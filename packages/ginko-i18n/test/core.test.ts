@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees } from '../src/core/compiler'
 import { defineCatalog } from '../src/core/catalog'
 import { createFormatters } from '../src/core/format'
-import { alternatesOf, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, resolveConfig, stripLocale } from '../src/core/locales'
+import { alternatesOf, canonicalCase, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, resolveConfig, stripLocale } from '../src/core/locales'
 import { createTranslator, formatParts } from '../src/core/messages'
 
 const pexd = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de-AT' })
@@ -56,6 +56,17 @@ describe('paths', () => {
   })
   it('rejects a zone pattern without a leading slash', () => {
     expect(() => resolveConfig({ locales: ['de-AT'], userLocale: ['app/**'] })).toThrow(/must start with "\/"/)
+  })
+  it('accepts URL codes with capitals, as Ginko passes canonical tags', () => {
+    const config = resolveConfig({ locales: ['de', ...['pt-BR', 'zh-Hant'].map(code => ({ code, language: code }))] })
+    expect(config.locales.map(l => l.code)).toEqual(['de', 'pt-BR', 'zh-Hant'])
+    expect(localeFromPath('/pt-BR/sobre', config)).toBe('pt-BR')
+    expect(negotiateLocale('pt-br', config)).toBe('pt-BR')
+  })
+  it.each([
+    ['/EN/about', '/en/about'], ['/pt-br/x?', '/pt-BR/x?'], ['/PT-BR', '/pt-BR'], ['/en/about', undefined], ['/pt-BR/x', undefined], ['/about', undefined],
+  ])('canonicalCase(%s) → %s', (path, expected) => {
+    expect(canonicalCase(path, resolveConfig({ locales: ['de', 'en', { code: 'pt-BR', language: 'pt-BR' }] }))).toBe(expected)
   })
   it('rejects two locales with one URL code', () => {
     expect(() => resolveConfig({ locales: ['en-GB', 'en-US'] })).toThrow(/Two locales use the URL code "en"/)
