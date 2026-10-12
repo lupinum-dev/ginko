@@ -29,8 +29,8 @@
 
 /* --- Appearance: every framed component is quiet (a border) or tint (a filled area). Each surface reads
    --ginko-surface and --ginko-surface-border and falls back to its own default (callout and excerpt: tint; the rest:
-   quiet). `appearance="quiet|tint"` on a tag (rendered as `data-appearance`) sets both, and nested tags inherit them (cards → card). A site sets its
-   default for every surface with the same two tokens on :root. --- */
+   quiet). `appearance="quiet|tint"` on a tag (rendered as `data-appearance`) sets both, and nested tags inherit them
+   (cards → card). A site sets its default for every surface with the same two tokens on :root. --- */
 :where(.ginko-callout, .ginko-aside, .ginko-excerpt, .ginko-accordion, .ginko-collapse, .ginko-tabs, .ginko-cards, .ginko-card,
   .ginko-read-more, .ginko-inline-toc, .ginko-steps, .ginko-files, .ginko-api, .ginko-quiz)[data-appearance='quiet'] {
   --ginko-surface: var(--card, var(--background, var(--ginko-default-background)));

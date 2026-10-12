@@ -13,30 +13,68 @@ import { components } from '@lupinum/ginko-components/registry'
 export default defineSite({ /* … */ components })
 ```
 
-The module provides the tag → component map under `ginko:components`; `<GinkoMarkdown>` merges it under its own
-`components` prop, so a site overrides one tag by passing it there. The Vue components are exported from
-`@lupinum/ginko-components/components` (for example to wrap `Callout` in an override). Styles are plain CSS files
-with the class prefix `ginko-`; colours read shadcn-style tokens (`--border`, `--muted`, `--foreground`, `--primary`)
-and the status colours `--ginko-info`, `--ginko-warning`, `--ginko-error`, `--ginko-success`.
-A site without those tokens gets neutral defaults (`--ginko-default-*`) that follow its colour mode: dark where it
-sets `color-scheme: dark`, `.dark` or `data-theme="dark"`, light everywhere else, also on a dark system.
+The module needs `@lupinum/ginko/nuxt` (it installs ginko-i18n, which provides the UI texts); without it the build
+stops with a message that says so. The module provides the tag → component map under `ginko:components`;
+`<GinkoMarkdown>` merges it under its own `components` prop, so a site overrides one tag by passing it there.
+
+## Exports
+
+| Entry | What |
+|---|---|
+| `@lupinum/ginko-components` | The Nuxt module (config key `ginkoComponents`) |
+| `@lupinum/ginko-components/registry` | `components`, the registry: tags, props and editor examples, plain data |
+| `@lupinum/ginko-components/components` | Every Vue component (`Callout`, `Card`, `Tabs`, ...), the six callout short forms (`NoteCallout`, `InfoCallout`, `WarningCallout`, `ErrorCallout`, `SuccessCallout`, `IdeaCallout`) and `componentMap` (tag → component) |
+| `@lupinum/ginko-components/styles.css` | All stylesheets in order, for hosts without the module |
+
+All of `./components` is public on purpose: a site wraps or replaces one component and passes the result through the
+`components` prop of `<GinkoMarkdown>`.
+
+## Props
+
+Prop names are camelCase (`iconColor`, `defaultValue`), and Markdown takes them exactly as written:
+`::card{iconColor="primary"}`. `icon-color` is an error ("property does not exist"). Boolean props work bare
+(`::code-tree{expandAll}`) or with `"true"`/`"false"`. Headings of a tag are `title`.
+
+## Theming
+
+Styles are plain CSS. The module adds them; outside Nuxt (for example an editor),
+`import '@lupinum/ginko-components/styles.css'` loads them in order.
+
+**Colours** come from shadcn-style tokens the site already has: `--background`, `--foreground`, `--card`, `--muted`,
+`--muted-foreground`, `--border`, `--primary`, `--primary-foreground`, `--ring`, `--radius` and `--font-mono`. Each
+colour token must be a full colour (`oklch(...)`, `hsl(...)`, hex). Older shadcn themes (Tailwind 3) store bare HSL
+channels (`--muted: 210 40% 96%`); those give no colour here. A site without the tokens gets neutral defaults that
+follow its colour mode: dark where it sets `color-scheme: dark`, `.dark` or `data-theme="dark"`, light everywhere else,
+also on a dark system. For this the stylesheet sets `color-scheme: dark` on `.dark` and `[data-theme="dark"]`, which
+also darkens the site's own form controls and scrollbars inside them. The defaults need `light-dark()` (Safari 17.5,
+Chrome 123).
 
 **Appearance.** Every framed component is *quiet* (a border) or *tint* (a filled area). Callouts and excerpts are
-tint by default, the rest quiet. `appearance="quiet"` or `appearance="tint"` on a tag changes one instance; cards in
-a `cards{appearance}` follow it. The tags with `appearance`: `callout` and its short forms, `aside`, `excerpt`,
-`accordion`, `collapse`, `tabs`, `cards`, `card`, `read-more`, `inline-toc`, `steps`, `files`, `api`, `quiz`. A site changes the default of every framed component on `:root`:
+tint by default, the rest quiet. `appearance="quiet"` or `appearance="tint"` on a tag changes one instance; it renders
+as `data-appearance` on the component's root. Cards in a `cards{appearance}` follow it. The tags with `appearance`:
+`callout` and its short forms, `aside`, `excerpt`, `accordion`, `collapse`, `tabs`, `cards`, `card`, `read-more`,
+`inline-toc`, `steps`, `files`, `api`, `quiz`. A site changes the default of every framed component on `:root`:
 
 ```css
 :root { --ginko-surface: var(--muted); --ginko-surface-border: transparent; } /* everything tint */
 ```
 
-`--ginko-tint` is the fill colour of tint (default `--muted`).
+**Code** sits on a dark panel in both colour modes, inside a lighter frame that holds the file name or the tabs. The
+syntax colours are the dark Shiki theme (`--shiki-dark`, which ginko-content always writes); with a single Shiki
+theme the code keeps that theme's colours.
 
-**Code** sits on a dark panel in both colour modes, inside a lighter frame that holds the file name or the tabs.
-The tokens are `--ginko-code-frame`, `--ginko-code-bg`, `--ginko-code-fg`, `--ginko-code-muted` and
-`--ginko-code-hover`; the syntax colours are the dark Shiki theme.
+**Stable** (changes only in a major version):
 
-New tags use `title` for a heading.
+| Kind | Names |
+|---|---|
+| Tokens a site sets | `--ginko-surface`, `--ginko-surface-border` (default of every framed component), `--ginko-tint` (fill of tint, default `--muted`), `--ginko-info`, `--ginko-warning`, `--ginko-error`, `--ginko-success`, `--ginko-idea` (status colours), `--ginko-code-frame`, `--ginko-code-bg`, `--ginko-code-fg`, `--ginko-code-muted`, `--ginko-code-hover` (code panel), `--ginko-scroll-margin` (space above an API entry that a link scrolls to, default `5rem`) |
+| Root classes | `ginko-<tag>` on the root element of each tag, for example `ginko-callout` (also for the short forms), `ginko-card`, `ginko-api-param`. Exceptions: `embedded` is `ginko-embed`, the code block (`pre`) is `ginko-code`, Markdown images are `ginko-img`, `collapse` without `label` is `ginko-clip` |
+| Attributes | `data-appearance="quiet"` / `"tint"` on a root |
+
+Everything else is internal and may change in a minor version: the `--ginko-default-*` fallbacks, other `--ginko-*`
+custom properties, class names below the root (`ginko-card-title`, ...) and other `data-*` attributes.
+
+## Tags
 
 | Tag | Kind | Props |
 |---|---|---|
@@ -93,26 +131,26 @@ host is a plain link. There is no generic iframe on purpose; see `embedded` belo
 
 ## Install a component with the shadcn-vue CLI
 
-Outside Nuxt (for example an editor), `import '@lupinum/ginko-components/styles.css'` loads all component stylesheets in order.
-
-The npm module above stays the simple path: one line in `nuxt.config.ts`, updates through the package. If you want to own and
-theme the code of a component, copy it into your app with the [shadcn-vue](https://www.shadcn-vue.com) CLI instead:
+The npm module above is the simple path: one line in `nuxt.config.ts`, updates through the package. To own and change
+the code of a component, copy it into your app with the [shadcn-vue](https://www.shadcn-vue.com) CLI instead. The
+Ginko docs site serves the registry:
 
 ```sh
-npx shadcn-vue@latest add https://<your-docs-site>/r/callout.json
+npx shadcn-vue@latest add https://ginko-docs.vercel.app/r/callout.json
 ```
 
-The CLI writes the component and its helper files to `components/ginko/` (under your `components` alias) and installs the npm
-packages it needs. Items it depends on (the shared stylesheet `ginko-components`, helpers `ginko-utils`, other components) come
-along. Import the stylesheet once in your main CSS: `@import "./components/ginko/ginko-components.css";`. It reads your shadcn
-tokens (`--background`, `--primary`, `--border`, `--radius`). Item names are the kebab-case file names (`callout`, `code-block`,
-`timeline-item`); `/r/registry.json` lists them all. Without the Nuxt module there is no UI-text provider, so the components use
-the English default texts from `texts.ts`; edit it. The tag-to-component map and the editor registry are not part of an item.
+Item names are the kebab-case file names (`callout`, `code-block`, `timeline-item`);
+[`/r/registry.json`](https://ginko-docs.vercel.app/r/registry.json) lists them all. The CLI writes the component and
+its helper files to `components/ginko/` (under your `components` alias) and installs the npm packages it needs. Items
+it depends on (the shared stylesheet `ginko-components`, the helpers `ginko-utils`, other components) come along.
+Import the stylesheet once in your main CSS: `@import "./components/ginko/ginko-components.css";`. It reads your
+shadcn tokens (see Theming). Without the Nuxt module there is no UI-text provider, so the components use the English
+texts in `texts.ts`; edit them there. The tag-to-component map and the editor registry are not part of an item.
 
-The items are generated from the files in `src/runtime/components` (never a second copy): `pnpm --filter
-@lupinum/ginko-components registry` writes them to `sites/docs/public/r/` (git-ignored), and the docs build runs it. Items
-reference each other by URL, so set `GINKO_REGISTRY_URL` to the public address of that folder (for example
-`https://docs.example.com/r`) when you build for deployment; the default is the docs dev server, `http://localhost:3500/r`.
+The items are generated from the files in `src/runtime/components` (never a second copy):
+`pnpm --filter @lupinum/ginko-components registry` writes them to `sites/docs/public/r/` (git-ignored), and the docs
+build runs it. Items reference each other by URL: `<url>/r`, with `url` from `sites/docs/ginko.config.ts`;
+`GINKO_REGISTRY_URL` overrides it (for example `http://localhost:3500/r` to test against the docs dev server).
 
 ## Embeds (`embedded`)
 

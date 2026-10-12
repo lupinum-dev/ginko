@@ -50,8 +50,8 @@ needs a public repository and an OIDC publish).
 history is in the private `lupinum-dev/ginko-archive`; internal working files (plan, reviews, spikes) are
 in the private `lupinum-dev/ginko-internal`. Keep them out of this repository.
 
-Docs deploy: set `GINKO_REGISTRY_URL` to the public `/r` address, or the shadcn registry items point at
-localhost.
+Docs deploy: the shadcn registry items point at `<url>/r`, with `url` from `sites/docs/ginko.config.ts`; keep that
+`url` the public docs address (`GINKO_REGISTRY_URL` overrides it).
 
 ## CI
 
