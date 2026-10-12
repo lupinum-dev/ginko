@@ -2,7 +2,7 @@
 import { defineSite } from '@lupinum/ginko'
 import { checkSchema, serializeSchema } from '@lupinum/ginko/internal'
 import { describe, expect, it } from 'vitest'
-import { allergensAT, allergensEU, events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '../src/index.ts'
+import { allergensEU, events, gallery, hourPlans, hours, hoursCalendarOf, lunch, lunchPlans, menu, notices } from '../src/index.ts'
 
 const siteWith = (bricks: Record<string, any>) =>
   defineSite({ site: 'cafe', name: 'Café', url: 'https://cafe.example', timezone: 'Asia/Singapore', locales: ['en'], currency: 'EUR', pages: { home: '/' }, bricks })
@@ -48,10 +48,24 @@ describe('allergens', () => {
     expect(json).toContain('"Nuts"')
     expect(json).not.toContain('Gluten')
   })
-  it('the default keeps the 14 EU codes, and allergensAT is the same list', () => {
+  it('the default keeps the 14 EU codes', () => {
     expect(fieldsOf({ menu: menu() })).toContain('{"de":"B Krebstiere","en":"B Crustaceans"}')
     expect(fieldsOf({ menu: menu() })).toContain('A Gluten')
-    expect(allergensAT).toBe(allergensEU)
     expect(allergensEU).toHaveLength(14)
+  })
+})
+
+describe('options', () => {
+  it('source: files reaches the brick on every factory, and no source means the platform', () => {
+    const files = { source: 'files' } as const
+    const bricks = { hours: hours(files), hourPlans: hourPlans(files), notices: notices(files), lunch: lunch(files), lunchPlans: lunchPlans(files), menu: menu(files), events: events({ ...files, route: { en: '/events/[slug]' } }), gallery: gallery(files) }
+    expect(Object.values(bricks).map((b) => b.source)).toEqual(Array(8).fill('files'))
+    expect(hours()).not.toHaveProperty('source')
+  })
+  it('the holiday calendar survives a spread of the brick', () => {
+    const singapore = { ...hours({ holidays: 'SG' }), label: 'Hours' }
+    const site = siteWith({ hours: singapore })
+    expect(hoursCalendarOf(site.bricks.hours)(2026).map((h) => h.date)).toContain('2026-08-09')
+    expect(hoursCalendarOf(hours())(2026).map((h) => h.date)).toContain('2026-10-26')
   })
 })

@@ -8,25 +8,25 @@ const week: DayHours[] = [
 ]
 const holiday: Exception = { _id: 'x1', when: { from: '2026-10-26', to: '2026-10-26' }, reason: 'Nationalfeiertag', closed: true }
 const winter: Exception = { _id: 'x2', when: { from: '2026-12-22', to: '2027-01-06' }, reason: 'Betriebsurlaub', closed: true }
-const and = 'und'
 
 describe('todayState', () => {
   it.each([
-    ['a normal Thursday is open with both times', { week, exceptions: [] }, '2026-10-08', { kind: 'open', times: '11:30–14:00 und 17:30–22:00' }],
+    ['a normal Thursday is open with both times', { week, exceptions: [] }, '2026-10-08', { kind: 'open', times: [{ from: '11:30', to: '14:00' }, { from: '17:30', to: '22:00' }] }],
     ['Monday is the weekly rest day', { week, exceptions: [] }, '2026-10-05', { kind: 'restDay' }],
     ['the owner closed today, with her note', { week, exceptions: [], closedOn: '2026-10-08', closedNote: 'Hochzeit' }, '2026-10-08', { kind: 'closed', reason: 'Hochzeit', field: 'closedNote' }],
-    ['yesterday’s closing switch no longer counts', { week, exceptions: [], closedOn: '2026-10-07' }, '2026-10-08', { kind: 'open', times: '11:30–14:00 und 17:30–22:00' }],
+    ['yesterday’s closing switch no longer counts', { week, exceptions: [], closedOn: '2026-10-07' }, '2026-10-08', { kind: 'open', times: [{ from: '11:30', to: '14:00' }, { from: '17:30', to: '22:00' }] }],
     ['a closure spanning New Year covers a Thursday inside it', { week, exceptions: [winter] }, '2026-12-31', { kind: 'closed', reason: 'Betriebsurlaub', field: 'exceptions.x2.reason' }],
   ] as const)('%s', (_name, hours, today, expected) => {
-    expect(todayState(hours as never, today, and)).toEqual(expected)
+    expect(todayState(today, { hours: hours as never })).toEqual(expected)
   })
 })
 
 describe('upcomingClosures', () => {
   it('shows a closure only within the notice days and before it starts', () => {
-    expect(upcomingClosures([winter, holiday], '2026-10-12', 14).map((e) => e._id)).toEqual(['x1'])
-    expect(upcomingClosures([holiday], '2026-10-26', 14)).toEqual([])
-    expect(upcomingClosures([holiday], '2026-10-01', 14)).toEqual([])
+    const ctx = (exceptions: Exception[]) => ({ hours: { week, exceptions }, calendar: 'none' as const })
+    expect(upcomingClosures(ctx([winter, holiday]), '2026-10-12', 14).map((e) => e._id)).toEqual(['x1'])
+    expect(upcomingClosures(ctx([holiday]), '2026-10-26', 14)).toEqual([])
+    expect(upcomingClosures(ctx([holiday]), '2026-10-01', 14)).toEqual([])
   })
 })
 
@@ -60,11 +60,11 @@ describe('hoursOn precedence', () => {
     ['the order of the plans does not matter', '2026-11-05', {}, [fromNovember, winterPlan], { closed: false, times: [{ from: '10:00', to: '12:00' }], source: 'plan' }],
     ['open-ended plan runs on', '2031-03-06', {}, [fromNovember], { closed: false, times: [{ from: '10:00', to: '12:00' }], source: 'plan' }],
     ['open-ended plan has not started', '2026-10-29', {}, [fromNovember], { closed: false, times: normalTimes, source: 'week' }],
-    ['holiday uses Sunday of the standard week', '2026-10-26', {}, [], { closed: false, times: [{ from: '11:30', to: '15:00' }], source: 'holiday', reason: 'Nationalfeiertag' }],
-    ['holiday uses the Sunday of the applicable plan (closed)', '2026-12-08', {}, [winterPlan], { closed: true, source: 'holiday', reason: 'Mariä Empfängnis' }],
+    ['holiday uses Sunday of the standard week', '2026-10-26', {}, [], { closed: false, times: [{ from: '11:30', to: '15:00' }], source: 'holiday', holiday: { de: 'Nationalfeiertag', en: 'Austrian National Day' } }],
+    ['holiday uses the Sunday of the applicable plan (closed)', '2026-12-08', {}, [winterPlan], { closed: true, source: 'holiday', holiday: { en: 'Immaculate Conception' } }],
     ['holiday setting closed', '2026-10-26', { holidays: 'closed' }, [], { closed: true, source: 'holiday' }],
     ['holiday setting normal falls through to the Monday rule', '2026-10-26', { holidays: 'normal' }, [], { closed: true, source: 'week' }],
-    ['holiday beats the plan weekday', '2027-01-06', {}, [winterPlan], { closed: true, source: 'holiday', reason: 'Heilige Drei Könige' }],
+    ['holiday beats the plan weekday', '2027-01-06', {}, [winterPlan], { closed: true, source: 'holiday', holiday: { en: 'Epiphany' } }],
     ['exception with times beats holiday', '2026-12-25', { exceptions: [{ _id: 'e2', when: { from: '2026-12-25', to: '2026-12-25' }, reason: 'Weihnachten', closed: false, from1: '12:00', to1: '15:00' }] }, [], { closed: false, times: winterThursday, source: 'exception', reason: 'Weihnachten' }],
     ['closing exception beats holiday and plan', '2027-01-06', { exceptions: [{ _id: 'e3', when: { from: '2026-12-22', to: '2027-01-10' }, reason: 'Urlaub', closed: true }] }, [winterPlan], { closed: true, source: 'exception', reason: 'Urlaub' }],
     ['special hours: closes early on 24.12.', '2026-12-24', { exceptions: [early] }, [winterPlan], { closed: false, times: [{ from: '11:00', to: '14:00' }], source: 'exception', reason: 'Heiligabend' }],
@@ -73,6 +73,10 @@ describe('hoursOn precedence', () => {
   ] as const)('%s', (_name, date, extra, plans, expected) => {
     const rule = hoursOn(date, { hours: { ...baseHours, ...(extra as object) } as never, plans: plans as never })
     expect(rule).toMatchObject(expected as object)
+  })
+
+  it('a holiday rule carries no German reason, only the names in both languages', () => {
+    expect(hoursOn('2026-10-26', { hours: baseHours })).not.toHaveProperty('reason')
   })
 
   it('weekOf returns seven days from Monday with the winter plan applied', () => {
@@ -97,23 +101,23 @@ describe('austrianHolidays', () => {
 
 describe('todayState with special hours, plans and holidays', () => {
   it('shows the special times of a non-closed exception', () => {
-    expect(todayState({ ...baseHours, exceptions: [early] }, '2026-12-24', and)).toEqual({ kind: 'open', times: '11:00–14:00', reason: 'Heiligabend', field: 'exceptions.e1.reason' })
+    expect(todayState('2026-12-24', { hours: { ...baseHours, exceptions: [early] } })).toEqual({ kind: 'open', times: [{ from: '11:00', to: '14:00' }], reason: 'Heiligabend', field: 'exceptions.e1.reason' })
   })
-  it('a closed holiday reports its name', () => {
-    expect(todayState({ ...baseHours, holidays: 'closed' }, '2026-10-26', and)).toMatchObject({ kind: 'closed', reason: 'Nationalfeiertag', names: { en: 'Austrian National Day' } })
+  it('a closed holiday reports its names', () => {
+    expect(todayState('2026-10-26', { hours: { ...baseHours, holidays: 'closed' } })).toEqual({ kind: 'holiday', holiday: { de: 'Nationalfeiertag', en: 'Austrian National Day' } })
   })
   it('uses plans when given', () => {
-    expect(todayState(baseHours, '2026-11-05', and, [winterPlan])).toEqual({ kind: 'open', times: '12:00–15:00' })
+    expect(todayState('2026-11-05', { hours: baseHours, plans: [winterPlan] })).toEqual({ kind: 'open', times: [{ from: '12:00', to: '15:00' }] })
   })
 })
 
 describe('upcomingClosures with holidays', () => {
   it('adds holidays on which the house is closed', () => {
     const ctx = { hours: { ...baseHours, holidays: 'closed' as const } }
-    expect(upcomingClosures([winter], '2026-10-12', 20, ctx).map((e) => e._id)).toEqual(['holiday-2026-10-26', 'holiday-2026-11-01'])
+    expect(upcomingClosures({ ...ctx, hours: { ...ctx.hours, exceptions: [winter] } }, '2026-10-12', 20).map((e) => e._id)).toEqual(['holiday-2026-10-26', 'holiday-2026-11-01'])
   })
   it('does not list holidays on which the house opens like on Sunday', () => {
-    expect(upcomingClosures([], '2026-10-12', 20, { hours: baseHours })).toEqual([])
+    expect(upcomingClosures({ hours: baseHours }, '2026-10-12', 20)).toEqual([])
   })
 })
 

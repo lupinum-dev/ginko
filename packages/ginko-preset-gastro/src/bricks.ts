@@ -1,5 +1,5 @@
-// Restaurant bricks with the owner's tasks (DEMOS.md demo 3, UI.md). Labels come in German and English; `lang` picks only default content.
-import { collection, f, single, type ChoicesField, type Label, type Locale } from '@lupinum/ginko'
+// Restaurant bricks with the owner's quick tasks. Labels come in German and English; `lang` picks only default content.
+import { collection, f, single, type BrickSource, type ChoicesField, type Label, type Locale } from '@lupinum/ginko'
 import { allergenNames } from './names.ts'
 import { calendarOf, type HolidayCalendar, type HolidaysOption } from './holidays.ts'
 
@@ -22,9 +22,6 @@ export const allergensEU: readonly ChoiceOption[] = ['A', 'B', 'C', 'D', 'E', 'F
   label: both(`${code} ${allergenNames.de[code]}`, `${code} ${allergenNames.en[code]}`),
 }))
 
-/** Alias of `allergensEU`, kept so existing imports work. */
-export const allergensAT = allergensEU
-
 /** The `allergens` field type: present unless the set is `'none'`. */
 type AllergenFields<A extends AllergenSet> = A extends 'none' ? {} : { allergens: ChoicesField<string> }
 
@@ -35,11 +32,16 @@ function allergenChoices(set: AllergenSet | undefined): readonly ChoiceOption[] 
   return set
 }
 
-/** Options every factory shares. */
-export interface LangOption {
-  /** The site's main language (default `de`). Picks the default content: the lunch placeholder is written for `de` or `en` only; other languages start with no lunch days. Labels always come in German and English. */
+/** Options every factory takes. */
+export interface GastroOptions {
+  /** The site's main language (default `de`). Picks the default content: the lunch placeholder and the "fully booked" text are written for `de` or `en` only; other languages start without them. Labels always come in German and English. */
   lang?: string
+  /** Where the content comes from: absent means the Ginko platform (the owner edits it), `'files'` means Markdown in `content/`. */
+  source?: BrickSource
 }
+
+/** `source` as a brick property, only when set, so a platform brick's schema stays as it was. */
+const sourceOf = (opts: GastroOptions) => (opts.source ? { source: opts.source } : {})
 
 // Row IDs in defaults are fixed so every fresh site starts with the same, stable rows.
 const weekDefault = weekdays.map((d) => ({
@@ -62,12 +64,14 @@ const lunchDefault = (lang: keyof typeof lunchPlaceholder, withAllergens: boolea
   ...(withAllergens ? { allergens: [] } : {}),
 }))
 
-// The holiday calendar chosen in `hours({ holidays })`, for `hoursCalendarOf`. Not part of the schema.
-const calendarsByBrick = new WeakMap<object, HolidaysOption>()
+// The holiday calendar chosen in `hours({ holidays })`, for `hoursCalendarOf`. Not part of the schema: a symbol key
+// stays out of the serialized schema but survives `{ ...hours(), label: 'Hours' }`.
+const calendarKey = Symbol('ginko-preset-gastro.holidays')
 
 /** The holiday calendar a brick from `hours()` was made with (Austria by default). Pass it to `hoursOn` as `ctx.calendar`. */
 export function hoursCalendarOf(brick: object): HolidayCalendar {
-  return calendarOf(calendarsByBrick.get(brick) ?? 'AT')
+  // Only `hours()` writes this key.
+  return calendarOf((brick as { readonly [calendarKey]?: HolidaysOption })[calendarKey] ?? 'AT')
 }
 
 /** Times only on a day that is not closed (a closed day keeps its stored times). */
@@ -85,18 +89,19 @@ function weekField() {
   }, { min: 7, max: 7, unique: 'day', default: weekDefault })
 }
 
-export function hours(opts: LangOption & {
+export function hours(opts: GastroOptions & {
   /** Which public holidays count. Code-level config, not a schema field: pass the same value as `ctx.calendar`. Default `'AT'`. */
   holidays?: HolidaysOption
 } = {}) {
   const brick = single({
     label: both('Öffnungszeiten', 'Opening hours'),
+    ...sourceOf(opts),
     fields: {
       week: weekField(),
       exceptions: f.list(both('Betriebsurlaub und Ausnahmen', 'Holiday closures and exceptions'), both('Ausnahme', 'Exception'), {
         when: f.daterange(both('Zeitraum', 'Dates')),
         reason: f.text(both('Grund', 'Reason'), { max: 140 }),
-        // A new exception is a closure unless she says otherwise (walkthrough: "Nein" was a trap).
+        // A new exception is a closure unless the owner says otherwise.
         closed: f.boolean(both('Geschlossen', 'Closed'), { default: true }),
         // Special hours: "Geschlossen" off and times set, e.g. 24.12. from 11:00 to 14:00.
         from1: f.time(both('Mittag von', 'Lunch from'), { optional: true, showWhen: open }),
@@ -117,14 +122,15 @@ export function hours(opts: LangOption & {
       { id: 'holidaySetting', label: both('Öffnungszeiten an Feiertagen', 'Opening hours on public holidays'), kind: 'edit', fields: ['holidays'] },
     ],
   })
-  if (opts.holidays) calendarsByBrick.set(brick, opts.holidays)
+  if (opts.holidays) Object.assign(brick, { [calendarKey]: opts.holidays })
   return brick
 }
 
 /** Own weekly hours for a date range: a season (yearly) or "new hours from a date" (open end). */
-export function hourPlans(opts: LangOption = {}) {
+export function hourPlans(opts: GastroOptions = {}) {
   return collection({
     label: both('Öffnungszeiten ab Datum und Saisonen', 'Hours from a date and seasons'),
+    ...sourceOf(opts),
     fields: {
       label: f.text(both('Name', 'Name'), { max: 80 }),
       from: f.date(both('Gilt ab', 'Applies from')),
@@ -142,9 +148,10 @@ export function hourPlans(opts: LangOption = {}) {
   })
 }
 
-export function notices(opts: LangOption = {}) {
+export function notices(opts: GastroOptions = {}) {
   return collection({
     label: both('Hinweise', 'Notices'),
+    ...sourceOf(opts),
     fields: {
       text: f.text(both('Text', 'Text'), { max: 140 }),
       until: f.date(both('Gilt bis', 'Shown until'), { optional: true }),
@@ -154,7 +161,7 @@ export function notices(opts: LangOption = {}) {
     visible: { mode: 'active', field: 'until' },
     autoRemoveExpired: true,
     tasks: [
-      // The weekly job first: it becomes the main button in Schnell ändern.
+      // The weekly job first: it becomes the main quick task.
       { id: 'soldOut', label: both('Heute ausgebucht', 'Fully booked today'), kind: 'create', prefill: { ...soldOutText(opts.lang), until: '@today' } },
       { id: 'add', label: both('Hinweis hinzufügen', 'Add a notice'), kind: 'create' },
       { id: 'remove', label: both('Hinweis entfernen', 'Remove a notice'), kind: 'remove' },
@@ -178,9 +185,10 @@ function lunchDays<A extends AllergenSet>(lang: string | undefined, allergens: A
   })
 }
 
-export function lunch<const A extends AllergenSet = 'EU'>(opts: LangOption & { weekOf?: string; allergens?: A } = {}) {
+export function lunch<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { weekOf?: string; allergens?: A } = {}) {
   return single({
     label: both('Mittagsmenü', 'Lunch menu'),
+    ...sourceOf(opts),
     fields: {
       weekOf: f.date(both('Woche ab', 'Week starting'), opts.weekOf ? { default: opts.weekOf } : {}),
       days: lunchDays(opts.lang, opts.allergens),
@@ -196,10 +204,11 @@ export function lunch<const A extends AllergenSet = 'EU'>(opts: LangOption & { w
 
 /** Lunch weeks planned ahead (at most 3). Nested lists are not allowed, so planned weeks are entries, not a list on `lunch`. A week shows from its first day (see `lunchWeekOn`). */
 /** `lunchBrick` is the key the site gives the `lunch()` brick; a planned week there counts as entered for it. */
-export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: LangOption & { allergens?: A; lunchBrick?: string } = {}) {
+export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { allergens?: A; lunchBrick?: string } = {}) {
   const lunchBrick = opts.lunchBrick ?? 'lunch'
   return collection({
     label: both('Mittagsmenü vorausplanen', 'Plan the lunch menu ahead'),
+    ...sourceOf(opts),
     fields: {
       weekOf: f.date(both('Woche ab', 'Week starting')),
       days: lunchDays(opts.lang, opts.allergens),
@@ -219,11 +228,12 @@ export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: LangOption 
   })
 }
 
-export function menu<const A extends AllergenSet = 'EU'>(opts: LangOption & { allergens?: A } = {}) {
+export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { allergens?: A } = {}) {
   const choices = allergenChoices(opts.allergens)
   const dishFields = choices ? ['category', 'name', 'description', 'price', 'allergens', 'veg'] : ['category', 'name', 'description', 'price', 'veg']
   return collection({
     label: both('Speisekarte', 'Menu'),
+    ...sourceOf(opts),
     fields: {
       category: f.choice(both('Kategorie', 'Category'), [
         { value: 'starters', label: both('Vorspeisen', 'Starters') }, { value: 'soups', label: both('Suppen', 'Soups') },
@@ -253,9 +263,10 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: LangOption & { al
   })
 }
 
-export function events(opts: LangOption & { route: Partial<Record<Locale, string>> }) {
+export function events(opts: GastroOptions & { route: Partial<Record<Locale, string>> }) {
   return collection({
     label: both('Veranstaltungen', 'Events'),
+    ...sourceOf(opts),
     fields: {
       title: f.text(both('Titel', 'Title'), { max: 120 }),
       slug: f.slug(both('Adresse', 'Web address'), { from: 'title' }),
@@ -278,9 +289,10 @@ export function events(opts: LangOption & { route: Partial<Record<Locale, string
   })
 }
 
-export function gallery(opts: LangOption = {}) {
+export function gallery(opts: GastroOptions = {}) {
   return single({
     label: both('Galerie', 'Gallery'),
+    ...sourceOf(opts),
     fields: {
       images: f.list(both('Bilder', 'Images'), both('Bild', 'Image'), { image: f.image(both('Bild', 'Image')) }, { max: 24, default: [] }),
     },

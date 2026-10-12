@@ -1,5 +1,5 @@
 // Public holiday calendars. `hours({ holidays })` names one; the site passes the same choice to `hoursOn` as `ctx.calendar`.
-// Names for guests in both site languages.
+// Holiday names for guests come in German and English only (`de`, `en`); a site in another language shows its own text.
 import { addDays, weekdayOf } from './dates.ts'
 
 export interface HolidayNames { de: string; en: string }
