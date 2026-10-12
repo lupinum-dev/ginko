@@ -11,7 +11,7 @@ const { t } = useI18n()
 <template>
   <aside class="sticky top-4 flex h-[calc(100dvh-2rem)] w-[92px] flex-none flex-col items-center rounded-2xl bg-sidebar px-2 pt-[18px] pb-4 text-sidebar-foreground">
     <NuxtLink
-      to="/?alle" :aria-label="`${siteName} · ${t('nav.mySites')}`" :title="siteName"
+      to="/?all" :aria-label="`${siteName} · ${t('nav.mySites')}`" :title="siteName"
       class="mb-[18px] grid size-11 flex-none place-items-center rounded-lg border border-primary text-base font-bold text-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/80"
     >{{ initial }}</NuxtLink>
     <nav class="grid gap-0.5" :aria-label="t('nav.views')">

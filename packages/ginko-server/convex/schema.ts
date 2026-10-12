@@ -242,7 +242,7 @@ export default defineSchema({
     height: v.optional(v.number()),
     status: v.union(v.literal('processing'), v.literal('ready'), v.literal('failed')),
     attempts: v.number(),
-    /** German reason of the last failed processing attempt (shown to the uploader). */
+    /** Catalog key (`errors.upload…`) of the reason of the last failed processing attempt, shown to the uploader in their language. */
     error: v.optional(v.string()),
     folder: v.optional(v.id('folders')),
     /** Uploaded through the library, put in a folder or kept on purpose: the 7-day sweep leaves it alone. Missing means false. */
@@ -283,7 +283,7 @@ export default defineSchema({
     scopes: v.array(scope),
     createdBy: v.string(),
     revokedAt: v.optional(v.number()),
-  }).index('by_hash', ['hash']),
+  }).index('by_hash', ['hash']).index('by_site', ['site']),
 
   /** A saved list view of one person (SPEC 4.2 views): a filter and sort of a brick's entry list. Never shared. */
   views: defineTable({
@@ -311,5 +311,5 @@ export default defineSchema({
     .index('by_site_brick_week_user', ['site', 'brick', 'week', 'user']),
 
   /** Local and test mail sink (GINKO_MAIL=outbox). */
-  outbox: defineTable({ to: v.string(), subject: v.string(), text: v.string(), at: v.number() }).index('by_to', ['to']),
+  outbox: defineTable({ to: v.string(), subject: v.string(), text: v.string(), at: v.number() }).index('by_to', ['to']).index('by_at', ['at']),
 })

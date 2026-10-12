@@ -104,6 +104,7 @@
     "actionReusedWithOtherContent": "Diese Aktion wurde schon mit anderem Inhalt ausgeführt.",
     "versionInvalid": "Die Versionsangabe ist ungültig.",
     "needsApprovalProposeAgain": "Das braucht hier eine Freigabe. Schlage die Änderung stattdessen neu vor.",
+    "agentUndoNeedsReview": "Diese Website prüft Änderungen der KI, darum geht Rückgängig hier nicht. Schlage mit ginko_revert die frühere Version vor.",
     "proposalTooLarge": "Dieser Vorschlag ist zu groß.",
     "tooManyOpenProposals": "Es warten schon {openMax} Vorschläge auf Freigabe. Bitte warte, bis einige geprüft sind.",
     "fileNoLongerAvailable": "Eine Datei ist nicht (mehr) verfügbar. Bitte neu hochladen.",
@@ -185,7 +186,17 @@
     "linkBroken": "Der Link „{link}“ führt ins Leere. Bitte korrigieren und noch einmal speichern.",
     "lastOwnerCannotBeRemoved": "Der letzte Besitzer kann nicht entfernt werden.",
     "signInNotSetUp": "Anmeldung noch nicht eingerichtet.",
-    "languageUnsupported": "Diese Sprache gibt es nicht."
+    "languageUnsupported": "Diese Sprache gibt es nicht.",
+    "uploadExpired": "Der Upload ist abgelaufen. Bitte wähle die Datei noch einmal.",
+    "uploadTooLarge": "Die Datei ist zu groß (Bilder höchstens {imageMb} MB, PDF höchstens {fileMb} MB).",
+    "uploadWrongType": "Dieser Dateityp ist nicht erlaubt ({types}).",
+    "uploadWrongContent": "Der Inhalt passt nicht zum Dateityp.",
+    "uploadFailed": "Der Upload ist fehlgeschlagen. Bitte versuche es noch einmal.",
+    "uploadMissing": "Die hochgeladene Datei fehlt. Bitte lade sie erneut hoch.",
+    "uploadRetrying": "Das Bild konnte nicht verarbeitet werden. Wir versuchen es erneut.",
+    "uploadHeicUnreadable": "Dieses HEIC-Foto kann nicht gelesen werden. Bitte speichere es als JPEG oder PNG und lade es erneut hoch.",
+    "uploadNotAnImage": "Diese Datei ist kein lesbares Bild.",
+    "siteUrlNotWeb": "Die Adresse der Website in der Config muss mit https:// oder http:// beginnen."
   },
   "history": {
     "changedSingle": "{label}: {fields} geändert",
@@ -226,7 +237,8 @@
     "staleAlreadyDraft": "Dieser Eintrag ist schon ein Entwurf.",
     "staleApproverNotAllowed": "Der Genehmiger darf das nicht mehr freigeben.",
     "staleNoLonger": "Das geht nicht mehr.",
-    "staleRefused": "{why} Bitte schlage die Änderung neu vor."
+    "staleRefused": "{why} Bitte schlage die Änderung neu vor.",
+    "stateField": "Status"
   },
   "publicness": {
     "deleted": "Der Eintrag wurde entfernt. Er lässt sich bis zum {until, date, long} wiederherstellen, danach wird er endgültig gelöscht.",
@@ -258,6 +270,13 @@
       "someone": "Jemand",
       "viaAi": "(über KI: {ai})",
       "viaAiUnnamed": "(über KI)"
+    },
+    "notLive": {
+      "subject": "Nicht live gegangen: eine geplante Änderung für {site}",
+      "text": "Hallo,\n\neine Änderung, die du für „{site}“ geplant hast, ist nicht live gegangen, weil sie nicht mehr passt:\n\n{what}\n\nDen Grund findest du im Verlauf: {path}\n"
     }
+  },
+  "content": {
+    "copyOf": "{text} (Kopie)"
   }
 }

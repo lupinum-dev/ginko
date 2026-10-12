@@ -65,6 +65,16 @@ async function insertSingle(ctx: MutationCtx, site: Id<'sites'>, single: NewSing
   return bytes
 }
 
+function isWebUrl(value: unknown): boolean {
+  if (typeof value !== 'string') return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 async function insertPushKey(ctx: MutationCtx, site: Doc<'sites'>, input: { label: string; scopes: ('release' | 'pull' | 'check' | 'export')[]; createdBy: string }) {
   const label = input.label.trim()
   if (label.length < 1 || label.length > 60) fail('INVALID', 'errors.nameLength1To60')
@@ -91,6 +101,31 @@ export const bootstrapKey = internalMutation({
     const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.site)).unique()
     if (!site) fail('SITE_NOT_FOUND', 'errors.siteMissing')
     return insertPushKey(ctx, site, { label: args.label, scopes: args.scopes, createdBy: 'bootstrap' })
+  },
+})
+
+/**
+ * The push keys of a site, for operators (`npx convex run release:pushKeys '{"site":"linde"}'`): to find a
+ * leaked key by its label and revoke it with `release:revokePushKeyAsOperator`. Never the key or its hash.
+ */
+export const pushKeys = internalQuery({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.site)).unique()
+    if (!site) fail('SITE_NOT_FOUND', 'errors.siteMissing')
+    const rows = await ctx.db.query('pushKeys').withIndex('by_site', (q) => q.eq('site', site._id)).collect()
+    return rows.map((r) => ({ id: r._id, label: r.label, scopes: r.scopes, createdBy: r.createdBy, createdAt: r._creationTime, revokedAt: r.revokedAt ?? null }))
+  },
+})
+
+/** `revokePushKey` for operators, who have a deploy key but no session. */
+export const revokePushKeyAsOperator = internalMutation({
+  args: { key: v.id('pushKeys') },
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.key)
+    if (!row) fail('NOT_FOUND', 'errors.keyNotFound')
+    if (!row.revokedAt) await ctx.db.patch(row._id, { revokedAt: Date.now() })
+    return { id: row._id }
   },
 })
 
@@ -170,6 +205,10 @@ export const release = internalMutation({
     const next = args.schema as Schema
     const problems = checkSchema(next)
     if (problems.length) fail('INVALID', 'errors.schemaInvalid', undefined, { problems: problems as unknown as Json })
+    // The key names the site; its config may not speak for another one. The URL is where "Update website
+    // now" sends the site's refresh token, so it must be a web address.
+    if (next.site !== site.slug) fail('INVALID', 'errors.siteNameMismatchInSchema')
+    if (!isWebUrl(next.url)) fail('INVALID', 'errors.siteUrlNotWeb')
 
     // 3. Migration changes are reported first: they name the exact fix (new ID). The ledger of
     // applied migrations is the permanent identity: the schema forgets a migration once it is

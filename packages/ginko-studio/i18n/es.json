@@ -9,7 +9,6 @@
     "mySites": "Mis sitios",
     "viewSite": "Ver sitio",
     "newTab": "(pestaña nueva)",
-    "menu": "Menú",
     "views": "Vistas",
     "areas": "Áreas",
     "list": "Lista",
@@ -137,7 +136,9 @@
     "preview": {
       "label": "Vista previa",
       "close": "Cerrar vista previa",
-      "frameTitle": "Vista previa del sitio web"
+      "frameTitle": "Vista previa del sitio web",
+      "stuck": "La vista previa no carga. Guardar sigue funcionando como siempre.",
+      "openSite": "Abrir sitio web"
     },
     "remove": {
       "title": "Eliminar entrada",
@@ -162,7 +163,8 @@
       "empty": "Aún no hay cambios."
     },
     "toast": {
-      "close": "Cerrar mensaje"
+      "close": "Cerrar mensaje",
+      "region": "Mensajes"
     }
   },
   "site": {
@@ -204,7 +206,6 @@
       "noEnd": "sin fecha de fin"
     },
     "quick": {
-      "heading": "Edición rápida",
       "nothingForYou": "No tienes tareas aquí. Pide al propietario los permisos que necesitas.",
       "todayDone": "<task>{task}</task> está completado para hoy.",
       "flagText": "“{text}”",
@@ -596,7 +597,9 @@
     "withdraw": "Retirar",
     "withdrawn": "Retirado.",
     "notApproved": "No aprobado",
-    "rejectedBy": "{who} lo rechazó: «{reason}»"
+    "rejectedBy": "{who} lo rechazó: «{reason}»",
+    "notLive": "No se publicó",
+    "notLiveBecause": "Planificado para {when}. {reason}"
   },
   "basics": {
     "search": {
@@ -621,6 +624,7 @@
       "menu": "Actualizar el sitio web ahora",
       "running": "Actualizando el sitio web…",
       "done": "El sitio web está al día.",
+      "partly": "Las páginas principales y el mapa del sitio están al día.",
       "fallback": "Se actualiza solo en unos minutos.",
       "pagesFailed": "{count, plural, one {No se pudo actualizar # página.} other {No se pudieron actualizar # páginas.}}",
       "lastAt": "Última actualización: {when}"
@@ -703,7 +707,6 @@
       "usedIn": "Usado en",
       "date": "Fecha"
     },
-    "inUse": "En uso",
     "selected": "{count, plural, one {# archivo seleccionado} other {# archivos seleccionados}}",
     "info": {
       "title": "Detalles",

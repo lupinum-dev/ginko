@@ -310,7 +310,8 @@ const emptyText = computed(() => {
       <p v-if="uploading" class="text-sm font-medium text-muted-foreground" role="status">{{ t('files.uploading') }}</p>
       <p v-if="error" class="text-sm font-medium text-destructive" role="alert">{{ error }}</p>
 
-      <p v-if="list.pending.value" class="text-sm text-muted-foreground" role="status">{{ t('files.loading') }}</p>
+      <p v-if="list.error.value" class="text-sm font-medium text-destructive" role="alert">{{ list.error.value }}</p>
+      <p v-else-if="list.pending.value" class="text-sm text-muted-foreground" role="status">{{ t('files.loading') }}</p>
       <p v-else-if="!files.length && !list.hasMore.value" class="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">{{ emptyText }}</p>
       <FileGrid
         v-else

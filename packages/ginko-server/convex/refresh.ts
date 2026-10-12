@@ -20,7 +20,8 @@ interface Plan {
   token: string
   min: Rev
   paths: string[]
-  note: string | null
+  /** More than MAX_PATHS addresses: only the pages and the sitemap were sent. The Studio says so in the owner's language. */
+  limited: boolean
 }
 
 type Row = { path: string; status: number; rev: string | null; ok: boolean }
@@ -74,7 +75,7 @@ export const plan = internalQuery({
       token,
       min: { schemaRev: actor.site.schemaRev, contentRev: actor.site.contentRev },
       paths: limited ? clean(pages) : all,
-      note: limited ? `Mehr als ${MAX_PATHS} Adressen: Es wurden nur die Seiten und die Sitemap neu geladen.` : null,
+      limited,
     }
   },
 })
@@ -149,7 +150,7 @@ export const urgentRefresh = action({
     for (let i = 0; i < plan.paths.length; i += BATCH) {
       results.push(...(await Promise.all(plan.paths.slice(i, i + BATCH).map((path) => refreshPath(plan, path)))))
     }
-    const result: Json = { results, note: plan.note }
+    const result: Json = { results, limited: plan.limited }
     return ctx.runMutation(internal.refresh.record, { site: args.site, opId: args.opId, hash: plan.hash, result })
   },
 })

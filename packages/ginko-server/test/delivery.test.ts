@@ -69,6 +69,20 @@ describe('GET /bundle/<site>', () => {
     expect(ids).toContain(entries.martinigans)
   })
 
+  it('a stranger who uses up the limit does not block the site, which sends its refresh token', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+    const { t, site } = await setup()
+    await t.run(async (ctx) => {
+      await ctx.db.patch(site, { refreshToken: 'site-secret' })
+      await ctx.db.insert('rateWindows', { site, window: Math.floor(NOW / 60_000), count: 600 })
+    })
+    const get = (token?: string) => t.fetch('/bundle/restaurant?format=3&locale=de', token ? { headers: { 'x-ginko-site-token': token } } : {})
+    expect((await get()).status).toBe(429)
+    expect((await get('wrong-secret')).status).toBe(429)
+    expect((await get('site-secret')).status).toBe(200)
+  })
+
   // 601 HTTP requests take ~3 s alone and more under a full parallel run: a longer limit, not a flake.
   it('the 601st request in one minute is RATE_LIMITED (429)', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
@@ -168,10 +182,10 @@ describe('urgentRefresh', () => {
 describe('refresh.record (Phase 5 review)', () => {
   it('two recordings of one opId keep one ops row and both answer with the first result', async () => {
     const { t, as } = await setup()
-    const first = { results: [{ path: '/', status: 200, rev: '1.1', ok: true }], note: null }
+    const first = { results: [{ path: '/', status: 200, rev: '1.1', ok: true }], limited: false }
     const args = { site: 'restaurant', opId: opId(), hash: 'hash-test' }
     expect(await as.owner.mutation(internal.refresh.record, { ...args, result: first })).toEqual(first)
-    expect(await as.owner.mutation(internal.refresh.record, { ...args, result: { results: [], note: 'zweiter Versuch' } })).toEqual(first)
+    expect(await as.owner.mutation(internal.refresh.record, { ...args, result: { results: [], limited: true } })).toEqual(first)
     expect(await t.run((ctx) => ctx.db.query('ops').collect())).toHaveLength(1)
   })
 
@@ -182,17 +196,30 @@ describe('refresh.record (Phase 5 review)', () => {
     const failed = { path: '/menu', status: 500, rev: '1.0', ok: false }
     const lastRefreshAt = async () => (await as.owner.query(api.sites.get, { site: 'restaurant' })).site.lastRefreshAt
     vi.setSystemTime(NOW)
-    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly', result: { results: [ok, failed], note: null } })
+    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly', result: { results: [ok, failed], limited: false } })
     expect(await lastRefreshAt()).toBeNull()
-    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-full', result: { results: [ok], note: null } })
+    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-full', result: { results: [ok], limited: false } })
     expect(await lastRefreshAt()).toBe(NOW)
     vi.setSystemTime(NOW + 60 * 60 * 1000)
-    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly-again', result: { results: [ok, failed], note: null } })
+    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly-again', result: { results: [ok, failed], limited: false } })
     expect(await lastRefreshAt()).toBe(NOW)
   })
 })
 
 describe('retention (daily)', () => {
+  // Wrong behaviour caught: sign-in codes stay readable in the outbox for ever.
+  it('removes outbox mail older than a day and keeps a newer one', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+    const { t } = await setup()
+    await t.run(async (ctx) => {
+      await ctx.db.insert('outbox', { to: 'a@example.test', subject: 'Code', text: '123456', at: NOW - DAY - 1 })
+      await ctx.db.insert('outbox', { to: 'b@example.test', subject: 'Code', text: '654321', at: NOW - 60_000 })
+    })
+    await t.mutation(internal.retention.daily, {})
+    expect((await t.run((ctx) => ctx.db.query('outbox').collect())).map((m) => m.to)).toEqual(['b@example.test'])
+  })
+
   it('hard-deletes an entry deleted 31 days ago with its slug rows, and keeps one deleted 29 days ago', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(NOW)

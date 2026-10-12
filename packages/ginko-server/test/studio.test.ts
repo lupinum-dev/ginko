@@ -149,12 +149,16 @@ describe('views', () => {
 
 describe('entries.duplicate', () => {
   // Wrong behaviour caught: the copy takes the slug of the original (SLUG_TAKEN or a second page on one URL), or shares list-row ids with it.
-  it('makes a copy with " (Kopie)", a free slug each time and its own list-row ids', async () => {
+  it('makes a copy marked in each language (Kopie, copy), a free slug each time and its own list-row ids', async () => {
     const s = await studioSetup()
     const created = await s.createEvent('Weinabend', { description: { de: 'Sechs Weine' } })
+    await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(created.entry))!
+      await ctx.db.patch(created.entry, { data: { ...row.data as object, title: { de: 'Weinabend', en: 'Wine evening' } } })
+    })
     const first = await s.as.owner.mutation(api.entries.duplicate, { site, opId: opId(), entry: created.entry }) as { entry: Id<'entries'> }
     const second = await s.as.owner.mutation(api.entries.duplicate, { site, opId: opId(), entry: created.entry }) as { entry: Id<'entries'> }
-    expect((await s.row(first.entry))!.data).toMatchObject({ title: { de: 'Weinabend (Kopie)' }, slug: { de: 'weinabend-kopie', en: 'weinabend-kopie' }, description: { de: 'Sechs Weine' } })
+    expect((await s.row(first.entry))!.data).toMatchObject({ title: { de: 'Weinabend (Kopie)', en: 'Wine evening (copy)' }, slug: { de: 'weinabend-kopie' }, description: { de: 'Sechs Weine' } })
     expect((await s.row(second.entry))!.data).toMatchObject({ title: { de: 'Weinabend (Kopie)' }, slug: { de: 'weinabend-kopie-2' } })
     expect((await s.row(created.entry))!.data).toMatchObject({ title: { de: 'Weinabend' }, slug: { de: 'weinabend' } })
   })

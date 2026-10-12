@@ -81,7 +81,7 @@ const blocked = computed(() => signedOut.value || !!error.value)
     </SiteRail>
     <header v-if="!blocked" class="sticky top-0 z-20 flex h-[57px] items-center gap-1.5 border-b bg-background/95 pr-2 pl-4 backdrop-blur min-[900px]:hidden">
       <NuxtLink
-        to="/?alle" :aria-label="`${siteName} · ${t('nav.mySites')}`"
+        to="/?all" :aria-label="`${siteName} · ${t('nav.mySites')}`"
         class="grid size-9 flex-none place-items-center rounded-lg border border-primary text-sm font-bold text-primary"
       >{{ initial }}</NuxtLink>
       <p class="ml-1.5 min-w-0 flex-1 truncate font-semibold">{{ siteName }}</p>
@@ -111,7 +111,7 @@ const blocked = computed(() => signedOut.value || !!error.value)
       <main v-else-if="error" class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
         <p class="text-xl font-bold">{{ opErrorOf(error).message }}</p>
         <p>{{ t('nav.noAccessHelp') }}</p>
-        <Button as-child variant="outline"><NuxtLink to="/?alle">{{ t('nav.mySites') }}</NuxtLink></Button>
+        <Button as-child variant="outline"><NuxtLink to="/?all">{{ t('nav.mySites') }}</NuxtLink></Button>
       </main>
       <slot v-else />
     </div>

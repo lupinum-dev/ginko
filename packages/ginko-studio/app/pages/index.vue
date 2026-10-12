@@ -27,10 +27,10 @@ async function accept(invite: string) {
     accepting.value = null
   }
 }
-// One site and nothing waiting: no list to choose from, unless the person came here on purpose ("Meine Seiten" link, `?alle`).
+// One site and nothing waiting: no list to choose from, unless the person came here on purpose ("Meine Seiten" link, `?all`).
 const route = useRoute()
 watchEffect(() => {
-  if (route.query.alle === undefined && sites.value?.length === 1 && invites.value?.length === 0) navigateTo(`/s/${sites.value[0]!.slug}`, { replace: true })
+  if (route.query.all === undefined && sites.value?.length === 1 && invites.value?.length === 0) navigateTo(`/s/${sites.value[0]!.slug}`, { replace: true })
 })
 // Reminder mail (the mail before the week starts for content that is out of date) is on by default.
 const { data: settings } = useConvexQuery(api.account.settings, {})

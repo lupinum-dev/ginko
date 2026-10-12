@@ -6,6 +6,7 @@ import { GINKO_ASSETS, type GinkoAssets } from '@lupinum/ginko-editor'
 import GinkoFieldImage from '../app/components/fields/GinkoFieldImage.vue'
 import FileInfoPanel from '../app/components/files/FileInfoPanel.vue'
 import FileRemoveDialog from '../app/components/files/FileRemoveDialog.vue'
+import FilesBrowser from '../app/components/files/FilesBrowser.vue'
 
 // Only the Convex side of the library is replaced: three files, and what `files.info` would answer.
 const library = vi.hoisted(() => ({ altSuggestion: null as Record<string, string> | null, alt: {} as Record<string, string> }))
@@ -15,7 +16,7 @@ vi.mock('../app/composables/useFilesLibrary', async () => {
   return {
     useFilesLibrary: () => ({
       slug: ref('restaurant'), canManage: ref(true), folders: ref([]), missingAlt: ref(null),
-      list: () => ({ files: ref([file]), pending: ref(false), hasMore: ref(false), more: async () => {} }),
+      list: () => ({ files: ref([file]), pending: ref(false), error: ref(null), hasMore: ref(false), more: async () => {} }),
       info: (id: () => string | null) => computed(() => (id() === 'f1' ? { ...file, uploader: 'u', uploadedBy: { email: 'u@example.test' }, previous: [], altSuggestion: library.altSuggestion, alt: library.alt, usedIn: [] } : undefined)),
       errorText: (error: unknown) => String(error),
     }),
@@ -35,6 +36,19 @@ beforeAll(async () => {
   await import('../app/components/files/LibraryPicker.vue')
 })
 beforeEach(() => { document.body.innerHTML = ''; library.alt = {}; library.altSuggestion = null })
+
+describe('the files list', () => {
+  test('a list that could not be read says why instead of loading forever', async () => {
+    const failed = {
+      slug: ref('restaurant'), canManage: ref(true), folders: ref([]), missingAlt: ref(null), errorText: String,
+      list: () => ({ files: ref([]), pending: ref(false), error: ref('Du hast keinen Zugriff auf diese Seite.'), hasMore: ref(false), more: async () => {} }),
+    }
+    mount(FilesBrowser, { props: { lib: failed as never, mode: 'page', locales: ['de'] }, attachTo: document.body })
+    await flushPromises()
+    expect(document.body.querySelector('[role="alert"]')?.textContent).toBe('Du hast keinen Zugriff auf diese Seite.')
+    expect(text()).not.toContain('Wird geladen')
+  })
+})
 
 describe('remove rule of the library', () => {
   const stubs = { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } }

@@ -73,7 +73,7 @@ async function remindSite(ctx: MutationCtx, site: Doc<'sites'>, schema: Schema, 
       await queueMail(ctx, {
         to,
         subject: t(locale, 'mail.reminder.subject', { brick: labelOf(brick.label, locale, schema.locales[0]!) }),
-        text: t(locale, 'mail.reminder.text', { site: site.name, brick: labelOf(brick.label, locale, schema.locales[0]!), link: `${siteOrigin()}/s/${site.slug}`, settings: `${siteOrigin()}/?alle=1` }),
+        text: t(locale, 'mail.reminder.text', { site: site.name, brick: labelOf(brick.label, locale, schema.locales[0]!), link: `${siteOrigin()}/s/${site.slug}`, settings: `${siteOrigin()}/?all` }),
       })
       sent++
     }

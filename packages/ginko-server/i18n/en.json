@@ -102,6 +102,7 @@
     "actionReusedWithOtherContent": "This action was already run with different content.",
     "versionInvalid": "The version value is not valid.",
     "needsApprovalProposeAgain": "This needs approval here. Propose the change again instead.",
+    "agentUndoNeedsReview": "This site reviews AI changes, so undo is not available. Use ginko_revert to propose the earlier version.",
     "proposalTooLarge": "This proposal is too large.",
     "tooManyOpenProposals": "{openMax} proposals are already waiting for approval. Please wait until some are reviewed.",
     "fileNoLongerAvailable": "A file is not available (anymore). Please upload it again.",
@@ -185,7 +186,17 @@
     "linkBroken": "The link “{link}” leads nowhere. Please fix it and save again.",
     "lastOwnerCannotBeRemoved": "The last owner cannot be removed.",
     "signInNotSetUp": "Sign-in is not set up yet.",
-    "languageUnsupported": "This language is not available."
+    "languageUnsupported": "This language is not available.",
+    "uploadExpired": "The upload has expired. Please choose the file again.",
+    "uploadTooLarge": "The file is too large (photos at most {imageMb} MB, PDFs at most {fileMb} MB).",
+    "uploadWrongType": "This file type is not allowed ({types}).",
+    "uploadWrongContent": "The content does not match the file type.",
+    "uploadFailed": "The upload failed. Please try again.",
+    "uploadMissing": "The uploaded file is missing. Please upload it again.",
+    "uploadRetrying": "The photo could not be processed. We are trying again.",
+    "uploadHeicUnreadable": "This HEIC photo cannot be read. Please save it as JPEG or PNG and upload it again.",
+    "uploadNotAnImage": "This file is not a readable image.",
+    "siteUrlNotWeb": "The site address in the config must start with https:// or http://."
   },
   "history": {
     "changedSingle": "{label}: {fields} changed",
@@ -226,7 +237,8 @@
     "staleAlreadyDraft": "This entry is already a draft.",
     "staleApproverNotAllowed": "The approver is no longer allowed to approve this.",
     "staleNoLonger": "This is no longer possible.",
-    "staleRefused": "{why} Please propose the change again."
+    "staleRefused": "{why} Please propose the change again.",
+    "stateField": "Status"
   },
   "publicness": {
     "deleted": "The entry was removed. You can restore it until {until, date, long}, then it is deleted for good.",
@@ -258,6 +270,13 @@
       "someone": "Someone",
       "viaAi": "(via AI: {ai})",
       "viaAiUnnamed": "(via AI)"
+    },
+    "notLive": {
+      "subject": "Did not go live: a planned change for {site}",
+      "text": "Hello,\n\na change you planned for “{site}” did not go live, because it no longer fits:\n\n{what}\n\nThe reason is in the history: {path}\n"
     }
+  },
+  "content": {
+    "copyOf": "{text} (copy)"
   }
 }

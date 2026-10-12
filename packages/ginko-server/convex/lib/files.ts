@@ -12,9 +12,10 @@ const SIGNATURES: Record<UploadType, (bytes: Uint8Array) => boolean> = {
   'application/pdf': (b) => at(b, 0, '%PDF-'),
 }
 
-export const TOO_LARGE = `Die Datei ist zu groß (Bilder höchstens ${formatMb(limitOf('image'))} MB, PDF höchstens ${formatMb(limitOf('file'))} MB).`
-export const WRONG_TYPE = `Dieser Dateityp ist nicht erlaubt (${Object.values(UPLOAD_TYPES).map((t) => t.label).join(', ')}).`
-export const WRONG_CONTENT = 'Der Inhalt passt nicht zum Dateityp.'
+/** Why the route refuses a file, as a catalog message (the Studio shows it in the person's language). */
+export const TOO_LARGE = { key: 'errors.uploadTooLarge', params: { imageMb: formatMb(limitOf('image')), fileMb: formatMb(limitOf('file')) } } as const
+export const WRONG_TYPE = { key: 'errors.uploadWrongType', params: { types: Object.values(UPLOAD_TYPES).map((t) => t.label).join(', ') } } as const
+export const WRONG_CONTENT = { key: 'errors.uploadWrongContent' } as const
 
 const NAME_FALLBACK = 'datei'
 const NAME_MAX = 120

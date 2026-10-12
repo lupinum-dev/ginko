@@ -102,6 +102,7 @@
     "actionReusedWithOtherContent": "Esta acción ya se ejecutó con otro contenido.",
     "versionInvalid": "El valor de la versión no es válido.",
     "needsApprovalProposeAgain": "Esto necesita aprobación aquí. Propón el cambio de nuevo.",
+    "agentUndoNeedsReview": "Este sitio revisa los cambios de la IA, así que deshacer no está disponible. Usa ginko_revert para proponer la versión anterior.",
     "proposalTooLarge": "Esta propuesta es demasiado grande.",
     "tooManyOpenProposals": "Ya hay {openMax} propuestas esperando aprobación. Espera a que se revisen algunas.",
     "fileNoLongerAvailable": "Un archivo ya no está disponible. Súbelo de nuevo.",
@@ -185,7 +186,17 @@
     "linkBroken": "El enlace «{link}» no lleva a ninguna parte. Corrígelo y guarda de nuevo.",
     "lastOwnerCannotBeRemoved": "No se puede eliminar al último propietario.",
     "signInNotSetUp": "El inicio de sesión aún no está configurado.",
-    "languageUnsupported": "Este idioma no está disponible."
+    "languageUnsupported": "Este idioma no está disponible.",
+    "uploadExpired": "La subida ha caducado. Vuelve a elegir el archivo.",
+    "uploadTooLarge": "El archivo es demasiado grande (fotos como máximo {imageMb} MB, PDF como máximo {fileMb} MB).",
+    "uploadWrongType": "Este tipo de archivo no está permitido ({types}).",
+    "uploadWrongContent": "El contenido no coincide con el tipo de archivo.",
+    "uploadFailed": "La subida ha fallado. Inténtalo de nuevo.",
+    "uploadMissing": "Falta el archivo subido. Vuelve a subirlo.",
+    "uploadRetrying": "No se pudo procesar la foto. Lo intentamos de nuevo.",
+    "uploadHeicUnreadable": "No se puede leer esta foto HEIC. Guárdala como JPEG o PNG y vuelve a subirla.",
+    "uploadNotAnImage": "Este archivo no es una imagen legible.",
+    "siteUrlNotWeb": "La dirección del sitio en la configuración debe empezar por https:// o http://."
   },
   "history": {
     "changedSingle": "{label}: cambio en {fields}",
@@ -226,7 +237,8 @@
     "staleAlreadyDraft": "Esta entrada ya es un borrador.",
     "staleApproverNotAllowed": "El aprobador ya no tiene permiso para aprobar esto.",
     "staleNoLonger": "Esto ya no es posible.",
-    "staleRefused": "{why} Propón el cambio de nuevo."
+    "staleRefused": "{why} Propón el cambio de nuevo.",
+    "stateField": "Estado"
   },
   "publicness": {
     "deleted": "La entrada se eliminó. Puedes restaurarla hasta el {until, date, long}; después se borra definitivamente.",
@@ -258,6 +270,13 @@
       "someone": "Alguien",
       "viaAi": "(vía IA: {ai})",
       "viaAiUnnamed": "(vía IA)"
+    },
+    "notLive": {
+      "subject": "No se publicó: un cambio planificado para {site}",
+      "text": "Hola:\n\nun cambio que planificaste para «{site}» no se publicó porque ya no encaja:\n\n{what}\n\nEl motivo está en el historial: {path}\n"
     }
+  },
+  "content": {
+    "copyOf": "{text} (copia)"
   }
 }

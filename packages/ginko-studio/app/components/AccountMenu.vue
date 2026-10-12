@@ -39,7 +39,7 @@ async function signOut() {
         <DropdownMenuSeparator />
       </template>
       <DropdownMenuItem as-child class="min-h-10 gap-2">
-        <NuxtLink to="/?alle"><LayoutGridIcon aria-hidden="true" />{{ t('nav.mySites') }}</NuxtLink>
+        <NuxtLink to="/?all"><LayoutGridIcon aria-hidden="true" />{{ t('nav.mySites') }}</NuxtLink>
       </DropdownMenuItem>
       <DropdownMenuItem class="min-h-10 gap-2" :disabled="busy" @select="signOut">
         <LogOutIcon aria-hidden="true" />{{ t('nav.signOut') }}

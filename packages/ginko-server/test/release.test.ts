@@ -58,6 +58,17 @@ async function subtitleWrites(s: Setup, skip: string[] = []): Promise<Write[]> {
 }
 
 describe('release mutation (SPEC 5.2)', () => {
+  // Wrong behaviour caught: a push key (a CI secret) points the site's refresh token at another address, or stores another site's config.
+  it.each([
+    ['another site', { site: 'andere' }, 'errors.siteNameMismatchInSchema'],
+    ['a URL that is no web address', { url: 'javascript:alert(1)' }, 'errors.siteUrlNotWeb'],
+  ])('refuses a config for %s and changes nothing', async (_name, change, key) => {
+    const s = await setup()
+    const schema = { ...copy(await storedSchema(s)), ...change }
+    expect(await errorOf(release(s, { schema }))).toMatchObject({ code: 'INVALID', key })
+    expect((await storedSite(s)).schemaRev).toBe(1)
+  })
+
   it('the same commit again returns the stored answer and changes nothing', async () => {
     const s = await setup()
     const schema = copy(await storedSchema(s))
@@ -183,12 +194,30 @@ describe('push keys and the HTTP routes (SPEC 5.1, 10)', () => {
     expect(await released.json()).toEqual({ schemaRev: 2, contentRev: 1 })
   })
 
+  it('answers the CLI in English, also for an error from the catalog', async () => {
+    const s = await setup()
+    const token = await keyFor(s, ['release'])
+    const response = await post(s, token, { commit: 'abcdef1234567', expectedSchemaRev: 5, expectedContentRev: 1, schema: await storedSchema(s), writes: [] })
+    expect(await response.json()).toMatchObject({ code: 'CHANGED_SINCE', message: 'The schema has changed in the meantime. Please try again.' })
+    expect(await (await get(s, 'ginko_restaurant_wrong')).json()).toMatchObject({ code: 'UNAUTHORIZED', message: 'The key is missing or invalid.' })
+  })
+
   it('a name starting with $ in the body is INVALID, not an internal error (F17)', async () => {
     const s = await setup()
     const token = await keyFor(s, ['release'])
     const schema = copy(await storedSchema(s))
     const response = await post(s, token, { commit: 'abcdef1234567', expectedSchemaRev: 1, expectedContentRev: 1, schema, writes: [{ entry: s.entries.hours, fields: { exceptions: [{ $x: 1 }] } }] })
     expect([response.status, ((await response.json()) as { code: string }).code]).toEqual([400, 'INVALID'])
+  })
+
+  it('an operator finds a key by its label and revokes it', async () => {
+    const s = await setup()
+    const token = await keyFor(s, ['release'])
+    const [listed] = await s.t.query(internal.release.pushKeys, { site: 'restaurant' })
+    expect(listed).toMatchObject({ label: 'CI', scopes: ['release'], revokedAt: null })
+    expect(listed).not.toHaveProperty('hash')
+    await s.t.mutation(internal.release.revokePushKeyAsOperator, { key: listed!.id })
+    expect((await get(s, token)).status).toBe(401)
   })
 
   it('a revoked or unknown key is 401', async () => {

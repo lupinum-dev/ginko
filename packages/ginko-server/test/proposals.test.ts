@@ -5,7 +5,7 @@ import type { Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, setup } from './setup'
+import { errorOf, opId, people, setup } from './setup'
 
 const NOW = Date.parse('2026-10-08T10:00:00Z')
 const MINUTE = 60 * 1000
@@ -101,6 +101,10 @@ describe('when a write needs a yes', () => {
     const publish = await s.as.cook.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: draft.entry as Id<'entries'>, lifeRev: 1 })
     expect(publish).toMatchObject({ status: 'open' })
     expect((await s.row(draft.entry as Id<'entries'>))!.state).toBe('draft')
+    // The approver reads the state change in their own language.
+    await s.t.run((ctx) => ctx.db.insert('userSettings', { user: people.owner, remindByMail: false, locale: 'en' }))
+    const detail = await s.as.owner.query(api.proposals.get, { site: 'restaurant', proposal: (publish as Proposed).proposal })
+    expect(detail.diff).toEqual([{ field: 'state', label: 'Status', kind: 'state', before: 'Draft', after: 'Online' }])
     await s.as.owner.mutation(api.proposals.approve, { proposal: (publish as Proposed).proposal })
     expect((await s.row(draft.entry as Id<'entries'>))!.state).toBe('live')
   })
@@ -370,6 +374,27 @@ describe('releases', () => {
     expect((await s.row(s.saibling))!.data.price).toEqual({ amount: 1450 })
     expect((await s.row(s.frittaten))!.data.price).toEqual({ amount: 1100 })
     expect(await s.t.run((ctx) => ctx.db.get(release))).toMatchObject({ status: 'applied' })
+  })
+
+  it('a scheduled release that fails while applying is recorded as stale, nothing is written, the approver is told', async () => {
+    const s = await approvalSetup()
+    const a = (await s.cookPrice(s.saibling, 1450)) as Proposed
+    const b = (await s.cookPrice(s.frittaten, 1100)) as Proposed
+    const { release } = await s.as.owner.mutation(api.proposals.createRelease, { site: 'restaurant', name: 'Nachts' }) as { release: Id<'releases'> }
+    for (const p of [a, b]) await s.as.owner.mutation(api.proposals.addToRelease, { release, proposal: p.proposal })
+    const at = NOW + 2 * HOUR
+    await s.as.owner.mutation(api.proposals.approveRelease, { release, at })
+    // The cook loses the task in between: the pre-check passes, the save itself refuses.
+    await s.t.run(async (ctx) => {
+      const cook = (await ctx.db.query('memberships').collect()).find((m) => m.grants.includes('menu.price'))!
+      await ctx.db.patch(cook._id, { grants: [] })
+    })
+    await s.advanceTo(at + MINUTE)
+    expect((await s.row(s.saibling))!.data.price).toEqual({ amount: 1350 })
+    expect(await s.t.run((ctx) => ctx.db.get(release))).toMatchObject({ status: 'stale' })
+    expect((await s.proposalRow(a.proposal))!).toMatchObject({ status: 'stale', reasonMsg: { key: 'history.staleRefused' } })
+    expect((await s.proposalRow(b.proposal))!.status).toBe('open')
+    expect((await s.rows('outbox')).map((m) => m.subject)).toContain('Nicht live gegangen: eine geplante Änderung für Gasthaus zur Linde')
   })
 
   it('staff cannot make or decide releases', async () => {

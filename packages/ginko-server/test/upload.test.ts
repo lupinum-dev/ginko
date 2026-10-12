@@ -38,6 +38,16 @@ describe('uploads.prepare and POST /upload', () => {
 
   // Astra phase 8: a stored file must belong to someone from the start, so nobody can claim it later.
   // The ticket is that handover: used once, then gone.
+  // Wrong behaviour caught: the Studio's uploads are blocked by CORS, or another origin may upload with a stolen ticket.
+  it('allows the browser call only from the platform UI (SITE_URL)', async () => {
+    vi.stubEnv('SITE_URL', 'https://platform.test/')
+    const s = await setup()
+    const preflight = (origin: string) => s.t.fetch('/upload', { method: 'OPTIONS', headers: { Origin: origin } })
+    expect((await preflight('https://platform.test')).headers.get('access-control-allow-origin')).toBe('https://platform.test')
+    expect((await preflight('https://evil.test')).headers.get('access-control-allow-origin')).toBeNull()
+    vi.unstubAllEnvs()
+  })
+
   it('uses a ticket once', async () => {
     const s = await setup()
     const { ticket } = await s.as.owner.mutation(api.uploads.prepare, { site: 'restaurant' })
@@ -64,12 +74,13 @@ describe('uploads.prepare and POST /upload', () => {
   })
 
   it.each([
-    ['an unsupported type', 'application/zip', 'PK\u0003\u0004 kein Bild', 415],
-    ['text sent as PNG', 'image/png', 'Dies ist Text, kein PNG.', 415],
-    ['an image over 20 MB', 'image/jpeg', jpeg(20 * MB + 1), 413],
-  ])('refuses %s and stores nothing', async (_name, type, content, status) => {
+    ['an unsupported type', 'application/zip', 'PK\u0003\u0004 kein Bild', 415, 'errors.uploadWrongType'],
+    ['text sent as PNG', 'image/png', 'Dies ist Text, kein PNG.', 415, 'errors.uploadWrongContent'],
+    ['an image over 20 MB', 'image/jpeg', jpeg(20 * MB + 1), 413, 'errors.uploadTooLarge'],
+  ])('refuses %s and stores nothing; the reason is a catalog key the Studio translates', async (_name, type, content, status, key) => {
     const s = await setup()
-    expect((await postUpload(s, { type, content })).status).toBe(status)
+    const response = await postUpload(s, { type, content })
+    expect([response.status, ((await response.json()) as { key: string }).key]).toEqual([status, key])
     expect(await storedFiles(s.t)).toHaveLength(0)
   })
 
@@ -132,7 +143,7 @@ describe('uploads.markReady and markFailed', () => {
   it('marks an upload failed after the third failed attempt, not before', async () => {
     const s = await setup()
     const id = await registerImage(s)
-    const fail = { upload: id, message: 'Das Bild konnte nicht verarbeitet werden.', permanent: false }
+    const fail = { upload: id, key: 'errors.uploadRetrying', permanent: false }
     await s.t.mutation(internal.uploads.markFailed, fail)
     await s.t.mutation(internal.uploads.markFailed, fail)
     expect(await s.t.run((ctx) => ctx.db.get(id))).toMatchObject({ status: 'processing', attempts: 2 })

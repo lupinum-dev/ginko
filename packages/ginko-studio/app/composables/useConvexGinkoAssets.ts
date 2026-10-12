@@ -2,16 +2,21 @@
 // queries uploads.get / uploads.urls for live state and URLs, and useUpload for sending a file.
 import { api } from '#convex/api'
 import type { GinkoAssets } from '@lupinum/ginko-editor'
+import { useI18n } from '#imports'
+import { useTextOf } from './useTextOf'
 
 export function useConvexGinkoAssets(site: Ref<string>): GinkoAssets {
   // Composables must be called in setup, so both senders are created here, not per upload.
   const send = { image: useUpload('image'), file: useUpload('file') }
+  const { t } = useI18n()
+  const textOf = useTextOf()
   return {
     state(id) {
       const query = useConvexQuery(api.uploads.get, () => (id.value ? { site: site.value, upload: id.value } : 'skip'))
       return computed(() => {
         const row = query.data.value
-        return row ? { status: row.status, error: row.error ?? undefined } : undefined
+        // `error` is the catalog key of the reason (uploads.get).
+        return row ? { status: row.status, error: row.error ? textOf({ key: row.error }, t('ops.upload.failed')) : undefined } : undefined
       })
     },
     details(ids) {
