@@ -19,10 +19,10 @@ const config = defineSite({
 })
 
 /** A site folder: ginko.config.ts (a plain module, so the test needs no imports), content/ and public/. */
-function siteWith(markdown: string) {
+function siteWith(markdown: string, site: object = config) {
   const root = mkdtempSync(join(tmpdir(), 'ginko-check-'))
   const files: Record<string, string> = {
-    'ginko.config.ts': `export default ${JSON.stringify(config)}\n`,
+    'ginko.config.ts': `export default ${JSON.stringify(site)}\n`,
     'content/docs/einstieg.md':`---\ntitle: Einstieg\n---\n\n${markdown}\n`,
   }
   for (const [path, text] of Object.entries(files)) {
@@ -52,9 +52,17 @@ describe('ginko check and links in content files', () => {
     expect(code).toBe(1)
   })
 
-  it('prints no link lines for a clean file and exits 0', async () => {
+  it('prints only the OK line for a clean site and exits 0', async () => {
     const { code, lines } = await runCheck(siteWith('Siehe [Start]($page.home).'))
-    expect(lines).toEqual([])
+    expect(lines).toEqual(['OK: schema and links are fine.'])
     expect(code).toBe(0)
+  })
+
+  it('reports an invalid config and exits 1', async () => {
+    // Pages are keyed by name, not by locale: the Nuxt build rejects this config.
+    const { code, lines } = await runCheck(siteWith('Text.', { ...config, pages: { de: ['/'] } }))
+    expect(lines[0]).toBe('ginko.config.ts is invalid:')
+    expect(lines[1]).toContain('pages.de')
+    expect(code).toBe(1)
   })
 })
