@@ -32,6 +32,8 @@ describe('interactive components', () => {
     const panels = [...html.matchAll(/<div id="[^"]*-p\d"[^>]*role="tabpanel"[^>]*>/g)].map((m) => m[0])
     expect(panels).toHaveLength(3)
     expect(panels.map((p) => /\shidden(=|\s|>)/.test(p))).toEqual([false, true, true])
+    // A text-only panel is reachable with Tab after the tab list.
+    expect(panels.every((p) => p.includes('tabindex="0"'))).toBe(true)
     expect(html).toContain('Zweiter Text')
     const tabs = [...html.matchAll(/<button[^>]*role="tab"[^>]*>/g)].map((m) => m[0])
     expect(tabs.map((t) => t.includes('aria-selected="true"'))).toEqual([true, false, false])

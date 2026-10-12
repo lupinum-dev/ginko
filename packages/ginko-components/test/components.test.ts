@@ -98,6 +98,8 @@ describe('registry and components', () => {
     const parsed = await parseMarkdown(components.timeline.editor.example, { profile: 'page', components })
     const html = await renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap }) }))
     expect(html.match(/data-active/g)).toHaveLength(1)
+    expect(html).toContain('class="ginko-timeline" role="list"')
+    expect(html.match(/role="listitem"/g)?.length).toBe(html.match(/class="ginko-timeline-item"/g)?.length)
   })
 
   const render = async (markdown: string) => {
