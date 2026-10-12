@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
@@ -59,6 +60,23 @@ describe('registry and components', () => {
     const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap }) })
     app.provide(GINKO_TOC_KEY, parsed.value.toc)
     expect(await renderToString(app)).toMatch(new RegExp(`class="${ROOT[tag]}[^"]*"[^>]*data-appearance="tint"`))
+  })
+
+  // The prop lists on the docs pages and in the README are written by hand: a new prop must not stay undocumented.
+  const docs = ['7.komponenten.md', '7.komponenten.en.md'].map((file) => readFileSync(new URL(`../../../sites/docs/content/docs/${file}`, import.meta.url), 'utf8'))
+  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
+  test.each(Object.entries(components))('%s: every prop is documented', (tag, def) => {
+    const props = Object.keys(def.props ?? {})
+    for (const page of docs) {
+      // Examples hold headings of their own: leave the fenced blocks out.
+      const section = page.replace(/^(`{3,})[^\n]*\n[^]*?^\1[ \t]*$/gm, '').split(/\n(?=##+ )/).find((part) => new RegExp(`^###+ .*\`${tag}\``).test(part))
+      expect(section, `docs section of ${tag}`).toBeDefined()
+      expect(props.filter((prop) => !section!.includes(`\`${prop}\``))).toEqual([])
+    }
+    const row = readme.split('\n').find((line) => line.startsWith('| ') && line.split('|')[1]!.includes(`\`${tag}\``))
+    expect(row, `README row of ${tag}`).toBeDefined()
+    expect(props.filter((prop) => prop !== 'appearance' && !row!.includes(`\`${prop}\``))).toEqual([])
+    if (props.includes('appearance')) expect(readme).toMatch(new RegExp(`The tags with \`appearance\`:[^]*?\`${tag}\``))
   })
 
   test('a code group holds only code blocks', async () => {
