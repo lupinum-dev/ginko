@@ -19,7 +19,7 @@ const ROOT: Record<string, string> = {
   timeline: 'ginko-timeline', 'timeline-item': 'ginko-timeline-item',
   'code-group': 'ginko-code-group', 'code-tree': 'ginko-code-tree', files: 'ginko-files',
   figure: 'ginko-figure', video: 'ginko-video', embedded: 'ginko-embed',
-  quiz: 'ginko-quiz', 'quiz-question': 'ginko-quiz-question', api: 'ginko-api', 'api-param': 'ginko-api-row',
+  quiz: 'ginko-quiz', 'quiz-question': 'ginko-quiz-question', api: 'ginko-api', 'api-param': 'ginko-api-param',
   tabs: 'ginko-tabs', tab: 'class="ginko-tab"', accordion: 'ginko-accordion', 'accordion-item': 'ginko-accordion-item', collapse: 'ginko-collapse', steps: 'ginko-steps', cards: 'ginko-cards', card: 'ginko-card', 'read-more': 'ginko-read-more', 'inline-toc': 'ginko-inline-toc',
 }
 

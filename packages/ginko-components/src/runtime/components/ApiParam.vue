@@ -15,7 +15,7 @@ const id = computed(() => apiEntryId(groupLabel(props.group, t('api.defaultGroup
 </script>
 
 <template>
-  <div :id="id" class="ginko-api-row">
+  <div :id="id" class="ginko-api-param">
     <code class="ginko-api-signature"><span class="ginko-api-name" :data-deprecated="deprecated || undefined">{{ name }}</span><span v-if="tail" class="ginko-api-type">{{ tail }}</span></code>
     <span v-if="presence === 'required' || deprecated || since" class="ginko-api-badges">
       <span v-if="presence === 'required'" class="ginko-api-badge" data-state="required">{{ t('api.required') }}</span>
