@@ -38,6 +38,16 @@ describe('uploads.prepare and POST /upload', () => {
 
   // Astra phase 8: a stored file must belong to someone from the start, so nobody can claim it later.
   // The ticket is that handover: used once, then gone.
+  // Wrong behaviour caught: the Studio's uploads are blocked by CORS, or another origin may upload with a stolen ticket.
+  it('allows the browser call only from the platform UI (SITE_URL)', async () => {
+    vi.stubEnv('SITE_URL', 'https://platform.test/')
+    const s = await setup()
+    const preflight = (origin: string) => s.t.fetch('/upload', { method: 'OPTIONS', headers: { Origin: origin } })
+    expect((await preflight('https://platform.test')).headers.get('access-control-allow-origin')).toBe('https://platform.test')
+    expect((await preflight('https://evil.test')).headers.get('access-control-allow-origin')).toBeNull()
+    vi.unstubAllEnvs()
+  })
+
   it('uses a ticket once', async () => {
     const s = await setup()
     const { ticket } = await s.as.owner.mutation(api.uploads.prepare, { site: 'restaurant' })

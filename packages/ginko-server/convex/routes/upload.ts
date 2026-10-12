@@ -8,13 +8,12 @@ import { httpAction, type ActionCtx } from '../_generated/server'
 import { kindOf, TOO_LARGE, WRONG_CONTENT, WRONG_TYPE } from '../lib/files'
 import { t, type MessageKey } from '../lib/i18n'
 
-/** The platform origin that may call this route from the browser (CORS). */
-const PLATFORM_ORIGIN = process.env.GINKO_PLATFORM_ORIGIN ?? 'http://localhost:3100'
-
+/** Only the platform UI (`SITE_URL`, the origin sign-in uses too) may call this route from the browser (CORS). */
 function headersFor(request: Request): Record<string, string> {
-  if (request.headers.get('Origin') !== PLATFORM_ORIGIN) return {}
+  const origin = request.headers.get('Origin')
+  if (!origin || origin !== process.env.SITE_URL?.replace(/\/$/, '')) return {}
   return {
-    'Access-Control-Allow-Origin': PLATFORM_ORIGIN,
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '600',
