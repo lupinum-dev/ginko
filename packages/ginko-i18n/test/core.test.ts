@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees } from '../src/core/compiler'
 import { defineCatalog } from '../src/core/catalog'
 import { createFormatters } from '../src/core/format'
-import { alternatesOf, inUserZone, localeFromPath, localizePath, negotiateLocale, resolveConfig, stripLocale } from '../src/core/locales'
+import { alternatesOf, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, resolveConfig, stripLocale } from '../src/core/locales'
 import { createTranslator, formatParts } from '../src/core/messages'
 
 const pexd = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de-AT' })
@@ -165,6 +165,10 @@ describe('ICU number, date and time styles', () => {
     expect(() => compileMessage('k', '{x, number, bogus}')).toThrow(MessageError)
     expect(() => compileMessage('k', '{x, number, bogus}')).toThrow(/Unknown number style "bogus"/)
   })
+})
+
+it.each([['de-AT', 'de_AT'], ['en', 'en'], ['zh-Hant-TW', 'zh_TW'], ['zh-Hant', 'zh']])('ogLocale(%s) → %s', (language, expected) => {
+  expect(ogLocale(language)).toBe(expected)
 })
 
 describe('alternatesOf', () => {

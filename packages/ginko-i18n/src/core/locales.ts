@@ -51,6 +51,12 @@ function nativeName(language: string): string {
   }
 }
 
+/** `og:locale` wants `language_TERRITORY`: `de-AT` → `de_AT`, `zh-Hant-TW` → `zh_TW`, `zh-Hant` → `zh`. */
+export function ogLocale(language: string): string {
+  const tag = new Intl.Locale(language)
+  return tag.region ? `${tag.language}_${tag.region}` : tag.language
+}
+
 export function resolveConfig(input: {
   locales: (string | LocaleInput)[]
   defaultLocale?: string
