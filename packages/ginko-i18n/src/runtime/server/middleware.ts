@@ -1,6 +1,6 @@
 import { defineEventHandler, getCookie, getRequestHeader, getRequestURL, sendRedirect } from 'nuxt/server'
 import { config } from '#ginko-i18n/config.mjs'
-import { inUserZone, isExcluded, localeFromPath, localizePath, negotiateLocale } from '@lupinum/ginko-i18n/core'
+import { canonicalCase, inUserZone, isExcluded, localeFromPath, localizePath, negotiateLocale } from '@lupinum/ginko-i18n/internal'
 
 const c = config
 
@@ -24,10 +24,8 @@ export default defineEventHandler((event) => {
   }
 
   // `/EN/about` would match `/en/about` (vue-router is case-insensitive) but render in the default locale.
-  const segment = path.split('/')[1] ?? ''
-  const lower = segment.toLowerCase()
-  if (segment !== lower && c.locales.some(l => l.code === lower))
-    return sendRedirect(event, `${c.base}/${lower}${path.slice(segment.length + 1)}${url.search}`, 301)
+  const canonical = canonicalCase(path, c)
+  if (canonical) return sendRedirect(event, `${c.base}${canonical}${url.search}`, 301)
   const fromPath = localeFromPath(path, c)
 
   // `prefix`: `/` has no content. Redirect live requests; the prerendered page handles static hosts.

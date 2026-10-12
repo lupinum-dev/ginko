@@ -59,7 +59,7 @@ async function pickLocale(code: string) {
     <p v-if="problem" class="text-destructive" role="alert">{{ problem }}</p>
     <ul v-if="invites?.length" class="m-0 list-none overflow-hidden rounded-xl border border-primary p-0">
       <li v-for="i in invites" :key="i.invite" class="grid gap-2.5 border-b px-4 py-3 last:border-b-0">
-        <p><T k="sites.invitedTo" :params="{ site: i.site, role: t(`invite.role.${i.role}`) }"><template #site="{ text }"><strong class="font-medium">{{ text }}</strong></template></T></p>
+        <p><I18nT k="sites.invitedTo" :params="{ site: i.site, role: t(`invite.role.${i.role}`) }"><template #site="{ text }"><strong class="font-medium">{{ text }}</strong></template></I18nT></p>
         <Button type="button" size="sm" class="justify-self-start" :disabled="accepting === i.invite" @click="accept(i.invite)">{{ t('sites.accept') }}</Button>
       </li>
     </ul>

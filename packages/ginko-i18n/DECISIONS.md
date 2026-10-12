@@ -58,9 +58,10 @@ disagree about. The hydration rule holds: server and client use the same value.
 **Evidence:** 0 hydration warnings in more than 1,400 browser checks across Nuxt 4.6 and Nuxt 5,
 server-rendered and static builds, and both strategies (old repository, `test/attack.mjs`).
 
-**Now:** the browser suites are not yet in the monorepo, and the monorepo changed the plugin and
-module since (for example, several alternates resolvers per page). So this evidence covers the
-standalone code only.
+**Now:** the suites live in `browser/` and CI runs them on every pull request that changes this
+package. Run on 2026-10-12 (branch `release/i18n`, n4, n4c5 and n5 apps, server-rendered and
+static, both strategies): `attack` 2,172/2,172, `zone-attack` 168/168, `edge-attack` 45/45,
+`content-attack` 132/132 checks passed.
 
 ## D4. Two strategies: `prefix_except_default` and `prefix`
 
@@ -91,8 +92,8 @@ pages) come from the content itself, which already knows its URL in each locale.
 **Evidence:** the English "Blog" link returned a 404 in the first test site
 ([research/content-contract.md](research/content-contract.md)).
 
-**Now:** Ginko entries carry their URLs from the bundle. Step A adds `entry.url` for the current
-locale, so sites no longer need their own helper (`pathOf`) for this.
+**Now:** Ginko entries carry their URLs from the bundle, and `url` for the current locale, so sites
+need no helper of their own for this.
 
 ## D7. Dynamic pages declare their other-language versions before rendering
 
@@ -172,8 +173,8 @@ That is wrong for translated slugs.
 
 **Now:** Ginko core serves its own `/sitemap.xml` from the bundle, with the same explicit alternates.
 ginko-i18n still turns `autoI18n` off and attaches alternates through the `sitemap:input` hook when a
-site installs `@nuxtjs/sitemap` instead. Both register `/sitemap.xml` today; 1.0 makes Ginko's route
-step aside when `@nuxtjs/sitemap` is installed (see `V1.md`).
+site installs `@nuxtjs/sitemap` instead, and Ginko's own route steps aside then (2026-10-12). Those
+alternates cover static pages only: pages with a dynamic segment need the site's own sitemap source.
 
 ## D14. Release through the monorepo
 
@@ -187,8 +188,10 @@ monorepo's Changesets setup (RELEASING.md).
 
 **Choice:** one package version supports Nuxt 4.6 and Nuxt 5. Server code imports only from
 `nuxt/server`, never from `h3` or `#imports`. Nitro plugins register through `addNitroPlugin` with
-separate `nitro2` and `nitro3` files where they need Nitro APIs. CI builds the test apps on Nuxt
-4.6.0, the latest 4.x, and the Nuxt 5 nightly.
+separate `nitro2` and `nitro3` files where they need Nitro APIs. The browser suites build test apps
+on Nuxt 4.6.0 (`n4`, `n4c5` with Nuxt 5 compatibility) and a pinned Nuxt 5 nightly (`n5`); CI runs
+them for pull requests that change this package. Until Nuxt 5 is released, the peer range is
+`^4.6.0` only.
 
 **Why:** Nuxt 5 is planned for Q4 2026 and is not released yet (npm `latest` is 4.6.1 on
 2026-10-11). Nuxt 4.6 is the first version whose `nuxt/server` API runs unchanged on Nuxt 5, so a

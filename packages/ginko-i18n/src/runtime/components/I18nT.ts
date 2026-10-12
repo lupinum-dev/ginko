@@ -1,5 +1,5 @@
 import { defineComponent, Fragment, h, type PropType, type VNodeChild } from 'vue'
-import { partsToString, type Params, type Part } from '@lupinum/ginko-i18n/core'
+import { partsToString, type Params, type Part } from '@lupinum/ginko-i18n/internal'
 import { useI18n } from '../composables'
 import type { TKey } from '../types'
 
@@ -8,7 +8,7 @@ import type { TKey } from '../types'
  * `k` is a full key, typed from the app's messages (a missing key fails vue-tsc); library keys include their namespace.
  */
 export default defineComponent({
-  name: 'T',
+  name: 'I18nT',
   props: {
     k: { type: String as PropType<TKey>, required: true },
     params: { type: Object as PropType<Params>, default: undefined },

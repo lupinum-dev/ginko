@@ -16,7 +16,7 @@ const trees = ['/__ginko/files/de/md/docs/e0/body.json']
 
 describe('prerenderRoutes', () => {
   test('lists pages, entries, .md twins, documents, JSON routes and trees', () => {
-    expect(prerenderRoutes(schema, bundles, trees, { robots: true, llms: true, llmsFull: true, markdown: true }).sort()).toEqual([
+    expect(prerenderRoutes(schema, bundles, trees, { robots: true, sitemap: true, llms: true, llmsFull: true, markdown: true }).sort()).toEqual([
       '/',
       '/__ginko/files/de.json',
       '/__ginko/files/de/md/docs/e0/body.json',
@@ -38,8 +38,9 @@ describe('prerenderRoutes', () => {
   })
 
   test('leaves out what the site serves itself or turns off', () => {
-    const routes = prerenderRoutes(schema, bundles, [], { robots: false, llms: false, llmsFull: false, markdown: false })
+    const routes = prerenderRoutes(schema, bundles, [], { robots: false, sitemap: false, llms: false, llmsFull: false, markdown: false })
     expect(routes).not.toContain('/robots.txt')
+    expect(routes).not.toContain('/sitemap.xml')
     expect(routes).not.toContain('/llms.txt')
     expect(routes).not.toContain('/llms-full.txt')
     expect(routes).not.toContain('/docs/einstieg.md')

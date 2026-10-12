@@ -2,8 +2,7 @@ import { computed, onMounted, ref } from 'vue'
 import type { RouteLocationRaw, RouteParamsGeneric, Router } from 'vue-router'
 import { navigateTo, useNuxtApp, useRoute, useRouter } from '#imports'
 import { config } from '#ginko-i18n/config.mjs'
-import { createFormatters, type Formatters } from '@lupinum/ginko-i18n/core'
-import { inUserZone, localeFromPath, localizePath, negotiateLocale, stripLocale, type LocaleConfig, createTranslator } from '@lupinum/ginko-i18n/core'
+import { createFormatters, createTranslator, inUserZone, localeFromPath, localizePath, negotiateLocale, stripLocale, type Formatters, type LocaleConfig } from '@lupinum/ginko-i18n/internal'
 import type { Alternate, AlternatesResolver, I18nState, KeysIn, ParamsFor, RuntimeConfig, TypedTranslator } from './types'
 
 const c: RuntimeConfig = config
@@ -25,7 +24,7 @@ export const alternatesKey = (path: string) => `ginko-i18n:alternates:${path}`
 /** Resolve a path written in any locale (or unprefixed) to the same page in `code`. */
 export function createLocalePath(router: Router) {
   return (target: string, code: string): string => {
-    // eslint-disable-next-line regexp/no-super-linear-backtracking -- retain existing router path parsing during this lint-only migration
+    // eslint-disable-next-line regexp/no-super-linear-backtracking -- linear: `[^?#]*` cannot overlap `.*`, which only takes the rest
     const match = /^([^?#]*)(.*)$/.exec(target)!
     const path = match[1] || '/'
     const tail = match[2] ?? ''

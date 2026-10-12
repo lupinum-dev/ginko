@@ -24,13 +24,15 @@ export function tree(file: string): Tree {
 export function manifest(cwd: string, buildDir: string): Manifest {
   const file = join(buildDir, 'ginko-i18n/manifest.json')
   if (!existsSync(file)) {
-    const bin = join(cwd, 'node_modules/.bin/nuxt')
-    const result = spawnSync(bin, ['prepare'], { cwd, encoding: 'utf8' })
+    const windows = process.platform === 'win32'
+    const bin = join(cwd, 'node_modules', '.bin', windows ? 'nuxt.cmd' : 'nuxt')
+    // Node runs a `.cmd` file only through a shell.
+    const result = spawnSync(bin, ['prepare'], { cwd, encoding: 'utf8', shell: windows })
     if (result.stdout) process.stderr.write(result.stdout)
     if (result.stderr) process.stderr.write(result.stderr)
     if (result.error) process.stderr.write(`${result.error.message}\n`)
   }
-  if (!existsSync(file)) throw new Error(`Manifest missing: ${file}`)
+  if (!existsSync(file)) throw new Error(`Manifest missing: ${file}. Fix: add @lupinum/ginko-i18n to the modules in nuxt.config and run \`nuxt prepare\`, or pass --build-dir if the app builds elsewhere.`)
   const m = json(file)
   if (!object(m) || !Array.isArray(m.locales) || !Array.isArray(m.sources) || !Array.isArray(m.srcDirs) || !object(m.params) || typeof m.defaultLocale !== 'string') throw new Error('Invalid manifest')
   for (const locale of m.locales) {
@@ -141,7 +143,7 @@ export function usages(m: Manifest) {
       if (t) functions.set(t[1] ?? 't', match[3] ?? '')
     }
     const names = [...functions.keys()].map(n => n.replace(/\$/g, '\\$')).join('|')
-    const calls = new RegExp(`(?:(\\b\\w+)\\s*\\.\\s*t|(?<![\\w$.])(${names}))\\s*\\(\\s*([^)]*)|<T\\b[^>]*\\bk\\s*=\\s*(['"])(.*?)\\4`, 'g')
+    const calls = new RegExp(`(?:(\\b\\w+)\\s*\\.\\s*t|(?<![\\w$.])(${names}))\\s*\\(\\s*([^)]*)|<I18nT\\b[^>]*\\bk\\s*=\\s*(['"])(.*?)\\4`, 'g')
     for (const match of text.matchAll(calls)) {
       const line = text.slice(0, match.index).split('\n').length
       // A key on the line after `@ts-expect-error` / `@vue-expect-error` is wrong on purpose (type tests).

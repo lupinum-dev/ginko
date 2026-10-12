@@ -2,8 +2,7 @@ import { shallowReactive } from 'vue'
 import { defineNuxtPlugin, isPrerendered, loadPayload, useHead, useRequestEvent, useRoute, useRouter, useState } from '#imports'
 import { config } from '#ginko-i18n/config.mjs'
 import { loaders } from '#ginko-i18n/loaders.mjs'
-import { alternatesOf, inUserZone, localeFromPath } from '@lupinum/ginko-i18n/core'
-import type { MessageTree } from '@lupinum/ginko-i18n/core'
+import { alternatesOf, inUserZone, localeFromPath, ogLocale, type MessageTree } from '@lupinum/ginko-i18n/internal'
 import { alternatesKey, createLocalePath, currentLocale, useI18n, writeLocaleCookie } from './composables'
 import type { AlternatesResolver, I18nState, RuntimeConfig } from './types'
 
@@ -122,8 +121,8 @@ export default defineNuxtPlugin({
               ...alternatesOf(Object.fromEntries(translated.map(a => [a.code, a.path])), c).map(a => ({ rel: 'alternate' as const, hreflang: a.hreflang, href: url(a.path) })),
             ],
             meta: [
-              { property: 'og:locale', content: locale.language.replace('-', '_') },
-              ...translated.filter(a => !a.current).map(a => ({ property: 'og:locale:alternate', content: a.language.replace('-', '_') })),
+              { property: 'og:locale', content: ogLocale(locale.language) },
+              ...translated.filter(a => !a.current).map(a => ({ property: 'og:locale:alternate', content: ogLocale(a.language) })),
             ],
           }
         })

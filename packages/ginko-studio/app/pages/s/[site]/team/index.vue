@@ -172,7 +172,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
             </template>
 
             <div v-else-if="confirming === m.id" class="grid gap-2 rounded-md bg-warning/12 px-3 py-2.5">
-              <p><T k="site.team.losesAccess" :params="{ email: m.email ?? noEmail, site: s.site.value?.name ?? t('site.fallback.site') }"><template #email="{ text }"><strong>{{ text }}</strong></template></T></p>
+              <p><I18nT k="site.team.losesAccess" :params="{ email: m.email ?? noEmail, site: s.site.value?.name ?? t('site.fallback.site') }"><template #email="{ text }"><strong>{{ text }}</strong></template></I18nT></p>
               <div class="flex flex-wrap gap-2">
                 <Button type="button" variant="destructive" size="sm" :disabled="memberBusy" @click="confirmRemove(m.id)">{{ t('site.common.remove') }}</Button>
                 <Button type="button" variant="ghost" size="sm" :disabled="memberBusy" @click="confirming = null">{{ t('site.common.cancel') }}</Button>

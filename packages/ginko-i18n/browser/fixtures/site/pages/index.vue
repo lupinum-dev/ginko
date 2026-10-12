@@ -21,13 +21,13 @@ const count = ref(0)
       {{ t('home.add') }}
     </button>
     <p data-test="consent">
-      <T k="home.consent">
+      <I18nT k="home.consent">
         <template #link="{ text }">
           <NuxtLink :to="localePath('/about')">{{ text }}</NuxtLink>
         </template><template #b="{ text }">
           <strong>{{ text }}</strong>
         </template>
-      </T>
+      </I18nT>
     </p>
     <p data-test="cta">
       {{ t('home.cta') }}

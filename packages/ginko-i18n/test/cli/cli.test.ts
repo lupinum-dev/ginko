@@ -61,7 +61,7 @@ describe('message and usage findings', () => {
     change(dir, (v) => {
       v.nested = { first: '{bad', second: 'Second' }
     })
-    writeFileSync(join(dir, 'src/page.vue'), 'const x = useI18n(\'lib\')\nx.t(\'absent\')\nt(`unknown`)\n<T k="component" />')
+    writeFileSync(join(dir, 'src/page.vue'), 'const x = useI18n(\'lib\')\nx.t(\'absent\')\nt(`unknown`)\n<I18nT k="component" />')
     const findings = run(dir, ['check']).value.findings
     expect(findings.find((f: { code: string }) => f.code === 'invalid-icu')).toMatchObject({ key: 'nested.first', line: 4, file: join(dir, 'i18n/en.json') })
     expect(findings.filter((f: { code: string }) => f.code === 'unknown-key').map((f: { key: string, line: number }) => [f.key, f.line])).toEqual([['lib.absent', 2], ['unknown', 3], ['component', 4]])
@@ -154,6 +154,14 @@ test('apply accepts valid items, rejects bad params/ICU/unknown keys, writes lib
   expect(read(dir, 'i18n/i18n.lock.json').en.last).toBe(createHash('sha256').update('Letzte').digest('hex'))
   expect(readFileSync(join(dir, 'i18n/en.json'), 'utf8')).toMatch(/\n {2}"nested": \{\n {4}"first":/)
   expect(readFileSync(join(dir, 'i18n/en.json'), 'utf8').endsWith('\n')).toBe(true)
+})
+test('apply refuses the default locale and leaves its source untouched', () => {
+  const dir = fixture()
+  const before = readFileSync(join(dir, 'i18n/de.json'), 'utf8')
+  const result = run(dir, ['apply', '-'], { locale: 'de', items: [{ key: 'last', text: 'Rewritten' }] })
+  expect(result.status).toBe(2)
+  expect(result.value.error).toMatch(/default locale/)
+  expect(readFileSync(join(dir, 'i18n/de.json'), 'utf8')).toBe(before)
 })
 test('apply file input succeeds, plural incompleteness is a JSON warning with examples, and creates missing target', () => {
   const dir = fixture()

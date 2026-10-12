@@ -127,7 +127,8 @@ export default defineNuxtModule<SiteInput>({
     addServerHandler({ middleware: true, handler: resolve(`./runtime/server/headers.${runtimeExt}`) })
     // robots.txt: the site's own public/robots.txt wins. Preview hosts get Disallow (robots.ts) and X-Robots-Tag (headers.ts).
     if (!existsSync(join(nuxt.options.rootDir, 'public', 'robots.txt'))) addServerHandler({ route: '/robots.txt', handler: resolve(`./runtime/server/robots.${runtimeExt}`) })
-    addServerHandler({ route: '/sitemap.xml', handler: resolve(`./runtime/server/sitemap.${runtimeExt}`) })
+    // With @nuxtjs/sitemap installed, that module owns /sitemap.xml; ginko-i18n gives it the hreflang alternates.
+    if (!(await hasNuxtModule('@nuxtjs/sitemap', nuxt))) addServerHandler({ route: '/sitemap.xml', handler: resolve(`./runtime/server/sitemap.${runtimeExt}`) })
     // Text for AI agents: /llms.txt (the site's own public/llms.txt wins) and one middleware for `<page>.md`, Accept negotiation and the Link header.
     if (site.agents?.enabled !== false) {
       if (!existsSync(join(nuxt.options.rootDir, 'public', 'llms.txt'))) addServerHandler({ route: '/llms.txt', handler: resolve(`./runtime/server/llms.${runtimeExt}`) })
@@ -217,6 +218,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
   if (Object.values(schema.bricks).every((b) => b.source === 'files') && nuxt.options.nitro.static) {
     const served = {
       robots: !existsSync(join(publicDir, 'robots.txt')),
+      sitemap: !(await hasNuxtModule('@nuxtjs/sitemap', nuxt)),
       llms: site.agents?.enabled !== false && !existsSync(join(publicDir, 'llms.txt')),
       llmsFull: site.agents?.enabled !== false && !existsSync(join(publicDir, 'llms-full.txt')),
       markdown: site.agents?.enabled !== false,

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees } from '../src/core/compile'
+import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees } from '../src/core/compiler'
 import { defineCatalog } from '../src/core/catalog'
 import { createFormatters } from '../src/core/format'
-import { alternatesOf, inUserZone, localeFromPath, localizePath, negotiateLocale, resolveConfig, stripLocale } from '../src/core/locales'
+import { alternatesOf, canonicalCase, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, resolveConfig, stripLocale } from '../src/core/locales'
 import { createTranslator, formatParts } from '../src/core/messages'
 
 const pexd = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de-AT' })
@@ -57,6 +57,17 @@ describe('paths', () => {
   it('rejects a zone pattern without a leading slash', () => {
     expect(() => resolveConfig({ locales: ['de-AT'], userLocale: ['app/**'] })).toThrow(/must start with "\/"/)
   })
+  it('accepts URL codes with capitals, as Ginko passes canonical tags', () => {
+    const config = resolveConfig({ locales: ['de', ...['pt-BR', 'zh-Hant'].map(code => ({ code, language: code }))] })
+    expect(config.locales.map(l => l.code)).toEqual(['de', 'pt-BR', 'zh-Hant'])
+    expect(localeFromPath('/pt-BR/sobre', config)).toBe('pt-BR')
+    expect(negotiateLocale('pt-br', config)).toBe('pt-BR')
+  })
+  it.each([
+    ['/EN/about', '/en/about'], ['/pt-br/x?', '/pt-BR/x?'], ['/PT-BR', '/pt-BR'], ['/en/about', undefined], ['/pt-BR/x', undefined], ['/about', undefined],
+  ])('canonicalCase(%s) → %s', (path, expected) => {
+    expect(canonicalCase(path, resolveConfig({ locales: ['de', 'en', { code: 'pt-BR', language: 'pt-BR' }] }))).toBe(expected)
+  })
   it('rejects two locales with one URL code', () => {
     expect(() => resolveConfig({ locales: ['en-GB', 'en-US'] })).toThrow(/Two locales use the URL code "en"/)
     expect(resolveConfig({ locales: ['en-GB', { language: 'en-US', code: 'us' }] }).locales.map(l => l.code)).toEqual(['en', 'us'])
@@ -79,6 +90,14 @@ describe('messages with odd input', () => {
   it('keeps params as text, never as markup', () => {
     const msg = compileMessage('k', 'Hi <b>{name}</b>').message
     expect(formatParts(msg, { name: '<link>x</link>' }, 'en')).toEqual(['Hi ', { tag: 'b', children: ['<link>x</link>'] }])
+  })
+  it.each(['constructor', 'toString', '__proto__', 'hasOwnProperty'])('select with the value %s falls back to other', (value) => {
+    const msg = compileMessage('k', '{role, select, admin {Admin} other {Guest}}').message
+    expect(formatParts(msg, { role: value }, 'en').join('')).toBe('Guest')
+  })
+  it('does not find keys on Object.prototype', () => {
+    const t = createTranslator({ messages: compileTree({ a: 'text' }).tree, language: 'en' })
+    expect(t.t('constructor.name')).toBe('constructor.name')
   })
   it('names the key when ICU is broken', () => {
     expect(() => compileTree({ a: { b: 'Hi {name' } })).toThrow(/"a.b" is not valid ICU/)
@@ -128,6 +147,8 @@ describe('site time zone and relative time', () => {
     ['5 minutes ago, en', createFormatters('en').relative(now - 5 * minute, now), '5 minutes ago'],
     ['5 minutes ago, de-AT', createFormatters('de-AT').relative(now - 5 * minute, now), 'vor 5 Minuten'],
     ['1 day ago, en', createFormatters('en').relative(now - 86_400_000, now), 'yesterday'],
+    ['59.7 minutes round up to an hour', createFormatters('de-AT').relative(now - 59.7 * minute, now), 'vor 1 Stunde'],
+    ['23.6 hours round up to a day', createFormatters('en').relative(now + 23.6 * 60 * minute, now), 'tomorrow'],
   ])('%s', (_, actual, expected) => {
     expect(actual).toBe(expected)
   })
@@ -155,6 +176,10 @@ describe('ICU number, date and time styles', () => {
     expect(() => compileMessage('k', '{x, number, bogus}')).toThrow(MessageError)
     expect(() => compileMessage('k', '{x, number, bogus}')).toThrow(/Unknown number style "bogus"/)
   })
+})
+
+it.each([['de-AT', 'de_AT'], ['en', 'en'], ['zh-Hant-TW', 'zh_TW'], ['zh-Hant', 'zh']])('ogLocale(%s) → %s', (language, expected) => {
+  expect(ogLocale(language)).toBe(expected)
 })
 
 describe('alternatesOf', () => {

@@ -23,7 +23,7 @@ function absolute(url: string) {
 export function seo(site: string, manifest: Manifest): Finding[] {
   if (!existsSync(site)) throw new Error(`Site directory missing: ${site}`)
   const findings: Finding[] = []
-  const pages = files(site, ['.html']).filter(file => !['200.html', '404.html'].includes(relative(site, file).split('/').at(-1)!)).flatMap((file) => {
+  const pages = files(site, ['.html']).filter(file => !['200.html', '404.html'].includes(relative(site, file).split(/[\\/]/).at(-1)!)).flatMap((file) => {
     const text = readFileSync(file, 'utf8')
     const metas = [...text.matchAll(/<meta\b[^>]*>/gi)].map(m => attrs(m[0]))
     if (metas.some(a => a.name?.toLowerCase() === 'robots' && a.content?.toLowerCase().split(/[\s,]+/).includes('noindex'))) return []

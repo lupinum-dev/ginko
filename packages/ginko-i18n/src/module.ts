@@ -2,9 +2,12 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, watch } from 'node:fs
 import { join } from 'node:path'
 import { addComponent, addImports, addPlugin, addServerHandler, addServerImports, addNitroPlugin, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, hasNuxtModule, updateTemplates } from '@nuxt/kit'
 import type { NuxtPage } from '@nuxt/schema'
-import { compileTree, mergeTrees, type RawTree } from './core/compile.ts'
+import { cachedNegotiatedPaths } from './cache-rules.ts'
+import { compileTree, mergeTrees, type RawTree } from './core/compiler.ts'
 import { inUserZone, isExcluded, localizePath, resolveConfig, type LocaleConfig, type LocaleInput, type Strategy } from './core/locales.ts'
 import type { Params } from './core/messages.ts'
+
+export type { Alternate, AlternatesResolver, TypedTranslator } from './runtime/types'
 
 export interface ModuleOptions {
   locales: (string | LocaleInput)[]
@@ -53,7 +56,7 @@ function readDir(dir: string): Record<string, RawTree> {
       out[code] = JSON.parse(readFileSync(join(dir, file), 'utf8'))
     }
     catch (error) {
-      // eslint-disable-next-line preserve-caught-error -- preserve the existing JSON error contract in this lint-only migration
+      // eslint-disable-next-line preserve-caught-error -- the message carries the file name and the parser text; the cause adds nothing
       throw new Error(`[ginko-i18n] ${join(dir, file)} is not valid JSON: ${(error as Error).message}`)
     }
   }
@@ -95,7 +98,7 @@ export default defineNuxtModule<ModuleOptions>({
     const unknown = Object.keys(options).filter(k => !KNOWN.has(k))
     if (unknown.length)
       throw new Error(`[ginko-i18n] Unknown option(s) i18n.${unknown.join(', i18n.')}. Fix: remove them; ginko-i18n is not @nuxtjs/i18n.`)
-    if (nuxt.options.modules.some(m => (Array.isArray(m) ? m[0] : m) === '@nuxtjs/i18n'))
+    if (hasNuxtModule('@nuxtjs/i18n', nuxt))
       throw new Error('[ginko-i18n] @nuxtjs/i18n is also installed. Fix: remove one; two modules cannot both own the locale.')
 
     // Nuxt layers concatenate arrays, so a site that repeats a layer's locales gets each one twice.
@@ -367,22 +370,13 @@ export {}
       })
     }
 
-    // Caches that ignore Vary (Vercel ISR, Nitro SWR) must never store a response whose language came
-    // from a header or cookie: every visitor would get the first visitor's language.
+    // D10: warn when a route rule caches a path whose language comes from the request.
     nuxt.hook('nitro:config', (nitro) => {
-      const rules = Object.entries({ ...nuxt.options.routeRules, ...nitro.routeRules })
       // Nuxt's own paths (assets, images, islands with a locale prop) do not depend on the visitor's language.
       const internal = new Set(['/_nuxt/**', '/__nuxt_island/**', '/_ipx/**'])
-      const negotiated = [...new Set(['/api/x', ...[...config.exclude.filter(p => !internal.has(p)), ...config.userLocale].map(p => p.replace(/\/\*\*$/, '/x')), ...(config.strategy === 'prefix' ? ['/'] : [])])]
-      const matches = (pattern: string, path: string) => new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*\*/g, '.*').replace(/(?<!\.)\*/g, '[^/]*')}$`).test(path)
-      for (const path of negotiated) {
-        // Nitro merges every matching rule, the more specific (longer) pattern last, so `/api/**: { isr: false }` wins over `/**`.
-        const hits = rules.filter(([pattern]) => matches(pattern, path)).sort(([a], [b]) => a.length - b.length)
-        const r = Object.assign({}, ...hits.map(([, rule]) => rule)) as { isr?: unknown, swr?: unknown, cache?: unknown }
-        if (!r.isr && !r.swr && !r.cache) continue
-        const pattern = hits.findLast(([, rule]) => { const x = rule as typeof r; return x.isr || x.swr || x.cache })![0]
-        console.warn(`[ginko-i18n] routeRules "${pattern}" caches ${path.replace(/\/x$/, '/**')}, whose language comes from Accept-Language or a cookie. Cached copies ignore those, so visitors get the wrong language. Fix: exclude that path from the cache rule, or put the locale in the URL.`)
-      }
+      const negotiated = [...new Set(['/api/**', ...config.exclude.filter(p => !internal.has(p)), ...config.userLocale, ...(config.strategy === 'prefix' ? ['/'] : [])])]
+      for (const { pattern, path } of cachedNegotiatedPaths({ ...nuxt.options.routeRules, ...nitro.routeRules }, negotiated))
+        console.warn(`[ginko-i18n] routeRules "${pattern}" caches ${path}, whose language comes from Accept-Language or a cookie. Cached copies ignore those, so visitors get the wrong language. Fix: exclude that path from the cache rule, or put the locale in the URL.`)
     })
 
     // @nuxtjs/sitemap pairs locales by stripping the prefix, which is wrong for translated slugs
@@ -404,7 +398,7 @@ export {}
       { name: 'useLocaleSuggestion', from: join(runtime, 'composables') },
       { name: 'addAlternatesResolver', from: join(runtime, 'composables') },
     ])
-    addComponent({ name: 'T', filePath: join(runtime, 'components/T') })
+    addComponent({ name: 'I18nT', filePath: join(runtime, 'components/I18nT') })
 
     // No `route`: Nitro 2 reads `/**` as a literal prefix, Nitro 3 reads no route as global.
     addServerHandler({ middleware: true, handler: { nuxt: join(runtime, 'server/middleware') } })

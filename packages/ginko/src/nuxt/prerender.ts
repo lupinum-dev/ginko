@@ -15,7 +15,7 @@ export function prerenderRoutes(
   schema: Pick<Schema, 'pages' | 'locales'>,
   bundles: Partial<Record<string, Bundle>>,
   trees: Iterable<string>,
-  served: { robots: boolean, llms: boolean, llmsFull: boolean, markdown: boolean },
+  served: { robots: boolean, sitemap: boolean, llms: boolean, llmsFull: boolean, markdown: boolean },
 ): string[] {
   const routes = new Set<string>()
   for (const paths of Object.values(schema.pages)) for (const path of Object.values(paths)) if (path) routes.add(path)
@@ -31,7 +31,7 @@ export function prerenderRoutes(
       }
     }
   }
-  routes.add('/sitemap.xml')
+  if (served.sitemap) routes.add('/sitemap.xml')
   if (served.robots) routes.add('/robots.txt')
   if (served.llms) routes.add('/llms.txt')
   if (served.llmsFull) routes.add('/llms-full.txt')

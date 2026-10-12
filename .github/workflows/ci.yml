@@ -26,3 +26,42 @@ jobs:
       - run: pnpm test
       - run: pnpm check:contracts
       - run: pnpm check:pack
+
+  # ginko-i18n browser suites (routing, hydration, SEO, zones; DECISIONS.md D3): the only proof for the
+  # module setup, plugin and middleware. They take 10–20 minutes, so they run only when a pull request
+  # changes packages/ginko-i18n.
+  i18n-browser:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: changed
+        run: |
+          if git diff --quiet "origin/${{ github.base_ref }}...HEAD" -- packages/ginko-i18n; then
+            echo "i18n=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "i18n=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.changed.outputs.i18n == 'true'
+        uses: pnpm/action-setup@v4
+      - if: steps.changed.outputs.i18n == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - if: steps.changed.outputs.i18n == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.changed.outputs.i18n == 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - if: steps.changed.outputs.i18n == 'true'
+        run: pnpm i18n:browser
+      - if: always() && steps.changed.outputs.i18n == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: i18n-browser-evidence
+          path: packages/ginko-i18n/browser/.evidence
+          include-hidden-files: true
+          if-no-files-found: ignore

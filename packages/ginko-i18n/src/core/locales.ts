@@ -34,8 +34,9 @@ export function resolveLocale(input: string | LocaleInput): Locale {
   const def = typeof input === 'string' ? { language: input } : input
   const tag = new Intl.Locale(def.language)
   const code = def.code ?? tag.language
-  if (!/^[a-z][a-z0-9-]*$/.test(code))
-    throw new Error(`[ginko-i18n] Locale code "${code}" must be lowercase letters, digits or "-". Fix: set \`code\` for ${def.language}.`)
+  // Case is kept, so a canonical tag (`pt-BR`, `zh-Hant`) can be the URL code; see `canonicalCase`.
+  if (!/^[a-z][a-z0-9-]*$/i.test(code))
+    throw new Error(`[ginko-i18n] Locale code "${code}" must be letters, digits or "-". Fix: set \`code\` for ${def.language}.`)
   const name = def.name ?? nativeName(tag.baseName)
   return { code, language: tag.baseName, name, dir: RTL.has(tag.language) ? 'rtl' : 'ltr' }
 }
@@ -51,6 +52,12 @@ function nativeName(language: string): string {
   }
 }
 
+/** `og:locale` wants `language_TERRITORY`: `de-AT` → `de_AT`, `zh-Hant-TW` → `zh_TW`, `zh-Hant` → `zh`. */
+export function ogLocale(language: string): string {
+  const tag = new Intl.Locale(language)
+  return tag.region ? `${tag.language}_${tag.region}` : tag.language
+}
+
 export function resolveConfig(input: {
   locales: (string | LocaleInput)[]
   defaultLocale?: string
@@ -63,9 +70,10 @@ export function resolveConfig(input: {
   const locales = input.locales.map(resolveLocale)
   const codes = new Set<string>()
   for (const l of locales) {
-    if (codes.has(l.code))
+    // `pt-br` and `pt-BR` would be one URL for the router, which matches case-insensitively.
+    if (codes.has(l.code.toLowerCase()))
       throw new Error(`[ginko-i18n] Two locales use the URL code "${l.code}". Fix: give one of them an explicit \`code\`.`)
-    codes.add(l.code)
+    codes.add(l.code.toLowerCase())
   }
   const wanted = input.defaultLocale ?? locales[0]!.code
   const def = locales.find(l => l.code === wanted || l.language === wanted)
@@ -122,6 +130,18 @@ function firstSegment(path: string): string {
   return path.split('/')[1] ?? ''
 }
 
+/**
+ * The path with its locale prefix in the code's own case (`/EN/about` → `/en/about`, `/pt-br/x` →
+ * `/pt-BR/x`), or `undefined` when the case is already right or the first segment is no locale code.
+ * The router matches case-insensitively, so a wrong-case URL would otherwise render in the default locale.
+ */
+export function canonicalCase(path: string, config: LocaleConfig): string | undefined {
+  const segment = firstSegment(path)
+  const locale = config.locales.find(l => l.code.toLowerCase() === segment.toLowerCase())
+  if (!locale || locale.code === segment) return undefined
+  return `/${locale.code}${path.slice(segment.length + 1)}`
+}
+
 /** The locale a path belongs to, or `undefined` when the path has no locale (`prefix` root, excluded paths, user-locale zones). */
 export function localeFromPath(path: string, config: LocaleConfig): string | undefined {
   if (isExcluded(path, config) || inUserZone(path, config)) return undefined
@@ -172,7 +192,7 @@ export function negotiateLocale(header: string | null | undefined, config: Local
     .sort((a, b) => b.quality - a.quality || a.index - b.index)
 
   for (const range of ranges) {
-    const exact = config.locales.find(l => l.language.toLowerCase() === range.tag || l.code === range.tag)
+    const exact = config.locales.find(l => l.language.toLowerCase() === range.tag || l.code.toLowerCase() === range.tag)
     if (exact) return exact.code
     const base = range.tag.split('-')[0]
     const partial = config.locales.find(l => l.language.toLowerCase().split('-')[0] === base)

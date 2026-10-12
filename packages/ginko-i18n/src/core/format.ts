@@ -39,6 +39,10 @@ const DAY = 24 * HOUR
 const WEEK = 7 * DAY
 const MONTH = 30.44 * DAY
 const YEAR = 365.25 * DAY
+/** Unit, its size in seconds, and the amount from which the next unit takes over. */
+const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number, number][] = [
+  ['second', 1, 60], ['minute', MINUTE, 60], ['hour', HOUR, 24], ['day', DAY, 7], ['week', WEEK, 5], ['month', MONTH, 12],
+]
 
 export function createFormatters(language: string, options: FormatterOptions = {}) {
   const zone = options.timeZone ?? 'UTC'
@@ -65,14 +69,11 @@ export function createFormatters(language: string, options: FormatterOptions = {
     relative: (value: DateInput, now: Date | number = Date.now()) => {
       const formatter = cached(`r|${language}`, () => new Intl.RelativeTimeFormat(language, { numeric: 'auto' }))
       const seconds = (toDate(value).getTime() - new Date(now).getTime()) / 1000
-      const abs = Math.abs(seconds)
-      if (abs < MINUTE) return formatter.format(Math.round(seconds), 'second')
-      if (abs < HOUR) return formatter.format(Math.round(seconds / MINUTE), 'minute')
-      if (abs < DAY) return formatter.format(Math.round(seconds / HOUR), 'hour')
-      if (abs < WEEK) return formatter.format(Math.round(seconds / DAY), 'day')
-      if (abs < 5 * WEEK) return formatter.format(Math.round(seconds / WEEK), 'week')
-      const months = Math.round(seconds / MONTH)
-      if (Math.abs(months) < 12) return formatter.format(months, 'month')
+      // Round first, then pick the unit: 59.7 minutes is "1 hour ago", not "60 minutes ago".
+      for (const [unit, size, limit] of RELATIVE_UNITS) {
+        const amount = Math.round(seconds / size)
+        if (Math.abs(amount) < limit) return formatter.format(amount, unit)
+      }
       return formatter.format(Math.round(seconds / YEAR), 'year')
     },
     number: (value: number, options?: Intl.NumberFormatOptions) =>
