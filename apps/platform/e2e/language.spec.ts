@@ -13,8 +13,8 @@ test('a browser with en-US sees the English sign-in and "My sites"', async ({ br
 
   const owner = await browser.newContext({ baseURL, locale: 'en-US', storageState: STATE.owner })
   const sites = await owner.newPage()
-  // `?alle` keeps the list open (a single site would open at once).
-  await sites.goto('/?alle', { waitUntil: 'networkidle' })
+  // `?all` keeps the list open (a single site would open at once).
+  await sites.goto('/?all', { waitUntil: 'networkidle' })
   await expect(sites.getByRole('heading', { name: 'My sites', level: 1 })).toBeVisible()
   await expect(sites.getByRole('button', { name: 'Sign out' })).toBeVisible()
   await owner.close()
@@ -24,7 +24,7 @@ test('the language picked on "My sites" is saved on the account and wins over th
   // The cook's account: the German setting this leaves behind matches every other test (German browser).
   const context = await browser.newContext({ baseURL, locale: 'en-US', storageState: STATE.cook })
   const page = await context.newPage()
-  await page.goto('/?alle', { waitUntil: 'networkidle' })
+  await page.goto('/?all', { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: 'English' }).click()
   await expect(page.getByRole('heading', { name: 'My sites', level: 1 })).toBeVisible()
   await page.getByRole('button', { name: 'Deutsch' }).click()
