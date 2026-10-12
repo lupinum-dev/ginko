@@ -58,6 +58,21 @@ describe('interactive components', () => {
     expect(html).toMatch(/<button[^>]*aria-expanded="false"[^>]*>\s*Mehr anzeigen/)
   })
 
+  test.each([
+    '::card{title="Karte" href="/ziel"}\nMehr auf [der Startseite](/).\n::',
+    '::read-more{href="/ziel"}\nMehr auf [der Startseite](/).\n::',
+  ])('a linked card or read-more keeps a link in its content out of its own link: %s', async (markdown) => {
+    // The HTML parser closes an outer <a> at an inner one, so nested links break hydration and the layout.
+    const html = await render(markdown)
+    let depth = 0
+    for (const [tag] of html.matchAll(/<\/?a[\s>]/g)) {
+      depth += tag.startsWith('</') ? -1 : 1
+      expect(depth).toBeLessThan(2)
+    }
+    expect(html).toContain('href="/ziel"')
+    expect(html).toContain('href="/"')
+  })
+
   test('inline-toc lists the headings nested and renders nothing without any', async () => {
     const html = await render('## Eins\n\n### Eins A\n\n## Zwei\n\n::inline-toc\n::', true)
     expect(html).toContain('href="#eins"')
