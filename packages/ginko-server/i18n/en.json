@@ -236,7 +236,8 @@
     "staleAlreadyDraft": "This entry is already a draft.",
     "staleApproverNotAllowed": "The approver is no longer allowed to approve this.",
     "staleNoLonger": "This is no longer possible.",
-    "staleRefused": "{why} Please propose the change again."
+    "staleRefused": "{why} Please propose the change again.",
+    "stateField": "Status"
   },
   "publicness": {
     "deleted": "The entry was removed. You can restore it until {until, date, long}, then it is deleted for good.",
@@ -273,5 +274,8 @@
       "subject": "Did not go live: a planned change for {site}",
       "text": "Hello,\n\na change you planned for “{site}” did not go live, because it no longer fits:\n\n{what}\n\nThe reason is in the history: {path}\n"
     }
+  },
+  "content": {
+    "copyOf": "{text} (copy)"
   }
 }

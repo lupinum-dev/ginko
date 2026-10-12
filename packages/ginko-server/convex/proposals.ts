@@ -330,15 +330,16 @@ export const get = query({
     const brick = Object.hasOwn(schema.bricks, p.brick) ? schema.bricks[p.brick] : undefined
     const before = (p.before ?? {}) as Record<string, Json>
     const after = (p.after ?? {}) as Record<string, Json>
-    // German, like `sentence`; the dates are written in the site's zone.
+    // In the reader's language; the dates are written in the site's zone.
+    const locale = await localeOfUser(ctx, actor.user.id)
     const when = (state: Json | undefined, publishAt: Json | undefined) => {
       if (typeof state !== 'string') return null
       const name = state === 'draft' ? msg('history.stateDraft') : state === 'live' ? msg('history.stateLive') : undefined
-      if (typeof publishAt !== 'number') return name ? historyText(name, 'de', schema) : state
-      return historyText(msg('history.stateScheduled', { state: name ?? state, at: publishAt }), 'de', schema)
+      if (typeof publishAt !== 'number') return name ? historyText(name, locale, schema) : state
+      return historyText(msg('history.stateScheduled', { state: name ?? state, at: publishAt }), locale, schema)
     }
     const diff = p.op === 'publish' || p.op === 'unpublish'
-      ? [{ field: 'state', label: 'Status', kind: 'state', before: when(before.state, before.publishAt), after: when(after.state, after.publishAt) }]
+      ? [{ field: 'state', label: t(locale, 'history.stateField'), kind: 'state', before: when(before.state, before.publishAt), after: when(after.state, after.publishAt) }]
       : diffFields(brick?.fields, before, after, schema.locales[0]!)
     const names = await labeler(ctx, actor)
     const conflict = p.status === 'open' || p.status === 'scheduled' ? await staleReason(ctx, p) : null

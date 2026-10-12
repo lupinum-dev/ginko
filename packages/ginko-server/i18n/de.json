@@ -236,7 +236,8 @@
     "staleAlreadyDraft": "Dieser Eintrag ist schon ein Entwurf.",
     "staleApproverNotAllowed": "Der Genehmiger darf das nicht mehr freigeben.",
     "staleNoLonger": "Das geht nicht mehr.",
-    "staleRefused": "{why} Bitte schlage die Änderung neu vor."
+    "staleRefused": "{why} Bitte schlage die Änderung neu vor.",
+    "stateField": "Status"
   },
   "publicness": {
     "deleted": "Der Eintrag wurde entfernt. Er lässt sich bis zum {until, date, long} wiederherstellen, danach wird er endgültig gelöscht.",
@@ -273,5 +274,8 @@
       "subject": "Nicht live gegangen: eine geplante Änderung für {site}",
       "text": "Hallo,\n\neine Änderung, die du für „{site}“ geplant hast, ist nicht live gegangen, weil sie nicht mehr passt:\n\n{what}\n\nDen Grund findest du im Verlauf: {path}\n"
     }
+  },
+  "content": {
+    "copyOf": "{text} (Kopie)"
   }
 }

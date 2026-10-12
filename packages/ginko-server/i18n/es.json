@@ -236,7 +236,8 @@
     "staleAlreadyDraft": "Esta entrada ya es un borrador.",
     "staleApproverNotAllowed": "El aprobador ya no tiene permiso para aprobar esto.",
     "staleNoLonger": "Esto ya no es posible.",
-    "staleRefused": "{why} Propón el cambio de nuevo."
+    "staleRefused": "{why} Propón el cambio de nuevo.",
+    "stateField": "Estado"
   },
   "publicness": {
     "deleted": "La entrada se eliminó. Puedes restaurarla hasta el {until, date, long}; después se borra definitivamente.",
@@ -273,5 +274,8 @@
       "subject": "No se publicó: un cambio planificado para {site}",
       "text": "Hola:\n\nun cambio que planificaste para «{site}» no se publicó porque ya no encaja:\n\n{what}\n\nEl motivo está en el historial: {path}\n"
     }
+  },
+  "content": {
+    "copyOf": "{text} (copia)"
   }
 }

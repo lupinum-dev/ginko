@@ -16,10 +16,10 @@ export function useUpdateSite(site: () => string) {
     if (running.value) return
     running.value = true
     try {
-      const result = await refresh.run({ site: site(), opId: crypto.randomUUID() }) as { results?: { ok: boolean }[] } | null
+      const result = await refresh.run({ site: site(), opId: crypto.randomUUID() }) as { results?: { ok: boolean }[]; limited?: boolean } | null
       const failed = (result?.results ?? []).filter((row) => !row.ok).length
       if (failed) show(`${t('basics.update.pagesFailed', { count: failed })} ${t('basics.update.fallback')}`, { tone: 'err' })
-      else show(t('basics.update.done'))
+      else show(result?.limited ? `${t('basics.update.partly')} ${t('basics.update.fallback')}` : t('basics.update.done'))
     } catch (error) {
       show(`${opErrorOf(error).message} ${t('basics.update.fallback')}`, { tone: 'err' })
     } finally {

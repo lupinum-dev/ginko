@@ -623,6 +623,7 @@
       "menu": "Update website now",
       "running": "Updating the website…",
       "done": "The website is up to date.",
+      "partly": "The main pages and the sitemap are up to date.",
       "fallback": "It updates by itself within a few minutes.",
       "pagesFailed": "{count, plural, one {# page} other {# pages}} could not be updated.",
       "lastAt": "Last update: {when}"

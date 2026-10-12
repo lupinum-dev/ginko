@@ -5,7 +5,7 @@ import type { Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, setup } from './setup'
+import { errorOf, opId, people, setup } from './setup'
 
 const NOW = Date.parse('2026-10-08T10:00:00Z')
 const MINUTE = 60 * 1000
@@ -101,6 +101,10 @@ describe('when a write needs a yes', () => {
     const publish = await s.as.cook.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: draft.entry as Id<'entries'>, lifeRev: 1 })
     expect(publish).toMatchObject({ status: 'open' })
     expect((await s.row(draft.entry as Id<'entries'>))!.state).toBe('draft')
+    // The approver reads the state change in their own language.
+    await s.t.run((ctx) => ctx.db.insert('userSettings', { user: people.owner, remindByMail: false, locale: 'en' }))
+    const detail = await s.as.owner.query(api.proposals.get, { site: 'restaurant', proposal: (publish as Proposed).proposal })
+    expect(detail.diff).toEqual([{ field: 'state', label: 'Status', kind: 'state', before: 'Draft', after: 'Online' }])
     await s.as.owner.mutation(api.proposals.approve, { proposal: (publish as Proposed).proposal })
     expect((await s.row(draft.entry as Id<'entries'>))!.state).toBe('live')
   })

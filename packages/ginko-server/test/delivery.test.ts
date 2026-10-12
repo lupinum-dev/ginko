@@ -182,10 +182,10 @@ describe('urgentRefresh', () => {
 describe('refresh.record (Phase 5 review)', () => {
   it('two recordings of one opId keep one ops row and both answer with the first result', async () => {
     const { t, as } = await setup()
-    const first = { results: [{ path: '/', status: 200, rev: '1.1', ok: true }], note: null }
+    const first = { results: [{ path: '/', status: 200, rev: '1.1', ok: true }], limited: false }
     const args = { site: 'restaurant', opId: opId(), hash: 'hash-test' }
     expect(await as.owner.mutation(internal.refresh.record, { ...args, result: first })).toEqual(first)
-    expect(await as.owner.mutation(internal.refresh.record, { ...args, result: { results: [], note: 'zweiter Versuch' } })).toEqual(first)
+    expect(await as.owner.mutation(internal.refresh.record, { ...args, result: { results: [], limited: true } })).toEqual(first)
     expect(await t.run((ctx) => ctx.db.query('ops').collect())).toHaveLength(1)
   })
 
@@ -196,12 +196,12 @@ describe('refresh.record (Phase 5 review)', () => {
     const failed = { path: '/menu', status: 500, rev: '1.0', ok: false }
     const lastRefreshAt = async () => (await as.owner.query(api.sites.get, { site: 'restaurant' })).site.lastRefreshAt
     vi.setSystemTime(NOW)
-    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly', result: { results: [ok, failed], note: null } })
+    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly', result: { results: [ok, failed], limited: false } })
     expect(await lastRefreshAt()).toBeNull()
-    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-full', result: { results: [ok], note: null } })
+    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-full', result: { results: [ok], limited: false } })
     expect(await lastRefreshAt()).toBe(NOW)
     vi.setSystemTime(NOW + 60 * 60 * 1000)
-    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly-again', result: { results: [ok, failed], note: null } })
+    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly-again', result: { results: [ok, failed], limited: false } })
     expect(await lastRefreshAt()).toBe(NOW)
   })
 })

@@ -623,6 +623,7 @@
       "menu": "Website jetzt aktualisieren",
       "running": "Website wird aktualisiert …",
       "done": "Die Website ist auf dem neuesten Stand.",
+      "partly": "Die Hauptseiten und die Sitemap sind auf dem neuesten Stand.",
       "fallback": "Sie aktualisiert sich von selbst in wenigen Minuten.",
       "pagesFailed": "{count, plural, one {# Seite} other {# Seiten}} konnten nicht aktualisiert werden.",
       "lastAt": "Zuletzt aktualisiert: {when}"

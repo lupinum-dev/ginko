@@ -9,6 +9,7 @@ import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } fr
 import { actorFor, authorize, authorizeWriter, byOf, checkRev, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor, type By } from './lib/access'
 import { byteSize, fileIdsOf, leavesOf, mergeField, nextPrints, rootOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { msg, recorded, type HistoryMsg, type Recorded } from './lib/history'
+import { isLocale, t } from './lib/i18n'
 import { countersOf, DELETED_KEPT, softRemove, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
@@ -458,7 +459,6 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
 
 // ---- Duplicate (SPEC 4.2): a new entry made with the normal create path. ----
 
-const COPY_SUFFIX = ' (Kopie)'
 const duplicateArgs = { site: v.string(), opId: v.string(), task: v.optional(v.string()), entry: v.string() }
 
 /** The same row `_id` for the same operation, so a retry with the same `opId` sends the same data and is replayed. */
@@ -475,28 +475,30 @@ function withNewRowIds(field: Field, value: Json, path: string, opId: string): J
   })
 }
 
-/** " (Kopie)" after every text of the value, or the value as it is when one of them would then be too long. */
-function withCopySuffix(field: Field, value: Json): Json {
-  const suffixed = (text: Json) => (typeof text === 'string' && text !== '' ? text + COPY_SUFFIX : text)
-  const texts = typeof value === 'string' ? [value] : Object.values(plainObject(value))
+/** The copy's label in that text's language ("Weinabend (Kopie)", "Wine evening (copy)"); English for a language the catalog lacks. */
+const copyText = (text: string, locale: string) => t(isLocale(locale) ? locale : 'en', 'content.copyOf', { text })
+
+/** The copy mark after every text of the value, or the value as it is when one of them would then be too long. `main` is the language of a plain text. */
+function withCopySuffix(field: Field, value: Json, main: string): Json {
+  const texts: [string, Json][] = typeof value === 'string' ? [[main, value]] : Object.entries(plainObject(value))
   const max = effectiveMax(field)
-  if (texts.some((text) => typeof text === 'string' && text !== '' && [...text].length + COPY_SUFFIX.length > max)) return value
-  if (typeof value === 'string') return suffixed(value)
-  return Object.fromEntries(Object.entries(plainObject(value)).map(([locale, text]) => [locale, suffixed(text)]))
+  const marked = texts.map(([locale, text]) => [locale, typeof text === 'string' && text !== '' ? copyText(text, locale) : text] as const)
+  if (marked.some(([, text]) => typeof text === 'string' && [...text].length > max)) return value
+  return typeof value === 'string' ? marked[0]![1] : Object.fromEntries(marked)
 }
 
 /**
  * The data of the copy: live fields only; slugs left out (create makes new, free ones from the title,
  * so "Wildwoche (Kopie)" becomes `wildwoche-kopie`, then `wildwoche-kopie-2`).
  */
-function copyOf(brick: CollectionBrick, data: Data, opId: string): Data {
+function copyOf(brick: CollectionBrick, data: Data, opId: string, main: string): Data {
   const slugSources = new Set(Object.values(brick.fields).flatMap((field) => (field.type === 'slug' && !field.retired ? [field.from] : [])))
   const label = ordered(brick.fields).find(([, field]) => field.type === 'text' && !field.retired)?.[0]
   const out: Data = {}
   for (const [name, field] of Object.entries(brick.fields)) {
     if (field.retired || field.type === 'slug' || data[name] === undefined) continue
     const value = withNewRowIds(field, data[name]!, name, opId)
-    out[name] = field.type === 'text' && (name === label || slugSources.has(name)) ? withCopySuffix(field, value) : value
+    out[name] = field.type === 'text' && (name === label || slugSources.has(name)) ? withCopySuffix(field, value, main) : value
   }
   return out
 }
@@ -515,7 +517,7 @@ export async function duplicateAs(ctx: MutationCtx, actor: Actor, args: ObjectTy
   if (entry.deletedAt) fail('INVALID', 'errors.removedEntryCannotCopy')
   return createAs(ctx, actor, {
     site: args.site, opId: args.opId, ...(args.task === undefined ? {} : { task: args.task }),
-    brick: entry.brick, data: copyOf(brick, entry.data as Data, args.opId),
+    brick: entry.brick, data: copyOf(brick, entry.data as Data, args.opId, schema.locales[0]!),
   })
 }
 
