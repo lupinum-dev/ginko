@@ -104,6 +104,27 @@ describe('readContent', () => {
   })
 })
 
+describe('```md preview fences', () => {
+  const fence = (code: string) => `Intro\n\n\`\`\`\`md preview\n${code}\n\`\`\`\`\n`
+
+  // Bug caught: validate() saw only the fence's code, so the rendered preview reached the page unchecked (SSR printed the script).
+  it.each([
+    ['a script component', '::script\nalert(1)\n::', /script/],
+    ['a javascript: link', ':a[x]{href="javascript:alert(1)"}', /Link is not allowed/],
+    ['an on* attribute', ':img{src="/a.svg" onerror="alert(1)"}', /onerror/],
+  ])('reports %s in the preview and leaves the file out', async (_, code, message) => {
+    const r = await read({ 'content/pages/1.a.md': md('title: A', fence(code)) })
+    expect(r.errors).toEqual([{ file: 'pages/1.a.md', path: 'body', message: expect.stringMatching(message) }])
+    expect(r.entries.pages).toEqual([])
+  })
+
+  it('keeps a preview the field allows', async () => {
+    const r = await read({ 'content/pages/1.a.md': md('title: A', fence('## Title\n\n[Link](https://example.com)')) })
+    expect(r.errors).toEqual([])
+    expect(JSON.stringify(r.entries.pages![0]!.data.body)).toContain('"preview"')
+  })
+})
+
 describe('buildFileBundles', () => {
   it('builds one bundle per locale with URLs, and falls back to the main language', async () => {
     const s = site({ 'content/docs/1.einstieg.md': md('title: Einstieg'), 'content/docs/2.nur-de.md': md('title: Nur Deutsch'), 'content/docs/1.einstieg.en.md': md('title: Getting started\nslug: getting-started', 'English text.') })

@@ -5,7 +5,7 @@ import type {
   Brick, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  imageInfo, isTranslatable, printOf, sha256, slugify, urlClashes, urlsFor, validate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, urlClashes, urlsFor, validate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -504,7 +504,9 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         const text = await readFile(src.path, 'utf8')
         if (ext === 'md') {
           // Parsed once, with the file's frontmatter; the profile problems are reported by validate() on the body text.
-          parsed = await parseFile(text)
+          const field = markdownKey === undefined ? undefined : brick.fields[markdownKey]
+          parsed = await parseFile(text, { profile: field?.type === 'markdown' ? effectiveProfile(field) : undefined, components: schema.components })
+          for (const problem of parsed.previewProblems) fail(cx, markdownKey ?? 'body', `In a \`\`\`md preview fence: ${coreMessage('en', problem.key, problem.params)}`)
           data = parsed.frontmatter
           const imageCx = { contentDir, publicDir, file: rel, images, renames: new Map<string, string>(), imageProps, sized, fail: (message: string) => fileErrors.push({ file: rel, message }) }
           rewriteImages(parsed.value.nodes, imageCx)
