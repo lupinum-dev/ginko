@@ -2,7 +2,7 @@
 // in a real browser and reports what breaks. Usage: node test/attack.mjs [filter]
 // Remote: --remote <https-url> --name <label> --strategy <strategy>; optional VERCEL_AUTOMATION_BYPASS_SECRET.
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { Agent as HttpAgent, createServer, request } from 'node:http'
 import { request as httpsRequest } from 'node:https'
 import { createServer as netServer } from 'node:net'
@@ -52,12 +52,14 @@ async function startSsr(dir) {
 }
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.xml': 'application/xml' }
 // Behaves like Netlify/Vercel static hosting: /a → a.html or a/index.html, else 404.html with status 404.
+// Paths are case-sensitive as on those hosts, also on macOS, whose disk would find `EN/about` for `en/about`.
 async function startStatic(dir) {
   const port = await freePort()
+  const root = realpathSync.native(dir)
   const server = createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url, 'http://x').pathname)
-    const candidates = [path, `${path}.html`, join(path, 'index.html')].map(p => join(dir, p))
-    const file = candidates.find(f => existsSync(f) && statSync(f).isFile())
+    const candidates = [path, `${path}.html`, join(path, 'index.html')].map(p => join(root, p))
+    const file = candidates.find(f => existsSync(f) && statSync(f).isFile() && realpathSync.native(f) === f)
     if (file) {
       res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' })
       return res.end(readFileSync(file))
@@ -310,8 +312,9 @@ async function attackUrls(name, base, strategy) {
     await context.close()
   }
   const cases = [
-    { path: '/EN/about', expect: 'redirect to /en/about', ok: r => (r.status === 301 && r.location === '/en/about') || (r.status === 200 && headOf(r.html).lang === 'en-GB' && headOf(r.html).canonical[0] === `${BASE}/en/about`) },
-    { path: '/En', expect: 'redirect to /en', ok: r => (r.status === 301 && r.location === '/en') || (r.status === 200 && headOf(r.html).lang === 'en-GB' && headOf(r.html).canonical[0] === `${BASE}/en`) },
+    // A server redirects a wrong-case prefix; a static host has no server and answers 404 (no duplicate page).
+    { path: '/EN/about', expect: isStatic() ? '404 (static host)' : 'redirect to /en/about', ok: r => (isStatic() ? r.status === 404 : r.status === 301 && r.location === '/en/about') },
+    { path: '/En', expect: isStatic() ? '404 (static host)' : 'redirect to /en', ok: r => (isStatic() ? r.status === 404 : r.status === 301 && r.location === '/en') },
     { path: '/en/ueber-uns', expect: 404, ok: r => r.status === 404 },
     { path: '/about', expect: 404, ok: r => r.status === 404 },
     { path: '/fr', expect: 404, ok: r => r.status === 404 },
