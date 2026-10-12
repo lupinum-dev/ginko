@@ -10,7 +10,7 @@
     "test": "vitest run",
     "i18n:browser": "bash packages/ginko-i18n/browser/build-all.sh && node packages/ginko-i18n/browser/attack.mjs && node packages/ginko-i18n/browser/zone-attack.mjs && node packages/ginko-i18n/browser/edge-attack.mjs && node packages/ginko-i18n/browser/content-attack.mjs",
     "check:contracts": "node --experimental-strip-types scripts/contracts.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @ginko-demo/restaurant typecheck && pnpm --filter @ginko-demo/garden typecheck && pnpm --filter @ginko-demo/industrie typecheck && pnpm --filter @ginko-demo/saas typecheck && pnpm --filter @ginko-demo/docs typecheck && pnpm --filter @ginko/platform typecheck",
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @lupinum/ginko-components typecheck && pnpm --filter @ginko-demo/restaurant typecheck && pnpm --filter @ginko-demo/garden typecheck && pnpm --filter @ginko-demo/industrie typecheck && pnpm --filter @ginko-demo/saas typecheck && pnpm --filter @ginko-demo/docs typecheck && pnpm --filter @ginko/platform typecheck",
     "e2e": "playwright test",
     "outbox": "node --experimental-strip-types scripts/outbox.ts",
     "check:pack": "node --experimental-strip-types scripts/check-pack.ts",

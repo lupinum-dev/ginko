@@ -1,6 +1,7 @@
 // Nuxt module: gives <GinkoMarkdown> the tag → component map and adds the stylesheet.
 // The registry (`@lupinum/ginko-components/registry`) is separate and pure data; list it in `ginko.config.ts`.
-import { addPlugin, createResolver, defineNuxtModule } from '@nuxt/kit'
+import type {} from '@lupinum/ginko-i18n' // the `ginko-i18n:sources` hook type
+import { addPlugin, createResolver, defineNuxtModule, hasNuxtModule } from '@nuxt/kit'
 import { STYLES } from './styles'
 import { mergeProviders, type EmbedProviderConfig } from './runtime/components/embed-utils'
 
@@ -24,5 +25,10 @@ export default defineNuxtModule<ModuleOptions>({
     }
     // Default UI texts (de, en); the host app overrides single keys under `components.*` in its own i18n folder.
     nuxt.hook('ginko-i18n:sources', (sources) => { sources.push({ namespace: 'components', dir: resolve('../i18n') }) })
+    // The UI texts come from ginko-i18n's `useI18n`; without the module the build fails on an unclear import error.
+    nuxt.hook('modules:done', async () => {
+      if (await hasNuxtModule('@lupinum/ginko-i18n', nuxt)) return
+      throw new Error("@lupinum/ginko-components needs @lupinum/ginko-i18n for its UI texts. Add '@lupinum/ginko/nuxt' to `modules` in nuxt.config.ts (it installs ginko-i18n with the languages of ginko.config.ts).")
+    })
   },
 })

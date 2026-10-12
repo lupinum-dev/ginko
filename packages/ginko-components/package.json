@@ -51,6 +51,7 @@
   "scripts": {
     "build": "nuxt-module-build prepare && nuxt-module-build build",
     "registry": "node --experimental-strip-types scripts/build-registry.ts",
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit",
     "prepack": "pnpm build"
   },
   "peerDependencies": {
@@ -59,6 +60,7 @@
   },
   "dependencies": {
     "@lupinum/ginko": "workspace:^",
+    "@lupinum/ginko-i18n": "workspace:^",
     "@nuxt/kit": "^4.6.0"
   },
   "devDependencies": {

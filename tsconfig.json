@@ -3,6 +3,7 @@
   "compilerOptions": {
     "types": ["node"],
     // The runtime composables are type-checked through their tests, against the same shims vitest uses.
+    // ginko-components checks its module and runtime with its own `typecheck` (vue-tsc against its .nuxt).
     "paths": { "#imports": ["./packages/ginko/test/shims/imports.ts"], "#ginko/schema": ["./packages/ginko/test/shims/schema.ts"], "#convex/api": ["./packages/ginko-server/convex/_generated/api"] }
   },
   "include": ["packages/*/src", "packages/*/test", "scripts"],
