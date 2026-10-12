@@ -56,8 +56,8 @@ const textOf = (node: Node): string => (typeof node === 'string' ? node : node.s
 /**
  * A ```md preview fence shows its Markdown and what it renders: it becomes `['example', { preview }, pre]`, the
  * parsed content in the `preview` prop and the code block as the child. The preview sits in a prop, so its
- * headings stay out of the page's table of contents and its text out of search. A site without an `example`
- * renderer shows the code block alone.
+ * headings stay out of the page's table of contents and its text out of search. `GinkoMarkdown` shows the code
+ * block alone unless the site passes an `example` component (as @lupinum/ginko-docs does).
  */
 async function withPreviews<T>(nodes: T[], parse: (code: string) => Promise<unknown[]>): Promise<T[]> {
   return Promise.all(nodes.map(async (raw) => {
