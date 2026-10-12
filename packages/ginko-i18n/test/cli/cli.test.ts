@@ -155,6 +155,14 @@ test('apply accepts valid items, rejects bad params/ICU/unknown keys, writes lib
   expect(readFileSync(join(dir, 'i18n/en.json'), 'utf8')).toMatch(/\n {2}"nested": \{\n {4}"first":/)
   expect(readFileSync(join(dir, 'i18n/en.json'), 'utf8').endsWith('\n')).toBe(true)
 })
+test('apply refuses the default locale and leaves its source untouched', () => {
+  const dir = fixture()
+  const before = readFileSync(join(dir, 'i18n/de.json'), 'utf8')
+  const result = run(dir, ['apply', '-'], { locale: 'de', items: [{ key: 'last', text: 'Rewritten' }] })
+  expect(result.status).toBe(2)
+  expect(result.value.error).toMatch(/default locale/)
+  expect(readFileSync(join(dir, 'i18n/de.json'), 'utf8')).toBe(before)
+})
 test('apply file input succeeds, plural incompleteness is a JSON warning with examples, and creates missing target', () => {
   const dir = fixture()
   rmSync(join(dir, 'i18n/en.json'))

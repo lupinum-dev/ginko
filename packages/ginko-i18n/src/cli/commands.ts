@@ -97,6 +97,7 @@ export function apply(m: Manifest, cwd: string, input: unknown) {
   if (!object(input) || typeof input.locale !== 'string' || !Array.isArray(input.items)) throw new Error('Expected { locale, items: [{ key, text }] }')
   const locale = m.locales.find(l => l.code === input.locale)
   if (!locale) throw new Error(`Unknown locale: ${input.locale}`)
+  if (locale.code === m.defaultLocale) throw new Error(`"${locale.code}" is the default locale: its messages are the source. Fix: edit the source files, or apply translations to another locale.`)
   const defaults = entries(m, m.defaultLocale), sourceLocale = m.locales.find(l => l.code === m.defaultLocale)!
   const written: { key: string, file: string }[] = [], rejected: { key: string, reason: string }[] = [], warnings: { key: string, message: string }[] = []
   const targets = new Map<string, { dir: string, value: Tree, reference: Tree }>()
