@@ -26,8 +26,8 @@ const state = httpAction(async (ctx, request) => {
   const key = await authenticate(ctx, request, ['release', 'check'])
   if (key instanceof Response) return key
   const slug = new URL(request.url).searchParams.get('site')
-  if (!slug) return failure('INVALID', 'Der Parameter site fehlt.')
-  if (slug !== key.siteSlug) return failure('FORBIDDEN', 'Dieser Schlüssel gehört zu einer anderen Seite.')
+  if (!slug) return failure('INVALID', 'The parameter site is missing.')
+  if (slug !== key.siteSlug) return failure('FORBIDDEN', 'This key belongs to another site.')
   try {
     return json(200, await ctx.runQuery(internal.release.state, { site: key.site }))
   } catch (error) {
@@ -39,17 +39,17 @@ const release = httpAction(async (ctx, request) => {
   const key = await authenticate(ctx, request, ['release'])
   if (key instanceof Response) return key
   const raw = await request.text()
-  if (new TextEncoder().encode(raw).byteLength > RELEASE_LIMITS.argBytes) return failure('RELEASE_TOO_LARGE', 'Dieser Release ist zu groß.')
+  if (new TextEncoder().encode(raw).byteLength > RELEASE_LIMITS.argBytes) return failure('RELEASE_TOO_LARGE', 'This release is too large.')
   let body: unknown
   try {
     body = JSON.parse(raw)
   } catch {
-    return failure('INVALID', 'Der Körper ist kein gültiges JSON.')
+    return failure('INVALID', 'The body is not valid JSON.')
   }
-  if (!isRelease(body)) return failure('INVALID', 'Der Release hat nicht die erwartete Form.')
+  if (!isRelease(body)) return failure('INVALID', 'The release does not have the expected shape.')
   // Convex reserves keys starting with `$`; the database layer would refuse them with an uncoded error.
-  if (hasDollarKey(body)) return failure('INVALID', 'Namen, die mit $ beginnen, sind nicht erlaubt.')
-  if (body.site !== undefined && body.site !== key.siteSlug) return failure('FORBIDDEN', 'Dieser Schlüssel gehört zu einer anderen Seite.')
+  if (hasDollarKey(body)) return failure('INVALID', 'Names that start with $ are not allowed.')
+  if (body.site !== undefined && body.site !== key.siteSlug) return failure('FORBIDDEN', 'This key belongs to another site.')
   try {
     const { site: _site, ...args } = body
     return json(200, await ctx.runMutation(internal.release.release, { ...args, site: key.site, actor: `pushkey:${key.keyId}`, schema: args.schema, writes: args.writes }))

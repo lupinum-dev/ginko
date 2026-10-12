@@ -9,12 +9,12 @@ const exportSite = httpAction(async (ctx, request) => {
   const key = await authenticate(ctx, request, ['export', 'pull'])
   if (key instanceof Response) return key
   const slug = new URL(request.url).searchParams.get('site')
-  if (!slug) return failure('INVALID', 'Der Parameter site fehlt.')
-  if (slug !== key.siteSlug) return failure('FORBIDDEN', 'Dieser Schlüssel gehört zu einer anderen Seite.')
+  if (!slug) return failure('INVALID', 'The parameter site is missing.')
+  if (slug !== key.siteSlug) return failure('FORBIDDEN', 'This key belongs to another site.')
   try {
     return json(200, await ctx.runQuery(internal.backup.snapshot, { site: key.site }))
   } catch (error) {
-    return errorResponse(error, 'Der Export ist fehlgeschlagen. Bitte später erneut versuchen.')
+    return errorResponse(error, 'The export failed. Please try again later.')
   }
 })
 

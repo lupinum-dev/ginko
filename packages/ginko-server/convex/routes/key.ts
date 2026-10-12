@@ -1,8 +1,10 @@
 // Shared by the CLI routes (release, export): the push key `Authorization: Bearer ginko_<site>_<32>`
-// names the site, only its SHA-256 is stored. Answers are JSON; errors carry `code` and a German message.
+// names the site, only its SHA-256 is stored. Answers are JSON; errors carry `code` and an English message
+// (the CLI prints it to a developer), plus `key`/`params` when the error came from the catalog.
 import { sha256 } from '@lupinum/ginko/internal'
 import { internal } from '../_generated/api'
 import type { ActionCtx } from '../_generated/server'
+import { t, type MessageKey } from '../lib/i18n'
 import { SLUG_PATTERN } from '../lib/input'
 
 export type Scope = 'release' | 'pull' | 'check' | 'export'
@@ -25,11 +27,12 @@ export function failure(code: string, message: string, details?: unknown): Respo
 }
 
 /** Turns a thrown `fail(...)` (ConvexError with `{ code, message, details? }`) into the HTTP answer. */
-export function errorResponse(error: unknown, fallback = 'Der Release ist fehlgeschlagen. Bitte später erneut versuchen.'): Response {
+export function errorResponse(error: unknown, fallback = 'The release failed. Please try again later.'): Response {
   const data = (error as { data?: unknown }).data
   if (data && typeof data === 'object' && 'code' in data && 'message' in data) {
-    const { code, message, details } = data as { code: string; message: string; details?: unknown }
-    return failure(code, message, details)
+    const { code, message, key, params, details } = data as { code: string; message: string; key?: string; params?: Record<string, string | number>; details?: unknown }
+    // `message` is the catalog's German default; the developer reads English.
+    return failure(code, key ? t('en', key as MessageKey, params) : message, details)
   }
   return failure('INTERNAL', fallback)
 }
@@ -38,9 +41,9 @@ export function errorResponse(error: unknown, fallback = 'Der Release ist fehlge
 export async function authenticate(ctx: ActionCtx, request: Request, scopes: Scope[]) {
   const header = request.headers.get('authorization') ?? ''
   const token = header.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : ''
-  if (!TOKEN.test(token)) return failure('UNAUTHORIZED', 'Der Schlüssel fehlt oder ist ungültig.')
+  if (!TOKEN.test(token)) return failure('UNAUTHORIZED', 'The key is missing or invalid.')
   const key = await ctx.runQuery(internal.release.pushKey, { hash: sha256(token) })
-  if (!key || key.revokedAt !== null) return failure('UNAUTHORIZED', 'Der Schlüssel fehlt oder ist ungültig.')
-  if (!scopes.some((s) => key.scopes.includes(s))) return failure('FORBIDDEN', 'Dieser Schlüssel darf das nicht.')
+  if (!key || key.revokedAt !== null) return failure('UNAUTHORIZED', 'The key is missing or invalid.')
+  if (!scopes.some((s) => key.scopes.includes(s))) return failure('FORBIDDEN', 'This key may not do that.')
   return key
 }

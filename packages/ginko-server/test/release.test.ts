@@ -183,6 +183,14 @@ describe('push keys and the HTTP routes (SPEC 5.1, 10)', () => {
     expect(await released.json()).toEqual({ schemaRev: 2, contentRev: 1 })
   })
 
+  it('answers the CLI in English, also for an error from the catalog', async () => {
+    const s = await setup()
+    const token = await keyFor(s, ['release'])
+    const response = await post(s, token, { commit: 'abcdef1234567', expectedSchemaRev: 5, expectedContentRev: 1, schema: await storedSchema(s), writes: [] })
+    expect(await response.json()).toMatchObject({ code: 'CHANGED_SINCE', message: 'The schema has changed in the meantime. Please try again.' })
+    expect(await (await get(s, 'ginko_restaurant_wrong')).json()).toMatchObject({ code: 'UNAUTHORIZED', message: 'The key is missing or invalid.' })
+  })
+
   it('a name starting with $ in the body is INVALID, not an internal error (F17)', async () => {
     const s = await setup()
     const token = await keyFor(s, ['release'])
