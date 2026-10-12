@@ -4,6 +4,7 @@
 import { BUNDLE_FORMAT } from '@lupinum/ginko/internal'
 import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'
+import { SITE_TOKEN_HEADER } from '../bundle'
 import { httpAction } from '../_generated/server'
 
 const headers = {
@@ -35,7 +36,8 @@ const bundle = httpAction(async (ctx, request) => {
       return failure(400, 'FORMAT_UNSUPPORTED', `Dieses Format gibt es nicht. Erwartet: format=${BUNDLE_FORMAT}.`)
     }
 
-    const admitted = await ctx.runMutation(internal.bundle.admit, { slug })
+    const token = request.headers.get(SITE_TOKEN_HEADER) ?? undefined
+    const admitted = await ctx.runMutation(internal.bundle.admit, { slug, token })
     if (admitted === 'SITE_NOT_FOUND') return failure(404, 'SITE_NOT_FOUND', 'Diese Seite gibt es nicht.')
     if (admitted === 'RATE_LIMITED') return failure(429, 'RATE_LIMITED', 'Zu viele Anfragen. Bitte warte eine Minute.')
 

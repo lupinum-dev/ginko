@@ -14,15 +14,21 @@ export function windowOf(now: number): number {
   return Math.floor(now / RATE_WINDOW_MS)
 }
 
+/** Header with which a site's own server proves it is the site: the refresh token it already shares with the platform (`sites:setRefreshToken`). */
+export const SITE_TOKEN_HEADER = 'x-ginko-site-token'
+
 /**
  * Counts one request in the current minute window. Returns RATE_LIMITED for the 601st.
+ * The limit is public and per site, so strangers can use it up; the site's own server, which sends
+ * the site's refresh token, is not counted, so nobody can block the site's fetches.
  * An unknown site is reported without a counter row.
  */
 export const admit = internalMutation({
-  args: { slug: v.string() },
-  handler: async (ctx, { slug }): Promise<'OK' | 'SITE_NOT_FOUND' | 'RATE_LIMITED'> => {
+  args: { slug: v.string(), token: v.optional(v.string()) },
+  handler: async (ctx, { slug, token }): Promise<'OK' | 'SITE_NOT_FOUND' | 'RATE_LIMITED'> => {
     const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', slug)).unique()
     if (!site) return 'SITE_NOT_FOUND'
+    if (token !== undefined && site.refreshToken !== undefined && sameSecret(token, site.refreshToken)) return 'OK'
     const window = windowOf(Date.now())
     const row = await ctx.db.query('rateWindows').withIndex('by_site_window', (q) => q.eq('site', site._id).eq('window', window)).unique()
     if (row && row.count >= RATE_LIMIT) return 'RATE_LIMITED'
@@ -31,6 +37,14 @@ export const admit = internalMutation({
     return 'OK'
   },
 })
+
+/** Compares two secrets in time that does not depend on where they differ. */
+function sameSecret(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
+}
 
 /** Change kinds that alter what the public bundle shows. Scheduling, unpublishing and reordering do not. */
 const CONTENT_KINDS = new Set(['create', 'save', 'confirm', 'undo', 'restore', 'publish'])

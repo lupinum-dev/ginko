@@ -366,7 +366,7 @@ Argumente: `{ site, commit, expectedSchemaRev, expectedContentRev, schema, write
   - 429 `RATE_LIMITED`
   - 503 intern
 - Header: `Cache-Control: no-store`, `Access-Control-Allow-Origin: *`.
-- Rate-Limit: 600 Anfragen pro Minute und Seite (Convex Rate Limiter).
+- Rate-Limit: 600 Anfragen pro Minute und Seite. Der eigene Server der Website sendet `x-ginko-site-token` (ihr Refresh-Token, `sites:setRefreshToken`) und zählt nicht mit: Fremde können das Limit aufbrauchen, aber nicht die Abrufe der Website sperren.
 - **Jedes Format bleibt für immer ausgeliefert.** Der Korpus in `contracts/` prüft jedes Format.
 
 ## 7. Markdown (ein Textformat)

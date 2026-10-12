@@ -69,6 +69,20 @@ describe('GET /bundle/<site>', () => {
     expect(ids).toContain(entries.martinigans)
   })
 
+  it('a stranger who uses up the limit does not block the site, which sends its refresh token', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+    const { t, site } = await setup()
+    await t.run(async (ctx) => {
+      await ctx.db.patch(site, { refreshToken: 'site-secret' })
+      await ctx.db.insert('rateWindows', { site, window: Math.floor(NOW / 60_000), count: 600 })
+    })
+    const get = (token?: string) => t.fetch('/bundle/restaurant?format=3&locale=de', token ? { headers: { 'x-ginko-site-token': token } } : {})
+    expect((await get()).status).toBe(429)
+    expect((await get('wrong-secret')).status).toBe(429)
+    expect((await get('site-secret')).status).toBe(200)
+  })
+
   // 601 HTTP requests take ~3 s alone and more under a full parallel run: a longer limit, not a flake.
   it('the 601st request in one minute is RATE_LIMITED (429)', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
