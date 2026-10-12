@@ -1,5 +1,5 @@
 // entries.create, remove, restore, reorder and tasks.prefill against SPEC 2.2, 2.7, 3 and 4.2.
-import { printOf } from '@lupinum/ginko'
+import { printOf } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'

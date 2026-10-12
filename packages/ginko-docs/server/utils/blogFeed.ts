@@ -2,7 +2,8 @@
 // Only file blogs have a feed: posts that live on the platform are not in that bundle.
 import schema from '#ginko/schema'
 import fileBundles from '#ginko/files'
-import { isVisible, todayIn, type Brick } from '@lupinum/ginko'
+import type { Brick } from '@lupinum/ginko'
+import { isVisible, todayIn } from '@lupinum/ginko/internal'
 import type { H3Event } from 'h3'
 import { rssXml } from './rss'
 

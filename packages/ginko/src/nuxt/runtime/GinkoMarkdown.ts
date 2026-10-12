@@ -2,9 +2,9 @@
 // highlighter runs here. In page state the field is `{ ref }`: the tree is loaded from the site,
 // so the payload holds only the texts a page shows. Registered by the Ginko module in every site.
 import { computed, defineComponent, h, inject, provide, type Component, type ComputedRef, type PropType } from 'vue'
-import { GINKO_COMPONENTS_KEY, GINKO_TOC_KEY } from '../../index.ts'
+import { GINKO_COMPONENTS_KEY, GINKO_TOC_KEY } from '../../internal.ts'
 import { GinkoMarkdown as GinkoMarkdownTree } from '../../vue.ts'
-import type { MarkdownTree, MarkdownValue } from '../../index.ts'
+import type { MarkdownTree, MarkdownValue } from '../../internal.ts'
 import { useGinkoMarkdown } from './markdown.ts'
 
 export const GinkoMarkdown = defineComponent({

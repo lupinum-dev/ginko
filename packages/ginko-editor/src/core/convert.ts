@@ -9,7 +9,7 @@
 // - Marks nest in a fixed order in the tree (`***x***` is em > strong, `**_x_**` is strong > em), but a
 //   ProseMirror text node only has a set of marks. Each mark remembers its depth in `order`.
 // - What the editor cannot show (the footnote `section`) is a `raw` node that holds the comark node.
-import type { ComponentRegistry } from '@lupinum/ginko'
+import type { ComponentRegistry } from '@lupinum/ginko/internal'
 import type { Json } from '@lupinum/ginko'
 
 /** A ProseMirror node as JSON (`editor.getJSON()`). */

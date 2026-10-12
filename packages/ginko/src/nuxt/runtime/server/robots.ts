@@ -1,7 +1,7 @@
 // `/robots.txt` (SPEC 8 "SEO"): allows crawling on the site's own host only; any other host
 // (preview deployment, staging, localhost) is disallowed entirely.
 import { defineEventHandler, getRequestHost, useRuntimeConfig } from 'nuxt/server'
-import { isPreviewHost, robotsTxt } from '../../../index.ts'
+import { isPreviewHost, robotsTxt } from '../../../internal.ts'
 import type { GinkoPublicConfig } from '../shared.ts'
 
 export default defineEventHandler((event) => {

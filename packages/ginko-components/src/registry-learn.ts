@@ -1,6 +1,7 @@
 // Registry entries of the quiz. Spread into `components` in `registry.ts`. Pure data, no Vue.
 // The answers are a Markdown task list inside `quiz-question`: `- [x]` marks a right answer, `- [ ]` a wrong one.
-import { defineComponents, f } from '@lupinum/ginko'
+import { f } from '@lupinum/ginko'
+import { defineComponents } from '@lupinum/ginko/internal'
 import { appearance, title } from './fields.ts'
 
 export const learnComponents = defineComponents({

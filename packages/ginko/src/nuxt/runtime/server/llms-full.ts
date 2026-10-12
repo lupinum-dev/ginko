@@ -2,7 +2,7 @@
 // `/llms-full.txt`: the Markdown of every main locale entry in one text file. A platform failure is a 503.
 import { createError, defineEventHandler, useRuntimeConfig } from 'nuxt/server'
 import schema from '#ginko/schema'
-import { llmsFullTxt } from '../../../index.ts'
+import { llmsFullTxt } from '../../../internal.ts'
 import type { GinkoPublicConfig } from '../shared.ts'
 import { loadServerBundles } from './bundles.ts'
 import { markdownTrees } from './markdown-trees.ts'

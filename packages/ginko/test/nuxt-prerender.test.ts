@@ -1,6 +1,6 @@
 // A static host serves only what `nuxt generate` wrote: a missing route is a 404 in production.
 import { describe, expect, test } from 'vitest'
-import type { Bundle, Schema } from '../src/index.ts'
+import type { Bundle, Schema } from '../src/internal.ts'
 import { markdownTwin, prerenderRoutes } from '../src/nuxt/prerender.ts'
 
 const schema = { locales: ['de', 'en'], pages: { home: { de: '/', en: '/en' }, search: { de: '/suche', en: '/en/search' } } } as unknown as Pick<Schema, 'pages' | 'locales'>

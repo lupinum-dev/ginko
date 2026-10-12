@@ -16,6 +16,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./internal": "./src/internal.ts",
     "./vue": "./src/vue.ts",
     "./search": "./src/search.ts",
     "./nuxt": "./src/nuxt/module.ts",
@@ -38,6 +39,10 @@
       ".": {
         "types": "./dist/index.d.mts",
         "import": "./dist/index.mjs"
+      },
+      "./internal": {
+        "types": "./dist/internal.d.mts",
+        "import": "./dist/internal.mjs"
       },
       "./vue": {
         "types": "./dist/vue.d.mts",

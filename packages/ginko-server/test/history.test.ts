@@ -1,5 +1,6 @@
 // changes.get, changes.list filters, entries.versionAt and entries.revert against SPEC 3 and 4.2 "Verlauf".
-import type { Json, Schema } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'

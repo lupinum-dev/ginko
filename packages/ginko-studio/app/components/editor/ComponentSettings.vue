@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, useId } from 'vue'
 import { useI18n } from '#imports'
-import { coreMessage, type ComponentRegistry } from '@lupinum/ginko'
+import { coreMessage, type ComponentRegistry } from '@lupinum/ginko/internal'
 import { aliasOf, propFields, propProblemMessage, readProp, writeProp, type ComponentProps, type PropField as PropFieldType, type PropValue } from '@lupinum/ginko-editor'
 import { ChevronDown } from '@lucide/vue'
 import { Button } from '@studio/components/ui/button'

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // One doc: breadcrumbs, title, lead and page actions, the text with the layer's Markdown components, the edit
 // link and date, previous/next; the table of contents beside it (or in the docs bar, see doc.vue).
-import { articleLd, breadcrumbLd, type ItemOf } from '@lupinum/ginko'
+import type { ItemOf } from '@lupinum/ginko'
+import { articleLd, breadcrumbLd } from '@lupinum/ginko/internal'
 import type { docsCollection } from '@lupinum/ginko-docs/config'
 
 const props = defineProps<{ doc: ItemOf<ReturnType<typeof docsCollection>['fields']> }>()

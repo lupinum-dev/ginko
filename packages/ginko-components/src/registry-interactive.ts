@@ -1,6 +1,7 @@
 // Registry entries of the interactive components (tabs, accordion, ...). Spread into `components` in `registry.ts`.
 // Pure data, no Vue. The Vue side is `runtime/components/interactive.ts`; the tag names are the keys of its map.
-import { defineComponents, f } from '@lupinum/ginko'
+import { f } from '@lupinum/ginko'
+import { defineComponents } from '@lupinum/ginko/internal'
 import { appearance, iconifyIcon as icon, title } from './fields.ts'
 
 const href = (label: { de: string; en: string }, optional: boolean) => f.text(label, { optional, max: 500 })

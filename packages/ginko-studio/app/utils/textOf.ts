@@ -3,7 +3,7 @@
 // (namespace `server`, see modules/server-messages.ts), else core's (`issues.*`, `links.*`, …), else the stored
 // German text (rows from before `msg`, an older server, a key this Studio does not know).
 // No Nuxt here, so unit tests load it directly; `useTextOf` binds it to the Studio's translator.
-import { coreMessage, labelOf } from '@lupinum/ginko'
+import { coreMessage, labelOf } from '@lupinum/ginko/internal'
 import type { Params } from '@lupinum/ginko-i18n/core'
 
 export interface StoredMsg {

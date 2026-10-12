@@ -3,7 +3,8 @@
 <script setup lang="ts">
 import { computed, inject, ref, type Ref } from 'vue'
 import { useI18n } from '#imports'
-import { addDays, DEFAULT_WEEK, workWeekOf, type Json, type WeekInfo } from '@lupinum/ginko'
+import type { Json, WeekInfo } from '@lupinum/ginko'
+import { addDays, DEFAULT_WEEK, workWeekOf } from '@lupinum/ginko/internal'
 import { useToday } from '@lupinum/ginko-editor'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'

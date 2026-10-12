@@ -1,7 +1,8 @@
 // Schema releases and push keys (SPEC 5, 10). The CLI reaches `release` and `state` through
 // the HTTP routes in routes/release.ts, which resolve the push key to its site first; the
 // internal functions here trust that site id. Owners and admins use the public mutations.
-import { checkSchema, defaultsFor, diffSchema, fieldsChanged, releaseData, sha256, stableJson, validate, type Fields, type Json, type Locale, type MigrationDescriptor, type Schema } from '@lupinum/ginko'
+import type { Fields, Json, Locale } from '@lupinum/ginko'
+import { checkSchema, defaultsFor, diffSchema, fieldsChanged, releaseData, sha256, stableJson, validate, type MigrationDescriptor, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'

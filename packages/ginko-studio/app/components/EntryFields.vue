@@ -1,6 +1,7 @@
 <!-- A run of fields of one entry form. Fields whose `showWhen` does not match stay mounted and hidden (their input stays). -->
 <script setup lang="ts">
-import { isShown, type Field, type Json, type Locale } from '@lupinum/ginko'
+import type { Field, Json, Locale } from '@lupinum/ginko'
+import { isShown } from '@lupinum/ginko/internal'
 import type { Issue } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
 

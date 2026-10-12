@@ -3,8 +3,8 @@
 //
 // Two sources: `sourceProblems` reads a text (the profile check of the core, per block: what the source view shows);
 // `docProblems` reads the open rich document (a component with a missing or invalid prop, a picture without description).
-import type { ComponentRegistry, Described, MarkdownProfile } from '@lupinum/ginko'
-import { markdownBlocks, msg, parseMarkdown } from '@lupinum/ginko'
+import type { ComponentRegistry, Described, MarkdownProfile } from '@lupinum/ginko/internal'
+import { markdownBlocks, msg, parseMarkdown } from '@lupinum/ginko/internal'
 import type { Node as PmNode } from '@tiptap/pm/model'
 import { propFields, propProblemMessage, readProp, type ComponentProps } from './component-props.ts'
 

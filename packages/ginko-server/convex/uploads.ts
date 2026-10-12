@@ -4,7 +4,7 @@
 // member and site; uploadsNode.ts checks the content and processes images (Node runtime).
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
-import { sha256 } from '@lupinum/ginko'
+import { sha256 } from '@lupinum/ginko/internal'
 import { internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { actorFor, fail } from './lib/access'
 import { cleanName } from './lib/files'

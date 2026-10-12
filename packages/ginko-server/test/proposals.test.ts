@@ -1,7 +1,7 @@
 // Approvals and releases against SPEC 17: when a write becomes a proposal, how it is decided and
 // applied through the normal path, and the digest mail. The menu tasks of the restaurant are
 // switched to `needsApproval` for the cook; the owner and admin stay direct.
-import type { Schema } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'

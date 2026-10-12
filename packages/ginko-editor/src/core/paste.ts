@@ -3,8 +3,8 @@
 // - plain text that is Markdown is parsed as Markdown;
 // - a bare address becomes a link (over selected text: the link's text stays; on an empty line: the UI may offer a link card);
 // - image files are handed to the UI, which uploads them (./uploads.ts shows the "wird hochgeladen" place meanwhile).
-import type { ComponentRegistry, MarkdownProfile } from '@lupinum/ginko'
-import { isSafeHref, parseMarkdown } from '@lupinum/ginko'
+import type { ComponentRegistry, MarkdownProfile } from '@lupinum/ginko/internal'
+import { isSafeHref, parseMarkdown } from '@lupinum/ginko/internal'
 import { Extension } from '@tiptap/core'
 import { Fragment, Slice, type Node as PmNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey, TextSelection, type EditorState } from '@tiptap/pm/state'

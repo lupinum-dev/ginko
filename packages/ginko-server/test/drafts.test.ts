@@ -1,6 +1,6 @@
 // Drafts of collection entries against SPEC 15: create/publish/unpublish/publishDue, the bundle,
 // revisions, rights, and the readers that must treat a draft apart (retention, backup).
-import type { Schema } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'

@@ -1,7 +1,8 @@
 // "Why is this not public?" (SPEC 4.2 entries.whyNotPublic): every reason, in plain words, that an
 // entry is missing on the website in one language. The rules are the ones the bundle applies
 // (drafts, `isVisible`, `missing: 'hide'`, `urlsFor`); this only names them.
-import { isVisible, todayIn, urlsFor, type Brick, type CollectionBrick, type Locale, type Schema } from '@lupinum/ginko'
+import type { Brick, CollectionBrick, Locale } from '@lupinum/ginko'
+import { isVisible, todayIn, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { Data } from './content'
 import { historyText, msg, type HistoryMsg } from './history'

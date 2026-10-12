@@ -2,7 +2,8 @@
 // confirmation, or a prefill the assistant cannot read.
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
-import { fromToolInput, taskInputSchema, type Brick, type Task } from '../../src/index.ts'
+import type { Brick, Task } from '../../src/index.ts'
+import { fromToolInput, taskInputSchema } from '../../src/internal.ts'
 
 const ctx = { mainLocale: 'de', currency: 'EUR' } as const
 const bricks = restaurant.bricks as Record<string, Brick>

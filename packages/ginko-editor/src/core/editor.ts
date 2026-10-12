@@ -1,6 +1,7 @@
 // Opens a Ginko Markdown field in a headless TipTap editor and saves it back without touching untouched text.
-import type { ComponentRegistry, Described, Json, MarkdownBlocks, MarkdownProfile } from '@lupinum/ginko'
-import { isStableMarkdown, markdownBlocks, msg, parseMarkdown, serializeMarkdown } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import type { ComponentRegistry, Described, MarkdownBlocks, MarkdownProfile } from '@lupinum/ginko/internal'
+import { isStableMarkdown, markdownBlocks, msg, parseMarkdown, serializeMarkdown } from '@lupinum/ginko/internal'
 import { Editor, getSchema, type AnyExtension } from '@tiptap/core'
 import { Node as PmNode } from '@tiptap/pm/model'
 import { fromEditorDoc, toEditorDoc, type GinkoDoc, type GinkoDocNode } from './convert.ts'

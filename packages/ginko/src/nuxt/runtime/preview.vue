@@ -3,7 +3,7 @@
 // and once the platform sends a bundle (handled by the plugin) it opens the target route.
 // It never fetches: the bundle comes only by message.
 import { definePageMeta, navigateTo, onBeforeUnmount, onMounted, ref, useRequestHeaders, useRoute, useRouter, useRuntimeConfig, useState, watch } from '#imports'
-import { coreMessage, type Bundle, type Locale } from '../../index.ts'
+import { coreMessage, type Bundle, type Locale } from '../../internal.ts'
 import { BUNDLE_STATE, PREVIEW_STATE } from './composables.ts'
 import type { GinkoPublicConfig } from './shared.ts'
 

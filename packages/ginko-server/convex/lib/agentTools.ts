@@ -1,7 +1,8 @@
 // The tool catalog of the agent door (SPEC 16), kept apart from the calls in agent.ts: which tools exist
 // for a person, how the model is told about them, and the pure helpers some of them use (search text).
 // A tool is listed only when the person may use it; agent.ts checks the same list again at call time.
-import { labelOf, type Brick, type CollectionBrick, type Json, type Schema, type Task } from '@lupinum/ginko'
+import type { Brick, CollectionBrick, Json, Task } from '@lupinum/ginko'
+import { labelOf, type Schema } from '@lupinum/ginko/internal'
 import type { Actor } from './access'
 
 export const HISTORY_MAX = 50

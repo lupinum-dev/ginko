@@ -1,7 +1,8 @@
 // What a ref field can point to: the entries of the target brick, by title. The Studio already loads
 // them with the site (useSiteData); the editor provides them to the fields below it.
 import { inject, provide, type InjectionKey } from 'vue'
-import type { Locale, Schema } from '@lupinum/ginko'
+import type { Locale } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { titleOf } from '../../utils/content'
 import { shownLabel } from '../../utils/labels'
 

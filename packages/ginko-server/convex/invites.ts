@@ -1,6 +1,6 @@
 // Invitations (SPEC 10). A link carries a random token; only its sha256 is stored. Accepting needs
 // a signed-in user with the invited email. Owners invite staff, admins invite owners and staff.
-import { sha256, type Schema } from '@lupinum/ginko'
+import { sha256, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { internalQuery, mutation, query, type MutationCtx } from './_generated/server'

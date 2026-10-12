@@ -4,7 +4,8 @@
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, reactive, watchEffect } from 'vue'
 import { useI18n } from '#imports'
-import { defaultsFor, isShown, ordered, stableJson, type Field, type Json, type Locale } from '@lupinum/ginko'
+import type { Field, Json, Locale } from '@lupinum/ginko'
+import { defaultsFor, isShown, ordered, stableJson } from '@lupinum/ginko/internal'
 import GinkoField from './GinkoField.vue'
 import { messageOf } from '@studio/utils/messageOf'
 import { BLOCKERS, issuesUnder, type Issue, newRowId, textIn } from '@lupinum/ginko-editor'

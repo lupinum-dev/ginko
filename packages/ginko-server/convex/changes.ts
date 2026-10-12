@@ -1,5 +1,6 @@
 // The change log of a site, newest first (SPEC 3). Any admin or member of the site may read it (SPEC 2.7).
-import type { Json, Schema } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { query, type QueryCtx } from './_generated/server'

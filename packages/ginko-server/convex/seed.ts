@@ -2,7 +2,7 @@
 // `scripts/seed-local.ts` passes contracts/<site>/data.json. The same file holds the import of a
 // `ginko export` (SPEC 9, 12). Internal, so only `npx convex run` with the deployment's admin key
 // reaches it; every function is refused on any deployment without GINKO_LOCAL.
-import type { Schema } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { components, internal } from './_generated/api'

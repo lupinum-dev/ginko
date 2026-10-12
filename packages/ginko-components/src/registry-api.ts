@@ -1,7 +1,8 @@
 // Registry entries of the api block. Spread into `components` in `registry.ts`. Pure data, no Vue.
 // One `api-param` per parameter or field; its Markdown content is the description. Parameters with the same
 // `group` are shown together, one tab per group.
-import { defineComponents, f } from '@lupinum/ginko'
+import { f } from '@lupinum/ginko'
+import { defineComponents } from '@lupinum/ginko/internal'
 import { appearance } from './fields.ts'
 
 export const apiComponents = defineComponents({

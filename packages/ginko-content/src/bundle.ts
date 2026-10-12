@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
-import { buildBundle, imageInfo, resolveRouteLinks, todayIn, type Bundle, type FileInfo, type Locale, type MarkdownValue, type Schema } from '@lupinum/ginko'
+import type { Locale, MarkdownValue } from '@lupinum/ginko'
+import { buildBundle, imageInfo, resolveRouteLinks, todayIn, type Bundle, type FileInfo, type Schema } from '@lupinum/ginko/internal'
 import { hashOf, head } from './images.ts'
 import { makeVariants } from './variants.ts'
 import { readContent, type ContentError, type ReadOptions } from './read.ts'

@@ -3,7 +3,8 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, h, Suspense } from 'vue'
 import { describe, expect, test } from 'vitest'
 import { GinkoMarkdown } from '@lupinum/ginko/vue'
-import { parseMarkdown, type MarkdownTree } from '@lupinum/ginko'
+import type { MarkdownTree } from '@lupinum/ginko'
+import { parseMarkdown } from '@lupinum/ginko/internal'
 
 // comark's renderer has an async setup, so (as in Nuxt pages) it needs a <Suspense> boundary.
 async function render(value: MarkdownTree | undefined) {

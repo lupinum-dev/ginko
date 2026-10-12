@@ -61,6 +61,13 @@ const events = useGinko('events') // typed from ginko.config.ts
 - **`@lupinum/ginko/vue`**: `<GinkoMarkdown :value>` (renders a parsed tree, inside `<Suspense>`) for a Vue 3 app without Nuxt.
 - **`ginko`**: the CLI for the platform: `pull`, `check`, `release`, `export`, `import`.
 
+## Stability
+
+`@lupinum/ginko`, `@lupinum/ginko/nuxt` and `@lupinum/ginko/vue` are the public API. Every name they
+export is documented on the docs site. Until 1.0, a minor release may still break it, and the changelog
+names the break. `@lupinum/ginko/internal` and `@lupinum/ginko/search` are for Ginko's own packages.
+They can change in any release, so do not import them in a site.
+
 ## Docs
 
 [Getting started](https://github.com/lupinum-dev/ginko/blob/main/sites/docs/content/docs/1.einstieg.en.md) ·

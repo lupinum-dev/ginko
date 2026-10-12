@@ -1,6 +1,7 @@
 // Steps 6 and 7 of the shared write flow (SPEC 4.1): check files and budget, then write
 // the entry with its revisions, the change row and the file references in one place.
-import { checkLinks, fileProblem, linkTargets, stableJson, type Field, type FileField, type Fields, type Json, type LinkIssue, type Schema, type ValidateOptions } from '@lupinum/ginko'
+import type { Field, FileField, Fields, Json } from '@lupinum/ginko'
+import { checkLinks, fileProblem, linkTargets, stableJson, type LinkIssue, type Schema, type ValidateOptions } from '@lupinum/ginko/internal'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { bundleOf, type NewItem } from '../bundle'
@@ -8,8 +9,8 @@ import { byOf, fail, type Actor } from './access'
 import { byteSize, fileIdsOf, usesOf, type Data, type Prints, type Use } from './content'
 import type { Recorded } from './history'
 
-export { SITE_BUDGET as BUDGET } from '@lupinum/ginko'
-import { SITE_BUDGET as BUDGET } from '@lupinum/ginko'
+export { SITE_BUDGET as BUDGET } from '@lupinum/ginko/internal'
+import { SITE_BUDGET as BUDGET } from '@lupinum/ginko/internal'
 
 /**
  * Fields may only point at ready uploads of the same site (SPEC 4.3 point 3). The ids in `images`

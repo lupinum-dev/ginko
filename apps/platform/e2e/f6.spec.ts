@@ -3,7 +3,7 @@
 // Item 9 (a draft's "Why not on the website?") needs a collection with drafts, which the restaurant does not have
 // (drafts are for blogs and news, SPEC 15); server test studio.test.ts and why-not-public.test.ts cover it.
 import { execFileSync } from 'node:child_process'
-import { addDays, todayIn } from '@lupinum/ginko'
+import { addDays, todayIn } from '@lupinum/ginko/internal'
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { STATE } from './global-setup'
 import { pdfBytes, pngBytes, resetContent } from './local'

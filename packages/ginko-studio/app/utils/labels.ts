@@ -1,7 +1,8 @@
 // How the Studio shows the schema's labels: in the language of the person, else in the main language of the site.
 import { useI18n } from '#imports'
 import { inject, provide, type InjectionKey } from 'vue'
-import { labelOf, type Currency, type Label, type Locale } from '@lupinum/ginko'
+import type { Currency, Label, Locale } from '@lupinum/ginko'
+import { labelOf } from '@lupinum/ginko/internal'
 
 /**
  * The language of the Studio's own texts: the person's (ginko-i18n, see useAccountLocale), never the site's. `main` is

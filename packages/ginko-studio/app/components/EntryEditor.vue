@@ -1,7 +1,8 @@
 <!-- Alles bearbeiten (UI.md 4): every field of one entry, the language switch with translation
      status, a sticky save bar, and the preview beside it on wide screens. Same engine as the tasks. -->
 <script setup lang="ts">
-import { defaultsFor, isShown, isTranslatable, ordered, printOf, urlsFor, type Brick, type CollectionBrick, type Field, type Fields, type Json, type Label as LabelText, type Locale, type Schema } from '@lupinum/ginko'
+import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
+import { defaultsFor, isShown, isTranslatable, ordered, printOf, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
 import { displayValue, fileIdsIn, languageName, titleOf } from '../utils/content'

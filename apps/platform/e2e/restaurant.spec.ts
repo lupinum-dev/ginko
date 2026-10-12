@@ -1,5 +1,5 @@
 // The restaurant jobs of UI.md 9, as the owner (Wirtin) and the cook (Koch) do them, at 390 and 1440 px.
-import { addDays, DEFAULT_WEEK, todayIn, workWeekOf } from '@lupinum/ginko'
+import { addDays, DEFAULT_WEEK, todayIn, workWeekOf } from '@lupinum/ginko/internal'
 import { expect, test, type Page } from '@playwright/test'
 import { STATE } from './global-setup'
 import { codeFor, openQuick, resetContent } from './local'

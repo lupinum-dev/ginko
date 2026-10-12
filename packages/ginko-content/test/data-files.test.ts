@@ -3,7 +3,8 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { collection, defineSite, f, serializeSchema } from '@lupinum/ginko'
+import { collection, defineSite, f } from '@lupinum/ginko'
+import { serializeSchema } from '@lupinum/ginko/internal'
 import { readContent } from '../src/index.ts'
 
 const schema = serializeSchema(defineSite({

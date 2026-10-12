@@ -4,7 +4,7 @@
 // address, and `describe` asks for the description (a picture needs one).
 import { computed, inject, ref, watch } from 'vue'
 import { useI18n } from '#imports'
-import { formatMb, limitOf, UPLOAD_TYPES } from '@lupinum/ginko'
+import { formatMb, limitOf, UPLOAD_TYPES } from '@lupinum/ginko/internal'
 import { cancelUpload, finishUpload, GINKO_ASSETS, startUpload, useUpload } from '@lupinum/ginko-editor'
 import type { Editor } from '@tiptap/core'
 

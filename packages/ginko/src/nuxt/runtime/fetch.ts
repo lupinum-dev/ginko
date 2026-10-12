@@ -3,7 +3,7 @@
 // Server-safe: no Nuxt app imports, no global fetch helper. Failures are plain errors with `statusCode: 503`;
 // the app plugin and the sitemap route turn them into Nuxt errors with their own `createError`.
 import schema from '#ginko/schema'
-import { BUNDLE_FORMAT, bundleFits, isBundle, knownBricks, withFileBricks, type Bundle, type Locale } from '../../index.ts'
+import { BUNDLE_FORMAT, bundleFits, isBundle, knownBricks, withFileBricks, type Bundle, type Locale } from '../../internal.ts'
 import type { GinkoPublicConfig } from './shared.ts'
 
 /** A platform that does not answer in time is a failure, not a page that never loads. */

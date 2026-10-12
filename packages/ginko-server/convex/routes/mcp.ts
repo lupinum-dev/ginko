@@ -1,7 +1,8 @@
 // POST /mcp: the agent door (SPEC 16) as MCP Streamable HTTP, stateless: one JSON-RPC request in, one
 // JSON answer out, no SSE, no session. Order: key and rate limit, then the method. Tool failures are
 // tool results with `isError` and the English message, so the assistant can tell the person.
-import { coreMessage, sha256, type Json } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import { coreMessage, sha256 } from '@lupinum/ginko/internal'
 import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'
 import type { Id } from '../_generated/dataModel'

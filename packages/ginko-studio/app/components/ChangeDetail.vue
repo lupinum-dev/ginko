@@ -1,7 +1,7 @@
 <!-- The field-by-field diff of one history row (UI.md 10.5), loaded when the row is opened. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
-import type { Schema } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { opErrorOf } from '../composables/useOps'
 
 const props = defineProps<{ site: string; change: string; brick: string; schema: Schema }>()

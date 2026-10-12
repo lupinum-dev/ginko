@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, unref, type Ref } from 'vue'
-import { GINKO_TOC_KEY, type MarkdownToc, type TocLink } from '@lupinum/ginko'
+import type { MarkdownToc, TocLink } from '@lupinum/ginko'
+import { GINKO_TOC_KEY } from '@lupinum/ginko/internal'
 import { isOn } from './interactive-utils'
 import SvgIcon from './SvgIcon.vue'
 import { useText } from './text'

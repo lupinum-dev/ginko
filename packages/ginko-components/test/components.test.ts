@@ -1,7 +1,7 @@
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { componentProblems, GINKO_TOC_KEY, isStableMarkdown, markdownBlocks, parseMarkdown, serializeMarkdown } from '@lupinum/ginko'
+import { componentProblems, GINKO_TOC_KEY, isStableMarkdown, markdownBlocks, parseMarkdown, serializeMarkdown } from '@lupinum/ginko/internal'
 import { GinkoMarkdown } from '@lupinum/ginko/vue'
 import de from '../i18n/de.json'
 import en from '../i18n/en.json'

@@ -1,7 +1,8 @@
 // The component registry of the editorial Markdown components: pure data, no Vue, so
 // `ginko.config.ts` can load it in Node (`import { components } from '@lupinum/ginko-components/registry'`).
 // The Vue side is in `runtime/components`; the tag names here are the keys of that map.
-import { defineComponents, f } from '@lupinum/ginko'
+import { f } from '@lupinum/ginko'
+import { defineComponents } from '@lupinum/ginko/internal'
 import { appearance, calloutIcon, iconifyIcon, title } from './fields.ts'
 import { apiComponents } from './registry-api.ts'
 import { codeComponents } from './registry-code.ts'

@@ -1,7 +1,7 @@
 // The agent door (SPEC 16): what a person's assistant can do with their key, and what it must not.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
-import type { Schema } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import type { Id } from '../convex/_generated/dataModel'
 import { opId, setup, upload } from './setup'
 

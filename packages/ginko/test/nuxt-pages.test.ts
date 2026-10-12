@@ -1,6 +1,6 @@
 // A renamed page file must not silently break links and the sitemap (module.ts warns at build).
 import { describe, expect, test } from 'vitest'
-import type { Schema } from '../src/index.ts'
+import type { Schema } from '../src/internal.ts'
 import { unservedPaths } from '../src/nuxt/pages.ts'
 
 const schema = {

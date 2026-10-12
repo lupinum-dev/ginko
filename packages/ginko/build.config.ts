@@ -40,6 +40,7 @@ async function rewriteTsSpecifiers() {
 export default defineBuildConfig({
   entries: [
     { input: 'src/index', name: 'index' },
+    { input: 'src/internal', name: 'internal' },
     { input: 'src/vue', name: 'vue' },
     { input: 'src/search', name: 'search' },
     { input: 'src/cli/index', name: 'cli/index' },

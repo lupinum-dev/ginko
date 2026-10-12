@@ -2,7 +2,8 @@
      message with a bundle the core builds from the stored entries plus the unsaved form values.
      Nothing reaches production; the preview page never fetches. -->
 <script setup lang="ts">
-import { servedBundle, todayIn, type FileInfo, type Json, type Locale, type Schema, type StoredEntry } from '@lupinum/ginko'
+import type { Json, Locale } from '@lupinum/ginko'
+import { servedBundle, todayIn, type FileInfo, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import type { Data } from '../utils/content'
 

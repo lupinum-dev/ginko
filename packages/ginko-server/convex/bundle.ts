@@ -1,6 +1,7 @@
 // Bundle reads for the public endpoint (SPEC 6). The HTTP layer lives in routes/bundle.ts;
 // the bundle itself is built by the core `servedBundle`, never here.
-import { servedBundle, todayIn, type Bundle, type FileInfo, type Json, type Schema, type StoredEntry } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import { servedBundle, todayIn, type Bundle, type FileInfo, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { internalMutation, internalQuery, type QueryCtx } from './_generated/server'

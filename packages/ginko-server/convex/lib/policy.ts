@@ -1,7 +1,8 @@
 // The approval policy (SPEC 17), in one place: which writes become proposals, and the proposal
 // itself. The operations in entries.ts ask `needsProposal` after their checks passed and call
 // `propose` instead of writing. Approving runs the same operation again (proposals.ts).
-import type { Json, Schema, Task } from '@lupinum/ginko'
+import type { Json, Task } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { internal } from '../_generated/api'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'

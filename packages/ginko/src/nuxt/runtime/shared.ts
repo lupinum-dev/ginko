@@ -1,5 +1,5 @@
 // Runtime config and helpers without Nuxt imports, so the module's unit tests can load them.
-import type { Locale, SiteInput } from '../../index.ts'
+import type { Locale, SiteInput } from '../../internal.ts'
 
 export interface GinkoPublicConfig {
   site: string; name: string; url: string; platform: string; locales: Locale[]; mainLocale: Locale; timezone: string

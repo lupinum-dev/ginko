@@ -2,8 +2,8 @@
 // profile of the field. Everything else is dropped or unwrapped: styles, colours, fonts, classes, comments,
 // empty spans, tracking images. It works on a DOM (the browser's, or happy-dom in tests) and returns a string,
 // which ProseMirror's clipboard parser then reads like any other HTML.
-import type { MarkdownProfile } from '@lupinum/ginko'
-import { isSafeHref, profileCovers } from '@lupinum/ginko'
+import type { MarkdownProfile } from '@lupinum/ginko/internal'
+import { isSafeHref, profileCovers } from '@lupinum/ginko/internal'
 
 export interface CleanOptions { profile: MarkdownProfile }
 

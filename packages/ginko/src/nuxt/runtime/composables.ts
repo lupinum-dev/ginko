@@ -7,11 +7,11 @@ import { defineOgImage, ogTemplate } from '#ginko/og'
 import {
   applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, query, seoHead, todayIn, websiteLd, weekOfSchema,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
-} from '../../index.ts'
+} from '../../internal.ts'
 import { fallbackLang, withUrl, type GinkoPublicConfig } from './shared.ts'
 
 /** `12,50 €` (de), `€12.50` (en), `¥1,250` (JPY): any ISO-4217 currency in the notation of the language (SPEC 8). */
-export { formatMoney, safeHref } from '../../index.ts'
+export { formatMoney, safeHref } from '../../internal.ts'
 
 /** Filled by the generated types/ginko.d.ts with the site's own config. */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type

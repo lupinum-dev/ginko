@@ -1,5 +1,5 @@
 // Invitations, memberships, and the read queries of sites and changes (SPEC 2.7, 10, 4.2).
-import { sha256 } from '@lupinum/ginko'
+import { sha256 } from '@lupinum/ginko/internal'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import betterAuthSchema from '../convex/betterAuth/schema'
 import { api, components, internal } from '../convex/_generated/api'

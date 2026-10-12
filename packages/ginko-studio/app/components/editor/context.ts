@@ -1,5 +1,5 @@
 // What the editor parts share without props: the site's component registry, and a tick for toolbar state.
-import type { ComponentRegistry } from '@lupinum/ginko'
+import type { ComponentRegistry } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
 import { useI18n } from '#imports'
 import { reactive, ref, watch, type InjectionKey, type Ref } from 'vue'

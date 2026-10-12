@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
-import { collection, defineSite, f, serializeSchema, single } from '@lupinum/ginko'
+import { collection, defineSite, f, single } from '@lupinum/ginko'
+import { serializeSchema } from '@lupinum/ginko/internal'
 import { buildFileBundles, readContent } from '../src/index.ts'
 
 const schema = serializeSchema(defineSite({

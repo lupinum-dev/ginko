@@ -1,6 +1,7 @@
 // The one diff builder (SPEC 4.2 "Verlauf"): changes.get and proposals.get show a change as
 // a list of root fields with their old and new value. Pure functions, no Convex.
-import { isTranslatable, labelOf, stableJson, type Fields, type Json } from '@lupinum/ginko'
+import type { Fields, Json } from '@lupinum/ginko'
+import { isTranslatable, labelOf, stableJson } from '@lupinum/ginko/internal'
 
 export interface LocaleDiff { locale: string; before: Json | null; after: Json | null }
 export interface RowDiff {

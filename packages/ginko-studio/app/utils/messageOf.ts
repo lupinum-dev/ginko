@@ -1,6 +1,6 @@
 // The text of a server error or a core issue in the Studio's language: both carry a catalog `key` with `params`
 // next to a German `message` (for agents and logs), see textOf.
-import type { Msg } from '@lupinum/ginko'
+import type { Msg } from '@lupinum/ginko/internal'
 import { useTextOf } from '../composables/useTextOf'
 
 export interface Described {

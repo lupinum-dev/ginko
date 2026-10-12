@@ -1,5 +1,5 @@
 // Memberships of a site (SPEC 3, 2.7, 10). Owners and admins manage them; staff have no access here.
-import type { Schema } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'

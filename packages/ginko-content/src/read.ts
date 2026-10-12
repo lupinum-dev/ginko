@@ -1,10 +1,12 @@
 import { statSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { basename, join, resolve, sep } from 'node:path'
-import {
-  imageInfo, isTranslatable, printOf, sha256, slugify, urlClashes, urlsFor, validate,
-  type Brick, type Fields, type FileInfo, type Json, type Locale, type MarkdownTree, type Schema, type StoredEntry,
+import type {
+  Brick, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
+import {
+  imageInfo, isTranslatable, printOf, sha256, slugify, urlClashes, urlsFor, validate, type FileInfo, type Schema, type StoredEntry,
+} from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
 import { head, renameInText, rewriteImages } from './images.ts'

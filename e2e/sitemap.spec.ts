@@ -3,7 +3,7 @@
 // today's date, so the test stays true as events pass (on 2026-10-08: 14 static pages + 4 event URLs).
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { isVisible, todayIn, type Bundle, type Schema } from '../packages/ginko/src/index.ts'
+import { isVisible, todayIn, type Bundle, type Schema } from '../packages/ginko/src/internal.ts'
 
 const read = <T>(file: string): T => JSON.parse(readFileSync(new URL(`../contracts/restaurant/${file}`, import.meta.url), 'utf8')) as T
 const schema = read<Schema>('schema.json')

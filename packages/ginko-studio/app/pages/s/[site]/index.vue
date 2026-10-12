@@ -1,7 +1,8 @@
 <!-- Schnell ändern (UI.md 3): every brick with tasks the person may do, in schema order, with a
      one-line state from the data and the task buttons. Generic: nothing here knows the restaurant. -->
 <script setup lang="ts">
-import { addDays, isVisible, weekOfSchema, plannedWeeks, plansThisWeek, staleOf, weeklyTask, workWeekOf, type Brick, type CollectionBrick, type Json } from '@lupinum/ginko'
+import type { Brick, CollectionBrick, Json } from '@lupinum/ginko'
+import { addDays, isVisible, weekOfSchema, plannedWeeks, plansThisWeek, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../composables/useSiteData'
 import { textIn } from '@lupinum/ginko-editor'
 import { displayValue, formatDay, taskRef, titleOf, type Task } from '../../../utils/content'
