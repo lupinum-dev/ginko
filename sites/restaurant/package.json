@@ -1,0 +1,23 @@
+{
+  "name": "@ginko-demo/restaurant",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@fontsource/alegreya": "5.2.8",
+    "@fontsource/alegreya-sans": "5.2.8",
+    "@lupinum/ginko": "workspace:*",
+    "nuxt": "4.6.0",
+    "vue": "3.5.43",
+    "@lupinum/ginko-preset-gastro": "workspace:*"
+  },
+  "scripts": {
+    "dev": "nuxt dev --port 3200",
+    "build": "nuxt build",
+    "typecheck": "nuxt typecheck",
+    "postinstall": "nuxt prepare"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "vue-tsc": "3.1.5"
+  }
+}

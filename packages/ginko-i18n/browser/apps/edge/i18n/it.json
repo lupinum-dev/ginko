@@ -1,0 +1,15 @@
+{
+  "fakeLib": {
+    "saved": "Salvato alle {time}"
+  },
+  "nav": {
+    "home": "Home",
+    "about": "Chi siamo"
+  },
+  "home": {
+    "title": "Benvenuti"
+  },
+  "about": {
+    "title": "Chi siamo"
+  }
+}

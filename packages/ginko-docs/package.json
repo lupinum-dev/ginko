@@ -1,0 +1,70 @@
+{
+  "name": "@lupinum/ginko-docs",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Docs preset for Ginko: a Nuxt layer with layout, search and Markdown components (CONTENT.md, Phase 14).",
+  "license": "MIT",
+  "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lupinum-dev/ginko.git",
+    "directory": "packages/ginko-docs"
+  },
+  "homepage": "https://github.com/lupinum-dev/ginko/tree/main/packages/ginko-docs#readme",
+  "bugs": {
+    "url": "https://github.com/lupinum-dev/ginko/issues"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
+  },
+  "files": [
+    "nuxt.config.ts",
+    "app",
+    "server",
+    "modules",
+    "icons",
+    "public",
+    "i18n",
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "main": "./nuxt.config.ts",
+  "exports": {
+    ".": "./nuxt.config.ts",
+    "./config": "./src/config.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./nuxt.config.ts",
+      "./config": {
+        "types": "./dist/config.d.mts",
+        "import": "./dist/config.mjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "unbuild",
+    "prepack": "pnpm build"
+  },
+  "dependencies": {
+    "@comark/vue": "0.7.0",
+    "@iconify-json/lucide": "1.2.137",
+    "@lupinum/ginko": "workspace:^",
+    "@lupinum/ginko-components": "workspace:^",
+    "@lupinum/ginko-content": "workspace:^",
+    "@nuxt/icon": "2.5.1",
+    "@nuxt/kit": "^4.6.0",
+    "beautiful-mermaid": "1.1.3",
+    "katex": "0.18.11"
+  },
+  "peerDependencies": {
+    "nuxt": "^4.6.0",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "nuxt": "4.6.0",
+    "unbuild": "3.6.1",
+    "vue": "3.5.43"
+  }
+}

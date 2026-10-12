@@ -1,0 +1,56 @@
+{
+  "code": {
+    "copy": "Code kopieren",
+    "copied": "Kopiert",
+    "terminal": "Terminal",
+    "untitled": "Code {number}"
+  },
+  "media": {
+    "zoom": "Bild vergrößern",
+    "close": "Schließen",
+    "play": "Abspielen",
+    "consent": "Beim Abspielen lädt {provider} Inhalte und setzt ggf. Cookies."
+  },
+  "embed": {
+    "load": "Inhalt laden",
+    "consent": "Beim Laden lädt {provider} Inhalte und setzt ggf. Cookies."
+  },
+  "quiz": {
+    "progress": "Frage {current} von {total}",
+    "question": "Frage {number}",
+    "back": "Zurück",
+    "next": "Weiter",
+    "results": "Ergebnis anzeigen",
+    "check": "Antwort prüfen",
+    "correct": "Richtig",
+    "incorrect": "Nicht richtig",
+    "multiple": "(mehrere Antworten möglich)",
+    "optionRight": "richtig",
+    "optionWrong": "falsch",
+    "score": "{correct} von {total} richtig",
+    "perfect": "Alles richtig.",
+    "retryPrompt": "Weiterlernen und erneut versuchen.",
+    "retry": "Erneut versuchen",
+    "problem": {
+      "count": "Diese Frage braucht mindestens zwei Antworten.",
+      "empty": "Eine Antwort hat keinen Text.",
+      "duplicate": "Zwei Antworten haben denselben Text.",
+      "single": "Bei „Eine richtige Antwort“ muss genau eine Antwort richtig sein.",
+      "multiple": "Mindestens eine Antwort muss richtig sein."
+    }
+  },
+  "api": {
+    "defaultGroup": "Parameter",
+    "groups": "Gruppen",
+    "required": "erforderlich",
+    "deprecated": "veraltet",
+    "since": "seit {version}"
+  },
+  "collapse": {
+    "more": "Mehr anzeigen",
+    "lines": "Alle {count} Zeilen anzeigen"
+  },
+  "toc": {
+    "title": "Auf dieser Seite"
+  }
+}

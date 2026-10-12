@@ -1,0 +1,56 @@
+{
+  "code": {
+    "copy": "Copy code",
+    "copied": "Copied",
+    "terminal": "Terminal",
+    "untitled": "Code {number}"
+  },
+  "media": {
+    "zoom": "Enlarge image",
+    "close": "Close",
+    "play": "Play",
+    "consent": "When you play, {provider} loads content and may set cookies."
+  },
+  "embed": {
+    "load": "Load content",
+    "consent": "When you load this, {provider} loads content and may set cookies."
+  },
+  "quiz": {
+    "progress": "Question {current} of {total}",
+    "question": "Question {number}",
+    "back": "Back",
+    "next": "Next",
+    "results": "See results",
+    "check": "Check answer",
+    "correct": "Correct",
+    "incorrect": "Not correct",
+    "multiple": "(select all that apply)",
+    "optionRight": "correct",
+    "optionWrong": "wrong",
+    "score": "{correct} of {total} correct",
+    "perfect": "Perfect score.",
+    "retryPrompt": "Keep learning and try again.",
+    "retry": "Try again",
+    "problem": {
+      "count": "This question needs at least two answers.",
+      "empty": "An answer has no text.",
+      "duplicate": "Two answers have the same text.",
+      "single": "A single-answer question needs exactly one correct answer.",
+      "multiple": "At least one answer must be correct."
+    }
+  },
+  "api": {
+    "defaultGroup": "Parameters",
+    "groups": "Groups",
+    "required": "required",
+    "deprecated": "deprecated",
+    "since": "since {version}"
+  },
+  "collapse": {
+    "more": "Show more",
+    "lines": "Show all {count} lines"
+  },
+  "toc": {
+    "title": "On this page"
+  }
+}

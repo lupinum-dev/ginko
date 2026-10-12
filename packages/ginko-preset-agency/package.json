@@ -1,0 +1,49 @@
+{
+  "name": "@lupinum/ginko-preset-agency",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Agency and studio bricks for Ginko sites: services, case studies, blog, authors, legal pages, FAQ, team and jobs.",
+  "license": "MIT",
+  "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lupinum-dev/ginko.git",
+    "directory": "packages/ginko-preset-agency"
+  },
+  "homepage": "https://github.com/lupinum-dev/ginko/tree/main/packages/ginko-preset-agency#readme",
+  "bugs": {
+    "url": "https://github.com/lupinum-dev/ginko/issues"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.mjs",
+    "types": "./dist/index.d.mts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "unbuild",
+    "prepack": "pnpm build"
+  },
+  "dependencies": {
+    "@lupinum/ginko": "workspace:^"
+  },
+  "devDependencies": {
+    "unbuild": "3.6.1"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // The runtime composables are type-checked through their tests, against the same shims vitest uses.
+    "paths": { "#imports": ["./packages/ginko/test/shims/imports.ts"], "#ginko/schema": ["./packages/ginko/test/shims/schema.ts"], "#convex/api": ["./packages/ginko-server/convex/_generated/api"] }
+  },
+  "include": ["packages/*/src", "packages/*/test", "scripts"],
+  "exclude": ["packages/ginko-server/test", "packages/ginko/src/nuxt/module.ts", "packages/ginko/src/nuxt/runtime", "packages/ginko-i18n/src/module.ts", "packages/ginko-i18n/src/runtime", "packages/ginko-components/src/module.ts", "packages/ginko-components/src/runtime", "packages/ginko-studio/test/markdown-editor.test.ts", "packages/ginko-studio/test/component-block.test.ts", "packages/ginko-studio/test/field-upload.test.ts", "packages/ginko-studio/test/ops-proposal.test.ts"]
+}

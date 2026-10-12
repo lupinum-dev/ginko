@@ -1,0 +1,18 @@
+{
+  "nav": { "home": "Home", "about": "About", "blog": "Blog", "onlyDe": "German only", "studio": "Studio" },
+  "home": {
+    "title": "Welcome",
+    "cart": "{count, plural, =0 {No items} one {# item} other {# items}}",
+    "add": "Add item",
+    "consent": "I accept the <link>privacy policy</link> and <b>everything</b> else.",
+    "cta": "{tone, select, du {Write to us} other {Contact us}}",
+    "place": "{n, selectordinal, one {#st} two {#nd} few {#rd} other {#th}} place",
+    "date": "As of {date}"
+  },
+  "about": { "title": "About us", "body": "We are a small team." },
+  "blog": { "notFound": "Post not found", "missing": "This post is only in German." },
+  "onlyDe": { "title": "German only" },
+  "error": { "title": "Page not found", "back": "Back home" },
+  "api": { "greeting": "Hello, {name}!" },
+  "suggest": "This page is also available in {name}."
+}

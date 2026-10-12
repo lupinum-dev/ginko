@@ -1,0 +1,7 @@
+{
+  "defaultLocale": "de",
+  "locales": [{ "code": "de", "language": "de-AT" }, { "code": "en", "language": "en-GB" }],
+  "params": { "tone": "sie" },
+  "sources": [{ "dir": "library", "origin": "library", "namespace": "lib" }, { "dir": "layer", "origin": "layer" }, { "dir": "i18n", "origin": "app" }],
+  "srcDirs": ["src"]
+}

@@ -1,0 +1,24 @@
+{
+  "it": {
+    "fakeLib.saved": "e5e23ea27c810f7dbc1b1ad337c4bcb576d873462da48f3c57d1f20577a107b5",
+    "nav.blog": "8c6bc099534a0251b576f6b88bd2db124ae9497c64bd9242e92a6aec23e6a73a",
+    "nav.onlyDe": "a31f8e34dc6873d51d594c119c49a1d595b30b38efb8348a089feb3f420b0177",
+    "nav.studio": "0aa91af2ec4c1fd761cc39b838088c06ef2190a5f72ab1e4f6fe7e7487bce5b7",
+    "home.cart": "1937c7faed3d0af3ef9f4568def2f01302b6c178b03d46d87511a94df85a20f9",
+    "home.add": "622721682a5a6adb7979a95b6f8395d8d1b51d132d61909b5dc6b8fe8f962c07",
+    "home.consent": "5b21b769b540ff760bd671e9508aa7ebb8a24c4b56fd29040f868006319b0bdc",
+    "home.cta": "0f6c752018a868d9b81b299e31eea73c6c1d7aafccec40c10fe32274003eebf5",
+    "home.place": "476fb9da45c1ef80b4c53ca37729646ebcdd7da0924bca36703ea7e42513b16f",
+    "home.date": "fe4fb3e56fd4ad49a2a03930ebc2f0b301211867b683077ff39926573feecbb4",
+    "about.body": "95ee335ff60aa881e5c1e4b9cc2fbd1306428085c5acc677d090de183eb2d29b",
+    "blog.notFound": "4141a76195868d4b2065934b952c887c1c9487c13832ce6f29b2a3f9e318c275",
+    "blog.missing": "ba32ec48835f0fdfef58b20e8723510294af0bca85710dfa266fe981e64c8d82",
+    "onlyDe.title": "c08cb45746325c5b88dc5cd562dc25b6e69bb97c96d8018b75fe215659d5a961",
+    "error.title": "106d2f8924d13eafa7bb11df75c2f32376d1a51ea19fe9992f7921e011a5a1bb",
+    "error.back": "e2998007714df41b3dca63a95cdacdc81da3afbeded338b637d0a796f84fa484",
+    "api.greeting": "13be64ce22096fcb30ad4fae905026daafffee542dbc4ac5ec19099079be2e21",
+    "suggest": "64cc6d35a215f881d2f9c04080ef4223ff5cc0b867286b5f3c643b246c7dfe7f",
+    "onlyInDefault": "f2d62cabf24070f9169c3f22df9bc1ae8d69d24d36334db269787f48fae75b51",
+    "fakeLib.save": "562c265c932878784da7571ec634e3e08abe341513ef249281f0146da43f1414"
+  }
+}

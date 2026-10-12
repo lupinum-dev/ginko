@@ -1,0 +1,34 @@
+{
+  "name": "ginko",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.28.5",
+  "engines": {
+    "node": "^22.19 || ^24.11"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "i18n:browser": "bash packages/ginko-i18n/browser/build-all.sh && node packages/ginko-i18n/browser/attack.mjs && node packages/ginko-i18n/browser/zone-attack.mjs && node packages/ginko-i18n/browser/edge-attack.mjs && node packages/ginko-i18n/browser/content-attack.mjs",
+    "check:contracts": "node --experimental-strip-types scripts/contracts.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @ginko-demo/restaurant typecheck && pnpm --filter @ginko-demo/starter typecheck && pnpm --filter @ginko-demo/industrie typecheck && pnpm --filter @ginko-demo/saas typecheck && pnpm --filter @ginko-demo/docs typecheck && pnpm --filter @ginko/platform typecheck",
+    "e2e": "playwright test",
+    "outbox": "node --experimental-strip-types scripts/outbox.ts",
+    "check:pack": "node --experimental-strip-types scripts/check-pack.ts",
+    "pack:local": "node --experimental-strip-types scripts/pack-local.ts",
+    "postinstall": "pnpm --filter @lupinum/ginko-i18n --filter @lupinum/ginko-components exec nuxt-module-build prepare"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "1.0.1",
+    "@changesets/cli": "3.0.3",
+    "@nuxt/module-builder": "1.0.3",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^24.19.1",
+    "@vitejs/plugin-vue": "6.0.9",
+    "happy-dom": "20.14.5",
+    "publint": "0.3.25",
+    "typescript": "6.0.3",
+    "unbuild": "3.6.1",
+    "vitest": "5.0.3",
+    "vue": "3.5.43"
+  }
+}

@@ -1,0 +1,679 @@
+{
+  "format": 3,
+  "site": "saas",
+  "locale": "fr",
+  "locales": [
+    "de",
+    "en",
+    "fr"
+  ],
+  "mainLocale": "de",
+  "currency": "EUR",
+  "schemaRev": 1,
+  "contentRev": 1,
+  "generatedAt": "2026-10-08T06:00:00.000Z",
+  "bricks": {
+    "hero": {
+      "kind": "single",
+      "data": {
+        "headline": "Suivi du temps pour les artisans",
+        "text": "Taktwerk erfasst Arbeitszeiten auf der Baustelle, auch ohne Netz.",
+        "buttonText": "Kostenlos testen",
+        "buttonUrl": "https://app.taktwerk.example/start"
+      },
+      "fallback": [
+        "text",
+        "buttonText"
+      ]
+    },
+    "features": {
+      "kind": "single",
+      "data": {
+        "headline": "Was Taktwerk kann",
+        "items": [
+          {
+            "_id": "ftStempel1",
+            "title": "Pointage sur mobile",
+            "text": "Mitarbeitende stempeln auf der Baustelle, auch ohne Netz."
+          },
+          {
+            "_id": "ftPausen02",
+            "title": "Pausen automatisch abziehen",
+            "text": "Pausenregeln nach Arbeitszeitgesetz, pro Betrieb einstellbar."
+          },
+          {
+            "_id": "ftExport03",
+            "title": "Export für die Lohnbuchhaltung",
+            "text": "CSV und DATEV-Format, mit einem Klick."
+          },
+          {
+            "_id": "ftPdfDok04",
+            "title": "Stundenzettel als PDF",
+            "text": "Für Kundinnen und Kunden zum Unterschreiben."
+          }
+        ]
+      },
+      "fallback": [
+        "headline",
+        "items.ftStempel1.text",
+        "items.ftPausen02.title",
+        "items.ftPausen02.text",
+        "items.ftExport03.title",
+        "items.ftExport03.text",
+        "items.ftPdfDok04.title",
+        "items.ftPdfDok04.text"
+      ]
+    },
+    "pricing": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "plan-start",
+          "data": {
+            "name": "Start",
+            "priceEur": {
+              "amount": 2900,
+              "currency": "EUR"
+            },
+            "priceChf": {
+              "amount": 3200,
+              "currency": "CHF"
+            },
+            "yearEur": {
+              "amount": 29000,
+              "currency": "EUR"
+            },
+            "yearChf": {
+              "amount": 32000,
+              "currency": "CHF"
+            },
+            "featured": false,
+            "features": [
+              {
+                "_id": "pfStart001",
+                "text": "Jusqu'à 3 collaborateurs"
+              },
+              {
+                "_id": "pfStart002",
+                "text": "Stempeln per Handy"
+              }
+            ],
+            "note": "hors TVA"
+          },
+          "fallback": [
+            "features.pfStart002.text"
+          ]
+        },
+        {
+          "id": "plan-team",
+          "data": {
+            "name": "Team",
+            "priceEur": {
+              "amount": 5900,
+              "currency": "EUR"
+            },
+            "priceChf": {
+              "amount": 6490,
+              "currency": "CHF"
+            },
+            "yearEur": {
+              "amount": 59000,
+              "currency": "EUR"
+            },
+            "yearChf": {
+              "amount": 64900,
+              "currency": "CHF"
+            },
+            "featured": true,
+            "features": [
+              {
+                "_id": "pfTeam0001",
+                "text": "Bis 15 Mitarbeitende"
+              },
+              {
+                "_id": "pfTeam0002",
+                "text": "Export für die Lohnbuchhaltung"
+              },
+              {
+                "_id": "pfTeam0003",
+                "text": "Pausenregeln pro Betrieb"
+              }
+            ],
+            "note": "hors TVA"
+          },
+          "fallback": [
+            "features.pfTeam0001.text",
+            "features.pfTeam0002.text",
+            "features.pfTeam0003.text"
+          ]
+        },
+        {
+          "id": "plan-pro",
+          "data": {
+            "name": "Pro",
+            "priceEur": {
+              "amount": 10900,
+              "currency": "EUR"
+            },
+            "priceChf": {
+              "amount": 11900,
+              "currency": "CHF"
+            },
+            "yearEur": {
+              "amount": 109000,
+              "currency": "EUR"
+            },
+            "yearChf": {
+              "amount": 119000,
+              "currency": "CHF"
+            },
+            "featured": false,
+            "features": [
+              {
+                "_id": "pfPro00001",
+                "text": "Unbegrenzt viele Mitarbeitende"
+              },
+              {
+                "_id": "pfPro00002",
+                "text": "Schnittstelle zur Lohnbuchhaltung"
+              }
+            ]
+          },
+          "fallback": [
+            "features.pfPro00001.text",
+            "features.pfPro00002.text"
+          ]
+        }
+      ]
+    },
+    "changelog": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "cl-2140",
+          "data": {
+            "version": "2.14.0",
+            "date": "2026-10-06",
+            "tags": [
+              "new",
+              "fixed"
+            ],
+            "body": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Neu: Stundenzettel als PDF exportieren. Behoben: Pausenzeiten um Mitternacht."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "body"
+          ]
+        },
+        {
+          "id": "cl-2132",
+          "data": {
+            "version": "2.13.2",
+            "date": "2026-09-22",
+            "tags": [
+              "improved"
+            ],
+            "body": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Verbessert: Ladezeit der Wochenübersicht."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "body"
+          ]
+        },
+        {
+          "id": "cl-2130",
+          "data": {
+            "version": "2.13.0",
+            "date": "2026-09-08",
+            "tags": [],
+            "body": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Neu: Zeitkonten für Teilzeitkräfte."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "body"
+          ]
+        }
+      ]
+    },
+    "blog": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "bl-pausen",
+          "data": {
+            "title": "Décompter les pauses correctement",
+            "slug": "pauses-decompte-correct",
+            "date": "2026-09-30",
+            "author": "Lena Ruhland",
+            "description": "Wie Pausen im Stundenzettel stehen, damit die Abrechnung stimmt.",
+            "image": {
+              "url": "/media/pausen-dach.jpg",
+              "alt": "Handwerker mit Tablet auf dem Dach",
+              "width": 1600,
+              "height": 900
+            },
+            "body": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Pausen gehören in den Stundenzettel, sonst fehlen Minuten in der Abrechnung."
+                ],
+                [
+                  "p",
+                  {},
+                  "Welcher Tarif passt, sehen Sie unter ",
+                  [
+                    "a",
+                    {
+                      "href": "/preise"
+                    },
+                    "Preise"
+                  ],
+                  "."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "description",
+            "image.alt",
+            "body"
+          ],
+          "urls": {
+            "de": "/blog/pausen-richtig-abrechnen",
+            "en": "/en/blog/billing-breaks-correctly",
+            "fr": "/fr/blog/pauses-decompte-correct"
+          }
+        },
+        {
+          "id": "bl-papier",
+          "data": {
+            "title": "Stundenzettel ohne Papier",
+            "slug": "stundenzettel-ohne-papier",
+            "date": "2026-08-12",
+            "author": "Jonas Keller",
+            "description": "Warum digitale Stundenzettel schneller abgerechnet werden.",
+            "body": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Papier geht verloren. Digitale Zettel kommen direkt in die Abrechnung."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "title",
+            "slug",
+            "description",
+            "body"
+          ],
+          "urls": {
+            "de": "/blog/stundenzettel-ohne-papier",
+            "en": "/en/blog/stundenzettel-ohne-papier",
+            "fr": "/fr/blog/stundenzettel-ohne-papier"
+          }
+        },
+        {
+          "id": "bl-mindestlohn",
+          "data": {
+            "title": "Die Mindestlohn-Doku in Taktwerk",
+            "slug": "mindestlohn-doku",
+            "date": "2026-07-01",
+            "author": "Lena Ruhland",
+            "description": "Wie Taktwerk Arbeitszeiten für die Dokumentation festhält.",
+            "body": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Jede Stempelung ist mit Datum und Uhrzeit festgehalten."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "title",
+            "slug",
+            "description",
+            "body"
+          ],
+          "urls": {
+            "de": "/blog/mindestlohn-doku",
+            "en": "/en/blog/mindestlohn-doku",
+            "fr": "/fr/blog/mindestlohn-doku"
+          }
+        }
+      ]
+    },
+    "testimonials": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "t-keller",
+          "data": {
+            "quote": "Depuis Taktwerk, nos heures sont justes. La paie prend deux fois moins de temps.",
+            "name": "Urs Keller",
+            "company": "Keller Haustechnik AG, Zürich",
+            "logo": {
+              "url": "/media/logo-keller.png",
+              "alt": "Logo Keller Haustechnik",
+              "width": 600,
+              "height": 240
+            }
+          },
+          "fallback": [
+            "logo.alt"
+          ]
+        },
+        {
+          "id": "t-brandt",
+          "data": {
+            "quote": "Auf der Baustelle stempeln alle mit dem Handy. Das spart mir jeden Montag eine Stunde.",
+            "name": "Anna Brandt",
+            "company": "Brandt Dachbau GmbH, Berlin"
+          },
+          "fallback": [
+            "quote"
+          ]
+        },
+        {
+          "id": "t-wirth",
+          "data": {
+            "quote": "Der Export passt direkt in unsere Software. Kein Abtippen mehr.",
+            "name": "Stefan Wirth",
+            "company": "Wirth Sanitär, Basel"
+          },
+          "fallback": [
+            "quote"
+          ]
+        }
+      ]
+    },
+    "faq": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "faq-offline",
+          "data": {
+            "question": "Kann ich Taktwerk offline nutzen?",
+            "answer": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Ja. Stempelungen werden auf dem Handy gespeichert und später übertragen."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "question",
+            "answer"
+          ]
+        },
+        {
+          "id": "faq-test",
+          "data": {
+            "question": "Gibt es eine Testphase?",
+            "answer": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Alle Tarife können Sie 30 Tage kostenlos testen. Details stehen unter ",
+                  [
+                    "a",
+                    {
+                      "href": "/preise"
+                    },
+                    "Preise"
+                  ],
+                  "."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "question",
+            "answer"
+          ]
+        },
+        {
+          "id": "faq-daten",
+          "data": {
+            "question": "Wo liegen meine Daten?",
+            "answer": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Auf Servern in der EU. Mehr dazu in der ",
+                  [
+                    "a",
+                    {
+                      "href": "/datenschutz"
+                    },
+                    "Datenschutzerklärung"
+                  ],
+                  "."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "question",
+            "answer"
+          ]
+        },
+        {
+          "id": "faq-kuendigung",
+          "data": {
+            "question": "Kann ich jederzeit kündigen?",
+            "answer": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Ja, zum Monatsende. Ihre Daten exportieren Sie vorher als CSV."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "question",
+            "answer"
+          ]
+        }
+      ]
+    },
+    "notices": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "nt-wartung",
+          "data": {
+            "text": "Wartung am 12. Oktober von 22 bis 23 Uhr.",
+            "until": "2026-10-12"
+          },
+          "fallback": [
+            "text"
+          ]
+        },
+        {
+          "id": "nt-fr",
+          "data": {
+            "text": "Nouveau : le changelog est désormais en français.",
+            "link": "https://taktwerk.example/fr/changelog",
+            "until": "2026-09-30"
+          },
+          "fallback": []
+        }
+      ]
+    },
+    "company": {
+      "kind": "single",
+      "data": {
+        "name": "Taktwerk GmbH",
+        "street": "Wiener Straße 18",
+        "city": "10999 Berlin",
+        "email": "hallo@taktwerk.example"
+      },
+      "fallback": []
+    },
+    "legal": {
+      "kind": "single",
+      "data": {
+        "terms": {
+          "nodes": [
+            [
+              "p",
+              {},
+              "Allgemeine Geschäftsbedingungen, Stand 1. September 2026."
+            ]
+          ],
+          "toc": {
+            "title": "",
+            "searchDepth": 3,
+            "depth": 2,
+            "links": []
+          }
+        },
+        "avv": {
+          "nodes": [
+            [
+              "p",
+              {},
+              "Auftragsverarbeitung nach Art. 28 DSGVO, Vorlage zum Download."
+            ]
+          ],
+          "toc": {
+            "title": "",
+            "searchDepth": 3,
+            "depth": 2,
+            "links": []
+          }
+        },
+        "privacy": {
+          "nodes": [
+            [
+              "p",
+              {},
+              "Wir verarbeiten Daten nur für den Betrieb von Taktwerk. Details folgen."
+            ]
+          ],
+          "toc": {
+            "title": "",
+            "searchDepth": 3,
+            "depth": 2,
+            "links": []
+          }
+        },
+        "imprint": {
+          "nodes": [
+            [
+              "p",
+              {},
+              "Taktwerk GmbH, Wiener Straße 18, 10999 Berlin. Geschäftsführung: Lena Brandt. Handelsregister: Amtsgericht Charlottenburg, HRB 000000 B. Alle Angaben erfunden (Demo)."
+            ]
+          ],
+          "toc": {
+            "title": "",
+            "searchDepth": 3,
+            "depth": 2,
+            "links": []
+          }
+        }
+      },
+      "fallback": [
+        "terms",
+        "avv",
+        "privacy",
+        "imprint"
+      ]
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{ "nav": { "home": "الرئيسية" }, "home": { "title": "أهلاً وسهلاً", "cart": "{count, plural, zero {لا عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}}" } }

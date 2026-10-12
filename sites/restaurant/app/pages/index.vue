@@ -1,0 +1,1 @@
+<template><PageHome /></template>

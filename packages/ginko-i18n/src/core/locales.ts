@@ -1,0 +1,182 @@
+// Locale identity and URL rules. Pure functions: they run in Nuxt, Nitro, Convex and plain Vue.
+
+export interface LocaleInput {
+  /** BCP 47 tag used for hreflang, `lang` and Intl, e.g. `de-AT`. */
+  language: string
+  /** URL segment. Defaults to the language subtag (`de-AT` → `de`). */
+  code?: string
+  /** Name shown in a switcher. Defaults to the native name from Intl.DisplayNames. */
+  name?: string
+}
+
+export interface Locale {
+  code: string
+  language: string
+  name: string
+  dir: 'ltr' | 'rtl'
+}
+
+export type Strategy = 'prefix_except_default' | 'prefix'
+
+export interface LocaleConfig {
+  locales: Locale[]
+  defaultLocale: string
+  strategy: Strategy
+  /** Path patterns that never get a locale prefix (`/api/**`, `/studio/**`). */
+  exclude: string[]
+  /** Path patterns whose locale comes from the user (cookie, then Accept-Language), not from the URL. */
+  userLocale: string[]
+}
+
+const RTL = new Set(['ar', 'arc', 'dv', 'fa', 'ha', 'he', 'khw', 'ks', 'ku', 'ps', 'sd', 'ur', 'yi'])
+
+export function resolveLocale(input: string | LocaleInput): Locale {
+  const def = typeof input === 'string' ? { language: input } : input
+  const tag = new Intl.Locale(def.language)
+  const code = def.code ?? tag.language
+  if (!/^[a-z][a-z0-9-]*$/.test(code))
+    throw new Error(`[ginko-i18n] Locale code "${code}" must be lowercase letters, digits or "-". Fix: set \`code\` for ${def.language}.`)
+  const name = def.name ?? nativeName(tag.baseName)
+  return { code, language: tag.baseName, name, dir: RTL.has(tag.language) ? 'rtl' : 'ltr' }
+}
+
+function nativeName(language: string): string {
+  try {
+    const short = new Intl.Locale(language).language
+    const name = new Intl.DisplayNames([language], { type: 'language' }).of(short) ?? language
+    return name.charAt(0).toLocaleUpperCase(language) + name.slice(1)
+  }
+  catch {
+    return language
+  }
+}
+
+export function resolveConfig(input: {
+  locales: (string | LocaleInput)[]
+  defaultLocale?: string
+  strategy?: Strategy
+  exclude?: string[]
+  userLocale?: string[]
+}): LocaleConfig {
+  if (!input.locales?.length)
+    throw new Error('[ginko-i18n] `i18n.locales` is empty. Fix: add at least one locale, e.g. `locales: [\'de-AT\']`.')
+  const locales = input.locales.map(resolveLocale)
+  const codes = new Set<string>()
+  for (const l of locales) {
+    if (codes.has(l.code))
+      throw new Error(`[ginko-i18n] Two locales use the URL code "${l.code}". Fix: give one of them an explicit \`code\`.`)
+    codes.add(l.code)
+  }
+  const wanted = input.defaultLocale ?? locales[0]!.code
+  const def = locales.find(l => l.code === wanted || l.language === wanted)
+  if (!def)
+    throw new Error(`[ginko-i18n] defaultLocale "${wanted}" is not in \`locales\` (${[...codes].join(', ')}).`)
+  for (const pattern of input.userLocale ?? []) {
+    if (!pattern.startsWith('/'))
+      throw new Error(`[ginko-i18n] i18n.userLocale pattern "${pattern}" must start with "/". Fix: write an exact path or a prefix such as "/app/**".`)
+  }
+  return {
+    locales,
+    defaultLocale: def.code,
+    strategy: input.strategy ?? 'prefix_except_default',
+    exclude: ['/api/**', '/_nuxt/**', '/__nuxt_island/**', '/_ipx/**', ...(input.exclude ?? [])],
+    userLocale: input.userLocale ?? [],
+  }
+}
+
+/**
+ * The hreflang links of one page, from its path per locale code: one per locale with its BCP 47
+ * language, plus `x-default` for the default locale's path. One rule for the page head and the
+ * sitemap, so search engines see the same alternates in both (D13).
+ */
+export function alternatesOf(paths: Partial<Record<string, string>>, config: Pick<LocaleConfig, 'locales' | 'defaultLocale'>): { hreflang: string, path: string }[] {
+  const links = config.locales.flatMap(l => paths[l.code] ? [{ hreflang: l.language, path: paths[l.code]! }] : [])
+  const fallback = paths[config.defaultLocale]
+  return fallback ? [...links, { hreflang: 'x-default', path: fallback }] : links
+}
+
+function matchesPattern(path: string, patterns: string[]): boolean {
+  return patterns.some((pattern) => {
+    if (pattern.endsWith('/**')) {
+      const base = pattern.slice(0, -3)
+      return path === base || path.startsWith(`${base}/`)
+    }
+    return path === pattern
+  })
+}
+
+export function isExcluded(path: string, config: LocaleConfig): boolean {
+  return matchesPattern(path, config.exclude)
+}
+
+/**
+ * The path is a user-locale zone: its locale comes from the user's cookie or Accept-Language, not
+ * from the URL. Excluded paths (`/api/**`, Nuxt internals, `exclude`) are never in a zone, so
+ * `userLocale: ['/**']` leaves them alone.
+ */
+export function inUserZone(path: string, config: LocaleConfig): boolean {
+  return !isExcluded(path, config) && matchesPattern(path, config.userLocale)
+}
+
+function firstSegment(path: string): string {
+  return path.split('/')[1] ?? ''
+}
+
+/** The locale a path belongs to, or `undefined` when the path has no locale (`prefix` root, excluded paths, user-locale zones). */
+export function localeFromPath(path: string, config: LocaleConfig): string | undefined {
+  if (isExcluded(path, config) || inUserZone(path, config)) return undefined
+  const segment = firstSegment(path)
+  const prefixed = config.locales.find(l => l.code === segment)
+  if (prefixed) {
+    // With prefix_except_default, `/de/...` is not a valid URL for the default locale.
+    if (config.strategy === 'prefix_except_default' && prefixed.code === config.defaultLocale) return undefined
+    return prefixed.code
+  }
+  return config.strategy === 'prefix_except_default' ? config.defaultLocale : undefined
+}
+
+export function stripLocale(path: string, config: LocaleConfig): string {
+  const segment = firstSegment(path)
+  if (!config.locales.some(l => l.code === segment)) return path || '/'
+  const rest = path.slice(segment.length + 1)
+  return rest.startsWith('/') ? rest : `/${rest}`
+}
+
+export function prefixFor(locale: string, config: LocaleConfig): string {
+  return config.strategy === 'prefix_except_default' && locale === config.defaultLocale ? '' : `/${locale}`
+}
+
+/** Add the locale prefix to an unprefixed path. `/` becomes `/en`, not `/en/`. */
+export function localizePath(path: string, locale: string, config: LocaleConfig): string {
+  const clean = path.startsWith('/') ? path : `/${path}`
+  const prefix = prefixFor(locale, config)
+  if (!prefix) return clean
+  return clean === '/' ? prefix : `${prefix}${clean}`
+}
+
+/**
+ * Pick the best locale from an Accept-Language header. Exact tag first, then the language subtag.
+ * Returns `undefined` when nothing matches, so callers choose their own fallback.
+ */
+export function negotiateLocale(header: string | null | undefined, config: LocaleConfig): string | undefined {
+  if (!header) return undefined
+  const ranges = header
+    .split(',')
+    .map((part, index) => {
+      const [tag = '', ...params] = part.trim().split(';')
+      const q = params.map(p => p.trim()).find(p => p.startsWith('q='))
+      const quality = q ? Number(q.slice(2)) : 1
+      return { tag: tag.trim().toLowerCase(), quality: Number.isFinite(quality) ? quality : 0, index }
+    })
+    .filter(r => r.tag && r.tag !== '*' && r.quality > 0)
+    .sort((a, b) => b.quality - a.quality || a.index - b.index)
+
+  for (const range of ranges) {
+    const exact = config.locales.find(l => l.language.toLowerCase() === range.tag || l.code === range.tag)
+    if (exact) return exact.code
+    const base = range.tag.split('-')[0]
+    const partial = config.locales.find(l => l.language.toLowerCase().split('-')[0] === base)
+    if (partial) return partial.code
+  }
+  return undefined
+}

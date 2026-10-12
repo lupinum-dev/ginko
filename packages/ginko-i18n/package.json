@@ -1,0 +1,72 @@
+{
+  "name": "@lupinum/ginko-i18n",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Nuxt i18n with the URL as the only locale source.",
+  "license": "MIT",
+  "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lupinum-dev/ginko.git",
+    "directory": "packages/ginko-i18n"
+  },
+  "homepage": "https://github.com/lupinum-dev/ginko/tree/main/packages/ginko-i18n#readme",
+  "bugs": {
+    "url": "https://github.com/lupinum-dev/ginko/issues"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": "./src/module.ts",
+    "./core": "./src/core/index.ts",
+    "./compile": "./src/core/compile.ts"
+  },
+  "bin": {
+    "ginko-i18n": "./src/cli/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/module.mjs",
+    "types": "./dist/types.d.mts",
+    "exports": {
+      ".": {
+        "types": "./dist/types.d.mts",
+        "import": "./dist/module.mjs"
+      },
+      "./core": {
+        "types": "./dist/core/index.d.mts",
+        "import": "./dist/core/index.mjs"
+      },
+      "./compile": {
+        "types": "./dist/core/compile.d.mts",
+        "import": "./dist/core/compile.mjs"
+      }
+    },
+    "bin": {
+      "ginko-i18n": "./dist/cli/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "nuxt-module-build prepare && nuxt-module-build build",
+    "prepack": "pnpm build"
+  },
+  "peerDependencies": {
+    "nuxt": "^4.6.0"
+  },
+  "dependencies": {
+    "@formatjs/icu-messageformat-parser": "^3.5.21",
+    "@nuxt/kit": "^4.6.0"
+  },
+  "devDependencies": {
+    "@nuxt/schema": "4.6.0",
+    "nuxt": "4.6.0",
+    "vue": "3.5.43",
+    "vue-router": "^4.6.0",
+    "vue-tsc": "^3.1.5"
+  }
+}

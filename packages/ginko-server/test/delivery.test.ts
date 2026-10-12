@@ -1,0 +1,258 @@
+// Delivery and upkeep: the bundle endpoint (SPEC 6), "Sofort von der Seite nehmen" (SPEC 4.4)
+// and the daily retention job (SPEC 12). One test per realistic failure.
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import corpus from '../../../contracts/restaurant/data.json' with { type: 'json' }
+import { api, internal } from '../convex/_generated/api'
+import { errorOf, opId, setup } from './setup'
+
+const DAY = 24 * 60 * 60 * 1000
+const NOW = Date.parse('2026-10-08T10:00:00Z')
+
+type Bundle = {
+  locale: string
+  requestedLocale?: string
+  bricks: Record<string, { items?: { id: string; data: Record<string, unknown>; fallback: string[] }[] }>
+}
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
+
+describe('GET /bundle/<site>', () => {
+  it('a stale English translation is delivered in German and its leaf is listed as fallback', async () => {
+    const { t, entries } = await setup()
+    const response = await t.fetch('/bundle/restaurant?format=3&locale=en')
+    expect(response.status).toBe(200)
+    const bundle = (await response.json()) as Bundle
+    expect(bundle.locale).toBe('en')
+    const item = bundle.bricks.menu!.items!.find((i) => i.id === entries['menu-schnitzel'])!
+    const germanName = (corpus.menu as { id: string; data: { name: { de: string } } }[]).find((r) => r.id === 'menu-schnitzel')!.data.name.de
+    expect(item.data.name).toBe(germanName)
+    expect(item.fallback).toContain('name')
+  })
+
+  it('a markdown field stored as a string is delivered as a parsed tree', async () => {
+    const { t, as, entries } = await setup()
+    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev: 1, fields: { imprint: { de: '**Hallo**' } }, sentence: 'Impressum' })
+    const bundle = (await (await t.fetch('/bundle/restaurant?format=3&locale=de')).json()) as { bricks: { legal: { data: { imprint: { nodes: unknown[] } } } } }
+    expect(Array.isArray(bundle.bricks.legal.data.imprint.nodes)).toBe(true)
+    expect(JSON.stringify(bundle.bricks.legal.data.imprint.nodes)).toContain('Hallo')
+  })
+
+  it('an unknown locale delivers the main language and names the requested one', async () => {
+    const { t } = await setup()
+    const bundle = (await (await t.fetch('/bundle/restaurant?format=3&locale=xx')).json()) as Bundle
+    expect(bundle).toMatchObject({ locale: 'de', requestedLocale: 'xx' })
+  })
+
+  it('format 1 (AST v1 texts) is refused with 400 FORMAT_UNSUPPORTED', async () => {
+    const { t } = await setup()
+    const response = await t.fetch('/bundle/restaurant?format=1&locale=de')
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ code: 'FORMAT_UNSUPPORTED' })
+  })
+
+  it('a minRev with a higher schemaRev alone is STALE (409)', async () => {
+    const { t } = await setup()
+    const response = await t.fetch('/bundle/restaurant?format=3&locale=de&minRev=2.1')
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ code: 'STALE' })
+  })
+
+  it('a deleted entry is not in the bundle', async () => {
+    const { t, entries } = await setup()
+    await t.run((ctx) => ctx.db.patch(entries.weinabend!, { deletedAt: Date.now() }))
+    const bundle = (await (await t.fetch('/bundle/restaurant?format=3&locale=de')).json()) as Bundle
+    const ids = bundle.bricks.events!.items!.map((i) => i.id)
+    expect(ids).not.toContain(entries.weinabend)
+    expect(ids).toContain(entries.martinigans)
+  })
+
+  // 601 HTTP requests take ~3 s alone and more under a full parallel run: a longer limit, not a flake.
+  it('the 601st request in one minute is RATE_LIMITED (429)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+    const { t } = await setup()
+    const statuses: number[] = []
+    for (let i = 0; i < 601; i++) statuses.push((await t.fetch('/bundle/restaurant?format=3&locale=de')).status)
+    expect(statuses.slice(0, 600).every((s) => s === 200)).toBe(true)
+    expect(statuses[600]).toBe(429)
+  }, 30_000)
+})
+
+/** Answers for the site's URLs. Every test stubs the platform's outgoing fetch, nothing else. */
+function stubFetch(answer: (path: string, call: number) => Response) {
+  const calls = new Map<string, number>()
+  const mock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const path = new URL(String(input)).pathname
+    const call = (calls.get(path) ?? 0) + 1
+    calls.set(path, call)
+    expect(init?.redirect).toBe('manual')
+    return answer(path, call)
+  })
+  vi.stubGlobal('fetch', mock)
+  return { mock, callsFor: (path: string) => calls.get(path) ?? 0 }
+}
+
+const proof = (rev: string) => new Response(null, { status: 200, headers: { 'x-ginko-rev': rev } })
+
+/** Runs the action while the test moves the fake clock, so the 5 s retry waits pass. */
+async function runWithClock<T>(call: Promise<T>): Promise<T> {
+  let done = false
+  void call.finally(() => (done = true))
+  while (!done) await vi.advanceTimersByTimeAsync(5_000)
+  return call
+}
+
+describe('urgentRefresh', () => {
+  it('re-renders the sitemap and the detail page of a deleted event, with both headers', async () => {
+    const { t, as, site, entries } = await setup()
+    await t.run((ctx) => ctx.db.patch(site, { refreshToken: 'token-test' }))
+    await t.run((ctx) => ctx.db.patch(entries.weinabend!, { deletedAt: Date.now() }))
+    const fetched = stubFetch(() => proof('1.1'))
+
+    const result = (await as.owner.action(api.refresh.urgentRefresh, { site: 'restaurant', opId: opId() })) as {
+      results: { path: string; status: number; rev: string; ok: boolean }[]
+    }
+
+    expect(fetched.callsFor('/veranstaltungen/weinabend-ebner')).toBe(1)
+    expect(fetched.callsFor('/en/events/wine-evening-ebner')).toBe(1)
+    expect(fetched.callsFor('/sitemap.xml')).toBe(1)
+    const init = fetched.mock.mock.calls[0]![1] as RequestInit
+    expect(init.headers).toMatchObject({ 'x-prerender-revalidate': 'token-test', 'x-ginko-min-rev': '1.1' })
+    expect(result.results.every((r) => r.ok)).toBe(true)
+  })
+
+  it('retries a path that answers 503 and accepts the proof of the second answer', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const { t, as, site } = await setup()
+    await t.run((ctx) => ctx.db.patch(site, { refreshToken: 'token-test' }))
+    const fetched = stubFetch((path, call) => (path === '/speisekarte' && call === 1 ? new Response(null, { status: 503 }) : proof('1.1')))
+
+    const result = (await runWithClock(as.owner.action(api.refresh.urgentRefresh, { site: 'restaurant', opId: opId() }))) as {
+      results: { path: string; status: number; rev: string; ok: boolean }[]
+    }
+
+    expect(fetched.callsFor('/speisekarte')).toBe(2)
+    expect(result.results.find((r) => r.path === '/speisekarte')).toMatchObject({ status: 200, rev: '1.1', ok: true })
+  })
+
+  it('a path whose proof stays below the minimum is reported as failed after three retries', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const { t, as, site } = await setup()
+    await t.run((ctx) => ctx.db.patch(site, { refreshToken: 'token-test' }))
+    const fetched = stubFetch((path) => (path === '/en' ? proof('1.0') : proof('1.1')))
+
+    const result = (await runWithClock(as.owner.action(api.refresh.urgentRefresh, { site: 'restaurant', opId: opId() }))) as {
+      results: { path: string; status: number; rev: string; ok: boolean }[]
+    }
+
+    expect(fetched.callsFor('/en')).toBe(4)
+    expect(result.results.find((r) => r.path === '/en')).toEqual({ path: '/en', status: 200, rev: '1.0', ok: false })
+    expect(result.results.filter((r) => !r.ok)).toHaveLength(1)
+  })
+
+  it('staff cannot refresh the site, even with the grants of the cook', async () => {
+    const { t, as, site } = await setup()
+    await t.run((ctx) => ctx.db.patch(site, { refreshToken: 'token-test' }))
+    const fetched = stubFetch(() => proof('1.1'))
+
+    const error = await errorOf(as.cook.action(api.refresh.urgentRefresh, { site: 'restaurant', opId: opId() }))
+
+    expect(error.code).toBe('FORBIDDEN')
+    expect(fetched.mock).not.toHaveBeenCalled()
+  })
+})
+
+describe('refresh.record (Phase 5 review)', () => {
+  it('two recordings of one opId keep one ops row and both answer with the first result', async () => {
+    const { t, as } = await setup()
+    const first = { results: [{ path: '/', status: 200, rev: '1.1', ok: true }], note: null }
+    const args = { site: 'restaurant', opId: opId(), hash: 'hash-test' }
+    expect(await as.owner.mutation(internal.refresh.record, { ...args, result: first })).toEqual(first)
+    expect(await as.owner.mutation(internal.refresh.record, { ...args, result: { results: [], note: 'zweiter Versuch' } })).toEqual(first)
+    expect(await t.run((ctx) => ctx.db.query('ops').collect())).toHaveLength(1)
+  })
+
+  it('sets lastRefreshAt only when every page confirmed; a partly failed refresh leaves it as it was', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const { as } = await setup()
+    const ok = { path: '/', status: 200, rev: '1.1', ok: true }
+    const failed = { path: '/menu', status: 500, rev: '1.0', ok: false }
+    const lastRefreshAt = async () => (await as.owner.query(api.sites.get, { site: 'restaurant' })).site.lastRefreshAt
+    vi.setSystemTime(NOW)
+    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly', result: { results: [ok, failed], note: null } })
+    expect(await lastRefreshAt()).toBeNull()
+    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-full', result: { results: [ok], note: null } })
+    expect(await lastRefreshAt()).toBe(NOW)
+    vi.setSystemTime(NOW + 60 * 60 * 1000)
+    await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly-again', result: { results: [ok, failed], note: null } })
+    expect(await lastRefreshAt()).toBe(NOW)
+  })
+})
+
+describe('retention (daily)', () => {
+  it('hard-deletes an entry deleted 31 days ago with its slug rows, and keeps one deleted 29 days ago', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+    const { t, entries } = await setup()
+    await t.run(async (ctx) => {
+      await ctx.db.patch(entries.weinabend!, { deletedAt: NOW - 31 * DAY })
+      await ctx.db.patch(entries.martinigans!, { deletedAt: NOW - 29 * DAY })
+    })
+
+    await t.mutation(internal.retention.daily, {})
+
+    const [gone, kept, slugsOfGone, slugsOfKept] = await t.run(async (ctx) => [
+      await ctx.db.get(entries.weinabend!),
+      await ctx.db.get(entries.martinigans!),
+      await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entries.weinabend!)).collect(),
+      await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entries.martinigans!)).collect(),
+    ] as const)
+    expect(gone).toBeNull()
+    expect(slugsOfGone).toHaveLength(0)
+    expect(kept).not.toBeNull()
+    expect(slugsOfKept.length).toBeGreaterThan(0)
+  })
+
+  it('removes an expired notice invisible for 31 days and keeps one invisible for 29 days', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+    const { t, entries } = await setup()
+    // Site time zone Europe/Vienna: today is 2026-10-08. 2026-09-07 is 31 days back, 2026-09-09 is 29 days back.
+    await t.run(async (ctx) => {
+      await ctx.db.patch(entries['notice-urlaub']!, { data: { text: { de: 'Betriebsurlaub.' }, until: '2026-09-07' } })
+      await ctx.db.patch(entries['notice-weinabend']!, { data: { text: { de: 'Weinabend.' }, until: '2026-09-09' } })
+    })
+
+    await t.mutation(internal.retention.daily, {})
+
+    const [removed, kept, change] = await t.run(async (ctx) => [
+      await ctx.db.get(entries['notice-urlaub']!),
+      await ctx.db.get(entries['notice-weinabend']!),
+      await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entries['notice-urlaub']!)).first(),
+    ] as const)
+    expect(removed).toMatchObject({ deletedAt: NOW, lifeRev: 2 })
+    expect(kept?.deletedAt).toBeUndefined()
+    expect(change).toMatchObject({ kind: 'remove', actor: 'system' })
+  })
+
+  it('keeps entryCount = live entries and bytes = stored rows through soft and hard delete', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+    const { t, entries, site } = await setup()
+    await t.run(async (ctx) => {
+      await ctx.db.patch(entries['notice-urlaub']!, { data: { text: { de: 'Betriebsurlaub.' }, until: '2026-09-07' } })
+    })
+    await t.mutation(internal.retention.daily, {})
+    // 31 days later the soft-deleted notice is hard-deleted.
+    vi.setSystemTime(NOW + 31 * 24 * 60 * 60 * 1000)
+    await t.mutation(internal.retention.daily, {})
+    const [counters, rows] = await t.run(async (ctx) => [await ctx.db.get(site), await ctx.db.query('entries').collect()] as const)
+    expect(rows.filter((r) => !r.deletedAt).length).toBeGreaterThan(10)
+    expect(rows.some((r) => r._id === entries['notice-urlaub'])).toBe(false)
+    expect(counters!.entryCount).toBe(rows.filter((r) => !r.deletedAt).length)
+    expect(counters!.bytes).toBe(rows.reduce((n, r) => n + r.bytes, 0))
+  })
+})

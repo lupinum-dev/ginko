@@ -1,0 +1,10 @@
+{
+  "hello": "Hallo {name}",
+  "nested": {
+    "first": "Erste",
+    "second": "Zweite"
+  },
+  "count": "{n, plural, one {Eins} other {Viele}}",
+  "global": "{tone, select, sie {Sie} other {Du}}",
+  "last": "Letzte"
+}

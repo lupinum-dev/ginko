@@ -1,0 +1,20 @@
+{
+  "nav": { "home": "Start", "about": "Über uns", "blog": "Blog", "onlyDe": "Nur Deutsch", "studio": "Studio" },
+  "home": {
+    "title": "Willkommen",
+    "cart": "{count, plural, =0 {Keine Artikel} one {# Artikel} other {# Artikel}}",
+    "add": "Artikel hinzufügen",
+    "consent": "Ich akzeptiere die <link>Datenschutzerklärung</link> und <b>alles</b> andere.",
+    "cta": "{tone, select, du {Schreib uns} other {Schreiben Sie uns}}",
+    "place": "{n, selectordinal, other {#.}} Platz",
+    "date": "Stand: {date}"
+  },
+  "about": { "title": "Über uns", "body": "Wir sind ein kleines Team." },
+  "blog": { "notFound": "Beitrag nicht gefunden", "missing": "Diesen Beitrag gibt es nur auf Deutsch." },
+  "onlyDe": { "title": "Nur auf Deutsch" },
+  "error": { "title": "Seite nicht gefunden", "back": "Zur Startseite" },
+  "api": { "greeting": "Grüß Gott, {name}!" },
+  "suggest": "Diese Seite gibt es auch auf {name}.",
+  "onlyInDefault": "Dieser Text fehlt im Englischen.",
+  "fakeLib": { "save": "Sichern" }
+}

@@ -1,0 +1,161 @@
+/* Tailwind v4 and the shadcn tokens of the Studio.
+   Token NAMES are the shadcn ones because ginko-components styles the content with them
+   (--background, --foreground, --primary, --muted, --border, --radius ...): content then looks right
+   inside the Studio. Token VALUES are PrimeVue Aura's default pairing, emerald on zinc. Stock emerald-500
+   with white text is 2.5:1, so light mode fills controls with emerald-700 (5.5:1); dark mode keeps
+   emerald-400 with dark text. Dark mode switches like ginko-components does: .dark / [data-theme="dark"],
+   or the system preference unless [data-theme="light"] is set. */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import 'tw-animate-css';
+/* Tailwind scans from the host app's folder; the layer's own files are outside it. */
+@source '../..';
+
+@custom-variant dark {
+  &:where(.dark, .dark *, [data-theme='dark'], [data-theme='dark'] *) { @slot; }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme='light']), :root:not([data-theme='light']) *) { @slot; }
+  }
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: #ffffff;
+  --foreground: #27272a;
+  --card: #ffffff;
+  --card-foreground: #27272a;
+  --popover: #ffffff;
+  --popover-foreground: #27272a;
+  --primary: #047857;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #27272a;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #ecfdf5;
+  --accent-foreground: #065f46;
+  --destructive: #b91c1c;
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --ring: #047857;
+  --success: #15803d;
+  --warning: #854d0e;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #27272a;
+  --sidebar-primary: #047857;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f4f5;
+  --sidebar-accent-foreground: #27272a;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #10b981;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --background: #09090b;
+    --foreground: #fafafa;
+    --card: #09090b;
+    --card-foreground: #fafafa;
+    --popover: #18181b;
+    --popover-foreground: #fafafa;
+    --primary: #34d399;
+    --primary-foreground: #09090b;
+    --secondary: #27272a;
+    --secondary-foreground: #fafafa;
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+    --accent: #052e22;
+    --accent-foreground: #6ee7b7;
+    --destructive: #f87171;
+    --border: #3f3f46;
+    --input: #52525b;
+    --ring: #34d399;
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --sidebar: #18181b;
+    --sidebar-foreground: #fafafa;
+    --sidebar-primary: #34d399;
+    --sidebar-primary-foreground: #09090b;
+    --sidebar-accent: #27272a;
+    --sidebar-accent-foreground: #fafafa;
+    --sidebar-border: #3f3f46;
+    --sidebar-ring: #34d399;
+    color-scheme: dark;
+  }
+}
+
+.dark,
+[data-theme='dark'] {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #09090b;
+  --card-foreground: #fafafa;
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
+  --primary: #34d399;
+  --primary-foreground: #09090b;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #052e22;
+  --accent-foreground: #6ee7b7;
+  --destructive: #f87171;
+  --border: #3f3f46;
+  --input: #52525b;
+  --ring: #34d399;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --sidebar: #18181b;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #34d399;
+  --sidebar-primary-foreground: #09090b;
+  --sidebar-accent: #27272a;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #3f3f46;
+  --sidebar-ring: #34d399;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+}

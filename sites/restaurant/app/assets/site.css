@@ -1,0 +1,163 @@
+/* Gasthaus zur Linde. Paper-white pages like a printed Speisekarte; one region in linden green
+   (the "Heute" board) carries the colour. Fonts are self-hosted (no requests to third parties). */
+@import '@fontsource/alegreya/latin-500.css';
+@import '@fontsource/alegreya/latin-700.css';
+@import '@fontsource/alegreya/latin-ext-500.css';
+@import '@fontsource/alegreya/latin-ext-700.css';
+@import '@fontsource/alegreya-sans/latin-400.css';
+@import '@fontsource/alegreya-sans/latin-500.css';
+@import '@fontsource/alegreya-sans/latin-700.css';
+@import '@fontsource/alegreya-sans/latin-ext-400.css';
+@import '@fontsource/alegreya-sans/latin-ext-700.css';
+
+:root {
+  --paper: #fbfbf7;
+  --paper-2: #f1f2ea;
+  --ink: #17211c;
+  --ink-2: #4a5650;
+  --rule: #d9ddd2;
+  --linde: #1e4032;
+  --linde-ink: #24503e;
+  --bluete: #e4e49a;
+  --bluete-2: #c9cf8a;
+  --on-linde: #f4f5ea;
+  --on-linde-2: #c3cfc4;
+
+  --serif: 'Alegreya', 'Iowan Old Style', Georgia, serif;
+  --sans: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;
+
+  --gutter: 16px;
+  --max: 72rem;
+  --radius: 14px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  color-scheme: light;
+  accent-color: var(--linde);
+}
+
+@media (min-width: 720px) {
+  :root { --gutter: 32px; }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: var(--bluete-2) var(--paper);
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1.125rem;
+  line-height: 1.55;
+  font-variant-numeric: lining-nums;
+  caret-color: var(--linde);
+  /* Owners type long German compounds and paste URLs: break them instead of widening the phone page. */
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+::selection { background: var(--bluete); color: var(--ink); }
+
+h1, h2, h3 {
+  font-family: var(--serif);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  margin: 0;
+}
+
+p { margin: 0; }
+
+a {
+  color: var(--linde-ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+a:hover { text-decoration-thickness: 2px; }
+
+:focus-visible {
+  outline: 3px solid var(--linde);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+img { max-width: 100%; height: auto; display: block; }
+
+.wrap {
+  max-width: var(--max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.skip {
+  position: absolute;
+  left: var(--gutter);
+  top: -100px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 8px 12px;
+  border-radius: 8px;
+  z-index: 10;
+}
+.skip:focus { top: 8px; }
+
+/* Page sections: a serif heading, generous space above, tight below. */
+.section { padding-block: 56px 8px; }
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.section-head h2 { font-size: clamp(1.75rem, 1.4rem + 1.4vw, 2.5rem); }
+.section-head a { font-weight: 500; }
+.lede { color: var(--ink-2); max-width: 60ch; }
+
+.page-title {
+  font-size: clamp(2.25rem, 1.6rem + 2.6vw, 3.75rem);
+  letter-spacing: -0.02em;
+  margin-top: 40px;
+}
+
+.price {
+  font-variant-numeric: tabular-nums lining-nums;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+/* A primary action: the phone number and the booking link. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: var(--linde);
+  color: var(--on-linde);
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 150ms var(--ease);
+}
+.button:hover { background: var(--linde-ink); }
+.button svg { flex: none; }
+
+.prose { max-width: 65ch; }
+.prose p + p { margin-top: 1em; }
+/* Headings an owner types in Markdown (## to ####): a clear step above the body text, space above, less below. */
+.prose h2 { font-size: 1.75rem; }
+.prose h3 { font-size: 1.45rem; }
+.prose h4 { font-family: var(--serif); font-weight: 700; font-size: 1.25rem; line-height: 1.2; text-wrap: balance; }
+.prose h2, .prose h3, .prose h4 { margin: 1.6em 0 0.5em; }
+.prose > :first-child { margin-top: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "create-ginko",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Start a Ginko site: npm create ginko my-site",
+  "bin": {
+    "create-ginko": "./index.mjs"
+  },
+  "files": [
+    "index.mjs",
+    "template",
+    "presets",
+    "CHANGELOG.md"
+  ],
+  "license": "MIT",
+  "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lupinum-dev/ginko.git",
+    "directory": "packages/create-ginko"
+  },
+  "homepage": "https://github.com/lupinum-dev/ginko",
+  "bugs": {
+    "url": "https://github.com/lupinum-dev/ginko/issues"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

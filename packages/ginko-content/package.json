@@ -1,0 +1,52 @@
+{
+  "name": "@lupinum/ginko-content",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Ginko bricks from Markdown files in the site's repo (CONTENT.md).",
+  "license": "MIT",
+  "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lupinum-dev/ginko.git",
+    "directory": "packages/ginko-content"
+  },
+  "homepage": "https://github.com/lupinum-dev/ginko/tree/main/packages/ginko-content#readme",
+  "bugs": {
+    "url": "https://github.com/lupinum-dev/ginko/issues"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.mjs",
+    "types": "./dist/index.d.mts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "unbuild",
+    "prepack": "pnpm build"
+  },
+  "dependencies": {
+    "@lupinum/ginko": "workspace:^",
+    "comark": "0.7.0",
+    "js-yaml": "5.4.3",
+    "sharp": "0.35.5",
+    "shiki": "4.3.1"
+  },
+  "devDependencies": {
+    "unbuild": "3.6.1"
+  }
+}

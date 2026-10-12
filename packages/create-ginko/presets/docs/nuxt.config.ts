@@ -1,0 +1,8 @@
+import ginko from './ginko.config'
+
+export default defineNuxtConfig({
+  compatibilityDate: '2026-10-01',
+  extends: ['@lupinum/ginko-docs'],
+  modules: ['@lupinum/ginko/nuxt'],
+  ginko,
+})

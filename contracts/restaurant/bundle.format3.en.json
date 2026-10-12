@@ -1,0 +1,807 @@
+{
+  "format": 3,
+  "site": "restaurant",
+  "locale": "en",
+  "locales": [
+    "de",
+    "en"
+  ],
+  "mainLocale": "de",
+  "currency": "EUR",
+  "schemaRev": 1,
+  "contentRev": 1,
+  "generatedAt": "2026-10-08T06:00:00.000Z",
+  "bricks": {
+    "hours": {
+      "kind": "single",
+      "data": {
+        "week": [
+          {
+            "_id": "wkmo000000",
+            "day": "mo",
+            "closed": true
+          },
+          {
+            "_id": "wktu000000",
+            "day": "tu",
+            "closed": false,
+            "from1": "11:30",
+            "to1": "14:00",
+            "from2": "17:30",
+            "to2": "22:00"
+          },
+          {
+            "_id": "wkwe000000",
+            "day": "we",
+            "closed": false,
+            "from1": "11:30",
+            "to1": "14:00",
+            "from2": "17:30",
+            "to2": "22:00"
+          },
+          {
+            "_id": "wkth000000",
+            "day": "th",
+            "closed": false,
+            "from1": "11:30",
+            "to1": "14:00",
+            "from2": "17:30",
+            "to2": "22:00"
+          },
+          {
+            "_id": "wkfr000000",
+            "day": "fr",
+            "closed": false,
+            "from1": "11:30",
+            "to1": "14:00",
+            "from2": "17:30",
+            "to2": "22:00"
+          },
+          {
+            "_id": "wksa000000",
+            "day": "sa",
+            "closed": false,
+            "from1": "11:30",
+            "to1": "22:00"
+          },
+          {
+            "_id": "wksu000000",
+            "day": "su",
+            "closed": false,
+            "from1": "11:30",
+            "to1": "15:00"
+          }
+        ],
+        "exceptions": [
+          {
+            "_id": "exWinter01",
+            "when": {
+              "from": "2026-12-27",
+              "to": "2027-01-06"
+            },
+            "reason": "Betriebsurlaub Winter",
+            "closed": true
+          },
+          {
+            "_id": "exFeiertg1",
+            "when": {
+              "from": "2026-10-26",
+              "to": "2026-10-26"
+            },
+            "reason": "Nationalfeiertag",
+            "closed": true
+          },
+          {
+            "_id": "exHeilAb01",
+            "when": {
+              "from": "2026-12-24",
+              "to": "2026-12-24"
+            },
+            "reason": "Heiligabend",
+            "closed": false,
+            "from1": "11:00",
+            "to1": "14:00"
+          }
+        ],
+        "holidayNoticeDays": 14,
+        "holidays": "sunday"
+      },
+      "fallback": [
+        "exceptions.exWinter01.reason",
+        "exceptions.exFeiertg1.reason",
+        "exceptions.exHeilAb01.reason"
+      ]
+    },
+    "notices": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "notice-ausgebucht",
+          "data": {
+            "text": "We are fully booked today.",
+            "until": "2026-10-08"
+          },
+          "fallback": []
+        },
+        {
+          "id": "notice-weinabend",
+          "data": {
+            "text": "Weinabend am 16. Oktober: nur noch wenige Plätze.",
+            "until": "2026-10-16"
+          },
+          "fallback": [
+            "text"
+          ]
+        },
+        {
+          "id": "notice-urlaub",
+          "data": {
+            "text": "Betriebsurlaub vom 22. Dezember bis 6. Jänner.",
+            "until": "2026-09-30"
+          },
+          "fallback": [
+            "text"
+          ]
+        }
+      ]
+    },
+    "lunch": {
+      "kind": "single",
+      "data": {
+        "weekOf": "2026-10-05",
+        "days": [
+          {
+            "_id": "ldmo000000",
+            "day": "mo",
+            "dish": "Pumpkin cream soup with pumpkin seed oil",
+            "price": {
+              "amount": 1150,
+              "currency": "EUR"
+            },
+            "allergens": [
+              "G",
+              "L"
+            ]
+          },
+          {
+            "_id": "ldtu000000",
+            "day": "tu",
+            "dish": "Tafelspitz mit Apfelkren und Erdäpfeln",
+            "price": {
+              "amount": 1390,
+              "currency": "EUR"
+            },
+            "allergens": [
+              "L"
+            ]
+          },
+          {
+            "_id": "ldwe000000",
+            "day": "we",
+            "dish": "Kaiserschmarrn mit Zwetschkenröster",
+            "price": {
+              "amount": 1190,
+              "currency": "EUR"
+            },
+            "allergens": [
+              "A",
+              "C",
+              "G"
+            ]
+          },
+          {
+            "_id": "ldth000000",
+            "day": "th",
+            "dish": "Gebackener Saibling mit Petersilienerdäpfeln",
+            "price": {
+              "amount": 1490,
+              "currency": "EUR"
+            },
+            "allergens": [
+              "D",
+              "A",
+              "G"
+            ]
+          },
+          {
+            "_id": "ldfr000000",
+            "day": "fr",
+            "dish": "Gemüsestrudel mit Kräuterrahm",
+            "price": {
+              "amount": 1250,
+              "currency": "EUR"
+            },
+            "allergens": [
+              "A",
+              "C",
+              "G"
+            ]
+          }
+        ],
+        "note": "Alle Gerichte inklusive Beilagensalat."
+      },
+      "fallback": [
+        "days.ldtu000000.dish",
+        "days.ldwe000000.dish",
+        "days.ldth000000.dish",
+        "days.ldfr000000.dish",
+        "note"
+      ]
+    },
+    "menu": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "menu-saibling",
+          "data": {
+            "category": "starters",
+            "name": "Cured char",
+            "description": "Mit Dille, Kren und Roggenbrot",
+            "price": {
+              "amount": 1350,
+              "currency": "EUR"
+            },
+            "allergens": [
+              "D",
+              "A",
+              "G"
+            ],
+            "veg": "none"
+          },
+          "fallback": [
+            "description"
+          ]
+        },
+        {
+          "id": "menu-frittaten",
+          "data": {
+            "category": "soups",
+            "name": "Frittatensuppe",
+            "description": "Hausgemacht, mit Schnittlauch",
+            "price": {
+              "amount": 690,
+              "currency": "EUR"
+            },
+            "allergens": [
+              "A",
+              "C",
+              "L"
+            ],
+            "veg": "vegetarian"
+          },
+          "fallback": [
+            "name",
+            "description"
+          ]
+        },
+        {
+          "id": "menu-schnitzel",
+          "data": {
+            "category": "mains",
+            "name": "Wiener Schnitzel vom Kalb",
+            "description": "With potato and cucumber salad",
+            "price": {
+              "amount": 2190,
+              "currency": "EUR"
+            },
+            "allergens": [
+              "A",
+              "C",
+              "G"
+            ],
+            "veg": "none",
+            "nextPrice": {
+              "amount": 2290,
+              "currency": "EUR"
+            },
+            "priceFrom": "2026-10-18"
+          },
+          "fallback": [
+            "name"
+          ]
+        },
+        {
+          "id": "menu-risotto",
+          "data": {
+            "category": "mains",
+            "name": "Kürbisrisotto",
+            "description": "Mit Parmesan und Kürbiskernen",
+            "price": {
+              "amount": 1690,
+              "currency": "EUR"
+            },
+            "allergens": [
+              "G"
+            ],
+            "veg": "vegetarian"
+          },
+          "fallback": [
+            "name",
+            "description"
+          ]
+        },
+        {
+          "id": "menu-dal",
+          "data": {
+            "category": "mains",
+            "name": "Linsen-Dal mit Reis",
+            "price": {
+              "amount": 1490,
+              "currency": "EUR"
+            },
+            "allergens": [],
+            "veg": "vegan"
+          },
+          "fallback": [
+            "name"
+          ]
+        },
+        {
+          "id": "menu-marillen",
+          "data": {
+            "category": "desserts",
+            "name": "Apricot dumplings",
+            "price": {
+              "amount": 890,
+              "currency": "EUR"
+            },
+            "allergens": [
+              "A",
+              "C",
+              "G"
+            ],
+            "veg": "vegetarian"
+          },
+          "fallback": []
+        },
+        {
+          "id": "menu-veltliner",
+          "data": {
+            "category": "drinks",
+            "name": "Grüner Veltliner, 0,125 l",
+            "price": {
+              "amount": 470,
+              "currency": "EUR"
+            },
+            "allergens": [
+              "O"
+            ],
+            "veg": "vegan"
+          },
+          "fallback": [
+            "name"
+          ]
+        },
+        {
+          "id": "menu-topfen",
+          "data": {
+            "category": "desserts",
+            "name": "Topfenstrudel",
+            "price": {
+              "amount": 790,
+              "currency": "EUR"
+            },
+            "allergens": [
+              "A",
+              "C",
+              "G"
+            ],
+            "veg": "vegetarian"
+          },
+          "fallback": [
+            "name"
+          ]
+        }
+      ]
+    },
+    "events": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "sommerfest",
+          "data": {
+            "title": "Sommerfest im Gastgarten",
+            "slug": "sommerfest-gastgarten",
+            "when": {
+              "from": "2026-06-20",
+              "to": "2026-06-21"
+            },
+            "description": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Musik, Grillstation und Kinderprogramm."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "title",
+            "slug",
+            "description"
+          ],
+          "updatedAt": "2026-10-05T09:00:00.000Z"
+        },
+        {
+          "id": "weinabend",
+          "data": {
+            "title": "Wine evening with winemaker Lena Ebner",
+            "slug": "wine-evening-ebner",
+            "when": {
+              "from": "2026-10-16",
+              "to": "2026-10-16"
+            },
+            "start": "19:00",
+            "description": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Sechs Weine aus dem Kamptal, dazu eine Brettljause. Plätze gibt es über ",
+                  [
+                    "a",
+                    {
+                      "href": "https://reservierung.gasthaus-linde.example/weinabend"
+                    },
+                    "die Reservierungsseite"
+                  ],
+                  "."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            },
+            "price": {
+              "amount": 3800,
+              "currency": "EUR"
+            },
+            "booking": "https://reservierung.gasthaus-linde.example/weinabend",
+            "image": {
+              "url": "/media/weinabend.jpg",
+              "alt": "Wine bottles on a wooden table",
+              "width": 1600,
+              "height": 1067
+            }
+          },
+          "fallback": [
+            "description"
+          ],
+          "updatedAt": "2026-09-20T08:15:00.000Z",
+          "urls": {
+            "de": "/veranstaltungen/weinabend-ebner",
+            "en": "/en/events/wine-evening-ebner"
+          }
+        },
+        {
+          "id": "martinigans",
+          "data": {
+            "title": "Martini-Gansl",
+            "slug": "martini-gansl",
+            "when": {
+              "from": "2026-11-11",
+              "to": "2026-11-11"
+            },
+            "description": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Gansl mit Blaukraut und Semmelknödel. Nur mit Reservierung."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            },
+            "price": {
+              "amount": 5490,
+              "currency": "EUR"
+            },
+            "booking": "https://reservierung.gasthaus-linde.example/martini"
+          },
+          "fallback": [
+            "title",
+            "slug",
+            "description"
+          ],
+          "updatedAt": "2026-10-01T14:30:00.000Z",
+          "urls": {
+            "de": "/veranstaltungen/martini-gansl",
+            "en": "/en/events/martini-gansl"
+          }
+        }
+      ]
+    },
+    "gallery": {
+      "kind": "single",
+      "data": {
+        "images": [
+          {
+            "_id": "galGastr01",
+            "image": {
+              "url": "/media/gastraum.jpg",
+              "alt": "Dining room with wood panelling",
+              "width": 1600,
+              "height": 1200
+            }
+          },
+          {
+            "_id": "galSchnit2",
+            "image": {
+              "url": "/media/schnitzel.jpg",
+              "alt": "Wiener Schnitzel auf dem Teller",
+              "width": 1600,
+              "height": 1067
+            }
+          },
+          {
+            "_id": "galGarten3",
+            "image": {
+              "url": "/media/gastgarten.jpg",
+              "alt": "Gastgarten unter Kastanien",
+              "width": 1600,
+              "height": 1067
+            }
+          },
+          {
+            "_id": "galKueche4",
+            "image": {
+              "url": "/media/kueche.jpg",
+              "alt": "Kitchen at work",
+              "width": 1200,
+              "height": 1600
+            }
+          }
+        ]
+      },
+      "fallback": [
+        "images.galSchnit2.image.alt",
+        "images.galGarten3.image.alt"
+      ]
+    },
+    "contact": {
+      "kind": "single",
+      "data": {
+        "street": "Dorfstraße 12",
+        "postalCode": "5020",
+        "city": "Salzburg",
+        "phone": "+43 662 000 000",
+        "email": "office@gasthaus-linde.example"
+      },
+      "fallback": []
+    },
+    "legal": {
+      "kind": "single",
+      "data": {
+        "imprint": {
+          "nodes": [
+            [
+              "p",
+              {},
+              "Gasthaus zur Linde, Inhaberin Maria Ebner",
+              [
+                "br",
+                {}
+              ],
+              "Dorfstraße 12, 5020 Salzburg"
+            ],
+            [
+              "p",
+              {},
+              "Kontakt: ",
+              [
+                "a",
+                {
+                  "href": "mailto:office@gasthaus-linde.example"
+                },
+                "office@gasthaus-linde.example"
+              ]
+            ]
+          ],
+          "toc": {
+            "title": "",
+            "searchDepth": 3,
+            "depth": 2,
+            "links": []
+          }
+        },
+        "privacy": {
+          "nodes": [
+            [
+              "p",
+              {},
+              "Diese Seite setzt keine Cookies und lädt keine Schriften von Dritten."
+            ]
+          ],
+          "toc": {
+            "title": "",
+            "searchDepth": 3,
+            "depth": 2,
+            "links": []
+          }
+        }
+      },
+      "fallback": [
+        "imprint",
+        "privacy"
+      ]
+    },
+    "seo": {
+      "kind": "single",
+      "data": {
+        "title": "Gasthaus zur Linde, Salzburg",
+        "description": "Austrian inn cooking in Salzburg: lunch menu, menu and events."
+      },
+      "fallback": []
+    },
+    "hourPlans": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "plan-winter",
+          "data": {
+            "label": "Winterzeiten",
+            "from": "2026-11-01",
+            "to": "2027-03-31",
+            "yearly": true,
+            "week": [
+              {
+                "_id": "wpmo000000",
+                "day": "mo",
+                "closed": true
+              },
+              {
+                "_id": "wptu000000",
+                "day": "tu",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpwe000000",
+                "day": "we",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpth000000",
+                "day": "th",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpfr000000",
+                "day": "fr",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpsa000000",
+                "day": "sa",
+                "closed": false,
+                "from1": "11:30",
+                "to1": "22:00"
+              },
+              {
+                "_id": "wpsu000000",
+                "day": "su",
+                "closed": true
+              }
+            ]
+          },
+          "fallback": [
+            "label"
+          ]
+        }
+      ]
+    },
+    "lunchPlans": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "plan-kw42",
+          "data": {
+            "weekOf": "2026-10-12",
+            "days": [
+              {
+                "_id": "ldmo000000",
+                "day": "mo",
+                "dish": "Gulaschsuppe mit Gebäck",
+                "price": {
+                  "amount": 1090,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "L"
+                ]
+              },
+              {
+                "_id": "ldtu000000",
+                "day": "tu",
+                "dish": "Krautfleckerl mit Speck",
+                "price": {
+                  "amount": 1590,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "L",
+                  "M"
+                ]
+              },
+              {
+                "_id": "ldwe000000",
+                "day": "we",
+                "dish": "Topfenknödel mit Zwetschkenröster",
+                "price": {
+                  "amount": 1150,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "C",
+                  "G"
+                ]
+              },
+              {
+                "_id": "ldth000000",
+                "day": "th",
+                "dish": "Gebratene Forelle mit Mandelbutter",
+                "price": {
+                  "amount": 1490,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "D",
+                  "G",
+                  "H"
+                ]
+              },
+              {
+                "_id": "ldfr000000",
+                "day": "fr",
+                "dish": "Spinatknödel mit brauner Butter",
+                "price": {
+                  "amount": 1250,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "C",
+                  "G"
+                ]
+              }
+            ],
+            "note": "Alle Gerichte inklusive Beilagensalat."
+          },
+          "fallback": [
+            "days.ldmo000000.dish",
+            "days.ldtu000000.dish",
+            "days.ldwe000000.dish",
+            "days.ldth000000.dish",
+            "days.ldfr000000.dish",
+            "note"
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "name": "@lupinum/ginko-components",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Editorial Markdown components for Ginko: callouts, asides, layout, timeline and more.",
+  "license": "MIT",
+  "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lupinum-dev/ginko.git",
+    "directory": "packages/ginko-components"
+  },
+  "homepage": "https://github.com/lupinum-dev/ginko/tree/main/packages/ginko-components#readme",
+  "bugs": {
+    "url": "https://github.com/lupinum-dev/ginko/issues"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
+  },
+  "files": [
+    "dist",
+    "i18n",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": "./src/module.ts",
+    "./registry": "./src/registry.ts",
+    "./components": "./src/runtime/components/index.ts",
+    "./styles.css": "./src/runtime/styles.css"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/module.mjs",
+    "types": "./dist/types.d.mts",
+    "exports": {
+      ".": {
+        "types": "./dist/types.d.mts",
+        "import": "./dist/module.mjs"
+      },
+      "./registry": {
+        "types": "./dist/registry.d.mts",
+        "import": "./dist/registry.mjs"
+      },
+      "./components": {
+        "types": "./dist/runtime/components/index.d.ts",
+        "import": "./dist/runtime/components/index.js"
+      },
+      "./styles.css": "./dist/runtime/styles.css"
+    }
+  },
+  "scripts": {
+    "build": "nuxt-module-build prepare && nuxt-module-build build",
+    "registry": "node --experimental-strip-types scripts/build-registry.ts",
+    "prepack": "pnpm build"
+  },
+  "peerDependencies": {
+    "nuxt": "^4.6.0",
+    "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "@lupinum/ginko": "workspace:^",
+    "@nuxt/kit": "^4.6.0"
+  },
+  "devDependencies": {
+    "@nuxt/schema": "4.6.0",
+    "@vue/server-renderer": "3.5.43",
+    "nuxt": "4.6.0",
+    "vue": "3.5.43",
+    "vue-tsc": "^3.1.5"
+  }
+}

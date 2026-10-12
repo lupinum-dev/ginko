@@ -1,0 +1,17 @@
+{
+  "name": "{{SITE}}",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@lupinum/ginko": "^{{VERSION}}",
+    "@lupinum/ginko-content": "^{{VERSION}}",
+    "nuxt": "^4.6.0",
+    "vue": "^3.5.0"
+  }
+}

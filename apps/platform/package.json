@@ -1,0 +1,27 @@
+{
+  "name": "@ginko/platform",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "convex": "CONVEX_AGENT_MODE=anonymous convex dev",
+    "dev": "nuxt dev --port 3100 --dotenv .env.local",
+    "typecheck": "tsc -p ../../packages/ginko-server/convex/tsconfig.json && nuxt typecheck",
+    "e2e": "playwright test",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@lupinum/better-convex-nuxt": "file:../../vendor/lupinum-better-convex-nuxt-1.0.0-rc.1.tgz",
+    "@lupinum/ginko-server": "workspace:*",
+    "@lupinum/ginko-studio": "workspace:*",
+    "convex": "1.46.0",
+    "nuxt": "4.6.0",
+    "vue": "3.5.43"
+  },
+  "devDependencies": {
+    "@lupinum/ginko": "workspace:*",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^24.19.1",
+    "typescript": "6.0.3",
+    "vue-tsc": "3.1.5"
+  }
+}

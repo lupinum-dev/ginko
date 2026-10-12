@@ -1,0 +1,66 @@
+{
+  "name": "@lupinum/ginko-editor",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Editing logic for Ginko bricks: the headless Markdown editor, uploads, issues and value helpers.",
+  "license": "MIT",
+  "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lupinum-dev/ginko.git",
+    "directory": "packages/ginko-editor"
+  },
+  "homepage": "https://github.com/lupinum-dev/ginko/tree/main/packages/ginko-editor#readme",
+  "bugs": {
+    "url": "https://github.com/lupinum-dev/ginko/issues"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "unbuild",
+    "prepack": "pnpm build"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "@lupinum/ginko": "workspace:^",
+    "@tiptap/core": "3.31.4",
+    "@tiptap/extension-blockquote": "3.31.4",
+    "@tiptap/extension-code": "3.31.4",
+    "@tiptap/extension-document": "3.31.4",
+    "@tiptap/extension-image": "3.31.4",
+    "@tiptap/extension-list": "3.31.4",
+    "@tiptap/extension-table": "3.31.4",
+    "@tiptap/pm": "3.31.4",
+    "@tiptap/starter-kit": "3.31.4"
+  },
+  "devDependencies": {
+    "@lupinum/ginko-components": "workspace:*",
+    "@vue/test-utils": "2.5.1",
+    "happy-dom": "20.14.5",
+    "unbuild": "3.6.1",
+    "vue": "3.5.43",
+    "vue-tsc": "3.1.5"
+  }
+}

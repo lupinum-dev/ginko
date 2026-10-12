@@ -1,0 +1,6 @@
+{
+  "functions": "../../packages/ginko-server/convex/",
+  "node": {
+    "externalPackages": ["sharp"]
+  }
+}

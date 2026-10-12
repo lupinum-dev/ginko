@@ -1,0 +1,58 @@
+// Approval is on (SPEC 17): the server answers a write with a proposal and writes nothing. Every Studio
+// write path must then say "Sent for approval", offer no Undo, and not read fields a proposal does not have.
+// Only the Convex mutations and the toast are replaced; messages come from the real catalogs.
+import { describe, expect, test, vi } from 'vitest'
+
+const mocks = vi.hoisted(() => ({ results: new Map<string, unknown>(), toasts: [] as { text: string; action?: unknown }[] }))
+vi.mock('#imports', async () => {
+  const { createTranslator } = await import('@lupinum/ginko-i18n/core')
+  const { compileCatalogs } = await import('@lupinum/ginko-i18n/compile')
+  const catalogs = compileCatalogs({
+    de: { ...(await import('../i18n/de.json')).default },
+    en: { ...(await import('../i18n/en.json')).default },
+  })
+  return { useI18n: () => ({ t: createTranslator({ messages: catalogs.en, fallback: catalogs.de, language: 'en', timeZone: 'Europe/Vienna' }).t, format: {} }) }
+})
+
+import { provideLastingOps, useOps } from '../app/composables/useOps'
+
+const holder: { lasting?: unknown } = {}
+vi.stubGlobal('useToast', () => ({ show: (text: string, opts?: { action?: unknown }) => mocks.toasts.push({ text, action: opts?.action }) }))
+vi.stubGlobal('useConvexMutation', (name: string) => ({ mutate: async () => mocks.results.get(String(name)) }))
+vi.stubGlobal('provide', (_key: unknown, value: unknown) => { holder.lasting = value })
+vi.stubGlobal('inject', () => holder.lasting)
+provideLastingOps()
+
+const ops = useOps({ value: 'demo' } as never)
+const proposal = { proposal: 'p1', status: 'open' }
+const sent = 'Sent for approval. The owner decides.'
+
+// [path, mutation it calls, a normal result, the call, toasts of a normal result]
+const paths: [string, string, unknown, () => Promise<unknown>, number][] = [
+  ['saveEntry', 'entries.save', { entry: 'e', rev: 2, change: 'c1' }, () => ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o' }), 1],
+  ['createEntry', 'entries.create', { entry: 'e', state: 'live' }, () => ops.createEntry({ brick: 'b', data: {}, op: 'o' }), 1],
+  ['removeEntry', 'entries.remove', { entry: 'e', lifeRev: 2 }, () => ops.removeEntry('e', 1), 1],
+  ['restoreEntry', 'entries.restore', { entry: 'e', lifeRev: 3 }, () => ops.restoreEntry('e', 2), 1],
+  ['publishEntry', 'entries.publish', { entry: 'e', lifeRev: 2 }, () => ops.publishEntry('e', 1, { timeZone: 'Europe/Vienna' }), 1],
+  ['unpublishEntry', 'entries.unpublish', { entry: 'e', lifeRev: 2, contentRev: 4 }, () => ops.unpublishEntry('e', 1, { timeZone: 'Europe/Vienna', wasLive: true }), 1],
+  ['undoChange', 'entries.undo', { change: 'c2' }, () => ops.undoChange('c1'), 1],
+  ['revertEntry', 'entries.revert', { entry: 'e', change: 'c3' }, () => ops.revertEntry('e', 'c1'), 1],
+  ['reorderEntries', 'entries.reorder', { orderRev: 2 }, () => ops.reorderEntries('b', ['a', 'b'], 1), 0],
+]
+
+describe('writes that become proposals', () => {
+  test.each(paths)('%s: proposal says "Sent for approval", no Undo, no throw', async (_name, mutation, _normal, run) => {
+    mocks.toasts.length = 0
+    mocks.results.set(mutation, proposal)
+    await expect(run()).resolves.not.toThrow()
+    expect(mocks.toasts).toEqual([{ text: sent, action: undefined }])
+  })
+
+  test.each(paths)('%s: a normal result keeps its own toast', async (_name, mutation, normal, run, count) => {
+    mocks.toasts.length = 0
+    mocks.results.set(mutation, normal)
+    await run()
+    expect(mocks.toasts).toHaveLength(count)
+    expect(mocks.toasts.map((t) => t.text)).not.toContain(sent)
+  })
+})

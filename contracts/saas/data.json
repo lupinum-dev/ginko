@@ -1,0 +1,572 @@
+{
+  "hero": [
+    {
+      "id": "hero",
+      "data": {
+        "headline": {
+          "de": "Zeiterfassung für Handwerksbetriebe",
+          "en": "Time tracking for trade businesses",
+          "fr": "Suivi du temps pour les artisans"
+        },
+        "text": {
+          "de": "Taktwerk erfasst Arbeitszeiten auf der Baustelle, auch ohne Netz.",
+          "en": "Taktwerk records working hours on site, even without a network."
+        },
+        "buttonText": {
+          "de": "Kostenlos testen",
+          "en": "Try it free"
+        },
+        "buttonUrl": "https://app.taktwerk.example/start"
+      },
+      "prints": {
+        "headline": {
+          "en": "50a47ff265e4d0c67f36b69a2900425e47a9069a4aad523c5d2fa11ee9d50f55",
+          "fr": "50a47ff265e4d0c67f36b69a2900425e47a9069a4aad523c5d2fa11ee9d50f55"
+        },
+        "text": {
+          "en": "c639a41b01d22a30ac6615bc68d2e0567b701a5e39a728cd5945a0759c02e10a"
+        },
+        "buttonText": {
+          "en": "aa0333b6f2ed682057bee8d671fb9adb4e42d3b1244d12226a2d102372c6c777"
+        }
+      }
+    }
+  ],
+  "features": [
+    {
+      "id": "features",
+      "data": {
+        "headline": {
+          "de": "Was Taktwerk kann",
+          "en": "What Taktwerk does"
+        },
+        "items": [
+          {
+            "_id": "ftStempel1",
+            "title": {
+              "de": "Stempeln per Handy",
+              "en": "Clock in on your phone",
+              "fr": "Pointage sur mobile"
+            },
+            "text": {
+              "de": "Mitarbeitende stempeln auf der Baustelle, auch ohne Netz.",
+              "en": "Crews clock in on site, even without a network."
+            }
+          },
+          {
+            "_id": "ftPausen02",
+            "title": {
+              "de": "Pausen automatisch abziehen"
+            },
+            "text": {
+              "de": "Pausenregeln nach Arbeitszeitgesetz, pro Betrieb einstellbar."
+            }
+          },
+          {
+            "_id": "ftExport03",
+            "title": {
+              "de": "Export für die Lohnbuchhaltung"
+            },
+            "text": {
+              "de": "CSV und DATEV-Format, mit einem Klick."
+            }
+          },
+          {
+            "_id": "ftPdfDok04",
+            "title": {
+              "de": "Stundenzettel als PDF"
+            },
+            "text": {
+              "de": "Für Kundinnen und Kunden zum Unterschreiben."
+            }
+          }
+        ]
+      },
+      "prints": {
+        "headline": {
+          "en": "693d10becbd8be94a8b7d27daef017d5ac80612961168c4e3f4d250e31a97b3d"
+        },
+        "items.ftStempel1.title": {
+          "en": "63161141ba529b75471ed027cd4dafc18de6a2cf86ddc328d65a440dcb8f812f",
+          "fr": "63161141ba529b75471ed027cd4dafc18de6a2cf86ddc328d65a440dcb8f812f"
+        },
+        "items.ftStempel1.text": {
+          "en": "75373203b7c4f79c6c661d5d88a95cbb37eee74f9cc0e6b87c1a59a4378a76db"
+        }
+      }
+    }
+  ],
+  "pricing": [
+    {
+      "id": "plan-start",
+      "order": 1,
+      "data": {
+        "name": "Start",
+        "priceEur": {
+          "amount": 2900
+        },
+        "priceChf": {
+          "amount": 3200
+        },
+        "featured": false,
+        "features": [
+          {
+            "_id": "pfStart001",
+            "text": {
+              "de": "Bis 3 Mitarbeitende",
+              "en": "Up to 3 employees",
+              "fr": "Jusqu'à 3 collaborateurs"
+            }
+          },
+          {
+            "_id": "pfStart002",
+            "text": {
+              "de": "Stempeln per Handy",
+              "en": "Clock in on your phone"
+            }
+          }
+        ],
+        "note": {
+          "de": "zzgl. MwSt.",
+          "en": "plus VAT",
+          "fr": "hors TVA"
+        },
+        "yearEur": {
+          "amount": 29000
+        },
+        "yearChf": {
+          "amount": 32000
+        }
+      },
+      "prints": {
+        "features.pfStart001.text": {
+          "en": "b478061b4eaa36254caba7173f4cdfd5f1a9804152064d36e0425bd3825ed7d4",
+          "fr": "b478061b4eaa36254caba7173f4cdfd5f1a9804152064d36e0425bd3825ed7d4"
+        },
+        "features.pfStart002.text": {
+          "en": "63161141ba529b75471ed027cd4dafc18de6a2cf86ddc328d65a440dcb8f812f"
+        },
+        "note": {
+          "en": "f7e576574ae815698fb1edb063d786286f97114f31bbca334daf142d6309f6b4",
+          "fr": "f7e576574ae815698fb1edb063d786286f97114f31bbca334daf142d6309f6b4"
+        }
+      }
+    },
+    {
+      "id": "plan-team",
+      "order": 2,
+      "data": {
+        "name": "Team",
+        "priceEur": {
+          "amount": 5900
+        },
+        "priceChf": {
+          "amount": 6490
+        },
+        "featured": true,
+        "features": [
+          {
+            "_id": "pfTeam0001",
+            "text": {
+              "de": "Bis 15 Mitarbeitende",
+              "en": "Up to 15 employees"
+            }
+          },
+          {
+            "_id": "pfTeam0002",
+            "text": {
+              "de": "Export für die Lohnbuchhaltung",
+              "en": "Payroll export"
+            }
+          },
+          {
+            "_id": "pfTeam0003",
+            "text": {
+              "de": "Pausenregeln pro Betrieb"
+            }
+          }
+        ],
+        "note": {
+          "de": "zzgl. MwSt.",
+          "en": "plus VAT",
+          "fr": "hors TVA"
+        },
+        "yearEur": {
+          "amount": 59000
+        },
+        "yearChf": {
+          "amount": 64900
+        }
+      },
+      "prints": {
+        "features.pfTeam0001.text": {
+          "en": "3d0d65d8bee0dca9da7aab8e82fb2b5eb3b70cb1dcb098f914a25a0a49410fb0"
+        },
+        "features.pfTeam0002.text": {
+          "en": "5ea73860dceb4d1c13952b58d86354e44772cbb3c6deb0acf4e820ff2afb2e55"
+        },
+        "note": {
+          "en": "f7e576574ae815698fb1edb063d786286f97114f31bbca334daf142d6309f6b4",
+          "fr": "f7e576574ae815698fb1edb063d786286f97114f31bbca334daf142d6309f6b4"
+        }
+      }
+    },
+    {
+      "id": "plan-pro",
+      "order": 3,
+      "data": {
+        "name": "Pro",
+        "priceEur": {
+          "amount": 10900
+        },
+        "priceChf": {
+          "amount": 11900
+        },
+        "featured": false,
+        "features": [
+          {
+            "_id": "pfPro00001",
+            "text": {
+              "de": "Unbegrenzt viele Mitarbeitende",
+              "en": "Unlimited employees"
+            }
+          },
+          {
+            "_id": "pfPro00002",
+            "text": {
+              "de": "Schnittstelle zur Lohnbuchhaltung"
+            }
+          }
+        ],
+        "yearEur": {
+          "amount": 109000
+        },
+        "yearChf": {
+          "amount": 119000
+        }
+      },
+      "prints": {
+        "features.pfPro00001.text": {
+          "en": "751e47bce049a31656c265a92024ee7fc52a6c3daaa5e76d0850b81b98b6f796"
+        }
+      }
+    }
+  ],
+  "changelog": [
+    {
+      "id": "cl-2140",
+      "data": {
+        "version": "2.14.0",
+        "date": "2026-10-06",
+        "tags": [
+          "new",
+          "fixed"
+        ],
+        "body": {
+          "de": "Neu: Stundenzettel als PDF exportieren. Behoben: Pausenzeiten um Mitternacht."
+        }
+      }
+    },
+    {
+      "id": "cl-2132",
+      "data": {
+        "version": "2.13.2",
+        "date": "2026-09-22",
+        "tags": [
+          "improved"
+        ],
+        "body": {
+          "de": "Verbessert: Ladezeit der Wochenübersicht.",
+          "en": "Improved: loading time of the weekly overview."
+        }
+      },
+      "prints": {
+        "body": {
+          "en": "e9982a0e3a3830045a3b6261e70cf46fff5fe25f0315016624fa2beb77f99001"
+        }
+      }
+    },
+    {
+      "id": "cl-2130",
+      "data": {
+        "version": "2.13.0",
+        "date": "2026-09-08",
+        "tags": [],
+        "body": {
+          "de": "Neu: Zeitkonten für Teilzeitkräfte."
+        }
+      }
+    }
+  ],
+  "blog": [
+    {
+      "id": "bl-pausen",
+      "data": {
+        "title": {
+          "de": "So rechnen Sie Pausen richtig ab",
+          "en": "How to bill breaks correctly",
+          "fr": "Décompter les pauses correctement"
+        },
+        "slug": {
+          "de": "pausen-richtig-abrechnen",
+          "en": "billing-breaks-correctly",
+          "fr": "pauses-decompte-correct"
+        },
+        "date": "2026-09-30",
+        "author": "Lena Ruhland",
+        "description": {
+          "de": "Wie Pausen im Stundenzettel stehen, damit die Abrechnung stimmt."
+        },
+        "image": {
+          "file": "fl-blog-pausen",
+          "alt": {
+            "de": "Handwerker mit Tablet auf dem Dach",
+            "en": "Tradesman with a tablet on a roof"
+          }
+        },
+        "body": {
+          "de": "Pausen gehören in den Stundenzettel, sonst fehlen Minuten in der Abrechnung.\n\nWelcher Tarif passt, sehen Sie unter [Preise](/preise).",
+          "en": "Breaks belong on the timesheet, or minutes go missing in payroll."
+        }
+      },
+      "prints": {
+        "title": {
+          "en": "fc2bd7e592d33349ebf9048154f4c0677b799ccdcefdd389009e0ee8277a2787",
+          "fr": "fc2bd7e592d33349ebf9048154f4c0677b799ccdcefdd389009e0ee8277a2787"
+        },
+        "slug": {
+          "en": "84c92d42d2163fbc5ddbe975aad939135397a831eb297b4325e113208139cd0b",
+          "fr": "84c92d42d2163fbc5ddbe975aad939135397a831eb297b4325e113208139cd0b"
+        },
+        "image.alt": {
+          "en": "f0c2f75c8cdb21e2659c3fd769e724b8ab985cf9e0139a27d389681443f82861"
+        },
+        "body": {
+          "en": "c193cf80cf976b5eadb28778095671aa3ece51048d8bec8d6752c2bdb859181e"
+        }
+      }
+    },
+    {
+      "id": "bl-papier",
+      "data": {
+        "title": {
+          "de": "Stundenzettel ohne Papier"
+        },
+        "slug": {
+          "de": "stundenzettel-ohne-papier"
+        },
+        "date": "2026-08-12",
+        "author": "Jonas Keller",
+        "description": {
+          "de": "Warum digitale Stundenzettel schneller abgerechnet werden."
+        },
+        "body": {
+          "de": "Papier geht verloren. Digitale Zettel kommen direkt in die Abrechnung."
+        }
+      }
+    },
+    {
+      "id": "bl-mindestlohn",
+      "data": {
+        "title": {
+          "de": "Die Mindestlohn-Doku in Taktwerk",
+          "en": "Minimum wage records in Taktwerk"
+        },
+        "slug": {
+          "de": "mindestlohn-doku"
+        },
+        "date": "2026-07-01",
+        "author": "Lena Ruhland",
+        "description": {
+          "de": "Wie Taktwerk Arbeitszeiten für die Dokumentation festhält."
+        },
+        "body": {
+          "de": "Jede Stempelung ist mit Datum und Uhrzeit festgehalten."
+        }
+      },
+      "prints": {
+        "title": {
+          "en": "d00c44353633538497848ee5416cda1b7f4ce18300ce0fc56c72accf4ee755cd"
+        }
+      }
+    }
+  ],
+  "testimonials": [
+    {
+      "id": "t-keller",
+      "order": 1,
+      "data": {
+        "quote": {
+          "de": "Seit Taktwerk stimmen unsere Stunden. Die Lohnabrechnung dauert halb so lang.",
+          "fr": "Depuis Taktwerk, nos heures sont justes. La paie prend deux fois moins de temps."
+        },
+        "name": "Urs Keller",
+        "company": "Keller Haustechnik AG, Zürich",
+        "logo": {
+          "file": "fl-logo-keller",
+          "alt": {
+            "de": "Logo Keller Haustechnik"
+          }
+        }
+      },
+      "prints": {
+        "quote": {
+          "fr": "fdaeb7ab51ebe8a7d51f72f186e0cea1a91bc9a3d3066c6e7e3c22671d9ff43a"
+        }
+      }
+    },
+    {
+      "id": "t-brandt",
+      "order": 2,
+      "data": {
+        "quote": {
+          "de": "Auf der Baustelle stempeln alle mit dem Handy. Das spart mir jeden Montag eine Stunde."
+        },
+        "name": "Anna Brandt",
+        "company": "Brandt Dachbau GmbH, Berlin"
+      }
+    },
+    {
+      "id": "t-wirth",
+      "order": 3,
+      "data": {
+        "quote": {
+          "de": "Der Export passt direkt in unsere Software. Kein Abtippen mehr.",
+          "en": "The export fits straight into our software. No more typing."
+        },
+        "name": "Stefan Wirth",
+        "company": "Wirth Sanitär, Basel"
+      },
+      "prints": {
+        "quote": {
+          "en": "1a8d4ed21ec388ec1f9838696bce603ec3586b2ba8f4d582ee846c8dc0bfb7da"
+        }
+      }
+    }
+  ],
+  "faq": [
+    {
+      "id": "faq-offline",
+      "order": 1,
+      "data": {
+        "question": {
+          "de": "Kann ich Taktwerk offline nutzen?",
+          "en": "Can I use Taktwerk offline?"
+        },
+        "answer": {
+          "de": "Ja. Stempelungen werden auf dem Handy gespeichert und später übertragen.",
+          "en": "Yes. Clock-ins are saved on the phone and sent later."
+        }
+      },
+      "prints": {
+        "question": {
+          "en": "cc7668994ba57abaf15c79b30a72b4f05eafa239519069d2db21d8e0a5dfae3c"
+        },
+        "answer": {
+          "en": "8560d9a20901632e0307d59de94dd9fd701e0ab6ad7c0dd766e7d3aa9ac8da2b"
+        }
+      }
+    },
+    {
+      "id": "faq-test",
+      "order": 2,
+      "data": {
+        "question": {
+          "de": "Gibt es eine Testphase?"
+        },
+        "answer": {
+          "de": "Alle Tarife können Sie 30 Tage kostenlos testen. Details stehen unter [Preise](/preise)."
+        }
+      }
+    },
+    {
+      "id": "faq-daten",
+      "order": 3,
+      "data": {
+        "question": {
+          "de": "Wo liegen meine Daten?"
+        },
+        "answer": {
+          "de": "Auf Servern in der EU. Mehr dazu in der [Datenschutzerklärung](/datenschutz)."
+        }
+      }
+    },
+    {
+      "id": "faq-kuendigung",
+      "order": 4,
+      "data": {
+        "question": {
+          "de": "Kann ich jederzeit kündigen?"
+        },
+        "answer": {
+          "de": "Ja, zum Monatsende. Ihre Daten exportieren Sie vorher als CSV."
+        }
+      }
+    }
+  ],
+  "notices": [
+    {
+      "id": "nt-wartung",
+      "order": 1,
+      "data": {
+        "text": {
+          "de": "Wartung am 12. Oktober von 22 bis 23 Uhr.",
+          "en": "Maintenance on 12 October, 10 to 11 pm."
+        },
+        "until": "2026-10-12"
+      },
+      "prints": {
+        "text": {
+          "en": "4a1d6f02f5c9fbb7a0109eb2472b060a4f77276022f83b2e162e970aeb1defbf"
+        }
+      }
+    },
+    {
+      "id": "nt-fr",
+      "order": 2,
+      "data": {
+        "text": {
+          "de": "Neu: Changelog jetzt auch auf Französisch.",
+          "fr": "Nouveau : le changelog est désormais en français."
+        },
+        "link": "https://taktwerk.example/fr/changelog",
+        "until": "2026-09-30"
+      },
+      "prints": {
+        "text": {
+          "fr": "e103501d579d566329227f6cab265ade0c996b77a0b4f78c2196fd3dae186941"
+        }
+      }
+    }
+  ],
+  "company": [
+    {
+      "id": "company",
+      "data": {
+        "name": "Taktwerk GmbH",
+        "street": "Wiener Straße 18",
+        "city": "10999 Berlin",
+        "email": "hallo@taktwerk.example"
+      }
+    }
+  ],
+  "legal": [
+    {
+      "id": "legal",
+      "data": {
+        "terms": {
+          "de": "Allgemeine Geschäftsbedingungen, Stand 1. September 2026."
+        },
+        "avv": {
+          "de": "Auftragsverarbeitung nach Art. 28 DSGVO, Vorlage zum Download."
+        },
+        "privacy": {
+          "de": "Wir verarbeiten Daten nur für den Betrieb von Taktwerk. Details folgen."
+        },
+        "imprint": {
+          "de": "Taktwerk GmbH, Wiener Straße 18, 10999 Berlin. Geschäftsführung: Lena Brandt. Handelsregister: Amtsgericht Charlottenburg, HRB 000000 B. Alle Angaben erfunden (Demo)."
+        }
+      }
+    }
+  ]
+}

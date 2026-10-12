@@ -1,0 +1,7 @@
+// The feed of another language: /<locale>/blog/rss.xml. The main language has none here (404), its feed has no prefix.
+// Registered by modules/pages.ts only when the site has `posts`.
+export default defineEventHandler((event) => {
+  const locale = getRouterParam(event, 'locale') ?? ''
+  if (locale === (useRuntimeConfig(event).public.ginko as { mainLocale: string }).mainLocale) throw createError({ statusCode: 404, statusMessage: 'Not found' })
+  return serveBlogFeed(event, locale)
+})

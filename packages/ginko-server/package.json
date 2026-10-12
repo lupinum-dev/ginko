@@ -1,0 +1,45 @@
+{
+  "name": "@lupinum/ginko-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Ginko platform backend for Convex: sites, entries, releases, uploads, sign-in.",
+  "license": "MIT",
+  "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lupinum-dev/ginko.git",
+    "directory": "packages/ginko-server"
+  },
+  "homepage": "https://github.com/lupinum-dev/ginko/tree/main/packages/ginko-server#readme",
+  "bugs": {
+    "url": "https://github.com/lupinum-dev/ginko/issues"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
+  },
+  "files": [
+    "convex",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    "./convex/*": "./convex/*"
+  },
+  "dependencies": {
+    "@better-auth/core": "1.7.6",
+    "@better-auth/oauth-provider": "1.7.6",
+    "@lupinum/better-convex-nuxt": "file:../../vendor/lupinum-better-convex-nuxt-1.0.0-rc.1.tgz",
+    "@lupinum/ginko": "workspace:^",
+    "@lupinum/ginko-i18n": "workspace:^",
+    "better-auth": "1.7.6",
+    "convex": "1.46.0",
+    "sharp": "0.35.5"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "5.0.0",
+    "@types/node": "^24.19.1",
+    "convex-test": "0.0.60",
+    "typescript": "6.0.3"
+  }
+}

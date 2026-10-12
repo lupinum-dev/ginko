@@ -1,0 +1,159 @@
+/* Styles of the quiz and api components. Plain CSS, class prefix `ginko-`; colours read the same shadcn-style tokens
+   and status colours as components.css. */
+
+:is(.ginko-quiz, .ginko-api) { box-sizing: border-box; margin: 1.25rem 0; border: 1px solid var(--ginko-surface-border, var(--border, var(--ginko-default-border))); background-color: var(--ginko-surface, transparent); border-radius: var(--radius, 0.625rem); }
+:is(.ginko-quiz, .ginko-api) *, :is(.ginko-quiz, .ginko-api) *::before, :is(.ginko-quiz, .ginko-api) *::after { box-sizing: border-box; }
+:is(.ginko-quiz, .ginko-api) [hidden] { display: none; }
+
+/* --- Quiz --- */
+.ginko-quiz { overflow: hidden; }
+.ginko-quiz-header { border-bottom: 1px solid var(--border, var(--ginko-default-border)); background-color: color-mix(in oklab, var(--foreground, var(--ginko-default-foreground)) 4%, var(--ginko-surface, var(--background, var(--ginko-default-background)))); padding: 0.75rem 1rem; }
+.ginko-quiz .ginko-quiz-title { margin: 0; color: var(--foreground, var(--ginko-default-foreground)); font-size: 1rem; font-weight: 600; line-height: 1.4; }
+.ginko-quiz .ginko-quiz-description { margin: 0.125rem 0 0; color: var(--muted-foreground, var(--ginko-default-muted-foreground)); font-size: 0.875rem; }
+.ginko-quiz-body { padding: 1rem; }
+.ginko-quiz-question { min-width: 0; margin: 0; border: 0; padding: 0; }
+.ginko-quiz-question:focus-visible { outline: 2px solid var(--ring, var(--primary, var(--ginko-default-primary))); outline-offset: 4px; }
+.ginko-quiz-legend { margin-bottom: 0.75rem; padding: 0; color: var(--foreground, var(--ginko-default-foreground)); font-weight: 600; line-height: 1.5; }
+.ginko-quiz-hint { margin-inline-start: 0.35rem; color: var(--muted-foreground, var(--ginko-default-muted-foreground)); font-size: 0.8125rem; font-weight: 400; }
+.ginko-quiz-options { display: grid; gap: 0.5rem; }
+.ginko-quiz-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--border, var(--ginko-default-border));
+  border-radius: calc(var(--radius, 0.625rem) - 2px);
+  padding: 0.625rem 0.75rem;
+  cursor: pointer;
+}
+.ginko-quiz-option:hover { background-color: var(--muted, var(--ginko-default-muted)); }
+/* The real input stays in the page and keeps the keyboard; the box around it shows its state. */
+.ginko-quiz-input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.ginko-quiz-option:has(.ginko-quiz-input:focus-visible) { outline: 2px solid var(--ring, var(--primary, var(--ginko-default-primary))); outline-offset: 2px; }
+.ginko-quiz-key {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1px solid var(--border, var(--ginko-default-border));
+  border-radius: 999px;
+  color: var(--muted-foreground, var(--ginko-default-muted-foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.ginko-quiz-option-label { min-width: 0; flex: 1; font-size: 0.9375rem; }
+.ginko-quiz-option-label > :first-child { margin-block-start: 0; }
+.ginko-quiz-option-label > :last-child { margin-block-end: 0; }
+.ginko-quiz-option[data-state='selected'] { border-color: var(--primary, var(--ginko-default-primary)); background-color: var(--muted, var(--ginko-default-muted)); }
+.ginko-quiz-option[data-state='selected'] .ginko-quiz-key { border-color: var(--primary, var(--ginko-default-primary)); background-color: var(--primary, var(--ginko-default-primary)); color: var(--primary-foreground, var(--ginko-default-primary-foreground)); }
+.ginko-quiz-option[data-state='correct'] { border-color: var(--ginko-success); background-color: color-mix(in oklab, var(--ginko-success) 10%, transparent); }
+.ginko-quiz-option[data-state='incorrect'] { border-color: var(--ginko-error); background-color: color-mix(in oklab, var(--ginko-error) 10%, transparent); }
+.ginko-quiz-option:has(.ginko-quiz-input:disabled) { cursor: default; }
+.ginko-quiz-option:has(.ginko-quiz-input:disabled):hover { background-color: transparent; }
+.ginko-quiz-mark { flex-shrink: 0; font-weight: 700; }
+.ginko-quiz-option[data-state='correct'] .ginko-quiz-mark { color: var(--ginko-success); }
+.ginko-quiz-option[data-state='incorrect'] .ginko-quiz-mark { color: var(--ginko-error); }
+.ginko-quiz-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ginko-quiz .ginko-quiz-problem { margin: 0; color: var(--ginko-error); font-size: 0.875rem; }
+
+.ginko-quiz-button {
+  margin-block-start: 0.75rem;
+  border: 1px solid var(--border, var(--ginko-default-border));
+  border-radius: calc(var(--radius, 0.625rem) - 2px);
+  background-color: var(--background, transparent);
+  padding: 0.4rem 0.9rem;
+  color: var(--foreground, var(--ginko-default-foreground));
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ginko-quiz-button:hover { background-color: var(--muted, var(--ginko-default-muted)); }
+.ginko-quiz-button:focus-visible { outline: 2px solid var(--ring, var(--primary, var(--ginko-default-primary))); outline-offset: 2px; }
+.ginko-quiz-button[aria-disabled='true'] { opacity: 0.5; cursor: not-allowed; }
+.ginko-quiz-button[aria-disabled='true']:hover { background-color: var(--background, transparent); }
+
+.ginko-quiz-feedback:not(:empty) { margin-block-start: 0.75rem; }
+.ginko-quiz .ginko-quiz-result { margin: 0; font-weight: 600; }
+.ginko-quiz .ginko-quiz-result[data-state='correct'] { color: var(--ginko-success); }
+.ginko-quiz .ginko-quiz-result[data-state='incorrect'] { color: var(--ginko-error); }
+.ginko-quiz-explanation { margin-block-start: 0.35rem; color: var(--muted-foreground, var(--ginko-default-muted-foreground)); font-size: 0.875rem; line-height: 1.6; }
+.ginko-quiz-explanation > :first-child { margin-block-start: 0; }
+.ginko-quiz-explanation > :last-child { margin-block-end: 0; }
+
+.ginko-quiz-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  border-top: 1px solid var(--border, var(--ginko-default-border));
+  padding: 0.5rem 1rem 0.75rem;
+}
+.ginko-quiz .ginko-quiz-progress { margin-block-start: 0.5rem; color: var(--muted-foreground, var(--ginko-default-muted-foreground)); font-size: 0.8125rem; }
+.ginko-quiz-nav { display: flex; gap: 0.5rem; }
+.ginko-quiz-footer .ginko-quiz-button { margin-block-start: 0.5rem; }
+.ginko-quiz-results:not(:empty) { padding: 1.25rem 1rem; text-align: center; }
+.ginko-quiz .ginko-quiz-score { margin: 0; font-size: 1.25rem; font-weight: 600; }
+.ginko-quiz .ginko-quiz-score[data-state='perfect'] { color: var(--ginko-success); }
+.ginko-quiz .ginko-quiz-note { margin: 0.25rem 0 0; color: var(--muted-foreground, var(--ginko-default-muted-foreground)); }
+
+/* --- Api --- */
+.ginko-api { overflow: hidden; }
+.ginko-api-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  border-bottom: 1px solid var(--border, var(--ginko-default-border));
+  background-color: color-mix(in oklab, var(--foreground, var(--ginko-default-foreground)) 4%, var(--ginko-surface, var(--background, var(--ginko-default-background))));
+  padding: 0.5rem 1rem;
+}
+.ginko-api-identity { display: inline-flex; min-width: 0; align-items: center; gap: 0.6rem; font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.875rem; }
+.ginko-api-method {
+  border-radius: 0.25rem;
+  background-color: var(--primary, var(--ginko-default-primary));
+  padding: 0.1rem 0.4rem;
+  color: var(--primary-foreground, var(--ginko-default-primary-foreground));
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.ginko-api-method[data-method='get'] { background-color: var(--ginko-info); color: #fff; }
+.ginko-api-method[data-method='post'] { background-color: var(--ginko-success); color: #fff; }
+.ginko-api-method[data-method='delete'] { background-color: var(--ginko-error); color: #fff; }
+.ginko-api-path { min-width: 0; overflow-wrap: anywhere; color: var(--foreground, var(--ginko-default-foreground)); font-weight: 600; }
+.ginko-api-tabs { display: flex; flex-wrap: wrap; gap: 0.125rem; }
+.ginko-api-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: none;
+  padding: 0.3rem 0.6rem;
+  color: var(--muted-foreground, var(--ginko-default-muted-foreground));
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.ginko-api-tab:hover { color: var(--foreground, var(--ginko-default-foreground)); }
+.ginko-api-tab[aria-selected='true'] { background-color: var(--background, var(--ginko-default-background)); color: var(--foreground, var(--ginko-default-foreground)); font-weight: 600; }
+.ginko-api-tab:focus-visible { outline: 2px solid var(--ring, var(--primary, var(--ginko-default-primary))); outline-offset: -2px; }
+.ginko-api-count { color: var(--muted-foreground, var(--ginko-default-muted-foreground)); font-size: 0.6875rem; font-weight: 400; }
+.ginko-api-row { scroll-margin-top: var(--ginko-scroll-margin, 5rem); padding: 0.75rem 1rem; }
+.ginko-api-row + .ginko-api-row { border-top: 1px solid var(--border, var(--ginko-default-border)); }
+.ginko-api-signature { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.875rem; }
+.ginko-api-name { color: var(--foreground, var(--ginko-default-foreground)); font-weight: 600; }
+.ginko-api-name[data-deprecated] { text-decoration: line-through; }
+.ginko-api-type { color: var(--muted-foreground, var(--ginko-default-muted-foreground)); }
+.ginko-api-badges { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; margin-inline-start: 0.6rem; vertical-align: middle; }
+.ginko-api-badge { border: 1px solid var(--border, var(--ginko-default-border)); border-radius: 999px; padding: 0 0.45rem; color: var(--muted-foreground, var(--ginko-default-muted-foreground)); font-size: 0.6875rem; line-height: 1.5; }
+.ginko-api-badge[data-state='required'] { border-color: var(--ginko-error); color: var(--ginko-error); }
+.ginko-api-badge[data-state='deprecated'] { border-color: var(--ginko-warning); color: var(--ginko-warning); }
+.ginko-api-description { margin-block-start: 0.25rem; color: var(--muted-foreground, var(--ginko-default-muted-foreground)); font-size: 0.875rem; line-height: 1.6; }
+.ginko-api-description > :first-child { margin-block-start: 0; }
+.ginko-api-description > :last-child { margin-block-end: 0; }

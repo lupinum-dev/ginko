@@ -1,0 +1,872 @@
+{
+  "site": "industrie",
+  "name": "Brunner Präzisionstechnik GmbH",
+  "url": "https://ginko-demo-industrie.vercel.app",
+  "timezone": "Europe/Vienna",
+  "locales": [
+    "de",
+    "en"
+  ],
+  "currency": "EUR",
+  "week": {
+    "firstDay": 1,
+    "weekend": [
+      6,
+      7
+    ]
+  },
+  "pages": {
+    "home": {
+      "de": "/",
+      "en": "/en"
+    },
+    "news": {
+      "de": "/aktuelles",
+      "en": "/en/news"
+    },
+    "products": {
+      "de": "/produkte",
+      "en": "/en/products"
+    },
+    "careers": {
+      "de": "/karriere",
+      "en": "/en/careers"
+    },
+    "events": {
+      "de": "/messen",
+      "en": "/en/events"
+    },
+    "contact": {
+      "de": "/kontakt",
+      "en": "/en/contact"
+    },
+    "certificates": {
+      "de": "/zertifikate",
+      "en": "/en/certificates"
+    },
+    "imprint": {
+      "de": "/impressum",
+      "en": "/en/imprint"
+    },
+    "privacy": {
+      "de": "/datenschutz",
+      "en": "/en/privacy"
+    }
+  },
+  "bricks": {
+    "hours": {
+      "kind": "single",
+      "label": "Empfang und Erreichbarkeit",
+      "fields": {
+        "week": {
+          "type": "list",
+          "label": "Wochenplan",
+          "itemLabel": "Tag",
+          "of": {
+            "day": {
+              "type": "choice",
+              "label": "Tag",
+              "options": [
+                {
+                  "value": "mo",
+                  "label": "Montag"
+                },
+                {
+                  "value": "tu",
+                  "label": "Dienstag"
+                },
+                {
+                  "value": "we",
+                  "label": "Mittwoch"
+                },
+                {
+                  "value": "th",
+                  "label": "Donnerstag"
+                },
+                {
+                  "value": "fr",
+                  "label": "Freitag"
+                },
+                {
+                  "value": "sa",
+                  "label": "Samstag"
+                },
+                {
+                  "value": "su",
+                  "label": "Sonntag"
+                }
+              ],
+              "pos": 0
+            },
+            "closed": {
+              "type": "boolean",
+              "label": "Geschlossen",
+              "pos": 1
+            },
+            "from1": {
+              "type": "time",
+              "label": "Vormittag von",
+              "optional": true,
+              "pos": 2
+            },
+            "to1": {
+              "type": "time",
+              "label": "Vormittag bis",
+              "optional": true,
+              "pos": 3
+            },
+            "from2": {
+              "type": "time",
+              "label": "Nachmittag von",
+              "optional": true,
+              "pos": 4
+            },
+            "to2": {
+              "type": "time",
+              "label": "Nachmittag bis",
+              "optional": true,
+              "pos": 5
+            }
+          },
+          "min": 7,
+          "max": 7,
+          "unique": "day",
+          "default": [
+            {
+              "_id": "wkmo000000",
+              "day": "mo",
+              "closed": false,
+              "from1": "07:00",
+              "to1": "12:00",
+              "from2": "12:30",
+              "to2": "16:00"
+            },
+            {
+              "_id": "wktu000000",
+              "day": "tu",
+              "closed": false,
+              "from1": "07:00",
+              "to1": "12:00",
+              "from2": "12:30",
+              "to2": "16:00"
+            },
+            {
+              "_id": "wkwe000000",
+              "day": "we",
+              "closed": false,
+              "from1": "07:00",
+              "to1": "12:00",
+              "from2": "12:30",
+              "to2": "16:00"
+            },
+            {
+              "_id": "wkth000000",
+              "day": "th",
+              "closed": false,
+              "from1": "07:00",
+              "to1": "12:00",
+              "from2": "12:30",
+              "to2": "16:00"
+            },
+            {
+              "_id": "wkfr000000",
+              "day": "fr",
+              "closed": false,
+              "from1": "07:00",
+              "to1": "12:00",
+              "from2": "12:30",
+              "to2": "16:00"
+            },
+            {
+              "_id": "wksa000000",
+              "day": "sa",
+              "closed": true
+            },
+            {
+              "_id": "wksu000000",
+              "day": "su",
+              "closed": true
+            }
+          ],
+          "pos": 0
+        },
+        "exceptions": {
+          "type": "list",
+          "label": "Betriebsferien und Ausnahmen",
+          "itemLabel": "Ausnahme",
+          "of": {
+            "when": {
+              "type": "daterange",
+              "label": "Zeitraum",
+              "pos": 0
+            },
+            "reason": {
+              "type": "text",
+              "label": "Grund",
+              "max": 140,
+              "pos": 1
+            },
+            "closed": {
+              "type": "boolean",
+              "label": "Geschlossen",
+              "pos": 2
+            }
+          },
+          "max": 20,
+          "default": [],
+          "pos": 1
+        },
+        "closedOn": {
+          "type": "date",
+          "label": "Heute geschlossen am",
+          "optional": true,
+          "pos": 2
+        },
+        "closedNote": {
+          "type": "text",
+          "label": "Hinweis zur Schließung",
+          "max": 140,
+          "optional": true,
+          "pos": 3
+        }
+      },
+      "tasks": [
+        {
+          "id": "closedToday",
+          "label": "Heute geschlossen",
+          "kind": "edit",
+          "fields": [
+            "closedOn",
+            "closedNote"
+          ],
+          "prefill": {
+            "closedOn": "@today"
+          }
+        },
+        {
+          "id": "holiday",
+          "label": "Betriebsferien eintragen",
+          "kind": "edit",
+          "fields": [
+            "exceptions"
+          ]
+        }
+      ],
+      "pos": 0
+    },
+    "notices": {
+      "kind": "collection",
+      "label": "Hinweise",
+      "fields": {
+        "text": {
+          "type": "text",
+          "label": "Text",
+          "max": 140,
+          "pos": 0
+        },
+        "until": {
+          "type": "date",
+          "label": "Gilt bis",
+          "optional": true,
+          "pos": 1
+        }
+      },
+      "max": 5,
+      "order": "manual",
+      "visible": {
+        "mode": "active",
+        "field": "until"
+      },
+      "autoRemoveExpired": true,
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Hinweis hinzufügen",
+          "kind": "create"
+        },
+        {
+          "id": "remove",
+          "label": "Hinweis entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 1
+    },
+    "news": {
+      "kind": "collection",
+      "label": "Aktuelles und Presse",
+      "fields": {
+        "title": {
+          "type": "text",
+          "label": "Titel",
+          "max": 120,
+          "pos": 0
+        },
+        "slug": {
+          "type": "slug",
+          "label": "Adresse",
+          "from": "title",
+          "pos": 1
+        },
+        "date": {
+          "type": "date",
+          "label": "Datum",
+          "pos": 2
+        },
+        "image": {
+          "type": "image",
+          "label": "Bild",
+          "optional": true,
+          "pos": 3
+        },
+        "body": {
+          "type": "markdown",
+          "label": "Text",
+          "profile": "basic",
+          "max": 5000,
+          "pos": 4
+        },
+        "pressPdf": {
+          "type": "file",
+          "label": "Presse-PDF",
+          "accept": [
+            "pdf"
+          ],
+          "maxSize": 5242880,
+          "optional": true,
+          "pos": 5
+        }
+      },
+      "max": 60,
+      "order": {
+        "field": "date",
+        "dir": "desc"
+      },
+      "route": {
+        "de": "/aktuelles/[slug]",
+        "en": "/en/news/[slug]"
+      },
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Beitrag hinzufügen",
+          "kind": "create"
+        },
+        {
+          "id": "edit",
+          "label": "Beitrag bearbeiten",
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "title",
+            "slug",
+            "date",
+            "image",
+            "body",
+            "pressPdf"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": "Beitrag entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 2
+    },
+    "jobs": {
+      "kind": "collection",
+      "label": "Stellen",
+      "fields": {
+        "title": {
+          "type": "text",
+          "label": "Titel",
+          "max": 120,
+          "pos": 0
+        },
+        "kind": {
+          "type": "choice",
+          "label": "Art",
+          "options": [
+            {
+              "value": "fulltime",
+              "label": "Vollzeit"
+            },
+            {
+              "value": "parttime",
+              "label": "Teilzeit"
+            },
+            {
+              "value": "apprenticeship",
+              "label": "Lehre"
+            }
+          ],
+          "pos": 1
+        },
+        "location": {
+          "type": "text",
+          "label": "Ort",
+          "max": 80,
+          "translate": false,
+          "pos": 2
+        },
+        "salary": {
+          "type": "money",
+          "label": "Gehalt ab (brutto)",
+          "pos": 3
+        },
+        "salaryPeriod": {
+          "type": "choice",
+          "label": "Gehalt pro",
+          "options": [
+            {
+              "value": "month",
+              "label": "Monat"
+            },
+            {
+              "value": "year",
+              "label": "Jahr"
+            }
+          ],
+          "pos": 4
+        },
+        "start": {
+          "type": "date",
+          "label": "Eintritt ab",
+          "optional": true,
+          "pos": 5
+        },
+        "until": {
+          "type": "date",
+          "label": "Ausschreibung endet",
+          "optional": true,
+          "pos": 6
+        },
+        "description": {
+          "type": "markdown",
+          "label": "Beschreibung",
+          "profile": "basic",
+          "max": 5000,
+          "pos": 7
+        },
+        "applyUrl": {
+          "type": "text",
+          "label": "Bewerben-Link",
+          "format": "url",
+          "optional": true,
+          "pos": 8
+        },
+        "applyEmail": {
+          "type": "text",
+          "label": "Bewerben per E-Mail",
+          "format": "email",
+          "optional": true,
+          "pos": 9
+        }
+      },
+      "max": 40,
+      "order": "manual",
+      "visible": {
+        "mode": "active",
+        "field": "until"
+      },
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Stelle ausschreiben",
+          "kind": "create"
+        },
+        {
+          "id": "edit",
+          "label": "Stelle bearbeiten",
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "title",
+            "kind",
+            "location",
+            "salary",
+            "salaryPeriod",
+            "start",
+            "until",
+            "description",
+            "applyUrl",
+            "applyEmail"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": "Stelle entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 3
+    },
+    "events": {
+      "kind": "collection",
+      "label": "Messen und Termine",
+      "fields": {
+        "title": {
+          "type": "text",
+          "label": "Titel",
+          "max": 120,
+          "pos": 0
+        },
+        "when": {
+          "type": "daterange",
+          "label": "Zeitraum",
+          "pos": 1
+        },
+        "location": {
+          "type": "text",
+          "label": "Ort",
+          "max": 120,
+          "translate": false,
+          "pos": 2
+        },
+        "booth": {
+          "type": "text",
+          "label": "Stand-Nr.",
+          "max": 20,
+          "optional": true,
+          "translate": false,
+          "pos": 3
+        }
+      },
+      "max": 40,
+      "order": {
+        "field": "when",
+        "dir": "asc"
+      },
+      "visible": {
+        "mode": "upcoming",
+        "field": "when"
+      },
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Messe eintragen",
+          "kind": "create"
+        },
+        {
+          "id": "edit",
+          "label": "Messe bearbeiten",
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "title",
+            "when",
+            "location",
+            "booth"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": "Messe entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 4
+    },
+    "products": {
+      "kind": "collection",
+      "label": "Produkte",
+      "fields": {
+        "name": {
+          "type": "text",
+          "label": "Name",
+          "max": 120,
+          "pos": 0
+        },
+        "slug": {
+          "type": "slug",
+          "label": "Adresse",
+          "from": "name",
+          "pos": 1
+        },
+        "summary": {
+          "type": "longtext",
+          "label": "Kurztext",
+          "max": 500,
+          "pos": 2
+        },
+        "images": {
+          "type": "list",
+          "label": "Bilder",
+          "itemLabel": "Bild",
+          "of": {
+            "image": {
+              "type": "image",
+              "label": "Bild",
+              "pos": 0
+            }
+          },
+          "max": 6,
+          "pos": 3
+        },
+        "specs": {
+          "type": "list",
+          "label": "Technische Daten",
+          "itemLabel": "Merkmal",
+          "of": {
+            "name": {
+              "type": "text",
+              "label": "Merkmal",
+              "max": 80,
+              "pos": 0
+            },
+            "value": {
+              "type": "text",
+              "label": "Wert",
+              "max": 80,
+              "pos": 1
+            },
+            "unit": {
+              "type": "text",
+              "label": "Einheit",
+              "max": 20,
+              "optional": true,
+              "pos": 2
+            }
+          },
+          "max": 30,
+          "pos": 4
+        },
+        "datasheet": {
+          "type": "file",
+          "label": "Datenblatt (PDF)",
+          "accept": [
+            "pdf"
+          ],
+          "maxSize": 10485760,
+          "optional": true,
+          "pos": 5
+        }
+      },
+      "max": 80,
+      "order": "manual",
+      "route": {
+        "de": "/produkte/[slug]",
+        "en": "/en/products/[slug]"
+      },
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Produkt hinzufügen",
+          "kind": "create"
+        },
+        {
+          "id": "edit",
+          "label": "Produkt bearbeiten",
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "name",
+            "slug",
+            "summary",
+            "images",
+            "specs",
+            "datasheet"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": "Produkt entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 5
+    },
+    "contacts": {
+      "kind": "collection",
+      "label": "Ansprechpartner",
+      "fields": {
+        "name": {
+          "type": "text",
+          "label": "Name",
+          "max": 80,
+          "translate": false,
+          "pos": 0
+        },
+        "role": {
+          "type": "text",
+          "label": "Rolle",
+          "max": 120,
+          "pos": 1
+        },
+        "phone": {
+          "type": "text",
+          "label": "Telefon",
+          "format": "tel",
+          "pos": 2
+        },
+        "email": {
+          "type": "text",
+          "label": "E-Mail",
+          "format": "email",
+          "pos": 3
+        },
+        "photo": {
+          "type": "image",
+          "label": "Foto",
+          "optional": true,
+          "pos": 4
+        }
+      },
+      "max": 30,
+      "order": "manual",
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Ansprechpartner hinzufügen",
+          "kind": "create"
+        },
+        {
+          "id": "edit",
+          "label": "Ansprechpartner bearbeiten",
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "name",
+            "role",
+            "phone",
+            "email",
+            "photo"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": "Ansprechpartner entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 6
+    },
+    "certificates": {
+      "kind": "collection",
+      "label": "Zertifikate",
+      "fields": {
+        "title": {
+          "type": "text",
+          "label": "Bezeichnung",
+          "max": 120,
+          "translate": false,
+          "pos": 0
+        },
+        "validUntil": {
+          "type": "date",
+          "label": "Gültig bis",
+          "pos": 1
+        },
+        "certificate": {
+          "type": "file",
+          "label": "Zertifikat (PDF)",
+          "accept": [
+            "pdf"
+          ],
+          "maxSize": 5242880,
+          "pos": 2
+        }
+      },
+      "max": 20,
+      "order": {
+        "field": "validUntil",
+        "dir": "asc"
+      },
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Zertifikat hinzufügen",
+          "kind": "create"
+        },
+        {
+          "id": "renew",
+          "label": "Zertifikat erneuern",
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "validUntil",
+            "certificate"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": "Zertifikat entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 7
+    },
+    "company": {
+      "kind": "single",
+      "label": "Firma und Adresse",
+      "fields": {
+        "street": {
+          "type": "text",
+          "label": "Straße und Hausnummer",
+          "max": 80,
+          "translate": false,
+          "default": "Industriestraße 14",
+          "pos": 0
+        },
+        "city": {
+          "type": "text",
+          "label": "PLZ und Ort",
+          "max": 80,
+          "translate": false,
+          "default": "4400 Steyr",
+          "pos": 1
+        },
+        "phone": {
+          "type": "text",
+          "label": "Telefon",
+          "format": "tel",
+          "default": "+43 7252 123 0",
+          "pos": 2
+        },
+        "email": {
+          "type": "text",
+          "label": "E-Mail",
+          "format": "email",
+          "default": "office@brunner-praezision.example",
+          "pos": 3
+        },
+        "vatId": {
+          "type": "text",
+          "label": "UID-Nummer",
+          "max": 20,
+          "translate": false,
+          "optional": true,
+          "default": "ATU00000000",
+          "pos": 4
+        }
+      },
+      "pos": 8
+    },
+    "legal": {
+      "kind": "single",
+      "label": "Rechtliches",
+      "fields": {
+        "imprint": {
+          "type": "markdown",
+          "label": "Impressum",
+          "profile": "basic",
+          "translate": "manual",
+          "optional": true,
+          "pos": 0
+        },
+        "privacy": {
+          "type": "markdown",
+          "label": "Datenschutz",
+          "profile": "basic",
+          "translate": "manual",
+          "optional": true,
+          "pos": 1
+        }
+      },
+      "pos": 9
+    }
+  },
+  "migrations": [],
+  "retired": {}
+}

@@ -1,0 +1,645 @@
+{
+  "site": "saas",
+  "name": "Taktwerk",
+  "url": "https://ginko-demo-saas.vercel.app",
+  "timezone": "Europe/Berlin",
+  "locales": [
+    "de",
+    "en",
+    "fr"
+  ],
+  "currency": "EUR",
+  "week": {
+    "firstDay": 1,
+    "weekend": [
+      6,
+      7
+    ]
+  },
+  "pages": {
+    "home": {
+      "de": "/",
+      "en": "/en",
+      "fr": "/fr"
+    },
+    "pricing": {
+      "de": "/preise",
+      "en": "/en/pricing",
+      "fr": "/fr/tarifs"
+    },
+    "changelog": {
+      "de": "/changelog",
+      "en": "/en/changelog",
+      "fr": "/fr/changelog"
+    },
+    "blog": {
+      "de": "/blog",
+      "en": "/en/blog",
+      "fr": "/fr/blog"
+    },
+    "faq": {
+      "de": "/faq",
+      "en": "/en/faq",
+      "fr": "/fr/faq"
+    },
+    "terms": {
+      "de": "/agb",
+      "en": "/en/terms",
+      "fr": "/fr/conditions"
+    },
+    "dpa": {
+      "de": "/avv",
+      "en": "/en/dpa",
+      "fr": "/fr/sous-traitance"
+    },
+    "privacy": {
+      "de": "/datenschutz",
+      "en": "/en/privacy",
+      "fr": "/fr/confidentialite"
+    },
+    "imprint": {
+      "de": "/impressum",
+      "en": "/en/imprint",
+      "fr": "/fr/mentions-legales"
+    }
+  },
+  "bricks": {
+    "hero": {
+      "kind": "single",
+      "label": "Startseite",
+      "fields": {
+        "headline": {
+          "type": "text",
+          "label": "Überschrift",
+          "max": 120,
+          "default": {
+            "de": "Zeiterfassung für Handwerksbetriebe"
+          },
+          "pos": 0
+        },
+        "text": {
+          "type": "longtext",
+          "label": "Text",
+          "max": 400,
+          "default": {
+            "de": "Taktwerk erfasst Arbeitszeiten auf der Baustelle, auch ohne Netz."
+          },
+          "pos": 1
+        },
+        "buttonText": {
+          "type": "text",
+          "label": "Knopf-Text",
+          "max": 40,
+          "default": {
+            "de": "Kostenlos testen"
+          },
+          "pos": 2
+        },
+        "buttonUrl": {
+          "type": "text",
+          "label": "Knopf-Link",
+          "format": "url",
+          "default": "https://app.taktwerk.example/start",
+          "pos": 3
+        }
+      },
+      "pos": 0
+    },
+    "features": {
+      "kind": "single",
+      "label": "Funktionen",
+      "fields": {
+        "headline": {
+          "type": "text",
+          "label": "Überschrift",
+          "max": 120,
+          "optional": true,
+          "pos": 0
+        },
+        "items": {
+          "type": "list",
+          "label": "Funktionen",
+          "itemLabel": "Funktion",
+          "of": {
+            "title": {
+              "type": "text",
+              "label": "Titel",
+              "max": 80,
+              "pos": 0
+            },
+            "text": {
+              "type": "longtext",
+              "label": "Text",
+              "max": 300,
+              "pos": 1
+            }
+          },
+          "max": 12,
+          "default": [],
+          "pos": 1
+        }
+      },
+      "pos": 1
+    },
+    "pricing": {
+      "kind": "collection",
+      "label": "Preise",
+      "fields": {
+        "name": {
+          "type": "text",
+          "label": "Plan",
+          "max": 40,
+          "translate": false,
+          "pos": 0
+        },
+        "priceEur": {
+          "type": "money",
+          "label": "Preis je Monat (EUR)",
+          "currency": "EUR",
+          "pos": 1
+        },
+        "priceChf": {
+          "type": "money",
+          "label": "Preis je Monat (CHF)",
+          "currency": "CHF",
+          "pos": 2
+        },
+        "yearEur": {
+          "type": "money",
+          "label": "Preis je Jahr (EUR)",
+          "currency": "EUR",
+          "optional": true,
+          "pos": 3
+        },
+        "yearChf": {
+          "type": "money",
+          "label": "Preis je Jahr (CHF)",
+          "currency": "CHF",
+          "optional": true,
+          "pos": 4
+        },
+        "featured": {
+          "type": "boolean",
+          "label": "Als beliebt markieren",
+          "pos": 5
+        },
+        "features": {
+          "type": "list",
+          "label": "Funktionen",
+          "itemLabel": "Funktion",
+          "of": {
+            "text": {
+              "type": "text",
+              "label": "Funktion",
+              "max": 120,
+              "pos": 0
+            }
+          },
+          "max": 20,
+          "pos": 6
+        },
+        "note": {
+          "type": "text",
+          "label": "Hinweis zum Preis",
+          "max": 120,
+          "optional": true,
+          "pos": 7
+        }
+      },
+      "max": 6,
+      "order": "manual",
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Plan hinzufügen",
+          "kind": "create"
+        },
+        {
+          "id": "price",
+          "label": "Preis ändern",
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "priceEur",
+            "priceChf",
+            "yearEur",
+            "yearChf",
+            "note"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": "Plan entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 2
+    },
+    "changelog": {
+      "kind": "collection",
+      "label": "Changelog",
+      "fields": {
+        "version": {
+          "type": "text",
+          "label": "Version",
+          "max": 20,
+          "translate": false,
+          "pos": 0
+        },
+        "date": {
+          "type": "date",
+          "label": "Datum",
+          "pos": 1
+        },
+        "tags": {
+          "type": "choices",
+          "label": "Art",
+          "max": 3,
+          "options": [
+            {
+              "value": "new",
+              "label": "Neu"
+            },
+            {
+              "value": "improved",
+              "label": "Verbessert"
+            },
+            {
+              "value": "fixed",
+              "label": "Behoben"
+            }
+          ],
+          "pos": 2
+        },
+        "body": {
+          "type": "markdown",
+          "label": "Text",
+          "profile": "basic",
+          "max": 5000,
+          "pos": 3
+        }
+      },
+      "max": 300,
+      "order": {
+        "field": "date",
+        "dir": "desc"
+      },
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Eintrag hinzufügen",
+          "kind": "create"
+        },
+        {
+          "id": "edit",
+          "label": "Eintrag bearbeiten",
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "version",
+            "date",
+            "tags",
+            "body"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": "Eintrag entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 3
+    },
+    "blog": {
+      "kind": "collection",
+      "label": "Blog",
+      "fields": {
+        "title": {
+          "type": "text",
+          "label": "Titel",
+          "max": 120,
+          "pos": 0
+        },
+        "slug": {
+          "type": "slug",
+          "label": "Adresse",
+          "from": "title",
+          "pos": 1
+        },
+        "date": {
+          "type": "date",
+          "label": "Datum",
+          "pos": 2
+        },
+        "author": {
+          "type": "text",
+          "label": "Autorin oder Autor",
+          "max": 80,
+          "translate": false,
+          "pos": 3
+        },
+        "description": {
+          "type": "text",
+          "label": "Kurzbeschreibung für Suchmaschinen",
+          "max": 160,
+          "pos": 4
+        },
+        "image": {
+          "type": "image",
+          "label": "Bild",
+          "optional": true,
+          "pos": 5
+        },
+        "body": {
+          "type": "markdown",
+          "label": "Text",
+          "profile": "basic",
+          "max": 20000,
+          "pos": 6
+        }
+      },
+      "max": 200,
+      "order": {
+        "field": "date",
+        "dir": "desc"
+      },
+      "route": {
+        "de": "/blog/[slug]",
+        "en": "/en/blog/[slug]",
+        "fr": "/fr/blog/[slug]"
+      },
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Artikel schreiben",
+          "kind": "create"
+        },
+        {
+          "id": "edit",
+          "label": "Artikel bearbeiten",
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "title",
+            "slug",
+            "date",
+            "author",
+            "description",
+            "image",
+            "body"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": "Artikel entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 4
+    },
+    "testimonials": {
+      "kind": "collection",
+      "label": "Kundenstimmen",
+      "fields": {
+        "quote": {
+          "type": "longtext",
+          "label": "Zitat",
+          "max": 400,
+          "pos": 0
+        },
+        "name": {
+          "type": "text",
+          "label": "Name",
+          "max": 80,
+          "translate": false,
+          "pos": 1
+        },
+        "company": {
+          "type": "text",
+          "label": "Firma",
+          "max": 80,
+          "translate": false,
+          "pos": 2
+        },
+        "logo": {
+          "type": "image",
+          "label": "Logo",
+          "optional": true,
+          "pos": 3
+        }
+      },
+      "max": 30,
+      "order": "manual",
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Stimme hinzufügen",
+          "kind": "create"
+        },
+        {
+          "id": "edit",
+          "label": "Stimme bearbeiten",
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "quote",
+            "name",
+            "company",
+            "logo"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": "Stimme entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 5
+    },
+    "faq": {
+      "kind": "collection",
+      "label": "Fragen und Antworten",
+      "fields": {
+        "question": {
+          "type": "text",
+          "label": "Frage",
+          "max": 200,
+          "pos": 0
+        },
+        "answer": {
+          "type": "markdown",
+          "label": "Antwort",
+          "profile": "basic",
+          "max": 2000,
+          "pos": 1
+        }
+      },
+      "max": 60,
+      "order": "manual",
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Frage hinzufügen",
+          "kind": "create"
+        },
+        {
+          "id": "edit",
+          "label": "Frage bearbeiten",
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "question",
+            "answer"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": "Frage entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 6
+    },
+    "notices": {
+      "kind": "collection",
+      "label": "Ankündigungen",
+      "fields": {
+        "text": {
+          "type": "text",
+          "label": "Text",
+          "max": 160,
+          "pos": 0
+        },
+        "link": {
+          "type": "text",
+          "label": "Link",
+          "format": "url",
+          "optional": true,
+          "pos": 1
+        },
+        "until": {
+          "type": "date",
+          "label": "Gilt bis",
+          "optional": true,
+          "pos": 2
+        }
+      },
+      "max": 5,
+      "order": "manual",
+      "visible": {
+        "mode": "active",
+        "field": "until"
+      },
+      "autoRemoveExpired": true,
+      "tasks": [
+        {
+          "id": "add",
+          "label": "Ankündigung hinzufügen",
+          "kind": "create"
+        },
+        {
+          "id": "remove",
+          "label": "Ankündigung entfernen",
+          "kind": "remove"
+        }
+      ],
+      "pos": 7
+    },
+    "company": {
+      "kind": "single",
+      "label": "Firma und Adresse",
+      "fields": {
+        "name": {
+          "type": "text",
+          "label": "Firmenname",
+          "max": 80,
+          "translate": false,
+          "default": "Taktwerk GmbH",
+          "pos": 0
+        },
+        "street": {
+          "type": "text",
+          "label": "Straße und Hausnummer",
+          "max": 80,
+          "translate": false,
+          "default": "Wiener Straße 18",
+          "pos": 1
+        },
+        "city": {
+          "type": "text",
+          "label": "PLZ und Ort",
+          "max": 80,
+          "translate": false,
+          "default": "10999 Berlin",
+          "pos": 2
+        },
+        "email": {
+          "type": "text",
+          "label": "E-Mail",
+          "format": "email",
+          "default": "hallo@taktwerk.example",
+          "pos": 3
+        },
+        "phone": {
+          "type": "text",
+          "label": "Telefon",
+          "format": "tel",
+          "optional": true,
+          "pos": 4
+        }
+      },
+      "pos": 8
+    },
+    "legal": {
+      "kind": "single",
+      "label": "Rechtliches",
+      "fields": {
+        "terms": {
+          "type": "markdown",
+          "label": "AGB",
+          "profile": "basic",
+          "translate": "manual",
+          "optional": true,
+          "pos": 0
+        },
+        "avv": {
+          "type": "markdown",
+          "label": "AVV",
+          "profile": "basic",
+          "translate": "manual",
+          "optional": true,
+          "pos": 1
+        },
+        "privacy": {
+          "type": "markdown",
+          "label": "Datenschutz",
+          "profile": "basic",
+          "translate": "manual",
+          "optional": true,
+          "pos": 2
+        },
+        "imprint": {
+          "type": "markdown",
+          "label": "Impressum",
+          "profile": "basic",
+          "translate": "manual",
+          "optional": true,
+          "pos": 3
+        }
+      },
+      "tasks": [
+        {
+          "id": "terms",
+          "label": "AGB ändern",
+          "kind": "edit",
+          "fields": [
+            "terms"
+          ]
+        }
+      ],
+      "pos": 9
+    }
+  },
+  "migrations": [],
+  "retired": {}
+}

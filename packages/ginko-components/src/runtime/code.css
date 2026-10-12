@@ -1,0 +1,161 @@
+/* Styles of the code components (code block, code-group, code-tree, files). Plain CSS, class prefix `ginko-`.
+   Code sits on a dark panel in both colour modes, inside a slightly lighter frame that also holds the file name or
+   the tabs. A site changes the look with the --ginko-code-* tokens. */
+
+:where(:root) {
+  --ginko-code-frame: oklch(0.27 0.01 56);
+  --ginko-code-bg: oklch(0.148 0.004 49);
+  --ginko-code-fg: oklch(0.96 0.003 97);
+  --ginko-code-muted: oklch(0.72 0.01 56);
+  --ginko-code-hover: oklch(1 0 0 / 0.07);
+}
+
+/* Shiki writes the light theme inline and the dark one into --shiki-dark; the panel is always dark. */
+.ginko-code .shiki, .ginko-code .shiki span { color: var(--shiki-dark, inherit) !important; }
+
+/* --- Frame: a code block, a code group and a code tree share it --- */
+:is(.ginko-code, .ginko-code-group, .ginko-code-tree) {
+  position: relative;
+  box-sizing: border-box;
+  margin: 1.25rem 0;
+  border-radius: calc(var(--radius, 0.625rem) + 0.125rem);
+  background: var(--ginko-code-frame);
+  padding: 0.25rem;
+  color: var(--ginko-code-fg);
+  font-size: 0.8125rem;
+  color-scheme: dark;
+}
+.ginko-code:has(> .ginko-code-label), .ginko-code-group, .ginko-code-tree { padding-top: 0.125rem; }
+.ginko-code-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  padding: 0 3rem 0 0.625rem;
+  color: var(--ginko-code-fg);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.ginko-code-label .ginko-code-icon, .ginko-code-tab .ginko-code-icon { width: 0.875rem; height: 0.875rem; color: var(--ginko-code-muted); }
+.ginko-code pre {
+  margin: 0;
+  padding: 0.875rem 1rem;
+  overflow-x: auto;
+  border-radius: var(--radius, 0.5rem);
+  background: var(--ginko-code-bg) !important;
+  color: var(--ginko-code-fg);
+  font-family: var(--font-mono, ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace);
+  font-size: inherit;
+  line-height: 1.6;
+  tab-size: 2;
+  scrollbar-color: oklch(1 0 0 / 0.18) transparent;
+  scrollbar-width: thin;
+}
+.ginko-code pre code { font: inherit; background: none; padding: 0; }
+.ginko-code pre .line.highlight { display: inline-block; width: calc(100% + 2rem); margin-inline: -1rem; padding-inline: 1rem; background: oklch(1 0 0 / 0.08); }
+.ginko-code-copy {
+  position: absolute;
+  top: 0.4375rem;
+  right: 0.4375rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--ginko-code-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+/* Without a file name the button floats over the code, top right. */
+.ginko-code:not(:has(> .ginko-code-label)) > .ginko-code-copy { top: 0.75rem; right: 0.75rem; background: var(--ginko-code-bg); }
+.ginko-code-copy:hover, .ginko-code-copy:focus-visible { background: var(--ginko-code-hover); color: var(--ginko-code-fg); }
+.ginko-code-copy:focus-visible, .ginko-code pre:focus-visible, .ginko-code-tab:focus-visible, .ginko-code-tree-row:focus-visible {
+  outline: 2px solid var(--ginko-code-muted);
+  outline-offset: -2px;
+}
+.ginko-code-icon { width: 1rem; height: 1rem; flex: none; }
+/* Inside a group or tree the outer frame is the group's. */
+.ginko-code[data-bare] { margin: 0; padding: 0; border-radius: 0; background: none; }
+
+/* --- Code group --- */
+.ginko-code-tabs { display: flex; gap: 0.125rem; padding: 0 2.75rem 0 0.25rem; overflow-x: auto; scrollbar-width: none; }
+.ginko-code-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  min-height: 2.25rem;
+  padding: 0 0.5rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--ginko-code-muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ginko-code-tab:hover { color: var(--ginko-code-fg); }
+.ginko-code-tab[aria-selected='true'] { border-bottom-color: var(--ginko-code-fg); color: var(--ginko-code-fg); font-weight: 500; }
+.ginko-code-tab[aria-selected='true'] .ginko-code-icon { color: var(--ginko-code-fg); }
+/* In a group the copy button sits in the tab row, top right. */
+.ginko-code-group .ginko-code[data-bare] { position: static; }
+.ginko-code-panel[hidden], .ginko-code-tree-panel[hidden] { display: none; }
+
+/* --- Code tree --- */
+.ginko-code-tree { display: grid; gap: 0.25rem; padding-top: 0.25rem; }
+.ginko-code-tree-list, .ginko-code-tree-branch { margin: 0; padding: 0; list-style: none; }
+.ginko-code-tree-list { padding: 0.25rem; max-height: 15rem; overflow-y: auto; }
+.ginko-code-tree-branch { margin-inline-start: 1rem; padding-inline-start: 0.375rem; border-inline-start: 1px solid oklch(1 0 0 / 0.1); }
+.ginko-code-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-height: 1.875rem;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: none;
+  color: var(--ginko-code-muted);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.ginko-code-tree-row:hover { background: var(--ginko-code-hover); color: var(--ginko-code-fg); }
+.ginko-code-tree-row[aria-current='true'] { background: var(--ginko-code-hover); color: var(--ginko-code-fg); font-weight: 500; }
+.ginko-code-tree-row .ginko-code-icon { color: inherit; }
+.ginko-code-tree-row .ginko-code-tree-chevron { width: 0.875rem; height: 0.875rem; transition: transform 150ms ease-out; }
+.ginko-code-tree-chevron[data-open] { transform: rotate(90deg); }
+.ginko-code-tree-spacer { width: 0.875rem; flex: none; }
+.ginko-code-tree-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ginko-code-tree-pane, .ginko-code-tree-panel { min-width: 0; }
+.ginko-code-tree-pane .ginko-code pre { max-height: 28rem; }
+.ginko-code-tree-fallback { margin: 1.25rem 0; }
+@media (min-width: 64rem) {
+  .ginko-code-tree { grid-template-columns: minmax(12rem, 0.85fr) minmax(0, 2fr); }
+  .ginko-code-tree-list { max-height: 28rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ginko-code-tree-row .ginko-code-tree-chevron { transition: none; }
+}
+
+/* --- Files --- */
+.ginko-files {
+  margin: 1.25rem 0;
+  padding: 0.5rem;
+  border: 1px solid var(--ginko-surface-border, var(--border, var(--ginko-default-border)));
+  border-radius: var(--radius, 0.625rem);
+  background: var(--ginko-surface, var(--card, var(--background, var(--ginko-default-background))));
+  font-size: 0.8125rem;
+}
+.ginko-files-list { margin: 0; padding: 0; list-style: none; }
+.ginko-files-list .ginko-files-list { margin-inline-start: 0.5rem; padding-inline-start: 0.875rem; border-inline-start: 1px solid var(--border, var(--ginko-default-border)); }
+.ginko-files-list li { margin: 0; }
+.ginko-files-row { display: flex; align-items: center; gap: 0.5rem; min-height: 2rem; padding: 0.25rem 0.5rem; border-radius: calc(var(--radius, 0.625rem) - 4px); }
+.ginko-files-row .ginko-code-icon { color: var(--muted-foreground, var(--ginko-default-muted-foreground)); }
+.ginko-files-row[data-active] { background: var(--muted, var(--ginko-default-muted)); font-weight: 500; }
+.ginko-files-name { min-width: 0; overflow-wrap: anywhere; }
+.ginko-files-note { margin-inline-start: auto; padding-inline-start: 1rem; color: var(--muted-foreground, var(--ginko-default-muted-foreground)); font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.75rem; text-align: end; }

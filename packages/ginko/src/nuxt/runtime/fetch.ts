@@ -1,0 +1,55 @@
+/// <reference path="./schema.d.ts" />
+// The platform's bundle endpoint (SPEC 6), shared by pages (plugin) and the sitemap route.
+// Server-safe: no Nuxt app imports, no global fetch helper. Failures are plain errors with `statusCode: 503`;
+// the app plugin and the sitemap route turn them into Nuxt errors with their own `createError`.
+import schema from '#ginko/schema'
+import { BUNDLE_FORMAT, bundleFits, isBundle, knownBricks, withFileBricks, type Bundle, type Locale } from '../../index.ts'
+import type { GinkoPublicConfig } from './shared.ts'
+
+/** A platform that does not answer in time is a failure, not a page that never loads. */
+const TIMEOUT_MS = 10_000
+/** Twice the site budget (SPEC 3: 4 MiB of content): anything bigger is not a bundle of this site. */
+const MAX_CHARS = 8 * 1024 * 1024
+
+/**
+ * The bundle a page reads: the platform's, the site's own file bricks (CONTENT.md), or both merged.
+ * File bundles come from `loadFiles` (the app fetches the site's own route `/__ginko/files/<locale>.json`,
+ * the server reads the build-time bundle directly), so this file needs no Nuxt app imports.
+ */
+export async function loadBundle(config: GinkoPublicConfig, locale: Locale, minRev: string | undefined, loadFiles: (locale: Locale) => Promise<Bundle | undefined>): Promise<Bundle> {
+  const [platform, files] = await Promise.all([
+    config.sources.platform ? fetchBundle(config, locale, minRev) : undefined,
+    config.sources.files ? loadFiles(locale) : undefined,
+  ])
+  return withFileBricks(platform, files, schema)
+}
+
+/** A platform failure: a plain error that carries the status, for the caller to turn into its framework's error. */
+export class PlatformError extends Error {
+  readonly statusCode = 503
+  constructor(message: string, cause?: unknown) { super(message, { cause }) }
+}
+
+/**
+ * Any platform failure (network, 5xx, 409 STALE, 429, wrong format) is a 503, never a 404:
+ * on Vercel a 503 keeps the last good page in the ISR cache, a 404 would replace it (ISR spike).
+ */
+export async function fetchBundle(config: GinkoPublicConfig, locale: Locale, minRev: string | undefined): Promise<Bundle> {
+  const query = new URLSearchParams({ format: String(BUNDLE_FORMAT), locale })
+  if (minRev && /^\d+\.\d+$/.test(minRev)) query.set('minRev', minRev)
+  const url = `${config.platform.replace(/\/$/, '')}/bundle/${encodeURIComponent(config.site)}?${query}`
+  let body: unknown
+  try {
+    const response = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const text = await response.text()
+    if (text.length > MAX_CHARS) throw new Error('bundle too large')
+    body = JSON.parse(text)
+  } catch (error) {
+    throw new PlatformError('Content temporarily unavailable', error)
+  }
+  // A bundle of the wrong shape, or with a brick of another kind than the site's config, is a
+  // platform failure too: defaults must never hide it (an empty collection would 404 detail pages).
+  if (!isBundle(body) || body.site !== config.site || !bundleFits(body, schema)) throw new PlatformError('Content in the wrong format')
+  return knownBricks(body, schema)
+}

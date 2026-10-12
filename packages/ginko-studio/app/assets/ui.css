@@ -1,0 +1,57 @@
+/* Ginko platform UI: a tool, not a brand. Calm, light, readable in daylight on a phone.
+   Base element styles on the shadcn tokens in css/tailwind.css; components style themselves with utilities.
+   Self-hosted font (no third parties). */
+@import '@fontsource-variable/inter/index.css';
+
+:root { accent-color: var(--primary); }
+
+@layer components {
+
+*, *::before, *::after { box-sizing: border-box; }
+/* The sticky site header (about 3.5rem) must not cover what focus or a link scrolls to. */
+html { -webkit-text-size-adjust: 100%; scrollbar-color: var(--input) var(--background); scroll-padding-top: 5rem; }
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font: 400 1rem/1.5 var(--font-sans);
+  caret-color: var(--primary);
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: var(--accent); }
+h1, h2, h3 { margin: 0; line-height: 1.2; text-wrap: balance; }
+/* Page and section titles: one size each; a utility class on the tag still wins (utilities come after this layer). */
+h1 { font-size: 1.5rem; font-weight: 600; }
+h2 { font-size: 1.25rem; font-weight: 600; }
+p { margin: 0; }
+/* Figures line up in dates and times; running text keeps Inter's normal figures (tabular widens hyphens). */
+time { font-variant-numeric: tabular-nums; }
+a:where(:not([data-slot])) { color: var(--primary); text-underline-offset: 0.18em; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}
+
+}
+
+/* Toasts (vue-sonner, unlayered, so these sit outside the layer too): an action and the close button big enough to
+   hit on a phone between services. */
+[data-sonner-toast] [data-button] { height: 2rem; padding-inline: 0.75rem; border-radius: var(--radius-md); font-size: 0.875rem; font-weight: 500; }
+[data-sonner-toast] [data-close-button] { width: 1.75rem; height: 1.75rem; }
+@media (pointer: coarse) {
+  [data-sonner-toast] [data-button] { height: 2.5rem; }
+  [data-sonner-toast] [data-close-button] { width: 2.25rem; height: 2.25rem; }
+}
+
+/* The clear button of search fields: the Lucide x in the muted text colour instead of the browser's own. */
+input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  background: var(--muted-foreground);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center / contain no-repeat;
+  cursor: pointer;
+}

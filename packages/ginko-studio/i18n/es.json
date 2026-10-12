@@ -1,0 +1,772 @@
+{
+  "nav": {
+    "quick": "Edición rápida",
+    "all": "Editar todo",
+    "files": "Archivos",
+    "history": "Historial",
+    "team": "Equipo",
+    "ai": "IA",
+    "mySites": "Mis sitios",
+    "viewSite": "Ver sitio",
+    "newTab": "(pestaña nueva)",
+    "menu": "Menú",
+    "views": "Vistas",
+    "areas": "Áreas",
+    "list": "Lista",
+    "signOut": "Cerrar sesión",
+    "signIn": "Iniciar sesión",
+    "signedOutTitle": "Has cerrado sesión.",
+    "signedOutText": "Lo que no se haya guardado se pierde. Inicia sesión de nuevo para seguir aquí.",
+    "noAccessHelp": "Si necesitas cambiar algo aquí, pide al propietario que te invite (de nuevo).",
+    "toReview": "Por revisar ({count})",
+    "short": {
+      "quick": "Hoy",
+      "all": "Contenido",
+      "review": "Revisar",
+      "files": "Archivos",
+      "history": "Historial",
+      "team": "Equipo",
+      "ai": "IA"
+    },
+    "more": "Más",
+    "account": "Cuenta",
+    "toReviewCount": "{count} por revisar"
+  },
+  "sites": {
+    "title": "Mis sitios",
+    "invitedTo": "<site>{site}</site> te invita como {role}.",
+    "accept": "Aceptar invitación",
+    "empty": "Todavía no tienes acceso a ningún sitio. Pide una invitación.",
+    "role": {
+      "admin": "Administrador",
+      "owner": "Propietario",
+      "staff": "Personal"
+    },
+    "remindTitle": "Recordatorios por correo",
+    "remindText": "Un correo breve la tarde antes de que empiece la semana si aún falta algo de la próxima semana, por ejemplo el menú del almuerzo.",
+    "language": "Idioma"
+  },
+  "login": {
+    "title": "Iniciar sesión",
+    "unavailable": "El inicio de sesión aún no está configurado.",
+    "email": "Correo electrónico",
+    "invalidEmail": "Introduce un correo electrónico válido.",
+    "sendFailed": "No se pudo enviar el código. Inténtalo de nuevo en un minuto.",
+    "sendCode": "Enviar código",
+    "sending": "Enviando …",
+    "sent": "Hemos enviado un código a <email>{email}</email>. Es válido durante 5 minutos.",
+    "code": "Código",
+    "submit": "Iniciar sesión",
+    "submitting": "Iniciando sesión …",
+    "sixDigits": "El código tiene 6 dígitos.",
+    "tooMany": "Demasiados intentos. Espera un minuto e inténtalo de nuevo.",
+    "tooManyWrong": "Demasiados intentos erróneos. Pide un código nuevo.",
+    "wrongCode": "El código es incorrecto o ha caducado.",
+    "newCode": "Enviar código nuevo",
+    "otherEmail": "Otro correo"
+  },
+  "problem": {
+    "offline": "Sin conexión. Lo que escribiste sigue aquí.",
+    "generic": "No ha funcionado. Lo que escribiste sigue aquí. Inténtalo de nuevo."
+  },
+  "invite": {
+    "titleShort": "Invitación",
+    "title": "Aceptar invitación",
+    "lead": "<site>{site}</site> te invita como {role}.",
+    "role": {
+      "owner": "propietario",
+      "staff": "miembro del personal",
+      "admin": "administrador"
+    },
+    "otherEmail": "Esta invitación es para otro correo electrónico. Inicia sesión con ese correo.",
+    "expired": "Esta invitación ha caducado o ya se usó. Pide una nueva.",
+    "accepting": "Aceptando …"
+  },
+  "entry": {
+    "newEntry": "Entrada nueva",
+    "more": "Más",
+    "removeEntry": "Eliminar entrada …",
+    "language": "Idioma",
+    "loading": "Cargando …",
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "saved": "Guardado",
+    "unsaved": "Sin guardar",
+    "saveBeforeLanguage": "Guarda primero y luego cambia el idioma.",
+    "groupHasIssues": "Errores en esta sección",
+    "foreignHint": "Aquí solo se muestran los textos que necesitan traducción. Los demás campos valen para todos los idiomas.",
+    "twin": "Esta entrada ya existe: “{title}”. Al guardar se crea una segunda.",
+    "saveContinues": "Todavía guardando. Si no tienes conexión, se guardará en cuanto vuelva.",
+    "notSaved": "Sin guardar: {reason}",
+    "notSavedReopen": "Sin guardar. Abre la tarea de nuevo.",
+    "status": {
+      "online": "En línea",
+      "onlineFrom": "En línea desde {when}",
+      "draft": "Borrador"
+    },
+    "save": {
+      "waiting": "Esperando conexión …",
+      "saving": "Guardando …",
+      "draft": "Guardar borrador",
+      "save": "Guardar"
+    },
+    "conflict": {
+      "changed": "Alguien ha cambiado {fields} mientras tanto.",
+      "thisEntry": "esta entrada",
+      "item": "{field}: guardado ahora como “{stored}”, tu texto “{mine}”",
+      "keepMine": "Guardar mis cambios",
+      "takeTheirs": "Usar la versión nueva"
+    },
+    "publish": {
+      "open": "Publicar …",
+      "changeSchedule": "Cambiar programación …",
+      "whenOnline": "¿Cuándo debe publicarse “{title}”?",
+      "now": "Ahora",
+      "later": "En línea desde …",
+      "dateTime": "Fecha y hora",
+      "siteZone": "Hora del sitio web ({zone}), no la hora de tu dispositivo.",
+      "publishNow": "Publicar ahora",
+      "schedule": "Programar",
+      "clearSchedule": "Quitar programación",
+      "futureTime": "Elige una hora en el futuro."
+    },
+    "unpublish": {
+      "button": "Quitar de la web",
+      "warning": "“{title}” desaparece del sitio web y vuelve a ser un borrador."
+    },
+    "preview": {
+      "label": "Vista previa",
+      "close": "Cerrar vista previa",
+      "frameTitle": "Vista previa del sitio web"
+    },
+    "remove": {
+      "title": "Eliminar entrada",
+      "text": "“{title}” se elimina del sitio web. Puedes restaurarla durante 30 días.",
+      "confirm": "Eliminar"
+    },
+    "discard": {
+      "question": "¿Descartar los cambios?",
+      "confirm": "Descartar",
+      "keepEditing": "Seguir editando"
+    },
+    "pick": {
+      "search": "Buscar",
+      "empty": "No se encontró nada."
+    },
+    "changes": {
+      "justNow": "ahora mismo",
+      "minutesAgo": "hace {count} min",
+      "hoursAgo": "hace {count} h",
+      "undo": "Deshacer",
+      "undone": "Deshecho",
+      "empty": "Aún no hay cambios."
+    },
+    "toast": {
+      "close": "Cerrar mensaje"
+    }
+  },
+  "site": {
+    "title": {
+      "quick": "{site} · Edición rápida",
+      "all": "{site} · Editar todo",
+      "team": "{site} · Equipo",
+      "ai": "{site} · Conectar IA",
+      "history": "{site} · Historial",
+      "area": "{area} · Editar todo"
+    },
+    "fallback": {
+      "site": "Sitio",
+      "area": "Área",
+      "entry": "Entrada"
+    },
+    "common": {
+      "back": "Atrás",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "remove": "Eliminar",
+      "done": "Listo"
+    },
+    "form": {
+      "email": "Correo electrónico"
+    },
+    "role": {
+      "owner": "Propietario",
+      "staff": "Personal"
+    },
+    "status": {
+      "draft": "Borrador",
+      "onlineFrom": "En línea desde {when}",
+      "expired": "caducado",
+      "ended": "terminado",
+      "from": "desde {date}",
+      "until": "hasta {date}",
+      "untilToday": "hasta hoy",
+      "noEnd": "sin fecha de fin"
+    },
+    "quick": {
+      "heading": "Edición rápida",
+      "nothingForYou": "No tienes tareas aquí. Pide al propietario los permisos que necesitas.",
+      "todayDone": "<task>{task}</task> está completado para hoy.",
+      "flagText": "“{text}”",
+      "clearToday": "Quitar",
+      "notFilled": "Aún sin completar",
+      "notThisWeek": ", aún no para esta semana",
+      "plannedWeek": "{label} {date}, planificado con antelación",
+      "nothingNow": "No hay nada introducido por ahora.",
+      "removeNamed": "Eliminar {title}"
+    },
+    "all": {
+      "heading": "Editar todo",
+      "lede": "Todas las áreas del sitio con todos sus campos. Elige un área.",
+      "allAreas": "Todas las áreas",
+      "new": "Nuevo",
+      "noEntries": "Aún no hay entradas.",
+      "moveUp": "Subir {title}",
+      "moveDown": "Bajar {title}",
+      "removed": "Eliminado (se puede restaurar durante 30 días)",
+      "restore": "Restaurar"
+    },
+    "area": {
+      "missing": "Esta área no existe.",
+      "noAccess": "No puedes editar esta área. Pregunta al propietario si necesitas cambiar algo aquí."
+    },
+    "entry": {
+      "missing": "Esta entrada ya no existe."
+    },
+    "team": {
+      "heading": "Equipo",
+      "ownersOnly": "Solo los propietarios pueden ver el equipo.",
+      "members": "Miembros",
+      "noEmail": "Sin correo electrónico",
+      "noRights": "Sin permisos.",
+      "changeRights": "Cambiar permisos",
+      "losesAccess": "<email>{email}</email> perderá el acceso a {site}.",
+      "openInvites": "Invitaciones abiertas",
+      "validUntil": "válida hasta {date}",
+      "revokeInvite": "Revocar",
+      "invite": "Invitar",
+      "role": "Rol",
+      "rights": "Permisos",
+      "sendInvite": "Enviar invitación",
+      "inviteSent": "Invitación enviada a {email}."
+    },
+    "ai": {
+      "heading": "Conectar IA",
+      "lead": "Tu asistente de IA podrá entonces hacer tareas por ti, por ejemplo “{first}” o “{second}”. Puede hacer exactamente lo que tú puedes hacer aquí. Cada cambio aparece en el historial como “vía IA” y se puede deshacer.",
+      "exampleOne": "Marcar hoy como completo",
+      "exampleTwo": "Añadir el menú del almuerzo desde la foto",
+      "keyFor": "Clave para “{label}”",
+      "keyOnce": "La clave se muestra solo ahora. Quien la tenga puede hacer cambios en tu nombre, así que dásela solo a tu asistente.",
+      "terminal": "Para Claude Code: ejecuta en la terminal",
+      "copyCommand": "Copiar comando",
+      "copiedCommand": "Comando copiado.",
+      "other": "Otro asistente",
+      "address": "Dirección (MCP, HTTP)",
+      "copyAddress": "Copiar dirección",
+      "copiedAddress": "Dirección copiada.",
+      "authHeader": "Encabezado Authorization",
+      "copyKey": "Copiar clave",
+      "copiedKey": "Clave copiada.",
+      "copyFailed": "No se pudo copiar. Selecciona el texto y cópialo tú.",
+      "newKey": "Clave nueva",
+      "forWhich": "¿Para qué asistente es?",
+      "labelHint": "El nombre aparece en el historial, por ejemplo “Claude Code” o “ChatGPT en el portátil”.",
+      "createKey": "Crear clave",
+      "yourKeys": "Tus claves",
+      "noneYet": "Ninguna todavía.",
+      "createdAt": "Creada {when}",
+      "revokedAt": ", revocada {when}",
+      "lastUsedAt": ", último uso {when}",
+      "neverUsed": ", nunca usada",
+      "revokeKey": "Revocar",
+      "revokeConfirm": "Después, “{label}” ya no podrá hacer cambios."
+    },
+    "history": {
+      "heading": "Historial",
+      "loadOlder": "Cargar anteriores"
+    }
+  },
+  "editor": {
+    "fix": "Corregir",
+    "fixAt": "Corregir: {message}",
+    "modCtrl": "Ctrl+",
+    "find": {
+      "search": "Buscar",
+      "replaceWith": "Reemplazar por",
+      "next": "Siguiente",
+      "prev": "Anterior",
+      "replace": "Reemplazar",
+      "replaceAll": "Reemplazar todo",
+      "count": "{current} de {total}",
+      "none": "Sin coincidencias"
+    },
+    "toolbar": {
+      "label": "Formato",
+      "blockType": "Tipo de bloque"
+    },
+    "marks": {
+      "bold": "Negrita",
+      "italic": "Cursiva",
+      "strike": "Tachado",
+      "code": "Código",
+      "link": "Enlace"
+    },
+    "blocks": {
+      "text": "Texto",
+      "h2": "Título",
+      "h3": "Subtítulo",
+      "h4": "Título pequeño",
+      "bulletList": "Lista con viñetas",
+      "orderedList": "Lista numerada",
+      "taskList": "Lista de tareas",
+      "blockquote": "Cita",
+      "horizontalRule": "Separador",
+      "table": "Tabla",
+      "image": "Imagen",
+      "codeBlock": "Bloque de código"
+    },
+    "source": {
+      "show": "Mostrar código Markdown",
+      "back": "Volver a la vista de texto",
+      "note": "Este texto se edita como Markdown.",
+      "problems": "Problemas en el texto",
+      "line": "Línea {line}: ",
+      "fixLine": "Corregir: línea {line}, {message}"
+    },
+    "slash": {
+      "insert": "Insertar",
+      "empty": "No se encontró nada.",
+      "groupText": "Texto",
+      "groupComponents": "Componentes",
+      "items": {
+        "heading2": {
+          "label": "Título",
+          "describe": "Título grande para una sección nueva"
+        },
+        "heading3": {
+          "label": "Subtítulo",
+          "describe": "Título más pequeño dentro de una sección"
+        },
+        "heading4": {
+          "label": "Título pequeño",
+          "describe": "El título más pequeño"
+        },
+        "bulletList": {
+          "label": "Lista con viñetas",
+          "describe": "Lista con puntos"
+        },
+        "orderedList": {
+          "label": "Lista numerada",
+          "describe": "Lista con números"
+        },
+        "taskList": {
+          "label": "Lista de tareas",
+          "describe": "Lista con casillas para marcar"
+        },
+        "blockquote": {
+          "label": "Cita",
+          "describe": "Texto con sangría, por ejemplo la opinión de un cliente"
+        },
+        "horizontalRule": {
+          "label": "Separador",
+          "describe": "Una línea entre dos secciones"
+        },
+        "table": {
+          "label": "Tabla",
+          "describe": "Filas y columnas"
+        },
+        "codeBlock": {
+          "label": "Bloque de código",
+          "describe": "Texto de ancho fijo, para código"
+        },
+        "image": {
+          "label": "Imagen",
+          "describe": "Insertar una imagen con descripción"
+        }
+      }
+    },
+    "link": {
+      "label": "Enlace (dirección web)",
+      "apply": "Aplicar",
+      "remove": "Quitar enlace",
+      "refused": "Este enlace no está permitido. Usa una dirección web (https://…), un correo electrónico (mailto:) o un teléfono (tel:)."
+    },
+    "image": {
+      "insertTitle": "Insertar imagen",
+      "describeTitle": "Describir imagen",
+      "address": "Dirección",
+      "description": "Descripción de la imagen",
+      "later": "Más tarde",
+      "cancel": "Cancelar",
+      "done": "Listo",
+      "insert": "Insertar",
+      "descriptionRequired": "Describe brevemente la imagen para las personas que no pueden verla.",
+      "addressRefused": "Esta dirección de imagen no está permitida. Usa una dirección web (https://…).",
+      "noDescription": "Una imagen del texto aún no tiene descripción."
+    },
+    "text": {
+      "tooLong": "El texto es demasiado largo (máximo {max} caracteres).",
+      "counter": "{count} / {limit} caracteres"
+    },
+    "card": {
+      "show": "Mostrar como {label}",
+      "fallbackLabel": "Tarjeta"
+    },
+    "upload": {
+      "generic": "No se pudo subir la imagen. Inténtalo de nuevo.",
+      "wait": "Todavía se está subiendo una imagen. Espera un momento.",
+      "badType": "Este formato de imagen no sirve. Usa {types}.",
+      "tooBig": "El archivo es demasiado grande (máximo {max} MB).",
+      "notReady": "La imagen no terminó de procesarse. Inténtalo de nuevo.",
+      "reopened": "La imagen se subió, pero el texto se volvió a abrir mientras tanto. Insértala de nuevo.",
+      "uploading": "subiendo …"
+    },
+    "block": {
+      "settings": "Ajustes",
+      "settingsFor": "Ajustes: {label}",
+      "noSettings": "Este bloque no tiene ajustes.",
+      "required": "Campos obligatorios",
+      "more": "Más ajustes",
+      "remove": "Eliminar"
+    },
+    "prop": {
+      "optional": "(opcional)",
+      "imagePlaceholder": "Ruta o dirección web",
+      "notSet": "Sin definir",
+      "default": "Predeterminado ({value})",
+      "choose": "Elegir …"
+    }
+  },
+  "fields": {
+    "optional": "(opcional)",
+    "choose": "Elegir …",
+    "none": "Ninguno",
+    "notSet": "Aún sin definir.",
+    "clear": "Quitar",
+    "remove": "Eliminar",
+    "cancel": "Cancelar",
+    "retry": "Reintentar",
+    "uploading": "Subiendo …",
+    "slug": {
+      "label": "Dirección web (URL)",
+      "pageAt": "La página está en {address}",
+      "generated": "Se genera a partir del título al crear."
+    },
+    "translation": {
+      "changedSince": "{name} ha cambiado desde la traducción",
+      "fitsAsIs": "Dejar como está",
+      "notTranslated": "Aún sin traducir. El sitio web muestra aquí el texto de {name}."
+    },
+    "date": {
+      "thisWeek": "Esta semana",
+      "nextWeek": "La próxima semana",
+      "today": "Hoy",
+      "tomorrow": "Mañana"
+    },
+    "daterange": {
+      "from": "desde",
+      "to": "hasta"
+    },
+    "file": {
+      "checking": "Comprobando …",
+      "blocked": "El archivo aún se está procesando. Espera un momento.",
+      "failed": "No se pudo subir el archivo. Inténtalo de nuevo.",
+      "opensInNewTab": "(se abre en una pestaña nueva)",
+      "unavailable": "El archivo no está disponible.",
+      "pick": "Elegir PDF",
+      "other": "Otro archivo"
+    },
+    "image": {
+      "processing": "Procesando …",
+      "blocked": "La foto aún se está procesando. Espera un momento.",
+      "failed": "No se pudo subir la foto. Inténtalo de nuevo.",
+      "tooLarge": "El archivo es demasiado grande (máximo {max} MB).",
+      "pick": "Elegir foto",
+      "other": "Otra foto",
+      "alt": "Descripción de la imagen",
+      "altHint": "¿Qué se ve en la foto? Para las personas que no pueden ver la imagen.",
+      "altFromLibrary": "Déjalo vacío para usar la descripción de Archivos."
+    },
+    "money": {
+      "negative": "Un precio no puede ser negativo.",
+      "invalid": "Introduce un importe como {example}."
+    },
+    "ref": {
+      "gone": "Esta entrada ya no existe.",
+      "removeChip": "Eliminar {title}",
+      "full": "Máximo {max}. Elimina una primero para cambiarla.",
+      "upTo": "Hasta {max} posibles.",
+      "add": "Añadir entrada",
+      "choose": "Elegir {target}",
+      "search": "Buscar {target} …",
+      "nothing": "No se encontró nada."
+    },
+    "list": {
+      "up": "Subir {title}",
+      "down": "Bajar {title}",
+      "remove": "Eliminar {title}",
+      "removed": "{title} eliminado",
+      "undo": "Deshacer",
+      "confirm": "Sí, es correcto",
+      "confirmBlocker": "Confirma para “{title}”: ¿sigue todo correcto en {label}?",
+      "changed": "{changed} ha cambiado. ¿Sigue todo correcto en {label}?",
+      "add": "Añadir {item}",
+      "text": "Texto"
+    }
+  },
+  "ops": {
+    "saved": "Guardado.",
+    "draftSaved": "Borrador guardado.",
+    "draftNotOnSite": "Borrador guardado. Aún no está en el sitio web.",
+    "draftScheduled": "Borrador guardado, en línea desde {time}.",
+    "liveHint": "En el sitio web en aproximadamente un minuto.",
+    "undo": "Deshacer",
+    "undone": "Deshecho.",
+    "undoNotPossible": "Ya no se puede deshacer: se cambió de nuevo después.",
+    "published": "Publicado.",
+    "scheduled": "Programado: en línea desde {time}.",
+    "unpublished": "Quitado de la web. Dejará de estar en el sitio web en aproximadamente un minuto.",
+    "scheduleCleared": "Programación quitada. La entrada sigue como borrador.",
+    "created": "Creado.",
+    "removed": "Eliminado.",
+    "removedNamed": "“{title}” eliminado.",
+    "restored": "Restaurado.",
+    "entryGone": "Esta entrada se eliminó mientras tanto.",
+    "leaveConfirm": "Tus cambios aún no están guardados. ¿Salir de todos modos?",
+    "value": {
+      "empty": "vacío",
+      "yes": "Sí",
+      "no": "No",
+      "none": "ninguno",
+      "changed": "cambiado",
+      "items": "{count, plural, one {# entrada} other {# entradas}}"
+    },
+    "upload": {
+      "notImage": "Elige una foto (JPEG, PNG, WebP o HEIC).",
+      "notPdf": "Elige un archivo PDF.",
+      "photoTooLarge": "La foto es demasiado grande (20 MB como máximo).",
+      "fileTooLarge": "El archivo es demasiado grande (10 MB como máximo).",
+      "failed": "Falló la subida. Inténtalo de nuevo.",
+      "offline": "Sin conexión. Inténtalo de nuevo.",
+      "aborted": "Cancelado."
+    }
+  },
+  "review": {
+    "title": "{site} · Por revisar",
+    "heading": "Por revisar",
+    "empty": "Nada espera tu decisión.",
+    "releases": "Versiones",
+    "plannedAt": "previsto para {time}",
+    "approveRelease": "Aprobar versión",
+    "releaseBlocked": "Un cambio de esta versión ya no encaja, así que la versión no puede publicarse. Quítalo de la versión y vuelve a aprobar.",
+    "removeFromRelease": "Quitar de la versión",
+    "releaseApproved": "Versión aprobada. En el sitio web en aproximadamente un minuto.",
+    "approve": "Aprobar",
+    "approveLater": "Aprobar para más tarde…",
+    "reject": "Rechazar…",
+    "rejectConfirm": "Rechazar",
+    "reason": "¿Por qué? El autor lo verá.",
+    "mine": "Lo propusiste tú",
+    "stale": "Ya no encaja",
+    "approved": "Aprobado. En el sitio web en aproximadamente un minuto.",
+    "rejected": "Rechazado.",
+    "sent": "Enviado para aprobación. Decide el propietario.",
+    "diff": {
+      "before": "Antes",
+      "after": "Después",
+      "reordered": "El orden cambió"
+    }
+  },
+  "history": {
+    "filter": {
+      "label": "Filtro",
+      "all": "Todo",
+      "mine": "Mis cambios",
+      "ai": "Vía IA",
+      "entry": "Esta entrada"
+    },
+    "noMatches": "Ningún cambio coincide con este filtro.",
+    "showChanges": "Mostrar cambios",
+    "hideChanges": "Ocultar cambios",
+    "revert": "Volver a esta versión",
+    "revertConfirm": "¿Volver a la versión del {date}? Se guarda como un cambio nuevo, así que puedes deshacerlo.",
+    "reverted": "Se volvió a la versión anterior.",
+    "alreadyThere": "La entrada ya tiene esta versión.",
+    "waiting": "Esperando aprobación",
+    "withdraw": "Retirar",
+    "withdrawn": "Retirado.",
+    "notApproved": "No aprobado",
+    "rejectedBy": "{who} lo rechazó: «{reason}»"
+  },
+  "basics": {
+    "search": {
+      "button": "Buscar…",
+      "label": "Buscar",
+      "shortcutMac": "⌘K",
+      "shortcutOther": "Ctrl K"
+    },
+    "palette": {
+      "title": "Búsqueda y acciones",
+      "description": "Busca entradas y áreas, o elige una acción.",
+      "placeholder": "Buscar entradas y áreas…",
+      "recent": "Entradas recientes",
+      "actions": "Acciones",
+      "entries": "Entradas",
+      "areas": "Áreas",
+      "newIn": "Nuevo en {area}",
+      "review": "Revisar",
+      "empty": "No se encontró nada para “{query}”."
+    },
+    "update": {
+      "menu": "Actualizar el sitio web ahora",
+      "running": "Actualizando el sitio web…",
+      "done": "El sitio web está al día.",
+      "fallback": "Se actualiza solo en unos minutos.",
+      "pagesFailed": "{count, plural, one {No se pudo actualizar # página.} other {No se pudieron actualizar # páginas.}}",
+      "lastAt": "Última actualización: {when}"
+    },
+    "duplicate": {
+      "menu": "Duplicar",
+      "done": "Copia creada como borrador.",
+      "sent": "Enviado para aprobación."
+    },
+    "history": {
+      "ofEntry": "Historial de esta entrada"
+    },
+    "why": {
+      "link": "¿Por qué no está en el sitio web?",
+      "loading": "Comprobando…",
+      "none": "Nada impide que esta entrada esté en el sitio web.",
+      "publish": "Publicar…",
+      "restore": "Restaurar",
+      "translate": "Editar traducción"
+    },
+    "removed": {
+      "link": "Eliminadas ({count})",
+      "title": "Entradas eliminadas",
+      "empty": "No se eliminó nada.",
+      "until": "Se borrará definitivamente el {date}"
+    },
+    "translation": {
+      "missing": "{lang}: {count, plural, one {falta # texto} other {faltan # textos}}",
+      "outdated": "{lang}: {count, plural, one {# texto por actualizar} other {# textos por actualizar}}",
+      "open": "Abrir {title} en {language}",
+      "incomplete": "Traducción incompleta"
+    },
+    "views": {
+      "searchLabel": "Buscar en esta lista",
+      "searchPlaceholder": "Buscar…",
+      "sortLabel": "Ordenar",
+      "sortDefault": "Orden predeterminado",
+      "sortAsc": "{field}, de A a Z",
+      "sortDesc": "{field}, de Z a A",
+      "save": "Guardar vista…",
+      "saveTitle": "Guardar esta vista",
+      "saveHelp": "Guarda la búsqueda y el orden actuales solo para ti.",
+      "name": "Nombre de la vista",
+      "saveConfirm": "Guardar",
+      "saved": "Vista guardada.",
+      "removeView": "Eliminar vista",
+      "removeDone": "Vista eliminada.",
+      "listLabel": "Vistas guardadas",
+      "optionsFor": "Opciones de la vista {name}",
+      "noMatch": "Ninguna entrada coincide."
+    }
+  },
+  "files": {
+    "title": "Archivos",
+    "pageTitle": "{site} · Archivos",
+    "views": {
+      "all": "Todos los archivos",
+      "recent": "Recientes",
+      "unused": "Sin usar",
+      "missingAlt": "Sin descripción de imagen",
+      "duplicates": "Duplicados",
+      "trash": "Papelera"
+    },
+    "folders": "Carpetas",
+    "newFolder": "Carpeta nueva",
+    "folderName": "Nombre de la carpeta",
+    "createFolder": "Crear",
+    "search": "Buscar archivos",
+    "layoutGrid": "Cuadrícula",
+    "layoutList": "Lista",
+    "upload": "Subir",
+    "uploading": "Subiendo …",
+    "dropTo": "Suelta para subir a {folder}",
+    "noAlt": "Sin descripción de imagen",
+    "col": {
+      "name": "Nombre",
+      "type": "Tipo",
+      "size": "Tamaño",
+      "dimensions": "Dimensiones",
+      "usedIn": "Usado en",
+      "date": "Fecha"
+    },
+    "inUse": "En uso",
+    "selected": "{count, plural, one {# archivo seleccionado} other {# archivos seleccionados}}",
+    "info": {
+      "title": "Detalles",
+      "name": "Nombre",
+      "alt": "Descripción de la imagen",
+      "saved": "Guardado",
+      "type": "Tipo",
+      "size": "Tamaño",
+      "dimensions": "Dimensiones",
+      "uploaded": "Subido",
+      "uploadedBy": "Subido por",
+      "usedIn": "Usado en",
+      "notUsed": "No se usa en ningún sitio.",
+      "altDefault": "Se usa donde esta foto no tiene descripción propia."
+    },
+    "focusHint": "Haz clic en la foto para fijar el punto de enfoque.",
+    "replace": "Reemplazar archivo…",
+    "replaceNote": "Todas las páginas que lo usan muestran el archivo nuevo. El archivo anterior se conserva 30 días.",
+    "download": "Descargar",
+    "moveTo": "Mover a…",
+    "move": "Mover",
+    "noFolder": "Sin carpeta",
+    "remove": "Eliminar",
+    "removeUsed": "Eliminar…",
+    "removeConfirm": "¿Eliminar {name}? Puedes restaurarlo desde la Papelera durante 30 días.",
+    "removeConfirmMany": "¿Eliminar {count} archivos? Puedes restaurarlos desde la Papelera durante 30 días.",
+    "removeUsedMsg": "{name} se usa en {count, plural, one {# lugar} other {# lugares}}. Quítalo primero de esas entradas.",
+    "removed": "{count, plural, one {# archivo movido a la Papelera.} other {# archivos movidos a la Papelera.}}",
+    "restore": "Restaurar",
+    "deletedEntry": "(eliminada)",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "empty": {
+      "all": "Aún no hay archivos. Arrastra fotos o PDF aquí, o usa Subir.",
+      "recent": "Aún no hay archivos. Arrastra fotos o PDF aquí, o usa Subir.",
+      "missingAlt": "Todas las fotos tienen descripción.",
+      "unused": "Todos los archivos están en uso.",
+      "duplicates": "No hay duplicados.",
+      "trash": "La Papelera está vacía. Los archivos eliminados se quedan aquí 30 días.",
+      "none": "No se encontraron archivos."
+    },
+    "loadMore": "Mostrar más",
+    "loading": "Cargando …",
+    "gone": "Este archivo ya no existe.",
+    "previous": "Archivo anterior",
+    "next": "Archivo siguiente",
+    "altLabel": "Descripción de la imagen",
+    "altHint": "¿Qué se ve en la foto? Para las personas que no pueden ver la imagen.",
+    "picker": {
+      "choose": "Elegir de la biblioteca",
+      "usePhoto": "Usar esta foto",
+      "useFile": "Usar este archivo"
+    }
+  },
+  "who": {
+    "member": "Un miembro del equipo",
+    "platform": "Soporte del sitio",
+    "former": "Antiguo miembro",
+    "system": "Sistema",
+    "via": "vía IA ({agent})",
+    "viaAi": "vía IA"
+  },
+  "ui": {
+    "close": "Cerrar"
+  }
+}

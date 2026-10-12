@@ -1,0 +1,649 @@
+{
+  "format": 3,
+  "site": "industrie",
+  "locale": "en",
+  "locales": [
+    "de",
+    "en"
+  ],
+  "mainLocale": "de",
+  "currency": "EUR",
+  "schemaRev": 1,
+  "contentRev": 1,
+  "generatedAt": "2026-10-08T06:00:00.000Z",
+  "bricks": {
+    "hours": {
+      "kind": "single",
+      "data": {
+        "week": [
+          {
+            "_id": "wkmo000000",
+            "day": "mo",
+            "closed": false,
+            "from1": "07:00",
+            "to1": "12:00",
+            "from2": "12:30",
+            "to2": "16:00"
+          },
+          {
+            "_id": "wktu000000",
+            "day": "tu",
+            "closed": false,
+            "from1": "07:00",
+            "to1": "12:00",
+            "from2": "12:30",
+            "to2": "16:00"
+          },
+          {
+            "_id": "wkwe000000",
+            "day": "we",
+            "closed": false,
+            "from1": "07:00",
+            "to1": "12:00",
+            "from2": "12:30",
+            "to2": "16:00"
+          },
+          {
+            "_id": "wkth000000",
+            "day": "th",
+            "closed": false,
+            "from1": "07:00",
+            "to1": "12:00",
+            "from2": "12:30",
+            "to2": "16:00"
+          },
+          {
+            "_id": "wkfr000000",
+            "day": "fr",
+            "closed": false,
+            "from1": "07:00",
+            "to1": "12:00",
+            "from2": "12:30",
+            "to2": "14:00"
+          },
+          {
+            "_id": "wksa000000",
+            "day": "sa",
+            "closed": true
+          },
+          {
+            "_id": "wksu000000",
+            "day": "su",
+            "closed": true
+          }
+        ],
+        "exceptions": [
+          {
+            "_id": "exWeihn001",
+            "when": {
+              "from": "2026-12-24",
+              "to": "2027-01-01"
+            },
+            "reason": "Company holiday over Christmas",
+            "closed": true
+          }
+        ]
+      },
+      "fallback": []
+    },
+    "notices": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "notice-messe",
+          "data": {
+            "text": "We are at the Steyr trade fair, booth B12.",
+            "until": "2026-10-16"
+          },
+          "fallback": []
+        },
+        {
+          "id": "notice-wartung",
+          "data": {
+            "text": "Wartung am Server am 9. Oktober, E-Mails können verzögert ankommen.",
+            "until": "2026-10-09"
+          },
+          "fallback": [
+            "text"
+          ]
+        },
+        {
+          "id": "notice-empfang",
+          "data": {
+            "text": "Empfang bis 1. September nur vormittags besetzt.",
+            "until": "2026-09-30"
+          },
+          "fallback": [
+            "text"
+          ]
+        }
+      ]
+    },
+    "news": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "news-cnc",
+          "data": {
+            "title": "Brunner invests in five new CNC mills",
+            "slug": "investment-cnc-mills",
+            "date": "2026-10-02",
+            "image": {
+              "url": "/media/cnc-halle.jpg",
+              "alt": "CNC mills in the shop floor",
+              "width": 2000,
+              "height": 1333
+            },
+            "body": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Die Brunner Präzisionstechnik GmbH erweitert ihre Fertigung in Steyr um fünf CNC-Fräsen. Die Investition sichert zwölf Arbeitsplätze in der Zerspanung."
+                ],
+                [
+                  "p",
+                  {},
+                  "Rückfragen an ",
+                  [
+                    "a",
+                    {
+                      "href": "mailto:marketing@brunner-praezision.example"
+                    },
+                    "die Marketing-Abteilung"
+                  ],
+                  "."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            },
+            "pressPdf": {
+              "url": "/media/pressemitteilung-cnc.pdf",
+              "name": "pressemitteilung-cnc.pdf",
+              "size": 238112
+            }
+          },
+          "fallback": [
+            "body"
+          ],
+          "urls": {
+            "de": "/aktuelles/investition-cnc-fraesen",
+            "en": "/en/news/investment-cnc-mills"
+          }
+        },
+        {
+          "id": "news-zulieferertag",
+          "data": {
+            "title": "Brunner beim Zulieferertag Oberösterreich",
+            "slug": "zulieferertag-2026",
+            "date": "2026-09-15",
+            "body": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Wir zeigen Drehteile für die Medizintechnik. Termine und Anmeldung: ",
+                  [
+                    "a",
+                    {
+                      "href": "https://zulieferer.example/termine"
+                    },
+                    "Veranstaltungsseite"
+                  ]
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "title",
+            "slug",
+            "body"
+          ],
+          "urls": {
+            "de": "/aktuelles/zulieferertag-2026",
+            "en": "/en/news/zulieferertag-2026"
+          }
+        },
+        {
+          "id": "news-logistik",
+          "data": {
+            "title": "Neuer Standort für die Logistik",
+            "slug": "neuer-standort-logistik",
+            "date": "2026-08-20",
+            "body": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Die Logistik zieht im Frühjahr 2027 in eine neue Halle am Werksrand."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            }
+          },
+          "fallback": [
+            "title",
+            "slug",
+            "body"
+          ],
+          "urls": {
+            "de": "/aktuelles/neuer-standort-logistik",
+            "en": "/en/news/neuer-standort-logistik"
+          }
+        }
+      ]
+    },
+    "jobs": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "job-cnc",
+          "data": {
+            "title": "CNC machinist",
+            "kind": "fulltime",
+            "location": "Steyr",
+            "salary": {
+              "amount": 280000,
+              "currency": "EUR"
+            },
+            "salaryPeriod": "month",
+            "start": "2026-11-01",
+            "until": "2026-11-30",
+            "description": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Sie rüsten, programmieren und überwachen CNC-Fräsen und Drehmaschinen."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            },
+            "applyEmail": "bewerbung@brunner-praezision.example"
+          },
+          "fallback": [
+            "description"
+          ]
+        },
+        {
+          "id": "job-einkauf",
+          "data": {
+            "title": "Purchasing clerk (part-time)",
+            "kind": "parttime",
+            "location": "Steyr",
+            "salary": {
+              "amount": 2400000,
+              "currency": "EUR"
+            },
+            "salaryPeriod": "year",
+            "until": "2026-12-15",
+            "description": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Einkauf von Rohmaterial und Normteilen, 20 Stunden pro Woche."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            },
+            "applyUrl": "https://www.brunner-praezision.example/karriere/einkauf"
+          },
+          "fallback": [
+            "description"
+          ]
+        },
+        {
+          "id": "job-lehre",
+          "data": {
+            "title": "Lehrstelle Werkzeugbau",
+            "kind": "apprenticeship",
+            "location": "Steyr",
+            "salary": {
+              "amount": 105000,
+              "currency": "EUR"
+            },
+            "salaryPeriod": "month",
+            "start": "2027-09-01",
+            "until": "2026-10-01",
+            "description": {
+              "nodes": [
+                [
+                  "p",
+                  {},
+                  "Lehre zum Werkzeugmechaniker, vier Jahre."
+                ]
+              ],
+              "toc": {
+                "title": "",
+                "searchDepth": 3,
+                "depth": 2,
+                "links": []
+              }
+            },
+            "applyUrl": "https://www.brunner-praezision.example/karriere/lehre"
+          },
+          "fallback": [
+            "title",
+            "description"
+          ]
+        }
+      ]
+    },
+    "events": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "msg-linz-2025",
+          "data": {
+            "title": "Fachmesse Linz 2025",
+            "when": {
+              "from": "2025-09-01",
+              "to": "2025-09-04"
+            },
+            "location": "Linz",
+            "booth": "A3"
+          },
+          "fallback": [
+            "title"
+          ]
+        },
+        {
+          "id": "msg-steyr",
+          "data": {
+            "title": "Steyr trade fair",
+            "when": {
+              "from": "2026-10-13",
+              "to": "2026-10-16"
+            },
+            "location": "Steyr, Halle B",
+            "booth": "B12"
+          },
+          "fallback": []
+        },
+        {
+          "id": "msg-stuttgart",
+          "data": {
+            "title": "Qualitätsmesse Stuttgart",
+            "when": {
+              "from": "2026-11-03",
+              "to": "2026-11-06"
+            },
+            "location": "Stuttgart",
+            "booth": "5-412"
+          },
+          "fallback": [
+            "title"
+          ]
+        }
+      ]
+    },
+    "products": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "prod-serie-600",
+          "data": {
+            "name": "Precision turned parts, series 600",
+            "slug": "turned-parts-series-600",
+            "summary": "Turned parts in steel and stainless steel up to 600 mm long.",
+            "images": [
+              {
+                "_id": "pimgSerie1",
+                "image": {
+                  "url": "/media/drehteil-serie-600.jpg",
+                  "alt": "Turned part in stainless steel",
+                  "width": 1600,
+                  "height": 1200
+                }
+              }
+            ],
+            "specs": [
+              {
+                "_id": "pspSerie01",
+                "name": "Max. length",
+                "value": "600",
+                "unit": "mm"
+              },
+              {
+                "_id": "pspSerie02",
+                "name": "Materials",
+                "value": "Stahl, Edelstahl 1.4301"
+              }
+            ],
+            "datasheet": {
+              "url": "/media/datenblatt-serie-600.pdf",
+              "name": "datenblatt-serie-600.pdf",
+              "size": 504220
+            }
+          },
+          "fallback": [
+            "specs.pspSerie01.value",
+            "specs.pspSerie01.unit",
+            "specs.pspSerie02.value"
+          ],
+          "urls": {
+            "de": "/produkte/drehteile-serie-600",
+            "en": "/en/products/turned-parts-series-600"
+          }
+        },
+        {
+          "id": "prod-baugruppen",
+          "data": {
+            "name": "Kundenspezifische Baugruppen",
+            "slug": "baugruppen",
+            "summary": "Montage von Baugruppen nach Kundenzeichnung.",
+            "images": [],
+            "specs": [
+              {
+                "_id": "pspBaugr01",
+                "name": "Qualitätsnorm",
+                "value": "ISO 9001"
+              }
+            ]
+          },
+          "fallback": [
+            "name",
+            "slug",
+            "summary",
+            "specs.pspBaugr01.name",
+            "specs.pspBaugr01.value"
+          ],
+          "urls": {
+            "de": "/produkte/baugruppen",
+            "en": "/en/products/baugruppen"
+          }
+        },
+        {
+          "id": "prod-spannsysteme",
+          "data": {
+            "name": "Clamping systems",
+            "slug": "clamping-systems",
+            "summary": "Spannvorrichtungen für Fräs- und Drehmaschinen.",
+            "images": [],
+            "specs": [
+              {
+                "_id": "pspSpann01",
+                "name": "Wiederholgenauigkeit",
+                "value": "0,005",
+                "unit": "mm"
+              }
+            ]
+          },
+          "fallback": [
+            "summary",
+            "specs.pspSpann01.name",
+            "specs.pspSpann01.value",
+            "specs.pspSpann01.unit"
+          ],
+          "urls": {
+            "de": "/produkte/spannsysteme",
+            "en": "/en/products/clamping-systems"
+          }
+        }
+      ]
+    },
+    "contacts": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "ctc-hofer",
+          "data": {
+            "name": "Sabine Hofer",
+            "role": "Head of marketing",
+            "phone": "+43 7252 123 45",
+            "email": "marketing@brunner-praezision.example",
+            "photo": {
+              "url": "/media/sabine-hofer.jpg",
+              "alt": "Porträt Sabine Hofer",
+              "width": 800,
+              "height": 1000
+            }
+          },
+          "fallback": [
+            "photo.alt"
+          ]
+        },
+        {
+          "id": "ctc-leitner",
+          "data": {
+            "name": "Markus Leitner",
+            "role": "Personalleitung",
+            "phone": "+43 7252 123 80",
+            "email": "hr@brunner-praezision.example"
+          },
+          "fallback": [
+            "role"
+          ]
+        },
+        {
+          "id": "ctc-brunner",
+          "data": {
+            "name": "Dr. Eva Brunner",
+            "role": "Managing director",
+            "phone": "+43 7252 123 10",
+            "email": "office@brunner-praezision.example"
+          },
+          "fallback": []
+        }
+      ]
+    },
+    "certificates": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "cert-en1090",
+          "data": {
+            "title": "EN 1090 (Stahlbau)",
+            "validUntil": "2026-06-30",
+            "certificate": {
+              "url": "/media/en-1090-stahlbau.pdf",
+              "name": "en-1090-stahlbau.pdf",
+              "size": 151206
+            }
+          },
+          "fallback": []
+        },
+        {
+          "id": "cert-iso",
+          "data": {
+            "title": "ISO 9001:2015",
+            "validUntil": "2027-03-14",
+            "certificate": {
+              "url": "/media/iso-9001-2015.pdf",
+              "name": "iso-9001-2015.pdf",
+              "size": 143871
+            }
+          },
+          "fallback": []
+        }
+      ]
+    },
+    "company": {
+      "kind": "single",
+      "data": {
+        "street": "Industriestraße 14",
+        "city": "4400 Steyr",
+        "phone": "+43 7252 123 0",
+        "email": "office@brunner-praezision.example",
+        "vatId": "ATU00000000"
+      },
+      "fallback": []
+    },
+    "legal": {
+      "kind": "single",
+      "data": {
+        "imprint": {
+          "nodes": [
+            [
+              "p",
+              {},
+              "Brunner Präzisionstechnik GmbH",
+              [
+                "br",
+                {}
+              ],
+              "Werkstraße 4, 4400 Steyr, Österreich"
+            ],
+            [
+              "p",
+              {},
+              "Firmenbuch: Landesgericht Steyr, FN 412345 t"
+            ]
+          ],
+          "toc": {
+            "title": "",
+            "searchDepth": 3,
+            "depth": 2,
+            "links": []
+          }
+        },
+        "privacy": {
+          "nodes": [
+            [
+              "p",
+              {},
+              "Diese Seite setzt keine Cookies. Kontaktdaten aus Anfragen werden nur zur Bearbeitung gespeichert."
+            ]
+          ],
+          "toc": {
+            "title": "",
+            "searchDepth": 3,
+            "depth": 2,
+            "links": []
+          }
+        }
+      },
+      "fallback": [
+        "imprint",
+        "privacy"
+      ]
+    }
+  }
+}

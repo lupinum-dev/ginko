@@ -1,0 +1,772 @@
+{
+  "nav": {
+    "quick": "Quick edit",
+    "all": "Edit everything",
+    "files": "Files",
+    "history": "History",
+    "team": "Team",
+    "ai": "AI",
+    "mySites": "My sites",
+    "viewSite": "View site",
+    "newTab": "(new tab)",
+    "menu": "Menu",
+    "views": "Views",
+    "areas": "Areas",
+    "list": "List",
+    "signOut": "Sign out",
+    "signIn": "Sign in",
+    "signedOutTitle": "You are signed out.",
+    "signedOutText": "Anything not saved here is gone. Sign in again to continue here.",
+    "noAccessHelp": "If you need to change something here, ask the owner to invite you (again).",
+    "toReview": "To review ({count})",
+    "short": {
+      "quick": "Today",
+      "all": "Content",
+      "review": "Review",
+      "files": "Files",
+      "history": "History",
+      "team": "Team",
+      "ai": "AI"
+    },
+    "more": "More",
+    "account": "Account",
+    "toReviewCount": "{count} to review"
+  },
+  "sites": {
+    "title": "My sites",
+    "invitedTo": "<site>{site}</site> invites you as {role}.",
+    "accept": "Accept invitation",
+    "empty": "You do not have access to a site yet. Please ask for an invitation.",
+    "role": {
+      "admin": "Admin",
+      "owner": "Owner",
+      "staff": "Staff"
+    },
+    "remindTitle": "Reminders by email",
+    "remindText": "A short email the evening before the week starts if something for next week is still missing, for example the lunch menu.",
+    "language": "Language"
+  },
+  "login": {
+    "title": "Sign in",
+    "unavailable": "Sign-in is not set up yet.",
+    "email": "Email address",
+    "invalidEmail": "Please enter a valid email address.",
+    "sendFailed": "The code could not be sent. Please try again in a minute.",
+    "sendCode": "Send code",
+    "sending": "Sending …",
+    "sent": "We sent a code to <email>{email}</email>. It is valid for 5 minutes.",
+    "code": "Code",
+    "submit": "Sign in",
+    "submitting": "Signing in …",
+    "sixDigits": "The code has 6 digits.",
+    "tooMany": "Too many attempts. Please wait a minute and try again.",
+    "tooManyWrong": "Too many wrong entries. Please request a new code.",
+    "wrongCode": "The code is wrong or has expired.",
+    "newCode": "Send new code",
+    "otherEmail": "Other email"
+  },
+  "problem": {
+    "offline": "No connection. Your input is still here.",
+    "generic": "That did not work. Your input is still here. Please try again."
+  },
+  "invite": {
+    "titleShort": "Invitation",
+    "title": "Accept invitation",
+    "lead": "<site>{site}</site> invites you as {role}.",
+    "role": {
+      "owner": "an owner",
+      "staff": "a staff member",
+      "admin": "an admin"
+    },
+    "otherEmail": "This invitation is for another email address. Sign in with that address.",
+    "expired": "This invitation has expired or was already used. Please ask for a new one.",
+    "accepting": "Accepting …"
+  },
+  "entry": {
+    "newEntry": "New entry",
+    "more": "More",
+    "removeEntry": "Remove entry …",
+    "language": "Language",
+    "loading": "Loading …",
+    "close": "Close",
+    "cancel": "Cancel",
+    "saved": "Saved",
+    "unsaved": "Not saved",
+    "saveBeforeLanguage": "Save first, then switch the language.",
+    "groupHasIssues": "Errors in this section",
+    "foreignHint": "Only texts that need a translation are shown here. All other fields apply to every language.",
+    "twin": "This entry already exists: “{title}”. Saving creates a second one.",
+    "saveContinues": "Still saving. If you are offline, it is saved as soon as the connection is back.",
+    "notSaved": "Not saved: {reason}",
+    "notSavedReopen": "Not saved. Please open the task again.",
+    "status": {
+      "online": "Online",
+      "onlineFrom": "Online from {when}",
+      "draft": "Draft"
+    },
+    "save": {
+      "waiting": "Waiting for connection …",
+      "saving": "Saving …",
+      "draft": "Save draft",
+      "save": "Save"
+    },
+    "conflict": {
+      "changed": "Someone has changed {fields} in the meantime.",
+      "thisEntry": "this entry",
+      "item": "{field}: saved now as “{stored}”, your input “{mine}”",
+      "keepMine": "Save my changes",
+      "takeTheirs": "Use the new version"
+    },
+    "publish": {
+      "open": "Publish …",
+      "changeSchedule": "Change schedule …",
+      "whenOnline": "When should “{title}” go online?",
+      "now": "Now",
+      "later": "Online from …",
+      "dateTime": "Date and time",
+      "siteZone": "Time of the website ({zone}), not the time on your device.",
+      "publishNow": "Publish now",
+      "schedule": "Schedule",
+      "clearSchedule": "Clear schedule",
+      "futureTime": "Please choose a time in the future."
+    },
+    "unpublish": {
+      "button": "Take offline",
+      "warning": "“{title}” disappears from the website and becomes a draft again."
+    },
+    "preview": {
+      "label": "Preview",
+      "close": "Close preview",
+      "frameTitle": "Preview of the website"
+    },
+    "remove": {
+      "title": "Remove entry",
+      "text": "“{title}” is removed from the website. You can restore it for 30 days.",
+      "confirm": "Remove"
+    },
+    "discard": {
+      "question": "Discard changes?",
+      "confirm": "Discard",
+      "keepEditing": "Keep editing"
+    },
+    "pick": {
+      "search": "Search",
+      "empty": "Nothing found."
+    },
+    "changes": {
+      "justNow": "just now",
+      "minutesAgo": "{count} min ago",
+      "hoursAgo": "{count} h ago",
+      "undo": "Undo",
+      "undone": "Undone",
+      "empty": "No changes yet."
+    },
+    "toast": {
+      "close": "Close message"
+    }
+  },
+  "site": {
+    "title": {
+      "quick": "{site} · Quick edit",
+      "all": "{site} · Edit everything",
+      "team": "{site} · Team",
+      "ai": "{site} · Connect AI",
+      "history": "{site} · History",
+      "area": "{area} · Edit everything"
+    },
+    "fallback": {
+      "site": "Site",
+      "area": "Area",
+      "entry": "Entry"
+    },
+    "common": {
+      "back": "Back",
+      "save": "Save",
+      "cancel": "Cancel",
+      "remove": "Remove",
+      "done": "Done"
+    },
+    "form": {
+      "email": "Email address"
+    },
+    "role": {
+      "owner": "Owner",
+      "staff": "Staff member"
+    },
+    "status": {
+      "draft": "Draft",
+      "onlineFrom": "Online from {when}",
+      "expired": "expired",
+      "ended": "ended",
+      "from": "from {date}",
+      "until": "until {date}",
+      "untilToday": "until today",
+      "noEnd": "no end date"
+    },
+    "quick": {
+      "heading": "Quick edit",
+      "nothingForYou": "You have no tasks here. Ask the owner for the rights you need.",
+      "todayDone": "<task>{task}</task> is filled in for today.",
+      "flagText": "“{text}”",
+      "clearToday": "Clear",
+      "notFilled": "Not filled in yet",
+      "notThisWeek": ", not yet for this week",
+      "plannedWeek": "{label} {date}, planned ahead",
+      "nothingNow": "Nothing entered right now.",
+      "removeNamed": "Remove {title}"
+    },
+    "all": {
+      "heading": "Edit everything",
+      "lede": "All areas of the site with all fields. Choose an area.",
+      "allAreas": "All areas",
+      "new": "New",
+      "noEntries": "No entries yet.",
+      "moveUp": "Move {title} up",
+      "moveDown": "Move {title} down",
+      "removed": "Removed (can be restored for 30 days)",
+      "restore": "Restore"
+    },
+    "area": {
+      "missing": "This area does not exist.",
+      "noAccess": "You may not edit this area. Ask the owner if you need to change something here."
+    },
+    "entry": {
+      "missing": "This entry does not exist (anymore)."
+    },
+    "team": {
+      "heading": "Team",
+      "ownersOnly": "Only owners can see the team.",
+      "members": "Members",
+      "noEmail": "No email address",
+      "noRights": "No rights.",
+      "changeRights": "Change rights",
+      "losesAccess": "<email>{email}</email> will lose access to {site}.",
+      "openInvites": "Open invitations",
+      "validUntil": "valid until {date}",
+      "revokeInvite": "Revoke",
+      "invite": "Invite",
+      "role": "Role",
+      "rights": "Rights",
+      "sendInvite": "Send invitation",
+      "inviteSent": "Invitation sent to {email}."
+    },
+    "ai": {
+      "heading": "Connect AI",
+      "lead": "Your AI assistant can then do tasks for you, for example “{first}” or “{second}”. It may do exactly what you may do here. Every change appears in the history as “via AI” and can be undone.",
+      "exampleOne": "Set today to fully booked",
+      "exampleTwo": "Add the lunch menu from the photo",
+      "keyFor": "Key for “{label}”",
+      "keyOnce": "The key is shown only now. Anyone who has it can make changes in your name, so give it only to your assistant.",
+      "terminal": "For Claude Code: run in the terminal",
+      "copyCommand": "Copy command",
+      "copiedCommand": "Command copied.",
+      "other": "Another assistant",
+      "address": "Address (MCP, HTTP)",
+      "copyAddress": "Copy address",
+      "copiedAddress": "Address copied.",
+      "authHeader": "Authorization header",
+      "copyKey": "Copy key",
+      "copiedKey": "Key copied.",
+      "copyFailed": "Copying did not work. Please select the text and copy it yourself.",
+      "newKey": "New key",
+      "forWhich": "Which assistant is it for?",
+      "labelHint": "The name appears in the history, for example “Claude Code” or “ChatGPT on laptop”.",
+      "createKey": "Create key",
+      "yourKeys": "Your keys",
+      "noneYet": "None yet.",
+      "createdAt": "Created {when}",
+      "revokedAt": ", revoked {when}",
+      "lastUsedAt": ", last used {when}",
+      "neverUsed": ", never used",
+      "revokeKey": "Revoke",
+      "revokeConfirm": "“{label}” cannot make any changes after that."
+    },
+    "history": {
+      "heading": "History",
+      "loadOlder": "Load older"
+    }
+  },
+  "editor": {
+    "fix": "Fix",
+    "fixAt": "Fix: {message}",
+    "modCtrl": "Ctrl+",
+    "find": {
+      "search": "Find",
+      "replaceWith": "Replace with",
+      "next": "Next",
+      "prev": "Previous",
+      "replace": "Replace",
+      "replaceAll": "Replace all",
+      "count": "{current} of {total}",
+      "none": "No matches"
+    },
+    "toolbar": {
+      "label": "Formatting",
+      "blockType": "Block type"
+    },
+    "marks": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "strike": "Strikethrough",
+      "code": "Code",
+      "link": "Link"
+    },
+    "blocks": {
+      "text": "Text",
+      "h2": "Heading",
+      "h3": "Subheading",
+      "h4": "Small heading",
+      "bulletList": "Bulleted list",
+      "orderedList": "Numbered list",
+      "taskList": "Checklist",
+      "blockquote": "Quote",
+      "horizontalRule": "Divider",
+      "table": "Table",
+      "image": "Image",
+      "codeBlock": "Code block"
+    },
+    "source": {
+      "show": "Show Markdown source",
+      "back": "Back to text view",
+      "note": "This text is edited as Markdown.",
+      "problems": "Problems in the text",
+      "line": "Line {line}: ",
+      "fixLine": "Fix: line {line}, {message}"
+    },
+    "slash": {
+      "insert": "Insert",
+      "empty": "Nothing found.",
+      "groupText": "Text",
+      "groupComponents": "Components",
+      "items": {
+        "heading2": {
+          "label": "Heading",
+          "describe": "Large heading for a new section"
+        },
+        "heading3": {
+          "label": "Subheading",
+          "describe": "Smaller heading inside a section"
+        },
+        "heading4": {
+          "label": "Small heading",
+          "describe": "Smallest heading"
+        },
+        "bulletList": {
+          "label": "Bulleted list",
+          "describe": "List with bullets"
+        },
+        "orderedList": {
+          "label": "Numbered list",
+          "describe": "List with numbers"
+        },
+        "taskList": {
+          "label": "Checklist",
+          "describe": "List with boxes to tick"
+        },
+        "blockquote": {
+          "label": "Quote",
+          "describe": "Indented text, for example a customer voice"
+        },
+        "horizontalRule": {
+          "label": "Divider",
+          "describe": "A line between two sections"
+        },
+        "table": {
+          "label": "Table",
+          "describe": "Rows and columns"
+        },
+        "codeBlock": {
+          "label": "Code block",
+          "describe": "Fixed-width text, for code"
+        },
+        "image": {
+          "label": "Image",
+          "describe": "Insert an image with a description"
+        }
+      }
+    },
+    "link": {
+      "label": "Link (web address)",
+      "apply": "Apply",
+      "remove": "Remove link",
+      "refused": "This link is not allowed. Use a web address (https://…), an email address (mailto:) or a phone number (tel:)."
+    },
+    "image": {
+      "insertTitle": "Insert image",
+      "describeTitle": "Describe image",
+      "address": "Address",
+      "description": "Image description",
+      "later": "Later",
+      "cancel": "Cancel",
+      "done": "Done",
+      "insert": "Insert",
+      "descriptionRequired": "Briefly describe the image for people who cannot see it.",
+      "addressRefused": "This image address is not allowed. Use a web address (https://…).",
+      "noDescription": "An image in the text has no description yet."
+    },
+    "text": {
+      "tooLong": "The text is too long (at most {max} characters).",
+      "counter": "{count} / {limit} characters"
+    },
+    "card": {
+      "show": "Show as {label}",
+      "fallbackLabel": "Card"
+    },
+    "upload": {
+      "generic": "The image could not be uploaded. Please try again.",
+      "wait": "An image is still uploading. Please wait a moment.",
+      "badType": "This image format does not work. Use {types}.",
+      "tooBig": "The file is too big (at most {max} MB).",
+      "notReady": "The image did not finish processing. Please try again.",
+      "reopened": "The image is uploaded, but the text was reopened in the meantime. Please insert it again.",
+      "uploading": "uploading …"
+    },
+    "block": {
+      "settings": "Settings",
+      "settingsFor": "Settings: {label}",
+      "noSettings": "This block has no settings.",
+      "required": "Required fields",
+      "more": "More settings",
+      "remove": "Remove"
+    },
+    "prop": {
+      "optional": "(optional)",
+      "imagePlaceholder": "Path or web address",
+      "notSet": "Not set",
+      "default": "Default ({value})",
+      "choose": "Choose …"
+    }
+  },
+  "fields": {
+    "optional": "(optional)",
+    "choose": "Choose …",
+    "none": "None",
+    "notSet": "Not set yet.",
+    "clear": "Clear",
+    "remove": "Remove",
+    "cancel": "Cancel",
+    "retry": "Try again",
+    "uploading": "Uploading …",
+    "slug": {
+      "label": "Web address (URL)",
+      "pageAt": "The page is at {address}",
+      "generated": "Generated from the title when created."
+    },
+    "translation": {
+      "changedSince": "{name} changed since the translation",
+      "fitsAsIs": "Keep as is",
+      "notTranslated": "Not translated yet. The website shows the text from {name} here."
+    },
+    "date": {
+      "thisWeek": "This week",
+      "nextWeek": "Next week",
+      "today": "Today",
+      "tomorrow": "Tomorrow"
+    },
+    "daterange": {
+      "from": "from",
+      "to": "to"
+    },
+    "file": {
+      "checking": "Checking …",
+      "blocked": "The file is still being processed. Please wait a moment.",
+      "failed": "The file could not be uploaded. Please try again.",
+      "opensInNewTab": "(opens in a new tab)",
+      "unavailable": "The file is not available.",
+      "pick": "Choose PDF",
+      "other": "Other file"
+    },
+    "image": {
+      "processing": "Processing …",
+      "blocked": "The photo is still being processed. Please wait a moment.",
+      "failed": "The photo could not be uploaded. Please try again.",
+      "tooLarge": "The file is too large (at most {max} MB).",
+      "pick": "Choose photo",
+      "other": "Other photo",
+      "alt": "Image description",
+      "altHint": "What can be seen in the photo? For people who cannot see the image.",
+      "altFromLibrary": "Leave empty to use the description from Files."
+    },
+    "money": {
+      "negative": "A price cannot be negative.",
+      "invalid": "Please enter an amount such as {example}."
+    },
+    "ref": {
+      "gone": "This entry no longer exists.",
+      "removeChip": "Remove {title}",
+      "full": "At most {max}. Remove one first to change it.",
+      "upTo": "Up to {max} possible.",
+      "add": "Add entry",
+      "choose": "Choose {target}",
+      "search": "Search {target} …",
+      "nothing": "Nothing found."
+    },
+    "list": {
+      "up": "Move {title} up",
+      "down": "Move {title} down",
+      "remove": "Remove {title}",
+      "removed": "{title} removed",
+      "undo": "Undo",
+      "confirm": "Yes, correct",
+      "confirmBlocker": "Please confirm for “{title}”: are the {label} still correct?",
+      "changed": "{changed} changed. Are the {label} still correct?",
+      "add": "Add {item}",
+      "text": "Text"
+    }
+  },
+  "ops": {
+    "saved": "Saved.",
+    "draftSaved": "Draft saved.",
+    "draftNotOnSite": "Draft saved. Not on the website yet.",
+    "draftScheduled": "Draft saved, online from {time}.",
+    "liveHint": "On the website in about a minute.",
+    "undo": "Undo",
+    "undone": "Undone.",
+    "undoNotPossible": "Can no longer be undone: it was changed again afterwards.",
+    "published": "Published.",
+    "scheduled": "Scheduled: online from {time}.",
+    "unpublished": "Unpublished. Not on the website in about a minute.",
+    "scheduleCleared": "Schedule removed. The entry stays a draft.",
+    "created": "Created.",
+    "removed": "Removed.",
+    "removedNamed": "“{title}” removed.",
+    "restored": "Restored.",
+    "entryGone": "This entry was removed in the meantime.",
+    "leaveConfirm": "Your changes are not saved yet. Leave anyway?",
+    "value": {
+      "empty": "empty",
+      "yes": "Yes",
+      "no": "No",
+      "none": "none",
+      "changed": "changed",
+      "items": "{count, plural, one {# entry} other {# entries}}"
+    },
+    "upload": {
+      "notImage": "Please choose a photo (JPEG, PNG, WebP or HEIC).",
+      "notPdf": "Please choose a PDF file.",
+      "photoTooLarge": "The photo is too large (20 MB at most).",
+      "fileTooLarge": "The file is too large (10 MB at most).",
+      "failed": "The upload failed. Please try again.",
+      "offline": "No connection. Please try again.",
+      "aborted": "Cancelled."
+    }
+  },
+  "review": {
+    "title": "{site} · To review",
+    "heading": "To review",
+    "empty": "Nothing waits for your decision.",
+    "releases": "Releases",
+    "plannedAt": "planned for {time}",
+    "approveRelease": "Approve release",
+    "releaseBlocked": "A change in this release no longer fits, so the release cannot go online. Remove it from the release, then approve again.",
+    "removeFromRelease": "Remove from release",
+    "releaseApproved": "Release approved. On the website in about a minute.",
+    "approve": "Approve",
+    "approveLater": "Approve for later…",
+    "reject": "Reject…",
+    "rejectConfirm": "Reject",
+    "reason": "Why? The author sees this.",
+    "mine": "You proposed this",
+    "stale": "No longer fits",
+    "approved": "Approved. On the website in about a minute.",
+    "rejected": "Rejected.",
+    "sent": "Sent for approval. The owner decides.",
+    "diff": {
+      "before": "Before",
+      "after": "After",
+      "reordered": "The order changed"
+    }
+  },
+  "history": {
+    "filter": {
+      "label": "Filter",
+      "all": "All",
+      "mine": "Mine",
+      "ai": "Via AI",
+      "entry": "This entry"
+    },
+    "noMatches": "No changes match this filter.",
+    "showChanges": "Show changes",
+    "hideChanges": "Hide changes",
+    "revert": "Back to this version",
+    "revertConfirm": "Go back to the version of {date}? This is saved as a new change, so you can undo it.",
+    "reverted": "Went back to the earlier version.",
+    "alreadyThere": "The entry already has this version.",
+    "waiting": "Waiting for approval",
+    "withdraw": "Withdraw",
+    "withdrawn": "Withdrawn.",
+    "notApproved": "Not approved",
+    "rejectedBy": "{who} rejected it: “{reason}”"
+  },
+  "basics": {
+    "search": {
+      "button": "Search…",
+      "label": "Search",
+      "shortcutMac": "⌘K",
+      "shortcutOther": "Ctrl K"
+    },
+    "palette": {
+      "title": "Search and actions",
+      "description": "Search entries and areas, or choose an action.",
+      "placeholder": "Search entries and areas…",
+      "recent": "Recent entries",
+      "actions": "Actions",
+      "entries": "Entries",
+      "areas": "Areas",
+      "newIn": "New {area}",
+      "review": "Review",
+      "empty": "Nothing found for “{query}”."
+    },
+    "update": {
+      "menu": "Update website now",
+      "running": "Updating the website…",
+      "done": "The website is up to date.",
+      "fallback": "It updates by itself within a few minutes.",
+      "pagesFailed": "{count, plural, one {# page} other {# pages}} could not be updated.",
+      "lastAt": "Last update: {when}"
+    },
+    "duplicate": {
+      "menu": "Duplicate",
+      "done": "Copy created as a draft.",
+      "sent": "Sent for approval."
+    },
+    "history": {
+      "ofEntry": "History of this entry"
+    },
+    "why": {
+      "link": "Why not on the website?",
+      "loading": "Checking…",
+      "none": "Nothing stops this entry from being on the website.",
+      "publish": "Publish…",
+      "restore": "Restore",
+      "translate": "Edit translation"
+    },
+    "removed": {
+      "link": "Removed ({count})",
+      "title": "Removed entries",
+      "empty": "Nothing was removed.",
+      "until": "Deleted for good on {date}"
+    },
+    "translation": {
+      "missing": "{lang}: {count, plural, one {# text missing} other {# texts missing}}",
+      "outdated": "{lang}: {count, plural, one {# text outdated} other {# texts outdated}}",
+      "open": "Open {title} in {language}",
+      "incomplete": "Translation incomplete"
+    },
+    "views": {
+      "searchLabel": "Search this list",
+      "searchPlaceholder": "Search…",
+      "sortLabel": "Sort",
+      "sortDefault": "Default order",
+      "sortAsc": "{field}, A to Z",
+      "sortDesc": "{field}, Z to A",
+      "save": "Save view…",
+      "saveTitle": "Save this view",
+      "saveHelp": "Saves the current search and sort for you only.",
+      "name": "Name of the view",
+      "saveConfirm": "Save",
+      "saved": "View saved.",
+      "removeView": "Remove view",
+      "removeDone": "View removed.",
+      "listLabel": "Saved views",
+      "optionsFor": "Options for view {name}",
+      "noMatch": "No entries match."
+    }
+  },
+  "files": {
+    "title": "Files",
+    "pageTitle": "{site} · Files",
+    "views": {
+      "all": "All files",
+      "recent": "Recent",
+      "unused": "Unused",
+      "missingAlt": "Missing image description",
+      "duplicates": "Duplicates",
+      "trash": "Trash"
+    },
+    "folders": "Folders",
+    "newFolder": "New folder",
+    "folderName": "Folder name",
+    "createFolder": "Create",
+    "search": "Search files",
+    "layoutGrid": "Grid",
+    "layoutList": "List",
+    "upload": "Upload",
+    "uploading": "Uploading …",
+    "dropTo": "Drop to upload to {folder}",
+    "noAlt": "No image description",
+    "col": {
+      "name": "Name",
+      "type": "Type",
+      "size": "Size",
+      "dimensions": "Dimensions",
+      "usedIn": "Used in",
+      "date": "Date"
+    },
+    "inUse": "In use",
+    "selected": "{count, plural, one {# file selected} other {# files selected}}",
+    "info": {
+      "title": "Details",
+      "name": "Name",
+      "alt": "Image description",
+      "saved": "Saved",
+      "type": "Type",
+      "size": "Size",
+      "dimensions": "Dimensions",
+      "uploaded": "Uploaded",
+      "uploadedBy": "Uploaded by",
+      "usedIn": "Used in",
+      "notUsed": "Not used anywhere.",
+      "altDefault": "Used wherever this photo has no description of its own."
+    },
+    "focusHint": "Click the photo to set the focus point.",
+    "replace": "Replace file…",
+    "replaceNote": "Every page that uses it shows the new file. The old file is kept for 30 days.",
+    "download": "Download",
+    "moveTo": "Move to…",
+    "move": "Move",
+    "noFolder": "No folder",
+    "remove": "Remove",
+    "removeUsed": "Remove…",
+    "removeConfirm": "Remove {name}? You can restore it from Trash for 30 days.",
+    "removeConfirmMany": "Remove {count} files? You can restore them from Trash for 30 days.",
+    "removeUsedMsg": "{name} is used in {count, plural, one {# place} other {# places}}. Remove it from those entries first.",
+    "removed": "{count, plural, one {# file moved to Trash.} other {# files moved to Trash.}}",
+    "restore": "Restore",
+    "deletedEntry": "(removed)",
+    "cancel": "Cancel",
+    "close": "Close",
+    "empty": {
+      "all": "No files yet. Drag photos or PDFs here, or use Upload.",
+      "recent": "No files yet. Drag photos or PDFs here, or use Upload.",
+      "missingAlt": "Every photo has a description.",
+      "unused": "Every file is in use.",
+      "duplicates": "No duplicates.",
+      "trash": "Trash is empty. Removed files stay here for 30 days.",
+      "none": "No files found."
+    },
+    "loadMore": "Show more",
+    "loading": "Loading …",
+    "gone": "This file no longer exists.",
+    "previous": "Previous file",
+    "next": "Next file",
+    "altLabel": "Image description",
+    "altHint": "What can be seen in the photo? For people who cannot see the image.",
+    "picker": {
+      "choose": "Choose from library",
+      "usePhoto": "Use this photo",
+      "useFile": "Use this file"
+    }
+  },
+  "who": {
+    "member": "A team member",
+    "platform": "Site support",
+    "former": "Former member",
+    "system": "System",
+    "via": "via AI ({agent})",
+    "viaAi": "via AI"
+  },
+  "ui": {
+    "close": "Close"
+  }
+}

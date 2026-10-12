@@ -1,0 +1,17 @@
+// `ginko pull` (SPEC 9): production content into the local platform. It is `export` into a temporary
+// folder, then `import`, then the folder is removed. The caller confirmed the local deployment first.
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { exportSite, type ExportInput } from './export.ts'
+import { importSite, type ImportInput } from './import.ts'
+
+export async function pull(input: Omit<ExportInput, 'dir'> & Omit<ImportInput, 'dir'>): Promise<{ entries: number; files: number }> {
+  const dir = await mkdtemp(join(tmpdir(), 'ginko-pull-'))
+  try {
+    await exportSite({ ...input, dir })
+    return await importSite({ ...input, dir })
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+}

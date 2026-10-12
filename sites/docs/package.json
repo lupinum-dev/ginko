@@ -1,0 +1,26 @@
+{
+  "name": "@ginko-demo/docs",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@lupinum/ginko": "workspace:*",
+    "@lupinum/ginko-components": "workspace:*",
+    "@lupinum/ginko-content": "workspace:*",
+    "@lupinum/ginko-docs": "workspace:*",
+    "nuxt": "4.6.0",
+    "vue": "3.5.43"
+  },
+  "scripts": {
+    "dev": "nuxt dev --port 3500",
+    "build": "pnpm --filter @lupinum/ginko-components registry && nuxt build",
+    "generate": "pnpm --filter @lupinum/ginko-components registry && nuxt generate",
+    "typecheck": "nuxt typecheck",
+    "postinstall": "nuxt prepare"
+  },
+  "devDependencies": {
+    "@takumi-rs/core": "2.14.0",
+    "nuxt-og-image": "6.10.3",
+    "typescript": "6.0.3",
+    "vue-tsc": "3.1.5"
+  }
+}
