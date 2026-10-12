@@ -95,11 +95,11 @@ describe('readContent', () => {
     ['two entries with the same slug', { 'content/docs/1.a.md': md('title: A\nslug: x'), 'content/docs/2.b.md': md('title: B\nslug: x') }, 'docs/2.b.md', /x/],
     ['a URL clash from the slug fallback (A has no English slug, B has "intro")', { 'content/docs/1.a.md': md('title: A\nslug: intro'), 'content/docs/2.b.md': md('title: B\nslug: other'), 'content/docs/2.b.en.md': md('title: B\nslug: intro') }, 'docs/2.b.en.md', /intro/],
     ['a missing image', { 'content/docs/1.a.md': md('title: A\nhero:\n  src: /img/none.png\n  alt: Weg') }, 'docs/1.a.md', /none\.png/],
-    ['a body the field profile does not allow (h1 in a rich field)', { 'content/docs/1.a.md': md('title: A', '# Zu gross') }, 'docs/1.a.md', /h1/],
-    ['a validation error (empty title)', { 'content/docs/1.a.md': md("title: ''") }, 'docs/1.a.md', /Titel/],
+    ['a body the field profile does not allow (h1 in a rich field)', { 'content/docs/1.a.md': md('title: A', '# Zu gross') }, 'docs/1.a.md', /“h1” is not allowed here/],
+    ['a validation error (empty title)', { 'content/docs/1.a.md': md("title: ''") }, 'docs/1.a.md', /“Titel” is missing/],
   ])('reports %s with the file, and still reads the rest', async (_, files, file, message) => {
     const r = await read({ ...files, 'content/docs/9.ok.md': md('title: Gut') })
-    expect(r.errors.some((e) => e.file === file && message.test(e.message + (e.path ?? '')))).toBe(true)
+    expect(r.errors.filter((e) => e.file === file).map((e) => e.message + (e.path ?? ''))).toContainEqual(expect.stringMatching(message))
     expect(r.entries.docs!.some((e) => e.id === 'docs/ok')).toBe(true)
   })
 })
@@ -183,8 +183,8 @@ describe('images in Markdown', () => {
   })
 
   it.each([
-    ['outside content/', '![A](../../escape.svg)', 'liegt außerhalb von content/'],
-    ['missing', '![A](./nope.svg)', 'fehlt'],
+    ['outside content/', '![A](../../escape.svg)', 'is outside content/'],
+    ['missing', '![A](./nope.svg)', 'is missing'],
   ])('reports an image that is %s with its file', async (_name, body, message) => {
     const r = await read({ 'content/docs/1.a.md': md('title: A', body), 'escape.svg': svg })
     expect(r.errors.filter((e) => e.file === 'docs/1.a.md' && e.message.includes(message))).toHaveLength(1)
@@ -219,7 +219,7 @@ describe('images in Markdown', () => {
 
   it('reports a component image prop that is missing, with its file', async () => {
     const r = await read({ 'content/pages/1.a.md': md('title: A', '::figure{src="./nope.svg"}') })
-    expect(r.errors.filter((e) => e.file === 'pages/1.a.md' && e.message.includes('fehlt'))).toHaveLength(1)
+    expect(r.errors.filter((e) => e.file === 'pages/1.a.md' && e.message.includes('is missing'))).toHaveLength(1)
   })
 
   // Bug caught: a co-located image got no srcset, so phones downloaded the full-size original.
