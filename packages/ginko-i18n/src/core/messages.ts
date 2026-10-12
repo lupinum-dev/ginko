@@ -85,7 +85,9 @@ export function formatParts(message: CompiledMessage, params: Params, language: 
         }
         case 's': {
           const [, name, cases] = node
-          walk(cases[show(params[name])] ?? cases.other ?? [], pound, into)
+          // Own keys only: a value such as `constructor` must not reach Object.prototype.
+          const value = show(params[name])
+          walk((Object.hasOwn(cases, value) ? cases[value] : cases.other) ?? [], pound, into)
           break
         }
         case 't': {
@@ -108,7 +110,7 @@ export function partsToString(parts: Part[]): string {
 export function lookup(tree: MessageTree | undefined, key: string): CompiledMessage | undefined {
   let node: CompiledMessage | MessageTree | undefined = tree
   for (const segment of key.split('.')) {
-    if (!node || typeof node === 'string' || Array.isArray(node)) return undefined
+    if (!node || typeof node === 'string' || Array.isArray(node) || !Object.hasOwn(node, segment)) return undefined
     node = node[segment]
   }
   return typeof node === 'string' || Array.isArray(node) ? node : undefined

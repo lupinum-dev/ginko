@@ -80,6 +80,14 @@ describe('messages with odd input', () => {
     const msg = compileMessage('k', 'Hi <b>{name}</b>').message
     expect(formatParts(msg, { name: '<link>x</link>' }, 'en')).toEqual(['Hi ', { tag: 'b', children: ['<link>x</link>'] }])
   })
+  it.each(['constructor', 'toString', '__proto__', 'hasOwnProperty'])('select with the value %s falls back to other', (value) => {
+    const msg = compileMessage('k', '{role, select, admin {Admin} other {Guest}}').message
+    expect(formatParts(msg, { role: value }, 'en').join('')).toBe('Guest')
+  })
+  it('does not find keys on Object.prototype', () => {
+    const t = createTranslator({ messages: compileTree({ a: 'text' }).tree, language: 'en' })
+    expect(t.t('constructor.name')).toBe('constructor.name')
+  })
   it('names the key when ICU is broken', () => {
     expect(() => compileTree({ a: { b: 'Hi {name' } })).toThrow(/"a.b" is not valid ICU/)
     expect(() => compileTree({ a: '{n, plural, one {x}}' })).toThrow(/"a" is not valid ICU/)
