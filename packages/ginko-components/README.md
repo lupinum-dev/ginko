@@ -114,7 +114,9 @@ Interactive components (`registry-interactive.ts`, styles in `interactive.css`):
 | `inline-toc` | block | `title`; `depth` 2 to 4; `open` (closed by default); reads the toc `<GinkoMarkdown>` provides under `ginko:toc` and renders nothing without headings |
 
 \* An Iconify name such as `lucide:book-open` (a bare name means Lucide). It renders through the site's global `<Icon>` from
-`@nuxt/icon`, which the docs preset includes; a site without it shows no icon. Only the icon sets the site installs work.
+`@nuxt/icon`, which the docs preset includes; a site without it shows no icon. A site that installs `@nuxt/icon` itself
+works as long as it keeps the default component name (`icon.componentName: 'Icon'`). Only the icon sets the site
+installs work.
 
 Media components (`registry-media.ts`, styles in `media.css`):
 
