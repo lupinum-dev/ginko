@@ -15,15 +15,16 @@ const props = defineProps<{ language?: string; filename?: string; highlights?: n
 const t = useText()
 const label = computed(() => (props.bare ? undefined : codeLabel(props, t('code.terminal'))))
 const pre = ref<HTMLElement>()
-const copied = ref(false)
+/** What the last click did; the live region reads it out. */
+const status = ref<'copied' | 'failed'>()
 let timer: ReturnType<typeof setTimeout> | undefined
 
 async function copy() {
   const text = (pre.value?.textContent ?? '').replace(/\n$/, '')
-  try { await navigator.clipboard.writeText(text) } catch { return }
-  copied.value = true
+  // Without clipboard permission (plain http, some iframes) writing fails: say so instead of doing nothing.
+  status.value = await navigator.clipboard.writeText(text).then(() => 'copied' as const, () => 'failed' as const)
   clearTimeout(timer)
-  timer = setTimeout(() => { copied.value = false }, 2000)
+  timer = setTimeout(() => { status.value = undefined }, 2000)
 }
 onBeforeUnmount(() => clearTimeout(timer))
 </script>
@@ -32,8 +33,8 @@ onBeforeUnmount(() => clearTimeout(timer))
   <div class="ginko-code" :data-bare="bare || undefined" :data-labelled="label?.text ? '' : undefined">
     <div v-if="label?.text" class="ginko-code-label"><CodeIcon :name="label.icon" :file="label.file" />{{ label.text }}</div>
     <button type="button" class="ginko-code-copy" :aria-label="t('code.copy')" @click="copy">
-      <CodeIcon :name="copied ? 'check' : 'copy'" />
-      <span class="ginko-code-status" aria-live="polite">{{ copied ? t('code.copied') : '' }}</span>
+      <CodeIcon :name="status === 'copied' ? 'check' : 'copy'" />
+      <span class="ginko-code-status" aria-live="polite">{{ status === 'copied' ? t('code.copied') : status === 'failed' ? t('code.copyFailed') : '' }}</span>
     </button>
     <pre ref="pre" v-bind="$attrs" tabindex="0"><slot /></pre>
   </div>

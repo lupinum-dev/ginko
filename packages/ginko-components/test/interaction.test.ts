@@ -80,6 +80,20 @@ describe('client interaction', () => {
     expect(document.activeElement).toBe(button(root, 'Erneut versuchen'))
   })
 
+  test('code block: a copy the browser refuses says so in the live region', async () => {
+    const clipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.reject(new Error('denied')) } })
+    try {
+      const root = await mount('```ts\nconst a = 1\n```')
+      root.querySelector<HTMLButtonElement>('.ginko-code-copy')!.click()
+      await new Promise((resolve) => setTimeout(resolve))
+      expect(root.querySelector('.ginko-code-status')?.textContent).toBe('Kopieren nicht möglich')
+    } finally {
+      if (clipboard) Object.defineProperty(navigator, 'clipboard', clipboard)
+      else Reflect.deleteProperty(navigator, 'clipboard')
+    }
+  })
+
   test('collapse: "show more" removes the clip and moves the focus to the content', async () => {
     // happy-dom has no layout: make the content taller than its clip.
     const height = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollHeight')

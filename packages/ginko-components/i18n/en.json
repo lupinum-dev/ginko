@@ -2,6 +2,7 @@
   "code": {
     "copy": "Copy code",
     "copied": "Copied",
+    "copyFailed": "Could not copy",
     "terminal": "Terminal",
     "untitled": "Code {number}"
   },
