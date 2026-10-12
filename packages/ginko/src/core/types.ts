@@ -92,7 +92,7 @@ export type Task =
 
 export type Visibility =
   | { mode: 'always' }
-  /** Shown until the date in `field`, plus `days` more (a week that starts on that Monday: `days: 6`). */
+  /** Shown until the date in `field`, plus `days` more (a week that starts on that day: `days: 6`). */
   | { mode: 'active'; field: string; days?: number }
   | { mode: 'upcoming'; field: string }
 
@@ -131,7 +131,7 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   visible?: Visibility
   missing?: 'fallback' | 'hide'
   autoRemoveExpired?: boolean
-  /** Entries of this collection plan weeks of the single brick `brick`; `field` (a date field here) holds the Monday. A planned week counts as entered for the weekly upkeep rule. */
+  /** Entries of this collection plan weeks of the single brick `brick`; `field` (a date field here) holds the first day of the week (`week.firstDay`). A planned week counts as entered for the weekly upkeep rule. */
   plans?: { brick: string; field: string }
   /** Entries can be saved as drafts and are shown only once published. */
   drafts?: boolean
