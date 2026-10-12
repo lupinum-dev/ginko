@@ -48,7 +48,7 @@ export function check(m: Manifest, cwd: string, site?: string, only?: string) {
   }
   // Without source directories (--dir mode) every key would look unused, so the check is skipped.
   const unusedSkipped = scan.dynamic || m.srcDirs.length === 0
-  if (!unusedSkipped) for (const [key, entry] of defaults) if (entry.source.origin !== 'library' && !entry.file.split('/').includes('node_modules') && !scan.used.has(key)) findings.push({ code: 'unused', severity: 'warning', key, file: entry.file, message: 'No static usage found' })
+  if (!unusedSkipped) for (const [key, entry] of defaults) if (entry.source.origin !== 'library' && !entry.file.split(/[\\/]/).includes('node_modules') && !scan.used.has(key)) findings.push({ code: 'unused', severity: 'warning', key, file: entry.file, message: 'No static usage found' })
   if (site) findings.push(...seo(site, m))
   // `--locale it`: only that locale's findings, so agents do not have to filter mixed output.
   if (only) findings.splice(0, findings.length, ...findings.filter(f => f.locale === only))
@@ -66,7 +66,7 @@ export function todo(m: Manifest, cwd: string, code: string, only: string[]) {
 }
 /** Where `apply` writes a key: the source that defines it, or the app for library keys. */
 function target(m: Manifest, cwd: string, source: ReturnType<typeof entries> extends Map<string, infer E> ? E : never, code: string) {
-  const library = source.source.origin === 'library' || source.file.split('/').includes('node_modules')
+  const library = source.source.origin === 'library' || source.file.split(/[\\/]/).includes('node_modules')
   return join(library ? catalogDir(m, cwd) : source.source.dir, `${code}.json`)
 }
 function set(node: Tree, key: string, text: string) {
@@ -115,7 +115,7 @@ export function apply(m: Manifest, cwd: string, input: unknown) {
       const result = analyze(item.text, locale.language), original = analyze(source.text, sourceLocale.language)
       if (!sameParams(result.params, original.params, m.params)) throw new Error('Parameters differ from default locale')
       if (result.missing.length) warnings.push({ key, message: `Missing plural categories: ${result.missing.join('; ')}` })
-      const library = source.source.origin === 'library' || source.file.split('/').includes('node_modules')
+      const library = source.source.origin === 'library' || source.file.split(/[\\/]/).includes('node_modules')
       const dir = library ? catalogDir(m, cwd) : source.source.dir, file = join(dir, `${locale.code}.json`)
       safeTarget(dir, file)
       let target = targets.get(file)
@@ -125,7 +125,7 @@ export function apply(m: Manifest, cwd: string, input: unknown) {
         if (dir === catalogDir(m, cwd)) {
           let libraries: Tree = {}
           for (const source of m.sources) {
-            if (source.origin !== 'library' && !source.dir.split('/').includes('node_modules')) continue
+            if (source.origin !== 'library' && !source.dir.split(/[\\/]/).includes('node_modules')) continue
             const raw = tree(join(source.dir, `${m.defaultLocale}.json`))
             libraries = mergeReference(libraries, source.namespace ? { [source.namespace]: raw } : raw)
           }
