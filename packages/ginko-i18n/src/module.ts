@@ -56,7 +56,7 @@ function readDir(dir: string): Record<string, RawTree> {
       out[code] = JSON.parse(readFileSync(join(dir, file), 'utf8'))
     }
     catch (error) {
-      // eslint-disable-next-line preserve-caught-error -- preserve the existing JSON error contract in this lint-only migration
+      // eslint-disable-next-line preserve-caught-error -- the message carries the file name and the parser text; the cause adds nothing
       throw new Error(`[ginko-i18n] ${join(dir, file)} is not valid JSON: ${(error as Error).message}`)
     }
   }

@@ -24,7 +24,7 @@ export const alternatesKey = (path: string) => `ginko-i18n:alternates:${path}`
 /** Resolve a path written in any locale (or unprefixed) to the same page in `code`. */
 export function createLocalePath(router: Router) {
   return (target: string, code: string): string => {
-    // eslint-disable-next-line regexp/no-super-linear-backtracking -- retain existing router path parsing during this lint-only migration
+    // eslint-disable-next-line regexp/no-super-linear-backtracking -- linear: `[^?#]*` cannot overlap `.*`, which only takes the rest
     const match = /^([^?#]*)(.*)$/.exec(target)!
     const path = match[1] || '/'
     const tail = match[2] ?? ''
