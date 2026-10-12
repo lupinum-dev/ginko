@@ -46,7 +46,7 @@ const currencies = [{ value: 'EUR' as const, label: 'EUR' }, { value: 'CHF' as c
       </ul>
       <p class="vat">{{ labels.vat[currency] }}</p>
       <!-- The trial button of the hero: on phones the header has none, so the pricing page offers it here. -->
-      <a v-if="safeHref(hero.data.buttonUrl)" class="button trial" :href="safeHref(hero.data.buttonUrl)" rel="noopener" :lang="ginkoLangOf(hero, 'buttonText')">{{ hero.data.buttonText }}</a>
+      <a v-if="ginkoSafeHref(hero.data.buttonUrl)" class="button trial" :href="ginkoSafeHref(hero.data.buttonUrl)" rel="noopener" :lang="ginkoLangOf(hero, 'buttonText')">{{ hero.data.buttonText }}</a>
     </template>
   </div>
 </template>

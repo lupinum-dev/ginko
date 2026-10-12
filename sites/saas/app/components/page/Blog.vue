@@ -12,8 +12,8 @@ const blog = useGinko('blog')
     <p v-if="!blog.items.length" class="empty">{{ t('noPosts') }}</p>
     <ul v-else class="posts">
       <li v-for="post in blog.items" :key="post.id" class="post">
-        <NuxtLink v-if="safeHref(post.data.image?.url)" :to="post.url" class="image-link" tabindex="-1" aria-hidden="true">
-          <img :src="safeHref(post.data.image?.url)" alt="" :width="post.data.image!.width" :height="post.data.image!.height" loading="lazy">
+        <NuxtLink v-if="ginkoSafeHref(post.data.image?.url)" :to="post.url" class="image-link" tabindex="-1" aria-hidden="true">
+          <img :src="ginkoSafeHref(post.data.image?.url)" alt="" :width="post.data.image!.width" :height="post.data.image!.height" loading="lazy">
         </NuxtLink>
         <div class="text">
           <p class="meta mono"><time :datetime="post.data.date">{{ format.date(post.data.date) }}</time></p>

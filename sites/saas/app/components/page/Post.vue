@@ -11,7 +11,7 @@ useSeoMeta({
   description: () => post.value.data.description,
   ogTitle: () => `${post.value.data.title} | ${siteName}`,
   ogDescription: () => post.value.data.description,
-  ogImage: () => safeHref(post.value.data.image?.url),
+  ogImage: () => ginkoSafeHref(post.value.data.image?.url),
 })
 </script>
 
@@ -20,7 +20,7 @@ useSeoMeta({
     <NuxtLink :to="path('blog')" class="back">{{ t('allPosts') }}</NuxtLink>
     <h1 class="page-title" :lang="ginkoLangOf(post, 'title')">{{ post.data.title }}</h1>
     <p class="facts mono">{{ post.data.author }} · <time :datetime="post.data.date">{{ format.date(post.data.date) }}</time></p>
-    <img v-if="safeHref(post.data.image?.url)" class="image" :src="safeHref(post.data.image?.url)" :alt="post.data.image!.alt" :lang="ginkoLangOf(post, 'image.alt')" :width="post.data.image!.width" :height="post.data.image!.height">
+    <img v-if="ginkoSafeHref(post.data.image?.url)" class="image" :src="ginkoSafeHref(post.data.image?.url)" :alt="post.data.image!.alt" :lang="ginkoLangOf(post, 'image.alt')" :width="post.data.image!.width" :height="post.data.image!.height">
     <GinkoMarkdown :value="post.data.body" class="prose" :lang="ginkoLangOf(post, 'body')" />
   </article>
 </template>

@@ -6,9 +6,9 @@ const props = defineProps<{ slug: string }>()
 const { lang, head } = useSite()
 const path = usePagePath()
 const product = useGinkoEntry('products', props.slug)
-head(() => product.value.data.name, 'products', () => safeHref(product.value.data.images[0]?.image.url))
+head(() => product.value.data.name, 'products', () => ginkoSafeHref(product.value.data.images[0]?.image.url))
 const data = computed(() => product.value.data)
-const sheet = computed(() => (data.value.datasheet && safeHref(data.value.datasheet.url) ? data.value.datasheet : undefined))
+const sheet = computed(() => (data.value.datasheet && ginkoSafeHref(data.value.datasheet.url) ? data.value.datasheet : undefined))
 </script>
 
 <template>
@@ -17,9 +17,9 @@ const sheet = computed(() => (data.value.datasheet && safeHref(data.value.datash
     <h1 class="page-title" :lang="ginkoLangOf(product, 'name')">{{ data.name }}</h1>
     <p class="lede summary" :lang="ginkoLangOf(product, 'summary')">{{ data.summary }}</p>
 
-    <ul v-if="data.images.some((i) => safeHref(i.image?.url))" class="images" :aria-label="t('productImages')">
+    <ul v-if="data.images.some((i) => ginkoSafeHref(i.image?.url))" class="images" :aria-label="t('productImages')">
       <li v-for="i in data.images" :key="i._id">
-        <img v-if="safeHref(i.image?.url)" :src="safeHref(i.image.url)" :alt="i.image.alt" :lang="ginkoLangOf(product, `images.${i._id}.image.alt`)" :width="i.image.width" :height="i.image.height">
+        <img v-if="ginkoSafeHref(i.image?.url)" :src="ginkoSafeHref(i.image.url)" :alt="i.image.alt" :lang="ginkoLangOf(product, `images.${i._id}.image.alt`)" :width="i.image.width" :height="i.image.height">
       </li>
     </ul>
 
@@ -41,7 +41,7 @@ const sheet = computed(() => (data.value.datasheet && safeHref(data.value.datash
     </section>
 
     <div v-if="sheet" class="download">
-      <a class="button" :href="safeHref(sheet.url)" :download="sheet.name" rel="noopener">{{ t('datasheetDownload') }}</a>
+      <a class="button" :href="ginkoSafeHref(sheet.url)" :download="sheet.name" rel="noopener">{{ t('datasheetDownload') }}</a>
       <span class="file mono">{{ sheet.name }} · {{ formatSize(sheet.size, lang) }}</span>
     </div>
   </article>

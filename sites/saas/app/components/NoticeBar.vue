@@ -8,7 +8,7 @@ const notices = useGinko('notices')
   <div v-if="notices.items.length" class="notices">
     <p v-for="item in notices.items" :key="item.id" class="wrap notice">
       <span :lang="ginkoLangOf(item, 'text')">{{ item.data.text }}</span>
-      <a v-if="safeHref(item.data.link)" :href="safeHref(item.data.link)" rel="noopener">{{ t('more') }}</a>
+      <a v-if="ginkoSafeHref(item.data.link)" :href="ginkoSafeHref(item.data.link)" rel="noopener">{{ t('more') }}</a>
     </p>
   </div>
 </template>

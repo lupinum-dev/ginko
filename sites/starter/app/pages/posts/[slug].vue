@@ -16,7 +16,7 @@ useGinkoSeo(() => ({
     <p><NuxtLink :to="path('posts')">All posts</NuxtLink></p>
     <h1>{{ post.data.title }}</h1>
     <p class="meta"><time :datetime="post.data.date">{{ format.date(post.data.date, 'long') }}</time></p>
-    <img v-if="post.data.cover && safeHref(post.data.cover.url)" :src="safeHref(post.data.cover.url)" :alt="post.data.cover.alt" :width="post.data.cover.width" :height="post.data.cover.height">
+    <img v-if="post.data.cover && ginkoSafeHref(post.data.cover.url)" :src="ginkoSafeHref(post.data.cover.url)" :alt="post.data.cover.alt" :width="post.data.cover.width" :height="post.data.cover.height">
     <GinkoMarkdown :value="post.data.body" class="prose" />
     <ul v-if="post.data.tags.length" class="tags" aria-label="Tags">
       <li v-for="tag in post.data.tags" :key="tag._id">{{ tag.name }}</li>

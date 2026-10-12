@@ -3,7 +3,7 @@
 const props = defineProps<{ images: readonly { _id: string; image: { url: string; alt: string; width?: number; height?: number } }[]; strip?: boolean; fallback?: readonly string[] }>()
 /** Only photos with an http(s) address: content never brings another scheme into the page. */
 // A row whose photo is missing (an upload removed on the platform) is left out too.
-const shown = computed(() => props.images.filter((row) => safeHref(row.image?.url)))
+const shown = computed(() => props.images.filter((row) => ginkoSafeHref(row.image?.url)))
 </script>
 
 <template>

@@ -25,9 +25,9 @@ head(() => t('careers'), 'careers')
             <GinkoMarkdown :value="j.data.description" class="prose" :lang="ginkoLangOf(j, 'description')" />
             <p v-if="j.data.start" class="date mono">{{ t('startFrom', { date: format.date(j.data.start) }) }}</p>
             <p v-if="j.data.until" class="date mono">{{ t('endsOn', { date: format.date(j.data.until) }) }}</p>
-            <div v-if="safeHref(j.data.applyUrl) || j.data.applyEmail" class="apply">
-              <a v-if="safeHref(j.data.applyUrl)" class="button" :href="safeHref(j.data.applyUrl)" rel="noopener">{{ t('applyOnline') }}</a>
-              <a v-if="j.data.applyEmail" class="button" :class="{ outline: safeHref(j.data.applyUrl) }" :href="`mailto:${j.data.applyEmail}`">{{ t('applyMail', { email: j.data.applyEmail }) }}</a>
+            <div v-if="ginkoSafeHref(j.data.applyUrl) || j.data.applyEmail" class="apply">
+              <a v-if="ginkoSafeHref(j.data.applyUrl)" class="button" :href="ginkoSafeHref(j.data.applyUrl)" rel="noopener">{{ t('applyOnline') }}</a>
+              <a v-if="j.data.applyEmail" class="button" :class="{ outline: ginkoSafeHref(j.data.applyUrl) }" :href="`mailto:${j.data.applyEmail}`">{{ t('applyMail', { email: j.data.applyEmail }) }}</a>
             </div>
           </div>
         </details>

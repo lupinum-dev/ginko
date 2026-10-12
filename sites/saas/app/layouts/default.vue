@@ -16,7 +16,7 @@ const nav = computed(() => [
   { key: 'blog', href: path('blog'), label: labels.value.nav.blog },
   { key: 'faq', href: path('faq'), label: labels.value.nav.faq },
 ])
-const cta = computed(() => safeHref(hero.value.data.buttonUrl))
+const cta = computed(() => ginkoSafeHref(hero.value.data.buttonUrl))
 </script>
 
 <template>

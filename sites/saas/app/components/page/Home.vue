@@ -9,7 +9,7 @@ const hero = useGinko('hero')
 const features = useGinko('features')
 const pricing = useGinko('pricing')
 const testimonials = useGinko('testimonials')
-const cta = computed(() => safeHref(hero.value.data.buttonUrl))
+const cta = computed(() => ginkoSafeHref(hero.value.data.buttonUrl))
 const quotes = computed(() => testimonials.value.items.slice(0, 3))
 </script>
 
@@ -60,7 +60,7 @@ const quotes = computed(() => testimonials.value.items.slice(0, 3))
           <figure class="quote">
             <blockquote :lang="ginkoLangOf(item, 'quote')">{{ item.data.quote }}</blockquote>
             <figcaption>
-              <img v-if="safeHref(item.data.logo?.url)" class="logo" :src="safeHref(item.data.logo?.url)" :alt="item.data.logo!.alt" :lang="ginkoLangOf(item, 'logo.alt')" :width="item.data.logo!.width" :height="item.data.logo!.height" loading="lazy">
+              <img v-if="ginkoSafeHref(item.data.logo?.url)" class="logo" :src="ginkoSafeHref(item.data.logo?.url)" :alt="item.data.logo!.alt" :lang="ginkoLangOf(item, 'logo.alt')" :width="item.data.logo!.width" :height="item.data.logo!.height" loading="lazy">
               <span class="name">{{ item.data.name }}</span>
               <span class="company">{{ item.data.company }}</span>
             </figcaption>

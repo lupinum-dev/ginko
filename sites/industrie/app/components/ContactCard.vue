@@ -8,7 +8,7 @@ defineProps<{ contact: Contact }>()
 
 <template>
   <article class="card" data-test="contact">
-    <img v-if="contact.data.photo && safeHref(contact.data.photo.url)" class="avatar" :src="safeHref(contact.data.photo.url)" :alt="contact.data.photo.alt" :lang="ginkoLangOf(contact, 'photo.alt')" width="56" height="56" loading="lazy">
+    <img v-if="contact.data.photo && ginkoSafeHref(contact.data.photo.url)" class="avatar" :src="ginkoSafeHref(contact.data.photo.url)" :alt="contact.data.photo.alt" :lang="ginkoLangOf(contact, 'photo.alt')" width="56" height="56" loading="lazy">
     <span v-else class="avatar initials" aria-hidden="true">{{ initials(contact.data.name) }}</span>
     <div class="text">
       <h3>{{ contact.data.name }}</h3>

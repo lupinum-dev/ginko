@@ -24,7 +24,7 @@ const eventLd = computed(() => {
     description: e.description && 'nodes' in e.description ? e.description : undefined,
     image: e.image ? new URL(e.image.url, siteUrl).href : undefined,
     price: e.price,
-    booking: safeHref(e.booking),
+    booking: ginkoSafeHref(e.booking),
   })
 })
 useGinkoSeo(() => ({ title: event.value.data.title, image: event.value.data.image?.url, jsonLd: [eventLd.value] }))
@@ -38,9 +38,9 @@ useGinkoSeo(() => ({ title: event.value.data.title, image: event.value.data.imag
       <span class="when">{{ eventWhen(event.data.when, event.data.start) }}</span>
       <span v-if="event.data.price" class="price">{{ t('price') }}: {{ formatMoney(event.data.price, lang) }}</span>
     </p>
-    <img v-if="safeHref(event.data.image?.url)" class="image" :src="safeHref(event.data.image?.url)" :alt="event.data.image!.alt" :lang="ginkoLangOf(event, 'image.alt')" :width="event.data.image!.width" :height="event.data.image!.height">
+    <img v-if="ginkoSafeHref(event.data.image?.url)" class="image" :src="ginkoSafeHref(event.data.image?.url)" :alt="event.data.image!.alt" :lang="ginkoLangOf(event, 'image.alt')" :width="event.data.image!.width" :height="event.data.image!.height">
     <GinkoMarkdown :value="event.data.description" class="prose" :lang="ginkoLangOf(event, 'description')" />
-    <a v-if="safeHref(event.data.booking)" class="button book" :href="safeHref(event.data.booking)" rel="noopener">{{ t('book') }}</a>
+    <a v-if="ginkoSafeHref(event.data.booking)" class="button book" :href="ginkoSafeHref(event.data.booking)" rel="noopener">{{ t('book') }}</a>
   </article>
 </template>
 

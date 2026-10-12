@@ -19,7 +19,7 @@ const { t } = useI18n()
         <dd><span :lang="ginkoLangOf(product, `specs.${s._id}.value`)">{{ s.value }}</span><template v-if="s.unit">&nbsp;<span :lang="ginkoLangOf(product, `specs.${s._id}.unit`)">{{ s.unit }}</span></template></dd>
       </div>
     </dl>
-    <a v-if="product.data.datasheet && safeHref(product.data.datasheet.url)" class="sheet" :href="safeHref(product.data.datasheet.url)" rel="noopener">{{ t('datasheet', { size: formatSize(product.data.datasheet.size, lang) }) }}</a>
+    <a v-if="product.data.datasheet && ginkoSafeHref(product.data.datasheet.url)" class="sheet" :href="ginkoSafeHref(product.data.datasheet.url)" rel="noopener">{{ t('datasheet', { size: formatSize(product.data.datasheet.size, lang) }) }}</a>
   </article>
 </template>
 
