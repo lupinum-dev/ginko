@@ -3,7 +3,8 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue'
 import { useI18n } from '#imports'
-import { isTranslatable, type Field, type Json, type Locale } from '@lupinum/ginko'
+import type { Field, Json, Locale } from '@lupinum/ginko'
+import { isTranslatable } from '@lupinum/ginko/internal'
 import { messageOf } from '@studio/utils/messageOf'
 import { ownIssues, TRANSLATION, type Issue } from '@lupinum/ginko-editor'
 import GinkoFieldChoice from './GinkoFieldChoice.vue'

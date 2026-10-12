@@ -1,6 +1,7 @@
 // Pure content rules of the write path (SPEC part 3 "Übersetzungs-Abdrücke", 4.2 save).
 // No Convex here, so every rule is testable with plain data.
-import { effectiveAlt, isTranslatable, printOf, stableJson, type Field, type Fields, type Json, type Locale } from '@lupinum/ginko'
+import type { Field, Fields, Json, Locale } from '@lupinum/ginko'
+import { effectiveAlt, isTranslatable, printOf, stableJson } from '@lupinum/ginko/internal'
 
 export type Data = Record<string, Json>
 export type Prints = Record<string, Record<string, string>>

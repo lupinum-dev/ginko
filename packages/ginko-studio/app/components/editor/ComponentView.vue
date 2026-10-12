@@ -6,7 +6,7 @@
 import { computed, nextTick, onMounted, onUpdated, ref, toRaw, useId, watch } from 'vue'
 import { useI18n } from '#imports'
 import { Settings2 } from '@lucide/vue'
-import type { ComponentRegistry } from '@lupinum/ginko'
+import type { ComponentRegistry } from '@lupinum/ginko/internal'
 import { componentMode, propsSummary, type ComponentProps } from '@lupinum/ginko-editor'
 import { NodeViewContent, NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { Button } from '@studio/components/ui/button'

@@ -1,6 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
-import { blockedSlugs, effectiveMax, isTranslatable, labelOf as labelIn, isVisible, ordered, sha256, slugify, todayIn, uniqueSlug, validate, type Brick, type CollectionBrick, type Field, type Fields, type Json, type Label, type Locale, type Schema } from '@lupinum/ginko'
+import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
+import { blockedSlugs, effectiveMax, isTranslatable, labelOf as labelIn, isVisible, ordered, sha256, slugify, todayIn, uniqueSlug, validate, type Schema } from '@lupinum/ginko/internal'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'

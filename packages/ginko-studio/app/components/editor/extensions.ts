@@ -1,6 +1,6 @@
 // What the Studio adds to the headless extensions: the node view of components, Mod+K, and the slash menu.
 // Nothing here changes the schema (see `extend` in createGinkoEditor).
-import type { ComponentRegistry, Msg } from '@lupinum/ginko'
+import type { ComponentRegistry, Msg } from '@lupinum/ginko/internal'
 import { docProblems, filterSlashItems, type DocProblem, type SlashItem } from '@lupinum/ginko-editor'
 import { Extension, type AnyExtension, type Editor } from '@tiptap/core'
 import { NodeSelection, Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'

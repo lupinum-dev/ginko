@@ -1,6 +1,6 @@
 // Allowed upload types (SPEC 4.3): the core table gives type and limit; here are the first bytes
 // that prove the content, so a file cannot pass as another kind by its declared type alone.
-import { formatMb, limitOf, UPLOAD_TYPES, type UploadType } from '@lupinum/ginko'
+import { formatMb, limitOf, UPLOAD_TYPES, type UploadType } from '@lupinum/ginko/internal'
 
 const at = (bytes: Uint8Array, offset: number, text: string) => [...text].every((c, i) => bytes[offset + i] === c.charCodeAt(0))
 

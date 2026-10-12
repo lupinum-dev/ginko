@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // What a paste or drop does beyond cleaning HTML: Markdown text, addresses, pictures; the upload place; problems at blocks.
 import { components } from '@lupinum/ginko-components/registry'
-import { coreMessage, type MarkdownProfile } from '@lupinum/ginko'
+import { coreMessage, type MarkdownProfile } from '@lupinum/ginko/internal'
 import { Slice } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
 import { describe, expect, test, vi } from 'vitest'

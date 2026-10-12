@@ -4,7 +4,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from '#imports'
 import { Bold, Code, Italic, Link, Search, Strikethrough } from '@lucide/vue'
-import { profileCovers, type MarkdownProfile } from '@lupinum/ginko'
+import { profileCovers, type MarkdownProfile } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
 import { isTaskItem, toggleTaskList } from '@lupinum/ginko-editor'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@studio/components/ui/select'

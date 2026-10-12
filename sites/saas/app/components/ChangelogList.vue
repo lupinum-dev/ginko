@@ -21,7 +21,7 @@ const entries = computed(() => changelog.value.items.slice(0, props.limit))
         <ul v-if="entry.data.tags.length" class="tags" :aria-label="t('tagsLabel')">
           <li v-for="tag in entry.data.tags" :key="tag"><TagChip :value="tag" /></li>
         </ul>
-        <GinkoMarkdown v-if="!limit" :value="entry.data.body" class="prose" :lang="langOf(entry, 'body')" />
+        <GinkoMarkdown v-if="!limit" :value="entry.data.body" class="prose" :lang="ginkoLangOf(entry, 'body')" />
       </div>
     </li>
   </ol>

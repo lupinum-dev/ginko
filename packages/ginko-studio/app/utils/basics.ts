@@ -1,5 +1,6 @@
 // Small rules of the Studio basics (UI.md 10.6) as plain functions, so they can be tested without a Nuxt app.
-import { ordered, type Brick, type Schema } from '@lupinum/ginko'
+import type { Brick } from '@lupinum/ginko'
+import { ordered, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { searchable, taskRef, type Data } from './content'
 

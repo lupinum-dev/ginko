@@ -1,6 +1,7 @@
 // Registry entries of the code components, spread into `components` by `registry.ts`. Pure data, no Vue.
 // A single code block is the plain `pre` tag of Markdown: it has no entry here, the Vue side overrides its renderer.
-import { defineComponents, f } from '@lupinum/ginko'
+import { f } from '@lupinum/ginko'
+import { defineComponents } from '@lupinum/ginko/internal'
 import { appearance } from './fields.ts'
 
 export const codeComponents = defineComponents({

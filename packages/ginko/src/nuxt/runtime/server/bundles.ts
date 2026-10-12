@@ -3,7 +3,7 @@
 // Platform rule (SPEC 8): any failure is a 503, never an empty answer.
 import { createError, getRequestHeader } from 'nuxt/server'
 import fileBundles from '#ginko/files'
-import type { Bundle, Locale } from '../../../index.ts'
+import type { Bundle, Locale } from '../../../internal.ts'
 import { loadBundle, PlatformError } from '../fetch.ts'
 import type { GinkoPublicConfig } from '../shared.ts'
 

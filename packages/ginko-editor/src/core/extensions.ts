@@ -5,8 +5,8 @@
 // link, bulletList, orderedList, listItem, blockquote, codeBlock, horizontalRule, hardBreak, image, table...).
 // Ginko's own: alert, taskCheckbox, mathBlock, mathInline, mermaid, component, inlineComponent, slot, raw.
 // The attributes that carry what the editor has no field for are described in ./convert.ts.
-import type { ComponentRegistry, MarkdownProfile } from '@lupinum/ginko'
-import { isSafeHref, profileCovers } from '@lupinum/ginko'
+import type { ComponentRegistry, MarkdownProfile } from '@lupinum/ginko/internal'
+import { isSafeHref, profileCovers } from '@lupinum/ginko/internal'
 import { Extension, Node, type AnyExtension, type Editor } from '@tiptap/core'
 import Blockquote from '@tiptap/extension-blockquote'
 import Code from '@tiptap/extension-code'

@@ -10,16 +10,16 @@ const { t } = useI18n()
 
 <template>
   <article class="card">
-    <h3 :lang="langOf(product, 'name')"><NuxtLink :to="product.url">{{ product.data.name }}</NuxtLink></h3>
-    <p class="summary" :lang="langOf(product, 'summary')">{{ product.data.summary }}</p>
+    <h3 :lang="ginkoLangOf(product, 'name')"><NuxtLink :to="product.url">{{ product.data.name }}</NuxtLink></h3>
+    <p class="summary" :lang="ginkoLangOf(product, 'summary')">{{ product.data.summary }}</p>
     <dl v-if="product.data.specs.length" class="specs mono">
       <div v-for="s in product.data.specs.slice(0, 3)" :key="s._id">
-        <dt :lang="langOf(product, `specs.${s._id}.name`)">{{ s.name }}</dt>
+        <dt :lang="ginkoLangOf(product, `specs.${s._id}.name`)">{{ s.name }}</dt>
         <!-- Value and unit each carry the language they come in (an untranslated one stays German). -->
-        <dd><span :lang="langOf(product, `specs.${s._id}.value`)">{{ s.value }}</span><template v-if="s.unit">&nbsp;<span :lang="langOf(product, `specs.${s._id}.unit`)">{{ s.unit }}</span></template></dd>
+        <dd><span :lang="ginkoLangOf(product, `specs.${s._id}.value`)">{{ s.value }}</span><template v-if="s.unit">&nbsp;<span :lang="ginkoLangOf(product, `specs.${s._id}.unit`)">{{ s.unit }}</span></template></dd>
       </div>
     </dl>
-    <a v-if="product.data.datasheet && safeHref(product.data.datasheet.url)" class="sheet" :href="safeHref(product.data.datasheet.url)" rel="noopener">{{ t('datasheet', { size: formatSize(product.data.datasheet.size, lang) }) }}</a>
+    <a v-if="product.data.datasheet && ginkoSafeHref(product.data.datasheet.url)" class="sheet" :href="ginkoSafeHref(product.data.datasheet.url)" rel="noopener">{{ t('datasheet', { size: formatSize(product.data.datasheet.size, lang) }) }}</a>
   </article>
 </template>
 

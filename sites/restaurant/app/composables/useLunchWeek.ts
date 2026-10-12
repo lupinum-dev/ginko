@@ -3,7 +3,7 @@ import { weekdayOf } from '../utils/site'
 
 /**
  * The lunch week to show: a week planned ahead for this work week, else the main `lunch` fields if they
- * are for this week (`lunchWeekOn`). `lunch` is that source, so `langOf(lunch, ...)` and `lunch.data` work for both.
+ * are for this week (`lunchWeekOn`). `lunch` is that source, so `ginkoLangOf(lunch, ...)` and `lunch.data` work for both.
  * Nothing to show: `current` is false and the page shows `lunchPending`.
  */
 export function useLunchWeek() {

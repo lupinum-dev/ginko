@@ -2,7 +2,8 @@
 // entries.ts create the proposals (lib/policy.ts); this file decides them. Approving runs the
 // same operation again as the author, with the approver named in the change row, so there is one
 // write path. A change that no longer fits (revision moved on) becomes `stale` and writes nothing.
-import { type Json, type Schema } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'

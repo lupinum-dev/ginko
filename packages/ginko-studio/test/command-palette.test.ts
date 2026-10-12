@@ -4,7 +4,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { computed, nextTick } from 'vue'
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
-import type { Schema } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import CommandPalette from '../app/components/CommandPalette.vue'
 
 const mocks = vi.hoisted(() => ({

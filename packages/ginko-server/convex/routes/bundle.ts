@@ -1,7 +1,7 @@
 // GET /bundle/<site>?format=3&locale=<l>[&minRev=<schemaRev>.<contentRev>] (SPEC 6).
 // Order: format, rate limit (also finds the site), build. Every answer is JSON with code and
 // German message on errors; the HTTP status carries the SPEC 6 mapping.
-import { BUNDLE_FORMAT } from '@lupinum/ginko'
+import { BUNDLE_FORMAT } from '@lupinum/ginko/internal'
 import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'
 import { httpAction } from '../_generated/server'

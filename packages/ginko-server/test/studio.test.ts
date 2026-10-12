@@ -1,6 +1,6 @@
 // Studio basics (SPEC 4.2): search, saved views, duplicate, trash, translation status and "why is this
 // not public?". One test per realistic failure. The clock is fixed because event visibility depends on today.
-import type { Schema } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'

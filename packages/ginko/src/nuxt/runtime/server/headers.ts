@@ -1,6 +1,6 @@
 // Framing rules (SPEC 8 "Header"): only the platform may frame the preview; nothing frames pages.
 import { defineEventHandler, getRequestHost, getRequestURL, useRuntimeConfig } from 'nuxt/server'
-import { isPreviewHost } from '../../../index.ts'
+import { isPreviewHost } from '../../../internal.ts'
 import type { GinkoPublicConfig } from '../shared.ts'
 
 export default defineEventHandler((event) => {

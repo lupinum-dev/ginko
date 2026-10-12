@@ -5,7 +5,8 @@ import { Button } from '@studio/components/ui/button'
 import type { Chosen } from '../files/LibraryPickerBody.vue'
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useI18n } from '#imports'
-import { acceptOf, fileProblem, formatMb, type Field, type Json } from '@lupinum/ginko'
+import type { Field, Json } from '@lupinum/ginko'
+import { acceptOf, fileProblem, formatMb } from '@lupinum/ginko/internal'
 import { useGinkoAssets, useUpload } from '@lupinum/ginko-editor'
 
 const props = defineProps<{ id: string; field: Extract<Field, { type: 'file' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string }>()

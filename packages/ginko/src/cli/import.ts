@@ -63,7 +63,7 @@ export async function importSite(input: ImportInput): Promise<{ entries: number;
   // 1. Schema. Rejected changes go through as warnings, as in `ginko dev` (SPEC 5.3).
   const pushed = await run('release:devPush', { site, schema: data.schema })
   const warnings = isObject(pushed) && Array.isArray(pushed.warnings) ? (pushed.warnings as SchemaChange[]) : []
-  for (const line of explainRejected(warnings)) log(`Warnung: ${line}`)
+  for (const line of explainRejected(warnings)) log(`Warning: ${line}`)
   log(`Schema “${site}” pushed to the local platform.`)
 
   // 2. Files first, so that a missing or broken file stops the import before anything is cleared.

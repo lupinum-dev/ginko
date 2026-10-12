@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import { computed, ref, useId, watch } from 'vue'
 import { useI18n } from '#imports'
-import { isSafeHref } from '@lupinum/ginko'
+import { isSafeHref } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
 import { Button } from '@studio/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@studio/components/ui/dialog'

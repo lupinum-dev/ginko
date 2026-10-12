@@ -1,6 +1,7 @@
 // Helpers the field components share. The storage format is the server's (SPEC 2.2); these only
 // translate it for people and back.
-import { minorDigits, type Locale } from '@lupinum/ginko'
+import type { Locale } from '@lupinum/ginko'
+import { minorDigits } from '@lupinum/ginko/internal'
 
 /** The text of a translatable value in one locale, or the plain value when it is not localized. */
 export function textIn(value: unknown, locale: Locale): string {

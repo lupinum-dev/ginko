@@ -3,13 +3,13 @@
 const props = defineProps<{ images: readonly { _id: string; image: { url: string; alt: string; width?: number; height?: number } }[]; strip?: boolean; fallback?: readonly string[] }>()
 /** Only photos with an http(s) address: content never brings another scheme into the page. */
 // A row whose photo is missing (an upload removed on the platform) is left out too.
-const shown = computed(() => props.images.filter((row) => safeHref(row.image?.url)))
+const shown = computed(() => props.images.filter((row) => ginkoSafeHref(row.image?.url)))
 </script>
 
 <template>
   <ul :class="['photos', { strip }]">
     <li v-for="(row, i) in shown" :key="row._id">
-      <img :src="row.image.url" :alt="row.image.alt" :lang="langOf({ fallback }, `images.${row._id}.image.alt`)" :width="row.image.width" :height="row.image.height" :loading="i < 2 ? 'eager' : 'lazy'" decoding="async">
+      <img :src="row.image.url" :alt="row.image.alt" :lang="ginkoLangOf({ fallback }, `images.${row._id}.image.alt`)" :width="row.image.width" :height="row.image.height" :loading="i < 2 ? 'eager' : 'lazy'" decoding="async">
     </li>
   </ul>
 </template>

@@ -5,7 +5,7 @@
 // (b) open + markdown() without an edit returns the text byte for byte (the renderer must not touch it);
 // (c) one real edit changes only the block it is in.
 import { components } from '@lupinum/ginko-components/registry'
-import { markdownBlocks, parseMarkdown, type ComponentRegistry, type MarkdownProfile } from '@lupinum/ginko'
+import { markdownBlocks, parseMarkdown, type ComponentRegistry, type MarkdownProfile } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
 import { describe, expect, test } from 'vitest'
 import { createGinkoEditor, fromEditorDoc, toEditorDoc } from '../src/core/index.ts'

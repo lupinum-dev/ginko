@@ -5,7 +5,8 @@
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, reactive, ref, watch, watchEffect } from 'vue'
 import { useI18n } from '#imports'
-import { coreMessage, effectiveMax, effectiveProfile, type Field, type Json, type Msg } from '@lupinum/ginko'
+import type { Field, Json } from '@lupinum/ginko'
+import { coreMessage, effectiveMax, effectiveProfile, type Msg } from '@lupinum/ginko/internal'
 import {
   BLOCKERS, docProblems, FLUSHERS, linkCardTag, makeLinkCard, missingRequired, slashItems, SLASH_COMPONENT_GROUP, sourceProblems, useGinkoEditor,
   type DocProblem, type SlashItem, type SourceProblem,

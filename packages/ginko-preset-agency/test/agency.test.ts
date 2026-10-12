@@ -1,5 +1,6 @@
 // A preset that fails the core's schema check breaks every site that declares it, and a wrong expiry rule shows closed jobs.
-import { checkSchema, defineSite, f, serializeSchema, type CollectionBrick, type SiteInput } from '@lupinum/ginko'
+import { defineSite, f, type CollectionBrick, type SiteInput } from '@lupinum/ginko'
+import { checkSchema, serializeSchema } from '@lupinum/ginko/internal'
 import { describe, expect, it } from 'vitest'
 import { authors, blog, caseStudies, faq, jobs, legal, openJobs, services, team } from '../src/index.ts'
 

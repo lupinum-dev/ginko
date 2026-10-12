@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto'
 import { closeSync, openSync, readFileSync, readSync, statSync } from 'node:fs'
 import { dirname, extname, join, resolve, sep } from 'node:path'
-import { imageInfo, type Json } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import { imageInfo } from '@lupinum/ginko/internal'
 
 /** Where content-addressed images are served from; the Nuxt module copies the registered files to this folder. */
 export const IMAGE_URL_PREFIX = '/_ginko/img/'

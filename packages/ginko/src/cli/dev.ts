@@ -168,10 +168,10 @@ async function push(schema: Schema, platformDir: string, site: string, log: (lin
   const output = await runOnce('npx', ['convex', 'run', 'release:devPush', JSON.stringify({ site, schema })], platformDir, targetEnv(target))
   const result = parseResult(output)
   if (!result) {
-    log(`devPush: unerwartete Antwort: ${output.slice(0, 300)}`)
+    log(`devPush: unexpected answer: ${output.slice(0, 300)}`)
     return
   }
   const warnings = Array.isArray(result.warnings) ? (result.warnings as SchemaChange[]) : []
-  if (warnings.length) for (const line of explainRejected(warnings)) log(`Warnung: ${line}`)
+  if (warnings.length) for (const line of explainRejected(warnings)) log(`Warning: ${line}`)
   log(`Schema pushed to the local platform (version ${String(result.schemaRev)}).`)
 }

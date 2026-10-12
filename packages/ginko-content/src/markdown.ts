@@ -1,4 +1,4 @@
-import { parseMarkdown as parseCore, type ParsedMarkdown } from '@lupinum/ginko'
+import { parseMarkdown as parseCore, type ParsedMarkdown } from '@lupinum/ginko/internal'
 import shiki from 'comark/plugins/shiki'
 import { bundledLanguages } from 'shiki/langs'
 import { bundledThemes } from 'shiki/themes'

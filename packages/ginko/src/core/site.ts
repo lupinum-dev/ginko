@@ -88,7 +88,7 @@ export function collection<const F extends Fields, const R extends Partial<Recor
   visible?: Visibility
   missing?: 'fallback' | 'hide'
   autoRemoveExpired?: boolean
-  /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the Monday. */
+  /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`weekStart`). */
   plans?: { brick: string; field: keyof F & string }
   drafts?: boolean
 }): CollectionBrick<F, R> {

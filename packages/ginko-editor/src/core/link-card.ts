@@ -1,5 +1,5 @@
 // A bare address pasted on an empty line can become a link card: a block component with an `href` and nothing else required.
-import type { ComponentRegistry } from '@lupinum/ginko'
+import type { ComponentRegistry } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
 import { propFields, editorMeta } from './component-props.ts'
 

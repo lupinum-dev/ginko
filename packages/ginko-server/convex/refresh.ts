@@ -1,6 +1,7 @@
 // "Sofort von der Seite nehmen" (SPEC 4.4): asks the site to re-render every page that a
 // change may have made stale, and checks each answer against the revision it must show.
-import { urlsFor, type Json, type Schema } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import { urlsFor, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { action, internalMutation, internalQuery } from './_generated/server'

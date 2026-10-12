@@ -1,7 +1,8 @@
 // Saved list views (SPEC 4.2): a person's named filter and sort of one brick's entry list.
 // A view belongs to one person; nobody else sees it, not even an admin. It is no content, so it
 // writes no change row and needs no opId; the name is unique per person and brick.
-import { labelOf, type Json, type Schema } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import { labelOf, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { mutation, query, type QueryCtx } from './_generated/server'

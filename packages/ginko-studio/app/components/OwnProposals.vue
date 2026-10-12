@@ -3,7 +3,7 @@
      (UI.md 10.7 item 6: a rejection writes no change row). Nothing shows when there is neither. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
-import type { Schema } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { opErrorOf } from '../composables/useOps'
 import { useTextOf } from '../composables/useTextOf'
 import { whoText } from '../utils/who'

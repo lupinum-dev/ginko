@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The `ginko` command: `ginko release | check | dev | export | import | pull`.
+// The `ginko` command: `ginko check | release | export | dev | import | pull`.
 // Reads GINKO_PLATFORM, GINKO_KEY and GITHUB_SHA from the environment (release, check, export and pull need the first two).
 import { execFile } from 'node:child_process'
 import { realpathSync } from 'node:fs'
@@ -21,14 +21,15 @@ const USAGE = `Usage: ginko <command> [--config <file>]
             ginko import <folder>
 
 Commands:
+  check     Check ginko.config.ts and the links in content/, and for platform bricks the schema against production.
+            Writes nothing. Platform bricks need GINKO_PLATFORM, GINKO_KEY.
   release   Deploy the schema and content to production (CI). Needs GINKO_PLATFORM, GINKO_KEY, GITHUB_SHA.
-  check     Check the schema against production and the links in content/ without writing anything. Needs GINKO_PLATFORM, GINKO_KEY.
-  dev       Start the local platform and site; schema changes go to the local platform at once.
   export    Save the schema, entries and files from production to a folder. Needs GINKO_PLATFORM, GINKO_KEY
             (scope export or pull). The folder must be new or empty.
-  import    Load an export folder into the local platform. Replaces the site's content there. Local only.
-  pull      Copy content from production to the local platform (export, then import). Needs GINKO_PLATFORM,
-            GINKO_KEY (scope pull or export). Local only.
+  dev       (Ginko monorepo only) Start the local platform and site; schema changes go to the local platform at once.
+  import    (Ginko monorepo only) Load an export folder into the local platform. Replaces the site's content there.
+  pull      (Ginko monorepo only) Copy content from production to the local platform (export, then import).
+            Needs GINKO_PLATFORM, GINKO_KEY (scope pull or export).
 
 Options:
   --config <file>   Path to ginko.config.ts (default: ./ginko.config.ts); import and pull look for apps/platform from here

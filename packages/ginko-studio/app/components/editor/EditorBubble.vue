@@ -3,7 +3,7 @@
 import { ref, watch } from 'vue'
 import { useI18n } from '#imports'
 import { Bold, Code, Italic, Link } from '@lucide/vue'
-import { profileCovers, type MarkdownProfile } from '@lupinum/ginko'
+import { profileCovers, type MarkdownProfile } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
 import { NodeSelection } from '@tiptap/pm/state'
 import { BubbleMenu } from '@tiptap/vue-3/menus'

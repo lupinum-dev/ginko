@@ -4,8 +4,9 @@
 // The node keeps the comark props as they were parsed (`props` attribute): values are strings, and a bare
 // attribute (`open`) is the key `:open` with "true". Writing keeps the key a prop already has, so an
 // untouched prop stays as written, and a changed prop keeps its place in the attribute list.
-import type { ComponentDef, ComponentRegistry, Described, Field } from '@lupinum/ginko'
-import { componentPropMessage, msg, effectiveMax, isSafeHref, labelOf, UNSAFE_LINK, URL_PROPS } from '@lupinum/ginko'
+import type { Field } from '@lupinum/ginko'
+import type { ComponentDef, ComponentRegistry, Described } from '@lupinum/ginko/internal'
+import { componentPropMessage, msg, effectiveMax, isSafeHref, labelOf, UNSAFE_LINK, URL_PROPS } from '@lupinum/ginko/internal'
 
 export type ComponentProps = Record<string, unknown>
 

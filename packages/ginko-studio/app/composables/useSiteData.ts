@@ -1,7 +1,8 @@
 // The open site: schema, live entries, the caller's role and grants (sites.get), plus what the
 // caller may do. Every page under /s/[site] reads this one query.
 import { api } from '#convex/api'
-import { ordered, sortEntries, type Brick, type CollectionBrick, type Json, type Schema, type StoredEntry } from '@lupinum/ginko'
+import type { Brick, CollectionBrick, Json } from '@lupinum/ginko'
+import { ordered, sortEntries, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { useToday } from '@lupinum/ginko-editor'
 import { taskRef, type Data, type Task } from '../utils/content'
 

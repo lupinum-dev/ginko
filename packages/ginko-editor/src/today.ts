@@ -1,5 +1,5 @@
 import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue'
-import { todayIn } from '@lupinum/ginko'
+import { todayIn } from '@lupinum/ginko/internal'
 
 // One tick per minute and on return to the tab, shared by every caller. Only the browser ticks.
 const tick = ref(0)

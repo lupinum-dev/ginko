@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // One blog post: title, date, authors, text. Article JSON-LD names the authors and carries both dates.
-import { articleLd } from '@lupinum/ginko'
+import { articleLd } from '@lupinum/ginko/internal'
 import type { Post } from '../composables/useBlog'
 
 const props = defineProps<{ post: Post }>()

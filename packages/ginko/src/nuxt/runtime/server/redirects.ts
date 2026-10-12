@@ -7,7 +7,7 @@ import { localeFromPath } from '@lupinum/ginko-i18n/core'
 import fileBundles from '#ginko/files'
 import locales from '#ginko/locales'
 import redirects from '#ginko/redirects'
-import { findRedirect } from '../../../index.ts'
+import { findRedirect } from '../../../internal.ts'
 
 export default defineEventHandler((event) => {
   const method = event.req.method

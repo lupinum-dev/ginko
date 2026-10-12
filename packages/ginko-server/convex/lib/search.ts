@@ -2,7 +2,8 @@
 // over one record per entry with all texts in all languages. The agent door and the Studio both call
 // `searchEntries`; nothing else searches.
 import { buildIndex, loadIndex, search, type SearchRecord } from '@lupinum/ginko/search'
-import { isTranslatable, type Brick, type Field, type Json, type Schema } from '@lupinum/ginko'
+import type { Brick, Field, Json } from '@lupinum/ginko'
+import { isTranslatable, type Schema } from '@lupinum/ginko/internal'
 import type { QueryCtx } from '../_generated/server'
 import { fail, type Actor } from './access'
 import type { Data } from './content'

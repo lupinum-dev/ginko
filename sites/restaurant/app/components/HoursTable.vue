@@ -34,7 +34,7 @@ const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
       </tbody>
     </table>
     <div v-for="c in coming" :key="c.plan._id" class="plan">
-      <h3>{{ t('fromDate', { date: format.date(c.starts, { day: 'numeric', month: 'long' }) }) }}<template v-if="c.plan.label">: <span :lang="langOf(itemOf(c.plan._id), 'label')">{{ c.plan.label }}</span></template></h3>
+      <h3>{{ t('fromDate', { date: format.date(c.starts, { day: 'numeric', month: 'long' }) }) }}<template v-if="c.plan.label">: <span :lang="ginkoLangOf(itemOf(c.plan._id), 'label')">{{ c.plan.label }}</span></template></h3>
       <table>
         <tbody>
           <tr v-for="d in c.plan.week" :key="d.day">
@@ -50,7 +50,7 @@ const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
         <li v-for="e in ahead" :key="e._id">
           <span class="when">{{ format.range(e.when.from, e.when.to) }}</span>
           <span>
-            <span :lang="e.names ? lang : langOf(hours, `exceptions.${e._id}.reason`)">{{ reasonOf(e) }}</span><template v-if="e.closed">, {{ t('closedFromTo') }}</template><template v-else>, {{ special(e) }}</template>
+            <span :lang="e.names ? lang : ginkoLangOf(hours, `exceptions.${e._id}.reason`)">{{ reasonOf(e) }}</span><template v-if="e.closed">, {{ t('closedFromTo') }}</template><template v-else>, {{ special(e) }}</template>
           </span>
         </li>
       </ul>

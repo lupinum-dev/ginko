@@ -25,7 +25,7 @@ Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm creat
 - Search index built in plain JS at build time, one record per heading section, loaded lazily per language.
 - Agent output: `/llms.txt`, `/llms-full.txt`, a `.md` twin for every page, `Accept: text/markdown`, and a Markdown 404 that suggests pages.
 - Render modes: Git-only sites prerender everything; platform sites refresh changed pages after a publish; previews render with `noindex`.
-- CLI `ginko`: `release`, `check`, `dev`, `export`, `import`, `pull`.
+- CLI `ginko`: `check` (schema and links, for every site) and `release` for CI, `export` for backups; `dev`, `import` and `pull` run only in the Ginko monorepo.
 
 **Languages (`@lupinum/ginko-i18n`)**
 

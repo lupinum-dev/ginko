@@ -1,5 +1,6 @@
 // Lunch planning: the main `lunch` fields are "this week"; `lunchPlans` entries are weeks planned ahead.
-import { workWeekOf, type WeekInfo } from '@lupinum/ginko'
+import type { WeekInfo } from '@lupinum/ginko'
+import { workWeekOf } from '@lupinum/ginko/internal'
 
 export interface LunchWeekData { weekOf: string; days: unknown[]; note?: unknown }
 

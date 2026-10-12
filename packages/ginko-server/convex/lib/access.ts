@@ -1,6 +1,7 @@
 // Steps 1, 2 and 4 of the shared write flow (SPEC 4.1): who, repeated op, may they.
 // Every write operation goes through `beginOp` and ends with `finishOp`.
-import { plansThisWeek, resolveToken, sha256, stableJson, weekOfSchema, type Json, type Schema, type Task } from '@lupinum/ginko'
+import type { Json, Task } from '@lupinum/ginko'
+import { plansThisWeek, resolveToken, sha256, stableJson, weekOfSchema, type Schema } from '@lupinum/ginko/internal'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { ActionCtx, MutationCtx, QueryCtx } from '../_generated/server'
 import { auth } from '../auth'

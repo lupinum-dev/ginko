@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 // Moving blocks (Alt+Arrow) in the headless core.
-import { markdownBlocks } from '@lupinum/ginko'
+import { markdownBlocks } from '@lupinum/ginko/internal'
 import { components } from '@lupinum/ginko-components/registry'
 import { TextSelection } from '@tiptap/pm/state'
 import { describe, expect, test } from 'vitest'

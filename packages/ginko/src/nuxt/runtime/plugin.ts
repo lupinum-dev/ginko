@@ -6,7 +6,7 @@
 import { addAlternatesResolver, addRouteMiddleware, createError, defineNuxtPlugin, useRequestHeader, useRequestURL, useResponseHeader, useRuntimeConfig, useState } from '#imports'
 import type { Ref } from 'vue'
 import schema from '#ginko/schema'
-import { bundleFits, isBundle, knownBricks, withFileBricks, type Bundle, type Locale } from '../../index.ts'
+import { bundleFits, isBundle, knownBricks, withFileBricks, type Bundle, type Locale } from '../../internal.ts'
 import { BUNDLE_STATE, PREVIEW_STATE } from './composables.ts'
 import { loadBundle as loadBundleCore, PlatformError } from './fetch.ts'
 import { localeFromPath } from '@lupinum/ginko-i18n/core'

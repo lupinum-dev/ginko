@@ -1,7 +1,8 @@
 // The entries of the slash menu ("/" in an empty paragraph), as data: what the profile allows, how each one
 // changes the document. Headless, the Studio only draws them.
-import type { ComponentRegistry, Label, MarkdownProfile } from '@lupinum/ginko'
-import { labelOf, parseMarkdown, profileCovers, URL_PROPS } from '@lupinum/ginko'
+import type { Label } from '@lupinum/ginko'
+import type { ComponentRegistry, MarkdownProfile } from '@lupinum/ginko/internal'
+import { labelOf, parseMarkdown, profileCovers, URL_PROPS } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { editorMeta, missingRequired, type ComponentProps, type PropField } from './component-props.ts'

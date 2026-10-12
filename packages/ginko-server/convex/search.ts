@@ -1,6 +1,7 @@
 // Studio search (⌘K, SPEC 4.2): entries, bricks and tasks that match the words. The entry search is
 // the one of the agent door (lib/search.ts); bricks and tasks match by label.
-import { labelOf, type Label, type Schema } from '@lupinum/ginko'
+import type { Label } from '@lupinum/ginko'
+import { labelOf, type Schema } from '@lupinum/ginko/internal'
 
 import { v } from 'convex/values'
 import { query } from './_generated/server'

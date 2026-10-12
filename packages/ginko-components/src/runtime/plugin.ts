@@ -1,5 +1,5 @@
 import { defineNuxtPlugin, useI18n, useRuntimeConfig } from '#imports'
-import { GINKO_COMPONENTS_KEY } from '@lupinum/ginko'
+import { GINKO_COMPONENTS_KEY } from '@lupinum/ginko/internal'
 import { componentMap } from './components/index'
 import { EMBED_PROVIDERS_KEY, type EmbedProviderEntry } from './components/embed-utils'
 import { TEXT_KEY, type Translate } from './components/text'

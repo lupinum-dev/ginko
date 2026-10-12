@@ -3,7 +3,7 @@
 <script setup lang="ts">
 import { nextTick, ref, useId, watch } from 'vue'
 import { useI18n } from '#imports'
-import { isSafeHref } from '@lupinum/ginko'
+import { isSafeHref } from '@lupinum/ginko/internal'
 import { normalizeHref } from '@lupinum/ginko-editor'
 import type { Editor } from '@tiptap/core'
 import { Button } from '@studio/components/ui/button'

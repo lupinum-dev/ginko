@@ -1,5 +1,5 @@
 // Site queries for the UI and the admin-only creation of a site (SPEC 4.2, 10).
-import { isCurrency, isLocale, isTimeZone, labelOf as labelIn, MAX_LOCALES, type Schema } from '@lupinum/ginko'
+import { isCurrency, isLocale, isTimeZone, labelOf as labelIn, MAX_LOCALES, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { internalMutation, mutation, query, type MutationCtx } from './_generated/server'
 import { actorFor, currentUser, fail } from './lib/access'

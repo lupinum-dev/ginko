@@ -2,7 +2,7 @@
      The row leaves the list by itself, because the list is a live query. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
-import type { Schema } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { opErrorOf } from '../composables/useOps'
 import { useTextOf } from '../composables/useTextOf'
 import { whenText } from '../utils/when'

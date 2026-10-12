@@ -1,6 +1,7 @@
 // Shared convex-test setup: the restaurant site from the contracts corpus, with its people.
 // Every platform test starts here, so no test writes its own seed.
-import { serializeSchema, type Json, type Schema } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import { serializeSchema, type Schema } from '@lupinum/ginko/internal'
 import { convexTest } from 'convex-test'
 import type { UserIdentityAttributes } from 'convex/server'
 import restaurant from '../../../sites/restaurant/ginko.config.ts'

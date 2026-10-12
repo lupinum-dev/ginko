@@ -2,7 +2,7 @@
 // hydration (a cached page rendered yesterday), every minute, and when a background tab comes back.
 // Collections from useGinko() follow, so expired notices and past events disappear without a reload.
 import { defineNuxtPlugin, onNuxtReady, useRuntimeConfig } from '#imports'
-import { todayIn } from '../../index.ts'
+import { todayIn } from '../../internal.ts'
 import { useGinkoToday } from './composables.ts'
 import type { GinkoPublicConfig } from './shared.ts'
 

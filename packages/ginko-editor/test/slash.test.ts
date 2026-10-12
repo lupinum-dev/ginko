@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // The slash menu entries: which ones a profile offers, the filter, and that an inserted component survives the trip to Markdown.
 import { components } from '@lupinum/ginko-components/registry'
-import type { MarkdownProfile } from '@lupinum/ginko'
+import type { MarkdownProfile } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
 import { describe, expect, test } from 'vitest'
 import { createGinkoEditor, filterSlashItems, slashItems, toggleTaskList } from '../src/core/index.ts'

@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 // Reading, writing and checking the props of a component block, headless.
 import { components } from '@lupinum/ginko-components/registry'
-import { defineComponents, f, labelOf, parseMarkdown, type ComponentRegistry } from '@lupinum/ginko'
+import { f } from '@lupinum/ginko'
+import { defineComponents, labelOf, parseMarkdown, type ComponentRegistry } from '@lupinum/ginko/internal'
 import { describe, expect, test } from 'vitest'
 import { createGinkoEditor, missingRequired, propProblem, propsSummary, readProp, slashItems, writeProp, type InsertedComponent, type PropField } from '../src/index.ts'
 

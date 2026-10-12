@@ -1,7 +1,7 @@
 <!-- Pages of one site: its name, "View site", the views (UI.md 2, 10.2). -->
 <script setup lang="ts">
 import { api } from '#convex/api'
-import { weekOfSchema, type ComponentRegistry, type Schema } from '@lupinum/ginko'
+import { weekOfSchema, type ComponentRegistry, type Schema } from '@lupinum/ginko/internal'
 import { provideGinkoAssets } from '@lupinum/ginko-editor'
 import { CircleCheckIcon, FileTextIcon, HistoryIcon, ImageIcon, SearchIcon, SparklesIcon, SquareArrowOutUpRightIcon, SunIcon, UsersIcon } from '@lucide/vue'
 import { OWN_BOTTOM_BAR, type SiteLink } from '../utils/siteLinks'

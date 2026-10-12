@@ -3,7 +3,7 @@
 import { computed, inject, onBeforeUnmount, ref, watch, watchEffect } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
-import { minorDigits } from '@lupinum/ginko'
+import { minorDigits } from '@lupinum/ginko/internal'
 import { BLOCKERS, currencySign, formatAmount, parseMoney } from '@lupinum/ginko-editor'
 import { Input } from '@studio/components/ui/input'
 import { useStudioSite } from '../../utils/labels'

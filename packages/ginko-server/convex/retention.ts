@@ -1,6 +1,6 @@
 // Retention (SPEC 12). Daily; one run handles at most 200 documents in all. A run that uses up
 // its budget schedules the next run at once, so the rest follows in batches.
-import { addDays, isVisible, todayIn, type Schema } from '@lupinum/ginko'
+import { addDays, isVisible, todayIn, type Schema } from '@lupinum/ginko/internal'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, type MutationCtx } from './_generated/server'

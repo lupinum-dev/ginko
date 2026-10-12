@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { components } from '@lupinum/ginko-components/registry'
-import type { MarkdownProfile } from '@lupinum/ginko'
+import type { MarkdownProfile } from '@lupinum/ginko/internal'
 import { describe, expect, test } from 'vitest'
 import { createGinkoEditor, looksLikeMarkdown } from '../src/core/index.ts'
 

@@ -2,7 +2,8 @@
 // a leaf is "fallback" when its translation is missing or outdated. A leaf that has a text in the
 // language is outdated, one without is missing. ginko_read, the translation status and
 // "why is this not public?" all read it here, so their numbers match.
-import { resolveEntry, type Json, type Locale, type Schema } from '@lupinum/ginko'
+import type { Json, Locale } from '@lupinum/ginko'
+import { resolveEntry, type Schema } from '@lupinum/ginko/internal'
 import { valueAt, type Data, type Prints } from './content'
 
 export interface LeafStatus {

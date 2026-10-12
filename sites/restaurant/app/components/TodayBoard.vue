@@ -27,22 +27,22 @@ const dish = computed(() => {
     <p v-if="state.kind === 'open'" class="status" data-test="status">
       <span class="status-label">{{ t('openToday') }}</span>
       <span class="status-times">{{ state.times }}</span>
-      <span v-if="state.reason" class="status-reason" :lang="state.field ? langOf(hours, state.field) : undefined">{{ state.reason }}</span>
+      <span v-if="state.reason" class="status-reason" :lang="state.field ? ginkoLangOf(hours, state.field) : undefined">{{ state.reason }}</span>
     </p>
     <p v-else class="status" data-test="status">
       <span class="status-label">{{ state.kind === 'restDay' ? t('restDay') : t('closedToday') }}</span>
       <span v-if="state.kind === 'closed' && state.names" class="status-reason" data-test="note" :lang="lang">{{ state.names[lang] }}</span>
-      <span v-else-if="state.kind === 'closed' && state.reason" class="status-reason" data-test="note" :lang="langOf(hours, state.field)">{{ state.reason }}</span>
+      <span v-else-if="state.kind === 'closed' && state.reason" class="status-reason" data-test="note" :lang="ginkoLangOf(hours, state.field)">{{ state.reason }}</span>
     </p>
 
     <ul v-if="notices.items.length" class="notices">
-      <li v-for="n in notices.items" :key="n.id" data-test="notice" :lang="langOf(n, 'text')">{{ n.data.text }}</li>
+      <li v-for="n in notices.items" :key="n.id" data-test="notice" :lang="ginkoLangOf(n, 'text')">{{ n.data.text }}</li>
     </ul>
 
     <div v-if="dish" class="lunch">
       <h3>{{ t('lunchToday') }}</h3>
       <p class="dish">
-        <span :lang="langOf(lunch, `days.${dish._id}.dish`)">{{ dish.dish }}</span>
+        <span :lang="ginkoLangOf(lunch, `days.${dish._id}.dish`)">{{ dish.dish }}</span>
         <span v-if="dish.price" class="price">{{ formatMoney(dish.price, lang) }}</span>
       </p>
       <Allergens :codes="dish.allergens" class="on-dark" />
@@ -50,7 +50,7 @@ const dish = computed(() => {
     </div>
 
     <p v-for="c in closures" :key="c._id" class="closure">
-      {{ t('upcomingClosure') }}: {{ format.range(c.when.from, c.when.to, { day: 'numeric', month: 'long' }) }} {{ t('closedFromTo') }}<template v-if="c.names"> ({{ c.names[lang] }})</template><template v-else-if="c.reason"> (<span :lang="langOf(hours, `exceptions.${c._id}.reason`)">{{ c.reason }}</span>)</template>
+      {{ t('upcomingClosure') }}: {{ format.range(c.when.from, c.when.to, { day: 'numeric', month: 'long' }) }} {{ t('closedFromTo') }}<template v-if="c.names"> ({{ c.names[lang] }})</template><template v-else-if="c.reason"> (<span :lang="ginkoLangOf(hours, `exceptions.${c._id}.reason`)">{{ c.reason }}</span>)</template>
     </p>
   </section>
 </template>

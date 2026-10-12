@@ -1,6 +1,6 @@
 // Shared by the CLI routes (release, export): the push key `Authorization: Bearer ginko_<site>_<32>`
 // names the site, only its SHA-256 is stored. Answers are JSON; errors carry `code` and a German message.
-import { sha256 } from '@lupinum/ginko'
+import { sha256 } from '@lupinum/ginko/internal'
 import { internal } from '../_generated/api'
 import type { ActionCtx } from '../_generated/server'
 import { SLUG_PATTERN } from '../lib/input'

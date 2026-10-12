@@ -7,7 +7,7 @@ import type { Nuxt } from 'nuxt/schema'
 import { checkExternalLinks } from './external-links.ts'
 import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
-import { checkLinks, checkSchema, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
+import { checkLinks, checkSchema, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
 const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
@@ -61,7 +61,7 @@ export default defineNuxtModule<SiteInput>({
     const redirects = site.redirects ?? []
     const redirectIssues = redirectProblems(redirects)
     if (redirectIssues.length) {
-      const report = `[ginko] Weiterleitungen in ginko.config.ts:\n- ${redirectIssues.join('\n- ')}`
+      const report = `[ginko] Invalid redirects in ginko.config.ts:\n- ${redirectIssues.join('\n- ')}`
       if (!nuxt.options.dev) throw new Error(report)
       console.warn(report)
     }
@@ -145,7 +145,7 @@ export default defineNuxtModule<SiteInput>({
     addPlugin(resolve(`./runtime/plugin.${runtimeExt}`))
     addPlugin({ src: resolve(`./runtime/today.client.${runtimeExt}`), mode: 'client' })
     extendPages((pages) => { pages.push({ name: 'ginko-preview', path: '/__ginko/preview', file: resolve('./runtime/preview.vue') }) })
-    for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'usePagePath', 'langOf', 'formatMoney', 'safeHref', 'isVisible']) addImports({ name, from: composables })
+    for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'usePagePath', 'ginkoLangOf', 'formatMoney', 'ginkoSafeHref', 'isGinkoVisible']) addImports({ name, from: composables })
     for (const name of ['GinkoItem', 'GinkoPageKey', 'GinkoLocale', 'GinkoSeoInput']) addImports({ name, from: composables, type: true })
     addComponent({ name: 'GinkoMarkdown', export: 'GinkoMarkdown', filePath: resolve(`./runtime/GinkoMarkdown.${runtimeExt}`) })
     addComponent({ name: 'GinkoImage', export: 'GinkoImage', filePath: resolve(`./runtime/GinkoImage.${runtimeExt}`) })
@@ -196,8 +196,8 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     const links = checkLinks(Object.values(result.bundles) as Bundle[], schema, { links: site.links, redirects: site.redirects, files: onlyFiles ? (path) => existsSync(join(publicDir, path)) : undefined })
     // Opt-in (`links.external`): asks the servers of outside links, so only on build / generate, never in dev.
     if (!nuxt.options.dev) links.push(...await checkExternalLinks(Object.values(result.bundles) as Bundle[], { links: site.links, root: nuxt.options.rootDir, log: console.log }))
-    const linkReport = links.map((i) => `- ${i.locale}/${i.id} (${i.field}): ${i.message}`).join('\n')
-    if (links.some((i) => i.severity === 'error') && !nuxt.options.dev) throw new Error(`[ginko] Kaputte Links:\n${linkReport}`)
+    const linkReport = links.map((i) => `- ${i.locale}/${i.id} (${i.field}): ${coreMessage('en', i.key, i.params)}`).join('\n')
+    if (links.some((i) => i.severity === 'error') && !nuxt.options.dev) throw new Error(`[ginko] Broken links:\n${linkReport}`)
     if (links.length) console.warn(`[ginko] Link check:\n${linkReport}`)
     images = result.images
     writeImages(result.imageFiles)

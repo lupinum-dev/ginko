@@ -1,7 +1,8 @@
 // The agent door (SPEC 16): a person's keys, and the tools behind POST /mcp (routes/mcp.ts).
 // A key acts as its person with their role and grants at call time. Every write runs through the
 // same operations as the platform (`saveAs`, `createAs`, ...), so rights, checks and history are one.
-import { labelOf as labelIn, checkLinks, fromToolInput, isSafeHref, isTranslatable, sha256, taskInputSchema, type Json, type JsonSchemaObject, type Schema } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import { labelOf as labelIn, checkLinks, fromToolInput, isSafeHref, isTranslatable, sha256, taskInputSchema, type JsonSchemaObject, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { bundleOf } from './bundle'

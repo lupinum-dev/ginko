@@ -38,7 +38,7 @@ export const f = {
   slug: <const O extends Opts<SlugField>>(label: Label, o: O) => ({ type: 'slug', label, ...o }) as SlugField & O,
 }
 
-/** Types whose values are stored as Localized<T> unless `translate: false`. Image stores only its `alt` localized. */
+/** The largest money amount in minor units (one million in a two-decimal currency). */
 export const MAX_CENTS = 100_000_000
 const TEXT_DEFAULT_MAX = { text: 200, longtext: 2000, markdown: 50000 } as const
 
@@ -78,6 +78,7 @@ export function effectiveMin(field: Field): number {
   }
 }
 
+/** Types whose values are stored as Localized<T> unless `translate: false`. Image stores only its `alt` localized. */
 export const TRANSLATABLE_TYPES = new Set(['text', 'longtext', 'markdown', 'slug'])
 
 export function isTranslatable(field: { type: string; translate?: false | 'manual'; format?: string }): boolean {

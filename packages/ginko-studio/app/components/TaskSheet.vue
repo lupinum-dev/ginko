@@ -2,7 +2,8 @@
      opId per attempt. Conflicts keep the person's input and show the new state next to it. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
-import { defaultsFor, isShown, type Brick, type Label as LabelText, type Locale, type Schema } from '@lupinum/ginko'
+import type { Brick, Label as LabelText, Locale } from '@lupinum/ginko'
+import { defaultsFor, isShown, type Schema } from '@lupinum/ginko/internal'
 import GinkoField from './fields/GinkoField.vue'
 import { provideRefs } from './fields/refs'
 import { Button } from '@studio/components/ui/button'

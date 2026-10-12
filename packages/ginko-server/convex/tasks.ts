@@ -1,6 +1,7 @@
 // Task queries (SPEC 2.7). `prefill` gives the starting values of a task's form. The server
 // resolves date tokens in the site's time zone; mutations never apply these values.
-import { isTranslatable, resolveToken, weekOfSchema, type Json, type Schema } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import { isTranslatable, resolveToken, weekOfSchema, type Schema } from '@lupinum/ginko/internal'
 import { v, type ObjectType } from 'convex/values'
 import { query, type QueryCtx } from './_generated/server'
 import { actorFor, entryOf, fail, taskBrickOf, type Actor } from './lib/access'

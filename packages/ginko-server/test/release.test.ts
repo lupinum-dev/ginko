@@ -1,6 +1,7 @@
 // Schema releases (SPEC 5.1–5.3, 10) against the restaurant site: the release mutation,
 // the HTTP routes the CLI calls, push keys and the local devPush.
-import { sha256, type Json, type Schema } from '@lupinum/ginko'
+import type { Json } from '@lupinum/ginko'
+import { sha256, type Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'

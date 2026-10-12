@@ -2,7 +2,7 @@
 // text instead of rendering it whole. In page state the field is `{ ref }`, so the tree is loaded
 // from the site; on the server that call stays in-process. Used inside Nuxt (auto-imported).
 import { computed, toValue, type ComputedRef, type MaybeRefOrGetter } from 'vue'
-import type { MarkdownTree, MarkdownValue } from '../../index.ts'
+import type { MarkdownTree, MarkdownValue } from '../../internal.ts'
 import { useAsyncData } from '#imports'
 
 /**

@@ -8,6 +8,7 @@ import { componentProblems } from './components.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
 import { type Brick, type Currency, type Field, type Fields, type Locale, type Schema } from './types.ts'
+import { coreMessage } from './messages.ts'
 import { checkValue } from './validate.ts'
 
 // Keys that would resolve to Object.prototype members in plain-object lookups, plus `prototype`.
@@ -246,7 +247,7 @@ function schemaProblems(schema: Schema): string[] {
     } else if ('value' in rule) {
       // A constant would reference an upload that no entry holds: unchecked and swept after 7 days.
       if (holdsFiles(field)) problems.push(`retired: “${path}” contains images or files and cannot have a fixed value; use from or, for optional fields, no rule.`)
-      for (const p of checkValue(schema, field, rule.value, `retired.${path}`)) problems.push(`${p.path}: ${p.message}`)
+      for (const p of checkValue(schema, field, rule.value, `retired.${path}`)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
     } else if (!field.optional) {
       problems.push(`retired: required field “${path}” needs from or value.`)
     }
@@ -404,7 +405,7 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
       numbersOk = false
     }
   }
-  if (field.default !== undefined) for (const p of checkValue(schema, field, field.default, `${path}.default`)) problems.push(`${p.path}: ${p.message}`)
+  if (field.default !== undefined) for (const p of checkValue(schema, field, field.default, `${path}.default`)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
   // Retirement is per top-level field or brick (SPEC 2.5); a list column cannot be retired on its own.
   if (!topLevel && field.retired) problems.push(`${path}: columns of a list cannot be retired one by one.`)
   switch (field.type) {

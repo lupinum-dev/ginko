@@ -184,7 +184,7 @@ describe('schema.ts:48 checkSchema rejects invalid executable contracts', () => 
 
   it.each([
     ['a text default that is not localized', (s: Schema) => { node(s, 'bricks.seo.fields.title').default = 123 },
-      ['seo.title.default: „Titel“ muss pro Sprache gespeichert sein.']],
+      ['seo.title.default: “Titel” must be stored per language.']],
     ['two migrations with the same ID', (s: Schema) => { s.migrations.push(migration('2026-11-seo-copy'), migration('2026-11-seo-copy')) },
       ['Migrations: duplicate ID.']],
     ['a malformed migration ID', (s: Schema) => { s.migrations.push(migration('seo-copy')) },

@@ -1,6 +1,7 @@
 // Registry entries of the media components, spread into `components` by `registry.ts`. Pure data, no Vue.
 // A Markdown image is the plain `img` tag: it has no entry here, the Vue side overrides its renderer.
-import { defineComponents, f } from '@lupinum/ginko'
+import { f } from '@lupinum/ginko'
+import { defineComponents } from '@lupinum/ginko/internal'
 
 export const mediaComponents = defineComponents({
   figure: {

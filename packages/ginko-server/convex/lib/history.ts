@@ -1,7 +1,8 @@
 // What the history says about a change or a proposal, stored as a catalog key plus params (`msg`), so
 // each team member reads it in their own Studio language and dates in the site's time zone. Next to it
 // the row keeps `sentence`, the German rendering, as the fallback for rows written before `msg`.
-import { labelOf, type Label, type Schema } from '@lupinum/ginko'
+import type { Label } from '@lupinum/ginko'
+import { labelOf, type Schema } from '@lupinum/ginko/internal'
 import { storedSentence } from './input'
 import { t, type MessageKey } from './i18n'
 

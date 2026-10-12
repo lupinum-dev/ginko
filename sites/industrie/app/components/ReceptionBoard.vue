@@ -21,7 +21,7 @@ const state = computed(() => todayState(h.value, today.value, t('and')))
       </p>
       <p v-else class="status" data-test="status">
         <span class="label">{{ state.kind === 'weekend' ? t('weekend') : t('closedToday') }}</span>
-        <span v-if="state.kind === 'closed' && state.reason" class="reason" data-test="note" :lang="langOf(hours, state.field)">{{ state.reason }}</span>
+        <span v-if="state.kind === 'closed' && state.reason" class="reason" data-test="note" :lang="ginkoLangOf(hours, state.field)">{{ state.reason }}</span>
       </p>
     </div>
     <address class="address">

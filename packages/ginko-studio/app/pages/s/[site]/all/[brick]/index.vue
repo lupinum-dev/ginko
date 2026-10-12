@@ -2,7 +2,8 @@
 <script setup lang="ts">
 import { PlusIcon } from '@lucide/vue'
 import { api } from '#convex/api'
-import { isVisible, type CollectionBrick } from '@lupinum/ginko'
+import type { CollectionBrick } from '@lupinum/ginko'
+import { isVisible } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../../../composables/useSiteData'
 import { displayValue, languageName, relevantDate, searchable, titleOf } from '../../../../../utils/content'
 import { haystackOf, sortRows } from '../../../../../utils/basics'

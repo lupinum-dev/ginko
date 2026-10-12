@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { checkExternalLinks, type Fetch } from '../nuxt/external-links.ts'
 import { checkLinks, serializeSchema, type Bundle, type SiteInput } from '../core/index.ts'
+import { english } from './report.ts'
 
 /** Prints the issues and returns false when one of them is an error (warnings do not fail the check). */
 export async function checkFileLinks(input: { config: SiteInput; root: string; log: (line: string) => void; fetch?: Fetch }): Promise<boolean> {
@@ -34,7 +35,7 @@ export async function checkFileLinks(input: { config: SiteInput; root: string; l
   })
   issues.push(...await checkExternalLinks(Object.values(result.bundles) as Bundle[], { links: input.config.links, root: input.root, log: input.log, fetch: input.fetch }))
   for (const i of issues) {
-    input.log(`content/${i.id}: ${i.message}`)
+    input.log(`content/${i.id}: ${english(i)}`)
     if (i.severity === 'error') ok = false
   }
   return ok

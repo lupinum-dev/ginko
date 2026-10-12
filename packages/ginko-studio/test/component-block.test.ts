@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 // Component blocks in the Markdown editor: which ones are drawn live, the settings popover, and the required props after an insert.
 import { components } from '@lupinum/ginko-components/registry'
-import { defineComponents, f, type ComponentRegistry } from '@lupinum/ginko'
+import { f } from '@lupinum/ginko'
+import { defineComponents, type ComponentRegistry } from '@lupinum/ginko/internal'
 import { componentMode } from '@lupinum/ginko-editor'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/core'

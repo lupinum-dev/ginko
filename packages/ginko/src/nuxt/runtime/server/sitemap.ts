@@ -4,7 +4,7 @@
 import { createError, defineEventHandler, useRuntimeConfig } from 'nuxt/server'
 import schema from '#ginko/schema'
 import locales from '#ginko/locales'
-import { todayIn } from '../../../index.ts'
+import { todayIn } from '../../../internal.ts'
 import type { GinkoPublicConfig } from '../shared.ts'
 import { loadServerBundles } from './bundles.ts'
 import { sitemapXml } from './sitemap-xml.ts'

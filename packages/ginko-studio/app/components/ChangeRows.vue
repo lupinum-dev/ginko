@@ -3,7 +3,7 @@
      staff only when one of their granted edit tasks covers every field of the change. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
-import type { Schema } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { useTextOf } from '../composables/useTextOf'
 import { byText } from '../utils/who'
 import { Badge } from '@studio/components/ui/badge'

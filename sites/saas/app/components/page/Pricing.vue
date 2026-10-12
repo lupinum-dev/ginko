@@ -36,17 +36,17 @@ const currencies = [{ value: 'EUR' as const, label: 'EUR' }, { value: 'CHF' as c
             <span v-else class="amount only mono">{{ t('onlyMonthly') }}</span>
           </p>
           <ul class="features">
-            <li v-for="feature in plan.data.features" :key="feature._id" :lang="langOf(plan, `features.${feature._id}.text`)">
+            <li v-for="feature in plan.data.features" :key="feature._id" :lang="ginkoLangOf(plan, `features.${feature._id}.text`)">
               <svg class="check" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square" aria-hidden="true"><path d="M3 9.5 7 13.5 15 4.5" /></svg>
               {{ feature.text }}
             </li>
           </ul>
-          <p v-if="plan.data.note" class="note" :lang="langOf(plan, 'note')">{{ plan.data.note }}</p>
+          <p v-if="plan.data.note" class="note" :lang="ginkoLangOf(plan, 'note')">{{ plan.data.note }}</p>
         </li>
       </ul>
       <p class="vat">{{ labels.vat[currency] }}</p>
       <!-- The trial button of the hero: on phones the header has none, so the pricing page offers it here. -->
-      <a v-if="safeHref(hero.data.buttonUrl)" class="button trial" :href="safeHref(hero.data.buttonUrl)" rel="noopener" :lang="langOf(hero, 'buttonText')">{{ hero.data.buttonText }}</a>
+      <a v-if="ginkoSafeHref(hero.data.buttonUrl)" class="button trial" :href="ginkoSafeHref(hero.data.buttonUrl)" rel="noopener" :lang="ginkoLangOf(hero, 'buttonText')">{{ hero.data.buttonText }}</a>
     </template>
   </div>
 </template>

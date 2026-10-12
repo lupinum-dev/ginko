@@ -6,7 +6,7 @@ const notices = useGinko('notices')
 <template>
   <div v-if="notices.items.length" class="strip">
     <ul class="wrap">
-      <li v-for="n in notices.items" :key="n.id" data-test="notice" :lang="langOf(n, 'text')">{{ n.data.text }}</li>
+      <li v-for="n in notices.items" :key="n.id" data-test="notice" :lang="ginkoLangOf(n, 'text')">{{ n.data.text }}</li>
     </ul>
   </div>
 </template>

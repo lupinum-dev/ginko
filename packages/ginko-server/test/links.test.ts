@@ -1,5 +1,5 @@
 // A save or publish that ADDS a broken link is refused (V1: link check blocks on error); old links, warnings and drafts never block.
-import type { Schema } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'

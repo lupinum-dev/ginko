@@ -1,5 +1,6 @@
 // Every label comes in German and English, so an English café owner sees English and an Austrian one German; the Austrian demo must keep its schema (`pnpm check:contracts`).
-import { checkSchema, defineSite, serializeSchema } from '@lupinum/ginko'
+import { defineSite } from '@lupinum/ginko'
+import { checkSchema, serializeSchema } from '@lupinum/ginko/internal'
 import { describe, expect, it } from 'vitest'
 import { allergensAT, allergensEU, events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '../src/index.ts'
 
