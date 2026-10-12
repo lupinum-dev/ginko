@@ -76,8 +76,8 @@ docs: collection({
 <GinkoMarkdown :value="entry.data.body" :components="{ callout: Callout }" />
 ```
 
-- `@lupinum/ginko-content` (Node): `readContent(contentDir, publicDir, schema) → { entries, files, errors }`, `parseMarkdown(text) → { frontmatter, value }`.
-- `@lupinum/ginko-content/vue`: `<GinkoMarkdown>`.
+- `@lupinum/ginko-content` (Node): `readContent(contentDir, publicDir, schema) → { entries, files, images, errors }`, `buildFileBundles`, `withMarkdownRefs`, `searchIndex`. Vertrag mit dem Modul und der CLI, keine API für Sites.
+- `<GinkoMarkdown>` kommt aus `@lupinum/ginko` (Nuxt: automatisch registriert; Vue: `@lupinum/ginko/vue`).
 - Das Ginko-Modul lädt `@lupinum/ginko-content` nur, wenn ein Baustein `source: 'files'` hat; fehlt das Paket, sagt der Fehler, was zu installieren ist.
 
 ## Phase 14: Doku-Preset
