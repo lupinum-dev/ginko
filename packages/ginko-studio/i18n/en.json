@@ -596,7 +596,9 @@
     "withdraw": "Withdraw",
     "withdrawn": "Withdrawn.",
     "notApproved": "Not approved",
-    "rejectedBy": "{who} rejected it: “{reason}”"
+    "rejectedBy": "{who} rejected it: “{reason}”",
+    "notLive": "Did not go live",
+    "notLiveBecause": "Planned for {when}. {reason}"
   },
   "basics": {
     "search": {

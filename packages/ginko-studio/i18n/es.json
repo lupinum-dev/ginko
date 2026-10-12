@@ -596,7 +596,9 @@
     "withdraw": "Retirar",
     "withdrawn": "Retirado.",
     "notApproved": "No aprobado",
-    "rejectedBy": "{who} lo rechazó: «{reason}»"
+    "rejectedBy": "{who} lo rechazó: «{reason}»",
+    "notLive": "No se publicó",
+    "notLiveBecause": "Planificado para {when}. {reason}"
   },
   "basics": {
     "search": {
