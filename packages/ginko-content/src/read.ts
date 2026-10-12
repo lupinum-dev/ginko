@@ -546,7 +546,6 @@ function markdownKeyOf(brick: Brick): string | undefined {
   return Object.keys(brick.fields).find((k) => brick.fields[k]!.type === 'markdown')
 }
 
-/** Content files (`.md`, `.yml`, `.yaml`, `.json`, `.csv`) directly in `dir`, by name; a missing folder has none. */
 /** The names of a collection folder's main-language entries: file names, and the slugs of CSV rows. Unreadable CSV is reported later. */
 async function entryNames(dir: string): Promise<string[]> {
   const names: string[] = []
@@ -569,6 +568,7 @@ async function entryNames(dir: string): Promise<string[]> {
   return names
 }
 
+/** Content files (`.md`, `.yml`, `.yaml`, `.json`, `.csv`) directly in `dir`, by name; a missing folder has none. */
 async function dataNames(dir: string): Promise<string[]> {
   const dirents = await readdir(dir, { withFileTypes: true }).catch(() => [])
   return dirents.filter((d) => d.isFile() && extensions.some((e) => d.name.endsWith(`.${e}`))).map((d) => d.name).sort()

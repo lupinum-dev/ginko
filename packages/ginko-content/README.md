@@ -1,9 +1,9 @@
 # @lupinum/ginko-content
 
-Markdown files as a content source for [`@lupinum/ginko`](https://github.com/lupinum-dev/ginko/tree/main/packages/ginko).
+Files as a content source for [`@lupinum/ginko`](https://github.com/lupinum-dev/ginko/tree/main/packages/ginko).
 At build time it reads `content/` and builds the same bundle the Ginko platform serves, so a site
-reads files and platform content the same way, with `useGinko`. Use it for texts that developers
-maintain: docs, a blog, legal pages.
+reads files and platform content the same way, with `useGinko`. Use it for content that developers
+maintain: docs, a blog, legal pages, a price list. It reads Markdown, YAML, JSON and CSV.
 
 ## Use
 
@@ -33,7 +33,12 @@ content/docs/1.getting-started.de.md   its translation
 The Ginko Nuxt module finds this package by itself. It serves the Markdown of a page with the page,
 adds `<GinkoMarkdown>` and a search index. A file error fails the build and names the file.
 
-Full guide: [Content from files](https://github.com/lupinum-dev/ginko/blob/main/sites/docs/content/docs/4.inhalte-aus-dateien.en.md).
+Full guide: [Content from files](https://ginko-docs.vercel.app/en/docs/content-from-files).
+
+## Stability
+
+You install this package; you do not import it. The Ginko module and `ginko check` load it. Its
+exports are the contract between the Ginko packages and can change in any release.
 
 ## License
 
