@@ -7,14 +7,14 @@ export default defineSite({
   name: '{{SITE}}',
   url: 'https://example.com',
   timezone: 'Europe/Vienna',
-  locales: ['de'],
+  locales: ['en'],
   currency: 'EUR',
   pages: { home: '/' },
   bricks: {
     start: single({
-      label: 'Startseite',
+      label: 'Start page',
       source: 'files',
-      fields: { title: f.text('Titel'), body: f.markdown('Text', { profile: 'basic' }) },
+      fields: { title: f.text('Title'), body: f.markdown('Text', { profile: 'basic' }) },
     }),
   },
 })

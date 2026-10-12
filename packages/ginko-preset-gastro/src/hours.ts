@@ -14,8 +14,13 @@ export interface Exception extends Times {
   when: { from: string; to: string }
   reason: string
   closed: boolean
-  /** Set on a synthetic entry for a public holiday (see `upcomingClosures`). */
-  names?: HolidayNames
+}
+/** A public holiday on which the house is closed, listed with the closures (see `upcomingClosures`). Guests read its name in their language from `holiday`. */
+export interface HolidayClosure {
+  _id: string
+  when: { from: string; to: string }
+  closed: true
+  holiday: HolidayNames
 }
 /** A date range with its own week: a season ("yearly") or "new hours from a date". */
 export interface HourPlan { _id?: string; id?: string; label?: string; from: string; to?: string; yearly?: boolean; week: DayHours[] }
@@ -36,7 +41,7 @@ export function spansText(spans: Span[], and: string): string {
   return spans.map((s) => `${s.from}–${s.to}`).join(` ${and} `)
 }
 
-/** The opening times of one weekday as text: `11:30–14:00 und 17:30–22:00`. Empty when closed. */
+/** The opening times of one weekday as text: `11:30–14:00 and 17:30–22:00` with `and` = "and". Empty when closed. */
 export function timesOf(day: DayHours | undefined, and: string): string {
   if (!day || day.closed) return ''
   return spansText(spansOf(day), and)
@@ -51,11 +56,12 @@ export type HoursSource = 'today' | 'exception' | 'holiday' | 'plan' | 'week'
 export interface DayRule {
   closed: boolean
   times: Span[]
+  /** The owner's text: the "closed today" note or the exception's reason. */
   reason?: string
   source: HoursSource
   /** Bundle path of the reason's text, so the page can set its language (closedNote, exception reason). */
   field?: string
-  /** Set when a public holiday decided the result. */
+  /** Set when a public holiday decided the result: its name in German and English. */
   holiday?: HolidayNames
 }
 export interface HoursContext {
@@ -114,7 +120,7 @@ export function hoursOn(date: string, ctx: HoursContext): DayRule {
   const setting = hours.holidays ?? 'sunday'
   if (holiday && setting !== 'normal') {
     const base = setting === 'closed' ? undefined : week.find((d) => d.day === 'su')
-    return { ...ruleOfDay(base, 'holiday'), reason: holiday.de, holiday: { de: holiday.de, en: holiday.en } }
+    return { ...ruleOfDay(base, 'holiday'), holiday: { de: holiday.de, en: holiday.en } }
   }
 
   return ruleOfDay(week.find((d) => d.day === weekdayOf(date)), plan ? 'plan' : 'week')
@@ -128,42 +134,47 @@ export function weekOf(monday: string, ctx: HoursContext): Array<DayRule & { dat
   })
 }
 
+/**
+ * `times` are the opening spans; join them with `spansText(times, and)` in the page's language. `field` is the bundle
+ * path of the owner's reason, for its language (closedNote or an exception's reason).
+ */
 export type TodayState =
-  | { kind: 'open'; times: string; reason?: string; field?: string }
-  /** `field` is the bundle path of the reason, for its language (closedNote or an exception's reason); empty for a holiday, which carries `names`. */
-  | { kind: 'closed'; reason?: string; field: string; names?: HolidayNames }
+  | { kind: 'open'; times: Span[]; reason?: string; field?: string }
+  | { kind: 'closed'; reason?: string; field: string }
+  /** Closed for a public holiday; `holiday` has its name in German and English. */
+  | { kind: 'holiday'; holiday: HolidayNames }
   | { kind: 'restDay' }
 
-/** Whether the house is open today, by `hoursOn`. */
-export function todayState(hours: HoursData, today: string, and: string, plans: HourPlan[] = [], calendar?: HolidaysOption): TodayState {
-  const rule = hoursOn(today, { hours, plans, calendar })
-  if (!rule.closed) return { kind: 'open', times: spansText(rule.times, and), ...(rule.source === 'exception' ? { reason: rule.reason, field: rule.field } : {}) }
+/** Whether the house is open on `today`, by `hoursOn`. */
+export function todayState(today: string, ctx: HoursContext): TodayState {
+  const rule = hoursOn(today, ctx)
+  if (!rule.closed) return { kind: 'open', times: rule.times, ...(rule.source === 'exception' ? { reason: rule.reason, field: rule.field } : {}) }
   if (rule.source === 'today' || rule.source === 'exception') return { kind: 'closed', reason: rule.reason, field: rule.field ?? '' }
-  if (rule.holiday) return { kind: 'closed', reason: rule.reason, field: '', names: rule.holiday }
+  if (rule.holiday) return { kind: 'holiday', holiday: rule.holiday }
   return { kind: 'restDay' }
 }
 
 /** Public holidays on which the house is closed, starting after `today` and within `days` days. */
-export function upcomingHolidayClosures(ctx: HoursContext, today: string, days: number): Exception[] {
-  const out: Exception[] = []
+export function upcomingHolidayClosures(ctx: HoursContext, today: string, days: number): HolidayClosure[] {
+  const out: HolidayClosure[] = []
   for (let i = 1; i <= days; i++) {
     const date = addDays(today, i)
     const rule = hoursOn(date, ctx)
     if (rule.source === 'holiday' && rule.closed && rule.holiday) {
-      out.push({ _id: `holiday-${date}`, when: { from: date, to: date }, reason: rule.holiday.de, closed: true, names: rule.holiday })
+      out.push({ _id: `holiday-${date}`, when: { from: date, to: date }, closed: true, holiday: rule.holiday })
     }
   }
   return out
 }
 
 /**
- * Closures that start within `days` days from today and have not started yet. With `ctx`, public
- * holidays that close the house are listed too.
+ * Closures that start after `today` and within `days` days: the owner's closing exceptions and the public
+ * holidays that close the house (by `ctx.calendar`). A holiday entry has `holiday` instead of `reason`.
  */
-export function upcomingClosures(exceptions: Exception[], today: string, days: number, ctx?: HoursContext): Exception[] {
+export function upcomingClosures(ctx: HoursContext, today: string, days: number): Array<Exception | HolidayClosure> {
   const until = addDays(today, days)
-  const closures = exceptions.filter((e) => e.closed && e.when.from > today && e.when.from <= until)
-  if (ctx) closures.push(...upcomingHolidayClosures(ctx, today, days))
+  const closures: Array<Exception | HolidayClosure> = (ctx.hours.exceptions ?? []).filter((e) => e.closed && e.when.from > today && e.when.from <= until)
+  closures.push(...upcomingHolidayClosures(ctx, today, days))
   return closures.sort((a, b) => a.when.from.localeCompare(b.when.from))
 }
 

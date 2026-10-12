@@ -10,45 +10,86 @@ const version = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json',
 const work = mkdtempSync(join(tmpdir(), 'create-ginko-test-'))
 afterAll(() => rmSync(work, { recursive: true, force: true }))
 
-const run = (...args: string[]) => spawnSync('node', [cli, ...args], { cwd: work, encoding: 'utf8' })
+const run = (...args: string[]) => spawnSync('node', [cli, ...args], { cwd: work, encoding: 'utf8', env: { ...process.env, npm_config_user_agent: '' } })
 const read = (dir: string, file: string) => readFileSync(join(work, dir, file), 'utf8')
 
 describe('create-ginko', () => {
-  it('without a preset creates the plain starter', () => {
-    expect(run('plain').status).toBe(0)
+  it('without options creates the English plain starter and says how to pick another one', () => {
+    const result = run('plain')
+    expect(result.status).toBe(0)
     expect(read('plain', 'ginko.config.ts')).toContain("site: 'plain'")
-    expect(existsSync(join(work, 'plain/content/start.md'))).toBe(true)
+    expect(read('plain', 'ginko.config.ts')).toContain("locales: ['en']")
+    expect(read('plain', 'content/start.md')).toContain('title: Hello Ginko')
     expect(JSON.parse(read('plain', 'package.json')).dependencies).not.toHaveProperty('@lupinum/ginko-docs')
+    expect(result.stdout).toContain('Created plain from the plain starter in English.')
+    expect(result.stdout).toContain('npm create ginko@latest my-site -- --preset gastro')
+  })
+
+  it('--lang de creates the German plain starter', () => {
+    expect(run('plain-de', '--lang', 'de').status).toBe(0)
+    expect(read('plain-de', 'ginko.config.ts')).toContain("locales: ['de']")
+    expect(read('plain-de', 'content/start.md')).toContain('title: Hallo Ginko')
   })
 
   // Each preset: its config imports the package, package.json lists it at the Ginko version, the base sample page is gone.
   const cases = [
-    { preset: 'gastro', pkg: '@lupinum/ginko-preset-gastro', files: ['content/hours.md', 'content/menu/1.tomato-soup.md', 'app/pages/index.vue'] },
-    { preset: 'docs', pkg: '@lupinum/ginko-docs', files: ['content/docs/1.getting-started.md', 'app/app.vue', 'nuxt.config.ts'] },
+    { preset: 'gastro', lang: 'en', pkg: '@lupinum/ginko-preset-gastro', files: ['content/hours.md', 'content/menu/1.tomato-soup.md', 'app/pages/index.vue'] },
+    { preset: 'gastro', lang: 'de', pkg: '@lupinum/ginko-preset-gastro', files: ['content/hours.md', 'content/menu/1.tomatensuppe.md', 'app/pages/index.vue'] },
+    { preset: 'docs', lang: 'en', pkg: '@lupinum/ginko-docs', files: ['content/docs/1.getting-started.md', 'app/app.vue', 'nuxt.config.ts'] },
   ]
-  for (const { preset, pkg, files } of cases) {
+  for (const { preset, lang, pkg, files } of cases) {
     for (const flag of [['--preset', preset], [`--preset=${preset}`]]) {
-      it(`${flag.join(' ')} creates the ${preset} starter`, () => {
-        const name = `${preset}-${flag.length}`
-        const result = run(name, ...flag)
+      it(`${flag.join(' ')} --lang ${lang} creates the ${preset} starter`, () => {
+        const name = `${preset}-${lang}-${flag.length}`
+        const result = run(name, ...flag, '--lang', lang)
         expect(result.status).toBe(0)
         for (const file of files) expect(existsSync(join(work, name, file)), file).toBe(true)
         expect(existsSync(join(work, name, 'content/start.md'))).toBe(false)
         expect(read(name, 'ginko.config.ts')).toContain(`site: '${name}'`)
+        expect(read(name, 'ginko.config.ts')).toMatch(new RegExp(`locales.*\\['${lang}'\\]`))
         expect(read(name, 'ginko.config.ts')).not.toContain('{{')
         expect(read(name, 'ginko.config.ts')).toContain(pkg)
         const pkgJson = JSON.parse(read(name, 'package.json'))
         expect(pkgJson.name).toBe(name)
         expect(pkgJson.dependencies[pkg]).toBe(`^${version}`)
         expect(existsSync(join(work, name, '.gitignore'))).toBe(true)
+        expect(result.stdout).toContain(`from the ${preset} preset`)
       })
     }
   }
+  it('the docs preset extends the docs layer', () => {
+    expect(read('docs-en-2', 'nuxt.config.ts')).toContain("extends: ['@lupinum/ginko-docs']")
+  })
 
-  it('an unknown preset exits 1 and lists the preset names', () => {
-    const result = run('nope', '--preset', 'shop')
+  it('accepts the -- that pnpm and yarn pass through', () => {
+    expect(run('dashed', '--', '--preset', 'gastro').status).toBe(0)
+    expect(existsSync(join(work, 'dashed/content/hours.md'))).toBe(true)
+  })
+
+  it('--help prints the usage and exits 0', () => {
+    const result = run('--help')
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('Usage:')
+  })
+
+  // Every mistake stops with exit 1 before a folder exists, so a script never "succeeds" without a site.
+  it.each([
+    ['an unknown option', ['bad-option', '--typescript'], 'Unknown option "--typescript".'],
+    ['an unknown preset', ['bad-preset', '--preset', 'shop'], 'Choose one of: gastro, docs.'],
+    ['a preset name that is an object key', ['bad-proto', '--preset', 'toString'], 'Unknown preset "toString"'],
+    ['an unknown language', ['bad-lang', '--lang', 'fr'], 'Choose one of: en, de.'],
+    ['a preset without that language', ['bad-docs-de', '--preset', 'docs', '--lang', 'de'], 'The docs preset has no German version yet.'],
+    ['--preset dropped by npm (only its value arrives)', ['bad-npm', 'gastro'], 'npm create ginko@latest bad-npm -- --preset gastro'],
+    ['a second folder name', ['bad-two', 'other'], 'Unexpected argument "other".'],
+  ])('%s exits 1 and creates nothing', (_name, args, message) => {
+    const result = run(...args)
     expect(result.status).toBe(1)
-    expect(result.stderr).toContain('gastro, docs')
-    expect(existsSync(join(work, 'nope'))).toBe(false)
+    expect(result.stderr).toContain(message)
+    expect(result.stderr).toContain('Usage:')
+    expect(existsSync(join(work, args[0]!))).toBe(false)
+  })
+
+  it('quotes a folder with spaces in the next steps', () => {
+    expect(run('My Site').stdout).toContain("cd 'My Site'")
   })
 })

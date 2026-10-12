@@ -1,6 +1,6 @@
 <!-- The weekly opening hours, today's row marked, plus the closures still ahead. -->
 <script setup lang="ts">
-import { hoursOn, spansOf, spansText, timesOf, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type Weekday } from '../utils/site'
+import { hoursOn, spansOf, spansText, timesOf, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type Weekday } from '../utils/site'
 
 const { lang, labels, today } = useSite()
 const { t, format } = useI18n()
@@ -16,7 +16,7 @@ const ahead = computed(() => [
   ...upcomingHolidayClosures(ctx.value, today.value, 90),
 ].sort((a, b) => a.when.from.localeCompare(b.when.from)))
 const todayKey = computed(() => weekdayOf(today.value))
-const reasonOf = (e: Exception) => (e.names ? e.names[lang.value] : e.reason)
+const reasonOf = (e: Exception | HolidayClosure) => ('holiday' in e ? e.holiday[lang.value] : e.reason)
 const special = (e: Exception) => spansText(spansOf(e), t('and'))
 const itemOf = (id?: string) => hourPlans.value.items.find((p) => p.id === id)!
 const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
@@ -50,7 +50,7 @@ const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
         <li v-for="e in ahead" :key="e._id">
           <span class="when">{{ format.range(e.when.from, e.when.to) }}</span>
           <span>
-            <span :lang="e.names ? lang : ginkoLangOf(hours, `exceptions.${e._id}.reason`)">{{ reasonOf(e) }}</span><template v-if="e.closed">, {{ t('closedFromTo') }}</template><template v-else>, {{ special(e) }}</template>
+            <span :lang="'holiday' in e ? lang : ginkoLangOf(hours, `exceptions.${e._id}.reason`)">{{ reasonOf(e) }}</span><template v-if="e.closed">, {{ t('closedFromTo') }}</template><template v-else>, {{ special(e) }}</template>
           </span>
         </li>
       </ul>

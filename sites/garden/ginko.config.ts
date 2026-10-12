@@ -1,10 +1,10 @@
-// The Ginko starter: a neutral site with pages, posts, events and a notice banner.
+// Garden demo: a neutral English site with pages, posts, events and a notice banner, on the generic Ginko API.
 // Every brick reads Markdown from content/ (source: 'files'), so the site runs without an account.
 // To let editors change a brick in Ginko Studio instead, remove `source: 'files'` from it.
 import { collection, defineSite, f, single } from '@lupinum/ginko'
 
 export default defineSite({
-  site: 'starter',
+  site: 'garden',
   name: 'Greenfield Community Garden',
   seo: { description: 'A neighbourhood garden where anyone can grow food, learn and meet.' },
   url: 'https://example.com',

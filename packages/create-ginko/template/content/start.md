@@ -1,5 +1,5 @@
 ---
-title: Hallo Ginko
+title: Hello Ginko
 ---
 
-Dieser Text liegt in `content/start.md`. Ändere ihn, und die Seite zeigt den neuen Text.
+This text lives in `content/start.md`. Change it, and the page shows the new text.
