@@ -38,7 +38,7 @@ You cannot do more than they can, and everything you change is shown in their hi
 
 - Add `propose: true` to any write tool, and the change is not made. It becomes a proposal the person approves.
   Use it when you are unsure, for big changes, or when the person says "show me first".
-- If review is on for your key, every write becomes a proposal without `propose`.
+- If review is on for your key, every write becomes a proposal without `propose`. `ginko_undo` then refuses on live content: propose the earlier version with `ginko_revert`.
 - The answer "Proposed, waiting for approval." means: nothing is live yet, and there is nothing to undo.
   Say exactly this to the person. Do not say the change was made.
 - `ginko_proposals` lists your own proposals and their state: waiting, applied, rejected (with the reason) or outdated.

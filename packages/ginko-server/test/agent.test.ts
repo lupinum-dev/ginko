@@ -255,6 +255,16 @@ describe('agent door: tool catalog', () => {
     expect((await entryRow(s, entry))!.data.price).toEqual({ amount: 2500 })
   })
 
+  it('with review on, ginko_undo cannot take back a live save past the review', async () => {
+    const s = await setup()
+    const entry = s.entries['menu-schnitzel']!
+    const saved = await saveOwner(s, entry, { price: { amount: 2500 } }, 1)
+    await s.t.run((ctx) => ctx.db.patch(s.site, { agentReview: true }))
+    const undone = await call(s, await keyOf(s, 'owner'), 'ginko_undo', { change: saved.change })
+    expect(undone).toMatchObject({ isError: true, text: expect.stringContaining('ginko_revert') })
+    expect((await entryRow(s, entry))!.data.price).toEqual({ amount: 2500 })
+  })
+
   it('ginko_proposals lists only the caller\'s own proposals, even for an owner who could see all', async () => {
     const s = await setup()
     const [owner, cook] = [await keyOf(s, 'owner'), await keyOf(s, 'cook')]

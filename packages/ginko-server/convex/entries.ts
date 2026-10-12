@@ -10,7 +10,7 @@ import { actorFor, authorize, authorizeWriter, byOf, checkRev, entryOf, fail, id
 import { byteSize, fileIdsOf, leavesOf, mergeField, nextPrints, rootOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { msg, recorded, type HistoryMsg, type Recorded } from './lib/history'
 import { countersOf, DELETED_KEPT, softRemove, writeCounters, type Counters } from './lib/lifecycle'
-import { directWriteRefused, needsProposal, propose, refuseDirectWrite } from './lib/policy'
+import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, same, syncEntryRefs, syncFileRefs } from './lib/write'
@@ -169,6 +169,7 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     const taskBrick = taskBrickOf(schema, args.task, entry)
     authorize(actor, schema, { task: args.task, brick: taskBrick, kind: 'edit', fields: roots })
     refuseDirectWrite(actor, taskBrick, args.task)
+    await refuseAgentUndo(ctx, actor, entry)
 
     if (entry.deletedAt) fail('NOT_UNDOABLE', 'errors.entryDeletedSince')
     if (roots.some((r) => entry.fieldRevs[r] !== change.entryRev)) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhileNoUndo', undefined, current(entry))

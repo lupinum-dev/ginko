@@ -102,6 +102,7 @@
     "actionReusedWithOtherContent": "Esta acción ya se ejecutó con otro contenido.",
     "versionInvalid": "El valor de la versión no es válido.",
     "needsApprovalProposeAgain": "Esto necesita aprobación aquí. Propón el cambio de nuevo.",
+    "agentUndoNeedsReview": "Este sitio revisa los cambios de la IA, así que deshacer no está disponible. Usa ginko_revert para proponer la versión anterior.",
     "proposalTooLarge": "Esta propuesta es demasiado grande.",
     "tooManyOpenProposals": "Ya hay {openMax} propuestas esperando aprobación. Espera a que se revisen algunas.",
     "fileNoLongerAvailable": "Un archivo ya no está disponible. Súbelo de nuevo.",

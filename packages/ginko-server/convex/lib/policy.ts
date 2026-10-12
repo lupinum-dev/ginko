@@ -71,6 +71,15 @@ export function refuseDirectWrite(actor: Actor, brick: string, taskRef: string |
   }
 }
 
+/**
+ * Undo has no proposal form, so an agent key under review may not undo live content: it would write
+ * past the review (SPEC 17). `ginko_revert` goes back as a normal save, which becomes a proposal.
+ */
+export async function refuseAgentUndo(ctx: QueryCtx, actor: Actor, entry: Pick<Doc<'entries'>, 'state'>) {
+  if (!actor.agentKey || actor.approvedBy || entry.state === 'draft') return
+  if (effectiveReview(await ctx.db.get(actor.agentKey), actor.site)) fail('FORBIDDEN', 'errors.agentUndoNeedsReview')
+}
+
 export interface NewProposal extends Recorded {
   op: ProposalOp
   brick: string

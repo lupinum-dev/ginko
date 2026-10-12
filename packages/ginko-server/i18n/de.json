@@ -104,6 +104,7 @@
     "actionReusedWithOtherContent": "Diese Aktion wurde schon mit anderem Inhalt ausgeführt.",
     "versionInvalid": "Die Versionsangabe ist ungültig.",
     "needsApprovalProposeAgain": "Das braucht hier eine Freigabe. Schlage die Änderung stattdessen neu vor.",
+    "agentUndoNeedsReview": "Diese Website prüft Änderungen der KI, darum geht Rückgängig hier nicht. Schlage mit ginko_revert die frühere Version vor.",
     "proposalTooLarge": "Dieser Vorschlag ist zu groß.",
     "tooManyOpenProposals": "Es warten schon {openMax} Vorschläge auf Freigabe. Bitte warte, bis einige geprüft sind.",
     "fileNoLongerAvailable": "Eine Datei ist nicht (mehr) verfügbar. Bitte neu hochladen.",
