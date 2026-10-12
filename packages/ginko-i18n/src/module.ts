@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, watch } from 'node:fs
 import { join } from 'node:path'
 import { addComponent, addImports, addPlugin, addServerHandler, addServerImports, addNitroPlugin, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, hasNuxtModule, updateTemplates } from '@nuxt/kit'
 import type { NuxtPage } from '@nuxt/schema'
+import { cachedNegotiatedPaths } from './cache-rules.ts'
 import { compileTree, mergeTrees, type RawTree } from './core/compiler.ts'
 import { inUserZone, isExcluded, localizePath, resolveConfig, type LocaleConfig, type LocaleInput, type Strategy } from './core/locales.ts'
 import type { Params } from './core/messages.ts'
@@ -369,22 +370,13 @@ export {}
       })
     }
 
-    // Caches that ignore Vary (Vercel ISR, Nitro SWR) must never store a response whose language came
-    // from a header or cookie: every visitor would get the first visitor's language.
+    // D10: warn when a route rule caches a path whose language comes from the request.
     nuxt.hook('nitro:config', (nitro) => {
-      const rules = Object.entries({ ...nuxt.options.routeRules, ...nitro.routeRules })
       // Nuxt's own paths (assets, images, islands with a locale prop) do not depend on the visitor's language.
       const internal = new Set(['/_nuxt/**', '/__nuxt_island/**', '/_ipx/**'])
-      const negotiated = [...new Set(['/api/x', ...[...config.exclude.filter(p => !internal.has(p)), ...config.userLocale].map(p => p.replace(/\/\*\*$/, '/x')), ...(config.strategy === 'prefix' ? ['/'] : [])])]
-      const matches = (pattern: string, path: string) => new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*\*/g, '.*').replace(/(?<!\.)\*/g, '[^/]*')}$`).test(path)
-      for (const path of negotiated) {
-        // Nitro merges every matching rule, the more specific (longer) pattern last, so `/api/**: { isr: false }` wins over `/**`.
-        const hits = rules.filter(([pattern]) => matches(pattern, path)).sort(([a], [b]) => a.length - b.length)
-        const r = Object.assign({}, ...hits.map(([, rule]) => rule)) as { isr?: unknown, swr?: unknown, cache?: unknown }
-        if (!r.isr && !r.swr && !r.cache) continue
-        const pattern = hits.findLast(([, rule]) => { const x = rule as typeof r; return x.isr || x.swr || x.cache })![0]
-        console.warn(`[ginko-i18n] routeRules "${pattern}" caches ${path.replace(/\/x$/, '/**')}, whose language comes from Accept-Language or a cookie. Cached copies ignore those, so visitors get the wrong language. Fix: exclude that path from the cache rule, or put the locale in the URL.`)
-      }
+      const negotiated = [...new Set(['/api/**', ...config.exclude.filter(p => !internal.has(p)), ...config.userLocale, ...(config.strategy === 'prefix' ? ['/'] : [])])]
+      for (const { pattern, path } of cachedNegotiatedPaths({ ...nuxt.options.routeRules, ...nitro.routeRules }, negotiated))
+        console.warn(`[ginko-i18n] routeRules "${pattern}" caches ${path}, whose language comes from Accept-Language or a cookie. Cached copies ignore those, so visitors get the wrong language. Fix: exclude that path from the cache rule, or put the locale in the URL.`)
     })
 
     // @nuxtjs/sitemap pairs locales by stripping the prefix, which is wrong for translated slugs
