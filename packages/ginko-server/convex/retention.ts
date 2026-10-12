@@ -17,6 +17,8 @@ const CHANGES_KEPT = 365 * DAY
 /** Trash and files before a replace (SPEC 12). */
 const TRASH_KEPT = 30 * DAY
 const PREVIOUS_KEPT = 30 * DAY
+/** The outbox holds sign-in codes in plain text (local and `.test` addresses): a day is enough to read them. */
+const OUTBOX_KEPT = DAY
 /** Rate windows are only needed for the current minute; a day is kept for inspection. */
 const WINDOWS_KEPT_MINUTES = 24 * 60
 
@@ -60,6 +62,10 @@ export const daily = internalMutation({
     const windows = await ctx.db.query('rateWindows').withIndex('by_window', (q) => q.lt('window', windowOf(now) - WINDOWS_KEPT_MINUTES)).take(left)
     for (const window of windows) await ctx.db.delete(window._id)
     left -= windows.length
+
+    const mails = await ctx.db.query('outbox').withIndex('by_at', (q) => q.lt('at', now - OUTBOX_KEPT)).take(left)
+    for (const mail of mails) await ctx.db.delete(mail._id)
+    left -= mails.length
 
     for (const site of await ctx.db.query('sites').collect()) {
       if (left === 0) break

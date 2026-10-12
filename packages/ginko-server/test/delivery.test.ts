@@ -207,6 +207,19 @@ describe('refresh.record (Phase 5 review)', () => {
 })
 
 describe('retention (daily)', () => {
+  // Wrong behaviour caught: sign-in codes stay readable in the outbox for ever.
+  it('removes outbox mail older than a day and keeps a newer one', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+    const { t } = await setup()
+    await t.run(async (ctx) => {
+      await ctx.db.insert('outbox', { to: 'a@example.test', subject: 'Code', text: '123456', at: NOW - DAY - 1 })
+      await ctx.db.insert('outbox', { to: 'b@example.test', subject: 'Code', text: '654321', at: NOW - 60_000 })
+    })
+    await t.mutation(internal.retention.daily, {})
+    expect((await t.run((ctx) => ctx.db.query('outbox').collect())).map((m) => m.to)).toEqual(['b@example.test'])
+  })
+
   it('hard-deletes an entry deleted 31 days ago with its slug rows, and keeps one deleted 29 days ago', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(NOW)

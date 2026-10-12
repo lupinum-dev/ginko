@@ -311,5 +311,5 @@ export default defineSchema({
     .index('by_site_brick_week_user', ['site', 'brick', 'week', 'user']),
 
   /** Local and test mail sink (GINKO_MAIL=outbox). */
-  outbox: defineTable({ to: v.string(), subject: v.string(), text: v.string(), at: v.number() }).index('by_to', ['to']),
+  outbox: defineTable({ to: v.string(), subject: v.string(), text: v.string(), at: v.number() }).index('by_to', ['to']).index('by_at', ['at']),
 })
