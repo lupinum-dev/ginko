@@ -386,7 +386,7 @@ describe('checkSchema: retired fields (SPEC 2.5)', () => {
     {
       name: 'a value rule that fails validation',
       mutate: (s: Schema) => { retire(s, 'seo.description', { value: { de: 'x'.repeat(161) } }) },
-      problems: ['retired.seo.description.de: „Beschreibung“ ist zu lang (höchstens 160 Zeichen).'],
+      problems: ['retired.seo.description.de: “Beschreibung” is too long (at most 160 characters).'],
     },
     {
       name: 'a required retired field with neither from nor value',
