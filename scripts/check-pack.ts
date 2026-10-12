@@ -3,15 +3,16 @@
 // from the tarballs with npm, builds them, checks a few URLs and runs the packaged `ginko check`.
 // Takes 1–3 minutes (npm install). Run: pnpm check:pack
 import { execSync, spawn } from 'node:child_process'
-import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 
 const root = join(import.meta.dirname, '..')
-const work = join(tmpdir(), 'ginko-check-pack')
+// Its own folder and free ports, so several checkouts can run the gate at the same time.
+const work = mkdtempSync(join(tmpdir(), 'ginko-check-pack-'))
 const tgz = join(work, 'tgz')
-rmSync(work, { recursive: true, force: true })
 mkdirSync(tgz, { recursive: true })
 const run = (cmd: string, cwd: string) => execSync(cmd, { cwd, stdio: 'pipe', encoding: 'utf8' })
 
@@ -73,6 +74,14 @@ function ginkoCheck(siteDir: string): string[] {
   }
 }
 
+async function freePort(): Promise<number> {
+  const server = createServer()
+  await new Promise<void>((resolve) => server.listen(0, resolve))
+  const { port } = server.address() as { port: number }
+  await new Promise((resolve) => server.close(resolve))
+  return port
+}
+
 async function serve(siteDir: string, port: number, checks: [string, RegExp][]) {
   run('npm install --no-audit --no-fund --loglevel=error', siteDir)
   run('npx nuxt build', siteDir)
@@ -112,10 +121,12 @@ writeFileSync(join(docs, 'app/utils/ginko-types.ts'), `export function probe() {
 useTarballs(docs)
 
 failures.push(
-  ...await serve(join(work, 'starter'), 3398, [['/', /<h1>Hallo Ginko<\/h1>/], ['/sitemap.xml', /<urlset/]]),
-  ...await serve(docs, 3399, [['/docs/einstieg', /class="docs-sidebar/], ['/en/docs/getting-started', /lang="en"/], ['/__ginko/search/de.json', /"url":"\/docs\//]]),
+  ...await serve(join(work, 'starter'), await freePort(), [['/', /<h1>Hallo Ginko<\/h1>/], ['/sitemap.xml', /<urlset/]]),
+  ...await serve(docs, await freePort(), [['/docs/einstieg', /class="docs-sidebar/], ['/en/docs/getting-started', /lang="en"/], ['/__ginko/search/de.json', /"url":"\/docs\//]]),
   ...typecheck(docs),
   ...ginkoCheck(join(work, 'starter')),
 )
 console.log(failures.length ? `FAIL check:pack\n${failures.join('\n')}` : 'OK check:pack: starter and docs build and serve from the tarballs')
+// A failed run keeps its folder for a look at the sites; a passed one cleans up.
+if (!failures.length) rmSync(work, { recursive: true, force: true })
 process.exit(failures.length ? 1 : 0)
