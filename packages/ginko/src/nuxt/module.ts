@@ -188,7 +188,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
   ;(nuxt.options.nitro.publicAssets ??= []).push({ dir: imageDir, baseURL: '/_ginko/img', maxAge: 60 * 60 * 24 * 365 })
   const build = async () => {
     const result = await content.buildFileBundles(contentDir, publicDir, schema, new Date(), { drafts: nuxt.options.dev, imageDir })
-    const report = result.errors.map((e) => `- content/${e.file}${e.path ? ` (${e.path})` : ''}: ${e.message}`).join('\n')
+    const report = result.errors.map((e) => `- ${content.errorLine(e)}`).join('\n')
     if (result.errors.length && !nuxt.options.dev) throw new Error(`[ginko] Errors in content/:\n${report}`)
     if (result.errors.length) console.error(`[ginko] Errors in content/ (these files are missing from the site):\n${report}`)
     // Link check (CONTENT.md): errors fail the build, warnings are printed. Paths of platform bricks are not known here, so unknown paths are checked only for sites with file bricks alone.

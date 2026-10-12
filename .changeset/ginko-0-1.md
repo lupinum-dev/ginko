@@ -15,7 +15,7 @@ Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm creat
 **Content (`@lupinum/ginko`, `@lupinum/ginko-content`)**
 
 - One text format: Markdown (comark 0.7) everywhere, with field profiles that limit what a field may contain. Footnotes, emoji, alerts, Shiki code, task lists, route links (`$blog.my-post`), reusable snippets and heading anchors.
-- Data files: YAML and JSON (one file, one entry) and CSV (one file, many entries), checked against the field schema with file and line in every error. Entries with `draft: true` stay out of production builds.
+- Data files: YAML and JSON (one file, one entry) and CSV (one file, many entries), checked against the field schema; every error names the file and field, and the line for CSV rows and unreadable files. Entries with `draft: true` stay out of production builds.
 - Query engine on the server: `where`, `order`, `limit`, pagination with totals, field selection, `include` for references, previous/next and facet counts.
 - References (`f.ref`), navigation trees and breadcrumbs, and a URL for every entry in every language; two entries on one URL fail the build.
 - Link check before any HTML exists: route links, anchors, snippets and redirected paths, in the build, the dev terminal, `ginko check` and the agent tools. On the platform a save, a new entry or a scheduled publish that adds a broken link is stopped, and History says why. External links are checked on request (`links.external`), at build only, with a 7-day cache.

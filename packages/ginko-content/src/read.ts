@@ -23,6 +23,11 @@ export interface ContentError {
   line?: number
 }
 
+/** One error as `ginko check` and the build print it: `content/<file>:<line> (<field>): <message>`. */
+export function errorLine(e: ContentError): string {
+  return `content/${e.file}${e.line !== undefined ? `:${e.line}` : ''}${e.path ? ` (${e.path})` : ''}: ${e.message}`
+}
+
 export interface ReadOptions {
   /** `false` leaves out entries marked `draft: true`. Default `true` (dev shows drafts). */
   drafts?: boolean

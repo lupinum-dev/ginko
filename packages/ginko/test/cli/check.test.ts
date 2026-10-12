@@ -65,4 +65,15 @@ describe('ginko check and links in content files', () => {
     expect(lines[1]).toContain('pages.de')
     expect(code).toBe(1)
   })
+
+  // Bug caught: the content package knows the line of a CSV row, but `ginko check` printed only the file and field.
+  it('prints the line of a data file error', async () => {
+    const menu = collection({ label: 'Karte', source: 'files', max: 50, order: 'manual', fields: { title: f.text('Titel'), price: f.number('Preis', { min: 0, max: 100, step: 0.1 }) } })
+    const path = siteWith('Text.', { ...config, bricks: { ...config.bricks, menu } })
+    mkdirSync(join(dirname(path), 'content/menu'))
+    writeFileSync(join(dirname(path), 'content/menu/preise.csv'), 'slug,title,price\nkaffee,Kaffee,"3,5"\n')
+    const { code, lines } = await runCheck(path)
+    expect(lines).toContainEqual(expect.stringMatching(/^content\/menu\/preise\.csv:2 \(price\): Column “price”/))
+    expect(code).toBe(1)
+  })
 })
