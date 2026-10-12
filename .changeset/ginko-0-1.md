@@ -1,14 +1,14 @@
 ---
-"@lupinum/ginko": major
-"@lupinum/ginko-i18n": major
-"@lupinum/ginko-content": major
-"@lupinum/ginko-components": major
-"@lupinum/ginko-docs": major
-"@lupinum/ginko-preset-gastro": major
-"create-ginko": major
+"@lupinum/ginko": minor
+"@lupinum/ginko-i18n": minor
+"@lupinum/ginko-content": minor
+"@lupinum/ginko-components": minor
+"@lupinum/ginko-docs": minor
+"@lupinum/ginko-preset-gastro": minor
+"create-ginko": minor
 ---
 
-Ginko 1.0: one content system for Nuxt websites, from Markdown files in Git to a hosted platform that owners, staff and AI agents edit together. All packages release together under one version.
+Ginko 0.1: one content system for Nuxt websites, from Markdown files in Git to a hosted platform that owners, staff and AI agents edit together. All packages release together under one version. Until 1.0, a minor version (0.1 → 0.2) may contain breaking changes; the changelog names each one and how to update.
 
 Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm create ginko@latest my-site`; the documentation explains every step.
 
@@ -55,6 +55,6 @@ The platform is a hosted service, not an npm package. A site connects to it with
 - Gastro: opening hours with exceptions, seasons, holidays and new hours from a date; lunch week with planning ahead and an optional PDF; menu with prices from a date; notices that expire; events; JSON-LD for Restaurant, Menu, opening hours and Event; a printable lunch sheet.
 - `create-ginko` starts a new site, plain or with `--preset gastro|docs`.
 
-**Not in 1.0**
+**Not in 0.1**
 
 Real-time co-editing comes next. Also not included: an agency preset, the editor UI as a shadcn-vue registry, OAuth for agent connectors, and a Google Business sync.
