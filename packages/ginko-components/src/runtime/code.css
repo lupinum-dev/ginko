@@ -10,8 +10,9 @@
   --ginko-code-hover: oklch(1 0 0 / 0.07);
 }
 
-/* Shiki writes the light theme inline and the dark one into --shiki-dark; the panel is always dark. */
-.ginko-code .shiki, .ginko-code .shiki span { color: var(--shiki-dark, inherit) !important; }
+/* Shiki writes the light theme inline and the dark one into --shiki-dark; the panel is always dark. With a single
+   theme there is no --shiki-dark, and the inline colours stay. */
+.ginko-code :is(.shiki, .shiki span)[style*='--shiki-dark'] { color: var(--shiki-dark) !important; }
 
 /* --- Frame: a code block, a code group and a code tree share it --- */
 :is(.ginko-code, .ginko-code-group, .ginko-code-tree) {

@@ -32,6 +32,8 @@ describe('interactive components', () => {
     const panels = [...html.matchAll(/<div id="[^"]*-p\d"[^>]*role="tabpanel"[^>]*>/g)].map((m) => m[0])
     expect(panels).toHaveLength(3)
     expect(panels.map((p) => /\shidden(=|\s|>)/.test(p))).toEqual([false, true, true])
+    // A text-only panel is reachable with Tab after the tab list.
+    expect(panels.every((p) => p.includes('tabindex="0"'))).toBe(true)
     expect(html).toContain('Zweiter Text')
     const tabs = [...html.matchAll(/<button[^>]*role="tab"[^>]*>/g)].map((m) => m[0])
     expect(tabs.map((t) => t.includes('aria-selected="true"'))).toEqual([true, false, false])
@@ -56,6 +58,21 @@ describe('interactive components', () => {
     expect(html).not.toContain('<details')
     expect(html).toContain('data-clipped')
     expect(html).toMatch(/<button[^>]*aria-expanded="false"[^>]*>\s*Mehr anzeigen/)
+  })
+
+  test.each([
+    '::card{title="Karte" href="/ziel"}\nMehr auf [der Startseite](/).\n::',
+    '::read-more{href="/ziel"}\nMehr auf [der Startseite](/).\n::',
+  ])('a linked card or read-more keeps a link in its content out of its own link: %s', async (markdown) => {
+    // The HTML parser closes an outer <a> at an inner one, so nested links break hydration and the layout.
+    const html = await render(markdown)
+    let depth = 0
+    for (const [tag] of html.matchAll(/<\/?a[\s>]/g)) {
+      depth += tag.startsWith('</') ? -1 : 1
+      expect(depth).toBeLessThan(2)
+    }
+    expect(html).toContain('href="/ziel"')
+    expect(html).toContain('href="/"')
   })
 
   test('inline-toc lists the headings nested and renders nothing without any', async () => {

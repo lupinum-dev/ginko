@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
@@ -19,7 +20,7 @@ const ROOT: Record<string, string> = {
   timeline: 'ginko-timeline', 'timeline-item': 'ginko-timeline-item',
   'code-group': 'ginko-code-group', 'code-tree': 'ginko-code-tree', files: 'ginko-files',
   figure: 'ginko-figure', video: 'ginko-video', embedded: 'ginko-embed',
-  quiz: 'ginko-quiz', 'quiz-question': 'ginko-quiz-question', api: 'ginko-api', 'api-param': 'ginko-api-row',
+  quiz: 'ginko-quiz', 'quiz-question': 'ginko-quiz-question', api: 'ginko-api', 'api-param': 'ginko-api-param',
   tabs: 'ginko-tabs', tab: 'class="ginko-tab"', accordion: 'ginko-accordion', 'accordion-item': 'ginko-accordion-item', collapse: 'ginko-collapse', steps: 'ginko-steps', cards: 'ginko-cards', card: 'ginko-card', 'read-more': 'ginko-read-more', 'inline-toc': 'ginko-inline-toc',
 }
 
@@ -50,6 +51,34 @@ describe('registry and components', () => {
     expect(await serializeMarkdown(parsed.value.nodes, { original: await markdownBlocks(text, options) })).toBe(text)
   })
 
+  // `appearance` is theming API: every tag that offers it renders it as `data-appearance` on its framed root.
+  test.each(Object.entries(components).filter(([, def]) => 'appearance' in (def.props ?? {})).map(([tag]) => tag))('%s: appearance renders as data-appearance', async (tag) => {
+    const example = tag === 'inline-toc' ? `## Überblick\n\n${components[tag].editor!.example!}` : components[tag as keyof typeof components].editor!.example!
+    const text = example.replace(new RegExp(`(:+${tag})(\\{[^}]*)?\\}?`), (_, open: string, attrs?: string) => `${open}${attrs ? `${attrs} ` : '{'}appearance="tint"}`)
+    const parsed = await parseMarkdown(text, { profile: 'page', components })
+    expect(parsed.problems).toEqual([])
+    const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap }) })
+    app.provide(GINKO_TOC_KEY, parsed.value.toc)
+    expect(await renderToString(app)).toMatch(new RegExp(`class="${ROOT[tag]}[^"]*"[^>]*data-appearance="tint"`))
+  })
+
+  // The prop lists on the docs pages and in the README are written by hand: a new prop must not stay undocumented.
+  const docs = ['7.komponenten.md', '7.komponenten.en.md'].map((file) => readFileSync(new URL(`../../../sites/docs/content/docs/${file}`, import.meta.url), 'utf8'))
+  const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
+  test.each(Object.entries(components))('%s: every prop is documented', (tag, def) => {
+    const props = Object.keys(def.props ?? {})
+    for (const page of docs) {
+      // Examples hold headings of their own: leave the fenced blocks out.
+      const section = page.replace(/^(`{3,})[^\n]*\n[^]*?^\1[ \t]*$/gm, '').split(/\n(?=##+ )/).find((part) => new RegExp(`^###+ .*\`${tag}\``).test(part))
+      expect(section, `docs section of ${tag}`).toBeDefined()
+      expect(props.filter((prop) => !section!.includes(`\`${prop}\``))).toEqual([])
+    }
+    const row = readme.split('\n').find((line) => line.startsWith('| ') && line.split('|')[1]!.includes(`\`${tag}\``))
+    expect(row, `README row of ${tag}`).toBeDefined()
+    expect(props.filter((prop) => prop !== 'appearance' && !row!.includes(`\`${prop}\``))).toEqual([])
+    if (props.includes('appearance')) expect(readme).toMatch(new RegExp(`The tags with \`appearance\`:[^]*?\`${tag}\``))
+  })
+
   test('a code group holds only code blocks', async () => {
     const parsed = await parseMarkdown('::code-group\n## Titel\n\nText\n::', { profile: 'page', components })
     expect(parsed.problems.join('\n')).toContain('darf nur „pre“ enthalten, nicht „h2“')
@@ -69,6 +98,8 @@ describe('registry and components', () => {
     const parsed = await parseMarkdown(components.timeline.editor.example, { profile: 'page', components })
     const html = await renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap }) }))
     expect(html.match(/data-active/g)).toHaveLength(1)
+    expect(html).toContain('class="ginko-timeline" role="list"')
+    expect(html.match(/role="listitem"/g)?.length).toBe(html.match(/class="ginko-timeline-item"/g)?.length)
   })
 
   const render = async (markdown: string) => {

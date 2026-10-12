@@ -4,7 +4,7 @@ import { CALLOUT_ICON_NAMES, TYPE_ICON, type IconName } from './icons'
 import SiteIcon from './SiteIcon.vue'
 import SvgIcon from './SvgIcon.vue'
 
-const props = defineProps<{ type?: string; title?: string; icon?: string }>()
+const props = defineProps<{ type?: string; title?: string; icon?: string; appearance?: 'quiet' | 'tint' }>()
 
 const type = computed(() => (props.type && props.type in TYPE_ICON ? props.type : 'info'))
 // `icon` is a built-in name (see CALLOUT_ICON_NAMES) or an Iconify name with a colon (`lucide:flag`, drawn by
@@ -17,7 +17,7 @@ const builtIn = computed<IconName>(() => {
 </script>
 
 <template>
-  <div class="ginko-callout" role="note" :data-type="type">
+  <div class="ginko-callout" role="note" :data-type="type" :data-appearance="appearance">
     <span class="ginko-callout-bar" aria-hidden="true" />
     <SiteIcon v-if="iconify" :name="iconify" class="ginko-callout-icon" />
     <SvgIcon v-else class="ginko-callout-icon" :name="builtIn" />

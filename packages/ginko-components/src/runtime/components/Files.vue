@@ -8,7 +8,7 @@ import { isVNode, kids, textOf } from './vnode-utils'
 
 interface Entry { name: string; note?: string; path: string; folder: boolean; children: Entry[] }
 
-const props = defineProps<{ active?: string }>()
+const props = defineProps<{ active?: string; appearance?: 'quiet' | 'tint' }>()
 const slots = useSlots()
 
 const isList = (v: unknown): v is VNode => isVNode(v) && v.type === 'ul'
@@ -36,7 +36,7 @@ function render() {
     ]),
     e.children.length ? list(e.children) : null,
   ])))
-  return entries.length ? h('div', { class: 'ginko-files' }, [list(entries)]) : null
+  return entries.length ? h('div', { class: 'ginko-files', 'data-appearance': props.appearance }, [list(entries)]) : null
 }
 </script>
 

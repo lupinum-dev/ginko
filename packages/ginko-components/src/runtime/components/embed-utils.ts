@@ -1,4 +1,5 @@
-// Pure provider matching of the `embedded` component (the tag `embed` stays blocked: without a registry it would render the native element). A provider is plain serializable data (so it can travel through
+// Pure provider matching of the `embedded` component (the tag `embed` stays blocked: without a registry it would
+// render the native element). A provider is plain serializable data (so it can travel through
 // `runtimeConfig.public`); only `https:` URLs of known providers ever become an iframe. Everything else is a link,
 // and `javascript:`, `data:` and similar addresses are rejected (`undefined`).
 import type { InjectionKey } from 'vue'

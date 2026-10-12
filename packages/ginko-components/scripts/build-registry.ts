@@ -1,6 +1,7 @@
 // Builds a shadcn-vue registry from the component sources, so `npx shadcn-vue add <url>/r/callout.json` installs the
 // same files the npm package ships. Nothing is copied into git: the output folder is generated (and git-ignored).
-// Env GINKO_REGISTRY_URL = public URL of the output folder (inter-item dependencies are URLs).
+// Env GINKO_REGISTRY_URL = public URL of the output folder (inter-item dependencies are URLs); by default `<url>/r`, with
+// `url` from the docs site's ginko.config.ts, which serves the folder.
 // Run: pnpm --filter @lupinum/ginko-components registry [outDir]   (default: sites/docs/public/r)
 //
 // Layout: one item per component (name = kebab-case file name), one `ginko-utils` item for helper files that several
@@ -16,7 +17,6 @@ const pkgRoot = join(import.meta.dirname, '..')
 const componentsDir = join(pkgRoot, 'src/runtime/components')
 // An installed copy has no ginko-i18n behind it: its fallback texts are the English ones.
 const i18nFile = join(pkgRoot, 'i18n/en.json')
-const DEFAULT_BASE_URL = 'http://localhost:3500/r' // the docs dev server; set GINKO_REGISTRY_URL for a deployed registry
 const FILE_TYPE = 'registry:component'
 const SCHEMA_BASE = 'https://shadcn-vue.com/schema'
 /** Files that belong to one item although nothing in that item imports them (the callout aliases note, info, ...). */
@@ -67,7 +67,7 @@ function rewrite(file: string, source: string): string {
  * `baseUrl` is where the folder is served (`https://docs.example.com/r`). The CLI resolves a bare name in
  * `registryDependencies` against the shadcn-vue registry, so a dependency between our items must be a full URL.
  */
-export function buildRegistry(outDir: string, baseUrl = DEFAULT_BASE_URL): RegistryItem[] {
+export function buildRegistry(outDir: string, baseUrl: string): RegistryItem[] {
   const base = baseUrl.replace(/\/$/, '')
   const files = new Set(readdirSync(componentsDir).filter((f) => /\.(vue|ts)$/.test(f) && f !== 'index.ts'))
   const components = [...files].filter((f) => f.endsWith('.vue')).sort()
@@ -177,6 +177,8 @@ export function buildRegistry(outDir: string, baseUrl = DEFAULT_BASE_URL): Regis
 
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   const out = resolve(process.argv[2] ?? join(pkgRoot, '../../sites/docs/public/r'))
-  const items = buildRegistry(out, process.env.GINKO_REGISTRY_URL)
-  console.log(`registry: ${items.length} items → ${out} (dependency URLs: ${process.env.GINKO_REGISTRY_URL ?? DEFAULT_BASE_URL})`)
+  const docsSite = (await import('../../../sites/docs/ginko.config.ts')).default as { url: string }
+  const baseUrl = process.env.GINKO_REGISTRY_URL ?? `${docsSite.url.replace(/\/$/, '')}/r`
+  const items = buildRegistry(out, baseUrl)
+  console.log(`registry: ${items.length} items → ${out} (dependency URLs: ${baseUrl})`)
 }

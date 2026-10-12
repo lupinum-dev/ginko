@@ -9,7 +9,7 @@ const isActive = computed(() => isOn(props.active))
 </script>
 
 <template>
-  <div class="ginko-timeline-item" :data-active="isActive || undefined">
+  <div class="ginko-timeline-item" role="listitem" :data-active="isActive || undefined">
     <span class="ginko-timeline-marker" :data-icon="icon ? '' : undefined" aria-hidden="true"><SiteIcon v-if="icon" :name="icon" /></span>
     <div v-if="title || date || label" class="ginko-timeline-head">
       <p v-if="title" class="ginko-timeline-title">{{ title }}</p>

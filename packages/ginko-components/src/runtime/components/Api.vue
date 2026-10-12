@@ -8,7 +8,7 @@ import { elements, Rendered } from './vnode-utils'
 // ::api with ::api-param children: method and path on top, the parameters below. Parameters with the same `group`
 // share a tab (WAI-ARIA tabs, arrow keys, Home/End); one group needs no tabs. A link to a row (`#api-query-limit`)
 // opens its group. The first group is shown on the server; the other panels stay in the page with `hidden`.
-defineProps<{ title?: string; method?: string; path?: string }>()
+defineProps<{ title?: string; method?: string; path?: string; appearance?: 'quiet' | 'tint' }>()
 const slots = useSlots()
 const t = useText()
 const groupOf = (node: VNode) => groupLabel((node.props as Record<string, unknown> | null)?.group, t('api.defaultGroup'))
@@ -31,7 +31,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="ginko-api">
+  <div class="ginko-api" :data-appearance="appearance">
     <template v-for="v in [view()]" :key="0">
       <div class="ginko-api-header">
         <span v-if="method || path" class="ginko-api-identity">

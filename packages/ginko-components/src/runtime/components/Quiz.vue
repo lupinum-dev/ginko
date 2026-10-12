@@ -6,7 +6,7 @@ import { useText } from './text'
 
 // ::quiz with ::quiz-question children: one question at a time, back/next, a result at the end. Everything runs in
 // the browser; nothing is sent anywhere. The questions stay in the page (`hidden`) so their answers are kept.
-defineProps<{ title?: string; description?: string }>()
+defineProps<{ title?: string; description?: string; appearance?: 'quiet' | 'tint' }>()
 const slots = useSlots()
 const t = useText()
 const id = useId()
@@ -16,7 +16,6 @@ const showResults = ref(false)
 const resetKey = ref(0)
 const answers = reactive(new Map<number, boolean>())
 const root = ref<HTMLElement | null>(null)
-const retryButton = ref<HTMLButtonElement | null>(null)
 
 provide(QUIZ_KEY, { report: (position: number, correct: boolean) => answers.set(position, correct), resetKey })
 
@@ -31,7 +30,8 @@ function go(to: number) {
 async function showScore() {
   showResults.value = true
   await nextTick()
-  retryButton.value?.focus()
+  // A template ref would not work here: inside `v-for` Vue fills it with an array.
+  root.value?.querySelector<HTMLElement>('.ginko-quiz-results button')?.focus()
 }
 
 async function retry() {
@@ -45,7 +45,7 @@ async function retry() {
 </script>
 
 <template>
-  <section ref="root" class="ginko-quiz" :aria-labelledby="title ? `${id}-title` : undefined">
+  <section ref="root" class="ginko-quiz" :data-appearance="appearance" :aria-labelledby="title ? `${id}-title` : undefined">
     <div v-if="title || description" class="ginko-quiz-header">
       <p v-if="title" :id="`${id}-title`" class="ginko-quiz-title">{{ title }}</p>
       <p v-if="description" class="ginko-quiz-description">{{ description }}</p>
@@ -81,7 +81,7 @@ async function retry() {
         <template v-if="showResults">
           <p class="ginko-quiz-score" :data-state="correctCount() === nodes.length ? 'perfect' : undefined">{{ t('quiz.score', { correct: correctCount(), total: nodes.length }) }}</p>
           <p class="ginko-quiz-note">{{ correctCount() === nodes.length ? t('quiz.perfect') : t('quiz.retryPrompt') }}</p>
-          <button ref="retryButton" type="button" class="ginko-quiz-button" @click="retry">{{ t('quiz.retry') }}</button>
+          <button type="button" class="ginko-quiz-button" @click="retry">{{ t('quiz.retry') }}</button>
         </template>
       </div>
     </template>
