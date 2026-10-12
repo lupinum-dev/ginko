@@ -88,14 +88,14 @@ function otherEmail() {
         <label for="email" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('login.email') }}</label>
         <Input id="email" v-model="email" type="email" autocomplete="email" inputmode="email" required :aria-invalid="!!error" :aria-describedby="error ? 'login-error' : undefined" />
       </div>
-      <p v-if="error" id="login-error" class="text-sm text-destructive">{{ error }}</p>
+      <p v-if="error" id="login-error" class="text-sm text-destructive" role="alert">{{ error }}</p>
       <Button class="mt-2 h-10 w-full" type="submit" :disabled="busy || !hydrated">{{ busy ? t('login.sending') : t('login.sendCode') }}</Button>
     </form>
     <form v-else class="grid gap-2.5" novalidate @submit.prevent="signIn">
       <p class="mb-2 text-muted-foreground"><T k="login.sent" :params="{ email: cleanEmail }"><template #email="{ text }"><strong class="font-medium text-foreground">{{ text }}</strong></template></T></p>
       <label for="code" class="text-sm font-medium">{{ t('login.code') }}</label>
       <Input id="code" ref="codeInput" v-model="code" class="h-12 text-center text-2xl tracking-[0.3em] md:text-2xl" inputmode="numeric" autocomplete="one-time-code" maxlength="7" :aria-invalid="!!error" :aria-describedby="error ? 'login-error' : undefined" />
-      <p v-if="error" id="login-error" class="text-sm text-destructive">{{ error }}</p>
+      <p v-if="error" id="login-error" class="text-sm text-destructive" role="alert">{{ error }}</p>
       <Button class="mt-2 h-10 w-full" type="submit" :disabled="busy">{{ busy ? t('login.submitting') : t('login.submit') }}</Button>
       <div class="mt-1 flex flex-wrap justify-center gap-1">
         <Button variant="ghost" size="sm" type="button" :disabled="busy" @click="sendCode">{{ t('login.newCode') }}</Button>

@@ -9,7 +9,6 @@
     "mySites": "Mis sitios",
     "viewSite": "Ver sitio",
     "newTab": "(pestaña nueva)",
-    "menu": "Menú",
     "views": "Vistas",
     "areas": "Áreas",
     "list": "Lista",
@@ -164,7 +163,8 @@
       "empty": "Aún no hay cambios."
     },
     "toast": {
-      "close": "Cerrar mensaje"
+      "close": "Cerrar mensaje",
+      "region": "Mensajes"
     }
   },
   "site": {
@@ -206,7 +206,6 @@
       "noEnd": "sin fecha de fin"
     },
     "quick": {
-      "heading": "Edición rápida",
       "nothingForYou": "No tienes tareas aquí. Pide al propietario los permisos que necesitas.",
       "todayDone": "<task>{task}</task> está completado para hoy.",
       "flagText": "“{text}”",
@@ -708,7 +707,6 @@
       "usedIn": "Usado en",
       "date": "Fecha"
     },
-    "inUse": "En uso",
     "selected": "{count, plural, one {# archivo seleccionado} other {# archivos seleccionados}}",
     "info": {
       "title": "Detalles",

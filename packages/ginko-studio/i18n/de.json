@@ -9,7 +9,6 @@
     "mySites": "Meine Seiten",
     "viewSite": "Seite ansehen",
     "newTab": "(neuer Tab)",
-    "menu": "Menü",
     "views": "Ansichten",
     "areas": "Bereiche",
     "list": "Liste",
@@ -164,7 +163,8 @@
       "empty": "Noch keine Änderungen."
     },
     "toast": {
-      "close": "Meldung schließen"
+      "close": "Meldung schließen",
+      "region": "Meldungen"
     }
   },
   "site": {
@@ -206,7 +206,6 @@
       "noEnd": "ohne Ablauf"
     },
     "quick": {
-      "heading": "Schnell ändern",
       "nothingForYou": "Für dich gibt es hier keine Aufgaben. Frag die Inhaberin nach den passenden Rechten.",
       "todayDone": "<task>{task}</task> ist für heute eingetragen.",
       "flagText": "„{text}“",
@@ -708,7 +707,6 @@
       "usedIn": "Verwendet in",
       "date": "Datum"
     },
-    "inUse": "Verwendet",
     "selected": "{count, plural, one {# Datei ausgewählt} other {# Dateien ausgewählt}}",
     "info": {
       "title": "Details",

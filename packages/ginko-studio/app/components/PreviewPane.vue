@@ -53,7 +53,7 @@ function bundle() {
     ;(entries[e.brick] ??= []).push({ id: e._id, order: e.order, data: data as Record<string, Json>, prints: e.prints })
   }
   if (props.editing && !props.editing.entry) {
-    ;(entries[props.editing.brick] ??= []).push({ id: 'neu', order: Number.MAX_SAFE_INTEGER, data: props.editing.data as Record<string, Json> })
+    ;(entries[props.editing.brick] ??= []).push({ id: 'new', order: Number.MAX_SAFE_INTEGER, data: props.editing.data as Record<string, Json> })
   }
   // Served like the platform's bundle endpoint: Markdown as trees, since the site has no parser.
   return servedBundle({

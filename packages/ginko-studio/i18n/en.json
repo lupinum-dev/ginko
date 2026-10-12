@@ -9,7 +9,6 @@
     "mySites": "My sites",
     "viewSite": "View site",
     "newTab": "(new tab)",
-    "menu": "Menu",
     "views": "Views",
     "areas": "Areas",
     "list": "List",
@@ -164,7 +163,8 @@
       "empty": "No changes yet."
     },
     "toast": {
-      "close": "Close message"
+      "close": "Close message",
+      "region": "Messages"
     }
   },
   "site": {
@@ -206,7 +206,6 @@
       "noEnd": "no end date"
     },
     "quick": {
-      "heading": "Quick edit",
       "nothingForYou": "You have no tasks here. Ask the owner for the rights you need.",
       "todayDone": "<task>{task}</task> is filled in for today.",
       "flagText": "“{text}”",
@@ -708,7 +707,6 @@
       "usedIn": "Used in",
       "date": "Date"
     },
-    "inUse": "In use",
     "selected": "{count, plural, one {# file selected} other {# files selected}}",
     "info": {
       "title": "Details",
