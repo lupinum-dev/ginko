@@ -42,6 +42,7 @@ function tabs() {
       :id="panelId(i)"
       :key="i"
       role="tabpanel"
+      tabindex="0"
       class="ginko-tabs-panel"
       :aria-labelledby="tabId(i)"
       :hidden="i !== active"
