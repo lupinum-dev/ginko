@@ -137,7 +137,9 @@
     "preview": {
       "label": "Vista previa",
       "close": "Cerrar vista previa",
-      "frameTitle": "Vista previa del sitio web"
+      "frameTitle": "Vista previa del sitio web",
+      "stuck": "La vista previa no carga. Guardar sigue funcionando como siempre.",
+      "openSite": "Abrir sitio web"
     },
     "remove": {
       "title": "Eliminar entrada",

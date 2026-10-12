@@ -137,7 +137,9 @@
     "preview": {
       "label": "Vorschau",
       "close": "Vorschau schließen",
-      "frameTitle": "Vorschau der Website"
+      "frameTitle": "Vorschau der Website",
+      "stuck": "Die Vorschau lädt nicht. Speichern funktioniert trotzdem wie gewohnt.",
+      "openSite": "Website öffnen"
     },
     "remove": {
       "title": "Eintrag entfernen",

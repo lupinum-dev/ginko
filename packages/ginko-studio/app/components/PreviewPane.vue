@@ -6,6 +6,10 @@ import type { Json, Locale } from '@lupinum/ginko'
 import { servedBundle, todayIn, type FileInfo, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import type { Data } from '../utils/content'
+import { siteOrigin } from '../utils/origin'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from '#imports'
+import { Button } from '@studio/components/ui/button'
 
 const props = defineProps<{
   site: { slug: string; url: string; previewOrigins: string[]; schemaRev: number; contentRev: number }
@@ -31,6 +35,16 @@ watch(() => props.path, (p) => { path.value = p; session.value = crypto.randomUU
 const src = computed(() => `${origin.value}/__ginko/preview?path=${encodeURIComponent(path.value)}&locale=${props.locale}&session=${session.value}`)
 const frame = ref<HTMLIFrameElement | null>(null)
 const ready = ref(false)
+/** No `ginko:ready` in time: the site is down, refuses framing, or has no preview route. The owner gets a way out. */
+const stuck = ref(false)
+const READY_MS = 8000
+let readyTimer: ReturnType<typeof setTimeout> | undefined
+function waitForReady() {
+  clearTimeout(readyTimer)
+  stuck.value = false
+  readyTimer = setTimeout(() => { if (!ready.value) stuck.value = true }, READY_MS)
+}
+const siteHref = computed(() => `${origin.value}${path.value}`)
 
 function bundle() {
   const entries: Record<string, StoredEntry[]> = {}
@@ -63,7 +77,7 @@ watch(() => [props.editing, props.entries, props.locale, props.revision], () => 
   timer = setTimeout(send, 250)
 }, { deep: true })
 watch(() => props.locale, () => { session.value = crypto.randomUUID() })
-watch(src, () => { ready.value = false })
+watch(src, () => { ready.value = false; waitForReady() })
 
 function onMessage(event: MessageEvent) {
   if (event.source !== frame.value?.contentWindow || event.origin !== origin.value) return
@@ -71,14 +85,16 @@ function onMessage(event: MessageEvent) {
   if (data?.session !== session.value) return
   if (data.type === 'ginko:ready') {
     ready.value = true
+    stuck.value = false
+    clearTimeout(readyTimer)
     send()
   } else if (data.type === 'ginko:navigate' && typeof data.path === 'string' && data.path.startsWith('/') && !data.path.startsWith('//')) {
     path.value = data.path
     session.value = crypto.randomUUID()
   }
 }
-onMounted(() => window.addEventListener('message', onMessage))
-onBeforeUnmount(() => { window.removeEventListener('message', onMessage); clearTimeout(timer) })
+onMounted(() => { window.addEventListener('message', onMessage); waitForReady() })
+onBeforeUnmount(() => { window.removeEventListener('message', onMessage); clearTimeout(timer); clearTimeout(readyTimer) })
 </script>
 
 <template>
@@ -87,7 +103,15 @@ onBeforeUnmount(() => { window.removeEventListener('message', onMessage); clearT
       <span class="font-semibold">{{ t('entry.preview.label') }}</span>
       <span class="truncate text-muted-foreground">{{ path }}</span>
     </header>
-    <iframe ref="frame" :key="session" :src="src" :title="t('entry.preview.frameTitle')" />
+    <div class="relative min-h-0">
+      <iframe ref="frame" :key="session" :src="src" :title="t('entry.preview.frameTitle')" />
+      <div v-if="stuck" class="absolute inset-0 grid place-content-center justify-items-center gap-3 bg-card p-6 text-center" role="status">
+        <p class="max-w-[36ch] text-sm text-muted-foreground">{{ t('entry.preview.stuck') }}</p>
+        <Button as-child variant="secondary">
+          <a :href="siteHref" target="_blank" rel="noopener">{{ t('entry.preview.openSite') }}</a>
+        </Button>
+      </div>
+    </div>
   </section>
 </template>
 

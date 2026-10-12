@@ -137,7 +137,9 @@
     "preview": {
       "label": "Preview",
       "close": "Close preview",
-      "frameTitle": "Preview of the website"
+      "frameTitle": "Preview of the website",
+      "stuck": "The preview does not load. Saving still works as usual.",
+      "openSite": "Open website"
     },
     "remove": {
       "title": "Remove entry",
