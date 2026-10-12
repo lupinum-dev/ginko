@@ -94,6 +94,31 @@ export const bootstrapKey = internalMutation({
   },
 })
 
+/**
+ * The push keys of a site, for operators (`npx convex run release:pushKeys '{"site":"linde"}'`): to find a
+ * leaked key by its label and revoke it with `release:revokePushKeyAsOperator`. Never the key or its hash.
+ */
+export const pushKeys = internalQuery({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.site)).unique()
+    if (!site) fail('SITE_NOT_FOUND', 'errors.siteMissing')
+    const rows = await ctx.db.query('pushKeys').withIndex('by_site', (q) => q.eq('site', site._id)).collect()
+    return rows.map((r) => ({ id: r._id, label: r.label, scopes: r.scopes, createdBy: r.createdBy, createdAt: r._creationTime, revokedAt: r.revokedAt ?? null }))
+  },
+})
+
+/** `revokePushKey` for operators, who have a deploy key but no session. */
+export const revokePushKeyAsOperator = internalMutation({
+  args: { key: v.id('pushKeys') },
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.key)
+    if (!row) fail('NOT_FOUND', 'errors.keyNotFound')
+    if (!row.revokedAt) await ctx.db.patch(row._id, { revokedAt: Date.now() })
+    return { id: row._id }
+  },
+})
+
 /** Owner or admin revokes a push key of the site. Revoking twice changes nothing. */
 export const revokePushKey = mutation({
   args: { site: v.string(), key: v.string() },

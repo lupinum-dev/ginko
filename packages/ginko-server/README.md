@@ -23,7 +23,8 @@ the same (`api.sites.get` and so on), so existing deployments and data stay vali
 5. For each new site:
    - `npx convex run --prod sites:bootstrap '{"slug":"linde","name":"Gasthaus zur Linde","url":"https://linde.example"}'`
    - `npx convex run --prod release:bootstrapKey '{"site":"linde","label":"CI","scopes":["release","check","pull","export"]}'`
-     prints the push key once. It goes into the site's CI as `GINKO_KEY`.
+     prints the push key once. It goes into the site's CI as `GINKO_KEY`. To revoke a leaked key, find its id
+     with `release:pushKeys '{"site":"linde"}'` and run `release:revokePushKeyAsOperator '{"key":"<id>"}'`.
    - `npx convex run --prod sites:setRefreshToken '{"slug":"linde","token":"<NUXT_GINKO_REVALIDATE_TOKEN of the site>"}'`
      (at least 32 characters). "Update website now" sends it to the site. A bundle request that carries it
      in `x-ginko-site-token` is not counted in the public rate limit.

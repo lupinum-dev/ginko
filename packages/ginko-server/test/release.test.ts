@@ -199,6 +199,16 @@ describe('push keys and the HTTP routes (SPEC 5.1, 10)', () => {
     expect([response.status, ((await response.json()) as { code: string }).code]).toEqual([400, 'INVALID'])
   })
 
+  it('an operator finds a key by its label and revokes it', async () => {
+    const s = await setup()
+    const token = await keyFor(s, ['release'])
+    const [listed] = await s.t.query(internal.release.pushKeys, { site: 'restaurant' })
+    expect(listed).toMatchObject({ label: 'CI', scopes: ['release'], revokedAt: null })
+    expect(listed).not.toHaveProperty('hash')
+    await s.t.mutation(internal.release.revokePushKeyAsOperator, { key: listed!.id })
+    expect((await get(s, token)).status).toBe(401)
+  })
+
   it('a revoked or unknown key is 401', async () => {
     const s = await setup()
     const token = await keyFor(s, ['release'])
