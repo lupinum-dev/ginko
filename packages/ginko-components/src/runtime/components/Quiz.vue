@@ -16,7 +16,6 @@ const showResults = ref(false)
 const resetKey = ref(0)
 const answers = reactive(new Map<number, boolean>())
 const root = ref<HTMLElement | null>(null)
-const retryButton = ref<HTMLButtonElement | null>(null)
 
 provide(QUIZ_KEY, { report: (position: number, correct: boolean) => answers.set(position, correct), resetKey })
 
@@ -31,7 +30,8 @@ function go(to: number) {
 async function showScore() {
   showResults.value = true
   await nextTick()
-  retryButton.value?.focus()
+  // A template ref would not work here: inside `v-for` Vue fills it with an array.
+  root.value?.querySelector<HTMLElement>('.ginko-quiz-results button')?.focus()
 }
 
 async function retry() {
@@ -81,7 +81,7 @@ async function retry() {
         <template v-if="showResults">
           <p class="ginko-quiz-score" :data-state="correctCount() === nodes.length ? 'perfect' : undefined">{{ t('quiz.score', { correct: correctCount(), total: nodes.length }) }}</p>
           <p class="ginko-quiz-note">{{ correctCount() === nodes.length ? t('quiz.perfect') : t('quiz.retryPrompt') }}</p>
-          <button ref="retryButton" type="button" class="ginko-quiz-button" @click="retry">{{ t('quiz.retry') }}</button>
+          <button type="button" class="ginko-quiz-button" @click="retry">{{ t('quiz.retry') }}</button>
         </template>
       </div>
     </template>

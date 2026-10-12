@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useId } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
 import { isOn } from './interactive-utils'
 import { useText } from './text'
 
@@ -28,6 +28,12 @@ onMounted(() => {
   observer.observe(region.value)
 })
 onBeforeUnmount(() => observer?.disconnect())
+// The button goes away with the click; focus moves to the content instead of falling back to the page.
+async function expand() {
+  expanded.value = true
+  await nextTick()
+  region.value?.focus()
+}
 </script>
 
 <template>
@@ -36,9 +42,9 @@ onBeforeUnmount(() => observer?.disconnect())
     <div class="ginko-disclosure-body"><slot /></div>
   </details>
   <div v-else class="ginko-clip" :data-clipped="!expanded && !fits ? '' : undefined">
-    <div :id="id" ref="region" class="ginko-clip-region"><slot /></div>
+    <div :id="id" ref="region" class="ginko-clip-region" tabindex="-1"><slot /></div>
     <div v-if="!expanded && !fits" class="ginko-clip-fade">
-      <button type="button" class="ginko-clip-button" :aria-controls="id" aria-expanded="false" @click="expanded = true">
+      <button type="button" class="ginko-clip-button" :aria-controls="id" aria-expanded="false" @click="expand">
         {{ lines ? t('collapse.lines', { count: lines }) : t('collapse.more') }}
       </button>
     </div>
