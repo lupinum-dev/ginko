@@ -58,6 +58,17 @@ async function subtitleWrites(s: Setup, skip: string[] = []): Promise<Write[]> {
 }
 
 describe('release mutation (SPEC 5.2)', () => {
+  // Wrong behaviour caught: a push key (a CI secret) points the site's refresh token at another address, or stores another site's config.
+  it.each([
+    ['another site', { site: 'andere' }, 'errors.siteNameMismatchInSchema'],
+    ['a URL that is no web address', { url: 'javascript:alert(1)' }, 'errors.siteUrlNotWeb'],
+  ])('refuses a config for %s and changes nothing', async (_name, change, key) => {
+    const s = await setup()
+    const schema = { ...copy(await storedSchema(s)), ...change }
+    expect(await errorOf(release(s, { schema }))).toMatchObject({ code: 'INVALID', key })
+    expect((await storedSite(s)).schemaRev).toBe(1)
+  })
+
   it('the same commit again returns the stored answer and changes nothing', async () => {
     const s = await setup()
     const schema = copy(await storedSchema(s))

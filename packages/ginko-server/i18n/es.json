@@ -195,7 +195,8 @@
     "uploadMissing": "Falta el archivo subido. Vuelve a subirlo.",
     "uploadRetrying": "No se pudo procesar la foto. Lo intentamos de nuevo.",
     "uploadHeicUnreadable": "No se puede leer esta foto HEIC. Guárdala como JPEG o PNG y vuelve a subirla.",
-    "uploadNotAnImage": "Este archivo no es una imagen legible."
+    "uploadNotAnImage": "Este archivo no es una imagen legible.",
+    "siteUrlNotWeb": "La dirección del sitio en la configuración debe empezar por https:// o http://."
   },
   "history": {
     "changedSingle": "{label}: cambio en {fields}",

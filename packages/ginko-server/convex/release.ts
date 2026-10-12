@@ -65,6 +65,16 @@ async function insertSingle(ctx: MutationCtx, site: Id<'sites'>, single: NewSing
   return bytes
 }
 
+function isWebUrl(value: unknown): boolean {
+  if (typeof value !== 'string') return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 async function insertPushKey(ctx: MutationCtx, site: Doc<'sites'>, input: { label: string; scopes: ('release' | 'pull' | 'check' | 'export')[]; createdBy: string }) {
   const label = input.label.trim()
   if (label.length < 1 || label.length > 60) fail('INVALID', 'errors.nameLength1To60')
@@ -195,6 +205,10 @@ export const release = internalMutation({
     const next = args.schema as Schema
     const problems = checkSchema(next)
     if (problems.length) fail('INVALID', 'errors.schemaInvalid', undefined, { problems: problems as unknown as Json })
+    // The key names the site; its config may not speak for another one. The URL is where "Update website
+    // now" sends the site's refresh token, so it must be a web address.
+    if (next.site !== site.slug) fail('INVALID', 'errors.siteNameMismatchInSchema')
+    if (!isWebUrl(next.url)) fail('INVALID', 'errors.siteUrlNotWeb')
 
     // 3. Migration changes are reported first: they name the exact fix (new ID). The ledger of
     // applied migrations is the permanent identity: the schema forgets a migration once it is
