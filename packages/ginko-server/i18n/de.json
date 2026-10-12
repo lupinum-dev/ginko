@@ -186,7 +186,16 @@
     "linkBroken": "Der Link „{link}“ führt ins Leere. Bitte korrigieren und noch einmal speichern.",
     "lastOwnerCannotBeRemoved": "Der letzte Besitzer kann nicht entfernt werden.",
     "signInNotSetUp": "Anmeldung noch nicht eingerichtet.",
-    "languageUnsupported": "Diese Sprache gibt es nicht."
+    "languageUnsupported": "Diese Sprache gibt es nicht.",
+    "uploadExpired": "Der Upload ist abgelaufen. Bitte wähle die Datei noch einmal.",
+    "uploadTooLarge": "Die Datei ist zu groß (Bilder höchstens {imageMb} MB, PDF höchstens {fileMb} MB).",
+    "uploadWrongType": "Dieser Dateityp ist nicht erlaubt ({types}).",
+    "uploadWrongContent": "Der Inhalt passt nicht zum Dateityp.",
+    "uploadFailed": "Der Upload ist fehlgeschlagen. Bitte versuche es noch einmal.",
+    "uploadMissing": "Die hochgeladene Datei fehlt. Bitte lade sie erneut hoch.",
+    "uploadRetrying": "Das Bild konnte nicht verarbeitet werden. Wir versuchen es erneut.",
+    "uploadHeicUnreadable": "Dieses HEIC-Foto kann nicht gelesen werden. Bitte speichere es als JPEG oder PNG und lade es erneut hoch.",
+    "uploadNotAnImage": "Diese Datei ist kein lesbares Bild."
   },
   "history": {
     "changedSingle": "{label}: {fields} geändert",

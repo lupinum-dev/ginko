@@ -186,7 +186,16 @@
     "linkBroken": "El enlace «{link}» no lleva a ninguna parte. Corrígelo y guarda de nuevo.",
     "lastOwnerCannotBeRemoved": "No se puede eliminar al último propietario.",
     "signInNotSetUp": "El inicio de sesión aún no está configurado.",
-    "languageUnsupported": "Este idioma no está disponible."
+    "languageUnsupported": "Este idioma no está disponible.",
+    "uploadExpired": "La subida ha caducado. Vuelve a elegir el archivo.",
+    "uploadTooLarge": "El archivo es demasiado grande (fotos como máximo {imageMb} MB, PDF como máximo {fileMb} MB).",
+    "uploadWrongType": "Este tipo de archivo no está permitido ({types}).",
+    "uploadWrongContent": "El contenido no coincide con el tipo de archivo.",
+    "uploadFailed": "La subida ha fallado. Inténtalo de nuevo.",
+    "uploadMissing": "Falta el archivo subido. Vuelve a subirlo.",
+    "uploadRetrying": "No se pudo procesar la foto. Lo intentamos de nuevo.",
+    "uploadHeicUnreadable": "No se puede leer esta foto HEIC. Guárdala como JPEG o PNG y vuelve a subirla.",
+    "uploadNotAnImage": "Este archivo no es una imagen legible."
   },
   "history": {
     "changedSingle": "{label}: cambio en {fields}",

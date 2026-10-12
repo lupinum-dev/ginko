@@ -8,6 +8,7 @@ import { sha256 } from '@lupinum/ginko/internal'
 import { internalMutation, internalQuery, mutation, query } from './_generated/server'
 import { actorFor, fail } from './lib/access'
 import { cleanName } from './lib/files'
+import { t, type MessageKey } from './lib/i18n'
 import { deleteStorage, isKeptUpload, purgeUpload } from './lib/library'
 
 const DAY = 24 * 60 * 60 * 1000
@@ -139,16 +140,16 @@ export const markReady = internalMutation({
 
 /** Counts a failed attempt. Permanent failures and the third attempt end in `failed`; others retry later. */
 export const markFailed = internalMutation({
-  args: { upload: v.id('uploads'), message: v.string(), permanent: v.boolean() },
+  args: { upload: v.id('uploads'), key: v.string(), permanent: v.boolean() },
   handler: async (ctx, args) => {
     const row = await ctx.db.get(args.upload)
     if (!row || row.status !== 'processing') return
     const attempts = row.attempts + 1
     if (args.permanent || attempts >= MAX_ATTEMPTS) {
-      await ctx.db.patch(row._id, { status: 'failed', attempts, error: args.message })
+      await ctx.db.patch(row._id, { status: 'failed', attempts, error: args.key })
       return
     }
-    await ctx.db.patch(row._id, { attempts, error: args.message })
+    await ctx.db.patch(row._id, { attempts, error: args.key })
     await ctx.scheduler.runAfter(RETRY_MS * attempts, internal.uploadsNode.run, { upload: row._id })
   },
 })
@@ -167,7 +168,9 @@ export const get = query({
     const row = id ? await ctx.db.get(id) : null
     if (!row || row.site !== actor.site._id) fail('NOT_FOUND', 'errors.fileNotFound')
     const url = row.status === 'ready' && row.processedId ? await ctx.storage.getUrl(row.processedId) : null
-    return { status: row.status, url, name: row.name, mime: row.mime, width: row.width ?? null, height: row.height ?? null, error: row.error ?? null }
+    return { status: row.status, url, name: row.name, mime: row.mime, width: row.width ?? null, height: row.height ?? null,
+      // `error` is the catalog key of the reason; `errorText` its German text, for agents and logs.
+      error: row.error ?? null, errorText: row.error ? t('de', row.error as MessageKey) : null }
   },
 })
 

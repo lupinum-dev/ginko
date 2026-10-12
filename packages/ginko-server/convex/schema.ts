@@ -242,7 +242,7 @@ export default defineSchema({
     height: v.optional(v.number()),
     status: v.union(v.literal('processing'), v.literal('ready'), v.literal('failed')),
     attempts: v.number(),
-    /** German reason of the last failed processing attempt (shown to the uploader). */
+    /** Catalog key (`errors.upload…`) of the reason of the last failed processing attempt, shown to the uploader in their language. */
     error: v.optional(v.string()),
     folder: v.optional(v.id('folders')),
     /** Uploaded through the library, put in a folder or kept on purpose: the 7-day sweep leaves it alone. Missing means false. */

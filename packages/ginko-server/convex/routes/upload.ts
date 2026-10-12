@@ -6,6 +6,7 @@ import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'
 import { httpAction, type ActionCtx } from '../_generated/server'
 import { kindOf, TOO_LARGE, WRONG_CONTENT, WRONG_TYPE } from '../lib/files'
+import { t, type MessageKey } from '../lib/i18n'
 
 /** The platform origin that may call this route from the browser (CORS). */
 const PLATFORM_ORIGIN = process.env.GINKO_PLATFORM_ORIGIN ?? 'http://localhost:3100'
@@ -21,23 +22,26 @@ function headersFor(request: Request): Record<string, string> {
   }
 }
 
-/** Answers with the upload id, or with `{ code, message }` (SPEC 11). */
-function reply(request: Request, status: number, body: { upload: string } | { code: string; message: string }) {
-  return Response.json(body, { status, headers: headersFor(request) })
+type Refusal = { key: MessageKey; params?: Record<string, string | number> }
+
+/** Answers with the upload id, or with `{ code, key, params, message }` (SPEC 11): the catalog message, `message` its German text. */
+function reply(request: Request, status: number, body: { upload: string } | ({ code: string } & Refusal)) {
+  const out = 'key' in body ? { ...body, message: t('de', body.key, body.params) } : body
+  return Response.json(out, { status, headers: headersFor(request) })
 }
 
 async function receive(ctx: ActionCtx, request: Request): Promise<Response> {
   const url = new URL(request.url)
   const owner = await ctx.runMutation(internal.uploads.redeem, { ticket: url.searchParams.get('ticket') ?? '' })
-  if (!owner) return reply(request, 403, { code: 'FORBIDDEN', message: 'Der Upload ist abgelaufen. Bitte wähle die Datei noch einmal.' })
+  if (!owner) return reply(request, 403, { code: 'FORBIDDEN', key: 'errors.uploadExpired' })
 
   const kind = kindOf(request.headers.get('Content-Type') ?? '')
-  if (!kind) return reply(request, 415, { code: 'UPLOAD_REJECTED', message: WRONG_TYPE })
+  if (!kind) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...WRONG_TYPE })
   const declared = request.headers.get('Content-Length')
-  if (declared !== null && Number(declared) > kind.limit) return reply(request, 413, { code: 'UPLOAD_REJECTED', message: TOO_LARGE })
+  if (declared !== null && Number(declared) > kind.limit) return reply(request, 413, { code: 'UPLOAD_REJECTED', ...TOO_LARGE })
   const bytes = new Uint8Array(await request.arrayBuffer())
-  if (bytes.byteLength > kind.limit) return reply(request, 413, { code: 'UPLOAD_REJECTED', message: TOO_LARGE })
-  if (!kind.signature(bytes)) return reply(request, 415, { code: 'UPLOAD_REJECTED', message: WRONG_CONTENT })
+  if (bytes.byteLength > kind.limit) return reply(request, 413, { code: 'UPLOAD_REJECTED', ...TOO_LARGE })
+  if (!kind.signature(bytes)) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...WRONG_CONTENT })
 
   const storageId = await ctx.storage.store(new Blob([bytes], { type: kind.mime }))
   try {
@@ -48,8 +52,8 @@ async function receive(ctx: ActionCtx, request: Request): Promise<Response> {
     return reply(request, 200, { upload })
   } catch (error) {
     await ctx.storage.delete(storageId)
-    const data = (error as { data?: { code?: string; message?: string } }).data
-    if (data?.code && data.message) return reply(request, 400, { code: data.code, message: data.message })
+    const data = (error as { data?: { code?: string; key?: MessageKey; params?: Record<string, string | number> } }).data
+    if (data?.code && data.key) return reply(request, 400, { code: data.code, key: data.key, ...(data.params ? { params: data.params } : {}) })
     throw error
   }
 }
@@ -58,7 +62,7 @@ export const upload = httpAction(async (ctx, request) => {
   try {
     return await receive(ctx, request)
   } catch {
-    return reply(request, 500, { code: 'INVALID', message: 'Der Upload ist fehlgeschlagen. Bitte versuche es noch einmal.' })
+    return reply(request, 500, { code: 'INVALID', key: 'errors.uploadFailed' })
   }
 })
 

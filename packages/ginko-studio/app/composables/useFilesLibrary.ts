@@ -5,6 +5,7 @@ import { api } from '#convex/api'
 import type { FunctionReturnType } from 'convex/server'
 import { computed, ref, watch, type Ref } from 'vue'
 import { opErrorOf } from './useOps'
+import { useTextOf } from './useTextOf'
 import { useUpload } from './useUpload'
 
 export type LibFile = FunctionReturnType<typeof api.files.list>['files'][number]
@@ -17,8 +18,10 @@ export interface ListQuery { view: ListView; folder?: string | null; search?: st
 
 export interface FileListState {
   files: Ref<LibFile[]>
-  /** The first page has not arrived yet. */
+  /** The first page has not arrived yet (and did not fail). */
   pending: Ref<boolean>
+  /** Why the first page could not be read, in the Studio's language; null while it loads or after it arrived. */
+  error: Ref<string | null>
   hasMore: Ref<boolean>
   more: () => Promise<void>
 }
@@ -61,6 +64,8 @@ export function useFilesLibrary(): FilesLibrary {
   const convex = useConvex()
   const sendImage = useUpload('image')
   const sendFile = useUpload('file')
+  const { t } = useI18n()
+  const textOf = useTextOf()
 
   const site = useConvexQuery(api.sites.get, () => ({ site: slug.value }))
   const canManage = computed(() => site.data.value?.role === 'owner' || site.data.value?.role === 'admin')
@@ -93,7 +98,8 @@ export function useFilesLibrary(): FilesLibrary {
       extra.value = [...extra.value, ...page.files]
       next.value = { done: page.isDone, cursor: page.cursor }
     }
-    return { files, pending: computed(() => first.data.value === undefined), hasMore, more }
+    const error = computed(() => (first.error.value ? opErrorOf(first.error.value).message : null))
+    return { files, pending: computed(() => first.data.value === undefined && !first.error.value), error, hasMore, more }
   }
 
   function info(file: () => string | null) {
@@ -114,7 +120,7 @@ export function useFilesLibrary(): FilesLibrary {
     for (let i = 0; i < 120; i++) {
       const state = await convex.query(api.uploads.get, { site: slug.value, upload: id })
       if (state.status === 'ready') return id
-      if (state.status === 'failed') throw new Error(state.error ?? 'failed')
+      if (state.status === 'failed') throw new Error(textOf(state.error ? { key: state.error } : null, t('ops.upload.failed')))
       await sleep(500)
     }
     return id

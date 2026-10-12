@@ -9,10 +9,6 @@ import { internalAction } from './_generated/server'
 import { processImage, UnreadableImageError } from './image'
 import { kindOf, WRONG_CONTENT } from './lib/files'
 
-const MISSING = 'Die hochgeladene Datei fehlt. Bitte lade sie erneut hoch.'
-const RETRY = 'Das Bild konnte nicht verarbeitet werden. Wir versuchen es erneut.'
-const HEIC = 'Dieses HEIC-Foto kann nicht gelesen werden. Bitte speichere es als JPEG oder PNG und lade es erneut hoch.'
-const UNREADABLE = 'Diese Datei ist kein lesbares Bild.'
 
 export const run = internalAction({
   args: { upload: v.id('uploads') },
@@ -22,13 +18,13 @@ export const run = internalAction({
 
     const original = await ctx.storage.get(row.storageId)
     if (!original) {
-      await ctx.runMutation(internal.uploads.markFailed, { upload, message: MISSING, permanent: true })
+      await ctx.runMutation(internal.uploads.markFailed, { upload, key: 'errors.uploadMissing', permanent: true })
       return null
     }
 
     const bytes = new Uint8Array(await original.arrayBuffer())
     if (!kindOf(row.mime)?.signature(bytes)) {
-      await ctx.runMutation(internal.uploads.markFailed, { upload, message: WRONG_CONTENT, permanent: true })
+      await ctx.runMutation(internal.uploads.markFailed, { upload, key: WRONG_CONTENT.key, permanent: true })
       return null
     }
     // The hash of the original bytes finds the same file uploaded twice (library view "Doppelt").
@@ -43,8 +39,8 @@ export const run = internalAction({
       result = await processImage(bytes)
     } catch (error) {
       const permanent = error instanceof UnreadableImageError
-      const message = !permanent ? RETRY : row.mime === 'image/heic' ? HEIC : UNREADABLE
-      await ctx.runMutation(internal.uploads.markFailed, { upload, message, permanent })
+      const key = !permanent ? 'errors.uploadRetrying' : row.mime === 'image/heic' ? 'errors.uploadHeicUnreadable' : 'errors.uploadNotAnImage'
+      await ctx.runMutation(internal.uploads.markFailed, { upload, key, permanent })
       return null
     }
 

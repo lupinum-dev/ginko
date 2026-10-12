@@ -186,7 +186,16 @@
     "linkBroken": "The link “{link}” leads nowhere. Please fix it and save again.",
     "lastOwnerCannotBeRemoved": "The last owner cannot be removed.",
     "signInNotSetUp": "Sign-in is not set up yet.",
-    "languageUnsupported": "This language is not available."
+    "languageUnsupported": "This language is not available.",
+    "uploadExpired": "The upload has expired. Please choose the file again.",
+    "uploadTooLarge": "The file is too large (photos at most {imageMb} MB, PDFs at most {fileMb} MB).",
+    "uploadWrongType": "This file type is not allowed ({types}).",
+    "uploadWrongContent": "The content does not match the file type.",
+    "uploadFailed": "The upload failed. Please try again.",
+    "uploadMissing": "The uploaded file is missing. Please upload it again.",
+    "uploadRetrying": "The photo could not be processed. We are trying again.",
+    "uploadHeicUnreadable": "This HEIC photo cannot be read. Please save it as JPEG or PNG and upload it again.",
+    "uploadNotAnImage": "This file is not a readable image."
   },
   "history": {
     "changedSingle": "{label}: {fields} changed",
