@@ -2,9 +2,9 @@
 // platform and a site (SPEC part 1): schema, validation, diff, bundle and Markdown. The platform imports
 // the same functions; there is no second copy.
 //
-// This entry is for site developers: each name here follows semver and is documented on the docs site.
-// Ginko's own packages import the rest from '@lupinum/ginko/internal', which has no stability promise.
-// Adding a name here later is a minor release; removing one is a major. Keep it small.
+// This entry is the public API for site developers: each name here is documented on the docs site
+// ("Reading content", API reference). Ginko's own packages import the rest from '@lupinum/ginko/internal',
+// which has no stability promise. Adding a name here later breaks nobody; removing one breaks sites. Keep it small.
 export { defineSite, single, collection, type SiteInput, type Migration, type MigrationContext } from './core/site.ts'
 export { f } from './core/fields.ts'
 export { formatMoney } from './core/money.ts'
