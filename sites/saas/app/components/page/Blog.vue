@@ -17,8 +17,8 @@ const blog = useGinko('blog')
         </NuxtLink>
         <div class="text">
           <p class="meta mono"><time :datetime="post.data.date">{{ format.date(post.data.date) }}</time></p>
-          <h2><NuxtLink :to="post.url" :lang="langOf(post, 'title')">{{ post.data.title }}</NuxtLink></h2>
-          <p class="description" :lang="langOf(post, 'description')">{{ post.data.description }}</p>
+          <h2><NuxtLink :to="post.url" :lang="ginkoLangOf(post, 'title')">{{ post.data.title }}</NuxtLink></h2>
+          <p class="description" :lang="ginkoLangOf(post, 'description')">{{ post.data.description }}</p>
           <p class="author">{{ t('by') }} {{ post.data.author }}</p>
         </div>
       </li>

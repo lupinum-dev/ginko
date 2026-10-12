@@ -16,7 +16,7 @@ const items = computed(() => (props.limit ? events.value.items.slice(0, props.li
     <tbody>
       <tr v-for="e in items" :key="e.id" data-test="event">
         <td class="mono when">{{ format.range(e.data.when.from, e.data.when.to) }}</td>
-        <th scope="row" class="fair" :lang="langOf(e, 'title')">{{ e.data.title }}</th>
+        <th scope="row" class="fair" :lang="ginkoLangOf(e, 'title')">{{ e.data.title }}</th>
         <td class="place">{{ e.data.location }}</td>
         <td class="mono booth" :data-label="t('booth')">{{ e.data.booth }}</td>
       </tr>

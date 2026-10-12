@@ -14,12 +14,12 @@ const sheet = computed(() => (data.value.datasheet && safeHref(data.value.datash
 <template>
   <article class="wrap product">
     <NuxtLink :to="path('products')" class="back">← {{ t('products') }}</NuxtLink>
-    <h1 class="page-title" :lang="langOf(product, 'name')">{{ data.name }}</h1>
-    <p class="lede summary" :lang="langOf(product, 'summary')">{{ data.summary }}</p>
+    <h1 class="page-title" :lang="ginkoLangOf(product, 'name')">{{ data.name }}</h1>
+    <p class="lede summary" :lang="ginkoLangOf(product, 'summary')">{{ data.summary }}</p>
 
     <ul v-if="data.images.some((i) => safeHref(i.image?.url))" class="images" :aria-label="t('productImages')">
       <li v-for="i in data.images" :key="i._id">
-        <img v-if="safeHref(i.image?.url)" :src="safeHref(i.image.url)" :alt="i.image.alt" :lang="langOf(product, `images.${i._id}.image.alt`)" :width="i.image.width" :height="i.image.height">
+        <img v-if="safeHref(i.image?.url)" :src="safeHref(i.image.url)" :alt="i.image.alt" :lang="ginkoLangOf(product, `images.${i._id}.image.alt`)" :width="i.image.width" :height="i.image.height">
       </li>
     </ul>
 
@@ -31,9 +31,9 @@ const sheet = computed(() => (data.value.datasheet && safeHref(data.value.datash
         </thead>
         <tbody>
           <tr v-for="s in data.specs" :key="s._id">
-            <th scope="row" :lang="langOf(product, `specs.${s._id}.name`)">{{ s.name }}</th>
-            <td class="num" :lang="langOf(product, `specs.${s._id}.value`)">{{ s.value }}</td>
-            <td class="unit mono" :lang="langOf(product, `specs.${s._id}.unit`)">{{ s.unit }}</td>
+            <th scope="row" :lang="ginkoLangOf(product, `specs.${s._id}.name`)">{{ s.name }}</th>
+            <td class="num" :lang="ginkoLangOf(product, `specs.${s._id}.value`)">{{ s.value }}</td>
+            <td class="unit mono" :lang="ginkoLangOf(product, `specs.${s._id}.unit`)">{{ s.unit }}</td>
           </tr>
         </tbody>
       </table>

@@ -16,13 +16,13 @@ head(() => t('careers'), 'careers')
       <div v-if="jobs.items.length" class="jobs">
         <details v-for="j in jobs.items" :key="j.id" class="job" data-test="job">
           <summary>
-            <span class="title" :lang="langOf(j, 'title')">{{ j.data.title }}</span>
+            <span class="title" :lang="ginkoLangOf(j, 'title')">{{ j.data.title }}</span>
             <span class="kind">{{ labels.kinds[j.data.kind] ?? j.data.kind }}</span>
             <span class="place">{{ j.data.location }}</span>
             <span class="salary mono">{{ salaryText(j.data, lang, { from: t('salaryFrom'), gross: t('gross') }) }}</span>
           </summary>
           <div class="body">
-            <GinkoMarkdown :value="j.data.description" class="prose" :lang="langOf(j, 'description')" />
+            <GinkoMarkdown :value="j.data.description" class="prose" :lang="ginkoLangOf(j, 'description')" />
             <p v-if="j.data.start" class="date mono">{{ t('startFrom', { date: format.date(j.data.start) }) }}</p>
             <p v-if="j.data.until" class="date mono">{{ t('endsOn', { date: format.date(j.data.until) }) }}</p>
             <div v-if="safeHref(j.data.applyUrl) || j.data.applyEmail" class="apply">

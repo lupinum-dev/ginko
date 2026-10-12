@@ -164,11 +164,11 @@ export function useGinkoBreadcrumbs(bricks: CollectionKey[]): ComputedRef<NavNod
 
 /**
  * `lang` for a field the bundle filled from the main language (SPEC 6 `fallback`), else undefined:
- * `:lang="langOf(item, 'note')"`. `path` is the field name, or `list.<_id>.field` inside a list.
+ * `:lang="ginkoLangOf(item, 'note')"`. `path` is the field name, or `list.<_id>.field` inside a list.
  * The value is the language tag of the main locale from `languages` in ginko.config (`de-AT`), the
  * form `lang` attributes need; the bare code (`de`) when the site sets no tag for it.
  */
-export function langOf(item: { fallback?: readonly string[] }, path: string): string | undefined {
+export function ginkoLangOf(item: { fallback?: readonly string[] }, path: string): string | undefined {
   const code = fallbackLang(item.fallback, path, (useRuntimeConfig().public.ginko as GinkoPublicConfig).mainLocale)
   return code && (useI18n().locales.find((l) => l.code === code)?.language ?? code)
 }
@@ -188,7 +188,7 @@ export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: string): 
 }
 
 /** The visibility rule of SPEC 2.1 for code that has an item outside useGinko. Reactive inside a computed. */
-export function isVisible<K extends CollectionKey>(brick: K, item: { data: Record<string, unknown> }): boolean {
+export function isGinkoVisible<K extends CollectionKey>(brick: K, item: { data: Record<string, unknown> }): boolean {
   return visible(schema.bricks[brick] as Brick, item.data, useGinkoToday().value)
 }
 
@@ -201,7 +201,7 @@ export interface GinkoSeoInput {
   /** Small label above the title on the generated share card (docs: the section). */
   section?: string
   noindex?: boolean
-  /** Extra JSON-LD objects (`articleLd`, `faqLd`, ...). */
+  /** Extra JSON-LD objects, for example an `Event` or a `FAQPage`. */
   jsonLd?: Record<string, unknown>[]
 }
 

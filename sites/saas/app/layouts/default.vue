@@ -34,7 +34,7 @@ const cta = computed(() => safeHref(hero.value.data.buttonUrl))
           <NuxtLink :to="a.path" :hreflang="a.code" :lang="a.code" :aria-current="a.current ? 'true' : undefined" :class="{ current: a.current }">{{ a.code.toUpperCase() }}</NuxtLink>
         </template>
       </nav>
-      <a v-if="cta" class="button cta" :href="cta" rel="noopener" :lang="langOf(hero, 'buttonText')">{{ hero.data.buttonText }}</a>
+      <a v-if="cta" class="button cta" :href="cta" rel="noopener" :lang="ginkoLangOf(hero, 'buttonText')">{{ hero.data.buttonText }}</a>
     </header>
     <main id="inhalt">
       <slot />

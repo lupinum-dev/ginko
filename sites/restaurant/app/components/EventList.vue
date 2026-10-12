@@ -16,7 +16,7 @@ const month = (date: string) => new Intl.DateTimeFormat(lang.value === 'de' ? 'd
     <li v-for="e in items" :key="e.id" class="event">
       <p class="date" aria-hidden="true"><span class="d">{{ day(e.data.when.from) }}</span><span class="m">{{ month(e.data.when.from) }}</span></p>
       <div class="body">
-        <h3 :lang="langOf(e, 'title')"><NuxtLink :to="e.url">{{ e.data.title }}</NuxtLink></h3>
+        <h3 :lang="ginkoLangOf(e, 'title')"><NuxtLink :to="e.url">{{ e.data.title }}</NuxtLink></h3>
         <p class="meta">
           <span>{{ eventWhen(e.data.when, e.data.start) }}</span>
           <span v-if="e.data.price" class="price">{{ formatMoney(e.data.price, lang) }}</span>

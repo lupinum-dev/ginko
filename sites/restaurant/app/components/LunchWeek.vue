@@ -13,14 +13,14 @@ const { lunch, current, todayKey } = useLunchWeek()
     <ol class="days">
       <li v-for="d in lunch.data.days" :key="d._id" :class="{ today: d.day === todayKey }" data-test="lunch" :aria-current="d.day === todayKey ? 'date' : undefined">
         <span class="day">{{ labels.weekdays[d.day as Weekday] }}<span v-if="d.day === todayKey" class="tag">{{ t('today') }}</span></span>
-        <span class="dish" :lang="langOf(lunch, `days.${d._id}.dish`)">{{ d.dish }}</span>
+        <span class="dish" :lang="ginkoLangOf(lunch, `days.${d._id}.dish`)">{{ d.dish }}</span>
         <span class="meta">
           <Allergens :codes="d.allergens" />
           <span v-if="d.price" class="price">{{ formatMoney(d.price, lang) }}</span>
         </span>
       </li>
     </ol>
-    <p v-if="lunch.data.note" class="note" :lang="langOf(lunch, 'note')">{{ lunch.data.note }}</p>
+    <p v-if="lunch.data.note" class="note" :lang="ginkoLangOf(lunch, 'note')">{{ lunch.data.note }}</p>
     <p class="print-link"><NuxtLink :to="lunchPrintPath(lang)">{{ t('printLink') }}</NuxtLink></p>
     <AllergenKey :codes="lunch.data.days.flatMap((d) => d.allergens)" />
   </div>

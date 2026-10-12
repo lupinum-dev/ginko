@@ -14,7 +14,7 @@ const items = computed(() => (props.limit ? jobs.value.items.slice(0, props.limi
 <template>
   <ul v-if="items.length" class="jobs">
     <li v-for="j in items" :key="j.id" class="job" data-test="job">
-      <h3 :lang="langOf(j, 'title')"><NuxtLink :to="path('careers')">{{ j.data.title }}</NuxtLink></h3>
+      <h3 :lang="ginkoLangOf(j, 'title')"><NuxtLink :to="path('careers')">{{ j.data.title }}</NuxtLink></h3>
       <p class="meta">{{ labels.kinds[j.data.kind] ?? j.data.kind }}<span class="sep" aria-hidden="true"> / </span>{{ j.data.location }}</p>
       <p class="salary mono">{{ salaryText(j.data, lang, { from: t('salaryFrom'), gross: t('gross') }) }}</p>
     </li>

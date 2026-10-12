@@ -11,7 +11,7 @@ head(() => title.value, props.field)
 <template>
   <div class="wrap">
     <h1 class="page-title">{{ title }}</h1>
-    <GinkoMarkdown :value="legal.data[field]" class="prose body" :lang="langOf(legal, field)" />
+    <GinkoMarkdown :value="legal.data[field]" class="prose body" :lang="ginkoLangOf(legal, field)" />
   </div>
 </template>
 

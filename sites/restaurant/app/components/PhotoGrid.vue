@@ -9,7 +9,7 @@ const shown = computed(() => props.images.filter((row) => safeHref(row.image?.ur
 <template>
   <ul :class="['photos', { strip }]">
     <li v-for="(row, i) in shown" :key="row._id">
-      <img :src="row.image.url" :alt="row.image.alt" :lang="langOf({ fallback }, `images.${row._id}.image.alt`)" :width="row.image.width" :height="row.image.height" :loading="i < 2 ? 'eager' : 'lazy'" decoding="async">
+      <img :src="row.image.url" :alt="row.image.alt" :lang="ginkoLangOf({ fallback }, `images.${row._id}.image.alt`)" :width="row.image.width" :height="row.image.height" :loading="i < 2 ? 'eager' : 'lazy'" decoding="async">
     </li>
   </ul>
 </template>
