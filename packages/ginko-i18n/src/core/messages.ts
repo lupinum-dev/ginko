@@ -19,7 +19,7 @@ export interface MessageTree { [key: string]: CompiledMessage | MessageTree }
 
 export type Params = Record<string, string | number | Date | undefined | null>
 
-/** Output of `formatParts`: text, or a tag with its formatted children (rendered by `<T>`). */
+/** Output of `formatParts`: text, or a tag with its formatted children (rendered by `<I18nT>`). */
 export type Part = string | { tag: string, children: Part[] }
 
 const pluralCache = new Map<string, Intl.PluralRules>()

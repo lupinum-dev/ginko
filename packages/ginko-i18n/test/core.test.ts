@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees } from '../src/core/compile'
+import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees } from '../src/core/compiler'
 import { defineCatalog } from '../src/core/catalog'
 import { createFormatters } from '../src/core/format'
 import { alternatesOf, inUserZone, localeFromPath, localizePath, negotiateLocale, resolveConfig, stripLocale } from '../src/core/locales'

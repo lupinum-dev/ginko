@@ -33,7 +33,7 @@ async function run() {
   <main class="mx-auto grid w-full max-w-sm gap-4 rounded-2xl border bg-card p-6 sm:p-8">
     <h1 class="text-xl font-semibold tracking-tight">{{ t('invite.title') }}</h1>
     <template v-if="offer">
-      <p class="text-muted-foreground"><T k="invite.lead" :params="{ site: offer.site, role: t(offer.role === 'owner' ? 'invite.role.owner' : 'invite.role.staff') }"><template #site="{ text }"><strong class="font-medium text-foreground">{{ text }}</strong></template></T></p>
+      <p class="text-muted-foreground"><I18nT k="invite.lead" :params="{ site: offer.site, role: t(offer.role === 'owner' ? 'invite.role.owner' : 'invite.role.staff') }"><template #site="{ text }"><strong class="font-medium text-foreground">{{ text }}</strong></template></I18nT></p>
       <p v-if="!offer.forYou" class="text-destructive" role="alert">{{ t('invite.otherEmail') }}</p>
       <p v-if="error" class="text-destructive" role="alert">{{ error }}</p>
       <Button v-if="offer.forYou" class="h-10 w-full" type="button" :disabled="pending" @click="run">{{ pending ? t('invite.accepting') : t('invite.title') }}</Button>

@@ -2,9 +2,11 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, watch } from 'node:fs
 import { join } from 'node:path'
 import { addComponent, addImports, addPlugin, addServerHandler, addServerImports, addNitroPlugin, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, hasNuxtModule, updateTemplates } from '@nuxt/kit'
 import type { NuxtPage } from '@nuxt/schema'
-import { compileTree, mergeTrees, type RawTree } from './core/compile.ts'
+import { compileTree, mergeTrees, type RawTree } from './core/compiler.ts'
 import { inUserZone, isExcluded, localizePath, resolveConfig, type LocaleConfig, type LocaleInput, type Strategy } from './core/locales.ts'
 import type { Params } from './core/messages.ts'
+
+export type { Alternate, AlternatesResolver, TypedTranslator } from './runtime/types'
 
 export interface ModuleOptions {
   locales: (string | LocaleInput)[]
@@ -404,7 +406,7 @@ export {}
       { name: 'useLocaleSuggestion', from: join(runtime, 'composables') },
       { name: 'addAlternatesResolver', from: join(runtime, 'composables') },
     ])
-    addComponent({ name: 'T', filePath: join(runtime, 'components/T') })
+    addComponent({ name: 'I18nT', filePath: join(runtime, 'components/I18nT') })
 
     // No `route`: Nitro 2 reads `/**` as a literal prefix, Nitro 3 reads no route as global.
     addServerHandler({ middleware: true, handler: { nuxt: join(runtime, 'server/middleware') } })

@@ -194,7 +194,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       <template v-if="sec.brick.kind === 'single'">
         <div v-if="todayFlag(sec.key, sec.brick, sec.tasks)" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md px-3 py-2.5 bg-warning/10">
           <p>
-            <T k="site.quick.todayDone" :params="{ task: shownLabel(todayFlag(sec.key, sec.brick, sec.tasks)!.task.label, s.main.value) }"><template #task="{ text }"><strong>{{ text }}</strong></template></T>
+            <I18nT k="site.quick.todayDone" :params="{ task: shownLabel(todayFlag(sec.key, sec.brick, sec.tasks)!.task.label, s.main.value) }"><template #task="{ text }"><strong>{{ text }}</strong></template></I18nT>
             <span v-for="text in flagTexts(sec.brick, todayFlag(sec.key, sec.brick, sec.tasks)!)" :key="text" class="mt-0.5 block">{{ t('site.quick.flagText', { text }) }}</span>
           </p>
           <Button type="button" variant="outline" size="sm" :disabled="lifting" @click="lift(todayFlag(sec.key, sec.brick, sec.tasks)!, sec.key)">{{ t('site.quick.clearToday') }}</Button>

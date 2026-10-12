@@ -1,6 +1,6 @@
 import { defineEventHandler, getCookie, getRequestHeader, getRequestURL, sendRedirect } from 'nuxt/server'
 import { config } from '#ginko-i18n/config.mjs'
-import { inUserZone, isExcluded, localeFromPath, localizePath, negotiateLocale } from '@lupinum/ginko-i18n/core'
+import { inUserZone, isExcluded, localeFromPath, localizePath, negotiateLocale } from '@lupinum/ginko-i18n/internal'
 
 const c = config
 

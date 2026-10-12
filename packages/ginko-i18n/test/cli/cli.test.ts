@@ -61,7 +61,7 @@ describe('message and usage findings', () => {
     change(dir, (v) => {
       v.nested = { first: '{bad', second: 'Second' }
     })
-    writeFileSync(join(dir, 'src/page.vue'), 'const x = useI18n(\'lib\')\nx.t(\'absent\')\nt(`unknown`)\n<T k="component" />')
+    writeFileSync(join(dir, 'src/page.vue'), 'const x = useI18n(\'lib\')\nx.t(\'absent\')\nt(`unknown`)\n<I18nT k="component" />')
     const findings = run(dir, ['check']).value.findings
     expect(findings.find((f: { code: string }) => f.code === 'invalid-icu')).toMatchObject({ key: 'nested.first', line: 4, file: join(dir, 'i18n/en.json') })
     expect(findings.filter((f: { code: string }) => f.code === 'unknown-key').map((f: { key: string, line: number }) => [f.key, f.line])).toEqual([['lib.absent', 2], ['unknown', 3], ['component', 4]])

@@ -141,7 +141,7 @@ export function usages(m: Manifest) {
       if (t) functions.set(t[1] ?? 't', match[3] ?? '')
     }
     const names = [...functions.keys()].map(n => n.replace(/\$/g, '\\$')).join('|')
-    const calls = new RegExp(`(?:(\\b\\w+)\\s*\\.\\s*t|(?<![\\w$.])(${names}))\\s*\\(\\s*([^)]*)|<T\\b[^>]*\\bk\\s*=\\s*(['"])(.*?)\\4`, 'g')
+    const calls = new RegExp(`(?:(\\b\\w+)\\s*\\.\\s*t|(?<![\\w$.])(${names}))\\s*\\(\\s*([^)]*)|<I18nT\\b[^>]*\\bk\\s*=\\s*(['"])(.*?)\\4`, 'g')
     for (const match of text.matchAll(calls)) {
       const line = text.slice(0, match.index).split('\n').length
       // A key on the line after `@ts-expect-error` / `@vue-expect-error` is wrong on purpose (type tests).

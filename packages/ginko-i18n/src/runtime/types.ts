@@ -31,7 +31,7 @@ export type ParamsFor<NS extends string, K extends string> = Known extends true
       : [params: GinkoI18nMessages[FullKey<NS, K>] & Params, options?: TranslateOptions]
     : [params?: Params, options?: TranslateOptions]
   : [params?: Params, options?: TranslateOptions]
-/** A full message key (`<T k>` takes full keys only: a namespace prop could not be checked together with `k`). */
+/** A full message key (`<I18nT k>` takes full keys only: a namespace prop could not be checked together with `k`). */
 export type TKey = AllKeys
 
 /** The typed `t` and `parts` of a translator for namespace `NS`. Missing keys and parameters fail typecheck. */
