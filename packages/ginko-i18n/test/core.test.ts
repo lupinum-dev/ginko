@@ -136,6 +136,8 @@ describe('site time zone and relative time', () => {
     ['5 minutes ago, en', createFormatters('en').relative(now - 5 * minute, now), '5 minutes ago'],
     ['5 minutes ago, de-AT', createFormatters('de-AT').relative(now - 5 * minute, now), 'vor 5 Minuten'],
     ['1 day ago, en', createFormatters('en').relative(now - 86_400_000, now), 'yesterday'],
+    ['59.7 minutes round up to an hour', createFormatters('de-AT').relative(now - 59.7 * minute, now), 'vor 1 Stunde'],
+    ['23.6 hours round up to a day', createFormatters('en').relative(now + 23.6 * 60 * minute, now), 'tomorrow'],
   ])('%s', (_, actual, expected) => {
     expect(actual).toBe(expected)
   })
