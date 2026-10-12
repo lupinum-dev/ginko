@@ -259,6 +259,10 @@
       "someone": "Alguien",
       "viaAi": "(vía IA: {ai})",
       "viaAiUnnamed": "(vía IA)"
+    },
+    "notLive": {
+      "subject": "No se publicó: un cambio planificado para {site}",
+      "text": "Hola:\n\nun cambio que planificaste para «{site}» no se publicó porque ya no encaja:\n\n{what}\n\nEl motivo está en el historial: {path}\n"
     }
   }
 }

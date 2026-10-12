@@ -7,7 +7,7 @@ import type { Schema } from '@lupinum/ginko/internal'
 import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
-import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
+import { internalAction, internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { checkFuture, createAs, publishAs, removeAs, saveAs, unpublishAs } from './entries'
 import { currentUser, fail, memberOf, type Actor } from './lib/access'
 import { rootOf } from './lib/content'
@@ -211,8 +211,12 @@ export const applyScheduled = internalMutation({
       return null
     }
     const applied = await applyNow(ctx, p, p.decidedBy)
-    if (applied.ok) await markApplied(ctx, p, p.decidedBy, applied.change)
-    else await markStale(ctx, p, applied, p.decidedBy, true)
+    if (applied.ok) {
+      await markApplied(ctx, p, p.decidedBy, applied.change)
+      return null
+    }
+    await markStale(ctx, p, applied, p.decidedBy, true)
+    await mailNotLive(ctx, p.site, p.decidedBy, (p.msg as HistoryMsg | undefined) ?? p.sentence)
     return null
   },
 })
@@ -474,27 +478,43 @@ export const approveRelease = mutation({
   },
 })
 
-/** The run of a scheduled release. A member that went stale blocks it; the others go back to open. */
-export const applyReleaseScheduled = internalMutation({
+/**
+ * The run of a scheduled release. A member that went stale blocks it; the others go back to open.
+ * Applying is all or none, so a member that fails while being written rolls the whole run back. The
+ * job is an action for that case: the failure is then recorded in its own mutation (`releaseFailed`)
+ * instead of leaving the release "scheduled" with nobody told.
+ */
+export const applyReleaseScheduled = internalAction({
+  args: { release: v.id('releases'), at: v.number() },
+  handler: async (ctx, args): Promise<null> => {
+    try {
+      await ctx.runMutation(internal.proposals.runScheduledRelease, args)
+    } catch (error) {
+      const data = error instanceof ConvexError ? error.data as { code?: string; details?: { stale?: StaleMember[] } } : undefined
+      await ctx.runMutation(internal.proposals.releaseFailed, { ...args, stale: data?.code === 'STALE' ? data.details?.stale ?? [] : [] })
+      // Anything but a member that no longer fits is a bug: it stays visible in the logs.
+      if (data?.code !== 'STALE') throw error
+    }
+    return null
+  },
+})
+
+type StaleMember = { proposal: Id<'proposals'>; reason: string; reasonMsg: HistoryMsg }
+
+export const runScheduledRelease = internalMutation({
   args: { release: v.id('releases'), at: v.number() },
   handler: async (ctx, args): Promise<null> => {
     const release = await ctx.db.get(args.release)
     if (!release || release.status !== 'scheduled' || release.at !== args.at || !release.decidedBy) return null
     const by = release.decidedBy
-    const members = (await ctx.db.query('proposals').withIndex('by_release', (q) => q.eq('release', release._id)).collect())
-      .filter((p) => p.status === 'scheduled').sort((a, b) => a._creationTime - b._creationTime)
+    const members = await scheduledMembers(ctx, release._id)
     const site = await ctx.db.get(release.site)
     const approver = site && await memberOf(ctx, site, { id: by })
     const stale = approver && isApprover(approver)
       ? await staleMembers(ctx, members)
       : members.map((p) => { const why = staleBecause('history.staleApproverNotAllowed'); return { proposal: p._id, sentence: p.sentence, reason: why.reason, reasonMsg: why.msg } })
     if (stale.length) {
-      for (const p of members) {
-        const s = stale.find((x) => x.proposal === p._id)
-        if (s) await markStale(ctx, p, { reason: s.reason, msg: s.reasonMsg }, by)
-        else await reopen(ctx, p)
-      }
-      await ctx.db.patch(release._id, { status: 'stale', job: undefined })
+      await blockRelease(ctx, release, members, stale)
       return null
     }
     for (const p of members) {
@@ -506,6 +526,50 @@ export const applyReleaseScheduled = internalMutation({
     return null
   },
 })
+
+/** A scheduled release whose run was rolled back: the failing member is stale with its reason, the others are open again. */
+export const releaseFailed = internalMutation({
+  args: { release: v.id('releases'), at: v.number(), stale: v.array(v.object({ proposal: v.id('proposals'), reason: v.string(), reasonMsg: v.any() })) },
+  handler: async (ctx, args): Promise<null> => {
+    const release = await ctx.db.get(args.release)
+    if (!release || release.status !== 'scheduled' || release.at !== args.at) return null
+    await blockRelease(ctx, release, await scheduledMembers(ctx, release._id), args.stale as StaleMember[])
+    return null
+  },
+})
+
+const scheduledMembers = async (ctx: QueryCtx, release: Id<'releases'>) =>
+  (await ctx.db.query('proposals').withIndex('by_release', (q) => q.eq('release', release)).collect())
+    .filter((p) => p.status === 'scheduled').sort((a, b) => a._creationTime - b._creationTime)
+
+/** The release did not go live: stale members keep their reason, the rest go back to open, and the approver is told. */
+async function blockRelease(ctx: MutationCtx, release: Doc<'releases'>, members: Doc<'proposals'>[], stale: StaleMember[]) {
+  const by = release.decidedBy!
+  for (const p of members) {
+    const s = stale.find((x) => x.proposal === p._id)
+    if (s) await markStale(ctx, p, { reason: s.reason, msg: s.reasonMsg }, by, true)
+    else await reopen(ctx, p)
+  }
+  await ctx.db.patch(release._id, { status: 'stale', job: undefined })
+  await mailNotLive(ctx, release.site, by, release.name)
+}
+
+/**
+ * Tells the approver that a change they planned did not go live (SPEC 17). Without this, a planned
+ * change that no longer fits fails at night and the inbox still says "scheduled".
+ */
+async function mailNotLive(ctx: MutationCtx, siteId: Id<'sites'>, approver: string, what: HistoryMsg | string) {
+  const site = await ctx.db.get(siteId)
+  if (!site || !mailAvailable()) return
+  const member = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).filter((q) => q.eq(q.field('user'), approver)).first()
+  if (!member?.email) return
+  const locale = await localeOfUser(ctx, member.user)
+  await queueMail(ctx, {
+    to: member.email,
+    subject: t(locale, 'mail.notLive.subject', { site: site.name }),
+    text: t(locale, 'mail.notLive.text', { site: site.name, what: typeof what === 'string' ? what : historyText(what, locale, site.schema as Schema), path: `${siteOrigin()}/s/${site.slug}/history` }),
+  })
+}
 
 // ---- Mail: one digest for the approvers ----
 

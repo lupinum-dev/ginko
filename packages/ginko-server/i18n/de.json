@@ -259,6 +259,10 @@
       "someone": "Jemand",
       "viaAi": "(über KI: {ai})",
       "viaAiUnnamed": "(über KI)"
+    },
+    "notLive": {
+      "subject": "Nicht live gegangen: eine geplante Änderung für {site}",
+      "text": "Hallo,\n\neine Änderung, die du für „{site}“ geplant hast, ist nicht live gegangen, weil sie nicht mehr passt:\n\n{what}\n\nDen Grund findest du im Verlauf: {path}\n"
     }
   }
 }

@@ -372,6 +372,27 @@ describe('releases', () => {
     expect(await s.t.run((ctx) => ctx.db.get(release))).toMatchObject({ status: 'applied' })
   })
 
+  it('a scheduled release that fails while applying is recorded as stale, nothing is written, the approver is told', async () => {
+    const s = await approvalSetup()
+    const a = (await s.cookPrice(s.saibling, 1450)) as Proposed
+    const b = (await s.cookPrice(s.frittaten, 1100)) as Proposed
+    const { release } = await s.as.owner.mutation(api.proposals.createRelease, { site: 'restaurant', name: 'Nachts' }) as { release: Id<'releases'> }
+    for (const p of [a, b]) await s.as.owner.mutation(api.proposals.addToRelease, { release, proposal: p.proposal })
+    const at = NOW + 2 * HOUR
+    await s.as.owner.mutation(api.proposals.approveRelease, { release, at })
+    // The cook loses the task in between: the pre-check passes, the save itself refuses.
+    await s.t.run(async (ctx) => {
+      const cook = (await ctx.db.query('memberships').collect()).find((m) => m.grants.includes('menu.price'))!
+      await ctx.db.patch(cook._id, { grants: [] })
+    })
+    await s.advanceTo(at + MINUTE)
+    expect((await s.row(s.saibling))!.data.price).toEqual({ amount: 1350 })
+    expect(await s.t.run((ctx) => ctx.db.get(release))).toMatchObject({ status: 'stale' })
+    expect((await s.proposalRow(a.proposal))!).toMatchObject({ status: 'stale', reasonMsg: { key: 'history.staleRefused' } })
+    expect((await s.proposalRow(b.proposal))!.status).toBe('open')
+    expect((await s.rows('outbox')).map((m) => m.subject)).toContain('Nicht live gegangen: eine geplante Änderung für Gasthaus zur Linde')
+  })
+
   it('staff cannot make or decide releases', async () => {
     const s = await approvalSetup()
     expect((await errorOf(s.as.cook.mutation(api.proposals.createRelease, { site: 'restaurant', name: 'X' }))).code).toBe('FORBIDDEN')

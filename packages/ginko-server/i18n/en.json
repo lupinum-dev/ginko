@@ -259,6 +259,10 @@
       "someone": "Someone",
       "viaAi": "(via AI: {ai})",
       "viaAiUnnamed": "(via AI)"
+    },
+    "notLive": {
+      "subject": "Did not go live: a planned change for {site}",
+      "text": "Hello,\n\na change you planned for “{site}” did not go live, because it no longer fits:\n\n{what}\n\nThe reason is in the history: {path}\n"
     }
   }
 }
