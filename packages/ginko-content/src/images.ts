@@ -95,7 +95,9 @@ function rewriteImage(props: Record<string, Json>, cx: ImageCx, prop: string, mo
     return
   }
   const root = resolve(cx.contentDir)
-  const abs = resolve(root, dirname(cx.file), decodeURI(clean))
+  let path: string
+  try { path = decodeURI(clean) } catch { return cx.fail(`Image “${src}” is not a valid path: write % as %25.`) }
+  const abs = resolve(root, dirname(cx.file), path)
   if (!abs.startsWith(root + sep)) return cx.fail(`Image “${src}” is outside content/.`)
   if (!isFile(abs)) return cx.fail(`Image “${src}” is missing (looked for ${join('content', abs.slice(root.length + 1))}).`)
   const bytes = readFileSync(abs)

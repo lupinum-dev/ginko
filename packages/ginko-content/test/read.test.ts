@@ -217,9 +217,13 @@ describe('images in Markdown', () => {
     expect(body).toContain('"width":40')
   })
 
-  it('reports a component image prop that is missing, with its file', async () => {
-    const r = await read({ 'content/pages/1.a.md': md('title: A', '::figure{src="./nope.svg"}') })
-    expect(r.errors.filter((e) => e.file === 'pages/1.a.md' && e.message.includes('is missing'))).toHaveLength(1)
+  it.each([
+    ['missing', './nope.svg', 'is missing'],
+    // Bug caught: decodeURI threw a URIError, so readContent rejected and the build stopped without naming the file.
+    ['a bare %', './50%off.svg', 'is not a valid path'],
+  ])('reports a component image prop that is %s, with its file', async (_name, src, message) => {
+    const r = await read({ 'content/pages/1.a.md': md('title: A', `::figure{src="${src}"}`) })
+    expect(r.errors.filter((e) => e.file === 'pages/1.a.md' && e.message.includes(message))).toHaveLength(1)
   })
 
   // Bug caught: a co-located image got no srcset, so phones downloaded the full-size original.
