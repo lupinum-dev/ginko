@@ -97,7 +97,7 @@ export default defineNuxtModule<ModuleOptions>({
     const unknown = Object.keys(options).filter(k => !KNOWN.has(k))
     if (unknown.length)
       throw new Error(`[ginko-i18n] Unknown option(s) i18n.${unknown.join(', i18n.')}. Fix: remove them; ginko-i18n is not @nuxtjs/i18n.`)
-    if (nuxt.options.modules.some(m => (Array.isArray(m) ? m[0] : m) === '@nuxtjs/i18n'))
+    if (hasNuxtModule('@nuxtjs/i18n', nuxt))
       throw new Error('[ginko-i18n] @nuxtjs/i18n is also installed. Fix: remove one; two modules cannot both own the locale.')
 
     // Nuxt layers concatenate arrays, so a site that repeats a layer's locales gets each one twice.
