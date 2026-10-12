@@ -1,6 +1,5 @@
 import { existsSync, readFileSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
-import sharp from 'sharp'
 import { IMAGE_URL_PREFIX, variantFiles } from './images.ts'
 
 export interface Variant { width: number; url: string }
@@ -12,6 +11,8 @@ export interface Variant { width: number; url: string }
  */
 export async function makeVariants(path: string, hash: string, width: number, dir: string, names: Set<string>, counter?: { encoded: number }): Promise<Variant[]> {
   const out: Variant[] = []
+  // Loaded here, not on import: `ginko check` never encodes, so it runs where sharp's native binary is missing.
+  const sharp = (await import('sharp')).default
   for (const { width: w, name } of variantFiles(path, hash, width)) {
     names.add(name)
     const target = join(dir, name)

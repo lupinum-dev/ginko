@@ -56,14 +56,14 @@ describe('YAML and JSON entries', () => {
   it('a brick with a markdown field cannot use data files', async () => {
     const r = await read({ 'content/docs/a.yml': 'title: A' })
     expect(r.entries.docs).toEqual([])
-    expect(r.errors).toEqual([{ file: 'docs/a.yml', path: 'body', message: expect.stringContaining('Markdown-Feld') }])
+    expect(r.errors).toEqual([{ file: 'docs/a.yml', path: 'body', message: expect.stringContaining('markdown field') }])
   })
 })
 
 describe('broken data files', () => {
   it.each([
-    ['YAML', 'a.yml', 'title: Kaffee\nprice: [3\nstock: 2\n', 'Ungültiges YAML', 3],
-    ['JSON', 'a.json', '{\n  "title": "Kaffee",\n  "price": }\n', 'Ungültiges JSON', 3],
+    ['YAML', 'a.yml', 'title: Kaffee\nprice: [3\nstock: 2\n', 'Invalid YAML', 3],
+    ['JSON', 'a.json', '{\n  "title": "Kaffee",\n  "price": }\n', 'Invalid JSON', 3],
   ])('%s: the error names the file and a line', async (_, file, text, message, line) => {
     const r = await read({ [`content/angebote/${file}`]: text })
     expect(r.entries.angebote).toEqual([])
@@ -91,8 +91,8 @@ describe('CSV entries', () => {
   })
 
   it.each([
-    ['comma decimal', 'slug,title,price\nkaffee,Kaffee,3.5\ntee,Tee,"3,5"', 3, 'price', 'keine Zahl'],
-    ['list column', 'slug,title,steps\nkaffee,Kaffee,mahlen', 2, 'steps', 'nicht in CSV'],
+    ['comma decimal', 'slug,title,price\nkaffee,Kaffee,3.5\ntee,Tee,"3,5"', 3, 'price', 'not a number'],
+    ['list column', 'slug,title,steps\nkaffee,Kaffee,mahlen', 2, 'steps', 'cannot be written in CSV'],
   ])('%s: the error names the column and the row line', async (_, text, line, path, message) => {
     const r = await read({ 'content/angebote/liste.csv': text })
     expect(r.errors).toEqual([{ file: 'angebote/liste.csv', path, line, message: expect.stringContaining(message) }])
@@ -102,7 +102,7 @@ describe('CSV entries', () => {
 
   it('needs a slug column', async () => {
     const r = await read({ 'content/angebote/liste.csv': 'title\nKaffee' })
-    expect(r.errors).toEqual([{ file: 'angebote/liste.csv', line: 1, message: expect.stringContaining('„slug“') }])
+    expect(r.errors).toEqual([{ file: 'angebote/liste.csv', line: 1, message: expect.stringContaining('“slug”') }])
   })
 })
 

@@ -23,7 +23,7 @@ export async function checkFileLinks(input: { config: SiteInput; root: string; l
   const result = await content.buildFileBundles(contentDir, publicDir, schema, new Date(), { drafts: false })
   let ok = true
   for (const e of result.errors) {
-    input.log(`content/${e.file}${e.path ? ` (${e.path})` : ''}: ${e.message}`)
+    input.log(content.errorLine(e))
     ok = false
   }
   // Same options as the build: unknown paths are checked only for sites with file bricks alone.

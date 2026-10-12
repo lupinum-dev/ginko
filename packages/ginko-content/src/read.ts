@@ -5,7 +5,7 @@ import type {
   Brick, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  imageInfo, isTranslatable, printOf, sha256, slugify, urlClashes, urlsFor, validate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, urlClashes, urlsFor, validate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -21,6 +21,11 @@ export interface ContentError {
   message: string
   /** 1-based line in the file, when the error belongs to one (YAML, JSON and CSV parse errors, CSV rows). */
   line?: number
+}
+
+/** One error as `ginko check` and the build print it: `content/<file>:<line> (<field>): <message>`. */
+export function errorLine(e: ContentError): string {
+  return `content/${e.file}${e.line !== undefined ? `:${e.line}` : ''}${e.path ? ` (${e.path})` : ''}: ${e.message}`
 }
 
 export interface ReadOptions {
@@ -79,11 +84,11 @@ function fail(cx: FileCx, path: string, message: string) {
 function redirectPaths(cx: FileCx, value: unknown): string[] | undefined {
   const list = Array.isArray(value) ? value : [value]
   if (!list.every((p): p is string => typeof p === 'string' && p.startsWith('/') && !p.startsWith('//'))) {
-    fail(cx, 'redirectFrom', '„redirectFrom“ muss ein Pfad oder eine Liste von Pfaden sein, jeder beginnt mit „/“.')
+    fail(cx, 'redirectFrom', '“redirectFrom” must be a path or a list of paths, each starting with “/”.')
     return undefined
   }
   if (!cx.isMain) {
-    fail(cx, 'redirectFrom', '„redirectFrom“ gehört in die Datei der Hauptsprache.')
+    fail(cx, 'redirectFrom', '“redirectFrom” belongs in the main-language file.')
     return undefined
   }
   return list
@@ -130,15 +135,15 @@ function parseDataFile(text: string, ext: string, rel: string, errors: ContentEr
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     if (ext === 'json') {
-      errors.push({ file: rel, message: `Ungültiges JSON: ${reason}`, line: lineAt(text, jsonErrorOffset(text, reason)) })
+      errors.push({ file: rel, message: `Invalid JSON: ${reason}`, line: lineAt(text, jsonErrorOffset(text, reason)) })
     } else {
       const mark = (error as { mark?: { line?: number }; reason?: string }).mark
       const why = (error as { reason?: string }).reason ?? reason.split('\n')[0]
-      errors.push({ file: rel, message: `Ungültiges YAML: ${why}`, ...(typeof mark?.line === 'number' ? { line: mark.line + 1 } : {}) })
+      errors.push({ file: rel, message: `Invalid YAML: ${why}`, ...(typeof mark?.line === 'number' ? { line: mark.line + 1 } : {}) })
     }
     return undefined
   }
-  if (!isRecord(data)) { errors.push({ file: rel, message: 'Die Datei muss ein Objekt mit Feldern enthalten.' }); return undefined }
+  if (!isRecord(data)) { errors.push({ file: rel, message: 'The file must hold an object with fields.' }); return undefined }
   return data
 }
 
@@ -153,7 +158,7 @@ function checkPublicFile(cx: FileCx, path: string, src: string) {
     const image = imageInfo(head(abs, 64 * 1024))
     cx.files[src] = { url: src, name: basename(src), size, ...(image ? { width: image.width, height: image.height } : {}) }
   } catch {
-    fail(cx, path, `Datei „${src}“ fehlt unter public/.`)
+    fail(cx, path, `File “${src}” is missing under public/.`)
   }
 }
 
@@ -166,10 +171,10 @@ function convertFields(fields: Fields, data: Record<string, unknown>, cx: FileCx
   for (const [key, value] of Object.entries(data)) {
     const field = Object.hasOwn(fields, key) ? fields[key] : undefined
     const path = cx.prefix + key
-    if (!field || field.retired) { fail(cx, path, `Unbekanntes Feld „${key}“.`); continue }
-    if (field.type === 'markdown') { fail(cx, path, `„${field.label}“ steht im Text der Datei, nicht im Frontmatter.`); continue }
+    if (!field || field.retired) { fail(cx, path, `Unknown field “${key}”.`); continue }
+    if (field.type === 'markdown') { fail(cx, path, `“${field.label}” is the text of the file, not a frontmatter key.`); continue }
     if (!cx.isMain && !isTranslatable(field) && field.type !== 'list' && field.type !== 'image') {
-      fail(cx, path, `„${field.label}“ gibt es nur in der Hauptsprache.`)
+      fail(cx, path, `“${field.label}” is set in the main-language file only.`)
       continue
     }
     switch (field.type) {
@@ -181,8 +186,8 @@ function convertFields(fields: Fields, data: Record<string, unknown>, cx: FileCx
         if (typeof value === 'string') { checkPublicFile(cx, path, value); out[key] = { file: value } } else out[key] = value
         break
       case 'image': {
-        if (!isRecord(value)) { fail(cx, path, `„${field.label}“ braucht src und alt.`); break }
-        if (!cx.isMain && value.src !== undefined) { fail(cx, path, `„${field.label}“ gibt es nur in der Hauptsprache (src).`); break }
+        if (!isRecord(value)) { fail(cx, path, `“${field.label}” needs src and alt.`); break }
+        if (!cx.isMain && value.src !== undefined) { fail(cx, path, `“${field.label}”: src is set in the main-language file only.`); break }
         if (typeof value.src === 'string') checkPublicFile(cx, path, value.src)
         out[key] = { ...(cx.isMain ? { file: value.src } : {}), alt: value.alt }
         break
@@ -191,7 +196,7 @@ function convertFields(fields: Fields, data: Record<string, unknown>, cx: FileCx
         // A list with one subfield may be written as plain values: `tags: [a, b]` = `tags: [{ name: a }, …]`.
         const only = Object.keys(field.of).length === 1 ? Object.keys(field.of)[0] : undefined
         const rows = Array.isArray(value) && only !== undefined ? value.map((row) => (isRecord(row) ? row : { [only]: row })) : value
-        if (!Array.isArray(rows) || !rows.every(isRecord)) { fail(cx, path, `„${field.label}“ muss eine Liste von Objekten sein.`); break }
+        if (!Array.isArray(rows) || !rows.every(isRecord)) { fail(cx, path, `“${field.label}” must be a list of objects.`); break }
         out[key] = rows.map((row, i) => convertFields(field.of, row, { ...cx, prefix: `${path}.${i}.` }))
         break
       }
@@ -242,7 +247,7 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
       const mainRows = rowsOf(mainView[key])
       for (const locale of cx.locales) {
         if (rowsOf(views[locale]?.[key]).length > mainRows.length) {
-          cx.errors.push({ file: cx.rels[locale] ?? '', path, message: `„${field.label}“ hat mehr Zeilen als in der Hauptsprache.` })
+          cx.errors.push({ file: cx.rels[locale] ?? '', path, message: `“${field.label}” has more rows than in the main language.` })
         }
       }
       out[key] = mainRows.map((_, i) => {
@@ -334,18 +339,18 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     const place = (src: Src, parsed: { name: string; number?: number; locale?: string }, rank: string, line?: number) => {
       const { rel } = src
       const report = (message: string) => errors.push({ file: rel, message, ...(line !== undefined ? { line } : {}) })
-      if (parsed.locale !== undefined && parsed.locale === main) return report(`Die Hauptsprache „${main}“ braucht keinen Suffix.`)
+      if (parsed.locale !== undefined && parsed.locale === main) return report(`The main language “${main}” takes no suffix in the file name.`)
       const locale = parsed.locale === undefined ? main : schema.locales.find((l) => l === parsed.locale)
-      if (locale === undefined) return report(`Sprache „${parsed.locale}“ ist nicht eingerichtet.`)
+      if (locale === undefined) return report(`Language “${parsed.locale}” is not in the site's locales.`)
       const group = groups.get(parsed.name) ?? { rank, translations: {} }
       groups.set(parsed.name, group)
       if (locale === main) {
-        if (group.main !== undefined) return report(`Eintrag „${relOf(parsed.name)}“ gibt es schon.`)
+        if (group.main !== undefined) return report(`Entry “${relOf(parsed.name)}” exists twice.`)
         group.main = src
         group.number = parsed.number
         group.rank = rank
       } else {
-        if (group.translations[locale] !== undefined) return report(`Sprache „${locale}“ gibt es für diesen Eintrag schon.`)
+        if (group.translations[locale] !== undefined) return report(`Language “${locale}” exists twice for this entry.`)
         group.translations[locale] = src
       }
     }
@@ -353,18 +358,18 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const rel = relOf(name)
       const path = join(contentDir, rel)
       if (extOf(name) === 'csv') {
-        if (!folder) { errors.push({ file: rel, message: 'CSV-Dateien gibt es nur für Sammlungen.' }); continue }
+        if (!folder) { errors.push({ file: rel, message: 'CSV files work for collections only.' }); continue }
         const csv = parseCsv(await readFile(path, 'utf8'))
         if ('error' in csv) { errors.push({ file: rel, ...csv.error }); continue }
         const [header, ...rows] = csv.rows
         if (header === undefined) continue
         const columns = header.cells.map((c) => c.trim())
         const slugColumn = columns.indexOf('slug')
-        if (slugColumn < 0) { errors.push({ file: rel, line: header.line, message: 'Die CSV-Datei braucht eine Spalte „slug“.' }); continue }
+        if (slugColumn < 0) { errors.push({ file: rel, line: header.line, message: 'The CSV file needs a “slug” column.' }); continue }
         const localeColumn = columns.indexOf('locale')
         rows.forEach((row, index) => {
           const slug = (row.cells[slugColumn] ?? '').trim()
-          if (slug === '') { errors.push({ file: rel, line: row.line, message: 'Die Spalte „slug“ ist leer.' }); return }
+          if (slug === '') { errors.push({ file: rel, line: row.line, message: 'The “slug” cell is empty.' }); return }
           const locale = localeColumn < 0 ? '' : (row.cells[localeColumn] ?? '').trim()
           place({ rel, path, name: slug, csv: { columns, row } }, { name: slug, locale: locale || undefined }, `${name}\u0000${String(index).padStart(8, '0')}`, row.line)
         })
@@ -389,7 +394,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     const slugOwner = new Map<string, string>()
     for (const [name, group] of sorted) {
       if (group.main === undefined) {
-        for (const src of Object.values(group.translations)) errors.push({ file: src.rel, message: `Keine Hauptsprache-Datei zu „${src.rel}“.`, ...(src.csv ? { line: src.csv.row.line } : {}) })
+        for (const src of Object.values(group.translations)) errors.push({ file: src.rel, message: `“${src.rel}” has no main-language file.`, ...(src.csv ? { line: src.csv.row.line } : {}) })
         continue
       }
       const id = folder ? `${key}/${name}` : key
@@ -425,7 +430,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
           const last = issue.path.split('.').pop()
           const locale = schema.locales.find((l) => l === last)
           const at = locale && rels[locale] ? locale : main
-          errors.push({ file: rels[at] ?? mainRel, path: issue.path, message: issue.message, ...(lines[at] !== undefined ? { line: lines[at] } : {}) })
+          errors.push({ file: rels[at] ?? mainRel, path: issue.path, message: coreMessage('en', issue.key, issue.params), ...(lines[at] !== undefined ? { line: lines[at] } : {}) })
         }
         continue
       }
@@ -450,7 +455,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       }
       const clash = taken.find((t) => slugOwner.has(t.key))
       if (clash) {
-        errors.push({ file: rels[clash.locale] ?? mainRel, path: slugKey, message: `Adresse „${clash.slug}“ gibt es schon bei „${slugOwner.get(clash.key)}“.` })
+        errors.push({ file: rels[clash.locale] ?? mainRel, path: slugKey, message: `Slug “${clash.slug}” is already taken by “${slugOwner.get(clash.key)}”.` })
         continue
       }
 
@@ -465,7 +470,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const urls = brick.kind === 'collection' ? urlsFor(schema, key, brick, entry, (fileId) => files[fileId]) : {}
       const urlClash = urlClashes([...urlOwners, { id, urls }]).find((c) => c.second === id)
       if (urlClash) {
-        errors.push({ file: rels[urlClash.locale] ?? mainRel, path: slugKey, message: `Adresse „${urlClash.url}“ gibt es schon bei „${urlClash.first}“.` })
+        errors.push({ file: rels[urlClash.locale] ?? mainRel, path: slugKey, message: `URL “${urlClash.url}” is already taken by “${urlClash.first}”.` })
         continue
       }
       urlOwners.push({ id, urls })
@@ -504,7 +509,9 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         const text = await readFile(src.path, 'utf8')
         if (ext === 'md') {
           // Parsed once, with the file's frontmatter; the profile problems are reported by validate() on the body text.
-          parsed = await parseFile(text)
+          const field = markdownKey === undefined ? undefined : brick.fields[markdownKey]
+          parsed = await parseFile(text, { profile: field?.type === 'markdown' ? effectiveProfile(field) : undefined, components: schema.components })
+          for (const problem of parsed.previewProblems) fail(cx, markdownKey ?? 'body', `In a \`\`\`md preview fence: ${coreMessage('en', problem.key, problem.params)}`)
           data = parsed.frontmatter
           const imageCx = { contentDir, publicDir, file: rel, images, renames: new Map<string, string>(), imageProps, sized, fail: (message: string) => fileErrors.push({ file: rel, message }) }
           rewriteImages(parsed.value.nodes, imageCx)
@@ -519,16 +526,16 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       // `draft` and `redirectFrom` are reserved: they are no fields of the brick.
       const { draft, redirectFrom, ...fields } = data
       const redirects = redirectFrom === undefined ? undefined : redirectPaths(cx, redirectFrom)
-      if (draft !== undefined && typeof draft !== 'boolean') fail(cx, 'draft', '„draft“ muss true oder false sein.')
+      if (draft !== undefined && typeof draft !== 'boolean') fail(cx, 'draft', '“draft” must be true or false.')
       if (draft === true && !drafts && fileErrors.length === 0) return 'draft'
       const view = convertFields(brick.fields, fields, cx)
       const hasBody = parsed !== undefined && parsed.value.nodes.length > 0
       if (parsed === undefined && markdownKey !== undefined) {
         const label = brick.fields[markdownKey]!.label
-        fail(cx, markdownKey, `„${label}“ ist ein Markdown-Feld und steht im Text einer .md-Datei; ${ext === 'csv' ? 'CSV' : ext.toUpperCase()}-Dateien haben keinen Text.`)
+        fail(cx, markdownKey, `“${label}” is a markdown field: it is the text of a .md file, and ${ext === 'csv' ? 'CSV' : ext.toUpperCase()} files have no text.`)
       }
       if (parsed !== undefined && markdownKey !== undefined && hasBody) view[markdownKey] = parsed.body
-      if (markdownKey === undefined && hasBody) fail(cx, 'body', `Der Text passt zu keinem Feld in „${key}“.`)
+      if (markdownKey === undefined && hasBody) fail(cx, 'body', `The text fits no field of “${key}” (it has no markdown field).`)
       // The slug defaults to the file name without its number (CONTENT.md "Slug"), for CSV to the `slug` cell.
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
       errors.push(...fileErrors)
@@ -544,7 +551,6 @@ function markdownKeyOf(brick: Brick): string | undefined {
   return Object.keys(brick.fields).find((k) => brick.fields[k]!.type === 'markdown')
 }
 
-/** Content files (`.md`, `.yml`, `.yaml`, `.json`, `.csv`) directly in `dir`, by name; a missing folder has none. */
 /** The names of a collection folder's main-language entries: file names, and the slugs of CSV rows. Unreadable CSV is reported later. */
 async function entryNames(dir: string): Promise<string[]> {
   const names: string[] = []
@@ -567,6 +573,7 @@ async function entryNames(dir: string): Promise<string[]> {
   return names
 }
 
+/** Content files (`.md`, `.yml`, `.yaml`, `.json`, `.csv`) directly in `dir`, by name; a missing folder has none. */
 async function dataNames(dir: string): Promise<string[]> {
   const dirents = await readdir(dir, { withFileTypes: true }).catch(() => [])
   return dirents.filter((d) => d.isFile() && extensions.some((e) => d.name.endsWith(`.${e}`))).map((d) => d.name).sort()
@@ -581,7 +588,7 @@ function slugKeyOf(brick: Brick): string | undefined {
 function brickProblemsOf(brick: Brick): { path?: string; message: string }[] {
   const problems: { path?: string; message: string }[] = []
   if (Object.values(brick.fields).filter((f) => f.type === 'markdown' && !f.retired).length > 1) {
-    problems.push({ message: 'Der Datei-Baustein hat mehr als ein Markdown-Feld.' })
+    problems.push({ message: 'The file brick has more than one markdown field.' })
   }
   return problems
 }

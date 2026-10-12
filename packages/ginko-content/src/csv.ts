@@ -54,7 +54,7 @@ export function parseCsv(input: string): CsvParse {
       cell += c
     }
   }
-  if (quoted) return { error: { line: quoteLine, message: 'Ein Wert in Anführungszeichen wird nicht geschlossen.' } }
+  if (quoted) return { error: { line: quoteLine, message: 'A quoted value is never closed.' } }
   if (cell !== '' || cells.length > 0) endRow()
   return { rows }
 }
@@ -72,17 +72,17 @@ export function cellValue(fields: Fields, column: string, cell: string): { value
     case 'number':
     case 'money':
       if (!/^-?\d+(\.\d+)?$/.test(text)) {
-        return { error: `Spalte „${column}“: „${text}“ ist keine Zahl. Zahlen brauchen einen Punkt als Dezimaltrenner (12.5, nicht 12,5).` }
+        return { error: `Column “${column}”: “${text}” is not a number. Use a point as the decimal separator (12.5, not 12,5).` }
       }
       return { value: Number(text) }
     case 'boolean':
-      if (text !== 'true' && text !== 'false') return { error: `Spalte „${column}“: „${text}“ ist kein Ja/Nein-Wert. Erlaubt: true oder false.` }
+      if (text !== 'true' && text !== 'false') return { error: `Column “${column}”: “${text}” is not true or false.` }
       return { value: text === 'true' }
     case 'list':
     case 'image':
     case 'choices':
     case 'daterange':
-      return { error: `Spalte „${column}“: „${field.label}“ gibt es nicht in CSV. Dafür eine YAML- oder Markdown-Datei nehmen.` }
+      return { error: `Column “${column}”: “${field.label}” cannot be written in CSV. Use a YAML or Markdown file for it.` }
     default:
       return { value: text }
   }

@@ -1,4 +1,4 @@
-import { parseMarkdown as parseCore, type ParsedMarkdown } from '@lupinum/ginko/internal'
+import { parseMarkdown as parseCore, type Described, type ParsedMarkdown, type ParseOptions } from '@lupinum/ginko/internal'
 import shiki from 'comark/plugins/shiki'
 import { bundledLanguages } from 'shiki/langs'
 import { bundledThemes } from 'shiki/themes'
@@ -25,16 +25,29 @@ async function createPlugins() {
 
 let plugins: ReturnType<typeof createPlugins> | undefined
 
+/** One Markdown file, parsed: the body tree, plus what the profile does not allow inside its ```md preview fences. */
+export interface ParsedFile extends ParsedMarkdown {
+  /** Problems of the preview fences only; the body's own problems are reported by validate() on the body text. */
+  previewProblems: Described[]
+}
+
 /**
  * One Markdown file → frontmatter and body tree: the core parser (heading anchors, toc) with the
  * Shiki plugin (themes github-light and catppuccin-mocha; code panels are dark, so the dark one shows) added. Profile checks are left to validate().
  * Components (`::callout` blocks and `<Callout>` tags) stay as element nodes; the site maps them.
+ * `check` is the markdown field's profile and the site's components: the preview of a ```md preview fence is rendered
+ * like the body, but validate() sees only the fence's code, so the preview is checked here.
  */
-export async function parseFile(text: string): Promise<ParsedMarkdown> {
+export async function parseFile(text: string, check: Pick<ParseOptions, 'profile' | 'components'> = {}): Promise<ParsedFile> {
   const shikiPlugins = await (plugins ??= createPlugins())
   const parsed = await parseCore(text, { frontmatter: true, plugins: shikiPlugins })
-  parsed.value.nodes = await withPreviews(parsed.value.nodes, async (code) => (await parseCore(code, { plugins: shikiPlugins })).value.nodes)
-  return parsed
+  const previewProblems: Described[] = []
+  parsed.value.nodes = await withPreviews(parsed.value.nodes, async (code) => {
+    const preview = await parseCore(code, { ...check, plugins: shikiPlugins })
+    previewProblems.push(...preview.problemMessages)
+    return preview.value.nodes
+  })
+  return { ...parsed, previewProblems }
 }
 
 type Node = string | [string, Record<string, unknown>, ...Node[]]
@@ -43,8 +56,8 @@ const textOf = (node: Node): string => (typeof node === 'string' ? node : node.s
 /**
  * A ```md preview fence shows its Markdown and what it renders: it becomes `['example', { preview }, pre]`, the
  * parsed content in the `preview` prop and the code block as the child. The preview sits in a prop, so its
- * headings stay out of the page's table of contents and its text out of search. A site without an `example`
- * renderer shows the code block alone.
+ * headings stay out of the page's table of contents and its text out of search. `GinkoMarkdown` shows the code
+ * block alone unless the site passes an `example` component (as @lupinum/ginko-docs does).
  */
 async function withPreviews<T>(nodes: T[], parse: (code: string) => Promise<unknown[]>): Promise<T[]> {
   return Promise.all(nodes.map(async (raw) => {

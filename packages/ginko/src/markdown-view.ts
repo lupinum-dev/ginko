@@ -7,7 +7,8 @@ import type { MarkdownTree } from './core/index.ts'
 
 // KaTeX and mermaid.js are not part of Ginko's bundle, so math and mermaid nodes show their source:
 // math as `<code class="math">`, mermaid as `<pre class="mermaid">` (the markup mermaid.js looks for).
-// A site that wants real rendering passes its own `math` / `mermaid` components, which win over these.
+// A ```md preview fence (`example`, from @lupinum/ginko-content) shows its code block alone.
+// A site that wants real rendering passes its own `math` / `mermaid` / `example` components, which win over these.
 const sourceOnly: Record<string, Component> = {
   math: defineComponent({
     name: 'GinkoMath',
@@ -19,6 +20,12 @@ const sourceOnly: Record<string, Component> = {
     name: 'GinkoMermaid',
     props: { content: { type: String, default: '' } },
     setup: (props) => () => h('pre', { class: 'mermaid' }, props.content),
+  }),
+  example: defineComponent({
+    name: 'GinkoExample',
+    // Declared so the parsed preview does not fall through as an attribute; the code block is the slot.
+    props: { preview: { type: Array, default: undefined } },
+    setup: (_, { slots }) => () => slots.default?.(),
   }),
 }
 

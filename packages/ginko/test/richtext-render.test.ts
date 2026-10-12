@@ -29,6 +29,13 @@ describe('GinkoMarkdown (plain Vue)', () => {
     expect(html).toContain('<pre class="mermaid">graph TD; A--&gt;B\n</pre>')
   })
 
+  // Bug caught: without a site renderer the node became an unknown <example> element with the preview tree in an attribute.
+  test('a ```md preview fence (`example`) shows its code block alone', async () => {
+    const html = await render({ nodes: [['example', { preview: [['p', {}, 'Shown']] }, ['pre', { language: 'md' }, ['code', {}, 'Shown']]]] })
+    expect(html).toContain('<pre language="md"><code>Shown</code></pre>')
+    expect(html).not.toMatch(/<example|preview=|<p>Shown/)
+  })
+
   test('a task list shows disabled checkboxes, each named by its item text', async () => {
     const { value } = await parseMarkdown('- [x] Fertig **jetzt**\n- [ ] Offen\n- Ohne Kästchen', { profile: 'basic' })
     const html = await render(value)
