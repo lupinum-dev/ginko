@@ -117,6 +117,6 @@ describe('without links.external', () => {
     const { fn } = fake({ 'HEAD https://dead.example/': 404 })
     const lines: string[] = []
     expect(await checkFileLinks({ ...site({ external: 'error' }), log: (l) => lines.push(l), fetch: fn })).toBe(false)
-    expect(lines).toEqual(['[ginko] external links: 1 checked, 0 from cache, 1 broken', 'content/docs/a: Externer Link https://dead.example/ ist kaputt (404).'])
+    expect(lines).toEqual(['[ginko] external links: 1 checked, 0 from cache, 1 broken', 'content/docs/a: External link https://dead.example/ is broken (404).'])
   })
 })

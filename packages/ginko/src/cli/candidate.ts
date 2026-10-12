@@ -6,6 +6,7 @@ import {
   type Field, type Fields, type Json, type Locale, type Migration, type MigrationDescriptor, type Schema, type SiteInput,
 } from '../core/index.ts'
 import { type Candidate, isObject, type ReleaseState, type Write } from './model.ts'
+import { english } from './report.ts'
 
 // The platform also counts translation prints, so it stays the authority on the exact size.
 const BUDGET = SITE_BUDGET
@@ -77,12 +78,12 @@ export async function buildCandidate(state: ReleaseState, site: SiteInput): Prom
   // Every entry of a brick whose fields changed is checked, not only the written ones (break-it 9).
   for (const entry of checked) {
     for (const issue of (await validate(schema, entry.brick, entry.data, { mode: 'release' })).errors) {
-      problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path || 'entry'}: ${issue.message}`)
+      problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path || 'entry'}: ${english(issue)}`)
     }
   }
   for (const single of created) {
     for (const issue of (await validate(schema, single.brick, single.data, { mode: 'release' })).errors) {
-      problems.push(`The new single brick “${single.brick}”, ${issue.path || 'entry'}: ${issue.message}`)
+      problems.push(`The new single brick “${single.brick}”, ${issue.path || 'entry'}: ${english(issue)}`)
     }
   }
 
