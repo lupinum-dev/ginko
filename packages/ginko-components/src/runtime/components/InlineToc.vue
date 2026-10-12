@@ -8,7 +8,7 @@ import { useText } from './text'
 
 // The table of contents of the tree <GinkoMarkdown> renders, provided under `ginko:toc`. No headings: nothing renders.
 // Closed by default (one line with the title); `open` shows the list from the start.
-const props = defineProps<{ title?: string; depth?: string | number; open?: boolean | string }>()
+const props = defineProps<{ title?: string; depth?: string | number; open?: boolean | string; appearance?: 'quiet' | 'tint' }>()
 const isOpen = computed(() => isOn(props.open))
 const t = useText()
 const provided = inject<Ref<MarkdownToc | null | undefined> | MarkdownToc | null>(GINKO_TOC_KEY, null)
@@ -21,7 +21,7 @@ const links = computed(() => limit(unref(provided)?.links ?? []))
 </script>
 
 <template>
-  <details v-if="links.length" class="ginko-inline-toc" :open="isOpen || undefined">
+  <details v-if="links.length" class="ginko-inline-toc" :open="isOpen || undefined" :data-appearance="appearance">
     <summary class="ginko-inline-toc-title">
       <SvgIcon class="ginko-inline-toc-icon" name="toc" />
       {{ title || t('toc.title') }}

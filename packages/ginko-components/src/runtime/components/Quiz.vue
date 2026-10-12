@@ -6,7 +6,7 @@ import { useText } from './text'
 
 // ::quiz with ::quiz-question children: one question at a time, back/next, a result at the end. Everything runs in
 // the browser; nothing is sent anywhere. The questions stay in the page (`hidden`) so their answers are kept.
-defineProps<{ title?: string; description?: string }>()
+defineProps<{ title?: string; description?: string; appearance?: 'quiet' | 'tint' }>()
 const slots = useSlots()
 const t = useText()
 const id = useId()
@@ -45,7 +45,7 @@ async function retry() {
 </script>
 
 <template>
-  <section ref="root" class="ginko-quiz" :aria-labelledby="title ? `${id}-title` : undefined">
+  <section ref="root" class="ginko-quiz" :data-appearance="appearance" :aria-labelledby="title ? `${id}-title` : undefined">
     <div v-if="title || description" class="ginko-quiz-header">
       <p v-if="title" :id="`${id}-title`" class="ginko-quiz-title">{{ title }}</p>
       <p v-if="description" class="ginko-quiz-description">{{ description }}</p>

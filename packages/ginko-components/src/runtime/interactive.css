@@ -42,7 +42,7 @@
 /* --- Accordion and collapse: <details>/<summary> --- */
 .ginko-accordion { margin: 1.25rem 0; border: 1px solid var(--ginko-surface-border, var(--border, var(--ginko-default-border))); background: var(--ginko-surface, transparent); border-radius: var(--radius, 0.625rem); overflow: hidden; }
 .ginko-accordion-item + .ginko-accordion-item { border-top: 1px solid var(--border, var(--ginko-default-border)); }
-[appearance='tint'] > .ginko-accordion-item + .ginko-accordion-item { border-top-color: color-mix(in oklab, var(--foreground, var(--ginko-default-foreground)) 8%, transparent); }
+[data-appearance='tint'] > .ginko-accordion-item + .ginko-accordion-item { border-top-color: color-mix(in oklab, var(--foreground, var(--ginko-default-foreground)) 8%, transparent); }
 .ginko-collapse { margin: 1.25rem 0; border: 1px solid var(--ginko-surface-border, var(--border, var(--ginko-default-border))); background: var(--ginko-surface, transparent); border-radius: var(--radius, 0.625rem); }
 .ginko-disclosure-summary {
   display: flex;

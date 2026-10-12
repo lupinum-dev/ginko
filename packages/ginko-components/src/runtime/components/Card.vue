@@ -11,6 +11,7 @@ const props = defineProps<{
   title?: string; description?: string; footer?: string; href?: string; image?: string; icon?: string; horizontal?: boolean | string
   /** Colour of the icon tile: a status colour or the primary colour; without it the tile stays neutral. */
   iconColor?: 'primary' | 'info' | 'success' | 'warning' | 'error'
+  appearance?: 'quiet' | 'tint'
 }>()
 const horizontal = computed(() => isOn(props.horizontal))
 const external = computed(() => !!props.href && isExternal(props.href))
@@ -23,6 +24,7 @@ const link = useLink()
     :data-link="href ? (external ? 'external' : 'internal') : undefined"
     :data-horizontal="horizontal || undefined"
     :data-icon-color="icon && iconColor ? iconColor : undefined"
+    :data-appearance="appearance"
   >
     <img v-if="image" class="ginko-card-image" :src="image" alt="" loading="lazy">
     <div class="ginko-card-main">

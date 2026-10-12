@@ -50,6 +50,17 @@ describe('registry and components', () => {
     expect(await serializeMarkdown(parsed.value.nodes, { original: await markdownBlocks(text, options) })).toBe(text)
   })
 
+  // `appearance` is theming API: every tag that offers it renders it as `data-appearance` on its framed root.
+  test.each(Object.entries(components).filter(([, def]) => 'appearance' in (def.props ?? {})).map(([tag]) => tag))('%s: appearance renders as data-appearance', async (tag) => {
+    const example = tag === 'inline-toc' ? `## Überblick\n\n${components[tag].editor!.example!}` : components[tag as keyof typeof components].editor!.example!
+    const text = example.replace(new RegExp(`(:+${tag})(\\{[^}]*)?\\}?`), (_, open: string, attrs?: string) => `${open}${attrs ? `${attrs} ` : '{'}appearance="tint"}`)
+    const parsed = await parseMarkdown(text, { profile: 'page', components })
+    expect(parsed.problems).toEqual([])
+    const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap }) })
+    app.provide(GINKO_TOC_KEY, parsed.value.toc)
+    expect(await renderToString(app)).toMatch(new RegExp(`class="${ROOT[tag]}[^"]*"[^>]*data-appearance="tint"`))
+  })
+
   test('a code group holds only code blocks', async () => {
     const parsed = await parseMarkdown('::code-group\n## Titel\n\nText\n::', { profile: 'page', components })
     expect(parsed.problems.join('\n')).toContain('darf nur „pre“ enthalten, nicht „h2“')

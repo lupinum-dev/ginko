@@ -6,7 +6,7 @@ import { useText } from './text'
 // Two forms. With `label`: a <details>/<summary> section readers open and close (works without JavaScript; `open` is
 // the initial state). Without `label`: tall content (usually a long code block) is cut off behind a fade until the
 // reader presses "Show more"; content that fits shows in full.
-const props = defineProps<{ label?: string; open?: boolean | string }>()
+const props = defineProps<{ label?: string; open?: boolean | string; appearance?: 'quiet' | 'tint' }>()
 const isOpen = computed(() => isOn(props.open))
 const t = useText()
 
@@ -31,7 +31,7 @@ onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <template>
-  <details v-if="label" class="ginko-collapse" :open="isOpen || undefined">
+  <details v-if="label" class="ginko-collapse" :open="isOpen || undefined" :data-appearance="appearance">
     <summary class="ginko-disclosure-summary">{{ label }}</summary>
     <div class="ginko-disclosure-body"><slot /></div>
   </details>
