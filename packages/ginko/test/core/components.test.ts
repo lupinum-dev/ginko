@@ -10,7 +10,7 @@ const registry = defineComponents({
     props: { type: f.choice('Art', { options: ['info', 'warning'] }), title: f.text('Titel', { optional: true, max: 10 }) },
   },
   tabs: { kind: 'block', label: 'Tabs', describe: 'Gruppe von Tabs.', props: {}, children: ['tab'] },
-  tab: { kind: 'block', label: 'Tab', describe: 'Ein Tab.', props: { label: f.text('Name') }, parents: ['tabs'] },
+  tab: { kind: 'block', label: 'Tab', describe: 'Ein Tab.', props: { title: f.text('Name') }, parents: ['tabs'] },
   card: { kind: 'block', label: 'Karte', describe: 'Karte mit Bereich.', props: {}, slots: { footer: { label: 'Fuß' } } },
   badge: { kind: 'inline', label: 'Badge', describe: 'Kleine Marke.', props: { size: f.number('Größe', { min: 1, max: 5, step: 1, optional: true }), solid: f.boolean('Gefüllt', { optional: true }), tags: f.choices('Tags', { options: ['a', 'b'], optional: true }) } },
 })
@@ -37,7 +37,7 @@ describe('parseMarkdown with a component registry', () => {
   const cases: [string, string, string | null][] = [
     ['known component', '::callout{type="warning" title="Achtung"}\nText\n::', null],
     ['inline component', 'Das ist :badge[neu]{size="2" solid tags="a,b"} so.', null],
-    ['nested children and parents', '::tabs\n::tab{label="Eins"}\nA\n::\n::', null],
+    ['nested children and parents', '::tabs\n::tab{title="Eins"}\nA\n::\n::', null],
     ['unknown tag', '::nope\nx\n::', 'Komponente „nope“ gibt es nicht.'],
     ['unknown prop', '::callout{type="info" color="red"}\nx\n::', 'Eigenschaft „color“ gibt es nicht'],
     ['bad choice', '::callout{type="danger"}\nx\n::', 'Eigenschaft „type“ hat einen ungültigen Wert'],
@@ -48,7 +48,7 @@ describe('parseMarkdown with a component registry', () => {
     ['not a number', ':badge[x]{size="viel"}', 'Eigenschaft „size“ muss eine Zahl sein'],
     ['bad boolean', ':badge[x]{solid="vielleicht"}', 'Eigenschaft „solid“ muss „true“ oder „false“'],
     ['bad choices value', ':badge[x]{tags="a,z"}', 'Eigenschaft „tags“ hat ungültige Werte'],
-    ['tab outside tabs', '::tab{label="x"}\nA\n::', 'darf nur in „tabs“ stehen'],
+    ['tab outside tabs', '::tab{title="x"}\nA\n::', 'darf nur in „tabs“ stehen'],
     ['wrong child in tabs', '::tabs\n::callout{type="info"}\nx\n::\n::', 'darf nur „tab“ enthalten, nicht „callout“'],
     ['block component written inline', 'Text :callout{type="info"} mehr', 'ist ein Block und gehört nicht in einen Absatz'],
     ['declared slot', '::card\n#footer\nUnten\n::', null],
