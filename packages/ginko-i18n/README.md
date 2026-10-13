@@ -679,7 +679,7 @@ numbers, such as `many (e.g. 1000000)` for Italian) but do not reject a translat
 Valid items are saved even if other items are rejected; `written` lists them as
 `{ key, file }`, `rejected` the others as `{ key, reason }`. Layer/app keys go to the
 source directory that defines the default message. Library keys go to the app's
-`i18n/<locale>.json`, including their namespace. Keys follow default-source order;
+`i18n/<code>.json`, including their namespace. Keys follow default-source order;
 unrelated keys remain, with two-space indentation and a trailing newline.
 The app's `i18n/i18n.lock.json` records the SHA-256 hash of each translated source.
 A changed hash produces a stale warning on subsequent checks. Do not edit source

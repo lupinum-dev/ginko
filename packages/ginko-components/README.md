@@ -232,7 +232,7 @@ the parser refuses slots).
 ## UI texts
 
 Fixed texts (copy button, zoom, play) live in `i18n/de.json` and `i18n/en.json`. The module adds them to ginko-i18n under
-the namespace `components`, so they follow the page language; a site overrides one key in its own `i18n/<locale>.json`
+the namespace `components`, so they follow the page language; a site overrides one key in its own `i18n/<code>.json`
 (for example `{ "components": { "code": { "copy": "Kopieren" } } }`). Without Nuxt (SSR tests) the components use the German defaults.
 
 `components` is a reserved namespace: do not use it for your own messages. The keys you can override are the ones in
