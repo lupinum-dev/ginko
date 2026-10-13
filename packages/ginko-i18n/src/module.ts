@@ -4,7 +4,7 @@ import { addComponent, addImports, addPlugin, addServerHandler, addServerImports
 import type { NuxtPage } from '@nuxt/schema'
 import { cachedNegotiatedPaths } from './cache-rules.ts'
 import { MANIFEST_VERSION, type Manifest, type ManifestSource } from './manifest.ts'
-import { compileTree, mergeTrees, type RawTree } from './core/compiler.ts'
+import { compileTree, mergeTrees, sourceProblem, type RawTree } from './core/compiler.ts'
 import { inUserZone, isExcluded, localizePath, resolveConfig, type LocaleConfig, type LocaleInput, type Strategy } from './core/locales.ts'
 import type { Params } from './core/messages.ts'
 
@@ -125,9 +125,8 @@ export default defineNuxtModule<ModuleOptions>({
       const libraries: MessageSource[] = []
       await nuxt.callHook('ginko-i18n:sources', libraries)
       for (const lib of libraries) {
-        // Without a namespace, a library's keys would merge into the app's and override them silently.
-        if (typeof lib.namespace !== 'string' || !lib.namespace || lib.namespace.includes('.'))
-          throw new Error(`[ginko-i18n] The ginko-i18n:sources entry for ${lib.dir} has no valid namespace (${JSON.stringify(lib.namespace)}). Fix: set a name without ".", e.g. { namespace: 'cms', dir }.`)
+        const problem = sourceProblem(lib)
+        if (problem) throw new Error(problem)
         sources.push({ ...lib, origin: 'library' })
       }
       const layers = [...nuxt.options._layers].reverse()

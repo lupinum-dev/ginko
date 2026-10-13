@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees } from '../src/core/compiler'
+import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees, sourceProblem } from '../src/core/compiler'
 import { defineCatalog } from '../src/core/catalog'
 import { createFormatters } from '../src/core/format'
 import { alternatesOf, canonicalCase, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, resolveConfig, stripLocale } from '../src/core/locales'
@@ -116,6 +116,14 @@ describe('messages with odd input', () => {
   ])('rejects the key in %j', (raw, problem, fix) => {
     expect(() => compileTree(raw)).toThrow(problem)
     expect(() => compileTree(raw)).toThrow(fix)
+  })
+  // A library source without a valid namespace merged its keys into the app's, or made them unreachable.
+  it.each([
+    ['cms', false],
+    ['', true],
+    ['my.lib', true],
+  ])('a ginko-i18n:sources namespace %j is refused: %s', (namespace, refused) => {
+    expect(sourceProblem({ namespace, dir: '/lib/i18n' }) !== undefined).toBe(refused)
   })
   it('reports params per key', () => {
     expect(compileTree({ a: { b: '{x} {n, plural, other {{y}}}' } }).params).toEqual({ 'a.b': ['x', 'n', 'y'] })

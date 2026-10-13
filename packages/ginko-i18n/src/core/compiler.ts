@@ -108,6 +108,17 @@ export function compileMessage(key: string, source: string): { message: Compiled
 }
 
 /**
+ * A `ginko-i18n:sources` entry needs a namespace: a name that is not empty and has no ".". Without one, a library's
+ * keys would merge into the app's and override them silently; with a dot, `t()` could not reach them.
+ * Returns the problem, or `undefined` for a valid entry.
+ */
+export function sourceProblem(source: { namespace?: unknown, dir: string }): string | undefined {
+  const { namespace } = source
+  if (typeof namespace === 'string' && namespace !== '' && !namespace.includes('.')) return undefined
+  return `[ginko-i18n] The ginko-i18n:sources entry for ${source.dir} has no valid namespace (${JSON.stringify(namespace)}). Fix: set a name without ".", e.g. { namespace: 'cms', dir }.`
+}
+
+/**
  * Keys are names; nesting separates them. `t('a.b')` reads `{ a: { b } }`, so a key `"a.b"` would be
  * unreachable (or shadowed), and an empty key cannot be written in a dotted path. The CLI reads files
  * with the same rule. Returns the problem, or `undefined` for a valid key.
