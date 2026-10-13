@@ -1,28 +1,35 @@
 ---
 title: Content for Nuxt sites that owners keep current themselves.
 description: Ginko keeps a site apart from its content. Developers build with plain Nuxt; owners change opening hours, menus and texts in the Studio, with approval and scheduling. The same bricks also read Markdown from the repository.
+install: npm create ginko@latest my-site
 links:
   - label: Get started
     href: /en/docs/getting-started
   - label: GitHub
     href: https://github.com/lupinum-dev/ginko
 features:
-  - title: Bricks instead of schema work
+  - icon: lucide:blocks
+    title: Bricks instead of schema work
     description: A brick describes one kind of content with fields. The form, the checks, the types and the bundle all come from it.
     href: /en/docs/bricks
-  - title: Files or platform
+  - icon: lucide:file-text
+    title: Files or platform
     description: The same brick reads Markdown from the repository today and the platform tomorrow. The site code stays the same.
     href: /en/docs/content-from-files
-  - title: Languages built in
+  - icon: lucide:languages
+    title: Languages built in
     description: Addresses per language, hreflang, a language switcher and ICU messages, without a second module.
     href: /en/docs/languages
-  - title: Approval before it goes live
+  - icon: lucide:shield-check
+    title: Approval before it goes live
     description: Changes can need a yes, go live at a set time, and can be taken back.
     href: /en/docs/platform-and-cli
-  - title: Components for Markdown
+  - icon: lucide:component
+    title: Components for Markdown
     description: Callouts, tabs, steps, cards, code groups and more, with fields in the Studio and as a shadcn-vue registry.
     href: /en/docs/components
-  - title: Readable by agents
+  - icon: lucide:bot
+    title: Readable by agents
     description: Every page also exists as Markdown, plus llms.txt and an MCP endpoint for the docs.
     href: /en/docs/getting-started
 ---
@@ -39,10 +46,14 @@ export default defineSite({
   site: 'linde',
   name: 'Linden Inn',
   url: 'https://linde.example',
+  timezone: 'Europe/Vienna',
   locales: ['en', 'de'],
+  currency: 'EUR',
+  pages: { home: { en: '/', de: '/de' } },
   bricks: {
     hours: single({
       label: 'Opening hours',
+      source: 'files',
       fields: { note: f.text('Note', { optional: true }), text: f.markdown('Hours') },
     }),
   },
