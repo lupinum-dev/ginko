@@ -26,7 +26,7 @@ Every factory takes `source`, plus its own options:
 |---|---|---|
 | `source` | the platform | `'files'` reads the brick from Markdown in `content/`, so it runs without the platform. |
 | `allergens` (`menu`, `lunch`, `lunchPlans`) | `'EU'` | `'EU'`, `'none'` (no allergen field), or your own `[{ value, label }]`. |
-| `weekOf` (`lunch`) | none | The default week of the lunch menu. |
+| `weekOf` (`lunch`) | none | Required for a platform `lunch()`: the week the first menu starts (`YYYY-MM-DD`). Without it, `ginko check` rejects the new single. |
 | `lunchBrick` (`lunchPlans`) | `'lunch'` | The key of the `lunch()` brick that planned weeks belong to. |
 | `route` (`events`, required) | none | The event page per locale, e.g. `{ en: '/events/[slug]' }`. |
 
@@ -49,7 +49,7 @@ export default defineSite({
   bricks: {
     hours: hours(),
     notices: notices(),
-    lunch: lunch(),
+    lunch: lunch({ weekOf: '2026-10-05' }),
     menu: menu(),
     events: events({ route: { de: '/veranstaltungen/[slug]', en: '/en/events/[slug]' } }),
     gallery: gallery(),
@@ -118,10 +118,10 @@ export default defineSite({
   currency: 'SGD',
   pages: { home: '/' },
   bricks: {
-    hours: hours({ lang: 'en' }),
-    notices: notices({ lang: 'en' }),
-    lunch: lunch({ lang: 'en', allergens: 'none' }),
-    menu: menu({ lang: 'en', allergens: 'none' }),
+    hours: hours(),
+    notices: notices(),
+    lunch: lunch({ weekOf: '2026-10-05', allergens: 'none' }),
+    menu: menu({ allergens: 'none' }),
   },
 })
 
