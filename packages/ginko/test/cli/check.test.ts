@@ -122,7 +122,7 @@ describe('ginko check and links in content files', () => {
   // Wrong behaviour caught: the external-link check ignored the CLI's fetch and sent real requests from tests.
   it('checks external links through the CLI fetch', async () => {
     const urls: string[] = []
-    const path = siteWith('Siehe [Linde](https://linde.example/about).', { ...config, links: { external: 'error' } })
+    const path = siteWith('Siehe [Linde](https://linde.example/about).', { ...config, linkCheck: { external: 'error' } })
     const { code } = await runCheck(path, [], async (url) => { urls.push(url); return new Response(null, { status: 200 }) })
     expect(urls).toEqual(['https://linde.example/about'])
     expect(code).toBe(0)
