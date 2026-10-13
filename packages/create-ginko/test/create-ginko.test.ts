@@ -21,6 +21,8 @@ describe('create-ginko', () => {
     expect(read('plain', 'ginko.config.ts')).toContain("locales: ['en']")
     expect(read('plain', 'content/start.md')).toContain('title: Hello Ginko')
     expect(JSON.parse(read('plain', 'package.json')).dependencies).not.toHaveProperty('@lupinum/ginko-docs')
+    // Wrong behaviour caught: `npx ginko-i18n check` (docs, Languages) finds no local bin and asks the registry for an unscoped name.
+    expect(JSON.parse(read('plain', 'package.json')).dependencies['@lupinum/ginko-i18n']).toBe(`^${version}`)
     // Wrong behaviour caught: a new site has no <title> or description until the owner finds `useGinkoSeo`.
     expect(read('plain', 'ginko.config.ts')).toMatch(/seo: \{ description: '.+' \}/)
     expect(read('plain', 'app/pages/index.vue')).toContain('useGinkoSeo(')

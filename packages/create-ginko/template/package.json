@@ -15,6 +15,7 @@
   "dependencies": {
     "@lupinum/ginko": "^{{VERSION}}",
     "@lupinum/ginko-content": "^{{VERSION}}",
+    "@lupinum/ginko-i18n": "^{{VERSION}}",
     "nuxt": "^4.6.0",
     "vue": "^3.5.0"
   },

@@ -11,7 +11,7 @@ import { supportsNode } from './node-version.mjs'
 // lacks; test/create-ginko.test.ts checks this against the packages' metadata), and what the next steps say about it
 const presets = {
   gastro: { packages: ['@lupinum/ginko-preset-gastro'], note: 'Hours and menu read from files. The preset\'s other bricks (notices, lunch, events, gallery) and the owner\'s quick tasks need the Ginko platform.' },
-  docs: { packages: ['@lupinum/ginko-docs', '@lupinum/ginko-i18n'], note: 'Pages are Markdown files in content/docs. No platform needed.' },
+  docs: { packages: ['@lupinum/ginko-docs'], note: 'Pages are Markdown files in content/docs. No platform needed.' },
 }
 const langs = { en: 'English', de: 'German' }
 const command = 'npm create ginko@latest'
