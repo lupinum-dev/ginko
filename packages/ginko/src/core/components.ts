@@ -52,6 +52,19 @@ export const BLOCKED_TAGS: ReadonlySet<string> = new Set([
   'form', 'button', 'textarea', 'select', 'option', 'template', 'noscript', 'svg', 'portal', 'slot',
 ])
 
+/**
+ * Blocked tags a registry may still declare. The component then replaces the element, so the tag passes only where
+ * the registry declares it and stays blocked everywhere else. `embed` is the provider embed of
+ * `@lupinum/ginko-components`. A site that declares it must also map it to a component: the native element would
+ * load the address like an iframe.
+ */
+const COMPONENT_ONLY_TAGS: ReadonlySet<string> = new Set(['embed'])
+
+/** Whether a text may not contain `tag`: a blocked tag, unless the registry declares it (COMPONENT_ONLY_TAGS). */
+export function isBlockedTag(tag: string, registry?: ComponentRegistry): boolean {
+  return BLOCKED_TAGS.has(tag) && !(COMPONENT_ONLY_TAGS.has(tag) && registry !== undefined && Object.hasOwn(registry, tag))
+}
+
 /** The tags Markdown itself produces (all profiles). A component must not take one of these names. */
 export const PLAIN_TAGS: ReadonlySet<string> = new Set([
   'strong', 'em', 'del', 'code', 'a', 'br', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'hr',
@@ -74,7 +87,7 @@ export function componentProblems(registry: ComponentRegistry): string[] {
     const def = registry[tag]!
     const at = `Component “${tag}”`
     if (!TAG.test(tag)) problems.push(`${at}: The name must be lower case and separated by hyphens (for example “code-group”).`)
-    if (BLOCKED_TAGS.has(tag)) problems.push(`${at}: The name is blocked.`)
+    if (BLOCKED_TAGS.has(tag) && !COMPONENT_ONLY_TAGS.has(tag)) problems.push(`${at}: The name is blocked.`)
     else if (PLAIN_TAGS.has(tag)) problems.push(`${at}: The name belongs to Markdown (${tag}) and cannot be overridden.`)
     if (def.kind !== 'block' && def.kind !== 'inline') problems.push(`${at}: kind must be “block” or “inline”.`)
     if (!isLabel(def.label)) problems.push(`${at}: label is missing.`)
@@ -126,7 +139,7 @@ export function checkComponentTree(nodes: readonly Node[], registry: ComponentRe
       for (const child of children) visit(child, tag)
       return
     }
-    if (!PLAIN_TAGS.has(tag) && !BLOCKED_TAGS.has(tag)) {
+    if (!PLAIN_TAGS.has(tag) && !isBlockedTag(tag, registry)) {
       if (!Object.hasOwn(registry, tag)) fail(msg('component.unknown', { tag }))
       else checkComponent(tag, registry[tag]!, props as Record<string, unknown>, children as Node[], parent, fail)
     }

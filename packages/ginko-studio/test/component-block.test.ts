@@ -71,7 +71,7 @@ describe('live or card', () => {
     layout: 'card', column: 'card', timeline: 'card', 'timeline-item': 'card', // children / parents
     tabs: 'card', tab: 'card', accordion: 'card', 'accordion-item': 'card', steps: 'card', cards: 'card', 'inline-toc': 'card',
     'code-group': 'card', 'code-tree': 'card', files: 'card',
-    figure: 'card', video: 'card', embedded: 'card', // images of the site and iframes are not loaded in the editor
+    figure: 'card', video: 'card', embed: 'card', // images of the site and iframes are not loaded in the editor
     quiz: 'card', 'quiz-question': 'card', api: 'card', 'api-param': 'card',
   }
   test.each(Object.keys(components).map((tag) => [tag, expected[tag]] as const))('%s is %s', (tag, mode) => {

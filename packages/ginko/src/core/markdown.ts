@@ -14,7 +14,7 @@ import mermaid from 'comark/plugins/mermaid'
 import taskList from 'comark/plugins/task-list'
 import toc from 'comark/plugins/toc'
 import { bare, coreMessage, msg, type Described } from './messages.ts'
-import { BLOCKED_TAGS, checkComponentTree, componentSlotNodes, type ComponentRegistry } from './components.ts'
+import { checkComponentTree, componentSlotNodes, isBlockedTag, type ComponentRegistry } from './components.ts'
 import { isSafeHref } from './href.ts'
 import type { Json } from './types.ts'
 
@@ -191,7 +191,7 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
         count++
         if (typeof node === 'string' || node[0] === null) return
         const [tag, props, ...children] = node
-        if (BLOCKED_TAGS.has(tag) && !slots.has(node)) fail(msg('markdown.tagBlocked', { tag }))
+        if (isBlockedTag(tag, profile === 'page' ? registry : undefined) && !slots.has(node)) fail(msg('markdown.tagBlocked', { tag }))
         else if (allowed && !allowed.has(tag)) fail(msg('markdown.tagNotInProfile', { tag, allowed: { key: `markdown.profile.${profile}` } }))
         for (const [name, raw] of Object.entries(props)) {
           // `:name` is comark's bound form of the same prop.

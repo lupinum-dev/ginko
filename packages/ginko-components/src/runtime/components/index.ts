@@ -41,7 +41,7 @@ import QuizQuestion from './QuizQuestion.vue'
 
 export { Api, ApiParam, Quiz, QuizQuestion }
 
-const mediaMap: Record<string, Component> = { img: Img, figure: Figure, video: Video, embedded: Embed }
+const mediaMap: Record<string, Component> = { img: Img, figure: Figure, video: Video, embed: Embed }
 
 const extraMap: Record<string, Component> = { quiz: Quiz, 'quiz-question': QuizQuestion, api: Api, 'api-param': ApiParam }
 

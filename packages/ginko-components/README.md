@@ -78,7 +78,7 @@ theme the code keeps that theme's colours.
 | Kind | Names |
 |---|---|
 | Tokens a site sets | `--ginko-surface`, `--ginko-surface-border` (default of every framed component), `--ginko-tint` (fill of tint, default `--muted`), `--ginko-info`, `--ginko-warning`, `--ginko-error`, `--ginko-success`, `--ginko-idea` (status colours), `--ginko-code-frame`, `--ginko-code-bg`, `--ginko-code-fg`, `--ginko-code-muted`, `--ginko-code-hover` (code panel), `--ginko-scroll-margin` (space above an API entry that a link scrolls to, default `5rem`) |
-| Root classes | `ginko-<tag>` on the root element of each tag, for example `ginko-callout` (also for the short forms), `ginko-card`, `ginko-api-param`. Exceptions: `embedded` is `ginko-embed`, the code block (`pre`) is `ginko-code`, Markdown images are `ginko-img`, `collapse` without `title` is `ginko-clip` |
+| Root classes | `ginko-<tag>` on the root element of each tag, for example `ginko-callout` (also for the short forms), `ginko-card`, `ginko-api-param`. Exceptions: the code block (`pre`) is `ginko-code`, Markdown images are `ginko-img`, `collapse` without `title` is `ginko-clip` |
 | Attributes | `data-appearance="quiet"` / `"tint"` on a root |
 
 Everything else is internal and may change in a minor version: the `--ginko-default-*` fallbacks, other `--ginko-*`
@@ -135,11 +135,11 @@ Media components (`registry-media.ts`, styles in `media.css`):
 | `img` (plain Markdown tag, renderer override) | inline | `loading="lazy"`, `decoding="async"`, `width`/`height` when the tree has them (ginko-content adds them) |
 | `figure` | block | `src` (image, required); `alt` (required); `caption`; `width`; `height`; `bleed`; `aspect` auto, video, wide, square, portrait; `fit` cover, contain; `placement` inline, start, end; `frame` default, none; `focus` center, top, bottom, left, right; `zoom` (default on: a click opens a native `<dialog>`, Escape or the close button closes it) |
 | `video` | block | `src` (required: YouTube or Vimeo link, or a `.mp4`/`.webm` URL); `title` (required); `poster` (image); `start` (seconds) |
-| `embedded` | block | `src` (required: the address of an allowed provider); `title` (required: iframe title and button label); `poster` (image) |
+| `embed` | block | `src` (required: the address of an allowed provider); `title` (required: iframe title and button label); `poster` (image) |
 
 `video` loads nothing from YouTube or Vimeo until the visitor clicks play: no iframe, no thumbnail. Then it inserts
 `youtube-nocookie.com` or `player.vimeo.com` (`dnt=1`). A direct file is a native `<video preload="none">`; any other
-host is a plain link. There is no generic iframe on purpose; see `embedded` below.
+host is a plain link. There is no generic iframe on purpose; see `embed` below.
 
 ## Install a component with the shadcn-vue CLI
 
@@ -164,9 +164,9 @@ The items are generated from the files in `src/runtime/components` (never a seco
 build runs it. Items reference each other by URL: `<url>/r`, with `url` from `sites/docs/ginko.config.ts`;
 `GINKO_REGISTRY_URL` overrides it (for example `http://localhost:3500/r` to test against the docs dev server).
 
-## Embeds (`embedded`)
+## Embeds (`embed`)
 
-`embedded` shows maps, music and booking widgets, but only from a list of known providers. Before the click it renders a
+`embed` shows maps, music and booking widgets, but only from a list of known providers. Before the click it renders a
 neutral surface (or your `poster`), a button "Load content: <title>" and one consent line; no iframe, no request to the
 provider. After the click it inserts the iframe with `loading="lazy"`,
 `referrerpolicy="strict-origin-when-cross-origin"` and `sandbox="allow-scripts allow-same-origin allow-popups allow-forms"`.

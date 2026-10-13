@@ -19,7 +19,7 @@ const ROOT: Record<string, string> = {
   kbd: 'ginko-kbd', badge: 'ginko-badge', flow: 'ginko-flow', layout: 'ginko-layout', column: 'ginko-column', center: 'ginko-center',
   timeline: 'ginko-timeline', 'timeline-item': 'ginko-timeline-item',
   'code-group': 'ginko-code-group', 'code-tree': 'ginko-code-tree', files: 'ginko-files',
-  figure: 'ginko-figure', video: 'ginko-video', embedded: 'ginko-embed',
+  figure: 'ginko-figure', video: 'ginko-video', embed: 'ginko-embed',
   quiz: 'ginko-quiz', 'quiz-question': 'ginko-quiz-question', api: 'ginko-api', 'api-param': 'ginko-api-param',
   tabs: 'ginko-tabs', tab: 'class="ginko-tab"', accordion: 'ginko-accordion', 'accordion-item': 'ginko-accordion-item', collapse: 'ginko-collapse', steps: 'ginko-steps', cards: 'ginko-cards', card: 'ginko-card', 'read-more': 'ginko-read-more', 'inline-toc': 'ginko-inline-toc',
 }
@@ -149,7 +149,7 @@ describe('registry and components', () => {
   })
 
   test('an embed loads nothing from the provider before the click', async () => {
-    const html = await render(components.embedded.editor.example)
+    const html = await render(components.embed.editor.example)
     expect(html).not.toContain('<iframe')
     expect(html).not.toMatch(/openstreetmap\.org|spotify|google\.com/i)
     expect(html).toContain('Inhalt laden: Karte von Berlin-Mitte')

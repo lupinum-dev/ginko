@@ -31,6 +31,7 @@ describe('componentProblems', () => {
   })
   test('a valid registry has no problems', () => expect(componentProblems(registry)).toEqual([]))
   test('children and parents may name plain Markdown tags', () => expect(componentProblems({ x: { ...def, children: ['pre'] } })).toEqual([]))
+  test('embed is blocked as an element but may be declared as a component', () => expect(componentProblems({ embed: def })).toEqual([]))
 })
 
 describe('parseMarkdown with a component registry', () => {
@@ -68,6 +69,14 @@ describe('parseMarkdown with a component registry', () => {
     expect((await parseMarkdown('::nope{a="1"}\nx\n::', { profile: 'page' })).problems).toEqual([])
     expect((await parseMarkdown('::script\nx\n::', { profile: 'page' })).problems).toEqual(['„script“ ist nicht erlaubt.'])
     expect((await parseMarkdown('::card\n#footer\nx\n::', { profile: 'page' })).problems).toEqual(['„template“ ist nicht erlaubt.'])
+  })
+
+  test('embed passes only where the registry declares it', async () => {
+    const withEmbed = { ...registry, embed: { kind: 'block', label: 'Embed', describe: 'x', props: { src: f.text('Adresse') } } } as const
+    const text = '::embed{src="https://example.org/map"}\n::'
+    expect((await parseMarkdown(text, { profile: 'page', components: withEmbed })).problems).toEqual([])
+    expect((await parseMarkdown(text, { profile: 'page', components: registry })).problems).toEqual(['„embed“ ist nicht erlaubt.'])
+    expect((await parseMarkdown(text, { profile: 'page' })).problems).toEqual(['„embed“ ist nicht erlaubt.'])
   })
 
   test('the registry is ignored below the page profile', async () => {
