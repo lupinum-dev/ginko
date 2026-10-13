@@ -1,7 +1,7 @@
 // Content types an agency or studio website needs. Labels come in German and English.
 // Every factory returns a brick for `bricks: { <key>: services() }`. For file content the brick key is the folder name,
 // so a site that keeps `content/leistungen/` writes `leistungen: services()`.
-import { collection, f, type Field, type Fields, type Label, type Locale, type RouteTemplate } from '@lupinum/ginko'
+import { collection, f, type CollectionBrick, type Field, type Fields, type Label, type Locale, type RouteTemplate } from '@lupinum/ginko'
 
 export type Routes = Record<Locale, RouteTemplate>
 
@@ -37,24 +37,25 @@ function common(o: BrickOptions<any>, label: Label, max: number) {
 }
 
 /**
- * Preset fields, then extra fields, then label overrides. The cast keeps the field names for the caller's types.
- * `NoInfer`: inside `defineSite({ bricks })` TypeScript would otherwise infer `E` from the expected brick type (loose
- * `Fields`), and `Omit` would then drop every preset field from the site's types.
+ * The preset brick, its tasks and options checked against the preset's own fields, then the extra fields and label
+ * overrides. The cast keeps the field names for the caller's types. `NoInfer`: inside `defineSite({ bricks })`
+ * TypeScript would otherwise infer `E` from the expected brick type (loose `Fields`), and `Omit` would then drop every
+ * preset field from the site's types.
  */
-function build<B extends Fields, E extends Fields>(base: B, o: BrickOptions<E>): Omit<B, keyof NoInfer<E>> & NoInfer<E> {
-  const merged: Record<string, Field> = { ...base, ...o.extra }
+function withExtras<B extends Fields, R extends Routes | undefined, E extends Fields>(brick: CollectionBrick<B, R>, o: BrickOptions<E>): CollectionBrick<Omit<B, keyof NoInfer<E>> & NoInfer<E>, R> {
+  const merged: Record<string, Field> = { ...brick.fields, ...o.extra }
   for (const [name, label] of Object.entries(o.fieldLabels ?? {})) if (merged[name]) merged[name] = { ...merged[name], label }
-  return merged as Omit<B, keyof NoInfer<E>> & NoInfer<E>
+  return { ...brick, fields: merged as Omit<B, keyof NoInfer<E>> & NoInfer<E> }
 }
 
 const routeOf = (defaults: Routes, o: RoutedOptions<any>): Routes => ({ ...defaults, ...o.route })
 
 export function services<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
-  return collection({
+  return withExtras(collection({
     ...common(o, both('Leistungen', 'Services'), 20),
     order: 'manual',
     route: routeOf({ de: '/leistungen/[slug]', en: '/en/services/[slug]' }, o),
-    fields: build({
+    fields: {
       title: f.text(both('Titel', 'Title')),
       description: f.longtext(both('Beschreibung', 'Description')),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
@@ -62,8 +63,8 @@ export function services<const E extends Fields = {}>(o: RoutedOptions<E> = {}) 
       featured: f.boolean(both('Hervorgehoben', 'Featured'), { optional: true }),
       outcome: f.longtext(both('Ergebnis', 'Outcome'), { optional: true }),
       body: bodyOf(both('Text', 'Text'), o),
-    }, o),
-  })
+    },
+  }), o)
 }
 
 export interface CaseStudyOptions<E extends Fields = {}> extends RoutedOptions<E> {
@@ -83,12 +84,12 @@ export function caseStudies<const E extends Fields = {}>(o: CaseStudyOptions<E> 
   const related: Fields = o.servicesBrick === false ? {} : {
     relatedServices: f.refs(both('Passende Leistungen', 'Related services'), { to: o.servicesBrick ?? 'services', max: 6, optional: true, group: work }),
   }
-  return collection({
+  return withExtras(collection({
     ...common(o, both('Referenzen', 'Case studies'), 200),
     layout: 'tabs',
     order: { field: 'date', dir: 'desc' },
     route: routeOf({ de: '/referenzen/[slug]', en: '/en/case-studies/[slug]' }, o),
-    fields: build({
+    fields: {
       title: f.text(both('Titel', 'Title')),
       description: f.longtext(both('Beschreibung', 'Description')),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
@@ -107,8 +108,8 @@ export function caseStudies<const E extends Fields = {}>(o: CaseStudyOptions<E> 
       period: f.text(both('Zeitraum', 'Period'), { optional: true, group: project }),
       measurable: f.text(both('Messbares Ergebnis', 'Measurable result'), { optional: true, group: result }),
       body: bodyOf(both('Text', 'Text'), o),
-    }, o),
-  })
+    },
+  }), o)
 }
 
 export interface BlogOptions<E extends Fields = {}> extends RoutedOptions<E> {
@@ -118,12 +119,12 @@ export interface BlogOptions<E extends Fields = {}> extends RoutedOptions<E> {
 
 export function blog<const E extends Fields = {}>(o: BlogOptions<E> = {}) {
   const author: Fields = o.authorsBrick === false ? {} : { author: f.ref(both('Autor', 'Author'), { to: o.authorsBrick ?? 'authors' }) }
-  return collection({
+  return withExtras(collection({
     ...common(o, both('Blog', 'Blog'), 500),
     order: { field: 'date', dir: 'desc' },
     route: routeOf({ de: '/blog/[slug]', en: '/en/blog/[slug]' }, o),
     tasks: [{ id: 'write', label: both('Beitrag schreiben', 'Write a post'), kind: 'create' }],
-    fields: build({
+    fields: {
       title: f.text(both('Titel', 'Title')),
       description: f.longtext(both('Beschreibung', 'Description')),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
@@ -132,17 +133,17 @@ export function blog<const E extends Fields = {}>(o: BlogOptions<E> = {}) {
       readingTime: f.text(both('Lesezeit', 'Reading time'), { optional: true }),
       ...author,
       body: bodyOf(both('Text', 'Text'), o),
-    }, o),
-  })
+    },
+  }), o)
 }
 
 export function authors<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
-  return collection({
+  return withExtras(collection({
     ...common(o, both('Autoren', 'Authors'), 50),
     order: 'manual',
     // No author pages unless the site gives a route.
     ...(o.route ? { route: o.route } : {}),
-    fields: build({
+    fields: {
       name: f.text(both('Name', 'Name')),
       slug: f.slug(both('Adresse', 'Address'), { from: 'name' }),
       role: f.text(both('Rolle', 'Role')),
@@ -156,8 +157,8 @@ export function authors<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
         },
         max: 10, optional: true,
       }),
-    }, o),
-  })
+    },
+  }), o)
 }
 
 export interface LegalOptions<E extends Fields = {}> extends RoutedOptions<E> {
@@ -172,25 +173,24 @@ export function legal<const E extends Fields = {}>(o: LegalOptions<E> = {}) {
     { value: 'imprint', label: both('Impressum', 'Imprint') },
     { value: 'terms', label: both('AGB', 'Terms and conditions') },
   ]
-  // `prefill` names `updatedAt`, which the generic `E` hides from the type here (the factory's own field, checked by the schema check).
-  return collection({
+  return withExtras(collection({
     ...common(o, both('Rechtliches', 'Legal'), 20),
     order: 'manual',
     route: routeOf({ de: '/[slug]', en: '/en/[slug]' }, o),
-    tasks: [{ id: 'update', label: both('Rechtstext aktualisieren', 'Update a legal text'), kind: 'edit', pick: true, fields: ['body', 'updatedAt'], prefill: { updatedAt: '@today' } as {} }],
-    fields: build({
+    tasks: [{ id: 'update', label: both('Rechtstext aktualisieren', 'Update a legal text'), kind: 'edit', pick: true, fields: ['body', 'updatedAt'], prefill: { updatedAt: '@today' } }],
+    fields: {
       title: f.text(both('Titel', 'Title')),
       description: f.longtext(both('Beschreibung', 'Description')),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
       legalType: f.choice(both('Art', 'Kind'), { options: types }),
       updatedAt: f.date(both('Stand', 'Last updated')),
       body: bodyOf(both('Text', 'Text'), o, { translate: 'manual' }),
-    }, o),
-  })
+    },
+  }), o)
 }
 
 export function faq<const E extends Fields = {}>(o: BrickOptions<E> = {}) {
-  return collection({
+  return withExtras(collection({
     ...common(o, both('Häufige Fragen', 'FAQ'), 100),
     order: 'manual',
     tasks: [
@@ -198,16 +198,16 @@ export function faq<const E extends Fields = {}>(o: BrickOptions<E> = {}) {
       { id: 'edit', label: both('Frage bearbeiten', 'Edit a question'), kind: 'edit', pick: true, fields: ['question', 'answer', 'category'] },
       { id: 'remove', label: both('Frage entfernen', 'Remove a question'), kind: 'remove' },
     ],
-    fields: build({
+    fields: {
       question: f.text(both('Frage', 'Question')),
       answer: f.longtext(both('Antwort', 'Answer')),
       category: f.text(both('Kategorie', 'Category'), { optional: true }),
-    }, o),
-  })
+    },
+  }), o)
 }
 
 export function team<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
-  return collection({
+  return withExtras(collection({
     ...common(o, both('Team', 'Team'), 50),
     order: { field: 'order', dir: 'asc' },
     // Team members have no page unless the site gives a route (it then adds a `slug` field through `extra`).
@@ -217,18 +217,18 @@ export function team<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
       { id: 'edit', label: both('Person bearbeiten', 'Edit a person'), kind: 'edit', pick: true, fields: ['name', 'role', 'photo', 'bio', 'order'] },
       { id: 'remove', label: both('Person entfernen', 'Remove a person'), kind: 'remove' },
     ],
-    fields: build({
+    fields: {
       name: f.text(both('Name', 'Name')),
       role: f.text(both('Rolle', 'Role')),
       photo: f.image(both('Foto', 'Photo'), { optional: true }),
       bio: f.longtext(both('Kurzbiografie', 'Short bio'), { optional: true }),
       order: f.number(both('Reihenfolge (1 = zuerst)', 'Order (1 = first)'), { min: 1, max: 999, step: 1, default: 100 }),
-    }, o),
-  })
+    },
+  }), o)
 }
 
 export function jobs<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
-  return collection({
+  return withExtras(collection({
     ...common(o, both('Stellen', 'Jobs'), 30),
     order: { field: 'title', dir: 'asc' },
     route: routeOf({ de: '/karriere/[slug]', en: '/en/careers/[slug]' }, o),
@@ -239,7 +239,7 @@ export function jobs<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
       { id: 'extend', label: both('Bewerbungsfrist ändern', 'Change the deadline'), kind: 'edit', pick: true, fields: ['validUntil'] },
       { id: 'remove', label: both('Stelle entfernen', 'Remove a job'), kind: 'remove' },
     ],
-    fields: build({
+    fields: {
       title: f.text(both('Titel', 'Title')),
       description: f.longtext(both('Kurzbeschreibung', 'Short description')),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
@@ -262,6 +262,6 @@ export function jobs<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
       applyEmail: f.text(both('Bewerbungs-E-Mail', 'Application email'), { format: 'email', optional: true }),
       validUntil: f.date(both('Ausgeschrieben bis', 'Open until'), { optional: true }),
       body: bodyOf(both('Beschreibung', 'Description'), o),
-    }, o),
-  })
+    },
+  }), o)
 }
