@@ -94,7 +94,7 @@ Types: `HoursData`, `HoursContext`, `DayHours`, `Exception`, `HourPlan`, `Holida
 
 Defaults are Austrian (German and English labels, Austrian holidays, the 14 EU allergens). Change them per site:
 
-- Labels and prefilled texts (such as the lunch placeholder) come in German and English. The site keeps the texts of its own locales when its main locale is German or English; otherwise it starts without the prefilled texts.
+- Labels and prefilled texts (such as the lunch placeholder) come in German and English. The site keeps the texts of its own locales when its main locale is `de` or `en`; otherwise it starts without the prefilled texts. A code with a region such as `de-CH` does not count as `de`.
 - `calendar` on `hours()`: `'AT'` (default), `'DE'` (nationwide days only, no regional ones), `'SG'`, `'none'` (no public holidays), or your own `(year) => Holiday[]`. This is code, not an owner setting. Give the same value to the hours rules as `calendar` in their context (`hoursOn(date, { hours, calendar })`, `todayState(today, { hours, calendar })`). `hoursCalendarOf(brick)` reads it back. The stored field `holidays` (the owner's choice for those days: like Sunday, closed, normal) is a different thing and keeps its name.
 - Singapore's lunar, Islamic and Hindu holidays are a table for 2026 and 2027 (source: [MOM](https://www.mom.gov.sg/employment-practices/public-holidays)). Add a row each year; other years only know the fixed dates.
 - `allergens` on `menu()`, `lunch()` and `lunchPlans()`: `'EU'` (default), `'none'` (no field), or your own `[{ value, label }]`.
