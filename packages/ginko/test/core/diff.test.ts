@@ -476,6 +476,11 @@ describe('checkSchema: limits and structure (SPEC 2.1)', () => {
       problems: ['gallery: too many fields.'],
     },
     {
+      name: 'a schema without week',
+      mutate: (s: Schema) => { delete (s as Partial<Schema>).week },
+      problems: ['week must be { firstDay: 1 to 7, weekend: [days 1 to 7] } (1 = Monday, 7 = Sunday).'],
+    },
+    {
       name: 'a schema over 256 KiB of ASCII',
       mutate: (s: Schema) => { node(s, 'bricks.hours').label = 'x'.repeat(270_000) },
       problems: ['The schema is too large (at most 256 KiB).'],
