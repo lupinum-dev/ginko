@@ -40,8 +40,8 @@ export interface PlatformOptions {
   fetch: (input: string, init?: RequestInit) => Promise<Response>
 }
 
-/** The push key format `ginko_<site>_<32>` (same as the platform issues it). */
-const PUSH_KEY_FORMAT = /^ginko_[a-z][a-z0-9-]{1,40}_[a-z0-9]{32}$/
+/** The push key format `ginko_<site>_<32>` (same as the platform issues it); group 1 is the site. */
+export const PUSH_KEY_FORMAT = /^ginko_([a-z][a-z0-9-]{1,40})_[a-z0-9]{32}$/
 /** Deadlines of one platform call, counting the reading of the body: GET 30 s, release POST 60 s. */
 const READ_TIMEOUT_MS = 30_000
 const WRITE_TIMEOUT_MS = 60_000

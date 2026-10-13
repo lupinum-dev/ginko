@@ -6,7 +6,7 @@
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { CliError, type SiteExport } from './model.ts'
-import type { Platform } from './platform.ts'
+import { PUSH_KEY_FORMAT, type Platform } from './platform.ts'
 
 export interface ExportInput {
   platform: Platform
@@ -24,7 +24,7 @@ const EXTENSIONS: Record<string, string> = {
 
 /** The site named by a push key `ginko_<site>_<32>`. The key is not part of any message. */
 export function siteOfKey(key: string): string {
-  const match = /^ginko_([a-z][a-z0-9-]{1,40})_[a-z0-9]{32}$/.exec(key.trim())
+  const match = PUSH_KEY_FORMAT.exec(key.trim())
   if (!match) throw new CliError('GINKO_KEY is not a valid key.', 'USAGE')
   return match[1]!
 }
