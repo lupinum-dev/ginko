@@ -13,6 +13,12 @@ test('a page carries only its own text, and client navigation loads the next one
   await expect(page.getByRole('heading', { name: 'Ginko oder Nuxt Content' })).toBeVisible()
 })
 
+// The docs layer keeps `source` in its bundle through the 'ginko:files' hook; without it the link falls back to the Studio.
+test('"edit this page" opens the file in the GitHub repository', async ({ page }) => {
+  await page.goto(`${origin}/docs/einstieg`)
+  await expect(page.locator('.docs-page-foot a').first()).toHaveAttribute('href', /^https:\/\/github\.com\/lupinum-dev\/ginko\//)
+})
+
 test('search finds a page by a word in its headings and opens it', async ({ page }) => {
   await page.goto(`${origin}/docs/einstieg`)
   await page.getByRole('button', { name: /Suchen/ }).click()
