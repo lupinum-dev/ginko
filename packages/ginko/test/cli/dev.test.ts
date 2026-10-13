@@ -5,6 +5,7 @@ describe('localDeploymentError', () => {
   it.each([
     ['anonymous deployment', { deployment: 'anonymous-agent', url: 'http://127.0.0.1:3210' }, undefined],
     ['anonymous deployment without url', { deployment: 'anonymous-agent' }, undefined],
+    ['anonymous deployment as Convex 1.46 writes it', { deployment: 'anonymous:anonymous-agent' }, undefined],
     ['localhost url without deployment', { url: 'http://localhost:3210' }, undefined],
     ['cloud deployment chosen by the Convex CLI', { deployment: 'dev:review-cloud-example', url: 'https://review.convex.cloud' }, 'dev:review-cloud-example'],
     ['cloud deployment with a local-looking url', { deployment: 'dev:review-cloud-example', url: 'http://127.0.0.1:3210' }, 'dev:review-cloud-example'],

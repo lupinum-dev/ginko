@@ -38,7 +38,9 @@ export function localDeploymentError(target: DeploymentTarget, command = 'local:
   if (target.cloudKeys?.length) return `${command} stopped: ${target.cloudKeys.join(', ')} is set. This makes Convex write to a cloud deployment, not to the local backend. Remove it for local commands. Nothing was written.`
   const deployment = target.deployment?.trim()
   if (deployment) {
-    return deployment.startsWith('anonymous-')
+    // Like the Convex CLI (deployment.ts isAnonymousDeployment): the name after the type prefix decides. Convex 1.46
+    // writes `anonymous:anonymous-agent`.
+    return deployment.split(':').at(-1)!.startsWith('anonymous-')
       ? undefined
       : `${command} stopped: Convex chose the target “${deployment}”, not the local backend (anonymous-…). Nothing was written.`
   }
