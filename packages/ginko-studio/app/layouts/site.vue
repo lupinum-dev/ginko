@@ -76,6 +76,7 @@ const blocked = computed(() => signedOut.value || !!error.value || !!deletion.va
   <!-- Wide screens: the rail on the page background, the page in a framed panel. Phones: a top bar, the page, tabs
        at the bottom. --studio-header-height is what sticks above the page (sticky toolbars and panes sit below it). -->
   <div class="min-h-dvh [--studio-header-height:57px] min-[900px]:flex min-[900px]:gap-4 min-[900px]:p-4 min-[900px]:[--studio-header-height:1rem]">
+    <a href="#studio-main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:ring-3 focus:ring-ring/80 focus:outline-none">{{ t('nav.skip') }}</a>
     <SiteRail v-if="!blocked" class="max-[899px]:hidden" :links="links" :initial="initial" :site-name="siteName">
       <template #foot>
         <AccountMenu :manager="manager" :last-refresh="lastRefresh" :updating="siteUpdate.running.value" @update="siteUpdate.run()" />
@@ -105,18 +106,20 @@ const blocked = computed(() => signedOut.value || !!error.value || !!deletion.va
           <a :href="viewUrl" target="_blank" rel="noopener">{{ t('nav.viewSite') }}<SquareArrowOutUpRightIcon aria-hidden="true" /><span class="sr-only"> {{ t('nav.newTab') }}</span></a>
         </Button>
       </div>
-      <main v-if="signedOut" class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
+      <main id="studio-main" tabindex="-1" class="outline-none">
+      <div v-if="signedOut" class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
         <p class="text-xl font-bold">{{ t('nav.signedOutTitle') }}</p>
         <p>{{ t('nav.signedOutText') }}</p>
         <Button as-child><NuxtLink :to="`/login?redirect=${encodeURIComponent(route.fullPath)}`">{{ t('nav.signIn') }}</NuxtLink></Button>
-      </main>
+      </div>
       <SiteDeleting v-else-if="deletion" :slug="slug" :name="deletion.name" :at="deletion.at" />
-      <main v-else-if="error" class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
+      <div v-else-if="error" class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
         <p class="text-xl font-bold">{{ opErrorOf(error).message }}</p>
         <p>{{ t('nav.noAccessHelp') }}</p>
         <Button as-child variant="outline"><NuxtLink to="/?all">{{ t('nav.mySites') }}</NuxtLink></Button>
-      </main>
+      </div>
       <slot v-else />
+      </main>
     </div>
     <SiteTabBar v-if="showTabs && !blocked" class="min-[900px]:hidden" :links="links" />
     <CommandPalette

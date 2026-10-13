@@ -428,7 +428,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           <template v-for="g in visibleGroups" :key="g.id">
             <Separator />
             <section class="grid gap-4">
-              <h3 class="text-base font-semibold">{{ shown(g.label) }}</h3>
+              <h2 class="text-base font-semibold">{{ shown(g.label) }}</h2>
               <EntryFields v-bind="fieldProps" :entries="g.fields" @update="setField" />
             </section>
           </template>
