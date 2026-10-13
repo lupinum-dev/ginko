@@ -28,7 +28,7 @@ export const apiComponents = defineComponents({
     children: ['api-param'],
     editor: {
       group: { de: 'API', en: 'API' },
-      example: ':::api{method="get" path="/v1/gaerten"}\n::api-param{name="limit" group="Query" type="number" :required="false" defaultValue="20" since="1.2"}\nAnzahl der Einträge, höchstens `100`.\n::\n::api-param{name="id" group="Antwort" type="string" required}\nDie Kennung des Gartens.\n::\n:::',
+      example: ':::api{method="get" path="/v1/gaerten"}\n::api-param{name="limit" group="Query" type="number" defaultValue="20" since="1.2"}\nAnzahl der Einträge, höchstens `100`.\n::\n::api-param{name="id" group="Antwort" type="string" required}\nDie Kennung des Gartens.\n::\n:::',
     },
   },
   'api-param': {
@@ -42,7 +42,7 @@ export const apiComponents = defineComponents({
       name: f.text({ de: 'Name', en: 'Name' }, { max: 80 }),
       group: f.text({ de: 'Gruppe', en: 'Group' }, { optional: true, max: 40, hint: { de: 'Zum Beispiel Query, Body oder Antwort. Ohne Angabe: „Parameter“.', en: 'For example Query, Body or Response. If empty: “Parameters”.' } }),
       type: f.text({ de: 'Typ', en: 'Type' }, { optional: true, max: 120, hint: { de: 'Zum Beispiel string oder number[].', en: 'For example string or number[].' } }),
-      required: f.boolean({ de: 'Erforderlich', en: 'Required' }, { optional: true, hint: { de: 'An: mit Marke „Erforderlich“. Ohne Angabe: nichts. Optional markierst du im Text mit :required="false" (der Name bekommt ein ?).', en: 'On: shows a “Required” badge. Not set: nothing. Mark optional in the text with :required="false" (the name gets a ?).' } }),
+      required: f.boolean({ de: 'Erforderlich', en: 'Required' }, { optional: true, hint: { de: 'An: der Parameter bekommt die Marke „Erforderlich“.', en: 'On: the parameter gets a “Required” badge.' } }),
       deprecated: f.boolean({ de: 'Veraltet', en: 'Deprecated' }, { optional: true }),
       since: f.text({ de: 'Seit Version', en: 'Since version' }, { optional: true, max: 20 }),
       defaultValue: f.text({ de: 'Standardwert', en: 'Default value' }, { optional: true, max: 80 }),

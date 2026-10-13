@@ -185,9 +185,9 @@ describe('registry and components', () => {
   })
 
   // A boolean prop reads the same everywhere: `prop="false"` is the prop absent when its default is off, and differs
-  // from it when its default is on. One exception: `api-param{required}` has three states (see the test below).
+  // from it when its default is on.
   const booleans = Object.entries(components).flatMap(([tag, def]) =>
-    Object.entries(def.props ?? {}).filter(([prop, field]) => field.type === 'boolean' && !(tag === 'api-param' && prop === 'required')).map(([prop, field]) => ({ tag, prop, defaultOn: field.default === true, example: def.editor!.example! })))
+    Object.entries(def.props ?? {}).filter(([, field]) => field.type === 'boolean').map(([prop, field]) => ({ tag, prop, defaultOn: field.default === true, example: def.editor!.example! })))
   // The example with the prop taken out of the opening line of the tag, and the same with `prop="false"` put in.
   const withFalse = ({ tag, prop, example }: (typeof booleans)[number]) => {
     const lines = example.split('\n')
@@ -198,15 +198,12 @@ describe('registry and components', () => {
     return { absent: build(bare), off: build(flagged) }
   }
 
-  test('api-param: required shows a badge, :required="false" adds ?, absent says nothing', async () => {
-    const row = async (attrs: string) => render(`:::api\n::api-param{name="id" type="string"${attrs}}\n::\n:::`)
+  test('api-param: a bare required shows the badge; :required="false" renders like absent', async () => {
+    const row = (attrs: string) => render(`:::api\n::api-param{name="id" type="string"${attrs}}\n::\n:::`)
     const [bare, off, absent] = [await row(' required'), await row(' :required="false"'), await row('')]
     expect(bare).toContain('data-state="required"')
-    expect(bare).toContain('>: string<')
-    expect(off).not.toContain('data-state="required"')
-    expect(off).toContain('>?: string<')
+    expect(off).toBe(absent)
     expect(absent).not.toContain('data-state="required"')
-    expect(absent).toContain('>: string<')
   })
 
   test.each(booleans)('$tag{$prop="false"} is $prop absent (default on: $defaultOn)', async (entry) => {
@@ -250,7 +247,7 @@ describe('registry and components', () => {
     expect(html).toContain('/v1/gaerten')
     expect(html.match(/role="tab"/g)).toHaveLength(2)
     expect(html.match(/role="tabpanel"[^>]*hidden/g)).toHaveLength(1)
-    expect(html).toContain('>?: number = 20</span>')
+    expect(html).toContain('>: number = 20</span>')
     expect(html).toContain('id="api-query-limit"')
     expect(html).toContain('seit 1.2')
   })

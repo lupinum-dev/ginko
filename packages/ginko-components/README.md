@@ -222,7 +222,7 @@ Learning and API components (`registry-learn.ts`, `registry-api.ts`, styles in `
 | `quiz` | block, children `quiz-question` | `title`; `description`; one question at a time, back/next, a result at the end; runs in the browser, nothing is sent |
 | `quiz-question` | block, parent `quiz` | `question` (required); `type` single (default), multiple; the content is a task list of answers (`- [x]` right, `- [ ]` wrong); the slot `#explanation` shows after "check" |
 | `api` | block, children `api-param` | `title` (shown without method and path); `method` get, post, put, patch, delete, head, options; `path`; one tab per `group` |
-| `api-param` | block, parent `api` | `name` (required); `group` (default "Parameter"); `type`; `required` (a bare `required` shows a badge, `:required="false"` adds `?` to the name, absent says nothing); `deprecated`; `since`; `defaultValue`; the content is the description |
+| `api-param` | block, parent `api` | `name` (required); `group` (default "Parameter"); `type`; `required` (shows a badge); `deprecated`; `since`; `defaultValue`; the content is the description |
 
 Answers are real radio buttons or checkboxes in a `<fieldset>` with a `<legend>`; the result is announced through an
 `aria-live` region and the explanation and the right answers are only rendered after "check". Because the

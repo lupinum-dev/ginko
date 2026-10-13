@@ -5,14 +5,14 @@ import { isOn } from './interactive-utils'
 import { useText } from './text'
 
 // One parameter or field of ::api. The Markdown content is the description. <Api> groups the rows by `group`.
-// `required` has three states: a bare `required` (badge), `:required="false"` (the name gets `?`), or absent (nothing said).
-const props = withDefaults(defineProps<{
+// A bare `required` shows the badge; absent or `:required="false"` shows nothing.
+const props = defineProps<{
   name: string; group?: string; type?: string; required?: boolean | string; deprecated?: boolean | string; since?: string; defaultValue?: string
-}>(), { required: undefined })
+}>()
 const t = useText()
 const deprecated = computed(() => isOn(props.deprecated))
-const required = computed(() => (props.required === undefined ? undefined : isOn(props.required)))
-const tail = computed(() => signatureTail({ type: props.type, optional: required.value === false, defaultValue: props.defaultValue }))
+const required = computed(() => isOn(props.required))
+const tail = computed(() => signatureTail({ type: props.type, defaultValue: props.defaultValue }))
 const id = computed(() => apiEntryId(groupLabel(props.group, t('api.defaultGroup')), props.name))
 </script>
 
