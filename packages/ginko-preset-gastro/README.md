@@ -10,6 +10,14 @@ built in: "Closed today", "Fully booked today", the lunch menu of the week, a pr
   reason), closed for a public holiday, or rest day. `upcomingClosures({ hours, plans }, today, days)` lists the
   closures guests should know about soon. Public holiday names come in German and English (`holiday.de`, `holiday.en`).
 
+## Install
+
+```bash
+npm install @lupinum/ginko @lupinum/ginko-preset-gastro
+```
+
+`@lupinum/ginko` is a peer dependency: the bricks are built by your site's copy of it.
+
 ## Options
 
 Every factory takes the same two options, plus its own:

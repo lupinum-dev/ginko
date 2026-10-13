@@ -91,7 +91,8 @@ if (preset) {
   const path = join(dir, 'package.json')
   const pkg = JSON.parse(readFileSync(path, 'utf8'))
   pkg.dependencies[presets[preset].dependency] = `^${own.version}`
-  if (preset === 'docs') pkg.dependencies['@lupinum/ginko-components'] = `^${own.version}`
+  // The docs layer plugs into the site's copy of these (they are its peers or the peers of its components).
+  if (preset === 'docs') for (const name of ['@lupinum/ginko-components', '@lupinum/ginko-i18n']) pkg.dependencies[name] = `^${own.version}`
   pkg.dependencies = Object.fromEntries(Object.entries(pkg.dependencies).sort(([a], [b]) => a.localeCompare(b)))
   writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`)
 }

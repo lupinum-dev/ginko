@@ -2,6 +2,12 @@
 
 Editorial Markdown components for Ginko: the registry (what an editor may write) and the Vue components (how it looks).
 
+```bash
+npm install @lupinum/ginko @lupinum/ginko-i18n @lupinum/ginko-components
+```
+
+`@lupinum/ginko` and `@lupinum/ginko-i18n` are peer dependencies: your site installs them once, and the components use that copy.
+
 ```ts
 // nuxt.config.ts
 export default defineNuxtConfig({ modules: ['@lupinum/ginko/nuxt', '@lupinum/ginko-components'] })

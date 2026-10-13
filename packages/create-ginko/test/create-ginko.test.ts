@@ -60,6 +60,10 @@ describe('create-ginko', () => {
   }
   it('the docs preset extends the docs layer', () => {
     expect(read('docs-en-2', 'nuxt.config.ts')).toContain("extends: ['@lupinum/ginko-docs']")
+    // The layer's peers (ginko, ginko-content) come from the base template; the components and their i18n peer are added.
+    expect(JSON.parse(read('docs-en-2', 'package.json')).dependencies).toMatchObject({
+      '@lupinum/ginko': `^${version}`, '@lupinum/ginko-content': `^${version}`, '@lupinum/ginko-components': `^${version}`, '@lupinum/ginko-i18n': `^${version}`,
+    })
   })
 
   it('accepts the -- that pnpm and yarn pass through', () => {

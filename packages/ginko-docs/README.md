@@ -9,7 +9,7 @@ code blocks and more) come from `@lupinum/ginko-components`. Math (`$x^2$`, `$$â
 ## Use
 
 ```bash
-npm install @lupinum/ginko @lupinum/ginko-content @lupinum/ginko-components @lupinum/ginko-docs
+npm install @lupinum/ginko @lupinum/ginko-content @lupinum/ginko-i18n @lupinum/ginko-components @lupinum/ginko-docs
 ```
 
 ```ts

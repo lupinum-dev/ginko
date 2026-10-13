@@ -39,10 +39,11 @@
     "build": "unbuild",
     "prepack": "pnpm build"
   },
-  "dependencies": {
-    "@lupinum/ginko": "workspace:^"
-  },
   "devDependencies": {
+    "@lupinum/ginko": "workspace:*",
     "unbuild": "3.6.1"
+  },
+  "peerDependencies": {
+    "@lupinum/ginko": "workspace:^"
   }
 }

@@ -132,16 +132,16 @@ importers:
 
   packages/ginko-components:
     dependencies:
-      '@lupinum/ginko':
-        specifier: workspace:^
-        version: link:../ginko
-      '@lupinum/ginko-i18n':
-        specifier: workspace:^
-        version: link:../ginko-i18n
       '@nuxt/kit':
         specifier: ^4.6.0
         version: 4.6.0(@nuxt/schema@4.6.0)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(oxc-parser@0.141.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))
     devDependencies:
+      '@lupinum/ginko':
+        specifier: workspace:*
+        version: link:../ginko
+      '@lupinum/ginko-i18n':
+        specifier: workspace:*
+        version: link:../ginko-i18n
       '@nuxt/schema':
         specifier: 4.6.0
         version: 4.6.0
@@ -160,22 +160,22 @@ importers:
 
   packages/ginko-content:
     dependencies:
-      '@lupinum/ginko':
-        specifier: workspace:^
-        version: link:../ginko
       comark:
         specifier: 0.7.0
         version: 0.7.0(beautiful-mermaid@1.1.3)(katex@0.17.0)(shiki@4.3.1)
       js-yaml:
-        specifier: 5.4.3
+        specifier: ^5.4.3
         version: 5.4.3
+      shiki:
+        specifier: ^4.3.1
+        version: 4.3.1
+    devDependencies:
+      '@lupinum/ginko':
+        specifier: workspace:*
+        version: link:../ginko
       sharp:
         specifier: 0.35.5
         version: 0.35.5(@types/node@24.19.1)
-      shiki:
-        specifier: 4.3.1
-        version: 4.3.1
-    devDependencies:
       unbuild:
         specifier: 3.6.1
         version: 3.6.1(typescript@6.0.3)(vue-sfc-transformer@0.2.5(@volar/typescript@2.4.23(typescript@6.0.3))(@vue/compiler-core@3.5.43)(@vue/language-core@3.1.5(typescript@6.0.3))(esbuild@0.28.2)(rolldown@1.2.13)(typescript@6.0.3)(vue@3.5.43(typescript@6.0.3)))(vue-tsc@3.1.5(typescript@6.0.3))(vue@3.5.43(typescript@6.0.3))
@@ -186,30 +186,30 @@ importers:
         specifier: 0.7.0
         version: 0.7.0(beautiful-mermaid@1.1.3)(katex@0.18.11)(shiki@4.3.1)(vue@3.5.43(typescript@6.0.3))
       '@iconify-json/lucide':
-        specifier: 1.2.137
+        specifier: ^1.2.137
         version: 1.2.137
-      '@lupinum/ginko':
-        specifier: workspace:^
-        version: link:../ginko
       '@lupinum/ginko-components':
         specifier: workspace:^
         version: link:../ginko-components
-      '@lupinum/ginko-content':
-        specifier: workspace:^
-        version: link:../ginko-content
       '@nuxt/icon':
-        specifier: 2.5.1
+        specifier: ^2.5.1
         version: 2.5.1(@nuxt/schema@4.6.0)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(oxc-parser@0.151.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))(vue@3.5.43(typescript@6.0.3))
       '@nuxt/kit':
         specifier: ^4.6.0
         version: 4.6.0(@nuxt/schema@4.6.0)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(oxc-parser@0.151.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))
       beautiful-mermaid:
-        specifier: 1.1.3
+        specifier: ^1.1.3
         version: 1.1.3
       katex:
-        specifier: 0.18.11
+        specifier: ^0.18.11
         version: 0.18.11
     devDependencies:
+      '@lupinum/ginko':
+        specifier: workspace:*
+        version: link:../ginko
+      '@lupinum/ginko-content':
+        specifier: workspace:*
+        version: link:../ginko-content
       nuxt:
         specifier: 4.6.0
         version: 4.6.0(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@oxc-project/types@0.153.0)(@types/node@24.19.1)(@vue/compiler-sfc@3.5.43)(acorn@8.19.0)(confbox@0.3.1)(db0@0.4.1)(dotenv@17.4.2)(esbuild@0.28.2)(giget@3.3.1)(ioredis@5.11.1(supports-color@10.2.2))(lightningcss@1.33.0)(mlly@1.8.2)(oxc-parser@0.151.0)(rolldown@1.2.13)(rollup-plugin-visualizer@7.1.1(rolldown@1.2.13)(rollup@4.64.1))(rollup@4.64.1)(srvx@1.0.5)(supports-color@10.2.2)(terser@5.51.2)(typescript@6.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))(vue-tsc@3.1.5(typescript@6.0.3))(yaml@2.9.1)
@@ -378,11 +378,10 @@ importers:
         version: 3.6.1(typescript@6.0.3)(vue-sfc-transformer@0.2.5(@volar/typescript@2.4.23(typescript@6.0.3))(@vue/compiler-core@3.5.43)(@vue/language-core@3.1.5(typescript@6.0.3))(esbuild@0.28.2)(rolldown@1.2.13)(typescript@6.0.3)(vue@3.5.43(typescript@6.0.3)))(vue-tsc@3.1.5(typescript@6.0.3))(vue@3.5.43(typescript@6.0.3))
 
   packages/ginko-preset-gastro:
-    dependencies:
-      '@lupinum/ginko':
-        specifier: workspace:^
-        version: link:../ginko
     devDependencies:
+      '@lupinum/ginko':
+        specifier: workspace:*
+        version: link:../ginko
       unbuild:
         specifier: 3.6.1
         version: 3.6.1(typescript@6.0.3)(vue-sfc-transformer@0.2.5(@volar/typescript@2.4.23(typescript@6.0.3))(@vue/compiler-core@3.5.43)(@vue/language-core@3.1.5(typescript@6.0.3))(esbuild@0.28.2)(rolldown@1.2.13)(typescript@6.0.3)(vue@3.5.43(typescript@6.0.3)))(vue-tsc@3.1.5(typescript@6.0.3))(vue@3.5.43(typescript@6.0.3))

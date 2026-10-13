@@ -40,13 +40,22 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "@lupinum/ginko": "workspace:^",
     "comark": "0.7.0",
-    "js-yaml": "5.4.3",
-    "sharp": "0.35.5",
-    "shiki": "4.3.1"
+    "js-yaml": "^5.4.3",
+    "shiki": "^4.3.1"
   },
   "devDependencies": {
+    "@lupinum/ginko": "workspace:*",
+    "sharp": "0.35.5",
     "unbuild": "3.6.1"
+  },
+  "peerDependencies": {
+    "@lupinum/ginko": "workspace:^",
+    "sharp": ">=0.33.0"
+  },
+  "peerDependenciesMeta": {
+    "sharp": {
+      "optional": true
+    }
   }
 }
