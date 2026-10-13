@@ -15,7 +15,7 @@ const neighbors = useGinkoNeighbors('docs', () => props.doc.id)
 const locale = useGinkoLocale()
 const site = useGinkoSite()
 // The Studio link needs the platform address and the site name: internal keys of the Ginko module, read by its own layer.
-const platform = useRuntimeConfig().public.ginko as { site: string, platform: string }
+const { platform, site: siteName } = useRuntimeConfig().public.ginko as { site: string, platform: string }
 const route = useRoute()
 useGinkoSeo(() => ({
   title: props.doc.data.title,
@@ -31,7 +31,7 @@ useGinkoSeo(() => ({
 
 const repository = useAppConfig().docs?.repository
 // A page from a file is edited in the repository; one stored on the platform in the Studio.
-const editUrl = computed(() => (props.doc.source ? docsEditUrl(repository, props.doc.source) : docsStudioUrl(platform.platform, platform.site, 'docs', props.doc.id)))
+const editUrl = computed(() => (props.doc.source ? docsEditUrl(repository, props.doc.source) : docsStudioUrl(platform, siteName, 'docs', props.doc.id)))
 const issueUrl = computed(() => docsIssueUrl(repository, props.doc.data.title, new URL(route.path, site.url).href))
 const updated = computed(() => props.doc.updatedAt && {
   iso: props.doc.updatedAt,
