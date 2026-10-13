@@ -5,8 +5,8 @@ import { createFormatters } from '../src/core/format'
 import { alternatesOf, canonicalCase, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, resolveConfig, stripLocale } from '../src/core/locales'
 import { createTranslator, formatParts } from '../src/core/messages'
 
-const pexd = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de-AT' })
-const prefix = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de-AT', strategy: 'prefix' })
+const pexd = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de' })
+const prefix = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de', strategy: 'prefix' })
 
 describe('negotiateLocale with hostile headers', () => {
   it.each([
@@ -54,8 +54,13 @@ describe('paths', () => {
     expect([inUserZone('/', config), inUserZone('/x/y', config), inUserZone('/studio', config), inUserZone('/api/x', config)]).toEqual([true, true, false, false])
     expect(localeFromPath('/en/about', config)).toBeUndefined()
   })
-  it('rejects a zone pattern without a leading slash', () => {
-    expect(() => resolveConfig({ locales: ['de-AT'], userLocale: ['app/**'] })).toThrow(/must start with "\/"/)
+  // `/admin/*` (the routeRules style) used to match nothing, without an error.
+  it.each([['exclude', '/admin/*'], ['exclude', 'studio'], ['userLocale', 'app/**'], ['userLocale', '/a/**/b'], ['userLocale', '/app*']])('rejects the %s pattern %s', (option, pattern) => {
+    expect(() => resolveConfig({ locales: ['de-AT'], [option]: [pattern] })).toThrow(`i18n.${option} pattern "${pattern}" is neither an exact path nor a prefix`)
+  })
+  it('takes a locale code as defaultLocale, not a language tag', () => {
+    expect(() => resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de-AT' })).toThrow('Fix: use "de"')
+    expect(() => resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'fr' })).toThrow('Fix: use one of "de", "en"')
   })
   it('accepts URL codes with capitals, as Ginko passes canonical tags', () => {
     const config = resolveConfig({ locales: ['de', ...['pt-BR', 'zh-Hant'].map(code => ({ code, language: code }))] })

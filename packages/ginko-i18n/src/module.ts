@@ -14,6 +14,7 @@ export interface SeoOptions {}
 
 export interface ModuleOptions {
   locales: (string | LocaleInput)[]
+  /** The URL code of the default locale (`'de'`, not `'de-AT'`). Default: the first locale. */
   defaultLocale?: string
   strategy?: Strategy
   /** Head tags: html lang/dir, canonical, hreflang + x-default, og:locale. */
@@ -22,7 +23,7 @@ export interface ModuleOptions {
   baseUrl?: string
   /** Parameters every message can use, e.g. `{ tone: 'sie' }`. */
   params?: Params
-  /** Extra unprefixed paths. `/api/**` and Nuxt internals are always excluded. */
+  /** Extra unprefixed paths: exact (`/studio`) or a prefix (`/admin/**`). `/api/**` and Nuxt internals are always excluded. */
   exclude?: string[]
   /** Paths whose locale comes from the user (cookie, then Accept-Language), not the URL: `['/app/**']`. Same syntax as `exclude`. */
   userLocale?: string[]

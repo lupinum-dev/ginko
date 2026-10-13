@@ -81,13 +81,15 @@ export function resolveConfig(input: {
     codes.add(l.code.toLowerCase())
   }
   const wanted = input.defaultLocale ?? locales[0]!.code
-  const def = locales.find(l => l.code === wanted || l.language === wanted)
-  if (!def)
-    throw new Error(`[ginko-i18n] defaultLocale "${wanted}" is not in \`locales\` (${[...codes].join(', ')}).`)
-  for (const pattern of input.userLocale ?? []) {
-    if (!pattern.startsWith('/'))
-      throw new Error(`[ginko-i18n] i18n.userLocale pattern "${pattern}" must start with "/". Fix: write an exact path or a prefix such as "/app/**".`)
+  const def = locales.find(l => l.code === wanted)
+  if (!def) {
+    const tagged = locales.find(l => l.language === wanted)
+    throw new Error(tagged
+      ? `[ginko-i18n] defaultLocale "${wanted}" is a language tag, not a locale code. Fix: use "${tagged.code}".`
+      : `[ginko-i18n] defaultLocale "${wanted}" is not a locale code. Fix: use one of ${locales.map(l => `"${l.code}"`).join(', ')}.`)
   }
+  checkPatterns('exclude', input.exclude ?? [])
+  checkPatterns('userLocale', input.userLocale ?? [])
   return {
     locales,
     defaultLocale: def.code,
@@ -106,6 +108,18 @@ export function alternatesOf(paths: Partial<Record<string, string>>, config: Pic
   const links = config.locales.flatMap(l => paths[l.code] ? [{ hreflang: l.language, path: paths[l.code]! }] : [])
   const fallback = paths[config.defaultLocale]
   return fallback ? [...links, { hreflang: 'x-default', path: fallback }] : links
+}
+
+/**
+ * `exclude` and `userLocale` take an exact path (`/studio`) or a prefix (`/app/**`, which also matches
+ * `/app`). Anything else, such as `/app/*`, would silently match nothing, so it fails setup.
+ */
+function checkPatterns(option: string, patterns: string[]) {
+  for (const pattern of patterns) {
+    const base = pattern.endsWith('/**') ? pattern.slice(0, -3) : pattern
+    if (!pattern.startsWith('/') || base.includes('*'))
+      throw new Error(`[ginko-i18n] i18n.${option} pattern "${pattern}" is neither an exact path nor a prefix. Fix: write an exact path such as "/studio" or a prefix such as "/app/**".`)
+  }
 }
 
 function matchesPattern(path: string, patterns: string[]): boolean {

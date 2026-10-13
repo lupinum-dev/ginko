@@ -68,7 +68,7 @@ export default defineNuxtConfig({
   modules: ['@lupinum/ginko-i18n'],
   i18n: {
     locales: ['de-AT', 'en-GB'], // URL codes become `de` and `en`
-    defaultLocale: 'de-AT', // `/ueber-uns` and `/en/about`
+    defaultLocale: 'de', // a URL code: `/ueber-uns` and `/en/about`
     baseUrl: 'https://example.com', // absolute canonical and hreflang URLs
   },
 })
@@ -554,13 +554,17 @@ Remove `@nuxtjs/i18n` first: both modules cannot own the locale, and setup fails
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `locales` | (required) | BCP 47 tags such as `'de-AT'`, or `{ language, code?, name? }`. The URL code defaults to the language subtag (`de-AT` → `de`); the name to the native name from `Intl.DisplayNames`. |
-| `defaultLocale` | first locale | The locale with no prefix under `prefix_except_default`, and the fallback for missing messages. |
+| `defaultLocale` | first locale | The code of the locale with no prefix under `prefix_except_default`, and the fallback for missing messages: `'de'`, not `'de-AT'`. |
 | `strategy` | `'prefix_except_default'` | Or `'prefix'`: every locale has a prefix and `/` redirects. |
 | `seo` | `true` | Head tags: `lang`, `dir`, canonical, hreflang with x-default, `og:locale`. `false` turns them off. An object (`{}`) is the same as `true` today; it is reserved for per-tag switches. |
 | `baseUrl` | `runtimeConfig.public.siteUrl` | Absolute site URL for canonical and hreflang. Set it in production. |
 | `params` | `{}` | Parameters every message can use, for example `{ tone: 'sie' }` for `{tone, select, …}`. |
 | `exclude` | `[]` | Extra unprefixed paths. `/api/**` and Nuxt internals are always excluded. |
-| `userLocale` | `[]` | Paths whose locale comes from the user (cookie, then `Accept-Language`), not the URL, for apps behind a login: `['/app/**']`. Same syntax as `exclude`. See [Apps and SaaS](#apps-and-saas). |
+| `userLocale` | `[]` | Paths whose locale comes from the user (cookie, then `Accept-Language`), not the URL, for apps behind a login: `['/app/**']`. See [Apps and SaaS](#apps-and-saas). |
+
+A pattern in `exclude` and `userLocale` is an exact path (`'/studio'`) or a prefix that ends in `/**`
+(`'/app/**'` matches `/app` and everything below it; `'/**'` matches every path). It starts with `/`.
+No other `*` is allowed: `'/app/*'` fails setup with a message.
 | `timeZone` | `'UTC'` | IANA time zone of the site (`'Europe/Vienna'`) for timestamps in `format.date` and `{d, date}` / `{d, time}` in messages. Calendar dates (`2026-10-08`) always stay on their day. One call can use another zone: `t('key', params, { timeZone: site.timezone })`, e.g. in an app that shows times of a site somewhere else. |
 
 Any other option fails setup with a message: Ginko i18n is not a drop-in for `@nuxtjs/i18n` options.
