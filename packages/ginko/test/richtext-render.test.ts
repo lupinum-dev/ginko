@@ -55,9 +55,9 @@ describe('GinkoMarkdown (plain Vue)', () => {
   // Bug caught: a registry that declares `embed` lets `::embed` through the parser; without a mapped component
   // the renderer emitted a native <embed> that loads the address like an iframe.
   test('a blocked tag renders only through a mapped component', async () => {
-    const value = { nodes: [['embed', { src: 'https://example.org' }], ['script', {}, 'alert(1)'], ['p', {}, 'kept']] } as MarkdownTree
+    const value = { nodes: [['embed', { src: 'https://example.org' }], ['script', {}, 'alert(1)'], ['SCRIPT', {}, 'alert(2)'], ['EMBED', { src: 'https://example.org' }], ['p', {}, 'kept']] } as MarkdownTree
     const bare = await render(value)
-    expect(bare).not.toMatch(/<embed|<script|alert/)
+    expect(bare).not.toMatch(/<embed|<script|alert/i)
     expect(bare).toContain('<p>kept</p>')
     const Embed = defineComponent({ props: { src: String }, setup: (props) => () => h('figure', props.src) })
     expect(await render(value, { embed: Embed })).toContain('<figure>https://example.org</figure>')

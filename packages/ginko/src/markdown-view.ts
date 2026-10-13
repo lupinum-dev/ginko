@@ -69,7 +69,12 @@ function labelCheckboxes(node: Tree): Tree {
 function dropUnsafe(node: Tree, components: Record<string, unknown>): Tree[] {
   if (!Array.isArray(node)) return [node]
   const [tag, props, ...children] = node as [string | null, Record<string, unknown>, ...Tree[]]
-  if (tag && tag !== 'template' && BLOCKED_TAGS.has(tag) && !Object.hasOwn(components, tag)) return []
+  if (tag && !Object.hasOwn(components, tag)) {
+    // HTML tag names ignore case and a tree that skipped the parser can hold `SCRIPT`. The component lookup above keeps
+    // the tag as written, because comark resolves components by that key.
+    const lower = tag.toLowerCase()
+    if (lower !== 'template' && BLOCKED_TAGS.has(lower)) return []
+  }
   const safe: Record<string, unknown> = {}
   for (const [name, value] of Object.entries(props ?? {})) {
     const key = name.replace(/^:/, '').toLowerCase()
