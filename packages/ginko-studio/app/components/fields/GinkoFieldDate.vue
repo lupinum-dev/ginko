@@ -18,7 +18,7 @@ const { t } = useI18n()
 const value = computed(() => (typeof props.modelValue === 'string' ? props.modelValue : ''))
 /** A week start (preset @workWeek) offers week starts of this site's week; any other date offers today and tomorrow. */
 const quick = computed(() => props.weeks
-  ? [{ label: t('fields.date.thisWeek'), date: workWeekOf(today.value, week.value) }, { label: t('fields.date.nextWeek'), date: addDays(workWeekOf(today.value, week.value), 7) }]
+  ? [{ label: t('fields.date.workWeek'), date: workWeekOf(today.value, week.value) }, { label: t('fields.date.nextWorkWeek'), date: addDays(workWeekOf(today.value, week.value), 7) }]
   : [{ label: t('fields.date.today'), date: today.value }, { label: t('fields.date.tomorrow'), date: addDays(today.value, 1) }])
 </script>
 

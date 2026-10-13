@@ -13,7 +13,7 @@ defineProps<{
   locales: readonly Locale[]
   issues: Issue[]
   route?: Partial<Record<Locale, string>>
-  /** Date fields that take a week start: they get "This week" and "Next week" (a planned week's start). */
+  /** Date fields that take a week start: they get "Current work week" and "Following work week" (a planned week's start). */
   weeks?: readonly string[]
 }>()
 const emit = defineEmits<{ update: [key: string, value: Json | undefined] }>()

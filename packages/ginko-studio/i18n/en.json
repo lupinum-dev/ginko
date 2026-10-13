@@ -474,8 +474,8 @@
       "notTranslated": "Not translated yet. The website shows the text from {name} here."
     },
     "date": {
-      "thisWeek": "This week",
-      "nextWeek": "Next week",
+      "workWeek": "Current work week",
+      "nextWorkWeek": "Following work week",
       "today": "Today",
       "tomorrow": "Tomorrow"
     },
