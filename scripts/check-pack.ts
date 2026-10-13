@@ -117,6 +117,7 @@ const created: Record<string, [string, RegExp][]> = {
   gastro: [['/', /<h1>Opening hours<\/h1>[\s\S]*Tomato soup/]],
   'gastro-de': [['/', /<h1>Öffnungszeiten<\/h1>[\s\S]*Tomatensuppe/]],
   docs: [['/docs/getting-started', /class="docs-sidebar/]],
+  'docs-de': [['/docs/einstieg', /lang="de"[\s\S]*class="docs-sidebar[\s\S]*Seiten schreiben/]],
 }
 for (const name of ['starter', ...readdirSync(join(root, 'packages/create-ginko/presets'))]) {
   if (!created[name]) failures.push(`check:pack has no URL check for the create-ginko preset folder ${name}`)
@@ -147,7 +148,7 @@ const results = await Promise.all([
   checkSite(docs, [['/docs/einstieg', /class="docs-sidebar/], ['/en/docs/getting-started', /lang="en"/], ['/__ginko/search/de.json', /"url":"\/docs\//]], { ginkoCheck: false }),
 ])
 failures.push(...results.flat())
-console.log(failures.length ? `FAIL check:pack\n${failures.join('\n')}` : 'OK check:pack: the create-ginko starters (plain, gastro, gastro --lang de, docs) and sites/docs build, serve and type-check from the tarballs')
+console.log(failures.length ? `FAIL check:pack\n${failures.join('\n')}` : 'OK check:pack: the create-ginko starters (plain, gastro, gastro --lang de, docs, docs --lang de) and sites/docs build, serve and type-check from the tarballs')
 // A failed run keeps its folder for a look at the sites; a passed one cleans up.
 if (!failures.length) rmSync(work, { recursive: true, force: true })
 process.exit(failures.length ? 1 : 0)

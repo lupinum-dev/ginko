@@ -11,7 +11,7 @@ npm run dev
 
 The new site reads its content from Markdown in `content/` and needs no platform. To let an owner
 edit a brick on the Ginko platform instead, remove `source: 'files'` from it in `ginko.config.ts`. See
-[Platform and CLI](https://github.com/lupinum-dev/ginko/blob/main/sites/docs/content/docs/9.plattform-und-cli.en.md).
+[Platform and CLI](https://github.com/lupinum-dev/ginko/blob/main/sites/docs/content/docs/12.plattform-und-cli.en.md).
 
 The sample site is English. `--lang de` creates it in German.
 
@@ -29,7 +29,7 @@ npm create ginko@latest my-docs -- --preset docs
 | Option | Values | Default |
 |---|---|---|
 | `--preset <name>` (or `--preset=<name>`) | `gastro`, `docs` | the plain starter |
-| `--lang <code>` (or `--lang=<code>`) | `en`, `de` (`docs` is English only) | `en` |
+| `--lang <code>` (or `--lang=<code>`) | `en`, `de` | `en` |
 | `-h`, `--help` | | |
 
 The command always says which starter and language it used. An unknown option, preset or language stops
