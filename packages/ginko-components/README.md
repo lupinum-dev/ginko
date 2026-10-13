@@ -105,7 +105,7 @@ custom properties, class names below the root (`ginko-card-title`, ...) and othe
 | `timeline-item` | block, parent `timeline` | `date`; `meta` (a short word next to the date); `title`; `icon`* (instead of the dot); `active` |
 | `pre` (plain Markdown tag, renderer override) | block | the code block of Markdown: label from `filename` or language, copy button |
 | `code-group` | block | none; children are code blocks, shown as tabs named by filename or language |
-| `code-tree` | block | `defaultValue` (path of the open file); `expandAll`; children are code blocks whose filename is the path |
+| `code-tree` | block | `file` (path of the open file); `expandAll`; children are code blocks whose filename is the path |
 | `files` | block | `active` (path to mark); content is a Markdown list, a nested list is a folder, text after ` # ` is a note at the end of the row; known file types get their icon |
 
 `icon` takes one of the built-in symbols: `file-text`, `info`, `triangle-alert`, `circle-x`, `circle-check`, `lightbulb`.
@@ -222,7 +222,7 @@ Learning and API components (`registry-learn.ts`, `registry-api.ts`, styles in `
 | Tag | Kind | Props |
 |---|---|---|
 | `quiz` | block, children `quiz-question` | `title`; `description`; one question at a time, back/next, a result at the end; runs in the browser, nothing is sent |
-| `quiz-question` | block, parent `quiz` | `question` (required); `type` single (default), multiple; the content is a task list of answers (`- [x]` right, `- [ ]` wrong); the slot `#explanation` shows after "check" |
+| `quiz-question` | block, parent `quiz` | `question` (required); `mode` single (default), multiple; the content is a task list of answers (`- [x]` right, `- [ ]` wrong); the slot `#explanation` shows after "check" |
 | `api` | block, children `api-param` | `title` (shown without method and path); `method` get, post, put, patch, delete, head, options; `path`; one tab per `group` |
 | `api-param` | block, parent `api` | `name` (required); `group` (default "Parameter"); `type`; `required` (shows a badge); `deprecated`; `since`; `defaultValue`; the content is the description |
 

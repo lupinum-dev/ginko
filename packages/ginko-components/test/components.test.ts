@@ -236,6 +236,11 @@ describe('registry and components', () => {
     expect(html).not.toContain('ginko-quiz-problem')
   })
 
+  test('code-tree{file} opens that file, not the first one', async () => {
+    const fence = (path: string) => `\`\`\`ts [${path}]\nx\n\`\`\`\n`
+    expect(await render(`::code-tree{file="b/two.ts"}\n${fence('a/one.ts')}${fence('b/two.ts')}::`)).toMatch(/aria-current="true"[^>]*>[\s\S]*?two\.ts/)
+  })
+
   test('quiz: a question without a valid answer list shows a problem text instead of a broken form', async () => {
     const html = await render(':::quiz\n::quiz-question{question="Allein?"}\n- [x] Nur eine\n::\n:::')
     expect(html).toContain('Diese Frage braucht mindestens zwei Antworten.')

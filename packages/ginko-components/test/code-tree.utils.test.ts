@@ -14,8 +14,8 @@ describe('code tree paths', () => {
     [['app.vue', 'app.vue'], undefined],
     [['app', 'app/index.ts'], undefined],
     [['app.vue'], 'missing.vue'],
-  ] as const)('ambiguous input %#', (paths, defaultValue) => {
-    expect(codeTreeProblem([...paths], defaultValue)).toBeTypeOf('string')
+  ] as const)('ambiguous input %#', (paths, file) => {
+    expect(codeTreeProblem([...paths], file)).toBeTypeOf('string')
   })
 
   test('the tree lists folders before files and nests by path', () => {
