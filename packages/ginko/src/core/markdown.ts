@@ -14,7 +14,7 @@ import mermaid from 'comark/plugins/mermaid'
 import taskList from 'comark/plugins/task-list'
 import toc from 'comark/plugins/toc'
 import { bare, coreMessage, msg, type Described } from './messages.ts'
-import { BLOCKED_TAGS, checkComponentTree, componentSlotNodes, type ComponentRegistry } from './components.ts'
+import { checkComponentTree, componentSlotNodes, isBlockedTag, type ComponentRegistry } from './components.ts'
 import { isSafeHref } from './href.ts'
 import type { Json } from './types.ts'
 
@@ -55,8 +55,8 @@ const TAGS: Record<Exclude<MarkdownProfile, 'page'>, ReadonlySet<string>> = {
   basic: new Set(BASIC_TAGS),
   rich: new Set([...BASIC_TAGS, 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'img', 'pre', 'math', 'mermaid']),
 }
-// Component syntax can name any tag (`::script`). Without a component registry `page` accepts any tag
-// except BLOCKED_TAGS (components.ts); with one, only the registered components (ParseOptions.components).
+// Component syntax can name any tag (`::script`). Without a component registry `page` accepts any tag that is
+// not blocked (isBlockedTag, components.ts); with one, only the registered components (ParseOptions.components).
 /**
  * Attributes a text may not set (besides `on*`): `style` paints over the page, `id` can clash with the page's own
  * ids (`__NUXT_DATA__` blanks it). Heading ids stay (the parser makes them), and so do props a registry declares.
@@ -191,7 +191,7 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
         count++
         if (typeof node === 'string' || node[0] === null) return
         const [tag, props, ...children] = node
-        if (BLOCKED_TAGS.has(tag) && !slots.has(node)) fail(msg('markdown.tagBlocked', { tag }))
+        if (isBlockedTag(tag, profile === 'page' ? registry : undefined) && !slots.has(node)) fail(msg('markdown.tagBlocked', { tag }))
         else if (allowed && !allowed.has(tag)) fail(msg('markdown.tagNotInProfile', { tag, allowed: { key: `markdown.profile.${profile}` } }))
         for (const [name, raw] of Object.entries(props)) {
           // `:name` is comark's bound form of the same prop.

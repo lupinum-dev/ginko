@@ -3,6 +3,9 @@
 import { collection, f, single, type Locale } from '@lupinum/ginko'
 import { BLOG_PATH, CHANGELOG_PATH } from '../shared/paths.ts'
 
+/** The registry of the Markdown components the layer renders, for `components` in `defineSite`. */
+export { components } from '@lupinum/ginko-components/registry'
+
 /** The site's languages, main language first. The same list as `locales` in `defineSite`, as a plain array or a tuple. */
 type Locales = readonly Locale[]
 

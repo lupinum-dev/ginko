@@ -19,7 +19,7 @@ const ROOT: Record<string, string> = {
   kbd: 'ginko-kbd', badge: 'ginko-badge', flow: 'ginko-flow', layout: 'ginko-layout', column: 'ginko-column', center: 'ginko-center',
   timeline: 'ginko-timeline', 'timeline-item': 'ginko-timeline-item',
   'code-group': 'ginko-code-group', 'code-tree': 'ginko-code-tree', files: 'ginko-files',
-  figure: 'ginko-figure', video: 'ginko-video', embedded: 'ginko-embed',
+  figure: 'ginko-figure', video: 'ginko-video', embed: 'ginko-embed',
   quiz: 'ginko-quiz', 'quiz-question': 'ginko-quiz-question', api: 'ginko-api', 'api-param': 'ginko-api-param',
   tabs: 'ginko-tabs', tab: 'class="ginko-tab"', accordion: 'ginko-accordion', 'accordion-item': 'ginko-accordion-item', collapse: 'ginko-collapse', steps: 'ginko-steps', cards: 'ginko-cards', card: 'ginko-card', 'read-more': 'ginko-read-more', 'inline-toc': 'ginko-inline-toc',
 }
@@ -149,7 +149,7 @@ describe('registry and components', () => {
   })
 
   test('an embed loads nothing from the provider before the click', async () => {
-    const html = await render(components.embedded.editor.example)
+    const html = await render(components.embed.editor.example)
     expect(html).not.toContain('<iframe')
     expect(html).not.toMatch(/openstreetmap\.org|spotify|google\.com/i)
     expect(html).toContain('Inhalt laden: Karte von Berlin-Mitte')
@@ -234,6 +234,11 @@ describe('registry and components', () => {
     expect(html).toContain('Frage 1 von 2')
     // The task list was read: both questions have a valid answer set (otherwise the problem text would show).
     expect(html).not.toContain('ginko-quiz-problem')
+  })
+
+  test('code-tree{file} opens that file, not the first one', async () => {
+    const fence = (path: string) => `\`\`\`ts [${path}]\nx\n\`\`\`\n`
+    expect(await render(`::code-tree{file="b/two.ts"}\n${fence('a/one.ts')}${fence('b/two.ts')}::`)).toMatch(/aria-current="true"[^>]*>[\s\S]*?two\.ts/)
   })
 
   test('quiz: a question without a valid answer list shows a problem text instead of a broken form', async () => {

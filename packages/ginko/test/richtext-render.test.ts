@@ -1,14 +1,14 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
-import { defineComponent, h, Suspense } from 'vue'
+import { defineComponent, h, Suspense, type Component } from 'vue'
 import { describe, expect, test } from 'vitest'
 import { GinkoMarkdown } from '@lupinum/ginko/vue'
 import type { MarkdownTree } from '@lupinum/ginko'
 import { parseMarkdown } from '@lupinum/ginko/internal'
 
 // comark's renderer has an async setup, so (as in Nuxt pages) it needs a <Suspense> boundary.
-async function render(value: MarkdownTree | undefined) {
-  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(GinkoMarkdown, { value }) }) }))
+async function render(value: MarkdownTree | undefined, components?: Record<string, Component>) {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(GinkoMarkdown, { value, components }) }) }))
   await flushPromises()
   return wrapper.html()
 }
@@ -50,5 +50,16 @@ describe('GinkoMarkdown (plain Vue)', () => {
     expect(html).not.toMatch(/javascript:|onclick|data:/)
     expect(html).toContain('<a>bad</a>')
     expect(html).toContain('<a href="/ok">good</a>')
+  })
+
+  // Bug caught: a registry that declares `embed` lets `::embed` through the parser; without a mapped component
+  // the renderer emitted a native <embed> that loads the address like an iframe.
+  test('a blocked tag renders only through a mapped component', async () => {
+    const value = { nodes: [['embed', { src: 'https://example.org' }], ['script', {}, 'alert(1)'], ['SCRIPT', {}, 'alert(2)'], ['EMBED', { src: 'https://example.org' }], ['p', {}, 'kept']] } as MarkdownTree
+    const bare = await render(value)
+    expect(bare).not.toMatch(/<embed|<script|alert/i)
+    expect(bare).toContain('<p>kept</p>')
+    const Embed = defineComponent({ props: { src: String }, setup: (props) => () => h('figure', props.src) })
+    expect(await render(value, { embed: Embed })).toContain('<figure>https://example.org</figure>')
   })
 })

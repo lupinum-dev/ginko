@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 // npm create ginko <folder> [-- --preset gastro|docs] [--lang en|de]: copies template/ into a new folder and sets
 // the site id and the Ginko versions. The Ginko packages release together, so they get this package's own version.
-// A preset is a small folder in presets/ that is copied over the base template and adds the preset's package.
+// A preset is a small folder in presets/ that is copied over the base template and adds the preset's packages.
 // German: template-de/ goes over the base template; a preset has its own folder `<preset>-de`.
 import { cpSync, existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { supportsNode } from './node-version.mjs'
 
-// preset name -> the package it needs, and what the printed next steps say about it
+// preset name -> the packages it adds (its own package, then the Ginko peers of that package that the base template
+// lacks; test/create-ginko.test.ts checks this against the packages' metadata), and what the next steps say about it
 const presets = {
-  gastro: { dependency: '@lupinum/ginko-preset-gastro', note: 'Hours and menu read from files. The preset\'s other bricks (notices, lunch, events, gallery) and the owner\'s quick tasks need the Ginko platform.' },
-  docs: { dependency: '@lupinum/ginko-docs', note: 'Pages are Markdown files in content/docs. No platform needed.' },
+  gastro: { packages: ['@lupinum/ginko-preset-gastro'], note: 'Hours and menu read from files. The preset\'s other bricks (notices, lunch, events, gallery) and the owner\'s quick tasks need the Ginko platform.' },
+  docs: { packages: ['@lupinum/ginko-docs', '@lupinum/ginko-i18n'], note: 'Pages are Markdown files in content/docs. No platform needed.' },
 }
 const langs = { en: 'English', de: 'German' }
 const command = 'npm create ginko@latest'
@@ -95,9 +96,7 @@ for (const file of ['package.json', 'ginko.config.ts']) {
 if (preset) {
   const path = join(dir, 'package.json')
   const pkg = JSON.parse(readFileSync(path, 'utf8'))
-  pkg.dependencies[presets[preset].dependency] = `^${own.version}`
-  // The docs layer plugs into the site's copy of these (they are its peers or the peers of its components).
-  if (preset === 'docs') for (const name of ['@lupinum/ginko-components', '@lupinum/ginko-i18n']) pkg.dependencies[name] = `^${own.version}`
+  for (const name of presets[preset].packages) pkg.dependencies[name] = `^${own.version}`
   pkg.dependencies = Object.fromEntries(Object.entries(pkg.dependencies).sort(([a], [b]) => a.localeCompare(b)))
   writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`)
 }

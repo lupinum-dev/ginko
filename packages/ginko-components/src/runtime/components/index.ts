@@ -41,16 +41,14 @@ import QuizQuestion from './QuizQuestion.vue'
 
 export { Api, ApiParam, Quiz, QuizQuestion }
 
-const mediaMap: Record<string, Component> = { img: Img, figure: Figure, video: Video, embedded: Embed }
+const mediaMap: Record<string, Component> = { img: Img, figure: Figure, video: Video, embed: Embed }
 
 const extraMap: Record<string, Component> = { quiz: Quiz, 'quiz-question': QuizQuestion, api: Api, 'api-param': ApiParam }
 
 const codeMap: Record<string, Component> = { pre: CodeBlock, 'code-group': CodeGroup, 'code-tree': CodeTree, files: Files }
 
-export {
-  Aside, Badge, Callout, Center, Column, Dropcap, ErrorCallout, Excerpt, Flow, IdeaCallout, InfoCallout, Kbd, Layout, NoteCallout,
-  SuccessCallout, Timeline, TimelineItem, WarningCallout,
-}
+// The six short forms of `callout` are only in the map (`componentMap.note` …): a wrapper starts from `Callout`.
+export { Aside, Badge, Callout, Center, Column, Dropcap, Excerpt, Flow, Kbd, Layout, Timeline, TimelineItem }
 
 /** Tag → component. The keys are the tags of `registry.ts`. */
 export const componentMap: Record<string, Component> = {

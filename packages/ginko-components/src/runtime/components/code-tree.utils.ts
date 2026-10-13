@@ -2,7 +2,7 @@
 export interface TreeNode { label: string; path: string; children?: TreeNode[] }
 
 /** Why the paths cannot form a tree (a message for the console), or undefined. */
-export function codeTreeProblem(paths: string[], defaultValue?: string): string | undefined {
+export function codeTreeProblem(paths: string[], file?: string): string | undefined {
   if (paths.length === 0) return 'No file with a file name.'
   const seen = new Set<string>()
   for (const path of paths) {
@@ -13,7 +13,7 @@ export function codeTreeProblem(paths: string[], defaultValue?: string): string 
   for (const path of paths) {
     if (paths.some((other) => other.startsWith(`${path}/`))) return `“${path}” is a file and a folder at once.`
   }
-  if (defaultValue !== undefined && !seen.has(defaultValue)) return `defaultValue “${defaultValue}” is not one of the files.`
+  if (file !== undefined && !seen.has(file)) return `file “${file}” is not one of the files.`
 }
 
 /** Folders first, then files, each by name. */

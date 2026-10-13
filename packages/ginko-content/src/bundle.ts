@@ -19,6 +19,7 @@ export function markdownRef(locale: Locale, brick: string, id: string, field: st
 /**
  * The bundle for page state: every markdown tree replaced by `{ ref, toc }` (CONTENT.md, Phase 14).
  * `trees` collects the trees by their ref, for the route that serves them.
+ * @internal Loaded by the Ginko module and CLI; sites do not import it.
  */
 export function withMarkdownRefs(bundle: Bundle, schema: Schema, trees: Map<string, MarkdownValue>): Bundle {
   const swap = (brick: string, id: string, data: Record<string, unknown>) => {
@@ -43,6 +44,7 @@ export function withMarkdownRefs(bundle: Bundle, schema: Schema, trees: Map<stri
  * ended before `now` are left out (an expired offer is not private data to publish), and the repo path
  * `source` is dropped unless `keepSource` is set (docs pages need it for their "Edit this page" link).
  * Items whose window is current or still to come stay: the page filters them by date in the browser.
+ * @internal Loaded by the Ginko module and CLI; sites do not import it.
  */
 export function publicBundle(bundle: Bundle, schema: Schema, now: Date, options: { keepSource?: boolean } = {}): Bundle {
   const today = todayIn(schema.timezone, now)
@@ -60,6 +62,7 @@ export function publicBundle(bundle: Bundle, schema: Schema, now: Date, options:
 /**
  * One bundle per locale from the files, built by the core's buildBundle, so visibility, order, URLs
  * and fallbacks follow the same rules as platform content. Revisions are 0: files have no history.
+ * @internal Loaded by the Ginko module and CLI; sites do not import it.
  */
 export async function buildFileBundles(options: BuildOptions): Promise<BuildResult> {
   const { contentDir, publicDir, schema, now = new Date() } = options

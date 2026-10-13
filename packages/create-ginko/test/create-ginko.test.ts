@@ -85,10 +85,15 @@ describe('create-ginko', () => {
   }
   it('the docs preset extends the docs layer', () => {
     expect(read('docs-en-2', 'nuxt.config.ts')).toContain("extends: ['@lupinum/ginko-docs']")
-    // The layer's peers (ginko, ginko-content) come from the base template; the components and their i18n peer are added.
-    expect(JSON.parse(read('docs-en-2', 'package.json')).dependencies).toMatchObject({
-      '@lupinum/ginko': `^${version}`, '@lupinum/ginko-content': `^${version}`, '@lupinum/ginko-components': `^${version}`, '@lupinum/ginko-i18n': `^${version}`,
-    })
+  })
+
+  // A preset adds its package and every Ginko peer of that package that the base template lacks, nothing else.
+  it.each([['gastro', '@lupinum/ginko-preset-gastro'], ['docs', '@lupinum/ginko-docs']])('the %s preset installs its package and its Ginko peers', (preset, pkg) => {
+    const metadata = (name: string) => JSON.parse(readFileSync(fileURLToPath(new URL(`../../${name.replace('@lupinum/', '')}/package.json`, import.meta.url)), 'utf8'))
+    const base = Object.keys(metadata('create-ginko/template').dependencies)
+    const peers = Object.keys(metadata(pkg).peerDependencies).filter((name) => name.startsWith('@lupinum/') && !base.includes(name))
+    const added = Object.keys(JSON.parse(read(`${preset}-en-2`, 'package.json')).dependencies).filter((name) => !base.includes(name))
+    expect(added.sort()).toEqual([pkg, ...peers].sort())
   })
 
   it('accepts the -- that pnpm and yarn pass through', () => {

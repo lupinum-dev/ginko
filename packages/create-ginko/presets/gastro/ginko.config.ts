@@ -7,15 +7,15 @@ export default defineSite({
   site: '{{SITE}}',
   name: '{{SITE}}',
   url: 'https://example.com',
-  timezone: 'Europe/Vienna',
+  timezone: 'Europe/Vienna', // change for your country
   locales: ['en'],
-  currency: 'EUR',
+  currency: 'EUR', // change for your country
   pages: { home: '/' },
   // Shown in search results and link previews. Replace it with one sentence about your site.
   seo: { description: 'Opening hours and menu of our restaurant.' },
   bricks: {
-    // content/hours.md: weekly hours. The hours rules (hoursOn, todayState) count Austrian public holidays; calendar: 'DE', 'SG' or 'none' changes that.
-    hours: hours({ source: 'files' }),
+    // content/hours.md: weekly hours. The hours rules (hoursOn, todayState) count Austrian public holidays; pass them calendar: 'DE', 'SG' or 'none' to change that.
+    hours: hours({ lang: 'en', source: 'files' }),
     // content/menu/: one file per dish. allergens: 'none' leaves out the allergen field.
     menu: menu({ allergens: 'none', source: 'files' }),
   },

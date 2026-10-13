@@ -34,8 +34,11 @@ export function docsMarkdownPath(path: string): string {
   return `${clean || '/index'}.md`
 }
 
+/** A chat the page menu can open the page in (`markdownActions.openIn`). */
+export type DocsAssistant = 'chatgpt' | 'claude'
+
 /** Links that open a chat with a prompt pointing at the page's Markdown. */
-export function docsAskLinks(prompt: string): { chatGpt: string, claude: string } {
+export function docsAskLinks(prompt: string): Record<DocsAssistant, string> {
   const q = encodeURIComponent(prompt)
-  return { chatGpt: `https://chatgpt.com/?q=${q}`, claude: `https://claude.ai/new?q=${q}` }
+  return { chatgpt: `https://chatgpt.com/?q=${q}`, claude: `https://claude.ai/new?q=${q}` }
 }
