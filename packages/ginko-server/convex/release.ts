@@ -10,6 +10,7 @@ import { internalMutation, internalQuery, mutation } from './_generated/server'
 import { actorFor, checkRev, fail } from './lib/access'
 import { byteSize, nextPrints, type Data, type Prints } from './lib/content'
 import { msg, recorded } from './lib/history'
+import { isFetchableSiteUrl } from './lib/siteUrl'
 import { BUDGET, checkNewFiles, checkNewLinks, entryUses, same, syncEntryRefs } from './lib/write'
 
 const scope = v.union(v.literal('release'), v.literal('pull'), v.literal('check'), v.literal('export'))
@@ -209,8 +210,8 @@ export const release = internalMutation({
     // now" sends the site's refresh token, so it must be a web address.
     if (next.site !== site.slug) fail('INVALID', 'errors.siteNameMismatchInSchema')
     if (!isWebUrl(next.url)) fail('INVALID', 'errors.siteUrlNotWeb')
-    // A push key is a CI secret, not an owner credential: only an owner changes the address (Studio), never a release.
-    if (next.url !== site.url) fail('INVALID', 'errors.siteUrlChangeInStudio')
+    // The release may move the site to a new address, but only to one the platform may call (no internal hosts).
+    if (next.url !== site.url && !isFetchableSiteUrl(next.url, process.env.GINKO_LOCAL === '1')) fail('INVALID', 'errors.siteUrlNotAllowed')
 
     // 3. Migration changes are reported first: they name the exact fix (new ID). The ledger of
     // applied migrations is the permanent identity: the schema forgets a migration once it is
@@ -350,8 +351,9 @@ export const release = internalMutation({
     const at = Date.now()
     await ctx.db.patch(args.site, {
       schema: next as unknown as Json,
-      // The config owns the site's name; the URL stays the owner's (checked above).
+      // The config owns the site's name and URL: "Seite ansehen", invites and the refresh target follow it.
       name: next.name,
+      url: next.url,
       schemaRev,
       contentRev,
       orderRevs,
