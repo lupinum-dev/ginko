@@ -2,6 +2,7 @@
 // Only file blogs have a feed: posts that live on the platform are not in that bundle.
 import schema from '#ginko/schema'
 import fileBundles from '#ginko/files'
+import locales from '#ginko/locales'
 import type { Brick } from '@lupinum/ginko'
 import { isVisible, todayIn } from '@lupinum/ginko/internal'
 import type { H3Event } from 'h3'
@@ -27,6 +28,8 @@ export function serveBlogFeed(event: H3Event, locale: string) {
     authors: ((p.data.authors as string[] | undefined) ?? []).flatMap((id) => authors.find((a) => a.id === id)?.data.name ?? []).map(String),
   }))
   const page = base + route.replace('/[slug]', '')
+  // RSS <language> is the BCP 47 tag of the locale (`languages` in the config), like the page head.
+  const language = locales.locales.find((l) => l.code === locale)?.language ?? locale
   setResponseHeader(event, 'content-type', 'application/rss+xml; charset=utf-8')
-  return rssXml({ title: `${config.name} Blog`, link: page, self: `${page}/rss.xml`, description: config.seo.description ?? `${config.name} Blog`, language: locale, items })
+  return rssXml({ title: `${config.name} Blog`, link: page, self: `${page}/rss.xml`, description: config.seo.description ?? `${config.name} Blog`, language, items })
 }
