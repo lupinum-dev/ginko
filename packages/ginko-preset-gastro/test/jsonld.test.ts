@@ -105,6 +105,22 @@ describe('eventJsonLd', () => {
       description: 'Ein Abend mit Wein.',
       offers: { '@type': 'Offer', price: '25.00', priceCurrency: 'EUR', url: 'https://linde.example/reservierung' },
     }],
+    // Wrong behaviour caught: every price was divided by 100, so a JPY price came out 100 times too small.
+    ['a price in a currency without minor units (JPY)', {
+      title: 'Sake', url: 'https://linde.example/veranstaltungen/sake', when: { from: '2026-11-06', to: '2026-11-06' },
+      location: { name: 'Gasthaus zur Linde' }, price: { amount: 3500, currency: 'JPY' },
+    }, {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Sake',
+      startDate: '2026-11-06',
+      endDate: '2026-11-06',
+      eventStatus: 'https://schema.org/EventScheduled',
+      eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+      location: { '@type': 'Place', name: 'Gasthaus zur Linde' },
+      url: 'https://linde.example/veranstaltungen/sake',
+      offers: { '@type': 'Offer', price: '3500', priceCurrency: 'JPY' },
+    }],
     ['a start time: added to startDate without an offset', {
       title: 'Weinabend', url: 'https://linde.example/veranstaltungen/weinabend', when: { from: '2026-11-06', to: '2026-11-06' }, start: '19:00',
       location: { name: 'Gasthaus zur Linde' },
