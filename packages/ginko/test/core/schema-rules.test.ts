@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import { plan } from '../../src/cli/plan.ts'
 import {
-  buildBundle, checkSchema, isShown, collection, defineSite, diffSchema, f, isCurrency, isLocale, labelOf, platformSchema, serializeSchema, single, validate,
+  buildBundle, checkSchema, checkSite, isShown, collection, defineSite, diffSchema, f, isCurrency, isLocale, labelOf, platformSchema, serializeSchema, single, validate,
   type Fields, type RouteTemplate, type Schema, type SiteInput,
 } from '../../src/core/index.ts'
 
@@ -113,6 +113,22 @@ describe('4. locales and currency', () => {
     expect(problemsOf(site({}, { currency: currency as never })).some((p) => p.startsWith('Invalid currency'))).toBe(!valid)
     expect(problemsOf(site({ price: f.money('Preis', { ...optional, currency: currency as never }) })).some((p) => p.includes('currency must be an ISO 4217 code'))).toBe(!valid)
     expect(isCurrency(currency)).toBe(valid)
+  })
+  // The site url builds canonical URLs and the sitemap; `new URL` on a bad value threw at runtime.
+  it.each([
+    ['https://linde.example', true], ['http://localhost:3000', true], ['https://linde.example/de/', true],
+    ['linde.example', false], ['/linde', false], ['ftp://linde.example', false], ['mailto:a@linde.example', false], ['', false],
+  ])('url "%s" -> valid: %s', (url, valid) => {
+    expect(problemsOf(site({}, { url })).some((p) => p.startsWith('Invalid site url'))).toBe(!valid)
+  })
+
+  // `languages` stays out of the schema, so only checkSite (Nuxt build, `ginko check`) sees it.
+  it.each([
+    [{ de: 'de-AT', en: 'en-GB' }, []],
+    [{ fr: 'fr-FR' }, ['languages: locale “fr” is not in locales.']],
+    [{ de: 'de_AT' }, ['languages.de: invalid language “de_AT” (expected a canonical language tag such as “de-AT” or “en-US”).']],
+  ])('languages %j', (languages, expected) => {
+    expect(checkSite(site({}, { languages }))).toEqual(expected)
   })
 })
 

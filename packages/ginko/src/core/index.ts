@@ -1,7 +1,7 @@
 export * from './types.ts'
 export { f, isTranslatable, effectiveMax, isShown, effectiveProfile, effectiveAlt, ALT_MAX } from './fields.ts'
 export { defineSite, single, collection, type SiteInput, type Migration, type MigrationContext, type RouteTemplate } from './site.ts'
-export { serializeSchema, platformSchema, migrationFingerprint, checkSchema, isTimeZone, mainLocale, ordered, SCHEMA_LIMITS, SITE_BUDGET } from './schema.ts'
+export { serializeSchema, platformSchema, migrationFingerprint, checkSchema, checkSite, isTimeZone, mainLocale, ordered, SCHEMA_LIMITS, SITE_BUDGET } from './schema.ts'
 export { parseMarkdown, plainText, textBlocks, URL_PROPS, UNSAFE_LINK, type TextBlock, describeProfile, profileCovers, MARKDOWN_PROFILES, type MarkdownProfile, type MarkdownToc, type MarkdownTree, type MarkdownValue, type ParsedMarkdown, type ParseOptions, type TocLink } from './markdown.ts'
 export { markdownBlocks, serializeMarkdown, isStableMarkdown, type MarkdownBlock, type MarkdownBlocks, type SerializeOptions } from './markdown-serialize.ts'
 export { validate, isDate, fileProblem, type ValidateOptions, type ValidationResult } from './validate.ts'

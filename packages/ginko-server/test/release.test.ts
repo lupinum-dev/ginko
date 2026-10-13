@@ -61,7 +61,7 @@ describe('release mutation (SPEC 5.2)', () => {
   // Wrong behaviour caught: a push key (a CI secret) points the site's refresh token at another address, or stores another site's config.
   it.each([
     ['another site', { site: 'andere' }, 'errors.siteNameMismatchInSchema'],
-    ['a URL that is no web address', { url: 'javascript:alert(1)' }, 'errors.siteUrlNotWeb'],
+    ['a URL that is no web address', { url: 'javascript:alert(1)' }, 'errors.schemaInvalid'],
     ['a new URL on an internal host', { url: 'https://169.254.169.254' }, 'errors.siteUrlNotAllowed'],
   ])('refuses a config for %s and changes nothing', async (_name, change, key) => {
     const s = await setup()

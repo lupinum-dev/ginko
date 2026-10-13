@@ -186,6 +186,19 @@ export function mainLocale(schema: Pick<Schema, 'locales'>): Locale {
 }
 
 /**
+ * Problems of a site config: those of its schema, plus the options that stay out of the schema (`languages`).
+ * The Nuxt build and `ginko check` run it; the platform checks only the schema (checkSchema).
+ */
+export function checkSite(site: SiteInput): string[] {
+  const problems: string[] = []
+  for (const [locale, language] of Object.entries(site.languages ?? {})) {
+    if (!site.locales.includes(locale)) problems.push(`languages: locale “${locale}” is not in locales.`)
+    if (!isLocale(language)) problems.push(`languages.${locale}: invalid language “${String(language)}” (expected a canonical language tag such as “de-AT” or “en-US”).`)
+  }
+  return [...problems, ...checkSchema(serializeSchema(site))]
+}
+
+/**
  * Structural problems of a schema itself (not of content). Empty when usable. The platform gets
  * schemas from the network (release, devPush), so any value is a problem list, never a crash.
  */
@@ -215,6 +228,7 @@ function schemaProblems(schema: Schema): string[] {
   // Locales are the keys of the stored content: any canonical language tag, e.g. `es`, `pt-BR`, `zh-Hant`.
   for (const locale of schema.locales) if (!isLocale(locale)) problems.push(`Invalid locale “${String(locale)}” (expected a canonical language code such as “es”, “pt-BR” or “zh-Hant”).`)
   for (const locale of new Set(schema.locales.filter((l, i) => schema.locales.indexOf(l) !== i))) problems.push(`Locale “${locale}” is listed twice.`)
+  if (!isSiteUrl(schema.url)) problems.push(`Invalid site url “${String(schema.url)}” (expected an absolute http(s) address such as “https://linde.example”).`)
   if (!isTimeZone(schema.timezone)) problems.push(`Invalid time zone “${String(schema.timezone)}” (expected for example “Europe/Vienna”).`)
   if (schema.week !== undefined && !isWeek(schema.week)) problems.push('week must be { firstDay: 1 to 7, weekend: [days 1 to 7] } (1 = Monday, 7 = Sunday).')
   if (!isCurrency(schema.currency)) problems.push(`Invalid currency “${String(schema.currency)}” (expected an ISO 4217 code such as “EUR” or “JPY”).`)
@@ -445,6 +459,16 @@ function holdsFiles(field: Field): boolean {
 const NUMBER_OPTIONS = ['min', 'max', 'step', 'maxBytes'] as const
 
 /** An IANA time zone name this runtime's `Intl` knows, e.g. `Europe/Vienna`. */
+function isSiteUrl(value: unknown): boolean {
+  if (typeof value !== 'string') return false
+  try {
+    const url = new URL(value)
+    return (url.protocol === 'https:' || url.protocol === 'http:') && url.host !== ''
+  } catch {
+    return false
+  }
+}
+
 export function isTimeZone(timeZone: unknown): timeZone is string {
   if (typeof timeZone !== 'string' || timeZone === '') return false
   try {

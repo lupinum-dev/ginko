@@ -8,7 +8,7 @@ import { checkExternalLinks } from './external-links.ts'
 import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
 import { configFilesToWatch } from './watch.ts'
-import { checkLinks, checkSchema, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
+import { checkLinks, checkSite, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
 const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
@@ -26,9 +26,9 @@ export default defineNuxtModule<SiteInput>({
   async setup(site, nuxt) {
     if (!site?.site || !site.bricks) throw new Error('[ginko] Option `ginko` is missing: the result of defineSite() from ginko.config.ts.')
     // The serialized schema is the site's own contract: checked at build, used at runtime for defaults.
-    const schema = serializeSchema(site)
-    const problems = checkSchema(schema)
+    const problems = checkSite(site)
     if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
+    const schema = serializeSchema(site)
 
     const { resolve } = createResolver(import.meta.url)
     // Dev: a change to ginko.config.ts restarts the dev server (see watch.ts). Texts in i18n/*.json reload by themselves (ginko-i18n).

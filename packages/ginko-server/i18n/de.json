@@ -198,7 +198,6 @@
     "uploadRetrying": "Das Bild konnte nicht verarbeitet werden. Wir versuchen es erneut.",
     "uploadHeicUnreadable": "Dieses HEIC-Foto kann nicht gelesen werden. Bitte speichere es als JPEG oder PNG und lade es erneut hoch.",
     "uploadNotAnImage": "Diese Datei ist kein lesbares Bild.",
-    "siteUrlNotWeb": "Die Adresse der Website in der Config muss mit https:// oder http:// beginnen.",
     "siteUrlNotAllowed": "Diese Adresse der Website ist nicht erlaubt. Sie muss eine öffentliche https://-Adresse sein."
   },
   "history": {

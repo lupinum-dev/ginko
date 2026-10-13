@@ -22,10 +22,12 @@ export interface Migration {
 export interface SiteInput {
   site: string
   name: string
+  /** The address of the live site, absolute `http(s)://`. Canonical URLs, the sitemap and share images start with it. */
   url: string
   timezone: string
+  /** The site's locales. The first entry is the main locale: the default for content, routes and plain-path pages. */
   locales: readonly [Locale, ...Locale[]]
-  /** The BCP 47 language per locale for `lang`, hreflang and dates, e.g. `{ de: 'de-AT' }`. Default: the locale itself. */
+  /** The BCP 47 language per locale for `lang`, hreflang and dates, e.g. `{ de: 'de-AT' }`. Default: the locale itself. Keys are entries of `locales`. */
   languages?: Partial<Record<Locale, string>>
   /**
    * The first day of the week, 1 (Monday) to 7 (Sunday). Default: the first day of the main locale's language

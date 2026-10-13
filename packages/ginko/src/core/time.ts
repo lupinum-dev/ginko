@@ -32,7 +32,7 @@ export function weekInfoOf(language: string, firstDayOfWeek?: WeekInfo['firstDay
     const locale = new Intl.Locale(language) as Intl.Locale & { getWeekInfo?: () => Partial<WeekInfo>; weekInfo?: Partial<WeekInfo> }
     const found = locale.getWeekInfo?.() ?? locale.weekInfo
     if (found?.firstDay && Array.isArray(found.weekend)) info = { firstDay: found.firstDay as WeekInfo['firstDay'], weekend: [...found.weekend] }
-  } catch { /* invalid tag: the schema check reports it */ }
+  } catch { /* invalid tag: checkSite reports it */ }
   return { firstDay: firstDayOfWeek ?? info.firstDay, weekend: info.weekend }
 }
 
