@@ -1,11 +1,7 @@
 import { parseMarkdown } from './markdown.ts'
 import type { Currency, Fields, Locale, Schema } from './types.ts'
 
-/**
- * 3: collection items carry `updatedAt` and, for file entries, `source`.
- * 2: text fields carry comark trees (V1.md rule 1); 1 carried AST v1 and is refused.
- * Format 2 is still read (`isBundle`): its items lack the two fields, which are optional.
- */
+/** 3: text fields carry comark trees; collection items carry `updatedAt` and, for file entries, `source`. Other formats are refused. */
 export const BUNDLE_FORMAT = 3
 
 export interface BundleItem {
@@ -25,9 +21,9 @@ export type BundleBrick =
   | { kind: 'single'; data: Record<string, unknown>; fallback: string[] }
   | { kind: 'collection'; items: BundleItem[] }
 
-/** GET <platform>/bundle/<site>?format=3&locale=<l> (SPEC part 6). `format` is 2 only for a bundle received from an older platform. */
+/** GET <platform>/bundle/<site>?format=3&locale=<l> (SPEC part 6). */
 export interface Bundle {
-  format: typeof BUNDLE_FORMAT | 2
+  format: typeof BUNDLE_FORMAT
   site: string
   locale: Locale
   requestedLocale?: string
@@ -48,7 +44,7 @@ export interface Bundle {
 export function isBundle(value: unknown): value is Bundle {
   if (!isRecord(value)) return false
   const b = value
-  if ((b.format !== BUNDLE_FORMAT && b.format !== 2) || typeof b.site !== 'string' || typeof b.locale !== 'string') return false
+  if (b.format !== BUNDLE_FORMAT || typeof b.site !== 'string' || typeof b.locale !== 'string') return false
   if (!Number.isInteger(b.schemaRev) || !Number.isInteger(b.contentRev) || !isRecord(b.bricks)) return false
   return Object.values(b.bricks).every(isBundleBrick)
 }

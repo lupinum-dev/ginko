@@ -285,14 +285,6 @@ describe('isBundle and bundleFits: a malformed bundle is a platform failure, not
     expect(isBundle(good) && bundleFits(good, schema)).toBe(true)
   })
 
-  // Format 2 (no updatedAt, no source) is still read; the items just lack the two fields.
-  it('accepts a format 2 bundle', () => {
-    const old = structuredClone(good) as unknown as Record<string, any>
-    old.format = 2
-    for (const item of old.bricks.events.items) { delete item.updatedAt; delete item.source }
-    expect(isBundle(old)).toBe(true)
-  })
-
   it.each([
     { name: 'items null', mutate: (b: Record<string, any>) => { b.bricks.events.items = null } },
     { name: 'item without data', mutate: (b: Record<string, any>) => { delete b.bricks.events.items[0].data } },

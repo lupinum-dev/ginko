@@ -57,7 +57,7 @@ export type ItemOf<F extends Fields, Routed extends boolean = boolean> = {
   fallback: string[]
   /** The address in every language the entry exists in (language switcher, hreflang). Routed bricks only. */
   urls?: Partial<Record<string, string>>
-  /** When the entry last changed (ISO 8601, UTC). Absent when unknown (bundle format 2). */
+  /** When the entry last changed (ISO 8601, UTC). Absent when unknown. */
   updatedAt?: string
 } & (Routed extends true ? {
   /** The address in the current language: a visible routed entry always has one. */
