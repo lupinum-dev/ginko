@@ -7,7 +7,7 @@ import { checkLinks, serializeSchema, type Bundle, type SiteInput } from '../cor
 import { english } from './report.ts'
 
 /** Prints the issues and returns false when one of them is an error (warnings do not fail the check). */
-export async function checkFileLinks(input: { config: SiteInput; root: string; log: (line: string) => void; fetch?: Fetch }): Promise<boolean> {
+export async function checkFileLinks(input: { config: SiteInput; root: string; log: (line: string) => void; fetch: Fetch }): Promise<boolean> {
   const schema = serializeSchema(input.config)
   if (!Object.values(schema.bricks).some((b) => b.source === 'files')) return true
   let content: typeof import('@lupinum/ginko-content')
