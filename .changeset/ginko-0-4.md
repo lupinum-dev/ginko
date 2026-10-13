@@ -12,9 +12,9 @@ Ginko 0.4: one content system for Nuxt websites, from Markdown files in Git to a
 
 Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm create ginko@latest my-site`; the documentation explains every step.
 
-Public API: `@lupinum/ginko` (`defineSite`, `single`, `collection`, `f`, `formatMoney`, `plainText`, `weekStartOf` and the types), `@lupinum/ginko/nuxt` (the module, the `useGinko*` composables, `ginkoLangOf`, `ginkoSafeHref`, `isGinkoVisible`, `<GinkoMarkdown>`, `<GinkoImage>`) and `@lupinum/ginko/vue` (`<GinkoMarkdown>`). `@lupinum/ginko/internal` has no stability promise. The `ginko` CLI commands `check`, `release` and `export` are public; `dev`, `import` and `pull` run only in the Ginko monorepo.
+Public API: `@lupinum/ginko` (`defineSite`, `single`, `collection`, `f`, `formatMoney`, `plainText`, `safeHref`, `weekStartOf` and the types; imported, not auto-imported), `@lupinum/ginko/nuxt` (the module, the `useGinko*` composables including `useGinkoLang` and `useGinkoSite`, `<GinkoMarkdown>`, `<GinkoImage>`), `@lupinum/ginko/vue` (`<GinkoMarkdown>`) and the search reader of `@lupinum/ginko/search` (`loadIndex`, `search` and their types). `@lupinum/ginko/internal` has no stability promise. The `ginko` CLI has `check [--offline]`, `release` and `export [folder]`; every run prints one JSON line and ends with exit code 0–4 (0 ok, 1 invalid, 2 usage, 3 platform unavailable, 4 key not allowed). The monorepo tools `pnpm local:dev`, `local:import` and `local:pull` run only in the Ginko repository.
 
-Names to know: field helpers take one options object (`f.choice(label, { options })`, `f.ref(label, { to })`, `f.list(label, { itemLabel, fields, max })`); `useGinkoPath` gives page paths; `useGinkoNeighbors(brick, id, { order })`; `formatMoney` is imported from `@lupinum/ginko`, not auto-imported; `Query.order` also takes `{ field, dir }`; the option type is `ChoiceOption`. The CLI reads `GINKO_PLATFORM` or `NUXT_PUBLIC_GINKO_PLATFORM`, and `GINKO_COMMIT` or `GITHUB_SHA`.
+Names to know: field helpers take one options object (`f.choice(label, { options })`, `f.ref(label, { to })`, `f.list(label, { itemLabel, fields, max })`); `useGinkoPath` gives page paths; `useGinkoNeighbors(brick, id, { order })`; `formatMoney` is imported from `@lupinum/ginko`, not auto-imported; `Query.order` also takes `{ field, dir }`; the option type is `ChoiceOption`. The CLI reads `GINKO_PLATFORM` or `NUXT_PUBLIC_GINKO_PLATFORM`, `GINKO_KEY`, `GINKO_COMMIT` or `GITHUB_SHA`, and for `release` `GINKO_BRANCH` (default `main`) and `GINKO_REMOTE` (default `origin`); it does not read `.env` files.
 
 **Names in the packages (renamed before 0.4, so nothing to migrate)**
 
@@ -39,7 +39,7 @@ Names to know: field helpers take one options object (`f.choice(label, { options
 - Agent output: `/llms.txt`, `/llms-full.txt`, a `.md` twin for every page, `Accept: text/markdown`, and a Markdown 404 that suggests pages.
 - Render modes: Git-only sites prerender everything; platform sites refresh changed pages after a publish; previews render with `noindex`.
 - In dev, `nuxt dev` restarts when `ginko.config.ts` changes, and a brick that cannot reach the platform names itself and the fix.
-- CLI `ginko`: `check` (schema, links and the share image, for every site) and `release` for CI, `export` for backups; `dev`, `import` and `pull` run only in the Ginko monorepo.
+- CLI `ginko`: `check` (schema, links and the share image, for every site; `--offline` without the platform) and `release` for CI, `export` for backups; `pnpm local:dev|import|pull` run only in the Ginko monorepo.
 
 **Languages (`@lupinum/ginko-i18n`)**
 

@@ -70,18 +70,21 @@ const events = useGinko('events') // typed from ginko.config.ts
   `useGinkoToday`, `useGinkoWeek`, `useGinkoLocale`, `useGinkoPath`, `useGinkoSeo` and more), the components
   `<GinkoMarkdown>` and `<GinkoImage>`, a sitemap, and languages through
   [`@lupinum/ginko-i18n`](https://github.com/lupinum-dev/ginko/tree/main/packages/ginko-i18n).
-- **`@lupinum/ginko/vue`**: `<GinkoMarkdown :value>` (renders a parsed tree, inside `<Suspense>`) for a Vue 3 app without Nuxt.
+- **`@lupinum/ginko/vue`**: `<GinkoMarkdown :value>` for a Vue 3 app without Nuxt: takes a parsed `MarkdownTree`,
+  renders at once (no `<Suspense>`), and uses only the components you pass.
 - **`ginko`**: the CLI. `ginko check` checks the config and the content links of every site (use it in CI;
   `--offline` needs no platform key); `release` and `export` work with the hosted platform. Every run prints one
   JSON line and ends with a documented exit code.
 
 ## Stability
 
-`@lupinum/ginko`, `@lupinum/ginko/nuxt`, `@lupinum/ginko/vue` and `@lupinum/ginko/search` are the public
-API. Every name they export is documented on the docs site. `pos` and `retired` on fields and bricks are set by
-the platform; do not set them. Until 1.0, a minor release may still break it, and the changelog names the break.
-`@lupinum/ginko/internal` and `@lupinum/ginko/internal/search` are for Ginko's own packages. They can change in
-any release, so do not import them in a site.
+`@lupinum/ginko`, `@lupinum/ginko/nuxt` and `@lupinum/ginko/vue` are the public API, and from
+`@lupinum/ginko/search` the names `loadIndex`, `search`, `SearchHit`, `SearchIndex` and `SearchIndexJson`. Their
+names are documented on the docs site ("Reading content", API reference). `pos` and `retired` on fields and bricks
+are set by the platform; do not set them. Until 1.0, a minor release may still break it, and the changelog names
+the break. `@lupinum/ginko/internal` and the other names of `@lupinum/ginko/search` (`buildIndex`,
+`searchSections`, `SearchRecord`) are for Ginko's own packages. They can change in any release, so do not import
+them in a site.
 
 ## Docs
 
