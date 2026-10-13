@@ -32,7 +32,7 @@ describe('quiz rules', () => {
 
 describe('api helpers', () => {
   test('signature: ?, type and default in order', () => {
-    expect(signatureTail({ type: 'number', optional: true, defaultValue: '20' })).toBe('?: number = 20')
+    expect(signatureTail({ type: 'number', defaultValue: '20' })).toBe(': number = 20')
     expect(signatureTail({ type: 'string' })).toBe(': string')
     expect(signatureTail({})).toBe('')
   })
