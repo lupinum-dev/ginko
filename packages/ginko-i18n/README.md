@@ -410,7 +410,7 @@ text. The examples are for `de-AT`:
 | `format.range(from, to, style?)` | `format.range('2026-06-20', '2026-06-21')` → `20.–21. Juni 2026` |
 | `format.relative(value, now?)` | `vor 5 Minuten`, `gestern`. Call it after mount or pass `now`: the text depends on the current time. |
 | `format.number(value, options?)` | `format.number(1234.5)` → `1 234,5` (`Intl.NumberFormatOptions`) |
-| `format.currency(value, currency)` | `format.currency(12.5, 'EUR')` → `€ 12,50` |
+| `format.currency(value, currency)` | `format.currency(12.5, 'EUR')` → `€ 12,50`. Takes the amount in major units (12.5). For an `f.money` field, use `formatMoney` from `@lupinum/ginko`. |
 | `format.list(items, type?)` | `format.list(['Äpfel', 'Birnen', 'Pflaumen'])` → `Äpfel, Birnen und Pflaumen` (`'conjunction'` or `'disjunction'`) |
 
 ### `<I18nT>`
