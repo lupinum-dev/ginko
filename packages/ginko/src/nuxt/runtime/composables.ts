@@ -212,10 +212,13 @@ export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: MaybeRefO
 export interface GinkoSeoInput {
   title?: string
   description?: string
-  /** A public path (`/og.png`) or absolute URL; a path becomes absolute with the site `url`. Default: `seo.image` of the site config. */
+  /**
+   * A public path (`/og.png`), an absolute URL, or a `SeoImage` with size and alt text; a path becomes absolute with
+   * the site `url`. Default: `seo.image` of the site config. Read once at setup to choose the generated card (below).
+   */
   image?: SeoImage | string
   type?: 'website' | 'article'
-  /** Small label above the title on the generated share card (docs: the section). */
+  /** The small label above the title on the generated share card (a docs page shows its section). No card, no effect. */
   section?: string
   noindex?: boolean
   /** Extra JSON-LD objects, for example an `Event` or a `FAQPage`. */

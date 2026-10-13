@@ -69,6 +69,19 @@ describe('fetchBundle when the platform is down', () => {
     expect(error.message).not.toContain('\n')
   })
 
+  // Wrong behaviour caught: a deployment without the platform address answers 503 with no hint in the server log.
+  test('production without NUXT_PUBLIC_GINKO_PLATFORM: plain 503, one log line naming the variable', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const fetch = vi.fn()
+    vi.stubGlobal('fetch', fetch)
+    for (let i = 0; i < 2; i++) {
+      await expect(fetchBundle({ ...config, platform: '' }, 'de', undefined)).rejects.toMatchObject({ statusCode: 503, message: 'Content temporarily unavailable' })
+    }
+    expect(fetch).not.toHaveBeenCalled()
+    expect(error.mock.calls).toEqual([[expect.stringContaining('NUXT_PUBLIC_GINKO_PLATFORM is not set')]])
+    error.mockRestore()
+  })
+
   // Wrong behaviour caught: production leaks dev advice, or stops being a plain 503.
   test('production keeps the plain 503 text', async () => {
     down()
