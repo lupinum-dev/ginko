@@ -108,6 +108,17 @@ describe('ginko check and links in content files', () => {
     expect(code).toBe(1)
   })
 
+  // Wrong behaviour caught: with a platform brick, a missing GINKO_PLATFORM (exit 2) replaced a broken link (exit 1).
+  it('keeps exit 1 for a broken link when the platform comparison fails', async () => {
+    const { code, lines, result } = await runCheck(siteWith('Siehe [Nichts]($page.nope).', { ...config, bricks: { ...config.bricks, news } }))
+    expect(lines).toEqual([
+      expect.stringContaining('$page.nope'),
+      'Skipped the comparison with production: The environment variable GINKO_PLATFORM is missing.',
+    ])
+    expect(result).toMatchObject({ ok: false, error: { code: 'INVALID' } })
+    expect(code).toBe(1)
+  })
+
   // Wrong behaviour caught: the external-link check ignored the CLI's fetch and sent real requests from tests.
   it('checks external links through the CLI fetch', async () => {
     const urls: string[] = []

@@ -14,8 +14,8 @@ import { explainChanges, explainProblems, explainRejected, kib } from './report.
 /**
  * Prints the report and returns true when the config is valid, the content files have no broken links and a
  * release with this schema and content would go through. Without `connect` (a site of file bricks only, or
- * --offline) the release part is skipped. `connect` runs only after the local checks, so a missing GINKO_PLATFORM
- * does not hide config and link problems. `root` is the folder of ginko.config.ts (content/ and public/ are below it).
+ * --offline) the release part is skipped. `connect` runs only after the local checks, and when those failed a platform
+ * failure (a missing GINKO_PLATFORM, an unreachable platform) is only logged: the result stays a code problem. `root` is the folder of ginko.config.ts (content/ and public/ are below it).
  * `fetch` sends the external-link checks.
  */
 export async function check(input: {
@@ -38,8 +38,15 @@ export async function check(input: {
     if (links) input.log('OK: schema and links are fine.')
     return links
   }
-  const release = await checkRelease({ config: input.config, platform: input.connect(), log: input.log })
-  return links && release
+  try {
+    return await checkRelease({ config: input.config, platform: input.connect(), log: input.log }) && links
+  } catch (error) {
+    // A local problem needs a code fix (exit 1). A platform failure must not replace it with an exit code that says
+    // a rerun helps.
+    if (links) throw error
+    input.log(`Skipped the comparison with production: ${error instanceof Error ? error.message : String(error)}`)
+    return false
+  }
 }
 
 /** `seo.image` as a path (`/og.png`) must exist in public/: otherwise every page points its share image at a 404. Absolute URLs are not fetched. */
