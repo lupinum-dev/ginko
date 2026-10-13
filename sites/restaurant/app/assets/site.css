@@ -10,6 +10,26 @@
 @import '@fontsource/alegreya-sans/latin-ext-400.css';
 @import '@fontsource/alegreya-sans/latin-ext-700.css';
 
+/* Stand-ins for the web fonts while they load, sized to Alegreya's width and line box. Without them the swap re-wraps
+   headings and event titles and shifts the page (CLS 0.16-0.20 on the events pages). Metrics: x-width of the fallback
+   against Alegreya / Alegreya Sans (size-adjust), ascent and descent from the fonts' hhea table divided by size-adjust. */
+@font-face {
+  font-family: 'Alegreya Fallback';
+  src: local('Times New Roman'), local('Times'), local('Liberation Serif');
+  size-adjust: 102.4%;
+  ascent-override: 99.2%;
+  descent-override: 33.7%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Alegreya Sans Fallback';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans');
+  size-adjust: 87.5%;
+  ascent-override: 102.9%;
+  descent-override: 34.3%;
+  line-gap-override: 0%;
+}
+
 :root {
   --paper: #fbfbf7;
   --paper-2: #f1f2ea;
@@ -23,8 +43,8 @@
   --on-linde: #f4f5ea;
   --on-linde-2: #c3cfc4;
 
-  --serif: 'Alegreya', 'Iowan Old Style', Georgia, serif;
-  --sans: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;
+  --serif: 'Alegreya', 'Alegreya Fallback', 'Iowan Old Style', Georgia, serif;
+  --sans: 'Alegreya Sans', 'Alegreya Sans Fallback', 'Segoe UI', system-ui, sans-serif;
 
   --gutter: 16px;
   --max: 72rem;
