@@ -9,14 +9,13 @@ code blocks and more) come from `@lupinum/ginko-components`. Math (`$x^2$`, `$$â
 ## Use
 
 ```bash
-npm install @lupinum/ginko @lupinum/ginko-content @lupinum/ginko-i18n @lupinum/ginko-components @lupinum/ginko-docs
+npm install @lupinum/ginko @lupinum/ginko-content @lupinum/ginko-i18n @lupinum/ginko-docs
 ```
 
 ```ts
 // ginko.config.ts
 import { defineSite } from '@lupinum/ginko'
-import { docsCollection } from '@lupinum/ginko-docs/config'
-import { components } from '@lupinum/ginko-components/registry'
+import { components, docsCollection } from '@lupinum/ginko-docs/config'
 
 const locales = ['en', 'de'] as const
 
@@ -36,7 +35,7 @@ export default defineSite({
 `docsCollection`, `blogCollections`, `blogPages` and `changelogPages` take one options object. `locales` is the same list as
 in `defineSite` (the layer accepts any `readonly string[]`; `defineSite` itself needs the tuple, hence `as const`).
 
-`components` is the registry of `@lupinum/ginko-components`. With it, Ginko checks every component tag and prop in the
+`components` is the registry of `@lupinum/ginko-components` (a dependency of the layer, re-exported here). With it, Ginko checks every component tag and prop in the
 pages; a site can add its own components next to it (see "Inside an existing site").
 
 The layer finds its content by brick key, so keep these names: `docs` (docsCollection), `home` (docsHome),
@@ -160,7 +159,7 @@ export default defineNuxtConfig({ extends: ['@lupinum/ginko-docs'], modules: ['@
 
 ```ts
 // ginko.config.ts: the docs brick next to the site's own bricks, the Markdown components next to the site's own
-import { components } from '@lupinum/ginko-components/registry'
+import { components, docsCollection } from '@lupinum/ginko-docs/config'
 
 bricks: { docs: docsCollection({ locales, base: '/handbook' }), /* â€¦ */ },
 components: { ...components, /* the site's own components; same name wins */ },
