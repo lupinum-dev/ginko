@@ -15,9 +15,15 @@ export function ginkoRouteRules(site: RouteRules): RouteRules {
   rules['/**'] = { ...rules['/**'], isr: rules['/**']?.isr ?? { expiration: ISR_SECONDS, allowQuery: [] } }
   // A site's own server routes pick their language from a header or cookie (ginko-i18n), so they are not cached.
   rules['/api/**'] = { isr: false, ...rules['/api/**'] }
-  // The preview is never cached and never indexed: the exact path and its children need their own rules (ISR spike).
+  // Ginko's own addresses are never indexed. The preview and other dynamic routes are never cached either; the exact
+  // path and its children need their own rules (ISR spike).
   for (const path of ['/__ginko', '/__ginko/**']) {
     rules[path] = { ...rules[path], isr: false, headers: { ...rules[path]?.headers, 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } }
+  }
+  // The file bundles, Markdown trees and search indexes are build output: Vercel and Netlify keep them until the next
+  // deploy, a browser asks again each time (they change with every deploy, under the same address).
+  for (const path of ['/__ginko/files/**', '/__ginko/search/**']) {
+    rules[path] = { ...rules[path], isr: { expiration: false, allowQuery: [] }, headers: { ...rules[path]?.headers, 'cache-control': 'public, max-age=0, must-revalidate', 'x-robots-tag': 'noindex' } }
   }
   return rules
 }

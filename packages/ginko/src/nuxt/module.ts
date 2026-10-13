@@ -41,6 +41,10 @@ export default defineNuxtModule<SiteInput>({
     const schema = serializeSchema(site)
     const problems = [...unknownSiteKeys(site), ...checkSchema(schema)]
     if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
+    const sources = {
+      platform: Object.values(schema.bricks).some((b) => b.source !== 'files'),
+      files: Object.values(schema.bricks).some((b) => b.source === 'files'),
+    }
 
     const { resolve } = createResolver(import.meta.url)
     // Dev: a change to ginko.config.ts restarts the dev server (see watch.ts). Texts in i18n/*.json reload by themselves (ginko-i18n).
@@ -58,10 +62,7 @@ export default defineNuxtModule<SiteInput>({
       timezone: schema.timezone,
       seo: site.seo ?? {},
       agents: site.agents ?? {},
-      sources: {
-        platform: Object.values(schema.bricks).some((b) => b.source !== 'files'),
-        files: Object.values(schema.bricks).some((b) => b.source === 'files'),
-      },
+      sources,
     } })
     // Languages come from ginko.config: ginko-i18n owns URLs, hreflang, canonical and the site's own texts
     // (i18n/<locale>.json). Other `i18n` options in nuxt.config (params, exclude) pass through.
@@ -146,7 +147,7 @@ export default defineNuxtModule<SiteInput>({
       if (!existsSync(join(nuxt.options.rootDir, 'public', 'llms-full.txt'))) addServerHandler({ route: '/llms-full.txt', handler: resolve(`./runtime/server/llms-full.${runtimeExt}`) })
       addServerHandler({ middleware: true, handler: resolve(`./runtime/server/markdown.${runtimeExt}`) })
     }
-    if (Object.values(schema.bricks).some((b) => b.source === 'files')) await useFiles(schema, site, nuxt)
+    if (sources.files) await useFiles(schema, site, nuxt)
     // The sitemap route imports the file bundles; a site without file bricks has none.
     else {
       addServerTemplate({ filename: '#ginko/files', getContents: () => 'export default {}' })
@@ -156,7 +157,10 @@ export default defineNuxtModule<SiteInput>({
     nuxt.hook('pages:resolved', (pages) => { for (const warning of unservedPaths(schema, pages)) console.warn(`[ginko] ${warning}`) })
     addPlugin(resolve(`./runtime/plugin.${runtimeExt}`))
     addPlugin({ src: resolve(`./runtime/today.client.${runtimeExt}`), mode: 'client' })
-    extendPages((pages) => { pages.push({ name: 'ginko-preview', path: '/__ginko/preview', file: resolve('./runtime/preview.vue') }) })
+    // The preview shows drafts from the platform; a site whose bricks all come from files has nothing to preview.
+    if (sources.platform) {
+      extendPages((pages) => { pages.push({ name: 'ginko-preview', path: '/__ginko/preview', file: resolve('./runtime/preview.vue') }) })
+    }
     for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'useGinkoPath', 'useGinkoLang', 'useGinkoSite']) addImports({ name, from: composables })
     for (const name of ['GinkoItem', 'GinkoPageKey', 'GinkoLocale', 'GinkoSeoInput']) addImports({ name, from: composables, type: true })
     addComponent({ name: 'GinkoMarkdown', export: 'GinkoMarkdown', filePath: resolve(`./runtime/GinkoMarkdown.${runtimeExt}`) })
