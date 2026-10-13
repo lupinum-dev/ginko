@@ -31,7 +31,7 @@ features:
   - icon: lucide:bot
     title: Lesbar für Agenten
     description: Jede Seite gibt es als Markdown, dazu llms.txt und einen MCP-Zugang zur Doku.
-    href: /docs/einstieg
+    href: /docs/seo-und-agenten
 ---
 
 ## Ein Baustein, eine Seite, ein Inhalt
