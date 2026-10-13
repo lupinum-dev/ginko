@@ -175,7 +175,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
   // Markdown trees by the path that serves them; the bundles carry only `{ ref, toc }` (CONTENT.md, Phase 14).
   let trees = new Map<string, MarkdownTree>()
   // The search index per locale, from the bundles above (CONTENT.md, Phase 14).
-  let searches: Partial<Record<Locale, ReturnType<typeof content.searchIndex>>> = {}
+  let searches: Partial<Record<Locale, Awaited<ReturnType<typeof content.searchIndex>>>> = {}
   // Images next to content files, copied under their content hash and served at /_ginko/img/ for a year (CONTENT.md "Bilder").
   const imageDir = join(rootDir, 'node_modules', '.cache', 'ginko-img') // not in buildDir: Nuxt empties that after the modules ran
   let images = new Map<string, string>()
@@ -211,7 +211,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     // What is served to everyone: no expired entries, no repo paths (kept only for the docs layer's "Edit this page" link).
     const now = new Date()
     bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, content.withMarkdownRefs(content.publicBundle(bundle!, schema, now, { keepSource: editLinks }), schema, trees)]))
-    searches = Object.fromEntries(Object.entries(bundles).map(([locale, bundle]) => [locale, content.searchIndex(bundle!, trees, schema)]))
+    searches = Object.fromEntries(await Promise.all(Object.entries(bundles).map(async ([locale, bundle]) => [locale, await content.searchIndex(bundle!, trees, schema)])))
   }
   await build()
   // A static host has no server: when every brick is a file brick the site can be prerendered, so the redirects are also route rules (exact paths only; patterns need the middleware).

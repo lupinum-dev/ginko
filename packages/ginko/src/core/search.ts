@@ -3,13 +3,6 @@
 // `@lupinum/ginko/search`; the core index does not export it. Imports no other core file, so the browser chunk carries
 // only the engine. Pure: no Node APIs, runs in Convex too. The records come from search-sections.ts.
 import MiniSearch from 'minisearch'
-import { stemmer as dutch } from '@zbsearch/stemmers/dutch'
-import { stemmer as english } from '@zbsearch/stemmers/english'
-import { stemmer as french } from '@zbsearch/stemmers/french'
-import { stemmer as german } from '@zbsearch/stemmers/german'
-import { stemmer as italian } from '@zbsearch/stemmers/italian'
-import { stemmer as portuguese } from '@zbsearch/stemmers/portuguese'
-import { stemmer as spanish } from '@zbsearch/stemmers/spanish'
 
 export interface SearchRecord {
   /** The item id; `<item id>#<anchor>` for a section with a heading. */
@@ -36,34 +29,44 @@ export interface SearchEngineData { readonly [engineData]: true }
 /** The index as JSON: what `buildIndex` returns and `loadIndex` takes. `language` picks the word rules for the index and every query. */
 export interface SearchIndexJson { language: string; index: SearchEngineData }
 
-// Stemmers for the languages Ginko sites use most; they load with the search, never with the page. Another language
-// gets lowercase words without accents and no stemming: prefix and typo matching still find word forms close enough.
-const stemmers: Record<string, (word: string) => string> = { de: german, en: english, es: spanish, fr: french, it: italian, nl: dutch, pt: portuguese }
+// Stemmers for the languages Ginko sites use most, each its own chunk: a browser loads only the stemmer of the index
+// it opens. Another language gets lowercase words without accents and no stemming: prefix and typo matching still
+// find word forms close enough.
+type Stemmer = (word: string) => string
+const stemmers: Record<string, () => Promise<{ stemmer: Stemmer }>> = {
+  de: () => import('@zbsearch/stemmers/german'),
+  en: () => import('@zbsearch/stemmers/english'),
+  es: () => import('@zbsearch/stemmers/spanish'),
+  fr: () => import('@zbsearch/stemmers/french'),
+  it: () => import('@zbsearch/stemmers/italian'),
+  nl: () => import('@zbsearch/stemmers/dutch'),
+  pt: () => import('@zbsearch/stemmers/portuguese'),
+}
 const withoutAccents = (term: string) => term.normalize('NFD').replace(/\p{M}/gu, '')
 
 /**
  * The word rules of a language (a locale code such as `de`, `en` or `pt-BR`). German spells ä/ö/ü/ß out first
  * ("Öffnungszeiten" and "Oeffnungszeiten" meet); every other language stems the word, then drops accents ("café" finds "cafe").
  */
-function processTerm(language: string): (term: string) => string {
+async function processTerm(language: string): Promise<(term: string) => string> {
   const code = language.split('-')[0]!.toLowerCase()
-  if (code === 'de') return (term) => german(term.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss'))
-  const stem = stemmers[code] ?? ((word: string) => word)
+  const stem: Stemmer = Object.hasOwn(stemmers, code) ? (await stemmers[code]!()).stemmer : (word) => word
+  if (code === 'de') return (term) => stem(term.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss'))
   return (term) => withoutAccents(stem(term.toLowerCase()))
 }
 
-const engineOptions = (language: string) => ({
+const engineOptions = async (language: string) => ({
   fields: ['title', 'heading', 'text'],
   storeFields: ['url', 'title', 'heading', 'excerpt'],
-  processTerm: processTerm(language),
+  processTerm: await processTerm(language),
 })
 
 /**
  * The serialized index of these records in `language` (the locale code of their text): title ranks above heading,
  * heading above text. Only id, url, title, heading and excerpt are stored.
  */
-export function buildIndex(records: readonly SearchRecord[], language: string): SearchIndexJson {
-  const index = new MiniSearch<SearchRecord>(engineOptions(language))
+export async function buildIndex(records: readonly SearchRecord[], language: string): Promise<SearchIndexJson> {
+  const index = new MiniSearch<SearchRecord>(await engineOptions(language))
   index.addAll(records as SearchRecord[])
   // The one place engine JSON becomes the opaque type, and loadIndex the one place it turns back.
   return { language, index: index.toJSON() as unknown as SearchEngineData }
@@ -84,9 +87,9 @@ export class SearchIndex {
   }
 }
 
-/** The index ready to search, with the word rules of the language it was built in. */
-export function loadIndex(json: SearchIndexJson): SearchIndex {
-  return wrap(MiniSearch.loadJS(json.index as unknown as EngineJson, engineOptions(json.language)))
+/** The index ready to search, with the word rules of the language it was built in (loads that language's stemmer). */
+export async function loadIndex(json: SearchIndexJson): Promise<SearchIndex> {
+  return wrap(MiniSearch.loadJS(json.index as unknown as EngineJson, await engineOptions(json.language)))
 }
 
 /** Prefix and typo tolerant (fuzzy 0.2); the best `limit` hits first. */
