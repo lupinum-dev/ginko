@@ -2,7 +2,7 @@
   "name": "@lupinum/ginko-content",
   "version": "0.0.0",
   "type": "module",
-  "description": "Ginko bricks from Markdown files in the site's repo (CONTENT.md).",
+  "description": "Ginko bricks from Markdown files in the site's repo.",
   "license": "MIT",
   "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",
   "repository": {

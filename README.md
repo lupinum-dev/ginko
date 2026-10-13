@@ -51,9 +51,9 @@ node --experimental-strip-types scripts/seed-local.ts             # demo content
 cd apps/platform && pnpm e2e                                       # Studio tests; starts Nuxt on 3100, the site on 3000
 ```
 
-Docs for site developers: [sites/docs/content/docs](sites/docs/content/docs). The contract and the
-design: [SPEC.md](SPEC.md), [V1.md](V1.md), [UI.md](UI.md), [CONTENT.md](CONTENT.md), [DESIGN.md](DESIGN.md). Releases:
-[RELEASING.md](RELEASING.md).
+Docs for site developers: [sites/docs/content/docs](sites/docs/content/docs). Releases:
+[RELEASING.md](RELEASING.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Security reports:
+[SECURITY.md](.github/SECURITY.md).
 
 ## License
 
