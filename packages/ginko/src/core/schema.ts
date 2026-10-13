@@ -467,12 +467,15 @@ function holdsFiles(field: Field): boolean {
 
 const NUMBER_OPTIONS = ['min', 'max', 'step', 'maxBytes'] as const
 
-/** An absolute http(s) address without credentials, query or fragment: page paths are appended to it. */
+/**
+ * An absolute http(s) address without credentials, query or fragment: page paths are appended to it. The parsed
+ * parts are '' for an empty `?` or `#`, so the normalised address is compared instead.
+ */
 function isSiteUrl(value: unknown): boolean {
   if (typeof value !== 'string') return false
   try {
     const url = new URL(value)
-    return (url.protocol === 'https:' || url.protocol === 'http:') && url.search === '' && url.hash === '' && url.username === '' && url.password === ''
+    return (url.protocol === 'https:' || url.protocol === 'http:') && url.href === url.origin + url.pathname
   } catch {
     return false
   }
