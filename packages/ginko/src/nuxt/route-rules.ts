@@ -2,6 +2,14 @@
 interface GinkoRouteRule { isr?: number | boolean | object; headers?: Record<string, string> }
 type RouteRules = Record<string, GinkoRouteRule>
 
+/**
+ * Nitro's Vercel options with Ginko's bypass token: only that token makes Vercel regenerate a page on demand (SPEC 4.4).
+ * A token the site set itself wins.
+ */
+export function ginkoVercelConfig<V extends { config?: { bypassToken?: string } }>(site: V | undefined, token: string | undefined) {
+  return { ...site, config: { ...site?.config, bypassToken: site?.config?.bypassToken ?? token } }
+}
+
 /** How long a page stays cached before Vercel renders it again: a default, the site's own `/**` rule wins. */
 const ISR_SECONDS = 60
 

@@ -7,7 +7,7 @@ import { fileLinkIssues } from './external-links.ts'
 import { checkI18nOptions } from './i18n.ts'
 import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
-import { ginkoRouteRules } from './route-rules.ts'
+import { ginkoRouteRules, ginkoVercelConfig } from './route-rules.ts'
 import { configFilesToWatch } from './watch.ts'
 import { checkSite, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
 
@@ -88,9 +88,7 @@ export default defineNuxtModule<SiteInput>({
     // Private runtime config (not `public`): `NUXT_GINKO_REVALIDATE_TOKEN` fills it at runtime. The server sends it as
     // `x-ginko-site-token`, so the platform does not count the site's own fetches against the visitor rate limit.
     nuxt.options.runtimeConfig.ginkoRevalidateToken ??= ''
-    // Only the bypass token makes Vercel regenerate a page on demand (SPEC 4.4). A token the site set itself wins.
-    const vercel = nuxt.options.nitro.vercel
-    nuxt.options.nitro.vercel = { ...vercel, config: { ...vercel?.config, bypassToken: vercel?.config?.bypassToken ?? process.env.NUXT_GINKO_REVALIDATE_TOKEN } }
+    nuxt.options.nitro.vercel = ginkoVercelConfig(nuxt.options.nitro.vercel, process.env.NUXT_GINKO_REVALIDATE_TOKEN)
 
     // No _payload.json on client navigation: Nuxt turns it on for every ISR route, and fetching it
     // renders the target on the server, which loads the production bundle. Pages read the bundle

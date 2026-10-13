@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { ginkoRouteRules } from '../src/nuxt/route-rules.ts'
+import { ginkoRouteRules, ginkoVercelConfig } from '../src/nuxt/route-rules.ts'
 
 // Wrong behaviour caught: a site that sets its own cache time or turns ISR off gets Ginko's 60 s without a warning.
 test('the site\'s own rules win; Ginko fills only what is unset', () => {
@@ -22,4 +22,10 @@ test('build output under /__ginko/ is cached until the next deploy; the rest is 
   // The documented exception to "the site wins": a site's cache header cannot make the preview cacheable.
   expect(ginkoRouteRules({ '/__ginko/**': { isr: 60, headers: { 'cache-control': 'max-age=3600', 'x-a': '1' } } })['/__ginko/**'])
     .toEqual({ isr: false, headers: { 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'x-a': '1' } })
+})
+
+// Wrong behaviour caught: NUXT_GINKO_REVALIDATE_TOKEN silently replaces the bypass token the site set itself.
+test('the site\'s own Vercel bypassToken wins; an unset one takes the env token', () => {
+  expect(ginkoVercelConfig({ regions: ['fra1'], config: { bypassToken: 'site' } }, 'env')).toEqual({ regions: ['fra1'], config: { bypassToken: 'site' } })
+  expect(ginkoVercelConfig(undefined, 'env')).toEqual({ config: { bypassToken: 'env' } })
 })
