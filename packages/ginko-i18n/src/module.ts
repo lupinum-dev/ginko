@@ -248,8 +248,11 @@ declare module '#app' {
   interface PageMeta {
     /** Translated paths or a subset of locales; \`false\` keeps the page unlocalized. */
     i18n?: PageI18n | false
-    /** Per-locale paths of a dynamic page, resolved before render (CMS and content slugs). */
-    alternates?: AlternatesResolver
+    /**
+     * Per-locale paths of a dynamic page, resolved before render (CMS and content slugs). Not inside
+     * \`i18n\`: Nuxt reads \`i18n\` at build time only while it is plain data, and a function would drop its \`paths\`.
+     */
+    i18nAlternates?: AlternatesResolver
   }
 }
 

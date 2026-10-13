@@ -173,7 +173,7 @@ server HTML agree. The function runs on the server and on client navigation:
 ```ts
 // app/pages/blog/[slug].vue
 definePageMeta({
-  alternates: async (to, { locale, localePath }) => {
+  i18nAlternates: async (to, { locale, localePath }) => {
     const post = await $fetch<{ slugs: Record<string, string> }>('/api/post', { query: { slug: to.params.slug, locale } })
     return Object.fromEntries(Object.entries(post.slugs).map(([code, slug]) => [code, localePath(`/blog/${slug}`, code)]))
   },
@@ -185,7 +185,7 @@ translated. Link to content with the paths your content data provides, never wit
 `localePath('/blog/…')`: `localePath` translates app routes, not content slugs.
 
 A Nuxt module that owns dynamic routes for many pages (a CMS) registers one resolver from its plugin
-instead. A page's own `definePageMeta({ alternates })` wins; otherwise the first resolver that returns
+instead. A page's own `definePageMeta({ i18nAlternates })` wins; otherwise the first resolver that returns
 paths does:
 
 ```ts
@@ -447,7 +447,9 @@ plain string (`'en'`), while `useI18n().locale` is a `ComputedRef<string>`.
 ### `definePageMeta`
 
 - `i18n`: `{ paths?, locales? }` or `false`. See [Locale options per page](#locale-options-per-page).
-- `alternates`: a resolver, as for `addAlternatesResolver`. See [Dynamic pages](#dynamic-pages-cms-content).
+- `i18nAlternates`: a resolver, as for `addAlternatesResolver`. See [Dynamic pages](#dynamic-pages-cms-content).
+  It is a key of its own, not part of `i18n`: Nuxt reads `i18n` at build time only while it is plain
+  data, so a function inside it would drop `paths` and `locales`.
 
 ### `@lupinum/ginko-i18n/core`
 

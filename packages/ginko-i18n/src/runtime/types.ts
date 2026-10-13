@@ -76,7 +76,7 @@ export interface I18nState {
   fixedLocale?: string
   /**
    * Libraries that own dynamic routes (a CMS) add a resolver here from their plugin. A page's own
-   * `definePageMeta({ alternates })` wins; otherwise the first resolver that returns paths does.
+   * `definePageMeta({ i18nAlternates })` wins; otherwise the first resolver that returns paths does.
    */
   resolvers: AlternatesResolver[]
 }

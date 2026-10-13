@@ -18,7 +18,7 @@ export function writeLocaleCookie(code: string) {
   document.cookie = `ginko_locale=${code}; path=${c.base || '/'}; max-age=31536000; samesite=lax`
 }
 
-/** Payload data key for a dynamic page's alternates, filled by `definePageMeta({ alternates })` (see plugin). */
+/** Payload data key for a dynamic page's alternates, filled by `definePageMeta({ i18nAlternates })` (see plugin). */
 export const alternatesKey = (path: string) => `ginko-i18n:alternates:${path}`
 
 /** Resolve a path written in any locale (or unprefixed) to the same page in `code`. */
@@ -146,7 +146,7 @@ export function useLocaleSuggestion() {
 
 /**
  * For a library's Nuxt plugin that owns dynamic routes (a CMS): give a route's path per locale, or
- * `undefined` when the route is not yours. A page's own `definePageMeta({ alternates })` wins; otherwise
+ * `undefined` when the route is not yours. A page's own `definePageMeta({ i18nAlternates })` wins; otherwise
  * the first resolver that returns paths does.
  */
 export function addAlternatesResolver(resolver: AlternatesResolver) {

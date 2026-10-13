@@ -97,9 +97,11 @@ need no helper of their own for this.
 
 ## D7. Dynamic pages declare their other-language versions before rendering
 
-**Choice:** `definePageMeta({ alternates: (to, { locale, localePath }) => … })`. The resolver runs
+**Choice:** `definePageMeta({ i18nAlternates: (to, { locale, localePath }) => … })`. The resolver runs
 inside the Nuxt app context, in the router guard, and its result is stored in the payload, so
-hydration and `_payload.json` reuse it.
+hydration and `_payload.json` reuse it. The key has the `i18n` prefix because page meta is one global
+namespace for every module. It is not inside `i18n`: Nuxt extracts `i18n` at build time only while
+it is plain data, so a function there would drop the page's `paths` and `locales`.
 
 **Why:** the language switcher and the `hreflang` tags must be right in the first HTML. When the
 alternates were computed during render instead, the switcher showed the previous page's links, the
