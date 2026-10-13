@@ -38,7 +38,8 @@ Names to know: field helpers take one options object (`f.choice(label, { options
 - Search index built in plain JS at build time, one record per heading section, loaded lazily per language.
 - Agent output: `/llms.txt`, `/llms-full.txt`, a `.md` twin for every page, `Accept: text/markdown`, and a Markdown 404 that suggests pages.
 - Render modes: Git-only sites prerender everything; platform sites refresh changed pages after a publish; previews render with `noindex`.
-- CLI `ginko`: `check` (schema and links, for every site) and `release` for CI, `export` for backups; `dev`, `import` and `pull` run only in the Ginko monorepo.
+- In dev, `nuxt dev` restarts when `ginko.config.ts` changes, and a brick that cannot reach the platform names itself and the fix.
+- CLI `ginko`: `check` (schema, links and the share image, for every site) and `release` for CI, `export` for backups; `dev`, `import` and `pull` run only in the Ginko monorepo.
 
 **Languages (`@lupinum/ginko-i18n`)**
 
@@ -67,7 +68,7 @@ The platform is a hosted service, not an npm package. A site connects to it with
 **Presets (`@lupinum/ginko-preset-gastro`, `create-ginko`)**
 
 - Gastro: opening hours with exceptions, seasons, holidays and new hours from a date; lunch week with planning ahead and an optional PDF; menu with prices from a date; notices that expire; events; JSON-LD for Restaurant, Menu, opening hours and Event; a printable lunch sheet.
-- `create-ginko` starts a new site, plain or with `--preset gastro|docs`.
+- `create-ginko` starts a new site, plain or with `--preset gastro|docs`. Starters install with npm, pnpm 11 and bun, carry a `typecheck` script and a page description, and create-ginko warns on an unsupported Node.
 
 **Not in 0.1**
 
