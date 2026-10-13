@@ -197,7 +197,8 @@
     "uploadHeicUnreadable": "Dieses HEIC-Foto kann nicht gelesen werden. Bitte speichere es als JPEG oder PNG und lade es erneut hoch.",
     "uploadNotAnImage": "Diese Datei ist kein lesbares Bild.",
     "siteUrlNotWeb": "Die Adresse der Website in der Config muss mit https:// oder http:// beginnen.",
-    "siteUrlChangeInStudio": "Die Version kann die Adresse der Website nicht ändern. Das macht die Inhaberin oder der Inhaber im Studio."
+    "siteUrlChangeInStudio": "Die Version kann die Adresse der Website nicht ändern. Das macht die Inhaberin oder der Inhaber im Studio.",
+    "siteUrlNotAllowed": "Diese Adresse der Website ist nicht erlaubt. Sie muss eine öffentliche https://-Adresse sein."
   },
   "history": {
     "changedSingle": "{label}: {fields} geändert",
