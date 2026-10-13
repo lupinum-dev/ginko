@@ -28,14 +28,19 @@ export interface LocaleConfig {
   userLocale: string[]
 }
 
+/**
+ * A URL code: letters, digits and `-`, starting with a letter. Case is kept, so a canonical tag (`pt-BR`,
+ * `zh-Hant`) can be the URL code; see `canonicalCase`. The module and the CLI share this rule.
+ */
+export const LOCALE_CODE = /^[a-z][a-z0-9-]*$/i
+
 const RTL = new Set(['ar', 'arc', 'dv', 'fa', 'ha', 'he', 'khw', 'ks', 'ku', 'ps', 'sd', 'ur', 'yi'])
 
 export function resolveLocale(input: string | LocaleInput): LocaleInfo {
   const def = typeof input === 'string' ? { language: input } : input
   const tag = new Intl.Locale(def.language)
   const code = def.code ?? tag.language
-  // Case is kept, so a canonical tag (`pt-BR`, `zh-Hant`) can be the URL code; see `canonicalCase`.
-  if (!/^[a-z][a-z0-9-]*$/i.test(code))
+  if (!LOCALE_CODE.test(code))
     throw new Error(`[ginko-i18n] Locale code "${code}" must be letters, digits or "-". Fix: set \`code\` for ${def.language}.`)
   const name = def.name ?? nativeName(tag.baseName)
   return { code, language: tag.baseName, name, dir: RTL.has(tag.language) ? 'rtl' : 'ltr' }

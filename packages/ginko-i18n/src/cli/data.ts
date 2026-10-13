@@ -3,6 +3,7 @@ import { resolve, join, relative, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { parse, TYPE, type MessageFormatElement } from '@formatjs/icu-messageformat-parser'
+import { LOCALE_CODE } from '../core/locales.ts'
 
 export interface Source { dir: string, namespace?: string, origin: string }
 // catalogDir: folder for i18n.lock.json and glossary.json; set only by dirManifest (--dir mode).
@@ -36,7 +37,7 @@ export function manifest(cwd: string, buildDir: string): Manifest {
   const m = json(file)
   if (!object(m) || !Array.isArray(m.locales) || !Array.isArray(m.sources) || !Array.isArray(m.srcDirs) || !object(m.params) || typeof m.defaultLocale !== 'string') throw new Error('Invalid manifest')
   for (const locale of m.locales) {
-    if (!object(locale) || typeof locale.code !== 'string' || !/^[a-z][a-z0-9-]*$/.test(locale.code) || typeof locale.language !== 'string') throw new Error('Invalid manifest locale')
+    if (!object(locale) || typeof locale.code !== 'string' || !LOCALE_CODE.test(locale.code) || typeof locale.language !== 'string') throw new Error('Invalid manifest locale')
     new Intl.PluralRules(locale.language)
   }
   if (!m.locales.some(l => l.code === m.defaultLocale)) throw new Error('Unknown default locale')
@@ -57,7 +58,7 @@ export function dirManifest(folder: string, defaultLocale: string, target?: stri
   const locales = [...new Set([...codes, ...(target ? [target] : [])])]
     .sort()
     .map((code) => {
-      if (!/^[a-z][a-z0-9-]*$/.test(code)) throw new Error(`Invalid locale file name: ${code}.json`)
+      if (!LOCALE_CODE.test(code)) throw new Error(`Invalid locale file name: ${code}.json`)
       new Intl.PluralRules(code)
       return { code, language: code }
     })

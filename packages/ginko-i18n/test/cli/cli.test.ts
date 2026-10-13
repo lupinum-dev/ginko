@@ -267,6 +267,21 @@ test('check --locale keeps only that locale and todo names each target file', ()
   expect(items.find(i => i.key === 'last')?.target).toBe(join(dir, 'i18n/en.json'))
 })
 
+// The CLI rejected `pt-BR` as a manifest code and as a file name, while the module accepts it as a URL code.
+test('a mixed-case locale code works from the manifest and in --dir mode', () => {
+  const dir = fixture(), m = read(dir, 'build/ginko-i18n/manifest.json')
+  m.locales[1].code = 'pt-BR'
+  m.locales[1].language = 'pt-BR'
+  write(dir, 'build/ginko-i18n/manifest.json', m)
+  for (const folder of ['i18n', 'layer', 'library']) rmSync(join(dir, folder, 'en.json'))
+  const result = run(dir, ['apply', '-'], { locale: 'pt-BR', items: [{ key: 'last', text: 'Último' }] })
+  expect(result.status).toBe(0)
+  expect(read(dir, 'i18n/pt-BR.json')).toEqual({ last: 'Último' })
+  write(dir, 'catalog/de.json', { a: 'Hallo' })
+  write(dir, 'catalog/pt-BR.json', { a: 'Olá' })
+  expect(run(dir, ['check', '--dir', 'catalog', '--default-locale', 'de']).status).toBe(0)
+})
+
 // --dir mode: a plain catalog folder without Nuxt; the lock and glossary live beside the catalogs.
 test('--dir catalog folder: check skips unused keys, apply writes catalog and lock beside it', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ginko-dir-'))
