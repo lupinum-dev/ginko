@@ -54,7 +54,7 @@ function rowTarget(sec: Section, entry: Entry): { task: Task } | { to: string } 
 }
 /** The title and timing of a listed entry; a chevron marks the rows that open something. */
 const rowClass = (opens: boolean) => ['grid min-w-0 flex-1 gap-0.5 bg-transparent p-0 text-left text-foreground no-underline', opens && 'cursor-pointer grid-cols-[1fr_auto] after:col-start-2 after:row-span-2 after:row-start-1 after:self-center after:px-1 after:text-xl after:text-muted-foreground after:content-["›"] [&>span]:col-start-1']
-// What is on the website now comes first; expired and upcoming entries follow (stable order within each group).
+// What is on the website now comes first; expired entries follow (stable order within each group).
 const rowsOf = (sec: Section) => [...sec.listed]
   .sort((a, b) => Number(timing(sec.brick as CollectionBrick, a).dim) - Number(timing(sec.brick as CollectionBrick, b).dim))
   .map((e) => ({ e, target: rowTarget(sec, e) }))

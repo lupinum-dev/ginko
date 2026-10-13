@@ -48,7 +48,7 @@ const single = computed(() => (brick.value?.kind === 'single' ? s.single(key.val
 const manual = computed(() => brick.value?.kind === 'collection' && brick.value.order === 'manual')
 const canCreate = computed(() => !!access.value && (access.value.all || !!access.value.create))
 
-/** "Draft" / "Online from …" for drafts; "expired" / "from 16.10." / "" for an entry of a timed collection. */
+/** "Draft" / "Online from …" for drafts; "expired" / "ended" (daterange) / "" for an entry of a timed collection. */
 function status(entry: Entry): string {
   const b = brick.value
   // A draft is not on the website, whatever its dates say (SPEC 15).
