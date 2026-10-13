@@ -74,13 +74,13 @@ export function defineSite<const S extends SiteInput>(site: S & { retired?: { [P
   return site
 }
 
-export function single<const F extends Fields>(input: { label: Label; describe?: string; source?: BrickSource; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly Task[] }): SingleBrick<F> {
+export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly Task[] }): SingleBrick<F> {
   return { kind: 'single', ...input }
 }
 
 export function collection<const F extends Fields, const R extends Partial<Record<Locale, string>> | undefined = undefined>(input: {
   label: Label
-  describe?: string
+  describe?: Label
   source?: BrickSource
   fields: F
   layout?: 'sections' | 'tabs'

@@ -114,7 +114,8 @@ export interface SingleBrick<F extends Fields = Fields> {
   label: Label
   /** @internal Platform-managed position in the config (see FieldBase.pos). Do not set it. */
   pos?: number
-  describe?: string
+  /** What the brick is for, shown in the Studio; a text or a text per language like `label`. Fields have `hint` instead. */
+  describe?: Label
   fields: F
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
@@ -130,7 +131,8 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   label: Label
   /** @internal Platform-managed position in the config (see FieldBase.pos). Do not set it. */
   pos?: number
-  describe?: string
+  /** What the brick is for, shown in the Studio; a text or a text per language like `label`. Fields have `hint` instead. */
+  describe?: Label
   fields: F
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'

@@ -127,7 +127,7 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
   unknownChanges(key, before, after, BRICK_KEYS, no)
   if (before.retired && !after.retired) no(key, 'unretired', msg('diff.unretired', { path: key }))
   if (!sameLabel(before.label, after.label)) ok(`${key}.label`, 'text', msg('diff.textChanged'))
-  if (before.describe !== after.describe) ok(`${key}.describe`, 'text', msg('diff.textChanged'))
+  if (!sameLabel(before.describe ?? '', after.describe ?? '')) ok(`${key}.describe`, 'text', msg('diff.textChanged'))
   if ((before.layout ?? 'sections') !== (after.layout ?? 'sections')) ok(`${key}.layout`, 'text', msg('diff.textChanged'))
   if (stableJson(before.tasks ?? []) !== stableJson(after.tasks ?? [])) ok(`${key}.tasks`, 'tasks', msg('diff.tasksChanged'))
   if (before.kind === 'collection' && after.kind === 'collection') {

@@ -396,6 +396,14 @@ describe('week tokens', () => {
   })
 })
 
+describe('brick describe', () => {
+  // Wrong behaviour caught: a per-language describe without the main language shows an empty text in the Studio.
+  it('is checked like a label', () => {
+    const input = site({}, { bricks: { menu: collection({ label: 'Karte', describe: { fr: 'Carte' }, fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual' }) } })
+    expect(problemsOf(input)).toEqual(['menu.describe: label needs a text in the main language “de” or in English.'])
+  })
+})
+
 describe('visible', () => {
   const withVisible = (visible: unknown) => site({}, {
     bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }), until: f.date('Bis', optional), when: f.daterange('Wann', optional) }, max: 20, order: 'manual', visible: visible as never }) },
