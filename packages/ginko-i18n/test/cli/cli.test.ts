@@ -111,16 +111,16 @@ describe('SEO findings', () => {
     mkdirSync(join(dir, 'site/en'), { recursive: true })
     writeFileSync(join(dir, 'site/index.html'), html())
     writeFileSync(join(dir, 'site/en/index.html'), html('/en', ['/', '/en'], 'en-GB'))
-    expect(run(dir, ['check', '--site', 'site']).value.findings.filter((f: { code: string }) => f.code === code)).toEqual([])
+    expect(run(dir, ['check', '--html', 'site']).value.findings.filter((f: { code: string }) => f.code === code)).toEqual([])
     edit(dir)
-    expect(run(dir, ['check', '--site', 'site']).value.findings.some((f: { code: string }) => f.code === code)).toBe(true)
+    expect(run(dir, ['check', '--html', 'site']).value.findings.some((f: { code: string }) => f.code === code)).toBe(true)
   })
   test('ignores noindex pages and error documents', () => {
     const dir = fixture()
     mkdirSync(join(dir, 'site'))
     for (const file of ['200.html', '404.html']) writeFileSync(join(dir, 'site', file), '<html>')
     writeFileSync(join(dir, 'site/ignored.html'), '<html><meta content="noindex, follow" name="robots">')
-    expect(run(dir, ['check', '--site', 'site']).value.findings).toEqual([])
+    expect(run(dir, ['check', '--html', 'site']).value.findings).toEqual([])
   })
 })
 
@@ -135,6 +135,7 @@ test('todo provides source, current, params, glossary, usage and filters', () =>
   expect(result).toMatchObject({ locale: 'en', language: 'en-GB', sourceLocale: 'de', sourceLanguage: 'de-AT', params: { tone: 'sie' }, glossary: { brand: 'Brand' } })
   expect(result.items).toEqual([{ key: 'hello', target: join(dir, 'i18n/en.json'), source: 'Hallo {name}', params: ['name'], usages: [`${join(dir, 'src/page.vue')}:5`], reason: 'missing' }, { key: 'last', target: join(dir, 'i18n/en.json'), source: 'Letzte', current: 'Last', params: [], usages: [`${join(dir, 'src/page.vue')}:10`], reason: 'stale' }])
   expect(run(dir, ['todo', '--to', 'en', '--only', 'stale']).value.items.map((i: { key: string }) => i.key)).toEqual(['last'])
+  expect(run(dir, ['todo', '--locale', 'en', '--only', 'stale']).value.items.map((i: { key: string }) => i.key)).toEqual(['last'])
 })
 
 test('apply accepts valid items, rejects bad params/ICU/unknown keys, writes library overrides and ordered keys with hashes', () => {
@@ -182,7 +183,7 @@ test('apply rejects a symlink outside a source and never writes its target', () 
   expect(result.value.rejected[0].reason).toContain('escapes')
   expect(readFileSync(join(outside, 'i18n/en.json'), 'utf8')).toBe(before)
 })
-test.each([['bogus'], ['todo'], ['todo', '--to', 'xx'], ['todo', '--to', 'en', '--only', 'extra'], ['apply'], ['check', '--bad'], ['check', 'extra'], ['apply', '-', '--site', 'site']])('usage error %j returns JSON and exit 2', (...args) => {
+test.each([['bogus'], ['todo'], ['todo', '--to', 'xx'], ['todo', '--to', 'en', '--only', 'extra'], ['apply'], ['check', '--bad'], ['check', 'extra'], ['apply', '-', '--html', 'site']])('usage error %j returns JSON and exit 2', (...args) => {
   expect(run(fixture(), args).status).toBe(2)
 })
 test('success, rejected and config outputs are pure JSON with documented exit codes', () => {
@@ -272,21 +273,21 @@ test('--dir catalog folder: check skips unused keys, apply writes catalog and lo
   dirs.push(dir)
   write(dir, 'catalog/de.json', { a: 'Hallo {name}', b: 'Nur' })
   write(dir, 'catalog/en.json', { a: 'Hi' })
-  const checked = run(dir, ['check', '--dir', 'catalog', '--default', 'de'])
+  const checked = run(dir, ['check', '--dir', 'catalog', '--default-locale', 'de'])
   expect(checked.status).toBe(1)
   expect(checked.value.summary).toEqual({ errors: 2, warnings: 0, unusedSkipped: true })
   expect(checked.value.findings.map((f: { code: string, locale: string, key: string }) => [f.code, f.locale, f.key])).toEqual([['missing', 'en', 'b'], ['params-mismatch', 'en', 'a']])
-  const applied = run(dir, ['apply', '-', '--dir', 'catalog', '--default', 'de'], { locale: 'en', items: [{ key: 'b', text: 'Only' }] })
+  const applied = run(dir, ['apply', '-', '--dir', 'catalog', '--default-locale', 'de'], { locale: 'en', items: [{ key: 'b', text: 'Only' }] })
   expect(applied.status).toBe(0)
   expect(read(dir, 'catalog/en.json')).toEqual({ a: 'Hi', b: 'Only' })
   expect(read(dir, 'catalog/i18n.lock.json')).toEqual({ en: { b: createHash('sha256').update('Nur').digest('hex') } })
   expect(existsSync(join(dir, 'i18n'))).toBe(false)
-  expect(run(dir, ['check', '--dir', 'catalog', '--default', 'de']).value.findings.map((f: { code: string }) => f.code)).toEqual(['params-mismatch'])
+  expect(run(dir, ['check', '--dir', 'catalog', '--default-locale', 'de']).value.findings.map((f: { code: string }) => f.code)).toEqual(['params-mismatch'])
   // A new language has no file yet: `todo --to es` must list every key, written to catalog/es.json.
-  const todo = run(dir, ['todo', '--to', 'es', '--dir', 'catalog', '--default', 'de']).value
+  const todo = run(dir, ['todo', '--to', 'es', '--dir', 'catalog', '--default-locale', 'de']).value
   expect(todo.items.map((i: { key: string, target: string }) => [i.key, i.target.endsWith('catalog/es.json')])).toEqual([['a', true], ['b', true]])
 })
-test.each([[['check', '--dir', 'catalog']], [['check', '--dir', 'catalog', '--default', 'fr']], [['check', '--default', 'de']]])('--dir usage error %j returns JSON and exit 2', (args) => {
+test.each([[['check', '--dir', 'catalog']], [['check', '--dir', 'catalog', '--default-locale', 'fr']], [['check', '--default-locale', 'de']]])('--dir usage error %j returns JSON and exit 2', (args) => {
   const dir = mkdtempSync(join(tmpdir(), 'ginko-dir-'))
   dirs.push(dir)
   write(dir, 'catalog/de.json', { a: 'Hallo' })

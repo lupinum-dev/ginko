@@ -9,7 +9,7 @@ function catalogDir(m: Manifest, cwd: string) {
 }
 
 export interface Finding { code: string, severity: 'error' | 'warning', locale?: string, key?: string, file?: string, line?: number, message: string }
-export function check(m: Manifest, cwd: string, site?: string, only?: string) {
+export function check(m: Manifest, cwd: string, html?: string, only?: string) {
   const findings: Finding[] = [], defaults = entries(m, m.defaultLocale), scan = usages(m)
   const lockFile = join(catalogDir(m, cwd), 'i18n.lock.json')
   const lock = existsSync(lockFile) ? json(lockFile) : {}
@@ -49,7 +49,7 @@ export function check(m: Manifest, cwd: string, site?: string, only?: string) {
   // Without source directories (--dir mode) every key would look unused, so the check is skipped.
   const unusedSkipped = scan.dynamic || m.srcDirs.length === 0
   if (!unusedSkipped) for (const [key, entry] of defaults) if (entry.source.origin !== 'library' && !entry.file.split(/[\\/]/).includes('node_modules') && !scan.used.has(key)) findings.push({ code: 'unused', severity: 'warning', key, file: entry.file, message: 'No static usage found' })
-  if (site) findings.push(...seo(site, m))
+  if (html) findings.push(...seo(html, m))
   // `--locale it`: only that locale's findings, so agents do not have to filter mixed output.
   if (only) findings.splice(0, findings.length, ...findings.filter(f => f.locale === only))
   const errors = findings.filter(f => f.severity === 'error').length, warnings = findings.filter(f => f.severity === 'warning').length

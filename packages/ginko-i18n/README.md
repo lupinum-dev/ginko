@@ -573,7 +573,7 @@ files. It needs no browser. It is tested on macOS and Linux.
 
 ```sh
 npx ginko-i18n check --json
-npx ginko-i18n todo --to en --json
+npx ginko-i18n todo --locale en --json
 npx ginko-i18n apply translations.json --json
 ```
 
@@ -581,17 +581,17 @@ Global options are `--cwd <app>` (defaults to the current directory),
 `--build-dir <dir>` (defaults to `<app>/.nuxt`), `--json`, and `--help`.
 
 To check a plain catalog folder with one `<code>.json` file per locale, with no
-Nuxt app, add `--dir <folder> --default <code>`. Relative paths resolve from
-`--cwd`. `--default` must name a locale file in the folder, and both options go
+Nuxt app, add `--dir <folder> --default-locale <code>`. Relative paths resolve from
+`--cwd`. `--default-locale` must name a locale file in the folder, and both options go
 together. `i18n.lock.json` and `glossary.json` are then read and written in that
 folder. Without source directories, `check` skips the unused-key check and sets
 `summary.unusedSkipped` to `true`:
 
 ```sh
-npx ginko-i18n todo --dir locales --default de --to es --json
+npx ginko-i18n todo --dir locales --default-locale de --locale es --json
 ```
 
-Relative build, input, and site paths resolve from the app directory. If the
+Relative build, input, and HTML paths resolve from the app directory. If the
 manifest is absent, the CLI runs the app's local `nuxt prepare` once. Preparation
 writes Nuxt build files; with an existing manifest, `check` only reads files.
 Preparation logs and apply warnings go to stderr. With `--json`, stdout contains
@@ -609,11 +609,11 @@ strings containing call-shaped text can count as usages.
 Use `check --locale <code>` to see only one locale's findings, for example while
 translating it.
 
-Use `check --site <built-html-directory>` to validate canonical URLs, self and
+Use `check --html <built-html-directory>` to validate canonical URLs, self and
 reciprocal hreflang links, x-default, and HTML language. Error documents and
 noindex pages are ignored. URL paths identify local HTML files regardless of origin.
 
-`todo --to <code>` lists missing and stale translations with their original ICU
+`todo --locale <code>` (or `--to <code>`) lists missing and stale translations with their original ICU
 source, current translation when present, parameters, and static usage locations.
 Use `--only missing` or `--only stale` to narrow the list. Each item names its
 `target`: the file `apply` will write. Keys from a layer go to that layer's folder,
@@ -647,6 +647,21 @@ unrelated keys remain, with two-space indentation and a trailing newline.
 The app's `i18n/i18n.lock.json` records the SHA-256 hash of each translated source.
 A changed hash produces a stale warning on subsequent checks. Do not edit source
 files concurrently with apply; apply reads and rewrites each affected JSON file.
+
+Each finding in the JSON output has `code`, `severity` (`error` or `warning`), a `message`, and
+where they apply `locale`, `key`, `file` and `line`. The `code` values are:
+
+| `code` | Severity | Meaning |
+| --- | --- | --- |
+| `missing` | error | A locale has no translation for a key of the default locale. |
+| `stale` | warning | The source text changed after the translation was applied. |
+| `extra` | warning | A locale has a key that the default locale does not have. |
+| `plural-missing` | warning | A plural message lacks a category that the locale's language needs. |
+| `params-mismatch` | error | A translation uses other parameters than the source. |
+| `invalid-icu` | error | A message is not valid ICU syntax. |
+| `unknown-key` | error | The code uses a static key that no file defines. |
+| `unused` | warning | No static usage found for a key (skipped when `summary.unusedSkipped` is `true`). |
+| `seo-canonical`, `seo-hreflang-self`, `seo-hreflang-reciprocal`, `seo-x-default`, `seo-lang` | error | Problems that `check --html` finds in built pages. |
 
 Exit codes: `0` means no errors, `1` means check errors or rejected apply items,
 and `2` means invalid usage or configuration. Warnings alone return `0`.
