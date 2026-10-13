@@ -73,7 +73,13 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const offline = args.flags.has('--offline')
           const platformBricks = Object.values(config.bricks).some((b) => b.source !== 'files')
           const compared = platformBricks && !offline
-          const ok = await check({ config, platform: compared ? connectPlatform(deps) : undefined, root: dirname(configPath), log: deps.log })
+          const ok = await check({
+            config,
+            connect: compared ? () => connectPlatform(deps) : undefined,
+            root: dirname(configPath),
+            fetch: deps.fetch,
+            log: deps.log,
+          })
           if (platformBricks && offline) deps.log('Skipped the comparison with production (--offline).')
           if (!ok) throw new CliError('ginko check found problems. Each one is listed on stderr.')
           return { compared }

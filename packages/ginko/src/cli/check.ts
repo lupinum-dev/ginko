@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { SiteInput } from '../core/index.ts'
 import { siteProblems } from '../core/site-keys.ts'
+import type { Fetch } from '../nuxt/external-links.ts'
 import { checkFileLinks } from './content-links.ts'
 import { CliError } from './model.ts'
 import { plan } from './plan.ts'
@@ -12,10 +13,18 @@ import { explainChanges, explainProblems, explainRejected, kib } from './report.
 
 /**
  * Prints the report and returns true when the config is valid, the content files have no broken links and a
- * release with this schema and content would go through. Without a platform (a site of file bricks only) the
- * release part is skipped. `root` is the folder of ginko.config.ts (content/ and public/ are below it).
+ * release with this schema and content would go through. Without `connect` (a site of file bricks only, or
+ * --offline) the release part is skipped. `connect` runs only after the local checks, so a missing GINKO_PLATFORM
+ * does not hide config and link problems. `root` is the folder of ginko.config.ts (content/ and public/ are below it).
+ * `fetch` sends the external-link checks.
  */
-export async function check(input: { config: SiteInput; platform: Platform | undefined; root: string; log: (line: string) => void }): Promise<boolean> {
+export async function check(input: {
+  config: SiteInput
+  connect: (() => Platform) | undefined
+  root: string
+  fetch: Fetch
+  log: (line: string) => void
+}): Promise<boolean> {
   // The same check as the Nuxt build, first: an invalid config fails here in CI, not later in `nuxt build`.
   const problems = siteProblems(input.config)
   if (problems.length > 0) {
@@ -24,12 +33,12 @@ export async function check(input: { config: SiteInput; platform: Platform | und
     return false
   }
   const image = checkSeoImage(input.config, input.root, input.log)
-  const links = await checkFileLinks({ config: input.config, root: input.root, log: input.log }) && image
-  if (!input.platform) {
+  const links = await checkFileLinks({ config: input.config, root: input.root, log: input.log, fetch: input.fetch }) && image
+  if (!input.connect) {
     if (links) input.log('OK: schema and links are fine.')
     return links
   }
-  const release = await checkRelease({ ...input, platform: input.platform })
+  const release = await checkRelease({ config: input.config, platform: input.connect(), log: input.log })
   return links && release
 }
 
