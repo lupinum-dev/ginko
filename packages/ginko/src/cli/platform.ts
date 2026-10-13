@@ -101,6 +101,10 @@ export function createPlatform(options: PlatformOptions): Platform {
     }
     if (!response.ok) {
       const error = isObject(body) ? body : {}
+      // The platform names its own 404s (SITE_NOT_FOUND …). A 404 without a code comes from another server at that address.
+      if (response.status === 404 && typeof error.code !== 'string') {
+        throw new CliError('No Ginko platform answers at this address (HTTP 404); check GINKO_PLATFORM.', 'USAGE')
+      }
       throw new PlatformError(
         typeof error.code === 'string' ? error.code : `HTTP_${response.status}`,
         typeof error.message === 'string' ? error.message.replaceAll(key, '…') : `The platform responded with HTTP ${response.status}.`,

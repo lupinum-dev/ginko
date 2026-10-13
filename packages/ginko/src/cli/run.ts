@@ -89,12 +89,12 @@ function parseArgs(argv: string[]): Args {
   const args: Args = { flags: new Set() }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!
-    if (arg === '--config') {
-      const value = argv[++i]
+    if (arg === '--config' || arg.startsWith('--config=')) {
+      // `--config` at the end and an empty `--config=` are the same mistake; config is then a non-empty path or absent.
+      const value = arg === '--config' ? argv[++i] : arg.slice('--config='.length)
       if (!value) throw new CliError('--config needs a path.', 'USAGE')
       args.config = value
-    } else if (arg.startsWith('--config=')) args.config = arg.slice('--config='.length)
-    else if (arg.startsWith('-')) args.flags.add(arg)
+    } else if (arg.startsWith('-')) args.flags.add(arg)
     else if (args.command === undefined) args.command = arg
     else if (args.folder === undefined) args.folder = arg
     else throw new CliError(`Unexpected argument “${arg}”.`, 'USAGE')

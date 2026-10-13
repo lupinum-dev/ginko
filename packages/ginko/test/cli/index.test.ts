@@ -51,36 +51,44 @@ describe('ginko release', () => {
 })
 
 describe('ginko output and exit codes', () => {
-  it.each<[string, string[], number, string, NodeJS.ProcessEnv?]>([
+  const PLATFORM = { GINKO_PLATFORM: 'https://platform.example', GINKO_KEY: KEY }
+
+  it.each<[string, string[], number, string, Partial<CliDeps>?, string?]>([
     ['no command', [], 2, 'USAGE'],
     ['unknown command', ['dev'], 2, 'USAGE'],
     ['unknown option', ['export', '--out', 'x'], 2, 'USAGE'],
     ['option of another command', ['release', '--offline'], 2, 'USAGE'],
     ['folder on a command without one', ['check', 'x'], 2, 'USAGE'],
+    ['--config= without a path', ['check', '--config='], 2, 'USAGE', {}, '--config needs a path.'],
     ['missing environment variable', ['export'], 2, 'USAGE'],
-    ['invalid platform address', ['export'], 2, 'USAGE', { NUXT_PUBLIC_GINKO_PLATFORM: 'not a url', GINKO_KEY: KEY }],
+    // The message proves that the CLI read NUXT_PUBLIC_GINKO_PLATFORM: without it, GINKO_PLATFORM would be missing.
+    ['invalid platform address', ['export'], 2, 'USAGE', { env: { NUXT_PUBLIC_GINKO_PLATFORM: 'not a url', GINKO_KEY: KEY } }, 'GINKO_PLATFORM is not a valid URL.'],
+    // GINKO_PLATFORM points at the site or another host: fix the setting, not the code.
+    ['a platform address without Ginko', ['export'], 2, 'USAGE', { env: PLATFORM, fetch: async () => new Response('<h1>Not found</h1>', { status: 404 }) }],
+    // The site's code is not at fault, so not exit 1.
+    ['a platform answer that is not an export', ['export'], 3, 'UNAVAILABLE', { env: PLATFORM, fetch: async () => Response.json({ ok: true }) }],
     ['config that cannot be loaded', ['check', '--config', 'missing/ginko.config.ts'], 1, 'INVALID'],
-  ])('%s: exit %i, one JSON line with error.code %s', async (_name, argv, exit, code, env = {}) => {
-    const result = await run(argv, { env })
+  ])('%s (%j): exit %i, one JSON line with error.code %s', async (_name, argv, exit, code, deps = {}, message = expect.any(String)) => {
+    const result = await run(argv, deps)
     expect(result.code).toBe(exit)
     expect(result.stdout.split('\n')).toEqual([expect.any(String), ''])
-    expect(JSON.parse(result.stdout)).toEqual({ ok: false, error: { code, message: expect.any(String) } })
+    expect(JSON.parse(result.stdout)).toEqual({ ok: false, error: { code, message } })
     // The human text goes to stderr.
     expect(result.log.join('\n')).toContain(JSON.parse(result.stdout).error.message)
   })
 
   it.each([
-    ['a rejected schema', new CliError('menu.allergens is missing'), 1],
-    ['a platform rejection', new PlatformError('SCHEMA_REJECTED', 'no', 400), 1],
-    ['an unreachable platform', new CliError('The platform is not reachable.', 'UNAVAILABLE'), 3],
-    ['a server error of the platform', new PlatformError('INTERNAL', 'try later', 500), 3],
-    ['a site that kept changing', new PlatformError('CHANGED_SINCE', 'changed', 409), 3],
-    ['a revoked key', new PlatformError('UNAUTHORIZED', 'no key', 401), 4],
-    ['a key without the scope', new PlatformError('FORBIDDEN', 'not allowed', 403), 4],
-    ['a proxy that refuses access', new PlatformError('HTTP_401', 'HTTP 401', 401), 4],
-    ['a key of another site', new CliError('The key belongs to the site “b”.', 'FORBIDDEN'), 4],
-    ['an unexpected error', new Error('EACCES'), 1],
-  ])('%s exits with %i', (_name, error, exit) => {
+    ['a rejected schema', 1, new CliError('menu.allergens is missing')],
+    ['a platform rejection', 1, new PlatformError('SCHEMA_REJECTED', 'no', 400)],
+    ['an unreachable platform', 3, new CliError('The platform is not reachable.', 'UNAVAILABLE')],
+    ['a server error of the platform', 3, new PlatformError('INTERNAL', 'try later', 500)],
+    ['a site that kept changing', 3, new PlatformError('CHANGED_SINCE', 'changed', 409)],
+    ['a revoked key', 4, new PlatformError('UNAUTHORIZED', 'no key', 401)],
+    ['a key without the scope', 4, new PlatformError('FORBIDDEN', 'not allowed', 403)],
+    ['a proxy that refuses access', 4, new PlatformError('HTTP_401', 'HTTP 401', 401)],
+    ['a key of another site', 4, new CliError('The key belongs to the site “b”.', 'FORBIDDEN')],
+    ['an unexpected error', 1, new Error('EACCES')],
+  ])('%s exits with %i', (_name, exit, error) => {
     expect(exitCodeOf(error)).toBe(exit)
   })
 

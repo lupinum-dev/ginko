@@ -88,6 +88,17 @@ describe('push key and platform URL', () => {
   })
 })
 
+// Wrong behaviour caught: a bad answer exits 1 ("fix the code"), or the platform's own 404 loses its code.
+describe('answers that are not a valid platform answer', () => {
+  it.each([
+    ['a state that is incomplete', 'UNAVAILABLE', () => Response.json({ site: 'linde' })],
+    ['the platform\'s own 404', 'SITE_NOT_FOUND', () => Response.json({ code: 'SITE_NOT_FOUND', message: 'This site does not exist.' }, { status: 404 })],
+  ])('%s ends state() with error.code %s', async (_name, code, response) => {
+    const platform = createPlatform({ url: URL, key: KEY, fetch: async () => response() })
+    await expect(platform.state('linde')).rejects.toMatchObject({ code })
+  })
+})
+
 describe('redirects', () => {
   it('a 307 is refused with a German message and the body is not followed', async () => {
     const init: RequestInit[] = []
