@@ -208,7 +208,7 @@ describe('entries.create and lifecycle after the phase 5 review', () => {
       const site = (await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', 'restaurant')).unique())!
       const schema = structuredClone(site.schema)
       schema.bricks.events.fields.booking.retired = true
-      schema.retired['events.booking'] = {}
+      schema.retired['events.booking'] = { drop: true }
       await ctx.db.patch(site._id, { schema })
     })
     const call = as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: { ...pumpkin, booking: 'not a url but retired' } })

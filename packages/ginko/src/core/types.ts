@@ -154,7 +154,11 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
 
 export type Brick = SingleBrick | CollectionBrick
 
-export type RetiredRule = { from: string } | { value: Json } | Record<string, never>
+/**
+ * What a retired field (SPEC 2.5) answers to old code: `from` mirrors another field of the brick, `value` is a fixed
+ * value, `drop: true` gives no value (optional fields only). A retired brick takes `{ drop: true }`.
+ */
+export type RetiredRule = { from: string } | { value: Json } | { drop: true }
 
 /** A migration as stored and transferred: the function itself never leaves the developer's machine or CI. */
 export interface MigrationDescriptor {

@@ -67,7 +67,10 @@ export interface SiteInput {
   retired?: Record<string, RetiredRule>
 }
 
-export function defineSite<const S extends SiteInput>(site: S): S {
+/** The keys `retired` takes: a brick (`gallery`) or a field of a brick (`menu.headline`). */
+type RetiredPath<B> = { [K in keyof B & string]: K | `${K}.${B[K] extends { fields: infer F } ? keyof F & string : never}` }[keyof B & string]
+
+export function defineSite<const S extends SiteInput>(site: S & { retired?: { [P in keyof S['retired']]: P extends RetiredPath<S['bricks']> ? RetiredRule : never } }): S {
   return site
 }
 

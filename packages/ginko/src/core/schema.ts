@@ -228,7 +228,16 @@ function schemaProblems(schema: Schema): string[] {
     const [brickKey, fieldName] = path.split('.')
     const brick = schema.bricks[brickKey ?? '']
     if (!brick) { problems.push(`retired: brick “${brickKey}” is missing.`); continue }
-    if (!fieldName) { if (!brick.retired) problems.push(`retired: brick “${brickKey}” has no retired marker.`); continue }
+    const keys = typeof rule === 'object' && rule !== null && !Array.isArray(rule) ? Object.keys(rule) : []
+    if (keys.length !== 1 || !['from', 'value', 'drop'].includes(keys[0]!) || ('drop' in rule && rule.drop !== true)) {
+      problems.push(`retired: “${path}” needs exactly one of { from }, { value } or { drop: true }.`)
+      continue
+    }
+    if (!fieldName) {
+      if (!brick.retired) problems.push(`retired: brick “${brickKey}” has no retired marker.`)
+      if (!('drop' in rule)) problems.push(`retired: brick “${brickKey}” takes { drop: true }.`)
+      continue
+    }
     const field = Object.hasOwn(brick.fields, fieldName) ? brick.fields[fieldName] : undefined
     if (!field) { problems.push(`retired: field “${path}” is missing.`); continue }
     if (!field.retired) problems.push(`retired: field “${path}” has no retired marker.`)
@@ -241,10 +250,10 @@ function schemaProblems(schema: Schema): string[] {
       }
     } else if ('value' in rule) {
       // A constant would reference an upload that no entry holds: unchecked and swept after 7 days.
-      if (holdsFiles(field)) problems.push(`retired: “${path}” contains images or files and cannot have a fixed value; use from or, for optional fields, no rule.`)
+      if (holdsFiles(field)) problems.push(`retired: “${path}” contains images or files and cannot have a fixed value; use from or, for optional fields, drop.`)
       for (const p of checkValue(schema, field, rule.value, `retired.${path}`)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
     } else if (!field.optional) {
-      problems.push(`retired: required field “${path}” needs from or value.`)
+      problems.push(`retired: required field “${path}” needs from or value, not drop.`)
     }
   }
   if (schema.agents !== undefined) {

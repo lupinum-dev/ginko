@@ -311,12 +311,12 @@ describe('serializeSchema', () => {
   })
 
   it('marks retired fields and whole bricks with retired: true', () => {
-    const site: SiteInput = { ...restaurant, retired: { 'seo.description': { value: { de: 'Alt' } }, gallery: {} } }
+    const site: SiteInput = { ...restaurant, retired: { 'seo.description': { value: { de: 'Alt' } }, gallery: { drop: true } } }
     const out = serializeSchema(site)
     expect(out.bricks.seo?.fields.description?.retired).toBe(true)
     expect(out.bricks.seo?.fields.title?.retired).toBeUndefined()
     expect(out.bricks.gallery).toHaveProperty('retired', true)
-    expect(out.retired).toStrictEqual({ 'seo.description': { value: { de: 'Alt' } }, gallery: {} })
+    expect(out.retired).toStrictEqual({ 'seo.description': { value: { de: 'Alt' } }, gallery: { drop: true } })
   })
 
   it('sorts migrations by id', () => {
@@ -389,9 +389,14 @@ describe('checkSchema: retired fields (SPEC 2.5)', () => {
       problems: ['retired.seo.description.de: “Beschreibung” is too long (at most 160 characters).'],
     },
     {
-      name: 'a required retired field with neither from nor value',
-      mutate: (s: Schema) => { retire(s, 'seo.title', {}) },
-      problems: ['retired: required field “seo.title” needs from or value.'],
+      name: 'a required retired field with drop',
+      mutate: (s: Schema) => { retire(s, 'seo.title', { drop: true }) },
+      problems: ['retired: required field “seo.title” needs from or value, not drop.'],
+    },
+    {
+      name: 'an empty rule (the form before drop)',
+      mutate: (s: Schema) => { retire(s, 'seo.description', {} as never) },
+      problems: ['retired: “seo.description” needs exactly one of { from }, { value } or { drop: true }.'],
     },
   ])('reports: $name', ({ mutate, problems }) => {
     const s = base()
