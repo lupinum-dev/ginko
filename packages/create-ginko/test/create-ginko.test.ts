@@ -34,6 +34,13 @@ describe('create-ginko', () => {
     expect(result.stdout).toContain('npm create ginko@latest my-site -- --preset gastro')
   })
 
+  it('shows pnpm users the starter options without the npm-only --', () => {
+    const result = spawnSync('node', [cli, 'via-pnpm'], { cwd: work, encoding: 'utf8', env: { ...process.env, npm_config_user_agent: 'pnpm/11.28.5 npm/? node/v24.18.0' } })
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('pnpm create ginko my-site --preset gastro')
+    expect(result.stdout).not.toContain(' -- ')
+  })
+
   it('says which site id it derived when the folder name is not a valid one', () => {
     const result = run('My Café!')
     expect(result.status).toBe(0)
