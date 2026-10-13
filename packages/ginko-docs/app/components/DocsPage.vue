@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { docsEditUrl, docsIssueUrl, docsStudioUrl } from '../lib/docsPage'
+import { markdownComponents } from '../lib/markdownComponents'
 // One doc: breadcrumbs, title, lead and page actions, the text with the layer's Markdown components, the edit
 // link and date, previous/next; the table of contents beside it (or in the docs bar, see doc.vue).
 import type { ItemOf } from '@lupinum/ginko'

@@ -6,7 +6,7 @@ const { t, localePath } = useI18n()
 const cfg = useAppConfig().docs ?? {}
 const { text, href } = useDocsSite()
 const docs = useDocs()
-const blog = useBlog()
+const blog = useDocsBlog()
 const route = useRoute()
 
 const within = (base: string | undefined) => !!base && (route.path === base || route.path.startsWith(`${base}/`))

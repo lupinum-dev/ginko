@@ -15,5 +15,5 @@ export default defineSite({
   currency: 'EUR',
   pages: { home: '/' },
   components, // die Markdown-Komponenten (::callout, ::tabs …) und ihre geprüften Props
-  bricks: { docs: docsCollection(locales) },
+  bricks: { docs: docsCollection({ locales }) },
 })

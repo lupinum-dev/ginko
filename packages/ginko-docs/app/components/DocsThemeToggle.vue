@@ -2,7 +2,7 @@
 // Auto, light or dark. Auto follows the system and is the default; a choice lives in localStorage and
 // <html data-theme>, and the head script applies it before paint. Both icons are in the HTML and CSS shows the
 // right one, so the server render never guesses the reader's scheme.
-import { COLOR_KEY, colorInitScript } from '../utils/docsInit'
+import { COLOR_KEY, colorInitScript } from '../lib/docsInit'
 
 const { t } = useI18n()
 useHead({ script: [{ key: 'docs-color-init', innerHTML: colorInitScript(), tagPriority: 'critical' }] })

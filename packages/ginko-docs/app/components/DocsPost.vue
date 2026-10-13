@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { markdownComponents } from '../lib/markdownComponents'
 // One blog post: title, date, authors, text. Article JSON-LD names the authors and carries both dates.
 import { articleLd } from '@lupinum/ginko/internal'
-import type { Post } from '../composables/useBlog'
+import type { Post } from '../lib/blogTypes'
 
 const props = defineProps<{ post: Post }>()
 const { t } = useI18n()
-const blog = useBlog()
+const blog = useDocsBlog()
 const locale = useGinkoLocale()
 const site = useRuntimeConfig().public.ginko as { url: string }
 const route = useRoute()

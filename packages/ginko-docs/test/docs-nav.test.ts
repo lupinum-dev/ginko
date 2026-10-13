@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NavNode } from '@lupinum/ginko'
-import { enrichNav, type DocFields } from '../app/utils/docsNav'
+import { enrichNav, type DocFields } from '../app/lib/docsNav'
 
 const node = (id: string, children: NavNode[] = []): NavNode => ({ id, title: id, path: `/docs/${id}`, children } as NavNode)
 

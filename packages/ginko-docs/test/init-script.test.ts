@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { bannerInitScript, bannerKey, COLOR_KEY, colorInitScript } from '../app/utils/docsInit'
+import { bannerInitScript, bannerKey, COLOR_KEY, colorInitScript } from '../app/lib/docsInit'
 
 const run = (bannerId?: string) => new Function(bannerId ? bannerInitScript(bannerId) : colorInitScript())()
 

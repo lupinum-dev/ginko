@@ -1,5 +1,5 @@
 // Copies text and shows the result for two seconds: `copied`, or `failed` when the clipboard is blocked.
-export function useCopy() {
+export function useDocsCopy() {
   const state = ref<'idle' | 'copied' | 'failed'>('idle')
   let timer: ReturnType<typeof setTimeout> | undefined
   async function copy(text: string | (() => Promise<string>)) {

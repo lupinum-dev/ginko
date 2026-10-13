@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { markdownComponents } from '../lib/markdownComponents'
 // The start page from the site's `home` brick (docsHome): hero with title, description, links and an install
 // command, the feature grid, then the free text. Everything is content, so it is translated like the docs.
 import type { ItemOf } from '@lupinum/ginko'
@@ -11,7 +12,7 @@ const data = computed(() => home.value.data)
 const { t } = useI18n()
 useGinkoSeo(() => ({ title: data.value.title, description: data.value.description }))
 
-const { state, copy } = useCopy()
+const { state, copy } = useDocsCopy()
 const external = (href: string) => /^https?:\/\//.test(href)
 </script>
 

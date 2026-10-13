@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Announcement above the header. The server always renders it; a dismissed one is hidden before first
 // paint by the head script (html[data-docs-banner-off], docs.css) and removed here after hydration.
-import { bannerInitScript, bannerKey } from '../utils/docsInit'
+import { bannerInitScript, bannerKey } from '../lib/docsInit'
 
 const props = defineProps<{ id: string, href?: string }>()
 const { t } = useI18n()

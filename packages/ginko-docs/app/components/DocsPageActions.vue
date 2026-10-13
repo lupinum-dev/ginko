@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { docsAskLinks, docsMarkdownPath } from '../lib/docsPage'
 // "Copy page" copies the page as Markdown; the menu next to it opens the Markdown twin or a chat that reads it.
 const props = defineProps<{ path: string, origin: string }>()
 const { t } = useI18n()
@@ -7,7 +8,7 @@ const { open, toggle } = useDocsPopover()
 const mdPath = computed(() => docsMarkdownPath(props.path))
 const links = computed(() => docsAskLinks(t('docs.askPrompt', { url: new URL(mdPath.value, props.origin).href })))
 
-const { state, copy: copyText } = useCopy()
+const { state, copy: copyText } = useDocsCopy()
 const copy = () => copyText(() => $fetch<string>(mdPath.value, { responseType: 'text' }))
 const menu = computed(() => cfg.chatGpt !== false || cfg.claude !== false)
 </script>

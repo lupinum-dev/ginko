@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The blog: all posts, newest first (the collection's order).
 const { t } = useI18n()
-const blog = useBlog()
+const blog = useDocsBlog()
 const posts = blog.posts()
 useGinkoSeo(() => ({ title: t('docs.blog'), description: t('docs.blogLead') }))
 useHead(() => ({ link: [{ rel: 'alternate', type: 'application/rss+xml', title: t('docs.blog'), href: blog.feedPath.value }] }))
