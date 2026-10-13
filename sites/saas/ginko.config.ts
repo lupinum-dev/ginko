@@ -35,10 +35,14 @@ export default defineSite({
       label: 'Funktionen',
       fields: {
         headline: f.text('Überschrift', { max: 120, optional: true }),
-        items: f.list('Funktionen', 'Funktion', {
-          title: f.text('Titel', { max: 80 }),
-          text: f.longtext('Text', { max: 300 }),
-        }, { max: 12, default: [] }),
+        items: f.list('Funktionen', {
+          itemLabel: 'Funktion',
+          fields: {
+            title: f.text('Titel', { max: 80 }),
+            text: f.longtext('Text', { max: 300 }),
+          },
+          max: 12, default: [],
+        }),
       },
     }),
     pricing: collection({
@@ -50,7 +54,7 @@ export default defineSite({
         yearEur: f.money('Preis je Jahr (EUR)', { currency: 'EUR', optional: true }),
         yearChf: f.money('Preis je Jahr (CHF)', { currency: 'CHF', optional: true }),
         featured: f.boolean('Als beliebt markieren'),
-        features: f.list('Funktionen', 'Funktion', { text: f.text('Funktion', { max: 120 }) }, { max: 20 }),
+        features: f.list('Funktionen', { itemLabel: 'Funktion', fields: { text: f.text('Funktion', { max: 120 }) }, max: 20 }),
         note: f.text('Hinweis zum Preis', { max: 120, optional: true }),
       },
       max: 6,
@@ -66,9 +70,12 @@ export default defineSite({
       fields: {
         version: f.text('Version', { max: 20, translate: false }),
         date: f.date('Datum'),
-        tags: f.choices('Art', [
-          { value: 'new', label: 'Neu' }, { value: 'improved', label: 'Verbessert' }, { value: 'fixed', label: 'Behoben' },
-        ], { max: 3 }),
+        tags: f.choices('Art', {
+          options: [
+            { value: 'new', label: 'Neu' }, { value: 'improved', label: 'Verbessert' }, { value: 'fixed', label: 'Behoben' },
+          ],
+          max: 3,
+        }),
         body: f.markdown('Text', { profile: 'basic', max: 5000 }),
       },
       max: 300,

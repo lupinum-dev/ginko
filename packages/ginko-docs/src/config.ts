@@ -29,7 +29,7 @@ export function docsCollection(locales: Locales, opts: { label?: string; max?: n
       /** Starts a group in the side navigation under this heading; the pages after it belong to it until the next one. */
       section: f.text('Section', { optional: true }),
       /** Nests the entry under another doc in the side navigation and the breadcrumbs. */
-      parent: f.ref('Parent page', 'docs', { optional: true }),
+      parent: f.ref('Parent page', { to: 'docs', optional: true }),
       /** Section tab above the side navigation; a page without one follows the tab of the page before it. Children follow their parent. */
       tab: f.text('Tab', { optional: true, max: 30 }),
       /** A short label next to the entry in the side navigation, e.g. "New". */
@@ -57,13 +57,17 @@ export function docsHome() {
       /** A command shown with a copy button, e.g. `pnpm add @lupinum/ginko`. */
       install: f.text('Install command', { optional: true, max: 200, translate: false }),
       /** Buttons under the description; the first one is the main one. */
-      links: f.list('Links', 'Link', { label: f.text('Text', { max: 40 }), href: f.text('Target', { max: 300 }) }, { max: 2, default: [] }),
-      features: f.list('Features', 'Feature', {
-        icon: f.text('Icon', { optional: true, max: 60, translate: false }),
-        title: f.text('Title', { max: 80 }),
-        description: f.longtext('Description', { max: 300 }),
-        href: f.text('Link', { optional: true, max: 300 }),
-      }, { max: 12, default: [] }),
+      links: f.list('Links', { itemLabel: 'Link', fields: { label: f.text('Text', { max: 40 }), href: f.text('Target', { max: 300 }) }, max: 2, default: [] }),
+      features: f.list('Features', {
+        itemLabel: 'Feature',
+        fields: {
+          icon: f.text('Icon', { optional: true, max: 60, translate: false }),
+          title: f.text('Title', { max: 80 }),
+          description: f.longtext('Description', { max: 300 }),
+          href: f.text('Link', { optional: true, max: 300 }),
+        },
+        max: 12, default: [],
+      }),
       body: f.markdown('Text', { profile: 'page', optional: true }),
     },
   })
@@ -87,9 +91,9 @@ export function blogCollections(locales: Locales, opts: { max?: number } = {}) {
         title: f.text('Title'),
         description: f.longtext('Description', { optional: true }),
         date: f.date('Date'),
-        authors: f.ref('Authors', 'authors', { multiple: true, optional: true }),
+        authors: f.ref('Authors', { to: 'authors', multiple: true, optional: true }),
         image: f.image('Image', { optional: true }),
-        tags: f.list('Tags', 'Tag', { tag: f.text('Tag', { max: 40 }) }, { max: 10, optional: true }),
+        tags: f.list('Tags', { itemLabel: 'Tag', fields: { tag: f.text('Tag', { max: 40 }) }, max: 10, optional: true }),
         slug: f.slug('Address', { from: 'title' }),
         body: f.markdown('Text', { profile: 'page' }),
       },

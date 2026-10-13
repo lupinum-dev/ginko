@@ -27,10 +27,14 @@ export default defineSite({
         tagline: f.text('Tagline', { max: 120 }),
         email: f.text('Contact email', { format: 'email', optional: true }),
         address: f.longtext('Address', { max: 300, optional: true }),
-        social: f.list('Social links', 'Link', {
-          label: f.text('Label', { max: 40 }),
-          url: f.text('Address of the link', { format: 'url' }),
-        }, { max: 8, default: [] }),
+        social: f.list('Social links', {
+          itemLabel: 'Link',
+          fields: {
+            label: f.text('Label', { max: 40 }),
+            url: f.text('Address of the link', { format: 'url' }),
+          },
+          max: 8, default: [],
+        }),
       },
     }),
     // A short banner on the home page. Leave the text empty to show nothing.
@@ -67,7 +71,7 @@ export default defineSite({
         date: f.date('Date'),
         summary: f.longtext('Summary', { max: 300 }),
         cover: f.image('Cover image', { optional: true }),
-        tags: f.list('Tags', 'Tag', { name: f.text('Tag', { max: 30 }) }, { max: 10, default: [] }),
+        tags: f.list('Tags', { itemLabel: 'Tag', fields: { name: f.text('Tag', { max: 30 }) }, max: 10, default: [] }),
         body: f.markdown('Text', { profile: 'rich' }),
       },
       max: 500,

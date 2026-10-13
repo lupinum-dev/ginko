@@ -19,7 +19,7 @@ const schema = serializeSchema(defineSite({
         slug: f.slug('Adresse', { from: 'title' }),
         price: f.money('Preis', { optional: true }),
         stock: f.number('Vorrat', { min: 0, max: 1000, step: 1, optional: true }),
-        steps: f.list('Schritte', 'Schritt', { label: f.text('Name') }, { max: 10, optional: true }),
+        steps: f.list('Schritte', { itemLabel: 'Schritt', fields: { label: f.text('Name') }, max: 10, optional: true }),
       },
     }),
     docs: collection({

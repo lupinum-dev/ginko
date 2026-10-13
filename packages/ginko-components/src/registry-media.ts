@@ -18,25 +18,40 @@ export const mediaComponents = defineComponents({
       width: f.number({ de: 'Breite in Pixeln', en: 'Width in pixels' }, { min: 1, max: 10000, step: 1, optional: true }),
       height: f.number({ de: 'Höhe in Pixeln', en: 'Height in pixels' }, { min: 1, max: 10000, step: 1, optional: true }),
       bleed: f.boolean({ de: 'Breiter als der Text', en: 'Wider than the text' }, { optional: true }),
-      aspect: f.choice({ de: 'Seitenverhältnis', en: 'Aspect ratio' }, [
-        { value: 'auto', label: { de: 'Original', en: 'Original' } }, { value: 'video', label: '16:9' }, { value: 'wide', label: '2:1' },
-        { value: 'square', label: { de: 'Quadrat', en: 'Square' } }, { value: 'portrait', label: { de: 'Hochformat', en: 'Portrait' } },
-      ], { optional: true, default: 'auto' }),
-      fit: f.choice({ de: 'Zuschnitt', en: 'Crop' }, [
-        { value: 'cover', label: { de: 'Füllend', en: 'Fill' } }, { value: 'contain', label: { de: 'Eingepasst', en: 'Fit' } },
-      ], { optional: true, default: 'cover' }),
-      placement: f.choice({ de: 'Platz', en: 'Position' }, [
-        { value: 'inline', label: { de: 'Im Text', en: 'In the text' } }, { value: 'start', label: { de: 'Links', en: 'Left' } },
-        { value: 'end', label: { de: 'Rechts', en: 'Right' } },
-      ], { optional: true, default: 'inline' }),
-      frame: f.choice({ de: 'Rahmen', en: 'Frame' }, [
-        { value: 'default', label: { de: 'Mit Rahmen', en: 'With frame' } }, { value: 'none', label: { de: 'Ohne', en: 'None' } },
-      ], { optional: true, default: 'default' }),
-      focus: f.choice({ de: 'Bildausschnitt', en: 'Image focus' }, [
-        { value: 'center', label: { de: 'Mitte', en: 'Middle' } }, { value: 'top', label: { de: 'Oben', en: 'Top' } },
-        { value: 'bottom', label: { de: 'Unten', en: 'Bottom' } }, { value: 'left', label: { de: 'Links', en: 'Left' } },
-        { value: 'right', label: { de: 'Rechts', en: 'Right' } },
-      ], { optional: true, default: 'center' }),
+      aspect: f.choice({ de: 'Seitenverhältnis', en: 'Aspect ratio' }, {
+        options: [
+          { value: 'auto', label: { de: 'Original', en: 'Original' } }, { value: 'video', label: '16:9' }, { value: 'wide', label: '2:1' },
+          { value: 'square', label: { de: 'Quadrat', en: 'Square' } }, { value: 'portrait', label: { de: 'Hochformat', en: 'Portrait' } },
+        ],
+        optional: true, default: 'auto',
+      }),
+      fit: f.choice({ de: 'Zuschnitt', en: 'Crop' }, {
+        options: [
+          { value: 'cover', label: { de: 'Füllend', en: 'Fill' } }, { value: 'contain', label: { de: 'Eingepasst', en: 'Fit' } },
+        ],
+        optional: true, default: 'cover',
+      }),
+      placement: f.choice({ de: 'Platz', en: 'Position' }, {
+        options: [
+          { value: 'inline', label: { de: 'Im Text', en: 'In the text' } }, { value: 'start', label: { de: 'Links', en: 'Left' } },
+          { value: 'end', label: { de: 'Rechts', en: 'Right' } },
+        ],
+        optional: true, default: 'inline',
+      }),
+      frame: f.choice({ de: 'Rahmen', en: 'Frame' }, {
+        options: [
+          { value: 'default', label: { de: 'Mit Rahmen', en: 'With frame' } }, { value: 'none', label: { de: 'Ohne', en: 'None' } },
+        ],
+        optional: true, default: 'default',
+      }),
+      focus: f.choice({ de: 'Bildausschnitt', en: 'Image focus' }, {
+        options: [
+          { value: 'center', label: { de: 'Mitte', en: 'Middle' } }, { value: 'top', label: { de: 'Oben', en: 'Top' } },
+          { value: 'bottom', label: { de: 'Unten', en: 'Bottom' } }, { value: 'left', label: { de: 'Links', en: 'Left' } },
+          { value: 'right', label: { de: 'Rechts', en: 'Right' } },
+        ],
+        optional: true, default: 'center',
+      }),
       zoom: f.boolean({ de: 'Vergrößern per Klick', en: 'Enlarge on click' }, { optional: true, default: true }),
     },
     editor: { group: { de: 'Medien', en: 'Media' }, example: '::figure{src="/favicon.svg" alt="Das Ginko-Blatt" caption="Das Zeichen von Ginko" aspect="square" fit="contain"}\n::' },

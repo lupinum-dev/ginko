@@ -32,10 +32,13 @@ export const learnComponents = defineComponents({
     },
     props: {
       question: f.text({ de: 'Frage', en: 'Question' }, { max: 300 }),
-      type: f.choice({ de: 'Art', en: 'Type' }, [
-        { value: 'single', label: { de: 'Eine richtige Antwort', en: 'One right answer' } },
-        { value: 'multiple', label: { de: 'Mehrere richtige Antworten', en: 'Several right answers' } },
-      ], { optional: true, default: 'single' }),
+      type: f.choice({ de: 'Art', en: 'Type' }, {
+        options: [
+          { value: 'single', label: { de: 'Eine richtige Antwort', en: 'One right answer' } },
+          { value: 'multiple', label: { de: 'Mehrere richtige Antworten', en: 'Several right answers' } },
+        ],
+        optional: true, default: 'single',
+      }),
     },
     slots: { explanation: { label: { de: 'Erklärung', en: 'Explanation' } } },
     parents: ['quiz'],

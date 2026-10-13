@@ -13,7 +13,7 @@ const registry: ComponentRegistry = {
       kind: 'block',
       label: 'Kasten',
       describe: 'Ein Kasten.',
-      props: { tags: f.choices('Marken', ['a', 'b', 'c'], { max: 2 }), href: f.text('Adresse', { format: 'url', max: 100 }) },
+      props: { tags: f.choices('Marken', { options: ['a', 'b', 'c'], max: 2 }), href: f.text('Adresse', { format: 'url', max: 100 }) },
       editor: { example: '::box\nText\n::' },
     },
   }),
@@ -138,6 +138,6 @@ describe('slash insert of a component', () => {
 test('propsSummary shows set props in one line', () => {
   expect(propsSummary({ type: 'warning', title: 'Achtung', ':open': 'true' })).toBe('type: warning · title: Achtung · open')
   expect(propsSummary({ title: 'x'.repeat(60) })).toBe(`title: ${'x'.repeat(39)}…`)
-  const def = { props: { type: f.choice('Art', [{ value: 'warning', label: 'Warnung' }, { value: 'info', label: 'Info' }]), title: f.text('Titel') } }
+  const def = { props: { type: f.choice('Art', { options: [{ value: 'warning', label: 'Warnung' }, { value: 'info', label: 'Info' }] }), title: f.text('Titel') } }
   expect(propsSummary({ type: 'warning', title: 'Achtung' }, def)).toBe('Art: Warnung · Titel: Achtung')
 })

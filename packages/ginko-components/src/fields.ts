@@ -2,10 +2,13 @@
 import { f } from '@lupinum/ginko'
 
 /** Quiet (a border) or tint (a filled area). Without it the tag keeps the site's default; see "Appearance" in the README. */
-export const appearance = f.choice({ de: 'Darstellung', en: 'Appearance' }, [
-  { value: 'quiet', label: { de: 'Ruhig (Rahmen)', en: 'Quiet (border)' } },
-  { value: 'tint', label: { de: 'Getönt (Fläche)', en: 'Tint (filled)' } },
-], { optional: true })
+export const appearance = f.choice({ de: 'Darstellung', en: 'Appearance' }, {
+  options: [
+    { value: 'quiet', label: { de: 'Ruhig (Rahmen)', en: 'Quiet (border)' } },
+    { value: 'tint', label: { de: 'Getönt (Fläche)', en: 'Tint (filled)' } },
+  ],
+  optional: true,
+})
 
 /** Heading of a tag that has a `title` prop. */
 export const title = f.text({ de: 'Titel', en: 'Title' }, { optional: true, max: 120 })
