@@ -1,5 +1,6 @@
 <!-- Upcoming events as a dated list. `limit` shortens it on the home page. -->
 <script setup lang="ts">
+import { formatMoney } from '@lupinum/ginko'
 
 const props = defineProps<{ limit?: number }>()
 const { lang } = useSite()

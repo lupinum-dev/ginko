@@ -1,7 +1,7 @@
 <!-- The "Heute" board: open or closed today, today's lunch, the owner's notices and the next closure.
      It is the one coloured region of the site, the first thing a guest checks at lunchtime. -->
 <script setup lang="ts">
-import { weekStartOf } from '@lupinum/ginko'
+import { formatMoney, weekStartOf } from '@lupinum/ginko'
 import { spansText, todayState, upcomingClosures, weekdayOf } from '../utils/site'
 
 const { lang, today } = useSite()

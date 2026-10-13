@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Money } from '@lupinum/ginko'
+import { formatMoney, type Money } from '@lupinum/ginko'
 import { priceOn, upcomingPrice } from '@lupinum/ginko-preset-gastro'
 
 const { labels, lang, today } = useSite()

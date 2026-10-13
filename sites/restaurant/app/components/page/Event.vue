@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatMoney } from '@lupinum/ginko'
 import { eventJsonLd } from '@lupinum/ginko-preset-gastro'
 import { siteName } from '../../utils/site'
 
