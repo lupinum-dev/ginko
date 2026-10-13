@@ -206,7 +206,6 @@
       "onlineFrom": "Online ab {when}",
       "expired": "abgelaufen",
       "ended": "vorbei",
-      "from": "ab {date}",
       "until": "bis {date}",
       "untilToday": "bis heute",
       "noEnd": "ohne Ablauf"

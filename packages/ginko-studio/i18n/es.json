@@ -206,7 +206,6 @@
       "onlineFrom": "En línea desde {when}",
       "expired": "caducado",
       "ended": "terminado",
-      "from": "desde {date}",
       "until": "hasta {date}",
       "untilToday": "hasta hoy",
       "noEnd": "sin fecha de fin"
