@@ -50,7 +50,12 @@ export function check(m: Manifest, cwd: string, html?: string, only?: string) {
   // `--locale it` lists only that locale's findings, so agents do not have to filter mixed output.
   // `ok` and `summary` still count every finding: an `unknown-key` error has no locale but fails CI.
   const errors = findings.filter(f => f.severity === 'error').length, warnings = findings.filter(f => f.severity === 'warning').length
-  return { ok: errors === 0, summary: { errors, warnings, ...(unusedSkipped ? { unusedSkipped: true } : {}) }, findings: only ? findings.filter(f => f.locale === only) : findings }
+  return {
+    ok: errors === 0,
+    ...(errors ? { error: { code: 'INVALID' as const, message: `${errors} ${errors === 1 ? 'error' : 'errors'}. Each one is listed in findings.` } } : {}),
+    summary: { errors, warnings, ...(unusedSkipped ? { unusedSkipped: true } : {}) },
+    findings: only ? findings.filter(f => f.locale === only) : findings,
+  }
 }
 /** Missing and stale translations of `code`, a locale of the manifest. */
 export function todo(m: Manifest, cwd: string, code: string, only: string[]) {
@@ -96,7 +101,7 @@ export function apply(m: Manifest, cwd: string, input: unknown) {
   if (!locale) throw new Error(`Unknown locale: ${input.locale}`)
   if (locale.code === m.defaultLocale) throw new Error(`"${locale.code}" is the default locale: its messages are the source. Fix: edit the source files, or apply translations to another locale.`)
   const defaults = entries(m, m.defaultLocale), sourceLocale = m.locales.find(l => l.code === m.defaultLocale)!
-  const written: { key: string, file: string }[] = [], rejected: { key: string, reason: string }[] = [], warnings: { key: string, message: string }[] = []
+  const written: { key: string, file: string }[] = [], rejected: { key: string, message: string }[] = [], warnings: { key: string, message: string }[] = []
   const targets = new Map<string, { dir: string, value: Tree, reference: Tree }>()
   const lockFile = join(catalogDir(m, cwd), 'i18n.lock.json'), lockValue = existsSync(lockFile) ? json(lockFile) : {}
   if (!object(lockValue)) throw new Error('Invalid translation lock')
@@ -135,7 +140,7 @@ export function apply(m: Manifest, cwd: string, input: unknown) {
       Object.defineProperty(updates, key, { value: hash(source.text), enumerable: true, configurable: true })
       written.push({ key, file })
     }
-    catch (error) { rejected.push({ key, reason: (error as Error).message }) }
+    catch (error) { rejected.push({ key, message: (error as Error).message }) }
   }
   if (written.length) {
     safeTarget(catalogDir(m, cwd), lockFile)
@@ -147,5 +152,9 @@ export function apply(m: Manifest, cwd: string, input: unknown) {
     mkdirSync(catalogDir(m, cwd), { recursive: true })
     writeFileSync(lockFile, `${JSON.stringify(lock, null, 2)}\n`)
   }
-  return { ok: rejected.length === 0, written, rejected, warnings }
+  return {
+    ok: rejected.length === 0,
+    ...(rejected.length ? { error: { code: 'INVALID' as const, message: `${rejected.length} ${rejected.length === 1 ? 'item was' : 'items were'} rejected. Each one is listed in rejected.` } } : {}),
+    written, rejected, warnings,
+  }
 }

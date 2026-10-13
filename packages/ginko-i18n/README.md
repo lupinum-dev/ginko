@@ -617,17 +617,20 @@ writes Nuxt build files; with an existing manifest, `check` only reads files.
 Preparation logs go to stderr. The manifest has a `version`; a CLI of another
 version refuses it (run `nuxt prepare` again).
 
-With `--json`, stdout is exactly one JSON object for every command, also for errors:
+With `--json`, stdout is exactly one JSON object for every command, also for errors. The
+shape, error codes and exit codes are the same as those of the `ginko` CLI:
 
 | Result | Shape |
 | --- | --- |
-| `check` | `{ ok, summary, findings }` |
+| `check` | `{ ok, summary, findings }`, plus `error` when `ok` is `false` |
 | `todo` | `{ ok, locale, language, sourceLocale, sourceLanguage, params, glossary, items }` |
-| `apply` | `{ ok, written, rejected, warnings }` |
-| `--help` | `{ ok, help }` |
-| Usage or configuration error | `{ ok: false, error: { code, message } }`, where `code` is `usage` (the command line) or `config` (manifest, message files, apply input) |
+| `apply` | `{ ok, written, rejected, warnings }`, plus `error` when `ok` is `false` |
+| Usage or input error | `{ ok: false, error: { code, message } }` |
 
-`ok` is `true` exactly when the exit code is `0`.
+`ok` is `true` exactly when the exit code is `0`. Every `ok: false` carries
+`error: { code, message }`. `code` is `USAGE` for a wrong command line (exit `2`) and
+`INVALID` for everything else (exit `1`): check errors, rejected apply items, and an
+invalid manifest, message file or apply input. `--help` prints plain text.
 
 `check` reports missing and extra translations, invalid ICU, parameter differences,
 incomplete plural categories, stale translations, unknown static keys, and unused
@@ -680,7 +683,7 @@ compile and use the source parameters, except global parameters.
 Missing plural categories produce a warning in the result's `warnings` (with sample
 numbers, such as `many (e.g. 1000000)` for Italian) but do not reject a translation.
 Valid items are saved even if other items are rejected; `written` lists them as
-`{ key, file }`, `rejected` the others as `{ key, reason }`. Layer/app keys go to the
+`{ key, file }`, `rejected` the others as `{ key, message }`. Layer/app keys go to the
 source directory that defines the default message. Library keys go to the app's
 `i18n/<code>.json`, including their namespace. Keys follow default-source order;
 unrelated keys remain, with two-space indentation and a trailing newline.
@@ -703,8 +706,9 @@ where they apply `locale`, `key`, `file` and `line`. The `code` values are:
 | `unused` | warning | No static usage found for a key (skipped when `summary.unusedSkipped` is `true`). |
 | `seo-canonical`, `seo-hreflang-self`, `seo-hreflang-reciprocal`, `seo-x-default`, `seo-lang` | error | Problems that `check --html` finds in built pages. |
 
-Exit codes: `0` means no errors, `1` means check errors or rejected apply items,
-and `2` means invalid usage or configuration. Warnings alone return `0`.
+Exit codes: `0` means no errors, `1` means check errors, rejected apply items, or an
+invalid manifest, message file or apply input, and `2` means invalid usage. Warnings
+alone return `0`.
 
 ## Troubleshooting
 

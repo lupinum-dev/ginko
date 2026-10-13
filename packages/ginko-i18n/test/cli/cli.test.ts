@@ -159,8 +159,8 @@ test('apply refuses the default locale and leaves its source untouched', () => {
   const dir = fixture()
   const before = readFileSync(join(dir, 'i18n/de.json'), 'utf8')
   const result = run(dir, ['apply', '-'], { locale: 'de', items: [{ key: 'last', text: 'Rewritten' }] })
-  expect(result.status).toBe(2)
-  expect(result.value).toMatchObject({ ok: false, error: { code: 'config', message: expect.stringMatching(/default locale/) } })
+  expect(result.status).toBe(1)
+  expect(result.value).toMatchObject({ ok: false, error: { code: 'INVALID', message: expect.stringMatching(/default locale/) } })
   expect(readFileSync(join(dir, 'i18n/de.json'), 'utf8')).toBe(before)
 })
 test('apply file input succeeds, plural incompleteness is a JSON warning with examples, and creates missing target', () => {
@@ -179,27 +179,32 @@ test('apply rejects a symlink outside a source and never writes its target', () 
   const before = readFileSync(join(outside, 'i18n/en.json'), 'utf8')
   const result = run(dir, ['apply', '-'], { locale: 'en', items: [{ key: 'last', text: 'Escape' }] })
   expect(result.status).toBe(1)
-  expect(result.value.rejected[0].reason).toContain('escapes')
+  expect(result.value.rejected[0].message).toContain('escapes')
   expect(readFileSync(join(outside, 'i18n/en.json'), 'utf8')).toBe(before)
 })
 // A typo such as `check --locale pt_BR` used to check nothing and pass.
 test.each([['bogus'], ['todo'], ['todo', '--locale', 'xx'], ['check', '--locale', 'xx'], ['todo', '--to', 'en'], ['todo', '--locale', 'en', '--only', 'extra'], ['apply'], ['check', '--bad'], ['check', 'extra'], ['apply', '-', '--html', 'site']])('usage error %j returns the error envelope and exit 2', (...args) => {
   const result = run(fixture(), args)
   expect(result.status).toBe(2)
-  expect(result.value).toMatchObject({ ok: false, error: { code: 'usage', message: expect.any(String) } })
+  expect(result.value).toMatchObject({ ok: false, error: { code: 'USAGE', message: expect.any(String) } })
 })
-// Agents parse every command the same way: `ok` matches exit 0, errors are `{ ok: false, error: { code, message } }`.
-test('every output has ok matching the exit code; a manifest of another version is a config error', () => {
+// Agents parse ginko-i18n like `ginko`: `ok` matches exit 0, every `ok: false` has `error: { code, message }`,
+// USAGE exits 2 and INVALID exits 1.
+test('every output has ok matching the exit code; a manifest of another version is INVALID', () => {
   const dir = fixture()
   expect(run(dir, ['check'])).toMatchObject({ status: 0, value: { ok: true } })
-  expect(run(dir, ['--help'])).toMatchObject({ status: 0, value: { ok: true, help: expect.any(String) } })
+  const help = spawnSync(process.execPath, [cli, '--help', '--json'], { encoding: 'utf8' })
+  expect(help.status).toBe(0)
+  expect(help.stdout).toMatch(/^ginko-i18n check/)
   expect(run(dir, ['apply', '-'], { locale: 'en', items: [{ key: 'last', text: 'Last' }] })).toMatchObject({ status: 0, value: { ok: true } })
-  expect(run(dir, ['apply', '-'], { locale: 'en', items: [{ key: 'absent', text: 'No' }] })).toMatchObject({ status: 1, value: { ok: false } })
+  expect(run(dir, ['apply', '-'], { locale: 'en', items: [{ key: 'absent', text: 'No' }] })).toMatchObject({ status: 1, value: { ok: false, error: { code: 'INVALID' } } })
+  change(dir, (v) => { delete v.last })
+  expect(run(dir, ['check'])).toMatchObject({ status: 1, value: { ok: false, error: { code: 'INVALID' } } })
   const m = read(dir, 'build/ginko-i18n/manifest.json')
   write(dir, 'build/ginko-i18n/manifest.json', { ...m, version: 2 })
-  expect(run(dir, ['check'])).toMatchObject({ status: 2, value: { ok: false, error: { code: 'config', message: expect.stringContaining('Manifest version 2 is not 1') } } })
+  expect(run(dir, ['check'])).toMatchObject({ status: 1, value: { ok: false, error: { code: 'INVALID', message: expect.stringContaining('Manifest version 2 is not 1') } } })
   write(dir, 'build/ginko-i18n/manifest.json', {})
-  expect(run(dir, ['check'])).toMatchObject({ status: 2, value: { ok: false, error: { code: 'config' } } })
+  expect(run(dir, ['check'])).toMatchObject({ status: 1, value: { ok: false, error: { code: 'INVALID' } } })
 })
 test('missing manifest prepares once using the app local binary and keeps its logs on stderr', () => {
   const dir = fixture()
@@ -207,7 +212,7 @@ test('missing manifest prepares once using the app local binary and keeps its lo
   mkdirSync(join(dir, 'node_modules/.bin'), { recursive: true })
   writeFileSync(join(dir, 'node_modules/.bin/nuxt'), '#!/bin/sh\necho preparing\necho "$1" >> prepare-calls\n', { mode: 0o755 })
   const result = run(dir, ['check'])
-  expect(result.status).toBe(2)
+  expect(result.status).toBe(1)
   expect(result.stderr).toContain('preparing')
   expect(readFileSync(join(dir, 'prepare-calls'), 'utf8')).toBe('prepare\n')
 })
@@ -296,14 +301,14 @@ test('a mixed-case locale code works from the manifest and in --dir mode', () =>
 })
 
 // A dotted key was typed as available, unreachable at runtime, and invisible to check.
-test('a message key with a dot is a config error that names the file and the fix', () => {
+test('a message key with a dot is an INVALID error that names the file and the fix', () => {
   const dir = fixture()
   change(dir, (v) => {
     v['v1.2'] = 'Version'
   })
   const result = run(dir, ['check'])
-  expect(result.status).toBe(2)
-  expect(result.value.error).toMatchObject({ code: 'config', message: expect.stringContaining(`contains "."`) })
+  expect(result.status).toBe(1)
+  expect(result.value.error).toMatchObject({ code: 'INVALID', message: expect.stringContaining(`contains "."`) })
   expect(result.value.error.message).toContain(join(dir, 'i18n/en.json'))
 })
 
@@ -330,7 +335,7 @@ test('--dir catalog folder: check skips unused keys, apply writes catalog and lo
   expect(run(dir, ['apply', '-', '--dir', 'catalog', '--default-locale', 'de'], { locale: 'es', items: [{ key: 'b', text: 'Solo' }] }).status).toBe(0)
   expect(read(dir, 'catalog/es.json')).toEqual({ b: 'Solo' })
 })
-// `todo --locale` was checked as a file name: a wrong code returned a `config` error about a file that does not exist.
+// `todo --locale` was checked as a file name: a wrong code returned an INVALID error about a file that does not exist.
 test.each([
   ['x_y', 'Invalid locale: x_y. Fix: use letters, digits and -.'],
   ['zz-zzzzzzzzzzzzz', 'Invalid locale: zz-zzzzzzzzzzzzz. Fix: use a BCP 47 tag such as "es" or "pt-BR".'],
@@ -341,22 +346,22 @@ test.each([
   write(dir, 'catalog/de.json', { a: 'Hallo' })
   const result = run(dir, ['todo', '--locale', code, '--dir', 'catalog', '--default-locale', 'de'])
   expect(result.status).toBe(2)
-  expect(result.value.error).toEqual({ code: 'usage', message })
+  expect(result.value.error).toEqual({ code: 'USAGE', message })
 })
-// A wrong --default-locale was a `config` error, so an agent looked in its files instead of its arguments.
-// A folder without catalogs is the folder's fault, so it stays `config` (it gave an empty list of codes).
+// A wrong --default-locale was an INVALID error, so an agent looked in its files instead of its arguments.
+// A folder without catalogs is the folder's fault, so it stays INVALID (it gave an empty list of codes).
 test.each([
-  [['check', '--dir', 'catalog'], 'usage', '--dir requires --default-locale <code>'],
-  [['check', '--default-locale', 'de'], 'usage', '--default-locale requires --dir <folder>'],
-  [['check', '--dir', 'catalog', '--default-locale', 'fr'], 'usage', 'Unknown default locale: fr. Fix: use one of de.'],
-  [['check', '--dir', 'catalog', '--default-locale', 'DE'], 'usage', 'Unknown default locale: DE. Fix: use "de".'],
-  [['check', '--dir', 'empty', '--default-locale', 'de'], 'config', 'No <code>.json catalogs in $DIR/empty. Fix: point --dir at the folder with the message files.'],
-])('--dir error %j returns JSON and exit 2', (args, code, message) => {
+  [['check', '--dir', 'catalog'], 'USAGE', '--dir requires --default-locale <code>'],
+  [['check', '--default-locale', 'de'], 'USAGE', '--default-locale requires --dir <folder>'],
+  [['check', '--dir', 'catalog', '--default-locale', 'fr'], 'USAGE', 'Unknown default locale: fr. Fix: use one of de.'],
+  [['check', '--dir', 'catalog', '--default-locale', 'DE'], 'USAGE', 'Unknown default locale: DE. Fix: use "de".'],
+  [['check', '--dir', 'empty', '--default-locale', 'de'], 'INVALID', 'No <code>.json catalogs in $DIR/empty. Fix: point --dir at the folder with the message files.'],
+])('--dir error %j returns JSON and its exit code', (args, code, message) => {
   const dir = mkdtempSync(join(tmpdir(), 'ginko-dir-'))
   dirs.push(dir)
   write(dir, 'catalog/de.json', { a: 'Hallo' })
   mkdirSync(join(dir, 'empty'))
   const result = run(dir, args)
-  expect(result.status).toBe(2)
+  expect(result.status).toBe(code === 'USAGE' ? 2 : 1)
   expect(result.value.error).toEqual({ code, message: message.replace('$DIR', dir) })
 })

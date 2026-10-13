@@ -9,9 +9,12 @@ const help = `ginko-i18n check [--locale <code>] [--html <dir>]
 ginko-i18n todo --locale <code> [--only missing,stale]
 ginko-i18n apply <file|->
 Global: --cwd <dir> --build-dir <dir> --dir <folder> --default-locale <code> --json --help
-Exit: 0 success, 1 errors/rejected items, 2 usage/config error`
+Exit: 0 success, 1 errors, rejected items or an invalid manifest, catalog or input, 2 usage`
 
-/** A wrong command line: error code `usage`. Every other error (manifest, catalogs, input) is `config`. Both exit 2. */
+/**
+ * A wrong command line: error code `USAGE`, exit 2. Every other error (manifest, catalogs, input) is `INVALID`, exit 1.
+ * The same codes and exit codes as the `ginko` CLI.
+ */
 class UsageError extends Error {}
 
 /** A locale code from the command line must be a locale of `m`. */
@@ -20,7 +23,8 @@ function knownLocale(m: Manifest, code: string, what = 'locale') {
   return code
 }
 
-// With --json, stdout is exactly one JSON object: `{ ok, ...fields }`, or `{ ok: false, error: { code, message } }`.
+// With --json, stdout is exactly one JSON object: `{ ok: true, ...fields }`, or `{ ok: false, error: { code, message }, ...fields }`.
+// `--help` prints plain text, like `ginko --help`.
 let machine = process.argv.includes('--json')
 const print = <T extends { ok: boolean }>(result: T, text: string) => console.log(machine ? JSON.stringify(result) : text)
 try {
@@ -34,7 +38,7 @@ try {
   })()
   machine = !!values.json
   if (values.help) {
-    print({ ok: true, help }, help)
+    console.log(help)
   }
   else {
     const [command = '', file = ''] = positionals
@@ -68,14 +72,15 @@ try {
     }
     else {
       const result = apply(m, cwd, input)
-      print(result, [...result.written.map(i => `Written ${i.key}: ${i.file}`), ...result.rejected.map(i => `Rejected ${i.key}: ${i.reason}`), ...result.warnings.map(i => `Warning ${i.key}: ${i.message}`)].join('\n'))
+      print(result, [...result.written.map(i => `Written ${i.key}: ${i.file}`), ...result.rejected.map(i => `Rejected ${i.key}: ${i.message}`), ...result.warnings.map(i => `Warning ${i.key}: ${i.message}`)].join('\n'))
       process.exitCode = result.ok ? 0 : 1
     }
   }
 }
 catch (error) {
   const message = (error as Error).message
-  if (machine) console.log(JSON.stringify({ ok: false, error: { code: error instanceof UsageError ? 'usage' : 'config', message } }))
+  const usage = error instanceof UsageError
+  if (machine) console.log(JSON.stringify({ ok: false, error: { code: usage ? 'USAGE' : 'INVALID', message } }))
   else process.stderr.write(`${message}\n`)
-  process.exitCode = 2
+  process.exitCode = usage ? 2 : 1
 }
