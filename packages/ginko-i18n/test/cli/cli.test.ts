@@ -196,6 +196,10 @@ test('every output has ok matching the exit code; a manifest of another version 
   const help = spawnSync(process.execPath, [cli, '--help', '--json'], { encoding: 'utf8' })
   expect(help.status).toBe(0)
   expect(help.stdout).toMatch(/^ginko-i18n check/)
+  // Same flags as `ginko`: -h is --help, and --version prints the package version.
+  expect(spawnSync(process.execPath, [cli, '-h'], { encoding: 'utf8' })).toMatchObject({ status: 0, stdout: expect.stringMatching(/^ginko-i18n check/) })
+  const version = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version
+  expect(spawnSync(process.execPath, [cli, '--version'], { encoding: 'utf8' })).toMatchObject({ status: 0, stdout: `${version}\n` })
   expect(run(dir, ['apply', '-'], { locale: 'en', items: [{ key: 'last', text: 'Last' }] })).toMatchObject({ status: 0, value: { ok: true } })
   expect(run(dir, ['apply', '-'], { locale: 'en', items: [{ key: 'absent', text: 'No' }] })).toMatchObject({ status: 1, value: { ok: false, error: { code: 'INVALID' } } })
   change(dir, (v) => { delete v.last })

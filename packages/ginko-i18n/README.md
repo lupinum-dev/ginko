@@ -595,7 +595,7 @@ npx ginko-i18n apply translations.json --json
 ```
 
 Global options are `--cwd <app>` (defaults to the current directory),
-`--build-dir <dir>` (defaults to `<app>/.nuxt`), `--json`, and `--help`.
+`--build-dir <dir>` (defaults to `<app>/.nuxt`), `--json`, `-h`/`--help` and `--version`.
 
 To check a plain catalog folder with one `<code>.json` file per locale, with no
 Nuxt app, add `--dir <folder> --default-locale <code>`. Relative paths resolve from
@@ -630,7 +630,8 @@ shape, error codes and exit codes are the same as those of the `ginko` CLI:
 `ok` is `true` exactly when the exit code is `0`. Every `ok: false` carries
 `error: { code, message }`. `code` is `USAGE` for a wrong command line (exit `2`) and
 `INVALID` for everything else (exit `1`): check errors, rejected apply items, and an
-invalid manifest, message file or apply input. `--help` prints plain text.
+invalid manifest, message file or apply input. `--help` and `--version` print plain text
+and exit `0`.
 
 `check` reports missing and extra translations, invalid ICU, parameter differences,
 incomplete plural categories, stale translations, unknown static keys, and unused

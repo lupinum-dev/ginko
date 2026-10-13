@@ -8,7 +8,7 @@ import { apply, check, todo } from './commands.ts'
 const help = `ginko-i18n check [--locale <code>] [--html <dir>]
 ginko-i18n todo --locale <code> [--only missing,stale]
 ginko-i18n apply <file|->
-Global: --cwd <dir> --build-dir <dir> --dir <folder> --default-locale <code> --json --help
+Global: --cwd <dir> --build-dir <dir> --dir <folder> --default-locale <code> --json -h/--help --version
 Exit: 0 success, 1 errors, rejected items or an invalid manifest, catalog or input, 2 usage`
 
 /**
@@ -17,6 +17,9 @@ Exit: 0 success, 1 errors, rejected items or an invalid manifest, catalog or inp
  */
 class UsageError extends Error {}
 
+/** The version of this package; dist/cli/index.mjs and src/cli/index.ts both sit two folders below package.json. */
+const version = () => (JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }).version
+
 /** A locale code from the command line must be a locale of `m`. */
 function knownLocale(m: Manifest, code: string, what = 'locale') {
   if (!m.locales.some(l => l.code === code)) throw new UsageError(unknownLocale(m, code, what))
@@ -24,13 +27,13 @@ function knownLocale(m: Manifest, code: string, what = 'locale') {
 }
 
 // With --json, stdout is exactly one JSON object: `{ ok: true, ...fields }`, or `{ ok: false, error: { code, message }, ...fields }`.
-// `--help` prints plain text, like `ginko --help`.
+// `--help` and `--version` print plain text, like `ginko --help` and `ginko --version`.
 let machine = process.argv.includes('--json')
 const print = <T extends { ok: boolean }>(result: T, text: string) => console.log(machine ? JSON.stringify(result) : text)
 try {
   const { values, positionals } = (() => {
     try {
-      return parseArgs({ allowPositionals: true, options: { 'cwd': { type: 'string' }, 'build-dir': { type: 'string' }, 'dir': { type: 'string' }, 'default-locale': { type: 'string' }, 'json': { type: 'boolean' }, 'help': { type: 'boolean' }, 'html': { type: 'string' }, 'locale': { type: 'string' }, 'only': { type: 'string' } } })
+      return parseArgs({ allowPositionals: true, options: { 'cwd': { type: 'string' }, 'build-dir': { type: 'string' }, 'dir': { type: 'string' }, 'default-locale': { type: 'string' }, 'json': { type: 'boolean' }, 'help': { type: 'boolean', short: 'h' }, 'version': { type: 'boolean' }, 'html': { type: 'string' }, 'locale': { type: 'string' }, 'only': { type: 'string' } } })
     }
     catch (error) {
       throw new UsageError(`${(error as Error).message}\n${help}`)
@@ -39,6 +42,9 @@ try {
   machine = !!values.json
   if (values.help) {
     console.log(help)
+  }
+  else if (values.version) {
+    console.log(version())
   }
   else {
     const [command = '', file = ''] = positionals
