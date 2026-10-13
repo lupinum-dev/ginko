@@ -4,10 +4,10 @@ import { docsAskLinks, docsMarkdownPath, type DocsAssistant } from '../lib/docsP
 const props = defineProps<{ path: string, origin: string }>()
 const { t } = useI18n()
 const cfg = useAppConfig().docs?.markdownActions ?? {}
-const assistants: Record<DocsAssistant, { icon: string, label: string }> = {
+const assistants = {
   chatgpt: { icon: 'docs:openai', label: 'docs.openChatGpt' },
   claude: { icon: 'docs:claude', label: 'docs.openClaude' },
-}
+} as const satisfies Record<DocsAssistant, { icon: string, label: string }>
 // Unknown names in `openIn` are skipped, so a typo in app.config.ts hides one entry instead of breaking the menu.
 const openIn = (cfg.openIn ?? ['chatgpt', 'claude']).filter((id) => Object.hasOwn(assistants, id))
 const { open, toggle } = useDocsPopover()
