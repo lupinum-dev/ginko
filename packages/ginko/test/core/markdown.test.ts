@@ -15,6 +15,13 @@ describe('parseMarkdown profiles', () => {
     ['**fett**{onclick="alert(1)"}', 'page', true],
     ['[x](javascript:alert(1)){href="javascript:alert(1)"}', 'page', true],
     [':badge[neu]{href="/ok"}', 'page', false],
+    // style and id from the text (overlay, clash with Nuxt's own ids); parser-made ids and cell alignment stay.
+    ['::div{style="position:fixed;inset:0"}\nx\n::', 'page', true],
+    ['::div{#__NUXT_DATA__}\nx\n::', 'page', true],
+    ['**x**{id="a"}', 'page', true],
+    ['::div{.box}\nx\n::', 'page', false],
+    ['## Titel {#eigene-id}', 'page', false],
+    ['| a | b |\n|:--|--:|\n| 1 | 2 |', 'page', false],
     ['Text[^1]\n\n[^1]: Fußnote', 'basic', false],
     ['Text[^1]\n\n[^1]: Fußnote', 'inline', true],
     ['Formel $x^2$', 'rich', false],
@@ -26,6 +33,14 @@ describe('parseMarkdown profiles', () => {
   ])('%j as %s refused: %s', async (text, profile, refused) => {
     const { problems } = await parseMarkdown(text, { profile })
     expect(problems.length > 0).toBe(refused)
+  })
+
+  test('the problem names the attribute, and a registry prop of that name is kept', async () => {
+    const refused = await parseMarkdown('::div{style="color:red"}\nx\n::', { profile: 'page' })
+    expect(refused.problems).toEqual(['Die Eigenschaft „style“ ist nicht erlaubt.'])
+    const components = { box: { kind: 'block', label: 'Box', describe: 'Box', props: { id: { type: 'text', optional: true } } } } as never
+    const kept = await parseMarkdown('::box{id="a"}\nx\n::', { profile: 'page', components })
+    expect(kept.problems).toEqual([])
   })
 
   test('an emoji shortcode becomes the character', async () => {
