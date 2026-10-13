@@ -91,7 +91,7 @@ describe('checkLinks', () => {
     [{ anchors: 'error' }, 1],
   ] as const)('config %j maps severities', (links, count) => {
     const nodes = 'broken' in links ? [link('$blog.nope')] : [link('$blog.hallo#weg')]
-    const issues = run(nodes, {}, { links })
+    const issues = run(nodes, {}, { linkCheck: links })
     expect(issues).toHaveLength(count)
     if (count) expect(issues[0]!.severity).toBe('broken' in links ? 'warn' : 'error')
   })
@@ -110,7 +110,7 @@ describe('checkLinks', () => {
   ])('link to a redirected path: %s', (name, redirects, links, severity) => {
     const target = name === 'entry redirectFrom' ? item('blog/hallo', { slug: 'hallo', redirectFrom: ['/alt'] }, '/blog/hallo') : post
     const b = bundle([target, item('blog/other', { slug: 'other', body: tree(link('/alt?x=1')) }, '/blog/other')])
-    const issues = checkLinks([b], schema, { redirects, links })
+    const issues = checkLinks([b], schema, { redirects, linkCheck: links })
     expect(issues.map((i) => [i.severity, i.message])).toEqual(severity ? [[severity, 'Link /alt?x=1 führt über eine Weiterleitung zu /blog/hallo.']] : [])
   })
   it('ignores external links', () => {

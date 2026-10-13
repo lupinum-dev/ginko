@@ -205,7 +205,7 @@ export function lunch<const A extends AllergenSet = 'EU'>(opts: GastroOptions & 
       days: lunchDays(opts.lang, opts.allergens),
       note: f.text(both('Hinweis', 'Note'), { max: 200, optional: true }),
       // Many houses also hand out the week as a PDF; replacing it in the Files library updates every link.
-      pdf: f.file(both('Mittagsmenü als PDF', 'Lunch menu as PDF'), { accept: ['pdf'], maxSize: 5 * 1024 * 1024, optional: true }),
+      pdf: f.file(both('Mittagsmenü als PDF', 'Lunch menu as PDF'), { accept: ['pdf'], maxBytes: 5 * 1024 * 1024, optional: true }),
     },
     tasks: [
       { id: 'lunchWeek', label: both('Mittagsmenü dieser Woche', 'This week’s lunch menu'), kind: 'edit', fields: ['weekOf', 'days', 'note'], prefill: { weekOf: '@workWeek' } },

@@ -1,5 +1,5 @@
 <!-- A PDF (UI.md 5, SPEC 2.2, 4.3). The file is uploaded at once; the server checks its content, then name and
-     size show. A file over the field's maxSize is refused before any upload; a file that is no PDF is refused by the check. -->
+     size show. A file over the field's maxBytes is refused before any upload; a file that is no PDF is refused by the check. -->
 <script setup lang="ts">
 import { Button } from '@studio/components/ui/button'
 import type { Chosen } from '../files/LibraryPickerBody.vue'

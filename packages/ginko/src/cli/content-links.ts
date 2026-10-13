@@ -29,11 +29,11 @@ export async function checkFileLinks(input: { config: SiteInput; root: string; l
   // Same options as the build: unknown paths are checked only for sites with file bricks alone.
   const onlyFiles = Object.values(schema.bricks).every((b) => b.source === 'files')
   const issues = checkLinks(Object.values(result.bundles) as Bundle[], schema, {
-    links: input.config.links,
+    linkCheck: input.config.linkCheck,
     redirects: input.config.redirects,
     files: onlyFiles ? (path) => existsSync(join(publicDir, path)) : undefined,
   })
-  issues.push(...await checkExternalLinks(Object.values(result.bundles) as Bundle[], { links: input.config.links, root: input.root, log: input.log, fetch: input.fetch }))
+  issues.push(...await checkExternalLinks(Object.values(result.bundles) as Bundle[], { linkCheck: input.config.linkCheck, root: input.root, log: input.log, fetch: input.fetch }))
   for (const i of issues) {
     input.log(`content/${i.id}: ${english(i)}`)
     if (i.severity === 'error') ok = false

@@ -391,7 +391,7 @@ describe('entries.whyNotPublic', () => {
     expect(fallback).toMatchObject({ public: true, reasons: [{ blocking: false, action: 'translate', sentence: expect.stringContaining('Hauptsprache (de)') }] })
     expect(fallback.url).toBe('https://ginko-demo-restaurant.vercel.app/en/events/martini-gansl')
 
-    await s.patchSchema((schema) => { (schema.bricks.events as { missing?: string }).missing = 'hide' })
+    await s.patchSchema((schema) => { (schema.bricks.events as { untranslated?: string }).untranslated = 'hide' })
     const hidden = await why(s, s.entries.martinigans!, 'en')
     expect(codes(hidden)).toEqual(['translation_hidden'])
     expect(hidden).toMatchObject({ public: false })

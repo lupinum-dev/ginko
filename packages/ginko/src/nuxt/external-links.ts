@@ -1,4 +1,4 @@
-// Opt-in check of `http(s)://` links over the network (`links.external`). Node only: core stays pure and lists the
+// Opt-in check of `http(s)://` links over the network (`linkCheck.external`). Node only: core stays pure and lists the
 // targets (`externalLinks`); this file asks the servers. Runs on `nuxt build` / generate and `ginko check`, never in dev.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -60,7 +60,7 @@ function writeCache(file: string, cache: Cache) {
 }
 
 export interface ExternalLinkOptions {
-  links: LinkConfig | undefined
+  linkCheck: LinkConfig | undefined
   /** The site's folder (cache below `node_modules/.cache/ginko`). */
   root: string
   log: (line: string) => void
@@ -69,12 +69,12 @@ export interface ExternalLinkOptions {
 }
 
 /**
- * Checks the `http(s)://` links of the bundles when `links.external` is `error` or `warn`; otherwise returns nothing, makes
+ * Checks the `http(s)://` links of the bundles when `linkCheck.external` is `error` or `warn`; otherwise returns nothing, makes
  * no request and prints nothing. Each URL is fetched once per run; at most 4 requests run at once and 1 per host.
  * Prints one summary line and returns the issues of the broken links.
  */
 export async function checkExternalLinks(bundles: Bundle[], options: ExternalLinkOptions): Promise<LinkIssue[]> {
-  const level = options.links?.external
+  const level = options.linkCheck?.external
   if (level !== 'error' && level !== 'warn') return []
   const fetchFn = options.fetch ?? globalThis.fetch
   const now = (options.now ?? Date.now)()

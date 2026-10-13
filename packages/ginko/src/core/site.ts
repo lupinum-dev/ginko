@@ -40,7 +40,7 @@ export interface SiteInput {
   pages: Record<string, string | Partial<Record<Locale, string>>>
   bricks: Record<string, Brick>
   /** How the link check (`checkLinks`) rates findings; default `error` for broken links, `warn` for missing anchors. */
-  links?: LinkConfig
+  linkCheck?: LinkConfig
   /** Old URLs that answer with a redirect (patterns: `:name`, trailing `*`). Not part of the schema contract; entries add theirs with `redirectFrom`. */
   redirects?: Redirect[]
   /** Site-wide SEO defaults for `useGinkoSeo`. Not part of the schema contract. */
@@ -86,7 +86,7 @@ export function collection<const F extends Fields, const R extends Partial<Recor
   order: 'manual' | { field: keyof F & string; dir: 'asc' | 'desc' }
   route?: R
   visible?: Visibility<keyof F & string>
-  missing?: 'fallback' | 'hide'
+  untranslated?: 'fallback' | 'hide'
   /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`firstDayOfWeek`). */
   plans?: { brick: string; field: keyof F & string }
   drafts?: boolean

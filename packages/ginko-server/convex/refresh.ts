@@ -62,8 +62,8 @@ export const plan = internalQuery({
     for (const [key, brick] of Object.entries(schema.bricks)) {
       if (brick.kind !== 'collection' || !brick.route) continue
       const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', key)).collect()
-      // `missing: 'fallback'` keeps every locale in the URL map, including locales that are hidden today.
-      const everywhere = { ...brick, missing: 'fallback' as const }
+      // `untranslated: 'fallback'` keeps every locale in the URL map, including locales that are hidden today.
+      const everywhere = { ...brick, untranslated: 'fallback' as const }
       for (const row of rows) {
         const urls = urlsFor(schema, key, everywhere, { id: row._id, order: row.order, data: row.data, prints: row.prints }, () => undefined)
         for (const url of Object.values(urls)) if (url) routed.add(url)

@@ -118,7 +118,7 @@ describe('resolve.ts:43 hiding is decided per leaf, not by the container', () =>
   // `tags` is optional and its word is required.
   const hiding = (): Schema => {
     const s = base()
-    collectionOf(s, 'menu').missing = 'hide'
+    collectionOf(s, 'menu').untranslated = 'hide'
     const fields = fieldsOf(s, 'menu')
     fields.extras = { type: 'list', label: 'Extras', itemLabel: 'Extra', max: 5, of: { note: { type: 'text', label: 'Notiz', max: 60, optional: true } } }
     fields.tags = { type: 'list', label: 'Schlagwörter', itemLabel: 'Schlagwort', max: 5, optional: true, of: { word: { type: 'text', label: 'Wort', max: 60 } } }
@@ -138,7 +138,7 @@ describe('resolve.ts:43 hiding is decided per leaf, not by the container', () =>
 describe('resolve.ts:43 an unknown locale does not hide a valid entry', () => {
   it('keeps an entry of a hide collection when the requested locale is unknown', () => {
     const s = base()
-    collectionOf(s, 'menu').missing = 'hide'
+    collectionOf(s, 'menu').untranslated = 'hide'
     const entry: StoredEntry = { id: 'k1', data: { category: 'mains', name: { de: 'Gulasch' }, price: { amount: 1290 }, allergens: [], veg: 'none' } }
     expect(itemsOf(build(s, { menu: [entry] }, 'fr').bricks.menu).map((i) => i.id)).toEqual(['k1'])
   })
@@ -283,7 +283,7 @@ describe('Astra phase 4 re-review', () => {
 
 describe('Astra phase 5 re-review: release.ts:253 / :220', () => {
   it.each([
-    { name: 'file', field: { type: 'file', label: 'Anhang', accept: ['pdf'], maxSize: 1024, optional: true, retired: true } },
+    { name: 'file', field: { type: 'file', label: 'Anhang', accept: ['pdf'], maxBytes: 1024, optional: true, retired: true } },
     { name: 'image in a list', field: { type: 'list', label: 'Bilder', itemLabel: 'Bild', max: 5, optional: true, retired: true, of: { image: { type: 'image', label: 'Bild' } } } },
   ])('a retired $name cannot carry a constant value (it would hold an unchecked upload)', ({ field }) => {
     const s = serializeSchema(restaurant)

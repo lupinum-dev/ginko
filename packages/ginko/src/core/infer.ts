@@ -10,7 +10,11 @@ declare const unknownChoice: unique symbol
 /** A choice value this code does not know yet (added by a later schema release). Handle it with a fallback. */
 export type UnknownChoice = string & { readonly [unknownChoice]: true }
 
-export interface Money { amount: number; currency: Currency }
+export interface Money {
+  /** In minor units, e.g. cents: 12.50 EUR is 1250. Never negative. */
+  amount: number
+  currency: Currency
+}
 export interface ImageValue {
   url: string
   alt: string

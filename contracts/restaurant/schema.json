@@ -780,7 +780,7 @@
           "accept": [
             "pdf"
           ],
-          "maxSize": 5242880,
+          "maxBytes": 5242880,
           "optional": true,
           "pos": 3
         }

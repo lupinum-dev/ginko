@@ -71,7 +71,7 @@ export interface ListField<F extends Fields = Fields> extends FieldBase {
 /** Points to entries of a collection brick `to`; stores the entry ID (a list of IDs with `multiple`). `max` only with `multiple`. */
 export interface RefField extends FieldBase { type: 'ref'; to: string; multiple?: boolean; max?: number }
 export interface ImageField extends FieldBase { type: 'image' }
-export interface FileField extends FieldBase { type: 'file'; accept: readonly 'pdf'[]; maxSize: number }
+export interface FileField extends FieldBase { type: 'file'; accept: readonly 'pdf'[]; maxBytes: number }
 export interface SlugField extends FieldBase { type: 'slug'; from: string }
 
 export type Field =
@@ -139,7 +139,11 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   order: 'manual' | { field: string; dir: 'asc' | 'desc' }
   route?: R
   visible?: Visibility
-  missing?: 'fallback' | 'hide'
+  /**
+   * What an entry does in a language where a translatable required field is missing or outdated: `'fallback'`
+   * (default) shows the main language there, `'hide'` leaves the entry out of that language.
+   */
+  untranslated?: 'fallback' | 'hide'
   /** Entries of this collection plan weeks of the single brick `brick`; `field` (a date field here) holds the first day of the week (`week.firstDay`). A planned week counts as entered for the weekly upkeep rule. */
   plans?: { brick: string; field: string }
   /** Entries can be saved as drafts and are shown only once published. */

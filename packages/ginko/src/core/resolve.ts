@@ -42,7 +42,7 @@ export interface ResolveContext {
 export interface ResolvedEntry {
   data: Record<string, unknown>
   fallback: string[]
-  /** `missing: 'hide'` and a required translatable leaf is missing or outdated in this locale. */
+  /** `untranslated: 'hide'` and a required translatable leaf is missing or outdated in this locale. */
   hidden: boolean
 }
 
@@ -56,7 +56,7 @@ export function resolveEntry(schema: Schema, brickKey: string, entry: StoredEntr
   const brick = schema.bricks[brickKey]!
   const main = schema.locales[0]!
   const fallback: string[] = []
-  const flags = { hidden: false, canHide: brick.kind === 'collection' && brick.missing === 'hide' }
+  const flags = { hidden: false, canHide: brick.kind === 'collection' && brick.untranslated === 'hide' }
   const state: State = { schema, brickKey, entry, ctx, main, fallback, flags }
   const data = resolveFields(brick.fields, entry.data, '', state)
   // Retired fields (SPEC 2.5) are projected after the live fields are resolved.
@@ -280,7 +280,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
   }
 }
 
-/** URL per locale where the entry exists (respects `missing: 'hide'`); the slug falls back to the main language. */
+/** URL per locale where the entry exists (respects `untranslated: 'hide'`); the slug falls back to the main language. */
 export function urlsFor(schema: Schema, key: string, brick: CollectionBrick, entry: StoredEntry, files: (id: string) => FileInfo | undefined): Partial<Record<Locale, string>> {
   const slugField = Object.entries(brick.fields).find(([, field]) => field.type === 'slug' && !field.retired)?.[0]
   if (!slugField || !brick.route) return {}
@@ -288,7 +288,7 @@ export function urlsFor(schema: Schema, key: string, brick: CollectionBrick, ent
   const main = schema.locales[0]!
   const urls: Partial<Record<Locale, string>> = {}
   for (const locale of schema.locales) {
-    if (locale !== main && brick.missing === 'hide' && resolveEntry(schema, key, entry, { locale, files }).hidden) continue
+    if (locale !== main && brick.untranslated === 'hide' && resolveEntry(schema, key, entry, { locale, files }).hidden) continue
     const slug = slugs[locale] || slugs[main]
     const route = brick.route[locale]
     if (slug && route) urls[locale] = route.replace('[slug]', slug)

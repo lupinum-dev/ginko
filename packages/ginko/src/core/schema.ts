@@ -19,8 +19,8 @@ const UNSAFE_PATH = /\.\.|\/\/|[?#]/
 // The serialized schema grammar. Unknown properties are rejected here and in diffSchema (deny by default).
 export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timezone', 'locales', 'currency', 'week', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor'])
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'missing', 'plans', 'drafts', 'retired'])
-export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxSize', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'group'])
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'drafts', 'retired'])
+export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'group'])
 
 /** Content budget per site (SPEC 3), shared by the platform's writes and the CLI's release check. */
 export const SITE_BUDGET = { siteBytes: 4 * 1024 * 1024, entries: 2000, entryBytes: 256 * 1024 } as const
@@ -371,7 +371,7 @@ function holdsFiles(field: Field): boolean {
   return field.type === 'image' || field.type === 'file' || (field.type === 'list' && Object.values(field.of).some(holdsFiles))
 }
 
-const NUMBER_OPTIONS = ['min', 'max', 'step', 'maxSize'] as const
+const NUMBER_OPTIONS = ['min', 'max', 'step', 'maxBytes'] as const
 
 /** An IANA time zone name this runtime's `Intl` knows, e.g. `Europe/Vienna`. */
 export function isTimeZone(timeZone: unknown): timeZone is string {
@@ -408,7 +408,7 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
   let numbersOk = true
   for (const key of NUMBER_OPTIONS) {
     const value = (field as unknown as Record<string, unknown>)[key]
-    const required = field.type === 'number' && key !== 'maxSize'
+    const required = field.type === 'number' && key !== 'maxBytes'
     if ((value !== undefined || required) && !(typeof value === 'number' && Number.isFinite(value))) {
       problems.push(`${path}: ${key} must be a finite number.`)
       numbersOk = false
@@ -467,7 +467,7 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
       if (field.max !== undefined && !(Number.isInteger(field.max) && field.max > 0)) problems.push(`${path}: max must be greater than 0.`)
       break
     }
-    case 'file': if (!(field.maxSize > 0 && field.maxSize <= limitOf('file'))) problems.push(`${path}: maxSize at most ${formatMb(limitOf('file'))} MB.`); break
+    case 'file': if (!(field.maxBytes > 0 && field.maxBytes <= limitOf('file'))) problems.push(`${path}: maxBytes at most ${formatMb(limitOf('file'))} MB.`); break
     case 'slug': {
       const source = siblings[field.from]
       if (!source || !['text', 'longtext'].includes(source.type)) problems.push(`${path}: from must be a text field.`)

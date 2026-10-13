@@ -69,7 +69,7 @@ export function effectiveMax(field: Field): number {
     case 'ref': return field.multiple ? field.max ?? Infinity : Infinity
     case 'choices': return Math.min(field.max ?? field.options.length, field.options.length)
     case 'number': case 'list': return field.max
-    case 'file': return field.maxSize
+    case 'file': return field.maxBytes
     default: return Infinity
   }
 }

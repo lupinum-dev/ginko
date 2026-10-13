@@ -202,9 +202,9 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     if (result.errors.length) console.error(`[ginko] Errors in content/ (these files are missing from the site):\n${report}`)
     // Link check (CONTENT.md): errors fail the build, warnings are printed. Paths of platform bricks are not known here, so unknown paths are checked only for sites with file bricks alone.
     const onlyFiles = Object.values(schema.bricks).every((b) => b.source === 'files')
-    const links = checkLinks(Object.values(result.bundles) as Bundle[], schema, { links: site.links, redirects: site.redirects, files: onlyFiles ? (path) => existsSync(join(publicDir, path)) : undefined })
-    // Opt-in (`links.external`): asks the servers of outside links, so only on build / generate, never in dev.
-    if (!nuxt.options.dev) links.push(...await checkExternalLinks(Object.values(result.bundles) as Bundle[], { links: site.links, root: nuxt.options.rootDir, log: console.log }))
+    const links = checkLinks(Object.values(result.bundles) as Bundle[], schema, { linkCheck: site.linkCheck, redirects: site.redirects, files: onlyFiles ? (path) => existsSync(join(publicDir, path)) : undefined })
+    // Opt-in (`linkCheck.external`): asks the servers of outside links, so only on build / generate, never in dev.
+    if (!nuxt.options.dev) links.push(...await checkExternalLinks(Object.values(result.bundles) as Bundle[], { linkCheck: site.linkCheck, root: nuxt.options.rootDir, log: console.log }))
     const linkReport = links.map((i) => `- ${i.locale}/${i.id} (${i.field}): ${coreMessage('en', i.key, i.params)}`).join('\n')
     if (links.some((i) => i.severity === 'error') && !nuxt.options.dev) throw new Error(`[ginko] Broken links:\n${linkReport}`)
     if (links.length) console.warn(`[ginko] Link check:\n${linkReport}`)
