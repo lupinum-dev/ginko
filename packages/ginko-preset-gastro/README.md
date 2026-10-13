@@ -91,7 +91,7 @@ the stored data, the same in the week, in hour plans and in exceptions.
 
 Types: `HoursData`, `HoursContext`, `DayHours`, `DayRule` (what `hoursOn` returns), `HoursSource`, `Span`, `Exception`, `HourPlan`,
 `HolidayClosure`, `TodayState`, `Weekday`, `Holiday`,
-`HolidayCalendar`, `LunchWeekData`, `PricedItem`, `RestaurantJsonLdInput`, `EventJsonLdInput`, `JsonLdMenuSection`.
+`HolidayCalendar`, `HolidaysOption` (what `calendar` takes), `LunchWeekData`, `PricedItem`, `RestaurantJsonLdInput`, `EventJsonLdInput`, `JsonLdMenuSection`.
 
 ## Outside Austria
 
@@ -105,6 +105,11 @@ Defaults are Austrian (German and English labels, Austrian holidays, the 14 EU a
 - `eventJsonLd` writes an Event per event: dates from `when`, plus the optional `start` time (`HH:MM`, local, no offset) in `startDate`, and `offers` only with a price. It needs `currency` for prices that carry none.
 
 ```ts
+import type { HolidaysOption } from '@lupinum/ginko-preset-gastro'
+
+// One constant for the holiday calendar, passed to every hours rule.
+export const calendar = 'SG' satisfies HolidaysOption
+
 export default defineSite({
   site: 'kopi-corner',
   name: 'Kopi Corner',
@@ -120,6 +125,9 @@ export default defineSite({
     menu: menu({ lang: 'en', allergens: 'none' }),
   },
 })
+
+// In a component, with the stored hours data:
+todayState(today, { hours: hoursData, calendar })
 ```
 
 Components stay in your site, because their look belongs to the site's design. The demo restaurant in

@@ -7,7 +7,7 @@ export {
   type DayHours, type DayRule, type Exception, type Holiday, type HolidayClosure, type HoursContext, type HoursData, type HoursSource, type HourPlan, type Span,
   type TodayState, type Weekday,
 } from './hours.ts'
-export type { HolidayCalendar } from './holidays.ts'
+export type { HolidayCalendar, HolidaysOption } from './holidays.ts'
 export { lunchWeekOn, type LunchWeekData } from './lunch.ts'
 export { priceOn, upcomingPrice, type PricedItem } from './prices.ts'
 export { eventJsonLd, restaurantJsonLd, type EventJsonLdInput, type JsonLdMenuSection, type RestaurantJsonLdInput } from './jsonld.ts'
