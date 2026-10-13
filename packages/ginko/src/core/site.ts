@@ -22,7 +22,10 @@ export interface Migration {
 export interface SiteInput {
   site: string
   name: string
-  /** The address of the live site, absolute `http(s)://`. Canonical URLs, the sitemap and share images start with it. */
+  /**
+   * The address of the live site, absolute `http(s)://`, without user, query or `#fragment` (page paths are appended
+   * to it). Canonical URLs, the sitemap and share images start with it.
+   */
   url: string
   timezone: string
   /** The site's locales. The first entry is the main locale: the default for content, routes and plain-path pages. */

@@ -26,7 +26,7 @@ export interface LinkIssue {
 export interface CheckLinksOptions {
   /** True when `path` (e.g. `/media/menu.pdf`) is a file in the site's public files. Without it, unknown paths are not checked. */
   files?: (path: string) => boolean
-  /** Severities; default: the site's `linkCheck`. */
+  /** Severities; default: broken `error`, anchors and redirected `warn`. Callers pass the site's `linkCheck`. */
   linkCheck?: LinkConfig
   /** The site's redirect rules (config); entry rules (`redirectFrom`) are read from the bundles. */
   redirects?: Redirect[]
