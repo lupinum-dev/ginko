@@ -16,6 +16,15 @@ Public API: `@lupinum/ginko` (`defineSite`, `single`, `collection`, `f`, `format
 
 Names to know: field helpers take one options object (`f.choice(label, { options })`, `f.ref(label, { to })`, `f.list(label, { itemLabel, fields, max })`); `useGinkoPath` gives page paths; `useGinkoNeighbors(brick, id, { order })`; `formatMoney` is imported from `@lupinum/ginko`, not auto-imported; `Query.order` also takes `{ field, dir }`; the option type is `ChoiceOption`. The CLI reads `GINKO_PLATFORM` or `NUXT_PUBLIC_GINKO_PLATFORM`, and `GINKO_COMMIT` or `GITHUB_SHA`.
 
+**Names in the packages (renamed before 0.1, so nothing to migrate)**
+
+- `@lupinum/ginko-i18n`: the locale object type is `LocaleInfo` (core's `Locale` is the string). CLI: `check --html <dir>` (was `--site`), `--default-locale` (was `--default`), `todo --locale <code>` (`--to` still works). `seo` also takes an object. The finding codes are listed in the README.
+- `@lupinum/ginko-components` (these are the words editors write in Markdown): the heading is `title` on `aside`, `excerpt`, `tab`, `accordion-item`, `collapse` and `read-more` (was `label`); `timeline-item` `label` is `meta`; `badge` colour `error` (was `danger`); `layout` and `center` take `frame` (was `type`); `column` takes `fit` (was `media`); `api-param` takes the flag `required` (was `presence="required"`; `presence="optional"` is `:required="false"`).
+- `@lupinum/ginko-docs`: `docsCollection({ locales, base, label, max })`, `blogCollections({ locales, max })`, `blogPages({ locales })`, `changelogPages({ locales })` take one options object. The layer's composables are `useDocsBlog` and `useDocsCopy`; its helpers are no longer auto-imported into the host app.
+- `@lupinum/ginko-preset-gastro`: `hours({ calendar })` (was `holidays`; the stored field `holidays` is unchanged). The package lists its exports; date, holiday-table, `Money` and `weekOf` helpers are internal.
+- `@lupinum/ginko-content`: `buildFileBundles({ contentDir, publicDir, schema, now?, drafts?, imageDir? })`; `readContent` is internal.
+- Dependencies: `@lupinum/ginko` is a peer dependency of content, components, docs and the gastro preset (install it once in the site); `@lupinum/ginko-content` is a peer of docs, `@lupinum/ginko-i18n` a peer of components, and `sharp` an optional peer of content. `create-ginko` lists them in the new site.
+
 **Content (`@lupinum/ginko`, `@lupinum/ginko-content`)**
 
 - One text format: Markdown (comark 0.7) everywhere, with field profiles that limit what a field may contain. Footnotes, emoji, alerts, Shiki code, task lists, route links (`$blog.my-post`), reusable snippets and heading anchors.
