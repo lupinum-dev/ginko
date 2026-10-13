@@ -7,9 +7,9 @@ export default defineSite({
   site: '{{SITE}}',
   name: '{{SITE}}',
   url: 'https://example.com',
-  timezone: 'Europe/Vienna',
+  timezone: 'Europe/Vienna', // change for your country
   locales: ['en'],
-  currency: 'EUR',
+  currency: 'EUR', // change for your country
   pages: { home: '/' },
   // Shown in search results and link previews. Replace it with one sentence about your site.
   seo: { description: 'Opening hours and menu of our restaurant.' },

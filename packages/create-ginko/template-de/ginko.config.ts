@@ -6,9 +6,9 @@ export default defineSite({
   site: '{{SITE}}',
   name: '{{SITE}}',
   url: 'https://example.com',
-  timezone: 'Europe/Vienna',
+  timezone: 'Europe/Vienna', // für dein Land ändern
   locales: ['de'],
-  currency: 'EUR',
+  currency: 'EUR', // für dein Land ändern
   pages: { home: '/' },
   // Steht in Suchergebnissen und Link-Vorschauen. Ersetze es durch einen Satz über deine Website.
   seo: { description: 'Eine neue Website mit Ginko.' },
