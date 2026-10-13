@@ -198,7 +198,7 @@ export interface Schema {
   bricks: Record<string, Brick>
   migrations: MigrationDescriptor[]
   retired: Record<string, RetiredRule>
-  /** Markdown components of `page` texts (components.ts). Absent: any tag except the blocked ones. */
+  /** Markdown components of `page` texts (components.ts). Absent: any tag except the blocked ones, with the global attributes only (attributeProblem). */
   components?: ComponentRegistry
   /** Default for the agent door (SPEC 17): `review: true` makes every agent write a proposal. */
   agents?: { review?: boolean }

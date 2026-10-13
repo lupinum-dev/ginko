@@ -3,9 +3,9 @@
 // Nuxt component (`nuxt/runtime/GinkoMarkdown.ts`) loads `{ ref }` values and renders through this one.
 import { defineComponent, h, type Component, type PropType } from 'vue'
 import { MarkdownDocument } from '@comark/vue'
-import { isSafeHref, URL_PROPS, type MarkdownTree } from './core/index.ts'
-import { allowedAs, isDomSinkProp } from './core/markdown.ts'
-import { BLOCKED_TAGS } from './core/components.ts'
+import type { MarkdownTree } from './core/index.ts'
+import { attributeProblem } from './core/markdown.ts'
+import { BLOCKED_TAGS, type ComponentRegistry } from './core/components.ts'
 
 // KaTeX and mermaid.js are not part of Ginko's bundle, so math and mermaid nodes show their source:
 // math as `<code class="math">`, mermaid as `<pre class="mermaid">` (the markup mermaid.js looks for).
@@ -60,15 +60,14 @@ function labelCheckboxes(node: Tree): Tree {
 }
 
 /**
- * The parser refuses blocked tags, unsafe URLs and `on*` props at build or save time, but a tree can reach this
- * component without the parser (a platform bundle, an import), or with a registry that declares a blocked tag
- * (`embed`, see COMPONENT_ONLY_TAGS) on a host that maps no component to it. So the renderer drops them too: a
- * blocked tag with no component in `components` goes with its children, and so do an address prop that is not
- * http(s), mailto, tel, relative or `#`, every event handler prop, every DOM sink prop (`outerHTML`, `.innerHTML`, see
- * isDomSinkProp) and an `as` prop other than an alert's (the element stays, without the attribute).
- * `template` stays: comark's slot nodes use it, and the native element is inert.
+ * The parser refuses blocked tags and the attributes its allowlist does not hold (`attributeProblem`) at build or save
+ * time, but a tree can reach this component without the parser (a platform bundle, an import), or with a registry that
+ * declares a blocked tag (`embed`, see COMPONENT_ONLY_TAGS) on a host that maps no component to it. So the renderer
+ * applies the same rules: a blocked tag with no component in `components` goes with its children, and every attribute
+ * the allowlist refuses goes (the element stays, without the attribute). `template` stays: comark's slot nodes use it,
+ * and the native element is inert.
  */
-function dropUnsafe(node: Tree, components: Record<string, unknown>): Tree[] {
+function dropUnsafe(node: Tree, components: Record<string, unknown>, registry: ComponentRegistry | undefined): Tree[] {
   if (!Array.isArray(node)) return [node]
   const [tag, props, ...children] = node as [string | null, Record<string, unknown>, ...Tree[]]
   if (tag && !Object.hasOwn(components, tag)) {
@@ -77,15 +76,8 @@ function dropUnsafe(node: Tree, components: Record<string, unknown>): Tree[] {
     const lower = tag.toLowerCase()
     if (lower !== 'template' && BLOCKED_TAGS.has(lower)) return []
   }
-  const safe: Record<string, unknown> = {}
-  for (const [name, value] of Object.entries(props ?? {})) {
-    const key = name.replace(/^:/, '').toLowerCase()
-    if (key.startsWith('on') || isDomSinkProp(name)) continue
-    if (key === 'as' && (name.startsWith(':') || !allowedAs(tag, value))) continue
-    if (URL_PROPS.has(key) && (typeof value !== 'string' || !isSafeHref(value))) continue
-    safe[name] = value
-  }
-  return [[tag, safe, ...children.flatMap((child) => dropUnsafe(child, components))] as Tree]
+  const safe = Object.fromEntries(Object.entries(props ?? {}).filter(([name, value]) => !attributeProblem(tag ?? '', name, value, registry)))
+  return [[tag, safe, ...children.flatMap((child) => dropUnsafe(child, components, registry))] as Tree]
 }
 
 export const GinkoMarkdown = defineComponent({
@@ -94,13 +86,15 @@ export const GinkoMarkdown = defineComponent({
     value: { type: Object as PropType<MarkdownTree | null | undefined>, default: undefined },
     /** Tag → component (or another tag name), e.g. `{ callout: Callout }`. Other tags use a global component of that name (PascalCase), else a plain element. */
     components: { type: Object as PropType<Record<string, Component | string>>, default: () => ({}) },
+    /** The site's component registry (`components` in ginko.config.ts): a component keeps the props it declares there. Without it a component gets only `class`, `title`, `lang`, `dir`, `data-*` and `aria-*`. */
+    registry: { type: Object as PropType<ComponentRegistry>, default: undefined },
   },
   setup(props) {
     // The tree is plain JSON; comark's renderer takes the same `{ nodes }` shape.
     return () => {
       if (!props.value) return null
       const components = { ...sourceOnly, ...props.components }
-      const nodes = props.value.nodes.flatMap((node) => dropUnsafe(node, components)).map(labelCheckboxes)
+      const nodes = props.value.nodes.flatMap((node) => dropUnsafe(node, components, props.registry)).map(labelCheckboxes)
       return h(MarkdownDocument, { value: { nodes: nodes as never }, components })
     }
   },

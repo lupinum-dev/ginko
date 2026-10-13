@@ -17,12 +17,27 @@ describe('parseMarkdown profiles', () => {
     ['**x**{outerHTML="<img src=x onerror=alert(1)>"}', 'inline', true],
     ['**x**{:innerText="x"}', 'page', true],
     ['[x](javascript:alert(1)){href="javascript:alert(1)"}', 'page', true],
-    [':badge[neu]{href="/ok"}', 'page', false],
+    // Without a registry a component takes the global attributes only (class, title, lang, dir, data-*, aria-*).
+    [':badge[neu]{href="/ok"}', 'page', true],
+    [':badge[neu]{.neu title="Neu" data-x="1" aria-label="Neu"}', 'page', false],
     // style and id from the text (overlay, clash with Nuxt's own ids); parser-made ids and cell alignment stay.
     ['::div{style="position:fixed;inset:0"}\nx\n::', 'page', true],
     ['::div{#__NUXT_DATA__}\nx\n::', 'page', true],
     ['**x**{id="a"}', 'page', true],
     ['::div{.box}\nx\n::', 'page', false],
+    // One allowlist (attributeProblem): what Markdown writes per tag, plus class, title, lang, dir, data-* and aria-*.
+    ['**x**{hidden tabindex="0"}', 'page', true],
+    ['**x**{.note title="t" lang="en" dir="ltr" data-x="1" aria-label="x"}', 'inline', false],
+    ['[x](/a){target="_blank" rel="noopener noreferrer"}', 'inline', false],
+    ['[x](/a){target="_top"}', 'inline', true],
+    ['[x](https://example.com){target="_blank" rel="opener"}', 'inline', true],
+    ['![x](/a.png){width="100" height="50" srcset="/a-640.webp 640w, /a.png 1280w" sizes="100vw"}', 'rich', false],
+    ['![x](/a.png){srcset="/a.webp 640w, javascript:alert(1) 2x"}', 'rich', true],
+    // A bound value must be JSON (comark looks anything else up in its render data); a bound address never passes.
+    ['- [x] erledigt', 'basic', false],
+    ['**x**{:title="frontmatter.title"}', 'page', true],
+    ["[x](/a){:href='\"/b\"'}", 'page', true],
+    ['| a |\n|---|\n| 1 |\n\n**x**{style="text-align:left"}', 'rich', true],
     // `as` makes comark's renderer mount another component; only the alert plugin's own `as` stays.
     ['Hi **x**{as="embed" src="https://www.youtube.com/watch?v=abc"}', 'page', true],
     ['Hi **x**{as="embed" src="https://www.youtube.com/watch?v=abc"}', 'rich', true],

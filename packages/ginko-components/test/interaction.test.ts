@@ -19,7 +19,7 @@ async function mount(markdown: string): Promise<HTMLElement> {
   const el = document.createElement('div')
   document.body.append(el)
   // <GinkoMarkdown> has an async setup.
-  const app = createApp({ render: () => h(Suspense, null, { default: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap }) }) })
+  const app = createApp({ render: () => h(Suspense, null, { default: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) }) })
   app.mount(el)
   unmount = () => app.unmount()
   await new Promise((resolve) => setTimeout(resolve))

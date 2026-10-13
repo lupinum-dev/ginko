@@ -72,7 +72,8 @@ const events = useGinko('events') // typed from ginko.config.ts
   `<GinkoMarkdown>` and `<GinkoImage>`, a sitemap, and languages through
   [`@lupinum/ginko-i18n`](https://github.com/lupinum-dev/ginko/tree/main/packages/ginko-i18n).
 - **`@lupinum/ginko/vue`**: `<GinkoMarkdown :value>` for a Vue 3 app without Nuxt: takes a parsed `MarkdownTree`,
-  renders at once (no `<Suspense>`), and uses only the components you pass.
+  renders at once (no `<Suspense>`), and uses only the components you pass. Pass the site's `components` as
+  `registry` too: a component keeps only the props its registry declares.
 - **`ginko`**: the CLI. `ginko check` checks the config and the content links of every site (use it in CI;
   `--offline` needs no platform key); `release` and `export` work with the hosted platform. Every run prints one
   JSON line and ends with a documented exit code.

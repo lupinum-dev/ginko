@@ -25,6 +25,9 @@ describe('componentProblems', () => {
     ['unknown child', { x: { ...def, children: ['nope'] } }, 'children names “nope”'],
     ['unknown parent', { x: { ...def, parents: ['nope'] } }, 'parents names “nope”'],
     ['prop named onclick', { x: { ...def, props: { onclick: f.text('Klick') } } }, 'Invalid property name'],
+    // A declared prop passes the attribute allowlist: `as` would mount another component, `innerHTML` writes markup.
+    ['prop named as', { x: { ...def, props: { as: f.text('Als') } } }, 'Invalid property name “as”'],
+    ['prop named innerHTML', { x: { ...def, props: { innerHTML: f.text('HTML') } } }, 'Invalid property name “innerHTML”'],
     // Labels follow the brick rule (labelProblem): the main language or English, no empty text.
     ['label without the main language or English', { x: { ...def, label: { fr: 'X' } } }, 'components.x.label: label needs a text in the main language “de” or in English.'],
     ['empty describe', { x: { ...def, describe: '' } }, 'components.x.describe: label is empty.'],
@@ -69,8 +72,9 @@ describe('parseMarkdown with a component registry', () => {
     else expect(problems.join('\n')).toContain(problem)
   })
 
-  test('without a registry any tag except the blocked ones is accepted, as before', async () => {
-    expect((await parseMarkdown('::nope{a="1"}\nx\n::', { profile: 'page' })).problems).toEqual([])
+  test('without a registry any tag except the blocked ones is accepted, with the global attributes only', async () => {
+    expect((await parseMarkdown('::nope{.box data-a="1"}\nx\n::', { profile: 'page' })).problems).toEqual([])
+    expect((await parseMarkdown('::nope{a="1"}\nx\n::', { profile: 'page' })).problems).toEqual(['Die Eigenschaft „a“ ist nicht erlaubt.'])
     expect((await parseMarkdown('::script\nx\n::', { profile: 'page' })).problems).toEqual(['„script“ ist nicht erlaubt.'])
     expect((await parseMarkdown('::card\n#footer\nx\n::', { profile: 'page' })).problems).toEqual(['„template“ ist nicht erlaubt.'])
   })

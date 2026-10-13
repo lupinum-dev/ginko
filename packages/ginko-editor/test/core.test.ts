@@ -61,7 +61,8 @@ const FEATURES: Case[] = [
   { name: 'inline component', profile: 'page', text: 'Das ist :badge[neu]{color="success"} im Text', registry: components },
   { name: 'component with slot template', profile: 'page', text: '::callout\nHaupttext\n\n#footer\nFuß\n::', registry: { callout: { ...components.callout, slots: { footer: { label: 'Fuß' } } } } },
   { name: 'nested components', profile: 'page', text: ':::tabs\n::tab{title="a"}\nx\n::\n:::', registry: components },
-  { name: 'components without a registry', profile: 'page', text: '::foo{a="1"}\nText :bar[x]\n::' },
+  // Without a registry a component keeps the global attributes only (attributeProblem).
+  { name: 'components without a registry', profile: 'page', text: '::foo{data-a="1"}\nText :bar[x]\n::' },
 ]
 
 // The examples of the real registry, with the `page` profile and the registry.

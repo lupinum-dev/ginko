@@ -79,6 +79,8 @@ export const PLAIN_TAGS: ReadonlySet<string> = new Set([
 const TAG = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
 
 const PROP = /^[a-z][a-zA-Z0-9]*$/
+/** Prop names a renderer acts on: comark mounts the component an `as` names, and Vue writes these DOM properties as markup. */
+const RESERVED_PROPS: ReadonlySet<string> = new Set(['as', 'innerHTML', 'outerHTML', 'innerText', 'outerText', 'textContent'])
 const PROP_TYPES = new Set<Field['type']>(['text', 'longtext', 'number', 'boolean', 'choice', 'choices', 'image', 'ref'])
 
 /** Structural problems of a registry, as English sentences. Empty when usable. `main` is the site's main locale (labels). */
@@ -97,7 +99,7 @@ export function componentProblems(registry: ComponentRegistry, main: string): st
       if (problem) problems.push(problem)
     }
     for (const [name, prop] of Object.entries(def.props ?? {})) {
-      if (!PROP.test(name) || /^on/i.test(name)) problems.push(`${at}: Invalid property name “${name}”.`)
+      if (!PROP.test(name) || /^on/i.test(name) || RESERVED_PROPS.has(name)) problems.push(`${at}: Invalid property name “${name}”.`)
       if (!PROP_TYPES.has(prop?.type)) problems.push(`${at}: Property “${name}” cannot have the type “${String(prop?.type)}” (allowed: ${[...PROP_TYPES].join(', ')}).`)
     }
     for (const key of ['children', 'parents'] as const) {
@@ -154,14 +156,11 @@ export function checkComponentTree(nodes: readonly Node[], registry: ComponentRe
 function checkComponent(tag: string, def: ComponentDef, props: Record<string, unknown>, children: Node[], parent: string | undefined, fail: Fail) {
   const seen = new Set<string>()
   for (const [name, raw] of Object.entries(props)) {
-    // `:name` is comark's bound form of the same attribute.
+    // `:name` is comark's bound form of the same attribute. An undeclared one is the profile check's (attributeProblem).
     const key = name.replace(/^:/, '')
     seen.add(key)
-    if (!Object.hasOwn(def.props, key)) fail(msg('component.propUnknown', { tag, prop: key }))
-    else {
-      const problem = componentPropMessage(def.props[key]!, raw)
-      if (problem) fail(msg('component.propInvalid', { tag, prop: key, problem: bare(problem) }))
-    }
+    const problem = Object.hasOwn(def.props, key) ? componentPropMessage(def.props[key]!, raw) : undefined
+    if (problem) fail(msg('component.propInvalid', { tag, prop: key, problem: bare(problem) }))
   }
   for (const [key, field] of Object.entries(def.props)) {
     if (!field.optional && !seen.has(key)) fail(msg('component.propMissing', { tag, prop: key }))

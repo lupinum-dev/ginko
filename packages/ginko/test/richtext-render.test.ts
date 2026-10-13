@@ -4,11 +4,11 @@ import { defineComponent, h, Suspense, type Component } from 'vue'
 import { describe, expect, test } from 'vitest'
 import { GinkoMarkdown } from '@lupinum/ginko/vue'
 import type { MarkdownTree } from '@lupinum/ginko'
-import { parseMarkdown } from '@lupinum/ginko/internal'
+import { defineComponents, f, parseMarkdown, type ComponentRegistry } from '@lupinum/ginko/internal'
 
 // comark's renderer has an async setup, so (as in Nuxt pages) it needs a <Suspense> boundary.
-async function render(value: MarkdownTree | undefined, components?: Record<string, Component>) {
-  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(GinkoMarkdown, { value, components }) }) }))
+async function render(value: MarkdownTree | undefined, components?: Record<string, Component>, registry?: ComponentRegistry) {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(GinkoMarkdown, { value, components, registry }) }) }))
   await flushPromises()
   return wrapper.html()
 }
@@ -63,6 +63,33 @@ describe('GinkoMarkdown (plain Vue)', () => {
     expect(wrapper.html()).toContain('<strong>x</strong>')
   })
 
+  // Bug caught: the renderer dropped only the listed dangers (on*, DOM sinks, `as`), so `style`, `id` or a bound value
+  // that comark looks up in its render data reached the page from a tree that skipped the parser (an import).
+  test('a tree keeps only the attributes of the allowlist', async () => {
+    const value = { nodes: [
+      ['p', { style: 'position:fixed;inset:0', id: '__nuxt', hidden: '', class: 'note', 'data-x': '1' }, 'Overlay'],
+      ['p', {}, ['strong', { ':title': 'frontmatter.title', ':data-ok': '"ja"' }, 'x'], ['a', { href: '/a', ':href': '"/b"', target: '_top' }, 'a']],
+      ['pre', { language: 'ts' }, ['code', {}, ['span', { style: 'color:#D73A49;--shiki-dark:#CBA6F7' }, 'const'], ['span', { style: 'position:fixed' }, ' x']]],
+      // A file's image with its WebP copies (@lupinum/ginko-content): each address in srcset is checked.
+      ['p', {}, ['img', { src: '/a.png', alt: 'A', srcset: '/a-640.webp 640w, /a.png 2000w', sizes: '100vw' }], ['img', { src: '/b.png', alt: 'B', srcset: 'javascript:alert(1) 1x' }]],
+    ] } as MarkdownTree
+    const html = await render(value)
+    expect(html).toContain('<p class="note" data-x="1">Overlay</p>')
+    expect(html).toContain('<strong data-ok="ja">x</strong>')
+    expect(html).toContain('<a href="/a">a</a>')
+    expect(html).toMatch(/<span style="color: ?#D73A49; ?--shiki-dark: ?#CBA6F7;?">const<\/span><span> x<\/span>/)
+    expect(html).toContain('<img src="/a.png" alt="A" srcset="/a-640.webp 640w, /a.png 2000w" sizes="100vw">')
+    expect(html).toContain('<img src="/b.png" alt="B">')
+  })
+
+  test('a component keeps the props its registry declares; without a registry only the global attributes', async () => {
+    const Badge = defineComponent({ props: { color: String }, setup: (props, { slots }) => () => h('mark', { 'data-color': props.color }, slots.default?.()) })
+    const registry = defineComponents({ badge: { kind: 'inline', label: 'Badge', describe: 'x', props: { color: f.text('Farbe') } } })
+    const value = { nodes: [['p', {}, ['badge', { color: 'red', style: 'position:fixed', onclick: 'alert(1)', class: 'b' }, 'neu']]] } as MarkdownTree
+    expect(await render(value, { badge: Badge }, registry)).toContain('<mark data-color="red" class="b">neu</mark>')
+    expect(await render(value, { badge: Badge })).toContain('<mark class="b">neu</mark>')
+  })
+
   // Bug caught: a registry that declares `embed` lets `::embed` through the parser; without a mapped component
   // the renderer emitted a native <embed> that loads the address like an iframe.
   test('a blocked tag renders only through a mapped component', async () => {
@@ -71,7 +98,8 @@ describe('GinkoMarkdown (plain Vue)', () => {
     expect(bare).not.toMatch(/<embed|<script|alert/i)
     expect(bare).toContain('<p>kept</p>')
     const Embed = defineComponent({ props: { src: String }, setup: (props) => () => h('figure', props.src) })
-    expect(await render(value, { embed: Embed })).toContain('<figure>https://example.org</figure>')
+    const registry = defineComponents({ embed: { kind: 'block', label: 'Embed', describe: 'x', props: { src: f.text('Adresse') } } })
+    expect(await render(value, { embed: Embed }, registry)).toContain('<figure>https://example.org</figure>')
   })
 
   // Bug caught: `**x**{as="embed"}` in a tree that skipped the parser mounted the mapped embed component.
@@ -81,7 +109,7 @@ describe('GinkoMarkdown (plain Vue)', () => {
     const value = { nodes: [['p', {}, ['strong', { as: 'embed', src: 'https://example.org' }, 'x']], ['blockquote', { as: 'tip' }, 'Hinweis']] } as MarkdownTree
     const html = await render(value, { embed: Embed, tip: Tip })
     expect(html).not.toContain('<figure')
-    expect(html).toContain('<strong src="https://example.org">x</strong>')
+    expect(html).toContain('<strong>x</strong>')
     expect(html).toContain('<aside as="tip">Hinweis</aside>')
   })
 })

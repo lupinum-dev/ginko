@@ -13,7 +13,7 @@ afterEach(() => { warn.mockRestore() })
 async function render(text: string, provideToc = false): Promise<string> {
   const parsed = await parseMarkdown(text, { profile: 'page', components })
   expect(parsed.problems).toEqual([])
-  const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap }) })
+  const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) })
   if (provideToc) app.provide(GINKO_TOC_KEY, parsed.value.toc)
   const html = await renderToString(app)
   expect(warn).not.toHaveBeenCalled()
