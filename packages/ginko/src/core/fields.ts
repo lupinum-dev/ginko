@@ -25,6 +25,7 @@ type DefaultInput<C> =
   : C extends { type: 'choices'; options: readonly { value: infer V }[] } ? readonly V[]
   : C extends { type: 'ref'; multiple: true } ? readonly string[]
   : C extends { type: 'ref' } ? string
+  : C extends { type: 'slug' } ? TextInput
   : never
 
 /**
@@ -74,9 +75,9 @@ type ListOpts<F extends Fields> = Omit<Opts<ListField<F>, readonly ListRow<F>[]>
 type OnlyColumns<O, F> = O extends { default: readonly (infer R)[] } ? { default: readonly (R extends unknown ? Only<R, F & { _id: string }> : never)[] } : unknown
 type ImageOpts = Opts<ImageField>
 type FileOpts = Opts<FileField>
-type RefOpts = Omit<Opts<RefField, string>, 'multiple' | 'max'>
-type RefsOpts = Omit<Opts<RefField, readonly string[]>, 'multiple'>
-type SlugOpts = Omit<Opts<SlugField, TextInput>, 'translate'>
+type RefOpts = Omit<Opts<RefField, DefaultInput<{ type: 'ref' }>>, 'multiple' | 'max'>
+type RefsOpts = Omit<Opts<RefField, DefaultInput<{ type: 'ref'; multiple: true }>>, 'multiple'>
+type SlugOpts = Omit<Opts<SlugField, DefaultInput<SlugField>>, 'translate'>
 
 // Builders keep options such as `optional: true` as literal types, so the
 // bundle types inferred from a site config know which keys may be missing.
