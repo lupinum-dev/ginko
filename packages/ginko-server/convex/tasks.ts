@@ -1,7 +1,7 @@
 // Task queries (SPEC 2.7). `prefill` gives the starting values of a task's form. The server
 // resolves date tokens in the site's time zone; mutations never apply these values.
 import type { Json } from '@lupinum/ginko'
-import { isTranslatable, resolveToken, weekOfSchema, type Schema } from '@lupinum/ginko/internal'
+import { resolveToken, weekOfSchema, type Schema } from '@lupinum/ginko/internal'
 import { v, type ObjectType } from 'convex/values'
 import { query, type QueryCtx } from './_generated/server'
 import { actorFor, entryOf, fail, taskBrickOf, type Actor } from './lib/access'
@@ -19,16 +19,12 @@ export async function prefillAs(ctx: QueryCtx, actor: Actor, args: ObjectType<ty
   const task = brick && taskId && rest.length === 0 ? brick.tasks?.find((t) => t.id === taskId) : undefined
   if (!brickKey || !brick || !task) fail('INVALID', 'errors.taskNotFound', undefined, { task: args.task })
 
-  const main = schema.locales[0]!
   const prefill = 'prefill' in task ? (task.prefill ?? {}) : {}
   const values: Record<string, Json> = {}
   for (const [key, raw] of Object.entries(prefill)) {
-    const field = Object.hasOwn(brick.fields, key) ? brick.fields[key] : undefined
-    if (!field || raw === undefined) continue
+    if (!Object.hasOwn(brick.fields, key) || raw === undefined) continue
     const token = typeof raw === 'string' ? resolveToken(raw, schema.timezone, weekOfSchema(schema)) : undefined
-    const value: Json = token ?? raw
-    // Literal text of a translatable field starts in the main language.
-    values[key] = isTranslatable(field) && typeof value === 'string' ? { [main]: value } : value
+    values[key] = token ?? raw
   }
 
   // An edit starts from the stored values of the fields it touches; the prefill overrides them.

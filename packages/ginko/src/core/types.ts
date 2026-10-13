@@ -88,6 +88,7 @@ export type Fields = Record<string, Field>
  */
 export const PREFILL_TOKENS = ['@today', '@workWeek', '@nextWorkWeek'] as const
 export type PrefillToken = typeof PREFILL_TOKENS[number]
+export const isPrefillToken = (value: unknown): value is PrefillToken => PREFILL_TOKENS.includes(value as PrefillToken)
 
 /** `needsApproval: true`: what staff does with this task goes live only after an owner or admin approves it (SPEC 17). */
 /** `K` is the field names of the brick: in `single()` and `collection()` a task names only fields the brick has. */

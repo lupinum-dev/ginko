@@ -400,10 +400,19 @@ describe('drafts must be a boolean', () => {
 })
 
 describe('week tokens', () => {
-  // Wrong behaviour caught: a mistyped or old token is silently stored as literal text, so the date field starts empty.
-  it.each(['@thisWeek', '@nextMonday'])('rejects the unknown token %s', (token) => {
-    const input = site({}, { bricks: { lunch: single({ label: 'Mittag', fields: { weekOf: f.date('Woche') }, tasks: [{ id: 'w', label: 'Woche', kind: 'edit', fields: ['weekOf'], prefill: { weekOf: token as never } }] }) } })
-    expect(problemsOf(input)).toEqual([`lunch.w: unknown token “${token}” (known: @today, @workWeek, @nextWorkWeek).`])
+  const withPrefill = (prefill: Record<string, unknown>) => site({}, {
+    bricks: { lunch: single({ label: 'Mittag', fields: { weekOf: f.date('Woche'), handle: f.text('Instagram', { translate: false, max: 40 }) }, tasks: [{ id: 'w', label: 'Woche', kind: 'edit', fields: ['weekOf'], prefill: prefill as never }] }) },
+  })
+  // Wrong behaviour caught: a mistyped token or a token on a text field is stored as literal text, so the form starts
+  // with an empty date or a date in a text; a plain text starting with @ (a handle) is refused as an unknown token.
+  it.each([
+    [{ weekOf: '@workWeek' }, []],
+    [{ handle: '@linde' }, []],
+    [{ weekOf: '@thisWeek' }, ['lunch.w.prefill.weekOf: “Woche” is not a valid date.']],
+    [{ weekOf: 'tomorrow' }, ['lunch.w.prefill.weekOf: “Woche” is not a valid date.']],
+    [{ handle: '@today' }, ['lunch.w.prefill.handle: @today needs a date field.']],
+  ])('prefill %j', (prefill, problems) => {
+    expect(problemsOf(withPrefill(prefill))).toEqual(problems)
   })
 
   // Wrong behaviour caught: the week is not stored on the schema, so server, Studio and site disagree about the first day.

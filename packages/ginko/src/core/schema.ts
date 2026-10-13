@@ -7,7 +7,7 @@ import { weekInfoOf } from './time.ts'
 import { componentProblems } from './components.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
-import { PREFILL_TOKENS, type Brick, type Currency, type Field, type Fields, type Json, type Locale, type PrefillToken, type Schema } from './types.ts'
+import { isPrefillToken, type Brick, type Currency, type Field, type Fields, type Json, type Locale, type Schema } from './types.ts'
 import { coreMessage } from './messages.ts'
 import { checkValue } from './validate.ts'
 
@@ -83,8 +83,8 @@ function storedPrefill(prefill: Readonly<Record<string, Json | undefined>>, fiel
   for (const [name, input] of Object.entries(prefill)) {
     if (input === undefined) continue
     const field = Object.hasOwn(fields, name) ? fields[name] : undefined
-    // Tokens stay; the platform resolves them when the task opens.
-    const value = field && !(typeof input === 'string' && input.startsWith('@')) ? storedValue(field, input, locales) : input
+    // Tokens stay; the platform resolves them when the task opens. Any other text is a value like a default.
+    const value = field && !isPrefillToken(input) ? storedValue(field, input, locales) : input
     if (value !== undefined) out[name] = value
   }
   return out
@@ -266,9 +266,13 @@ function schemaProblems(schema: Schema): string[] {
     }
     for (const task of brick.tasks ?? []) {
       pushLabel(`${key}.${task.id}.label`, task.label)
-      // A string that looks like a token but is none would be stored as literal text and leave the field empty.
-      for (const value of Object.values('prefill' in task ? task.prefill ?? {} : {})) {
-        if (typeof value === 'string' && value.startsWith('@') && !PREFILL_TOKENS.includes(value as PrefillToken)) problems.push(`${key}.${task.id}: unknown token “${value}” (known: ${PREFILL_TOKENS.join(', ')}).`)
+      // A prefill is checked like a default: a value the field cannot hold would start the form broken.
+      for (const [name, value] of Object.entries('prefill' in task ? task.prefill ?? {} : {})) {
+        const field = Object.hasOwn(brick.fields, name) ? brick.fields[name] : undefined
+        const path = `${key}.${task.id}.prefill.${name}`
+        if (!field) problems.push(`${path}: the field is missing.`)
+        else if (isPrefillToken(value)) { if (field.type !== 'date') problems.push(`${path}: ${value} needs a date field.`) }
+        else for (const p of checkValue(schema, field, value, path)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
       }
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
     }
