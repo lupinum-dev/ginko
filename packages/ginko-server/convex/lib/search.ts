@@ -1,7 +1,8 @@
 // The one search over entries (SPEC 4.2 search.studio, SPEC 16 ginko_search): the core search engine
 // over one record per entry with all texts in all languages. The agent door and the Studio both call
 // `searchEntries`; nothing else searches.
-import { buildIndex, loadIndex, search, type SearchRecord } from '@lupinum/ginko/search'
+import { buildIndex, type SearchRecord } from '@lupinum/ginko/internal/search'
+import { loadIndex, search } from '@lupinum/ginko/search'
 import type { Brick, Field, Json } from '@lupinum/ginko'
 import { isTranslatable, type Schema } from '@lupinum/ginko/internal'
 import type { QueryCtx } from '../_generated/server'
@@ -105,7 +106,7 @@ export async function searchEntries(ctx: QueryCtx, actor: Actor, input: { query:
     }
   }
   // The texts of every language are in one record; the main language's word rules fit most of them.
-  const hits = search(loadIndex(buildIndex(records, schema.locales[0] ?? 'de')), query, { limit: input.limit })
+  const hits = search(await loadIndex(await buildIndex(records, schema.locales[0] ?? 'de')), query, { limit: input.limit })
   // The engine matches word beginnings only. German compounds hide the word inside ("Topfenstrudel"), so
   // entries that contain every query word anywhere come after the engine's hits, title matches first.
   const ranked = hits.map((hit) => hit.id)

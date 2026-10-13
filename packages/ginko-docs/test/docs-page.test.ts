@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildIndex, loadIndex, search } from '@lupinum/ginko/search'
+import { buildIndex } from '@lupinum/ginko/internal/search'
+import { loadIndex, search } from '@lupinum/ginko/search'
 import { handleMcp, type DocsMcpDeps } from '../server/mcp/handler'
 import { docsAskLinks, docsEditUrl, docsMarkdownPath, docsStudioUrl } from '../app/utils/docsPage'
 
@@ -27,12 +28,12 @@ describe('page helpers', () => {
 })
 
 describe('docs MCP', () => {
-  const index = loadIndex(buildIndex([
+  const index = buildIndex([
     { id: 'a', url: '/docs/sprachen', title: 'Sprachen', heading: 'Übersetzen', text: 'Jede Seite gibt es in mehreren Sprachen.', excerpt: 'Jede Seite gibt es', brick: 'docs', locale: 'de' },
     { id: 'b', url: '/docs/start', title: 'Einstieg', text: 'So fängt man an.', excerpt: 'So fängt man an.', brick: 'docs', locale: 'de' },
-  ], 'de'))
+  ], 'de').then(loadIndex)
   const deps: DocsMcpDeps = {
-    search: (q) => search(index, q),
+    search: async (q) => search(await index, q),
     read: (path) => (path === '/docs/start' ? '# Einstieg\n\nSo fängt man an.' : undefined),
   }
   const call = (method: string, params?: object) => handleMcp({ jsonrpc: '2.0', id: 1, method, params }, deps) as Promise<any>

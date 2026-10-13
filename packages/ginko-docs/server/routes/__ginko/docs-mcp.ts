@@ -6,7 +6,8 @@ import locales from '#ginko/locales'
 import { loadIndex, search, type SearchIndex } from '@lupinum/ginko/search'
 import { handleMcp, readLimitedText } from '../../mcp/handler'
 
-const loaded = new Map<string, SearchIndex>()
+// The loading index per locale, kept as its promise so two first requests share one load.
+const loaded = new Map<string, Promise<SearchIndex>>()
 
 export default defineEventHandler(async (event) => {
   if (event.req.method !== 'POST') throw createError({ statusCode: 405, statusMessage: 'POST only' })
@@ -16,12 +17,12 @@ export default defineEventHandler(async (event) => {
   let body: unknown
   try { body = raw === '' ? undefined : JSON.parse(raw) } catch { throw createError({ statusCode: 400, statusMessage: 'Body must be JSON' }) }
   const response = await handleMcp(body, {
-    search(query, locale = locales.defaultLocale) {
+    async search(query, locale = locales.defaultLocale) {
       const json = Object.hasOwn(indexes, locale) ? indexes[locale as keyof typeof indexes] : undefined
       if (!json) return []
       let index = loaded.get(locale)
       if (!index) loaded.set(locale, index = loadIndex(json))
-      return search(index, query, { limit: 8 })
+      return search(await index, query, { limit: 8 })
     },
     // The same Markdown the public `<page>.md` twin returns: ask the site's own middleware.
     async read(path) {

@@ -19,7 +19,7 @@ async function open() {
   try {
     const { loadIndex, search } = await import('@lupinum/ginko/search')
     const url: string = `/__ginko/search/${locale.value}.json` // a plain string: the typed route union is too deep to compare
-    engine.value = { index: loadIndex(await $fetch<SearchIndexJson>(url)), search }
+    engine.value = { index: await loadIndex(await $fetch<SearchIndexJson>(url)), search }
   } catch { /* no index: the dialog shows "no results" */ }
 }
 watch(locale, () => { engine.value = undefined })

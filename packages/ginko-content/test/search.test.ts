@@ -5,7 +5,8 @@ import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { collection, defineSite, f, single, type MarkdownTree } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
-import { buildIndex, loadIndex, search, searchSections, type SearchRecord } from '@lupinum/ginko/search'
+import { buildIndex, searchSections, type SearchRecord } from '@lupinum/ginko/internal/search'
+import { loadIndex, search } from '@lupinum/ginko/search'
 import { buildFileBundles, searchIndex, withMarkdownRefs } from '../src/index.ts'
 
 const schema = serializeSchema(defineSite({
@@ -40,7 +41,7 @@ async function build(files: Record<string, string>, locale: 'de' | 'en' = 'de') 
   const trees = new Map<string, MarkdownTree>()
   const bundle = withMarkdownRefs(bundles[locale]!, schema, trees)
   const records = searchSections(bundle, { schema, trees })
-  const index = loadIndex(searchIndex(bundle, trees, schema))
+  const index = await loadIndex(await searchIndex(bundle, trees, schema))
   return { records, find: (query: string) => search(index, query).map((hit) => hit.id) }
 }
 
@@ -99,9 +100,9 @@ describe('search', () => {
 })
 
 describe('search in the language of the index', () => {
-  it('an English index stems English words: "connecting" finds "connected"', () => {
+  it('an English index stems English words: "connecting" finds "connected"', async () => {
     const record = (id: string, text: string): SearchRecord => ({ id, url: `/${id}`, title: id, text, excerpt: '', brick: 'docs', locale: 'en' })
-    const index = loadIndex(buildIndex([record('setup', 'How the site connected to the platform.'), record('other', 'Nothing here.')], 'en'))
+    const index = await loadIndex(await buildIndex([record('setup', 'How the site connected to the platform.'), record('other', 'Nothing here.')], 'en'))
     expect(search(index, 'connecting')[0]?.id).toBe('setup')
   })
 })
