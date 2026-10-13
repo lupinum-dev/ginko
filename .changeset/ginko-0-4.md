@@ -8,7 +8,7 @@
 "create-ginko": minor
 ---
 
-Ginko 0.1: one content system for Nuxt websites, from Markdown files in Git to a hosted platform that owners, staff and AI agents edit together. All packages release together under one version. Until 1.0, a minor version (0.1 → 0.2) may contain breaking changes; the changelog names each one and how to update.
+Ginko 0.4: one content system for Nuxt websites, from Markdown files in Git to a hosted platform that owners, staff and AI agents edit together. All packages release together under one version. It starts at 0.4 because `@lupinum/ginko-content` and `@lupinum/ginko-docs` already published an older, unrelated line up to 0.3. Until 1.0, a minor version (0.4 → 0.5) may contain breaking changes; the changelog names each one and how to update.
 
 Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm create ginko@latest my-site`; the documentation explains every step.
 
@@ -16,7 +16,7 @@ Public API: `@lupinum/ginko` (`defineSite`, `single`, `collection`, `f`, `format
 
 Names to know: field helpers take one options object (`f.choice(label, { options })`, `f.ref(label, { to })`, `f.list(label, { itemLabel, fields, max })`); `useGinkoPath` gives page paths; `useGinkoNeighbors(brick, id, { order })`; `formatMoney` is imported from `@lupinum/ginko`, not auto-imported; `Query.order` also takes `{ field, dir }`; the option type is `ChoiceOption`. The CLI reads `GINKO_PLATFORM` or `NUXT_PUBLIC_GINKO_PLATFORM`, and `GINKO_COMMIT` or `GITHUB_SHA`.
 
-**Names in the packages (renamed before 0.1, so nothing to migrate)**
+**Names in the packages (renamed before 0.4, so nothing to migrate)**
 
 - `@lupinum/ginko-i18n`: the locale object type is `LocaleInfo` (core's `Locale` is the string). CLI: `check --html <dir>` (was `--site`), `--default-locale` (was `--default`), `todo --locale <code>` (`--to` still works). `seo` also takes an object. The finding codes are listed in the README.
 - `@lupinum/ginko-components` (these are the words editors write in Markdown): the heading is `title` on `aside`, `excerpt`, `tab`, `accordion-item`, `collapse` and `read-more` (was `label`); `timeline-item` `label` is `meta`; `badge` colour `error` (was `danger`); `layout` and `center` take `frame` (was `type`); `column` takes `fit` (was `media`); `api-param` takes the flag `required` (was `presence="required"`; the `?` marker of `presence="optional"` is gone).
@@ -70,6 +70,6 @@ The platform is a hosted service, not an npm package. A site connects to it with
 - Gastro: opening hours with exceptions, seasons, holidays and new hours from a date; lunch week with planning ahead and an optional PDF; menu with prices from a date; notices that expire; events; JSON-LD for Restaurant, Menu, opening hours and Event; a printable lunch sheet.
 - `create-ginko` starts a new site, plain or with `--preset gastro|docs`. Starters install with npm, pnpm 11 and bun, carry a `typecheck` script and a page description, and create-ginko warns on an unsupported Node.
 
-**Not in 0.1**
+**Not in 0.4**
 
 Real-time co-editing comes next. Also not included: an agency preset, the editor UI as a shadcn-vue registry, OAuth for agent connectors, and a Google Business sync.

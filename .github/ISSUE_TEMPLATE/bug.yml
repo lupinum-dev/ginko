@@ -19,7 +19,7 @@ body:
     id: ginko
     attributes:
       label: Ginko package and version
-      placeholder: "@lupinum/ginko 0.1.0"
+      placeholder: "@lupinum/ginko 0.4.0"
     validations:
       required: true
   - type: input
