@@ -7,6 +7,7 @@ import type { Nuxt } from 'nuxt/schema'
 import { checkExternalLinks } from './external-links.ts'
 import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
+import { configFilesToWatch } from './watch.ts'
 import { checkLinks, checkSchema, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
@@ -30,6 +31,8 @@ export default defineNuxtModule<SiteInput>({
     if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
 
     const { resolve } = createResolver(import.meta.url)
+    // Dev: a change to ginko.config.ts restarts the dev server (see watch.ts). Texts in i18n/*.json reload by themselves (ginko-i18n).
+    if (nuxt.options.dev) nuxt.options.watch.push(...configFilesToWatch(nuxt.options.rootDir))
     // Object.assign, not `public.ginko =`: Nuxt types `public` from each site's own values, so a site's
     // `seo` would narrow the type this module must write (a site with `seo.description` makes it required).
     Object.assign(nuxt.options.runtimeConfig.public, { ginko: {
