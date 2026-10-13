@@ -344,16 +344,19 @@ test.each([
   expect(result.value.error).toEqual({ code: 'usage', message })
 })
 // A wrong --default-locale was a `config` error, so an agent looked in its files instead of its arguments.
+// A folder without catalogs is the folder's fault, so it stays `config` (it gave an empty list of codes).
 test.each([
-  [['check', '--dir', 'catalog'], '--dir requires --default-locale <code>'],
-  [['check', '--default-locale', 'de'], '--default-locale requires --dir <folder>'],
-  [['check', '--dir', 'catalog', '--default-locale', 'fr'], 'Unknown default locale: fr. Fix: use one of de.'],
-  [['check', '--dir', 'catalog', '--default-locale', 'DE'], 'Unknown default locale: DE. Fix: use "de".'],
-])('--dir usage error %j returns JSON and exit 2', (args, message) => {
+  [['check', '--dir', 'catalog'], 'usage', '--dir requires --default-locale <code>'],
+  [['check', '--default-locale', 'de'], 'usage', '--default-locale requires --dir <folder>'],
+  [['check', '--dir', 'catalog', '--default-locale', 'fr'], 'usage', 'Unknown default locale: fr. Fix: use one of de.'],
+  [['check', '--dir', 'catalog', '--default-locale', 'DE'], 'usage', 'Unknown default locale: DE. Fix: use "de".'],
+  [['check', '--dir', 'empty', '--default-locale', 'de'], 'config', 'No <code>.json catalogs in $DIR/empty. Fix: point --dir at the folder with the message files.'],
+])('--dir error %j returns JSON and exit 2', (args, code, message) => {
   const dir = mkdtempSync(join(tmpdir(), 'ginko-dir-'))
   dirs.push(dir)
   write(dir, 'catalog/de.json', { a: 'Hallo' })
+  mkdirSync(join(dir, 'empty'))
   const result = run(dir, args)
   expect(result.status).toBe(2)
-  expect(result.value.error).toEqual({ code: 'usage', message })
+  expect(result.value.error).toEqual({ code, message: message.replace('$DIR', dir) })
 })

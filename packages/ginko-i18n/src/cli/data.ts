@@ -57,6 +57,7 @@ export function manifest(cwd: string, buildDir: string): Manifest {
 }
 // --dir mode: a plain folder of `<code>.json` catalogs, without Nuxt or source scanning.
 // The CLI checks `defaultLocale` against the files, because it is a command-line argument (a `usage` error).
+// A folder without catalogs is a `config` error: the fault is the folder, not the locale code.
 const reserved = ['i18n.lock.json', 'glossary.json']
 export function dirManifest(folder: string, defaultLocale: string): Manifest {
   const locales = readdirSync(folder, { withFileTypes: true })
@@ -68,6 +69,7 @@ export function dirManifest(folder: string, defaultLocale: string): Manifest {
       new Intl.PluralRules(code)
       return { code, language: code }
     })
+  if (!locales.length) throw new Error(`No <code>.json catalogs in ${folder}. Fix: point --dir at the folder with the message files.`)
   return { locales, defaultLocale, params: {}, sources: [{ dir: folder, origin: 'app' }], srcDirs: [], catalogDir: folder }
 }
 /** --dir mode: adds a locale that has no file yet (`todo`/`apply` for a new language). A known code returns `m` unchanged. */
