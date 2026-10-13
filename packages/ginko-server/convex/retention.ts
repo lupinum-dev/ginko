@@ -79,7 +79,7 @@ export const daily = internalMutation({
 
       for (const [key, brick] of Object.entries(schema.bricks)) {
         if (left === 0) break
-        if (brick.kind === 'collection' && brick.autoRemoveExpired) {
+        if (brick.kind === 'collection' && brick.visible?.mode === 'until' && brick.visible.deleteExpired) {
           const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).collect()
           // Drafts are left alone: nobody has published them yet (SPEC 15).
           const expired = rows.filter((row) => !row.deletedAt && row.state !== 'draft' && !isVisible(brick, row.data, today) && !isVisible(brick, row.data, expiredSince))

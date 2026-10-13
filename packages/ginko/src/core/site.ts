@@ -85,9 +85,8 @@ export function collection<const F extends Fields, const R extends Partial<Recor
   max: number
   order: 'manual' | { field: keyof F & string; dir: 'asc' | 'desc' }
   route?: R
-  visible?: Visibility
+  visible?: Visibility<keyof F & string>
   missing?: 'fallback' | 'hide'
-  autoRemoveExpired?: boolean
   /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`firstDayOfWeek`). */
   plans?: { brick: string; field: keyof F & string }
   drafts?: boolean

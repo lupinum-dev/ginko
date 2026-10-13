@@ -396,6 +396,23 @@ describe('week tokens', () => {
   })
 })
 
+describe('visible', () => {
+  const withVisible = (visible: unknown) => site({}, {
+    bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }), until: f.date('Bis', optional), when: f.daterange('Wann', optional) }, max: 20, order: 'manual', visible: visible as never }) },
+  })
+  // Wrong behaviour caught: a mode or option name from before 0.4 is stored and every entry shows for ever.
+  it.each([
+    [{ mode: 'until', field: 'until', days: 6, deleteExpired: true }, []],
+    [{ mode: 'until', field: 'when' }, []],
+    [{ mode: 'active', field: 'until' }, ['menu: visible.mode must be “always” or “until”.']],
+    [{ mode: 'until', field: 'name' }, ['menu: visibility needs a date or daterange field.']],
+    [{ mode: 'until', field: 'until', autoRemoveExpired: true }, ['menu.visible: unknown property “autoRemoveExpired”.']],
+    [{ mode: 'always', field: 'until' }, ['menu: visible: “always” takes no other options.']],
+  ])('%j', (visible, problems) => {
+    expect(problemsOf(withVisible(visible))).toEqual(problems)
+  })
+})
+
 describe('plans (weeks planned ahead)', () => {
   const week = single({ label: 'Mittag', fields: { weekOf: f.date('Woche') }, tasks: [{ id: 'w', label: 'Woche', kind: 'edit', fields: ['weekOf'], prefill: { weekOf: '@workWeek' } }] })
   const planner = (plans: { brick: string; field: string }) => site({}, {

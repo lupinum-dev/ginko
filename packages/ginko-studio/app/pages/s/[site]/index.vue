@@ -66,13 +66,13 @@ function timing(brick: CollectionBrick, entry: Entry): { text: string; dim: bool
   const value = entry.data[vis.field]
   const today = s.today.value
   const visible = isVisible(brick, entry.data, today)
-  if (vis.mode === 'active') {
+  if (brick.fields[vis.field]?.type !== 'daterange') {
     const until = typeof value === 'string' ? addDays(value, vis.days ?? 0) : undefined
     if (!until) return { text: t('site.status.noEnd'), dim: false }
     return visible ? { text: until === today ? t('site.status.untilToday') : t('site.status.until', { date: formatDay(until, format) }), dim: false } : { text: t('site.status.expired'), dim: true }
   }
   const range = value as { from: string; to: string } | undefined
-  if (!range) return { text: '', dim: false }
+  if (!range) return { text: t('site.status.noEnd'), dim: false }
   return { text: displayValue({ type: 'daterange', label: '' }, range, s.main.value, { t, format }), dim: !visible }
 }
 

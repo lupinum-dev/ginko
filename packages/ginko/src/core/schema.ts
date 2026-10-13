@@ -19,7 +19,7 @@ const UNSAFE_PATH = /\.\.|\/\/|[?#]/
 // The serialized schema grammar. Unknown properties are rejected here and in diffSchema (deny by default).
 export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timezone', 'locales', 'currency', 'week', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor'])
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'missing', 'autoRemoveExpired', 'plans', 'drafts', 'retired'])
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'missing', 'plans', 'drafts', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxSize', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'group'])
 
 /** Content budget per site (SPEC 3), shared by the platform's writes and the CLI's release check. */
@@ -219,12 +219,7 @@ function schemaProblems(schema: Schema): string[] {
         if (!Object.values(brick.fields).some((fd) => fd.type === 'slug')) problems.push(`${key}: route needs a slug field.`)
       }
       const vis = brick.visible
-      if (vis && vis.mode !== 'always') {
-        const target = brick.fields[vis.field]
-        const wanted = vis.mode === 'active' ? 'date' : 'daterange'
-        if (target?.type !== wanted) problems.push(`${key}: visibility needs a ${wanted} field.`)
-        if (vis.mode === 'active' && vis.days !== undefined && !(Number.isInteger(vis.days) && vis.days >= 0)) problems.push(`${key}: visibility: days must be a whole number from 0.`)
-      }
+      if (vis !== undefined) problems.push(...visibilityProblems(key, vis, brick.fields))
     } else if (brick.fields && Object.values(brick.fields).some((fd) => fd.type === 'slug')) {
       problems.push(`${key}: single bricks have no address (slug).`)
     }
@@ -280,6 +275,20 @@ function schemaProblems(schema: Schema): string[] {
     if (!target) problems.push(`Migration “${m.id}”: field “${m.brick}.${m.fills}” is missing.`)
     else if (target.retired) problems.push(`Migration “${m.id}”: “${m.brick}.${m.fills}” is retired.`)
   }
+  return problems
+}
+
+function visibilityProblems(key: string, vis: unknown, fields: Fields): string[] {
+  if (typeof vis !== 'object' || vis === null || Array.isArray(vis)) return [`${key}: visible must be an object.`]
+  const { mode, field, days, deleteExpired } = vis as Record<string, unknown>
+  if (mode === 'always') return Object.keys(vis).length === 1 ? [] : [`${key}: visible: “always” takes no other options.`]
+  if (mode !== 'until') return [`${key}: visible.mode must be “always” or “until”.`]
+  const problems: string[] = []
+  for (const k of Object.keys(vis)) if (!['mode', 'field', 'days', 'deleteExpired'].includes(k)) problems.push(`${key}.visible: unknown property “${k}”.`)
+  const type = typeof field === 'string' && Object.hasOwn(fields, field) ? fields[field]!.type : undefined
+  if (type !== 'date' && type !== 'daterange') problems.push(`${key}: visibility needs a date or daterange field.`)
+  if (days !== undefined && !(Number.isInteger(days) && (days as number) >= 0)) problems.push(`${key}: visibility: days must be a whole number from 0.`)
+  if (deleteExpired !== undefined && typeof deleteExpired !== 'boolean') problems.push(`${key}: visibility: deleteExpired must be true or false.`)
   return problems
 }
 

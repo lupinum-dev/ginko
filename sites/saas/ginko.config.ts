@@ -145,8 +145,7 @@ export default defineSite({
       },
       max: 5,
       order: 'manual',
-      visible: { mode: 'active', field: 'until' },
-      autoRemoveExpired: true,
+      visible: { mode: 'until', field: 'until', deleteExpired: true },
       tasks: [
         { id: 'add', label: 'Ankündigung hinzufügen', kind: 'create' },
         { id: 'remove', label: 'Ankündigung entfernen', kind: 'remove' },

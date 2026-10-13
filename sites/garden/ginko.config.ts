@@ -91,7 +91,7 @@ export default defineSite({
       },
       max: 100,
       order: { field: 'when', dir: 'asc' },
-      visible: { mode: 'upcoming', field: 'when' },
+      visible: { mode: 'until', field: 'when' },
       route: { en: '/events/[slug]' },
     }),
   },

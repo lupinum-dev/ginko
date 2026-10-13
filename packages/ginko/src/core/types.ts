@@ -95,11 +95,15 @@ export type Task =
   | { id: string; label: Label; kind: 'create'; prefill?: Record<string, Json | PrefillToken>; needsApproval?: boolean }
   | { id: string; label: Label; kind: 'remove'; needsApproval?: boolean }
 
-export type Visibility =
+/**
+ * Which entries of a collection the website shows. `always`: all of them. `until`: an entry is shown until the
+ * date in `field` (a `date`, or the end `to` of a `daterange`) has passed, plus `days` more (a week that starts
+ * on that day: `days: 6`). An empty field always shows the entry. `deleteExpired: true` lets the platform delete
+ * entries that are no longer shown (see the docs page "Bricks", Visibility).
+ */
+export type Visibility<K extends string = string> =
   | { mode: 'always' }
-  /** Shown until the date in `field`, plus `days` more (a week that starts on that day: `days: 6`). */
-  | { mode: 'active'; field: string; days?: number }
-  | { mode: 'upcoming'; field: string }
+  | { mode: 'until'; field: K; days?: number; deleteExpired?: boolean }
 
 /** Where a brick's content comes from: the platform (default) or Markdown files in the site's repo (CONTENT.md). */
 export type BrickSource = 'files'
@@ -136,7 +140,6 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   route?: R
   visible?: Visibility
   missing?: 'fallback' | 'hide'
-  autoRemoveExpired?: boolean
   /** Entries of this collection plan weeks of the single brick `brick`; `field` (a date field here) holds the first day of the week (`week.firstDay`). A planned week counts as entered for the weekly upkeep rule. */
   plans?: { brick: string; field: string }
   /** Entries can be saved as drafts and are shown only once published. */

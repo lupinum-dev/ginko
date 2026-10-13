@@ -168,8 +168,7 @@ export function notices(opts: GastroOptions = {}) {
     },
     max: 5,
     order: 'manual',
-    visible: { mode: 'active', field: 'until' },
-    autoRemoveExpired: true,
+    visible: { mode: 'until', field: 'until', deleteExpired: true },
     tasks: [
       // The weekly job first: it becomes the main quick task.
       { id: 'soldOut', label: both('Heute ausgebucht', 'Fully booked today'), kind: 'create', prefill: { ...soldOutText(opts.lang), until: '@today' } },
@@ -229,8 +228,7 @@ export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: GastroOptio
     max: 3,
     order: { field: 'weekOf', dir: 'asc' },
     // A planned week is over on its last day and then removed, so the owner never clears old weeks by hand.
-    visible: { mode: 'active', field: 'weekOf', days: 6 },
-    autoRemoveExpired: true,
+    visible: { mode: 'until', field: 'weekOf', days: 6, deleteExpired: true },
     plans: { brick: lunchBrick, field: 'weekOf' },
     tasks: [
       { id: 'planNext', label: both('Nächste Woche planen', 'Plan next week'), kind: 'create', prefill: { weekOf: '@nextWorkWeek' } },
@@ -296,7 +294,7 @@ export function events(opts: GastroOptions & { route: Partial<Record<Locale, str
     },
     max: 30,
     order: { field: 'when', dir: 'asc' },
-    visible: { mode: 'upcoming', field: 'when' },
+    visible: { mode: 'until', field: 'when' },
     route: opts.route,
     tasks: [
       { id: 'add', label: both('Veranstaltung hinzufügen', 'Add an event'), kind: 'create' },

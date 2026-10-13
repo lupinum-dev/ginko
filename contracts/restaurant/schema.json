@@ -479,10 +479,10 @@
       "max": 5,
       "order": "manual",
       "visible": {
-        "mode": "active",
-        "field": "until"
+        "mode": "until",
+        "field": "until",
+        "deleteExpired": true
       },
-      "autoRemoveExpired": true,
       "tasks": [
         {
           "id": "soldOut",
@@ -1194,7 +1194,7 @@
         "dir": "asc"
       },
       "visible": {
-        "mode": "upcoming",
+        "mode": "until",
         "field": "when"
       },
       "route": {
@@ -1938,11 +1938,11 @@
         "dir": "asc"
       },
       "visible": {
-        "mode": "active",
+        "mode": "until",
         "field": "weekOf",
-        "days": 6
+        "days": 6,
+        "deleteExpired": true
       },
-      "autoRemoveExpired": true,
       "plans": {
         "brick": "lunch",
         "field": "weekOf"

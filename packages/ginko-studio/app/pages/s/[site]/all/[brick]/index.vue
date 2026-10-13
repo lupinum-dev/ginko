@@ -56,7 +56,7 @@ function status(entry: Entry): string {
   if (!b || b.kind !== 'collection' || !b.visible || b.visible.mode === 'always') return ''
   if (isVisible(b, entry.data, s.today.value)) return ''
   const v = entry.data[b.visible.field]
-  if (b.visible.mode === 'active') return t('site.status.expired')
+  if (b.fields[b.visible.field]?.type !== 'daterange') return t('site.status.expired')
   return v && (v as { to: string }).to < s.today.value ? t('site.status.ended') : t('site.status.from', { date: displayValue({ type: 'daterange', label: '' }, v, s.main.value, { t, format }) })
 }
 

@@ -274,10 +274,10 @@
       "max": 5,
       "order": "manual",
       "visible": {
-        "mode": "active",
-        "field": "until"
+        "mode": "until",
+        "field": "until",
+        "deleteExpired": true
       },
-      "autoRemoveExpired": true,
       "tasks": [
         {
           "id": "add",
@@ -467,7 +467,7 @@
       "max": 40,
       "order": "manual",
       "visible": {
-        "mode": "active",
+        "mode": "until",
         "field": "until"
       },
       "tasks": [
@@ -539,7 +539,7 @@
         "dir": "asc"
       },
       "visible": {
-        "mode": "upcoming",
+        "mode": "until",
         "field": "when"
       },
       "tasks": [

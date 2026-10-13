@@ -163,7 +163,7 @@ describe('publicBundle', () => {
     site: 'ev', name: 'Ev', url: 'https://ev.example', timezone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
     bricks: {
       events: collection({
-        label: 'Termine', source: 'files', max: 50, order: 'manual', visible: { mode: 'upcoming', field: 'when' },
+        label: 'Termine', source: 'files', max: 50, order: 'manual', visible: { mode: 'until', field: 'when' },
         route: { de: '/termine/[slug]' },
         fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), when: f.daterange('Wann'), body: f.markdown('Text') },
       }),

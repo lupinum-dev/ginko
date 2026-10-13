@@ -34,7 +34,7 @@ describe('entries.create', () => {
     expect(await errorOf(as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Drei', '2026-10-30') }))).toMatchObject({ code: 'INVALID' })
   })
 
-  it('autoRemoveExpired: the expired notice is removed first, as a remove change of actor system', async () => {
+  it('visible.deleteExpired: the expired notice is removed first, as a remove change of actor system', async () => {
     // A day on which notice-ausgebucht (until 2026-10-08) is still visible and notice-urlaub (2026-09-30) is not.
     vi.setSystemTime(new Date('2026-10-05T10:00:00Z'))
     const { t, as, entries } = await setup()

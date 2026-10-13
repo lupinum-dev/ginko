@@ -76,8 +76,7 @@ export default defineSite({
       },
       max: 5,
       order: 'manual',
-      visible: { mode: 'active', field: 'until' },
-      autoRemoveExpired: true,
+      visible: { mode: 'until', field: 'until', deleteExpired: true },
       tasks: [
         { id: 'add', label: 'Hinweis hinzufügen', kind: 'create' },
         { id: 'remove', label: 'Hinweis entfernen', kind: 'remove' },
@@ -122,7 +121,7 @@ export default defineSite({
       },
       max: 40,
       order: 'manual',
-      visible: { mode: 'active', field: 'until' },
+      visible: { mode: 'until', field: 'until' },
       tasks: [
         { id: 'add', label: 'Stelle ausschreiben', kind: 'create' },
         { id: 'edit', label: 'Stelle bearbeiten', kind: 'edit', pick: true, fields: ['title', 'kind', 'location', 'salary', 'salaryPeriod', 'start', 'until', 'description', 'applyUrl', 'applyEmail'] },
@@ -139,7 +138,7 @@ export default defineSite({
       },
       max: 40,
       order: { field: 'when', dir: 'asc' },
-      visible: { mode: 'upcoming', field: 'when' },
+      visible: { mode: 'until', field: 'when' },
       tasks: [
         { id: 'add', label: 'Messe eintragen', kind: 'create' },
         { id: 'edit', label: 'Messe bearbeiten', kind: 'edit', pick: true, fields: ['title', 'when', 'location', 'booth'] },

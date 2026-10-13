@@ -176,11 +176,13 @@ export function defaultsFor(fields: Fields): Record<string, Json> {
 
 /** One visibility rule for listings, detail pages, URL maps and sitemap. Dates inclusive, in the site's time zone. */
 export function isVisible(brick: Brick, data: Record<string, unknown>, today: string): boolean {
-  if (brick.kind !== 'collection' || !brick.visible || brick.visible.mode === 'always') return true
-  const value = data[brick.visible.field]
-  if (brick.visible.mode === 'active') return value === undefined || value === null || (typeof value === 'string' && addDays(value, brick.visible.days ?? 0) >= today)
-  const range = value as { to?: string } | undefined
-  return typeof range?.to === 'string' && range.to >= today
+  const vis = brick.kind === 'collection' ? brick.visible : undefined
+  if (!vis || vis.mode === 'always') return true
+  const value = data[vis.field]
+  if (value === undefined || value === null) return true
+  // A date field holds the last day; a daterange its end `to`.
+  const last = typeof value === 'string' ? value : (value as { to?: unknown }).to
+  return typeof last === 'string' && addDays(last, vis.days ?? 0) >= today
 }
 
 export function sortEntries(brick: CollectionBrick, entries: StoredEntry[]): StoredEntry[] {

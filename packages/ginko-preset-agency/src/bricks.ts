@@ -232,7 +232,7 @@ export function jobs<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
     order: { field: 'title', dir: 'asc' },
     route: routeOf({ de: '/karriere/[slug]', en: '/en/careers/[slug]' }, o),
     // Expired jobs drop out of lists by themselves (open through `validUntil`; `openJobs` is the same rule for your own code).
-    visible: { mode: 'active', field: 'validUntil' },
+    visible: { mode: 'until', field: 'validUntil' },
     tasks: [
       { id: 'add', label: both('Stelle ausschreiben', 'Post a job'), kind: 'create' },
       { id: 'extend', label: both('Bewerbungsfrist ändern', 'Change the deadline'), kind: 'edit', pick: true, fields: ['validUntil'] },

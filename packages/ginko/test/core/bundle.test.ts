@@ -151,10 +151,18 @@ describe('isVisible: dates are inclusive in the site time zone (SPEC 2.1)', () =
     { name: 'an active notice that ends tomorrow is visible', brick: 'notices', data: { until: '2026-10-09' }, visible: true },
     { name: 'with days, an entry stays that many days after its date', brick: 'lunchPlans', data: { weekOf: '2026-10-02' }, visible: true },
     { name: 'with days, it is hidden the day after', brick: 'lunchPlans', data: { weekOf: '2026-10-01' }, visible: false },
-    { name: 'an upcoming event that ends today is visible', brick: 'events', data: { when: { from: '2026-10-01', to: '2026-10-08' } }, visible: true },
-    { name: 'an upcoming event that ended yesterday is hidden', brick: 'events', data: { when: { from: '2026-10-01', to: '2026-10-07' } }, visible: false },
+    { name: 'an event that ends today is visible', brick: 'events', data: { when: { from: '2026-10-01', to: '2026-10-08' } }, visible: true },
+    { name: 'an event that ended yesterday is hidden', brick: 'events', data: { when: { from: '2026-10-01', to: '2026-10-07' } }, visible: false },
+    { name: 'an event without dates stays visible', brick: 'events', data: {}, visible: true },
   ])('$name', ({ brick, data, visible }) => {
     expect(isVisible(brickOf(base(), brick), data, TODAY)).toBe(visible)
+  })
+
+  // Wrong behaviour caught: `days` only counts for a date field, so a daterange entry disappears on its last day.
+  it('adds days to the end of a daterange', () => {
+    const events = { ...brickOf(base(), 'events'), visible: { mode: 'until', field: 'when', days: 2 } } as Brick
+    expect(isVisible(events, { when: { from: '2026-10-01', to: '2026-10-06' } }, TODAY)).toBe(true)
+    expect(isVisible(events, { when: { from: '2026-10-01', to: '2026-10-05' } }, TODAY)).toBe(false)
   })
 
   // Wrong behaviour caught: at 00:30 in Vienna a notice that ended yesterday still shows, because the UTC date is one day behind.

@@ -527,10 +527,10 @@
       "max": 5,
       "order": "manual",
       "visible": {
-        "mode": "active",
-        "field": "until"
+        "mode": "until",
+        "field": "until",
+        "deleteExpired": true
       },
-      "autoRemoveExpired": true,
       "tasks": [
         {
           "id": "add",
