@@ -2,7 +2,7 @@
 import { parseArgs } from 'node:util'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { dirManifest, manifest, type Manifest } from './data.ts'
+import { dirManifest, manifest, object, withLocale, type Manifest } from './data.ts'
 import { apply, check, todo } from './commands.ts'
 
 const help = `ginko-i18n check [--locale <code>] [--html <dir>]
@@ -43,8 +43,18 @@ try {
     if (only.some(code => !['missing', 'stale'].includes(code))) throw new UsageError('--only accepts missing,stale')
     if (!!values.dir !== !!values['default-locale']) throw new UsageError(values.dir ? '--dir requires --default-locale <code>' : '--default-locale requires --dir <folder>')
     const cwd = resolve(values.cwd ?? process.cwd())
-    // `todo --locale es` in --dir mode may name a locale without a file yet: that is how a new language starts.
-    const m = values.dir ? dirManifest(resolve(cwd, values.dir), values['default-locale']!, command === 'todo' ? values.locale : undefined) : manifest(cwd, resolve(cwd, values['build-dir'] ?? '.nuxt'))
+    const input = command === 'apply' ? JSON.parse(readFileSync(file === '-' ? 0 : resolve(cwd, file), 'utf8')) as unknown : undefined
+    let m = values.dir ? dirManifest(resolve(cwd, values.dir), values['default-locale']!) : manifest(cwd, resolve(cwd, values['build-dir'] ?? '.nuxt'))
+    // In --dir mode a new language starts with `todo --locale es`, then `apply` writes es.json.
+    if (values.dir && command === 'todo') {
+      try {
+        m = withLocale(m, values.locale!)
+      }
+      catch (error) {
+        throw new UsageError((error as Error).message)
+      }
+    }
+    if (values.dir && object(input) && typeof input.locale === 'string') m = withLocale(m, input.locale)
     const locale = values.locale === undefined ? undefined : knownLocale(m, values.locale)
     if (command === 'check') {
       const result = check(m, cwd, values.html ? resolve(cwd, values.html) : undefined, locale)
@@ -56,7 +66,6 @@ try {
       print(result, [`Translate ${result.sourceLocale} → ${result.locale}`, ...result.items.map(i => `${i.key} (${i.code}) → ${i.file}: ${i.source}`)].join('\n'))
     }
     else {
-      const input = JSON.parse(readFileSync(file === '-' ? 0 : resolve(cwd, file), 'utf8')) as unknown
       const result = apply(m, cwd, input)
       print(result, [...result.written.map(i => `Written ${i.key}: ${i.file}`), ...result.rejected.map(i => `Rejected ${i.key}: ${i.reason}`), ...result.warnings.map(i => `Warning ${i.key}: ${i.message}`)].join('\n'))
       process.exitCode = result.ok ? 0 : 1

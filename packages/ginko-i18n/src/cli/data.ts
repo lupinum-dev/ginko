@@ -57,12 +57,10 @@ export function manifest(cwd: string, buildDir: string): Manifest {
 }
 // --dir mode: a plain folder of `<code>.json` catalogs, without Nuxt or source scanning.
 const reserved = ['i18n.lock.json', 'glossary.json']
-// `extra` (`todo --locale es`) may name a locale without a file yet: that is how a new language starts.
-export function dirManifest(folder: string, defaultLocale: string, extra?: string): Manifest {
-  const codes = readdirSync(folder, { withFileTypes: true })
+export function dirManifest(folder: string, defaultLocale: string): Manifest {
+  const locales = readdirSync(folder, { withFileTypes: true })
     .filter(e => e.isFile() && e.name.endsWith('.json') && !reserved.includes(e.name))
     .map(e => e.name.slice(0, -'.json'.length))
-  const locales = [...new Set([...codes, ...(extra ? [extra] : [])])]
     .sort()
     .map((code) => {
       if (!LOCALE_CODE.test(code)) throw new Error(`Invalid locale file name: ${code}.json`)
@@ -71,6 +69,20 @@ export function dirManifest(folder: string, defaultLocale: string, extra?: strin
     })
   if (!locales.some(l => l.code === defaultLocale)) throw new Error(`Unknown default locale: ${defaultLocale}`)
   return { locales, defaultLocale, params: {}, sources: [{ dir: folder, origin: 'app' }], srcDirs: [], catalogDir: folder }
+}
+/** --dir mode: adds a locale that has no file yet (`todo`/`apply` for a new language). A known code returns `m` unchanged. */
+export function withLocale(m: Manifest, code: string): Manifest {
+  if (m.locales.some(l => l.code === code)) return m
+  const twin = m.locales.find(l => l.code.toLowerCase() === code.toLowerCase())
+  if (twin) throw new Error(`Unknown locale: ${code}. Fix: use "${twin.code}".`)
+  if (!LOCALE_CODE.test(code)) throw new Error(`Invalid locale: ${code}. Fix: use letters, digits and -.`)
+  try {
+    new Intl.PluralRules(code)
+  }
+  catch {
+    throw new Error(`Invalid locale: ${code}. Fix: use a BCP 47 tag such as "es" or "pt-BR".`)
+  }
+  return { ...m, locales: [...m.locales, { code, language: code }].sort((a, b) => a.code < b.code ? -1 : 1) }
 }
 export function entries(m: Manifest, code: string): Map<string, Entry> {
   const out = new Map<string, Entry>()

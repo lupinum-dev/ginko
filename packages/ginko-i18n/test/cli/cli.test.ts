@@ -326,6 +326,22 @@ test('--dir catalog folder: check skips unused keys, apply writes catalog and lo
   // A new language has no file yet: `todo --locale es` must list every key, written to catalog/es.json.
   const todo = run(dir, ['todo', '--locale', 'es', '--dir', 'catalog', '--default-locale', 'de']).value
   expect(todo.items.map((i: { key: string, file: string }) => [i.key, i.file.endsWith('catalog/es.json')])).toEqual([['a', true], ['b', true]])
+  // The next step of that flow: apply creates es.json.
+  expect(run(dir, ['apply', '-', '--dir', 'catalog', '--default-locale', 'de'], { locale: 'es', items: [{ key: 'b', text: 'Solo' }] }).status).toBe(0)
+  expect(read(dir, 'catalog/es.json')).toEqual({ b: 'Solo' })
+})
+// `todo --locale` was checked as a file name: a wrong code returned a `config` error about a file that does not exist.
+test.each([
+  ['x_y', 'Invalid locale: x_y. Fix: use letters, digits and -.'],
+  ['zz-zzzzzzzzzzzzz', 'Invalid locale: zz-zzzzzzzzzzzzz. Fix: use a BCP 47 tag such as "es" or "pt-BR".'],
+  ['DE', 'Unknown locale: DE. Fix: use "de".'],
+])('--dir todo --locale %s is a usage error', (code, message) => {
+  const dir = mkdtempSync(join(tmpdir(), 'ginko-dir-'))
+  dirs.push(dir)
+  write(dir, 'catalog/de.json', { a: 'Hallo' })
+  const result = run(dir, ['todo', '--locale', code, '--dir', 'catalog', '--default-locale', 'de'])
+  expect(result.status).toBe(2)
+  expect(result.value.error).toEqual({ code: 'usage', message })
 })
 test.each([[['check', '--dir', 'catalog']], [['check', '--dir', 'catalog', '--default-locale', 'fr']], [['check', '--default-locale', 'de']]])('--dir usage error %j returns JSON and exit 2', (args) => {
   const dir = mkdtempSync(join(tmpdir(), 'ginko-dir-'))

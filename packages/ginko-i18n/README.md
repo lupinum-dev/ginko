@@ -608,6 +608,9 @@ folder. Without source directories, `check` skips the unused-key check and sets
 npx ginko-i18n todo --dir locales --default-locale de --locale es --json
 ```
 
+In this mode `todo` and `apply` also accept a locale that has no file yet, such as `es`
+above: `apply` then creates `es.json`.
+
 Relative build, input, and HTML paths resolve from the app directory. If the
 manifest is absent, the CLI runs the app's local `nuxt prepare` once. Preparation
 writes Nuxt build files; with an existing manifest, `check` only reads files.
