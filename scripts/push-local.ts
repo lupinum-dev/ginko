@@ -1,4 +1,4 @@
-// Pushes a site's config to the LOCAL platform once, like `ginko dev` does on every change.
+// Pushes a site's config to the LOCAL platform once, like `pnpm local:dev` does on every change.
 //   node --experimental-strip-types scripts/push-local.ts [folder under sites/, default restaurant]
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'

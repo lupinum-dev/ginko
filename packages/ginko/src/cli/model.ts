@@ -1,5 +1,5 @@
 // Shared shapes of the CLI: what the platform's release state looks like, what the CLI sends
-// back, and the error type that ends a command with an English message and exit code 1.
+// back, and the error type that ends a command with an English message and a coded failure.
 import type { Json, Schema } from '../core/index.ts'
 
 /** GET /release/state (SPEC 5.1 step 2): the stored schema and the data of every entry, deleted ones too. */
@@ -31,8 +31,22 @@ export interface Candidate {
   bytes: { site: number; largest: number }
 }
 
-/** A command that stops here. The message is shown as it is; the exit code is 1. */
-export class CliError extends Error {}
+/**
+ * The `error.code` of a CLI failure that is not the platform's own answer. It decides the exit code (run.ts):
+ * INVALID 1 (fix the config, schema or content), USAGE 2 (fix the call or the environment),
+ * UNAVAILABLE 3 (platform unreachable or the outcome unknown: running the same commit again is safe), FORBIDDEN 4.
+ */
+export type CliCode = 'INVALID' | 'USAGE' | 'UNAVAILABLE' | 'FORBIDDEN'
+
+/** A command that stops here. The message is shown as it is. */
+export class CliError extends Error {
+  readonly code: CliCode
+
+  constructor(message: string, code: CliCode = 'INVALID') {
+    super(message)
+    this.code = code
+  }
+}
 
 export const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)

@@ -1,4 +1,4 @@
-// `ginko import <dir>` (SPEC 9, 12): loads a `ginko export` folder into the LOCAL platform. The caller
+// `pnpm local:import <dir>` (SPEC 9, 12, monorepo only): loads a `ginko export` folder into the LOCAL platform. The caller
 // has confirmed the local deployment (connectLocal); nothing here talks to production.
 // Steps: push the schema (devPush), store the files and the entry batches in local storage, clear the
 // site's content, then import the stored batches. `convex run` takes its arguments on the command line,
@@ -60,7 +60,7 @@ export async function importSite(input: ImportInput): Promise<{ entries: number;
   const data = await readExport(input.dir)
   const site = data.site
 
-  // 1. Schema. Rejected changes go through as warnings, as in `ginko dev` (SPEC 5.3).
+  // 1. Schema. Rejected changes go through as warnings, as in `local:dev` (SPEC 5.3).
   const pushed = await run('release:devPush', { site, schema: data.schema })
   const warnings = isObject(pushed) && Array.isArray(pushed.warnings) ? (pushed.warnings as SchemaChange[]) : []
   for (const line of explainRejected(warnings)) log(`Warning: ${line}`)

@@ -15,8 +15,8 @@ export interface ReleaseInput {
   /** The commit this CI run builds (GINKO_COMMIT or GITHUB_SHA). */
   commit: string
   platform: Platform
-  /** Head commit of origin/main (`git ls-remote origin main`). */
-  mainCommit: () => Promise<string>
+  /** Head commit of the release branch on the remote (GINKO_BRANCH on GINKO_REMOTE, default origin/main). */
+  branchHead: () => Promise<string>
   sleep: (ms: number) => Promise<void>
   log: (line: string) => void
 }
@@ -27,12 +27,12 @@ export const RETRY_WAITS_MS = [2_000, 4_000, 8_000, 16_000, 32_000] as const
 export async function release(input: ReleaseInput): Promise<ReleaseOutcome> {
   const site = input.config.site
   for (let attempt = 0; ; attempt++) {
-    // 1. Only the newest commit of main may release.
-    if ((await input.mainCommit()) !== input.commit) return { deploy: false, reason: 'superseded' }
+    // 1. Only the newest commit of the release branch may release.
+    if ((await input.branchHead()) !== input.commit) return { deploy: false, reason: 'superseded' }
 
     // 2–4. State, diff, candidate. Anything rejected stops here, before the platform is asked.
     const state = await input.platform.state(site)
-    if (state.site !== site) throw new CliError(`The key belongs to the site “${state.site}”, not to “${site}”.`)
+    if (state.site !== site) throw new CliError(`The key belongs to the site “${state.site}”, not to “${site}”.`, 'FORBIDDEN')
     const result = await plan(state, input.config)
     if (result.rejected.length > 0) throw new CliError(explainRejected(result.rejected).join('\n'))
     if (!result.candidate) throw new CliError('Internal error: candidate is missing.')

@@ -1,5 +1,5 @@
 // Local demo: resets the restaurant site in the LOCAL Convex backend to the contract corpus and
-// prints invite links for the owner and the cook (SPEC 13 roles). Run after `ginko dev` created the site:
+// prints invite links for the owner and the cook (SPEC 13 roles). Run after `pnpm local:dev` created the site:
 //   node --experimental-strip-types scripts/seed-local.ts            (content, members and invites)
 //   node --experimental-strip-types scripts/seed-local.ts --content  (content only; members stay)
 import { execFileSync } from 'node:child_process'

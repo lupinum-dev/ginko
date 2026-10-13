@@ -1,4 +1,4 @@
-// `ginko dev` with fake child processes: no Convex, no dev server. Only the config watcher and the pushes are real.
+// `pnpm local:dev` with fake child processes: no Convex, no dev server. Only the config watcher and the pushes are real.
 import { EventEmitter } from 'node:events'
 import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -93,7 +93,7 @@ afterEach(async () => {
   vi.clearAllMocks()
 })
 
-describe('ginko dev watches the config', { timeout: 60_000 }, () => {
+describe('local:dev watches the config', { timeout: 60_000 }, () => {
   it('a save during the first push is pushed afterwards', async () => {
     start()
     await waitFor(() => pushes.length === 1, 'first push')
@@ -108,7 +108,7 @@ describe('ginko dev watches the config', { timeout: 60_000 }, () => {
     start()
     await waitFor(() => pushes.length === 1, 'first push')
     pushes[0]!.finish()
-    await waitFor(() => lines.some((l) => l.includes('ginko dev is running')), 'ready')
+    await waitFor(() => lines.some((l) => l.includes('local:dev is running')), 'ready')
     atomicSave(withField('second'))
     await waitFor(() => pushes.length === 2, 'push after the first rename')
     pushes[1]!.finish()
@@ -122,7 +122,7 @@ describe('ginko dev watches the config', { timeout: 60_000 }, () => {
     start()
     await waitFor(() => pushes.length === 1, 'first push')
     pushes[0]!.finish()
-    await waitFor(() => lines.some((l) => l.includes('ginko dev is running')), 'ready')
+    await waitFor(() => lines.some((l) => l.includes('local:dev is running')), 'ready')
     writeFileSync(configPath, withField('alpha'))
     await waitFor(() => pushes.length === 2, 'second push')
     writeFileSync(configPath, withField('beta'))
@@ -142,12 +142,12 @@ describe('ginko dev watches the config', { timeout: 60_000 }, () => {
     start()
     await waitFor(() => pushes.length === 1, 'first push')
     pushes[0]!.finish()
-    await waitFor(() => lines.some((l) => l.includes('ginko dev is running')), 'ready')
+    await waitFor(() => lines.some((l) => l.includes('local:dev is running')), 'ready')
     expect(lines.join('\n')).toMatch(/imports.*restarting/)
   })
 })
 
-describe('ginko dev with another target than the local one', () => {
+describe('local:dev with another target than the local one', () => {
   it('stops before it starts any process', async () => {
     vi.stubEnv('CONVEX_DEPLOYMENT', 'dev:something-cloud')
     await expect(runDev({ configPath, log: () => undefined })).rejects.toThrow(/stopped.*dev:something-cloud/)

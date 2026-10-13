@@ -1,5 +1,5 @@
-// The local Convex deployment, shared by the commands that write to it (`ginko dev`, `ginko import`,
-// `ginko pull`): finding apps/platform, confirming that the Convex CLI points at the LOCAL backend
+// The local Convex deployment, shared by the monorepo tools that write to it (`local:dev`, `local:import`,
+// `local:pull`): finding apps/platform, confirming that the Convex CLI points at the LOCAL backend
 // before any write, and running `npx convex run` against exactly that deployment.
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
@@ -7,13 +7,13 @@ import { dirname, join } from 'node:path'
 import { CliError, isObject } from './model.ts'
 
 /** Walks up from the site folder to the monorepo that holds apps/platform. */
-export function findPlatform(from: string, command = 'ginko dev'): string {
+export function findPlatform(from: string, command = 'local:dev'): string {
   let dir = from
   for (;;) {
     const candidate = join(dir, 'apps', 'platform')
     if (existsSync(join(candidate, 'package.json'))) return candidate
     const parent = dirname(dir)
-    if (parent === dir) throw new CliError(`apps/platform was not found. \`${command}\` must run in the Ginko monorepo.`)
+    if (parent === dir) throw new CliError(`apps/platform was not found. \`${command}\` must run in the Ginko monorepo.`, 'USAGE')
     dir = parent
   }
 }
@@ -33,7 +33,7 @@ const CLOUD_KEYS = ['CONVEX_DEPLOY_KEY', 'CONVEX_SELF_HOSTED_ADMIN_KEY', 'CONVEX
  * Returns an English error when the target is not the local backend, otherwise undefined.
  * A selected deployment name decides alone: it must be the local anonymous one. Without a name, the URL must be local.
  */
-export function localDeploymentError(target: DeploymentTarget, command = 'ginko dev'): string | undefined {
+export function localDeploymentError(target: DeploymentTarget, command = 'local:dev'): string | undefined {
   // A deploy key wins over CONVEX_DEPLOYMENT in the Convex CLI: with one set, a local command would write to the cloud (Astra 9).
   if (target.cloudKeys?.length) return `${command} stopped: ${target.cloudKeys.join(', ')} is set. This makes Convex write to a cloud deployment, not to the local backend. Remove it for local commands. Nothing was written.`
   const deployment = target.deployment?.trim()
@@ -52,7 +52,7 @@ export function localDeploymentError(target: DeploymentTarget, command = 'ginko 
  * Like localDeploymentError, for the check before `convex dev` starts: a fresh checkout has no target yet
  * (the anonymous setup creates .env.local), so only a known target that is not local is refused.
  */
-export function knownTargetError(target: DeploymentTarget, command = 'ginko dev'): string | undefined {
+export function knownTargetError(target: DeploymentTarget, command = 'local:dev'): string | undefined {
   if (!target.cloudKeys?.length && !target.deployment?.trim() && !target.url?.trim()) return undefined
   return localDeploymentError(target, command)
 }
@@ -109,7 +109,7 @@ export function connectLocal(from: string, command: string): Runner {
   const platformDir = findPlatform(from, command)
   const target = readDeploymentTarget(platformDir)
   const problem = localDeploymentError(target, command)
-  if (problem) throw new CliError(problem)
+  if (problem) throw new CliError(problem, 'USAGE')
   const env = targetEnv(target)
   return async (fn, args) => parseOutput(await runOnce('npx', ['convex', 'run', fn, JSON.stringify(args)], platformDir, env))
 }

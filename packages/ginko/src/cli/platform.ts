@@ -53,11 +53,11 @@ function checkPlatformUrl(url: string): void {
   try {
     parsed = new URL(url)
   } catch {
-    throw new CliError('GINKO_PLATFORM is not a valid URL.')
+    throw new CliError('GINKO_PLATFORM is not a valid URL.', 'USAGE')
   }
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)
   if (parsed.protocol !== 'https:' && !(parsed.protocol === 'http:' && local)) {
-    throw new CliError('GINKO_PLATFORM must start with https:// (http:// only for localhost, 127.0.0.1 and [::1]).')
+    throw new CliError('GINKO_PLATFORM must start with https:// (http:// only for localhost, 127.0.0.1 and [::1]).', 'USAGE')
   }
 }
 
@@ -65,7 +65,7 @@ export function createPlatform(options: PlatformOptions): Platform {
   checkPlatformUrl(options.url)
   const key = options.key.trim()
   // Checked before any request, and the value is never part of the message: it may be a real key with a typo.
-  if (!PUSH_KEY_FORMAT.test(key)) throw new CliError('GINKO_KEY is not a valid push key (expected: ginko_<site>_<32 characters a-z0-9>).')
+  if (!PUSH_KEY_FORMAT.test(key)) throw new CliError('GINKO_KEY is not a valid push key (expected: ginko_<site>_<32 characters a-z0-9>).', 'USAGE')
   const base = options.url.replace(/\/+$/, '')
 
   // Messages here are fixed English text. Raw fetch errors are not passed on: they can quote header values.
@@ -82,16 +82,16 @@ export function createPlatform(options: PlatformOptions): Platform {
         signal,
       })
     } catch {
-      throw new CliError(signal.aborted ? timeoutMessage(deadlineMs, note) : 'The platform is not reachable. Check GINKO_PLATFORM and your network.')
+      throw new CliError(signal.aborted ? timeoutMessage(deadlineMs, note) : 'The platform is not reachable. Check GINKO_PLATFORM and your network.', 'UNAVAILABLE')
     }
     if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
-      throw new CliError('The platform redirects; check GINKO_PLATFORM.')
+      throw new CliError('The platform redirects; check GINKO_PLATFORM.', 'USAGE')
     }
     let text: string
     try {
       text = await response.text()
     } catch {
-      throw new CliError(signal.aborted ? timeoutMessage(deadlineMs, note) : `The connection to the platform broke while reading the response.${after}`)
+      throw new CliError(signal.aborted ? timeoutMessage(deadlineMs, note) : `The connection to the platform broke while reading the response.${after}`, 'UNAVAILABLE')
     }
     let body: unknown
     try {
@@ -122,7 +122,7 @@ export function createPlatform(options: PlatformOptions): Platform {
     async release(body) {
       const answer = await call('/release', { method: 'POST', body: JSON.stringify(body) }, WRITE_TIMEOUT_MS, UNKNOWN_OUTCOME)
       if (!isObject(answer) || typeof answer.schemaRev !== 'number' || typeof answer.contentRev !== 'number') {
-        throw new CliError('The platform did not send a valid response to the release.')
+        throw new CliError(`The platform did not send a valid response to the release. ${UNKNOWN_OUTCOME}`, 'UNAVAILABLE')
       }
       return { schemaRev: answer.schemaRev, contentRev: answer.contentRev }
     },

@@ -1,4 +1,4 @@
-// `ginko dev` (SPEC 5.3, 9): the local Convex backend, the local platform (GINKO_LOCAL=1) and the
+// `pnpm local:dev` (SPEC 5.3, 9, monorepo only): the local Convex backend, the local platform (GINKO_LOCAL=1) and the
 // site, started as three child processes. The site's ginko.config.ts is watched; every change is
 // pushed to the local platform with the devPush mutation. Ctrl-C stops all of them.
 import { spawn, type ChildProcess } from 'node:child_process'
@@ -27,7 +27,7 @@ export async function runDev(input: DevInput): Promise<number> {
   const repoDir = dirname(dirname(platformDir))
   // Before any process starts: `convex dev` would contact a cloud deployment first.
   const early = knownTargetError(readDeploymentTarget(platformDir))
-  if (early) throw new CliError(early)
+  if (early) throw new CliError(early, 'USAGE')
   const env = { ...process.env, GINKO_LOCAL: '1' }
   const children: ChildProcess[] = []
   let watcher: FSWatcher | undefined
@@ -92,7 +92,7 @@ export async function runDev(input: DevInput): Promise<number> {
     // Confirm the deployment that the Convex CLI selected before any write. Only then every command gets it explicitly.
     target = readDeploymentTarget(platformDir)
     const problem = localDeploymentError(target)
-    if (problem) throw new CliError(problem)
+    if (problem) throw new CliError(problem, 'USAGE')
     // The platform reads GINKO_LOCAL inside Convex, so the backend needs it too (SPEC 5.3).
     await runOnce('npx', ['convex', 'env', 'set', 'GINKO_LOCAL', '1'], platformDir, targetEnv(target))
   } catch (error) {
@@ -122,8 +122,8 @@ export async function runDev(input: DevInput): Promise<number> {
     debounce = setTimeout(() => { if (!stopping) void pushLatest() }, 200)
   })
   await pushLatest()
-  log(`ginko dev is running. Config: ${input.configPath}. Press Ctrl-C to stop everything.`)
-  log('Changes to files that the config imports take effect only after restarting `ginko dev`.')
+  log(`local:dev is running. Config: ${input.configPath}. Press Ctrl-C to stop everything.`)
+  log('Changes to files that the config imports take effect only after restarting `pnpm local:dev`.')
   return exited
 }
 

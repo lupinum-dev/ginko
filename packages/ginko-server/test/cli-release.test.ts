@@ -42,12 +42,12 @@ async function platformFor(s: Setup, onPost?: () => Promise<void>): Promise<{ pl
   return { platform, posts: () => posts }
 }
 
-function inputFor(platform: Platform, config: SiteInput, commit = COMMIT, mainCommit = COMMIT): ReleaseInput {
+function inputFor(platform: Platform, config: SiteInput, commit = COMMIT, branchHead = COMMIT): ReleaseInput {
   return {
     config,
     commit,
     platform,
-    mainCommit: async () => mainCommit,
+    branchHead: async () => branchHead,
     sleep: async (ms) => { sleeps.push(ms) },
     log: () => undefined,
   }

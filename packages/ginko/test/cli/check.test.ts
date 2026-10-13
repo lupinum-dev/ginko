@@ -32,16 +32,19 @@ function siteWith(markdown: string, site: object = config) {
   return join(root, 'ginko.config.ts')
 }
 
-async function runCheck(configPath: string) {
+/** The exit code and the report on stderr, without the closing line of a failed check. */
+async function runCheck(configPath: string, argv: string[] = []) {
   const lines: string[] = []
-  const code = await main(['check', '--config', configPath], {
+  const stdout: string[] = []
+  const code = await main(['check', '--config', configPath, ...argv], {
     env: {}, // a site of file bricks only needs no platform
     git: async () => '',
-    stdout: () => undefined,
+    stdout: (text) => stdout.push(text),
     log: (line) => lines.push(line),
     fetch: async () => { throw new Error('no platform call expected') },
   })
-  return { code, lines }
+  const result = JSON.parse(stdout.join('')) as { ok: boolean }
+  return { code, lines: result.ok ? lines : lines.slice(0, -1), result }
 }
 
 describe('ginko check and links in content files', () => {
@@ -62,15 +65,27 @@ describe('ginko check and links in content files', () => {
     expect(missing.code).toBe(1)
     mkdirSync(join(dirname(path), 'public'))
     writeFileSync(join(dirname(path), 'public/og.png'), '')
-    expect(await runCheck(path)).toEqual({ code: 0, lines: ['OK: schema and links are fine.'] })
+    expect(await runCheck(path)).toMatchObject({ code: 0, lines: ['OK: schema and links are fine.'] })
     // An absolute URL is not looked up in public/.
     expect((await runCheck(siteWith('Siehe [Start]($page.home).', { ...config, seo: { image: 'https://cdn.example/og.png' } }))).code).toBe(0)
   })
 
   it('prints only the OK line for a clean site and exits 0', async () => {
-    const { code, lines } = await runCheck(siteWith('Siehe [Start]($page.home).'))
+    const { code, lines, result } = await runCheck(siteWith('Siehe [Start]($page.home).'))
     expect(lines).toEqual(['OK: schema and links are fine.'])
+    expect(result).toEqual({ ok: true, compared: false })
     expect(code).toBe(0)
+  })
+
+  // Wrong behaviour caught: a pull request from a fork has no GINKO_KEY, and check fails before it checks anything.
+  it('--offline checks a site with platform bricks without the platform and says it skipped the comparison', async () => {
+    const news = collection({ label: 'News', max: 10, order: 'manual', fields: { title: f.text('Titel') } })
+    const path = siteWith('Siehe [Start]($page.home).', { ...config, bricks: { ...config.bricks, news } })
+    expect((await runCheck(path)).result).toMatchObject({ ok: false, error: { code: 'USAGE' } })
+    const offline = await runCheck(path, ['--offline'])
+    expect(offline.lines).toEqual(['OK: schema and links are fine.', 'Skipped the comparison with production (--offline).'])
+    expect(offline.result).toEqual({ ok: true, compared: false })
+    expect(offline.code).toBe(0)
   })
 
   it('reports an invalid config and exits 1', async () => {

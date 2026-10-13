@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { checkSchema, serializeSchema, type SiteInput } from '../core/index.ts'
 import { checkFileLinks } from './content-links.ts'
+import { CliError } from './model.ts'
 import { plan } from './plan.ts'
 import type { Platform } from './platform.ts'
 import { explainChanges, explainProblems, explainRejected, kib } from './report.ts'
@@ -43,10 +44,7 @@ function checkSeoImage(config: SiteInput, root: string, log: (line: string) => v
 
 async function checkRelease(input: { config: SiteInput; platform: Platform; log: (line: string) => void }): Promise<boolean> {
   const state = await input.platform.state(input.config.site)
-  if (state.site !== input.config.site) {
-    input.log(`The key belongs to the site “${state.site}”, not to “${input.config.site}”.`)
-    return false
-  }
+  if (state.site !== input.config.site) throw new CliError(`The key belongs to the site “${state.site}”, not to “${input.config.site}”.`, 'FORBIDDEN')
   const result = await plan(state, input.config)
   input.log(`Site “${state.site}”: schema version ${state.schemaRev}, content ${state.contentRev}.`)
   if (result.rejected.length > 0) {

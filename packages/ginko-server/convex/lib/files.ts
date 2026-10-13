@@ -21,7 +21,7 @@ const NAME_FALLBACK = 'datei'
 const NAME_MAX = 120
 
 /**
- * The name an upload is stored under. It must be safe to use as a file name later (`ginko pull`,
+ * The name an upload is stored under. It must be safe to use as a file name later (`pnpm local:pull`,
  * `ginko export`): only the part after the last / or \, no control characters (bidi overrides
  * count, they hide the real extension), NFC, at most 120 characters with the extension kept.
  * A name that ends up empty, or only dots, becomes "datei".
