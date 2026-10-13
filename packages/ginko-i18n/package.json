@@ -24,8 +24,7 @@
   "exports": {
     ".": "./src/module.ts",
     "./core": "./src/core/index.ts",
-    "./compile": "./src/core/compile.ts",
-    "./internal": "./src/core/internal.ts"
+    "./compile": "./src/core/compile.ts"
   },
   "bin": {
     "ginko-i18n": "./src/cli/index.ts"
@@ -46,10 +45,6 @@
       "./compile": {
         "types": "./dist/core/compile.d.mts",
         "import": "./dist/core/compile.mjs"
-      },
-      "./internal": {
-        "types": "./dist/core/internal.d.mts",
-        "import": "./dist/core/internal.mjs"
       }
     },
     "bin": {

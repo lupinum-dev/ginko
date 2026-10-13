@@ -2,7 +2,7 @@ import { computed, onMounted, ref } from 'vue'
 import type { RouteLocationRaw, RouteParamsGeneric, Router } from 'vue-router'
 import { navigateTo, useNuxtApp, useRoute, useRouter } from '#imports'
 import { config } from '#ginko-i18n/config.mjs'
-import { createFormatters, createTranslator, inUserZone, localeFromPath, localizePath, negotiateLocale, stripLocale, type Formatters, type LocaleConfig } from '@lupinum/ginko-i18n/internal'
+import { createFormatters, createTranslator, inUserZone, localeFromPath, localizePath, negotiateLocale, stripLocale, type Formatters, type LocaleConfig } from '@lupinum/ginko-i18n/core'
 import type { Alternate, AlternatesResolver, I18nState, KeysIn, ParamsFor, RuntimeConfig, TypedTranslator } from './types'
 
 const c: RuntimeConfig = config

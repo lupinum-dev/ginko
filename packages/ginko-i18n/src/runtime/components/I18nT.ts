@@ -1,5 +1,5 @@
 import { defineComponent, Fragment, h, type PropType, type VNodeChild } from 'vue'
-import { partsToString, type Params, type Part } from '@lupinum/ginko-i18n/internal'
+import { partsToString, type Params, type Part } from '@lupinum/ginko-i18n/core'
 import { useI18n } from '../composables'
 import type { TKey } from '../types'
 

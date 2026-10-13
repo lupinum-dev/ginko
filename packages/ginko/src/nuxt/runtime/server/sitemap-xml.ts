@@ -1,5 +1,5 @@
 // The sitemap document as a pure function (SPEC 8 "Sitemap"), so it can be unit tested without Nuxt.
-import { alternatesOf, type LocaleConfig } from '@lupinum/ginko-i18n/internal'
+import { alternatesOf, type LocaleConfig } from '@lupinum/ginko-i18n/core'
 import { isVisible, type Brick, type Bundle, type Fields, type Locale, type Schema } from '../../../internal.ts'
 
 /** One group of `<url>` elements; `alternates` lists the group's URLs as `xhtml:link` hreflang entries. */

@@ -464,13 +464,15 @@ Framework-free and parser-free. See [Outside Nuxt](#outside-nuxt).
 | `stripLocale(path, config)` | Removes it: `/en/about` → `/about`. |
 | `localeFromPath(path, config)` | The code a path belongs to, or `undefined` (`/de/x` under `prefix_except_default`). |
 | `negotiateLocale(header, config)` | The best code for an `Accept-Language` header, or `undefined`. |
+| `isExcluded(path, config)` | Whether the path never gets a prefix (`exclude`, `/api/**`, Nuxt internals). |
+| `inUserZone(path, config)` | Whether the path is in a user-locale zone (`userLocale`). |
+| `canonicalCase(path, config)` | The path with its prefix in the code's own case (`/EN/about` → `/en/about`), or `undefined` when it is already right. |
+| `alternatesOf(paths, config)` | The hreflang links of a page from its path per code: `{ hreflang, path }[]`, with `x-default` for the default locale. The head tags and the sitemap use it. |
+| `ogLocale(language)` | The `og:locale` form of a tag: `de-AT` → `de_AT`. |
+| `partsToString(parts)` | The plain text of a `parts()` result. |
 
 Types: `Translator`, `TranslateOptions`, `Params`, `Part`, `MessageTree`, `Catalog`, `Formatters`,
 `FormatterOptions`, `DateStyle`, `LocaleInfo`, `LocaleInput`, `LocaleConfig`, `Strategy`.
-
-### `@lupinum/ginko-i18n/internal`
-
-An entry for Ginko's own packages, with no compatibility promise. Do not import it in your code.
 
 ### `@lupinum/ginko-i18n/compile`
 

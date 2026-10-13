@@ -2,7 +2,7 @@ import { shallowReactive } from 'vue'
 import { defineNuxtPlugin, isPrerendered, loadPayload, useHead, useRequestEvent, useRoute, useRouter, useState } from '#imports'
 import { config } from '#ginko-i18n/config.mjs'
 import { loaders } from '#ginko-i18n/loaders.mjs'
-import { alternatesOf, inUserZone, localeFromPath, ogLocale, type MessageTree } from '@lupinum/ginko-i18n/internal'
+import { alternatesOf, inUserZone, localeFromPath, ogLocale, type MessageTree } from '@lupinum/ginko-i18n/core'
 import { alternatesKey, createLocalePath, currentLocale, useI18n, writeLocaleCookie } from './composables'
 import type { AlternatesResolver, I18nState, RuntimeConfig } from './types'
 
