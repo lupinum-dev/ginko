@@ -15,8 +15,8 @@ export default defineSite({
   seo: { description: 'Opening hours and menu of our restaurant.' },
   bricks: {
     // content/hours.md: weekly hours. The hours rules (hoursOn, todayState) count Austrian public holidays; calendar: 'DE', 'SG' or 'none' changes that.
-    hours: hours({ lang: 'en', source: 'files' }),
+    hours: hours({ source: 'files' }),
     // content/menu/: one file per dish. allergens: 'none' leaves out the allergen field.
-    menu: menu({ lang: 'en', allergens: 'none', source: 'files' }),
+    menu: menu({ allergens: 'none', source: 'files' }),
   },
 })

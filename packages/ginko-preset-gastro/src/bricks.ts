@@ -1,4 +1,5 @@
-// Restaurant bricks with the owner's quick tasks. Labels come in German and English; `lang` picks only default content.
+// Restaurant bricks with the owner's quick tasks. Labels and prefilled texts come in German and English; the site keeps
+// the texts of its own locales (`serializeSchema`), so a site in another language starts without them.
 import { collection, f, single, type BrickSource, type ChoiceOption, type ChoicesField, type Locale, type RouteTemplate } from '@lupinum/ginko'
 import { allergenNames } from './names.ts'
 import { calendarOf, type HolidayCalendar, type HolidaysOption } from './holidays.ts'
@@ -33,8 +34,6 @@ function allergenChoices(set: AllergenSet | undefined): readonly ChoiceOption[] 
 
 /** Options every factory takes. */
 export interface GastroOptions {
-  /** The site's main language (default `de`). Picks the default content: the lunch placeholder and the "fully booked" text are written for `de` or `en` only; other languages start without them. Labels always come in German and English. */
-  lang?: string
   /** Where the content comes from: absent means the Ginko platform (the owner edits it), `'files'` means Markdown in `content/`. */
   source?: BrickSource
 }
@@ -52,14 +51,12 @@ const weekDefault = weekdays.map((d) => ({
 
 const lunchPlaceholder = { de: 'Wird noch bekannt gegeben', en: 'To be announced' } as const
 
-// Prefilled texts exist only in `de` and `en`; a site in another language starts without them.
-const soldOutText = (lang: string | undefined): Record<string, string> => (lang === 'en' ? { text: 'We are fully booked today.' } : lang === undefined || lang === 'de' ? { text: 'Heute sind wir ausgebucht.' } : {})
+const soldOutText = { de: 'Heute sind wir ausgebucht.', en: 'We are fully booked today.' }
 
-// The placeholder dish text is keyed by the site's main language, so only `de` and `en` have one.
-const lunchDefault = (lang: keyof typeof lunchPlaceholder, withAllergens: boolean) => weekdays.slice(0, 5).map((d) => ({
+const lunchDefault = (withAllergens: boolean) => weekdays.slice(0, 5).map((d) => ({
   _id: `ld${d.value}000000`,
   day: d.value,
-  dish: { [lang]: lunchPlaceholder[lang] },
+  dish: lunchPlaceholder,
   ...(withAllergens ? { allergens: [] } : {}),
 }))
 
@@ -171,7 +168,7 @@ export function notices(opts: GastroOptions = {}) {
     visible: { mode: 'until', field: 'until', deleteExpired: true },
     tasks: [
       // The weekly job first: it becomes the main quick task.
-      { id: 'soldOut', label: both('Heute ausgebucht', 'Fully booked today'), kind: 'create', prefill: { ...soldOutText(opts.lang), until: '@today' } },
+      { id: 'soldOut', label: both('Heute ausgebucht', 'Fully booked today'), kind: 'create', prefill: { text: soldOutText, until: '@today' } },
       { id: 'add', label: both('Hinweis hinzufügen', 'Add a notice'), kind: 'create' },
       { id: 'remove', label: both('Hinweis entfernen', 'Remove a notice'), kind: 'remove' },
     ],
@@ -179,10 +176,8 @@ export function notices(opts: GastroOptions = {}) {
 }
 
 /** The list of lunch days; `allergens` left out when the set is `'none'`. */
-function lunchDays<A extends AllergenSet>(lang: string | undefined, allergens: A | undefined) {
+function lunchDays<A extends AllergenSet>(allergens: A | undefined) {
   const choices = allergenChoices(allergens)
-  const placeholder = lang === undefined ? 'de' : lang
-  const isPlaceholderLang = (l: string): l is keyof typeof lunchPlaceholder => l === 'de' || l === 'en'
   return f.list(both('Tage', 'Days'), {
     itemLabel: both('Tag', 'Day'),
     fields: {
@@ -192,7 +187,7 @@ function lunchDays<A extends AllergenSet>(lang: string | undefined, allergens: A
       ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) } : {}) as AllergenFields<A>,
     },
     min: 5, max: 5, unique: 'day',
-      ...(isPlaceholderLang(placeholder) ? { default: lunchDefault(placeholder, !!choices) } : {}),
+    default: lunchDefault(!!choices),
   })
 }
 
@@ -202,7 +197,7 @@ export function lunch<const A extends AllergenSet = 'EU'>(opts: GastroOptions & 
     ...sourceOf(opts),
     fields: {
       weekOf: f.date(both('Woche ab', 'Week starting'), opts.weekOf ? { default: opts.weekOf } : {}),
-      days: lunchDays(opts.lang, opts.allergens),
+      days: lunchDays(opts.allergens),
       note: f.text(both('Hinweis', 'Note'), { max: 200, optional: true }),
       // Many houses also hand out the week as a PDF; replacing it in the Files library updates every link.
       pdf: f.file(both('Mittagsmenü als PDF', 'Lunch menu as PDF'), { accept: ['pdf'], maxBytes: 5 * 1024 * 1024, optional: true }),
@@ -222,7 +217,7 @@ export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: GastroOptio
     ...sourceOf(opts),
     fields: {
       weekOf: f.date(both('Woche ab', 'Week starting')),
-      days: lunchDays(opts.lang, opts.allergens),
+      days: lunchDays(opts.allergens),
       note: f.text(both('Hinweis', 'Note'), { max: 200, optional: true }),
     },
     max: 3,

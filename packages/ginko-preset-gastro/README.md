@@ -20,11 +20,10 @@ npm install @lupinum/ginko @lupinum/ginko-preset-gastro
 
 ## Options
 
-Every factory takes the same two options, plus its own:
+Every factory takes `source`, plus its own options:
 
 | Option | Default | What it does |
 |---|---|---|
-| `lang` | `'de'` | The site's main language. Picks only default content (the lunch placeholder, the "fully booked" text), for `de` or `en`. Labels are always German and English. |
 | `source` | the platform | `'files'` reads the brick from Markdown in `content/`, so it runs without the platform. |
 | `calendar` (`hours`) | `'AT'` | The public holidays the hours rules use: `'AT'`, `'DE'`, `'SG'`, `'none'`, or your own `(year) => Holiday[]`. |
 | `allergens` (`menu`, `lunch`, `lunchPlans`) | `'EU'` | `'EU'`, `'none'` (no allergen field), or your own `[{ value, label }]`. |
@@ -95,7 +94,7 @@ Types: `HoursData`, `HoursContext`, `DayHours`, `Exception`, `HourPlan`, `Holida
 
 Defaults are Austrian (German and English labels, Austrian holidays, the 14 EU allergens). Change them per site:
 
-- Labels are always German and English. `lang: 'en'` on a factory only picks the default text (such as the lunch placeholder), so use it when the main locale is `en`.
+- Labels and prefilled texts (such as the lunch placeholder) come in German and English. The site keeps the texts of its own locales, so an English site gets the English texts and a site in another language starts without them.
 - `calendar` on `hours()`: `'AT'` (default), `'DE'` (nationwide days only, no regional ones), `'SG'`, `'none'` (no public holidays), or your own `(year) => Holiday[]`. This is code, not an owner setting. Give the same value to the hours rules as `calendar` in their context (`hoursOn(date, { hours, calendar })`, `todayState(today, { hours, calendar })`). `hoursCalendarOf(brick)` reads it back. The stored field `holidays` (the owner's choice for those days: like Sunday, closed, normal) is a different thing and keeps its name.
 - Singapore's lunar, Islamic and Hindu holidays are a table for 2026 and 2027 (source: [MOM](https://www.mom.gov.sg/employment-practices/public-holidays)). Add a row each year; other years only know the fixed dates.
 - `allergens` on `menu()`, `lunch()` and `lunchPlans()`: `'EU'` (default), `'none'` (no field), or your own `[{ value, label }]`.
@@ -112,10 +111,10 @@ export default defineSite({
   currency: 'SGD',
   pages: { home: '/' },
   bricks: {
-    hours: hours({ lang: 'en', calendar: 'SG' }),
-    notices: notices({ lang: 'en' }),
-    lunch: lunch({ lang: 'en', allergens: 'none' }),
-    menu: menu({ lang: 'en', allergens: 'none' }),
+    hours: hours({ calendar: 'SG' }),
+    notices: notices(),
+    lunch: lunch({ allergens: 'none' }),
+    menu: menu({ allergens: 'none' }),
   },
 })
 ```

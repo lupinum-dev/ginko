@@ -493,7 +493,8 @@
           "kind": "create",
           "prefill": {
             "text": {
-              "de": "Heute sind wir ausgebucht."
+              "de": "Heute sind wir ausgebucht.",
+              "en": "We are fully booked today."
             },
             "until": "@today"
           }
@@ -724,7 +725,8 @@
               "_id": "ldmo000000",
               "day": "mo",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -732,7 +734,8 @@
               "_id": "ldtu000000",
               "day": "tu",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -740,7 +743,8 @@
               "_id": "ldwe000000",
               "day": "we",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -748,7 +752,8 @@
               "_id": "ldth000000",
               "day": "th",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -756,7 +761,8 @@
               "_id": "ldfr000000",
               "day": "fr",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             }
@@ -1884,7 +1890,8 @@
               "_id": "ldmo000000",
               "day": "mo",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -1892,7 +1899,8 @@
               "_id": "ldtu000000",
               "day": "tu",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -1900,7 +1908,8 @@
               "_id": "ldwe000000",
               "day": "we",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -1908,7 +1917,8 @@
               "_id": "ldth000000",
               "day": "th",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -1916,7 +1926,8 @@
               "_id": "ldfr000000",
               "day": "fr",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             }

@@ -156,7 +156,7 @@ describe('tasks.prefill', () => {
     vi.setSystemTime(new Date('2026-10-11T23:30:00Z'))
     const { as } = await setup()
     const values = await as.owner.query(api.tasks.prefill, { site: 'restaurant', task: 'notices.soldOut' })
-    expect(values).toEqual({ text: { de: 'Heute sind wir ausgebucht.' }, until: '2026-10-12' })
+    expect(values).toEqual({ text: { de: 'Heute sind wir ausgebucht.', en: 'We are fully booked today.' }, until: '2026-10-12' })
   })
 
   it('lunchWeek: weekOf is the Monday of this week, the stored days stay', async () => {
