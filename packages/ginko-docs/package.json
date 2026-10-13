@@ -2,7 +2,7 @@
   "name": "@lupinum/ginko-docs",
   "version": "0.0.0",
   "type": "module",
-  "description": "Docs preset for Ginko: a Nuxt layer with layout, search and Markdown components (CONTENT.md, Phase 14).",
+  "description": "Docs sites on Ginko: a Nuxt layer with navigation, search, blog, changelog and Markdown components.",
   "license": "MIT",
   "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",
   "repository": {
