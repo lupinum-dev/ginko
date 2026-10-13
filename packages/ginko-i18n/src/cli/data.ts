@@ -5,12 +5,16 @@ import { spawnSync } from 'node:child_process'
 import { parse, TYPE, type MessageFormatElement } from '@formatjs/icu-messageformat-parser'
 import { keyProblem } from '../core/compiler.ts'
 import { LOCALE_CODE } from '../core/locales.ts'
-import { MANIFEST_VERSION } from '../manifest.ts'
+import { MANIFEST_VERSION, type Manifest as ManifestFile, type ManifestSource } from '../manifest.ts'
+import type { LocaleInfo } from '../core/locales.ts'
 
-export interface Source { dir: string, namespace?: string, origin: string }
-// catalogDir: folder for i18n.lock.json and glossary.json; set only by dirManifest (--dir mode).
-export interface Manifest { locales: { code: string, language: string }[], defaultLocale: string, params: Record<string, unknown>, sources: Source[], srcDirs: string[], catalogDir?: string }
-export interface Entry { text: string, file: string, line: number, source: Source, localKey: string }
+/**
+ * What the commands read: the fields they use of the manifest file, or of a `--dir` folder (dirManifest).
+ * catalogDir: folder for i18n.lock.json and glossary.json; set only by dirManifest (--dir mode).
+ */
+export type Manifest = Pick<ManifestFile, 'defaultLocale' | 'params' | 'sources' | 'srcDirs'> & { locales: Pick<LocaleInfo, 'code' | 'language'>[], catalogDir?: string }
+export interface Entry { text: string, file: string, line: number, source: ManifestSource, localKey: string }
+const ORIGINS: readonly unknown[] = ['library', 'layer', 'app'] satisfies ManifestSource['origin'][]
 export type Tree = { [key: string]: string | Tree }
 export const json = (file: string) => JSON.parse(readFileSync(file, 'utf8')) as unknown
 export const hash = (text: string) => createHash('sha256').update(text).digest('hex')
@@ -48,7 +52,7 @@ export function manifest(cwd: string, buildDir: string): Manifest {
     new Intl.PluralRules(locale.language)
   }
   if (!m.locales.some(l => l.code === m.defaultLocale)) throw new Error('Unknown default locale')
-  for (const source of m.sources) if (!object(source) || typeof source.dir !== 'string' || typeof source.origin !== 'string' || (source.namespace !== undefined && typeof source.namespace !== 'string')) throw new Error('Invalid manifest source')
+  for (const source of m.sources) if (!object(source) || typeof source.dir !== 'string' || !ORIGINS.includes(source.origin) || (source.namespace !== undefined && typeof source.namespace !== 'string')) throw new Error('Invalid manifest source')
   if (!m.srcDirs.every(d => typeof d === 'string')) throw new Error('Invalid manifest srcDirs')
   const result = m as unknown as Manifest
   result.sources = result.sources.map(s => ({ ...s, dir: resolve(cwd, s.dir) }))

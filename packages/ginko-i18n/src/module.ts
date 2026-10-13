@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { addComponent, addImports, addPlugin, addServerHandler, addServerImports, addNitroPlugin, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, hasNuxtModule, updateTemplates } from '@nuxt/kit'
 import type { NuxtPage } from '@nuxt/schema'
 import { cachedNegotiatedPaths } from './cache-rules.ts'
-import { MANIFEST_VERSION } from './manifest.ts'
+import { MANIFEST_VERSION, type Manifest, type ManifestSource } from './manifest.ts'
 import { compileTree, mergeTrees, type RawTree } from './core/compiler.ts'
 import { inUserZone, isExcluded, localizePath, resolveConfig, type LocaleConfig, type LocaleInput, type Strategy } from './core/locales.ts'
 import type { Params } from './core/messages.ts'
@@ -38,8 +38,6 @@ export interface PageI18n {
 
 /** A library's messages: `dir` holds `<code>.json` files, read under the key `namespace` (required). */
 export interface MessageSource { namespace: string, dir: string }
-/** A message folder: a library's (namespaced), a layer's or the app's `i18n/`. */
-interface ResolvedSource { dir: string, namespace?: string, origin: 'library' | 'layer' | 'app' }
 
 declare module '@nuxt/schema' {
   interface NuxtHooks {
@@ -122,8 +120,8 @@ export default defineNuxtModule<ModuleOptions>({
       console.warn('[ginko-i18n] No baseUrl: canonical and hreflang will use relative URLs. Fix: set i18n.baseUrl.')
 
     // Messages: library sources first, then layers from the deepest to the app, so the app wins per key.
-    const collectSources = async (): Promise<ResolvedSource[]> => {
-      const sources: ResolvedSource[] = []
+    const collectSources = async (): Promise<ManifestSource[]> => {
+      const sources: ManifestSource[] = []
       const libraries: MessageSource[] = []
       await nuxt.callHook('ginko-i18n:sources', libraries)
       for (const lib of libraries) {
@@ -136,7 +134,7 @@ export default defineNuxtModule<ModuleOptions>({
       layers.forEach((layer, index) => sources.push({ dir: join(layer.config.rootDir, 'i18n'), origin: index === layers.length - 1 ? 'app' : 'layer' }))
       return sources
     }
-    const loadMessages = (sources: ResolvedSource[]) => {
+    const loadMessages = (sources: ManifestSource[]) => {
       const raw: Record<string, RawTree[]> = {}
       for (const source of sources) {
         for (const [code, tree] of Object.entries(readDir(source.dir))) {
@@ -164,7 +162,7 @@ export default defineNuxtModule<ModuleOptions>({
       }
     }
     // Read sources after all modules ran: a library registered after this module would be missed otherwise.
-    let sources: ResolvedSource[] = []
+    let sources: ManifestSource[] = []
     let state = loadMessages([])
     nuxt.hook('modules:done', async () => {
       sources = await collectSources()
@@ -279,7 +277,7 @@ export {}
         params: options.params ?? {},
         sources,
         srcDirs: [...new Set(nuxt.options._layers.map(l => l.config.srcDir).filter(Boolean))],
-      }, null, 2),
+      } satisfies Manifest, null, 2),
     })
 
     // Nuxt prefetches every dynamic chunk; a visitor needs only their own locale's messages.
