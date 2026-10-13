@@ -10,7 +10,7 @@ const SITE_KEYS = {
 } satisfies Record<keyof SiteInput, true>
 
 /** Messages for keys that a site config does not know. A typo (`redirect`) would otherwise change nothing, silently. */
-export function unknownSiteKeys(site: object): string[] {
+function unknownSiteKeys(site: object): string[] {
   return Object.keys(site).filter((key) => !Object.hasOwn(SITE_KEYS, key)).map((key) => `Unknown key “${key}”. Known keys: ${Object.keys(SITE_KEYS).join(', ')}.`)
 }
 
