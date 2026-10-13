@@ -15,7 +15,7 @@ export const interactiveComponents = defineComponents({
       en: 'Shows several contents as tabs; one of them is always visible.',
     },
     props: {
-      layout: f.choice({ de: 'Reiterform', en: 'Tab style' }, {
+      variant: f.choice({ de: 'Reiterform', en: 'Tab style' }, {
         options: [
           { value: 'separate', label: { de: 'Schaltflächen über dem Rahmen', en: 'Buttons above the frame' } },
           { value: 'line', label: { de: 'Unterstrichen, ohne Rahmen', en: 'Underlined, no frame' } },

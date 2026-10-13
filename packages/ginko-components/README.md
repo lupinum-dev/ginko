@@ -44,7 +44,8 @@ Prop names are camelCase (`iconColor`, `defaultValue`), and Markdown takes them 
 
 One word per idea on every tag: the heading is `title`, the status colour for a problem is `error`, the border kind of
 `layout`, `center` and `figure` is `frame`, the fill of `flow` and `layout` is `background`, the look of a component box
-is `appearance`, and how an image fills its box is `fit`. No value is called `default`: the value without a frame or
+is `appearance`, how an image fills its box is `fit`, and the width preset of `flow`, `column` and `center` is `width`
+(`figure{width,height}` are pixel sizes, like the attributes of `<img>`). No value is called `default`: the value without a frame or
 fill is `none`.
 
 ## Theming
@@ -99,8 +100,8 @@ custom properties, class names below the root (`ginko-card-title`, ...) and othe
 | `badge` | inline | `color` neutral (default), primary, success, warning, error |
 | `flow` | block | `width` reading (default), wide; `background` none (default), muted, tint |
 | `layout` | block, children `column` | `frame` none (default), card, border, border-dashed, outline, outline-dashed; `align`; `gap`; `stack`; `background` as on `flow` |
-| `column` | block, parent `layout` | `size` xs to xl; `align`; `fit` natural, cover, contain |
-| `center` | block | `size` sm, md, lg; `frame` as on `layout` |
+| `column` | block, parent `layout` | `width` xs to xl; `align`; `fit` natural, cover, contain |
+| `center` | block | `width` sm, md, lg; `frame` as on `layout` |
 | `timeline` | block, children `timeline-item` | none |
 | `timeline-item` | block, parent `timeline` | `date`; `meta` (a short word next to the date); `title`; `icon`* (instead of the dot); `active` |
 | `pre` (plain Markdown tag, renderer override) | block | the code block of Markdown: label from `filename` or language, copy button |
@@ -114,7 +115,7 @@ Interactive components (`registry-interactive.ts`, styles in `interactive.css`):
 
 | Tag | Kind | Props |
 |---|---|---|
-| `tabs` | block, children `tab` | `layout` separate (default: buttons above a frame), line (underlined, no frame); `padded` (default on; off lets a code block fill the tab); WAI-ARIA tabs, the first tab is selected on the server, hidden panels stay in the page |
+| `tabs` | block, children `tab` | `variant` separate (default: buttons above a frame), line (underlined, no frame); `padded` (default on; off lets a code block fill the tab); WAI-ARIA tabs, the first tab is selected on the server, hidden panels stay in the page |
 | `tab` | block, parent `tabs` | `title` (required); `icon`* |
 | `accordion` | block, children `accordion-item` | `multiple` (otherwise opening one item closes the others, through the shared `name` of `<details>`) |
 | `accordion-item` | block, parent `accordion` | `title` (required); `open` (`<details>`, works without JavaScript) |

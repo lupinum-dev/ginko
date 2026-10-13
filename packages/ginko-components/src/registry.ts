@@ -203,7 +203,7 @@ export const components = defineComponents({
     label: { de: 'Spalte', en: 'Column' },
     describe: { de: 'Eine Spalte innerhalb von „Spalten“.', en: 'A column inside “Columns”.' },
     props: {
-      size: f.choice({ de: 'Breite', en: 'Width' }, {
+      width: f.choice({ de: 'Breite', en: 'Width' }, {
         options: [
           { value: 'xs', label: { de: 'Sehr schmal', en: 'Very narrow' } }, { value: 'sm', label: { de: 'Schmal', en: 'Narrow' } },
           { value: 'md', label: { de: 'Mittel', en: 'Medium' } }, { value: 'lg', label: { de: 'Breit', en: 'Wide' } },
@@ -221,7 +221,7 @@ export const components = defineComponents({
       }),
     },
     parents: ['layout'],
-    editor: { group: { de: 'Layout', en: 'Layout' }, example: ':::layout\n::column{size="lg"}\nBreite Spalte\n::\n::column{size="sm"}\nSchmale Spalte\n::\n:::' },
+    editor: { group: { de: 'Layout', en: 'Layout' }, example: ':::layout\n::column{width="lg"}\nBreite Spalte\n::\n::column{width="sm"}\nSchmale Spalte\n::\n:::' },
   },
   center: {
     kind: 'block',
@@ -231,7 +231,7 @@ export const components = defineComponents({
       en: 'Centers the content in a narrow column, optionally with a frame.',
     },
     props: {
-      size: f.choice({ de: 'Breite', en: 'Width' }, {
+      width: f.choice({ de: 'Breite', en: 'Width' }, {
         options: [
           { value: 'sm', label: { de: 'Schmal', en: 'Narrow' } }, { value: 'md', label: { de: 'Mittel', en: 'Medium' } },
           { value: 'lg', label: { de: 'Breit', en: 'Wide' } },
@@ -240,7 +240,7 @@ export const components = defineComponents({
       }),
       frame,
     },
-    editor: { group: { de: 'Layout', en: 'Layout' }, example: '::center{size="sm" frame="card"}\nBis bald!\n::' },
+    editor: { group: { de: 'Layout', en: 'Layout' }, example: '::center{width="sm" frame="card"}\nBis bald!\n::' },
   },
   timeline: {
     kind: 'block',

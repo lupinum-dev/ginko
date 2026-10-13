@@ -27,7 +27,7 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 <template>
   <div ref="root" class="docs-example">
-    <Tabs layout="line">
+    <Tabs variant="line">
       <Tab :label="t('docs.example.preview')">
         <GinkoMarkdown :value="tree" :components="markdownComponents" class="docs-example-preview" />
       </Tab>

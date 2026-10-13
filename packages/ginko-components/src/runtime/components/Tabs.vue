@@ -6,9 +6,9 @@ import { elements, Rendered } from './vnode-utils'
 
 // ::tabs with ::tab{title} children (WAI-ARIA tabs pattern): tablist/tab/tabpanel, arrow keys, Home/End,
 // roving tabindex. The first tab is selected on the server; panels of the other tabs stay in the DOM with `hidden`.
-// `layout="line"` underlines the selected tab instead of a chip and drops the panel frame; `padded="false"` removes the
+// `variant="line"` underlines the selected tab instead of a chip and drops the panel frame; `padded="false"` removes the
 // panel's inner space, for a code block that should fill it.
-const props = withDefaults(defineProps<{ layout?: 'separate' | 'line'; padded?: boolean | string; appearance?: 'quiet' | 'tint' }>(), { padded: true })
+const props = withDefaults(defineProps<{ variant?: 'separate' | 'line'; padded?: boolean | string; appearance?: 'quiet' | 'tint' }>(), { padded: true })
 const slots = useSlots()
 const { active, tabId, panelId, select, onKeydown } = useTabs(() => tabs().length)
 
@@ -21,7 +21,7 @@ function tabs() {
 </script>
 
 <template>
-  <div class="ginko-tabs" :data-layout="props.layout === 'line' ? 'line' : undefined" :data-unpadded="isOn(props.padded) ? undefined : ''" :data-appearance="props.appearance">
+  <div class="ginko-tabs" :data-variant="props.variant === 'line' ? 'line' : undefined" :data-unpadded="isOn(props.padded) ? undefined : ''" :data-appearance="props.appearance">
     <div class="ginko-tabs-list" role="tablist">
       <button
         v-for="(tab, i) in tabs()"
