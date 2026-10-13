@@ -1,6 +1,6 @@
 // Retention (SPEC 12). Daily; one run handles at most 200 documents in all. A run that uses up
 // its budget schedules the next run at once, so the rest follows in batches.
-import { addDays, isVisible, todayIn, type Schema } from '@lupinum/ginko/internal'
+import { addDays, deletesExpired, isVisible, todayIn, type Schema } from '@lupinum/ginko/internal'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, type MutationCtx } from './_generated/server'
@@ -79,7 +79,7 @@ export const daily = internalMutation({
 
       for (const [key, brick] of Object.entries(schema.bricks)) {
         if (left === 0) break
-        if (brick.kind === 'collection' && brick.visible?.mode === 'until' && brick.visible.deleteExpired) {
+        if (deletesExpired(brick)) {
           const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).collect()
           // Drafts are left alone: nobody has published them yet (SPEC 15).
           const expired = rows.filter((row) => !row.deletedAt && row.state !== 'draft' && !isVisible(brick, row.data, today) && !isVisible(brick, row.data, expiredSince))

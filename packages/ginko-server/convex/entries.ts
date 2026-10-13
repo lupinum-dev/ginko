@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, isTranslatable, labelOf as labelIn, isVisible, ordered, sha256, slugify, todayIn, uniqueSlug, validate, type Schema } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, isTranslatable, labelOf as labelIn, deletesExpired, isVisible, ordered, sha256, slugify, todayIn, uniqueSlug, validate, type Schema } from '@lupinum/ginko/internal'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
@@ -360,7 +360,7 @@ function roomPlan(actor: Actor, brick: CollectionBrick, rows: Doc<'entries'>[]):
   const need = live.length - brick.max + 1
   const today = todayIn((actor.site.schema as Schema).timezone)
   // A draft is never expired: it is not published yet (SPEC 15). It still takes a place in `max`.
-  const expired = brick.visible?.mode === 'until' && brick.visible.deleteExpired ? live.filter((r) => r.state !== 'draft' && !isVisible(brick as Brick, r.data, today)) : []
+  const expired = deletesExpired(brick) ? live.filter((r) => r.state !== 'draft' && !isVisible(brick as Brick, r.data, today)) : []
   if (expired.length < need) fail('INVALID', 'errors.collectionFull', { max: brick.max }, { max: brick.max })
   return expired.slice(0, need)
 }

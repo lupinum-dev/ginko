@@ -177,14 +177,24 @@ export function defaultsFor(fields: Fields): Record<string, Json> {
 
 /** One visibility rule for listings, detail pages, URL maps and sitemap. Dates inclusive, in the site's time zone. */
 export function isVisible(brick: Brick, data: Record<string, unknown>, today: string): boolean {
-  const vis = brick.kind === 'collection' ? brick.visible : undefined
-  if (!vis || vis.mode === 'always') return true
-  const value = data[vis.field]
-  if (value === undefined || value === null) return true
-  // A date field holds the last day; a daterange its end `to`.
-  const last = typeof value === 'string' ? value : (value as { to?: unknown }).to
-  return typeof last === 'string' && addDays(last, vis.days ?? 0) >= today
+  const last = visibleUntil(brick, data)
+  return last === undefined || last >= today
 }
+
+/**
+ * The last day an entry shows under `visible: { mode: 'until' }`: the date, or the end `to` of a daterange, plus `days`.
+ * `undefined` when the entry has no end: the brick has no `until` rule, or the field is empty.
+ */
+export function visibleUntil(brick: Brick, data: Record<string, unknown>): string | undefined {
+  const vis = brick.kind === 'collection' ? brick.visible : undefined
+  if (vis?.mode !== 'until') return undefined
+  const value = data[vis.field]
+  const last = typeof value === 'string' ? value : (value as { to?: unknown } | null | undefined)?.to
+  return typeof last === 'string' ? addDays(last, vis.days ?? 0) : undefined
+}
+
+/** Whether the platform deletes the entries of this brick that no longer show (`visible.deleteExpired`). */
+export const deletesExpired = (brick: Brick): boolean => brick.kind === 'collection' && brick.visible?.mode === 'until' && brick.visible.deleteExpired === true
 
 export function sortEntries(brick: CollectionBrick, entries: StoredEntry[]): StoredEntry[] {
   const copy = [...entries]

@@ -2,7 +2,7 @@
      one-line state from the data and the task buttons. Generic: nothing here knows the restaurant. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Json } from '@lupinum/ginko'
-import { addDays, isVisible, weekOfSchema, plannedWeeks, plansThisWeek, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
+import { isVisible, visibleUntil, weekOfSchema, plannedWeeks, plansThisWeek, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../composables/useSiteData'
 import { textIn } from '@lupinum/ginko-editor'
 import { displayValue, formatDay, taskRef, titleOf, type Task } from '../../../utils/content'
@@ -59,21 +59,16 @@ const rowsOf = (sec: Section) => [...sec.listed]
   .sort((a, b) => Number(timing(sec.brick as CollectionBrick, a).dim) - Number(timing(sec.brick as CollectionBrick, b).dim))
   .map((e) => ({ e, target: rowTarget(sec, e) }))
 
-/** "until 8.10." / "from 16.10." / "expired" for a timed entry. */
+/** "until 8.10." / the date range / "expired" for a timed entry. */
 function timing(brick: CollectionBrick, entry: Entry): { text: string; dim: boolean } {
   const vis = brick.visible
   if (!vis || vis.mode === 'always') return { text: '', dim: false }
-  const value = entry.data[vis.field]
   const today = s.today.value
+  const until = visibleUntil(brick, entry.data)
+  if (!until) return { text: t('site.status.noEnd'), dim: false }
   const visible = isVisible(brick, entry.data, today)
-  if (brick.fields[vis.field]?.type !== 'daterange') {
-    const until = typeof value === 'string' ? addDays(value, vis.days ?? 0) : undefined
-    if (!until) return { text: t('site.status.noEnd'), dim: false }
-    return visible ? { text: until === today ? t('site.status.untilToday') : t('site.status.until', { date: formatDay(until, format) }), dim: false } : { text: t('site.status.expired'), dim: true }
-  }
-  const range = value as { from: string; to: string } | undefined
-  if (!range) return { text: t('site.status.noEnd'), dim: false }
-  return { text: displayValue({ type: 'daterange', label: '' }, range, s.main.value, { t, format }), dim: !visible }
+  if (brick.fields[vis.field]?.type === 'daterange') return { text: displayValue({ type: 'daterange', label: '' }, entry.data[vis.field], s.main.value, { t, format }), dim: !visible }
+  return visible ? { text: until === today ? t('site.status.untilToday') : t('site.status.until', { date: formatDay(until, format) }), dim: false } : { text: t('site.status.expired'), dim: true }
 }
 
 /** A single's date field preset to @today shows "Heute: <task>" with Aufheben (UI.md 3). */
