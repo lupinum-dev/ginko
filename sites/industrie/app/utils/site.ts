@@ -75,10 +75,13 @@ export function formatSize(bytes: number, lang: GinkoLocale): string {
   return nbsp(bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${number.format(bytes / (1024 * 1024))} MB`)
 }
 
-/** `ab 2.800,00 € brutto / Monat` / `from €2,800.00 gross / month`. `from` and `gross` are the caller's messages. */
-export function salaryText(job: { salary: Money; salaryPeriod: string }, lang: GinkoLocale, text: { from: string; gross: string }): string {
-  // Salaries are whole euros in job ads ("ab 2.800 € brutto"); cents only when there are some.
-  const amount = formatMoney(job.salary, lang)
+/**
+ * `ab € 2.800,50 brutto / Monat` / `from €2,800.50 gross / month`. `lang` picks the period label, `language` (BCP 47,
+ * `useI18n().language`) the money notation; `from` and `gross` are the caller's messages.
+ */
+export function salaryText(job: { salary: Money; salaryPeriod: string }, lang: GinkoLocale, language: string, text: { from: string; gross: string }): string {
+  // Salaries are whole euros in job ads ("ab € 2.800 brutto"); cents only when there are some.
+  const amount = formatMoney(job.salary, language)
   const shown = job.salary.amount % 100 === 0 ? amount.replace(/[.,]00(?!\d)/, '') : amount
   return nbsp(`${text.from} ${shown} ${text.gross} / ${labels[lang].periods[job.salaryPeriod] ?? job.salaryPeriod}`)
 }

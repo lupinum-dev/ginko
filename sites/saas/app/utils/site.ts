@@ -122,8 +122,8 @@ interface PlanPrices { priceEur: Money; priceChf: Money; yearEur?: Money; yearCh
 
 /** The price of a plan for a billing period and currency; undefined when the plan has no yearly price. */
 /** A price as shown: whole amounts without cents ("29 €", "32 CHF" in German), cents only when there are some. */
-export function priceText(money: Money, lang: GinkoLocale): string {
-  const text = formatMoney(money, lang)
+export function priceText(money: Money, language: string): string {
+  const text = formatMoney(money, language)
   return money.amount % 100 === 0 ? text.replace(/[.,]00(?!\d)/, '') : text
 }
 

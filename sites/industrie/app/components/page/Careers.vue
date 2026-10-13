@@ -3,7 +3,7 @@ import { salaryText } from '../../utils/site'
 import { safeHref } from '@lupinum/ginko'
 
 const langOf = useGinkoLang()
-const { t, format } = useI18n()
+const { t, format, language } = useI18n()
 
 const { lang, labels, head } = useSite()
 const jobs = useGinko('jobs')
@@ -22,7 +22,7 @@ head(() => t('careers'), 'careers')
             <span class="title" :lang="langOf(j, 'title')">{{ j.data.title }}</span>
             <span class="kind">{{ labels.kinds[j.data.kind] ?? j.data.kind }}</span>
             <span class="place">{{ j.data.location }}</span>
-            <span class="salary mono">{{ salaryText(j.data, lang, { from: t('salaryFrom'), gross: t('gross') }) }}</span>
+            <span class="salary mono">{{ salaryText(j.data, lang, language, { from: t('salaryFrom'), gross: t('gross') }) }}</span>
           </summary>
           <div class="body">
             <GinkoMarkdown :value="j.data.description" class="prose" :lang="langOf(j, 'description')" />

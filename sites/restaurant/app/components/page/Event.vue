@@ -6,9 +6,8 @@ import { siteName } from '../../utils/site'
 const langOf = useGinkoLang()
 
 const props = defineProps<{ slug: string }>()
-const { lang } = useSite()
 const path = useGinkoPath()
-const { t } = useI18n()
+const { t, language } = useI18n()
 const eventWhen = useEventWhen()
 const event = useGinkoEntry('events', () => props.slug)
 const contact = useGinko('contact')
@@ -39,7 +38,7 @@ useGinkoSeo(() => ({ title: event.value.data.title, image: event.value.data.imag
     <h1 class="page-title" :lang="langOf(event, 'title')">{{ event.data.title }}</h1>
     <p class="facts">
       <span class="when">{{ eventWhen(event.data.when, event.data.start) }}</span>
-      <span v-if="event.data.price" class="price">{{ t('price') }}: {{ formatMoney(event.data.price, lang) }}</span>
+      <span v-if="event.data.price" class="price">{{ t('price') }}: {{ formatMoney(event.data.price, language) }}</span>
     </p>
     <img v-if="safeHref(event.data.image?.url)" class="image" :src="safeHref(event.data.image?.url)" :alt="event.data.image!.alt" :lang="langOf(event, 'image.alt')" :width="event.data.image!.width" :height="event.data.image!.height">
     <GinkoMarkdown :value="event.data.description" class="prose" :lang="langOf(event, 'description')" />

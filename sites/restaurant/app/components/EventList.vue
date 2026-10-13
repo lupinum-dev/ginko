@@ -6,7 +6,7 @@ const langOf = useGinkoLang()
 
 const props = defineProps<{ limit?: number }>()
 const { lang } = useSite()
-const { t } = useI18n()
+const { t, language } = useI18n()
 const eventWhen = useEventWhen()
 const events = useGinko('events')
 const items = computed(() => (props.limit ? events.value.items.slice(0, props.limit) : events.value.items))
@@ -22,7 +22,7 @@ const month = (date: string) => new Intl.DateTimeFormat(lang.value === 'de' ? 'd
         <h3 :lang="langOf(e, 'title')"><NuxtLink :to="e.url">{{ e.data.title }}</NuxtLink></h3>
         <p class="meta">
           <span>{{ eventWhen(e.data.when, e.data.start) }}</span>
-          <span v-if="e.data.price" class="price">{{ formatMoney(e.data.price, lang) }}</span>
+          <span v-if="e.data.price" class="price">{{ formatMoney(e.data.price, language) }}</span>
         </p>
       </div>
     </li>

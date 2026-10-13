@@ -5,12 +5,12 @@ import { priceOn, upcomingPrice } from '@lupinum/ginko-preset-gastro'
 const langOf = useGinkoLang()
 
 const { labels, lang, today } = useSite()
-const { t, format } = useI18n()
+const { t, format, language } = useI18n()
 const menu = useGinko('menu')
 /** "ab 1. November 19,50 €" when the price changes within 14 days. */
 function nextPriceLine(data: { price: Money; nextPrice?: Money; priceFrom?: string }) {
   const next = upcomingPrice(data, today.value, 14)
-  return next && t('priceFrom', { date: format.date(next.from, { day: 'numeric', month: 'long' }), price: formatMoney(next.price, lang.value) })
+  return next && t('priceFrom', { date: format.date(next.from, { day: 'numeric', month: 'long' }), price: formatMoney(next.price, language.value) })
 }
 const order = ['starters', 'soups', 'mains', 'desserts', 'drinks']
 const groups = computed(() => order
@@ -30,7 +30,7 @@ useSeoMeta({ title: () => `${t('menu')} | Gasthaus zur Linde` })
         <li v-for="item in g.items" :key="item.id" class="dish">
           <div class="line">
             <h3 :lang="langOf(item, 'name')">{{ item.data.name }}</h3>
-            <span class="price">{{ formatMoney(priceOn(item.data, today), lang) }}</span>
+            <span class="price">{{ formatMoney(priceOn(item.data, today), language) }}</span>
           </div>
           <p v-if="nextPriceLine(item.data)" class="next-price" data-test="next-price">{{ nextPriceLine(item.data) }}</p>
           <p v-if="item.data.description" class="desc" :lang="langOf(item, 'description')">{{ item.data.description }}</p>

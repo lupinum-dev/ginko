@@ -8,7 +8,7 @@ const langOf = useGinkoLang()
 
 const { lang, today } = useSite()
 const path = useGinkoPath()
-const { t, format } = useI18n()
+const { t, format, language } = useI18n()
 const notices = useGinko('notices')
 const { lunch, current: lunchCurrent } = useLunchWeek()
 const { hours, data: h, ctx } = useHours()
@@ -45,7 +45,7 @@ const dish = computed(() => {
       <h3>{{ t('lunchToday') }}</h3>
       <p class="dish">
         <span :lang="langOf(lunch, `days.${dish._id}.dish`)">{{ dish.dish }}</span>
-        <span v-if="dish.price" class="price">{{ formatMoney(dish.price, lang) }}</span>
+        <span v-if="dish.price" class="price">{{ formatMoney(dish.price, language) }}</span>
       </p>
       <Allergens :codes="dish.allergens" class="on-dark" />
       <NuxtLink :to="path('lunch')" class="more">{{ t('lunchWeek') }}</NuxtLink>

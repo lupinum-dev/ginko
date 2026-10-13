@@ -6,7 +6,7 @@ import { lunchPrintPath, type Weekday } from '../utils/site'
 const langOf = useGinkoLang()
 
 const { lang, labels } = useSite()
-const { t, format } = useI18n()
+const { t, format, language } = useI18n()
 const { lunch, current, todayKey } = useLunchWeek()
 </script>
 
@@ -19,7 +19,7 @@ const { lunch, current, todayKey } = useLunchWeek()
         <span class="dish" :lang="langOf(lunch, `days.${d._id}.dish`)">{{ d.dish }}</span>
         <span class="meta">
           <Allergens :codes="d.allergens" />
-          <span v-if="d.price" class="price">{{ formatMoney(d.price, lang) }}</span>
+          <span v-if="d.price" class="price">{{ formatMoney(d.price, language) }}</span>
         </span>
       </li>
     </ol>

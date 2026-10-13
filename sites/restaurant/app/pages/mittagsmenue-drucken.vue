@@ -9,7 +9,7 @@ const langOf = useGinkoLang()
 definePageMeta({ layout: 'print', path: '/mittagsmenue/drucken', i18n: { paths: { en: '/lunch/print' } } })
 
 const { lang, labels } = useSite()
-const { t, format } = useI18n()
+const { t, format, language } = useI18n()
 const path = useGinkoPath()
 const { lunch, current } = useLunchWeek()
 const contact = useGinko('contact')
@@ -52,7 +52,7 @@ const range = computed(() => {
             <span class="dish" :lang="langOf(lunch, `days.${d._id}.dish`)">{{ d.dish }}</span>
             <span class="meta">
               <span v-if="d.allergens.length" class="letters">{{ [...d.allergens].sort().join(' ') }}</span>
-              <span v-if="d.price" class="price">{{ formatMoney(d.price, lang) }}</span>
+              <span v-if="d.price" class="price">{{ formatMoney(d.price, language) }}</span>
             </span>
           </li>
         </ol>

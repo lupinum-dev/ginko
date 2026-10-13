@@ -6,7 +6,7 @@ const langOf = useGinkoLang()
 
 const { lang, labels } = useSite()
 const path = useGinkoPath()
-const { t } = useI18n()
+const { t, language } = useI18n()
 usePageSeo('home')
 const hero = useGinko('hero')
 const features = useGinko('features')
@@ -50,7 +50,7 @@ const quotes = computed(() => testimonials.value.items.slice(0, 3))
       <ul class="plans">
         <li v-for="plan in pricing.items" :key="plan.id" class="plan">
           <span class="plan-name">{{ plan.data.name }}</span>
-          <span class="plan-price mono">{{ priceText(plan.data.priceEur, lang) }}</span>
+          <span class="plan-price mono">{{ priceText(plan.data.priceEur, language) }}</span>
           <span class="plan-period">{{ t('perMonth') }}</span>
         </li>
       </ul>

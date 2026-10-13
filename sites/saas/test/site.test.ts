@@ -47,10 +47,10 @@ describe('tagLabel', () => {
 
 // Whole prices read "29 €" / "32 CHF" in German; a price with cents keeps them, so nothing is rounded away.
 it.each([
-  [{ amount: 2900, currency: 'EUR' as const }, 'de', /^29\s€$/],
-  [{ amount: 3200, currency: 'CHF' as const }, 'de', /^32\sCHF$/],
-  [{ amount: 2950, currency: 'EUR' as const }, 'de', /^29,50\s€$/],
-  [{ amount: 10900, currency: 'EUR' as const }, 'en', /^€109$/],
-])('priceText(%o, %s)', (money, lang, expected) => {
-  expect(priceText(money, lang as 'de' | 'en')).toMatch(expected)
+  [{ amount: 2900, currency: 'EUR' as const }, 'de-DE', /^29\s€$/],
+  [{ amount: 3200, currency: 'CHF' as const }, 'de-DE', /^32\sCHF$/],
+  [{ amount: 2950, currency: 'EUR' as const }, 'de-DE', /^29,50\s€$/],
+  [{ amount: 10900, currency: 'EUR' as const }, 'en-GB', /^€109$/],
+])('priceText(%o, %s)', (money, language, expected) => {
+  expect(priceText(money, language)).toMatch(expected)
 })
