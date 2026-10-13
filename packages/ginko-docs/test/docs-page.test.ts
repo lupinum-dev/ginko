@@ -21,8 +21,8 @@ describe('page helpers', () => {
   it.each([['/en/docs/languages', '/en/docs/languages.md'], ['/docs/x/', '/docs/x.md'], ['/', '/index.md']])('markdown twin of %s', (path, md) => expect(docsMarkdownPath(path)).toBe(md))
 
   it('ask links carry the encoded prompt', () => {
-    const { chatGpt, claude } = docsAskLinks('Lies https://x.dev/a.md & fertig')
-    expect(chatGpt).toBe('https://chatgpt.com/?q=Lies%20https%3A%2F%2Fx.dev%2Fa.md%20%26%20fertig')
+    const { chatgpt, claude } = docsAskLinks('Lies https://x.dev/a.md & fertig')
+    expect(chatgpt).toBe('https://chatgpt.com/?q=Lies%20https%3A%2F%2Fx.dev%2Fa.md%20%26%20fertig')
     expect(claude.startsWith('https://claude.ai/new?q=')).toBe(true)
   })
 })

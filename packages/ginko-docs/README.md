@@ -38,8 +38,13 @@ in `defineSite` (the layer accepts any `readonly string[]`; `defineSite` itself 
 `components` is the registry of `@lupinum/ginko-components` (a dependency of the layer, re-exported here). With it, Ginko checks every component tag and prop in the
 pages; a site can add its own components next to it (see "Inside an existing site").
 
-The layer finds its content by brick key, so keep these names: `docs` (docsCollection), `home` (docsHome),
-`posts` and `authors` (blogCollections), `changelog` (changelogCollection). Only `docs` is required.
+Limits of the layer:
+
+- It finds its content by brick key, so keep these names: `docs` (docsCollection), `home` (docsHome), `posts` and
+  `authors` (blogCollections), `changelog` (changelogCollection). Only `docs` is required. One site has one docs
+  collection.
+- The docs move with `base`; the blog is always at `/blog` and the changelog at `/changelog` (with the language
+  prefix in other languages, for example `/de/blog`).
 
 ```ts
 // nuxt.config.ts
@@ -58,12 +63,12 @@ export default defineAppConfig({
   docs: {
     title: 'My docs',                                   // header text, next to the logo
     logo: { light: '/logo.svg', dark: '/logo-dark.svg' }, // `wordmark: true` when the image holds the name
-    theme: 'nuxt',                                      // colour preset: 'default' (zinc) | 'nuxt'
+    theme: 'green',                                     // colour preset: 'default' (emerald on zinc) | 'green'
     nav: [{ id: 'guide', href: '/guide' }],             // header links after Docs, Blog, Changelog
     social: [{ icon: 'docs:github', href: 'https://github.com/me/docs', label: 'GitHub' }],
     banner: { id: 'v2', href: '/docs/changes' },        // dismissible notice above the header; `href` optional
     repository: { url: 'https://github.com/me/docs', branch: 'main' }, // "Edit this page" and "Report an issue"
-    markdownActions: { copy: true, chatGpt: true, claude: true },       // "Copy page" and its menu, all default true
+    markdownActions: { copy: true, openIn: ['chatgpt', 'claude'] },     // "Copy page" and the chats of its menu (the defaults)
     footer: {
       links: [{ id: 'github', href: 'https://github.com/me/docs' }],
       attribution: true,                                // "Built with Ginko", default true
