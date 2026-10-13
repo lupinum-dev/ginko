@@ -24,8 +24,8 @@ const retire = (s: Schema, path: string, rule: Schema['retired'][string]) => {
   s.retired[path] = rule
 }
 
-function migration(id: string, brick: string, fills: string, from: (entry: Record<string, unknown>) => unknown): MigrationDescriptor {
-  return { id, brick, fills, fingerprint: migrationFingerprint(brick, fills, from) }
+function migration(id: string, brick: string, fills: string, compute: (entry: Record<string, unknown>) => unknown): MigrationDescriptor {
+  return { id, brick, fills, fingerprint: migrationFingerprint(brick, fills, compute) }
 }
 
 // A production schema that already runs a migration and the field it filled.
