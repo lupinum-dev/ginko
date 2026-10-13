@@ -52,6 +52,17 @@ describe('GinkoMarkdown (plain Vue)', () => {
     expect(html).toContain('<a href="/ok">good</a>')
   })
 
+  // Bug caught: Vue assigned `outerHTML` / `.innerHTML` as DOM properties, so a changed value put raw HTML on the page.
+  test('a tree with DOM sink props renders without them, also after the value changes', async () => {
+    const tree = (html: string) => ({ nodes: [['p', {}, 'Hi ', ['strong', { 'outerHTML': html, '.innerHTML': html, '^innerHTML': html }, 'x']]] }) as MarkdownTree
+    const wrapper = mount(defineComponent({ props: { value: Object }, render() { return h(Suspense, null, { default: () => h(GinkoMarkdown, { value: this.value as MarkdownTree }) }) } }), { props: { value: tree('a') } })
+    await flushPromises()
+    await wrapper.setProps({ value: tree('<img src="x" data-pwned="1">') })
+    await flushPromises()
+    expect(wrapper.html()).not.toMatch(/<img|innerhtml|outerhtml/i)
+    expect(wrapper.html()).toContain('<strong>x</strong>')
+  })
+
   // Bug caught: a registry that declares `embed` lets `::embed` through the parser; without a mapped component
   // the renderer emitted a native <embed> that loads the address like an iframe.
   test('a blocked tag renders only through a mapped component', async () => {

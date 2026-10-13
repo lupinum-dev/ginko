@@ -13,6 +13,9 @@ describe('parseMarkdown profiles', () => {
     ['::callout\nHi\n::', 'page', false],
     ['::script\nalert(1)\n::', 'page', true],
     ['**fett**{onclick="alert(1)"}', 'page', true],
+    // DOM sink props: Vue assigns `el.outerHTML = value`, which puts raw HTML on the page at the next patch.
+    ['**x**{outerHTML="<img src=x onerror=alert(1)>"}', 'inline', true],
+    ['**x**{:innerText="x"}', 'page', true],
     ['[x](javascript:alert(1)){href="javascript:alert(1)"}', 'page', true],
     [':badge[neu]{href="/ok"}', 'page', false],
     // style and id from the text (overlay, clash with Nuxt's own ids); parser-made ids and cell alignment stay.

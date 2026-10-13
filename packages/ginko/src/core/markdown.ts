@@ -63,6 +63,15 @@ const TAGS: Record<Exclude<MarkdownProfile, 'page'>, ReadonlySet<string>> = {
  */
 const BLOCKED_ATTRIBUTES: ReadonlySet<string> = new Set(['style', 'id'])
 
+/**
+ * Props that Vue sets as DOM properties writing markup or text (`el.outerHTML = value` replaces the element with raw
+ * HTML on the next patch). Compared lower-cased and without comark's `:`. comark itself drops only innerHTML,
+ * dangerouslySetInnerHTML and textContent. A raw key that starts with `.` or `^` (Vue's force-prop / force-attr
+ * prefixes) is refused too: Vue patches `.`-keys even during hydration.
+ */
+const DOM_SINK_PROPS: ReadonlySet<string> = new Set(['outerhtml', 'innerhtml', 'outertext', 'innertext', 'textcontent'])
+export const isDomSinkProp = (name: string): boolean => /^[.^]/.test(name) || DOM_SINK_PROPS.has(name.replace(/^:/, '').toLowerCase())
+
 /** The alert types comark's alert plugin writes as `as` on a `blockquote` (`> [!TIP]`). */
 const ALERT_TYPES: ReadonlySet<string> = new Set(['note', 'tip', 'important', 'warning', 'caution'])
 
@@ -207,7 +216,7 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
         for (const [name, raw] of Object.entries(props)) {
           // `:name` is comark's bound form of the same prop.
           const key = name.replace(/^:/, '').toLowerCase()
-          if (key.startsWith('on')) fail(msg('markdown.propBlocked', { prop: key }))
+          if (key.startsWith('on') || isDomSinkProp(name)) fail(msg('markdown.propBlocked', { prop: key }))
           else if (key === 'as' && (name.startsWith(':') || !allowedAs(tag, raw))) fail(msg('markdown.propBlocked', { prop: key }))
           else if (BLOCKED_ATTRIBUTES.has(key) && !declaredProp(tag, key) && !parserMade(tag, key, raw)) fail(msg('markdown.propBlocked', { prop: key }))
           else if (URL_PROPS.has(key) && (typeof raw !== 'string' || !isSafeHref(raw))) fail(msg('markdown.unsafeLink'))
