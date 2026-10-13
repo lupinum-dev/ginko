@@ -7,7 +7,7 @@ import { compileTree, mergeTrees, type RawTree } from './core/compiler.ts'
 import { inUserZone, isExcluded, localizePath, resolveConfig, type LocaleConfig, type LocaleInput, type Strategy } from './core/locales.ts'
 import type { Params } from './core/messages.ts'
 
-export type { Alternate, AlternatesResolver, TypedTranslator } from './runtime/types'
+export type { Alternate, AlternatesResolver, I18n, ServerI18n, TypedTranslator } from './runtime/types'
 
 /** Head-tag switches. No keys yet; the object form exists so that a switch can be added without a new option name. */
 export interface SeoOptions {}

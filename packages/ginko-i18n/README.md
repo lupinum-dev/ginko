@@ -393,7 +393,8 @@ Auto-imported in components, pages and plugins.
 | `switchLocale(code)` | `Promise<void>` | Go to the current page in `code`, or change the user's locale inside a zone. |
 | `format` | object | Intl formatting in the current language, see below. |
 
-With a namespace, `useI18n('cms')` takes keys relative to it (`t('save')` for `cms.save`).
+With a namespace, `useI18n('cms')` takes keys relative to it (`t('save')` for `cms.save`). The result's
+type is `I18n<NS>`, for wrappers that take it as a parameter. New members will not reuse these names.
 
 A missing key renders the key itself (and warns in dev), never an empty string. A key missing in one
 locale shows the default locale's text.
@@ -438,11 +439,12 @@ For a module's Nuxt plugin that owns dynamic routes. The resolver gets the route
 `{ locale, localePath }` and returns a path per locale code, or `undefined` when the route is not its
 own. See [Dynamic pages](#dynamic-pages-cms-content).
 
-### `getI18n(event)`
+### `getI18n(event, namespace?)`
 
-Auto-imported in server routes. Returns `{ locale, language, t, parts, has, format }` for the request's
-locale, with the same typed keys and formatters as `useI18n()`. One difference: here `locale` is a
-plain string (`'en'`), while `useI18n().locale` is a `ComputedRef<string>`.
+Auto-imported in server routes. Returns `{ locale, language, t, parts, has, format }` (type
+`ServerI18n<NS>`) for the request's locale, with the same typed keys, namespace and formatters as
+`useI18n()`. One difference: here `locale` and `language` are plain strings (`'en'`), while
+`useI18n().locale` is a `ComputedRef<string>`.
 
 ### `definePageMeta`
 
@@ -491,8 +493,8 @@ and an old tree is not detected. Compile again after an upgrade.
 
 ### Types from `@lupinum/ginko-i18n`
 
-`ModuleOptions`, `PageI18n`, `MessageSource` (for the `ginko-i18n:sources` hook), `Alternate`,
-`AlternatesResolver` and `TypedTranslator`.
+`ModuleOptions`, `PageI18n`, `MessageSource` (for the `ginko-i18n:sources` hook), `I18n` (the result of
+`useI18n`), `ServerI18n` (the result of `getI18n`), `Alternate`, `AlternatesResolver` and `TypedTranslator`.
 
 ## Message syntax
 
