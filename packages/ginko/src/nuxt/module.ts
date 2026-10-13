@@ -52,7 +52,7 @@ export default defineNuxtModule<SiteInput>({
       },
     } })
     // Languages come from ginko.config: ginko-i18n owns URLs, hreflang, canonical and the site's own texts
-    // (i18n/<locale>.json). The other `i18n` options in nuxt.config pass through; the ones Ginko sets fail.
+    // (i18n/<code>.json). The other `i18n` options in nuxt.config pass through; the ones Ginko sets fail.
     // `i18n` is typed only where ginko-i18n's module types are loaded (a site), so it is read as unknown here.
     checkI18nOptions((nuxt.options as { i18n?: unknown }).i18n)
     // Resolved from this package, not the site: with pnpm a site does not see @lupinum/ginko's own dependencies.

@@ -4,7 +4,7 @@ import type { Nuxt } from 'nuxt/schema'
 // Loads the module's type augmentation of `NuxtHooks` (the `ginko-i18n:sources` hook).
 import type {} from '@lupinum/ginko-i18n'
 
-// The texts of server errors live in @lupinum/ginko-server (i18n/<locale>.json, the same files its mails use).
+// The texts of server errors live in @lupinum/ginko-server (i18n/<code>.json, the same files its mails use).
 // The Studio translates `error.key` with them, so they join the Studio's catalogs under the namespace `server`.
 // Found like server-api.ts finds the Convex code: through the host app, because the package exports only convex/*.
 export default (_options: unknown, nuxt: Nuxt) => {

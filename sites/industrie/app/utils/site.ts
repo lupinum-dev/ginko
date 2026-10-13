@@ -1,4 +1,4 @@
-// The site's own routes and lookup tables. Fixed texts are ginko-i18n messages in i18n/<locale>.json.
+// The site's own routes and lookup tables. Fixed texts are ginko-i18n messages in i18n/<code>.json.
 // Content comes from the bundle. Option labels in ginko.config.ts are editor text (SPEC 2), so job kinds
 // and weekday names for visitors live in `labels`, in both languages.
 import { formatMoney, plainText, type MarkdownValue, type Money } from '@lupinum/ginko'
@@ -21,7 +21,7 @@ export type Weekday = (typeof weekdayKeys)[number]
 
 /**
  * Lookup tables read with a dynamic key (`t()` takes only literal keys), so they stay in TypeScript, per language.
- * Fixed texts are ginko-i18n messages in i18n/<locale>.json.
+ * Fixed texts are ginko-i18n messages in i18n/<code>.json.
  */
 export const labels = {
   de: {
