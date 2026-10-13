@@ -481,10 +481,11 @@ Build time only: it loads the FormatJS parser.
 | Export | Meaning |
 | --- | --- |
 | `compileCatalogs({ de, en })` | Compiles source catalogs per locale for `defineCatalog`. |
-| `compileTree(raw)` | Compiles one locale: `{ tree, params, numeric }`, where `params` lists each key's parameter names and `numeric` the ones used as numbers. |
+| `compileTree(raw)` | Compiles one locale: a `CompiledTree` `{ tree, params, numeric }`, where `params` lists each key's parameter names and `numeric` the ones used as numbers. |
 | `MessageError` | Thrown for invalid ICU. `key` and `source` name the message. |
 
-Types: `RawTree`.
+Types: `RawTree`, `CompiledTree`. The format inside `tree` is internal: it can change in any release,
+and an old tree is not detected. Compile again after an upgrade.
 
 ### Types from `@lupinum/ginko-i18n`
 
