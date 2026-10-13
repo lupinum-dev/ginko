@@ -14,6 +14,8 @@ const slug = computed(() => String(route.params.site))
 // Every form under this layout (Schnell ändern, Alles bearbeiten) uploads to this site.
 provideGinkoAssets(useConvexGinkoAssets(slug))
 const { data, error } = useConvexQuery(api.sites.get, () => ({ site: slug.value }))
+// A site whose deletion has started opens for nothing but cancelling it (`sites.get` is refused for everyone then).
+const { data: deletion } = useConvexQuery(api.sites.deletion, () => ({ site: slug.value }))
 // The slash menu of Markdown fields offers the components of this site's schema.
 provide(EDITOR_COMPONENTS, () => (data.value?.site.schema as { components?: ComponentRegistry } | undefined)?.components)
 // Labels and prices under this layout read the site's main language and currency.
@@ -67,7 +69,7 @@ const ownBottomBar = ref(0)
 provide(OWN_BOTTOM_BAR, ownBottomBar)
 const showTabs = computed(() => ownBottomBar.value === 0)
 // Signed out or no access: no site to navigate, so no rail, bars or site name (the message offers the way out).
-const blocked = computed(() => signedOut.value || !!error.value)
+const blocked = computed(() => signedOut.value || !!error.value || !!deletion.value)
 </script>
 
 <template>
@@ -108,6 +110,7 @@ const blocked = computed(() => signedOut.value || !!error.value)
         <p>{{ t('nav.signedOutText') }}</p>
         <Button as-child><NuxtLink :to="`/login?redirect=${encodeURIComponent(route.fullPath)}`">{{ t('nav.signIn') }}</NuxtLink></Button>
       </main>
+      <SiteDeleting v-else-if="deletion" :slug="slug" :name="deletion.name" :at="deletion.at" />
       <main v-else-if="error" class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
         <p class="text-xl font-bold">{{ opErrorOf(error).message }}</p>
         <p>{{ t('nav.noAccessHelp') }}</p>

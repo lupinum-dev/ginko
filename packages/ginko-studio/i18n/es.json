@@ -43,7 +43,12 @@
     },
     "remindTitle": "Recordatorios por correo",
     "remindText": "Un correo breve la tarde antes de que empiece la semana si aún falta algo de la próxima semana, por ejemplo el menú del almuerzo.",
-    "language": "Idioma"
+    "language": "Idioma",
+    "deleteAccount": {
+      "title": "Eliminar cuenta",
+      "text": "Se eliminan tu cuenta, tus membresías y tu inicio de sesión. Los cambios que hiciste permanecen en el historial como «Antiguo miembro».",
+      "button": "Eliminar mi cuenta"
+    }
   },
   "login": {
     "title": "Iniciar sesión",
@@ -233,6 +238,16 @@
     },
     "entry": {
       "missing": "Esta entrada ya no existe."
+    },
+    "delete": {
+      "title": "Eliminar sitio",
+      "text": "Todo el contenido, los archivos, el historial y el acceso de {site} se eliminan 7 días después de que lo confirmes. Hasta entonces puedes cancelar.",
+      "confirmLabel": "Escribe {slug} para confirmar",
+      "button": "Eliminar sitio"
+    },
+    "deleting": {
+      "text": "{site} se eliminará el {date}.",
+      "cancel": "Cancelar eliminación"
     },
     "team": {
       "heading": "Equipo",
