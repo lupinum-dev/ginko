@@ -1,9 +1,9 @@
 // Content types an agency or studio website needs. Labels come in German and English.
 // Every factory returns a brick for `bricks: { <key>: services() }`. For file content the brick key is the folder name,
 // so a site that keeps `content/leistungen/` writes `leistungen: services()`.
-import { collection, f, type Field, type Fields, type Label, type Locale } from '@lupinum/ginko'
+import { collection, f, type Field, type Fields, type Label, type Locale, type RouteTemplate } from '@lupinum/ginko'
 
-export type Routes = Partial<Record<Locale, string>>
+export type Routes = Record<Locale, RouteTemplate>
 
 export interface BrickOptions<E extends Fields = {}> {
   /** Replaces the brick's label: a text for every site language, or `{ de, en }`. */
@@ -81,7 +81,7 @@ export function caseStudies<const E extends Fields = {}>(o: CaseStudyOptions<E> 
   // Display only: the Studio shows these fields under four headings, as tabs on wide screens.
   const [project, result, work, home] = [both('Projekt', 'Project'), both('Ergebnis', 'Result'), both('Leistungen', 'Work'), both('Startseite', 'Homepage')]
   const related: Fields = o.servicesBrick === false ? {} : {
-    relatedServices: f.ref(both('Passende Leistungen', 'Related services'), { to: o.servicesBrick ?? 'services', multiple: true, max: 6, optional: true, group: work }),
+    relatedServices: f.refs(both('Passende Leistungen', 'Related services'), { to: o.servicesBrick ?? 'services', max: 6, optional: true, group: work }),
   }
   return collection({
     ...common(o, both('Referenzen', 'Case studies'), 200),
@@ -172,11 +172,12 @@ export function legal<const E extends Fields = {}>(o: LegalOptions<E> = {}) {
     { value: 'imprint', label: both('Impressum', 'Imprint') },
     { value: 'terms', label: both('AGB', 'Terms and conditions') },
   ]
+  // `prefill` names `updatedAt`, which the generic `E` hides from the type here (the factory's own field, checked by the schema check).
   return collection({
     ...common(o, both('Rechtliches', 'Legal'), 20),
     order: 'manual',
     route: routeOf({ de: '/[slug]', en: '/en/[slug]' }, o),
-    tasks: [{ id: 'update', label: both('Rechtstext aktualisieren', 'Update a legal text'), kind: 'edit', pick: true, fields: ['body', 'updatedAt'], prefill: { updatedAt: '@today' } }],
+    tasks: [{ id: 'update', label: both('Rechtstext aktualisieren', 'Update a legal text'), kind: 'edit', pick: true, fields: ['body', 'updatedAt'], prefill: { updatedAt: '@today' } as {} }],
     fields: build({
       title: f.text(both('Titel', 'Title')),
       description: f.longtext(both('Beschreibung', 'Description')),

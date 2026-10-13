@@ -10,10 +10,11 @@ type Locales = readonly Locale[]
  * `path` in every language: `{ en: '/blog', de: '/de/blog' }` when `en` is the main language. The main language has no
  * prefix; every other language gets `/<locale>` in front (ginko-i18n's rule).
  */
-function localized(locales: Locales, path: string): Partial<Record<Locale, string>> {
+function localized<P extends `/${string}`>(locales: Locales, path: P): Record<Locale, P> {
   const [main] = locales
   if (main === undefined) throw new Error('[ginko-docs] `locales` is empty. Fix: pass the same list as `locales` in defineSite.')
-  return Object.fromEntries(locales.map((l) => [l, l === main ? path : `/${l}${path}`]))
+  // `/<locale>` + a path still matches the path's pattern, e.g. `/${string}/[slug]`.
+  return Object.fromEntries(locales.map((l) => [l, l === main ? path : `/${l}${path}`])) as Record<Locale, P>
 }
 
 /** `base`: where the docs live, default `/docs` (e.g. `/handbook` inside a larger site). */
@@ -95,7 +96,7 @@ export function blogCollections(opts: { locales: Locales; max?: number }) {
         title: f.text('Title'),
         description: f.longtext('Description', { optional: true }),
         date: f.date('Date'),
-        authors: f.ref('Authors', { to: 'authors', multiple: true, optional: true }),
+        authors: f.refs('Authors', { to: 'authors', optional: true }),
         image: f.image('Image', { optional: true }),
         tags: f.list('Tags', { itemLabel: 'Tag', fields: { tag: f.text('Tag', { max: 40 }) }, max: 10, optional: true }),
         slug: f.slug('Address', { from: 'title' }),

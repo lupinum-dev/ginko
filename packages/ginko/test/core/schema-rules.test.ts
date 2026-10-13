@@ -3,7 +3,7 @@ import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import { plan } from '../../src/cli/plan.ts'
 import {
   buildBundle, checkSchema, isShown, collection, defineSite, diffSchema, f, isCurrency, isLocale, labelOf, platformSchema, serializeSchema, single, validate,
-  type Fields, type Schema, type SiteInput,
+  type Fields, type RouteTemplate, type Schema, type SiteInput,
 } from '../../src/core/index.ts'
 
 // One regression test per finding of the break-it phase 9 (schema rules). Each fails without its fix.
@@ -177,7 +177,8 @@ describe('5. money options stay within SPEC 2.2', () => {
 
 describe('6. routes and pages', () => {
   const news = (de: string, en = '/en/news/[slug]') => collection({
-    label: 'News', fields: { title: f.text('Titel', { max: 80 }), slug: f.slug('Adresse', { from: 'title' }) }, max: 5, order: 'manual', route: { de, en },
+    // Invalid routes on purpose: the schema check must report what the type would reject.
+    label: 'News', fields: { title: f.text('Titel', { max: 80 }), slug: f.slug('Adresse', { from: 'title' }) }, max: 5, order: 'manual', route: { de, en } as Record<string, RouteTemplate>,
   })
   const withBricks = (bricks: Bricks) => site({}, { bricks: { ...site().bricks, ...bricks } })
 
@@ -393,6 +394,27 @@ describe('week tokens', () => {
   it('stores the week of the main language, with firstDayOfWeek as override', () => {
     expect(serializeSchema(site({}, { languages: { de: 'en-US' } })).week).toEqual({ firstDay: 7, weekend: [6, 7] })
     expect(serializeSchema(site({}, { languages: { de: 'de-AT' }, firstDayOfWeek: 6 })).week).toEqual({ firstDay: 6, weekend: [6, 7] })
+  })
+})
+
+describe('defaults in the stored form', () => {
+  const stored = (fields: Fields, tasks?: unknown) => serializeSchema(site({}, { bricks: { menu: collection({ label: 'Karte', fields, max: 20, order: 'manual', tasks: tasks as never }) } })).bricks.menu!
+  // Wrong behaviour caught: a plain default of a translatable field is stored as a string and fails the release check,
+  // or a preset's `{ de, en }` text keeps locales the site does not have.
+  it.each([
+    ['a plain text is the main language', f.text('Name', { default: 'Linde' }), { de: 'Linde' }],
+    ['texts per language keep the site locales', f.text('Name', { default: { de: 'Linde', en: 'Linden', fr: 'Tilleul' } }), { de: 'Linde', en: 'Linden' }],
+    ['a text of other languages only is left out', f.text('Name', { default: { fr: 'Tilleul' } }), undefined],
+    ['a text that is not translated stays plain', f.text('Ort', { translate: false, default: 'Salzburg' }), 'Salzburg'],
+    ['list rows store their texts per language', f.list('Tage', { itemLabel: 'Tag', max: 2, fields: { dish: f.text('Gericht') }, default: [{ _id: 'r000000001', dish: 'Suppe' }] }), [{ _id: 'r000000001', dish: { de: 'Suppe' } }]],
+    ['a list with a row of other languages only is left out', f.list('Tage', { itemLabel: 'Tag', max: 2, fields: { dish: f.text('Gericht') }, default: [{ _id: 'r000000001', dish: { fr: 'Soupe' } }] }), undefined],
+  ])('%s', (_name, field, expected) => {
+    expect(stored({ field }).fields.field!.default).toEqual(expected)
+  })
+
+  it('stores prefilled texts the same way and keeps tokens', () => {
+    const task = { id: 'add', label: 'Neu', kind: 'create', prefill: { name: { de: 'Ausgebucht', en: 'Booked out', it: 'Esaurito' }, day: '@today' } }
+    expect(stored({ name: f.text('Name'), day: f.date('Tag') }, [task]).tasks![0]).toMatchObject({ prefill: { name: { de: 'Ausgebucht', en: 'Booked out' }, day: '@today' } })
   })
 })
 

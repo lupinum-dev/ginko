@@ -7,7 +7,7 @@ import { weekInfoOf } from './time.ts'
 import { componentProblems } from './components.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
-import { PREFILL_TOKENS, type Brick, type Currency, type Field, type Fields, type Locale, type PrefillToken, type Schema } from './types.ts'
+import { PREFILL_TOKENS, type Brick, type Currency, type Field, type Fields, type Json, type Locale, type PrefillToken, type Schema } from './types.ts'
 import { coreMessage } from './messages.ts'
 import { checkValue } from './validate.ts'
 
@@ -37,8 +37,12 @@ export function serializeSchema(site: SiteInput): Schema {
   const isRetired = (path: string) => Object.hasOwn(retired, path) && Boolean(retired[path])
   // fromEntries creates own properties, so a key such as `__proto__` stays visible to checkSchema.
   const bricks = Object.fromEntries(Object.entries(site.bricks).map(([key, brick], pos) => {
-    const fields: Fields = Object.fromEntries(Object.entries(brick.fields).map(([name, field]) => [name, isRetired(`${key}.${name}`) ? { ...field, retired: true as const } : field]))
-    return [key, { ...brick, pos, fields: positioned(fields), ...(isRetired(key) ? { retired: true as const } : {}) }]
+    const fields: Fields = Object.fromEntries(Object.entries(brick.fields).map(([name, input]) => {
+      const field = storedField(input, site.locales)
+      return [name, isRetired(`${key}.${name}`) ? { ...field, retired: true as const } : field]
+    }))
+    const tasks = brick.tasks?.map((task) => 'prefill' in task && task.prefill ? { ...task, prefill: storedPrefill(task.prefill, brick.fields, site.locales) } : task)
+    return [key, { ...brick, pos, fields: positioned(fields), ...(tasks ? { tasks } : {}), ...(isRetired(key) ? { retired: true as const } : {}) }]
   }))
   const migrations = Object.entries(site.migrations ?? {})
     .map(([id, m]) => ({ id, brick: m.brick, fills: m.fills, fingerprint: migrationFingerprint(m.brick, m.fills, m.compute) }))
@@ -60,6 +64,62 @@ export function serializeSchema(site: SiteInput): Schema {
     ...(site.agents?.review !== undefined ? { agents: { review: site.agents.review } } : {}),
   }, [], []) as Schema
 }
+
+// Defaults and prefills are written in the input form (`f.text('Name', { default: 'Linde' })`) and stored in the
+// stored form, here and nowhere else: the validator, the diff and the platform only see the stored form.
+
+/** `field` with its `default` (and the defaults of list columns) in the stored form, keys in their order; see `storedValue`. */
+function storedField(field: Field, locales: readonly Locale[]): Field {
+  return Object.fromEntries(Object.entries(field).flatMap(([key, value]) => {
+    if (key === 'of' && field.type === 'list') return [[key, Object.fromEntries(Object.entries(field.of).map(([name, column]) => [name, storedField(column, locales)]))]]
+    if (key !== 'default' || value === undefined) return [[key, value]]
+    const stored = storedValue(field, value as Json, locales)
+    return stored === undefined ? [] : [[key, stored]]
+  })) as Field
+}
+
+function storedPrefill(prefill: Readonly<Record<string, Json | undefined>>, fields: Fields, locales: readonly Locale[]): Record<string, Json> {
+  const out: Record<string, Json> = {}
+  for (const [name, input] of Object.entries(prefill)) {
+    if (input === undefined) continue
+    const field = Object.hasOwn(fields, name) ? fields[name] : undefined
+    // Tokens stay; the platform resolves them when the task opens.
+    const value = field && !(typeof input === 'string' && input.startsWith('@')) ? storedValue(field, input, locales) : input
+    if (value !== undefined) out[name] = value
+  }
+  return out
+}
+
+/**
+ * A config value in the stored form: the plain text of a translatable field is the main language's text, and texts
+ * per language keep only the site's locales (a preset writes `{ de, en }` for every site). `undefined` when no text
+ * of the site's locales is left: such a default or prefill is left out, as if the preset had none.
+ */
+function storedValue(field: Field, value: Json, locales: readonly Locale[]): Json | undefined {
+  if (isTranslatable(field)) {
+    if (typeof value === 'string') return { [locales[0]!]: value }
+    // Anything but one text per language stays as it is, so the schema check reports it.
+    if (!isRecord(value) || Object.values(value).some((text) => typeof text !== 'string')) return value
+    const kept = Object.fromEntries(Object.entries(value).filter(([locale]) => locales.includes(locale)))
+    return Object.keys(kept).length ? kept : undefined
+  }
+  if (field.type !== 'list' || !Array.isArray(value)) return value
+  const rows: Json[] = []
+  for (const row of value) {
+    if (!isRecord(row)) { rows.push(row); continue }
+    const stored: Record<string, Json> = {}
+    for (const [name, cell] of Object.entries(row)) {
+      const column = Object.hasOwn(field.of, name) ? field.of[name] : undefined
+      const v = column ? storedValue(column, cell, locales) : cell
+      if (v === undefined) return undefined
+      stored[name] = v
+    }
+    rows.push(stored)
+  }
+  return rows
+}
+
+const isRecord = (value: Json): value is { [key: string]: Json } => typeof value === 'object' && value !== null && !Array.isArray(value)
 
 const LOST = '$lost'
 

@@ -74,17 +74,20 @@ export function defineSite<const S extends SiteInput>(site: S & { retired?: { [P
   return site
 }
 
-export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly Task[] }): SingleBrick<F> {
+/** A collection's detail page per locale: a path with `[slug]` where the entry's slug goes, e.g. `/blog/[slug]`. */
+export type RouteTemplate = `/${string}[slug]${string}`
+
+export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly Task<keyof F & string>[] }): SingleBrick<F> {
   return { kind: 'single', ...input }
 }
 
-export function collection<const F extends Fields, const R extends Partial<Record<Locale, string>> | undefined = undefined>(input: {
+export function collection<const F extends Fields, const R extends Record<Locale, RouteTemplate> | undefined = undefined>(input: {
   label: Label
   describe?: Label
   source?: BrickSource
   fields: F
   layout?: 'sections' | 'tabs'
-  tasks?: readonly Task[]
+  tasks?: readonly Task<keyof F & string>[]
   max: number
   order: 'manual' | { field: keyof F & string; dir: 'asc' | 'desc' }
   route?: R

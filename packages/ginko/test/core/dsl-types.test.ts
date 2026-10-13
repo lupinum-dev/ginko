@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collection, defineSite, f, single } from '../../src/index.ts'
+import { collection, defineSite, f, single, type DataOf } from '../../src/index.ts'
 
 // The authoring types reject input the validator would only reject at `ginko release`. `pnpm typecheck`
 // runs this file: each `@ts-expect-error` fails the check when a type is widened again.
@@ -14,6 +14,72 @@ describe('authoring types', () => {
     defineSite({ ...base, bricks, retired: { 'menu.gone': { drop: true } } })
     // @ts-expect-error the empty rule from before 0.4
     defineSite({ ...base, bricks, retired: { 'menu.old': {} } })
+    expect(true).toBe(true)
+  })
+
+  it('builders take no platform keys and only the options their type uses', () => {
+    // @ts-expect-error `pos` is set by the platform
+    f.text('Name', { pos: 3 })
+    // @ts-expect-error `retired` is set through the site's `retired`
+    f.text('Name', { retired: true })
+    // @ts-expect-error a slug always has one value per language
+    f.slug('Adresse', { from: 'name', translate: false })
+    // @ts-expect-error several entries need f.refs
+    f.ref('Autor', { to: 'people', multiple: true })
+    // @ts-expect-error max counts entries, so only f.refs has it
+    f.ref('Autor', { to: 'people', max: 2 })
+    expect(true).toBe(true)
+  })
+
+  it('default has the type of the field', () => {
+    f.text('Name', { default: 'Linde' })
+    f.text('Name', { default: { de: 'Linde', en: 'Linden' } })
+    f.money('Preis', { default: { amount: 1250 } })
+    const kind = f.choice('Art', { options: ['a', 'b'], default: 'a' })
+    // @ts-expect-error the value type keeps the option values
+    const notAnOption: DataOf<{ kind: typeof kind }>['kind'] = 'c'
+    f.choices('Arten', { options: ['a', 'b'], default: ['b'] })
+    // @ts-expect-error a number field takes a number
+    f.number('Anzahl', { min: 0, max: 9, step: 1, default: '3' })
+    // @ts-expect-error a value that is not an option
+    f.choice('Art', { options: ['a', 'b'], default: 'c' })
+    // @ts-expect-error markdown has no default
+    f.markdown('Text', { default: 'Hallo' })
+    // @ts-expect-error a mistyped option
+    f.text('Name', { max: 80, maxx: 90 })
+    expect(notAnOption).toBe('c')
+  })
+
+  it('list rows keep the types of their columns', () => {
+    const fields = { days: f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { dish: f.text('Gericht'), price: f.money('Preis') } }) }
+    const row = {} as DataOf<typeof fields>['days'][number]
+    const dish: string = row.dish
+    // @ts-expect-error money is no text
+    const price: string = row.price
+    expect([dish, price]).toHaveLength(2)
+  })
+
+  it('ref is one ID, refs a list of IDs', () => {
+    const fields = { author: f.ref('Autor', { to: 'people' }), tags: f.refs('Tags', { to: 'tags', max: 3 }) }
+    const data = {} as DataOf<typeof fields>
+    const one: string = data.author
+    const many: string[] = data.tags
+    // @ts-expect-error not a list
+    const wrong: string[] = data.author
+    expect([one, many, wrong]).toHaveLength(3)
+  })
+
+  it('tasks, visible and route name what the brick has', () => {
+    const fields = { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), until: f.date('Bis') }
+    collection({ label: 'News', fields, max: 5, order: 'manual', route: { de: '/news/[slug]' }, visible: { mode: 'until', field: 'until' }, tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['title'], prefill: { until: '@today' } }] })
+    // @ts-expect-error the visibility field does not exist
+    collection({ label: 'News', fields, max: 5, order: 'manual', visible: { mode: 'until', field: 'untill' } })
+    // @ts-expect-error a task field that does not exist
+    collection({ label: 'News', fields, max: 5, order: 'manual', tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['titel'] }] })
+    // @ts-expect-error a prefill for a field that does not exist
+    single({ label: 'S', fields, tasks: [{ id: 'c', label: 'C', kind: 'edit', fields: ['title'], prefill: { titel: 'x' } }] })
+    // @ts-expect-error a route without [slug]
+    collection({ label: 'News', fields, max: 5, order: 'manual', route: { de: '/news' } })
     expect(true).toBe(true)
   })
 })

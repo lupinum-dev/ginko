@@ -90,9 +90,10 @@ export const PREFILL_TOKENS = ['@today', '@workWeek', '@nextWorkWeek'] as const
 export type PrefillToken = typeof PREFILL_TOKENS[number]
 
 /** `needsApproval: true`: what staff does with this task goes live only after an owner or admin approves it (SPEC 17). */
-export type Task =
-  | { id: string; label: Label; kind: 'edit'; fields: readonly string[]; pick?: boolean; prefill?: Record<string, Json | PrefillToken>; needsApproval?: boolean }
-  | { id: string; label: Label; kind: 'create'; prefill?: Record<string, Json | PrefillToken>; needsApproval?: boolean }
+/** `K` is the field names of the brick: in `single()` and `collection()` a task names only fields the brick has. */
+export type Task<K extends string = string> =
+  | { id: string; label: Label; kind: 'edit'; fields: readonly K[]; pick?: boolean; prefill?: { readonly [P in K]?: Json | PrefillToken }; needsApproval?: boolean }
+  | { id: string; label: Label; kind: 'create'; prefill?: { readonly [P in K]?: Json | PrefillToken }; needsApproval?: boolean }
   | { id: string; label: Label; kind: 'remove'; needsApproval?: boolean }
 
 /**

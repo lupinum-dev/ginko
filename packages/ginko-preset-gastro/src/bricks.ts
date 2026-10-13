@@ -1,5 +1,5 @@
 // Restaurant bricks with the owner's quick tasks. Labels come in German and English; `lang` picks only default content.
-import { collection, f, single, type BrickSource, type ChoiceOption, type ChoicesField, type Locale } from '@lupinum/ginko'
+import { collection, f, single, type BrickSource, type ChoiceOption, type ChoicesField, type Locale, type RouteTemplate } from '@lupinum/ginko'
 import { allergenNames } from './names.ts'
 import { calendarOf, type HolidayCalendar, type HolidaysOption } from './holidays.ts'
 
@@ -240,7 +240,8 @@ export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: GastroOptio
 
 export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { allergens?: A } = {}) {
   const choices = allergenChoices(opts.allergens)
-  const dishFields = choices ? ['category', 'name', 'description', 'price', 'allergens', 'veg'] : ['category', 'name', 'description', 'price', 'veg']
+  // `allergens` exists only when the set is not 'none', which the type cannot see here; the schema check covers it.
+  const dishFields = (choices ? ['category', 'name', 'description', 'price', 'allergens', 'veg'] : ['category', 'name', 'description', 'price', 'veg']) as readonly ('category' | 'name' | 'description' | 'price' | 'veg')[]
   return collection({
     label: both('Speisekarte', 'Menu'),
     ...sourceOf(opts),
@@ -277,7 +278,7 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
   })
 }
 
-export function events(opts: GastroOptions & { route: Partial<Record<Locale, string>> }) {
+export function events(opts: GastroOptions & { route: Record<Locale, RouteTemplate> }) {
   return collection({
     label: both('Veranstaltungen', 'Events'),
     ...sourceOf(opts),

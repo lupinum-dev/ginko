@@ -492,7 +492,9 @@
           },
           "kind": "create",
           "prefill": {
-            "text": "Heute sind wir ausgebucht.",
+            "text": {
+              "de": "Heute sind wir ausgebucht."
+            },
             "until": "@today"
           }
         },

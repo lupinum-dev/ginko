@@ -24,7 +24,7 @@ export async function prefillAs(ctx: QueryCtx, actor: Actor, args: ObjectType<ty
   const values: Record<string, Json> = {}
   for (const [key, raw] of Object.entries(prefill)) {
     const field = Object.hasOwn(brick.fields, key) ? brick.fields[key] : undefined
-    if (!field) continue
+    if (!field || raw === undefined) continue
     const token = typeof raw === 'string' ? resolveToken(raw, schema.timezone, weekOfSchema(schema)) : undefined
     const value: Json = token ?? raw
     // Literal text of a translatable field starts in the main language.

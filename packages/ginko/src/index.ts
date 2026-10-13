@@ -5,7 +5,7 @@
 // This entry is the public API for site developers: each name here is documented on the docs site
 // ("Reading content", API reference). Ginko's own packages import the rest from '@lupinum/ginko/internal',
 // which has no stability promise. Adding a name here later breaks nobody; removing one breaks sites. Keep it small.
-export { defineSite, single, collection, type SiteInput, type Migration, type MigrationContext } from './core/site.ts'
+export { defineSite, single, collection, type SiteInput, type Migration, type MigrationContext, type RouteTemplate } from './core/site.ts'
 export type { LinkConfig } from './core/links.ts'
 export type { Redirect } from './core/redirects.ts'
 export type { ComponentRegistry } from './core/components.ts'
