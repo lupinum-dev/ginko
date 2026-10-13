@@ -7,7 +7,10 @@
     "node": "^22.19 || ^24.11"
   },
   "scripts": {
-    "build": "pnpm --filter @lupinum/ginko --filter @lupinum/ginko-i18n --filter @lupinum/ginko-content --filter @lupinum/ginko-components --filter @lupinum/ginko-docs --filter @lupinum/ginko-preset-gastro --filter create-ginko --if-present run build",
+    "lint": "node scripts/lint-changesets.mjs",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:contracts && pnpm check:pack && node scripts/audit-deps.mjs",
+    "changeset": "changeset",
+    "build": "pnpm --filter @lupinum/ginko-i18n run build && pnpm --filter @lupinum/ginko run build && pnpm --filter @lupinum/ginko-content run build && pnpm --filter @lupinum/ginko-components run build && pnpm --filter @lupinum/ginko-docs run build && pnpm --filter @lupinum/ginko-preset-gastro run build && pnpm --filter create-ginko --if-present run build",
     "test": "vitest run",
     "i18n:browser": "bash packages/ginko-i18n/browser/build-all.sh && node packages/ginko-i18n/browser/attack.mjs && node packages/ginko-i18n/browser/zone-attack.mjs && node packages/ginko-i18n/browser/edge-attack.mjs && node packages/ginko-i18n/browser/content-attack.mjs",
     "check:contracts": "node --experimental-strip-types scripts/contracts.ts",
@@ -26,6 +29,7 @@
     "@types/node": "^24.19.1",
     "@vitejs/plugin-vue": "6.0.9",
     "happy-dom": "20.14.5",
+    "pkg-pr-new": "0.0.90",
     "publint": "0.3.25",
     "typescript": "6.0.3",
     "unbuild": "3.6.1",

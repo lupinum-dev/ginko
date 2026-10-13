@@ -58,6 +58,9 @@ export default defineBuildConfig({
     ...Object.keys(pkg.dependencies),
     ...Object.keys(pkg.dependencies).map((name) => new RegExp(`^${name}/`)),
     ...Object.keys(pkg.peerDependencies),
+    // Loaded with a dynamic import when a site has file bricks. Not a dependency or peer (ginko-content depends on ginko,
+    // and a cycle stops the release), so it is only a devDependency here for types and tests.
+    '@lupinum/ginko-content',
     'vue',
     'nitropack',
     'h3',

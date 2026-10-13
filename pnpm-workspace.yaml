@@ -8,14 +8,26 @@ packages:
 allowBuilds:
   esbuild: true
 
+# Dependency quarantine: never install versions younger than 24 hours. Our own scope skips it,
+# because only our protected release workflows publish it.
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
 minimumReleaseAgeExclude:
-  - '@nuxt/kit-nightly@5.0.0-2610102328-1438bbb'
-  - '@nuxt/nitro-server-nightly@5.0.0-2610102328-1438bbb'
-  - '@nuxt/schema-nightly@5.0.0-2610102328-1438bbb'
-  - '@nuxt/vite-builder-nightly@5.0.0-2610102328-1438bbb'
-  - '@nuxt/vite-server-nightly@5.0.0-2610102328-1438bbb'
-  - nuxt-nightly@5.0.0-2610102328-1438bbb
+  - '@lupinum/*'
 
 # Pre-release better-convex from feat/functions-and-agents (158427e1). Remove when published.
 overrides:
   '@lupinum/better-convex-vue': 'file:./vendor/lupinum-better-convex-vue-1.0.0-rc.1.tgz'
+
+auditConfig:
+  ignoreGhsas:
+    # No fixed simple-git 3.x, and Nuxt DevTools fails to load 4.x. DevTools runs only in `nuxt dev`
+    # on a developer machine with the repository's own arguments. Recheck 2026-11-06.
+    - GHSA-v5rq-49vh-5v5c
+    - GHSA-x6jw-m9v5-85vh
+    - GHSA-g4wm-2vf7-vfgr
+    - GHSA-858h-whjf-mvg5
+    # No published fix; braces processes build-time glob patterns, not published site input. Recheck 2026-11-01.
+    - GHSA-vfj7-8cjw-p6xm
+    # No published fix; node-forge is used only for listhen dev-server self-signed certificates. Recheck 2026-11-01.
+    - GHSA-86w9-cpqp-85rv
