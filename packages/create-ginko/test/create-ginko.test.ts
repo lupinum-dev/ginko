@@ -21,6 +21,8 @@ describe('create-ginko', () => {
     expect(read('plain', 'ginko.config.ts')).toContain("locales: ['en']")
     expect(read('plain', 'content/start.md')).toContain('title: Hello Ginko')
     expect(JSON.parse(read('plain', 'package.json')).dependencies).not.toHaveProperty('@lupinum/ginko-docs')
+    // pnpm 11 exits 1 on `pnpm install` unless the starter allows esbuild's install script.
+    expect(read('plain', 'pnpm-workspace.yaml')).toMatch(/^allowBuilds:\n  esbuild: true$/m)
     expect(result.stdout).toContain('Created plain from the plain starter in English.')
     expect(result.stdout).toContain('npm create ginko@latest my-site -- --preset gastro')
   })
