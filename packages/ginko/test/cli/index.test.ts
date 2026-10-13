@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { main } from '../../src/cli/index.ts'
 import { main as monorepoMain } from '../../src/cli/monorepo.ts'
-import { CliError } from '../../src/cli/model.ts'
 import { PlatformError } from '../../src/cli/platform.ts'
 import { exitCodeOf, type CliDeps } from '../../src/cli/run.ts'
 
@@ -52,6 +52,11 @@ describe('ginko release', () => {
 
 describe('ginko output and exit codes', () => {
   const PLATFORM = { GINKO_PLATFORM: 'https://platform.example', GINKO_KEY: KEY }
+  const RESTAURANT = fileURLToPath(new URL('../../../../sites/restaurant/ginko.config.ts', import.meta.url))
+  // A valid platform state, but of the site "b": the key belongs to another site.
+  const otherSite = async () => Response.json({ site: 'b', schema: { bricks: {}, migrations: [], retired: {} }, schemaRev: 1, contentRev: 1, migrations: [], entries: [] })
+  const RELEASE = { ...PLATFORM, GINKO_COMMIT: 'c1' }
+  const head = async () => 'c1\trefs/heads/main\n'
 
   it.each<[string, string[], number, string, Partial<CliDeps>?, string?]>([
     ['no command', [], 2, 'USAGE'],
@@ -68,6 +73,12 @@ describe('ginko output and exit codes', () => {
     // The site's code is not at fault, so not exit 1.
     ['a platform answer that is not an export', ['export'], 3, 'UNAVAILABLE', { env: PLATFORM, fetch: async () => Response.json({ ok: true }) }],
     ['config that cannot be loaded', ['check', '--config', 'missing/ginko.config.ts'], 1, 'INVALID'],
+    // Exit 3 tells CI that a rerun can help; the codes below come from the real throw sites, not from a hand-built error.
+    ['an unreachable platform', ['export'], 3, 'UNAVAILABLE', { env: PLATFORM, fetch: async () => { throw new TypeError('fetch failed') } }],
+    ['git ls-remote fails', ['release'], 3, 'UNAVAILABLE', { env: RELEASE, git: async () => { throw new Error('network') } }],
+    ['the release branch does not exist', ['release'], 2, 'USAGE', { env: RELEASE, git: async () => '' }],
+    ['release with a key of another site', ['release', '--config', RESTAURANT], 4, 'FORBIDDEN', { env: RELEASE, git: head, fetch: otherSite }],
+    ['check with a key of another site', ['check', '--config', RESTAURANT], 4, 'FORBIDDEN', { env: PLATFORM, fetch: otherSite }],
   ])('%s (%j): exit %i, one JSON line with error.code %s', async (_name, argv, exit, code, deps = {}, message = expect.any(String)) => {
     const result = await run(argv, deps)
     expect(result.code).toBe(exit)
@@ -78,15 +89,12 @@ describe('ginko output and exit codes', () => {
   })
 
   it.each([
-    ['a rejected schema', 1, new CliError('menu.allergens is missing')],
     ['a platform rejection', 1, new PlatformError('SCHEMA_REJECTED', 'no', 400)],
-    ['an unreachable platform', 3, new CliError('The platform is not reachable.', 'UNAVAILABLE')],
     ['a server error of the platform', 3, new PlatformError('INTERNAL', 'try later', 500)],
     ['a site that kept changing', 3, new PlatformError('CHANGED_SINCE', 'changed', 409)],
     ['a revoked key', 4, new PlatformError('UNAUTHORIZED', 'no key', 401)],
     ['a key without the scope', 4, new PlatformError('FORBIDDEN', 'not allowed', 403)],
     ['a proxy that refuses access', 4, new PlatformError('HTTP_401', 'HTTP 401', 401)],
-    ['a key of another site', 4, new CliError('The key belongs to the site “b”.', 'FORBIDDEN')],
     ['an unexpected error', 1, new Error('EACCES')],
   ])('%s exits with %i', (_name, exit, error) => {
     expect(exitCodeOf(error)).toBe(exit)
