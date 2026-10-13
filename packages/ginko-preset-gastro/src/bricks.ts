@@ -1,5 +1,6 @@
-// Restaurant bricks with the owner's quick tasks. Labels and prefilled texts come in German and English; the site keeps
-// the texts of its own locales (`serializeSchema`), so a site in another language starts without them.
+// Restaurant bricks with the owner's quick tasks. Labels and prefilled texts come in German and English. The site keeps
+// the texts of its own locales when its main locale is German or English; otherwise it starts without the prefilled
+// texts (`serializeSchema`).
 import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate } from '@lupinum/ginko'
 import type { ChoicesField, ListField } from '@lupinum/ginko/internal'
 import { allergenNames } from './names.ts'
