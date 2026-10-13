@@ -7,6 +7,7 @@
     "node": "^22.19 || ^24.11"
   },
   "scripts": {
+    "build": "pnpm --filter @lupinum/ginko --filter @lupinum/ginko-i18n --filter @lupinum/ginko-content --filter @lupinum/ginko-components --filter @lupinum/ginko-docs --filter @lupinum/ginko-preset-gastro --filter create-ginko --if-present run build",
     "test": "vitest run",
     "i18n:browser": "bash packages/ginko-i18n/browser/build-all.sh && node packages/ginko-i18n/browser/attack.mjs && node packages/ginko-i18n/browser/zone-attack.mjs && node packages/ginko-i18n/browser/edge-attack.mjs && node packages/ginko-i18n/browser/content-attack.mjs",
     "check:contracts": "node --experimental-strip-types scripts/contracts.ts",

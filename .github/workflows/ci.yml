@@ -6,6 +6,12 @@ on:
   pull_request:
   push:
     branches: [main]
+  # release.yml starts this workflow on the Version packages PR, because pull requests
+  # opened with GITHUB_TOKEN trigger no workflows on their own.
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -65,3 +71,20 @@ jobs:
           path: packages/ginko-i18n/browser/.evidence
           include-hidden-files: true
           if-no-files-found: ignore
+
+  # The one required status check for the main branch ruleset, and the check release.yml waits for
+  # before it publishes. i18n-browser is skipped outside pull requests, so `skipped` counts as passing.
+  ci:
+    name: ci
+    if: always()
+    needs: [check, i18n-browser]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "job results: $RESULTS"
+          for result in $RESULTS; do
+            [[ "$result" == success || "$result" == skipped ]] || exit 1
+          done
