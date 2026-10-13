@@ -1,13 +1,14 @@
 <script setup lang="ts">
 // The lunch week as one A4 page for the door. Same data and pending rule as the lunch page; a week that is
 // not the current one prints nothing but the pending text, so no old menu goes on the door by mistake.
+import { formatMoney } from '@lupinum/ginko'
 import { siteName, telHref, type Weekday } from '../utils/site'
 
 definePageMeta({ layout: 'print', path: '/mittagsmenue/drucken', i18n: { paths: { en: '/lunch/print' } } })
 
 const { lang, labels } = useSite()
 const { t, format } = useI18n()
-const path = usePagePath()
+const path = useGinkoPath()
 const { lunch, current } = useLunchWeek()
 const contact = useGinko('contact')
 const print = () => window.print()

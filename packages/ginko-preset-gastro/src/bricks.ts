@@ -79,14 +79,18 @@ const open = { field: 'closed', not: true } as const
 
 /** One 7-row week, shared by the standard hours and the hour plans. */
 function weekField() {
-  return f.list(both('Wochenplan', 'Weekly hours'), both('Tag', 'Day'), {
-    day: f.choice(both('Tag', 'Day'), weekdays),
-    closed: f.boolean(both('Ruhetag', 'Closed all day')),
-    from1: f.time(both('Mittag von', 'Lunch from'), { optional: true, showWhen: open }),
-    to1: f.time(both('Mittag bis', 'Lunch until'), { optional: true, showWhen: open }),
-    from2: f.time(both('Abend von', 'Evening from'), { optional: true, showWhen: open }),
-    to2: f.time(both('Abend bis', 'Evening until'), { optional: true, showWhen: open }),
-  }, { min: 7, max: 7, unique: 'day', default: weekDefault })
+  return f.list(both('Wochenplan', 'Weekly hours'), {
+    itemLabel: both('Tag', 'Day'),
+    fields: {
+      day: f.choice(both('Tag', 'Day'), { options: weekdays }),
+      closed: f.boolean(both('Ruhetag', 'Closed all day')),
+      from1: f.time(both('Mittag von', 'Lunch from'), { optional: true, showWhen: open }),
+      to1: f.time(both('Mittag bis', 'Lunch until'), { optional: true, showWhen: open }),
+      from2: f.time(both('Abend von', 'Evening from'), { optional: true, showWhen: open }),
+      to2: f.time(both('Abend bis', 'Evening until'), { optional: true, showWhen: open }),
+    },
+    min: 7, max: 7, unique: 'day', default: weekDefault,
+  })
 }
 
 export function hours(opts: GastroOptions & {
@@ -98,23 +102,30 @@ export function hours(opts: GastroOptions & {
     ...sourceOf(opts),
     fields: {
       week: weekField(),
-      exceptions: f.list(both('Betriebsurlaub und Ausnahmen', 'Holiday closures and exceptions'), both('Ausnahme', 'Exception'), {
-        when: f.daterange(both('Zeitraum', 'Dates')),
-        reason: f.text(both('Grund', 'Reason'), { max: 140 }),
-        // A new exception is a closure unless the owner says otherwise.
-        closed: f.boolean(both('Geschlossen', 'Closed'), { default: true }),
-        // Special hours: "Geschlossen" off and times set, e.g. 24.12. from 11:00 to 14:00.
-        from1: f.time(both('Mittag von', 'Lunch from'), { optional: true, showWhen: open }),
-        to1: f.time(both('Mittag bis', 'Lunch until'), { optional: true, showWhen: open }),
-        from2: f.time(both('Abend von', 'Evening from'), { optional: true, showWhen: open }),
-        to2: f.time(both('Abend bis', 'Evening until'), { optional: true, showWhen: open }),
-      }, { max: 20, default: [] }),
+      exceptions: f.list(both('Betriebsurlaub und Ausnahmen', 'Holiday closures and exceptions'), {
+        itemLabel: both('Ausnahme', 'Exception'),
+        fields: {
+          when: f.daterange(both('Zeitraum', 'Dates')),
+          reason: f.text(both('Grund', 'Reason'), { max: 140 }),
+          // A new exception is a closure unless the owner says otherwise.
+          closed: f.boolean(both('Geschlossen', 'Closed'), { default: true }),
+          // Special hours: "Geschlossen" off and times set, e.g. 24.12. from 11:00 to 14:00.
+          from1: f.time(both('Mittag von', 'Lunch from'), { optional: true, showWhen: open }),
+          to1: f.time(both('Mittag bis', 'Lunch until'), { optional: true, showWhen: open }),
+          from2: f.time(both('Abend von', 'Evening from'), { optional: true, showWhen: open }),
+          to2: f.time(both('Abend bis', 'Evening until'), { optional: true, showWhen: open }),
+        },
+        max: 20, default: [],
+      }),
       closedOn: f.date(both('Heute geschlossen am', 'Closed on'), { optional: true }),
       closedNote: f.text(both('Hinweis zur Schließung', 'Note about the closure'), { max: 140, optional: true }),
       holidayNoticeDays: f.number(both('Hinweis vor Ausnahmen (Tage)', 'Show notice before closures (days)'), { min: 0, max: 60, step: 1, default: 14 }),
-      holidays: f.choice(both('An Feiertagen', 'On public holidays'), [
-        { value: 'sunday', label: both('wie Sonntag', 'same as Sunday') }, { value: 'closed', label: both('geschlossen', 'closed') }, { value: 'normal', label: both('normal', 'normal hours') },
-      ], { optional: true, default: 'sunday' }),
+      holidays: f.choice(both('An Feiertagen', 'On public holidays'), {
+        options: [
+          { value: 'sunday', label: both('wie Sonntag', 'same as Sunday') }, { value: 'closed', label: both('geschlossen', 'closed') }, { value: 'normal', label: both('normal', 'normal hours') },
+        ],
+        optional: true, default: 'sunday',
+      }),
     },
     tasks: [
       { id: 'closedToday', label: both('Heute geschlossen', 'Closed today'), kind: 'edit', fields: ['closedOn', 'closedNote'], prefill: { closedOn: '@today' } },
@@ -174,14 +185,16 @@ function lunchDays<A extends AllergenSet>(lang: string | undefined, allergens: A
   const choices = allergenChoices(allergens)
   const placeholder = lang === undefined ? 'de' : lang
   const isPlaceholderLang = (l: string): l is keyof typeof lunchPlaceholder => l === 'de' || l === 'en'
-  return f.list(both('Tage', 'Days'), both('Tag', 'Day'), {
-    day: f.choice(both('Tag', 'Day'), weekdays.slice(0, 5)),
-    dish: f.text(both('Gericht', 'Dish'), { max: 200 }),
-    price: f.money(both('Preis', 'Price'), { optional: true }),
-    ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), choices) } : {}) as AllergenFields<A>,
-  }, {
+  return f.list(both('Tage', 'Days'), {
+    itemLabel: both('Tag', 'Day'),
+    fields: {
+      day: f.choice(both('Tag', 'Day'), { options: weekdays.slice(0, 5) }),
+      dish: f.text(both('Gericht', 'Dish'), { max: 200 }),
+      price: f.money(both('Preis', 'Price'), { optional: true }),
+      ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) } : {}) as AllergenFields<A>,
+    },
     min: 5, max: 5, unique: 'day',
-    ...(isPlaceholderLang(placeholder) ? { default: lunchDefault(placeholder, !!choices) } : {}),
+      ...(isPlaceholderLang(placeholder) ? { default: lunchDefault(placeholder, !!choices) } : {}),
   })
 }
 
@@ -235,18 +248,22 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
     label: both('Speisekarte', 'Menu'),
     ...sourceOf(opts),
     fields: {
-      category: f.choice(both('Kategorie', 'Category'), [
-        { value: 'starters', label: both('Vorspeisen', 'Starters') }, { value: 'soups', label: both('Suppen', 'Soups') },
-        { value: 'mains', label: both('Hauptspeisen', 'Mains') }, { value: 'desserts', label: both('Desserts', 'Desserts') },
-        { value: 'drinks', label: both('Getränke', 'Drinks') },
-      ]),
+      category: f.choice(both('Kategorie', 'Category'), {
+        options: [
+          { value: 'starters', label: both('Vorspeisen', 'Starters') }, { value: 'soups', label: both('Suppen', 'Soups') },
+          { value: 'mains', label: both('Hauptspeisen', 'Mains') }, { value: 'desserts', label: both('Desserts', 'Desserts') },
+          { value: 'drinks', label: both('Getränke', 'Drinks') },
+        ],
+      }),
       name: f.text(both('Name', 'Name'), { max: 120 }),
       description: f.longtext(both('Beschreibung', 'Description'), { max: 500, optional: true }),
       price: f.money(both('Preis', 'Price')),
-      ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), choices) } : {}) as AllergenFields<A>,
-      veg: f.choice(both('Vegetarisch', 'Vegetarian'), [
-        { value: 'none', label: both('nicht vegetarisch', 'not vegetarian') }, { value: 'vegetarian', label: both('vegetarisch', 'vegetarian') }, { value: 'vegan', label: both('vegan', 'vegan') },
-      ]),
+      ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) } : {}) as AllergenFields<A>,
+      veg: f.choice(both('Vegetarisch', 'Vegetarian'), {
+        options: [
+          { value: 'none', label: both('nicht vegetarisch', 'not vegetarian') }, { value: 'vegetarian', label: both('vegetarisch', 'vegetarian') }, { value: 'vegan', label: both('vegan', 'vegan') },
+        ],
+      }),
       // A planned price change: the site shows `nextPrice` from `priceFrom` on (see `priceOn`).
       nextPrice: f.money(both('Neuer Preis', 'New price'), { optional: true }),
       priceFrom: f.date(both('Neuer Preis gilt ab', 'New price applies from'), { optional: true }),
@@ -294,7 +311,7 @@ export function gallery(opts: GastroOptions = {}) {
     label: both('Galerie', 'Gallery'),
     ...sourceOf(opts),
     fields: {
-      images: f.list(both('Bilder', 'Images'), both('Bild', 'Image'), { image: f.image(both('Bild', 'Image')) }, { max: 24, default: [] }),
+      images: f.list(both('Bilder', 'Images'), { itemLabel: both('Bild', 'Image'), fields: { image: f.image(both('Bild', 'Image')) }, max: 24, default: [] }),
     },
     tasks: [{ id: 'edit', label: both('Fotos bearbeiten', 'Edit photos'), kind: 'edit', fields: ['images'] }],
   })

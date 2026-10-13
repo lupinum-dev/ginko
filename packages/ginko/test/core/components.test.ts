@@ -7,12 +7,12 @@ import {
 const registry = defineComponents({
   callout: {
     kind: 'block', label: 'Hinweis', describe: 'Hebt einen Absatz hervor.',
-    props: { type: f.choice('Art', ['info', 'warning']), title: f.text('Titel', { optional: true, max: 10 }) },
+    props: { type: f.choice('Art', { options: ['info', 'warning'] }), title: f.text('Titel', { optional: true, max: 10 }) },
   },
   tabs: { kind: 'block', label: 'Tabs', describe: 'Gruppe von Tabs.', props: {}, children: ['tab'] },
   tab: { kind: 'block', label: 'Tab', describe: 'Ein Tab.', props: { label: f.text('Name') }, parents: ['tabs'] },
   card: { kind: 'block', label: 'Karte', describe: 'Karte mit Bereich.', props: {}, slots: { footer: { label: 'Fuß' } } },
-  badge: { kind: 'inline', label: 'Badge', describe: 'Kleine Marke.', props: { size: f.number('Größe', { min: 1, max: 5, step: 1, optional: true }), solid: f.boolean('Gefüllt', { optional: true }), tags: f.choices('Tags', ['a', 'b'], { optional: true }) } },
+  badge: { kind: 'inline', label: 'Badge', describe: 'Kleine Marke.', props: { size: f.number('Größe', { min: 1, max: 5, step: 1, optional: true }), solid: f.boolean('Gefüllt', { optional: true }), tags: f.choices('Tags', { options: ['a', 'b'], optional: true }) } },
 })
 
 describe('componentProblems', () => {
@@ -100,7 +100,7 @@ describe('component registry in the schema', () => {
   })
 
   test('checkSchema reports registry problems', () => {
-    const schema = serializeSchema({ ...site, components: { table: { kind: 'block', label: 'T', describe: 't', props: { r: f.ref('R', 'missing') } } } })
+    const schema = serializeSchema({ ...site, components: { table: { kind: 'block', label: 'T', describe: 't', props: { r: f.ref('R', { to: 'missing' }) } } } })
     const problems = checkSchema(schema).join('\n')
     expect(problems).toContain('belongs to Markdown')
     expect(problems).toContain('components.table.props.r: to must name a collection')

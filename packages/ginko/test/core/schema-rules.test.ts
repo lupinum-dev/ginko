@@ -64,7 +64,7 @@ describe('2. values lost in serializeSchema', () => {
   })
 
   it('names the path of a lost value inside a list column', () => {
-    const rows = f.list('Zeilen', 'Zeile', { c: f.text('C', { ...optional, default: (() => 1) as never }) }, { max: 3 })
+    const rows = f.list('Zeilen', { itemLabel: 'Zeile', fields: { c: f.text('C', { ...optional, default: (() => 1) as never }) }, max: 3 })
     expect(problemsOf(site({ rows }))[0]).toContain('menu.rows.c.default: a function cannot be stored')
   })
 
@@ -72,7 +72,7 @@ describe('2. values lost in serializeSchema', () => {
   it.each(['__proto__', 'prototype', 'constructor'])('a brick, field and list column named %s are refused, not dropped', (key) => {
     const text = f.text('X', optional)
     const brick = single({ label: 'X', fields: { t: f.text('T', optional) } })
-    const column = f.list('Zeilen', 'Zeile', Object.fromEntries([[key, text]]), { max: 3 })
+    const column = f.list('Zeilen', { itemLabel: 'Zeile', fields: Object.fromEntries([[key, text]]), max: 3 })
     const cases: [string, SiteInput, string][] = [
       ['brick', site({}, { bricks: { ...site().bricks, ...Object.fromEntries([[key, brick]]) } as Bricks }), 'Invalid brick name'],
       ['field', site(Object.fromEntries([[key, text]])), 'invalid field name'],
@@ -142,7 +142,7 @@ describe('4b. translatable labels', () => {
     expect(withLabel(label)).toContain(problem)
   })
   it('checks labels of bricks, options and tasks too', () => {
-    const input = site({ kind: f.choice('Art', [{ value: 'a', label: { fr: 'A' } }]) }, {
+    const input = site({ kind: f.choice('Art', { options: [{ value: 'a', label: { fr: 'A' } }] }) }, {
       bricks: { menu: collection({ label: { fr: 'Menu' }, fields: { name: f.text('Name') }, max: 5, order: 'manual', tasks: [{ id: 'new', kind: 'create', label: { fr: 'Nouveau' } }] }) },
     })
     expect(problemsOf(input)).toEqual(['menu.label: label needs a text in the main language “de” or in English.', 'menu.new.label: label needs a text in the main language “de” or in English.'])
@@ -311,7 +311,7 @@ describe('9. value rules (F12)', () => {
 describe('file bricks', () => {
   const md = { body: f.markdown('Text') }
   const files = (fields: Fields, source?: 'files') => site({}, { bricks: { docs: collection({ label: 'Doku', source, fields: { title: f.text('Titel'), ...fields }, max: 50, order: 'manual' }) } })
-  const list = (cell: Fields[string]) => ({ rows: f.list('Zeilen', 'Zeile', { cell }, { max: 5 }) })
+  const list = (cell: Fields[string]) => ({ rows: f.list('Zeilen', { itemLabel: 'Zeile', fields: { cell }, max: 5 }) })
 
   it.each([
     ['two markdown fields in a file brick', files({ ...md, intro: f.markdown('Intro') }, 'files'), 'docs: at most one markdown field (the text of the file).'],

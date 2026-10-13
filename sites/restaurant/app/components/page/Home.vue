@@ -2,7 +2,7 @@
 import { priceOn, restaurantJsonLd } from '@lupinum/ginko-preset-gastro'
 import { siteName, telHref } from '../../utils/site'
 
-const path = usePagePath()
+const path = useGinkoPath()
 const { t } = useI18n()
 const { labels, today } = useSite()
 const gallery = useGinko('gallery')

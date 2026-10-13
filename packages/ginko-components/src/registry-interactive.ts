@@ -15,10 +15,13 @@ export const interactiveComponents = defineComponents({
       en: 'Shows several contents as tabs; one of them is always visible.',
     },
     props: {
-      layout: f.choice({ de: 'Reiterform', en: 'Tab style' }, [
-        { value: 'separate', label: { de: 'Schaltflächen über dem Rahmen', en: 'Buttons above the frame' } },
-        { value: 'line', label: { de: 'Unterstrichen, ohne Rahmen', en: 'Underlined, no frame' } },
-      ], { optional: true, default: 'separate' }),
+      layout: f.choice({ de: 'Reiterform', en: 'Tab style' }, {
+        options: [
+          { value: 'separate', label: { de: 'Schaltflächen über dem Rahmen', en: 'Buttons above the frame' } },
+          { value: 'line', label: { de: 'Unterstrichen, ohne Rahmen', en: 'Underlined, no frame' } },
+        ],
+        optional: true, default: 'separate',
+      }),
       padded: f.boolean({ de: 'Innenabstand', en: 'Inner space' }, { optional: true, default: true, hint: { de: 'Aus: ein Codeblock füllt den Reiter.', en: 'Off: a code block fills the tab.' } }),
       appearance,
     },
@@ -82,18 +85,24 @@ export const interactiveComponents = defineComponents({
       de: 'Nummerierte Schritte; jede Überschrift im Block beginnt einen Schritt.',
       en: 'Numbered steps; each heading in the block starts a step.',
     },
-    props: { mode: f.choice({ de: 'Zeichen', en: 'Marker' }, [
-      { value: 'numbered', label: { de: 'Nummer', en: 'Number' } }, { value: 'check', label: { de: 'Haken', en: 'Check' } },
-    ], { optional: true, default: 'numbered' }), appearance },
+    props: { mode: f.choice({ de: 'Zeichen', en: 'Marker' }, {
+      options: [
+        { value: 'numbered', label: { de: 'Nummer', en: 'Number' } }, { value: 'check', label: { de: 'Haken', en: 'Check' } },
+      ],
+      optional: true, default: 'numbered',
+    }), appearance },
     editor: { group: { de: 'Layout', en: 'Layout' }, example: '::steps\n### Konto anlegen\nÖffne die Startseite.\n\n### Seite füllen\nTrage die Texte ein.\n::' },
   },
   cards: {
     kind: 'block',
     label: { de: 'Karten', en: 'Cards' },
     describe: { de: 'Ordnet Karten nebeneinander an.', en: 'Puts cards side by side.' },
-    props: { cols: f.choice({ de: 'Spalten', en: 'Columns' }, [
-      { value: '1', label: { de: 'Eine', en: 'One' } }, { value: '2', label: { de: 'Zwei', en: 'Two' } }, { value: '3', label: { de: 'Drei', en: 'Three' } },
-    ], { optional: true, default: '2' }), appearance },
+    props: { cols: f.choice({ de: 'Spalten', en: 'Columns' }, {
+      options: [
+        { value: '1', label: { de: 'Eine', en: 'One' } }, { value: '2', label: { de: 'Zwei', en: 'Two' } }, { value: '3', label: { de: 'Drei', en: 'Three' } },
+      ],
+      optional: true, default: '2',
+    }), appearance },
     children: ['card'],
     editor: { group: { de: 'Layout', en: 'Layout' }, example: ':::cards\n::card{title="Erste Karte" href="/"}\nKurzer Text.\n::\n::card{title="Zweite Karte"}\nNoch ein Text.\n::\n:::' },
   },
@@ -110,11 +119,14 @@ export const interactiveComponents = defineComponents({
       footer: f.text({ de: 'Fußzeile', en: 'Footer' }, { optional: true, max: 120 }),
       href: href({ de: 'Link', en: 'Link' }, true),
       icon,
-      iconColor: f.choice({ de: 'Symbolfarbe', en: 'Icon colour' }, [
-        { value: 'primary', label: { de: 'Hauptfarbe', en: 'Primary' } }, { value: 'info', label: { de: 'Info', en: 'Info' } },
-        { value: 'success', label: { de: 'Erfolg', en: 'Success' } }, { value: 'warning', label: { de: 'Warnung', en: 'Warning' } },
-        { value: 'error', label: { de: 'Fehler', en: 'Error' } },
-      ], { optional: true }),
+      iconColor: f.choice({ de: 'Symbolfarbe', en: 'Icon colour' }, {
+        options: [
+          { value: 'primary', label: { de: 'Hauptfarbe', en: 'Primary' } }, { value: 'info', label: { de: 'Info', en: 'Info' } },
+          { value: 'success', label: { de: 'Erfolg', en: 'Success' } }, { value: 'warning', label: { de: 'Warnung', en: 'Warning' } },
+          { value: 'error', label: { de: 'Fehler', en: 'Error' } },
+        ],
+        optional: true,
+      }),
       image: f.image({ de: 'Bild', en: 'Image' }, { optional: true }),
       horizontal: f.boolean({ de: 'Bild neben dem Text', en: 'Image beside the text' }, { optional: true }),
       appearance,

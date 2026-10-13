@@ -15,10 +15,13 @@ export const apiComponents = defineComponents({
     },
     props: {
       title: f.text({ de: 'Titel', en: 'Title' }, { optional: true, max: 120, hint: { de: 'Wird gezeigt, wenn weder Methode noch Pfad gesetzt sind.', en: 'Shown when neither method nor path is set.' } }),
-      method: f.choice({ de: 'Methode', en: 'Method' }, [
-        { value: 'get', label: 'GET' }, { value: 'post', label: 'POST' }, { value: 'put', label: 'PUT' }, { value: 'patch', label: 'PATCH' },
-        { value: 'delete', label: 'DELETE' }, { value: 'head', label: 'HEAD' }, { value: 'options', label: 'OPTIONS' },
-      ], { optional: true }),
+      method: f.choice({ de: 'Methode', en: 'Method' }, {
+        options: [
+          { value: 'get', label: 'GET' }, { value: 'post', label: 'POST' }, { value: 'put', label: 'PUT' }, { value: 'patch', label: 'PATCH' },
+          { value: 'delete', label: 'DELETE' }, { value: 'head', label: 'HEAD' }, { value: 'options', label: 'OPTIONS' },
+        ],
+        optional: true,
+      }),
       path: f.text({ de: 'Pfad', en: 'Path' }, { optional: true, max: 300, hint: { de: 'Zum Beispiel /v1/gaerten/{id}.', en: 'For example /v1/gardens/{id}.' } }),
       appearance,
     },
@@ -39,10 +42,13 @@ export const apiComponents = defineComponents({
       name: f.text({ de: 'Name', en: 'Name' }, { max: 80 }),
       group: f.text({ de: 'Gruppe', en: 'Group' }, { optional: true, max: 40, hint: { de: 'Zum Beispiel Query, Body oder Antwort. Ohne Angabe: „Parameter“.', en: 'For example Query, Body or Response. If empty: “Parameters”.' } }),
       type: f.text({ de: 'Typ', en: 'Type' }, { optional: true, max: 120, hint: { de: 'Zum Beispiel string oder number[].', en: 'For example string or number[].' } }),
-      presence: f.choice({ de: 'Pflicht', en: 'Required' }, [
-        { value: 'required', label: { de: 'Erforderlich', en: 'Required' } },
-        { value: 'optional', label: { de: 'Optional (mit ?)', en: 'Optional (with ?)' } },
-      ], { optional: true }),
+      presence: f.choice({ de: 'Pflicht', en: 'Required' }, {
+        options: [
+          { value: 'required', label: { de: 'Erforderlich', en: 'Required' } },
+          { value: 'optional', label: { de: 'Optional (mit ?)', en: 'Optional (with ?)' } },
+        ],
+        optional: true,
+      }),
       deprecated: f.boolean({ de: 'Veraltet', en: 'Deprecated' }, { optional: true }),
       since: f.text({ de: 'Seit Version', en: 'Since version' }, { optional: true, max: 20 }),
       defaultValue: f.text({ de: 'Standardwert', en: 'Default value' }, { optional: true, max: 80 }),

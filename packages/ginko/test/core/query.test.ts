@@ -58,6 +58,11 @@ describe('query order', () => {
     expect(ids(query(bundle, 'menu', { where: { category: 'mains' }, order: 'category' }, schema).items)).toEqual(['menu-schnitzel', 'menu-risotto', 'menu-dal'])
   })
 
+  it('takes the { field, dir } form of a brick order, same result as the string', () => {
+    expect(ids(query(bundle, 'events', { order: { field: 'price', dir: 'desc' } }, schema).items)).toEqual(['martinigans', 'weinabend', 'sommerfest'])
+    expect(ids(query(bundle, 'events', { order: { field: 'price' } }, schema).items)).toEqual(['weinabend', 'martinigans', 'sommerfest'])
+  })
+
   it('rejects an invalid order', () => {
     expect(() => query(bundle, 'menu', { order: 'price sideways' }, schema)).toThrow(/invalid order/)
   })
@@ -94,7 +99,7 @@ describe('query projection and facets', () => {
 
 describe('query include', () => {
   // `ref` does not exist in core yet: a hand-written schema carries the agreed shape.
-  const refSchema: QuerySchema = { bricks: { posts: { fields: { author: f.ref('Autor', 'people'), tags: f.ref('Tags', 'tags', { multiple: true }), title: f.text('Titel') } } } }
+  const refSchema: QuerySchema = { bricks: { posts: { fields: { author: f.ref('Autor', { to: 'people' }), tags: f.ref('Tags', { to: 'tags', multiple: true }), title: f.text('Titel') } } } }
   const b = mini({
     people: { kind: 'collection', items: [item('ann', { name: 'Ann' })] },
     tags: { kind: 'collection', items: [item('t1', { label: 'One' }), item('t2', { label: 'Two' })] },

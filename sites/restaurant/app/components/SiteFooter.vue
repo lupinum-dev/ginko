@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { siteName, telHref } from '../utils/site'
 
-const path = usePagePath()
+const path = useGinkoPath()
 const { t } = useI18n()
 const contact = useGinko('contact')
 </script>

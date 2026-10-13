@@ -3,10 +3,12 @@ import type { Field, Fields, RefField } from './types.ts'
 
 type Scalar = string | number | boolean
 export interface Condition { eq?: unknown; ne?: unknown; gt?: unknown; gte?: unknown; lt?: unknown; lte?: unknown; in?: unknown[]; contains?: unknown }
+/** A sort order: the string `'price desc'` (several separated by `,`) or `{ field, dir }` like a brick's `order`. */
+export type QueryOrder = string | { field: string; dir?: 'asc' | 'desc' }
 export interface Query {
   where?: Record<string, unknown>
-  /** Brick order syntax: `'price desc'`, several separated by `,`. Default: the bundle's item order. */
-  order?: string
+  /** Default: the bundle's item order. */
+  order?: QueryOrder
   limit?: number
   /** 1-based. */
   page?: number
@@ -101,7 +103,12 @@ function checkField(known: Set<string> | undefined, field: string, brick: string
   if (known && !known.has(field)) throw new Error(`query: brick "${brick}" has no field "${field}" (${where})`)
 }
 
-function parseOrder(order: string): { field: string; sign: 1 | -1 }[] {
+function parseOrder(input: QueryOrder): { field: string; sign: 1 | -1 }[] {
+  if (typeof input !== 'string') {
+    if (!input.field || (input.dir !== undefined && input.dir !== 'asc' && input.dir !== 'desc')) throw new Error(`query: invalid order ${JSON.stringify(input)}`)
+    return [{ field: input.field, sign: input.dir === 'desc' ? -1 : 1 }]
+  }
+  const order = input
   return order.split(',').map((part) => part.trim()).filter(Boolean).map((part) => {
     const [field, dir, extra] = part.split(/\s+/)
     if (!field || extra !== undefined || (dir !== undefined && dir !== 'asc' && dir !== 'desc')) throw new Error(`query: invalid order "${part}"`)
@@ -189,7 +196,7 @@ function include(bundle: Bundle, brick: string, item: BundleItem, fields: string
 }
 
 /** The items before and after `id` in the given (or default) order. Both are missing for an unknown id. */
-export function neighbors(bundle: Bundle, brick: string, id: string, order?: string): { prev?: BundleItem; next?: BundleItem } {
+export function neighbors(bundle: Bundle, brick: string, id: string, order?: QueryOrder): { prev?: BundleItem; next?: BundleItem } {
   let items = collectionOf(bundle, brick)
   if (order) items = sortItems(items, parseOrder(order))
   const at = items.findIndex((i) => i.id === id)

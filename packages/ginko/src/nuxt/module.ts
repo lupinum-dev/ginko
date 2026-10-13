@@ -21,7 +21,7 @@ const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
  * The platform origin comes from `NUXT_PUBLIC_GINKO_PLATFORM` (default in dev: http://localhost:3100).
  */
 export default defineNuxtModule<SiteInput>({
-  meta: { name: '@lupinum/ginko', configKey: 'ginko', compatibility: { nuxt: '>=4.6.0' } },
+  meta: { name: '@lupinum/ginko', configKey: 'ginko', compatibility: { nuxt: '^4.6.0' } },
   async setup(site, nuxt) {
     if (!site?.site || !site.bricks) throw new Error('[ginko] Option `ginko` is missing: the result of defineSite() from ginko.config.ts.')
     // The serialized schema is the site's own contract: checked at build, used at runtime for defaults.
@@ -149,7 +149,7 @@ export default defineNuxtModule<SiteInput>({
     addPlugin(resolve(`./runtime/plugin.${runtimeExt}`))
     addPlugin({ src: resolve(`./runtime/today.client.${runtimeExt}`), mode: 'client' })
     extendPages((pages) => { pages.push({ name: 'ginko-preview', path: '/__ginko/preview', file: resolve('./runtime/preview.vue') }) })
-    for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'usePagePath', 'ginkoLangOf', 'formatMoney', 'ginkoSafeHref', 'isGinkoVisible']) addImports({ name, from: composables })
+    for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'useGinkoPath', 'ginkoLangOf', 'ginkoSafeHref', 'isGinkoVisible']) addImports({ name, from: composables })
     for (const name of ['GinkoItem', 'GinkoPageKey', 'GinkoLocale', 'GinkoSeoInput']) addImports({ name, from: composables, type: true })
     addComponent({ name: 'GinkoMarkdown', export: 'GinkoMarkdown', filePath: resolve(`./runtime/GinkoMarkdown.${runtimeExt}`) })
     addComponent({ name: 'GinkoImage', export: 'GinkoImage', filePath: resolve(`./runtime/GinkoImage.${runtimeExt}`) })

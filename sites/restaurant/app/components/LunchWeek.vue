@@ -1,5 +1,6 @@
 <!-- The lunch menu of the week: 5 days from the week start. Today's row is marked. Shown only for the current work week (on the weekend: the coming one). -->
 <script setup lang="ts">
+import { formatMoney } from '@lupinum/ginko'
 import { lunchPrintPath, type Weekday } from '../utils/site'
 
 const { lang, labels } = useSite()

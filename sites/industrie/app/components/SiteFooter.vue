@@ -2,7 +2,7 @@
 import { companyName, telHref } from '../utils/site'
 const { t } = useI18n()
 
-const path = usePagePath()
+const path = useGinkoPath()
 const company = useGinko('company')
 const links = computed((): { key: GinkoPageKey; label: string }[] => [
   { key: 'products', label: t('nav.products') },

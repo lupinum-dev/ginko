@@ -26,15 +26,21 @@ export const f = {
   date: <const O extends Opts<DateField> = {}>(label: Label, o?: O) => ({ type: 'date', label, ...o }) as DateField & O,
   time: <const O extends Opts<TimeField> = {}>(label: Label, o?: O) => ({ type: 'time', label, ...o }) as TimeField & O,
   daterange: <const O extends Opts<DateRangeField> = {}>(label: Label, o?: O) => ({ type: 'daterange', label, ...o }) as DateRangeField & O,
-  choice: <const V extends string, const O extends Omit<Opts<ChoiceField>, 'options'> = {}>(label: Label, input: readonly OptionInput<V>[], o?: O) =>
-    ({ type: 'choice', label, ...(o as O), options: options(input) }) as ChoiceField<V> & O,
-  choices: <const V extends string, const O extends Omit<Opts<ChoicesField>, 'options'> = {}>(label: Label, input: readonly OptionInput<V>[], o?: O) =>
-    ({ type: 'choices', label, ...(o as O), options: options(input) }) as ChoicesField<V> & O,
-  list: <const F extends Fields, const O extends Omit<Opts<ListField<F>>, 'of' | 'itemLabel'>>(label: Label, itemLabel: Label, of: F, o: O) =>
-    ({ type: 'list', label, itemLabel, of, ...o }) as ListField<F> & O,
+  choice: <const V extends string, const O extends Omit<Opts<ChoiceField>, 'options'> = {}>(label: Label, o: O & { options: readonly OptionInput<V>[] }) => {
+    const { options: input, ...rest } = o
+    return { type: 'choice', label, ...rest, options: options(input) } as unknown as ChoiceField<V> & Omit<O, 'options'>
+  },
+  choices: <const V extends string, const O extends Omit<Opts<ChoicesField>, 'options'> = {}>(label: Label, o: O & { options: readonly OptionInput<V>[] }) => {
+    const { options: input, ...rest } = o
+    return { type: 'choices', label, ...rest, options: options(input) } as unknown as ChoicesField<V> & Omit<O, 'options'>
+  },
+  list: <const F extends Fields, const O extends Omit<Opts<ListField<F>>, 'of'>>(label: Label, o: O & { fields: F }) => {
+    const { fields, itemLabel, ...rest } = o
+    return { type: 'list', label, itemLabel, of: fields, ...rest } as unknown as ListField<F> & Omit<O, 'fields'>
+  },
   image: <const O extends Opts<ImageField> = {}>(label: Label, o?: O) => ({ type: 'image', label, ...o }) as ImageField & O,
   file: <const O extends Opts<FileField>>(label: Label, o: O) => ({ type: 'file', label, ...o }) as FileField & O,
-  ref: <const O extends Omit<Opts<RefField>, 'to'> = {}>(label: Label, to: string, o?: O) => ({ type: 'ref', label, to, ...o }) as RefField & O,
+  ref: <const O extends Omit<Opts<RefField>, 'to'> = {}>(label: Label, o: O & { to: string }) => ({ type: 'ref', label, ...o }) as RefField & O,
   slug: <const O extends Opts<SlugField>>(label: Label, o: O) => ({ type: 'slug', label, ...o }) as SlugField & O,
 }
 

@@ -19,14 +19,14 @@ export type Json = null | boolean | number | string | Json[] | { [key: string]: 
 /** A translatable value: one entry per locale, always, even for one-language sites. */
 export type Localized<T> = Partial<Record<Locale, T>>
 
-export interface Option {
+export interface ChoiceOption {
   value: string
   label: Label
 }
 
 interface FieldBase {
   label: Label
-  /** Position in the config, set by serializeSchema: stored objects lose key order (Convex sorts keys). */
+  /** @internal Platform-managed: position in the config, set by serializeSchema (stored objects lose key order). Do not set it. */
   pos?: number
   /** A short help text under the field, per language like `label`. */
   hint?: Label
@@ -35,7 +35,7 @@ interface FieldBase {
   default?: Json
   /** `false` turns translation off for a translatable type; `'manual'` never gets machine suggestions. */
   translate?: false | 'manual'
-  /** Set by the platform when a field is listed in `retired`. */
+  /** @internal Platform-managed: set when a field is listed in `retired`. Do not set it. */
   retired?: true
   /**
    * Show the field in the Studio only while a sibling field (same brick, list row or component) `is` a value,
@@ -103,13 +103,14 @@ export interface SingleBrick<F extends Fields = Fields> {
   kind: 'single'
   source?: BrickSource
   label: Label
-  /** Position in the config (see FieldBase.pos). */
+  /** @internal Platform-managed position in the config (see FieldBase.pos). Do not set it. */
   pos?: number
   describe?: string
   fields: F
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]
+  /** @internal Platform-managed: set when the brick is listed in `retired`. Do not set it. */
   retired?: true
 }
 
@@ -118,7 +119,7 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   kind: 'collection'
   source?: BrickSource
   label: Label
-  /** Position in the config (see FieldBase.pos). */
+  /** @internal Platform-managed position in the config (see FieldBase.pos). Do not set it. */
   pos?: number
   describe?: string
   fields: F
@@ -135,6 +136,7 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   plans?: { brick: string; field: string }
   /** Entries can be saved as drafts and are shown only once published. */
   drafts?: boolean
+  /** @internal Platform-managed: set when the brick is listed in `retired`. Do not set it. */
   retired?: true
 }
 

@@ -11,7 +11,7 @@ import {
 import { fallbackLang, withUrl, type GinkoPublicConfig } from './shared.ts'
 
 /** `12,50 €` (de), `€12.50` (en), `¥1,250` (JPY): any ISO-4217 currency in the notation of the language (SPEC 8). */
-export { formatMoney, safeHref as ginkoSafeHref } from '../../internal.ts'
+export { safeHref as ginkoSafeHref } from '../../internal.ts'
 
 /** Filled by the generated types/ginko.d.ts with the site's own config. */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -41,10 +41,10 @@ export function useGinkoLocale(): ComputedRef<GinkoLocale> {
 
 /**
  * The path of a page of the site config (`pages`) in a locale, default the current one:
- * `const path = usePagePath(); path('menu')`, `path('menu', 'en')`. A page without a path in that
+ * `const path = useGinkoPath(); path('menu')`, `path('menu', 'en')`. A page without a path in that
  * locale gives its main-locale path, as ginko-i18n's alternates do.
  */
-export function usePagePath(): (key: GinkoPageKey, locale?: GinkoLocale) => string {
+export function useGinkoPath(): (key: GinkoPageKey, locale?: GinkoLocale) => string {
   const current = useGinkoLocale()
   const { mainLocale } = useRuntimeConfig().public.ginko as GinkoPublicConfig
   return (key, locale = current.value) => {
@@ -137,12 +137,12 @@ export function useGinkoQuery<K extends CollectionKey>(brick: K, q: MaybeRefOrGe
   })
 }
 
-/** The entries before and after `id` among the visible ones, in `order` (core `neighbors` syntax) or bundle order. */
-export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRefOrGetter<string>, order?: string): ComputedRef<{ prev?: GinkoItem<K>; next?: GinkoItem<K> }> {
+/** The entries before and after `id` among the visible ones, in `options.order` (the `Query` order) or bundle order. */
+export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRefOrGetter<string>, options: Pick<Query, 'order'> = {}): ComputedRef<{ prev?: GinkoItem<K>; next?: GinkoItem<K> }> {
   const bundle = useVisibleBundle([brick])
   const locale = useGinkoLocale()
   return computed(() => {
-    const { prev, next } = neighbors(bundle.value, brick, toValue(id), order)
+    const { prev, next } = neighbors(bundle.value, brick, toValue(id), options.order)
     const one = (item?: BundleItem) => item && withRouteUrl(brick, [item], locale.value)[0]
     return { prev: one(prev), next: one(next) } as never
   })
@@ -213,7 +213,7 @@ export interface GinkoSeoInput {
 export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
   const config = useRuntimeConfig().public.ginko as GinkoPublicConfig
   const locale = useGinkoLocale()
-  const path = usePagePath()
+  const path = useGinkoPath()
   const route = useRoute()
   const i18n = useI18n()
   const absolute = (src: string) => (/^https?:\/\//.test(src) ? src : new URL(src, config.url).href)

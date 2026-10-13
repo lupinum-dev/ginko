@@ -2,7 +2,7 @@
 const settings = useGinko('settings')
 const notice = useGinko('notice')
 const today = useGinkoToday()
-const path = usePagePath()
+const path = useGinkoPath()
 const showNotice = computed(() => !!notice.value.data.text && (!notice.value.data.until || notice.value.data.until >= today.value))
 useGinkoSeo({ title: 'Home', description: settings.value.data.tagline })
 </script>

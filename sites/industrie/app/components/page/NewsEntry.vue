@@ -4,7 +4,7 @@ const { t, format } = useI18n()
 
 const props = defineProps<{ slug: string }>()
 const { lang, head } = useSite()
-const path = usePagePath()
+const path = useGinkoPath()
 const entry = useGinkoEntry('news', props.slug)
 head(() => entry.value.data.title, 'news', () => ginkoSafeHref(entry.value.data.image?.url))
 const data = computed(() => entry.value.data)

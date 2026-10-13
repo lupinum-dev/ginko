@@ -39,19 +39,27 @@ export default defineSite({
     hours: single({
       label: 'Empfang und Erreichbarkeit',
       fields: {
-        week: f.list('Wochenplan', 'Tag', {
-          day: f.choice('Tag', weekdays),
-          closed: f.boolean('Geschlossen'),
-          from1: f.time('Vormittag von', { optional: true }),
-          to1: f.time('Vormittag bis', { optional: true }),
-          from2: f.time('Nachmittag von', { optional: true }),
-          to2: f.time('Nachmittag bis', { optional: true }),
-        }, { min: 7, max: 7, unique: 'day', default: weekDefault }),
-        exceptions: f.list('Betriebsferien und Ausnahmen', 'Ausnahme', {
-          when: f.daterange('Zeitraum'),
-          reason: f.text('Grund', { max: 140 }),
-          closed: f.boolean('Geschlossen'),
-        }, { max: 20, default: [] }),
+        week: f.list('Wochenplan', {
+          itemLabel: 'Tag',
+          fields: {
+            day: f.choice('Tag', { options: weekdays }),
+            closed: f.boolean('Geschlossen'),
+            from1: f.time('Vormittag von', { optional: true }),
+            to1: f.time('Vormittag bis', { optional: true }),
+            from2: f.time('Nachmittag von', { optional: true }),
+            to2: f.time('Nachmittag bis', { optional: true }),
+          },
+          min: 7, max: 7, unique: 'day', default: weekDefault,
+        }),
+        exceptions: f.list('Betriebsferien und Ausnahmen', {
+          itemLabel: 'Ausnahme',
+          fields: {
+            when: f.daterange('Zeitraum'),
+            reason: f.text('Grund', { max: 140 }),
+            closed: f.boolean('Geschlossen'),
+          },
+          max: 20, default: [],
+        }),
         closedOn: f.date('Heute geschlossen am', { optional: true }),
         closedNote: f.text('Hinweis zur Schließung', { max: 140, optional: true }),
       },
@@ -98,12 +106,14 @@ export default defineSite({
       label: 'Stellen',
       fields: {
         title: f.text('Titel', { max: 120 }),
-        kind: f.choice('Art', [
-          { value: 'fulltime', label: 'Vollzeit' }, { value: 'parttime', label: 'Teilzeit' }, { value: 'apprenticeship', label: 'Lehre' },
-        ]),
+        kind: f.choice('Art', {
+          options: [
+            { value: 'fulltime', label: 'Vollzeit' }, { value: 'parttime', label: 'Teilzeit' }, { value: 'apprenticeship', label: 'Lehre' },
+          ],
+        }),
         location: f.text('Ort', { max: 80, translate: false }),
         salary: f.money('Gehalt ab (brutto)'),
-        salaryPeriod: f.choice('Gehalt pro', [{ value: 'month', label: 'Monat' }, { value: 'year', label: 'Jahr' }]),
+        salaryPeriod: f.choice('Gehalt pro', { options: [{ value: 'month', label: 'Monat' }, { value: 'year', label: 'Jahr' }] }),
         start: f.date('Eintritt ab', { optional: true }),
         until: f.date('Ausschreibung endet', { optional: true }),
         description: f.markdown('Beschreibung', { profile: 'basic', max: 5000 }),
@@ -142,12 +152,16 @@ export default defineSite({
         name: f.text('Name', { max: 120 }),
         slug: f.slug('Adresse', { from: 'name' }),
         summary: f.longtext('Kurztext', { max: 500 }),
-        images: f.list('Bilder', 'Bild', { image: f.image('Bild') }, { max: 6 }),
-        specs: f.list('Technische Daten', 'Merkmal', {
-          name: f.text('Merkmal', { max: 80 }),
-          value: f.text('Wert', { max: 80 }),
-          unit: f.text('Einheit', { max: 20, optional: true }),
-        }, { max: 30 }),
+        images: f.list('Bilder', { itemLabel: 'Bild', fields: { image: f.image('Bild') }, max: 6 }),
+        specs: f.list('Technische Daten', {
+          itemLabel: 'Merkmal',
+          fields: {
+            name: f.text('Merkmal', { max: 80 }),
+            value: f.text('Wert', { max: 80 }),
+            unit: f.text('Einheit', { max: 20, optional: true }),
+          },
+          max: 30,
+        }),
         datasheet: f.file('Datenblatt (PDF)', { accept: ['pdf'], maxSize: 10 * 1024 * 1024, optional: true }),
       },
       max: 80,

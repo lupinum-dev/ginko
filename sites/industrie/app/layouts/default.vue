@@ -2,7 +2,7 @@
 // The site shell. It reads content (notices, job count), so it is a layout: the platform preview page
 // renders without a layout until its bundle arrives by message. ginko-i18n writes lang, canonical and hreflang.
 const { otherLang } = useSite()
-const path = usePagePath()
+const path = useGinkoPath()
 const { alternates, t } = useI18n()
 const jobs = useGinko('jobs')
 

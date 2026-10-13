@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const settings = useGinko('settings')
 const pages = useGinko('pages')
-const path = usePagePath()
+const path = useGinkoPath()
 </script>
 
 <template>

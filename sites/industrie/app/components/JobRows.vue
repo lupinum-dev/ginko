@@ -5,7 +5,7 @@ const { t } = useI18n()
 
 const props = defineProps<{ limit?: number }>()
 const { lang, labels } = useSite()
-const path = usePagePath()
+const path = useGinkoPath()
 const jobs = useGinko('jobs')
 const company = useGinko('company')
 const items = computed(() => (props.limit ? jobs.value.items.slice(0, props.limit) : jobs.value.items))

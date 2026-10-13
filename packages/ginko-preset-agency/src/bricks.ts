@@ -81,7 +81,7 @@ export function caseStudies<const E extends Fields = {}>(o: CaseStudyOptions<E> 
   // Display only: the Studio shows these fields under four headings, as tabs on wide screens.
   const [project, result, work, home] = [both('Projekt', 'Project'), both('Ergebnis', 'Result'), both('Leistungen', 'Work'), both('Startseite', 'Homepage')]
   const related: Fields = o.servicesBrick === false ? {} : {
-    relatedServices: f.ref(both('Passende Leistungen', 'Related services'), o.servicesBrick ?? 'services', { multiple: true, max: 6, optional: true, group: work }),
+    relatedServices: f.ref(both('Passende Leistungen', 'Related services'), { to: o.servicesBrick ?? 'services', multiple: true, max: 6, optional: true, group: work }),
   }
   return collection({
     ...common(o, both('Referenzen', 'Case studies'), 200),
@@ -98,8 +98,8 @@ export function caseStudies<const E extends Fields = {}>(o: CaseStudyOptions<E> 
       // Completion date, or the latest milestone for ongoing work.
       date: f.date(both('Datum', 'Date'), { group: project }),
       summary: f.longtext(both('Zusammenfassung', 'Summary')),
-      services: f.list(both('Leistungen', 'Work done'), both('Leistung', 'Item'), { name: f.text(both('Leistung', 'Item')) }, { max: 20, group: work }),
-      serviceCategories: f.choices(both('Bereiche', 'Areas'), categories, { group: work }),
+      services: f.list(both('Leistungen', 'Work done'), { itemLabel: both('Leistung', 'Item'), fields: { name: f.text(both('Leistung', 'Item')) }, max: 20, group: work }),
+      serviceCategories: f.choices(both('Bereiche', 'Areas'), { options: categories, group: work }),
       ...related,
       // Position on the homepage (1 = first). Unset = not on the homepage.
       homeOrder: f.number(both('Position auf der Startseite', 'Position on the homepage'), { min: 1, max: 99, step: 1, optional: true, group: home }),
@@ -117,7 +117,7 @@ export interface BlogOptions<E extends Fields = {}> extends RoutedOptions<E> {
 }
 
 export function blog<const E extends Fields = {}>(o: BlogOptions<E> = {}) {
-  const author: Fields = o.authorsBrick === false ? {} : { author: f.ref(both('Autor', 'Author'), o.authorsBrick ?? 'authors') }
+  const author: Fields = o.authorsBrick === false ? {} : { author: f.ref(both('Autor', 'Author'), { to: o.authorsBrick ?? 'authors' }) }
   return collection({
     ...common(o, both('Blog', 'Blog'), 500),
     order: { field: 'date', dir: 'desc' },
@@ -148,10 +148,14 @@ export function authors<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
       role: f.text(both('Rolle', 'Role')),
       bio: f.longtext(both('Kurzbiografie', 'Short bio')),
       avatar: f.image(both('Bild', 'Picture'), { optional: true }),
-      links: f.list(both('Links', 'Links'), both('Link', 'Link'), {
-        label: f.text(both('Text', 'Text')),
-        href: f.text(both('Adresse', 'Address'), { format: 'url' }),
-      }, { max: 10, optional: true }),
+      links: f.list(both('Links', 'Links'), {
+        itemLabel: both('Link', 'Link'),
+        fields: {
+          label: f.text(both('Text', 'Text')),
+          href: f.text(both('Adresse', 'Address'), { format: 'url' }),
+        },
+        max: 10, optional: true,
+      }),
     }, o),
   })
 }
@@ -177,7 +181,7 @@ export function legal<const E extends Fields = {}>(o: LegalOptions<E> = {}) {
       title: f.text(both('Titel', 'Title')),
       description: f.longtext(both('Beschreibung', 'Description')),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
-      legalType: f.choice(both('Art', 'Kind'), types),
+      legalType: f.choice(both('Art', 'Kind'), { options: types }),
       updatedAt: f.date(both('Stand', 'Last updated')),
       body: bodyOf(both('Text', 'Text'), o, { translate: 'manual' }),
     }, o),
@@ -239,15 +243,20 @@ export function jobs<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
       description: f.longtext(both('Kurzbeschreibung', 'Short description')),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
       location: f.text(both('Ort', 'Location')),
-      employmentType: f.choice(both('Anstellung', 'Employment'), [
-        { value: 'fullTime', label: both('Vollzeit', 'Full time') }, { value: 'partTime', label: both('Teilzeit', 'Part time') },
-        { value: 'freelance', label: both('Freie Mitarbeit', 'Freelance') }, { value: 'internship', label: both('Praktikum', 'Internship') },
-        { value: 'apprenticeship', label: both('Lehre', 'Apprenticeship') },
-      ]),
-      remote: f.choice(both('Arbeitsort', 'Work place'), [
-        { value: 'onsite', label: both('vor Ort', 'On site') }, { value: 'hybrid', label: both('hybrid', 'Hybrid') },
-        { value: 'remote', label: both('remote', 'Remote') },
-      ], { default: 'onsite' }),
+      employmentType: f.choice(both('Anstellung', 'Employment'), {
+        options: [
+          { value: 'fullTime', label: both('Vollzeit', 'Full time') }, { value: 'partTime', label: both('Teilzeit', 'Part time') },
+          { value: 'freelance', label: both('Freie Mitarbeit', 'Freelance') }, { value: 'internship', label: both('Praktikum', 'Internship') },
+          { value: 'apprenticeship', label: both('Lehre', 'Apprenticeship') },
+        ],
+      }),
+      remote: f.choice(both('Arbeitsort', 'Work place'), {
+        options: [
+          { value: 'onsite', label: both('vor Ort', 'On site') }, { value: 'hybrid', label: both('hybrid', 'Hybrid') },
+          { value: 'remote', label: both('remote', 'Remote') },
+        ],
+        default: 'onsite',
+      }),
       applyUrl: f.text(both('Bewerbungs-Link', 'Application link'), { format: 'url', optional: true }),
       applyEmail: f.text(both('Bewerbungs-E-Mail', 'Application email'), { format: 'email', optional: true }),
       validUntil: f.date(both('Ausgeschrieben bis', 'Open until'), { optional: true }),

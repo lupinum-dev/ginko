@@ -19,21 +19,30 @@ const CALLOUT_TYPES = [
   { value: 'idea', label: { de: 'Tipp', en: 'Tip' } },
 ] as const
 
-const surface = f.choice({ de: 'Hintergrund', en: 'Background' }, [
-  { value: 'default', label: { de: 'Ohne', en: 'None' } }, { value: 'muted', label: { de: 'Grau', en: 'Gray' } },
-  { value: 'tint', label: { de: 'Getönt', en: 'Tinted' } },
-], { optional: true, default: 'default' })
-const align = f.choice({ de: 'Ausrichtung', en: 'Alignment' }, [
-  { value: 'start', label: { de: 'Oben', en: 'Top' } }, { value: 'center', label: { de: 'Mitte', en: 'Middle' } },
-  { value: 'end', label: { de: 'Unten', en: 'Bottom' } },
-], { optional: true })
-const frame = f.choice({ de: 'Rahmen', en: 'Frame' }, [
-  { value: 'default', label: { de: 'Ohne', en: 'None' } }, { value: 'card', label: { de: 'Karte', en: 'Card' } },
-  { value: 'border', label: { de: 'Rahmen', en: 'Border' } },
-  { value: 'border-dashed', label: { de: 'Rahmen gestrichelt', en: 'Dashed border' } },
-  { value: 'outline', label: { de: 'Kontur', en: 'Outline' } },
-  { value: 'outline-dashed', label: { de: 'Kontur gestrichelt', en: 'Dashed outline' } },
-], { optional: true, default: 'default' })
+const surface = f.choice({ de: 'Hintergrund', en: 'Background' }, {
+  options: [
+    { value: 'default', label: { de: 'Ohne', en: 'None' } }, { value: 'muted', label: { de: 'Grau', en: 'Gray' } },
+    { value: 'tint', label: { de: 'Getönt', en: 'Tinted' } },
+  ],
+  optional: true, default: 'default',
+})
+const align = f.choice({ de: 'Ausrichtung', en: 'Alignment' }, {
+  options: [
+    { value: 'start', label: { de: 'Oben', en: 'Top' } }, { value: 'center', label: { de: 'Mitte', en: 'Middle' } },
+    { value: 'end', label: { de: 'Unten', en: 'Bottom' } },
+  ],
+  optional: true,
+})
+const frame = f.choice({ de: 'Rahmen', en: 'Frame' }, {
+  options: [
+    { value: 'default', label: { de: 'Ohne', en: 'None' } }, { value: 'card', label: { de: 'Karte', en: 'Card' } },
+    { value: 'border', label: { de: 'Rahmen', en: 'Border' } },
+    { value: 'border-dashed', label: { de: 'Rahmen gestrichelt', en: 'Dashed border' } },
+    { value: 'outline', label: { de: 'Kontur', en: 'Outline' } },
+    { value: 'outline-dashed', label: { de: 'Kontur gestrichelt', en: 'Dashed outline' } },
+  ],
+  optional: true, default: 'default',
+})
 
 // The short forms of `callout` stay valid in existing texts, but are not offered when inserting (`hidden`): the
 // editor shows one "Hinweisbox" with the field "Art". Choosing an Art on a short form turns it into `callout`
@@ -58,7 +67,7 @@ export const components = defineComponents({
       en: 'Highlights a paragraph: information, tip, warning …',
     },
     props: {
-      type: f.choice({ de: 'Art', en: 'Type' }, CALLOUT_TYPES, { optional: true, default: 'info' }),
+      type: f.choice({ de: 'Art', en: 'Type' }, { options: CALLOUT_TYPES, optional: true, default: 'info' }),
       title,
       icon: calloutIcon,
       appearance,
@@ -98,9 +107,12 @@ export const components = defineComponents({
     props: {
       label: f.text({ de: 'Überschrift', en: 'Heading' }, { optional: true, max: 60 }),
       source: f.text({ de: 'Quelle', en: 'Source' }, { optional: true, max: 120 }),
-      size: f.choice({ de: 'Größe', en: 'Size' }, [
-        { value: 'body', label: { de: 'Fließtext', en: 'Body text' } }, { value: 'display', label: { de: 'Groß', en: 'Large' } },
-      ], { optional: true, default: 'body' }),
+      size: f.choice({ de: 'Größe', en: 'Size' }, {
+        options: [
+          { value: 'body', label: { de: 'Fließtext', en: 'Body text' } }, { value: 'display', label: { de: 'Groß', en: 'Large' } },
+        ],
+        optional: true, default: 'body',
+      }),
       appearance,
     },
     editor: { group: { de: 'Text', en: 'Text' }, example: '::excerpt{source="Anna Muster, 2024" size="display"}\nWer pflanzt, glaubt an morgen.\n::' },
@@ -129,11 +141,14 @@ export const components = defineComponents({
       de: 'Eine kleine farbige Marke im Text, zum Beispiel „neu“.',
       en: 'A small colored badge in the text, for example “new”.',
     },
-    props: { color: f.choice({ de: 'Farbe', en: 'Color' }, [
-      { value: 'neutral', label: { de: 'Neutral', en: 'Neutral' } }, { value: 'primary', label: { de: 'Hauptfarbe', en: 'Primary' } },
-      { value: 'success', label: { de: 'Grün', en: 'Green' } }, { value: 'warning', label: { de: 'Gelb', en: 'Yellow' } },
-      { value: 'danger', label: { de: 'Rot', en: 'Red' } },
-    ], { optional: true, default: 'neutral' }) },
+    props: { color: f.choice({ de: 'Farbe', en: 'Color' }, {
+      options: [
+        { value: 'neutral', label: { de: 'Neutral', en: 'Neutral' } }, { value: 'primary', label: { de: 'Hauptfarbe', en: 'Primary' } },
+        { value: 'success', label: { de: 'Grün', en: 'Green' } }, { value: 'warning', label: { de: 'Gelb', en: 'Yellow' } },
+        { value: 'danger', label: { de: 'Rot', en: 'Red' } },
+      ],
+      optional: true, default: 'neutral',
+    }) },
     editor: { group: { de: 'Text', en: 'Text' }, example: 'Die Funktion ist :badge[neu]{color="success"}.' },
   },
   flow: {
@@ -144,9 +159,12 @@ export const components = defineComponents({
       en: 'Keeps the text at a comfortable line length, optionally on a background.',
     },
     props: {
-      width: f.choice({ de: 'Breite', en: 'Width' }, [
-        { value: 'reading', label: { de: 'Lesebreite', en: 'Reading width' } }, { value: 'wide', label: { de: 'Breit', en: 'Wide' } },
-      ], { optional: true, default: 'reading' }),
+      width: f.choice({ de: 'Breite', en: 'Width' }, {
+        options: [
+          { value: 'reading', label: { de: 'Lesebreite', en: 'Reading width' } }, { value: 'wide', label: { de: 'Breit', en: 'Wide' } },
+        ],
+        optional: true, default: 'reading',
+      }),
       surface,
     },
     editor: { group: { de: 'Layout', en: 'Layout' }, example: '::flow{surface="muted"}\nEin längerer Text, der in Lesebreite steht.\n::' },
@@ -161,14 +179,20 @@ export const components = defineComponents({
     props: {
       type: frame,
       align,
-      gap: f.choice({ de: 'Abstand', en: 'Gap' }, [
-        { value: 'none', label: { de: 'Keiner', en: 'None' } }, { value: 'sm', label: { de: 'Klein', en: 'Small' } },
-        { value: 'md', label: { de: 'Mittel', en: 'Medium' } }, { value: 'lg', label: { de: 'Groß', en: 'Large' } },
-      ], { optional: true, default: 'md' }),
-      stack: f.choice({ de: 'Untereinander bis', en: 'Stack until' }, [
-        { value: 'sm', label: { de: 'Klein', en: 'Small' } }, { value: 'md', label: { de: 'Mittel', en: 'Medium' } },
-        { value: 'lg', label: { de: 'Groß', en: 'Large' } },
-      ], { optional: true, default: 'md' }),
+      gap: f.choice({ de: 'Abstand', en: 'Gap' }, {
+        options: [
+          { value: 'none', label: { de: 'Keiner', en: 'None' } }, { value: 'sm', label: { de: 'Klein', en: 'Small' } },
+          { value: 'md', label: { de: 'Mittel', en: 'Medium' } }, { value: 'lg', label: { de: 'Groß', en: 'Large' } },
+        ],
+        optional: true, default: 'md',
+      }),
+      stack: f.choice({ de: 'Untereinander bis', en: 'Stack until' }, {
+        options: [
+          { value: 'sm', label: { de: 'Klein', en: 'Small' } }, { value: 'md', label: { de: 'Mittel', en: 'Medium' } },
+          { value: 'lg', label: { de: 'Groß', en: 'Large' } },
+        ],
+        optional: true, default: 'md',
+      }),
       surface,
     },
     children: ['column'],
@@ -179,16 +203,22 @@ export const components = defineComponents({
     label: { de: 'Spalte', en: 'Column' },
     describe: { de: 'Eine Spalte innerhalb von „Spalten“.', en: 'A column inside “Columns”.' },
     props: {
-      size: f.choice({ de: 'Breite', en: 'Width' }, [
-        { value: 'xs', label: { de: 'Sehr schmal', en: 'Very narrow' } }, { value: 'sm', label: { de: 'Schmal', en: 'Narrow' } },
-        { value: 'md', label: { de: 'Mittel', en: 'Medium' } }, { value: 'lg', label: { de: 'Breit', en: 'Wide' } },
-        { value: 'xl', label: { de: 'Sehr breit', en: 'Very wide' } },
-      ], { optional: true, default: 'md' }),
+      size: f.choice({ de: 'Breite', en: 'Width' }, {
+        options: [
+          { value: 'xs', label: { de: 'Sehr schmal', en: 'Very narrow' } }, { value: 'sm', label: { de: 'Schmal', en: 'Narrow' } },
+          { value: 'md', label: { de: 'Mittel', en: 'Medium' } }, { value: 'lg', label: { de: 'Breit', en: 'Wide' } },
+          { value: 'xl', label: { de: 'Sehr breit', en: 'Very wide' } },
+        ],
+        optional: true, default: 'md',
+      }),
       align,
-      media: f.choice({ de: 'Bild', en: 'Image' }, [
-        { value: 'natural', label: { de: 'Natürlich', en: 'Natural' } }, { value: 'cover', label: { de: 'Füllend', en: 'Fill' } },
-        { value: 'contain', label: { de: 'Eingepasst', en: 'Fit' } },
-      ], { optional: true, default: 'natural' }),
+      media: f.choice({ de: 'Bild', en: 'Image' }, {
+        options: [
+          { value: 'natural', label: { de: 'Natürlich', en: 'Natural' } }, { value: 'cover', label: { de: 'Füllend', en: 'Fill' } },
+          { value: 'contain', label: { de: 'Eingepasst', en: 'Fit' } },
+        ],
+        optional: true, default: 'natural',
+      }),
     },
     parents: ['layout'],
     editor: { group: { de: 'Layout', en: 'Layout' }, example: ':::layout\n::column{size="lg"}\nBreite Spalte\n::\n::column{size="sm"}\nSchmale Spalte\n::\n:::' },
@@ -201,10 +231,13 @@ export const components = defineComponents({
       en: 'Centers the content in a narrow column, optionally with a frame.',
     },
     props: {
-      size: f.choice({ de: 'Breite', en: 'Width' }, [
-        { value: 'sm', label: { de: 'Schmal', en: 'Narrow' } }, { value: 'md', label: { de: 'Mittel', en: 'Medium' } },
-        { value: 'lg', label: { de: 'Breit', en: 'Wide' } },
-      ], { optional: true, default: 'md' }),
+      size: f.choice({ de: 'Breite', en: 'Width' }, {
+        options: [
+          { value: 'sm', label: { de: 'Schmal', en: 'Narrow' } }, { value: 'md', label: { de: 'Mittel', en: 'Medium' } },
+          { value: 'lg', label: { de: 'Breit', en: 'Wide' } },
+        ],
+        optional: true, default: 'md',
+      }),
       type: frame,
     },
     editor: { group: { de: 'Layout', en: 'Layout' }, example: '::center{size="sm" type="card"}\nBis bald!\n::' },

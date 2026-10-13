@@ -55,8 +55,10 @@ const events = useGinko('events') // typed from ginko.config.ts
 ## What is in the package
 
 - **`@lupinum/ginko`**: `defineSite`, the field types, schema checks and the bundle format.
-- **`@lupinum/ginko/nuxt`**: the Nuxt module. It fetches and caches the bundle, adds `useGinko`,
-  `useGinkoEntry`, `useGinkoToday` and `<GinkoMarkdown>`, a sitemap, and languages through
+- **`@lupinum/ginko/nuxt`**: the Nuxt module. It fetches and caches the bundle, adds the composables
+  (`useGinko`, `useGinkoEntry`, `useGinkoQuery`, `useGinkoNeighbors`, `useGinkoNav`, `useGinkoBreadcrumbs`,
+  `useGinkoToday`, `useGinkoWeek`, `useGinkoLocale`, `useGinkoPath`, `useGinkoSeo` and more), the components
+  `<GinkoMarkdown>` and `<GinkoImage>`, a sitemap, and languages through
   [`@lupinum/ginko-i18n`](https://github.com/lupinum-dev/ginko/tree/main/packages/ginko-i18n).
 - **`@lupinum/ginko/vue`**: `<GinkoMarkdown :value>` (renders a parsed tree, inside `<Suspense>`) for a Vue 3 app without Nuxt.
 - **`ginko`**: the CLI. `ginko check` checks the config and the content links of every site (use it in CI);
@@ -65,9 +67,10 @@ const events = useGinko('events') // typed from ginko.config.ts
 ## Stability
 
 `@lupinum/ginko`, `@lupinum/ginko/nuxt`, `@lupinum/ginko/vue` and `@lupinum/ginko/search` are the public
-API. Every name they export is documented on the docs site. Until 1.0, a minor release may still break it,
-and the changelog names the break. `@lupinum/ginko/internal` and `@lupinum/ginko/internal/search` are for
-Ginko's own packages. They can change in any release, so do not import them in a site.
+API. Every name they export is documented on the docs site. `pos` and `retired` on fields and bricks are set by
+the platform; do not set them. Until 1.0, a minor release may still break it, and the changelog names the break.
+`@lupinum/ginko/internal` and `@lupinum/ginko/internal/search` are for Ginko's own packages. They can change in
+any release, so do not import them in a site.
 
 ## Docs
 

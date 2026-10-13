@@ -67,7 +67,7 @@ describe('file check', () => {
 
 describe('markdown and components', () => {
   const registry = defineComponents({
-    callout: { kind: 'block', label: 'Hinweis', describe: 'x', props: { type: f.choice('Art', ['info', 'warning']) } },
+    callout: { kind: 'block', label: 'Hinweis', describe: 'x', props: { type: f.choice('Art', { options: ['info', 'warning'] }) } },
     tabs: { kind: 'block', label: 'Tabs', describe: 'x', props: {}, children: ['tab'] },
     tab: { kind: 'block', label: 'Tab', describe: 'x', props: {}, parents: ['tabs'] },
   })
