@@ -6,8 +6,8 @@ import { describe, expect, test } from 'vitest'
 import { ref } from 'vue'
 import type { Locale } from '../src/index.ts'
 import type { Bundle, Schema } from '../src/internal.ts'
-import { fallbackLang, withUrl } from '../src/nuxt/runtime/shared.ts'
-import { BUNDLE_STATE, TODAY_STATE, ginkoLangOf, useGinkoBreadcrumbs, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, useGinkoPath } from '../src/nuxt/runtime/composables.ts'
+import { withUrl } from '../src/nuxt/runtime/shared.ts'
+import { BUNDLE_STATE, TODAY_STATE, useGinkoLang, useGinkoBreadcrumbs, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, useGinkoPath } from '../src/nuxt/runtime/composables.ts'
 import * as shim from './shims/imports.ts'
 import { i18nLocale, routePath, seoConfig, useState } from './shims/imports.ts'
 import { installOgImage } from './shims/og.ts'
@@ -106,17 +106,16 @@ describe('useGinkoSeo', () => {
 })
 
 describe('entry helpers', () => {
-  test('a routed item gets the url of the current locale; ginkoLangOf is the main locale only for a fallen-back field', () => {
+  test('a routed item gets the url of the current locale', () => {
     const [item] = withUrl([{ id: 'x', fallback: ['title'], urls: { de: '/veranstaltungen/a', en: '/en/events/a' } }], 'en')
     expect(item!.url).toBe('/en/events/a')
-    expect(fallbackLang(item!.fallback, 'title', 'de')).toBe('de')
-    expect(fallbackLang(item!.fallback, 'description', 'de')).toBeUndefined()
   })
 
-  test('ginkoLangOf gives the language tag of the main locale (de-AT), not its code', () => {
+  test('useGinkoLang gives the language tag of the main locale (de-AT) only for a fallen-back field', () => {
+    const langOf = useGinkoLang()
     const item = { fallback: ['title'] }
-    expect(ginkoLangOf(item, 'title')).toBe('de-AT')
-    expect(ginkoLangOf(item, 'description')).toBeUndefined()
+    expect(langOf(item, 'title')).toBe('de-AT')
+    expect(langOf(item, 'description')).toBeUndefined()
   })
 })
 

@@ -8,10 +8,7 @@ import {
   applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, query, seoHead, todayIn, websiteLd, weekOfSchema,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
 } from '../../internal.ts'
-import { fallbackLang, withUrl, type GinkoPublicConfig } from './shared.ts'
-
-/** `12,50 €` (de), `€12.50` (en), `¥1,250` (JPY): any ISO-4217 currency in the notation of the language (SPEC 8). */
-export { safeHref as ginkoSafeHref } from '../../internal.ts'
+import { withUrl, type GinkoPublicConfig } from './shared.ts'
 
 /** Filled by the generated types/ginko.d.ts with the site's own config. */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -32,6 +29,25 @@ export const PREVIEW_STATE = 'ginko:preview'
 export type GinkoPageKey = keyof Site['pages'] & string
 /** The site's `locales` (a subset of the core `Locale`). Auto-imported. */
 export type GinkoLocale = Site['locales'][number]
+
+/** The public facts of the site from ginko.config.ts. The rest of `runtimeConfig.public.ginko` is internal. */
+export interface GinkoSite {
+  name: string
+  /** The production address, for absolute links. */
+  url: string
+  locales: readonly GinkoLocale[]
+  /** The first of `locales`. */
+  mainLocale: GinkoLocale
+  /** IANA time zone, e.g. `Europe/Vienna`. */
+  timezone: string
+}
+
+/** `const { url, mainLocale } = useGinkoSite()`: name, address, locales and time zone of the site. Auto-imported. */
+export function useGinkoSite(): GinkoSite {
+  const { name, url, locales, mainLocale, timezone } = useRuntimeConfig().public.ginko as GinkoPublicConfig
+  // The runtime config is this site's own config, so its locales are the site's.
+  return { name, url, locales: locales as GinkoLocale[], mainLocale: mainLocale as GinkoLocale, timezone }
+}
 
 /** The current locale. ginko-i18n owns it (URL, strategy, excluded paths); it only ever takes a locale of the site. */
 export function useGinkoLocale(): ComputedRef<GinkoLocale> {
@@ -164,13 +180,14 @@ export function useGinkoBreadcrumbs(bricks: CollectionKey[]): ComputedRef<NavNod
 
 /**
  * `lang` for a field the bundle filled from the main language (SPEC 6 `fallback`), else undefined:
- * `:lang="ginkoLangOf(item, 'note')"`. `path` is the field name, or `list.<_id>.field` inside a list.
- * The value is the language tag of the main locale from `languages` in ginko.config (`de-AT`), the
- * form `lang` attributes need; the bare code (`de`) when the site sets no tag for it.
+ * `const langOf = useGinkoLang()`, then `:lang="langOf(item, 'note')"`. `path` is the field name, or
+ * `list.<_id>.field` inside a list. The value is the language tag of the main locale from `languages` in
+ * ginko.config (`de-AT`), the form `lang` attributes need; the bare code (`de`) when the site sets no tag for it.
  */
-export function ginkoLangOf(item: { fallback?: readonly string[] }, path: string): string | undefined {
-  const code = fallbackLang(item.fallback, path, (useRuntimeConfig().public.ginko as GinkoPublicConfig).mainLocale)
-  return code && (useI18n().locales.find((l) => l.code === code)?.language ?? code)
+export function useGinkoLang(): (item: { fallback?: readonly string[] }, path: string) => string | undefined {
+  const { mainLocale } = useRuntimeConfig().public.ginko as GinkoPublicConfig
+  const tag = useI18n().locales.find((l) => l.code === mainLocale)?.language ?? mainLocale
+  return (item, path) => (item.fallback?.includes(path) ? tag : undefined)
 }
 
 /** The visible entry whose slug in the current locale is `slug`; otherwise a real 404 (SPEC 8). */
@@ -185,11 +202,6 @@ export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: string): 
     if (!item) throw createError({ statusCode: 404, statusMessage: 'Not found' })
     return item as never
   })
-}
-
-/** The visibility rule of SPEC 2.1 for code that has an item outside useGinko. Reactive inside a computed. */
-export function isGinkoVisible<K extends CollectionKey>(brick: K, item: { data: Record<string, unknown> }): boolean {
-  return visible(schema.bricks[brick] as Brick, item.data, useGinkoToday().value)
 }
 
 export interface GinkoSeoInput {

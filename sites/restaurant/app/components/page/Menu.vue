@@ -2,6 +2,8 @@
 import { formatMoney, type Money } from '@lupinum/ginko'
 import { priceOn, upcomingPrice } from '@lupinum/ginko-preset-gastro'
 
+const langOf = useGinkoLang()
+
 const { labels, lang, today } = useSite()
 const { t, format } = useI18n()
 const menu = useGinko('menu')
@@ -27,11 +29,11 @@ useSeoMeta({ title: () => `${t('menu')} | Gasthaus zur Linde` })
       <ul class="dishes">
         <li v-for="item in g.items" :key="item.id" class="dish">
           <div class="line">
-            <h3 :lang="ginkoLangOf(item, 'name')">{{ item.data.name }}</h3>
+            <h3 :lang="langOf(item, 'name')">{{ item.data.name }}</h3>
             <span class="price">{{ formatMoney(priceOn(item.data, today), lang) }}</span>
           </div>
           <p v-if="nextPriceLine(item.data)" class="next-price" data-test="next-price">{{ nextPriceLine(item.data) }}</p>
-          <p v-if="item.data.description" class="desc" :lang="ginkoLangOf(item, 'description')">{{ item.data.description }}</p>
+          <p v-if="item.data.description" class="desc" :lang="langOf(item, 'description')">{{ item.data.description }}</p>
           <p class="meta">
             <span v-if="item.data.veg !== 'none'" class="veg">{{ labels.veg[item.data.veg] }}</span>
             <Allergens :codes="item.data.allergens" />

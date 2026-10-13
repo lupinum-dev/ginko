@@ -44,7 +44,7 @@ export function useDocs() {
 
   /** Where the docs live in this language (docsCollection's `base`, `/docs` by default), e.g. `/de/docs`. */
   const { localePath } = useI18n()
-  const { mainLocale } = useRuntimeConfig().public.ginko as { mainLocale: string }
+  const { mainLocale } = useGinkoSite()
   const route = (schema.bricks.docs as { route?: Record<string, string> } | undefined)?.route?.[mainLocale]
   const base = computed(() => localePath(route?.replace(/\/\[slug\]$/, '') ?? '/docs'))
 

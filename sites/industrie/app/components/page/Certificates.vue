@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { certStatus, formatSize } from '../../utils/site'
+import { safeHref } from '@lupinum/ginko'
 const { t, format } = useI18n()
 
 const { lang, labels, today, head } = useSite()
@@ -17,7 +18,7 @@ head(() => t('certificates'), 'certificates')
           <p class="until mono">{{ t('validUntil') }} {{ format.date(c.data.validUntil) }}</p>
           <p><span class="chip" :class="certStatus(c.data.validUntil, today)" data-test="status">{{ labels.certStatus[certStatus(c.data.validUntil, today)] }}</span></p>
           <!-- A required file can still be missing (an upload removed on the platform): then no link. -->
-          <p v-if="ginkoSafeHref(c.data.certificate?.url)"><a :href="ginkoSafeHref(c.data.certificate.url)" :download="c.data.certificate.name" rel="noopener">{{ c.data.certificate.name }} <span class="mono size">({{ t('certificatePdf', { size: formatSize(c.data.certificate.size, lang) }) }})</span></a></p>
+          <p v-if="safeHref(c.data.certificate?.url)"><a :href="safeHref(c.data.certificate.url)" :download="c.data.certificate.name" rel="noopener">{{ c.data.certificate.name }} <span class="mono size">({{ t('certificatePdf', { size: formatSize(c.data.certificate.size, lang) }) }})</span></a></p>
         </li>
       </ul>
       <p v-else class="empty">{{ t('noCertificates') }}</p>

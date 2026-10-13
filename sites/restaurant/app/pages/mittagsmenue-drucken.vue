@@ -4,6 +4,8 @@
 import { formatMoney } from '@lupinum/ginko'
 import { siteName, telHref, type Weekday } from '../utils/site'
 
+const langOf = useGinkoLang()
+
 definePageMeta({ layout: 'print', path: '/mittagsmenue/drucken', i18n: { paths: { en: '/lunch/print' } } })
 
 const { lang, labels } = useSite()
@@ -47,14 +49,14 @@ const range = computed(() => {
         <ol class="days">
           <li v-for="d in lunch.data.days" :key="d._id" data-test="print-day">
             <span class="day">{{ labels.weekdays[d.day as Weekday] }}</span>
-            <span class="dish" :lang="ginkoLangOf(lunch, `days.${d._id}.dish`)">{{ d.dish }}</span>
+            <span class="dish" :lang="langOf(lunch, `days.${d._id}.dish`)">{{ d.dish }}</span>
             <span class="meta">
               <span v-if="d.allergens.length" class="letters">{{ [...d.allergens].sort().join(' ') }}</span>
               <span v-if="d.price" class="price">{{ formatMoney(d.price, lang) }}</span>
             </span>
           </li>
         </ol>
-        <p v-if="lunch.data.note" class="note" :lang="ginkoLangOf(lunch, 'note')">{{ lunch.data.note }}</p>
+        <p v-if="lunch.data.note" class="note" :lang="langOf(lunch, 'note')">{{ lunch.data.note }}</p>
         <AllergenKey class="key" :codes="lunch.data.days.flatMap((d) => d.allergens)" />
       </template>
       <p v-else class="pending">{{ t('lunchPending') }}</p>

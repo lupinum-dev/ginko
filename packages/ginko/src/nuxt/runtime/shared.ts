@@ -15,8 +15,3 @@ export interface GinkoPublicConfig {
 export function withUrl<T extends { urls?: Partial<Record<string, string>> }>(items: T[], locale: Locale): (T & { url?: string })[] {
   return items.map((item) => ({ ...item, url: item.urls?.[locale] }))
 }
-
-/** The main locale when the field at `path` was filled from it (SPEC 6 `fallback`), so `lang` can say so. */
-export function fallbackLang(fallback: readonly string[] | undefined, path: string, mainLocale: Locale): Locale | undefined {
-  return fallback?.includes(path) ? mainLocale : undefined
-}

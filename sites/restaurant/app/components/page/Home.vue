@@ -10,7 +10,7 @@ const contact = useGinko('contact')
 const { ctx: hoursCtx } = useHours()
 const menu = useGinko('menu')
 const seo = useGinko('seo')
-const siteUrl = (useRuntimeConfig().public.ginko as { url: string }).url
+const { url: siteUrl } = useGinkoSite()
 
 // Restaurant JSON-LD for search engines: hours from the same rule as the page, menu with today's prices.
 const restaurantLd = computed(() => {
