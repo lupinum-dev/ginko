@@ -35,7 +35,7 @@ export async function release(input: ReleaseInput): Promise<ReleaseOutcome> {
     if (state.site !== site) throw new CliError(`The key belongs to the site “${state.site}”, not to “${site}”.`, 'FORBIDDEN')
     const result = await plan(state, input.config)
     if (result.rejected.length > 0) throw new CliError(explainRejected(result.rejected).join('\n'))
-    if (!result.candidate) throw new CliError('Internal error: candidate is missing.')
+    if (!result.candidate) throw new Error('Internal error: candidate is missing.')
     if (result.candidate.problems.length > 0) throw new CliError(explainProblems(result.candidate.problems).join('\n'))
 
     // 5. The platform checks again and writes in one transaction.

@@ -78,7 +78,7 @@ export async function runDev(input: DevInput): Promise<number> {
 
   // 1. Local backend. Its functions are up when `convex dev` says so.
   const backend = new Promise<void>((done, fail) => {
-    const timer = setTimeout(() => fail(new CliError('The local Convex backend is not ready after 3 minutes.')), READY_TIMEOUT_MS)
+    const timer = setTimeout(() => fail(new CliError('The local Convex backend is not ready after 3 minutes.', 'UNAVAILABLE')), READY_TIMEOUT_MS)
     start('convex', 'npx', ['convex', 'dev'], platformDir, { ...env, CONVEX_AGENT_MODE: 'anonymous' }, (line) => {
       if (CONVEX_READY.test(line)) {
         clearTimeout(timer)
