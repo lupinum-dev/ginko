@@ -13,7 +13,7 @@ npm create ginko my-site
 Or add it to an existing Nuxt 4.6+ site:
 
 ```bash
-npm install @lupinum/ginko
+npm install @lupinum/ginko @lupinum/ginko-content
 ```
 
 ```ts
@@ -25,18 +25,28 @@ export default defineSite({
   name: 'My site',
   url: 'https://example.com',
   timezone: 'Europe/Vienna',
-  locales: ['de', 'en'],
+  locales: ['en'],
   currency: 'EUR',
-  pages: { home: { de: '/', en: '/en' } },
+  pages: { home: '/' },
   bricks: {
     events: collection({
       label: 'Events',
+      source: 'files', // read from content/events/*.md; without `source` the brick needs the Ginko platform
       fields: { title: f.text('Title'), date: f.date('Date') },
       max: 50,
       order: { field: 'date', dir: 'asc' },
     }),
   },
 })
+```
+
+One file per entry, for example `content/events/opening.md`:
+
+```md
+---
+title: Opening night
+date: 2026-11-05
+---
 ```
 
 ```ts

@@ -32,6 +32,9 @@ Every factory takes the same two options, plus its own:
 | `lunchBrick` (`lunchPlans`) | `'lunch'` | The key of the `lunch()` brick that planned weeks belong to. |
 | `route` (`events`, required) | none | The event page per locale, e.g. `{ en: '/events/[slug]' }`. |
 
+These bricks read from the Ginko platform. Without a running platform the dev server answers 503: add
+`source: 'files'` to each factory (`hours({ source: 'files' })`) to read Markdown from `content/` instead.
+
 ```ts
 // ginko.config.ts
 import { defineSite } from '@lupinum/ginko'
