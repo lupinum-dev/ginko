@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const route = useRoute()
-const doc = useGinkoEntry('docs', String(route.params.slug))
+const doc = useGinkoEntry('docs', () => route.params.slug)
 const toc = computed(() => doc.value.data.body.toc?.links ?? [])
 </script>
 

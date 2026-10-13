@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { safeHref } from '@lupinum/ginko'
+
 const settings = useGinko('settings')
 const pages = useGinko('pages')
 const path = useGinkoPath()

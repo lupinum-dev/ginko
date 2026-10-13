@@ -117,13 +117,13 @@ export function useGinko<K extends BrickKey>(brick: K): ComputedRef<BrickValue<B
 }
 
 /** The bundle with only the entries visible today (SPEC 2.1 `visible`) in the given collections. The one place that rule is applied. */
-function useVisibleBundle(bricks: readonly BrickKey[]): ComputedRef<Bundle> {
+function useVisibleBundle(bricks: MaybeRefOrGetter<readonly BrickKey[]>): ComputedRef<Bundle> {
   const bundle = useGinkoBundle()
   const today = useGinkoToday()
   return computed(() => {
     const now = today.value
     const out = { ...bundle.value.bricks }
-    for (const key of bricks) {
+    for (const key of toValue(bricks)) {
       const value = out[key]
       const def = schema.bricks[key] as Brick | undefined
       if (value?.kind === 'collection' && def) out[key] = { ...value, items: value.items.filter((item) => visible(def, item.data, now)) }
@@ -165,14 +165,14 @@ export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRe
 }
 
 /** Navigation tree of the visible entries of these collections in the current locale (core `navTree`). */
-export function useGinkoNav(bricks: CollectionKey[]): ComputedRef<NavNode[]> {
+export function useGinkoNav(bricks: MaybeRefOrGetter<CollectionKey[]>): ComputedRef<NavNode[]> {
   const bundle = useVisibleBundle(bricks)
   const locale = useGinkoLocale()
-  return computed(() => navTree(bundle.value, bricks, locale.value))
+  return computed(() => navTree(bundle.value, toValue(bricks), locale.value))
 }
 
 /** The nodes from the root down to the current route's path; empty when the path is not in the tree. */
-export function useGinkoBreadcrumbs(bricks: CollectionKey[]): ComputedRef<NavNode[]> {
+export function useGinkoBreadcrumbs(bricks: MaybeRefOrGetter<CollectionKey[]>): ComputedRef<NavNode[]> {
   const tree = useGinkoNav(bricks)
   const route = useRoute()
   return computed(() => breadcrumbs(tree.value, route.path))
@@ -190,14 +190,19 @@ export function useGinkoLang(): (item: { fallback?: readonly string[] }, path: s
   return (item, path) => (item.fallback?.includes(path) ? tag : undefined)
 }
 
-/** The visible entry whose slug in the current locale is `slug`; otherwise a real 404 (SPEC 8). */
-export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: string): ComputedRef<GinkoItem<K>> {
+/**
+ * The visible entry whose slug in the current locale is `slug`; otherwise a real 404 (SPEC 8). `slug` may be a
+ * getter such as `() => route.params.slug`, so a reused page follows client navigation; an array (catch-all
+ * route) is joined with `/`. The 404 is thrown when the value is read, not at the call.
+ */
+export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: MaybeRefOrGetter<string | string[] | undefined>): ComputedRef<GinkoItem<K>> {
   const items = useGinko(brick)
   const locale = useGinkoLocale()
   return computed(() => {
     const def = schema.bricks[brick]!
     const route = def.kind === 'collection' ? def.route?.[locale.value] : undefined
-    const path = route?.replace('[slug]', slug)
+    const value = toValue(slug)
+    const path = value === undefined ? undefined : route?.replace('[slug]', Array.isArray(value) ? value.join('/') : value)
     const item = (items.value as { items: (BundleItem & { url?: string })[] }).items.find((i) => path && i.url === path)
     if (!item) throw createError({ statusCode: 404, statusMessage: 'Not found' })
     return item as never

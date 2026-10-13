@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { certStatus, formatSize } from '../../utils/site'
 import { safeHref } from '@lupinum/ginko'
+
 const { t, format } = useI18n()
 
 const { lang, labels, today, head } = useSite()

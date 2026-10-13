@@ -7,7 +7,7 @@ import { ref } from 'vue'
 import type { Locale } from '../src/index.ts'
 import type { Bundle, Schema } from '../src/internal.ts'
 import { withUrl } from '../src/nuxt/runtime/shared.ts'
-import { BUNDLE_STATE, TODAY_STATE, useGinkoLang, useGinkoBreadcrumbs, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, useGinkoPath } from '../src/nuxt/runtime/composables.ts'
+import { BUNDLE_STATE, TODAY_STATE, useGinkoLang, useGinkoBreadcrumbs, useGinkoEntry, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, useGinkoPath } from '../src/nuxt/runtime/composables.ts'
 import * as shim from './shims/imports.ts'
 import { i18nLocale, routePath, seoConfig, useState } from './shims/imports.ts'
 import { installOgImage } from './shims/og.ts'
@@ -162,6 +162,18 @@ describe('collection composables', () => {
     const { prev, next } = useGinkoNeighbors('events' as never, 'weinabend', { order: 'price desc' }).value as { prev?: { id: string }; next?: unknown }
     expect(prev?.id).toBe('martinigans')
     expect(next).toBeUndefined()
+  })
+
+  // Wrong behaviour caught: a page reused for another slug (client navigation) keeps showing the first entry.
+  test('useGinkoEntry follows a slug getter and answers 404 for a missing slug', () => {
+    today('2026-10-08')
+    const slug = ref<string | undefined>('weinabend-ebner')
+    const entry = useGinkoEntry('events' as never, () => slug.value)
+    expect((entry.value as { id: string }).id).toBe('weinabend')
+    slug.value = 'martini-gansl'
+    expect((entry.value as { id: string }).id).toBe('martinigans')
+    slug.value = undefined
+    expect(() => entry.value).toThrow(expect.objectContaining({ statusCode: 404 }))
   })
 
   test('useGinkoBreadcrumbs gives the trail for the route path', () => {

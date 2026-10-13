@@ -8,7 +8,7 @@ const props = defineProps<{ slug: string }>()
 const { lang } = useSite()
 const path = useGinkoPath()
 const { t, format } = useI18n()
-const post = useGinkoEntry('blog', props.slug)
+const post = useGinkoEntry('blog', () => props.slug)
 useSeoMeta({
   title: () => `${post.value.data.title} | ${siteName}`,
   description: () => post.value.data.description,

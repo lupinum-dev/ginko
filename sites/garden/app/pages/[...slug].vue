@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { safeHref } from '@lupinum/ginko'
+
 const route = useRoute()
-const slug = Array.isArray(route.params.slug) ? route.params.slug.join('/') : String(route.params.slug)
-const page = useGinkoEntry('pages', slug)
+const page = useGinkoEntry('pages', () => route.params.slug)
 useGinkoSeo(() => ({
   title: page.value.data.title,
   description: page.value.data.intro,

@@ -10,7 +10,7 @@ const { lang } = useSite()
 const path = useGinkoPath()
 const { t } = useI18n()
 const eventWhen = useEventWhen()
-const event = useGinkoEntry('events', props.slug)
+const event = useGinkoEntry('events', () => props.slug)
 const contact = useGinko('contact')
 const { url: siteUrl } = useGinkoSite()
 

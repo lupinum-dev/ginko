@@ -2,7 +2,7 @@
 const { format } = useI18n()
 const route = useRoute()
 const path = useGinkoPath()
-const event = useGinkoEntry('events', String(route.params.slug))
+const event = useGinkoEntry('events', () => route.params.slug)
 useGinkoSeo(() => ({ title: event.value.data.title, description: `${format.range(event.value.data.when.from, event.value.data.when.to, 'long')}, ${event.value.data.place}` }))
 </script>
 
