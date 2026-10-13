@@ -57,7 +57,7 @@ export const redeem = internalMutation({
     const site = await ctx.db.get(row.site)
     const member = await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', row.user).eq('site', row.site)).unique()
     const admin = await ctx.db.query('admins').withIndex('by_user', (q) => q.eq('user', row.user)).unique()
-    if (!site || (!member && !admin)) return null
+    if (!site || site.deleting || (!member && !admin)) return null
     // A folder deleted since the ticket was made is dropped; the file is still a library file.
     const folder = row.folder && await ctx.db.get(row.folder) ? row.folder : undefined
     return { site: row.site, user: row.user, ...(folder ? { folder } : {}), ...(row.library || row.folder ? { library: true } : {}) }

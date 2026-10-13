@@ -48,8 +48,13 @@ export async function actorFor(ctx: QueryCtx, siteSlug: string): Promise<Actor> 
   return actor
 }
 
-/** Role and grants of a user on a site right now, or null when they are neither admin nor member. */
-export async function memberOf(ctx: QueryCtx, site: Doc<'sites'>, user: User): Promise<Actor | null> {
+/**
+ * Role and grants of a user on a site right now, or null when they are neither admin nor member. A site that is
+ * being deleted has no access for anyone (also not for agent keys and scheduled approvals), unless `deleting`
+ * is set: only the cancel and status calls of `sites.ts` do that.
+ */
+export async function memberOf(ctx: QueryCtx, site: Doc<'sites'>, user: User, opts: { deleting?: boolean } = {}): Promise<Actor | null> {
+  if (site.deleting && !opts.deleting) return null
   const admin = await ctx.db.query('admins').withIndex('by_user', (q) => q.eq('user', user.id)).unique()
   if (admin) return { user, site, role: 'admin', grants: [] }
   const member = await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', user.id).eq('site', site._id)).unique()

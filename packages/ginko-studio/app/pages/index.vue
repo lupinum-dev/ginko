@@ -86,6 +86,7 @@ async function pickLocale(code: string) {
         <ToggleGroupItem v-for="l in locales" :key="l.code" :value="l.code" :lang="l.language" class="px-3">{{ localeLabel(l) }}</ToggleGroupItem>
       </ToggleGroup>
     </div>
+    <DeleteAccount />
     <SignOut />
   </main>
 </template>

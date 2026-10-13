@@ -43,7 +43,12 @@
     },
     "remindTitle": "Erinnerungen per E-Mail",
     "remindText": "Am Abend vor Wochenbeginn eine kurze Mail, wenn für nächste Woche noch etwas fehlt, zum Beispiel das Mittagsmenü.",
-    "language": "Sprache"
+    "language": "Sprache",
+    "deleteAccount": {
+      "title": "Konto löschen",
+      "text": "Dein Konto, deine Mitgliedschaften und deine Anmeldung werden entfernt. Änderungen von dir bleiben im Verlauf als „Ehemaliges Mitglied“ erhalten.",
+      "button": "Mein Konto löschen"
+    }
   },
   "login": {
     "title": "Anmelden",
@@ -233,6 +238,16 @@
     },
     "entry": {
       "missing": "Diesen Eintrag gibt es nicht (mehr)."
+    },
+    "delete": {
+      "title": "Seite löschen",
+      "text": "Alle Inhalte, Dateien, der Verlauf und der Zugang von {site} werden 7 Tage nach deiner Bestätigung gelöscht. Bis dahin kannst du abbrechen.",
+      "confirmLabel": "Zur Bestätigung {slug} eingeben",
+      "button": "Seite löschen"
+    },
+    "deleting": {
+      "text": "{site} wird am {date} gelöscht.",
+      "cancel": "Löschung abbrechen"
     },
     "team": {
       "heading": "Team",

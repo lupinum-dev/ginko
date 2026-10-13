@@ -32,6 +32,7 @@ export const sweep = internalMutation({
     const now = new Date(args.now ?? Date.now())
     let sent = 0
     for (const site of await ctx.db.query('sites').collect()) {
+      if (site.deleting) continue
       const schema = site.schema as Schema
       const today = todayIn(schema.timezone, now)
       if (!isDayBeforeWeekStart(today, schema) || hourIn(schema.timezone, now) !== REMIND_HOUR) continue

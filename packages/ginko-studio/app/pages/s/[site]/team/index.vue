@@ -226,6 +226,8 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
           </div>
         </form>
       </section>
+
+      <DeleteSite v-if="s.site.value" :slug="s.slug.value" :name="s.site.value.name" />
     </template>
   </main>
 </template>

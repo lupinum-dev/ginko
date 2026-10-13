@@ -27,7 +27,7 @@ export const admit = internalMutation({
   args: { slug: v.string(), token: v.optional(v.string()) },
   handler: async (ctx, { slug, token }): Promise<'OK' | 'SITE_NOT_FOUND' | 'RATE_LIMITED'> => {
     const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', slug)).unique()
-    if (!site) return 'SITE_NOT_FOUND'
+    if (!site || site.deleting) return 'SITE_NOT_FOUND'
     if (token !== undefined && site.refreshToken !== undefined && sameSecret(token, site.refreshToken)) return 'OK'
     const window = windowOf(Date.now())
     const row = await ctx.db.query('rateWindows').withIndex('by_site_window', (q) => q.eq('site', site._id).eq('window', window)).unique()
@@ -72,7 +72,7 @@ export const build = internalQuery({
   },
   handler: async (ctx, { slug, locale, minRev }): Promise<Bundle | 'SITE_NOT_FOUND' | 'STALE'> => {
     const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', slug)).unique()
-    if (!site) return 'SITE_NOT_FOUND'
+    if (!site || site.deleting) return 'SITE_NOT_FOUND'
     if (minRev && (site.schemaRev < minRev.schemaRev || site.contentRev < minRev.contentRev)) return 'STALE'
     return bundleOf(ctx, site, locale)
   },

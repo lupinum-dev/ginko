@@ -583,7 +583,7 @@ export const sendDigest = internalMutation({
   args: { site: v.id('sites') },
   handler: async (ctx, args): Promise<null> => {
     const site = await ctx.db.get(args.site)
-    if (!site) return null
+    if (!site || site.deleting) return null
     await ctx.db.patch(site._id, { digestAt: undefined })
     const open = (await ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', site._id).eq('status', 'open')).collect())
       .filter((p) => p.mailedAt === undefined)

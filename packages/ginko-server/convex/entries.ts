@@ -727,7 +727,7 @@ export const publishDue = internalMutation({
     const entry = await ctx.db.get(args.entry)
     if (!entry || entry.deletedAt || stateOf(entry) !== 'draft' || entry.publishAt !== args.at) return null
     const site = await ctx.db.get(entry.site)
-    if (!site) return null
+    if (!site || site.deleting) return null
     const c = countersOf(site)
     const schema = site.schema as Schema
     const label = labelOf(schema, entry.brick, entry.data as Data)

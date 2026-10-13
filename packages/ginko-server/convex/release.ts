@@ -150,7 +150,7 @@ export const pushKey = internalQuery({
     const key = await ctx.db.query('pushKeys').withIndex('by_hash', (q) => q.eq('hash', args.hash)).unique()
     if (!key) return null
     const site = await ctx.db.get(key.site)
-    if (!site) return null
+    if (!site || site.deleting) return null
     return { keyId: key._id, site: key.site, siteSlug: site.slug, scopes: key.scopes, revokedAt: key.revokedAt ?? null }
   },
 })

@@ -102,6 +102,10 @@ const calls: Call[] = [
   { fn: 'tasks.prefill', kind: 'query', args: (site, f) => ({ site, task: 'menu.edit', entry: f.entry }) },
   { fn: 'sites.get', kind: 'query', args: (site) => ({ site }) },
   { fn: 'sites.setAgentReview', kind: 'mutation', args: (site) => ({ site, review: false }) },
+  { fn: 'sites.deletion', kind: 'query', args: (site) => ({ site }) },
+  // A wrong confirmation: against "andere" the call stops there instead of really starting the deletion of the attacker's own site.
+  { fn: 'sites.startDeletion', kind: 'mutation', args: (site) => ({ site, confirm: 'nope' }) },
+  { fn: 'sites.cancelDeletion', kind: 'mutation', args: (site) => ({ site }) },
   { fn: 'sites.translationStatus', kind: 'query', args: (site) => ({ site }) },
   { fn: 'views.save', kind: 'mutation', args: (site, f) => ({ site, id: f.view, brick: 'menu', name: 'pwned', query: {} }) },
   { fn: 'views.remove', kind: 'mutation', args: (site, f) => ({ site, id: f.view }) },

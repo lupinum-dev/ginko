@@ -43,7 +43,12 @@
     },
     "remindTitle": "Reminders by email",
     "remindText": "A short email the evening before the week starts if something for next week is still missing, for example the lunch menu.",
-    "language": "Language"
+    "language": "Language",
+    "deleteAccount": {
+      "title": "Delete account",
+      "text": "Your account, your memberships and your sign-in are removed. Changes you made stay in the history as “Former member”.",
+      "button": "Delete my account"
+    }
   },
   "login": {
     "title": "Sign in",
@@ -233,6 +238,16 @@
     },
     "entry": {
       "missing": "This entry does not exist (anymore)."
+    },
+    "delete": {
+      "title": "Delete site",
+      "text": "All content, files, history and access of {site} are deleted 7 days after you confirm. Until then you can cancel.",
+      "confirmLabel": "Type {slug} to confirm",
+      "button": "Delete site"
+    },
+    "deleting": {
+      "text": "{site} will be deleted on {date}.",
+      "cancel": "Cancel deletion"
     },
     "team": {
       "heading": "Team",

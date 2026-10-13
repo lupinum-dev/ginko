@@ -1,15 +1,16 @@
 // Site queries for the UI and the admin-only creation of a site (SPEC 4.2, 10).
 import { isCurrency, isLocale, isTimeZone, labelOf as labelIn, MAX_LOCALES, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
-import { internalMutation, mutation, query, type MutationCtx } from './_generated/server'
-import { actorFor, currentUser, fail } from './lib/access'
+import { internal } from './_generated/api'
+import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
+import { actorFor, currentUser, fail, memberOf, type Actor } from './lib/access'
 import { NAME_MAX, SLUG } from './lib/input'
 import { isFetchableSiteUrl } from './lib/siteUrl'
 import { leafStatus } from './lib/translation'
 import { labelOf } from './entries'
 import type { Data } from './lib/content'
 
-/** The sites the signed-in user may open, with their role. Admins see every site. */
+/** The sites the signed-in user may open, with their role. Admins see every site. A site being deleted is listed for owners and admins only (they can cancel). */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
@@ -23,8 +24,63 @@ export const mine = query({
     const sites = await Promise.all(memberships.map((member) => ctx.db.get(member.site)))
     return memberships.flatMap((member, index) => {
       const site = sites[index]
-      return site ? [{ slug: site.slug, name: site.name, url: site.url, role: member.role }] : []
+      return site && (!site.deleting || member.role === 'owner') ? [{ slug: site.slug, name: site.name, url: site.url, role: member.role }] : []
     })
+  },
+})
+
+/** Days between the start of a site deletion and the hard delete. */
+export const DELETION_DAYS = 7
+
+/** Owner or admin of the site, also while it is being deleted. Anyone else (and an unknown site) gets FORBIDDEN as everywhere. */
+async function deletionActor(ctx: QueryCtx, slug: string): Promise<Actor> {
+  const user = await currentUser(ctx)
+  const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', slug)).unique()
+  const actor = site ? await memberOf(ctx, site, user, { deleting: true }) : null
+  if (!actor) fail('FORBIDDEN', 'errors.noAccess')
+  if (actor.role === 'staff') fail('FORBIDDEN', 'errors.ownersOnly')
+  return actor
+}
+
+/** When the site will be deleted (ms) and its name, for the banner; null when no deletion is running or the caller may not cancel it. */
+export const deletion = query({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const user = await currentUser(ctx)
+    const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.site)).unique()
+    const actor = site?.deleting ? await memberOf(ctx, site, user, { deleting: true }) : null
+    return actor && actor.role !== 'staff' ? { name: actor.site.name, at: actor.site.deleting!.at } : null
+  },
+})
+
+/**
+ * Starts the deletion of a site (GDPR): confirmed by its address, owners and admins only. From now on nobody opens the site
+ * but to cancel, the public bundle answers as for an unknown site and keys stop working; `siteDeletion.purge` removes
+ * everything after `DELETION_DAYS` days.
+ */
+export const startDeletion = mutation({
+  args: { site: v.string(), confirm: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await deletionActor(ctx, args.site)
+    if (args.confirm !== actor.site.slug) fail('INVALID', 'errors.deleteSiteConfirm')
+    if (actor.site.deleting) return { at: actor.site.deleting.at }
+    const at = Date.now() + DELETION_DAYS * 24 * 60 * 60 * 1000
+    const job = await ctx.scheduler.runAt(at, internal.siteDeletion.purge, { site: actor.site._id })
+    await ctx.db.patch(actor.site._id, { deleting: { at, job } })
+    return { at }
+  },
+})
+
+/** Stops a running site deletion; owners and admins only. */
+export const cancelDeletion = mutation({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await deletionActor(ctx, args.site)
+    if (actor.site.deleting) {
+      await ctx.scheduler.cancel(actor.site.deleting.job)
+      await ctx.db.patch(actor.site._id, { deleting: undefined })
+    }
+    return null
   },
 })
 
