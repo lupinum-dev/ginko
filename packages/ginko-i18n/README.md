@@ -386,10 +386,10 @@ Auto-imported in components, pages and plugins.
 | `has(key)` | `boolean` | Whether the key exists in the current locale or the default locale. |
 | `locale` | `ComputedRef<string>` | The current URL code (`'en'`). |
 | `language` | `ComputedRef<string>` | The current BCP 47 tag (`'en-GB'`). |
-| `locales` | `Locale[]` | Every locale: `{ code, language, name, dir }`. |
+| `locales` | `LocaleInfo[]` | Every locale: `{ code, language, name, dir }`. |
 | `defaultLocale` | `string` | The default locale's code. |
 | `localePath(path, code?)` | `string` | The same page in `code` (default: the current locale). Accepts paths only, not route objects. |
-| `alternates` | `ComputedRef<Alternate[]>` | The current page in every locale: a `Locale` plus `path`, `current`, and `translated` (false when the page has no version there; `path` is then that locale's home). |
+| `alternates` | `ComputedRef<Alternate[]>` | The current page in every locale: a `LocaleInfo` plus `path`, `current`, and `translated` (false when the page has no version there; `path` is then that locale's home). |
 | `switchLocale(code)` | `Promise<void>` | Go to the current page in `code`, or change the user's locale inside a zone. |
 | `format` | object | Intl formatting in the current language, see below. |
 
@@ -441,7 +441,8 @@ own. See [Dynamic pages](#dynamic-pages-cms-content).
 ### `getI18n(event)`
 
 Auto-imported in server routes. Returns `{ locale, language, t, parts, has, format }` for the request's
-locale, with the same typed keys and formatters as `useI18n()`.
+locale, with the same typed keys and formatters as `useI18n()`. One difference: here `locale` is a
+plain string (`'en'`), while `useI18n().locale` is a `ComputedRef<string>`.
 
 ### `definePageMeta`
 
@@ -465,7 +466,11 @@ Framework-free and parser-free. See [Outside Nuxt](#outside-nuxt).
 | `negotiateLocale(header, config)` | The best code for an `Accept-Language` header, or `undefined`. |
 
 Types: `Translator`, `TranslateOptions`, `Params`, `Part`, `MessageTree`, `Catalog`, `Formatters`,
-`FormatterOptions`, `DateStyle`, `Locale`, `LocaleInput`, `LocaleConfig`, `Strategy`.
+`FormatterOptions`, `DateStyle`, `LocaleInfo`, `LocaleInput`, `LocaleConfig`, `Strategy`.
+
+### `@lupinum/ginko-i18n/internal`
+
+An entry for Ginko's own packages, with no compatibility promise. Do not import it in your code.
 
 ### `@lupinum/ginko-i18n/compile`
 
@@ -549,7 +554,7 @@ Remove `@nuxtjs/i18n` first: both modules cannot own the locale, and setup fails
 | `locales` | (required) | BCP 47 tags such as `'de-AT'`, or `{ language, code?, name? }`. The URL code defaults to the language subtag (`de-AT` → `de`); the name to the native name from `Intl.DisplayNames`. |
 | `defaultLocale` | first locale | The locale with no prefix under `prefix_except_default`, and the fallback for missing messages. |
 | `strategy` | `'prefix_except_default'` | Or `'prefix'`: every locale has a prefix and `/` redirects. |
-| `seo` | `true` | Head tags: `lang`, `dir`, canonical, hreflang with x-default, `og:locale`. |
+| `seo` | `true` | Head tags: `lang`, `dir`, canonical, hreflang with x-default, `og:locale`. `false` turns them off. An object (`{}`) is the same as `true` today; it is reserved for per-tag switches. |
 | `baseUrl` | `runtimeConfig.public.siteUrl` | Absolute site URL for canonical and hreflang. Set it in production. |
 | `params` | `{}` | Parameters every message can use, for example `{ tone: 'sie' }` for `{tone, select, …}`. |
 | `exclude` | `[]` | Extra unprefixed paths. `/api/**` and Nuxt internals are always excluded. |

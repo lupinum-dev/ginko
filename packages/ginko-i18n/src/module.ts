@@ -9,12 +9,15 @@ import type { Params } from './core/messages.ts'
 
 export type { Alternate, AlternatesResolver, TypedTranslator } from './runtime/types'
 
+/** Head-tag switches. No keys yet; the object form exists so that a switch can be added without a new option name. */
+export interface SeoOptions {}
+
 export interface ModuleOptions {
   locales: (string | LocaleInput)[]
   defaultLocale?: string
   strategy?: Strategy
   /** Head tags: html lang/dir, canonical, hreflang + x-default, og:locale. */
-  seo?: boolean
+  seo?: boolean | SeoOptions
   /** Absolute site URL for canonical and hreflang. */
   baseUrl?: string
   /** Parameters every message can use, e.g. `{ tone: 'sie' }`. */

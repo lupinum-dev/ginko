@@ -111,7 +111,13 @@ export function compileMessage(key: string, source: string): { message: Compiled
  * Compile a whole tree. `params` maps each dotted key to its parameter names; `numeric` maps each key
  * to the subset of those names used as numbers (for types and checks).
  */
-export function compileTree(raw: RawTree, prefix = ''): { tree: MessageTree, params: Record<string, string[]>, numeric: Record<string, string[]> } {
+type Compiled = { tree: MessageTree, params: Record<string, string[]>, numeric: Record<string, string[]> }
+
+export function compileTree(raw: RawTree): Compiled {
+  return compileAt(raw, '')
+}
+
+function compileAt(raw: RawTree, prefix: string): Compiled {
   const tree: MessageTree = {}
   const params: Record<string, string[]> = {}
   const numeric: Record<string, string[]> = {}
@@ -124,7 +130,7 @@ export function compileTree(raw: RawTree, prefix = ''): { tree: MessageTree, par
       numeric[key] = compiled.numeric
     }
     else if (v && typeof v === 'object') {
-      const child = compileTree(v, key)
+      const child = compileAt(v, key)
       tree[k] = child.tree
       Object.assign(params, child.params)
       Object.assign(numeric, child.numeric)

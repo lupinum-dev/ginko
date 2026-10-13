@@ -1,7 +1,7 @@
 // Types shared by app and server runtime. No `#imports` here: the server type program loads this file.
 import type { Ref } from 'vue'
 import type { RouteLocationNormalizedGeneric } from 'vue-router'
-import type { Locale, LocaleConfig, MessageTree, Params, Part, TranslateOptions } from '@lupinum/ginko-i18n/core'
+import type { LocaleInfo, LocaleConfig, MessageTree, Params, Part, TranslateOptions } from '@lupinum/ginko-i18n/core'
 
 declare global {
   /**
@@ -51,7 +51,7 @@ export interface RuntimeConfig extends LocaleConfig {
   timeZone: string
 }
 
-export interface Alternate extends Locale {
+export interface Alternate extends LocaleInfo {
   path: string
   current: boolean
   /** False when this page has no version in that locale; `path` then points to the locale's home. */

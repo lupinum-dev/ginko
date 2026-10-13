@@ -9,7 +9,7 @@ export interface LocaleInput {
   name?: string
 }
 
-export interface Locale {
+export interface LocaleInfo {
   code: string
   language: string
   name: string
@@ -19,7 +19,7 @@ export interface Locale {
 export type Strategy = 'prefix_except_default' | 'prefix'
 
 export interface LocaleConfig {
-  locales: Locale[]
+  locales: LocaleInfo[]
   defaultLocale: string
   strategy: Strategy
   /** Path patterns that never get a locale prefix (`/api/**`, `/studio/**`). */
@@ -30,7 +30,7 @@ export interface LocaleConfig {
 
 const RTL = new Set(['ar', 'arc', 'dv', 'fa', 'ha', 'he', 'khw', 'ks', 'ku', 'ps', 'sd', 'ur', 'yi'])
 
-export function resolveLocale(input: string | LocaleInput): Locale {
+export function resolveLocale(input: string | LocaleInput): LocaleInfo {
   const def = typeof input === 'string' ? { language: input } : input
   const tag = new Intl.Locale(def.language)
   const code = def.code ?? tag.language
