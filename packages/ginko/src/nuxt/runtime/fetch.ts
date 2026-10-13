@@ -16,9 +16,9 @@ const MAX_CHARS = 8 * 1024 * 1024
  * File bundles come from `loadFiles` (the app fetches the site's own route `/__ginko/files/<locale>.json`,
  * the server reads the build-time bundle directly), so this file needs no Nuxt app imports.
  */
-export async function loadBundle(config: GinkoPublicConfig, locale: Locale, minRev: string | undefined, loadFiles: (locale: Locale) => Promise<Bundle | undefined>): Promise<Bundle> {
+export async function loadBundle(config: GinkoPublicConfig, locale: Locale, minRev: string | undefined, loadFiles: (locale: Locale) => Promise<Bundle | undefined>, siteToken?: string): Promise<Bundle> {
   const [platform, files] = await Promise.all([
-    config.sources.platform ? fetchBundle(config, locale, minRev) : undefined,
+    config.sources.platform ? fetchBundle(config, locale, minRev, siteToken) : undefined,
     config.sources.files ? loadFiles(locale) : undefined,
   ])
   return withFileBricks(platform, files, schema)
@@ -30,17 +30,23 @@ export class PlatformError extends Error {
   constructor(message: string, cause?: unknown) { super(message, { cause }) }
 }
 
+/** Header with which the site's server proves to the platform that it is the site (not counted by the visitor rate limit). */
+export const SITE_TOKEN_HEADER = 'x-ginko-site-token'
+
 /**
  * Any platform failure (network, 5xx, 409 STALE, 429, wrong format) is a 503, never a 404:
  * on Vercel a 503 keeps the last good page in the ISR cache, a 404 would replace it (ISR spike).
  */
-export async function fetchBundle(config: GinkoPublicConfig, locale: Locale, minRev: string | undefined): Promise<Bundle> {
+export async function fetchBundle(config: GinkoPublicConfig, locale: Locale, minRev: string | undefined, siteToken?: string): Promise<Bundle> {
   const query = new URLSearchParams({ format: String(BUNDLE_FORMAT), locale })
   if (minRev && /^\d+\.\d+$/.test(minRev)) query.set('minRev', minRev)
   const url = `${config.platform.replace(/\/$/, '')}/bundle/${encodeURIComponent(config.site)}?${query}`
   let body: unknown
   try {
-    const response = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) })
+    // `siteToken` is the private `NUXT_GINKO_REVALIDATE_TOKEN`: only server code passes it, a browser never has it.
+    const headers: Record<string, string> = { accept: 'application/json' }
+    if (siteToken) headers[SITE_TOKEN_HEADER] = siteToken
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const text = await response.text()
     if (text.length > MAX_CHARS) throw new Error('bundle too large')

@@ -67,6 +67,9 @@ export default defineNuxtModule<SiteInput>({
     }
     addServerTemplate({ filename: '#ginko/redirects', getContents: () => `export default ${JSON.stringify(redirects)}` })
     addServerHandler({ middleware: true, handler: resolve(`./runtime/server/redirects.${runtimeExt}`) })
+    // Private runtime config (not `public`): `NUXT_GINKO_REVALIDATE_TOKEN` fills it at runtime. The server sends it as
+    // `x-ginko-site-token`, so the platform does not count the site's own fetches against the visitor rate limit.
+    nuxt.options.runtimeConfig.ginkoRevalidateToken ??= ''
     // Only the bypass token makes Vercel regenerate a page on demand (SPEC 4.4).
     nuxt.options.nitro.vercel = { ...nuxt.options.nitro.vercel, config: { ...nuxt.options.nitro.vercel?.config, bypassToken: process.env.NUXT_GINKO_REVALIDATE_TOKEN } }
 

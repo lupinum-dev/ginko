@@ -17,9 +17,9 @@ import type { GinkoPublicConfig } from './shared.ts'
  * The app's bundle loader: a platform failure becomes Nuxt's fatal 503 error page (never a 404, see `fetchBundle`).
  * File bundles come from the site's own route; on the server that call stays in-process.
  */
-async function loadBundle(config: GinkoPublicConfig, locale: Locale, minRev: string | undefined): Promise<Bundle> {
+async function loadBundle(config: GinkoPublicConfig, locale: Locale, minRev: string | undefined, siteToken: string | undefined): Promise<Bundle> {
   try {
-    return await loadBundleCore(config, locale, minRev, (l) => $fetch<Bundle>(`/__ginko/files/${l}.json`))
+    return await loadBundleCore(config, locale, minRev, (l) => $fetch<Bundle>(`/__ginko/files/${l}.json`), siteToken)
   } catch (error) {
     if (error instanceof PlatformError) throw createError({ statusCode: error.statusCode, statusMessage: error.message, fatal: true, cause: error.cause })
     throw error
@@ -35,6 +35,8 @@ const ERROR_PAGE = /^\/__nuxt_error(\/|$)/
 
 export default defineNuxtPlugin(async (nuxtApp) => {
   const config = useRuntimeConfig().public.ginko as GinkoPublicConfig
+  // Private runtime config exists on the server only; the browser never has, nor sends, the token. Read before any await (Nuxt context).
+  const siteToken = import.meta.server ? (useRuntimeConfig().ginkoRevalidateToken as string | undefined) : undefined
   const bundles = useState<Partial<Record<Locale, Bundle>>>(BUNDLE_STATE, () => ({}))
   // Forwarded so an urgent refresh never renders an older bundle (SPEC 4.4 step 4); invalid values are ignored.
   const minRev = (import.meta.server ? useRequestHeader('x-ginko-min-rev') : undefined) ?? undefined
@@ -42,7 +44,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 
   const load = async (locale: Locale) => {
     if (bundles.value[locale]) return
-    bundles.value = { ...bundles.value, [locale]: await loadBundle(config, locale, minRev) }
+    bundles.value = { ...bundles.value, [locale]: await loadBundle(config, locale, minRev, siteToken) }
   }
 
   // The requested URL, not useRoute(): plugins run before the router resolves, when the route is still '/'.
