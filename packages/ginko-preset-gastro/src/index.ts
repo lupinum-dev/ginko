@@ -1,7 +1,12 @@
-export * from './bricks.ts'
-export * from './hours.ts'
-export { germanHolidays, singaporeHolidays, calendarOf, type HolidayCalendar, type HolidayCalendarName, type HolidaysOption } from './holidays.ts'
-export * from './names.ts'
-export * from './lunch.ts'
-export * from './prices.ts'
-export * from './jsonld.ts'
+// The public surface, listed on purpose: everything not named here is internal and may change in any release.
+// Every name below is described in the README.
+export { allergensEU, events, gallery, hourPlans, hours, hoursCalendarOf, lunch, lunchPlans, menu, notices } from './bricks.ts'
+export { allergenNames, weekdayNames } from './names.ts'
+export {
+  hoursOn, spansOf, spansText, timesOf, todayState, upcomingClosures, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor,
+  type DayHours, type Exception, type Holiday, type HolidayClosure, type HoursContext, type HoursData, type HourPlan, type TodayState, type Weekday,
+} from './hours.ts'
+export type { HolidayCalendar } from './holidays.ts'
+export { lunchWeekOn, type LunchWeekData } from './lunch.ts'
+export { priceOn, upcomingPrice, type PricedItem } from './prices.ts'
+export { eventJsonLd, restaurantJsonLd, type EventJsonLdInput, type JsonLdMenuSection, type RestaurantJsonLdInput } from './jsonld.ts'

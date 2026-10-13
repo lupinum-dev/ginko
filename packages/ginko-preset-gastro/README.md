@@ -48,6 +48,38 @@ export default defineSite({
 })
 ```
 
+## Exports
+
+These are all the public names. Everything else in the package is internal and can change in any release.
+
+**Brick factories.** `hours`, `hourPlans`, `notices`, `lunch`, `lunchPlans`, `menu`, `events`, `gallery`: see [Options](#options).
+Their stored field names (`week`, `exceptions`, `closedOn`, `closedNote`, `holidayNoticeDays`, `holidays`, `from1` to `to2`,
+`weekOf`, `days`, `nextPrice`, `priceFrom` and so on) are the data of your site. They do not change.
+
+| Name | What it is |
+|---|---|
+| `allergensEU` | The 14 EU allergens as `{ value, label }` options (letter codes). |
+| `allergenNames` | `{ de, en }`: the allergen name per code, for visitors. |
+| `weekdayNames` | `{ de, en }`: the weekday name per `mo`, `tu`, `we`, `th`, `fr`, `sa`, `su`. |
+| `hoursCalendarOf(brick)` | The holiday calendar a brick from `hours()` was made with (`'AT'` if none). |
+| `hoursOn(date, { hours, plans?, calendar? })` | What applies on a date (`YYYY-MM-DD`): `{ closed, times, reason?, source, field?, holiday? }`. The one rule every display builds on. |
+| `todayState(today, ctx)` | `{ kind: 'open', times }`, `{ kind: 'closed', reason }`, `{ kind: 'holiday', holiday }` or `{ kind: 'restDay' }`. |
+| `upcomingClosures(ctx, today, days)` | The owner's closing exceptions and the public holidays that close the house, in the next `days` days. |
+| `upcomingHolidayClosures(ctx, today, days)` | Only the closing public holidays. |
+| `upcomingPlans(plans, today, days)` | Hour plans that start in the next `days` days, with their start date. |
+| `weekFor(date, ctx)` | The 7-day week that applies on a date: `{ week, plan? }`. |
+| `weekdayOf(date)` | The weekday key (`'mo'` to `'su'`) of a date. |
+| `timesOf(day, and)` | One day's opening times as text: `11:30–14:00 and 17:30–22:00` (empty when closed). |
+| `spansOf(times)`, `spansText(spans, and)` | The time spans of a day, and the spans joined as text. |
+| `lunchWeekOn(main, planned, today, week)` | The lunch week to show today: a planned week, the main `lunch` data, or nothing. `week` is the site's week info. |
+| `priceOn(item, date)` | The price on a date. `nextPrice` counts from `priceFrom` on. |
+| `upcomingPrice(item, today, days)` | `{ from, price }` for a price change in the next `days` days, else `undefined`. |
+| `restaurantJsonLd(input)` | schema.org `Restaurant` data. Prices are in minor units (cents), so `1250` is `12.50`. |
+| `eventJsonLd(input)` | schema.org `Event` data for one event. Same price rule. |
+
+Types: `HoursData`, `HoursContext`, `DayHours`, `Exception`, `HourPlan`, `HolidayClosure`, `TodayState`, `Weekday`, `Holiday`,
+`HolidayCalendar`, `LunchWeekData`, `PricedItem`, `RestaurantJsonLdInput`, `EventJsonLdInput`, `JsonLdMenuSection`.
+
 ## Outside Austria
 
 Defaults are Austrian (German and English labels, Austrian holidays, the 14 EU allergens). Change them per site:
