@@ -12,6 +12,10 @@ Ginko 0.1: one content system for Nuxt websites, from Markdown files in Git to a
 
 Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm create ginko@latest my-site`; the documentation explains every step.
 
+Public API: `@lupinum/ginko` (`defineSite`, `single`, `collection`, `f`, `formatMoney`, `plainText`, `weekStartOf` and the types), `@lupinum/ginko/nuxt` (the module, the `useGinko*` composables, `ginkoLangOf`, `ginkoSafeHref`, `isGinkoVisible`, `<GinkoMarkdown>`, `<GinkoImage>`) and `@lupinum/ginko/vue` (`<GinkoMarkdown>`). `@lupinum/ginko/internal` has no stability promise. The `ginko` CLI commands `check`, `release` and `export` are public; `dev`, `import` and `pull` run only in the Ginko monorepo.
+
+Names to know: field helpers take one options object (`f.choice(label, { options })`, `f.ref(label, { to })`, `f.list(label, { itemLabel, fields, max })`); `useGinkoPath` gives page paths; `useGinkoNeighbors(brick, id, { order })`; `formatMoney` is imported from `@lupinum/ginko`, not auto-imported; `Query.order` also takes `{ field, dir }`; the option type is `ChoiceOption`. The CLI reads `GINKO_PLATFORM` or `NUXT_PUBLIC_GINKO_PLATFORM`, and `GINKO_COMMIT` or `GITHUB_SHA`.
+
 **Content (`@lupinum/ginko`, `@lupinum/ginko-content`)**
 
 - One text format: Markdown (comark 0.7) everywhere, with field profiles that limit what a field may contain. Footnotes, emoji, alerts, Shiki code, task lists, route links (`$blog.my-post`), reusable snippets and heading anchors.
