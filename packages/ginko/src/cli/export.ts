@@ -29,7 +29,7 @@ export function siteOfKey(key: string): string {
   return match[1]!
 }
 
-/** The folder `ginko export` writes to without --out: `ginko-export-<site>-<YYYY-MM-DD>` in the working folder. */
+/** The folder `ginko export` writes to when no folder is given: `ginko-export-<site>-<YYYY-MM-DD>` in the working folder. */
 export function defaultDir(site: string, now: Date): string {
   return `ginko-export-${site}-${now.toISOString().slice(0, 10)}`
 }
