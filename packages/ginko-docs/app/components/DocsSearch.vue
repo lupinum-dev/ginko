@@ -104,9 +104,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
       <div class="docs-search-body" tabindex="0" role="region" :aria-label="t('docs.searchResults')">
         <ul v-if="flat.length" id="docs-search-list" class="docs-search-results" role="listbox" :aria-label="t('docs.search')">
-          <li v-for="(g, n) in groups" :key="n" role="group" :aria-labelledby="g.label ? `docs-hit-group-${n}` : undefined">
+          <li v-for="(g, n) in groups" :key="n" role="none">
             <p v-if="g.label" :id="`docs-hit-group-${n}`" class="docs-search-group">{{ g.label }}</p>
-            <ul role="none">
+            <ul role="group" :aria-labelledby="g.label ? `docs-hit-group-${n}` : undefined">
               <li
                 v-for="{ hit, indent } in g.rows" :id="`docs-hit-${indexOf(hit)}`" :key="hit.id" role="option" :aria-selected="indexOf(hit) === active"
                 class="docs-search-hit" :class="{ 'is-section': indent }" @mousemove="active = indexOf(hit)" @click="active = indexOf(hit); go()"

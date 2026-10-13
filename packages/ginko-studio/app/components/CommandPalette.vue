@@ -104,10 +104,11 @@ function onEnter(event: KeyboardEvent) {
           <SearchIcon class="size-4 shrink-0 opacity-50" aria-hidden="true" />
           <ListboxFilter
             v-model="query" auto-focus :placeholder="t('basics.palette.placeholder')" :aria-label="t('basics.palette.title')"
-            class="flex h-11 w-full rounded-md bg-transparent text-base outline-hidden placeholder:text-muted-foreground md:text-sm" @keydown.enter="onEnter"
+            :aria-activedescendant="highlighted?.isConnected ? highlighted.id : undefined"
+            class="flex h-11 w-full rounded-md bg-transparent text-base outline-hidden placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/80 md:text-sm" @keydown.enter="onEnter"
           />
         </div>
-        <CommandList class="max-h-[60dvh] p-1.5">
+        <CommandList class="max-h-[60dvh] p-1.5" :aria-label="t('basics.palette.title')">
           <CommandGroup v-if="!searching && recents.length" :heading="t('basics.palette.recent')">
             <CommandItem v-for="item in recents" :key="item.value" :value="item.value" class="min-h-10 rounded-md data-[highlighted]:bg-muted data-[highlighted]:text-foreground" @select="pick(item, $event)">
               <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
