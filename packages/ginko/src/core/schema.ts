@@ -463,17 +463,18 @@ function holdsFiles(field: Field): boolean {
 
 const NUMBER_OPTIONS = ['min', 'max', 'step', 'maxBytes'] as const
 
-/** An IANA time zone name this runtime's `Intl` knows, e.g. `Europe/Vienna`. */
+/** An absolute http(s) address without credentials, query or fragment: page paths are appended to it. */
 function isSiteUrl(value: unknown): boolean {
   if (typeof value !== 'string') return false
   try {
     const url = new URL(value)
-    return (url.protocol === 'https:' || url.protocol === 'http:') && url.host !== ''
+    return (url.protocol === 'https:' || url.protocol === 'http:') && url.search === '' && url.hash === '' && url.username === '' && url.password === ''
   } catch {
     return false
   }
 }
 
+/** An IANA time zone name this runtime's `Intl` knows, e.g. `Europe/Vienna`. */
 export function isTimeZone(timeZone: unknown): timeZone is string {
   if (typeof timeZone !== 'string' || timeZone === '') return false
   try {

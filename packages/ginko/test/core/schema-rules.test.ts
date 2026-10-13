@@ -118,6 +118,7 @@ describe('4. locales and currency', () => {
   it.each([
     ['https://linde.example', true], ['http://localhost:3000', true], ['https://linde.example/de/', true],
     ['linde.example', false], ['/linde', false], ['ftp://linde.example', false], ['mailto:a@linde.example', false], ['', false],
+    ['https://linde.example/?a#b', false], ['https://u:p@linde.example', false],
   ])('url "%s" -> valid: %s', (url, valid) => {
     expect(problemsOf(site({}, { url })).some((p) => p.startsWith('Invalid site url'))).toBe(!valid)
   })
