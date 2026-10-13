@@ -12,7 +12,7 @@ export default defineSite({
   currency: 'EUR',
   pages: { home: '/' },
   bricks: {
-    // content/hours.md: weekly hours. The hours rules (hoursOn, todayState) count Austrian public holidays; holidays: 'DE', 'SG' or 'none' changes that.
+    // content/hours.md: weekly hours. The hours rules (hoursOn, todayState) count Austrian public holidays; calendar: 'DE', 'SG' or 'none' changes that.
     hours: hours({ source: 'files' }),
     // content/menu/: one file per dish. allergens: 'none' leaves out the allergen field.
     menu: menu({ allergens: 'none', source: 'files' }),

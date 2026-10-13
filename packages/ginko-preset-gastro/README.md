@@ -18,7 +18,7 @@ Every factory takes the same two options, plus its own:
 |---|---|---|
 | `lang` | `'de'` | The site's main language. Picks only default content (the lunch placeholder, the "fully booked" text), for `de` or `en`. Labels are always German and English. |
 | `source` | the platform | `'files'` reads the brick from Markdown in `content/`, so it runs without the platform. |
-| `holidays` (`hours`) | `'AT'` | The public holidays the hours rules use: `'AT'`, `'DE'`, `'SG'`, `'none'`, or your own `(year) => Holiday[]`. |
+| `calendar` (`hours`) | `'AT'` | The public holidays the hours rules use: `'AT'`, `'DE'`, `'SG'`, `'none'`, or your own `(year) => Holiday[]`. |
 | `allergens` (`menu`, `lunch`, `lunchPlans`) | `'EU'` | `'EU'`, `'none'` (no allergen field), or your own `[{ value, label }]`. |
 | `weekOf` (`lunch`) | none | The default week of the lunch menu. |
 | `lunchBrick` (`lunchPlans`) | `'lunch'` | The key of the `lunch()` brick that planned weeks belong to. |
@@ -53,7 +53,7 @@ export default defineSite({
 Defaults are Austrian (German and English labels, Austrian holidays, the 14 EU allergens). Change them per site:
 
 - Labels are always German and English. `lang: 'en'` on a factory only picks the default text (such as the lunch placeholder), so use it when the main locale is `en`.
-- `holidays` on `hours()`: `'AT'` (default), `'DE'` (nationwide days only, no regional ones), `'SG'`, `'none'` (no public holidays), or your own `(year) => Holiday[]`. This is code, not an owner setting. Give the same value to the hours rules as `calendar` in their context (`hoursOn(date, { hours, calendar })`, `todayState(today, { hours, calendar })`). `hoursCalendarOf(brick)` reads it back.
+- `calendar` on `hours()`: `'AT'` (default), `'DE'` (nationwide days only, no regional ones), `'SG'`, `'none'` (no public holidays), or your own `(year) => Holiday[]`. This is code, not an owner setting. Give the same value to the hours rules as `calendar` in their context (`hoursOn(date, { hours, calendar })`, `todayState(today, { hours, calendar })`). `hoursCalendarOf(brick)` reads it back. The stored field `holidays` (the owner's choice for those days: like Sunday, closed, normal) is a different thing and keeps its name.
 - Singapore's lunar, Islamic and Hindu holidays are a table for 2026 and 2027 (source: [MOM](https://www.mom.gov.sg/employment-practices/public-holidays)). Add a row each year; other years only know the fixed dates.
 - `allergens` on `menu()`, `lunch()` and `lunchPlans()`: `'EU'` (default), `'none'` (no field), or your own `[{ value, label }]`.
 - `restaurantJsonLd` has no default currency or country: pass `currency` and `address.country`.
@@ -69,7 +69,7 @@ export default defineSite({
   currency: 'SGD',
   pages: { home: '/' },
   bricks: {
-    hours: hours({ lang: 'en', holidays: 'SG' }),
+    hours: hours({ lang: 'en', calendar: 'SG' }),
     notices: notices({ lang: 'en' }),
     lunch: lunch({ lang: 'en', allergens: 'none' }),
     menu: menu({ lang: 'en', allergens: 'none' }),

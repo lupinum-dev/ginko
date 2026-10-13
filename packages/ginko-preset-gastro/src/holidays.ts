@@ -1,4 +1,4 @@
-// Public holiday calendars. `hours({ holidays })` names one; the site passes the same choice to `hoursOn` as `ctx.calendar`.
+// Public holiday calendars. `hours({ calendar })` names one; the site passes the same choice to `hoursOn` as `ctx.calendar`.
 // Holiday names for guests come in German and English only (`de`, `en`); a site in another language shows its own text.
 import { addDays, weekdayOf } from './dates.ts'
 
@@ -51,7 +51,7 @@ export function austrianHolidays(year: number): Holiday[] {
 /**
  * German nationwide public holidays only (9 days). Regional ones are NOT included: Heilige Drei Könige,
  * Fronleichnam, Mariä Himmelfahrt, Reformationstag, Allerheiligen, Buß- und Bettag, Frauentag and others.
- * Pass your own calendar function to `hours({ holidays })` when the state has more.
+ * Pass your own calendar function to `hours({ calendar })` when the state has more.
  */
 export function germanHolidays(year: number): Holiday[] {
   const y = String(year)

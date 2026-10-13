@@ -63,7 +63,7 @@ describe('options', () => {
     expect(hours()).not.toHaveProperty('source')
   })
   it('the holiday calendar survives a spread of the brick', () => {
-    const singapore = { ...hours({ holidays: 'SG' }), label: 'Hours' }
+    const singapore = { ...hours({ calendar: 'SG' }), label: 'Hours' }
     const site = siteWith({ hours: singapore })
     expect(hoursCalendarOf(site.bricks.hours)(2026).map((h) => h.date)).toContain('2026-08-09')
     expect(hoursCalendarOf(hours())(2026).map((h) => h.date)).toContain('2026-10-26')
