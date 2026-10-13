@@ -70,39 +70,53 @@ const footnoteId = matching(/^fn(ref)?-[\w-]+$/)
 /** A link's `rel` without `opener`, which would let the opened page navigate the site's tab. */
 const rel: ValueCheck = (value) => typeof value === 'string' && value.trim().split(/\s+/).every((token) => /^[a-z-]*$/.test(token) && token !== 'opener')
 const textAlign = matching(/^text-align:(left|right|center)$/)
+/**
+ * A `class` of these tokens only: the classes Markdown's plugins write. A text never picks a class of its own, so it
+ * cannot take a rule of the site's CSS (`.ginko-quiz-input`, a Tailwind `fixed inset-0`), which would turn a link
+ * into an invisible box over the page.
+ */
+const classes = (...tokens: string[]): ValueCheck => (value) => typeof value === 'string' && value.trim() !== '' && value.trim().split(/\s+/).every((token) => tokens.includes(token))
 /** What Shiki writes on a highlighted line or token: colours, font style and the line's display, nothing that moves a box. */
 const SHIKI_DECLARATION = /^(?:(?:color|--shiki-(?:light|dark)(?:-bg)?)\s*:\s*#[0-9a-f]{3,8}|(?:--shiki-(?:light|dark)-)?(?:font-style|font-weight|text-decoration)\s*:\s*[\w-]+|display\s*:\s*inline(?:-block)?)$/i
 const shikiStyle: ValueCheck = (value) => typeof value === 'string' && value.split(';').every((d) => d.trim() === '' || SHIKI_DECLARATION.test(d.trim()))
 
 /**
  * Per tag, the attributes Markdown and its plugins write, with the values they write; every element also takes the
- * global ones (isGlobalAttribute). `span` and `example` come from plugins that run after the profile check on files
- * (Shiki's colours, the ```md preview fence of @lupinum/ginko-content), and the renderer sees them; `srcset` and
- * `sizes` are the WebP copies of a file's image (@lupinum/ginko-content).
+ * global ones (isGlobalAttribute). `class` holds the plugins' own classes: task lists, footnotes, math, the code
+ * fence's `language-…` and Shiki's. `span`, `example` and the `class` of `pre` come from plugins that run after the
+ * profile check on files (Shiki with the themes of @lupinum/ginko-content, its ```md preview fence), and the renderer
+ * sees them; `srcset` and `sizes` are the WebP copies of a file's image (@lupinum/ginko-content).
  */
 const TAG_ATTRIBUTES: Readonly<Record<string, Readonly<Record<string, ValueCheck>>>> = {
-  a: { href: anyValue, target: oneOf(['_blank']), rel, id: footnoteId },
+  a: { href: anyValue, target: oneOf(['_blank']), rel, id: footnoteId, class: classes('footnote-backref') },
   img: { src: anyValue, alt: anyValue, width: anyValue, height: anyValue, srcset: anyValue, sizes: anyValue },
-  input: { type: oneOf(['checkbox']), checked: anyValue, disabled: anyValue },
-  ol: { start: anyValue },
-  li: { id: footnoteId },
+  input: { type: oneOf(['checkbox']), checked: anyValue, disabled: anyValue, class: classes('task-list-item-checkbox') },
+  ul: { class: classes('contains-task-list') },
+  ol: { start: anyValue, class: classes('contains-task-list', 'footnotes-list') },
+  li: { id: footnoteId, class: classes('task-list-item') },
+  sup: { class: classes('footnote-ref') },
+  section: { class: classes('footnotes') },
   th: { style: textAlign },
   td: { style: textAlign },
-  pre: { language: anyValue, filename: anyValue, highlights: anyValue, meta: anyValue },
+  pre: { language: anyValue, filename: anyValue, highlights: anyValue, meta: anyValue, class: classes('shiki', 'shiki-themes', 'github-light', 'catppuccin-mocha', 'dark:catppuccin-mocha') },
+  code: { class: matching(/^language-\S+$/) },
   // comark's renderer mounts the component an `as` names in place of the element: only the alert plugin's types (`> [!TIP]`).
   blockquote: { as: oneOf(['note', 'tip', 'important', 'warning', 'caution']) },
-  math: { content: anyValue },
+  math: { content: anyValue, class: oneOf(['math inline', 'math block']) },
   mermaid: { content: anyValue },
   h1: heading, h2: heading, h3: heading, h4: heading, h5: heading, h6: heading,
   // A component's slot (`#title`): comark's `template` node with the slot's name.
   template: { name: anyValue },
-  span: { style: shikiStyle },
+  span: { style: shikiStyle, class: classes('line', 'highlight') },
   example: { preview: anyValue },
 }
 
-/** `class`, `title`, `lang`, `dir`, `data-*` and `aria-*`: what every element may carry (`{.note lang="en"}`). */
+/**
+ * `title`, `lang`, `dir` and `aria-*`: what every element may carry (`**new**{lang="en"}`). Not `class` (see `classes`)
+ * and not `data-*`: both are hooks of the site's CSS, `data-v-…` even of Vue's scoped styles.
+ */
 function isGlobalAttribute(key: string): boolean {
-  return key === 'class' || key === 'title' || key === 'lang' || key === 'dir' || /^(data|aria)-[a-z0-9-]+$/.test(key)
+  return key === 'title' || key === 'lang' || key === 'dir' || /^aria-[a-z0-9-]+$/.test(key)
 }
 
 /** Attributes that hold an address; their value must pass `isSafeHref` (`srcset`: each address in it). */
@@ -131,8 +145,9 @@ function isJson(value: string): boolean {
  * of the parser (profileCheck) and the renderer (`GinkoMarkdown`). `blocked` for an attribute that is not allowed,
  * `unsafe` for an address that fails `isSafeHref`. Every element takes the global attributes (isGlobalAttribute); on top,
  * a component the registry declares takes exactly its declared props, and any other tag what Markdown and its plugins
- * write there (TAG_ATTRIBUTES). So `on*` handlers, DOM sinks (`outerHTML`), `style`, `id`, Vue's `.`/`^` prefixes and
- * comark's `as` outside an alert are refused, and a component without a registry gets the global attributes only.
+ * write there (TAG_ATTRIBUTES). So `on*` handlers, DOM sinks (`outerHTML`), `style`, `id`, a `class` or `data-*` of the
+ * text's own, Vue's `.`/`^` prefixes and comark's `as` outside an alert are refused, and a component without a registry
+ * gets the global attributes only.
  * A bound value must be JSON: comark parses it and looks any other value up in its render data. A bound address is
  * never allowed, and a bound value never passes a value rule (only `:checked="true"` and declared props take one).
  */

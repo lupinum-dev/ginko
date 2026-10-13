@@ -8,7 +8,8 @@ const languageNames = ['typescript', 'javascript', 'json', 'vue', 'bash', 'markd
 
 /**
  * Comark's Shiki plugin keeps one highlighter for the whole process, so the plugin and its grammars
- * are loaded once here and reused by every call.
+ * are loaded once here and reused by every call. Shiki writes the theme names into the class of `pre`; the
+ * renderer keeps that class only with these two names (`TAG_ATTRIBUTES` in @lupinum/ginko's core/markdown.ts).
  */
 async function createPlugins() {
   const [light, dark] = await Promise.all([bundledThemes['github-light'](), bundledThemes['catppuccin-mocha']()])

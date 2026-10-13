@@ -91,6 +91,15 @@ describe('live or card', () => {
     expect(card.text()).toContain('Name: npm')
     expect(wrapper.get('[data-component="callout"] button').attributes('aria-label')).toBe('Einstellungen: Hinweisbox')
   })
+
+  // Bug caught: the parser took any `class`, so a stored `::callout{class="fixed inset-0 z-50"}` opened rich and the live
+  // callout took the Studio's own utilities (the dialog overlay's): the attacker's text over the whole Studio.
+  test('a stored class never reaches the Studio page: the text opens as source, with the problem', async () => {
+    const wrapper = await mounted('::callout{class="fixed inset-0 z-50"}\n## Ihre Sitzung ist abgelaufen\n::\n')
+    await until(() => wrapper.find('ul[aria-label="Probleme im Text"]').exists())
+    expect(wrapper.get('ul[aria-label="Probleme im Text"]').text()).toContain('„class“')
+    expect(document.querySelector('.ginko-callout')).toBeNull()
+  })
 })
 
 describe('settings popover', () => {

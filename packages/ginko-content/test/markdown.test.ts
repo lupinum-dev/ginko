@@ -1,4 +1,7 @@
+import { createSSRApp, h } from 'vue'
+import { renderToString } from 'vue/server-renderer'
 import { describe, expect, it } from 'vitest'
+import { GinkoMarkdown } from '@lupinum/ginko/vue'
 import { parseFile } from '../src/markdown.ts'
 
 const text = (node: unknown): string => (typeof node === 'string' ? node : Array.isArray(node) ? node.slice(2).map(text).join('') : '')
@@ -13,8 +16,10 @@ describe('parseFile', () => {
   })
 
   it('highlights code at build time and lists headings in the toc', async () => {
-    const r = await parseFile('## Setup\n\n```ts\nconst a = 1\n```\n\n### Details\n')
-    expect(JSON.stringify(r.value.nodes)).toMatch(/shiki|line/)
+    const r = await parseFile('## Setup\n\n```ts {1}\nconst a = 1\n```\n\n### Details\n')
+    // The renderer keeps only the classes it knows (core/markdown.ts): Shiki's must pass, also for these themes.
+    const html = await renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: r.value }) }))
+    expect(html).toContain('<pre language="ts" class="shiki shiki-themes github-light catppuccin-mocha dark:catppuccin-mocha"><code class="language-ts"><span class="line highlight" style="display: inline-block"><span style="color:#D73A49;--shiki-dark:#CBA6F7">const</span>')
     expect(JSON.stringify(r.value.toc)).toContain('Details')
   })
 

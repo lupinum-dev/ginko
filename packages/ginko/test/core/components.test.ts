@@ -73,7 +73,7 @@ describe('parseMarkdown with a component registry', () => {
   })
 
   test('without a registry any tag except the blocked ones is accepted, with the global attributes only', async () => {
-    expect((await parseMarkdown('::nope{.box data-a="1"}\nx\n::', { profile: 'page' })).problems).toEqual([])
+    expect((await parseMarkdown('::nope{lang="en" aria-label="Box"}\nx\n::', { profile: 'page' })).problems).toEqual([])
     expect((await parseMarkdown('::nope{a="1"}\nx\n::', { profile: 'page' })).problems).toEqual(['Die Eigenschaft „a“ ist nicht erlaubt.'])
     expect((await parseMarkdown('::script\nx\n::', { profile: 'page' })).problems).toEqual(['„script“ ist nicht erlaubt.'])
     expect((await parseMarkdown('::card\n#footer\nx\n::', { profile: 'page' })).problems).toEqual(['„template“ ist nicht erlaubt.'])

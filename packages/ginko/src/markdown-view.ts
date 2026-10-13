@@ -86,7 +86,7 @@ export const GinkoMarkdown = defineComponent({
     value: { type: Object as PropType<MarkdownTree | null | undefined>, default: undefined },
     /** Tag → component (or another tag name), e.g. `{ callout: Callout }`. Other tags use a global component of that name (PascalCase), else a plain element. */
     components: { type: Object as PropType<Record<string, Component | string>>, default: () => ({}) },
-    /** The site's component registry (`components` in ginko.config.ts): a component keeps the props it declares there. Without it a component gets only `class`, `title`, `lang`, `dir`, `data-*` and `aria-*`. */
+    /** The site's component registry (`components` in ginko.config.ts): a component keeps the props it declares there. Without it a component gets only `title`, `lang`, `dir` and `aria-*`. */
     registry: { type: Object as PropType<ComponentRegistry>, default: undefined },
   },
   setup(props) {

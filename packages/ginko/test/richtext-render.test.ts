@@ -65,18 +65,26 @@ describe('GinkoMarkdown (plain Vue)', () => {
 
   // Bug caught: the renderer dropped only the listed dangers (on*, DOM sinks, `as`), so `style`, `id` or a bound value
   // that comark looks up in its render data reached the page from a tree that skipped the parser (an import).
+  // Bug caught: any `class` and `data-*` passed, so a link took a site rule (`.ginko-quiz-input`, a Vue scoped
+  // `[data-v-<hash>]`) and became an invisible box over the page that sent every click to the attacker's address.
   test('a tree keeps only the attributes of the allowlist', async () => {
     const value = { nodes: [
-      ['p', { style: 'position:fixed;inset:0', id: '__nuxt', hidden: '', class: 'note', 'data-x': '1' }, 'Overlay'],
-      ['p', {}, ['strong', { ':title': 'frontmatter.title', ':data-ok': '"ja"' }, 'x'], ['a', { href: '/a', ':href': '"/b"', target: '_top' }, 'a']],
-      ['pre', { language: 'ts' }, ['code', {}, ['span', { style: 'color:#D73A49;--shiki-dark:#CBA6F7' }, 'const'], ['span', { style: 'position:fixed' }, ' x']]],
+      ['p', { style: 'position:fixed;inset:0', id: '__nuxt', hidden: '', class: 'note', 'data-x': '1', lang: 'en' }, 'Overlay'],
+      ['p', {}, ['strong', { ':title': 'frontmatter.title', ':aria-label': '"ja"' }, 'x'], ['a', { href: '/a', ':href': '"/b"', target: '_top' }, 'a']],
+      ['p', {}, ['a', { href: 'https://evil.example/deal', class: 'ginko-quiz-input' }, 'Angebot'], ['a', { href: 'https://evil.example/login', class: 'input', 'data-v-0a1b2c3d': '' }, 'Login']],
+      ['ul', { class: 'contains-task-list fixed' }, ['li', { class: 'task-list-item' }, 'erledigt']],
+      // Shiki's classes on a file's code block (@lupinum/ginko-content) stay.
+      ['pre', { language: 'ts', class: 'shiki shiki-themes github-light catppuccin-mocha dark:catppuccin-mocha' }, ['code', { class: 'language-ts' }, ['span', { class: 'line highlight', style: 'display: inline-block' }, ['span', { style: 'color:#D73A49;--shiki-dark:#CBA6F7' }, 'const'], ['span', { style: 'position:fixed' }, ' x']]]],
       // A file's image with its WebP copies (@lupinum/ginko-content): each address in srcset is checked.
       ['p', {}, ['img', { src: '/a.png', alt: 'A', srcset: '/a-640.webp 640w, /a.png 2000w', sizes: '100vw' }], ['img', { src: '/b.png', alt: 'B', srcset: 'javascript:alert(1) 1x' }]],
     ] } as MarkdownTree
     const html = await render(value)
-    expect(html).toContain('<p class="note" data-x="1">Overlay</p>')
-    expect(html).toContain('<strong data-ok="ja">x</strong>')
+    expect(html).toContain('<p lang="en">Overlay</p>')
+    expect(html).toContain('<strong aria-label="ja">x</strong>')
     expect(html).toContain('<a href="/a">a</a>')
+    expect(html).toContain('<a href="https://evil.example/deal">Angebot</a><a href="https://evil.example/login">Login</a>')
+    expect(html).toMatch(/<ul>\s*<li class="task-list-item">erledigt<\/li>/)
+    expect(html).toContain('<pre language="ts" class="shiki shiki-themes github-light catppuccin-mocha dark:catppuccin-mocha"><code class="language-ts"><span class="line highlight"')
     expect(html).toMatch(/<span style="color: ?#D73A49; ?--shiki-dark: ?#CBA6F7;?">const<\/span><span> x<\/span>/)
     expect(html).toContain('<img src="/a.png" alt="A" srcset="/a-640.webp 640w, /a.png 2000w" sizes="100vw">')
     expect(html).toContain('<img src="/b.png" alt="B">')
@@ -85,9 +93,9 @@ describe('GinkoMarkdown (plain Vue)', () => {
   test('a component keeps the props its registry declares; without a registry only the global attributes', async () => {
     const Badge = defineComponent({ props: { color: String }, setup: (props, { slots }) => () => h('mark', { 'data-color': props.color }, slots.default?.()) })
     const registry = defineComponents({ badge: { kind: 'inline', label: 'Badge', describe: 'x', props: { color: f.text('Farbe') } } })
-    const value = { nodes: [['p', {}, ['badge', { color: 'red', style: 'position:fixed', onclick: 'alert(1)', class: 'b' }, 'neu']]] } as MarkdownTree
-    expect(await render(value, { badge: Badge }, registry)).toContain('<mark data-color="red" class="b">neu</mark>')
-    expect(await render(value, { badge: Badge })).toContain('<mark class="b">neu</mark>')
+    const value = { nodes: [['p', {}, ['badge', { color: 'red', style: 'position:fixed', onclick: 'alert(1)', class: 'b', title: 'Neu' }, 'neu']]] } as MarkdownTree
+    expect(await render(value, { badge: Badge }, registry)).toContain('<mark data-color="red" title="Neu">neu</mark>')
+    expect(await render(value, { badge: Badge })).toContain('<mark title="Neu">neu</mark>')
   })
 
   // Bug caught: a registry that declares `embed` lets `::embed` through the parser; without a mapped component

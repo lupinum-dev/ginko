@@ -17,17 +17,24 @@ describe('parseMarkdown profiles', () => {
     ['**x**{outerHTML="<img src=x onerror=alert(1)>"}', 'inline', true],
     ['**x**{:innerText="x"}', 'page', true],
     ['[x](javascript:alert(1)){href="javascript:alert(1)"}', 'page', true],
-    // Without a registry a component takes the global attributes only (class, title, lang, dir, data-*, aria-*).
+    // Without a registry a component takes the global attributes only (title, lang, dir, aria-*).
     [':badge[neu]{href="/ok"}', 'page', true],
-    [':badge[neu]{.neu title="Neu" data-x="1" aria-label="Neu"}', 'page', false],
+    [':badge[neu]{title="Neu" lang="de" aria-label="Neu"}', 'page', false],
     // style and id from the text (overlay, clash with Nuxt's own ids); parser-made ids and cell alignment stay.
     ['::div{style="position:fixed;inset:0"}\nx\n::', 'page', true],
     ['::div{#__NUXT_DATA__}\nx\n::', 'page', true],
     ['**x**{id="a"}', 'page', true],
-    ['::div{.box}\nx\n::', 'page', false],
-    // One allowlist (attributeProblem): what Markdown writes per tag, plus class, title, lang, dir, data-* and aria-*.
+    // One allowlist (attributeProblem): what Markdown writes per tag, plus title, lang, dir and aria-*.
     ['**x**{hidden tabindex="0"}', 'page', true],
-    ['**x**{.note title="t" lang="en" dir="ltr" data-x="1" aria-label="x"}', 'inline', false],
+    ['**x**{title="t" lang="en" dir="ltr" aria-label="x"}', 'inline', false],
+    // A class or data-* of the text's own takes a rule of the site's CSS: an invisible link over the whole page
+    // (`.ginko-quiz-input` of ginko-components, a Vue scoped rule through `data-v-<hash>`, a Tailwind utility).
+    ['Neu: [Angebot ansehen](https://evil.example/deal){.ginko-quiz-input}', 'inline', true],
+    ['[Hier klicken](https://evil.example/login){.input data-v-0a1b2c3d}', 'basic', true],
+    ['**x**{data-x="1"}', 'inline', true],
+    ['::div{.box}\nx\n::', 'page', true],
+    ['- [ ] offen{.fixed}', 'basic', true],
+    ['```mermaid {.fixed .inset-0}\ngraph TD; A-->B\n```', 'rich', true],
     ['[x](/a){target="_blank" rel="noopener noreferrer"}', 'inline', false],
     ['[x](/a){target="_top"}', 'inline', true],
     ['[x](https://example.com){target="_blank" rel="opener"}', 'inline', true],
@@ -35,6 +42,7 @@ describe('parseMarkdown profiles', () => {
     ['![x](/a.png){srcset="/a.webp 640w, javascript:alert(1) 2x"}', 'rich', true],
     // A bound value must be JSON (comark looks anything else up in its render data); a bound address never passes.
     ['- [x] erledigt', 'basic', false],
+    ['1. [ ] offen\n2. [x] erledigt', 'basic', false],
     ['**x**{:title="frontmatter.title"}', 'page', true],
     ["[x](/a){:href='\"/b\"'}", 'page', true],
     ['| a |\n|---|\n| 1 |\n\n**x**{style="text-align:left"}', 'rich', true],
