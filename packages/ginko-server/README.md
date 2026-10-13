@@ -9,13 +9,19 @@ reference host.
 
 ## Deploy the platform (Lupinum operators)
 
-`apps/platform` is the host: its `convex.json` points the Convex CLI at `../../packages/ginko-server/convex/`
-(with `sharp` as an external package), and it extends `@lupinum/ginko-studio` for the UI. Function names stay
-the same (`api.sites.get` and so on), so existing deployments and data stay valid.
+This package is the Convex project: its `convex.json` points the Convex CLI at `convex/` (with `sharp` as an
+external package). `apps/platform` is the host for the UI; it extends `@lupinum/ginko-studio`. Function names
+stay the same (`api.sites.get` and so on), so existing deployments and data stay valid.
+
+Run every `npx convex` command of the platform in `packages/ginko-server`, never in another folder. The Convex CLI
+keeps `sharp` out of the bundle only when it runs next to the `package.json` that lists it; from `apps/platform` it
+bundles `sharp`, and the deploy fails on Convex's Linux runtime.
 
 1. Set the Convex environment variables (table below) on the deployment, for example
    `npx convex env set --prod SITE_URL https://platform.example`.
-2. Deploy the functions from `apps/platform`: `npx convex deploy`.
+2. Deploy the functions from `packages/ginko-server`. The environment variable names the target and wins over
+   the local `.env.local` in that folder:
+   `cd packages/ginko-server && CONVEX_DEPLOYMENT=prod:<deployment name> npx convex deploy`.
 3. Create the auth signing key once: `npx convex run --prod auth:ensureSigningKey`.
 4. Set the UI's environment variables (see the [`ginko-studio` README](../ginko-studio/README.md)) and deploy
    `apps/platform` (Vercel). `SITE_URL` and `BCN_AUTH_PROXY_IP_SECRET` must be the same on both sides, or
@@ -47,7 +53,7 @@ running it again is safe.
 
 ## Environment variables
 
-Set them in the Convex deployment (not in the host's `.env.local`).
+Set them in the Convex deployment (not in `.env.local`).
 
 | Name | Purpose |
 | --- | --- |
@@ -59,6 +65,13 @@ Set them in the Convex deployment (not in the host's `.env.local`).
 | `GINKO_MAIL_FROM` | Sender address for mail sent through Resend. |
 | `RESEND_API_KEY` | API key for Resend when `GINKO_MAIL=resend`. |
 | `GINKO_LOCAL` | `1` only on a local deployment: enables the demo seed and `devPush`. Never set it on a hosted one. |
+
+## Local backend
+
+`pnpm --filter @ginko/platform convex` starts `convex dev` in this folder against an anonymous local backend (no
+account, no cloud). It writes the deployment and its URLs to `packages/ginko-server/.env.local` (git-ignored); the
+scripts in `scripts/` and `apps/platform` (`pnpm dev`, the e2e tests) read that one file. State lives in
+`packages/ginko-server/.convex`.
 
 ## Tests
 

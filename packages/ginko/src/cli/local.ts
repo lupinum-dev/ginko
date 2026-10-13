@@ -1,19 +1,22 @@
 // The local Convex deployment, shared by the monorepo tools that write to it (`local:dev`, `local:import`,
-// `local:pull`): finding apps/platform, confirming that the Convex CLI points at the LOCAL backend
-// before any write, and running `npx convex run` against exactly that deployment.
+// `local:pull`): finding packages/ginko-server (the Convex project), confirming that the Convex CLI points at the
+// LOCAL backend before any write, and running `npx convex run` against exactly that deployment.
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { CliError, isObject } from './model.ts'
 
-/** Walks up from the site folder to the monorepo that holds apps/platform. */
-export function findPlatform(from: string, command = 'local:dev'): string {
+/**
+ * Walks up from the site folder to the monorepo and returns its Convex project, packages/ginko-server:
+ * the folder with convex.json, where `convex dev` runs and writes .env.local.
+ */
+export function findBackend(from: string, command = 'local:dev'): string {
   let dir = from
   for (;;) {
-    const candidate = join(dir, 'apps', 'platform')
+    const candidate = join(dir, 'packages', 'ginko-server')
     if (existsSync(join(candidate, 'package.json'))) return candidate
     const parent = dirname(dir)
-    if (parent === dir) throw new CliError(`apps/platform was not found. \`${command}\` must run in the Ginko monorepo.`, 'USAGE')
+    if (parent === dir) throw new CliError(`packages/ginko-server was not found. \`${command}\` must run in the Ginko monorepo.`, 'USAGE')
     dir = parent
   }
 }
@@ -68,10 +71,10 @@ function isLocalUrl(url: string): boolean {
   }
 }
 
-/** The target as the Convex CLI sees it: process environment first, then apps/platform/.env.local (its own precedence). */
-export function readDeploymentTarget(platformDir: string): DeploymentTarget {
-  const file = parseEnvFile(join(platformDir, '.env.local'))
-  const dotenv = parseEnvFile(join(platformDir, '.env'))
+/** The target as the Convex CLI sees it: process environment first, then packages/ginko-server/.env.local (its own precedence). */
+export function readDeploymentTarget(backendDir: string): DeploymentTarget {
+  const file = parseEnvFile(join(backendDir, '.env.local'))
+  const dotenv = parseEnvFile(join(backendDir, '.env'))
   return {
     deployment: process.env.CONVEX_DEPLOYMENT || file.CONVEX_DEPLOYMENT,
     url: process.env.CONVEX_URL || file.CONVEX_URL,
@@ -105,15 +108,15 @@ export type Runner = (fn: string, args: Record<string, unknown>) => Promise<unkn
 
 /**
  * Confirms the local deployment and returns the runner for it. Throws before anything is written when
- * the Convex CLI points anywhere else. `from` is the folder to search apps/platform upwards from.
+ * the Convex CLI points anywhere else. `from` is the folder to search packages/ginko-server upwards from.
  */
 export function connectLocal(from: string, command: string): Runner {
-  const platformDir = findPlatform(from, command)
-  const target = readDeploymentTarget(platformDir)
+  const backendDir = findBackend(from, command)
+  const target = readDeploymentTarget(backendDir)
   const problem = localDeploymentError(target, command)
   if (problem) throw new CliError(problem, 'USAGE')
   const env = targetEnv(target)
-  return async (fn, args) => parseOutput(await runOnce('npx', ['convex', 'run', fn, JSON.stringify(args)], platformDir, env))
+  return async (fn, args) => parseOutput(await runOnce('npx', ['convex', 'run', fn, JSON.stringify(args)], backendDir, env))
 }
 
 /** The JSON value that `convex run` prints; it may be preceded by progress lines. Undefined when there is none. */

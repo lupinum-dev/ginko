@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "convex": "CONVEX_AGENT_MODE=anonymous convex dev",
-    "dev": "nuxt dev --port 3100 --dotenv .env.local",
+    "convex": "pnpm --filter @lupinum/ginko-server convex",
+    "dev": "nuxt dev --port 3100 --dotenv ../../packages/ginko-server/.env.local",
     "typecheck": "tsc -p ../../packages/ginko-server/convex/tsconfig.json && nuxt typecheck",
     "e2e": "playwright test",
     "postinstall": "nuxt prepare"

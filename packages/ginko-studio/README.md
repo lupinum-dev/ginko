@@ -24,8 +24,9 @@ whole app: do not extend a website with this layer. For the Convex side and the 
 
 ## Environment variables
 
-Read at build and start time by the host (`--dotenv .env.local` in development). A production build stops
-when `SITE_URL` or `CONVEX_SITE_URL` is missing; development uses the local defaults.
+Read at build and start time by the host. In development, `pnpm dev` reads `packages/ginko-server/.env.local`
+(the file that `convex dev` writes). A production build stops when `SITE_URL` or `CONVEX_SITE_URL` is missing;
+development uses the local defaults.
 
 | Name | Purpose |
 | --- | --- |

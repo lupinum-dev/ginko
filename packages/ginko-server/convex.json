@@ -1,5 +1,5 @@
 {
-  "functions": "../../packages/ginko-server/convex/",
+  "functions": "convex/",
   "node": {
     "externalPackages": ["sharp"]
   }

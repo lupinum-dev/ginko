@@ -44,7 +44,7 @@ pnpm check:pack   # packs the released packages, installs a new site from the ta
 The platform and Studio locally, on a local Convex backend (never a cloud deployment):
 
 ```bash
-cd apps/platform && CONVEX_AGENT_MODE=anonymous npx convex dev   # keep it running
+pnpm --filter @ginko/platform convex                               # keep it running; runs in packages/ginko-server, writes its .env.local
 node --experimental-strip-types scripts/setup-local.ts           # once per new backend: env vars, signing key
 node --experimental-strip-types scripts/push-local.ts             # the restaurant site (or: saas, docs, …)
 node --experimental-strip-types scripts/seed-local.ts             # demo content, owner and cook invites

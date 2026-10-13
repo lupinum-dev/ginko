@@ -1,19 +1,19 @@
-// Prepares a fresh LOCAL Convex backend (apps/platform, `convex dev` running) for sign-in and the demos:
+// Prepares a fresh LOCAL Convex backend (packages/ginko-server, `convex dev` running) for sign-in and the demos:
 // sets the environment variables the platform needs, only those still missing, and the auth signing key.
 //   node --experimental-strip-types scripts/setup-local.ts
 import { execFileSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 
-const platform = new URL('../apps/platform/', import.meta.url).pathname
-const env = readFileSync(`${platform}.env.local`, 'utf8')
-if (!/^CONVEX_DEPLOYMENT=anonymous/m.test(env)) throw new Error('apps/platform/.env.local points at a non-local deployment. Stopped.')
+const server = new URL('../packages/ginko-server/', import.meta.url).pathname
+const env = readFileSync(`${server}.env.local`, 'utf8')
+if (!/^CONVEX_DEPLOYMENT=anonymous/m.test(env)) throw new Error('packages/ginko-server/.env.local points at a non-local deployment. Stopped.')
 // A deploy key wins over .env.local in the Convex CLI and would send this to the cloud.
 if (process.env.CONVEX_DEPLOY_KEY) throw new Error('CONVEX_DEPLOY_KEY is set: this script is for the local backend only. Stopped.')
 
-const convex = (...args: string[]) => execFileSync('npx', ['convex', ...args], { cwd: platform, encoding: 'utf8' })
+const convex = (...args: string[]) => execFileSync('npx', ['convex', ...args], { cwd: server, encoding: 'utf8' })
 const secret = () => randomBytes(32).toString('hex')
-/** A value from apps/platform/.env.local, where the Nuxt side reads it: both sides must agree. */
+/** A value from packages/ginko-server/.env.local, where the Nuxt side reads it: both sides must agree. */
 const local = (name: string) => env.match(new RegExp(`^${name}=(.*)$`, 'm'))?.[1]?.trim()
 
 // The platform UI runs on 3100 (apps/platform `pnpm dev`, the e2e tests).
@@ -40,7 +40,7 @@ for (const name of ['BCN_AUTH_PROXY_IP_SECRET', 'SITE_URL']) {
   if (local(name) === value) continue
   const line = `${name}=${value}`
   file = new RegExp(`^${name}=.*$`, 'm').test(file) ? file.replace(new RegExp(`^${name}=.*$`, 'm'), line) : `${file.replace(/\n?$/, '\n')}${line}\n`
-  console.log(`wrote ${name} to apps/platform/.env.local`)
+  console.log(`wrote ${name} to packages/ginko-server/.env.local`)
 }
-if (file !== env) writeFileSync(`${platform}.env.local`, file)
+if (file !== env) writeFileSync(`${server}.env.local`, file)
 console.log(convex('run', 'auth:ensureSigningKey').trim() || 'signing key ready')

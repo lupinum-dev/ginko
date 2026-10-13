@@ -6,7 +6,7 @@ import { watch, type FSWatcher } from 'node:fs'
 import { basename, dirname } from 'node:path'
 import { platformSchema, serializeSchema, type Schema, type SchemaChange } from '../core/index.ts'
 import { loadConfig } from './config.ts'
-import { findPlatform, knownTargetError, localDeploymentError, parseResult, readDeploymentTarget, runOnce, targetEnv, type DeploymentTarget } from './local.ts'
+import { findBackend, knownTargetError, localDeploymentError, parseResult, readDeploymentTarget, runOnce, targetEnv, type DeploymentTarget } from './local.ts'
 import { CliError } from './model.ts'
 import { explainRejected } from './report.ts'
 
@@ -23,10 +23,10 @@ const KILL_AFTER_MS = 5_000
 export async function runDev(input: DevInput): Promise<number> {
   const { log } = input
   const siteDir = dirname(input.configPath)
-  const platformDir = findPlatform(siteDir)
-  const repoDir = dirname(dirname(platformDir))
+  const backendDir = findBackend(siteDir)
+  const repoDir = dirname(dirname(backendDir))
   // Before any process starts: `convex dev` would contact a cloud deployment first.
-  const early = knownTargetError(readDeploymentTarget(platformDir))
+  const early = knownTargetError(readDeploymentTarget(backendDir))
   if (early) throw new CliError(early, 'USAGE')
   const env = { ...process.env, GINKO_LOCAL: '1' }
   const children: ChildProcess[] = []
@@ -79,7 +79,7 @@ export async function runDev(input: DevInput): Promise<number> {
   // 1. Local backend. Its functions are up when `convex dev` says so.
   const backend = new Promise<void>((done, fail) => {
     const timer = setTimeout(() => fail(new CliError('The local Convex backend is not ready after 3 minutes.', 'UNAVAILABLE')), READY_TIMEOUT_MS)
-    start('convex', 'npx', ['convex', 'dev'], platformDir, { ...env, CONVEX_AGENT_MODE: 'anonymous' }, (line) => {
+    start('convex', 'npx', ['convex', 'dev'], backendDir, { ...env, CONVEX_AGENT_MODE: 'anonymous' }, (line) => {
       if (CONVEX_READY.test(line)) {
         clearTimeout(timer)
         done()
@@ -90,11 +90,11 @@ export async function runDev(input: DevInput): Promise<number> {
   try {
     await backend
     // Confirm the deployment that the Convex CLI selected before any write. Only then every command gets it explicitly.
-    target = readDeploymentTarget(platformDir)
+    target = readDeploymentTarget(backendDir)
     const problem = localDeploymentError(target)
     if (problem) throw new CliError(problem, 'USAGE')
     // The platform reads GINKO_LOCAL inside Convex, so the backend needs it too (SPEC 5.3).
-    await runOnce('npx', ['convex', 'env', 'set', 'GINKO_LOCAL', '1'], platformDir, targetEnv(target))
+    await runOnce('npx', ['convex', 'env', 'set', 'GINKO_LOCAL', '1'], backendDir, targetEnv(target))
   } catch (error) {
     stop(1)
     throw error
@@ -111,7 +111,7 @@ export async function runDev(input: DevInput): Promise<number> {
     revision++
     try {
       const config = await loadConfig(input.configPath, revision)
-      await push(platformSchema(serializeSchema(config)), platformDir, config.site, log, target)
+      await push(platformSchema(serializeSchema(config)), backendDir, config.site, log, target)
     } catch (error) {
       log(`Schema not pushed: ${error instanceof Error ? error.message : String(error)}`)
     }
@@ -164,8 +164,8 @@ export function serialized(run: () => Promise<void>, stopped: () => boolean = ()
 }
 
 /** devPush in the local platform. Rejected changes go through and are shown as warnings (SPEC 5.3). */
-async function push(schema: Schema, platformDir: string, site: string, log: (line: string) => void, target: DeploymentTarget) {
-  const output = await runOnce('npx', ['convex', 'run', 'release:devPush', JSON.stringify({ site, schema })], platformDir, targetEnv(target))
+async function push(schema: Schema, backendDir: string, site: string, log: (line: string) => void, target: DeploymentTarget) {
+  const output = await runOnce('npx', ['convex', 'run', 'release:devPush', JSON.stringify({ site, schema })], backendDir, targetEnv(target))
   const result = parseResult(output)
   if (!result) {
     log(`devPush: unexpected answer: ${output.slice(0, 300)}`)

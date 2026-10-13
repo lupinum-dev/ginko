@@ -69,8 +69,8 @@ const atomicSave = (source: string) => {
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'ginko-dev-'))
-  mkdirSync(join(dir, 'apps/platform'), { recursive: true })
-  writeFileSync(join(dir, 'apps/platform/package.json'), '{"name":"@ginko/platform"}\n')
+  mkdirSync(join(dir, 'packages/ginko-server'), { recursive: true })
+  writeFileSync(join(dir, 'packages/ginko-server/package.json'), '{"name":"@lupinum/ginko-server"}\n')
   mkdirSync(join(dir, 'sites/demo'), { recursive: true })
   configPath = join(dir, 'sites/demo/ginko.config.ts')
   writeFileSync(configPath, config())

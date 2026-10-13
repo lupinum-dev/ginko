@@ -1,5 +1,5 @@
 // Helpers for the platform e2e tests (UI.md 9). They talk to the LOCAL Convex backend only: the
-// deployment in .env.local must be the anonymous local one, or every helper refuses.
+// deployment in packages/ginko-server/.env.local must be the anonymous local one, or every helper refuses.
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { deflateSync, crc32 } from 'node:zlib'
@@ -12,13 +12,14 @@ import es from '../../../packages/ginko-server/i18n/es.json' with { type: 'json'
 /** The code mail comes in the person's language, which an earlier English test may have stored. */
 const CODE_SUBJECTS = [de, en, es].map((catalog) => catalog.mail.code.subject)
 
-const platformDir = new URL('../', import.meta.url).pathname
+/** The Convex project: `.env.local` (the local deployment) and the folder `npx convex` runs in. */
+export const serverDir = new URL('../../../packages/ginko-server/', import.meta.url).pathname
 const repoDir = new URL('../../../', import.meta.url).pathname
 
 export function assertLocal() {
   if (process.env.CONVEX_DEPLOY_KEY) throw new Error('CONVEX_DEPLOY_KEY is set: the e2e tests write data and run against the local backend only. Stopped.')
-  if (!/^CONVEX_DEPLOYMENT=anonymous/m.test(readFileSync(`${platformDir}.env.local`, 'utf8'))) {
-    throw new Error('apps/platform/.env.local is not the local Convex deployment. The e2e tests write data; stopped.')
+  if (!/^CONVEX_DEPLOYMENT=anonymous/m.test(readFileSync(`${serverDir}.env.local`, 'utf8'))) {
+    throw new Error('packages/ginko-server/.env.local is not the local Convex deployment. The e2e tests write data; stopped.')
   }
 }
 

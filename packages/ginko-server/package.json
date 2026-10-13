@@ -26,6 +26,9 @@
   "exports": {
     "./convex/*": "./convex/*"
   },
+  "scripts": {
+    "convex": "CONVEX_AGENT_MODE=anonymous convex dev"
+  },
   "dependencies": {
     "@better-auth/core": "1.7.6",
     "@better-auth/oauth-provider": "1.7.6",

@@ -1,4 +1,4 @@
-// Tools for the Ginko monorepo, not part of the published `ginko` command (they need apps/platform):
+// Tools for the Ginko monorepo, not part of the published `ginko` command (they need packages/ginko-server):
 //   pnpm local:dev    --config <file>   local Convex backend, platform and site (dev.ts)
 //   pnpm local:import <folder>          an export folder into the local platform (import.ts)
 //   pnpm local:pull                     production content into the local platform (pull.ts)
@@ -24,7 +24,7 @@ Commands:
                          Needs GINKO_PLATFORM and GINKO_KEY (scope pull or export).
 
 Options:
-  --config <file>   Path to the site's ginko.config.ts, required by local:dev; apps/platform is searched from there
+  --config <file>   Path to the site's ginko.config.ts, required by local:dev; packages/ginko-server is searched from there
                     (without it: from the current folder)
   -h, --help        Show this help
 `

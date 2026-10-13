@@ -2,7 +2,7 @@
 import { addDays, DEFAULT_WEEK, todayIn, workWeekOf } from '@lupinum/ginko/internal'
 import { expect, test, type Page } from '@playwright/test'
 import { STATE } from './global-setup'
-import { codeFor, openQuick, resetContent } from './local'
+import { codeFor, openQuick, resetContent, serverDir } from './local'
 
 const today = () => todayIn('Europe/Vienna')
 const asOwner = { storageState: STATE.owner }
@@ -308,7 +308,7 @@ test.describe('Anmelden und Einladung', () => {
     await owner.close()
 
     const { execFileSync } = await import('node:child_process')
-    const mails = execFileSync('npx', ['convex', 'data', 'outbox', '--limit', '30', '--order', 'desc', '--format', 'jsonLines'], { cwd: new URL('../', import.meta.url).pathname, encoding: 'utf8' })
+    const mails = execFileSync('npx', ['convex', 'data', 'outbox', '--limit', '30', '--order', 'desc', '--format', 'jsonLines'], { cwd: serverDir, encoding: 'utf8' })
     const link = mails.trim().split('\n').map((l) => JSON.parse(l) as { to: string; text: string }).find((m) => m.to === email)!.text.match(/(http\S+\/invite\/\S+)/)![1]!
 
     await page.goto('/login', { waitUntil: 'networkidle' })
