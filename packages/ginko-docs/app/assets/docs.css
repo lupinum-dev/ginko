@@ -462,7 +462,7 @@
 /* ---------- Not found and error ---------- */
 
 .docs-error { display: grid; place-items: center; min-height: calc(100dvh - var(--docs-header) - 10rem); padding: 4rem 1.5rem; text-align: center; }
-.docs-error-code { margin: 0; color: color-mix(in oklab, var(--muted-foreground) 35%, transparent); font-size: clamp(4.5rem, 3rem + 6vw, 7.5rem); font-weight: 700; line-height: 1; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
+.docs-error-code { margin: 0; color: var(--muted-foreground); font-size: clamp(4.5rem, 3rem + 6vw, 7.5rem); font-weight: 700; line-height: 1; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; }
 .docs-error h1 { margin: 0.75rem 0 0; font-size: var(--docs-h1); font-weight: 700; letter-spacing: -0.025em; }
 .docs-error p:not(.docs-error-code) { max-width: 28rem; margin: 0.75rem auto 0; color: var(--muted-foreground); }
 .docs-error-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-top: 2rem; }
