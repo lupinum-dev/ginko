@@ -3,7 +3,6 @@
 import schema from '#ginko/schema'
 import type { DocNode } from '../utils/docsNav'
 
-export type { DocNode } from '../utils/docsNav'
 export interface DocTab { title: string; path: string }
 
 export function useDocs() {
