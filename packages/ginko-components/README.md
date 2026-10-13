@@ -20,8 +20,8 @@ export default defineSite({ /* … */ components })
 ```
 
 The module needs `@lupinum/ginko/nuxt` (it installs ginko-i18n, which provides the UI texts); without it the build
-stops with a message that says so. The module provides the tag → component map under `ginko:components`;
-`<GinkoMarkdown>` merges it under its own `components` prop, so a site overrides one tag by passing it there.
+stops with a message that says so. The module gives `<GinkoMarkdown>` the tag → component map (through an internal
+inject key); `<GinkoMarkdown>` merges it under its own `components` prop, so a site overrides one tag by passing it there.
 
 ## Exports
 
@@ -123,10 +123,10 @@ Interactive components (`registry-interactive.ts`, styles in `interactive.css`):
 | `cards` | block, children `card` | `cols` 1 to 3 (default 2) |
 | `card` | block | `title`; `description`; `footer`; `href`; `icon`* (in a tile above the title); `iconColor` primary, info, success, warning, error; `image`; `horizontal` |
 | `read-more` | block | `href` (required); `title` (the link text; the address if empty); `icon`*; several in a row join into one list |
-| `inline-toc` | block | `title`; `depth` 2 to 4; `open` (closed by default); reads the toc `<GinkoMarkdown>` provides under `ginko:toc` and renders nothing without headings |
+| `inline-toc` | block | `title`; `depth` 2 to 4; `open` (closed by default); reads the toc of the page that `<GinkoMarkdown>` renders, and renders nothing without headings |
 
 \* An Iconify name such as `lucide:book-open` (a bare name means Lucide). It renders through the site's global `<Icon>` from
-`@nuxt/icon`, which the docs preset includes; a site without it shows no icon. A site that installs `@nuxt/icon` itself
+`@nuxt/icon`, which the docs layer includes; a site without it shows no icon. A site that installs `@nuxt/icon` itself
 works as long as it keeps the default component name (`icon.componentName: 'Icon'`). Only the icon sets the site
 installs work.
 
