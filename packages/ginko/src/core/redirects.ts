@@ -36,6 +36,17 @@ function compile(rule: Redirect): CompiledRule {
   return { rule, pattern: new RegExp(`^${source}${tail}$`), params, wildcard }
 }
 
+// Rules are compiled once per rule list (config rules are one stable array; entry rules are cached per bundle below),
+// not on every request. Keyed by identity: a list that is changed in place after its first match is not recompiled.
+const compiledRules = new WeakMap<readonly Redirect[], CompiledRule[]>()
+const entryRules = new WeakMap<Bundle, Redirect[]>()
+
+function compiledFor(rules: readonly Redirect[]): CompiledRule[] {
+  let compiled = compiledRules.get(rules)
+  if (!compiled) compiledRules.set(rules, compiled = rules.map(compile))
+  return compiled
+}
+
 /**
  * First matching rule wins. `from` may hold `:name` segments and one trailing `*`; `to` may use `:name` and `:splat`. Query strings of the request are kept.
  */
@@ -44,7 +55,7 @@ export function matchRedirect(rules: readonly Redirect[], path: string): { to: s
   const pathPart = trimSlash(queryStart === -1 ? path : path.slice(0, queryStart))
   const query = queryStart === -1 ? '' : path.slice(queryStart + 1)
 
-  for (const compiled of rules.map(compile)) {
+  for (const compiled of compiledFor(rules)) {
     const match = compiled.pattern.exec(pathPart)
     if (!match) continue
 
@@ -66,7 +77,10 @@ export function matchRedirect(rules: readonly Redirect[], path: string): { to: s
 
 /** The redirect for `path`: the site's config rules first, then the entries' `redirectFrom` in the given bundle (the one of the path's locale). */
 export function findRedirect(rules: readonly Redirect[], bundle: Bundle | undefined, path: string): { to: string; status: 301 | 302 | 307 | 308 } | undefined {
-  return matchRedirect(rules, path) ?? (bundle ? matchRedirect(entryRedirects(bundle), path) : undefined)
+  if (!bundle) return matchRedirect(rules, path)
+  let fromEntries = entryRules.get(bundle)
+  if (!fromEntries) entryRules.set(bundle, fromEntries = entryRedirects(bundle))
+  return matchRedirect(rules, path) ?? matchRedirect(fromEntries, path)
 }
 
 /**

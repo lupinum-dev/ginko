@@ -52,6 +52,25 @@ describe('matchRedirect keeps path targets on the site', () => {
   })
 })
 
+// Wrong behaviour caught: every request compiles all rules again (3 ms per 2000 rules, on each page view).
+describe('compiled rules are reused', () => {
+  it('reads a rule list once, and the entry rules of a bundle once', () => {
+    let reads = 0
+    const rules: Redirect[] = [{ get from() { reads++; return '/a' }, to: '/b' }]
+    expect(matchRedirect(rules, '/a')).toEqual({ to: '/b', status: 301 })
+    const afterFirst = reads
+    expect(afterFirst).toBeGreaterThan(0)
+    expect(matchRedirect(rules, '/a')).toEqual({ to: '/b', status: 301 })
+    expect(reads).toBe(afterFirst)
+
+    let entryReads = 0
+    const bundle = { bricks: { news: { kind: 'collection', get items() { entryReads++; return [{ id: 'n/a', data: { redirectFrom: '/alt' }, fallback: [], urls: { de: '/neu' } }] } } }, locale: 'de' } as unknown as Bundle
+    expect(findRedirect([], bundle, '/alt')).toEqual({ to: '/neu', status: 301 })
+    expect(findRedirect([], bundle, '/alt')).toEqual({ to: '/neu', status: 301 })
+    expect(entryReads).toBe(1)
+  })
+})
+
 describe('entryRedirects', () => {
   const bundle: Bundle = {
     format: 3,
