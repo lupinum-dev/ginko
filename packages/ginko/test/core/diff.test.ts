@@ -398,6 +398,16 @@ describe('checkSchema: retired fields (SPEC 2.5)', () => {
       mutate: (s: Schema) => { retire(s, 'seo.description', {} as never) },
       problems: ['retired: “seo.description” needs exactly one of { from }, { value } or { drop: true }.'],
     },
+    {
+      name: 'a retired brick with a value rule',
+      mutate: (s: Schema) => { s.bricks.gallery!.retired = true; s.retired.gallery = { value: 1 } },
+      problems: ['retired: brick “gallery” takes { drop: true }.'],
+    },
+    {
+      name: 'a sort direction other than asc or desc',
+      mutate: (s: Schema) => { Object.assign(s.bricks.events!, { order: { field: 'when', dir: 'up' } }) },
+      problems: ['events: order.dir must be “asc” or “desc”.'],
+    },
   ])('reports: $name', ({ mutate, problems }) => {
     const s = base()
     mutate(s)

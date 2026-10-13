@@ -412,6 +412,7 @@ describe('week tokens', () => {
     [{ weekOf: '@thisWeek' }, ['lunch.w.prefill.weekOf: unknown token “@thisWeek” (known: @today, @workWeek, @nextWorkWeek).']],
     [{ weekOf: 'tomorrow' }, ['lunch.w.prefill.weekOf: “Woche” is not a valid date.']],
     [{ handle: '@today' }, ['lunch.w.prefill.handle: “@today” needs a date field.']],
+    [{ nope: 'x' }, ['lunch.w.prefill.nope: the field is missing.']],
   ])('prefill %j', (prefill, problems) => {
     expect(problemsOf(withPrefill(prefill))).toEqual(problems)
   })
@@ -473,6 +474,7 @@ describe('visible', () => {
     [{ mode: 'until', field: 'name' }, ['menu: visibility needs a date or daterange field.']],
     [{ mode: 'until', field: 'until', autoRemoveExpired: true }, ['menu.visible: unknown property “autoRemoveExpired”.']],
     [{ mode: 'always', field: 'until' }, ['menu: visible: “always” takes no other options.']],
+    [{ mode: 'until', field: 'until', deleteExpired: 'yes' }, ['menu: visibility: deleteExpired must be true or false.']],
   ])('%j', (visible, problems) => {
     expect(problemsOf(withVisible(visible))).toEqual(problems)
   })
