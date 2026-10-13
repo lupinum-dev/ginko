@@ -30,7 +30,7 @@ describe('propProblem', () => {
     ['box', 'tags', ['a', 'a'], 'a,a'],
     ['box', 'tags', ['a', 'b', 'c'], 'a,b,c'],
     ['box', 'tags', ['z'], 'z'],
-    ['tab', 'label', '', ''],
+    ['tab', 'title', '', ''],
     ['card', 'image', 'javascript:alert(1)', 'javascript:alert(1)'],
   ]
   test.each(cases)('%s %s %j gives the message of parseMarkdown', async (tag, key, value, attribute) => {
@@ -79,8 +79,8 @@ describe('writeProp', () => {
   })
 
   test('a boolean is written bare when on and left out when off; a default of true is left out when on', () => {
-    expect(writeProp(field('collapse', 'open'), { label: 'x' }, 'open', true)).toEqual({ label: 'x', ':open': 'true' })
-    expect(writeProp(field('collapse', 'open'), { label: 'x', ':open': 'true' }, 'open', false)).toEqual({ label: 'x' })
+    expect(writeProp(field('collapse', 'open'), { title: 'x' }, 'open', true)).toEqual({ title: 'x', ':open': 'true' })
+    expect(writeProp(field('collapse', 'open'), { title: 'x', ':open': 'true' }, 'open', false)).toEqual({ title: 'x' })
     expect(writeProp(field('figure', 'zoom'), { src: '/a.svg' }, 'zoom', false)).toEqual({ src: '/a.svg', zoom: 'false' })
     expect(writeProp(field('figure', 'zoom'), { src: '/a.svg', zoom: 'false' }, 'zoom', true)).toEqual({ src: '/a.svg' })
   })
@@ -94,7 +94,7 @@ describe('writeProp', () => {
   })
 
   test('an edited block is saved as Markdown with only that block changed', async () => {
-    const text = 'Davor  *so*\n\n::callout{type="info" title="A"}\nText\n::\n\n::collapse{label="Mehr" open}\nInhalt\n::\n'
+    const text = 'Davor  *so*\n\n::callout{type="info" title="A"}\nText\n::\n\n::collapse{title="Mehr" open}\nInhalt\n::\n'
     const handle = await createGinkoEditor({ text, profile: 'page', components: registry, element: document.createElement('div') })
     if (handle.mode !== 'rich') throw new Error(handle.problems.join())
     const { editor } = handle
@@ -107,9 +107,9 @@ describe('writeProp', () => {
       })
     }
     edit('callout', 'type', 'warning')
-    expect(await handle.markdown()).toBe('Davor  *so*\n\n::callout{type="warning" title="A"}\nText\n::\n\n::collapse{label="Mehr" open}\nInhalt\n::\n')
+    expect(await handle.markdown()).toBe('Davor  *so*\n\n::callout{type="warning" title="A"}\nText\n::\n\n::collapse{title="Mehr" open}\nInhalt\n::\n')
     edit('collapse', 'open', false)
-    expect(await handle.markdown()).toBe('Davor  *so*\n\n::callout{type="warning" title="A"}\nText\n::\n\n::collapse{label="Mehr"}\nInhalt\n::\n')
+    expect(await handle.markdown()).toBe('Davor  *so*\n\n::callout{type="warning" title="A"}\nText\n::\n\n::collapse{title="Mehr"}\nInhalt\n::\n')
   })
 })
 

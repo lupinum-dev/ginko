@@ -60,7 +60,7 @@ const FEATURES: Case[] = [
   { name: 'component', profile: 'page', text: '::callout{type="warning"}\nHinweistext\n::', registry: components },
   { name: 'inline component', profile: 'page', text: 'Das ist :badge[neu]{color="success"} im Text', registry: components },
   { name: 'component with slot template', profile: 'page', text: '::callout\nHaupttext\n\n#footer\nFuß\n::', registry: { callout: { ...components.callout, slots: { footer: { label: 'Fuß' } } } } },
-  { name: 'nested components', profile: 'page', text: ':::tabs\n::tab{label="a"}\nx\n::\n:::', registry: components },
+  { name: 'nested components', profile: 'page', text: ':::tabs\n::tab{title="a"}\nx\n::\n:::', registry: components },
   { name: 'components without a registry', profile: 'page', text: '::foo{a="1"}\nText :bar[x]\n::' },
 ]
 

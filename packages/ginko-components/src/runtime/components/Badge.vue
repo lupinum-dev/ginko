@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-const COLORS = ['neutral', 'primary', 'success', 'warning', 'danger']
+const COLORS = ['neutral', 'primary', 'success', 'warning', 'error']
 const props = defineProps<{ color?: string }>()
 const color = computed(() => (props.color && COLORS.includes(props.color) ? props.color : 'neutral'))
 </script>

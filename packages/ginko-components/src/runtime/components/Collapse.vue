@@ -3,10 +3,10 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
 import { isOn } from './interactive-utils'
 import { useText } from './text'
 
-// Two forms. With `label`: a <details>/<summary> section readers open and close (works without JavaScript; `open` is
-// the initial state). Without `label`: tall content (usually a long code block) is cut off behind a fade until the
+// Two forms. With `title`: a <details>/<summary> section readers open and close (works without JavaScript; `open` is
+// the initial state). Without `title`: tall content (usually a long code block) is cut off behind a fade until the
 // reader presses "Show more"; content that fits shows in full.
-const props = defineProps<{ label?: string; open?: boolean | string; appearance?: 'quiet' | 'tint' }>()
+const props = defineProps<{ title?: string; open?: boolean | string; appearance?: 'quiet' | 'tint' }>()
 const isOpen = computed(() => isOn(props.open))
 const t = useText()
 
@@ -21,7 +21,7 @@ function measure() {
   if (el) fits.value = el.scrollHeight - el.clientHeight <= 2
 }
 onMounted(() => {
-  if (props.label || !region.value) return
+  if (props.title || !region.value) return
   lines.value = region.value.querySelectorAll('pre .line').length
   measure()
   observer = new ResizeObserver(measure)
@@ -37,8 +37,8 @@ async function expand() {
 </script>
 
 <template>
-  <details v-if="label" class="ginko-collapse" :open="isOpen || undefined" :data-appearance="appearance">
-    <summary class="ginko-disclosure-summary">{{ label }}</summary>
+  <details v-if="title" class="ginko-collapse" :open="isOpen || undefined" :data-appearance="appearance">
+    <summary class="ginko-disclosure-summary">{{ title }}</summary>
     <div class="ginko-disclosure-body"><slot /></div>
   </details>
   <div v-else class="ginko-clip" :data-clipped="!expanded && !fits ? '' : undefined">

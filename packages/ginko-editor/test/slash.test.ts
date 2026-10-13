@@ -55,7 +55,7 @@ describe('slashItems', () => {
     if (handle.mode !== 'rich') throw new Error('expected rich')
     await slashItems({ profile: 'page', components }).find((i) => i.id === 'component:tabs')!.run(handle.editor)
     const tabs = handle.editor.getJSON().content!.find((n) => n.type === 'component')!
-    expect((tabs.content as Array<{ attrs: { props: unknown } }>).map((t) => t.attrs.props)).toEqual([{ label: 'npm' }, { label: 'pnpm' }])
+    expect((tabs.content as Array<{ attrs: { props: unknown } }>).map((t) => t.attrs.props)).toEqual([{ title: 'npm' }, { title: 'pnpm' }])
     handle.destroy()
   })
 })

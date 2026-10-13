@@ -22,13 +22,13 @@ async function render(text: string, provideToc = false): Promise<string> {
 
 describe('interactive components', () => {
   test('a tab outside tabs is a problem; a card may stand alone', async () => {
-    const tab = await parseMarkdown('::tab{label="A"}\nText\n::', { profile: 'page', components })
+    const tab = await parseMarkdown('::tab{title="A"}\nText\n::', { profile: 'page', components })
     expect(tab.problems.join('\n')).toContain('darf nur in „tabs“ stehen')
     expect((await parseMarkdown('::card{title="A"}\nText\n::', { profile: 'page', components })).problems).toEqual([])
   })
 
   test('tabs: the first panel is visible, the others stay in the DOM with `hidden`', async () => {
-    const html = await render(':::tabs\n::tab{label="Eins"}\nErster Text\n::\n::tab{label="Zwei"}\nZweiter Text\n::\n::tab{label="Drei"}\nDritter Text\n::\n:::')
+    const html = await render(':::tabs\n::tab{title="Eins"}\nErster Text\n::\n::tab{title="Zwei"}\nZweiter Text\n::\n::tab{title="Drei"}\nDritter Text\n::\n:::')
     const panels = [...html.matchAll(/<div id="[^"]*-p\d"[^>]*role="tabpanel"[^>]*>/g)].map((m) => m[0])
     expect(panels).toHaveLength(3)
     expect(panels.map((p) => /\shidden(=|\s|>)/.test(p))).toEqual([false, true, true])
@@ -41,16 +41,16 @@ describe('interactive components', () => {
   })
 
   test('a bare `open` opens an accordion item and a collapse', async () => {
-    const html = await render(':::accordion\n::accordion-item{label="A" open}\nx\n::\n::accordion-item{label="B"}\ny\n::\n:::\n\n::collapse{label="C"}\nz\n::')
+    const html = await render(':::accordion\n::accordion-item{title="A" open}\nx\n::\n::accordion-item{title="B"}\ny\n::\n:::\n\n::collapse{title="C"}\nz\n::')
     expect(html.match(/<details[^>]*>/g)!.map((d) => d.includes(' open'))).toEqual([true, false, false])
   })
 
   test('accordion items close each other through a shared name; `multiple` lets several stay open', async () => {
     const names = async (text: string) => (await render(text)).match(/<details[^>]*>/g)!.map((d) => d.match(/name="([^"]+)"/)?.[1])
-    const single = await names(':::accordion\n::accordion-item{label="A"}\nx\n::\n::accordion-item{label="B"}\ny\n::\n:::')
+    const single = await names(':::accordion\n::accordion-item{title="A"}\nx\n::\n::accordion-item{title="B"}\ny\n::\n:::')
     expect(single[0]).toBeTruthy()
     expect(single[1]).toBe(single[0])
-    expect(await names(':::accordion{multiple}\n::accordion-item{label="A"}\nx\n::\n::accordion-item{label="B"}\ny\n::\n:::')).toEqual([undefined, undefined])
+    expect(await names(':::accordion{multiple}\n::accordion-item{title="A"}\nx\n::\n::accordion-item{title="B"}\ny\n::\n:::')).toEqual([undefined, undefined])
   })
 
   test('collapse without a label clips the content behind a "show more" button instead of an empty summary', async () => {

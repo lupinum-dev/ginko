@@ -34,7 +34,7 @@ const button = (root: HTMLElement, text: string) => [...root.querySelectorAll('b
 
 describe('client interaction', () => {
   test('tabs: arrow keys, Home and End move the selection and the focus, and wrap around', async () => {
-    const root = await mount('::::tabs\n:::tab{label="A"}\nEins\n:::\n:::tab{label="B"}\nZwei\n:::\n:::tab{label="C"}\nDrei\n:::\n::::')
+    const root = await mount('::::tabs\n:::tab{title="A"}\nEins\n:::\n:::tab{title="B"}\nZwei\n:::\n:::tab{title="C"}\nDrei\n:::\n::::')
     const tabs = [...root.querySelectorAll<HTMLElement>('[role="tab"]')]
     const panels = [...root.querySelectorAll<HTMLElement>('[role="tabpanel"]')]
     const selected = () => tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true')

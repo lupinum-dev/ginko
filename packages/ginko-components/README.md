@@ -33,7 +33,10 @@ All of `./components` is public on purpose: a site wraps or replaces one compone
 
 Prop names are camelCase (`iconColor`, `defaultValue`), and Markdown takes them exactly as written:
 `::card{iconColor="primary"}`. `icon-color` is an error ("property does not exist"). Boolean props work bare
-(`::code-tree{expandAll}`) or with `"true"`/`"false"`. Headings of a tag are `title`.
+(`::code-tree{expandAll}`) or with `"true"`/`"false"`.
+
+One word per idea on every tag: the heading is `title`, a status colour is `error` (not `danger`), the frame of `layout`
+and `center` is `frame`, and how an image fills its box is `fit`.
 
 ## Theming
 
@@ -68,7 +71,7 @@ theme the code keeps that theme's colours.
 | Kind | Names |
 |---|---|
 | Tokens a site sets | `--ginko-surface`, `--ginko-surface-border` (default of every framed component), `--ginko-tint` (fill of tint, default `--muted`), `--ginko-info`, `--ginko-warning`, `--ginko-error`, `--ginko-success`, `--ginko-idea` (status colours), `--ginko-code-frame`, `--ginko-code-bg`, `--ginko-code-fg`, `--ginko-code-muted`, `--ginko-code-hover` (code panel), `--ginko-scroll-margin` (space above an API entry that a link scrolls to, default `5rem`) |
-| Root classes | `ginko-<tag>` on the root element of each tag, for example `ginko-callout` (also for the short forms), `ginko-card`, `ginko-api-param`. Exceptions: `embedded` is `ginko-embed`, the code block (`pre`) is `ginko-code`, Markdown images are `ginko-img`, `collapse` without `label` is `ginko-clip` |
+| Root classes | `ginko-<tag>` on the root element of each tag, for example `ginko-callout` (also for the short forms), `ginko-card`, `ginko-api-param`. Exceptions: `embedded` is `ginko-embed`, the code block (`pre`) is `ginko-code`, Markdown images are `ginko-img`, `collapse` without `title` is `ginko-clip` |
 | Attributes | `data-appearance="quiet"` / `"tint"` on a root |
 
 Everything else is internal and may change in a minor version: the `--ginko-default-*` fallbacks, other `--ginko-*`
@@ -80,17 +83,17 @@ custom properties, class names below the root (`ginko-card-title`, ...) and othe
 |---|---|---|
 | `callout` | block | `type` note, info (default), warning, error, success, idea; `title`; `icon` (a built-in name: file-text, info, triangle-alert, circle-x, circle-check, lightbulb; or an Iconify name with a colon, `lucide:flag`) |
 | `note` `info` `warning` `error` `success` `idea` | block | `title`; `icon` (as on `callout`; a `callout` with fixed type) |
-| `aside` | block | `label` |
-| `excerpt` | block | `label`; `source`; `size` body (default), display |
+| `aside` | block | `title` |
+| `excerpt` | block | `title`; `source`; `size` body (default), display |
 | `dropcap` | block | `lines` 2 to 4 |
 | `kbd` | inline | none |
-| `badge` | inline | `color` neutral (default), primary, success, warning, danger |
+| `badge` | inline | `color` neutral (default), primary, success, warning, error |
 | `flow` | block | `width` reading (default), wide; `surface` default, muted, tint |
-| `layout` | block, children `column` | `type`, `align`, `gap`, `stack`, `surface` |
-| `column` | block, parent `layout` | `size` xs to xl; `align`; `media` natural, cover, contain |
-| `center` | block | `size` sm, md, lg; `type` |
+| `layout` | block, children `column` | `frame`, `align`, `gap`, `stack`, `surface` |
+| `column` | block, parent `layout` | `size` xs to xl; `align`; `fit` natural, cover, contain |
+| `center` | block | `size` sm, md, lg; `frame` |
 | `timeline` | block, children `timeline-item` | none |
-| `timeline-item` | block, parent `timeline` | `date`; `label`; `title`; `icon`* (instead of the dot); `active` |
+| `timeline-item` | block, parent `timeline` | `date`; `meta` (a short word next to the date); `title`; `icon`* (instead of the dot); `active` |
 | `pre` (plain Markdown tag, renderer override) | block | the code block of Markdown: label from `filename` or language, copy button |
 | `code-group` | block | none; children are code blocks, shown as tabs named by filename or language |
 | `code-tree` | block | `defaultValue` (path of the open file); `expandAll`; children are code blocks whose filename is the path |
@@ -103,14 +106,14 @@ Interactive components (`registry-interactive.ts`, styles in `interactive.css`):
 | Tag | Kind | Props |
 |---|---|---|
 | `tabs` | block, children `tab` | `layout` separate (default: buttons above a frame), line (underlined, no frame); `padded` (default on; off lets a code block fill the tab); WAI-ARIA tabs, the first tab is selected on the server, hidden panels stay in the page |
-| `tab` | block, parent `tabs` | `label` (required); `icon`* |
+| `tab` | block, parent `tabs` | `title` (required); `icon`* |
 | `accordion` | block, children `accordion-item` | `multiple` (otherwise opening one item closes the others, through the shared `name` of `<details>`) |
-| `accordion-item` | block, parent `accordion` | `label` (required); `open` (`<details>`, works without JavaScript) |
-| `collapse` | block | with `label`: a `<details>` section, `open` sets the initial state; without `label`: long content (usually code) is cut off behind a fade with a "Show all n lines" button |
+| `accordion-item` | block, parent `accordion` | `title` (required); `open` (`<details>`, works without JavaScript) |
+| `collapse` | block | with `title`: a `<details>` section, `open` sets the initial state; without `title`: long content (usually code) is cut off behind a fade with a "Show all n lines" button |
 | `steps` | block | `mode` numbered (default), check; every heading directly inside starts a step |
 | `cards` | block, children `card` | `cols` 1 to 3 (default 2) |
 | `card` | block | `title`; `description`; `footer`; `href`; `icon`* (in a tile above the title); `iconColor` primary, info, success, warning, error; `image`; `horizontal` |
-| `read-more` | block | `href` (required); `label`; `icon`*; several in a row join into one list |
+| `read-more` | block | `href` (required); `title` (the link text; the address if empty); `icon`*; several in a row join into one list |
 | `inline-toc` | block | `title`; `depth` 2 to 4; `open` (closed by default); reads the toc `<GinkoMarkdown>` provides under `ginko:toc` and renders nothing without headings |
 
 \* An Iconify name such as `lucide:book-open` (a bare name means Lucide). It renders through the site's global `<Icon>` from
@@ -212,7 +215,7 @@ Learning and API components (`registry-learn.ts`, `registry-api.ts`, styles in `
 | `quiz` | block, children `quiz-question` | `title`; `description`; one question at a time, back/next, a result at the end; runs in the browser, nothing is sent |
 | `quiz-question` | block, parent `quiz` | `question` (required); `type` single (default), multiple; the content is a task list of answers (`- [x]` right, `- [ ]` wrong); the slot `#explanation` shows after "check" |
 | `api` | block, children `api-param` | `title` (shown without method and path); `method` get, post, put, patch, delete, head, options; `path`; one tab per `group` |
-| `api-param` | block, parent `api` | `name` (required); `group` (default "Parameter"); `type`; `presence` required, optional (adds `?`); `deprecated`; `since`; `defaultValue`; the content is the description |
+| `api-param` | block, parent `api` | `name` (required); `group` (default "Parameter"); `type`; `required` (a bare `required` shows a badge, `:required="false"` adds `?` to the name, absent says nothing); `deprecated`; `since`; `defaultValue`; the content is the description |
 
 Answers are real radio buttons or checkboxes in a `<fieldset>` with a `<legend>`; the result is announced through an
 `aria-live` region and the explanation and the right answers are only rendered after "check". Because the

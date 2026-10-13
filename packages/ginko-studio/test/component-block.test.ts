@@ -80,7 +80,7 @@ describe('live or card', () => {
   })
 
   test('a live component is the real one with the text as its content; a card shows the props in one line', async () => {
-    const wrapper = await mounted('::callout{type="warning" title="Achtung"}\nText\n::\n\n:::tabs\n::tab{label="npm"}\nInhalt\n::\n:::\n')
+    const wrapper = await mounted('::callout{type="warning" title="Achtung"}\nText\n::\n\n:::tabs\n::tab{title="npm"}\nInhalt\n::\n:::\n')
     const live = wrapper.get('[data-component="callout"]')
     expect(live.attributes('data-mode')).toBe('live')
     expect(live.find('.ginko-callout[data-type="warning"] .ginko-callout-title').text()).toBe('Achtung')

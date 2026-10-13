@@ -198,7 +198,7 @@
 .ginko-badge[data-color='primary'] { --ginko-badge: var(--primary, var(--ginko-default-primary)); }
 .ginko-badge[data-color='success'] { --ginko-badge: var(--ginko-success); }
 .ginko-badge[data-color='warning'] { --ginko-badge: var(--ginko-warning); }
-.ginko-badge[data-color='danger'] { --ginko-badge: var(--ginko-error); }
+.ginko-badge[data-color='error'] { --ginko-badge: var(--ginko-error); }
 
 /* --- Flow: reading measure --- */
 .ginko-flow { min-width: 0; margin-block: 2rem; }
