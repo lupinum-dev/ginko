@@ -14,6 +14,8 @@ describe('authoring types', () => {
     defineSite({ ...base, bricks, retired: { 'menu.gone': { drop: true } } })
     // @ts-expect-error the empty rule from before 0.4
     defineSite({ ...base, bricks, retired: { 'menu.old': {} } })
+    // @ts-expect-error a retired brick takes { drop: true }
+    defineSite({ ...base, bricks, retired: { hours: { from: 'note' } } })
     expect(true).toBe(true)
   })
 
@@ -47,6 +49,11 @@ describe('authoring types', () => {
     f.markdown('Text', { default: 'Hallo' })
     // @ts-expect-error a mistyped option
     f.text('Name', { max: 80, maxx: 90 })
+    // @ts-expect-error an e-mail address is not translated, so its default is one text
+    f.text('E-Mail', { format: 'email', default: { de: 'a@linde.example' } })
+    // @ts-expect-error a text with translate: false has one text
+    f.text('Ort', { translate: false, default: { de: 'Salzburg' } })
+    f.text('Ort', { translate: false, default: 'Salzburg' })
     expect(notAnOption).toBe('c')
   })
 
@@ -56,6 +63,11 @@ describe('authoring types', () => {
     const dish: string = row.dish
     // @ts-expect-error money is no text
     const price: string = row.price
+    f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { dish: f.text('Gericht'), price: f.money('Preis') }, default: [{ _id: 'r000000001', dish: 'Suppe', price: { amount: 950 } }] })
+    // @ts-expect-error a list default cell has its column's type
+    f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { dish: f.text('Gericht'), price: f.money('Preis') }, default: [{ _id: 'r000000001', price: 950 }] })
+    // @ts-expect-error a list default names only its columns
+    f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { dish: f.text('Gericht') }, default: [{ _id: 'r000000001', dsh: 'Suppe' }] })
     expect([dish, price]).toHaveLength(2)
   })
 
@@ -74,6 +86,10 @@ describe('authoring types', () => {
     collection({ label: 'News', fields, max: 5, order: 'manual', route: { de: '/news/[slug]' }, visible: { mode: 'until', field: 'until' }, tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['title'], prefill: { until: '@today' } }] })
     // @ts-expect-error the visibility field does not exist
     collection({ label: 'News', fields, max: 5, order: 'manual', visible: { mode: 'until', field: 'untill' } })
+    // @ts-expect-error visibility needs a date or daterange field
+    collection({ label: 'News', fields, max: 5, order: 'manual', visible: { mode: 'until', field: 'title' } })
+    // @ts-expect-error plans needs a date field
+    collection({ label: 'News', fields, max: 5, order: 'manual', plans: { brick: 'lunch', field: 'title' } })
     // @ts-expect-error a task field that does not exist
     collection({ label: 'News', fields, max: 5, order: 'manual', tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['titel'] }] })
     // @ts-expect-error a prefill for a field that does not exist

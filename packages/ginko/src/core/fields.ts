@@ -11,14 +11,33 @@ import type { MarkdownProfile } from './markdown.ts'
 type TextInput = string | Localized<string>
 
 /**
+ * The `default` of a field `C` as you write it (`serializeSchema` stores it in the stored form). A text that is not
+ * translated (`format`, `translate: false`) takes a plain text only. `never`: the type has no default.
+ */
+type DefaultInput<C> =
+  C extends { type: 'text' | 'longtext' } ? (C extends { format: string } | { translate: false } ? string : TextInput)
+  : C extends { type: 'number' } ? number
+  : C extends { type: 'money' } ? Pick<Money, 'amount'>
+  : C extends { type: 'boolean' } ? boolean
+  : C extends { type: 'date' | 'time' } ? string
+  : C extends { type: 'daterange' } ? { from: string; to: string }
+  : C extends { type: 'choice'; options: readonly { value: infer V }[] } ? V
+  : C extends { type: 'choices'; options: readonly { value: infer V }[] } ? readonly V[]
+  : C extends { type: 'ref'; multiple: true } ? readonly string[]
+  : C extends { type: 'ref' } ? string
+  : never
+
+/**
  * A builder's options for the field type `F`: without what the builder (`type`, `label`) or the platform (`pos`,
- * `retired`) sets, and with `default` typed as `D`, the value as you write it (`serializeSchema` stores it in the
- * stored form). `D = never`: the type has no default.
+ * `retired`) sets, and with `default` typed as `D`. `D = never`: the type has no default.
  */
 type Opts<F, D = never> = Omit<F, 'type' | 'label' | 'pos' | 'retired' | 'default'> & ([D] extends [never] ? unknown : { default?: D })
 
 /** `O` with every key that `A` does not have set to `never`: an unknown option fails the type check, not the release. */
 type Only<O, A> = O & { [K in Exclude<keyof O, keyof A>]: never }
+
+/** A text's `default` narrowed by its own options: plain text when `format` or `translate: false` is set. */
+type TextDefault<T extends string, O> = { default?: DefaultInput<{ type: T } & O> }
 
 type OptionInput<V extends string> = V | { value: V; label: Label }
 
@@ -26,20 +45,23 @@ function options<V extends string>(input: readonly OptionInput<V>[]) {
   return input.map((o) => (typeof o === 'string' ? { value: o, label: o } : o))
 }
 
-type TextOpts = Opts<TextField, TextInput>
-type LongTextOpts = Opts<LongTextField, TextInput>
+type TextOpts = Opts<TextField, DefaultInput<TextField>>
+type LongTextOpts = Opts<LongTextField, DefaultInput<LongTextField>>
 type MarkdownOpts = Opts<MarkdownField>
-type NumberOpts = Opts<NumberField, number>
-type MoneyOpts = Opts<MoneyField, Pick<Money, 'amount'>>
-type BooleanOpts = Opts<BooleanField, boolean>
-type DateOpts = Opts<DateField, string>
-type TimeOpts = Opts<TimeField, string>
-type DateRangeOpts = Opts<DateRangeField, { from: string; to: string }>
+type NumberOpts = Opts<NumberField, DefaultInput<NumberField>>
+type MoneyOpts = Opts<MoneyField, DefaultInput<MoneyField>>
+type BooleanOpts = Opts<BooleanField, DefaultInput<BooleanField>>
+type DateOpts = Opts<DateField, DefaultInput<DateField>>
+type TimeOpts = Opts<TimeField, DefaultInput<TimeField>>
+type DateRangeOpts = Opts<DateRangeField, DefaultInput<DateRangeField>>
 // `V` comes from `options` only, so a `default` that is no option fails.
 type ChoiceOpts<V extends string> = Omit<Opts<ChoiceField, NoInfer<V>>, 'options'> & { options: readonly OptionInput<V>[] }
 type ChoicesOpts<V extends string> = Omit<Opts<ChoicesField, readonly NoInfer<V>[]>, 'options'> & { options: readonly OptionInput<V>[] }
-/** List rows in their stored form: each with a fixed `_id` (10 letters or digits), the columns by name. */
-type ListOpts<F extends Fields> = Omit<Opts<ListField<F>, readonly ({ _id: string } & { [column: string]: Json })[]>, 'of'> & { fields: F }
+/** List rows as written: a fixed `_id` (10 letters or digits) plus column values, each typed like that column's `default`. */
+type ListRow<F extends Fields> = { _id: string } & { [K in keyof F]?: DefaultInput<F[K]> }
+type ListOpts<F extends Fields> = Omit<Opts<ListField<F>, readonly ListRow<F>[]>, 'of'> & { fields: F }
+/** Like `Only` for the rows of a list `default`: a cell of a column the list does not have fails the type check. */
+type OnlyColumns<O, F> = O extends { default: readonly (infer R)[] } ? { default: readonly (R extends unknown ? Only<R, F & { _id: string }> : never)[] } : unknown
 type ImageOpts = Opts<ImageField>
 type FileOpts = Opts<FileField>
 type RefOpts = Omit<Opts<RefField, string>, 'multiple' | 'max'>
@@ -49,8 +71,8 @@ type SlugOpts = Omit<Opts<SlugField, TextInput>, 'translate'>
 // Builders keep options such as `optional: true` as literal types, so the
 // bundle types inferred from a site config know which keys may be missing.
 export const f = {
-  text: <const O extends TextOpts = {}>(label: Label, o?: Only<O, TextOpts>) => ({ type: 'text', label, ...o }) as TextField & O,
-  longtext: <const O extends LongTextOpts = {}>(label: Label, o?: Only<O, LongTextOpts>) => ({ type: 'longtext', label, ...o }) as LongTextField & O,
+  text: <const O extends TextOpts = {}>(label: Label, o?: Only<O, TextOpts> & TextDefault<'text', O>) => ({ type: 'text', label, ...o }) as TextField & O,
+  longtext: <const O extends LongTextOpts = {}>(label: Label, o?: Only<O, LongTextOpts> & TextDefault<'longtext', O>) => ({ type: 'longtext', label, ...o }) as LongTextField & O,
   /** Markdown has no `default`: its start value is the empty text. */
   markdown: <const O extends MarkdownOpts = {}>(label: Label, o?: Only<O, MarkdownOpts>) => ({ type: 'markdown', label, ...o }) as MarkdownField & O,
   number: <const O extends NumberOpts>(label: Label, o: Only<O, NumberOpts>) => ({ type: 'number', label, ...o }) as NumberField & O,
@@ -67,7 +89,7 @@ export const f = {
     const { options: input, ...rest } = o
     return { type: 'choices', label, ...rest, options: options(input) } as unknown as ChoicesField<V> & Omit<O, 'options'>
   },
-  list: <const F extends Fields, const O extends ListOpts<F>>(label: Label, o: Only<O, ListOpts<F>> & { fields: F }) => {
+  list: <const F extends Fields, const O extends ListOpts<F>>(label: Label, o: Only<O, ListOpts<F>> & OnlyColumns<O, F> & { fields: F }) => {
     const { fields, itemLabel, ...rest } = o
     return { type: 'list', label, itemLabel, of: fields, ...rest } as unknown as ListField<F> & Omit<O, 'fields'>
   },

@@ -69,12 +69,18 @@ export interface SiteInput {
   retired?: Record<string, RetiredRule>
 }
 
-/** The keys `retired` takes: a brick (`gallery`) or a field of a brick (`menu.headline`). */
-type RetiredPath<B> = { [K in keyof B & string]: K | `${K}.${B[K] extends { fields: infer F } ? keyof F & string : never}` }[keyof B & string]
+/** The field keys `retired` takes: `menu.headline` for the field `headline` of the brick `menu`. */
+type RetiredFieldPath<B> = { [K in keyof B & string]: `${K}.${B[K] extends { fields: infer F } ? keyof F & string : never}` }[keyof B & string]
 
-export function defineSite<const S extends SiteInput>(site: S & { retired?: { [P in keyof S['retired']]: P extends RetiredPath<S['bricks']> ? RetiredRule : never } }): S {
+/** `retired` names bricks of the config (they take `{ drop: true }`) and their fields (any rule); anything else fails. */
+type RetiredInput<S extends SiteInput> = { [P in keyof S['retired']]: P extends keyof S['bricks'] ? { drop: true } : P extends RetiredFieldPath<S['bricks']> ? RetiredRule : never }
+
+export function defineSite<const S extends SiteInput>(site: S & { retired?: RetiredInput<S> }): S {
   return site
 }
+
+/** The names of the fields in `F` whose type is one of `T`. */
+type FieldsOfType<F, T extends string> = { [K in keyof F]: F[K] extends { type: T } ? K : never }[keyof F] & string
 
 /** A collection's detail page per locale: a path with `[slug]` where the entry's slug goes, e.g. `/blog/[slug]`. */
 export type RouteTemplate = `/${string}[slug]${string}`
@@ -93,10 +99,10 @@ export function collection<const F extends Fields, const R extends Record<Locale
   max: number
   order: 'manual' | { field: keyof F & string; dir?: 'asc' | 'desc' }
   route?: R
-  visible?: Visibility<keyof F & string>
+  visible?: Visibility<FieldsOfType<F, 'date' | 'daterange'>>
   untranslated?: 'fallback' | 'hide'
   /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`firstDayOfWeek`). */
-  plans?: { brick: string; field: keyof F & string }
+  plans?: { brick: string; field: FieldsOfType<F, 'date'> }
   drafts?: boolean
 }): CollectionBrick<F, R> {
   return { kind: 'collection', ...input }
