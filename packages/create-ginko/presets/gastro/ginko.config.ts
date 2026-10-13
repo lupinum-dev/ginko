@@ -11,6 +11,8 @@ export default defineSite({
   locales: ['en'],
   currency: 'EUR',
   pages: { home: '/' },
+  // Shown in search results and link previews. Replace it with one sentence about your site.
+  seo: { description: 'Opening hours and menu of our restaurant.' },
   bricks: {
     // content/hours.md: weekly hours. The hours rules (hoursOn, todayState) count Austrian public holidays; calendar: 'DE', 'SG' or 'none' changes that.
     hours: hours({ lang: 'en', source: 'files' }),

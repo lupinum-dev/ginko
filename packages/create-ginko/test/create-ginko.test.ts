@@ -21,6 +21,9 @@ describe('create-ginko', () => {
     expect(read('plain', 'ginko.config.ts')).toContain("locales: ['en']")
     expect(read('plain', 'content/start.md')).toContain('title: Hello Ginko')
     expect(JSON.parse(read('plain', 'package.json')).dependencies).not.toHaveProperty('@lupinum/ginko-docs')
+    // Wrong behaviour caught: a new site has no <title> or description until the owner finds `useGinkoSeo`.
+    expect(read('plain', 'ginko.config.ts')).toMatch(/seo: \{ description: '.+' \}/)
+    expect(read('plain', 'app/pages/index.vue')).toContain('useGinkoSeo(')
     // pnpm 11 exits 1 on `pnpm install` unless the starter allows esbuild's install script.
     expect(read('plain', 'pnpm-workspace.yaml')).toMatch(/^allowBuilds:\n  esbuild: true$/m)
     expect(result.stdout).toContain('Created plain from the plain starter in English.')
@@ -60,6 +63,7 @@ describe('create-ginko', () => {
         expect(read(name, 'ginko.config.ts')).toMatch(new RegExp(`locales.*\\['${lang}'\\]`))
         expect(read(name, 'ginko.config.ts')).not.toContain('{{')
         expect(read(name, 'ginko.config.ts')).toContain(pkg)
+        expect(read(name, 'ginko.config.ts')).toMatch(/seo: \{ description: '.+' \}/)
         const pkgJson = JSON.parse(read(name, 'package.json'))
         expect(pkgJson.name).toBe(name)
         expect(pkgJson.dependencies[pkg]).toBe(`^${version}`)

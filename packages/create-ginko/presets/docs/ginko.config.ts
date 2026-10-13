@@ -14,6 +14,8 @@ export default defineSite({
   locales,
   currency: 'EUR',
   pages: { home: '/' },
+  // Shown in search results and link previews. Replace it with one sentence about your site.
+  seo: { description: 'Documentation for our product.' },
   components, // the Markdown components (::callout, ::tabs …) and their checked props
   bricks: { docs: docsCollection({ locales }) },
 })

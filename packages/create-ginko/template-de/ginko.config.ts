@@ -10,6 +10,8 @@ export default defineSite({
   locales: ['de'],
   currency: 'EUR',
   pages: { home: '/' },
+  // Steht in Suchergebnissen und Link-Vorschauen. Ersetze es durch einen Satz über deine Website.
+  seo: { description: 'Eine neue Website mit Ginko.' },
   bricks: {
     start: single({
       label: 'Startseite',
