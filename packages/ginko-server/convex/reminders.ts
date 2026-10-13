@@ -11,9 +11,9 @@ import { mailAvailable, queueMail, siteOrigin } from './mail'
 
 const REMIND_HOUR = 17
 
-/** Hour of day (0 to 23) at `now` in `timezone`. */
-function hourIn(timezone: string, now: Date): number {
-  const hour = new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: '2-digit', hourCycle: 'h23' }).formatToParts(now).find((p) => p.type === 'hour')?.value
+/** Hour of day (0 to 23) at `now` in `timeZone`. */
+function hourIn(timeZone: string, now: Date): number {
+  const hour = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', hourCycle: 'h23' }).formatToParts(now).find((p) => p.type === 'hour')?.value
   return Number(hour)
 }
 
@@ -34,8 +34,8 @@ export const sweep = internalMutation({
     for (const site of await ctx.db.query('sites').collect()) {
       if (site.deleting) continue
       const schema = site.schema as Schema
-      const today = todayIn(schema.timezone, now)
-      if (!isDayBeforeWeekStart(today, schema) || hourIn(schema.timezone, now) !== REMIND_HOUR) continue
+      const today = todayIn(schema.timeZone, now)
+      if (!isDayBeforeWeekStart(today, schema) || hourIn(schema.timeZone, now) !== REMIND_HOUR) continue
       sent += await remindSite(ctx, site, schema, today, now.getTime())
     }
     return { sent }

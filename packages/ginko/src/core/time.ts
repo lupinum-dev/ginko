@@ -1,8 +1,8 @@
 // Dates in the site's time zone. "Today" never comes from the editor's device (SPEC 2.7, B7).
 
-/** `YYYY-MM-DD` of `now` in `timezone`. */
-export function todayIn(timezone: string, now: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)
+/** `YYYY-MM-DD` of `now` in `timeZone`. */
+export function todayIn(timeZone: string, now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
   return `${get('year')}-${get('month')}-${get('day')}`
 }
@@ -57,8 +57,8 @@ export function workWeekOf(date: string, week: WeekInfo): string {
   return placeInWeek(isoDay(date), week) > lastWorkday ? addDays(own, 7) : own
 }
 
-export function resolveToken(token: string, timezone: string, week: WeekInfo, now: Date = new Date()): string | undefined {
-  const today = todayIn(timezone, now)
+export function resolveToken(token: string, timeZone: string, week: WeekInfo, now: Date = new Date()): string | undefined {
+  const today = todayIn(timeZone, now)
   if (token === '@today') return today
   if (token === '@workWeek') return workWeekOf(today, week)
   if (token === '@nextWorkWeek') return addDays(workWeekOf(today, week), 7)

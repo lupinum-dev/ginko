@@ -9,7 +9,7 @@ export default defineSite({
   site: 'ginko-docs',
   name: 'Ginko',
   url: 'https://ginko-docs.vercel.app',
-  timezone: 'Europe/Vienna',
+  timeZone: 'Europe/Vienna',
   locales,
   currency: 'EUR',
   pages: { home: { de: '/', en: '/en' }, blog: blogPages({ locales }), changelog: changelogPages({ locales }) },

@@ -39,7 +39,7 @@ export default defineSite({
   site: 'linde',
   name: 'Linden Inn',
   url: 'https://linde.example',
-  timezone: 'Europe/Vienna',
+  timeZone: 'Europe/Vienna',
   locales: ['en', 'de'],
   currency: 'EUR',
   pages: { home: { en: '/', de: '/de' } },

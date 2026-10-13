@@ -43,7 +43,7 @@ onMounted(() => {
 })
 
 /** A release member that is no longer open, in the Studio's language. */
-const textOf = useTextOf(() => ({ timeZone: s.schema.value!.timezone, main: s.schema.value!.locales[0] }))
+const textOf = useTextOf(() => ({ timeZone: s.schema.value!.timeZone, main: s.schema.value!.locales[0] }))
 const lineOf = (m: { sentence: string; msg: HistoryMsg | null }) => textOf(m.msg, m.sentence)
 /** A stale reason in the Studio's language; the German text when the server sent no message. */
 const reasonOf = (m: { reason?: string | null; reasonMsg?: HistoryMsg | null }) => textOf(m.reasonMsg, m.reason ?? '')
@@ -58,7 +58,7 @@ async function approveAll(release: string) {
   try {
     const result = await approveRelease.mutate({ release }) as { status: string; at?: number; stale?: { proposal: string; sentence: string; reason: string; reasonMsg?: HistoryMsg | null }[] }
     if (result.status === 'stale') blocked.value = { ...blocked.value, [release]: result.stale ?? [] }
-    else show(result.status === 'scheduled' && result.at !== undefined ? t('ops.scheduled', { time: whenText(result.at, s.schema.value!.timezone, format) }) : t('review.releaseApproved'))
+    else show(result.status === 'scheduled' && result.at !== undefined ? t('ops.scheduled', { time: whenText(result.at, s.schema.value!.timeZone, format) }) : t('review.releaseApproved'))
   } catch (e) {
     const error = opErrorOf(e)
     // A late failure comes with the list of members that no longer fit.
@@ -101,7 +101,7 @@ async function remove(release: string, proposal: string) {
         <h2 class="text-base font-semibold tracking-tight">{{ t('review.releases') }}</h2>
         <div v-for="r in releases" :key="r.release" class="overflow-hidden rounded-xl border">
           <div class="flex flex-wrap items-center gap-2 border-b px-4 py-3">
-            <h3 class="min-w-0 flex-1 font-medium">{{ r.name }}<span v-if="r.at" class="text-[13px] font-normal text-muted-foreground"> · {{ t('review.plannedAt', { time: whenText(r.at, s.schema.value.timezone, format) }) }}</span></h3>
+            <h3 class="min-w-0 flex-1 font-medium">{{ r.name }}<span v-if="r.at" class="text-[13px] font-normal text-muted-foreground"> · {{ t('review.plannedAt', { time: whenText(r.at, s.schema.value.timeZone, format) }) }}</span></h3>
             <Button type="button" size="sm" :disabled="busy === r.release" @click="approveAll(r.release)">{{ t('review.approveRelease') }}</Button>
           </div>
           <div v-if="blocked[r.release]?.length" class="grid gap-1 border-b bg-warning/12 px-4 py-3" role="alert">

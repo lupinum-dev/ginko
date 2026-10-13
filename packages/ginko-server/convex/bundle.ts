@@ -131,6 +131,6 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
     schemaRev: site.schemaRev,
     contentRev: site.contentRev,
     generatedAt: new Date().toISOString(),
-    today: todayIn(schema.timezone),
+    today: todayIn(schema.timeZone),
   })
 }

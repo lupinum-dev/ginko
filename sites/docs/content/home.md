@@ -46,7 +46,7 @@ export default defineSite({
   site: 'linde',
   name: 'Gasthaus zur Linde',
   url: 'https://linde.example',
-  timezone: 'Europe/Vienna',
+  timeZone: 'Europe/Vienna',
   locales: ['de', 'en'],
   currency: 'EUR',
   pages: { home: { de: '/', en: '/en' } },

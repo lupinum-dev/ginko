@@ -27,7 +27,7 @@ export interface SiteInput {
    * to it). Canonical URLs, the sitemap and share images start with it.
    */
   url: string
-  timezone: string
+  timeZone: string
   /** The site's locales. The first entry is the main locale: the default for content, routes and plain-path pages. */
   locales: readonly [Locale, ...Locale[]]
   /** The BCP 47 language per locale for `lang`, hreflang and dates, e.g. `{ de: 'de-AT' }`. Default: the locale itself. Keys are entries of `locales`. */

@@ -157,7 +157,7 @@
     "nameTooLong": "The name is too long (at most {nameMax} characters).",
     "siteAddressNotUrl": "The site address is not a valid URL (http or https).",
     "siteLocalesInvalid": "Languages must be 1 to {max} different language tags, e.g. “de”, “en” or “pt-BR”.",
-    "siteTimezoneInvalid": "Invalid time zone “{timezone}” (e.g. “Europe/Vienna”).",
+    "siteTimezoneInvalid": "Invalid time zone “{timeZone}” (e.g. “Europe/Vienna”).",
     "siteCurrencyInvalid": "Invalid currency “{currency}” (an ISO 4217 code such as “EUR” or “CHF”).",
     "addressTaken": "This address is already taken.",
     "onlyAdminsCreateSites": "Only admins create sites.",

@@ -2,7 +2,7 @@
 import { markdownRequestPath, type Locale, type SiteInput } from '../../internal.ts'
 
 export interface GinkoPublicConfig {
-  site: string; name: string; url: string; platform: string; locales: Locale[]; mainLocale: Locale; timezone: string
+  site: string; name: string; url: string; platform: string; locales: Locale[]; mainLocale: Locale; timeZone: string
   /** `seo` of the site config (`useGinkoSeo` defaults). */
   seo: NonNullable<SiteInput['seo']>
   /** `agents` of the site config (llms.txt, Markdown routes). */

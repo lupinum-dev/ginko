@@ -47,7 +47,7 @@ export function withMarkdownRefs(bundle: Bundle, schema: Schema, trees: Map<stri
  * @internal Loaded by the Ginko module and CLI; sites do not import it.
  */
 export function publicBundle(bundle: Bundle, schema: Schema, now: Date, options: { keepSource?: boolean } = {}): Bundle {
-  const today = todayIn(schema.timezone, now)
+  const today = todayIn(schema.timeZone, now)
   const bricks = Object.fromEntries(Object.entries(bundle.bricks).map(([key, brick]) => {
     if (brick.kind !== 'collection') return [key, brick]
     const def = schema.bricks[key]
@@ -74,7 +74,7 @@ export async function buildFileBundles(options: BuildOptions): Promise<BuildResu
   for (const locale of schema.locales) {
     bundles[locale] = resolveRouteLinks(buildBundle({
       schema: files, requestedLocale: locale, entries, files: (id) => fileInfo[id],
-      schemaRev: 0, contentRev: 0, generatedAt: now.toISOString(), today: todayIn(schema.timezone, now),
+      schemaRev: 0, contentRev: 0, generatedAt: now.toISOString(), today: todayIn(schema.timeZone, now),
     }), files)
   }
   return { bundles, images, imageFiles, errors }

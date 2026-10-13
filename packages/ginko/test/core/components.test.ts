@@ -87,7 +87,7 @@ describe('parseMarkdown with a component registry', () => {
 
 describe('component registry in the schema', () => {
   const site = {
-    site: 'demo', name: 'Demo', url: 'https://demo.test', timezone: 'Europe/Vienna', locales: ['de'] as const, currency: 'EUR' as const,
+    site: 'demo', name: 'Demo', url: 'https://demo.test', timeZone: 'Europe/Vienna', locales: ['de'] as const, currency: 'EUR' as const,
     pages: { home: '/' },
     bricks: { page: single({ label: 'Seite', fields: { body: f.markdown('Text', { profile: 'page' }) } }) },
   }

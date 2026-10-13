@@ -2,7 +2,7 @@
   "site": "saas",
   "name": "Taktwerk",
   "url": "https://ginko-demo-saas.vercel.app",
-  "timezone": "Europe/Berlin",
+  "timeZone": "Europe/Berlin",
   "locales": [
     "de",
     "en",

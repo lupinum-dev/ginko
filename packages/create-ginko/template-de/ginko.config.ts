@@ -6,7 +6,7 @@ export default defineSite({
   site: '{{SITE}}',
   name: '{{SITE}}',
   url: 'https://example.com',
-  timezone: 'Europe/Vienna', // für dein Land ändern
+  timeZone: 'Europe/Vienna', // für dein Land ändern
   locales: ['de'],
   currency: 'EUR', // für dein Land ändern
   pages: { home: '/' },

@@ -188,7 +188,7 @@ export interface Schema {
   site: string
   name: string
   url: string
-  timezone: string
+  timeZone: string
   locales: Locale[]
   currency: Currency
   /** First day of the week and weekend days of the site (computed once from the main language or `firstDayOfWeek`). */

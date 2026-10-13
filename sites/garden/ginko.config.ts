@@ -8,7 +8,7 @@ export default defineSite({
   name: 'Greenfield Community Garden',
   seo: { description: 'A neighbourhood garden where anyone can grow food, learn and meet.' },
   url: 'https://example.com',
-  timezone: 'Europe/London',
+  timeZone: 'Europe/London',
   locales: ['en'],
   languages: { en: 'en-GB' },
   currency: 'GBP',

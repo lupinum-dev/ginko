@@ -1,7 +1,7 @@
 // The bridge to ginko-i18n: Ginko passes `locales`, `defaultLocale`, `baseUrl` and `timeZone` from ginko.config.ts.
 
 /** The ginko-i18n options Ginko sets, and where each one lives in ginko.config.ts. */
-const OWNED = { locales: 'locales', defaultLocale: 'the first entry of locales', baseUrl: 'url', timeZone: 'timezone' } as const
+const OWNED = { locales: 'locales', defaultLocale: 'the first entry of locales', baseUrl: 'url', timeZone: 'timeZone' } as const
 
 /**
  * Throws when nuxt.config `i18n` sets an option Ginko owns. Nuxt would merge it silently with Ginko's

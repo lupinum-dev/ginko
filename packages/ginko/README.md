@@ -24,7 +24,7 @@ export default defineSite({
   site: 'my-site',
   name: 'My site',
   url: 'https://example.com',
-  timezone: 'Europe/Vienna',
+  timeZone: 'Europe/Vienna',
   locales: ['en'],
   currency: 'EUR',
   pages: { home: '/' },

@@ -21,7 +21,7 @@ provide(EDITOR_COMPONENTS, () => (data.value?.site.schema as { components?: Comp
 // Labels and prices under this layout read the site's main language and currency.
 provideStudioSite({ main: () => data.value?.site.schema.locales[0] ?? '', currency: () => data.value?.site.schema.currency ?? 'EUR' })
 // Date fields under this layout count "today" and weeks in the site's zone and week (`schema.week`).
-provide('ginko:timezone', computed(() => data.value?.site.schema.timezone ?? 'Europe/Vienna'))
+provide('ginko:timeZone', computed(() => data.value?.site.schema.timeZone ?? 'Europe/Vienna'))
 // While the site loads there is no schema yet.
 provide('ginko:week', computed(() => data.value?.site.schema.week ?? DEFAULT_WEEK))
 // Signed out in another tab, or removed from the team while working here: no page, sheet or button

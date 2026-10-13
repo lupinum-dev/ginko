@@ -9,7 +9,7 @@ import { loadIndex, search } from '@lupinum/ginko/search'
 import { buildFileBundles, searchIndex, withMarkdownRefs } from '../src/index.ts'
 
 const schema = serializeSchema(defineSite({
-  site: 'doku', name: 'Doku', url: 'https://doku.example', timezone: 'Europe/Vienna',
+  site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
   locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
   bricks: {
     docs: collection({

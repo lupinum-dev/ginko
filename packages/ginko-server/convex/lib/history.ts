@@ -23,7 +23,7 @@ export interface Recorded {
 }
 
 /** The site facts a message needs: the main language (labels fall back to it) and the zone of its dates. */
-type Where = Pick<Schema, 'locales' | 'timezone'>
+type Where = Pick<Schema, 'locales' | 'timeZone'>
 
 /** The key is checked against the catalog where a message is built. */
 export const msg = (key: MessageKey, params?: Record<string, Param>): HistoryMsg => (params ? { key, params } : { key })
@@ -38,7 +38,7 @@ export function historyText(message: HistoryMsg, locale: string, where: Where | 
     name,
     typeof value === 'string' || typeof value === 'number' ? value : isMsg(value) ? historyText(value, locale, where) : labelOf(value, locale, main),
   ]))
-  return t(locale, message.key as MessageKey, params, { timeZone: where?.timezone ?? 'UTC' })
+  return t(locale, message.key as MessageKey, params, { timeZone: where?.timeZone ?? 'UTC' })
 }
 
 /** The row fields `msg` and `sentence` (German, cut to the stored length) for a message. */

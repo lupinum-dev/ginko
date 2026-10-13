@@ -10,7 +10,7 @@ import { buildFileBundles, publicBundle } from '../src/index.ts'
 import { readContent } from '../src/read.ts'
 
 const schema = serializeSchema(defineSite({
-  site: 'doku', name: 'Doku', url: 'https://doku.example', timezone: 'Europe/Vienna',
+  site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
   locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
   bricks: {
     docs: collection({
@@ -160,7 +160,7 @@ describe('buildFileBundles', () => {
 
 describe('publicBundle', () => {
   const events = serializeSchema(defineSite({
-    site: 'ev', name: 'Ev', url: 'https://ev.example', timezone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
+    site: 'ev', name: 'Ev', url: 'https://ev.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
     bricks: {
       events: collection({
         label: 'Termine', source: 'files', max: 50, order: 'manual', visible: { mode: 'until', field: 'when' },
@@ -284,7 +284,7 @@ describe('images in Markdown', () => {
 
 describe('image variants', () => {
   const imageSchema = serializeSchema(defineSite({
-    site: 'doku', name: 'Doku', url: 'https://doku.example', timezone: 'Europe/Vienna',
+    site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
     locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
     bricks: { docs: collection({ label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), hero: f.image('Bild', { optional: true }), body: f.markdown('Text') } }) },
   }))

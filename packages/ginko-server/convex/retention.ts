@@ -70,7 +70,7 @@ export const daily = internalMutation({
     for (const site of await ctx.db.query('sites').collect()) {
       if (left === 0) break
       const schema = site.schema as Schema
-      const today = todayIn(schema.timezone, new Date(now))
+      const today = todayIn(schema.timeZone, new Date(now))
       // An entry is expired when it has been invisible for 30 days: its last visible day is before this date.
       const expiredSince = addDays(today, -30)
       // The site's counters change in this loop; one patch at the end writes them.

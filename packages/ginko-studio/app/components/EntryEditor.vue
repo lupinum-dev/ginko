@@ -84,7 +84,7 @@ const form = useEntryForm({
   task: () => (props.entry ? props.tasks?.save : props.tasks?.create),
   removeTask: () => props.tasks?.remove,
   draft: () => props.entry?.state === 'draft',
-  timeZone: () => props.schema.timezone,
+  timeZone: () => props.schema.timeZone,
 })
 const { draft, baseline, issues, problem, conflict, busy, slow, waiting, dirty, confirm } = form
 
@@ -237,7 +237,7 @@ watch(() => props.entry?._id, () => {
 
 // Drafts (SPEC 15): only collections that ask for them. A draft is saved without going online;
 // "Veröffentlichen …" puts it online now or at a time; a live entry can be taken back to a draft.
-const timeZone = computed(() => props.schema.timezone)
+const timeZone = computed(() => props.schema.timeZone)
 const drafts = computed(() => props.brick.kind === 'collection' && props.brick.drafts === true)
 const state = computed(() => props.entry?.state ?? 'live')
 // A draft stays a draft when the collection later turns drafts off (SPEC 15), so it can still be published.

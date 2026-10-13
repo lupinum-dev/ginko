@@ -40,17 +40,17 @@ let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => { timer = setInterval(() => { now.value = Date.now() }, 60_000) })
 onUnmounted(() => clearInterval(timer))
 
-/** "just now", "5 min ago", "2 h ago", then the date and time in the site's timezone. */
+/** "just now", "5 min ago", "2 h ago", then the date and time in the site's time zone. */
 function when(at: number): string {
   const diff = now.value - at
   if (diff < 60_000) return t('entry.changes.justNow')
   if (diff < 3_600_000) return t('entry.changes.minutesAgo', { count: Math.floor(diff / 60_000) })
   if (diff < 86_400_000) return t('entry.changes.hoursAgo', { count: Math.floor(diff / 3_600_000) })
-  return format.date(at, { timeZone: props.schema.timezone, day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return format.date(at, { timeZone: props.schema.timeZone, day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 /** The line in the Studio's language, dates in the site's zone; rows from before `msg` show their German sentence. */
-const textOf = useTextOf(() => ({ timeZone: props.schema.timezone, main: props.schema.locales[0] }))
+const textOf = useTextOf(() => ({ timeZone: props.schema.timeZone, main: props.schema.locales[0] }))
 const sentenceOf = (change: Change) => textOf(change.msg, change.sentence)
 
 /** Who made the change, and the AI key when one did. */
@@ -80,7 +80,7 @@ function toggleShow(id: string) {
 }
 const confirming = ref<string | null>(null)
 const canRevert = (change: Change) => change.kind === 'save' && !!change.entry && (props.manager || taskFor(change) !== undefined)
-const fullDate = (at: number) => format.date(at, { timeZone: props.schema.timezone, day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+const fullDate = (at: number) => format.date(at, { timeZone: props.schema.timeZone, day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 async function revert(change: Change) {
   busy.value = change._id
   try {

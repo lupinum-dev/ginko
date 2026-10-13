@@ -7,7 +7,7 @@ describe('checkI18nOptions', () => {
   test.each([
     [{ locales: ['fr'] }, 'i18n.locales'],
     [{ defaultLocale: 'en' }, 'i18n.defaultLocale'],
-    [{ baseUrl: 'https://x.test', timeZone: 'Europe/Vienna' }, 'i18n.baseUrl, i18n.timeZone, which ginko.config.ts owns (url, timezone)'],
+    [{ baseUrl: 'https://x.test', timeZone: 'Europe/Vienna' }, 'i18n.baseUrl, i18n.timeZone, which ginko.config.ts owns (url, timeZone)'],
   ])('%j fails with %s', (options, text) => {
     expect(() => checkI18nOptions(options)).toThrow(text)
   })

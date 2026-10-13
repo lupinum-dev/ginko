@@ -10,7 +10,7 @@ afterEach(() => vi.useRealTimers())
 test('a preview that never gets ready says so after 8 s and links to the website', async () => {
   vi.useFakeTimers()
   const site = { slug: 'restaurant', url: 'https://linde.test', previewOrigins: [], schemaRev: 1, contentRev: 1 }
-  const wrapper = mount(PreviewPane, { props: { site, schema: { locales: ['de'], timezone: 'Europe/Vienna', bricks: {} } as unknown as Schema, entries: [], locale: 'de', path: '/speisekarte' } })
+  const wrapper = mount(PreviewPane, { props: { site, schema: { locales: ['de'], timeZone: 'Europe/Vienna', bricks: {} } as unknown as Schema, entries: [], locale: 'de', path: '/speisekarte' } })
   vi.advanceTimersByTime(7_000)
   await flushPromises()
   expect(wrapper.text()).not.toContain('Die Vorschau lädt nicht')

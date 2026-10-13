@@ -2,7 +2,7 @@
   "site": "restaurant",
   "name": "Gasthaus zur Linde",
   "url": "https://ginko-demo-restaurant.vercel.app",
-  "timezone": "Europe/Vienna",
+  "timeZone": "Europe/Vienna",
   "locales": [
     "de",
     "en"

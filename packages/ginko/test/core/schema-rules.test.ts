@@ -17,7 +17,7 @@ type Bricks = SiteInput['bricks']
 /** A small site: one collection `menu` with a name and the given extra fields. */
 function site(fields: Fields = {}, over: Partial<SiteInput> = {}): SiteInput {
   return defineSite({
-    site: 'linde', name: 'Linde', url: 'https://linde.example', timezone: 'Europe/Vienna',
+    site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
     locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
     bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }), ...fields }, max: 20, order: 'manual' }) },
     ...over,
@@ -86,8 +86,8 @@ describe('2. values lost in serializeSchema', () => {
 })
 
 describe('3. the time zone must exist', () => {
-  it.each([['Europe/Wien', false], ['Mars/Olympus', false], ['', false], ['Europe/Vienna', true], ['UTC', true]])('%s -> valid: %s', (timezone, valid) => {
-    expect(problemsOf(site({}, { timezone })).some((p) => p.startsWith('Invalid time zone'))).toBe(!valid)
+  it.each([['Europe/Wien', false], ['Mars/Olympus', false], ['', false], ['Europe/Vienna', true], ['UTC', true]])('%s -> valid: %s', (timeZone, valid) => {
+    expect(problemsOf(site({}, { timeZone })).some((p) => p.startsWith('Invalid time zone'))).toBe(!valid)
   })
 })
 
@@ -242,14 +242,14 @@ describe('7. duplicate locales and the order of checkSchema and diffSchema', () 
 describe('8. diffSchema', () => {
   it('a changed time zone is refused', () => {
     const next = base()
-    next.timezone = 'Europe/Berlin'
-    expect(diffSchema(base(), next).rejected.map((r) => [r.kind, r.message])).toEqual([['timezone', 'Zeitzone kann nicht geändert werden.']])
+    next.timeZone = 'Europe/Berlin'
+    expect(diffSchema(base(), next).rejected.map((r) => [r.kind, r.message])).toEqual([['timeZone', 'Zeitzone kann nicht geändert werden.']])
   })
 
   // Astra 9: sites:bootstrap stores an empty Vienna/EUR/de schema; the first release must set its own.
   it('a site without bricks takes time zone, currency and languages from its first release', () => {
-    const empty = { ...base(), bricks: {}, timezone: 'Europe/Vienna', currency: 'EUR' as const, locales: ['de'] as Schema['locales'] }
-    const next = { ...base(), timezone: 'Europe/London', currency: 'CHF' as const, locales: ['en', 'de'] as Schema['locales'] }
+    const empty = { ...base(), bricks: {}, timeZone: 'Europe/Vienna', currency: 'EUR' as const, locales: ['de'] as Schema['locales'] }
+    const next = { ...base(), timeZone: 'Europe/London', currency: 'CHF' as const, locales: ['en', 'de'] as Schema['locales'] }
     expect(diffSchema(empty, next).rejected).toEqual([])
   })
 

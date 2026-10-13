@@ -52,7 +52,7 @@ const canCreate = computed(() => !!access.value && (access.value.all || !!access
 function status(entry: Entry): string {
   const b = brick.value
   // A draft is not on the website, whatever its dates say (SPEC 15).
-  if (entry.state === 'draft') return entry.publishAt ? t('site.status.onlineFrom', { when: whenText(entry.publishAt, s.schema.value?.timezone ?? 'Europe/Vienna', format) }) : t('site.status.draft')
+  if (entry.state === 'draft') return entry.publishAt ? t('site.status.onlineFrom', { when: whenText(entry.publishAt, s.schema.value?.timeZone ?? 'Europe/Vienna', format) }) : t('site.status.draft')
   if (!b || b.kind !== 'collection' || !b.visible || b.visible.mode === 'always') return ''
   if (isVisible(b, entry.data, s.today.value)) return ''
   return b.fields[b.visible.field]?.type === 'daterange' ? t('site.status.ended') : t('site.status.expired')

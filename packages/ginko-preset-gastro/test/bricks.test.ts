@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { allergensEU, events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '../src/index.ts'
 
 const siteWith = (bricks: Record<string, any>) =>
-  defineSite({ site: 'cafe', name: 'Café', url: 'https://cafe.example', timezone: 'Asia/Singapore', locales: ['en'], currency: 'EUR', pages: { home: '/' }, bricks })
+  defineSite({ site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Asia/Singapore', locales: ['en'], currency: 'EUR', pages: { home: '/' }, bricks })
 
 describe('labels', () => {
   it('brick, field, task and option labels come in German and English, whatever the site locales are', () => {
@@ -30,13 +30,13 @@ describe('labels', () => {
     expect(german).not.toContain('To be announced')
     // A main locale the preset has no text for: the prefilled texts are left out, not stored without the main language,
     // even when the site has both of the preset's languages as well.
-    const swiss = serializeSchema({ ...siteWith({ lunch: lunch(), notices: notices() }), locales: ['fr', 'de', 'en'], timezone: 'Europe/Zurich' })
+    const swiss = serializeSchema({ ...siteWith({ lunch: lunch(), notices: notices() }), locales: ['fr', 'de', 'en'], timeZone: 'Europe/Zurich' })
     expect(swiss.bricks.lunch!.fields.days!.default).toBeUndefined()
     expect(checkSchema(swiss)).toEqual([])
   })
   it('a Spanish site built from the preset passes checkSchema (labels fall back to English)', () => {
     const site = defineSite({
-      site: 'cafe', name: 'Café', url: 'https://cafe.example', timezone: 'Europe/Madrid', locales: ['es'], currency: 'EUR', pages: { home: '/' },
+      site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Madrid', locales: ['es'], currency: 'EUR', pages: { home: '/' },
       bricks: {
         hours: hours(), hourPlans: hourPlans(), notices: notices(), lunch: lunch(), lunchPlans: lunchPlans(), menu: menu(),
         events: events({ route: { es: '/eventos/[slug]' } }), gallery: gallery(),

@@ -8,7 +8,7 @@ import type { H3Event } from 'h3'
 import { rssXml } from './rss'
 
 export function serveBlogFeed(event: H3Event, locale: string) {
-  const config = useRuntimeConfig(event).public.ginko as { name: string; url: string; locales: string[]; timezone: string; seo: { description?: string } }
+  const config = useRuntimeConfig(event).public.ginko as { name: string; url: string; locales: string[]; timeZone: string; seo: { description?: string } }
   const bundle = config.locales.includes(locale) ? fileBundles[locale as keyof typeof fileBundles] : undefined
   const posts = bundle?.bricks.posts
   const def = schema.bricks.posts as Brick | undefined
@@ -16,7 +16,7 @@ export function serveBlogFeed(event: H3Event, locale: string) {
 
   const base = config.url.replace(/\/$/, '')
   const authors = bundle.bricks.authors?.kind === 'collection' ? bundle.bricks.authors.items : []
-  const today = todayIn(config.timezone)
+  const today = todayIn(config.timeZone)
   const route = def.route?.[locale as keyof typeof def.route]
   if (!route) throw createError({ statusCode: 404, statusMessage: 'No blog' })
   const items = posts.items.filter((p) => p.urls?.[bundle.locale] && isVisible(def, p.data, today)).map((p) => ({

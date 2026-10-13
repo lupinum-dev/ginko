@@ -28,7 +28,7 @@ export default defineSite({
   site: 'studio',
   name: 'Studio',
   url: 'https://example.com',
-  timezone: 'Europe/Vienna',
+  timeZone: 'Europe/Vienna',
   locales: ['de', 'en'],
   currency: 'EUR',
   pages: { home: { de: '/', en: '/en' } },

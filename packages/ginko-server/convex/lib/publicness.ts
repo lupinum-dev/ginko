@@ -35,7 +35,7 @@ export interface Publicness {
 export function publicness(site: Doc<'sites'>, key: string, row: Doc<'entries'>, locale: Locale): Publicness {
   const schema = site.schema as Schema
   const brick = schema.bricks[key]!
-  const zone = schema.timezone
+  const zone = schema.timeZone
   const reasons: Reason[] = []
   const done = (): Publicness => ({ public: reasons.every((r) => !r.blocking), reasons })
   const reason = (code: Reason['code'], blocking: boolean, message: HistoryMsg, action?: ReasonAction): Reason =>

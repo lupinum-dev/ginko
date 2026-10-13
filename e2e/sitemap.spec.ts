@@ -7,7 +7,7 @@ import { isVisible, todayIn, type Bundle, type Schema } from '../packages/ginko/
 
 const read = <T>(file: string): T => JSON.parse(readFileSync(new URL(`../contracts/restaurant/${file}`, import.meta.url), 'utf8')) as T
 const schema = read<Schema>('schema.json')
-const today = todayIn(schema.timezone)
+const today = todayIn(schema.timeZone)
 const expectedUrls = schema.locales.reduce((n, locale) => {
   const bundle = read<Bundle>(`bundle.format3.${locale}.json`)
   const pages = Object.values(schema.pages).filter((paths) => paths[locale]).length

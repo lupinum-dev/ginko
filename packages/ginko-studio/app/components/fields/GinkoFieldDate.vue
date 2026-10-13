@@ -11,9 +11,9 @@ import { Input } from '@studio/components/ui/input'
 
 const props = defineProps<{ id: string; modelValue: Json | undefined; invalid: boolean; describedBy?: string; optional?: boolean; weeks?: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
-const timezone = inject<Ref<string>>('ginko:timezone', ref('Europe/Vienna'))
+const timeZone = inject<Ref<string>>('ginko:timeZone', ref('Europe/Vienna'))
 const week = inject<Ref<WeekInfo>>('ginko:week', ref(DEFAULT_WEEK))
-const today = useToday(timezone)
+const today = useToday(timeZone)
 const { t } = useI18n()
 const value = computed(() => (typeof props.modelValue === 'string' ? props.modelValue : ''))
 /** A week start (preset @workWeek) offers week starts of this site's week; any other date offers today and tomorrow. */

@@ -20,7 +20,7 @@ export default defineSite({
   site: 'industrie',
   name: 'Brunner Präzisionstechnik GmbH',
   url: 'https://ginko-demo-industrie.vercel.app',
-  timezone: 'Europe/Vienna',
+  timeZone: 'Europe/Vienna',
   locales: ['de', 'en'],
   languages: { de: 'de-AT', en: 'en-GB' },
   currency: 'EUR',

@@ -358,7 +358,7 @@ function roomPlan(actor: Actor, brick: CollectionBrick, rows: Doc<'entries'>[]):
   const live = rows.filter((r) => !r.deletedAt)
   if (live.length < brick.max) return []
   const need = live.length - brick.max + 1
-  const today = todayIn((actor.site.schema as Schema).timezone)
+  const today = todayIn((actor.site.schema as Schema).timeZone)
   // A draft is never expired: it is not published yet (SPEC 15). It still takes a place in `max`.
   const expired = deletesExpired(brick) ? live.filter((r) => r.state !== 'draft' && !isVisible(brick as Brick, r.data, today)) : []
   if (expired.length < need) fail('INVALID', 'errors.collectionFull', { max: brick.max }, { max: brick.max })

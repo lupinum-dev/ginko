@@ -9,7 +9,7 @@ const candidateOf = (release: ReleaseState, site: SiteInput) => buildCandidate(r
 // Production has `menu.headline`. The new config adds `menu.title` (translatable) filled from it,
 // retires `headline` in favour of `title`, and adds a plain `code` filled from the price.
 const before = defineSite({
-  site: 'cafe', name: 'Café', url: 'https://cafe.example', timezone: 'Europe/Vienna',
+  site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Vienna',
   locales: ['de', 'en'], currency: 'EUR', pages: {},
   bricks: {
     menu: collection({ label: 'Karte', fields: { headline: f.text('Überschrift', { max: 120 }), price: f.money('Preis') }, max: 20, order: 'manual' }),

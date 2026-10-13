@@ -17,7 +17,7 @@ const { runOnce } = await import('../../src/cli/local.ts')
 const CORE = pathToFileURL(join(import.meta.dirname, '../../src/core/index.ts')).href
 const config = (extra = '') => `import { collection, defineSite, f } from '${CORE}'
 export default defineSite({
-  site: 'demo', name: 'Demo', url: 'https://demo.example', timezone: 'Europe/Vienna',
+  site: 'demo', name: 'Demo', url: 'https://demo.example', timeZone: 'Europe/Vienna',
   locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
   bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 })${extra} }, max: 20, order: 'manual' }) },
 })

@@ -315,16 +315,16 @@ describe('sites.create: site settings', () => {
     const s = await setup()
     expect(await code(create(s, { currency: 'EURO' }))).toBe('INVALID')
     expect(await code(create(s, { locales: ['de', 'DE'] }))).toBe('INVALID')
-    expect(await code(create(s, { timezone: 'Mars/Olympus' }))).toBe('INVALID')
+    expect(await code(create(s, { timeZone: 'Mars/Olympus' }))).toBe('INVALID')
     expect(await s.t.run((ctx) => ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', 'neue-seite')).unique())).toBeNull()
   })
 
-  it('takes timezone, locales and currency, and keeps the defaults without them', async () => {
+  it('takes timeZone, locales and currency, and keeps the defaults without them', async () => {
     const s = await setup()
-    await create(s, { slug: 'schweiz', timezone: 'Europe/Zurich', locales: ['en', 'de'], currency: 'CHF' })
+    await create(s, { slug: 'schweiz', timeZone: 'Europe/Zurich', locales: ['en', 'de'], currency: 'CHF' })
     await create(s, { slug: 'standard' })
     const schemaOf = async (slug: string) => (await s.t.run((ctx) => ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', slug)).unique()))!.schema as Schema
-    expect(await schemaOf('schweiz')).toMatchObject({ timezone: 'Europe/Zurich', locales: ['en', 'de'], currency: 'CHF' })
-    expect(await schemaOf('standard')).toMatchObject({ timezone: 'Europe/Vienna', locales: ['de'], currency: 'EUR' })
+    expect(await schemaOf('schweiz')).toMatchObject({ timeZone: 'Europe/Zurich', locales: ['en', 'de'], currency: 'CHF' })
+    expect(await schemaOf('standard')).toMatchObject({ timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR' })
   })
 })

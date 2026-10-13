@@ -6,7 +6,7 @@ export default defineSite({
   site: 'saas',
   name: 'Taktwerk',
   url: 'https://ginko-demo-saas.vercel.app',
-  timezone: 'Europe/Berlin',
+  timeZone: 'Europe/Berlin',
   locales: ['de', 'en', 'fr'],
   languages: { de: 'de-DE', en: 'en-GB', fr: 'fr-FR' },
   currency: 'EUR',

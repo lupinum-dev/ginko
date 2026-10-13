@@ -60,7 +60,7 @@ export default defineNuxtModule<SiteInput>({
       platform: nuxt.options.dev ? 'http://localhost:3100' : '',
       locales: schema.locales,
       mainLocale: schema.locales[0]!,
-      timezone: schema.timezone,
+      timeZone: schema.timeZone,
       seo: site.seo ?? {},
       agents: site.agents ?? {},
       sources,
@@ -72,7 +72,7 @@ export default defineNuxtModule<SiteInput>({
     // Resolved from this package, not the site: with pnpm a site does not see @lupinum/ginko's own dependencies.
     const i18n = await tryResolveModule('@lupinum/ginko-i18n', import.meta.url)
     const locales = schema.locales.map((code) => ({ code, language: site.languages?.[code] ?? code }))
-    await installModule(i18n ?? '@lupinum/ginko-i18n', { locales, defaultLocale: schema.locales[0], baseUrl: schema.url, timeZone: schema.timezone })
+    await installModule(i18n ?? '@lupinum/ginko-i18n', { locales, defaultLocale: schema.locales[0], baseUrl: schema.url, timeZone: schema.timeZone })
     // The server routes (sitemap hreflang, redirects, Markdown) read the config ginko-i18n resolved, with
     // its strategy, exclude and userLocale, so they never disagree with the module's own routes.
     addServerTemplate({ filename: '#ginko/locales', getContents: () => `export { config as default } from '#ginko-i18n/config.mjs'` })

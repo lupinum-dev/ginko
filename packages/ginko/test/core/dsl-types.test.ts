@@ -4,7 +4,7 @@ import { collection, defineSite, f, single, type DataOf, type Money, type Query 
 // The authoring types reject input the validator would only reject at `ginko release`. `pnpm typecheck`
 // runs this file: each `@ts-expect-error` fails the check when a type is widened again.
 
-const base = { site: 'linde', name: 'Linde', url: 'https://linde.example', timezone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: '/' } } as const
+const base = { site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: '/' } } as const
 
 describe('authoring types', () => {
   it('retired takes only bricks and fields of the config', () => {

@@ -157,7 +157,7 @@
     "nameTooLong": "El nombre es demasiado largo (máximo {nameMax} caracteres).",
     "siteAddressNotUrl": "La dirección del sitio no es una URL válida (http o https).",
     "siteLocalesInvalid": "Los idiomas deben ser de 1 a {max} etiquetas de idioma distintas, p. ej. “de”, “en” o “pt-BR”.",
-    "siteTimezoneInvalid": "Zona horaria no válida “{timezone}” (p. ej. “Europe/Vienna”).",
+    "siteTimezoneInvalid": "Zona horaria no válida “{timeZone}” (p. ej. “Europe/Vienna”).",
     "siteCurrencyInvalid": "Moneda no válida “{currency}” (un código ISO 4217 como “EUR” o “CHF”).",
     "addressTaken": "Esta dirección ya está en uso.",
     "onlyAdminsCreateSites": "Solo los administradores crean sitios.",

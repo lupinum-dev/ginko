@@ -128,7 +128,7 @@ export const setAgentReview = mutation({
 })
 
 /** Creates a site with an empty schema (SPEC 2.1 shape, no bricks yet); its first release brings the bricks. */
-async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; url: string; timezone?: string; locales?: string[]; currency?: string }) {
+async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; url: string; timeZone?: string; locales?: string[]; currency?: string }) {
   if (!SLUG.test(args.slug)) fail('INVALID', 'errors.siteAddressFormat')
   const name = args.name.trim()
   if (!name) fail('INVALID', 'errors.nameMissing')
@@ -142,10 +142,10 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
   if (url?.protocol !== 'http:' && url?.protocol !== 'https:') fail('INVALID', 'errors.siteAddressNotUrl')
   if (!isFetchableSiteUrl(args.url, process.env.GINKO_LOCAL === '1')) fail('INVALID', 'errors.siteUrlNotAllowed')
   // Defaults stay Vienna, German, EUR; the first release may still change them while the site has no bricks.
-  const timezone = args.timezone ?? 'Europe/Vienna'
+  const timeZone = args.timeZone ?? 'Europe/Vienna'
   const locales = args.locales ?? ['de']
   const currency = args.currency ?? 'EUR'
-  if (!isTimeZone(timezone)) fail('INVALID', 'errors.siteTimezoneInvalid', { timezone })
+  if (!isTimeZone(timeZone)) fail('INVALID', 'errors.siteTimezoneInvalid', { timeZone })
   if (locales.length < 1 || locales.length > MAX_LOCALES || !locales.every(isLocale) || new Set(locales).size !== locales.length) fail('INVALID', 'errors.siteLocalesInvalid', { max: MAX_LOCALES })
   if (!isCurrency(currency)) fail('INVALID', 'errors.siteCurrencyInvalid', { currency })
   const existing = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.slug)).unique()
@@ -155,7 +155,7 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
     site: args.slug,
     name,
     url: args.url,
-    timezone,
+    timeZone,
     locales,
     currency,
     pages: {},
@@ -180,7 +180,7 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
 
 /** Admin only, from the platform UI. */
 export const create = mutation({
-  args: { slug: v.string(), name: v.string(), url: v.string(), timezone: v.optional(v.string()), locales: v.optional(v.array(v.string())), currency: v.optional(v.string()) },
+  args: { slug: v.string(), name: v.string(), url: v.string(), timeZone: v.optional(v.string()), locales: v.optional(v.array(v.string())), currency: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await currentUser(ctx)
     const admin = await ctx.db.query('admins').withIndex('by_user', (q) => q.eq('user', user.id)).unique()

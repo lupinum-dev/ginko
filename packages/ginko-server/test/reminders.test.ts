@@ -112,7 +112,7 @@ describe('reminders.sweep', () => {
     const s = await setupUnplanned()
     await s.t.run(async (ctx) => {
       const site = (await ctx.db.get(s.site))!
-      await ctx.db.patch(s.site, { schema: { ...(site.schema as object), timezone: 'America/Los_Angeles' } })
+      await ctx.db.patch(s.site, { schema: { ...(site.schema as object), timeZone: 'America/Los_Angeles' } })
     })
     // Sunday 17:30 in Vienna is Sunday 08:30 in Los Angeles.
     expect(await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })).toEqual({ sent: 0 })

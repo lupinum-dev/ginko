@@ -8,7 +8,7 @@ import { collection, defineSite, f } from '../../src/core/index.ts'
 
 // One file brick (docs/<name>.md) with a route, and a home page that a link can point to.
 const config = defineSite({
-  site: 'linde', name: 'Linde', url: 'https://linde.example', timezone: 'Europe/Vienna',
+  site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
   locales: ['de'], currency: 'EUR', pages: { home: '/' },
   bricks: {
     docs: collection({

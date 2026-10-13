@@ -41,14 +41,14 @@ export interface GinkoSite {
   /** The first of `locales`. */
   mainLocale: GinkoLocale
   /** IANA time zone, e.g. `Europe/Vienna`. */
-  timezone: string
+  timeZone: string
 }
 
 /** `const { url, mainLocale } = useGinkoSite()`: name, address, locales and time zone of the site. Auto-imported. */
 export function useGinkoSite(): GinkoSite {
-  const { name, url, locales, mainLocale, timezone } = useRuntimeConfig().public.ginko as GinkoPublicConfig
+  const { name, url, locales, mainLocale, timeZone } = useRuntimeConfig().public.ginko as GinkoPublicConfig
   // The runtime config is this site's own config, so its locales are the site's.
-  return { name, url, locales: locales as GinkoLocale[], mainLocale: mainLocale as GinkoLocale, timezone }
+  return { name, url, locales: locales as GinkoLocale[], mainLocale: mainLocale as GinkoLocale, timeZone }
 }
 
 /** The current locale. ginko-i18n owns it (URL, strategy, excluded paths); it only ever takes a locale of the site. */
@@ -92,7 +92,7 @@ export const TODAY_STATE = 'ginko:today'
  * client render the same day; a tab left open, or a cached page opened, after midnight then moves on.
  */
 export function useGinkoToday(): Ref<string> {
-  return useState<string>(TODAY_STATE, () => todayIn((useRuntimeConfig().public.ginko as GinkoPublicConfig).timezone))
+  return useState<string>(TODAY_STATE, () => todayIn((useRuntimeConfig().public.ginko as GinkoPublicConfig).timeZone))
 }
 
 /** First day of the week and weekend days of the site (`schema.week`, from the main language or `firstDayOfWeek`), the same the server and the Studio use. */

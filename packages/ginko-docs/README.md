@@ -23,7 +23,7 @@ export default defineSite({
   site: 'my-docs',
   name: 'My docs',
   url: 'https://docs.example.com',
-  timezone: 'Europe/Vienna',
+  timeZone: 'Europe/Vienna',
   locales,
   currency: 'EUR',
   pages: { home: { en: '/', de: '/de' } }, // the start page is the page `home`

@@ -7,10 +7,10 @@ import { useGinkoToday } from './composables.ts'
 import type { GinkoPublicConfig } from './shared.ts'
 
 export default defineNuxtPlugin(() => {
-  const timezone = (useRuntimeConfig().public.ginko as GinkoPublicConfig).timezone
+  const timeZone = (useRuntimeConfig().public.ginko as GinkoPublicConfig).timeZone
   const today = useGinkoToday()
   const refresh = () => {
-    const now = todayIn(timezone)
+    const now = todayIn(timeZone)
     if (today.value !== now) today.value = now
   }
   onNuxtReady(() => {

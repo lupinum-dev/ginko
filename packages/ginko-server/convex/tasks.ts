@@ -23,7 +23,7 @@ export async function prefillAs(ctx: QueryCtx, actor: Actor, args: ObjectType<ty
   const values: Record<string, Json> = {}
   for (const [key, raw] of Object.entries(prefill)) {
     if (!Object.hasOwn(brick.fields, key) || raw === undefined) continue
-    const token = typeof raw === 'string' ? resolveToken(raw, schema.timezone, schema.week) : undefined
+    const token = typeof raw === 'string' ? resolveToken(raw, schema.timeZone, schema.week) : undefined
     values[key] = token ?? raw
   }
 

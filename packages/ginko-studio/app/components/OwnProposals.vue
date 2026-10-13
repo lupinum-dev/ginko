@@ -31,11 +31,11 @@ const rejected = computed(() => (rejectedList.data.value?.page ?? []).filter((p)
 /** A stale proposal with `at` was planned and failed at its time; the approver who planned it needs to know too. */
 const notLive = computed(() => (staleList.data.value?.page ?? []).filter((p) => p.at !== null && matches(p) && recent(p)))
 
-const textOf = useTextOf(() => ({ timeZone: props.schema.timezone, main: props.schema.locales[0] }))
+const textOf = useTextOf(() => ({ timeZone: props.schema.timeZone, main: props.schema.locales[0] }))
 const line = (p: Row) => textOf(p.msg, p.sentence)
 const rejectedText = (p: Row) => t('history.rejectedBy', { who: p.decidedBy ? whoText(p.decidedBy, t) : t('who.member'), reason: textOf(p.reasonMsg, p.reason ?? '') })
 const notLiveText = (p: Row) => t('history.notLiveBecause', { when: when(p.at!), reason: textOf(p.reasonMsg, p.reason ?? '') })
-const when = (at: number) => format.date(at, { timeZone: props.schema.timezone, day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+const when = (at: number) => format.date(at, { timeZone: props.schema.timeZone, day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
 const busy = ref<string | null>(null)
 async function withdraw(proposal: string) {

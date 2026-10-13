@@ -6,7 +6,7 @@ import { authors, blog, caseStudies, faq, jobs, legal, openJobs, services, team 
 
 const siteWith = (bricks: Record<string, any>, locales: SiteInput['locales'] = ['de', 'en']) =>
   defineSite({
-    site: 'agency', name: 'Agency', url: 'https://agency.example', timezone: 'Europe/Vienna',
+    site: 'agency', name: 'Agency', url: 'https://agency.example', timeZone: 'Europe/Vienna',
     locales, currency: 'EUR', pages: { home: locales.length === 1 ? '/' : { de: '/', en: '/en' } }, bricks,
   })
 

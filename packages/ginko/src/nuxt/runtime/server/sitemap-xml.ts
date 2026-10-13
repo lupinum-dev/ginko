@@ -17,7 +17,7 @@ const MAX_IMAGES = 20
 
 /**
  * `bundles` must hold every locale of the site for routed entries; `today` is the site's date
- * (todayIn of its timezone), so the visibility rule matches the pages. `locales` is ginko-i18n's
+ * (todayIn of its time zone), so the visibility rule matches the pages. `locales` is ginko-i18n's
  * config: hreflang uses its languages and `x-default`, exactly as the page head does.
  */
 export function sitemapXml(site: Schema, bundles: Partial<Record<Locale, Bundle>>, today: string, locales: Pick<LocaleConfig, 'locales' | 'defaultLocale'>): string {

@@ -38,7 +38,7 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
   // currency, languages and time zone freely; from then on they are fixed (Astra 9).
   const fresh = Object.keys(prod.bricks).length === 0
   if (fresh) {
-    for (const k of ['currency', 'timezone'] as const) if (prod[k] !== next[k]) ok(k, k, msg('diff.freshSetting', { name: k, value: next[k] }))
+    for (const k of ['currency', 'timeZone'] as const) if (prod[k] !== next[k]) ok(k, k, msg('diff.freshSetting', { name: k, value: next[k] }))
     if (prod.locales.join(',') !== next.locales.join(',')) ok('locales', 'locales', msg('diff.freshLocales', { locales: next.locales.join(', ') }))
   } else {
     if (prod.currency !== next.currency) no('currency', 'currency', msg('diff.currencyChanged'), fx('moneyFields'))
@@ -50,7 +50,7 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
     }
     for (const locale of next.locales) if (!prod.locales.includes(locale)) ok('locales', 'localeAdded', msg('diff.localeAdded', { locale }))
     // The time zone moves the end of every stored expiry date, so it is not a free text like name and url.
-    if (prod.timezone !== next.timezone) no('timezone', 'timezone', msg('diff.timezoneChanged'), fx('keepTimezone'))
+    if (prod.timeZone !== next.timeZone) no('timeZone', 'timeZone', msg('diff.timezoneChanged'), fx('keepTimezone'))
   }
   for (const k of ['name', 'url'] as const) if (prod[k] !== next[k]) ok(k, k, msg('diff.valueChanged', { name: k }))
   if (stableJson(prod.week) !== stableJson(next.week)) ok('week', 'week', msg('diff.valueChanged', { name: 'week' }))

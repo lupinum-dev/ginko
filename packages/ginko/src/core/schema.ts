@@ -17,7 +17,7 @@ const RESERVED_KEYS = new Set([...Object.getOwnPropertyNames(Object.prototype), 
 const UNSAFE_PATH = /\.\.|\/\/|[?#]/
 
 // The serialized schema grammar. Unknown properties are rejected here and in diffSchema (deny by default).
-export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timezone', 'locales', 'currency', 'week', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
+export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timeZone', 'locales', 'currency', 'week', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor'])
 export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'drafts', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'group'])
@@ -51,7 +51,7 @@ export function serializeSchema(site: SiteInput): Schema {
     site: site.site,
     name: site.name,
     url: site.url,
-    timezone: site.timezone,
+    timeZone: site.timeZone,
     locales: [...site.locales],
     currency: site.currency,
     // Computed once here; the server, the Studio and the site all read `schema.week`.
@@ -195,6 +195,13 @@ export function mainLocale(schema: Pick<Schema, 'locales'>): Locale {
   return schema.locales[0]!
 }
 
+// The top-level keys of a site config, typed against `SiteInput`: a new or renamed key fails the type check here.
+const SITE_KEYS = {
+  site: true, name: true, url: true, timeZone: true, locales: true, languages: true, firstDayOfWeek: true, currency: true,
+  pages: true, bricks: true, linkCheck: true, redirects: true, seo: true, agents: true, components: true, migrations: true,
+  retired: true,
+} satisfies Record<keyof SiteInput, true>
+
 /**
  * Problems of a site config: those of its schema, plus the options that stay out of the schema (`languages`).
  * The Nuxt build, `ginko check` and `ginko release` run it; the platform checks only the schema (checkSchema).
@@ -240,7 +247,7 @@ function schemaProblems(schema: Schema): string[] {
   for (const locale of schema.locales) if (!isLocale(locale)) problems.push(`Invalid locale “${String(locale)}” (expected a canonical language code such as “es”, “pt-BR” or “zh-Hant”).`)
   for (const locale of new Set(schema.locales.filter((l, i) => schema.locales.indexOf(l) !== i))) problems.push(`Locale “${locale}” is listed twice.`)
   if (!isSiteUrl(schema.url)) problems.push(`Invalid site url “${String(schema.url)}” (expected an absolute http(s) address such as “https://linde.example”).`)
-  if (!isTimeZone(schema.timezone)) problems.push(`Invalid time zone “${String(schema.timezone)}” (expected for example “Europe/Vienna”).`)
+  if (!isTimeZone(schema.timeZone)) problems.push(`Invalid time zone “${String(schema.timeZone)}” (expected for example “Europe/Vienna”).`)
   if (!isWeek(schema.week)) problems.push('week must be { firstDay: 1 to 7, weekend: [days 1 to 7] } (1 = Monday, 7 = Sunday).')
   if (!isCurrency(schema.currency)) problems.push(`Invalid currency “${String(schema.currency)}” (expected an ISO 4217 code such as “EUR” or “JPY”).`)
   const pageOwner = new Map<string, string>()
