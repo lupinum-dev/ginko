@@ -1,7 +1,6 @@
 // Restaurant bricks with the owner's quick tasks. Labels come in German and English; `lang` picks only default content.
 import { collection, f, single, type BrickSource, type ChoiceOption, type ChoicesField, type Locale } from '@lupinum/ginko'
 import { allergenNames } from './names.ts'
-import { calendarOf, type HolidayCalendar, type HolidaysOption } from './holidays.ts'
 
 /** Allergen codes on dishes: the EU list of 14, none at all (the field is left out), or your own list. */
 export type AllergenSet = 'EU' | 'none' | readonly ChoiceOption[]
@@ -63,16 +62,6 @@ const lunchDefault = (lang: keyof typeof lunchPlaceholder, withAllergens: boolea
   ...(withAllergens ? { allergens: [] } : {}),
 }))
 
-// The holiday calendar chosen in `hours({ calendar })`, for `hoursCalendarOf`. Not part of the schema: a symbol key
-// stays out of the serialized schema but survives `{ ...hours(), label: 'Hours' }`.
-const calendarKey = Symbol('ginko-preset-gastro.calendar')
-
-/** The holiday calendar a brick from `hours()` was made with (Austria by default). Pass it to `hoursOn` as `ctx.calendar`. */
-export function hoursCalendarOf(brick: object): HolidayCalendar {
-  // Only `hours()` writes this key.
-  return calendarOf((brick as { readonly [calendarKey]?: HolidaysOption })[calendarKey] ?? 'AT')
-}
-
 /** Times only on a day that is not closed (a closed day keeps its stored times). */
 const open = { field: 'closed', not: true } as const
 
@@ -92,11 +81,9 @@ function weekField() {
   })
 }
 
-export function hours(opts: GastroOptions & {
-  /** Which public holidays count. Code-level config, not a schema field: pass the same value as `ctx.calendar`. Default `'AT'`. (The stored field `holidays` is the owner's setting for those days.) */
-  calendar?: HolidaysOption
-} = {}) {
-  const brick = single({
+/** Weekly hours, closures and the owner's choice for public holidays. Which holidays count is `calendar` in the context of the hours rules (`hoursOn`, `todayState`). */
+export function hours(opts: GastroOptions = {}) {
+  return single({
     label: both('Öffnungszeiten', 'Opening hours'),
     ...sourceOf(opts),
     fields: {
@@ -132,8 +119,6 @@ export function hours(opts: GastroOptions & {
       { id: 'holidaySetting', label: both('Öffnungszeiten an Feiertagen', 'Opening hours on public holidays'), kind: 'edit', fields: ['holidays'] },
     ],
   })
-  if (opts.calendar) Object.assign(brick, { [calendarKey]: opts.calendar })
-  return brick
 }
 
 /** Own weekly hours for a date range: a season (yearly) or "new hours from a date" (open end). */

@@ -14,7 +14,7 @@ export default defineSite({
   // Steht in Suchergebnissen und Link-Vorschauen. Ersetze es durch einen Satz über deine Website.
   seo: { description: 'Öffnungszeiten und Speisekarte unseres Restaurants.' },
   bricks: {
-    // content/hours.md: weekly hours. The hours rules (hoursOn, todayState) count Austrian public holidays; calendar: 'DE', 'SG' or 'none' changes that.
+    // content/hours.md: weekly hours. The hours rules (hoursOn, todayState) count Austrian public holidays; pass them calendar: 'DE', 'SG' or 'none' to change that.
     hours: hours({ source: 'files' }),
     // content/menu/: one file per dish. allergens: 'none' leaves out the allergen field.
     menu: menu({ allergens: 'none', source: 'files' }),

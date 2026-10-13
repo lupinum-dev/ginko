@@ -26,7 +26,6 @@ Every factory takes the same two options, plus its own:
 |---|---|---|
 | `lang` | `'de'` | The site's main language. Picks only default content (the lunch placeholder, the "fully booked" text), for `de` or `en`. Labels are always German and English. |
 | `source` | the platform | `'files'` reads the brick from Markdown in `content/`, so it runs without the platform. |
-| `calendar` (`hours`) | `'AT'` | The public holidays the hours rules use: `'AT'`, `'DE'`, `'SG'`, `'none'`, or your own `(year) => Holiday[]`. |
 | `allergens` (`menu`, `lunch`, `lunchPlans`) | `'EU'` | `'EU'`, `'none'` (no allergen field), or your own `[{ value, label }]`. |
 | `weekOf` (`lunch`) | none | The default week of the lunch menu. |
 | `lunchBrick` (`lunchPlans`) | `'lunch'` | The key of the `lunch()` brick that planned weeks belong to. |
@@ -67,12 +66,14 @@ These are all the public names. Everything else in the package is internal and c
 Their stored field names (`week`, `exceptions`, `closedOn`, `closedNote`, `holidayNoticeDays`, `holidays`, `from1` to `to2`,
 `weekOf`, `days`, `nextPrice`, `priceFrom` and so on) are the data of your site. They do not change.
 
+A day has at most two opening periods (`from1`–`to1` and `from2`–`to2`, labelled lunch and evening). This is a limit of
+the stored data, the same in the week, in hour plans and in exceptions.
+
 | Name | What it is |
 |---|---|
 | `allergensEU` | The 14 EU allergens as `{ value, label }` options (letter codes). |
 | `allergenNames` | `{ de, en }`: the allergen name per code, for visitors. |
 | `weekdayNames` | `{ de, en }`: the weekday name per `mo`, `tu`, `we`, `th`, `fr`, `sa`, `su`. |
-| `hoursCalendarOf(brick)` | The holiday calendar a brick from `hours()` was made with (`'AT'` if none). |
 | `hoursOn(date, { hours, plans?, calendar? })` | What applies on a date (`YYYY-MM-DD`): `{ closed, times, reason?, source, field?, holiday? }`. The one rule every display builds on. |
 | `todayState(today, ctx)` | `{ kind: 'open', times }`, `{ kind: 'closed', reason }`, `{ kind: 'holiday', holiday }` or `{ kind: 'restDay' }`. |
 | `upcomingClosures(ctx, today, days)` | The owner's closing exceptions and the public holidays that close the house, in the next `days` days. |
@@ -88,7 +89,8 @@ Their stored field names (`week`, `exceptions`, `closedOn`, `closedNote`, `holid
 | `restaurantJsonLd(input)` | schema.org `Restaurant` data. Prices are in minor units (cents), so `1250` is `12.50`. |
 | `eventJsonLd(input)` | schema.org `Event` data for one event. Same price rule. |
 
-Types: `HoursData`, `HoursContext`, `DayHours`, `Exception`, `HourPlan`, `HolidayClosure`, `TodayState`, `Weekday`, `Holiday`,
+Types: `HoursData`, `HoursContext`, `DayHours`, `DayRule` (what `hoursOn` returns), `HoursSource`, `Span`, `Exception`, `HourPlan`,
+`HolidayClosure`, `TodayState`, `Weekday`, `Holiday`,
 `HolidayCalendar`, `LunchWeekData`, `PricedItem`, `RestaurantJsonLdInput`, `EventJsonLdInput`, `JsonLdMenuSection`.
 
 ## Outside Austria
@@ -96,7 +98,7 @@ Types: `HoursData`, `HoursContext`, `DayHours`, `Exception`, `HourPlan`, `Holida
 Defaults are Austrian (German and English labels, Austrian holidays, the 14 EU allergens). Change them per site:
 
 - Labels are always German and English. `lang: 'en'` on a factory only picks the default text (such as the lunch placeholder), so use it when the main locale is `en`.
-- `calendar` on `hours()`: `'AT'` (default), `'DE'` (nationwide days only, no regional ones), `'SG'`, `'none'` (no public holidays), or your own `(year) => Holiday[]`. This is code, not an owner setting. Give the same value to the hours rules as `calendar` in their context (`hoursOn(date, { hours, calendar })`, `todayState(today, { hours, calendar })`). `hoursCalendarOf(brick)` reads it back. The stored field `holidays` (the owner's choice for those days: like Sunday, closed, normal) is a different thing and keeps its name.
+- `calendar` in the context of the hours rules: `'AT'` (default), `'DE'` (nationwide days only, no regional ones), `'SG'`, `'none'` (no public holidays), or your own `(year) => Holiday[]`. This is code, not an owner setting, and not part of `hours()`. Pass it to every call that reads holidays: `hoursOn(date, { hours, calendar })`, `todayState(today, { hours, calendar })`, `upcomingClosures` and `upcomingHolidayClosures`. A call without it counts Austrian holidays. Keep the value in one constant of your site so all calls agree. The stored field `holidays` (the owner's choice for those days: like Sunday, closed, normal) is a different thing and keeps its name.
 - Singapore's lunar, Islamic and Hindu holidays are a table for 2026 and 2027 (source: [MOM](https://www.mom.gov.sg/employment-practices/public-holidays)). Add a row each year; other years only know the fixed dates.
 - `allergens` on `menu()`, `lunch()` and `lunchPlans()`: `'EU'` (default), `'none'` (no field), or your own `[{ value, label }]`.
 - `restaurantJsonLd` has no default currency or country: pass `currency` and `address.country`.
@@ -112,7 +114,7 @@ export default defineSite({
   currency: 'SGD',
   pages: { home: '/' },
   bricks: {
-    hours: hours({ lang: 'en', calendar: 'SG' }),
+    hours: hours({ lang: 'en' }),
     notices: notices({ lang: 'en' }),
     lunch: lunch({ lang: 'en', allergens: 'none' }),
     menu: menu({ lang: 'en', allergens: 'none' }),
