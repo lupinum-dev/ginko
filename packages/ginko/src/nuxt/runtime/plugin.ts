@@ -3,7 +3,8 @@
 // and on client navigation into another locale. The preview fills the state by message instead,
 // and in preview mode nothing fetches. The preview listeners live here, not in preview.vue,
 // because the preview page is replaced by the target route after the first bundle.
-import { addAlternatesResolver, addRouteMiddleware, createError, defineNuxtPlugin, useRequestHeader, useRequestURL, useResponseHeader, useRuntimeConfig, useState } from '#imports'
+import { addAlternatesResolver, addRouteMiddleware, clearError, createError, defineNuxtPlugin, useError, useRequestHeader, useRequestURL, useResponseHeader, useRuntimeConfig, useState } from '#imports'
+import type { NuxtApp } from '#app'
 import type { Ref } from 'vue'
 import schema from '#ginko/schema'
 import { bundleFits, isBundle, knownBricks, withFileBricks, type Bundle, type Locale } from '../../internal.ts'
@@ -49,7 +50,7 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 
   // The requested URL, not useRoute(): plugins run before the router resolves, when the route is still '/'.
   const path = useRequestURL().pathname
-  if (import.meta.client && PREVIEW.test(path)) listenToPlatform(config, bundles, preview)
+  if (import.meta.client && PREVIEW.test(path)) listenToPlatform(nuxtApp, config, bundles, preview)
   // A server error page (a 503 for a failed bundle) never asks the platform again: not while the server
   // renders it, not in the browser that shows it. A hanging platform would hold it for another deadline.
   // Asked at each use: after clearError() a normal navigation loads again (Astra 9).
@@ -95,6 +96,7 @@ function entryUrls(bundle: Bundle | undefined, path: string): Partial<Record<Loc
  * for the session and locale the preview page announced. Links are cancelled and reported to the platform.
  */
 function listenToPlatform(
+  nuxtApp: NuxtApp,
   config: GinkoPublicConfig,
   bundles: Ref<Partial<Record<Locale, Bundle>>>,
   preview: Ref<{ session: string; locale: Locale } | null>,
@@ -112,7 +114,11 @@ function listenToPlatform(
     // The platform sends only its own bricks; file bricks come from the site, as in `loadBundle`.
     // If the site's file route fails, the preview still shows the platform's bricks.
     void filesOf(locale).then((files) => {
-      if (preview.value?.session === state.session) bundles.value = { ...bundles.value, [locale]: withFileBricks(platform, files, schema) }
+      if (preview.value?.session !== state.session) return
+      bundles.value = { ...bundles.value, [locale]: withFileBricks(platform, files, schema) }
+      // A draft without the entry at this address showed the 404 page. The Studio sends every draft into the same
+      // frame, and only a navigation clears a fatal error, so each new draft clears it and the page renders again.
+      void nuxtApp.runWithContext(() => (useError().value ? clearError() : undefined))
     })
   })
   const fileBundles: Partial<Record<Locale, Promise<Bundle | undefined>>> = {}

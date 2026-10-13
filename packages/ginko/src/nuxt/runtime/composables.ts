@@ -200,7 +200,6 @@ export function useGinkoLang(): (item: { fallback?: readonly string[] }, path: s
 export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: MaybeRefOrGetter<string | string[] | undefined>): ComputedRef<GinkoItem<K>> {
   const items = useGinko(brick)
   const locale = useGinkoLocale()
-  const preview = useState<{ session: string; locale: Locale } | null>(PREVIEW_STATE, () => null)
   return computed(() => {
     const def = schema.bricks[brick]!
     const route = def.kind === 'collection' ? def.route?.[locale.value] : undefined
@@ -208,9 +207,7 @@ export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: MaybeRefO
     const path = value === undefined ? undefined : route?.replace('[slug]', Array.isArray(value) ? value.join('/') : value)
     const item = (items.value as { items: (BundleItem & { url?: string })[] }).items.find((i) => path && i.url === path)
     // Fatal: on the client, Nuxt opens the error page only for a fatal error, so a navigation to a missing slug shows the 404.
-    // Not in the preview: there the Studio sends each draft in place, and only a navigation would clear a fatal error,
-    // so a slug edited and typed back would keep the 404. Without the error the entry comes back with the next draft.
-    if (!item) throw createError({ statusCode: 404, statusMessage: 'Not found', fatal: !preview.value })
+    if (!item) throw createError({ statusCode: 404, statusMessage: 'Not found', fatal: true })
     return item as never
   })
 }
