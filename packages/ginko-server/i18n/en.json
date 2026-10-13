@@ -248,7 +248,7 @@
     "scheduled": "The entry is a draft and goes online on {at, date, ::MMMd}, {at, time, ::Hm} (time zone {zone}).",
     "noRouteLocale": "“{brick}” has no page of its own in this language. Its entries only appear inside other pages.",
     "noRoute": "“{brick}” has no page of its own. Its entries only appear inside other pages.",
-    "notVisible": "The entry’s period has ended or has not started yet, so the website does not show it.",
+    "notVisible": "The entry’s date has passed, so the website no longer shows it.",
     "translationHidden": "For {locale}, translations that “{brick}” requires {what, select, both {are missing or outdated} missing {are missing} other {are outdated}}. The entry does not appear there.",
     "translationFallback": "For {locale}, translations {what, select, both {are missing or outdated} missing {are missing} other {are outdated}}. The website shows the text in the main language ({main}) there instead.",
     "notReleased": "The structure of the website has never been released. Only after the first release is the content meant for the website."

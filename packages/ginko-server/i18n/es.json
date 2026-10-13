@@ -248,7 +248,7 @@
     "scheduled": "La entrada es un borrador y se publica el {at, date, ::MMMd} a las {at, time, ::Hm} (zona horaria {zone}).",
     "noRouteLocale": "“{brick}” no tiene página propia en este idioma. Sus entradas solo aparecen dentro de otras páginas.",
     "noRoute": "“{brick}” no tiene página propia. Sus entradas solo aparecen dentro de otras páginas.",
-    "notVisible": "El período de la entrada ha terminado o aún no ha empezado, así que el sitio web no la muestra.",
+    "notVisible": "La fecha de la entrada ya pasó, así que el sitio web ya no la muestra.",
     "translationHidden": "Para {locale}, {what, select, both {faltan o están desactualizadas las traducciones} missing {faltan las traducciones} other {están desactualizadas las traducciones}} que “{brick}” requiere. La entrada no aparece allí.",
     "translationFallback": "Para {locale}, {what, select, both {faltan traducciones o están desactualizadas} missing {faltan traducciones} other {las traducciones están desactualizadas}}. El sitio web muestra allí el texto en el idioma principal ({main}).",
     "notReleased": "La estructura del sitio web nunca se ha publicado. El contenido solo está pensado para el sitio web después de la primera versión."

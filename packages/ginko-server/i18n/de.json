@@ -248,7 +248,7 @@
     "scheduled": "Der Eintrag ist ein Entwurf und geht am {at, date, ::MMMd}, {at, time, ::Hm} Uhr online (Zeitzone {zone}).",
     "noRouteLocale": "„{brick}“ hat in dieser Sprache keine eigene Seite. Die Einträge erscheinen nur innerhalb anderer Seiten.",
     "noRoute": "„{brick}“ hat keine eigene Seite. Die Einträge erscheinen nur innerhalb anderer Seiten.",
-    "notVisible": "Der Zeitraum des Eintrags ist abgelaufen oder noch nicht erreicht, deshalb zeigt ihn die Website nicht.",
+    "notVisible": "Das Datum des Eintrags ist vorbei, deshalb zeigt ihn die Website nicht mehr.",
     "translationHidden": "Für {locale} {what, select, both {fehlen oder sind veraltet} missing {fehlen} other {sind veraltet}} Übersetzungen, die „{brick}“ verlangt. Der Eintrag erscheint dort deshalb nicht.",
     "translationFallback": "Für {locale} {what, select, both {fehlen oder sind veraltet} missing {fehlen} other {sind veraltet}} Übersetzungen. Die Website zeigt dort stattdessen den Text in der Hauptsprache ({main}).",
     "notReleased": "Die Struktur der Website wurde noch nie veröffentlicht. Erst nach dem ersten Release ist der Inhalt für die Website bestimmt."
