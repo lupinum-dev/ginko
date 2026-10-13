@@ -3,10 +3,10 @@
 // Texts are not configured here but in the site's i18n messages (see the README).
 import type { DocsAssistant } from './lib/docsPage'
 
-export default defineAppConfig({ docs: { title: 'Docs' } })
+export default defineAppConfig({ docs: {} })
 
 export interface DocsConfig {
-  /** Brand name in the header; the accessible name of the logo. */
+  /** Brand name in the header; the accessible name of the logo. Default: `name` from ginko.config.ts. */
   title?: string
   /** A logo before the title, or instead of it with `wordmark: true` (the image then carries the name).
    *  `dark` is shown in dark mode (else `light` always). */

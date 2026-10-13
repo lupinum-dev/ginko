@@ -61,7 +61,7 @@ follow the reader's language (`/guide` becomes `/de/guide`); absolute URLs stay 
 ```ts
 export default defineAppConfig({
   docs: {
-    title: 'My docs',                                   // header text, next to the logo
+    title: 'My docs',                                   // header text, next to the logo (default: `name` from ginko.config.ts)
     logo: { light: '/logo.svg', dark: '/logo-dark.svg' }, // `wordmark: true` when the image holds the name
     theme: 'green',                                     // colour preset: 'default' (emerald on zinc) or 'green' (green on slate)
     nav: [{ id: 'guide', href: '/guide' }],             // header links after Docs, Blog, Changelog
