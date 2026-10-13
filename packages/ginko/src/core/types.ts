@@ -1,5 +1,6 @@
 import type { ComponentRegistry } from './components.ts'
 import type { MarkdownProfile } from './markdown.ts'
+import type { ValueInput } from './fields.ts'
 import type { Msg } from './messages.ts'
 import type { WeekInfo } from './time.ts'
 // The schema as plain data. This is what `ginko.config.ts` describes, what
@@ -90,12 +91,20 @@ export const PREFILL_TOKENS = ['@today', '@workWeek', '@nextWorkWeek'] as const
 export type PrefillToken = typeof PREFILL_TOKENS[number]
 export const isPrefillToken = (value: unknown): value is PrefillToken => PREFILL_TOKENS.includes(value as PrefillToken)
 
-/** `needsApproval: true`: what staff does with this task goes live only after an owner or admin approves it (SPEC 17). */
-/** `K` is the field names of the brick: in `single()` and `collection()` a task names only fields the brick has. */
-export type Task<K extends string = string> =
-  | { id: string; label: Label; kind: 'edit'; fields: readonly K[]; pick?: boolean; prefill?: { readonly [P in K]?: Json | PrefillToken }; needsApproval?: boolean }
-  | { id: string; label: Label; kind: 'create'; prefill?: { readonly [P in K]?: Json | PrefillToken }; needsApproval?: boolean }
+/**
+ * A quick task of a brick. `needsApproval: true`: what staff does with this task goes live only after an owner or
+ * admin approves it (SPEC 17). `F` is the fields of the brick: in `single()` and `collection()` a task names only
+ * fields the brick has, and a prefill has the type of that field's `default` (a token needs a `date` field).
+ */
+export type Task<F extends Fields = Fields> =
+  | { id: string; label: Label; kind: 'edit'; fields: readonly (keyof F & string)[]; pick?: boolean; prefill?: Prefill<F>; needsApproval?: boolean }
+  | { id: string; label: Label; kind: 'create'; prefill?: Prefill<F>; needsApproval?: boolean }
   | { id: string; label: Label; kind: 'remove'; needsApproval?: boolean }
+
+/** Prefill values by field name. Without known fields (the stored schema) any JSON or token. */
+type Prefill<F extends Fields> = Fields extends F
+  ? { readonly [name: string]: Json | PrefillToken | undefined }
+  : { readonly [P in keyof F]?: ValueInput<F[P]> | (F[P] extends { type: 'date' } ? PrefillToken : never) }
 
 /**
  * Which entries of a collection the website shows. `always`: all of them. `until`: an entry is shown until the

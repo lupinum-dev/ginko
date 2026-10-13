@@ -85,8 +85,9 @@ type FieldsOfType<F, T extends string> = { [K in keyof F]: F[K] extends { type: 
 /** A collection's detail page per locale: a path with `[slug]` where the entry's slug goes, e.g. `/blog/[slug]`. */
 export type RouteTemplate = `/${string}[slug]${string}`
 
-export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly Task<keyof F & string>[] }): SingleBrick<F> {
-  return { kind: 'single', ...input }
+export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly Task<F>[] }): SingleBrick<F> {
+  // A task's prefill is typed by the brick's fields here and stored as JSON; TypeScript cannot relate the two for a generic `F`.
+  return { kind: 'single', ...input } as SingleBrick<F>
 }
 
 export function collection<const F extends Fields, const R extends Record<Locale, RouteTemplate> | undefined = undefined>(input: {
@@ -95,7 +96,7 @@ export function collection<const F extends Fields, const R extends Record<Locale
   source?: BrickSource
   fields: F
   layout?: 'sections' | 'tabs'
-  tasks?: readonly Task<keyof F & string>[]
+  tasks?: readonly Task<F>[]
   max: number
   order: 'manual' | { field: keyof F & string; dir?: 'asc' | 'desc' }
   route?: R
@@ -105,5 +106,6 @@ export function collection<const F extends Fields, const R extends Record<Locale
   plans?: { brick: string; field: FieldsOfType<F, 'date'> }
   drafts?: boolean
 }): CollectionBrick<F, R> {
-  return { kind: 'collection', ...input }
+  // See single(): the prefill types of the tasks.
+  return { kind: 'collection', ...input } as CollectionBrick<F, R>
 }
