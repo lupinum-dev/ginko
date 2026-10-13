@@ -196,7 +196,8 @@
     "uploadRetrying": "Das Bild konnte nicht verarbeitet werden. Wir versuchen es erneut.",
     "uploadHeicUnreadable": "Dieses HEIC-Foto kann nicht gelesen werden. Bitte speichere es als JPEG oder PNG und lade es erneut hoch.",
     "uploadNotAnImage": "Diese Datei ist kein lesbares Bild.",
-    "siteUrlNotWeb": "Die Adresse der Website in der Config muss mit https:// oder http:// beginnen."
+    "siteUrlNotWeb": "Die Adresse der Website in der Config muss mit https:// oder http:// beginnen.",
+    "siteUrlChangeInStudio": "Die Version kann die Adresse der Website nicht ändern. Das macht die Inhaberin oder der Inhaber im Studio."
   },
   "history": {
     "changedSingle": "{label}: {fields} geändert",

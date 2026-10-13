@@ -196,7 +196,8 @@
     "uploadRetrying": "No se pudo procesar la foto. Lo intentamos de nuevo.",
     "uploadHeicUnreadable": "No se puede leer esta foto HEIC. Guárdala como JPEG o PNG y vuelve a subirla.",
     "uploadNotAnImage": "Este archivo no es una imagen legible.",
-    "siteUrlNotWeb": "La dirección del sitio en la configuración debe empezar por https:// o http://."
+    "siteUrlNotWeb": "La dirección del sitio en la configuración debe empezar por https:// o http://.",
+    "siteUrlChangeInStudio": "La publicación no puede cambiar la dirección del sitio. La persona propietaria la cambia en el Studio."
   },
   "history": {
     "changedSingle": "{label}: cambio en {fields}",

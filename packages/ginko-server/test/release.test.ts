@@ -464,10 +464,22 @@ describe('release candidate (break-it 9)', () => {
     expect(await errorOf(release(s, { schema: await storedSchema(s), expectedSchemaRev: rev }))).toMatchObject({ code: 'INVALID' })
   })
 
-  it('the release carries the config name and URL to the site', async () => {
+  it('the release carries the config name to the site', async () => {
     const s = await setup()
-    const schema = { ...copy(await storedSchema(s)), name: 'Gasthaus Linde', url: 'https://linde.example' }
+    const schema = { ...copy(await storedSchema(s)), name: 'Gasthaus Linde' }
     await release(s, { schema })
-    expect(await storedSite(s)).toMatchObject({ name: 'Gasthaus Linde', url: 'https://linde.example' })
+    expect(await storedSite(s)).toMatchObject({ name: 'Gasthaus Linde' })
   })
+
+  // Wrong behaviour caught: a push key moves the site address, and "Update website now" then sends the refresh token there.
+  it('refuses a config with another URL, even a valid https one, and keeps the stored URL', async () => {
+    const s = await setup()
+    const before = (await storedSite(s)).url
+    const schema = { ...copy(await storedSchema(s)), url: 'https://attacker.example' }
+    expect(await errorOf(release(s, { schema }))).toMatchObject({ code: 'INVALID', key: 'errors.siteUrlChangeInStudio' })
+    const site = await storedSite(s)
+    expect(site.url).toBe(before)
+    expect(site.schemaRev).toBe(1)
+  })
+
 })

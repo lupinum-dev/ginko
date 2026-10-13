@@ -209,6 +209,8 @@ export const release = internalMutation({
     // now" sends the site's refresh token, so it must be a web address.
     if (next.site !== site.slug) fail('INVALID', 'errors.siteNameMismatchInSchema')
     if (!isWebUrl(next.url)) fail('INVALID', 'errors.siteUrlNotWeb')
+    // A push key is a CI secret, not an owner credential: only an owner changes the address (Studio), never a release.
+    if (next.url !== site.url) fail('INVALID', 'errors.siteUrlChangeInStudio')
 
     // 3. Migration changes are reported first: they name the exact fix (new ID). The ledger of
     // applied migrations is the permanent identity: the schema forgets a migration once it is
@@ -348,9 +350,8 @@ export const release = internalMutation({
     const at = Date.now()
     await ctx.db.patch(args.site, {
       schema: next as unknown as Json,
-      // The config owns the site's name and URL: "Seite ansehen", invites and the refresh target follow it.
+      // The config owns the site's name; the URL stays the owner's (checked above).
       name: next.name,
-      url: next.url,
       schemaRev,
       contentRev,
       orderRevs,
