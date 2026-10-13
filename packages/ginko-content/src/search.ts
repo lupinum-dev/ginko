@@ -7,6 +7,7 @@ import type { SearchIndexJson } from '@lupinum/ginko/search'
 /**
  * The serialized search index of one locale's bundle (see searchSections). `bundle` must hold the `{ ref }`
  * markdown values that withMarkdownRefs wrote, and `trees` the trees behind those refs.
+ * @internal Loaded by the Ginko module and CLI; sites do not import it.
  */
 export function searchIndex(bundle: Bundle, trees: Map<string, MarkdownTree>, schema: Schema): Promise<SearchIndexJson> {
   return buildIndex(searchSections(bundle, { schema, trees }), bundle.locale)
