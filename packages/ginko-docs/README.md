@@ -63,7 +63,7 @@ export default defineAppConfig({
   docs: {
     title: 'My docs',                                   // header text, next to the logo
     logo: { light: '/logo.svg', dark: '/logo-dark.svg' }, // `wordmark: true` when the image holds the name
-    theme: 'green',                                     // colour preset: 'default' (emerald on zinc) | 'green'
+    theme: 'green',                                     // colour preset: 'default' (emerald on zinc) or 'green' (green on slate)
     nav: [{ id: 'guide', href: '/guide' }],             // header links after Docs, Blog, Changelog
     social: [{ icon: 'docs:github', href: 'https://github.com/me/docs', label: 'GitHub' }],
     banner: { id: 'v2', href: '/docs/changes' },        // dismissible notice above the header; `href` optional
