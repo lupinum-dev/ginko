@@ -57,10 +57,21 @@ function packageName(spec: string): string {
 
 const sourceOf = (file: string) => readFileSync(join(componentsDir, file), 'utf8')
 
+/** Values a component imports from `@lupinum/ginko/internal`. A site must not import `/internal`, so an installed copy
+ *  carries the value itself. The registry test checks that each value still equals the export. */
+export const INTERNAL_VALUES: Record<string, string> = { GINKO_TOC_KEY: 'ginko:toc' }
+const internalImportRe = /^import\s*\{([^}]*)\}\s*from\s*['"]@lupinum\/ginko\/internal['"]\s*$/m
+
 /** The text.ts fallback reads `../../../i18n/de.json`; installed, a generated `texts.ts` (the English texts) sits next to it.
- *  The CLI parses every `registry:component` file as TypeScript, so the JSON itself cannot be shipped. */
+ *  The CLI parses every `registry:component` file as TypeScript, so the JSON itself cannot be shipped.
+ *  An import from `@lupinum/ginko/internal` becomes constants (see INTERNAL_VALUES). */
 function rewrite(file: string, source: string): string {
-  return file === 'text.ts' ? source.replace('../../../i18n/de.json', './texts') : source
+  if (file === 'text.ts') return source.replace('../../../i18n/de.json', './texts')
+  return source.replace(internalImportRe, (_, names: string) => names.split(',').map((n) => n.trim()).filter(Boolean).map((name) => {
+    const value = INTERNAL_VALUES[name]
+    if (value === undefined) throw new Error(`${file}: add ${name} from @lupinum/ginko/internal to INTERNAL_VALUES`)
+    return `const ${name} = ${JSON.stringify(value)}`
+  }).join('\n'))
 }
 
 /**
