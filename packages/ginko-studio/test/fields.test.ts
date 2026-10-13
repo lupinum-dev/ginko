@@ -115,7 +115,7 @@ describe('list rows', () => {
 
   test('removing a row offers "Rückgängig", which puts the row back at the same position', async () => {
     const { wrapper, value } = host(rowsOf('Winterpause', 'Hochzeit', 'Ruhetag'))
-    expect(wrapper.findAll('h4').map((h) => h.text())).toEqual(['Winterpause', 'Hochzeit', 'Ruhetag'])
+    expect(wrapper.findAll('h3').map((h) => h.text())).toEqual(['Winterpause', 'Hochzeit', 'Ruhetag'])
     await wrapper.get('[aria-label="Hochzeit entfernen"]').trigger('click')
     expect((value.value as { reason: string }[]).map((r) => r.reason)).toEqual(['Winterpause', 'Ruhetag'])
     expect(shown.at(-1)?.text).toBe('Hochzeit entfernt')
@@ -124,7 +124,7 @@ describe('list rows', () => {
     shown.at(-1)!.action!.run()
     await flushPromises()
     expect((value.value as { reason: string }[]).map((r) => r.reason)).toEqual(['Winterpause', 'Hochzeit', 'Ruhetag'])
-    expect(wrapper.findAll('h4').map((h) => h.text())).toEqual(['Winterpause', 'Hochzeit', 'Ruhetag'])
+    expect(wrapper.findAll('h3').map((h) => h.text())).toEqual(['Winterpause', 'Hochzeit', 'Ruhetag'])
   })
 
   test('the add button names the row, and a column with showWhen hides on a closed row', async () => {

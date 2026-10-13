@@ -82,7 +82,7 @@ async function remove(release: string, proposal: string) {
 </script>
 
 <template>
-  <main class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid gap-4">
+  <div class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid gap-4">
     <h1 class="text-xl font-semibold tracking-tight">{{ t('review.heading') }}</h1>
     <p v-if="list.error.value" class="font-medium text-destructive" role="alert">{{ opErrorOf(list.error.value).message }}</p>
     <p v-if="problem" class="font-medium text-destructive" role="alert">{{ problem }}</p>
@@ -127,5 +127,5 @@ async function remove(release: string, proposal: string) {
         </div>
       </section>
     </template>
-  </main>
+  </div>
 </template>

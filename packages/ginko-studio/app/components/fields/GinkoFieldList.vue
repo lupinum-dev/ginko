@@ -128,7 +128,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
     <ol v-if="rows.length" class="m-0 grid list-none gap-3 p-0">
       <li v-for="(row, index) in rows" :key="row._id" class="grid gap-4 rounded-md border bg-card p-3 sm:p-4" :data-row="row._id">
         <div class="flex items-center justify-between gap-2">
-          <h4 class="m-0 min-w-0 flex-1 truncate text-sm font-semibold">{{ rowTitle(row, index) }}</h4>
+          <h3 class="m-0 min-w-0 flex-1 truncate text-sm font-semibold">{{ rowTitle(row, index) }}</h3>
           <div v-if="!fixed" class="-my-1 -mr-2 flex shrink-0">
             <Button type="button" variant="ghost" size="icon" :disabled="index === 0" :aria-label="t('fields.list.up', { title: rowTitle(row, index) })" @click="move(index, -1)"><ArrowUpIcon aria-hidden="true" /></Button>
             <Button type="button" variant="ghost" size="icon" :disabled="index === rows.length - 1" :aria-label="t('fields.list.down', { title: rowTitle(row, index) })" @click="move(index, 1)"><ArrowDownIcon aria-hidden="true" /></Button>

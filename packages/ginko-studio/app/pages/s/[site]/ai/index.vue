@@ -69,7 +69,7 @@ async function revoke(id: string) {
 </script>
 
 <template>
-  <main class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8">
+  <div class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8">
     <h1 class="text-xl font-semibold tracking-tight">{{ t('site.ai.heading') }}</h1>
     <p class="mt-1 max-w-[60ch] text-[13px] text-muted-foreground">
       {{ t('site.ai.lead', { first: t('site.ai.exampleOne'), second: t('site.ai.exampleTwo') }) }}
@@ -142,5 +142,5 @@ async function revoke(id: string) {
         </li>
       </ul>
     </section>
-  </main>
+  </div>
 </template>

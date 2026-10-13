@@ -14,7 +14,7 @@ const leave = (to: string) => clearError({ redirect: to })
 
 <template>
   <NuxtLayout>
-    <main class="docs-error">
+    <div class="docs-error">
       <div>
         <p class="docs-error-code">{{ error.statusCode }}</p>
         <h1>{{ notFound ? t('docs.notFound.title') : t('docs.error.title') }}</h1>
@@ -24,6 +24,6 @@ const leave = (to: string) => clearError({ redirect: to })
           <a v-if="docs.first.value" :href="docs.first.value" class="docs-button is-large is-soft" @click.prevent="leave(docs.first.value)">{{ t('docs.docs') }}</a>
         </div>
       </div>
-    </main>
+    </div>
   </NuxtLayout>
 </template>

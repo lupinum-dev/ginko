@@ -40,7 +40,7 @@ function loadOlder() {
 </script>
 
 <template>
-  <main class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8">
+  <div class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8">
     <h1 class="mb-5 text-xl font-semibold tracking-tight">{{ t('site.history.heading') }}</h1>
 
     <template v-if="s.schema.value">
@@ -67,5 +67,5 @@ function loadOlder() {
         <Button type="button" variant="outline" @click="loadOlder">{{ t('site.history.loadOlder') }}</Button>
       </div>
     </template>
-  </main>
+  </div>
 </template>

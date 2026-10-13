@@ -190,7 +190,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
 </script>
 
 <template>
-  <main class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8">
+  <div class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8">
     <header class="mb-6">
       <h1 class="text-xl font-semibold tracking-tight">{{ t('nav.quick') }}</h1>
       <p v-if="s.today.value" class="mt-0.5 text-[13px] text-muted-foreground">{{ format.date(s.today.value, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }}</p>
@@ -268,5 +268,5 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       @pick="picked"
       @close="picking = null"
     />
-  </main>
+  </div>
 </template>
