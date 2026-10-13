@@ -1,4 +1,4 @@
-// The bricks for ginko.config.ts. Docs pages live at <base>/<slug> in every language (main language
+// The bricks for ginko.config.ts. Docs pages live at <base>/<slug> in every locale (main locale
 // unprefixed); the layer serves its page at that address. The start page, the blog and the changelog are optional.
 import { collection, f, single, type Locale } from '@lupinum/ginko'
 import { BLOG_PATH, CHANGELOG_PATH } from '../shared/paths.ts'
@@ -6,12 +6,12 @@ import { BLOG_PATH, CHANGELOG_PATH } from '../shared/paths.ts'
 /** The registry of the Markdown components the layer renders, for `components` in `defineSite`. */
 export { components } from '@lupinum/ginko-components/registry'
 
-/** The site's languages, main language first. The same list as `locales` in `defineSite`, as a plain array or a tuple. */
+/** The site's locales, main locale first. The same list as `locales` in `defineSite`, as a plain array or a tuple. */
 type Locales = readonly Locale[]
 
 /**
- * `path` in every language: `{ en: '/blog', de: '/de/blog' }` when `en` is the main language. The main language has no
- * prefix; every other language gets `/<locale>` in front (ginko-i18n's rule).
+ * `path` in every locale: `{ en: '/blog', de: '/de/blog' }` when `en` is the main locale. The main locale has no
+ * prefix; every other locale gets `/<locale>` in front (ginko-i18n's rule).
  */
 function localized<P extends `/${string}`>(locales: Locales, path: P): Record<Locale, P> {
   const [main] = locales
@@ -82,7 +82,7 @@ export function docsHome() {
 
 /**
  * The optional blog: `{ posts, authors }`, spread into `bricks` in ginko.config.ts. Posts live at
- * /blog/<slug> (main language unprefixed, `/<l>/blog/<slug>` otherwise) and come out newest first.
+ * /blog/<slug> (main locale unprefixed, `/<l>/blog/<slug>` otherwise) and come out newest first.
  * Authors have no page; a post names them in `authors`. Files: `content/posts/<n>.<name>[.<locale>].md`
  * and `content/authors/<name>[.<locale>].yml`. Add `blog: blogPages({ locales })` to `pages` as well.
  */

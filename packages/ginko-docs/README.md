@@ -105,7 +105,7 @@ Each docs page's frontmatter can set, besides `title` and `description`:
 | `section` | Starts a group in the side navigation with this heading; the pages after it belong to it until the next `section`. |
 | `tab` | Starts a tab above the side navigation (for example "Guide" and "Reference"); pages follow the tab before them. |
 | `parent` | Nests the page under another one (`parent: docs/<name>`: the entry id, the file name without number, locale and extension). |
-| `icon` | An Iconify name, e.g. `lucide:rocket`, before the title in the navigation. Main language only. |
+| `icon` | An Iconify name, e.g. `lucide:rocket`, before the title in the navigation. Main locale only. |
 | `badge` | A short label after the title, e.g. "New". |
 
 Icons come from `@nuxt/icon` with the `lucide` set installed. Any other Iconify set works once the site installs it
