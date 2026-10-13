@@ -8,8 +8,9 @@ const OWNED = { locales: 'locales', defaultLocale: 'the first entry of locales',
  * value (Ginko's scalar wins, arrays concatenate), so `locales: ['fr']` would add a locale Ginko does not
  * know. The other options (strategy, exclude, userLocale, params, seo) pass through.
  */
-export function checkI18nOptions(userI18n: Record<string, unknown> | undefined): void {
-  const clashes = (Object.keys(OWNED) as (keyof typeof OWNED)[]).filter((key) => userI18n?.[key] !== undefined)
+export function checkI18nOptions(userI18n: unknown): void {
+  const set = new Set(userI18n && typeof userI18n === 'object' ? Object.entries(userI18n).filter(([, value]) => value !== undefined).map(([key]) => key) : [])
+  const clashes = (Object.keys(OWNED) as (keyof typeof OWNED)[]).filter((key) => set.has(key))
   if (clashes.length)
     throw new Error(`[ginko] nuxt.config sets ${clashes.map((key) => `i18n.${key}`).join(', ')}, which ginko.config.ts owns (${clashes.map((key) => OWNED[key]).join(', ')}). Fix: delete these keys from \`i18n\` in nuxt.config.`)
 }
