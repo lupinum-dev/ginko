@@ -29,7 +29,7 @@ stops with a message that says so. The module provides the tag → component map
 |---|---|
 | `@lupinum/ginko-components` | The Nuxt module (config key `ginkoComponents`) |
 | `@lupinum/ginko-components/registry` | `components`, the registry: tags, props and editor examples, plain data |
-| `@lupinum/ginko-components/components` | Every Vue component (`Callout`, `Card`, `Tabs`, ...), the six callout short forms (`NoteCallout`, `InfoCallout`, `WarningCallout`, `ErrorCallout`, `SuccessCallout`, `IdeaCallout`) and `componentMap` (tag → component) |
+| `@lupinum/ginko-components/components` | Every Vue component (`Callout`, `Card`, `Tabs`, ...) and `componentMap` (tag → component; the six callout short forms are only there, for example `componentMap.note`) |
 | `@lupinum/ginko-components/styles.css` | All stylesheets in order, for hosts without the module |
 
 All of `./components` is public on purpose: a site wraps or replaces one component and passes the result through the
