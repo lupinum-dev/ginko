@@ -63,6 +63,17 @@ const TAGS: Record<Exclude<MarkdownProfile, 'page'>, ReadonlySet<string>> = {
  */
 const BLOCKED_ATTRIBUTES: ReadonlySet<string> = new Set(['style', 'id'])
 
+/** The alert types comark's alert plugin writes as `as` on a `blockquote` (`> [!TIP]`). */
+const ALERT_TYPES: ReadonlySet<string> = new Set(['note', 'tip', 'important', 'warning', 'caution'])
+
+/**
+ * comark's renderer mounts the component named by an `as` prop in place of the element, so `**x**{as="embed"}`
+ * would get past the registry. Only the alert plugin's own `as` stays.
+ */
+export function allowedAs(tag: string | null, raw: unknown): boolean {
+  return tag === 'blockquote' && typeof raw === 'string' && ALERT_TYPES.has(raw)
+}
+
 /** What the parser itself writes: heading ids, footnote ids (`fn-1`, `fnref-1`) and the `text-align` of table cells. */
 function parserMade(tag: string, key: string, raw: unknown): boolean {
   if (typeof raw !== 'string') return false
@@ -197,6 +208,7 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
           // `:name` is comark's bound form of the same prop.
           const key = name.replace(/^:/, '').toLowerCase()
           if (key.startsWith('on')) fail(msg('markdown.propBlocked', { prop: key }))
+          else if (key === 'as' && (name.startsWith(':') || !allowedAs(tag, raw))) fail(msg('markdown.propBlocked', { prop: key }))
           else if (BLOCKED_ATTRIBUTES.has(key) && !declaredProp(tag, key) && !parserMade(tag, key, raw)) fail(msg('markdown.propBlocked', { prop: key }))
           else if (URL_PROPS.has(key) && (typeof raw !== 'string' || !isSafeHref(raw))) fail(msg('markdown.unsafeLink'))
         }

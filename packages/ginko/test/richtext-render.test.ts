@@ -62,4 +62,15 @@ describe('GinkoMarkdown (plain Vue)', () => {
     const Embed = defineComponent({ props: { src: String }, setup: (props) => () => h('figure', props.src) })
     expect(await render(value, { embed: Embed })).toContain('<figure>https://example.org</figure>')
   })
+
+  // Bug caught: `**x**{as="embed"}` in a tree that skipped the parser mounted the mapped embed component.
+  test('an `as` prop mounts no component, except on an alert', async () => {
+    const Embed = defineComponent({ props: { src: String }, setup: (props) => () => h('figure', props.src) })
+    const Tip = defineComponent({ setup: (_, { slots }) => () => h('aside', slots.default?.()) })
+    const value = { nodes: [['p', {}, ['strong', { as: 'embed', src: 'https://example.org' }, 'x']], ['blockquote', { as: 'tip' }, 'Hinweis']] } as MarkdownTree
+    const html = await render(value, { embed: Embed, tip: Tip })
+    expect(html).not.toContain('<figure')
+    expect(html).toContain('<strong src="https://example.org">x</strong>')
+    expect(html).toContain('<aside as="tip">Hinweis</aside>')
+  })
 })

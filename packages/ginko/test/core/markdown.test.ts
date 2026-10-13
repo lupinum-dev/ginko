@@ -20,6 +20,10 @@ describe('parseMarkdown profiles', () => {
     ['::div{#__NUXT_DATA__}\nx\n::', 'page', true],
     ['**x**{id="a"}', 'page', true],
     ['::div{.box}\nx\n::', 'page', false],
+    // `as` makes comark's renderer mount another component; only the alert plugin's own `as` stays.
+    ['Hi **x**{as="embed" src="https://www.youtube.com/watch?v=abc"}', 'page', true],
+    ['Hi **x**{as="embed" src="https://www.youtube.com/watch?v=abc"}', 'rich', true],
+    ['> [!TIP]\n> Hinweis', 'basic', false],
     ['## Titel {#eigene-id}', 'page', false],
     ['| a | b |\n|:--|--:|\n| 1 | 2 |', 'page', false],
     ['Text[^1]\n\n[^1]: Fußnote', 'basic', false],

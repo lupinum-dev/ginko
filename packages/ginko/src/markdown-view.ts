@@ -4,6 +4,7 @@
 import { defineComponent, h, type Component, type PropType } from 'vue'
 import { MarkdownDocument } from '@comark/vue'
 import { isSafeHref, URL_PROPS, type MarkdownTree } from './core/index.ts'
+import { allowedAs } from './core/markdown.ts'
 import { BLOCKED_TAGS } from './core/components.ts'
 
 // KaTeX and mermaid.js are not part of Ginko's bundle, so math and mermaid nodes show their source:
@@ -63,7 +64,8 @@ function labelCheckboxes(node: Tree): Tree {
  * component without the parser (a platform bundle, an import), or with a registry that declares a blocked tag
  * (`embed`, see COMPONENT_ONLY_TAGS) on a host that maps no component to it. So the renderer drops them too: a
  * blocked tag with no component in `components` goes with its children, and so do an address prop that is not
- * http(s), mailto, tel, relative or `#` and every event handler prop (the element stays, without the attribute).
+ * http(s), mailto, tel, relative or `#`, every event handler prop and an `as` prop other than an alert's (the element
+ * stays, without the attribute).
  * `template` stays: comark's slot nodes use it, and the native element is inert.
  */
 function dropUnsafe(node: Tree, components: Record<string, unknown>): Tree[] {
@@ -79,6 +81,7 @@ function dropUnsafe(node: Tree, components: Record<string, unknown>): Tree[] {
   for (const [name, value] of Object.entries(props ?? {})) {
     const key = name.replace(/^:/, '').toLowerCase()
     if (key.startsWith('on')) continue
+    if (key === 'as' && (name.startsWith(':') || !allowedAs(tag, value))) continue
     if (URL_PROPS.has(key) && (typeof value !== 'string' || !isSafeHref(value))) continue
     safe[name] = value
   }
