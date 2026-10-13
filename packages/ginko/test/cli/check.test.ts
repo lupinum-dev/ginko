@@ -52,6 +52,21 @@ describe('ginko check and links in content files', () => {
     expect(code).toBe(1)
   })
 
+  // Wrong behaviour caught: `ginko check` says OK while every page's og:image is a 404.
+  it('reports a seo.image that is missing from public/ and exits 1', async () => {
+    const site = { ...config, seo: { image: '/og.png' } }
+    const path = siteWith('Siehe [Start]($page.home).', site)
+    const missing = await runCheck(path)
+    expect(missing.lines).toEqual([expect.stringContaining('seo.image "/og.png" is missing')])
+    expect(missing.lines[0]).toContain('public/og.png')
+    expect(missing.code).toBe(1)
+    mkdirSync(join(dirname(path), 'public'))
+    writeFileSync(join(dirname(path), 'public/og.png'), '')
+    expect(await runCheck(path)).toEqual({ code: 0, lines: ['OK: schema and links are fine.'] })
+    // An absolute URL is not looked up in public/.
+    expect((await runCheck(siteWith('Siehe [Start]($page.home).', { ...config, seo: { image: 'https://cdn.example/og.png' } }))).code).toBe(0)
+  })
+
   it('prints only the OK line for a clean site and exits 0', async () => {
     const { code, lines } = await runCheck(siteWith('Siehe [Start]($page.home).'))
     expect(lines).toEqual(['OK: schema and links are fine.'])

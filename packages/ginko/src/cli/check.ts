@@ -1,5 +1,7 @@
 // `ginko check`: SPEC 5.3. Steps 2–4 of the release against production, plus the budget.
 // It reads the state and never writes.
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { checkSchema, serializeSchema, type SiteInput } from '../core/index.ts'
 import { checkFileLinks } from './content-links.ts'
 import { plan } from './plan.ts'
@@ -19,13 +21,24 @@ export async function check(input: { config: SiteInput; platform: Platform | und
     for (const problem of problems) input.log(`  ✗ ${problem}`)
     return false
   }
-  const links = await checkFileLinks({ config: input.config, root: input.root, log: input.log })
+  const image = checkSeoImage(input.config, input.root, input.log)
+  const links = await checkFileLinks({ config: input.config, root: input.root, log: input.log }) && image
   if (!input.platform) {
     if (links) input.log('OK: schema and links are fine.')
     return links
   }
   const release = await checkRelease({ ...input, platform: input.platform })
   return links && release
+}
+
+/** `seo.image` as a path (`/og.png`) must exist in public/: otherwise every page points its share image at a 404. Absolute URLs are not fetched. */
+function checkSeoImage(config: SiteInput, root: string, log: (line: string) => void): boolean {
+  const image = config.seo?.image
+  if (!image || !image.startsWith('/') || image.startsWith('//')) return true
+  const file = image.split(/[?#]/)[0]!
+  if (existsSync(join(root, 'public', file))) return true
+  log(`ginko.config.ts: seo.image "${image}" is missing. Fix: add the file public${file}, or change seo.image.`)
+  return false
 }
 
 async function checkRelease(input: { config: SiteInput; platform: Platform; log: (line: string) => void }): Promise<boolean> {
