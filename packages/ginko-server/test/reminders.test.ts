@@ -50,6 +50,13 @@ describe('reminders.sweep', () => {
     expect(sent[0]!.text).toContain('Erinnerungen per E-Mail')
   })
 
+  // Wrong behaviour caught: a created but unreleased site had no `week` in its schema, so the hourly sweep threw for all sites.
+  it('still mails when another site is created but not released yet', async () => {
+    const s = await setupUnplanned()
+    await s.t.mutation(internal.sites.bootstrap, { slug: 'neue-seite', name: 'Neue Seite', url: 'https://neu.example' })
+    expect(await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })).toEqual({ sent: 2 })
+  })
+
   // Wrong behaviour caught: the person switches the mail off and still gets it, or the switch hides the mail for everyone.
   it('skips a person who switched reminders off', async () => {
     const s = await setupUnplanned()
