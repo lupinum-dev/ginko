@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
   checkSchema, coreMessage, diffSchema, migrationFingerprint, ordered, serializeSchema,
-  type MigrationDescriptor, type Option, type Schema, type SiteInput,
+  type MigrationDescriptor, type ChoiceOption, type Schema, type SiteInput,
 } from '../../src/core/index.ts'
 
 // The production baseline is the restaurant config as the platform stores it (SPEC 13).
@@ -76,11 +76,11 @@ const allowed: Row[] = [
   },
   {
     name: 'a new choice option',
-    mutate: (s) => { (field(s, 'menu.category').options as Option[]).push({ value: 'sides', label: 'Beilagen' }) },
+    mutate: (s) => { (field(s, 'menu.category').options as ChoiceOption[]).push({ value: 'sides', label: 'Beilagen' }) },
   },
   {
     name: 'a choice option label renamed',
-    mutate: (s) => { (field(s, 'menu.category').options as Option[]).find((o) => o.value === 'starters')!.label = 'Vorspeise' },
+    mutate: (s) => { (field(s, 'menu.category').options as ChoiceOption[]).find((o) => o.value === 'starters')!.label = 'Vorspeise' },
   },
   { name: 'a list min lowered', mutate: (s) => { field(s, 'lunch.days').min = 4 } },
   { name: 'a number min lowered', mutate: (s) => { field(s, 'hours.holidayNoticeDays').min = -5 } },
@@ -153,7 +153,7 @@ const rejected: RejectedRow[] = [
   { name: 'an optional field made required', mutate: (s) => { delete field(s, 'seo.image').optional }, kind: 'madeRequired' },
   {
     name: 'a choice option removed',
-    mutate: (s) => { field(s, 'menu.category').options = (field(s, 'menu.category').options as Option[]).filter((o) => o.value !== 'drinks') },
+    mutate: (s) => { field(s, 'menu.category').options = (field(s, 'menu.category').options as ChoiceOption[]).filter((o) => o.value !== 'drinks') },
     kind: 'optionRemoved',
   },
   { name: 'a field max lowered', mutate: (s) => { field(s, 'seo.title').max = 60 }, kind: 'maxLowered' },
