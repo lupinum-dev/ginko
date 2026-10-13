@@ -1,0 +1,19 @@
+name: Feature request
+description: Propose a change or an addition.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the job you cannot do today, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like Ginko to do?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What did you try instead?
