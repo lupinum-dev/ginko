@@ -206,7 +206,8 @@ export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: MaybeRefO
     const value = toValue(slug)
     const path = value === undefined ? undefined : route?.replace('[slug]', Array.isArray(value) ? value.join('/') : value)
     const item = (items.value as { items: (BundleItem & { url?: string })[] }).items.find((i) => path && i.url === path)
-    if (!item) throw createError({ statusCode: 404, statusMessage: 'Not found' })
+    // Fatal: on the client, Nuxt opens the error page only for a fatal error, so a navigation to a missing slug shows the 404.
+    if (!item) throw createError({ statusCode: 404, statusMessage: 'Not found', fatal: true })
     return item as never
   })
 }
