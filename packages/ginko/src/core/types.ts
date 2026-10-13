@@ -7,8 +7,8 @@ import type { WeekInfo } from './time.ts'
 // `ginko release` sends, and what the platform stores. SPEC.md part 2.
 
 /**
- * A content language: a canonical BCP-47 tag such as `de`, `es`, `pt-BR` or `zh-Hant` (the key of every
- * translated value and the URL segment). Open; `isLocale` is the runtime check.
+ * A locale code: a canonical BCP-47 tag such as `de`, `es`, `pt-BR` or `zh-Hant`, the key of every translated
+ * value and the URL segment (not the `languages` tag used for `lang` and formats). Open; `isLocale` is the runtime check.
  */
 export type Locale = string
 /** An ISO-4217 code such as `EUR`, `CHF` or `JPY`; `isCurrency` is the runtime check. Money is stored in minor units (cents). */
