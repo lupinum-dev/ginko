@@ -1,0 +1,36 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Steps, or a link to a minimal repository. Include the brick schema or config if it matters.
+    validations:
+      required: true
+  - type: input
+    id: ginko
+    attributes:
+      label: Ginko package and version
+      placeholder: "@lupinum/ginko 0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js, package manager and Nuxt versions
+      placeholder: "Node 24.1, pnpm 11.28, Nuxt 4.x"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      render: shell

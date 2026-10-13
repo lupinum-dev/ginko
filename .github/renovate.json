@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "minimumReleaseAge": "1 day",
+  "internalChecksFilter": "strict",
+  "rangeStrategy": "bump",
+  "schedule": ["before 6am on Monday"],
+  "packageRules": [
+    {
+      "description": "One pull request for all minor and patch updates of dev dependencies",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "dev dependencies (non-major)"
+    },
+    {
+      "description": "comark and @comark/vue must stay on the same version; update them by hand",
+      "matchPackageNames": ["comark", "@comark/vue"],
+      "groupName": "comark",
+      "dependencyDashboardApproval": true
+    }
+  ]
+}
