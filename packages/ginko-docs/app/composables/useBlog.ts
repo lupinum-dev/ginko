@@ -2,7 +2,8 @@
 // reads. The layer cannot know the site's bricks at compile time, so the reads go through one cast here.
 import schema from '#ginko/schema'
 import type { ItemOf } from '@lupinum/ginko'
-import { BLOG_PATH, CHANGELOG_PATH, type blogCollections, type changelogCollection } from '@lupinum/ginko-docs/config'
+import type { blogCollections, changelogCollection } from '@lupinum/ginko-docs/config'
+import { BLOG_PATH, CHANGELOG_PATH } from '../../shared/paths'
 
 type Blog = ReturnType<typeof blogCollections>
 export type Post = ItemOf<Blog['posts']['fields']> & { url?: string }

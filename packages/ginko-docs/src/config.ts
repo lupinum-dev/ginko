@@ -1,16 +1,15 @@
 // The bricks for ginko.config.ts. Docs pages live at <base>/<slug> in every language (main language
 // unprefixed); the layer serves its page at that address. The start page, the blog and the changelog are optional.
 import { collection, f, single, type Locale } from '@lupinum/ginko'
+import { BLOG_PATH, CHANGELOG_PATH } from '../shared/paths.ts'
 
 type Locales = readonly [Locale, ...Locale[]]
 
-// The layer's fixed addresses and the locale rule, shared with the page module and the app. The main language has
-// no prefix; every other language gets `/<locale>` in front (ginko-i18n's rule).
-export const BLOG_PATH = '/blog'
-export const CHANGELOG_PATH = '/changelog'
-
-/** `path` in every language: `{ en: '/blog', de: '/de/blog' }` when `en` is the main language. */
-export function localized(locales: readonly Locale[], path: string): Partial<Record<Locale, string>> {
+/**
+ * `path` in every language: `{ en: '/blog', de: '/de/blog' }` when `en` is the main language. The main language has no
+ * prefix; every other language gets `/<locale>` in front (ginko-i18n's rule).
+ */
+function localized(locales: readonly Locale[], path: string): Partial<Record<Locale, string>> {
   const [main] = locales
   return Object.fromEntries(locales.map((l) => [l, l === main ? path : `/${l}${path}`]))
 }
