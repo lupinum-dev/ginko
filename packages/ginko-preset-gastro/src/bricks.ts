@@ -1,6 +1,7 @@
 // Restaurant bricks with the owner's quick tasks. Labels and prefilled texts come in German and English; the site keeps
 // the texts of its own locales (`serializeSchema`), so a site in another language starts without them.
-import { collection, f, single, type BrickSource, type ChoiceOption, type ChoicesField, type Locale, type RouteTemplate } from '@lupinum/ginko'
+import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate } from '@lupinum/ginko'
+import type { ChoicesField } from '@lupinum/ginko/internal'
 import { allergenNames } from './names.ts'
 import { calendarOf, type HolidayCalendar, type HolidaysOption } from './holidays.ts'
 

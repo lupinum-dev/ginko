@@ -38,7 +38,11 @@ export interface ComponentDef<P extends Fields = Fields> {
 /** Tag → definition. The tag is kebab-case. */
 export type ComponentRegistry = Record<string, ComponentDef>
 
-/** Only a type helper: keeps the literal types of the registry. */
+/**
+ * Defines the Markdown components a site allows in `page` texts (`SiteInput.components`): tag (kebab-case) →
+ * `{ kind, label, describe, props, slots?, children?, parents?, editor? }`, with props built by `f.*`. Returns the
+ * registry unchanged and keeps its literal types; the schema check validates it on release.
+ */
 export function defineComponents<const R extends ComponentRegistry>(registry: R): R {
   return registry
 }

@@ -1,6 +1,7 @@
 // Steps 6 and 7 of the shared write flow (SPEC 4.1): check files and budget, then write
 // the entry with its revisions, the change row and the file references in one place.
-import type { Field, FileField, Fields, Json } from '@lupinum/ginko'
+import type { Field, Fields, Json } from '@lupinum/ginko'
+import type { FileField } from '@lupinum/ginko/internal'
 import { checkLinks, fileProblem, linkTargets, stableJson, type LinkIssue, type Schema, type ValidateOptions } from '@lupinum/ginko/internal'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
