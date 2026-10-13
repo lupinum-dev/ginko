@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// npm create ginko <folder> [-- --preset gastro|docs] [--lang en|de]: copies template/ into a new folder and sets
+// npm create ginko <folder> [-- --preset gastro|docs] [--locale en|de]: copies template/ into a new folder and sets
 // the site id and the Ginko versions. The Ginko packages release together, so they get this package's own version.
 // A preset is a small folder in presets/ that is copied over the base template and adds the preset's packages.
 // German: template-de/ goes over the base template; a preset has its own folder `<preset>-de`.
@@ -15,20 +15,20 @@ const presets = {
 }
 const langs = { en: 'English', de: 'German' }
 const command = 'npm create ginko@latest'
-const usage = `Usage: ${command} <folder> -- [--preset gastro|docs] [--lang en|de]
+const usage = `Usage: ${command} <folder> -- [--preset gastro|docs] [--locale en|de]
 
 Creates a Nuxt site with Ginko that reads its content from Markdown files.
 
   --preset <name>  start from a preset: gastro (restaurant) or docs (documentation)
-  --lang <code>    language of the sample site: en (default) or de
+  --locale <code>  locale code of the sample site: en (default) or de
   -h, --help       show this help
 
 With npm, write -- before the options. Without it, npm keeps them for itself.`
 
-/** Prints the problem and the usage, and stops without creating anything. */
+/** Prints the problem and the usage, and stops without creating anything. Exit 2 is a usage error, as in `ginko`. */
 function fail(message) {
   console.error(`${message}\n\n${usage}`)
-  process.exit(1)
+  process.exit(2)
 }
 
 const args = process.argv.slice(2)
@@ -40,19 +40,19 @@ for (let i = 0; i < args.length; i++) {
   // pnpm and yarn may pass the `--` of `pnpm create ginko my-site -- --preset gastro` through.
   if (arg === '--') continue
   if (arg === '-h' || arg === '--help') { console.log(usage); process.exit(0) }
-  if (arg === '--preset' || arg === '--lang') {
+  if (arg === '--preset' || arg === '--locale') {
     const value = args[++i]
     if (!value || value.startsWith('-')) fail(`${arg} needs a value.`)
     if (arg === '--preset') preset = value
     else lang = value
   }
   else if (arg.startsWith('--preset=')) preset = arg.slice('--preset='.length)
-  else if (arg.startsWith('--lang=')) lang = arg.slice('--lang='.length)
+  else if (arg.startsWith('--locale=')) lang = arg.slice('--locale='.length)
   else if (arg.startsWith('-')) fail(`Unknown option "${arg}".`)
   else if (target === undefined) target = arg
   // npm drops `--preset` written without `--` and passes only its value, so a second name is almost always that.
   else if (Object.hasOwn(presets, arg)) fail(`Unexpected argument "${arg}". npm drops --preset when it comes before --. Write:\n  ${command} ${target} -- --preset ${arg}`)
-  else if (Object.hasOwn(langs, arg)) fail(`Unexpected argument "${arg}". npm drops --lang when it comes before --. Write:\n  ${command} ${target} -- --lang ${arg}`)
+  else if (Object.hasOwn(langs, arg)) fail(`Unexpected argument "${arg}". npm drops --locale when it comes before --. Write:\n  ${command} ${target} -- --locale ${arg}`)
   else fail(`Unexpected argument "${arg}". Give one folder name.`)
 }
 if (preset !== undefined && !Object.hasOwn(presets, preset)) {
@@ -61,7 +61,7 @@ if (preset !== undefined && !Object.hasOwn(presets, preset)) {
 if (!Object.hasOwn(langs, lang)) fail(`Unknown language "${lang}". Choose one of: ${Object.keys(langs).join(', ')}.`)
 const presetDir = preset && (lang === 'en' ? preset : `${preset}-${lang}`)
 if (presetDir && !existsSync(new URL(`./presets/${presetDir}`, import.meta.url))) {
-  fail(`The ${preset} preset has no ${langs[lang]} version yet. Leave out --lang ${lang}.`)
+  fail(`The ${preset} preset has no ${langs[lang]} version yet. Leave out --locale ${lang}.`)
 }
 if (!target) fail('Give the name of the folder to create.')
 const dir = resolve(target)
@@ -110,7 +110,7 @@ if (site !== basename(dir)) console.log(`The site id is "${site}": the folder na
 if (preset) console.log(presets[preset].note)
 // npm keeps options for itself unless they come after --; pnpm, yarn and bun pass them on.
 const example = pm === 'npm' ? `${command} my-site -- --preset gastro` : `${pm} create ginko my-site --preset gastro`
-console.log(`Other starters: --preset gastro, --preset docs; German sample: --lang de.${pm === 'npm' ? ' With npm, put -- before them:' : ''}
+console.log(`Other starters: --preset gastro, --preset docs; German sample: --locale de.${pm === 'npm' ? ' With npm, put -- before them:' : ''}
   ${example}
 
 Next:

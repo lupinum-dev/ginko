@@ -51,8 +51,8 @@ describe('create-ginko', () => {
     expect(run('plain-id').stdout).not.toContain('The site id is')
   })
 
-  it('--lang de creates the German plain starter', () => {
-    expect(run('plain-de', '--lang', 'de').status).toBe(0)
+  it('--locale de creates the German plain starter', () => {
+    expect(run('plain-de', '--locale', 'de').status).toBe(0)
     expect(read('plain-de', 'ginko.config.ts')).toContain("locales: ['de']")
     expect(read('plain-de', 'content/start.md')).toContain('title: Hallo Ginko')
   })
@@ -66,9 +66,9 @@ describe('create-ginko', () => {
   ]
   for (const { preset, lang, pkg, files } of cases) {
     for (const flag of [['--preset', preset], [`--preset=${preset}`]]) {
-      it(`${flag.join(' ')} --lang ${lang} creates the ${preset} starter`, () => {
+      it(`${flag.join(' ')} --locale ${lang} creates the ${preset} starter`, () => {
         const name = `${preset}-${lang}-${flag.length}`
-        const result = run(name, ...flag, '--lang', lang)
+        const result = run(name, ...flag, '--locale', lang)
         expect(result.status).toBe(0)
         for (const file of files) expect(existsSync(join(work, name, file)), file).toBe(true)
         expect(existsSync(join(work, name, 'content/start.md'))).toBe(false)
@@ -109,17 +109,17 @@ describe('create-ginko', () => {
     expect(result.stdout).toContain('Usage:')
   })
 
-  // Every mistake stops with exit 1 before a folder exists, so a script never "succeeds" without a site.
+  // Every usage mistake stops with exit 2 (as in `ginko`) before a folder exists, so a script never "succeeds" without a site.
   it.each([
     ['an unknown option', ['bad-option', '--typescript'], 'Unknown option "--typescript".'],
     ['an unknown preset', ['bad-preset', '--preset', 'shop'], 'Choose one of: gastro, docs.'],
     ['a preset name that is an object key', ['bad-proto', '--preset', 'toString'], 'Unknown preset "toString"'],
-    ['an unknown language', ['bad-lang', '--lang', 'fr'], 'Choose one of: en, de.'],
+    ['an unknown language', ['bad-lang', '--locale', 'fr'], 'Choose one of: en, de.'],
     ['--preset dropped by npm (only its value arrives)', ['bad-npm', 'gastro'], 'npm create ginko@latest bad-npm -- --preset gastro'],
     ['a second folder name', ['bad-two', 'other'], 'Unexpected argument "other".'],
-  ])('%s exits 1 and creates nothing', (_name, args, message) => {
+  ])('%s exits 2 and creates nothing', (_name, args, message) => {
     const result = run(...args)
-    expect(result.status).toBe(1)
+    expect(result.status).toBe(2)
     expect(result.stderr).toContain(message)
     expect(result.stderr).toContain('Usage:')
     expect(existsSync(join(work, args[0]!))).toBe(false)
