@@ -6,7 +6,7 @@ built in: "Closed today", "Fully booked today", the lunch menu of the week, a pr
 - **Bricks:** `hours()`, `hourPlans()`, `notices()`, `lunch()`, `lunchPlans()`, `menu()`, `events({ route })`, `gallery()`.
 - **Allergens:** the 14 EU allergens with the Austrian letter codes (`allergensEU`), and visitor names in
   German and English (`allergenNames`).
-- **Opening hours:** `todayState(today, { hours, plans })` says open (with the times), closed (with the owner's
+- **Opening hours:** `todayState({ hours, plans }, today)` says open (with the times), closed (with the owner's
   reason), closed for a public holiday, or rest day. `upcomingClosures({ hours, plans }, today, days)` lists the
   closures guests should know about soon. Public holiday names come in German and English (`holiday.de`, `holiday.en`).
 
@@ -73,12 +73,12 @@ the stored data, the same in the week, in hour plans and in exceptions.
 | `allergensEU` | The 14 EU allergens as `{ value, label }` options (letter codes). |
 | `allergenNames` | `{ de, en }`: the allergen name per code, for visitors. |
 | `weekdayNames` | `{ de, en }`: the weekday name per `mo`, `tu`, `we`, `th`, `fr`, `sa`, `su`. |
-| `hoursOn(date, { hours, plans?, calendar? })` | What applies on a date (`YYYY-MM-DD`): `{ closed, times, reason?, source, field?, holiday? }`. The one rule every display builds on. |
-| `todayState(today, ctx)` | `{ kind: 'open', times }`, `{ kind: 'closed', reason }`, `{ kind: 'holiday', holiday }` or `{ kind: 'restDay' }`. |
+| `hoursOn({ hours, plans?, calendar? }, date)` | What applies on a date (`YYYY-MM-DD`): `{ closed, times, reason?, source, field?, holiday? }`. The one rule every display builds on. |
+| `todayState(ctx, today)` | `{ kind: 'open', times }`, `{ kind: 'closed', reason }`, `{ kind: 'holiday', holiday }` or `{ kind: 'restDay' }`. |
 | `upcomingClosures(ctx, today, days)` | The owner's closing exceptions and the public holidays that close the house, in the next `days` days. |
 | `upcomingHolidayClosures(ctx, today, days)` | Only the closing public holidays. |
 | `upcomingPlans(plans, today, days)` | Hour plans that start in the next `days` days, with their start date. |
-| `weekFor(date, ctx)` | The 7-day week that applies on a date: `{ week, plan? }`. |
+| `weekFor(ctx, date)` | The 7-day week that applies on a date: `{ week, plan? }`. |
 | `weekdayOf(date)` | The weekday key (`'mo'` to `'su'`) of a date. |
 | `timesOf(day, and)` | One day's opening times as text: `11:30–14:00 and 17:30–22:00` (empty when closed). |
 | `spansOf(times)`, `spansText(spans, and)` | The time spans of a day, and the spans joined as text. |
@@ -96,8 +96,8 @@ Types: `HoursData`, `HoursContext`, `DayHours`, `DayRule` (what `hoursOn` return
 
 Defaults are Austrian (German and English labels, Austrian holidays, the 14 EU allergens). Change them per site:
 
-- Labels are always German and English. `lang: 'en'` on a factory only picks the default text (such as the lunch placeholder), so use it when the main locale is `en`.
-- `calendar` in the context of the hours rules: `'AT'` (default), `'DE'` (nationwide days only, no regional ones), `'SG'`, `'none'` (no public holidays), or your own `(year) => Holiday[]`. This is code, not an owner setting, and not part of `hours()`. Pass it to every call that reads holidays: `hoursOn(date, { hours, calendar })`, `todayState(today, { hours, calendar })`, `upcomingClosures` and `upcomingHolidayClosures`. A call without it counts Austrian holidays. Keep the value in one constant of your site so all calls agree. The stored field `holidays` (the owner's choice for those days: like Sunday, closed, normal) is a different thing and keeps its name.
+- Labels and prefilled texts (such as the lunch placeholder) come in German and English. The site keeps the texts of its own locales when its main locale is `de` or `en`; otherwise it starts without the prefilled texts. A code with a region such as `de-CH` does not count as `de`.
+- `calendar` in the context of the hours rules: `'AT'` (default), `'DE'` (nationwide days only, no regional ones), `'SG'`, `'none'` (no public holidays), or your own `(year) => Holiday[]`. This is code, not an owner setting, and not part of `hours()`. Pass it to every call that reads holidays: `hoursOn({ hours, calendar }, date)`, `todayState({ hours, calendar }, today)`, `upcomingClosures` and `upcomingHolidayClosures`. A call without it counts Austrian holidays. Keep the value in one constant of your site so all calls agree. The stored field `holidays` (the owner's choice for those days: like Sunday, closed, normal) is a different thing and keeps its name.
 - Singapore's lunar, Islamic and Hindu holidays are a table for 2026 and 2027 (source: [MOM](https://www.mom.gov.sg/employment-practices/public-holidays)). Add a row each year; other years only know the fixed dates.
 - `allergens` on `menu()`, `lunch()` and `lunchPlans()`: `'EU'` (default), `'none'` (no field), or your own `[{ value, label }]`.
 - `restaurantJsonLd` has no default currency or country: pass `currency` and `address.country`.
@@ -126,7 +126,7 @@ export default defineSite({
 })
 
 // In a component, with the stored hours data:
-todayState(today, { hours: hoursData, calendar })
+todayState({ hours: hoursData, calendar }, today)
 ```
 
 Components stay in your site, because their look belongs to the site's design. The demo restaurant in

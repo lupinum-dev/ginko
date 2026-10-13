@@ -13,7 +13,7 @@ const notices = useGinko('notices')
 const { lunch, current: lunchCurrent } = useLunchWeek()
 const { hours, data: h, ctx } = useHours()
 
-const state = computed(() => todayState(today.value, ctx.value))
+const state = computed(() => todayState(ctx.value, today.value))
 const closures = computed(() => upcomingClosures(ctx.value, today.value, h.value.holidayNoticeDays))
 // Only the menu of the week that contains today counts (a planned week wins); on the weekend the coming week is not today's dish.
 const dish = computed(() => {

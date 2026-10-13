@@ -87,7 +87,7 @@ function specialSpecs(input: RestaurantJsonLdInput, week: ReturnType<typeof week
   const runs: Array<{ key: string; spans: Span[]; from: string; to: string }> = []
   for (let i = 0; i < (input.days ?? 60); i++) {
     const date = addDays(input.today, i)
-    const rule = hoursOn(date, input.hours)
+    const rule = hoursOn(input.hours, date)
     const base = week.find((d) => d.day === weekdayOf(date))
     const baseKey = !base || base.closed ? '' : spanKey(spansOf(base))
     const key = rule.closed ? '' : spanKey(rule.times)
@@ -102,7 +102,7 @@ function specialSpecs(input: RestaurantJsonLdInput, week: ReturnType<typeof week
 }
 
 export function restaurantJsonLd(input: RestaurantJsonLdInput): Record<string, unknown> {
-  const { week } = weekFor(input.today, input.hours)
+  const { week } = weekFor(input.hours, input.today)
   const currency = input.currency
   const sections = input.menu?.sections?.filter((s) => s.items.length)
   const special = specialSpecs(input, week)

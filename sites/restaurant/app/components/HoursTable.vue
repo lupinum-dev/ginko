@@ -9,9 +9,9 @@ const { t, format } = useI18n()
 const { hours, hourPlans, data, plans, ctx } = useHours()
 
 // Special hours are listed only where they apply: a closure over the same day wins (see hoursOn).
-const shown = (e: Exception) => spansOf(e).length > 0 && hoursOn(e.when.from, ctx.value).field === `exceptions.${e._id}.reason`
+const shown = (e: Exception) => spansOf(e).length > 0 && hoursOn(ctx.value, e.when.from).field === `exceptions.${e._id}.reason`
 // The week that applies today (a running season replaces the standard week), then the plans that start soon.
-const week = computed(() => weekFor(today.value, ctx.value).week)
+const week = computed(() => weekFor(ctx.value, today.value).week)
 const coming = computed(() => upcomingPlans(plans.value, today.value, 120))
 const ahead = computed(() => [
   ...data.value.exceptions.filter((e) => e.when.to >= today.value && (e.closed || shown(e))),
