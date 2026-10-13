@@ -182,7 +182,7 @@ export interface Schema {
   currency: Currency
   /** First day of the week and weekend days of the site (computed once from the main language or `firstDayOfWeek`). Absent in schemas stored before it existed: read it with `weekOfSchema`. */
   week?: WeekInfo
-  /** Static pages by key, each with its path per locale (the first page is the home page). */
+  /** Static pages by key, each with its path per locale (the home page is the one whose main-locale path is `/`). */
   pages: Record<string, Partial<Record<Locale, string>>>
   bricks: Record<string, Brick>
   migrations: MigrationDescriptor[]

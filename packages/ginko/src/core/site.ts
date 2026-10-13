@@ -35,7 +35,7 @@ export interface SiteInput {
   currency: Currency
   /**
    * Static pages by key: `{ menu: { de: '/speisekarte', en: '/en/menu' } }`. A plain path is the page in
-   * the main locale only. The first page is the home page. The sitemap pairs a page's locales by key.
+   * the main locale only. The home page is the page whose main-locale path is `/`. The sitemap pairs a page's locales by key.
    */
   pages: Record<string, string | Partial<Record<Locale, string>>>
   bricks: Record<string, Brick>
