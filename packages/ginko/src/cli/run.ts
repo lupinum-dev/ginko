@@ -135,7 +135,8 @@ export async function runCli(argv: string[], deps: CliDeps, cli: Cli): Promise<E
     const command = Object.hasOwn(cli.commands, args.command) ? cli.commands[args.command]! : undefined
     if (!command) throw new CliError(`Unknown command “${args.command}”. Run it with --help to see the commands.`, 'USAGE')
     const name = `${cli.prefix}${args.command}`
-    const flag = [...args.flags].find((f) => !command.flags?.includes(f))
+    // `--json` is accepted everywhere for symmetry with ginko-i18n; the output is JSON anyway.
+    const flag = [...args.flags].find((f) => f !== '--json' && !command.flags?.includes(f))
     if (flag) throw new CliError(`Unknown option “${flag}” for ${name}.`, 'USAGE')
     if (args.folder !== undefined && !command.folder) throw new CliError(`Unexpected argument “${args.folder}” for ${name}.`, 'USAGE')
     if (args.folder === undefined && command.folder === 'required') throw new CliError(`${name} needs a folder: ${name} <folder>.`, 'USAGE')

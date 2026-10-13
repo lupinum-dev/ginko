@@ -100,6 +100,13 @@ describe('ginko output and exit codes', () => {
     expect(exitCodeOf(error)).toBe(exit)
   })
 
+  // Wrong behaviour caught: a script that adds --json to ginko and ginko-i18n alike fails on ginko with USAGE.
+  it('accepts --json on every command (the output is JSON anyway)', async () => {
+    const result = await run(['check', '--offline', '--json', '--config', RESTAURANT])
+    expect(result.code).toBe(0)
+    expect(JSON.parse(result.stdout)).toMatchObject({ ok: true })
+  })
+
   it('prints help and the version as plain text with exit 0', async () => {
     const help = await run(['export', '--help'])
     expect([help.code, help.stdout]).toEqual([0, expect.stringContaining('Usage: ginko <command>')])
