@@ -94,7 +94,8 @@ export default defineNuxtModule<SiteInput>({
     // renders the target on the server, which loads the production bundle. Pages read the bundle
     // already in the browser instead, so the preview never reaches production (SPEC 8).
     nuxt.options.experimental.payloadExtraction = false
-    nuxt.options.routeRules = ginkoRouteRules(nuxt.options.routeRules ?? {})
+    // The rule type is Nitro's in a site and a fallback without `headers` here, so the result is cast back to it.
+    nuxt.options.routeRules = ginkoRouteRules(nuxt.options.routeRules ?? {}) as typeof nuxt.options.routeRules
 
     // Generated share cards (nuxt-og-image): only with that module installed and one renderer for it. `#ginko/og`
     // is the one place that reaches nuxt-og-image, so a site without it never imports it.

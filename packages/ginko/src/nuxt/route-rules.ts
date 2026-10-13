@@ -1,6 +1,6 @@
-/** The parts of a Nitro route rule that Ginko sets; every other key passes through. */
-interface RouteRule { isr?: unknown; headers?: Record<string, string>; [key: string]: unknown }
-type RouteRules = Record<string, RouteRule>
+/** The parts of a Nitro route rule that Ginko sets; every other key passes through at runtime. */
+export interface GinkoRouteRule { isr?: number | boolean | object; headers?: Record<string, string> }
+type RouteRules = Record<string, GinkoRouteRule>
 
 /** How long a page stays cached before Vercel renders it again: a default, the site's own `/**` rule wins. */
 export const ISR_SECONDS = 60
