@@ -1,7 +1,7 @@
 ---
 title: Inhalte für Nuxt-Seiten, die Inhaber selbst pflegen.
 description: Ginko trennt die Seite von ihren Inhalten. Entwickler bauen mit normalem Nuxt; Inhaber ändern Öffnungszeiten, Speisekarte und Texte im Studio, mit Freigabe und Zeitplan. Dieselben Bausteine lesen auch Markdown aus dem Repo.
-install: npm create ginko my-site
+install: npm create ginko@latest my-site
 links:
   - label: Loslegen
     href: /docs/einstieg
@@ -31,7 +31,7 @@ features:
   - icon: lucide:bot
     title: Lesbar für Agenten
     description: Jede Seite gibt es als Markdown, dazu llms.txt und einen MCP-Zugang zur Doku.
-    href: /docs/einstieg
+    href: /docs/seo-und-agenten
 ---
 
 ## Ein Baustein, eine Seite, ein Inhalt
@@ -46,10 +46,14 @@ export default defineSite({
   site: 'linde',
   name: 'Gasthaus zur Linde',
   url: 'https://linde.example',
+  timezone: 'Europe/Vienna',
   locales: ['de', 'en'],
+  currency: 'EUR',
+  pages: { home: { de: '/', en: '/en' } },
   bricks: {
     hours: single({
       label: 'Öffnungszeiten',
+      source: 'files',
       fields: { note: f.text('Hinweis', { optional: true }), text: f.markdown('Zeiten') },
     }),
   },

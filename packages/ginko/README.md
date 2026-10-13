@@ -76,7 +76,7 @@ They can change in any release, so do not import them in a site.
 [Reading content](https://github.com/lupinum-dev/ginko/blob/main/sites/docs/content/docs/5.seiten-lesen.en.md) ·
 [Languages](https://github.com/lupinum-dev/ginko/blob/main/sites/docs/content/docs/6.sprachen.en.md) ·
 [Content from files](https://github.com/lupinum-dev/ginko/blob/main/sites/docs/content/docs/4.inhalte-aus-dateien.en.md) ·
-[Platform and CLI](https://github.com/lupinum-dev/ginko/blob/main/sites/docs/content/docs/9.plattform-und-cli.en.md)
+[Platform and CLI](https://github.com/lupinum-dev/ginko/blob/main/sites/docs/content/docs/12.plattform-und-cli.en.md)
 
 ## License
 

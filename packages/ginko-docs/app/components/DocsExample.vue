@@ -8,7 +8,7 @@ import { Tab, Tabs } from '@lupinum/ginko-components/components'
 const props = defineProps<{ preview: MarkdownTree['nodes'] }>()
 const { t } = useI18n()
 const { t: tc } = useI18n('components') // the code block's own texts: "Copy code", "Copied"
-const tree = computed<MarkdownTree>(() => ({ nodes: props.preview }))
+const tree = computed<MarkdownTree>(() => ({ nodes: props.preview, toc: previewToc(props.preview) }))
 
 const root = useTemplateRef<HTMLElement>('root')
 const copied = ref(false)

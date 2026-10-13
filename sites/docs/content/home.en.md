@@ -24,7 +24,7 @@ features:
     href: /en/docs/components
   - title: Readable by agents
     description: Every page also exists as Markdown, plus llms.txt and an MCP endpoint for the docs.
-    href: /en/docs/getting-started
+    href: /en/docs/seo-and-agents
 ---
 
 ## One brick, one page, one piece of content
@@ -39,10 +39,14 @@ export default defineSite({
   site: 'linde',
   name: 'Linden Inn',
   url: 'https://linde.example',
+  timezone: 'Europe/Vienna',
   locales: ['en', 'de'],
+  currency: 'EUR',
+  pages: { home: { en: '/', de: '/de' } },
   bricks: {
     hours: single({
       label: 'Opening hours',
+      source: 'files',
       fields: { note: f.text('Note', { optional: true }), text: f.markdown('Hours') },
     }),
   },

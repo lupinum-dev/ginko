@@ -3,7 +3,7 @@
 import schema from '#ginko/schema'
 
 const hasHome = Object.hasOwn(schema.bricks, 'home')
-if (!hasHome) await navigateTo(useDocs().first.value ?? '/', { redirectCode: 302 })
+if (!hasHome) await toFirstDoc()
 </script>
 
 <template>

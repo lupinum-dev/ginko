@@ -30,7 +30,7 @@ describe('docs MCP', () => {
   const index = loadIndex(buildIndex([
     { id: 'a', url: '/docs/sprachen', title: 'Sprachen', heading: 'Übersetzen', text: 'Jede Seite gibt es in mehreren Sprachen.', excerpt: 'Jede Seite gibt es', brick: 'docs', locale: 'de' },
     { id: 'b', url: '/docs/start', title: 'Einstieg', text: 'So fängt man an.', excerpt: 'So fängt man an.', brick: 'docs', locale: 'de' },
-  ]))
+  ], 'de'))
   const deps: DocsMcpDeps = {
     search: (q) => search(index, q),
     read: (path) => (path === '/docs/start' ? '# Einstieg\n\nSo fängt man an.' : undefined),

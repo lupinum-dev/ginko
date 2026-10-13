@@ -1,16 +1,15 @@
 // The bricks for ginko.config.ts. Docs pages live at <base>/<slug> in every language (main language
 // unprefixed); the layer serves its page at that address. The start page, the blog and the changelog are optional.
 import { collection, f, single, type Locale } from '@lupinum/ginko'
+import { BLOG_PATH, CHANGELOG_PATH } from '../shared/paths.ts'
 
 type Locales = readonly [Locale, ...Locale[]]
 
-// The layer's fixed addresses and the locale rule, shared with the page module and the app. The main language has
-// no prefix; every other language gets `/<locale>` in front (ginko-i18n's rule).
-export const BLOG_PATH = '/blog'
-export const CHANGELOG_PATH = '/changelog'
-
-/** `path` in every language: `{ en: '/blog', de: '/de/blog' }` when `en` is the main language. */
-export function localized(locales: readonly Locale[], path: string): Partial<Record<Locale, string>> {
+/**
+ * `path` in every language: `{ en: '/blog', de: '/de/blog' }` when `en` is the main language. The main language has no
+ * prefix; every other language gets `/<locale>` in front (ginko-i18n's rule).
+ */
+function localized(locales: readonly Locale[], path: string): Partial<Record<Locale, string>> {
   const [main] = locales
   return Object.fromEntries(locales.map((l) => [l, l === main ? path : `/${l}${path}`]))
 }
@@ -19,25 +18,25 @@ export function localized(locales: readonly Locale[], path: string): Partial<Rec
 export function docsCollection(locales: Locales, opts: { label?: string; max?: number; base?: `/${string}` } = {}) {
   const base = opts.base ?? '/docs'
   return collection({
-    label: opts.label ?? 'Doku',
+    label: opts.label ?? 'Docs',
     source: 'files',
     max: opts.max ?? 500,
     order: 'manual',
     route: localized(locales, `${base}/[slug]`),
     fields: {
-      title: f.text('Titel'),
-      description: f.longtext('Beschreibung', { optional: true }),
+      title: f.text('Title'),
+      description: f.longtext('Description', { optional: true }),
       /** Starts a group in the side navigation under this heading; the pages after it belong to it until the next one. */
-      section: f.text('Abschnitt', { optional: true }),
+      section: f.text('Section', { optional: true }),
       /** Nests the entry under another doc in the side navigation and the breadcrumbs. */
-      parent: f.ref('Übergeordnete Seite', 'docs', { optional: true }),
+      parent: f.ref('Parent page', 'docs', { optional: true }),
       /** Section tab above the side navigation; a page without one follows the tab of the page before it. Children follow their parent. */
-      tab: f.text('Reiter', { optional: true, max: 30 }),
-      /** A short label next to the entry in the side navigation, e.g. „Neu“. */
-      badge: f.text('Kennzeichen', { optional: true, max: 20 }),
+      tab: f.text('Tab', { optional: true, max: 30 }),
+      /** A short label next to the entry in the side navigation, e.g. "New". */
+      badge: f.text('Badge', { optional: true, max: 20 }),
       /** An icon name such as `lucide:book-open` (any installed Iconify set), shown before the title in the side navigation. */
-      icon: f.text('Symbol', { optional: true, max: 60, translate: false }),
-      slug: f.slug('Adresse', { from: 'title' }),
+      icon: f.text('Icon', { optional: true, max: 60, translate: false }),
+      slug: f.slug('Address', { from: 'title' }),
       body: f.markdown('Text', { profile: 'page' }),
     },
   })
@@ -50,19 +49,19 @@ export function docsCollection(locales: Locales, opts: { label?: string; max?: n
  */
 export function docsHome() {
   return single({
-    label: 'Startseite',
+    label: 'Start page',
     source: 'files',
     fields: {
-      title: f.text('Titel', { max: 120 }),
-      description: f.longtext('Beschreibung', { optional: true, max: 400 }),
+      title: f.text('Title', { max: 120 }),
+      description: f.longtext('Description', { optional: true, max: 400 }),
       /** A command shown with a copy button, e.g. `pnpm add @lupinum/ginko`. */
-      install: f.text('Installationsbefehl', { optional: true, max: 200, translate: false }),
+      install: f.text('Install command', { optional: true, max: 200, translate: false }),
       /** Buttons under the description; the first one is the main one. */
-      links: f.list('Links', 'Link', { label: f.text('Text', { max: 40 }), href: f.text('Ziel', { max: 300 }) }, { max: 2, default: [] }),
-      features: f.list('Merkmale', 'Merkmal', {
-        icon: f.text('Symbol', { optional: true, max: 60, translate: false }),
-        title: f.text('Titel', { max: 80 }),
-        description: f.longtext('Beschreibung', { max: 300 }),
+      links: f.list('Links', 'Link', { label: f.text('Text', { max: 40 }), href: f.text('Target', { max: 300 }) }, { max: 2, default: [] }),
+      features: f.list('Features', 'Feature', {
+        icon: f.text('Icon', { optional: true, max: 60, translate: false }),
+        title: f.text('Title', { max: 80 }),
+        description: f.longtext('Description', { max: 300 }),
         href: f.text('Link', { optional: true, max: 300 }),
       }, { max: 12, default: [] }),
       body: f.markdown('Text', { profile: 'page', optional: true }),
@@ -79,33 +78,33 @@ export function docsHome() {
 export function blogCollections(locales: Locales, opts: { max?: number } = {}) {
   return {
     posts: collection({
-      label: 'Beiträge',
+      label: 'Posts',
       source: 'files',
       max: opts.max ?? 500,
       order: { field: 'date', dir: 'desc' },
       route: localized(locales, `${BLOG_PATH}/[slug]`),
       fields: {
-        title: f.text('Titel'),
-        description: f.longtext('Beschreibung', { optional: true }),
-        date: f.date('Datum'),
-        authors: f.ref('Autoren', 'authors', { multiple: true, optional: true }),
-        image: f.image('Bild', { optional: true }),
-        tags: f.list('Schlagwörter', 'Schlagwort', { tag: f.text('Schlagwort', { max: 40 }) }, { max: 10, optional: true }),
-        slug: f.slug('Adresse', { from: 'title' }),
+        title: f.text('Title'),
+        description: f.longtext('Description', { optional: true }),
+        date: f.date('Date'),
+        authors: f.ref('Authors', 'authors', { multiple: true, optional: true }),
+        image: f.image('Image', { optional: true }),
+        tags: f.list('Tags', 'Tag', { tag: f.text('Tag', { max: 40 }) }, { max: 10, optional: true }),
+        slug: f.slug('Address', { from: 'title' }),
         body: f.markdown('Text', { profile: 'page' }),
       },
     }),
     authors: collection({
-      label: 'Autoren',
+      label: 'Authors',
       source: 'files',
       max: 100,
       order: 'manual',
       fields: {
         name: f.text('Name'),
-        role: f.text('Rolle', { optional: true }),
-        avatar: f.image('Bild', { optional: true }),
+        role: f.text('Role', { optional: true }),
+        avatar: f.image('Image', { optional: true }),
         /** Shown as a link on the author's name. */
-        url: f.text('Webseite', { format: 'url', optional: true }),
+        url: f.text('Website', { format: 'url', optional: true }),
       },
     }),
   }
@@ -118,13 +117,13 @@ export function blogCollections(locales: Locales, opts: { max?: number } = {}) {
  */
 export function changelogCollection() {
   return collection({
-    label: 'Änderungen',
+    label: 'Changelog',
     source: 'files',
     max: 500,
     order: { field: 'date', dir: 'desc' },
     fields: {
       version: f.text('Version', { max: 40, translate: false }),
-      date: f.date('Datum'),
+      date: f.date('Date'),
       body: f.markdown('Text', { profile: 'page' }),
     },
   })

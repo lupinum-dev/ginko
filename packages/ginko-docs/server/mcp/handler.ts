@@ -40,8 +40,9 @@ async function callTool(params: Json, deps: DocsMcpDeps) {
       : 'No results.')
   }
   if (params.name === 'read_doc') {
-    // A path of this site only: starts with "/", no scheme-relative "//", no "..".
-    if (typeof args.path !== 'string' || !/^\/(?!\/)/.test(args.path) || args.path.split('/').includes('..')) return text('`path` must be a page path like "/en/docs/languages".', true)
+    // A page path of this site only: starts with "/", no scheme-relative "//", no "..", and no query or fragment,
+    // which would reach other routes (`/__ginko/search/en.json?`) through the `.md` lookup.
+    if (typeof args.path !== 'string' || !/^\/(?!\/)[^?#]*$/.test(args.path) || args.path.split('/').includes('..')) return text('`path` must be a page path like "/en/docs/languages".', true)
     const markdown = await deps.read(args.path.replace(/\.md$/, ''))
     return markdown === undefined ? text(`No page at ${args.path}.`, true) : text(markdown)
   }
@@ -70,9 +71,13 @@ export async function handleMcpMessage(message: unknown, deps: DocsMcpDeps): Pro
   }
 }
 
-/** A request body: one message, or a batch of them. */
+/** Messages in one batch; a client needs a handful, more only multiplies the work of one request. */
+export const MAX_BATCH = 20
+
+/** A request body: one message, or a batch of up to MAX_BATCH. */
 export async function handleMcp(body: unknown, deps: DocsMcpDeps): Promise<Json | Json[] | undefined> {
   if (!Array.isArray(body)) return handleMcpMessage(body, deps)
+  if (body.length === 0 || body.length > MAX_BATCH) return fail(null, -32600, `Invalid request: a batch holds 1 to ${MAX_BATCH} messages`)
   const out = (await Promise.all(body.map((m) => handleMcpMessage(m, deps)))).filter((r): r is Json => r !== undefined)
   return out.length ? out : undefined
 }

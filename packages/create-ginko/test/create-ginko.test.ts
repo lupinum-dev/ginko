@@ -36,6 +36,7 @@ describe('create-ginko', () => {
     { preset: 'gastro', lang: 'en', pkg: '@lupinum/ginko-preset-gastro', files: ['content/hours.md', 'content/menu/1.tomato-soup.md', 'app/pages/index.vue'] },
     { preset: 'gastro', lang: 'de', pkg: '@lupinum/ginko-preset-gastro', files: ['content/hours.md', 'content/menu/1.tomatensuppe.md', 'app/pages/index.vue'] },
     { preset: 'docs', lang: 'en', pkg: '@lupinum/ginko-docs', files: ['content/docs/1.getting-started.md', 'app/app.vue', 'nuxt.config.ts'] },
+    { preset: 'docs', lang: 'de', pkg: '@lupinum/ginko-docs', files: ['content/docs/1.einstieg.md', 'app/app.vue', 'nuxt.config.ts'] },
   ]
   for (const { preset, lang, pkg, files } of cases) {
     for (const flag of [['--preset', preset], [`--preset=${preset}`]]) {
@@ -78,7 +79,6 @@ describe('create-ginko', () => {
     ['an unknown preset', ['bad-preset', '--preset', 'shop'], 'Choose one of: gastro, docs.'],
     ['a preset name that is an object key', ['bad-proto', '--preset', 'toString'], 'Unknown preset "toString"'],
     ['an unknown language', ['bad-lang', '--lang', 'fr'], 'Choose one of: en, de.'],
-    ['a preset without that language', ['bad-docs-de', '--preset', 'docs', '--lang', 'de'], 'The docs preset has no German version yet.'],
     ['--preset dropped by npm (only its value arrives)', ['bad-npm', 'gastro'], 'npm create ginko@latest bad-npm -- --preset gastro'],
     ['a second folder name', ['bad-two', 'other'], 'Unexpected argument "other".'],
   ])('%s exits 1 and creates nothing', (_name, args, message) => {
