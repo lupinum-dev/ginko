@@ -23,7 +23,7 @@ const current = computed(() => alternates.value.find((a) => a.current))
       </button>
       <ul v-if="open" id="docs-lang-menu" class="docs-popover">
         <li v-for="a in alternates" :key="a.code">
-          <NuxtLink :to="a.path" :hreflang="a.code" :lang="a.code" :aria-current="a.current ? 'true' : undefined">
+          <NuxtLink :to="a.path" :hreflang="a.code" :lang="a.code" :aria-current="a.current ? 'page' : undefined">
             {{ nameOf(a.code) }}
             <Icon v-if="a.current" name="lucide:check" class="docs-icon" />
           </NuxtLink>

@@ -75,7 +75,8 @@ export default defineNuxtConfig({
 ```
 
 **2. Add one message file per locale** in `i18n/`, next to `nuxt.config.ts`. The file name is the URL
-code:
+code, not the language tag: `'de-AT'` has the code `de` (its language subtag, unless you set `code`), so
+its file is `de.json`:
 
 ```json
 // i18n/de.json
