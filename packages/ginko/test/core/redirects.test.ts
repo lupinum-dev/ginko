@@ -35,6 +35,23 @@ describe('matchRedirect', () => {
   })
 })
 
+// Wrong behaviour caught: a splat that starts with a second slash or backslash turns the path into a scheme-relative URL to another host.
+describe('matchRedirect keeps path targets on the site', () => {
+  const rules: Redirect[] = [{ from: '/blog/*', to: '/:splat' }]
+  it.each([
+    ['/blog//evil.example', '/evil.example'],
+    ['/blog/%2F%2Fevil.example', '/%2F%2Fevil.example'],
+    ['/blog/\\evil.example', '/evil.example'],
+    ['/blog///\\/evil.example?x=1', '/evil.example?x=1'],
+    ['/blog/post', '/post'],
+  ])('%s', (path, to) => {
+    expect(matchRedirect(rules, path)).toEqual({ to, status: 301 })
+  })
+  it('leaves a full URL written in the rule alone', () => {
+    expect(matchRedirect([{ from: '/a', to: 'https://example.com/x' }], '/a')).toEqual({ to: 'https://example.com/x', status: 301 })
+  })
+})
+
 describe('entryRedirects', () => {
   const bundle: Bundle = {
     format: 3,
@@ -75,6 +92,7 @@ describe('redirectProblems', () => {
     ['valid', [{ from: '/a', to: '/b' }], []],
     ['from without slash', [{ from: 'a', to: '/b' }], ['"a": path must start with "/".']],
     ['redirect to itself', [{ from: '/a', to: '/a/' }], ['"/a": redirect points to itself.']],
+    ['to starts with a parameter', [{ from: '/blog/*', to: '/:splat' }], ['"/blog/*": "to" starts with a parameter (/:splat). Start it with a fixed path such as "/new/:splat" so a visitor cannot choose the target host.']],
     ['duplicate from', [{ from: '/a', to: '/b' }, { from: '/a', to: '/c' }], ['"/a": defined more than once.']],
   ])('%s', (_name, rules, expected) => {
     expect(redirectProblems(rules)).toEqual(expected)

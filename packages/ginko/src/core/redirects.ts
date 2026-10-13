@@ -55,6 +55,9 @@ export function matchRedirect(rules: readonly Redirect[], path: string): { to: s
     values.splat = compiled.wildcard ? (match[match.length - 1] ?? '') : ''
 
     let to = compiled.rule.to.replace(/:([A-Za-z_]\w*)/g, (token, name: string) => values[name] ?? token)
+    // A path stays a path on this site: a substituted `//evil.example` would be read as another host.
+    // Targets written as full URLs in the rule (`https://…`) are not touched.
+    if (/^[/\\]/.test(to)) to = '/' + to.replace(/^[/\\]+/, '')
     if (query) to += (to.includes('?') ? '&' : '?') + query
     return { to, status: compiled.rule.status ?? 301 }
   }
@@ -95,6 +98,7 @@ export function redirectProblems(rules: readonly Redirect[]): string[] {
   for (const { from, to } of rules) {
     if (!from.startsWith('/')) problems.push(`"${from}": path must start with "/".`)
     if (trimSlash(from) === trimSlash(to)) problems.push(`"${from}": redirect points to itself.`)
+    if (/^[/\\]?:/.test(to)) problems.push(`"${from}": "to" starts with a parameter (${to}). Start it with a fixed path such as "/new/:splat" so a visitor cannot choose the target host.`)
     if (seen.has(from)) problems.push(`"${from}": defined more than once.`)
     seen.add(from)
   }
