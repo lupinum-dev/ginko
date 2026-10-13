@@ -21,8 +21,7 @@
     "./vue": "./src/vue.ts",
     "./internal/search": "./src/internal-search.ts",
     "./search": "./src/search.ts",
-    "./nuxt": "./src/nuxt/module.ts",
-    "./i18n/*.json": "./i18n/*.json"
+    "./nuxt": "./src/nuxt/module.ts"
   },
   "bin": {
     "ginko": "./src/cli/index.ts"
@@ -61,8 +60,7 @@
       "./nuxt": {
         "types": "./dist/nuxt/module.d.mts",
         "import": "./dist/nuxt/module.mjs"
-      },
-      "./i18n/*.json": "./i18n/*.json"
+      }
     },
     "main": "./dist/index.mjs",
     "types": "./dist/index.d.mts",
