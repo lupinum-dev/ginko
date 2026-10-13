@@ -55,8 +55,8 @@ const TAGS: Record<Exclude<MarkdownProfile, 'page'>, ReadonlySet<string>> = {
   basic: new Set(BASIC_TAGS),
   rich: new Set([...BASIC_TAGS, 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'img', 'pre', 'math', 'mermaid']),
 }
-// Component syntax can name any tag (`::script`). Without a component registry `page` accepts any tag
-// except BLOCKED_TAGS (components.ts); with one, only the registered components (ParseOptions.components).
+// Component syntax can name any tag (`::script`). Without a component registry `page` accepts any tag that is
+// not blocked (isBlockedTag, components.ts); with one, only the registered components (ParseOptions.components).
 /**
  * Attributes a text may not set (besides `on*`): `style` paints over the page, `id` can clash with the page's own
  * ids (`__NUXT_DATA__` blanks it). Heading ids stay (the parser makes them), and so do props a registry declares.

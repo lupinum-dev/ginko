@@ -45,7 +45,8 @@ export function defineComponents<const R extends ComponentRegistry>(registry: R)
 
 /**
  * Tags that run code, load content or submit data. A text never contains them, with or without a registry
- * (comark syntax can name any tag: `::script`).
+ * (comark syntax can name any tag: `::script`), except a tag in COMPONENT_ONLY_TAGS that the registry declares
+ * (see isBlockedTag).
  */
 export const BLOCKED_TAGS: ReadonlySet<string> = new Set([
   'script', 'style', 'iframe', 'frame', 'frameset', 'object', 'embed', 'applet', 'link', 'meta', 'base',
@@ -55,8 +56,7 @@ export const BLOCKED_TAGS: ReadonlySet<string> = new Set([
 /**
  * Blocked tags a registry may still declare. The component then replaces the element, so the tag passes only where
  * the registry declares it and stays blocked everywhere else. `embed` is the provider embed of
- * `@lupinum/ginko-components`. A site that declares it must also map it to a component: the native element would
- * load the address like an iframe.
+ * `@lupinum/ginko-components`. The renderer (markdown-view.ts) drops such a tag when no component is mapped to it.
  */
 const COMPONENT_ONLY_TAGS: ReadonlySet<string> = new Set(['embed'])
 
@@ -87,7 +87,7 @@ export function componentProblems(registry: ComponentRegistry): string[] {
     const def = registry[tag]!
     const at = `Component “${tag}”`
     if (!TAG.test(tag)) problems.push(`${at}: The name must be lower case and separated by hyphens (for example “code-group”).`)
-    if (BLOCKED_TAGS.has(tag) && !COMPONENT_ONLY_TAGS.has(tag)) problems.push(`${at}: The name is blocked.`)
+    if (isBlockedTag(tag, registry)) problems.push(`${at}: The name is blocked.`)
     else if (PLAIN_TAGS.has(tag)) problems.push(`${at}: The name belongs to Markdown (${tag}) and cannot be overridden.`)
     if (def.kind !== 'block' && def.kind !== 'inline') problems.push(`${at}: kind must be “block” or “inline”.`)
     if (!isLabel(def.label)) problems.push(`${at}: label is missing.`)
@@ -108,7 +108,7 @@ type Fail = (problem: Described) => void
 
 /**
  * The slot nodes (comark's `template` with `name`) a text may keep: direct children of a registered component.
- * The profile check lets exactly these through its `BLOCKED_TAGS` rule (identity of the node); `checkComponentTree`
+ * The profile check lets exactly these through its blocked-tag rule (isBlockedTag) (identity of the node); `checkComponentTree`
  * then reports an undeclared slot name. A `template` anywhere else, or when there is no registry, stays refused.
  */
 export function componentSlotNodes(nodes: readonly Node[], registry: ComponentRegistry): Set<Node> {
