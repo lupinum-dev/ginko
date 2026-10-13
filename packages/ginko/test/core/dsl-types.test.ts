@@ -71,6 +71,8 @@ describe('authoring types', () => {
     // @ts-expect-error a row needs every column that is not optional
     f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { dish: f.text('Gericht') }, default: [{ _id: 'r000000001' }] })
     f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { dish: f.text('Gericht'), body: f.markdown('Text'), note: f.text('Hinweis', { optional: true }) }, default: [{ _id: 'r000000001', dish: 'Suppe', body: { de: '# Suppe' } }] })
+    // @ts-expect-error a markdown column that is not translated takes a plain text
+    f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { body: f.markdown('Text', { translate: false }) }, default: [{ _id: 'r000000001', body: { de: '# Suppe' } }] })
     expect([dish, price]).toHaveLength(2)
   })
 
@@ -99,8 +101,6 @@ describe('authoring types', () => {
     single({ label: 'S', fields, tasks: [{ id: 'c', label: 'C', kind: 'edit', fields: ['title'], prefill: { titel: 'x' } }] })
     // @ts-expect-error a prefill has the type of its field
     single({ label: 'S', fields: { price: f.money('Preis') }, tasks: [{ id: 'c', label: 'C', kind: 'create', prefill: { price: 'x' } }] })
-    // @ts-expect-error a token needs a date field
-    single({ label: 'S', fields: { seats: f.number('Plätze', { min: 0, max: 99, step: 1 }) }, tasks: [{ id: 'c', label: 'C', kind: 'create', prefill: { seats: '@today' } }] })
     // @ts-expect-error a route without [slug]
     collection({ label: 'News', fields, max: 5, order: 'manual', route: { de: '/news' } })
     expect(true).toBe(true)

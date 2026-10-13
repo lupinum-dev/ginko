@@ -26,6 +26,7 @@ type DefaultInput<C> =
   : C extends { type: 'ref'; multiple: true } ? readonly string[]
   : C extends { type: 'ref' } ? string
   : C extends { type: 'slug' } ? TextInput
+  : C extends { type: 'list'; of: infer G extends Fields } ? readonly ListRow<G>[]
   : never
 
 /**
@@ -59,18 +60,17 @@ type DateRangeOpts = Opts<DateRangeField, DefaultInput<DateRangeField>>
 type ChoiceOpts<V extends string> = Omit<Opts<ChoiceField, NoInfer<V>>, 'options'> & { options: readonly OptionInput<V>[] }
 type ChoicesOpts<V extends string> = Omit<Opts<ChoicesField, readonly NoInfer<V>[]>, 'options'> & { options: readonly OptionInput<V>[] }
 /**
- * A value as you write it for the field `C`: its `default`, the rows of a list, and the text of a markdown field
- * (list cells and prefills hold markdown, although `f.markdown` has no `default`).
+ * A value as you write it for the field `C`: its `default`, and the text of a markdown field (list cells and prefills
+ * hold markdown, although `f.markdown` has no `default`).
  */
 export type ValueInput<C> =
-  C extends { type: 'markdown' } ? TextInput
-  : C extends { type: 'list'; of: infer G extends Fields } ? readonly ListRow<G>[]
+  C extends { type: 'markdown' } ? (C extends { translate: false } ? string : TextInput)
   : DefaultInput<C>
 /** List rows as written: a fixed `_id` (10 letters or digits) plus a value per column; only optional columns may be missing. */
 type ListRow<F extends Fields> = { _id: string }
   & { [K in keyof F as F[K] extends { optional: true } ? never : K]: ValueInput<F[K]> }
   & { [K in keyof F as F[K] extends { optional: true } ? K : never]?: ValueInput<F[K]> }
-type ListOpts<F extends Fields> = Omit<Opts<ListField<F>, readonly ListRow<F>[]>, 'of'> & { fields: F }
+type ListOpts<F extends Fields> = Omit<Opts<ListField<F>, DefaultInput<ListField<F>>>, 'of'> & { fields: F }
 /** Like `Only` for the rows of a list `default`: a cell of a column the list does not have fails the type check. */
 type OnlyColumns<O, F> = O extends { default: readonly (infer R)[] } ? { default: readonly (R extends unknown ? Only<R, F & { _id: string }> : never)[] } : unknown
 type ImageOpts = Opts<ImageField>

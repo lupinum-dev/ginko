@@ -94,7 +94,8 @@ export const isPrefillToken = (value: unknown): value is PrefillToken => PREFILL
 /**
  * A quick task of a brick. `needsApproval: true`: what staff does with this task goes live only after an owner or
  * admin approves it (SPEC 17). `F` is the fields of the brick: in `single()` and `collection()` a task names only
- * fields the brick has, and a prefill has the type of that field's `default` (a token needs a `date` field).
+ * fields the brick has, and a prefill is written like that field's value (see `ValueInput`). The release check
+ * reports a token on a field that is not a `date`.
  */
 export type Task<F extends Fields = Fields> =
   | { id: string; label: Label; kind: 'edit'; fields: readonly (keyof F & string)[]; pick?: boolean; prefill?: Prefill<F>; needsApproval?: boolean }
@@ -104,7 +105,7 @@ export type Task<F extends Fields = Fields> =
 /** Prefill values by field name. Without known fields (the stored schema) any JSON or token. */
 type Prefill<F extends Fields> = Fields extends F
   ? { readonly [name: string]: Json | PrefillToken | undefined }
-  : { readonly [P in keyof F]?: ValueInput<F[P]> | (F[P] extends { type: 'date' } ? PrefillToken : never) }
+  : { readonly [P in keyof F]?: ValueInput<F[P]> }
 
 /**
  * Which entries of a collection the website shows. `always`: all of them. `until`: an entry is shown until the
