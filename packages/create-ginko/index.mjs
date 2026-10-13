@@ -102,6 +102,7 @@ const agent = (process.env.npm_config_user_agent ?? '').split('/')[0]
 const pm = ['pnpm', 'yarn', 'bun'].includes(agent) ? agent : 'npm'
 const cd = /^[\w./-]+$/.test(target) ? target : `'${target.replaceAll('\'', '\'\\\'\'')}'`
 console.log(`Created ${target} from the ${preset ? `${preset} preset` : 'plain starter'} in ${langs[lang]}.`)
+if (site !== basename(dir)) console.log(`The site id is "${site}": the folder name in lower case, with other characters replaced by "-", at most 40 characters. Change \`site\` in ginko.config.ts to use another one.`)
 if (preset) console.log(presets[preset].note)
 console.log(`Other starters: --preset gastro, --preset docs; German sample: --lang de. With npm, put -- before them:
   ${command} my-site -- --preset gastro

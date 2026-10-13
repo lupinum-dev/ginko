@@ -15,6 +15,10 @@ edit a brick on the Ginko platform instead, remove `source: 'files'` from it in 
 
 The sample site is English. `--lang de` creates it in German.
 
+The site id (`site` in `ginko.config.ts`) comes from the folder name: lower case, every run of other characters
+becomes `-`, at most 40 characters, and it must start with a letter. When the id differs from the folder name, the
+command says so. Change `site` in `ginko.config.ts` if you want another id.
+
 ## Options
 
 Write the options after `--`. npm keeps options before `--` for itself and passes on only their values; the

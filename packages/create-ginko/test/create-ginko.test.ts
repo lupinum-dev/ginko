@@ -25,6 +25,14 @@ describe('create-ginko', () => {
     expect(result.stdout).toContain('npm create ginko@latest my-site -- --preset gastro')
   })
 
+  it('says which site id it derived when the folder name is not a valid one', () => {
+    const result = run('My Café!')
+    expect(result.status).toBe(0)
+    expect(read('My Café!', 'ginko.config.ts')).toContain("site: 'my-caf'")
+    expect(result.stdout).toContain('The site id is "my-caf"')
+    expect(run('plain-id').stdout).not.toContain('The site id is')
+  })
+
   it('--lang de creates the German plain starter', () => {
     expect(run('plain-de', '--lang', 'de').status).toBe(0)
     expect(read('plain-de', 'ginko.config.ts')).toContain("locales: ['de']")
