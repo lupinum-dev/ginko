@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import { plan } from '../../src/cli/plan.ts'
 import {
-  buildBundle, checkSchema, checkSite, isShown, collection, defineSite, diffSchema, f, isCurrency, isLocale, labelOf, platformSchema, serializeSchema, single, validate,
+  buildBundle, checkSchema, checkSite, isShown, collection, defineComponents, defineSite, diffSchema, f, isCurrency, isLocale, labelOf, platformSchema, serializeSchema, single, validate,
   type Fields, type RouteTemplate, type Schema, type SiteInput,
 } from '../../src/core/index.ts'
 
@@ -442,6 +442,14 @@ describe('defaults in the stored form', () => {
   it('stores prefilled texts the same way and keeps tokens', () => {
     const task = { id: 'add', label: 'Neu', kind: 'create', prefill: { name: { de: 'Ausgebucht', en: 'Booked out', it: 'Esaurito' }, day: '@today' } }
     expect(stored({ name: f.text('Name'), day: f.date('Tag') }, [task]).tasks![0]).toMatchObject({ prefill: { name: { de: 'Ausgebucht', en: 'Booked out' }, day: '@today' } })
+  })
+
+  // Wrong behaviour caught: a component prop's plain default was stored as written and failed the release check.
+  it('stores component prop defaults the same way', () => {
+    const components = defineComponents({ box: { kind: 'block', label: 'Box', describe: 'Box', props: { title: f.text('T', { optional: true, default: 'Hallo' }) } } })
+    const input = site({}, { components })
+    expect(serializeSchema(input).components!.box!.props.title!.default).toEqual({ de: 'Hallo' })
+    expect(checkSite(input)).toEqual([])
   })
 })
 

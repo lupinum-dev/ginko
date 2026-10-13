@@ -4,7 +4,7 @@ import { sha256 } from './sha256.ts'
 import { formatMb, limitOf } from './uploads.ts'
 import { weeklyTask } from './stale.ts'
 import { weekInfoOf } from './time.ts'
-import { componentProblems } from './components.ts'
+import { componentProblems, type ComponentRegistry } from './components.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
 import { isPrefillToken, PREFILL_TOKENS, type Brick, type Currency, type Field, type Fields, type Json, type Locale, type Schema } from './types.ts'
@@ -60,7 +60,7 @@ export function serializeSchema(site: SiteInput): Schema {
     bricks,
     migrations,
     retired,
-    ...(site.components ? { components: site.components } : {}),
+    ...(site.components ? { components: storedComponents(site.components, site.locales) } : {}),
     ...(site.agents?.review !== undefined ? { agents: { review: site.agents.review } } : {}),
   }, [], []) as Schema
 }
@@ -76,6 +76,14 @@ function storedField(field: Field, locales: readonly Locale[]): Field {
     const stored = storedValue(field, value as Json, locales)
     return stored === undefined ? [] : [[key, stored]]
   })) as Field
+}
+
+/** Component props with their defaults in the stored form, like brick fields. A malformed `props` stays for checkSchema to report. */
+function storedComponents(registry: ComponentRegistry, locales: readonly Locale[]): ComponentRegistry {
+  return Object.fromEntries(Object.entries(registry).map(([tag, def]) => {
+    if (!def || typeof def.props !== 'object' || def.props === null) return [tag, def]
+    return [tag, { ...def, props: Object.fromEntries(Object.entries(def.props).map(([name, prop]) => [name, storedField(prop, locales)])) }]
+  }))
 }
 
 function storedPrefill(prefill: Readonly<Record<string, Json | undefined>>, fields: Fields, locales: readonly Locale[]): Record<string, Json> {
