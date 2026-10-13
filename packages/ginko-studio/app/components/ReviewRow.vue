@@ -9,7 +9,7 @@ import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
 import { Label } from '@studio/components/ui/label'
 import { Textarea } from '@studio/components/ui/textarea'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useTextOf } from '../composables/useTextOf'
 import { byText } from '../utils/who'
 import { msToZoned, zonedToMs } from '../utils/when'
@@ -48,11 +48,24 @@ const at = ref('')
 const reason = ref('')
 const timeError = ref('')
 
+// Opening a form moves the focus into it; cancelling puts it back on the button that opened it. Without this the
+// button is removed with the row actions and the focus drops to the top of the page.
+function focusId(id: string) { nextTick(() => document.getElementById(id)?.focus()) }
+function openReject() {
+  mode.value = 'reject'
+  focusId(`why-${props.proposal.proposal}`)
+}
+function cancel() {
+  const opener = mode.value === 'later' ? 'later' : 'reject'
+  mode.value = null
+  focusId(`${opener}-${props.proposal.proposal}`)
+}
 function openLater() {
   const day = 24 * 60 * 60 * 1000
   at.value = `${msToZoned(Date.now() + day, props.timeZone).slice(0, 10)}T09:00`
   timeError.value = ''
   mode.value = 'later'
+  focusId(`at-${props.proposal.proposal}`)
 }
 function schedule() {
   const ms = zonedToMs(at.value, props.timeZone)
@@ -81,8 +94,8 @@ function sendReject() {
       <template v-if="proposal.canDecide">
         <div v-if="!mode" class="flex flex-wrap gap-2">
           <Button v-if="!stale && !inRelease" type="button" size="sm" :disabled="busy" @click="emit('approve')">{{ t('review.approve') }}</Button>
-          <Button v-if="!stale && !inRelease" type="button" variant="secondary" size="sm" :disabled="busy" @click="openLater">{{ t('review.approveLater') }}</Button>
-          <Button type="button" variant="ghost" size="sm" :disabled="busy" @click="mode = 'reject'">{{ t('review.reject') }}</Button>
+          <Button v-if="!stale && !inRelease" :id="`later-${proposal.proposal}`" type="button" variant="secondary" size="sm" :disabled="busy" @click="openLater">{{ t('review.approveLater') }}</Button>
+          <Button :id="`reject-${proposal.proposal}`" type="button" variant="ghost" size="sm" :disabled="busy" @click="openReject">{{ t('review.reject') }}</Button>
         </div>
         <div v-else-if="mode === 'later'" class="grid gap-2">
           <Label :for="`at-${proposal.proposal}`" class="font-medium">{{ t('entry.publish.dateTime') }}</Label>
@@ -90,7 +103,7 @@ function sendReject() {
           <p v-if="timeError" class="font-medium text-destructive" role="alert">{{ timeError }}</p>
           <div class="flex flex-wrap gap-2">
             <Button type="button" size="sm" :disabled="busy" @click="schedule">{{ t('entry.publish.schedule') }}</Button>
-            <Button type="button" variant="ghost" size="sm" @click="mode = null">{{ t('entry.cancel') }}</Button>
+            <Button type="button" variant="ghost" size="sm" @click="cancel">{{ t('entry.cancel') }}</Button>
           </div>
         </div>
         <div v-else class="grid gap-2">
@@ -98,7 +111,7 @@ function sendReject() {
           <Textarea :id="`why-${proposal.proposal}`" v-model="reason" rows="2" maxlength="300" required />
           <div class="flex flex-wrap gap-2">
             <Button type="button" variant="destructive" size="sm" :disabled="busy || !reason.trim()" @click="sendReject">{{ t('review.rejectConfirm') }}</Button>
-            <Button type="button" variant="ghost" size="sm" @click="mode = null">{{ t('entry.cancel') }}</Button>
+            <Button type="button" variant="ghost" size="sm" @click="cancel">{{ t('entry.cancel') }}</Button>
           </div>
         </div>
       </template>

@@ -25,4 +25,18 @@ export default defineNuxtConfig({
     customCollections: [{ prefix: 'docs', dir: here('./icons') }],
     clientBundle: { icons, scan: true, includeCustomCollections: true },
   },
+  // The diagram engine (mermaid + ELK, 462 kB gzip) is loaded only by a page with a ```mermaid block. Left alone, Rolldown
+  // put its small shared module helper into that chunk, the icon runtime on every page imported the helper from there,
+  // and so every page downloaded the engine. A named group of its own keeps the helper out of it (e2e/docs.spec.ts checks).
+  vite: {
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [{ name: 'mermaid', test: /[\\/]node_modules[\\/](beautiful-mermaid|elkjs|mermaid)[\\/]/, includeDependenciesRecursively: false }],
+          },
+        },
+      },
+    },
+  },
 })

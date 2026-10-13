@@ -3,6 +3,7 @@
 // Math renders on the server (the HTML holds `.katex`); mermaid renders in the browser.
 import { defineAsyncComponent } from 'vue'
 import DocsExample from '../components/DocsExample.vue'
+import DocsTable from '../components/DocsTable.vue'
 
 export const markdownComponents = {
   math: defineAsyncComponent(async () => {
@@ -11,4 +12,5 @@ export const markdownComponents = {
   }),
   mermaid: defineAsyncComponent(() => import('@comark/vue/plugins/mermaid').then((m) => m.Mermaid)),
   example: DocsExample,
+  table: DocsTable,
 }

@@ -182,6 +182,8 @@ const setField = (key: string, value: Json | undefined) => form.setField(key, va
 const fieldProps = computed(() => ({ draft: draft.value, baseline: baseline.value, locale: locale.value, locales: props.schema.locales, issues: issues.value, route: props.brick.kind === 'collection' ? props.brick.route : undefined, weeks: props.brick.kind === 'collection' && props.brick.plans ? [props.brick.plans.field] : undefined }))
 
 async function save() {
+  // The save button is only aria-disabled (below), so a keyboard press still lands here.
+  if (busy.value || (!dirty.value && props.entry)) return
   if (await form.save()) {
     if (!waiting.value) savedOnce.value = true
     if (form.created.value) emit('created', form.created.value)
@@ -433,7 +435,8 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
         </template>
 
         <div class="bar sticky bottom-0 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background py-3">
-          <Button type="submit" :disabled="busy || (!dirty && !!entry)">{{ busy ? (slow ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
+          <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
+          <Button type="submit" :aria-disabled="busy || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (slow ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
           <Button v-if="isDraft && !publishing" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
           <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
           <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>

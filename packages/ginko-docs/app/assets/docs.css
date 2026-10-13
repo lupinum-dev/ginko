@@ -14,7 +14,7 @@
   --background: light-dark(#ffffff, #09090b);
   --foreground: light-dark(#27272a, #fafafa);
   --muted: light-dark(#f4f4f5, #27272a);
-  --muted-foreground: light-dark(#71717a, #a1a1aa);
+  --muted-foreground: light-dark(#6b6b74, #a1a1aa);
   --accent: light-dark(#ecfdf5, #052e22);
   --accent-foreground: light-dark(#065f46, #6ee7b7);
   --secondary: light-dark(#f4f4f5, #27272a);
@@ -60,7 +60,7 @@
   --background: light-dark(#ffffff, #020617);
   --foreground: light-dark(#0f172a, #f8fafc);
   --muted: light-dark(#f1f5f9, #0f172a);
-  --muted-foreground: light-dark(#64748b, #94a3b8);
+  --muted-foreground: light-dark(#5f6f86, #94a3b8);
   --accent: light-dark(#f1f5f9, #1e293b);
   --card: light-dark(#ffffff, #020617);
   --popover: light-dark(#ffffff, #0f172a);
@@ -303,7 +303,7 @@
 .docs-prose > :where(p, ul, ol, dl, blockquote) { max-width: var(--docs-measure); }
 .docs-prose :where(p, li) { text-wrap: pretty; }
 .docs-prose > :first-child { margin-top: 0; }
-.docs-prose :where(p, ul, ol, dl, table, blockquote, figure) { margin: 0 0 1rem; }
+.docs-prose :where(p, ul, ol, dl, .docs-table, blockquote, figure) { margin: 0 0 1rem; }
 .docs-prose :where(h2, h3, h4) { color: var(--foreground); font-weight: 600; letter-spacing: -0.015em; scroll-margin-top: calc(var(--docs-top) + var(--docs-bar) + 1rem); }
 /* Standalone, the root's scroll-padding already clears header and bar; a heading margin on top would double it. */
 :root.docs-standalone .docs-prose :where(h2, h3, h4) { scroll-margin-top: 0; }
@@ -328,7 +328,8 @@
 .docs-prose hr { margin: 2.5rem 0; border: 0; border-top: 1px solid var(--border); }
 .docs-prose blockquote { padding-left: 1rem; border-left: 2px solid var(--border); color: var(--muted-foreground); }
 .docs-prose img { max-width: 100%; height: auto; border-radius: var(--radius); }
-.docs-prose table { display: block; width: 100%; max-width: 100%; overflow-x: auto; border-collapse: separate; border-spacing: 0; border: 1px solid var(--border); border-radius: var(--docs-r-box); font-size: 0.875rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.docs-prose .docs-table { width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--docs-r-box); }
+.docs-prose table { border-collapse: separate; border-spacing: 0; margin: 0; font-size: 0.875rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .docs-prose :where(th, td) { padding: 0.6875rem 0.875rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
 .docs-prose tr:last-child > td { border-bottom: 0; }
 .docs-prose th { background: var(--sidebar); color: var(--muted-foreground); font-size: 0.78125rem; font-weight: 600; white-space: nowrap; }

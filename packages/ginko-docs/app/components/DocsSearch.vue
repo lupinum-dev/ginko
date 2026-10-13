@@ -102,7 +102,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         >
         <button type="button" class="docs-kbd" @click="dialog?.close()">Esc</button>
       </div>
-      <div class="docs-search-body">
+      <div class="docs-search-body" tabindex="0" role="region" :aria-label="t('docs.searchResults')">
         <ul v-if="flat.length" id="docs-search-list" class="docs-search-results" role="listbox" :aria-label="t('docs.search')">
           <li v-for="(g, n) in groups" :key="n" role="group" :aria-labelledby="g.label ? `docs-hit-group-${n}` : undefined">
             <p v-if="g.label" :id="`docs-hit-group-${n}`" class="docs-search-group">{{ g.label }}</p>
