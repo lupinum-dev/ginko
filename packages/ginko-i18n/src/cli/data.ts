@@ -72,11 +72,16 @@ export function dirManifest(folder: string, defaultLocale: string): Manifest {
   if (!locales.length) throw new Error(`No <code>.json catalogs in ${folder}. Fix: point --dir at the folder with the message files.`)
   return { locales, defaultLocale, params: {}, sources: [{ dir: folder, origin: 'app' }], srcDirs: [], catalogDir: folder }
 }
+const caseTwin = (m: Manifest, code: string) => m.locales.find(l => l.code.toLowerCase() === code.toLowerCase())?.code
+/** The message for a code that is not a locale of `m`: the fix names its case twin, or else every code. */
+export function unknownLocale(m: Manifest, code: string, what = 'locale'): string {
+  const twin = caseTwin(m, code)
+  return `Unknown ${what}: ${code}. Fix: use ${twin ? `"${twin}"` : `one of ${m.locales.map(l => l.code).join(', ')}`}.`
+}
 /** --dir mode: adds a locale that has no file yet (`todo`/`apply` for a new language). A known code returns `m` unchanged. */
 export function withLocale(m: Manifest, code: string): Manifest {
   if (m.locales.some(l => l.code === code)) return m
-  const twin = m.locales.find(l => l.code.toLowerCase() === code.toLowerCase())
-  if (twin) throw new Error(`Unknown locale: ${code}. Fix: use "${twin.code}".`)
+  if (caseTwin(m, code)) throw new Error(unknownLocale(m, code))
   if (!LOCALE_CODE.test(code)) throw new Error(`Invalid locale: ${code}. Fix: use letters, digits and -.`)
   try {
     new Intl.PluralRules(code)

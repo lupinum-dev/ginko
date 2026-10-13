@@ -2,7 +2,7 @@
 import { parseArgs } from 'node:util'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { dirManifest, manifest, object, withLocale, type Manifest } from './data.ts'
+import { dirManifest, manifest, object, unknownLocale, withLocale, type Manifest } from './data.ts'
 import { apply, check, todo } from './commands.ts'
 
 const help = `ginko-i18n check [--locale <code>] [--html <dir>]
@@ -14,11 +14,10 @@ Exit: 0 success, 1 errors/rejected items, 2 usage/config error`
 /** A wrong command line: error code `usage`. Every other error (manifest, catalogs, input) is `config`. Both exit 2. */
 class UsageError extends Error {}
 
-/** A locale code from the command line must be a locale of `m`; the fix names its case twin, or else every code. */
+/** A locale code from the command line must be a locale of `m`. */
 function knownLocale(m: Manifest, code: string, what = 'locale') {
-  if (m.locales.some(l => l.code === code)) return code
-  const twin = m.locales.find(l => l.code.toLowerCase() === code.toLowerCase())
-  throw new UsageError(`Unknown ${what}: ${code}. Fix: use ${twin ? `"${twin.code}"` : `one of ${m.locales.map(l => l.code).join(', ')}`}.`)
+  if (!m.locales.some(l => l.code === code)) throw new UsageError(unknownLocale(m, code, what))
+  return code
 }
 
 // With --json, stdout is exactly one JSON object: `{ ok, ...fields }`, or `{ ok: false, error: { code, message } }`.
