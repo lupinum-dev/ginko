@@ -409,9 +409,9 @@ describe('week tokens', () => {
   it.each([
     [{ weekOf: '@workWeek' }, []],
     [{ handle: '@linde' }, []],
-    [{ weekOf: '@thisWeek' }, ['lunch.w.prefill.weekOf: “Woche” is not a valid date.']],
+    [{ weekOf: '@thisWeek' }, ['lunch.w.prefill.weekOf: unknown token “@thisWeek” (known: @today, @workWeek, @nextWorkWeek).']],
     [{ weekOf: 'tomorrow' }, ['lunch.w.prefill.weekOf: “Woche” is not a valid date.']],
-    [{ handle: '@today' }, ['lunch.w.prefill.handle: @today needs a date field.']],
+    [{ handle: '@today' }, ['lunch.w.prefill.handle: “@today” needs a date field.']],
   ])('prefill %j', (prefill, problems) => {
     expect(problemsOf(withPrefill(prefill))).toEqual(problems)
   })

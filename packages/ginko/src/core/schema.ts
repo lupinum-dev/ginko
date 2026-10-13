@@ -7,7 +7,7 @@ import { weekInfoOf } from './time.ts'
 import { componentProblems } from './components.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
-import { isPrefillToken, type Brick, type Currency, type Field, type Fields, type Json, type Locale, type Schema } from './types.ts'
+import { isPrefillToken, PREFILL_TOKENS, type Brick, type Currency, type Field, type Fields, type Json, type Locale, type Schema } from './types.ts'
 import { coreMessage } from './messages.ts'
 import { checkValue } from './validate.ts'
 
@@ -273,9 +273,11 @@ function schemaProblems(schema: Schema): string[] {
       for (const [name, value] of Object.entries('prefill' in task ? task.prefill ?? {} : {})) {
         const field = Object.hasOwn(brick.fields, name) ? brick.fields[name] : undefined
         const path = `${key}.${task.id}.prefill.${name}`
+        const token = isPrefillToken(value)
         if (!field) problems.push(`${path}: the field is missing.`)
-        else if (isPrefillToken(value)) { if (field.type !== 'date') problems.push(`${path}: ${value} needs a date field.`) }
-        else for (const p of checkValue(schema, field, value, path)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
+        else if (!token && field.type === 'date' && typeof value === 'string' && value.startsWith('@')) problems.push(`${path}: unknown token “${value}” (known: ${PREFILL_TOKENS.join(', ')}).`)
+        else if (!token) for (const p of checkValue(schema, field, value, path)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
+        else if (field.type !== 'date') problems.push(`${path}: “${value}” needs a date field.`)
       }
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
     }
