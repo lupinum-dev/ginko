@@ -1,7 +1,7 @@
 // Restaurant bricks with the owner's quick tasks. Labels and prefilled texts come in German and English; the site keeps
 // the texts of its own locales (`serializeSchema`), so a site in another language starts without them.
 import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate } from '@lupinum/ginko'
-import type { ChoicesField } from '@lupinum/ginko/internal'
+import type { ChoicesField, ListField } from '@lupinum/ginko/internal'
 import { allergenNames } from './names.ts'
 import { calendarOf, type HolidayCalendar, type HolidaysOption } from './holidays.ts'
 
@@ -54,12 +54,7 @@ const lunchPlaceholder = { de: 'Wird noch bekannt gegeben', en: 'To be announced
 
 const soldOutText = { de: 'Heute sind wir ausgebucht.', en: 'We are fully booked today.' }
 
-const lunchDefault = (withAllergens: boolean) => weekdays.slice(0, 5).map((d) => ({
-  _id: `ld${d.value}000000`,
-  day: d.value,
-  dish: lunchPlaceholder,
-  ...(withAllergens ? { allergens: [] } : {}),
-}))
+const lunchDefault = weekdays.slice(0, 5).map((d) => ({ _id: `ld${d.value}000000`, day: d.value, dish: lunchPlaceholder }))
 
 // The holiday calendar chosen in `hours({ calendar })`, for `hoursCalendarOf`. Not part of the schema: a symbol key
 // stays out of the serialized schema but survives `{ ...hours(), label: 'Hours' }`.
@@ -179,17 +174,16 @@ export function notices(opts: GastroOptions = {}) {
 /** The list of lunch days; `allergens` left out when the set is `'none'`. */
 function lunchDays<A extends AllergenSet>(allergens: A | undefined) {
   const choices = allergenChoices(allergens)
-  return f.list(both('Tage', 'Days'), {
-    itemLabel: both('Tag', 'Day'),
-    fields: {
-      day: f.choice(both('Tag', 'Day'), { options: weekdays.slice(0, 5) }),
-      dish: f.text(both('Gericht', 'Dish'), { max: 200 }),
-      price: f.money(both('Preis', 'Price'), { optional: true }),
-      ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) } : {}) as AllergenFields<A>,
-    },
-    min: 5, max: 5, unique: 'day',
-    default: lunchDefault(!!choices),
-  })
+  const columns = {
+    day: f.choice(both('Tag', 'Day'), { options: weekdays.slice(0, 5) }),
+    dish: f.text(both('Gericht', 'Dish'), { max: 200 }),
+    price: f.money(both('Preis', 'Price'), { optional: true }),
+  }
+  const list = { itemLabel: both('Tag', 'Day'), min: 5, max: 5, unique: 'day' } as const
+  // Each branch checks its own default rows; `allergens` exists only when the set is not 'none', which the type cannot see here.
+  return (choices
+    ? f.list(both('Tage', 'Days'), { ...list, fields: { ...columns, allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) }, default: lunchDefault.map((row) => ({ ...row, allergens: [] })) })
+    : f.list(both('Tage', 'Days'), { ...list, fields: columns, default: lunchDefault })) as ListField<typeof columns & AllergenFields<A>>
 }
 
 export function lunch<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { weekOf?: string; allergens?: A } = {}) {
@@ -236,32 +230,33 @@ export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: GastroOptio
 
 export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { allergens?: A } = {}) {
   const choices = allergenChoices(opts.allergens)
-  // `allergens` exists only when the set is not 'none', which the type cannot see here; the schema check covers it.
-  const dishFields = (choices ? ['category', 'name', 'description', 'price', 'allergens', 'veg'] : ['category', 'name', 'description', 'price', 'veg']) as readonly ('category' | 'name' | 'description' | 'price' | 'veg')[]
+  const fields = {
+    category: f.choice(both('Kategorie', 'Category'), {
+      options: [
+        { value: 'starters', label: both('Vorspeisen', 'Starters') }, { value: 'soups', label: both('Suppen', 'Soups') },
+        { value: 'mains', label: both('Hauptspeisen', 'Mains') }, { value: 'desserts', label: both('Desserts', 'Desserts') },
+        { value: 'drinks', label: both('Getränke', 'Drinks') },
+      ],
+    }),
+    name: f.text(both('Name', 'Name'), { max: 120 }),
+    description: f.longtext(both('Beschreibung', 'Description'), { max: 500, optional: true }),
+    price: f.money(both('Preis', 'Price')),
+    ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) } : {}) as AllergenFields<A>,
+    veg: f.choice(both('Vegetarisch', 'Vegetarian'), {
+      options: [
+        { value: 'none', label: both('nicht vegetarisch', 'not vegetarian') }, { value: 'vegetarian', label: both('vegetarisch', 'vegetarian') }, { value: 'vegan', label: both('vegan', 'vegan') },
+      ],
+    }),
+    // A planned price change: the site shows `nextPrice` from `priceFrom` on (see `priceOn`).
+    nextPrice: f.money(both('Neuer Preis', 'New price'), { optional: true }),
+    priceFrom: f.date(both('Neuer Preis gilt ab', 'New price applies from'), { optional: true }),
+  }
+  // `allergens` exists only when the set is not 'none', which the type cannot see here.
+  const dishFields = (choices ? ['category', 'name', 'description', 'price', 'allergens', 'veg'] : ['category', 'name', 'description', 'price', 'veg']) as readonly (keyof typeof fields & string)[]
   return collection({
     label: both('Speisekarte', 'Menu'),
     ...sourceOf(opts),
-    fields: {
-      category: f.choice(both('Kategorie', 'Category'), {
-        options: [
-          { value: 'starters', label: both('Vorspeisen', 'Starters') }, { value: 'soups', label: both('Suppen', 'Soups') },
-          { value: 'mains', label: both('Hauptspeisen', 'Mains') }, { value: 'desserts', label: both('Desserts', 'Desserts') },
-          { value: 'drinks', label: both('Getränke', 'Drinks') },
-        ],
-      }),
-      name: f.text(both('Name', 'Name'), { max: 120 }),
-      description: f.longtext(both('Beschreibung', 'Description'), { max: 500, optional: true }),
-      price: f.money(both('Preis', 'Price')),
-      ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) } : {}) as AllergenFields<A>,
-      veg: f.choice(both('Vegetarisch', 'Vegetarian'), {
-        options: [
-          { value: 'none', label: both('nicht vegetarisch', 'not vegetarian') }, { value: 'vegetarian', label: both('vegetarisch', 'vegetarian') }, { value: 'vegan', label: both('vegan', 'vegan') },
-        ],
-      }),
-      // A planned price change: the site shows `nextPrice` from `priceFrom` on (see `priceOn`).
-      nextPrice: f.money(both('Neuer Preis', 'New price'), { optional: true }),
-      priceFrom: f.date(both('Neuer Preis gilt ab', 'New price applies from'), { optional: true }),
-    },
+    fields,
     max: 150,
     order: 'manual',
     tasks: [
