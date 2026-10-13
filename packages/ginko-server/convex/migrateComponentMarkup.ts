@@ -70,9 +70,9 @@ async function rewriteChanges(ctx: MutationCtx, changes: Doc<'changes'>[], schem
     if (!fields) continue
     const patch: { before?: Data; after?: Data } = {}
     for (const key of ['before', 'after'] as const) {
-      const values = change[key] as Data | undefined
-      if (values === undefined || values === null) continue
-      const next = renameInValues(fields, values)
+      const values: unknown = change[key]
+      if (typeof values !== 'object' || values === null || Array.isArray(values)) continue
+      const next = renameInValues(fields, values as Data)
       if (JSON.stringify(next) !== JSON.stringify(values)) patch[key] = next
     }
     if (!Object.keys(patch).length) continue
