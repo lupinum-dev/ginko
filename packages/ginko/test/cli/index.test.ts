@@ -116,12 +116,19 @@ describe('ginko output and exit codes', () => {
   })
 })
 
-// Wrong behaviour caught: pnpm runs root scripts in the repository root, so a default ./ginko.config.ts made
-// local:dev start the platform and `nuxt dev` there instead of in a site.
-describe('pnpm local:dev', () => {
-  it('needs --config: exit 2 with USAGE, nothing started', async () => {
+describe('pnpm local:*', () => {
+  // Wrong behaviour caught: pnpm runs root scripts in the repository root, so a default ./ginko.config.ts made
+  // local:dev start the platform and `nuxt dev` there instead of in a site.
+  it('local:dev needs --config: exit 2 with USAGE, nothing started', async () => {
     const { code, stdout } = await run(['dev'], {}, monorepoMain)
     expect(code).toBe(2)
     expect(JSON.parse(stdout)).toEqual({ ok: false, error: { code: 'USAGE', message: 'local:dev needs --config <site>/ginko.config.ts.' } })
+  })
+
+  // Wrong behaviour caught: without the required-folder rule, import reaches importSite without a folder and exits 1.
+  it('local:import needs a folder: exit 2 with USAGE', async () => {
+    const { code, stdout } = await run(['import'], {}, monorepoMain)
+    expect(code).toBe(2)
+    expect(JSON.parse(stdout)).toEqual({ ok: false, error: { code: 'USAGE', message: 'local:import needs a folder: local:import <folder>.' } })
   })
 })
