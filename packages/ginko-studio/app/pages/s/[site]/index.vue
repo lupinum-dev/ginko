@@ -131,7 +131,17 @@ const open = ref<{ key: string; task: Task; entryId?: string } | null>(null)
 const openEntry = computed(() => (open.value?.entryId ? s.entries.value.find((e) => e._id === open.value!.entryId) : undefined))
 const picking = ref<{ key: string; task: Task } | null>(null)
 
+// Closing the sheets returns the focus to the button that started the task; the sheets are removed, so the browser has nowhere to put it back.
+let launcher: HTMLElement | null = null
+watch([open, picking], ([sheet, pick]) => {
+  if (sheet || pick || !launcher) return
+  const button = launcher
+  launcher = null
+  nextTick(() => { if (button.isConnected) button.focus() })
+})
+
 function start(key: string, task: Task) {
+  if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) launcher = document.activeElement
   const brick = s.schema.value!.bricks[key]!
   // "This week" while a planned week covers it: the same task edits that planned week (the one the website shows),
   // not the single's own fields, which would save without showing anywhere. The server allows it with this task.

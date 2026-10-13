@@ -92,6 +92,8 @@ async function finish(ok: boolean) {
   if (ok && !dirty.value && !waiting.value) emit('close')
 }
 async function save() {
+  // The save button is only aria-disabled (below), so a keyboard press still lands here.
+  if (busy.value || !ready.value) return
   if (form.blockers.size) nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
   await finish(await form.save())
 }
@@ -172,7 +174,8 @@ function onCancel(event: Event) {
           <Button type="button" variant="outline" @click="confirmClose = false">{{ t('entry.discard.keepEditing') }}</Button>
         </template>
         <template v-else>
-          <Button type="submit" class="flex-1" :disabled="busy || !ready">{{ busy ? (slow ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
+          <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
+          <Button type="submit" class="flex-1" :aria-disabled="busy || !ready ? 'true' : undefined">{{ busy ? (slow ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
           <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>
         </template>
       </footer>
