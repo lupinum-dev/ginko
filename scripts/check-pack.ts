@@ -58,9 +58,6 @@ function useTarballs(siteDir: string, extra: Record<string, string> = {}) {
   writeFileSync(path, JSON.stringify(pkg, null, 2))
 }
 
-const docsDev = JSON.parse(readFileSync(join(root, 'sites/docs/package.json'), 'utf8')).devDependencies
-const typeChecker = ['typescript', 'vue-tsc'].map((name) => `${name}@${docsDev[name]}`).join(' ')
-
 /** Runs one step in a site; a failure becomes a line of the report. */
 async function step(siteDir: string, name: string, cmd: string): Promise<string[]> {
   try {
@@ -88,8 +85,8 @@ async function checkSite(siteDir: string, checks: [string, RegExp][], { ginkoChe
   }
   return [
     ...await serve(siteDir, await freePort(), checks),
-    // A new site has no type checker; add the one sites/docs uses, for this check only.
-    ...await step(siteDir, 'typecheck', `npm install --no-save --no-audit --no-fund --loglevel=error ${typeChecker} && npx nuxi typecheck`),
+    // The starters ship their type checker (vue-tsc) and a `typecheck` script; the docs site has vue-tsc in its devDependencies.
+    ...await step(siteDir, 'typecheck', 'npx nuxi typecheck'),
     ...(ginkoCheck ? await step(siteDir, 'ginko check', 'npx ginko check') : []),
   ]
 }

@@ -24,6 +24,10 @@ describe('create-ginko', () => {
     // Wrong behaviour caught: a new site has no <title> or description until the owner finds `useGinkoSeo`.
     expect(read('plain', 'ginko.config.ts')).toMatch(/seo: \{ description: '.+' \}/)
     expect(read('plain', 'app/pages/index.vue')).toContain('useGinkoSeo(')
+    // `nuxt typecheck` needs both packages; it fails with a prompt to install them otherwise.
+    const pkg = JSON.parse(read('plain', 'package.json'))
+    expect(pkg.scripts.typecheck).toBe('nuxt typecheck')
+    expect(Object.keys(pkg.devDependencies)).toEqual(['typescript', 'vue-tsc'])
     // pnpm 11 exits 1 on `pnpm install` unless the starter allows esbuild's install script.
     expect(read('plain', 'pnpm-workspace.yaml')).toMatch(/^allowBuilds:\n  esbuild: true$/m)
     expect(result.stdout).toContain('Created plain from the plain starter in English.')
