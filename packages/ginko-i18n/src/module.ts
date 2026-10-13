@@ -94,7 +94,7 @@ function localizePages(pages: NuxtPage[], config: LocaleConfig): NuxtPage[] {
 }
 
 export default defineNuxtModule<ModuleOptions>({
-  meta: { name: '@lupinum/ginko-i18n', configKey: 'i18n', compatibility: { nuxt: '>=4.6.0' } },
+  meta: { name: '@lupinum/ginko-i18n', configKey: 'i18n', compatibility: { nuxt: '^4.6.0' } },
   defaults: { locales: [], seo: true, params: {} },
   async setup(options, nuxt) {
     const unknown = Object.keys(options).filter(k => !KNOWN.has(k))
