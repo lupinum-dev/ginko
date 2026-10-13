@@ -9,13 +9,14 @@ code blocks and more) come from `@lupinum/ginko-components`. Math (`$x^2$`, `$$�
 ## Use
 
 ```bash
-npm install @lupinum/ginko @lupinum/ginko-content @lupinum/ginko-docs
+npm install @lupinum/ginko @lupinum/ginko-content @lupinum/ginko-components @lupinum/ginko-docs
 ```
 
 ```ts
 // ginko.config.ts
 import { defineSite } from '@lupinum/ginko'
 import { docsCollection } from '@lupinum/ginko-docs/config'
+import { components } from '@lupinum/ginko-components/registry'
 
 const locales = ['en', 'de'] as const
 
@@ -27,9 +28,13 @@ export default defineSite({
   locales,
   currency: 'EUR',
   pages: { home: { en: '/', de: '/de' } }, // the start page is the page `home`
+  components, // the Markdown components: ::callout, ::tabs, ::steps …
   bricks: { docs: docsCollection(locales) },
 })
 ```
+
+`components` is the registry of `@lupinum/ginko-components`. With it, Ginko checks every component tag and prop in the
+pages; a site can add its own components next to it (see "Inside an existing site").
 
 The layer finds its content by brick key, so keep these names: `docs` (docsCollection), `home` (docsHome),
 `posts` and `authors` (blogCollections), `changelog` (changelogCollection). Only `docs` is required.
@@ -169,8 +174,9 @@ components: { ...components, /* the site's own components; same name wins */ },
   `data-theme` on `<html>`, so it fits a site that themes with that attribute.
 - **Error page:** the layer's `error.vue` shows a not-found page inside the site's layout, with links home and to
   the docs. A site with its own `error.vue` keeps it.
-- **Components:** the layer loads the Vue side of `@lupinum/ginko-components`, but the tags only parse when the
-  site's `components` include the registry (see above). Without it, `::callout` and friends are reported as unknown.
+- **Components:** the layer loads the Vue side of `@lupinum/ginko-components`. Pass the registry in the site's
+  `components` (see above): only then does Ginko check the tags and props in the pages. Without a registry, the
+  check accepts any tag, so a misspelled `::calout` goes through without an error.
 - **Title:** pages get the title `Page · Site name` from Ginko (`seo.titleTemplate` in `defineSite`). If the site
   already sets `app.head.titleTemplate` in `nuxt.config.ts`, set `seo: { titleTemplate: '%s' }` so the name is not
   added twice.
