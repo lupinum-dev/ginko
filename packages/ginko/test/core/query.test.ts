@@ -100,6 +100,13 @@ describe('query projection and facets', () => {
     expect(r.items).toHaveLength(1)
     expect(r.facets).toEqual({ veg: { none: 1, vegetarian: 1, vegan: 1 }, allergens: { A: 1, C: 1, G: 2 } })
   })
+
+  // Wrong behaviour caught: counting in a plain object turned `constructor` into a string and dropped `__proto__`.
+  it('facets count values that name Object.prototype members', () => {
+    const b = mini({ posts: { kind: 'collection', items: [item('a', { tag: 'constructor' }), item('b', { tag: 'constructor' }), item('c', { tag: '__proto__' }), item('d', { tag: 'js' })] } })
+    const tags = query(b, 'posts', { facets: ['tag'] }).facets!.tag!
+    expect(Object.entries(tags)).toEqual([['constructor', 2], ['__proto__', 1], ['js', 1]])
+  })
 })
 
 describe('query include', () => {

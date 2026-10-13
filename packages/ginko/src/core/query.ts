@@ -170,15 +170,16 @@ export function query(bundle: Bundle, brick: string, q: Query = {}, schema?: Que
   if (q.facets?.length) {
     facets = {}
     for (const field of q.facets) {
-      const counts: Record<string, number> = {}
+      // A Map, so a value such as `constructor` or `__proto__` counts like any other.
+      const counts = new Map<string, number>()
       for (const item of items) {
         const v = item.data[field]
         for (const one of Array.isArray(v) ? v : [v]) {
           const s = scalar(one)
-          if (s !== undefined) counts[String(s)] = (counts[String(s)] ?? 0) + 1
+          if (s !== undefined) counts.set(String(s), (counts.get(String(s)) ?? 0) + 1)
         }
       }
-      facets[field] = counts
+      facets[field] = Object.fromEntries(counts)
     }
   }
 
