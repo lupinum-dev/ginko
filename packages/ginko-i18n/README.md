@@ -323,7 +323,8 @@ nuxt.hook('ginko-i18n:sources', (sources) => {
 })
 ```
 
-`useI18n('cms')` then gives a translator whose keys are relative to that namespace.
+`useI18n('cms')` then gives a translator whose keys are relative to that namespace. `namespace` is
+required, so a library never overrides the app's own keys.
 
 ### Outside Nuxt
 
@@ -565,7 +566,7 @@ Remove `@nuxtjs/i18n` first: both modules cannot own the locale, and setup fails
 | `locales` | (required) | BCP 47 tags such as `'de-AT'`, or `{ language, code?, name? }`. The URL code defaults to the language subtag (`de-AT` → `de`); the name to the native name from `Intl.DisplayNames`. |
 | `defaultLocale` | first locale | The code of the locale with no prefix under `prefix_except_default`, and the fallback for missing messages: `'de'`, not `'de-AT'`. |
 | `strategy` | `'prefix_except_default'` | Or `'prefix'`: every locale has a prefix and `/` redirects. |
-| `seo` | `true` | Head tags: `lang`, `dir`, canonical, hreflang with x-default, `og:locale`. `false` turns them off. An object (`{}`) is the same as `true` today; it is reserved for per-tag switches. |
+| `seo` | `true` | Head tags: `lang`, `dir`, canonical, hreflang with x-default, `og:locale`. `false` turns them off. |
 | `baseUrl` | `runtimeConfig.public.siteUrl` | Absolute site URL for canonical and hreflang. Set it in production. |
 | `params` | `{}` | Parameters every message can use, for example `{ tone: 'sie' }` for `{tone, select, …}`. |
 | `exclude` | `[]` | Extra unprefixed paths. `/api/**` and Nuxt internals are always excluded. |

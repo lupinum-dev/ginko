@@ -9,16 +9,13 @@ import type { Params } from './core/messages.ts'
 
 export type { Alternate, AlternatesResolver, I18n, ServerI18n, TypedTranslator } from './runtime/types'
 
-/** Head-tag switches. No keys yet; the object form exists so that a switch can be added without a new option name. */
-export interface SeoOptions {}
-
 export interface ModuleOptions {
   locales: (string | LocaleInput)[]
   /** The URL code of the default locale (`'de'`, not `'de-AT'`). Default: the first locale. */
   defaultLocale?: string
   strategy?: Strategy
   /** Head tags: html lang/dir, canonical, hreflang + x-default, og:locale. */
-  seo?: boolean | SeoOptions
+  seo?: boolean
   /** Absolute site URL for canonical and hreflang. */
   baseUrl?: string
   /** Parameters every message can use, e.g. `{ tone: 'sie' }`. */
@@ -38,8 +35,10 @@ export interface PageI18n {
   locales?: string[]
 }
 
-export interface MessageSource { namespace?: string, dir: string }
-interface ResolvedSource extends MessageSource { origin: 'library' | 'layer' | 'app' }
+/** A library's messages: `dir` holds `<code>.json` files, read under the key `namespace` (required). */
+export interface MessageSource { namespace: string, dir: string }
+/** A message folder: a library's (namespaced), a layer's or the app's `i18n/`. */
+interface ResolvedSource { dir: string, namespace?: string, origin: 'library' | 'layer' | 'app' }
 
 declare module '@nuxt/schema' {
   interface NuxtHooks {
@@ -126,7 +125,12 @@ export default defineNuxtModule<ModuleOptions>({
       const sources: ResolvedSource[] = []
       const libraries: MessageSource[] = []
       await nuxt.callHook('ginko-i18n:sources', libraries)
-      for (const lib of libraries) sources.push({ ...lib, origin: 'library' })
+      for (const lib of libraries) {
+        // Without a namespace, a library's keys would merge into the app's and override them silently.
+        if (typeof lib.namespace !== 'string' || !lib.namespace || lib.namespace.includes('.'))
+          throw new Error(`[ginko-i18n] The ginko-i18n:sources entry for ${lib.dir} has no valid namespace (${JSON.stringify(lib.namespace)}). Fix: set a name without ".", e.g. { namespace: 'cms', dir }.`)
+        sources.push({ ...lib, origin: 'library' })
+      }
       const layers = [...nuxt.options._layers].reverse()
       layers.forEach((layer, index) => sources.push({ dir: join(layer.config.rootDir, 'i18n'), origin: index === layers.length - 1 ? 'app' : 'layer' }))
       return sources
