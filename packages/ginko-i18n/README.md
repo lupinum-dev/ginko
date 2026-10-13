@@ -572,11 +572,11 @@ Remove `@nuxtjs/i18n` first: both modules cannot own the locale, and setup fails
 | `params` | `{}` | Parameters every message can use, for example `{ tone: 'sie' }` for `{tone, select, …}`. |
 | `exclude` | `[]` | Extra unprefixed paths. `/api/**` and Nuxt internals are always excluded. |
 | `userLocale` | `[]` | Paths whose locale comes from the user (cookie, then `Accept-Language`), not the URL, for apps behind a login: `['/app/**']`. See [Apps and SaaS](#apps-and-saas). |
+| `timeZone` | `'UTC'` | IANA time zone of the site (`'Europe/Vienna'`) for timestamps in `format.date` and `{d, date}` / `{d, time}` in messages. Calendar dates (`2026-10-08`) always stay on their day. One call can use another zone: `t('key', params, { timeZone: site.timezone })`, e.g. in an app that shows times of a site somewhere else. |
 
 A pattern in `exclude` and `userLocale` is an exact path (`'/studio'`) or a prefix that ends in `/**`
 (`'/app/**'` matches `/app` and everything below it; `'/**'` matches every path). It starts with `/`.
 No other `*` is allowed: `'/app/*'` fails setup with a message.
-| `timeZone` | `'UTC'` | IANA time zone of the site (`'Europe/Vienna'`) for timestamps in `format.date` and `{d, date}` / `{d, time}` in messages. Calendar dates (`2026-10-08`) always stay on their day. One call can use another zone: `t('key', params, { timeZone: site.timezone })`, e.g. in an app that shows times of a site somewhere else. |
 
 Any other option fails setup with a message: Ginko i18n is not a drop-in for `@nuxtjs/i18n` options.
 
