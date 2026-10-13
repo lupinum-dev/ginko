@@ -26,7 +26,7 @@ Every factory takes `source`, plus its own options:
 |---|---|---|
 | `source` | the platform | `'files'` reads the brick from Markdown in `content/`, so it runs without the platform. |
 | `allergens` (`menu`, `lunch`, `lunchPlans`) | `'EU'` | `'EU'`, `'none'` (no allergen field), or your own `[{ value, label }]`. |
-| `weekOf` (`lunch`) | none | Required for a platform `lunch()`: the week the first menu starts (`YYYY-MM-DD`). Without it, `ginko check` rejects the new single. |
+| `weekOf` (`lunch`) | none | Required for a platform `lunch()`: the week the first menu starts (`YYYY-MM-DD`). Without it, `ginko check` rejects the new single. A platform `lunch()` also needs the main locale `de` or `en` (see [Outside Austria](#outside-austria)). |
 | `lunchBrick` (`lunchPlans`) | `'lunch'` | The key of the `lunch()` brick that planned weeks belong to. |
 | `route` (`events`, required) | none | The event page per locale, e.g. `{ en: '/events/[slug]' }`. |
 
@@ -96,7 +96,7 @@ Types: `HoursData`, `HoursContext`, `DayHours`, `DayRule` (what `hoursOn` return
 
 Defaults are Austrian (German and English labels, Austrian holidays, the 14 EU allergens). Change them per site:
 
-- Labels and prefilled texts (such as the lunch placeholder) come in German and English. The site keeps the texts of its own locales when its main locale is `de` or `en`; otherwise it starts without the prefilled texts. A code with a region such as `de-CH` does not count as `de`.
+- Labels and prefilled texts (such as the lunch placeholder) come in German and English. The site keeps the texts of its own locales when its main locale is `de` or `en`; otherwise it starts without the prefilled texts. A platform `lunch()` cannot start without them: its days need the placeholder dish, so with another main locale `ginko check` rejects the new single. Use `lunch({ source: 'files' })` there. A code with a region such as `de-CH` does not count as `de`.
 - `calendar` in the context of the hours rules: `'AT'` (default), `'DE'` (nationwide days only, no regional ones), `'SG'`, `'none'` (no public holidays), or your own `(year) => Holiday[]`. This is code, not an owner setting, and not part of `hours()`. Pass it to every call that reads holidays: `hoursOn({ hours, calendar }, date)`, `todayState({ hours, calendar }, today)`, `upcomingClosures` and `upcomingHolidayClosures`. A call without it counts Austrian holidays. Keep the value in one constant of your site so all calls agree. The stored field `holidays` (the owner's choice for those days: like Sunday, closed, normal) is a different thing and keeps its name.
 - Singapore's lunar, Islamic and Hindu holidays are a table for 2026 and 2027 (source: [MOM](https://www.mom.gov.sg/employment-practices/public-holidays)). Add a row each year; other years only know the fixed dates.
 - `allergens` on `menu()`, `lunch()` and `lunchPlans()`: `'EU'` (default), `'none'` (no field), or your own `[{ value, label }]`.
