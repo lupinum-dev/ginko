@@ -43,4 +43,12 @@ describe('GinkoMarkdown (plain Vue)', () => {
     expect(html).toContain('<input class="task-list-item-checkbox" type="checkbox" disabled="" aria-label="Offen">')
     expect(html.match(/<input/g)).toHaveLength(2)
   })
+
+  // Bug caught: a tree that skipped the parser (platform bundle) rendered script URLs and event handlers as they were.
+  test('a tree with javascript: URLs and onclick renders without those attributes', async () => {
+    const html = await render({ nodes: [['p', {}, ['a', { href: 'javascript:alert(1)', onclick: 'alert(2)' }, 'bad'], ' ', ['a', { href: '/ok' }, 'good'], ['img', { src: 'data:text/html,x', alt: 'i' }]]] })
+    expect(html).not.toMatch(/javascript:|onclick|data:/)
+    expect(html).toContain('<a>bad</a>')
+    expect(html).toContain('<a href="/ok">good</a>')
+  })
 })

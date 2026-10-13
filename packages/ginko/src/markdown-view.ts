@@ -3,7 +3,7 @@
 // Nuxt component (`nuxt/runtime/GinkoMarkdown.ts`) loads `{ ref }` values and renders through this one.
 import { defineComponent, h, type Component, type PropType } from 'vue'
 import { MarkdownDocument } from '@comark/vue'
-import type { MarkdownTree } from './core/index.ts'
+import { isSafeHref, URL_PROPS, type MarkdownTree } from './core/index.ts'
 
 // KaTeX and mermaid.js are not part of Ginko's bundle, so math and mermaid nodes show their source:
 // math as `<code class="math">`, mermaid as `<pre class="mermaid">` (the markup mermaid.js looks for).
@@ -57,6 +57,24 @@ function labelCheckboxes(node: Tree): Tree {
   return [tag, props, ...rest] as Tree
 }
 
+/**
+ * The parser refuses unsafe URLs and `on*` props at build or save time, but a tree can reach this component
+ * without the parser (a platform bundle, an import). So the renderer drops them too: an address prop that is not
+ * http(s), mailto, tel, relative or `#`, and every event handler prop. The element stays, without the attribute.
+ */
+function dropUnsafeProps(node: Tree): Tree {
+  if (!Array.isArray(node)) return node
+  const [tag, props, ...children] = node as [string | null, Record<string, unknown>, ...Tree[]]
+  const safe: Record<string, unknown> = {}
+  for (const [name, value] of Object.entries(props ?? {})) {
+    const key = name.replace(/^:/, '').toLowerCase()
+    if (key.startsWith('on')) continue
+    if (URL_PROPS.has(key) && (typeof value !== 'string' || !isSafeHref(value))) continue
+    safe[name] = value
+  }
+  return [tag, safe, ...children.map(dropUnsafeProps)] as Tree
+}
+
 export const GinkoMarkdown = defineComponent({
   name: 'GinkoMarkdown',
   props: {
@@ -66,6 +84,6 @@ export const GinkoMarkdown = defineComponent({
   },
   setup(props) {
     // The tree is plain JSON; comark's renderer takes the same `{ nodes }` shape.
-    return () => (props.value ? h(MarkdownDocument, { value: { nodes: props.value.nodes.map(labelCheckboxes) as never }, components: { ...sourceOnly, ...props.components } }) : null)
+    return () => (props.value ? h(MarkdownDocument, { value: { nodes: props.value.nodes.map((node) => labelCheckboxes(dropUnsafeProps(node))) as never }, components: { ...sourceOnly, ...props.components } }) : null)
   },
 })

@@ -35,6 +35,42 @@ describe('matchRedirect', () => {
   })
 })
 
+// Wrong behaviour caught: a splat that starts with a second slash or backslash turns the path into a scheme-relative URL to another host.
+describe('matchRedirect keeps path targets on the site', () => {
+  const rules: Redirect[] = [{ from: '/blog/*', to: '/:splat' }]
+  it.each([
+    ['/blog//evil.example', '/evil.example'],
+    ['/blog/%2F%2Fevil.example', '/%2F%2Fevil.example'],
+    ['/blog/\\evil.example', '/evil.example'],
+    ['/blog///\\/evil.example?x=1', '/evil.example?x=1'],
+    ['/blog/post', '/post'],
+  ])('%s', (path, to) => {
+    expect(matchRedirect(rules, path)).toEqual({ to, status: 301 })
+  })
+  it('leaves a full URL written in the rule alone', () => {
+    expect(matchRedirect([{ from: '/a', to: 'https://example.com/x' }], '/a')).toEqual({ to: 'https://example.com/x', status: 301 })
+  })
+})
+
+// Wrong behaviour caught: every request compiles all rules again (3 ms per 2000 rules, on each page view).
+describe('compiled rules are reused', () => {
+  it('reads a rule list once, and the entry rules of a bundle once', () => {
+    let reads = 0
+    const rules: Redirect[] = [{ get from() { reads++; return '/a' }, to: '/b' }]
+    expect(matchRedirect(rules, '/a')).toEqual({ to: '/b', status: 301 })
+    const afterFirst = reads
+    expect(afterFirst).toBeGreaterThan(0)
+    expect(matchRedirect(rules, '/a')).toEqual({ to: '/b', status: 301 })
+    expect(reads).toBe(afterFirst)
+
+    let entryReads = 0
+    const bundle = { bricks: { news: { kind: 'collection', get items() { entryReads++; return [{ id: 'n/a', data: { redirectFrom: '/alt' }, fallback: [], urls: { de: '/neu' } }] } } }, locale: 'de' } as unknown as Bundle
+    expect(findRedirect([], bundle, '/alt')).toEqual({ to: '/neu', status: 301 })
+    expect(findRedirect([], bundle, '/alt')).toEqual({ to: '/neu', status: 301 })
+    expect(entryReads).toBe(1)
+  })
+})
+
 describe('entryRedirects', () => {
   const bundle: Bundle = {
     format: 3,
@@ -75,6 +111,7 @@ describe('redirectProblems', () => {
     ['valid', [{ from: '/a', to: '/b' }], []],
     ['from without slash', [{ from: 'a', to: '/b' }], ['"a": path must start with "/".']],
     ['redirect to itself', [{ from: '/a', to: '/a/' }], ['"/a": redirect points to itself.']],
+    ['to starts with a parameter', [{ from: '/blog/*', to: '/:splat' }], ['"/blog/*": "to" starts with a parameter (/:splat). Start it with a fixed path such as "/new/:splat" so a visitor cannot choose the target host.']],
     ['duplicate from', [{ from: '/a', to: '/b' }, { from: '/a', to: '/c' }], ['"/a": defined more than once.']],
   ])('%s', (_name, rules, expected) => {
     expect(redirectProblems(rules)).toEqual(expected)

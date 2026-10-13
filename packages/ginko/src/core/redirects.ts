@@ -36,6 +36,17 @@ function compile(rule: Redirect): CompiledRule {
   return { rule, pattern: new RegExp(`^${source}${tail}$`), params, wildcard }
 }
 
+// Rules are compiled once per rule list (config rules are one stable array; entry rules are cached per bundle below),
+// not on every request. Keyed by identity: a list that is changed in place after its first match is not recompiled.
+const compiledRules = new WeakMap<readonly Redirect[], CompiledRule[]>()
+const entryRules = new WeakMap<Bundle, Redirect[]>()
+
+function compiledFor(rules: readonly Redirect[]): CompiledRule[] {
+  let compiled = compiledRules.get(rules)
+  if (!compiled) compiledRules.set(rules, compiled = rules.map(compile))
+  return compiled
+}
+
 /**
  * First matching rule wins. `from` may hold `:name` segments and one trailing `*`; `to` may use `:name` and `:splat`. Query strings of the request are kept.
  */
@@ -44,7 +55,7 @@ export function matchRedirect(rules: readonly Redirect[], path: string): { to: s
   const pathPart = trimSlash(queryStart === -1 ? path : path.slice(0, queryStart))
   const query = queryStart === -1 ? '' : path.slice(queryStart + 1)
 
-  for (const compiled of rules.map(compile)) {
+  for (const compiled of compiledFor(rules)) {
     const match = compiled.pattern.exec(pathPart)
     if (!match) continue
 
@@ -55,6 +66,9 @@ export function matchRedirect(rules: readonly Redirect[], path: string): { to: s
     values.splat = compiled.wildcard ? (match[match.length - 1] ?? '') : ''
 
     let to = compiled.rule.to.replace(/:([A-Za-z_]\w*)/g, (token, name: string) => values[name] ?? token)
+    // A path stays a path on this site: a substituted `//evil.example` would be read as another host.
+    // Targets written as full URLs in the rule (`https://…`) are not touched.
+    if (/^[/\\]/.test(to)) to = '/' + to.replace(/^[/\\]+/, '')
     if (query) to += (to.includes('?') ? '&' : '?') + query
     return { to, status: compiled.rule.status ?? 301 }
   }
@@ -63,7 +77,10 @@ export function matchRedirect(rules: readonly Redirect[], path: string): { to: s
 
 /** The redirect for `path`: the site's config rules first, then the entries' `redirectFrom` in the given bundle (the one of the path's locale). */
 export function findRedirect(rules: readonly Redirect[], bundle: Bundle | undefined, path: string): { to: string; status: 301 | 302 | 307 | 308 } | undefined {
-  return matchRedirect(rules, path) ?? (bundle ? matchRedirect(entryRedirects(bundle), path) : undefined)
+  if (!bundle) return matchRedirect(rules, path)
+  let fromEntries = entryRules.get(bundle)
+  if (!fromEntries) entryRules.set(bundle, fromEntries = entryRedirects(bundle))
+  return matchRedirect(rules, path) ?? matchRedirect(fromEntries, path)
 }
 
 /**
@@ -95,6 +112,7 @@ export function redirectProblems(rules: readonly Redirect[]): string[] {
   for (const { from, to } of rules) {
     if (!from.startsWith('/')) problems.push(`"${from}": path must start with "/".`)
     if (trimSlash(from) === trimSlash(to)) problems.push(`"${from}": redirect points to itself.`)
+    if (/^[/\\]?:/.test(to)) problems.push(`"${from}": "to" starts with a parameter (${to}). Start it with a fixed path such as "/new/:splat" so a visitor cannot choose the target host.`)
     if (seen.has(from)) problems.push(`"${from}": defined more than once.`)
     seen.add(from)
   }

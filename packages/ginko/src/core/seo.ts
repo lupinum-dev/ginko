@@ -97,3 +97,17 @@ export function faqLd(pairs: { question: string; answer: string }[]): Record<str
     mainEntity: pairs.map((p) => ({ '@type': 'Question', name: p.question, acceptedAnswer: { '@type': 'Answer', text: p.answer } })),
   }
 }
+
+/**
+ * Headers every response of a Ginko site carries. Only the platform may frame `/__ginko` (the preview); nothing
+ * else is framed. `nosniff` stops a browser from reading user text (`.md`, `llms.txt`, JSON) as HTML, and the
+ * referrer policy keeps full URLs from leaving the site.
+ */
+export function siteHeaders(input: { preview: boolean; platformOrigin: string; noindex: boolean }): Record<string, string> {
+  return {
+    'content-security-policy': input.preview && input.platformOrigin ? `frame-ancestors ${input.platformOrigin}` : `frame-ancestors 'self'`,
+    'x-content-type-options': 'nosniff',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+    ...(input.noindex ? { 'x-robots-tag': 'noindex' } : {}),
+  }
+}

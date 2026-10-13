@@ -1,16 +1,21 @@
 // `POST /__ginko/docs-mcp`: read-only MCP endpoint of the docs (see ../../mcp/handler.ts). It lives under `/__ginko/`
 // like the other generated endpoints, so it cannot collide with a page or with the platform's own `/mcp`.
-import { createError, defineEventHandler, readBody, setResponseStatus } from 'nuxt/server'
+import { createError, defineEventHandler, setResponseStatus } from 'nuxt/server'
 import indexes from '#ginko/search'
 import locales from '#ginko/locales'
 import { loadIndex, search, type SearchIndex } from '@lupinum/ginko/search'
-import { handleMcp } from '../../mcp/handler'
+import { handleMcp, readLimitedText } from '../../mcp/handler'
 
 const loaded = new Map<string, SearchIndex>()
 
 export default defineEventHandler(async (event) => {
   if (event.req.method !== 'POST') throw createError({ statusCode: 405, statusMessage: 'POST only' })
-  const response = await handleMcp(await readBody(event), {
+  // Over 1 MB: refuse before parsing (a plain Node host has no body limit of its own).
+  const raw = await readLimitedText(event.req)
+  if (raw === undefined) throw createError({ statusCode: 413, statusMessage: 'Request body too large (limit 1 MB)' })
+  let body: unknown
+  try { body = raw === '' ? undefined : JSON.parse(raw) } catch { throw createError({ statusCode: 400, statusMessage: 'Body must be JSON' }) }
+  const response = await handleMcp(body, {
     search(query, locale = locales.defaultLocale) {
       const json = Object.hasOwn(indexes, locale) ? indexes[locale as keyof typeof indexes] : undefined
       if (!json) return []

@@ -57,6 +57,19 @@ const TAGS: Record<Exclude<MarkdownProfile, 'page'>, ReadonlySet<string>> = {
 }
 // Component syntax can name any tag (`::script`). Without a component registry `page` accepts any tag
 // except BLOCKED_TAGS (components.ts); with one, only the registered components (ParseOptions.components).
+/**
+ * Attributes a text may not set (besides `on*`): `style` paints over the page, `id` can clash with the page's own
+ * ids (`__NUXT_DATA__` blanks it). Heading ids stay (the parser makes them), and so do props a registry declares.
+ */
+const BLOCKED_ATTRIBUTES: ReadonlySet<string> = new Set(['style', 'id'])
+
+/** What the parser itself writes: heading ids, footnote ids (`fn-1`, `fnref-1`) and the `text-align` of table cells. */
+function parserMade(tag: string, key: string, raw: unknown): boolean {
+  if (typeof raw !== 'string') return false
+  if (key === 'id') return (/^h[1-6]$/.test(tag) && !raw.startsWith('__')) || ((tag === 'a' || tag === 'li') && /^fn(ref)?-[\w-]+$/.test(raw))
+  return (tag === 'th' || tag === 'td') && /^text-align:(left|right|center)$/.test(raw)
+}
+
 /** Attributes that hold an address; their value must pass `isSafeHref`. */
 export const URL_PROPS: ReadonlySet<string> = new Set(['href', 'src', 'srcset', 'action', 'formaction', 'poster', 'xlink:href'])
 export const UNSAFE_LINK = msg('markdown.unsafeLink').message
@@ -172,6 +185,8 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
       let count = 0
       const fail = (problem: Described) => { if (!found.has(problem.message)) { found.add(problem.message); problems.push(problem) } }
       const slots = profile === 'page' && registry ? componentSlotNodes(state.tree.nodes, registry) : new Set<Node>()
+      // A prop the registry declares for this component is the site's own contract and stays.
+      const declaredProp = (tag: string, key: string) => !!registry && Object.hasOwn(registry, tag) && Object.hasOwn(registry[tag]!.props, key)
       const visit = (node: Node) => {
         count++
         if (typeof node === 'string' || node[0] === null) return
@@ -182,6 +197,7 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
           // `:name` is comark's bound form of the same prop.
           const key = name.replace(/^:/, '').toLowerCase()
           if (key.startsWith('on')) fail(msg('markdown.propBlocked', { prop: key }))
+          else if (BLOCKED_ATTRIBUTES.has(key) && !declaredProp(tag, key) && !parserMade(tag, key, raw)) fail(msg('markdown.propBlocked', { prop: key }))
           else if (URL_PROPS.has(key) && (typeof raw !== 'string' || !isSafeHref(raw))) fail(msg('markdown.unsafeLink'))
         }
         children.forEach(visit)

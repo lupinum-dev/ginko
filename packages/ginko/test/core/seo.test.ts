@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { articleLd, breadcrumbLd, faqLd, isPreviewHost, organizationLd, robotsTxt, seoHead, websiteLd, type SeoInput } from '../../src/core/index.ts'
+import { articleLd, breadcrumbLd, faqLd, isPreviewHost, organizationLd, robotsTxt, seoHead, siteHeaders, websiteLd, type SeoInput } from '../../src/core/index.ts'
 
 const base: SeoInput = { siteName: 'Site' }
 
@@ -130,5 +130,16 @@ describe('JSON-LD helpers', () => {
     ],
   ])('%s', (_label, actual, expected) => {
     expect(actual).toStrictEqual(expected)
+  })
+})
+
+describe('siteHeaders', () => {
+  // Wrong behaviour caught: user text served as HTML by sniffing, full URLs in the referrer, the preview framed by anyone or pages framed by the platform.
+  it.each([
+    [{ preview: false, platformOrigin: 'https://app.example', noindex: false }, { 'content-security-policy': "frame-ancestors 'self'", 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin' }],
+    [{ preview: true, platformOrigin: 'https://app.example', noindex: false }, { 'content-security-policy': 'frame-ancestors https://app.example', 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin' }],
+    [{ preview: true, platformOrigin: '', noindex: true }, { 'content-security-policy': "frame-ancestors 'self'", 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin', 'x-robots-tag': 'noindex' }],
+  ])('%j', (input, expected) => {
+    expect(siteHeaders(input)).toEqual(expected)
   })
 })
