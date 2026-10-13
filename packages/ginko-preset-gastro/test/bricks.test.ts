@@ -28,8 +28,9 @@ describe('labels', () => {
     const german = JSON.stringify(serializeSchema({ ...siteWith({ lunch: lunch(), notices: notices() }), locales: ['de'] }))
     expect(german).toContain('{"de":"Heute sind wir ausgebucht."}')
     expect(german).not.toContain('To be announced')
-    // A main locale the preset has no text for: the prefilled texts are left out, not stored without the main language.
-    const swiss = serializeSchema({ ...siteWith({ lunch: lunch(), notices: notices() }), locales: ['fr', 'de'], timezone: 'Europe/Zurich' })
+    // A main locale the preset has no text for: the prefilled texts are left out, not stored without the main language,
+    // even when the site has both of the preset's languages as well.
+    const swiss = serializeSchema({ ...siteWith({ lunch: lunch(), notices: notices() }), locales: ['fr', 'de', 'en'], timezone: 'Europe/Zurich' })
     expect(swiss.bricks.lunch!.fields.days!.default).toBeUndefined()
     expect(checkSchema(swiss)).toEqual([])
   })

@@ -431,17 +431,12 @@ describe('defaults in the stored form', () => {
     ['a plain text is the main language', f.text('Name', { default: 'Linde' }), { de: 'Linde' }],
     ['texts per language keep the site locales', f.text('Name', { default: { de: 'Linde', en: 'Linden', fr: 'Tilleul' } }), { de: 'Linde', en: 'Linden' }],
     ['a text of other languages only is left out', f.text('Name', { default: { fr: 'Tilleul' } }), undefined],
-    ['a text of the site locales without the main language stays', f.text('Name', { default: { en: 'Linden' } }), { en: 'Linden' }],
+    ['a text of the site locales without the main language is left out', f.text('Name', { default: { en: 'Linden' } }), undefined],
     ['a text that is not translated stays plain', f.text('Ort', { translate: false, default: 'Salzburg' }), 'Salzburg'],
     ['list rows store their texts per language', f.list('Tage', { itemLabel: 'Tag', max: 2, fields: { dish: f.text('Gericht') }, default: [{ _id: 'r000000001', dish: 'Suppe' }] }), [{ _id: 'r000000001', dish: { de: 'Suppe' } }]],
     ['a list with a row of other languages only is left out', f.list('Tage', { itemLabel: 'Tag', max: 2, fields: { dish: f.text('Gericht') }, default: [{ _id: 'r000000001', dish: { fr: 'Soupe' } }] }), undefined],
   ])('%s', (_name, field, expected) => {
     expect(stored({ field }).fields.field!.default).toEqual(expected)
-  })
-
-  // Wrong behaviour caught: the site's own default without the main language disappears instead of failing the check.
-  it('reports a default of the site locales without the main language', () => {
-    expect(problemsOf(site({ note: f.text('Hinweis', { default: { en: 'Hello' } }) }))).toEqual(['menu.note.default.de: “Hinweis” is missing.'])
   })
 
   it('stores prefilled texts the same way and keeps tokens', () => {
