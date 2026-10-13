@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
 import type { Locale, MarkdownValue } from '@lupinum/ginko'
-import { buildBundle, imageInfo, resolveRouteLinks, todayIn, type Bundle, type FileInfo, type Schema } from '@lupinum/ginko/internal'
+import { buildBundle, imageInfo, isVisible, resolveRouteLinks, todayIn, type Bundle, type FileInfo, type Schema } from '@lupinum/ginko/internal'
 import { hashOf, head } from './images.ts'
 import { makeVariants } from './variants.ts'
 import { readContent, type ContentError, type ReadOptions } from './read.ts'
@@ -35,6 +35,25 @@ export function withMarkdownRefs(bundle: Bundle, schema: Schema, trees: Map<stri
   const bricks = Object.fromEntries(Object.entries(bundle.bricks).map(([key, b]) => [key, b.kind === 'single'
     ? { ...b, data: swap(key, key, b.data) }
     : { ...b, items: b.items.map((item) => ({ ...item, data: swap(key, item.id, item.data) })) }]))
+  return { ...bundle, bricks }
+}
+
+/**
+ * The bundle a site serves to everyone (`/__ginko/files/*`, page state, search): items whose visibility window
+ * ended before `now` are left out (an expired offer is not private data to publish), and the repo path
+ * `source` is dropped unless `keepSource` is set (docs pages need it for their "Edit this page" link).
+ * Items whose window is current or still to come stay: the page filters them by date in the browser.
+ */
+export function publicBundle(bundle: Bundle, schema: Schema, now: Date, options: { keepSource?: boolean } = {}): Bundle {
+  const today = todayIn(schema.timezone, now)
+  const bricks = Object.fromEntries(Object.entries(bundle.bricks).map(([key, brick]) => {
+    if (brick.kind !== 'collection') return [key, brick]
+    const def = schema.bricks[key]
+    const items = brick.items
+      .filter((item) => !def || isVisible(def, item.data, today))
+      .map(({ source, ...item }) => (options.keepSource && source !== undefined ? { ...item, source } : item))
+    return [key, { ...brick, items }]
+  }))
   return { ...bundle, bricks }
 }
 

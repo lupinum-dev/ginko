@@ -16,6 +16,8 @@ const icons = [
 
 export default defineNuxtConfig({
   modules: ['@lupinum/ginko-components', '@nuxt/icon', here('./modules/pages')],
+  // Tells @lupinum/ginko to keep each page's repository path (`source`) in the served bundle, for "Edit this page".
+  appConfig: { docs: { editLinks: true } },
   css: [here('./app/assets/docs.css')],
   icon: {
     provider: 'none',

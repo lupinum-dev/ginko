@@ -6,7 +6,7 @@ import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 import { collection, defineSite, f, single } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
-import { buildFileBundles, readContent } from '../src/index.ts'
+import { buildFileBundles, publicBundle, readContent } from '../src/index.ts'
 
 const schema = serializeSchema(defineSite({
   site: 'doku', name: 'Doku', url: 'https://doku.example', timezone: 'Europe/Vienna',
@@ -154,6 +154,39 @@ describe('buildFileBundles', () => {
     // "Edit this page" on the English page must open the English file.
     const en = bundles.en!.bricks.docs!
     expect(en.kind === 'collection' && en.items.map((i) => i.source)).toEqual(['content/docs/1.einstieg.en.md', 'content/docs/2.zwei.md'])
+  })
+})
+
+describe('publicBundle', () => {
+  const events = serializeSchema(defineSite({
+    site: 'ev', name: 'Ev', url: 'https://ev.example', timezone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
+    bricks: {
+      events: collection({
+        label: 'Termine', source: 'files', max: 50, order: 'manual', visible: { mode: 'upcoming', field: 'when' },
+        route: { de: '/termine/[slug]' },
+        fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), when: f.daterange('Wann'), body: f.markdown('Text') },
+      }),
+    },
+  }))
+  const now = new Date('2026-10-08T10:00:00Z')
+
+  // Wrong behaviour caught: an expired entry (and its text) stays in the public file, or a current/future one is dropped, or repo paths leak.
+  it('drops entries whose window ended and the source path, and keeps current and future ones', async () => {
+    const s = site({
+      'content/events/1.vorbei.md': md('title: Vorbei\nwhen:\n  from: 2026-09-01\n  to: 2026-09-02', 'EXPIRED-MARKER'),
+      'content/events/2.heute.md': md('title: Heute\nwhen:\n  from: 2026-10-01\n  to: 2026-10-08'),
+      'content/events/3.bald.md': md('title: Bald\nwhen:\n  from: 2026-11-01\n  to: 2026-11-02'),
+    })
+    const { bundles, errors } = await buildFileBundles(s.content, s.public, events, now)
+    expect(errors).toEqual([])
+    const full = bundles.de!
+    expect(JSON.stringify(full)).toContain('EXPIRED-MARKER')
+    const served = publicBundle(full, events, now)
+    const brick = served.bricks.events!
+    expect(brick.kind === 'collection' && brick.items.map((i) => i.data.title)).toEqual(['Heute', 'Bald'])
+    expect(JSON.stringify(served)).not.toMatch(/EXPIRED-MARKER|"source"|content\/events/)
+    const kept = publicBundle(full, events, now, { keepSource: true }).bricks.events!
+    expect(kept.kind === 'collection' && kept.items.map((i) => i.source)).toEqual(['content/events/2.heute.md', 'content/events/3.bald.md'])
   })
 })
 

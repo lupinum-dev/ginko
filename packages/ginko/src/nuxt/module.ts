@@ -187,6 +187,8 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     for (const name of readdirSync(imageDir)) if (!keep.has(name)) rmSync(join(imageDir, name), { force: true })
   }
   ;(nuxt.options.nitro.publicAssets ??= []).push({ dir: imageDir, baseURL: '/_ginko/img', maxAge: 60 * 60 * 24 * 365 })
+  // The docs layer (@lupinum/ginko-docs) sets `appConfig.docs.editLinks`: its pages link to the file in the repository.
+  const editLinks = (nuxt.options.appConfig as { docs?: { editLinks?: boolean } }).docs?.editLinks === true
   const build = async () => {
     const result = await content.buildFileBundles(contentDir, publicDir, schema, new Date(), { drafts: nuxt.options.dev, imageDir })
     const report = result.errors.map((e) => `- ${content.errorLine(e)}`).join('\n')
@@ -203,7 +205,9 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     images = result.images
     writeImages(result.imageFiles)
     trees = new Map()
-    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, content.withMarkdownRefs(bundle!, schema, trees)]))
+    // What is served to everyone: no expired entries, no repo paths (kept only for the docs layer's "Edit this page" link).
+    const now = new Date()
+    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, content.withMarkdownRefs(content.publicBundle(bundle!, schema, now, { keepSource: editLinks }), schema, trees)]))
     searches = Object.fromEntries(Object.entries(bundles).map(([locale, bundle]) => [locale, content.searchIndex(bundle!, trees, schema)]))
   }
   await build()
