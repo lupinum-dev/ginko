@@ -12,7 +12,7 @@ export type ReleaseOutcome =
 
 export interface ReleaseInput {
   config: SiteInput
-  /** The commit this CI run builds (GITHUB_SHA). */
+  /** The commit this CI run builds (GINKO_COMMIT or GITHUB_SHA). */
   commit: string
   platform: Platform
   /** Head commit of origin/main (`git ls-remote origin main`). */

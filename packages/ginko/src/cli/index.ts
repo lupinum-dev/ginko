@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The `ginko` command: `ginko check | release | export | dev | import | pull`.
-// Reads GINKO_PLATFORM, GINKO_KEY and GITHUB_SHA from the environment (release, check, export and pull need the first two).
+// Reads GINKO_PLATFORM (or NUXT_PUBLIC_GINKO_PLATFORM), GINKO_KEY and GINKO_COMMIT (or GITHUB_SHA) from the environment (release, check, export and pull need the first two).
 import { execFile } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -23,7 +23,7 @@ const USAGE = `Usage: ginko <command> [--config <file>]
 Commands:
   check     Check ginko.config.ts and the links in content/, and for platform bricks the schema against production.
             Writes nothing. Platform bricks need GINKO_PLATFORM, GINKO_KEY.
-  release   Deploy the schema and content to production (CI). Needs GINKO_PLATFORM, GINKO_KEY, GITHUB_SHA.
+  release   Deploy the schema and content to production (CI). Needs GINKO_PLATFORM, GINKO_KEY, GINKO_COMMIT (or GITHUB_SHA).
   export    Save the schema, entries and files from production to a folder. Needs GINKO_PLATFORM, GINKO_KEY
             (scope export or pull). The folder must be new or empty.
   dev       (Ginko monorepo only) Start the local platform and site; schema changes go to the local platform at once.
@@ -107,11 +107,17 @@ async function mainCommit(deps: CliDeps): Promise<string> {
 
 const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms))
 
-function env(deps: CliDeps, name: string): string {
-  const value = deps.env[name]
-  if (!value) throw new CliError(`The environment variable ${name} is missing.`)
+/** The first set variable among these names; the error names the first one. */
+function env(deps: CliDeps, ...names: [string, ...string[]]): string {
+  const value = names.map((name) => deps.env[name]).find(Boolean)
+  if (!value) throw new CliError(`The environment variable ${names[0]} is missing.`)
   return value
 }
+
+// One CI secret serves the site and the CLI: the site reads NUXT_PUBLIC_GINKO_PLATFORM, so the CLI accepts it too.
+const PLATFORM_ENV = ['GINKO_PLATFORM', 'NUXT_PUBLIC_GINKO_PLATFORM'] as const
+// GITHUB_SHA is the GitHub name; GINKO_COMMIT works on any CI host.
+const COMMIT_ENV = ['GINKO_COMMIT', 'GITHUB_SHA'] as const
 
 export async function main(argv: string[], deps: CliDeps = realDeps()): Promise<number> {
   const args = parseArgs(argv)
@@ -129,7 +135,7 @@ export async function main(argv: string[], deps: CliDeps = realDeps()): Promise<
 
   // export, import and pull work on the hosted or local content only, so they need no config.
   if (args.command === 'export') {
-    const platform = createPlatform({ url: env(deps, 'GINKO_PLATFORM'), key: env(deps, 'GINKO_KEY'), fetch: request })
+    const platform = createPlatform({ url: env(deps, ...PLATFORM_ENV), key: env(deps, 'GINKO_KEY'), fetch: request })
     const site = siteOfKey(env(deps, 'GINKO_KEY'))
     const done = await exportSite({ platform, site, dir: args.out ?? defaultDir(site, new Date()), fetch: (url) => request(url), log: deps.log })
     deps.stdout(`${JSON.stringify({ export: done.dir, entries: done.entries, files: done.files })}\n`)
@@ -144,7 +150,7 @@ export async function main(argv: string[], deps: CliDeps = realDeps()): Promise<
       deps.stdout(`${JSON.stringify({ import: args.dir, entries: done.entries, files: done.files })}\n`)
       return 0
     }
-    const platform = createPlatform({ url: env(deps, 'GINKO_PLATFORM'), key: env(deps, 'GINKO_KEY'), fetch: request })
+    const platform = createPlatform({ url: env(deps, ...PLATFORM_ENV), key: env(deps, 'GINKO_KEY'), fetch: request })
     const done = await pull({ platform, site: siteOfKey(env(deps, 'GINKO_KEY')), fetch: (url) => request(url), log: deps.log, run, upload })
     deps.stdout(`${JSON.stringify({ pull: true, entries: done.entries, files: done.files })}\n`)
     return 0
@@ -152,7 +158,7 @@ export async function main(argv: string[], deps: CliDeps = realDeps()): Promise<
 
   // SPEC 5.1 step 1 comes first: a superseded run needs neither the config nor the platform credentials.
   if (args.command === 'release') {
-    const commit = env(deps, 'GITHUB_SHA')
+    const commit = env(deps, ...COMMIT_ENV)
     if ((await mainCommit(deps)) !== commit) {
       deps.stdout(`${JSON.stringify({ deploy: false, reason: 'superseded' })}\n`)
       return 0
@@ -160,7 +166,7 @@ export async function main(argv: string[], deps: CliDeps = realDeps()): Promise<
   }
 
   const config = await loadConfig(configPath)
-  const connect = () => createPlatform({ url: env(deps, 'GINKO_PLATFORM'), key: env(deps, 'GINKO_KEY'), fetch: request })
+  const connect = () => createPlatform({ url: env(deps, ...PLATFORM_ENV), key: env(deps, 'GINKO_KEY'), fetch: request })
   if (args.command === 'check') {
     // A site whose bricks all come from files has no platform: only its content links are checked.
     const filesOnly = Object.values(config.bricks).every((b) => b.source === 'files')
@@ -168,7 +174,7 @@ export async function main(argv: string[], deps: CliDeps = realDeps()): Promise<
   }
   const platform = connect()
 
-  const outcome = await release({ config, commit: env(deps, 'GITHUB_SHA'), platform, mainCommit: () => mainCommit(deps), sleep, log: deps.log })
+  const outcome = await release({ config, commit: env(deps, ...COMMIT_ENV), platform, mainCommit: () => mainCommit(deps), sleep, log: deps.log })
   deps.stdout(`${JSON.stringify(outcome.deploy ? { deploy: true, schemaRev: outcome.schemaRev, contentRev: outcome.contentRev } : outcome)}\n`)
   return 0
 }
