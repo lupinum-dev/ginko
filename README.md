@@ -52,7 +52,7 @@ cd apps/platform && pnpm e2e                                       # Studio test
 ```
 
 Docs for site developers: [sites/docs/content/docs](sites/docs/content/docs). Releases:
-[RELEASING.md](RELEASING.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Security reports:
+[RELEASING.md](RELEASING.md). Contributing: [CONTRIBUTING.md](.github/CONTRIBUTING.md). Security reports:
 [SECURITY.md](.github/SECURITY.md).
 
 ## License
