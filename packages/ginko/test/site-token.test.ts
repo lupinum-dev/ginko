@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { fetchBundle, SITE_TOKEN_HEADER } from '../src/nuxt/runtime/fetch.ts'
+import { fetchBundle, PlatformError, SITE_TOKEN_HEADER } from '../src/nuxt/runtime/fetch.ts'
 import type { GinkoPublicConfig } from '../src/nuxt/runtime/shared.ts'
 
 const bundle = readFileSync(fileURLToPath(new URL('../../../contracts/restaurant/bundle.format3.de.json', import.meta.url)), 'utf8')
@@ -50,5 +50,29 @@ describe('token stays private', () => {
 
   test('the app plugin reads it on the server only', () => {
     expect(src('../src/nuxt/runtime/plugin.ts')).toMatch(/import\.meta\.server \? \(useRuntimeConfig\(\)\.ginkoRevalidateToken/)
+  })
+})
+
+describe('fetchBundle when the platform is down', () => {
+  const down = () => vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('fetch failed') }))
+
+  // Wrong behaviour caught: a new dev site shows only "Content temporarily unavailable" and ECONNREFUSED, with no hint at `source: 'files'`.
+  test('dev (local platform): names the bricks, the address and both fixes', async () => {
+    down()
+    const error = await fetchBundle({ ...config, platform: 'http://localhost:3100' } as GinkoPublicConfig, 'de', undefined).catch((e) => e)
+    expect(error).toBeInstanceOf(PlatformError)
+    expect(error.statusCode).toBe(503)
+    expect(error.message).toContain('http://localhost:3100')
+    expect(error.message).toContain('"contact"')
+    expect(error.message).toContain("add source: 'files'")
+    expect(error.message).toContain('NUXT_PUBLIC_GINKO_PLATFORM')
+    expect(error.message).not.toContain('\n')
+  })
+
+  // Wrong behaviour caught: production leaks dev advice, or stops being a plain 503.
+  test('production keeps the plain 503 text', async () => {
+    down()
+    const error = await fetchBundle(config, 'de', undefined).catch((e) => e)
+    expect(error).toMatchObject({ statusCode: 503, message: 'Content temporarily unavailable' })
   })
 })
