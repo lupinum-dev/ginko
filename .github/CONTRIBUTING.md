@@ -40,8 +40,8 @@ The platform e2e tests need a local Convex backend; see the README.
   change for the people who use the package. Tooling, tests and docs-only changes need none.
 - Keep one topic per pull request. Fill in the pull request template.
 
-How releases work: [RELEASING.md](RELEASING.md).
+How releases work: [RELEASING.md](../RELEASING.md).
 
 ## Security
 
-Do not report vulnerabilities in a public issue. See [SECURITY.md](.github/SECURITY.md).
+Do not report vulnerabilities in a public issue. See [SECURITY.md](SECURITY.md).

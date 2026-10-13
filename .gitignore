@@ -6,8 +6,10 @@ dist
 .env.local
 .convex
 *.log
-.claude/
+.claude/*
+!.claude/CLAUDE.md
 test-results
 playwright-report
 .breakit
 .packs
+/release

@@ -24,25 +24,30 @@ pnpm check:pack   # packs the released packages, checks manifest, LICENSE and pu
 
 ## A release
 
-Once, before the first release:
+Handbook: [lupinum-oss, Releasing](https://github.com/lupinum-dev/lupinum-oss). `.github/workflows/release.yml` and
+`scripts/release.mjs` are the handbook's files; do not edit them here, copy them again from the handbook.
 
-1. `npm whoami` must be a member of the `@lupinum` npm org with publish rights (2FA or an automation token).
+1. Merging changesets into `main` makes `release.yml` open or update the **Version packages** pull request
+   (new versions and `CHANGELOG.md` files). It starts `ci` on that pull request.
+2. **Click 1:** read the diff of that pull request (only versions, `CHANGELOG.md` files and `.changeset/`), then merge it.
+3. `release.yml` builds and packs every public package whose version is not on npm yet.
+4. **Click 2:** approve the deployment to the `npm` environment in the Actions run. Read the run summary first
+   ("Release files unchanged since ..."). The job publishes with npm trusted publishing and provenance, then creates the
+   tag `v<version>` and the GitHub release.
 
-Every release, on `main` with a clean tree:
+There is no npm token. The pack job needs `pnpm build` to work and `scripts/release.mjs` to find no dependency
+cycle between the published packages (a peer dependency counts).
 
-```bash
-GITHUB_TOKEN=<token with repo read> pnpm changeset version   # bumps versions, writes CHANGELOG.md files
-git diff                                                      # read the changelogs
-pnpm install && pnpm check:pack
-git commit -am "chore(release): v$(node -p "require('./packages/ginko/package.json').version")"
-pnpm changeset publish                                        # publishes and creates the git tags
-git push --follow-tags
-```
+### First publication of the new packages
 
-`@changesets/changelog-github` needs `GITHUB_TOKEN` to link commits and pull requests.
-
-Later: publish from GitHub Actions with `changesets/action` and `NPM_CONFIG_PROVENANCE=true` (provenance
-needs a public repository and an OIDC publish).
+npm attaches a trusted publisher only to a package that exists. These packages are not on npm yet:
+`@lupinum/ginko`, `@lupinum/ginko-i18n`, `@lupinum/ginko-components`, `@lupinum/ginko-preset-gastro`, `create-ginko`.
+Follow "First publication of a new package" in the handbook: reject the `npm` deployment of the first run, download its
+`release` artifact, publish only those tarballs by hand with
+`npm publish ./release/<file>.tgz --access public --ignore-scripts --tag latest` (`--tag next` for a prerelease) and your 2FA code,
+then set on every package the trusted publisher (workflow `release.yml`, environment `npm`) and "Require two-factor
+authentication and disallow tokens". Then run `release.yml` by hand on `main`: it publishes the packages that already
+exist (`@lupinum/ginko-content`, `@lupinum/ginko-docs`) with provenance and creates the tag and GitHub release.
 
 ## Repository
 
@@ -56,4 +61,5 @@ Docs deploy: the shadcn registry items point at `<url>/r`, with `url` from `site
 ## CI
 
 `.github/workflows/ci.yml` runs typecheck, unit tests, `check:contracts` and `check:pack` on every pull
-request and push to `main`.
+request and push to `main`. Its `ci` job is the one required status check, and `release.yml` waits for it
+before it publishes.
