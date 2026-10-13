@@ -66,3 +66,30 @@ it('with GINKO_MAIL=resend, a code is sent through Resend and not stored, except
   const kept = await s.t.run((ctx) => ctx.db.query('outbox').collect())
   expect(kept.map((m) => [m.to, m.subject])).toEqual([['koechin@example.test', 'Einladung zu Gasthaus zur Linde'], ['koechin@example.test', 'Dein Anmeldecode']])
 })
+
+// Security review 13 Oct: sign-in proves the mailbox with a code. A password sign-up for an invited address would
+// skip that proof and take the invitation (or admin, for an address in GINKO_ADMIN_EMAILS).
+it('an invited address cannot sign up or sign in with a password', async () => {
+  const s = await setup()
+  await s.as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'gast@example.com', role: 'staff', grants: [] })
+  // As the Studio's auth proxy sends it: the visitor IP, signed with the shared proxy secret.
+  const secret = 'x'.repeat(32)
+  vi.stubEnv('BCN_AUTH_PROXY_IP_SECRET', secret)
+  vi.stubEnv('CONVEX_SITE_URL', 'https://platform.ginko.test')
+  vi.stubEnv('BETTER_AUTH_SECRETS', `0:${'a'.repeat(64)}`)
+  const ip = '203.0.113.7'
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  const signature = Buffer.from(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`v1\n${ip}`))).toString('base64url')
+  const post = (path: string, body: object) => s.t.fetch(`/api/auth/${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: 'https://ginko.test', 'x-bcn-client-ip': ip, 'x-bcn-client-ip-signature': signature },
+    body: JSON.stringify(body),
+  })
+  const credentials = { email: 'gast@example.com', password: 'a-long-attacker-password' }
+  expect((await post('sign-up/email', { ...credentials, name: 'Gast' })).ok).toBe(false)
+  expect((await post('sign-in/email', credentials)).ok).toBe(false)
+  // The same request shape still reaches the code sign-in, so the refusals above are not a broken request.
+  expect((await post('email-otp/send-verification-otp', { email: 'gast@example.com', type: 'sign-in' })).ok).toBe(true)
+  const codes = await s.t.run((ctx) => ctx.db.query('outbox').collect())
+  expect(codes.filter((m) => m.to === 'gast@example.com' && m.subject === 'Dein Anmeldecode')).toHaveLength(1)
+})

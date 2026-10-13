@@ -19,6 +19,9 @@ export const auth: BetterConvexAuth<DataModel> = createBetterConvexAuth<DataMode
   // The session token carries the email, so `ctx.auth` identity has `email` (lib/access.ts currentUser).
   defineSessionClaims: ({ user }) => ({ email: user.email }),
   emailOTP: { otpLength: 6, expiresIn: 5 * 60, allowedAttempts: 3 },
+  // Codes are the only way in: a code proves the mailbox, which the sign-up gate below relies on. The library turns
+  // email and password on unless it is switched off, and a password sign-up proves nothing about the address.
+  emailAndPassword: false,
   // Sign-up is limited to admin addresses and pending invitations; anyone else gets no account (and no code, see mail.queueCode).
   beforeUserCreate: async ({ ctx, user }): Promise<UserCreateDecision> => {
     const email = normalizeEmail(user.email)
