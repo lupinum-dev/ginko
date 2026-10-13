@@ -8,30 +8,28 @@
 "create-ginko": minor
 ---
 
-Ginko 0.4: one content system for Nuxt websites, from Markdown files in Git to a hosted platform that owners, staff and AI agents edit together. All packages release together under one version. It starts at 0.4 because `@lupinum/ginko-content` and `@lupinum/ginko-docs` already published an older, unrelated line up to 0.3. Until 1.0, a minor version (0.4 → 0.5) may contain breaking changes; the changelog names each one and how to update.
+Add Ginko 0.4, the first release: one content system for Nuxt websites, from Markdown files in Git to a hosted platform.
+
+Owners, staff and AI agents edit the same content. All seven packages release together under one version. It starts at 0.4 because `@lupinum/ginko-content` and `@lupinum/ginko-docs` already published an older, unrelated line up to 0.3. Until 1.0, a minor version (0.4 → 0.5) may contain breaking changes; the changelog names each one and how to update.
 
 Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm create ginko@latest my-site`; the documentation explains every step.
 
-Public API: `@lupinum/ginko` (`defineSite`, `single`, `collection`, `f`, `formatMoney`, `plainText`, `safeHref`, `weekStartOf` and the types; imported, not auto-imported), `@lupinum/ginko/nuxt` (the module, the `useGinko*` composables including `useGinkoLang` and `useGinkoSite`, `<GinkoMarkdown>`, `<GinkoImage>`), `@lupinum/ginko/vue` (`<GinkoMarkdown>`) and the search reader of `@lupinum/ginko/search` (`loadIndex`, `search` and their types). `@lupinum/ginko/internal` has no stability promise. The `ginko` CLI has `check [--offline]`, `release` and `export [folder]`; every run prints one JSON line and ends with exit code 0–4 (0 ok, 1 invalid, 2 usage, 3 platform unavailable, 4 key not allowed). The monorepo tools `pnpm local:dev`, `local:import` and `local:pull` run only in the Ginko repository.
+**Public API**
 
-Names to know: field helpers take one options object (`f.choice(label, { options })`, `f.ref(label, { to })`, `f.list(label, { itemLabel, fields, max })`); `useGinkoPath` gives page paths; `useGinkoNeighbors(brick, id, { order })`; `formatMoney` is imported from `@lupinum/ginko`, not auto-imported; `Query.order` also takes `{ field, dir }`; the option type is `ChoiceOption`. The CLI reads `GINKO_PLATFORM` or `NUXT_PUBLIC_GINKO_PLATFORM`, `GINKO_KEY`, `GINKO_COMMIT` or `GITHUB_SHA`, and for `release` `GINKO_BRANCH` (default `main`) and `GINKO_REMOTE` (default `origin`); it does not read `.env` files.
-
-**Names in the packages (renamed before 0.4, so nothing to migrate)**
-
-- `@lupinum/ginko-i18n`: the locale object type is `LocaleInfo` (core's `Locale` is the string). CLI: `check --html <dir>` (was `--site`), `--default-locale` (was `--default`), `todo --locale <code>` (`--to` still works). `seo` also takes an object. The finding codes are listed in the README.
-- `@lupinum/ginko-components` (these are the words editors write in Markdown): the heading is `title` on `aside`, `excerpt`, `tab`, `accordion-item`, `collapse` and `read-more` (was `label`); `timeline-item` `label` is `meta`; `badge` colour `error` (was `danger`); `layout` and `center` take `frame` (was `type`); `column` takes `fit` (was `media`); `api-param` takes the flag `required` (was `presence="required"`; the `?` marker of `presence="optional"` is gone).
-- `@lupinum/ginko-docs`: `docsCollection({ locales, base, label, max })`, `blogCollections({ locales, max })`, `blogPages({ locales })`, `changelogPages({ locales })` take one options object. The layer's composables are `useDocsBlog` and `useDocsCopy`; its helpers are no longer auto-imported into the host app.
-- `@lupinum/ginko-preset-gastro`: `hours({ calendar })` (was `holidays`; the stored field `holidays` is unchanged). The package lists its exports; date, holiday-table, `Money` and `weekOf` helpers are internal.
-- `@lupinum/ginko-content`: `buildFileBundles({ contentDir, publicDir, schema, now?, drafts?, imageDir? })`; `readContent` is internal.
-- Dependencies: `@lupinum/ginko` is a peer dependency of content, components, docs and the gastro preset (install it once in the site); `@lupinum/ginko-content` is a peer of docs, `@lupinum/ginko-i18n` a peer of components, and `sharp` an optional peer of content. `create-ginko` lists them in the new site.
+- `@lupinum/ginko`: `defineSite`, `single`, `collection`, `f`, `defineComponents`, `formatMoney`, `plainText`, `safeHref`, `startOfWeek` and the documented types. Imported, not auto-imported.
+- `@lupinum/ginko/nuxt`: the module, the `useGinko*` composables (everything that needs a Nuxt app starts with `useGinko`), `<GinkoMarkdown>` and `<GinkoImage>`. `@lupinum/ginko/vue`: `<GinkoMarkdown>` for any Vue app. `@lupinum/ginko/search`: `loadIndex` and `search`.
+- `@lupinum/ginko/internal` is for Ginko's own packages and has no stability promise.
+- The `ginko` CLI: `check [--offline]`, `release` and `export [folder]`, plus `--version`. Every run prints one JSON line (`{ "ok": true, … }` or `{ "ok": false, "error": { code, message } }`) and ends with exit code 0 (ok), 1 (fix the code), 2 (usage), 3 (platform unreachable, retry) or 4 (key not allowed). `release` deploys only on `"deploy": true`. The CLI reads `GINKO_PLATFORM`, `GINKO_KEY`, `GINKO_COMMIT` (or `GITHUB_SHA`), `GINKO_BRANCH` and `GINKO_REMOTE`; it does not read `.env` files. `ginko-i18n --json` uses the same output shape.
+- Config names: `f.ref` (one entry) and `f.refs` (several); `visible: { mode: 'until', field, days?, deleteExpired? }`; prefill tokens `@today`, `@workWeek`, `@nextWorkWeek`; `firstDayOfWeek`, `linkCheck`, `untranslated`, `maxBytes`, `Migration.compute`, `retired` rule `{ drop: true }`. Options and defaults are typed per field, and an unknown top-level key fails the build.
+- Markdown components: `embed`, `frame` (`none`, `card`, `border`, …), `background` (`none`, `muted`, `tint`), `appearance` (`quiet`, `tint`), `quiz-question{mode}`, `code-tree{file}`.
 
 **Content (`@lupinum/ginko`, `@lupinum/ginko-content`)**
 
 - One text format: Markdown (comark 0.7) everywhere, with field profiles that limit what a field may contain. Footnotes, emoji, alerts, Shiki code, task lists, route links (`$blog.my-post`), reusable snippets and heading anchors.
 - Data files: YAML and JSON (one file, one entry) and CSV (one file, many entries), checked against the field schema; every error names the file and field, and the line for CSV rows and unreadable files. Entries with `draft: true` stay out of production builds.
 - Query engine in the site, over the loaded bundle: `where`, `order`, `limit`, pagination with totals, field selection, `include` for references, previous/next and facet counts.
-- References (`f.ref`), navigation trees and breadcrumbs, and a URL for every entry in every language; two entries on one URL fail the build.
-- Link check before any HTML exists: route links, anchors, snippets and redirected paths, in the build, the dev terminal, `ginko check` and the agent tools. On the platform a save, a new entry or a scheduled publish that adds a broken link is stopped, and History says why. External links are checked on request (`links.external`), at build only, with a 7-day cache.
+- References (`f.ref`, `f.refs`), navigation trees and breadcrumbs, and a URL for every entry in every language; two entries on one URL fail the build.
+- Link check before any HTML exists: route links, anchors, snippets and redirected paths, in the build, the dev terminal, `ginko check` and the agent tools. On the platform a save, a new entry or a scheduled publish that adds a broken link is stopped, and History says why. External links are checked on request (`linkCheck.external`), at build only, with a 7-day cache.
 - Images: WebP copies at 480, 960 and 1600 px, made at upload on the platform and at build for files. `<GinkoImage>` and Markdown images get `srcset` and `sizes`.
 - Redirects from `redirectFrom` and site patterns, always 301.
 - SEO from the bundle: title template, canonical, Open Graph, `<html lang>`, hreflang with `x-default`, sitemap with `lastmod`, images and alternates, robots.txt with `noindex` on preview hosts, JSON-LD. With `nuxt-og-image` installed, every page without its own image gets a generated share card.
