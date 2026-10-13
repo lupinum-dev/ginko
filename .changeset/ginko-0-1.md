@@ -48,6 +48,7 @@ The platform is a hosted service, not an npm package. A site connects to it with
 - Team and invitations with per-task rights, sign-in with an emailed code, AI agent keys with an MCP tool catalog derived from the operations, and weekly reminder mails.
 - Long forms group their fields under headings or in tabs (`group` on a field, `layout: 'tabs'` on a brick); phones always show headings.
 - A rich text editor (TipTap 3) that writes Markdown, where untouched text stays byte for byte. Headings, lists, task lists, quotes, code blocks, tables, images from the library, embeds, registry components with prop forms, slash and bubble menus, Markdown shortcuts and paste, source mode, find and replace (⌘F), a drag handle and Alt+↑/↓ to move blocks, character counter, a link card for pasted URLs, uploads with progress, and a formatting bar above the phone keyboard.
+- Delete a site, with seven days to cancel, and delete your own account. The last owner of a site must hand it over or delete it first.
 - Studio in German, English and Spanish (beta), light and dark.
 
 **Presets (`@lupinum/ginko-preset-gastro`, `create-ginko`)**
