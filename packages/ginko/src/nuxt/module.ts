@@ -3,14 +3,13 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:f
 import { basename, join, relative, resolve as resolvePath } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Nuxt } from 'nuxt/schema'
-import { checkExternalLinks } from './external-links.ts'
+import { fileLinkIssues } from './external-links.ts'
 import { checkI18nOptions } from './i18n.ts'
 import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules } from './route-rules.ts'
 import { configFilesToWatch } from './watch.ts'
-import { checkLinks, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
-import { siteProblems } from '../core/site-keys.ts'
+import { checkSite, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
 const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
@@ -214,11 +213,9 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     const report = result.errors.map((e) => `- ${content.errorLine(e)}`).join('\n')
     if (result.errors.length && !nuxt.options.dev) throw new Error(`[ginko] Errors in content/:\n${report}`)
     if (result.errors.length) console.error(`[ginko] Errors in content/ (these files are missing from the site):\n${report}`)
-    // Link check (CONTENT.md): errors fail the build, warnings are printed. Paths of platform bricks are not known here, so unknown paths are checked only for sites with file bricks alone.
-    const onlyFiles = Object.values(schema.bricks).every((b) => b.source === 'files')
-    const links = checkLinks(Object.values(result.bundles) as Bundle[], schema, { linkCheck: site.linkCheck, redirects: site.redirects, files: onlyFiles ? (path) => existsSync(join(publicDir, path)) : undefined })
-    // Opt-in (`linkCheck.external`): asks the servers of outside links, so only on build / generate, never in dev.
-    if (!nuxt.options.dev) links.push(...await checkExternalLinks(Object.values(result.bundles) as Bundle[], { linkCheck: site.linkCheck, root: nuxt.options.rootDir, log: console.log }))
+    // Link check (CONTENT.md): errors fail the build, warnings are printed. External links (opt-in) ask other servers,
+    // so only on build / generate, never in dev.
+    const links = await fileLinkIssues({ bundles: Object.values(result.bundles) as Bundle[], schema, site, publicDir, root: nuxt.options.rootDir, log: console.log, external: !nuxt.options.dev })
     const linkReport = links.map((i) => `- ${i.locale}/${i.id} (${i.field}): ${coreMessage('en', i.key, i.params)}`).join('\n')
     if (links.some((i) => i.severity === 'error') && !nuxt.options.dev) throw new Error(`[ginko] Broken links:\n${linkReport}`)
     if (links.length) console.warn(`[ginko] Link check:\n${linkReport}`)

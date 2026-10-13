@@ -1,8 +1,9 @@
 // Opt-in check of `http(s)://` links over the network (`linkCheck.external`). Node only: core stays pure and lists the
 // targets (`externalLinks`); this file asks the servers. Runs on `nuxt build` / generate and `ginko check`, never in dev.
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+// `fileLinkIssues` is the whole link check of file content, the one entry for the build and `ginko check`.
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { externalLinks, msg, type Bundle, type LinkConfig, type LinkIssue } from '../core/index.ts'
+import { checkLinks, externalLinks, msg, type Bundle, type LinkConfig, type LinkIssue, type Schema, type SiteInput } from '../core/index.ts'
 
 const TIMEOUT_MS = 8000
 const CONCURRENCY = 4
@@ -109,5 +110,27 @@ export async function checkExternalLinks(bundles: Bundle[], options: ExternalLin
   })
   const broken = [...results.values()].filter((r) => r.broken).length
   options.log(`[ginko] external links: ${urls.length} checked, ${fresh.length} from cache, ${broken} broken`)
+  return issues
+}
+
+/**
+ * The link check of file content, shared by the Nuxt build (useFiles) and `ginko check`: route links, anchors,
+ * snippets and redirected paths, and with `external` the opt-in `http(s)://` check. Paths of platform bricks are not
+ * known here, so unknown paths (files in `public/`) are checked only for sites with file bricks alone.
+ */
+export async function fileLinkIssues(options: {
+  bundles: Bundle[]
+  schema: Schema
+  site: Pick<SiteInput, 'linkCheck' | 'redirects'>
+  publicDir: string
+  root: string
+  log: (line: string) => void
+  fetch?: Fetch
+  external: boolean
+}): Promise<LinkIssue[]> {
+  const { bundles, schema, site } = options
+  const onlyFiles = Object.values(schema.bricks).every((b) => b.source === 'files')
+  const issues = checkLinks(bundles, schema, { linkCheck: site.linkCheck, redirects: site.redirects, files: onlyFiles ? (path) => existsSync(join(options.publicDir, path)) : undefined })
+  if (options.external) issues.push(...await checkExternalLinks(bundles, { linkCheck: site.linkCheck, root: options.root, log: options.log, fetch: options.fetch }))
   return issues
 }
