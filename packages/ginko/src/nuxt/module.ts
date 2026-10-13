@@ -7,8 +7,10 @@ import type { Nuxt } from 'nuxt/schema'
 import { checkExternalLinks } from './external-links.ts'
 import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
+import { ginkoRouteRules } from './route-rules.ts'
 import { configFilesToWatch } from './watch.ts'
 import { checkLinks, checkSchema, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
+import { unknownSiteKeys } from '../core/site-keys.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
 const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
@@ -37,7 +39,7 @@ export default defineNuxtModule<SiteInput>({
     if (!site?.site || !site.bricks) throw new Error('[ginko] Option `ginko` is missing: the result of defineSite() from ginko.config.ts.')
     // The serialized schema is the site's own contract: checked at build, used at runtime for defaults.
     const schema = serializeSchema(site)
-    const problems = checkSchema(schema)
+    const problems = [...unknownSiteKeys(site), ...checkSchema(schema)]
     if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
 
     const { resolve } = createResolver(import.meta.url)
@@ -83,22 +85,15 @@ export default defineNuxtModule<SiteInput>({
     // Private runtime config (not `public`): `NUXT_GINKO_REVALIDATE_TOKEN` fills it at runtime. The server sends it as
     // `x-ginko-site-token`, so the platform does not count the site's own fetches against the visitor rate limit.
     nuxt.options.runtimeConfig.ginkoRevalidateToken ??= ''
-    // Only the bypass token makes Vercel regenerate a page on demand (SPEC 4.4).
-    nuxt.options.nitro.vercel = { ...nuxt.options.nitro.vercel, config: { ...nuxt.options.nitro.vercel?.config, bypassToken: process.env.NUXT_GINKO_REVALIDATE_TOKEN } }
+    // Only the bypass token makes Vercel regenerate a page on demand (SPEC 4.4). A token the site set itself wins.
+    const vercel = nuxt.options.nitro.vercel
+    nuxt.options.nitro.vercel = { ...vercel, config: { ...vercel?.config, bypassToken: vercel?.config?.bypassToken ?? process.env.NUXT_GINKO_REVALIDATE_TOKEN } }
 
-    // ISR for every page; queries share one cache entry so a refresh reaches them (ISR spike, question 5).
-    // The preview is never cached: the exact path and its children need their own rules (ISR spike).
     // No _payload.json on client navigation: Nuxt turns it on for every ISR route, and fetching it
     // renders the target on the server, which loads the production bundle. Pages read the bundle
     // already in the browser instead, so the preview never reaches production (SPEC 8).
     nuxt.options.experimental.payloadExtraction = false
-    const rules = (nuxt.options.routeRules ??= {})
-    rules['/**'] = { ...rules['/**'], isr: { expiration: 60, allowQuery: [] } }
-    // A site's own server routes pick their language from a header or cookie (ginko-i18n), so they are not cached.
-    rules['/api/**'] = { isr: false, ...rules['/api/**'] }
-    for (const path of ['/__ginko', '/__ginko/**']) {
-      rules[path] = { ...rules[path], isr: false, headers: { ...rules[path]?.headers, 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } }
-    }
+    nuxt.options.routeRules = ginkoRouteRules(nuxt.options.routeRules ?? {})
 
     // Generated share cards (nuxt-og-image): only with that module installed and one renderer for it. `#ginko/og`
     // is the one place that reaches nuxt-og-image, so a site without it never imports it.

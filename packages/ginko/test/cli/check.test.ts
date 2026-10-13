@@ -88,6 +88,13 @@ describe('ginko check and links in content files', () => {
     expect(offline.code).toBe(0)
   })
 
+  // Wrong behaviour caught: a typo such as `redirect` instead of `redirects` passes and does nothing.
+  it('reports an unknown key of the site config and exits 1', async () => {
+    const { code, lines } = await runCheck(siteWith('Text.', { ...config, redirect: [] }))
+    expect(lines.slice(0, 2)).toEqual(['ginko.config.ts is invalid:', expect.stringContaining('Unknown key “redirect”')])
+    expect(code).toBe(1)
+  })
+
   it('reports an invalid config and exits 1', async () => {
     // Pages are keyed by name, not by locale: the Nuxt build rejects this config.
     const { code, lines } = await runCheck(siteWith('Text.', { ...config, pages: { de: ['/'] } }))
