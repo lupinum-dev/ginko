@@ -7,7 +7,8 @@ const ISR_SECONDS = 60
 
 /**
  * Ginko's cache rules on top of the site's own (docs: 11.veroeffentlichen "Vercel"). Ginko only fills what the site
- * left unset; a more specific rule of the site wins anyway (Nitro merges rules by specificity).
+ * left unset, except under /__ginko/: there Ginko's `isr`, `cache-control` and `x-robots-tag` replace the site's, so
+ * the preview is never cached or indexed. A more specific rule of the site wins anyway (Nitro merges by specificity).
  */
 export function ginkoRouteRules(site: RouteRules): RouteRules {
   const rules = { ...site }

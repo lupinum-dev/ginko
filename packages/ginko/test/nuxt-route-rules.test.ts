@@ -19,4 +19,7 @@ test('build output under /__ginko/ is cached until the next deploy; the rest is 
   for (const path of ['/__ginko', '/__ginko/**']) {
     expect(rules[path]).toEqual({ isr: false, headers: { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } })
   }
+  // The documented exception to "the site wins": a site's cache header cannot make the preview cacheable.
+  expect(ginkoRouteRules({ '/__ginko/**': { isr: 60, headers: { 'cache-control': 'max-age=3600', 'x-a': '1' } } })['/__ginko/**'])
+    .toEqual({ isr: false, headers: { 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'x-a': '1' } })
 })
