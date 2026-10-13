@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest'
 import { ref } from 'vue'
 import type { Locale } from '../src/index.ts'
 import type { Bundle, Schema } from '../src/internal.ts'
-import { withUrl } from '../src/nuxt/runtime/shared.ts'
+import { agentRequest, withUrl } from '../src/nuxt/runtime/shared.ts'
 import { BUNDLE_STATE, TODAY_STATE, useGinkoLang, useGinkoBreadcrumbs, useGinkoEntry, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, useGinkoPath } from '../src/nuxt/runtime/composables.ts'
 import * as shim from './shims/imports.ts'
 import { i18nLocale, routePath, seoConfig, useState } from './shims/imports.ts'
@@ -183,6 +183,22 @@ describe('collection composables', () => {
     routePath.value = '/unbekannt'
     expect(useGinkoBreadcrumbs(['events'] as never).value).toEqual([])
     routePath.value = '/'
+  })
+})
+
+// Wrong behaviour caught: a page whose slug has a dot (`/blog/v1.2`) is taken for a file, so it gets no Link header
+// and `Accept: text/markdown` returns HTML although `/blog/v1.2.md` exists.
+describe('agentRequest', () => {
+  test.each([
+    ['/blog/v1.2', { page: '/blog/v1.2', asMarkdown: false }],
+    ['/blog/v1.2.md', { page: '/blog/v1.2', asMarkdown: true }],
+    ['/en/menu', { page: '/en/menu', asMarkdown: false }],
+    ['/index.md', { page: '/', asMarkdown: true }],
+    ['/__ginko/files/de.json', undefined],
+    ['/_ginko/img/abc.webp', undefined],
+    ['/_nuxt/entry.js', undefined],
+  ])('%s', (path, request) => {
+    expect(agentRequest(path)).toEqual(request)
   })
 })
 

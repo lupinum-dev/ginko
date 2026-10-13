@@ -10,8 +10,8 @@ import { localeFromPath } from '@lupinum/ginko-i18n/core'
 import schema from '#ginko/schema'
 import locales from '#ginko/locales'
 import fileBundles from '#ginko/files'
-import { entryMarkdown, findEntryByPath, markdownNotFound, markdownRequestPath, prefersMarkdown, type Bundle, type Locale } from '../../../internal.ts'
-import type { GinkoPublicConfig } from '../shared.ts'
+import { entryMarkdown, findEntryByPath, markdownNotFound, prefersMarkdown, type Bundle, type Locale } from '../../../internal.ts'
+import { agentRequest, type GinkoPublicConfig } from '../shared.ts'
 import { loadServerBundles } from './bundles.ts'
 import { markdownTrees } from './markdown-trees.ts'
 
@@ -19,12 +19,9 @@ export default defineEventHandler(async (event) => {
   const method = event.req.method
   if (method !== 'GET' && method !== 'HEAD') return
   const path = getRequestURL(event).pathname
-  if (/^\/(__ginko|_nuxt|_ginko)(\/|$)/.test(path)) return
-  const markdownPage = markdownRequestPath(path)
-  // Other files (images, feeds, robots.txt) are no pages: skip them without asking the platform.
-  if (markdownPage === undefined && /\.[^/]*$/.test(path)) return
-  const asMarkdown = markdownPage !== undefined
-  const pagePath = markdownPage ?? path
+  const request = agentRequest(path)
+  if (!request) return
+  const { page: pagePath, asMarkdown } = request
 
   const config = useRuntimeConfig().public.ginko as GinkoPublicConfig
   const locale = (localeFromPath(pagePath, locales) ?? locales.defaultLocale) as Locale
