@@ -28,14 +28,19 @@ export interface LocaleConfig {
   userLocale: string[]
 }
 
+/**
+ * A URL code: letters, digits and `-`, starting with a letter. Case is kept, so a canonical tag (`pt-BR`,
+ * `zh-Hant`) can be the URL code; see `canonicalCase`. The module and the CLI share this rule.
+ */
+export const LOCALE_CODE = /^[a-z][a-z0-9-]*$/i
+
 const RTL = new Set(['ar', 'arc', 'dv', 'fa', 'ha', 'he', 'khw', 'ks', 'ku', 'ps', 'sd', 'ur', 'yi'])
 
 export function resolveLocale(input: string | LocaleInput): LocaleInfo {
   const def = typeof input === 'string' ? { language: input } : input
   const tag = new Intl.Locale(def.language)
   const code = def.code ?? tag.language
-  // Case is kept, so a canonical tag (`pt-BR`, `zh-Hant`) can be the URL code; see `canonicalCase`.
-  if (!/^[a-z][a-z0-9-]*$/i.test(code))
+  if (!LOCALE_CODE.test(code))
     throw new Error(`[ginko-i18n] Locale code "${code}" must be letters, digits or "-". Fix: set \`code\` for ${def.language}.`)
   const name = def.name ?? nativeName(tag.baseName)
   return { code, language: tag.baseName, name, dir: RTL.has(tag.language) ? 'rtl' : 'ltr' }
@@ -76,13 +81,15 @@ export function resolveConfig(input: {
     codes.add(l.code.toLowerCase())
   }
   const wanted = input.defaultLocale ?? locales[0]!.code
-  const def = locales.find(l => l.code === wanted || l.language === wanted)
-  if (!def)
-    throw new Error(`[ginko-i18n] defaultLocale "${wanted}" is not in \`locales\` (${[...codes].join(', ')}).`)
-  for (const pattern of input.userLocale ?? []) {
-    if (!pattern.startsWith('/'))
-      throw new Error(`[ginko-i18n] i18n.userLocale pattern "${pattern}" must start with "/". Fix: write an exact path or a prefix such as "/app/**".`)
+  const def = locales.find(l => l.code === wanted)
+  if (!def) {
+    const tagged = locales.find(l => l.language === wanted)
+    throw new Error(tagged
+      ? `[ginko-i18n] defaultLocale "${wanted}" is a language tag, not a locale code. Fix: use "${tagged.code}".`
+      : `[ginko-i18n] defaultLocale "${wanted}" is not a locale code. Fix: use one of ${locales.map(l => `"${l.code}"`).join(', ')}.`)
   }
+  checkPatterns('exclude', input.exclude ?? [])
+  checkPatterns('userLocale', input.userLocale ?? [])
   return {
     locales,
     defaultLocale: def.code,
@@ -101,6 +108,18 @@ export function alternatesOf(paths: Partial<Record<string, string>>, config: Pic
   const links = config.locales.flatMap(l => paths[l.code] ? [{ hreflang: l.language, path: paths[l.code]! }] : [])
   const fallback = paths[config.defaultLocale]
   return fallback ? [...links, { hreflang: 'x-default', path: fallback }] : links
+}
+
+/**
+ * `exclude` and `userLocale` take an exact path (`/studio`) or a prefix (`/app/**`, which also matches
+ * `/app`). Anything else, such as `/app/*`, would silently match nothing, so it fails setup.
+ */
+function checkPatterns(option: string, patterns: string[]) {
+  for (const pattern of patterns) {
+    const base = pattern.endsWith('/**') ? pattern.slice(0, -3) : pattern
+    if (!pattern.startsWith('/') || base.includes('*'))
+      throw new Error(`[ginko-i18n] i18n.${option} pattern "${pattern}" is neither an exact path nor a prefix. Fix: write an exact path such as "/studio" or a prefix such as "/app/**".`)
+  }
 }
 
 function matchesPattern(path: string, patterns: string[]): boolean {

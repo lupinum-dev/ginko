@@ -1,10 +1,10 @@
-import { resolveConfig } from '@lupinum/ginko-i18n/core'
 import { addComponent, addComponentsDir, addImports, addPlugin, addServerHandler, addServerTemplate, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, extendPages, hasNuxtModule, installModule, tryResolveModule } from '@nuxt/kit'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { basename, join, relative, resolve as resolvePath } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Nuxt } from 'nuxt/schema'
 import { checkExternalLinks } from './external-links.ts'
+import { checkI18nOptions } from './i18n.ts'
 import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules } from './route-rules.ts'
@@ -66,14 +66,16 @@ export default defineNuxtModule<SiteInput>({
       sources,
     } })
     // Languages come from ginko.config: ginko-i18n owns URLs, hreflang, canonical and the site's own texts
-    // (i18n/<locale>.json). Other `i18n` options in nuxt.config (params, exclude) pass through.
+    // (i18n/<code>.json). The other `i18n` options in nuxt.config pass through; the ones Ginko sets fail.
+    // `i18n` is typed only where ginko-i18n's module types are loaded (a site), so it is read as unknown here.
+    checkI18nOptions((nuxt.options as { i18n?: unknown }).i18n)
     // Resolved from this package, not the site: with pnpm a site does not see @lupinum/ginko's own dependencies.
     const i18n = await tryResolveModule('@lupinum/ginko-i18n', import.meta.url)
     const locales = schema.locales.map((code) => ({ code, language: site.languages?.[code] ?? code }))
     await installModule(i18n ?? '@lupinum/ginko-i18n', { locales, defaultLocale: schema.locales[0], baseUrl: schema.url, timeZone: schema.timezone })
-    // The same pure resolution ginko-i18n runs on these options, for the server routes (sitemap hreflang).
-    const resolved = resolveConfig({ locales, defaultLocale: schema.locales[0] })
-    addServerTemplate({ filename: '#ginko/locales', getContents: () => `export default ${JSON.stringify(resolved)}` })
+    // The server routes (sitemap hreflang, redirects, Markdown) read the config ginko-i18n resolved, with
+    // its strategy, exclude and userLocale, so they never disagree with the module's own routes.
+    addServerTemplate({ filename: '#ginko/locales', getContents: () => `export { config as default } from '#ginko-i18n/config.mjs'` })
     // Redirect rules of the site config (patterns); entries add theirs from `redirectFrom` in the middleware.
     const redirects = site.redirects ?? []
     const redirectIssues = redirectProblems(redirects)

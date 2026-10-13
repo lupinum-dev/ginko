@@ -73,7 +73,7 @@ export default defineAppConfig({
 })
 ```
 
-Texts are not part of the config, they come from the site's own messages (`i18n/<locale>.json`), so every
+Texts are not part of the config, they come from the site's own messages (`i18n/<code>.json`), so every
 language has its own:
 
 ```json

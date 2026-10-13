@@ -1,7 +1,8 @@
-// Types shared by app and server runtime. No `#imports` here: the server type program loads this file.
-import type { Ref } from 'vue'
+// Types and the typed translator shared by app and server runtime. No `#imports` here: the server type
+// program loads this file.
+import type { ComputedRef, Ref } from 'vue'
 import type { RouteLocationNormalizedGeneric } from 'vue-router'
-import type { LocaleInfo, LocaleConfig, MessageTree, Params, Part, TranslateOptions } from '@lupinum/ginko-i18n/core'
+import type { Formatters, LocaleInfo, LocaleConfig, MessageTree, Params, Part, TranslateOptions, Translator } from '@lupinum/ginko-i18n/core'
 
 declare global {
   /**
@@ -41,6 +42,44 @@ export interface TypedTranslator<NS extends string = ''> {
   has: (key: KeysIn<NS>) => boolean
 }
 
+/** `t`, `parts` and `has` of `translator()` with keys relative to `namespace`. */
+export function typedTranslator<NS extends string>(translator: () => Translator, namespace?: NS): TypedTranslator<NS> {
+  const prefix = namespace ? `${namespace}.` : ''
+  return {
+    t: (key, ...params) => translator().t(prefix + key, params[0], params[1]),
+    parts: (key, ...params) => translator().parts(prefix + key, params[0], params[1]),
+    has: key => translator().has(prefix + key),
+  }
+}
+
+/** The result of `useI18n(namespace?)`. New members will not reuse these names. */
+export interface I18n<NS extends string = ''> extends TypedTranslator<NS> {
+  /** The current URL code (`'en'`). */
+  locale: ComputedRef<string>
+  /** The current BCP 47 tag (`'en-GB'`). */
+  language: ComputedRef<string>
+  locales: LocaleInfo[]
+  /** The default locale's code. */
+  defaultLocale: string
+  /** The same page in `code` (default: the current locale). Paths only, not route objects. */
+  localePath: (path: string, code?: string) => string
+  /** The current page in every locale, for a language switcher. */
+  alternates: ComputedRef<Alternate[]>
+  /** Go to the current page in `code`, or change the user's locale inside a user-locale zone. */
+  switchLocale: (code: string) => Promise<void>
+  /** Intl formatting in the current language and the site's time zone. */
+  format: Formatters
+}
+
+/** The result of `getI18n(event, namespace?)`: the request's locale as plain values. */
+export interface ServerI18n<NS extends string = ''> extends TypedTranslator<NS> {
+  /** The request's URL code (`'en'`). */
+  locale: string
+  /** The request's BCP 47 tag (`'en-GB'`). */
+  language: string
+  format: Formatters
+}
+
 export interface RuntimeConfig extends LocaleConfig {
   seo: boolean
   baseUrl: string
@@ -76,7 +115,7 @@ export interface I18nState {
   fixedLocale?: string
   /**
    * Libraries that own dynamic routes (a CMS) add a resolver here from their plugin. A page's own
-   * `definePageMeta({ alternates })` wins; otherwise the first resolver that returns paths does.
+   * `definePageMeta({ i18nAlternates })` wins; otherwise the first resolver that returns paths does.
    */
   resolvers: AlternatesResolver[]
 }

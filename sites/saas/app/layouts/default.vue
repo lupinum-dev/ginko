@@ -34,7 +34,7 @@ const cta = computed(() => safeHref(hero.value.data.buttonUrl))
       <nav class="langs" :aria-label="t('langNav')">
         <template v-for="(a, i) in alternates" :key="a.code">
           <span v-if="i" aria-hidden="true">·</span>
-          <NuxtLink :to="a.path" :hreflang="a.code" :lang="a.code" :aria-current="a.current ? 'true' : undefined" :class="{ current: a.current }">{{ a.code.toUpperCase() }}</NuxtLink>
+          <NuxtLink :to="a.path" :hreflang="a.language" :lang="a.language" :aria-current="a.current ? 'page' : undefined" :class="{ current: a.current }">{{ a.code.toUpperCase() }}</NuxtLink>
         </template>
       </nav>
       <a v-if="cta" class="button cta" :href="cta" rel="noopener" :lang="langOf(hero, 'buttonText')">{{ hero.data.buttonText }}</a>

@@ -1,4 +1,4 @@
-// The site's own routes and lookup tables. Fixed texts are ginko-i18n messages in i18n/<locale>.json.
+// The site's own routes and lookup tables. Fixed texts are ginko-i18n messages in i18n/<code>.json.
 // Content comes from the bundle. Opening-hours logic comes from the gastro preset.
 // Option labels in ginko.config.ts are editor text (SPEC 2), so visitor names live in code, per language:
 // allergens and weekdays from the preset, menu categories and veg labels here.

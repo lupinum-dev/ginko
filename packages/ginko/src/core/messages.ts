@@ -1,4 +1,4 @@
-// Every text core shows to a person has a catalog key (`i18n/<locale>.json`) and parameters next to the
+// Every text core shows to a person has a catalog key (`i18n/<code>.json`) and parameters next to the
 // German sentence. German is the source and the fallback. The Studio and the server translate with
 // `coreMessage(locale, key, params)`; the catalogs are exported as `coreCatalogs` for tools that merge them.
 // The catalogs are compiled ahead of time (scripts/compile-messages.ts): no ICU parser at runtime.

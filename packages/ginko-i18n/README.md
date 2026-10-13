@@ -68,14 +68,15 @@ export default defineNuxtConfig({
   modules: ['@lupinum/ginko-i18n'],
   i18n: {
     locales: ['de-AT', 'en-GB'], // URL codes become `de` and `en`
-    defaultLocale: 'de-AT', // `/ueber-uns` and `/en/about`
+    defaultLocale: 'de', // a URL code: `/ueber-uns` and `/en/about`
     baseUrl: 'https://example.com', // absolute canonical and hreflang URLs
   },
 })
 ```
 
 **2. Add one message file per locale** in `i18n/`, next to `nuxt.config.ts`. The file name is the URL
-code:
+code, not the language tag: `'de-AT'` has the code `de` (its language subtag, unless you set `code`), so
+its file is `de.json`:
 
 ```json
 // i18n/de.json
@@ -173,7 +174,7 @@ server HTML agree. The function runs on the server and on client navigation:
 ```ts
 // app/pages/blog/[slug].vue
 definePageMeta({
-  alternates: async (to, { locale, localePath }) => {
+  i18nAlternates: async (to, { locale, localePath }) => {
     const post = await $fetch<{ slugs: Record<string, string> }>('/api/post', { query: { slug: to.params.slug, locale } })
     return Object.fromEntries(Object.entries(post.slugs).map(([code, slug]) => [code, localePath(`/blog/${slug}`, code)]))
   },
@@ -185,7 +186,7 @@ translated. Link to content with the paths your content data provides, never wit
 `localePath('/blog/…')`: `localePath` translates app routes, not content slugs.
 
 A Nuxt module that owns dynamic routes for many pages (a CMS) registers one resolver from its plugin
-instead. A page's own `definePageMeta({ alternates })` wins; otherwise the first resolver that returns
+instead. A page's own `definePageMeta({ i18nAlternates })` wins; otherwise the first resolver that returns
 paths does:
 
 ```ts
@@ -323,7 +324,8 @@ nuxt.hook('ginko-i18n:sources', (sources) => {
 })
 ```
 
-`useI18n('cms')` then gives a translator whose keys are relative to that namespace.
+`useI18n('cms')` then gives a translator whose keys are relative to that namespace. `namespace` is
+required, so a library never overrides the app's own keys.
 
 ### Outside Nuxt
 
@@ -393,7 +395,8 @@ Auto-imported in components, pages and plugins.
 | `switchLocale(code)` | `Promise<void>` | Go to the current page in `code`, or change the user's locale inside a zone. |
 | `format` | object | Intl formatting in the current language, see below. |
 
-With a namespace, `useI18n('cms')` takes keys relative to it (`t('save')` for `cms.save`).
+With a namespace, `useI18n('cms')` takes keys relative to it (`t('save')` for `cms.save`). The result's
+type is `I18n<NS>`, for wrappers that take it as a parameter. New members will not reuse these names.
 
 A missing key renders the key itself (and warns in dev), never an empty string. A key missing in one
 locale shows the default locale's text.
@@ -438,16 +441,19 @@ For a module's Nuxt plugin that owns dynamic routes. The resolver gets the route
 `{ locale, localePath }` and returns a path per locale code, or `undefined` when the route is not its
 own. See [Dynamic pages](#dynamic-pages-cms-content).
 
-### `getI18n(event)`
+### `getI18n(event, namespace?)`
 
-Auto-imported in server routes. Returns `{ locale, language, t, parts, has, format }` for the request's
-locale, with the same typed keys and formatters as `useI18n()`. One difference: here `locale` is a
-plain string (`'en'`), while `useI18n().locale` is a `ComputedRef<string>`.
+Auto-imported in server routes. Returns `{ locale, language, t, parts, has, format }` (type
+`ServerI18n<NS>`) for the request's locale, with the same typed keys, namespace and formatters as
+`useI18n()`. One difference: here `locale` and `language` are plain strings (`'en'`), while
+`useI18n().locale` is a `ComputedRef<string>`.
 
 ### `definePageMeta`
 
 - `i18n`: `{ paths?, locales? }` or `false`. See [Locale options per page](#locale-options-per-page).
-- `alternates`: a resolver, as for `addAlternatesResolver`. See [Dynamic pages](#dynamic-pages-cms-content).
+- `i18nAlternates`: a resolver, as for `addAlternatesResolver`. See [Dynamic pages](#dynamic-pages-cms-content).
+  It is a key of its own, not part of `i18n`: Nuxt reads `i18n` at build time only while it is plain
+  data, so a function inside it would drop `paths` and `locales`.
 
 ### `@lupinum/ginko-i18n/core`
 
@@ -464,13 +470,15 @@ Framework-free and parser-free. See [Outside Nuxt](#outside-nuxt).
 | `stripLocale(path, config)` | Removes it: `/en/about` → `/about`. |
 | `localeFromPath(path, config)` | The code a path belongs to, or `undefined` (`/de/x` under `prefix_except_default`). |
 | `negotiateLocale(header, config)` | The best code for an `Accept-Language` header, or `undefined`. |
+| `isExcluded(path, config)` | Whether the path never gets a prefix (`exclude`, `/api/**`, Nuxt internals). |
+| `inUserZone(path, config)` | Whether the path is in a user-locale zone (`userLocale`). |
+| `canonicalCase(path, config)` | The path with its prefix in the code's own case (`/EN/about` → `/en/about`), or `undefined` when it is already right. |
+| `alternatesOf(paths, config)` | The hreflang links of a page from its path per code: `{ hreflang, path }[]`, with `x-default` for the default locale. The head tags and the sitemap use it. |
+| `ogLocale(language)` | The `og:locale` form of a tag: `de-AT` → `de_AT`. |
+| `partsToString(parts)` | The plain text of a `parts()` result. |
 
 Types: `Translator`, `TranslateOptions`, `Params`, `Part`, `MessageTree`, `Catalog`, `Formatters`,
 `FormatterOptions`, `DateStyle`, `LocaleInfo`, `LocaleInput`, `LocaleConfig`, `Strategy`.
-
-### `@lupinum/ginko-i18n/internal`
-
-An entry for Ginko's own packages, with no compatibility promise. Do not import it in your code.
 
 ### `@lupinum/ginko-i18n/compile`
 
@@ -479,15 +487,16 @@ Build time only: it loads the FormatJS parser.
 | Export | Meaning |
 | --- | --- |
 | `compileCatalogs({ de, en })` | Compiles source catalogs per locale for `defineCatalog`. |
-| `compileTree(raw)` | Compiles one locale: `{ tree, params, numeric }`, where `params` lists each key's parameter names and `numeric` the ones used as numbers. |
+| `compileTree(raw)` | Compiles one locale: a `CompiledTree` `{ tree, params, numeric }`, where `params` lists each key's parameter names and `numeric` the ones used as numbers. |
 | `MessageError` | Thrown for invalid ICU. `key` and `source` name the message. |
 
-Types: `RawTree`.
+Types: `RawTree`, `CompiledTree`. The format inside `tree` is internal: it can change in any release,
+and an old tree is not detected. Compile again after an upgrade.
 
 ### Types from `@lupinum/ginko-i18n`
 
-`ModuleOptions`, `PageI18n`, `MessageSource` (for the `ginko-i18n:sources` hook), `Alternate`,
-`AlternatesResolver` and `TypedTranslator`.
+`ModuleOptions`, `PageI18n`, `MessageSource` (for the `ginko-i18n:sources` hook), `I18n` (the result of
+`useI18n`), `ServerI18n` (the result of `getI18n`), `Alternate`, `AlternatesResolver` and `TypedTranslator`.
 
 ## Message syntax
 
@@ -505,6 +514,10 @@ Messages are [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/for
 | Literal text | `'{'` and `'<'` (an apostrophe quotes) |
 
 Every `plural` and `select` needs an `other` case. Plural and number arguments are typed as `number`.
+
+Keys are names, and nesting separates them: `t('nav.about')` reads `{ "nav": { "about": … } }`. So a
+key must not contain `.` and must not be empty. The build, `compileTree` and the CLI fail on such a key
+and show the nested form to use.
 
 ## Coming from @nuxtjs/i18n
 
@@ -552,14 +565,18 @@ Remove `@nuxtjs/i18n` first: both modules cannot own the locale, and setup fails
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `locales` | (required) | BCP 47 tags such as `'de-AT'`, or `{ language, code?, name? }`. The URL code defaults to the language subtag (`de-AT` → `de`); the name to the native name from `Intl.DisplayNames`. |
-| `defaultLocale` | first locale | The locale with no prefix under `prefix_except_default`, and the fallback for missing messages. |
+| `defaultLocale` | first locale | The code of the locale with no prefix under `prefix_except_default`, and the fallback for missing messages: `'de'`, not `'de-AT'`. |
 | `strategy` | `'prefix_except_default'` | Or `'prefix'`: every locale has a prefix and `/` redirects. |
-| `seo` | `true` | Head tags: `lang`, `dir`, canonical, hreflang with x-default, `og:locale`. `false` turns them off. An object (`{}`) is the same as `true` today; it is reserved for per-tag switches. |
+| `seo` | `true` | Head tags: `lang`, `dir`, canonical, hreflang with x-default, `og:locale`. `false` turns them off. |
 | `baseUrl` | `runtimeConfig.public.siteUrl` | Absolute site URL for canonical and hreflang. Set it in production. |
 | `params` | `{}` | Parameters every message can use, for example `{ tone: 'sie' }` for `{tone, select, …}`. |
 | `exclude` | `[]` | Extra unprefixed paths. `/api/**` and Nuxt internals are always excluded. |
-| `userLocale` | `[]` | Paths whose locale comes from the user (cookie, then `Accept-Language`), not the URL, for apps behind a login: `['/app/**']`. Same syntax as `exclude`. See [Apps and SaaS](#apps-and-saas). |
+| `userLocale` | `[]` | Paths whose locale comes from the user (cookie, then `Accept-Language`), not the URL, for apps behind a login: `['/app/**']`. See [Apps and SaaS](#apps-and-saas). |
 | `timeZone` | `'UTC'` | IANA time zone of the site (`'Europe/Vienna'`) for timestamps in `format.date` and `{d, date}` / `{d, time}` in messages. Calendar dates (`2026-10-08`) always stay on their day. One call can use another zone: `t('key', params, { timeZone: site.timezone })`, e.g. in an app that shows times of a site somewhere else. |
+
+A pattern in `exclude` and `userLocale` is an exact path (`'/studio'`) or a prefix that ends in `/**`
+(`'/app/**'` matches `/app` and everything below it; `'/**'` matches every path). It starts with `/`.
+No other `*` is allowed: `'/app/*'` fails setup with a message.
 
 Any other option fails setup with a message: Ginko i18n is not a drop-in for `@nuxtjs/i18n` options.
 
@@ -591,11 +608,26 @@ folder. Without source directories, `check` skips the unused-key check and sets
 npx ginko-i18n todo --dir locales --default-locale de --locale es --json
 ```
 
+In this mode `todo` and `apply` also accept a locale that has no file yet, such as `es`
+above: `apply` then creates `es.json`.
+
 Relative build, input, and HTML paths resolve from the app directory. If the
 manifest is absent, the CLI runs the app's local `nuxt prepare` once. Preparation
 writes Nuxt build files; with an existing manifest, `check` only reads files.
-Preparation logs and apply warnings go to stderr. With `--json`, stdout contains
-one JSON value, including for usage and configuration errors.
+Preparation logs go to stderr. The manifest has a `version`; a CLI of another
+version refuses it (run `nuxt prepare` again).
+
+With `--json`, stdout is exactly one JSON object for every command, also for errors:
+
+| Result | Shape |
+| --- | --- |
+| `check` | `{ ok, summary, findings }` |
+| `todo` | `{ ok, locale, language, sourceLocale, sourceLanguage, params, glossary, items }` |
+| `apply` | `{ ok, written, rejected, warnings }` |
+| `--help` | `{ ok, help }` |
+| Usage or configuration error | `{ ok: false, error: { code, message } }`, where `code` is `usage` (the command line) or `config` (manifest, message files, apply input) |
+
+`ok` is `true` exactly when the exit code is `0`.
 
 `check` reports missing and extra translations, invalid ICU, parameter differences,
 incomplete plural categories, stale translations, unknown static keys, and unused
@@ -606,18 +638,25 @@ call suppresses unused warnings and sets `summary.unusedSkipped` to `true`.
 The scanner is a conservative text scan, not a JavaScript parser; comments and
 strings containing call-shaped text can count as usages.
 
-Use `check --locale <code>` to see only one locale's findings, for example while
-translating it.
+Use `check --locale <code>` to list only one locale's findings, for example while
+translating it. `ok`, `summary` and the exit code still count every finding, so an
+`unknown-key` error (which has no locale) still fails the run. An unknown code is a
+usage error.
 
 Use `check --html <built-html-directory>` to validate canonical URLs, self and
 reciprocal hreflang links, x-default, and HTML language. Error documents and
 noindex pages are ignored. URL paths identify local HTML files regardless of origin.
 
-`todo --locale <code>` (or `--to <code>`) lists missing and stale translations with their original ICU
-source, current translation when present, parameters, and static usage locations.
-Use `--only missing` or `--only stale` to narrow the list. Each item names its
-`target`: the file `apply` will write. Keys from a layer go to that layer's folder,
-which other sites may share; library keys go to the app.
+`todo --locale <code>` lists missing and stale translations. Each item has:
+
+- `key`, and `code`: `missing` or `stale`, as in the findings of `check`.
+- `file`: the file `apply` will write. Keys from a layer go to that layer's folder,
+  which other sites may share; library keys go to the app.
+- `source`: the default locale's ICU text, and `current`: the translation, when there is one.
+- `params`: the source's parameter names.
+- `usages`: static usages in the code, as `{ file, line }`.
+
+Use `--only missing` or `--only stale` to narrow the list.
 
 The JSON output also includes:
 
@@ -640,9 +679,10 @@ The JSON output also includes:
 compile and use the source parameters, except global parameters.
 Missing plural categories produce a warning in the result's `warnings` (with sample
 numbers, such as `many (e.g. 1000000)` for Italian) but do not reject a translation.
-Valid items are saved even if other items are rejected. Layer/app keys go to the
+Valid items are saved even if other items are rejected; `written` lists them as
+`{ key, file }`, `rejected` the others as `{ key, reason }`. Layer/app keys go to the
 source directory that defines the default message. Library keys go to the app's
-`i18n/<locale>.json`, including their namespace. Keys follow default-source order;
+`i18n/<code>.json`, including their namespace. Keys follow default-source order;
 unrelated keys remain, with two-space indentation and a trailing newline.
 The app's `i18n/i18n.lock.json` records the SHA-256 hash of each translated source.
 A changed hash produces a stale warning on subsequent checks. Do not edit source

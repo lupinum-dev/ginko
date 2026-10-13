@@ -1,4 +1,4 @@
-// Every text the server sends to a person (errors, mail) comes from a catalog in `i18n/<locale>.json`
+// Every text the server sends to a person (errors, mail) comes from a catalog in `i18n/<code>.json`
 // and is written in that person's language. German is the source language and the fallback: a locale
 // that lacks a key, or a locale nobody supports, shows the German text. A new language is a new
 // catalog file plus one import line in `CATALOGS`.

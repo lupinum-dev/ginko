@@ -24,8 +24,9 @@ stops with an error that names the fix. Unknown options also stop setup, so a co
 **Why:** the key is familiar. Two modules cannot both decide the locale, and a silent merge would
 produce wrong URLs that are hard to trace.
 
-**Now:** unchanged. Ginko core installs ginko-i18n and passes `locales`, `defaultLocale` and
-`baseUrl` from `ginko.config.ts`, so a Ginko site usually writes no `i18n:` block at all.
+**Now:** unchanged. Ginko core installs ginko-i18n and passes `locales`, `defaultLocale`, `baseUrl`
+and `timeZone` from `ginko.config.ts`; setting one of them under `i18n` in `nuxt.config` stops setup
+with a message. A Ginko site usually writes no `i18n:` block at all.
 
 ## D2. Messages use a subset of ICU MessageFormat, compiled at build time
 
@@ -97,9 +98,11 @@ need no helper of their own for this.
 
 ## D7. Dynamic pages declare their other-language versions before rendering
 
-**Choice:** `definePageMeta({ alternates: (to, { locale, localePath }) => … })`. The resolver runs
+**Choice:** `definePageMeta({ i18nAlternates: (to, { locale, localePath }) => … })`. The resolver runs
 inside the Nuxt app context, in the router guard, and its result is stored in the payload, so
-hydration and `_payload.json` reuse it.
+hydration and `_payload.json` reuse it. The key has the `i18n` prefix because page meta is one global
+namespace for every module. It is not inside `i18n`: Nuxt extracts `i18n` at build time only while
+it is plain data, so a function there would drop the page's `paths` and `locales`.
 
 **Why:** the language switcher and the `hreflang` tags must be right in the first HTML. When the
 alternates were computed during render instead, the switcher showed the previous page's links, the
@@ -115,8 +118,8 @@ site can override any single key.
 **Why:** one message system replaces a catalogue and fallback logic per library.
 
 **Now:** Ginko core installs ginko-i18n itself (`packages/ginko/src/nuxt/module.ts`), with the
-locales from `ginko.config.ts`. There is one owner for the list of locales; step A (fix 6) removes the
-remaining second copies.
+locales from `ginko.config.ts`. There is one owner for the list of locales. Ginko's server routes read
+`#ginko-i18n/config.mjs` through `#ginko/locales`, so there is one resolved config.
 
 ## D9. No language model inside the library
 
