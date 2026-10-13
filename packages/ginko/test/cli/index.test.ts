@@ -1,15 +1,22 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { main } from '../../src/cli/index.ts'
+import { main as monorepoMain } from '../../src/cli/monorepo.ts'
 import { CliError } from '../../src/cli/model.ts'
 import { PlatformError } from '../../src/cli/platform.ts'
 import { exitCodeOf, type CliDeps } from '../../src/cli/run.ts'
 
-/** Runs the CLI and returns its exit code, the stdout text and the stderr lines. */
-async function run(argv: string[], deps: Partial<CliDeps> = {}) {
+/** Runs the CLI (`ginko` unless another is given) and returns its exit code, the stdout text and the stderr lines. */
+async function run(argv: string[], deps: Partial<CliDeps> = {}, cli = main) {
   const out: string[] = []
   const log: string[] = []
-  const code = await main(argv, { env: {}, git: async () => '', stdout: (text) => out.push(text), log: (line) => log.push(line), ...deps })
+  const code = await cli(argv, {
+    env: {},
+    git: async () => '',
+    stdout: (text) => out.push(text),
+    log: (line) => log.push(line),
+    ...deps,
+  })
   return { code, stdout: out.join(''), log }
 }
 
@@ -74,6 +81,7 @@ describe('ginko output and exit codes', () => {
     ['a site that kept changing', new PlatformError('CHANGED_SINCE', 'changed', 409), 3],
     ['a revoked key', new PlatformError('UNAUTHORIZED', 'no key', 401), 4],
     ['a key without the scope', new PlatformError('FORBIDDEN', 'not allowed', 403), 4],
+    ['a proxy that refuses access', new PlatformError('HTTP_401', 'HTTP 401', 401), 4],
     ['a key of another site', new CliError('The key belongs to the site “b”.', 'FORBIDDEN'), 4],
     ['an unexpected error', new Error('EACCES'), 1],
   ])('%s exits with %i', (_name, error, exit) => {
@@ -86,5 +94,15 @@ describe('ginko output and exit codes', () => {
     const version = await run(['--version'])
     const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }
     expect([version.code, version.stdout]).toEqual([0, `${pkg.version}\n`])
+  })
+})
+
+// Wrong behaviour caught: pnpm runs root scripts in the repository root, so a default ./ginko.config.ts made
+// local:dev start the platform and `nuxt dev` there instead of in a site.
+describe('pnpm local:dev', () => {
+  it('needs --config: exit 2 with USAGE, nothing started', async () => {
+    const { code, stdout } = await run(['dev'], {}, monorepoMain)
+    expect(code).toBe(2)
+    expect(JSON.parse(stdout)).toEqual({ ok: false, error: { code: 'USAGE', message: 'local:dev needs --config <site>/ginko.config.ts.' } })
   })
 })

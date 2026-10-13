@@ -10,7 +10,7 @@ import { defaultDir, exportSite, siteOfKey } from './export.ts'
 import { CliError } from './model.ts'
 import { createPlatform } from './platform.ts'
 import { release } from './release.ts'
-import { env, isEntryPoint, realDeps, runCli, type CliDeps, type ExitCode } from './run.ts'
+import { env, isEntryPoint, realDeps, runCli, type Args, type CliDeps, type ExitCode } from './run.ts'
 
 const USAGE = `Usage: ginko <command> [--config <file>]
 
@@ -62,6 +62,7 @@ const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms))
 export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCode> {
   const request = deps.fetch ?? ((url: string, init?: RequestInit) => fetch(url, init))
   const connect = () => createPlatform({ url: env(deps, ...PLATFORM_ENV), key: env(deps, 'GINKO_KEY'), fetch: request })
+  const configPathOf = (args: Args) => resolve(args.config ?? 'ginko.config.ts')
 
   return runCli(argv, deps, {
     prefix: 'ginko ',
@@ -71,7 +72,7 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
       check: {
         flags: ['--offline'],
         async run(args) {
-          const configPath = resolve(args.config)
+          const configPath = configPathOf(args)
           const config = await loadConfig(configPath)
           // A site whose bricks all come from files has no platform to compare with; --offline skips the comparison.
           const offline = args.flags.has('--offline')
@@ -88,7 +89,7 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           // SPEC 5.1 step 1 comes first: a superseded run needs neither the config nor the platform credentials.
           const commit = env(deps, ...COMMIT_ENV)
           if ((await branchHead(deps)) !== commit) return { deploy: false, reason: 'superseded' }
-          const config = await loadConfig(resolve(args.config))
+          const config = await loadConfig(configPathOf(args))
           return release({ config, commit, platform: connect(), branchHead: () => branchHead(deps), sleep, log: deps.log })
         },
       },

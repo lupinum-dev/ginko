@@ -32,14 +32,26 @@ export function realDeps(): CliDeps {
 /** 0 ok, 1 invalid or rejected (fix the code), 2 usage (fix the call), 3 unavailable (run again), 4 key not allowed. */
 export type ExitCode = 0 | 1 | 2 | 3 | 4
 
+/**
+ * The `error.code` of a failure: the CLI's own code, the platform's code, or UNEXPECTED for any other error (a bug or
+ * a local failure such as EACCES). Not INTERNAL: that is the platform's own 500, which exits 3, not 1.
+ */
+function codeOf(error: unknown): string {
+  return error instanceof CliError || error instanceof PlatformError ? error.code : 'UNEXPECTED'
+}
+
 /** The exit code of a failure. Only these rules decide it; every other error is a rejection (1). */
 export function exitCodeOf(error: unknown): ExitCode {
-  const code = error instanceof CliError || error instanceof PlatformError ? error.code : undefined
+  const code = codeOf(error)
   if (code === 'UNAUTHORIZED' || code === 'FORBIDDEN') return 4
   if (code === 'USAGE') return 2
   // CHANGED_SINCE reaches here only after every retry; the platform wrote nothing, so the same commit may run again.
   if (code === 'UNAVAILABLE' || code === 'CHANGED_SINCE') return 3
-  if (error instanceof PlatformError && (error.status >= 500 || error.status === 408 || error.status === 429)) return 3
+  if (error instanceof PlatformError) {
+    // A proxy or deployment protection in front of the platform answers 401/403 without Ginko's code: still access.
+    if (error.status === 401 || error.status === 403) return 4
+    if (error.status >= 500 || error.status === 408 || error.status === 429) return 3
+  }
   return 1
 }
 
@@ -54,7 +66,7 @@ export async function runCommand(deps: CliDeps, command: () => Promise<Record<st
     return 0
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    const code = error instanceof CliError || error instanceof PlatformError ? error.code : 'INTERNAL'
+    const code = codeOf(error)
     deps.log(error instanceof PlatformError ? `Error ${code}: ${message}` : message)
     deps.stdout(`${JSON.stringify({ ok: false, error: { code, message } })}\n`)
     return exitCodeOf(error)
@@ -64,8 +76,8 @@ export async function runCommand(deps: CliDeps, command: () => Promise<Record<st
 /** A parsed command line: `<command> [folder] [--config <file>] [--flag …]`. */
 export interface Args {
   command?: string
-  /** `--config`: the site's ginko.config.ts. */
-  config: string
+  /** `--config`: the site's ginko.config.ts. Each CLI decides what its absence means. */
+  config?: string
   /** The one positional argument after the command: the folder of `export` and `import`. */
   folder?: string
   /** Boolean options such as `--offline`; each command says which it accepts. */
@@ -73,7 +85,7 @@ export interface Args {
 }
 
 export function parseArgs(argv: string[]): Args {
-  const args: Args = { config: 'ginko.config.ts', flags: new Set() }
+  const args: Args = { flags: new Set() }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!
     if (arg === '--config') {
