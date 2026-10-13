@@ -58,6 +58,11 @@ describe('query order', () => {
     expect(ids(query(bundle, 'menu', { where: { category: 'mains' }, order: 'category' }, schema).items)).toEqual(['menu-schnitzel', 'menu-risotto', 'menu-dal'])
   })
 
+  it('takes the { field, dir } form of a brick order, same result as the string', () => {
+    expect(ids(query(bundle, 'events', { order: { field: 'price', dir: 'desc' } }, schema).items)).toEqual(['martinigans', 'weinabend', 'sommerfest'])
+    expect(ids(query(bundle, 'events', { order: { field: 'price' } }, schema).items)).toEqual(['weinabend', 'martinigans', 'sommerfest'])
+  })
+
   it('rejects an invalid order', () => {
     expect(() => query(bundle, 'menu', { order: 'price sideways' }, schema)).toThrow(/invalid order/)
   })

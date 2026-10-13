@@ -12,7 +12,7 @@ export { plainText, type MarkdownValue, type MarkdownTree, type MarkdownToc, typ
 export { weekStartOf, type WeekInfo } from './core/time.ts'
 export type { DataOf, ValueOf, BrickValue, ItemOf, Money, ImageValue, FileValue, UnknownChoice } from './core/infer.ts'
 export type { NavNode } from './core/navigation.ts'
-export type { Query, QueryResult, Condition } from './core/query.ts'
+export type { Query, QueryOrder, QueryResult, Condition } from './core/query.ts'
 export type {
   Locale, Currency, Label, Json, Localized, Option, PrefillToken, Task, Visibility, BrickSource,
   Field, FieldType, Fields, TextField, LongTextField, MarkdownField, NumberField, MoneyField, BooleanField, DateField,
