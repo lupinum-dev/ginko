@@ -44,7 +44,7 @@ export interface SiteInput {
    */
   pages: Record<string, string | Partial<Record<Locale, string>>>
   bricks: Record<string, Brick>
-  /** How the link check (`checkLinks`) rates findings; default `error` for broken links, `warn` for missing anchors. */
+  /** How the link check (`checkLinks`) rates findings; default: broken `error`, anchors and redirected `warn`; external links are checked only when `external` is set. */
   linkCheck?: LinkConfig
   /** Old URLs that answer with a redirect (patterns: `:name`, trailing `*`). Not part of the schema contract; entries add theirs with `redirectFrom`. */
   redirects?: Redirect[]
@@ -90,7 +90,7 @@ export type RouteTemplate = `/${string}[slug]${string}`
 
 export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly Task<F>[] }): SingleBrick<F> {
   // A task's prefill is typed by the brick's fields here and stored as JSON; TypeScript cannot relate the two for a generic `F`.
-  return { kind: 'single', ...input } as SingleBrick<F>
+  return { kind: 'single', ...input, tasks: input.tasks as readonly Task[] | undefined }
 }
 
 export function collection<const F extends Fields, const R extends Record<Locale, RouteTemplate> | undefined = undefined>(input: {
@@ -110,5 +110,5 @@ export function collection<const F extends Fields, const R extends Record<Locale
   drafts?: boolean
 }): CollectionBrick<F, R> {
   // See single(): the prefill types of the tasks.
-  return { kind: 'collection', ...input } as CollectionBrick<F, R>
+  return { kind: 'collection', ...input, tasks: input.tasks as readonly Task[] | undefined }
 }
