@@ -118,8 +118,8 @@ const normal = (path: string) => (path.length > 1 && path.endsWith('/') ? path.s
  * `resolveRouteLinks` could not resolve, and `/…` paths that match no entry URL, no page and no public file.
  * Warnings: a `#anchor` whose target text has no heading with that id. External links are not checked here (no network in core): see `externalLinks`.
  */
-export function checkLinks(bundles: Bundle[], schema: Pages & { linkCheck?: LinkConfig }, options: CheckLinksOptions = {}): LinkIssue[] {
-  const config = options.linkCheck ?? schema.linkCheck ?? {}
+export function checkLinks(bundles: Bundle[], schema: Pages, options: CheckLinksOptions = {}): LinkIssue[] {
+  const config = options.linkCheck ?? {}
   const levels = { broken: config.broken ?? 'error', anchors: config.anchors ?? 'warn', redirected: config.redirected ?? 'warn' }
   const rules = [...(options.redirects ?? []), ...bundles.flatMap(entryRedirects)]
   const known = new Set<string>()

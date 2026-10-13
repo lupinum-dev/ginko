@@ -68,7 +68,7 @@ describe('resolveRouteLinks', () => {
 })
 
 describe('checkLinks', () => {
-  const run = (nodes: unknown[], options = {}, extra = {}) => checkLinks([resolveRouteLinks(withText(...nodes), schema)], { ...schema, ...extra }, options)
+  const run = (nodes: unknown[], options = {}) => checkLinks([resolveRouteLinks(withText(...nodes), schema)], schema, options)
 
   it('reports a broken route link as error', () => {
     expect(run([link('$blog.nope')])).toMatchObject([{ severity: 'error', brick: 'blog', id: 'blog/other', href: '$blog.nope' }])
@@ -91,7 +91,7 @@ describe('checkLinks', () => {
     [{ anchors: 'error' }, 1],
   ] as const)('config %j maps severities', (links, count) => {
     const nodes = 'broken' in links ? [link('$blog.nope')] : [link('$blog.hallo#weg')]
-    const issues = run(nodes, {}, { linkCheck: links })
+    const issues = run(nodes, { linkCheck: links })
     expect(issues).toHaveLength(count)
     if (count) expect(issues[0]!.severity).toBe('broken' in links ? 'warn' : 'error')
   })
