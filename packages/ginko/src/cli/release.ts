@@ -27,8 +27,9 @@ export const RETRY_WAITS_MS = [2_000, 4_000, 8_000, 16_000, 32_000] as const
 export async function release(input: ReleaseInput): Promise<ReleaseOutcome> {
   const site = input.config.site
   for (let attempt = 0; ; attempt++) {
-    // 1. Only the newest commit of the release branch may release.
-    if ((await input.branchHead()) !== input.commit) return { deploy: false, reason: 'superseded' }
+    // 1. Only the newest commit of the release branch may release. The caller checks before the first try
+    // (index.ts, before it loads the config); a retry checks again, as a newer commit may have arrived while waiting.
+    if (attempt > 0 && (await input.branchHead()) !== input.commit) return { deploy: false, reason: 'superseded' }
 
     // 2–4. State, diff, candidate. Anything rejected stops here, before the platform is asked.
     const state = await input.platform.state(site)

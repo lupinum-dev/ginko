@@ -97,12 +97,23 @@ describe('ginko release and check against the platform (SPEC 5.1, 5.3)', () => {
     expect((await storedSite(s)).schemaRev).toBe(2)
   })
 
-  it('a commit that is no longer the head of main releases nothing', async () => {
+  it('a retry whose commit is no longer the head of main releases nothing', async () => {
+    sleeps = []
     const s = await setup()
-    const { platform, posts } = await platformFor(s)
+    let raced = false
+    const { platform, posts } = await platformFor(s, async () => {
+      // The first POST is stale (CHANGED_SINCE), and a newer commit lands on main while the CLI waits.
+      if (raced) return
+      raced = true
+      await s.t.run(async (ctx) => {
+        const site = (await ctx.db.get(s.site))!
+        await ctx.db.patch(s.site, { contentRev: site.contentRev + 1 })
+      })
+    })
     const outcome = await release(inputFor(platform, withTitle, COMMIT, 'ffffffffffffffffffffffffffffffffffffffff'))
     expect(outcome).toEqual({ deploy: false, reason: 'superseded' })
-    expect(posts()).toBe(0)
+    expect(posts()).toBe(1)
+    expect(sleeps).toEqual([2000])
     expect((await storedSite(s)).schemaRev).toBe(1)
   })
 
