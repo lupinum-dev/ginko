@@ -86,6 +86,7 @@ export const peek = query({
     const invite = await ctx.db.query('invites').withIndex('by_tokenHash', (q) => q.eq('tokenHash', sha256(args.token))).unique()
     if (!invite || invite.acceptedAt !== undefined || invite.expiresAt <= Date.now()) return null
     const site = (await ctx.db.get(invite.site))!
+    if (site.deleting) return null
     return { site: site.name, role: invite.role, forYou: !!user.email && normalizeEmail(user.email) === invite.email }
   },
 })
@@ -94,7 +95,10 @@ export const peek = query({
 async function claim(ctx: MutationCtx, user: { id: string }, invite: Doc<'invites'>) {
   await ctx.db.patch(invite._id, { acceptedAt: Date.now() })
   // The UI opens the site next, so the answer names it.
-  const site = (await ctx.db.get(invite.site))!.slug
+  const siteRow = (await ctx.db.get(invite.site))!
+  // A site that is being deleted takes nobody new.
+  if (siteRow.deleting) fail('NOT_FOUND', 'errors.inviteNotFound')
+  const site = siteRow.slug
   const existing = await ctx.db
     .query('memberships')
     .withIndex('by_user_site', (q) => q.eq('user', user.id).eq('site', invite.site))
@@ -139,7 +143,7 @@ export const mine = query({
     const rows = []
     for (const invite of invites.filter(isOpen)) {
       const site = await ctx.db.get(invite.site)
-      if (site) rows.push({ invite: invite._id, site: site.name, role: invite.role, expiresAt: invite.expiresAt })
+      if (site && !site.deleting) rows.push({ invite: invite._id, site: site.name, role: invite.role, expiresAt: invite.expiresAt })
     }
     return rows
   },

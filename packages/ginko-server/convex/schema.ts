@@ -34,6 +34,11 @@ export default defineSchema({
     digestAt: v.optional(v.number()),
     /** When the live site last proved it shows the current revision after a publish or an urgent refresh (ms). */
     lastRefreshAt: v.optional(v.number()),
+    /**
+     * Set when an owner or admin started the deletion: nobody opens the site except to cancel, the bundle answers as for an
+     * unknown site and keys stop working. `at` is when `siteDeletion.purge` (the scheduled `job`) removes everything.
+     */
+    deleting: v.optional(v.object({ at: v.number(), job: v.id('_scheduled_functions') })),
   }).index('by_slug', ['slug']),
 
   memberships: defineTable({
@@ -56,7 +61,7 @@ export default defineSchema({
     acceptedAt: v.optional(v.number()),
     /** The inviter's language: the invitee's mails until they have their own setting. */
     locale: v.optional(v.string()),
-  }).index('by_tokenHash', ['tokenHash']).index('by_site', ['site']).index('by_email', ['email']),
+  }).index('by_tokenHash', ['tokenHash']).index('by_site', ['site']).index('by_email', ['email']).index('by_expires', ['expiresAt']),
 
   admins: defineTable({ user: v.string() }).index('by_user', ['user']),
 
@@ -145,7 +150,7 @@ export default defineSchema({
     calls: v.optional(v.number()),
     /** Whether this key's writes are proposals (SPEC 17). Absent: the site's setting decides. */
     review: v.optional(v.boolean()),
-  }).index('by_hash', ['hash']).index('by_site_user', ['site', 'user']),
+  }).index('by_hash', ['hash']).index('by_site_user', ['site', 'user']).index('by_user', ['user']),
 
   /**
    * A change that needs a yes (SPEC 17). `args` are the arguments of the normal operation (with the
@@ -219,7 +224,7 @@ export default defineSchema({
     /** Library upload (SPEC 4.3): the file is kept and may go straight into a folder. */
     folder: v.optional(v.id('folders')),
     library: v.optional(v.boolean()),
-  }).index('by_tokenHash', ['tokenHash']).index('by_expires', ['expiresAt']),
+  }).index('by_tokenHash', ['tokenHash']).index('by_expires', ['expiresAt']).index('by_site', ['site']),
 
   /** Folders of the asset library (SPEC 3). A file is in at most one; absent `parent` means the top level. */
   folders: defineTable({
@@ -293,7 +298,7 @@ export default defineSchema({
     name: v.string(),
     /** `{ text?, filters?, sort? }`; the shape is checked by `views.save`. */
     query: v.any(),
-  }).index('by_site_user_brick', ['site', 'user', 'brick']),
+  }).index('by_site_user_brick', ['site', 'user', 'brick']).index('by_user', ['user']),
 
   /** Fixed-window request counter per site (bundle endpoint, 600 per minute); `window` = minute since epoch. */
   rateWindows: defineTable({ site: v.id('sites'), window: v.number(), count: v.number() })

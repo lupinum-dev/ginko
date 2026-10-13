@@ -185,6 +185,8 @@
     "fileTooBig": "El archivo es demasiado grande (máximo {max, number} MB).",
     "linkBroken": "El enlace «{link}» no lleva a ninguna parte. Corrígelo y guarda de nuevo.",
     "lastOwnerCannotBeRemoved": "No se puede eliminar al último propietario.",
+    "lastOwnerOfSites": "Eres el último propietario de {sites}. Añade primero otro propietario o elimina el sitio.",
+    "deleteSiteConfirm": "Escribe la dirección del sitio para confirmar.",
     "signInNotSetUp": "El inicio de sesión aún no está configurado.",
     "languageUnsupported": "Este idioma no está disponible.",
     "uploadExpired": "La subida ha caducado. Vuelve a elegir el archivo.",

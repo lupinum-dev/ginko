@@ -185,6 +185,8 @@
     "fileTooBig": "Die Datei ist zu groß (höchstens {max, number} MB).",
     "linkBroken": "Der Link „{link}“ führt ins Leere. Bitte korrigieren und noch einmal speichern.",
     "lastOwnerCannotBeRemoved": "Der letzte Besitzer kann nicht entfernt werden.",
+    "lastOwnerOfSites": "Du bist der letzte Inhaber von {sites}. Füge zuerst einen weiteren Inhaber hinzu oder lösche die Seite.",
+    "deleteSiteConfirm": "Bitte gib zur Bestätigung die Adresse der Seite ein.",
     "signInNotSetUp": "Anmeldung noch nicht eingerichtet.",
     "languageUnsupported": "Diese Sprache gibt es nicht.",
     "uploadExpired": "Der Upload ist abgelaufen. Bitte wähle die Datei noch einmal.",

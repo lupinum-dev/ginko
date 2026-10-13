@@ -185,6 +185,8 @@
     "fileTooBig": "The file is too large (at most {max, number} MB).",
     "linkBroken": "The link “{link}” leads nowhere. Please fix it and save again.",
     "lastOwnerCannotBeRemoved": "The last owner cannot be removed.",
+    "lastOwnerOfSites": "You are the last owner of {sites}. Add another owner or delete the site first.",
+    "deleteSiteConfirm": "Please type the address of the site to confirm.",
     "signInNotSetUp": "Sign-in is not set up yet.",
     "languageUnsupported": "This language is not available.",
     "uploadExpired": "The upload has expired. Please choose the file again.",
