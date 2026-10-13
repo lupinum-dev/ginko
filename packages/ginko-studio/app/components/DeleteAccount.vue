@@ -39,7 +39,7 @@ async function confirm() {
     <h2 id="delete-account-title" class="font-medium">{{ t('sites.deleteAccount.title') }}</h2>
     <p class="text-[13px] text-muted-foreground">{{ t('sites.deleteAccount.text') }}</p>
     <p v-if="problem" class="font-semibold text-destructive" role="alert">{{ problem }}</p>
-    <Button type="button" variant="destructive" class="justify-self-start" @click="open = true">{{ t('sites.deleteAccount.button') }}</Button>
+    <Button type="button" variant="outline" class="justify-self-start text-destructive hover:text-destructive" @click="open = true">{{ t('sites.deleteAccount.button') }}</Button>
 
     <Dialog v-model:open="open">
       <DialogContent class="sm:max-w-lg">
