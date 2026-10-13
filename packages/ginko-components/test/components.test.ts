@@ -62,6 +62,22 @@ describe('registry and components', () => {
     expect(await renderToString(app)).toMatch(new RegExp(`class="${ROOT[tag]}[^"]*"[^>]*data-appearance="tint"`))
   })
 
+  // `frame` and `background` are theming API like `appearance`, read by the CSS through data attributes. Stored Markdown
+  // and the components are a hard cut from `surface`/`data-type`, so a component left on the old names would lose its styling.
+  test.each([
+    ['::flow{background="muted"}\nText\n::', ['data-background="muted"']],
+    ['::flow\nText\n::', ['data-background="none"']],
+    [':::layout{frame="card" background="tint"}\n::column\nA\n::\n:::', ['data-frame="card"', 'data-background="tint"']],
+    [':::layout\n::column\nA\n::\n:::', ['data-frame="none"', 'data-background="none"']],
+    ['::center{frame="border"}\nText\n::', ['data-frame="border"']],
+    ['::center\nText\n::', ['data-frame="none"']],
+  ])('%j renders %j', async (text, attributes) => {
+    const parsed = await parseMarkdown(text, { profile: 'page', components })
+    expect(parsed.problems).toEqual([])
+    const html = await renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap }) }))
+    for (const attribute of attributes) expect(html).toContain(attribute)
+  })
+
   // The prop lists on the docs pages and in the README are written by hand: a new prop must not stay undocumented.
   const docs = ['7.komponenten.md', '7.komponenten.en.md'].map((file) => readFileSync(new URL(`../../../sites/docs/content/docs/${file}`, import.meta.url), 'utf8'))
   const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
