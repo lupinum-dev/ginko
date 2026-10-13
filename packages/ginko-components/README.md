@@ -42,7 +42,7 @@ Prop names are camelCase (`iconColor`, `defaultValue`), and Markdown takes them 
 `::card{iconColor="primary"}`. `icon-color` is an error ("property does not exist"). Boolean props work bare
 (`::code-tree{expandAll}`) or with `"true"`/`"false"`.
 
-One word per idea on every tag: the heading is `title`, a status colour is `error` (not `danger`), the frame of `layout`
+One word per idea on every tag: the heading is `title`, the status colour for a problem is `error`, the frame of `layout`
 and `center` is `frame`, and how an image fills its box is `fit`.
 
 ## Theming
