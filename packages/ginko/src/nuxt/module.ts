@@ -13,6 +13,16 @@ import { checkLinks, checkSchema, coreMessage, entryRedirects, redirectProblems,
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
 const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
 
+declare module '@nuxt/schema' {
+  interface NuxtHooks {
+    /**
+     * Internal, for @lupinum/ginko-docs: called once before the file bundles are built. `keepSource: true` keeps each
+     * file entry's repository path (`source`) in the served bundle, for an "Edit this page" link.
+     */
+    'ginko:files': (options: { keepSource: boolean }) => void | Promise<void>
+  }
+}
+
 /**
  * `@lupinum/ginko/nuxt` (SPEC part 8). The site passes its `defineSite` result:
  *
@@ -193,8 +203,9 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     for (const name of readdirSync(imageDir)) if (!keep.has(name)) rmSync(join(imageDir, name), { force: true })
   }
   ;(nuxt.options.nitro.publicAssets ??= []).push({ dir: imageDir, baseURL: '/_ginko/img', maxAge: 60 * 60 * 24 * 365 })
-  // The docs layer (@lupinum/ginko-docs) sets `appConfig.docs.editLinks`: its pages link to the file in the repository.
-  const editLinks = (nuxt.options.appConfig as { docs?: { editLinks?: boolean } }).docs?.editLinks === true
+  // Internal hook: the docs layer (@lupinum/ginko-docs) sets `keepSource`, so its pages can link to the file in the repository.
+  const fileOptions = { keepSource: false }
+  await nuxt.callHook('ginko:files', fileOptions)
   const build = async () => {
     const result = await content.buildFileBundles({ contentDir, publicDir, schema, drafts: nuxt.options.dev, imageDir })
     const report = result.errors.map((e) => `- ${content.errorLine(e)}`).join('\n')
@@ -213,8 +224,8 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     trees = new Map()
     // What is served to everyone: no expired entries, no repo paths (kept only for the docs layer's "Edit this page" link).
     const now = new Date()
-    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, content.withMarkdownRefs(content.publicBundle(bundle!, schema, now, { keepSource: editLinks }), schema, trees)]))
-    searches = Object.fromEntries(await Promise.all(Object.entries(bundles).map(async ([locale, bundle]) => [locale, await content.searchIndex(bundle!, trees, schema)])))
+    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, content.withMarkdownRefs(content.publicBundle(bundle!, schema, now, fileOptions), schema, trees)]))
+    searches = Object.fromEntries(Object.entries(bundles).map(([locale, bundle]) => [locale, content.searchIndex(bundle!, trees, schema)]))
   }
   await build()
   // A static host has no server: when every brick is a file brick the site can be prerendered, so the redirects are also route rules (exact paths only; patterns need the middleware).

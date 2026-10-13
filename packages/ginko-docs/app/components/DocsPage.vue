@@ -7,7 +7,8 @@ import type { ItemOf } from '@lupinum/ginko'
 import { articleLd, breadcrumbLd } from '@lupinum/ginko/internal'
 import type { docsCollection } from '@lupinum/ginko-docs/config'
 
-const props = defineProps<{ doc: ItemOf<ReturnType<typeof docsCollection>['fields']> }>()
+// `source` (the page's repository path) is in the bundle because this layer asks for it (hook `ginko:files`, nuxt.config.ts).
+const props = defineProps<{ doc: ItemOf<ReturnType<typeof docsCollection>['fields']> & { source?: string } }>()
 const { t, format } = useI18n()
 const { crumbs } = useDocs()
 const neighbors = useGinkoNeighbors('docs', () => props.doc.id)

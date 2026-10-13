@@ -55,8 +55,6 @@ export type ItemOf<F extends Fields, Routed extends boolean = boolean> = {
   urls?: Partial<Record<string, string>>
   /** When the entry last changed (ISO 8601, UTC). Absent when unknown (bundle format 2). */
   updatedAt?: string
-  /** Repo-relative path of the entry's main-language file. File entries only (for an "edit this page" link). */
-  source?: string
 } & (Routed extends true ? {
   /** The address in the current language: a visible routed entry always has one. */
   url: string
