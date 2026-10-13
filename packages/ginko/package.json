@@ -75,7 +75,6 @@
     "prepack": "pnpm build"
   },
   "peerDependencies": {
-    "@lupinum/ginko-content": "workspace:^",
     "nuxt": "^4.6.0",
     "nuxt-og-image": "^6.0.0",
     "vue": "^3.5.0"
@@ -95,9 +94,6 @@
     "vue": "3.5.43"
   },
   "peerDependenciesMeta": {
-    "@lupinum/ginko-content": {
-      "optional": true
-    },
     "nuxt-og-image": {
       "optional": true
     }
