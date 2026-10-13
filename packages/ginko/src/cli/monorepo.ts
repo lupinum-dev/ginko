@@ -11,9 +11,8 @@ import { siteOfKey } from './export.ts'
 import { importSite, postFile } from './import.ts'
 import { connectLocal } from './local.ts'
 import { CliError } from './model.ts'
-import { createPlatform } from './platform.ts'
 import { pull } from './pull.ts'
-import { env, isEntryPoint, realDeps, runCli, type Args, type CliDeps, type ExitCode } from './run.ts'
+import { connectPlatform, env, isEntryPoint, realDeps, runCli, type Args, type CliDeps, type ExitCode } from './run.ts'
 
 const USAGE = `Usage: pnpm local:<command>   (Ginko monorepo only, run in the repository root)
 
@@ -31,8 +30,7 @@ Options:
 `
 
 export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCode> {
-  const request = deps.fetch ?? ((url: string, init?: RequestInit) => fetch(url, init))
-  const upload = (url: string, bytes: Uint8Array<ArrayBuffer>, mime: string) => postFile(request, url, bytes, mime)
+  const upload = (url: string, bytes: Uint8Array<ArrayBuffer>, mime: string) => postFile(deps.fetch, url, bytes, mime)
   // The local check comes first: a wrong target stops before anything is read or written.
   const local = (args: Args) => connectLocal(args.config ? dirname(resolve(args.config)) : process.cwd(), `local:${args.command}`)
 
@@ -58,8 +56,7 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
       pull: {
         async run(args) {
           const run = local(args)
-          const platform = createPlatform({ url: env(deps, 'GINKO_PLATFORM', 'NUXT_PUBLIC_GINKO_PLATFORM'), key: env(deps, 'GINKO_KEY'), fetch: request })
-          return pull({ platform, site: siteOfKey(env(deps, 'GINKO_KEY')), fetch: (url) => request(url), log: deps.log, run, upload })
+          return pull({ platform: connectPlatform(deps), site: siteOfKey(env(deps, 'GINKO_KEY')), fetch: deps.fetch, log: deps.log, run, upload })
         },
       },
     },

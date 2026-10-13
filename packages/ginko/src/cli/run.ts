@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { CliError } from './model.ts'
-import { PlatformError } from './platform.ts'
+import { createPlatform, PlatformError, type Platform } from './platform.ts'
 
 /** The outside world of the CLI. main() takes it as a parameter so that tests can replace it. */
 export interface CliDeps {
@@ -14,8 +14,8 @@ export interface CliDeps {
   git: (args: string[]) => Promise<string>
   stdout: (text: string) => void
   log: (line: string) => void
-  /** Network requests (platform, file downloads, local upload). Defaults to the global fetch; tests route it elsewhere. */
-  fetch?: (input: string, init?: RequestInit) => Promise<Response>
+  /** Network requests (platform, file downloads, local upload). Tests route it elsewhere. */
+  fetch: (input: string, init?: RequestInit) => Promise<Response>
 }
 
 export function realDeps(): CliDeps {
@@ -26,6 +26,7 @@ export function realDeps(): CliDeps {
     }),
     stdout: (text) => { process.stdout.write(text) },
     log: (line) => { process.stderr.write(`${line}\n`) },
+    fetch: (input, init) => fetch(input, init),
   }
 }
 
@@ -59,7 +60,7 @@ export function exitCodeOf(error: unknown): ExitCode {
  * Runs one command and prints its one JSON line: the command's fields after `ok: true`, or the coded error.
  * Never throws; the result is the exit code.
  */
-export async function runCommand(deps: CliDeps, command: () => Promise<Record<string, unknown>>): Promise<ExitCode> {
+async function runCommand(deps: CliDeps, command: () => Promise<Record<string, unknown>>): Promise<ExitCode> {
   try {
     const fields = await command()
     deps.stdout(`${JSON.stringify({ ok: true, ...fields })}\n`)
@@ -84,7 +85,7 @@ export interface Args {
   flags: Set<string>
 }
 
-export function parseArgs(argv: string[]): Args {
+function parseArgs(argv: string[]): Args {
   const args: Args = { flags: new Set() }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!
@@ -147,6 +148,14 @@ export function env(deps: CliDeps, ...names: [string, ...string[]]): string {
   const value = names.map((name) => deps.env[name]).find(Boolean)
   if (!value) throw new CliError(`The environment variable ${names[0]} is missing.`, 'USAGE')
   return value
+}
+
+// One CI secret serves the site and the CLI: the site reads NUXT_PUBLIC_GINKO_PLATFORM, so the CLI accepts it too.
+const PLATFORM_ENV = ['GINKO_PLATFORM', 'NUXT_PUBLIC_GINKO_PLATFORM'] as const
+
+/** The hosted platform from GINKO_PLATFORM (or NUXT_PUBLIC_GINKO_PLATFORM) and GINKO_KEY. */
+export function connectPlatform(deps: CliDeps): Platform {
+  return createPlatform({ url: env(deps, ...PLATFORM_ENV), key: env(deps, 'GINKO_KEY'), fetch: deps.fetch })
 }
 
 /** True when the module at `url` is the started program (argv[1] is the bin link or the file), not an import of a test. */

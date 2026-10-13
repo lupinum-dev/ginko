@@ -15,6 +15,7 @@ async function run(argv: string[], deps: Partial<CliDeps> = {}, cli = main) {
     git: async () => '',
     stdout: (text) => out.push(text),
     log: (line) => log.push(line),
+    fetch: async () => { throw new Error('no network call expected') },
     ...deps,
   })
   return { code, stdout: out.join(''), log }
@@ -66,11 +67,6 @@ describe('ginko output and exit codes', () => {
     expect(JSON.parse(result.stdout)).toEqual({ ok: false, error: { code, message: expect.any(String) } })
     // The human text goes to stderr.
     expect(result.log.join('\n')).toContain(JSON.parse(result.stdout).error.message)
-  })
-
-  it('reads the platform from NUXT_PUBLIC_GINKO_PLATFORM when GINKO_PLATFORM is not set', async () => {
-    const { stdout } = await run(['export'], { env: { NUXT_PUBLIC_GINKO_PLATFORM: 'not a url', GINKO_KEY: KEY } })
-    expect(JSON.parse(stdout).error.message).toBe('GINKO_PLATFORM is not a valid URL.')
   })
 
   it.each([

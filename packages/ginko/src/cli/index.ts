@@ -8,9 +8,8 @@ import { loadConfig } from './config.ts'
 import { check } from './check.ts'
 import { defaultDir, exportSite, siteOfKey } from './export.ts'
 import { CliError } from './model.ts'
-import { createPlatform } from './platform.ts'
 import { release } from './release.ts'
-import { env, isEntryPoint, realDeps, runCli, type Args, type CliDeps, type ExitCode } from './run.ts'
+import { connectPlatform, env, isEntryPoint, realDeps, runCli, type Args, type CliDeps, type ExitCode } from './run.ts'
 
 const USAGE = `Usage: ginko <command> [--config <file>]
 
@@ -37,8 +36,6 @@ function version(): string {
   return (JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }).version
 }
 
-// One CI secret serves the site and the CLI: the site reads NUXT_PUBLIC_GINKO_PLATFORM, so the CLI accepts it too.
-const PLATFORM_ENV = ['GINKO_PLATFORM', 'NUXT_PUBLIC_GINKO_PLATFORM'] as const
 // GITHUB_SHA is the GitHub name; GINKO_COMMIT works on any CI host.
 const COMMIT_ENV = ['GINKO_COMMIT', 'GITHUB_SHA'] as const
 
@@ -60,8 +57,6 @@ async function branchHead(deps: CliDeps): Promise<string> {
 const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms))
 
 export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCode> {
-  const request = deps.fetch ?? ((url: string, init?: RequestInit) => fetch(url, init))
-  const connect = () => createPlatform({ url: env(deps, ...PLATFORM_ENV), key: env(deps, 'GINKO_KEY'), fetch: request })
   const configPathOf = (args: Args) => resolve(args.config ?? 'ginko.config.ts')
 
   return runCli(argv, deps, {
@@ -78,7 +73,7 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const offline = args.flags.has('--offline')
           const platformBricks = Object.values(config.bricks).some((b) => b.source !== 'files')
           const compared = platformBricks && !offline
-          const ok = await check({ config, platform: compared ? connect() : undefined, root: dirname(configPath), log: deps.log })
+          const ok = await check({ config, platform: compared ? connectPlatform(deps) : undefined, root: dirname(configPath), log: deps.log })
           if (platformBricks && offline) deps.log('Skipped the comparison with production (--offline).')
           if (!ok) throw new CliError('ginko check found problems. Each one is listed on stderr.')
           return { compared }
@@ -90,16 +85,16 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const commit = env(deps, ...COMMIT_ENV)
           if ((await branchHead(deps)) !== commit) return { deploy: false, reason: 'superseded' }
           const config = await loadConfig(configPathOf(args))
-          return release({ config, commit, platform: connect(), branchHead: () => branchHead(deps), sleep, log: deps.log })
+          return release({ config, commit, platform: connectPlatform(deps), branchHead: () => branchHead(deps), sleep, log: deps.log })
         },
       },
       // Works on the hosted content only, so it needs no config.
       export: {
         folder: 'optional',
         async run(args) {
-          const platform = connect()
+          const platform = connectPlatform(deps)
           const site = siteOfKey(env(deps, 'GINKO_KEY'))
-          return exportSite({ platform, site, dir: args.folder ?? defaultDir(site, new Date()), fetch: (url) => request(url), log: deps.log })
+          return exportSite({ platform, site, dir: args.folder ?? defaultDir(site, new Date()), fetch: deps.fetch, log: deps.log })
         },
       },
     },
