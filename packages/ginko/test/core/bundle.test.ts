@@ -294,6 +294,7 @@ describe('isBundle and bundleFits: a malformed bundle is a platform failure, not
     { name: 'contentRev missing', mutate: (b: Record<string, any>) => { delete b.contentRev } },
     // Format 1 carried AST v1 text values, which the renderer cannot show.
     { name: 'format 1', mutate: (b: Record<string, any>) => { b.format = 1 } },
+    { name: 'format 2 (no longer read)', mutate: (b: Record<string, any>) => { b.format = 2 } },
   ])('rejects $name', ({ mutate }) => {
     const bad = structuredClone(good) as unknown as Record<string, any>
     mutate(bad)
