@@ -75,7 +75,7 @@ as `data-appearance` on the component's root. Cards in a `cards{appearance}` fol
 syntax colours are the dark Shiki theme (`--shiki-dark`, which ginko-content always writes); with a single Shiki
 theme the code keeps that theme's colours.
 
-**Stable** (changes only in a major version):
+**Stable** (until 1.0, changes only in a minor release, with a changelog entry):
 
 | Kind | Names |
 |---|---|
@@ -83,7 +83,7 @@ theme the code keeps that theme's colours.
 | Root classes | `ginko-<tag>` on the root element of each tag, for example `ginko-callout` (also for the short forms), `ginko-card`, `ginko-api-param`. Exceptions: the code block (`pre`) is `ginko-code`, Markdown images are `ginko-img`, `collapse` without `title` is `ginko-clip` |
 | Attributes | `data-appearance="quiet"` / `"tint"` on a root |
 
-Everything else is internal and may change in a minor version: the `--ginko-default-*` fallbacks, other `--ginko-*`
+Everything else is internal and can change in any release: the `--ginko-default-*` fallbacks, other `--ginko-*`
 custom properties, class names below the root (`ginko-card-title`, ...) and other `data-*` attributes.
 
 ## Tags
