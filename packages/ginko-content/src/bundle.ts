@@ -61,7 +61,8 @@ export function publicBundle(bundle: Bundle, schema: Schema, now: Date, options:
  * One bundle per locale from the files, built by the core's buildBundle, so visibility, order, URLs
  * and fallbacks follow the same rules as platform content. Revisions are 0: files have no history.
  */
-export async function buildFileBundles(contentDir: string, publicDir: string, schema: Schema, now = new Date(), options: BuildOptions = {}): Promise<{ bundles: Partial<Record<Locale, Bundle>>; images: Map<string, string>; imageFiles: Set<string>; errors: ContentError[] }> {
+export async function buildFileBundles(options: BuildOptions): Promise<BuildResult> {
+  const { contentDir, publicDir, schema, now = new Date() } = options
   const files = fileSchema(schema)
   const { entries, files: fileInfo, images, errors } = await readContent(contentDir, publicDir, files, options)
   const imageFiles = new Set<string>()
@@ -77,8 +78,25 @@ export async function buildFileBundles(contentDir: string, publicDir: string, sc
 }
 
 export interface BuildOptions extends ReadOptions {
+  /** The site's `content/` folder. */
+  contentDir: string
+  /** The site's `public/` folder. */
+  publicDir: string
+  schema: Schema
+  /** The time the build counts as "now" (visibility windows, `generatedAt`). Default: the current time. */
+  now?: Date
   /** Where the WebP variants of the site's images are written (the folder served at `/_ginko/img`). Without it, no variants are made. */
   imageDir?: string
+}
+
+export interface BuildResult {
+  /** One bundle per locale of the schema. */
+  bundles: Partial<Record<Locale, Bundle>>
+  /** Co-located Markdown images: served URL to absolute path. */
+  images: Map<string, string>
+  /** Every WebP variant file name that was written to `imageDir`. */
+  imageFiles: Set<string>
+  errors: ContentError[]
 }
 
 /**

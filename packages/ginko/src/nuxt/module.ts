@@ -193,7 +193,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
   // The docs layer (@lupinum/ginko-docs) sets `appConfig.docs.editLinks`: its pages link to the file in the repository.
   const editLinks = (nuxt.options.appConfig as { docs?: { editLinks?: boolean } }).docs?.editLinks === true
   const build = async () => {
-    const result = await content.buildFileBundles(contentDir, publicDir, schema, new Date(), { drafts: nuxt.options.dev, imageDir })
+    const result = await content.buildFileBundles({ contentDir, publicDir, schema, drafts: nuxt.options.dev, imageDir })
     const report = result.errors.map((e) => `- ${content.errorLine(e)}`).join('\n')
     if (result.errors.length && !nuxt.options.dev) throw new Error(`[ginko] Errors in content/:\n${report}`)
     if (result.errors.length) console.error(`[ginko] Errors in content/ (these files are missing from the site):\n${report}`)

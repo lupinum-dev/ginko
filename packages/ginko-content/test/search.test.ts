@@ -37,7 +37,7 @@ const md = (front: string, body: string) => `---\n${front}\n---\n\n${body}\n`
 /** The records and the searcher the module builds: bundles with markdown refs, the trees behind them, per locale. */
 async function build(files: Record<string, string>, locale: 'de' | 'en' = 'de') {
   const s = site(files)
-  const { bundles } = await buildFileBundles(s.content, s.public, schema)
+  const { bundles } = await buildFileBundles({ contentDir: s.content, publicDir: s.public, schema })
   const trees = new Map<string, MarkdownTree>()
   const bundle = withMarkdownRefs(bundles[locale]!, schema, trees)
   const records = searchSections(bundle, { schema, trees })
