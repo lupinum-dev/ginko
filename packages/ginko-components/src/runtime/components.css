@@ -9,7 +9,7 @@
   --ginko-default-background: light-dark(#fff, #09090b);
   --ginko-default-foreground: light-dark(#18181b, #fafafa);
   --ginko-default-muted: light-dark(#f4f4f5, #27272a);
-  --ginko-default-muted-foreground: light-dark(#71717a, #a1a1aa);
+  --ginko-default-muted-foreground: light-dark(#6b6b74, #a1a1aa);
   --ginko-default-border: light-dark(#e4e4e7, #27272a);
   --ginko-default-primary: light-dark(#18181b, #fafafa);
   --ginko-default-primary-foreground: light-dark(#fafafa, #18181b);

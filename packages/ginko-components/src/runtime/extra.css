@@ -122,9 +122,10 @@
   font-weight: 700;
   letter-spacing: 0.04em;
 }
-.ginko-api-method[data-method='get'] { background-color: var(--ginko-info); color: #fff; }
-.ginko-api-method[data-method='post'] { background-color: var(--ginko-success); color: #fff; }
-.ginko-api-method[data-method='delete'] { background-color: var(--ginko-error); color: #fff; }
+.ginko-api-method[data-method='get'] { background-color: var(--ginko-info); color: light-dark(#fff, #09090b); }
+/* Light green is 3.3:1 under white text; the badge uses green-700 (5.0:1). Dark mode: the light accents carry dark text. */
+.ginko-api-method[data-method='post'] { background-color: light-dark(#15803d, var(--ginko-success)); color: light-dark(#fff, #09090b); }
+.ginko-api-method[data-method='delete'] { background-color: var(--ginko-error); color: light-dark(#fff, #09090b); }
 .ginko-api-path { min-width: 0; overflow-wrap: anywhere; color: var(--foreground, var(--ginko-default-foreground)); font-weight: 600; }
 .ginko-api-tabs { display: flex; flex-wrap: wrap; gap: 0.125rem; }
 .ginko-api-tab {
