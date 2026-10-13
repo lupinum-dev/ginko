@@ -7,7 +7,7 @@ definePageMeta({ layout: 'print', path: '/mittagsmenue/drucken', i18n: { paths: 
 
 const { lang, labels } = useSite()
 const { t, format } = useI18n()
-const path = usePagePath()
+const path = useGinkoPath()
 const { lunch, current } = useLunchWeek()
 const contact = useGinko('contact')
 const print = () => window.print()

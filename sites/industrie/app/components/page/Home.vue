@@ -3,7 +3,7 @@ import { certStatus, facts } from '../../utils/site'
 const { t, format } = useI18n()
 
 const { lang, today, head } = useSite()
-const path = usePagePath()
+const path = useGinkoPath()
 const products = useGinko('products')
 const jobs = useGinko('jobs')
 const certificates = useGinko('certificates')

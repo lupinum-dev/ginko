@@ -7,7 +7,7 @@ import { ref } from 'vue'
 import type { Locale } from '../src/index.ts'
 import type { Bundle, Schema } from '../src/internal.ts'
 import { fallbackLang, withUrl } from '../src/nuxt/runtime/shared.ts'
-import { BUNDLE_STATE, TODAY_STATE, ginkoLangOf, useGinkoBreadcrumbs, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, usePagePath } from '../src/nuxt/runtime/composables.ts'
+import { BUNDLE_STATE, TODAY_STATE, ginkoLangOf, useGinkoBreadcrumbs, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, useGinkoPath } from '../src/nuxt/runtime/composables.ts'
 import * as shim from './shims/imports.ts'
 import { i18nLocale, routePath, seoConfig, useState } from './shims/imports.ts'
 import { installOgImage } from './shims/og.ts'
@@ -27,7 +27,7 @@ const bundles: Partial<Record<Locale, Bundle>> = {
 const i18n = resolveConfig({ locales: schema.locales })
 const sitemapXml = (site: Schema, input: Partial<Record<Locale, Bundle>>, today: string) => render(site, input, today, i18n)
 
-describe('usePagePath', () => {
+describe('useGinkoPath', () => {
   test.each([
     ['de', 'menu', undefined, '/speisekarte'],
     ['de', 'menu', 'en', '/en/menu'],
@@ -38,7 +38,7 @@ describe('usePagePath', () => {
     // A page the site config only has in German (SPEC 2 `pages`): it falls back to the main locale.
     ;(siteSchema.pages as Record<string, Partial<Record<Locale, string>>>).untranslated = { de: '/nur-deutsch' }
     i18nLocale.value = current
-    expect(usePagePath()(key as never, locale as Locale | undefined)).toBe(path)
+    expect(useGinkoPath()(key as never, locale as Locale | undefined)).toBe(path)
     delete (siteSchema.pages as Record<string, unknown>).untranslated
   })
 })

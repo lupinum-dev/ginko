@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const { format } = useI18n()
 const route = useRoute()
-const path = usePagePath()
+const path = useGinkoPath()
 const post = useGinkoEntry('posts', String(route.params.slug))
 useGinkoSeo(() => ({
   title: post.value.data.title,

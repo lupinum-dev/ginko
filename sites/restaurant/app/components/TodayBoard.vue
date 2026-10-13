@@ -5,7 +5,7 @@ import { weekStartOf } from '@lupinum/ginko'
 import { spansText, todayState, upcomingClosures, weekdayOf } from '../utils/site'
 
 const { lang, today } = useSite()
-const path = usePagePath()
+const path = useGinkoPath()
 const { t, format } = useI18n()
 const notices = useGinko('notices')
 const { lunch, current: lunchCurrent } = useLunchWeek()

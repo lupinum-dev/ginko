@@ -2,7 +2,7 @@
 import { legalPages, siteName, telHref, type LegalKey } from '../utils/site'
 
 const { labels } = useSite()
-const path = usePagePath()
+const path = useGinkoPath()
 const { t } = useI18n()
 const company = useGinko('company')
 const legal: LegalKey[] = ['terms', 'avv', 'privacy', 'imprint']

@@ -4,7 +4,7 @@
 import { siteName } from '../utils/site'
 
 const { labels } = useSite()
-const path = usePagePath()
+const path = useGinkoPath()
 const { t } = useI18n()
 const hero = useGinko('hero')
 const { alternates } = useI18n()

@@ -6,7 +6,7 @@ const { t } = useI18n()
 
 const props = defineProps<{ error: NuxtError }>()
 const { lang } = useSite()
-const path = usePagePath()
+const path = useGinkoPath()
 const missing = computed(() => props.error.statusCode === 404)
 useHead({ htmlAttrs: { lang: lang.value }, title: siteName })
 </script>

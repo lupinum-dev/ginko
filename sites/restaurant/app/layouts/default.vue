@@ -2,7 +2,7 @@
 // The site shell. It reads content (SEO), so it is a layout: the platform preview page renders
 // without a layout until its bundle arrives by message. ginko-i18n writes lang, canonical and hreflang.
 const { otherLang } = useSite()
-const path = usePagePath()
+const path = useGinkoPath()
 const seo = useGinko('seo')
 const { alternates, t } = useI18n()
 

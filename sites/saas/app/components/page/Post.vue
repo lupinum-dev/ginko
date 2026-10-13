@@ -3,7 +3,7 @@ import { siteName } from '../../utils/site'
 
 const props = defineProps<{ slug: string }>()
 const { lang } = useSite()
-const path = usePagePath()
+const path = useGinkoPath()
 const { t, format } = useI18n()
 const post = useGinkoEntry('blog', props.slug)
 useSeoMeta({

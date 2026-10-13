@@ -2,7 +2,7 @@
 import { priceText } from '../../utils/site'
 
 const { lang, labels } = useSite()
-const path = usePagePath()
+const path = useGinkoPath()
 const { t } = useI18n()
 usePageSeo('home')
 const hero = useGinko('hero')

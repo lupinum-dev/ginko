@@ -41,10 +41,10 @@ export function useGinkoLocale(): ComputedRef<GinkoLocale> {
 
 /**
  * The path of a page of the site config (`pages`) in a locale, default the current one:
- * `const path = usePagePath(); path('menu')`, `path('menu', 'en')`. A page without a path in that
+ * `const path = useGinkoPath(); path('menu')`, `path('menu', 'en')`. A page without a path in that
  * locale gives its main-locale path, as ginko-i18n's alternates do.
  */
-export function usePagePath(): (key: GinkoPageKey, locale?: GinkoLocale) => string {
+export function useGinkoPath(): (key: GinkoPageKey, locale?: GinkoLocale) => string {
   const current = useGinkoLocale()
   const { mainLocale } = useRuntimeConfig().public.ginko as GinkoPublicConfig
   return (key, locale = current.value) => {
@@ -213,7 +213,7 @@ export interface GinkoSeoInput {
 export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
   const config = useRuntimeConfig().public.ginko as GinkoPublicConfig
   const locale = useGinkoLocale()
-  const path = usePagePath()
+  const path = useGinkoPath()
   const route = useRoute()
   const i18n = useI18n()
   const absolute = (src: string) => (/^https?:\/\//.test(src) ? src : new URL(src, config.url).href)
