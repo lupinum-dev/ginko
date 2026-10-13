@@ -42,8 +42,10 @@ Prop names are camelCase (`iconColor`, `defaultValue`), and Markdown takes them 
 `::card{iconColor="primary"}`. `icon-color` is an error ("property does not exist"). Boolean props work bare
 (`::code-tree{expandAll}`) or with `"true"`/`"false"`.
 
-One word per idea on every tag: the heading is `title`, the status colour for a problem is `error`, the frame of `layout`
-and `center` is `frame`, and how an image fills its box is `fit`.
+One word per idea on every tag: the heading is `title`, the status colour for a problem is `error`, the border kind of
+`layout`, `center` and `figure` is `frame`, the fill of `flow` and `layout` is `background`, the look of a component box
+is `appearance`, and how an image fills its box is `fit`. No value is called `default`: the value without a frame or
+fill is `none`.
 
 ## Theming
 
@@ -95,10 +97,10 @@ custom properties, class names below the root (`ginko-card-title`, ...) and othe
 | `dropcap` | block | `lines` 2 to 4 |
 | `kbd` | inline | none |
 | `badge` | inline | `color` neutral (default), primary, success, warning, error |
-| `flow` | block | `width` reading (default), wide; `surface` default, muted, tint |
-| `layout` | block, children `column` | `frame`, `align`, `gap`, `stack`, `surface` |
+| `flow` | block | `width` reading (default), wide; `background` none (default), muted, tint |
+| `layout` | block, children `column` | `frame` none (default), card, border, border-dashed, outline, outline-dashed; `align`; `gap`; `stack`; `background` as on `flow` |
 | `column` | block, parent `layout` | `size` xs to xl; `align`; `fit` natural, cover, contain |
-| `center` | block | `size` sm, md, lg; `frame` |
+| `center` | block | `size` sm, md, lg; `frame` as on `layout` |
 | `timeline` | block, children `timeline-item` | none |
 | `timeline-item` | block, parent `timeline` | `date`; `meta` (a short word next to the date); `title`; `icon`* (instead of the dot); `active` |
 | `pre` (plain Markdown tag, renderer override) | block | the code block of Markdown: label from `filename` or language, copy button |
@@ -133,7 +135,7 @@ Media components (`registry-media.ts`, styles in `media.css`):
 | Tag | Kind | Props |
 |---|---|---|
 | `img` (plain Markdown tag, renderer override) | inline | `loading="lazy"`, `decoding="async"`, `width`/`height` when the tree has them (ginko-content adds them) |
-| `figure` | block | `src` (image, required); `alt` (required); `caption`; `width`; `height`; `bleed`; `aspect` auto, video, wide, square, portrait; `fit` cover, contain; `placement` inline, start, end; `frame` default, none; `focus` center, top, bottom, left, right; `zoom` (default on: a click opens a native `<dialog>`, Escape or the close button closes it) |
+| `figure` | block | `src` (image, required); `alt` (required); `caption`; `width`; `height`; `bleed`; `aspect` auto, video, wide, square, portrait; `fit` cover, contain; `placement` inline, start, end; `frame` border (default), none; `focus` center, top, bottom, left, right; `zoom` (default on: a click opens a native `<dialog>`, Escape or the close button closes it) |
 | `video` | block | `src` (required: YouTube or Vimeo link, or a `.mp4`/`.webm` URL); `title` (required); `poster` (image); `start` (seconds) |
 | `embed` | block | `src` (required: the address of an allowed provider); `title` (required: iframe title and button label); `poster` (image) |
 

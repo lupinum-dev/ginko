@@ -19,12 +19,12 @@ const CALLOUT_TYPES = [
   { value: 'idea', label: { de: 'Tipp', en: 'Tip' } },
 ] as const
 
-const surface = f.choice({ de: 'Hintergrund', en: 'Background' }, {
+const background = f.choice({ de: 'Hintergrund', en: 'Background' }, {
   options: [
-    { value: 'default', label: { de: 'Ohne', en: 'None' } }, { value: 'muted', label: { de: 'Grau', en: 'Gray' } },
+    { value: 'none', label: { de: 'Ohne', en: 'None' } }, { value: 'muted', label: { de: 'Grau', en: 'Gray' } },
     { value: 'tint', label: { de: 'Getönt', en: 'Tinted' } },
   ],
-  optional: true, default: 'default',
+  optional: true, default: 'none',
 })
 const align = f.choice({ de: 'Ausrichtung', en: 'Alignment' }, {
   options: [
@@ -35,13 +35,13 @@ const align = f.choice({ de: 'Ausrichtung', en: 'Alignment' }, {
 })
 const frame = f.choice({ de: 'Rahmen', en: 'Frame' }, {
   options: [
-    { value: 'default', label: { de: 'Ohne', en: 'None' } }, { value: 'card', label: { de: 'Karte', en: 'Card' } },
+    { value: 'none', label: { de: 'Ohne', en: 'None' } }, { value: 'card', label: { de: 'Karte', en: 'Card' } },
     { value: 'border', label: { de: 'Rahmen', en: 'Border' } },
     { value: 'border-dashed', label: { de: 'Rahmen gestrichelt', en: 'Dashed border' } },
     { value: 'outline', label: { de: 'Kontur', en: 'Outline' } },
     { value: 'outline-dashed', label: { de: 'Kontur gestrichelt', en: 'Dashed outline' } },
   ],
-  optional: true, default: 'default',
+  optional: true, default: 'none',
 })
 
 // The short forms of `callout` stay valid in existing texts, but are not offered when inserting (`hidden`): the
@@ -165,9 +165,9 @@ export const components = defineComponents({
         ],
         optional: true, default: 'reading',
       }),
-      surface,
+      background,
     },
-    editor: { group: { de: 'Layout', en: 'Layout' }, example: '::flow{surface="muted"}\nEin längerer Text, der in Lesebreite steht.\n::' },
+    editor: { group: { de: 'Layout', en: 'Layout' }, example: '::flow{background="muted"}\nEin längerer Text, der in Lesebreite steht.\n::' },
   },
   layout: {
     kind: 'block',
@@ -193,7 +193,7 @@ export const components = defineComponents({
         ],
         optional: true, default: 'md',
       }),
-      surface,
+      background,
     },
     children: ['column'],
     editor: { group: { de: 'Layout', en: 'Layout' }, example: ':::layout\n::column\nLinke Spalte\n::\n::column\nRechte Spalte\n::\n:::' },

@@ -40,9 +40,9 @@ export const mediaComponents = defineComponents({
       }),
       frame: f.choice({ de: 'Rahmen', en: 'Frame' }, {
         options: [
-          { value: 'default', label: { de: 'Mit Rahmen', en: 'With frame' } }, { value: 'none', label: { de: 'Ohne', en: 'None' } },
+          { value: 'none', label: { de: 'Ohne', en: 'None' } }, { value: 'border', label: { de: 'Rahmen', en: 'Border' } },
         ],
-        optional: true, default: 'default',
+        optional: true, default: 'border',
       }),
       focus: f.choice({ de: 'Bildausschnitt', en: 'Image focus' }, {
         options: [
