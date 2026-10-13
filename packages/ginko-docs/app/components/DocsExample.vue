@@ -28,10 +28,10 @@ onBeforeUnmount(() => clearTimeout(timer))
 <template>
   <div ref="root" class="docs-example">
     <Tabs variant="line">
-      <Tab :label="t('docs.example.preview')">
+      <Tab :title="t('docs.example.preview')">
         <GinkoMarkdown :value="tree" :components="markdownComponents" class="docs-example-preview" />
       </Tab>
-      <Tab :label="t('docs.example.source')">
+      <Tab :title="t('docs.example.source')">
         <slot />
       </Tab>
     </Tabs>

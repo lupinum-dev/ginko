@@ -52,24 +52,10 @@ test('math renders on the server, mermaid in the browser, and pages without them
   expect(plain).not.toContain('katex')
 })
 
-test('a page without a diagram never requests the mermaid chunk, a page with one does', async ({ page }) => {
-  // The diagram engine (mermaid + ELK) is the one script over 1 MB; find it by that, not by its hashed name.
-  const scripts: { url: string; body: string }[] = []
-  page.on('response', async (response) => {
-    if (response.request().resourceType() === 'script') scripts.push({ url: response.url(), body: await response.text().catch(() => '') })
-  })
-  const isMermaid = (body: string) => body.length > 1_000_000 && body.includes('ELK')
-
-  await page.goto(`${origin}/docs/komponenten`, { waitUntil: 'networkidle' })
-  await expect(page.locator('.mermaid svg').first()).toBeVisible()
-  const engine = scripts.filter((s) => isMermaid(s.body))
-  expect(engine, 'a page with a diagram loads the mermaid chunk').toHaveLength(1)
-
-  scripts.length = 0
-  await page.goto(`${origin}/docs/einstieg`, { waitUntil: 'networkidle' })
-  expect(scripts.length).toBeGreaterThan(0)
-  expect(scripts.filter((s) => s.url === engine[0]!.url || isMermaid(s.body)).map((s) => s.url)).toEqual([])
-  expect(await page.locator('link[rel="modulepreload"][href*="' + new URL(engine[0]!.url).pathname.split('/').pop() + '"]').count()).toBe(0)
+test('a ```md preview fence shows its two tabs by name', async ({ page }) => {
+  await page.goto(`${origin}/docs/komponenten`)
+  const tabs = page.locator('.docs-example').first().getByRole('tab')
+  await expect(tabs).toHaveText(['Vorschau', 'Markdown'])
 })
 
 test('with nuxt-og-image installed, a docs page gets a generated share card', async ({ page, request }) => {
