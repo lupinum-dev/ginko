@@ -2,7 +2,7 @@
      one-line state from the data and the task buttons. Generic: nothing here knows the restaurant. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Json } from '@lupinum/ginko'
-import { isVisible, visibleUntil, weekOfSchema, plannedWeeks, plansThisWeek, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
+import { isVisible, visibleUntil, plannedWeeks, plansThisWeek, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../composables/useSiteData'
 import { textIn } from '@lupinum/ginko-editor'
 import { displayValue, formatDay, taskRef, titleOf, type Task } from '../../../utils/content'
@@ -97,7 +97,7 @@ function flagTexts(brick: Brick, flag: { task: Task; entry: Entry }): string[] {
  */
 function plannedNow(key: string, task = weeklyTask(s.schema.value!.bricks[key]!)?.task) {
   const schema = s.schema.value!
-  const start = workWeekOf(s.today.value, weekOfSchema(schema))
+  const start = workWeekOf(s.today.value, schema.week)
   if (!task) return undefined
   for (const [k, b] of Object.entries(schema.bricks)) {
     if (b.kind !== 'collection' || b.plans?.brick !== key) continue
@@ -115,7 +115,7 @@ function weekState(key: string, brick: Brick) {
     const field = s.schema.value!.bricks[plan.key]!.fields[plan.field]
     return { current: true, text: t('site.quick.plannedWeek', { label: field ? shownLabel(field.label, s.main.value) : '', date: formatDay(plan.start, format) }) }
   }
-  const state = staleOf(brick, entry.data, s.today.value, weekOfSchema(s.schema.value!), plannedWeeks(s.schema.value!, key, (k) => s.entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
+  const state = staleOf(brick, entry.data, s.today.value, s.schema.value!.week, plannedWeeks(s.schema.value!, key, (k) => s.entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
   if (!state) return undefined
   return { current: state.current, text: state.stored ? `${shownLabel(brick.fields[state.field]!.label, s.main.value)} ${formatDay(state.stored, format)}` : t('site.quick.notFilled') }
 }

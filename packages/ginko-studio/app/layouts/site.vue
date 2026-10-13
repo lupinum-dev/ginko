@@ -1,7 +1,7 @@
 <!-- Pages of one site: its name, "View site", the views (UI.md 2, 10.2). -->
 <script setup lang="ts">
 import { api } from '#convex/api'
-import { weekOfSchema, type ComponentRegistry, type Schema } from '@lupinum/ginko/internal'
+import { DEFAULT_WEEK, type ComponentRegistry, type Schema } from '@lupinum/ginko/internal'
 import { provideGinkoAssets } from '@lupinum/ginko-editor'
 import { CircleCheckIcon, FileTextIcon, HistoryIcon, ImageIcon, SearchIcon, SparklesIcon, SquareArrowOutUpRightIcon, SunIcon, UsersIcon } from '@lucide/vue'
 import { OWN_BOTTOM_BAR, type SiteLink } from '../utils/siteLinks'
@@ -22,7 +22,8 @@ provide(EDITOR_COMPONENTS, () => (data.value?.site.schema as { components?: Comp
 provideStudioSite({ main: () => data.value?.site.schema.locales[0] ?? '', currency: () => data.value?.site.schema.currency ?? 'EUR' })
 // Date fields under this layout count "today" and weeks in the site's zone and week (`schema.week`).
 provide('ginko:timezone', computed(() => data.value?.site.schema.timezone ?? 'Europe/Vienna'))
-provide('ginko:week', computed(() => weekOfSchema((data.value?.site.schema ?? {}) as Schema)))
+// While the site loads there is no schema yet.
+provide('ginko:week', computed(() => data.value?.site.schema.week ?? DEFAULT_WEEK))
 // Signed out in another tab, or removed from the team while working here: no page, sheet or button
 // stays usable (break-it 9). The page says what happened and what to do.
 const { status } = useConvexAuth()

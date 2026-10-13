@@ -1,7 +1,7 @@
 // Task queries (SPEC 2.7). `prefill` gives the starting values of a task's form. The server
 // resolves date tokens in the site's time zone; mutations never apply these values.
 import type { Json } from '@lupinum/ginko'
-import { resolveToken, weekOfSchema, type Schema } from '@lupinum/ginko/internal'
+import { resolveToken, type Schema } from '@lupinum/ginko/internal'
 import { v, type ObjectType } from 'convex/values'
 import { query, type QueryCtx } from './_generated/server'
 import { actorFor, entryOf, fail, taskBrickOf, type Actor } from './lib/access'
@@ -23,7 +23,7 @@ export async function prefillAs(ctx: QueryCtx, actor: Actor, args: ObjectType<ty
   const values: Record<string, Json> = {}
   for (const [key, raw] of Object.entries(prefill)) {
     if (!Object.hasOwn(brick.fields, key) || raw === undefined) continue
-    const token = typeof raw === 'string' ? resolveToken(raw, schema.timezone, weekOfSchema(schema)) : undefined
+    const token = typeof raw === 'string' ? resolveToken(raw, schema.timezone, schema.week) : undefined
     values[key] = token ?? raw
   }
 

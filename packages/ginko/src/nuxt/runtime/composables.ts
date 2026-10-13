@@ -5,7 +5,7 @@ import { computed, createError, toValue, useI18n, useHead, useRoute, useRuntimeC
 import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
 import {
-  applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, query, seoHead, todayIn, websiteLd, weekOfSchema,
+  applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, query, seoHead, todayIn, websiteLd,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
 } from '../../internal.ts'
 import { withUrl, type GinkoPublicConfig } from './shared.ts'
@@ -97,7 +97,7 @@ export function useGinkoToday(): Ref<string> {
 
 /** First day of the week and weekend days of the site (`schema.week`, from the main language or `firstDayOfWeek`), the same the server and the Studio use. */
 export function useGinkoWeek(): WeekInfo {
-  return weekOfSchema(schema)
+  return schema.week
 }
 
 /**

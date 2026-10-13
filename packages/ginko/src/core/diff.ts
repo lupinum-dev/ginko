@@ -53,7 +53,7 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
     if (prod.timezone !== next.timezone) no('timezone', 'timezone', msg('diff.timezoneChanged'), fx('keepTimezone'))
   }
   for (const k of ['name', 'url'] as const) if (prod[k] !== next[k]) ok(k, k, msg('diff.valueChanged', { name: k }))
-  if (stableJson((prod.week ?? null) as Json) !== stableJson((next.week ?? null) as Json)) ok('week', 'week', msg('diff.valueChanged', { name: 'week' }))
+  if (stableJson(prod.week) !== stableJson(next.week)) ok('week', 'week', msg('diff.valueChanged', { name: 'week' }))
   if (stableJson(prod.pages) !== stableJson(next.pages)) ok('pages', 'pages', msg('diff.pagesChanged'))
   // A policy, not a data contract: switching agent review on or off changes no stored shape (SPEC 17).
   if (stableJson((prod.agents ?? null) as Json) !== stableJson((next.agents ?? null) as Json)) ok('agents', 'agents', msg('diff.agentsChanged'))

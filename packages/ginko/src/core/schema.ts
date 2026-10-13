@@ -241,7 +241,7 @@ function schemaProblems(schema: Schema): string[] {
   for (const locale of new Set(schema.locales.filter((l, i) => schema.locales.indexOf(l) !== i))) problems.push(`Locale “${locale}” is listed twice.`)
   if (!isSiteUrl(schema.url)) problems.push(`Invalid site url “${String(schema.url)}” (expected an absolute http(s) address such as “https://linde.example”).`)
   if (!isTimeZone(schema.timezone)) problems.push(`Invalid time zone “${String(schema.timezone)}” (expected for example “Europe/Vienna”).`)
-  if (schema.week !== undefined && !isWeek(schema.week)) problems.push('week must be { firstDay: 1 to 7, weekend: [days 1 to 7] } (1 = Monday, 7 = Sunday).')
+  if (!isWeek(schema.week)) problems.push('week must be { firstDay: 1 to 7, weekend: [days 1 to 7] } (1 = Monday, 7 = Sunday).')
   if (!isCurrency(schema.currency)) problems.push(`Invalid currency “${String(schema.currency)}” (expected an ISO 4217 code such as “EUR” or “JPY”).`)
   const pageOwner = new Map<string, string>()
   for (const [key, paths] of Object.entries(schema.pages)) {

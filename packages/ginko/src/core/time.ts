@@ -36,9 +36,6 @@ export function weekInfoOf(language: string, firstDayOfWeek?: WeekInfo['firstDay
   return { firstDay: firstDayOfWeek ?? info.firstDay, weekend: info.weekend }
 }
 
-/** The site's week; schemas stored before `week` existed get the default. */
-export const weekOfSchema = (schema: { week?: WeekInfo }): WeekInfo => schema.week ?? DEFAULT_WEEK
-
 const isoDay = (date: string) => new Date(`${date}T00:00:00Z`).getUTCDay() || 7 // 1 = Monday, 7 = Sunday
 
 /** Days since the week started: 0 on its first day, 6 on its last. */
