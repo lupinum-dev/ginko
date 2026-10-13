@@ -62,7 +62,8 @@ export function resolveEntry(schema: Schema, brickKey: string, entry: StoredEntr
   // Retired fields (SPEC 2.5) are projected after the live fields are resolved.
   for (const [name, field] of Object.entries(brick.fields)) {
     if (!field.retired) continue
-    const rule = schema.retired[`${brickKey}.${name}`] ?? { drop: true }
+    // checkSchema requires a rule for every retired field.
+    const rule = schema.retired[`${brickKey}.${name}`]!
     if ('from' in rule) {
       if (rule.from in data) data[name] = data[rule.from]
       for (const leaf of [...fallback]) {
