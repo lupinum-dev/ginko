@@ -2,7 +2,7 @@
 // a release before it is sent. The platform repeats the same work in sites.release (SPEC 5.2),
 // so both must stay in step: same migration rules, same defaults, same validation.
 import {
-  checkSchema, defaultsFor, fieldsChanged, isTranslatable, platformSchema, releaseData, serializeSchema, SITE_BUDGET, validate,
+  checkSite, defaultsFor, fieldsChanged, isTranslatable, platformSchema, releaseData, serializeSchema, SITE_BUDGET, validate,
   type Field, type Fields, type Json, type Locale, type Migration, type MigrationDescriptor, type Schema, type SiteInput,
 } from '../core/index.ts'
 import { type Candidate, isObject, type ReleaseState, type Write } from './model.ts'
@@ -21,7 +21,7 @@ const byteSize = (value: unknown): number => new TextEncoder().encode(JSON.strin
 export async function buildCandidate(state: ReleaseState, site: SiteInput): Promise<Candidate> {
   // File bricks (CONTENT.md) never reach the platform.
   const schema = platformSchema(serializeSchema(site))
-  const problems: string[] = checkSchema(schema)
+  const problems = checkSite(site, schema)
   const applied = new Set([...state.schema.migrations, ...state.migrations].map((m) => m.id))
   const fresh = schema.migrations.filter((m) => !applied.has(m.id))
 

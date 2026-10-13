@@ -187,15 +187,16 @@ export function mainLocale(schema: Pick<Schema, 'locales'>): Locale {
 
 /**
  * Problems of a site config: those of its schema, plus the options that stay out of the schema (`languages`).
- * The Nuxt build and `ginko check` run it; the platform checks only the schema (checkSchema).
+ * The Nuxt build, `ginko check` and `ginko release` run it; the platform checks only the schema (checkSchema).
+ * `schema` is the site's serialized schema, passed by callers that already have it.
  */
-export function checkSite(site: SiteInput): string[] {
+export function checkSite(site: SiteInput, schema: Schema = serializeSchema(site)): string[] {
   const problems: string[] = []
   for (const [locale, language] of Object.entries(site.languages ?? {})) {
     if (!site.locales.includes(locale)) problems.push(`languages: locale “${locale}” is not in locales.`)
     if (!isLocale(language)) problems.push(`languages.${locale}: invalid language “${String(language)}” (expected a canonical language tag such as “de-AT” or “en-US”).`)
   }
-  return [...problems, ...checkSchema(serializeSchema(site))]
+  return [...problems, ...checkSchema(schema)]
 }
 
 /**

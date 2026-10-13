@@ -94,3 +94,11 @@ describe('buildCandidate: entries the release would leave invalid (break-it 9)',
     expect(candidate.problems.some((p) => p.includes('e1') && p.includes('Code'))).toBe(true)
   })
 })
+
+describe('buildCandidate: site options outside the schema', () => {
+  // Wrong behaviour caught: release skips the `languages` check that build and `ginko check` run, and stores the default week.
+  it('an invalid language tag is a problem', async () => {
+    const candidate = await buildCandidate(state([]), defineSite({ ...before, languages: { de: 'de_AT' } }))
+    expect(candidate.problems).toContain('languages.de: invalid language “de_AT” (expected a canonical language tag such as “de-AT” or “en-US”).')
+  })
+})

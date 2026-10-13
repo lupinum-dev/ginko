@@ -26,9 +26,9 @@ export default defineNuxtModule<SiteInput>({
   async setup(site, nuxt) {
     if (!site?.site || !site.bricks) throw new Error('[ginko] Option `ginko` is missing: the result of defineSite() from ginko.config.ts.')
     // The serialized schema is the site's own contract: checked at build, used at runtime for defaults.
-    const problems = checkSite(site)
-    if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
     const schema = serializeSchema(site)
+    const problems = checkSite(site, schema)
+    if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
 
     const { resolve } = createResolver(import.meta.url)
     // Dev: a change to ginko.config.ts restarts the dev server (see watch.ts). Texts in i18n/*.json reload by themselves (ginko-i18n).
