@@ -4,6 +4,7 @@ import { v } from 'convex/values'
 import { internalMutation, mutation, query, type MutationCtx } from './_generated/server'
 import { actorFor, currentUser, fail } from './lib/access'
 import { NAME_MAX, SLUG } from './lib/input'
+import { isFetchableSiteUrl } from './lib/siteUrl'
 import { leafStatus } from './lib/translation'
 import { labelOf } from './entries'
 import type { Data } from './lib/content'
@@ -83,6 +84,7 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
     // fails below
   }
   if (url?.protocol !== 'http:' && url?.protocol !== 'https:') fail('INVALID', 'errors.siteAddressNotUrl')
+  if (!isFetchableSiteUrl(args.url, process.env.GINKO_LOCAL === '1')) fail('INVALID', 'errors.siteUrlNotAllowed')
   // Defaults stay Vienna, German, EUR; the first release may still change them while the site has no bricks.
   const timezone = args.timezone ?? 'Europe/Vienna'
   const locales = args.locales ?? ['de']

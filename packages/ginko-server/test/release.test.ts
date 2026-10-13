@@ -62,6 +62,7 @@ describe('release mutation (SPEC 5.2)', () => {
   it.each([
     ['another site', { site: 'andere' }, 'errors.siteNameMismatchInSchema'],
     ['a URL that is no web address', { url: 'javascript:alert(1)' }, 'errors.siteUrlNotWeb'],
+    ['a new URL on an internal host', { url: 'https://169.254.169.254' }, 'errors.siteUrlNotAllowed'],
   ])('refuses a config for %s and changes nothing', async (_name, change, key) => {
     const s = await setup()
     const schema = { ...copy(await storedSchema(s)), ...change }

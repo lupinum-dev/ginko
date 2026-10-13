@@ -6,6 +6,7 @@ import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { action, internalMutation, internalQuery } from './_generated/server'
 import { actorFor, fail, recordOp, replayed } from './lib/access'
+import { isFetchableSiteUrl } from './lib/siteUrl'
 
 export const MAX_PATHS = 500
 export const BATCH = 20
@@ -49,6 +50,8 @@ export const plan = internalQuery({
 
     const token = actor.site.refreshToken
     if (!token) fail('INVALID', 'errors.reloadKeyMissing')
+    // The token goes to this address, so it must be a public one (SSRF); stored URLs are checked again here, not only when saved.
+    if (!isFetchableSiteUrl(actor.site.url, process.env.GINKO_LOCAL === '1')) fail('INVALID', 'errors.siteUrlNotAllowed')
 
     const schema = actor.site.schema as Schema
     const pages = new Set<string>(['/sitemap.xml'])

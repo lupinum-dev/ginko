@@ -196,7 +196,8 @@
     "uploadRetrying": "The photo could not be processed. We are trying again.",
     "uploadHeicUnreadable": "This HEIC photo cannot be read. Please save it as JPEG or PNG and upload it again.",
     "uploadNotAnImage": "This file is not a readable image.",
-    "siteUrlNotWeb": "The site address in the config must start with https:// or http://."
+    "siteUrlNotWeb": "The site address in the config must start with https:// or http://.",
+    "siteUrlNotAllowed": "This site address cannot be used. It must be a public https:// address."
   },
   "history": {
     "changedSingle": "{label}: {fields} changed",

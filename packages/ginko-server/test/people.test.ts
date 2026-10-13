@@ -317,6 +317,8 @@ describe('sites.create and sites.bootstrap input (F05)', () => {
     const s = await setup()
     expect((await errorOf(create(s, { name: 'x'.repeat(101) }))).code).toBe('INVALID')
     for (const url of ['javascript:alert(1)', 'file:///etc/passwd', 'ftp://x.example', 'kein url']) expect((await errorOf(create(s, { url }))).code).toBe('INVALID')
+    // http://localhost is the dev setup only (GINKO_LOCAL=1); site-url.test.ts covers the production refusal.
+    vi.stubEnv('GINKO_LOCAL', '1')
     await create(s, { name: 'x'.repeat(100), url: 'http://localhost:3000' })
   })
 
