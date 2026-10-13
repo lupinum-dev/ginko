@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { formatMoney } from '@lupinum/ginko'
+import { formatMoney, safeHref } from '@lupinum/ginko'
 import { eventJsonLd } from '@lupinum/ginko-preset-gastro'
 import { siteName } from '../../utils/site'
+
+const langOf = useGinkoLang()
 
 const props = defineProps<{ slug: string }>()
 const { lang } = useSite()
 const path = useGinkoPath()
 const { t } = useI18n()
 const eventWhen = useEventWhen()
-const event = useGinkoEntry('events', props.slug)
+const event = useGinkoEntry('events', () => props.slug)
 const contact = useGinko('contact')
-const siteUrl = (useRuntimeConfig().public.ginko as { url: string }).url
+const { url: siteUrl } = useGinkoSite()
 
 // Event JSON-LD for search engines: the event's dates, place, price and booking link as the page shows them.
 const eventLd = computed(() => {
@@ -25,7 +27,7 @@ const eventLd = computed(() => {
     description: e.description && 'nodes' in e.description ? e.description : undefined,
     image: e.image ? new URL(e.image.url, siteUrl).href : undefined,
     price: e.price,
-    booking: ginkoSafeHref(e.booking),
+    booking: safeHref(e.booking),
   })
 })
 useGinkoSeo(() => ({ title: event.value.data.title, image: event.value.data.image?.url, jsonLd: [eventLd.value] }))
@@ -34,14 +36,14 @@ useGinkoSeo(() => ({ title: event.value.data.title, image: event.value.data.imag
 <template>
   <article class="wrap event">
     <NuxtLink :to="path('events')" class="back">{{ t('allEvents') }}</NuxtLink>
-    <h1 class="page-title" :lang="ginkoLangOf(event, 'title')">{{ event.data.title }}</h1>
+    <h1 class="page-title" :lang="langOf(event, 'title')">{{ event.data.title }}</h1>
     <p class="facts">
       <span class="when">{{ eventWhen(event.data.when, event.data.start) }}</span>
       <span v-if="event.data.price" class="price">{{ t('price') }}: {{ formatMoney(event.data.price, lang) }}</span>
     </p>
-    <img v-if="ginkoSafeHref(event.data.image?.url)" class="image" :src="ginkoSafeHref(event.data.image?.url)" :alt="event.data.image!.alt" :lang="ginkoLangOf(event, 'image.alt')" :width="event.data.image!.width" :height="event.data.image!.height">
-    <GinkoMarkdown :value="event.data.description" class="prose" :lang="ginkoLangOf(event, 'description')" />
-    <a v-if="ginkoSafeHref(event.data.booking)" class="button book" :href="ginkoSafeHref(event.data.booking)" rel="noopener">{{ t('book') }}</a>
+    <img v-if="safeHref(event.data.image?.url)" class="image" :src="safeHref(event.data.image?.url)" :alt="event.data.image!.alt" :lang="langOf(event, 'image.alt')" :width="event.data.image!.width" :height="event.data.image!.height">
+    <GinkoMarkdown :value="event.data.description" class="prose" :lang="langOf(event, 'description')" />
+    <a v-if="safeHref(event.data.booking)" class="button book" :href="safeHref(event.data.booking)" rel="noopener">{{ t('book') }}</a>
   </article>
 </template>
 

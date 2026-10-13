@@ -1,5 +1,5 @@
 // Shared shapes of the CLI: what the platform's release state looks like, what the CLI sends
-// back, and the error type that ends a command with an English message and exit code 1.
+// back, and the error type that ends a command with an English message and a coded failure.
 import type { Json, Schema } from '../core/index.ts'
 
 /** GET /release/state (SPEC 5.1 step 2): the stored schema and the data of every entry, deleted ones too. */
@@ -31,22 +31,39 @@ export interface Candidate {
   bytes: { site: number; largest: number }
 }
 
-/** A command that stops here. The message is shown as it is; the exit code is 1. */
-export class CliError extends Error {}
+/**
+ * The `error.code` of a CLI failure that is not the platform's own answer. It decides the exit code (run.ts):
+ * INVALID 1 (fix the config, schema or content), USAGE 2 (fix the call or the environment),
+ * UNAVAILABLE 3 (platform unreachable or the outcome unknown: running the same commit again is safe), FORBIDDEN 4.
+ */
+export type CliCode = 'INVALID' | 'USAGE' | 'UNAVAILABLE' | 'FORBIDDEN'
+
+/** A command that stops here. The message is shown as it is. */
+export class CliError extends Error {
+  readonly code: CliCode
+
+  constructor(message: string, code: CliCode = 'INVALID') {
+    super(message)
+    this.code = code
+  }
+}
 
 export const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-/** Checks the shape of the state JSON from the platform. The schema is trusted once its parts exist. */
+/**
+ * Checks the shape of the state JSON from the platform. The schema is trusted once its parts exist. A bad answer is
+ * UNAVAILABLE, not INVALID: the site's code is not at fault, the platform (or what answers at GINKO_PLATFORM) is.
+ */
 export function parseReleaseState(value: unknown): ReleaseState {
-  if (!isObject(value)) throw new CliError('The platform did not return a valid state.')
+  if (!isObject(value)) throw new CliError('The platform did not return a valid state.', 'UNAVAILABLE')
   const { site, schema, schemaRev, contentRev, migrations, entries } = value
   const valid = typeof site === 'string'
     && isObject(schema) && isObject(schema.bricks) && Array.isArray(schema.migrations) && isObject(schema.retired)
     && typeof schemaRev === 'number' && typeof contentRev === 'number'
     && Array.isArray(migrations) && Array.isArray(entries)
     && entries.every((e) => isObject(e) && typeof e.id === 'string' && typeof e.brick === 'string' && isObject(e.data))
-  if (!valid) throw new CliError('The platform returned an incomplete state.')
+  if (!valid) throw new CliError('The platform returned an incomplete state.', 'UNAVAILABLE')
   return value as unknown as ReleaseState
 }
 
@@ -103,7 +120,10 @@ export interface SiteExport extends Omit<ExportAnswer, 'files'> {
   files: (ExportFileInfo & { path: string })[]
 }
 
-/** Checks the shape of an export. `locator` is the key that says where a file is: `url` (platform) or `path` (folder). */
+/**
+ * Checks the shape of an export. `locator` is the key that says where a file is: `url` (platform) or `path` (folder).
+ * A bad platform answer is UNAVAILABLE (as in parseReleaseState); a bad local export.json is INVALID.
+ */
 export function parseExport(value: unknown, locator: 'url', problem: string): ExportAnswer
 export function parseExport(value: unknown, locator: 'path', problem: string): SiteExport
 export function parseExport(value: unknown, locator: 'url' | 'path', problem: string): ExportAnswer | SiteExport {
@@ -123,6 +143,6 @@ export function parseExport(value: unknown, locator: 'url' | 'path', problem: st
       && (f.focus === undefined || (isObject(f.focus) && typeof f.focus.x === 'number' && typeof f.focus.y === 'number')))
     && (value.folders === undefined || (Array.isArray(value.folders) && value.folders.every((f) => isObject(f)
       && typeof f.id === 'string' && typeof f.name === 'string' && optionalString(f.parent))))
-  if (!valid) throw new CliError(problem)
+  if (!valid) throw new CliError(problem, locator === 'url' ? 'UNAVAILABLE' : 'INVALID')
   return value as unknown as ExportAnswer | SiteExport
 }

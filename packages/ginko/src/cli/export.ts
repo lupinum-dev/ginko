@@ -25,11 +25,11 @@ const EXTENSIONS: Record<string, string> = {
 /** The site named by a push key `ginko_<site>_<32>`. The key is not part of any message. */
 export function siteOfKey(key: string): string {
   const match = /^ginko_([a-z][a-z0-9-]{1,40})_[a-z0-9]{32}$/.exec(key.trim())
-  if (!match) throw new CliError('GINKO_KEY is not a valid key.')
+  if (!match) throw new CliError('GINKO_KEY is not a valid key.', 'USAGE')
   return match[1]!
 }
 
-/** The folder `ginko export` writes to without --out: `ginko-export-<site>-<YYYY-MM-DD>` in the working folder. */
+/** The folder `ginko export` writes to when no folder is given: `ginko-export-<site>-<YYYY-MM-DD>` in the working folder. */
 export function defaultDir(site: string, now: Date): string {
   return `ginko-export-${site}-${now.toISOString().slice(0, 10)}`
 }
@@ -47,10 +47,10 @@ async function requireEmpty(dir: string) {
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code
     if (code === 'ENOENT') return
-    if (code === 'ENOTDIR') throw new CliError(`“${dir}” is not a folder.`)
+    if (code === 'ENOTDIR') throw new CliError(`“${dir}” is not a folder.`, 'USAGE')
     throw error
   }
-  if (names.length > 0) throw new CliError(`The folder “${dir}” is not empty. Choose a new folder (--out).`)
+  if (names.length > 0) throw new CliError(`The folder “${dir}” is not empty. Choose a new folder.`, 'USAGE')
 }
 
 export async function exportSite(input: ExportInput): Promise<{ dir: string; entries: number; files: number }> {
@@ -67,14 +67,14 @@ export async function exportSite(input: ExportInput): Promise<{ dir: string; ent
       let bytes: Uint8Array
       try {
         const response = await input.fetch(url)
-        if (!response.ok) throw new CliError(`The file “${file.name}” could not be downloaded (HTTP ${response.status}).`)
+        if (!response.ok) throw new CliError(`The file “${file.name}” could not be downloaded (HTTP ${response.status}).`, 'UNAVAILABLE')
         bytes = new Uint8Array(await response.arrayBuffer())
       } catch (error) {
         if (error instanceof CliError) throw error
-        throw new CliError(`The file “${file.name}” could not be downloaded.`)
+        throw new CliError(`The file “${file.name}” could not be downloaded.`, 'UNAVAILABLE')
       }
       if (bytes.byteLength !== file.size) {
-        throw new CliError(`The file “${file.name}” is incomplete: ${bytes.byteLength} instead of ${file.size} bytes.`)
+        throw new CliError(`The file “${file.name}” is incomplete: ${bytes.byteLength} instead of ${file.size} bytes.`, 'UNAVAILABLE')
       }
       await writeFile(join(dir, path), bytes)
       files.push({ ...info, path })

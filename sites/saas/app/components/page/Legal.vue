@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { legalPages, type LegalKey } from '../../utils/site'
 
+const langOf = useGinkoLang()
+
 // AGB, AVV, privacy and imprint: written by hand in every language (translate: 'manual'). A language without
 // its own text shows the main language's text, marked with its `lang`.
 const props = defineProps<{ field: LegalKey }>()
@@ -13,7 +15,7 @@ const legal = useGinko('legal')
 <template>
   <div class="wrap page-body">
     <h1 class="page-title">{{ labels.pages[page].title }}</h1>
-    <GinkoMarkdown :value="legal.data[field]" class="prose body" :lang="ginkoLangOf(legal, field)" />
+    <GinkoMarkdown :value="legal.data[field]" class="prose body" :lang="langOf(legal, field)" />
   </div>
 </template>
 

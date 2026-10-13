@@ -146,7 +146,7 @@
     "devPushLocalOnly": "devPush only exists in the local platform.",
     "siteNameMismatchInSchema": "The site name in the schema does not match.",
     "localOnly": "Local only.",
-    "siteNotStartedDev": "The site does not exist. Start `ginko dev` first.",
+    "siteNotStartedDev": "The site does not exist. Start `pnpm local:dev` first.",
     "siteNotPushedSchema": "The site does not exist. Push the schema first.",
     "backupFoldersInconsistent": "The folders in the backup are not consistent.",
     "entryBrickMissingFromSchema": "The entry {id} belongs to “{brick}”, which is not in the schema.",

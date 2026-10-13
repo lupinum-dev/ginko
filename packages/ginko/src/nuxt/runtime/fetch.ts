@@ -43,6 +43,9 @@ export function unreachableMessage(config: GinkoPublicConfig, url: string): stri
   return `Ginko cannot get content from the platform at ${origin}, which the brick(s) ${bricks.map((b) => `"${b}"`).join(', ')} read from. Fix: add source: 'files' to read them from Markdown files, or start the platform / set NUXT_PUBLIC_GINKO_PLATFORM.`
 }
 
+/** Logged once per server process: a deployment without the platform address answers every platform page with 503. */
+let missingPlatformLogged = false
+
 /** Header with which the site's server proves to the platform that it is the site (not counted by the visitor rate limit). */
 export const SITE_TOKEN_HEADER = 'x-ginko-site-token'
 
@@ -51,6 +54,12 @@ export const SITE_TOKEN_HEADER = 'x-ginko-site-token'
  * on Vercel a 503 keeps the last good page in the ISR cache, a 404 would replace it (ISR spike).
  */
 export async function fetchBundle(config: GinkoPublicConfig, locale: Locale, minRev: string | undefined, siteToken?: string): Promise<Bundle> {
+  if (!config.platform) {
+    // Only production has no default address; the visitor still gets the plain 503, the log names the cause.
+    if (!missingPlatformLogged) console.error('[ginko] NUXT_PUBLIC_GINKO_PLATFORM is not set, so every page with platform content answers 503. Set it to the platform address in the environment of this deployment.')
+    missingPlatformLogged = true
+    throw new PlatformError('Content temporarily unavailable')
+  }
   const query = new URLSearchParams({ format: String(BUNDLE_FORMAT), locale })
   if (minRev && /^\d+\.\d+$/.test(minRev)) query.set('minRev', minRev)
   const url = `${config.platform.replace(/\/$/, '')}/bundle/${encodeURIComponent(config.site)}?${query}`

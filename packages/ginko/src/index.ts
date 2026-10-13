@@ -12,6 +12,7 @@ export { defineComponents, type ComponentDef, type ComponentRegistry } from './c
 export type { SeoImage } from './core/seo.ts'
 export { f } from './core/fields.ts'
 export { formatMoney } from './core/money.ts'
+export { safeHref } from './core/href.ts'
 export { plainText, type MarkdownProfile, type MarkdownValue, type MarkdownTree, type MarkdownToc, type TocLink } from './core/markdown.ts'
 export { startOfWeek, type WeekInfo } from './core/time.ts'
 export type { DataOf, ItemOf, Money, ImageValue, FileValue, UnknownChoice } from './core/infer.ts'

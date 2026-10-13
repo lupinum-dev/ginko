@@ -8,7 +8,7 @@ const props = defineProps<{ post: Post }>()
 const { t } = useI18n()
 const blog = useDocsBlog()
 const locale = useGinkoLocale()
-const site = useRuntimeConfig().public.ginko as { url: string }
+const site = useGinkoSite()
 const route = useRoute()
 const authors = computed(() => blog.authorsOf(props.post))
 const absolute = (path: string) => new URL(path, site.url).href

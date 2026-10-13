@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { safeHref } from '@lupinum/ginko'
+
 const settings = useGinko('settings')
 const pages = useGinko('pages')
 const path = useGinkoPath()
@@ -22,7 +24,7 @@ const path = useGinkoPath()
       <p v-if="settings.data.email"><a :href="`mailto:${settings.data.email}`">{{ settings.data.email }}</a></p>
       <address v-if="settings.data.address">{{ settings.data.address }}</address>
       <ul v-if="settings.data.social?.length" aria-label="Links">
-        <li v-for="link in settings.data.social" :key="link._id"><a :href="ginkoSafeHref(link.url)" rel="noopener">{{ link.label }}</a></li>
+        <li v-for="link in settings.data.social" :key="link._id"><a :href="safeHref(link.url)" rel="noopener">{{ link.label }}</a></li>
       </ul>
     </footer>
   </div>

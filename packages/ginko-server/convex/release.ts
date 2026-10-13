@@ -359,7 +359,7 @@ export const release = internalMutation({
 })
 
 /**
- * `ginko dev` (SPEC 5.3): stores the site's schema in the LOCAL platform; rejected changes go
+ * `pnpm local:dev` (SPEC 5.3): stores the site's schema in the LOCAL platform; rejected changes go
  * through and come back as warnings. Internal, so only `npx convex run` with the deployment's
  * admin key can call it — no sign-in needed locally, unreachable for browsers. A site that does
  * not exist yet is created, so a fresh local backend works without setup. Every non-retired

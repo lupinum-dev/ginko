@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { priceText } from '../../utils/site'
+import { safeHref } from '@lupinum/ginko'
+
+const langOf = useGinkoLang()
 
 const { lang, labels } = useSite()
 const path = useGinkoPath()
@@ -9,7 +12,7 @@ const hero = useGinko('hero')
 const features = useGinko('features')
 const pricing = useGinko('pricing')
 const testimonials = useGinko('testimonials')
-const cta = computed(() => ginkoSafeHref(hero.value.data.buttonUrl))
+const cta = computed(() => safeHref(hero.value.data.buttonUrl))
 const quotes = computed(() => testimonials.value.items.slice(0, 3))
 </script>
 
@@ -17,10 +20,10 @@ const quotes = computed(() => testimonials.value.items.slice(0, 3))
   <div>
     <section class="wrap hero" aria-labelledby="hero-title">
       <div class="intro">
-        <h1 id="hero-title" :lang="ginkoLangOf(hero, 'headline')">{{ hero.data.headline }}</h1>
-        <p class="text" :lang="ginkoLangOf(hero, 'text')">{{ hero.data.text }}</p>
+        <h1 id="hero-title" :lang="langOf(hero, 'headline')">{{ hero.data.headline }}</h1>
+        <p class="text" :lang="langOf(hero, 'text')">{{ hero.data.text }}</p>
         <div class="actions">
-          <a v-if="cta" class="button" :href="cta" rel="noopener" :lang="ginkoLangOf(hero, 'buttonText')">{{ hero.data.buttonText }}</a>
+          <a v-if="cta" class="button" :href="cta" rel="noopener" :lang="langOf(hero, 'buttonText')">{{ hero.data.buttonText }}</a>
           <NuxtLink class="button secondary" :to="path('pricing')">{{ t('seePricing') }}</NuxtLink>
         </div>
       </div>
@@ -29,12 +32,12 @@ const quotes = computed(() => testimonials.value.items.slice(0, 3))
 
     <section id="funktionen" class="wrap section" aria-labelledby="features-title">
       <div class="section-head">
-        <h2 id="features-title" :lang="ginkoLangOf(features, 'headline')">{{ features.data.headline || labels.nav.features }}</h2>
+        <h2 id="features-title" :lang="langOf(features, 'headline')">{{ features.data.headline || labels.nav.features }}</h2>
       </div>
       <ul class="features" :class="{ four: features.data.items.length % 4 === 0 }">
         <li v-for="item in features.data.items" :key="item._id" class="feature">
-          <h3 :lang="ginkoLangOf(features, `items.${item._id}.title`)">{{ item.title }}</h3>
-          <p :lang="ginkoLangOf(features, `items.${item._id}.text`)">{{ item.text }}</p>
+          <h3 :lang="langOf(features, `items.${item._id}.title`)">{{ item.title }}</h3>
+          <p :lang="langOf(features, `items.${item._id}.text`)">{{ item.text }}</p>
         </li>
       </ul>
     </section>
@@ -58,9 +61,9 @@ const quotes = computed(() => testimonials.value.items.slice(0, 3))
       <ul class="quotes">
         <li v-for="item in quotes" :key="item.id">
           <figure class="quote">
-            <blockquote :lang="ginkoLangOf(item, 'quote')">{{ item.data.quote }}</blockquote>
+            <blockquote :lang="langOf(item, 'quote')">{{ item.data.quote }}</blockquote>
             <figcaption>
-              <img v-if="ginkoSafeHref(item.data.logo?.url)" class="logo" :src="ginkoSafeHref(item.data.logo?.url)" :alt="item.data.logo!.alt" :lang="ginkoLangOf(item, 'logo.alt')" :width="item.data.logo!.width" :height="item.data.logo!.height" loading="lazy">
+              <img v-if="safeHref(item.data.logo?.url)" class="logo" :src="safeHref(item.data.logo?.url)" :alt="item.data.logo!.alt" :lang="langOf(item, 'logo.alt')" :width="item.data.logo!.width" :height="item.data.logo!.height" loading="lazy">
               <span class="name">{{ item.data.name }}</span>
               <span class="company">{{ item.data.company }}</span>
             </figcaption>

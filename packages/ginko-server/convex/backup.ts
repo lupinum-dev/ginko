@@ -1,4 +1,4 @@
-// Read side of `ginko export` and `ginko pull` (SPEC 9, 12). The CLI reaches `snapshot` through
+// Read side of `ginko export` and `pnpm local:pull` (SPEC 9, 12). The CLI reaches `snapshot` through
 // GET /export (routes/export.ts), which resolves the push key to its site first.
 import type { Json } from '@lupinum/ginko'
 import { v } from 'convex/values'

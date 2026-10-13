@@ -6,8 +6,8 @@ import { describe, expect, test } from 'vitest'
 import { ref } from 'vue'
 import type { Locale } from '../src/index.ts'
 import type { Bundle, Schema } from '../src/internal.ts'
-import { fallbackLang, withUrl } from '../src/nuxt/runtime/shared.ts'
-import { BUNDLE_STATE, TODAY_STATE, ginkoLangOf, useGinkoBreadcrumbs, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, useGinkoPath } from '../src/nuxt/runtime/composables.ts'
+import { agentRequest, withUrl } from '../src/nuxt/runtime/shared.ts'
+import { BUNDLE_STATE, TODAY_STATE, useGinkoLang, useGinkoBreadcrumbs, useGinkoEntry, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, useGinkoPath } from '../src/nuxt/runtime/composables.ts'
 import * as shim from './shims/imports.ts'
 import { i18nLocale, routePath, seoConfig, useState } from './shims/imports.ts'
 import { installOgImage } from './shims/og.ts'
@@ -106,17 +106,16 @@ describe('useGinkoSeo', () => {
 })
 
 describe('entry helpers', () => {
-  test('a routed item gets the url of the current locale; ginkoLangOf is the main locale only for a fallen-back field', () => {
+  test('a routed item gets the url of the current locale', () => {
     const [item] = withUrl([{ id: 'x', fallback: ['title'], urls: { de: '/veranstaltungen/a', en: '/en/events/a' } }], 'en')
     expect(item!.url).toBe('/en/events/a')
-    expect(fallbackLang(item!.fallback, 'title', 'de')).toBe('de')
-    expect(fallbackLang(item!.fallback, 'description', 'de')).toBeUndefined()
   })
 
-  test('ginkoLangOf gives the language tag of the main locale (de-AT), not its code', () => {
+  test('useGinkoLang gives the language tag of the main locale (de-AT) only for a fallen-back field', () => {
+    const langOf = useGinkoLang()
     const item = { fallback: ['title'] }
-    expect(ginkoLangOf(item, 'title')).toBe('de-AT')
-    expect(ginkoLangOf(item, 'description')).toBeUndefined()
+    expect(langOf(item, 'title')).toBe('de-AT')
+    expect(langOf(item, 'description')).toBeUndefined()
   })
 })
 
@@ -165,6 +164,18 @@ describe('collection composables', () => {
     expect(next).toBeUndefined()
   })
 
+  // Wrong behaviour caught: a page reused for another slug (client navigation) keeps showing the first entry.
+  test('useGinkoEntry follows a slug getter and answers 404 for a missing slug', () => {
+    today('2026-10-08')
+    const slug = ref<string | undefined>('weinabend-ebner')
+    const entry = useGinkoEntry('events' as never, () => slug.value)
+    expect((entry.value as { id: string }).id).toBe('weinabend')
+    slug.value = 'martini-gansl'
+    expect((entry.value as { id: string }).id).toBe('martinigans')
+    slug.value = undefined
+    expect(() => entry.value).toThrow(expect.objectContaining({ statusCode: 404 }))
+  })
+
   test('useGinkoBreadcrumbs gives the trail for the route path', () => {
     today('2026-10-08')
     routePath.value = '/veranstaltungen/martini-gansl'
@@ -172,6 +183,25 @@ describe('collection composables', () => {
     routePath.value = '/unbekannt'
     expect(useGinkoBreadcrumbs(['events'] as never).value).toEqual([])
     routePath.value = '/'
+  })
+})
+
+// Wrong behaviour caught: a page whose slug has a dot (`/blog/v1.2`) is taken for a file, so it gets no Link header
+// and `Accept: text/markdown` returns HTML although `/blog/v1.2.md` exists.
+// And: an agent's `Accept: text/markdown` on /llms.txt loads the platform bundle for a lookup that never matches.
+describe('agentRequest', () => {
+  test.each([
+    ['/blog/v1.2', { page: '/blog/v1.2', asMarkdown: false }],
+    ['/blog/v1.2.md', { page: '/blog/v1.2', asMarkdown: true }],
+    ['/en/menu', { page: '/en/menu', asMarkdown: false }],
+    ['/index.md', { page: '/', asMarkdown: true }],
+    ['/__ginko/files/de.json', undefined],
+    ['/_ginko/img/abc.webp', undefined],
+    ['/_nuxt/entry.js', undefined],
+    ['/llms.txt', undefined],
+    ['/sitemap.xml', undefined],
+  ])('%s', (path, request) => {
+    expect(agentRequest(path)).toEqual(request)
   })
 })
 
