@@ -6,7 +6,7 @@ type Scalar = string | number | boolean
 type Data = Record<string, unknown>
 
 /** What a condition compares a value with: one element of a list value, money by `amount`, a daterange by its start date. */
-type Comparable<V> = V extends readonly (infer E)[] ? E : V extends Money ? Pick<Money, 'amount'> | number : V extends { from: string } ? string : V
+type Comparable<V> = V extends readonly (infer E)[] ? E : V extends Money ? Pick<Money, 'amount'> : V extends { from: string } ? string : V
 
 /**
  * A test on one field. `eq`/`ne`: equal or not (for a list value: one element is). `gt`, `gte`, `lt`, `lte`: compare.
@@ -39,7 +39,6 @@ export interface QueryResult {
   pages: number
   facets?: Record<string, Record<string, number>>
 }
-/** The part of a site schema `query` reads. A `ref` field names its target brick in `to`. */
 /** What `query` reads of the schema: the fields of each brick (a full `Schema` fits). */
 export interface QuerySchema { bricks: Record<string, { fields: Fields }> }
 
