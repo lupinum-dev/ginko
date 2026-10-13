@@ -17,10 +17,9 @@ const byteSize = (value: unknown): number => new TextEncoder().encode(JSON.strin
  * Builds the release candidate from the stored state and the local config. Runs every migration
  * that the platform has not applied yet over every entry of its brick, deleted ones too.
  * Writes are merged: one write per entry, holding all target fields of the new migrations.
+ * `schema` is the platform schema of `site` (without file bricks, CONTENT.md); `plan()` passes the one it built.
  */
-export async function buildCandidate(state: ReleaseState, site: SiteInput): Promise<Candidate> {
-  // File bricks (CONTENT.md) never reach the platform.
-  const schema = platformSchema(serializeSchema(site))
+export async function buildCandidate(state: ReleaseState, site: SiteInput, schema: Schema = platformSchema(serializeSchema(site))): Promise<Candidate> {
   const problems = checkSite(site, schema)
   const applied = new Set([...state.schema.migrations, ...state.migrations].map((m) => m.id))
   const fresh = schema.migrations.filter((m) => !applied.has(m.id))
