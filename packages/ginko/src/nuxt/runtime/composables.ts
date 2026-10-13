@@ -137,12 +137,12 @@ export function useGinkoQuery<K extends CollectionKey>(brick: K, q: MaybeRefOrGe
   })
 }
 
-/** The entries before and after `id` among the visible ones, in `order` (core `neighbors` syntax) or bundle order. */
-export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRefOrGetter<string>, order?: string): ComputedRef<{ prev?: GinkoItem<K>; next?: GinkoItem<K> }> {
+/** The entries before and after `id` among the visible ones, in `options.order` (the `Query` order) or bundle order. */
+export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRefOrGetter<string>, options: Pick<Query, 'order'> = {}): ComputedRef<{ prev?: GinkoItem<K>; next?: GinkoItem<K> }> {
   const bundle = useVisibleBundle([brick])
   const locale = useGinkoLocale()
   return computed(() => {
-    const { prev, next } = neighbors(bundle.value, brick, toValue(id), order)
+    const { prev, next } = neighbors(bundle.value, brick, toValue(id), options.order)
     const one = (item?: BundleItem) => item && withRouteUrl(brick, [item], locale.value)[0]
     return { prev: one(prev), next: one(next) } as never
   })

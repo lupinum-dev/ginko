@@ -158,6 +158,13 @@ describe('collection composables', () => {
     expect(next?.id).toBe('martinigans')
   })
 
+  test('useGinkoNeighbors takes the order as { order }', () => {
+    today('2026-10-08')
+    const { prev, next } = useGinkoNeighbors('events' as never, 'weinabend', { order: 'price desc' }).value as { prev?: { id: string }; next?: unknown }
+    expect(prev?.id).toBe('martinigans')
+    expect(next).toBeUndefined()
+  })
+
   test('useGinkoBreadcrumbs gives the trail for the route path', () => {
     today('2026-10-08')
     routePath.value = '/veranstaltungen/martini-gansl'
