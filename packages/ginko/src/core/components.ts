@@ -4,6 +4,7 @@
 import type { Node } from 'comark'
 import { effectiveMax } from './fields.ts'
 import { isSafeHref } from './href.ts'
+import { labelProblem } from './labels.ts'
 import { bare, msg, commaList, orList, type Described } from './messages.ts'
 import type { MarkdownProfile } from './markdown.ts'
 import type { Field, Fields, Label } from './types.ts'
@@ -77,14 +78,11 @@ export const PLAIN_TAGS: ReadonlySet<string> = new Set([
 
 const TAG = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
 
-/** A non-empty text, or texts per language (`{ de: '…', en: '…' }`). */
-const isLabel = (value: unknown): boolean => (typeof value === 'string' && value !== '')
-  || (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length > 0 && Object.values(value).every((v) => typeof v === 'string' && v !== ''))
 const PROP = /^[a-z][a-zA-Z0-9]*$/
 const PROP_TYPES = new Set<Field['type']>(['text', 'longtext', 'number', 'boolean', 'choice', 'choices', 'image', 'ref'])
 
-/** Structural problems of a registry, as English sentences. Empty when usable. */
-export function componentProblems(registry: ComponentRegistry): string[] {
+/** Structural problems of a registry, as English sentences. Empty when usable. `main` is the site's main locale (labels). */
+export function componentProblems(registry: ComponentRegistry, main: string): string[] {
   const problems: string[] = []
   const tags = Object.keys(registry)
   for (const tag of tags) {
@@ -94,9 +92,10 @@ export function componentProblems(registry: ComponentRegistry): string[] {
     if (isBlockedTag(tag, registry)) problems.push(`${at}: The name is blocked.`)
     else if (PLAIN_TAGS.has(tag)) problems.push(`${at}: The name belongs to Markdown (${tag}) and cannot be overridden.`)
     if (def.kind !== 'block' && def.kind !== 'inline') problems.push(`${at}: kind must be “block” or “inline”.`)
-    if (!isLabel(def.label)) problems.push(`${at}: label is missing.`)
-    if (!isLabel(def.describe)) problems.push(`${at}: describe is missing.`)
-    if (def.editor?.group !== undefined && !isLabel(def.editor.group)) problems.push(`${at}: editor.group must be a text or a text per language.`)
+    for (const [path, label] of [['label', def.label], ['describe', def.describe], ...(def.editor?.group === undefined ? [] : [['editor.group', def.editor.group]])] as const) {
+      const problem = labelProblem(`components.${tag}.${path}`, label, main)
+      if (problem) problems.push(problem)
+    }
     for (const [name, prop] of Object.entries(def.props ?? {})) {
       if (!PROP.test(name) || /^on/i.test(name)) problems.push(`${at}: Invalid property name “${name}”.`)
       if (!PROP_TYPES.has(prop?.type)) problems.push(`${at}: Property “${name}” cannot have the type “${String(prop?.type)}” (allowed: ${[...PROP_TYPES].join(', ')}).`)

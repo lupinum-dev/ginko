@@ -366,10 +366,9 @@ function schemaProblems(schema: Schema): string[] {
   if (schema.components !== undefined) {
     if (typeof schema.components !== 'object' || schema.components === null || Array.isArray(schema.components)) problems.push('components must be an object.')
     else {
-      problems.push(...componentProblems(schema.components))
+      problems.push(...componentProblems(schema.components, main))
       for (const [tag, def] of Object.entries(schema.components)) {
         unknown(`components.${tag}`, def, COMPONENT_KEYS)
-        pushLabel(`components.${tag}.label`, def.label)
         for (const [slot, { label }] of Object.entries(def.slots ?? {})) pushLabel(`components.${tag}.slots.${slot}.label`, label)
         // Props are ordinary fields: same grammar and limits as brick fields (`ref` must name a collection).
         for (const [name, field] of Object.entries(def.props ?? {})) problems.push(...checkField(`components.${tag}.props.${name}`, field, def.props, false, schema))
@@ -515,10 +514,8 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
   const hintIssue = field.hint === undefined ? null : labelProblem(`${path}.hint`, field.hint, schema.locales[0] ?? '')
   if (hintIssue) problems.push(hintIssue)
   if (field.group !== undefined) {
-    const blank = typeof field.group === 'string' ? field.group.trim() === '' : Object.values(field.group ?? {}).every((v) => typeof v === 'string' && v.trim() === '')
     const groupIssue = labelProblem(`${path}.group`, field.group, schema.locales[0] ?? '')
     if (groupIssue) problems.push(groupIssue)
-    else if (blank) problems.push(`${path}.group: needs a non-empty heading.`)
     else if (!topLevel) problems.push(`${path}.group: only fields of a brick can be grouped, not list columns.`)
   }
   if (field.showWhen !== undefined) {

@@ -25,13 +25,17 @@ describe('componentProblems', () => {
     ['unknown child', { x: { ...def, children: ['nope'] } }, 'children names “nope”'],
     ['unknown parent', { x: { ...def, parents: ['nope'] } }, 'parents names “nope”'],
     ['prop named onclick', { x: { ...def, props: { onclick: f.text('Klick') } } }, 'Invalid property name'],
+    // Labels follow the brick rule (labelProblem): the main language or English, no empty text.
+    ['label without the main language or English', { x: { ...def, label: { fr: 'X' } } }, 'components.x.label: label needs a text in the main language “de” or in English.'],
+    ['empty describe', { x: { ...def, describe: '' } }, 'components.x.describe: label is empty.'],
+    ['editor.group with an invalid language', { x: { ...def, editor: { group: { de: 'G', EN_us: 'G' } } } }, 'components.x.editor.group: label has the invalid language “EN_us”.'],
   ]
   test.each(cases)('%s', (_name, reg, text) => {
-    expect(componentProblems(reg).join('\n')).toContain(text)
+    expect(componentProblems(reg, 'de').join('\n')).toContain(text)
   })
-  test('a valid registry has no problems', () => expect(componentProblems(registry)).toEqual([]))
-  test('children and parents may name plain Markdown tags', () => expect(componentProblems({ x: { ...def, children: ['pre'] } })).toEqual([]))
-  test('embed is blocked as an element but may be declared as a component', () => expect(componentProblems({ embed: def })).toEqual([]))
+  test('a valid registry has no problems', () => expect(componentProblems(registry, 'de')).toEqual([]))
+  test('children and parents may name plain Markdown tags', () => expect(componentProblems({ x: { ...def, children: ['pre'] } }, 'de')).toEqual([]))
+  test('embed is blocked as an element but may be declared as a component', () => expect(componentProblems({ embed: def }, 'de')).toEqual([]))
 })
 
 describe('parseMarkdown with a component registry', () => {

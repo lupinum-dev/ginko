@@ -583,8 +583,8 @@ describe('group and layout (display only)', () => {
     expect(checkSchema(schema)).toEqual([])
   })
   it.each([
-    ['empty group', { group: '' }, 'menu.note.group: needs a non-empty heading.'],
-    ['blank group in every language', { group: { de: ' ', en: '' } }, 'menu.note.group: needs a non-empty heading.'],
+    ['empty group', { group: '' }, 'menu.note.group: label is empty.'],
+    ['blank group in every language', { group: { de: ' ', en: '' } }, 'menu.note.group: label needs a text for each language.'],
     ['group that is a number', { group: 3 }, 'menu.note.group: label must be a text or an object with one text per language.'],
   ])('rejects %s', (_name, extra, problem) => {
     const problems = problemsOf(site({ note: f.longtext('Notiz', extra as never) })); expect(problems, JSON.stringify(problems)).toContain(problem)

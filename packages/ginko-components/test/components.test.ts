@@ -30,7 +30,8 @@ afterEach(() => { warn.mockRestore() })
 
 describe('registry and components', () => {
   test('the registry is valid and every tag has a component', () => {
-    expect(componentProblems(components)).toEqual([])
+    // 'es': a site in a language the registry does not name falls back to English, so every label needs `en`.
+    expect(componentProblems(components, 'es')).toEqual([])
     expect(Object.keys(components).filter((tag) => !(tag in componentMap))).toEqual([])
     expect(Object.keys(componentMap).filter((tag) => !(tag in components)).sort()).toEqual(PLAIN_TAG_OVERRIDES.slice().sort())
   })
