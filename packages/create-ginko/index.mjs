@@ -5,6 +5,7 @@
 // German: template-de/ goes over the base template; a preset has its own folder `<preset>-de`.
 import { cpSync, existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
+import { supportsNode } from './node-version.mjs'
 
 // preset name -> the package it needs, and what the printed next steps say about it
 const presets = {
@@ -73,6 +74,10 @@ if (!/^[a-z]/.test(site)) {
   process.exit(1)
 }
 const own = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+// A warning, not an error: the site is still created, and the user may run it on another Node.
+if (!supportsNode(process.versions.node, own.engines.node)) {
+  console.warn(`Warning: Ginko needs Node ${own.engines.node}, but this is Node ${process.versions.node}. The site is created, but install and dev may fail or print warnings. Switch to a supported Node version before you run "install".\n`)
+}
 cpSync(new URL('./template', import.meta.url), dir, { recursive: true })
 // npm drops .gitignore from published packages, so the template carries it as `gitignore`.
 renameSync(join(dir, 'gitignore'), join(dir, '.gitignore'))

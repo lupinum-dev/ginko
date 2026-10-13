@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -105,5 +105,31 @@ describe('create-ginko', () => {
 
   it('quotes a folder with spaces in the next steps', () => {
     expect(run('My Site').stdout).toContain("cd 'My Site'")
+  })
+})
+
+describe('node version', () => {
+  const range = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')).engines.node
+  // Wrong behaviour caught: a stranger on Node 20 gets no hint until npm prints EBADENGINE.
+  it.each([
+    ['20.20.2', false], ['22.17.9', false], ['22.18.0', true], ['22.22.3', true], ['23.1.0', false],
+    ['24.0.0', true], ['24.18.0', true], ['26.0.0', true], ['27.0.0', false],
+  ])('Node %s supported: %s', async (version, ok) => {
+    const { supportsNode } = await import('../node-version.mjs')
+    expect(supportsNode(version, range)).toBe(ok)
+  })
+
+  it('the starter declares the same range as the packages', () => {
+    expect(JSON.parse(read('plain', 'package.json')).engines.node).toBe(range)
+  })
+
+  it('create-ginko warns on an unsupported Node but still creates the site', () => {
+    const preload = join(work, 'fake-node-20.mjs')
+    writeFileSync(preload, "Object.defineProperty(process.versions, 'node', { value: '20.20.2' })")
+    const result = spawnSync('node', ['--import', preload, cli, 'old-node'], { cwd: work, encoding: 'utf8', env: { ...process.env, npm_config_user_agent: '' } })
+    expect(result.status).toBe(0)
+    expect(result.stderr).toContain('Ginko needs Node ^22.18.0 || ^24.0.0 || ^26.0.0, but this is Node 20.20.2')
+    expect(existsSync(join(work, 'old-node/ginko.config.ts'))).toBe(true)
+    expect(run('current-node').stderr).not.toContain('Ginko needs Node')
   })
 })
