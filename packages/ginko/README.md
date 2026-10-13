@@ -64,7 +64,8 @@ const events = useGinko('events') // typed from ginko.config.ts
 
 ## What is in the package
 
-- **`@lupinum/ginko`**: `defineSite`, the field types, schema checks and the bundle format.
+- **`@lupinum/ginko`**: `defineSite`, `single`, `collection`, `f`, `defineComponents`, `formatMoney`, `plainText`,
+  `safeHref`, `startOfWeek` and the documented types.
 - **`@lupinum/ginko/nuxt`**: the Nuxt module. It fetches and caches the bundle, adds the composables
   (`useGinko`, `useGinkoEntry`, `useGinkoQuery`, `useGinkoNeighbors`, `useGinkoNav`, `useGinkoBreadcrumbs`,
   `useGinkoToday`, `useGinkoWeek`, `useGinkoLocale`, `useGinkoPath`, `useGinkoSeo` and more), the components
