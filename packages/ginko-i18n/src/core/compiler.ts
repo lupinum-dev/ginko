@@ -108,20 +108,37 @@ export function compileMessage(key: string, source: string): { message: Compiled
 }
 
 /**
- * Compile a whole tree. `params` maps each dotted key to its parameter names; `numeric` maps each key
- * to the subset of those names used as numbers (for types and checks).
+ * Keys are names; nesting separates them. `t('a.b')` reads `{ a: { b } }`, so a key `"a.b"` would be
+ * unreachable (or shadowed), and an empty key cannot be written in a dotted path. The CLI reads files
+ * with the same rule. Returns the problem, or `undefined` for a valid key.
  */
-type Compiled = { tree: MessageTree, params: Record<string, string[]>, numeric: Record<string, string[]> }
+export function keyProblem(segment: string, parent: string): string | undefined {
+  const where = parent ? ` in "${parent}"` : ''
+  if (segment === '') return `A message key${where} is empty. Fix: give it a name.`
+  if (segment.includes('.')) {
+    const nested = segment.split('.').reduceRight((inner, part) => `{ ${JSON.stringify(part)}: ${inner} }`, '…')
+    return `Message key "${segment}"${where} contains ".", which separates nested keys, so t() cannot reach it. Fix: nest it as ${nested}.`
+  }
+  return undefined
+}
 
-export function compileTree(raw: RawTree): Compiled {
+/**
+ * The compiled messages of one locale. `params` maps each dotted key to its parameter names; `numeric`
+ * maps each key to the subset of those names used as numbers (for types and checks).
+ */
+export interface CompiledTree { tree: MessageTree, params: Record<string, string[]>, numeric: Record<string, string[]> }
+
+export function compileTree(raw: RawTree): CompiledTree {
   return compileAt(raw, '')
 }
 
-function compileAt(raw: RawTree, prefix: string): Compiled {
+function compileAt(raw: RawTree, prefix: string): CompiledTree {
   const tree: MessageTree = {}
   const params: Record<string, string[]> = {}
   const numeric: Record<string, string[]> = {}
   for (const [k, v] of Object.entries(raw)) {
+    const problem = keyProblem(k, prefix)
+    if (problem) throw new Error(`[ginko-i18n] ${problem}`)
     const key = prefix ? `${prefix}.${k}` : k
     if (typeof v === 'string') {
       const compiled = compileMessage(key, v)

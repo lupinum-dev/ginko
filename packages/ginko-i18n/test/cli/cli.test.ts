@@ -282,6 +282,18 @@ test('a mixed-case locale code works from the manifest and in --dir mode', () =>
   expect(run(dir, ['check', '--dir', 'catalog', '--default-locale', 'de']).status).toBe(0)
 })
 
+// A dotted key was typed as available, unreachable at runtime, and invisible to check.
+test('a message key with a dot is a config error that names the file and the fix', () => {
+  const dir = fixture()
+  change(dir, (v) => {
+    v['v1.2'] = 'Version'
+  })
+  const result = run(dir, ['check'])
+  expect(result.status).toBe(2)
+  expect(result.value.error).toContain(`contains "."`)
+  expect(result.value.error).toContain(join(dir, 'i18n/en.json'))
+})
+
 // --dir mode: a plain catalog folder without Nuxt; the lock and glossary live beside the catalogs.
 test('--dir catalog folder: check skips unused keys, apply writes catalog and lock beside it', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ginko-dir-'))

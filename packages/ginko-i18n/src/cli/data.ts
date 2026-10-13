@@ -3,6 +3,7 @@ import { resolve, join, relative, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { parse, TYPE, type MessageFormatElement } from '@formatjs/icu-messageformat-parser'
+import { keyProblem } from '../core/compiler.ts'
 import { LOCALE_CODE } from '../core/locales.ts'
 
 export interface Source { dir: string, namespace?: string, origin: string }
@@ -18,8 +19,12 @@ export function object(value: unknown): value is Record<string, unknown> {
 export function tree(file: string): Tree {
   if (!existsSync(file)) return {}
   const value = json(file)
-  const valid = (v: unknown): boolean => object(v) && Object.values(v).every(x => typeof x === 'string' || valid(x))
-  if (!valid(value)) throw new Error(`Invalid message tree: ${file}`)
+  const valid = (v: unknown, parent: string): boolean => object(v) && Object.entries(v).every(([key, x]) => {
+    const problem = keyProblem(key, parent)
+    if (problem) throw new Error(`${problem} (${file})`)
+    return typeof x === 'string' || valid(x, parent ? `${parent}.${key}` : key)
+  })
+  if (!valid(value, '')) throw new Error(`Invalid message tree: ${file}`)
   return value as Tree
 }
 export function manifest(cwd: string, buildDir: string): Manifest {

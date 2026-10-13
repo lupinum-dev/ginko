@@ -508,6 +508,10 @@ Messages are [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/for
 
 Every `plural` and `select` needs an `other` case. Plural and number arguments are typed as `number`.
 
+Keys are names, and nesting separates them: `t('nav.about')` reads `{ "nav": { "about": … } }`. So a
+key must not contain `.` and must not be empty. The build, `compileTree` and the CLI fail on such a key
+and show the nested form to use.
+
 ## Coming from @nuxtjs/i18n
 
 Remove `@nuxtjs/i18n` first: both modules cannot own the locale, and setup fails if both are installed.

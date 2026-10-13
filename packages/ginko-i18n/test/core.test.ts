@@ -108,6 +108,15 @@ describe('messages with odd input', () => {
     expect(() => compileTree({ a: { b: 'Hi {name' } })).toThrow(/"a.b" is not valid ICU/)
     expect(() => compileTree({ a: '{n, plural, one {x}}' })).toThrow(/"a" is not valid ICU/)
   })
+  // `"Mr. Smith"` as a key was typed as available but `t()` read `{ Mr: { ' Smith' } }` instead.
+  it.each([
+    [{ 'a.b': 'x' }, 'Message key "a.b" contains "."', '{ "a": { "b": … } }'],
+    [{ nav: { 'v1.2': 'x' } }, 'Message key "v1.2" in "nav" contains "."', '{ "v1": { "2": … } }'],
+    [{ nav: { '': 'x' } }, 'A message key in "nav" is empty', 'give it a name'],
+  ])('rejects the key in %j', (raw, problem, fix) => {
+    expect(() => compileTree(raw)).toThrow(problem)
+    expect(() => compileTree(raw)).toThrow(fix)
+  })
   it('reports params per key', () => {
     expect(compileTree({ a: { b: '{x} {n, plural, other {{y}}}' } }).params).toEqual({ 'a.b': ['x', 'n', 'y'] })
   })
