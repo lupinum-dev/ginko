@@ -103,7 +103,7 @@ describe('query projection and facets', () => {
 })
 
 describe('query include', () => {
-  // `ref` does not exist in core yet: a hand-written schema carries the agreed shape.
+  // f.refs stores { type: 'ref', multiple: true }; include resolves it to a list.
   const refSchema: QuerySchema = { bricks: { posts: { fields: { author: f.ref('Autor', { to: 'people' }), tags: f.refs('Tags', { to: 'tags' }), title: f.text('Titel') } } } }
   const b = mini({
     people: { kind: 'collection', items: [item('ann', { name: 'Ann' })] },
