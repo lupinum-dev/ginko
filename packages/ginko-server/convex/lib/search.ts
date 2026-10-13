@@ -104,7 +104,8 @@ export async function searchEntries(ctx: QueryCtx, actor: Actor, input: { query:
       records.push({ id: row._id, url: '', title: label, text: body, excerpt: '', brick: key, locale: '' })
     }
   }
-  const hits = search(loadIndex(buildIndex(records)), query, { limit: input.limit })
+  // The texts of every language are in one record; the main language's word rules fit most of them.
+  const hits = search(loadIndex(buildIndex(records, schema.locales[0] ?? 'de')), query, { limit: input.limit })
   // The engine matches word beginnings only. German compounds hide the word inside ("Topfenstrudel"), so
   // entries that contain every query word anywhere come after the engine's hits, title matches first.
   const ranked = hits.map((hit) => hit.id)

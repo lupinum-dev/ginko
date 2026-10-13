@@ -1,8 +1,14 @@
-// Site search: sections of the bundle's items, indexed with MiniSearch and a German stemmer.
+// Site search: sections of the bundle's items, indexed with MiniSearch and the stemmer of the index's language.
 // The engine choice lives in this one file. It imports MiniSearch, so the browser reaches it
 // only through `@lupinum/ginko/search`; the core index does not export it. Pure: no Node APIs, runs in Convex too.
 import MiniSearch from 'minisearch'
-import { stemmer } from '@zbsearch/stemmers/german'
+import { stemmer as dutch } from '@zbsearch/stemmers/dutch'
+import { stemmer as english } from '@zbsearch/stemmers/english'
+import { stemmer as french } from '@zbsearch/stemmers/french'
+import { stemmer as german } from '@zbsearch/stemmers/german'
+import { stemmer as italian } from '@zbsearch/stemmers/italian'
+import { stemmer as portuguese } from '@zbsearch/stemmers/portuguese'
+import { stemmer as spanish } from '@zbsearch/stemmers/spanish'
 import type { Bundle } from './bundle.ts'
 import { textBlocks, type MarkdownTree } from './markdown.ts'
 import type { Schema } from './types.ts'
@@ -31,8 +37,8 @@ export interface SearchSectionsOptions {
 
 export interface SearchHit { id: string; url: string; title: string; heading?: string; excerpt: string; score: number }
 
-/** The index as JSON: what `buildIndex` returns and `loadIndex` takes. */
-export type SearchIndexJson = ReturnType<MiniSearch<SearchRecord>['toJSON']>
+/** The index as JSON: what `buildIndex` returns and `loadIndex` takes. `language` picks the word rules for the index and every query. */
+export interface SearchIndexJson { language: string; index: ReturnType<MiniSearch<SearchRecord>['toJSON']> }
 
 const treeOf = (value: unknown, trees?: ReadonlyMap<string, MarkdownTree>): MarkdownTree | undefined => {
   if (typeof value !== 'object' || value === null) return undefined
@@ -97,25 +103,43 @@ export function searchSections(bundle: Bundle, options: SearchSectionsOptions): 
   return records
 }
 
-/** ä/ö/ü/ß are spelled out (ä → ae), then the German stemmer: "Öffnungszeiten" and "Oeffnungszeiten" meet, "Gerichte" finds "Gericht". */
-const fold = (term: string) => term.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
-const engineOptions = {
-  fields: ['title', 'heading', 'text'],
-  storeFields: ['url', 'title', 'heading', 'excerpt'],
-  processTerm: (term: string) => stemmer(fold(term)),
+// Stemmers for the languages Ginko sites use most; they load with the search, never with the page. Another language
+// gets lowercase words without accents and no stemming: prefix and typo matching still find word forms close enough.
+const stemmers: Record<string, (word: string) => string> = { de: german, en: english, es: spanish, fr: french, it: italian, nl: dutch, pt: portuguese }
+const withoutAccents = (term: string) => term.normalize('NFD').replace(/\p{M}/gu, '')
+
+/**
+ * The word rules of a language (a locale code such as `de`, `en` or `pt-BR`). German spells ä/ö/ü/ß out first
+ * ("Öffnungszeiten" and "Oeffnungszeiten" meet); every other language stems the word, then drops accents ("café" finds "cafe").
+ */
+function processTerm(language: string): (term: string) => string {
+  const code = language.split('-')[0]!.toLowerCase()
+  if (code === 'de') return (term) => german(term.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss'))
+  const stem = stemmers[code] ?? ((word: string) => word)
+  return (term) => withoutAccents(stem(term.toLowerCase()))
 }
 
-/** The serialized index of these records: title ranks above heading, heading above text. Only id, url, title, heading and excerpt are stored. */
-export function buildIndex(records: readonly SearchRecord[]): SearchIndexJson {
-  const index = new MiniSearch<SearchRecord>(engineOptions)
+const engineOptions = (language: string) => ({
+  fields: ['title', 'heading', 'text'],
+  storeFields: ['url', 'title', 'heading', 'excerpt'],
+  processTerm: processTerm(language),
+})
+
+/**
+ * The serialized index of these records in `language` (the locale code of their text): title ranks above heading,
+ * heading above text. Only id, url, title, heading and excerpt are stored.
+ */
+export function buildIndex(records: readonly SearchRecord[], language: string): SearchIndexJson {
+  const index = new MiniSearch<SearchRecord>(engineOptions(language))
   index.addAll(records as SearchRecord[])
-  return index.toJSON()
+  return { language, index: index.toJSON() }
 }
 
 export type SearchIndex = MiniSearch<SearchRecord>
 
+/** The index ready to search, with the word rules of the language it was built in. */
 export function loadIndex(json: SearchIndexJson): SearchIndex {
-  return MiniSearch.loadJS(json, engineOptions)
+  return MiniSearch.loadJS(json.index, engineOptions(json.language))
 }
 
 /** Prefix and typo tolerant (fuzzy 0.2); the best `limit` hits first. */

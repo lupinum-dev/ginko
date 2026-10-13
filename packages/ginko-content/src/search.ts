@@ -8,5 +8,5 @@ import { buildIndex, searchSections, type SearchIndexJson } from '@lupinum/ginko
  * markdown values that withMarkdownRefs wrote, and `trees` the trees behind those refs.
  */
 export function searchIndex(bundle: Bundle, trees: Map<string, MarkdownTree>, schema: Schema): SearchIndexJson {
-  return buildIndex(searchSections(bundle, { schema, trees }))
+  return buildIndex(searchSections(bundle, { schema, trees }), bundle.locale)
 }
