@@ -2,7 +2,7 @@
 // a release before it is sent. The platform repeats the same work in sites.release (SPEC 5.2),
 // so both must stay in step: same migration rules, same defaults, same validation.
 import {
-  checkSite, defaultsFor, fieldsChanged, isTranslatable, releaseData, SITE_BUDGET, validate,
+  checkSite, defaultsFor, fieldsChanged, isTranslatable, markdownTrees, releaseData, SITE_BUDGET, validate,
   type Field, type Fields, type Json, type Locale, type Migration, type MigrationDescriptor, type Schema, type SiteInput,
 } from '../core/index.ts'
 import { type Candidate, isObject, type ReleaseState, type Write } from './model.ts'
@@ -93,8 +93,13 @@ export async function buildCandidate(state: ReleaseState, site: SiteInput, schem
     bytes.largest = Math.max(bytes.largest, size)
     if (size > BUDGET.entryBytes) problems.push(`${label} is too large (at most 256 KiB).`)
   }
-  for (const entry of state.entries) count(byteSize(changedData.get(entry.id) ?? entry.data), `Entry ${entry.id} (${entry.brick})`)
-  for (const single of created) count(byteSize(single.data), `The new single brick “${single.brick}”`)
+  // Like the platform, an entry's size includes the trees of its Markdown texts.
+  const sizeOf = async (brick: string, data: Record<string, Json>) => {
+    const fields = (schema.bricks[brick] ?? state.schema.bricks[brick])?.fields ?? {}
+    return byteSize(data) + byteSize(await markdownTrees(fields, data))
+  }
+  for (const entry of state.entries) count(await sizeOf(entry.brick, changedData.get(entry.id) ?? entry.data), `Entry ${entry.id} (${entry.brick})`)
+  for (const single of created) count(await sizeOf(single.brick, single.data), `The new single brick “${single.brick}”`)
   if (bytes.site > BUDGET.siteBytes) problems.push('The site has reached its storage budget (4 MiB).')
 
   // The limit counts live entries only, plus the singles this release creates (the platform checks the same in sites.release).

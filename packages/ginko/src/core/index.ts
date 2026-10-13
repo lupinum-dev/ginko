@@ -8,7 +8,7 @@ export { validate, isDate, fileProblem, type ValidateOptions, type ValidationRes
 export { diffSchema, type SchemaChange, type SchemaDiff } from './diff.ts'
 export { releaseData, fieldsChanged } from './release.ts'
 export { resolveEntry, buildBundle, servedBundle, applyDefaults, defaultsFor, isVisible, visibleUntil, deletesExpired, sortEntries, urlsFor, urlClashes, blockedSlugs, type UrlClash, printOf, type StoredEntry, type FileInfo, type ResolveContext, type BuildBundleInput } from './resolve.ts'
-export { BUNDLE_FORMAT, isBundle, bundleFits, knownBricks, withFileBricks, type Bundle, type BundleBrick, type BundleItem } from './bundle.ts'
+export { BUNDLE_FORMAT, isBundle, bundleFits, knownBricks, withFileBricks, markdownTrees, type MarkdownTrees, type Bundle, type BundleBrick, type BundleItem } from './bundle.ts'
 export { isSafeHref, safeHref } from './href.ts'
 export { slugify, uniqueSlug, SLUG_PATTERN } from './slug.ts'
 export { todayIn, startOfWeek, workWeekOf, weekInfoOf, DEFAULT_WEEK, addDays, resolveToken, type WeekInfo } from './time.ts'

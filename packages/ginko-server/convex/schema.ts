@@ -76,6 +76,13 @@ export default defineSchema({
     lifeRev: v.number(),
     /** Leaf path → locale → print of the main-language value at translation time. */
     prints: v.record(v.string(), v.record(v.string(), v.string())),
+    /**
+     * The trees of the Markdown texts in `data` (core `markdownTrees`) as JSON text; written with every
+     * write of `data` (lib/content `storageOf`). The bundle serves them, so a request parses nothing.
+     * JSON text, because a tree may hold keys that a Convex value does not allow. A row without it
+     * (the test fixtures) is parsed per request.
+     */
+    trees: v.optional(v.string()),
     bytes: v.number(),
     deletedAt: v.optional(v.number()),
     /** Drafts (SPEC 15): absent means live. A draft is stored and counted but never in the public bundle. */

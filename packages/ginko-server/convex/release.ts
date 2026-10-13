@@ -8,7 +8,7 @@ import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import { internalMutation, internalQuery, mutation } from './_generated/server'
 import { actorFor, checkRev, fail } from './lib/access'
-import { byteSize, nextPrints, type Data, type Prints } from './lib/content'
+import { byteSize, nextPrints, storageOf, type Data, type Prints } from './lib/content'
 import { msg, recorded } from './lib/history'
 import { isFetchableSiteUrl } from './lib/siteUrl'
 import { BUDGET, checkNewFiles, checkNewLinks, entryUses, same, syncEntryRefs } from './lib/write'
@@ -40,30 +40,30 @@ async function allEntries(ctx: QueryCtx, site: Id<'sites'>): Promise<Entry[]> {
   return ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site)).collect()
 }
 
-/** The entry a single brick starts with: its defaults, prints and one revision per field (SPEC 5.2 step 7). */
+/** The entry a single brick starts with: its defaults, prints, stored trees and one revision per field (SPEC 5.2 step 7). */
 interface NewSingle {
   brick: string
   data: Record<string, Json>
   prints: Prints
   fields: Fields
+  trees: string
+  bytes: number
 }
 
-function newSingle(brick: string, fields: Fields, main: Locale): NewSingle {
+async function newSingle(brick: string, fields: Fields, main: Locale): Promise<NewSingle> {
   const data = defaultsFor(fields)
   const prints = nextPrints({ fields, roots: Object.keys(data), before: {}, after: data, prints: {}, main, confirm: undefined })
-  return { brick, data, prints, fields }
+  return { brick, data, prints, fields, ...(await storageOf(fields, data, prints)) }
 }
 
-/** Stores a new single and returns its bytes. The release and devPush share this write. */
-async function insertSingle(ctx: MutationCtx, site: Id<'sites'>, single: NewSingle, locales: Schema['locales']): Promise<number> {
+/** Stores a new single. The release and devPush share this write. */
+async function insertSingle(ctx: MutationCtx, site: Id<'sites'>, single: NewSingle, locales: Schema['locales']) {
   const fieldRevs = Object.fromEntries(Object.keys(single.fields).map((name) => [name, 1]))
-  const bytes = byteSize(single.data) + byteSize(single.prints)
   const id = await ctx.db.insert('entries', {
     site, brick: single.brick, kind: 'single', order: 0, data: single.data, rev: 1, fieldRevs, lifeRev: 1,
-    prints: single.prints, bytes,
+    prints: single.prints, trees: single.trees, bytes: single.bytes,
   })
   await syncEntryRefs(ctx, site, id, await entryUses(ctx, single.fields, single.data, locales))
-  return bytes
 }
 
 async function insertPushKey(ctx: MutationCtx, site: Doc<'sites'>, input: { label: string; scopes: ('release' | 'pull' | 'check' | 'export')[]; createdBy: string }) {
@@ -256,7 +256,7 @@ export const release = internalMutation({
 
     // 7. Candidate on the server: new required defaults (also new list columns) and writes into every
     // entry, new singles from defaults. Same rules as the CLI's candidate (core releaseData).
-    const updates: { entry: Entry; data: Record<string, Json>; prints: Prints; roots: string[] }[] = []
+    const updates: { entry: Entry; data: Record<string, Json>; prints: Prints; roots: string[]; trees: string; bytes: number }[] = []
     const checked: { entry: Entry; data: Record<string, Json> }[] = []
     for (const [key, brick] of Object.entries(next.bricks)) {
       if (!Object.hasOwn(stored.bricks, key)) continue
@@ -266,7 +266,7 @@ export const release = internalMutation({
         const { data, roots } = releaseData(stored.bricks[key]!.fields, brick.fields, before, writesOf.get(entry._id) ?? {})
         const prints = nextPrints({ fields: brick.fields, roots, before, after: data, prints: entry.prints, main, confirm: undefined })
         const changed = roots.filter((r) => !same(data[r], before[r]) || !same(printsOf(prints, r), printsOf(entry.prints, r)))
-        if (changed.length) updates.push({ entry, data, prints, roots: changed })
+        if (changed.length) updates.push({ entry, data, prints, roots: changed, ...(await storageOf(brick.fields, data, prints)) })
         if (changed.length || all) checked.push({ entry, data })
       }
     }
@@ -274,7 +274,7 @@ export const release = internalMutation({
     const created: NewSingle[] = []
     for (const [key, brick] of Object.entries(next.bricks)) {
       if (Object.hasOwn(stored.bricks, key) || brick.kind !== 'single') continue
-      created.push(newSingle(key, brick.fields, main))
+      created.push(await newSingle(key, brick.fields, main))
     }
 
     // Every entry of a brick whose fields changed, not only the written ones (break-it 9): a lowered
@@ -301,11 +301,8 @@ export const release = internalMutation({
     // Budget (SPEC 3, 5.2 step 9). Documents are the entries written plus the singles created.
     if (updates.length + created.length > RELEASE_LIMITS.documents) fail('RELEASE_TOO_LARGE', 'errors.releaseTooLarge')
     const updated = new Map(updates.map((u) => [u.entry._id, u]))
-    const entryBytes = (e: Entry) => {
-      const u = updated.get(e._id)
-      return u ? byteSize(u.data) + byteSize(u.prints) : e.bytes
-    }
-    const createdBytes = created.map((c) => byteSize(c.data) + byteSize(c.prints))
+    const entryBytes = (e: Entry) => updated.get(e._id)?.bytes ?? e.bytes
+    const createdBytes = created.map((c) => c.bytes)
     if (createdBytes.some((b) => b > BUDGET.entryBytes) || entries.some((e) => entryBytes(e) > BUDGET.entryBytes)) {
       fail('TOO_LARGE', 'errors.entryTooLarge')
     }
@@ -323,7 +320,7 @@ export const release = internalMutation({
       const rev = u.entry.rev + 1
       const fieldRevs = { ...u.entry.fieldRevs }
       for (const root of u.roots) fieldRevs[root] = rev
-      await ctx.db.patch(u.entry._id, { data: u.data, prints: u.prints, rev, fieldRevs, bytes: entryBytes(u.entry) })
+      await ctx.db.patch(u.entry._id, { data: u.data, prints: u.prints, trees: u.trees, rev, fieldRevs, bytes: u.bytes })
       await syncEntryRefs(ctx, args.site, u.entry._id, await entryUses(ctx, next.bricks[u.entry.brick]!.fields, u.data, next.locales))
     }
 
@@ -399,14 +396,15 @@ async function createMissingSingles(ctx: MutationCtx, site: Doc<'sites'>, schema
   const main = schema.locales[0]!
   const created: NewSingle[] = []
   for (const [key, brick] of Object.entries(schema.bricks)) {
-    if (brick.kind === 'single' && !brick.retired && !filled.has(key)) created.push(newSingle(key, brick.fields, main))
+    if (brick.kind === 'single' && !brick.retired && !filled.has(key)) created.push(await newSingle(key, brick.fields, main))
   }
 
   const orderRevs: Record<string, number> = { ...site.orderRevs }
   for (const key of Object.keys(schema.bricks)) orderRevs[key] ??= 0
   let createdBytes = 0
   for (const single of created) {
-    createdBytes += await insertSingle(ctx, site._id, single, schema.locales)
+    await insertSingle(ctx, site._id, single, schema.locales)
+    createdBytes += single.bytes
     orderRevs[single.brick] = (orderRevs[single.brick] ?? 0) + 1
   }
   await ctx.db.patch(site._id, {

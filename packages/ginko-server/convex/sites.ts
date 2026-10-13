@@ -111,7 +111,8 @@ export const get = query({
       },
       role: actor.role,
       grants: actor.grants,
-      entries: entries.filter((entry) => entry.deletedAt === undefined),
+      // The stored Markdown trees are for the bundle; the Studio edits the texts.
+      entries: entries.filter((entry) => entry.deletedAt === undefined).map(({ trees: _trees, ...entry }) => entry),
     }
   },
 })

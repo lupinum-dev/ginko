@@ -2,7 +2,8 @@ import { effectiveAlt, isTranslatable } from './fields.ts'
 import { addDays } from './time.ts'
 import { sha256, stableJson } from './sha256.ts'
 import { resolveRouteLinks } from './links.ts'
-import { BUNDLE_FORMAT, withMarkdownTrees, type Bundle, type BundleBrick, type BundleItem } from './bundle.ts'
+import { BUNDLE_FORMAT, withMarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type MarkdownTrees } from './bundle.ts'
+import type { MarkdownTree } from './markdown.ts'
 import type { Brick, CollectionBrick, Field, Fields, Json, Locale, Schema } from './types.ts'
 
 export interface StoredEntry {
@@ -12,6 +13,8 @@ export interface StoredEntry {
   data: Record<string, Json>
   /** Translation prints: leaf path → locale → sha256(stableJson(main-language value at translation time)). */
   prints?: Record<string, Partial<Record<Locale, string>>>
+  /** The trees of the Markdown texts in `data` (`markdownTrees`), served in place of the texts; a text without one is parsed. */
+  trees?: MarkdownTrees
   /** When the entry last changed (ISO 8601, UTC); goes to the bundle item unchanged. */
   updatedAt?: string
   /** Repo-relative path of the file per locale (a translation's own file); file entries only. */
@@ -106,8 +109,13 @@ function resolveFields(fields: Fields, stored: Record<string, Json> | undefined,
 }
 
 function resolveValue(field: Field, value: Json, path: string, state: State): unknown {
-  if (isTranslatable(field)) return localized(value, path, state, field)
+  if (isTranslatable(field)) {
+    const picked = localized(value, path, state, field)
+    return field.type === 'markdown' ? storedTree(picked, value, path, state) : picked
+  }
   switch (field.type) {
+    case 'markdown':
+      return storedTree(value, value, path, state)
     case 'money':
       return { amount: (value as { amount: number }).amount, currency: field.currency ?? state.schema.currency }
     case 'image': {
@@ -125,6 +133,15 @@ function resolveValue(field: Field, value: Json, path: string, state: State): un
     default:
       return value
   }
+}
+
+/** The stored tree of the text `localized` picked: same leaf, and the requested locale or the main one, whichever holds that text. */
+function storedTree(text: unknown, value: Json, leaf: string, state: State): unknown {
+  const stored = state.entry.trees?.[leaf]
+  if (stored === undefined || typeof text !== 'string') return text
+  if (typeof value === 'string') return stored
+  const locale = (value as Record<string, Json>)[state.ctx.locale] === text ? state.ctx.locale : state.main
+  return (stored as Partial<Record<Locale, MarkdownTree>>)[locale] ?? text
 }
 
 /**

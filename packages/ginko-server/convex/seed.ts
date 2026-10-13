@@ -9,7 +9,7 @@ import { components, internal } from './_generated/api'
 import { internalAction, internalMutation, type MutationCtx } from './_generated/server'
 import { fail } from './lib/access'
 import { normalizeEmail } from './members'
-import { byteSize, remapFileIds, usesOf, type Data } from './lib/content'
+import { remapFileIds, storageOf, usesOf, type Data } from './lib/content'
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
 import { syncEntryRefs } from './lib/write'
 
@@ -195,11 +195,11 @@ export const importExport = internalMutation({
       const def = schema.bricks[row.brick]
       if (!def) fail('INVALID', 'errors.entryBrickMissingFromSchema', { id: row.id, brick: row.brick })
       const data = remapFileIds(def.fields, row.data as Data, uploads)
-      const size = byteSize(data) + byteSize(row.prints)
+      const { trees, bytes: size } = await storageOf(def.fields, data, row.prints)
       const id = await ctx.db.insert('entries', {
         site: site._id, brick: row.brick, kind: row.kind, order: row.order, data, rev: row.rev,
         fieldRevs: Object.fromEntries(Object.keys(def.fields).map((f) => [f, row.rev])),
-        lifeRev: row.deletedAt === undefined ? 1 : 2, prints: row.prints, bytes: size,
+        lifeRev: row.deletedAt === undefined ? 1 : 2, prints: row.prints, trees, bytes: size,
         ...(row.deletedAt === undefined ? {} : { deletedAt: row.deletedAt }),
         ...(row.state === 'draft' ? { state: 'draft' as const } : {}),
       })

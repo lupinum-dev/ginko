@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
-  applyDefaults, bundleFits, isBundle, knownBricks, type Bundle,
+  applyDefaults, bundleFits, isBundle, knownBricks, markdownTrees, parseMarkdown, type Bundle,
   buildBundle, isVisible, printOf, resolveEntry, serializeSchema, sortEntries, todayIn,
   type Brick, type BundleBrick, type BundleItem, type CollectionBrick, type Locale, type Schema, type StoredEntry,
 } from '../../src/core/index.ts'
@@ -123,6 +123,16 @@ describe('resolveEntry: translations and fallback (SPEC 6)', () => {
     const r = resolve(base(), 'lunch', lunch, 'en')
     expect(r.data.days).toEqual([{ _id: 'k3Fd9aZ0qx', day: 'mo', dish: 'Tafelspitz', allergens: [] }])
     expect(r.fallback).toEqual(['days.k3Fd9aZ0qx.dish'])
+  })
+
+  // Wrong behaviour caught: the stored tree of an outdated translation goes online while its leaf is listed as fallback.
+  it('serves the stored tree of the text it picks: the main language tree for an outdated translation', async () => {
+    const s = base()
+    const data = { imprint: { de: 'Wirtin **Maria**', en: 'Landlady **Maria**' } }
+    const trees = await markdownTrees(brickOf(s, 'legal').fields, data)
+    const legal = (print: string): StoredEntry => ({ id: 'legal', data, prints: { imprint: { en: printOf(print) } }, trees })
+    expect(resolve(s, 'legal', legal('Wirtin **Maria**'), 'en').data.imprint).toEqual((await parseMarkdown('Landlady **Maria**')).value)
+    expect(resolve(s, 'legal', legal('Wirtin'), 'en').data.imprint).toEqual((await parseMarkdown('Wirtin **Maria**')).value)
   })
 })
 
