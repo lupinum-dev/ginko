@@ -30,7 +30,7 @@ const external = (href: string) => /^https?:\/\//.test(href)
           </NuxtLink>
         </div>
         <div v-if="data.install" class="docs-install">
-          <code>{{ data.install }}</code>
+          <code tabindex="0" role="region" :aria-label="t('docs.installCommand')">{{ data.install }}</code>
           <button type="button" class="docs-icon-button" :aria-label="state === 'copied' ? t('docs.copied') : state === 'failed' ? t('docs.copyFailed') : t('docs.copyCommand')" @click="copy(data.install ?? '')">
             <Icon :name="state === 'copied' ? 'lucide:check' : 'lucide:copy'" class="docs-icon" />
           </button>
