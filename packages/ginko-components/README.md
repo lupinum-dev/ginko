@@ -27,7 +27,8 @@ stops with a message that says so. The module provides the tag → component map
 | `@lupinum/ginko-components/styles.css` | All stylesheets in order, for hosts without the module |
 
 All of `./components` is public on purpose: a site wraps or replaces one component and passes the result through the
-`components` prop of `<GinkoMarkdown>`.
+`components` prop of `<GinkoMarkdown>`. What stays stable is the component names and the props of the registry (the
+Markdown props in the tables below). Slots, other props and the inner markup may change in any release.
 
 ## Props
 
@@ -160,7 +161,7 @@ build runs it. Items reference each other by URL: `<url>/r`, with `url` from `si
 ## Embeds (`embedded`)
 
 `embedded` shows maps, music and booking widgets, but only from a list of known providers. Before the click it renders a
-neutral surface (or your `poster`), a button "Inhalt laden: <title>" and one consent line; no iframe, no request to the
+neutral surface (or your `poster`), a button "Load content: <title>" and one consent line; no iframe, no request to the
 provider. After the click it inserts the iframe with `loading="lazy"`,
 `referrerpolicy="strict-origin-when-cross-origin"` and `sandbox="allow-scripts allow-same-origin allow-popups allow-forms"`.
 An address no provider matches is a plain link (`rel="noopener"`); `javascript:`, `data:` and other non-http(s)
@@ -227,3 +228,7 @@ the parser refuses slots).
 Fixed texts (copy button, zoom, play) live in `i18n/de.json` and `i18n/en.json`. The module adds them to ginko-i18n under
 the namespace `components`, so they follow the page language; a site overrides one key in its own `i18n/<locale>.json`
 (for example `{ "components": { "code": { "copy": "Kopieren" } } }`). Without Nuxt (SSR tests) the components use the German defaults.
+
+`components` is a reserved namespace: do not use it for your own messages. The keys you can override are the ones in
+[`i18n/en.json`](./i18n/en.json): `code.*` (copy button), `media.*` (zoom, play, consent), `embed.*`, `quiz.*`, `api.*`,
+`collapse.*` and `toc.title`.

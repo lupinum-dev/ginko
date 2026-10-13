@@ -5,6 +5,8 @@ import { addPlugin, createResolver, defineNuxtModule, hasNuxtModule } from '@nux
 import { STYLES } from './styles'
 import { mergeProviders, type EmbedProviderConfig } from './runtime/components/embed-utils'
 
+export type { EmbedProvider, EmbedProviderConfig } from './runtime/components/embed-utils'
+
 export interface ModuleOptions {
   embeds?: {
     /** Adds or replaces a provider of the `embed` component by id; `false` disables a built-in. See the README. */
