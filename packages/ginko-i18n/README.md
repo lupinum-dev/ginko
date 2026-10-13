@@ -610,8 +610,20 @@ npx ginko-i18n todo --dir locales --default-locale de --locale es --json
 Relative build, input, and HTML paths resolve from the app directory. If the
 manifest is absent, the CLI runs the app's local `nuxt prepare` once. Preparation
 writes Nuxt build files; with an existing manifest, `check` only reads files.
-Preparation logs and apply warnings go to stderr. With `--json`, stdout contains
-one JSON value, including for usage and configuration errors.
+Preparation logs go to stderr. The manifest has a `version`; a CLI of another
+version refuses it (run `nuxt prepare` again).
+
+With `--json`, stdout is exactly one JSON object for every command, also for errors:
+
+| Result | Shape |
+| --- | --- |
+| `check` | `{ ok, summary, findings }` |
+| `todo` | `{ ok, locale, language, sourceLocale, sourceLanguage, params, glossary, items }` |
+| `apply` | `{ ok, written, rejected, warnings }` |
+| `--help` | `{ ok, help }` |
+| Usage or configuration error | `{ ok: false, error: { code, message } }`, where `code` is `usage` (the command line) or `config` (manifest, message files, apply input) |
+
+`ok` is `true` exactly when the exit code is `0`.
 
 `check` reports missing and extra translations, invalid ICU, parameter differences,
 incomplete plural categories, stale translations, unknown static keys, and unused
@@ -622,18 +634,25 @@ call suppresses unused warnings and sets `summary.unusedSkipped` to `true`.
 The scanner is a conservative text scan, not a JavaScript parser; comments and
 strings containing call-shaped text can count as usages.
 
-Use `check --locale <code>` to see only one locale's findings, for example while
-translating it.
+Use `check --locale <code>` to list only one locale's findings, for example while
+translating it. `ok`, `summary` and the exit code still count every finding, so an
+`unknown-key` error (which has no locale) still fails the run. An unknown code is a
+usage error.
 
 Use `check --html <built-html-directory>` to validate canonical URLs, self and
 reciprocal hreflang links, x-default, and HTML language. Error documents and
 noindex pages are ignored. URL paths identify local HTML files regardless of origin.
 
-`todo --locale <code>` (or `--to <code>`) lists missing and stale translations with their original ICU
-source, current translation when present, parameters, and static usage locations.
-Use `--only missing` or `--only stale` to narrow the list. Each item names its
-`target`: the file `apply` will write. Keys from a layer go to that layer's folder,
-which other sites may share; library keys go to the app.
+`todo --locale <code>` lists missing and stale translations. Each item has:
+
+- `key`, and `code`: `missing` or `stale`, as in the findings of `check`.
+- `file`: the file `apply` will write. Keys from a layer go to that layer's folder,
+  which other sites may share; library keys go to the app.
+- `source`: the default locale's ICU text, and `current`: the translation, when there is one.
+- `params`: the source's parameter names.
+- `usages`: static usages in the code, as `{ file, line }`.
+
+Use `--only missing` or `--only stale` to narrow the list.
 
 The JSON output also includes:
 
@@ -656,7 +675,8 @@ The JSON output also includes:
 compile and use the source parameters, except global parameters.
 Missing plural categories produce a warning in the result's `warnings` (with sample
 numbers, such as `many (e.g. 1000000)` for Italian) but do not reject a translation.
-Valid items are saved even if other items are rejected. Layer/app keys go to the
+Valid items are saved even if other items are rejected; `written` lists them as
+`{ key, file }`, `rejected` the others as `{ key, reason }`. Layer/app keys go to the
 source directory that defines the default message. Library keys go to the app's
 `i18n/<locale>.json`, including their namespace. Keys follow default-source order;
 unrelated keys remain, with two-space indentation and a trailing newline.

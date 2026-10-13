@@ -78,7 +78,7 @@ describe('message and usage findings', () => {
     write(dir, 'i18n/de.json', { overridden: 'New', nested: 'Flat' })
     write(dir, 'layer/de.json', { overridden: 'Old', nested: { hidden: 'Hidden' } })
     const before = readFileSync(join(dir, 'i18n/de.json'), 'utf8')
-    const result = run(dir, ['todo', '--to', 'en']).value
+    const result = run(dir, ['todo', '--locale', 'en']).value
     expect(result.items.find((i: { key: string }) => i.key === 'nested.hidden')).toBeUndefined()
     run(dir, ['check'])
     expect(readFileSync(join(dir, 'i18n/de.json'), 'utf8')).toBe(before)
@@ -131,10 +131,9 @@ test('todo provides source, current, params, glossary, usage and filters', () =>
   })
   write(dir, 'i18n/i18n.lock.json', { en: { last: 'old' } })
   write(dir, 'i18n/glossary.json', { brand: 'Brand' })
-  const result = run(dir, ['todo', '--to', 'en']).value
-  expect(result).toMatchObject({ locale: 'en', language: 'en-GB', sourceLocale: 'de', sourceLanguage: 'de-AT', params: { tone: 'sie' }, glossary: { brand: 'Brand' } })
-  expect(result.items).toEqual([{ key: 'hello', target: join(dir, 'i18n/en.json'), source: 'Hallo {name}', params: ['name'], usages: [`${join(dir, 'src/page.vue')}:5`], reason: 'missing' }, { key: 'last', target: join(dir, 'i18n/en.json'), source: 'Letzte', current: 'Last', params: [], usages: [`${join(dir, 'src/page.vue')}:10`], reason: 'stale' }])
-  expect(run(dir, ['todo', '--to', 'en', '--only', 'stale']).value.items.map((i: { key: string }) => i.key)).toEqual(['last'])
+  const result = run(dir, ['todo', '--locale', 'en']).value
+  expect(result).toMatchObject({ ok: true, locale: 'en', language: 'en-GB', sourceLocale: 'de', sourceLanguage: 'de-AT', params: { tone: 'sie' }, glossary: { brand: 'Brand' } })
+  expect(result.items).toEqual([{ key: 'hello', file: join(dir, 'i18n/en.json'), source: 'Hallo {name}', params: ['name'], usages: [{ file: join(dir, 'src/page.vue'), line: 5 }], code: 'missing' }, { key: 'last', file: join(dir, 'i18n/en.json'), source: 'Letzte', current: 'Last', params: [], usages: [{ file: join(dir, 'src/page.vue'), line: 10 }], code: 'stale' }])
   expect(run(dir, ['todo', '--locale', 'en', '--only', 'stale']).value.items.map((i: { key: string }) => i.key)).toEqual(['last'])
 })
 
@@ -161,7 +160,7 @@ test('apply refuses the default locale and leaves its source untouched', () => {
   const before = readFileSync(join(dir, 'i18n/de.json'), 'utf8')
   const result = run(dir, ['apply', '-'], { locale: 'de', items: [{ key: 'last', text: 'Rewritten' }] })
   expect(result.status).toBe(2)
-  expect(result.value.error).toMatch(/default locale/)
+  expect(result.value).toMatchObject({ ok: false, error: { code: 'config', message: expect.stringMatching(/default locale/) } })
   expect(readFileSync(join(dir, 'i18n/de.json'), 'utf8')).toBe(before)
 })
 test('apply file input succeeds, plural incompleteness is a JSON warning with examples, and creates missing target', () => {
@@ -183,16 +182,24 @@ test('apply rejects a symlink outside a source and never writes its target', () 
   expect(result.value.rejected[0].reason).toContain('escapes')
   expect(readFileSync(join(outside, 'i18n/en.json'), 'utf8')).toBe(before)
 })
-test.each([['bogus'], ['todo'], ['todo', '--to', 'xx'], ['todo', '--to', 'en', '--only', 'extra'], ['apply'], ['check', '--bad'], ['check', 'extra'], ['apply', '-', '--html', 'site']])('usage error %j returns JSON and exit 2', (...args) => {
-  expect(run(fixture(), args).status).toBe(2)
+// A typo such as `check --locale pt_BR` used to check nothing and pass.
+test.each([['bogus'], ['todo'], ['todo', '--locale', 'xx'], ['check', '--locale', 'xx'], ['todo', '--to', 'en'], ['todo', '--locale', 'en', '--only', 'extra'], ['apply'], ['check', '--bad'], ['check', 'extra'], ['apply', '-', '--html', 'site']])('usage error %j returns the error envelope and exit 2', (...args) => {
+  const result = run(fixture(), args)
+  expect(result.status).toBe(2)
+  expect(result.value).toMatchObject({ ok: false, error: { code: 'usage', message: expect.any(String) } })
 })
-test('success, rejected and config outputs are pure JSON with documented exit codes', () => {
+// Agents parse every command the same way: `ok` matches exit 0, errors are `{ ok: false, error: { code, message } }`.
+test('every output has ok matching the exit code; a manifest of another version is a config error', () => {
   const dir = fixture()
-  expect(run(dir, ['check']).status).toBe(0)
-  expect(run(dir, ['--help']).status).toBe(0)
-  expect(run(dir, ['apply', '-'], { locale: 'en', items: [{ key: 'last', text: 'Last' }] }).status).toBe(0)
+  expect(run(dir, ['check'])).toMatchObject({ status: 0, value: { ok: true } })
+  expect(run(dir, ['--help'])).toMatchObject({ status: 0, value: { ok: true, help: expect.any(String) } })
+  expect(run(dir, ['apply', '-'], { locale: 'en', items: [{ key: 'last', text: 'Last' }] })).toMatchObject({ status: 0, value: { ok: true } })
+  expect(run(dir, ['apply', '-'], { locale: 'en', items: [{ key: 'absent', text: 'No' }] })).toMatchObject({ status: 1, value: { ok: false } })
+  const m = read(dir, 'build/ginko-i18n/manifest.json')
+  write(dir, 'build/ginko-i18n/manifest.json', { ...m, version: 2 })
+  expect(run(dir, ['check'])).toMatchObject({ status: 2, value: { ok: false, error: { code: 'config', message: expect.stringContaining('Manifest version 2 is not 1') } } })
   write(dir, 'build/ginko-i18n/manifest.json', {})
-  expect(run(dir, ['check']).status).toBe(2)
+  expect(run(dir, ['check'])).toMatchObject({ status: 2, value: { ok: false, error: { code: 'config' } } })
 })
 test('missing manifest prepares once using the app local binary and keeps its logs on stderr', () => {
   const dir = fixture()
@@ -254,8 +261,9 @@ test('destructured namespaced translators and expected type errors are scanned c
   expect(findings.some(f => f.code === 'unknown-key' && f.key === key)).toBe(false)
 })
 
-// Agents could not narrow mixed output to the locale they were translating.
-test('check --locale keeps only that locale and todo names each target file', () => {
+// Agents could not narrow mixed output to the locale they were translating. `check --locale en` also
+// passed while an `unknown-key` error (no locale) failed the full check.
+test('check --locale lists only that locale, but ok and the exit code count every error', () => {
   const dir = fixture()
   change(dir, (v) => {
     delete v.last
@@ -263,8 +271,13 @@ test('check --locale keeps only that locale and todo names each target file', ()
   const findings = run(dir, ['check', '--locale', 'en']).value.findings as { locale?: string }[]
   expect(findings.length).toBeGreaterThan(0)
   expect(findings.every(f => f.locale === 'en')).toBe(true)
-  const items = run(dir, ['todo', '--to', 'en']).value.items as { key: string, target: string }[]
-  expect(items.find(i => i.key === 'last')?.target).toBe(join(dir, 'i18n/en.json'))
+  const items = run(dir, ['todo', '--locale', 'en']).value.items as { key: string, file: string }[]
+  expect(items.find(i => i.key === 'last')?.file).toBe(join(dir, 'i18n/en.json'))
+  const fresh = fixture()
+  writeFileSync(join(fresh, 'src/page.vue'), 't(\'missing.key\')\n')
+  const result = run(fresh, ['check', '--locale', 'en'])
+  expect(result.value.findings).toEqual([])
+  expect(result).toMatchObject({ status: 1, value: { ok: false, summary: { errors: 1 } } })
 })
 
 // The CLI rejected `pt-BR` as a manifest code and as a file name, while the module accepts it as a URL code.
@@ -290,8 +303,8 @@ test('a message key with a dot is a config error that names the file and the fix
   })
   const result = run(dir, ['check'])
   expect(result.status).toBe(2)
-  expect(result.value.error).toContain(`contains "."`)
-  expect(result.value.error).toContain(join(dir, 'i18n/en.json'))
+  expect(result.value.error).toMatchObject({ code: 'config', message: expect.stringContaining(`contains "."`) })
+  expect(result.value.error.message).toContain(join(dir, 'i18n/en.json'))
 })
 
 // --dir mode: a plain catalog folder without Nuxt; the lock and glossary live beside the catalogs.
@@ -310,9 +323,9 @@ test('--dir catalog folder: check skips unused keys, apply writes catalog and lo
   expect(read(dir, 'catalog/i18n.lock.json')).toEqual({ en: { b: createHash('sha256').update('Nur').digest('hex') } })
   expect(existsSync(join(dir, 'i18n'))).toBe(false)
   expect(run(dir, ['check', '--dir', 'catalog', '--default-locale', 'de']).value.findings.map((f: { code: string }) => f.code)).toEqual(['params-mismatch'])
-  // A new language has no file yet: `todo --to es` must list every key, written to catalog/es.json.
-  const todo = run(dir, ['todo', '--to', 'es', '--dir', 'catalog', '--default-locale', 'de']).value
-  expect(todo.items.map((i: { key: string, target: string }) => [i.key, i.target.endsWith('catalog/es.json')])).toEqual([['a', true], ['b', true]])
+  // A new language has no file yet: `todo --locale es` must list every key, written to catalog/es.json.
+  const todo = run(dir, ['todo', '--locale', 'es', '--dir', 'catalog', '--default-locale', 'de']).value
+  expect(todo.items.map((i: { key: string, file: string }) => [i.key, i.file.endsWith('catalog/es.json')])).toEqual([['a', true], ['b', true]])
 })
 test.each([[['check', '--dir', 'catalog']], [['check', '--dir', 'catalog', '--default-locale', 'fr']], [['check', '--default-locale', 'de']]])('--dir usage error %j returns JSON and exit 2', (args) => {
   const dir = mkdtempSync(join(tmpdir(), 'ginko-dir-'))
@@ -320,5 +333,5 @@ test.each([[['check', '--dir', 'catalog']], [['check', '--dir', 'catalog', '--de
   write(dir, 'catalog/de.json', { a: 'Hallo' })
   const result = run(dir, args)
   expect(result.status).toBe(2)
-  expect(result.value.error).toMatch(/--default|Unknown default locale/)
+  expect(result.value.error.message).toMatch(/--default|Unknown default locale/)
 })

@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { addComponent, addImports, addPlugin, addServerHandler, addServerImports, addNitroPlugin, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, hasNuxtModule, updateTemplates } from '@nuxt/kit'
 import type { NuxtPage } from '@nuxt/schema'
 import { cachedNegotiatedPaths } from './cache-rules.ts'
+import { MANIFEST_VERSION } from './manifest.ts'
 import { compileTree, mergeTrees, type RawTree } from './core/compiler.ts'
 import { inUserZone, isExcluded, localizePath, resolveConfig, type LocaleConfig, type LocaleInput, type Strategy } from './core/locales.ts'
 import type { Params } from './core/messages.ts'
@@ -270,7 +271,7 @@ export {}
       filename: 'ginko-i18n/manifest.json',
       write: true,
       getContents: () => JSON.stringify({
-        version: 1,
+        version: MANIFEST_VERSION,
         rootDir: nuxt.options.rootDir,
         locales: config.locales,
         defaultLocale: config.defaultLocale,
