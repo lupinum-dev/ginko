@@ -34,7 +34,7 @@ Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm creat
 - Redirects from `redirectFrom` (301) and site rules in `redirects` (301 by default, `status` 302/307/308 per rule).
 - SEO from the bundle: title template, canonical, Open Graph, `<html lang>`, hreflang with `x-default`, sitemap with `lastmod`, images and alternates, robots.txt with `noindex` on preview hosts, JSON-LD. With `nuxt-og-image` installed, every page without its own image gets a generated share card.
 - Search index built in plain JS at build time, one record per heading section, loaded lazily per language.
-- Agent output: `/llms.txt`, `/llms-full.txt`, a `.md` twin for every page, `Accept: text/markdown`, and a Markdown 404 that suggests pages.
+- Agent output: `/llms.txt`, `/llms-full.txt`, a `.md` twin for every entry page (collections with a `route`), and a Markdown 404 that suggests pages. `Accept: text/markdown` on the normal address works on a server but is not stable yet: the ISR cache on Vercel may ignore `Vary: Accept`.
 - Render modes: Git-only sites prerender everything; platform sites refresh changed pages after a publish; previews render with `noindex`.
 - In dev, `nuxt dev` restarts when `ginko.config.ts` changes, and a brick that cannot reach the platform names itself and the fix.
 - CLI `ginko`: `check` (schema, links and the share image, for every site; `--offline` without the platform) and `release` for CI, `export` for backups; `pnpm local:dev|import|pull` run only in the Ginko monorepo.
