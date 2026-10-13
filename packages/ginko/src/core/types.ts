@@ -139,7 +139,8 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]
   max: number
-  order: 'manual' | { field: string; dir: 'asc' | 'desc' }
+  /** `manual`: the owner sorts the entries. Else by a field, ascending unless `dir: 'desc'`. */
+  order: 'manual' | { field: string; dir?: 'asc' | 'desc' }
   route?: R
   visible?: Visibility
   /**

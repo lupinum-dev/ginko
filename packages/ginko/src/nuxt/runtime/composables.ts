@@ -23,6 +23,8 @@ type CollectionKey = { [K in BrickKey]: Bricks[K] extends { kind: 'collection' }
 
 /** One entry of a collection, for component props: `defineProps<{ dish: GinkoItem<'menu'> }>()`. Auto-imported. */
 export type GinkoItem<K extends CollectionKey> = BrickValue<Bricks[K]> extends { items: (infer I)[] } ? I : never
+/** The `data` of one entry of a collection: what `useGinkoQuery` filters and sorts by. */
+type GinkoData<K extends CollectionKey> = GinkoItem<K> extends { data: infer D } ? D : never
 
 export const BUNDLE_STATE = 'ginko:bundle'
 /** Set by the preview page on mount: the session and locale it accepts bundles for (SPEC 8 "Vorschau"). */
@@ -127,22 +129,22 @@ function withRouteUrl(brick: string, items: BundleItem[], locale: Locale): Bundl
  * entries in the client state, so a hidden entry is neither in `items` nor in `total`. `q` may be a ref or
  * getter (a page number from the route), and the result follows it.
  */
-export function useGinkoQuery<K extends CollectionKey>(brick: K, q: MaybeRefOrGetter<Query> = {}): ComputedRef<Omit<QueryResult, 'items'> & { items: GinkoItem<K>[] }> {
+export function useGinkoQuery<K extends CollectionKey>(brick: K, q: MaybeRefOrGetter<Query<GinkoData<K>>> = {}): ComputedRef<Omit<QueryResult, 'items'> & { items: GinkoItem<K>[] }> {
   const bundle = useVisibleBundle([brick])
   const locale = useGinkoLocale()
   return computed(() => {
-    const result = query(bundle.value, brick, toValue(q), schema)
+    const result = query(bundle.value, brick, toValue(q) as Query, schema)
     // The core returns bundle items; their typed shape is the brick's GinkoItem (same cast as useGinko).
     return { ...result, items: withRouteUrl(brick, result.items, locale.value) } as never
   })
 }
 
 /** The entries before and after `id` among the visible ones, in `options.order` (the `Query` order) or bundle order. */
-export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRefOrGetter<string>, options: Pick<Query, 'order'> = {}): ComputedRef<{ prev?: GinkoItem<K>; next?: GinkoItem<K> }> {
+export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRefOrGetter<string>, options: Pick<Query<GinkoData<K>>, 'order'> = {}): ComputedRef<{ prev?: GinkoItem<K>; next?: GinkoItem<K> }> {
   const bundle = useVisibleBundle([brick])
   const locale = useGinkoLocale()
   return computed(() => {
-    const { prev, next } = neighbors(bundle.value, brick, toValue(id), options.order)
+    const { prev, next } = neighbors(bundle.value, brick, toValue(id), options.order as Query['order'])
     const one = (item?: BundleItem) => item && withRouteUrl(brick, [item], locale.value)[0]
     return { prev: one(prev), next: one(next) } as never
   })

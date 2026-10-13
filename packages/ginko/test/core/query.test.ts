@@ -81,6 +81,11 @@ describe('query paging', () => {
     const r = query(five, 'n', q)
     expect({ ids: ids(r.items), total: r.total, page: r.page, pages: r.pages }).toEqual({ ids: expected, total, page, pages })
   })
+
+  // Wrong behaviour caught: a computed limit of 0 returns every entry instead of failing.
+  it.each([0, -1, Number.NaN])('limit %s throws', (limit) => {
+    expect(() => query(five, 'n', { limit })).toThrow(`query: limit must be at least 1 (got ${limit})`)
+  })
 })
 
 describe('query projection and facets', () => {

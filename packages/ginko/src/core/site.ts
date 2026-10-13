@@ -89,7 +89,7 @@ export function collection<const F extends Fields, const R extends Record<Locale
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task<keyof F & string>[]
   max: number
-  order: 'manual' | { field: keyof F & string; dir: 'asc' | 'desc' }
+  order: 'manual' | { field: keyof F & string; dir?: 'asc' | 'desc' }
   route?: R
   visible?: Visibility<keyof F & string>
   untranslated?: 'fallback' | 'hide'

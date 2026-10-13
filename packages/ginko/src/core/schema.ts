@@ -266,6 +266,7 @@ function schemaProblems(schema: Schema): string[] {
       if (brick.drafts !== undefined && typeof brick.drafts !== 'boolean') problems.push(`${key}: drafts must be true or false.`)
       if (brick.plans !== undefined) problems.push(...plansProblems(key, brick.plans, brick.fields, schema))
       if (brick.order !== 'manual' && !brick.fields[brick.order.field]) problems.push(`${key}: the sort field is missing.`)
+      if (brick.order !== 'manual' && brick.order.dir !== undefined && brick.order.dir !== 'asc' && brick.order.dir !== 'desc') problems.push(`${key}: order.dir must be “asc” or “desc”.`)
       if (brick.route) {
         for (const locale of schema.locales) {
           const route = brick.route[locale]

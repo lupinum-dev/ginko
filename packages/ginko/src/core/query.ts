@@ -1,20 +1,36 @@
 import type { BundleItem, Bundle } from './bundle.ts'
+import type { Money } from './infer.ts'
 import type { Field, Fields, RefField } from './types.ts'
 
 type Scalar = string | number | boolean
-export interface Condition { eq?: unknown; ne?: unknown; gt?: unknown; gte?: unknown; lt?: unknown; lte?: unknown; in?: unknown[]; contains?: unknown }
-/** A sort order: the string `'price desc'` (several separated by `,`) or `{ field, dir }` like a brick's `order`. */
-export type QueryOrder = string | { field: string; dir?: 'asc' | 'desc' }
-export interface Query {
-  where?: Record<string, unknown>
+type Data = Record<string, unknown>
+
+/** What a condition compares a value with: one element of a list value, money by `amount`, a daterange by its start date. */
+type Comparable<V> = V extends readonly (infer E)[] ? E : V extends Money ? Pick<Money, 'amount'> | number : V extends { from: string } ? string : V
+
+/**
+ * A test on one field. `eq`/`ne`: equal or not (for a list value: one element is). `gt`, `gte`, `lt`, `lte`: compare.
+ * `in`: equal to one of these. `contains`: a text contains this text (case-insensitive), a list contains this element.
+ */
+export interface Condition<V = unknown> {
+  eq?: Comparable<V> | null; ne?: Comparable<V> | null; gt?: Comparable<V>; gte?: Comparable<V>; lt?: Comparable<V>; lte?: Comparable<V>
+  in?: readonly Comparable<V>[]; contains?: Comparable<V>
+}
+/** A sort order: the text `'price desc, name'` (`asc` is the default) or `{ field, dir? }` like a brick's `order`. */
+export type QueryOrder<D = Data> = string | { field: keyof D & string; dir?: 'asc' | 'desc' }
+/** `D` is the data of the brick's entries; `useGinkoQuery` sets it, so field names and values are checked. */
+export interface Query<D = Data> {
+  /** Per field a value (equal to it) or a `Condition`; every field must match. */
+  where?: { [K in keyof D]?: Comparable<D[K]> | null | Condition<D[K]> }
   /** Default: the bundle's item order. */
-  order?: QueryOrder
+  order?: QueryOrder<D>
+  /** At least 1; without it, every matching entry. */
   limit?: number
   /** 1-based. */
   page?: number
-  fields?: string[]
-  facets?: string[]
-  include?: string[]
+  fields?: (keyof D & string)[]
+  facets?: (keyof D & string)[]
+  include?: (keyof D & string)[]
 }
 export interface QueryResult {
   items: BundleItem[]
@@ -89,7 +105,7 @@ function matches(value: unknown, cond: Condition): boolean {
 
 function asCondition(spec: unknown): Condition {
   if (isRecord(spec) && Object.keys(spec).length > 0 && Object.keys(spec).every((k) => OPERATORS.includes(k))) return spec as Condition
-  return { eq: spec }
+  return { eq: spec as Condition['eq'] }
 }
 
 function knownFields(items: BundleItem[], brick: string, schema?: QuerySchema): Set<string> | undefined {
@@ -103,7 +119,7 @@ function checkField(known: Set<string> | undefined, field: string, brick: string
   if (known && !known.has(field)) throw new Error(`query: brick "${brick}" has no field "${field}" (${where})`)
 }
 
-function parseOrder(input: QueryOrder): { field: string; sign: 1 | -1 }[] {
+function parseOrder(input: QueryOrder<Data>): { field: string; sign: 1 | -1 }[] {
   if (typeof input !== 'string') {
     if (!input.field || (input.dir !== undefined && input.dir !== 'asc' && input.dir !== 'desc')) throw new Error(`query: invalid order ${JSON.stringify(input)}`)
     return [{ field: input.field, sign: input.dir === 'desc' ? -1 : 1 }]
@@ -134,6 +150,7 @@ function sortItems(items: BundleItem[], order: { field: string; sign: 1 | -1 }[]
 
 /** Filter, order, page, project and enrich the items of one collection brick. Pure; throws on a field the brick does not have. */
 export function query(bundle: Bundle, brick: string, q: Query = {}, schema?: QuerySchema): QueryResult {
+  if (q.limit !== undefined && !(q.limit >= 1)) throw new Error(`query: limit must be at least 1 (got ${String(q.limit)})`)
   const all = collectionOf(bundle, brick)
   const known = knownFields(all, brick, schema)
   const where = Object.entries(q.where ?? {}).map(([field, spec]) => {
@@ -166,7 +183,7 @@ export function query(bundle: Bundle, brick: string, q: Query = {}, schema?: Que
     }
   }
 
-  const limit = q.limit !== undefined && q.limit > 0 ? Math.floor(q.limit) : undefined
+  const limit = q.limit !== undefined ? Math.floor(q.limit) : undefined
   const page = q.page !== undefined && q.page > 0 ? Math.floor(q.page) : 1
   const pages = limit ? Math.max(1, Math.ceil(total / limit)) : 1
   if (limit) items = items.slice((page - 1) * limit, page * limit)

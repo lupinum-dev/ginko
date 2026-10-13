@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collection, defineSite, f, single, type DataOf } from '../../src/index.ts'
+import { collection, defineSite, f, single, type DataOf, type Money, type Query } from '../../src/index.ts'
 
 // The authoring types reject input the validator would only reject at `ginko release`. `pnpm typecheck`
 // runs this file: each `@ts-expect-error` fails the check when a type is widened again.
@@ -81,5 +81,15 @@ describe('authoring types', () => {
     // @ts-expect-error a route without [slug]
     collection({ label: 'News', fields, max: 5, order: 'manual', route: { de: '/news' } })
     expect(true).toBe(true)
+  })
+
+  it('a query names fields of the brick and compares with their values', () => {
+    type Dish = { name: string; price: Money; tags: string[] }
+    const ok: Query<Dish> = { where: { price: { lte: { amount: 1500 } }, tags: 'veg', name: { contains: 'suppe' } }, order: { field: 'price' }, facets: ['tags'] }
+    // @ts-expect-error a field the brick does not have
+    const typo: Query<Dish> = { where: { prise: { lte: 1500 } } }
+    // @ts-expect-error a text compared with a number
+    const wrong: Query<Dish> = { where: { name: { gt: 3 } } }
+    expect([ok, typo, wrong]).toHaveLength(3)
   })
 })

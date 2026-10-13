@@ -189,7 +189,7 @@ export function sortEntries(brick: CollectionBrick, entries: StoredEntry[]): Sto
   const copy = [...entries]
   if (brick.order === 'manual') return copy.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id))
   const { field, dir } = brick.order
-  const sign = dir === 'asc' ? 1 : -1
+  const sign = dir === 'desc' ? -1 : 1
   // Numbers and money compare numerically; daterange by from, then to; strings (dates, times) by code unit.
   // Empty values sort first in ascending order.
   const key = (e: StoredEntry): (number | string)[] => {

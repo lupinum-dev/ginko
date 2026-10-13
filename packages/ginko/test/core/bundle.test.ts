@@ -184,6 +184,13 @@ describe('sortEntries: when asc (SPEC 2.1)', () => {
     ])
     expect(sorted.map((e) => e.id)).toEqual(['k5', 'k9', 'k1', 'k2'])
   })
+
+  // Wrong behaviour caught: an order without `dir` sorts descending, the opposite of the query order's default.
+  it('sorts ascending when dir is left out', () => {
+    const events = { ...collectionOf(base(), 'events'), order: { field: 'when' } }
+    const entry = (id: string, from: string): StoredEntry => ({ id, data: { when: { from, to: from } } })
+    expect(sortEntries(events, [entry('late', '2026-10-20'), entry('early', '2026-10-01')]).map((e) => e.id)).toEqual(['early', 'late'])
+  })
 })
 
 describe('retired fields are projected into the bundle (SPEC 2.5)', () => {
