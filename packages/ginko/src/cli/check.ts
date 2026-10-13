@@ -2,8 +2,8 @@
 // It reads the state and never writes.
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { checkSchema, serializeSchema, type SiteInput } from '../core/index.ts'
-import { unknownSiteKeys } from '../core/site-keys.ts'
+import type { SiteInput } from '../core/index.ts'
+import { siteProblems } from '../core/site-keys.ts'
 import { checkFileLinks } from './content-links.ts'
 import { CliError } from './model.ts'
 import { plan } from './plan.ts'
@@ -17,7 +17,7 @@ import { explainChanges, explainProblems, explainRejected, kib } from './report.
  */
 export async function check(input: { config: SiteInput; platform: Platform | undefined; root: string; log: (line: string) => void }): Promise<boolean> {
   // The same check as the Nuxt build, first: an invalid config fails here in CI, not later in `nuxt build`.
-  const problems = [...unknownSiteKeys(input.config), ...checkSchema(serializeSchema(input.config))]
+  const problems = siteProblems(input.config)
   if (problems.length > 0) {
     input.log('ginko.config.ts is invalid:')
     for (const problem of problems) input.log(`  ✗ ${problem}`)

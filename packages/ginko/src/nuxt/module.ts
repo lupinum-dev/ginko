@@ -9,8 +9,8 @@ import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules } from './route-rules.ts'
 import { configFilesToWatch } from './watch.ts'
-import { checkLinks, checkSchema, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
-import { unknownSiteKeys } from '../core/site-keys.ts'
+import { checkLinks, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
+import { siteProblems } from '../core/site-keys.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
 const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
@@ -37,10 +37,11 @@ export default defineNuxtModule<SiteInput>({
   meta: { name: '@lupinum/ginko', configKey: 'ginko', compatibility: { nuxt: '^4.6.0' } },
   async setup(site, nuxt) {
     if (!site?.site || !site.bricks) throw new Error('[ginko] Option `ginko` is missing: the result of defineSite() from ginko.config.ts.')
-    // The serialized schema is the site's own contract: checked at build, used at runtime for defaults.
-    const schema = serializeSchema(site)
-    const problems = [...unknownSiteKeys(site), ...checkSchema(schema)]
+    // The same check as `ginko check`, so an invalid config fails the build.
+    const problems = siteProblems(site)
     if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
+    // The serialized schema is the site's own contract: used at runtime for defaults.
+    const schema = serializeSchema(site)
     const sources = {
       platform: Object.values(schema.bricks).some((b) => b.source !== 'files'),
       files: Object.values(schema.bricks).some((b) => b.source === 'files'),
