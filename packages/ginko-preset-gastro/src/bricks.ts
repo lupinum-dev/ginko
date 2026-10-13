@@ -209,7 +209,7 @@ export function lunch<const A extends AllergenSet = 'EU'>(opts: GastroOptions & 
       pdf: f.file(both('Mittagsmenü als PDF', 'Lunch menu as PDF'), { accept: ['pdf'], maxSize: 5 * 1024 * 1024, optional: true }),
     },
     tasks: [
-      { id: 'lunchWeek', label: both('Mittagsmenü dieser Woche', 'This week’s lunch menu'), kind: 'edit', fields: ['weekOf', 'days', 'note'], prefill: { weekOf: '@thisWeek' } },
+      { id: 'lunchWeek', label: both('Mittagsmenü dieser Woche', 'This week’s lunch menu'), kind: 'edit', fields: ['weekOf', 'days', 'note'], prefill: { weekOf: '@workWeek' } },
     ],
   })
 }
@@ -233,7 +233,7 @@ export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: GastroOptio
     autoRemoveExpired: true,
     plans: { brick: lunchBrick, field: 'weekOf' },
     tasks: [
-      { id: 'planNext', label: both('Nächste Woche planen', 'Plan next week'), kind: 'create', prefill: { weekOf: '@nextWeek' } },
+      { id: 'planNext', label: both('Nächste Woche planen', 'Plan next week'), kind: 'create', prefill: { weekOf: '@nextWorkWeek' } },
       { id: 'edit', label: both('Geplante Woche bearbeiten', 'Edit a planned week'), kind: 'edit', pick: true, fields: ['weekOf', 'days', 'note'] },
       { id: 'remove', label: both('Geplante Woche entfernen', 'Remove a planned week'), kind: 'remove' },
     ],

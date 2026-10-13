@@ -40,7 +40,7 @@ const fields = computed(() => taskFields(props.brick, props.task))
 const isCreate = computed(() => props.task.kind === 'create')
 const ref_ = computed(() => taskRef(props.brickKey, props.task))
 /** Date fields the task presets to a week start get week shortcuts. */
-const weekFields = computed(() => new Set(Object.entries(('prefill' in props.task ? props.task.prefill : undefined) ?? {}).filter(([, v]) => v === '@thisWeek' || v === '@nextWeek').map(([k]) => k)))
+const weekFields = computed(() => new Set(Object.entries(('prefill' in props.task ? props.task.prefill : undefined) ?? {}).filter(([, v]) => v === '@workWeek' || v === '@nextWorkWeek').map(([k]) => k)))
 
 const form = useEntryForm({
   site: computed(() => props.site),

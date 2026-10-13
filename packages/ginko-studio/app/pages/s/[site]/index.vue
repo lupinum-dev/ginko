@@ -95,7 +95,7 @@ function flagTexts(brick: Brick, flag: { task: Task; entry: Entry }): string[] {
   return flag.task.fields.filter((f) => brick.fields[f]?.type === 'text').map((f) => textIn(flag.entry.data[f], s.main.value)).filter(Boolean)
 }
 
-/** A single's date field preset to @thisWeek shows whether it is this week's (UI.md 3, weekly upkeep). The rule is `staleOf`, the same the reminder mail uses. */
+/** A single's date field preset to @workWeek shows whether it is this week's (UI.md 3, weekly upkeep). The rule is `staleOf`, the same the reminder mail uses. */
 /**
  * The entry planned ahead for this week of the single `key` (an entry of a collection that `plans` it). When there is
  * one, it is what the website shows this week, not the single's own fields (lunchWeekOn in the gastro preset).

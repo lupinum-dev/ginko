@@ -3,7 +3,7 @@ import { DEFAULT_WEEK, plannedWeeks, staleOf, weekInfoOf, type Schema, type Task
 
 const lunch = {
   fields: { weekOf: { type: 'date' }, note: { type: 'text' } },
-  tasks: [{ id: 'lunchWeek', label: 'Mittagsmenü', kind: 'edit', fields: ['weekOf', 'note'], prefill: { weekOf: '@thisWeek' } }] as Task[],
+  tasks: [{ id: 'lunchWeek', label: 'Mittagsmenü', kind: 'edit', fields: ['weekOf', 'note'], prefill: { weekOf: '@workWeek' } }] as Task[],
 }
 
 describe('staleOf (weekly upkeep)', () => {

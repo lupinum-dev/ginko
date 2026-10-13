@@ -4,7 +4,7 @@ import type { Json, Schema, Task } from './types.ts'
 export interface WeekState {
   /** The edit task that fixes it. */
   task: Extract<Task, { kind: 'edit' }>
-  /** The date field the task presets to `@thisWeek`. */
+  /** The date field the task presets to `@workWeek`. */
   field: string
   /** The week start stored in the field, if any. */
   stored: string | undefined
@@ -14,7 +14,7 @@ export interface WeekState {
 
 /**
  * The "out of date" rule for weekly upkeep (UI.md 3): an edit task that presets a date field to
- * `@thisWeek` says the content must be entered again each week. It is current while the field holds
+ * `@workWeek` says the content must be entered again each week. It is current while the field holds
  * the first day of today's work week (the coming week once only weekend days are left, see `workWeekOf`).
  * A week planned ahead in a collection (`plans`, see `plannedWeeks`) counts as entered too. Undefined when the brick has no such task. The Studio shows the state; the weekly reminder mail asks the same question.
  */
@@ -31,12 +31,12 @@ export function staleOf(
   return { ...weekly, stored, current: stored === workWeekOf(today, week) || planned.includes(workWeekOf(today, week)) }
 }
 
-/** The brick's weekly task: the first edit task that presets a date field to `@thisWeek`. */
+/** The brick's weekly task: the first edit task that presets a date field to `@workWeek`. */
 export function weeklyTask(brick: { fields: Record<string, { type: string }>; tasks?: readonly Task[] }): Pick<WeekState, 'task' | 'field'> | undefined {
   for (const task of brick.tasks ?? []) {
     if (task.kind !== 'edit' || !task.prefill) continue
     for (const [field, token] of Object.entries(task.prefill)) {
-      if (token === '@thisWeek' && brick.fields[field]?.type === 'date') return { task, field }
+      if (token === '@workWeek' && brick.fields[field]?.type === 'date') return { task, field }
     }
   }
   return undefined

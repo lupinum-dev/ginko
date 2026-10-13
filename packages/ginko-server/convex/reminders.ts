@@ -1,6 +1,6 @@
 // The weekly reminder (SPEC 10): content that is out of date for the coming week (`staleOf`, the rule
 // the Studio shows too) is mailed once per person and week, on the day before the site's week starts (Sunday for Monday-first weeks), between 17:00 and 18:00 in the site's time zone.
-import { weekStartOf, type Json } from '@lupinum/ginko'
+import { startOfWeek, type Json } from '@lupinum/ginko'
 import { addDays, labelOf, plannedWeeks, staleOf, todayIn, weekOfSchema, workWeekOf, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { components } from './_generated/api'
@@ -18,7 +18,7 @@ function hourIn(timezone: string, now: Date): number {
 }
 
 /** Whether tomorrow is the first day of the site's week. */
-const isDayBeforeWeekStart = (date: string, schema: Schema) => weekStartOf(addDays(date, 1), weekOfSchema(schema)) === addDays(date, 1)
+const isDayBeforeWeekStart = (date: string, schema: Schema) => startOfWeek(addDays(date, 1), weekOfSchema(schema)) === addDays(date, 1)
 
 /**
  * Hourly. Sends the reminders of every site whose 17:00 hour on the day before the week starts it is. `now` is for tests and the

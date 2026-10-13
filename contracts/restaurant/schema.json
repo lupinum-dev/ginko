@@ -799,7 +799,7 @@
             "note"
           ],
           "prefill": {
-            "weekOf": "@thisWeek"
+            "weekOf": "@workWeek"
           },
           "needsApproval": true
         }
@@ -1956,7 +1956,7 @@
           },
           "kind": "create",
           "prefill": {
-            "weekOf": "@nextWeek"
+            "weekOf": "@nextWorkWeek"
           }
         },
         {

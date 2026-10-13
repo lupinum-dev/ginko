@@ -29,9 +29,9 @@ export interface SiteInput {
   languages?: Partial<Record<Locale, string>>
   /**
    * The first day of the week, 1 (Monday) to 7 (Sunday). Default: the first day of the main locale's language
-   * (`languages`), e.g. Monday for `de-AT`, Sunday for `en-US`. Weekly bricks (`@thisWeek`) start on this day.
+   * (`languages`), e.g. Monday for `de-AT`, Sunday for `en-US`. Weekly bricks (`@workWeek`) start on this day.
    */
-  weekStart?: 1 | 2 | 3 | 4 | 5 | 6 | 7
+  firstDayOfWeek?: 1 | 2 | 3 | 4 | 5 | 6 | 7
   currency: Currency
   /**
    * Static pages by key: `{ menu: { de: '/speisekarte', en: '/en/menu' } }`. A plain path is the page in
@@ -88,7 +88,7 @@ export function collection<const F extends Fields, const R extends Partial<Recor
   visible?: Visibility
   missing?: 'fallback' | 'hide'
   autoRemoveExpired?: boolean
-  /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`weekStart`). */
+  /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`firstDayOfWeek`). */
   plans?: { brick: string; field: keyof F & string }
   drafts?: boolean
 }): CollectionBrick<F, R> {

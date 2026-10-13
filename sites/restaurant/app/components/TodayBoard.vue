@@ -1,7 +1,7 @@
 <!-- The "Heute" board: open or closed today, today's lunch, the owner's notices and the next closure.
      It is the one coloured region of the site, the first thing a guest checks at lunchtime. -->
 <script setup lang="ts">
-import { formatMoney, weekStartOf } from '@lupinum/ginko'
+import { formatMoney, startOfWeek } from '@lupinum/ginko'
 import { spansText, todayState, upcomingClosures, weekdayOf } from '../utils/site'
 
 const { lang, today } = useSite()
@@ -15,7 +15,7 @@ const state = computed(() => todayState(today.value, ctx.value))
 const closures = computed(() => upcomingClosures(ctx.value, today.value, h.value.holidayNoticeDays))
 // Only the menu of the week that contains today counts (a planned week wins); on the weekend the coming week is not today's dish.
 const dish = computed(() => {
-  if (state.value.kind !== 'open' || !lunchCurrent.value || lunch.value.data.weekOf !== weekStartOf(today.value, useGinkoWeek())) return undefined
+  if (state.value.kind !== 'open' || !lunchCurrent.value || lunch.value.data.weekOf !== startOfWeek(today.value, useGinkoWeek())) return undefined
   return lunch.value.data.days.find((d) => d.day === weekdayOf(today.value))
 })
 </script>

@@ -7,7 +7,7 @@ import { weekInfoOf } from './time.ts'
 import { componentProblems } from './components.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
-import { type Brick, type Currency, type Field, type Fields, type Locale, type Schema } from './types.ts'
+import { PREFILL_TOKENS, type Brick, type Currency, type Field, type Fields, type Locale, type PrefillToken, type Schema } from './types.ts'
 import { coreMessage } from './messages.ts'
 import { checkValue } from './validate.ts'
 
@@ -51,7 +51,7 @@ export function serializeSchema(site: SiteInput): Schema {
     locales: [...site.locales],
     currency: site.currency,
     // Computed once here; the server, the Studio and the site all read `schema.week`.
-    week: weekInfoOf(site.languages?.[site.locales[0]] ?? site.locales[0], site.weekStart),
+    week: weekInfoOf(site.languages?.[site.locales[0]] ?? site.locales[0], site.firstDayOfWeek),
     pages: Object.fromEntries(Object.entries(site.pages).map(([key, page]) => [key, typeof page === 'string' ? { [site.locales[0]]: page } : page])),
     bricks,
     migrations,
@@ -191,9 +191,9 @@ function schemaProblems(schema: Schema): string[] {
     }
     for (const task of brick.tasks ?? []) {
       pushLabel(`${key}.${task.id}.label`, task.label)
+      // A string that looks like a token but is none would be stored as literal text and leave the field empty.
       for (const value of Object.values('prefill' in task ? task.prefill ?? {} : {})) {
-        const renamed = value === '@thisMonday' ? '@thisWeek' : value === '@nextMonday' ? '@nextWeek' : undefined
-        if (renamed) problems.push(`${key}.${task.id}: the token “${value as string}” no longer exists. Use “${renamed}”; weeks start on the site's first day of the week.`)
+        if (typeof value === 'string' && value.startsWith('@') && !PREFILL_TOKENS.includes(value as PrefillToken)) problems.push(`${key}.${task.id}: unknown token “${value}” (known: ${PREFILL_TOKENS.join(', ')}).`)
       }
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
     }
@@ -298,7 +298,7 @@ function plansProblems(key: string, plans: unknown, fields: Fields, schema: Sche
   const target = typeof brick === 'string' && Object.hasOwn(schema.bricks, brick) ? schema.bricks[brick] : undefined
   if (!target) problems.push(`${key}: plans names the brick “${String(brick)}”, which does not exist.`)
   else if (target.kind !== 'single') problems.push(`${key}: plans needs a single brick, “${String(brick)}” is a collection.`)
-  else if (!weeklyTask(target)) problems.push(`${key}: plans: “${String(brick)}” has no weekly task (an edit task with @thisWeek).`)
+  else if (!weeklyTask(target)) problems.push(`${key}: plans: “${String(brick)}” has no weekly task (an edit task with @workWeek).`)
   if (typeof field !== 'string' || !Object.hasOwn(fields, field) || fields[field]?.type !== 'date') problems.push(`${key}: plans needs a date field for the week start.`)
   // The weekly task edits a planned week in place of the single, so the week needs every field the task edits.
   const weekly = target?.kind === 'single' ? weeklyTask(target) : undefined

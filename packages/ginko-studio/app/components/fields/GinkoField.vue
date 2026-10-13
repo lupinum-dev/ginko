@@ -35,7 +35,7 @@ const props = defineProps<{
   issues: readonly Issue[]
   /** The value when the form opened, for lists that ask "Noch richtig?". */
   baseline?: Json
-  /** A date that starts a week (task preset @thisWeek/@nextWeek). */
+  /** A date that starts a week (task preset @workWeek/@nextWorkWeek). */
   weeks?: boolean
   /** The page address of the entry per language (`/veranstaltungen/[slug]`), for the preview under a slug field. */
   route?: Partial<Record<string, string>>

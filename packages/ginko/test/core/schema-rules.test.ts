@@ -383,21 +383,21 @@ describe('drafts must be a boolean', () => {
 })
 
 describe('week tokens', () => {
-  // Wrong behaviour caught: the renamed tokens are silently stored as literal text, so the date field starts empty.
-  it.each([['@thisMonday', '@thisWeek'], ['@nextMonday', '@nextWeek']])('rejects %s and names %s', (old, renamed) => {
-    const input = site({}, { bricks: { lunch: single({ label: 'Mittag', fields: { weekOf: f.date('Woche') }, tasks: [{ id: 'w', label: 'Woche', kind: 'edit', fields: ['weekOf'], prefill: { weekOf: old as never } }] }) } })
-    expect(problemsOf(input)).toEqual([`lunch.w: the token “${old}” no longer exists. Use “${renamed}”; weeks start on the site's first day of the week.`])
+  // Wrong behaviour caught: a mistyped or old token is silently stored as literal text, so the date field starts empty.
+  it.each(['@thisWeek', '@nextMonday'])('rejects the unknown token %s', (token) => {
+    const input = site({}, { bricks: { lunch: single({ label: 'Mittag', fields: { weekOf: f.date('Woche') }, tasks: [{ id: 'w', label: 'Woche', kind: 'edit', fields: ['weekOf'], prefill: { weekOf: token as never } }] }) } })
+    expect(problemsOf(input)).toEqual([`lunch.w: unknown token “${token}” (known: @today, @workWeek, @nextWorkWeek).`])
   })
 
   // Wrong behaviour caught: the week is not stored on the schema, so server, Studio and site disagree about the first day.
-  it('stores the week of the main language, with weekStart as override', () => {
+  it('stores the week of the main language, with firstDayOfWeek as override', () => {
     expect(serializeSchema(site({}, { languages: { de: 'en-US' } })).week).toEqual({ firstDay: 7, weekend: [6, 7] })
-    expect(serializeSchema(site({}, { languages: { de: 'de-AT' }, weekStart: 6 })).week).toEqual({ firstDay: 6, weekend: [6, 7] })
+    expect(serializeSchema(site({}, { languages: { de: 'de-AT' }, firstDayOfWeek: 6 })).week).toEqual({ firstDay: 6, weekend: [6, 7] })
   })
 })
 
 describe('plans (weeks planned ahead)', () => {
-  const week = single({ label: 'Mittag', fields: { weekOf: f.date('Woche') }, tasks: [{ id: 'w', label: 'Woche', kind: 'edit', fields: ['weekOf'], prefill: { weekOf: '@thisWeek' } }] })
+  const week = single({ label: 'Mittag', fields: { weekOf: f.date('Woche') }, tasks: [{ id: 'w', label: 'Woche', kind: 'edit', fields: ['weekOf'], prefill: { weekOf: '@workWeek' } }] })
   const planner = (plans: { brick: string; field: string }) => site({}, {
     bricks: {
       lunch: week,

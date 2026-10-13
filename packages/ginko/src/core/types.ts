@@ -82,7 +82,12 @@ export type Field =
 export type FieldType = Field['type']
 export type Fields = Record<string, Field>
 
-export type PrefillToken = '@today' | '@thisWeek' | '@nextWeek'
+/**
+ * Values the platform resolves in the site's time zone when a task opens: `@today`; `@workWeek`, the first day
+ * of the work week (at the weekend, after the last workday, the coming week); `@nextWorkWeek`, the week after it.
+ */
+export const PREFILL_TOKENS = ['@today', '@workWeek', '@nextWorkWeek'] as const
+export type PrefillToken = typeof PREFILL_TOKENS[number]
 
 /** `needsApproval: true`: what staff does with this task goes live only after an owner or admin approves it (SPEC 17). */
 export type Task =
@@ -160,7 +165,7 @@ export interface Schema {
   timezone: string
   locales: Locale[]
   currency: Currency
-  /** First day of the week and weekend days of the site (computed once from the main language or `weekStart`). Absent in schemas stored before it existed: read it with `weekOfSchema`. */
+  /** First day of the week and weekend days of the site (computed once from the main language or `firstDayOfWeek`). Absent in schemas stored before it existed: read it with `weekOfSchema`. */
   week?: WeekInfo
   /** Static pages by key, each with its path per locale (the first page is the home page). */
   pages: Record<string, Partial<Record<Locale, string>>>

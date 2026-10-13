@@ -11,7 +11,7 @@ export { resolveEntry, buildBundle, servedBundle, applyDefaults, defaultsFor, is
 export { BUNDLE_FORMAT, isBundle, bundleFits, knownBricks, withFileBricks, type Bundle, type BundleBrick, type BundleItem } from './bundle.ts'
 export { isSafeHref, safeHref } from './href.ts'
 export { slugify, uniqueSlug, SLUG_PATTERN } from './slug.ts'
-export { todayIn, weekStartOf, workWeekOf, weekInfoOf, weekOfSchema, DEFAULT_WEEK, addDays, resolveToken, type WeekInfo } from './time.ts'
+export { todayIn, startOfWeek, workWeekOf, weekInfoOf, weekOfSchema, DEFAULT_WEEK, addDays, resolveToken, type WeekInfo } from './time.ts'
 export { plannedWeeks, plansThisWeek, staleOf, weeklyTask, type WeekState } from './stale.ts'
 export { sha256, stableJson } from './sha256.ts'
 export { formatMoney, minorDigits } from './money.ts'
