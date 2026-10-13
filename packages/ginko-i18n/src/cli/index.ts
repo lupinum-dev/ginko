@@ -14,10 +14,11 @@ Exit: 0 success, 1 errors/rejected items, 2 usage/config error`
 /** A wrong command line: error code `usage`. Every other error (manifest, catalogs, input) is `config`. Both exit 2. */
 class UsageError extends Error {}
 
-function knownLocale(m: Manifest, code: string) {
-  if (!m.locales.some(l => l.code === code))
-    throw new UsageError(`Unknown locale: ${code}. Fix: use one of ${m.locales.map(l => l.code).join(', ')}.`)
-  return code
+/** A locale code from the command line must be a locale of `m`; the fix names its case twin, or else every code. */
+function knownLocale(m: Manifest, code: string, what = 'locale') {
+  if (m.locales.some(l => l.code === code)) return code
+  const twin = m.locales.find(l => l.code.toLowerCase() === code.toLowerCase())
+  throw new UsageError(`Unknown ${what}: ${code}. Fix: use ${twin ? `"${twin.code}"` : `one of ${m.locales.map(l => l.code).join(', ')}`}.`)
 }
 
 // With --json, stdout is exactly one JSON object: `{ ok, ...fields }`, or `{ ok: false, error: { code, message } }`.
@@ -45,6 +46,7 @@ try {
     const cwd = resolve(values.cwd ?? process.cwd())
     const input = command === 'apply' ? JSON.parse(readFileSync(file === '-' ? 0 : resolve(cwd, file), 'utf8')) as unknown : undefined
     let m = values.dir ? dirManifest(resolve(cwd, values.dir), values['default-locale']!) : manifest(cwd, resolve(cwd, values['build-dir'] ?? '.nuxt'))
+    if (values.dir) knownLocale(m, m.defaultLocale, 'default locale')
     // In --dir mode a new language starts with `todo --locale es`, then `apply` writes es.json.
     if (values.dir && command === 'todo') {
       try {

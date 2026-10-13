@@ -343,11 +343,17 @@ test.each([
   expect(result.status).toBe(2)
   expect(result.value.error).toEqual({ code: 'usage', message })
 })
-test.each([[['check', '--dir', 'catalog']], [['check', '--dir', 'catalog', '--default-locale', 'fr']], [['check', '--default-locale', 'de']]])('--dir usage error %j returns JSON and exit 2', (args) => {
+// A wrong --default-locale was a `config` error, so an agent looked in its files instead of its arguments.
+test.each([
+  [['check', '--dir', 'catalog'], '--dir requires --default-locale <code>'],
+  [['check', '--default-locale', 'de'], '--default-locale requires --dir <folder>'],
+  [['check', '--dir', 'catalog', '--default-locale', 'fr'], 'Unknown default locale: fr. Fix: use one of de.'],
+  [['check', '--dir', 'catalog', '--default-locale', 'DE'], 'Unknown default locale: DE. Fix: use "de".'],
+])('--dir usage error %j returns JSON and exit 2', (args, message) => {
   const dir = mkdtempSync(join(tmpdir(), 'ginko-dir-'))
   dirs.push(dir)
   write(dir, 'catalog/de.json', { a: 'Hallo' })
   const result = run(dir, args)
   expect(result.status).toBe(2)
-  expect(result.value.error.message).toMatch(/--default|Unknown default locale/)
+  expect(result.value.error).toEqual({ code: 'usage', message })
 })
