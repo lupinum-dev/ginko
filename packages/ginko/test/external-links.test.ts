@@ -90,7 +90,7 @@ describe('cache', () => {
   })
 })
 
-describe('without links.external', () => {
+describe('without linkCheck.external', () => {
   const config = defineSite({
     site: 'linde', name: 'Linde', url: 'https://linde.example', timezone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: '/' },
     bricks: { docs: collection({ label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') } }) },

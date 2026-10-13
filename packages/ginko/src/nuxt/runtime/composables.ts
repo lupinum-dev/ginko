@@ -79,7 +79,7 @@ export function useGinkoToday(): Ref<string> {
   return useState<string>(TODAY_STATE, () => todayIn((useRuntimeConfig().public.ginko as GinkoPublicConfig).timezone))
 }
 
-/** First day of the week and weekend days of the site (`schema.week`, from the main language or `weekStart`), the same the server and the Studio use. */
+/** First day of the week and weekend days of the site (`schema.week`, from the main language or `firstDayOfWeek`), the same the server and the Studio use. */
 export function useGinkoWeek(): WeekInfo {
   return weekOfSchema(schema)
 }
