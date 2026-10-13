@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { handleMcp, MAX_BATCH, type DocsMcpDeps } from '../server/mcp/handler'
+import { handleMcp, MAX_BATCH, MAX_BODY_BYTES, readLimitedText, type DocsMcpDeps } from '../server/mcp/handler'
 
 const read: string[] = []
 const deps: DocsMcpDeps = {
@@ -26,5 +26,15 @@ describe('docs MCP endpoint', () => {
     for (const batch of [[], Array.from({ length: MAX_BATCH + 1 }, () => ping)]) {
       expect(await handleMcp(batch, deps)).toMatchObject({ error: { code: -32600 } })
     }
+  })
+
+  // Wrong behaviour caught: a huge body is read and parsed in full (declared by content-length, or chunked without one).
+  it('refuses a body over 1 MB before reading it, and reads a small one', async () => {
+    const big = 'x'.repeat(MAX_BODY_BYTES + 1)
+    expect(await readLimitedText(new Request('http://x/', { method: 'POST', body: big }))).toBeUndefined()
+    const chunked = new Request('http://x/', { method: 'POST', body: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(big)); c.close() } }), duplex: 'half' } as RequestInit)
+    expect(chunked.headers.get('content-length')).toBeNull()
+    expect(await readLimitedText(chunked)).toBeUndefined()
+    expect(await readLimitedText(new Request('http://x/', { method: 'POST', body: '{"a":"é"}' }))).toBe('{"a":"é"}')
   })
 })

@@ -81,3 +81,28 @@ export async function handleMcp(body: unknown, deps: DocsMcpDeps): Promise<Json 
   const out = (await Promise.all(body.map((m) => handleMcpMessage(m, deps)))).filter((r): r is Json => r !== undefined)
   return out.length ? out : undefined
 }
+
+/** Largest request body the endpoint reads (1 MB); a JSON-RPC call is a few hundred bytes. */
+export const MAX_BODY_BYTES = 1_000_000
+
+/**
+ * The body text of `request`, or undefined when it is over `max` bytes. A `content-length` over the limit is
+ * refused without reading anything; without one (chunked upload) the stream is cut as soon as it passes the limit.
+ */
+export async function readLimitedText(request: Request, max = MAX_BODY_BYTES): Promise<string | undefined> {
+  const declared = Number(request.headers.get('content-length'))
+  if (Number.isFinite(declared) && declared > max) return undefined
+  if (!request.body) return ''
+  const reader = request.body.getReader()
+  const decoder = new TextDecoder()
+  let size = 0
+  let result = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > max) { await reader.cancel(); return undefined }
+    result += decoder.decode(value, { stream: true })
+  }
+  return result + decoder.decode()
+}
