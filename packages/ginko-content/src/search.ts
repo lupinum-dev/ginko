@@ -1,7 +1,8 @@
 // The build-time search index (CONTENT.md, Phase 14): sections of every file item with a URL, as a serialized MiniSearch index.
 import type { MarkdownTree } from '@lupinum/ginko'
 import type { Bundle, Schema } from '@lupinum/ginko/internal'
-import { buildIndex, searchSections, type SearchIndexJson } from '@lupinum/ginko/search'
+import { buildIndex, searchSections } from '@lupinum/ginko/internal/search'
+import type { SearchIndexJson } from '@lupinum/ginko/search'
 
 /**
  * The serialized search index of one locale's bundle (see searchSections). `bundle` must hold the `{ ref }`

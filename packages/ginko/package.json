@@ -19,6 +19,7 @@
     ".": "./src/index.ts",
     "./internal": "./src/internal.ts",
     "./vue": "./src/vue.ts",
+    "./internal/search": "./src/internal-search.ts",
     "./search": "./src/search.ts",
     "./nuxt": "./src/nuxt/module.ts",
     "./i18n/*.json": "./i18n/*.json"
@@ -48,6 +49,10 @@
       "./vue": {
         "types": "./dist/vue.d.mts",
         "import": "./dist/vue.mjs"
+      },
+      "./internal/search": {
+        "types": "./dist/internal/search.d.mts",
+        "import": "./dist/internal/search.mjs"
       },
       "./search": {
         "types": "./dist/search.d.mts",

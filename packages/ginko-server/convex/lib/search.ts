@@ -1,7 +1,8 @@
 // The one search over entries (SPEC 4.2 search.studio, SPEC 16 ginko_search): the core search engine
 // over one record per entry with all texts in all languages. The agent door and the Studio both call
 // `searchEntries`; nothing else searches.
-import { buildIndex, loadIndex, search, type SearchRecord } from '@lupinum/ginko/search'
+import { buildIndex, type SearchRecord } from '@lupinum/ginko/internal/search'
+import { loadIndex, search } from '@lupinum/ginko/search'
 import type { Brick, Field, Json } from '@lupinum/ginko'
 import { isTranslatable, type Schema } from '@lupinum/ginko/internal'
 import type { QueryCtx } from '../_generated/server'

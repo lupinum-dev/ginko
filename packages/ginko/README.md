@@ -64,10 +64,10 @@ const events = useGinko('events') // typed from ginko.config.ts
 
 ## Stability
 
-`@lupinum/ginko`, `@lupinum/ginko/nuxt` and `@lupinum/ginko/vue` are the public API. Every name they
-export is documented on the docs site. Until 1.0, a minor release may still break it, and the changelog
-names the break. `@lupinum/ginko/internal` and `@lupinum/ginko/search` are for Ginko's own packages.
-They can change in any release, so do not import them in a site.
+`@lupinum/ginko`, `@lupinum/ginko/nuxt`, `@lupinum/ginko/vue` and `@lupinum/ginko/search` are the public
+API. Every name they export is documented on the docs site. Until 1.0, a minor release may still break it,
+and the changelog names the break. `@lupinum/ginko/internal` and `@lupinum/ginko/internal/search` are for
+Ginko's own packages. They can change in any release, so do not import them in a site.
 
 ## Docs
 
