@@ -301,7 +301,7 @@ describe('serializeSchema', () => {
   it('produces plain JSON that survives a round trip, with migrations as descriptors', () => {
     const site: SiteInput = {
       ...restaurant,
-      migrations: { '2026-11-menu-tag-from-name': { brick: 'menu', fills: 'tag', from: (e) => e.name } },
+      migrations: { '2026-11-menu-tag-from-name': { brick: 'menu', fills: 'tag', compute: (e) => e.name } },
     }
     const out = serializeSchema(site)
     expect(out.migrations).toEqual([
@@ -323,8 +323,8 @@ describe('serializeSchema', () => {
     const site: SiteInput = {
       ...restaurant,
       migrations: {
-        '2026-12-b-second': { brick: 'menu', fills: 'tag', from: (e) => e.name },
-        '2026-11-a-first': { brick: 'menu', fills: 'note', from: (e) => e.name },
+        '2026-12-b-second': { brick: 'menu', fills: 'tag', compute: (e) => e.name },
+        '2026-11-a-first': { brick: 'menu', fills: 'note', compute: (e) => e.name },
       },
     }
     expect(serializeSchema(site).migrations.map((m) => m.id)).toEqual(['2026-11-a-first', '2026-12-b-second'])

@@ -30,8 +30,8 @@ const after = defineSite({
   },
   retired: { 'menu.headline': { from: 'title' } },
   migrations: {
-    '2026-11-menu-title': { brick: 'menu', fills: 'title', from: (entry) => entry.headline },
-    '2026-11-menu-code': { brick: 'menu', fills: 'code', from: (entry) => `K${String((entry.price as { amount: number }).amount)}` },
+    '2026-11-menu-title': { brick: 'menu', fills: 'title', compute: (entry) => entry.headline },
+    '2026-11-menu-code': { brick: 'menu', fills: 'code', compute: (entry) => `K${String((entry.price as { amount: number }).amount)}` },
   },
 })
 
@@ -65,7 +65,7 @@ describe('buildCandidate: migrations over live and deleted entries (SPEC 5.1 ste
   })
 
   it('a migration the platform already applied is not run again', async () => {
-    const applied = { id: '2026-11-menu-title', brick: 'menu', fills: 'title', fingerprint: migrationFingerprint('menu', 'title', after.migrations['2026-11-menu-title']!.from), schemaRev: 2 }
+    const applied = { id: '2026-11-menu-title', brick: 'menu', fills: 'title', fingerprint: migrationFingerprint('menu', 'title', after.migrations['2026-11-menu-title']!.compute), schemaRev: 2 }
     const candidate = await buildCandidate(state([live, deleted], [applied]), after)
     expect(candidate.writes).toEqual([{ entry: 'live-soup', fields: { code: 'K500' } }, { entry: 'old-cake', fields: { code: 'K300' } }])
   })
@@ -89,7 +89,7 @@ describe('buildCandidate: the entry limit (SPEC 5.2)', () => {
 
 describe('buildCandidate: entries the release would leave invalid (break-it 9)', () => {
   it('a plain required target that the migration leaves empty is a problem', async () => {
-    const empty = defineSite({ ...after, migrations: { ...after.migrations, '2026-11-menu-code': { brick: 'menu', fills: 'code', from: () => undefined } } })
+    const empty = defineSite({ ...after, migrations: { ...after.migrations, '2026-11-menu-code': { brick: 'menu', fills: 'code', compute: () => undefined } } })
     const candidate = await buildCandidate(state([{ id: 'e1', brick: 'menu', data: { headline: { de: 'Suppe' }, price: { amount: 450 } }, deletedAt: null }]), empty)
     expect(candidate.problems.some((p) => p.includes('e1') && p.includes('Code'))).toBe(true)
   })

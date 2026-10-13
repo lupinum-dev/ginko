@@ -19,7 +19,7 @@ const menu = restaurant.bricks.menu
 const withTitle: SiteInput = {
   ...restaurant,
   bricks: { ...restaurant.bricks, menu: { ...menu, fields: { ...menu.fields, title: f.text('Titel', { max: 120 }) } } },
-  migrations: { '2026-11-menu-title': { brick: 'menu', fills: 'title', from: (entry) => entry.name } },
+  migrations: { '2026-11-menu-title': { brick: 'menu', fills: 'title', compute: (entry) => entry.name } },
 }
 
 let sleeps: number[] = []

@@ -16,7 +16,7 @@ export interface Migration {
   brick: string
   fills: string
   /** Pure: no network, no clock, no randomness. Runs locally or in CI, never on the platform. */
-  from: (entry: Record<string, Json>, ctx: MigrationContext) => Json | undefined
+  compute: (entry: Record<string, Json>, ctx: MigrationContext) => Json | undefined
 }
 
 export interface SiteInput {

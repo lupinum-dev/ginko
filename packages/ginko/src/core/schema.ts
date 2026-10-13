@@ -41,7 +41,7 @@ export function serializeSchema(site: SiteInput): Schema {
     return [key, { ...brick, pos, fields: positioned(fields), ...(isRetired(key) ? { retired: true as const } : {}) }]
   }))
   const migrations = Object.entries(site.migrations ?? {})
-    .map(([id, m]) => ({ id, brick: m.brick, fills: m.fills, fingerprint: migrationFingerprint(m.brick, m.fills, m.from) }))
+    .map(([id, m]) => ({ id, brick: m.brick, fills: m.fills, fingerprint: migrationFingerprint(m.brick, m.fills, m.compute) }))
     .sort((a, b) => a.id.localeCompare(b.id))
   return plain({
     site: site.site,
@@ -117,8 +117,8 @@ export function ordered<T extends { pos?: number }>(record: Record<string, T>): 
 }
 
 /** Exact source text: a changed literal inside the function must change the fingerprint. */
-export function migrationFingerprint(brick: string, fills: string, from: (...args: never[]) => unknown): string {
-  return sha256(`${brick}\n${fills}\n${from.toString()}`)
+export function migrationFingerprint(brick: string, fills: string, compute: (...args: never[]) => unknown): string {
+  return sha256(`${brick}\n${fills}\n${compute.toString()}`)
 }
 
 export function mainLocale(schema: Pick<Schema, 'locales'>): Locale {

@@ -121,11 +121,11 @@ function migrate(migration: Migration, descriptor: MigrationDescriptor, field: F
   const mainLocale = schema.locales[0]!
   const fields = schema.bricks[descriptor.brick]!.fields
   if (!isTranslatable(field)) {
-    return migration.from(structuredClone(data), { locales: schema.locales, mainLocale }) ?? null
+    return migration.compute(structuredClone(data), { locales: schema.locales, mainLocale }) ?? null
   }
   const out: Record<string, Json> = {}
   for (const locale of schema.locales) {
-    const value = migration.from(forLocale(fields, data, locale), { locales: schema.locales, mainLocale, locale })
+    const value = migration.compute(forLocale(fields, data, locale), { locales: schema.locales, mainLocale, locale })
     if (value !== undefined && value !== null) out[locale] = value
   }
   return out
