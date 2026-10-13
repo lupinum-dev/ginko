@@ -4,6 +4,7 @@
 import { defineComponent, h, type Component, type PropType } from 'vue'
 import { MarkdownDocument } from '@comark/vue'
 import { isSafeHref, URL_PROPS, type MarkdownTree } from './core/index.ts'
+import { BLOCKED_TAGS } from './core/components.ts'
 
 // KaTeX and mermaid.js are not part of Ginko's bundle, so math and mermaid nodes show their source:
 // math as `<code class="math">`, mermaid as `<pre class="mermaid">` (the markup mermaid.js looks for).
@@ -58,13 +59,17 @@ function labelCheckboxes(node: Tree): Tree {
 }
 
 /**
- * The parser refuses unsafe URLs and `on*` props at build or save time, but a tree can reach this component
- * without the parser (a platform bundle, an import). So the renderer drops them too: an address prop that is not
- * http(s), mailto, tel, relative or `#`, and every event handler prop. The element stays, without the attribute.
+ * The parser refuses blocked tags, unsafe URLs and `on*` props at build or save time, but a tree can reach this
+ * component without the parser (a platform bundle, an import), or with a registry that declares a blocked tag
+ * (`embed`, see COMPONENT_ONLY_TAGS) on a host that maps no component to it. So the renderer drops them too: a
+ * blocked tag with no component in `components` goes with its children, and so do an address prop that is not
+ * http(s), mailto, tel, relative or `#` and every event handler prop (the element stays, without the attribute).
+ * `template` stays: comark's slot nodes use it, and the native element is inert.
  */
-function dropUnsafeProps(node: Tree): Tree {
-  if (!Array.isArray(node)) return node
+function dropUnsafe(node: Tree, components: Record<string, unknown>): Tree[] {
+  if (!Array.isArray(node)) return [node]
   const [tag, props, ...children] = node as [string | null, Record<string, unknown>, ...Tree[]]
+  if (tag && tag !== 'template' && BLOCKED_TAGS.has(tag) && !Object.hasOwn(components, tag)) return []
   const safe: Record<string, unknown> = {}
   for (const [name, value] of Object.entries(props ?? {})) {
     const key = name.replace(/^:/, '').toLowerCase()
@@ -72,7 +77,7 @@ function dropUnsafeProps(node: Tree): Tree {
     if (URL_PROPS.has(key) && (typeof value !== 'string' || !isSafeHref(value))) continue
     safe[name] = value
   }
-  return [tag, safe, ...children.map(dropUnsafeProps)] as Tree
+  return [[tag, safe, ...children.flatMap((child) => dropUnsafe(child, components))] as Tree]
 }
 
 export const GinkoMarkdown = defineComponent({
@@ -84,6 +89,11 @@ export const GinkoMarkdown = defineComponent({
   },
   setup(props) {
     // The tree is plain JSON; comark's renderer takes the same `{ nodes }` shape.
-    return () => (props.value ? h(MarkdownDocument, { value: { nodes: props.value.nodes.map((node) => labelCheckboxes(dropUnsafeProps(node))) as never }, components: { ...sourceOnly, ...props.components } }) : null)
+    return () => {
+      if (!props.value) return null
+      const components = { ...sourceOnly, ...props.components }
+      const nodes = props.value.nodes.flatMap((node) => dropUnsafe(node, components)).map(labelCheckboxes)
+      return h(MarkdownDocument, { value: { nodes: nodes as never }, components })
+    }
   },
 })
