@@ -15,7 +15,7 @@ test('a person deletes their account and is signed out; the owner no longer sees
   await ownerPage.getByRole('button', { name: 'Einladen' }).click()
   await ownerPage.getByLabel('E-Mail-Adresse').fill(email)
   await ownerPage.getByRole('button', { name: 'Einladung senden' }).click()
-  await expect(ownerPage.getByText(email)).toBeVisible()
+  await expect(ownerPage.getByText(email, { exact: true })).toBeVisible()
 
   const link = newestMail(email)?.text.match(/https?:\/\/\S+\/invite\/[\w-]+/)?.[0]
   expect(link, 'invite mail with a link').toBeTruthy()
@@ -36,7 +36,7 @@ test('a person deletes their account and is signed out; the owner no longer sees
   // The membership is gone.
   await ownerPage.reload({ waitUntil: 'networkidle' })
   await expect(ownerPage.getByRole('heading', { name: 'Mitglieder' })).toBeVisible()
-  await expect(ownerPage.getByText(email)).toHaveCount(0)
+  await expect(ownerPage.getByText(email, { exact: true })).toHaveCount(0)
   await owner.close()
   await guest.close()
 })
