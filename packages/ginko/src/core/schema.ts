@@ -92,8 +92,10 @@ function storedPrefill(prefill: Readonly<Record<string, Json | undefined>>, fiel
 
 /**
  * A config value in the stored form: the plain text of a translatable field is the main language's text, and texts
- * per language keep only the site's locales (a preset writes `{ de, en }` for every site). `undefined` when no text
- * in the main language is left: such a default or prefill is left out, as if the preset had none.
+ * per language keep only the site's locales (a preset writes `{ de, en }` for every site). `undefined` when texts of
+ * other locales were removed and no text in the main language is left: such a default or prefill was written for
+ * other sites and is left out, as if the preset had none. Texts of the site's own locales without the main language
+ * stay, so the schema check reports them.
  */
 function storedValue(field: Field, value: Json, locales: readonly Locale[]): Json | undefined {
   if (isTranslatable(field)) {
@@ -101,7 +103,7 @@ function storedValue(field: Field, value: Json, locales: readonly Locale[]): Jso
     // Anything but one text per language stays as it is, so the schema check reports it.
     if (!isRecord(value) || Object.values(value).some((text) => typeof text !== 'string')) return value
     const kept = Object.fromEntries(Object.entries(value).filter(([locale]) => locales.includes(locale)))
-    return Object.hasOwn(kept, locales[0]!) ? kept : undefined
+    return Object.hasOwn(kept, locales[0]!) || Object.keys(kept).length === Object.keys(value).length ? kept : undefined
   }
   if (field.type !== 'list' || !Array.isArray(value)) return value
   const rows: Json[] = []
