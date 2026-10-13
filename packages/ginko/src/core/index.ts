@@ -23,8 +23,7 @@ export { query, neighbors, type Query, type QueryOrder, type QueryResult, type Q
 export { navTree, breadcrumbs, type NavNode } from './navigation.ts'
 export { resolveRouteLinks, checkLinks, externalLinks, linkTargets, type ExternalLink, type LinkConfig, type LinkIssue, type CheckLinksOptions } from './links.ts'
 export { matchRedirect, findRedirect, entryRedirects, redirectProblems, type Redirect } from './redirects.ts'
-// The search engine (core/search.ts, search-sections.ts) is exported from '@lupinum/ginko/search' (reading) and
-// '@lupinum/ginko/internal/search' (building) only: it imports MiniSearch, which must stay out of the client bundle.
+// The search engine (core/search.ts) is exported from '@lupinum/ginko/search' (and its builders from '/internal'), not here: it imports MiniSearch, which must stay out of the client bundle.
 export { entryMarkdown, llmsFullTxt, llmsTxt, markdownNotFound, type AgentOptions } from './agent.ts'
 export { findEntryByPath, markdownRequestPath, prefersMarkdown, type EntryMatch } from './agent-route.ts'
 export { seoHead, robotsTxt, isPreviewHost, siteHeaders, websiteLd, organizationLd, breadcrumbLd, articleLd, faqLd, type SeoImage, type SeoInput, type SeoHead } from './seo.ts'

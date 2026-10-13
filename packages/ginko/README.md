@@ -82,8 +82,7 @@ const events = useGinko('events') // typed from ginko.config.ts
 `@lupinum/ginko/search` the names `loadIndex`, `search`, `SearchHit`, `SearchIndex` and `SearchIndexJson`. Their
 names are documented on the docs site ("Reading content", API reference). `pos` and `retired` on fields and bricks
 are set by the platform; do not set them. Until 1.0, a minor release may still break it, and the changelog names
-the break. `@lupinum/ginko/internal` and the other names of `@lupinum/ginko/search` (`buildIndex`,
-`searchSections`, `SearchRecord`) are for Ginko's own packages. They can change in any release, so do not import
+the break. `@lupinum/ginko/internal` is for Ginko's own packages. Its names can change in any release, so do not import
 them in a site.
 
 ## Docs
