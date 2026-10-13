@@ -13,7 +13,7 @@ import type { WeekInfo } from './time.ts'
 export type Locale = string
 /** An ISO-4217 code such as `EUR`, `CHF` or `JPY`; `isCurrency` is the runtime check. Money is stored in minor units (cents). */
 export type Currency = string
-/** A name shown to people: a string is the main language; a record has one text per language and must contain the main language. */
+/** A name shown to people: a string is the main language; a record has one text per language and must contain the main language or English (the fallback). */
 export type Label = string | Record<Locale, string>
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
 
