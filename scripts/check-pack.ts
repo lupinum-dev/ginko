@@ -2,6 +2,7 @@
 // manifest, license and publint; creates a site with create-ginko for the plain starter and every preset, and a
 // copy of sites/docs, installs them from the tarballs with npm, builds them, checks a few URLs, type-checks
 // them and runs the packaged `ginko check`. Takes 2–4 minutes (npm install). Run: pnpm check:pack
+// `pnpm check:pack --nuxt5` does the same on the Nuxt 5 nightly that the ginko-i18n browser suite pins.
 import { exec as execCallback, execSync, spawn } from 'node:child_process'
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
@@ -19,6 +20,10 @@ const run = (cmd: string, cwd: string) => execSync(cmd, { cwd, stdio: 'pipe', en
 // The sites install and build at the same time.
 const exec = promisify(execCallback)
 const runAsync = (cmd: string, cwd: string) => exec(cmd, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+// The Nuxt 5 nightly comes from one place, the ginko-i18n test app that runs on it.
+const nuxt5 = process.argv.includes('--nuxt5')
+  ? (JSON.parse(readFileSync(join(root, 'packages/ginko-i18n/browser/apps/n5/package.json'), 'utf8')).dependencies.nuxt as string)
+  : undefined
 const outputOf = (error: unknown) => (error instanceof Error && 'stdout' in error ? `${String(error.stdout)}${String((error as { stderr?: unknown }).stderr ?? '')}` : String(error))
 
 // The packages of the release: the fixed group in .changeset/config.json. The others (server, Studio,
@@ -55,6 +60,11 @@ function useTarballs(siteDir: string, extra: Record<string, string> = {}) {
   for (const name of Object.keys(pkg.dependencies ?? {})) if (tarball[name]) pkg.dependencies[name] = tarball[name]
   Object.assign(pkg.dependencies, extra)
   pkg.overrides = Object.fromEntries(Object.entries(tarball).filter(([n]) => n !== 'create-ginko'))
+  // `$nuxt` points every nested nuxt (peers of other modules too) at the site's own.
+  if (nuxt5) {
+    pkg.dependencies.nuxt = nuxt5
+    pkg.overrides.nuxt = '$nuxt'
+  }
   writeFileSync(path, JSON.stringify(pkg, null, 2))
 }
 
@@ -151,10 +161,14 @@ useTarballs(docs)
 
 const results = await Promise.all([
   ...Object.entries(created).map(([name, checks]) => checkSite(join(work, name), checks)),
-  checkSite(docs, [['/docs/einstieg', /class="docs-sidebar/], ['/en/docs/getting-started', /lang="en"/], ['/__ginko/search/de.json', /"url":"\/docs\//]], { ginkoCheck: false }),
+  checkSite(docs, [
+    ['/docs/einstieg', /class="docs-sidebar/], ['/en/docs/getting-started', /lang="en"/], ['/__ginko/search/de.json', /"url":"\/docs\//],
+    // The layer's two feed handlers: the main language and a prefixed one.
+    ['/blog/rss.xml', /<rss[\s\S]*<item>/], ['/en/blog/rss.xml', /<rss[\s\S]*<item>/],
+  ], { ginkoCheck: false }),
 ])
 failures.push(...results.flat())
-console.log(failures.length ? `FAIL check:pack\n${failures.join('\n')}` : 'OK check:pack: the create-ginko starters (plain, gastro, gastro --locale de, docs, docs --locale de) and sites/docs build, serve and type-check from the tarballs')
+console.log(failures.length ? `FAIL check:pack${nuxt5 ? ` (${nuxt5})` : ''}\n${failures.join('\n')}` : `OK check:pack${nuxt5 ? ` (${nuxt5})` : ''}: the create-ginko starters (plain, gastro, gastro --locale de, docs, docs --locale de) and sites/docs build, serve and type-check from the tarballs`)
 // A failed run keeps its folder for a look at the sites; a passed one cleans up.
 if (!failures.length) rmSync(work, { recursive: true, force: true })
 process.exit(failures.length ? 1 : 0)
