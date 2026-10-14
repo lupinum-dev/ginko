@@ -126,6 +126,7 @@
       "open": "Publicar …",
       "changeSchedule": "Cambiar programación …",
       "whenOnline": "¿Cuándo debe publicarse “{title}”?",
+      "whenOnlineUntitled": "¿Cuándo debe publicarse la entrada?",
       "now": "Ahora",
       "later": "En línea desde …",
       "dateTime": "Fecha y hora",

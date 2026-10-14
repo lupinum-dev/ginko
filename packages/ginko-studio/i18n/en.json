@@ -126,6 +126,7 @@
       "open": "Publish …",
       "changeSchedule": "Change schedule …",
       "whenOnline": "When should “{title}” go online?",
+      "whenOnlineUntitled": "When should the entry go online?",
       "now": "Now",
       "later": "Online from …",
       "dateTime": "Date and time",

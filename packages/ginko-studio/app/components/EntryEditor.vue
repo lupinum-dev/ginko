@@ -5,7 +5,7 @@ import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, L
 import { defaultsFor, isShown, isTranslatable, ordered, printOf, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { displayValue, fileIdsIn, languageName, titleOf } from '../utils/content'
+import { displayValue, fileIdsIn, languageName, publishQuestion, titleOf } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, zonedToMs } from '../utils/when'
 import { opErrorOf } from '../composables/useOps'
@@ -452,7 +452,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
             <p v-if="publishError && askUnpublish" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ publishError }}</p>
           </template>
           <div v-if="publishing" class="grid basis-full gap-2.5 rounded-lg border border-primary bg-card p-3.5" role="group" aria-labelledby="publish-title">
-            <p id="publish-title" class="font-bold">{{ t('entry.publish.whenOnline', { title }) }}</p>
+            <p id="publish-title" class="font-bold">{{ publishQuestion(brick, draft, main, t) }}</p>
             <RadioGroup v-model="when" class="flex flex-wrap gap-2" aria-labelledby="publish-title">
               <Label for="publish-now" class="min-h-10 cursor-pointer gap-2 rounded-md border border-input px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11"><RadioGroupItem id="publish-now" value="now" />{{ t('entry.publish.now') }}</Label>
               <Label for="publish-later" class="min-h-10 cursor-pointer gap-2 rounded-md border border-input px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11"><RadioGroupItem id="publish-later" value="later" />{{ t('entry.publish.later') }}</Label>

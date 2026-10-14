@@ -9,8 +9,8 @@ import type { Words } from './when'
 export type Data = Record<string, Json>
 export type { Task }
 
-/** A short name for an entry: its first text field in the main language. */
-export function titleOf(brick: Brick, data: Data, locale: Locale): string {
+/** The name the entry's own input gives it (its week, or its first filled text field); undefined while nothing is typed. */
+export function typedTitle(brick: Brick, data: Data, locale: Locale): string | undefined {
   // A week planned ahead is named by its week ("Woche ab 19.10.2026"), not by its note.
   if (brick.kind === 'collection' && brick.plans && typeof data[brick.plans.field] === 'string') {
     const day = new Date(`${data[brick.plans.field]}T00:00:00Z`)
@@ -24,7 +24,18 @@ export function titleOf(brick: Brick, data: Data, locale: Locale): string {
       if (text) return text
     }
   }
-  return shownLabel(brick.label, locale)
+  return undefined
+}
+
+/** A short name for an entry: its first text field in the main language, else the brick's label. */
+export function titleOf(brick: Brick, data: Data, locale: Locale): string {
+  return typedTitle(brick, data, locale) ?? shownLabel(brick.label, locale)
+}
+
+/** The publish panel's question about what was typed, new entry or edited: "Wann soll „Herbstfest“ online gehen?". */
+export function publishQuestion(brick: Brick, data: Data, locale: Locale, t: Words['t']): string {
+  const name = typedTitle(brick, data, locale)
+  return name ? t('entry.publish.whenOnline', { title: name }) : t('entry.publish.whenOnlineUntitled')
 }
 
 /** The name of a list row: its first filled text or choice column ("Dienstag", a dish). `key` tells which column it is. */

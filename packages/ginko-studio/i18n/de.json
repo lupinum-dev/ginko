@@ -126,6 +126,7 @@
       "open": "Veröffentlichen …",
       "changeSchedule": "Zeitplan ändern …",
       "whenOnline": "Wann soll „{title}“ online gehen?",
+      "whenOnlineUntitled": "Wann soll der Eintrag online gehen?",
       "now": "Jetzt",
       "later": "Online ab …",
       "dateTime": "Datum und Uhrzeit",
