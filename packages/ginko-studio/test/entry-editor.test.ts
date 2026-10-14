@@ -10,6 +10,7 @@ import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import { useEntryForm } from '../app/composables/useEntryForm'
 import EntryEditor from '../app/components/EntryEditor.vue'
+import PreviewPane from '../app/components/PreviewPane.vue'
 
 const { computed, inject, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch } = vue
 Object.entries({ computed, inject, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch, useI18n, useEntryForm }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
@@ -57,5 +58,35 @@ test('the save bar says how much to cut when the entry is over the limit', async
     expect(wrapper.get('.bar p').text()).toBe('Dieser Eintrag ist zu groß: 500 KB von 480 KB. Kürze ihn um etwa 20 KB, dann lässt er sich speichern.')
   } finally {
     vi.useRealTimers()
+  }
+})
+
+// Wrong behaviour caught: the preview shows the site without its entries while they are still loading.
+test('the preview sends the site only once its entries have loaded', async () => {
+  vi.useFakeTimers()
+  try {
+    const entries = ref<unknown[] | undefined>(undefined)
+    vi.stubGlobal('useConvexQuery', () => ({ data: entries, error: ref(undefined) }))
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, canRemove: false },
+      global: { stubs: { EntryFields: true, NuxtLink: true }, components: { PreviewPane } },
+    })
+    await wrapper.findAll('button').find((b) => b.text() === 'Vorschau')!.trigger('click')
+    // Not attached, so nothing loads the site; the frame's window is a stand-in that records what it is sent.
+    const frame = wrapper.get('iframe').element
+    const source = new MessageChannel().port1
+    const post = vi.spyOn(source, 'postMessage').mockImplementation(() => {})
+    Object.defineProperty(frame, 'contentWindow', { value: source })
+    const session = new URL(frame.getAttribute('src')!).searchParams.get('session')
+    window.dispatchEvent(new MessageEvent('message', { source, origin: 'https://restaurant.test', data: { type: 'ginko:ready', session } }))
+    await vi.advanceTimersByTimeAsync(300)
+    expect(post).not.toHaveBeenCalled()
+
+    entries.value = []
+    await vi.advanceTimersByTimeAsync(300)
+    expect(post).toHaveBeenCalledTimes(1)
+  } finally {
+    vi.useRealTimers()
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
   }
 })

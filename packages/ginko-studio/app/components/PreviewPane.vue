@@ -14,7 +14,8 @@ import { Button } from '@studio/components/ui/button'
 const props = defineProps<{
   site: { slug: string; url: string; previewOrigins: string[]; schemaRev: number; contentRev: number }
   schema: Schema
-  entries: Entry[]
+  /** Undefined while they load: nothing is sent before, or the site would show without its entries. */
+  entries: Entry[] | undefined
   /** The form being edited: its brick, its entry (none = new), and the unsaved values. */
   editing?: { brick: string; entry?: string; data: Data }
   locale: Locale
@@ -48,7 +49,7 @@ const siteHref = computed(() => `${origin.value}${path.value}`)
 
 function bundle() {
   const entries: Record<string, StoredEntry[]> = {}
-  for (const e of props.entries) {
+  for (const e of props.entries ?? []) {
     const data = props.editing && props.editing.brick === e.brick && props.editing.entry === e._id ? { ...e.data, ...props.editing.data } : e.data
     ;(entries[e.brick] ??= []).push({ id: e._id, order: e.order, data: data as Record<string, Json>, prints: e.prints })
   }
@@ -64,7 +65,7 @@ function bundle() {
 
 let sends = 0
 async function send() {
-  if (!ready.value || !frame.value?.contentWindow) return
+  if (!ready.value || !props.entries || !frame.value?.contentWindow) return
   const run = ++sends
   const message = { type: 'ginko:preview', session: session.value, site: props.site.slug, locale: props.locale, bundle: JSON.parse(JSON.stringify(await bundle())) }
   // A newer edit was sent while this one was parsed.

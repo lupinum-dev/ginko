@@ -388,9 +388,9 @@ const showPreview = ref(false)
 
 // The preview builds the site from all its entries, so it reads them only while it is open.
 const previewRead = useConvexQuery(api.entries.ofBricks, () => (showPreview.value ? { site: props.site.slug, bricks: Object.keys(props.schema.bricks) } : 'skip'))
-const previewEntries = computed(() => previewRead.data.value ?? [])
+const previewEntries = computed(() => previewRead.data.value)
 // The preview needs the URLs of every referenced photo and PDF, also of one uploaded just now.
-const fileIds = computed(() => [...fileIdsIn([previewEntries.value.map((e) => e.data), draft.value])].sort())
+const fileIds = computed(() => [...fileIdsIn([(previewEntries.value ?? []).map((e) => e.data), draft.value])].sort())
 const { data: fileInfo } = useConvexQuery(api.uploads.urls, () => (showPreview.value && fileIds.value.length ? { site: props.site.slug, ids: fileIds.value } : 'skip'))
 function files(id: string) {
   const f = fileInfo.value?.[id]
