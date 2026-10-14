@@ -186,9 +186,7 @@ describe('collection composables', () => {
   })
 })
 
-// Wrong behaviour caught: a page whose slug has a dot (`/blog/v1.2`) is taken for a file, so it gets no Link header
-// and `Accept: text/markdown` returns HTML although `/blog/v1.2.md` exists.
-// And: an agent's `Accept: text/markdown` on /llms.txt loads the platform bundle for a lookup that never matches.
+// Wrong behaviour caught: a page whose slug has a dot (`/blog/v1.2`) is taken for a file, so it gets no Link header.
 describe('agentRequest', () => {
   test.each([
     ['/blog/v1.2', { page: '/blog/v1.2', asMarkdown: false }],
@@ -198,8 +196,6 @@ describe('agentRequest', () => {
     ['/__ginko/files/de.json', undefined],
     ['/_ginko/img/abc.webp', undefined],
     ['/_nuxt/entry.js', undefined],
-    ['/llms.txt', undefined],
-    ['/sitemap.xml', undefined],
   ])('%s', (path, request) => {
     expect(agentRequest(path)).toEqual(request)
   })

@@ -67,3 +67,14 @@ test('with nuxt-og-image installed, a docs page gets a generated share card', as
   expect(response.headers()['content-type']).toContain('image/png')
   expect(await page.locator('meta[name="twitter:image"]').getAttribute('content')).toBe(image)
 })
+
+// Wrong behaviour caught: the normal address answers an agent's `Accept: text/markdown` with Markdown. The host's
+// page cache ignores `Vary`, so every visitor would then get that Markdown instead of the page.
+test('Markdown only at the .md address: the page stays HTML for any Accept and links its twin', async ({ request }) => {
+  const page = await request.get(`${origin}/docs/einstieg`, { headers: { accept: 'text/markdown' } })
+  expect(page.headers()['content-type']).toContain('text/html')
+  expect(page.headers().link).toContain('</docs/einstieg.md>; rel="alternate"; type="text/markdown"')
+  const twin = await request.get(`${origin}/docs/einstieg.md`)
+  expect(twin.headers()['content-type']).toContain('text/markdown')
+  expect(await twin.text()).toContain('# ')
+})

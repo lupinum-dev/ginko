@@ -25,7 +25,7 @@ export { resolveRouteLinks, checkLinks, externalLinks, linkTargets, type Externa
 export { matchRedirect, findRedirect, entryRedirects, redirectProblems, type Redirect } from './redirects.ts'
 // The search engine (core/search.ts) is exported from '@lupinum/ginko/search' (and its builders from '/internal'), not here: it imports MiniSearch, which must stay out of the client bundle.
 export { entryMarkdown, llmsFullTxt, llmsTxt, markdownNotFound, type AgentOptions } from './agent.ts'
-export { findEntryByPath, markdownRequestPath, prefersMarkdown, type EntryMatch } from './agent-route.ts'
+export { findEntryByPath, markdownRequestPath, type EntryMatch } from './agent-route.ts'
 export { seoHead, robotsTxt, isPreviewHost, siteHeaders, websiteLd, organizationLd, breadcrumbLd, articleLd, faqLd, type SeoImage, type SeoInput, type SeoHead } from './seo.ts'
 export { imageInfo, type ImageInfo, type ImageType } from './image.ts'
 export { GINKO_COMPONENTS_KEY, GINKO_TOC_KEY, defineComponents, componentProblems, componentPropProblem, componentPropMessage, type ComponentDef, type ComponentRegistry, type ComponentSlot } from './components.ts'

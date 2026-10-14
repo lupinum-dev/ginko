@@ -57,7 +57,7 @@ export interface SiteInput {
     image?: string
     organization?: { logo?: string; sameAs?: string[] }
   }
-  /** Text for AI agents (`/llms.txt`, `<page>.md`, `Accept: text/markdown`) and the agent door's default. Only `review` is part of the schema contract. */
+  /** Text for AI agents (`/llms.txt`, `<page>.md`) and the agent door's default. Only `review` is part of the schema contract. */
   agents?: {
     /** Default for the agent door (SPEC 17): `true` makes every agent write a proposal that needs a yes. Default `false`. */
     review?: boolean
