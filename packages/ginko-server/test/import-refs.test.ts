@@ -59,9 +59,9 @@ async function exportFolder() {
   const dir = await mkdtemp(join(tmpdir(), 'ginko-refs-test-'))
   dirs.push(dir)
   const entry = (id: string, brick: string, order: number, data: unknown) => ({ id, brick, kind: 'item', order, data, prints: {}, rev: 1 })
-  const brick = { kind: 'collection', label, fields: {} }
+  const bricks = { authors: { kind: 'collection', label, fields: { name: { type: 'text', label } } }, posts: { kind: 'collection', label, fields } }
   await writeFile(join(dir, 'export.json'), JSON.stringify({
-    format: 1, site: 'restaurant', name: 'R', schema: { bricks: { authors: brick, posts: brick }, migrations: [], retired: {} }, schemaRev: 1, contentRev: 1,
+    format: 1, site: 'restaurant', name: 'R', schema: { locales: ['de', 'en'], bricks, migrations: [], retired: {} }, schemaRev: 1, contentRev: 1,
     exportedAt: '2026-10-11T00:00:00.000Z', files: [],
     entries: [
       // The post comes first on purpose: its author is imported after it.

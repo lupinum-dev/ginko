@@ -10,9 +10,6 @@ import { dropTrees } from './trees'
 /** A removed entry can be restored this long, then retention deletes it for good (SPEC 12). */
 export const DELETED_KEPT = 30 * 24 * 60 * 60 * 1000
 
-/** The trash may hold this many budget bytes; a removal that passes it deletes the oldest removed entries early. */
-export const TRASH_BYTES = SITE_BUDGET.siteBytes
-
 /**
  * Site values one operation changes, changed in memory and written back once. `entryCount` and `bytes` count the
  * live entries (drafts included), `trashBytes` the removed ones, `treeBytes` the stored trees of the live ones.
@@ -52,7 +49,7 @@ export function storageSums(rows: readonly Pick<Doc<'entries'>, 'deletedAt' | 'b
 /**
  * Soft-deletes one entry (SPEC 4.2 remove): `deletedAt`, lifeRev+1, one change row. Its slug stays reserved and its
  * file references stay; its trees go (the trash keeps none). Its bytes move from `bytes` to `trashBytes`, so removing
- * frees room at once; when the trash then holds more than TRASH_BYTES, the oldest removed entries are deleted for good
+ * frees room at once; when the trash then holds more than SITE_BUDGET.trashBytes, the oldest removed entries are deleted for good
  * now instead of after 30 days. A draft was never in the bundle, so removing it leaves `contentRev` alone; a scheduled
  * draft loses its job and its time.
  */
@@ -71,7 +68,7 @@ export async function softRemove(ctx: MutationCtx, c: Counters, entry: Doc<'entr
     site: entry.site, entry: entry._id, brick: entry.brick, ...by, opId, kind: 'remove', ...history,
     entryRev: entry.rev + 1, contentRev: c.contentRev, at,
   })
-  while (c.trashBytes > TRASH_BYTES) {
+  while (c.trashBytes > SITE_BUDGET.trashBytes) {
     const oldest = await ctx.db.query('entries').withIndex('by_site_deleted', (q) => q.eq('site', entry.site).gt('deletedAt', 0)).first()
     if (!oldest) break
     await purgeEntry(ctx, c, oldest)

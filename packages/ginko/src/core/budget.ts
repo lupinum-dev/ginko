@@ -5,9 +5,10 @@
  * stays inside Convex's read limit even for text that is almost all formatting.
  *
  * `entryBytes` is 480 KiB, not 512: a history row holds the before and after of a changed field, and two values of
- * 512 KiB would pass Convex's 1 MiB document limit.
+ * 512 KiB would pass Convex's 1 MiB document limit. `trashBytes` caps the removed entries, which count apart from the
+ * site: a removal past it deletes the oldest removed entries early, and an import past it is refused.
  */
-export const SITE_BUDGET = { siteBytes: 4 * 1024 * 1024, entries: 2000, entryBytes: 480 * 1024, treeBytes: 8 * 1024 * 1024 } as const
+export const SITE_BUDGET = { siteBytes: 4 * 1024 * 1024, entries: 2000, entryBytes: 480 * 1024, treeBytes: 8 * 1024 * 1024, trashBytes: 4 * 1024 * 1024 } as const
 
 /** UTF-8 bytes of `value` as JSON, the way the budget counts. */
 export function byteSize(value: unknown): number {

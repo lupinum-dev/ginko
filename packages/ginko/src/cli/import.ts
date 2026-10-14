@@ -8,12 +8,12 @@
 // storage; a batch stays under a mutation's limits.
 import { readFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
-import type { Msg, SchemaChange } from '../core/index.ts'
+import { entryBytes, SITE_BUDGET, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
 import type { Runner } from './local.ts'
 import { CliError, isObject, parseExport, type ExportEntry, type SiteExport } from './model.ts'
-import { english, explainRejected } from './report.ts'
+import { english, explainRejected, kib } from './report.ts'
 
-/** Largest JSON size of one batch: one mutation writes it, and entries may have up to 256 KiB each. */
+/** Largest JSON size of one batch: one mutation writes it, and entries may have up to 480 KiB each. */
 export const BATCH_BYTES = 2_000_000
 
 export interface ImportInput {
@@ -90,10 +90,43 @@ function warningText(warning: Record<string, unknown>): string | undefined {
 /** Largest size of the `ids` argument of one importRefs call (a command-line argument). */
 const IDS_BYTES = 100_000
 
+/**
+ * What the platform's import (seed.ts importExport) would refuse in an export, as English lines: values the Studio cannot
+ * open at all, entries over the entry limit (removed ones too: a restore must be able to save them), and live or removed
+ * entries over a site's budget. Values that a save refuses only today are no problem: the platform stores them and warns.
+ * The target site counts as empty: a local import clears it first, and the hosted import takes only an empty site.
+ */
+export async function checkImport(schema: Schema, entries: ExportEntry[]): Promise<string[]> {
+  const problems: string[] = []
+  let bytes = 0
+  let trash = 0
+  let live = 0
+  for (const entry of entries) {
+    for (const issue of (await validate(schema, entry.brick, entry.data, { mode: 'restore' })).errors) {
+      problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path || 'entry'}: ${english(issue)}`)
+    }
+    const size = entryBytes(entry.data, entry.prints)
+    if (size > SITE_BUDGET.entryBytes) problems.push(`Entry ${entry.id} (${entry.brick}) is ${kib(size)}; the limit is ${kib(SITE_BUDGET.entryBytes)}.`)
+    if (entry.deletedAt === undefined) {
+      live++
+      bytes += size
+    } else trash += size
+  }
+  if (live > SITE_BUDGET.entries) problems.push(`The export has ${live} entries; a site holds at most ${SITE_BUDGET.entries}.`)
+  if (bytes > SITE_BUDGET.siteBytes) problems.push(`The export's entries take ${kib(bytes)}; a site holds at most ${kib(SITE_BUDGET.siteBytes)}.`)
+  if (trash > SITE_BUDGET.trashBytes) problems.push(`The export's removed entries take ${kib(trash)}; the trash holds at most ${kib(SITE_BUDGET.trashBytes)}.`)
+  return problems
+}
+
 export async function importSite(input: ImportInput): Promise<{ entries: number; files: number }> {
   const { run, log } = input
   const data = await readExport(input.dir)
   const site = input.site ?? data.site
+  // Before the schema push, the hosted site's opening and the clear: a refused import changes nothing.
+  const problems = await checkImport(data.schema, data.entries)
+  if (problems.length > 0) {
+    throw new CliError(['The platform would refuse this export:', ...problems.map((p) => `  ✗ ${p}`), 'Nothing was imported. Fix these entries in export.json, then run the command again.'].join('\n'))
+  }
   if (!input.prod) return importInto(input, data, site)
 
   // Hosted: the schema comes from `ginko release`, never from here.

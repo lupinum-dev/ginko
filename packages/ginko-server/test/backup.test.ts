@@ -303,6 +303,37 @@ describe('export → import round trip (SPEC 12)', () => {
   })
 })
 
+describe('import budget (SPEC 3)', () => {
+  // Wrong behaviour caught: an import stores entries over the entry limit (the Studio then cannot save them), and the
+  // CLI clears the local site before the platform refuses anything, so a refused import leaves it half-imported.
+  it('an export entry over the entry limit is refused with every problem, and nothing is stored or cleared', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    const notice = (id: string, text: string) => ({ id, brick: 'notices', kind: 'item' as const, order: 1, data: { text: { de: text } }, prints: {}, rev: 1 })
+    const entries = [notice('e1', 'x'.repeat(500 * 1024)), notice('e2', 'kurz'), notice('e3', 'y'.repeat(600 * 1024))]
+    const before = await s.t.run((ctx) => ctx.db.query('entries').collect())
+
+    const refused = await errorOf(s.t.mutation(internal.seed.importExport, { site: 'restaurant', files: [], entries }))
+    expect(refused).toMatchObject({ code: 'TOO_LARGE', message: 'Eintrag e1 ist zu groß (500 KB, höchstens 480 KB).' })
+    expect(refused.details).toMatchObject({ problems: [{ message: 'Eintrag e1 ist zu groß (500 KB, höchstens 480 KB).' }, { message: 'Eintrag e3 ist zu groß (600 KB, höchstens 480 KB).' }] })
+
+    const dir = await tempDir()
+    const schema = (await s.t.run((ctx) => ctx.db.get(s.site)))!.schema
+    await writeFile(join(dir, 'export.json'), JSON.stringify({
+      format: 1, site: 'restaurant', name: 'Linde', schema, schemaRev: 1, contentRev: 1, exportedAt: '2026-10-14T00:00:00.000Z', entries, files: [],
+    }))
+    const { run, upload, calls } = localOf(s)
+    await expect(importSite({ dir, run, upload, log: () => undefined })).rejects.toThrow([
+      'The platform would refuse this export:',
+      '  ✗ Entry e1 (notices) is 501 KiB; the limit is 480 KiB.',
+      '  ✗ Entry e3 (notices) is 601 KiB; the limit is 480 KiB.',
+      'Nothing was imported. Fix these entries in export.json, then run the command again.',
+    ].join('\n'))
+    expect(calls).toEqual([])
+    expect(await s.t.run((ctx) => ctx.db.query('entries').collect())).toEqual(before)
+  })
+})
+
 describe('local:import and local:pull refuse a target that is not the local backend', () => {
   it('stops before it reads the folder, asks the platform or runs anything', async () => {
     const { s } = await production()

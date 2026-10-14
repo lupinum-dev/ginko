@@ -27,7 +27,7 @@ export default defineSchema({
     /** Budget bytes (core `entryBytes`) of the live entries, drafts included (SPEC 3). */
     bytes: v.number(),
     /**
-     * Budget bytes of the removed entries in the trash; capped (lib/lifecycle `TRASH_BYTES`). Optional and
+     * Budget bytes of the removed entries in the trash; capped (SITE_BUDGET.trashBytes). Optional and
      * `treeBytes` too until `entries:migrateStorage` ran everywhere (internals/migrations.md).
      */
     trashBytes: v.optional(v.number()),

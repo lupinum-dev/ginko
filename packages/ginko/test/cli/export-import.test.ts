@@ -14,9 +14,10 @@ afterEach(async () => { await Promise.all(dirs.splice(0).map((d) => rm(d, { recu
 const tmp = async () => { const d = await mkdtemp(join(tmpdir(), 'ginko-ei-')); dirs.push(d); return d }
 
 const answer = (files: ExportAnswer['files'], folders?: ExportAnswer['folders']): ExportAnswer => ({
-  format: 1, site: 'linde', name: 'Linde', schema: { bricks: {} } as unknown as ExportAnswer['schema'],
+  format: 1, site: 'linde', name: 'Linde',
+  schema: { locales: ['de'], bricks: { page: { kind: 'single', label: 'Seite', fields: { image: { type: 'image', label: 'Bild' } } } } } as unknown as ExportAnswer['schema'],
   schemaRev: 1, contentRev: 1, exportedAt: '2026-10-11T00:00:00.000Z',
-  entries: [{ id: 'e1', brick: 'page', kind: 'single', order: 0, data: { image: 'up1' }, prints: {}, rev: 1 }],
+  entries: [{ id: 'e1', brick: 'page', kind: 'single', order: 0, data: { image: { file: 'up1', alt: { de: 'Linde' } } }, prints: {}, rev: 1 }],
   ...(folders ? { folders } : {}), files,
 })
 

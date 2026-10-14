@@ -3,18 +3,20 @@
 // `ginko export` (SPEC 9, 12). Internal, so only `npx convex run` with the deployment's admin key
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
-import type { Json } from '@lupinum/ginko'
+import type { Fields } from '@lupinum/ginko'
 import { byteSize, entryBytes, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
 import { internalAction, internalMutation, internalQuery, type MutationCtx, type QueryCtx } from './_generated/server'
 import { fail } from './lib/access'
+import type { ErrorParams } from './lib/fail'
+import { DEFAULT_LOCALE, t, type MessageKey } from './lib/i18n'
 import { normalizeEmail } from './members'
 import { remapEntryRefs, remapFileIds, treesOf, usesOf, type Data } from './lib/content'
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
 import { dropTrees, putTrees } from './lib/trees'
-import { same, syncEntryRefs } from './lib/write'
+import { BUDGET, same, sizeText, syncEntryRefs } from './lib/write'
 
 function localOnly() {
   if (process.env.GINKO_LOCAL !== '1') fail('FORBIDDEN', 'errors.localOnly')
@@ -127,6 +129,9 @@ export const importClear = internalMutation({
   },
 })
 
+/** One reason an import batch is refused; the batch answers with all of them (details.problems), the first as its error. */
+type ImportProblem = { code: 'INVALID' | 'TOO_LARGE'; key: MessageKey; params: ErrorParams }
+
 /** The first value of an import batch that the Studio would refuse today: the exported entry ID, its brick and the issue. */
 export type ImportWarning = { id: string; brick: string; path: string } & Msg
 
@@ -214,38 +219,62 @@ export const importExport = internalMutation({
       }))
     }
 
-    const ids: Record<string, Id<'entries'>> = {}
-    const known = new Set<string>(uploads.values())
+    // 1. Check every row before anything is stored, and collect every problem, so the operator fixes them in one pass.
+    // Values the Studio and the site cannot read at all (a wrong type, an unknown field or language) are refused, so
+    // an export cannot store what the editor cannot open. Rules a save enforces on top (row id format, alt texts, lengths,
+    // Markdown profiles) are not: a backup must restore what the platform once stored, so they come back as warnings.
+    // Entry references are not looked up; they still name exported IDs until importRefs. Removed entries are checked
+    // too: a restore checks nothing, so this is the only check they get. The budget is checked like a save: each entry,
+    // removed ones too (a restore must be able to save them), the live entries against the site, the removed ones
+    // against the trash.
+    const problems: ImportProblem[] = []
+    const rows: { row: (typeof args.entries)[number]; fields: Fields; data: Data; size: number }[] = []
     let bytes = 0
     let trashBytes = 0
-    let treeBytes = 0
     let live = 0
-    const orderRevs: Record<string, number> = { ...site.orderRevs }
     // Entries with values the Studio would refuse today, and the first such value (for the CLI's one-line notice).
     let warnings = 0
     let firstWarning: ImportWarning | undefined
     for (const row of args.entries) {
-      const def = schema.bricks[row.brick]
-      if (!def) fail('INVALID', 'errors.entryBrickMissingFromSchema', { id: row.id, brick: row.brick })
+      const def = Object.hasOwn(schema.bricks, row.brick) ? schema.bricks[row.brick] : undefined
+      if (!def) {
+        problems.push({ code: 'INVALID', key: 'errors.entryBrickMissingFromSchema', params: { id: row.id, brick: row.brick } })
+        continue
+      }
       const data = remapFileIds(def.fields, row.data as Data, uploads)
-      // Values the Studio and the site cannot read at all (a wrong type, an unknown field or language) are refused, so
-      // an export cannot store what the editor cannot open. Rules a save enforces on top (row id format, alt texts, lengths,
-      // Markdown profiles) are not: a backup must restore what the platform once stored, so they come back as warnings.
-      // Entry references are not looked up; they still name exported IDs until importRefs. Removed entries are checked
-      // too: a restore checks nothing, so this is the only check they get.
       const checked = await validate(schema, row.brick, data, { mode: 'restore' })
-      if (checked.errors.length) fail('INVALID', 'errors.importEntryInvalid', { id: row.id, path: checked.errors[0]!.path, count: checked.errors.length }, { errors: checked.errors as unknown as Json })
+      if (checked.errors.length) problems.push({ code: 'INVALID', key: 'errors.importEntryInvalid', params: { id: row.id, path: checked.errors[0]!.path, count: checked.errors.length } })
       const warning = checked.warnings[0]
       if (warning) {
         warnings++
         firstWarning ??= { id: row.id, brick: row.brick, path: warning.path, key: warning.key, ...(warning.params ? { params: warning.params } : {}) }
       }
       const size = entryBytes(data, row.prints)
+      if (size > BUDGET.entryBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importEntryTooLarge', params: { id: row.id, used: sizeText(size), limit: sizeText(BUDGET.entryBytes) } })
+      if (row.deletedAt === undefined) {
+        live++
+        bytes += size
+      } else trashBytes += size
+      rows.push({ row, fields: def.fields, data, size })
+    }
+    if (site.entryCount + live > BUDGET.entries) problems.push({ code: 'TOO_LARGE', key: 'errors.siteEntryLimitReached', params: {} })
+    if (site.bytes + bytes > BUDGET.siteBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importSiteTooLarge', params: { used: sizeText(site.bytes + bytes), limit: sizeText(BUDGET.siteBytes) } })
+    const trashAfter = (site.trashBytes ?? 0) + trashBytes
+    if (trashAfter > BUDGET.trashBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importTrashTooLarge', params: { used: sizeText(trashAfter), limit: sizeText(BUDGET.trashBytes) } })
+    const first = problems[0]
+    if (first) fail(first.code, first.key, first.params, { problems: problems.map((p) => ({ ...p, message: t(DEFAULT_LOCALE, p.key, p.params) })) })
+
+    // 2. Store.
+    const ids: Record<string, Id<'entries'>> = {}
+    const known = new Set<string>(uploads.values())
+    let treeBytes = 0
+    const orderRevs: Record<string, number> = { ...site.orderRevs }
+    for (const { row, fields, data, size } of rows) {
       // The trash keeps no trees.
-      const trees = row.deletedAt === undefined ? await treesOf(def.fields, data) : { json: '', bytes: 0 }
+      const trees = row.deletedAt === undefined ? await treesOf(fields, data) : { json: '', bytes: 0 }
       const id = await ctx.db.insert('entries', {
         site: site._id, brick: row.brick, kind: row.kind, order: row.order, data, rev: row.rev,
-        fieldRevs: Object.fromEntries(Object.keys(def.fields).map((f) => [f, row.rev])),
+        fieldRevs: Object.fromEntries(Object.keys(fields).map((f) => [f, row.rev])),
         lifeRev: row.deletedAt === undefined ? 1 : 2, prints: row.prints, bytes: size, treeBytes: trees.bytes, contentAt: row.contentAt ?? Date.now(),
         ...(row.deletedAt === undefined ? {} : { deletedAt: row.deletedAt }),
         ...(row.state === 'draft' ? { state: 'draft' as const } : {}),
@@ -256,22 +285,18 @@ export const importExport = internalMutation({
         await ctx.db.patch(id, { publishAt: row.publishAt, publishJob: await ctx.scheduler.runAt(row.publishAt, internal.entries.publishDue, { entry: id, at: row.publishAt }) })
       }
       ids[row.id] = id
-      if (row.deletedAt === undefined) {
-        live++
-        bytes += size
-        treeBytes += trees.bytes
-      } else trashBytes += size
+      treeBytes += trees.bytes
       orderRevs[row.brick] = 1
-      for (const [name, field] of Object.entries(def.fields)) {
+      for (const [name, field] of Object.entries(fields)) {
         if (field.type !== 'slug') continue
         for (const [locale, slug] of Object.entries((data[name] ?? {}) as Record<string, string>)) {
           await ctx.db.insert('slugs', { site: site._id, brick: row.brick, locale, slug, entry: id })
         }
       }
-      await syncEntryRefs(ctx, site._id, id, new Map([...usesOf(def.fields, data, schema.locales)].filter(([file]) => known.has(file))))
+      await syncEntryRefs(ctx, site._id, id, new Map([...usesOf(fields, data, schema.locales)].filter(([file]) => known.has(file))))
     }
     await ctx.db.patch(site._id, {
-      bytes: site.bytes + bytes, trashBytes: (site.trashBytes ?? 0) + trashBytes, treeBytes: (site.treeBytes ?? 0) + treeBytes, entryCount: site.entryCount + live, orderRevs,
+      bytes: site.bytes + bytes, trashBytes: trashAfter, treeBytes: (site.treeBytes ?? 0) + treeBytes, entryCount: site.entryCount + live, orderRevs,
     })
     return { entries: args.entries.length, files: args.files.length, ids, warnings, ...(firstWarning ? { firstWarning } : {}) }
   },
