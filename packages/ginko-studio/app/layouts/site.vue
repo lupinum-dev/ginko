@@ -119,7 +119,11 @@ const blocked = computed(() => signedOut.value || !!error.value || !!deletion.va
         <p>{{ t('nav.noAccessHelp') }}</p>
         <Button as-child variant="outline"><NuxtLink to="/?all">{{ t('nav.mySites') }}</NuxtLink></Button>
       </div>
-      <slot v-else />
+      <template v-else>
+        <!-- Above every page, so every role sees it (a manager without tasks never sees Schnell ändern). -->
+        <StorageNotice v-if="data" class="mx-4 mt-4 max-w-[712px] min-[720px]:mx-6 min-[720px]:mt-6" :slug="slug" :bytes="data.site.bytes" :entry-count="data.site.entryCount" />
+        <slot />
+      </template>
       </main>
     </div>
     <SiteTabBar v-if="showTabs && !blocked" class="min-[900px]:hidden" :links="links" />
