@@ -881,3 +881,34 @@ export const whyNotPublic = query({
     return { locale, ...publicness(actor.site, entry.brick, entry, locale) }
   },
 })
+
+/**
+ * Writes every entry's Markdown trees (and with them `bytes`) again from its data, once per deployment after the
+ * parser's output changed: a row keeps the trees of the parser it was saved with (`trees` in schema.ts). Works
+ * through 10 entries at a time and schedules itself until all are done; running it again is safe. Entries of a
+ * brick the schema no longer has keep what they have.
+ */
+export const rebuildTrees = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args): Promise<null> => {
+    const page = await ctx.db.query('entries').paginate({ cursor: args.cursor ?? null, numItems: 10 })
+    const sites = new Map<Id<'sites'>, Doc<'sites'> | null>()
+    const changed = new Map<Id<'sites'>, number>()
+    for (const row of page.page) {
+      if (!sites.has(row.site)) sites.set(row.site, await ctx.db.get(row.site))
+      const schema = sites.get(row.site)?.schema as Schema | undefined
+      const brick = schema && Object.hasOwn(schema.bricks, row.brick) ? schema.bricks[row.brick]! : undefined
+      if (!brick) continue
+      const { trees, bytes } = await storageOf(brick.fields, row.data as Data, row.prints as Prints)
+      if (trees === row.trees && bytes === row.bytes) continue
+      await ctx.db.patch(row._id, { trees, bytes })
+      changed.set(row.site, (changed.get(row.site) ?? 0) + bytes - row.bytes)
+    }
+    for (const [id, delta] of changed) {
+      const site = sites.get(id)!
+      await ctx.db.patch(id, { bytes: site.bytes + delta, contentRev: site.contentRev + 1 })
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.entries.rebuildTrees, { cursor: page.continueCursor })
+    return null
+  },
+})

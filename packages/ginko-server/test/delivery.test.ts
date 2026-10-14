@@ -87,6 +87,30 @@ describe('GET /bundle/<site>', () => {
     expect(await errorOf(post(20, '## a\n'.repeat(4000)))).toMatchObject({ code: 'TOO_LARGE', message: 'Dieser Eintrag ist zu groß (höchstens 256 KiB).' })
   }, 60_000)
 
+  // Wrong behaviour caught: after a parser change the rebuild leaves stale trees, stops after its first batch, or
+  // forgets the site's byte total.
+  it('rebuildTrees writes every entry\'s trees and bytes again from its data', async () => {
+    const s = await setup()
+    const entry = s.entries.legal!
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { imprint: { de: '**Hallo**' } }, sentence: 'Impressum' })
+    const saved = (await s.t.run((ctx) => ctx.db.get(entry)))!
+    // What a row looks like after a parser change: its trees are not what the parser makes now.
+    await s.t.run(async (ctx) => {
+      await ctx.db.patch(entry, { trees: '{}', bytes: saved.bytes - 10 })
+      await ctx.db.patch(s.site, { bytes: (await ctx.db.get(s.site))!.bytes - 10 })
+    })
+    // The site total is the entries' bytes plus what else the site stores; the rebuild keeps that sum true.
+    const rest = () => s.t.run(async (ctx) => (await ctx.db.get(s.site))!.bytes - (await ctx.db.query('entries').collect()).reduce((sum, row) => sum + row.bytes, 0))
+    const before = await rest()
+    vi.useFakeTimers()
+    await s.t.mutation(internal.entries.rebuildTrees, {})
+    await s.t.finishAllScheduledFunctions(vi.runAllTimers)
+    expect(await s.t.run((ctx) => ctx.db.get(entry))).toMatchObject({ trees: saved.trees, bytes: saved.bytes })
+    expect(await rest()).toBe(before)
+    // The fixture's rows (more than one batch) had no trees; all have them now.
+    expect((await s.t.run((ctx) => ctx.db.query('entries').collect())).filter((row) => row.trees === undefined)).toEqual([])
+  })
+
   it('an unknown locale delivers the main language and names the requested one', async () => {
     const { t } = await setup()
     const bundle = (await (await t.fetch('/bundle/restaurant?format=3&locale=xx')).json()) as Bundle

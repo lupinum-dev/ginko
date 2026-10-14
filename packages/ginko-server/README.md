@@ -37,6 +37,14 @@ uploaded before that have none; make them once per deployment with `npx convex r
 (add `--prod` for production). It works through 20 files at a time and schedules itself until all are done;
 running it again is safe.
 
+## Markdown trees
+
+Every entry stores the parsed trees of its Markdown texts next to its data, so the public bundle parses nothing.
+A row keeps the trees of the parser it was saved with. After an update that changes the parser's output (comark,
+its plugins or Ginko's Markdown rules), write them again once per deployment with `npx convex run entries:rebuildTrees`
+(add `--prod` for production). It works through 10 entries at a time and schedules itself until all are done;
+running it again is safe.
+
 ## Environment variables
 
 Set them in the Convex deployment (not in the host's `.env.local`).
