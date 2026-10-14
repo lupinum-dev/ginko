@@ -63,6 +63,19 @@ export function remapFileIds(fields: Fields, data: Record<string, Json>, map: Re
   return out
 }
 
+/** The data with `fn` applied to every Markdown text: each language, list rows included. Other values stay as they are. */
+export function mapMarkdownTexts(fields: Fields, data: Record<string, Json>, fn: (text: string) => string): Record<string, Json> {
+  const walk = (field: Field, value: Json): Json => {
+    if (field.type === 'markdown') {
+      if (typeof value === 'string') return fn(value)
+      if (isRecord(value)) return Object.fromEntries(Object.entries(value).map(([locale, text]) => [locale, typeof text === 'string' ? fn(text) : text]))
+    }
+    if (field.type === 'list' && Array.isArray(value)) return value.map((row) => (isRecord(row) ? mapMarkdownTexts(field.of, row, fn) : row))
+    return value
+  }
+  return Object.fromEntries(Object.entries(data).map(([name, value]) => [name, Object.hasOwn(fields, name) ? walk(fields[name]!, value) : value]))
+}
+
 type Node = [string, Record<string, Json>, ...Json[]]
 const isNode = (n: unknown): n is Node => Array.isArray(n) && typeof n[0] === 'string' && isRecord(n[1])
 

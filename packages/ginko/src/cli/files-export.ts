@@ -9,8 +9,8 @@
 import { createHash } from 'node:crypto'
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, posix, resolve, sep } from 'node:path'
-import type { Field, Fields, Json } from '../core/types.ts'
-import { imageInfo, imagePropsOf, limitOf, parseMarkdown, remapFileIds, serializeSchema, UPLOAD_TYPES, type Schema, type UploadType } from '../core/index.ts'
+import type { Fields, Json } from '../core/types.ts'
+import { imageInfo, imagePropsOf, limitOf, mapMarkdownTexts, parseMarkdown, remapFileIds, serializeSchema, UPLOAD_TYPES, type Schema, type UploadType } from '../core/index.ts'
 import { loadConfig } from './config.ts'
 import { CliError, type ExportEntry, type ExportFolder, type SiteExport } from './model.ts'
 
@@ -121,7 +121,7 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
   let kept = 0
   for (const entry of entries) {
     const fields = schema.bricks[entry.brick]!.fields
-    entry.data = mapMarkdown(fields, remapFileIds(fields, entry.data, ids), (text) => toFileRefs(text, refs, imageProps))
+    entry.data = mapMarkdownTexts(fields, remapFileIds(fields, entry.data, ids), (text) => toFileRefs(text, refs, imageProps))
     for (const text of markdownTexts(fields, entry.data)) kept += [...await localSources(text, imageProps)].filter((src) => ids.has(src)).length
   }
   if (kept > 0) input.log(`Warning: ${kept} image(s) inside Markdown texts keep their public/ path, written in a form this export cannot rewrite; the site must keep serving them.`)
@@ -150,23 +150,8 @@ function folderOf(src: string, folders: Map<string, ExportFolder>): string | und
 /** Every Markdown text of an entry: each language, list rows included. */
 function markdownTexts(fields: Fields, data: Record<string, Json>): string[] {
   const texts: string[] = []
-  mapMarkdown(fields, data, (text) => { texts.push(text); return text })
+  mapMarkdownTexts(fields, data, (text) => { texts.push(text); return text })
   return texts
-}
-
-/** The data with `fn` applied to every Markdown text. */
-function mapMarkdown(fields: Fields, data: Record<string, Json>, fn: (text: string) => string): Record<string, Json> {
-  const walk = (field: Field, value: Json): Json => {
-    if (field.type === 'markdown') {
-      if (typeof value === 'string') return fn(value)
-      if (isRecord(value)) return Object.fromEntries(Object.entries(value).map(([locale, text]) => [locale, typeof text === 'string' ? fn(text) : text]))
-    }
-    if (field.type === 'list' && Array.isArray(value)) {
-      return value.map((row) => (isRecord(row) ? { ...row, ...mapMarkdown(field.of, row, fn) } : row))
-    }
-    return value
-  }
-  return Object.fromEntries(Object.entries(data).map(([name, value]) => [name, Object.hasOwn(fields, name) ? walk(fields[name]!, value) : value]))
 }
 
 /** The site paths (`/images/a.png`, `/_ginko/img/<hash>.png`) a text shows as an image or in a component image prop. */
