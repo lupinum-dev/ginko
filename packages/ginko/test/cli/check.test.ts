@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { main } from '../../src/cli/index.ts'
 import type { CliDeps } from '../../src/cli/run.ts'
-import { collection, defineSite, f } from '../../src/core/index.ts'
+import { collection, defineSite, f, single } from '../../src/core/index.ts'
 
 // One file brick (docs/<name>.md) with a route, and a home page that a link can point to.
 const config = defineSite({
@@ -126,6 +126,15 @@ describe('ginko check and links in content files', () => {
     const { code } = await runCheck(path, [], async (url) => { urls.push(url); return new Response(null, { status: 200 }) })
     expect(urls).toEqual(['https://linde.example/about'])
     expect(code).toBe(0)
+  })
+
+  // Wrong behaviour caught: a schema allows entries larger than the platform accepts, and nobody hears of it until a Save fails.
+  it('warns when a brick\'s maxima can pass the entry limit', async () => {
+    const legal = single({ label: 'Rechtliches', fields: { body: f.markdown('Text', { max: 300_000 }) } })
+    const site = { ...config, locales: ['de', 'en'], bricks: { ...config.bricks, docs: { ...config.bricks.docs, route: { de: '/doku/[slug]', en: '/docs/[slug]' } }, legal } }
+    const { lines, result } = await runCheck(siteWith('Text.', site), ['--offline'])
+    expect(lines).toContain('Warning: brick “legal” can hold about 586 KiB per entry (largest: body 300,000 × 2 languages); the entry limit is 480 KiB. Lower a max so a full entry fits.')
+    expect(result.ok).toBe(true)
   })
 
   // Bug caught: the content package knows the line of a CSV row, but `ginko check` printed only the file and field.

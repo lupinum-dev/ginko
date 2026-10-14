@@ -1,3 +1,6 @@
+import { ALT_MAX, effectiveMax, isTranslatable } from './fields.ts'
+import type { Field, Fields } from './types.ts'
+
 /**
  * Content budget per site (SPEC 3): one rule for the platform's writes, imports and releases, the CLI's checks and
  * the Studio's meters. Bytes are the stored text, the JSON of an entry's `data` and `prints`. Markdown trees are
@@ -26,4 +29,32 @@ export function entryBytes(data: unknown, prints: unknown = {}): number {
  */
 export function fitsBudget(after: number, before: number, limit: number): boolean {
   return after <= limit || after <= before
+}
+
+/** JSON around one stored value (quotes, key, comma); an entry or list-row id; one short stored value (a number, a date, an option). */
+const VALUE_JSON = 8
+const ID_BYTES = 40
+const SHORT_VALUE = 32
+
+/**
+ * About how many bytes a full value of `field` takes: every text at its max in every language, every list at its max
+ * rows. One byte per character, as for Latin text (worst-case UTF-8 would flag almost every schema). Several refs
+ * without a `max` count 0. An estimate for `ginko check`; the platform's exact count stays the authority.
+ */
+export function largestFieldBytes(field: Field, locales: readonly string[]): number {
+  if (field.retired) return 0
+  const values = isTranslatable(field) ? locales.length : 1
+  switch (field.type) {
+    case 'text': case 'longtext': case 'markdown': return (effectiveMax(field) + VALUE_JSON) * values
+    case 'list': return field.max * (largestEntryBytes(field.of, locales) + ID_BYTES)
+    case 'choices': return effectiveMax(field) * ID_BYTES
+    case 'ref': return field.multiple ? (field.max ?? 0) * ID_BYTES : ID_BYTES
+    case 'image': case 'file': return ID_BYTES + ALT_MAX * locales.length
+    default: return SHORT_VALUE * values
+  }
+}
+
+/** About how many bytes an entry with every field full takes (largestFieldBytes summed), to compare with SITE_BUDGET.entryBytes. */
+export function largestEntryBytes(fields: Fields, locales: readonly string[]): number {
+  return Object.values(fields).reduce((sum, field) => sum + largestFieldBytes(field, locales), 0)
 }

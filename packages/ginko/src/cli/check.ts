@@ -2,7 +2,7 @@
 // It reads the state and never writes.
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { checkSite, SITE_BUDGET, type SiteInput } from '../core/index.ts'
+import { checkSite, effectiveMax, isTranslatable, largestEntryBytes, largestFieldBytes, serializeSchema, SITE_BUDGET, type SiteInput } from '../core/index.ts'
 import type { Fetch } from '../nuxt/external-links.ts'
 import { checkFileLinks } from './content-links.ts'
 import { CliError } from './model.ts'
@@ -31,6 +31,7 @@ export async function check(input: {
     for (const problem of problems) input.log(`  ✗ ${problem}`)
     return false
   }
+  warnEntrySize(input.config, input.log)
   const image = checkSeoImage(input.config, input.root, input.log)
   const links = await checkFileLinks({ config: input.config, root: input.root, log: input.log, fetch: input.fetch }) && image
   if (!input.connect) {
@@ -45,6 +46,27 @@ export async function check(input: {
     if (links) throw error
     input.log(`Skipped the comparison with production: ${error instanceof Error ? error.message : String(error)}`)
     return false
+  }
+}
+
+/**
+ * A brick whose maxima add up past the entry limit allows values the platform refuses at Save. Only a warning: it is an
+ * estimate (largestEntryBytes), and existing configs must not fail CI for it.
+ */
+function warnEntrySize(config: SiteInput, log: (line: string) => void) {
+  const { bricks, locales } = serializeSchema(config)
+  for (const [key, brick] of Object.entries(bricks)) {
+    const max = largestEntryBytes(brick.fields, locales)
+    if (max <= SITE_BUDGET.entryBytes) continue
+    const fields = Object.entries(brick.fields).map(([name, field]) => ({ name, field, bytes: largestFieldBytes(field, locales) }))
+    const largest = fields.filter((f) => f.bytes > 0).sort((a, b) => b.bytes - a.bytes).slice(0, 3).map(({ name, field, bytes }) => {
+      if (field.type === 'list') return `${name} ${field.max} rows`
+      if (field.type !== 'text' && field.type !== 'longtext' && field.type !== 'markdown') return `${name} ${kib(bytes)}`
+      const languages = isTranslatable(field) && locales.length > 1 ? ` × ${locales.length} languages` : ''
+      return `${name} ${effectiveMax(field).toLocaleString('en-US')}${languages}`
+    })
+    const uncounted = fields.filter(({ field }) => field.type === 'ref' && field.multiple && field.max === undefined).map((f) => f.name)
+    log(`Warning: brick “${key}” can hold about ${kib(max)} per entry (largest: ${largest.join(', ')}); the entry limit is ${kib(SITE_BUDGET.entryBytes)}. Lower a max so a full entry fits.${uncounted.length ? ` Not counted: ${uncounted.join(', ')} (entries without a max).` : ''}`)
   }
 }
 
