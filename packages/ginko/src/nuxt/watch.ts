@@ -1,78 +1,88 @@
-import { createHash } from 'node:crypto'
-import { existsSync, readFileSync, watch, type FSWatcher } from 'node:fs'
-import { basename, join } from 'node:path'
+import { createHash, randomUUID } from 'node:crypto'
+import { existsSync, readFileSync, watch } from 'node:fs'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { checkSite, type SiteInput } from '../core/index.ts'
 
-const CONFIG_EXTENSIONS = ['ts', 'mts', 'js', 'mjs']
-const CONFIG_NAMES = new Set(CONFIG_EXTENSIONS.map((ext) => `ginko.config.${ext}`))
+const CONFIG_NAMES = new Set(['ts', 'mts', 'js', 'mjs'].map((ext) => `ginko.config.${ext}`))
 
-/**
- * The site's `ginko.config.*` files, as absolute paths. `nuxt.config.ts` imports the config, but Nuxt restarts
- * `nuxt dev` only when `nuxt.config` itself changes: adding these to `nuxt.options.watch` restarts it for them too
- * (without it, a new language or page path does nothing until the dev server is restarted by hand).
- */
-export function configFilesToWatch(rootDir: string): string[] {
-  return CONFIG_EXTENSIONS.map((ext) => join(rootDir, `ginko.config.${ext}`)).filter(existsSync)
-}
-
-/** The part of a Nuxt instance the fallback watcher needs. */
-interface Lifecycle {
-  hook(name: 'ready' | 'close', fn: () => void): unknown
-}
-
-/** Process-wide: survives the Nuxt instance that failed to load. Lost with a restarted fork, which is fine. */
-interface ConfigWatch {
-  up: boolean
-  watcher?: FSWatcher
-}
-
-declare global {
-  var __ginkoConfigWatch: ConfigWatch | undefined
+/** The part of the Nuxt instance the config watcher uses. */
+interface DevNuxt {
+  hook(name: 'ready' | 'build:done' | 'close', fn: () => void): unknown
+  callHook(name: 'restart', options: { hard: true }): unknown
 }
 
 /**
- * Dev only. The restart through `nuxt.options.watch` (configFilesToWatch) works only while a Nuxt instance runs. After a
- * save that breaks the config, the next load fails, @nuxt/cli serves the error and watches only nuxt.config.*, so the
- * fixed save reached nobody until a manual restart. This watcher marks an instance up when it is ready and down when it
- * closes, and calls `restart` for a changed ginko.config.* only when no instance was up as the change began (the last
- * load failed). The state is read at the first file event, not after the debounce: a healthy save makes Nuxt close the
- * instance for its own in-place reload within milliseconds, and that save must not restart the fork as well. Remove it
- * when @nuxt/cli keeps watching after a failed load (internals/migrations.md).
+ * Dev only. `nuxt.config.ts` imports ginko.config.ts, and Node keeps that import in its module cache for the life of the
+ * process: Nuxt's in-place reload reads nuxt.config.ts again, but gets the cached ginko.config.ts, so a saved change did
+ * nothing (and a broken one showed no error) until a manual restart. This watcher loads a changed config fresh and runs
+ * the checks of the module's setup. A good version restarts the whole dev process with Nuxt's hard restart (as Nuxt does
+ * for a changed local module). A broken one is reported in one line, and the server keeps the version it runs.
+ * Files that the config imports are not watched, and the check uses their cached version.
  */
-export function keepConfigWatchedAcrossFailures(nuxt: Lifecycle, rootDir: string, restart: (file: string) => void): void {
-  const state = (globalThis.__ginkoConfigWatch ??= { up: false })
-  nuxt.hook('ready', () => { state.up = true })
-  nuxt.hook('close', () => { state.up = false })
-  if (state.watcher) return
-  const hashes = new Map<string, string>()
-  const hash = (file: string) => existsSync(file) ? createHash('sha1').update(readFileSync(file)).digest('hex') : ''
-  for (const name of CONFIG_NAMES) hashes.set(name, hash(join(rootDir, name)))
+export function restartOnConfigChange(nuxt: DevNuxt, rootDir: string): void {
+  // @nuxt/cli ignores a hard restart asked for before the dev server is ready (verified in @nuxt/cli 4.0.0 and 4.0.1:
+  // a fork's request counts only after it reported ready). A good save made while the server starts waits until then.
+  let ready = false
+  let pending: string | undefined
+  let restarting = false
+  const restart = (name: string) => {
+    restarting = true
+    console.info(`[ginko] ${name} changed: restarting the dev server.`)
+    void Promise.resolve(nuxt.callHook('restart', { hard: true })).catch((error: unknown) => console.error('[ginko] The dev server could not restart:', error))
+  }
+  const hashOf = (file: string) => existsSync(file) ? createHash('sha1').update(readFileSync(file)).digest('hex') : ''
+  const hashes = new Map([...CONFIG_NAMES].map((name) => [name, hashOf(join(rootDir, name))]))
+  const check = async (name: string) => {
+    const file = join(rootDir, name)
+    const hash = hashOf(file)
+    // Content, not events: a save without a change, or a touch, does nothing. A removed file is left to the next restart.
+    if (restarting || !hash || hashes.get(name) === hash) return
+    hashes.set(name, hash)
+    const problem = await configProblem(file)
+    if (problem) console.error(`[ginko] ${name} has an error, the dev server keeps the last good version: ${problem}`)
+    else if (ready) restart(name)
+    else pending = name
+  }
+  // One check at a time, in the order of the saves.
+  let queue = Promise.resolve()
   let debounce: NodeJS.Timeout | undefined
-  let wasDown = false
   // The folder, not the file: editors that save by renaming a temp file replace the inode.
-  state.watcher = watch(rootDir, (_event, name) => {
+  const watcher = watch(rootDir, (_event, name) => {
     if (!name || !CONFIG_NAMES.has(name)) return
-    // The raw event arrives before Nuxt's chokidar has looked at the file, so Nuxt cannot have closed the instance yet.
-    if (!debounce) wasDown = !state.up
     clearTimeout(debounce)
-    debounce = setTimeout(() => {
-      debounce = undefined
-      const file = join(rootDir, name)
-      const now = hash(file)
-      // Content, not events: a save without a change, or a touch, does not restart.
-      if (hashes.get(name) === now) return
-      hashes.set(name, now)
-      if (wasDown) restart(file)
-    }, 200)
-    debounce.unref()
+    debounce = setTimeout(() => { queue = queue.then(() => check(name)).catch((error: unknown) => console.error('[ginko]', error)) }, 100)
   })
-  state.watcher.unref()
+  watcher.unref()
+  // Ready: the first build is done. Registered at `ready`, after Nitro's own `build:done` that builds the server, so it
+  // runs when both are done; @nuxt/cli reports ready a few milliseconds later, the delay leaves room for that.
+  let settle: NodeJS.Timeout | undefined
+  nuxt.hook('ready', () => nuxt.hook('build:done', () => {
+    settle = setTimeout(() => {
+      ready = true
+      if (pending && !restarting) restart(pending)
+    }, 1000)
+  }))
+  nuxt.hook('close', () => {
+    clearTimeout(debounce)
+    clearTimeout(settle)
+    watcher.close()
+  })
 }
 
 /**
- * Asks the `nuxt dev` parent process to restart its fork, with the IPC message @nuxt/cli's own fork sends for a
- * config restart (verified in @nuxt/cli 4.0.1, dev-*.mjs `nuxt:internal:dev:restart`). Without a fork it says what to do.
+ * Why the config file cannot serve the site, in one line, or undefined when it can: it must load and pass the checks
+ * that make the module's setup fail. Loaded with a new query string, so Node reads the file again instead of returning
+ * the cached module (cli/config.ts does the same for `local:dev`).
  */
-export function nuxiRestart(file: string): void {
-  if (process.env.__NUXT__FORK && process.send) process.send({ type: 'nuxt:internal:dev:restart', reason: { type: 'config', files: [file] } })
-  else console.warn(`[ginko] ${basename(file)} changed, but the dev server stopped with an error before. Restart \`nuxt dev\`.`)
+async function configProblem(file: string): Promise<string | undefined> {
+  try {
+    const module = await import(`${pathToFileURL(file).href}?ginko=${randomUUID()}`) as { default?: SiteInput }
+    const site = module.default
+    if (!site?.site || !site.bricks) return 'the default export must be the result of defineSite().'
+    const problems = checkSite(site)
+    return problems.length ? problems.join(' ') : undefined
+  } catch (error) {
+    return error instanceof Error ? error.message.split('\n')[0]! : String(error)
+  }
 }
