@@ -55,3 +55,27 @@ the exact condition for removing it and the tracking issue when there is one. Re
   they are reset), then ship step 3.
 - **Tracking issue:** none yet.
 
+
+
+## Storage addresses in Markdown texts become `$file` references (`migrations:markdownStorageUrls`)
+
+- **Why:** before `$file.<uploadId>` existed, the Studio wrote a picture pasted into a Markdown text as its storage
+  address (`http://127.0.0.1:3210/api/storage/…` locally). Such a file has no file reference: the daily sweep purges it
+  after 7 days (the text then shows a hole), Trash does not warn and backups leave it out, and an export carries the
+  host it was written on. The migration rewrites every address that matches a current storage address of one of the
+  site's uploads (original, processed file or variant) to `$file.<uploadId>`, then rebuilds the entry's trees and
+  file references; addresses that match nothing stay. At the end `entries:recountStorage` sets the site counters.
+- **Introduced:** 15 October 2026.
+- **Compatibility code:** `packages/ginko-server/convex/migrations.ts` (the whole module) and its line in
+  `convex/_generated/api.d.ts`. Nothing else reads old addresses.
+- **Dependents:** every deployment whose texts hold storage addresses: local backends with pictures pasted into texts,
+  and possibly hosted production. Run it before the next daily sweep where a pasted picture is younger than 7 days.
+- **Steps:**
+  1. Local: `npx convex run migrations:markdownStorageUrls` (10 entries per run, schedules itself; running it again
+     is safe). Then `npx convex run entries:storageStatus` until `isDone`: `countersMatch: true` for every site.
+  2. Hosted production only with Matthias's OK, after `npx convex export --prod`:
+     `npx convex run --prod migrations:markdownStorageUrls`, then `storageStatus` with `--prod`.
+- **Removal condition:** the migration ran on every local backend that keeps its data and on hosted production. Then
+  delete `convex/migrations.ts`, its line in `convex/_generated/api.d.ts`, its test in
+  `packages/ginko-server/test/files.test.ts` and this entry.
+- **Tracking issue:** none yet.

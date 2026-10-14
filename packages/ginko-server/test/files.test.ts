@@ -389,6 +389,24 @@ describe('uploads.sweep with the library', () => {
   })
 })
 
+describe('migrations.markdownStorageUrls', () => {
+  // Wrong behaviour caught: the one-time rewrite misses an address written on another host (local vs. production),
+  // replaces an address it cannot match with a broken reference, or leaves the file without its reference.
+  it('turns a storage address in a text into the file reference, on any host, and leaves unknown addresses alone', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout'] })
+    const s = await setup()
+    const id = await readyImage(s)
+    const token = await s.t.run(async (ctx) => (await ctx.storage.getUrl((await ctx.db.get(id))!.processedId!))!.split('/api/storage/')[1])
+    const text = `![Hund](http://127.0.0.1:3210/api/storage/${token})\n\n![Weg](https://alt.example/api/storage/unbekannt)`
+    await s.t.run((ctx) => ctx.db.patch(s.entries.legal!, { data: { imprint: { de: text } } }))
+    await s.t.mutation(internal.migrations.markdownStorageUrls, {})
+    await s.t.finishAllScheduledFunctions(vi.runAllTimers)
+    const row = await s.t.run((ctx) => ctx.db.get(s.entries.legal!))
+    expect(row!.data).toEqual({ imprint: { de: `![Hund]($file.${id})\n\n![Weg](https://alt.example/api/storage/unbekannt)` } })
+    expect(await fileRefsOf(s, id)).toHaveLength(1)
+  })
+})
+
 /** A ready image with two variant files, stored widest first to show that the bundle sorts them. */
 async function imageWithVariants(s: Setup) {
   const file = await readyImage(s)

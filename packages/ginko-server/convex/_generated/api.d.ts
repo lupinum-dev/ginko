@@ -46,6 +46,7 @@ import type * as lib_trees from "../lib/trees.js";
 import type * as lib_write from "../lib/write.js";
 import type * as mail from "../mail.js";
 import type * as members from "../members.js";
+import type * as migrations from "../migrations.js";
 import type * as proposals from "../proposals.js";
 import type * as refresh from "../refresh.js";
 import type * as release from "../release.js";
@@ -111,6 +112,7 @@ declare const fullApi: ApiFromModules<{
   "lib/write": typeof lib_write;
   mail: typeof mail;
   members: typeof members;
+  migrations: typeof migrations;
   proposals: typeof proposals;
   refresh: typeof refresh;
   release: typeof release;
