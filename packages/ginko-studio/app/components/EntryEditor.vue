@@ -5,7 +5,7 @@ import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, L
 import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, printOf, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { fileIdsIn, languageName, publishQuestion, titleOf } from '../utils/content'
+import { languageName, previewFileIds, publishQuestion, titleOf } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -389,8 +389,8 @@ const showPreview = ref(false)
 // The preview builds the site from all its entries, so it reads them only while it is open.
 const previewRead = useConvexQuery(api.entries.ofBricks, () => (showPreview.value ? { site: props.site.slug, bricks: Object.keys(props.schema.bricks) } : 'skip'))
 const previewEntries = computed(() => previewRead.data.value)
-// The preview needs the URLs and library descriptions of every referenced photo and PDF (fields and texts), also of one uploaded just now.
-const fileIds = computed(() => [...fileIdsIn([(previewEntries.value ?? []).map((e) => e.data), draft.value])].sort())
+// The preview needs the URLs and library descriptions of the referenced photos and PDFs (fields and texts), also of one uploaded just now.
+const fileIds = computed(() => previewFileIds(draft.value, (previewEntries.value ?? []).map((e) => e.data)))
 const { data: fileInfo } = useConvexQuery(api.uploads.urls, () => (showPreview.value && fileIds.value.length ? { site: props.site.slug, ids: fileIds.value } : 'skip'))
 function files(id: string) {
   const f = fileInfo.value?.[id]

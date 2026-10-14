@@ -119,15 +119,33 @@ export function languageName(locale: string, language: string): string {
   }
 }
 
-/** Upload ids referenced anywhere in stored data: `{ file: id }` of image and file fields and `$file.<id>` in Markdown texts, in lists too. */
-export function fileIdsIn(value: unknown, out: Set<string> = new Set()): Set<string> {
-  if (typeof value === 'string') for (const id of fileRefsIn(value)) out.add(id)
-  else if (Array.isArray(value)) for (const v of value) fileIdsIn(v, out)
+/**
+ * Upload ids referenced anywhere in stored data: `{ file: id }` of image and file fields and, with `texts`, `$file.<id>`
+ * in Markdown texts, in lists too.
+ */
+function fileIdsIn(value: unknown, out: Set<string>, texts: boolean): Set<string> {
+  if (typeof value === 'string') { if (texts) for (const id of fileRefsIn(value)) out.add(id) }
+  else if (Array.isArray(value)) for (const v of value) fileIdsIn(v, out, texts)
   else if (value && typeof value === 'object') {
     for (const [k, v] of Object.entries(value)) {
       if (k === 'file' && typeof v === 'string') out.add(v)
-      else fileIdsIn(v, out)
+      else fileIdsIn(v, out, texts)
     }
   }
   return out
+}
+
+/** How many files one `uploads.urls` query answers. */
+const MAX_FILES = 200
+
+/**
+ * The files the preview asks for: it shows any page of the site, so in principle every file of every entry. One query
+ * answers at most `MAX_FILES`, so the most likely shown come first: the open entry's own (`draft`), then the image and
+ * file fields of the other entries (lists show them), then the pictures in their texts (only their own page shows them).
+ */
+export function previewFileIds(draft: unknown, entries: readonly unknown[]): string[] {
+  const ids = fileIdsIn(draft, new Set(), true)
+  fileIdsIn(entries, ids, false)
+  fileIdsIn(entries, ids, true)
+  return [...ids].slice(0, MAX_FILES)
 }
