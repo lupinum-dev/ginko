@@ -3,12 +3,12 @@
      changing it opens as Markdown source instead; "Markdown" in the toolbar switches by hand, both ways.
      Pasted and dropped content is cleaned or uploaded by the core's paste hooks; problems show at their block. -->
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, reactive, ref, watch, watchEffect } from 'vue'
+import { computed, inject, onBeforeUnmount, provide, reactive, ref, watch, watchEffect } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
 import { coreMessage, effectiveMax, effectiveProfile, type Msg } from '@lupinum/ginko/internal'
 import {
-  BLOCKERS, docProblems, FLUSHERS, linkCardTag, makeLinkCard, missingRequired, slashItems, SLASH_COMPONENT_GROUP, sourceProblems, useGinkoEditor,
+  BLOCKERS, docProblems, FLUSHERS, GINKO_ASSETS, linkCardTag, makeLinkCard, missingRequired, slashItems, SLASH_COMPONENT_GROUP, sourceProblems, useFileImages, useGinkoEditor,
   type DocProblem, type SlashItem, type SourceProblem,
 } from '@lupinum/ginko-editor'
 import { GripVertical } from '@lucide/vue'
@@ -19,7 +19,7 @@ import { Alert } from '@studio/components/ui/alert'
 import { Button } from '@studio/components/ui/button'
 import { Textarea } from '@studio/components/ui/textarea'
 import { TooltipProvider } from '@studio/components/ui/tooltip'
-import { canHover, createSettingsBus, EDITOR_COMPONENTS, isCoarsePointer, useEditorTick } from './context.ts'
+import { canHover, createSettingsBus, EDITOR_COMPONENTS, EDITOR_FILES, isCoarsePointer, useEditorTick } from './context.ts'
 import EditorBubble from './EditorBubble.vue'
 import EditorToolbar from './EditorToolbar.vue'
 import FindBar from './FindBar.vue'
@@ -30,7 +30,11 @@ import SourceToggle from './SourceToggle.vue'
 import { useImageUploads } from './useImageUploads.ts'
 import { useStudioSite } from '../../utils/labels'
 
-const props = defineProps<{ id: string; field: Extract<Field, { type: 'markdown' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string }>()
+const props = defineProps<{
+  id: string; field: Extract<Field, { type: 'markdown' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string
+  /** The language of the text (the Studio's own language is `locale`): pictures from the library take their description in it. */
+  contentLocale?: string
+}>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 
 const DEBOUNCE_MS = 300
@@ -87,12 +91,19 @@ const items = () => slashItems({
 /** True while the person looks at the Markdown source by choice ("Markdown" in the toolbar). */
 const wantSource = ref(false)
 
+// Pictures from the Files library: the text keeps `$file.<id>`, the editor and the component settings show the file.
+const assets = inject(GINKO_ASSETS, undefined)
+const fileImages = assets ? useFileImages(assets, () => t('editor.image.missing')) : undefined
+if (fileImages) provide(EDITOR_FILES, { images: fileImages, locale: () => props.contentLocale ?? '' })
+
 const uploads = useImageUploads({
   id: () => props.id,
   editor: () => editor.value,
   describe: (pos) => { describePos.value = pos; imageOpen.value = true },
   fail: (message) => toast.show(message, { tone: 'err' }),
 })
+/** "Bild hochladen" in the image dialog: the picture goes in at the cursor, like a dropped one. */
+const uploadAtCursor = assets ? (file: File) => { const current = editor.value; if (current) uploads.handle([file], current.state.selection.from) } : undefined
 
 /** A bare address pasted on an empty line: the chip near the caret offers a link card (when the site has one). */
 const cardTag = computed(() => linkCardTag(registry?.()))
@@ -106,6 +117,7 @@ const { handle, mode, editor, problemMessages, open, markdown } = useGinkoEditor
   // TipTap mounts into this element; EditorContent moves it into the page.
   element: document.createElement('div'),
   onImageFiles: (files, pos) => uploads.handle(files, pos),
+  fileImages,
   onUrlPasted: ({ url, pos }) => showChip(url, pos),
   extend: studioExtensions({ slashItems: items, slash, bus, openLink: () => { linkOpen.value = true }, problems: { registry: () => registry?.(), fix, t, text: coreText } }),
 }))
@@ -341,7 +353,9 @@ const frame = 'relative rounded-md border border-input bg-background transition-
         <GripVertical class="size-4 text-muted-foreground" aria-hidden="true" />
       </DragHandle>
       <EditorBubble :editor="editor" :profile="profile" @link="linkOpen = true" />
-      <ImageDialog v-if="'image' in editor.schema.nodes" v-model:open="imageOpen" :editor="editor" :describe="describePos" />
+      <ImageDialog
+        v-if="'image' in editor.schema.nodes" v-model:open="imageOpen" :editor="editor" :describe="describePos" :images="fileImages" :locale="contentLocale ?? ''" :upload="uploadAtCursor"
+      />
       <SlashMenu :state="slash" />
       <Button
         v-if="chip && cardTag" type="button" variant="secondary" size="sm" class="absolute z-10 shadow-md [@media(pointer:coarse)]:h-11"
@@ -421,6 +435,6 @@ const frame = 'relative rounded-md border border-input bg-background transition-
 .ginko-editor :deep(.ginko-problem-note) { display: flex; align-items: center; gap: 0.75rem; margin: 0.25rem 0 0.75rem; border-left: 2px solid var(--destructive); padding-left: 0.75rem; font-size: 0.875rem; color: var(--destructive); }
 .ginko-editor :deep(.ginko-problem-note button) { flex-shrink: 0; min-height: 2rem; border: 1px solid var(--border); border-radius: 0.375rem; background: var(--background); padding: 0 0.75rem; color: var(--foreground); font-size: 0.875rem; cursor: pointer; }
 @media (pointer: coarse) { .ginko-editor :deep(.ginko-problem-note button) { min-height: 2.75rem; min-width: 2.75rem; } }
-/* A picture on its way into the library (uploads.ts). */
-.ginko-editor :deep(.ginko-uploading) { display: inline-block; border-radius: 0.25rem; background: var(--muted); padding: 0 0.5rem; color: var(--muted-foreground); font-size: 0.875em; }
+/* A picture on its way into the library (uploads.ts), and one whose library file is gone (file-images.ts). */
+.ginko-editor :deep(:is(.ginko-uploading, .ginko-image-missing)) { display: inline-block; border-radius: 0.25rem; background: var(--muted); padding: 0 0.5rem; color: var(--muted-foreground); font-size: 0.875em; }
 </style>

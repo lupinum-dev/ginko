@@ -1,5 +1,6 @@
 // What the editor parts share without props: the site's component registry, and a tick for toolbar state.
 import type { ComponentRegistry } from '@lupinum/ginko/internal'
+import type { FileImages } from '@lupinum/ginko-editor'
 import type { Editor } from '@tiptap/core'
 import { useI18n } from '#imports'
 import { reactive, ref, watch, type InjectionKey, type Ref } from 'vue'
@@ -9,6 +10,10 @@ import { reactive, ref, watch, type InjectionKey, type Ref } from 'vue'
  * Without it, no component appears in the slash menu.
  */
 export const EDITOR_COMPONENTS: InjectionKey<() => ComponentRegistry | undefined> = Symbol('ginko:editor-components')
+
+/** Provided by a Markdown editor for its parts (component settings): the library files of its pictures, and the language of the text. */
+export interface EditorFiles { images: FileImages; locale: () => string }
+export const EDITOR_FILES: InjectionKey<EditorFiles> = Symbol('ginko:editor-files')
 
 /** Rises after every transaction of `editor`; read it inside a computed to make it follow the selection. */
 export function useEditorTick(editor: () => Editor | undefined): Ref<number> {

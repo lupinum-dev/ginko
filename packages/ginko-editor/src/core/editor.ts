@@ -23,6 +23,8 @@ export interface GinkoEditorOptions {
   onImageFiles?: GinkoExtensionsOptions['onImageFiles']
   /** A bare address was pasted on an empty line and became a link: the UI may offer to turn it into a link card. */
   onUrlPasted?: GinkoExtensionsOptions['onUrlPasted']
+  /** The library files of `$file.<id>` pictures, so the editor can show them (see `useFileImages`). */
+  fileImages?: GinkoExtensionsOptions['fileImages']
   /** Open as Markdown source although the text could be shown rich (the person chose the source view). */
   forceSource?: boolean
 }
@@ -66,7 +68,7 @@ const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringif
  * of them fails, the result is in `source` mode: no document, the text is kept as it is.
  */
 export async function createGinkoEditor(options: GinkoEditorOptions): Promise<GinkoEditorHandle> {
-  const { text, profile, components, element, extend, onImageFiles, onUrlPasted, forceSource } = options
+  const { text, profile, components, element, extend, onImageFiles, onUrlPasted, fileImages, forceSource } = options
   const parseOptions = { profile, components }
   const parsed = await parseMarkdown(text, parseOptions)
   const listeners = new Set<() => void>()
@@ -93,7 +95,7 @@ export async function createGinkoEditor(options: GinkoEditorOptions): Promise<Gi
   const nodes = original.nodes
   const sources = new Map<Json, string>()
   for (const block of original.blocks) if (block.nodes.length === 1) sources.set(block.nodes[0]!, block.source)
-  const extensions = (extend ?? ((list) => list))(ginkoExtensions({ profile, components, onImageFiles, onUrlPasted }))
+  const extensions = (extend ?? ((list) => list))(ginkoExtensions({ profile, components, onImageFiles, onUrlPasted, fileImages }))
 
   // The document must fit the schema and come back as the same tree; otherwise saving would change the text.
   let doc: GinkoDoc

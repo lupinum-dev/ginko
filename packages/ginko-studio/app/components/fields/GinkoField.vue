@@ -123,7 +123,7 @@ const trState = computed(() => (leaf.value ? translation?.state(leaf.value) : un
       <GinkoFieldList v-else-if="field.type === 'list'" :id="id" :field="field" :model-value="value" :baseline="baseline" :path="path" :locale="locale" :locales="locales" :issues="issues" @update:model-value="set" />
       <!-- The editor needs the browser (TipTap mounts into a DOM element), so it is not rendered on the server. -->
       <ClientOnly v-else-if="field.type === 'markdown'">
-        <MarkdownEditor :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
+        <MarkdownEditor :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" :content-locale="locale" @update:model-value="set" />
         <template #fallback><div class="min-h-[11.5rem] rounded-md border border-input bg-background" aria-hidden="true" /></template>
       </ClientOnly>
       <GinkoFieldImage v-else-if="field.type === 'image'" :id="id" :field="field" :model-value="value" :locale="locale" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />

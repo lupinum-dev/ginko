@@ -58,7 +58,8 @@ function pasteInto(editor: Editor, clipboard: { text?: string; files?: File[] })
 const png = (size = 10) => { const file = new File(['x'], 'foto.png', { type: 'image/png' }); Object.defineProperty(file, 'size', { value: size }); return file }
 
 describe('pictures by paste', () => {
-  test('uploading place, then the image with the library address, then the description is asked for; the save waits meanwhile', async () => {
+  // Wrong behaviour caught: the text stores the file's storage address, which breaks when the file is replaced or swept.
+  test('uploading place, then the image as a library reference (shown with its address), then the description is asked for; the save waits meanwhile', async () => {
     const { assets, states, sent } = fakeAssets()
     const blockers = new Map<string, string>()
     const wrapper = await mounted({ text: 'Eins\n', assets, blockers })
@@ -86,7 +87,7 @@ describe('pictures by paste', () => {
     document.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }))
     await until(() => !blockers.has('t-alt'))
     await wait(350)
-    expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual(['Eins![Ein Foto vom Hof](https://cdn.test/u1.png)\n'])
+    expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual(['Eins![Ein Foto vom Hof]($file.u1)\n'])
   })
 
   test('a failed upload removes the place and says why', async () => {

@@ -12,3 +12,4 @@ export { sourceProblems, docProblems, type BlockProblem, type SourceProblem, typ
 export { linkCardTag, makeLinkCard } from './link-card.ts'
 export { findMatches, getSearch, searchInfo, searchKey, type SearchMatch, type SearchOptions, type SearchState } from './search.ts'
 export { moveBlock } from './move.ts'
+export { shownSrc } from './file-images.ts'

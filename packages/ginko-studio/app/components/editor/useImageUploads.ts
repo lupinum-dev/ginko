@@ -1,7 +1,7 @@
 // Pictures that are pasted or dropped into a Markdown field: refused when they are too big or the wrong type, otherwise
 // uploaded into the library with the same flow as the photo field (`useUpload`). The editor shows "wird hochgeladen …"
-// at the place meanwhile; when the server has the picture ready, the place becomes the image with the library's
-// address, and `describe` asks for the description (a picture needs one).
+// at the place meanwhile; when the server has the picture ready, the place becomes the image with its library reference
+// (`$file.<id>`, the editor shows the file), and `describe` asks for the description (a picture needs one).
 import { computed, inject, ref, watch } from 'vue'
 import { useI18n } from '#imports'
 import { formatMb, limitOf, UPLOAD_TYPES } from '@lupinum/ginko/internal'
@@ -53,8 +53,8 @@ export function useImageUploads(o: ImageUploadOptions) {
     precheck: (file) => refuseImage(file, t),
   })
 
-  /** Waits until the server has processed the upload, and returns its address. */
-  function ready(id: string): Promise<string> {
+  /** Waits until the server has processed the upload, so the picture shows at once. */
+  function ready(id: string): Promise<void> {
     current.value = id
     return new Promise((resolve, reject) => {
       let stop = () => {}
@@ -63,8 +63,7 @@ export function useImageUploads(o: ImageUploadOptions) {
       const timer = setTimeout(() => done(() => reject(new Error(t('editor.upload.notReady')))), READY_TIMEOUT_MS)
       stop = watch([state, details], () => {
         if (state.value?.status === 'failed') { const message = state.value.error ?? generic(); done(() => reject(new Error(message))); return }
-        const url = details.value?.[id]?.url
-        if (url) done(() => resolve(url))
+        if (details.value?.[id]?.url) done(resolve)
       }, { immediate: true })
       // Settled during the first look: the watcher did not exist yet to be stopped.
       if (settled) stop()
@@ -76,9 +75,9 @@ export function useImageUploads(o: ImageUploadOptions) {
       let uploaded: string | undefined
       await choose(file, (id) => { uploaded = id })
       if (!uploaded) { cancelUpload(editor, slot); o.fail(error.value ?? generic()); return }
-      const url = await ready(uploaded)
+      await ready(uploaded)
       if (editor.isDestroyed) { o.fail(t('editor.upload.reopened')); return }
-      const at = finishUpload(editor, slot, { src: url, alt: '' })
+      const at = finishUpload(editor, slot, { src: `$file.${uploaded}`, alt: '' })
       if (at !== undefined) o.describe(at)
     } catch (failure) {
       cancelUpload(editor, slot)

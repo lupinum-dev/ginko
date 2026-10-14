@@ -17,6 +17,9 @@ const WHOLE_REF = /^\$file\.([A-Za-z0-9_-]+)$/
 /** `![alt]($file.<id>)`: group 1 is the image's own description, group 2 the upload ID. */
 const MARKDOWN_IMAGE_REF = /!\[([^\]]*)\]\(\s*<?\$file\.([A-Za-z0-9_-]+)/g
 
+/** The upload ID when the whole `value` is a file reference (`$file.<id>`), else undefined. */
+export const fileRefOf = (value: string): string | undefined => WHOLE_REF.exec(value)?.[1]
+
 /** The upload IDs a text references. */
 export function fileRefsIn(text: string): Set<string> {
   return new Set([...text.matchAll(FILE_REF)].map((m) => m[1]!))
@@ -96,7 +99,7 @@ export function fileRefUses(nodes: readonly Json[], components: ComponentRegistr
       if (!isNode(node)) continue
       const [tag, props] = node
       const check = (prop: string, kind: FileRefUse['kind']) => {
-        const id = typeof props[prop] === 'string' ? WHOLE_REF.exec(props[prop])?.[1] : undefined
+        const id = typeof props[prop] === 'string' ? fileRefOf(props[prop]) : undefined
         if (id) out.push({ id, kind, node, prop })
       }
       if (tag === 'img') check('src', 'img')

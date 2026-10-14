@@ -481,7 +481,11 @@
       "insert": "Insertar",
       "descriptionRequired": "Describe brevemente la imagen para las personas que no pueden verla.",
       "addressRefused": "Esta dirección de imagen no está permitida. Usa una dirección web (https://…).",
-      "noDescription": "Una imagen del texto aún no tiene descripción."
+      "noDescription": "Una imagen del texto aún no tiene descripción.",
+      "fromLibrary": "Elegir de la biblioteca de archivos",
+      "upload": "Subir imagen",
+      "orAddress": "O introduce una dirección web",
+      "missing": "Imagen no encontrada"
     },
     "text": {
       "tooLong": "El texto es demasiado largo (máximo {max} caracteres).",
@@ -510,10 +514,12 @@
     },
     "prop": {
       "optional": "(opcional)",
-      "imagePlaceholder": "Ruta o dirección web",
+      "imagePlaceholder": "Dirección web (https://…)",
       "notSet": "Sin definir",
       "default": "Predeterminado ({value})",
-      "choose": "Elegir …"
+      "choose": "Elegir …",
+      "chooseImage": "Elegir imagen",
+      "changeImage": "Cambiar imagen"
     }
   },
   "fields": {

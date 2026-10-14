@@ -481,7 +481,11 @@
       "insert": "Insert",
       "descriptionRequired": "Briefly describe the image for people who cannot see it.",
       "addressRefused": "This image address is not allowed. Use a web address (https://…).",
-      "noDescription": "An image in the text has no description yet."
+      "noDescription": "An image in the text has no description yet.",
+      "fromLibrary": "Choose from Files library",
+      "upload": "Upload image",
+      "orAddress": "Or enter a web address",
+      "missing": "Image not found"
     },
     "text": {
       "tooLong": "The text is too long (at most {max} characters).",
@@ -510,10 +514,12 @@
     },
     "prop": {
       "optional": "(optional)",
-      "imagePlaceholder": "Path or web address",
+      "imagePlaceholder": "Web address (https://…)",
       "notSet": "Not set",
       "default": "Default ({value})",
-      "choose": "Choose …"
+      "choose": "Choose …",
+      "chooseImage": "Choose image",
+      "changeImage": "Change image"
     }
   },
   "fields": {

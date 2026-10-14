@@ -1,6 +1,7 @@
 // Small helpers shared by the Finder components.
 import type { Label } from '@lupinum/ginko'
 import type { LibFile } from '../../composables/useFilesLibrary'
+import type { Chosen } from './LibraryPickerBody.vue'
 
 export type PickKind = 'image' | 'pdf'
 
@@ -15,3 +16,6 @@ export const fieldsText = (use: { paths: string[]; fieldLabels: (Label | null)[]
 
 /** The drag payload that moves files into a folder. */
 export const DRAG_TYPE = 'application/x-ginko-files'
+
+/** The description that a picture in a Markdown text carries itself: the picker's own text, else the library's. */
+export const textAltOf = (chosen: Chosen, locale: string) => chosen.alt?.[locale]?.trim() || chosen.libraryAlt || ''

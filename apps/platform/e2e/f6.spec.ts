@@ -216,6 +216,41 @@ test.describe('Dateien', () => {
     await expect(page.getByText('Jedes Foto hat eine Beschreibung.')).toBeVisible()
     if (!narrow(page)) await expect(page.getByRole('navigation', { name: 'Dateien' }).getByRole('button', { name: /Bildbeschreibung fehlt/ })).not.toContainText('1')
   })
+
+  // The text page this needs: a Markdown field with the `page` profile (the figure component). The restaurant site that
+  // this suite pushes has only `basic` texts (no pictures, no components), so the test waits for such a field there.
+  test.fixme('4b. picks a library image for a Markdown figure and the preview shows it', async ({ page }) => {
+    const photo = `f6-figur-${stamp()}.png`
+    await open(page, '/s/restaurant/files')
+    await uploadPhoto(page, photo)
+
+    await open(page, '/s/restaurant/all/pages/new')
+    await page.getByLabel('Titel').fill(`Bildseite ${stamp()}`)
+    const text = page.getByRole('textbox', { name: 'Text' })
+    await text.click()
+    await page.keyboard.type('/Abbildung')
+    await page.keyboard.press('Enter')
+    const settings = page.getByRole('dialog', { name: 'Abbildung' })
+    await settings.getByRole('button', { name: 'Bild wählen' }).click()
+    const picker = page.getByRole('dialog', { name: 'Dateien' })
+    await picker.getByRole('button', { name: photo }).click()
+    await picker.getByLabel('Bildbeschreibung').fill('Gedeckter Tisch im Garten')
+    await picker.getByRole('button', { name: 'Dieses Foto verwenden' }).click()
+    await expect(picker).toHaveCount(0)
+    await expect(settings.locator('img')).toHaveAttribute('src', /\/api\/storage\//)
+    await expect(settings.getByLabel('Bildbeschreibung')).toHaveValue('Gedeckter Tisch im Garten')
+    await page.keyboard.press('Escape')
+
+    await page.getByRole('button', { name: 'Speichern', exact: true }).click()
+    await expect(toast(page)).toContainText('Gespeichert')
+    await page.reload({ waitUntil: 'networkidle' })
+    // The text keeps the library reference; the site gets the file's address.
+    await page.getByRole('button', { name: 'Markdown-Quelltext zeigen' }).click()
+    await expect(page.getByRole('textbox', { name: 'Text' })).toHaveValue(/src="\$file\.[A-Za-z0-9_-]+"/)
+    await page.getByRole('button', { name: 'Vorschau', exact: true }).click()
+    const preview = page.frameLocator('iframe[title="Vorschau der Website"]')
+    await expect(preview.locator('figure img')).toHaveAttribute('src', /\/api\/storage\//, { timeout: 20_000 })
+  })
 })
 
 // ---- Review, History, ⌘K, "Why not on the website?" ----

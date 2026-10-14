@@ -481,7 +481,11 @@
       "insert": "Einfügen",
       "descriptionRequired": "Beschreibe das Bild kurz, für Menschen, die es nicht sehen.",
       "addressRefused": "Diese Bildadresse ist nicht erlaubt. Erlaubt sind Webadressen (https://…).",
-      "noDescription": "Ein Bild im Text hat noch keine Beschreibung."
+      "noDescription": "Ein Bild im Text hat noch keine Beschreibung.",
+      "fromLibrary": "Aus Dateibibliothek wählen",
+      "upload": "Bild hochladen",
+      "orAddress": "Oder Webadresse eingeben",
+      "missing": "Bild nicht gefunden"
     },
     "text": {
       "tooLong": "Der Text ist zu lang (höchstens {max} Zeichen).",
@@ -510,10 +514,12 @@
     },
     "prop": {
       "optional": "(optional)",
-      "imagePlaceholder": "Pfad oder Web-Adresse",
+      "imagePlaceholder": "Webadresse (https://…)",
       "notSet": "Keine Angabe",
       "default": "Standard ({value})",
-      "choose": "Bitte wählen"
+      "choose": "Bitte wählen",
+      "chooseImage": "Bild wählen",
+      "changeImage": "Anderes Bild"
     }
   },
   "fields": {

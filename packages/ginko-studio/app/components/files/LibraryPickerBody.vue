@@ -12,7 +12,11 @@ import { useFilesLibrary } from '../../composables/useFilesLibrary'
 import FilesBrowser from './FilesBrowser.vue'
 import type { PickKind } from './util'
 
-export interface Chosen { id: string; alt?: Record<string, string> }
+/**
+ * `alt`: what a field stores as its own description (empty when the library's applies). `libraryAlt`: the library's
+ * description in the picker's language, for a place that must carry the text itself (a picture in a Markdown text).
+ */
+export interface Chosen { id: string; alt?: Record<string, string>; libraryAlt?: string }
 
 const props = defineProps<{ kind: PickKind; locale: string }>()
 const emit = defineEmits<{ choose: [chosen: Chosen]; cancel: [] }>()
@@ -38,7 +42,7 @@ function choose() {
   const file = known.value
   if (!file || !ready.value) return
   emit('choose', props.kind === 'image'
-    ? { id: file.id, alt: libraryAlt.value ? {} : { ...suggested.value, ...(needsAlt.value ? { [props.locale]: altText.value.trim() } : {}) } }
+    ? { id: file.id, alt: libraryAlt.value ? {} : { ...suggested.value, ...(needsAlt.value ? { [props.locale]: altText.value.trim() } : {}) }, ...(libraryAlt.value ? { libraryAlt: libraryAlt.value } : {}) }
     : { id: file.id })
 }
 </script>

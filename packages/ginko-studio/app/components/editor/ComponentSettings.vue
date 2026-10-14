@@ -45,6 +45,23 @@ function change(key: string, field: PropFieldType, value: PropValue) {
   if (problem) return
   emit('update', writeProp(field, props.values, key, next))
 }
+
+/**
+ * A picture from the library for an image prop. For `src`, its description also fills an empty `alt` of the component
+ * (the one the page shows for this picture), in the same change.
+ */
+function pick(key: string, field: PropFieldType, picked: { src: string; alt: string }) {
+  const problem = propProblemMessage(props.registry, props.tag, key, picked.src)
+  errors[key] = problem && coreMessage(locale.value, problem.key, problem.params)
+  if (problem) return
+  let next = writeProp(field, props.values, key, picked.src)
+  const altField = def.value?.props?.alt
+  if (key === 'src' && picked.alt && altField?.type === 'text' && !readProp(altField, props.values, 'alt')) {
+    next = writeProp(altField, next, 'alt', picked.alt)
+    errors.alt = undefined
+  }
+  emit('update', next)
+}
 </script>
 
 <template>
@@ -57,7 +74,7 @@ function change(key: string, field: PropFieldType, value: PropValue) {
       <p class="text-xs font-medium text-muted-foreground">{{ t('editor.block.required') }}</p>
       <PropField
         v-for="[key, field] in required" :key="key" :name="key" :field="field" :model-value="readProp(field, shown, key)" :error="errors[key]"
-        @change="change(key, field, $event)"
+        @change="change(key, field, $event)" @pick="pick(key, field, $event)"
       />
     </section>
 
@@ -70,14 +87,14 @@ function change(key: string, field: PropFieldType, value: PropValue) {
       <CollapsibleContent :id="moreId" class="grid gap-3">
         <PropField
           v-for="[key, field] in optional" :key="key" :name="key" :field="field" :model-value="readProp(field, shown, key)" :error="errors[key]"
-          @change="change(key, field, $event)"
+          @change="change(key, field, $event)" @pick="pick(key, field, $event)"
         />
       </CollapsibleContent>
     </Collapsible>
     <template v-else>
       <PropField
         v-for="[key, field] in optional" :key="key" :name="key" :field="field" :model-value="readProp(field, shown, key)" :error="errors[key]"
-        @change="change(key, field, $event)"
+        @change="change(key, field, $event)" @pick="pick(key, field, $event)"
       />
     </template>
 

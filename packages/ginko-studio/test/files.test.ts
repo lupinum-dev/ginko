@@ -1,8 +1,12 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
-import { ref } from 'vue'
-import { GINKO_ASSETS, type GinkoAssets } from '@lupinum/ginko-editor'
+import { markRaw, ref } from 'vue'
+import { components } from '@lupinum/ginko-components/registry'
+import { createGinkoEditor, GINKO_ASSETS, useFileImages, type GinkoAssets } from '@lupinum/ginko-editor'
+import ComponentSettings from '../app/components/editor/ComponentSettings.vue'
+import { EDITOR_FILES } from '../app/components/editor/context.ts'
+import ImageDialog from '../app/components/editor/ImageDialog.vue'
 import GinkoFieldImage from '../app/components/fields/GinkoFieldImage.vue'
 import FileInfoPanel from '../app/components/files/FileInfoPanel.vue'
 import FileRemoveDialog from '../app/components/files/FileRemoveDialog.vue'
@@ -169,5 +173,49 @@ describe('info panel alt text', () => {
     await flushPromises()
     expect(setAlt).toHaveBeenCalledWith('f1', 'en', 'Team at lunch')
     expect(text()).toContain('Gespeichert')
+  })
+})
+
+describe('library pictures in a Markdown text', () => {
+  async function choose(opener: string) {
+    button(opener)!.click()
+    await vi.waitFor(() => expect(button('Dieses Foto verwenden')).toBeDefined())
+    button('team.jpg')!.click()
+    await flushPromises()
+  }
+
+  // Wrong behaviour caught: the text gets the file's storage address (it breaks when the file is replaced), or a picture without description.
+  test('"Aus Dateibibliothek wählen" in the image dialog puts the file reference with the library description into the text', async () => {
+    library.alt = { de: 'Das Team beim Mittagessen' }
+    const handle = await createGinkoEditor({ text: 'Eins\n', profile: 'rich', element: document.createElement('div') })
+    if (handle.mode !== 'rich') throw new Error('expected rich')
+    handle.editor.commands.setTextSelection(5)
+    const images = useFileImages(assets, () => 'Bild nicht gefunden')
+    // markRaw: mount() makes its props deeply reactive, and a transaction made through a proxy does not fit the editor.
+    const dialog = mount(ImageDialog, { props: { editor: markRaw(handle.editor), open: true, images, locale: 'de' }, attachTo: document.body })
+    await flushPromises()
+    await choose('Aus Dateibibliothek wählen')
+    button('Dieses Foto verwenden')!.click()
+    await flushPromises()
+    expect(await handle.markdown()).toBe('Eins![Das Team beim Mittagessen]($file.f1)\n')
+    dialog.unmount()
+    handle.destroy()
+  })
+
+  // Wrong behaviour caught: the figure stores an address instead of the library file, or the description typed in the picker is lost.
+  test('"Bild wählen" at a figure stores the file reference and fills the empty description with the one typed in the picker', async () => {
+    const wrapper = mount(ComponentSettings, {
+      props: { tag: 'figure', registry: components, values: {} },
+      global: { provide: { [EDITOR_FILES as symbol]: { images: useFileImages(assets, () => 'Bild nicht gefunden'), locale: () => 'de' } } },
+      attachTo: document.body,
+    })
+    await choose('Bild wählen')
+    const alt = document.body.querySelector('#picker-alt') as HTMLInputElement
+    alt.value = 'Das Team beim Mittagessen'
+    alt.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+    button('Dieses Foto verwenden')!.click()
+    await flushPromises()
+    expect(wrapper.emitted('update')).toEqual([[{ src: '$file.f1', alt: 'Das Team beim Mittagessen' }]])
   })
 })
