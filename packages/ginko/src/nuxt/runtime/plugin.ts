@@ -7,9 +7,10 @@ import { addAlternatesResolver, addRouteMiddleware, clearError, createError, def
 import type { NuxtApp } from '#app'
 import type { Ref } from 'vue'
 import schema from '#ginko/schema'
-import { bundleFits, isBundle, knownBricks, withFileBricks, type Bundle, type Locale } from '../../internal.ts'
+import { bundleFits, isBundle, knownBricks, platformMarkdownRef, withFileBricks, withMarkdownRefs, type Bundle, type Locale } from '../../internal.ts'
 import { BUNDLE_STATE, PREVIEW_STATE } from './composables.ts'
 import { loadBundle as loadBundleCore, PlatformError } from './fetch.ts'
+import { serverTrees } from './markdown.ts'
 import { localeFromPath } from '@lupinum/ginko-i18n/core'
 import { config as i18nConfig } from '#ginko-i18n/config.mjs'
 import type { GinkoPublicConfig } from './shared.ts'
@@ -45,7 +46,14 @@ export default defineNuxtPlugin(async (nuxtApp) => {
 
   const load = async (locale: Locale) => {
     if (bundles.value[locale]) return
-    bundles.value = { ...bundles.value, [locale]: await loadBundle(config, locale, minRev, siteToken) }
+    const full = await loadBundle(config, locale, minRev, siteToken)
+    // On the server, platform texts become `{ ref }` like file texts, so the payload carries only the texts a page
+    // renders (useGinkoMarkdown reads them from this request's trees, no extra request). In the browser (language
+    // switch) the bundle keeps its trees: they are in memory already, and <GinkoMarkdown> takes both shapes.
+    const rev = `${full.schemaRev}.${full.contentRev}`
+    bundles.value = { ...bundles.value, [locale]: import.meta.server && config.sources.platform
+      ? withMarkdownRefs(full, schema, serverTrees(nuxtApp), (brick, id, field) => platformMarkdownRef(locale, rev, brick, id, field))
+      : full }
   }
 
   // The requested URL, not useRoute(): plugins run before the router resolves, when the route is still '/'.

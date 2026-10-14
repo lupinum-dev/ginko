@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync } from 'node:fs'
 import { basename, extname, join } from 'node:path'
-import type { Locale, MarkdownValue } from '@lupinum/ginko'
+import type { Locale } from '@lupinum/ginko'
 import { buildBundle, imageInfo, isVisible, resolveRouteLinks, todayIn, type Bundle, type FileInfo, type Schema } from '@lupinum/ginko/internal'
 import { hashOf, head } from './images.ts'
 import { makeVariants } from './variants.ts'
@@ -9,34 +9,6 @@ import { readContent, type ContentError, type ReadOptions } from './read.ts'
 /** The schema with only the file bricks: what the site's build turns into a bundle (CONTENT.md). */
 export function fileSchema(schema: Schema): Schema {
   return { ...schema, bricks: Object.fromEntries(Object.entries(schema.bricks).filter(([, brick]) => brick.source === 'files')) }
-}
-
-/** The site path that serves one markdown tree; `id` may contain `/` (`docs/einstieg`), kept as path segments because a static build would double-encode `%2F`. */
-export function markdownRef(locale: Locale, brick: string, id: string, field: string): string {
-  return `/__ginko/files/${locale}/md/${encodeURIComponent(brick)}/${id.split('/').map(encodeURIComponent).join('/')}/${encodeURIComponent(field)}.json`
-}
-
-/**
- * The bundle for page state: every markdown tree replaced by `{ ref, toc }` (CONTENT.md, Phase 14).
- * `trees` collects the trees by their ref, for the route that serves them.
- * @internal Loaded by the Ginko module and CLI; sites do not import it.
- */
-export function withMarkdownRefs(bundle: Bundle, schema: Schema, trees: Map<string, MarkdownValue>): Bundle {
-  const swap = (brick: string, id: string, data: Record<string, unknown>) => {
-    const out = { ...data }
-    for (const [name, field] of Object.entries(schema.bricks[brick]?.fields ?? {})) {
-      const value = out[name] as MarkdownValue | undefined
-      if (field.type !== 'markdown' || !value || !('nodes' in value)) continue
-      const ref = markdownRef(bundle.locale as Locale, brick, id, name)
-      trees.set(ref, value)
-      out[name] = value.toc === undefined ? { ref } : { ref, toc: value.toc }
-    }
-    return out
-  }
-  const bricks = Object.fromEntries(Object.entries(bundle.bricks).map(([key, b]) => [key, b.kind === 'single'
-    ? { ...b, data: swap(key, key, b.data) }
-    : { ...b, items: b.items.map((item) => ({ ...item, data: swap(key, item.id, item.data) })) }]))
-  return { ...bundle, bricks }
 }
 
 /**

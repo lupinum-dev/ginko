@@ -10,7 +10,7 @@ import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules, ginkoVercelConfig } from './route-rules.ts'
 import { configFilesToWatch, keepConfigWatchedAcrossFailures, nuxiRestart } from './watch.ts'
-import { checkSite, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
+import { checkSite, coreMessage, entryRedirects, fileMarkdownRef, redirectProblems, serializeSchema, withMarkdownRefs, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
 const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
@@ -180,6 +180,8 @@ export default defineNuxtModule<SiteInput>({
     // The preview shows drafts from the platform; a site whose bricks all come from files has nothing to preview.
     if (sources.platform) {
       extendPages((pages) => { pages.push({ name: 'ginko-preview', path: '/__ginko/preview', file: resolve('./runtime/preview.vue') }) })
+      // Page state holds platform texts as `{ ref }` (runtime/plugin.ts); this route serves them on client navigation.
+      addServerHandler({ route: '/__ginko/platform/:locale/:rev/md/**', handler: resolve(`./runtime/server/platform-md.${runtimeExt}`) })
     }
     for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'useGinkoPath', 'useGinkoLang', 'useGinkoSite']) addImports({ name, from: composables })
     for (const name of ['GinkoItem', 'GinkoPageKey', 'GinkoLocale', 'GinkoSeoInput']) addImports({ name, from: composables, type: true })
@@ -204,7 +206,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
   const contentDir = join(rootDir, 'content')
   const publicDir = join(rootDir, 'public')
   let bundles: Partial<Record<Locale, Bundle>> = {}
-  // Markdown trees by the path that serves them; the bundles carry only `{ ref, toc }` (CONTENT.md, Phase 14).
+  // Markdown trees by the path that serves them; the bundles carry only `{ ref }` (CONTENT.md, Phase 14).
   let trees = new Map<string, MarkdownTree>()
   // The search index per locale, from the bundles above (CONTENT.md, Phase 14).
   let searches: Partial<Record<Locale, Awaited<ReturnType<typeof content.searchIndex>>>> = {}
@@ -241,7 +243,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     trees = new Map()
     // What is served to everyone: no expired entries, no repo paths (kept only for the docs layer's "Edit this page" link).
     const now = new Date()
-    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, content.withMarkdownRefs(content.publicBundle(bundle!, schema, now, fileOptions), schema, trees)]))
+    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, withMarkdownRefs(content.publicBundle(bundle!, schema, now, fileOptions), schema, trees, (brick, id, field) => fileMarkdownRef(locale, brick, id, field))]))
     searches = Object.fromEntries(await Promise.all(Object.entries(bundles).map(async ([locale, bundle]) => [locale, await content.searchIndex(bundle!, trees, schema)])))
   }
   await build()

@@ -12,6 +12,8 @@ const eventWhen = useEventWhen()
 const event = useGinkoEntry('events', () => props.slug)
 const contact = useGinko('contact')
 const { url: siteUrl } = useGinkoSite()
+// In page state the description is `{ ref }`; the same text <GinkoMarkdown> shows below, loaded once.
+const description = await useGinkoMarkdown(() => event.value.data.description)
 
 // Event JSON-LD for search engines: the event's dates, place, price and booking link as the page shows them.
 const eventLd = computed(() => {
@@ -22,8 +24,7 @@ const eventLd = computed(() => {
     when: e.when,
     start: e.start,
     location: { name: siteName, address: { street: contact.value.data.street, postalCode: contact.value.data.postalCode, city: contact.value.data.city, country: 'AT' } },
-    // A `ref` description is fetched at runtime, so it is left out here (the description is optional).
-    description: e.description && 'nodes' in e.description ? e.description : undefined,
+    description: description.value ?? undefined,
     image: e.image ? new URL(e.image.url, siteUrl).href : undefined,
     price: e.price,
     booking: safeHref(e.booking),

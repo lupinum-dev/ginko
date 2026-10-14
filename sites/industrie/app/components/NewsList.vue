@@ -10,6 +10,11 @@ const props = defineProps<{ limit?: number; thumbs?: boolean }>()
 const { lang } = useSite()
 const news = useGinko('news')
 const items = computed(() => (props.limit ? news.value.items.slice(0, props.limit) : news.value.items))
+// In page state each text is `{ ref }`: load the texts of the listed items and keep only their excerpts.
+const { data: excerpts } = await useAsyncData(
+  () => `news-excerpts:${lang.value}:${items.value.map((n) => n.id).join(',')}`,
+  async () => Object.fromEntries(await Promise.all(items.value.map(async (n) => [n.id, excerpt(await fetchGinkoMarkdown(n.data.body))] as const))),
+)
 </script>
 
 <template>
@@ -18,7 +23,7 @@ const items = computed(() => (props.limit ? news.value.items.slice(0, props.limi
       <p class="date mono">{{ format.date(n.data.date) }}</p>
       <div class="text">
         <h3 :lang="langOf(n, 'title')"><NuxtLink :to="n.url">{{ n.data.title }}</NuxtLink></h3>
-        <p class="excerpt" :lang="langOf(n, 'body')">{{ excerpt(n.data.body) }}</p>
+        <p class="excerpt" :lang="langOf(n, 'body')">{{ excerpts?.[n.id] }}</p>
       </div>
       <img v-if="thumbs && n.data.image && safeHref(n.data.image.url)" class="thumb" :src="safeHref(n.data.image.url)" :alt="n.data.image.alt" :lang="langOf(n, 'image.alt')" width="120" :height="Math.round(120 * n.data.image.height / n.data.image.width)" loading="lazy">
     </li>

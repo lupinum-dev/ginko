@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { collection, defineSite, f, single, type MarkdownTree } from '@lupinum/ginko'
-import { serializeSchema } from '@lupinum/ginko/internal'
+import { fileMarkdownRef, serializeSchema, withMarkdownRefs } from '@lupinum/ginko/internal'
 import { buildIndex, searchSections, type SearchRecord } from '@lupinum/ginko/internal/search'
 import { loadIndex, search } from '@lupinum/ginko/search'
-import { buildFileBundles, searchIndex, withMarkdownRefs } from '../src/index.ts'
+import { buildFileBundles, searchIndex } from '../src/index.ts'
 
 const schema = serializeSchema(defineSite({
   site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
@@ -39,7 +39,7 @@ async function build(files: Record<string, string>, locale: 'de' | 'en' = 'de') 
   const s = site(files)
   const { bundles } = await buildFileBundles({ contentDir: s.content, publicDir: s.public, schema })
   const trees = new Map<string, MarkdownTree>()
-  const bundle = withMarkdownRefs(bundles[locale]!, schema, trees)
+  const bundle = withMarkdownRefs(bundles[locale]!, schema, trees, (brick, id, field) => fileMarkdownRef(locale, brick, id, field))
   const records = searchSections(bundle, { schema, trees })
   const index = await loadIndex(await searchIndex(bundle, trees, schema))
   return { records, find: (query: string) => search(index, query).map((hit) => hit.id) }
