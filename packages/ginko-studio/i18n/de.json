@@ -299,7 +299,7 @@
       "heading": "Schlüssel für Veröffentlichungen",
       "lead": "Mit diesen Schlüsseln veröffentlichen Programme die Seite, zum Beispiel die automatische Veröffentlichung. Neue Schlüssel richtet die Website-Betreuung ein.",
       "createdAt": "Erstellt {when}",
-      "createdBy": "Erstellt {when} von {who}",
+      "createdBy": "{who} · erstellt {when}",
       "lastUsedAt": ", zuletzt benutzt {when}",
       "neverUsed": ", noch nie benutzt",
       "revoke": "Widerrufen",

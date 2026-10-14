@@ -299,7 +299,7 @@
       "heading": "Publishing keys",
       "lead": "Programs use these keys to publish the site, for example automatic publishing. Site support sets up new keys.",
       "createdAt": "Created {when}",
-      "createdBy": "Created {when} by {who}",
+      "createdBy": "{who} · created {when}",
       "lastUsedAt": ", last used {when}",
       "neverUsed": ", never used",
       "revoke": "Revoke",

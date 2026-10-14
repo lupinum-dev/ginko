@@ -299,7 +299,7 @@
       "heading": "Claves de publicación",
       "lead": "Los programas usan estas claves para publicar el sitio, por ejemplo la publicación automática. El soporte del sitio configura las claves nuevas.",
       "createdAt": "Creada {when}",
-      "createdBy": "Creada {when} por {who}",
+      "createdBy": "{who} · creada {when}",
       "lastUsedAt": ", último uso {when}",
       "neverUsed": ", nunca usada",
       "revoke": "Revocar",
