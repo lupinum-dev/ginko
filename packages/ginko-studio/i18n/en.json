@@ -134,7 +134,12 @@
       "publishNow": "Publish now",
       "schedule": "Schedule",
       "clearSchedule": "Clear schedule",
-      "futureTime": "Please choose a time in the future."
+      "futureTime": "Please choose a time in the future.",
+      "timeTwice": "This time occurs twice on that day because the clocks go back. Which one do you mean?",
+      "timeTwiceFirst": "The first time ({time})",
+      "timeTwiceSecond": "The second time ({time})",
+      "timePickOne": "Please choose which of the two times you mean.",
+      "timeMissing": "This time does not exist on that day because the clocks go forward. Please choose another time."
     },
     "unpublish": {
       "button": "Take offline",

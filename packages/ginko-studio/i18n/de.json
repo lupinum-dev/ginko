@@ -134,7 +134,12 @@
       "publishNow": "Jetzt veröffentlichen",
       "schedule": "Planen",
       "clearSchedule": "Zeitplan aufheben",
-      "futureTime": "Bitte einen Zeitpunkt in der Zukunft wählen."
+      "futureTime": "Bitte einen Zeitpunkt in der Zukunft wählen.",
+      "timeTwice": "Diese Uhrzeit gibt es an diesem Tag zweimal, weil die Uhr zurückgestellt wird. Welche ist gemeint?",
+      "timeTwiceFirst": "Das erste Mal ({time})",
+      "timeTwiceSecond": "Das zweite Mal ({time})",
+      "timePickOne": "Bitte wählen, welche der beiden Uhrzeiten gemeint ist.",
+      "timeMissing": "Diese Uhrzeit gibt es an diesem Tag nicht, weil die Uhr vorgestellt wird. Bitte eine andere Uhrzeit wählen."
     },
     "unpublish": {
       "button": "Zurückziehen",

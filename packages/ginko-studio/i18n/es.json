@@ -134,7 +134,12 @@
       "publishNow": "Publicar ahora",
       "schedule": "Programar",
       "clearSchedule": "Quitar programación",
-      "futureTime": "Elige una hora en el futuro."
+      "futureTime": "Elige una hora en el futuro.",
+      "timeTwice": "Esta hora existe dos veces ese día porque se atrasa el reloj. ¿Cuál quieres decir?",
+      "timeTwiceFirst": "La primera vez ({time})",
+      "timeTwiceSecond": "La segunda vez ({time})",
+      "timePickOne": "Elige cuál de las dos horas quieres decir.",
+      "timeMissing": "Esta hora no existe ese día porque se adelanta el reloj. Elige otra hora."
     },
     "unpublish": {
       "button": "Quitar de la web",

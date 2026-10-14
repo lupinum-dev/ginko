@@ -4,22 +4,28 @@ import { compileCatalogs } from '@lupinum/ginko-i18n/compile'
 import { describe, expect, it } from 'vitest'
 import server from '../../ginko-server/i18n/de.json'
 import { textOf } from '../app/utils/textOf.ts'
-import { msToZoned, whenText, zonedToMs } from '../app/utils/when.ts'
+import { msToZoned, whenText, zonedTimes } from '../app/utils/when.ts'
 
-describe('zonedToMs / msToZoned', () => {
+describe('zonedTimes / msToZoned', () => {
   it.each([
     ['2026-10-14T09:00', 'Europe/Vienna', '2026-10-14T07:00:00.000Z'], // summer time, UTC+2
     ['2026-12-01T09:00', 'Europe/Vienna', '2026-12-01T08:00:00.000Z'], // winter time, UTC+1
     ['2026-10-25T09:00', 'Europe/Vienna', '2026-10-25T08:00:00.000Z'], // the morning after the switch
     ['2026-10-14T09:00', 'America/New_York', '2026-10-14T13:00:00.000Z'],
   ])('%s in %s is %s, and back', (local, zone, iso) => {
-    const ms = zonedToMs(local, zone)!
-    expect(new Date(ms).toISOString()).toBe(iso)
-    expect(msToZoned(ms, zone)).toBe(local)
+    const times = zonedTimes(local, zone)!
+    expect(times.map((ms) => new Date(ms).toISOString())).toEqual([iso])
+    expect(msToZoned(times[0]!, zone)).toBe(local)
+  })
+
+  // Wrong behaviour caught: the second 02:30 is taken without asking, and a 02:30 that never happens becomes 03:30.
+  it('the hour the clocks go back has two times, the skipped hour none', () => {
+    expect(zonedTimes('2026-10-25T02:30', 'Europe/Vienna')!.map((ms) => new Date(ms).toISOString())).toEqual(['2026-10-25T00:30:00.000Z', '2026-10-25T01:30:00.000Z'])
+    expect(zonedTimes('2026-03-29T02:30', 'Europe/Vienna')).toEqual([])
   })
 
   it('a malformed value is undefined, not a wrong time', () => {
-    expect(zonedToMs('14.10.2026 09:00', 'Europe/Vienna')).toBeUndefined()
+    expect(zonedTimes('14.10.2026 09:00', 'Europe/Vienna')).toBeUndefined()
   })
 })
 

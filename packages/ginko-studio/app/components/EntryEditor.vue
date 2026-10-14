@@ -7,12 +7,12 @@ import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
 import { displayValue, fileIdsIn, languageName, publishQuestion, titleOf } from '../utils/content'
 import { shownLabel } from '../utils/labels'
-import { msToZoned, whenText, zonedToMs } from '../utils/when'
+import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { opErrorOf } from '../composables/useOps'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { EllipsisIcon } from '@lucide/vue'
 import WhyNotPublic from './WhyNotPublic.vue'
-import SiteZoneNote from './SiteZoneNote.vue'
+import ScheduleField from './ScheduleField.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
 import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
@@ -23,7 +23,6 @@ import { Button } from '@studio/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@studio/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
 import { Badge } from '@studio/components/ui/badge'
-import { Input } from '@studio/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
 import { Label } from '@studio/components/ui/label'
@@ -256,11 +255,11 @@ const publishTask = computed(() => props.tasks?.save ?? props.tasks?.create)
 const publishing = ref(false)
 const when = ref<'now' | 'later'>('now')
 const at = ref('')
+/** The instant `at` names (ScheduleField); undefined while it names none or two. */
+const picked = ref<number>()
 const publishError = ref('')
 const publishBusy = ref(false)
 const HOUR = 60 * 60 * 1000
-const minAt = ref('')
-const maxAt = ref('')
 
 function openPublish() {
   const now = Date.now()
@@ -268,8 +267,7 @@ function openPublish() {
   when.value = scheduled ? 'later' : 'now'
   // A suggestion for "Online ab": tomorrow 9:00 at the site, or the time already planned.
   at.value = scheduled ? msToZoned(scheduled, timeZone.value) : `${msToZoned(now + 24 * HOUR, timeZone.value).slice(0, 10)}T09:00`
-  minAt.value = msToZoned(now, timeZone.value)
-  maxAt.value = msToZoned(now + 365 * 24 * HOUR, timeZone.value)
+  picked.value = scheduled
   publishError.value = ''
   publishing.value = true
 }
@@ -278,11 +276,11 @@ async function doPublish() {
   publishError.value = ''
   let ms: number | undefined
   if (when.value === 'later') {
-    ms = zonedToMs(at.value, timeZone.value)
-    if (ms === undefined || ms <= Date.now()) {
-      publishError.value = t('entry.publish.futureTime')
-      return
-    }
+    const problem = scheduleProblem(at.value, timeZone.value, picked.value, Date.now())
+    if (problem === 'entry.publish.timeMissing') document.getElementById('publish-at')?.focus()
+    else if (problem) publishError.value = t(problem)
+    if (problem) return
+    ms = picked.value
   }
   publishBusy.value = true
   try {
@@ -457,8 +455,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
             </RadioGroup>
             <div v-if="when === 'later'" class="grid max-w-80 gap-1.5">
               <Label for="publish-at" class="font-semibold">{{ t('entry.publish.dateTime') }}</Label>
-              <Input id="publish-at" v-model="at" type="datetime-local" :min="minAt" :max="maxAt" required />
-              <SiteZoneNote :zone="timeZone" input />
+              <ScheduleField v-model:local="at" v-model:picked="picked" :zone="timeZone" input-id="publish-at" />
             </div>
             <p v-if="publishError" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ publishError }}</p>
             <div class="flex flex-wrap gap-2">
