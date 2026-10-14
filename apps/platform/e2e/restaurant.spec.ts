@@ -89,6 +89,14 @@ test.describe('Wirtin', () => {
     await expect(preview.getByText('Kürbisabend für Freunde').first()).toBeVisible({ timeout: 20_000 })
   })
 
+  test('25. the size line of the save bar is a live region before it says anything', async ({ page }) => {
+    await page.goto('/s/restaurant/all/events/new', { waitUntil: 'networkidle' })
+    // Screen readers announce only changes inside a live region that is already in the accessibility tree.
+    const sizeLine = page.locator('.bar [aria-live="polite"]')
+    await expect(sizeLine).toHaveText('')
+    await expect(sizeLine).not.toHaveCSS('display', 'none')
+  })
+
   test('13. she changes the phone number herself; a number with letters is refused', async ({ page }) => {
     await page.goto('/s/restaurant/all', { waitUntil: 'networkidle' })
     await page.getByRole('link', { name: 'Adresse und Kontakt' }).first().click()
