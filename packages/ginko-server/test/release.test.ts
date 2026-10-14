@@ -377,6 +377,21 @@ describe('release regressions (Phase 5 review)', () => {
     expect((await storedSite(s)).entryCount).toBe(Object.keys(s.entries).length)
   })
 
+  // Wrong behaviour caught: a release that makes an entry too large says only "this entry is too large", and a removed
+  // entry (which counts apart, in the trash) blocks it the same way.
+  it('a release that makes a live entry too large names it; a removed entry does not block it', async () => {
+    const s = await setup()
+    const schema = withSubtitle(await storedSchema(s))
+    schema.bricks.menu!.fields.subtitle = { type: 'markdown', label: 'Untertitel', max: 500_000, translate: false }
+    const writes = (await subtitleWrites(s)).map((w) => (w.entry === s.entries['menu-schnitzel'] ? { ...w, fields: { subtitle: 'x'.repeat(495_000) } } : w))
+
+    const refused = await errorOf(release(s, { schema, writes }))
+    expect(refused).toMatchObject({ code: 'TOO_LARGE', message: 'Nach dem Release wäre „Wiener Schnitzel vom Kalb“ zu groß (484 KB von höchstens 480 KB).', details: { entry: s.entries['menu-schnitzel'] } })
+
+    await s.t.run((ctx) => ctx.db.patch(s.entries['menu-schnitzel']!, { deletedAt: Date.now() }))
+    await expect(release(s, { schema, writes })).resolves.toMatchObject({ schemaRev: 2 })
+  })
+
   it('a migration dropped from the config keeps its identity: same descriptor is skipped, changed one is MIGRATION_CHANGED', async () => {
     const s = await setup()
     const dropped = async () => {

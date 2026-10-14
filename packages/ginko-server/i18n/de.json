@@ -136,6 +136,7 @@
     "siteMissing": "Die Seite gibt es nicht.",
     "schemaChangedMeanwhileRetry": "Das Schema hat sich inzwischen geändert. Bitte neu versuchen.",
     "releaseTooLarge": "Dieser Release ist zu groß.",
+    "releaseEntryTooLarge": "Nach dem Release wäre „{title}“ zu groß ({used} von höchstens {limit}).",
     "schemaInvalid": "Das Schema ist nicht gültig.",
     "knownMigrationChanged": "Eine bekannte Migration hat sich geändert. Eine Reparatur braucht eine neue ID.",
     "schemaBreaksChangeRules": "Das Schema verletzt die Regeln für Änderungen.",

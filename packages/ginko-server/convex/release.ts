@@ -13,7 +13,8 @@ import { msg, recorded } from './lib/history'
 import { isFetchableSiteUrl } from './lib/siteUrl'
 import { storageSums } from './lib/lifecycle'
 import { putTrees } from './lib/trees'
-import { BUDGET, checkNewFiles, checkNewLinks, entryUses, overBudget, same, syncEntryRefs } from './lib/write'
+import { BUDGET, checkNewFiles, checkNewLinks, entryUses, overBudget, same, sizeText, syncEntryRefs } from './lib/write'
+import { labelOf } from './entries'
 
 const scope = v.union(v.literal('release'), v.literal('pull'), v.literal('check'), v.literal('export'))
 
@@ -306,10 +307,15 @@ export const release = internalMutation({
     // Budget (SPEC 3, 5.2 step 9). Documents are the entries written plus the singles created.
     if (updates.length + created.length > RELEASE_LIMITS.documents) fail('RELEASE_TOO_LARGE', 'errors.releaseTooLarge')
     const updated = new Map(updates.map((u) => [u.entry._id, u]))
-    // A written entry must fit the entry limit unless it does not grow; an entry the release does not touch is not checked.
-    const tooLarge = [...created.map((c) => ({ after: c.bytes, before: 0 })), ...updates.map((u) => ({ after: u.bytes, before: u.entry.bytes }))]
-      .find((e) => !fitsBudget(e.after, e.before, BUDGET.entryBytes))
-    if (tooLarge) fail('TOO_LARGE', 'errors.entryTooLarge', overBudget(tooLarge.after, BUDGET.entryBytes))
+    // A written live entry and a created single must fit the entry limit unless they do not grow. An entry the release
+    // does not touch is not checked, nor a removed one (the trash counts apart); the error names the entry.
+    const tooLarge = [
+      ...created.map((c) => ({ after: c.bytes, before: 0, title: labelOf(next, c.brick, c.data), entry: undefined })),
+      ...updates.filter((u) => !u.entry.deletedAt).map((u) => ({ after: u.bytes, before: u.entry.bytes, title: labelOf(next, u.entry.brick, u.data), entry: u.entry._id })),
+    ].find((e) => !fitsBudget(e.after, e.before, BUDGET.entryBytes))
+    if (tooLarge) {
+      fail('TOO_LARGE', 'errors.releaseEntryTooLarge', { title: tooLarge.title, used: sizeText(tooLarge.after), limit: sizeText(BUDGET.entryBytes) }, tooLarge.entry ? { entry: tooLarge.entry } : undefined)
+    }
     // entryCount and bytes count live entries only (SPEC 4.2 remove); removed ones are in trashBytes.
     const entryCount = entries.filter((e) => !e.deletedAt).length + created.length
     const after = storageSums([

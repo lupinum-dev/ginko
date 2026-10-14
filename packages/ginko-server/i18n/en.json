@@ -134,6 +134,7 @@
     "siteMissing": "This site does not exist.",
     "schemaChangedMeanwhileRetry": "The schema has changed in the meantime. Please try again.",
     "releaseTooLarge": "This release is too large.",
+    "releaseEntryTooLarge": "After the release, “{title}” would be too large ({used} of at most {limit}).",
     "schemaInvalid": "The schema is not valid.",
     "knownMigrationChanged": "A known migration has changed. A repair needs a new ID.",
     "schemaBreaksChangeRules": "The schema breaks the rules for changes.",

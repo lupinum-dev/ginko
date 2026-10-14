@@ -134,6 +134,7 @@
     "siteMissing": "Este sitio no existe.",
     "schemaChangedMeanwhileRetry": "El esquema ha cambiado mientras tanto. Inténtalo de nuevo.",
     "releaseTooLarge": "Esta versión es demasiado grande.",
+    "releaseEntryTooLarge": "Después de la versión, «{title}» sería demasiado grande ({used} de como máximo {limit}).",
     "schemaInvalid": "El esquema no es válido.",
     "knownMigrationChanged": "Una migración conocida ha cambiado. Una reparación necesita un ID nuevo.",
     "schemaBreaksChangeRules": "El esquema incumple las reglas de cambio.",

@@ -2,7 +2,7 @@
 // It reads the state and never writes.
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { checkSite, type SiteInput } from '../core/index.ts'
+import { checkSite, SITE_BUDGET, type SiteInput } from '../core/index.ts'
 import type { Fetch } from '../nuxt/external-links.ts'
 import { checkFileLinks } from './content-links.ts'
 import { CliError } from './model.ts'
@@ -77,7 +77,7 @@ async function checkRelease(input: { config: SiteInput; platform: Platform; log:
   const migrations = result.schema.migrations.filter((m) => !state.migrations.some((s) => s.id === m.id)
     && !state.schema.migrations.some((s) => s.id === m.id))
   if (migrations.length > 0) input.log(`New migrations: ${migrations.map((m) => m.id).join(', ')}. Writes: ${candidate.writes.length} entries.`)
-  input.log(`Size: site ${kib(candidate.bytes.site)} of 4 MiB, largest entry ${kib(candidate.bytes.largest)} (limit 256 KiB).`)
+  input.log(`Size: site ${kib(candidate.bytes.site)} of ${kib(SITE_BUDGET.siteBytes)}, largest entry ${kib(candidate.bytes.largest)} (limit ${kib(SITE_BUDGET.entryBytes)}).`)
   if (candidate.problems.length > 0) {
     for (const line of explainProblems(candidate.problems)) input.log(line)
     return false
