@@ -2,6 +2,7 @@
 // Every factory returns a brick for `bricks: { <key>: services() }`. For file content the brick key is the folder name,
 // so a site that keeps `content/leistungen/` writes `leistungen: services()`.
 import { collection, f, type CollectionBrick, type Field, type Fields, type Label, type Locale, type RouteTemplate } from '@lupinum/ginko'
+import type { MarkdownField } from '@lupinum/ginko/internal'
 
 export type Routes = Record<Locale, RouteTemplate>
 
@@ -26,7 +27,7 @@ export interface RoutedOptions<E extends Fields = {}> extends BrickOptions<E> {
 
 type MarkdownOptions = NonNullable<Parameters<typeof f.markdown>[1]>
 /** The main Markdown text of an entry, with the site's body options. */
-const bodyOf = (label: Label, o: BrickOptions<any>, preset: MarkdownOptions = {}) => f.markdown(label, { ...preset, ...o.body })
+const bodyOf = (label: Label, o: BrickOptions<any>, preset: MarkdownOptions = {}): MarkdownField => f.markdown(label, { ...preset, ...o.body })
 
 /** A schema label in both languages. The editor sees the one for their language, and a site in another language falls back to English. */
 const both = (de: string, en: string) => ({ de, en })
