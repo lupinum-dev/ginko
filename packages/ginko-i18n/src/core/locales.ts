@@ -163,11 +163,12 @@ export function canonicalCase(path: string, config: LocaleConfig): string | unde
 
 /**
  * The one form of a path: no repeated slashes, no trailing slash (except `/`), the locale code in its
- * own case. `undefined` when the path already has it. The result always starts with exactly one `/`,
- * so `//evil.com` becomes `/evil.com` and a redirect to it never leaves the site.
+ * own case. `undefined` when the path already has it. Browsers read `\` as `/` in http(s) URLs, so a
+ * run of mixed `/` and `\` collapses to one `/`: `//evil.com` and `/\evil.com/` become `/evil.com`,
+ * and a redirect to the result never leaves the site.
  */
 export function cleanPath(path: string, config: LocaleConfig): string | undefined {
-  let clean = path.replace(/\/{2,}/g, '/')
+  let clean = path.replace(/[\\/]{2,}/g, '/')
   if (clean.length > 1 && clean.endsWith('/')) clean = clean.slice(0, -1)
   clean = canonicalCase(clean, config) ?? clean
   return clean === path ? undefined : clean

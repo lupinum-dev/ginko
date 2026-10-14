@@ -70,7 +70,7 @@ describe('paths', () => {
   })
   it.each([
     ['//blog', '/blog'], ['/blog/', '/blog'], ['//en//blog/', '/en/blog'], ['/EN/about/', '/en/about'], ['/pt-br/x', '/pt-BR/x'], ['/PT-BR', '/pt-BR'],
-    ['//evil.com', '/evil.com'], ['/', undefined], ['/en', undefined], ['/blog', undefined], ['/pt-BR/x', undefined],
+    ['//evil.com', '/evil.com'], ['/\\evil.com/', '/evil.com'], ['/', undefined], ['/en', undefined], ['/blog', undefined], ['/pt-BR/x', undefined],
   ])('cleanPath(%s) → %s', (path, expected) => {
     expect(cleanPath(path, resolveConfig({ locales: ['de', 'en', { code: 'pt-BR', language: 'pt-BR' }] }))).toBe(expected)
   })
