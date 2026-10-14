@@ -4,7 +4,7 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Fields } from '@lupinum/ginko'
-import { byteSize, entryBytes, fitsBudget, remapFileIds, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, entryBytes, fitsBudget, remapFileIds, stableJson, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -238,22 +238,27 @@ export const importExport = internalMutation({
         uploads.set(file.id, have._id)
         continue
       }
-      // The same content is already in this site's library (an earlier import, or the owner's own upload): the entries
-      // use that file, with its description, and the copy the CLI stored again is not kept.
       const sha256 = file.sha256
-      const same = sha256 === undefined ? null : await ctx.db.query('uploads').withIndex('by_site_sha256', (q) => q.eq('site', site._id).eq('sha256', sha256))
-        .filter((q) => q.and(q.eq(q.field('trashedAt'), undefined), q.neq(q.field('status'), 'failed'))).first()
-      if (same) {
-        uploads.set(file.id, same._id)
-        await deleteStorage(ctx, file.storageId)
-        continue
-      }
       const library = {
         ...(file.folder !== undefined && folders.has(file.folder) ? { folder: folders.get(file.folder)! } : {}),
         ...(file.kept ? { kept: true } : {}),
         ...(file.focus ? { focus: file.focus } : {}),
         ...(sha256 ? { sha256 } : {}),
         ...(file.alt && Object.keys(file.alt).length ? { alt: file.alt } : {}),
+      }
+      // The same content is already in this site's library (an earlier import, or the owner's own upload): the entries
+      // use that file, with its description, and the copy the CLI stored again is not kept. An original from
+      // files-export takes any such file (the export holds each content once). A backup may hold the same content as two
+      // library files with their own description, folder, focus or kept flag: it takes only a file that has the same.
+      const candidates = sha256 === undefined ? [] : await ctx.db.query('uploads').withIndex('by_site_sha256', (q) => q.eq('site', site._id).eq('sha256', sha256))
+        .filter((q) => q.and(q.eq(q.field('trashedAt'), undefined), q.neq(q.field('status'), 'failed'))).collect()
+      const libraryOf = (row: { folder?: Id<'folders'>; kept?: boolean; focus?: { x: number; y: number }; alt?: Record<string, string> }) =>
+        stableJson([row.folder ?? null, row.kept ?? false, row.focus ?? null, row.alt ?? {}])
+      const same = candidates.find((row) => file.original || libraryOf(row) === libraryOf(library))
+      if (same) {
+        uploads.set(file.id, same._id)
+        await deleteStorage(ctx, file.storageId)
+        continue
       }
       if (file.original) {
         // An original takes the path of every upload (uploadsNode): content check, metadata removed, WebP, size limit, variants.

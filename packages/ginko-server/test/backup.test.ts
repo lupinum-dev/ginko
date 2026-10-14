@@ -338,6 +338,25 @@ describe('import of local:files-export originals', () => {
   })
 })
 
+describe('import of a backup with the same picture twice', () => {
+  // Wrong behaviour caught: two library files of one backup with the same bytes became one on restore, and the second
+  // lost its description and kept flag (the entries using it showed the first file's description).
+  it('restores two files with the same bytes as two library files, also when imported again', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2])
+    const hash = createHash('sha256').update(bytes).digest('hex')
+    const file = async (id: string, extra: object) => ({ id, storageId: await s.t.run((ctx) => ctx.storage.store(new Blob([bytes], { type: 'image/webp' }))), name: `${id}.webp`, mime: 'image/webp', size: bytes.byteLength, sha256: hash, ...extra })
+    const importOnce = async () => s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', files: [await file('a', { alt: { de: 'Hund' }, kept: true }), await file('b', { alt: { de: 'Katze' }, kept: true })], entries: [],
+    })
+    await importOnce()
+    await importOnce()
+    const uploads = await s.t.run((ctx) => ctx.db.query('uploads').withIndex('by_site_sha256', (q) => q.eq('site', s.site).eq('sha256', hash)).collect())
+    expect(uploads.map((u) => [u.alt, u.kept])).toEqual([[{ de: 'Hund' }, true], [{ de: 'Katze' }, true]])
+  })
+})
+
 describe('import budget (SPEC 3)', () => {
   // Wrong behaviour caught: an import stores entries over the entry limit (the Studio then cannot save them), and the
   // CLI clears the local site before the platform refuses anything, so a refused import leaves it half-imported.
