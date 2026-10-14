@@ -191,8 +191,9 @@ describe('createGinkoEditor', () => {
 })
 
 describe('pictures from the Files library', () => {
-  // Wrong behaviour caught: the editor draws `$file.<id>` as an address (a broken picture), or writes the file's URL back into the text.
-  test('a picture keeps its reference in the text and shows its file; a file the library lacks shows a note instead', async () => {
+  // Wrong behaviour caught: the editor draws `$file.<id>` as an address (a broken picture), writes the file's URL back into the
+  // text, or draws a trashed file as intact although the save refuses it.
+  test('a picture keeps its reference in the text and shows its file; a file the library lacks or has in the trash shows a note instead', async () => {
     const library = reactive<Record<string, UploadDetails | null>>({})
     const assets: GinkoAssets = {
       state: () => computed(() => undefined),
@@ -200,7 +201,7 @@ describe('pictures from the Files library', () => {
       upload: async () => 'unused',
     }
     const fileImages = useFileImages(assets, () => 'Bild nicht gefunden')
-    const text = '![Hund]($file.dog) und ![Katze]($file.gone)\n'
+    const text = '![Hund]($file.dog) und ![Katze]($file.gone) ![Maus]($file.old)\n'
     const handle = await createGinkoEditor({ text, profile: 'rich', element: document.createElement('div'), fileImages })
     if (handle.mode !== 'rich') throw new Error('expected rich')
     const dom = handle.editor.view.dom
@@ -208,14 +209,15 @@ describe('pictures from the Files library', () => {
 
     library.dog = { url: 'https://files.test/dog.webp', name: 'dog.webp', size: 1, width: 800, height: 600 }
     library.gone = null
+    library.old = { url: 'https://files.test/old.webp', name: 'old.webp', size: 1, width: 800, height: 600, trashed: true }
     await nextTick()
     await nextTick()
     expect([...dom.querySelectorAll('.ginko-image img')].map((img) => [img.getAttribute('src'), img.getAttribute('alt')])).toEqual([['https://files.test/dog.webp', 'Hund']])
-    expect(dom.querySelector('.ginko-image-missing')?.textContent).toBe('Bild nicht gefunden')
+    expect([...dom.querySelectorAll('.ginko-image-missing')].map((note) => note.textContent)).toEqual(['Bild nicht gefunden', 'Bild nicht gefunden'])
     expect(handle.dirty).toBe(false)
 
     appendX(handle.editor, -1)
-    expect(await handle.markdown()).toBe('![Hund]($file.dog) und ![Katze]($file.gone)X\n')
+    expect(await handle.markdown()).toBe('![Hund]($file.dog) und ![Katze]($file.gone) ![Maus]($file.old)X\n')
     handle.destroy()
   })
 })

@@ -9,6 +9,8 @@ export interface UploadDetails {
   url: string; name: string; size: number; width: number | null; height: number | null
   /** The library's description per language: it applies wherever a field has none of its own. */
   alt?: Record<string, string>
+  /** In the trash: a field keeps showing it, but a text may not name it (the save refuses), so a text shows it as missing. */
+  trashed?: true
 }
 
 /**
@@ -47,7 +49,7 @@ export interface FileImages {
   want(src: string): void
   /**
    * The file of a `$file.<id>` source (reactive): undefined while it loads and for any other source, null when the
-   * library has no ready file with this ID.
+   * library has no ready file with this ID or the file is in the trash.
    */
   file(src: string): UploadDetails | null | undefined
   /** The text in place of a file the library does not have, in the UI language. */
@@ -68,7 +70,8 @@ export function useFileImages(assets: GinkoAssets, missingText: () => string): F
     file(src) {
       const id = fileRefOf(src)
       // `in`, not Object.hasOwn: Vue tracks `in` on a reactive object, so a file that arrives later is seen.
-      return id === undefined || !(id in known) ? undefined : known[id]
+      if (id === undefined || !(id in known)) return undefined
+      return known[id]?.trashed ? null : known[id]
     },
     missingText,
   }

@@ -177,7 +177,8 @@ export const get = query({
 /**
  * Read path for fields that show a stored file (a saved image or PDF): the URL of each READY upload
  * of this site. Unknown ids, uploads of another site and uploads that are not ready give null, so
- * a reply never shows whether an id exists elsewhere.
+ * a reply never shows whether an id exists elsewhere. A file in the trash says so (`trashed`): a field
+ * keeps showing it, but a text may not name it.
  */
 export const urls = query({
   args: { site: v.string(), ids: v.array(v.string()) },
@@ -185,12 +186,12 @@ export const urls = query({
     const actor = await actorFor(ctx, site)
     // A page shows at most a few dozen files (gallery max 24); a bound keeps one query small.
     if (ids.length > 200) fail('INVALID', 'errors.tooManyFiles')
-    const found: Record<string, { url: string; name: string; size: number; width: number | null; height: number | null; alt: Record<string, string> } | null> = {}
+    const found: Record<string, { url: string; name: string; size: number; width: number | null; height: number | null; alt: Record<string, string>; trashed?: true } | null> = {}
     for (const id of ids) {
       const uploadId = ctx.db.normalizeId('uploads', id)
       const row = uploadId ? await ctx.db.get(uploadId) : null
       const url = row && row.site === actor.site._id && row.status === 'ready' && row.processedId ? await ctx.storage.getUrl(row.processedId) : null
-      found[id] = row && url ? { url, name: row.name, size: row.size, width: row.width ?? null, height: row.height ?? null, alt: row.alt ?? {} } : null
+      found[id] = row && url ? { url, name: row.name, size: row.size, width: row.width ?? null, height: row.height ?? null, alt: row.alt ?? {}, ...(row.trashedAt ? { trashed: true as const } : {}) } : null
     }
     return found
   },
