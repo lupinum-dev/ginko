@@ -95,9 +95,10 @@ const ops = useOps(s.slug)
         <h1 class="text-xl font-semibold tracking-tight">{{ shownLabel(brick.label, s.main.value) }}</h1>
         <Button v-if="canCreate" as-child><NuxtLink :to="`/s/${s.slug.value}/all/${key}/new`"><PlusIcon aria-hidden="true" />{{ t('site.all.new') }}</NuxtLink></Button>
       </header>
-      <SavedViews v-if="total || asked || search" v-model:search="search" v-model:sort="sort" :slug="s.slug.value" :brick-key="key" :brick="brick" />
+      <!-- While an answer loads, the last page can be an empty search: the box stays (it may hold the focus) and no empty state shows. -->
+      <SavedViews v-if="total || asked || search || (page && loading)" v-model:search="search" v-model:sort="sort" :slug="s.slug.value" :brick-key="key" :brick="brick" />
       <p class="sr-only" aria-live="polite">{{ loading && asked ? t('site.all.searching') : '' }}</p>
-      <p v-if="!page" class="text-muted-foreground" role="status">{{ t('entry.loading') }}</p>
+      <p v-if="!page || (!total && loading)" class="text-muted-foreground" role="status">{{ t('entry.loading') }}</p>
       <p v-else-if="!total && !asked" class="text-muted-foreground">{{ t('site.all.noEntries') }}</p>
       <p v-else-if="!total" class="text-muted-foreground">{{ t('basics.views.noMatch') }}</p>
       <template v-else>
