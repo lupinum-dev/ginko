@@ -4,7 +4,7 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Json } from '@lupinum/ginko'
-import { byteSize, entryBytes, validate, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, entryBytes, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -127,6 +127,9 @@ export const importClear = internalMutation({
   },
 })
 
+/** The first value of an import batch that the Studio would refuse today: the exported entry ID, its brick and the issue. */
+export type ImportWarning = { id: string; brick: string; path: string } & Msg
+
 /**
  * Import step 2, repeated per batch: stores the batch's files as ready uploads and its entries.
  * - `files` name uploaded storage ids. A storage id that already has an upload row is not stored twice,
@@ -134,6 +137,8 @@ export const importClear = internalMutation({
  * - Entry data gets the new upload IDs in place of the exported ones (an ID that is not in `files` stays).
  * - Slugs and file references are rebuilt from the data; deletedAt, rev and prints are restored.
  * - The site's counters grow by the batch (entryCount for live entries only).
+ * - `warnings` counts the entries that hold values the Studio would refuse today (they are stored as they are);
+ *   `firstWarning` names the first one.
  * - The answer's `ids` map each exported entry ID to the new one; entry references in `data` still hold the exported
  *   IDs until `importRefs` rewrites them.
  */
@@ -214,17 +219,24 @@ export const importExport = internalMutation({
     let treeBytes = 0
     let live = 0
     const orderRevs: Record<string, number> = { ...site.orderRevs }
+    // Entries with values the Studio would refuse today, and the first such value (for the CLI's one-line notice).
+    let warnings = 0
+    let firstWarning: ImportWarning | undefined
     for (const row of args.entries) {
       const def = schema.bricks[row.brick]
       if (!def) fail('INVALID', 'errors.entryBrickMissingFromSchema', { id: row.id, brick: row.brick })
       const data = remapFileIds(def.fields, row.data as Data, uploads)
       // Values the Studio and the site cannot read at all (a wrong type, an unknown field or language) are refused, so
       // an export cannot store what the editor cannot open. Rules a save enforces on top (row id format, alt texts, lengths,
-      // Markdown profiles) are not: a backup must restore what the platform once stored. Entry references are not looked
-      // up either; they still name exported IDs until importRefs. A deleted entry is checked when it is restored.
-      if (row.deletedAt === undefined) {
-        const errors = (await validate(schema, row.brick, data, { mode: 'restore' })).errors
-        if (errors.length) fail('INVALID', 'errors.importEntryInvalid', { id: row.id, path: errors[0]!.path, count: errors.length }, { errors: errors as unknown as Json })
+      // Markdown profiles) are not: a backup must restore what the platform once stored, so they come back as warnings.
+      // Entry references are not looked up; they still name exported IDs until importRefs. Removed entries are checked
+      // too: a restore checks nothing, so this is the only check they get.
+      const checked = await validate(schema, row.brick, data, { mode: 'restore' })
+      if (checked.errors.length) fail('INVALID', 'errors.importEntryInvalid', { id: row.id, path: checked.errors[0]!.path, count: checked.errors.length }, { errors: checked.errors as unknown as Json })
+      const warning = checked.warnings[0]
+      if (warning) {
+        warnings++
+        firstWarning ??= { id: row.id, brick: row.brick, path: warning.path, key: warning.key, ...(warning.params ? { params: warning.params } : {}) }
       }
       const size = entryBytes(data, row.prints)
       // The trash keeps no trees.
@@ -259,7 +271,7 @@ export const importExport = internalMutation({
     await ctx.db.patch(site._id, {
       bytes: site.bytes + bytes, trashBytes: (site.trashBytes ?? 0) + trashBytes, treeBytes: (site.treeBytes ?? 0) + treeBytes, entryCount: site.entryCount + live, orderRevs,
     })
-    return { entries: args.entries.length, files: args.files.length, ids }
+    return { entries: args.entries.length, files: args.files.length, ids, warnings, ...(firstWarning ? { firstWarning } : {}) }
   },
 })
 
@@ -269,17 +281,20 @@ export const importExport = internalMutation({
  */
 export const importBatch = internalAction({
   args: { site: v.string(), batch: v.id('_storage') },
-  handler: async (ctx, args): Promise<{ entries: number; files: number; ids: Record<string, string> }> => {
+  handler: async (ctx, args): Promise<ImportAnswer> => {
     if (!(await ctx.runQuery(internal.seed.isImportAllowed, { site: args.site }))) fail('FORBIDDEN', 'errors.importClosed')
     const blob = await ctx.storage.get(args.batch)
     if (!blob) fail('NOT_FOUND', 'errors.importBatchNotLocal')
     const batch = JSON.parse(await blob.text()) as { site: string; files: never[]; entries: never[] }
     if (batch.site !== args.site) fail('INVALID', 'errors.importBatchOtherSite')
-    const result: { entries: number; files: number; ids: Record<string, string> } = await ctx.runMutation(internal.seed.importExport, batch)
+    const result: ImportAnswer = await ctx.runMutation(internal.seed.importExport, batch)
     await ctx.storage.delete(args.batch)
     return result
   },
 })
+
+/** What one import batch answers (importExport, importBatch). */
+type ImportAnswer = { entries: number; files: number; ids: Record<string, string>; warnings: number; firstWarning?: ImportWarning }
 
 /** For `importBatch`, an action without database access. */
 export const isImportAllowed = internalQuery({

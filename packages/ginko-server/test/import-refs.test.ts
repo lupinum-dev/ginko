@@ -162,4 +162,22 @@ describe('import checks each entry like a save', () => {
     expect(JSON.stringify(error)).toContain('authors/bad')
     expect((await entriesOf(s, s.site)).length).toBe(before)
   })
+
+  // Wrong behaviour caught: a removed entry is never checked (restore checks nothing either), and values a save refuses
+  // today are stored without a word, so the operator never learns about them.
+  it('checks removed entries too, and stores values the Studio would refuse today as warnings', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const before = (await entriesOf(s, s.site)).length
+    const call = (entries: unknown[]) => s.t.mutation(makeFunctionReference<'mutation'>('seed:importExport'), { site: 'restaurant', files: [], entries })
+    const entry = (id: string, data: unknown, deletedAt?: number) => ({ id, brick: 'authors', kind: 'item' as const, order: 1, data, prints: {}, rev: 1, ...(deletedAt ? { deletedAt } : {}) })
+
+    expect(await errorOf(call([entry('authors/gone', { name: 5 }, Date.parse('2026-10-01T00:00:00Z'))]))).toMatchObject({ code: 'INVALID', message: 'Eintrag „authors/gone“ passt nicht zum Schema (1 Fehler, zuerst bei „name“). Nichts aus diesem Teil wurde gespeichert.' })
+    expect((await entriesOf(s, s.site)).length).toBe(before)
+
+    expect(await call([entry('authors/anna', { name: { de: 'Anna' } }), entry('authors/long', { name: { de: 'x'.repeat(5000) } }), entry('authors/longer', { name: { de: 'y'.repeat(6000) } })]))
+      .toMatchObject({ entries: 3, warnings: 2, firstWarning: { id: 'authors/long', brick: 'authors', path: 'name.de', key: 'issues.tooLong' } })
+    expect((await entriesOf(s, s.site)).length).toBe(before + 3)
+  })
 })

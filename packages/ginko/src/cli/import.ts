@@ -8,10 +8,10 @@
 // storage; a batch stays under a mutation's limits.
 import { readFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
-import type { SchemaChange } from '../core/index.ts'
+import type { Msg, SchemaChange } from '../core/index.ts'
 import type { Runner } from './local.ts'
 import { CliError, isObject, parseExport, type ExportEntry, type SiteExport } from './model.ts'
-import { explainRejected } from './report.ts'
+import { english, explainRejected } from './report.ts'
 
 /** Largest JSON size of one batch: one mutation writes it, and entries may have up to 256 KiB each. */
 export const BATCH_BYTES = 2_000_000
@@ -65,6 +65,26 @@ async function readFileOf(dir: string, file: SiteExport['files'][number]): Promi
 function referencedIds(entries: ExportEntry[], ids: Record<string, string>): Record<string, string> {
   const text = JSON.stringify(entries.map((e) => e.data))
   return Object.fromEntries(Object.entries(ids).filter(([exported]) => text.includes(JSON.stringify(exported))))
+}
+
+/** A catalog message read from the platform's JSON; parameters that are not text, numbers or messages are left out. */
+function msgOf(value: Record<string, unknown>): Msg | undefined {
+  if (typeof value.key !== 'string') return undefined
+  if (!isObject(value.params)) return { key: value.key }
+  const params: NonNullable<Msg['params']> = {}
+  for (const [name, param] of Object.entries(value.params)) {
+    const nested = isObject(param) ? msgOf(param) : undefined
+    if (typeof param === 'string' || typeof param === 'number') params[name] = param
+    else if (nested) params[name] = nested
+  }
+  return { key: value.key, params }
+}
+
+/** The platform's first import warning (seed.ts ImportWarning) as `<entry> <path>: <English message>`. */
+function warningText(warning: Record<string, unknown>): string | undefined {
+  const message = msgOf(warning)
+  if (typeof warning.id !== 'string' || typeof warning.path !== 'string' || !message) return undefined
+  return `${warning.id} ${warning.path}: ${english(message)}`
 }
 
 /** Largest size of the `ids` argument of one importRefs call (a command-line argument). */
@@ -163,11 +183,19 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
   // 5. Import the stored batches; each answers with the new ID of every entry.
   let done = 0
   const ids: Record<string, string> = {}
+  let warnings = 0
+  let firstWarning: string | undefined
   for (const batch of storedBatches) {
     const result = await run('seed:importBatch', { site, batch: batch.id })
     if (isObject(result) && isObject(result.ids)) for (const [exported, id] of Object.entries(result.ids)) if (typeof id === 'string') ids[exported] = id
+    if (isObject(result) && typeof result.warnings === 'number') warnings += result.warnings
+    if (isObject(result) && isObject(result.firstWarning)) firstWarning ??= warningText(result.firstWarning)
     done += batch.count
     log(`Entries: ${done}/${data.entries.length}`)
+  }
+  if (warnings > 0) {
+    const first = firstWarning ? ` (first: ${firstWarning})` : ''
+    log(`${warnings === 1 ? '1 entry holds' : `${warnings} entries hold`} values the Studio would refuse today${first}. They were imported as they were; fix them in the Studio.`)
   }
 
   // 6. References between entries still name the exported IDs.
