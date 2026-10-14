@@ -13,6 +13,8 @@ export default defineSite({
   locales,
   currency: 'EUR',
   pages: { home: { de: '/', en: '/en' }, blog: blogPages({ locales }), changelog: changelogPages({ locales }) },
+  // The share cards: the leaf logo on the docs' emerald.
+  seo: { color: '#047857', organization: { logo: '/logo.svg' } },
   components,
   bricks: { home: docsHome(), docs: docsCollection({ locales }), ...blogCollections({ locales }), changelog: changelogCollection() },
 })

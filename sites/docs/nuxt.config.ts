@@ -3,8 +3,8 @@ import ginko from './ginko.config.ts'
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-01',
   extends: ['@lupinum/ginko-docs'],
-  // nuxt-og-image first: the Ginko module looks for it when it sets up (generated share cards).
-  modules: ['nuxt-og-image', '@lupinum/ginko/nuxt'],
+  // nuxt-og-image draws a share card for every page (Ginko passes title, image, logo and `seo.color`).
+  modules: ['@lupinum/ginko/nuxt', 'nuxt-og-image'],
   ginko,
   app: { head: { link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }] } },
 })

@@ -14,7 +14,8 @@ export default defineSite({
   currency: 'EUR', // für dein Land ändern
   pages: { home: '/' },
   // Steht in Suchergebnissen und Link-Vorschauen. Ersetze es durch einen Satz über deine Website.
-  seo: { description: 'Dokumentation zu unserem Produkt.' },
+  // `color`: the brand colour of the generated share cards.
+  seo: { description: 'Dokumentation zu unserem Produkt.', color: '#047857' },
   components, // die Markdown-Komponenten (::callout, ::tabs …) und ihre geprüften Props
   bricks: { docs: docsCollection({ locales }) },
 })

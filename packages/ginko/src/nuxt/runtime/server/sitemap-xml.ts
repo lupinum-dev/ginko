@@ -1,12 +1,22 @@
-// The sitemap document as a pure function (SPEC 8 "Sitemap"), so it can be unit tested without Nuxt.
+// The sitemap as pure functions (SPEC 8 "Sitemap"), so it can be unit tested without Nuxt: one list of
+// URLs, which /sitemap.xml renders and /__ginko/sitemap.json hands to @nuxtjs/sitemap as a source.
 import { alternatesOf, type LocaleConfig } from '@lupinum/ginko-i18n/core'
 import { isVisible, type Brick, type Bundle, type Fields, type Locale, type Schema } from '../../../internal.ts'
 
-/** One group of `<url>` elements; `alternates` lists the group's URLs as `xhtml:link` hreflang entries. */
+/** One `<url>`, in the shape @nuxtjs/sitemap reads from a source. All URLs are absolute. */
+export interface SitemapUrl {
+  loc: string
+  /** ISO 8601 time of the entry's last change (`updatedAt`); static pages have none. */
+  lastmod?: string
+  /** hreflang alternates, `x-default` included; only for pages with more than one locale. */
+  alternatives?: { hreflang: string; href: string }[]
+  images?: { loc: string }[]
+}
+
+/** One page or entry with its URL in every locale it has. */
 interface Group {
   urls: Record<Locale, string>
   alternates: boolean
-  /** ISO 8601 time of the entry's last change (`updatedAt`); static pages have none. */
   lastmod?: string
   /** Absolute image URLs per locale (`imagesOf`). */
   images?: Partial<Record<Locale, string[]>>
@@ -20,26 +30,37 @@ const MAX_IMAGES = 20
  * (todayIn of its time zone), so the visibility rule matches the pages. `locales` is ginko-i18n's
  * config: hreflang uses its languages and `x-default`, exactly as the page head does.
  */
-export function sitemapXml(site: Schema, bundles: Partial<Record<Locale, Bundle>>, today: string, locales: Pick<LocaleConfig, 'locales' | 'defaultLocale'>): string {
+export function sitemapUrls(site: Schema, bundles: Partial<Record<Locale, Bundle>>, today: string, locales: Pick<LocaleConfig, 'locales' | 'defaultLocale'>): SitemapUrl[] {
   const base = site.url.replace(/\/$/, '')
-  const groups: Group[] = [...staticGroups(site, base), ...entryGroups(site, bundles, today, base)]
   const seen = new Set<string>()
-  const urls: string[] = []
-  let hasImages = false
-  for (const group of groups) {
-    const alternates = alternatesOf(group.urls, locales).map((a) => `<xhtml:link rel="alternate" hreflang="${escapeXml(a.hreflang)}" href="${escapeXml(a.path)}"/>`)
-    for (const [locale, href] of Object.entries(group.urls)) {
-      if (seen.has(href)) continue
-      seen.add(href)
-      const images = (group.images?.[locale] ?? []).map((src) => `<image:image><image:loc>${escapeXml(src)}</image:loc></image:image>`)
-      hasImages ||= images.length > 0
-      urls.push(`  <url><loc>${escapeXml(href)}</loc>${group.lastmod ? `<lastmod>${escapeXml(group.lastmod)}</lastmod>` : ''}${group.alternates ? alternates.join('') : ''}${images.join('')}</url>`)
+  const urls: SitemapUrl[] = []
+  for (const group of [...staticGroups(site, base), ...entryGroups(site, bundles, today, base)]) {
+    const alternatives = group.alternates ? alternatesOf(group.urls, locales).map((a) => ({ hreflang: a.hreflang, href: a.path })) : []
+    for (const [locale, loc] of Object.entries(group.urls)) {
+      if (seen.has(loc)) continue
+      seen.add(loc)
+      const images = (group.images?.[locale] ?? []).map((src) => ({ loc: src }))
+      urls.push({ loc, ...(group.lastmod && { lastmod: group.lastmod }), ...(alternatives.length && { alternatives }), ...(images.length && { images }) })
     }
   }
+  return urls
+}
+
+/** The sitemap document of `sitemapUrls`. */
+export function sitemapXml(site: Schema, bundles: Partial<Record<Locale, Bundle>>, today: string, locales: Pick<LocaleConfig, 'locales' | 'defaultLocale'>): string {
+  const urls = sitemapUrls(site, bundles, today, locales)
+  const element = (url: SitemapUrl) => [
+    `  <url><loc>${escapeXml(url.loc)}</loc>`,
+    url.lastmod ? `<lastmod>${escapeXml(url.lastmod)}</lastmod>` : '',
+    ...(url.alternatives ?? []).map((a) => `<xhtml:link rel="alternate" hreflang="${escapeXml(a.hreflang)}" href="${escapeXml(a.href)}"/>`),
+    ...(url.images ?? []).map((i) => `<image:image><image:loc>${escapeXml(i.loc)}</image:loc></image:image>`),
+    '</url>',
+  ].join('')
+  const hasImages = urls.some((u) => u.images)
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml"${hasImages ? ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' : ''}>`,
-    ...urls,
+    ...urls.map(element),
     '</urlset>',
   ].join('\n')
 }

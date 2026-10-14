@@ -13,7 +13,8 @@ export default defineSite({
   currency: 'EUR', // für dein Land ändern
   pages: { home: '/' },
   // Steht in Suchergebnissen und Link-Vorschauen. Ersetze es durch einen Satz über deine Website.
-  seo: { description: 'Öffnungszeiten und Speisekarte unseres Restaurants.' },
+  // `color`: the brand colour of the generated share cards.
+  seo: { description: 'Öffnungszeiten und Speisekarte unseres Restaurants.', color: '#1e4032' },
   bricks: {
     // content/hours.md: die Öffnungszeiten der Woche. Die Regeln dazu (hoursOn, todayState) zählen die österreichischen
     // Feiertage; mit calendar: 'DE', 'SG' oder 'none' änderst du das.

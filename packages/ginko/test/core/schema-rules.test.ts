@@ -131,6 +131,14 @@ describe('4. locales and currency', () => {
   ])('languages %j', (languages, expected) => {
     expect(checkSite(site({}, { languages }))).toEqual(expected)
   })
+
+  it.each([
+    ['#1e4032', []], ['#fff', []],
+    ['rgb(4,120,87)', ['seo.color: invalid colour “rgb(4,120,87)” (expected “#rrggbb” or “#rgb”).']],
+    ['#047857ff', ['seo.color: invalid colour “#047857ff” (expected “#rrggbb” or “#rgb”).']],
+  ])('seo.color %s', (color, expected) => {
+    expect(checkSite(site({}, { seo: { color } }))).toEqual(expected)
+  })
 })
 
 describe('4b. translatable labels', () => {

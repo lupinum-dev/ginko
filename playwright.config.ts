@@ -16,6 +16,7 @@ export default defineConfig({
     { command: 'node sites/industrie/.output/server/index.mjs', port: 3202, reuseExistingServer: false, env: { PORT: '3202', NUXT_PUBLIC_GINKO_PLATFORM: 'http://localhost:3999' } },
     { command: 'node sites/saas/.output/server/index.mjs', port: 3203, reuseExistingServer: false, env: { PORT: '3203', NUXT_PUBLIC_GINKO_PLATFORM: 'http://localhost:3999' } },
     // Files only (CONTENT.md): never asks the platform.
-    { command: 'node sites/docs/.output/server/index.mjs', port: 3204, reuseExistingServer: false, env: { PORT: '3204' } },
+    // The share cards' signing secret, as a host sets it (a test value).
+    { command: 'node sites/docs/.output/server/index.mjs', port: 3204, reuseExistingServer: false, env: { PORT: '3204', NUXT_APP_SECRET: 'e2e-share-card-secret-0123456789abcdef' } },
   ],
 })

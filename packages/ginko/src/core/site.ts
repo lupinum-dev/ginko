@@ -53,8 +53,10 @@ export interface SiteInput {
     /** `%s` is the page title; default `%s · <name>`. */
     titleTemplate?: string
     description?: string
-    /** Fallback Open Graph image: a public path (`/og.png`) or an absolute URL. */
+    /** Fallback Open Graph image: a public path (`/og.png`) or an absolute URL. Generated share cards replace it. */
     image?: string
+    /** The brand colour, `#rrggbb` or `#rgb`: the background of generated share cards (nuxt-og-image). */
+    color?: string
     organization?: { logo?: string; sameAs?: string[] }
   }
   /** Text for AI agents (`/llms.txt`, `<page>.md`) and the agent door's default. Only `review` is part of the schema contract. */

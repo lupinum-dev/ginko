@@ -1,10 +1,11 @@
-import { addComponent, addComponentsDir, addImports, addPlugin, addServerHandler, addServerTemplate, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, extendPages, hasNuxtModule, installModule, tryResolveModule } from '@nuxt/kit'
+import { addComponent, addComponentsDir, addImports, addNitroPlugin, addPlugin, addServerHandler, addServerTemplate, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, extendPages, installModule, tryResolveModule } from '@nuxt/kit'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { basename, join, relative, resolve as resolvePath } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Nuxt } from 'nuxt/schema'
 import { fileLinkIssues } from './external-links.ts'
 import { checkI18nOptions } from './i18n.ts'
+import { listsNuxtSeo, nuxtSeoDependencies, runsNuxtSeo } from './nuxt-seo.ts'
 import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules, ginkoVercelConfig } from './route-rules.ts'
@@ -34,6 +35,8 @@ declare module '@nuxt/schema' {
  */
 export default defineNuxtModule<SiteInput>({
   meta: { name: '@lupinum/ginko', configKey: 'ginko', compatibility: { nuxt: '^4.6.0 || ^5.0.0-0' } },
+  // The site's data for the Nuxt SEO modules it installs (nuxt-seo.ts). Read from nuxt.config, before setup runs.
+  moduleDependencies: (nuxt) => nuxtSeoDependencies((nuxt.options as unknown as { ginko?: SiteInput }).ginko, nuxt),
   async setup(site, nuxt) {
     if (!site?.site || !site.bricks) throw new Error('[ginko] Option `ginko` is missing: the result of defineSite() from ginko.config.ts.')
     // The serialized schema is the site's own contract: checked at build (the same check as `ginko check`), used at runtime for defaults.
@@ -98,7 +101,8 @@ export default defineNuxtModule<SiteInput>({
 
     // Generated share cards (nuxt-og-image): only with that module installed and one renderer for it. `#ginko/og`
     // is the one place that reaches nuxt-og-image, so a site without it never imports it.
-    const renderer = (await hasNuxtModule('nuxt-og-image', nuxt)) ? await ogRenderer(nuxt.options.rootDir) : undefined
+    const ogImage = await listsNuxtSeo('nuxt-og-image', nuxt)
+    const renderer = ogImage ? await ogRenderer(nuxt.options.rootDir) : undefined
     if (renderer) {
       // nuxt-og-image picks the renderer from the file name and finds templates in `components/OgImage` (also in listed component dirs).
       // Not in buildDir: Nuxt empties that after the modules ran (like the image cache of file bricks below). Not under `.cache` either: Nuxt ignores that folder name when it scans components.
@@ -107,12 +111,13 @@ export default defineNuxtModule<SiteInput>({
       copyFileSync(resolve(`./runtime/og/GinkoCard.vue`), join(ogDir, 'OgImage', `GinkoCard.${renderer}.vue`))
       // nuxt-og-image registers `components/OgImage` of each layer itself, which this directory is not: register it as it does (island component).
       addComponentsDir({ path: join(ogDir, 'OgImage'), island: true })
-      // Card URLs are absolute: nuxt-og-image reads the site URL from `site.url` (nuxt-site-config). The site's own setting wins.
-      // `site` is typed by nuxt-site-config only when it is installed, so it is read as unknown here.
-      const options = nuxt.options as { site?: unknown }
-      const own = typeof options.site === 'object' && options.site !== null ? options.site as { url?: string } : {}
-      options.site = { ...own, url: own.url ?? schema.url }
-    } else if (await hasNuxtModule('nuxt-og-image', nuxt)) {
+      // nuxt-og-image signs the card URLs a server renders with NUXT_APP_SECRET and answers 500 without it. A static
+      // build draws every card at build time and needs none. create-ginko writes one into the new site's `.env`.
+      const secret = process.env.NUXT_APP_SECRET || (nuxt.options.runtimeConfig as { appSecret?: string }).appSecret
+      if (!nuxt.options.dev && !nuxt.options.nitro.static && !secret) {
+        console.warn('[ginko] Share cards need NUXT_APP_SECRET (at least 32 characters) where the site runs, or they answer with 500. Create one with `npx nuxt-og-image generate-secret` and set it in the host\'s environment.')
+      }
+    } else if (ogImage) {
       console.warn('[ginko] nuxt-og-image has no renderer: install @takumi-rs/core (or satori with @resvg/resvg-js) to get generated share cards.')
     }
     const ogContents = renderer
@@ -120,6 +125,10 @@ export default defineNuxtModule<SiteInput>({
       : 'export const defineOgImage = undefined\nexport const ogTemplate = undefined'
     addTemplate({ filename: 'ginko/og.mjs', getContents: () => ogContents })
     nuxt.options.alias['#ginko/og'] = resolve(nuxt.options.buildDir, 'ginko/og.mjs')
+    // JSON-LD: with nuxt-schema-org, `useGinkoSeo` adds its nodes to that module's graph. The one place that reaches it;
+    // the template is written after `modules:done`, when every module is known.
+    addTemplate({ filename: 'ginko/schema-org.mjs', getContents: () => (runsNuxtSeo('nuxt-schema-org', nuxt) ? `export { useSchemaOrg } from '#imports'` : 'export const useSchemaOrg = undefined') })
+    nuxt.options.alias['#ginko/schema-org'] = resolve(nuxt.options.buildDir, 'ginko/schema-org.mjs')
     addTemplate({ filename: 'ginko/schema.mjs', getContents: () => `export default ${JSON.stringify(schema)}` })
     nuxt.options.alias['#ginko/schema'] = resolve(nuxt.options.buildDir, 'ginko/schema.mjs')
     // The server build does not see the alias above: the sitemap route imports the schema as a Nitro virtual module.
@@ -137,10 +146,17 @@ export default defineNuxtModule<SiteInput>({
     })
 
     addServerHandler({ middleware: true, handler: resolve(`./runtime/server/headers.${runtimeExt}`) })
-    // robots.txt: the site's own public/robots.txt wins. Preview hosts get Disallow (robots.ts) and X-Robots-Tag (headers.ts).
-    if (!existsSync(join(nuxt.options.rootDir, 'public', 'robots.txt'))) addServerHandler({ route: '/robots.txt', handler: resolve(`./runtime/server/robots.${runtimeExt}`) })
-    // With @nuxtjs/sitemap installed, that module owns /sitemap.xml; ginko-i18n gives it the hreflang alternates.
-    if (!(await hasNuxtModule('@nuxtjs/sitemap', nuxt))) addServerHandler({ route: '/sitemap.xml', handler: resolve(`./runtime/server/sitemap.${runtimeExt}`) })
+    // Preview hosts are not indexable for the Nuxt SEO modules either; a no-op without nuxt-site-config.
+    const siteConfigPlugin = resolve(`./runtime/server/site-config.${runtimeExt}`)
+    addNitroPlugin({ nitro2: siteConfigPlugin, nitro3: siteConfigPlugin })
+    // Decided when every module is installed, also those another module brings (nuxt-ai-ready brings @nuxtjs/sitemap).
+    nuxt.hook('modules:done', () => {
+      // robots.txt: the site's own public/robots.txt or @nuxtjs/robots wins. Preview hosts get Disallow (robots.ts) and X-Robots-Tag (headers.ts).
+      if (!existsSync(join(nuxt.options.rootDir, 'public', 'robots.txt')) && !runsNuxtSeo('@nuxtjs/robots', nuxt)) addServerHandler({ route: '/robots.txt', handler: resolve(`./runtime/server/robots.${runtimeExt}`) })
+      // With @nuxtjs/sitemap, that module owns /sitemap.xml and reads Ginko's URLs from /__ginko/sitemap.json (a source, see nuxt-seo.ts).
+      if (runsNuxtSeo('@nuxtjs/sitemap', nuxt)) addServerHandler({ route: '/__ginko/sitemap.json', handler: resolve(`./runtime/server/sitemap-source.${runtimeExt}`) })
+      else addServerHandler({ route: '/sitemap.xml', handler: resolve(`./runtime/server/sitemap.${runtimeExt}`) })
+    })
     // Text for AI agents: /llms.txt (the site's own public/llms.txt wins) and one middleware for `<page>.md`, Accept negotiation and the Link header.
     if (site.agents?.enabled !== false) {
       if (!existsSync(join(nuxt.options.rootDir, 'public', 'llms.txt'))) addServerHandler({ route: '/llms.txt', handler: resolve(`./runtime/server/llms.${runtimeExt}`) })
@@ -233,10 +249,11 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
   }
   const { resolve } = createResolver(import.meta.url)
   // `nuxt generate` (it sets nitro.static) for Git-only sites (SPEC "Statische Seite"): prerender every page, document and JSON route into .output/public.
-  if (Object.values(schema.bricks).every((b) => b.source === 'files') && nuxt.options.nitro.static) {
+  // After `modules:done`, like the routes they prerender (module.ts).
+  if (Object.values(schema.bricks).every((b) => b.source === 'files') && nuxt.options.nitro.static) nuxt.hook('modules:done', () => {
     const served = {
-      robots: !existsSync(join(publicDir, 'robots.txt')),
-      sitemap: !(await hasNuxtModule('@nuxtjs/sitemap', nuxt)),
+      robots: !existsSync(join(publicDir, 'robots.txt')) && !runsNuxtSeo('@nuxtjs/robots', nuxt),
+      sitemap: !runsNuxtSeo('@nuxtjs/sitemap', nuxt),
       llms: site.agents?.enabled !== false && !existsSync(join(publicDir, 'llms.txt')),
       llmsFull: site.agents?.enabled !== false && !existsSync(join(publicDir, 'llms-full.txt')),
       markdown: site.agents?.enabled !== false,
@@ -247,7 +264,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
       failOnError: true,
       routes: [...(nuxt.options.nitro.prerender?.routes ?? []), ...prerenderRoutes(schema, bundles, trees.keys(), served)],
     }
-  }
+  })
   addServerTemplate({ filename: '#ginko/files', getContents: () => `export default ${JSON.stringify(bundles)}` })
   addServerTemplate({ filename: '#ginko/files-md', getContents: () => `export default ${JSON.stringify(Object.fromEntries(trees))}` })
   addServerTemplate({ filename: '#ginko/search', getContents: () => `export default ${JSON.stringify(searches)}` })

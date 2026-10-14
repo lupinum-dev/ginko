@@ -17,9 +17,10 @@ for (const paths of entries) {
 }
 
 /**
- * Sitemap keeps its own page and prerender discovery; we only attach explicit alternates to the
- * static pages we know, since its `autoI18n` pairs locales by stripping prefixes (wrong for
- * translated slugs). A plain function, not `defineNitroPlugin`, so it loads on Nitro 2 and 3.
+ * We attach explicit alternates to the static pages we know, since the sitemap's `autoI18n` pairs
+ * locales by stripping prefixes (wrong for translated slugs). Used on its own, the sitemap keeps its
+ * page and prerender discovery; on a Ginko site, Ginko supplies every URL with its alternates (D13).
+ * A plain function, not `defineNitroPlugin`, so it loads on Nitro 2 and 3.
  */
 export default (app: ServerApp) => {
   app.hooks.hook('sitemap:input', (ctx) => {

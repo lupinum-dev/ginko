@@ -12,7 +12,8 @@ export default defineSite({
   currency: 'EUR', // change for your country
   pages: { home: '/' },
   // Shown in search results and link previews. Replace it with one sentence about your site.
-  seo: { description: 'Opening hours and menu of our restaurant.' },
+  // `color`: the brand colour of the generated share cards.
+  seo: { description: 'Opening hours and menu of our restaurant.', color: '#1e4032' },
   bricks: {
     // content/hours.md: weekly hours. The hours rules (hoursOn, todayState) count Austrian public holidays; pass them calendar: 'DE', 'SG' or 'none' to change that.
     hours: hours({ source: 'files' }),

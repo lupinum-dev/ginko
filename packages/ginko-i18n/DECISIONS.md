@@ -176,8 +176,10 @@ That is wrong for translated slugs.
 
 **Now:** Ginko core serves its own `/sitemap.xml` from the bundle, with the same explicit alternates.
 ginko-i18n still turns `autoI18n` off and attaches alternates through the `sitemap:input` hook when a
-site installs `@nuxtjs/sitemap` instead, and Ginko's own route steps aside then (2026-10-12). Those
-alternates cover static pages only: pages with a dynamic segment need the site's own sitemap source.
+site installs `@nuxtjs/sitemap` instead, and Ginko's own route steps aside then (2026-10-12). Used on
+its own, ginko-i18n covers static pages only: pages with a dynamic segment need the site's own sitemap
+source. On a Ginko site, Ginko hands `@nuxtjs/sitemap` every page and entry with its alternates and turns
+the module's page discovery off (Ginko D4, 2026-10-14).
 
 ## D14. Release through the monorepo
 
