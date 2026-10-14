@@ -119,15 +119,23 @@ export function rootOf(leaf: string): string {
 }
 
 /**
- * Upload IDs referenced anywhere in a value: image and file fields store `{ file }`, Markdown texts hold `$file.<id>`.
- * `only` keeps those of one field type (no Markdown references).
+ * Whether a `$file.<id>` of a Markdown text has the form of an upload ID (on the server: `ctx.db.normalizeId('uploads', id)`).
+ * A shell example like `backup="$file.bak"` stands where a reference may stand but names no upload: it is text, not a
+ * reference, so it never reaches a `fileRefs` row or the file check.
  */
-export function fileIdsOf(fields: Fields, data: Data, only?: 'image' | 'file'): Set<string> {
+export type IsUploadId = (id: string) => boolean
+
+/**
+ * Upload IDs referenced anywhere in a value: image and file fields store `{ file }`, Markdown texts hold `$file.<id>`
+ * (those `isUploadId` accepts). `only` keeps those of one field type (no Markdown references).
+ */
+export function fileIdsOf(fields: Fields, data: Data, which: { isUploadId: IsUploadId } | { only: 'image' | 'file' }): Set<string> {
+  const only = 'only' in which ? which.only : undefined
   const ids = new Set<string>()
   const walk = (field: Field, value: Json | undefined) => {
     if (value === undefined || value === null) return
     if ((field.type === 'image' || field.type === 'file') && (!only || field.type === only) && typeof asRecord(value).file === 'string') ids.add(asRecord(value).file as string)
-    if (field.type === 'markdown' && !only) for (const text of textsOf(value)) for (const id of fileRefsIn(text)) ids.add(id)
+    if (field.type === 'markdown' && 'isUploadId' in which) for (const text of textsOf(value)) for (const id of fileRefsIn(text)) if (which.isUploadId(id)) ids.add(id)
     if (field.type === 'list' && Array.isArray(value)) for (const row of value) for (const [k, inner] of Object.entries(field.of)) walk(inner, asRecord(row)[k])
   }
   for (const [name, field] of Object.entries(fields)) walk(field, data[name])
@@ -144,7 +152,7 @@ export interface Use { path: string; missingAlt: boolean }
  * path; it lacks a description where a language's text shows the file as `![]($file.<id>)` and the library has no
  * text for that language.
  */
-export function usesOf(fields: Fields, data: Data, locales: readonly Locale[], fileAlt?: (file: string) => Record<string, string> | undefined): Map<string, Use[]> {
+export function usesOf(fields: Fields, data: Data, locales: readonly Locale[], isUploadId: IsUploadId, fileAlt?: (file: string) => Record<string, string> | undefined): Map<string, Use[]> {
   const out = new Map<string, Use[]>()
   const walk = (path: string, field: Field, value: Json | undefined) => {
     if (value === undefined || value === null) return
@@ -159,7 +167,7 @@ export function usesOf(fields: Fields, data: Data, locales: readonly Locale[], f
     if (field.type === 'markdown') {
       // A text for every language (translate: false) is checked against each of them.
       const texts: [readonly Locale[], string][] = typeof value === 'string' ? [[locales, value]] : Object.entries(asRecord(value)).flatMap(([l, t]) => (typeof t === 'string' && locales.includes(l) ? [[[l], t] as [Locale[], string]] : []))
-      const files = new Set(texts.flatMap(([, text]) => [...fileRefsIn(text)]))
+      const files = new Set(texts.flatMap(([, text]) => [...fileRefsIn(text)]).filter(isUploadId))
       for (const file of files) {
         const library = fileAlt?.(file)
         const missingAlt = texts.some(([langs, text]) => fileImagesWithoutAlt(text).has(file) && langs.some((l) => !effectiveAlt(undefined, library, l)))

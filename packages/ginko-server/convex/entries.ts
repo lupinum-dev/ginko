@@ -15,7 +15,7 @@ import { countersOf, DELETED_KEPT, purgeEntry, softRemove, storageSums, writeCou
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
 import { taskFor } from './lib/agentTools'
-import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs } from './lib/write'
+import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
 import { editorEntry, editorEntryWithTranslation, listRow, titleOf } from './lib/list'
 
@@ -428,8 +428,8 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     if (c.bytes + size > BUDGET.siteBytes) fail('TOO_LARGE', 'errors.siteStorageLimitReached', overBudget(c.bytes + size, BUDGET.siteBytes))
     const trees = await treesOf(brick.fields, data)
     if (c.treeBytes + trees.bytes > BUDGET.treeBytes) fail('TOO_LARGE', 'errors.entryTooComplex')
-    const files = fileIdsOf(brick.fields, data)
-    await checkFiles(ctx, actor.site._id, files, fileIdsOf(brick.fields, data, 'image'))
+    const files = fileIdsOf(brick.fields, data, { isUploadId: uploadIdsOf(ctx) })
+    await checkFiles(ctx, actor.site._id, files, fileIdsOf(brick.fields, data, { only: 'image' }))
     // Without `drafts` an entry is always live. With it, only `publish: {}` goes live at once.
     const draft = brick.drafts === true && (args.publish === undefined || args.publish.at !== undefined)
     const at = draft ? args.publish?.at : undefined

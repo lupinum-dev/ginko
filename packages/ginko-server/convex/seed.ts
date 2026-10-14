@@ -19,7 +19,7 @@ import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
 import { cleanName, kindOf, WRONG_TYPE } from './lib/files'
 import { deleteStorage } from './lib/library'
 import { putTrees } from './lib/trees'
-import { BUDGET, same, sizeText, syncEntryRefs } from './lib/write'
+import { BUDGET, same, sizeText, syncEntryRefs, uploadIdsOf } from './lib/write'
 
 function localOnly() {
   if (process.env.GINKO_LOCAL !== '1') fail('FORBIDDEN', 'errors.localOnly')
@@ -347,7 +347,7 @@ export const importExport = internalMutation({
           await ctx.db.insert('slugs', { site: site._id, brick: row.brick, locale, slug, entry: id })
         }
       }
-      await syncEntryRefs(ctx, site._id, id, new Map([...usesOf(fields, data, schema.locales)].filter(([file]) => known.has(file))))
+      await syncEntryRefs(ctx, site._id, id, new Map([...usesOf(fields, data, schema.locales, uploadIdsOf(ctx))].filter(([file]) => known.has(file))))
     }
     // It only touches ready images without variants, so a second run (next batch) changes nothing.
     if (withoutVariants) await ctx.scheduler.runAfter(0, internal.images.backfillVariants, {})

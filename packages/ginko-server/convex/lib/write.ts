@@ -7,7 +7,7 @@ import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { bundleOf, type NewItem } from '../bundle'
 import { byOf, fail, type Actor } from './access'
-import { fileIdsOf, refIdsIn, treesOf, usesOf, type Data, type Prints, type Use } from './content'
+import { fileIdsOf, refIdsIn, treesOf, usesOf, type Data, type IsUploadId, type Prints, type Use } from './content'
 import type { Recorded } from './history'
 import { putTrees } from './trees'
 
@@ -23,6 +23,9 @@ export function sizeText(bytes: number): string {
 
 /** The params of a budget error: how much is used, the limit, and how much is over it. */
 export const overBudget = (used: number, limit: number) => ({ used: sizeText(used), limit: sizeText(limit), over: sizeText(used - limit) })
+
+/** The `$file.<id>` words of Markdown texts that can name an upload: those with the form of an uploads ID. */
+export const uploadIdsOf = (ctx: QueryCtx): IsUploadId => (id) => ctx.db.normalizeId('uploads', id) !== null
 
 /**
  * Fields may only point at ready uploads of the same site (SPEC 4.3 point 3). The ids in `images`
@@ -40,10 +43,11 @@ export async function checkFiles(ctx: QueryCtx, site: Id<'sites'>, ids: Iterable
 
 /** Checks the files an edit adds: those new to the entry, those new to an image field (a PDF may already sit in a file field), and every file newly placed in a file field. */
 export async function checkNewFiles(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, before: Data, after: Data) {
-  const known = fileIdsOf(fields, before)
-  const knownImages = fileIdsOf(fields, before, 'image')
-  const images = new Set([...fileIdsOf(fields, after, 'image')].filter((id) => !knownImages.has(id)))
-  const added = [...fileIdsOf(fields, after)].filter((id) => !known.has(id))
+  const isUploadId = uploadIdsOf(ctx)
+  const known = fileIdsOf(fields, before, { isUploadId })
+  const knownImages = fileIdsOf(fields, before, { only: 'image' })
+  const images = new Set([...fileIdsOf(fields, after, { only: 'image' })].filter((id) => !knownImages.has(id)))
+  const added = [...fileIdsOf(fields, after, { isUploadId })].filter((id) => !known.has(id))
   await checkFiles(ctx, site, new Set([...added, ...images]), images)
   // A file's rules belong to the field it sits in. An upload already in a lenient field must still pass the stricter field it is newly placed in.
   const placed = new Set(placementsOf(fields, before).map((p) => `${p.path}\n${p.id}`))
@@ -113,7 +117,7 @@ export async function refsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, 
  */
 async function altsFor(ctx: QueryCtx, fields: Fields, data: Data): Promise<(file: string) => Record<string, string> | undefined> {
   const found = new Map<string, Record<string, string>>()
-  for (const id of fileIdsOf(fields, data)) {
+  for (const id of fileIdsOf(fields, data, { isUploadId: uploadIdsOf(ctx) })) {
     const key = ctx.db.normalizeId('uploads', id)
     const alt = key ? (await ctx.db.get(key))?.alt : undefined
     if (alt) found.set(id, alt)
@@ -123,13 +127,13 @@ async function altsFor(ctx: QueryCtx, fields: Fields, data: Data): Promise<(file
 
 /** Every use of a file in `data` with its "missing alt text" mark, library descriptions included (`usesOf`). */
 export async function entryUses(ctx: QueryCtx, fields: Fields, data: Data, locales: readonly string[]): Promise<Map<string, Use[]>> {
-  return usesOf(fields, data, locales, await altsFor(ctx, fields, data))
+  return usesOf(fields, data, locales, uploadIdsOf(ctx), await altsFor(ctx, fields, data))
 }
 
 /** The files of `data` that are ready uploads of this site outside the trash: what a `$file.<id>` in a text may name. */
 async function liveUploadsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, data: Data): Promise<(file: string) => boolean> {
   const live = new Set<string>()
-  for (const id of fileIdsOf(fields, data)) {
+  for (const id of fileIdsOf(fields, data, { isUploadId: uploadIdsOf(ctx) })) {
     const key = ctx.db.normalizeId('uploads', id)
     const upload = key ? await ctx.db.get(key) : null
     if (upload && upload.site === site && upload.status === 'ready' && !upload.trashedAt) live.add(id)
@@ -251,7 +255,8 @@ export async function commitEntry(ctx: MutationCtx, w: EntryWrite) {
     entryRev: rev, contentRev, at: now,
   })
   await syncEntryRefs(ctx, site._id, entry._id, await entryUses(ctx, w.fields, w.data, (site.schema as Schema).locales))
-  const changeFiles = new Set([...fileIdsOf(w.fields, before), ...fileIdsOf(w.fields, after)])
+  const isUploadId = uploadIdsOf(ctx)
+  const changeFiles = new Set([...fileIdsOf(w.fields, before, { isUploadId }), ...fileIdsOf(w.fields, after, { isUploadId })])
   if (changeFiles.size) await syncFileRefs(ctx, site._id, 'change', change, changeFiles)
   return { change, rev, contentRev }
 }

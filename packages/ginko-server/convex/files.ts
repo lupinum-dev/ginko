@@ -13,7 +13,7 @@ import { labelOf } from './entries'
 import { actorFor, fail, type Actor } from './lib/access'
 import { fieldLabelAt, usesOf, valueAt, type Data } from './lib/content'
 import { cleanName } from './lib/files'
-import { entryUses, same } from './lib/write'
+import { entryUses, same, uploadIdsOf } from './lib/write'
 
 const PAGE = 50
 /** Rows read per step and steps per call: a view that filters a lot returns early with a cursor instead of reading the whole table. */
@@ -442,7 +442,7 @@ export const setAlt = mutation({
       const entry = id ? await ctx.db.get(id) : null
       const brick = entry && Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
       if (!entry || !brick) continue
-      const uses = usesOf(brick.fields, entry.data as Data, schema.locales, (file) => (file === row._id ? alt : undefined)).get(row._id)
+      const uses = usesOf(brick.fields, entry.data as Data, schema.locales, uploadIdsOf(ctx), (file) => (file === row._id ? alt : undefined)).get(row._id)
       if (!uses) continue
       const missingAlt = uses.some((u) => u.missingAlt)
       if (!same(ref.uses, uses) || ref.missingAlt !== missingAlt) await ctx.db.patch(ref._id, { uses, missingAlt })

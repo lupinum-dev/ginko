@@ -376,6 +376,22 @@ describe('uploads.sweep with the library', () => {
     expect(await fileRefsOf(s, id)).toHaveLength(1)
   })
 
+  // Wrong behaviour caught: `$file.<word>` in a shell example counted as a library file, so the text was refused as a
+  // missing file, and an entry that already held it could not be saved at all (a fileRefs row for the ID `bak`).
+  it('reads $file words in code as text: such a text saves, and an entry holding one stays editable', async () => {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.legal!.fields.imprint as { profile: string }).profile = 'rich'
+      await ctx.db.patch(s.site, { schema })
+    })
+    const snippet = '```sh\nmv "$file" "$file.bak"\nbackup="$file.bak"\n```\n'
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: snippet } }, sentence: 'x' })
+    await s.t.run(async (ctx) => ctx.db.patch(s.entries.legal!, { data: { ...(await ctx.db.get(s.entries.legal!))!.data, privacy: { de: snippet } } }))
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 2, fields: { imprint: { de: 'Neu' } }, sentence: 'x' })
+    expect(await s.t.run((ctx) => ctx.db.query('fileRefs').collect())).toEqual([])
+  })
+
   it('does not delete the storage of a replaced file as an orphan', async () => {
     vi.setSystemTime(new Date('2026-10-01T00:00:00Z'))
     const s = await setup()
