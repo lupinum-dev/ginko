@@ -278,13 +278,16 @@ describe('export → import round trip (SPEC 12)', () => {
     expect(rows.site.orderRevs.menu).toBe(1)
   })
 
-  it('clears a site that is bigger than one call, and refuses everything outside GINKO_LOCAL=1', async () => {
+  // Wrong behaviour caught: one clear call sizes its work by document count, so on a site with large entries it passes a
+  // mutation's read limit, fails, and leaves the local site partly emptied.
+  it('clears a site that is bigger than one call by bytes, and refuses everything outside GINKO_LOCAL=1', async () => {
     vi.stubEnv('GINKO_LOCAL', '1')
     const s = await setup()
     await s.t.run(async (ctx) => {
       const template = (await ctx.db.get(s.entries['menu-dal']!))!
       const { _id: _i, _creationTime: _t, ...row } = template
-      for (let i = 0; i < 350; i++) await ctx.db.insert('entries', { ...row, order: 100 + i })
+      // 24 entries of 200,000 characters: about 4.8 MB, far fewer documents than one call took before.
+      for (let i = 0; i < 24; i++) await ctx.db.insert('entries', { ...row, order: 100 + i, data: { ...(row.data as object), description: { de: 'x'.repeat(200_000) } } })
     })
     const clear = makeFunctionReference<'mutation'>('seed:importClear')
     const answers = []

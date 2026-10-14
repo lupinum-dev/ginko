@@ -26,6 +26,8 @@ export interface ImportInput {
   prod?: boolean
   /** The site's slug on the platform. Default: the site of the export. */
   site?: string
+  /** The command that repeats this import (e.g. `pnpm local:import <folder>`), named when a local import fails halfway. */
+  again?: string
   /** Largest size of one call's arguments. Default BATCH_BYTES; tests lower it to get several batches. */
   batchBytes?: number
 }
@@ -204,6 +206,22 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
     const bytes = new TextEncoder().encode(JSON.stringify(batch.args)) as Uint8Array<ArrayBuffer>
     storedBatches.push({ id: await input.upload(url, bytes, 'application/json'), count: batch.count })
   }
+
+  if (input.prod) return fill(input, data, site, storedBatches)
+  // From the clear on, a failure leaves the local site partly imported. Running the same command again finishes it: it
+  // stores the batches again, clears what is left and imports everything.
+  try {
+    return await fill(input, data, site, storedBatches)
+  } catch (error) {
+    const again = input.again ? `: ${input.again}` : '.'
+    const reason = error instanceof Error ? error.message : String(error)
+    throw new CliError(`${reason}\nThe local site is only partly imported. Run the same command again to finish${again}`, error instanceof CliError ? error.code : undefined)
+  }
+}
+
+/** Steps 4 to 6: clear the local site, import the stored batches, rewrite the references between entries. */
+async function fill(input: ImportInput, data: SiteExport, site: string, storedBatches: { id: string; count: number }[]): Promise<{ entries: number; files: number }> {
+  const { run, log } = input
 
   // 4. Clear. Each call removes a bounded part. Never on the hosted platform: it is empty by rule.
   if (!input.prod) {

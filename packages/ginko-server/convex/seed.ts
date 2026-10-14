@@ -6,7 +6,7 @@
 import type { Fields } from '@lupinum/ginko'
 import { byteSize, entryBytes, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
-import type { Id } from './_generated/dataModel'
+import type { Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
 import { internalAction, internalMutation, internalQuery, type MutationCtx, type QueryCtx } from './_generated/server'
 import { fail } from './lib/access'
@@ -15,7 +15,7 @@ import { DEFAULT_LOCALE, t, type MessageKey } from './lib/i18n'
 import { normalizeEmail } from './members'
 import { remapEntryRefs, remapFileIds, treesOf, usesOf, type Data } from './lib/content'
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
-import { dropTrees, putTrees } from './lib/trees'
+import { putTrees } from './lib/trees'
 import { BUDGET, same, sizeText, syncEntryRefs } from './lib/write'
 
 function localOnly() {
@@ -89,40 +89,59 @@ async function siteBySlug(ctx: MutationCtx, slug: string) {
   return site
 }
 
-async function dropFileRefs(ctx: MutationCtx, holder: 'entry' | 'change', holderId: string) {
-  const refs = await ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', holder).eq('holderId', holderId)).collect()
-  for (const ref of refs) await ctx.db.delete(ref._id)
-}
+/** What one importClear call may read before it stops: a quarter of a mutation's 16 MiB, leaving room for its writes. */
+const CLEAR_BYTES = 4_000_000
+const CLEAR_DOCS = 2000
 
 /**
- * Import step 1: deletes the site's entries, slugs, file references, changes and ops, like `reset`
- * without people. One call removes a bounded part (so it stays under the limits of a mutation) and
- * returns `done: false` until nothing is left; the CLI repeats it. When done, the counters are zero
- * and contentRev has risen. Uploads and their files stay; the retention sweep removes them.
+ * Import step 1: deletes the site's entries, trees, slugs, file references, changes and ops, like `reset` without
+ * people. One call stops after about CLEAR_BYTES of documents (or CLEAR_DOCS of them), so it stays under the limits of a
+ * mutation whatever the size of the rows, and returns `done: false` until nothing is left; the CLI repeats it, and a
+ * rerun after a failure continues where the last call stopped. When done, the counters are zero and contentRev has
+ * risen. Uploads and their files stay; the retention sweep removes them.
  */
 export const importClear = internalMutation({
   args: { site: v.string() },
   handler: async (ctx, args) => {
     localOnly()
     const site = await siteBySlug(ctx, args.site)
-    for (const change of await ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', site._id)).take(500)) {
-      await dropFileRefs(ctx, 'change', change._id)
-      await ctx.db.delete(change._id)
+    let spent = 0
+    let docs = 0
+    const full = () => spent > CLEAR_BYTES || docs >= CLEAR_DOCS
+    const drop = async (doc: { _id: Id<TableNames> }) => {
+      spent += JSON.stringify(doc).length
+      docs++
+      await ctx.db.delete(doc._id)
     }
-    for (const op of await ctx.db.query('ops').withIndex('by_site_actor_op', (q) => q.eq('site', site._id)).take(500)) await ctx.db.delete(op._id)
-    for (const entry of await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).take(300)) {
-      await dropFileRefs(ctx, 'entry', entry._id)
-      for (const slug of await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()) await ctx.db.delete(slug._id)
-      await dropTrees(ctx, entry._id)
-      await ctx.db.delete(entry._id)
+    const dropRefs = async (holder: 'entry' | 'change', holderId: string) => {
+      for (const ref of await ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', holder).eq('holderId', holderId)).collect()) await drop(ref)
     }
-    for (const slug of await ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', site._id)).take(500)) await ctx.db.delete(slug._id)
 
-    const left = (await ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', site._id)).first())
-      ?? (await ctx.db.query('ops').withIndex('by_site_actor_op', (q) => q.eq('site', site._id)).first())
-      ?? (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).first())
-      ?? (await ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', site._id)).first())
-    if (left) return { done: false }
+    for await (const change of ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', site._id))) {
+      if (full()) return { done: false }
+      await dropRefs('change', change._id)
+      await drop(change)
+    }
+    for await (const op of ctx.db.query('ops').withIndex('by_site_actor_op', (q) => q.eq('site', site._id))) {
+      if (full()) return { done: false }
+      await drop(op)
+    }
+    // The trees first, by site: an entry's parts can be larger than the entry.
+    for await (const part of ctx.db.query('entryTrees').withIndex('by_site', (q) => q.eq('site', site._id))) {
+      if (full()) return { done: false }
+      await drop(part)
+    }
+    for await (const entry of ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id))) {
+      if (full()) return { done: false }
+      await dropRefs('entry', entry._id)
+      for (const slug of await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()) await drop(slug)
+      await drop(entry)
+    }
+    for await (const slug of ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', site._id))) {
+      if (full()) return { done: false }
+      await drop(slug)
+    }
+
     const orderRevs = Object.fromEntries(Object.keys((site.schema as Schema).bricks).map((brick) => [brick, 0]))
     await ctx.db.patch(site._id, { bytes: 0, trashBytes: 0, treeBytes: 0, entryCount: 0, orderRevs, contentRev: site.contentRev + 1 })
     return { done: true }

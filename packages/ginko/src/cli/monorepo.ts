@@ -61,7 +61,7 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
         folder: 'required',
         async run(args) {
           const run = local(args)
-          const done = await importSite({ dir: args.folder!, run, upload, log: deps.log })
+          const done = await importSite({ dir: args.folder!, run, upload, log: deps.log, again: `pnpm local:import ${args.folder!}` })
           return { dir: args.folder, ...done }
         },
       },
