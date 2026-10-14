@@ -110,6 +110,28 @@ describe('entries.remove and restore', () => {
     expect(await t.run((ctx) => ctx.db.get(site))).toMatchObject({ trashBytes: 4 * 1024 * 1024 - 10 - 1000 + row!.bytes })
   })
 
+  // Wrong behaviour caught: a removed entry can only wait 30 days for retention, so the trash frees no room on demand.
+  it('an owner deletes a removed entry for good; staff may not', async () => {
+    const { t, as, entries, site } = await setup()
+    const entry = entries['notice-ausgebucht']!
+    await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })
+    const [trash] = await as.owner.query(api.entries.trash, { site: 'restaurant' }).then((r) => r.items)
+    expect(trash).toMatchObject({ entry, mayPurge: true })
+    expect(await errorOf(as.cook.mutation(api.entries.purge, { site: 'restaurant', opId: opId(), entry, lifeRev: 2 }))).toMatchObject({ code: 'FORBIDDEN', message: 'Endgültig löschen dürfen nur Inhaber und Admins.' })
+
+    await as.owner.mutation(api.entries.purge, { site: 'restaurant', opId: opId(), entry, lifeRev: 2 })
+    const after = await t.run(async (ctx) => ({
+      row: await ctx.db.get(entry),
+      slugs: await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry)).collect(),
+      site: (await ctx.db.get(site))!,
+      change: await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry)).order('desc').first(),
+    }))
+    expect(after.row).toBeNull()
+    expect(after.slugs).toHaveLength(0)
+    expect(after.site.trashBytes).toBe(0)
+    expect(after.change).toMatchObject({ kind: 'purge', sentence: '„Heute sind wir ausgebucht.“ endgültig gelöscht' })
+  })
+
   it('a restore with a stale lifeRev is CHANGED_SINCE; the current lifeRev restores', async () => {
     const { as, entries } = await setup()
     const entry = entries['menu-saibling']!

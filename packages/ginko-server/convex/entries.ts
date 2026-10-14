@@ -10,7 +10,7 @@ import { actorFor, authorize, authorizeWriter, byOf, checkRev, entryOf, fail, id
 import { fileIdsOf, leavesOf, mergeField, nextPrints, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { msg, recorded, type HistoryMsg, type Recorded } from './lib/history'
 import { isLocale, t } from './lib/i18n'
-import { countersOf, DELETED_KEPT, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
+import { countersOf, DELETED_KEPT, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
 import { taskFor } from './lib/agentTools'
@@ -609,6 +609,34 @@ export const restore = mutation({
   },
 })
 
+/**
+ * Deletes a removed entry for good now, as retention does after 30 days (lib/lifecycle purgeEntry): its slugs, file
+ * references, trees and the row. Its change rows stay, with their old values, as long as retention keeps them. Owners
+ * and admins only, because it cannot be undone; the agent door has no tool for it.
+ */
+export const purge = mutation({
+  args: { site: v.string(), opId: v.string(), entry: v.string(), lifeRev: v.number() },
+  handler: async (ctx, args): Promise<Json> => {
+    const actor = await actorFor(ctx, args.site)
+    if (actor.role === 'staff') fail('FORBIDDEN', 'errors.purgeOwnersOnly')
+    checkRev(args.lifeRev)
+    return idempotent(ctx, actor, args, async () => {
+      const entry = await entryOf(ctx, actor, args.entry)
+      if (!entry.deletedAt || entry.lifeRev !== args.lifeRev) fail('CHANGED_SINCE', 'errors.entryChangedMeanwhile', undefined, lifeStateOf(entry))
+      const schema = actor.site.schema as Schema
+      const c = countersOf(actor.site)
+      await purgeEntry(ctx, c, entry)
+      await ctx.db.insert('changes', {
+        site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'purge',
+        ...recorded(msg('history.purged', { title: labelOf(schema, entry.brick, entry.data as Data) }), schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: Date.now(),
+      })
+      await writeCounters(ctx, actor.site._id, c)
+      const result: Json = { entry: entry._id }
+      return result
+    })
+  },
+})
+
 // ---- Drafts (SPEC 15): publish, unpublish and the scheduled publishDue. ----
 
 const YEAR = 365 * 24 * 60 * 60 * 1000
@@ -879,6 +907,7 @@ export const trash = query({
         lifeRev: row.lifeRev, deletedAt: row.deletedAt!, purgeAt: row.deletedAt! + DELETED_KEPT, wasDraft: row.state === 'draft',
         deletedBy: removal ? { actor: removal.actor, ...(member?.email ? { email: member.email } : {}), ...(removal.via ? { via: removal.via } : {}) } : null,
         mayRestore: actor.role !== 'staff' || (task !== undefined && !directWriteRefused(actor, row.brick, task)),
+        mayPurge: actor.role !== 'staff',
         ...(task === undefined ? {} : { task }),
       }
     }))
