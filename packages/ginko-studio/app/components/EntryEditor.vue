@@ -389,12 +389,12 @@ const showPreview = ref(false)
 // The preview builds the site from all its entries, so it reads them only while it is open.
 const previewRead = useConvexQuery(api.entries.ofBricks, () => (showPreview.value ? { site: props.site.slug, bricks: Object.keys(props.schema.bricks) } : 'skip'))
 const previewEntries = computed(() => previewRead.data.value)
-// The preview needs the URLs of every referenced photo and PDF, also of one uploaded just now.
+// The preview needs the URLs and library descriptions of every referenced photo and PDF (fields and texts), also of one uploaded just now.
 const fileIds = computed(() => [...fileIdsIn([(previewEntries.value ?? []).map((e) => e.data), draft.value])].sort())
 const { data: fileInfo } = useConvexQuery(api.uploads.urls, () => (showPreview.value && fileIds.value.length ? { site: props.site.slug, ids: fileIds.value } : 'skip'))
 function files(id: string) {
   const f = fileInfo.value?.[id]
-  return f ? { url: f.url, name: f.name, size: f.size, ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}) } : undefined
+  return f ? { url: f.url, name: f.name, size: f.size, alt: f.alt, ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}) } : undefined
 }
 
 // The save bar sits at the bottom: the layout hides the phone tab bar while this editor is open.

@@ -11,6 +11,7 @@ import GinkoFieldImage from '../app/components/fields/GinkoFieldImage.vue'
 import FileInfoPanel from '../app/components/files/FileInfoPanel.vue'
 import FileRemoveDialog from '../app/components/files/FileRemoveDialog.vue'
 import FilesBrowser from '../app/components/files/FilesBrowser.vue'
+import { fileIdsIn } from '../app/utils/content'
 
 // Only the Convex side of the library is replaced: three files, and what `files.info` would answer.
 const library = vi.hoisted(() => ({ altSuggestion: null as Record<string, string> | null, alt: {} as Record<string, string> }))
@@ -177,6 +178,11 @@ describe('info panel alt text', () => {
 })
 
 describe('library pictures in a Markdown text', () => {
+  // Wrong behaviour caught: the preview asks only for the files of image fields, so every library picture in a text shows as broken.
+  test('the preview asks for the files of texts too', () => {
+    expect([...fileIdsIn({ body: { de: '![Hund]($file.f1)\n\n`$file.code`' }, cover: { file: 'f2' } })]).toEqual(['f1', 'f2'])
+  })
+
   async function choose(opener: string) {
     button(opener)!.click()
     await vi.waitFor(() => expect(button('Dieses Foto verwenden')).toBeDefined())

@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { entryTitle, ordered, stableJson, type Schema } from '@lupinum/ginko/internal'
+import { entryTitle, fileRefsIn, ordered, stableJson, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { shownLabel } from './labels'
 import type { Words } from './when'
@@ -119,9 +119,10 @@ export function languageName(locale: string, language: string): string {
   }
 }
 
-/** Upload ids referenced anywhere in stored data (`{ file: id }` of image and file fields, in lists too). */
+/** Upload ids referenced anywhere in stored data: `{ file: id }` of image and file fields and `$file.<id>` in Markdown texts, in lists too. */
 export function fileIdsIn(value: unknown, out: Set<string> = new Set()): Set<string> {
-  if (Array.isArray(value)) for (const v of value) fileIdsIn(v, out)
+  if (typeof value === 'string') for (const id of fileRefsIn(value)) out.add(id)
+  else if (Array.isArray(value)) for (const v of value) fileIdsIn(v, out)
   else if (value && typeof value === 'object') {
     for (const [k, v] of Object.entries(value)) {
       if (k === 'file' && typeof v === 'string') out.add(v)
