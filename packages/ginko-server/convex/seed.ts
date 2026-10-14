@@ -4,7 +4,7 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Fields } from '@lupinum/ginko'
-import { byteSize, entryBytes, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, entryBytes, fitsBudget, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -361,6 +361,7 @@ export const importRefs = internalMutation({
     const site = await siteBySlug(ctx, args.site)
     const schema = site.schema as Schema
     const ids = new Map(Object.entries(args.ids))
+    const exportedOf = new Map(Object.entries(args.ids).map(([exported, id]) => [id, exported]))
     // 25 entries of up to 480 KiB stay under the 16 MiB a mutation may read.
     const page = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).paginate({ numItems: 25, cursor: args.cursor ?? null })
     let delta = 0
@@ -372,12 +373,21 @@ export const importRefs = internalMutation({
       const data = remapEntryRefs(def.fields, entry.data as Data, ids)
       if (same(data, entry.data)) continue
       const size = entry.bytes + byteSize(data) - byteSize(entry.data)
+      // A path ID from `ginko files-export` is shorter than a Convex ID: an entry with many references grows here. The CLI
+      // checks this before it clears anything (checkImport); this is the platform's own guard.
+      if (!fitsBudget(size, entry.bytes, BUDGET.entryBytes)) {
+        fail('TOO_LARGE', 'errors.importEntryTooLarge', { id: exportedOf.get(entry._id) ?? entry._id, used: sizeText(size), limit: sizeText(BUDGET.entryBytes) })
+      }
       await ctx.db.patch(entry._id, { data, bytes: size })
       if (entry.deletedAt === undefined) delta += size - entry.bytes
       else trashDelta += size - entry.bytes
       changed++
     }
-    if (delta !== 0 || trashDelta !== 0) await ctx.db.patch(site._id, { bytes: site.bytes + delta, trashBytes: (site.trashBytes ?? 0) + trashDelta })
+    const bytes = site.bytes + delta
+    const trashBytes = (site.trashBytes ?? 0) + trashDelta
+    if (!fitsBudget(bytes, site.bytes, BUDGET.siteBytes)) fail('TOO_LARGE', 'errors.importSiteTooLarge', { used: sizeText(bytes), limit: sizeText(BUDGET.siteBytes) })
+    if (!fitsBudget(trashBytes, site.trashBytes ?? 0, BUDGET.trashBytes)) fail('TOO_LARGE', 'errors.importTrashTooLarge', { used: sizeText(trashBytes), limit: sizeText(BUDGET.trashBytes) })
+    if (delta !== 0 || trashDelta !== 0) await ctx.db.patch(site._id, { bytes, trashBytes })
     return { done: page.isDone, cursor: page.continueCursor, changed }
   },
 })

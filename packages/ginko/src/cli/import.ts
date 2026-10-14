@@ -92,14 +92,22 @@ function warningText(warning: Record<string, unknown>): string | undefined {
 /** Largest size of the `ids` argument of one importRefs call (a command-line argument). */
 const IDS_BYTES = 100_000
 
+/** Length of a Convex document ID, which every referenced entry ID becomes in step 6. */
+const NEW_ID = 'x'.repeat(32)
+
 /**
- * What the platform's import (seed.ts importExport) would refuse in an export, as English lines: values the Studio cannot
- * open at all, entries over the entry limit (removed ones too: a restore must be able to save them), and live or removed
- * entries over a site's budget. Values that a save refuses only today are no problem: the platform stores them and warns.
- * The target site counts as empty: a local import clears it first, and the hosted import takes only an empty site.
+ * What the platform's import (seed.ts importExport, importRefs) would refuse in an export, as English lines: values the
+ * Studio cannot open at all, entries over the entry limit (removed ones too: a restore must be able to save them), and
+ * live or removed entries over a site's budget. Values that a save refuses only today are no problem: the platform stores
+ * them and warns. The target site counts as empty: a local import clears it first, and the hosted import takes only an
+ * empty site. Sizes count references to other entries with their new IDs: an ID from `ginko files-export` is a path like
+ * `authors/anna`, shorter than the Convex ID that replaces it, so an entry with many references grows in step 6.
  */
 export async function checkImport(schema: Schema, entries: ExportEntry[]): Promise<string[]> {
   const problems: string[] = []
+  const exported = new Set(entries.map((e) => e.id))
+  // Like referencedIds: any string value that names an exported entry (a text with exactly that value counts too, which only overestimates).
+  const withNewIds = (data: unknown): unknown => JSON.parse(JSON.stringify(data ?? null, (_key, value: unknown) => typeof value === 'string' && exported.has(value) ? NEW_ID : value))
   let bytes = 0
   let trash = 0
   let live = 0
@@ -107,7 +115,7 @@ export async function checkImport(schema: Schema, entries: ExportEntry[]): Promi
     for (const issue of (await validate(schema, entry.brick, entry.data, { mode: 'restore' })).errors) {
       problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path || 'entry'}: ${english(issue)}`)
     }
-    const size = entryBytes(entry.data, entry.prints)
+    const size = entryBytes(withNewIds(entry.data), entry.prints)
     if (size > SITE_BUDGET.entryBytes) problems.push(`Entry ${entry.id} (${entry.brick}) is ${kib(size)}; the limit is ${kib(SITE_BUDGET.entryBytes)}.`)
     if (entry.deletedAt === undefined) {
       live++

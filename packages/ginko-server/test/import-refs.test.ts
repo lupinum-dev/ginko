@@ -5,9 +5,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { makeFunctionReference } from 'convex/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { importSite } from '../../../packages/ginko/src/cli/import.ts'
+import { checkImport, importSite } from '../../../packages/ginko/src/cli/import.ts'
 import type { Runner } from '../../../packages/ginko/src/cli/local.ts'
 import type { Fields } from '@lupinum/ginko'
+import type { Schema } from '@lupinum/ginko/internal'
 import { remapEntryRefs } from '../convex/lib/content'
 import { errorOf, setup } from './setup'
 
@@ -100,6 +101,32 @@ describe('import keeps references between entries', () => {
     expect(post.data).toEqual({ author: anna._id, more: [anna._id], credits: [{ _id: 'r1', who: anna._id, role: true }] })
     const site = (await s.t.run((ctx) => ctx.db.get(s.site)))!
     expect(site.bytes).toBe(rows.reduce((sum, e) => sum + e.bytes, 0))
+  })
+
+  // A post that names a short files-export ID 20000 times: 234 KiB in the export, 684 KiB once each `authors/a` is a
+  // 32-character Convex ID. Wrong behaviour caught: the size is checked before the rewrite only, so the import clears the
+  // site and stores an entry the Studio then refuses to grow.
+  const manyRefs = [
+    { id: 'posts/many', brick: 'posts', kind: 'item' as const, order: 1, data: { more: Array<string>(20000).fill('authors/a') }, prints: {}, rev: 1 },
+    { id: 'authors/a', brick: 'authors', kind: 'item' as const, order: 1, data: { name: { de: 'Anna' } }, prints: {}, rev: 1 },
+  ]
+
+  it('the CLI counts references with the length of their new IDs before it clears anything', async () => {
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const schema = (await s.t.run((ctx) => ctx.db.get(s.site)))!.schema as Schema
+    expect(await checkImport(schema, manyRefs)).toEqual(['Entry posts/many (posts) is 684 KiB; the limit is 480 KiB.'])
+  })
+
+  it('the platform refuses a reference rewrite that grows an entry past its limit', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const call = (fn: string, args: Record<string, unknown>) => s.t.mutation(makeFunctionReference<'mutation'>(fn), args)
+    const { ids } = (await call('seed:importExport', { site: 'restaurant', files: [], entries: manyRefs })) as { ids: Record<string, string> }
+    expect(await errorOf(call('seed:importRefs', { site: 'restaurant', ids }))).toMatchObject({ code: 'TOO_LARGE', message: 'Eintrag posts/many ist zu groß (684 KB, höchstens 480 KB).' })
+    const post = (await entriesOf(s, s.site)).find((e) => e.brick === 'posts')!
+    expect(post.data).toEqual({ more: Array<string>(20000).fill('authors/a') })
   })
 })
 
