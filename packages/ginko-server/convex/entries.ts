@@ -915,7 +915,7 @@ export async function usesOfEntry(ctx: QueryCtx, actor: Actor, target: Doc<'entr
     if (brick.retired) continue
     const fields = Object.fromEntries(Object.entries(brick.fields).filter(([, field]) => !field.retired && pointsAt(field, target.brick)))
     if (!Object.keys(fields).length) continue
-    const rows = await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', actor.site._id).eq('brick', key).eq('deletedAt', undefined)).collect()
+    const rows = await liveRowsQuery(ctx, actor.site._id, key).collect()
     for (const row of rows) {
       if (row._id === target._id) continue
       const paths = refIdsIn(fields, row.data as Data).filter((ref) => ref.to === target.brick && ref.id === target._id).map((ref) => ref.path)
@@ -948,8 +948,9 @@ export const removed = query({
 })
 
 // ---- What the Studio's pages read (VOL-1): each page subscribes only to the entries it shows. ----
-// Any member may read, as with every Studio read (SPEC 2.7). Each reads by_site_brick_order: one brick is bounded by
-// SITE_BUDGET (bytes and entries), which keeps a whole-brick read inside Convex's per-query limits.
+// Any member may read, as with every Studio read (SPEC 2.7). Each reads only the live rows (by_site_brick_deleted), never
+// the brick's trash: one brick's live rows are bounded by SITE_BUDGET (bytes and entries), which keeps a whole-brick
+// read inside Convex's per-query limits.
 
 /** A brick of the schema that is not retired. */
 function liveBrick(schema: Schema, key: string) {
@@ -958,9 +959,14 @@ function liveBrick(schema: Schema, key: string) {
   return brick
 }
 
+/** The rows of a brick that are not removed. Index order, not the site's order: sort them when the order matters. */
+function liveRowsQuery(ctx: QueryCtx, site: Id<'sites'>, key: string) {
+  return ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', site).eq('brick', key).eq('deletedAt', undefined))
+}
+
 /** The live rows of a brick, in the site's order for a collection (core sortEntries, as on the website). */
 async function liveRowsOf(ctx: QueryCtx, site: Id<'sites'>, key: string, brick: Brick): Promise<Doc<'entries'>[]> {
-  const rows = (await rowsOf(ctx, site, key)).filter((row) => row.deletedAt === undefined)
+  const rows = await liveRowsQuery(ctx, site, key).collect()
   if (brick.kind !== 'collection') return rows
   const byId = new Map(rows.map((row) => [row._id as string, row]))
   return sortEntries(brick, rows.map((row): StoredEntry => ({ id: row._id, order: row.order, data: row.data }))).map((stored) => byId.get(stored.id)!)
@@ -1026,7 +1032,7 @@ export const single = query({
     const actor = await actorFor(ctx, args.site)
     const schema = actor.site.schema as Schema
     if (liveBrick(schema, args.brick).kind !== 'single') return null
-    const row = (await rowsOf(ctx, actor.site._id, args.brick)).find((r) => r.deletedAt === undefined)
+    const row = await liveRowsQuery(ctx, actor.site._id, args.brick).first()
     return row ? editorEntryWithTranslation(schema, row) : null
   },
 })
