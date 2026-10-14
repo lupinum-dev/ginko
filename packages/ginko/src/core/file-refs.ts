@@ -121,6 +121,8 @@ export function fileRefUses(nodes: readonly Json[], components: ComponentRegistr
 export function resolveFileRefs(bundle: Bundle, schema: Pick<Schema, 'components'>, files: (id: string) => FileInfo | undefined): Bundle {
   const components = schema.components
   const resolveNodes = (nodes: Json[]): Json[] => {
+    // Most texts reference no file: they stay as they are, uncopied (every bundle request runs this).
+    if (!fileRefUses(nodes, components).length) return nodes
     // Trees are JSON: a copy keeps the stored tree as it is.
     const copy = JSON.parse(JSON.stringify(nodes)) as Json[]
     for (const use of fileRefUses(copy, components)) {
