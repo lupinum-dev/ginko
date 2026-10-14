@@ -12,6 +12,7 @@ import { internalAction, internalMutation, internalQuery, type MutationCtx, type
 import { fail } from './lib/access'
 import type { ErrorParams } from './lib/fail'
 import { DEFAULT_LOCALE, t, type MessageKey } from './lib/i18n'
+import { badKey } from './lib/input'
 import { normalizeEmail } from './members'
 import { remapEntryRefs, remapFileIds, treesOf, usesOf, type Data } from './lib/content'
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
@@ -335,6 +336,9 @@ export const importBatch = internalAction({
     if (!blob) fail('NOT_FOUND', 'errors.importBatchNotLocal')
     const batch = JSON.parse(await blob.text()) as { site: string; files: never[]; entries: never[] }
     if (batch.site !== args.site) fail('INVALID', 'errors.importBatchOtherSite')
+    // runMutation would refuse such a key with an uncoded error; name it instead.
+    const bad = badKey(batch)
+    if (bad) fail('INVALID', 'errors.nameNotAllowed', { name: bad })
     const result: ImportAnswer = await ctx.runMutation(internal.seed.importExport, batch)
     await ctx.storage.delete(args.batch)
     return result

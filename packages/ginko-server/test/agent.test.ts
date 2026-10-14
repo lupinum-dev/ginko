@@ -54,6 +54,18 @@ describe('agent door', () => {
     expect((await call(s, key, 'ginko_history', { limit: 2 })).data[1]).toMatchObject({ kind: 'create', undoable: false })
   })
 
+  // Wrong behaviour caught: a German field name (a key Convex refuses) failed inside runMutation, and the assistant
+  // was told "Try again later", so it retried the same call forever.
+  it('a name Convex refuses is named in the answer', async () => {
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    expect(await call(s, key, 'task_notices_soldOut', { 'Überschrift': 'x' })).toEqual({
+      text: 'The name “Überschrift” is not allowed: names use ASCII letters, digits and signs and do not start with $.',
+      data: undefined,
+      isError: true,
+    })
+  })
+
   it('a price in euros is stored in cents and the change names the key', async () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')

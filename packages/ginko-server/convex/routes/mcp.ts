@@ -8,6 +8,7 @@ import { internal } from '../_generated/api'
 import type { Id } from '../_generated/dataModel'
 import { httpAction, type ActionCtx } from '../_generated/server'
 import { READ_TOOLS } from '../lib/agentTools'
+import { badKey } from '../lib/input'
 import { t, type MessageKey } from '../lib/i18n'
 
 const PROTOCOL = '2025-06-18'
@@ -59,6 +60,9 @@ function messageOf(error: unknown): string {
 }
 
 async function callTool(ctx: ActionCtx, key: Id<'agentKeys'>, name: string, args: Record<string, Json>) {
+  // Convex refuses such a key with an uncoded error before agent.call runs; the assistant needs the name to fix the call.
+  const bad = badKey(args)
+  if (bad) return toolText(t('en', 'errors.nameNotAllowed', { name: bad }), undefined, true)
   try {
     if (name === 'ginko_overview') return toolText('Overview of the website.', await ctx.runQuery(internal.agent.overview, { key }))
     if (name === 'ginko_history') {

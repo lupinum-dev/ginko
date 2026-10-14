@@ -14,6 +14,7 @@
     "fieldNotObject": "„{what}“ fehlt oder ist kein Objekt.",
     "proposeTrueFalse": "„propose“ ist true oder false.",
     "unknownOption": "Unbekannte Angabe: {unknown}.",
+    "nameNotAllowed": "Der Name „{name}“ ist nicht erlaubt: Namen bestehen aus ASCII-Buchstaben, Ziffern und Zeichen und beginnen nicht mit $.",
     "removeNeedsConfirm": "Zum Entfernen muss confirm true sein. Frag die Person vorher.",
     "nothingToChange": "Nichts zu ändern: nenne mindestens ein Feld.",
     "languageNotSetUpAvailable": "Die Sprache „{asked}“ ist nicht eingerichtet. Möglich: {locales}.",

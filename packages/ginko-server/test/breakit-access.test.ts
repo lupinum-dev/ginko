@@ -930,6 +930,8 @@ describe('6. push keys', () => {
 // ---------------------------------------------------------------------------------------------
 
 // A refusal with a code, or one by Convex's own argument checks (wrong type at the function boundary, `$` in a field name).
+// A direct entries.save keeps Convex's uncoded message for such names: the client serializes the arguments, so no server
+// code runs. Only the JSON boundaries (agent door, release route, import batch) name the key (lib/input.ts badKey).
 const REFUSAL = /^(INVALID|TOO_LARGE|uncoded: (Validator error|Field name \$))/
 const json = (text: string): Json => JSON.parse(text) as Json
 const nest = (depth: number): Json => { let v: Json = 1; for (let i = 0; i < depth; i++) v = { a: v }; return v }

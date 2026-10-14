@@ -3,7 +3,8 @@
 import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'
 import { httpAction } from '../_generated/server'
-import { hasDollarKey } from '../lib/input'
+import { t } from '../lib/i18n'
+import { badKey } from '../lib/input'
 import { RELEASE_LIMITS } from '../release'
 import { authenticate, errorResponse, failure, json } from './key'
 
@@ -47,8 +48,9 @@ const release = httpAction(async (ctx, request) => {
     return failure('INVALID', 'The body is not valid JSON.')
   }
   if (!isRelease(body)) return failure('INVALID', 'The release does not have the expected shape.')
-  // Convex reserves keys starting with `$`; the database layer would refuse them with an uncoded error.
-  if (hasDollarKey(body)) return failure('INVALID', 'Names that start with $ are not allowed.')
+  // Convex refuses some keys (`$…`, non-ASCII, over 1024 characters) with an uncoded error before the mutation runs.
+  const bad = badKey(body)
+  if (bad) return failure('INVALID', t('en', 'errors.nameNotAllowed', { name: bad }))
   if (body.site !== undefined && body.site !== key.siteSlug) return failure('FORBIDDEN', 'This key belongs to another site.')
   try {
     const { site: _site, ...args } = body

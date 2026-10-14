@@ -33,9 +33,25 @@ export function isRev(value: number): boolean {
   return Number.isSafeInteger(value) && value >= 0
 }
 
-/** True when an object key starting with `$` appears anywhere in the value (Convex reserves them). */
-export function hasDollarKey(value: unknown): boolean {
-  if (Array.isArray(value)) return value.some(hasDollarKey)
-  if (typeof value !== 'object' || value === null) return false
-  return Object.entries(value).some(([key, inner]) => key.startsWith('$') || hasDollarKey(inner))
+/**
+ * The first object key Convex would refuse (starts with `$`, has a character outside ASCII 32–126, or is longer than
+ * 1024 characters), as a dotted path; undefined when every key is fine. Convex refuses such keys while it serializes
+ * the arguments, before any handler runs, with an uncoded error; the JSON boundaries check them first.
+ */
+export function badKey(value: unknown, path = ''): string | undefined {
+  if (Array.isArray(value)) {
+    for (const [i, inner] of value.entries()) {
+      const bad = badKey(inner, path ? `${path}.${i}` : String(i))
+      if (bad) return bad
+    }
+    return undefined
+  }
+  if (typeof value !== 'object' || value === null) return undefined
+  for (const [key, inner] of Object.entries(value)) {
+    const at = path ? `${path}.${key}` : key
+    if (key.startsWith('$') || key.length > 1024 || /[^\x20-\x7e]/.test(key)) return at
+    const bad = badKey(inner, at)
+    if (bad) return bad
+  }
+  return undefined
 }
