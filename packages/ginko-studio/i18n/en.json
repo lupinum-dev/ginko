@@ -162,6 +162,15 @@
       "confirm": "Discard",
       "keepEditing": "Keep editing"
     },
+    "gone": {
+      "text": "Someone removed this entry. Your changes are still here.",
+      "textClean": "Someone removed this entry.",
+      "restoreAndSave": "Restore and save",
+      "restore": "Restore",
+      "saveAsNew": "Save as new entry",
+      "discard": "Discard",
+      "noRights": "Your changes stay on this device. Ask the owner to restore the entry, then open it again."
+    },
     "pick": {
       "search": "Search",
       "empty": "Nothing found."

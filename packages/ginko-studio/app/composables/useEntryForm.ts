@@ -28,6 +28,8 @@ export interface EntryFormOptions {
   draft?: () => boolean
   /** The site's time zone, for "online ab …" in messages. */
   timeZone?: () => string
+  /** Someone removed the edited entry meanwhile (useKeptEntry): saving waits for a restore or "save as new". */
+  removed?: () => boolean
 }
 
 export function useEntryForm(o: EntryFormOptions) {
@@ -54,13 +56,16 @@ export function useEntryForm(o: EntryFormOptions) {
   const flushers = new Set<() => Promise<void>>()
   provide(FLUSHERS, flushers)
 
-  const isCreate = computed(() => !o.entry())
+  /** Fixed when the form loads: an edit never turns into a create when its entry disappears. */
+  const loadedId = ref<string>()
+  const isCreate = computed(() => !loadedId.value)
   const keys = () => Object.keys(o.fields())
   const storedOf = (data: Data) => Object.fromEntries(keys().map((k) => [k, data[k]])) as Data
 
   /** Starts the form: `start` are the values shown (prefill or stored). */
   function load(start: Data) {
     const entry = o.entry()
+    loadedId.value = entry?._id
     draft.value = copy(start)
     baseline.value = entry ? copy(storedOf(entry.data)) : {}
     initial.value = copy(start)
@@ -114,7 +119,18 @@ export function useEntryForm(o: EntryFormOptions) {
 
   /** Saves; resolves true when done (nothing to save counts as done). */
   /** `publish` only when creating in a collection with drafts: `{}` online now, `{ at }` scheduled; absent a draft. */
-  async function save(rev = baseRev.value, publish?: { at?: number }): Promise<boolean> {
+  function save(rev = baseRev.value, publish?: { at?: number }): Promise<boolean> {
+    // A removed entry cannot take a save: the person restores it or saves the input as a new entry.
+    if (o.removed?.()) return Promise.resolve(false)
+    return write(rev, publish)
+  }
+
+  /** The input of a removed entry as a new entry (EntryGoneBanner); the server makes new addresses. */
+  function saveAsNew(task?: string): Promise<boolean> {
+    return write(baseRev.value, undefined, { task })
+  }
+
+  async function write(rev: number, publish?: { at?: number }, asNew?: { task?: string }): Promise<boolean> {
     if (busy.value) return false
     // Typing from the last moments may still wait in an editor's pause: take it before reading the draft.
     await Promise.all([...flushers].map((flush) => flush()))
@@ -129,8 +145,11 @@ export function useEntryForm(o: EntryFormOptions) {
     try {
       // What is sent: edits made while the call runs stay unsaved (and dirty), never marked as saved.
       const submitted = copy(draft.value)
-      if (isCreate.value) {
-        const result = await ops.createEntry({ brick: o.brickKey(), data: submitted as Record<string, Json>, task: o.task?.(), removeTask: o.removeTask?.(), op, label: t('ops.saved'), publish, timeZone: o.timeZone?.() })
+      if (isCreate.value || asNew) {
+        const fields = o.brick().fields
+        // A copy keeps only live fields and no address: the removed entry still holds its addresses.
+        const data = asNew ? Object.fromEntries(Object.entries(submitted).filter(([k]) => fields[k] && !fields[k].retired && fields[k].type !== 'slug')) : submitted
+        const result = await ops.createEntry({ brick: o.brickKey(), data: data as Record<string, Json>, task: asNew ? asNew.task : o.task?.(), removeTask: o.removeTask?.(), op, label: t('ops.saved'), publish, timeZone: o.timeZone?.() })
         if (result.entry === undefined) waiting.value = true
         else created.value = result.entry
         // Saved: what was sent no longer counts as open input (a second Speichern would create another).
@@ -220,5 +239,23 @@ export function useEntryForm(o: EntryFormOptions) {
     conflict.value = null
   }
 
-  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, slow, waiting, confirm, blockers, isCreate, changed, dirty, created, load, setField, save, keepMine, takeTheirs }
+  /**
+   * Brings the removed entry back (with the remove right) and saves the input onto it. False when the
+   * restore went to approval or failed: the entry stays removed, the input stays in the form.
+   */
+  async function restoreAndSave(lifeRev: number, task?: string): Promise<boolean> {
+    const entry = o.entry()
+    if (!entry || busy.value || !(await ops.restoreEntry(entry._id, lifeRev, task))) return false
+    // Convex applies the restored entry to the live list before the mutation resolves; let the form see it.
+    await nextTick()
+    return dirty.value ? save() : true
+  }
+
+  /** Drops the person's input (an explicit "Verwerfen"): the form shows what it opened with. */
+  function discard() {
+    draft.value = copy(initial.value)
+    confirm.value = []
+  }
+
+  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, slow, waiting, confirm, blockers, isCreate, changed, dirty, created, load, setField, save, saveAsNew, restoreAndSave, discard, keepMine, takeTheirs }
 }

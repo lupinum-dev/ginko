@@ -162,6 +162,15 @@
       "confirm": "Descartar",
       "keepEditing": "Seguir editando"
     },
+    "gone": {
+      "text": "Alguien eliminó esta entrada. Tus cambios siguen aquí.",
+      "textClean": "Alguien eliminó esta entrada.",
+      "restoreAndSave": "Restaurar y guardar",
+      "restore": "Restaurar",
+      "saveAsNew": "Guardar como entrada nueva",
+      "discard": "Descartar",
+      "noRights": "Tus cambios se quedan en este dispositivo. Pide al propietario que restaure la entrada y vuelve a abrirla."
+    },
     "pick": {
       "search": "Buscar",
       "empty": "No se encontró nada."

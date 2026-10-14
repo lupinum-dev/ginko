@@ -122,8 +122,11 @@ function weekState(key: string, brick: Brick) {
 
 // The open sheet: a task, and for edit tasks the entry.
 const open = ref<{ key: string; task: Task; entryId?: string } | null>(null)
-/** The open task's entry, live: the sheet sees changes others save meanwhile. */
-const openEntry = computed(() => (open.value?.entryId ? s.entries.value.find((e) => e._id === open.value!.entryId) : undefined))
+/** The open task's entry, live: the sheet sees changes others save meanwhile, and keeps it when someone removes it (N1). */
+const { entry: openEntry, removed: openRemoved } = useKeptEntry(
+  () => open.value?.entryId,
+  () => (open.value?.entryId ? s.entries.value.find((e) => e._id === open.value!.entryId) : undefined),
+)
 const picking = ref<{ key: string; task: Task } | null>(null)
 
 // Closing the sheets returns the focus to the button that started the task; the sheets are removed, so the browser has nowhere to put it back.
@@ -251,6 +254,8 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       :schema="s.schema.value"
       :entries="s.entries.value"
       :remove-task="sections.find((x) => x.key === open!.key)?.remove"
+      :removed="openRemoved"
+      :may-restore="s.isManager.value || !!sections.find((x) => x.key === open!.key)?.remove"
       :existing="s.schema.value.bricks[open.key]!.kind === 'collection' ? s.entriesOf(open.key).filter((e) => isVisible(s.schema.value!.bricks[open!.key]!, e.data, s.today.value)) : undefined"
       @close="open = null"
     />

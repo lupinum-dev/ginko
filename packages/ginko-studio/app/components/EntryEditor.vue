@@ -13,6 +13,7 @@ import { TRANSLATION } from '@lupinum/ginko-editor'
 import { EllipsisIcon } from '@lucide/vue'
 import WhyNotPublic from './WhyNotPublic.vue'
 import ScheduleField from './ScheduleField.vue'
+import EntryGoneBanner from './EntryGoneBanner.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
 import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
@@ -41,9 +42,12 @@ const props = defineProps<{
   /** Staff work through tasks (SPEC 2.7): the task refs that allow saving, creating and removing here, and the fields the save task covers. Owners pass none. */
   tasks?: { save?: string; fields?: readonly string[]; create?: string; remove?: string }
   canRemove: boolean
+  /** Someone removed `entry` while it was open (useKeptEntry): the form keeps the input and offers a way out. */
+  removed?: boolean
   /**
-   * Called after a removal. A prop, not an emit: the removed entry leaves the live list at once, which
-   * unmounts this editor before the mutation returns, and an unmounted component's emits go nowhere.
+   * Called after a removal, and after "Verwerfen" on an entry someone else removed. A prop, not an emit:
+   * a caller without a kept entry unmounts this editor when the entry leaves the live list, before the
+   * mutation returns, and an unmounted component's emits go nowhere.
    */
   onRemoved?: () => void
 }>()
@@ -85,6 +89,7 @@ const form = useEntryForm({
   removeTask: () => props.tasks?.remove,
   draft: () => props.entry?.state === 'draft',
   timeZone: () => props.schema.timeZone,
+  removed: () => !!props.removed,
 })
 const { draft, baseline, issues, problem, conflict, busy, slow, waiting, dirty, confirm } = form
 
@@ -183,7 +188,7 @@ const fieldProps = computed(() => ({ draft: draft.value, baseline: baseline.valu
 
 async function save() {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
-  if (busy.value || (!dirty.value && props.entry)) return
+  if (busy.value || props.removed || (!dirty.value && props.entry)) return
   if (await form.save()) {
     if (!waiting.value) savedOnce.value = true
     if (form.created.value) emit('created', form.created.value)
@@ -196,18 +201,41 @@ async function keepMine() {
 
 const ops = useOps(computed(() => props.site.slug))
 const removing = ref(false)
+/** The person's own removal: the entry leaves the list before the mutation returns, and that is no news to them. */
+const removingSelf = ref(false)
 async function remove() {
   if (!props.entry) return
   removing.value = true
+  removingSelf.value = true
   try {
     // A removal that went to approval leaves the entry where it is.
-    if (await ops.removeEntry(props.entry._id, props.entry.lifeRev, props.tasks?.remove, title.value, props.entry.state === 'draft')) props.onRemoved?.()
+    if (await ops.removeEntry(props.entry._id, props.entry.lifeRev, props.tasks?.remove, title.value, props.entry.state === 'draft')) {
+      // Removing it drops the input too, as closing would: nothing to ask on the way out.
+      form.discard()
+      props.onRemoved?.()
+    } else {
+      removingSelf.value = false
+    }
   } finally {
     removing.value = false
     askRemove.value = false
   }
 }
 const askRemove = ref(false)
+
+// Someone else removed the entry (N1): restore and save, save as a new entry, or discard.
+const mayCreate = computed(() => props.brick.kind === 'collection' && (!props.tasks || !!props.tasks.create))
+async function restoreRemoved(lifeRev: number) {
+  const typed = dirty.value
+  if (await form.restoreAndSave(lifeRev, props.tasks?.remove) && typed && !waiting.value) savedOnce.value = true
+}
+async function saveAsNew() {
+  if (await form.saveAsNew(props.tasks?.create) && form.created.value) emit('created', form.created.value)
+}
+function discardRemoved() {
+  form.discard()
+  props.onRemoved?.()
+}
 
 // More: a draft copy of this entry (UI.md 10.6). Copying belongs to the create right.
 const canDuplicate = computed(() => !!props.entry && props.brick.kind === 'collection' && (!props.tasks || !!props.tasks.create))
@@ -350,7 +378,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
       <header class="mb-4 grid gap-2.5">
         <div class="flex items-center justify-between gap-3">
           <h1 class="text-xl font-semibold tracking-tight">{{ title }}</h1>
-          <DropdownMenu v-if="entry">
+          <DropdownMenu v-if="entry && !removed">
             <DropdownMenuTrigger as-child>
               <Button type="button" variant="ghost" class="-mr-2 shrink-0"><EllipsisIcon aria-hidden="true" />{{ t('entry.more') }}</Button>
             </DropdownMenuTrigger>
@@ -393,6 +421,12 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
       </header>
 
       <form ref="formEl" class="grid gap-6" novalidate @submit.prevent="save">
+        <EntryGoneBanner
+          v-if="removed && entry && !removingSelf"
+          :site="site.slug" :brick-key="brickKey" :entry="entry" :dirty="dirty" :busy="busy"
+          :may-restore="canRemove" :may-create="mayCreate"
+          @restore="restoreRemoved" @save-as-new="saveAsNew" @discard="discardRemoved"
+        />
         <div v-if="conflict" class="grid gap-2 rounded-md bg-warning/10 p-3" role="alert">
           <p><strong>{{ t('entry.conflict.changed', { fields: conflict.fields.map((k) => shownField(k)).join(', ') || t('entry.conflict.thisEntry') }) }}</strong></p>
           <ul class="m-0 pl-4">
@@ -432,13 +466,13 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
 
         <div class="bar sticky bottom-0 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background py-3">
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-          <Button type="submit" :aria-disabled="busy || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (slow ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
-          <Button v-if="isDraft && !publishing" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
+          <Button type="submit" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (slow ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
+          <Button v-if="isDraft && !publishing && !removed" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
           <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
           <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>
           <span v-else-if="dirty" class="font-medium text-warning">{{ t('entry.unsaved') }}</span>
           <Button type="button" variant="ghost" class="ml-auto" :aria-pressed="showPreview" @click="showPreview = !showPreview">{{ showPreview ? t('entry.preview.close') : t('entry.preview.label') }}</Button>
-          <template v-if="drafts && entry && state === 'live'">
+          <template v-if="drafts && entry && state === 'live' && !removed">
             <Button v-if="!askUnpublish" type="button" variant="ghost" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
             <span v-else class="flex basis-full flex-wrap items-center gap-2">
               {{ t('entry.unpublish.warning', { title }) }}

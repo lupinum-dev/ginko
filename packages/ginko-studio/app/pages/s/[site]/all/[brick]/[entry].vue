@@ -9,13 +9,17 @@ const key = computed(() => String(route.params.brick))
 const id = computed(() => String(route.params.entry))
 const brick = computed(() => s.schema.value?.bricks[key.value])
 const access = computed(() => (brick.value ? tasksFor(key.value, brick.value) : undefined))
-const entry = computed(() => (id.value === 'new' ? undefined : s.entries.value.find((e) => e._id === id.value)))
+// Kept after someone else removes it, so the editor and the person's input stay (N1).
+const { entry, removed: entryRemoved } = useKeptEntry(
+  () => (id.value === 'new' ? undefined : id.value),
+  () => (id.value === 'new' ? undefined : s.entries.value.find((e) => e._id === id.value)),
+)
 const back = computed(() => ({ to: `/s/${s.slug.value}/all/${key.value}`, label: brick.value ? shownLabel(brick.value.label, s.main.value) : t('site.common.back') }))
 const { shown } = useStudioSite()
 useHead(() => ({ title: t('site.title.area', { area: brick.value ? shown(brick.value.label) : t('site.fallback.entry') }) }))
 
 function created(entryId: string) { navigateTo(`/s/${s.slug.value}/all/${key.value}/${entryId}`, { replace: true }) }
-function removed() { navigateTo(back.value.to) }
+function toList() { navigateTo(back.value.to) }
 </script>
 
 <template>
@@ -29,7 +33,8 @@ function removed() { navigateTo(back.value.to) }
       :site="s.site.value" :schema="s.schema.value" :brick-key="key" :brick="brick" :entry="entry" :entries="s.entries.value"
       :tasks="access?.all ? undefined : access"
       :can-remove="!!access && (access.all || !!access.remove)"
-      @created="created" @removed="removed"
+      :removed="entryRemoved"
+      @created="created" @removed="toList"
     />
   </AllShell>
 </template>

@@ -299,6 +299,29 @@ test.describe('Gleichzeitig (Astra phase 8)', () => {
     await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('Schnitzel des Kochs')
     await expect(page.getByRole('textbox', { name: 'Beschreibung' })).toHaveValue('Mit Erdäpfelsalat')
   })
+
+  test('22. someone removes the entry she is editing; her input stays and "Wiederherstellen und speichern" saves it', async ({ page, browser }) => {
+    await page.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
+    await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
+    const description = page.getByRole('textbox', { name: 'Beschreibung' })
+    await description.fill('Mit Erdäpfelsalat')
+
+    const other = await browser.newPage({ storageState: STATE.owner, viewport: { width: 1440, height: 900 } })
+    await other.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
+    await other.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
+    await other.getByRole('button', { name: 'Mehr' }).click()
+    await other.getByRole('menuitem', { name: 'Eintrag entfernen' }).click()
+    await other.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click()
+    await expect(other.locator('[data-sonner-toast]')).toContainText('entfernt')
+    await other.close()
+
+    await expect(page.getByRole('alert').filter({ hasText: 'Jemand hat diesen Eintrag entfernt.' })).toContainText('Jemand hat diesen Eintrag entfernt. Deine Änderungen sind noch da.')
+    await expect(description).toHaveValue('Mit Erdäpfelsalat')
+    await page.getByRole('button', { name: 'Wiederherstellen und speichern' }).click()
+    await expect(toast(page)).toContainText('Gespeichert')
+    await page.reload({ waitUntil: 'networkidle' })
+    await expect(page.getByRole('textbox', { name: 'Beschreibung' })).toHaveValue('Mit Erdäpfelsalat')
+  })
 })
 
 test.describe('Anmelden und Einladung', () => {

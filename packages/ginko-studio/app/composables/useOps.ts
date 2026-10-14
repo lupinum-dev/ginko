@@ -81,17 +81,20 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   async function removeEntry(entry: string, lifeRev: number, task?: string, label = t('ops.removed'), draft = false) {
     const result = await remove.mutate({ site: site.value, opId: opId(), task, entry, lifeRev }) as { lifeRev: number }
     if (isProposal(result)) { sentForApproval(); return false }
-    show(draft ? label : `${label} ${t('ops.liveHint')}`, { action: { label: t('ops.undo'), run: () => restoreEntry(entry, result.lifeRev, task, t('ops.restored'), draft) } })
+    show(draft ? label : `${label} ${t('ops.liveHint')}`, { action: { label: t('ops.undo'), run: async () => { await restoreEntry(entry, result.lifeRev, task, t('ops.restored'), draft) } } })
     return true
   }
 
+  /** True when the entry is back; false when the restore went to approval or failed (the message says which). */
   async function restoreEntry(entry: string, lifeRev: number, task?: string, label = t('ops.restored'), draft = false) {
     try {
       const result = await restore.mutate({ site: site.value, opId: opId(), task, entry, lifeRev }) as { lifeRev: number }
-      if (isProposal(result)) return sentForApproval()
+      if (isProposal(result)) { sentForApproval(); return false }
       show(draft ? label : `${label} ${t('ops.liveHint')}`, { action: { label: t('ops.undo'), run: async () => { await removeEntry(entry, result.lifeRev, task, t('ops.removed'), draft) } } })
+      return true
     } catch (error) {
       show(opErrorOf(error).message, { tone: 'err' })
+      return false
     }
   }
 

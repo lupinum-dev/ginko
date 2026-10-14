@@ -5,6 +5,7 @@ import { api } from '#convex/api'
 import type { Brick, Label as LabelText, Locale } from '@lupinum/ginko'
 import { defaultsFor, isShown, type Schema } from '@lupinum/ginko/internal'
 import GinkoField from './fields/GinkoField.vue'
+import EntryGoneBanner from './EntryGoneBanner.vue'
 import { provideRefs } from './fields/refs'
 import { Button } from '@studio/components/ui/button'
 import { XIcon } from '@lucide/vue'
@@ -24,6 +25,10 @@ const props = defineProps<{
   locales: readonly Locale[]
   /** The brick's remove task, so the person can undo a creation (staff need the grant). */
   removeTask?: Task
+  /** Someone removed `entry` while the sheet was open (useKeptEntry): the input stays, the banner offers a way out. */
+  removed?: boolean
+  /** The person may restore a removed entry (owners, admins, staff with the remove task). */
+  mayRestore?: boolean
   /** The brick's current entries, to point out a new one that already exists. */
   existing?: Entry[]
   /** The whole site, so ref fields can list the entries they point to. */
@@ -55,6 +60,7 @@ const form = useEntryForm({
   task: () => ref_.value,
   removeTask: () => (props.removeTask ? taskRef(props.brickKey, props.removeTask) : undefined),
   draft: () => !isCreate.value && props.entry?.state === 'draft',
+  removed: () => !isCreate.value && !!props.removed,
 })
 const { draft, baseline, ready, issues, problem, conflict, busy, slow, waiting, dirty } = form
 
@@ -93,12 +99,24 @@ async function finish(ok: boolean) {
 }
 async function save() {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
-  if (busy.value || !ready.value) return
+  if (busy.value || !ready.value || removedHere.value) return
   if (form.blockers.size) nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
   await finish(await form.save())
 }
 async function keepMine() {
   await finish(await form.keepMine())
+}
+// Someone removed the entry (N1): bring it back and save the input, or drop it.
+const removedHere = computed(() => !isCreate.value && !!props.removed && !!props.entry)
+async function restoreRemoved(lifeRev: number) {
+  const typed = dirty.value
+  const ok = await form.restoreAndSave(lifeRev, props.removeTask ? taskRef(props.brickKey, props.removeTask) : undefined)
+  // Without input the sheet stays open on the restored entry; with input it closes like after Speichern.
+  if (typed) await finish(ok)
+}
+function discardRemoved() {
+  form.discard()
+  emit('close')
 }
 function requestClose() {
   // A save on its way cannot be taken back by closing; say so instead of offering "Verwerfen" (break-it 9).
@@ -137,6 +155,11 @@ function onCancel(event: Event) {
         <p v-if="prefillError" :class="PROBLEM" role="alert">{{ opErrorOf(prefillError).message }}</p>
         <p v-else-if="!ready" class="text-muted-foreground">{{ t('entry.loading') }}</p>
         <template v-else>
+          <EntryGoneBanner
+            v-if="removedHere && entry"
+            :site="site" :brick-key="brickKey" :entry="entry" :dirty="dirty" :busy="busy" :may-restore="!!mayRestore"
+            @restore="restoreRemoved" @discard="discardRemoved"
+          />
           <div v-if="conflict" class="grid gap-2 rounded-md bg-warning/10 p-3" role="alert">
             <p><strong>{{ t('entry.conflict.changed', { fields: conflict.fields.map((k) => shownField(k)).join(', ') || t('entry.conflict.thisEntry') }) }}</strong></p>
             <ul class="list-disc pl-[18px]">
@@ -175,7 +198,7 @@ function onCancel(event: Event) {
         </template>
         <template v-else>
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-          <Button type="submit" class="flex-1" :aria-disabled="busy || !ready ? 'true' : undefined">{{ busy ? (slow ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
+          <Button type="submit" class="flex-1" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (slow ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
           <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>
         </template>
       </footer>

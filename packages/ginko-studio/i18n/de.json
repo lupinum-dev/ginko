@@ -162,6 +162,15 @@
       "confirm": "Verwerfen",
       "keepEditing": "Weiter bearbeiten"
     },
+    "gone": {
+      "text": "Jemand hat diesen Eintrag entfernt. Deine Änderungen sind noch da.",
+      "textClean": "Jemand hat diesen Eintrag entfernt.",
+      "restoreAndSave": "Wiederherstellen und speichern",
+      "restore": "Wiederherstellen",
+      "saveAsNew": "Als neuen Eintrag speichern",
+      "discard": "Verwerfen",
+      "noRights": "Deine Änderungen bleiben auf diesem Gerät. Frag die Inhaberin, ob sie den Eintrag wiederherstellt, und öffne ihn dann wieder."
+    },
     "pick": {
       "search": "Suchen",
       "empty": "Nichts gefunden."
