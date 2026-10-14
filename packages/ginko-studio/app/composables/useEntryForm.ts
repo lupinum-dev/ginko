@@ -207,11 +207,13 @@ export function useEntryForm(o: EntryFormOptions) {
     conflict.value = null
     return save(c.rev)
   }
+  /** The stored values for the conflicting fields; the person's other changes stay in the form, unsaved. */
   function takeTheirs() {
     const c = conflict.value
     if (!c) return
     const theirs = storedOf(c.data)
-    draft.value = copy(theirs)
+    const mine = Object.fromEntries(changed.value.filter((k) => !c.fields.includes(k)).map((k) => [k, draft.value[k]]))
+    draft.value = copy({ ...theirs, ...mine } as Data)
     baseline.value = copy(theirs)
     initial.value = copy(theirs)
     baseRev.value = c.rev

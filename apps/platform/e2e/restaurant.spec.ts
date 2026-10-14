@@ -279,6 +279,26 @@ test.describe('Gleichzeitig (Astra phase 8)', () => {
     await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('Wiener Schnitzel vom Kalb, klassisch')
     await expect(page.getByRole('textbox', { name: 'Beschreibung' })).toHaveValue('Mit Petersilienerdäpfeln')
   })
+
+  test('21. "Neuen Stand übernehmen" takes the other value only for the conflicting field and keeps her other input', async ({ page, browser }) => {
+    await page.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
+    await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
+    await page.getByRole('textbox', { name: 'Name' }).fill('Schnitzel der Wirtin')
+    await page.getByRole('textbox', { name: 'Beschreibung' }).fill('Mit Erdäpfelsalat')
+
+    const cook = await browser.newPage({ storageState: STATE.cook, viewport: { width: 1440, height: 900 } })
+    await cook.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
+    await cook.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
+    await cook.getByRole('textbox', { name: 'Name' }).fill('Schnitzel des Kochs')
+    await cook.getByRole('button', { name: 'Speichern' }).click()
+    await expect(toast(cook)).toContainText('Gespeichert')
+    await cook.close()
+
+    await page.getByRole('button', { name: 'Speichern' }).click()
+    await page.getByRole('button', { name: 'Neuen Stand übernehmen' }).click()
+    await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('Schnitzel des Kochs')
+    await expect(page.getByRole('textbox', { name: 'Beschreibung' })).toHaveValue('Mit Erdäpfelsalat')
+  })
 })
 
 test.describe('Anmelden und Einladung', () => {
