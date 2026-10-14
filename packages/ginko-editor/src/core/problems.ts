@@ -67,8 +67,12 @@ function componentMessage(registry: ComponentRegistry, tag: string, props: Compo
   return msg('editor.component.more', { first: { key: first.key, ...(first.params ? { params: first.params } : {}) }, count: rest.length })
 }
 
-/** The problems of the open document: components with invalid props, pictures without a description. */
-export function docProblems(doc: PmNode, registry: ComponentRegistry | undefined): DocProblem[] {
+/**
+ * The problems of the open document: components with invalid props, pictures without a description. `described` says
+ * whether a picture without its own text still has one (a Files library file with a description in the text's
+ * language), the same rule as the save (effective alt).
+ */
+export function docProblems(doc: PmNode, registry: ComponentRegistry | undefined, described?: (src: string) => boolean): DocProblem[] {
   const found: DocProblem[] = []
   doc.forEach((top, offset, index) => {
     top.descendants((node, pos) => {
@@ -77,7 +81,7 @@ export function docProblems(doc: PmNode, registry: ComponentRegistry | undefined
         const tag = String(node.attrs.tag)
         const problem = componentMessage(registry, tag, (node.attrs.props ?? {}) as ComponentProps)
         if (problem) found.push({ ...problem, index, pos: at, kind: 'component', tag })
-      } else if (node.type.name === 'image' && !String(node.attrs.alt ?? '').trim()) {
+      } else if (node.type.name === 'image' && !String(node.attrs.alt ?? '').trim() && !described?.(String(node.attrs.src ?? ''))) {
         found.push({ ...msg('editor.problem.imageNoDescription'), index, pos: at, kind: 'image' })
       }
       return true

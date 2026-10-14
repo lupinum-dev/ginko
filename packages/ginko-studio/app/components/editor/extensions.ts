@@ -8,6 +8,7 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node as PmNode } from '@tiptap/pm/model'
 import Suggestion from '@tiptap/suggestion'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
+import { watch } from 'vue'
 import type { SettingsBus } from './context.ts'
 import ComponentView from './ComponentView.vue'
 
@@ -34,8 +35,11 @@ export interface StudioExtensionsOptions {
   openLink: () => void
   /** Where the keyboard and the slash menu ask a component block to open its settings. */
   bus: SettingsBus
-  /** The registry for the check of component props, and what "Beheben" does with a problem. */
-  problems?: { registry: () => ComponentRegistry | undefined; fix: (problem: DocProblem) => void; t: Translate; text: (message: Msg) => string }
+  /**
+   * The registry for the check of component props, what "Beheben" does with a problem, and whether a picture without
+   * its own text has one from the Files library (reactive: the notes follow when the library's files arrive).
+   */
+  problems?: { registry: () => ComponentRegistry | undefined; fix: (problem: DocProblem) => void; t: Translate; text: (message: Msg) => string; described?: (src: string) => boolean }
 }
 
 export function studioExtensions({ slashItems, slash, openLink, bus, problems }: StudioExtensionsOptions) {
@@ -43,7 +47,7 @@ export function studioExtensions({ slashItems, slash, openLink, bus, problems }:
     const extensions = base.map((ext) => ext.name === 'component' ? componentExtension(ext as AnyExtension, slash, bus) : ext)
     // Every profile has links (the link mark comes with StarterKit, so it is not an extension of its own in `base`).
     extensions.push(Extension.create({ name: 'ginkoLinkKey', addKeyboardShortcuts() { return { 'Mod-k': () => { openLink(); return true } } } }))
-    if (problems) extensions.push(problemsExtension(problems.registry, problems.fix, problems.t, problems.text))
+    if (problems) extensions.push(problemsExtension(problems))
     // A click (or tap) on a link opens its address instead of following it: the address is visible and can be changed.
     extensions.push(Extension.create({
       name: 'ginkoLinkClick',
@@ -151,7 +155,7 @@ function componentExtension(ext: AnyExtension, slash: SlashState, bus: SettingsB
  * Problems at the block: a block with an invalid component prop or a picture without description gets a red left
  * border (class `ginko-problem`), and a note with "Beheben" under it. The note is a widget, not part of the document.
  */
-function problemsExtension(registry: () => ComponentRegistry | undefined, fix: (problem: DocProblem) => void, t: Translate, text: (message: Msg) => string): AnyExtension {
+function problemsExtension({ registry, fix, t, text, described }: NonNullable<StudioExtensionsOptions['problems']>): AnyExtension {
   const key = new PluginKey<DecorationSet>('ginkoProblems')
   const note = (problem: DocProblem): HTMLElement => {
     const el = document.createElement('div')
@@ -173,7 +177,7 @@ function problemsExtension(registry: () => ComponentRegistry | undefined, fix: (
     return el
   }
   const build = (doc: PmNode): DecorationSet => {
-    const found = docProblems(doc, registry())
+    const found = docProblems(doc, registry(), described)
     if (!found.length) return DecorationSet.empty
     const decorations: Decoration[] = []
     const seen = new Set<number>()
@@ -191,8 +195,14 @@ function problemsExtension(registry: () => ComponentRegistry | undefined, fix: (
     addProseMirrorPlugins() {
       return [new Plugin<DecorationSet>({
         key,
-        state: { init: (_config, state) => build(state.doc), apply: (tr, old) => (tr.docChanged ? build(tr.doc) : old) },
+        state: { init: (_config, state) => build(state.doc), apply: (tr, old) => (tr.docChanged || tr.getMeta(key) ? build(tr.doc) : old) },
         props: { decorations: (state) => key.getState(state) },
+        // A picture's library description arrives after the text opens: when it changes what is described, the notes follow.
+        view: (view) => ({
+          destroy: described
+            ? watch(() => docProblems(view.state.doc, undefined, described).map((p) => p.pos).join(), () => { if (!view.isDestroyed) view.dispatch(view.state.tr.setMeta(key, true)) })
+            : undefined,
+        }),
       })]
     },
   })

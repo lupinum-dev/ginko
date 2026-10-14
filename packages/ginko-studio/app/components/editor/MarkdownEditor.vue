@@ -6,7 +6,7 @@
 import { computed, inject, onBeforeUnmount, provide, reactive, ref, watch, watchEffect } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
-import { coreMessage, effectiveMax, effectiveProfile, type Msg } from '@lupinum/ginko/internal'
+import { coreMessage, effectiveAlt, effectiveMax, effectiveProfile, type Msg } from '@lupinum/ginko/internal'
 import {
   BLOCKERS, docProblems, FLUSHERS, GINKO_ASSETS, linkCardTag, makeLinkCard, missingRequired, slashItems, SLASH_COMPONENT_GROUP, sourceProblems, useFileImages, useGinkoEditor,
   type DocProblem, type SlashItem, type SourceProblem,
@@ -95,6 +95,8 @@ const wantSource = ref(false)
 const assets = inject(GINKO_ASSETS, undefined)
 const fileImages = assets ? useFileImages(assets, () => t('editor.image.missing')) : undefined
 if (fileImages) provide(EDITOR_FILES, { images: fileImages, locale: () => props.contentLocale ?? '' })
+/** A picture without its own text is described when its library file has a text in this text's language (the save's rule). */
+const described = (src: string) => Boolean(props.contentLocale && effectiveAlt(undefined, fileImages?.file(src)?.alt, props.contentLocale))
 
 const uploads = useImageUploads({
   id: () => props.id,
@@ -119,7 +121,7 @@ const { handle, mode, editor, problemMessages, open, markdown } = useGinkoEditor
   onImageFiles: (files, pos) => uploads.handle(files, pos),
   fileImages,
   onUrlPasted: ({ url, pos }) => showChip(url, pos),
-  extend: studioExtensions({ slashItems: items, slash, bus, openLink: () => { linkOpen.value = true }, problems: { registry: () => registry?.(), fix, t, text: coreText } }),
+  extend: studioExtensions({ slashItems: items, slash, bus, openLink: () => { linkOpen.value = true }, problems: { registry: () => registry?.(), fix, t, text: coreText, described } }),
 }))
 
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -223,7 +225,7 @@ onBeforeUnmount(() => { flushers?.delete(flush); void flush() })
 // Things that stop a save: a text over the limit, a picture without description. (The upload itself blocks in useImageUploads.)
 const blockers = inject(BLOCKERS, undefined)
 const tick = useEditorTick(() => editor.value)
-const undescribed = computed(() => { void tick.value; return editor.value ? docProblems(editor.value.state.doc, undefined).some((p) => p.kind === 'image') : false })
+const undescribed = computed(() => { void tick.value; return editor.value ? docProblems(editor.value.state.doc, undefined, described).some((p) => p.kind === 'image') : false })
 watchEffect(() => {
   if (!blockers) return
   const set = (key: string, message: string | false) => { if (message) blockers.set(key, message); else blockers.delete(key) }

@@ -37,13 +37,13 @@ function fakeAssets(upload?: GinkoAssets['upload']) {
   return { assets, states, sent }
 }
 
-interface Options { text: string; profile?: string; max?: number; assets?: GinkoAssets; blockers?: Map<string, string> }
-async function mounted({ text, profile = 'page', max, assets, blockers }: Options) {
+interface Options { text: string; profile?: string; max?: number; assets?: GinkoAssets; blockers?: Map<string, string>; contentLocale?: string }
+async function mounted({ text, profile = 'page', max, assets, blockers, contentLocale }: Options) {
   const provide: Record<symbol, unknown> = { [EDITOR_COMPONENTS as symbol]: () => components }
   if (assets) provide[GINKO_ASSETS as symbol] = assets
   if (blockers) provide[BLOCKERS as symbol] = blockers
   const field = { type: 'markdown', label: 'Text', profile, ...(max ? { max } : {}) } as never
-  const wrapper = mount(MarkdownEditor, { props: { id: 't', field, modelValue: text, invalid: false }, attachTo: document.body, global: { provide } })
+  const wrapper = mount(MarkdownEditor, { props: { id: 't', field, modelValue: text, invalid: false, ...(contentLocale ? { contentLocale } : {}) }, attachTo: document.body, global: { provide } })
   mountedWrappers.push(wrapper)
   await until(() => wrapper.find('[role="textbox"], textarea').exists())
   return wrapper
@@ -110,6 +110,18 @@ describe('pictures by paste', () => {
     expect(vi.mocked(toast.error).mock.calls[0]![0]).toBe('Die Datei ist zu groß (höchstens 20 MB).')
     expect(sent).toHaveLength(0)
     expect(editor.view.dom.textContent).not.toContain('wird hochgeladen')
+  })
+
+  // Wrong behaviour caught: a picture whose library file is described counts as undescribed in the editor, so a text the
+  // server accepts (from the migration or an export: `![]($file.<id>)`) cannot be saved in the Studio.
+  test('a picture without its own text but with a library description in the text\'s language does not block the save', async () => {
+    const { assets } = fakeAssets()
+    assets.details = (ids) => computed(() => Object.fromEntries(ids.value.map((id) => [id, { url: `https://cdn.test/${id}.png`, name: 'a.png', size: 1, width: 1, height: 1, alt: { de: 'Ein Foto vom Hof' } }])))
+    const blockers = new Map<string, string>()
+    const wrapper = await mounted({ text: '![]($file.u1)\n', assets, blockers, contentLocale: 'de' })
+    await until(() => editorOf(wrapper).view.dom.querySelector('img') !== null)
+    await until(() => !blockers.has('t-alt'))
+    expect(document.querySelector('.ginko-problem-note')).toBeNull()
   })
 })
 
