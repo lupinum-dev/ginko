@@ -91,11 +91,20 @@ async function checkSite(siteDir: string, checks: [string, RegExp][], { ginkoChe
   ]
 }
 
+/** Whether the server answers within 30 s. A fixed wait of 1.5 s failed the gate on a busy machine. */
+async function answers(port: number): Promise<boolean> {
+  for (let i = 0; i < 60; i++) {
+    if (await fetch(`http://localhost:${port}/`).then(() => true, () => false)) return true
+    await sleep(500)
+  }
+  return false
+}
+
 async function serve(siteDir: string, port: number, checks: [string, RegExp][]) {
   const server = spawn('node', ['.output/server/index.mjs'], { cwd: siteDir, env: { ...process.env, PORT: String(port) }, stdio: 'ignore' })
   const failures: string[] = []
   try {
-    await sleep(1500)
+    if (!await answers(port)) return [`${siteDir}: the server did not answer within 30 s`]
     for (const [path, expect] of checks) {
       const res = await fetch(`http://localhost:${port}${path}`)
       const body = await res.text()
