@@ -2,7 +2,7 @@
 // It reads the state and never writes.
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { checkSite, effectiveMax, isTranslatable, largestEntryBytes, largestFieldBytes, serializeSchema, SITE_BUDGET, type SiteInput } from '../core/index.ts'
+import { checkSite, effectiveMax, isTranslatable, largestEntryBytes, largestFieldBytes, platformSchema, serializeSchema, SITE_BUDGET, type SiteInput } from '../core/index.ts'
 import type { Fetch } from '../nuxt/external-links.ts'
 import { checkFileLinks } from './content-links.ts'
 import { CliError } from './model.ts'
@@ -51,10 +51,11 @@ export async function check(input: {
 
 /**
  * A brick whose maxima add up past the entry limit allows values the platform refuses at Save. Only a warning: it is an
- * estimate (largestEntryBytes), and existing configs must not fail CI for it.
+ * estimate (largestEntryBytes), and existing configs must not fail CI for it. File bricks are skipped: they never reach the
+ * platform.
  */
 function warnEntrySize(config: SiteInput, log: (line: string) => void) {
-  const { bricks, locales } = serializeSchema(config)
+  const { bricks, locales } = platformSchema(serializeSchema(config))
   for (const [key, brick] of Object.entries(bricks)) {
     const max = largestEntryBytes(brick.fields, locales)
     if (max <= SITE_BUDGET.entryBytes) continue

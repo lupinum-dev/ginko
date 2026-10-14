@@ -129,11 +129,16 @@ describe('ginko check and links in content files', () => {
   })
 
   // Wrong behaviour caught: a schema allows entries larger than the platform accepts, and nobody hears of it until a Save fails.
-  it('warns when a brick\'s maxima can pass the entry limit', async () => {
+  // A file brick never reaches the platform, so the same maxima there get no warning.
+  it('warns when a platform brick\'s maxima can pass the entry limit', async () => {
     const legal = single({ label: 'Rechtliches', fields: { body: f.markdown('Text', { max: 300_000 }) } })
-    const site = { ...config, locales: ['de', 'en'], bricks: { ...config.bricks, docs: { ...config.bricks.docs, route: { de: '/doku/[slug]', en: '/docs/[slug]' } }, legal } }
+    const docs = collection({
+      label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]', en: '/docs/[slug]' },
+      fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text', { max: 300_000 }) },
+    })
+    const site = { ...config, locales: ['de', 'en'], bricks: { docs, legal } }
     const { lines, result } = await runCheck(siteWith('Text.', site), ['--offline'])
-    expect(lines).toContain('Warning: brick “legal” can hold about 586 KiB per entry (largest: body 300,000 × 2 languages); the entry limit is 480 KiB. Lower a max so a full entry fits.')
+    expect(lines.filter((line) => line.startsWith('Warning:'))).toEqual(['Warning: brick “legal” can hold about 586 KiB per entry (largest: body 300,000 × 2 languages); the entry limit is 480 KiB. Lower a max so a full entry fits.'])
     expect(result.ok).toBe(true)
   })
 
