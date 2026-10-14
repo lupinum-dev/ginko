@@ -173,6 +173,8 @@ export const importExport = internalMutation({
       deletedAt: v.optional(v.number()),
       state: v.optional(v.union(v.literal('draft'), v.literal('live'))),
       publishAt: v.optional(v.number()),
+      /** When the entry last changed for the public (the bundle's updatedAt); absent in older exports, then the import time. */
+      contentAt: v.optional(v.number()),
     })),
   },
   handler: async (ctx, args) => {
@@ -244,7 +246,7 @@ export const importExport = internalMutation({
       const id = await ctx.db.insert('entries', {
         site: site._id, brick: row.brick, kind: row.kind, order: row.order, data, rev: row.rev,
         fieldRevs: Object.fromEntries(Object.keys(def.fields).map((f) => [f, row.rev])),
-        lifeRev: row.deletedAt === undefined ? 1 : 2, prints: row.prints, bytes: size, treeBytes: trees.bytes, contentAt: Date.now(),
+        lifeRev: row.deletedAt === undefined ? 1 : 2, prints: row.prints, bytes: size, treeBytes: trees.bytes, contentAt: row.contentAt ?? Date.now(),
         ...(row.deletedAt === undefined ? {} : { deletedAt: row.deletedAt }),
         ...(row.state === 'draft' ? { state: 'draft' as const } : {}),
       })

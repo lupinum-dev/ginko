@@ -65,6 +65,8 @@ export const snapshot = internalQuery({
         // Drafts keep their state in a backup (SPEC 15); a missing state means live.
         ...(e.state === undefined ? {} : { state: e.state }),
         ...(e.publishAt === undefined ? {} : { publishAt: e.publishAt }),
+        // What the bundle shows as updatedAt, so a restored site keeps it (an entry from before contentAt counts from its creation).
+        contentAt: e.contentAt ?? e._creationTime,
       })),
       folders: (await ctx.db.query('folders').withIndex('by_site_parent', (q) => q.eq('site', args.site)).collect())
         .map((f) => ({ id: f._id, name: f.name, ...(f.parent === undefined ? {} : { parent: f.parent }) })),
