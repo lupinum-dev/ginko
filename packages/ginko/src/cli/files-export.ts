@@ -38,7 +38,7 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
     if ((error as { code?: string }).code !== 'ERR_MODULE_NOT_FOUND') throw error
     throw new CliError('Install @lupinum/ginko-content to read file content.', 'USAGE')
   }
-  const result = await content.readContent(join(root, 'content'), join(root, 'public'), filesSchema)
+  const result = await content.readContent(join(root, 'content'), join(root, 'public'), filesSchema, { markdown: 'text' })
   if (result.errors.length > 0) throw new CliError(`The content has errors:\n${result.errors.map(content.errorLine).join('\n')}`)
 
   const entries: ExportEntry[] = []

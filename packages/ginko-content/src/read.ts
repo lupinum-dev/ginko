@@ -34,6 +34,9 @@ export function errorLine(e: ContentError): string {
 export interface ReadOptions {
   /** `false` leaves out entries marked `draft: true`. Default `true` (dev shows drafts). */
   drafts?: boolean
+  /** `text` keeps each Markdown field as its source text, the form the platform stores and the Studio edits
+   * (`pnpm local:files-export`). Default `tree`: the parsed tree the site's bundle carries. */
+  markdown?: 'tree' | 'text'
 }
 
 export interface ReadResult {
@@ -438,10 +441,11 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         continue
       }
 
-      // The text is valid: the tree takes its place (the bundle carries trees, CONTENT.md Phase 14).
+      // The text is valid: the tree takes its place (the bundle carries trees, CONTENT.md Phase 14), unless the caller
+      // wants the text the platform stores.
       const markdownKey = markdownKeyOf(brick)
       const texts = markdownKey === undefined ? undefined : data[markdownKey]
-      if (markdownKey !== undefined && isRecord(texts)) {
+      if (options.markdown !== 'text' && markdownKey !== undefined && isRecord(texts)) {
         data[markdownKey] = Object.fromEntries(Object.entries(texts).map(([locale, text]) => [locale, trees[locale as Locale] ?? text]))
         // Prints are of the stored main value, which is now the tree; a print of the text would mark every translation stale.
         for (const locale of Object.keys(prints[markdownKey] ?? {})) prints[markdownKey]![locale as Locale] = printOf((data[markdownKey] as Record<string, unknown>)[main])

@@ -61,6 +61,8 @@ describe('local:files-export', () => {
     expect(hallo).toMatchObject({ id: 'blog/hallo', brick: 'blog', kind: 'item', order: 0, rev: 1 })
     expect(hallo!.data.title).toEqual({ de: 'Hallo Welt', en: 'Hello world' })
     expect(hallo!.data.slug).toEqual({ de: 'hallo', en: 'hallo' })
+    // The platform stores and the Studio edits Markdown as text, not as the site's parsed tree.
+    expect(hallo!.data.body).toEqual({ de: '\nErster Absatz.\n', en: '\nFirst paragraph.\n' })
     // A translation is fresh: it has a print for the main-language value.
     expect(Object.keys(hallo!.prints.title!)).toEqual(['en'])
     expect(zweiter!.data.title).toEqual({ de: 'Zweiter' })
