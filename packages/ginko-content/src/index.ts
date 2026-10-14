@@ -4,3 +4,4 @@
 export { errorLine } from './read.ts'
 export { buildFileBundles, publicBundle, withMarkdownRefs } from './bundle.ts'
 export { searchIndex } from './search.ts'
+export { readContent } from './read.ts'

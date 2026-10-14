@@ -2,12 +2,14 @@
 //   pnpm local:dev    --config <file>   local Convex backend, platform and site (dev.ts)
 //   pnpm local:import <folder>          an export folder into the local platform (import.ts)
 //   pnpm local:pull                     production content into the local platform (pull.ts)
+//   pnpm local:files-export --config <file> [folder]  the site's content files as an export folder (files-export.ts)
 // The root package.json runs this file; the package build leaves it out. Output and exit codes as `ginko` (run.ts).
 // pnpm runs root scripts in the repository root, also with -w from a site folder, so local:dev has no default config:
 // ./ginko.config.ts would be the root's, which does not exist.
 import { dirname, resolve } from 'node:path'
 import { runDev } from './dev.ts'
 import { siteOfKey } from './export.ts'
+import { filesExport } from './files-export.ts'
 import { importSite, postFile } from './import.ts'
 import { connectLocal } from './local.ts'
 import { CliError } from './model.ts'
@@ -20,6 +22,9 @@ Commands:
   local:dev --config <file>
                          Start the local platform and the site; schema changes go to the local platform at once.
   local:import <folder>  Load an export folder into the local platform. Replaces the site's content there.
+  local:files-export --config <file> [folder]
+                         Write the site's content/ files as an export folder (default ginko-export-<site>-files),
+                         ready for local:import. Every brick counts as file content, whatever its source.
   local:pull             Copy content from production to the local platform (export, then import).
                          Needs GINKO_PLATFORM and GINKO_KEY (scope pull or export).
 
@@ -51,6 +56,13 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const run = local(args)
           const done = await importSite({ dir: args.folder!, run, upload, log: deps.log })
           return { dir: args.folder, ...done }
+        },
+      },
+      'files-export': {
+        folder: 'optional',
+        async run(args) {
+          if (!args.config) throw new CliError('local:files-export needs --config <site>/ginko.config.ts.', 'USAGE')
+          return filesExport({ config: resolve(args.config), ...(args.folder ? { dir: args.folder } : {}), log: deps.log })
         },
       },
       pull: {
