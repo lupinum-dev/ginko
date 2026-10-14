@@ -6,12 +6,6 @@ export type PickKind = 'image' | 'pdf'
 
 export const isImage = (file: Pick<LibFile, 'kind'>) => file.kind === 'image'
 
-/** "340 KB", "2.4 MB". */
-export function sizeText(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
 /** Places a file is used at: every path of every entry (deleted entries still block). */
 export const placesOf = (usedIn: { paths: string[] }[]) => usedIn.reduce((sum, u) => sum + Math.max(1, u.paths.length), 0)
 

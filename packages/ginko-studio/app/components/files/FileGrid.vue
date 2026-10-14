@@ -5,7 +5,8 @@ import { FileTextIcon } from '@lucide/vue'
 import { useI18n } from '#imports'
 import { Badge } from '@studio/components/ui/badge'
 import type { LibFile } from '../../composables/useFilesLibrary'
-import { DRAG_TYPE, sizeText } from './util'
+import { DRAG_TYPE } from './util'
+import { sizeText } from '../../utils/size'
 
 const props = defineProps<{ files: LibFile[]; layout: 'grid' | 'list'; selected: ReadonlySet<string>; draggable: boolean }>()
 const emit = defineEmits<{ pick: [id: string, how: { shift: boolean; toggle: boolean }]; quicklook: [id: string] }>()
@@ -90,7 +91,7 @@ const typeText = (f: LibFile) => (f.kind === 'image' ? f.mime.replace('image/', 
           </button>
         </td>
         <td class="hidden px-3 sm:table-cell">{{ typeText(file) }}</td>
-        <td class="hidden px-3 sm:table-cell">{{ sizeText(file.size) }}</td>
+        <td class="hidden px-3 sm:table-cell">{{ sizeText(file.size, format.number) }}</td>
         <td class="hidden px-3 md:table-cell">{{ dimensions(file) }}</td>
         <td class="hidden px-3 md:table-cell">{{ file.usedCount || '–' }}</td>
         <td class="hidden px-3 lg:table-cell">{{ date(file) }}</td>

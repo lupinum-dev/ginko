@@ -11,7 +11,8 @@ import { Label } from '@studio/components/ui/label'
 import { languageName } from '../../utils/content'
 import { useStudioSite } from '../../utils/labels'
 import type { FilesLibrary, UsedIn } from '../../composables/useFilesLibrary'
-import { fieldsText, sizeText } from './util'
+import { fieldsText } from './util'
+import { sizeText } from '../../utils/size'
 import { whoText } from '../../utils/who'
 import { whenFull } from '../../utils/when'
 
@@ -127,7 +128,7 @@ const uploaded = computed(() => (info.value ? whenFull(info.value.createdAt, sit
 
     <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
       <dt class="text-muted-foreground">{{ t('files.info.type') }}</dt><dd class="m-0">{{ typeText }}</dd>
-      <dt class="text-muted-foreground">{{ t('files.info.size') }}</dt><dd class="m-0">{{ sizeText(info.size) }}</dd>
+      <dt class="text-muted-foreground">{{ t('files.info.size') }}</dt><dd class="m-0">{{ sizeText(info.size, format.number) }}</dd>
       <template v-if="dimensions"><dt class="text-muted-foreground">{{ t('files.info.dimensions') }}</dt><dd class="m-0">{{ dimensions }}</dd></template>
       <dt class="text-muted-foreground">{{ t('files.info.uploaded') }}</dt><dd class="m-0">{{ uploaded }}</dd>
       <dt class="text-muted-foreground">{{ t('files.info.uploadedBy') }}</dt><dd class="m-0 [overflow-wrap:anywhere]">{{ whoText(info.uploadedBy, t) }}</dd>

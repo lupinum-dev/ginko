@@ -208,6 +208,10 @@
     "toast": {
       "close": "Meldung schließen",
       "region": "Meldungen"
+    },
+    "size": {
+      "near": "Dieser Eintrag belegt {used} von {limit}.",
+      "over": "Dieser Eintrag ist zu groß: {used} von {limit}. Kürze ihn um etwa {over}, dann lässt er sich speichern."
     }
   },
   "site": {

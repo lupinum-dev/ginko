@@ -208,6 +208,10 @@
     "toast": {
       "close": "Cerrar mensaje",
       "region": "Mensajes"
+    },
+    "size": {
+      "near": "Esta entrada ocupa {used} de {limit}.",
+      "over": "Esta entrada es demasiado grande: {used} de {limit}. Acórtala unos {over} para poder guardarla."
     }
   },
   "site": {

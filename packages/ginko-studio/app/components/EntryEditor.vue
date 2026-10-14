@@ -2,12 +2,13 @@
      status, a sticky save bar, and the preview beside it on wide screens. Same engine as the tasks. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { defaultsFor, isShown, isTranslatable, ordered, printOf, urlsFor, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, printOf, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
 import { fileIdsIn, languageName, publishQuestion, titleOf } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
+import { sizeText } from '../utils/size'
 import { opErrorOf } from '../composables/useOps'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { EllipsisIcon } from '@lucide/vue'
@@ -20,7 +21,7 @@ import EntryRemoveDialog from './EntryRemoveDialog.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
 import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
-import { useMediaQuery } from '@vueuse/core'
+import { refDebounced, useMediaQuery } from '@vueuse/core'
 import { OWN_BOTTOM_BAR } from '../utils/siteLinks'
 import { provideSiteRefs } from '../composables/useSiteRefs'
 import { Button } from '@studio/components/ui/button'
@@ -194,6 +195,19 @@ const groupHasIssue = (g: FieldGroup) => g.fields.some(([key]) => issues.value.s
 watch(issues, () => { const first = visibleGroups.value.find(groupHasIssue); if (tabbed.value && first) activeTab.value = first.id })
 const setField = (key: string, value: Json | undefined) => form.setField(key, value)
 const fieldProps = computed(() => ({ draft: draft.value, baseline: baseline.value, locale: locale.value, locales: props.schema.locales, issues: issues.value, route: props.brick.kind === 'collection' ? props.brick.route : undefined, weeks: props.brick.kind === 'collection' && props.brick.plans ? [props.brick.plans.field] : undefined }))
+
+// The entry limit spans all fields and languages, so no field counter shows it (SPEC 3). Counted as the server does
+// (core entryBytes: the stored text, the draft over the stored data; the prints may lag by a few bytes), after the
+// typing pause of the editors, not on every key. Save stays possible: a save that shrinks an entry over the limit passes.
+const typed = refDebounced(draft, 300)
+const size = computed(() => {
+  const used = entryBytes({ ...props.entry?.data, ...typed.value }, props.entry?.prints ?? {})
+  const limit = SITE_BUDGET.entryBytes
+  const text = (bytes: number) => sizeText(bytes, format.number)
+  if (used > limit) return { over: true, text: t('entry.size.over', { used: text(used), limit: text(limit), over: text(used - limit) }) }
+  if (used >= limit * 0.8) return { over: false, text: t('entry.size.near', { used: text(used), limit: text(limit) }) }
+  return undefined
+})
 
 async function save() {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
@@ -479,6 +493,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
         </template>
 
         <div class="bar sticky bottom-0 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background py-3">
+          <p :class="['basis-full text-sm empty:hidden', size?.over ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ size?.text }}</p>
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
           <Button type="submit" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (slow ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
           <Button v-if="isDraft && !publishing && !removed" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
