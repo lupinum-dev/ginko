@@ -14,7 +14,8 @@ export type Prints = Record<string, Record<string, string>>
  * Returns undefined when nothing is left of the field.
  */
 export function mergeField(field: Field, stored: Json | undefined, next: Json, locale: Locale | undefined): Json | undefined {
-  if (!locale) return next
+  // A whole-field save follows the same rule as a save in one language: null or "" removes that language.
+  if (!locale) return isTranslatable(field) && isRecord(next) ? withoutEmpty(next) : next
   if (isTranslatable(field)) return mergeLocalized(stored, next, locale)
   if (field.type === 'image' && isRecord(next)) {
     return { ...next, alt: mergeLocalized(asRecord(stored).alt, next.alt, locale) ?? {} } as Json
@@ -35,6 +36,12 @@ export function mergeField(field: Field, stored: Json | undefined, next: Json, l
     })
   }
   return next
+}
+
+/** A localized value without its null and "" entries; undefined when no language is left. */
+function withoutEmpty(value: Record<string, Json>): Json | undefined {
+  const kept = Object.entries(value).filter(([, v]) => v !== null && v !== '')
+  return kept.length ? Object.fromEntries(kept) : undefined
 }
 
 /** `stored` with the entry of `locale` taken from `next`: absent stays, null or "" removes it. */
