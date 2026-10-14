@@ -1,10 +1,11 @@
 import { ALT_MAX, effectiveAlt, effectiveMax, effectiveProfile, isTranslatable, MAX_CENTS } from './fields.ts'
+import { fileRefUses } from './file-refs.ts'
 import { parseMarkdown } from './markdown.ts'
 import { labelOf } from './labels.ts'
 import { bare, DEFAULT_LOCALE, msg, type CoreKey, type Described, type Msg } from './messages.ts'
 import { roundedMb, type UploadType } from './uploads.ts'
 import { SLUG_PATTERN } from './slug.ts'
-import type { Field, FileField, Fields, Issue, Locale, MarkdownField, Schema } from './types.ts'
+import type { Field, FileField, Fields, Issue, Json, Locale, MarkdownField, Schema } from './types.ts'
 
 /**
  * Codes of values the Studio and the site cannot read at all (wrong shape, unknown names). A `restore` refuses only
@@ -24,6 +25,12 @@ export interface ValidateOptions {
   refs?: (brick: string, id: string) => boolean
   /** The description text a file has in the Files library, per language. Without it an image field must carry its own main-language alt. */
   fileAlt?: (file: string) => Record<string, string> | undefined
+  /**
+   * Platform texts: whether a `$file.<id>` in a Markdown text names a ready upload of the site that is not in the trash.
+   * With it, every such reference must, and every Markdown image needs a description (its own, else the library's in
+   * `fileAlt`), the rule of image fields. Without it (file content) neither is checked.
+   */
+  uploads?: (file: string) => boolean
 }
 
 export interface ValidationResult {
@@ -45,14 +52,15 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
   if (!brick) return { errors: [issue('', 'UNKNOWN_BRICK', 'unknownBrick', { brick: brickKey })], warnings: [] }
   const texts: MarkdownLeaf[] = []
   const issues = checkFields(brick.fields, data, '', { locales: schema.locales, main: schema.locales[0]!, texts, refs: opts.refs, fileAlt: opts.fileAlt })
-  for (const { field, text, path } of texts) {
-    const { problemMessages: problems } = await parseMarkdown(text, { profile: effectiveProfile(field), components: schema.components })
+  for (const { field, text, path, locale } of texts) {
+    const { problemMessages: problems, value } = await parseMarkdown(text, { profile: effectiveProfile(field), components: schema.components })
     const label = shown(field, schema.locales[0]!)
     for (const problem of problems) {
       issues.push(problem.line === undefined
         ? issue(path, 'MARKDOWN', 'markdown', { label, problem: bare(problem) })
         : issue(path, 'MARKDOWN', 'markdownAt', { label, line: problem.line, problem: bare(problem) }))
     }
+    if (opts.uploads) issues.push(...fileRefIssues(value.nodes, path, label, locale, schema, opts.uploads, opts.fileAlt))
   }
   if (opts.mode === 'restore') return { errors: issues.filter((i) => SHAPE_CODES.has(i.code)), warnings: issues.filter((i) => !SHAPE_CODES.has(i.code)) }
   if (opts.mode !== 'patch') return { errors: issues, warnings: [] }
@@ -68,7 +76,27 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
   return { errors, warnings }
 }
 
-interface MarkdownLeaf { field: MarkdownField; text: string; path: string }
+/** One issue per kind and text: a `$file` reference to no live upload, and a Markdown image without any description. */
+function fileRefIssues(nodes: Json[], path: string, label: string, locale: Locale, schema: Schema, uploads: (file: string) => boolean, fileAlt: ValidateOptions['fileAlt']): Issue[] {
+  const out: Issue[] = []
+  const refs = fileRefUses(nodes, schema.components)
+  if (refs.some((ref) => !uploads(ref.id))) out.push(issue(path, 'FILE_REF_MISSING', 'fileRefMissing', { label }))
+  const library = new Map(refs.filter((ref) => ref.kind === 'img').map((ref) => [ref.node, fileAlt?.(ref.id)]))
+  let described = true
+  eachNode(nodes, (node) => { if (node[0] === 'img' && !effectiveAlt({ [locale]: node[1].alt }, library.get(node), locale)) described = false })
+  if (!described) out.push(issue(path, 'ALT_REQUIRED', 'markdownImageAltMissing', { label }))
+  return out
+}
+
+function eachNode(nodes: readonly Json[], fn: (node: [string, Record<string, Json>, ...Json[]]) => void) {
+  for (const node of nodes) {
+    if (!Array.isArray(node) || typeof node[0] !== 'string' || !isRecord(node[1])) continue
+    fn(node as [string, Record<string, Json>, ...Json[]])
+    eachNode(node.slice(2), fn)
+  }
+}
+
+interface MarkdownLeaf { field: MarkdownField; text: string; path: string; locale: Locale }
 /** `texts` collects Markdown values for the profile check, which needs the async parser. */
 interface Ctx { locales: Locale[]; main: Locale; texts?: MarkdownLeaf[]; refs?: ValidateOptions['refs']; fileAlt?: ValidateOptions['fileAlt'] }
 
@@ -106,17 +134,19 @@ function checkField(field: Field, value: unknown, path: string, ctx: Ctx): Issue
     for (const locale of ctx.locales) {
       const v = value[locale]
       if (v === undefined || v === null || v === '') continue
-      out.push(...checkScalar(field, v, join(path, locale), locale === ctx.main, ctx))
+      out.push(...checkScalar(field, v, join(path, locale), locale as Locale, ctx))
     }
     return out
   }
-  return checkScalar(field, value, path, true, ctx)
+  return checkScalar(field, value, path, undefined, ctx)
 }
 
 /** Control characters other than tab and line breaks: pasted junk that breaks XML, mail and search. */
 const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/
 
-function checkScalar(field: Field, value: unknown, path: string, isMain: boolean, ctx?: Ctx): Issue[] {
+/** `locale` is the language of a translatable value; undefined for a value that serves every language. */
+function checkScalar(field: Field, value: unknown, path: string, locale: Locale | undefined, ctx?: Ctx): Issue[] {
+  const isMain = locale === undefined || locale === ctx?.main
   const label = shown(field, ctx?.main)
   const fail = (code: string, key: IssueKey, params?: Msg['params']) => [issue(path, code, key, { label, ...params })]
   switch (field.type) {
@@ -128,7 +158,7 @@ function checkScalar(field: Field, value: unknown, path: string, isMain: boolean
       if (!field.optional && isMain && value.trim() === '') return fail('REQUIRED', 'fieldEmpty')
       if (value.length > max) return fail('TOO_LONG', 'tooLong', { max })
       if (CONTROL.test(value)) return fail('FORMAT', 'controlChars')
-      if (field.type === 'markdown') ctx?.texts?.push({ field, text: value, path })
+      if (field.type === 'markdown') ctx?.texts?.push({ field, text: value, path, locale: locale ?? ctx!.main })
       if (field.type === 'text' && field.format && value !== '') {
         const ok = field.format === 'url' ? /^https?:\/\/[^\s]+$/i.test(value)
           : field.format === 'email' ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)

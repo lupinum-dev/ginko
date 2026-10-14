@@ -368,6 +368,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“: Beschreibung des Bildes (Alt-Text) fehlt."
    ],
+   "fileRefMissing": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“: Ein Bild im Text ist nicht mehr in der Dateibibliothek. Wähle es neu aus."
+   ],
+   "markdownImageAltMissing": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“: Ein Bild im Text hat keine Beschreibung. Beschreibe es kurz für Menschen, die es nicht sehen."
+   ],
    "altTooLong": [
     "„",
     [
@@ -1592,6 +1608,22 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: The image description (alt text) is missing."
    ],
+   "fileRefMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: An image in the text is no longer in the Files library. Choose it again."
+   ],
+   "markdownImageAltMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: An image in the text has no description. Describe it briefly for people who cannot see it."
+   ],
    "altTooLong": [
     "“",
     [
@@ -2815,6 +2847,22 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "”: falta la descripción de la imagen (texto alternativo)."
+   ],
+   "fileRefMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: una imagen del texto ya no está en la biblioteca de archivos. Vuelve a elegirla."
+   ],
+   "markdownImageAltMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: una imagen del texto no tiene descripción. Descríbela brevemente para quien no puede verla."
    ],
    "altTooLong": [
     "“",

@@ -4,7 +4,7 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Fields } from '@lupinum/ginko'
-import { byteSize, entryBytes, fitsBudget, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, entryBytes, fitsBudget, remapFileIds, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -14,7 +14,7 @@ import type { ErrorParams } from './lib/fail'
 import { DEFAULT_LOCALE, t, type MessageKey } from './lib/i18n'
 import { badKey } from './lib/input'
 import { normalizeEmail } from './members'
-import { remapEntryRefs, remapFileIds, treesOf, usesOf, type Data } from './lib/content'
+import { remapEntryRefs, treesOf, usesOf, type Data } from './lib/content'
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
 import { putTrees } from './lib/trees'
 import { BUDGET, same, sizeText, syncEntryRefs } from './lib/write'

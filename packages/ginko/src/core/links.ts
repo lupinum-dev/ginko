@@ -42,7 +42,7 @@ const isTree = (v: unknown): v is Tree => isRecord(v) && Array.isArray(v.nodes)
 const isNode = (n: unknown): n is Node => Array.isArray(n) && typeof n[0] === 'string' && isRecord(n[1])
 
 /** Calls `fn` for every Markdown tree of the bundle (also in list rows) with where it is; its result replaces the tree. */
-function mapTrees(bundle: Bundle, fn: (tree: Tree, at: { brick: string; id: string; field: string }) => Tree): Bundle {
+export function mapTrees(bundle: Bundle, fn: (tree: Tree, at: { brick: string; id: string; field: string }) => Tree): Bundle {
   const walk = (value: unknown, at: { brick: string; id: string }, field: string): unknown => {
     if (isTree(value)) return fn(value, { ...at, field })
     if (Array.isArray(value)) return value.map((v, i) => walk(v, at, `${field}.${i}`))

@@ -315,6 +315,23 @@ describe('markdown field (profile check)', () => {
       ['body.de', 'MARKDOWN', '„Text“, Zeile 3: Die Komponente „figure“ ist nicht geschlossen: Nach ihrem Inhalt fehlt eine Zeile mit „::“.'],
     ])
   })
+
+  // Wrong behaviour caught: the platform stores a text whose library picture is gone (the site shows a hole) or whose
+  // picture has no description at all, which agent tools and imports could write without the editor's check.
+  it.each([
+    ['a described picture of the library', { de: '![Hund]($file.up1)' }, []],
+    ['a picture described only in the library', { de: '![]($file.up1)', en: '![]($file.up1)' }, [['body.en', 'ALT_REQUIRED']]],
+    ['a picture that is gone, inside a component', { de: '::figure{src="$file.gone"}\n::' }, [['body.de', 'FILE_REF_MISSING']]],
+    ['a web picture without description', { de: '![](https://bilder.example/a.jpg)' }, [['body.de', 'ALT_REQUIRED']]],
+  ] as const)('platform texts: %s', async (_name, body, expected) => {
+    const withArticle = serializeSchema({
+      ...site,
+      components: { figure: { kind: 'block', label: 'Abbildung', describe: 'Ein Bild.', props: { src: f.image('Bild') } } },
+      bricks: { ...site.bricks, article: single({ label: 'Artikel', fields: { body: f.markdown('Text', { profile: 'page' }) } }) },
+    })
+    const { errors } = await validate(withArticle, 'article', { body }, { ...check('create'), uploads: (id) => id === 'up1', fileAlt: (id) => (id === 'up1' ? { de: 'Ein Hund' } : undefined) })
+    expect(pairs(errors)).toEqual(expected)
+  })
 })
 
 describe('slug field (SPEC 2.2)', () => {

@@ -101,22 +101,22 @@ describe('component registry in the schema', () => {
   const site = {
     site: 'demo', name: 'Demo', url: 'https://demo.test', timeZone: 'Europe/Vienna', locales: ['de'] as const, currency: 'EUR' as const,
     pages: { home: '/' },
-    bricks: { page: single({ label: 'Seite', fields: { body: f.markdown('Text', { profile: 'page' }) } }) },
+    bricks: { article: single({ label: 'Seite', fields: { body: f.markdown('Text', { profile: 'page' }) } }) },
   }
 
   test('validate rejects an unknown component in a markdown field', async () => {
     const schema = serializeSchema({ ...site, components: registry })
     expect(checkSchema(schema)).toEqual([])
-    const ok = await validate(schema, 'page', { body: { de: '::callout{type="info"}\nHi\n::' } }, { mode: 'release' })
+    const ok = await validate(schema, 'article', { body: { de: '::callout{type="info"}\nHi\n::' } }, { mode: 'release' })
     expect(ok.errors).toEqual([])
-    const bad = await validate(schema, 'page', { body: { de: '::nope\nHi\n::' } }, { mode: 'release' })
+    const bad = await validate(schema, 'article', { body: { de: '::nope\nHi\n::' } }, { mode: 'release' })
     expect(bad.errors.map((e) => e.message)).toEqual(['„Text“: Komponente „nope“ gibt es nicht.'])
   })
 
   test('a schema without components is unchanged and keeps accepting any tag', async () => {
     const schema = serializeSchema(site)
     expect('components' in schema).toBe(false)
-    const result = await validate(schema, 'page', { body: { de: '::nope\nHi\n::' } }, { mode: 'release' })
+    const result = await validate(schema, 'article', { body: { de: '::nope\nHi\n::' } }, { mode: 'release' })
     expect(result.errors).toEqual([])
   })
 

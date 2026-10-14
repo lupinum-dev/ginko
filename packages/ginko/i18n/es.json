@@ -40,6 +40,8 @@
     "duplicateRowId": "“{label}”: el ID de fila aparece dos veces.",
     "notImage": "“{label}” no es una imagen válida.",
     "altMissing": "“{label}”: falta la descripción de la imagen (texto alternativo).",
+    "fileRefMissing": "“{label}”: una imagen del texto ya no está en la biblioteca de archivos. Vuelve a elegirla.",
+    "markdownImageAltMissing": "“{label}”: una imagen del texto no tiene descripción. Descríbela brevemente para quien no puede verla.",
     "altTooLong": "“{label}”: el texto alternativo es demasiado largo.",
     "notFile": "“{label}” no es un archivo válido."
   },

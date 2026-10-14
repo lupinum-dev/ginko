@@ -172,29 +172,6 @@ export function valueAt(data: Data, path: string): Json | undefined {
   return current
 }
 
-/** The data with every upload ID found in `map` replaced by its new ID. Unknown IDs stay as they are. */
-export function remapFileIds(fields: Fields, data: Data, map: ReadonlyMap<string, string>): Data {
-  const walk = (field: Field, value: Json | undefined): Json | undefined => {
-    if (value === undefined || value === null) return value
-    if (field.type === 'image' || field.type === 'file') {
-      const to = typeof asRecord(value).file === 'string' ? map.get(asRecord(value).file as string) : undefined
-      return to ? { ...asRecord(value), file: to } : value
-    }
-    if (field.type === 'list' && Array.isArray(value)) {
-      return value.map((row) => {
-        if (!isRecord(row)) return row
-        const out: Record<string, Json> = { ...row }
-        for (const [key, inner] of Object.entries(field.of)) if (out[key] !== undefined) out[key] = walk(inner, out[key])!
-        return out
-      })
-    }
-    return value
-  }
-  const out: Data = { ...data }
-  for (const [name, field] of Object.entries(fields)) if (out[name] !== undefined) out[name] = walk(field, out[name])!
-  return out
-}
-
 /** An entry ID in a `ref` field: its root field, its content path (`author`, `credits.<row id>.who`) and the brick it points to. */
 export interface RefId { root: string; path: string; to: string; id: string }
 

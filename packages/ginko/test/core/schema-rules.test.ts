@@ -83,6 +83,13 @@ describe('2. values lost in serializeSchema', () => {
       expect(problems.join('\n'), `${what} ${key}`).toContain(`${word} “${key}”`)
     }
   })
+
+  // Wrong behaviour caught: a brick named `page` or `file` would make `$page.menu` or `$file.<id>` in a text mean two things.
+  it.each(['page', 'file'])('a brick named %s is refused: the name belongs to Markdown references', (key) => {
+    const brick = single({ label: 'X', fields: { t: f.text('T', optional) } })
+    const problems = checkSchema(serializeSchema(site({}, { bricks: { ...site().bricks, ...Object.fromEntries([[key, brick]]) } as Bricks })))
+    expect(problems.join('\n')).toContain(`The brick name “${key}” is reserved`)
+  })
 })
 
 describe('3. the time zone must exist', () => {

@@ -13,6 +13,8 @@ import { checkValue } from './validate.ts'
 
 // Keys that would resolve to Object.prototype members in plain-object lookups, plus `prototype`.
 const RESERVED_KEYS = new Set([...Object.getOwnPropertyNames(Object.prototype), 'prototype'])
+/** `$page.<key>` and `$file.<id>` in Markdown texts (links.ts, file-refs.ts): no brick may take these names. */
+const LINK_HEADS = new Set(['page', 'file'])
 // A path that could leave the site or name a query or fragment instead of a page.
 const UNSAFE_PATH = /\.\.|\/\/|[?#]/
 
@@ -269,6 +271,7 @@ function schemaProblems(schema: Schema): string[] {
   const routes = new Map<string, string>()
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (!/^[a-z][a-zA-Z0-9]{0,40}$/.test(key) || RESERVED_KEYS.has(key)) problems.push(`Invalid brick name “${key}”.`)
+    else if (LINK_HEADS.has(key)) problems.push(`The brick name “${key}” is reserved: \`$${key}.…\` in a Markdown text means ${key === 'page' ? 'a page' : 'a file of the Files library'}.`)
     unknown(key, brick, BRICK_KEYS)
     pushLabel(`${key}.label`, brick.label)
     if (brick.describe !== undefined) pushLabel(`${key}.describe`, brick.describe)

@@ -2,6 +2,7 @@ import { effectiveAlt, isTranslatable } from './fields.ts'
 import { addDays } from './time.ts'
 import { sha256, stableJson } from './sha256.ts'
 import { resolveRouteLinks } from './links.ts'
+import { resolveFileRefs } from './file-refs.ts'
 import { BUNDLE_FORMAT, withMarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type MarkdownTrees } from './bundle.ts'
 import type { MarkdownTree } from './markdown.ts'
 import type { Brick, CollectionBrick, Field, Fields, Json, Locale, Schema } from './types.ts'
@@ -269,14 +270,16 @@ export interface BuildBundleInput {
 }
 
 /**
- * The bundle a site receives: `buildBundle` with every Markdown text as its tree. The platform's
- * bundle endpoint, the Studio preview and the contract fixtures all serve this, never `buildBundle` alone.
- * In another language, links to entries left out of it go to their main-language page (`resolveRouteLinks`).
+ * The bundle a site receives: `buildBundle` with every Markdown text as its tree, its `$file.<id>` references
+ * resolved to the files' URLs and its route links to paths. The platform's bundle endpoint, the Studio preview and
+ * the contract fixtures all serve this, never `buildBundle` alone. In another language, links to entries left out of
+ * it go to their main-language page (`resolveRouteLinks`).
  */
 export async function servedBundle(input: BuildBundleInput): Promise<Bundle> {
   const bundle = buildBundle(input)
   const main = bundle.locale === bundle.mainLocale ? undefined : buildBundle({ ...input, requestedLocale: bundle.mainLocale })
-  return resolveRouteLinks(await withMarkdownTrees(bundle, input.schema), input.schema, main)
+  const trees = await withMarkdownTrees(bundle, input.schema)
+  return resolveRouteLinks(resolveFileRefs(trees, input.schema, input.files), input.schema, main)
 }
 
 export function buildBundle(input: BuildBundleInput): Bundle {

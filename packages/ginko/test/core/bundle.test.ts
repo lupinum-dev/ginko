@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
-  applyDefaults, bundleFits, isBundle, knownBricks, markdownTrees, parseMarkdown, platformMarkdownRef, withMarkdownRefs, type Bundle, type MarkdownTree,
-  buildBundle, isVisible, printOf, resolveEntry, serializeSchema, sortEntries, todayIn,
+  applyDefaults, bundleFits, f, isBundle, knownBricks, markdownTrees, parseMarkdown, platformMarkdownRef, withMarkdownRefs, type Bundle, type MarkdownTree,
+  buildBundle, servedBundle, type FileInfo, isVisible, printOf, resolveEntry, serializeSchema, sortEntries, todayIn,
   type Brick, type BundleBrick, type BundleItem, type CollectionBrick, type Locale, type Schema, type StoredEntry,
 } from '../../src/core/index.ts'
 
@@ -333,4 +333,29 @@ it('withMarkdownRefs: a platform text becomes only its ref in page state, and th
   const legal = out.bricks.legal
   expect(legal?.kind === 'single' && legal.data.imprint).toEqual({ ref: '/__ginko/platform/de/1.1/md/legal/legal/imprint.json' })
   expect(trees.get('/__ginko/platform/de/1.1/md/legal/legal/imprint.json')?.nodes[0]).toEqual(['p', {}, 'Gasthaus zur Linde, Inhaberin Maria Ebner', ['br', {}], 'Dorfstraße 12, 5020 Salzburg'])
+})
+
+// Wrong behaviour caught: a picture of the Files library inside a text (`$file.<id>`) reaches the site as that literal
+// reference, so the browser shows a broken image; a file that is gone keeps an address that cannot load.
+it('servedBundle resolves $file references in texts to the file, its size, variants and library description', async () => {
+  const s = base()
+  const legal = s.bricks.legal!
+  ;(legal.fields.imprint as { profile: string }).profile = 'page'
+  s.components = { figure: { kind: 'block', label: 'Bild', describe: 'Ein Bild', props: { src: f.image('Bild'), alt: f.text('Beschreibung', { optional: true }), width: f.text('Breite', { optional: true }), height: f.text('Höhe', { optional: true }) } } }
+  const files = new Map<string, FileInfo>([
+    ['f1', { url: 'https://cdn.example/f1.webp', name: 'hund.jpg', size: 9, width: 2400, height: 1600, variants: [{ width: 480, url: 'https://cdn.example/f1-480.webp' }], alt: { de: 'Ein Hund' } }],
+    ['f2', { url: 'https://cdn.example/karte.pdf', name: 'karte.pdf', size: 3 }],
+  ])
+  const text = '![]($file.f1)\n\n![Eigenes]($file.gone)\n\n[Karte]($file.f2)\n\n::figure{src="$file.f1"}\n::\n'
+  const bundle = await servedBundle({
+    schema: s, requestedLocale: 'de', entries: { legal: [{ id: 'legal', data: { imprint: { de: text } } }] }, files: (id) => files.get(id),
+    schemaRev: 1, contentRev: 1, generatedAt: '2026-10-08T00:00:00.000Z', today: TODAY,
+  })
+  const brick = bundle.bricks.legal
+  expect(brick?.kind === 'single' && (brick.data.imprint as MarkdownTree).nodes).toEqual([
+    ['p', {}, ['img', { src: 'https://cdn.example/f1.webp', alt: 'Ein Hund', width: 2400, height: 1600, srcset: 'https://cdn.example/f1-480.webp 480w, https://cdn.example/f1.webp 2400w', sizes: '100vw' }]],
+    ['p', {}, ['img', { alt: 'Eigenes', 'data-broken': true }]],
+    ['p', {}, ['a', { href: 'https://cdn.example/karte.pdf' }, 'Karte']],
+    ['figure', { src: 'https://cdn.example/f1.webp', alt: 'Ein Hund', width: 2400, height: 1600 }],
+  ])
 })

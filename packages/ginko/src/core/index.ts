@@ -25,6 +25,7 @@ export * from './tool-schema.ts'
 export { UPLOAD_TYPES, acceptOf, limitOf, formatMb, type UploadType } from './uploads.ts'
 export { query, neighbors, type Query, type QueryOrder, type QueryResult, type QuerySchema, type Condition } from './query.ts'
 export { navTree, breadcrumbs, type NavNode } from './navigation.ts'
+export { FILE_REF, fileRefsIn, fileImagesWithoutAlt, rewriteFileRefs, remapFileIds, resolveFileRefs, fileRefUses, imagePropsOf, type FileRefUse } from './file-refs.ts'
 export { resolveRouteLinks, checkLinks, externalLinks, linkTargets, type ExternalLink, type LinkConfig, type LinkIssue, type CheckLinksOptions } from './links.ts'
 export { matchRedirect, findRedirect, entryRedirects, redirectProblems, type Redirect } from './redirects.ts'
 // The search engine (core/search.ts, search-sections.ts) is exported from '@lupinum/ginko/search' (reading) and
