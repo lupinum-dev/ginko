@@ -336,9 +336,12 @@ export default defineSchema({
     query: v.any(),
   }).index('by_site_user_brick', ['site', 'user', 'brick']).index('by_user', ['user']),
 
-  /** Fixed-window request counter per site (bundle endpoint, 600 per minute); `window` = minute since epoch. */
-  rateWindows: defineTable({ site: v.id('sites'), window: v.number(), count: v.number() })
-    .index('by_site_window', ['site', 'window']).index('by_window', ['window']),
+  /**
+   * Fixed-window counters per site; `window` = minute since epoch. No `kind`: bundle requests (600 per minute).
+   * `invite`: invite mails (invites.create), one row per hour, its window the hour's first minute.
+   */
+  rateWindows: defineTable({ site: v.id('sites'), kind: v.optional(v.literal('invite')), window: v.number(), count: v.number() })
+    .index('by_site_kind_window', ['site', 'kind', 'window']).index('by_window', ['window']),
 
   /** A person's own settings, one row each. No row means the defaults: reminders on, German (SPEC 10). `locale` is the language of messages and mail to this person. */
   /**

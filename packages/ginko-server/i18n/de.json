@@ -111,6 +111,7 @@
     "agentUndoNeedsReview": "Diese Website prüft Änderungen der KI, darum geht Rückgängig hier nicht. Schlage mit ginko_revert die frühere Version vor.",
     "proposalTooLarge": "Dieser Vorschlag ist zu groß.",
     "tooManyOpenProposals": "Es warten schon {openMax} Vorschläge auf Freigabe. Bitte warte, bis einige geprüft sind.",
+    "tooManyInvites": "Zu viele Einladungen in kurzer Zeit: höchstens {max} pro Stunde. Bitte später noch einmal senden.",
     "fileNoLongerAvailable": "Eine Datei ist nicht (mehr) verfügbar. Bitte neu hochladen.",
     "fileNotImage": "Diese Datei ist kein Bild.",
     "grantNotFound": "Die Aufgabe „{grant}“ gibt es nicht.",

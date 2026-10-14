@@ -31,7 +31,7 @@ export const admit = internalMutation({
     if (!site || site.deleting) return 'SITE_NOT_FOUND'
     if (token !== undefined && site.refreshToken !== undefined && sameSecret(token, site.refreshToken)) return 'OK'
     const window = windowOf(Date.now())
-    const row = await ctx.db.query('rateWindows').withIndex('by_site_window', (q) => q.eq('site', site._id).eq('window', window)).unique()
+    const row = await ctx.db.query('rateWindows').withIndex('by_site_kind_window', (q) => q.eq('site', site._id).eq('kind', undefined).eq('window', window)).unique()
     if (row && row.count >= RATE_LIMIT) return 'RATE_LIMITED'
     if (row) await ctx.db.patch(row._id, { count: row.count + 1 })
     else await ctx.db.insert('rateWindows', { site: site._id, window, count: 1 })

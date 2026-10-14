@@ -172,6 +172,20 @@ describe('invites.create', () => {
     expect(invite).toMatchObject({ tokenHash: sha256(token), grants: ['menu.price'], role: 'staff' })
     expect(JSON.stringify(invite)).not.toContain(token)
   })
+
+  it('an owner sends 20 invites in an hour; the 21st is refused without a mail, a platform admin is not counted', async () => {
+    const { t, as } = await setup()
+    const invite = (who: typeof as.owner, email: string) => who.mutation(api.invites.create, { site: 'restaurant', email, role: 'staff', grants: [] })
+    const mails = async () => (await t.run((ctx) => ctx.db.query('outbox').collect())).length
+    for (let i = 0; i < 20; i++) await invite(as.owner, `a${i}@example.com`)
+    expect(await errorOf(invite(as.owner, 'a20@example.com'))).toMatchObject({ code: 'RATE_LIMITED', key: 'errors.tooManyInvites', params: { max: 20 } })
+    expect(await mails()).toBe(20)
+    await invite(as.admin, 'b0@example.com')
+    expect(await mails()).toBe(21)
+    vi.setSystemTime(Date.now() + 61 * 60_000)
+    await invite(as.owner, 'a20@example.com')
+    expect(await mails()).toBe(22)
+  })
 })
 
 describe('members.remove and setGrants', () => {

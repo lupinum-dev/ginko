@@ -109,6 +109,7 @@
     "agentUndoNeedsReview": "Este sitio revisa los cambios de la IA, así que deshacer no está disponible. Usa ginko_revert para proponer la versión anterior.",
     "proposalTooLarge": "Esta propuesta es demasiado grande.",
     "tooManyOpenProposals": "Ya hay {openMax} propuestas esperando aprobación. Espera a que se revisen algunas.",
+    "tooManyInvites": "Demasiadas invitaciones en poco tiempo: como máximo {max} por hora. Vuelve a enviarla más tarde.",
     "fileNoLongerAvailable": "Un archivo ya no está disponible. Súbelo de nuevo.",
     "fileNotImage": "Este archivo no es una imagen.",
     "grantNotFound": "La tarea “{grant}” no existe.",

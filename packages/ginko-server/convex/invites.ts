@@ -4,6 +4,7 @@ import { sha256, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { internalQuery, mutation, query, type MutationCtx } from './_generated/server'
+import { windowOf } from './bundle'
 import { actorFor, currentUser, fail, type Actor } from './lib/access'
 import { isEmail } from './lib/input'
 import { localeOfUser, t } from './lib/i18n'
@@ -12,6 +13,8 @@ import { adminEmails, checkGrants, normalizeEmail } from './members'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const INVITE_DAYS = 7
+/** Invite mails per site and hour. A real team invites a handful of people; this bounds what a script or a stolen session sends through our mail domain. */
+const INVITE_LIMIT = 20
 
 /** 32 random bytes, base64url without padding. */
 function newToken(): string {
@@ -19,6 +22,17 @@ function newToken(): string {
   let binary = ''
   for (const byte of bytes) binary += String.fromCharCode(byte)
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+/** Counts one invite mail in the site's current hour, or refuses the one over the limit. Platform admins onboard whole teams and are not counted. */
+async function countInvite(ctx: MutationCtx, actor: Actor) {
+  if (actor.role === 'admin') return
+  const site = actor.site._id
+  const hour = Math.floor(windowOf(Date.now()) / 60) * 60
+  const row = await ctx.db.query('rateWindows').withIndex('by_site_kind_window', (q) => q.eq('site', site).eq('kind', 'invite').eq('window', hour)).unique()
+  if (row && row.count >= INVITE_LIMIT) fail('RATE_LIMITED', 'errors.tooManyInvites', { max: INVITE_LIMIT })
+  if (row) await ctx.db.patch(row._id, { count: row.count + 1 })
+  else await ctx.db.insert('rateWindows', { site, kind: 'invite', window: hour, count: 1 })
 }
 
 /** Owners invite staff only; admins may also invite owners (SPEC 2.7). */
@@ -52,6 +66,7 @@ export const create = mutation({
     for (const invite of pending) mayInvite(actor, invite.role)
     for (const invite of pending) await ctx.db.delete(invite._id)
 
+    await countInvite(ctx, actor)
     const token = newToken()
     // The invitee has no setting yet: the invite mail and their first sign-in code use the inviter's language.
     const locale = await localeOfUser(ctx, actor.user.id)
