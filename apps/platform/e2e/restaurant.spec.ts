@@ -143,6 +143,20 @@ test.describe('Unterwegs (break-it 9)', () => {
     await page.getByRole('button', { name: 'Speichern', exact: true }).click()
     await expect(page.getByText('„Preis“ fehlt.')).toHaveCount(0)
   })
+
+  test('23. after a reload the typed name comes back with "Wiederherstellen"', async ({ page }) => {
+    await page.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
+    await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
+    await page.getByRole('textbox', { name: 'Name' }).fill('Schnitzel mit Preiselbeeren')
+    // The local copy is written after a short pause in typing.
+    await page.waitForTimeout(1000)
+    // The browser's own leave question: leaving there keeps the local copy.
+    page.once('dialog', (d) => d.accept())
+    await page.reload({ waitUntil: 'networkidle' })
+    await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('Wiener Schnitzel vom Kalb')
+    await page.getByRole('button', { name: 'Wiederherstellen', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('Schnitzel mit Preiselbeeren')
+  })
 })
 
 test.describe('Übersetzen (Phase 11)', () => {

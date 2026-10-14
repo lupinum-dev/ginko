@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 // The form engine of Schnell ändern and Alles bearbeiten (useEntryForm), mounted in a small component. The Nuxt
-// auto-imports are Vue's own; only the Studio's writes (useOps) are replaced, so the test sees every call.
+// auto-imports are Vue's own; only the Studio's writes (useOps), the toast and the signed-in person are replaced.
+// Browser storage is happy-dom's real localStorage.
 import { mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
@@ -9,6 +10,9 @@ import type { Entry } from '../app/composables/useSiteData'
 for (const name of ['ref', 'shallowRef', 'computed', 'reactive', 'watch', 'nextTick', 'provide', 'onMounted', 'onBeforeUnmount'] as const) vi.stubGlobal(name, vue[name])
 vi.stubGlobal('onBeforeRouteLeave', () => {})
 vi.stubGlobal('onBeforeRouteUpdate', () => {})
+vi.stubGlobal('useConvexAuth', () => ({ user: vue.ref({ id: 'u1' }) }))
+const toasts: string[] = []
+vi.stubGlobal('useToast', () => ({ show: (text: string) => toasts.push(text) }))
 
 const calls: unknown[] = []
 const stored: Entry = {
@@ -53,7 +57,7 @@ function mountForm() {
         site: vue.ref('restaurant'), brickKey: () => 'dishes', brick: () => brick, fields: () => (brick as { fields: never }).fields,
         entry: () => entry.value, removed: () => removed.value, main: () => 'de', locale: () => 'de',
       })
-      form.load({ ...stored.data })
+      form.load({ ...entry.value!.data })
       return () => vue.h('div')
     },
   }))
@@ -62,7 +66,9 @@ function mountForm() {
 
 beforeEach(() => {
   calls.length = 0
+  toasts.length = 0
   live.value = stored
+  localStorage.clear()
 })
 
 describe('useEntryForm', () => {
@@ -85,5 +91,26 @@ describe('useEntryForm', () => {
       ['save', { entry: 'e1', baseRev: 6, fields: { description: 'Mit Erdäpfelsalat' } }],
     ])
     expect(form.dirty.value).toBe(false)
+  })
+
+  // Wrong behaviour caught: a reload, crash or closed tab loses the typed input; or the copy comes back silently
+  // and overwrites what someone saved meanwhile.
+  test('after a reload the typed name is offered back; "Wiederherstellen" restores it and a name saved meanwhile is a conflict', async () => {
+    const before = mountForm()
+    before.setField('name', 'Schnitzel mit Preiselbeeren')
+    await vue.nextTick()
+    // The tab goes away: the copy is written at once, not after the pause.
+    window.dispatchEvent(new Event('pagehide'))
+    // Meanwhile the cook saves another name.
+    live.value = { ...stored, rev: 6, fieldRevs: { ...stored.fieldRevs, name: 6 }, data: { ...stored.data, name: 'Kalbsschnitzel' } }
+
+    const after = mountForm()
+    expect(after.draft.value.name).toBe('Kalbsschnitzel')
+    expect(after.localOffer.value?.fields).toEqual({ name: 'Schnitzel mit Preiselbeeren' })
+
+    await after.restoreLocal()
+    expect(after.draft.value.name).toBe('Schnitzel mit Preiselbeeren')
+    expect(after.conflict.value).toEqual({ fields: ['name'], data: live.value.data, rev: 6 })
+    expect(toasts).toEqual(['Wiederhergestellt. Inzwischen hat jemand Name geändert, bitte unten entscheiden.'])
   })
 })

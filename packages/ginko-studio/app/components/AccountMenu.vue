@@ -2,6 +2,7 @@
      for owner and admin, My sites, sign out. -->
 <script setup lang="ts">
 import { LayoutGridIcon, LogOutIcon, RefreshCwIcon } from '@lucide/vue'
+import { forgetLocalDrafts } from '../composables/useLocalDraft'
 
 const props = defineProps<{ manager: boolean, lastRefresh?: number | null, updating: boolean, side?: 'top' | 'right' | 'bottom' }>()
 const emit = defineEmits<{ update: [] }>()
@@ -11,8 +12,11 @@ const initial = computed(() => (user.value?.email ?? '?').charAt(0).toUpperCase(
 const busy = ref(false)
 async function signOut() {
   busy.value = true
+  const id = user.value?.id
   try {
     await client.signOut()
+    // Unsaved input kept in this browser must not stay behind on a shared computer.
+    if (id) forgetLocalDrafts(id)
     await navigateTo('/login')
   } finally {
     busy.value = false

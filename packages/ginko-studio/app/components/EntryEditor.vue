@@ -14,6 +14,7 @@ import { EllipsisIcon } from '@lucide/vue'
 import WhyNotPublic from './WhyNotPublic.vue'
 import ScheduleField from './ScheduleField.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
+import LocalDraftOffer from './LocalDraftOffer.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
 import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
@@ -90,8 +91,19 @@ const form = useEntryForm({
   draft: () => props.entry?.state === 'draft',
   timeZone: () => props.schema.timeZone,
   removed: () => !!props.removed,
+  // A local copy made in another language is restored in that language (its texts belong there).
+  otherLocale: async (next) => {
+    if (!props.schema.locales.includes(next)) return false
+    if (dirty.value) {
+      useToast().show(t('entry.saveBeforeLanguage'), { tone: 'err' })
+      return false
+    }
+    locale.value = next
+    await nextTick()
+    return true
+  },
 })
-const { draft, baseline, issues, problem, conflict, busy, slow, waiting, dirty, confirm } = form
+const { draft, baseline, issues, problem, conflict, busy, slow, waiting, dirty, confirm, localOffer } = form
 
 function start() {
   form.load(props.entry ? { ...props.entry.data } : defaultsFor(fields.value))
@@ -427,6 +439,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           :may-restore="canRemove" :may-create="mayCreate"
           @restore="restoreRemoved" @save-as-new="saveAsNew" @discard="discardRemoved"
         />
+        <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
         <div v-if="conflict" class="grid gap-2 rounded-md bg-warning/10 p-3" role="alert">
           <p><strong>{{ t('entry.conflict.changed', { fields: conflict.fields.map((k) => shownField(k)).join(', ') || t('entry.conflict.thisEntry') }) }}</strong></p>
           <ul class="m-0 pl-4">

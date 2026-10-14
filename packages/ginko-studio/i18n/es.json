@@ -171,6 +171,12 @@
       "discard": "Descartar",
       "noRights": "Tus cambios se quedan en este dispositivo. Pide al propietario que restaure la entrada y vuelve a abrirla."
     },
+    "localDraft": {
+      "offer": "¿Restaurar los cambios sin guardar de {time}?",
+      "restore": "Restaurar",
+      "discard": "Descartar",
+      "restoredConflict": "Restaurado. Alguien cambió {fields} mientras tanto; decide abajo."
+    },
     "pick": {
       "search": "Buscar",
       "empty": "No se encontró nada."

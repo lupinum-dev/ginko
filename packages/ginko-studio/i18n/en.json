@@ -171,6 +171,12 @@
       "discard": "Discard",
       "noRights": "Your changes stay on this device. Ask the owner to restore the entry, then open it again."
     },
+    "localDraft": {
+      "offer": "Restore your unsaved changes from {time}?",
+      "restore": "Restore",
+      "discard": "Discard",
+      "restoredConflict": "Restored. Someone changed {fields} in the meantime; please decide below."
+    },
     "pick": {
       "search": "Search",
       "empty": "Nothing found."

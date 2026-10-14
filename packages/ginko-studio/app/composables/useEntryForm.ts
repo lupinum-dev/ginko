@@ -1,12 +1,15 @@
 // One form engine for Schnell ändern and Alles bearbeiten (UI.md 3.2, 4): a draft of root fields,
 // the stored baseline, save or create with one opId per attempt, field errors, conflicts that keep
-// the person's input, and "Noch richtig?" blockers from list rows.
+// the person's input, "Noch richtig?" blockers from list rows, and a copy of unsaved input in this browser.
 import type { Brick, Fields, Json, Locale } from '@lupinum/ginko'
 import { useI18n } from '#imports'
 import type { Entry } from './useSiteData'
 import type { OpError } from './useOps'
 import { changedRoots, type Data } from '../utils/content'
+import { shownLabel } from '../utils/labels'
+import { clearLocalDraft, localDraftKey, readLocalDraft, useLocalDraftWriter, writeLocalDraft, type LocalDraft } from './useLocalDraft'
 import { BLOCKERS, FLUSHERS, type Issue } from '@lupinum/ginko-editor'
+import { stableJson } from '@lupinum/ginko/internal'
 
 /** Stored values are JSON; a JSON copy also unwraps Vue's proxies (structuredClone cannot). */
 export const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value ?? null)) ?? value
@@ -30,6 +33,8 @@ export interface EntryFormOptions {
   timeZone?: () => string
   /** Someone removed the edited entry meanwhile (useKeptEntry): saving waits for a restore or "save as new". */
   removed?: () => boolean
+  /** Switches the form to the language of a local copy before it is restored; false when it cannot now. Without it, copies in other languages are not offered. */
+  otherLocale?: (locale: Locale) => Promise<boolean>
 }
 
 export function useEntryForm(o: EntryFormOptions) {
@@ -76,6 +81,7 @@ export function useEntryForm(o: EntryFormOptions) {
     confirm.value = []
     waiting.value = false
     ready.value = true
+    if (mounted) localOffer.value = offerOf(localKey.value)
   }
 
   const changed = computed(() => changedRoots(baseline.value, draft.value).filter((k) => keys().includes(k)))
@@ -84,7 +90,14 @@ export function useEntryForm(o: EntryFormOptions) {
   // Leaving with unsaved input asks first: the browser's back button, a link such as "Alle Bereiche",
   // closing or reloading the tab (break-it 9). A save on its way needs no question: it goes on.
   const unsaved = () => dirty.value && !busy.value
-  const mayLeave = () => !unsaved() || window.confirm(t('ops.leaveConfirm'))
+  const mayLeave = () => {
+    if (!unsaved()) return true
+    if (!window.confirm(t('ops.leaveConfirm'))) return false
+    // "Trotzdem weggehen" drops the input on purpose (the browser's own leave dialog keeps the local copy).
+    // A removed entry keeps it: the input comes back if the entry is restored and opened again.
+    if (!o.removed?.()) forgetLocal()
+    return true
+  }
   onBeforeRouteLeave(mayLeave)
   onBeforeRouteUpdate(mayLeave)
   const onUnload = (event: BeforeUnloadEvent) => { if (unsaved()) event.preventDefault() }
@@ -142,6 +155,8 @@ export function useEntryForm(o: EntryFormOptions) {
     slow.value = false
     const timer = setTimeout(() => { slow.value = true }, 4000)
     const op = ops.opId()
+    // Read now: a sheet closed while the save waits for the connection is gone when it lands.
+    const key = localKey.value
     try {
       // What is sent: edits made while the call runs stay unsaved (and dirty), never marked as saved.
       const submitted = copy(draft.value)
@@ -172,6 +187,8 @@ export function useEntryForm(o: EntryFormOptions) {
         initial.value = submitted
         confirm.value = []
       }
+      // Handed in, and nothing typed since: the local copy has done its job.
+      if (key && !changedRoots(submitted, draft.value).length) clearLocalDraft(key)
       issues.value = []
       problem.value = ''
       return true
@@ -251,11 +268,103 @@ export function useEntryForm(o: EntryFormOptions) {
     return dirty.value ? save() : true
   }
 
-  /** Drops the person's input (an explicit "Verwerfen"): the form shows what it opened with. */
+  /** Drops the person's input (an explicit "Verwerfen"): the form shows what it opened with, and no local copy stays. */
   function discard() {
     draft.value = copy(initial.value)
     confirm.value = []
+    forgetLocal()
   }
 
-  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, slow, waiting, confirm, blockers, isCreate, changed, dirty, created, load, setField, save, saveAsNew, restoreAndSave, discard, keepMine, takeTheirs }
+  // A copy of the unsaved input in this browser (N2), per person and form: the entry id, a new entry of a
+  // brick, or a create task. Only after load(): an empty form must not overwrite the copy before it is offered.
+  const auth = useConvexAuth()
+  const localKey = computed(() => {
+    const user = auth.user.value?.id
+    if (!user || !ready.value) return undefined
+    const task = o.task?.()
+    return localDraftKey(o.site.value, user, loadedId.value ?? (task ? `task:${task}` : `new:${o.brickKey()}`))
+  })
+  const same = (a: Json | undefined, b: Json | undefined) => stableJson(a ?? null) === stableJson(b ?? null)
+  /** A copy that differs from the form, offered back with "Wiederherstellen"; never applied without a yes. */
+  const localOffer = ref<LocalDraft | null>(null)
+  // Browser storage exists only in the browser: a form loaded during server rendering looks once it is mounted,
+  // and again when the signed-in person becomes known after load().
+  let mounted = false
+  onMounted(() => {
+    mounted = true
+    if (ready.value) localOffer.value = offerOf(localKey.value)
+  })
+  watch(localKey, (key, before) => { if (mounted && key && !before && !dirty.value) localOffer.value = offerOf(key) })
+
+  function offerOf(key: string | undefined): LocalDraft | null {
+    const record = key ? readLocalDraft(key) : undefined
+    if (!key || !record || (record.locale !== o.locale() && !o.otherLocale)) return null
+    const own = keys().filter((k) => Object.hasOwn(record.fields, k))
+    if (own.some((k) => !same(draft.value[k], record.fields[k]))) return record
+    // Nothing new in it (saved meanwhile): drop it, unless it holds fields this form does not show.
+    if (own.length === Object.keys(record.fields).length) clearLocalDraft(key)
+    return null
+  }
+
+  function keepLocal() {
+    const key = localKey.value
+    // While a copy is offered, it stays as it is until the person decides.
+    if (!key || localOffer.value) return
+    const fields: Data = isCreate.value ? copy(draft.value) : Object.fromEntries(changed.value.map((k) => [k, copy(draft.value[k] ?? null)]))
+    if (!dirty.value || !Object.keys(fields).length) return clearLocalDraft(key)
+    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields })
+  }
+  // Typed back to what was there: the next write removes the copy (a save removes it at once, in write()).
+  const localWriter = useLocalDraftWriter(() => draft.value, keepLocal)
+
+  function forgetLocal() {
+    localWriter.cancel()
+    if (localKey.value) clearLocalDraft(localKey.value)
+    localOffer.value = null
+  }
+
+  /**
+   * Puts the offered copy into the form. Fields someone saved after the copy was made open the conflict
+   * panel at once ("Meine Eingaben speichern" / "Neuen Stand übernehmen"); the others save normally.
+   */
+  async function restoreLocal() {
+    let record = localOffer.value
+    if (record && record.locale !== o.locale()) {
+      // The language switch loads the form again, which offers the copy anew.
+      if (!(await o.otherLocale?.(record.locale))) return
+      record = localOffer.value
+    }
+    if (!record) return
+    localOffer.value = null
+    const { fields, baseRev: copyBase } = record
+    const own = keys().filter((k) => Object.hasOwn(fields, k))
+    const next = { ...draft.value }
+    for (const k of own) {
+      const value = fields[k]
+      if (value === null || value === undefined) delete next[k]
+      else next[k] = copy(value)
+    }
+    draft.value = next
+    waiting.value = false
+    const entry = o.entry()
+    if (!entry) return
+    const clash = own.filter((k) => (entry.fieldRevs[k] ?? 0) > copyBase && !same(entry.data[k], next[k]))
+    // The copy's base: a save of a root changed after it is refused as a conflict, never overwrites it.
+    baseRev.value = Math.min(copyBase, entry.rev)
+    if (clash.length) {
+      conflict.value = { fields: clash, data: entry.data, rev: entry.rev }
+      const label = (k: string) => { const f = o.brick().fields[k]; return f ? shownLabel(f.label, o.main()) : k }
+      useToast().show(t('entry.localDraft.restoredConflict', { fields: clash.map(label).join(', ') }))
+    }
+    reconcile()
+  }
+
+  /** "Verwerfen" on the offer: the copy goes, the form stays as it is. */
+  function dropLocal() {
+    const key = localKey.value
+    if (key) clearLocalDraft(key)
+    localOffer.value = null
+  }
+
+  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, slow, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs }
 }

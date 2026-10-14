@@ -6,6 +6,7 @@ import type { Brick, Label as LabelText, Locale } from '@lupinum/ginko'
 import { defaultsFor, isShown, type Schema } from '@lupinum/ginko/internal'
 import GinkoField from './fields/GinkoField.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
+import LocalDraftOffer from './LocalDraftOffer.vue'
 import { provideRefs } from './fields/refs'
 import { Button } from '@studio/components/ui/button'
 import { XIcon } from '@lucide/vue'
@@ -62,7 +63,7 @@ const form = useEntryForm({
   draft: () => !isCreate.value && props.entry?.state === 'draft',
   removed: () => !isCreate.value && !!props.removed,
 })
-const { draft, baseline, ready, issues, problem, conflict, busy, slow, waiting, dirty } = form
+const { draft, baseline, ready, issues, problem, conflict, busy, slow, waiting, dirty, localOffer } = form
 
 // Prefill (SPEC 2.7): stored values of the task's fields, then the task's preset, resolved on the server.
 const prefillArgs = computed(() => ({ site: props.site, task: ref_.value, ...(props.entry && !isCreate.value ? { entry: props.entry._id } : {}) }))
@@ -114,10 +115,6 @@ async function restoreRemoved(lifeRev: number) {
   // Without input the sheet stays open on the restored entry; with input it closes like after Speichern.
   if (typed) await finish(ok)
 }
-function discardRemoved() {
-  form.discard()
-  emit('close')
-}
 function requestClose() {
   // A save on its way cannot be taken back by closing; say so instead of offering "Verwerfen" (break-it 9).
   if (busy.value) {
@@ -126,10 +123,16 @@ function requestClose() {
     emit('close')
     return
   }
-  if (dirty.value && !confirmClose.value) {
+  // A removed entry: the input stays on this device (the banner says so and has its own "Verwerfen").
+  if (dirty.value && !confirmClose.value && !removedHere.value) {
     confirmClose.value = true
     return
   }
+  emit('close')
+}
+/** "Verwerfen" (after "Änderungen verwerfen?", or on a removed entry): the input goes, and so does its local copy. */
+function discardAndClose() {
+  form.discard()
   emit('close')
 }
 function onCancel(event: Event) {
@@ -158,8 +161,9 @@ function onCancel(event: Event) {
           <EntryGoneBanner
             v-if="removedHere && entry"
             :site="site" :brick-key="brickKey" :entry="entry" :dirty="dirty" :busy="busy" :may-restore="!!mayRestore"
-            @restore="restoreRemoved" @discard="discardRemoved"
+            @restore="restoreRemoved" @discard="discardAndClose"
           />
+          <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
           <div v-if="conflict" class="grid gap-2 rounded-md bg-warning/10 p-3" role="alert">
             <p><strong>{{ t('entry.conflict.changed', { fields: conflict.fields.map((k) => shownField(k)).join(', ') || t('entry.conflict.thisEntry') }) }}</strong></p>
             <ul class="list-disc pl-[18px]">
@@ -193,7 +197,7 @@ function onCancel(event: Event) {
         <p v-if="waiting && !dirty && !confirmClose" class="basis-full font-medium text-warning" role="status">{{ t('history.waiting') }}</p>
         <template v-if="confirmClose">
           <p class="basis-full font-semibold" role="alert">{{ t('entry.discard.question') }}</p>
-          <Button type="button" variant="destructive" @click="emit('close')">{{ t('entry.discard.confirm') }}</Button>
+          <Button type="button" variant="destructive" @click="discardAndClose">{{ t('entry.discard.confirm') }}</Button>
           <Button type="button" variant="outline" @click="confirmClose = false">{{ t('entry.discard.keepEditing') }}</Button>
         </template>
         <template v-else>

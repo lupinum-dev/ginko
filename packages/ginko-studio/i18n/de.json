@@ -171,6 +171,12 @@
       "discard": "Verwerfen",
       "noRights": "Deine Änderungen bleiben auf diesem Gerät. Frag die Inhaberin, ob sie den Eintrag wiederherstellt, und öffne ihn dann wieder."
     },
+    "localDraft": {
+      "offer": "Ungespeicherte Änderungen vom {time} wiederherstellen?",
+      "restore": "Wiederherstellen",
+      "discard": "Verwerfen",
+      "restoredConflict": "Wiederhergestellt. Inzwischen hat jemand {fields} geändert, bitte unten entscheiden."
+    },
     "pick": {
       "search": "Suchen",
       "empty": "Nichts gefunden."
