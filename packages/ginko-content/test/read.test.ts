@@ -240,7 +240,7 @@ describe('images in Markdown', () => {
   // Bug caught: a relative image prop of a component reached validate() unchanged, so it failed as an unsafe URL.
   it('moves an image prop of a component to a content-addressed URL with its size', async () => {
     const r = await read({
-      'content/pages/1.a.md': md('title: A', '::figure{src="./cover.svg"}'),
+      'content/pages/1.a.md': md('title: A', '::figure{src="./cover.svg"}\n::'),
       'content/pages/cover.svg': svg,
     })
     expect(r.errors).toEqual([])

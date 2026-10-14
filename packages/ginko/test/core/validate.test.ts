@@ -301,6 +301,20 @@ describe('markdown field (profile check)', () => {
   ] as const)('%s', async (_name, text, expected) => {
     expect(pairs((await validate(withNote, 'note', { text }, check('create'))).errors)).toEqual(expected)
   })
+
+  // Wrong behaviour caught: a `::figure` without its closing `::` swallows the rest of the text (the site drops it),
+  // and the save goes through without a message. Every write path calls validate(), so this guards all of them.
+  it('refuses an unclosed component, with its line', async () => {
+    const withArticle = serializeSchema({
+      ...site,
+      components: { figure: { kind: 'block', label: 'Abbildung', describe: 'Ein Bild.', props: { src: f.text('Bild') } } },
+      bricks: { ...site.bricks, article: single({ label: 'Artikel', fields: { body: f.markdown('Text', { profile: 'page' }) } }) },
+    })
+    const { errors } = await validate(withArticle, 'article', { body: { de: 'Intro\n\n::figure{src="/a.jpg"}\nText danach' } }, check('create'))
+    expect(errors.map((e) => [e.path, e.code, e.message])).toEqual([
+      ['body.de', 'MARKDOWN', '„Text“, Zeile 3: Die Komponente „figure“ ist nicht geschlossen: Nach ihrem Inhalt fehlt eine Zeile mit „::“.'],
+    ])
+  })
 })
 
 describe('slug field (SPEC 2.2)', () => {

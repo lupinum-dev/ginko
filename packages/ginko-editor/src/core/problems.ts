@@ -44,11 +44,12 @@ export async function sourceProblems(text: string, options: { profile: MarkdownP
     const { problemMessages } = await parseMarkdown(block.source, { profile, components })
     const line = text.slice(0, from).split('\n').length
     const excerpt = block.source.split('\n')[0]!.slice(0, 60)
-    for (const problem of problemMessages) found.push({ ...problem, index, from, line, excerpt })
+    // A problem with its own line (an unclosed component) counts it from the block's first line.
+    for (const problem of problemMessages) found.push({ ...problem, index, from, line: problem.line === undefined ? line : line + problem.line - 1, excerpt })
   }
   // A problem that only shows when the whole text is read (it cannot be tied to one block) goes to the first block.
   for (const problem of whole.problemMessages) {
-    if (!found.some((p) => p.message === problem.message)) found.push({ ...problem, index: 0, from: 0, line: 1, excerpt: text.split('\n')[0]!.slice(0, 60) })
+    if (!found.some((p) => p.message === problem.message)) found.push({ ...problem, index: 0, from: 0, line: problem.line ?? 1, excerpt: text.split('\n')[0]!.slice(0, 60) })
   }
   return found.sort((a, b) => a.index - b.index)
 }

@@ -414,6 +414,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const trees: Partial<Record<Locale, MarkdownTree>> = { [main]: mainView.tree }
       const rels: Record<Locale, string> = { [main]: mainRel }
       const lines: Partial<Record<Locale, number>> = { [main]: group.main.csv?.row.line }
+      // The file line where each locale's body text starts, so a problem at a line of the text points into the file.
+      const bodyLines: Partial<Record<Locale, number>> = { [main]: mainView.bodyLine }
       for (const locale of schema.locales) {
         const src = group.translations[locale]
         if (src === undefined) continue
@@ -423,6 +425,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         if (doc.tree) trees[locale] = doc.tree
         rels[locale] = src.rel
         lines[locale] = src.csv?.row.line
+        bodyLines[locale] = doc.bodyLine
       }
 
       const prints: Prints = {}
@@ -436,7 +439,11 @@ export async function readContent(contentDir: string, publicDir: string, schema:
           const last = issue.path.split('.').pop()
           const locale = schema.locales.find((l) => l === last)
           const at = locale && rels[locale] ? locale : main
-          errors.push({ file: rels[at] ?? mainRel, path: issue.path, message: coreMessage('en', issue.key, issue.params), ...(lines[at] !== undefined ? { line: lines[at] } : {}) })
+          const bodyLine = bodyLines[at]
+          const textLine = issue.key === 'issues.markdownAt' && issue.path.split('.')[0] === markdownKeyOf(brick) ? issue.params?.line : undefined
+          const line = typeof textLine === 'number' && bodyLine !== undefined ? bodyLine + textLine - 1 : lines[at]
+          const params = line !== undefined && textLine !== undefined ? { ...issue.params, line } : issue.params
+          errors.push({ file: rels[at] ?? mainRel, path: issue.path, message: coreMessage('en', issue.key, params), ...(line !== undefined ? { line } : {}) })
         }
         continue
       }
@@ -494,7 +501,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
      * the parsed body; YAML, JSON and CSV: the whole file or row is data and there is no body).
      * `'draft'` when the entry is marked `draft: true` and drafts are off.
      */
-    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; redirectFrom?: string[]; draft?: true } | 'draft' | undefined> {
+    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; draft?: true } | 'draft' | undefined> {
       const { rel } = src
       const ext = extOf(rel)
       const markdownKey = markdownKeyOf(brick)
@@ -502,6 +509,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const cx: FileCx = { file: rel, isMain, prefix: '', publicDir, files, errors: fileErrors, line: src.csv?.row.line }
       let data: Record<string, unknown>
       let parsed: Awaited<ReturnType<typeof parseFile>> | undefined
+      let bodyLine: number | undefined
       if (src.csv) {
         data = {}
         const { columns, row } = src.csv
@@ -524,6 +532,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
           rewriteImages(parsed.value.nodes, imageCx)
           rewriteImages(parsed.value.summary, imageCx)
           parsed.body = renameInText(parsed.body, imageCx.renames)
+          // The body is the end of the file (after the frontmatter); renames keep its lines.
+          bodyLine = text.split('\n').length - parsed.body.split('\n').length + 1
         } else {
           const raw = parseDataFile(text, ext, rel, errors)
           if (raw === undefined) return undefined
@@ -546,7 +556,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       // The slug defaults to the file name without its number (CONTENT.md "Slug"), for CSV to the `slug` cell.
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
       errors.push(...fileErrors)
-      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, redirectFrom: redirects, draft: draft === true ? true : undefined }
+      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, draft: draft === true ? true : undefined }
     }
   }
 

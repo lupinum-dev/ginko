@@ -2,6 +2,7 @@
   "issues": {
     "unknownBrick": "No existe el bloque “{brick}”.",
     "markdown": "“{label}”: {problem}",
+    "markdownAt": "“{label}”, línea {line}: {problem}",
     "notObject": "Se espera un objeto.",
     "unknownField": "Campo desconocido.",
     "fieldMissing": "Falta “{label}”.",
@@ -58,7 +59,8 @@
     "propBlocked": "La propiedad “{prop}” no está permitida.",
     "unsafeLink": "Enlace no permitido (solo http, https, mailto, tel o /ruta).",
     "oneParagraph": "Aquí solo se permite un párrafo.",
-    "tooComplex": "El texto es demasiado complejo (máximo {max} elementos)."
+    "tooComplex": "El texto es demasiado complejo (máximo {max} elementos).",
+    "componentNotClosed": "El componente “{tag}” no está cerrado: falta una línea con “{close}” después de su contenido."
   },
   "component": {
     "or": "{first} o {second}",

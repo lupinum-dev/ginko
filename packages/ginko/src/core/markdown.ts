@@ -199,12 +199,15 @@ export interface ParsedMarkdown {
   /** What the profile does not allow, as sentences. Empty when the text is fine. */
   problems: string[]
   /** The same problems with catalog key and parameters (`coreMessage(locale, key, params)`), in the same order. */
-  problemMessages: Described[]
+  problemMessages: MarkdownProblem[]
 }
+
+/** A problem of a text; `line` (1-based, in the parsed text, frontmatter included) when it belongs to one line. */
+export type MarkdownProblem = Described & { line?: number }
 
 /** Parses Markdown with comark, checks it against the profile, adds heading anchors and the toc (h2, h3). */
 export async function parseMarkdown(text: string, options: ParseOptions = {}): Promise<ParsedMarkdown> {
-  const problems: Described[] = []
+  const problems: MarkdownProblem[] = []
   let body = text
   let summary: Node[] | undefined
   const plugins = [
@@ -214,6 +217,7 @@ export async function parseMarkdown(text: string, options: ParseOptions = {}): P
     // `basic` field is reported, not silently kept. Footnotes must run before the check (`[^1]` is a `span` until then).
     emoji(), footnotes(), math(), mermaid(),
     moreMarker((nodes) => { summary = nodes }),
+    closedComponents(text, problems),
     profileCheck(options.profile ?? 'page', problems, options.components),
     ...(options.plugins ?? []),
     headingAnchors(),
@@ -266,6 +270,31 @@ function moreMarker(set: (nodes: Node[]) => void) {
       if (at === -1) return
       set(state.tree.nodes.slice(0, at))
       state.tree.nodes.splice(at, 1)
+    },
+  }))()
+}
+
+type BlockOpen = { type: 'mdc_block_open'; map: [number, number]; markup: string; info: string }
+const isBlockOpen = (token: unknown): token is BlockOpen =>
+  typeof token === 'object' && token !== null && 'type' in token && token.type === 'mdc_block_open' && 'map' in token && Array.isArray(token.map)
+
+/**
+ * comark ends an unclosed `::name` block at the end of its parent (the text, or the enclosing `:::gallery`), so the
+ * text after it becomes the component's content and the site drops it. comark keeps no flag for this, but the open
+ * token's `map[1]` is the line it stopped at: the closing marker, or the parent's end. `>` covers a block in a quote.
+ * Depends on comark 0.7's token shape (`mdc_block_open`, `map`, `markup`); validate.test.ts fails if that changes.
+ */
+function closedComponents(text: string, problems: MarkdownProblem[]) {
+  return defineComarkPlugin(() => ({
+    name: 'ginko-closed',
+    post(state) {
+      const lines = state.markdown.split('\n')
+      // Token lines count in state.markdown, which is the text after a frontmatter block.
+      const frontmatterLines = text.split('\n').length - lines.length
+      for (const token of state.tokens) {
+        if (!isBlockOpen(token) || lines[token.map[1]]?.replace(/^[\s>]*/, '').trim() === token.markup) continue
+        problems.push({ ...msg('markdown.componentNotClosed', { tag: token.info, close: token.markup }), line: frontmatterLines + token.map[0] + 1 })
+      }
     },
   }))()
 }

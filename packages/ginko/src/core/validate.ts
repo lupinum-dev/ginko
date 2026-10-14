@@ -47,7 +47,12 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
   const issues = checkFields(brick.fields, data, '', { locales: schema.locales, main: schema.locales[0]!, texts, refs: opts.refs, fileAlt: opts.fileAlt })
   for (const { field, text, path } of texts) {
     const { problemMessages: problems } = await parseMarkdown(text, { profile: effectiveProfile(field), components: schema.components })
-    for (const problem of problems) issues.push(issue(path, 'MARKDOWN', 'markdown', { label: shown(field, schema.locales[0]!), problem: bare(problem) }))
+    const label = shown(field, schema.locales[0]!)
+    for (const problem of problems) {
+      issues.push(problem.line === undefined
+        ? issue(path, 'MARKDOWN', 'markdown', { label, problem: bare(problem) })
+        : issue(path, 'MARKDOWN', 'markdownAt', { label, line: problem.line, problem: bare(problem) }))
+    }
   }
   if (opts.mode === 'restore') return { errors: issues.filter((i) => SHAPE_CODES.has(i.code)), warnings: issues.filter((i) => !SHAPE_CODES.has(i.code)) }
   if (opts.mode !== 'patch') return { errors: issues, warnings: [] }

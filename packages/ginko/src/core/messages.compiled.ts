@@ -24,6 +24,23 @@ export const compiled: Record<string, MessageTree> = {
      "problem"
     ]
    ],
+   "markdownAt": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“, Zeile ",
+    [
+     "a",
+     "line"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
    "notObject": "Erwartet ein Objekt.",
    "unknownField": "Unbekanntes Feld.",
    "fieldMissing": [
@@ -431,6 +448,19 @@ export const compiled: Record<string, MessageTree> = {
      "max"
     ],
     " Elemente)."
+   ],
+   "componentNotClosed": [
+    "Die Komponente „",
+    [
+     "a",
+     "tag"
+    ],
+    "“ ist nicht geschlossen: Nach ihrem Inhalt fehlt eine Zeile mit „",
+    [
+     "a",
+     "close"
+    ],
+    "“."
    ]
   },
   "component": {
@@ -1218,6 +1248,23 @@ export const compiled: Record<string, MessageTree> = {
      "problem"
     ]
    ],
+   "markdownAt": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”, line ",
+    [
+     "a",
+     "line"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
    "notObject": "An object is expected.",
    "unknownField": "Unknown field.",
    "fieldMissing": [
@@ -1625,6 +1672,19 @@ export const compiled: Record<string, MessageTree> = {
      "max"
     ],
     " elements)."
+   ],
+   "componentNotClosed": [
+    "The component “",
+    [
+     "a",
+     "tag"
+    ],
+    "” is not closed: a line with “",
+    [
+     "a",
+     "close"
+    ],
+    "” is missing after its content."
    ]
   },
   "component": {
@@ -2412,6 +2472,23 @@ export const compiled: Record<string, MessageTree> = {
      "problem"
     ]
    ],
+   "markdownAt": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”, línea ",
+    [
+     "a",
+     "line"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
    "notObject": "Se espera un objeto.",
    "unknownField": "Campo desconocido.",
    "fieldMissing": [
@@ -2819,6 +2896,19 @@ export const compiled: Record<string, MessageTree> = {
      "max"
     ],
     " elementos)."
+   ],
+   "componentNotClosed": [
+    "El componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "” no está cerrado: falta una línea con “",
+    [
+     "a",
+     "close"
+    ],
+    "” después de su contenido."
    ]
   },
   "component": {

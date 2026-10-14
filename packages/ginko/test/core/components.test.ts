@@ -64,7 +64,11 @@ describe('parseMarkdown with a component registry', () => {
     ['slot on a component without slots', '::callout{type="info"}\n#footer\nx\n::', 'hat keine Bereiche'],
     ['template outside a registered component', '::nope\n#footer\nx\n::', '„template“ ist nicht erlaubt.'],
     ['blocked tag stays blocked', '::script\nx\n::', '„script“ ist nicht erlaubt.'],
-    ['plain Markdown is not a component', '# Titel\n\n| a |\n|---|\n| b |\n\n- x', null],
+    // An unclosed block swallows the rest of its parent; inside a list item comark re-reads the indented lines.
+    ['unclosed component in a list item', '- Punkt\n\n  ::callout{type="info"}\n  x\n- Zwei\n\nDanach', 'Die Komponente „callout“ ist nicht geschlossen'],
+    ['closed component in a list item', '- Punkt\n\n  ::callout{type="info"}\n  x\n  ::\n- Zwei', null],
+    ['closed component in a quote', '> ::callout{type="info"}\n> x\n> ::\n\nDanach', null],
+    ['plain Markdown is not a component','# Titel\n\n| a |\n|---|\n| b |\n\n- x', null],
   ]
   test.each(cases)('%s', async (_name, text, problem) => {
     const { problems } = await parseMarkdown(text, { profile: 'page', components: registry })
