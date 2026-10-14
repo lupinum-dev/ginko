@@ -5,7 +5,8 @@
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { sha256 } from '@lupinum/ginko/internal'
-import { internalMutation, internalQuery, mutation, query } from './_generated/server'
+import type { Doc } from './_generated/dataModel'
+import { internalMutation, internalQuery, mutation, query, type MutationCtx } from './_generated/server'
 import { actorFor, fail } from './lib/access'
 import { cleanName } from './lib/files'
 import { t, type MessageKey } from './lib/i18n'
@@ -80,6 +81,16 @@ export const register = internalMutation({
   },
 })
 
+/**
+ * A file that entries already name (an import writes the entries before their files are processed) reaches the site
+ * only now: contentRev rises like after a save, so a site's cache fetches the content again.
+ */
+async function showWhereUsed(ctx: MutationCtx, row: Doc<'uploads'>) {
+  const used = await ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', row._id)).filter((q) => q.eq(q.field('holder'), 'entry')).first()
+  const site = used ? await ctx.db.get(row.site) : null
+  if (site) await ctx.db.patch(site._id, { contentRev: site.contentRev + 1 })
+}
+
 /** A PDF whose content checked out is ready as stored; nothing is processed or removed. Repeats are no-ops. */
 export const markFileReady = internalMutation({
   args: { upload: v.id('uploads'), sha256: v.optional(v.string()) },
@@ -87,6 +98,7 @@ export const markFileReady = internalMutation({
     const row = await ctx.db.get(upload)
     if (!row || row.status !== 'processing') return false
     await ctx.db.patch(upload, { status: 'ready', processedId: row.storageId, ...(sha256 ? { sha256 } : {}) })
+    await showWhereUsed(ctx, row)
     return true
   },
 })
@@ -134,6 +146,7 @@ export const markReady = internalMutation({
     if (!row || row.status !== 'processing') return false
     await ctx.db.patch(row._id, { processedId: args.processedId, size: args.size, width: args.width, height: args.height, status: 'ready', ...(args.variants ? { variants: args.variants } : {}), ...(args.sha256 ? { sha256: args.sha256 } : {}) })
     await ctx.scheduler.runAfter(0, internal.uploads.dropFile, { storageId: row.storageId })
+    await showWhereUsed(ctx, row)
     return true
   },
 })

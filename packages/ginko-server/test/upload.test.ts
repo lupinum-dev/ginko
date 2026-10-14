@@ -140,6 +140,16 @@ describe('uploads.markReady and markFailed', () => {
     expect(await s.t.run((ctx) => ctx.db.get(id))).toMatchObject({ status: 'ready', processedId: first, width: 2400, height: 1800 })
   })
 
+  // Wrong behaviour caught: an imported picture that an entry already names became ready without a new contentRev, so a
+  // site's cache kept serving the entry with the picture broken until some unrelated save.
+  it('markReady of a file an entry uses raises contentRev, so the site fetches it', async () => {
+    const s = await setup()
+    const id = await registerImage(s)
+    await s.t.run((ctx) => ctx.db.insert('fileRefs', { site: s.site, file: id, holder: 'entry', holderId: Object.values(s.entries)[0]!, uses: [{ path: 'photo', missingAlt: false }], missingAlt: false }))
+    await s.t.mutation(internal.uploads.markReady, { upload: id, processedId: await storeFile(s.t, 'webp'), size: 8, width: 2, height: 1 })
+    expect((await s.t.run((ctx) => ctx.db.get(s.site)))!.contentRev).toBe(2)
+  })
+
   it('marks an upload failed after the third failed attempt, not before', async () => {
     const s = await setup()
     const id = await registerImage(s)
