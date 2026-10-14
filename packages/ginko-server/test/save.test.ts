@@ -310,4 +310,11 @@ describe('budget (SPEC 3)', () => {
     expect(siteRow.bytes).toBe(before[0] - before[1] + row.bytes)
   })
 
+  // Wrong behaviour caught: a site over its budget (after an import or a release) refuses every save, also the one that shortens it.
+  it('a save that shrinks an entry passes while the site is over its budget', async () => {
+    const { t, as, entries, site } = await setup()
+    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev: 1, fields: { imprint: { de: 'Ein längerer Text für das Impressum.' } } })
+    await t.run((ctx) => ctx.db.patch(site, { bytes: 5 * 1024 * 1024 }))
+    await expect(as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev: 2, fields: { imprint: { de: 'kurz' } } })).resolves.toMatchObject({ rev: 3 })
+  })
 })

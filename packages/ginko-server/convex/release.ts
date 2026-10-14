@@ -2,7 +2,7 @@
 // the HTTP routes in routes/release.ts, which resolve the push key to its site first; the
 // internal functions here trust that site id. Owners and admins use the public mutations.
 import type { Fields, Json, Locale } from '@lupinum/ginko'
-import { byteSize, checkSchema, defaultsFor, entryBytes, diffSchema, fieldsChanged, releaseData, sha256, stableJson, validate, type MigrationDescriptor, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, checkSchema, defaultsFor, entryBytes, fitsBudget, diffSchema, fieldsChanged, releaseData, sha256, stableJson, validate, type MigrationDescriptor, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -306,8 +306,10 @@ export const release = internalMutation({
     // Budget (SPEC 3, 5.2 step 9). Documents are the entries written plus the singles created.
     if (updates.length + created.length > RELEASE_LIMITS.documents) fail('RELEASE_TOO_LARGE', 'errors.releaseTooLarge')
     const updated = new Map(updates.map((u) => [u.entry._id, u]))
-    const tooLarge = [...created.map((c) => c.bytes), ...entries.map((e) => updated.get(e._id)?.bytes ?? e.bytes)].find((b) => b > BUDGET.entryBytes)
-    if (tooLarge !== undefined) fail('TOO_LARGE', 'errors.entryTooLarge', overBudget(tooLarge, BUDGET.entryBytes))
+    // A written entry must fit the entry limit unless it does not grow; an entry the release does not touch is not checked.
+    const tooLarge = [...created.map((c) => ({ after: c.bytes, before: 0 })), ...updates.map((u) => ({ after: u.bytes, before: u.entry.bytes }))]
+      .find((e) => !fitsBudget(e.after, e.before, BUDGET.entryBytes))
+    if (tooLarge) fail('TOO_LARGE', 'errors.entryTooLarge', overBudget(tooLarge.after, BUDGET.entryBytes))
     // entryCount and bytes count live entries only (SPEC 4.2 remove); removed ones are in trashBytes.
     const entryCount = entries.filter((e) => !e.deletedAt).length + created.length
     const after = storageSums([
@@ -315,8 +317,8 @@ export const release = internalMutation({
       ...created.map((c) => ({ bytes: c.bytes, treeBytes: c.trees.bytes })),
     ])
     if (entryCount > BUDGET.entries) fail('TOO_LARGE', 'errors.siteEntryCapReached')
-    if (after.bytes > BUDGET.siteBytes) fail('TOO_LARGE', 'errors.siteStorageLimitReached', overBudget(after.bytes, BUDGET.siteBytes))
-    if (after.treeBytes > BUDGET.treeBytes) fail('TOO_LARGE', 'errors.entryTooComplex')
+    if (!fitsBudget(after.bytes, site.bytes, BUDGET.siteBytes)) fail('TOO_LARGE', 'errors.siteStorageLimitReached', overBudget(after.bytes, BUDGET.siteBytes))
+    if (!fitsBudget(after.treeBytes, site.treeBytes ?? 0, BUDGET.treeBytes)) fail('TOO_LARGE', 'errors.entryTooComplex')
 
     // 8. Write: schema, entries, orderRevs, migrations, contentRev only when an entry changed, release record, change row.
     const changedContent = updates.length > 0 || created.length > 0

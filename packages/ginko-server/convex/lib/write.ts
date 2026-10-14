@@ -2,7 +2,7 @@
 // the entry with its revisions, the change row and the file references in one place.
 import type { Field, Fields, Json } from '@lupinum/ginko'
 import type { FileField } from '@lupinum/ginko/internal'
-import { checkLinks, entryBytes, fileProblem, linkTargets, stableJson, type LinkIssue, type Schema, type ValidateOptions } from '@lupinum/ginko/internal'
+import { checkLinks, entryBytes, fileProblem, fitsBudget, linkTargets, stableJson, type LinkIssue, type Schema, type ValidateOptions } from '@lupinum/ginko/internal'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { bundleOf, type NewItem } from '../bundle'
@@ -16,7 +16,8 @@ import { SITE_BUDGET as BUDGET } from '@lupinum/ginko/internal'
 
 /** "340 KB", "4.2 MB": sizes in error texts, on the same 1024 base as the Studio's `sizeText` (components/files/util.ts). */
 export function sizeText(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  const kb = Math.max(1, Math.round(bytes / 1024))
+  if (kb < 1024) return `${kb} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} MB`
 }
 
@@ -212,13 +213,14 @@ export interface EntryWrite {
 export async function commitEntry(ctx: MutationCtx, w: EntryWrite) {
   const { actor, entry } = w
   const site = actor.site
+  // A write that does not grow the entry, the site or the trees always passes, so an entry or site over a limit can be shortened.
   const bytes = entryBytes(w.data, w.prints)
-  if (bytes > BUDGET.entryBytes) fail('TOO_LARGE', 'errors.entryTooLarge', overBudget(bytes, BUDGET.entryBytes))
+  if (!fitsBudget(bytes, entry.bytes, BUDGET.entryBytes)) fail('TOO_LARGE', 'errors.entryTooLarge', overBudget(bytes, BUDGET.entryBytes))
   const siteBytes = site.bytes - entry.bytes + bytes
-  if (siteBytes > BUDGET.siteBytes) fail('TOO_LARGE', 'errors.siteStorageLimitReached', overBudget(siteBytes, BUDGET.siteBytes))
+  if (!fitsBudget(siteBytes, site.bytes, BUDGET.siteBytes)) fail('TOO_LARGE', 'errors.siteStorageLimitReached', overBudget(siteBytes, BUDGET.siteBytes))
   const trees = await treesOf(w.fields, w.data)
   const treeBytes = (site.treeBytes ?? 0) - (entry.treeBytes ?? 0) + trees.bytes
-  if (treeBytes > BUDGET.treeBytes) fail('TOO_LARGE', 'errors.entryTooComplex')
+  if (!fitsBudget(treeBytes, site.treeBytes ?? 0, BUDGET.treeBytes)) fail('TOO_LARGE', 'errors.entryTooComplex')
 
   const rev = entry.rev + 1
   const fieldRevs = { ...entry.fieldRevs }
