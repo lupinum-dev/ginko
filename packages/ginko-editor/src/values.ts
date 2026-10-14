@@ -1,17 +1,9 @@
 // Helpers the field components share. The storage format is the server's (SPEC 2.2); these only
 // translate it for people and back.
-import type { Locale } from '@lupinum/ginko'
 import { minorDigits } from '@lupinum/ginko/internal'
 
-/** The text of a translatable value in one locale, or the plain value when it is not localized. */
-export function textIn(value: unknown, locale: Locale): string {
-  if (typeof value === 'string') return value
-  if (value && typeof value === 'object' && !Array.isArray(value)) {
-    const v = (value as Record<string, unknown>)[locale]
-    return typeof v === 'string' ? v : ''
-  }
-  return ''
-}
+// The rule lives in core, where the platform's list search reads it too.
+export { textIn } from '@lupinum/ginko/internal'
 
 /** A list row id: 10 characters, as the server expects (SPEC 2.2 list). */
 export function newRowId(): string {

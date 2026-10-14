@@ -1,9 +1,9 @@
 <!-- Choose the entry for a pick task (UI.md 3): search by name, grouped by the first choice field. -->
 <script setup lang="ts">
 import type { Brick, Locale } from '@lupinum/ginko'
-import { ordered } from '@lupinum/ginko/internal'
+import { ordered, searchable } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
-import { displayValue, groupField, searchable, titleOf, type Task } from '../utils/content'
+import { displayValue, groupField, titleOf, type Task } from '../utils/content'
 import { useStudioSite } from '../utils/labels'
 import { Input } from '@studio/components/ui/input'
 import { XIcon } from '@lucide/vue'

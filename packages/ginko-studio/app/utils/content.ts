@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { ordered, stableJson, type Schema } from '@lupinum/ginko/internal'
+import { entryTitle, ordered, stableJson, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { shownLabel } from './labels'
 import type { Words } from './when'
@@ -9,28 +9,13 @@ import type { Words } from './when'
 export type Data = Record<string, Json>
 export type { Task }
 
-/** The name the entry's own input gives it (its week, or its first filled text field); undefined while nothing is typed. */
-export function typedTitle(brick: Brick, data: Data, locale: Locale): string | undefined {
-  // A week planned ahead is named by its week ("Woche ab 19.10.2026"), not by its note.
-  if (brick.kind === 'collection' && brick.plans && typeof data[brick.plans.field] === 'string') {
-    const day = new Date(`${data[brick.plans.field]}T00:00:00Z`)
-    const field = brick.fields[brick.plans.field]
-    if (field && !Number.isNaN(day.getTime())) return `${shownLabel(field.label, locale)} ${new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(day)}`
-  }
-  for (const [key, field] of ordered(brick.fields)) {
-    if (field.retired) continue
-    if (field.type === 'text' || field.type === 'longtext') {
-      const text = textIn(data[key], locale).trim()
-      if (text) return text
-    }
-  }
-  return undefined
-}
-
 /** A short name for an entry: its first text field in the main language, else the brick's label. */
 export function titleOf(brick: Brick, data: Data, locale: Locale): string {
   return typedTitle(brick, data, locale) ?? shownLabel(brick.label, locale)
 }
+
+/** The name the entry's own input gives it (core `entryTitle`, labels for the person); undefined while nothing is typed. */
+export const typedTitle = (brick: Brick, data: Data, locale: Locale): string | undefined => entryTitle(brick, data, locale, (label) => shownLabel(label, locale))
 
 /** The publish panel's question about what was typed, new entry or edited: "Wann soll „Herbstfest“ online gehen?". */
 export function publishQuestion(brick: Brick, data: Data, locale: Locale, t: Words['t']): string {
@@ -57,11 +42,6 @@ export function groupField(brick: Brick): { key: string; field: Extract<Field, {
     if (field.type === 'choice' && !field.retired) return { key, field }
   }
   return undefined
-}
-
-/** Lower case without accents, so "schnitz" finds "Schnitzel" and "kase" finds "Käse". */
-export function searchable(text: string): string {
-  return text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 }
 
 /** Root fields whose value differs between two data objects. */

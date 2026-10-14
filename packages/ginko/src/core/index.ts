@@ -19,6 +19,7 @@ export { plannedWeeks, plansThisWeek, staleOf, weeklyTask, type WeekState } from
 export { sha256, stableJson } from './sha256.ts'
 export { formatMoney, minorDigits } from './money.ts'
 export { labelOf, isLocale, isCurrency, MAX_LOCALES } from './labels.ts'
+export { textIn, searchable, entryTitle, listHaystack, listSort } from './list.ts'
 export type { DataOf, ValueOf, BrickValue, ItemOf, Money, ImageValue, FileValue, UnknownChoice } from './infer.ts'
 export * from './tool-schema.ts'
 export { UPLOAD_TYPES, acceptOf, limitOf, formatMb, type UploadType } from './uploads.ts'

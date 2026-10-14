@@ -3,10 +3,9 @@
 import { PlusIcon } from '@lucide/vue'
 import { api } from '#convex/api'
 import type { CollectionBrick } from '@lupinum/ginko'
-import { isVisible } from '@lupinum/ginko/internal'
+import { isVisible, listHaystack, listSort, searchable } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../../../composables/useSiteData'
-import { languageName, relevantDate, searchable, titleOf } from '../../../../../utils/content'
-import { haystackOf, sortRows } from '../../../../../utils/basics'
+import { languageName, relevantDate, titleOf } from '../../../../../utils/content'
 import type { ListSort } from '../../../../../components/SavedViews.vue'
 import { whenText } from '../../../../../utils/when'
 import { Badge } from '@studio/components/ui/badge'
@@ -32,8 +31,8 @@ const listed = computed(() => {
   const b = brick.value
   if (!b) return entries.value
   const words = searchable(search.value.trim()).split(/\s+/).filter(Boolean)
-  const found = words.length ? entries.value.filter((e) => { const hay = haystackOf(b, e.data, s.schema.value?.locales ?? []); return words.every((w) => hay.includes(w)) }) : entries.value
-  return sort.value ? sortRows(found, b, sort.value, s.main.value) : found
+  const found = words.length ? entries.value.filter((e) => { const hay = listHaystack(b, e.data, s.schema.value?.locales ?? []); return words.every((w) => hay.includes(w)) }) : entries.value
+  return sort.value ? listSort(found, b, sort.value, s.main.value) : found
 })
 // Translation gaps per entry and language; a click opens the entry in that language.
 const { data: translation } = useConvexQuery(api.sites.translationStatus, () => ({ site: s.slug.value }))
