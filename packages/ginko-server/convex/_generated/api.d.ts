@@ -35,6 +35,7 @@ import type * as lib_i18n from "../lib/i18n.js";
 import type * as lib_input from "../lib/input.js";
 import type * as lib_library from "../lib/library.js";
 import type * as lib_lifecycle from "../lib/lifecycle.js";
+import type * as lib_list from "../lib/list.js";
 import type * as lib_names from "../lib/names.js";
 import type * as lib_policy from "../lib/policy.js";
 import type * as lib_publicness from "../lib/publicness.js";
@@ -99,6 +100,7 @@ declare const fullApi: ApiFromModules<{
   "lib/input": typeof lib_input;
   "lib/library": typeof lib_library;
   "lib/lifecycle": typeof lib_lifecycle;
+  "lib/list": typeof lib_list;
   "lib/names": typeof lib_names;
   "lib/policy": typeof lib_policy;
   "lib/publicness": typeof lib_publicness;

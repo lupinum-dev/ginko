@@ -79,6 +79,12 @@ const calls: Call[] = [
   { fn: 'entries.removed', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
   { fn: 'entries.trash', kind: 'query', args: (site) => ({ site }) },
   { fn: 'entries.whyNotPublic', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
+  { fn: 'entries.list', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
+  { fn: 'entries.list#search', kind: 'query', args: (site) => ({ site, brick: 'menu', search: 'Saibling' }) },
+  { fn: 'entries.get', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
+  { fn: 'entries.single', kind: 'query', args: (site) => ({ site, brick: 'hours' }) },
+  { fn: 'entries.titles', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
+  { fn: 'entries.ofBricks', kind: 'query', args: (site) => ({ site, bricks: ['menu', 'hours', 'notices'] }) },
   { fn: 'release.createPushKey', kind: 'mutation', args: (site) => ({ site, label: 'x', scopes: ['release', 'export'] }) },
   { fn: 'release.revokePushKey', kind: 'mutation', args: (site, f) => ({ site, key: f.pushKey.id }) },
   { fn: 'members.list', kind: 'query', args: (site) => ({ site }) },
@@ -101,6 +107,7 @@ const calls: Call[] = [
   { fn: 'uploads.urls', kind: 'query', args: (site, f) => ({ site, ids: [f.file] }) },
   { fn: 'tasks.prefill', kind: 'query', args: (site, f) => ({ site, task: 'menu.edit', entry: f.entry }) },
   { fn: 'sites.get', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'sites.meta', kind: 'query', args: (site) => ({ site }) },
   { fn: 'sites.setAgentReview', kind: 'mutation', args: (site) => ({ site, review: false }) },
   { fn: 'sites.deletion', kind: 'query', args: (site) => ({ site }) },
   // A wrong confirmation: against "andere" the call stops there instead of really starting the deletion of the attacker's own site.
@@ -142,7 +149,7 @@ describe('tenant isolation: owner of "andere" against "restaurant"', () => {
           const result = c.kind === 'query' ? await s.as.stranger.query(ref, args) : await s.as.stranger.mutation(ref, args)
           const text = JSON.stringify(result)
           const hit = SECRETS.filter((x) => text.includes(x)).concat([f.entry, f.file, f.folder, f.change, f.proposal, f.member].filter((x) => text.includes(x)))
-          if (hit.length && !['uploads.urls', 'sites.get', 'sites.translationStatus'].includes(name)) leaks.push(`${c.fn}: ${hit.join(',')}`)
+          if (hit.length && !['uploads.urls', 'sites.get', 'sites.meta', 'sites.translationStatus'].includes(name)) leaks.push(`${c.fn}: ${hit.join(',')}`)
         } catch {
           // Refused: the expected answer for a stranger.
         }

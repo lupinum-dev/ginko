@@ -84,6 +84,39 @@ export const cancelDeletion = mutation({
   },
 })
 
+/**
+ * One site's settings and counters with its schema, and the caller's own role and grants: what every Studio page
+ * reads. No entries: each page reads the ones it shows (entries.list, get, single, titles, ofBricks), so a save
+ * does not send the whole site to every open tab. `refreshToken` is never returned.
+ */
+export const meta = query({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    const site = actor.site
+    return {
+      site: {
+        slug: site.slug,
+        name: site.name,
+        url: site.url,
+        previewOrigins: site.previewOrigins,
+        schema: site.schema,
+        schemaRev: site.schemaRev,
+        contentRev: site.contentRev,
+        entryCount: site.entryCount,
+        bytes: site.bytes,
+        release: site.release,
+        /** The site setting for agent review (SPEC 17); null: the config's `agents.review` decides. */
+        agentReview: site.agentReview ?? null,
+        /** When the live site last proved it shows the current revision (an urgent refresh that every page confirmed); null: never. */
+        lastRefreshAt: site.lastRefreshAt ?? null,
+      },
+      role: actor.role,
+      grants: actor.grants,
+    }
+  },
+})
+
 /** One site with its schema, its live entries, and the caller's own role and grants. `refreshToken` is never returned. */
 export const get = query({
   args: { site: v.string() },

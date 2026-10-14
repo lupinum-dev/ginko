@@ -10,6 +10,9 @@ import type { Field, Fields } from './types.ts'
  * `entryBytes` is 480 KiB, not 512: a history row holds the before and after of a changed field, and two values of
  * 512 KiB would pass Convex's 1 MiB document limit. `trashBytes` caps the removed entries, which count apart from the
  * site: a removal past it deletes the oldest removed entries early, and an import past it is refused.
+ *
+ * The Studio's list queries (ginko-server entries.list, titles, ofBricks) read a whole brick per run, which these
+ * limits keep inside Convex's per-query read limits. Raising `siteBytes` above about 8 MiB needs index pagination.
  */
 export const SITE_BUDGET = { siteBytes: 4 * 1024 * 1024, entries: 2000, entryBytes: 480 * 1024, treeBytes: 8 * 1024 * 1024, trashBytes: 4 * 1024 * 1024 } as const
 

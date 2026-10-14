@@ -424,3 +424,45 @@ describe('entries.whyNotPublic', () => {
     expect((await errorOf(s.as.stranger.query(api.entries.whyNotPublic, { site: 'andere', entry: s.entries.martinigans! }))).code).toBe('NOT_FOUND')
   })
 })
+
+describe('Studio reads at volume', () => {
+  /** `count` notices without English ("Hinweis 0" …) inserted straight into the brick, as an imported site holds them. */
+  async function manyNotices(s: Awaited<ReturnType<typeof studioSetup>>, count: number) {
+    await s.t.run(async (ctx) => {
+      for (let i = 0; i < count; i++) {
+        await ctx.db.insert('entries', { site: s.site, brick: 'notices', kind: 'item', order: 100 + i, data: { text: { de: `Hinweis ${i}` }, until: '2026-12-31' }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, bytes: 60 })
+      }
+    })
+  }
+
+  // Wrong behaviour caught: every Studio page subscribes to the site with all its entries, so each save anywhere sends
+  // the whole site (megabytes) to every open tab.
+  it('sites.meta carries no entries: it stays the same size when the site gets 120 more', async () => {
+    const s = await studioSetup()
+    const before = await s.as.owner.query(api.sites.meta, { site })
+    await manyNotices(s, 120)
+    expect(await s.as.owner.query(api.sites.meta, { site })).toEqual(before)
+  })
+
+  // Wrong behaviour caught: the list renders and searches every entry in the browser (1,000 rows, 5 MB).
+  it('entries.list sends 50 small rows of a long list and searches on the server', async () => {
+    const s = await studioSetup()
+    const base = await s.as.owner.query(api.entries.list, { site, brick: 'notices' })
+    await manyNotices(s, 120)
+    const list = await s.as.owner.query(api.entries.list, { site, brick: 'notices' })
+    expect(list.rows).toHaveLength(50)
+    expect(list.total).toBe(base.total + 120)
+    expect(JSON.stringify(list.rows).length).toBeLessThan(50 * 300)
+    const found = await s.as.owner.query(api.entries.list, { site, brick: 'notices', search: 'hinweis 107' })
+    expect(found.rows.map((r) => r.title)).toEqual(['Hinweis 107'])
+  })
+
+  // Wrong behaviour caught: the translation badges came from a status list capped at 200 entries, so every later
+  // entry showed as translated.
+  it('the 201st notice of a brick still shows its missing English text', async () => {
+    const s = await studioSetup()
+    await manyNotices(s, 201)
+    const list = await s.as.owner.query(api.entries.list, { site, brick: 'notices', search: 'hinweis 200' })
+    expect(list.rows[0]!.gaps).toEqual([{ locale: 'en', missing: 1, outdated: 0 }])
+  })
+})

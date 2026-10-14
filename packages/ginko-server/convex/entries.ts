@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, deletesExpired, isVisible, ordered, sha256, slugify, sortEntries, todayIn, uniqueSlug, validate, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, listHaystack, listSort, deletesExpired, isVisible, ordered, searchable, sha256, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, validate, visibleUntil, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
@@ -17,6 +17,7 @@ import { publicness } from './lib/publicness'
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
+import { editorEntry, editorEntryWithTranslation, listRow, titleOf } from './lib/list'
 
 const underRoot = (leaf: string, root: string) => leaf === root || leaf.startsWith(`${root}.`)
 
@@ -943,6 +944,131 @@ export const removed = query({
       .order('desc')
       .take(100)
     return rows.map((e) => ({ _id: e._id, data: e.data, lifeRev: e.lifeRev, deletedAt: e.deletedAt! }))
+  },
+})
+
+// ---- What the Studio's pages read (VOL-1): each page subscribes only to the entries it shows. ----
+// Any member may read, as with every Studio read (SPEC 2.7). Each reads by_site_brick_order: one brick is bounded by
+// SITE_BUDGET (bytes and entries), which keeps a whole-brick read inside Convex's per-query limits.
+
+/** A brick of the schema that is not retired. */
+function liveBrick(schema: Schema, key: string) {
+  const brick = Object.hasOwn(schema.bricks, key) ? schema.bricks[key] : undefined
+  if (!brick || brick.retired) fail('INVALID', 'errors.brickNoLongerEditable')
+  return brick
+}
+
+/** The live rows of a brick, in the site's order for a collection (core sortEntries, as on the website). */
+async function liveRowsOf(ctx: QueryCtx, site: Id<'sites'>, key: string, brick: Brick): Promise<Doc<'entries'>[]> {
+  const rows = (await rowsOf(ctx, site, key)).filter((row) => row.deletedAt === undefined)
+  if (brick.kind !== 'collection') return rows
+  const byId = new Map(rows.map((row) => [row._id as string, row]))
+  return sortEntries(brick, rows.map((row): StoredEntry => ({ id: row._id, order: row.order, data: row.data }))).map((stored) => byId.get(stored.id)!)
+}
+
+/** Rows a list shows at first and adds per "Show more". */
+export const LIST_PAGE = 50
+/** Longest search text the list takes; more is cut. */
+const SEARCH_MAX = 200
+
+/**
+ * One collection's list (SPEC 4.2): the live entries in the site's order, narrowed by `search` (every word in a text or
+ * longtext field, any language, without accents) and sorted by `sort` (a saved view), the first `limit` of them as
+ * small rows (lib/list.ts listRow). `total` counts every match.
+ */
+export const list = query({
+  args: {
+    site: v.string(),
+    brick: v.string(),
+    search: v.optional(v.string()),
+    sort: v.optional(v.object({ field: v.string(), dir: v.union(v.literal('asc'), v.literal('desc')) })),
+    limit: v.optional(v.number()),
+    /** The person's language, for labels inside a title (a planned week's "Woche ab"); default: the site's main language. */
+    language: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    const schema = actor.site.schema as Schema
+    const brick = structuralBrick(schema, args.brick)
+    const limit = args.limit !== undefined && Number.isFinite(args.limit) ? Math.min(Math.max(Math.floor(args.limit), 1), SITE_BUDGET.entries) : LIST_PAGE
+    let rows = await liveRowsOf(ctx, actor.site._id, args.brick, brick)
+    const words = searchable((args.search ?? '').trim().slice(0, SEARCH_MAX)).split(/\s+/).filter(Boolean)
+    if (words.length) {
+      rows = rows.filter((row) => {
+        const hay = listHaystack(brick, row.data as Data, schema.locales)
+        return words.every((word) => hay.includes(word))
+      })
+    }
+    if (args.sort) rows = listSort(rows, brick, args.sort, schema.locales[0]!)
+    return { total: rows.length, rows: rows.slice(0, limit).map((row) => listRow(schema, args.brick, row, args.language)) }
+  },
+})
+
+/**
+ * One entry for an editor, with its translation gaps; `null` when no such entry of this site exists. A removed entry
+ * comes back with `deleted: true`, so a form open on it keeps the person's input (N1).
+ */
+export const get = query({
+  args: { site: v.string(), entry: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    const id = ctx.db.normalizeId('entries', args.entry)
+    const row = id ? await ctx.db.get(id) : null
+    if (!row || row.site !== actor.site._id) return null
+    return editorEntryWithTranslation(actor.site.schema as Schema, row)
+  },
+})
+
+/** The one entry of a single brick for its editor, with its translation gaps; `null` before it exists (and for a collection). */
+export const single = query({
+  args: { site: v.string(), brick: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    const schema = actor.site.schema as Schema
+    if (liveBrick(schema, args.brick).kind !== 'single') return null
+    const row = (await rowsOf(ctx, actor.site._id, args.brick)).find((r) => r.deletedAt === undefined)
+    return row ? editorEntryWithTranslation(schema, row) : null
+  },
+})
+
+/**
+ * The live entries of a brick by title (lib/list.ts titleOf; null while untitled), with their state and the last day
+ * they show (`until`, for `visible: until`): what a ref picker, a pick list and the duplicate check need. About 60 B a row.
+ */
+export const titles = query({
+  args: { site: v.string(), brick: v.string(), language: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    const schema = actor.site.schema as Schema
+    const brick = liveBrick(schema, args.brick)
+    return (await liveRowsOf(ctx, actor.site._id, args.brick, brick)).map((row) => {
+      const until = visibleUntil(brick, row.data as Data)
+      return {
+        _id: row._id,
+        title: titleOf(schema, brick, row.data as Data, args.language),
+        ...(row.state === undefined ? {} : { state: row.state }),
+        ...(until === undefined ? {} : { until }),
+      }
+    })
+  },
+})
+
+/**
+ * The live entries of the named bricks for an editor (lib/list.ts editorEntry), each collection in the site's order:
+ * Schnell ändern's sections and the preview, which builds the site from them. Names the schema lacks are skipped.
+ */
+export const ofBricks = query({
+  args: { site: v.string(), bricks: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    const schema = actor.site.schema as Schema
+    const out = []
+    for (const key of new Set(args.bricks)) {
+      const brick = Object.hasOwn(schema.bricks, key) ? schema.bricks[key]! : undefined
+      if (!brick) continue
+      for (const row of await liveRowsOf(ctx, actor.site._id, key, brick)) out.push(editorEntry(row))
+    }
+    return out
   },
 })
 
