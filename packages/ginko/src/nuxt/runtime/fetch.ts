@@ -30,7 +30,8 @@ export async function loadBundle(config: GinkoPublicConfig, locale: Locale, minR
 /** A platform failure: a plain error that carries the status, for the caller to turn into its framework's error. */
 export class PlatformError extends Error {
   readonly statusCode = 503
-  constructor(message: string, cause?: unknown) { super(message, { cause }) }
+  /** `platformStatus`: the platform's own HTTP status when it answered with one (409: it has not reached `minRev`). */
+  constructor(message: string, cause?: unknown, readonly platformStatus?: number) { super(message, { cause }) }
 }
 
 /**
@@ -67,17 +68,21 @@ export async function fetchBundle(config: GinkoPublicConfig, locale: Locale, min
   if (minRev && /^\d+\.\d+$/.test(minRev)) query.set('minRev', minRev)
   const url = `${config.platform.replace(/\/$/, '')}/bundle/${encodeURIComponent(config.site)}?${query}`
   let body: unknown
+  let status: number | undefined
   try {
     // `siteToken` is the private `NUXT_GINKO_REVALIDATE_TOKEN`: only server code passes it, a browser never has it.
     const headers: Record<string, string> = { accept: 'application/json' }
     if (siteToken) headers[SITE_TOKEN_HEADER] = siteToken
     const response = await fetch(url, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    if (!response.ok) {
+      status = response.status
+      throw new Error(`HTTP ${status}`)
+    }
     const text = await response.text()
     if (text.length > MAX_CHARS) throw new Error('bundle too large')
     body = JSON.parse(text)
   } catch (error) {
-    throw new PlatformError(unreachableMessage(config, url), error)
+    throw new PlatformError(unreachableMessage(config, url), error, status)
   }
   // A bundle of the wrong shape, or with a brick of another kind than the site's config, is a
   // platform failure too: defaults must never hide it (an empty collection would 404 detail pages).
