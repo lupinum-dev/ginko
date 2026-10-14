@@ -15,6 +15,7 @@ import { byText } from '../utils/who'
 import { msToZoned, whenFull, zonedToMs } from '../utils/when'
 import type { DiffField, ProposalRow } from '../utils/review'
 import ChangeDiff from './ChangeDiff.vue'
+import SiteZoneNote from './SiteZoneNote.vue'
 
 const props = defineProps<{
   proposal: ProposalRow
@@ -100,6 +101,7 @@ function sendReject() {
         <div v-else-if="mode === 'later'" class="grid gap-2">
           <Label :for="`at-${proposal.proposal}`" class="font-medium">{{ t('entry.publish.dateTime') }}</Label>
           <Input :id="`at-${proposal.proposal}`" v-model="at" type="datetime-local" required />
+          <SiteZoneNote :zone="timeZone" input />
           <p v-if="timeError" class="font-medium text-destructive" role="alert">{{ timeError }}</p>
           <div class="flex flex-wrap gap-2">
             <Button type="button" size="sm" :disabled="busy" @click="schedule">{{ t('entry.publish.schedule') }}</Button>

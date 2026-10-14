@@ -25,6 +25,9 @@ export function zonedToMs(local: string, timeZone: string): number | undefined {
   return wall - offsetAt(first, timeZone)
 }
 
+/** The zone of the person's device; differs from the site's when they work from elsewhere. Browser only (onMounted). */
+export const deviceZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone
+
 /** ms → `2026-10-14T09:00` in `timeZone`, for an `<input type="datetime-local">`. */
 export function msToZoned(ms: number, timeZone: string): string {
   const shifted = new Date(ms + offsetAt(ms, timeZone))

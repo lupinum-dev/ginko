@@ -175,6 +175,7 @@
     }
   },
   "site": {
+    "zoneNote": "All times are in the website's time zone ({zone}).",
     "title": {
       "quick": "{site} · Quick edit",
       "all": "{site} · Edit everything",

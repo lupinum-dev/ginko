@@ -12,6 +12,7 @@ import { opErrorOf } from '../composables/useOps'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { EllipsisIcon } from '@lucide/vue'
 import WhyNotPublic from './WhyNotPublic.vue'
+import SiteZoneNote from './SiteZoneNote.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
 import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
@@ -260,8 +261,6 @@ const publishBusy = ref(false)
 const HOUR = 60 * 60 * 1000
 const minAt = ref('')
 const maxAt = ref('')
-/** Shown only when the laptop is in another zone than the site, so 9:00 is not misread. */
-const otherZone = ref(false)
 
 function openPublish() {
   const now = Date.now()
@@ -271,7 +270,6 @@ function openPublish() {
   at.value = scheduled ? msToZoned(scheduled, timeZone.value) : `${msToZoned(now + 24 * HOUR, timeZone.value).slice(0, 10)}T09:00`
   minAt.value = msToZoned(now, timeZone.value)
   maxAt.value = msToZoned(now + 365 * 24 * HOUR, timeZone.value)
-  otherZone.value = Intl.DateTimeFormat().resolvedOptions().timeZone !== timeZone.value
   publishError.value = ''
   publishing.value = true
 }
@@ -460,7 +458,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
             <div v-if="when === 'later'" class="grid max-w-80 gap-1.5">
               <Label for="publish-at" class="font-semibold">{{ t('entry.publish.dateTime') }}</Label>
               <Input id="publish-at" v-model="at" type="datetime-local" :min="minAt" :max="maxAt" required />
-              <p v-if="otherZone" class="text-sm text-muted-foreground">{{ t('entry.publish.siteZone', { zone: timeZone }) }}</p>
+              <SiteZoneNote :zone="timeZone" input />
             </div>
             <p v-if="publishError" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ publishError }}</p>
             <div class="flex flex-wrap gap-2">

@@ -175,6 +175,7 @@
     }
   },
   "site": {
+    "zoneNote": "Alle Zeiten in der Zeitzone der Website ({zone}).",
     "title": {
       "quick": "{site} · Schnell ändern",
       "all": "{site} · Alles bearbeiten",

@@ -175,6 +175,7 @@
     }
   },
   "site": {
+    "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",
     "title": {
       "quick": "{site} · Edición rápida",
       "all": "{site} · Editar todo",

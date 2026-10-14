@@ -111,7 +111,7 @@ async function undo(change: Change) {
         <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div class="grid min-w-0 gap-0.5">
             <p class="font-medium">{{ sentenceOf(change) }}</p>
-            <p class="text-[13px] text-muted-foreground">{{ actorName(change) }} · {{ when(change.at) }}</p>
+            <p class="text-[13px] text-muted-foreground">{{ actorName(change) }} · <span :title="fullDate(change.at)">{{ when(change.at) }}</span></p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <Badge v-if="change.undoneBy" variant="soft">{{ t('entry.changes.undone') }}</Badge>

@@ -370,6 +370,14 @@ test.describe('Prüfen und Verlauf', () => {
   test.describe('7. History detail', () => {
     test.use({ storageState: STATE.owner })
 
+    test('a reader in another time zone is told that the times are the site’s', async ({ browser, baseURL, viewport }) => {
+      const away = await browser.newContext({ baseURL, viewport, storageState: STATE.owner, timezoneId: 'America/Los_Angeles' })
+      const page = await away.newPage()
+      await open(page, '/s/restaurant/history')
+      await expect(page.getByText('Alle Zeiten in der Zeitzone der Website (Europe/Vienna).')).toBeVisible()
+      await away.close()
+    })
+
     test('Show changes shows before and after; Back to this version is a new save; Undo takes it back', async ({ page }) => {
       const priceField = () => page.getByRole('textbox', { name: 'Preis', exact: true })
       const setPrice = async (value: string) => {
