@@ -148,6 +148,8 @@
     "devPushLocalOnly": "devPush gibt es nur in der lokalen Plattform.",
     "siteNameMismatchInSchema": "Der Seitenname im Schema passt nicht.",
     "localOnly": "Nur lokal.",
+    "importClosed": "Der Import ist für diese Seite nicht geöffnet.",
+    "importNeedsEmptySite": "Nur eine leere Seite kann für den Import geöffnet werden: sie hat Einträge, Änderungen oder Bearbeitungen.",
     "siteNotStartedDev": "Die Seite gibt es nicht. Zuerst `pnpm local:dev` starten.",
     "siteNotPushedSchema": "Die Seite gibt es nicht. Zuerst das Schema pushen.",
     "backupFoldersInconsistent": "Die Ordner der Sicherung sind nicht stimmig.",

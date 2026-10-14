@@ -295,7 +295,7 @@ describe('export → import round trip (SPEC 12)', () => {
 
     vi.stubEnv('GINKO_LOCAL', '')
     const keep = await setup()
-    for (const [fn, args] of [['seed:importClear', { site: 'restaurant' }], ['seed:uploadUrl', {}], ['seed:importExport', { site: 'restaurant', files: [], entries: [] }]] as const) {
+    for (const [fn, args] of [['seed:importClear', { site: 'restaurant' }], ['seed:uploadUrl', { site: 'restaurant' }], ['seed:importExport', { site: 'restaurant', files: [], entries: [] }]] as const) {
       expect([fn, (await errorOf(keep.t.mutation(makeFunctionReference<'mutation'>(fn), args))).code]).toEqual([fn, 'FORBIDDEN'])
     }
     expect(await keep.t.run((ctx) => ctx.db.query('entries').collect())).not.toHaveLength(0)

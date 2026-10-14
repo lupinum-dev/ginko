@@ -146,6 +146,8 @@
     "devPushLocalOnly": "devPush only exists in the local platform.",
     "siteNameMismatchInSchema": "The site name in the schema does not match.",
     "localOnly": "Local only.",
+    "importClosed": "The import is not open for this site.",
+    "importNeedsEmptySite": "Only an empty site can be opened for import: it has entries, changes or edits.",
     "siteNotStartedDev": "The site does not exist. Start `pnpm local:dev` first.",
     "siteNotPushedSchema": "The site does not exist. Push the schema first.",
     "backupFoldersInconsistent": "The folders in the backup are not consistent.",

@@ -39,6 +39,8 @@ export default defineSchema({
      * unknown site and keys stop working. `at` is when `siteDeletion.purge` (the scheduled `job`) removes everything.
      */
     deleting: v.optional(v.object({ at: v.number(), job: v.id('_scheduled_functions') })),
+    /** Set by `seed:importOpen` on an empty site while an operator loads an export folder into the hosted platform; `seed:importDone` clears it. */
+    importOpen: v.optional(v.boolean()),
   }).index('by_slug', ['slug']),
 
   memberships: defineTable({

@@ -1,8 +1,11 @@
-// `pnpm local:import <dir>` (SPEC 9, 12, monorepo only): loads a `ginko export` folder into the LOCAL platform. The caller
-// has confirmed the local deployment (connectLocal); nothing here talks to production.
-// Steps: push the schema (devPush), store the files and the entry batches in local storage, clear the
-// site's content, then import the stored batches. `convex run` takes its arguments on the command line,
-// whose size the OS limits, so the entries travel through storage; a batch stays under a mutation's limits.
+// `pnpm local:import <dir>` and `pnpm ops:import <dir> --site <slug> --prod` (SPEC 9, 12, monorepo only): load a `ginko export`
+// folder into the LOCAL platform, or (prod) into an EMPTY site of the hosted one. The caller has confirmed the target
+// (connectLocal / connectProd); nothing here chooses it.
+// Local steps: push the schema (devPush), store the files and the entry batches in storage, clear the site's content,
+// import the stored batches, then rewrite the entry references (the entries got new IDs). Prod steps: no schema push and
+// no clear; check that the stored schema has every brick, open the empty site for import, the same steps, close it again.
+// `convex run` takes its arguments on the command line, whose size the OS limits, so the entries travel through
+// storage; a batch stays under a mutation's limits.
 import { readFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
 import type { SchemaChange } from '../core/index.ts'
@@ -19,6 +22,10 @@ export interface ImportInput {
   /** Posts the bytes to a local upload URL and returns the storage ID the platform answers with. */
   upload: (url: string, bytes: Uint8Array<ArrayBuffer>, mime: string) => Promise<string>
   log: (line: string) => void
+  /** Hosted platform: the schema must already be released, the site must be empty, nothing is cleared. Default: local. */
+  prod?: boolean
+  /** The site's slug on the platform. Default: the site of the export. */
+  site?: string
   /** Largest size of one call's arguments. Default BATCH_BYTES; tests lower it to get several batches. */
   batchBytes?: number
 }
@@ -54,23 +61,53 @@ async function readFileOf(dir: string, file: SiteExport['files'][number]): Promi
   return bytes
 }
 
+/** The IDs the export's entries are referenced by in other entries' data: only these need a new ID there. */
+function referencedIds(entries: ExportEntry[], ids: Record<string, string>): Record<string, string> {
+  const text = JSON.stringify(entries.map((e) => e.data))
+  return Object.fromEntries(Object.entries(ids).filter(([exported]) => text.includes(JSON.stringify(exported))))
+}
+
+/** Largest size of the `ids` argument of one importRefs call (a command-line argument). */
+const IDS_BYTES = 100_000
+
 export async function importSite(input: ImportInput): Promise<{ entries: number; files: number }> {
   const { run, log } = input
-  const limit = input.batchBytes ?? BATCH_BYTES
   const data = await readExport(input.dir)
-  const site = data.site
+  const site = input.site ?? data.site
+  if (!input.prod) return importInto(input, data, site)
+
+  // Hosted: the schema comes from `ginko release`, never from here.
+  const status = await run('seed:importStatus', { site })
+  if (!isObject(status) || !Array.isArray(status.bricks)) throw new CliError(`The site “${site}” does not exist on the platform. Create it (sites:bootstrap) and run \`ginko release\` first.`)
+  const missing = Object.keys(data.schema.bricks).filter((brick) => !(status.bricks as unknown[]).includes(brick))
+  if (missing.length > 0) throw new CliError(`The released schema of “${site}” has no ${missing.map((b) => `“${b}”`).join(', ')}. Run \`ginko release\` for the site first.`)
+  await run('seed:importOpen', { site })
+  log(`Site “${site}” is open for import.`)
+  try {
+    return await importInto(input, data, site)
+  } finally {
+    await run('seed:importDone', { site })
+    log(`Site “${site}” is closed for import.`)
+  }
+}
+
+async function importInto(input: ImportInput, data: SiteExport, site: string): Promise<{ entries: number; files: number }> {
+  const { run, log } = input
+  const limit = input.batchBytes ?? BATCH_BYTES
 
   // 1. Schema. Rejected changes go through as warnings, as in `local:dev` (SPEC 5.3).
-  const pushed = await run('release:devPush', { site, schema: data.schema })
-  const warnings = isObject(pushed) && Array.isArray(pushed.warnings) ? (pushed.warnings as SchemaChange[]) : []
-  for (const line of explainRejected(warnings)) log(`Warning: ${line}`)
-  log(`Schema “${site}” pushed to the local platform.`)
+  if (!input.prod) {
+    const pushed = await run('release:devPush', { site, schema: data.schema })
+    const warnings = isObject(pushed) && Array.isArray(pushed.warnings) ? (pushed.warnings as SchemaChange[]) : []
+    for (const line of explainRejected(warnings)) log(`Warning: ${line}`)
+    log(`Schema “${site}” pushed to the local platform.`)
+  }
 
   // 2. Files first, so that a missing or broken file stops the import before anything is cleared.
   const stored = new Map<string, string>()
   for (const file of data.files) {
     const bytes = await readFileOf(input.dir, file)
-    const url = await run('seed:uploadUrl', {})
+    const url = await run('seed:uploadUrl', { site })
     if (typeof url !== 'string') throw new CliError('The local platform did not return an upload address.')
     stored.set(file.id, await input.upload(url, bytes, file.mime))
   }
@@ -109,24 +146,42 @@ export async function importSite(input: ImportInput): Promise<{ entries: number;
   // Every batch is in storage before anything is cleared, so a failure leaves the local content as it was (Astra 9).
   const storedBatches: { id: string; count: number }[] = []
   for (const batch of batches) {
-    const url = await run('seed:uploadUrl', {})
+    const url = await run('seed:uploadUrl', { site })
     if (typeof url !== 'string') throw new CliError('The local platform did not return an upload address.')
     const bytes = new TextEncoder().encode(JSON.stringify(batch.args)) as Uint8Array<ArrayBuffer>
     storedBatches.push({ id: await input.upload(url, bytes, 'application/json'), count: batch.count })
   }
 
-  // 4. Clear. Each call removes a bounded part.
-  for (;;) {
-    const cleared = await run('seed:importClear', { site })
-    if (isObject(cleared) && cleared.done === true) break
+  // 4. Clear. Each call removes a bounded part. Never on the hosted platform: it is empty by rule.
+  if (!input.prod) {
+    for (;;) {
+      const cleared = await run('seed:importClear', { site })
+      if (isObject(cleared) && cleared.done === true) break
+    }
   }
 
-  // 5. Import the stored batches.
+  // 5. Import the stored batches; each answers with the new ID of every entry.
   let done = 0
+  const ids: Record<string, string> = {}
   for (const batch of storedBatches) {
-    await run('seed:importBatch', { site, batch: batch.id })
+    const result = await run('seed:importBatch', { site, batch: batch.id })
+    if (isObject(result) && isObject(result.ids)) for (const [exported, id] of Object.entries(result.ids)) if (typeof id === 'string') ids[exported] = id
     done += batch.count
     log(`Entries: ${done}/${data.entries.length}`)
+  }
+
+  // 6. References between entries still name the exported IDs.
+  const refs = referencedIds(data.entries, ids)
+  if (Object.keys(refs).length > 0) {
+    if (Buffer.byteLength(JSON.stringify(refs)) > IDS_BYTES) throw new CliError('Too many references between entries for one call.')
+    let cursor: string | undefined
+    for (;;) {
+      const page = await run('seed:importRefs', { site, ids: refs, ...(cursor === undefined ? {} : { cursor }) })
+      if (!isObject(page) || page.done === true) break
+      if (typeof page.cursor !== 'string') throw new CliError('The platform did not return a cursor for the references.')
+      cursor = page.cursor
+    }
+    log(`References between ${Object.keys(refs).length} entries updated.`)
   }
   return { entries: data.entries.length, files: data.files.length }
 }

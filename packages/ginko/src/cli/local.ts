@@ -163,3 +163,12 @@ export function runOnce(command: string, args: string[], cwd: string, env: NodeJ
     })
   })
 }
+
+/**
+ * The runner for the HOSTED platform (`pnpm ops:import`): every call is `npx convex run --prod`, in packages/ginko-server,
+ * with the credentials the Convex CLI finds (login or CONVEX_DEPLOY_KEY). The caller has made the operator say `--prod`.
+ */
+export function connectProd(from: string, command: string): Runner {
+  const backendDir = findBackend(from, command)
+  return async (fn, args) => parseOutput(await runOnce('npx', ['convex', 'run', '--prod', fn, JSON.stringify(args)], backendDir))
+}

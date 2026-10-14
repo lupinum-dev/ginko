@@ -20,6 +20,7 @@
     "local:dev": "node --experimental-strip-types packages/ginko/src/cli/monorepo.ts dev",
     "local:import": "node --experimental-strip-types packages/ginko/src/cli/monorepo.ts import",
     "local:files-export": "node --experimental-strip-types packages/ginko/src/cli/monorepo.ts files-export",
+    "ops:import": "node --experimental-strip-types packages/ginko/src/cli/monorepo.ts ops:import",
     "local:pull": "node --experimental-strip-types packages/ginko/src/cli/monorepo.ts pull",
     "check:pack": "node --experimental-strip-types scripts/check-pack.ts",
     "pack:local": "node --experimental-strip-types scripts/pack-local.ts",

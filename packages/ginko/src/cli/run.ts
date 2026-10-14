@@ -79,6 +79,8 @@ export interface Args {
   command?: string
   /** `--config`: the site's ginko.config.ts. Each CLI decides what its absence means. */
   config?: string
+  /** `--site`: a site's slug on the platform; only commands with `site: true` accept it. */
+  site?: string
   /** The one positional argument after the command: the folder of `export` and `import`. */
   folder?: string
   /** Boolean options such as `--offline`; each command says which it accepts. */
@@ -94,6 +96,10 @@ function parseArgs(argv: string[]): Args {
       const value = arg === '--config' ? argv[++i] : arg.slice('--config='.length)
       if (!value) throw new CliError('--config needs a path.', 'USAGE')
       args.config = value
+    } else if (arg === '--site' || arg.startsWith('--site=')) {
+      const value = arg === '--site' ? argv[++i] : arg.slice('--site='.length)
+      if (!value) throw new CliError('--site needs a site slug.', 'USAGE')
+      args.site = value
     } else if (arg.startsWith('-')) args.flags.add(arg)
     else if (args.command === undefined) args.command = arg
     else if (args.folder === undefined) args.folder = arg
@@ -107,6 +113,8 @@ export interface Command {
   folder?: 'optional' | 'required'
   /** Boolean options besides `--config`, such as `--offline`. */
   flags?: readonly string[]
+  /** Whether the command takes `--site <slug>`. */
+  site?: boolean
   run: (args: Args) => Promise<Record<string, unknown>>
 }
 
@@ -138,6 +146,7 @@ export async function runCli(argv: string[], deps: CliDeps, cli: Cli): Promise<E
     // `--json` is accepted everywhere for symmetry with ginko-i18n; the output is JSON anyway.
     const flag = [...args.flags].find((f) => f !== '--json' && !command.flags?.includes(f))
     if (flag) throw new CliError(`Unknown option “${flag}” for ${name}.`, 'USAGE')
+    if (args.site !== undefined && !command.site) throw new CliError(`Unknown option “--site” for ${name}.`, 'USAGE')
     if (args.folder !== undefined && !command.folder) throw new CliError(`Unexpected argument “${args.folder}” for ${name}.`, 'USAGE')
     if (args.folder === undefined && command.folder === 'required') throw new CliError(`${name} needs a folder: ${name} <folder>.`, 'USAGE')
     return command.run(args)

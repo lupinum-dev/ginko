@@ -1,20 +1,35 @@
 // Local demo content (GINKO_LOCAL=1 only): resets one site to a corpus and invites its people.
 // `scripts/seed-local.ts` passes contracts/<site>/data.json. The same file holds the import of a
 // `ginko export` (SPEC 9, 12). Internal, so only `npx convex run` with the deployment's admin key
-// reaches it; every function is refused on any deployment without GINKO_LOCAL.
+// reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
+// deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
-import { internalAction, internalMutation, type MutationCtx } from './_generated/server'
+import { internalAction, internalMutation, internalQuery, type MutationCtx, type QueryCtx } from './_generated/server'
 import { fail } from './lib/access'
 import { normalizeEmail } from './members'
-import { remapFileIds, storageOf, usesOf, type Data } from './lib/content'
+import { byteSize, remapEntryRefs, remapFileIds, storageOf, usesOf, type Data } from './lib/content'
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
-import { syncEntryRefs } from './lib/write'
+import { same, syncEntryRefs } from './lib/write'
 
 function localOnly() {
   if (process.env.GINKO_LOCAL !== '1') fail('FORBIDDEN', 'errors.localOnly')
+}
+
+/**
+ * The import steps run with GINKO_LOCAL=1, or on a site that is open for import (`sites.importOpen`, set by `importOpen`
+ * only on an empty site). `importClear` never runs on a hosted deployment: it would delete content.
+ */
+async function importAllowed(ctx: QueryCtx, slug: string) {
+  if (process.env.GINKO_LOCAL === '1') return true
+  const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', slug)).unique()
+  return site?.importOpen === true
+}
+
+async function requireImportAllowed(ctx: QueryCtx, slug: string) {
+  if (!(await importAllowed(ctx, slug))) fail('FORBIDDEN', 'errors.importClosed')
 }
 
 export const reset = internalMutation({
@@ -57,9 +72,9 @@ export const reset = internalMutation({
 
 /** An upload URL of the local storage; the CLI posts one exported file to it and gets a storage id. */
 export const uploadUrl = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    localOnly()
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    await requireImportAllowed(ctx, args.site)
     return ctx.storage.generateUploadUrl()
   },
 })
@@ -116,6 +131,8 @@ export const importClear = internalMutation({
  * - Entry data gets the new upload IDs in place of the exported ones (an ID that is not in `files` stays).
  * - Slugs and file references are rebuilt from the data; deletedAt, rev and prints are restored.
  * - The site's counters grow by the batch (entryCount for live entries only).
+ * - The answer's `ids` map each exported entry ID to the new one; entry references in `data` still hold the exported
+ *   IDs until `importRefs` rewrites them.
  */
 export const importExport = internalMutation({
   args: {
@@ -151,7 +168,7 @@ export const importExport = internalMutation({
     })),
   },
   handler: async (ctx, args) => {
-    localOnly()
+    await requireImportAllowed(ctx, args.site)
     const site = await siteBySlug(ctx, args.site)
     const schema = site.schema as Schema
 
@@ -187,6 +204,7 @@ export const importExport = internalMutation({
       }))
     }
 
+    const ids: Record<string, Id<'entries'>> = {}
     const known = new Set<string>(uploads.values())
     let bytes = 0
     let live = 0
@@ -207,6 +225,7 @@ export const importExport = internalMutation({
       if (row.state === 'draft' && row.publishAt !== undefined && row.deletedAt === undefined) {
         await ctx.db.patch(id, { publishAt: row.publishAt, publishJob: await ctx.scheduler.runAt(row.publishAt, internal.entries.publishDue, { entry: id, at: row.publishAt }) })
       }
+      ids[row.id] = id
       bytes += size
       if (row.deletedAt === undefined) live++
       orderRevs[row.brick] = 1
@@ -219,7 +238,7 @@ export const importExport = internalMutation({
       await syncEntryRefs(ctx, site._id, id, new Map([...usesOf(def.fields, data, schema.locales)].filter(([file]) => known.has(file))))
     }
     await ctx.db.patch(site._id, { bytes: site.bytes + bytes, entryCount: site.entryCount + live, orderRevs })
-    return { entries: args.entries.length, files: args.files.length }
+    return { entries: args.entries.length, files: args.files.length, ids }
   },
 })
 
@@ -229,14 +248,89 @@ export const importExport = internalMutation({
  */
 export const importBatch = internalAction({
   args: { site: v.string(), batch: v.id('_storage') },
-  handler: async (ctx, args): Promise<{ entries: number; files: number }> => {
-    localOnly()
+  handler: async (ctx, args): Promise<{ entries: number; files: number; ids: Record<string, string> }> => {
+    if (!(await ctx.runQuery(internal.seed.isImportAllowed, { site: args.site }))) fail('FORBIDDEN', 'errors.importClosed')
     const blob = await ctx.storage.get(args.batch)
     if (!blob) fail('NOT_FOUND', 'errors.importBatchNotLocal')
     const batch = JSON.parse(await blob.text()) as { site: string; files: never[]; entries: never[] }
     if (batch.site !== args.site) fail('INVALID', 'errors.importBatchOtherSite')
-    const result: { entries: number; files: number } = await ctx.runMutation(internal.seed.importExport, batch)
+    const result: { entries: number; files: number; ids: Record<string, string> } = await ctx.runMutation(internal.seed.importExport, batch)
     await ctx.storage.delete(args.batch)
     return result
+  },
+})
+
+/** For `importBatch`, an action without database access. */
+export const isImportAllowed = internalQuery({
+  args: { site: v.string() },
+  handler: (ctx, args) => importAllowed(ctx, args.site),
+})
+
+/**
+ * Import step 3 (after the last batch): entries got new IDs, so the entry references in `data` (`ref` fields, also in list
+ * rows) still name the exported IDs. This rewrites every ID found in `ids` (exported ID → new ID); unknown IDs stay.
+ * Entry references live only in `data`, so nothing else needs to follow, but the entry's `bytes` and the site's budget
+ * do (the IDs differ in length). One call handles one page; the CLI repeats it with the returned `cursor` until `done`.
+ */
+export const importRefs = internalMutation({
+  args: { site: v.string(), ids: v.record(v.string(), v.string()), cursor: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireImportAllowed(ctx, args.site)
+    const site = await siteBySlug(ctx, args.site)
+    const schema = site.schema as Schema
+    const ids = new Map(Object.entries(args.ids))
+    // 50 entries of up to 256 KiB stay under the 16 MiB a mutation may read.
+    const page = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).paginate({ numItems: 50, cursor: args.cursor ?? null })
+    let delta = 0
+    let changed = 0
+    for (const entry of page.page) {
+      const def = schema.bricks[entry.brick]
+      if (!def) continue
+      const data = remapEntryRefs(def.fields, entry.data as Data, ids)
+      if (same(data, entry.data)) continue
+      const size = entry.bytes + byteSize(data) - byteSize(entry.data)
+      await ctx.db.patch(entry._id, { data, bytes: size })
+      delta += size - entry.bytes
+      changed++
+    }
+    if (delta !== 0) await ctx.db.patch(site._id, { bytes: site.bytes + delta })
+    return { done: page.isDone, cursor: page.continueCursor, changed }
+  },
+})
+
+/**
+ * Opens an EMPTY site for the import steps on a hosted deployment (`npx convex run --prod seed:importOpen`). Empty means
+ * the state after `sites:bootstrap` and the first release: no entries (also no deleted ones), no changes, no ops.
+ * `importDone` closes it again.
+ */
+export const importOpen = internalMutation({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const site = await siteBySlug(ctx, args.site)
+    const used = (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).first())
+      ?? (await ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', site._id)).first())
+      ?? (await ctx.db.query('ops').withIndex('by_site_actor_op', (q) => q.eq('site', site._id)).first())
+    if (used || site.entryCount !== 0) fail('INVALID', 'errors.importNeedsEmptySite')
+    await ctx.db.patch(site._id, { importOpen: true })
+    return { site: args.site, open: true }
+  },
+})
+
+/** Closes the import of a site and raises contentRev, so bundles and caches see the new content. */
+export const importDone = internalMutation({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const site = await siteBySlug(ctx, args.site)
+    await ctx.db.patch(site._id, { importOpen: undefined, ...(site.importOpen ? { contentRev: site.contentRev + 1 } : {}) })
+    return { site: args.site, open: false }
+  },
+})
+
+/** What `pnpm ops:import` checks before it opens a hosted site: the bricks of the stored (released) schema, or null for an unknown site. */
+export const importStatus = internalQuery({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.site)).unique()
+    return site ? { bricks: Object.keys((site.schema as Schema).bricks) } : null
   },
 })

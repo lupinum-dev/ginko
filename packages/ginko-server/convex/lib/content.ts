@@ -188,6 +188,31 @@ export function remapFileIds(fields: Fields, data: Data, map: ReadonlyMap<string
   return out
 }
 
+/**
+ * The data with every entry ID of a `ref` field (a single ID, or a list with `multiple`, also in list rows)
+ * found in `map` replaced by its new ID. Unknown IDs stay as they are. Entry references live only in `data`;
+ * no index table repeats them.
+ */
+export function remapEntryRefs(fields: Fields, data: Data, map: ReadonlyMap<string, string>): Data {
+  const swap = (id: Json): Json => (typeof id === 'string' ? (map.get(id) ?? id) : id)
+  const walk = (field: Field, value: Json | undefined): Json | undefined => {
+    if (value === undefined || value === null) return value
+    if (field.type === 'ref') return Array.isArray(value) ? value.map(swap) : swap(value)
+    if (field.type === 'list' && Array.isArray(value)) {
+      return value.map((row) => {
+        if (!isRecord(row)) return row
+        const out: Record<string, Json> = { ...row }
+        for (const [key, inner] of Object.entries(field.of)) if (out[key] !== undefined) out[key] = walk(inner, out[key])!
+        return out
+      })
+    }
+    return value
+  }
+  const out: Data = { ...data }
+  for (const [name, field] of Object.entries(fields)) if (out[name] !== undefined) out[name] = walk(field, out[name])!
+  return out
+}
+
 export function byteSize(value: unknown): number {
   return new TextEncoder().encode(JSON.stringify(value ?? null)).byteLength
 }

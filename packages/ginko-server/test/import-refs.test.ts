@@ -1,0 +1,148 @@
+// Import keeps references between entries (remapEntryRefs, seed:importRefs) and a hosted site takes an import only while
+// an operator has opened it (seed:importOpen), and only when it is empty.
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { makeFunctionReference } from 'convex/server'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { importSite } from '../../../packages/ginko/src/cli/import.ts'
+import type { Runner } from '../../../packages/ginko/src/cli/local.ts'
+import type { Fields } from '@lupinum/ginko'
+import { remapEntryRefs } from '../convex/lib/content'
+import { errorOf, setup } from './setup'
+
+type Setup = Awaited<ReturnType<typeof setup>>
+
+const label = { de: 'x', en: 'x' }
+const fields = {
+  author: { type: 'ref', to: 'authors', label },
+  more: { type: 'ref', to: 'authors', multiple: true, label },
+  credits: { type: 'list', label, itemLabel: label, max: 5, of: { who: { type: 'ref', to: 'authors', label }, role: { type: 'boolean', label } } },
+} as unknown as Fields
+
+describe('remapEntryRefs', () => {
+  it('replaces known ids in a single ref, a refs list and a list row; unknown ids and other values stay', () => {
+    const map = new Map([['authors/a', 'NEW_A'], ['authors/b', 'NEW_B']])
+    const data = {
+      author: 'authors/a',
+      more: ['authors/b', 'authors/gone', 'authors/a'],
+      credits: [{ _id: 'r1', who: 'authors/b', role: true }, { _id: 'r2', who: 'authors/gone', role: false }],
+      title: 'authors/a',
+    }
+    expect(remapEntryRefs(fields, data, map)).toEqual({
+      author: 'NEW_A',
+      more: ['NEW_B', 'authors/gone', 'NEW_A'],
+      credits: [{ _id: 'r1', who: 'NEW_B', role: true }, { _id: 'r2', who: 'authors/gone', role: false }],
+      title: 'authors/a',
+    })
+  })
+})
+
+const dirs: string[] = []
+afterEach(async () => {
+  vi.unstubAllEnvs()
+  for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true })
+})
+
+/** The site with two more bricks in its stored schema: `authors` (collection) and `posts` with the ref fields above. */
+async function withRefBricks(s: Setup, site: Setup['site']) {
+  await s.t.run(async (ctx) => {
+    const row = (await ctx.db.get(site))!
+    const schema = row.schema as { bricks: Record<string, unknown> }
+    schema.bricks.authors = { kind: 'collection', label, fields: { name: { type: 'text', label } } }
+    schema.bricks.posts = { kind: 'collection', label, fields }
+    await ctx.db.patch(site, { schema })
+  })
+}
+
+async function exportFolder() {
+  const dir = await mkdtemp(join(tmpdir(), 'ginko-refs-test-'))
+  dirs.push(dir)
+  const entry = (id: string, brick: string, order: number, data: unknown) => ({ id, brick, kind: 'item', order, data, prints: {}, rev: 1 })
+  const brick = { kind: 'collection', label, fields: {} }
+  await writeFile(join(dir, 'export.json'), JSON.stringify({
+    format: 1, site: 'restaurant', name: 'R', schema: { bricks: { authors: brick, posts: brick }, migrations: [], retired: {} }, schemaRev: 1, contentRev: 1,
+    exportedAt: '2026-10-11T00:00:00.000Z', files: [],
+    entries: [
+      // The post comes first on purpose: its author is imported after it.
+      entry('posts/hello', 'posts', 1, { author: 'authors/anna', more: ['authors/anna'], credits: [{ _id: 'r1', who: 'authors/anna', role: true }] }),
+      entry('authors/anna', 'authors', 1, { name: 'Anna' }),
+    ],
+  }))
+  return dir
+}
+
+function runnerOf(s: Setup) {
+  const calls: string[] = []
+  const run: Runner = async (fn, args) => {
+    calls.push(fn)
+    if (fn === 'release:devPush') return { warnings: [] }
+    return fn === 'seed:importBatch' ? s.t.action(makeFunctionReference<'action'>(fn), args) : fn === 'seed:importStatus' ? s.t.query(makeFunctionReference<'query'>(fn), args) : s.t.mutation(makeFunctionReference<'mutation'>(fn), args)
+  }
+  const upload = (_url: string, bytes: Uint8Array, mime: string) => s.t.run((ctx) => ctx.storage.store(new Blob([bytes], { type: mime })))
+  return { run, upload, calls }
+}
+
+const entriesOf = (s: Setup, site: Setup['site']) => s.t.run(async (ctx) => (await ctx.db.query('entries').collect()).filter((e) => e.site === site))
+
+describe('import keeps references between entries', () => {
+  it('points ref, refs and list-row refs at the new id of the imported entry and keeps the budget exact', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const { run, upload, calls } = runnerOf(s)
+    await importSite({ dir: await exportFolder(), run, upload, log: () => undefined })
+    expect(calls).toContain('seed:importRefs')
+
+    const rows = await entriesOf(s, s.site)
+    const anna = rows.find((e) => e.brick === 'authors')!
+    const post = rows.find((e) => e.brick === 'posts')!
+    expect(post.data).toEqual({ author: anna._id, more: [anna._id], credits: [{ _id: 'r1', who: anna._id, role: true }] })
+    const site = (await s.t.run((ctx) => ctx.db.get(s.site)))!
+    expect(site.bytes).toBe(rows.reduce((sum, e) => sum + e.bytes, 0))
+  })
+})
+
+describe('hosted import guard', () => {
+  it('opens only an empty site, takes the import only while open, never clears, and closes again', async () => {
+    const s = await setup()
+    const call = (fn: string, args: Record<string, unknown>) => s.t.mutation(makeFunctionReference<'mutation'>(fn), args)
+    const dir = await exportFolder()
+    await withRefBricks(s, s.other)
+
+    // Not local and not open: refused, also for the file upload and the clear.
+    for (const [fn, args] of [['seed:importExport', { site: 'andere', files: [], entries: [] }], ['seed:uploadUrl', { site: 'andere' }], ['seed:importRefs', { site: 'andere', ids: {} }], ['seed:importClear', { site: 'andere' }]] as const) {
+      expect([fn, (await errorOf(call(fn, args))).code]).toEqual([fn, 'FORBIDDEN'])
+    }
+    // A site with content cannot be opened; the empty one can.
+    expect((await errorOf(call('seed:importOpen', { site: 'restaurant' }))).code).toBe('INVALID')
+    expect(await call('seed:importOpen', { site: 'andere' })).toMatchObject({ open: true })
+    // Open: the import steps work, the clear still does not.
+    await expect(call('seed:importExport', { site: 'andere', files: [], entries: [] })).resolves.toMatchObject({ entries: 0 })
+    expect((await errorOf(call('seed:importClear', { site: 'andere' }))).code).toBe('FORBIDDEN')
+    // Another site stays closed.
+    expect((await errorOf(call('seed:importExport', { site: 'restaurant', files: [], entries: [] }))).code).toBe('FORBIDDEN')
+
+    // The CLI path: checks the released bricks, imports, rewrites refs, closes the site.
+    const { run, upload, calls } = runnerOf(s)
+    await call('seed:importDone', { site: 'andere' })
+    await importSite({ dir, run, upload, log: () => undefined, prod: true, site: 'andere' })
+    expect(calls).not.toContain('release:devPush')
+    expect(calls).not.toContain('seed:importClear')
+    expect(calls.at(-1)).toBe('seed:importDone')
+    const rows = await entriesOf(s, s.other)
+    expect(rows.find((e) => e.brick === 'posts')!.data).toMatchObject({ author: rows.find((e) => e.brick === 'authors')!._id })
+    expect((await s.t.run((ctx) => ctx.db.get(s.other)))!.importOpen).toBeUndefined()
+    expect((await errorOf(call('seed:importExport', { site: 'andere', files: [], entries: [] }))).code).toBe('FORBIDDEN')
+
+    // The site now has entries: no second import,.
+    expect((await errorOf(call('seed:importOpen', { site: 'andere' }))).code).toBe('INVALID')
+  })
+
+  it('stops before it opens the site when the released schema lacks a brick of the export', async () => {
+    const s = await setup()
+    const { run, upload, calls } = runnerOf(s)
+    await expect(importSite({ dir: await exportFolder(), run, upload, log: () => undefined, prod: true, site: 'andere' })).rejects.toThrow(/ginko release/)
+    expect(calls).toEqual(['seed:importStatus'])
+  })
+})

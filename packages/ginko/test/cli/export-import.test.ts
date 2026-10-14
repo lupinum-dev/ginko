@@ -74,3 +74,15 @@ describe('export and import keep the asset library', () => {
     await expect(importSite({ dir, run, upload: async () => 's', log: () => {} })).resolves.toMatchObject({ files: 1 })
   })
 })
+
+describe('ops:import', () => {
+  it('needs the literal --prod and a --site before it talks to any deployment', async () => {
+    const { main } = await import('../../src/cli/monorepo.ts')
+    const out: string[] = []
+    const deps = { env: {}, git: async () => '', stdout: (t: string) => { out.push(t) }, log: () => undefined, fetch: async () => { throw new Error('no network') } }
+    expect(await main(['ops:import', 'folder', '--site', 'lupinum'], deps)).toBe(2)
+    expect(await main(['ops:import', 'folder', '--prod'], deps)).toBe(2)
+    expect(out.join('')).toMatch(/Add --prod to confirm/)
+    expect(out.join('')).toMatch(/needs --site/)
+  })
+})

@@ -3,6 +3,7 @@
 //   pnpm local:import <folder>          an export folder into the local platform (import.ts)
 //   pnpm local:pull                     production content into the local platform (pull.ts)
 //   pnpm local:files-export --config <file> [folder]  the site's content files as an export folder (files-export.ts)
+//   pnpm ops:import <folder> --site <slug> --prod     an export folder into an EMPTY site of the hosted platform (operators; import.ts)
 // The root package.json runs this file; the package build leaves it out. Output and exit codes as `ginko` (run.ts).
 // pnpm runs root scripts in the repository root, also with -w from a site folder, so local:dev has no default config:
 // ./ginko.config.ts would be the root's, which does not exist.
@@ -11,12 +12,12 @@ import { runDev } from './dev.ts'
 import { siteOfKey } from './export.ts'
 import { filesExport } from './files-export.ts'
 import { importSite, postFile } from './import.ts'
-import { connectLocal } from './local.ts'
+import { connectLocal, connectProd } from './local.ts'
 import { CliError } from './model.ts'
 import { pull } from './pull.ts'
 import { connectPlatform, env, isEntryPoint, realDeps, runCli, type Args, type CliDeps, type ExitCode } from './run.ts'
 
-const USAGE = `Usage: pnpm local:<command>   (Ginko monorepo only, run in the repository root)
+const USAGE = `Usage: pnpm local:<command> | pnpm ops:import   (Ginko monorepo only, run in the repository root)
 
 Commands:
   local:dev --config <file>
@@ -27,8 +28,14 @@ Commands:
                          ready for local:import. Every brick counts as file content, whatever its source.
   local:pull             Copy content from production to the local platform (export, then import).
                          Needs GINKO_PLATFORM and GINKO_KEY (scope pull or export).
+  ops:import <folder> --site <slug> --prod
+                         For Lupinum operators: load an export folder into the EMPTY site <slug> of the hosted platform
+                         (runs \`npx convex run --prod\`; needs Convex access to production). Run \`ginko release\` for the
+                         site first: the schema is not pushed here. Refuses a site that has entries, changes or edits.
 
 Options:
+  --site <slug>     ops:import: the site on the platform
+  --prod            ops:import: required; confirms that production is meant
   --config <file>   Path to the site's ginko.config.ts, required by local:dev; packages/ginko-server is searched from there
                     (without it: from the current folder)
   -h, --help        Show this help
@@ -40,7 +47,7 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
   const local = (args: Args) => connectLocal(args.config ? dirname(resolve(args.config)) : process.cwd(), `local:${args.command}`)
 
   return runCli(argv, deps, {
-    prefix: 'local:',
+    prefix: argv[0]?.startsWith('ops:') ? '' : 'local:',
     usage: USAGE,
     commands: {
       dev: {
@@ -56,6 +63,18 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
           const run = local(args)
           const done = await importSite({ dir: args.folder!, run, upload, log: deps.log })
           return { dir: args.folder, ...done }
+        },
+      },
+      'ops:import': {
+        folder: 'required',
+        site: true,
+        flags: ['--prod'],
+        async run(args) {
+          if (!args.flags.has('--prod')) throw new CliError('ops:import writes to the hosted platform. Add --prod to confirm.', 'USAGE')
+          if (!args.site) throw new CliError('ops:import needs --site <slug>.', 'USAGE')
+          const run = connectProd(process.cwd(), 'ops:import')
+          const done = await importSite({ dir: args.folder!, run, upload, log: deps.log, prod: true, site: args.site })
+          return { dir: args.folder, site: args.site, ...done }
         },
       },
       'files-export': {

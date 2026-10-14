@@ -146,6 +146,8 @@
     "devPushLocalOnly": "devPush solo existe en la plataforma local.",
     "siteNameMismatchInSchema": "El nombre del sitio en el esquema no coincide.",
     "localOnly": "Solo local.",
+    "importClosed": "La importación no está abierta para este sitio.",
+    "importNeedsEmptySite": "Solo un sitio vacío puede abrirse para la importación: tiene entradas, cambios o ediciones.",
     "siteNotStartedDev": "El sitio no existe. Inicia primero `pnpm local:dev`.",
     "siteNotPushedSchema": "El sitio no existe. Sube primero el esquema.",
     "backupFoldersInconsistent": "Las carpetas de la copia de seguridad no son coherentes.",
