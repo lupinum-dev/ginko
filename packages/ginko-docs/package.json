@@ -61,7 +61,7 @@
     "@lupinum/ginko": "workspace:^",
     "@lupinum/ginko-content": "workspace:^",
     "@lupinum/ginko-i18n": "workspace:^",
-    "nuxt": "^4.6.0",
+    "nuxt": "^4.6.0 || ^5.0.0-0",
     "vue": "^3.5.0"
   },
   "devDependencies": {

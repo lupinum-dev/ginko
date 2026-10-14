@@ -12,7 +12,7 @@ Add Ginko 0.4, the first release: one content system for Nuxt websites, from Mar
 
 Owners, staff and AI agents edit the same content. All seven packages release together under one version. It starts at 0.4 because `@lupinum/ginko-content` and `@lupinum/ginko-docs` already published an older, unrelated line up to 0.3. Until 1.0, a minor version (0.4 → 0.5) may contain breaking changes; the changelog names each one and how to update.
 
-Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm create ginko@latest my-site`; the documentation explains every step.
+Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+ or Nuxt 5 (tested on its nightly until it is released). Start a site with `npm create ginko@latest my-site`; the documentation explains every step.
 
 **Public API**
 
@@ -42,7 +42,7 @@ Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm creat
 **Languages (`@lupinum/ginko-i18n`)**
 
 - The only locale authority: routes, alternates, hreflang, messages with plurals, and formatters for dates, ranges, relative time, numbers, currency and lists, each in the site's time zone.
-- Works on its own in any Nuxt 4.6+ app, without the rest of Ginko.
+- Works on its own in any Nuxt 4.6+ or Nuxt 5 app, without the rest of Ginko.
 
 **Components and docs (`@lupinum/ginko-components`, `@lupinum/ginko-docs`)**
 

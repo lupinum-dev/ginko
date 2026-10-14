@@ -49,7 +49,7 @@ gives the reasons.
 
 ## Requirements
 
-- Nuxt 4.6 or later. Nuxt 5 is not supported yet.
+- Nuxt 4.6 or Nuxt 5. Until Nuxt 5 is released, CI tests it on a pinned nightly.
 - Node.js 22.18 or later, Node.js 24, or Node.js 26.
 - Not together with `@nuxtjs/i18n`: setup fails with a message if both are installed.
 

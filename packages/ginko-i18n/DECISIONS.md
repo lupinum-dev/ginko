@@ -193,8 +193,9 @@ monorepo's Changesets setup (RELEASING.md).
 `nuxt/server`, never from `h3` or `#imports`. Nitro plugins register through `addNitroPlugin` with
 separate `nitro2` and `nitro3` files where they need Nitro APIs. The browser suites build test apps
 on Nuxt 4.6.0 (`n4`, `n4c5` with Nuxt 5 compatibility) and a pinned Nuxt 5 nightly (`n5`); CI runs
-them for pull requests that change this package. Until Nuxt 5 is released, the peer range is
-`^4.6.0` only.
+them for pull requests that change this package. The peer range and the module's `compatibility`
+are both `^4.6.0 || ^5.0.0-0` (Ginko D3): with `^4.6.0` alone, Nuxt switches the module off on
+Nuxt 5 (`NUXT_B8013`) and npm refuses the install.
 
 **Why:** Nuxt 5 is planned for Q4 2026 and is not released yet (npm `latest` is 4.6.1 on
 2026-10-11). Nuxt 4.6 is the first version whose `nuxt/server` API runs unchanged on Nuxt 5, so a
