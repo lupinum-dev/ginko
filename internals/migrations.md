@@ -42,9 +42,10 @@ the exact condition for removing it and the tracking issue when there is one. Re
 
 - **Why:** after a save that breaks `ginko.config.ts`, the next load fails and @nuxt/cli then watches only
   `nuxt.config.*`, `.nuxtrc` and `.nuxtignore`, so the fixed save restarted nothing until a manual restart.
-  `keepConfigWatchedAcrossFailures` in `packages/ginko/src/nuxt/watch.ts` watches the site folder and, only
-  while no Nuxt instance is up, asks the `nuxt dev` parent for a restart with @nuxt/cli's internal IPC message
-  `nuxt:internal:dev:restart` (verified in @nuxt/cli 4.0.1).
+  `keepConfigWatchedAcrossFailures` in `packages/ginko/src/nuxt/watch.ts` watches the site folder and, only for
+  a save made while no Nuxt instance was up (the last load failed), asks the `nuxt dev` parent for a restart with
+  @nuxt/cli's internal IPC message `nuxt:internal:dev:restart` (verified in @nuxt/cli 4.0.1). A save while healthy
+  is left to Nuxt's own in-place reload, even though that reload closes the instance a few milliseconds later.
 - **Introduced:** 2026-10-14.
 - **Dependents:** `nuxt dev` of every site that uses `@lupinum/ginko/nuxt`; the call in `packages/ginko/src/nuxt/module.ts`.
 - **Removal condition:** @nuxt/cli keeps watching the last instance's `nuxt.options.watch` paths after a failed load

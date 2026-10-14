@@ -33,8 +33,10 @@ declare global {
  * Dev only. The restart through `nuxt.options.watch` (configFilesToWatch) works only while a Nuxt instance runs. After a
  * save that breaks the config, the next load fails, @nuxt/cli serves the error and watches only nuxt.config.*, so the
  * fixed save reached nobody until a manual restart. This watcher marks an instance up when it is ready and down when it
- * closes; a changed ginko.config.* while no instance is up (the last load failed) calls `restart`. While healthy it does
- * nothing: Nuxt restarts in place. Remove it when @nuxt/cli keeps watching after a failed load (internals/migrations.md).
+ * closes, and calls `restart` for a changed ginko.config.* only when no instance was up as the change began (the last
+ * load failed). The state is read at the first file event, not after the debounce: a healthy save makes Nuxt close the
+ * instance for its own in-place reload within milliseconds, and that save must not restart the fork as well. Remove it
+ * when @nuxt/cli keeps watching after a failed load (internals/migrations.md).
  */
 export function keepConfigWatchedAcrossFailures(nuxt: Lifecycle, rootDir: string, restart: (file: string) => void): void {
   const state = (globalThis.__ginkoConfigWatch ??= { up: false })
@@ -45,17 +47,21 @@ export function keepConfigWatchedAcrossFailures(nuxt: Lifecycle, rootDir: string
   const hash = (file: string) => existsSync(file) ? createHash('sha1').update(readFileSync(file)).digest('hex') : ''
   for (const name of CONFIG_NAMES) hashes.set(name, hash(join(rootDir, name)))
   let debounce: NodeJS.Timeout | undefined
+  let wasDown = false
   // The folder, not the file: editors that save by renaming a temp file replace the inode.
   state.watcher = watch(rootDir, (_event, name) => {
     if (!name || !CONFIG_NAMES.has(name)) return
+    // The raw event arrives before Nuxt's chokidar has looked at the file, so Nuxt cannot have closed the instance yet.
+    if (!debounce) wasDown = !state.up
     clearTimeout(debounce)
     debounce = setTimeout(() => {
+      debounce = undefined
       const file = join(rootDir, name)
       const now = hash(file)
       // Content, not events: a save without a change, or a touch, does not restart.
       if (hashes.get(name) === now) return
       hashes.set(name, now)
-      if (!state.up) restart(file)
+      if (wasDown) restart(file)
     }, 200)
     debounce.unref()
   })
