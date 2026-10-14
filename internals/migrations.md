@@ -1,7 +1,7 @@
 # Migrations
 
 Temporary compatibility code that is still active. Each entry says why it exists, since when, what depends on it,
-and the exact condition for removing it. Remove the code and its entry together.
+the exact condition for removing it and the tracking issue when there is one. Remove the code and its entry together.
 
 ## Entry storage: trees in `entryTrees`, text-only budget, separate trash (`entries:migrateStorage`)
 
@@ -37,3 +37,18 @@ and the exact condition for removing it. Remove the code and its entry together.
   run its `entries:rebuildTrees` to restore its trees and counters.
 - **Removal condition:** `storageStatus` reports `legacyRows: 0` and `countersMatch: true` for every site on every
   deployment (local backends included, or they are reset), then ship step 5.
+
+## Dev restart after a failed config load
+
+- **Why:** after a save that breaks `ginko.config.ts`, the next load fails and @nuxt/cli then watches only
+  `nuxt.config.*`, `.nuxtrc` and `.nuxtignore`, so the fixed save restarted nothing until a manual restart.
+  `keepConfigWatchedAcrossFailures` in `packages/ginko/src/nuxt/watch.ts` watches the site folder and, only
+  while no Nuxt instance is up, asks the `nuxt dev` parent for a restart with @nuxt/cli's internal IPC message
+  `nuxt:internal:dev:restart` (verified in @nuxt/cli 4.0.1).
+- **Introduced:** 2026-10-14.
+- **Dependents:** `nuxt dev` of every site that uses `@lupinum/ginko/nuxt`; the call in `packages/ginko/src/nuxt/module.ts`.
+- **Removal condition:** @nuxt/cli keeps watching the last instance's `nuxt.options.watch` paths after a failed load
+  (to be reported upstream at nuxt/cli). Then delete `keepConfigWatchedAcrossFailures`, `nuxiRestart`, their call
+  and their test in `packages/ginko/test/nuxt-watch.test.ts`. If a newer @nuxt/cli renames the IPC message before
+  that, the fallback silently does nothing: check the message name when upgrading @nuxt/cli.
+- **Tracking issue:** none yet.

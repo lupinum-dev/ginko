@@ -9,7 +9,7 @@ import { listsNuxtSeo, nuxtSeoDependencies, runsNuxtSeo } from './nuxt-seo.ts'
 import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules, ginkoVercelConfig } from './route-rules.ts'
-import { configFilesToWatch } from './watch.ts'
+import { configFilesToWatch, keepConfigWatchedAcrossFailures, nuxiRestart } from './watch.ts'
 import { checkSite, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
@@ -38,6 +38,12 @@ export default defineNuxtModule<SiteInput>({
   // The site's data for the Nuxt SEO modules it installs (nuxt-seo.ts). Read from nuxt.config, before setup runs.
   moduleDependencies: (nuxt) => nuxtSeoDependencies((nuxt.options as unknown as { ginko?: SiteInput }).ginko, nuxt),
   async setup(site, nuxt) {
+    // Dev: a change to ginko.config.ts restarts the dev server (see watch.ts), also after a load that failed. Registered
+    // before the checks below, which throw on a broken config. Texts in i18n/*.json reload by themselves (ginko-i18n).
+    if (nuxt.options.dev) {
+      nuxt.options.watch.push(...configFilesToWatch(nuxt.options.rootDir))
+      keepConfigWatchedAcrossFailures(nuxt, nuxt.options.rootDir, nuxiRestart)
+    }
     if (!site?.site || !site.bricks) throw new Error('[ginko] Option `ginko` is missing: the result of defineSite() from ginko.config.ts.')
     // The serialized schema is the site's own contract: checked at build (the same check as `ginko check`), used at runtime for defaults.
     const schema = serializeSchema(site)
@@ -49,8 +55,6 @@ export default defineNuxtModule<SiteInput>({
     }
 
     const { resolve } = createResolver(import.meta.url)
-    // Dev: a change to ginko.config.ts restarts the dev server (see watch.ts). Texts in i18n/*.json reload by themselves (ginko-i18n).
-    if (nuxt.options.dev) nuxt.options.watch.push(...configFilesToWatch(nuxt.options.rootDir))
     // Object.assign, not `public.ginko =`: Nuxt types `public` from each site's own values, so a site's
     // `seo` would narrow the type this module must write (a site with `seo.description` makes it required).
     Object.assign(nuxt.options.runtimeConfig.public, { ginko: {
