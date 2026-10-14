@@ -210,7 +210,9 @@ export default defineNuxtPlugin(() => {
 Every page gets `<html lang dir>`, a canonical link, hreflang links (with `x-default` for the default
 locale) and `og:locale`. Pages that are not translated into a locale get no hreflang for it. Set
 `baseUrl` so the links are absolute; without it the module uses `runtimeConfig.public.siteUrl`, and
-without both the links are relative (the build warns). Turn the tags off with `seo: false`.
+without both the links are relative (the build warns). Turn the tags off with `seo: false`. Error
+pages (404, 503) are not pages of the site: they get `lang`, `dir` and `robots: noindex`, but no
+canonical, hreflang or `og:url`.
 
 Every page has one URL. The server answers other spellings of it with a 301 to that URL: repeated
 slashes (`//blog`), a trailing slash (`/blog/`) and a locale code in another case (`/EN/about`). A
