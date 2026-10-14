@@ -7,8 +7,21 @@ import { resetAll, signIn } from './local'
 
 export const STATE = { owner: 'e2e/.state/wirtin.json', cook: 'e2e/.state/koch.json' }
 
+/**
+ * The Studio preview loads every local site from http://localhost:3000 (devPush stores that origin), and Playwright
+ * reuses whatever already runs there. Another site on 3000 (say lupinum-v7) makes the preview tests time out without a
+ * hint, so stop here with the reason. The site name is in the runtime config the Ginko module puts into the page.
+ */
+async function checkPreviewSite() {
+  const html = await (await fetch('http://localhost:3000/')).text()
+  const site = /ginko"?:\{"?site"?:"([^"]+)"/.exec(html)?.[1]
+  if (site !== 'restaurant') throw new Error(`Port 3000 serves the site “${site ?? 'unknown'}”, not sites/restaurant. The Studio preview loads http://localhost:3000, so the preview tests would fail. Stop the other dev server and run the tests again.`)
+}
+
 export default async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0]!.use.baseURL!
+  // After Playwright's webServer started or reused port 3000, so this sees what the tests will see.
+  await checkPreviewSite()
   const links = resetAll()
   const browser = await chromium.launch()
   for (const [who, email] of [['owner', 'wirtin@example.test'], ['cook', 'koch@example.test']] as const) {
