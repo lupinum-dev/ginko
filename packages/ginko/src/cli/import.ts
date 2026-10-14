@@ -185,11 +185,12 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
   // 3. Entries in batches. A batch carries the files that its entries mention (found by their ID in the
   // entry's JSON, which may name a few too many, never too few); the platform stores each file once.
   const folders = data.folders ?? []
-  const toFile = ({ id, name, mime, size, width, height, folder, kept, focus, sha256 }: SiteExport['files'][number]) => ({
+  const toFile = ({ id, name, mime, size, width, height, folder, kept, focus, sha256, original }: SiteExport['files'][number]) => ({
     id, storageId: stored.get(id)!, name, mime, size,
     ...(width === undefined ? {} : { width }), ...(height === undefined ? {} : { height }),
     ...(folder === undefined ? {} : { folder }), ...(kept ? { kept: true } : {}),
     ...(focus === undefined ? {} : { focus }), ...(sha256 === undefined ? {} : { sha256 }),
+    ...(original ? { original: true } : {}),
   })
   // Every call carries all folders (a few rows; the platform matches them by name and parent).
   const toArgs = (entries: ExportEntry[]) => {
@@ -262,6 +263,8 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
     const first = firstWarning ? ` (first: ${firstWarning})` : ''
     log(`${warnings === 1 ? '1 entry holds' : `${warnings} entries hold`} values the Studio would refuse today${first}. They were imported as they were; fix them in the Studio.`)
   }
+  // Originals (local:files-export) go through the upload pipeline after their batch; the bundle serves only ready files.
+  if (data.files.some((file) => file.original)) log('Images are being processed; they appear on the site in a moment.')
 
   // 6. References between entries still name the exported IDs.
   const refs = referencedIds(data.entries, ids)

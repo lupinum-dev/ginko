@@ -16,6 +16,8 @@ import { badKey } from './lib/input'
 import { normalizeEmail } from './members'
 import { remapEntryRefs, treesOf, usesOf, type Data } from './lib/content'
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
+import { cleanName, kindOf, WRONG_TYPE } from './lib/files'
+import { deleteStorage } from './lib/library'
 import { putTrees } from './lib/trees'
 import { BUDGET, same, sizeText, syncEntryRefs } from './lib/write'
 
@@ -183,6 +185,8 @@ export const importExport = internalMutation({
       kept: v.optional(v.boolean()),
       focus: v.optional(v.object({ x: v.number(), y: v.number() })),
       sha256: v.optional(v.string()),
+      /** The original file (`local:files-export`), not a processed copy from a backup: it goes through the upload pipeline. */
+      original: v.optional(v.boolean()),
     })),
     /** The folders of the export, parents first or in any order. */
     folders: v.optional(v.array(v.object({ id: v.string(), name: v.string(), parent: v.optional(v.string()) }))),
@@ -224,17 +228,42 @@ export const importExport = internalMutation({
 
     const uploads = new Map<string, Id<'uploads'>>()
     for (const file of args.files) {
+      // A repeated batch names the same stored file: it is stored once.
       const have = await ctx.db.query('uploads').withIndex('by_storage', (q) => q.eq('storageId', file.storageId)).first()
-      uploads.set(file.id, have?._id ?? await ctx.db.insert('uploads', {
+      if (have) {
+        uploads.set(file.id, have._id)
+        continue
+      }
+      // The same content is already in this site's library (an earlier import, or the owner's own upload): the entries
+      // use that file, with its description, and the copy the CLI stored again is not kept.
+      const sha256 = file.sha256
+      const same = sha256 === undefined ? null : await ctx.db.query('uploads').withIndex('by_site_sha256', (q) => q.eq('site', site._id).eq('sha256', sha256))
+        .filter((q) => q.and(q.eq(q.field('trashedAt'), undefined), q.neq(q.field('status'), 'failed'))).first()
+      if (same) {
+        uploads.set(file.id, same._id)
+        await deleteStorage(ctx, file.storageId)
+        continue
+      }
+      const library = {
+        ...(file.folder !== undefined && folders.has(file.folder) ? { folder: folders.get(file.folder)! } : {}),
+        ...(file.kept ? { kept: true } : {}),
+        ...(file.focus ? { focus: file.focus } : {}),
+        ...(sha256 ? { sha256 } : {}),
+      }
+      if (file.original) {
+        // An original takes the path of every upload (uploadsNode): content check, metadata removed, WebP, size limit, variants.
+        if (!kindOf(file.mime)) fail('INVALID', WRONG_TYPE.key, WRONG_TYPE.params)
+        const id = await ctx.db.insert('uploads', { site: site._id, uploader: 'import', storageId: file.storageId, name: cleanName(file.name), size: file.size, mime: file.mime, status: 'processing', attempts: 0, ...library })
+        await ctx.scheduler.runAfter(0, internal.uploadsNode.run, { upload: id })
+        uploads.set(file.id, id)
+        continue
+      }
+      uploads.set(file.id, await ctx.db.insert('uploads', {
         // Exported bytes are already processed (a WebP for photos), so they are their own processed file (Astra 9).
         site: site._id, uploader: 'import', storageId: file.storageId, processedId: file.storageId, name: file.name, size: file.size, mime: file.mime,
         ...(file.width === undefined ? {} : { width: file.width }),
         ...(file.height === undefined ? {} : { height: file.height }),
-        status: 'ready', attempts: 0,
-        ...(file.folder !== undefined && folders.has(file.folder) ? { folder: folders.get(file.folder)! } : {}),
-        ...(file.kept ? { kept: true } : {}),
-        ...(file.focus ? { focus: file.focus } : {}),
-        ...(file.sha256 ? { sha256: file.sha256 } : {}),
+        status: 'ready', attempts: 0, ...library,
       }))
     }
 

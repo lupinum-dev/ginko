@@ -1,9 +1,13 @@
+// @vitest-environment node
+// (Node, not edge-runtime: sharp in the upload pipeline of imported originals reads only Node's own byte arrays.)
 // Export, import and pull (SPEC 9, 12): GET /export, `ginko export` against it, and the import into a
 // second backend. Two convex-test backends stand for production and the local platform.
+import { createHash } from 'node:crypto'
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { makeFunctionReference } from 'convex/server'
+import sharp from 'sharp'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { importSite } from '../../../packages/ginko/src/cli/import.ts'
 import { main } from '../../../packages/ginko/src/cli/index.ts'
@@ -304,6 +308,30 @@ describe('export → import round trip (SPEC 12)', () => {
       expect([fn, (await errorOf(keep.t.mutation(makeFunctionReference<'mutation'>(fn), args))).code]).toEqual([fn, 'FORBIDDEN'])
     }
     expect(await keep.t.run((ctx) => ctx.db.query('entries').collect())).not.toHaveLength(0)
+  })
+})
+
+describe('import of local:files-export originals', () => {
+  // Wrong behaviour caught: an original was stored as if processed (no content check, metadata kept, a 3000 px image
+  // served as it is, no smaller copies), and every repeated import added the same pictures again.
+  it('an original image from files-export goes through the upload pipeline', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    vi.useFakeTimers()
+    const s = await setup()
+    const jpeg = new Uint8Array(await sharp({ create: { width: 3000, height: 2000, channels: 3, background: '#2f7d4a' } }).jpeg().toBuffer())
+    // files-export names an original by the SHA-256 of its bytes, the hash the upload pipeline records.
+    const hash = createHash('sha256').update(jpeg).digest('hex')
+    const store = () => s.t.run((ctx) => ctx.storage.store(new Blob([jpeg], { type: 'image/jpeg' })))
+    const event = { id: 'e1', brick: 'events', kind: 'item' as const, order: 1, prints: {}, rev: 1, data: { title: { de: 'Weinabend' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'hi' }, image: { file: hash, alt: { de: 'Ein Hund' } } } }
+    const importOnce = async () => s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', files: [{ id: hash, storageId: await store(), name: 'a.jpg', mime: 'image/jpeg', size: jpeg.byteLength, sha256: hash, original: true }], entries: [event],
+    })
+    await importOnce()
+    await s.t.finishAllScheduledFunctions(vi.runAllTimers)
+    await importOnce()
+    const uploads = await s.t.run((ctx) => ctx.db.query('uploads').collect())
+    expect(uploads.map((u) => ({ status: u.status, width: u.width, height: u.height, processed: u.processedId !== u.storageId, variants: u.variants?.map((x) => x.width) })))
+      .toEqual([{ status: 'ready', width: 2400, height: 1600, processed: true, variants: [480, 960, 1600] }])
   })
 })
 
