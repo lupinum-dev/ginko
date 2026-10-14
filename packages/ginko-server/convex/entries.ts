@@ -1040,13 +1040,15 @@ export const single = query({
 /**
  * The live entries of a brick by title (lib/list.ts titleOf; null while untitled), with their state and the last day
  * they show (`until`, for `visible: until`): what a ref picker, a pick list and the duplicate check need. About 60 B a row.
+ * A retired brick still answers: a ref field that points at it keeps showing the titles of the entries it holds.
  */
 export const titles = query({
   args: { site: v.string(), brick: v.string(), language: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const actor = await actorFor(ctx, args.site)
     const schema = actor.site.schema as Schema
-    const brick = liveBrick(schema, args.brick)
+    const brick = Object.hasOwn(schema.bricks, args.brick) ? schema.bricks[args.brick] : undefined
+    if (!brick) fail('INVALID', 'errors.brickNoLongerEditable')
     return (await liveRowsOf(ctx, actor.site._id, args.brick, brick)).map((row) => {
       const until = visibleUntil(brick, row.data as Data)
       return {

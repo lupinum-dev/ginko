@@ -456,6 +456,20 @@ describe('Studio reads at volume', () => {
     expect(found.rows.map((r) => r.title)).toEqual(['Hinweis 107'])
   })
 
+  // Wrong behaviour caught: a ref field that points at a retired collection shows no titles for the ids it holds.
+  it('entries.titles still names the entries of a retired collection', async () => {
+    const s = await studioSetup()
+    await manyNotices(s, 1)
+    await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(s.site))!
+      const schema = structuredClone(row.schema)
+      schema.bricks.notices.retired = true
+      await ctx.db.patch(s.site, { schema })
+    })
+    const titles = await s.as.owner.query(api.entries.titles, { site, brick: 'notices' })
+    expect(titles.map((e) => e.title)).toContain('Hinweis 0')
+  })
+
   // Wrong behaviour caught: the translation badges came from a status list capped at 200 entries, so every later
   // entry showed as translated.
   it('the 201st notice of a brick still shows its missing English text', async () => {
