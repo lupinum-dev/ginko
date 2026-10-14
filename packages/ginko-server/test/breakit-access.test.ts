@@ -1,6 +1,5 @@
 // Break-it probes of the platform backend: who may call what, and which values the server accepts.
 // Each test tries a forbidden action and expects a refusal. A failing test here is a real gap, not a flaky check.
-// Two tests fail on purpose-free gaps (a push key outlives its maker; a localized null is stored); the rest hold.
 import type { Json } from '@lupinum/ginko'
 import type { Schema } from '@lupinum/ginko/internal'
 import type { FunctionReference } from 'convex/server'
@@ -912,16 +911,28 @@ describe('6. push keys', () => {
     expect((await s.t.run((ctx) => ctx.db.get(s.site)))!.url).toBe('https://ginko-demo-restaurant.vercel.app')
   })
 
-  it('[design question] a key made by a person who later leaves the team keeps working', async () => {
-    // Agent keys die with the membership. Push keys are CI secrets of the site, but nothing ends them
-    // when the owner who made them is removed. Expected here: they stop, like agent keys.
+  it('a push key outlives its maker, is listed with its maker and last use, and stops after revoke', async () => {
+    // Push keys are CI secrets of the site (decided): removing the person who made one does not end it.
+    // The Team page lists every live key with who made it, so an owner can revoke it on purpose.
     const s = await setup()
     await s.as.admin.mutation(api.invites.create, { ...SITE, email: 'neu@example.com', role: 'owner', grants: [] })
     const neu = as(s, 'u-neu', 'neu@example.com')
     await neu.mutation(api.invites.accept, { token: await tokenMailedTo(s, 'neu@example.com') })
-    const token = (await neu.mutation(api.release.createPushKey, { ...SITE, label: 'ci', scopes: ['export'] })).key
-    await s.as.owner.mutation(api.members.remove, { ...SITE, member: (await memberOfUser(s, 'u-neu'))!._id })
-    expect((await hit(s, token, '/export?site=restaurant')).status).toBe(401)
+    const made = await neu.mutation(api.release.createPushKey, { ...SITE, label: 'ci', scopes: ['export'] })
+    const member = (await memberOfUser(s, 'u-neu'))!._id
+    const keys = async () => (await s.as.owner.query(api.members.list, SITE)).keys
+    expect(await keys()).toEqual([{ id: made.id, label: 'ci', scopes: ['export'], by: { email: 'neu@example.com' }, member, createdAt: expect.any(Number), lastUsedAt: null }])
+
+    expect((await hit(s, made.key, '/export?site=restaurant')).status).toBe(200)
+    expect(typeof (await keys())[0]!.lastUsedAt).toBe('number')
+
+    await s.as.owner.mutation(api.members.remove, { ...SITE, member })
+    expect((await hit(s, made.key, '/export?site=restaurant')).status).toBe(200)
+    expect(await keys()).toMatchObject([{ label: 'ci', by: { kind: 'former' }, member: null }])
+
+    await s.as.owner.mutation(api.release.revokePushKey, { ...SITE, key: made.id })
+    expect((await hit(s, made.key, '/export?site=restaurant')).status).toBe(401)
+    expect(await keys()).toEqual([])
   })
 })
 

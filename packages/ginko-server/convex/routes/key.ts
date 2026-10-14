@@ -37,6 +37,9 @@ export function errorResponse(error: unknown, fallback = 'The release failed. Pl
   return failure('INTERNAL', fallback)
 }
 
+/** "Last used" on the Team page is a date, so one stamp an hour is enough and a busy CI adds few writes. */
+const TOUCH_EVERY_MS = 60 * 60_000
+
 /** Resolves the bearer key to its site and checks revocation and scope. Returns a response on failure. */
 export async function authenticate(ctx: ActionCtx, request: Request, scopes: Scope[]) {
   const header = request.headers.get('authorization') ?? ''
@@ -45,5 +48,6 @@ export async function authenticate(ctx: ActionCtx, request: Request, scopes: Sco
   const key = await ctx.runQuery(internal.release.pushKey, { hash: sha256(token) })
   if (!key || key.revokedAt !== null) return failure('UNAUTHORIZED', 'The key is missing or invalid.')
   if (!scopes.some((s) => key.scopes.includes(s))) return failure('FORBIDDEN', 'This key may not do that.')
+  if (key.lastUsedAt === null || Date.now() - key.lastUsedAt > TOUCH_EVERY_MS) await ctx.runMutation(internal.release.touchPushKey, { key: key.keyId })
   return key
 }

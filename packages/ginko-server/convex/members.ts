@@ -4,6 +4,7 @@ import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, fail, type Actor } from './lib/access'
+import { labeler, type Who } from './lib/names'
 
 /** Emails are compared lowercased and trimmed everywhere (invites, admins, sign-up). */
 export function normalizeEmail(email: string): string {
@@ -48,17 +49,39 @@ async function ownersOf(ctx: QueryCtx | MutationCtx, site: Id<'sites'>) {
   return members.filter((m) => m.role === 'owner')
 }
 
+/**
+ * The team page: members, open invites, and the site's live push keys. Push keys belong to the site and outlive
+ * their maker, so each names who made it (`by`) and, while that person is on the team, their membership (`member`).
+ */
 export const list = query({
   args: { site: v.string() },
   handler: async (ctx, args) => {
     const actor = await managerOf(ctx, args.site)
     const members = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', actor.site._id)).collect()
     const invites = await ctx.db.query('invites').withIndex('by_site', (q) => q.eq('site', actor.site._id)).collect()
+    const pushKeys = await ctx.db.query('pushKeys').withIndex('by_site', (q) => q.eq('site', actor.site._id)).collect()
+    const memberOfUser = new Map(members.map((m) => [m.user as string, m._id]))
+    const names = await labeler(ctx, actor)
+    // Keys made with `release:bootstrapKey` come from the platform's operators.
+    const by = async (createdBy: string): Promise<Who> => (createdBy === 'bootstrap' ? { kind: 'platform' } : names.who(createdBy))
     return {
       members: members.map((m) => ({ id: m._id, email: m.email ?? null, role: m.role, grants: m.grants })),
       invites: invites
         .filter((i) => i.acceptedAt === undefined)
         .map((i) => ({ id: i._id, email: i.email, role: i.role, grants: i.grants, expiresAt: i.expiresAt })),
+      keys: await Promise.all(
+        pushKeys
+          .filter((k) => k.revokedAt === undefined)
+          .map(async (k) => ({
+            id: k._id,
+            label: k.label,
+            scopes: k.scopes,
+            by: await by(k.createdBy),
+            member: memberOfUser.get(k.createdBy) ?? null,
+            createdAt: k._creationTime,
+            lastUsedAt: k.lastUsedAt ?? null,
+          })),
+      ),
     }
   },
 })

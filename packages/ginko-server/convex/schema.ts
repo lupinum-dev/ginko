@@ -322,6 +322,8 @@ export default defineSchema({
     scopes: v.array(scope),
     createdBy: v.string(),
     revokedAt: v.optional(v.number()),
+    /** When a CLI route last accepted the key, stamped at most once an hour (routes/key.ts). */
+    lastUsedAt: v.optional(v.number()),
   }).index('by_hash', ['hash']).index('by_site', ['site']),
 
   /** A saved list view of one person (SPEC 4.2 views): a filter and sort of a brick's entry list. Never shared. */

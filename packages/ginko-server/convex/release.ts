@@ -109,7 +109,7 @@ export const pushKeys = internalQuery({
     const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.site)).unique()
     if (!site) fail('SITE_NOT_FOUND', 'errors.siteMissing')
     const rows = await ctx.db.query('pushKeys').withIndex('by_site', (q) => q.eq('site', site._id)).collect()
-    return rows.map((r) => ({ id: r._id, label: r.label, scopes: r.scopes, createdBy: r.createdBy, createdAt: r._creationTime, revokedAt: r.revokedAt ?? null }))
+    return rows.map((r) => ({ id: r._id, label: r.label, scopes: r.scopes, createdBy: r.createdBy, createdAt: r._creationTime, lastUsedAt: r.lastUsedAt ?? null, revokedAt: r.revokedAt ?? null }))
   },
 })
 
@@ -145,7 +145,15 @@ export const pushKey = internalQuery({
     if (!key) return null
     const site = await ctx.db.get(key.site)
     if (!site || site.deleting) return null
-    return { keyId: key._id, site: key.site, siteSlug: site.slug, scopes: key.scopes, revokedAt: key.revokedAt ?? null }
+    return { keyId: key._id, site: key.site, siteSlug: site.slug, scopes: key.scopes, revokedAt: key.revokedAt ?? null, lastUsedAt: key.lastUsedAt ?? null }
+  },
+})
+
+/** Stamps when a push key was last used. Called at most once an hour per key, so CI runs add almost no writes. */
+export const touchPushKey = internalMutation({
+  args: { key: v.id('pushKeys') },
+  handler: async (ctx, { key }) => {
+    await ctx.db.patch(key, { lastUsedAt: Date.now() })
   },
 })
 
