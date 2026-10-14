@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
-  applyDefaults, bundleFits, isBundle, knownBricks, markdownTrees, parseMarkdown, type Bundle,
+  applyDefaults, bundleFits, isBundle, knownBricks, markdownTrees, parseMarkdown, platformMarkdownRef, withMarkdownRefs, type Bundle, type MarkdownTree,
   buildBundle, isVisible, printOf, resolveEntry, serializeSchema, sortEntries, todayIn,
   type Brick, type BundleBrick, type BundleItem, type CollectionBrick, type Locale, type Schema, type StoredEntry,
 } from '../../src/core/index.ts'
@@ -323,4 +323,14 @@ describe('isBundle and bundleFits: a malformed bundle is a platform failure, not
 it('knownBricks keeps only the bricks of the site schema', () => {
   const bundle = JSON.parse('{"format":1,"site":"s","locale":"de","schemaRev":1,"contentRev":1,"bricks":{"__proto__":{"kind":"single","data":{},"fallback":[]},"later":{"kind":"single","data":{},"fallback":[]},"seo":{"kind":"single","data":{},"fallback":[]}}}')
   expect(Object.keys(knownBricks(bundle, { bricks: { seo: { kind: 'single', label: 'SEO', fields: {} } } } as never).bricks)).toEqual(['seo'])
+})
+
+// Page weight P1/P1b: every page's payload carried every text with its heading list, ~85% of the payload on v7.
+it('withMarkdownRefs: a platform text becomes only its ref in page state, and the tree is kept for the route', () => {
+  const bundle = JSON.parse(readFileSync(new URL('../../../../contracts/restaurant/bundle.format3.de.json', import.meta.url), 'utf8')) as Bundle
+  const trees = new Map<string, MarkdownTree>()
+  const out = withMarkdownRefs(bundle, serializeSchema(restaurant), trees, (brick, id, field) => platformMarkdownRef('de', '1.1', brick, id, field))
+  const legal = out.bricks.legal
+  expect(legal?.kind === 'single' && legal.data.imprint).toEqual({ ref: '/__ginko/platform/de/1.1/md/legal/legal/imprint.json' })
+  expect(trees.get('/__ginko/platform/de/1.1/md/legal/legal/imprint.json')?.nodes[0]).toEqual(['p', {}, 'Gasthaus zur Linde, Inhaberin Maria Ebner', ['br', {}], 'Dorfstraße 12, 5020 Salzburg'])
 })

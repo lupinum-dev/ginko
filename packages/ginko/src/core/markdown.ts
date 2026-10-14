@@ -19,8 +19,9 @@ import { isSafeHref } from './href.ts'
 import type { Json } from './types.ts'
 
 /**
- * In page state the tree is replaced by `ref`, the site path that serves it, so a page's payload
- * carries only the texts it shows (CONTENT.md, Phase 14). `toc` stays for lists and navigation.
+ * In page state the tree is replaced by `ref`, the site path that serves it (withMarkdownRefs), so a page's
+ * payload carries only the texts it shows (CONTENT.md, Phase 14). The toc comes with the loaded tree; page
+ * state no longer carries it, `toc` stays optional here so the type does not change.
  */
 export type MarkdownValue = MarkdownTree | { ref: string; toc?: MarkdownToc }
 

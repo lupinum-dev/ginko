@@ -36,7 +36,9 @@ const updated = computed(() => props.doc.updatedAt && {
   iso: props.doc.updatedAt,
   text: format.date(new Date(props.doc.updatedAt), 'long'),
 })
-const toc = computed(() => props.doc.data.body.toc?.links ?? [])
+// The toc comes with the text (page state holds only its ref); the same request as <GinkoMarkdown> below.
+const tree = await useGinkoMarkdown(() => props.doc.data.body)
+const toc = computed(() => tree.value?.toc?.links ?? [])
 const top = () => window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
 </script>
 

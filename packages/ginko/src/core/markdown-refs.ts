@@ -25,9 +25,9 @@ export function platformMarkdownRef(locale: Locale, rev: string, brick: string, 
 }
 
 /**
- * The bundle for page state: every markdown field that holds its tree becomes `{ ref, toc }` (values that are refs
- * already stay); the toc stays for lists and navigation. `trees` collects the trees by their ref, for the route
- * that serves them. Markdown inside `list` fields stays inline.
+ * The bundle for page state: every markdown field that holds its tree becomes `{ ref }` (values that are refs
+ * already stay). `trees` collects the trees by their ref, for the route that serves them. The tree keeps its own
+ * toc, so a page reads the toc of the text it loaded. Markdown inside `list` fields stays inline.
  */
 export function withMarkdownRefs(bundle: Bundle, schema: Pick<Schema, 'bricks'>, trees: Map<string, MarkdownTree>, refOf: MarkdownRefOf): Bundle {
   const swap = (brick: string, id: string, data: Record<string, unknown>) => {
@@ -37,7 +37,7 @@ export function withMarkdownRefs(bundle: Bundle, schema: Pick<Schema, 'bricks'>,
       if (field.type !== 'markdown' || !value || !('nodes' in value)) continue
       const ref = refOf(brick, id, name)
       trees.set(ref, value)
-      out[name] = value.toc === undefined ? { ref } : { ref, toc: value.toc }
+      out[name] = { ref }
     }
     return out
   }
