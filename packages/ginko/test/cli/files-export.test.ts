@@ -1,4 +1,5 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -20,6 +21,10 @@ const config = defineSite({
       label: 'FAQ', source: 'files', max: 50, order: 'manual',
       fields: { question: f.text('Frage'), answer: f.longtext('Antwort') },
     }),
+    authors: collection({
+      label: 'Autorinnen', max: 20, order: 'manual',
+      fields: { name: f.text('Name'), avatar: f.image('Bild', { optional: true }), bio: f.markdown('Über mich', { profile: 'rich', optional: true }) },
+    }),
   },
 })
 
@@ -37,9 +42,9 @@ function run(argv: string[]) {
   return main(argv, deps).then((code) => ({ code, json: JSON.parse(out.join('')) as Record<string, unknown> }))
 }
 
-function site() {
+function site(extra: Record<string, string | Uint8Array> = {}) {
   const root = mkdtempSync(join(tmpdir(), 'ginko-files-export-'))
-  for (const [path, text] of Object.entries(files)) {
+  for (const [path, text] of Object.entries({ ...files, ...extra })) {
     mkdirSync(dirname(join(root, path)), { recursive: true })
     writeFileSync(join(root, path), text)
   }
@@ -74,5 +79,30 @@ describe('local:files-export', () => {
     expect((await run(['files-export'])).code).toBe(2)
     await run(['files-export', '--config', s.config, s.out])
     expect((await run(['files-export', '--config', s.config, s.out])).code).toBe(2)
+  })
+
+  // Wrong behaviour caught: the export wrote no files and kept public/ paths, so on the platform every image of the
+  // content vanished without an error; a type the Files library cannot hold went through unnoticed.
+  it('exports a frontmatter image as a file and points the entry at it', async () => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEElEQVQImWPQr/WCIAY4CwA5GgXF89GPfAAAAABJRU5ErkJggg==', 'base64')
+    const H = createHash('sha256').update(png).digest('hex')
+    const anna = '---\nname: Anna\navatar:\n  src: /images/a.png\n  alt: Ein Bild\n---\n\n![Anna im Garten](/images/team/a-copy.png)\n'
+    const s = site({ 'public/images/a.png': png, 'public/images/team/a-copy.png': png, 'content/authors/1.anna.md': anna })
+    const { code, json } = await run(['files-export', '--config', s.config, s.out])
+    expect([code, json.files]).toEqual([0, 1])
+    const exported = parseExport(JSON.parse(readFileSync(join(s.out, 'export.json'), 'utf8')), 'path', 'invalid')
+    expect(exported.files).toEqual([{ id: H, name: 'a.png', mime: 'image/png', size: png.byteLength, width: 3, height: 2, sha256: H, original: true, path: `files/${H}.png`, folder: 'images' }])
+    // The copy under images/team is the same picture: one file, and no empty folder for it.
+    expect(exported.folders).toEqual([{ id: 'images', name: 'images' }])
+    expect(readFileSync(join(s.out, `files/${H}.png`))).toEqual(png)
+    const author = exported.entries.find((e) => e.id === 'authors/anna')!
+    expect(author.data.avatar).toEqual({ file: H, alt: { de: 'Ein Bild' } })
+    expect(author.data.bio).toEqual({ de: `\n![Anna im Garten]($file.${H})\n` })
+
+    const avif = site({ 'public/images/b.avif': Buffer.from('AAAAHGZ0eXBhdmlmAAAAAG1pZjFhdmlmbWlhZgAAANZtZXRhAAAAAAAAACFoZGxyAAAAAAAAAABwaWN0AAAAAAAAAAAAAAAAAAAAACJpbG9jAAAAAERAAAEAAQAAAAAA+gABAAAAAAAAACMAAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABhdjAxAAAAAA5waXRtAAAAAAABAAAAVmlwcnAAAAA4aXBjbwAAAAxhdjFDgSACAAAAABRpc3BlAAAAAAAAAAMAAAACAAAAEHBpeGkAAAAAAwgICAAAABZpcG1hAAAAAAAAAAEAAQOBAgMAAAArbWRhdBIACgg4BCtICGg0gDIVGUJjBMAANAAAkEDJHGFSyVivY+eA', 'base64'), 'content/authors/1.anna.md': '---\nname: Anna\navatar:\n  src: /images/b.avif\n  alt: Ein Bild\n---\n' })
+    const refused = await run(['files-export', '--config', avif.config, avif.out])
+    expect(refused.code).toBe(1)
+    expect(JSON.stringify(refused.json)).toMatch(/JPEG, PNG, WebP.*: \/images\/b\.avif\. Convert them/)
+    expect(existsSync(avif.out)).toBe(false)
   })
 })
