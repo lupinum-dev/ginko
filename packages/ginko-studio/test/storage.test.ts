@@ -50,7 +50,7 @@ test('an owner deletes a removed entry for good after one question; staff see no
 // Wrong behaviour caught: the site budget is found only when a save is refused, or the full band can be hidden while saves fail.
 test('the storage band warns from 80 %, and once full it cannot be hidden', async () => {
   const MB = 1024 * 1024
-  const notice = (bytes: number, entryCount = 10) => mount(StorageNotice, { props: { slug: 'restaurant', bytes, entryCount } })
+  const notice = (bytes: number, entryCount = 10) => mount(StorageNotice, { props: { slug: 'restaurant', bytes, entryCount, manager: true } })
   expect(notice(1 * MB).text()).toBe('')
 
   const near = notice(3.3 * MB)
@@ -67,8 +67,15 @@ test('the storage band warns from 80 %, and once full it cannot be hidden', asyn
 // Wrong behaviour caught: with only the entry count high, the band asks to shorten texts, which frees no entries.
 test('a band about the entry count alone asks only to remove entries', () => {
   const MB = 1024 * 1024
-  const near = mount(StorageNotice, { props: { slug: 'restaurant', bytes: 1 * MB, entryCount: 1640 } })
+  const near = mount(StorageNotice, { props: { slug: 'restaurant', bytes: 1 * MB, entryCount: 1640, manager: true } })
   expect(near.text()).toBe('1 640 von 2 000 Einträgen angelegt. Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.')
-  const full = mount(StorageNotice, { props: { slug: 'restaurant', bytes: 1 * MB, entryCount: 2000 } })
+  const full = mount(StorageNotice, { props: { slug: 'restaurant', bytes: 1 * MB, entryCount: 2000, manager: true } })
   expect(full.text()).toBe('2 000 von 2 000 Einträgen angelegt. Neue Einträge kannst du nicht mehr anlegen. Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.')
+})
+
+// Wrong behaviour caught: an editor hides the warning that only an owner or admin is meant to dismiss.
+test('only an owner or admin can hide the storage warning', () => {
+  const near = mount(StorageNotice, { props: { slug: 'restaurant', bytes: 3.3 * 1024 * 1024, entryCount: 10, manager: false } })
+  expect(near.text()).toContain('Speicher fast voll')
+  expect(near.find('button').exists()).toBe(false)
 })

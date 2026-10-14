@@ -121,7 +121,7 @@ const blocked = computed(() => signedOut.value || !!error.value || !!deletion.va
       </div>
       <template v-else>
         <!-- Above every page, so every role sees it (a manager without tasks never sees Schnell ändern). -->
-        <StorageNotice v-if="data" class="mx-4 mt-4 max-w-[712px] min-[720px]:mx-6 min-[720px]:mt-6" :slug="slug" :bytes="data.site.bytes" :entry-count="data.site.entryCount" />
+        <StorageNotice v-if="data" class="mx-4 mt-4 max-w-[712px] min-[720px]:mx-6 min-[720px]:mt-6" :slug="slug" :bytes="data.site.bytes" :entry-count="data.site.entryCount" :manager="manager" />
         <slot />
       </template>
       </main>
