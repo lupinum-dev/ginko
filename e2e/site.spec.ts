@@ -128,3 +128,12 @@ test('a 404 page has no canonical or alternates and is noindex', async ({ page }
   await expect(page.locator('link[rel=alternate][hreflang]')).toHaveCount(0)
   await expect(page.locator('meta[name=robots]')).toHaveAttribute('content', 'noindex')
 })
+
+// Wrong behaviour caught: vue-router matches any case, so every case variant of a page answered 200 with
+// its own canonical address and search engines saw duplicate pages.
+test('a page in another case redirects to its own spelling', async ({ request }) => {
+  const german = await request.get('/VERANSTALTUNGEN', { maxRedirects: 0 })
+  const english = await request.get('/en/EVENTS', { maxRedirects: 0 })
+  expect([german.status(), english.status()]).toEqual([301, 301])
+  expect([german.headers().location, english.headers().location]).toEqual(['/veranstaltungen', '/en/events'])
+})

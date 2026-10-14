@@ -213,8 +213,10 @@ locale) and `og:locale`. Pages that are not translated into a locale get no href
 without both the links are relative (the build warns). Turn the tags off with `seo: false`.
 
 Every page has one URL. The server answers other spellings of it with a 301 to that URL: repeated
-slashes (`//blog`), a trailing slash (`/blog/`) and a locale code in another case (`/EN/about`). URLs
-therefore never end in `/`, except the root.
+slashes (`//blog`), a trailing slash (`/blog/`) and a locale code in another case (`/EN/about`). A
+page path in another case (`/Blog`) redirects to the spelling of the page file or route; a slug keeps
+the case the visitor typed, and the page decides whether it exists. URLs therefore never end in `/`, except the
+root. The canonical link and `og:url` use that one URL.
 
 With `@nuxtjs/sitemap` installed, the module turns its `autoI18n` off and gives it explicit alternates,
 because `@nuxtjs/sitemap` pairs locales by stripping the prefix, which is wrong for translated slugs.
