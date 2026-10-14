@@ -24,7 +24,13 @@ export default defineSchema({
     contentRev: v.number(),
     orderRevs: v.record(v.string(), v.number()),
     entryCount: v.number(),
+    /** Budget bytes (core `entryBytes`) of every stored entry, removed ones included until retention deletes them (SPEC 3, 12). */
     bytes: v.number(),
+    /**
+     * Bytes of the live entries' Markdown trees (`entryTrees`); bounded by SITE_BUDGET.treeBytes so the bundle read stays in
+     * Convex's limits. Optional until `entries:migrateStorage` ran everywhere (internals/migrations.md).
+     */
+    treeBytes: v.optional(v.number()),
     release: v.union(v.null(), v.object({ commit: v.string(), schemaRev: v.number(), contentRev: v.number(), at: v.number() })),
     /** Vercel bypass token of the site; never returned by a query. */
     refreshToken: v.optional(v.string()),
@@ -79,13 +85,14 @@ export default defineSchema({
     /** Leaf path → locale → print of the main-language value at translation time. */
     prints: v.record(v.string(), v.record(v.string(), v.string())),
     /**
-     * The trees of the Markdown texts in `data` (core `markdownTrees`) as JSON text; written with every
-     * write of `data` (lib/content `storageOf`). The bundle serves them, so a request parses nothing.
-     * JSON text, because a tree may hold keys that a Convex value does not allow. A row without it
-     * (the test fixtures) is parsed per request. After a parser change: `entries.rebuildTrees`.
+     * Legacy: the Markdown trees on the row itself. They live in `entryTrees` now; `entries:migrateStorage` moves
+     * them, and the bundle still reads this until then (internals/migrations.md).
      */
     trees: v.optional(v.string()),
+    /** Budget bytes: core `entryBytes(data, prints)`, the text without its trees. */
     bytes: v.number(),
+    /** UTF-8 bytes of this entry's rows in `entryTrees`; 0 in the trash, which keeps no trees. */
+    treeBytes: v.optional(v.number()),
     deletedAt: v.optional(v.number()),
     /** Drafts (SPEC 15): absent means live. A draft is stored and counted but never in the public bundle. */
     state: v.optional(v.union(v.literal('draft'), v.literal('live'))),
@@ -96,6 +103,16 @@ export default defineSchema({
   })
     .index('by_site_brick_order', ['site', 'brick', 'order'])
     .index('by_site_brick_deleted', ['site', 'brick', 'deletedAt']),
+
+  /**
+   * The trees of an entry's Markdown texts (core `markdownTrees`) as JSON text, split into parts below Convex's 1 MiB
+   * document limit. Derived from `entries.data` and written with it (lib/trees.ts, the only code that touches this table),
+   * so the bundle parses nothing. JSON text, because a tree may hold keys that a Convex value does not allow. An entry
+   * without rows is parsed per request. After a parser change: `entries:migrateStorage`.
+   */
+  entryTrees: defineTable({ site: v.id('sites'), entry: v.id('entries'), part: v.number(), json: v.string() })
+    .index('by_entry', ['entry', 'part'])
+    .index('by_site', ['site']),
 
   slugs: defineTable({
     site: v.id('sites'),

@@ -41,6 +41,7 @@ import type * as lib_publicness from "../lib/publicness.js";
 import type * as lib_search from "../lib/search.js";
 import type * as lib_siteUrl from "../lib/siteUrl.js";
 import type * as lib_translation from "../lib/translation.js";
+import type * as lib_trees from "../lib/trees.js";
 import type * as lib_write from "../lib/write.js";
 import type * as mail from "../mail.js";
 import type * as members from "../members.js";
@@ -104,6 +105,7 @@ declare const fullApi: ApiFromModules<{
   "lib/search": typeof lib_search;
   "lib/siteUrl": typeof lib_siteUrl;
   "lib/translation": typeof lib_translation;
+  "lib/trees": typeof lib_trees;
   "lib/write": typeof lib_write;
   mail: typeof mail;
   members: typeof members;

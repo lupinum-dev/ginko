@@ -4,15 +4,16 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Json } from '@lupinum/ginko'
-import { validate, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, entryBytes, validate, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
 import { internalAction, internalMutation, internalQuery, type MutationCtx, type QueryCtx } from './_generated/server'
 import { fail } from './lib/access'
 import { normalizeEmail } from './members'
-import { byteSize, remapEntryRefs, remapFileIds, storageOf, usesOf, type Data } from './lib/content'
+import { remapEntryRefs, remapFileIds, treesOf, usesOf, type Data } from './lib/content'
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
+import { dropTrees, putTrees } from './lib/trees'
 import { same, syncEntryRefs } from './lib/write'
 
 function localOnly() {
@@ -47,7 +48,7 @@ export const reset = internalMutation({
     const schema = site.schema as Schema
 
     // Proposals point at the entries deleted here, so they go too.
-    const tables = args.people ? (['entries', 'slugs', 'fileRefs', 'changes', 'ops', 'proposals', 'memberships', 'invites'] as const) : (['entries', 'slugs', 'fileRefs', 'changes', 'ops', 'proposals'] as const)
+    const tables = args.people ? (['entries', 'entryTrees', 'slugs', 'fileRefs', 'changes', 'ops', 'proposals', 'memberships', 'invites'] as const) : (['entries', 'entryTrees', 'slugs', 'fileRefs', 'changes', 'ops', 'proposals'] as const)
     // Fresh people also get fresh settings: a language stored by an earlier run would change every text they see.
     if (args.people) {
       for (const person of args.people) {
@@ -110,6 +111,7 @@ export const importClear = internalMutation({
     for (const entry of await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).take(300)) {
       await dropFileRefs(ctx, 'entry', entry._id)
       for (const slug of await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()) await ctx.db.delete(slug._id)
+      await dropTrees(ctx, entry._id)
       await ctx.db.delete(entry._id)
     }
     for (const slug of await ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', site._id)).take(500)) await ctx.db.delete(slug._id)
@@ -120,7 +122,7 @@ export const importClear = internalMutation({
       ?? (await ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', site._id)).first())
     if (left) return { done: false }
     const orderRevs = Object.fromEntries(Object.keys((site.schema as Schema).bricks).map((brick) => [brick, 0]))
-    await ctx.db.patch(site._id, { bytes: 0, entryCount: 0, orderRevs, contentRev: site.contentRev + 1 })
+    await ctx.db.patch(site._id, { bytes: 0, treeBytes: 0, entryCount: 0, orderRevs, contentRev: site.contentRev + 1 })
     return { done: true }
   },
 })
@@ -208,6 +210,7 @@ export const importExport = internalMutation({
     const ids: Record<string, Id<'entries'>> = {}
     const known = new Set<string>(uploads.values())
     let bytes = 0
+    let treeBytes = 0
     let live = 0
     const orderRevs: Record<string, number> = { ...site.orderRevs }
     for (const row of args.entries) {
@@ -222,21 +225,27 @@ export const importExport = internalMutation({
         const errors = (await validate(schema, row.brick, data, { mode: 'restore' })).errors
         if (errors.length) fail('INVALID', 'errors.importEntryInvalid', { id: row.id, path: errors[0]!.path, count: errors.length }, { errors: errors as unknown as Json })
       }
-      const { trees, bytes: size } = await storageOf(def.fields, data, row.prints)
+      const size = entryBytes(data, row.prints)
+      // The trash keeps no trees.
+      const trees = row.deletedAt === undefined ? await treesOf(def.fields, data) : { json: '', bytes: 0 }
       const id = await ctx.db.insert('entries', {
         site: site._id, brick: row.brick, kind: row.kind, order: row.order, data, rev: row.rev,
         fieldRevs: Object.fromEntries(Object.keys(def.fields).map((f) => [f, row.rev])),
-        lifeRev: row.deletedAt === undefined ? 1 : 2, prints: row.prints, trees, bytes: size,
+        lifeRev: row.deletedAt === undefined ? 1 : 2, prints: row.prints, bytes: size, treeBytes: trees.bytes,
         ...(row.deletedAt === undefined ? {} : { deletedAt: row.deletedAt }),
         ...(row.state === 'draft' ? { state: 'draft' as const } : {}),
       })
+      await putTrees(ctx, site._id, id, trees.json)
       // A scheduled draft gets its job back (a time in the past runs at once); `contentRev` is not touched.
       if (row.state === 'draft' && row.publishAt !== undefined && row.deletedAt === undefined) {
         await ctx.db.patch(id, { publishAt: row.publishAt, publishJob: await ctx.scheduler.runAt(row.publishAt, internal.entries.publishDue, { entry: id, at: row.publishAt }) })
       }
       ids[row.id] = id
       bytes += size
-      if (row.deletedAt === undefined) live++
+      if (row.deletedAt === undefined) {
+        live++
+        treeBytes += trees.bytes
+      }
       orderRevs[row.brick] = 1
       for (const [name, field] of Object.entries(def.fields)) {
         if (field.type !== 'slug') continue
@@ -246,14 +255,16 @@ export const importExport = internalMutation({
       }
       await syncEntryRefs(ctx, site._id, id, new Map([...usesOf(def.fields, data, schema.locales)].filter(([file]) => known.has(file))))
     }
-    await ctx.db.patch(site._id, { bytes: site.bytes + bytes, entryCount: site.entryCount + live, orderRevs })
+    await ctx.db.patch(site._id, {
+      bytes: site.bytes + bytes, treeBytes: (site.treeBytes ?? 0) + treeBytes, entryCount: site.entryCount + live, orderRevs,
+    })
     return { entries: args.entries.length, files: args.files.length, ids }
   },
 })
 
 /**
  * Import step 2 as the CLI calls it: one batch that the CLI stored as JSON in local storage (the
- * command line is too small for entries of up to 256 KiB). Reads it, runs importExport, removes it.
+ * command line is too small for entries of up to 480 KiB). Reads it, runs importExport, removes it.
  */
 export const importBatch = internalAction({
   args: { site: v.string(), batch: v.id('_storage') },
@@ -288,8 +299,8 @@ export const importRefs = internalMutation({
     const site = await siteBySlug(ctx, args.site)
     const schema = site.schema as Schema
     const ids = new Map(Object.entries(args.ids))
-    // 50 entries of up to 256 KiB stay under the 16 MiB a mutation may read.
-    const page = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).paginate({ numItems: 50, cursor: args.cursor ?? null })
+    // 25 entries of up to 480 KiB stay under the 16 MiB a mutation may read.
+    const page = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).paginate({ numItems: 25, cursor: args.cursor ?? null })
     let delta = 0
     let changed = 0
     for (const entry of page.page) {

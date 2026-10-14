@@ -10,8 +10,8 @@ import { diffFields } from './lib/diff'
 
 const PAGE_SIZE = 50
 /**
- * A change row stores the `before` and `after` of its fields and the prints, up to 2 x 256 KiB. A page
- * of 50 such rows would pass Convex's 8 MiB read limit, so a page also ends once it has read this much
+ * A change row stores the `before` and `after` of its fields and the prints, up to 2 x 480 KiB (SITE_BUDGET.entryBytes).
+ * A page of 50 such rows would pass Convex's 16 MiB read limit, so a page also ends once it has read this much
  * and hands out the cursor for the rest.
  */
 const PAGE_BYTES = 2 * 1024 * 1024

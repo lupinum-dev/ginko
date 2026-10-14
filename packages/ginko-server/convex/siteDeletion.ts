@@ -10,6 +10,7 @@ import { purgeUpload } from './lib/library'
 /** Rows per table and run. Entries, changes and proposals carry big documents, so fewer of them fit in one transaction. */
 const BATCH = 100
 const HEAVY_BATCH = 20
+const TREE_BATCH = 5
 
 export const purge = internalMutation({
   args: { site: v.id('sites') },
@@ -30,6 +31,8 @@ export const purge = internalMutation({
     await sweep(BATCH, (n) => ctx.db.query('folders').withIndex('by_site_parent', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('uploadTickets').withIndex('by_site', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', id)).take(n))
+    // A part of an entry's trees holds up to about 900 KB.
+    await sweep(TREE_BATCH, (n) => ctx.db.query('entryTrees').withIndex('by_site', (q) => q.eq('site', id)).take(n))
     await sweep(HEAVY_BATCH, (n) => ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', id)).take(n))
     await sweep(HEAVY_BATCH, (n) => ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', id)).take(n))
     await sweep(HEAVY_BATCH, (n) => ctx.db.query('proposals').withIndex('by_site', (q) => q.eq('site', id)).take(n))

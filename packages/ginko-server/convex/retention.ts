@@ -2,13 +2,12 @@
 // its budget schedules the next run at once, so the rest follows in batches.
 import { addDays, deletesExpired, todayIn, visibleUntil, type Schema } from '@lupinum/ginko/internal'
 import { internal } from './_generated/api'
-import type { Doc, Id } from './_generated/dataModel'
-import { internalMutation, type MutationCtx } from './_generated/server'
+import { internalMutation } from './_generated/server'
 import { windowOf } from './bundle'
 import { SYSTEM } from './lib/access'
 import { deletePrevious, purgeUpload } from './lib/library'
 import { msg, recorded } from './lib/history'
-import { countersOf, DELETED_KEPT, softRemove, writeCounters, type Counters } from './lib/lifecycle'
+import { countersOf, DELETED_KEPT, purgeEntry, softRemove, writeCounters } from './lib/lifecycle'
 
 export const BATCH = 200
 const DAY = 24 * 60 * 60 * 1000
@@ -96,7 +95,7 @@ export const daily = internalMutation({
         // Live entries have no deletedAt, and in the index `undefined` sorts before every number:
         // without the lower bound this range would hard-delete every live entry.
         const deleted = await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', site._id).eq('brick', key).gt('deletedAt', 0).lt('deletedAt', now - DELETED_KEPT)).take(left)
-        for (const row of deleted) await hardDelete(ctx, row, state)
+        for (const row of deleted) await purgeEntry(ctx, state, row)
         if (deleted.length) touched = true
         left -= deleted.length
       }
@@ -120,14 +119,3 @@ export const daily = internalMutation({
     return null
   },
 })
-
-/** Deleted for 30 days: the entry, its slugs, its file references and its prints go. Changes stay for a year. */
-async function hardDelete(ctx: MutationCtx, row: Doc<'entries'>, state: Counters) {
-  const slugs = await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', row._id)).collect()
-  for (const slug of slugs) await ctx.db.delete(slug._id)
-  const refs = await ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', 'entry').eq('holderId', row._id)).collect()
-  for (const ref of refs) await ctx.db.delete(ref._id)
-  await ctx.db.delete(row._id)
-  // entryCount already dropped at the soft delete; only the stored bytes go now.
-  state.bytes -= row.bytes
-}

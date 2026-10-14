@@ -1,4 +1,5 @@
 // entries.save and entries.undo against SPEC 3 and 4.1–4.2.
+import { entryBytes } from '@lupinum/ginko/internal'
 import { describe, expect, it } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
@@ -287,4 +288,26 @@ describe('entries.save with a ref field (SPEC 2.2)', () => {
     const rows = await t.run((ctx) => ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry)).collect())
     expect(Object.fromEntries(rows.map((r) => [r.locale, r.slug]))).toEqual({ de: 'sommerfest-2', en: 'sommerfest-2' })
   })
+})
+
+describe('budget (SPEC 3)', () => {
+  // Wrong behaviour caught: the derived Markdown trees count toward the entry limit, so a legal text of 165 KB is refused as too large.
+  it('a legal text whose trees are twice its size saves; the entry and the site count the text only', async () => {
+    const { t, as, entries, site } = await setup()
+    const entry = entries.legal!
+    // Like the AGB of a real site: a long text in two languages, allowed by a raised max.
+    await t.run(async (ctx) => {
+      const row = (await ctx.db.get(site))!
+      const schema = row.schema as { bricks: { legal: { fields: { imprint: { max?: number } } } } }
+      schema.bricks.legal.fields.imprint.max = 100_000
+      await ctx.db.patch(site, { schema })
+    })
+    const before = await t.run(async (ctx) => [(await ctx.db.get(site))!.bytes, (await ctx.db.get(entry))!.bytes] as const)
+    const imprint = { de: 'Absatz mit **fett** und Umlauten äöüß.\n\n'.repeat(1900), en: 'Paragraph with **bold** and umlauts äöüß.\n\n'.repeat(1900) }
+    await expect(as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { imprint } })).resolves.toMatchObject({ rev: 2 })
+    const [row, siteRow] = await t.run(async (ctx) => [(await ctx.db.get(entry))!, (await ctx.db.get(site))!] as const)
+    expect(row.bytes).toBe(entryBytes(row.data, row.prints))
+    expect(siteRow.bytes).toBe(before[0] - before[1] + row.bytes)
+  })
+
 })

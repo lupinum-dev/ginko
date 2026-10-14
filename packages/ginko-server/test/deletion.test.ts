@@ -145,6 +145,8 @@ describe('delete site', () => {
     await s.as.owner.mutation(api.files.createFolder, { site: 'restaurant', name: 'Ordner' })
     await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries['menu-saibling']!, baseRev: 1, fields: { price: { amount: 1500 } } })
     await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.entries['menu-frittaten']!, baseRev: 1, fields: { price: { amount: 999 } } })
+    // A Markdown text stores its trees (entryTrees).
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: '**Hallo**' } } })
     await s.t.run(async (ctx) => {
       const site = (await ctx.db.get(s.site))!
       const menu = (site.schema as { bricks: Record<string, { tasks?: { needsApproval?: boolean }[] }> }).bricks.menu!

@@ -220,18 +220,15 @@ export function remapEntryRefs(fields: Fields, data: Data, map: ReadonlyMap<stri
   return out
 }
 
-export function byteSize(value: unknown): number {
-  return new TextEncoder().encode(JSON.stringify(value ?? null)).byteLength
-}
-
 /**
- * What a row stores beside `data` and `prints`: the trees of its Markdown texts, which the bundle serves
- * (`trees` in schema.ts), and its size for the budget. The trees count: one `## a` line of text is a
- * tree several times its length, and the bundle reads and sends the trees.
+ * The trees of an entry's Markdown texts as JSON text, which the bundle serves (`entryTrees` in schema.ts, lib/trees.ts),
+ * and their UTF-8 size. '' and 0 when the entry has no Markdown text. The trees do not count toward an entry's budget
+ * (core `entryBytes`); their size only feeds the site's `treeBytes` guard.
  */
-export async function storageOf(fields: Fields, data: Data, prints: Prints): Promise<{ trees: string; bytes: number }> {
-  const trees = JSON.stringify(await markdownTrees(fields, data))
-  return { trees, bytes: byteSize(data) + byteSize(prints) + new TextEncoder().encode(trees).byteLength }
+export async function treesOf(fields: Fields, data: Data): Promise<{ json: string; bytes: number }> {
+  const trees = await markdownTrees(fields, data)
+  const json = Object.keys(trees).length ? JSON.stringify(trees) : ''
+  return { json, bytes: new TextEncoder().encode(json).byteLength }
 }
 
 function isRecord(v: unknown): v is Record<string, Json> {

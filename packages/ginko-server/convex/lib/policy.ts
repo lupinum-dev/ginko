@@ -2,12 +2,11 @@
 // itself. The operations in entries.ts ask `needsProposal` after their checks passed and call
 // `propose` instead of writing. Approving runs the same operation again (proposals.ts).
 import type { Json, Task } from '@lupinum/ginko'
-import type { Schema } from '@lupinum/ginko/internal'
+import { byteSize, type Schema } from '@lupinum/ginko/internal'
 import { internal } from '../_generated/api'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { fail, type Actor } from './access'
-import { byteSize } from './content'
 import type { Recorded } from './history'
 
 export type ProposalOp = Doc<'proposals'>['op']

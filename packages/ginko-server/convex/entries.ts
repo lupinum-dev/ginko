@@ -1,20 +1,21 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, isTranslatable, labelOf as labelIn, deletesExpired, isVisible, ordered, sha256, slugify, todayIn, uniqueSlug, validate, type Schema } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, deletesExpired, isVisible, ordered, sha256, slugify, todayIn, uniqueSlug, validate, type Schema } from '@lupinum/ginko/internal'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
-import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
+import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, authorizeWriter, byOf, checkRev, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor, type By } from './lib/access'
-import { fileIdsOf, leavesOf, mergeField, nextPrints, rootOf, storageOf, withoutLocale, type Data, type Prints } from './lib/content'
+import { fileIdsOf, leavesOf, mergeField, nextPrints, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { msg, recorded, type HistoryMsg, type Recorded } from './lib/history'
 import { isLocale, t } from './lib/i18n'
-import { countersOf, DELETED_KEPT, softRemove, writeCounters, type Counters } from './lib/lifecycle'
+import { countersOf, DELETED_KEPT, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
 import { taskFor } from './lib/agentTools'
-import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, same, syncEntryRefs, syncFileRefs } from './lib/write'
+import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, syncEntryRefs, syncFileRefs } from './lib/write'
+import { putTrees, readTreesJson } from './lib/trees'
 
 const underRoot = (leaf: string, root: string) => leaf === root || leaf.startsWith(`${root}.`)
 
@@ -278,10 +279,9 @@ export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
 }
 
 // ---- Structural operations (SPEC 4.2): create, remove, restore, reorder. ----
-// They follow the flow of SPEC 4.1 like `save`. The site's counters (contentRev, entryCount,
-// bytes, orderRevs) are changed in memory and written back once at the end.
+// They follow the flow of SPEC 4.1 like `save`. The site's counters (`Counters` in lib/lifecycle.ts)
+// are changed in memory and written back once at the end.
 
-/** Site values one operation changes. `entryCount` counts live entries; `bytes` counts every stored row. */
 const plainObject = (value: Json | undefined): Record<string, Json> =>
   typeof value === 'object' && value !== null && !Array.isArray(value) ? value : {}
 
@@ -401,9 +401,11 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const removing = roomPlan(actor, brick, rows)
     const c = countersOf(actor.site)
     if (c.entryCount - removing.length >= BUDGET.entries) fail('TOO_LARGE', 'errors.siteEntryLimitReached')
-    const { trees, bytes: size } = await storageOf(brick.fields, data, prints)
-    if (size > BUDGET.entryBytes) fail('TOO_LARGE', 'errors.entryTooLarge')
-    if (c.bytes + size > BUDGET.siteBytes) fail('TOO_LARGE', 'errors.siteStorageLimitReached')
+    const size = entryBytes(data, prints)
+    if (size > BUDGET.entryBytes) fail('TOO_LARGE', 'errors.entryTooLarge', overBudget(size, BUDGET.entryBytes))
+    if (c.bytes + size > BUDGET.siteBytes) fail('TOO_LARGE', 'errors.siteStorageLimitReached', overBudget(c.bytes + size, BUDGET.siteBytes))
+    const trees = await treesOf(brick.fields, data)
+    if (c.treeBytes + trees.bytes > BUDGET.treeBytes) fail('TOO_LARGE', 'errors.entryTooComplex')
     const files = fileIdsOf(brick.fields, data)
     await checkFiles(ctx, actor.site._id, files, fileIdsOf(brick.fields, data, 'image'))
     // Without `drafts` an entry is always live. With it, only `publish: {}` goes live at once.
@@ -429,9 +431,10 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const order = Math.max(0, ...rows.map((r) => r.order)) + 1
     const entry = await ctx.db.insert('entries', {
       site: actor.site._id, brick: args.brick, kind: 'item', order, data, rev: 1,
-      fieldRevs: Object.fromEntries(Object.keys(brick.fields).map((name) => [name, 1])), lifeRev: 1, prints, trees, bytes: size,
+      fieldRevs: Object.fromEntries(Object.keys(brick.fields).map((name) => [name, 1])), lifeRev: 1, prints, bytes: size, treeBytes: trees.bytes,
       ...(draft ? { state: 'draft' as const } : {}),
     })
+    await putTrees(ctx, actor.site._id, entry, trees.json)
     if (at !== undefined) await ctx.db.patch(entry, { publishAt: at, publishJob: await ctx.scheduler.runAt(at, internal.entries.publishDue, { entry, at }) })
     for (const row of slugged.slugs) {
       await ctx.db.insert('slugs', { site: actor.site._id, brick: args.brick, locale: row.locale, slug: row.slug, entry })
@@ -440,6 +443,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     if (!draft || at !== undefined) await checkNewLinks(ctx, actor.site, [{ entry: (await ctx.db.get(entry))!, fields: brick.fields, before: {}, after: data }])
     c.entryCount += 1
     c.bytes += size
+    c.treeBytes += trees.bytes
     if (!draft) c.contentRev += 1
     c.orderRevs[args.brick] = (c.orderRevs[args.brick] ?? 0) + 1
     const label = labelOf(schema, args.brick, data)
@@ -572,16 +576,24 @@ export const restore = mutation({
       if (live >= brick.max) fail('INVALID', 'errors.collectionFull', { max: brick.max }, { max: brick.max })
       const c = countersOf(actor.site)
       if (c.entryCount >= BUDGET.entries) fail('TOO_LARGE', 'errors.siteEntryLimitReached')
+      // The trash keeps no trees: they are made again.
+      const trees = await treesOf(brick.fields, entry.data as Data)
+      if (c.treeBytes + trees.bytes > BUDGET.treeBytes) fail('TOO_LARGE', 'errors.entryTooComplex')
 
       const order = Math.max(0, ...rows.map((r) => r.order)) + 1
-      await ctx.db.patch(entry._id, { deletedAt: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, order })
+      const now = Date.now()
+      await ctx.db.patch(entry._id, {
+        deletedAt: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, order, treeBytes: trees.bytes,
+      })
+      await putTrees(ctx, actor.site._id, entry._id, trees.json)
       c.entryCount += 1
+      c.treeBytes += trees.bytes
       // A restored draft stays out of the bundle (its schedule went with the removal).
       if (entry.state !== 'draft') c.contentRev += 1
       c.orderRevs[entry.brick] = (c.orderRevs[entry.brick] ?? 0) + 1
       await ctx.db.insert('changes', {
         site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'restore',
-        ...recorded(msg('history.restored', { title: labelOf(schema, entry.brick, entry.data as Data) }), schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: Date.now(),
+        ...recorded(msg('history.restored', { title: labelOf(schema, entry.brick, entry.data as Data) }), schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: now,
       })
       await writeCounters(ctx, actor.site._id, c)
       // The new lifeRev lets the UI undo this at once (restore after remove, remove after restore).
@@ -883,32 +895,80 @@ export const whyNotPublic = query({
 })
 
 /**
- * Writes every entry's Markdown trees (and with them `bytes`) again from its data, once per deployment after the
- * parser's output changed: a row keeps the trees of the parser it was saved with (`trees` in schema.ts). Works
- * through 10 entries at a time and schedules itself until all are done; running it again is safe. Entries of a
- * brick the schema no longer has keep what they have.
+ * Brings every entry to the storage model of now (internals/migrations.md) and writes its Markdown trees again
+ * from its data, also after a parser change (a row keeps the trees of the parser it was saved with). Per entry:
+ * `bytes` = core `entryBytes`, the trees into `entryTrees` (none in the trash), `treeBytes` and no legacy `trees`.
+ * Works through 10 entries at a time and schedules itself;
+ * then `recountStorage` sets every site's counters to the sums. Running it again is safe. Entries of a brick the
+ * schema no longer has keep the trees they have.
  */
-export const rebuildTrees = internalMutation({
+export const migrateStorage = internalMutation({
   args: { cursor: v.optional(v.union(v.string(), v.null())) },
   handler: async (ctx, args): Promise<null> => {
     const page = await ctx.db.query('entries').paginate({ cursor: args.cursor ?? null, numItems: 10 })
     const sites = new Map<Id<'sites'>, Doc<'sites'> | null>()
-    const changed = new Map<Id<'sites'>, number>()
+    const changed = new Set<Id<'sites'>>()
     for (const row of page.page) {
       if (!sites.has(row.site)) sites.set(row.site, await ctx.db.get(row.site))
       const schema = sites.get(row.site)?.schema as Schema | undefined
       const brick = schema && Object.hasOwn(schema.bricks, row.brick) ? schema.bricks[row.brick]! : undefined
-      if (!brick) continue
-      const { trees, bytes } = await storageOf(brick.fields, row.data as Data, row.prints as Prints)
-      if (trees === row.trees && bytes === row.bytes) continue
-      await ctx.db.patch(row._id, { trees, bytes })
-      changed.set(row.site, (changed.get(row.site) ?? 0) + bytes - row.bytes)
+      const stored = row.trees ?? await readTreesJson(ctx, row._id)
+      const json = row.deletedAt !== undefined ? '' : brick ? (await treesOf(brick.fields, row.data as Data)).json : stored
+      const treeBytes = new TextEncoder().encode(json).byteLength
+      const bytes = entryBytes(row.data, row.prints)
+      if (json === stored && row.trees === undefined && bytes === row.bytes && treeBytes === row.treeBytes) continue
+      await ctx.db.patch(row._id, { bytes, treeBytes, trees: undefined })
+      if (json !== stored || row.trees !== undefined) await putTrees(ctx, row.site, row._id, json)
+      // New trees change what the bundle serves: its caches must refresh.
+      if (json !== stored && row.deletedAt === undefined && row.state !== 'draft') changed.add(row.site)
     }
-    for (const [id, delta] of changed) {
-      const site = sites.get(id)!
-      await ctx.db.patch(id, { bytes: site.bytes + delta, contentRev: site.contentRev + 1 })
+    for (const id of changed) {
+      const site = sites.get(id)
+      if (site) await ctx.db.patch(id, { contentRev: site.contentRev + 1 })
     }
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.entries.rebuildTrees, { cursor: page.continueCursor })
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.entries.migrateStorage, { cursor: page.continueCursor })
+    else await ctx.scheduler.runAfter(0, internal.entries.recountStorage, {})
     return null
+  },
+})
+
+/** The last step of `migrateStorage`: per site (one per run), `bytes` and `treeBytes` become the sums over its entries. */
+export const recountStorage = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args): Promise<null> => {
+    const page = await ctx.db.query('sites').paginate({ cursor: args.cursor ?? null, numItems: 1 })
+    for (const site of page.page) {
+      const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).collect()
+      await ctx.db.patch(site._id, storageSums(rows))
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.entries.recountStorage, { cursor: page.continueCursor })
+    return null
+  },
+})
+
+/**
+ * Read-only check after `migrateStorage`, one site per call (repeat with `cursor` until `isDone`): entries that still
+ * hold legacy `trees`, counters that differ from the sums over the entries, and entries over
+ * the entry limit (expected: none of each).
+ */
+export const storageStatus = internalQuery({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query('sites').paginate({ cursor: args.cursor ?? null, numItems: 1 })
+    const sites = []
+    for (const site of page.page) {
+      const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).collect()
+      const sums = storageSums(rows)
+      const counters = { bytes: site.bytes, treeBytes: site.treeBytes }
+      sites.push({
+        site: site.slug,
+        legacyRows: rows.filter((row) => row.trees !== undefined || row.treeBytes === undefined).length,
+        countersMatch: counters.bytes === sums.bytes && counters.treeBytes === sums.treeBytes,
+        counters,
+        sums,
+        overLimit: rows.filter((row) => entryBytes(row.data, row.prints) > BUDGET.entryBytes).map((row) => row._id),
+      })
+    }
+    return { sites, cursor: page.continueCursor, isDone: page.isDone }
   },
 })

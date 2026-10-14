@@ -2,16 +2,26 @@
 // the entry with its revisions, the change row and the file references in one place.
 import type { Field, Fields, Json } from '@lupinum/ginko'
 import type { FileField } from '@lupinum/ginko/internal'
-import { checkLinks, fileProblem, linkTargets, stableJson, type LinkIssue, type Schema, type ValidateOptions } from '@lupinum/ginko/internal'
+import { checkLinks, entryBytes, fileProblem, linkTargets, stableJson, type LinkIssue, type Schema, type ValidateOptions } from '@lupinum/ginko/internal'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { bundleOf, type NewItem } from '../bundle'
 import { byOf, fail, type Actor } from './access'
-import { fileIdsOf, storageOf, usesOf, type Data, type Prints, type Use } from './content'
+import { fileIdsOf, treesOf, usesOf, type Data, type Prints, type Use } from './content'
 import type { Recorded } from './history'
+import { putTrees } from './trees'
 
 export { SITE_BUDGET as BUDGET } from '@lupinum/ginko/internal'
 import { SITE_BUDGET as BUDGET } from '@lupinum/ginko/internal'
+
+/** "340 KB", "4.2 MB": sizes in error texts, on the same 1024 base as the Studio's `sizeText` (components/files/util.ts). */
+export function sizeText(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} MB`
+}
+
+/** The params of a budget error: how much is used, the limit, and how much is over it. */
+export const overBudget = (used: number, limit: number) => ({ used: sizeText(used), limit: sizeText(limit), over: sizeText(used - limit) })
 
 /**
  * Fields may only point at ready uploads of the same site (SPEC 4.3 point 3). The ids in `images`
@@ -202,17 +212,23 @@ export interface EntryWrite {
 export async function commitEntry(ctx: MutationCtx, w: EntryWrite) {
   const { actor, entry } = w
   const site = actor.site
-  const { trees, bytes } = await storageOf(w.fields, w.data, w.prints)
-  if (bytes > BUDGET.entryBytes) fail('TOO_LARGE', 'errors.entryTooLarge')
+  const bytes = entryBytes(w.data, w.prints)
+  if (bytes > BUDGET.entryBytes) fail('TOO_LARGE', 'errors.entryTooLarge', overBudget(bytes, BUDGET.entryBytes))
   const siteBytes = site.bytes - entry.bytes + bytes
-  if (siteBytes > BUDGET.siteBytes) fail('TOO_LARGE', 'errors.siteStorageLimitReached')
+  if (siteBytes > BUDGET.siteBytes) fail('TOO_LARGE', 'errors.siteStorageLimitReached', overBudget(siteBytes, BUDGET.siteBytes))
+  const trees = await treesOf(w.fields, w.data)
+  const treeBytes = (site.treeBytes ?? 0) - (entry.treeBytes ?? 0) + trees.bytes
+  if (treeBytes > BUDGET.treeBytes) fail('TOO_LARGE', 'errors.entryTooComplex')
 
   const rev = entry.rev + 1
   const fieldRevs = { ...entry.fieldRevs }
   for (const root of w.roots) fieldRevs[root] = rev
-  const contentRev = entry.state === 'draft' ? site.contentRev : site.contentRev + 1
-  await ctx.db.patch(entry._id, { data: w.data, prints: w.prints, trees, rev, fieldRevs, bytes })
-  await ctx.db.patch(site._id, { contentRev, bytes: siteBytes })
+  const draft = entry.state === 'draft'
+  const contentRev = draft ? site.contentRev : site.contentRev + 1
+  const now = Date.now()
+  await ctx.db.patch(entry._id, { data: w.data, prints: w.prints, trees: undefined, rev, fieldRevs, bytes, treeBytes: trees.bytes })
+  await putTrees(ctx, site._id, entry._id, trees.json)
+  await ctx.db.patch(site._id, { contentRev, bytes: siteBytes, treeBytes })
 
   const pick = (data: Data) => Object.fromEntries(w.roots.filter((r) => data[r] !== undefined).map((r) => [r, data[r]!]))
   const pickPrints = (prints: Prints) => Object.fromEntries(Object.entries(prints).filter(([leaf]) => w.roots.some((r) => leaf === r || leaf.startsWith(`${r}.`))))
@@ -221,7 +237,7 @@ export async function commitEntry(ctx: MutationCtx, w: EntryWrite) {
   const change = await ctx.db.insert('changes', {
     site: site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: w.opId, kind: w.kind, ...w.history,
     fields: w.roots, before, after, printsBefore: pickPrints(entry.prints), printsAfter: pickPrints(w.prints),
-    entryRev: rev, contentRev, at: Date.now(),
+    entryRev: rev, contentRev, at: now,
   })
   await syncEntryRefs(ctx, site._id, entry._id, await entryUses(ctx, w.fields, w.data, (site.schema as Schema).locales))
   const changeFiles = new Set([...fileIdsOf(w.fields, before), ...fileIdsOf(w.fields, after)])

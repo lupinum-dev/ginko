@@ -111,7 +111,7 @@ export const get = query({
       },
       role: actor.role,
       grants: actor.grants,
-      // The stored Markdown trees are for the bundle; the Studio edits the texts.
+      // Legacy Markdown trees on a row (until `entries:migrateStorage` moved them) are for the bundle; the Studio edits the texts.
       entries: entries.filter((entry) => entry.deletedAt === undefined).map(({ trees: _trees, ...entry }) => entry),
     }
   },
@@ -177,6 +177,7 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
     orderRevs: {},
     entryCount: 0,
     bytes: 0,
+    treeBytes: 0,
     release: null,
   })
 }

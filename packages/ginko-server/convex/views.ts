@@ -2,12 +2,11 @@
 // A view belongs to one person; nobody else sees it, not even an admin. It is no content, so it
 // writes no change row and needs no opId; the name is unique per person and brick.
 import type { Json } from '@lupinum/ginko'
-import { labelOf, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, labelOf, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { mutation, query, type QueryCtx } from './_generated/server'
 import { actorFor, fail, type Actor } from './lib/access'
-import { byteSize } from './lib/content'
 
 export const VIEWS_MAX = 20
 export const NAME_MIN = 1

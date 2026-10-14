@@ -45,11 +45,12 @@ running it again is safe.
 
 ## Markdown trees
 
-Every entry stores the parsed trees of its Markdown texts next to its data, so the public bundle parses nothing.
-A row keeps the trees of the parser it was saved with. After an update that changes the parser's output (comark,
-its plugins or Ginko's Markdown rules), write them again once per deployment with `npx convex run entries:rebuildTrees`
-(add `--prod` for production). It works through 10 entries at a time and schedules itself until all are done;
-running it again is safe.
+Every live entry stores the parsed trees of its Markdown texts in the `entryTrees` table, so the public bundle parses
+nothing. An entry keeps the trees of the parser it was saved with. After an update that changes the parser's output
+(comark, its plugins or Ginko's Markdown rules), write them again once per deployment with
+`npx convex run entries:migrateStorage` (add `--prod` for production). It works through 10 entries at a time and
+schedules itself until all are done, then recounts every site's byte counters; running it again is safe.
+`npx convex run entries:storageStatus` checks the result, one site per call (pass the returned `cursor`).
 
 ## Environment variables
 

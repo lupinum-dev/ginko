@@ -1,11 +1,12 @@
 // Demo content from a corpus (contracts/<site>/data.json), shared by the local reset (seed.ts) and
 // the demo fill (demo.ts): the entries with their slugs and counters, and invites for the demo people.
 import type { Json } from '@lupinum/ginko'
-import { sha256, type Schema } from '@lupinum/ginko/internal'
+import { entryBytes, sha256, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { checkGrants, normalizeEmail } from '../members'
-import { storageOf } from './content'
+import { treesOf } from './content'
+import { putTrees } from './trees'
 
 type CorpusEntry = { id: string; order?: number; data: Record<string, Json>; prints?: Record<string, Record<string, string>> }
 
@@ -28,10 +29,11 @@ function withoutFiles(schema: Schema, brick: string, data: Record<string, Json>)
 export type Corpus = Record<string, CorpusEntry[]>
 export type Person = { email: string; role: 'owner' | 'staff'; grants: string[] }
 
-/** Inserts the corpus entries of the bricks the site knows; sets bytes, entryCount and orderRevs, and raises contentRev. */
+/** Inserts the corpus entries of the bricks the site knows; sets the byte counters, entryCount and orderRevs, and raises contentRev. */
 export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus: Corpus) {
   const schema = site.schema as Schema
   let bytes = 0
+  let treeBytes = 0
   let count = 0
   const orderRevs: Record<string, number> = {}
   for (const [brick, rows] of Object.entries(corpus)) {
@@ -41,13 +43,16 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
     for (const [index, row] of rows.entries()) {
       const data = withoutFiles(schema, brick, row.data)
       const prints = row.prints ?? {}
-      const { trees, bytes: size } = await storageOf(def.fields, data, prints)
+      const size = entryBytes(data, prints)
+      const trees = await treesOf(def.fields, data)
       const fieldRevs = Object.fromEntries(Object.keys(def.fields).map((f) => [f, 1]))
       const id = await ctx.db.insert('entries', {
         site: site._id, brick, kind: def.kind === 'single' ? 'single' : 'item', order: row.order ?? index + 1,
-        data, rev: 1, fieldRevs, lifeRev: 1, prints, trees, bytes: size,
+        data, rev: 1, fieldRevs, lifeRev: 1, prints, bytes: size, treeBytes: trees.bytes,
       })
+      await putTrees(ctx, site._id, id, trees.json)
       bytes += size
+      treeBytes += trees.bytes
       count++
       for (const [name, field] of Object.entries(def.fields)) {
         if (field.type !== 'slug') continue
@@ -57,7 +62,7 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
       }
     }
   }
-  await ctx.db.patch(site._id, { bytes, entryCount: count, orderRevs, contentRev: site.contentRev + 1 })
+  await ctx.db.patch(site._id, { bytes, treeBytes, entryCount: count, orderRevs, contentRev: site.contentRev + 1 })
   return { count }
 }
 
