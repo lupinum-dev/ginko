@@ -735,6 +735,7 @@
       "empty": "Nichts wurde entfernt.",
       "until": "Wird am {date} endgültig gelöscht",
       "deleteNow": "Jetzt löschen",
+      "deleteNowNamed": "Jetzt löschen: „{title}“",
       "confirmTitle": "„{title}“ endgültig löschen?",
       "confirmBody": "Du kannst den Eintrag danach nicht mehr wiederherstellen. Der Verlauf zeigt frühere Fassungen noch bis zu einem Jahr.",
       "confirm": "Endgültig löschen"

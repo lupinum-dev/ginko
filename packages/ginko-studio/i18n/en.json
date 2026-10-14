@@ -735,6 +735,7 @@
       "empty": "Nothing was removed.",
       "until": "Deleted for good on {date}",
       "deleteNow": "Delete now",
+      "deleteNowNamed": "Delete now: “{title}”",
       "confirmTitle": "Delete “{title}” for good?",
       "confirmBody": "You cannot restore it afterwards. The history still shows earlier versions for up to a year.",
       "confirm": "Delete for good"

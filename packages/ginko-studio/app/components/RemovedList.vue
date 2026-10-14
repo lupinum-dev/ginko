@@ -44,7 +44,7 @@ async function purge() {
           <span class="block text-sm text-muted-foreground">{{ item.brickLabel }} · {{ t('basics.removed.until', { date: format.date(item.purgeAt, { timeZone, dateStyle: 'medium' }) }) }}</span>
         </span>
         <span class="flex shrink-0 flex-wrap justify-end gap-1">
-          <Button v-if="item.mayPurge" type="button" variant="ghost" class="text-destructive hover:text-destructive" @click="ask(item)">{{ t('basics.removed.deleteNow') }}</Button>
+          <Button v-if="item.mayPurge" type="button" variant="ghost" class="text-destructive hover:text-destructive" :aria-label="t('basics.removed.deleteNowNamed', { title: item.label })" @click="ask(item)">{{ t('basics.removed.deleteNow') }}</Button>
           <Button v-if="item.mayRestore" type="button" variant="outline" @click="ops.restoreEntry(item.entry, item.lifeRev, item.task)">{{ t('site.all.restore') }}</Button>
         </span>
       </li>

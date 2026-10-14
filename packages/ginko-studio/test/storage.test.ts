@@ -31,6 +31,8 @@ test('an owner deletes a removed entry for good after one question; staff see no
   vi.stubGlobal('useConvexQuery', () => ({ data: ref(trashed(true)) }))
   mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, attachTo: document.body })
 
+  // A screen reader names the entry, not only "Jetzt löschen" once per row.
+  expect(button('Jetzt löschen')!.getAttribute('aria-label')).toBe('Jetzt löschen: „Kürbissuppe“')
   button('Jetzt löschen')!.click()
   await flushPromises()
   expect(document.body.querySelector('[role="dialog"] h2')?.textContent).toBe('„Kürbissuppe“ endgültig löschen?')

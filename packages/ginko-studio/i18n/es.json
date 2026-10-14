@@ -735,6 +735,7 @@
       "empty": "No se eliminó nada.",
       "until": "Se borrará definitivamente el {date}",
       "deleteNow": "Eliminar ahora",
+      "deleteNowNamed": "Eliminar ahora: “{title}”",
       "confirmTitle": "¿Eliminar “{title}” definitivamente?",
       "confirmBody": "Después no podrás restaurarla. El historial sigue mostrando versiones anteriores hasta un año.",
       "confirm": "Eliminar definitivamente"
