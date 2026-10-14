@@ -45,7 +45,7 @@ describe('GET /bundle/<site>', () => {
 
   // The bundle is a query with a 1 s limit. Parsing every stored text per request let staff with an add task
   // fill a collection with valid texts that are slow to parse until the bundle failed for every visitor.
-  it('is built from the trees stored at each save, and those trees count toward the budget', async () => {
+  it('is built from the trees stored at each save', async () => {
     const s = await setup()
     // The saas blog (Markdown bodies up to 20000 characters), added by the cook.
     const blog = serializeSchema(saas).bricks.blog!
@@ -82,9 +82,6 @@ describe('GET /bundle/<site>', () => {
     const parse = await fastest(async () => { for (let i = 0; i < 20; i++) await parseMarkdown(slow) })
     // The posts add the reading of their stored trees to the build, a small part of parsing their texts.
     expect(after - before).toBeLessThan(parse / 3)
-
-    // `## a` lines make a tree more than ten times their text: 20000 characters are too large to store.
-    expect(await errorOf(post(20, '## a\n'.repeat(4000)))).toMatchObject({ code: 'TOO_LARGE', message: 'Dieser Eintrag ist zu groß (höchstens 256 KiB).' })
   }, 60_000)
 
   // Wrong behaviour caught: after a parser change the rebuild leaves stale trees, stops after its first batch, or

@@ -6,9 +6,18 @@ import { roundedMb, type UploadType } from './uploads.ts'
 import { SLUG_PATTERN } from './slug.ts'
 import type { Field, FileField, Fields, Issue, Locale, MarkdownField, Schema } from './types.ts'
 
+/**
+ * Codes of values the Studio and the site cannot read at all (wrong shape, unknown names). A `restore` refuses only
+ * these: a backup brings back what the platform once stored, even where a rule became stricter since.
+ */
+export const SHAPE_CODES: ReadonlySet<string> = new Set(['TYPE', 'NOT_OBJECT', 'NOT_LOCALIZED', 'UNKNOWN_FIELD', 'UNKNOWN_LOCALE', 'UNKNOWN_BRICK'])
+
 export interface ValidateOptions {
-  /** create/release: everything strict. patch: only paths under `changed` are errors, the rest are warnings. */
-  mode: 'create' | 'patch' | 'release'
+  /**
+   * create/release: everything strict. patch: only paths under `changed` are errors, the rest are warnings.
+   * restore (backup import, never a Studio path): only SHAPE_CODES are errors, the rest are warnings.
+   */
+  mode: 'create' | 'patch' | 'release' | 'restore'
   /** Leaf paths changed by a patch, e.g. `closedNote` or `days.k3Fd9aZ0qx.dish`. */
   changed?: ReadonlySet<string>
   /** Whether entry `id` exists in collection brick `brick`. Without it, referenced IDs are not looked up. */
@@ -40,6 +49,7 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
     const { problemMessages: problems } = await parseMarkdown(text, { profile: effectiveProfile(field), components: schema.components })
     for (const problem of problems) issues.push(issue(path, 'MARKDOWN', 'markdown', { label: shown(field, schema.locales[0]!), problem: bare(problem) }))
   }
+  if (opts.mode === 'restore') return { errors: issues.filter((i) => SHAPE_CODES.has(i.code)), warnings: issues.filter((i) => !SHAPE_CODES.has(i.code)) }
   if (opts.mode !== 'patch') return { errors: issues, warnings: [] }
   const changed = opts.changed ?? new Set<string>()
   const errors: Issue[] = []

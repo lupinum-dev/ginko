@@ -22,9 +22,6 @@ export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'sl
 export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'drafts', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'group'])
 
-/** Content budget per site (SPEC 3), shared by the platform's writes and the CLI's release check. */
-export const SITE_BUDGET = { siteBytes: 4 * 1024 * 1024, entries: 2000, entryBytes: 256 * 1024 } as const
-
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
 
 /**

@@ -15,9 +15,6 @@ import { byteSize, remapEntryRefs, remapFileIds, storageOf, usesOf, type Data } 
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
 import { same, syncEntryRefs } from './lib/write'
 
-/** Validation codes for values of the wrong shape: the import refuses these (importExport). */
-const UNREADABLE = new Set(['TYPE', 'NOT_OBJECT', 'NOT_LOCALIZED', 'UNKNOWN_FIELD', 'UNKNOWN_LOCALE', 'UNKNOWN_BRICK'])
-
 function localOnly() {
   if (process.env.GINKO_LOCAL !== '1') fail('FORBIDDEN', 'errors.localOnly')
 }
@@ -222,7 +219,7 @@ export const importExport = internalMutation({
       // Markdown profiles) are not: a backup must restore what the platform once stored. Entry references are not looked
       // up either; they still name exported IDs until importRefs. A deleted entry is checked when it is restored.
       if (row.deletedAt === undefined) {
-        const errors = (await validate(schema, row.brick, data, { mode: 'create' })).errors.filter((e) => UNREADABLE.has(e.code))
+        const errors = (await validate(schema, row.brick, data, { mode: 'restore' })).errors
         if (errors.length) fail('INVALID', 'errors.importEntryInvalid', { id: row.id, path: errors[0]!.path, count: errors.length }, { errors: errors as unknown as Json })
       }
       const { trees, bytes: size } = await storageOf(def.fields, data, row.prints)
