@@ -1,9 +1,11 @@
 // Release gate: the packages work outside this monorepo. Packs every released package and checks its
 // manifest, license and publint; creates a site with create-ginko for the plain starter and every preset, and a
 // copy of sites/docs, installs them from the tarballs with npm, builds them, checks a few URLs, type-checks
-// them and runs the packaged `ginko check`. Takes 2–4 minutes (npm install). Run: pnpm check:pack
+// them and runs the packaged `ginko check`. A second docs site adds the Nuxt SEO modules (@nuxtjs/seo). Every site's
+// share card must render. Takes 2–4 minutes (npm install). Run: pnpm check:pack
 // `pnpm check:pack --nuxt5` does the same on the Nuxt 5 nightly that the ginko-i18n browser suite pins.
 import { exec as execCallback, execSync, spawn } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
@@ -12,6 +14,8 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { promisify } from 'node:util'
 
 const root = join(import.meta.dirname, '..')
+// The share cards' signing secret, set as a host sets it (create-ginko writes one into .env, which the server does not read).
+process.env.NUXT_APP_SECRET ??= randomBytes(32).toString('hex')
 // Its own folder and free ports, so several checkouts can run the gate at the same time.
 const work = mkdtempSync(join(tmpdir(), 'ginko-check-pack-'))
 const tgz = join(work, 'tgz')
@@ -86,9 +90,12 @@ async function freePort(): Promise<number> {
   return port
 }
 
+/** A URL and what its body must match, or a function that returns the problem it finds. */
+type Check = [path: string, expect: RegExp | ((body: string) => string | undefined)]
+
 /** Installs and builds a site, serves it and checks the URLs. Then the types from the tarballs (typed
  * composables, not `any`) and, for a create-ginko site, the packaged `ginko check`. */
-async function checkSite(siteDir: string, checks: [string, RegExp][], { ginkoCheck = true } = {}): Promise<string[]> {
+async function checkSite(siteDir: string, checks: Check[], { ginkoCheck = true } = {}): Promise<string[]> {
   for (const [name, cmd] of [['npm install', 'npm install --no-audit --no-fund --loglevel=error'], ['nuxt build', 'npx nuxt build']] as const) {
     const failed = await step(siteDir, name, cmd)
     if (failed.length) return failed
@@ -110,7 +117,29 @@ async function answers(port: number): Promise<boolean> {
   return false
 }
 
-async function serve(siteDir: string, port: number, checks: [string, RegExp][]) {
+const metaContent = (html: string, property: string) =>
+  /content="([^"]*)"/.exec(html.match(new RegExp(`<meta[^>]*property="${property}"[^>]*>`))?.[0] ?? '')?.[1]?.replaceAll('&amp;', '&')
+const count = (html: string, pattern: RegExp) => html.match(new RegExp(pattern, 'g'))?.length ?? 0
+
+/**
+ * The head of a page of the docs site with @nuxtjs/seo: what broke before Ginko handed the modules its data (a page
+ * that rendered at all, a `%siteName` or doubled name in the title, a second canonical, a wrong `<html lang>`, a second
+ * WebSite node).
+ */
+const seoHead = (lang: string) => (html: string) => {
+  const title = /<title>([^<]*)<\/title>/.exec(html)?.[1] ?? ''
+  const problems = [
+    count(html, /<title>/) !== 1 && 'title count',
+    (title.includes('%') || title.split('Ginko').length !== 2) && `title "${title}"`,
+    count(html, /rel="canonical"/) !== 1 && 'canonical count',
+    count(html, /property="og:url"/) !== 1 && 'og:url count',
+    !new RegExp(`<html[^>]*lang="${lang}"`).test(html) && 'html lang',
+    count(html, /"@type":"WebSite"/) > 1 && 'WebSite twice',
+  ].filter(Boolean)
+  return problems.length ? problems.join(', ') : undefined
+}
+
+async function serve(siteDir: string, port: number, checks: Check[]) {
   const server = spawn('node', ['.output/server/index.mjs'], { cwd: siteDir, env: { ...process.env, PORT: String(port) }, stdio: 'ignore' })
   const failures: string[] = []
   try {
@@ -118,8 +147,15 @@ async function serve(siteDir: string, port: number, checks: [string, RegExp][]) 
     for (const [path, expect] of checks) {
       const res = await fetch(`http://localhost:${port}${path}`)
       const body = await res.text()
-      if (res.status !== 200 || !expect.test(body)) failures.push(`${siteDir} ${path}: ${res.status}`)
+      const problem = res.status !== 200 ? String(res.status) : typeof expect === 'function' ? expect(body) : expect.test(body) ? undefined : 'no match'
+      if (problem) failures.push(`${siteDir} ${path}: ${problem}`)
     }
+    // The share card of the first page, rendered by nuxt-og-image with Ginko's template. Its URL starts with the site's
+    // own address, so only the path is asked for here.
+    const first = await (await fetch(`http://localhost:${port}${checks[0]![0]}`)).text()
+    const card = metaContent(first, 'og:image')
+    const res = card === undefined ? undefined : await fetch(`http://localhost:${port}${new URL(card).pathname}`)
+    if (!res || res.status !== 200 || !res.headers.get('content-type')?.startsWith('image/')) failures.push(`${siteDir} share card ${card ?? '(no og:image)'}: ${res?.status} ${res?.headers.get('content-type')}`)
   } finally {
     server.kill()
   }
@@ -128,7 +164,7 @@ async function serve(siteDir: string, port: number, checks: [string, RegExp][]) 
 
 // 1. New sites from create-ginko (files only, no platform): the plain starter and every preset it offers.
 // Every preset folder (`<preset>` or `<preset>-<lang>`) becomes a site, so a new preset cannot skip the gate.
-const created: Record<string, [string, RegExp][]> = {
+const created: Record<string, Check[]> = {
   starter: [['/', /<h1>Hello Ginko<\/h1>/], ['/sitemap.xml', /<urlset/]],
   gastro: [['/', /<h1>Opening hours<\/h1>[\s\S]*Tomato soup/]],
   'gastro-de': [['/', /<h1>Öffnungszeiten<\/h1>[\s\S]*Tomatensuppe/]],
@@ -158,6 +194,17 @@ writeFileSync(join(docs, 'app/utils/ginko-types.ts'), `export function probe() {
 }
 `)
 useTarballs(docs)
+// 3. The same docs site with the Nuxt SEO modules (internals/decisions.md D4): they own sitemap and robots.txt, Ginko
+// hands them its URLs, address, name and languages. @nuxtjs/seo brings its own nuxt-og-image.
+const docsSeo = join(work, 'docs-seo')
+cpSync(docs, docsSeo, { recursive: true })
+const seoPkg = JSON.parse(readFileSync(join(docsSeo, 'package.json'), 'utf8'))
+delete seoPkg.dependencies['nuxt-og-image']
+delete seoPkg.devDependencies['nuxt-og-image']
+seoPkg.dependencies['@nuxtjs/seo'] = '6.0.1'
+writeFileSync(join(docsSeo, 'package.json'), JSON.stringify(seoPkg, null, 2))
+const seoConfig = join(docsSeo, 'nuxt.config.ts')
+writeFileSync(seoConfig, readFileSync(seoConfig, 'utf8').replace(/modules: \[[^\]]*\]/, `modules: ['@nuxtjs/seo', '@lupinum/ginko/nuxt']`))
 
 const results = await Promise.all([
   ...Object.entries(created).map(([name, checks]) => checkSite(join(work, name), checks)),
@@ -166,9 +213,16 @@ const results = await Promise.all([
     // The layer's two feed handlers: the main language and a prefixed one.
     ['/blog/rss.xml', /<rss[\s\S]*<item>/], ['/en/blog/rss.xml', /<rss[\s\S]*<item>/],
   ], { ginkoCheck: false }),
+  checkSite(docsSeo, [
+    ['/docs/einstieg', seoHead('de')], ['/en/docs/getting-started', seoHead('en')], ['/', seoHead('de')],
+    // Ginko's entries with hreflang, on the site's address (not the request host).
+    ['/sitemap.xml', /<loc>https:\/\/ginko-docs\.vercel\.app\/en\/docs\/getting-started<\/loc>[\s\S]*hreflang="de"/],
+    // localhost is a preview host: never indexable, also for @nuxtjs/robots.
+    ['/robots.txt', /Disallow: \/\s*$/m],
+  ], { ginkoCheck: false }),
 ])
 failures.push(...results.flat())
-console.log(failures.length ? `FAIL check:pack${nuxt5 ? ` (${nuxt5})` : ''}\n${failures.join('\n')}` : `OK check:pack${nuxt5 ? ` (${nuxt5})` : ''}: the create-ginko starters (plain, gastro, gastro --locale de, docs, docs --locale de) and sites/docs build, serve and type-check from the tarballs`)
+console.log(failures.length ? `FAIL check:pack${nuxt5 ? ` (${nuxt5})` : ''}\n${failures.join('\n')}` : `OK check:pack${nuxt5 ? ` (${nuxt5})` : ''}: the create-ginko starters (plain, gastro, gastro --locale de, docs, docs --locale de) and sites/docs (also with @nuxtjs/seo) build, serve, render share cards and type-check from the tarballs`)
 // A failed run keeps its folder for a look at the sites; a passed one cleans up.
 if (!failures.length) rmSync(work, { recursive: true, force: true })
 process.exit(failures.length ? 1 : 0)

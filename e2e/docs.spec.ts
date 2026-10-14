@@ -81,8 +81,9 @@ test('a page without a diagram never requests the mermaid chunk, a page with one
 test('with nuxt-og-image installed, a docs page gets a generated share card', async ({ page, request }) => {
   await page.goto(`${origin}/docs/einstieg`)
   const image = await page.locator('meta[property="og:image"]').getAttribute('content')
-  expect(image).toMatch(/\/_og\/[sd]\//)
-  const response = await request.get(new URL(image!, origin).href)
+  // Absolute on the site's own address (crawlers need that), so only its path is asked for here.
+  expect(image).toMatch(/^https:\/\/ginko-docs\.vercel\.app\/_og\/[sd]\//)
+  const response = await request.get(new URL(new URL(image!).pathname, origin).href)
   expect(response.status()).toBe(200)
   expect(response.headers()['content-type']).toContain('image/png')
   expect(await page.locator('meta[name="twitter:image"]').getAttribute('content')).toBe(image)
