@@ -359,8 +359,9 @@
       "near": "Almacenamiento casi lleno: {used} de {limit} ocupados.",
       "full": "Almacenamiento lleno: {used} de {limit} ocupados. Puedes seguir guardando textos más cortos, pero no añadir entradas.",
       "entries": "{count} de {limit} entradas creadas.",
-      "entriesFull": "Las {limit} entradas están creadas. Para añadir nuevas, elimina otras primero.",
+      "entriesFull": "{count} de {limit} entradas creadas. No puedes añadir entradas nuevas.",
       "hint": "Para hacer espacio, elimina entradas o acorta textos largos. Las entradas eliminadas no cuentan.",
+      "entriesHint": "Para hacer espacio, elimina entradas. Las entradas eliminadas no cuentan.",
       "dismiss": "Ocultar aviso"
     }
   },

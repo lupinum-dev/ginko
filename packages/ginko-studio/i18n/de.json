@@ -359,8 +359,9 @@
       "near": "Speicher fast voll: {used} von {limit} belegt.",
       "full": "Speicher voll: {used} von {limit} belegt. Kürzere Texte lassen sich weiter speichern, neue Einträge nicht.",
       "entries": "{count} von {limit} Einträgen angelegt.",
-      "entriesFull": "Alle {limit} Einträge angelegt. Neue Einträge gehen erst wieder, wenn du andere entfernst.",
+      "entriesFull": "{count} von {limit} Einträgen angelegt. Neue Einträge kannst du nicht mehr anlegen.",
       "hint": "Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.",
+      "entriesHint": "Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.",
       "dismiss": "Hinweis ausblenden"
     }
   },

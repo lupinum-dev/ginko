@@ -23,7 +23,8 @@ const text = computed(() => {
   const lines: string[] = []
   if (storage.value) lines.push(t(storage.value === 'full' ? 'site.storage.full' : 'site.storage.near', { used: size(props.bytes), limit: size(SITE_BUDGET.siteBytes) }))
   if (entries.value) lines.push(t(entries.value === 'full' ? 'site.storage.entriesFull' : 'site.storage.entries', { count: format.number(props.entryCount), limit: format.number(SITE_BUDGET.entries) }))
-  lines.push(t('site.storage.hint'))
+  // Shorter texts free storage, not entries: with only the count high, the hint names removing alone.
+  lines.push(t(storage.value ? 'site.storage.hint' : 'site.storage.entriesHint'))
   return lines.join(' ')
 })
 

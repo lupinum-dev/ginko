@@ -359,8 +359,9 @@
       "near": "Storage almost full: {used} of {limit} used.",
       "full": "Storage full: {used} of {limit} used. You can still save shorter texts, but not add entries.",
       "entries": "{count} of {limit} entries used.",
-      "entriesFull": "All {limit} entries used. To add new ones, remove others first.",
+      "entriesFull": "{count} of {limit} entries used. You cannot add new entries.",
       "hint": "To make room, remove entries or shorten long texts. Removed entries do not count.",
+      "entriesHint": "To make room, remove entries. Removed entries do not count.",
       "dismiss": "Hide notice"
     }
   },

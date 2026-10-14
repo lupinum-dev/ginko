@@ -63,3 +63,12 @@ test('the storage band warns from 80 %, and once full it cannot be hidden', asyn
   expect(full.text()).toBe('Speicher voll: 4 MB von 4 MB belegt. Kürzere Texte lassen sich weiter speichern, neue Einträge nicht. 1 640 von 2 000 Einträgen angelegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.')
   expect(full.find('button').exists()).toBe(false)
 })
+
+// Wrong behaviour caught: with only the entry count high, the band asks to shorten texts, which frees no entries.
+test('a band about the entry count alone asks only to remove entries', () => {
+  const MB = 1024 * 1024
+  const near = mount(StorageNotice, { props: { slug: 'restaurant', bytes: 1 * MB, entryCount: 1640 } })
+  expect(near.text()).toBe('1 640 von 2 000 Einträgen angelegt. Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.')
+  const full = mount(StorageNotice, { props: { slug: 'restaurant', bytes: 1 * MB, entryCount: 2000 } })
+  expect(full.text()).toBe('2 000 von 2 000 Einträgen angelegt. Neue Einträge kannst du nicht mehr anlegen. Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.')
+})
