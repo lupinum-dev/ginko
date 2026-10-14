@@ -16,7 +16,9 @@
     "@lupinum/ginko": "^{{VERSION}}",
     "@lupinum/ginko-content": "^{{VERSION}}",
     "@lupinum/ginko-i18n": "^{{VERSION}}",
-    "nuxt": "^4.6.0",
+    "@takumi-rs/core": "^2.15.0",
+    "nuxt": "^4.6.1",
+    "nuxt-og-image": "^7.0.0",
     "vue": "^3.5.0"
   },
   "devDependencies": {

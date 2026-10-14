@@ -3,6 +3,7 @@
 // the site id and the Ginko versions. The Ginko packages release together, so they get this package's own version.
 // A preset is a small folder in presets/ that is copied over the base template and adds the preset's packages.
 // German: template-de/ goes over the base template; a preset has its own folder `<preset>-de`.
+import { randomBytes } from 'node:crypto'
 import { cpSync, existsSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { supportsNode } from './node-version.mjs'
@@ -101,6 +102,9 @@ if (preset) {
   writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`)
 }
 
+// The share cards (nuxt-og-image) sign their URLs with this secret; `nuxt dev` and `nuxt preview` read .env.
+writeFileSync(join(dir, '.env'), `# Signs the share card URLs. Set the same variable where the site runs.\nNUXT_APP_SECRET=${randomBytes(32).toString('hex')}\n`)
+
 // The next steps name the package manager that ran us (npm, pnpm, yarn or bun), and quote a folder a shell would split.
 const agent = (process.env.npm_config_user_agent ?? '').split('/')[0]
 const pm = ['pnpm', 'yarn', 'bun'].includes(agent) ? agent : 'npm'
@@ -118,4 +122,7 @@ Next:
   cd ${cd}
   ${pm} install
   ${pm} run dev
+
+Before you deploy, set NUXT_APP_SECRET where the site runs (any 32 or more random characters, .env has one).
+Without it, the share cards of a server-rendered site answer with an error; a static build needs none.
 `)

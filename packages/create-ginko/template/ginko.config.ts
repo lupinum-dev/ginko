@@ -12,7 +12,8 @@ export default defineSite({
   currency: 'EUR', // change for your country
   pages: { home: '/' },
   // Shown in search results and link previews. Replace it with one sentence about your site.
-  seo: { description: 'A new website built with Ginko.' },
+  // `color`: the brand colour of the generated share cards.
+  seo: { description: 'A new website built with Ginko.', color: '#1f2937' },
   bricks: {
     start: single({
       label: 'Start page',
