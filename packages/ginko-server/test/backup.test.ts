@@ -231,6 +231,8 @@ describe('export → import round trip (SPEC 12)', () => {
     const local = await setup() // the plain corpus, without the gallery images and the deletion: import must replace it
     const dir = await tempDir()
     await exportOf(prod, dir)
+    // An hour later: an imported entry keeps when it last changed, not the import time (the bundle's updatedAt).
+    vi.setSystemTime(Date.now() + 3_600_000)
 
     const { run, upload, calls } = localOf(local)
     // A small batch size forces several importExport calls; the files and counters must survive that.
