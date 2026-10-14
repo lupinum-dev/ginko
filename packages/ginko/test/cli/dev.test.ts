@@ -59,17 +59,13 @@ describe('prepareLocalBackend', () => {
   afterEach(() => { vi.unstubAllEnvs() })
 
   /** A backend folder with this .env.local and a fake `npx convex` (the process boundary) that records its args. */
-  function backend(envLocal: string) {
+  function backend(envLocal: string, envList = 'GINKO_LOCAL=1\n') {
     const dir = mkdtempSync(join(tmpdir(), 'ginko-backend-'))
     writeFileSync(join(dir, '.env.local'), envLocal)
     const calls: string[][] = []
-    const values: Record<string, string> = { GINKO_ADMIN_EMAILS: 'admin@example.test', SITE_URL: 'http://localhost:3100', BCN_AUTH_PROXY_IP_SECRET: 'proxy-secret' }
     const run = async (_command: string, args: string[]) => {
       calls.push(args.slice(1))
-      const [verb, sub, name] = args.slice(1)
-      if (verb === 'env' && sub === 'list') return 'GINKO_LOCAL=1\n'
-      if (verb === 'env' && sub === 'get') return `${values[name!] ?? ''}\n`
-      return ''
+      return args[1] === 'env' && args[2] === 'list' ? envList : ''
     }
     return { dir, calls, run }
   }
@@ -78,10 +74,24 @@ describe('prepareLocalBackend', () => {
   it('a fresh backend gets the sign-in variables and names the admin', async () => {
     const { dir, calls, run } = backend('CONVEX_DEPLOYMENT=anonymous-agent\n')
     const admin = await prepareLocalBackend(dir, 'local:dev', () => undefined, run)
-    expect(calls.filter((c) => c[0] === 'env' && c[1] === 'set').map((c) => c[2])).toEqual(['GINKO_MAIL', 'SITE_URL', 'GINKO_ADMIN_EMAILS', 'BETTER_AUTH_SECRETS', 'BCN_AUTH_PROXY_IP_SECRET'])
+    const sets = calls.filter((c) => c[0] === 'env' && c[1] === 'set')
+    expect(sets.map((c) => c[2])).toEqual(['GINKO_MAIL', 'SITE_URL', 'GINKO_ADMIN_EMAILS', 'BETTER_AUTH_SECRETS', 'BCN_AUTH_PROXY_IP_SECRET'])
     expect(calls.some((c) => c.join(' ') === 'run auth:ensureSigningKey')).toBe(true)
-    expect(readFileSync(join(dir, '.env.local'), 'utf8')).toBe('CONVEX_DEPLOYMENT=anonymous-agent\nBCN_AUTH_PROXY_IP_SECRET=proxy-secret\nSITE_URL=http://localhost:3100\n')
+    // The Nuxt side gets the very secret the backend got.
+    const proxySecret = sets.find((c) => c[2] === 'BCN_AUTH_PROXY_IP_SECRET')![3]
+    expect(readFileSync(join(dir, '.env.local'), 'utf8')).toBe(`CONVEX_DEPLOYMENT=anonymous-agent\nBCN_AUTH_PROXY_IP_SECRET=${proxySecret}\nSITE_URL=http://localhost:3100\n`)
     expect(admin).toBe('admin@example.test')
+  })
+
+  // Wrong behaviour caught: every local:dev start waits for Convex CLI calls that only repeat what `env list` showed.
+  it('a prepared backend costs one env list and the signing key check, and keeps the operator\'s admin', async () => {
+    const envLocal = 'CONVEX_DEPLOYMENT=anonymous-agent\nBCN_AUTH_PROXY_IP_SECRET=proxy-secret\nSITE_URL=http://localhost:3100\n'
+    const envList = 'GINKO_LOCAL=1\nGINKO_MAIL=outbox\nSITE_URL=http://localhost:3100\nGINKO_ADMIN_EMAILS=owner@example.test,second@example.test\nBETTER_AUTH_SECRETS=0:abc\nBCN_AUTH_PROXY_IP_SECRET=proxy-secret\n'
+    const { dir, calls, run } = backend(envLocal, envList)
+    const admin = await prepareLocalBackend(dir, 'local:dev', () => undefined, run)
+    expect(calls).toEqual([['env', 'list'], ['run', 'auth:ensureSigningKey']])
+    expect(readFileSync(join(dir, '.env.local'), 'utf8')).toBe(envLocal)
+    expect(admin).toBe('owner@example.test')
   })
 
   // Wrong behaviour caught: the sign-in setup writes secrets and settings into a cloud deployment.

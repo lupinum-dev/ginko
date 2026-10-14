@@ -145,17 +145,20 @@ export async function prepareLocalBackend(backendDir: string, command: string, l
     BETTER_AUTH_SECRETS: () => `0:${secret()}`,
     BCN_AUTH_PROXY_IP_SECRET: () => local.BCN_AUTH_PROXY_IP_SECRET || secret(),
   }
-  const have = parseEnvText(await convex('env', 'list'))
+  // The backend's values after this function: what `env list` showed plus what is set below. No `env get` per name:
+  // every Convex CLI call costs a second or two on each start.
+  const values = parseEnvText(await convex('env', 'list'))
   for (const [name, value] of Object.entries(wanted)) {
     // The platform reads GINKO_LOCAL inside Convex (SPEC 5.3): a backend with another value must not keep it.
-    if (name === 'GINKO_LOCAL' ? have[name] === '1' : have[name] !== undefined) continue
-    await convex('env', 'set', name, value())
+    if (name === 'GINKO_LOCAL' ? values[name] === '1' : values[name] !== undefined) continue
+    values[name] = value()
+    await convex('env', 'set', name, values[name])
     log(`set ${name}`)
   }
   // The Nuxt side must send the same proxy secret and know the same site URL, or sign-in returns 403.
   let file = before
   for (const name of ['BCN_AUTH_PROXY_IP_SECRET', 'SITE_URL']) {
-    const value = (await convex('env', 'get', name)).trim()
+    const value = values[name]
     if (local[name] === value) continue
     const line = `${name}=${value}`
     const pattern = new RegExp(`^${name}=.*$`, 'm')
@@ -164,7 +167,7 @@ export async function prepareLocalBackend(backendDir: string, command: string, l
   }
   if (file !== before) writeFileSync(envFile, file)
   await convex('run', 'auth:ensureSigningKey')
-  return (await convex('env', 'get', 'GINKO_ADMIN_EMAILS')).split(',')[0]!.trim()
+  return values.GINKO_ADMIN_EMAILS!.split(',')[0]!.trim()
 }
 
 /** Runs one function of the local platform with JSON arguments and returns its JSON result. */
