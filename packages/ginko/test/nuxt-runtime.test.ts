@@ -11,6 +11,7 @@ import { BUNDLE_STATE, TODAY_STATE, useGinkoLang, useGinkoBreadcrumbs, useGinkoE
 import * as shim from './shims/imports.ts'
 import { i18nLocale, routePath, seoConfig, useState } from './shims/imports.ts'
 import { installOgImage } from './shims/og.ts'
+import { installSchemaOrg } from './shims/schema-org.ts'
 import siteSchema from './shims/schema.ts'
 import { resolveConfig } from '@lupinum/ginko-i18n/core'
 import { sitemapXml as render } from '../src/nuxt/runtime/server/sitemap-xml.ts'
@@ -68,22 +69,32 @@ describe('useGinkoSeo', () => {
     expect(metaOf(head, key)).toBe(value)
   })
 
-  test('a site without nuxt-og-image keeps the page and site image; with it, a page without image gets a generated card', () => {
+  test('a site without nuxt-og-image keeps the page and site image; with it, every page gets a card with its image inside', () => {
     // No module: today's output (the site image), and nothing to call.
     expect(metaOf(run('/speisekarte', { title: 'Menü' }), 'og:image')).toBe('https://restaurant.test/og.png')
     const calls: unknown[][] = []
     installOgImage((...args) => calls.push(args))
     try {
-      const generated = run('/speisekarte', { title: 'Menü', description: 'Page', section: 'Karte' })
+      const generated = run('/speisekarte', { title: 'Menü', description: 'Page', section: 'Karte', image: '/a.png' })
       expect(metaOf(generated, 'og:image')).toBeUndefined()
+      // nuxt-og-image writes `summary_large_image`; a `summary` of ours would win and shrink the card on X.
+      expect(metaOf(generated, 'twitter:card')).toBeUndefined()
       expect(calls).toHaveLength(1)
-      const [template, props] = calls[0] as [string, Record<string, () => string>]
-      expect([template, props.title!(), props.description!(), props.section!(), props.siteName]).toStrictEqual(['GinkoCard', 'Menü', 'Page', 'Karte', 'Restaurant'])
-      // An explicit page image keeps today's og:image and makes no card.
-      calls.length = 0
-      expect(metaOf(run('/speisekarte', { title: 'Menü', image: '/a.png' }), 'og:image')).toBe('https://restaurant.test/a.png')
-      expect(calls).toHaveLength(0)
+      const [template, props] = calls[0] as [string, Record<string, string | (() => string)>]
+      const value = (key: string) => { const v = props[key]; return typeof v === 'function' ? v() : v }
+      expect([template, ...['title', 'description', 'section', 'siteName', 'image', 'logo'].map(value)]).toStrictEqual(['GinkoCard', 'Menü', 'Page', 'Karte', 'Restaurant', '/a.png', '/logo.png'])
     } finally { installOgImage(undefined) }
+  })
+
+  test('with nuxt-schema-org, the JSON-LD goes into its graph and no script of our own is written', () => {
+    // The lab found two WebSite nodes on a home page: ours and the module's default one.
+    const graphs: Record<string, unknown>[][] = []
+    installSchemaOrg((nodes) => graphs.push(nodes.value))
+    try {
+      const home = run('/', { title: 'Home', jsonLd: [{ '@context': 'https://schema.org', '@type': 'FAQPage' }] })
+      expect(home.script).toStrictEqual([])
+      expect(graphs).toStrictEqual([[{ '@type': 'FAQPage' }]])
+    } finally { installSchemaOrg(undefined) }
   })
 
   test('the home page gets WebSite and Organization JSON-LD before the page\'s own; other pages only their own', () => {

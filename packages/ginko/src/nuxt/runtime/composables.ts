@@ -4,6 +4,7 @@
 import { computed, createError, toValue, useI18n, useHead, useRoute, useRuntimeConfig, useState, type ComputedRef, type MaybeRefOrGetter, type Ref } from '#imports'
 import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
+import { useSchemaOrg } from '#ginko/schema-org'
 import {
   applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, query, seoHead, todayIn, websiteLd,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
@@ -232,6 +233,8 @@ export interface GinkoSeoInput {
  * Title, description, Open Graph, Twitter card, robots and JSON-LD of a page in one call (SPEC 8 "SEO").
  * Defaults come from `seo` in ginko.config.ts. The home page of the locale also gets WebSite (and,
  * with `seo.organization`, Organization) JSON-LD. Canonical, hreflang and og:locale are ginko-i18n's.
+ * With nuxt-schema-org the page's JSON-LD joins that module's graph, which brings WebSite, WebPage and
+ * the organization (nuxt-seo.ts), so nothing is written twice.
  */
 export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
   const config = useRuntimeConfig().public.ginko as GinkoPublicConfig
@@ -240,17 +243,28 @@ export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
   const route = useRoute()
   const i18n = useI18n()
   const absolute = (src: string) => (/^https?:\/\//.test(src) ? src : new URL(src, config.url).href)
-  // With nuxt-og-image installed, a page without its own image gets a generated card (the site's
-  // default `seo.image` gives way to it). Decided once per page, like the other setup-time calls.
-  const generated = defineOgImage !== undefined && ogTemplate !== undefined && toValue(input).image === undefined
-  if (generated && defineOgImage && ogTemplate) {
+  // Images of the site itself stay paths: nuxt-og-image reads them from the site, not from its public address.
+  const cardImage = (raw: GinkoSeoInput['image'] | string | undefined) => (raw === undefined ? '' : typeof raw === 'string' ? raw : raw.url)
+  // With nuxt-og-image installed, every page gets a generated card with the page's image in it (the site's
+  // default `seo.image` gives way to it).
+  const generated = defineOgImage !== undefined && ogTemplate !== undefined
+  if (defineOgImage && ogTemplate) {
+    const { seo } = config
     defineOgImage(ogTemplate, {
       title: () => toValue(input).title ?? config.name,
-      description: () => toValue(input).description ?? config.seo.description ?? '',
+      description: () => toValue(input).description ?? seo.description ?? '',
       siteName: config.name,
       section: () => toValue(input).section ?? '',
+      image: () => cardImage(toValue(input).image),
+      logo: cardImage(seo.organization?.logo),
+      color: seo.color ?? '',
+    }, {
+      // The image's alt text describes the card, which shows that image.
+      alt: () => { const image = toValue(input).image; return (typeof image === 'object' ? image.alt : undefined) ?? toValue(input).title ?? config.name },
     })
   }
+  // With nuxt-schema-org the page's JSON-LD joins that module's graph; `@context` belongs to the graph, not to a node.
+  if (useSchemaOrg) useSchemaOrg(computed(() => (toValue(input).jsonLd ?? []).map(({ '@context': _context, ...node }) => node)))
   const trim = (p: string) => (p.length > 1 ? p.replace(/\/$/, '') : p)
   useHead(() => {
     const page = toValue(input)
@@ -258,17 +272,21 @@ export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
     const raw = generated ? undefined : (page.image ?? seo.image)
     const image = raw === undefined ? undefined : typeof raw === 'string' ? { url: absolute(raw) } : { ...raw, url: absolute(raw.url) }
     const head = seoHead({ siteName: config.name, titleTemplate: seo.titleTemplate, title: page.title, description: page.description ?? seo.description, image, type: page.type, noindex: page.noindex })
-    const ld = [...(page.jsonLd ?? [])]
+    const ld = useSchemaOrg ? [] : [...(page.jsonLd ?? [])]
     // The home page is the page whose main-language path is `/`.
     const home = Object.keys(schema.pages).find((key) => schema.pages[key]?.[config.mainLocale] === '/')
-    if (home !== undefined && trim(route.path) === trim(path(home as GinkoPageKey, locale.value))) {
+    if (!useSchemaOrg && home !== undefined && trim(route.path) === trim(path(home as GinkoPageKey, locale.value))) {
       const lang = i18n.locales.find((l) => l.code === locale.value)?.language ?? locale.value
       ld.unshift(websiteLd({ name: config.name, url: config.url, lang }))
       if (seo.organization) ld.splice(1, 0, organizationLd({ name: config.name, url: config.url, ...seo.organization, logo: seo.organization.logo && absolute(seo.organization.logo) }))
     }
     return {
       title: head.title,
-      meta: head.meta,
+      // The title is complete (seo.titleTemplate is applied above): no template of the site or of
+      // nuxt-seo-utils may add the site name a second time.
+      titleTemplate: null,
+      // A generated card is large: nuxt-og-image writes `twitter:card` with its image, so ours (`summary`, no image) stays out.
+      meta: generated ? head.meta.filter((m) => !('name' in m && m.name === 'twitter:card')) : head.meta,
       // `<` is escaped so a value such as "</script>" cannot end the script element.
       script: ld.map((entry, i) => ({ key: `ginko-ld-${i}`, type: 'application/ld+json', innerHTML: JSON.stringify(entry).replace(/</g, '\\u003c') })),
     }

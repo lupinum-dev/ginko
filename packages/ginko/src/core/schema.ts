@@ -214,6 +214,9 @@ export function checkSite(site: SiteInput, schema: Schema = serializeSchema(site
     if (!site.locales.includes(locale)) problems.push(`languages: locale “${locale}” is not in locales.`)
     if (!isLocale(language)) problems.push(`languages.${locale}: invalid language “${String(language)}” (expected a canonical language tag such as “de-AT” or “en-US”).`)
   }
+  // The share cards' brand colour; any other format would draw them grey without a word.
+  const color = site.seo?.color
+  if (color !== undefined && !/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(color)) problems.push(`seo.color: invalid colour “${String(color)}” (expected “#rrggbb” or “#rgb”).`)
   return [...problems, ...checkSchema(schema)]
 }
 

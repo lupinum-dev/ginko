@@ -37,6 +37,11 @@ declare module '#ginko/redirects' {
   export default redirects
 }
 
+declare module '#ginko/schema-org' {
+  /** nuxt-schema-org's `useSchemaOrg`, or undefined when the site does not install it. */
+  export const useSchemaOrg: ((nodes: import('vue').Ref<Record<string, unknown>[]>) => unknown) | undefined
+}
+
 declare module '#ginko/og' {
   /** nuxt-og-image's `defineOgImage`, or undefined when the site does not install it. */
   export const defineOgImage: ((component: string, props?: Record<string, unknown>, options?: Record<string, unknown>) => unknown) | undefined

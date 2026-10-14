@@ -18,6 +18,7 @@ export default defineConfig({
             { find: /^#imports$/, replacement: fileURLToPath(new URL('packages/ginko/test/shims/imports.ts', import.meta.url)) },
             { find: /^#convex\/api$/, replacement: fileURLToPath(new URL('packages/ginko-studio/test/shims/convex-api.ts', import.meta.url)) },
             { find: /^#ginko\/og$/, replacement: fileURLToPath(new URL('packages/ginko/test/shims/og.ts', import.meta.url)) },
+            { find: /^#ginko\/schema-org$/, replacement: fileURLToPath(new URL('packages/ginko/test/shims/schema-org.ts', import.meta.url)) },
             { find: /^#ginko\/schema$/, replacement: fileURLToPath(new URL('packages/ginko/test/shims/schema.ts', import.meta.url)) },
           ],
         },
