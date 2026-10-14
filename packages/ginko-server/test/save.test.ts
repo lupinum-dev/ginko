@@ -44,7 +44,8 @@ describe('entries.save', () => {
     const entry = entries['menu-saibling']!
     await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { price: { amount: 1500 } }, sentence: 'Wirtin' })
     const conflict = await errorOf(as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1600 } }, sentence: 'Koch' }))
-    expect(conflict).toMatchObject({ code: 'CHANGED_SINCE', details: { rev: 2, conflicts: ['price'] } })
+    // Who saved it comes along; staff see a colleague as "a member", not by email.
+    expect(conflict).toMatchObject({ code: 'CHANGED_SINCE', details: { rev: 2, conflicts: ['price'], by: { price: { kind: 'member' } } } })
     // The cook edits the name from the same stale base: no conflict, the name was not touched since.
     await expect(as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.edit', entry, baseRev: 1, fields: { veg: 'vegetarian' }, sentence: 'Koch' })).resolves.toMatchObject({ rev: 3 })
   })

@@ -8,6 +8,7 @@ import { internal } from './_generated/api'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, authorizeWriter, byOf, checkRev, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor, type By } from './lib/access'
 import { fileIdsOf, leavesOf, mergeField, nextPrints, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
+import { labeler, type Who } from './lib/names'
 import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
 import { isLocale, t } from './lib/i18n'
 import { countersOf, DELETED_KEPT, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
@@ -33,6 +34,24 @@ function brickOf(schema: Schema, entry: Doc<'entries'>) {
 
 function current(entry: Doc<'entries'>): Json {
   return { entry: entry._id, rev: entry.rev, data: entry.data as Json, fieldRevs: entry.fieldRevs, deleted: !!entry.deletedAt }
+}
+
+/**
+ * Who made the newest change of each conflicting root, for the conflict panel ("anna@… hat „…“ hinzugefügt").
+ * Only the changes after the person's base are read, newest first, and only on this failing path.
+ */
+async function conflictAuthors(ctx: QueryCtx, actor: Actor, entry: Doc<'entries'>, roots: string[], baseRev: number): Promise<Record<string, Who>> {
+  const names = await labeler(ctx, actor)
+  const by: Record<string, Who> = {}
+  const open = new Set(roots)
+  for await (const change of ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry._id)).order('desc')) {
+    if (!open.size || (change.entryRev !== undefined && change.entryRev <= baseRev)) break
+    for (const root of change.fields ?? []) {
+      if (!open.delete(root)) continue
+      by[root] = await names.who(change.actor)
+    }
+  }
+  return by
 }
 
 const saveArgs = {
@@ -98,7 +117,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   // A base above the entry's revision was never read, so it cannot vouch for anything.
   if (args.baseRev > entry.rev) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhile', undefined, current(entry))
   const conflicts = roots.filter((r) => (entry.fieldRevs[r] ?? 0) > args.baseRev)
-  if (conflicts.length) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhile', undefined, { ...(current(entry) as object), conflicts })
+  if (conflicts.length) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhile', undefined, { ...(current(entry) as object), conflicts, by: await conflictAuthors(ctx, actor, entry, conflicts, args.baseRev) })
 
   const before = entry.data as Data
   const data: Data = { ...before }

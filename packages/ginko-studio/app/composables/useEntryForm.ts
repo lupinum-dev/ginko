@@ -9,7 +9,8 @@ import { changedRoots, type Data } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { clearLocalDraft, localDraftKey, readLocalDraft, useLocalDraftWriter, writeLocalDraft, type LocalDraft } from './useLocalDraft'
 import { BLOCKERS, FLUSHERS, type Issue } from '@lupinum/ginko-editor'
-import { stableJson } from '@lupinum/ginko/internal'
+import { mergeRows, stableJson } from '@lupinum/ginko/internal'
+import type { Who } from '../utils/who'
 
 /** Stored values are JSON; a JSON copy also unwraps Vue's proxies (structuredClone cannot). */
 export const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value ?? null)) ?? value
@@ -49,7 +50,8 @@ export function useEntryForm(o: EntryFormOptions) {
   const ready = ref(false)
   const issues = ref<Issue[]>([])
   const problem = ref('')
-  const conflict = ref<{ fields: string[]; data: Data; rev: number } | null>(null)
+  /** Fields someone saved after the person's base: their values, the entry's rev, and who did it when the server says. */
+  const conflict = ref<{ fields: string[]; data: Data; rev: number; by?: Record<string, Who> } | null>(null)
   const busy = ref(false)
   /** The last save went to approval (SPEC 17): the input stays, nothing changed on the website, so no new rev. Cleared by the next edit. */
   const waiting = ref(false)
@@ -124,7 +126,7 @@ export function useEntryForm(o: EntryFormOptions) {
     } else if (e.code === 'CHANGED_SINCE' && e.details?.deleted) {
       problem.value = t('ops.entryGone')
     } else if (e.code === 'CHANGED_SINCE' && e.details?.data) {
-      conflict.value = { fields: (e.details.conflicts as string[] | undefined) ?? [], data: e.details.data as Data, rev: Number(e.details.rev) }
+      conflict.value = { fields: (e.details.conflicts as string[] | undefined) ?? [], data: e.details.data as Data, rev: Number(e.details.rev), ...(e.details.by ? { by: e.details.by } : {}) }
     } else {
       problem.value = e.message
     }
@@ -243,6 +245,36 @@ export function useEntryForm(o: EntryFormOptions) {
     conflict.value = null
     return save(c.rev)
   }
+  /**
+   * Both people's rows, when every conflicting field is a list and no row was changed by both or
+   * moved (mergeRows); null otherwise. "Beides behalten" shows only then.
+   */
+  const listMerge = computed<Data | null>(() => {
+    const c = conflict.value
+    if (!c?.fields.length) return null
+    const merged: Data = {}
+    for (const k of c.fields) {
+      if (o.fields()[k]?.type !== 'list') return null
+      const m = mergeRows(baseline.value[k], draft.value[k], c.data[k])
+      if (m.clashes.length || m.reordered) return null
+      merged[k] = m.rows
+    }
+    return merged
+  })
+  /** "Beides behalten": the merged lists and the person's other changes over the current server state, saved at once. */
+  async function mergeLists() {
+    const c = conflict.value
+    const merged = listMerge.value
+    if (!c || !merged) return false
+    const mine = Object.fromEntries(changed.value.map((k) => [k, draft.value[k]]))
+    const theirs = storedOf(c.data)
+    baseline.value = copy(theirs)
+    draft.value = copy({ ...theirs, ...mine, ...merged } as Data)
+    baseRev.value = c.rev
+    conflict.value = null
+    return save(c.rev)
+  }
+
   /** The stored values for the conflicting fields; the person's other changes stay in the form, unsaved. */
   function takeTheirs() {
     const c = conflict.value
@@ -366,5 +398,5 @@ export function useEntryForm(o: EntryFormOptions) {
     localOffer.value = null
   }
 
-  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, slow, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs }
+  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, slow, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
 }

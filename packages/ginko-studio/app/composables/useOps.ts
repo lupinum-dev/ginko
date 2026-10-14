@@ -7,11 +7,18 @@ import type { InjectionKey } from 'vue'
 import type { Json } from '@lupinum/ginko'
 import { whenText } from '../utils/when'
 import { messageOf, type Described } from '../utils/messageOf'
+import type { Who } from '../utils/who'
 
 export interface OpError {
   code: string
   message: string
-  details?: { errors?: { path: string; message: string; code: string; key?: string; params?: Described['params'] }[]; conflicts?: string[]; rev?: number; data?: Record<string, Json>; deleted?: boolean; [key: string]: unknown }
+  details?: {
+    errors?: { path: string; message: string; code: string; key?: string; params?: Described['params'] }[]
+    conflicts?: string[]; rev?: number; data?: Record<string, Json>; deleted?: boolean
+    /** A conflict: who made the newest change of each conflicting field. */
+    by?: Record<string, Who>
+    [key: string]: unknown
+  }
 }
 
 /** A write the approval policy turned into a proposal: nothing was written, so it has no entry, rev or change (SPEC 17). */

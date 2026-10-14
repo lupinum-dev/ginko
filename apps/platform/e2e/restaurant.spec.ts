@@ -336,6 +336,36 @@ test.describe('Gleichzeitig (Astra phase 8)', () => {
     await page.reload({ waitUntil: 'networkidle' })
     await expect(page.getByRole('textbox', { name: 'Beschreibung' })).toHaveValue('Mit Erdäpfelsalat')
   })
+
+  test('24. both add a row to the same list; the conflict names both rows and "Beides behalten" saves both', async ({ page, browser }) => {
+    const exceptions = (p: Page) => p.getByRole('group', { name: 'Betriebsurlaub und Ausnahmen' })
+    const addException = async (p: Page, reason: string, from: string) => {
+      await exceptions(p).getByRole('button', { name: 'Ausnahme hinzufügen' }).click()
+      const row = exceptions(p).locator('[data-row]').last()
+      await row.getByLabel('von', { exact: true }).fill(from)
+      await row.getByLabel('Grund').fill(reason)
+    }
+    await page.goto('/s/restaurant/all/hours', { waitUntil: 'networkidle' })
+    await addException(page, 'Kaspressknödel-Fest', addDays(today(), 30))
+
+    const other = await browser.newPage({ storageState: STATE.owner, viewport: { width: 1440, height: 900 } })
+    await other.goto('/s/restaurant/all/hours', { waitUntil: 'networkidle' })
+    await addException(other, 'Frittatensuppen-Tag', addDays(today(), 40))
+    await other.getByRole('button', { name: 'Speichern', exact: true }).click()
+    await expect(toast(other)).toContainText('Gespeichert')
+    await other.close()
+
+    await page.getByRole('button', { name: 'Speichern', exact: true }).click()
+    const panel = page.getByRole('alert').filter({ hasText: 'Inzwischen hat jemand' })
+    await expect(panel).toContainText('Du hast „Kaspressknödel-Fest“ hinzugefügt')
+    await expect(panel).toContainText('„Frittatensuppen-Tag“ hinzugefügt')
+    await page.getByRole('button', { name: 'Beides behalten' }).click()
+    await expect(toast(page)).toContainText('Gespeichert')
+    await page.reload({ waitUntil: 'networkidle' })
+    const reasons = exceptions(page).getByLabel('Grund')
+    await expect(reasons.nth(-2)).toHaveValue('Frittatensuppen-Tag')
+    await expect(reasons.last()).toHaveValue('Kaspressknödel-Fest')
+  })
 })
 
 test.describe('Anmelden und Einladung', () => {

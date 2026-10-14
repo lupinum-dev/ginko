@@ -120,7 +120,19 @@
       "thisEntry": "diesen Eintrag",
       "item": "{field}: jetzt gespeichert „{stored}“, deine Eingabe „{mine}“",
       "keepMine": "Meine Eingaben speichern",
-      "takeTheirs": "Neuen Stand übernehmen"
+      "takeTheirs": "Neuen Stand übernehmen",
+      "keepBoth": "Beides behalten",
+      "someone": "Jemand",
+      "row": {
+        "youAdded": "Du hast „{row}“ hinzugefügt",
+        "youRemoved": "Du hast „{row}“ entfernt",
+        "youChanged": "Du hast „{row}“ geändert",
+        "theyAdded": "{who} hat „{row}“ hinzugefügt",
+        "theyRemoved": "{who} hat „{row}“ entfernt",
+        "theyChanged": "{who} hat „{row}“ geändert",
+        "clash": "„{row}“ habt ihr beide geändert, bitte eine Version wählen.",
+        "untitled": "Zeile {n}"
+      }
     },
     "publish": {
       "open": "Veröffentlichen …",

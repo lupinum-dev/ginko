@@ -120,7 +120,19 @@
       "thisEntry": "this entry",
       "item": "{field}: saved now as “{stored}”, your input “{mine}”",
       "keepMine": "Save my changes",
-      "takeTheirs": "Use the new version"
+      "takeTheirs": "Use the new version",
+      "keepBoth": "Keep both",
+      "someone": "Someone",
+      "row": {
+        "youAdded": "You added “{row}”",
+        "youRemoved": "You removed “{row}”",
+        "youChanged": "You changed “{row}”",
+        "theyAdded": "{who} added “{row}”",
+        "theyRemoved": "{who} removed “{row}”",
+        "theyChanged": "{who} changed “{row}”",
+        "clash": "You both changed “{row}”; please choose one version.",
+        "untitled": "Row {n}"
+      }
     },
     "publish": {
       "open": "Publish …",

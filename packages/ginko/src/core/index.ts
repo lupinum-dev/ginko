@@ -7,6 +7,7 @@ export { parseMarkdown, plainText, textBlocks, URL_PROPS, UNSAFE_LINK, type Text
 export { markdownBlocks, serializeMarkdown, isStableMarkdown, type MarkdownBlock, type MarkdownBlocks, type SerializeOptions } from './markdown-serialize.ts'
 export { validate, isDate, fileProblem, SHAPE_CODES, type ValidateOptions, type ValidationResult } from './validate.ts'
 export { diffSchema, type SchemaChange, type SchemaDiff } from './diff.ts'
+export { rowDiffs, mergeRows, type RowDiff } from './rows.ts'
 export { releaseData, fieldsChanged } from './release.ts'
 export { resolveEntry, buildBundle, servedBundle, applyDefaults, defaultsFor, isVisible, visibleUntil, deletesExpired, sortEntries, urlsFor, urlClashes, blockedSlugs, type UrlClash, printOf, type StoredEntry, type FileInfo, type ResolveContext, type BuildBundleInput } from './resolve.ts'
 export { BUNDLE_FORMAT, isBundle, bundleFits, knownBricks, withFileBricks, markdownTrees, type MarkdownTrees, type Bundle, type BundleBrick, type BundleItem } from './bundle.ts'

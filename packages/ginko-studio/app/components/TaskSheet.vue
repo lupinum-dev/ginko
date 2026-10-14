@@ -7,12 +7,13 @@ import { defaultsFor, isShown, type Schema } from '@lupinum/ginko/internal'
 import GinkoField from './fields/GinkoField.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
+import ConflictPanel from './ConflictPanel.vue'
 import { provideRefs } from './fields/refs'
 import { Button } from '@studio/components/ui/button'
 import { XIcon } from '@lucide/vue'
 import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
-import { displayValue, taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
+import { taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 
 const props = defineProps<{
@@ -37,9 +38,8 @@ const props = defineProps<{
   entries?: Entry[]
 }>()
 const emit = defineEmits<{ close: [] }>()
-const { t, format } = useI18n()
+const { t } = useI18n()
 const shown = (label: LabelText) => shownLabel(label, props.main)
-const shownField = (key: string) => (props.brick.fields[key] ? shown(props.brick.fields[key]!.label) : key)
 
 provideRefs(() => props.schema ?? { bricks: {} } as unknown as Schema, () => props.entries ?? [], () => props.main)
 const fields = computed(() => taskFields(props.brick, props.task))
@@ -107,6 +107,9 @@ async function save() {
 async function keepMine() {
   await finish(await form.keepMine())
 }
+async function keepBoth() {
+  await finish(await form.mergeLists())
+}
 // Someone removed the entry (N1): bring it back and save the input, or drop it.
 const removedHere = computed(() => !isCreate.value && !!props.removed && !!props.entry)
 async function restoreRemoved(lifeRev: number) {
@@ -164,16 +167,12 @@ function onCancel(event: Event) {
             @restore="restoreRemoved" @discard="discardAndClose"
           />
           <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
-          <div v-if="conflict" class="grid gap-2 rounded-md bg-warning/10 p-3" role="alert">
-            <p><strong>{{ t('entry.conflict.changed', { fields: conflict.fields.map((k) => shownField(k)).join(', ') || t('entry.conflict.thisEntry') }) }}</strong></p>
-            <ul class="list-disc pl-[18px]">
-              <li v-for="k in conflict.fields" :key="k">{{ t('entry.conflict.item', { field: shownField(k), stored: displayValue(brick.fields[k]!, conflict.data[k], main, { t, format }), mine: displayValue(brick.fields[k]!, draft[k], main, { t, format }) }) }}</li>
-            </ul>
-            <div class="flex flex-wrap gap-2">
-              <Button type="button" @click="keepMine">{{ t('entry.conflict.keepMine') }}</Button>
-              <Button type="button" variant="outline" @click="form.takeTheirs()">{{ t('entry.conflict.takeTheirs') }}</Button>
-            </div>
-          </div>
+          <ConflictPanel
+            v-if="conflict"
+            :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="main" :main="main"
+            :can-keep-both="!!form.listMerge.value"
+            @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
+          />
           <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
           <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: titleOf(brick, twin.data, main) }) }}</p>
           <GinkoField

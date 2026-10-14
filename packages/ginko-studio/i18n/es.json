@@ -120,7 +120,19 @@
       "thisEntry": "esta entrada",
       "item": "{field}: guardado ahora como “{stored}”, tu texto “{mine}”",
       "keepMine": "Guardar mis cambios",
-      "takeTheirs": "Usar la versión nueva"
+      "takeTheirs": "Usar la versión nueva",
+      "keepBoth": "Conservar ambos",
+      "someone": "Alguien",
+      "row": {
+        "youAdded": "Has añadido «{row}»",
+        "youRemoved": "Has eliminado «{row}»",
+        "youChanged": "Has cambiado «{row}»",
+        "theyAdded": "{who} añadió «{row}»",
+        "theyRemoved": "{who} eliminó «{row}»",
+        "theyChanged": "{who} cambió «{row}»",
+        "clash": "Ambos cambiasteis «{row}»; elige una versión.",
+        "untitled": "Fila {n}"
+      }
     },
     "publish": {
       "open": "Publicar …",

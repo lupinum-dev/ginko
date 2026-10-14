@@ -17,13 +17,18 @@ vi.stubGlobal('useToast', () => ({ show: (text: string) => toasts.push(text) }))
 const calls: unknown[] = []
 const stored: Entry = {
   _id: 'e1', brick: 'dishes', kind: 'item', order: 1, rev: 5, lifeRev: 1, fieldRevs: { name: 2, description: 3 }, prints: {},
-  data: { name: 'Wiener Schnitzel vom Kalb', description: 'Mit Petersilkartoffeln' },
+  data: { name: 'Wiener Schnitzel vom Kalb', description: 'Mit Petersilkartoffeln', sides: [{ _id: 'r1', name: 'Erdäpfelsalat' }] },
 }
+/** The next save is refused with this error (a conflict), as the server does. */
+let refuseNext: unknown
 /** The live list's view of the entry: undefined once someone removed it. */
 const live = vue.shallowRef<Entry | undefined>(stored)
 vi.stubGlobal('useOps', () => ({
   opId: () => 'op',
   saveEntry: async (args: { entry: string; baseRev: number; fields: unknown }) => {
+    const refused = refuseNext
+    refuseNext = undefined
+    if (refused) throw refused
     calls.push(['save', { entry: args.entry, baseRev: args.baseRev, fields: args.fields }])
     return { rev: 7 }
   },
@@ -44,7 +49,10 @@ const { useKeptEntry } = await import('../app/composables/useKeptEntry')
 
 const brick = {
   kind: 'collection', label: 'Gerichte',
-  fields: { name: { type: 'text', label: 'Name' }, description: { type: 'longtext', label: 'Beschreibung' } },
+  fields: {
+    name: { type: 'text', label: 'Name' }, description: { type: 'longtext', label: 'Beschreibung' },
+    sides: { type: 'list', label: 'Beilagen', of: { name: { type: 'text', label: 'Name' } } },
+  },
 } as never
 
 /** The entry page: the entry from the live list, kept when it leaves it (as [entry].vue does). */
@@ -68,6 +76,7 @@ beforeEach(() => {
   calls.length = 0
   toasts.length = 0
   live.value = stored
+  refuseNext = undefined
   localStorage.clear()
 })
 
@@ -112,5 +121,22 @@ describe('useEntryForm', () => {
     expect(after.draft.value.name).toBe('Schnitzel mit Preiselbeeren')
     expect(after.conflict.value).toEqual({ fields: ['name'], data: live.value.data, rev: 6 })
     expect(toasts).toEqual(['Wiederhergestellt. Inzwischen hat jemand Name geändert, bitte unten entscheiden.'])
+  })
+  // Wrong behaviour caught: two people each add a row to the same list at once; the conflict only offers to keep
+  // one person's list, so the other row is lost.
+  test('both add a row to the same list: "Beides behalten" saves both rows onto the new state', async () => {
+    const form = mountForm()
+    const salad = { _id: 'r1', name: 'Erdäpfelsalat' }
+    form.setField('sides', [salad, { _id: 'r3', name: 'Kaspressknödel' }])
+    refuseNext = {
+      code: 'CHANGED_SINCE', message: 'Inzwischen hat jemand das geändert.',
+      details: { rev: 6, conflicts: ['sides'], data: { ...stored.data, sides: [salad, { _id: 'r2', name: 'Frittatensuppe' }] }, by: { sides: { email: 'koch@example.com' } } },
+    }
+    expect(await form.save()).toBe(false)
+
+    expect(await form.mergeLists()).toBe(true)
+    expect(calls).toEqual([
+      ['save', { entry: 'e1', baseRev: 6, fields: { sides: [salad, { _id: 'r2', name: 'Frittatensuppe' }, { _id: 'r3', name: 'Kaspressknödel' }] } }],
+    ])
   })
 })

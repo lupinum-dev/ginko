@@ -5,7 +5,7 @@ import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, L
 import { defaultsFor, isShown, isTranslatable, ordered, printOf, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { displayValue, fileIdsIn, languageName, publishQuestion, titleOf } from '../utils/content'
+import { fileIdsIn, languageName, publishQuestion, titleOf } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { opErrorOf } from '../composables/useOps'
@@ -15,6 +15,7 @@ import WhyNotPublic from './WhyNotPublic.vue'
 import ScheduleField from './ScheduleField.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
+import ConflictPanel from './ConflictPanel.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
 import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
@@ -178,7 +179,6 @@ watch(draft, () => {
 provide(TRANSLATION, { state: translation, source: sourceText, confirm: confirmTranslation, mainName: () => languageName(main.value, uiLocale.value) })
 
 const shown = (label: LabelText) => shownLabel(label, main.value)
-const shownField = (key: string) => (props.brick.fields[key] ? shown(props.brick.fields[key]!.label) : key)
 const title = computed(() => props.brick.kind === 'single' ? shown(props.brick.label) : props.entry ? titleOf(props.brick, props.entry.data, main.value) : t('entry.newEntry'))
 const savedOnce = ref(false)
 const formEl = ref<HTMLFormElement | null>(null)
@@ -209,6 +209,9 @@ async function save() {
 
 async function keepMine() {
   if (await form.keepMine() && !waiting.value) savedOnce.value = true
+}
+async function keepBoth() {
+  if (await form.mergeLists() && !waiting.value) savedOnce.value = true
 }
 
 const ops = useOps(computed(() => props.site.slug))
@@ -440,16 +443,12 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           @restore="restoreRemoved" @save-as-new="saveAsNew" @discard="discardRemoved"
         />
         <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
-        <div v-if="conflict" class="grid gap-2 rounded-md bg-warning/10 p-3" role="alert">
-          <p><strong>{{ t('entry.conflict.changed', { fields: conflict.fields.map((k) => shownField(k)).join(', ') || t('entry.conflict.thisEntry') }) }}</strong></p>
-          <ul class="m-0 pl-4">
-            <li v-for="k in conflict.fields" :key="k">{{ t('entry.conflict.item', { field: shownField(k), stored: displayValue(brick.fields[k]!, conflict.data[k], locale, { t, format }), mine: displayValue(brick.fields[k]!, draft[k], locale, { t, format }) }) }}</li>
-          </ul>
-          <div class="flex flex-wrap gap-2">
-            <Button type="button" @click="keepMine">{{ t('entry.conflict.keepMine') }}</Button>
-            <Button type="button" variant="outline" @click="form.takeTheirs()">{{ t('entry.conflict.takeTheirs') }}</Button>
-          </div>
-        </div>
+        <ConflictPanel
+          v-if="conflict"
+          :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="locale" :main="main"
+          :can-keep-both="!!form.listMerge.value"
+          @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
+        />
         <p v-if="problem" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ problem }}</p>
 
         <EntryFields v-bind="fieldProps" :entries="grouped.ungrouped" @update="setField" />
