@@ -20,14 +20,22 @@ const treeOf = (value: unknown, trees?: ReadonlyMap<string, MarkdownTree>): Mark
   return typeof ref === 'string' ? trees?.get(ref) : undefined
 }
 
+/**
+ * A plain text field as Markdown text: characters that Markdown or HTML would read as syntax are escaped, so a title
+ * like `<img onerror=…>` or `a](b` stays text in the `.md` twin and llms.txt. `inline` (titles, link texts) also
+ * turns line breaks into spaces.
+ */
+export const markdownText = (text: string, inline = false) =>
+  (inline ? text.replace(/\s*\n\s*/g, ' ') : text).replace(/[\\`*_[\]<>#|!~]/g, '\\$&')
+
 /** One entry as Markdown: its title as `#`, then each text field as a paragraph and each markdown field as its Markdown. */
 export async function entryMarkdown(item: BundleItem, brick: string, options: AgentOptions): Promise<string> {
   const title = typeof item.data.title === 'string' ? item.data.title : item.id
-  const parts = [`# ${title}`]
+  const parts = [`# ${markdownText(title, true)}`]
   for (const [name, field] of Object.entries(options.schema.bricks[brick]?.fields ?? {})) {
     if (name === 'title') continue
     const value = item.data[name]
-    if ((field.type === 'text' || field.type === 'longtext') && typeof value === 'string' && value.trim()) parts.push(value.trim())
+    if ((field.type === 'text' || field.type === 'longtext') && typeof value === 'string' && value.trim()) parts.push(markdownText(value.trim()))
     if (field.type !== 'markdown') continue
     const tree = treeOf(value, options.trees)
     if (tree) {
@@ -63,7 +71,7 @@ export function llmsTxt(bundle: Bundle, options: AgentOptions & { siteName: stri
       const url = item.urls?.[bundle.locale]
       if (!url) continue
       const title = typeof item.data.title === 'string' ? item.data.title : item.id
-      links.push(`- [${title}](${origin}${markdownPath(url)})`)
+      links.push(`- [${markdownText(title, true)}](${origin}${markdownPath(url)})`)
     }
     if (links.length === 0) continue
     lines.push('', `## ${brickLabel(options.schema.bricks[brick]?.label, brick, bundle)}`, '', ...links)
@@ -117,7 +125,7 @@ export function markdownNotFound(bundle: Bundle, path: string, options: { origin
   const suggestions = matches.sort((a, b) => b.score - a.score).slice(0, options.limit ?? 5)
   const lines = ['# Not found', '', `There is no page at \`${path}\`.`]
   if (suggestions.length > 0) {
-    lines.push('', '## Maybe you meant', '', ...suggestions.map((match) => `- [${match.title}](${origin}${markdownPath(match.url)})`))
+    lines.push('', '## Maybe you meant', '', ...suggestions.map((match) => `- [${markdownText(match.title, true)}](${origin}${markdownPath(match.url)})`))
   }
   lines.push('', `All pages: ${origin}/llms.txt`)
   return `${lines.join('\n')}\n`

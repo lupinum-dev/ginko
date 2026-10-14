@@ -29,6 +29,11 @@ describe('entryMarkdown', () => {
     expect(markdown).toBe('# Erster Beitrag\n\nKurz vorweg.\n\n## Schritte\n\n- eins\n- zwei\n\nSiehe [Doku](https://example.com/doku).\n')
   })
 
+  test('text fields stay text: HTML and Markdown syntax in a title or intro is escaped', async () => {
+    const markdown = await entryMarkdown(item('a', { title: 'Hi <img src=x onerror=alert(1)>\n# not a heading', intro: 'See [x](javascript:alert(2)) *now*' }), 'blog', options)
+    expect(markdown).toBe('# Hi \\<img src=x onerror=alert(1)\\> \\# not a heading\n\nSee \\[x\\](javascript:alert(2)) \\*now\\*\n')
+  })
+
   test('a { ref } markdown value is read from the trees map', async () => {
     const body = await parseMarkdown('Nur **fett**.')
     const trees = new Map([['blog/a/body', body.value]])
