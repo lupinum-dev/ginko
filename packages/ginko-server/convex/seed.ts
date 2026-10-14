@@ -3,7 +3,8 @@
 // `ginko export` (SPEC 9, 12). Internal, so only `npx convex run` with the deployment's admin key
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
-import type { Schema } from '@lupinum/ginko/internal'
+import type { Json } from '@lupinum/ginko'
+import { validate, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -13,6 +14,9 @@ import { normalizeEmail } from './members'
 import { byteSize, remapEntryRefs, remapFileIds, storageOf, usesOf, type Data } from './lib/content'
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
 import { same, syncEntryRefs } from './lib/write'
+
+/** Validation codes for values of the wrong shape: the import refuses these (importExport). */
+const UNREADABLE = new Set(['TYPE', 'NOT_OBJECT', 'NOT_LOCALIZED', 'UNKNOWN_FIELD', 'UNKNOWN_LOCALE', 'UNKNOWN_BRICK'])
 
 function localOnly() {
   if (process.env.GINKO_LOCAL !== '1') fail('FORBIDDEN', 'errors.localOnly')
@@ -213,6 +217,14 @@ export const importExport = internalMutation({
       const def = schema.bricks[row.brick]
       if (!def) fail('INVALID', 'errors.entryBrickMissingFromSchema', { id: row.id, brick: row.brick })
       const data = remapFileIds(def.fields, row.data as Data, uploads)
+      // Values the Studio and the site cannot read at all (a wrong type, an unknown field or language) are refused, so
+      // an export cannot store what the editor cannot open. Rules a save enforces on top (row id format, alt texts, lengths,
+      // Markdown profiles) are not: a backup must restore what the platform once stored. Entry references are not looked
+      // up either; they still name exported IDs until importRefs. A deleted entry is checked when it is restored.
+      if (row.deletedAt === undefined) {
+        const errors = (await validate(schema, row.brick, data, { mode: 'create' })).errors.filter((e) => UNREADABLE.has(e.code))
+        if (errors.length) fail('INVALID', 'errors.importEntryInvalid', { id: row.id, path: errors[0]!.path, count: errors.length }, { errors: errors as unknown as Json })
+      }
       const { trees, bytes: size } = await storageOf(def.fields, data, row.prints)
       const id = await ctx.db.insert('entries', {
         site: site._id, brick: row.brick, kind: row.kind, order: row.order, data, rev: row.rev,

@@ -66,7 +66,7 @@ async function exportFolder() {
     entries: [
       // The post comes first on purpose: its author is imported after it.
       entry('posts/hello', 'posts', 1, { author: 'authors/anna', more: ['authors/anna'], credits: [{ _id: 'r1', who: 'authors/anna', role: true }] }),
-      entry('authors/anna', 'authors', 1, { name: 'Anna' }),
+      entry('authors/anna', 'authors', 1, { name: { de: 'Anna' } }),
     ],
   }))
   return dir
@@ -144,5 +144,22 @@ describe('hosted import guard', () => {
     const { run, upload, calls } = runnerOf(s)
     await expect(importSite({ dir: await exportFolder(), run, upload, log: () => undefined, prod: true, site: 'andere' })).rejects.toThrow(/ginko release/)
     expect(calls).toEqual(['seed:importStatus'])
+  })
+})
+
+describe('import checks each entry like a save', () => {
+  it('refuses a batch whose entry the editor could not open, names the entry, and stores nothing of it', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const before = (await entriesOf(s, s.site)).length
+    const entry = (id: string, data: unknown) => ({ id, brick: 'authors', kind: 'item' as const, order: 1, data, prints: {}, rev: 1 })
+    // A Markdown-style tree where the field holds text: what the first files-export wrote.
+    const error = await errorOf(s.t.mutation(makeFunctionReference<'mutation'>('seed:importExport'), {
+      site: 'restaurant', files: [], entries: [entry('authors/ok', { name: { de: 'Anna' } }), entry('authors/bad', { name: { de: { nodes: [['p', {}, 'Anna']] } } })],
+    }))
+    expect(error).toMatchObject({ code: 'INVALID' })
+    expect(JSON.stringify(error)).toContain('authors/bad')
+    expect((await entriesOf(s, s.site)).length).toBe(before)
   })
 })
