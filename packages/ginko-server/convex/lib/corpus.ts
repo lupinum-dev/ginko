@@ -29,17 +29,15 @@ function withoutFiles(schema: Schema, brick: string, data: Record<string, Json>)
 export type Corpus = Record<string, CorpusEntry[]>
 export type Person = { email: string; role: 'owner' | 'staff'; grants: string[] }
 
-/** Inserts the corpus entries of the bricks the site knows; sets the byte counters, entryCount and orderRevs, and raises contentRev. */
+/** Inserts the corpus entries of the bricks the site knows; sets the byte counters and entryCount, and raises contentRev. */
 export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus: Corpus) {
   const schema = site.schema as Schema
   let bytes = 0
   let treeBytes = 0
   let count = 0
-  const orderRevs: Record<string, number> = {}
   for (const [brick, rows] of Object.entries(corpus)) {
     const def = schema.bricks[brick]
     if (!def) continue
-    orderRevs[brick] = 1
     for (const [index, row] of rows.entries()) {
       const data = withoutFiles(schema, brick, row.data)
       const prints = row.prints ?? {}
@@ -62,7 +60,7 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
       }
     }
   }
-  await ctx.db.patch(site._id, { bytes, trashBytes: 0, treeBytes, entryCount: count, orderRevs, contentRev: site.contentRev + 1 })
+  await ctx.db.patch(site._id, { bytes, trashBytes: 0, treeBytes, entryCount: count, contentRev: site.contentRev + 1 })
   return { count }
 }
 

@@ -100,7 +100,6 @@ export const get = query({
         schema: site.schema,
         schemaRev: site.schemaRev,
         contentRev: site.contentRev,
-        orderRevs: site.orderRevs,
         entryCount: site.entryCount,
         bytes: site.bytes,
         release: site.release,
@@ -174,7 +173,6 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
     schema,
     schemaRev: 1,
     contentRev: 1,
-    orderRevs: {},
     entryCount: 0,
     bytes: 0,
     trashBytes: 0,
@@ -260,5 +258,22 @@ export const translationStatus = query({
       bricks.push({ brick: key, label: labelIn(def.label, schema.locales[0]!, schema.locales[0]!), kind: def.kind, locales })
     }
     return { main: schema.locales[0]!, locales: foreign, bricks }
+  },
+})
+
+/**
+ * One-time cleanup (internals/migrations.md): removes the unused `orderRevs` from every site. Running it again is safe.
+ * Internal: `npx convex run sites:dropOrderRevs`.
+ */
+export const dropOrderRevs = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let cleared = 0
+    for (const site of await ctx.db.query('sites').collect()) {
+      if (site.orderRevs === undefined) continue
+      await ctx.db.patch(site._id, { orderRevs: undefined })
+      cleared++
+    }
+    return { cleared }
   },
 })

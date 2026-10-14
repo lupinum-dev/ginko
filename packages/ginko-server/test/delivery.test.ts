@@ -23,7 +23,7 @@ async function withBlog(s: Setup, bodyMax?: number) {
   await s.t.run(async (ctx) => {
     const site = (await ctx.db.get(s.site))!
     const schema = site.schema as Schema
-    await ctx.db.patch(s.site, { schema: { ...schema, bricks: { ...schema.bricks, blog } }, orderRevs: { ...site.orderRevs, blog: 0 } })
+    await ctx.db.patch(s.site, { schema: { ...schema, bricks: { ...schema.bricks, blog } } })
     const cook = (await ctx.db.query('memberships').collect()).find((m) => m.user === people.cook && m.site === s.site)!
     await ctx.db.patch(cook._id, { grants: [...cook.grants, 'blog.add'] })
   })

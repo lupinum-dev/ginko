@@ -81,7 +81,7 @@ export async function setup() {
     })
   }
   const seeded = await t.run(async (ctx) => {
-    const blank = { url: siteSchema.url, previewOrigins: ['http://localhost:3100'], schema: siteSchema, schemaRev: 1, contentRev: 1, orderRevs: {}, entryCount: 0, bytes: 0, release: null }
+    const blank = { url: siteSchema.url, previewOrigins: ['http://localhost:3100'], schema: siteSchema, schemaRev: 1, contentRev: 1, entryCount: 0, bytes: 0, release: null }
     const site = await ctx.db.insert('sites', { ...blank, slug: 'restaurant', name: siteSchema.name })
     const other = await ctx.db.insert('sites', { ...blank, slug: 'andere', name: 'Andere Seite' })
     await ctx.db.insert('admins', { user: people.admin })
@@ -92,10 +92,8 @@ export async function setup() {
     const entries: Record<string, Id<'entries'>> = {}
     let bytes = 0
     let count = 0
-    const orderRevs: Record<string, number> = {}
     for (const [brick, rows] of Object.entries(corpus as Record<string, CorpusEntry[]>)) {
       const def = siteSchema.bricks[brick]!
-      orderRevs[brick] = 0
       for (const [index, row] of rows.entries()) {
         const size = new TextEncoder().encode(JSON.stringify(row.data)).byteLength
         const fieldRevs = Object.fromEntries(Object.keys(def.fields).map((f) => [f, 1]))
@@ -115,7 +113,7 @@ export async function setup() {
         }
       }
     }
-    await ctx.db.patch(site, { bytes, entryCount: count, orderRevs })
+    await ctx.db.patch(site, { bytes, entryCount: count })
     return { site, other, entries }
   })
   return {

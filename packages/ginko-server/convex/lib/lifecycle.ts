@@ -20,16 +20,14 @@ export interface Counters {
   bytes: number
   trashBytes: number
   treeBytes: number
-  orderRevs: Record<string, number>
 }
 
 export const countersOf = (site: Doc<'sites'>): Counters => ({
   contentRev: site.contentRev, entryCount: site.entryCount, bytes: site.bytes, trashBytes: site.trashBytes ?? 0, treeBytes: site.treeBytes ?? 0,
-  orderRevs: { ...site.orderRevs },
 })
 
 export async function writeCounters(ctx: MutationCtx, site: Id<'sites'>, c: Counters) {
-  await ctx.db.patch(site, { contentRev: c.contentRev, entryCount: c.entryCount, bytes: c.bytes, trashBytes: c.trashBytes, treeBytes: c.treeBytes, orderRevs: c.orderRevs })
+  await ctx.db.patch(site, { contentRev: c.contentRev, entryCount: c.entryCount, bytes: c.bytes, trashBytes: c.trashBytes, treeBytes: c.treeBytes })
 }
 
 /** The byte counters of a site as the sums over its entry rows: what every write keeps them equal to. */
@@ -63,7 +61,6 @@ export async function softRemove(ctx: MutationCtx, c: Counters, entry: Doc<'entr
   c.trashBytes += entry.bytes
   c.treeBytes -= entry.treeBytes ?? 0
   if (entry.state !== 'draft') c.contentRev += 1
-  c.orderRevs[entry.brick] = (c.orderRevs[entry.brick] ?? 0) + 1
   await ctx.db.insert('changes', {
     site: entry.site, entry: entry._id, brick: entry.brick, ...by, opId, kind: 'remove', ...history,
     entryRev: entry.rev + 1, contentRev: c.contentRev, at,

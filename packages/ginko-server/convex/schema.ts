@@ -22,7 +22,8 @@ export default defineSchema({
     schema: v.any(),
     schemaRev: v.number(),
     contentRev: v.number(),
-    orderRevs: v.record(v.string(), v.number()),
+    /** Unused since entries.move (one order value per move); `sites:dropOrderRevs` unsets it (internals/migrations.md). */
+    orderRevs: v.optional(v.record(v.string(), v.number())),
     entryCount: v.number(),
     /** Budget bytes (core `entryBytes`) of the live entries, drafts included (SPEC 3). */
     bytes: v.number(),

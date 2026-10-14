@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, deletesExpired, isVisible, ordered, sha256, slugify, todayIn, uniqueSlug, validate, type Schema } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, deletesExpired, isVisible, ordered, sha256, slugify, sortEntries, todayIn, uniqueSlug, validate, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
@@ -299,7 +299,7 @@ export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
   })
 }
 
-// ---- Structural operations (SPEC 4.2): create, remove, restore, reorder. ----
+// ---- Structural operations (SPEC 4.2): create, remove, restore, move. ----
 // They follow the flow of SPEC 4.1 like `save`. The site's counters (`Counters` in lib/lifecycle.ts)
 // are changed in memory and written back once at the end.
 
@@ -329,7 +329,7 @@ function structuralBrick(schema: Schema, key: string): CollectionBrick {
 }
 
 /** Every row of a brick in order, deleted ones included: their order values stay in use. */
-function rowsOf(ctx: MutationCtx, site: Id<'sites'>, brick: string) {
+function rowsOf(ctx: QueryCtx, site: Id<'sites'>, brick: string) {
   return ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site).eq('brick', brick)).collect()
 }
 
@@ -468,7 +468,6 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     c.bytes += size
     c.treeBytes += trees.bytes
     if (!draft) c.contentRev += 1
-    c.orderRevs[args.brick] = (c.orderRevs[args.brick] ?? 0) + 1
     const label = labelOf(schema, args.brick, data)
     const change = await ctx.db.insert('changes', {
       site: actor.site._id, entry, brick: args.brick, ...byOf(actor), opId: args.opId, kind: 'create',
@@ -617,7 +616,6 @@ export const restore = mutation({
       c.treeBytes += trees.bytes
       // A restored draft stays out of the bundle (its schedule went with the removal).
       if (entry.state !== 'draft') c.contentRev += 1
-      c.orderRevs[entry.brick] = (c.orderRevs[entry.brick] ?? 0) + 1
       await ctx.db.insert('changes', {
         site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'restore',
         ...recorded(msg('history.restored', { title: labelOf(schema, entry.brick, entry.data as Data) }), schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: now,
@@ -815,48 +813,79 @@ export const publishDue = internalMutation({
   },
 })
 
-export const reorder = mutation({
-  args: { site: v.string(), opId: v.string(), brick: v.string(), order: v.array(v.string()), orderRev: v.number() },
+/**
+ * The new order value of `entry` one place up or down: halfway to the live neighbour after the next one, or one past
+ * the last. `null`: it is first or last already. `undefined`: no value fits (a live entry shares its order, or the gap
+ * between the neighbours is used up); `renumber` makes room.
+ */
+async function movedOrder(ctx: QueryCtx, entry: Doc<'entries'>, direction: 'up' | 'down'): Promise<number | null | undefined> {
+  const tied = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', entry.site).eq('brick', entry.brick).eq('order', entry.order)).collect()
+  if (tied.some((row) => row._id !== entry._id && row.deletedAt === undefined)) return undefined
+  const rows = ctx.db.query('entries')
+    .withIndex('by_site_brick_order', (q) => (direction === 'up' ? q.eq('site', entry.site).eq('brick', entry.brick).lt('order', entry.order) : q.eq('site', entry.site).eq('brick', entry.brick).gt('order', entry.order)))
+    .order(direction === 'up' ? 'desc' : 'asc')
+  // Removed entries keep their order values (a restore puts them last); they are passed over.
+  const live: number[] = []
+  for await (const row of rows) {
+    if (row.deletedAt !== undefined) continue
+    live.push(row.order)
+    if (live.length === 2) break
+  }
+  const [near, far] = live
+  if (near === undefined) return null
+  const order = far === undefined ? near + (direction === 'up' ? -1 : 1) : (near + far) / 2
+  return order === near || order === far ? undefined : order
+}
+
+/** Gives the rows of a manual brick the orders 1..n in their current order (sortEntries, removed ones included); only `order` changes. */
+async function renumber(ctx: MutationCtx, brick: CollectionBrick, site: Id<'sites'>, key: string) {
+  const rows = await rowsOf(ctx, site, key)
+  const byId = new Map(rows.map((row) => [row._id as string, row]))
+  const sorted = sortEntries(brick, rows.map((row): StoredEntry => ({ id: row._id, order: row.order, data: row.data })))
+  for (const [index, stored] of sorted.entries()) {
+    const row = byId.get(stored.id)!
+    if (row.order !== index + 1) await ctx.db.patch(row._id, { order: index + 1 })
+  }
+}
+
+/**
+ * Moves one entry of a manually ordered collection one place up or down (SPEC 4.2). It writes one order value
+ * between the neighbours, so moves by two people at once both apply. Owners and admins only: no task covers it.
+ */
+export const move = mutation({
+  args: { site: v.string(), opId: v.string(), entry: v.string(), direction: v.union(v.literal('up'), v.literal('down')) },
   handler: async (ctx, args): Promise<Json> => {
     const actor = await actorFor(ctx, args.site)
-    checkRev(args.orderRev)
     return idempotent(ctx, actor, args, async () => {
+      let entry = await entryOf(ctx, actor, args.entry)
       const schema = actor.site.schema as Schema
-      const brick = structuralBrick(schema, args.brick)
-      if (brick.order !== 'manual') fail('INVALID', 'errors.collectionAutoSorted', undefined, { brick: args.brick })
+      const brick = structuralBrick(schema, entry.brick)
+      if (brick.order !== 'manual') fail('INVALID', 'errors.collectionAutoSorted', undefined, { brick: entry.brick })
       // No task covers reordering (SPEC 2.7), so staff may not reorder.
       if (actor.role === 'staff') fail('FORBIDDEN', 'errors.notYourTask')
+      if (entry.deletedAt) fail('CHANGED_SINCE', 'errors.thisEntryDeletedSince', undefined, current(entry))
 
-      const entries: Doc<'entries'>[] = []
-      for (const id of args.order) {
-        const entry = await entryOf(ctx, actor, id)
-        if (entry.brick !== args.brick) fail('INVALID', 'errors.entryBelongsToOtherBrick', undefined, { entry: id })
-        entries.push(entry)
-      }
       const c = countersOf(actor.site)
-      const orderRev = c.orderRevs[args.brick] ?? 0
-      if (orderRev !== args.orderRev) fail('CHANGED_SINCE', 'errors.orderChangedMeanwhile', undefined, { orderRev })
-      if (new Set(args.order).size !== args.order.length) fail('INVALID', 'errors.entryListedTwice')
-      if (entries.some((e) => e.deletedAt)) fail('INVALID', 'errors.deletedEntryInList')
-      const live = (await rowsOf(ctx, actor.site._id, args.brick)).filter((r) => !r.deletedAt)
-      if (live.length !== args.order.length) fail('INVALID', 'errors.listMustContainAllEntries', undefined, { expected: live.length })
-
-      // Rows come in order, so an unchanged list is the same list in the same sequence.
-      if (live.every((row, index) => row._id === entries[index]!._id)) {
-        const result: Json = { orderRev, contentRev: c.contentRev }
+      let order = await movedOrder(ctx, entry, args.direction)
+      if (order === undefined) {
+        // Rare: equal orders from older data, or about 50 moves into the same gap.
+        await renumber(ctx, brick, actor.site._id, entry.brick)
+        entry = (await ctx.db.get(entry._id))!
+        order = await movedOrder(ctx, entry, args.direction)
+      }
+      // Already first or last: nothing to do.
+      if (order === null || order === undefined) {
+        const result: Json = { order: entry.order, contentRev: c.contentRev }
         return result
       }
-      for (const [index, entry] of entries.entries()) {
-        if (entry.order !== index + 1) await ctx.db.patch(entry._id, { order: index + 1, rev: entry.rev + 1 })
-      }
-      c.orderRevs[args.brick] = orderRev + 1
+      await ctx.db.patch(entry._id, { order, rev: entry.rev + 1 })
       c.contentRev += 1
       await ctx.db.insert('changes', {
-        site: actor.site._id, brick: args.brick, ...byOf(actor), opId: args.opId, kind: 'reorder',
-        ...recorded(msg('history.reordered', { label: brick.label }), schema), contentRev: c.contentRev, at: Date.now(),
+        site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'reorder',
+        ...recorded(msg('history.reordered', { label: brick.label }), schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: Date.now(),
       })
       await writeCounters(ctx, actor.site._id, c)
-      const result: Json = { orderRev: orderRev + 1, contentRev: c.contentRev }
+      const result: Json = { order, contentRev: c.contentRev }
       return result
     })
   },

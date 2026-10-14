@@ -51,7 +51,7 @@ function lastingOps() {
     undo: useConvexMutation(api.entries.undo),
     publish: useConvexMutation(api.entries.publish),
     unpublish: useConvexMutation(api.entries.unpublish),
-    reorder: useConvexMutation(api.entries.reorder),
+    move: useConvexMutation(api.entries.move),
   }
 }
 export function provideLastingOps() {
@@ -67,7 +67,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   const revert = useConvexMutation(api.entries.revert)
   const lasting = inject(LASTING)
   if (!lasting) throw new Error('provideLastingOps() is missing in app.vue')
-  const { remove, restore, undo, publish, unpublish, reorder } = lasting
+  const { remove, restore, undo, publish, unpublish, move } = lasting
   /** Nothing was written: say so and offer no Undo. The server does not name the approver, so neither does the message. */
   const sentForApproval = () => show(t('review.sent'))
 
@@ -126,11 +126,10 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     return result
   }
 
-  /** Moves one entry in its list; false when it failed or went to approval (the list then stays as it is). */
-  async function reorderEntries(brick: string, order: string[], orderRev: number) {
+  /** Moves one entry one place up or down in its list; false when it failed (the list then stays as it is). */
+  async function moveEntry(entry: string, direction: 'up' | 'down') {
     try {
-      const result = await reorder.mutate({ site: site.value, opId: opId(), brick, order, orderRev })
-      if (isProposal(result)) { sentForApproval(); return false }
+      await move.mutate({ site: site.value, opId: opId(), entry, direction })
       return true
     } catch (error) {
       show(opErrorOf(error).message, { tone: 'err' })
@@ -156,7 +155,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   return {
     opId,
     revertEntry,
-    reorderEntries,
+    moveEntry,
     /** Saves changed root fields. Throws OpError; on success shows the message with Rückgängig. */
     async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean }) {
       try {

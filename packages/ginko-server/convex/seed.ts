@@ -143,8 +143,7 @@ export const importClear = internalMutation({
       await drop(slug)
     }
 
-    const orderRevs = Object.fromEntries(Object.keys((site.schema as Schema).bricks).map((brick) => [brick, 0]))
-    await ctx.db.patch(site._id, { bytes: 0, trashBytes: 0, treeBytes: 0, entryCount: 0, orderRevs, contentRev: site.contentRev + 1 })
+    await ctx.db.patch(site._id, { bytes: 0, trashBytes: 0, treeBytes: 0, entryCount: 0, contentRev: site.contentRev + 1 })
     return { done: true }
   },
 })
@@ -293,7 +292,6 @@ export const importExport = internalMutation({
     // 2. Store.
     const ids: Record<string, Id<'entries'>> = {}
     const known = new Set<string>(uploads.values())
-    const orderRevs: Record<string, number> = { ...site.orderRevs }
     for (const { row, fields, data, size, trees } of rows) {
       const id = await ctx.db.insert('entries', {
         site: site._id, brick: row.brick, kind: row.kind, order: row.order, data, rev: row.rev,
@@ -308,7 +306,6 @@ export const importExport = internalMutation({
         await ctx.db.patch(id, { publishAt: row.publishAt, publishJob: await ctx.scheduler.runAt(row.publishAt, internal.entries.publishDue, { entry: id, at: row.publishAt }) })
       }
       ids[row.id] = id
-      orderRevs[row.brick] = 1
       for (const [name, field] of Object.entries(fields)) {
         if (field.type !== 'slug') continue
         for (const [locale, slug] of Object.entries((data[name] ?? {}) as Record<string, string>)) {
@@ -318,7 +315,7 @@ export const importExport = internalMutation({
       await syncEntryRefs(ctx, site._id, id, new Map([...usesOf(fields, data, schema.locales)].filter(([file]) => known.has(file))))
     }
     await ctx.db.patch(site._id, {
-      bytes: site.bytes + bytes, trashBytes: trashAfter, treeBytes: (site.treeBytes ?? 0) + treeBytes, entryCount: site.entryCount + live, orderRevs,
+      bytes: site.bytes + bytes, trashBytes: trashAfter, treeBytes: (site.treeBytes ?? 0) + treeBytes, entryCount: site.entryCount + live,
     })
     return { entries: args.entries.length, files: args.files.length, ids, warnings, ...(firstWarning ? { firstWarning } : {}) }
   },

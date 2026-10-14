@@ -37,7 +37,6 @@ const paths: [string, string, unknown, () => Promise<unknown>, number][] = [
   ['unpublishEntry', 'entries.unpublish', { entry: 'e', lifeRev: 2, contentRev: 4 }, () => ops.unpublishEntry('e', 1, { timeZone: 'Europe/Vienna', wasLive: true }), 1],
   ['undoChange', 'entries.undo', { change: 'c2' }, () => ops.undoChange('c1'), 1],
   ['revertEntry', 'entries.revert', { entry: 'e', change: 'c3' }, () => ops.revertEntry('e', 'c1'), 1],
-  ['reorderEntries', 'entries.reorder', { orderRev: 2 }, () => ops.reorderEntries('b', ['a', 'b'], 1), 0],
 ]
 
 describe('writes that become proposals', () => {

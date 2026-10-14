@@ -334,7 +334,7 @@ export const release = internalMutation({
     if (!fitsBudget(after.bytes, site.bytes, BUDGET.siteBytes)) fail('TOO_LARGE', 'errors.siteStorageLimitReached', overBudget(after.bytes, BUDGET.siteBytes))
     if (!fitsBudget(after.treeBytes, site.treeBytes ?? 0, BUDGET.treeBytes)) fail('TOO_LARGE', 'errors.entryTooComplex')
 
-    // 8. Write: schema, entries, orderRevs, migrations, contentRev only when an entry changed, release record, change row.
+    // 8. Write: schema, entries, migrations, contentRev only when an entry changed, release record, change row.
     const changedContent = updates.length > 0 || created.length > 0
     const schemaRev = site.schemaRev + 1
     const contentRev = changedContent ? site.contentRev + 1 : site.contentRev
@@ -347,12 +347,7 @@ export const release = internalMutation({
       await syncEntryRefs(ctx, args.site, u.entry._id, await entryUses(ctx, next.bricks[u.entry.brick]!.fields, u.data, next.locales))
     }
 
-    const orderRevs: Record<string, number> = { ...site.orderRevs }
-    for (const key of Object.keys(next.bricks)) orderRevs[key] ??= 0
-    for (const c of created) {
-      await insertSingle(ctx, args.site, c, next.locales)
-      orderRevs[c.brick] = (orderRevs[c.brick] ?? 0) + 1
-    }
+    for (const c of created) await insertSingle(ctx, args.site, c, next.locales)
 
     for (const m of fresh) {
       await ctx.db.insert('migrationsApplied', { site: args.site, id: m.id, brick: m.brick, fills: m.fills, fingerprint: m.fingerprint, schemaRev })
@@ -365,7 +360,6 @@ export const release = internalMutation({
       url: next.url,
       schemaRev,
       contentRev,
-      orderRevs,
       entryCount,
       ...after,
       release: { commit: args.commit, schemaRev, contentRev, at },
@@ -397,7 +391,7 @@ export const devPush = internalMutation({
     if (!site) {
       const id = await ctx.db.insert('sites', {
         slug: args.site, name: next.name, url: next.url, previewOrigins: ['http://localhost:3000'], schema: next as unknown as Json,
-        schemaRev: 1, contentRev: 1, orderRevs: {}, entryCount: 0, bytes: 0, trashBytes: 0, treeBytes: 0, release: null,
+        schemaRev: 1, contentRev: 1, entryCount: 0, bytes: 0, trashBytes: 0, treeBytes: 0, release: null,
       })
       await createMissingSingles(ctx, (await ctx.db.get(id))!, next)
       return { schemaRev: 1, changes: [], warnings: [] }
@@ -412,7 +406,7 @@ export const devPush = internalMutation({
   },
 })
 
-/** devPush: the missing single entries, with the site's counters kept exact (entryCount, the byte sums, orderRevs). */
+/** devPush: the missing single entries, with the site's counters kept exact (entryCount, the byte sums). */
 async function createMissingSingles(ctx: MutationCtx, site: Doc<'sites'>, schema: Schema) {
   const entries = await allEntries(ctx, site._id)
   const filled = new Set(entries.map((e) => e.brick))
@@ -422,14 +416,8 @@ async function createMissingSingles(ctx: MutationCtx, site: Doc<'sites'>, schema
     if (brick.kind === 'single' && !brick.retired && !filled.has(key)) created.push(await newSingle(key, brick.fields, main))
   }
 
-  const orderRevs: Record<string, number> = { ...site.orderRevs }
-  for (const key of Object.keys(schema.bricks)) orderRevs[key] ??= 0
-  for (const single of created) {
-    await insertSingle(ctx, site._id, single, schema.locales)
-    orderRevs[single.brick] = (orderRevs[single.brick] ?? 0) + 1
-  }
+  for (const single of created) await insertSingle(ctx, site._id, single, schema.locales)
   await ctx.db.patch(site._id, {
-    orderRevs,
     entryCount: entries.filter((e) => !e.deletedAt).length + created.length,
     ...storageSums([...entries, ...created.map((c) => ({ bytes: c.bytes, treeBytes: c.trees.bytes }))]),
   })

@@ -37,3 +37,23 @@ the exact condition for removing it and the tracking issue when there is one. Re
   run its `entries:rebuildTrees` to restore its trees and counters.
 - **Removal condition:** `storageStatus` reports `legacyRows: 0` and `countersMatch: true` for every site on every
   deployment (local backends included, or they are reset), then ship step 5.
+
+## Unused `sites.orderRevs`
+
+- **Why:** the old `entries.reorder` sent the whole order of a brick with an `orderRev`, and `orderRevs` (one count
+  per brick on the site row) caught a concurrent reorder. `entries.move` writes one order value per move, so nothing
+  reads or writes `orderRevs` any more. Sites stored before the change still hold it.
+- **Introduced:** 15 October 2026.
+- **Compatibility code:** `convex/schema.ts`: `sites.orderRevs` is optional; `sites:dropOrderRevs` unsets it.
+- **Dependents:** every deployment with sites created before the introduction date (local backends, hosted production).
+- **Steps:**
+  1. Deploy this code. Nothing writes `orderRevs` from now on.
+  2. `npx convex run sites:dropOrderRevs` (one call; it reports how many sites it cleared; running it again is safe).
+     Hosted production needs Matthias's OK: `npx convex export --prod` first, then
+     `npx convex run --prod sites:dropOrderRevs`.
+  3. Contract step: remove `orderRevs` from `convex/schema.ts` and delete `dropOrderRevs`. Convex refuses this deploy
+     while any site still has the field, which is a safety net.
+- **Removal condition:** `sites:dropOrderRevs` answered `cleared: 0` on every deployment (local backends included, or
+  they are reset), then ship step 3.
+- **Tracking issue:** none yet.
+

@@ -277,7 +277,6 @@ describe('export → import round trip (SPEC 12)', () => {
     expect(rows.site.entryCount).toBe(rows.entries.filter((e) => !e.deletedAt).length)
     expect(rows.site.bytes).toBe(rows.entries.filter((e) => !e.deletedAt).reduce((sum, e) => sum + e.bytes, 0))
     expect(rows.site.trashBytes).toBe(rows.entries.filter((e) => e.deletedAt).reduce((sum, e) => sum + e.bytes, 0))
-    expect(rows.site.orderRevs.menu).toBe(1)
   })
 
   // Wrong behaviour caught: one clear call sizes its work by document count, so on a site with large entries it passes a

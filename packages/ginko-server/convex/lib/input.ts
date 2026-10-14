@@ -28,7 +28,7 @@ export function isEmail(email: string): boolean {
   return email.length <= EMAIL_MAX && EMAIL.test(email)
 }
 
-/** A revision (baseRev, lifeRev, orderRev …) is a count: NaN, fractions, negative and infinite numbers are no revision. */
+/** A revision (baseRev, lifeRev …) is a count: NaN, fractions, negative and infinite numbers are no revision. */
 export function isRev(value: number): boolean {
   return Number.isSafeInteger(value) && value >= 0
 }

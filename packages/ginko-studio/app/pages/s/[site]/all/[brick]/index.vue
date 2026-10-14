@@ -59,12 +59,9 @@ function status(entry: Entry): string {
 
 const moving = ref(false)
 async function move(index: number, by: -1 | 1) {
-  const order = entries.value.map((e) => e._id)
-  const [id] = order.splice(index, 1)
-  order.splice(index + by, 0, id!)
   moving.value = true
   try {
-    await ops.reorderEntries(key.value, order, s.site.value?.orderRevs[key.value] ?? 0)
+    await ops.moveEntry(entries.value[index]!._id, by < 0 ? 'up' : 'down')
   } finally {
     moving.value = false
   }

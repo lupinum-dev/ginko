@@ -122,9 +122,10 @@ describe('translations (SPEC 3 prints)', () => {
 })
 
 describe('entries.undo of structural changes', () => {
-  it('a reorder change (no entry) is NOT_UNDOABLE, not NOT_FOUND', async () => {
-    const { t, as, site } = await setup()
-    const change = await t.run((ctx) => ctx.db.insert('changes', { site, brick: 'menu', actor: 'u-wirtin', opId: 'x', kind: 'reorder', sentence: 'Reihenfolge', contentRev: 2, at: Date.now() }))
+  it('a move is NOT_UNDOABLE, not NOT_FOUND', async () => {
+    const { t, as, entries } = await setup()
+    await as.owner.mutation(api.entries.move, { site: 'restaurant', opId: opId(), entry: entries['menu-frittaten']!, direction: 'up' })
+    const change = (await t.run((ctx) => ctx.db.query('changes').collect())).find((c) => c.kind === 'reorder')!._id
     expect((await errorOf(as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change }))).code).toBe('NOT_UNDOABLE')
   })
 })
@@ -146,15 +147,13 @@ async function readyImage(s: Awaited<ReturnType<typeof setup>>) {
 
 describe('revisions are whole numbers from 0 (F01)', () => {
   // NaN is false in every `>` and `<`, so it used to skip the conflict check of save.
-  it.each([['NaN', NaN], ['-1', -1], ['0.5', 0.5], ['Infinity', Infinity]])('save, remove, restore and reorder refuse %s', async (_name, bad) => {
+  it.each([['NaN', NaN], ['-1', -1], ['0.5', 0.5], ['Infinity', Infinity]])('save, remove and restore refuse %s', async (_name, bad) => {
     const { as, entries } = await setup()
     const entry = entries['menu-saibling']!
     const save = as.cook.mutation(api.entries.save, { site: 'restaurant', task: 'menu.price', opId: opId(), entry, baseRev: bad, fields: { price: { amount: 999 } }, sentence: 'x' })
     expect((await errorOf(save)).code).toBe('INVALID')
     expect((await errorOf(as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: bad }))).code).toBe('INVALID')
     expect((await errorOf(as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry, lifeRev: bad }))).code).toBe('INVALID')
-    const reorder = as.owner.mutation(api.entries.reorder, { site: 'restaurant', opId: opId(), brick: 'menu', order: [entry], orderRev: bad })
-    expect((await errorOf(reorder)).code).toBe('INVALID')
   })
 
   it('a stale baseRev is still CHANGED_SINCE', async () => {

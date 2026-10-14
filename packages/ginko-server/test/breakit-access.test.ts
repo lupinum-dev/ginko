@@ -69,7 +69,7 @@ const publicCalls: Call[] = [
   { fn: 'entries.restore', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-saibling'], lifeRev: 1 }) },
   { fn: 'entries.publish', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-saibling'], lifeRev: 1 }) },
   { fn: 'entries.unpublish', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-saibling'], lifeRev: 1 }) },
-  { fn: 'entries.reorder', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), brick: 'menu', order: [s.entries['menu-saibling']], orderRev: 0 }) },
+  { fn: 'entries.move', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-frittaten'], direction: 'up' }) },
   { fn: 'entries.removed', kind: 'query', args: () => ({ ...SITE, brick: 'menu' }) },
   { fn: 'entries.usedBy', kind: 'query', args: (s) => ({ ...SITE, entry: s.entries['menu-saibling'] }) },
   { fn: 'entries.trash', kind: 'query', args: () => SITE },
@@ -256,7 +256,7 @@ describe('2. staff (the cook) outside the grants', () => {
     expect(code).toBe('FORBIDDEN')
   })
 
-  it('entries.create / duplicate / remove / restore / reorder refuse a cook without the matching task', async () => {
+  it('entries.create / duplicate / remove / restore / move refuse a cook without the matching task', async () => {
     const s = await setup()
     const notice = s.entries['notice-ausgebucht']!
     const results = {
@@ -265,7 +265,7 @@ describe('2. staff (the cook) outside the grants', () => {
       duplicateNotice: await outcome(s.as.cook.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), task: 'menu.add', entry: notice })),
       removeNotice: await outcome(s.as.cook.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), task: 'menu.remove', entry: notice, lifeRev: 1 })),
       removeWithEditTask: await outcome(s.as.cook.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), task: 'menu.edit', entry: saibling(s), lifeRev: 1 })),
-      reorder: await outcome(s.as.cook.mutation(api.entries.reorder, { site: 'restaurant', opId: opId(), brick: 'menu', order: Object.values(s.entries).slice(0, 1), orderRev: 0 })),
+      reorder: await outcome(s.as.cook.mutation(api.entries.move, { site: 'restaurant', opId: opId(), entry: s.entries['menu-frittaten']!, direction: 'up' })),
     }
     expect(results).toEqual({ createNotice: 'FORBIDDEN', createNoTask: 'FORBIDDEN', duplicateNotice: 'FORBIDDEN', removeNotice: 'FORBIDDEN', removeWithEditTask: 'FORBIDDEN', reorder: 'FORBIDDEN' })
     expect((await rows(s, 'entries')).filter((e) => !e.deletedAt).length).toBe(Object.keys(s.entries).length)
@@ -440,7 +440,7 @@ const cross: CrossCall[] = [
   { fn: 'entries.remove', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
   { fn: 'entries.duplicate', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry }) },
   { fn: 'entries.publish', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
-  { fn: 'entries.reorder', kind: 'mutation', args: (site, f) => ({ site, opId: o(), brick: 'menu', order: [f.entry], orderRev: 0 }) },
+  { fn: 'entries.move', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, direction: 'down' }) },
   { fn: 'entries.whyNotPublic', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
   { fn: 'entries.removed', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
   { fn: 'entries.usedBy', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
@@ -1276,7 +1276,7 @@ describe('7c. references to files and entries of another site, brick or state', 
     expect(await outcome(s.as.owner.mutation(api.entries.create, { ...SITE, opId: opId(), brick: 'notices', data: { text: { de: 'x' }, related: foreign } }))).toMatch(REFUSAL)
   })
 
-  it('structural arguments: lifeRev, orderRev and publish time are checked as numbers', async () => {
+  it('structural arguments: lifeRev and publish time are checked as numbers', async () => {
     const s = await setup()
     await enableDrafts(s)
     const draft = (await s.as.owner.mutation(api.entries.create, { ...SITE, opId: opId(), brick: 'events', data: { title: { de: 'Fest' }, when: { from: '2027-01-02', to: '2027-01-02' }, description: { de: 'x' } } })) as { entry: string }
@@ -1288,7 +1288,6 @@ describe('7c. references to files and entries of another site, brick or state', 
       results.push(await outcome(s.as.owner.mutation(api.entries.restore, { ...SITE, opId: opId(), entry: menu, lifeRev: n })))
       results.push(await outcome(s.as.owner.mutation(api.entries.publish, { ...SITE, opId: opId(), entry: draft.entry, lifeRev: n })))
       results.push(await outcome(s.as.owner.mutation(api.entries.unpublish, { ...SITE, opId: opId(), entry: draft.entry, lifeRev: n })))
-      results.push(await outcome(s.as.owner.mutation(api.entries.reorder, { ...SITE, opId: opId(), brick: 'menu', order: [menu], orderRev: n })))
     }
     for (const at of [NaN, Infinity, -5, 1000, 1.5, Date.now() + 5 * 365 * 24 * 3600 * 1000, Date.now() + 5000.5]) {
       results.push(await outcome(s.as.owner.mutation(api.entries.publish, { ...SITE, opId: opId(), entry: draft.entry, lifeRev: 1, at })))

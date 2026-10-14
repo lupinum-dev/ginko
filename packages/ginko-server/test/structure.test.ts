@@ -1,4 +1,4 @@
-// entries.create, remove, restore, reorder and tasks.prefill against SPEC 2.2, 2.7, 3 and 4.2.
+// entries.create, remove, restore, move and tasks.prefill against SPEC 2.2, 2.7, 3 and 4.2.
 import { printOf } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
@@ -156,47 +156,79 @@ describe('entries.remove and restore', () => {
     expect(await errorOf(as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change._id }))).toMatchObject({ code: 'NOT_UNDOABLE' })
   })
 
-  it('an entry of site andere is NOT_FOUND for remove, restore and reorder via site restaurant', async () => {
-    const { t, as, other, entries } = await setup()
+  it('an entry of site andere is NOT_FOUND for remove, restore and move via site restaurant', async () => {
+    const { t, as, other } = await setup()
     const foreign = await t.run((ctx) => ctx.db.insert('entries', { site: other, brick: 'menu', kind: 'item', order: 1, data: {}, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, bytes: 2 }))
     expect(await errorOf(as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: foreign, lifeRev: 1 }))).toMatchObject({ code: 'NOT_FOUND' })
     expect(await errorOf(as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: foreign, lifeRev: 1 }))).toMatchObject({ code: 'NOT_FOUND' })
-    const menu = Object.keys(entries).filter((k) => k.startsWith('menu-')).map((k) => entries[k]!)
-    expect(await errorOf(as.owner.mutation(api.entries.reorder, { site: 'restaurant', opId: opId(), brick: 'menu', order: [foreign, ...menu], orderRev: 0 }))).toMatchObject({ code: 'NOT_FOUND' })
+    expect(await errorOf(as.owner.mutation(api.entries.move, { site: 'restaurant', opId: opId(), entry: foreign, direction: 'up' }))).toMatchObject({ code: 'NOT_FOUND' })
   })
 })
 
-describe('entries.reorder', () => {
-  const menuIds = (entries: Record<string, Id<'entries'>>) => Object.keys(entries).filter((k) => k.startsWith('menu-')).map((k) => entries[k]!)
+describe('entries.move', () => {
+  const MENU = ['menu-saibling', 'menu-frittaten', 'menu-schnitzel', 'menu-risotto', 'menu-dal', 'menu-marillen', 'menu-veltliner', 'menu-topfen']
+  const menuRows = (s: Awaited<ReturnType<typeof setup>>) => s.t.run(async (ctx) => (await ctx.db.query('entries').collect()).filter((e) => e.site === s.site && e.brick === 'menu').sort((a, b) => a.order - b.order))
+  const move = (s: Awaited<ReturnType<typeof setup>>, entry: string, direction: 'up' | 'down', who: 'owner' | 'cook' = 'owner') =>
+    s.as[who].mutation(api.entries.move, { site: 'restaurant', opId: opId(), entry, direction })
 
-  it('a second reorder with the same orderRev is CHANGED_SINCE; the first one moves the list', async () => {
-    const { as, entries } = await setup()
-    const reversed = menuIds(entries).reverse()
-    await expect(as.owner.mutation(api.entries.reorder, { site: 'restaurant', opId: opId(), brick: 'menu', order: reversed, orderRev: 0 })).resolves.toEqual({ orderRev: 1, contentRev: 2 })
-    expect(await errorOf(as.owner.mutation(api.entries.reorder, { site: 'restaurant', opId: opId(), brick: 'menu', order: menuIds(entries), orderRev: 0 }))).toMatchObject({ code: 'CHANGED_SINCE', details: { orderRev: 1 } })
+  // Wrong behaviour caught: one step rewrites every row after the moved one (and resends the whole list), so a move at
+  // 1,000 entries takes seconds and conflicts with any other move.
+  it('moving the third menu entry up writes one order value', async () => {
+    const s = await setup()
+    const [first, second, third] = MENU.map((k) => s.entries[k]!)
+    const before = await menuRows(s)
+    expect(await move(s, third!, 'up')).toEqual({ order: 1.5, contentRev: 2 })
+    const after = await menuRows(s)
+    expect(after.slice(0, 3).map((r) => [r._id, r.order])).toEqual([[first, 1], [third, 1.5], [second, 2]])
+    expect(after.filter((r) => r._id !== third && r.rev !== before.find((b) => b._id === r._id)!.rev)).toEqual([])
+    const change = (await s.t.run((ctx) => ctx.db.query('changes').collect())).find((c) => c.kind === 'reorder')
+    expect(change).toMatchObject({ entry: third, brick: 'menu', actor: 'u-wirtin', entryRev: 2, contentRev: 2 })
   })
 
-  it.each([
-    { why: 'a missing id', order: (ids: Id<'entries'>[]) => ids.slice(1), code: 'INVALID' },
-    { why: 'a duplicate id', order: (ids: Id<'entries'>[]) => [...ids.slice(0, -1), ids[0]!], code: 'INVALID' },
-  ])('rejects a list with $why', async ({ order, code }) => {
-    const { as, entries } = await setup()
-    const call = as.owner.mutation(api.entries.reorder, { site: 'restaurant', opId: opId(), brick: 'menu', order: order(menuIds(entries)), orderRev: 0 })
-    expect((await errorOf(call)).code).toBe(code)
+  // Wrong behaviour caught: after about 50 halvings of one gap the midpoint equals a neighbour, and a move silently does nothing.
+  it('60 moves into the same gap keep the order strictly increasing and land where asked', async () => {
+    const s = await setup()
+    const ids = MENU.map((k) => s.entries[k]!)
+    for (let i = 0; i < 60; i++) {
+      // The entry in third place moves up into the gap between the first and the second, over and over.
+      const third = (await menuRows(s))[2]!._id
+      await move(s, third, 'up')
+      const rows = await menuRows(s)
+      expect(rows[1]!._id).toBe(third)
+      expect(rows.every((r, j) => j === 0 || r.order > rows[j - 1]!.order)).toBe(true)
+    }
+    const rows = await menuRows(s)
+    expect([rows[0]!._id, ...rows.slice(3).map((r) => r._id)]).toEqual([ids[0], ...ids.slice(3)])
   })
 
-  it('rejects a list with a deleted id', async () => {
-    const { as, entries } = await setup()
-    await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: entries['menu-topfen']!, lifeRev: 1 })
-    const call = as.owner.mutation(api.entries.reorder, { site: 'restaurant', opId: opId(), brick: 'menu', order: menuIds(entries), orderRev: 1 })
-    expect((await errorOf(call)).code).toBe('INVALID')
+  it('the first entry up and the last entry down change nothing', async () => {
+    const s = await setup()
+    const before = await menuRows(s)
+    expect(await move(s, s.entries['menu-saibling']!, 'up')).toEqual({ order: 1, contentRev: 1 })
+    expect(await move(s, s.entries['menu-topfen']!, 'down')).toEqual({ order: 8, contentRev: 1 })
+    expect(await menuRows(s)).toEqual(before)
   })
 
-  it('reorder on a collection with a date order is rejected', async () => {
-    const { as, entries } = await setup()
-    const events = Object.keys(entries).filter((k) => ['weinabend', 'martinigans', 'sommerfest'].includes(k)).map((k) => entries[k]!)
-    const call = as.owner.mutation(api.entries.reorder, { site: 'restaurant', opId: opId(), brick: 'events', order: events, orderRev: 0 })
-    expect((await errorOf(call)).code).toBe('INVALID')
+  it('two moves of different entries at once both apply', async () => {
+    const s = await setup()
+    await Promise.all([move(s, s.entries['menu-frittaten']!, 'up'), move(s, s.entries['menu-topfen']!, 'up')])
+    expect((await menuRows(s)).map((r) => r._id)).toEqual(['menu-frittaten', 'menu-saibling', 'menu-schnitzel', 'menu-risotto', 'menu-dal', 'menu-marillen', 'menu-topfen', 'menu-veltliner'].map((k) => s.entries[k]))
+  })
+
+  it('a removed entry is passed over: the next live one is the neighbour', async () => {
+    const s = await setup()
+    await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: s.entries['menu-frittaten']!, lifeRev: 1 })
+    await move(s, s.entries['menu-schnitzel']!, 'up')
+    const live = (await menuRows(s)).filter((r) => !r.deletedAt).map((r) => r._id)
+    expect(live.slice(0, 2)).toEqual([s.entries['menu-schnitzel'], s.entries['menu-saibling']])
+  })
+
+  it('refuses staff, an auto-sorted collection and a removed entry', async () => {
+    const s = await setup()
+    expect((await errorOf(move(s, s.entries['menu-frittaten']!, 'up', 'cook'))).code).toBe('FORBIDDEN')
+    expect((await errorOf(move(s, s.entries.martinigans!, 'up'))).code).toBe('INVALID')
+    await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: s.entries['menu-frittaten']!, lifeRev: 1 })
+    expect((await errorOf(move(s, s.entries['menu-frittaten']!, 'up'))).code).toBe('CHANGED_SINCE')
   })
 })
 
