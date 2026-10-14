@@ -185,12 +185,12 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
   // 3. Entries in batches. A batch carries the files that its entries mention (found by their ID in the
   // entry's JSON, which may name a few too many, never too few); the platform stores each file once.
   const folders = data.folders ?? []
-  const toFile = ({ id, name, mime, size, width, height, folder, kept, focus, sha256, original }: SiteExport['files'][number]) => ({
+  const toFile = ({ id, name, mime, size, width, height, folder, kept, focus, sha256, original, alt }: SiteExport['files'][number]) => ({
     id, storageId: stored.get(id)!, name, mime, size,
     ...(width === undefined ? {} : { width }), ...(height === undefined ? {} : { height }),
     ...(folder === undefined ? {} : { folder }), ...(kept ? { kept: true } : {}),
     ...(focus === undefined ? {} : { focus }), ...(sha256 === undefined ? {} : { sha256 }),
-    ...(original ? { original: true } : {}),
+    ...(original ? { original: true } : {}), ...(alt === undefined ? {} : { alt }),
   })
   // Every call carries all folders (a few rows; the platform matches them by name and parent).
   const toArgs = (entries: ExportEntry[]) => {

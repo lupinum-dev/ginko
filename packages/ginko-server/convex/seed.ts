@@ -187,6 +187,8 @@ export const importExport = internalMutation({
       sha256: v.optional(v.string()),
       /** The original file (`local:files-export`), not a processed copy from a backup: it goes through the upload pipeline. */
       original: v.optional(v.boolean()),
+      /** The Files library description per language. */
+      alt: v.optional(v.record(v.string(), v.string())),
     })),
     /** The folders of the export, parents first or in any order. */
     folders: v.optional(v.array(v.object({ id: v.string(), name: v.string(), parent: v.optional(v.string()) }))),
@@ -227,6 +229,8 @@ export const importExport = internalMutation({
     }
 
     const uploads = new Map<string, Id<'uploads'>>()
+    // A backup carries no smaller copies (variants): restored images get them made afterwards.
+    let withoutVariants = false
     for (const file of args.files) {
       // A repeated batch names the same stored file: it is stored once.
       const have = await ctx.db.query('uploads').withIndex('by_storage', (q) => q.eq('storageId', file.storageId)).first()
@@ -249,6 +253,7 @@ export const importExport = internalMutation({
         ...(file.kept ? { kept: true } : {}),
         ...(file.focus ? { focus: file.focus } : {}),
         ...(sha256 ? { sha256 } : {}),
+        ...(file.alt && Object.keys(file.alt).length ? { alt: file.alt } : {}),
       }
       if (file.original) {
         // An original takes the path of every upload (uploadsNode): content check, metadata removed, WebP, size limit, variants.
@@ -265,6 +270,7 @@ export const importExport = internalMutation({
         ...(file.height === undefined ? {} : { height: file.height }),
         status: 'ready', attempts: 0, ...library,
       }))
+      if (file.mime.startsWith('image/')) withoutVariants = true
     }
 
     // 1. Check every row before anything is stored, and collect every problem, so the operator fixes them in one pass.
@@ -343,6 +349,8 @@ export const importExport = internalMutation({
       }
       await syncEntryRefs(ctx, site._id, id, new Map([...usesOf(fields, data, schema.locales)].filter(([file]) => known.has(file))))
     }
+    // It only touches ready images without variants, so a second run (next batch) changes nothing.
+    if (withoutVariants) await ctx.scheduler.runAfter(0, internal.images.backfillVariants, {})
     await ctx.db.patch(site._id, {
       bytes: site.bytes + bytes, trashBytes: trashAfter, treeBytes: (site.treeBytes ?? 0) + treeBytes, entryCount: site.entryCount + live,
     })

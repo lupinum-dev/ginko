@@ -82,6 +82,8 @@ export interface ExportFileInfo {
   sha256?: string
   /** The bytes are the original file (`local:files-export`), not a processed copy: the import runs them through the upload pipeline. */
   original?: true
+  /** The description written in the Files library, per language. Absent in older exports. */
+  alt?: Record<string, string>
 }
 
 /** A folder of the asset library; `parent` is another folder's `id`. */
@@ -142,6 +144,7 @@ export function parseExport(value: unknown, locator: 'url' | 'path', problem: st
       && typeof f.id === 'string' && typeof f.name === 'string' && typeof f.mime === 'string' && typeof f.size === 'number'
       && typeof f[locator] === 'string' && optionalNumber(f.width) && optionalNumber(f.height)
       && optionalString(f.folder) && optionalString(f.sha256) && (f.kept === undefined || typeof f.kept === 'boolean') && (f.original === undefined || f.original === true)
+      && (f.alt === undefined || (isObject(f.alt) && Object.values(f.alt).every((text) => typeof text === 'string')))
       && (f.focus === undefined || (isObject(f.focus) && typeof f.focus.x === 'number' && typeof f.focus.y === 'number')))
     && (value.folders === undefined || (Array.isArray(value.folders) && value.folders.every((f) => isObject(f)
       && typeof f.id === 'string' && typeof f.name === 'string' && optionalString(f.parent))))

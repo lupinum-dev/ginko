@@ -231,7 +231,9 @@ async function bundleOf(s: Setup, locale: string) {
 describe('export → import round trip (SPEC 12)', () => {
   it('gives the imported site the same bundle, new ready uploads, deleted entries and exact counters', async () => {
     vi.stubEnv('GINKO_LOCAL', '1')
-    const { s: prod } = await production()
+    const { s: prod, kitchen } = await production()
+    // The Files library description must survive the backup (it is the default text of every use).
+    await prod.as.owner.mutation(api.files.setAlt, { site: 'restaurant', file: kitchen, locale: 'de', text: 'Ein Hund' })
     const local = await setup() // the plain corpus, without the gallery images and the deletion: import must replace it
     const dir = await tempDir()
     await exportOf(prod, dir)
@@ -268,6 +270,7 @@ describe('export → import round trip (SPEC 12)', () => {
     // The bytes moved with them: the first image's upload serves the exported WebP copy from the local storage.
     const first = imported.find((u) => u._id === fileIds[0])!
     expect(await local.t.run(async (ctx) => (await ctx.storage.get(first.storageId))?.text())).toBe('webp-bytes-kitchen')
+    expect(first.alt).toEqual({ de: 'Ein Hund' })
     expect(rows.refs.filter((r) => r.holder === 'entry').map((r) => r.file).sort()).toEqual([...fileIds, fileIds[0]].sort())
 
     // Deleted entries come back deleted; the addresses are rebuilt; counters count live entries only.

@@ -48,6 +48,7 @@ export const snapshot = internalQuery({
         ...(upload.kept ? { kept: true } : {}),
         ...(upload.focus === undefined ? {} : { focus: upload.focus }),
         ...(upload.sha256 === undefined ? {} : { sha256: upload.sha256 }),
+        ...(upload.alt && Object.keys(upload.alt).length ? { alt: upload.alt } : {}),
       })
     }
 
