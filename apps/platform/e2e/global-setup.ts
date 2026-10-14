@@ -13,8 +13,13 @@ export const STATE = { owner: 'e2e/.state/wirtin.json', cook: 'e2e/.state/koch.j
  * hint, so stop here with the reason. The site name is in the runtime config the Ginko module puts into the page.
  */
 async function checkPreviewSite() {
-  const html = await (await fetch('http://localhost:3000/')).text()
-  const site = /ginko"?:\{"?site"?:"([^"]+)"/.exec(html)?.[1]
+  // The site may answer 503 until the Studio on 3100, which it reads its content from, has compiled: wait for a page.
+  let site: string | undefined
+  for (let tries = 0; tries < 60 && !site; tries++) {
+    if (tries) await new Promise((done) => setTimeout(done, 2000))
+    const html = await fetch('http://localhost:3000/').then((r) => r.text(), () => '')
+    site = /ginko"?:\{"?site"?:"([^"]+)"/.exec(html)?.[1]
+  }
   if (site !== 'restaurant') throw new Error(`Port 3000 serves the site “${site ?? 'unknown'}”, not sites/restaurant. The Studio preview loads http://localhost:3000, so the preview tests would fail. Stop the other dev server and run the tests again.`)
 }
 

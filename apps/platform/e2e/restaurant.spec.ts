@@ -240,7 +240,8 @@ test.describe('Koch', () => {
     await expect(price).toHaveValue('22,50')
     await page.getByRole('button', { name: 'Speichern' }).click()
     const conflict = page.getByRole('dialog').getByRole('alert')
-    await expect(conflict).toContainText('Inzwischen hat jemand Preis geändert.')
+    // The cook sees the owner as "Ein Mitglied", the way History names her for staff.
+    await expect(conflict).toContainText('Ein Mitglied hat inzwischen Preis geändert.')
     await expect(conflict).toContainText('23,00')
     await expect(conflict).toContainText('22,50')
     await conflict.getByRole('button', { name: 'Meine Eingaben speichern' }).click()
@@ -356,7 +357,7 @@ test.describe('Gleichzeitig (Astra phase 8)', () => {
     await other.close()
 
     await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-    const panel = page.getByRole('alert').filter({ hasText: 'Inzwischen hat jemand' })
+    const panel = page.getByRole('alert').filter({ hasText: /inzwischen/i })
     await expect(panel).toContainText('Du hast „Kaspressknödel-Fest“ hinzugefügt')
     await expect(panel).toContainText('„Frittatensuppen-Tag“ hinzugefügt')
     await page.getByRole('button', { name: 'Beides behalten' }).click()
