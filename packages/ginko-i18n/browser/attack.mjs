@@ -82,6 +82,7 @@ function headOf(html) {
     canonical: links.filter(t => attr(t, 'rel') === 'canonical').map(t => attr(t, 'href')),
     alternates: Object.fromEntries(links.filter(t => attr(t, 'rel') === 'alternate' && attr(t, 'hreflang')).map(t => [attr(t, 'hreflang'), attr(t, 'href')])),
     ogLocale: tags.filter(t => attr(t, 'property') === 'og:locale').map(t => attr(t, 'content')),
+    ogUrl: tags.filter(t => attr(t, 'property') === 'og:url').map(t => attr(t, 'content')),
     h1: /<h1[^>]*>([^<]*)</.exec(html)?.[1]?.trim(),
     switcher: Object.fromEntries([...html.matchAll(/<a[^>]*data-test="switch-(\w+)"[^>]*>/g)].map(m => [m[1], attr(m[0], 'href')])),
   }
@@ -161,6 +162,7 @@ async function attackPages(name, base, strategy) {
     const canonical = `${BASE}${encodeURI(p.path)}`
     record(name, `one canonical ${p.path}`, head.canonical.length === 1 && [canonical, `${BASE}${p.path}`].includes(head.canonical[0]), JSON.stringify(head.canonical))
     record(name, `og:locale ${p.path}`, head.ogLocale[0] === LANG[p.locale].replace('-', '_'), JSON.stringify(head.ogLocale))
+    record(name, `og:url == canonical ${p.path}`, head.ogUrl.length === 1 && head.ogUrl[0] === head.canonical[0], JSON.stringify(head.ogUrl))
     // Switcher links in the HTML must agree with hreflang (crawlers and no-JS users see this HTML).
     const translatedSwitch = Object.entries(head.switcher).filter(([code]) => head.alternates[LANG[code]])
     const disagree = translatedSwitch.filter(([code, href]) => `${BASE}${href}` !== head.alternates[LANG[code]] && `${BASE}${encodeURI(href)}` !== head.alternates[LANG[code]])
