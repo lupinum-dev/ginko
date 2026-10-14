@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees, sourceProblem } from '../src/core/compiler'
 import { defineCatalog } from '../src/core/catalog'
 import { createFormatters } from '../src/core/format'
-import { alternatesOf, canonicalCase, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, resolveConfig, stripLocale } from '../src/core/locales'
+import { alternatesOf, cleanPath, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, resolveConfig, stripLocale } from '../src/core/locales'
 import { createTranslator, formatParts } from '../src/core/messages'
 
 const pexd = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de' })
@@ -69,9 +69,10 @@ describe('paths', () => {
     expect(negotiateLocale('pt-br', config)).toBe('pt-BR')
   })
   it.each([
-    ['/EN/about', '/en/about'], ['/pt-br/x?', '/pt-BR/x?'], ['/PT-BR', '/pt-BR'], ['/en/about', undefined], ['/pt-BR/x', undefined], ['/about', undefined],
-  ])('canonicalCase(%s) → %s', (path, expected) => {
-    expect(canonicalCase(path, resolveConfig({ locales: ['de', 'en', { code: 'pt-BR', language: 'pt-BR' }] }))).toBe(expected)
+    ['//blog', '/blog'], ['/blog/', '/blog'], ['//en//blog/', '/en/blog'], ['/EN/about/', '/en/about'], ['/pt-br/x', '/pt-BR/x'], ['/PT-BR', '/pt-BR'],
+    ['//evil.com', '/evil.com'], ['/', undefined], ['/en', undefined], ['/blog', undefined], ['/pt-BR/x', undefined],
+  ])('cleanPath(%s) → %s', (path, expected) => {
+    expect(cleanPath(path, resolveConfig({ locales: ['de', 'en', { code: 'pt-BR', language: 'pt-BR' }] }))).toBe(expected)
   })
   it('rejects two locales with one URL code', () => {
     expect(() => resolveConfig({ locales: ['en-GB', 'en-US'] })).toThrow(/Two locales use the URL code "en"/)

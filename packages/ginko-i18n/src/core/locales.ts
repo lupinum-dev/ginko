@@ -161,6 +161,18 @@ export function canonicalCase(path: string, config: LocaleConfig): string | unde
   return `/${locale.code}${path.slice(segment.length + 1)}`
 }
 
+/**
+ * The one form of a path: no repeated slashes, no trailing slash (except `/`), the locale code in its
+ * own case. `undefined` when the path already has it. The result always starts with exactly one `/`,
+ * so `//evil.com` becomes `/evil.com` and a redirect to it never leaves the site.
+ */
+export function cleanPath(path: string, config: LocaleConfig): string | undefined {
+  let clean = path.replace(/\/{2,}/g, '/')
+  if (clean.length > 1 && clean.endsWith('/')) clean = clean.slice(0, -1)
+  clean = canonicalCase(clean, config) ?? clean
+  return clean === path ? undefined : clean
+}
+
 /** The locale a path belongs to, or `undefined` when the path has no locale (`prefix` root, excluded paths, user-locale zones). */
 export function localeFromPath(path: string, config: LocaleConfig): string | undefined {
   if (isExcluded(path, config) || inUserZone(path, config)) return undefined

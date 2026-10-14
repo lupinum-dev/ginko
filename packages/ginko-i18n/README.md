@@ -212,6 +212,10 @@ locale) and `og:locale`. Pages that are not translated into a locale get no href
 `baseUrl` so the links are absolute; without it the module uses `runtimeConfig.public.siteUrl`, and
 without both the links are relative (the build warns). Turn the tags off with `seo: false`.
 
+Every page has one URL. The server answers other spellings of it with a 301 to that URL: repeated
+slashes (`//blog`), a trailing slash (`/blog/`) and a locale code in another case (`/EN/about`). URLs
+therefore never end in `/`, except the root.
+
 With `@nuxtjs/sitemap` installed, the module turns its `autoI18n` off and gives it explicit alternates,
 because `@nuxtjs/sitemap` pairs locales by stripping the prefix, which is wrong for translated slugs.
 This covers static pages only: pages with a dynamic segment (`/blog/[slug]`) are not in the list. Add
@@ -473,6 +477,7 @@ Framework-free and parser-free. See [Outside Nuxt](#outside-nuxt).
 | `isExcluded(path, config)` | Whether the path never gets a prefix (`exclude`, `/api/**`, Nuxt internals). |
 | `inUserZone(path, config)` | Whether the path is in a user-locale zone (`userLocale`). |
 | `canonicalCase(path, config)` | The path with its prefix in the code's own case (`/EN/about` → `/en/about`), or `undefined` when it is already right. |
+| `cleanPath(path, config)` | The one form of a path: no repeated or trailing slashes, the prefix in the code's own case (`//EN/about/` → `/en/about`), or `undefined` when it is already right. The server redirects other forms here with a 301. |
 | `alternatesOf(paths, config)` | The hreflang links of a page from its path per code: `{ hreflang, path }[]`, with `x-default` for the default locale. The head tags and the sitemap use it. |
 | `ogLocale(language)` | The `og:locale` form of a tag: `de-AT` → `de_AT`. |
 | `partsToString(parts)` | The plain text of a `parts()` result. |
