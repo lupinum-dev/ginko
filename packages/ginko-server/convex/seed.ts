@@ -247,9 +247,10 @@ export const importExport = internalMutation({
     // removed ones too (a restore must be able to save them), the live entries against the site, the removed ones
     // against the trash.
     const problems: ImportProblem[] = []
-    const rows: { row: (typeof args.entries)[number]; fields: Fields; data: Data; size: number }[] = []
+    const rows: { row: (typeof args.entries)[number]; fields: Fields; data: Data; size: number; trees: { json: string; bytes: number } }[] = []
     let bytes = 0
     let trashBytes = 0
+    let treeBytes = 0
     let live = 0
     // Entries with values the Studio would refuse today, and the first such value (for the CLI's one-line notice).
     let warnings = 0
@@ -270,27 +271,29 @@ export const importExport = internalMutation({
       }
       const size = entryBytes(data, row.prints)
       if (size > BUDGET.entryBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importEntryTooLarge', params: { id: row.id, used: sizeText(size), limit: sizeText(BUDGET.entryBytes) } })
+      // The trash keeps no trees.
+      const trees = row.deletedAt === undefined ? await treesOf(def.fields, data) : { json: '', bytes: 0 }
       if (row.deletedAt === undefined) {
         live++
         bytes += size
+        treeBytes += trees.bytes
       } else trashBytes += size
-      rows.push({ row, fields: def.fields, data, size })
+      rows.push({ row, fields: def.fields, data, size, trees })
     }
     if (site.entryCount + live > BUDGET.entries) problems.push({ code: 'TOO_LARGE', key: 'errors.siteEntryLimitReached', params: {} })
     if (site.bytes + bytes > BUDGET.siteBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importSiteTooLarge', params: { used: sizeText(site.bytes + bytes), limit: sizeText(BUDGET.siteBytes) } })
     const trashAfter = (site.trashBytes ?? 0) + trashBytes
     if (trashAfter > BUDGET.trashBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importTrashTooLarge', params: { used: sizeText(trashAfter), limit: sizeText(BUDGET.trashBytes) } })
+    // The bundle reads every live entry's trees: past the hidden guard, every public page would fail.
+    if ((site.treeBytes ?? 0) + treeBytes > BUDGET.treeBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.entryTooComplex', params: {} })
     const first = problems[0]
     if (first) fail(first.code, first.key, first.params, { problems: problems.map((p) => ({ ...p, message: t(DEFAULT_LOCALE, p.key, p.params) })) })
 
     // 2. Store.
     const ids: Record<string, Id<'entries'>> = {}
     const known = new Set<string>(uploads.values())
-    let treeBytes = 0
     const orderRevs: Record<string, number> = { ...site.orderRevs }
-    for (const { row, fields, data, size } of rows) {
-      // The trash keeps no trees.
-      const trees = row.deletedAt === undefined ? await treesOf(fields, data) : { json: '', bytes: 0 }
+    for (const { row, fields, data, size, trees } of rows) {
       const id = await ctx.db.insert('entries', {
         site: site._id, brick: row.brick, kind: row.kind, order: row.order, data, rev: row.rev,
         fieldRevs: Object.fromEntries(Object.keys(fields).map((f) => [f, row.rev])),
@@ -304,7 +307,6 @@ export const importExport = internalMutation({
         await ctx.db.patch(id, { publishAt: row.publishAt, publishJob: await ctx.scheduler.runAt(row.publishAt, internal.entries.publishDue, { entry: id, at: row.publishAt }) })
       }
       ids[row.id] = id
-      treeBytes += trees.bytes
       orderRevs[row.brick] = 1
       for (const [name, field] of Object.entries(fields)) {
         if (field.type !== 'slug') continue

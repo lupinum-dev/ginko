@@ -207,4 +207,23 @@ describe('import checks each entry like a save', () => {
       .toMatchObject({ entries: 3, warnings: 2, firstWarning: { id: 'authors/long', brick: 'authors', path: 'name.de', key: 'issues.tooLong' } })
     expect((await entriesOf(s, s.site)).length).toBe(before + 3)
   })
+
+  // Wrong behaviour caught: an import stores Markdown trees past the guard the saves keep, and every public page fails.
+  it('refuses live entries whose Markdown trees pass the site\'s guard', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(s.site))!
+      const schema = row.schema as { bricks: Record<string, unknown> }
+      schema.bricks.notes = { kind: 'collection', label, fields: { body: { type: 'markdown', label } } }
+      await ctx.db.patch(s.site, { schema, treeBytes: 8 * 1024 * 1024 - 10 })
+    })
+    const before = (await entriesOf(s, s.site)).length
+    const entry = (id: string, deletedAt?: number) => ({ id, brick: 'notes', kind: 'item' as const, order: 1, data: { body: { de: '## Hallo' } }, prints: {}, rev: 1, ...(deletedAt ? { deletedAt } : {}) })
+    const call = (entries: unknown[]) => s.t.mutation(makeFunctionReference<'mutation'>('seed:importExport'), { site: 'restaurant', files: [], entries })
+    // The trash keeps no trees.
+    await expect(call([entry('notes/gone', Date.parse('2026-10-01T00:00:00Z'))])).resolves.toMatchObject({ entries: 1 })
+    expect(await errorOf(call([entry('notes/live')]))).toMatchObject({ code: 'TOO_LARGE', message: 'Die Texte dieser Seite sind zu stark formatiert, um sie auszuliefern (z. B. sehr viele Überschriften oder Listenpunkte). Vereinfache diesen Text.' })
+    expect((await entriesOf(s, s.site)).length).toBe(before + 1)
+  })
 })
