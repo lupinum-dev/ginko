@@ -432,6 +432,8 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const entry = await ctx.db.insert('entries', {
       site: actor.site._id, brick: args.brick, kind: 'item', order, data, rev: 1,
       fieldRevs: Object.fromEntries(Object.keys(brick.fields).map((name) => [name, 1])), lifeRev: 1, prints, bytes: size, treeBytes: trees.bytes,
+      // A draft's `contentAt` is set again when it goes live.
+      contentAt: Date.now(),
       ...(draft ? { state: 'draft' as const } : {}),
     })
     await putTrees(ctx, actor.site._id, entry, trees.json)
@@ -585,7 +587,7 @@ export const restore = mutation({
       const order = Math.max(0, ...rows.map((r) => r.order)) + 1
       const now = Date.now()
       await ctx.db.patch(entry._id, {
-        deletedAt: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, order, treeBytes: trees.bytes,
+        deletedAt: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, order, treeBytes: trees.bytes, ...(entry.state === 'draft' ? {} : { contentAt: now }),
       })
       await putTrees(ctx, actor.site._id, entry._id, trees.json)
       c.entryCount += 1
@@ -623,10 +625,10 @@ async function cancelJob(ctx: MutationCtx, entry: Doc<'entries'>) {
   if (entry.publishJob) await ctx.scheduler.cancel(entry.publishJob)
 }
 
-/** Draft → live: state, no schedule, lifeRev+1, contentRev+1 and one 'publish' change. Shared by `publishAs` and `publishDue`. */
+/** Draft → live: state, no schedule, `contentAt`, lifeRev+1, contentRev+1 and one 'publish' change. Shared by `publishAs` and `publishDue`. */
 async function goLive(ctx: MutationCtx, c: Counters, entry: Doc<'entries'>, by: By, opId: string, history: Recorded, now = Date.now()) {
   await cancelJob(ctx, entry)
-  await ctx.db.patch(entry._id, { state: 'live', publishAt: undefined, publishJob: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1 })
+  await ctx.db.patch(entry._id, { state: 'live', publishAt: undefined, publishJob: undefined, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, contentAt: now })
   c.contentRev += 1
   return ctx.db.insert('changes', {
     site: entry.site, entry: entry._id, brick: entry.brick, ...by, opId, kind: 'publish', ...history, entryRev: entry.rev + 1, contentRev: c.contentRev, at: now,
@@ -898,11 +900,14 @@ export const whyNotPublic = query({
   },
 })
 
+/** Change kinds that alter what the public bundle shows: before `contentAt`, the newest of them was an entry's `updatedAt`. */
+const CONTENT_KINDS = new Set(['create', 'save', 'confirm', 'undo', 'restore', 'publish'])
+
 /**
  * Brings every entry to the storage model of now (internals/migrations.md) and writes its Markdown trees again
  * from its data, also after a parser change (a row keeps the trees of the parser it was saved with). Per entry:
- * `bytes` = core `entryBytes`, the trees into `entryTrees` (none in the trash), `treeBytes` and no legacy `trees`.
- * Works through 10 entries at a time and schedules itself;
+ * `bytes` = core `entryBytes`, the trees into `entryTrees` (none in the trash), `treeBytes`, no legacy `trees`, and
+ * `contentAt` from its change history when it has none. Works through 10 entries at a time and schedules itself;
  * then `recountStorage` sets every site's counters to the sums. Running it again is safe. Entries of a brick the
  * schema no longer has keep the trees they have.
  */
@@ -920,8 +925,13 @@ export const migrateStorage = internalMutation({
       const json = row.deletedAt !== undefined ? '' : brick ? (await treesOf(brick.fields, row.data as Data)).json : stored
       const treeBytes = new TextEncoder().encode(json).byteLength
       const bytes = entryBytes(row.data, row.prints)
-      if (json === stored && row.trees === undefined && bytes === row.bytes && treeBytes === row.treeBytes) continue
-      await ctx.db.patch(row._id, { bytes, treeBytes, trees: undefined })
+      let contentAt = row.contentAt
+      if (contentAt === undefined) {
+        const recent = await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', row._id)).order('desc').take(10)
+        contentAt = recent.find((change) => CONTENT_KINDS.has(change.kind))?.at ?? row._creationTime
+      }
+      if (json === stored && row.trees === undefined && bytes === row.bytes && treeBytes === row.treeBytes && contentAt === row.contentAt) continue
+      await ctx.db.patch(row._id, { bytes, treeBytes, contentAt, trees: undefined })
       if (json !== stored || row.trees !== undefined) await putTrees(ctx, row.site, row._id, json)
       // New trees change what the bundle serves: its caches must refresh.
       if (json !== stored && row.deletedAt === undefined && row.state !== 'draft') changed.add(row.site)
@@ -952,7 +962,7 @@ export const recountStorage = internalMutation({
 
 /**
  * Read-only check after `migrateStorage`, one site per call (repeat with `cursor` until `isDone`): entries that still
- * hold legacy `trees`, counters that differ from the sums over the entries, and entries over
+ * hold legacy `trees` or have no `contentAt`, counters that differ from the sums over the entries, and entries over
  * the entry limit (expected: none of each).
  */
 export const storageStatus = internalQuery({
@@ -966,7 +976,7 @@ export const storageStatus = internalQuery({
       const counters = { bytes: site.bytes, trashBytes: site.trashBytes, treeBytes: site.treeBytes }
       sites.push({
         site: site.slug,
-        legacyRows: rows.filter((row) => row.trees !== undefined || row.treeBytes === undefined).length,
+        legacyRows: rows.filter((row) => row.trees !== undefined || row.contentAt === undefined || row.treeBytes === undefined).length,
         countersMatch: counters.bytes === sums.bytes && counters.trashBytes === sums.trashBytes && counters.treeBytes === sums.treeBytes,
         counters,
         sums,

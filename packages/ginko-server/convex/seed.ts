@@ -232,7 +232,7 @@ export const importExport = internalMutation({
       const id = await ctx.db.insert('entries', {
         site: site._id, brick: row.brick, kind: row.kind, order: row.order, data, rev: row.rev,
         fieldRevs: Object.fromEntries(Object.keys(def.fields).map((f) => [f, row.rev])),
-        lifeRev: row.deletedAt === undefined ? 1 : 2, prints: row.prints, bytes: size, treeBytes: trees.bytes,
+        lifeRev: row.deletedAt === undefined ? 1 : 2, prints: row.prints, bytes: size, treeBytes: trees.bytes, contentAt: Date.now(),
         ...(row.deletedAt === undefined ? {} : { deletedAt: row.deletedAt }),
         ...(row.state === 'draft' ? { state: 'draft' as const } : {}),
       })

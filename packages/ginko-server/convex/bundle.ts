@@ -47,20 +47,6 @@ function sameSecret(a: string, b: string): boolean {
   return diff === 0
 }
 
-/** Change kinds that alter what the public bundle shows. Scheduling, unpublishing and reordering do not. */
-const CONTENT_KINDS = new Set(['create', 'save', 'confirm', 'undo', 'restore', 'publish'])
-
-/**
- * When a live entry last changed for the public: its newest content change (a draft's edits end in
- * its 'publish' change, so they count from the moment they went online). Changes are kept only for
- * a while (retention.ts); an older entry falls back to its creation time.
- */
-async function updatedAtOf(ctx: QueryCtx, entry: Doc<'entries'>): Promise<string> {
-  const recent = await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry._id)).order('desc').take(10)
-  const at = recent.find((change) => CONTENT_KINDS.has(change.kind))?.at ?? entry._creationTime
-  return new Date(at).toISOString()
-}
-
 /**
  * The bundle of one site and locale. `minRev` is `<schemaRev>.<contentRev>` as numbers;
  * a smaller stored number answers STALE, so a refresh never caches older content.
@@ -103,7 +89,9 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
     const list: StoredEntry[] = await Promise.all(live.map(async (row) => {
       const override = overrides?.get(row._id)
       const trees = override === undefined ? await storedTrees(ctx, row) : undefined
-      return { id: row._id, order: row.order, data: override ?? row.data, prints: row.prints, ...(trees ? { trees } : {}), updatedAt: await updatedAtOf(ctx, row) }
+      // `contentAt` is when the entry last changed for the public; an entry from before it counts from its creation.
+      const updatedAt = new Date(row.contentAt ?? row._creationTime).toISOString()
+      return { id: row._id, order: row.order, data: override ?? row.data, prints: row.prints, ...(trees ? { trees } : {}), updatedAt }
     }))
     // An entry that does not exist yet (a create that is only proposed) joins its collection at the end.
     for (const item of added) {

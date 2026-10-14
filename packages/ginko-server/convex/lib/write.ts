@@ -228,7 +228,8 @@ export async function commitEntry(ctx: MutationCtx, w: EntryWrite) {
   const draft = entry.state === 'draft'
   const contentRev = draft ? site.contentRev : site.contentRev + 1
   const now = Date.now()
-  await ctx.db.patch(entry._id, { data: w.data, prints: w.prints, trees: undefined, rev, fieldRevs, bytes, treeBytes: trees.bytes })
+  // A draft's edits reach the public when it goes live, so only a live entry's save is its new `contentAt`.
+  await ctx.db.patch(entry._id, { data: w.data, prints: w.prints, trees: undefined, rev, fieldRevs, bytes, treeBytes: trees.bytes, ...(draft ? {} : { contentAt: now }) })
   await putTrees(ctx, site._id, entry._id, trees.json)
   await ctx.db.patch(site._id, { contentRev, bytes: siteBytes, treeBytes })
 

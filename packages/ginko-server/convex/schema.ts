@@ -95,6 +95,11 @@ export default defineSchema({
     bytes: v.number(),
     /** UTF-8 bytes of this entry's rows in `entryTrees`; 0 in the trash, which keeps no trees. */
     treeBytes: v.optional(v.number()),
+    /**
+     * When the entry last changed for the public (ms): a save of a live entry, its creation, going live, a restore.
+     * The bundle's `updatedAt`. A draft's saves leave it alone; release migrations do too.
+     */
+    contentAt: v.optional(v.number()),
     deletedAt: v.optional(v.number()),
     /** Drafts (SPEC 15): absent means live. A draft is stored and counted but never in the public bundle. */
     state: v.optional(v.union(v.literal('draft'), v.literal('live'))),

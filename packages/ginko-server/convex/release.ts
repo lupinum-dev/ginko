@@ -63,7 +63,7 @@ async function insertSingle(ctx: MutationCtx, site: Id<'sites'>, single: NewSing
   const fieldRevs = Object.fromEntries(Object.keys(single.fields).map((name) => [name, 1]))
   const id = await ctx.db.insert('entries', {
     site, brick: single.brick, kind: 'single', order: 0, data: single.data, rev: 1, fieldRevs, lifeRev: 1,
-    prints: single.prints, bytes: single.bytes, treeBytes: single.trees.bytes,
+    prints: single.prints, bytes: single.bytes, treeBytes: single.trees.bytes, contentAt: Date.now(),
   })
   await putTrees(ctx, site, id, single.trees.json)
   await syncEntryRefs(ctx, site, id, await entryUses(ctx, single.fields, single.data, locales))

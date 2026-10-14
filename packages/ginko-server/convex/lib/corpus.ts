@@ -48,7 +48,7 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
       const fieldRevs = Object.fromEntries(Object.keys(def.fields).map((f) => [f, 1]))
       const id = await ctx.db.insert('entries', {
         site: site._id, brick, kind: def.kind === 'single' ? 'single' : 'item', order: row.order ?? index + 1,
-        data, rev: 1, fieldRevs, lifeRev: 1, prints, bytes: size, treeBytes: trees.bytes,
+        data, rev: 1, fieldRevs, lifeRev: 1, prints, bytes: size, treeBytes: trees.bytes, contentAt: Date.now(),
       })
       await putTrees(ctx, site._id, id, trees.json)
       bytes += size

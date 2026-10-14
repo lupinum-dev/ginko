@@ -136,10 +136,11 @@ describe('GET /bundle/<site>', () => {
     await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { imprint: { de: '**Hallo**' } }, sentence: 'Impressum' })
     const trees = () => s.t.run(async (ctx) => (await ctx.db.query('entryTrees').withIndex('by_entry', (q) => q.eq('entry', entry)).collect()).map((part) => part.json).join(''))
     const saved = await trees()
+    const savedAt = (await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry)).first()))!.at
     // A row from before: stale trees on the row itself (as after a parser change), bytes with trees, no newer fields or counters.
     await s.t.run(async (ctx) => {
       for (const part of await ctx.db.query('entryTrees').collect()) await ctx.db.delete(part._id)
-      await ctx.db.patch(entry, { trees: '{}', bytes: 99_999, treeBytes: undefined })
+      await ctx.db.patch(entry, { trees: '{}', bytes: 99_999, treeBytes: undefined, contentAt: undefined })
       await ctx.db.patch(s.site, { bytes: 1, trashBytes: undefined, treeBytes: undefined })
     })
     vi.useFakeTimers()
@@ -147,7 +148,7 @@ describe('GET /bundle/<site>', () => {
     await s.t.finishAllScheduledFunctions(vi.runAllTimers)
     const row = (await s.t.run((ctx) => ctx.db.get(entry)))!
     expect(row.trees).toBeUndefined()
-    expect(row).toMatchObject({ bytes: entryBytes(row.data, row.prints), treeBytes: new TextEncoder().encode(saved).byteLength })
+    expect(row).toMatchObject({ bytes: entryBytes(row.data, row.prints), treeBytes: new TextEncoder().encode(saved).byteLength, contentAt: savedAt })
     expect(await trees()).toBe(saved)
     // Every site is checked; the fixture's rows (more than one batch) are all migrated.
     const status = []
@@ -162,6 +163,21 @@ describe('GET /bundle/<site>', () => {
       { site: 'restaurant', legacyRows: 0, countersMatch: true, overLimit: [] },
       { site: 'andere', legacyRows: 0, countersMatch: true, overLimit: [] },
     ])
+  })
+
+  // Wrong behaviour caught: updatedAt comes from change rows, so it falls back to the creation time once retention deleted them.
+  it('updatedAt survives the change retention', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+    const s = await setup()
+    const entry = s.entries['menu-saibling']!
+    // Saved an hour after it was created; a year later retention deleted the change rows.
+    vi.setSystemTime(NOW + 60 * 60 * 1000)
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { price: { amount: 1500 } } })
+    vi.setSystemTime(NOW + 366 * DAY)
+    await s.t.run(async (ctx) => { for (const change of await ctx.db.query('changes').collect()) await ctx.db.delete(change._id) })
+    const bundle = await s.t.run(async (ctx) => bundleOf(ctx, (await ctx.db.get(s.site))!, 'de'))
+    expect(bundle.bricks.menu!.items!.find((item) => item.id === entry)!.updatedAt).toBe('2026-10-08T11:00:00.000Z')
   })
 
   it('an unknown locale delivers the main language and names the requested one', async () => {
