@@ -169,7 +169,7 @@
       "title": "Eliminar entrada",
       "text": "“{title}” se elimina del sitio web. Puedes restaurarla durante 30 días.",
       "confirm": "Eliminar",
-      "usedIn": "«{title}» se usa en {count, plural, one {# entrada} other {# entradas}}. Faltará allí en el sitio web hasta que lo restaures.",
+      "usedIn": "«{title}» se usa en {count, plural, one {# entrada} other {# entradas}}. El sitio web no lo mostrará allí hasta que restaures la entrada.",
       "confirmAnyway": "Eliminar de todos modos",
       "checking": "Comprobando dónde se usa esta entrada …"
     },

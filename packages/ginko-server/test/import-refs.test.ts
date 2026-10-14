@@ -125,7 +125,7 @@ describe('import keeps references between entries', () => {
     await withRefBricks(s, s.site)
     const call = (fn: string, args: Record<string, unknown>) => s.t.mutation(makeFunctionReference<'mutation'>(fn), args)
     const { ids } = (await call('seed:importExport', { site: 'restaurant', files: [], entries: manyRefs })) as { ids: Record<string, string> }
-    expect(await errorOf(call('seed:importRefs', { site: 'restaurant', ids }))).toMatchObject({ code: 'TOO_LARGE', message: 'Eintrag posts/many ist zu groß (684 KB, höchstens 480 KB).' })
+    expect(await errorOf(call('seed:importRefs', { site: 'restaurant', ids }))).toMatchObject({ code: 'TOO_LARGE', message: 'Eintrag „posts/many“ ist zu groß (684 KB, höchstens 480 KB).' })
     const post = (await entriesOf(s, s.site)).find((e) => e.brick === 'posts')!
     expect(post.data).toEqual({ more: Array<string>(20000).fill('authors/a') })
   })

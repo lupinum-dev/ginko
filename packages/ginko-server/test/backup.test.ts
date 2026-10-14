@@ -319,8 +319,8 @@ describe('import budget (SPEC 3)', () => {
     const before = await s.t.run((ctx) => ctx.db.query('entries').collect())
 
     const refused = await errorOf(s.t.mutation(internal.seed.importExport, { site: 'restaurant', files: [], entries }))
-    expect(refused).toMatchObject({ code: 'TOO_LARGE', message: 'Eintrag e1 ist zu groß (500 KB, höchstens 480 KB).' })
-    expect(refused.details).toMatchObject({ problems: [{ message: 'Eintrag e1 ist zu groß (500 KB, höchstens 480 KB).' }, { message: 'Eintrag e3 ist zu groß (600 KB, höchstens 480 KB).' }] })
+    expect(refused).toMatchObject({ code: 'TOO_LARGE', message: 'Eintrag „e1“ ist zu groß (500 KB, höchstens 480 KB).' })
+    expect(refused.details).toMatchObject({ problems: [{ message: 'Eintrag „e1“ ist zu groß (500 KB, höchstens 480 KB).' }, { message: 'Eintrag „e3“ ist zu groß (600 KB, höchstens 480 KB).' }] })
 
     const dir = await tempDir()
     const schema = (await s.t.run((ctx) => ctx.db.get(s.site)))!.schema

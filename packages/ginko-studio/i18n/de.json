@@ -169,7 +169,7 @@
       "title": "Eintrag entfernen",
       "text": "„{title}“ wird von der Website entfernt. Wiederherstellen geht 30 Tage lang.",
       "confirm": "Entfernen",
-      "usedIn": "„{title}“ wird in {count, plural, one {# Eintrag} other {# Einträgen}} verwendet. Dort fehlt es auf der Website, bis du es wiederherstellst.",
+      "usedIn": "„{title}“ wird in {count, plural, one {# Eintrag} other {# Einträgen}} verwendet. Dort fehlt der Eintrag auf der Website, bis du ihn wiederherstellst.",
       "confirmAnyway": "Trotzdem entfernen",
       "checking": "Prüft, wo der Eintrag verwendet wird …"
     },
@@ -185,7 +185,7 @@
       "restore": "Wiederherstellen",
       "saveAsNew": "Als neuen Eintrag speichern",
       "discard": "Verwerfen",
-      "noRights": "Deine Änderungen bleiben auf diesem Gerät. Frag die Inhaberin, ob sie den Eintrag wiederherstellt, und öffne ihn dann wieder."
+      "noRights": "Deine Änderungen bleiben auf diesem Gerät. Bitte die Inhaber der Website, den Eintrag wiederherzustellen, und öffne ihn dann wieder."
     },
     "localDraft": {
       "offer": "Ungespeicherte Änderungen vom {time} wiederherstellen?",

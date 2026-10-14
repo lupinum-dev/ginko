@@ -169,7 +169,7 @@
       "title": "Remove entry",
       "text": "“{title}” is removed from the website. You can restore it for 30 days.",
       "confirm": "Remove",
-      "usedIn": "“{title}” is used in {count, plural, one {# entry} other {# entries}}. It will be missing there on the website until you restore it.",
+      "usedIn": "“{title}” is used in {count, plural, one {# entry} other {# entries}}. The website leaves it out there until you restore it.",
       "confirmAnyway": "Remove anyway",
       "checking": "Checking where this entry is used …"
     },
