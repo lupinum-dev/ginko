@@ -98,6 +98,15 @@ describe('GinkoMarkdown (plain Vue)', () => {
     expect(await render(value, { badge: Badge })).toContain('<mark title="Neu">neu</mark>')
   })
 
+  // Wrong behaviour caught: a prop of type image is checked as an address only when its name is `src` or `poster`.
+  test('a declared image prop must be a safe address, whatever its name', async () => {
+    const Card = defineComponent({ props: { image: String }, setup: (props) => () => h('img', { src: props.image }) })
+    const registry = defineComponents({ card: { kind: 'block', label: 'Card', describe: 'x', props: { image: f.image('Bild', { optional: true }) } } })
+    const card = (image: string) => ({ nodes: [['card', { image }]] }) as MarkdownTree
+    expect(await render(card('/a.png'), { card: Card }, registry)).toContain('<img src="/a.png">')
+    expect(await render(card('javascript:alert(1)'), { card: Card }, registry)).toContain('<img>')
+  })
+
   // Bug caught: a registry that declares `embed` lets `::embed` through the parser; without a mapped component
   // the renderer emitted a native <embed> that loads the address like an iframe.
   test('a blocked tag renders only through a mapped component', async () => {

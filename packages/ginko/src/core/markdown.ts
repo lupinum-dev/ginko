@@ -150,16 +150,19 @@ function isJson(value: string): boolean {
  * gets the global attributes only.
  * A bound value must be JSON: comark parses it and looks any other value up in its render data. A bound address is
  * never allowed, and a bound value never passes a value rule (only `:checked="true"` and declared props take one).
+ * A declared prop of type `image` is an address like `src`.
  */
 export function attributeProblem(tag: string, name: string, value: unknown, registry?: ComponentRegistry): 'blocked' | 'unsafe' | undefined {
   const bound = name.startsWith(':')
   const key = bound ? name.slice(1) : name
-  if (bound && (URL_PROPS.has(key) || (typeof value === 'string' && !isJson(value)))) return 'blocked'
   const declared = registry !== undefined && Object.hasOwn(registry, tag) ? registry[tag]!.props : undefined
+  // A declared prop of type image holds an address whatever its name (a card's `image`).
+  const address = URL_PROPS.has(key) || (declared !== undefined && Object.hasOwn(declared, key) && declared[key]!.type === 'image')
+  if (bound && (address || (typeof value === 'string' && !isJson(value)))) return 'blocked'
   const rules = declared ? undefined : Object.hasOwn(TAG_ATTRIBUTES, tag) ? TAG_ATTRIBUTES[tag]! : undefined
   const check = declared ? (Object.hasOwn(declared, key) ? anyValue : undefined) : rules && Object.hasOwn(rules, key) ? rules[key] : undefined
   if (!check) return isGlobalAttribute(key) ? undefined : 'blocked'
-  if (URL_PROPS.has(key)) return safeAddress(key, value) ? undefined : 'unsafe'
+  if (address) return safeAddress(key, value) ? undefined : 'unsafe'
   return (bound ? check === anyValue : check(value)) ? undefined : 'blocked'
 }
 
