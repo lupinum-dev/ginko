@@ -1,11 +1,36 @@
-<!-- Everything removed on the site, all areas, newest first, with the day it is deleted for good (UI.md 10.6). -->
+<!-- Everything removed on the site, all areas, newest first, with the day it is deleted for good (UI.md 10.6).
+     Owners and admins can also delete an entry for good now ("Jetzt löschen"), after one question: it frees the
+     trash at once and cannot be undone. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
+import { Button } from '@studio/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@studio/components/ui/dialog'
 
 const props = defineProps<{ slug: string; timeZone: string }>()
 const { t, format } = useI18n()
 const { data } = useConvexQuery(api.entries.trash, () => ({ site: props.slug }))
 const ops = useOps(computed(() => props.slug))
+
+type Item = NonNullable<typeof data.value>['items'][number]
+const asking = ref(false)
+/** The entry the question is about; kept after closing, so the title stays while the dialog fades out. */
+const target = ref<Item>()
+function ask(item: Item) {
+  target.value = item
+  asking.value = true
+}
+const busy = ref(false)
+async function purge() {
+  const item = target.value
+  if (!item) return
+  busy.value = true
+  try {
+    await ops.purgeEntry(item.entry, item.lifeRev, item.label)
+  } finally {
+    busy.value = false
+    asking.value = false
+  }
+}
 </script>
 
 <template>
@@ -18,8 +43,23 @@ const ops = useOps(computed(() => props.slug))
           <span class="block truncate font-semibold">{{ item.label }}</span>
           <span class="block text-sm text-muted-foreground">{{ item.brickLabel }} · {{ t('basics.removed.until', { date: format.date(item.purgeAt, { timeZone, dateStyle: 'medium' }) }) }}</span>
         </span>
-        <Button v-if="item.mayRestore" type="button" variant="outline" class="shrink-0" @click="ops.restoreEntry(item.entry, item.lifeRev, item.task)">{{ t('site.all.restore') }}</Button>
+        <span class="flex shrink-0 flex-wrap justify-end gap-1">
+          <Button v-if="item.mayPurge" type="button" variant="ghost" class="text-destructive hover:text-destructive" @click="ask(item)">{{ t('basics.removed.deleteNow') }}</Button>
+          <Button v-if="item.mayRestore" type="button" variant="outline" @click="ops.restoreEntry(item.entry, item.lifeRev, item.task)">{{ t('site.all.restore') }}</Button>
+        </span>
       </li>
     </ul>
+    <Dialog v-model:open="asking">
+      <DialogContent class="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{{ t('basics.removed.confirmTitle', { title: target?.label ?? '' }) }}</DialogTitle>
+          <DialogDescription>{{ t('basics.removed.confirmBody') }}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button type="button" variant="outline" @click="asking = false">{{ t('entry.cancel') }}</Button>
+          <Button type="button" variant="destructive" :disabled="busy" @click="purge">{{ t('basics.removed.confirm') }}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </section>
 </template>

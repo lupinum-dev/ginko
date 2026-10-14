@@ -614,7 +614,8 @@
       "failed": "Falló la subida. Inténtalo de nuevo.",
       "offline": "Sin conexión. Inténtalo de nuevo.",
       "aborted": "Cancelado."
-    }
+    },
+    "purged": "“{title}” eliminado definitivamente."
   },
   "review": {
     "title": "{site} · Por revisar",
@@ -719,7 +720,11 @@
       "link": "Eliminadas ({count})",
       "title": "Entradas eliminadas",
       "empty": "No se eliminó nada.",
-      "until": "Se borrará definitivamente el {date}"
+      "until": "Se borrará definitivamente el {date}",
+      "deleteNow": "Eliminar ahora",
+      "confirmTitle": "¿Eliminar “{title}” definitivamente?",
+      "confirmBody": "Después no podrás restaurarla. El historial sigue mostrando versiones anteriores hasta un año.",
+      "confirm": "Eliminar definitivamente"
     },
     "translation": {
       "missing": "{lang}: {count, plural, one {falta # texto} other {faltan # textos}}",

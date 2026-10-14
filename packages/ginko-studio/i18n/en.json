@@ -614,7 +614,8 @@
       "failed": "The upload failed. Please try again.",
       "offline": "No connection. Please try again.",
       "aborted": "Cancelled."
-    }
+    },
+    "purged": "“{title}” deleted for good."
   },
   "review": {
     "title": "{site} · To review",
@@ -719,7 +720,11 @@
       "link": "Removed ({count})",
       "title": "Removed entries",
       "empty": "Nothing was removed.",
-      "until": "Deleted for good on {date}"
+      "until": "Deleted for good on {date}",
+      "deleteNow": "Delete now",
+      "confirmTitle": "Delete “{title}” for good?",
+      "confirmBody": "You cannot restore it afterwards. The history still shows earlier versions for up to a year.",
+      "confirm": "Delete for good"
     },
     "translation": {
       "missing": "{lang}: {count, plural, one {# text missing} other {# texts missing}}",

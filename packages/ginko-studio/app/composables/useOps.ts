@@ -65,6 +65,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   const save = useConvexMutation(api.entries.save)
   const create = useConvexMutation(api.entries.create)
   const revert = useConvexMutation(api.entries.revert)
+  const purge = useConvexMutation(api.entries.purge)
   const lasting = inject(LASTING)
   if (!lasting) throw new Error('provideLastingOps() is missing in app.vue')
   const { remove, restore, undo, publish, unpublish, move } = lasting
@@ -137,6 +138,18 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     }
   }
 
+  /** Deletes a removed entry for good (owners and admins). It cannot be undone, so the message offers no Rückgängig. True when it is gone. */
+  async function purgeEntry(entry: string, lifeRev: number, title: string) {
+    try {
+      await purge.mutate({ site: site.value, opId: opId(), entry, lifeRev })
+      show(t('ops.purged', { title }))
+      return true
+    } catch (error) {
+      show(opErrorOf(error).message, { tone: 'err' })
+      return false
+    }
+  }
+
   /** Goes back to the version after `change` as a normal save (UI.md 10.5); undo works like for any save. */
   async function revertEntry(entry: string, change: string, task?: string) {
     try {
@@ -202,6 +215,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
       }
     },
     restoreEntry,
+    purgeEntry,
     undoChange,
     publishEntry,
     unpublishEntry,
