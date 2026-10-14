@@ -13,13 +13,43 @@ describe('parseMarkdown profiles', () => {
     ['::callout\nHi\n::', 'page', false],
     ['::script\nalert(1)\n::', 'page', true],
     ['**fett**{onclick="alert(1)"}', 'page', true],
+    // DOM sink props: Vue assigns `el.outerHTML = value`, which puts raw HTML on the page at the next patch.
+    ['**x**{outerHTML="<img src=x onerror=alert(1)>"}', 'inline', true],
+    ['**x**{:innerText="x"}', 'page', true],
     ['[x](javascript:alert(1)){href="javascript:alert(1)"}', 'page', true],
-    [':badge[neu]{href="/ok"}', 'page', false],
+    // Without a registry a component takes the global attributes only (title, lang, dir, aria-*).
+    [':badge[neu]{href="/ok"}', 'page', true],
+    [':badge[neu]{title="Neu" lang="de" aria-label="Neu"}', 'page', false],
     // style and id from the text (overlay, clash with Nuxt's own ids); parser-made ids and cell alignment stay.
     ['::div{style="position:fixed;inset:0"}\nx\n::', 'page', true],
     ['::div{#__NUXT_DATA__}\nx\n::', 'page', true],
     ['**x**{id="a"}', 'page', true],
-    ['::div{.box}\nx\n::', 'page', false],
+    // One allowlist (attributeProblem): what Markdown writes per tag, plus title, lang, dir and aria-*.
+    ['**x**{hidden tabindex="0"}', 'page', true],
+    ['**x**{title="t" lang="en" dir="ltr" aria-label="x"}', 'inline', false],
+    // A class or data-* of the text's own takes a rule of the site's CSS: an invisible link over the whole page
+    // (`.ginko-quiz-input` of ginko-components, a Vue scoped rule through `data-v-<hash>`, a Tailwind utility).
+    ['Neu: [Angebot ansehen](https://evil.example/deal){.ginko-quiz-input}', 'inline', true],
+    ['[Hier klicken](https://evil.example/login){.input data-v-0a1b2c3d}', 'basic', true],
+    ['**x**{data-x="1"}', 'inline', true],
+    ['::div{.box}\nx\n::', 'page', true],
+    ['- [ ] offen{.fixed}', 'basic', true],
+    ['```mermaid {.fixed .inset-0}\ngraph TD; A-->B\n```', 'rich', true],
+    ['[x](/a){target="_blank" rel="noopener noreferrer"}', 'inline', false],
+    ['[x](/a){target="_top"}', 'inline', true],
+    ['[x](https://example.com){target="_blank" rel="opener"}', 'inline', true],
+    ['![x](/a.png){width="100" height="50" srcset="/a-640.webp 640w, /a.png 1280w" sizes="100vw"}', 'rich', false],
+    ['![x](/a.png){srcset="/a.webp 640w, javascript:alert(1) 2x"}', 'rich', true],
+    // A bound value must be JSON (comark looks anything else up in its render data); a bound address never passes.
+    ['- [x] erledigt', 'basic', false],
+    ['1. [ ] offen\n2. [x] erledigt', 'basic', false],
+    ['**x**{:title="frontmatter.title"}', 'page', true],
+    ["[x](/a){:href='\"/b\"'}", 'page', true],
+    ['| a |\n|---|\n| 1 |\n\n**x**{style="text-align:left"}', 'rich', true],
+    // `as` makes comark's renderer mount another component; only the alert plugin's own `as` stays.
+    ['Hi **x**{as="embed" src="https://www.youtube.com/watch?v=abc"}', 'page', true],
+    ['Hi **x**{as="embed" src="https://www.youtube.com/watch?v=abc"}', 'rich', true],
+    ['> [!TIP]\n> Hinweis', 'basic', false],
     ['## Titel {#eigene-id}', 'page', false],
     ['| a | b |\n|:--|--:|\n| 1 | 2 |', 'page', false],
     ['Text[^1]\n\n[^1]: Fußnote', 'basic', false],

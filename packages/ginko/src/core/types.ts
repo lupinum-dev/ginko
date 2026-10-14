@@ -1,18 +1,19 @@
 import type { ComponentRegistry } from './components.ts'
 import type { MarkdownProfile } from './markdown.ts'
+import type { ValueInput } from './fields.ts'
 import type { Msg } from './messages.ts'
 import type { WeekInfo } from './time.ts'
 // The schema as plain data. This is what `ginko.config.ts` describes, what
 // `ginko release` sends, and what the platform stores. SPEC.md part 2.
 
 /**
- * A content language: a canonical BCP-47 tag such as `de`, `es`, `pt-BR` or `zh-Hant` (the key of every
- * translated value and the URL segment). Open; `isLocale` is the runtime check.
+ * A locale code: a canonical BCP-47 tag such as `de`, `es`, `pt-BR` or `zh-Hant`, the key of every translated
+ * value and the URL segment (not the `languages` tag used for `lang` and formats). Open; `isLocale` is the runtime check.
  */
 export type Locale = string
 /** An ISO-4217 code such as `EUR`, `CHF` or `JPY`; `isCurrency` is the runtime check. Money is stored in minor units (cents). */
 export type Currency = string
-/** A name shown to people: a string is the main language; a record has one text per language and must contain the main language. */
+/** A name shown to people: a string is the main language; a record has one text per language and must contain the main language or English (the fallback). */
 export type Label = string | Record<Locale, string>
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
 
@@ -71,7 +72,7 @@ export interface ListField<F extends Fields = Fields> extends FieldBase {
 /** Points to entries of a collection brick `to`; stores the entry ID (a list of IDs with `multiple`). `max` only with `multiple`. */
 export interface RefField extends FieldBase { type: 'ref'; to: string; multiple?: boolean; max?: number }
 export interface ImageField extends FieldBase { type: 'image' }
-export interface FileField extends FieldBase { type: 'file'; accept: readonly 'pdf'[]; maxSize: number }
+export interface FileField extends FieldBase { type: 'file'; accept: readonly 'pdf'[]; maxBytes: number }
 export interface SlugField extends FieldBase { type: 'slug'; from: string }
 
 export type Field =
@@ -82,19 +83,39 @@ export type Field =
 export type FieldType = Field['type']
 export type Fields = Record<string, Field>
 
-export type PrefillToken = '@today' | '@thisWeek' | '@nextWeek'
+/**
+ * Values the platform resolves in the site's time zone when a task opens: `@today`; `@workWeek`, the first day
+ * of the work week (at the weekend, after the last workday, the coming week); `@nextWorkWeek`, the week after it.
+ */
+export const PREFILL_TOKENS = ['@today', '@workWeek', '@nextWorkWeek'] as const
+export type PrefillToken = typeof PREFILL_TOKENS[number]
+export const isPrefillToken = (value: unknown): value is PrefillToken => PREFILL_TOKENS.includes(value as PrefillToken)
 
-/** `needsApproval: true`: what staff does with this task goes live only after an owner or admin approves it (SPEC 17). */
-export type Task =
-  | { id: string; label: Label; kind: 'edit'; fields: readonly string[]; pick?: boolean; prefill?: Record<string, Json | PrefillToken>; needsApproval?: boolean }
-  | { id: string; label: Label; kind: 'create'; prefill?: Record<string, Json | PrefillToken>; needsApproval?: boolean }
+/**
+ * A quick task of a brick. `needsApproval: true`: what staff does with this task goes live only after an owner or
+ * admin approves it (SPEC 17). `F` is the fields of the brick: in `single()` and `collection()` a task names only
+ * fields the brick has, and a prefill is written like that field's value (see `ValueInput`). The release check
+ * reports a token on a field that is not a `date`.
+ */
+export type Task<F extends Fields = Fields> =
+  | { id: string; label: Label; kind: 'edit'; fields: readonly (keyof F & string)[]; pick?: boolean; prefill?: Prefill<F>; needsApproval?: boolean }
+  | { id: string; label: Label; kind: 'create'; prefill?: Prefill<F>; needsApproval?: boolean }
   | { id: string; label: Label; kind: 'remove'; needsApproval?: boolean }
 
-export type Visibility =
+/** Prefill values by field name. Without known fields (the stored schema) any JSON or token. */
+type Prefill<F extends Fields> = Fields extends F
+  ? { readonly [name: string]: Json | PrefillToken | undefined }
+  : { readonly [P in keyof F]?: ValueInput<F[P]> }
+
+/**
+ * Which entries of a collection the website shows. `always`: all of them. `until`: an entry is shown until the
+ * date in `field` (a `date`, or the end `to` of a `daterange`) has passed, plus `days` more (a week that starts
+ * on that day: `days: 6`). An empty field always shows the entry. `deleteExpired: true` lets the platform delete
+ * entries that are no longer shown (see the docs page "Bricks", Visibility).
+ */
+export type Visibility<K extends string = string> =
   | { mode: 'always' }
-  /** Shown until the date in `field`, plus `days` more (a week that starts on that day: `days: 6`). */
-  | { mode: 'active'; field: string; days?: number }
-  | { mode: 'upcoming'; field: string }
+  | { mode: 'until'; field: K; days?: number; deleteExpired?: boolean }
 
 /** Where a brick's content comes from: the platform (default) or Markdown files in the site's repo (CONTENT.md). */
 export type BrickSource = 'files'
@@ -105,7 +126,8 @@ export interface SingleBrick<F extends Fields = Fields> {
   label: Label
   /** @internal Platform-managed position in the config (see FieldBase.pos). Do not set it. */
   pos?: number
-  describe?: string
+  /** What the brick is for, shown in the Studio; a text or a text per language like `label`. Fields have `hint` instead. */
+  describe?: Label
   fields: F
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
@@ -121,17 +143,22 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   label: Label
   /** @internal Platform-managed position in the config (see FieldBase.pos). Do not set it. */
   pos?: number
-  describe?: string
+  /** What the brick is for, shown in the Studio; a text or a text per language like `label`. Fields have `hint` instead. */
+  describe?: Label
   fields: F
   /** How the Studio shows field groups: headings one below the other, or tabs on wide screens (phones always show headings). */
   layout?: 'sections' | 'tabs'
   tasks?: readonly Task[]
   max: number
-  order: 'manual' | { field: string; dir: 'asc' | 'desc' }
+  /** `manual`: the owner sorts the entries. Else by a field, ascending unless `dir: 'desc'`. */
+  order: 'manual' | { field: string; dir?: 'asc' | 'desc' }
   route?: R
   visible?: Visibility
-  missing?: 'fallback' | 'hide'
-  autoRemoveExpired?: boolean
+  /**
+   * What an entry does in a language where a translatable required field is missing or outdated: `'fallback'`
+   * (default) shows the main language there, `'hide'` leaves the entry out of that language.
+   */
+  untranslated?: 'fallback' | 'hide'
   /** Entries of this collection plan weeks of the single brick `brick`; `field` (a date field here) holds the first day of the week (`week.firstDay`). A planned week counts as entered for the weekly upkeep rule. */
   plans?: { brick: string; field: string }
   /** Entries can be saved as drafts and are shown only once published. */
@@ -142,7 +169,11 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
 
 export type Brick = SingleBrick | CollectionBrick
 
-export type RetiredRule = { from: string } | { value: Json } | Record<string, never>
+/**
+ * What a retired field (SPEC 2.5) answers to old code: `from` mirrors another field of the brick, `value` is a fixed
+ * value, `drop: true` gives no value (optional fields only). A retired brick takes `{ drop: true }`.
+ */
+export type RetiredRule = { from: string } | { value: Json } | { drop: true }
 
 /** A migration as stored and transferred: the function itself never leaves the developer's machine or CI. */
 export interface MigrationDescriptor {
@@ -157,17 +188,17 @@ export interface Schema {
   site: string
   name: string
   url: string
-  timezone: string
+  timeZone: string
   locales: Locale[]
   currency: Currency
-  /** First day of the week and weekend days of the site (computed once from the main language or `weekStart`). Absent in schemas stored before it existed: read it with `weekOfSchema`. */
-  week?: WeekInfo
-  /** Static pages by key, each with its path per locale (the first page is the home page). */
+  /** First day of the week and weekend days of the site (computed once from the main language or `firstDayOfWeek`). */
+  week: WeekInfo
+  /** Static pages by key, each with its path per locale (the home page is the one whose main-locale path is `/`). */
   pages: Record<string, Partial<Record<Locale, string>>>
   bricks: Record<string, Brick>
   migrations: MigrationDescriptor[]
   retired: Record<string, RetiredRule>
-  /** Markdown components of `page` texts (components.ts). Absent: any tag except the blocked ones. */
+  /** Markdown components of `page` texts (components.ts). Absent: any tag except the blocked ones, with the global attributes only (attributeProblem). */
   components?: ComponentRegistry
   /** Default for the agent door (SPEC 17): `review: true` makes every agent write a proposal. */
   agents?: { review?: boolean }

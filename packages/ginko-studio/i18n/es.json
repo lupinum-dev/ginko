@@ -206,7 +206,6 @@
       "onlineFrom": "En línea desde {when}",
       "expired": "caducado",
       "ended": "terminado",
-      "from": "desde {date}",
       "until": "hasta {date}",
       "untilToday": "hasta hoy",
       "noEnd": "sin fecha de fin"
@@ -475,8 +474,8 @@
       "notTranslated": "Aún sin traducir. El sitio web muestra aquí el texto de {name}."
     },
     "date": {
-      "thisWeek": "Esta semana",
-      "nextWeek": "La próxima semana",
+      "workWeek": "Semana laboral actual",
+      "nextWorkWeek": "Semana laboral siguiente",
       "today": "Hoy",
       "tomorrow": "Mañana"
     },

@@ -206,7 +206,6 @@
       "onlineFrom": "Online ab {when}",
       "expired": "abgelaufen",
       "ended": "vorbei",
-      "from": "ab {date}",
       "until": "bis {date}",
       "untilToday": "bis heute",
       "noEnd": "ohne Ablauf"
@@ -475,8 +474,8 @@
       "notTranslated": "Noch nicht übersetzt. Die Website zeigt hier den Text auf {name}."
     },
     "date": {
-      "thisWeek": "Diese Woche",
-      "nextWeek": "Nächste Woche",
+      "workWeek": "Aktuelle Arbeitswoche",
+      "nextWorkWeek": "Folgende Arbeitswoche",
       "today": "Heute",
       "tomorrow": "Morgen"
     },

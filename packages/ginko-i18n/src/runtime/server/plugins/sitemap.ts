@@ -1,6 +1,6 @@
 import { config } from '#ginko-i18n/config.mjs'
 import { entries } from '#ginko-i18n/sitemap.mjs'
-import { alternatesOf } from '@lupinum/ginko-i18n/internal'
+import { alternatesOf } from '@lupinum/ginko-i18n/core'
 
 // Local shapes: @nuxtjs/sitemap is optional, so its types are not imported.
 type Alternative = { hreflang: string, href: string }

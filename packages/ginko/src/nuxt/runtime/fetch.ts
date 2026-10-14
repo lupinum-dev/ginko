@@ -30,6 +30,22 @@ export class PlatformError extends Error {
   constructor(message: string, cause?: unknown) { super(message, { cause }) }
 }
 
+/**
+ * The 503 text. In dev the platform is a local address that is often not running (a new site, a pasted README
+ * example), so the message names the bricks that need it, the address tried and the two fixes. Elsewhere it stays
+ * the plain, safe text. One ASCII line: Nitro puts it in the status line.
+ */
+export function unreachableMessage(config: GinkoPublicConfig, url: string): string {
+  const local = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/.test(config.platform)
+  if (!local) return 'Content temporarily unavailable'
+  const bricks = Object.entries(schema.bricks).filter(([, brick]) => brick.source !== 'files').map(([name]) => name)
+  const origin = new URL(url).origin
+  return `Ginko cannot get content from the platform at ${origin}, which the brick(s) ${bricks.map((b) => `"${b}"`).join(', ')} read from. Fix: add source: 'files' to read them from Markdown files, or start the platform / set NUXT_PUBLIC_GINKO_PLATFORM.`
+}
+
+/** Logged once per server process: a deployment without the platform address answers every platform page with 503. */
+let missingPlatformLogged = false
+
 /** Header with which the site's server proves to the platform that it is the site (not counted by the visitor rate limit). */
 export const SITE_TOKEN_HEADER = 'x-ginko-site-token'
 
@@ -38,6 +54,12 @@ export const SITE_TOKEN_HEADER = 'x-ginko-site-token'
  * on Vercel a 503 keeps the last good page in the ISR cache, a 404 would replace it (ISR spike).
  */
 export async function fetchBundle(config: GinkoPublicConfig, locale: Locale, minRev: string | undefined, siteToken?: string): Promise<Bundle> {
+  if (!config.platform) {
+    // Only production has no default address; the visitor still gets the plain 503, the log names the cause.
+    if (!missingPlatformLogged) console.error('[ginko] NUXT_PUBLIC_GINKO_PLATFORM is not set, so every page with platform content answers 503. Set it to the platform address in the environment of this deployment.')
+    missingPlatformLogged = true
+    throw new PlatformError('Content temporarily unavailable')
+  }
   const query = new URLSearchParams({ format: String(BUNDLE_FORMAT), locale })
   if (minRev && /^\d+\.\d+$/.test(minRev)) query.set('minRev', minRev)
   const url = `${config.platform.replace(/\/$/, '')}/bundle/${encodeURIComponent(config.site)}?${query}`
@@ -52,7 +74,7 @@ export async function fetchBundle(config: GinkoPublicConfig, locale: Locale, min
     if (text.length > MAX_CHARS) throw new Error('bundle too large')
     body = JSON.parse(text)
   } catch (error) {
-    throw new PlatformError('Content temporarily unavailable', error)
+    throw new PlatformError(unreachableMessage(config, url), error)
   }
   // A bundle of the wrong shape, or with a brick of another kind than the site's config, is a
   // platform failure too: defaults must never hide it (an empty collection would 404 detail pages).

@@ -60,7 +60,7 @@ export function useHead(input: unknown) {
 export const seoConfig: Record<string, unknown> = {}
 
 export function useRuntimeConfig() {
-  return { public: { ginko: { site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', seo: seoConfig, platform: 'https://platform.test', locales: ['de', 'en'], mainLocale: 'de', timezone: 'Europe/Vienna' } } }
+  return { public: { ginko: { site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', seo: seoConfig, platform: 'https://platform.test', locales: ['de', 'en'], mainLocale: 'de', timeZone: 'Europe/Vienna' } } }
 }
 
 export function createError(options: { statusCode: number; statusMessage: string; fatal?: boolean }) {

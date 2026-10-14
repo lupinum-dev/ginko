@@ -5,13 +5,10 @@ import { computed, createError, toValue, useI18n, useHead, useRoute, useRuntimeC
 import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
 import {
-  applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, query, seoHead, todayIn, websiteLd, weekOfSchema,
+  applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, query, seoHead, todayIn, websiteLd,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
 } from '../../internal.ts'
-import { fallbackLang, withUrl, type GinkoPublicConfig } from './shared.ts'
-
-/** `12,50 €` (de), `€12.50` (en), `¥1,250` (JPY): any ISO-4217 currency in the notation of the language (SPEC 8). */
-export { safeHref as ginkoSafeHref } from '../../internal.ts'
+import { withUrl, type GinkoPublicConfig } from './shared.ts'
 
 /** Filled by the generated types/ginko.d.ts with the site's own config. */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -23,6 +20,8 @@ type CollectionKey = { [K in BrickKey]: Bricks[K] extends { kind: 'collection' }
 
 /** One entry of a collection, for component props: `defineProps<{ dish: GinkoItem<'menu'> }>()`. Auto-imported. */
 export type GinkoItem<K extends CollectionKey> = BrickValue<Bricks[K]> extends { items: (infer I)[] } ? I : never
+/** The `data` of one entry of a collection: what `useGinkoQuery` filters and sorts by. */
+type GinkoData<K extends CollectionKey> = GinkoItem<K> extends { data: infer D } ? D : never
 
 export const BUNDLE_STATE = 'ginko:bundle'
 /** Set by the preview page on mount: the session and locale it accepts bundles for (SPEC 8 "Vorschau"). */
@@ -32,6 +31,25 @@ export const PREVIEW_STATE = 'ginko:preview'
 export type GinkoPageKey = keyof Site['pages'] & string
 /** The site's `locales` (a subset of the core `Locale`). Auto-imported. */
 export type GinkoLocale = Site['locales'][number]
+
+/** The public facts of the site from ginko.config.ts. The rest of `runtimeConfig.public.ginko` is internal. */
+export interface GinkoSite {
+  name: string
+  /** The production address, for absolute links. */
+  url: string
+  locales: readonly GinkoLocale[]
+  /** The first of `locales`. */
+  mainLocale: GinkoLocale
+  /** IANA time zone, e.g. `Europe/Vienna`. */
+  timeZone: string
+}
+
+/** `const { url, mainLocale } = useGinkoSite()`: name, address, locales and time zone of the site. Auto-imported. */
+export function useGinkoSite(): GinkoSite {
+  const { name, url, locales, mainLocale, timeZone } = useRuntimeConfig().public.ginko as GinkoPublicConfig
+  // The runtime config is this site's own config, so its locales are the site's.
+  return { name, url, locales: locales as GinkoLocale[], mainLocale: mainLocale as GinkoLocale, timeZone }
+}
 
 /** The current locale. ginko-i18n owns it (URL, strategy, excluded paths); it only ever takes a locale of the site. */
 export function useGinkoLocale(): ComputedRef<GinkoLocale> {
@@ -74,12 +92,12 @@ export const TODAY_STATE = 'ginko:today'
  * client render the same day; a tab left open, or a cached page opened, after midnight then moves on.
  */
 export function useGinkoToday(): Ref<string> {
-  return useState<string>(TODAY_STATE, () => todayIn((useRuntimeConfig().public.ginko as GinkoPublicConfig).timezone))
+  return useState<string>(TODAY_STATE, () => todayIn((useRuntimeConfig().public.ginko as GinkoPublicConfig).timeZone))
 }
 
-/** First day of the week and weekend days of the site (`schema.week`, from the main language or `weekStart`), the same the server and the Studio use. */
+/** First day of the week and weekend days of the site (`schema.week`, from the main language or `firstDayOfWeek`), the same the server and the Studio use. */
 export function useGinkoWeek(): WeekInfo {
-  return weekOfSchema(schema)
+  return schema.week
 }
 
 /**
@@ -101,13 +119,13 @@ export function useGinko<K extends BrickKey>(brick: K): ComputedRef<BrickValue<B
 }
 
 /** The bundle with only the entries visible today (SPEC 2.1 `visible`) in the given collections. The one place that rule is applied. */
-function useVisibleBundle(bricks: readonly BrickKey[]): ComputedRef<Bundle> {
+function useVisibleBundle(bricks: MaybeRefOrGetter<readonly BrickKey[]>): ComputedRef<Bundle> {
   const bundle = useGinkoBundle()
   const today = useGinkoToday()
   return computed(() => {
     const now = today.value
     const out = { ...bundle.value.bricks }
-    for (const key of bricks) {
+    for (const key of toValue(bricks)) {
       const value = out[key]
       const def = schema.bricks[key] as Brick | undefined
       if (value?.kind === 'collection' && def) out[key] = { ...value, items: value.items.filter((item) => visible(def, item.data, now)) }
@@ -127,36 +145,36 @@ function withRouteUrl(brick: string, items: BundleItem[], locale: Locale): Bundl
  * entries in the client state, so a hidden entry is neither in `items` nor in `total`. `q` may be a ref or
  * getter (a page number from the route), and the result follows it.
  */
-export function useGinkoQuery<K extends CollectionKey>(brick: K, q: MaybeRefOrGetter<Query> = {}): ComputedRef<Omit<QueryResult, 'items'> & { items: GinkoItem<K>[] }> {
+export function useGinkoQuery<K extends CollectionKey>(brick: K, q: MaybeRefOrGetter<Query<GinkoData<K>>> = {}): ComputedRef<Omit<QueryResult, 'items'> & { items: GinkoItem<K>[] }> {
   const bundle = useVisibleBundle([brick])
   const locale = useGinkoLocale()
   return computed(() => {
-    const result = query(bundle.value, brick, toValue(q), schema)
+    const result = query(bundle.value, brick, toValue(q) as Query, schema)
     // The core returns bundle items; their typed shape is the brick's GinkoItem (same cast as useGinko).
     return { ...result, items: withRouteUrl(brick, result.items, locale.value) } as never
   })
 }
 
 /** The entries before and after `id` among the visible ones, in `options.order` (the `Query` order) or bundle order. */
-export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRefOrGetter<string>, options: Pick<Query, 'order'> = {}): ComputedRef<{ prev?: GinkoItem<K>; next?: GinkoItem<K> }> {
+export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRefOrGetter<string>, options: Pick<Query<GinkoData<K>>, 'order'> = {}): ComputedRef<{ prev?: GinkoItem<K>; next?: GinkoItem<K> }> {
   const bundle = useVisibleBundle([brick])
   const locale = useGinkoLocale()
   return computed(() => {
-    const { prev, next } = neighbors(bundle.value, brick, toValue(id), options.order)
+    const { prev, next } = neighbors(bundle.value, brick, toValue(id), options.order as Query['order'])
     const one = (item?: BundleItem) => item && withRouteUrl(brick, [item], locale.value)[0]
     return { prev: one(prev), next: one(next) } as never
   })
 }
 
 /** Navigation tree of the visible entries of these collections in the current locale (core `navTree`). */
-export function useGinkoNav(bricks: CollectionKey[]): ComputedRef<NavNode[]> {
+export function useGinkoNav(bricks: MaybeRefOrGetter<CollectionKey[]>): ComputedRef<NavNode[]> {
   const bundle = useVisibleBundle(bricks)
   const locale = useGinkoLocale()
-  return computed(() => navTree(bundle.value, bricks, locale.value))
+  return computed(() => navTree(bundle.value, toValue(bricks), locale.value))
 }
 
 /** The nodes from the root down to the current route's path; empty when the path is not in the tree. */
-export function useGinkoBreadcrumbs(bricks: CollectionKey[]): ComputedRef<NavNode[]> {
+export function useGinkoBreadcrumbs(bricks: MaybeRefOrGetter<CollectionKey[]>): ComputedRef<NavNode[]> {
   const tree = useGinkoNav(bricks)
   const route = useRoute()
   return computed(() => breadcrumbs(tree.value, route.path))
@@ -164,41 +182,46 @@ export function useGinkoBreadcrumbs(bricks: CollectionKey[]): ComputedRef<NavNod
 
 /**
  * `lang` for a field the bundle filled from the main language (SPEC 6 `fallback`), else undefined:
- * `:lang="ginkoLangOf(item, 'note')"`. `path` is the field name, or `list.<_id>.field` inside a list.
- * The value is the language tag of the main locale from `languages` in ginko.config (`de-AT`), the
- * form `lang` attributes need; the bare code (`de`) when the site sets no tag for it.
+ * `const langOf = useGinkoLang()`, then `:lang="langOf(item, 'note')"`. `path` is the field name, or
+ * `list.<_id>.field` inside a list. The value is the language tag of the main locale from `languages` in
+ * ginko.config (`de-AT`), the form `lang` attributes need; the bare code (`de`) when the site sets no tag for it.
  */
-export function ginkoLangOf(item: { fallback?: readonly string[] }, path: string): string | undefined {
-  const code = fallbackLang(item.fallback, path, (useRuntimeConfig().public.ginko as GinkoPublicConfig).mainLocale)
-  return code && (useI18n().locales.find((l) => l.code === code)?.language ?? code)
+export function useGinkoLang(): (item: { fallback?: readonly string[] }, path: string) => string | undefined {
+  const { mainLocale } = useRuntimeConfig().public.ginko as GinkoPublicConfig
+  const tag = useI18n().locales.find((l) => l.code === mainLocale)?.language ?? mainLocale
+  return (item, path) => (item.fallback?.includes(path) ? tag : undefined)
 }
 
-/** The visible entry whose slug in the current locale is `slug`; otherwise a real 404 (SPEC 8). */
-export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: string): ComputedRef<GinkoItem<K>> {
+/**
+ * The visible entry whose slug in the current locale is `slug`; otherwise a real 404 (SPEC 8). `slug` may be a
+ * getter such as `() => route.params.slug`, so a reused page follows client navigation; an array (catch-all
+ * route) is joined with `/`. The 404 is thrown when the value is read, not at the call.
+ */
+export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: MaybeRefOrGetter<string | string[] | undefined>): ComputedRef<GinkoItem<K>> {
   const items = useGinko(brick)
   const locale = useGinkoLocale()
   return computed(() => {
     const def = schema.bricks[brick]!
     const route = def.kind === 'collection' ? def.route?.[locale.value] : undefined
-    const path = route?.replace('[slug]', slug)
+    const value = toValue(slug)
+    const path = value === undefined ? undefined : route?.replace('[slug]', Array.isArray(value) ? value.join('/') : value)
     const item = (items.value as { items: (BundleItem & { url?: string })[] }).items.find((i) => path && i.url === path)
-    if (!item) throw createError({ statusCode: 404, statusMessage: 'Not found' })
+    // Fatal: on the client, Nuxt opens the error page only for a fatal error, so a navigation to a missing slug shows the 404.
+    if (!item) throw createError({ statusCode: 404, statusMessage: 'Not found', fatal: true })
     return item as never
   })
-}
-
-/** The visibility rule of SPEC 2.1 for code that has an item outside useGinko. Reactive inside a computed. */
-export function isGinkoVisible<K extends CollectionKey>(brick: K, item: { data: Record<string, unknown> }): boolean {
-  return visible(schema.bricks[brick] as Brick, item.data, useGinkoToday().value)
 }
 
 export interface GinkoSeoInput {
   title?: string
   description?: string
-  /** A public path (`/og.png`) or absolute URL; a path becomes absolute with the site `url`. Default: `seo.image` of the site config. */
+  /**
+   * A public path (`/og.png`), an absolute URL, or a `SeoImage` with size and alt text; a path becomes absolute with
+   * the site `url`. Default: `seo.image` of the site config. Read once at setup to choose the generated card (below).
+   */
   image?: SeoImage | string
   type?: 'website' | 'article'
-  /** Small label above the title on the generated share card (docs: the section). */
+  /** The small label above the title on the generated share card (a docs page shows its section). No card, no effect. */
   section?: string
   noindex?: boolean
   /** Extra JSON-LD objects, for example an `Event` or a `FAQPage`. */

@@ -2,6 +2,7 @@
 // so Google never shows "open" on a day the site says "closed".
 import { addDays, hoursOn, spansOf, weekdayKeys, weekdayOf, weekFor, type HoursContext, type Span, type Weekday } from './hours.ts'
 import { plainText, type MarkdownTree } from '@lupinum/ginko'
+import { minorDigits } from '@lupinum/ginko/internal'
 import type { Money } from './prices.ts'
 
 const dayNames: Record<Weekday, string> = { mo: 'Monday', tu: 'Tuesday', we: 'Wednesday', th: 'Thursday', fr: 'Friday', sa: 'Saturday', su: 'Sunday' }
@@ -31,7 +32,12 @@ function requireCurrency(currency: string | undefined): string {
 }
 
 const spanKey =(spans: Span[]) => spans.map((s) => `${s.from}-${s.to}`).join(',')
-const price = (m: Money) => (m.amount / 100).toFixed(2)
+/** schema.org `price` and `priceCurrency`: the amount in major units of its currency (2 decimals for EUR, 0 for JPY). */
+function offerPrice(m: Money, siteCurrency: string | undefined) {
+  const currency = m.currency ?? requireCurrency(siteCurrency)
+  const digits = minorDigits(currency)
+  return { price: (m.amount / 10 ** digits).toFixed(digits), priceCurrency: currency }
+}
 
 export interface EventJsonLdInput {
   title: string
@@ -81,7 +87,7 @@ function specialSpecs(input: RestaurantJsonLdInput, week: ReturnType<typeof week
   const runs: Array<{ key: string; spans: Span[]; from: string; to: string }> = []
   for (let i = 0; i < (input.days ?? 60); i++) {
     const date = addDays(input.today, i)
-    const rule = hoursOn(date, input.hours)
+    const rule = hoursOn(input.hours, date)
     const base = week.find((d) => d.day === weekdayOf(date))
     const baseKey = !base || base.closed ? '' : spanKey(spansOf(base))
     const key = rule.closed ? '' : spanKey(rule.times)
@@ -96,7 +102,7 @@ function specialSpecs(input: RestaurantJsonLdInput, week: ReturnType<typeof week
 }
 
 export function restaurantJsonLd(input: RestaurantJsonLdInput): Record<string, unknown> {
-  const { week } = weekFor(input.today, input.hours)
+  const { week } = weekFor(input.hours, input.today)
   const currency = input.currency
   const sections = input.menu?.sections?.filter((s) => s.items.length)
   const special = specialSpecs(input, week)
@@ -111,7 +117,7 @@ export function restaurantJsonLd(input: RestaurantJsonLdInput): Record<string, u
             '@type': 'MenuItem',
             name: i.name,
             ...(i.description ? { description: i.description } : {}),
-            offers: { '@type': 'Offer', price: price(i.price), priceCurrency: i.price.currency ?? requireCurrency(currency) },
+            offers: { '@type': 'Offer', ...offerPrice(i.price, currency) },
           })),
         })),
       }
@@ -146,6 +152,6 @@ export function eventJsonLd(input: EventJsonLdInput): Record<string, unknown> {
     url: input.url,
     ...(input.image ? { image: input.image } : {}),
     ...(description ? { description } : {}),
-    ...(input.price ? { offers: { '@type': 'Offer', price: price(input.price), priceCurrency: input.price.currency ?? requireCurrency(input.currency), ...(input.booking ? { url: input.booking } : {}) } } : {}),
+    ...(input.price ? { offers: { '@type': 'Offer', ...offerPrice(input.price, input.currency), ...(input.booking ? { url: input.booking } : {}) } } : {}),
   }
 }

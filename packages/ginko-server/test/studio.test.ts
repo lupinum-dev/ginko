@@ -373,7 +373,7 @@ describe('entries.whyNotPublic', () => {
     expect(result.reasons[0]!.sentence).toContain('Europe/Vienna')
     // The reason is a message too: the Studio shows it in the reader's language, with the date in the site's zone.
     expect(result.reasons[0]!.msg).toEqual({ key: 'publicness.scheduled', params: { at: NOW + DAY, zone: 'Europe/Vienna' } })
-    expect(historyText(result.reasons[0]!.msg, 'en', { locales: ['de'], timezone: 'Europe/Vienna' })).toBe('The entry is a draft and goes online on Oct 9, 12:00 (time zone Europe/Vienna).')
+    expect(historyText(result.reasons[0]!.msg, 'en', { locales: ['de'], timeZone: 'Europe/Vienna' })).toBe('The entry is a draft and goes online on Oct 9, 12:00 (time zone Europe/Vienna).')
   })
 
   it('a removed entry, with the date it is deleted for good', async () => {
@@ -391,7 +391,7 @@ describe('entries.whyNotPublic', () => {
     expect(fallback).toMatchObject({ public: true, reasons: [{ blocking: false, action: 'translate', sentence: expect.stringContaining('Hauptsprache (de)') }] })
     expect(fallback.url).toBe('https://ginko-demo-restaurant.vercel.app/en/events/martini-gansl')
 
-    await s.patchSchema((schema) => { (schema.bricks.events as { missing?: string }).missing = 'hide' })
+    await s.patchSchema((schema) => { (schema.bricks.events as { untranslated?: string }).untranslated = 'hide' })
     const hidden = await why(s, s.entries.martinigans!, 'en')
     expect(codes(hidden)).toEqual(['translation_hidden'])
     expect(hidden).toMatchObject({ public: false })

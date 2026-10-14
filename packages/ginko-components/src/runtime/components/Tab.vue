@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// One panel of ::tabs. <Tabs> reads `label` and `icon` from this component's props and builds the tab around it.
-defineProps<{ label?: string; icon?: string }>()
+// One panel of ::tabs. <Tabs> reads `title` and `icon` from this component's props and builds the tab around it.
+defineProps<{ title?: string; icon?: string }>()
 </script>
 
 <template>

@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/ginko-components",
-  "version": "0.0.0",
+  "version": "0.3.0",
   "type": "module",
   "sideEffects": [
     "**/*.css"
@@ -58,15 +58,17 @@
     "prepack": "pnpm build"
   },
   "peerDependencies": {
+    "@lupinum/ginko": "workspace:^",
+    "@lupinum/ginko-i18n": "workspace:^",
     "nuxt": "^4.6.0",
     "vue": "^3.5.0"
   },
   "dependencies": {
-    "@lupinum/ginko": "workspace:^",
-    "@lupinum/ginko-i18n": "workspace:^",
     "@nuxt/kit": "^4.6.0"
   },
   "devDependencies": {
+    "@lupinum/ginko": "workspace:*",
+    "@lupinum/ginko-i18n": "workspace:*",
     "@nuxt/schema": "4.6.0",
     "@vue/server-renderer": "3.5.43",
     "nuxt": "4.6.0",

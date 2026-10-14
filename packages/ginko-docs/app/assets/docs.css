@@ -56,7 +56,7 @@
 }
 
 /* Theme presets (docs.theme in app.config.ts), set on <html data-docs-theme>. */
-:where(html[data-docs-theme='nuxt']) {
+:where(html[data-docs-theme='green']) {
   --background: light-dark(#ffffff, #020617);
   --foreground: light-dark(#0f172a, #f8fafc);
   --muted: light-dark(#f1f5f9, #0f172a);
@@ -363,7 +363,7 @@
 /* The Preview/Markdown switch: pills, the chosen one lifted on the card colour (row E, PrimeVue SelectButton). */
 .docs-example > .ginko-tabs > .ginko-tabs-list > .ginko-tabs-tab { height: 1.875rem; margin: 0; padding: 0 0.75rem; border: 0; border-radius: var(--docs-r-control); font-size: 0.8125rem; font-weight: 500; }
 .docs-example > .ginko-tabs > .ginko-tabs-list > .ginko-tabs-tab[aria-selected='true'] { background: light-dark(var(--card), var(--muted)); color: var(--foreground); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 0 0 1px var(--border); }
-.docs-example > .ginko-tabs > .ginko-tabs-panel, .docs-example > .ginko-tabs[data-layout] > .ginko-tabs-panel { padding: 0; }
+.docs-example > .ginko-tabs > .ginko-tabs-panel, .docs-example > .ginko-tabs[data-variant] > .ginko-tabs-panel { padding: 0; }
 .docs-example-preview {
   padding: 2rem 1.75rem;
   background-color: var(--card);

@@ -7,9 +7,9 @@ import { ancestorsOf, buildTree, codeTreeProblem, type TreeNode } from './code-t
 import { isOn } from './interactive-utils'
 import { elements } from './vnode-utils'
 
-const props = defineProps<{ defaultValue?: string; expandAll?: boolean | string }>()
+const props = defineProps<{ file?: string; expandAll?: boolean | string }>()
 const slots = useSlots()
-const selected = ref(props.defaultValue ?? '')
+const selected = ref(props.file ?? '')
 // null until the reader opens or closes a folder; then it is theirs, no longer derived from the selection.
 const opened = ref<Set<string> | null>(null)
 
@@ -48,7 +48,7 @@ function rows(nodes: TreeNode[], open: Set<string>, active: string): VNode[] {
 function render() {
   const blocks = elements(slots.default?.())
   const paths = blocks.map(pathOf)
-  const problem = codeTreeProblem(paths, props.defaultValue)
+  const problem = codeTreeProblem(paths, props.file)
   if (problem) {
     console.warn(`[ginko-components] code-tree: ${problem}`)
     return h('div', { class: 'ginko-code-tree-fallback' }, blocks)

@@ -19,12 +19,12 @@ const CALLOUT_TYPES = [
   { value: 'idea', label: { de: 'Tipp', en: 'Tip' } },
 ] as const
 
-const surface = f.choice({ de: 'Hintergrund', en: 'Background' }, {
+const background = f.choice({ de: 'Hintergrund', en: 'Background' }, {
   options: [
-    { value: 'default', label: { de: 'Ohne', en: 'None' } }, { value: 'muted', label: { de: 'Grau', en: 'Gray' } },
+    { value: 'none', label: { de: 'Ohne', en: 'None' } }, { value: 'muted', label: { de: 'Grau', en: 'Gray' } },
     { value: 'tint', label: { de: 'Getönt', en: 'Tinted' } },
   ],
-  optional: true, default: 'default',
+  optional: true, default: 'none',
 })
 const align = f.choice({ de: 'Ausrichtung', en: 'Alignment' }, {
   options: [
@@ -35,13 +35,13 @@ const align = f.choice({ de: 'Ausrichtung', en: 'Alignment' }, {
 })
 const frame = f.choice({ de: 'Rahmen', en: 'Frame' }, {
   options: [
-    { value: 'default', label: { de: 'Ohne', en: 'None' } }, { value: 'card', label: { de: 'Karte', en: 'Card' } },
+    { value: 'none', label: { de: 'Ohne', en: 'None' } }, { value: 'card', label: { de: 'Karte', en: 'Card' } },
     { value: 'border', label: { de: 'Rahmen', en: 'Border' } },
     { value: 'border-dashed', label: { de: 'Rahmen gestrichelt', en: 'Dashed border' } },
     { value: 'outline', label: { de: 'Kontur', en: 'Outline' } },
     { value: 'outline-dashed', label: { de: 'Kontur gestrichelt', en: 'Dashed outline' } },
   ],
-  optional: true, default: 'default',
+  optional: true, default: 'none',
 })
 
 // The short forms of `callout` stay valid in existing texts, but are not offered when inserting (`hidden`): the
@@ -94,8 +94,8 @@ export const components = defineComponents({
       de: 'Eine ruhige Anmerkung neben dem Haupttext, mit optionaler Überschrift.',
       en: 'A quiet side note next to the main text, with an optional heading.',
     },
-    props: { label: f.text({ de: 'Überschrift', en: 'Heading' }, { optional: true, max: 60 }), appearance },
-    editor: { group: { de: 'Text', en: 'Text' }, example: '::aside{label="Hintergrund"}\nDer Verein wurde 1998 gegründet.\n::' },
+    props: { title: f.text({ de: 'Überschrift', en: 'Heading' }, { optional: true, max: 60 }), appearance },
+    editor: { group: { de: 'Text', en: 'Text' }, example: '::aside{title="Hintergrund"}\nDer Verein wurde 1998 gegründet.\n::' },
   },
   excerpt: {
     kind: 'block',
@@ -105,7 +105,7 @@ export const components = defineComponents({
       en: 'A highlighted quote or excerpt, with an optional source.',
     },
     props: {
-      label: f.text({ de: 'Überschrift', en: 'Heading' }, { optional: true, max: 60 }),
+      title: f.text({ de: 'Überschrift', en: 'Heading' }, { optional: true, max: 60 }),
       source: f.text({ de: 'Quelle', en: 'Source' }, { optional: true, max: 120 }),
       size: f.choice({ de: 'Größe', en: 'Size' }, {
         options: [
@@ -145,7 +145,7 @@ export const components = defineComponents({
       options: [
         { value: 'neutral', label: { de: 'Neutral', en: 'Neutral' } }, { value: 'primary', label: { de: 'Hauptfarbe', en: 'Primary' } },
         { value: 'success', label: { de: 'Grün', en: 'Green' } }, { value: 'warning', label: { de: 'Gelb', en: 'Yellow' } },
-        { value: 'danger', label: { de: 'Rot', en: 'Red' } },
+        { value: 'error', label: { de: 'Rot', en: 'Red' } },
       ],
       optional: true, default: 'neutral',
     }) },
@@ -165,9 +165,9 @@ export const components = defineComponents({
         ],
         optional: true, default: 'reading',
       }),
-      surface,
+      background,
     },
-    editor: { group: { de: 'Layout', en: 'Layout' }, example: '::flow{surface="muted"}\nEin längerer Text, der in Lesebreite steht.\n::' },
+    editor: { group: { de: 'Layout', en: 'Layout' }, example: '::flow{background="muted"}\nEin längerer Text, der in Lesebreite steht.\n::' },
   },
   layout: {
     kind: 'block',
@@ -177,7 +177,7 @@ export const components = defineComponents({
       en: 'Puts columns side by side; on small screens they stack.',
     },
     props: {
-      type: frame,
+      frame,
       align,
       gap: f.choice({ de: 'Abstand', en: 'Gap' }, {
         options: [
@@ -193,7 +193,7 @@ export const components = defineComponents({
         ],
         optional: true, default: 'md',
       }),
-      surface,
+      background,
     },
     children: ['column'],
     editor: { group: { de: 'Layout', en: 'Layout' }, example: ':::layout\n::column\nLinke Spalte\n::\n::column\nRechte Spalte\n::\n:::' },
@@ -203,7 +203,7 @@ export const components = defineComponents({
     label: { de: 'Spalte', en: 'Column' },
     describe: { de: 'Eine Spalte innerhalb von „Spalten“.', en: 'A column inside “Columns”.' },
     props: {
-      size: f.choice({ de: 'Breite', en: 'Width' }, {
+      width: f.choice({ de: 'Breite', en: 'Width' }, {
         options: [
           { value: 'xs', label: { de: 'Sehr schmal', en: 'Very narrow' } }, { value: 'sm', label: { de: 'Schmal', en: 'Narrow' } },
           { value: 'md', label: { de: 'Mittel', en: 'Medium' } }, { value: 'lg', label: { de: 'Breit', en: 'Wide' } },
@@ -212,7 +212,7 @@ export const components = defineComponents({
         optional: true, default: 'md',
       }),
       align,
-      media: f.choice({ de: 'Bild', en: 'Image' }, {
+      fit: f.choice({ de: 'Bild', en: 'Image' }, {
         options: [
           { value: 'natural', label: { de: 'Natürlich', en: 'Natural' } }, { value: 'cover', label: { de: 'Füllend', en: 'Fill' } },
           { value: 'contain', label: { de: 'Eingepasst', en: 'Fit' } },
@@ -221,7 +221,7 @@ export const components = defineComponents({
       }),
     },
     parents: ['layout'],
-    editor: { group: { de: 'Layout', en: 'Layout' }, example: ':::layout\n::column{size="lg"}\nBreite Spalte\n::\n::column{size="sm"}\nSchmale Spalte\n::\n:::' },
+    editor: { group: { de: 'Layout', en: 'Layout' }, example: ':::layout\n::column{width="lg"}\nBreite Spalte\n::\n::column{width="sm"}\nSchmale Spalte\n::\n:::' },
   },
   center: {
     kind: 'block',
@@ -231,16 +231,16 @@ export const components = defineComponents({
       en: 'Centers the content in a narrow column, optionally with a frame.',
     },
     props: {
-      size: f.choice({ de: 'Breite', en: 'Width' }, {
+      width: f.choice({ de: 'Breite', en: 'Width' }, {
         options: [
           { value: 'sm', label: { de: 'Schmal', en: 'Narrow' } }, { value: 'md', label: { de: 'Mittel', en: 'Medium' } },
           { value: 'lg', label: { de: 'Breit', en: 'Wide' } },
         ],
         optional: true, default: 'md',
       }),
-      type: frame,
+      frame,
     },
-    editor: { group: { de: 'Layout', en: 'Layout' }, example: '::center{size="sm" type="card"}\nBis bald!\n::' },
+    editor: { group: { de: 'Layout', en: 'Layout' }, example: '::center{width="sm" frame="card"}\nBis bald!\n::' },
   },
   timeline: {
     kind: 'block',
@@ -262,13 +262,13 @@ export const components = defineComponents({
     },
     props: {
       date: f.text({ de: 'Datum', en: 'Date' }, { optional: true, max: 40 }),
-      label: f.text({ de: 'Etikett', en: 'Tag' }, { optional: true, max: 40, hint: { de: 'Kurzes Wort neben dem Datum, zum Beispiel „Neu“.', en: 'A short word next to the date, for example “New”.' } }),
+      meta: f.text({ de: 'Etikett', en: 'Tag' }, { optional: true, max: 40, hint: { de: 'Kurzes Wort neben dem Datum, zum Beispiel „Neu“.', en: 'A short word next to the date, for example “New”.' } }),
       title,
       icon: iconifyIcon,
       active: f.boolean({ de: 'Hervorgehoben', en: 'Highlighted' }, { optional: true }),
     },
     parents: ['timeline'],
-    editor: { group: { de: 'Layout', en: 'Layout' }, example: ':::timeline\n::timeline-item{date="Mai 2025" label="Neu" title="Erste Ernte"}\nDie Tomaten sind reif.\n::\n:::' },
+    editor: { group: { de: 'Layout', en: 'Layout' }, example: ':::timeline\n::timeline-item{date="Mai 2025" meta="Neu" title="Erste Ernte"}\nDie Tomaten sind reif.\n::\n:::' },
   },
   ...interactiveComponents,
   ...codeComponents,

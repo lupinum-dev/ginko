@@ -2,14 +2,16 @@
 <script setup lang="ts">
 import { hoursOn, spansOf, spansText, timesOf, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type Weekday } from '../utils/site'
 
+const langOf = useGinkoLang()
+
 const { lang, labels, today } = useSite()
 const { t, format } = useI18n()
 const { hours, hourPlans, data, plans, ctx } = useHours()
 
 // Special hours are listed only where they apply: a closure over the same day wins (see hoursOn).
-const shown = (e: Exception) => spansOf(e).length > 0 && hoursOn(e.when.from, ctx.value).field === `exceptions.${e._id}.reason`
+const shown = (e: Exception) => spansOf(e).length > 0 && hoursOn(ctx.value, e.when.from).field === `exceptions.${e._id}.reason`
 // The week that applies today (a running season replaces the standard week), then the plans that start soon.
-const week = computed(() => weekFor(today.value, ctx.value).week)
+const week = computed(() => weekFor(ctx.value, today.value).week)
 const coming = computed(() => upcomingPlans(plans.value, today.value, 120))
 const ahead = computed(() => [
   ...data.value.exceptions.filter((e) => e.when.to >= today.value && (e.closed || shown(e))),
@@ -34,7 +36,7 @@ const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
       </tbody>
     </table>
     <div v-for="c in coming" :key="c.plan._id" class="plan">
-      <h3>{{ t('fromDate', { date: format.date(c.starts, { day: 'numeric', month: 'long' }) }) }}<template v-if="c.plan.label">: <span :lang="ginkoLangOf(itemOf(c.plan._id), 'label')">{{ c.plan.label }}</span></template></h3>
+      <h3>{{ t('fromDate', { date: format.date(c.starts, { day: 'numeric', month: 'long' }) }) }}<template v-if="c.plan.label">: <span :lang="langOf(itemOf(c.plan._id), 'label')">{{ c.plan.label }}</span></template></h3>
       <table>
         <tbody>
           <tr v-for="d in c.plan.week" :key="d.day">
@@ -50,7 +52,7 @@ const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
         <li v-for="e in ahead" :key="e._id">
           <span class="when">{{ format.range(e.when.from, e.when.to) }}</span>
           <span>
-            <span :lang="'holiday' in e ? lang : ginkoLangOf(hours, `exceptions.${e._id}.reason`)">{{ reasonOf(e) }}</span><template v-if="e.closed">, {{ t('closedFromTo') }}</template><template v-else>, {{ special(e) }}</template>
+            <span :lang="'holiday' in e ? lang : langOf(hours, `exceptions.${e._id}.reason`)">{{ reasonOf(e) }}</span><template v-if="e.closed">, {{ t('closedFromTo') }}</template><template v-else>, {{ special(e) }}</template>
           </span>
         </li>
       </ul>

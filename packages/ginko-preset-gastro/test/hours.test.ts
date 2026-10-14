@@ -17,7 +17,7 @@ describe('todayState', () => {
     ['yesterday’s closing switch no longer counts', { week, exceptions: [], closedOn: '2026-10-07' }, '2026-10-08', { kind: 'open', times: [{ from: '11:30', to: '14:00' }, { from: '17:30', to: '22:00' }] }],
     ['a closure spanning New Year covers a Thursday inside it', { week, exceptions: [winter] }, '2026-12-31', { kind: 'closed', reason: 'Betriebsurlaub', field: 'exceptions.x2.reason' }],
   ] as const)('%s', (_name, hours, today, expected) => {
-    expect(todayState(today, { hours: hours as never })).toEqual(expected)
+    expect(todayState({ hours: hours as never }, today)).toEqual(expected)
   })
 })
 
@@ -71,16 +71,16 @@ describe('hoursOn precedence', () => {
     ['a non-closed exception without times does nothing', '2026-10-08', { exceptions: [{ _id: 'e4', when: { from: '2026-10-08', to: '2026-10-08' }, reason: 'x', closed: false }] }, [], { closed: false, times: normalTimes, source: 'week' }],
     ['closedOn beats exception, holiday and plan', '2026-10-26', { closedOn: '2026-10-26', closedNote: 'Hochzeit', exceptions: [{ _id: 'e5', when: { from: '2026-10-26', to: '2026-10-26' }, reason: 'x', closed: false, from1: '09:00', to1: '10:00' }] }, [winterPlan], { closed: true, source: 'today', reason: 'Hochzeit' }],
   ] as const)('%s', (_name, date, extra, plans, expected) => {
-    const rule = hoursOn(date, { hours: { ...baseHours, ...(extra as object) } as never, plans: plans as never })
+    const rule = hoursOn({ hours: { ...baseHours, ...(extra as object) } as never, plans: plans as never }, date)
     expect(rule).toMatchObject(expected as object)
   })
 
   it('a holiday rule carries no German reason, only the names in both languages', () => {
-    expect(hoursOn('2026-10-26', { hours: baseHours })).not.toHaveProperty('reason')
+    expect(hoursOn({ hours: baseHours }, '2026-10-26')).not.toHaveProperty('reason')
   })
 
   it('weekOf returns seven days from Monday with the winter plan applied', () => {
-    const days = weekOf('2026-11-02', { hours: baseHours, plans: [winterPlan] })
+    const days = weekOf({ hours: baseHours, plans: [winterPlan] }, '2026-11-02')
     expect(days.map((d) => d.date)).toEqual(['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08'])
     expect(days[3]).toMatchObject({ weekday: 'th', source: 'plan', times: winterThursday })
     expect(days[6]).toMatchObject({ weekday: 'su', closed: true })
@@ -101,13 +101,13 @@ describe('austrianHolidays', () => {
 
 describe('todayState with special hours, plans and holidays', () => {
   it('shows the special times of a non-closed exception', () => {
-    expect(todayState('2026-12-24', { hours: { ...baseHours, exceptions: [early] } })).toEqual({ kind: 'open', times: [{ from: '11:00', to: '14:00' }], reason: 'Heiligabend', field: 'exceptions.e1.reason' })
+    expect(todayState({ hours: { ...baseHours, exceptions: [early] } }, '2026-12-24')).toEqual({ kind: 'open', times: [{ from: '11:00', to: '14:00' }], reason: 'Heiligabend', field: 'exceptions.e1.reason' })
   })
   it('a closed holiday reports its names', () => {
-    expect(todayState('2026-10-26', { hours: { ...baseHours, holidays: 'closed' } })).toEqual({ kind: 'holiday', holiday: { de: 'Nationalfeiertag', en: 'Austrian National Day' } })
+    expect(todayState({ hours: { ...baseHours, holidays: 'closed' } }, '2026-10-26')).toEqual({ kind: 'holiday', holiday: { de: 'Nationalfeiertag', en: 'Austrian National Day' } })
   })
   it('uses plans when given', () => {
-    expect(todayState('2026-11-05', { hours: baseHours, plans: [winterPlan] })).toEqual({ kind: 'open', times: [{ from: '12:00', to: '15:00' }] })
+    expect(todayState({ hours: baseHours, plans: [winterPlan] }, '2026-11-05')).toEqual({ kind: 'open', times: [{ from: '12:00', to: '15:00' }] })
   })
 })
 

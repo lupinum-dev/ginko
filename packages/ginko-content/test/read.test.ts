@@ -6,10 +6,11 @@ import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 import { collection, defineSite, f, single } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
-import { buildFileBundles, publicBundle, readContent } from '../src/index.ts'
+import { buildFileBundles, publicBundle } from '../src/index.ts'
+import { readContent } from '../src/read.ts'
 
 const schema = serializeSchema(defineSite({
-  site: 'doku', name: 'Doku', url: 'https://doku.example', timezone: 'Europe/Vienna',
+  site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
   locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
   bricks: {
     docs: collection({
@@ -128,7 +129,7 @@ describe('```md preview fences', () => {
 describe('buildFileBundles', () => {
   it('builds one bundle per locale with URLs, and falls back to the main language', async () => {
     const s = site({ 'content/docs/1.einstieg.md': md('title: Einstieg'), 'content/docs/2.nur-de.md': md('title: Nur Deutsch'), 'content/docs/1.einstieg.en.md': md('title: Getting started\nslug: getting-started', 'English text.') })
-    const { bundles, errors } = await buildFileBundles(s.content, s.public, schema)
+    const { bundles, errors } = await buildFileBundles({ contentDir: s.content, publicDir: s.public, schema })
     expect(errors).toEqual([])
     const en = bundles.en!.bricks.docs!
     expect(en.kind === 'collection' && en.items.map((i) => [i.data.title, i.urls, i.fallback.includes('title'), i.fallback.includes('body')])).toEqual([
@@ -145,7 +146,7 @@ describe('buildFileBundles', () => {
     utimesSync(join(s.content, 'docs/1.einstieg.md'), new Date('2026-01-01T00:00:00Z'), new Date('2026-01-01T00:00:00Z'))
     utimesSync(join(s.content, 'docs/1.einstieg.en.md'), new Date('2026-02-01T00:00:00Z'), new Date('2026-02-01T00:00:00Z'))
     utimesSync(join(s.content, 'docs/2.zwei.md'), new Date('2026-03-01T00:00:00Z'), new Date('2026-03-01T00:00:00Z'))
-    const { bundles } = await buildFileBundles(s.content, s.public, schema)
+    const { bundles } = await buildFileBundles({ contentDir: s.content, publicDir: s.public, schema })
     const docs = bundles.de!.bricks.docs!
     expect(docs.kind === 'collection' && docs.items.map((i) => [i.id, i.source, i.updatedAt])).toEqual([
       ['docs/einstieg', 'content/docs/1.einstieg.md', '2026-02-01T00:00:00.000Z'],
@@ -159,10 +160,10 @@ describe('buildFileBundles', () => {
 
 describe('publicBundle', () => {
   const events = serializeSchema(defineSite({
-    site: 'ev', name: 'Ev', url: 'https://ev.example', timezone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
+    site: 'ev', name: 'Ev', url: 'https://ev.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
     bricks: {
       events: collection({
-        label: 'Termine', source: 'files', max: 50, order: 'manual', visible: { mode: 'upcoming', field: 'when' },
+        label: 'Termine', source: 'files', max: 50, order: 'manual', visible: { mode: 'until', field: 'when' },
         route: { de: '/termine/[slug]' },
         fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), when: f.daterange('Wann'), body: f.markdown('Text') },
       }),
@@ -177,7 +178,7 @@ describe('publicBundle', () => {
       'content/events/2.heute.md': md('title: Heute\nwhen:\n  from: 2026-10-01\n  to: 2026-10-08'),
       'content/events/3.bald.md': md('title: Bald\nwhen:\n  from: 2026-11-01\n  to: 2026-11-02'),
     })
-    const { bundles, errors } = await buildFileBundles(s.content, s.public, events, now)
+    const { bundles, errors } = await buildFileBundles({ contentDir: s.content, publicDir: s.public, schema: events, now })
     expect(errors).toEqual([])
     const full = bundles.de!
     expect(JSON.stringify(full)).toContain('EXPIRED-MARKER')
@@ -283,7 +284,7 @@ describe('images in Markdown', () => {
 
 describe('image variants', () => {
   const imageSchema = serializeSchema(defineSite({
-    site: 'doku', name: 'Doku', url: 'https://doku.example', timezone: 'Europe/Vienna',
+    site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
     locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
     bricks: { docs: collection({ label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), hero: f.image('Bild', { optional: true }), body: f.markdown('Text') } }) },
   }))
@@ -301,7 +302,7 @@ describe('image variants', () => {
     writeFileSync(join(root, 'public/img/a.png'), await png(width, 100))
     writeFileSync(join(root, 'content/docs/1.a.md'), md('title: A\nhero:\n  src: /img/a.png\n  alt: Rot'))
     const imageDir = join(root, 'out')
-    const { bundles, imageFiles, errors } = await buildFileBundles(join(root, 'content'), join(root, 'public'), imageSchema, new Date(), { imageDir })
+    const { bundles, imageFiles, errors } = await buildFileBundles({ contentDir: join(root, 'content'), publicDir: join(root, 'public'), schema: imageSchema, imageDir })
     expect(errors).toEqual([])
     const hero = (bundles.de!.bricks.docs as unknown as { items: { data: { hero: { variants?: { width: number; url: string }[] } } }[] }).items[0]!.data.hero
     expect(hero.variants?.map((v) => v.width)).toEqual(widths.length ? widths : undefined)
@@ -319,7 +320,7 @@ describe('image variants', () => {
     mkdirSync(join(root, 'content/docs'), { recursive: true })
     writeFileSync(join(root, 'public/img/a.svg'), '<svg width="2000" height="1000"></svg>')
     writeFileSync(join(root, 'content/docs/1.a.md'), md('title: A\nhero:\n  src: /img/a.svg\n  alt: Rot'))
-    const { bundles, imageFiles } = await buildFileBundles(join(root, 'content'), join(root, 'public'), imageSchema, new Date(), { imageDir: join(root, 'out') })
+    const { bundles, imageFiles } = await buildFileBundles({ contentDir: join(root, 'content'), publicDir: join(root, 'public'), schema: imageSchema, imageDir: join(root, 'out') })
     expect(imageFiles.size).toBe(0)
     expect(JSON.stringify(bundles.de)).not.toContain('variants')
   })

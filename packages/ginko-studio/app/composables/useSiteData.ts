@@ -32,7 +32,7 @@ export async function useSiteData() {
   const grants = computed(() => new Set(query.data.value?.grants ?? []))
   const entries = computed(() => (query.data.value?.entries ?? []) as unknown as Entry[])
   const main = computed(() => schema.value?.locales[0] ?? 'de')
-  const today = useToday(() => schema.value?.timezone ?? 'Europe/Vienna')
+  const today = useToday(() => schema.value?.timeZone ?? 'Europe/Vienna')
 
   /** owner and admin may do everything; staff only granted tasks (SPEC 2.7). */
   const may = (brick: string, task: Task) => role.value === 'owner' || role.value === 'admin' || grants.value.has(taskRef(brick, task))

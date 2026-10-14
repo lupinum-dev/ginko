@@ -3,7 +3,9 @@
 // Nuxt component (`nuxt/runtime/GinkoMarkdown.ts`) loads `{ ref }` values and renders through this one.
 import { defineComponent, h, type Component, type PropType } from 'vue'
 import { MarkdownDocument } from '@comark/vue'
-import { isSafeHref, URL_PROPS, type MarkdownTree } from './core/index.ts'
+import type { MarkdownTree } from './core/index.ts'
+import { attributeProblem } from './core/markdown.ts'
+import { BLOCKED_TAGS, type ComponentRegistry } from './core/components.ts'
 
 // KaTeX and mermaid.js are not part of Ginko's bundle, so math and mermaid nodes show their source:
 // math as `<code class="math">`, mermaid as `<pre class="mermaid">` (the markup mermaid.js looks for).
@@ -58,21 +60,24 @@ function labelCheckboxes(node: Tree): Tree {
 }
 
 /**
- * The parser refuses unsafe URLs and `on*` props at build or save time, but a tree can reach this component
- * without the parser (a platform bundle, an import). So the renderer drops them too: an address prop that is not
- * http(s), mailto, tel, relative or `#`, and every event handler prop. The element stays, without the attribute.
+ * The parser refuses blocked tags and the attributes its allowlist does not hold (`attributeProblem`) at build or save
+ * time, but a tree can reach this component without the parser (a platform bundle, an import), or with a registry that
+ * declares a blocked tag (`embed`, see COMPONENT_ONLY_TAGS) on a host that maps no component to it. So the renderer
+ * applies the same rules: a blocked tag with no component in `components` goes with its children, and every attribute
+ * the allowlist refuses goes (the element stays, without the attribute). `template` stays: comark's slot nodes use it,
+ * and the native element is inert.
  */
-function dropUnsafeProps(node: Tree): Tree {
-  if (!Array.isArray(node)) return node
+function dropUnsafe(node: Tree, components: Record<string, unknown>, registry: ComponentRegistry | undefined): Tree[] {
+  if (!Array.isArray(node)) return [node]
   const [tag, props, ...children] = node as [string | null, Record<string, unknown>, ...Tree[]]
-  const safe: Record<string, unknown> = {}
-  for (const [name, value] of Object.entries(props ?? {})) {
-    const key = name.replace(/^:/, '').toLowerCase()
-    if (key.startsWith('on')) continue
-    if (URL_PROPS.has(key) && (typeof value !== 'string' || !isSafeHref(value))) continue
-    safe[name] = value
+  if (tag && !Object.hasOwn(components, tag)) {
+    // HTML tag names ignore case and a tree that skipped the parser can hold `SCRIPT`. The component lookup above keeps
+    // the tag as written, because comark resolves components by that key.
+    const lower = tag.toLowerCase()
+    if (lower !== 'template' && BLOCKED_TAGS.has(lower)) return []
   }
-  return [tag, safe, ...children.map(dropUnsafeProps)] as Tree
+  const safe = Object.fromEntries(Object.entries(props ?? {}).filter(([name, value]) => !attributeProblem(tag ?? '', name, value, registry)))
+  return [[tag, safe, ...children.flatMap((child) => dropUnsafe(child, components, registry))] as Tree]
 }
 
 export const GinkoMarkdown = defineComponent({
@@ -81,9 +86,16 @@ export const GinkoMarkdown = defineComponent({
     value: { type: Object as PropType<MarkdownTree | null | undefined>, default: undefined },
     /** Tag → component (or another tag name), e.g. `{ callout: Callout }`. Other tags use a global component of that name (PascalCase), else a plain element. */
     components: { type: Object as PropType<Record<string, Component | string>>, default: () => ({}) },
+    /** The site's component registry (`components` in ginko.config.ts): a component keeps the props it declares there. Without it a component gets only `title`, `lang`, `dir` and `aria-*`. */
+    registry: { type: Object as PropType<ComponentRegistry>, default: undefined },
   },
   setup(props) {
     // The tree is plain JSON; comark's renderer takes the same `{ nodes }` shape.
-    return () => (props.value ? h(MarkdownDocument, { value: { nodes: props.value.nodes.map((node) => labelCheckboxes(dropUnsafeProps(node))) as never }, components: { ...sourceOnly, ...props.components } }) : null)
+    return () => {
+      if (!props.value) return null
+      const components = { ...sourceOnly, ...props.components }
+      const nodes = props.value.nodes.flatMap((node) => dropUnsafe(node, components, props.registry)).map(labelCheckboxes)
+      return h(MarkdownDocument, { value: { nodes: nodes as never }, components })
+    }
   },
 })

@@ -14,7 +14,7 @@ it('fills a freshly released site once, with .test people only, and refuses a si
   await s.t.mutation(internal.sites.bootstrap, { slug: 'linde', name: 'Gasthaus zur Linde', url: 'https://ginko-demo-restaurant.vercel.app' })
   const { key } = await s.t.mutation(internal.release.bootstrapKey, { site: 'linde', label: 'CI', scopes: ['release'] })
   const platform = createPlatform({ url: 'https://platform.test', key, fetch: async (url, init) => { const { pathname, search } = new URL(url); return s.t.fetch(pathname + search, init) } })
-  await release({ config: { ...restaurant, site: 'linde' }, commit: 'c1', platform, mainCommit: async () => 'c1', sleep: async () => undefined, log: () => undefined })
+  await release({ config: { ...restaurant, site: 'linde' }, commit: 'c1', platform, branchHead: async () => 'c1', sleep: async () => undefined, log: () => undefined })
 
   expect(await errorOf(s.t.mutation(internal.demo.fill, { site: 'linde', corpus, people: [{ email: 'echt@example.com', role: 'owner', grants: [] }] }))).toMatchObject({ code: 'INVALID' })
   const filled = await s.t.mutation(internal.demo.fill, { site: 'linde', corpus, people })

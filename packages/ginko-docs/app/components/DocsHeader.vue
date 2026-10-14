@@ -4,9 +4,10 @@
 // navigation (on docs pages), the site links and social link, the language and the light/dark switch.
 const { t, localePath } = useI18n()
 const cfg = useAppConfig().docs ?? {}
+const title = cfg.title ?? useGinkoSite().name
 const { text, href } = useDocsSite()
 const docs = useDocs()
-const blog = useBlog()
+const blog = useDocsBlog()
 const route = useRoute()
 
 const within = (base: string | undefined) => !!base && (route.path === base || route.path.startsWith(`${base}/`))
@@ -61,10 +62,10 @@ onBeforeUnmount(() => {
     <div class="docs-header-inner">
       <NuxtLink :to="localePath('/')" class="docs-brand">
         <template v-if="cfg.logo">
-          <img :class="{ 'docs-when-light': cfg.logo.dark }" :src="cfg.logo.light" :alt="cfg.logo.wordmark ? cfg.title : ''">
+          <img :class="{ 'docs-when-light': cfg.logo.dark }" :src="cfg.logo.light" :alt="cfg.logo.wordmark ? title : ''">
           <img v-if="cfg.logo.dark" class="docs-when-dark" :src="cfg.logo.dark" alt="">
         </template>
-        <span v-if="!cfg.logo?.wordmark">{{ cfg.title }}</span>
+        <span v-if="!cfg.logo?.wordmark">{{ title }}</span>
       </NuxtLink>
       <nav v-if="links.length > 1 || cfg.nav?.length" class="docs-nav-links" :aria-label="t('docs.siteLinks')">
         <NuxtLink v-for="l in links" :key="l.key" :to="l.to" :aria-current="l.active ? 'page' : undefined">{{ l.label }}</NuxtLink>

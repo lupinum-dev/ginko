@@ -7,7 +7,7 @@ const { alternates, t } = useI18n()
 const jobs = useGinko('jobs')
 
 // The same page in the other language; ginko-i18n falls back to that language's home page.
-const otherHref = computed(() => alternates.value.find((a) => a.code === otherLang.value)!.path)
+const other = computed(() => alternates.value.find((a) => a.code === otherLang.value)!)
 
 const nav = computed(() => [
   { key: 'products', href: path('products'), label: t('nav.products') },
@@ -27,7 +27,7 @@ const nav = computed(() => [
         <span class="mark">BRUNNER</span>
         <span class="line">{{ t('brandLine') }}</span>
       </NuxtLink>
-      <NuxtLink :to="otherHref" class="lang" :hreflang="otherLang" :lang="otherLang">{{ t('other') }}</NuxtLink>
+      <NuxtLink :to="other.path" class="lang" :hreflang="other.language" :lang="other.language">{{ t('other') }}</NuxtLink>
       <nav class="nav" :aria-label="t('mainNav')">
         <NuxtLink v-for="item in nav" :key="item.key" :to="item.href" class="nav-link">
           {{ item.label }}

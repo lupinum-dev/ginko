@@ -1,13 +1,13 @@
 // Local demo: resets the restaurant site in the LOCAL Convex backend to the contract corpus and
-// prints invite links for the owner and the cook (SPEC 13 roles). Run after `ginko dev` created the site:
+// prints invite links for the owner and the cook (SPEC 13 roles). Run after `pnpm local:dev` created the site:
 //   node --experimental-strip-types scripts/seed-local.ts            (content, members and invites)
 //   node --experimental-strip-types scripts/seed-local.ts --content  (content only; members stay)
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 
-const platform = new URL('../apps/platform/', import.meta.url).pathname
-const env = readFileSync(`${platform}.env.local`, 'utf8')
-if (!/^CONVEX_DEPLOYMENT=anonymous/m.test(env)) throw new Error('apps/platform/.env.local points at a non-local deployment. Stopped.')
+const server = new URL('../packages/ginko-server/', import.meta.url).pathname
+const env = readFileSync(`${server}.env.local`, 'utf8')
+if (!/^CONVEX_DEPLOYMENT=anonymous/m.test(env)) throw new Error('packages/ginko-server/.env.local points at a non-local deployment. Stopped.')
 // A deploy key wins over .env.local in the Convex CLI and would send this to the cloud.
 if (process.env.CONVEX_DEPLOY_KEY) throw new Error('CONVEX_DEPLOY_KEY is set: this script is for the local backend only. Stopped.')
 
@@ -28,5 +28,5 @@ const people = [
   { email: 'koch@example.test', role: 'staff', grants: ['menu.edit', 'menu.price', 'menu.add', 'menu.remove', 'lunch.lunchWeek'] },
 ]
 const args = process.argv.includes('--content') ? { site: 'restaurant', corpus } : { site: 'restaurant', corpus, people }
-const out = execFileSync('npx', ['convex', 'run', 'seed:reset', JSON.stringify(args)], { cwd: platform, encoding: 'utf8' })
+const out = execFileSync('npx', ['convex', 'run', 'seed:reset', JSON.stringify(args)], { cwd: server, encoding: 'utf8' })
 console.log(out)

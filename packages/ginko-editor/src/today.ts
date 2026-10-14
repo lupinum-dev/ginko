@@ -6,10 +6,10 @@ const tick = ref(0)
 let ticking = false
 
 /**
- * Today's date in `timezone`, moving on at midnight: an editor left open overnight offers the new
+ * Today's date in `timeZone`, moving on at midnight: an editor left open overnight offers the new
  * "Heute", "Diese Woche" and week state, not yesterday's.
  */
-export function useToday(timezone: MaybeRefOrGetter<string>) {
+export function useToday(timeZone: MaybeRefOrGetter<string>) {
   if (typeof document !== 'undefined' && !ticking) {
     ticking = true
     setInterval(() => { tick.value++ }, 60_000)
@@ -17,6 +17,6 @@ export function useToday(timezone: MaybeRefOrGetter<string>) {
   }
   return computed(() => {
     void tick.value
-    return todayIn(toValue(timezone))
+    return todayIn(toValue(timeZone))
   })
 }

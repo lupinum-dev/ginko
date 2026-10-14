@@ -9,7 +9,7 @@ import { valueAt, type Data, type Prints } from './content'
 export interface LeafStatus {
   missing: string[]
   outdated: string[]
-  /** `missing: 'hide'` and a required leaf is missing or outdated: the bundle leaves the entry out in this language. */
+  /** `untranslated: 'hide'` and a required leaf is missing or outdated: the bundle leaves the entry out in this language. */
   hidden: boolean
 }
 

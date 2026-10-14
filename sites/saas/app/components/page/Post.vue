@@ -1,27 +1,30 @@
 <script setup lang="ts">
 import { siteName } from '../../utils/site'
+import { safeHref } from '@lupinum/ginko'
+
+const langOf = useGinkoLang()
 
 const props = defineProps<{ slug: string }>()
 const { lang } = useSite()
 const path = useGinkoPath()
 const { t, format } = useI18n()
-const post = useGinkoEntry('blog', props.slug)
+const post = useGinkoEntry('blog', () => props.slug)
 useSeoMeta({
   title: () => `${post.value.data.title} | ${siteName}`,
   description: () => post.value.data.description,
   ogTitle: () => `${post.value.data.title} | ${siteName}`,
   ogDescription: () => post.value.data.description,
-  ogImage: () => ginkoSafeHref(post.value.data.image?.url),
+  ogImage: () => safeHref(post.value.data.image?.url),
 })
 </script>
 
 <template>
   <article class="wrap page-body post">
     <NuxtLink :to="path('blog')" class="back">{{ t('allPosts') }}</NuxtLink>
-    <h1 class="page-title" :lang="ginkoLangOf(post, 'title')">{{ post.data.title }}</h1>
+    <h1 class="page-title" :lang="langOf(post, 'title')">{{ post.data.title }}</h1>
     <p class="facts mono">{{ post.data.author }} · <time :datetime="post.data.date">{{ format.date(post.data.date) }}</time></p>
-    <img v-if="ginkoSafeHref(post.data.image?.url)" class="image" :src="ginkoSafeHref(post.data.image?.url)" :alt="post.data.image!.alt" :lang="ginkoLangOf(post, 'image.alt')" :width="post.data.image!.width" :height="post.data.image!.height">
-    <GinkoMarkdown :value="post.data.body" class="prose" :lang="ginkoLangOf(post, 'body')" />
+    <img v-if="safeHref(post.data.image?.url)" class="image" :src="safeHref(post.data.image?.url)" :alt="post.data.image!.alt" :lang="langOf(post, 'image.alt')" :width="post.data.image!.width" :height="post.data.image!.height">
+    <GinkoMarkdown :value="post.data.body" class="prose" :lang="langOf(post, 'body')" />
   </article>
 </template>
 

@@ -2,7 +2,7 @@ import { shallowReactive } from 'vue'
 import { defineNuxtPlugin, isPrerendered, loadPayload, useHead, useRequestEvent, useRoute, useRouter, useState } from '#imports'
 import { config } from '#ginko-i18n/config.mjs'
 import { loaders } from '#ginko-i18n/loaders.mjs'
-import { alternatesOf, inUserZone, localeFromPath, ogLocale, type MessageTree } from '@lupinum/ginko-i18n/internal'
+import { alternatesOf, inUserZone, localeFromPath, ogLocale, type MessageTree } from '@lupinum/ginko-i18n/core'
 import { alternatesKey, createLocalePath, currentLocale, useI18n, writeLocaleCookie } from './composables'
 import type { AlternatesResolver, I18nState, RuntimeConfig } from './types'
 
@@ -52,7 +52,7 @@ export default defineNuxtPlugin({
       // Dynamic pages (CMS slugs) resolve their alternates here, before anything renders, so the
       // layout's switcher and the head agree. The result lives in payload data: hydration reuses it,
       // and `nuxt generate` writes it to _payload.json, so static hosts need no API on navigation.
-      const own = to.meta.alternates as AlternatesResolver | undefined
+      const own = to.meta.i18nAlternates as AlternatesResolver | undefined
       const key = alternatesKey(to.path)
       if ((!own && !resolvers.length) || nuxtApp.payload.data[key] !== undefined) return
       if (import.meta.client && nuxtApp.static.data[key] === undefined && (await isPrerendered(to.path))) {

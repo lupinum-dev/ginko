@@ -11,7 +11,7 @@ import type { ProposalRow } from '../utils/review'
 const props = defineProps<{ site: string; schema: Schema; proposal: ProposalRow; open: boolean; inRelease?: boolean }>()
 const emit = defineEmits<{ toggle: [] }>()
 const { t, format } = useI18n()
-const textOf = useTextOf(() => ({ timeZone: props.schema.timezone, main: props.schema.locales[0] }))
+const textOf = useTextOf(() => ({ timeZone: props.schema.timeZone, main: props.schema.locales[0] }))
 const { show } = useToast()
 const ops = useOps(computed(() => props.site))
 
@@ -33,7 +33,7 @@ async function approve(at?: number) {
   try {
     const result = await approveMutation.mutate({ proposal: props.proposal.proposal, at }) as { status: string; change?: string | null; reason?: string; reasonMsg?: { key: string; params?: Record<string, unknown> } | null }
     if (result.status === 'stale') show(result.reason ? textOf(result.reasonMsg, result.reason) : t('review.stale'), { tone: 'err' })
-    else if (result.status === 'scheduled' && at !== undefined) show(t('ops.scheduled', { time: whenText(at, props.schema.timezone, format) }))
+    else if (result.status === 'scheduled' && at !== undefined) show(t('ops.scheduled', { time: whenText(at, props.schema.timeZone, format) }))
     else {
       const change = result.change
       show(t('review.approved'), change ? { action: { label: t('ops.undo'), run: () => ops.undoChange(change) } } : {})
@@ -68,7 +68,7 @@ async function reject(reason: string) {
     :error="error || (detail.error.value ? opErrorOf(detail.error.value).message : '')"
     :fields="fields"
     :locale="schema.locales[0]!"
-    :time-zone="schema.timezone"
+    :time-zone="schema.timeZone"
     :in-release="inRelease"
     @toggle="emit('toggle')"
     @approve="approve"

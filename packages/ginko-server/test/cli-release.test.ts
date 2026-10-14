@@ -1,5 +1,6 @@
 // The CLI's release and check (packages/ginko/src/cli) against the platform's HTTP routes and the
 // release mutation: the CLI's fetch is routed into convex-test, so the whole SPEC 5.1 path runs.
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../sites/restaurant/ginko.config.ts'
 import { check } from '../../../packages/ginko/src/cli/check.ts'
@@ -19,7 +20,7 @@ const menu = restaurant.bricks.menu
 const withTitle: SiteInput = {
   ...restaurant,
   bricks: { ...restaurant.bricks, menu: { ...menu, fields: { ...menu.fields, title: f.text('Titel', { max: 120 }) } } },
-  migrations: { '2026-11-menu-title': { brick: 'menu', fills: 'title', from: (entry) => entry.name } },
+  migrations: { '2026-11-menu-title': { brick: 'menu', fills: 'title', compute: (entry) => entry.name } },
 }
 
 let sleeps: number[] = []
@@ -42,12 +43,12 @@ async function platformFor(s: Setup, onPost?: () => Promise<void>): Promise<{ pl
   return { platform, posts: () => posts }
 }
 
-function inputFor(platform: Platform, config: SiteInput, commit = COMMIT, mainCommit = COMMIT): ReleaseInput {
+function inputFor(platform: Platform, config: SiteInput, commit = COMMIT, branchHead = COMMIT): ReleaseInput {
   return {
     config,
     commit,
     platform,
-    mainCommit: async () => mainCommit,
+    branchHead: async () => branchHead,
     sleep: async (ms) => { sleeps.push(ms) },
     log: () => undefined,
   }
@@ -96,12 +97,23 @@ describe('ginko release and check against the platform (SPEC 5.1, 5.3)', () => {
     expect((await storedSite(s)).schemaRev).toBe(2)
   })
 
-  it('a commit that is no longer the head of main releases nothing', async () => {
+  it('a retry whose commit is no longer the head of main releases nothing', async () => {
+    sleeps = []
     const s = await setup()
-    const { platform, posts } = await platformFor(s)
+    let raced = false
+    const { platform, posts } = await platformFor(s, async () => {
+      // The first POST is stale (CHANGED_SINCE), and a newer commit lands on main while the CLI waits.
+      if (raced) return
+      raced = true
+      await s.t.run(async (ctx) => {
+        const site = (await ctx.db.get(s.site))!
+        await ctx.db.patch(s.site, { contentRev: site.contentRev + 1 })
+      })
+    })
     const outcome = await release(inputFor(platform, withTitle, COMMIT, 'ffffffffffffffffffffffffffffffffffffffff'))
     expect(outcome).toEqual({ deploy: false, reason: 'superseded' })
-    expect(posts()).toBe(0)
+    expect(posts()).toBe(1)
+    expect(sleeps).toEqual([2000])
     expect((await storedSite(s)).schemaRev).toBe(1)
   })
 
@@ -136,7 +148,9 @@ describe('ginko release and check against the platform (SPEC 5.1, 5.3)', () => {
     const s = await setup()
     const { platform, posts } = await platformFor(s)
     const lines: string[] = []
-    expect(await check({ config: withTitle, platform, log: (line) => lines.push(line) })).toBe(true)
+    const root = fileURLToPath(new URL('../../../sites/restaurant/', import.meta.url))
+    const noFetch = async () => { throw new Error('no external link check expected') }
+    expect(await check({ config: withTitle, connect: () => platform, root, fetch: noFetch, log: (line) => lines.push(line) })).toBe(true)
     expect(lines.join('\n')).toContain('OK: A release with this schema would be accepted.')
     expect(posts()).toBe(0)
     const site = await storedSite(s)

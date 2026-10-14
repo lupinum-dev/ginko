@@ -1,6 +1,8 @@
 <!-- The weekly reception hours, today's row marked, plus the exceptions in the next 60 days. -->
 <script setup lang="ts">
 import { exceptionsAhead, timesOf, weekdayOf, type DayHours, type Exception, type Weekday } from '../utils/site'
+
+const langOf = useGinkoLang()
 const { t, format } = useI18n()
 
 const { lang, labels, today } = useSite()
@@ -26,7 +28,7 @@ const todayKey = computed(() => weekdayOf(today.value))
       <ul>
         <li v-for="e in ahead" :key="e._id">
           <span class="mono">{{ format.range(e.when.from, e.when.to) }}</span>
-          <span><span :lang="ginkoLangOf(hours, `exceptions.${e._id}.reason`)">{{ e.reason }}</span><template v-if="e.closed">, {{ t('closed') }}</template></span>
+          <span><span :lang="langOf(hours, `exceptions.${e._id}.reason`)">{{ e.reason }}</span><template v-if="e.closed">, {{ t('closed') }}</template></span>
         </li>
       </ul>
     </div>

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees } from '../src/core/compiler'
+import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees, sourceProblem } from '../src/core/compiler'
 import { defineCatalog } from '../src/core/catalog'
 import { createFormatters } from '../src/core/format'
 import { alternatesOf, canonicalCase, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, resolveConfig, stripLocale } from '../src/core/locales'
 import { createTranslator, formatParts } from '../src/core/messages'
 
-const pexd = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de-AT' })
-const prefix = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de-AT', strategy: 'prefix' })
+const pexd = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de' })
+const prefix = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de', strategy: 'prefix' })
 
 describe('negotiateLocale with hostile headers', () => {
   it.each([
@@ -54,8 +54,13 @@ describe('paths', () => {
     expect([inUserZone('/', config), inUserZone('/x/y', config), inUserZone('/studio', config), inUserZone('/api/x', config)]).toEqual([true, true, false, false])
     expect(localeFromPath('/en/about', config)).toBeUndefined()
   })
-  it('rejects a zone pattern without a leading slash', () => {
-    expect(() => resolveConfig({ locales: ['de-AT'], userLocale: ['app/**'] })).toThrow(/must start with "\/"/)
+  // `/admin/*` (the routeRules style) used to match nothing, without an error.
+  it.each([['exclude', '/admin/*'], ['exclude', 'studio'], ['userLocale', 'app/**'], ['userLocale', '/a/**/b'], ['userLocale', '/app*']])('rejects the %s pattern %s', (option, pattern) => {
+    expect(() => resolveConfig({ locales: ['de-AT'], [option]: [pattern] })).toThrow(`i18n.${option} pattern "${pattern}" is neither an exact path nor a prefix`)
+  })
+  it('takes a locale code as defaultLocale, not a language tag', () => {
+    expect(() => resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de-AT' })).toThrow('Fix: use "de"')
+    expect(() => resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'fr' })).toThrow('Fix: use one of "de", "en"')
   })
   it('accepts URL codes with capitals, as Ginko passes canonical tags', () => {
     const config = resolveConfig({ locales: ['de', ...['pt-BR', 'zh-Hant'].map(code => ({ code, language: code }))] })
@@ -102,6 +107,23 @@ describe('messages with odd input', () => {
   it('names the key when ICU is broken', () => {
     expect(() => compileTree({ a: { b: 'Hi {name' } })).toThrow(/"a.b" is not valid ICU/)
     expect(() => compileTree({ a: '{n, plural, one {x}}' })).toThrow(/"a" is not valid ICU/)
+  })
+  // `"Mr. Smith"` as a key was typed as available but `t()` read `{ Mr: { ' Smith' } }` instead.
+  it.each([
+    [{ 'a.b': 'x' }, 'Message key "a.b" contains "."', '{ "a": { "b": … } }'],
+    [{ nav: { 'v1.2': 'x' } }, 'Message key "v1.2" in "nav" contains "."', '{ "v1": { "2": … } }'],
+    [{ nav: { '': 'x' } }, 'A message key in "nav" is empty', 'give it a name'],
+  ])('rejects the key in %j', (raw, problem, fix) => {
+    expect(() => compileTree(raw)).toThrow(problem)
+    expect(() => compileTree(raw)).toThrow(fix)
+  })
+  // A library source without a valid namespace merged its keys into the app's, or made them unreachable.
+  it.each([
+    ['cms', false],
+    ['', true],
+    ['my.lib', true],
+  ])('a ginko-i18n:sources namespace %j is refused: %s', (namespace, refused) => {
+    expect(sourceProblem({ namespace, dir: '/lib/i18n' }) !== undefined).toBe(refused)
   })
   it('reports params per key', () => {
     expect(compileTree({ a: { b: '{x} {n, plural, other {{y}}}' } }).params).toEqual({ 'a.b': ['x', 'n', 'y'] })

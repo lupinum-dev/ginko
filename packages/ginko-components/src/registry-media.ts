@@ -40,9 +40,9 @@ export const mediaComponents = defineComponents({
       }),
       frame: f.choice({ de: 'Rahmen', en: 'Frame' }, {
         options: [
-          { value: 'default', label: { de: 'Mit Rahmen', en: 'With frame' } }, { value: 'none', label: { de: 'Ohne', en: 'None' } },
+          { value: 'none', label: { de: 'Ohne', en: 'None' } }, { value: 'border', label: { de: 'Rahmen', en: 'Border' } },
         ],
-        optional: true, default: 'default',
+        optional: true, default: 'border',
       }),
       focus: f.choice({ de: 'Bildausschnitt', en: 'Image focus' }, {
         options: [
@@ -71,7 +71,7 @@ export const mediaComponents = defineComponents({
     },
     editor: { group: { de: 'Medien', en: 'Media' }, example: '::video{src="https://www.youtube.com/watch?v=M7lc1UVf-VE" title="Beispielvideo des YouTube-Players" start="30"}\n::' },
   },
-  embedded: {
+  embed: {
     kind: 'block',
     label: { de: 'Einbettung', en: 'Embed' },
     describe: {
@@ -83,6 +83,6 @@ export const mediaComponents = defineComponents({
       title: f.text({ de: 'Titel', en: 'Title' }, { max: 120, hint: { de: 'Beschreibt den Inhalt für Screenreader und die Taste „Inhalt laden“.', en: 'Describes the content for screen readers and the “Load content” button.' } }),
       poster: f.image({ de: 'Vorschaubild', en: 'Preview image' }, { optional: true, hint: { de: 'Ohne Vorschaubild sehen Besucher eine graue Fläche. Wir laden keines vom Anbieter.', en: 'Without a preview image, visitors see a grey area. We never load one from the provider.' } }),
     },
-    editor: { group: { de: 'Medien', en: 'Media' }, example: '::embedded{src="https://www.openstreetmap.org/export/embed.html?bbox=13.35%2C52.50%2C13.45%2C52.54&layer=mapnik" title="Karte von Berlin-Mitte"}\n::' },
+    editor: { group: { de: 'Medien', en: 'Media' }, example: '::embed{src="https://www.openstreetmap.org/export/embed.html?bbox=13.35%2C52.50%2C13.45%2C52.54&layer=mapnik" title="Karte von Berlin-Mitte"}\n::' },
   },
 })

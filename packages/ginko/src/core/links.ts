@@ -26,8 +26,8 @@ export interface LinkIssue {
 export interface CheckLinksOptions {
   /** True when `path` (e.g. `/media/menu.pdf`) is a file in the site's public files. Without it, unknown paths are not checked. */
   files?: (path: string) => boolean
-  /** Severities; default: the schema's `links`. */
-  links?: LinkConfig
+  /** Severities; default: broken `error`, anchors and redirected `warn`. Callers pass the site's `linkCheck`. */
+  linkCheck?: LinkConfig
   /** The site's redirect rules (config); entry rules (`redirectFrom`) are read from the bundles. */
   redirects?: Redirect[]
 }
@@ -118,8 +118,8 @@ const normal = (path: string) => (path.length > 1 && path.endsWith('/') ? path.s
  * `resolveRouteLinks` could not resolve, and `/…` paths that match no entry URL, no page and no public file.
  * Warnings: a `#anchor` whose target text has no heading with that id. External links are not checked here (no network in core): see `externalLinks`.
  */
-export function checkLinks(bundles: Bundle[], schema: Pages & { links?: LinkConfig }, options: CheckLinksOptions = {}): LinkIssue[] {
-  const config = options.links ?? schema.links ?? {}
+export function checkLinks(bundles: Bundle[], schema: Pages, options: CheckLinksOptions = {}): LinkIssue[] {
+  const config = options.linkCheck ?? {}
   const levels = { broken: config.broken ?? 'error', anchors: config.anchors ?? 'warn', redirected: config.redirected ?? 'warn' }
   const rules = [...(options.redirects ?? []), ...bundles.flatMap(entryRedirects)]
   const known = new Set<string>()

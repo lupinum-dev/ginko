@@ -2,14 +2,14 @@
 import { defineSite } from '@lupinum/ginko'
 import { checkSchema, serializeSchema } from '@lupinum/ginko/internal'
 import { describe, expect, it } from 'vitest'
-import { allergensEU, events, gallery, hourPlans, hours, hoursCalendarOf, lunch, lunchPlans, menu, notices } from '../src/index.ts'
+import { allergensEU, events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '../src/index.ts'
 
 const siteWith = (bricks: Record<string, any>) =>
-  defineSite({ site: 'cafe', name: 'Café', url: 'https://cafe.example', timezone: 'Asia/Singapore', locales: ['en'], currency: 'EUR', pages: { home: '/' }, bricks })
+  defineSite({ site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Asia/Singapore', locales: ['en'], currency: 'EUR', pages: { home: '/' }, bricks })
 
 describe('labels', () => {
-  it('brick, field, task and option labels come in German and English, whatever lang is', () => {
-    const schema = JSON.stringify(serializeSchema(siteWith({ hours: hours({ lang: 'en' }), lunch: lunch({ lang: 'en' }), menu: menu({ lang: 'en' }) })))
+  it('brick, field, task and option labels come in German and English, whatever the site locales are', () => {
+    const schema = JSON.stringify(serializeSchema(siteWith({ hours: hours(), lunch: lunch(), menu: menu() })))
     expect(schema).toContain('{"de":"Öffnungszeiten","en":"Opening hours"}')
     expect(schema).toContain('{"de":"Heute geschlossen","en":"Closed today"}')
     expect(schema).toContain('{"de":"Mittagsmenü","en":"Lunch menu"}')
@@ -19,16 +19,26 @@ describe('labels', () => {
   it('the lunch plan task has both languages', () => {
     expect(JSON.stringify(serializeSchema(siteWith({ lunchPlans: lunchPlans() })))).toContain('{"de":"Nächste Woche planen","en":"Plan next week"}')
   })
-  it('lang only changes default content, not the labels', () => {
-    expect(JSON.stringify(serializeSchema(siteWith({ lunch: lunch() })))).toContain('Wird noch bekannt gegeben')
-    expect(JSON.stringify(serializeSchema(siteWith({ lunch: lunch({ lang: 'en' }) })))).toContain('To be announced')
-    expect(JSON.stringify(serializeSchema(siteWith({ notices: notices({ lang: 'en' }) })))).toContain('We are fully booked today.')
+  // Wrong behaviour caught: an English site stores the German placeholder, or a German one the English text.
+  it('prefilled texts keep the site locales only', () => {
+    const english = JSON.stringify(serializeSchema(siteWith({ lunch: lunch(), notices: notices() })))
+    expect(english).toContain('{"en":"To be announced"}')
+    expect(english).toContain('{"en":"We are fully booked today."}')
+    expect(english).not.toContain('Wird noch bekannt gegeben')
+    const german = JSON.stringify(serializeSchema({ ...siteWith({ lunch: lunch(), notices: notices() }), locales: ['de'] }))
+    expect(german).toContain('{"de":"Heute sind wir ausgebucht."}')
+    expect(german).not.toContain('To be announced')
+    // A main locale the preset has no text for: the prefilled texts are left out, not stored without the main language,
+    // even when the site has both of the preset's languages as well.
+    const swiss = serializeSchema({ ...siteWith({ lunch: lunch(), notices: notices() }), locales: ['fr', 'de', 'en'], timeZone: 'Europe/Zurich' })
+    expect(swiss.bricks.lunch!.fields.days!.default).toBeUndefined()
+    expect(checkSchema(swiss)).toEqual([])
   })
   it('a Spanish site built from the preset passes checkSchema (labels fall back to English)', () => {
     const site = defineSite({
-      site: 'cafe', name: 'Café', url: 'https://cafe.example', timezone: 'Europe/Madrid', locales: ['es'], currency: 'EUR', pages: { home: '/' },
+      site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Madrid', locales: ['es'], currency: 'EUR', pages: { home: '/' },
       bricks: {
-        hours: hours(), hourPlans: hourPlans(), notices: notices(), lunch: lunch({ lang: 'es' }), lunchPlans: lunchPlans({ lang: 'es' }), menu: menu(),
+        hours: hours(), hourPlans: hourPlans(), notices: notices(), lunch: lunch(), lunchPlans: lunchPlans(), menu: menu(),
         events: events({ route: { es: '/eventos/[slug]' } }), gallery: gallery(),
       },
     })
@@ -39,7 +49,7 @@ describe('labels', () => {
 describe('allergens', () => {
   const fieldsOf = (bricks: Record<string, any>) => JSON.stringify(serializeSchema(siteWith(bricks)))
   it('"none" leaves the field out of menu and lunch, and the schema is valid', () => {
-    const site = siteWith({ menu: menu({ allergens: 'none' }), lunch: lunch({ lang: 'en', allergens: 'none' }), lunchPlans: lunchPlans({ lang: 'en', allergens: 'none' }), notices: notices() })
+    const site = siteWith({ menu: menu({ allergens: 'none' }), lunch: lunch({ allergens: 'none' }), lunchPlans: lunchPlans({ allergens: 'none' }), notices: notices() })
     expect(JSON.stringify(serializeSchema(site))).not.toMatch(/llergen/)
     expect(checkSchema(serializeSchema(site))).toEqual([])
   })
@@ -61,11 +71,5 @@ describe('options', () => {
     const bricks = { hours: hours(files), hourPlans: hourPlans(files), notices: notices(files), lunch: lunch(files), lunchPlans: lunchPlans(files), menu: menu(files), events: events({ ...files, route: { en: '/events/[slug]' } }), gallery: gallery(files) }
     expect(Object.values(bricks).map((b) => b.source)).toEqual(Array(8).fill('files'))
     expect(hours()).not.toHaveProperty('source')
-  })
-  it('the holiday calendar survives a spread of the brick', () => {
-    const singapore = { ...hours({ holidays: 'SG' }), label: 'Hours' }
-    const site = siteWith({ hours: singapore })
-    expect(hoursCalendarOf(site.bricks.hours)(2026).map((h) => h.date)).toContain('2026-08-09')
-    expect(hoursCalendarOf(hours())(2026).map((h) => h.date)).toContain('2026-10-26')
   })
 })

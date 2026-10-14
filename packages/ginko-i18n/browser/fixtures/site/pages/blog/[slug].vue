@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   // Runs before render (server and client navigation), so switcher, head and payload agree.
-  alternates: async (to, { locale, localePath }) => {
+  i18nAlternates: async (to, { locale, localePath }) => {
     const post = await $fetch<{ slugs: Record<string, string> }>('/api/post', { query: { slug: to.params.slug, locale } }).catch(() => null)
     if (!post) return undefined
     return Object.fromEntries(Object.entries(post.slugs).map(([c, slug]) => [c, localePath(`/blog/${slug}`, c)]))

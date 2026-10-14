@@ -11,14 +11,14 @@ import { Input } from '@studio/components/ui/input'
 
 const props = defineProps<{ id: string; modelValue: Json | undefined; invalid: boolean; describedBy?: string; optional?: boolean; weeks?: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
-const timezone = inject<Ref<string>>('ginko:timezone', ref('Europe/Vienna'))
+const timeZone = inject<Ref<string>>('ginko:timeZone', ref('Europe/Vienna'))
 const week = inject<Ref<WeekInfo>>('ginko:week', ref(DEFAULT_WEEK))
-const today = useToday(timezone)
+const today = useToday(timeZone)
 const { t } = useI18n()
 const value = computed(() => (typeof props.modelValue === 'string' ? props.modelValue : ''))
-/** A week start (preset @thisWeek) offers week starts of this site's week; any other date offers today and tomorrow. */
+/** A week start (preset @workWeek) offers week starts of this site's week; any other date offers today and tomorrow. */
 const quick = computed(() => props.weeks
-  ? [{ label: t('fields.date.thisWeek'), date: workWeekOf(today.value, week.value) }, { label: t('fields.date.nextWeek'), date: addDays(workWeekOf(today.value, week.value), 7) }]
+  ? [{ label: t('fields.date.workWeek'), date: workWeekOf(today.value, week.value) }, { label: t('fields.date.nextWorkWeek'), date: addDays(workWeekOf(today.value, week.value), 7) }]
   : [{ label: t('fields.date.today'), date: today.value }, { label: t('fields.date.tomorrow'), date: addDays(today.value, 1) }])
 </script>
 

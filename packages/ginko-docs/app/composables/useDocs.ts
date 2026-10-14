@@ -1,9 +1,7 @@
 // What is docs-specific on top of Ginko's navigation: the tree comes from `useGinkoNav`, the
 // breadcrumb chain from `useGinkoBreadcrumbs`; this adds tabs and sections from the entries' fields.
 import schema from '#ginko/schema'
-import type { DocNode } from '../utils/docsNav'
-
-export interface DocTab { title: string; path: string }
+import { enrichNav, type DocNode, type DocTab } from '../lib/docsNav'
 
 export function useDocs() {
   const items = useGinko('docs')
@@ -46,19 +44,9 @@ export function useDocs() {
 
   /** Where the docs live in this language (docsCollection's `base`, `/docs` by default), e.g. `/de/docs`. */
   const { localePath } = useI18n()
-  const { mainLocale } = useRuntimeConfig().public.ginko as { mainLocale: string }
+  const { mainLocale } = useGinkoSite()
   const route = (schema.bricks.docs as { route?: Record<string, string> } | undefined)?.route?.[mainLocale]
   const base = computed(() => localePath(route?.replace(/\/\[slug\]$/, '') ?? '/docs'))
 
   return { nodes, tabs, activeTab, sections, crumbs, first, base }
-}
-
-/**
- * Leads to the first docs page of the language. A site without any docs page yet gets a 404 instead: a redirect to
- * `/` would loop, because `/` leads here when the site has no start page.
- */
-export function toFirstDoc() {
-  const first = useDocs().first.value
-  if (!first) throw createError({ statusCode: 404, statusMessage: 'No docs page yet: add a Markdown file to content/docs/.' })
-  return navigateTo(first, { redirectCode: 302 })
 }

@@ -53,14 +53,14 @@ describe('checkExternalLinks verdicts', () => {
     ['other network error is ignored', { 'HEAD https://x.example/': new TypeError('reset') }, undefined],
   ] as const)('%s', async (_name, script, reason) => {
     const { fn } = fake(script as Record<string, number | Error>)
-    const issues = await checkExternalLinks(bundles('https://x.example/'), { links: { external: 'error' }, root: tmp(), log: () => {}, fetch: fn })
+    const issues = await checkExternalLinks(bundles('https://x.example/'), { linkCheck: { external: 'error' }, root: tmp(), log: () => {}, fetch: fn })
     expect(issues.map((i) => i.key === 'links.externalBroken' && i.params?.reason)).toEqual(reason ? [reason] : [])
   })
 
   it('fetches a URL once even when several links use it, and prints one summary line', async () => {
     const { fn, calls } = fake({})
     const log = vi.fn()
-    await checkExternalLinks(bundles('https://x.example/', 'https://x.example/', 'https://y.example/'), { links: { external: 'warn' }, root: tmp(), log, fetch: fn })
+    await checkExternalLinks(bundles('https://x.example/', 'https://x.example/', 'https://y.example/'), { linkCheck: { external: 'warn' }, root: tmp(), log, fetch: fn })
     expect(calls.sort()).toEqual(['HEAD https://x.example/', 'HEAD https://y.example/'])
     expect(log.mock.calls).toEqual([['[ginko] external links: 2 checked, 0 from cache, 0 broken']])
   })
@@ -73,7 +73,7 @@ describe('cache', () => {
     const run = async (script: Record<string, number>, hrefs: string[]) => {
       const { fn, calls } = fake(script)
       const log = vi.fn()
-      const issues = await checkExternalLinks(bundles(...hrefs), { links: { external: 'error' }, root, log, fetch: fn, now: () => t })
+      const issues = await checkExternalLinks(bundles(...hrefs), { linkCheck: { external: 'error' }, root, log, fetch: fn, now: () => t })
       return { calls, issues, line: log.mock.calls[0]![0] }
     }
     expect((await run({}, ['https://ok.example/'])).calls).toHaveLength(1)
@@ -90,9 +90,9 @@ describe('cache', () => {
   })
 })
 
-describe('without links.external', () => {
+describe('without linkCheck.external', () => {
   const config = defineSite({
-    site: 'linde', name: 'Linde', url: 'https://linde.example', timezone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: '/' },
+    site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: '/' },
     bricks: { docs: collection({ label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') } }) },
   })
   const site = (links: object | undefined) => {
@@ -100,7 +100,7 @@ describe('without links.external', () => {
     const file = join(root, 'content/docs/a.md')
     mkdirSync(dirname(file), { recursive: true })
     writeFileSync(file, '---\ntitle: A\n---\n\n[x](https://dead.example/)\n')
-    return { root, config: { ...config, ...(links ? { links } : {}) } }
+    return { root, config: { ...config, ...(links ? { linkCheck: links } : {}) } }
   }
 
   it('`ginko check` makes no request and prints no summary when the option is absent or off', async () => {

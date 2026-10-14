@@ -215,13 +215,13 @@ const FILE_TYPES: Record<FileField['accept'][number], UploadType> = { pdf: 'appl
 
 /**
  * Why a file may not be attached to a file field, or undefined when it may. Server and editor both
- * call it, so a file over `maxSize` or of another type is refused the same way everywhere.
+ * call it, so a file over `maxBytes` or of another type is refused the same way everywhere.
  * It carries the catalog key and parameters, so each reader gets the text in their language.
  */
 export function fileProblem(field: FileField, file: { size: number; contentType: string; name?: string }): Described | undefined {
   const type = file.contentType.split(';')[0]!.trim().toLowerCase()
   if (!field.accept.some((kind) => FILE_TYPES[kind] === type)) return msg('file.typeNotAllowed', { allowed: field.accept.map((kind) => kind.toUpperCase()).join(', ') })
-  if (file.size > field.maxSize) return msg('file.tooBig', { max: roundedMb(field.maxSize) })
+  if (file.size > field.maxBytes) return msg('file.tooBig', { max: roundedMb(field.maxBytes) })
   return undefined
 }
 

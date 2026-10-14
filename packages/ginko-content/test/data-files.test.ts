@@ -5,10 +5,10 @@ import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { collection, defineSite, f } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
-import { readContent } from '../src/index.ts'
+import { readContent } from '../src/read.ts'
 
 const schema = serializeSchema(defineSite({
-  site: 'preise', name: 'Preise', url: 'https://preise.example', timezone: 'Europe/Vienna',
+  site: 'preise', name: 'Preise', url: 'https://preise.example', timeZone: 'Europe/Vienna',
   locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
   bricks: {
     angebote: collection({

@@ -98,8 +98,8 @@ async function revoke(id: string) {
   }
 }
 
-/** "valid until 15.10." in the site's timezone. */
-const validUntil = (expiresAt: number) => t('site.team.validUntil', { date: format.date(new Date(expiresAt), { timeZone: s.schema.value?.timezone ?? 'Europe/Vienna', day: 'numeric', month: 'numeric' }) })
+/** "valid until 15.10." in the site's time zone. */
+const validUntil = (expiresAt: number) => t('site.team.validUntil', { date: format.date(new Date(expiresAt), { timeZone: s.schema.value?.timeZone ?? 'Europe/Vienna', day: 'numeric', month: 'numeric' }) })
 
 // The invite form: all rights off by default (least privilege, UI.md 7).
 const inviting = ref(false)

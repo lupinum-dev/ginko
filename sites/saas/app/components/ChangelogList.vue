@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { formatShortDate } from '../utils/site'
 
+const langOf = useGinkoLang()
+
 // The changelog newest first (the brick's order). `limit` shows only the latest entries, without their text.
 const props = defineProps<{ limit?: number; level: 'h2' | 'h3' }>()
 const { lang } = useSite()
@@ -21,7 +23,7 @@ const entries = computed(() => changelog.value.items.slice(0, props.limit))
         <ul v-if="entry.data.tags.length" class="tags" :aria-label="t('tagsLabel')">
           <li v-for="tag in entry.data.tags" :key="tag"><TagChip :value="tag" /></li>
         </ul>
-        <GinkoMarkdown v-if="!limit" :value="entry.data.body" class="prose" :lang="ginkoLangOf(entry, 'body')" />
+        <GinkoMarkdown v-if="!limit" :value="entry.data.body" class="prose" :lang="langOf(entry, 'body')" />
       </div>
     </li>
   </ol>

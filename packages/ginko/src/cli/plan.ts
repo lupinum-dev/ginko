@@ -18,7 +18,7 @@ export async function plan(state: ReleaseState, site: SiteInput): Promise<Plan> 
   const schema = platformSchema(serializeSchema(site))
   // A schema that is not well-formed gets no diff: diffSchema assumes valid input, and its answers
   // (e.g. a "removed" language for a doubled one) would hide the real problem, which the candidate reports.
-  if (checkSchema(schema).length > 0) return { schema, changes: [], rejected: [], candidate: await buildCandidate(state, site) }
+  if (checkSchema(schema).length > 0) return { schema, changes: [], rejected: [], candidate: await buildCandidate(state, site, schema) }
   // The ledger of applied migrations overrides the schema's copy, as in sites.release (SPEC 5.2 step 3).
   const known = new Map<string, MigrationDescriptor>()
   for (const m of [...state.schema.migrations, ...state.migrations]) {
@@ -26,5 +26,5 @@ export async function plan(state: ReleaseState, site: SiteInput): Promise<Plan> 
   }
   const { changes, rejected } = diffSchema({ ...state.schema, migrations: [...known.values()] }, schema)
   if (rejected.length > 0) return { schema, changes, rejected, candidate: null }
-  return { schema, changes, rejected, candidate: await buildCandidate(state, site) }
+  return { schema, changes, rejected, candidate: await buildCandidate(state, site, schema) }
 }

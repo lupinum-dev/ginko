@@ -52,7 +52,7 @@ describe('issues of validate', () => {
 })
 
 describe('file check', () => {
-  const field = f.file('Karte', { accept: ['pdf'], maxSize: 1.5 * 1024 * 1024 })
+  const field = f.file('Karte', { accept: ['pdf'], maxBytes: 1.5 * 1024 * 1024 })
   // Wrong behaviour caught: the size limit shows as "1,5" in English, or the type error loses its list of allowed types.
   it.each([
     [{ size: 10, contentType: 'image/png' }, 'file.typeNotAllowed', 'This file type is not allowed (allowed: PDF).', 'Dieser Dateityp ist nicht erlaubt (erlaubt: PDF).'],

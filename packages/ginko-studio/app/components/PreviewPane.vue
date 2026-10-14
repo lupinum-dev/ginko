@@ -58,7 +58,7 @@ function bundle() {
   // Served like the platform's bundle endpoint: Markdown as trees, since the site has no parser.
   return servedBundle({
     schema: props.schema, requestedLocale: props.locale, entries, files: props.files ?? (() => undefined),
-    schemaRev: props.site.schemaRev, contentRev: props.site.contentRev, generatedAt: new Date().toISOString(), today: todayIn(props.schema.timezone),
+    schemaRev: props.site.schemaRev, contentRev: props.site.contentRev, generatedAt: new Date().toISOString(), today: todayIn(props.schema.timeZone),
   })
 }
 

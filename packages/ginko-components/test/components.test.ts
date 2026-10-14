@@ -19,7 +19,7 @@ const ROOT: Record<string, string> = {
   kbd: 'ginko-kbd', badge: 'ginko-badge', flow: 'ginko-flow', layout: 'ginko-layout', column: 'ginko-column', center: 'ginko-center',
   timeline: 'ginko-timeline', 'timeline-item': 'ginko-timeline-item',
   'code-group': 'ginko-code-group', 'code-tree': 'ginko-code-tree', files: 'ginko-files',
-  figure: 'ginko-figure', video: 'ginko-video', embedded: 'ginko-embed',
+  figure: 'ginko-figure', video: 'ginko-video', embed: 'ginko-embed',
   quiz: 'ginko-quiz', 'quiz-question': 'ginko-quiz-question', api: 'ginko-api', 'api-param': 'ginko-api-param',
   tabs: 'ginko-tabs', tab: 'class="ginko-tab"', accordion: 'ginko-accordion', 'accordion-item': 'ginko-accordion-item', collapse: 'ginko-collapse', steps: 'ginko-steps', cards: 'ginko-cards', card: 'ginko-card', 'read-more': 'ginko-read-more', 'inline-toc': 'ginko-inline-toc',
 }
@@ -30,7 +30,8 @@ afterEach(() => { warn.mockRestore() })
 
 describe('registry and components', () => {
   test('the registry is valid and every tag has a component', () => {
-    expect(componentProblems(components)).toEqual([])
+    // 'es': a site in a language the registry does not name falls back to English, so every label needs `en`.
+    expect(componentProblems(components, 'es')).toEqual([])
     expect(Object.keys(components).filter((tag) => !(tag in componentMap))).toEqual([])
     expect(Object.keys(componentMap).filter((tag) => !(tag in components)).sort()).toEqual(PLAIN_TAG_OVERRIDES.slice().sort())
   })
@@ -40,7 +41,7 @@ describe('registry and components', () => {
     const text = tag === 'inline-toc' ? `## Überblick\n\n${def.editor!.example!}` : def.editor!.example!
     const parsed = await parseMarkdown(text, { profile: 'page', components })
     expect(parsed.problems).toEqual([])
-    const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap }) })
+    const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) })
     app.provide(GINKO_TOC_KEY, parsed.value.toc)
     const html = await renderToString(app)
     expect(html).toContain(ROOT[tag]!)
@@ -57,9 +58,25 @@ describe('registry and components', () => {
     const text = example.replace(new RegExp(`(:+${tag})(\\{[^}]*)?\\}?`), (_, open: string, attrs?: string) => `${open}${attrs ? `${attrs} ` : '{'}appearance="tint"}`)
     const parsed = await parseMarkdown(text, { profile: 'page', components })
     expect(parsed.problems).toEqual([])
-    const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap }) })
+    const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) })
     app.provide(GINKO_TOC_KEY, parsed.value.toc)
     expect(await renderToString(app)).toMatch(new RegExp(`class="${ROOT[tag]}[^"]*"[^>]*data-appearance="tint"`))
+  })
+
+  // `frame` and `background` are theming API like `appearance`, read by the CSS through data attributes. Stored Markdown
+  // and the components are a hard cut from `surface`/`data-type`, so a component left on the old names would lose its styling.
+  test.each([
+    ['::flow{background="muted"}\nText\n::', ['data-background="muted"']],
+    ['::flow\nText\n::', ['data-background="none"']],
+    [':::layout{frame="card" background="tint"}\n::column\nA\n::\n:::', ['data-frame="card"', 'data-background="tint"']],
+    [':::layout\n::column\nA\n::\n:::', ['data-frame="none"', 'data-background="none"']],
+    ['::center{frame="border"}\nText\n::', ['data-frame="border"']],
+    ['::center\nText\n::', ['data-frame="none"']],
+  ])('%j renders %j', async (text, attributes) => {
+    const parsed = await parseMarkdown(text, { profile: 'page', components })
+    expect(parsed.problems).toEqual([])
+    const html = await renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) }))
+    for (const attribute of attributes) expect(html).toContain(attribute)
   })
 
   // The prop lists on the docs pages and in the README are written by hand: a new prop must not stay undocumented.
@@ -96,7 +113,7 @@ describe('registry and components', () => {
 
   test('a bare `active` marks the timeline item', async () => {
     const parsed = await parseMarkdown(components.timeline.editor.example, { profile: 'page', components })
-    const html = await renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap }) }))
+    const html = await renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) }))
     expect(html.match(/data-active/g)).toHaveLength(1)
     expect(html).toContain('class="ginko-timeline" role="list"')
     expect(html.match(/role="listitem"/g)?.length).toBe(html.match(/class="ginko-timeline-item"/g)?.length)
@@ -105,7 +122,7 @@ describe('registry and components', () => {
   const render = async (markdown: string) => {
     const parsed = await parseMarkdown(markdown, { profile: 'page', components })
     expect(parsed.problems).toEqual([])
-    return renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap }) }))
+    return renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) }))
   }
 
   // Labels without their icons, for readable assertions.
@@ -149,7 +166,7 @@ describe('registry and components', () => {
   })
 
   test('an embed loads nothing from the provider before the click', async () => {
-    const html = await render(components.embedded.editor.example)
+    const html = await render(components.embed.editor.example)
     expect(html).not.toContain('<iframe')
     expect(html).not.toMatch(/openstreetmap\.org|spotify|google\.com/i)
     expect(html).toContain('Inhalt laden: Karte von Berlin-Mitte')
@@ -198,6 +215,14 @@ describe('registry and components', () => {
     return { absent: build(bare), off: build(flagged) }
   }
 
+  test('api-param: a bare required shows the badge; :required="false" renders like absent', async () => {
+    const row = (attrs: string) => render(`:::api\n::api-param{name="id" type="string"${attrs}}\n::\n:::`)
+    const [bare, off, absent] = [await row(' required'), await row(' :required="false"'), await row('')]
+    expect(bare).toContain('data-state="required"')
+    expect(off).toBe(absent)
+    expect(absent).not.toContain('data-state="required"')
+  })
+
   test.each(booleans)('$tag{$prop="false"} is $prop absent (default on: $defaultOn)', async (entry) => {
     const text = (md: string) => (entry.tag === 'inline-toc' ? `## Überblick\n\n${md}` : md)
     const { absent, off } = withFalse(entry)
@@ -228,6 +253,11 @@ describe('registry and components', () => {
     expect(html).not.toContain('ginko-quiz-problem')
   })
 
+  test('code-tree{file} opens that file, not the first one', async () => {
+    const fence = (path: string) => `\`\`\`ts [${path}]\nx\n\`\`\`\n`
+    expect(await render(`::code-tree{file="b/two.ts"}\n${fence('a/one.ts')}${fence('b/two.ts')}::`)).toMatch(/aria-current="true"[^>]*>[\s\S]*?two\.ts/)
+  })
+
   test('quiz: a question without a valid answer list shows a problem text instead of a broken form', async () => {
     const html = await render(':::quiz\n::quiz-question{question="Allein?"}\n- [x] Nur eine\n::\n:::')
     expect(html).toContain('Diese Frage braucht mindestens zwei Antworten.')
@@ -239,7 +269,7 @@ describe('registry and components', () => {
     expect(html).toContain('/v1/gaerten')
     expect(html.match(/role="tab"/g)).toHaveLength(2)
     expect(html.match(/role="tabpanel"[^>]*hidden/g)).toHaveLength(1)
-    expect(html).toContain('>?: number = 20</span>')
+    expect(html).toContain('>: number = 20</span>')
     expect(html).toContain('id="api-query-limit"')
     expect(html).toContain('seit 1.2')
   })

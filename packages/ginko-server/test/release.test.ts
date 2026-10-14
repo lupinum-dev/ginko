@@ -61,7 +61,7 @@ describe('release mutation (SPEC 5.2)', () => {
   // Wrong behaviour caught: a push key (a CI secret) points the site's refresh token at another address, or stores another site's config.
   it.each([
     ['another site', { site: 'andere' }, 'errors.siteNameMismatchInSchema'],
-    ['a URL that is no web address', { url: 'javascript:alert(1)' }, 'errors.siteUrlNotWeb'],
+    ['a URL that is no web address', { url: 'javascript:alert(1)' }, 'errors.schemaInvalid'],
     ['a new URL on an internal host', { url: 'https://169.254.169.254' }, 'errors.siteUrlNotAllowed'],
   ])('refuses a config for %s and changes nothing', async (_name, change, key) => {
     const s = await setup()
@@ -306,7 +306,7 @@ describe('release regressions (Phase 5 review)', () => {
   /** A new optional file field on menu, filled by PHOTO_MIGRATION. */
   function withPhoto(schema: Schema): Schema {
     const next = copy(schema)
-    next.bricks.menu!.fields.photo = { type: 'file', label: 'Foto', accept: ['pdf'], maxSize: 1024 * 1024, optional: true }
+    next.bricks.menu!.fields.photo = { type: 'file', label: 'Foto', accept: ['pdf'], maxBytes: 1024 * 1024, optional: true }
     next.migrations.push(PHOTO_MIGRATION)
     return next
   }
@@ -336,10 +336,10 @@ describe('release regressions (Phase 5 review)', () => {
     expect((await storedSite(s)).schemaRev).toBe(1)
   })
 
-  // The server enforces the file field's own `accept` and `maxSize`, not only the editor (fileProblem).
+  // The server enforces the file field's own `accept` and `maxBytes`, not only the editor (fileProblem).
   it.each([
     { case: 'a PNG in a PDF field', file: { type: 'image/png', name: 'foto.png', content: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) }, message: 'Dieser Dateityp ist nicht erlaubt (erlaubt: PDF).' },
-    { case: 'a PDF over maxSize', file: { name: 'gross.pdf', content: `%PDF-1.4 ${'x'.repeat(1024 * 1024)}` }, message: 'Die Datei ist zu groß (höchstens 1 MB).' },
+    { case: 'a PDF over maxBytes', file: { name: 'gross.pdf', content: `%PDF-1.4 ${'x'.repeat(1024 * 1024)}` }, message: 'Die Datei ist zu groß (höchstens 1 MB).' },
   ])('refuses $case in a file field and writes nothing', async ({ file, message }) => {
     const s = await setup()
     const photo = await upload(s, { ...file, ready: false })
@@ -354,7 +354,7 @@ describe('release regressions (Phase 5 review)', () => {
     const big = await upload(s, { name: 'gross.pdf', content: `%PDF-1.4 ${'x'.repeat(1024 * 1024)}`, ready: false })
     await s.t.mutation(internal.uploads.markFileReady, { upload: big })
     const lenient = copy(await storedSchema(s))
-    lenient.bricks.menu!.fields.doc = { type: 'file', label: 'Dokument', accept: ['pdf'], maxSize: 10 * 1024 * 1024, optional: true }
+    lenient.bricks.menu!.fields.doc = { type: 'file', label: 'Dokument', accept: ['pdf'], maxBytes: 10 * 1024 * 1024, optional: true }
     lenient.migrations.push({ id: '2026-11-menu-doc', brick: 'menu', fills: 'doc', fingerprint: sha256('menu-doc') })
     await release(s, { schema: lenient, writes: await menuWrites(s, { doc: { file: big } }) })
     const error = await errorOf(release(s, { schema: withPhoto(lenient), writes: await menuWrites(s, { photo: { file: big } }) }))

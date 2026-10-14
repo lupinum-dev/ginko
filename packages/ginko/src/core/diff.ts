@@ -38,7 +38,7 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
   // currency, languages and time zone freely; from then on they are fixed (Astra 9).
   const fresh = Object.keys(prod.bricks).length === 0
   if (fresh) {
-    for (const k of ['currency', 'timezone'] as const) if (prod[k] !== next[k]) ok(k, k, msg('diff.freshSetting', { name: k, value: next[k] }))
+    for (const k of ['currency', 'timeZone'] as const) if (prod[k] !== next[k]) ok(k, k, msg('diff.freshSetting', { name: k, value: next[k] }))
     if (prod.locales.join(',') !== next.locales.join(',')) ok('locales', 'locales', msg('diff.freshLocales', { locales: next.locales.join(', ') }))
   } else {
     if (prod.currency !== next.currency) no('currency', 'currency', msg('diff.currencyChanged'), fx('moneyFields'))
@@ -50,10 +50,10 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
     }
     for (const locale of next.locales) if (!prod.locales.includes(locale)) ok('locales', 'localeAdded', msg('diff.localeAdded', { locale }))
     // The time zone moves the end of every stored expiry date, so it is not a free text like name and url.
-    if (prod.timezone !== next.timezone) no('timezone', 'timezone', msg('diff.timezoneChanged'), fx('keepTimezone'))
+    if (prod.timeZone !== next.timeZone) no('timeZone', 'timeZone', msg('diff.timezoneChanged'), fx('keepTimezone'))
   }
   for (const k of ['name', 'url'] as const) if (prod[k] !== next[k]) ok(k, k, msg('diff.valueChanged', { name: k }))
-  if (stableJson((prod.week ?? null) as Json) !== stableJson((next.week ?? null) as Json)) ok('week', 'week', msg('diff.valueChanged', { name: 'week' }))
+  if (stableJson(prod.week) !== stableJson(next.week)) ok('week', 'week', msg('diff.valueChanged', { name: 'week' }))
   if (stableJson(prod.pages) !== stableJson(next.pages)) ok('pages', 'pages', msg('diff.pagesChanged'))
   // A policy, not a data contract: switching agent review on or off changes no stored shape (SPEC 17).
   if (stableJson((prod.agents ?? null) as Json) !== stableJson((next.agents ?? null) as Json)) ok('agents', 'agents', msg('diff.agentsChanged'))
@@ -127,7 +127,7 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
   unknownChanges(key, before, after, BRICK_KEYS, no)
   if (before.retired && !after.retired) no(key, 'unretired', msg('diff.unretired', { path: key }))
   if (!sameLabel(before.label, after.label)) ok(`${key}.label`, 'text', msg('diff.textChanged'))
-  if (before.describe !== after.describe) ok(`${key}.describe`, 'text', msg('diff.textChanged'))
+  if (!sameLabel(before.describe ?? '', after.describe ?? '')) ok(`${key}.describe`, 'text', msg('diff.textChanged'))
   if ((before.layout ?? 'sections') !== (after.layout ?? 'sections')) ok(`${key}.layout`, 'text', msg('diff.textChanged'))
   if (stableJson(before.tasks ?? []) !== stableJson(after.tasks ?? [])) ok(`${key}.tasks`, 'tasks', msg('diff.tasksChanged'))
   if (before.kind === 'collection' && after.kind === 'collection') {
@@ -138,7 +138,7 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
       else if (onlyNewLocalesAdded(before.route, after.route, newLocales)) ok(`${key}.route`, 'routeAdded', msg('diff.routeAddedLocale'))
       else no(`${key}.route`, 'routeChanged', msg('diff.routeChanged', { key }), fx('keepRoute'))
     }
-    for (const k of ['order', 'visible', 'missing', 'autoRemoveExpired', 'plans', 'drafts'] as const) {
+    for (const k of ['order', 'visible', 'untranslated', 'plans', 'drafts'] as const) {
       if (stableJson(before[k] ?? null) !== stableJson(after[k] ?? null)) ok(`${key}.${k}`, k, msg('diff.valueChanged', { name: k }))
     }
   }

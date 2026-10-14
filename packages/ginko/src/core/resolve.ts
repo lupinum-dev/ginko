@@ -2,7 +2,8 @@ import { effectiveAlt, isTranslatable } from './fields.ts'
 import { addDays } from './time.ts'
 import { sha256, stableJson } from './sha256.ts'
 import { resolveRouteLinks } from './links.ts'
-import { BUNDLE_FORMAT, withMarkdownTrees, type Bundle, type BundleBrick, type BundleItem } from './bundle.ts'
+import { BUNDLE_FORMAT, withMarkdownTrees, type Bundle, type BundleBrick, type BundleItem, type MarkdownTrees } from './bundle.ts'
+import type { MarkdownTree } from './markdown.ts'
 import type { Brick, CollectionBrick, Field, Fields, Json, Locale, Schema } from './types.ts'
 
 export interface StoredEntry {
@@ -12,6 +13,8 @@ export interface StoredEntry {
   data: Record<string, Json>
   /** Translation prints: leaf path → locale → sha256(stableJson(main-language value at translation time)). */
   prints?: Record<string, Partial<Record<Locale, string>>>
+  /** The trees of the Markdown texts in `data` (`markdownTrees`), served in place of the texts; a text without one is parsed. */
+  trees?: MarkdownTrees
   /** When the entry last changed (ISO 8601, UTC); goes to the bundle item unchanged. */
   updatedAt?: string
   /** Repo-relative path of the file per locale (a translation's own file); file entries only. */
@@ -42,7 +45,7 @@ export interface ResolveContext {
 export interface ResolvedEntry {
   data: Record<string, unknown>
   fallback: string[]
-  /** `missing: 'hide'` and a required translatable leaf is missing or outdated in this locale. */
+  /** `untranslated: 'hide'` and a required translatable leaf is missing or outdated in this locale. */
   hidden: boolean
 }
 
@@ -56,13 +59,14 @@ export function resolveEntry(schema: Schema, brickKey: string, entry: StoredEntr
   const brick = schema.bricks[brickKey]!
   const main = schema.locales[0]!
   const fallback: string[] = []
-  const flags = { hidden: false, canHide: brick.kind === 'collection' && brick.missing === 'hide' }
+  const flags = { hidden: false, canHide: brick.kind === 'collection' && brick.untranslated === 'hide' }
   const state: State = { schema, brickKey, entry, ctx, main, fallback, flags }
   const data = resolveFields(brick.fields, entry.data, '', state)
   // Retired fields (SPEC 2.5) are projected after the live fields are resolved.
   for (const [name, field] of Object.entries(brick.fields)) {
     if (!field.retired) continue
-    const rule = schema.retired[`${brickKey}.${name}`] ?? {}
+    // checkSchema requires a rule for every retired field.
+    const rule = schema.retired[`${brickKey}.${name}`]!
     if ('from' in rule) {
       if (rule.from in data) data[name] = data[rule.from]
       for (const leaf of [...fallback]) {
@@ -105,8 +109,13 @@ function resolveFields(fields: Fields, stored: Record<string, Json> | undefined,
 }
 
 function resolveValue(field: Field, value: Json, path: string, state: State): unknown {
-  if (isTranslatable(field)) return localized(value, path, state, field)
+  if (isTranslatable(field)) {
+    const picked = localized(value, path, state, field)
+    return field.type === 'markdown' ? storedTree(picked, value, path, state) : picked
+  }
   switch (field.type) {
+    case 'markdown':
+      return storedTree(value, value, path, state)
     case 'money':
       return { amount: (value as { amount: number }).amount, currency: field.currency ?? state.schema.currency }
     case 'image': {
@@ -124,6 +133,15 @@ function resolveValue(field: Field, value: Json, path: string, state: State): un
     default:
       return value
   }
+}
+
+/** The stored tree of the text `localized` picked: same leaf, and the requested locale or the main one, whichever holds that text. */
+function storedTree(text: unknown, value: Json, leaf: string, state: State): unknown {
+  const stored = state.entry.trees?.[leaf]
+  if (stored === undefined || typeof text !== 'string') return text
+  if (typeof value === 'string') return stored
+  const locale = (value as Record<string, Json>)[state.ctx.locale] === text ? state.ctx.locale : state.main
+  return (stored as Partial<Record<Locale, MarkdownTree>>)[locale] ?? text
 }
 
 /**
@@ -176,18 +194,30 @@ export function defaultsFor(fields: Fields): Record<string, Json> {
 
 /** One visibility rule for listings, detail pages, URL maps and sitemap. Dates inclusive, in the site's time zone. */
 export function isVisible(brick: Brick, data: Record<string, unknown>, today: string): boolean {
-  if (brick.kind !== 'collection' || !brick.visible || brick.visible.mode === 'always') return true
-  const value = data[brick.visible.field]
-  if (brick.visible.mode === 'active') return value === undefined || value === null || (typeof value === 'string' && addDays(value, brick.visible.days ?? 0) >= today)
-  const range = value as { to?: string } | undefined
-  return typeof range?.to === 'string' && range.to >= today
+  const last = visibleUntil(brick, data)
+  return last === undefined || last >= today
 }
+
+/**
+ * The last day an entry shows under `visible: { mode: 'until' }`: the date, or the end `to` of a daterange, plus `days`.
+ * `undefined` when the entry has no end: the brick has no `until` rule, or the field is empty.
+ */
+export function visibleUntil(brick: Brick, data: Record<string, unknown>): string | undefined {
+  const vis = brick.kind === 'collection' ? brick.visible : undefined
+  if (vis?.mode !== 'until') return undefined
+  const value = data[vis.field]
+  const last = typeof value === 'string' ? value : (value as { to?: unknown } | null | undefined)?.to
+  return typeof last === 'string' ? addDays(last, vis.days ?? 0) : undefined
+}
+
+/** Whether the platform deletes the entries of this brick that no longer show (`visible.deleteExpired`). */
+export const deletesExpired = (brick: Brick): boolean => brick.kind === 'collection' && brick.visible?.mode === 'until' && brick.visible.deleteExpired === true
 
 export function sortEntries(brick: CollectionBrick, entries: StoredEntry[]): StoredEntry[] {
   const copy = [...entries]
   if (brick.order === 'manual') return copy.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id))
   const { field, dir } = brick.order
-  const sign = dir === 'asc' ? 1 : -1
+  const sign = dir === 'desc' ? -1 : 1
   // Numbers and money compare numerically; daterange by from, then to; strings (dates, times) by code unit.
   // Empty values sort first in ascending order.
   const key = (e: StoredEntry): (number | string)[] => {
@@ -278,7 +308,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
   }
 }
 
-/** URL per locale where the entry exists (respects `missing: 'hide'`); the slug falls back to the main language. */
+/** URL per locale where the entry exists (respects `untranslated: 'hide'`); the slug falls back to the main language. */
 export function urlsFor(schema: Schema, key: string, brick: CollectionBrick, entry: StoredEntry, files: (id: string) => FileInfo | undefined): Partial<Record<Locale, string>> {
   const slugField = Object.entries(brick.fields).find(([, field]) => field.type === 'slug' && !field.retired)?.[0]
   if (!slugField || !brick.route) return {}
@@ -286,7 +316,7 @@ export function urlsFor(schema: Schema, key: string, brick: CollectionBrick, ent
   const main = schema.locales[0]!
   const urls: Partial<Record<Locale, string>> = {}
   for (const locale of schema.locales) {
-    if (locale !== main && brick.missing === 'hide' && resolveEntry(schema, key, entry, { locale, files }).hidden) continue
+    if (locale !== main && brick.untranslated === 'hide' && resolveEntry(schema, key, entry, { locale, files }).hidden) continue
     const slug = slugs[locale] || slugs[main]
     const route = brick.route[locale]
     if (slug && route) urls[locale] = route.replace('[slug]', slug)

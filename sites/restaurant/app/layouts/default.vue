@@ -7,7 +7,7 @@ const seo = useGinko('seo')
 const { alternates, t } = useI18n()
 
 // The same page in the other language; ginko-i18n falls back to that language's home page.
-const otherHref = computed(() => alternates.value.find((a) => a.code === otherLang.value)!.path)
+const other = computed(() => alternates.value.find((a) => a.code === otherLang.value)!)
 
 useSeoMeta({
   title: () => seo.value.data.title,
@@ -31,7 +31,7 @@ const nav = computed(() => [
       <LindenLeaf class="brand-leaf" />
       <span>Gasthaus zur Linde</span>
     </NuxtLink>
-    <NuxtLink :to="otherHref" class="lang" :hreflang="otherLang" :lang="otherLang">{{ t('other') }}</NuxtLink>
+    <NuxtLink :to="other.path" class="lang" :hreflang="other.language" :lang="other.language">{{ t('other') }}</NuxtLink>
     <nav class="nav" :aria-label="t('nav.main')">
       <NuxtLink v-for="item in nav" :key="item.key" :to="item.href" class="nav-link">{{ item.label }}</NuxtLink>
     </nav>

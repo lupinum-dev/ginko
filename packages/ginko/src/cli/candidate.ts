@@ -2,7 +2,7 @@
 // a release before it is sent. The platform repeats the same work in sites.release (SPEC 5.2),
 // so both must stay in step: same migration rules, same defaults, same validation.
 import {
-  checkSchema, defaultsFor, fieldsChanged, isTranslatable, platformSchema, releaseData, serializeSchema, SITE_BUDGET, validate,
+  checkSite, defaultsFor, fieldsChanged, isTranslatable, markdownTrees, releaseData, SITE_BUDGET, validate,
   type Field, type Fields, type Json, type Locale, type Migration, type MigrationDescriptor, type Schema, type SiteInput,
 } from '../core/index.ts'
 import { type Candidate, isObject, type ReleaseState, type Write } from './model.ts'
@@ -17,11 +17,10 @@ const byteSize = (value: unknown): number => new TextEncoder().encode(JSON.strin
  * Builds the release candidate from the stored state and the local config. Runs every migration
  * that the platform has not applied yet over every entry of its brick, deleted ones too.
  * Writes are merged: one write per entry, holding all target fields of the new migrations.
+ * `schema` is the platform schema of `site` (without file bricks, CONTENT.md); `plan()` passes the one it built.
  */
-export async function buildCandidate(state: ReleaseState, site: SiteInput): Promise<Candidate> {
-  // File bricks (CONTENT.md) never reach the platform.
-  const schema = platformSchema(serializeSchema(site))
-  const problems: string[] = checkSchema(schema)
+export async function buildCandidate(state: ReleaseState, site: SiteInput, schema: Schema): Promise<Candidate> {
+  const problems = checkSite(site, schema)
   const applied = new Set([...state.schema.migrations, ...state.migrations].map((m) => m.id))
   const fresh = schema.migrations.filter((m) => !applied.has(m.id))
 
@@ -94,8 +93,13 @@ export async function buildCandidate(state: ReleaseState, site: SiteInput): Prom
     bytes.largest = Math.max(bytes.largest, size)
     if (size > BUDGET.entryBytes) problems.push(`${label} is too large (at most 256 KiB).`)
   }
-  for (const entry of state.entries) count(byteSize(changedData.get(entry.id) ?? entry.data), `Entry ${entry.id} (${entry.brick})`)
-  for (const single of created) count(byteSize(single.data), `The new single brick “${single.brick}”`)
+  // Like the platform, an entry's size includes the trees of its Markdown texts.
+  const sizeOf = async (brick: string, data: Record<string, Json>) => {
+    const fields = (schema.bricks[brick] ?? state.schema.bricks[brick])?.fields ?? {}
+    return byteSize(data) + byteSize(await markdownTrees(fields, data))
+  }
+  for (const entry of state.entries) count(await sizeOf(entry.brick, changedData.get(entry.id) ?? entry.data), `Entry ${entry.id} (${entry.brick})`)
+  for (const single of created) count(await sizeOf(single.brick, single.data), `The new single brick “${single.brick}”`)
   if (bytes.site > BUDGET.siteBytes) problems.push('The site has reached its storage budget (4 MiB).')
 
   // The limit counts live entries only, plus the singles this release creates (the platform checks the same in sites.release).
@@ -121,11 +125,11 @@ function migrate(migration: Migration, descriptor: MigrationDescriptor, field: F
   const mainLocale = schema.locales[0]!
   const fields = schema.bricks[descriptor.brick]!.fields
   if (!isTranslatable(field)) {
-    return migration.from(structuredClone(data), { locales: schema.locales, mainLocale }) ?? null
+    return migration.compute(structuredClone(data), { locales: schema.locales, mainLocale }) ?? null
   }
   const out: Record<string, Json> = {}
   for (const locale of schema.locales) {
-    const value = migration.from(forLocale(fields, data, locale), { locales: schema.locales, mainLocale, locale })
+    const value = migration.compute(forLocale(fields, data, locale), { locales: schema.locales, mainLocale, locale })
     if (value !== undefined && value !== null) out[locale] = value
   }
   return out

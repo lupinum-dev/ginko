@@ -2,7 +2,7 @@
      one-line state from the data and the task buttons. Generic: nothing here knows the restaurant. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Json } from '@lupinum/ginko'
-import { addDays, isVisible, weekOfSchema, plannedWeeks, plansThisWeek, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
+import { isVisible, visibleUntil, plannedWeeks, plansThisWeek, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../composables/useSiteData'
 import { textIn } from '@lupinum/ginko-editor'
 import { displayValue, formatDay, taskRef, titleOf, type Task } from '../../../utils/content'
@@ -54,26 +54,21 @@ function rowTarget(sec: Section, entry: Entry): { task: Task } | { to: string } 
 }
 /** The title and timing of a listed entry; a chevron marks the rows that open something. */
 const rowClass = (opens: boolean) => ['grid min-w-0 flex-1 gap-0.5 bg-transparent p-0 text-left text-foreground no-underline', opens && 'cursor-pointer grid-cols-[1fr_auto] after:col-start-2 after:row-span-2 after:row-start-1 after:self-center after:px-1 after:text-xl after:text-muted-foreground after:content-["›"] [&>span]:col-start-1']
-// What is on the website now comes first; expired and upcoming entries follow (stable order within each group).
+// What is on the website now comes first; expired entries follow (stable order within each group).
 const rowsOf = (sec: Section) => [...sec.listed]
   .sort((a, b) => Number(timing(sec.brick as CollectionBrick, a).dim) - Number(timing(sec.brick as CollectionBrick, b).dim))
   .map((e) => ({ e, target: rowTarget(sec, e) }))
 
-/** "until 8.10." / "from 16.10." / "expired" for a timed entry. */
+/** "until 8.10." / the date range / "expired" for a timed entry. */
 function timing(brick: CollectionBrick, entry: Entry): { text: string; dim: boolean } {
   const vis = brick.visible
   if (!vis || vis.mode === 'always') return { text: '', dim: false }
-  const value = entry.data[vis.field]
   const today = s.today.value
-  const visible = isVisible(brick, entry.data, today)
-  if (vis.mode === 'active') {
-    const until = typeof value === 'string' ? addDays(value, vis.days ?? 0) : undefined
-    if (!until) return { text: t('site.status.noEnd'), dim: false }
-    return visible ? { text: until === today ? t('site.status.untilToday') : t('site.status.until', { date: formatDay(until, format) }), dim: false } : { text: t('site.status.expired'), dim: true }
-  }
-  const range = value as { from: string; to: string } | undefined
-  if (!range) return { text: '', dim: false }
-  return { text: displayValue({ type: 'daterange', label: '' }, range, s.main.value, { t, format }), dim: !visible }
+  const until = visibleUntil(brick, entry.data)
+  if (!until) return { text: t('site.status.noEnd'), dim: false }
+  const visible = until >= today
+  if (brick.fields[vis.field]?.type === 'daterange') return { text: displayValue({ type: 'daterange', label: '' }, entry.data[vis.field], s.main.value, { t, format }), dim: !visible }
+  return visible ? { text: until === today ? t('site.status.untilToday') : t('site.status.until', { date: formatDay(until, format) }), dim: false } : { text: t('site.status.expired'), dim: true }
 }
 
 /** A single's date field preset to @today shows "Heute: <task>" with Aufheben (UI.md 3). */
@@ -95,14 +90,14 @@ function flagTexts(brick: Brick, flag: { task: Task; entry: Entry }): string[] {
   return flag.task.fields.filter((f) => brick.fields[f]?.type === 'text').map((f) => textIn(flag.entry.data[f], s.main.value)).filter(Boolean)
 }
 
-/** A single's date field preset to @thisWeek shows whether it is this week's (UI.md 3, weekly upkeep). The rule is `staleOf`, the same the reminder mail uses. */
+/** A single's date field preset to @workWeek shows whether it is this week's (UI.md 3, weekly upkeep). The rule is `staleOf`, the same the reminder mail uses. */
 /**
  * The entry planned ahead for this week of the single `key` (an entry of a collection that `plans` it). When there is
  * one, it is what the website shows this week, not the single's own fields (lunchWeekOn in the gastro preset).
  */
 function plannedNow(key: string, task = weeklyTask(s.schema.value!.bricks[key]!)?.task) {
   const schema = s.schema.value!
-  const start = workWeekOf(s.today.value, weekOfSchema(schema))
+  const start = workWeekOf(s.today.value, schema.week)
   if (!task) return undefined
   for (const [k, b] of Object.entries(schema.bricks)) {
     if (b.kind !== 'collection' || b.plans?.brick !== key) continue
@@ -120,7 +115,7 @@ function weekState(key: string, brick: Brick) {
     const field = s.schema.value!.bricks[plan.key]!.fields[plan.field]
     return { current: true, text: t('site.quick.plannedWeek', { label: field ? shownLabel(field.label, s.main.value) : '', date: formatDay(plan.start, format) }) }
   }
-  const state = staleOf(brick, entry.data, s.today.value, weekOfSchema(s.schema.value!), plannedWeeks(s.schema.value!, key, (k) => s.entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
+  const state = staleOf(brick, entry.data, s.today.value, s.schema.value!.week, plannedWeeks(s.schema.value!, key, (k) => s.entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
   if (!state) return undefined
   return { current: state.current, text: state.stored ? `${shownLabel(brick.fields[state.field]!.label, s.main.value)} ${formatDay(state.stored, format)}` : t('site.quick.notFilled') }
 }

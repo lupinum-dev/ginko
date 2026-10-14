@@ -11,6 +11,9 @@ maintain: docs, a blog, legal pages, a price list. It reads Markdown, YAML, JSON
 npm install @lupinum/ginko @lupinum/ginko-content
 ```
 
+`@lupinum/ginko` is a peer dependency. Images get WebP variants through `sharp`, an optional peer dependency: install it
+(`npm install sharp`, version 0.33 to 0.35) if your site has image files. `ginko check` runs without it.
+
 Give a brick `source: 'files'` and one `f.markdown` field:
 
 ```ts

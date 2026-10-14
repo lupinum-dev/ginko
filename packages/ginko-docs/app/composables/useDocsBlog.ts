@@ -1,19 +1,14 @@
 // The optional blog and changelog: whether the site has them, where they live in this language, and typed
 // reads. The layer cannot know the site's bricks at compile time, so the reads go through one cast here.
 import schema from '#ginko/schema'
-import type { ItemOf } from '@lupinum/ginko'
-import type { blogCollections, changelogCollection } from '@lupinum/ginko-docs/config'
 import { BLOG_PATH, CHANGELOG_PATH } from '../../shared/paths'
+import type { Author, ChangelogEntry, Post } from '../lib/blogTypes'
 
-type Blog = ReturnType<typeof blogCollections>
-export type Post = ItemOf<Blog['posts']['fields']> & { url?: string }
-export type Author = ItemOf<Blog['authors']['fields']>
-export type ChangelogEntry = ItemOf<ReturnType<typeof changelogCollection>['fields']>
 
 const has = (brick: string) => Object.hasOwn(schema.bricks, brick)
 const read = <T>(brick: string) => (useGinko as unknown as (b: string) => ComputedRef<{ items: T[] }>)(brick)
 
-export function useBlog() {
+export function useDocsBlog() {
   const { localePath } = useI18n()
   const hasPosts = has('posts')
   const hasChangelog = has('changelog')

@@ -9,14 +9,13 @@ code blocks and more) come from `@lupinum/ginko-components`. Math (`$x^2$`, `$$�
 ## Use
 
 ```bash
-npm install @lupinum/ginko @lupinum/ginko-content @lupinum/ginko-components @lupinum/ginko-docs
+npm install @lupinum/ginko @lupinum/ginko-content @lupinum/ginko-i18n @lupinum/ginko-docs
 ```
 
 ```ts
 // ginko.config.ts
 import { defineSite } from '@lupinum/ginko'
-import { docsCollection } from '@lupinum/ginko-docs/config'
-import { components } from '@lupinum/ginko-components/registry'
+import { components, docsCollection } from '@lupinum/ginko-docs/config'
 
 const locales = ['en', 'de'] as const
 
@@ -24,20 +23,28 @@ export default defineSite({
   site: 'my-docs',
   name: 'My docs',
   url: 'https://docs.example.com',
-  timezone: 'Europe/Vienna',
+  timeZone: 'Europe/Vienna',
   locales,
   currency: 'EUR',
   pages: { home: { en: '/', de: '/de' } }, // the start page is the page `home`
   components, // the Markdown components: ::callout, ::tabs, ::steps …
-  bricks: { docs: docsCollection(locales) },
+  bricks: { docs: docsCollection({ locales }) },
 })
 ```
 
-`components` is the registry of `@lupinum/ginko-components`. With it, Ginko checks every component tag and prop in the
+`docsCollection`, `blogCollections`, `blogPages` and `changelogPages` take one options object. `locales` is the same list as
+in `defineSite` (the layer accepts any `readonly string[]`; `defineSite` itself needs the tuple, hence `as const`).
+
+`components` is the registry of `@lupinum/ginko-components` (a dependency of the layer, re-exported here). With it, Ginko checks every component tag and prop in the
 pages; a site can add its own components next to it (see "Inside an existing site").
 
-The layer finds its content by brick key, so keep these names: `docs` (docsCollection), `home` (docsHome),
-`posts` and `authors` (blogCollections), `changelog` (changelogCollection). Only `docs` is required.
+Limits of the layer:
+
+- It finds its content by brick key, so keep these names: `docs` (docsCollection), `home` (docsHome), `posts` and
+  `authors` (blogCollections), `changelog` (changelogCollection). Only `docs` is required. One site has one docs
+  collection.
+- The docs move with `base`; the blog is always at `/blog` and the changelog at `/changelog` (with the language
+  prefix in other languages, for example `/de/blog`).
 
 ```ts
 // nuxt.config.ts
@@ -54,14 +61,14 @@ follow the reader's language (`/guide` becomes `/de/guide`); absolute URLs stay 
 ```ts
 export default defineAppConfig({
   docs: {
-    title: 'My docs',                                   // header text, next to the logo
+    title: 'My docs',                                   // header text, next to the logo (default: `name` from ginko.config.ts)
     logo: { light: '/logo.svg', dark: '/logo-dark.svg' }, // `wordmark: true` when the image holds the name
-    theme: 'nuxt',                                      // colour preset: 'default' (zinc) | 'nuxt'
+    theme: 'green',                                     // colour preset: 'default' (emerald on zinc) or 'green' (green on slate)
     nav: [{ id: 'guide', href: '/guide' }],             // header links after Docs, Blog, Changelog
     social: [{ icon: 'docs:github', href: 'https://github.com/me/docs', label: 'GitHub' }],
     banner: { id: 'v2', href: '/docs/changes' },        // dismissible notice above the header; `href` optional
     repository: { url: 'https://github.com/me/docs', branch: 'main' }, // "Edit this page" and "Report an issue"
-    markdownActions: { copy: true, chatGpt: true, claude: true },       // "Copy page" and its menu, all default true
+    markdownActions: { copy: true, openIn: ['chatgpt', 'claude'] },     // "Copy page" and the chats of its menu (the defaults)
     footer: {
       links: [{ id: 'github', href: 'https://github.com/me/docs' }],
       attribution: true,                                // "Built with Ginko", default true
@@ -70,14 +77,15 @@ export default defineAppConfig({
 })
 ```
 
-Texts are not part of the config, they come from the site's own messages (`i18n/<locale>.json`), so every
+Texts are not part of the config, they come from the site's own messages (`i18n/<code>.json`), so every
 language has its own:
 
 ```json
 { "docs": { "banner": { "v2": "Version 2 is out." }, "nav": { "guide": "Guide" }, "footer": { "github": "GitHub" } } }
 ```
 
-- `banner.id` picks the message `docs.banner.<id>`. A reader who closes the banner does not see it again; a new `id` shows it to everyone.
+- `docs` is a reserved message namespace: keep your own messages out of it. Only `docs.nav.<id>`, `docs.footer.<id>` and `docs.banner.<id>` are yours to set; the other `docs.*` keys are the layer's own texts.
+- `banner.id` picks the message `docs.banner.<id>`. A reader who closes the banner does not see it again (it is remembered in `localStorage`, and the page gets `data-docs-banner-off` on `<html>`); a new `id` shows it to everyone.
 - Each `nav` and footer link `id` picks the message `docs.nav.<id>` or `docs.footer.<id>`.
 - `social` icons are any Iconify name. Built in: `docs:github`, `docs:discord`, `docs:x`, `docs:bluesky`, `docs:mastodon`, `docs:linkedin`, `docs:youtube`.
 - `repository` adds "Edit this page" to every page that comes from a file (`<url>/edit/<branch>/<source>`; `branch` defaults to `main`)
@@ -96,8 +104,8 @@ Each docs page's frontmatter can set, besides `title` and `description`:
 | --- | --- |
 | `section` | Starts a group in the side navigation with this heading; the pages after it belong to it until the next `section`. |
 | `tab` | Starts a tab above the side navigation (for example "Guide" and "Reference"); pages follow the tab before them. |
-| `parent` | Nests the page under another one (`parent: docs/<slug>`). |
-| `icon` | An Iconify name, e.g. `lucide:rocket`, before the title in the navigation. Main language only. |
+| `parent` | Nests the page under another one (`parent: docs/<name>`: the entry id, the file name without number, locale and extension). |
+| `icon` | An Iconify name, e.g. `lucide:rocket`, before the title in the navigation. Main locale only. |
 | `badge` | A short label after the title, e.g. "New". |
 
 Icons come from `@nuxt/icon` with the `lucide` set installed. Any other Iconify set works once the site installs it
@@ -139,8 +147,8 @@ The layer is plain CSS. Colours, radius and fonts are shadcn-style tokens, the s
 }
 ```
 
-The defaults are `light-dark(light, dark)` pairs. The header switch stores the reader's choice in `localStorage` and
-sets `data-theme="light|dark"` on `<html>`; a small inline script applies it before the first paint. A `.dark` class
+The defaults are `light-dark(light, dark)` pairs. The header switch stores the reader's choice in `localStorage`
+(key `docs-color-mode`) and sets `data-theme="light|dark"` on `<html>`; a small inline script applies it before the first paint. A `.dark` class
 on `<html>` (for example from `@nuxtjs/color-mode`) works too. Layout sizes are tokens as well: `--docs-sidebar`,
 `--docs-toc`, `--docs-max`, `--docs-header`.
 
@@ -156,9 +164,9 @@ export default defineNuxtConfig({ extends: ['@lupinum/ginko-docs'], modules: ['@
 
 ```ts
 // ginko.config.ts: the docs brick next to the site's own bricks, the Markdown components next to the site's own
-import { components } from '@lupinum/ginko-components/registry'
+import { components, docsCollection } from '@lupinum/ginko-docs/config'
 
-bricks: { docs: docsCollection(locales, { base: '/handbook' }), /* … */ },
+bricks: { docs: docsCollection({ locales, base: '/handbook' }), /* … */ },
 components: { ...components, /* the site's own components; same name wins */ },
 ```
 
@@ -171,7 +179,9 @@ components: { ...components, /* the site's own components; same name wins */ },
 - **Nothing leaks.** Every rule is under a `docs-` class; the page background, font and `color-scheme` are only set
   by the layer's own frame. The search, the language menu and the light/dark switch are components
   (`<DocsSearch />`, `<DocsLanguage />`, `<DocsThemeToggle />`) the site can put into its own header; the switch sets
-  `data-theme` on `<html>`, so it fits a site that themes with that attribute.
+  `data-theme` on `<html>`, so it fits a site that themes with that attribute. `<DocsThemeToggle segmented />` is the
+  three-way Auto/Light/Dark switch (the phone menu uses it). These three are the public components. The other `Docs*`
+  components, the `useDocs*` composables and the files in `app/lib` are internal and can change in any release.
 - **Error page:** the layer's `error.vue` shows a not-found page inside the site's layout, with links home and to
   the docs. A site with its own `error.vue` keeps it.
 - **Components:** the layer loads the Vue side of `@lupinum/ginko-components`. Pass the registry in the site's
@@ -210,17 +220,17 @@ import { blogCollections, blogPages, changelogCollection, changelogPages, docsCo
 
 export default defineSite({
   // ...
-  pages: { /* home */ blog: blogPages(locales), changelog: changelogPages(locales) },
-  bricks: { docs: docsCollection(locales), ...blogCollections(locales), changelog: changelogCollection() },
+  pages: { /* home */ blog: blogPages({ locales }), changelog: changelogPages({ locales }) },
+  bricks: { docs: docsCollection({ locales }), ...blogCollections({ locales }), changelog: changelogCollection() },
 })
 ```
 
-- `blogCollections(locales)` returns `{ posts, authors }`. Both are file bricks, so the folders are `content/posts/` and `content/authors/` (the brick name is the folder name).
+- `blogCollections({ locales })` returns `{ posts, authors }`. Both are file bricks, so the folders are `content/posts/` and `content/authors/` (the brick name is the folder name).
 - **Posts** (`content/posts/<n>.<name>[.<locale>].md`) have `title`, `description`, `date` (`YYYY-MM-DD`), `authors` (a list of author ids), `image`, `tags` and `slug`. They live at `/blog/<slug>` (`/<l>/blog/<slug>` in other languages), the list at `/blog`, newest first.
 - **Authors** (`content/authors/<name>[.<locale>].yml`) have `name`, `role`, `avatar` and `url`. A post names them by id: `authors: [authors/jane]`. Authors have no page.
 - A post page writes Article JSON-LD with the author names, `datePublished` from `date` and `dateModified` from the entry's `updatedAt`.
 - **RSS:** `/blog/rss.xml` and `/<l>/blog/rss.xml`, RSS 2.0 with title and description (not the full text) and absolute links. It reads the build-time file bundle, so it works for file blogs only. `nuxt generate` writes it: the blog page sends the feed path in the `x-nitro-prerender` header, because Nitro's crawler does not follow `.xml` links.
-- **Changelog:** `changelogCollection()` is one collection with `version`, `date` and Markdown text per release (`content/changelog/v1-2-0.md`; no dots in the file name, a dot reads as a language). The page `/changelog` shows all releases newest first, each with an anchor (`#v1-2-0`). It is a collection, not a docs page, so the date orders it and it has its own link in the header.
+- **Changelog:** `changelogCollection()` (options: `max`) is one collection with `version`, `date` and Markdown text per release (`content/changelog/v1-2-0.md`; no dots in the file name, a dot reads as a language). The page `/changelog` shows all releases newest first, each with an anchor (`#v1-2-0`). It is a collection, not a docs page, so the date orders it and it has its own link in the header.
 
 The Ginko docs themselves are built this way: [sites/docs](https://github.com/lupinum-dev/ginko/tree/main/sites/docs).
 

@@ -81,6 +81,11 @@ describe('query paging', () => {
     const r = query(five, 'n', q)
     expect({ ids: ids(r.items), total: r.total, page: r.page, pages: r.pages }).toEqual({ ids: expected, total, page, pages })
   })
+
+  // Wrong behaviour caught: a computed limit of 0 returns every entry instead of failing.
+  it.each([0, -1, Number.NaN])('limit %s throws', (limit) => {
+    expect(() => query(five, 'n', { limit })).toThrow(`query: limit must be at least 1 (got ${limit})`)
+  })
 })
 
 describe('query projection and facets', () => {
@@ -95,11 +100,18 @@ describe('query projection and facets', () => {
     expect(r.items).toHaveLength(1)
     expect(r.facets).toEqual({ veg: { none: 1, vegetarian: 1, vegan: 1 }, allergens: { A: 1, C: 1, G: 2 } })
   })
+
+  // Wrong behaviour caught: counting in a plain object turned `constructor` into a string and dropped `__proto__`.
+  it('facets count values that name Object.prototype members', () => {
+    const b = mini({ posts: { kind: 'collection', items: [item('a', { tag: 'constructor' }), item('b', { tag: 'constructor' }), item('c', { tag: '__proto__' }), item('d', { tag: 'js' })] } })
+    const tags = query(b, 'posts', { facets: ['tag'] }).facets!.tag!
+    expect(Object.entries(tags)).toEqual([['constructor', 2], ['__proto__', 1], ['js', 1]])
+  })
 })
 
 describe('query include', () => {
-  // `ref` does not exist in core yet: a hand-written schema carries the agreed shape.
-  const refSchema: QuerySchema = { bricks: { posts: { fields: { author: f.ref('Autor', { to: 'people' }), tags: f.ref('Tags', { to: 'tags', multiple: true }), title: f.text('Titel') } } } }
+  // f.refs stores { type: 'ref', multiple: true }; include resolves it to a list.
+  const refSchema: QuerySchema = { bricks: { posts: { fields: { author: f.ref('Autor', { to: 'people' }), tags: f.refs('Tags', { to: 'tags' }), title: f.text('Titel') } } } }
   const b = mini({
     people: { kind: 'collection', items: [item('ann', { name: 'Ann' })] },
     tags: { kind: 'collection', items: [item('t1', { label: 'One' }), item('t2', { label: 'Two' })] },

@@ -47,10 +47,10 @@ describe('exceptionsAhead', () => {
 describe('text helpers', () => {
 
   it('states the salary with period and currency style of the language', () => {
-    expect(salaryText({ salary: { amount: 280000, currency: 'EUR' }, salaryPeriod: 'month' }, 'de', { from: 'ab', gross: 'brutto' })).toBe('ab\u00a02.800\u00a0€\u00a0brutto\u00a0/\u00a0Monat')
-    expect(salaryText({ salary: { amount: 2400000, currency: 'EUR' }, salaryPeriod: 'year' }, 'en', { from: 'from', gross: 'gross' })).toBe('from €24,000 gross / year')
+    expect(salaryText({ salary: { amount: 280000, currency: 'EUR' }, salaryPeriod: 'month' }, 'de', 'de-AT', { from: 'ab', gross: 'brutto' })).toBe('ab\u00a0€\u00a02.800\u00a0brutto\u00a0/\u00a0Monat')
+    expect(salaryText({ salary: { amount: 2400000, currency: 'EUR' }, salaryPeriod: 'year' }, 'en', 'en-GB', { from: 'from', gross: 'gross' })).toBe('from €24,000 gross / year')
     // Cents stay when there are some.
-    expect(salaryText({ salary: { amount: 280050, currency: 'EUR' }, salaryPeriod: 'month' }, 'de', { from: 'ab', gross: 'brutto' })).toContain('2.800,50')
+    expect(salaryText({ salary: { amount: 280050, currency: 'EUR' }, salaryPeriod: 'month' }, 'de', 'de-AT', { from: 'ab', gross: 'brutto' })).toContain('2.800,50')
   })
 
   it('formats file sizes from bytes', () => {

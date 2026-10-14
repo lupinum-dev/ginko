@@ -15,7 +15,7 @@ export const interactiveComponents = defineComponents({
       en: 'Shows several contents as tabs; one of them is always visible.',
     },
     props: {
-      layout: f.choice({ de: 'Reiterform', en: 'Tab style' }, {
+      variant: f.choice({ de: 'Reiterform', en: 'Tab style' }, {
         options: [
           { value: 'separate', label: { de: 'Schaltflächen über dem Rahmen', en: 'Buttons above the frame' } },
           { value: 'line', label: { de: 'Unterstrichen, ohne Rahmen', en: 'Underlined, no frame' } },
@@ -26,15 +26,15 @@ export const interactiveComponents = defineComponents({
       appearance,
     },
     children: ['tab'],
-    editor: { group: { de: 'Interaktiv', en: 'Interactive' }, keywords: ['tabs', 'reiter', 'reitergruppe', 'register', 'tab', 'panels'], example: ':::tabs\n::tab{label="npm"}\nInstalliere das Paket mit npm.\n::\n::tab{label="pnpm"}\nInstalliere das Paket mit pnpm.\n::\n:::' },
+    editor: { group: { de: 'Interaktiv', en: 'Interactive' }, keywords: ['tabs', 'reiter', 'reitergruppe', 'register', 'tab', 'panels'], example: ':::tabs\n::tab{title="npm"}\nInstalliere das Paket mit npm.\n::\n::tab{title="pnpm"}\nInstalliere das Paket mit pnpm.\n::\n:::' },
   },
   tab: {
     kind: 'block',
     label: { de: 'Reiter', en: 'Tab' },
     describe: { de: 'Ein Reiter innerhalb einer Reitergruppe.', en: 'A tab inside a tab group.' },
-    props: { label: f.text({ de: 'Name', en: 'Name' }, { max: 40 }), icon },
+    props: { title: f.text({ de: 'Name', en: 'Name' }, { max: 40 }), icon },
     parents: ['tabs'],
-    editor: { group: { de: 'Interaktiv', en: 'Interactive' }, example: ':::tabs\n::tab{label="Erster"}\nInhalt des ersten Reiters.\n::\n::tab{label="Zweiter"}\nInhalt des zweiten Reiters.\n::\n:::' },
+    editor: { group: { de: 'Interaktiv', en: 'Interactive' }, example: ':::tabs\n::tab{title="Erster"}\nInhalt des ersten Reiters.\n::\n::tab{title="Zweiter"}\nInhalt des zweiten Reiters.\n::\n:::' },
   },
   accordion: {
     kind: 'block',
@@ -48,7 +48,7 @@ export const interactiveComponents = defineComponents({
       appearance,
     },
     children: ['accordion-item'],
-    editor: { group: { de: 'Interaktiv', en: 'Interactive' }, example: ':::accordion\n::accordion-item{label="Wie melde ich mich an?"}\nPer E-Mail mit einem Code.\n::\n::accordion-item{label="Kostet das etwas?"}\nNein.\n::\n:::' },
+    editor: { group: { de: 'Interaktiv', en: 'Interactive' }, example: ':::accordion\n::accordion-item{title="Wie melde ich mich an?"}\nPer E-Mail mit einem Code.\n::\n::accordion-item{title="Kostet das etwas?"}\nNein.\n::\n:::' },
   },
   'accordion-item': {
     kind: 'block',
@@ -58,11 +58,11 @@ export const interactiveComponents = defineComponents({
       en: 'An entry of the accordion, with heading and text.',
     },
     props: {
-      label: f.text({ de: 'Überschrift', en: 'Heading' }, { max: 120 }),
+      title: f.text({ de: 'Überschrift', en: 'Heading' }, { max: 120 }),
       open: f.boolean({ de: 'Geöffnet', en: 'Open' }, { optional: true }),
     },
     parents: ['accordion'],
-    editor: { group: { de: 'Interaktiv', en: 'Interactive' }, example: ':::accordion\n::accordion-item{label="Erste Frage" open}\nDie Antwort steht schon offen.\n::\n:::' },
+    editor: { group: { de: 'Interaktiv', en: 'Interactive' }, example: ':::accordion\n::accordion-item{title="Erste Frage" open}\nDie Antwort steht schon offen.\n::\n:::' },
   },
   collapse: {
     kind: 'block',
@@ -72,11 +72,11 @@ export const interactiveComponents = defineComponents({
       en: 'A section with a heading that readers can open and close, or long content cut off behind “Show more”.',
     },
     props: {
-      label: f.text({ de: 'Überschrift', en: 'Heading' }, { optional: true, max: 120, hint: { de: 'Ohne Überschrift wird langer Inhalt gekürzt und lässt sich mit „Mehr anzeigen“ ganz öffnen.', en: 'Without a heading, long content is cut off and opens fully with “Show more”.' } }),
+      title: f.text({ de: 'Überschrift', en: 'Heading' }, { optional: true, max: 120, hint: { de: 'Ohne Überschrift wird langer Inhalt gekürzt und lässt sich mit „Mehr anzeigen“ ganz öffnen.', en: 'Without a heading, long content is cut off and opens fully with “Show more”.' } }),
       open: f.boolean({ de: 'Geöffnet', en: 'Open' }, { optional: true }),
       appearance,
     },
-    editor: { group: { de: 'Interaktiv', en: 'Interactive' }, example: '::collapse{label="Mehr Details"}\nHier steht der längere Text.\n::' },
+    editor: { group: { de: 'Interaktiv', en: 'Interactive' }, example: '::collapse{title="Mehr Details"}\nHier steht der längere Text.\n::' },
   },
   steps: {
     kind: 'block',
@@ -139,11 +139,11 @@ export const interactiveComponents = defineComponents({
     describe: { de: 'Ein auffälliger Link zu einer weiteren Seite.', en: 'A prominent link to another page.' },
     props: {
       href: href({ de: 'Link', en: 'Link' }, false),
-      label: f.text({ de: 'Text', en: 'Text' }, { optional: true, max: 120 }),
+      title: f.text({ de: 'Text', en: 'Text' }, { optional: true, max: 120 }),
       icon,
       appearance,
     },
-    editor: { group: { de: 'Text', en: 'Text' }, keywords: ['link', 'weiterlesen', 'verweis', 'weiter', 'read more', 'more', 'next'], example: '::read-more{href="/" label="Zur Startseite"}\nWie alles anfängt.\n::' },
+    editor: { group: { de: 'Text', en: 'Text' }, keywords: ['link', 'weiterlesen', 'verweis', 'weiter', 'read more', 'more', 'next'], example: '::read-more{href="/" title="Zur Startseite"}\nWie alles anfängt.\n::' },
   },
   'inline-toc': {
     kind: 'block',

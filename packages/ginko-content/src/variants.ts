@@ -12,7 +12,10 @@ export interface Variant { width: number; url: string }
 export async function makeVariants(path: string, hash: string, width: number, dir: string, names: Set<string>, counter?: { encoded: number }): Promise<Variant[]> {
   const out: Variant[] = []
   // Loaded here, not on import: `ginko check` never encodes, so it runs where sharp's native binary is missing.
-  const sharp = (await import('sharp')).default
+  const sharp = await import('sharp').then((m) => m.default, (error: { code?: string }) => {
+    if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error
+    throw new Error('[ginko-content] Images in your content need the sharp package to make WebP copies. Fix: npm install sharp')
+  })
   for (const { width: w, name } of variantFiles(path, hash, width)) {
     names.add(name)
     const target = join(dir, name)

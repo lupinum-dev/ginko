@@ -2,16 +2,25 @@
   "name": "{{SITE}}",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "^22.18.0 || ^24.0.0 || ^26.0.0"
+  },
   "scripts": {
     "dev": "nuxt dev",
     "build": "nuxt build",
     "preview": "nuxt preview",
+    "typecheck": "nuxt typecheck",
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
     "@lupinum/ginko": "^{{VERSION}}",
     "@lupinum/ginko-content": "^{{VERSION}}",
+    "@lupinum/ginko-i18n": "^{{VERSION}}",
     "nuxt": "^4.6.0",
     "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.1.5"
   }
 }

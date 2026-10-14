@@ -2,8 +2,8 @@ import { computed, onMounted, ref } from 'vue'
 import type { RouteLocationRaw, RouteParamsGeneric, Router } from 'vue-router'
 import { navigateTo, useNuxtApp, useRoute, useRouter } from '#imports'
 import { config } from '#ginko-i18n/config.mjs'
-import { createFormatters, createTranslator, inUserZone, localeFromPath, localizePath, negotiateLocale, stripLocale, type Formatters, type LocaleConfig } from '@lupinum/ginko-i18n/internal'
-import type { Alternate, AlternatesResolver, I18nState, KeysIn, ParamsFor, RuntimeConfig, TypedTranslator } from './types'
+import { createFormatters, createTranslator, inUserZone, localeFromPath, localizePath, negotiateLocale, stripLocale, type Formatters, type LocaleConfig } from '@lupinum/ginko-i18n/core'
+import { typedTranslator, type Alternate, type AlternatesResolver, type I18n, type I18nState, type RuntimeConfig } from './types'
 
 const c: RuntimeConfig = config
 
@@ -18,7 +18,7 @@ export function writeLocaleCookie(code: string) {
   document.cookie = `ginko_locale=${code}; path=${c.base || '/'}; max-age=31536000; samesite=lax`
 }
 
-/** Payload data key for a dynamic page's alternates, filled by `definePageMeta({ alternates })` (see plugin). */
+/** Payload data key for a dynamic page's alternates, filled by `definePageMeta({ i18nAlternates })` (see plugin). */
 export const alternatesKey = (path: string) => `ginko-i18n:alternates:${path}`
 
 /** Resolve a path written in any locale (or unprefixed) to the same page in `code`. */
@@ -47,7 +47,7 @@ function resolveClone(router: Router, name: string, params: RouteParamsGeneric) 
   return router.resolve({ name, params } as RouteLocationRaw).path
 }
 
-export function useI18n<NS extends string = ''>(namespace?: NS) {
+export function useI18n<NS extends string = ''>(namespace?: NS): I18n<NS> {
   const nuxtApp = useNuxtApp()
   const state = nuxtApp.$ginkoI18n as I18nState
   const route = useRoute()
@@ -63,7 +63,6 @@ export function useI18n<NS extends string = ''>(namespace?: NS) {
     timeZone: c.timeZone,
     onMissing: import.meta.dev ? key => console.warn(`[ginko-i18n] Missing message "${key}" (${locale.value})`) : undefined,
   }))
-  const prefix = namespace ? `${namespace}.` : ''
 
   const resolvePath = createLocalePath(router)
   const localePath = (target: string, code: string = locale.value) => resolvePath(target, code)
@@ -81,12 +80,6 @@ export function useI18n<NS extends string = ''>(namespace?: NS) {
       return { ...l, path: path ?? localizePath('/', l.code, c), current: l.code === locale.value, translated: !!path }
     })
   })
-
-  const typed: TypedTranslator<NS> = {
-    t: (key, ...params) => translator.value.t(prefix + key, params[0], params[1]),
-    parts: (key, ...params) => translator.value.parts(prefix + key, params[0], params[1]),
-    has: key => translator.value.has(prefix + key),
-  }
 
   /**
    * Change the language. In a user-locale zone: remember it in the cookie and re-render in place.
@@ -116,7 +109,7 @@ export function useI18n<NS extends string = ''>(namespace?: NS) {
   }
 
   return {
-    ...typed,
+    ...typedTranslator(() => translator.value, namespace),
     locale,
     language: computed(() => current.value.language),
     locales: c.locales,
@@ -146,7 +139,7 @@ export function useLocaleSuggestion() {
 
 /**
  * For a library's Nuxt plugin that owns dynamic routes (a CMS): give a route's path per locale, or
- * `undefined` when the route is not yours. A page's own `definePageMeta({ alternates })` wins; otherwise
+ * `undefined` when the route is not yours. A page's own `definePageMeta({ i18nAlternates })` wins; otherwise
  * the first resolver that returns paths does.
  */
 export function addAlternatesResolver(resolver: AlternatesResolver) {

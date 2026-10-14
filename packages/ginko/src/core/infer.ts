@@ -10,7 +10,11 @@ declare const unknownChoice: unique symbol
 /** A choice value this code does not know yet (added by a later schema release). Handle it with a fallback. */
 export type UnknownChoice = string & { readonly [unknownChoice]: true }
 
-export interface Money { amount: number; currency: Currency }
+export interface Money {
+  /** In minor units, e.g. cents: 12.50 EUR is 1250. Never negative. */
+  amount: number
+  currency: Currency
+}
 export interface ImageValue {
   url: string
   alt: string
@@ -53,10 +57,8 @@ export type ItemOf<F extends Fields, Routed extends boolean = boolean> = {
   fallback: string[]
   /** The address in every language the entry exists in (language switcher, hreflang). Routed bricks only. */
   urls?: Partial<Record<string, string>>
-  /** When the entry last changed (ISO 8601, UTC). Absent when unknown (bundle format 2). */
+  /** When the entry last changed (ISO 8601, UTC). Absent when unknown. */
   updatedAt?: string
-  /** Repo-relative path of the entry's main-language file. File entries only (for an "edit this page" link). */
-  source?: string
 } & (Routed extends true ? {
   /** The address in the current language: a visible routed entry always has one. */
   url: string

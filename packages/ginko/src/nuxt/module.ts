@@ -1,16 +1,28 @@
-import { resolveConfig } from '@lupinum/ginko-i18n/core'
 import { addComponent, addComponentsDir, addImports, addPlugin, addServerHandler, addServerTemplate, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, extendPages, hasNuxtModule, installModule, tryResolveModule } from '@nuxt/kit'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { basename, join, relative, resolve as resolvePath } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Nuxt } from 'nuxt/schema'
-import { checkExternalLinks } from './external-links.ts'
+import { fileLinkIssues } from './external-links.ts'
+import { checkI18nOptions } from './i18n.ts'
 import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
-import { checkLinks, checkSchema, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
+import { ginkoRouteRules, ginkoVercelConfig } from './route-rules.ts'
+import { configFilesToWatch } from './watch.ts'
+import { checkSite, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
 const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
+
+declare module '@nuxt/schema' {
+  interface NuxtHooks {
+    /**
+     * Internal, for @lupinum/ginko-docs: called once before the file bundles are built. `keepSource: true` keeps each
+     * file entry's repository path (`source`) in the served bundle, for an "Edit this page" link.
+     */
+    'ginko:files': (options: { keepSource: boolean }) => void | Promise<void>
+  }
+}
 
 /**
  * `@lupinum/ginko/nuxt` (SPEC part 8). The site passes its `defineSite` result:
@@ -24,12 +36,18 @@ export default defineNuxtModule<SiteInput>({
   meta: { name: '@lupinum/ginko', configKey: 'ginko', compatibility: { nuxt: '^4.6.0' } },
   async setup(site, nuxt) {
     if (!site?.site || !site.bricks) throw new Error('[ginko] Option `ginko` is missing: the result of defineSite() from ginko.config.ts.')
-    // The serialized schema is the site's own contract: checked at build, used at runtime for defaults.
+    // The serialized schema is the site's own contract: checked at build (the same check as `ginko check`), used at runtime for defaults.
     const schema = serializeSchema(site)
-    const problems = checkSchema(schema)
+    const problems = checkSite(site, schema)
     if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
+    const sources = {
+      platform: Object.values(schema.bricks).some((b) => b.source !== 'files'),
+      files: Object.values(schema.bricks).some((b) => b.source === 'files'),
+    }
 
     const { resolve } = createResolver(import.meta.url)
+    // Dev: a change to ginko.config.ts restarts the dev server (see watch.ts). Texts in i18n/*.json reload by themselves (ginko-i18n).
+    if (nuxt.options.dev) nuxt.options.watch.push(...configFilesToWatch(nuxt.options.rootDir))
     // Object.assign, not `public.ginko =`: Nuxt types `public` from each site's own values, so a site's
     // `seo` would narrow the type this module must write (a site with `seo.description` makes it required).
     Object.assign(nuxt.options.runtimeConfig.public, { ginko: {
@@ -40,23 +58,22 @@ export default defineNuxtModule<SiteInput>({
       platform: nuxt.options.dev ? 'http://localhost:3100' : '',
       locales: schema.locales,
       mainLocale: schema.locales[0]!,
-      timezone: schema.timezone,
+      timeZone: schema.timeZone,
       seo: site.seo ?? {},
       agents: site.agents ?? {},
-      sources: {
-        platform: Object.values(schema.bricks).some((b) => b.source !== 'files'),
-        files: Object.values(schema.bricks).some((b) => b.source === 'files'),
-      },
+      sources,
     } })
     // Languages come from ginko.config: ginko-i18n owns URLs, hreflang, canonical and the site's own texts
-    // (i18n/<locale>.json). Other `i18n` options in nuxt.config (params, exclude) pass through.
+    // (i18n/<code>.json). The other `i18n` options in nuxt.config pass through; the ones Ginko sets fail.
+    // `i18n` is typed only where ginko-i18n's module types are loaded (a site), so it is read as unknown here.
+    checkI18nOptions((nuxt.options as { i18n?: unknown }).i18n)
     // Resolved from this package, not the site: with pnpm a site does not see @lupinum/ginko's own dependencies.
     const i18n = await tryResolveModule('@lupinum/ginko-i18n', import.meta.url)
     const locales = schema.locales.map((code) => ({ code, language: site.languages?.[code] ?? code }))
-    await installModule(i18n ?? '@lupinum/ginko-i18n', { locales, defaultLocale: schema.locales[0], baseUrl: schema.url, timeZone: schema.timezone })
-    // The same pure resolution ginko-i18n runs on these options, for the server routes (sitemap hreflang).
-    const resolved = resolveConfig({ locales, defaultLocale: schema.locales[0] })
-    addServerTemplate({ filename: '#ginko/locales', getContents: () => `export default ${JSON.stringify(resolved)}` })
+    await installModule(i18n ?? '@lupinum/ginko-i18n', { locales, defaultLocale: schema.locales[0], baseUrl: schema.url, timeZone: schema.timeZone })
+    // The server routes (sitemap hreflang, redirects, Markdown) read the config ginko-i18n resolved, with
+    // its strategy, exclude and userLocale, so they never disagree with the module's own routes.
+    addServerTemplate({ filename: '#ginko/locales', getContents: () => `export { config as default } from '#ginko-i18n/config.mjs'` })
     // Redirect rules of the site config (patterns); entries add theirs from `redirectFrom` in the middleware.
     const redirects = site.redirects ?? []
     const redirectIssues = redirectProblems(redirects)
@@ -70,22 +87,14 @@ export default defineNuxtModule<SiteInput>({
     // Private runtime config (not `public`): `NUXT_GINKO_REVALIDATE_TOKEN` fills it at runtime. The server sends it as
     // `x-ginko-site-token`, so the platform does not count the site's own fetches against the visitor rate limit.
     nuxt.options.runtimeConfig.ginkoRevalidateToken ??= ''
-    // Only the bypass token makes Vercel regenerate a page on demand (SPEC 4.4).
-    nuxt.options.nitro.vercel = { ...nuxt.options.nitro.vercel, config: { ...nuxt.options.nitro.vercel?.config, bypassToken: process.env.NUXT_GINKO_REVALIDATE_TOKEN } }
+    nuxt.options.nitro.vercel = ginkoVercelConfig(nuxt.options.nitro.vercel, process.env.NUXT_GINKO_REVALIDATE_TOKEN)
 
-    // ISR for every page; queries share one cache entry so a refresh reaches them (ISR spike, question 5).
-    // The preview is never cached: the exact path and its children need their own rules (ISR spike).
     // No _payload.json on client navigation: Nuxt turns it on for every ISR route, and fetching it
     // renders the target on the server, which loads the production bundle. Pages read the bundle
     // already in the browser instead, so the preview never reaches production (SPEC 8).
     nuxt.options.experimental.payloadExtraction = false
-    const rules = (nuxt.options.routeRules ??= {})
-    rules['/**'] = { ...rules['/**'], isr: { expiration: 60, allowQuery: [] } }
-    // A site's own server routes pick their language from a header or cookie (ginko-i18n), so they are not cached.
-    rules['/api/**'] = { isr: false, ...rules['/api/**'] }
-    for (const path of ['/__ginko', '/__ginko/**']) {
-      rules[path] = { ...rules[path], isr: false, headers: { ...rules[path]?.headers, 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } }
-    }
+    // The rule type is Nitro's in a site and a fallback without `headers` here, so the result is cast back to it.
+    nuxt.options.routeRules = ginkoRouteRules(nuxt.options.routeRules ?? {}) as typeof nuxt.options.routeRules
 
     // Generated share cards (nuxt-og-image): only with that module installed and one renderer for it. `#ginko/og`
     // is the one place that reaches nuxt-og-image, so a site without it never imports it.
@@ -138,7 +147,7 @@ export default defineNuxtModule<SiteInput>({
       if (!existsSync(join(nuxt.options.rootDir, 'public', 'llms-full.txt'))) addServerHandler({ route: '/llms-full.txt', handler: resolve(`./runtime/server/llms-full.${runtimeExt}`) })
       addServerHandler({ middleware: true, handler: resolve(`./runtime/server/markdown.${runtimeExt}`) })
     }
-    if (Object.values(schema.bricks).some((b) => b.source === 'files')) await useFiles(schema, site, nuxt)
+    if (sources.files) await useFiles(schema, site, nuxt)
     // The sitemap route imports the file bundles; a site without file bricks has none.
     else {
       addServerTemplate({ filename: '#ginko/files', getContents: () => 'export default {}' })
@@ -148,8 +157,11 @@ export default defineNuxtModule<SiteInput>({
     nuxt.hook('pages:resolved', (pages) => { for (const warning of unservedPaths(schema, pages)) console.warn(`[ginko] ${warning}`) })
     addPlugin(resolve(`./runtime/plugin.${runtimeExt}`))
     addPlugin({ src: resolve(`./runtime/today.client.${runtimeExt}`), mode: 'client' })
-    extendPages((pages) => { pages.push({ name: 'ginko-preview', path: '/__ginko/preview', file: resolve('./runtime/preview.vue') }) })
-    for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'useGinkoPath', 'ginkoLangOf', 'ginkoSafeHref', 'isGinkoVisible']) addImports({ name, from: composables })
+    // The preview shows drafts from the platform; a site whose bricks all come from files has nothing to preview.
+    if (sources.platform) {
+      extendPages((pages) => { pages.push({ name: 'ginko-preview', path: '/__ginko/preview', file: resolve('./runtime/preview.vue') }) })
+    }
+    for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'useGinkoPath', 'useGinkoLang', 'useGinkoSite']) addImports({ name, from: composables })
     for (const name of ['GinkoItem', 'GinkoPageKey', 'GinkoLocale', 'GinkoSeoInput']) addImports({ name, from: composables, type: true })
     addComponent({ name: 'GinkoMarkdown', export: 'GinkoMarkdown', filePath: resolve(`./runtime/GinkoMarkdown.${runtimeExt}`) })
     addComponent({ name: 'GinkoImage', export: 'GinkoImage', filePath: resolve(`./runtime/GinkoImage.${runtimeExt}`) })
@@ -190,18 +202,17 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     for (const name of readdirSync(imageDir)) if (!keep.has(name)) rmSync(join(imageDir, name), { force: true })
   }
   ;(nuxt.options.nitro.publicAssets ??= []).push({ dir: imageDir, baseURL: '/_ginko/img', maxAge: 60 * 60 * 24 * 365 })
-  // The docs layer (@lupinum/ginko-docs) sets `appConfig.docs.editLinks`: its pages link to the file in the repository.
-  const editLinks = (nuxt.options.appConfig as { docs?: { editLinks?: boolean } }).docs?.editLinks === true
+  // Internal hook: the docs layer (@lupinum/ginko-docs) sets `keepSource`, so its pages can link to the file in the repository.
+  const fileOptions = { keepSource: false }
+  await nuxt.callHook('ginko:files', fileOptions)
   const build = async () => {
-    const result = await content.buildFileBundles(contentDir, publicDir, schema, new Date(), { drafts: nuxt.options.dev, imageDir })
+    const result = await content.buildFileBundles({ contentDir, publicDir, schema, drafts: nuxt.options.dev, imageDir })
     const report = result.errors.map((e) => `- ${content.errorLine(e)}`).join('\n')
     if (result.errors.length && !nuxt.options.dev) throw new Error(`[ginko] Errors in content/:\n${report}`)
     if (result.errors.length) console.error(`[ginko] Errors in content/ (these files are missing from the site):\n${report}`)
-    // Link check (CONTENT.md): errors fail the build, warnings are printed. Paths of platform bricks are not known here, so unknown paths are checked only for sites with file bricks alone.
-    const onlyFiles = Object.values(schema.bricks).every((b) => b.source === 'files')
-    const links = checkLinks(Object.values(result.bundles) as Bundle[], schema, { links: site.links, redirects: site.redirects, files: onlyFiles ? (path) => existsSync(join(publicDir, path)) : undefined })
-    // Opt-in (`links.external`): asks the servers of outside links, so only on build / generate, never in dev.
-    if (!nuxt.options.dev) links.push(...await checkExternalLinks(Object.values(result.bundles) as Bundle[], { links: site.links, root: nuxt.options.rootDir, log: console.log }))
+    // Link check (CONTENT.md): errors fail the build, warnings are printed. External links (opt-in) ask other servers,
+    // so only on build / generate, never in dev.
+    const links = await fileLinkIssues({ bundles: Object.values(result.bundles) as Bundle[], schema, site, publicDir, root: nuxt.options.rootDir, log: console.log, external: !nuxt.options.dev })
     const linkReport = links.map((i) => `- ${i.locale}/${i.id} (${i.field}): ${coreMessage('en', i.key, i.params)}`).join('\n')
     if (links.some((i) => i.severity === 'error') && !nuxt.options.dev) throw new Error(`[ginko] Broken links:\n${linkReport}`)
     if (links.length) console.warn(`[ginko] Link check:\n${linkReport}`)
@@ -210,7 +221,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     trees = new Map()
     // What is served to everyone: no expired entries, no repo paths (kept only for the docs layer's "Edit this page" link).
     const now = new Date()
-    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, content.withMarkdownRefs(content.publicBundle(bundle!, schema, now, { keepSource: editLinks }), schema, trees)]))
+    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, content.withMarkdownRefs(content.publicBundle(bundle!, schema, now, fileOptions), schema, trees)]))
     searches = Object.fromEntries(await Promise.all(Object.entries(bundles).map(async ([locale, bundle]) => [locale, await content.searchIndex(bundle!, trees, schema)])))
   }
   await build()

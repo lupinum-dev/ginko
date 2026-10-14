@@ -7,6 +7,7 @@ import { makeFunctionReference } from 'convex/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { importSite } from '../../../packages/ginko/src/cli/import.ts'
 import { main } from '../../../packages/ginko/src/cli/index.ts'
+import { main as local } from '../../../packages/ginko/src/cli/monorepo.ts'
 import { exportSite } from '../../../packages/ginko/src/cli/export.ts'
 import type { Runner } from '../../../packages/ginko/src/cli/local.ts'
 import { createPlatform } from '../../../packages/ginko/src/cli/platform.ts'
@@ -166,11 +167,11 @@ describe('ginko export', () => {
     const out = join(await tempDir(), 'backup')
     const stdout: string[] = []
     const logs: string[] = []
-    const code = await main(['export', '--out', out], {
+    const code = await main(['export', out], {
       env: { GINKO_PLATFORM: PLATFORM, GINKO_KEY: key }, git: async () => '', stdout: (t) => stdout.push(t), log: (l) => logs.push(l), fetch: fetchOf(s),
     })
     expect(code).toBe(0)
-    expect(JSON.parse(stdout.join(''))).toEqual({ export: out, entries: expect.any(Number), files: 2 })
+    expect(JSON.parse(stdout.join(''))).toEqual({ ok: true, dir: out, entries: expect.any(Number), files: 2 })
     expect(stdout.join('') + logs.join('\n')).not.toContain(key)
 
     const written = JSON.parse(await readFile(join(out, 'export.json'), 'utf8')) as SiteExport
@@ -188,10 +189,12 @@ describe('ginko export', () => {
     const out = await tempDir()
     await writeFile(join(out, 'wichtig.txt'), 'bleibt')
     const requests: string[] = []
-    await expect(main(['export', `--out=${out}`], {
-      env: { GINKO_PLATFORM: PLATFORM, GINKO_KEY: key }, git: async () => '', stdout: () => undefined, log: () => undefined,
+    const logs: string[] = []
+    expect(await main(['export', out], {
+      env: { GINKO_PLATFORM: PLATFORM, GINKO_KEY: key }, git: async () => '', stdout: () => undefined, log: (l) => logs.push(l),
       fetch: async (input, init) => { requests.push(input); return fetchOf(s)(input, init) },
-    })).rejects.toThrow(/is not empty/)
+    })).toBe(2)
+    expect(logs.join('\n')).toMatch(/is not empty/)
     expect(requests).toEqual([])
     expect(await readFile(join(out, 'wichtig.txt'), 'utf8')).toBe('bleibt')
   })
@@ -201,10 +204,12 @@ describe('ginko export', () => {
     const key = await pushKey(s, ['export'])
     const out = join(await tempDir(), 'backup')
     const cut = fetchOf(s)
-    await expect(main(['export', '--out', out], {
-      env: { GINKO_PLATFORM: PLATFORM, GINKO_KEY: key }, git: async () => '', stdout: () => undefined, log: () => undefined,
+    const logs: string[] = []
+    expect(await main(['export', out], {
+      env: { GINKO_PLATFORM: PLATFORM, GINKO_KEY: key }, git: async () => '', stdout: () => undefined, log: (l) => logs.push(l),
       fetch: async (input, init) => (input.startsWith(STORAGE) ? new Response('zu kurz') : cut(input, init)),
-    })).rejects.toThrow(/is incomplete/)
+    })).toBe(3)
+    expect(logs.join('\n')).toMatch(/is incomplete/)
     await expect(readdir(out)).rejects.toThrow()
   })
 })
@@ -297,19 +302,21 @@ describe('export → import round trip (SPEC 12)', () => {
   })
 })
 
-describe('ginko import and pull refuse a target that is not the local backend', () => {
+describe('local:import and local:pull refuse a target that is not the local backend', () => {
   it('stops before it reads the folder, asks the platform or runs anything', async () => {
     const { s } = await production()
     const key = await pushKey(s, ['pull'])
     vi.stubEnv('CONVEX_DEPLOYMENT', 'prod:happy-animal-123')
     const requests: string[] = []
+    const logs: string[] = []
     const deps = {
-      env: { GINKO_PLATFORM: PLATFORM, GINKO_KEY: key }, git: async () => '', stdout: () => undefined, log: () => undefined,
+      env: { GINKO_PLATFORM: PLATFORM, GINKO_KEY: key }, git: async () => '', stdout: () => undefined, log: (l: string) => logs.push(l),
       fetch: async (input: string, init?: RequestInit) => { requests.push(input); return fetchOf(s)(input, init) },
     }
     const missing = join(await tempDir(), 'gibt-es-nicht')
-    await expect(main(['import', missing], deps)).rejects.toThrow(/ginko import stopped.*not the local backend/)
-    await expect(main(['pull'], deps)).rejects.toThrow(/ginko pull stopped.*not the local backend/)
+    expect(await local(['import', missing], deps)).toBe(2)
+    expect(await local(['pull'], deps)).toBe(2)
+    expect(logs).toEqual([expect.stringMatching(/local:import stopped.*not the local backend/), expect.stringMatching(/local:pull stopped.*not the local backend/)])
     expect(requests).toEqual([])
   })
 })

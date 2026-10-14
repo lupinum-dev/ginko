@@ -47,17 +47,18 @@ export function sameLabel(a: Label | undefined, b: Label | undefined): boolean {
 }
 
 /**
- * Why a label is not valid, as an English sentence, or null. A string is always accepted (old schemas);
- * a record needs the main language and a text for every key, and its keys are content languages.
+ * Why a label is not valid, as an English sentence, or null. A text must not be empty or blank; a record needs the main
+ * language (or English) and a text for every key, and its keys are content languages. The one rule for every label
+ * of a schema: bricks, fields, tasks and components.
  */
 export function labelProblem(path: string, label: unknown, main: string): string | null {
-  if (typeof label === 'string') return null
+  if (typeof label === 'string') return label.trim() === '' ? `${path}: label is empty.` : null
   if (typeof label !== 'object' || label === null || Array.isArray(label)) return `${path}: label must be a text or an object with one text per language.`
   const record = label as Record<string, unknown>
   const bad = Object.keys(record).find((k) => !isLocale(k))
   if (bad !== undefined) return `${path}: label has the invalid language “${bad}”.`
   // English is the shared fallback, so labels from presets (`{ de, en }`) also work on a site in `es`.
   if (!Object.hasOwn(record, main) && !Object.hasOwn(record, 'en')) return `${path}: label needs a text in the main language “${main}” or in English.`
-  if (Object.values(record).some((v) => typeof v !== 'string')) return `${path}: label needs a text for each language.`
+  if (Object.values(record).some((v) => typeof v !== 'string' || v.trim() === '')) return `${path}: label needs a text for each language.`
   return null
 }

@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -21,12 +21,38 @@ describe('create-ginko', () => {
     expect(read('plain', 'ginko.config.ts')).toContain("locales: ['en']")
     expect(read('plain', 'content/start.md')).toContain('title: Hello Ginko')
     expect(JSON.parse(read('plain', 'package.json')).dependencies).not.toHaveProperty('@lupinum/ginko-docs')
+    // Wrong behaviour caught: `npx ginko-i18n check` (docs, Languages) finds no local bin and asks the registry for an unscoped name.
+    expect(JSON.parse(read('plain', 'package.json')).dependencies['@lupinum/ginko-i18n']).toBe(`^${version}`)
+    // Wrong behaviour caught: a new site has no <title> or description until the owner finds `useGinkoSeo`.
+    expect(read('plain', 'ginko.config.ts')).toMatch(/seo: \{ description: '.+' \}/)
+    expect(read('plain', 'app/pages/index.vue')).toContain('useGinkoSeo(')
+    // `nuxt typecheck` needs both packages; it fails with a prompt to install them otherwise.
+    const pkg = JSON.parse(read('plain', 'package.json'))
+    expect(pkg.scripts.typecheck).toBe('nuxt typecheck')
+    expect(Object.keys(pkg.devDependencies)).toEqual(['typescript', 'vue-tsc'])
+    // pnpm 11 exits 1 on `pnpm install` unless the starter allows esbuild's install script.
+    expect(read('plain', 'pnpm-workspace.yaml')).toMatch(/^allowBuilds:\n  esbuild: true$/m)
     expect(result.stdout).toContain('Created plain from the plain starter in English.')
     expect(result.stdout).toContain('npm create ginko@latest my-site -- --preset gastro')
   })
 
-  it('--lang de creates the German plain starter', () => {
-    expect(run('plain-de', '--lang', 'de').status).toBe(0)
+  it('shows pnpm users the starter options without the npm-only --', () => {
+    const result = spawnSync('node', [cli, 'via-pnpm'], { cwd: work, encoding: 'utf8', env: { ...process.env, npm_config_user_agent: 'pnpm/11.28.5 npm/? node/v24.18.0' } })
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('pnpm create ginko my-site --preset gastro')
+    expect(result.stdout).not.toContain(' -- ')
+  })
+
+  it('says which site id it derived when the folder name is not a valid one', () => {
+    const result = run('My Café!')
+    expect(result.status).toBe(0)
+    expect(read('My Café!', 'ginko.config.ts')).toContain("site: 'my-caf'")
+    expect(result.stdout).toContain('The site id is "my-caf"')
+    expect(run('plain-id').stdout).not.toContain('The site id is')
+  })
+
+  it('--locale de creates the German plain starter', () => {
+    expect(run('plain-de', '--locale', 'de').status).toBe(0)
     expect(read('plain-de', 'ginko.config.ts')).toContain("locales: ['de']")
     expect(read('plain-de', 'content/start.md')).toContain('title: Hallo Ginko')
   })
@@ -40,9 +66,9 @@ describe('create-ginko', () => {
   ]
   for (const { preset, lang, pkg, files } of cases) {
     for (const flag of [['--preset', preset], [`--preset=${preset}`]]) {
-      it(`${flag.join(' ')} --lang ${lang} creates the ${preset} starter`, () => {
+      it(`${flag.join(' ')} --locale ${lang} creates the ${preset} starter`, () => {
         const name = `${preset}-${lang}-${flag.length}`
-        const result = run(name, ...flag, '--lang', lang)
+        const result = run(name, ...flag, '--locale', lang)
         expect(result.status).toBe(0)
         for (const file of files) expect(existsSync(join(work, name, file)), file).toBe(true)
         expect(existsSync(join(work, name, 'content/start.md'))).toBe(false)
@@ -50,6 +76,7 @@ describe('create-ginko', () => {
         expect(read(name, 'ginko.config.ts')).toMatch(new RegExp(`locales.*\\['${lang}'\\]`))
         expect(read(name, 'ginko.config.ts')).not.toContain('{{')
         expect(read(name, 'ginko.config.ts')).toContain(pkg)
+        expect(read(name, 'ginko.config.ts')).toMatch(/seo: \{ description: '.+' \}/)
         const pkgJson = JSON.parse(read(name, 'package.json'))
         expect(pkgJson.name).toBe(name)
         expect(pkgJson.dependencies[pkg]).toBe(`^${version}`)
@@ -60,6 +87,15 @@ describe('create-ginko', () => {
   }
   it('the docs preset extends the docs layer', () => {
     expect(read('docs-en-2', 'nuxt.config.ts')).toContain("extends: ['@lupinum/ginko-docs']")
+  })
+
+  // A preset adds its package and every Ginko peer of that package that the base template lacks, nothing else.
+  it.each([['gastro', '@lupinum/ginko-preset-gastro'], ['docs', '@lupinum/ginko-docs']])('the %s preset installs its package and its Ginko peers', (preset, pkg) => {
+    const metadata = (name: string) => JSON.parse(readFileSync(fileURLToPath(new URL(`../../${name.replace('@lupinum/', '')}/package.json`, import.meta.url)), 'utf8'))
+    const base = Object.keys(metadata('create-ginko/template').dependencies)
+    const peers = Object.keys(metadata(pkg).peerDependencies).filter((name) => name.startsWith('@lupinum/') && !base.includes(name))
+    const added = Object.keys(JSON.parse(read(`${preset}-en-2`, 'package.json')).dependencies).filter((name) => !base.includes(name))
+    expect(added.sort()).toEqual([pkg, ...peers].sort())
   })
 
   it('accepts the -- that pnpm and yarn pass through', () => {
@@ -73,17 +109,17 @@ describe('create-ginko', () => {
     expect(result.stdout).toContain('Usage:')
   })
 
-  // Every mistake stops with exit 1 before a folder exists, so a script never "succeeds" without a site.
+  // Every usage mistake stops with exit 2 (as in `ginko`) before a folder exists, so a script never "succeeds" without a site.
   it.each([
     ['an unknown option', ['bad-option', '--typescript'], 'Unknown option "--typescript".'],
     ['an unknown preset', ['bad-preset', '--preset', 'shop'], 'Choose one of: gastro, docs.'],
     ['a preset name that is an object key', ['bad-proto', '--preset', 'toString'], 'Unknown preset "toString"'],
-    ['an unknown language', ['bad-lang', '--lang', 'fr'], 'Choose one of: en, de.'],
+    ['an unknown language', ['bad-lang', '--locale', 'fr'], 'Choose one of: en, de.'],
     ['--preset dropped by npm (only its value arrives)', ['bad-npm', 'gastro'], 'npm create ginko@latest bad-npm -- --preset gastro'],
     ['a second folder name', ['bad-two', 'other'], 'Unexpected argument "other".'],
-  ])('%s exits 1 and creates nothing', (_name, args, message) => {
+  ])('%s exits 2 and creates nothing', (_name, args, message) => {
     const result = run(...args)
-    expect(result.status).toBe(1)
+    expect(result.status).toBe(2)
     expect(result.stderr).toContain(message)
     expect(result.stderr).toContain('Usage:')
     expect(existsSync(join(work, args[0]!))).toBe(false)
@@ -91,5 +127,31 @@ describe('create-ginko', () => {
 
   it('quotes a folder with spaces in the next steps', () => {
     expect(run('My Site').stdout).toContain("cd 'My Site'")
+  })
+})
+
+describe('node version', () => {
+  const range = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')).engines.node
+  // Wrong behaviour caught: a stranger on Node 20 gets no hint until npm prints EBADENGINE.
+  it.each([
+    ['20.20.2', false], ['22.17.9', false], ['22.18.0', true], ['22.22.3', true], ['23.1.0', false],
+    ['24.0.0', true], ['24.18.0', true], ['26.0.0', true], ['27.0.0', false],
+  ])('Node %s supported: %s', async (version, ok) => {
+    const { supportsNode } = await import('../node-version.mjs')
+    expect(supportsNode(version, range)).toBe(ok)
+  })
+
+  it('the starter declares the same range as the packages', () => {
+    expect(JSON.parse(read('plain', 'package.json')).engines.node).toBe(range)
+  })
+
+  it('create-ginko warns on an unsupported Node but still creates the site', () => {
+    const preload = join(work, 'fake-node-20.mjs')
+    writeFileSync(preload, "Object.defineProperty(process.versions, 'node', { value: '20.20.2' })")
+    const result = spawnSync('node', ['--import', preload, cli, 'old-node'], { cwd: work, encoding: 'utf8', env: { ...process.env, npm_config_user_agent: '' } })
+    expect(result.status).toBe(0)
+    expect(result.stderr).toContain('Ginko needs Node ^22.18.0 || ^24.0.0 || ^26.0.0, but this is Node 20.20.2')
+    expect(existsSync(join(work, 'old-node/ginko.config.ts'))).toBe(true)
+    expect(run('current-node').stderr).not.toContain('Ginko needs Node')
   })
 })

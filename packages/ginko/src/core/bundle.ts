@@ -1,11 +1,7 @@
-import { parseMarkdown } from './markdown.ts'
-import type { Currency, Fields, Locale, Schema } from './types.ts'
+import { parseMarkdown, type MarkdownTree } from './markdown.ts'
+import type { Currency, Fields, Json, Locale, Schema } from './types.ts'
 
-/**
- * 3: collection items carry `updatedAt` and, for file entries, `source`.
- * 2: text fields carry comark trees (V1.md rule 1); 1 carried AST v1 and is refused.
- * Format 2 is still read (`isBundle`): its items lack the two fields, which are optional.
- */
+/** 3: text fields carry comark trees; collection items carry `updatedAt` and, for file entries, `source`. Other formats are refused. */
 export const BUNDLE_FORMAT = 3
 
 export interface BundleItem {
@@ -25,9 +21,9 @@ export type BundleBrick =
   | { kind: 'single'; data: Record<string, unknown>; fallback: string[] }
   | { kind: 'collection'; items: BundleItem[] }
 
-/** GET <platform>/bundle/<site>?format=3&locale=<l> (SPEC part 6). `format` is 2 only for a bundle received from an older platform. */
+/** GET <platform>/bundle/<site>?format=3&locale=<l> (SPEC part 6). */
 export interface Bundle {
-  format: typeof BUNDLE_FORMAT | 2
+  format: typeof BUNDLE_FORMAT
   site: string
   locale: Locale
   requestedLocale?: string
@@ -48,7 +44,7 @@ export interface Bundle {
 export function isBundle(value: unknown): value is Bundle {
   if (!isRecord(value)) return false
   const b = value
-  if ((b.format !== BUNDLE_FORMAT && b.format !== 2) || typeof b.site !== 'string' || typeof b.locale !== 'string') return false
+  if (b.format !== BUNDLE_FORMAT || typeof b.site !== 'string' || typeof b.locale !== 'string') return false
   if (!Number.isInteger(b.schemaRev) || !Number.isInteger(b.contentRev) || !isRecord(b.bricks)) return false
   return Object.values(b.bricks).every(isBundleBrick)
 }
@@ -73,10 +69,40 @@ export function withFileBricks(platform: Bundle | undefined, files: Bundle | und
   return { ...base, bricks: { ...Object.fromEntries(fromPlatform), ...files?.bricks } }
 }
 
+/** Leaf path (as `StoredEntry.prints`: `body`, `sections.<row id>.text`) → the tree of its text, or of each locale's text. */
+export type MarkdownTrees = Record<string, MarkdownTree | Partial<Record<Locale, MarkdownTree>>>
+
+/**
+ * The tree of every Markdown text in an entry's stored data. The platform stores them with the data
+ * and the bundle serves them (`StoredEntry.trees`): a request reads trees and parses nothing, so its
+ * cost follows the stored bytes, not how much work the texts take to parse.
+ */
+export async function markdownTrees(fields: Fields, data: Record<string, Json>): Promise<MarkdownTrees> {
+  const trees: MarkdownTrees = {}
+  const parse = async (text: string) => (await parseMarkdown(text)).value
+  const walk = async (inner: Fields, row: Record<string, unknown>, path: string) => {
+    for (const [name, field] of Object.entries(inner)) {
+      const value = row[name]
+      const leaf = path ? `${path}.${name}` : name
+      if (field.type === 'markdown' && typeof value === 'string') trees[leaf] = await parse(value)
+      else if (field.type === 'markdown' && isRecord(value)) {
+        const perLocale: Partial<Record<Locale, MarkdownTree>> = {}
+        for (const [locale, text] of Object.entries(value)) if (typeof text === 'string') perLocale[locale as Locale] = await parse(text)
+        trees[leaf] = perLocale
+      } else if (field.type === 'list' && Array.isArray(value)) {
+        for (const r of value) if (isRecord(r) && typeof r._id === 'string') await walk(field.of, r, `${leaf}.${r._id}`)
+      }
+    }
+  }
+  await walk(fields, data, '')
+  return trees
+}
+
 /**
  * The bundle with every Markdown string replaced by its parsed tree, so sites render without a parser
  * (V1.md rule 1). Part of `servedBundle`; file bundles carry trees already.
- * Values are validated on save, so the profile is not checked again; trees (file bricks) stay as they are.
+ * Values are validated on save, so the profile is not checked again; trees (file bricks, the platform's
+ * stored trees: `markdownTrees`) stay as they are.
  */
 export async function withMarkdownTrees(bundle: Bundle, schema: Pick<Schema, 'bricks'>): Promise<Bundle> {
   const fill = async (fields: Fields, data: Record<string, unknown>): Promise<Record<string, unknown>> => {

@@ -1,7 +1,7 @@
 // The weekly reminder (SPEC 10): content that is out of date for the coming week (`staleOf`, the rule
 // the Studio shows too) is mailed once per person and week, on the day before the site's week starts (Sunday for Monday-first weeks), between 17:00 and 18:00 in the site's time zone.
-import { weekStartOf, type Json } from '@lupinum/ginko'
-import { addDays, labelOf, plannedWeeks, staleOf, todayIn, weekOfSchema, workWeekOf, type Schema } from '@lupinum/ginko/internal'
+import { startOfWeek, type Json } from '@lupinum/ginko'
+import { addDays, labelOf, plannedWeeks, staleOf, todayIn, workWeekOf, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { components } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
@@ -11,14 +11,14 @@ import { mailAvailable, queueMail, siteOrigin } from './mail'
 
 const REMIND_HOUR = 17
 
-/** Hour of day (0 to 23) at `now` in `timezone`. */
-function hourIn(timezone: string, now: Date): number {
-  const hour = new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: '2-digit', hourCycle: 'h23' }).formatToParts(now).find((p) => p.type === 'hour')?.value
+/** Hour of day (0 to 23) at `now` in `timeZone`. */
+function hourIn(timeZone: string, now: Date): number {
+  const hour = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', hourCycle: 'h23' }).formatToParts(now).find((p) => p.type === 'hour')?.value
   return Number(hour)
 }
 
 /** Whether tomorrow is the first day of the site's week. */
-const isDayBeforeWeekStart = (date: string, schema: Schema) => weekStartOf(addDays(date, 1), weekOfSchema(schema)) === addDays(date, 1)
+const isDayBeforeWeekStart = (date: string, schema: Schema) => startOfWeek(addDays(date, 1), schema.week) === addDays(date, 1)
 
 /**
  * Hourly. Sends the reminders of every site whose 17:00 hour on the day before the week starts it is. `now` is for tests and the
@@ -34,8 +34,8 @@ export const sweep = internalMutation({
     for (const site of await ctx.db.query('sites').collect()) {
       if (site.deleting) continue
       const schema = site.schema as Schema
-      const today = todayIn(schema.timezone, now)
-      if (!isDayBeforeWeekStart(today, schema) || hourIn(schema.timezone, now) !== REMIND_HOUR) continue
+      const today = todayIn(schema.timeZone, now)
+      if (!isDayBeforeWeekStart(today, schema) || hourIn(schema.timeZone, now) !== REMIND_HOUR) continue
       sent += await remindSite(ctx, site, schema, today, now.getTime())
     }
     return { sent }
@@ -45,7 +45,7 @@ export const sweep = internalMutation({
 async function remindSite(ctx: MutationCtx, site: Doc<'sites'>, schema: Schema, today: string, at: number): Promise<number> {
   // Tomorrow starts the coming week; asking from there keeps the rule right for any first day.
   const coming = addDays(today, 1)
-  const info = weekOfSchema(schema)
+  const info = schema.week
   const week = workWeekOf(coming, info)
   const members = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).collect()
   // Live entries of the collections that plan weeks ahead (no drafts, nothing deleted), read once per site.

@@ -17,7 +17,7 @@ export function acceptOf(kind: 'image' | 'file'): string {
   return typesOf(kind).join(',')
 }
 
-/** The largest upload of a kind; also the highest `maxSize` a file field may set. */
+/** The largest upload of a kind; also the highest `maxBytes` a file field may set. */
 export function limitOf(kind: 'image' | 'file'): number {
   return Math.max(...typesOf(kind).map((type) => UPLOAD_TYPES[type].limit))
 }

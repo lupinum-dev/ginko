@@ -28,6 +28,18 @@ test('a platform failure is a 503, never a 404', async ({ page, request }) => {
   expect(response?.status()).toBe(503)
 })
 
+// Wrong behaviour caught: a non-fatal 404 from useGinkoEntry shows the error page only on a full load; after a
+// client-side navigation to a missing slug the page stayed broken.
+test('a client-side navigation to a missing entry shows the 404 page', async ({ page }) => {
+  await page.goto('/veranstaltungen/weinabend-ebner')
+  await page.waitForFunction(() => (document.querySelector('#__nuxt') as { __vue_app__?: unknown } | null)?.__vue_app__)
+  await page.evaluate(() => {
+    const app = (document.querySelector('#__nuxt') as unknown as { __vue_app__: { config: { globalProperties: { $router: { push: (to: string) => Promise<unknown> } } } } }).__vue_app__
+    return app.config.globalProperties.$router.push('/veranstaltungen/gibt-es-nicht')
+  })
+  await expect(page.getByRole('heading', { name: 'Diese Seite gibt es nicht.' })).toBeVisible()
+})
+
 // Break-it 9: a hanging or oversized platform answer is a quick 503; an unknown brick key never breaks the page.
 for (const [mode, status] of [['hang', 503], ['huge', 503], ['proto', 200]] as const) {
   test(`a platform answer of kind "${mode}" gives ${status}`, async ({ page, request }) => {

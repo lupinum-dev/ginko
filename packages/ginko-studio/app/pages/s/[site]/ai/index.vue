@@ -21,7 +21,7 @@ const keys = computed(() => list.data.value ?? [])
 const createKey = useConvexMutation(api.agent.createKey)
 const revokeKey = useConvexMutation(api.agent.revokeKey)
 
-const when = (ms: number) => format.date(new Date(ms), { timeZone: s.schema.value?.timezone ?? 'Europe/Vienna', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+const when = (ms: number) => format.date(new Date(ms), { timeZone: s.schema.value?.timeZone ?? 'Europe/Vienna', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
 
 // Creating: a name, then the key once. Leaving the page loses it; that is said next to it.
 const label = ref('Claude Code')

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // One level of the side navigation. A node with children gets a toggle button; the branch of the current page
 // starts open, and a reader's own choice holds until the page changes.
-import type { DocNode } from '../utils/docsNav'
+import type { DocNode } from '../lib/docsNav'
 
 const props = defineProps<{ nodes: DocNode[] }>()
 const { t } = useI18n()

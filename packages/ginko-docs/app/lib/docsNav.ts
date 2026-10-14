@@ -8,6 +8,8 @@ export interface DocNode extends NavNode {
   tab?: string
   children: DocNode[]
 }
+export interface DocTab { title: string; path: string }
+
 export interface DocFields { tab?: string; section?: string; badge?: string; icon?: string }
 
 /**

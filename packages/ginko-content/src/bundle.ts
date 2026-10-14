@@ -19,6 +19,7 @@ export function markdownRef(locale: Locale, brick: string, id: string, field: st
 /**
  * The bundle for page state: every markdown tree replaced by `{ ref, toc }` (CONTENT.md, Phase 14).
  * `trees` collects the trees by their ref, for the route that serves them.
+ * @internal Loaded by the Ginko module and CLI; sites do not import it.
  */
 export function withMarkdownRefs(bundle: Bundle, schema: Schema, trees: Map<string, MarkdownValue>): Bundle {
   const swap = (brick: string, id: string, data: Record<string, unknown>) => {
@@ -43,9 +44,10 @@ export function withMarkdownRefs(bundle: Bundle, schema: Schema, trees: Map<stri
  * ended before `now` are left out (an expired offer is not private data to publish), and the repo path
  * `source` is dropped unless `keepSource` is set (docs pages need it for their "Edit this page" link).
  * Items whose window is current or still to come stay: the page filters them by date in the browser.
+ * @internal Loaded by the Ginko module and CLI; sites do not import it.
  */
 export function publicBundle(bundle: Bundle, schema: Schema, now: Date, options: { keepSource?: boolean } = {}): Bundle {
-  const today = todayIn(schema.timezone, now)
+  const today = todayIn(schema.timeZone, now)
   const bricks = Object.fromEntries(Object.entries(bundle.bricks).map(([key, brick]) => {
     if (brick.kind !== 'collection') return [key, brick]
     const def = schema.bricks[key]
@@ -60,8 +62,10 @@ export function publicBundle(bundle: Bundle, schema: Schema, now: Date, options:
 /**
  * One bundle per locale from the files, built by the core's buildBundle, so visibility, order, URLs
  * and fallbacks follow the same rules as platform content. Revisions are 0: files have no history.
+ * @internal Loaded by the Ginko module and CLI; sites do not import it.
  */
-export async function buildFileBundles(contentDir: string, publicDir: string, schema: Schema, now = new Date(), options: BuildOptions = {}): Promise<{ bundles: Partial<Record<Locale, Bundle>>; images: Map<string, string>; imageFiles: Set<string>; errors: ContentError[] }> {
+export async function buildFileBundles(options: BuildOptions): Promise<BuildResult> {
+  const { contentDir, publicDir, schema, now = new Date() } = options
   const files = fileSchema(schema)
   const { entries, files: fileInfo, images, errors } = await readContent(contentDir, publicDir, files, options)
   const imageFiles = new Set<string>()
@@ -70,15 +74,32 @@ export async function buildFileBundles(contentDir: string, publicDir: string, sc
   for (const locale of schema.locales) {
     bundles[locale] = resolveRouteLinks(buildBundle({
       schema: files, requestedLocale: locale, entries, files: (id) => fileInfo[id],
-      schemaRev: 0, contentRev: 0, generatedAt: now.toISOString(), today: todayIn(schema.timezone, now),
+      schemaRev: 0, contentRev: 0, generatedAt: now.toISOString(), today: todayIn(schema.timeZone, now),
     }), files)
   }
   return { bundles, images, imageFiles, errors }
 }
 
 export interface BuildOptions extends ReadOptions {
+  /** The site's `content/` folder. */
+  contentDir: string
+  /** The site's `public/` folder. */
+  publicDir: string
+  schema: Schema
+  /** The time the build counts as "now" (visibility windows, `generatedAt`). Default: the current time. */
+  now?: Date
   /** Where the WebP variants of the site's images are written (the folder served at `/_ginko/img`). Without it, no variants are made. */
   imageDir?: string
+}
+
+export interface BuildResult {
+  /** One bundle per locale of the schema. */
+  bundles: Partial<Record<Locale, Bundle>>
+  /** Co-located Markdown images: served URL to absolute path. */
+  images: Map<string, string>
+  /** Every WebP variant file name that was written to `imageDir`. */
+  imageFiles: Set<string>
+  errors: ContentError[]
 }
 
 /**

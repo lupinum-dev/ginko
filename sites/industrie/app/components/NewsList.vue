@@ -1,6 +1,9 @@
 <!-- News as a dated list: date, title, the first 160 characters, optionally a thumbnail. `limit` shortens it on the home page. -->
 <script setup lang="ts">
 import { excerpt } from '../utils/site'
+import { safeHref } from '@lupinum/ginko'
+
+const langOf = useGinkoLang()
 const { t, format } = useI18n()
 
 const props = defineProps<{ limit?: number; thumbs?: boolean }>()
@@ -14,10 +17,10 @@ const items = computed(() => (props.limit ? news.value.items.slice(0, props.limi
     <li v-for="n in items" :key="n.id" class="item" data-test="news">
       <p class="date mono">{{ format.date(n.data.date) }}</p>
       <div class="text">
-        <h3 :lang="ginkoLangOf(n, 'title')"><NuxtLink :to="n.url">{{ n.data.title }}</NuxtLink></h3>
-        <p class="excerpt" :lang="ginkoLangOf(n, 'body')">{{ excerpt(n.data.body) }}</p>
+        <h3 :lang="langOf(n, 'title')"><NuxtLink :to="n.url">{{ n.data.title }}</NuxtLink></h3>
+        <p class="excerpt" :lang="langOf(n, 'body')">{{ excerpt(n.data.body) }}</p>
       </div>
-      <img v-if="thumbs && n.data.image && ginkoSafeHref(n.data.image.url)" class="thumb" :src="ginkoSafeHref(n.data.image.url)" :alt="n.data.image.alt" :lang="ginkoLangOf(n, 'image.alt')" width="120" :height="Math.round(120 * n.data.image.height / n.data.image.width)" loading="lazy">
+      <img v-if="thumbs && n.data.image && safeHref(n.data.image.url)" class="thumb" :src="safeHref(n.data.image.url)" :alt="n.data.image.alt" :lang="langOf(n, 'image.alt')" width="120" :height="Math.round(120 * n.data.image.height / n.data.image.width)" loading="lazy">
     </li>
   </ol>
   <p v-else class="empty">{{ t('noNews') }}</p>

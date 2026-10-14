@@ -1,6 +1,6 @@
 // Retention (SPEC 12). Daily; one run handles at most 200 documents in all. A run that uses up
 // its budget schedules the next run at once, so the rest follows in batches.
-import { addDays, isVisible, todayIn, type Schema } from '@lupinum/ginko/internal'
+import { addDays, deletesExpired, todayIn, visibleUntil, type Schema } from '@lupinum/ginko/internal'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, type MutationCtx } from './_generated/server'
@@ -70,8 +70,8 @@ export const daily = internalMutation({
     for (const site of await ctx.db.query('sites').collect()) {
       if (left === 0) break
       const schema = site.schema as Schema
-      const today = todayIn(schema.timezone, new Date(now))
-      // An entry is expired when it is invisible today and was already invisible 30 days ago.
+      const today = todayIn(schema.timeZone, new Date(now))
+      // An entry is expired when it has been invisible for 30 days: its last visible day is before this date.
       const expiredSince = addDays(today, -30)
       // The site's counters change in this loop; one patch at the end writes them.
       const state = countersOf(site)
@@ -79,10 +79,13 @@ export const daily = internalMutation({
 
       for (const [key, brick] of Object.entries(schema.bricks)) {
         if (left === 0) break
-        if (brick.kind === 'collection' && brick.autoRemoveExpired) {
+        if (deletesExpired(brick)) {
           const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).collect()
           // Drafts are left alone: nobody has published them yet (SPEC 15).
-          const expired = rows.filter((row) => !row.deletedAt && row.state !== 'draft' && !isVisible(brick, row.data, today) && !isVisible(brick, row.data, expiredSince))
+          const expired = rows.filter((row) => {
+            const until = visibleUntil(brick, row.data)
+            return !row.deletedAt && row.state !== 'draft' && until !== undefined && until < expiredSince
+          })
           for (const row of expired.slice(0, left)) {
             await softRemove(ctx, state, row, `retention:${row._id}:${row.lifeRev + 1}`, SYSTEM, recorded(msg('history.expiredAutoRemoved')), now)
             left--

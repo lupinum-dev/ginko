@@ -1,7 +1,7 @@
 // Bundle reads for the public endpoint (SPEC 6). The HTTP layer lives in routes/bundle.ts;
 // the bundle itself is built by the core `servedBundle`, never here.
 import type { Json } from '@lupinum/ginko'
-import { servedBundle, todayIn, type Bundle, type FileInfo, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { servedBundle, todayIn, type Bundle, type FileInfo, type MarkdownTrees, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { internalMutation, internalQuery, type QueryCtx } from './_generated/server'
@@ -92,7 +92,12 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
     // Drafts never leave the platform (SPEC 15); their slugs stay reserved in the slugs table.
     // An override (a save that is about to happen) replaces the stored data and also lets a draft through: the link check reads the state after the write.
     const live = rows.filter((row) => !row.deletedAt && (row.state !== 'draft' || overrides?.has(row._id)))
-    const list: StoredEntry[] = await Promise.all(live.map(async (row) => ({ id: row._id, order: row.order, data: overrides?.get(row._id) ?? row.data, prints: row.prints, updatedAt: await updatedAtOf(ctx, row) })))
+    // An overridden row's stored trees belong to its old data: its texts are parsed.
+    const list: StoredEntry[] = await Promise.all(live.map(async (row) => {
+      const override = overrides?.get(row._id)
+      const trees = override === undefined && row.trees !== undefined ? (JSON.parse(row.trees) as MarkdownTrees) : undefined
+      return { id: row._id, order: row.order, data: override ?? row.data, prints: row.prints, ...(trees ? { trees } : {}), updatedAt: await updatedAtOf(ctx, row) }
+    }))
     // An entry that does not exist yet (a create that is only proposed) joins its collection at the end.
     for (const item of added) {
       if (item.brick === key) list.push({ id: item.id, order: Math.max(0, ...list.map((e) => e.order ?? 0)) + 1, data: item.data, prints: {}, updatedAt: new Date().toISOString() })
@@ -131,6 +136,6 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
     schemaRev: site.schemaRev,
     contentRev: site.contentRev,
     generatedAt: new Date().toISOString(),
-    today: todayIn(schema.timezone),
+    today: todayIn(schema.timeZone),
   })
 }

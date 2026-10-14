@@ -1,4 +1,4 @@
-// HTTP route for `ginko export` and `ginko pull` (SPEC 9, 12): `GET /export?site=<slug>`.
+// HTTP route for `ginko export` and `pnpm local:pull` (SPEC 9, 12): `GET /export?site=<slug>`.
 // Same push key, site check and error answers as GET /release/state; the key needs scope export or pull.
 import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'

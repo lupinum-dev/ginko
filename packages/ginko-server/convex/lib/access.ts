@@ -1,7 +1,7 @@
 // Steps 1, 2 and 4 of the shared write flow (SPEC 4.1): who, repeated op, may they.
 // Every write operation goes through `beginOp` and ends with `finishOp`.
 import type { Json, Task } from '@lupinum/ginko'
-import { plansThisWeek, resolveToken, sha256, stableJson, weekOfSchema, type Schema } from '@lupinum/ginko/internal'
+import { plansThisWeek, resolveToken, sha256, stableJson, type Schema } from '@lupinum/ginko/internal'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { ActionCtx, MutationCtx, QueryCtx } from '../_generated/server'
 import { auth } from '../auth'
@@ -89,7 +89,7 @@ export function taskBrickOf(schema: Schema, ref: string | undefined, entry: Pick
   const [taskBrick, taskId] = (ref ?? '').split('.')
   if (!taskBrick || taskBrick === entry.brick || entry.state === 'draft' || !Object.hasOwn(schema.bricks, taskBrick)) return entry.brick
   const task = schema.bricks[taskBrick]!.tasks?.find((t) => t.id === taskId)
-  const thisWeek = resolveToken('@thisWeek', schema.timezone, weekOfSchema(schema))
+  const thisWeek = resolveToken('@workWeek', schema.timeZone, schema.week)
   return task && thisWeek && plansThisWeek(schema, taskBrick, task, entry.brick, entry.data as Record<string, Json>, thisWeek) ? taskBrick : entry.brick
 }
 

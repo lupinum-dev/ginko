@@ -1,9 +1,12 @@
 // Delivery and upkeep: the bundle endpoint (SPEC 6), "Sofort von der Seite nehmen" (SPEC 4.4)
 // and the daily retention job (SPEC 12). One test per realistic failure.
+import { parseMarkdown, serializeSchema, type Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import corpus from '../../../contracts/restaurant/data.json' with { type: 'json' }
+import saas from '../../../sites/saas/ginko.config.ts'
 import { api, internal } from '../convex/_generated/api'
-import { errorOf, opId, setup } from './setup'
+import { bundleOf } from '../convex/bundle'
+import { errorOf, opId, people, setup } from './setup'
 
 const DAY = 24 * 60 * 60 * 1000
 const NOW = Date.parse('2026-10-08T10:00:00Z')
@@ -38,6 +41,74 @@ describe('GET /bundle/<site>', () => {
     const bundle = (await (await t.fetch('/bundle/restaurant?format=3&locale=de')).json()) as { bricks: { legal: { data: { imprint: { nodes: unknown[] } } } } }
     expect(Array.isArray(bundle.bricks.legal.data.imprint.nodes)).toBe(true)
     expect(JSON.stringify(bundle.bricks.legal.data.imprint.nodes)).toContain('Hallo')
+  })
+
+  // The bundle is a query with a 1 s limit. Parsing every stored text per request let staff with an add task
+  // fill a collection with valid texts that are slow to parse until the bundle failed for every visitor.
+  it('is built from the trees stored at each save, and those trees count toward the budget', async () => {
+    const s = await setup()
+    // The saas blog (Markdown bodies up to 20000 characters), added by the cook.
+    const blog = serializeSchema(saas).bricks.blog!
+    blog.route = { de: (blog.route as Record<string, string>).de! } as never
+    await s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      const schema = site.schema as Schema
+      await ctx.db.patch(s.site, { schema: { ...schema, bricks: { ...schema.bricks, blog } }, orderRevs: { ...site.orderRevs, blog: 0 } })
+      const cook = (await ctx.db.query('memberships').collect()).find((m) => m.user === people.cook && m.site === s.site)!
+      await ctx.db.patch(cook._id, { grants: [...cook.grants, 'blog.add'] })
+    })
+    const post = (i: number, body: string) => s.as.cook.mutation(api.entries.create, {
+      site: 'restaurant', opId: opId(), task: 'blog.add', brick: 'blog',
+      data: { title: { de: `Beitrag ${i}` }, date: '2026-10-01', author: 'Koch', description: { de: 'Kurz' }, body: { de: body } },
+    })
+    // The fastest of three runs after a warm-up: timings in a busy test run only ever get slower.
+    const fastest = async (work: () => Promise<unknown>) => {
+      await work()
+      let best = Infinity
+      for (let i = 0; i < 3; i++) {
+        const start = performance.now()
+        await work()
+        best = Math.min(best, performance.now() - start)
+      }
+      return best
+    }
+    const build = () => s.t.run(async (ctx) => { await bundleOf(ctx, (await ctx.db.get(s.site))!, 'de') })
+
+    // 10000 empty headings: a valid body that is almost nothing to store or serve, and slow to parse.
+    const slow = '#\n'.repeat(10000)
+    const before = await fastest(build)
+    for (let i = 0; i < 20; i++) await post(i, slow)
+    const after = await fastest(build)
+    const parse = await fastest(async () => { for (let i = 0; i < 20; i++) await parseMarkdown(slow) })
+    // The posts add the reading of their stored trees to the build, a small part of parsing their texts.
+    expect(after - before).toBeLessThan(parse / 3)
+
+    // `## a` lines make a tree more than ten times their text: 20000 characters are too large to store.
+    expect(await errorOf(post(20, '## a\n'.repeat(4000)))).toMatchObject({ code: 'TOO_LARGE', message: 'Dieser Eintrag ist zu groß (höchstens 256 KiB).' })
+  }, 60_000)
+
+  // Wrong behaviour caught: after a parser change the rebuild leaves stale trees, stops after its first batch, or
+  // forgets the site's byte total.
+  it('rebuildTrees writes every entry\'s trees and bytes again from its data', async () => {
+    const s = await setup()
+    const entry = s.entries.legal!
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { imprint: { de: '**Hallo**' } }, sentence: 'Impressum' })
+    const saved = (await s.t.run((ctx) => ctx.db.get(entry)))!
+    // What a row looks like after a parser change: its trees are not what the parser makes now.
+    await s.t.run(async (ctx) => {
+      await ctx.db.patch(entry, { trees: '{}', bytes: saved.bytes - 10 })
+      await ctx.db.patch(s.site, { bytes: (await ctx.db.get(s.site))!.bytes - 10 })
+    })
+    // The site total is the entries' bytes plus what else the site stores; the rebuild keeps that sum true.
+    const rest = () => s.t.run(async (ctx) => (await ctx.db.get(s.site))!.bytes - (await ctx.db.query('entries').collect()).reduce((sum, row) => sum + row.bytes, 0))
+    const before = await rest()
+    vi.useFakeTimers()
+    await s.t.mutation(internal.entries.rebuildTrees, {})
+    await s.t.finishAllScheduledFunctions(vi.runAllTimers)
+    expect(await s.t.run((ctx) => ctx.db.get(entry))).toMatchObject({ trees: saved.trees, bytes: saved.bytes })
+    expect(await rest()).toBe(before)
+    // The fixture's rows (more than one batch) had no trees; all have them now.
+    expect((await s.t.run((ctx) => ctx.db.query('entries').collect())).filter((row) => row.trees === undefined)).toEqual([])
   })
 
   it('an unknown locale delivers the main language and names the requested one', async () => {

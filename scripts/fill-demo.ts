@@ -1,5 +1,5 @@
 // Fills the HOSTED demo site with the contract corpus and invites the demo people (demo:fill).
-// Runs only against the deployment of CONVEX_DEPLOY_KEY, never against apps/platform/.env.local:
+// Runs only against the deployment of CONVEX_DEPLOY_KEY, never against packages/ginko-server/.env.local:
 //   CONVEX_DEPLOY_KEY=prod:… node --experimental-strip-types scripts/fill-demo.ts [site=restaurant]
 // The demo people have .test addresses: their codes and invites stay in the outbox (pnpm outbox <email>).
 import { execFileSync } from 'node:child_process'
@@ -25,5 +25,5 @@ const peopleBySite: Record<string, { email: string; role: 'owner' | 'staff'; gra
 }
 const people = peopleBySite[site]
 if (!people) throw new Error(`No demo people for site "${site}".`)
-const platform = new URL('../apps/platform/', import.meta.url).pathname
-console.log(execFileSync('npx', ['convex', 'run', 'demo:fill', JSON.stringify({ site, corpus, people })], { cwd: platform, encoding: 'utf8' }))
+const server = new URL('../packages/ginko-server/', import.meta.url).pathname
+console.log(execFileSync('npx', ['convex', 'run', 'demo:fill', JSON.stringify({ site, corpus, people })], { cwd: server, encoding: 'utf8' }))

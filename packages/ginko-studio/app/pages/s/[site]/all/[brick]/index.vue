@@ -5,7 +5,7 @@ import { api } from '#convex/api'
 import type { CollectionBrick } from '@lupinum/ginko'
 import { isVisible } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../../../composables/useSiteData'
-import { displayValue, languageName, relevantDate, searchable, titleOf } from '../../../../../utils/content'
+import { languageName, relevantDate, searchable, titleOf } from '../../../../../utils/content'
 import { haystackOf, sortRows } from '../../../../../utils/basics'
 import type { ListSort } from '../../../../../components/SavedViews.vue'
 import { whenText } from '../../../../../utils/when'
@@ -48,16 +48,14 @@ const single = computed(() => (brick.value?.kind === 'single' ? s.single(key.val
 const manual = computed(() => brick.value?.kind === 'collection' && brick.value.order === 'manual')
 const canCreate = computed(() => !!access.value && (access.value.all || !!access.value.create))
 
-/** "Draft" / "Online from …" for drafts; "expired" / "from 16.10." / "" for an entry of a timed collection. */
+/** "Draft" / "Online from …" for drafts; "expired" / "ended" (daterange) / "" for an entry of a timed collection. */
 function status(entry: Entry): string {
   const b = brick.value
   // A draft is not on the website, whatever its dates say (SPEC 15).
-  if (entry.state === 'draft') return entry.publishAt ? t('site.status.onlineFrom', { when: whenText(entry.publishAt, s.schema.value?.timezone ?? 'Europe/Vienna', format) }) : t('site.status.draft')
+  if (entry.state === 'draft') return entry.publishAt ? t('site.status.onlineFrom', { when: whenText(entry.publishAt, s.schema.value?.timeZone ?? 'Europe/Vienna', format) }) : t('site.status.draft')
   if (!b || b.kind !== 'collection' || !b.visible || b.visible.mode === 'always') return ''
   if (isVisible(b, entry.data, s.today.value)) return ''
-  const v = entry.data[b.visible.field]
-  if (b.visible.mode === 'active') return t('site.status.expired')
-  return v && (v as { to: string }).to < s.today.value ? t('site.status.ended') : t('site.status.from', { date: displayValue({ type: 'daterange', label: '' }, v, s.main.value, { t, format }) })
+  return b.fields[b.visible.field]?.type === 'daterange' ? t('site.status.ended') : t('site.status.expired')
 }
 
 const moving = ref(false)

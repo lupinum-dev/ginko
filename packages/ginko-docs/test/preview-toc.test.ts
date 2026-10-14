@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 // The parser that turns a ```md preview fence into the `example` node, as the file build does.
 import { parseFile } from '../../ginko-content/src/markdown.ts'
-import { previewToc } from '../app/utils/previewToc'
+import { previewToc } from '../app/lib/previewToc'
 
 describe('previewToc', () => {
   it('gives an inline-toc inside a ```md preview the preview\'s own headings', async () => {

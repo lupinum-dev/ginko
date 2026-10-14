@@ -58,9 +58,6 @@ function useTarballs(siteDir: string, extra: Record<string, string> = {}) {
   writeFileSync(path, JSON.stringify(pkg, null, 2))
 }
 
-const docsDev = JSON.parse(readFileSync(join(root, 'sites/docs/package.json'), 'utf8')).devDependencies
-const typeChecker = ['typescript', 'vue-tsc'].map((name) => `${name}@${docsDev[name]}`).join(' ')
-
 /** Runs one step in a site; a failure becomes a line of the report. */
 async function step(siteDir: string, name: string, cmd: string): Promise<string[]> {
   try {
@@ -88,17 +85,26 @@ async function checkSite(siteDir: string, checks: [string, RegExp][], { ginkoChe
   }
   return [
     ...await serve(siteDir, await freePort(), checks),
-    // A new site has no type checker; add the one sites/docs uses, for this check only.
-    ...await step(siteDir, 'typecheck', `npm install --no-save --no-audit --no-fund --loglevel=error ${typeChecker} && npx nuxi typecheck`),
+    // The starters ship their type checker (vue-tsc) and a `typecheck` script; the docs site has vue-tsc in its devDependencies.
+    ...await step(siteDir, 'typecheck', 'npx nuxi typecheck'),
     ...(ginkoCheck ? await step(siteDir, 'ginko check', 'npx ginko check') : []),
   ]
+}
+
+/** Whether the server answers within 30 s. A fixed wait of 1.5 s failed the gate on a busy machine. */
+async function answers(port: number): Promise<boolean> {
+  for (let i = 0; i < 60; i++) {
+    if (await fetch(`http://localhost:${port}/`).then(() => true, () => false)) return true
+    await sleep(500)
+  }
+  return false
 }
 
 async function serve(siteDir: string, port: number, checks: [string, RegExp][]) {
   const server = spawn('node', ['.output/server/index.mjs'], { cwd: siteDir, env: { ...process.env, PORT: String(port) }, stdio: 'ignore' })
   const failures: string[] = []
   try {
-    await sleep(1500)
+    if (!await answers(port)) return [`${siteDir}: the server did not answer within 30 s`]
     for (const [path, expect] of checks) {
       const res = await fetch(`http://localhost:${port}${path}`)
       const body = await res.text()
@@ -122,7 +128,7 @@ const created: Record<string, [string, RegExp][]> = {
 for (const name of ['starter', ...readdirSync(join(root, 'packages/create-ginko/presets'))]) {
   if (!created[name]) failures.push(`check:pack has no URL check for the create-ginko preset folder ${name}`)
   const [preset, lang] = name.split('-')
-  const args = name === 'starter' ? '' : `--preset ${preset}${lang ? ` --lang ${lang}` : ''}`
+  const args = name === 'starter' ? '' : `--preset ${preset}${lang ? ` --locale ${lang}` : ''}`
   run(`node ${join(root, 'packages/create-ginko/index.mjs')} ${name} ${args}`, work)
   useTarballs(join(work, name))
 }
@@ -148,7 +154,7 @@ const results = await Promise.all([
   checkSite(docs, [['/docs/einstieg', /class="docs-sidebar/], ['/en/docs/getting-started', /lang="en"/], ['/__ginko/search/de.json', /"url":"\/docs\//]], { ginkoCheck: false }),
 ])
 failures.push(...results.flat())
-console.log(failures.length ? `FAIL check:pack\n${failures.join('\n')}` : 'OK check:pack: the create-ginko starters (plain, gastro, gastro --lang de, docs, docs --lang de) and sites/docs build, serve and type-check from the tarballs')
+console.log(failures.length ? `FAIL check:pack\n${failures.join('\n')}` : 'OK check:pack: the create-ginko starters (plain, gastro, gastro --locale de, docs, docs --locale de) and sites/docs build, serve and type-check from the tarballs')
 // A failed run keeps its folder for a look at the sites; a passed one cleans up.
 if (!failures.length) rmSync(work, { recursive: true, force: true })
 process.exit(failures.length ? 1 : 0)

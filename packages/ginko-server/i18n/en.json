@@ -146,7 +146,7 @@
     "devPushLocalOnly": "devPush only exists in the local platform.",
     "siteNameMismatchInSchema": "The site name in the schema does not match.",
     "localOnly": "Local only.",
-    "siteNotStartedDev": "The site does not exist. Start `ginko dev` first.",
+    "siteNotStartedDev": "The site does not exist. Start `pnpm local:dev` first.",
     "siteNotPushedSchema": "The site does not exist. Push the schema first.",
     "backupFoldersInconsistent": "The folders in the backup are not consistent.",
     "entryBrickMissingFromSchema": "The entry {id} belongs to “{brick}”, which is not in the schema.",
@@ -157,7 +157,7 @@
     "nameTooLong": "The name is too long (at most {nameMax} characters).",
     "siteAddressNotUrl": "The site address is not a valid URL (http or https).",
     "siteLocalesInvalid": "Languages must be 1 to {max} different language tags, e.g. “de”, “en” or “pt-BR”.",
-    "siteTimezoneInvalid": "Invalid time zone “{timezone}” (e.g. “Europe/Vienna”).",
+    "siteTimezoneInvalid": "Invalid time zone “{timeZone}” (e.g. “Europe/Vienna”).",
     "siteCurrencyInvalid": "Invalid currency “{currency}” (an ISO 4217 code such as “EUR” or “CHF”).",
     "addressTaken": "This address is already taken.",
     "onlyAdminsCreateSites": "Only admins create sites.",
@@ -198,7 +198,6 @@
     "uploadRetrying": "The photo could not be processed. We are trying again.",
     "uploadHeicUnreadable": "This HEIC photo cannot be read. Please save it as JPEG or PNG and upload it again.",
     "uploadNotAnImage": "This file is not a readable image.",
-    "siteUrlNotWeb": "The site address in the config must start with https:// or http://.",
     "siteUrlNotAllowed": "This site address cannot be used. It must be a public https:// address."
   },
   "history": {
@@ -249,7 +248,7 @@
     "scheduled": "The entry is a draft and goes online on {at, date, ::MMMd}, {at, time, ::Hm} (time zone {zone}).",
     "noRouteLocale": "“{brick}” has no page of its own in this language. Its entries only appear inside other pages.",
     "noRoute": "“{brick}” has no page of its own. Its entries only appear inside other pages.",
-    "notVisible": "The entry’s period has ended or has not started yet, so the website does not show it.",
+    "notVisible": "The entry’s date has passed, so the website no longer shows it.",
     "translationHidden": "For {locale}, translations that “{brick}” requires {what, select, both {are missing or outdated} missing {are missing} other {are outdated}}. The entry does not appear there.",
     "translationFallback": "For {locale}, translations {what, select, both {are missing or outdated} missing {are missing} other {are outdated}}. The website shows the text in the main language ({main}) there instead.",
     "notReleased": "The structure of the website has never been released. Only after the first release is the content meant for the website."

@@ -87,7 +87,7 @@ export function planOn(plans: HourPlan[] | undefined, date: string): HourPlan | 
 }
 
 /** The 7-day plan that applies on `date`: a covering plan, else the standard week. */
-export function weekFor(date: string, ctx: HoursContext): { week: DayHours[]; plan?: HourPlan } {
+export function weekFor(ctx: HoursContext, date: string): { week: DayHours[]; plan?: HourPlan } {
   const plan = planOn(ctx.plans, date)
   return plan ? { week: plan.week, plan } : { week: ctx.hours.week }
 }
@@ -102,7 +102,7 @@ function ruleOfDay(day: DayHours | undefined, source: HoursSource): DayRule {
  * date (closed, or its own times), a public holiday (by the holiday setting), a plan that covers
  * the date, the standard week.
  */
-export function hoursOn(date: string, ctx: HoursContext): DayRule {
+export function hoursOn(ctx: HoursContext, date: string): DayRule {
   const { hours } = ctx
   if (hours.closedOn === date) return { closed: true, times: [], reason: hours.closedNote || undefined, source: 'today', field: 'closedNote' }
 
@@ -115,7 +115,7 @@ export function hoursOn(date: string, ctx: HoursContext): DayRule {
       : { closed: false, times: spansOf(exception), reason: exception.reason, source: 'exception', field }
   }
 
-  const { week, plan } = weekFor(date, ctx)
+  const { week, plan } = weekFor(ctx, date)
   const holiday = holidayOn(date, ctx.calendar)
   const setting = hours.holidays ?? 'sunday'
   if (holiday && setting !== 'normal') {
@@ -127,10 +127,10 @@ export function hoursOn(date: string, ctx: HoursContext): DayRule {
 }
 
 /** The 7 days from `monday`, each with what applies. */
-export function weekOf(monday: string, ctx: HoursContext): Array<DayRule & { date: string; weekday: Weekday }> {
+export function weekOf(ctx: HoursContext, monday: string): Array<DayRule & { date: string; weekday: Weekday }> {
   return Array.from({ length: 7 }, (_, i) => {
     const date = addDays(monday, i)
-    return { date, weekday: weekdayOf(date), ...hoursOn(date, ctx) }
+    return { date, weekday: weekdayOf(date), ...hoursOn(ctx, date) }
   })
 }
 
@@ -146,8 +146,8 @@ export type TodayState =
   | { kind: 'restDay' }
 
 /** Whether the house is open on `today`, by `hoursOn`. */
-export function todayState(today: string, ctx: HoursContext): TodayState {
-  const rule = hoursOn(today, ctx)
+export function todayState(ctx: HoursContext, today: string): TodayState {
+  const rule = hoursOn(ctx, today)
   if (!rule.closed) return { kind: 'open', times: rule.times, ...(rule.source === 'exception' ? { reason: rule.reason, field: rule.field } : {}) }
   if (rule.source === 'today' || rule.source === 'exception') return { kind: 'closed', reason: rule.reason, field: rule.field ?? '' }
   if (rule.holiday) return { kind: 'holiday', holiday: rule.holiday }
@@ -159,7 +159,7 @@ export function upcomingHolidayClosures(ctx: HoursContext, today: string, days: 
   const out: HolidayClosure[] = []
   for (let i = 1; i <= days; i++) {
     const date = addDays(today, i)
-    const rule = hoursOn(date, ctx)
+    const rule = hoursOn(ctx, date)
     if (rule.source === 'holiday' && rule.closed && rule.holiday) {
       out.push({ _id: `holiday-${date}`, when: { from: date, to: date }, closed: true, holiday: rule.holiday })
     }

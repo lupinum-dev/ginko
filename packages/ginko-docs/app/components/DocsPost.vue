@@ -1,13 +1,13 @@
 <script setup lang="ts">
+import { markdownComponents } from '../lib/markdownComponents'
 // One blog post: title, date, authors, text. Article JSON-LD names the authors and carries both dates.
 import { articleLd } from '@lupinum/ginko/internal'
-import type { Post } from '../composables/useBlog'
+import type { Post } from '../lib/blogTypes'
 
 const props = defineProps<{ post: Post }>()
-const { t } = useI18n()
-const blog = useBlog()
-const locale = useGinkoLocale()
-const site = useRuntimeConfig().public.ginko as { url: string }
+const { t, language } = useI18n()
+const blog = useDocsBlog()
+const site = useGinkoSite()
 const route = useRoute()
 const authors = computed(() => blog.authorsOf(props.post))
 const absolute = (path: string) => new URL(path, site.url).href
@@ -15,7 +15,7 @@ const absolute = (path: string) => new URL(path, site.url).href
 useGinkoSeo(() => {
   const { title, description, date, image } = props.post.data
   const ld = articleLd({
-    title, description, lang: locale.value, url: absolute(route.path), image: image ? absolute(image.url) : undefined,
+    title, description, lang: language.value, url: absolute(route.path), image: image ? absolute(image.url) : undefined,
     published: date, modified: (props.post.updatedAt ?? date).slice(0, 10),
   })
   return {

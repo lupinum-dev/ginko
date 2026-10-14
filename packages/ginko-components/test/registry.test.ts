@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os'
 import { dirname, join, normalize } from 'node:path'
 import { afterAll, describe, expect, test } from 'vitest'
 import { STYLES } from '../src/styles.ts'
-import { buildRegistry, type RegistryItem } from '../scripts/build-registry.ts'
+import * as internal from '@lupinum/ginko/internal'
+import { buildRegistry, INTERNAL_VALUES, type RegistryItem } from '../scripts/build-registry.ts'
 
 const BASE = 'https://example.test/r'
 const out = mkdtempSync(join(tmpdir(), 'ginko-registry-'))
@@ -65,6 +66,13 @@ describe('shadcn-vue registry', () => {
   test('npm packages are listed where imported (callout none, inline-toc needs @lupinum/ginko)', () => {
     expect(byName.get('callout')!.dependencies).toBeUndefined()
     expect(byName.get('inline-toc')!.dependencies).toEqual(['@lupinum/ginko'])
+  })
+
+  test('installed files never import @lupinum/ginko/internal; they carry its current values instead', () => {
+    const importing = items.flatMap((item) => item.files.filter((f) => f.content.includes('@lupinum/ginko/internal')).map((f) => f.path))
+    expect(importing).toEqual([])
+    expect(byName.get('inline-toc')!.files[0]!.content).toContain('const GINKO_TOC_KEY = "ginko:toc"')
+    for (const [name, value] of Object.entries(INTERNAL_VALUES)) expect(internal[name as keyof typeof internal], name).toBe(value)
   })
 
   test('styles.css imports exactly the stylesheets of STYLES, in order', () => {

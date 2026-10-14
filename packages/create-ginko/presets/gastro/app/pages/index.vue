@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { formatMoney } from '@lupinum/ginko'
-import { priceOn } from '@lupinum/ginko-preset-gastro'
+import { priceOn, timesOf, weekdayNames, type Weekday } from '@lupinum/ginko-preset-gastro'
 
 const hours = useGinko('hours')
 const menu = useGinko('menu')
 const today = useGinkoToday()
-const days = { mo: 'Monday', tu: 'Tuesday', we: 'Wednesday', th: 'Thursday', fr: 'Friday', sa: 'Saturday', su: 'Sunday' } as Record<string, string>
-const times = (d: { from1?: string; to1?: string; from2?: string; to2?: string }) =>
-  [[d.from1, d.to1], [d.from2, d.to2]].filter(([from, to]) => from && to).map(([from, to]) => `${from} to ${to}`).join(' and ')
+const { language } = useI18n()
 const categories = [['starters', 'Starters'], ['soups', 'Soups'], ['mains', 'Mains'], ['desserts', 'Desserts'], ['drinks', 'Drinks']] as const
 useGinkoSeo({ title: 'Menu and opening hours' })
 </script>
@@ -18,8 +16,8 @@ useGinkoSeo({ title: 'Menu and opening hours' })
     <table>
       <tbody>
         <tr v-for="d in hours.data.week" :key="d.day">
-          <th scope="row">{{ days[d.day] }}</th>
-          <td>{{ d.closed ? 'Closed' : times(d) }}</td>
+          <th scope="row">{{ weekdayNames.en[d.day as Weekday] }}</th>
+          <td>{{ d.closed ? 'Closed' : timesOf(d, 'and') }}</td>
         </tr>
       </tbody>
     </table>
@@ -28,7 +26,7 @@ useGinkoSeo({ title: 'Menu and opening hours' })
       <h2>{{ title }}</h2>
       <ul>
         <li v-for="dish in menu.items.filter((i) => i.data.category === key)" :key="dish.id">
-          <strong>{{ dish.data.name }}</strong>, {{ formatMoney(priceOn(dish.data, today), 'en') }}
+          <strong>{{ dish.data.name }}</strong>, {{ formatMoney(priceOn(dish.data, today), language) }}
           <br>{{ dish.data.description }}
         </li>
       </ul>

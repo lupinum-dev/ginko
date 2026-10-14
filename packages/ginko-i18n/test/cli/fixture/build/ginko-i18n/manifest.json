@@ -1,4 +1,5 @@
 {
+  "version": 1,
   "defaultLocale": "de",
   "locales": [{ "code": "de", "language": "de-AT" }, { "code": "en", "language": "en-GB" }],
   "params": { "tone": "sie" },

@@ -20,7 +20,7 @@ export const learnComponents = defineComponents({
     children: ['quiz-question'],
     editor: {
       group: { de: 'Lernen', en: 'Learning' },
-      example: ':::quiz{title="Kurz geprüft" description="Zwei Fragen zum Garten."}\n::quiz-question{question="Wann gießt man am besten?"}\n- [ ] Mittags\n- [x] Morgens\n\n#explanation\nAm Morgen verdunstet weniger Wasser.\n::\n::quiz-question{question="Was wächst im Schatten?" type="multiple"}\n- [x] Farn\n- [ ] Tomate\n- [x] Funkie\n::\n:::',
+      example: ':::quiz{title="Kurz geprüft" description="Zwei Fragen zum Garten."}\n::quiz-question{question="Wann gießt man am besten?"}\n- [ ] Mittags\n- [x] Morgens\n\n#explanation\nAm Morgen verdunstet weniger Wasser.\n::\n::quiz-question{question="Was wächst im Schatten?" mode="multiple"}\n- [x] Farn\n- [ ] Tomate\n- [x] Funkie\n::\n:::',
     },
   },
   'quiz-question': {
@@ -32,7 +32,7 @@ export const learnComponents = defineComponents({
     },
     props: {
       question: f.text({ de: 'Frage', en: 'Question' }, { max: 300 }),
-      type: f.choice({ de: 'Art', en: 'Type' }, {
+      mode: f.choice({ de: 'Antworten', en: 'Answers' }, {
         options: [
           { value: 'single', label: { de: 'Eine richtige Antwort', en: 'One right answer' } },
           { value: 'multiple', label: { de: 'Mehrere richtige Antworten', en: 'Several right answers' } },

@@ -38,7 +38,7 @@ export default defineNuxtModule({
 
     // The list pages work without an entry in `pages`, but the sitemap and the static build only know pages listed there.
     const logger = useLogger('ginko-docs')
-    if (bricks.posts && !site?.pages?.blog) logger.warn('The site has a blog but no `blog: blogPages(locales)` in `pages`: the blog list is missing from the sitemap and the static build.')
-    if (bricks.changelog && !site?.pages?.changelog) logger.warn('The site has a changelog but no `changelog: changelogPages(locales)` in `pages`: it is missing from the sitemap and the static build.')
+    if (bricks.posts && !site?.pages?.blog) logger.warn('The site has a blog but no `blog: blogPages({ locales })` in `pages`: the blog list is missing from the sitemap and the static build.')
+    if (bricks.changelog && !site?.pages?.changelog) logger.warn('The site has a changelog but no `changelog: changelogPages({ locales })` in `pages`: it is missing from the sitemap and the static build.')
   },
 })

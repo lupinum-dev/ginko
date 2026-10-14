@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/ginko-docs",
-  "version": "0.0.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Docs sites on Ginko: a Nuxt layer with navigation, search, blog, changelog and Markdown components.",
   "license": "MIT",
@@ -50,20 +50,24 @@
   },
   "dependencies": {
     "@comark/vue": "0.7.0",
-    "@iconify-json/lucide": "1.2.137",
-    "@lupinum/ginko": "workspace:^",
+    "@iconify-json/lucide": "^1.2.137",
     "@lupinum/ginko-components": "workspace:^",
-    "@lupinum/ginko-content": "workspace:^",
-    "@nuxt/icon": "2.5.1",
+    "@nuxt/icon": "^2.5.1",
     "@nuxt/kit": "^4.6.0",
-    "beautiful-mermaid": "1.1.3",
-    "katex": "0.18.11"
+    "beautiful-mermaid": "^1.1.3",
+    "katex": "^0.18.11"
   },
   "peerDependencies": {
+    "@lupinum/ginko": "workspace:^",
+    "@lupinum/ginko-content": "workspace:^",
+    "@lupinum/ginko-i18n": "workspace:^",
     "nuxt": "^4.6.0",
     "vue": "^3.5.0"
   },
   "devDependencies": {
+    "@lupinum/ginko": "workspace:*",
+    "@lupinum/ginko-content": "workspace:*",
+    "@lupinum/ginko-i18n": "workspace:*",
     "nuxt": "4.6.0",
     "unbuild": "3.6.1",
     "vue": "3.5.43"

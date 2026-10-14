@@ -13,7 +13,7 @@ npm create ginko my-site
 Or add it to an existing Nuxt 4.6+ site:
 
 ```bash
-npm install @lupinum/ginko
+npm install @lupinum/ginko @lupinum/ginko-content
 ```
 
 ```ts
@@ -24,19 +24,29 @@ export default defineSite({
   site: 'my-site',
   name: 'My site',
   url: 'https://example.com',
-  timezone: 'Europe/Vienna',
-  locales: ['de', 'en'],
+  timeZone: 'Europe/Vienna',
+  locales: ['en'],
   currency: 'EUR',
-  pages: { home: { de: '/', en: '/en' } },
+  pages: { home: '/' },
   bricks: {
     events: collection({
       label: 'Events',
+      source: 'files', // read from content/events/*.md; without `source` the brick needs the Ginko platform
       fields: { title: f.text('Title'), date: f.date('Date') },
       max: 50,
       order: { field: 'date', dir: 'asc' },
     }),
   },
 })
+```
+
+One file per entry, for example `content/events/opening.md`:
+
+```md
+---
+title: Opening night
+date: 2026-11-05
+---
 ```
 
 ```ts
@@ -54,15 +64,19 @@ const events = useGinko('events') // typed from ginko.config.ts
 
 ## What is in the package
 
-- **`@lupinum/ginko`**: `defineSite`, the field types, schema checks and the bundle format.
+- **`@lupinum/ginko`**: `defineSite`, `single`, `collection`, `f`, `defineComponents`, `formatMoney`, `plainText`,
+  `safeHref`, `startOfWeek` and the documented types.
 - **`@lupinum/ginko/nuxt`**: the Nuxt module. It fetches and caches the bundle, adds the composables
   (`useGinko`, `useGinkoEntry`, `useGinkoQuery`, `useGinkoNeighbors`, `useGinkoNav`, `useGinkoBreadcrumbs`,
   `useGinkoToday`, `useGinkoWeek`, `useGinkoLocale`, `useGinkoPath`, `useGinkoSeo` and more), the components
   `<GinkoMarkdown>` and `<GinkoImage>`, a sitemap, and languages through
   [`@lupinum/ginko-i18n`](https://github.com/lupinum-dev/ginko/tree/main/packages/ginko-i18n).
-- **`@lupinum/ginko/vue`**: `<GinkoMarkdown :value>` (renders a parsed tree, inside `<Suspense>`) for a Vue 3 app without Nuxt.
-- **`ginko`**: the CLI. `ginko check` checks the config and the content links of every site (use it in CI);
-  `release` and `export` work with the hosted platform; `dev`, `pull` and `import` run only in the Ginko monorepo.
+- **`@lupinum/ginko/vue`**: `<GinkoMarkdown :value>` for a Vue 3 app without Nuxt: takes a parsed `MarkdownTree`,
+  renders at once (no `<Suspense>`), and uses only the components you pass. Pass the site's `components` as
+  `registry` too: a component keeps only the props its registry declares.
+- **`ginko`**: the CLI. `ginko check` checks the config and the content links of every site (use it in CI;
+  `--offline` needs no platform key); `release` and `export` work with the hosted platform. Every run prints one
+  JSON line and ends with a documented exit code.
 
 ## Stability
 

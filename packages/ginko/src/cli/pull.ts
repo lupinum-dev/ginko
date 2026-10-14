@@ -1,4 +1,4 @@
-// `ginko pull` (SPEC 9): production content into the local platform. It is `export` into a temporary
+// `pnpm local:pull` (SPEC 9, monorepo only): production content into the local platform. It is `export` into a temporary
 // folder, then `import`, then the folder is removed. The caller confirmed the local deployment first.
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'

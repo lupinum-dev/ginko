@@ -2,7 +2,7 @@
 import { computed, getCurrentInstance, type Component } from 'vue'
 
 // An icon the author names (`lucide:book-open`, or `book-open` for Lucide) on a card, tab, link or timeline entry.
-// It renders through the site's global <Icon> (@nuxt/icon, which the docs preset includes); a site without it shows
+// It renders through the site's global <Icon> (@nuxt/icon, which the docs layer includes); a site without it shows
 // no icon instead of an error.
 const props = defineProps<{ name: string }>()
 const Icon = getCurrentInstance()?.appContext.components.Icon as Component | undefined

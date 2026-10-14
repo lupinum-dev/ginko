@@ -71,7 +71,7 @@ describe('live or card', () => {
     layout: 'card', column: 'card', timeline: 'card', 'timeline-item': 'card', // children / parents
     tabs: 'card', tab: 'card', accordion: 'card', 'accordion-item': 'card', steps: 'card', cards: 'card', 'inline-toc': 'card',
     'code-group': 'card', 'code-tree': 'card', files: 'card',
-    figure: 'card', video: 'card', embedded: 'card', // images of the site and iframes are not loaded in the editor
+    figure: 'card', video: 'card', embed: 'card', // images of the site and iframes are not loaded in the editor
     quiz: 'card', 'quiz-question': 'card', api: 'card', 'api-param': 'card',
   }
   test.each(Object.keys(components).map((tag) => [tag, expected[tag]] as const))('%s is %s', (tag, mode) => {
@@ -80,7 +80,7 @@ describe('live or card', () => {
   })
 
   test('a live component is the real one with the text as its content; a card shows the props in one line', async () => {
-    const wrapper = await mounted('::callout{type="warning" title="Achtung"}\nText\n::\n\n:::tabs\n::tab{label="npm"}\nInhalt\n::\n:::\n')
+    const wrapper = await mounted('::callout{type="warning" title="Achtung"}\nText\n::\n\n:::tabs\n::tab{title="npm"}\nInhalt\n::\n:::\n')
     const live = wrapper.get('[data-component="callout"]')
     expect(live.attributes('data-mode')).toBe('live')
     expect(live.find('.ginko-callout[data-type="warning"] .ginko-callout-title').text()).toBe('Achtung')
@@ -90,6 +90,15 @@ describe('live or card', () => {
     expect(card.text()).toContain('Reiter')
     expect(card.text()).toContain('Name: npm')
     expect(wrapper.get('[data-component="callout"] button').attributes('aria-label')).toBe('Einstellungen: Hinweisbox')
+  })
+
+  // Bug caught: the parser took any `class`, so a stored `::callout{class="fixed inset-0 z-50"}` opened rich and the live
+  // callout took the Studio's own utilities (the dialog overlay's): the attacker's text over the whole Studio.
+  test('a stored class never reaches the Studio page: the text opens as source, with the problem', async () => {
+    const wrapper = await mounted('::callout{class="fixed inset-0 z-50"}\n## Ihre Sitzung ist abgelaufen\n::\n')
+    await until(() => wrapper.find('ul[aria-label="Probleme im Text"]').exists())
+    expect(wrapper.get('ul[aria-label="Probleme im Text"]').text()).toContain('„class“')
+    expect(document.querySelector('.ginko-callout')).toBeNull()
   })
 })
 

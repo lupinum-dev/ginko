@@ -4,7 +4,8 @@ Seven packages are published to npm and always share one version (the `fixed` gr
 `.changeset/config.json`): `@lupinum/ginko`, `@lupinum/ginko-i18n`, `@lupinum/ginko-content`,
 `@lupinum/ginko-components`, `@lupinum/ginko-docs`, `@lupinum/ginko-preset-gastro` and `create-ginko`.
 
-The first release is 0.1.0. Until 1.0, a minor version may contain breaking changes, and the changelog
+The first release is 0.4.0: `@lupinum/ginko-content` and `@lupinum/ginko-docs` already have an older line
+up to 0.3.x on npm, so the packages start at 0.3.0 and the first minor changeset makes them 0.4.0. Until 1.0, a minor version may contain breaking changes, and the changelog
 names each one with how to update; a patch never breaks anything. The quality bar is a 1.0 all the same:
 no public name we expect to change, docs that work as written.
 

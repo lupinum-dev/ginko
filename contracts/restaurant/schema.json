@@ -2,7 +2,7 @@
   "site": "restaurant",
   "name": "Gasthaus zur Linde",
   "url": "https://ginko-demo-restaurant.vercel.app",
-  "timezone": "Europe/Vienna",
+  "timeZone": "Europe/Vienna",
   "locales": [
     "de",
     "en"
@@ -479,10 +479,10 @@
       "max": 5,
       "order": "manual",
       "visible": {
-        "mode": "active",
-        "field": "until"
+        "mode": "until",
+        "field": "until",
+        "deleteExpired": true
       },
-      "autoRemoveExpired": true,
       "tasks": [
         {
           "id": "soldOut",
@@ -492,7 +492,10 @@
           },
           "kind": "create",
           "prefill": {
-            "text": "Heute sind wir ausgebucht.",
+            "text": {
+              "de": "Heute sind wir ausgebucht.",
+              "en": "We are fully booked today."
+            },
             "until": "@today"
           }
         },
@@ -722,7 +725,8 @@
               "_id": "ldmo000000",
               "day": "mo",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -730,7 +734,8 @@
               "_id": "ldtu000000",
               "day": "tu",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -738,7 +743,8 @@
               "_id": "ldwe000000",
               "day": "we",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -746,7 +752,8 @@
               "_id": "ldth000000",
               "day": "th",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -754,7 +761,8 @@
               "_id": "ldfr000000",
               "day": "fr",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             }
@@ -780,7 +788,7 @@
           "accept": [
             "pdf"
           ],
-          "maxSize": 5242880,
+          "maxBytes": 5242880,
           "optional": true,
           "pos": 3
         }
@@ -799,7 +807,7 @@
             "note"
           ],
           "prefill": {
-            "weekOf": "@thisWeek"
+            "weekOf": "@workWeek"
           },
           "needsApproval": true
         }
@@ -1194,7 +1202,7 @@
         "dir": "asc"
       },
       "visible": {
-        "mode": "upcoming",
+        "mode": "until",
         "field": "when"
       },
       "route": {
@@ -1882,7 +1890,8 @@
               "_id": "ldmo000000",
               "day": "mo",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -1890,7 +1899,8 @@
               "_id": "ldtu000000",
               "day": "tu",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -1898,7 +1908,8 @@
               "_id": "ldwe000000",
               "day": "we",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -1906,7 +1917,8 @@
               "_id": "ldth000000",
               "day": "th",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             },
@@ -1914,7 +1926,8 @@
               "_id": "ldfr000000",
               "day": "fr",
               "dish": {
-                "de": "Wird noch bekannt gegeben"
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
               },
               "allergens": []
             }
@@ -1938,11 +1951,11 @@
         "dir": "asc"
       },
       "visible": {
-        "mode": "active",
+        "mode": "until",
         "field": "weekOf",
-        "days": 6
+        "days": 6,
+        "deleteExpired": true
       },
-      "autoRemoveExpired": true,
       "plans": {
         "brick": "lunch",
         "field": "weekOf"
@@ -1956,7 +1969,7 @@
           },
           "kind": "create",
           "prefill": {
-            "weekOf": "@nextWeek"
+            "weekOf": "@nextWorkWeek"
           }
         },
         {

@@ -1,6 +1,6 @@
 ---
 title: Content for Nuxt sites that owners keep current themselves.
-description: Ginko keeps a site apart from its content. Developers build with plain Nuxt; owners change opening hours, menus and texts in the Studio, with approval and scheduling. The same bricks also read Markdown from the repository.
+description: Ginko keeps a site apart from its content. Developers build with plain Nuxt. Owners change opening hours, menus and texts in the Studio, with approval and scheduling. Lupinum hosts the Studio and opens it by invitation; without it, the same bricks read Markdown from the repository.
 links:
   - label: Get started
     href: /en/docs/getting-started
@@ -17,7 +17,7 @@ features:
     description: Addresses per language, hreflang, a language switcher and ICU messages, without a second module.
     href: /en/docs/languages
   - title: Approval before it goes live
-    description: Changes can need a yes, go live at a set time, and can be taken back.
+    description: Changes can need a yes, go live at a set time, and can be taken back. The Studio is hosted by Lupinum, by invitation.
     href: /en/docs/platform-and-cli
   - title: Components for Markdown
     description: Callouts, tabs, steps, cards, code groups and more, with fields in the Studio and as a shadcn-vue registry.
@@ -29,7 +29,7 @@ features:
 
 ## One brick, one page, one piece of content
 
-A brick in `ginko.config.ts` describes the content. The page reads it with one composable. The content lives in a file or comes from the platform.
+A **brick** in `ginko.config.ts` describes one kind of content. The page reads it with one composable. The content lives in a Markdown file or comes from the platform, where owners edit it in the **Studio**. Either way, the site receives it as a **bundle**: all content of one language in one JSON response.
 
 ::code-group
 ```ts [ginko.config.ts]
@@ -39,7 +39,7 @@ export default defineSite({
   site: 'linde',
   name: 'Linden Inn',
   url: 'https://linde.example',
-  timezone: 'Europe/Vienna',
+  timeZone: 'Europe/Vienna',
   locales: ['en', 'de'],
   currency: 'EUR',
   pages: { home: { en: '/', de: '/de' } },
@@ -70,4 +70,4 @@ Tuesday to Saturday 11 am–10 pm, Sunday 11 am–3 pm.
 ```
 ::
 
-Continue with [Getting started]($docs.einstieg).
+Continue with [Getting started]($docs.einstieg). To compare Ginko with Nuxt Content, a hosted CMS or a Git-based editor, read [Compare and switch]($docs.umstieg).

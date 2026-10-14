@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const langOf = useGinkoLang()
 // Questions in the brick's manual order, as native <details>. The first one is open. `limit` shows only the first ones.
 const props = defineProps<{ limit?: number }>()
 const { t } = useI18n()
@@ -10,8 +11,8 @@ const items = computed(() => faq.value.items.slice(0, props.limit))
   <p v-if="!items.length" class="empty">{{ t('noFaq') }}</p>
   <div v-else class="faq">
     <details v-for="(item, i) in items" :key="item.id" class="item" :open="i === 0">
-      <summary :lang="ginkoLangOf(item, 'question')">{{ item.data.question }}</summary>
-      <GinkoMarkdown :value="item.data.answer" class="prose answer" :lang="ginkoLangOf(item, 'answer')" />
+      <summary :lang="langOf(item, 'question')">{{ item.data.question }}</summary>
+      <GinkoMarkdown :value="item.data.answer" class="prose answer" :lang="langOf(item, 'answer')" />
     </details>
   </div>
 </template>

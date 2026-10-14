@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const blog = useBlog()
+const blog = useDocsBlog()
 const post = blog.post(String(useRoute().params.slug))
 </script>
 

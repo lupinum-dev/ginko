@@ -62,3 +62,31 @@ test('the preview is never cached and only the platform may frame it', async ({ 
   expect(response.headers()['cache-control']).toBe('no-store')
   expect(response.headers()['content-security-policy']).toBe('frame-ancestors http://localhost:3999')
 })
+
+// Wrong behaviour caught: the Studio sends each draft into the same frame, which stays on the saved entry's address.
+// A draft with another slug makes the entry miss; a fatal 404 there stuck until a navigation, so typing the slug back
+// left the preview on the error page.
+test('an entry whose draft slug changes and changes back shows again', async ({ page }) => {
+  const path = '/veranstaltungen/weinabend-ebner'
+  await page.goto(framed(path, 's-slug'))
+  const frame = page.frameLocator('#preview')
+  const heading = frame.getByRole('heading', { name: 'Weinabend mit Winzerin Lena Ebner' })
+  await expect(heading).toBeVisible()
+
+  // Posts the parent page's German bundle again with the event's draft slug, as the Studio's PreviewPane does.
+  const sendDraft = (slug: string) => page.evaluate((s) => {
+    // `bundles` is a top-level const of the parent page's script: a global lexical binding, read by indirect eval.
+    const bundles = (0, eval)('bundles') as { de: { bricks: { events: { items: { id: string; urls: Record<string, string>; data: Record<string, unknown> }[] } } } }
+    const bundle = structuredClone(bundles.de)
+    const item = bundle.bricks.events.items.find((i) => i.id === 'weinabend')!
+    item.data.slug = s
+    item.urls.de = `/veranstaltungen/${s}`
+    const frame = document.getElementById('preview') as HTMLIFrameElement
+    frame.contentWindow!.postMessage({ type: 'ginko:preview', session: 's-slug', site: 'restaurant', locale: 'de', bundle }, new URL(frame.src).origin)
+  }, slug)
+  await sendDraft('weinabend-ebne')
+  await expect(heading).toHaveCount(0)
+  await sendDraft('weinabend-ebner')
+  await expect(heading).toBeVisible()
+  await expect(frame.getByText('Diese Seite gibt es nicht.')).toHaveCount(0)
+})

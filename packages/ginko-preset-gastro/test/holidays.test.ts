@@ -46,19 +46,19 @@ const closedOnHolidays: HoursData = { week, exceptions: [], holidays: 'closed' }
 
 describe('hoursOn with a calendar', () => {
   it('SG closes on National Day when the setting is "closed"', () => {
-    expect(hoursOn('2027-08-09', { hours: closedOnHolidays, calendar: 'SG' })).toMatchObject({ closed: true, source: 'holiday', holiday: { en: 'National Day' } })
+    expect(hoursOn({ hours: closedOnHolidays, calendar: 'SG' }, '2027-08-09')).toMatchObject({ closed: true, source: 'holiday', holiday: { en: 'National Day' } })
   })
   it('SG does not close on the Austrian National Day', () => {
-    expect(hoursOn('2026-10-26', { hours: closedOnHolidays, calendar: 'SG' })).toMatchObject({ closed: false, source: 'week' })
+    expect(hoursOn({ hours: closedOnHolidays, calendar: 'SG' }, '2026-10-26')).toMatchObject({ closed: false, source: 'week' })
   })
   it('"none" never marks a holiday, not even 25 December', () => {
-    expect(hoursOn('2026-12-25', { hours: closedOnHolidays, calendar: 'none' })).toMatchObject({ closed: false, source: 'week' })
+    expect(hoursOn({ hours: closedOnHolidays, calendar: 'none' }, '2026-12-25')).toMatchObject({ closed: false, source: 'week' })
   })
   it('without a calendar Austria still counts', () => {
-    expect(hoursOn('2026-10-26', { hours: closedOnHolidays })).toMatchObject({ closed: true, source: 'holiday' })
+    expect(hoursOn({ hours: closedOnHolidays }, '2026-10-26')).toMatchObject({ closed: true, source: 'holiday' })
   })
   it('a custom calendar function is used', () => {
     const calendar = (year: number) => [{ date: `${year}-03-03`, de: 'Hausfest', en: 'House party' }]
-    expect(hoursOn('2026-03-03', { hours: closedOnHolidays, calendar })).toMatchObject({ closed: true, holiday: { en: 'House party' } })
+    expect(hoursOn({ hours: closedOnHolidays, calendar }, '2026-03-03')).toMatchObject({ closed: true, holiday: { en: 'House party' } })
   })
 })

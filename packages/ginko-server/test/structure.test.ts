@@ -34,7 +34,7 @@ describe('entries.create', () => {
     expect(await errorOf(as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: notice('Drei', '2026-10-30') }))).toMatchObject({ code: 'INVALID' })
   })
 
-  it('autoRemoveExpired: the expired notice is removed first, as a remove change of actor system', async () => {
+  it('visible.deleteExpired: the expired notice is removed first, as a remove change of actor system', async () => {
     // A day on which notice-ausgebucht (until 2026-10-08) is still visible and notice-urlaub (2026-09-30) is not.
     vi.setSystemTime(new Date('2026-10-05T10:00:00Z'))
     const { t, as, entries } = await setup()
@@ -156,7 +156,7 @@ describe('tasks.prefill', () => {
     vi.setSystemTime(new Date('2026-10-11T23:30:00Z'))
     const { as } = await setup()
     const values = await as.owner.query(api.tasks.prefill, { site: 'restaurant', task: 'notices.soldOut' })
-    expect(values).toEqual({ text: { de: 'Heute sind wir ausgebucht.' }, until: '2026-10-12' })
+    expect(values).toEqual({ text: { de: 'Heute sind wir ausgebucht.', en: 'We are fully booked today.' }, until: '2026-10-12' })
   })
 
   it('lunchWeek: weekOf is the Monday of this week, the stored days stay', async () => {
@@ -208,7 +208,7 @@ describe('entries.create and lifecycle after the phase 5 review', () => {
       const site = (await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', 'restaurant')).unique())!
       const schema = structuredClone(site.schema)
       schema.bricks.events.fields.booking.retired = true
-      schema.retired['events.booking'] = {}
+      schema.retired['events.booking'] = { drop: true }
       await ctx.db.patch(site._id, { schema })
     })
     const call = as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: { ...pumpkin, booking: 'not a url but retired' } })

@@ -8,28 +8,36 @@
 "create-ginko": minor
 ---
 
-Ginko 0.1: one content system for Nuxt websites, from Markdown files in Git to a hosted platform that owners, staff and AI agents edit together. All packages release together under one version. Until 1.0, a minor version (0.1 → 0.2) may contain breaking changes; the changelog names each one and how to update.
+Add Ginko 0.4, the first release: one content system for Nuxt websites, from Markdown files in Git to a hosted platform.
+
+Owners, staff and AI agents edit the same content. All seven packages release together under one version. It starts at 0.4 because `@lupinum/ginko-content` and `@lupinum/ginko-docs` already published an older, unrelated line up to 0.3. Until 1.0, a minor version (0.4 → 0.5) may contain breaking changes; the changelog names each one and how to update.
 
 Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm create ginko@latest my-site`; the documentation explains every step.
 
-Public API: `@lupinum/ginko` (`defineSite`, `single`, `collection`, `f`, `formatMoney`, `plainText`, `weekStartOf` and the types), `@lupinum/ginko/nuxt` (the module, the `useGinko*` composables, `ginkoLangOf`, `ginkoSafeHref`, `isGinkoVisible`, `<GinkoMarkdown>`, `<GinkoImage>`) and `@lupinum/ginko/vue` (`<GinkoMarkdown>`). `@lupinum/ginko/internal` has no stability promise. The `ginko` CLI commands `check`, `release` and `export` are public; `dev`, `import` and `pull` run only in the Ginko monorepo.
+**Public API**
 
-Names to know: field helpers take one options object (`f.choice(label, { options })`, `f.ref(label, { to })`, `f.list(label, { itemLabel, fields, max })`); `useGinkoPath` gives page paths; `useGinkoNeighbors(brick, id, { order })`; `formatMoney` is imported from `@lupinum/ginko`, not auto-imported; `Query.order` also takes `{ field, dir }`; the option type is `ChoiceOption`. The CLI reads `GINKO_PLATFORM` or `NUXT_PUBLIC_GINKO_PLATFORM`, and `GINKO_COMMIT` or `GITHUB_SHA`.
+- `@lupinum/ginko`: `defineSite`, `single`, `collection`, `f`, `defineComponents`, `formatMoney`, `plainText`, `safeHref`, `startOfWeek` and the documented types. Imported, not auto-imported.
+- `@lupinum/ginko/nuxt`: the module, the `useGinko*` composables (everything that needs a Nuxt app starts with `useGinko`), `<GinkoMarkdown>` and `<GinkoImage>`. `@lupinum/ginko/vue`: `<GinkoMarkdown>` for any Vue app. `@lupinum/ginko/search`: `loadIndex` and `search`.
+- `@lupinum/ginko/internal` and `@lupinum/ginko/internal/search` are for Ginko's own packages and have no stability promise.
+- The `ginko` CLI: `check [--offline]`, `release` and `export [folder]`, plus `--version`. Every command run prints one JSON line, `{ "ok": true, … }` or `{ "ok": false, "error": { code, message } }` (`--help` and `--version` print plain text), and ends with exit code 0 (ok), 1 (fix the code), 2 (usage), 3 (platform unreachable, retry) or 4 (key not allowed). CI deploys the site only when `release` prints `"deploy": true` (a superseded run exits 0 with `"deploy": false`). The CLI reads `GINKO_PLATFORM` (or `NUXT_PUBLIC_GINKO_PLATFORM`), `GINKO_KEY`, `GINKO_COMMIT` (or `GITHUB_SHA`), `GINKO_BRANCH` and `GINKO_REMOTE`; it does not read `.env` files. `ginko-i18n --json` uses the same output shape, error codes (`USAGE`, `INVALID`) and exit codes.
+- Config names: `f.ref` (one entry) and `f.refs` (several); `visible: { mode: 'until', field, days?, deleteExpired? }`; prefill tokens `@today`, `@workWeek`, `@nextWorkWeek`; `firstDayOfWeek`, `linkCheck`, `untranslated`, `maxBytes`, `Migration.compute`, `retired` rule `{ drop: true }`. Options and defaults are typed per field, and an unknown top-level key fails the build.
+- Markdown components: `embed`, `frame` (`none`, `card`, `border`, …), `background` (`none`, `muted`, `tint`), `appearance` (`quiet`, `tint`), `quiz-question{mode}`, `code-tree{file}`.
 
 **Content (`@lupinum/ginko`, `@lupinum/ginko-content`)**
 
 - One text format: Markdown (comark 0.7) everywhere, with field profiles that limit what a field may contain. Footnotes, emoji, alerts, Shiki code, task lists, route links (`$blog.my-post`), reusable snippets and heading anchors.
 - Data files: YAML and JSON (one file, one entry) and CSV (one file, many entries), checked against the field schema; every error names the file and field, and the line for CSV rows and unreadable files. Entries with `draft: true` stay out of production builds.
 - Query engine in the site, over the loaded bundle: `where`, `order`, `limit`, pagination with totals, field selection, `include` for references, previous/next and facet counts.
-- References (`f.ref`), navigation trees and breadcrumbs, and a URL for every entry in every language; two entries on one URL fail the build.
-- Link check before any HTML exists: route links, anchors, snippets and redirected paths, in the build, the dev terminal, `ginko check` and the agent tools. On the platform a save, a new entry or a scheduled publish that adds a broken link is stopped, and History says why. External links are checked on request (`links.external`), at build only, with a 7-day cache.
+- References (`f.ref`, `f.refs`), navigation trees and breadcrumbs, and a URL for every entry in every language; two entries on one URL fail the build.
+- Link check before any HTML exists: route links, anchors, snippets and redirected paths, in the build, the dev terminal, `ginko check` and the agent tools. On the platform a save, a new entry or a scheduled publish that adds a broken link is stopped, and History says why. External links are checked on request (`linkCheck.external`), at build and in `ginko check` (never in dev), with a 7-day cache.
 - Images: WebP copies at 480, 960 and 1600 px, made at upload on the platform and at build for files. `<GinkoImage>` and Markdown images get `srcset` and `sizes`.
-- Redirects from `redirectFrom` and site patterns, always 301.
+- Redirects from `redirectFrom` (301) and site rules in `redirects` (301 by default, `status` 302/307/308 per rule).
 - SEO from the bundle: title template, canonical, Open Graph, `<html lang>`, hreflang with `x-default`, sitemap with `lastmod`, images and alternates, robots.txt with `noindex` on preview hosts, JSON-LD. With `nuxt-og-image` installed, every page without its own image gets a generated share card.
 - Search index built in plain JS at build time, one record per heading section, loaded lazily per language.
-- Agent output: `/llms.txt`, `/llms-full.txt`, a `.md` twin for every page, `Accept: text/markdown`, and a Markdown 404 that suggests pages.
+- Agent output: `/llms.txt`, `/llms-full.txt`, a `.md` twin for every entry page (collections with a `route`), and a Markdown 404 that suggests pages. The normal address always answers with HTML.
 - Render modes: Git-only sites prerender everything; platform sites refresh changed pages after a publish; previews render with `noindex`.
-- CLI `ginko`: `check` (schema and links, for every site) and `release` for CI, `export` for backups; `dev`, `import` and `pull` run only in the Ginko monorepo.
+- In dev, `nuxt dev` restarts when `ginko.config.ts` changes, and a brick that cannot reach the platform names itself and the fix.
+- CLI `ginko`: `check` (schema, links and the share image, for every site; `--offline` without the platform) and `release` for CI, `export` for backups; `pnpm local:dev|import|pull` run only in the Ginko monorepo.
 
 **Languages (`@lupinum/ginko-i18n`)**
 
@@ -39,7 +47,7 @@ Names to know: field helpers take one options object (`f.choice(label, { options
 **Components and docs (`@lupinum/ginko-components`, `@lupinum/ginko-docs`)**
 
 - Content components with props defined as Ginko fields: callouts, tabs, code groups, steps, cards, accordion, figures, embeds (click to load), timeline, quiz and more. Each one can also be copied into an app with the shadcn-vue CLI, from a registry the docs build generates.
-- Docs preset: navigation, section tabs, breadcrumbs, table of contents with scroll spy, previous/next, ⌘K search with heading results, blog with authors and RSS, changelog, copy page as Markdown, dark mode. A guide for switching from Nuxt Content and `@nuxtjs/i18n`. Math (KaTeX) and mermaid diagrams render and load only on pages that use them.
+- Docs layer (`@lupinum/ginko-docs`; `npm create ginko@latest my-docs -- --preset docs` starts a site with it): navigation, section tabs, breadcrumbs, table of contents with scroll spy, previous/next, ⌘K search with heading results, blog with authors and RSS, changelog, copy page as Markdown, dark mode. A guide for switching from Nuxt Content and `@nuxtjs/i18n`. Math (KaTeX) and mermaid diagrams render and load only on pages that use them.
 
 **Platform and Studio (hosted by Lupinum)**
 
@@ -58,8 +66,8 @@ The platform is a hosted service, not an npm package. A site connects to it with
 **Presets (`@lupinum/ginko-preset-gastro`, `create-ginko`)**
 
 - Gastro: opening hours with exceptions, seasons, holidays and new hours from a date; lunch week with planning ahead and an optional PDF; menu with prices from a date; notices that expire; events; JSON-LD for Restaurant, Menu, opening hours and Event; a printable lunch sheet.
-- `create-ginko` starts a new site, plain or with `--preset gastro|docs`.
+- `create-ginko` starts a new site, plain or with `--preset gastro|docs`. Starters install with npm, pnpm 11 and bun, carry a `typecheck` script and a page description, and create-ginko warns on an unsupported Node.
 
-**Not in 0.1**
+**Not in 0.4**
 
 Real-time co-editing comes next. Also not included: an agency preset, the editor UI as a shadcn-vue registry, OAuth for agent connectors, and a Google Business sync.

@@ -4,6 +4,7 @@
 import type { Node } from 'comark'
 import { effectiveMax } from './fields.ts'
 import { isSafeHref } from './href.ts'
+import { labelProblem } from './labels.ts'
 import { bare, msg, commaList, orList, type Described } from './messages.ts'
 import type { MarkdownProfile } from './markdown.ts'
 import type { Field, Fields, Label } from './types.ts'
@@ -38,19 +39,36 @@ export interface ComponentDef<P extends Fields = Fields> {
 /** Tag → definition. The tag is kebab-case. */
 export type ComponentRegistry = Record<string, ComponentDef>
 
-/** Only a type helper: keeps the literal types of the registry. */
+/**
+ * Defines the Markdown components a site allows in `page` texts (`SiteInput.components`): tag (kebab-case) →
+ * `{ kind, label, describe, props, slots?, children?, parents?, editor? }`, with props built by `f.*`. Returns the
+ * registry unchanged and keeps its literal types; the schema check validates it on release.
+ */
 export function defineComponents<const R extends ComponentRegistry>(registry: R): R {
   return registry
 }
 
 /**
  * Tags that run code, load content or submit data. A text never contains them, with or without a registry
- * (comark syntax can name any tag: `::script`).
+ * (comark syntax can name any tag: `::script`), except a tag in COMPONENT_ONLY_TAGS that the registry declares
+ * (see isBlockedTag).
  */
 export const BLOCKED_TAGS: ReadonlySet<string> = new Set([
   'script', 'style', 'iframe', 'frame', 'frameset', 'object', 'embed', 'applet', 'link', 'meta', 'base',
   'form', 'button', 'textarea', 'select', 'option', 'template', 'noscript', 'svg', 'portal', 'slot',
 ])
+
+/**
+ * Blocked tags a registry may still declare. The component then replaces the element, so the tag passes only where
+ * the registry declares it and stays blocked everywhere else. `embed` is the provider embed of
+ * `@lupinum/ginko-components`. The renderer (markdown-view.ts) drops such a tag when no component is mapped to it.
+ */
+const COMPONENT_ONLY_TAGS: ReadonlySet<string> = new Set(['embed'])
+
+/** Whether a text may not contain `tag`: a blocked tag, unless the registry declares it (COMPONENT_ONLY_TAGS). */
+export function isBlockedTag(tag: string, registry?: ComponentRegistry): boolean {
+  return BLOCKED_TAGS.has(tag) && !(COMPONENT_ONLY_TAGS.has(tag) && registry !== undefined && Object.hasOwn(registry, tag))
+}
 
 /** The tags Markdown itself produces (all profiles). A component must not take one of these names. */
 export const PLAIN_TAGS: ReadonlySet<string> = new Set([
@@ -60,28 +78,28 @@ export const PLAIN_TAGS: ReadonlySet<string> = new Set([
 
 const TAG = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
 
-/** A non-empty text, or texts per language (`{ de: '…', en: '…' }`). */
-const isLabel = (value: unknown): boolean => (typeof value === 'string' && value !== '')
-  || (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length > 0 && Object.values(value).every((v) => typeof v === 'string' && v !== ''))
 const PROP = /^[a-z][a-zA-Z0-9]*$/
+/** Prop names a renderer acts on: comark mounts the component an `as` names, and Vue writes these DOM properties as markup. */
+const RESERVED_PROPS: ReadonlySet<string> = new Set(['as', 'innerHTML', 'outerHTML', 'innerText', 'outerText', 'textContent'])
 const PROP_TYPES = new Set<Field['type']>(['text', 'longtext', 'number', 'boolean', 'choice', 'choices', 'image', 'ref'])
 
-/** Structural problems of a registry, as English sentences. Empty when usable. */
-export function componentProblems(registry: ComponentRegistry): string[] {
+/** Structural problems of a registry, as English sentences. Empty when usable. `main` is the site's main locale (labels). */
+export function componentProblems(registry: ComponentRegistry, main: string): string[] {
   const problems: string[] = []
   const tags = Object.keys(registry)
   for (const tag of tags) {
     const def = registry[tag]!
     const at = `Component “${tag}”`
     if (!TAG.test(tag)) problems.push(`${at}: The name must be lower case and separated by hyphens (for example “code-group”).`)
-    if (BLOCKED_TAGS.has(tag)) problems.push(`${at}: The name is blocked.`)
+    if (isBlockedTag(tag, registry)) problems.push(`${at}: The name is blocked.`)
     else if (PLAIN_TAGS.has(tag)) problems.push(`${at}: The name belongs to Markdown (${tag}) and cannot be overridden.`)
     if (def.kind !== 'block' && def.kind !== 'inline') problems.push(`${at}: kind must be “block” or “inline”.`)
-    if (!isLabel(def.label)) problems.push(`${at}: label is missing.`)
-    if (!isLabel(def.describe)) problems.push(`${at}: describe is missing.`)
-    if (def.editor?.group !== undefined && !isLabel(def.editor.group)) problems.push(`${at}: editor.group must be a text or a text per language.`)
+    for (const [path, label] of [['label', def.label], ['describe', def.describe], ...(def.editor?.group === undefined ? [] : [['editor.group', def.editor.group]])] as const) {
+      const problem = labelProblem(`components.${tag}.${path}`, label, main)
+      if (problem) problems.push(problem)
+    }
     for (const [name, prop] of Object.entries(def.props ?? {})) {
-      if (!PROP.test(name) || /^on/i.test(name)) problems.push(`${at}: Invalid property name “${name}”.`)
+      if (!PROP.test(name) || /^on/i.test(name) || RESERVED_PROPS.has(name)) problems.push(`${at}: Invalid property name “${name}”.`)
       if (!PROP_TYPES.has(prop?.type)) problems.push(`${at}: Property “${name}” cannot have the type “${String(prop?.type)}” (allowed: ${[...PROP_TYPES].join(', ')}).`)
     }
     for (const key of ['children', 'parents'] as const) {
@@ -95,7 +113,7 @@ type Fail = (problem: Described) => void
 
 /**
  * The slot nodes (comark's `template` with `name`) a text may keep: direct children of a registered component.
- * The profile check lets exactly these through its `BLOCKED_TAGS` rule (identity of the node); `checkComponentTree`
+ * The profile check lets exactly these through its blocked-tag rule (isBlockedTag) (identity of the node); `checkComponentTree`
  * then reports an undeclared slot name. A `template` anywhere else, or when there is no registry, stays refused.
  */
 export function componentSlotNodes(nodes: readonly Node[], registry: ComponentRegistry): Set<Node> {
@@ -126,7 +144,7 @@ export function checkComponentTree(nodes: readonly Node[], registry: ComponentRe
       for (const child of children) visit(child, tag)
       return
     }
-    if (!PLAIN_TAGS.has(tag) && !BLOCKED_TAGS.has(tag)) {
+    if (!PLAIN_TAGS.has(tag) && !isBlockedTag(tag, registry)) {
       if (!Object.hasOwn(registry, tag)) fail(msg('component.unknown', { tag }))
       else checkComponent(tag, registry[tag]!, props as Record<string, unknown>, children as Node[], parent, fail)
     }
@@ -138,14 +156,11 @@ export function checkComponentTree(nodes: readonly Node[], registry: ComponentRe
 function checkComponent(tag: string, def: ComponentDef, props: Record<string, unknown>, children: Node[], parent: string | undefined, fail: Fail) {
   const seen = new Set<string>()
   for (const [name, raw] of Object.entries(props)) {
-    // `:name` is comark's bound form of the same attribute.
+    // `:name` is comark's bound form of the same attribute. An undeclared one is the profile check's (attributeProblem).
     const key = name.replace(/^:/, '')
     seen.add(key)
-    if (!Object.hasOwn(def.props, key)) fail(msg('component.propUnknown', { tag, prop: key }))
-    else {
-      const problem = componentPropMessage(def.props[key]!, raw)
-      if (problem) fail(msg('component.propInvalid', { tag, prop: key, problem: bare(problem) }))
-    }
+    const problem = Object.hasOwn(def.props, key) ? componentPropMessage(def.props[key]!, raw) : undefined
+    if (problem) fail(msg('component.propInvalid', { tag, prop: key, problem: bare(problem) }))
   }
   for (const [key, field] of Object.entries(def.props)) {
     if (!field.optional && !seen.has(key)) fail(msg('component.propMissing', { tag, prop: key }))

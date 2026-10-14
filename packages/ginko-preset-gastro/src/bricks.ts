@@ -1,9 +1,10 @@
-// Restaurant bricks with the owner's quick tasks. Labels come in German and English; `lang` picks only default content.
-import { collection, f, single, type BrickSource, type ChoicesField, type Label, type Locale } from '@lupinum/ginko'
+// Restaurant bricks with the owner's quick tasks. Labels and prefilled texts come in German and English. The site keeps
+// the texts of its own locales when its main locale is `de` or `en` (exactly: `de-CH` does not count); otherwise it
+// starts without the prefilled texts (`serializeSchema`).
+import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate } from '@lupinum/ginko'
+import type { ChoicesField, ListField } from '@lupinum/ginko/internal'
 import { allergenNames } from './names.ts'
-import { calendarOf, type HolidayCalendar, type HolidaysOption } from './holidays.ts'
 
-export interface ChoiceOption { value: string; label: Label }
 /** Allergen codes on dishes: the EU list of 14, none at all (the field is left out), or your own list. */
 export type AllergenSet = 'EU' | 'none' | readonly ChoiceOption[]
 
@@ -34,8 +35,6 @@ function allergenChoices(set: AllergenSet | undefined): readonly ChoiceOption[] 
 
 /** Options every factory takes. */
 export interface GastroOptions {
-  /** The site's main language (default `de`). Picks the default content: the lunch placeholder and the "fully booked" text are written for `de` or `en` only; other languages start without them. Labels always come in German and English. */
-  lang?: string
   /** Where the content comes from: absent means the Ginko platform (the owner edits it), `'files'` means Markdown in `content/`. */
   source?: BrickSource
 }
@@ -53,26 +52,9 @@ const weekDefault = weekdays.map((d) => ({
 
 const lunchPlaceholder = { de: 'Wird noch bekannt gegeben', en: 'To be announced' } as const
 
-// Prefilled texts exist only in `de` and `en`; a site in another language starts without them.
-const soldOutText = (lang: string | undefined): Record<string, string> => (lang === 'en' ? { text: 'We are fully booked today.' } : lang === undefined || lang === 'de' ? { text: 'Heute sind wir ausgebucht.' } : {})
+const soldOutText = { de: 'Heute sind wir ausgebucht.', en: 'We are fully booked today.' }
 
-// The placeholder dish text is keyed by the site's main language, so only `de` and `en` have one.
-const lunchDefault = (lang: keyof typeof lunchPlaceholder, withAllergens: boolean) => weekdays.slice(0, 5).map((d) => ({
-  _id: `ld${d.value}000000`,
-  day: d.value,
-  dish: { [lang]: lunchPlaceholder[lang] },
-  ...(withAllergens ? { allergens: [] } : {}),
-}))
-
-// The holiday calendar chosen in `hours({ holidays })`, for `hoursCalendarOf`. Not part of the schema: a symbol key
-// stays out of the serialized schema but survives `{ ...hours(), label: 'Hours' }`.
-const calendarKey = Symbol('ginko-preset-gastro.holidays')
-
-/** The holiday calendar a brick from `hours()` was made with (Austria by default). Pass it to `hoursOn` as `ctx.calendar`. */
-export function hoursCalendarOf(brick: object): HolidayCalendar {
-  // Only `hours()` writes this key.
-  return calendarOf((brick as { readonly [calendarKey]?: HolidaysOption })[calendarKey] ?? 'AT')
-}
+const lunchDefault = weekdays.slice(0, 5).map((d) => ({ _id: `ld${d.value}000000`, day: d.value, dish: lunchPlaceholder }))
 
 /** Times only on a day that is not closed (a closed day keeps its stored times). */
 const open = { field: 'closed', not: true } as const
@@ -93,11 +75,9 @@ function weekField() {
   })
 }
 
-export function hours(opts: GastroOptions & {
-  /** Which public holidays count. Code-level config, not a schema field: pass the same value as `ctx.calendar`. Default `'AT'`. */
-  holidays?: HolidaysOption
-} = {}) {
-  const brick = single({
+/** Weekly hours, closures and the owner's choice for public holidays. Which holidays count is `calendar` in the context of the hours rules (`hoursOn`, `todayState`). */
+export function hours(opts: GastroOptions = {}) {
+  return single({
     label: both('Öffnungszeiten', 'Opening hours'),
     ...sourceOf(opts),
     fields: {
@@ -133,8 +113,6 @@ export function hours(opts: GastroOptions & {
       { id: 'holidaySetting', label: both('Öffnungszeiten an Feiertagen', 'Opening hours on public holidays'), kind: 'edit', fields: ['holidays'] },
     ],
   })
-  if (opts.holidays) Object.assign(brick, { [calendarKey]: opts.holidays })
-  return brick
 }
 
 /** Own weekly hours for a date range: a season (yearly) or "new hours from a date" (open end). */
@@ -169,11 +147,10 @@ export function notices(opts: GastroOptions = {}) {
     },
     max: 5,
     order: 'manual',
-    visible: { mode: 'active', field: 'until' },
-    autoRemoveExpired: true,
+    visible: { mode: 'until', field: 'until', deleteExpired: true },
     tasks: [
       // The weekly job first: it becomes the main quick task.
-      { id: 'soldOut', label: both('Heute ausgebucht', 'Fully booked today'), kind: 'create', prefill: { ...soldOutText(opts.lang), until: '@today' } },
+      { id: 'soldOut', label: both('Heute ausgebucht', 'Fully booked today'), kind: 'create', prefill: { text: soldOutText, until: '@today' } },
       { id: 'add', label: both('Hinweis hinzufügen', 'Add a notice'), kind: 'create' },
       { id: 'remove', label: both('Hinweis entfernen', 'Remove a notice'), kind: 'remove' },
     ],
@@ -181,21 +158,18 @@ export function notices(opts: GastroOptions = {}) {
 }
 
 /** The list of lunch days; `allergens` left out when the set is `'none'`. */
-function lunchDays<A extends AllergenSet>(lang: string | undefined, allergens: A | undefined) {
+function lunchDays<A extends AllergenSet>(allergens: A | undefined) {
   const choices = allergenChoices(allergens)
-  const placeholder = lang === undefined ? 'de' : lang
-  const isPlaceholderLang = (l: string): l is keyof typeof lunchPlaceholder => l === 'de' || l === 'en'
-  return f.list(both('Tage', 'Days'), {
-    itemLabel: both('Tag', 'Day'),
-    fields: {
-      day: f.choice(both('Tag', 'Day'), { options: weekdays.slice(0, 5) }),
-      dish: f.text(both('Gericht', 'Dish'), { max: 200 }),
-      price: f.money(both('Preis', 'Price'), { optional: true }),
-      ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) } : {}) as AllergenFields<A>,
-    },
-    min: 5, max: 5, unique: 'day',
-      ...(isPlaceholderLang(placeholder) ? { default: lunchDefault(placeholder, !!choices) } : {}),
-  })
+  const columns = {
+    day: f.choice(both('Tag', 'Day'), { options: weekdays.slice(0, 5) }),
+    dish: f.text(both('Gericht', 'Dish'), { max: 200 }),
+    price: f.money(both('Preis', 'Price'), { optional: true }),
+  }
+  const list = { itemLabel: both('Tag', 'Day'), min: 5, max: 5, unique: 'day' } as const
+  // Each branch checks its own default rows; `allergens` exists only when the set is not 'none', which the type cannot see here.
+  return (choices
+    ? f.list(both('Tage', 'Days'), { ...list, fields: { ...columns, allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) }, default: lunchDefault.map((row) => ({ ...row, allergens: [] })) })
+    : f.list(both('Tage', 'Days'), { ...list, fields: columns, default: lunchDefault })) as ListField<typeof columns & AllergenFields<A>>
 }
 
 export function lunch<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { weekOf?: string; allergens?: A } = {}) {
@@ -204,13 +178,13 @@ export function lunch<const A extends AllergenSet = 'EU'>(opts: GastroOptions & 
     ...sourceOf(opts),
     fields: {
       weekOf: f.date(both('Woche ab', 'Week starting'), opts.weekOf ? { default: opts.weekOf } : {}),
-      days: lunchDays(opts.lang, opts.allergens),
+      days: lunchDays(opts.allergens),
       note: f.text(both('Hinweis', 'Note'), { max: 200, optional: true }),
       // Many houses also hand out the week as a PDF; replacing it in the Files library updates every link.
-      pdf: f.file(both('Mittagsmenü als PDF', 'Lunch menu as PDF'), { accept: ['pdf'], maxSize: 5 * 1024 * 1024, optional: true }),
+      pdf: f.file(both('Mittagsmenü als PDF', 'Lunch menu as PDF'), { accept: ['pdf'], maxBytes: 5 * 1024 * 1024, optional: true }),
     },
     tasks: [
-      { id: 'lunchWeek', label: both('Mittagsmenü dieser Woche', 'This week’s lunch menu'), kind: 'edit', fields: ['weekOf', 'days', 'note'], prefill: { weekOf: '@thisWeek' } },
+      { id: 'lunchWeek', label: both('Mittagsmenü dieser Woche', 'This week’s lunch menu'), kind: 'edit', fields: ['weekOf', 'days', 'note'], prefill: { weekOf: '@workWeek' } },
     ],
   })
 }
@@ -224,17 +198,16 @@ export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: GastroOptio
     ...sourceOf(opts),
     fields: {
       weekOf: f.date(both('Woche ab', 'Week starting')),
-      days: lunchDays(opts.lang, opts.allergens),
+      days: lunchDays(opts.allergens),
       note: f.text(both('Hinweis', 'Note'), { max: 200, optional: true }),
     },
     max: 3,
     order: { field: 'weekOf', dir: 'asc' },
     // A planned week is over on its last day and then removed, so the owner never clears old weeks by hand.
-    visible: { mode: 'active', field: 'weekOf', days: 6 },
-    autoRemoveExpired: true,
+    visible: { mode: 'until', field: 'weekOf', days: 6, deleteExpired: true },
     plans: { brick: lunchBrick, field: 'weekOf' },
     tasks: [
-      { id: 'planNext', label: both('Nächste Woche planen', 'Plan next week'), kind: 'create', prefill: { weekOf: '@nextWeek' } },
+      { id: 'planNext', label: both('Nächste Woche planen', 'Plan next week'), kind: 'create', prefill: { weekOf: '@nextWorkWeek' } },
       { id: 'edit', label: both('Geplante Woche bearbeiten', 'Edit a planned week'), kind: 'edit', pick: true, fields: ['weekOf', 'days', 'note'] },
       { id: 'remove', label: both('Geplante Woche entfernen', 'Remove a planned week'), kind: 'remove' },
     ],
@@ -243,31 +216,33 @@ export function lunchPlans<const A extends AllergenSet = 'EU'>(opts: GastroOptio
 
 export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & { allergens?: A } = {}) {
   const choices = allergenChoices(opts.allergens)
-  const dishFields = choices ? ['category', 'name', 'description', 'price', 'allergens', 'veg'] : ['category', 'name', 'description', 'price', 'veg']
+  const fields = {
+    category: f.choice(both('Kategorie', 'Category'), {
+      options: [
+        { value: 'starters', label: both('Vorspeisen', 'Starters') }, { value: 'soups', label: both('Suppen', 'Soups') },
+        { value: 'mains', label: both('Hauptspeisen', 'Mains') }, { value: 'desserts', label: both('Desserts', 'Desserts') },
+        { value: 'drinks', label: both('Getränke', 'Drinks') },
+      ],
+    }),
+    name: f.text(both('Name', 'Name'), { max: 120 }),
+    description: f.longtext(both('Beschreibung', 'Description'), { max: 500, optional: true }),
+    price: f.money(both('Preis', 'Price')),
+    ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) } : {}) as AllergenFields<A>,
+    veg: f.choice(both('Vegetarisch', 'Vegetarian'), {
+      options: [
+        { value: 'none', label: both('nicht vegetarisch', 'not vegetarian') }, { value: 'vegetarian', label: both('vegetarisch', 'vegetarian') }, { value: 'vegan', label: both('vegan', 'vegan') },
+      ],
+    }),
+    // A planned price change: the site shows `nextPrice` from `priceFrom` on (see `priceOn`).
+    nextPrice: f.money(both('Neuer Preis', 'New price'), { optional: true }),
+    priceFrom: f.date(both('Neuer Preis gilt ab', 'New price applies from'), { optional: true }),
+  }
+  // `allergens` exists only when the set is not 'none', which the type cannot see here.
+  const dishFields = (choices ? ['category', 'name', 'description', 'price', 'allergens', 'veg'] : ['category', 'name', 'description', 'price', 'veg']) as readonly (keyof typeof fields & string)[]
   return collection({
     label: both('Speisekarte', 'Menu'),
     ...sourceOf(opts),
-    fields: {
-      category: f.choice(both('Kategorie', 'Category'), {
-        options: [
-          { value: 'starters', label: both('Vorspeisen', 'Starters') }, { value: 'soups', label: both('Suppen', 'Soups') },
-          { value: 'mains', label: both('Hauptspeisen', 'Mains') }, { value: 'desserts', label: both('Desserts', 'Desserts') },
-          { value: 'drinks', label: both('Getränke', 'Drinks') },
-        ],
-      }),
-      name: f.text(both('Name', 'Name'), { max: 120 }),
-      description: f.longtext(both('Beschreibung', 'Description'), { max: 500, optional: true }),
-      price: f.money(both('Preis', 'Price')),
-      ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) } : {}) as AllergenFields<A>,
-      veg: f.choice(both('Vegetarisch', 'Vegetarian'), {
-        options: [
-          { value: 'none', label: both('nicht vegetarisch', 'not vegetarian') }, { value: 'vegetarian', label: both('vegetarisch', 'vegetarian') }, { value: 'vegan', label: both('vegan', 'vegan') },
-        ],
-      }),
-      // A planned price change: the site shows `nextPrice` from `priceFrom` on (see `priceOn`).
-      nextPrice: f.money(both('Neuer Preis', 'New price'), { optional: true }),
-      priceFrom: f.date(both('Neuer Preis gilt ab', 'New price applies from'), { optional: true }),
-    },
+    fields,
     max: 150,
     order: 'manual',
     tasks: [
@@ -280,7 +255,7 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
   })
 }
 
-export function events(opts: GastroOptions & { route: Partial<Record<Locale, string>> }) {
+export function events(opts: GastroOptions & { route: Record<Locale, RouteTemplate> }) {
   return collection({
     label: both('Veranstaltungen', 'Events'),
     ...sourceOf(opts),
@@ -297,7 +272,7 @@ export function events(opts: GastroOptions & { route: Partial<Record<Locale, str
     },
     max: 30,
     order: { field: 'when', dir: 'asc' },
-    visible: { mode: 'upcoming', field: 'when' },
+    visible: { mode: 'until', field: 'when' },
     route: opts.route,
     tasks: [
       { id: 'add', label: both('Veranstaltung hinzufügen', 'Add an event'), kind: 'create' },

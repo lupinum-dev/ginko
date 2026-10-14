@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { toFirstDoc } from '../lib/docsFirst'
 // The start page: the site's `home` brick (docsHome) when it has one, otherwise the first docs page.
 import schema from '#ginko/schema'
 

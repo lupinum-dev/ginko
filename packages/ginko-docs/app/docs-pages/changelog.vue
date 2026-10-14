@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { markdownComponents } from '../lib/markdownComponents'
 // The changelog: one page, one section per release, newest first (the collection's order). Each version has an anchor.
 const { t } = useI18n()
-const blog = useBlog()
+const blog = useDocsBlog()
 const entries = blog.changelog()
 useGinkoSeo(() => ({ title: t('docs.changelog') }))
 // `1.2.0` -> `v1-2-0`, a valid id and a stable address for the release.

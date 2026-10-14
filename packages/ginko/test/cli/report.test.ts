@@ -3,7 +3,7 @@ import { explainChanges, explainRejected } from '../../src/cli/report.ts'
 import { collection, defineSite, diffSchema, f, serializeSchema } from '../../src/core/index.ts'
 
 const site = (fields: Parameters<typeof collection>[0]['fields']) => serializeSchema(defineSite({
-  site: 'linde', name: 'Linde', url: 'https://linde.example', timezone: 'Europe/Vienna',
+  site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
   locales: ['de'], currency: 'EUR', pages: { home: '/' },
   bricks: { menu: collection({ label: 'Karte', max: 50, order: 'manual', fields }) },
 }))

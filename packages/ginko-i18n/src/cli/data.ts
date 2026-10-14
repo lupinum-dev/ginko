@@ -3,11 +3,18 @@ import { resolve, join, relative, dirname } from 'node:path'
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { parse, TYPE, type MessageFormatElement } from '@formatjs/icu-messageformat-parser'
+import { keyProblem } from '../core/compiler.ts'
+import { LOCALE_CODE } from '../core/locales.ts'
+import { MANIFEST_VERSION, type Manifest as ManifestFile, type ManifestSource } from '../manifest.ts'
+import type { LocaleInfo } from '../core/locales.ts'
 
-export interface Source { dir: string, namespace?: string, origin: string }
-// catalogDir: folder for i18n.lock.json and glossary.json; set only by dirManifest (--dir mode).
-export interface Manifest { locales: { code: string, language: string }[], defaultLocale: string, params: Record<string, unknown>, sources: Source[], srcDirs: string[], catalogDir?: string }
-export interface Entry { text: string, file: string, line: number, source: Source, localKey: string }
+/**
+ * What the commands read: the fields they use of the manifest file, or of a `--dir` folder (dirManifest).
+ * catalogDir: folder for i18n.lock.json and glossary.json; set only by dirManifest (--dir mode).
+ */
+export type Manifest = Pick<ManifestFile, 'defaultLocale' | 'params' | 'sources' | 'srcDirs'> & { locales: Pick<LocaleInfo, 'code' | 'language'>[], catalogDir?: string }
+export interface Entry { text: string, file: string, line: number, source: ManifestSource, localKey: string }
+const ORIGINS: readonly unknown[] = ['library', 'layer', 'app'] satisfies ManifestSource['origin'][]
 export type Tree = { [key: string]: string | Tree }
 export const json = (file: string) => JSON.parse(readFileSync(file, 'utf8')) as unknown
 export const hash = (text: string) => createHash('sha256').update(text).digest('hex')
@@ -17,8 +24,12 @@ export function object(value: unknown): value is Record<string, unknown> {
 export function tree(file: string): Tree {
   if (!existsSync(file)) return {}
   const value = json(file)
-  const valid = (v: unknown): boolean => object(v) && Object.values(v).every(x => typeof x === 'string' || valid(x))
-  if (!valid(value)) throw new Error(`Invalid message tree: ${file}`)
+  const valid = (v: unknown, parent: string): boolean => object(v) && Object.entries(v).every(([key, x]) => {
+    const problem = keyProblem(key, parent)
+    if (problem) throw new Error(`${problem} (${file})`)
+    return typeof x === 'string' || valid(x, parent ? `${parent}.${key}` : key)
+  })
+  if (!valid(value, '')) throw new Error(`Invalid message tree: ${file}`)
   return value as Tree
 }
 export function manifest(cwd: string, buildDir: string): Manifest {
@@ -34,13 +45,14 @@ export function manifest(cwd: string, buildDir: string): Manifest {
   }
   if (!existsSync(file)) throw new Error(`Manifest missing: ${file}. Fix: add @lupinum/ginko-i18n to the modules in nuxt.config and run \`nuxt prepare\`, or pass --build-dir if the app builds elsewhere.`)
   const m = json(file)
+  if (object(m) && m.version !== MANIFEST_VERSION) throw new Error(`Manifest version ${JSON.stringify(m.version)} is not ${MANIFEST_VERSION}: ${file}. Fix: run \`nuxt prepare\` with the same @lupinum/ginko-i18n version as this CLI.`)
   if (!object(m) || !Array.isArray(m.locales) || !Array.isArray(m.sources) || !Array.isArray(m.srcDirs) || !object(m.params) || typeof m.defaultLocale !== 'string') throw new Error('Invalid manifest')
   for (const locale of m.locales) {
-    if (!object(locale) || typeof locale.code !== 'string' || !/^[a-z][a-z0-9-]*$/.test(locale.code) || typeof locale.language !== 'string') throw new Error('Invalid manifest locale')
+    if (!object(locale) || typeof locale.code !== 'string' || !LOCALE_CODE.test(locale.code) || typeof locale.language !== 'string') throw new Error('Invalid manifest locale')
     new Intl.PluralRules(locale.language)
   }
   if (!m.locales.some(l => l.code === m.defaultLocale)) throw new Error('Unknown default locale')
-  for (const source of m.sources) if (!object(source) || typeof source.dir !== 'string' || typeof source.origin !== 'string' || (source.namespace !== undefined && typeof source.namespace !== 'string')) throw new Error('Invalid manifest source')
+  for (const source of m.sources) if (!object(source) || typeof source.dir !== 'string' || !ORIGINS.includes(source.origin) || (source.namespace !== undefined && typeof source.namespace !== 'string')) throw new Error('Invalid manifest source')
   if (!m.srcDirs.every(d => typeof d === 'string')) throw new Error('Invalid manifest srcDirs')
   const result = m as unknown as Manifest
   result.sources = result.sources.map(s => ({ ...s, dir: resolve(cwd, s.dir) }))
@@ -48,21 +60,40 @@ export function manifest(cwd: string, buildDir: string): Manifest {
   return result
 }
 // --dir mode: a plain folder of `<code>.json` catalogs, without Nuxt or source scanning.
+// The CLI checks `defaultLocale` against the files, because it is a command-line argument (a `USAGE` error).
+// A folder without catalogs is an `INVALID` error: the fault is the folder, not the locale code.
 const reserved = ['i18n.lock.json', 'glossary.json']
-// `target` (`todo --to es`) may name a locale without a file yet: that is how a new language starts.
-export function dirManifest(folder: string, defaultLocale: string, target?: string): Manifest {
-  const codes = readdirSync(folder, { withFileTypes: true })
+export function dirManifest(folder: string, defaultLocale: string): Manifest {
+  const locales = readdirSync(folder, { withFileTypes: true })
     .filter(e => e.isFile() && e.name.endsWith('.json') && !reserved.includes(e.name))
     .map(e => e.name.slice(0, -'.json'.length))
-  const locales = [...new Set([...codes, ...(target ? [target] : [])])]
     .sort()
     .map((code) => {
-      if (!/^[a-z][a-z0-9-]*$/.test(code)) throw new Error(`Invalid locale file name: ${code}.json`)
+      if (!LOCALE_CODE.test(code)) throw new Error(`Invalid locale file name: ${code}.json`)
       new Intl.PluralRules(code)
       return { code, language: code }
     })
-  if (!locales.some(l => l.code === defaultLocale)) throw new Error(`Unknown default locale: ${defaultLocale}`)
+  if (!locales.length) throw new Error(`No <code>.json catalogs in ${folder}. Fix: point --dir at the folder with the message files.`)
   return { locales, defaultLocale, params: {}, sources: [{ dir: folder, origin: 'app' }], srcDirs: [], catalogDir: folder }
+}
+const caseTwin = (m: Manifest, code: string) => m.locales.find(l => l.code.toLowerCase() === code.toLowerCase())?.code
+/** The message for a code that is not a locale of `m`: the fix names its case twin, or else every code. */
+export function unknownLocale(m: Manifest, code: string, what = 'locale'): string {
+  const twin = caseTwin(m, code)
+  return `Unknown ${what}: ${code}. Fix: use ${twin ? `"${twin}"` : `one of ${m.locales.map(l => l.code).join(', ')}`}.`
+}
+/** --dir mode: adds a locale that has no file yet (`todo`/`apply` for a new language). A known code returns `m` unchanged. */
+export function withLocale(m: Manifest, code: string): Manifest {
+  if (m.locales.some(l => l.code === code)) return m
+  if (caseTwin(m, code)) throw new Error(unknownLocale(m, code))
+  if (!LOCALE_CODE.test(code)) throw new Error(`Invalid locale: ${code}. Fix: use letters, digits and -.`)
+  try {
+    new Intl.PluralRules(code)
+  }
+  catch {
+    throw new Error(`Invalid locale: ${code}. Fix: use a BCP 47 tag such as "es" or "pt-BR".`)
+  }
+  return { ...m, locales: [...m.locales, { code, language: code }].sort((a, b) => a.code < b.code ? -1 : 1) }
 }
 export function entries(m: Manifest, code: string): Map<string, Entry> {
   const out = new Map<string, Entry>()
@@ -128,7 +159,7 @@ export function files(dir: string, extensions: string[]): string[] {
   })
 }
 export function usages(m: Manifest) {
-  const used = new Map<string, string[]>()
+  const used = new Map<string, { file: string, line: number }[]>()
   let dynamic = false
   for (const file of new Set(m.srcDirs.flatMap(d => files(d, ['.vue', '.ts', '.js'])))) {
     const text = readFileSync(file, 'utf8')
@@ -159,7 +190,7 @@ export function usages(m: Manifest) {
         if (match[1] !== undefined && namespace === undefined) continue // `x.t()` on something that is not useI18n
         key = namespace ? `${namespace}.${literal[2]}` : literal[2]!
       }
-      used.set(key, [...(used.get(key) ?? []), `${file}:${line}`])
+      used.set(key, [...(used.get(key) ?? []), { file, line }])
     }
   }
   return { used, dynamic }

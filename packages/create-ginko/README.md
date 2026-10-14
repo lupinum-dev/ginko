@@ -10,10 +10,15 @@ npm run dev
 ```
 
 The new site reads its content from Markdown in `content/` and needs no platform. To let an owner
-edit a brick on the Ginko platform instead, remove `source: 'files'` from it in `ginko.config.ts`. See
+edit a brick on the Ginko platform instead, remove `source: 'files'` from it in `ginko.config.ts`,
+and give the single's required fields a `default` or make them optional (`f.markdown`, `f.image` and `f.file` cannot have a default, so set `optional: true` on them). See
 [Platform and CLI](https://github.com/lupinum-dev/ginko/blob/main/sites/docs/content/docs/12.plattform-und-cli.en.md).
 
-The sample site is English. `--lang de` creates it in German.
+The sample site is English. `--locale de` creates it in German.
+
+The site id (`site` in `ginko.config.ts`) comes from the folder name: lower case, every run of other characters
+becomes `-`, at most 40 characters, and it must start with a letter. When the id differs from the folder name, the
+command says so. Change `site` in `ginko.config.ts` if you want another id.
 
 ## Options
 
@@ -21,7 +26,7 @@ Write the options after `--`. npm keeps options before `--` for itself and passe
 command then stops and shows the right form. pnpm, yarn and bun accept the same command.
 
 ```bash
-npm create ginko@latest my-site -- --lang de
+npm create ginko@latest my-site -- --locale de
 npm create ginko@latest my-restaurant -- --preset gastro
 npm create ginko@latest my-docs -- --preset docs
 ```
@@ -29,11 +34,12 @@ npm create ginko@latest my-docs -- --preset docs
 | Option | Values | Default |
 |---|---|---|
 | `--preset <name>` (or `--preset=<name>`) | `gastro`, `docs` | the plain starter |
-| `--lang <code>` (or `--lang=<code>`) | `en`, `de` | `en` |
+| `--locale <code>` (or `--locale=<code>`) | `en`, `de` | `en` |
 | `-h`, `--help` | | |
 
-The command always says which starter and language it used. An unknown option, preset or language stops
-with exit code 1 and creates nothing.
+The command always says which starter and language it used. An unknown option, preset or locale stops
+with exit code 2 (a usage error, as in the `ginko` CLI) and creates nothing. A folder that exists and is not
+empty stops with exit code 1.
 
 ## Presets
 

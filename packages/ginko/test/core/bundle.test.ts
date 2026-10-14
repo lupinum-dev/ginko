@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
-  applyDefaults, bundleFits, isBundle, knownBricks, type Bundle,
+  applyDefaults, bundleFits, isBundle, knownBricks, markdownTrees, parseMarkdown, type Bundle,
   buildBundle, isVisible, printOf, resolveEntry, serializeSchema, sortEntries, todayIn,
   type Brick, type BundleBrick, type BundleItem, type CollectionBrick, type Locale, type Schema, type StoredEntry,
 } from '../../src/core/index.ts'
@@ -124,6 +124,16 @@ describe('resolveEntry: translations and fallback (SPEC 6)', () => {
     expect(r.data.days).toEqual([{ _id: 'k3Fd9aZ0qx', day: 'mo', dish: 'Tafelspitz', allergens: [] }])
     expect(r.fallback).toEqual(['days.k3Fd9aZ0qx.dish'])
   })
+
+  // Wrong behaviour caught: the stored tree of an outdated translation goes online while its leaf is listed as fallback.
+  it('serves the stored tree of the text it picks: the main language tree for an outdated translation', async () => {
+    const s = base()
+    const data = { imprint: { de: 'Wirtin **Maria**', en: 'Landlady **Maria**' } }
+    const trees = await markdownTrees(brickOf(s, 'legal').fields, data)
+    const legal = (print: string): StoredEntry => ({ id: 'legal', data, prints: { imprint: { en: printOf(print) } }, trees })
+    expect(resolve(s, 'legal', legal('Wirtin **Maria**'), 'en').data.imprint).toEqual((await parseMarkdown('Landlady **Maria**')).value)
+    expect(resolve(s, 'legal', legal('Wirtin'), 'en').data.imprint).toEqual((await parseMarkdown('Wirtin **Maria**')).value)
+  })
 })
 
 describe('buildBundle: locales (SPEC 6)', () => {
@@ -151,10 +161,18 @@ describe('isVisible: dates are inclusive in the site time zone (SPEC 2.1)', () =
     { name: 'an active notice that ends tomorrow is visible', brick: 'notices', data: { until: '2026-10-09' }, visible: true },
     { name: 'with days, an entry stays that many days after its date', brick: 'lunchPlans', data: { weekOf: '2026-10-02' }, visible: true },
     { name: 'with days, it is hidden the day after', brick: 'lunchPlans', data: { weekOf: '2026-10-01' }, visible: false },
-    { name: 'an upcoming event that ends today is visible', brick: 'events', data: { when: { from: '2026-10-01', to: '2026-10-08' } }, visible: true },
-    { name: 'an upcoming event that ended yesterday is hidden', brick: 'events', data: { when: { from: '2026-10-01', to: '2026-10-07' } }, visible: false },
+    { name: 'an event that ends today is visible', brick: 'events', data: { when: { from: '2026-10-01', to: '2026-10-08' } }, visible: true },
+    { name: 'an event that ended yesterday is hidden', brick: 'events', data: { when: { from: '2026-10-01', to: '2026-10-07' } }, visible: false },
+    { name: 'an event without dates stays visible', brick: 'events', data: {}, visible: true },
   ])('$name', ({ brick, data, visible }) => {
     expect(isVisible(brickOf(base(), brick), data, TODAY)).toBe(visible)
+  })
+
+  // Wrong behaviour caught: `days` only counts for a date field, so a daterange entry disappears on its last day.
+  it('adds days to the end of a daterange', () => {
+    const events = { ...brickOf(base(), 'events'), visible: { mode: 'until', field: 'when', days: 2 } } as Brick
+    expect(isVisible(events, { when: { from: '2026-10-01', to: '2026-10-06' } }, TODAY)).toBe(true)
+    expect(isVisible(events, { when: { from: '2026-10-01', to: '2026-10-05' } }, TODAY)).toBe(false)
   })
 
   // Wrong behaviour caught: at 00:30 in Vienna a notice that ended yesterday still shows, because the UTC date is one day behind.
@@ -175,6 +193,13 @@ describe('sortEntries: when asc (SPEC 2.1)', () => {
       entry('k5', '2026-10-09', '2026-10-30'),
     ])
     expect(sorted.map((e) => e.id)).toEqual(['k5', 'k9', 'k1', 'k2'])
+  })
+
+  // Wrong behaviour caught: an order without `dir` sorts descending, the opposite of the query order's default.
+  it('sorts ascending when dir is left out', () => {
+    const events = { ...collectionOf(base(), 'events'), order: { field: 'when' } }
+    const entry = (id: string, from: string): StoredEntry => ({ id, data: { when: { from, to: from } } })
+    expect(sortEntries(events, [entry('late', '2026-10-20'), entry('early', '2026-10-01')]).map((e) => e.id)).toEqual(['early', 'late'])
   })
 })
 
@@ -270,14 +295,6 @@ describe('isBundle and bundleFits: a malformed bundle is a platform failure, not
     expect(isBundle(good) && bundleFits(good, schema)).toBe(true)
   })
 
-  // Format 2 (no updatedAt, no source) is still read; the items just lack the two fields.
-  it('accepts a format 2 bundle', () => {
-    const old = structuredClone(good) as unknown as Record<string, any>
-    old.format = 2
-    for (const item of old.bricks.events.items) { delete item.updatedAt; delete item.source }
-    expect(isBundle(old)).toBe(true)
-  })
-
   it.each([
     { name: 'items null', mutate: (b: Record<string, any>) => { b.bricks.events.items = null } },
     { name: 'item without data', mutate: (b: Record<string, any>) => { delete b.bricks.events.items[0].data } },
@@ -287,6 +304,7 @@ describe('isBundle and bundleFits: a malformed bundle is a platform failure, not
     { name: 'contentRev missing', mutate: (b: Record<string, any>) => { delete b.contentRev } },
     // Format 1 carried AST v1 text values, which the renderer cannot show.
     { name: 'format 1', mutate: (b: Record<string, any>) => { b.format = 1 } },
+    { name: 'format 2 (no longer read)', mutate: (b: Record<string, any>) => { b.format = 2 } },
   ])('rejects $name', ({ mutate }) => {
     const bad = structuredClone(good) as unknown as Record<string, any>
     mutate(bad)

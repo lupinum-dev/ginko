@@ -2,6 +2,9 @@
 // The site shell. It reads content (notices, hero button), so it is a layout: the platform preview
 // page renders without a layout until its bundle arrives by message. ginko-i18n writes lang, canonical and hreflang.
 import { siteName } from '../utils/site'
+import { safeHref } from '@lupinum/ginko'
+
+const langOf = useGinkoLang()
 
 const { labels } = useSite()
 const path = useGinkoPath()
@@ -16,7 +19,7 @@ const nav = computed(() => [
   { key: 'blog', href: path('blog'), label: labels.value.nav.blog },
   { key: 'faq', href: path('faq'), label: labels.value.nav.faq },
 ])
-const cta = computed(() => ginkoSafeHref(hero.value.data.buttonUrl))
+const cta = computed(() => safeHref(hero.value.data.buttonUrl))
 </script>
 
 <template>
@@ -31,10 +34,10 @@ const cta = computed(() => ginkoSafeHref(hero.value.data.buttonUrl))
       <nav class="langs" :aria-label="t('langNav')">
         <template v-for="(a, i) in alternates" :key="a.code">
           <span v-if="i" aria-hidden="true">·</span>
-          <NuxtLink :to="a.path" :hreflang="a.code" :lang="a.code" :aria-current="a.current ? 'true' : undefined" :class="{ current: a.current }">{{ a.code.toUpperCase() }}</NuxtLink>
+          <NuxtLink :to="a.path" :hreflang="a.language" :lang="a.language" :aria-current="a.current ? 'page' : undefined" :class="{ current: a.current }">{{ a.code.toUpperCase() }}</NuxtLink>
         </template>
       </nav>
-      <a v-if="cta" class="button cta" :href="cta" rel="noopener" :lang="ginkoLangOf(hero, 'buttonText')">{{ hero.data.buttonText }}</a>
+      <a v-if="cta" class="button cta" :href="cta" rel="noopener" :lang="langOf(hero, 'buttonText')">{{ hero.data.buttonText }}</a>
     </header>
     <main id="inhalt">
       <slot />

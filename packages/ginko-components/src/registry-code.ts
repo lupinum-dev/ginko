@@ -24,11 +24,11 @@ export const codeComponents = defineComponents({
       en: 'Shows a file tree and, next to it, the code of the chosen file. Each code block needs its path as file name.',
     },
     props: {
-      defaultValue: f.text({ de: 'Startdatei', en: 'Start file' }, { optional: true, max: 200, hint: { de: 'Pfad der Datei, die zuerst offen ist.', en: 'Path of the file that is open first.' } }),
+      file: f.text({ de: 'Startdatei', en: 'Start file' }, { optional: true, max: 200, hint: { de: 'Pfad der Datei, die zuerst offen ist.', en: 'Path of the file that is open first.' } }),
       expandAll: f.boolean({ de: 'Alle Ordner offen', en: 'All folders open' }, { optional: true }),
     },
     children: ['pre'],
-    editor: { group: { de: 'Code', en: 'Code' }, example: '::code-tree{defaultValue="app/app.vue"}\n```vue [app/app.vue]\n<template><NuxtPage /></template>\n```\n```ts [nuxt.config.ts]\nexport default defineNuxtConfig({})\n```\n::' },
+    editor: { group: { de: 'Code', en: 'Code' }, example: '::code-tree{file="app/app.vue"}\n```vue [app/app.vue]\n<template><NuxtPage /></template>\n```\n```ts [nuxt.config.ts]\nexport default defineNuxtConfig({})\n```\n::' },
   },
   files: {
     kind: 'block',

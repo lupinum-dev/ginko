@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import { plan } from '../../src/cli/plan.ts'
 import {
-  buildBundle, checkSchema, isShown, collection, defineSite, diffSchema, f, isCurrency, isLocale, labelOf, platformSchema, serializeSchema, single, validate,
-  type Fields, type Schema, type SiteInput,
+  buildBundle, checkSchema, checkSite, isShown, collection, defineComponents, defineSite, diffSchema, f, isCurrency, isLocale, labelOf, platformSchema, serializeSchema, single, validate,
+  type Fields, type RouteTemplate, type Schema, type SiteInput,
 } from '../../src/core/index.ts'
 
 // One regression test per finding of the break-it phase 9 (schema rules). Each fails without its fix.
@@ -17,7 +17,7 @@ type Bricks = SiteInput['bricks']
 /** A small site: one collection `menu` with a name and the given extra fields. */
 function site(fields: Fields = {}, over: Partial<SiteInput> = {}): SiteInput {
   return defineSite({
-    site: 'linde', name: 'Linde', url: 'https://linde.example', timezone: 'Europe/Vienna',
+    site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna',
     locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
     bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }), ...fields }, max: 20, order: 'manual' }) },
     ...over,
@@ -86,8 +86,8 @@ describe('2. values lost in serializeSchema', () => {
 })
 
 describe('3. the time zone must exist', () => {
-  it.each([['Europe/Wien', false], ['Mars/Olympus', false], ['', false], ['Europe/Vienna', true], ['UTC', true]])('%s -> valid: %s', (timezone, valid) => {
-    expect(problemsOf(site({}, { timezone })).some((p) => p.startsWith('Invalid time zone'))).toBe(!valid)
+  it.each([['Europe/Wien', false], ['Mars/Olympus', false], ['', false], ['Europe/Vienna', true], ['UTC', true]])('%s -> valid: %s', (timeZone, valid) => {
+    expect(problemsOf(site({}, { timeZone })).some((p) => p.startsWith('Invalid time zone'))).toBe(!valid)
   })
 })
 
@@ -113,6 +113,23 @@ describe('4. locales and currency', () => {
     expect(problemsOf(site({}, { currency: currency as never })).some((p) => p.startsWith('Invalid currency'))).toBe(!valid)
     expect(problemsOf(site({ price: f.money('Preis', { ...optional, currency: currency as never }) })).some((p) => p.includes('currency must be an ISO 4217 code'))).toBe(!valid)
     expect(isCurrency(currency)).toBe(valid)
+  })
+  // The site url builds canonical URLs and the sitemap; `new URL` on a bad value threw at runtime.
+  it.each([
+    ['https://linde.example', true], ['http://localhost:3000', true], ['https://linde.example/de/', true],
+    ['linde.example', false], ['/linde', false], ['ftp://linde.example', false], ['mailto:a@linde.example', false], ['', false],
+    ['https://linde.example/?a#b', false], ['https://u:p@linde.example', false], ['https://linde.example?', false], ['https://linde.example#', false],
+  ])('url "%s" -> valid: %s', (url, valid) => {
+    expect(problemsOf(site({}, { url })).some((p) => p.startsWith('Invalid site url'))).toBe(!valid)
+  })
+
+  // `languages` stays out of the schema, so only checkSite (Nuxt build, `ginko check`, `ginko release`) sees it.
+  it.each([
+    [{ de: 'de-AT', en: 'en-GB' }, []],
+    [{ fr: 'fr-FR' }, ['languages: locale “fr” is not in locales.']],
+    [{ de: 'de_AT' }, ['languages.de: invalid language “de_AT” (expected a canonical language tag such as “de-AT” or “en-US”).']],
+  ])('languages %j', (languages, expected) => {
+    expect(checkSite(site({}, { languages }))).toEqual(expected)
   })
 })
 
@@ -177,7 +194,8 @@ describe('5. money options stay within SPEC 2.2', () => {
 
 describe('6. routes and pages', () => {
   const news = (de: string, en = '/en/news/[slug]') => collection({
-    label: 'News', fields: { title: f.text('Titel', { max: 80 }), slug: f.slug('Adresse', { from: 'title' }) }, max: 5, order: 'manual', route: { de, en },
+    // Invalid routes on purpose: the schema check must report what the type would reject.
+    label: 'News', fields: { title: f.text('Titel', { max: 80 }), slug: f.slug('Adresse', { from: 'title' }) }, max: 5, order: 'manual', route: { de, en } as Record<string, RouteTemplate>,
   })
   const withBricks = (bricks: Bricks) => site({}, { bricks: { ...site().bricks, ...bricks } })
 
@@ -224,14 +242,14 @@ describe('7. duplicate locales and the order of checkSchema and diffSchema', () 
 describe('8. diffSchema', () => {
   it('a changed time zone is refused', () => {
     const next = base()
-    next.timezone = 'Europe/Berlin'
-    expect(diffSchema(base(), next).rejected.map((r) => [r.kind, r.message])).toEqual([['timezone', 'Zeitzone kann nicht geändert werden.']])
+    next.timeZone = 'Europe/Berlin'
+    expect(diffSchema(base(), next).rejected.map((r) => [r.kind, r.message])).toEqual([['timeZone', 'Zeitzone kann nicht geändert werden.']])
   })
 
   // Astra 9: sites:bootstrap stores an empty Vienna/EUR/de schema; the first release must set its own.
   it('a site without bricks takes time zone, currency and languages from its first release', () => {
-    const empty = { ...base(), bricks: {}, timezone: 'Europe/Vienna', currency: 'EUR' as const, locales: ['de'] as Schema['locales'] }
-    const next = { ...base(), timezone: 'Europe/London', currency: 'CHF' as const, locales: ['en', 'de'] as Schema['locales'] }
+    const empty = { ...base(), bricks: {}, timeZone: 'Europe/Vienna', currency: 'EUR' as const, locales: ['de'] as Schema['locales'] }
+    const next = { ...base(), timeZone: 'Europe/London', currency: 'CHF' as const, locales: ['en', 'de'] as Schema['locales'] }
     expect(diffSchema(empty, next).rejected).toEqual([])
   })
 
@@ -383,21 +401,87 @@ describe('drafts must be a boolean', () => {
 })
 
 describe('week tokens', () => {
-  // Wrong behaviour caught: the renamed tokens are silently stored as literal text, so the date field starts empty.
-  it.each([['@thisMonday', '@thisWeek'], ['@nextMonday', '@nextWeek']])('rejects %s and names %s', (old, renamed) => {
-    const input = site({}, { bricks: { lunch: single({ label: 'Mittag', fields: { weekOf: f.date('Woche') }, tasks: [{ id: 'w', label: 'Woche', kind: 'edit', fields: ['weekOf'], prefill: { weekOf: old as never } }] }) } })
-    expect(problemsOf(input)).toEqual([`lunch.w: the token “${old}” no longer exists. Use “${renamed}”; weeks start on the site's first day of the week.`])
+  const withPrefill = (prefill: Record<string, unknown>) => site({}, {
+    bricks: { lunch: single({ label: 'Mittag', fields: { weekOf: f.date('Woche'), handle: f.text('Instagram', { translate: false, max: 40 }) }, tasks: [{ id: 'w', label: 'Woche', kind: 'edit', fields: ['weekOf'], prefill: prefill as never }] }) },
+  })
+  // Wrong behaviour caught: a mistyped token or a token on a text field is stored as literal text, so the form starts
+  // with an empty date or a date in a text; a plain text starting with @ (a handle) is refused as an unknown token.
+  it.each([
+    [{ weekOf: '@workWeek' }, []],
+    [{ handle: '@linde' }, []],
+    [{ weekOf: '@thisWeek' }, ['lunch.w.prefill.weekOf: unknown token “@thisWeek” (known: @today, @workWeek, @nextWorkWeek).']],
+    [{ weekOf: 'tomorrow' }, ['lunch.w.prefill.weekOf: “Woche” is not a valid date.']],
+    [{ handle: '@today' }, ['lunch.w.prefill.handle: “@today” needs a date field.']],
+    [{ nope: 'x' }, ['lunch.w.prefill.nope: the field is missing.']],
+  ])('prefill %j', (prefill, problems) => {
+    expect(problemsOf(withPrefill(prefill))).toEqual(problems)
   })
 
   // Wrong behaviour caught: the week is not stored on the schema, so server, Studio and site disagree about the first day.
-  it('stores the week of the main language, with weekStart as override', () => {
+  it('stores the week of the main language, with firstDayOfWeek as override', () => {
     expect(serializeSchema(site({}, { languages: { de: 'en-US' } })).week).toEqual({ firstDay: 7, weekend: [6, 7] })
-    expect(serializeSchema(site({}, { languages: { de: 'de-AT' }, weekStart: 6 })).week).toEqual({ firstDay: 6, weekend: [6, 7] })
+    expect(serializeSchema(site({}, { languages: { de: 'de-AT' }, firstDayOfWeek: 6 })).week).toEqual({ firstDay: 6, weekend: [6, 7] })
+  })
+})
+
+describe('defaults in the stored form', () => {
+  const stored = (fields: Fields, tasks?: unknown) => serializeSchema(site({}, { bricks: { menu: collection({ label: 'Karte', fields, max: 20, order: 'manual', tasks: tasks as never }) } })).bricks.menu!
+  // Wrong behaviour caught: a plain default of a translatable field is stored as a string and fails the release check,
+  // or a preset's `{ de, en }` text keeps locales the site does not have.
+  it.each([
+    ['a plain text is the main language', f.text('Name', { default: 'Linde' }), { de: 'Linde' }],
+    ['texts per language keep the site locales', f.text('Name', { default: { de: 'Linde', en: 'Linden', fr: 'Tilleul' } }), { de: 'Linde', en: 'Linden' }],
+    ['a text of other languages only is left out', f.text('Name', { default: { fr: 'Tilleul' } }), undefined],
+    ['a text of the site locales without the main language is left out', f.text('Name', { default: { en: 'Linden' } }), undefined],
+    ['a text that is not translated stays plain', f.text('Ort', { translate: false, default: 'Salzburg' }), 'Salzburg'],
+    ['list rows store their texts per language', f.list('Tage', { itemLabel: 'Tag', max: 2, fields: { dish: f.text('Gericht') }, default: [{ _id: 'r000000001', dish: 'Suppe' }] }), [{ _id: 'r000000001', dish: { de: 'Suppe' } }]],
+    ['a list with a row of other languages only is left out', f.list('Tage', { itemLabel: 'Tag', max: 2, fields: { dish: f.text('Gericht') }, default: [{ _id: 'r000000001', dish: { fr: 'Soupe' } }] }), undefined],
+  ])('%s', (_name, field, expected) => {
+    expect(stored({ field }).fields.field!.default).toEqual(expected)
+  })
+
+  it('stores prefilled texts the same way and keeps tokens', () => {
+    const task = { id: 'add', label: 'Neu', kind: 'create', prefill: { name: { de: 'Ausgebucht', en: 'Booked out', it: 'Esaurito' }, day: '@today' } }
+    expect(stored({ name: f.text('Name'), day: f.date('Tag') }, [task]).tasks![0]).toMatchObject({ prefill: { name: { de: 'Ausgebucht', en: 'Booked out' }, day: '@today' } })
+  })
+
+  // Wrong behaviour caught: a component prop's plain default was stored as written and failed the release check.
+  it('stores component prop defaults the same way', () => {
+    const components = defineComponents({ box: { kind: 'block', label: 'Box', describe: 'Box', props: { title: f.text('T', { optional: true, default: 'Hallo' }) } } })
+    const input = site({}, { components })
+    expect(serializeSchema(input).components!.box!.props.title!.default).toEqual({ de: 'Hallo' })
+    expect(checkSite(input)).toEqual([])
+  })
+})
+
+describe('brick describe', () => {
+  // Wrong behaviour caught: a per-language describe without the main language shows an empty text in the Studio.
+  it('is checked like a label', () => {
+    const input = site({}, { bricks: { menu: collection({ label: 'Karte', describe: { fr: 'Carte' }, fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual' }) } })
+    expect(problemsOf(input)).toEqual(['menu.describe: label needs a text in the main language “de” or in English.'])
+  })
+})
+
+describe('visible', () => {
+  const withVisible = (visible: unknown) => site({}, {
+    bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }), until: f.date('Bis', optional), when: f.daterange('Wann', optional) }, max: 20, order: 'manual', visible: visible as never }) },
+  })
+  // Wrong behaviour caught: a mode or option name from before 0.4 is stored and every entry shows for ever.
+  it.each([
+    [{ mode: 'until', field: 'until', days: 6, deleteExpired: true }, []],
+    [{ mode: 'until', field: 'when' }, []],
+    [{ mode: 'active', field: 'until' }, ['menu: visible.mode must be “always” or “until”.']],
+    [{ mode: 'until', field: 'name' }, ['menu: visibility needs a date or daterange field.']],
+    [{ mode: 'until', field: 'until', autoRemoveExpired: true }, ['menu.visible: unknown property “autoRemoveExpired”.']],
+    [{ mode: 'always', field: 'until' }, ['menu: visible: “always” takes no other options.']],
+    [{ mode: 'until', field: 'until', deleteExpired: 'yes' }, ['menu: visibility: deleteExpired must be true or false.']],
+  ])('%j', (visible, problems) => {
+    expect(problemsOf(withVisible(visible))).toEqual(problems)
   })
 })
 
 describe('plans (weeks planned ahead)', () => {
-  const week = single({ label: 'Mittag', fields: { weekOf: f.date('Woche') }, tasks: [{ id: 'w', label: 'Woche', kind: 'edit', fields: ['weekOf'], prefill: { weekOf: '@thisWeek' } }] })
+  const week = single({ label: 'Mittag', fields: { weekOf: f.date('Woche') }, tasks: [{ id: 'w', label: 'Woche', kind: 'edit', fields: ['weekOf'], prefill: { weekOf: '@workWeek' } }] })
   const planner = (plans: { brick: string; field: string }) => site({}, {
     bricks: {
       lunch: week,
@@ -499,8 +583,8 @@ describe('group and layout (display only)', () => {
     expect(checkSchema(schema)).toEqual([])
   })
   it.each([
-    ['empty group', { group: '' }, 'menu.note.group: needs a non-empty heading.'],
-    ['blank group in every language', { group: { de: ' ', en: '' } }, 'menu.note.group: needs a non-empty heading.'],
+    ['empty group', { group: '' }, 'menu.note.group: label is empty.'],
+    ['blank group in every language', { group: { de: ' ', en: '' } }, 'menu.note.group: label needs a text for each language.'],
     ['group that is a number', { group: 3 }, 'menu.note.group: label must be a text or an object with one text per language.'],
   ])('rejects %s', (_name, extra, problem) => {
     const problems = problemsOf(site({ note: f.longtext('Notiz', extra as never) })); expect(problems, JSON.stringify(problems)).toContain(problem)

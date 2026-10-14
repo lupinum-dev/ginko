@@ -13,6 +13,12 @@ test('a page carries only its own text, and client navigation loads the next one
   await expect(page.getByRole('heading', { name: 'Ginko oder Nuxt Content' })).toBeVisible()
 })
 
+// The docs layer keeps `source` in its bundle through the 'ginko:files' hook; without it the link falls back to the Studio.
+test('"edit this page" opens the file in the GitHub repository', async ({ page }) => {
+  await page.goto(`${origin}/docs/einstieg`)
+  await expect(page.locator('.docs-page-foot a').first()).toHaveAttribute('href', /^https:\/\/github\.com\/lupinum-dev\/ginko\//)
+})
+
 test('search finds a page by a word in its headings and opens it', async ({ page }) => {
   await page.goto(`${origin}/docs/einstieg`)
   await page.getByRole('button', { name: /Suchen/ }).click()
@@ -46,6 +52,12 @@ test('math renders on the server, mermaid in the browser, and pages without them
   expect(plain).not.toContain('katex')
 })
 
+test('a ```md preview fence shows its two tabs by name', async ({ page }) => {
+  await page.goto(`${origin}/docs/komponenten`)
+  const tabs = page.locator('.docs-example').first().getByRole('tab')
+  await expect(tabs).toHaveText(['Vorschau', 'Markdown'])
+})
+
 test('a page without a diagram never requests the mermaid chunk, a page with one does', async ({ page }) => {
   // The diagram engine (mermaid + ELK) is the one script over 1 MB; find it by that, not by its hashed name.
   const scripts: { url: string; body: string }[] = []
@@ -74,4 +86,15 @@ test('with nuxt-og-image installed, a docs page gets a generated share card', as
   expect(response.status()).toBe(200)
   expect(response.headers()['content-type']).toContain('image/png')
   expect(await page.locator('meta[name="twitter:image"]').getAttribute('content')).toBe(image)
+})
+
+// Wrong behaviour caught: the normal address answers an agent's `Accept: text/markdown` with Markdown. The host's
+// page cache ignores `Vary`, so every visitor would then get that Markdown instead of the page.
+test('Markdown only at the .md address: the page stays HTML for any Accept and links its twin', async ({ request }) => {
+  const page = await request.get(`${origin}/docs/einstieg`, { headers: { accept: 'text/markdown' } })
+  expect(page.headers()['content-type']).toContain('text/html')
+  expect(page.headers().link).toContain('</docs/einstieg.md>; rel="alternate"; type="text/markdown"')
+  const twin = await request.get(`${origin}/docs/einstieg.md`)
+  expect(twin.headers()['content-type']).toContain('text/markdown')
+  expect(await twin.text()).toContain('# ')
 })

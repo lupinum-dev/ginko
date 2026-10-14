@@ -8,14 +8,14 @@ import { useText } from './text'
 // One question of ::quiz. The answers are a Markdown task list in the content (`- [x]` right, `- [ ]` wrong); they
 // render as real radio buttons or checkboxes in a <fieldset> with a <legend>. Nothing says which answer is right
 // until "check" is pressed; the result and the optional `#explanation` slot then appear in an aria-live region.
-const props = defineProps<{ question: string; type?: string; position?: number }>()
+const props = defineProps<{ question: string; mode?: string; position?: number }>()
 const slots = useSlots()
 const t = useText()
 const id = useId()
 
 const quiz = inject(QUIZ_KEY, null)
 
-const multiple = computed(() => props.type === 'multiple')
+const multiple = computed(() => props.mode === 'multiple')
 
 /** The task-list items of the content: their text for the checks, their nodes for display. */
 function readItems() {

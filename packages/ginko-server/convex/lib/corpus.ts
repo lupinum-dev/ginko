@@ -5,7 +5,7 @@ import { sha256, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { MutationCtx } from '../_generated/server'
 import { checkGrants, normalizeEmail } from '../members'
-import { byteSize } from './content'
+import { storageOf } from './content'
 
 type CorpusEntry = { id: string; order?: number; data: Record<string, Json>; prints?: Record<string, Record<string, string>> }
 
@@ -41,11 +41,11 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
     for (const [index, row] of rows.entries()) {
       const data = withoutFiles(schema, brick, row.data)
       const prints = row.prints ?? {}
-      const size = byteSize(data) + byteSize(prints)
+      const { trees, bytes: size } = await storageOf(def.fields, data, prints)
       const fieldRevs = Object.fromEntries(Object.keys(def.fields).map((f) => [f, 1]))
       const id = await ctx.db.insert('entries', {
         site: site._id, brick, kind: def.kind === 'single' ? 'single' : 'item', order: row.order ?? index + 1,
-        data, rev: 1, fieldRevs, lifeRev: 1, prints, bytes: size,
+        data, rev: 1, fieldRevs, lifeRev: 1, prints, trees, bytes: size,
       })
       bytes += size
       count++

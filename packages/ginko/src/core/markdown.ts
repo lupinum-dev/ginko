@@ -14,7 +14,7 @@ import mermaid from 'comark/plugins/mermaid'
 import taskList from 'comark/plugins/task-list'
 import toc from 'comark/plugins/toc'
 import { bare, coreMessage, msg, type Described } from './messages.ts'
-import { BLOCKED_TAGS, checkComponentTree, componentSlotNodes, type ComponentRegistry } from './components.ts'
+import { checkComponentTree, componentSlotNodes, isBlockedTag, type ComponentRegistry } from './components.ts'
 import { isSafeHref } from './href.ts'
 import type { Json } from './types.ts'
 
@@ -41,7 +41,7 @@ export type TocLink = { id: string; depth: number; text: string; children?: TocL
  * - `basic`: paragraphs, headings h2–h4, lists (also task lists, `- [ ] item`), quotes, alerts, dividers, footnotes. Emoji shortcodes (`:tada:`) work in every profile.
  * - `rich`: tables, images, code blocks, math (`$x^2$`, `$$…$$`), mermaid diagrams (a `mermaid` code fence).
  * - `page`: h1, h5, h6 and components (`::callout`, `:badge[…]`).
- * Raw HTML is never parsed: `<b>` stays text. Links and images must pass `isSafeHref`.
+ * Raw HTML is never parsed: `<b>` stays text. Links and images must pass `isSafeHref`. Attributes: see `attributeProblem`.
  */
 export const MARKDOWN_PROFILES = ['inline', 'basic', 'rich', 'page'] as const
 export type MarkdownProfile = (typeof MARKDOWN_PROFILES)[number]
@@ -55,23 +55,117 @@ const TAGS: Record<Exclude<MarkdownProfile, 'page'>, ReadonlySet<string>> = {
   basic: new Set(BASIC_TAGS),
   rich: new Set([...BASIC_TAGS, 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'img', 'pre', 'math', 'mermaid']),
 }
-// Component syntax can name any tag (`::script`). Without a component registry `page` accepts any tag
-// except BLOCKED_TAGS (components.ts); with one, only the registered components (ParseOptions.components).
-/**
- * Attributes a text may not set (besides `on*`): `style` paints over the page, `id` can clash with the page's own
- * ids (`__NUXT_DATA__` blanks it). Heading ids stay (the parser makes them), and so do props a registry declares.
- */
-const BLOCKED_ATTRIBUTES: ReadonlySet<string> = new Set(['style', 'id'])
+// Component syntax can name any tag (`::script`). Without a component registry `page` accepts any tag that is
+// not blocked (isBlockedTag, components.ts); with one, only the registered components (ParseOptions.components).
 
-/** What the parser itself writes: heading ids, footnote ids (`fn-1`, `fnref-1`) and the `text-align` of table cells. */
-function parserMade(tag: string, key: string, raw: unknown): boolean {
-  if (typeof raw !== 'string') return false
-  if (key === 'id') return (/^h[1-6]$/.test(tag) && !raw.startsWith('__')) || ((tag === 'a' || tag === 'li') && /^fn(ref)?-[\w-]+$/.test(raw))
-  return (tag === 'th' || tag === 'td') && /^text-align:(left|right|center)$/.test(raw)
+type ValueCheck = (value: unknown) => boolean
+const anyValue: ValueCheck = () => true
+const oneOf = (values: readonly string[]): ValueCheck => (value) => typeof value === 'string' && values.includes(value)
+const matching = (pattern: RegExp): ValueCheck => (value) => typeof value === 'string' && pattern.test(value)
+
+/** Heading ids: comark's, ours (headingAnchors) or `{#id}`. Not `__…`, the prefix of Nuxt's own ids (`__nuxt`, `__NUXT_DATA__`). */
+const heading = { id: (value: unknown) => typeof value === 'string' && !value.startsWith('__') }
+/** The ids of the footnotes plugin: `fnref-1` on the reference, `fn-1` on the note. */
+const footnoteId = matching(/^fn(ref)?-[\w-]+$/)
+/** A link's `rel` without `opener`, which would let the opened page navigate the site's tab. */
+const rel: ValueCheck = (value) => typeof value === 'string' && value.trim().split(/\s+/).every((token) => /^[a-z-]*$/.test(token) && token !== 'opener')
+const textAlign = matching(/^text-align:(left|right|center)$/)
+/**
+ * A `class` of these tokens only: the classes Markdown's plugins write. A text never picks a class of its own, so it
+ * cannot take a rule of the site's CSS (`.ginko-quiz-input`, a Tailwind `fixed inset-0`), which would turn a link
+ * into an invisible box over the page.
+ */
+const classes = (...tokens: string[]): ValueCheck => (value) => typeof value === 'string' && value.trim() !== '' && value.trim().split(/\s+/).every((token) => tokens.includes(token))
+/** What Shiki writes on a highlighted line or token: colours, font style and the line's display, nothing that moves a box. */
+const SHIKI_DECLARATION = /^(?:(?:color|--shiki-(?:light|dark)(?:-bg)?)\s*:\s*#[0-9a-f]{3,8}|(?:--shiki-(?:light|dark)-)?(?:font-style|font-weight|text-decoration)\s*:\s*[\w-]+|display\s*:\s*inline(?:-block)?)$/i
+const shikiStyle: ValueCheck = (value) => typeof value === 'string' && value.split(';').every((d) => d.trim() === '' || SHIKI_DECLARATION.test(d.trim()))
+
+/**
+ * Per tag, the attributes Markdown and its plugins write, with the values they write; every element also takes the
+ * global ones (isGlobalAttribute). `class` holds the plugins' own classes: task lists, footnotes, math, the code
+ * fence's `language-…` and Shiki's. `span`, `example` and the `class` of `pre` come from plugins that run after the
+ * profile check on files (Shiki with the themes of @lupinum/ginko-content, its ```md preview fence), and the renderer
+ * sees them; `srcset` and `sizes` are the WebP copies of a file's image (@lupinum/ginko-content).
+ */
+const TAG_ATTRIBUTES: Readonly<Record<string, Readonly<Record<string, ValueCheck>>>> = {
+  a: { href: anyValue, target: oneOf(['_blank']), rel, id: footnoteId, class: classes('footnote-backref') },
+  img: { src: anyValue, alt: anyValue, width: anyValue, height: anyValue, srcset: anyValue, sizes: anyValue },
+  input: { type: oneOf(['checkbox']), checked: anyValue, disabled: anyValue, class: classes('task-list-item-checkbox') },
+  ul: { class: classes('contains-task-list') },
+  ol: { start: anyValue, class: classes('contains-task-list', 'footnotes-list') },
+  li: { id: footnoteId, class: classes('task-list-item') },
+  sup: { class: classes('footnote-ref') },
+  section: { class: classes('footnotes') },
+  th: { style: textAlign },
+  td: { style: textAlign },
+  pre: { language: anyValue, filename: anyValue, highlights: anyValue, meta: anyValue, class: classes('shiki', 'shiki-themes', 'github-light', 'catppuccin-mocha', 'dark:catppuccin-mocha') },
+  code: { class: matching(/^language-\S+$/) },
+  // comark's renderer mounts the component an `as` names in place of the element: only the alert plugin's types (`> [!TIP]`).
+  blockquote: { as: oneOf(['note', 'tip', 'important', 'warning', 'caution']) },
+  math: { content: anyValue, class: oneOf(['math inline', 'math block']) },
+  mermaid: { content: anyValue },
+  h1: heading, h2: heading, h3: heading, h4: heading, h5: heading, h6: heading,
+  // A component's slot (`#title`): comark's `template` node with the slot's name.
+  template: { name: anyValue },
+  span: { style: shikiStyle, class: classes('line', 'highlight') },
+  example: { preview: anyValue },
 }
 
-/** Attributes that hold an address; their value must pass `isSafeHref`. */
+/**
+ * `title`, `lang`, `dir` and `aria-*`: what every element may carry (`**new**{lang="en"}`). Not `class` (see `classes`)
+ * and not `data-*`: both are hooks of the site's CSS, `data-v-…` even of Vue's scoped styles.
+ */
+function isGlobalAttribute(key: string): boolean {
+  return key === 'title' || key === 'lang' || key === 'dir' || /^aria-[a-z0-9-]+$/.test(key)
+}
+
+/** Attributes that hold an address; their value must pass `isSafeHref` (`srcset`: each address in it). */
 export const URL_PROPS: ReadonlySet<string> = new Set(['href', 'src', 'srcset', 'action', 'formaction', 'poster', 'xlink:href'])
+
+function safeAddress(key: string, value: unknown): boolean {
+  if (typeof value !== 'string') return false
+  if (key !== 'srcset') return isSafeHref(value)
+  return value.split(',').every((candidate) => {
+    const [url, descriptor, ...rest] = candidate.trim().split(/\s+/)
+    return url !== undefined && isSafeHref(url) && (descriptor === undefined || /^\d+(\.\d+)?[wx]$/.test(descriptor)) && rest.length === 0
+  })
+}
+
+function isJson(value: string): boolean {
+  try {
+    JSON.parse(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Whether a text may give `tag` the attribute `name` (`:name` is comark's bound form) with `value`: the one allowlist
+ * of the parser (profileCheck) and the renderer (`GinkoMarkdown`). `blocked` for an attribute that is not allowed,
+ * `unsafe` for an address that fails `isSafeHref`. Every element takes the global attributes (isGlobalAttribute); on top,
+ * a component the registry declares takes exactly its declared props, and any other tag what Markdown and its plugins
+ * write there (TAG_ATTRIBUTES). So `on*` handlers, DOM sinks (`outerHTML`), `style`, `id`, a `class` or `data-*` of the
+ * text's own, Vue's `.`/`^` prefixes and comark's `as` outside an alert are refused, and a component without a registry
+ * gets the global attributes only.
+ * A bound value must be JSON: comark parses it and looks any other value up in its render data. A bound address is
+ * never allowed, and a bound value never passes a value rule (only `:checked="true"` and declared props take one).
+ * A declared prop of type `image` is an address like `src`.
+ */
+export function attributeProblem(tag: string, name: string, value: unknown, registry?: ComponentRegistry): 'blocked' | 'unsafe' | undefined {
+  const bound = name.startsWith(':')
+  const key = bound ? name.slice(1) : name
+  const declared = registry !== undefined && Object.hasOwn(registry, tag) ? registry[tag]!.props : undefined
+  // A declared prop of type image holds an address whatever its name (a card's `image`).
+  const address = URL_PROPS.has(key) || (declared !== undefined && Object.hasOwn(declared, key) && declared[key]!.type === 'image')
+  if (bound && (address || (typeof value === 'string' && !isJson(value)))) return 'blocked'
+  const rules = declared ? undefined : Object.hasOwn(TAG_ATTRIBUTES, tag) ? TAG_ATTRIBUTES[tag]! : undefined
+  const check = declared ? (Object.hasOwn(declared, key) ? anyValue : undefined) : rules && Object.hasOwn(rules, key) ? rules[key] : undefined
+  if (!check) return isGlobalAttribute(key) ? undefined : 'blocked'
+  if (address) return safeAddress(key, value) ? undefined : 'unsafe'
+  return (bound ? check === anyValue : check(value)) ? undefined : 'blocked'
+}
+
 export const UNSAFE_LINK = msg('markdown.unsafeLink').message
 const MAX_NODES = 20000
 
@@ -92,7 +186,7 @@ export interface ParseOptions {
   frontmatter?: boolean
   /** Extra comark plugins, e.g. Shiki highlighting. They run after the profile check. */
   plugins?: ComarkPlugin[]
-  /** The site's component registry. With the `page` profile, only these components are allowed, with checked props, parents and children. Without it `page` accepts any tag except the blocked ones. */
+  /** The site's component registry. With the `page` profile, only these components are allowed, with checked props, parents and children. Without it `page` accepts any tag except the blocked ones, with the global attributes only. */
   components?: ComponentRegistry
 }
 
@@ -185,20 +279,21 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
       let count = 0
       const fail = (problem: Described) => { if (!found.has(problem.message)) { found.add(problem.message); problems.push(problem) } }
       const slots = profile === 'page' && registry ? componentSlotNodes(state.tree.nodes, registry) : new Set<Node>()
-      // A prop the registry declares for this component is the site's own contract and stays.
-      const declaredProp = (tag: string, key: string) => !!registry && Object.hasOwn(registry, tag) && Object.hasOwn(registry[tag]!.props, key)
       const visit = (node: Node) => {
         count++
         if (typeof node === 'string' || node[0] === null) return
         const [tag, props, ...children] = node
-        if (BLOCKED_TAGS.has(tag) && !slots.has(node)) fail(msg('markdown.tagBlocked', { tag }))
+        const component = registry && Object.hasOwn(registry, tag) ? registry[tag]! : undefined
+        // A refused tag goes with its attributes: one problem is enough.
+        if (isBlockedTag(tag, profile === 'page' ? registry : undefined) && !slots.has(node)) fail(msg('markdown.tagBlocked', { tag }))
         else if (allowed && !allowed.has(tag)) fail(msg('markdown.tagNotInProfile', { tag, allowed: { key: `markdown.profile.${profile}` } }))
-        for (const [name, raw] of Object.entries(props)) {
+        else for (const [name, raw] of Object.entries(props)) {
+          const problem = attributeProblem(tag, name, raw, registry)
           // `:name` is comark's bound form of the same prop.
-          const key = name.replace(/^:/, '').toLowerCase()
-          if (key.startsWith('on')) fail(msg('markdown.propBlocked', { prop: key }))
-          else if (BLOCKED_ATTRIBUTES.has(key) && !declaredProp(tag, key) && !parserMade(tag, key, raw)) fail(msg('markdown.propBlocked', { prop: key }))
-          else if (URL_PROPS.has(key) && (typeof raw !== 'string' || !isSafeHref(raw))) fail(msg('markdown.unsafeLink'))
+          const key = name.replace(/^:/, '')
+          if (problem === 'unsafe') fail(msg('markdown.unsafeLink'))
+          else if (problem && component && !Object.hasOwn(component.props, key)) fail(msg('component.propUnknown', { tag, prop: key }))
+          else if (problem) fail(msg('markdown.propBlocked', { prop: key }))
         }
         children.forEach(visit)
       }

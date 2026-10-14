@@ -148,7 +148,7 @@
     "devPushLocalOnly": "devPush gibt es nur in der lokalen Plattform.",
     "siteNameMismatchInSchema": "Der Seitenname im Schema passt nicht.",
     "localOnly": "Nur lokal.",
-    "siteNotStartedDev": "Die Seite gibt es nicht. Zuerst `ginko dev` starten.",
+    "siteNotStartedDev": "Die Seite gibt es nicht. Zuerst `pnpm local:dev` starten.",
     "siteNotPushedSchema": "Die Seite gibt es nicht. Zuerst das Schema pushen.",
     "backupFoldersInconsistent": "Die Ordner der Sicherung sind nicht stimmig.",
     "entryBrickMissingFromSchema": "Der Eintrag {id} gehört zu „{brick}“, das es im Schema nicht gibt.",
@@ -159,7 +159,7 @@
     "nameTooLong": "Der Name ist zu lang (höchstens {nameMax} Zeichen).",
     "siteAddressNotUrl": "Die Adresse der Seite ist keine gültige URL (http oder https).",
     "siteLocalesInvalid": "Die Sprachen müssen 1 bis {max} verschiedene Sprachkürzel sein, z. B. „de“, „en“ oder „pt-BR“.",
-    "siteTimezoneInvalid": "Ungültige Zeitzone „{timezone}“ (erwartet wird z. B. „Europe/Vienna“).",
+    "siteTimezoneInvalid": "Ungültige Zeitzone „{timeZone}“ (erwartet wird z. B. „Europe/Vienna“).",
     "siteCurrencyInvalid": "Ungültige Währung „{currency}“ (erwartet wird ein ISO-4217-Code wie „EUR“ oder „CHF“).",
     "addressTaken": "Diese Adresse ist schon vergeben.",
     "onlyAdminsCreateSites": "Nur Admins legen Seiten an.",
@@ -198,7 +198,6 @@
     "uploadRetrying": "Das Bild konnte nicht verarbeitet werden. Wir versuchen es erneut.",
     "uploadHeicUnreadable": "Dieses HEIC-Foto kann nicht gelesen werden. Bitte speichere es als JPEG oder PNG und lade es erneut hoch.",
     "uploadNotAnImage": "Diese Datei ist kein lesbares Bild.",
-    "siteUrlNotWeb": "Die Adresse der Website in der Config muss mit https:// oder http:// beginnen.",
     "siteUrlNotAllowed": "Diese Adresse der Website ist nicht erlaubt. Sie muss eine öffentliche https://-Adresse sein."
   },
   "history": {
@@ -249,7 +248,7 @@
     "scheduled": "Der Eintrag ist ein Entwurf und geht am {at, date, ::MMMd}, {at, time, ::Hm} Uhr online (Zeitzone {zone}).",
     "noRouteLocale": "„{brick}“ hat in dieser Sprache keine eigene Seite. Die Einträge erscheinen nur innerhalb anderer Seiten.",
     "noRoute": "„{brick}“ hat keine eigene Seite. Die Einträge erscheinen nur innerhalb anderer Seiten.",
-    "notVisible": "Der Zeitraum des Eintrags ist abgelaufen oder noch nicht erreicht, deshalb zeigt ihn die Website nicht.",
+    "notVisible": "Das Datum des Eintrags ist vorbei, deshalb zeigt ihn die Website nicht mehr.",
     "translationHidden": "Für {locale} {what, select, both {fehlen oder sind veraltet} missing {fehlen} other {sind veraltet}} Übersetzungen, die „{brick}“ verlangt. Der Eintrag erscheint dort deshalb nicht.",
     "translationFallback": "Für {locale} {what, select, both {fehlen oder sind veraltet} missing {fehlen} other {sind veraltet}} Übersetzungen. Die Website zeigt dort stattdessen den Text in der Hauptsprache ({main}).",
     "notReleased": "Die Struktur der Website wurde noch nie veröffentlicht. Erst nach dem ersten Release ist der Inhalt für die Website bestimmt."

@@ -1,0 +1,4 @@
+# pnpm 11 stops `pnpm install` with an error until you say which packages may run install scripts.
+# esbuild (used by Nuxt and Vite) downloads its binary this way. npm and bun ignore this file.
+allowBuilds:
+  esbuild: true

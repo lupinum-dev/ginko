@@ -1,13 +1,13 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, isTranslatable, labelOf as labelIn, isVisible, ordered, sha256, slugify, todayIn, uniqueSlug, validate, type Schema } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, isTranslatable, labelOf as labelIn, deletesExpired, isVisible, ordered, sha256, slugify, todayIn, uniqueSlug, validate, type Schema } from '@lupinum/ginko/internal'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, authorizeWriter, byOf, checkRev, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor, type By } from './lib/access'
-import { byteSize, fileIdsOf, leavesOf, mergeField, nextPrints, rootOf, withoutLocale, type Data, type Prints } from './lib/content'
+import { fileIdsOf, leavesOf, mergeField, nextPrints, rootOf, storageOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { msg, recorded, type HistoryMsg, type Recorded } from './lib/history'
 import { isLocale, t } from './lib/i18n'
 import { countersOf, DELETED_KEPT, softRemove, writeCounters, type Counters } from './lib/lifecycle'
@@ -358,9 +358,9 @@ function roomPlan(actor: Actor, brick: CollectionBrick, rows: Doc<'entries'>[]):
   const live = rows.filter((r) => !r.deletedAt)
   if (live.length < brick.max) return []
   const need = live.length - brick.max + 1
-  const today = todayIn((actor.site.schema as Schema).timezone)
+  const today = todayIn((actor.site.schema as Schema).timeZone)
   // A draft is never expired: it is not published yet (SPEC 15). It still takes a place in `max`.
-  const expired = brick.autoRemoveExpired ? live.filter((r) => r.state !== 'draft' && !isVisible(brick as Brick, r.data, today)) : []
+  const expired = deletesExpired(brick) ? live.filter((r) => r.state !== 'draft' && !isVisible(brick as Brick, r.data, today)) : []
   if (expired.length < need) fail('INVALID', 'errors.collectionFull', { max: brick.max }, { max: brick.max })
   return expired.slice(0, need)
 }
@@ -401,7 +401,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const removing = roomPlan(actor, brick, rows)
     const c = countersOf(actor.site)
     if (c.entryCount - removing.length >= BUDGET.entries) fail('TOO_LARGE', 'errors.siteEntryLimitReached')
-    const size = byteSize(data) + byteSize(prints)
+    const { trees, bytes: size } = await storageOf(brick.fields, data, prints)
     if (size > BUDGET.entryBytes) fail('TOO_LARGE', 'errors.entryTooLarge')
     if (c.bytes + size > BUDGET.siteBytes) fail('TOO_LARGE', 'errors.siteStorageLimitReached')
     const files = fileIdsOf(brick.fields, data)
@@ -429,7 +429,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const order = Math.max(0, ...rows.map((r) => r.order)) + 1
     const entry = await ctx.db.insert('entries', {
       site: actor.site._id, brick: args.brick, kind: 'item', order, data, rev: 1,
-      fieldRevs: Object.fromEntries(Object.keys(brick.fields).map((name) => [name, 1])), lifeRev: 1, prints, bytes: size,
+      fieldRevs: Object.fromEntries(Object.keys(brick.fields).map((name) => [name, 1])), lifeRev: 1, prints, trees, bytes: size,
       ...(draft ? { state: 'draft' as const } : {}),
     })
     if (at !== undefined) await ctx.db.patch(entry, { publishAt: at, publishJob: await ctx.scheduler.runAt(at, internal.entries.publishDue, { entry, at }) })
@@ -879,5 +879,36 @@ export const whyNotPublic = query({
     if (!locale) fail('INVALID', 'errors.languageNotOnSite', { locale: args.locale ?? '' })
     if (!Object.hasOwn(schema.bricks, entry.brick)) fail('NOT_FOUND', 'errors.entryNotFound')
     return { locale, ...publicness(actor.site, entry.brick, entry, locale) }
+  },
+})
+
+/**
+ * Writes every entry's Markdown trees (and with them `bytes`) again from its data, once per deployment after the
+ * parser's output changed: a row keeps the trees of the parser it was saved with (`trees` in schema.ts). Works
+ * through 10 entries at a time and schedules itself until all are done; running it again is safe. Entries of a
+ * brick the schema no longer has keep what they have.
+ */
+export const rebuildTrees = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args): Promise<null> => {
+    const page = await ctx.db.query('entries').paginate({ cursor: args.cursor ?? null, numItems: 10 })
+    const sites = new Map<Id<'sites'>, Doc<'sites'> | null>()
+    const changed = new Map<Id<'sites'>, number>()
+    for (const row of page.page) {
+      if (!sites.has(row.site)) sites.set(row.site, await ctx.db.get(row.site))
+      const schema = sites.get(row.site)?.schema as Schema | undefined
+      const brick = schema && Object.hasOwn(schema.bricks, row.brick) ? schema.bricks[row.brick]! : undefined
+      if (!brick) continue
+      const { trees, bytes } = await storageOf(brick.fields, row.data as Data, row.prints as Prints)
+      if (trees === row.trees && bytes === row.bytes) continue
+      await ctx.db.patch(row._id, { trees, bytes })
+      changed.set(row.site, (changed.get(row.site) ?? 0) + bytes - row.bytes)
+    }
+    for (const [id, delta] of changed) {
+      const site = sites.get(id)!
+      await ctx.db.patch(id, { bytes: site.bytes + delta, contentRev: site.contentRev + 1 })
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.entries.rebuildTrees, { cursor: page.continueCursor })
+    return null
   },
 })

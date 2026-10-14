@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { previewToc } from '../lib/previewToc'
+import { markdownComponents } from '../lib/markdownComponents'
 // A ```md preview fence (ginko-content parses it into `example`): what the Markdown renders, then the Markdown
 // itself, as two tabs in one frame. The preview arrives as a parsed tree in a prop; the code block is the slot.
 // One copy button serves both tabs (the code block's own is hidden in CSS), so it sits in the same place in each.
@@ -25,11 +27,11 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 <template>
   <div ref="root" class="docs-example">
-    <Tabs layout="line">
-      <Tab :label="t('docs.example.preview')">
+    <Tabs variant="line">
+      <Tab :title="t('docs.example.preview')">
         <GinkoMarkdown :value="tree" :components="markdownComponents" class="docs-example-preview" />
       </Tab>
-      <Tab :label="t('docs.example.source')">
+      <Tab :title="t('docs.example.source')">
         <slot />
       </Tab>
     </Tabs>

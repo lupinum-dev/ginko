@@ -14,7 +14,7 @@ export const appearance = f.choice({ de: 'Darstellung', en: 'Appearance' }, {
 export const title = f.text({ de: 'Titel', en: 'Title' }, { optional: true, max: 120 })
 
 /** An Iconify name for tab, card, read-more and timeline-item (drawn by SiteIcon). */
-export const iconifyIcon = f.text({ de: 'Symbol', en: 'Icon' }, { optional: true, max: 60, translate: false, hint: { de: 'Ein Iconify-Name, zum Beispiel lucide:book-open. Braucht @nuxt/icon (im Docs-Preset enthalten).', en: 'An Iconify name, for example lucide:book-open. Needs @nuxt/icon (included in the docs preset).' } })
+export const iconifyIcon = f.text({ de: 'Symbol', en: 'Icon' }, { optional: true, max: 60, translate: false, hint: { de: 'Ein Iconify-Name, zum Beispiel lucide:book-open. Braucht @nuxt/icon (in der Doku-Ebene enthalten).', en: 'An Iconify name, for example lucide:book-open. Needs @nuxt/icon (included in the docs layer).' } })
 
 /** Callout symbol: a built-in name or an Iconify name (with a colon). Names are CALLOUT_ICON_NAMES in runtime/components/icons.ts. */
 export const calloutIcon = f.text({ de: 'Symbol', en: 'Icon' }, { optional: true, max: 60, translate: false, hint: {

@@ -24,8 +24,8 @@ const retire = (s: Schema, path: string, rule: Schema['retired'][string]) => {
   s.retired[path] = rule
 }
 
-function migration(id: string, brick: string, fills: string, from: (entry: Record<string, unknown>) => unknown): MigrationDescriptor {
-  return { id, brick, fills, fingerprint: migrationFingerprint(brick, fills, from) }
+function migration(id: string, brick: string, fills: string, compute: (entry: Record<string, unknown>) => unknown): MigrationDescriptor {
+  return { id, brick, fills, fingerprint: migrationFingerprint(brick, fills, compute) }
 }
 
 // A production schema that already runs a migration and the field it filled.
@@ -301,7 +301,7 @@ describe('serializeSchema', () => {
   it('produces plain JSON that survives a round trip, with migrations as descriptors', () => {
     const site: SiteInput = {
       ...restaurant,
-      migrations: { '2026-11-menu-tag-from-name': { brick: 'menu', fills: 'tag', from: (e) => e.name } },
+      migrations: { '2026-11-menu-tag-from-name': { brick: 'menu', fills: 'tag', compute: (e) => e.name } },
     }
     const out = serializeSchema(site)
     expect(out.migrations).toEqual([
@@ -311,20 +311,20 @@ describe('serializeSchema', () => {
   })
 
   it('marks retired fields and whole bricks with retired: true', () => {
-    const site: SiteInput = { ...restaurant, retired: { 'seo.description': { value: { de: 'Alt' } }, gallery: {} } }
+    const site: SiteInput = { ...restaurant, retired: { 'seo.description': { value: { de: 'Alt' } }, gallery: { drop: true } } }
     const out = serializeSchema(site)
     expect(out.bricks.seo?.fields.description?.retired).toBe(true)
     expect(out.bricks.seo?.fields.title?.retired).toBeUndefined()
     expect(out.bricks.gallery).toHaveProperty('retired', true)
-    expect(out.retired).toStrictEqual({ 'seo.description': { value: { de: 'Alt' } }, gallery: {} })
+    expect(out.retired).toStrictEqual({ 'seo.description': { value: { de: 'Alt' } }, gallery: { drop: true } })
   })
 
   it('sorts migrations by id', () => {
     const site: SiteInput = {
       ...restaurant,
       migrations: {
-        '2026-12-b-second': { brick: 'menu', fills: 'tag', from: (e) => e.name },
-        '2026-11-a-first': { brick: 'menu', fills: 'note', from: (e) => e.name },
+        '2026-12-b-second': { brick: 'menu', fills: 'tag', compute: (e) => e.name },
+        '2026-11-a-first': { brick: 'menu', fills: 'note', compute: (e) => e.name },
       },
     }
     expect(serializeSchema(site).migrations.map((m) => m.id)).toEqual(['2026-11-a-first', '2026-12-b-second'])
@@ -389,9 +389,24 @@ describe('checkSchema: retired fields (SPEC 2.5)', () => {
       problems: ['retired.seo.description.de: “Beschreibung” is too long (at most 160 characters).'],
     },
     {
-      name: 'a required retired field with neither from nor value',
-      mutate: (s: Schema) => { retire(s, 'seo.title', {}) },
-      problems: ['retired: required field “seo.title” needs from or value.'],
+      name: 'a required retired field with drop',
+      mutate: (s: Schema) => { retire(s, 'seo.title', { drop: true }) },
+      problems: ['retired: required field “seo.title” needs from or value, not drop.'],
+    },
+    {
+      name: 'an empty rule (the form before drop)',
+      mutate: (s: Schema) => { retire(s, 'seo.description', {} as never) },
+      problems: ['retired: “seo.description” needs exactly one of { from }, { value } or { drop: true }.'],
+    },
+    {
+      name: 'a retired brick with a value rule',
+      mutate: (s: Schema) => { s.bricks.gallery!.retired = true; s.retired.gallery = { value: 1 } },
+      problems: ['retired: brick “gallery” takes { drop: true }.'],
+    },
+    {
+      name: 'a sort direction other than asc or desc',
+      mutate: (s: Schema) => { Object.assign(s.bricks.events!, { order: { field: 'when', dir: 'up' } }) },
+      problems: ['events: order.dir must be “asc” or “desc”.'],
     },
   ])('reports: $name', ({ mutate, problems }) => {
     const s = base()
@@ -459,6 +474,11 @@ describe('checkSchema: limits and structure (SPEC 2.1)', () => {
         for (let i = 0; i < 60; i++) fieldsOf(s, 'gallery')[`f${i}`] = { type: 'boolean', label: 'Feld' }
       },
       problems: ['gallery: too many fields.'],
+    },
+    {
+      name: 'a schema without week',
+      mutate: (s: Schema) => { delete (s as Partial<Schema>).week },
+      problems: ['week must be { firstDay: 1 to 7, weekend: [days 1 to 7] } (1 = Monday, 7 = Sunday).'],
     },
     {
       name: 'a schema over 256 KiB of ASCII',

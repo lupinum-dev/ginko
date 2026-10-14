@@ -25,22 +25,3 @@ export function findEntryByPath(bundle: Bundle, path: string): EntryMatch | unde
   }
   return undefined
 }
-
-/**
- * Whether an `Accept` header asks for Markdown over HTML: `text/markdown` must be named with a q-value above
- * HTML's (explicit `text/html`, else `text/*`, else the catch-all); on a tie the one listed first wins.
- * The catch-all alone never counts.
- */
-export function prefersMarkdown(accept: string | null | undefined): boolean {
-  if (!accept) return false
-  const ranges = accept.split(',').map((part, order) => {
-    const [type = '', ...params] = part.split(';').map((s) => s.trim())
-    const q = params.map((p) => /^q=([\d.]+)$/i.exec(p)?.[1]).find((v) => v !== undefined)
-    return { type: type.toLowerCase(), q: q === undefined ? 1 : Number(q), order }
-  })
-  const md = ranges.find((r) => r.type === 'text/markdown')
-  if (!md || !(md.q > 0)) return false
-  const html = ranges.find((r) => r.type === 'text/html') ?? ranges.find((r) => r.type === 'text/*') ?? ranges.find((r) => r.type === '*/*')
-  if (!html || !(html.q > 0)) return true
-  return md.q > html.q || (md.q === html.q && md.order < html.order)
-}

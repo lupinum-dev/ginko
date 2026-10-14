@@ -146,7 +146,7 @@
     "devPushLocalOnly": "devPush solo existe en la plataforma local.",
     "siteNameMismatchInSchema": "El nombre del sitio en el esquema no coincide.",
     "localOnly": "Solo local.",
-    "siteNotStartedDev": "El sitio no existe. Inicia primero `ginko dev`.",
+    "siteNotStartedDev": "El sitio no existe. Inicia primero `pnpm local:dev`.",
     "siteNotPushedSchema": "El sitio no existe. Sube primero el esquema.",
     "backupFoldersInconsistent": "Las carpetas de la copia de seguridad no son coherentes.",
     "entryBrickMissingFromSchema": "La entrada {id} pertenece a “{brick}”, que no está en el esquema.",
@@ -157,7 +157,7 @@
     "nameTooLong": "El nombre es demasiado largo (máximo {nameMax} caracteres).",
     "siteAddressNotUrl": "La dirección del sitio no es una URL válida (http o https).",
     "siteLocalesInvalid": "Los idiomas deben ser de 1 a {max} etiquetas de idioma distintas, p. ej. “de”, “en” o “pt-BR”.",
-    "siteTimezoneInvalid": "Zona horaria no válida “{timezone}” (p. ej. “Europe/Vienna”).",
+    "siteTimezoneInvalid": "Zona horaria no válida “{timeZone}” (p. ej. “Europe/Vienna”).",
     "siteCurrencyInvalid": "Moneda no válida “{currency}” (un código ISO 4217 como “EUR” o “CHF”).",
     "addressTaken": "Esta dirección ya está en uso.",
     "onlyAdminsCreateSites": "Solo los administradores crean sitios.",
@@ -198,7 +198,6 @@
     "uploadRetrying": "No se pudo procesar la foto. Lo intentamos de nuevo.",
     "uploadHeicUnreadable": "No se puede leer esta foto HEIC. Guárdala como JPEG o PNG y vuelve a subirla.",
     "uploadNotAnImage": "Este archivo no es una imagen legible.",
-    "siteUrlNotWeb": "La dirección del sitio en la configuración debe empezar por https:// o http://.",
     "siteUrlNotAllowed": "Esta dirección del sitio no se puede usar. Debe ser una dirección pública con https://."
   },
   "history": {
@@ -249,7 +248,7 @@
     "scheduled": "La entrada es un borrador y se publica el {at, date, ::MMMd} a las {at, time, ::Hm} (zona horaria {zone}).",
     "noRouteLocale": "“{brick}” no tiene página propia en este idioma. Sus entradas solo aparecen dentro de otras páginas.",
     "noRoute": "“{brick}” no tiene página propia. Sus entradas solo aparecen dentro de otras páginas.",
-    "notVisible": "El período de la entrada ha terminado o aún no ha empezado, así que el sitio web no la muestra.",
+    "notVisible": "La fecha de la entrada ya pasó, así que el sitio web ya no la muestra.",
     "translationHidden": "Para {locale}, {what, select, both {faltan o están desactualizadas las traducciones} missing {faltan las traducciones} other {están desactualizadas las traducciones}} que “{brick}” requiere. La entrada no aparece allí.",
     "translationFallback": "Para {locale}, {what, select, both {faltan traducciones o están desactualizadas} missing {faltan traducciones} other {las traducciones están desactualizadas}}. El sitio web muestra allí el texto en el idioma principal ({main}).",
     "notReleased": "La estructura del sitio web nunca se ha publicado. El contenido solo está pensado para el sitio web después de la primera versión."

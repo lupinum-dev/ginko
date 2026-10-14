@@ -1,21 +1,28 @@
-// The bricks for ginko.config.ts. Docs pages live at <base>/<slug> in every language (main language
+// The bricks for ginko.config.ts. Docs pages live at <base>/<slug> in every locale (main locale
 // unprefixed); the layer serves its page at that address. The start page, the blog and the changelog are optional.
 import { collection, f, single, type Locale } from '@lupinum/ginko'
 import { BLOG_PATH, CHANGELOG_PATH } from '../shared/paths.ts'
 
-type Locales = readonly [Locale, ...Locale[]]
+/** The registry of the Markdown components the layer renders, for `components` in `defineSite`. */
+export { components } from '@lupinum/ginko-components/registry'
+
+/** The site's locales, main locale first. The same list as `locales` in `defineSite`, as a plain array or a tuple. */
+type Locales = readonly Locale[]
 
 /**
- * `path` in every language: `{ en: '/blog', de: '/de/blog' }` when `en` is the main language. The main language has no
- * prefix; every other language gets `/<locale>` in front (ginko-i18n's rule).
+ * `path` in every locale: `{ en: '/blog', de: '/de/blog' }` when `en` is the main locale. The main locale has no
+ * prefix; every other locale gets `/<locale>` in front (ginko-i18n's rule).
  */
-function localized(locales: readonly Locale[], path: string): Partial<Record<Locale, string>> {
+function localized<P extends `/${string}`>(locales: Locales, path: P): Record<Locale, P> {
   const [main] = locales
-  return Object.fromEntries(locales.map((l) => [l, l === main ? path : `/${l}${path}`]))
+  if (main === undefined) throw new Error('[ginko-docs] `locales` is empty. Fix: pass the same list as `locales` in defineSite.')
+  // `/<locale>` + a path still matches the path's pattern, e.g. `/${string}/[slug]`.
+  return Object.fromEntries(locales.map((l) => [l, l === main ? path : `/${l}${path}`])) as Record<Locale, P>
 }
 
 /** `base`: where the docs live, default `/docs` (e.g. `/handbook` inside a larger site). */
-export function docsCollection(locales: Locales, opts: { label?: string; max?: number; base?: `/${string}` } = {}) {
+export function docsCollection(opts: { locales: Locales; label?: string; max?: number; base?: `/${string}` }) {
+  const { locales } = opts
   const base = opts.base ?? '/docs'
   return collection({
     label: opts.label ?? 'Docs',
@@ -75,11 +82,12 @@ export function docsHome() {
 
 /**
  * The optional blog: `{ posts, authors }`, spread into `bricks` in ginko.config.ts. Posts live at
- * /blog/<slug> (main language unprefixed, `/<l>/blog/<slug>` otherwise) and come out newest first.
+ * /blog/<slug> (main locale unprefixed, `/<l>/blog/<slug>` otherwise) and come out newest first.
  * Authors have no page; a post names them in `authors`. Files: `content/posts/<n>.<name>[.<locale>].md`
- * and `content/authors/<name>[.<locale>].yml`. Add `blog: blogPages(locales)` to `pages` as well.
+ * and `content/authors/<name>[.<locale>].yml`. Add `blog: blogPages({ locales })` to `pages` as well.
  */
-export function blogCollections(locales: Locales, opts: { max?: number } = {}) {
+export function blogCollections(opts: { locales: Locales; max?: number }) {
+  const { locales } = opts
   return {
     posts: collection({
       label: 'Posts',
@@ -91,7 +99,7 @@ export function blogCollections(locales: Locales, opts: { max?: number } = {}) {
         title: f.text('Title'),
         description: f.longtext('Description', { optional: true }),
         date: f.date('Date'),
-        authors: f.ref('Authors', { to: 'authors', multiple: true, optional: true }),
+        authors: f.refs('Authors', { to: 'authors', optional: true }),
         image: f.image('Image', { optional: true }),
         tags: f.list('Tags', { itemLabel: 'Tag', fields: { tag: f.text('Tag', { max: 40 }) }, max: 10, optional: true }),
         slug: f.slug('Address', { from: 'title' }),
@@ -117,13 +125,13 @@ export function blogCollections(locales: Locales, opts: { max?: number } = {}) {
 /**
  * The optional changelog: one page at /changelog with one entry per release, newest first. Entries have no
  * page of their own, the page links to each by anchor. Files: `content/changelog/<name>[.<locale>].md`
- * with `version` and `date` in the frontmatter (a dot in the name would read as a language: use `v1-2-0.md`). Add `changelog: changelogPages(locales)` to `pages` as well.
+ * with `version` and `date` in the frontmatter (a dot in the name would read as a language: use `v1-2-0.md`). Add `changelog: changelogPages({ locales })` to `pages` as well.
  */
-export function changelogCollection() {
+export function changelogCollection(opts: { max?: number } = {}) {
   return collection({
     label: 'Changelog',
     source: 'files',
-    max: 500,
+    max: opts.max ?? 500,
     order: { field: 'date', dir: 'desc' },
     fields: {
       version: f.text('Version', { max: 40, translate: false }),
@@ -134,5 +142,5 @@ export function changelogCollection() {
 }
 
 /** The list pages by locale, for `pages` in ginko.config.ts: the sitemap and the static build know them from there. */
-export const blogPages = (locales: Locales) => localized(locales, BLOG_PATH)
-export const changelogPages = (locales: Locales) => localized(locales, CHANGELOG_PATH)
+export const blogPages = (opts: { locales: Locales }) => localized(opts.locales, BLOG_PATH)
+export const changelogPages = (opts: { locales: Locales }) => localized(opts.locales, CHANGELOG_PATH)

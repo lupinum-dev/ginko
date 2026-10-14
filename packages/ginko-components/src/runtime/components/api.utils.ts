@@ -12,8 +12,8 @@ export function apiEntryId(group: string, name: string): string {
 }
 
 /** Everything after the name, built from the props so authors never type a signature: `?`, `: type`, ` = default`. */
-export function signatureTail(p: { type?: string; optional?: boolean; defaultValue?: string }): string {
-  return `${p.optional ? '?' : ''}${p.type ? `: ${p.type}` : ''}${p.defaultValue ? ` = ${p.defaultValue}` : ''}`
+export function signatureTail(p: { type?: string; defaultValue?: string }): string {
+  return `${p.type ? `: ${p.type}` : ''}${p.defaultValue ? ` = ${p.defaultValue}` : ''}`
 }
 
 /** Group labels in order of first appearance, each with the indexes of its parameters. */

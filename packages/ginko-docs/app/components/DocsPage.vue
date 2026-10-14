@@ -1,16 +1,20 @@
 <script setup lang="ts">
+import { docsEditUrl, docsIssueUrl, docsStudioUrl } from '../lib/docsPage'
+import { markdownComponents } from '../lib/markdownComponents'
 // One doc: breadcrumbs, title, lead and page actions, the text with the layer's Markdown components, the edit
 // link and date, previous/next; the table of contents beside it (or in the docs bar, see doc.vue).
 import type { ItemOf } from '@lupinum/ginko'
 import { articleLd, breadcrumbLd } from '@lupinum/ginko/internal'
 import type { docsCollection } from '@lupinum/ginko-docs/config'
 
-const props = defineProps<{ doc: ItemOf<ReturnType<typeof docsCollection>['fields']> }>()
-const { t, format } = useI18n()
+// `source` (the page's repository path) is in the bundle because this layer asks for it (hook `ginko:files`, nuxt.config.ts).
+const props = defineProps<{ doc: ItemOf<ReturnType<typeof docsCollection>['fields']> & { source?: string } }>()
+const { t, format, language } = useI18n()
 const { crumbs } = useDocs()
 const neighbors = useGinkoNeighbors('docs', () => props.doc.id)
-const locale = useGinkoLocale()
-const site = useRuntimeConfig().public.ginko as { url: string, site: string, platform: string }
+const site = useGinkoSite()
+// The Studio link needs the platform address and the site name: internal keys of the Ginko module, read by its own layer.
+const { platform, site: siteName } = useRuntimeConfig().public.ginko as { site: string, platform: string }
 const route = useRoute()
 useGinkoSeo(() => ({
   title: props.doc.data.title,
@@ -19,14 +23,14 @@ useGinkoSeo(() => ({
   type: 'article',
   jsonLd: [
     // articleLd fixes the type to Article; docs are TechArticle.
-    { ...articleLd({ title: props.doc.data.title, url: new URL(route.path, site.url).href, description: props.doc.data.description, modified: props.doc.updatedAt, lang: locale.value }), '@type': 'TechArticle' },
+    { ...articleLd({ title: props.doc.data.title, url: new URL(route.path, site.url).href, description: props.doc.data.description, modified: props.doc.updatedAt, lang: language.value }), '@type': 'TechArticle' },
     ...(crumbs.value.length > 1 ? [breadcrumbLd(crumbs.value.map((c) => ({ ...c, children: [] })), new URL(site.url).origin)] : []),
   ],
 }))
 
 const repository = useAppConfig().docs?.repository
 // A page from a file is edited in the repository; one stored on the platform in the Studio.
-const editUrl = computed(() => (props.doc.source ? docsEditUrl(repository, props.doc.source) : docsStudioUrl(site.platform, site.site, 'docs', props.doc.id)))
+const editUrl = computed(() => (props.doc.source ? docsEditUrl(repository, props.doc.source) : docsStudioUrl(platform, siteName, 'docs', props.doc.id)))
 const issueUrl = computed(() => docsIssueUrl(repository, props.doc.data.title, new URL(route.path, site.url).href))
 const updated = computed(() => props.doc.updatedAt && {
   iso: props.doc.updatedAt,

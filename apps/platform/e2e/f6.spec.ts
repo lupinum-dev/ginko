@@ -6,11 +6,10 @@ import { execFileSync } from 'node:child_process'
 import { addDays, todayIn } from '@lupinum/ginko/internal'
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { STATE } from './global-setup'
-import { pdfBytes, pngBytes, resetContent } from './local'
+import { pdfBytes, pngBytes, resetContent, serverDir } from './local'
 
 const today = () => todayIn('Europe/Vienna')
 const stamp = () => Date.now().toString(36)
-const platformDir = new URL('../', import.meta.url).pathname
 
 test.beforeEach(() => resetContent())
 
@@ -168,7 +167,7 @@ test.describe('Dateien', () => {
     await expect(page.getByText('Der Papierkorb ist leer.')).toBeVisible()
 
     // The old file stays in the storage for 30 days (`uploads.previous`); the Studio has no button for it yet.
-    const rows = execFileSync('npx', ['convex', 'data', 'uploads', '--limit', '500', '--order', 'desc', '--format', 'jsonLines'], { cwd: platformDir, encoding: 'utf8' })
+    const rows = execFileSync('npx', ['convex', 'data', 'uploads', '--limit', '500', '--order', 'desc', '--format', 'jsonLines'], { cwd: serverDir, encoding: 'utf8' })
     const row = rows.trim().split('\n').map((l) => JSON.parse(l) as { name: string; previous?: unknown[]; trashedAt?: number }).find((r) => r.name === pdf)
     expect(row?.previous).toHaveLength(1)
     expect(row?.trashedAt).toBeUndefined()

@@ -1,6 +1,6 @@
 // "Why is this not public?" (SPEC 4.2 entries.whyNotPublic): every reason, in plain words, that an
 // entry is missing on the website in one language. The rules are the ones the bundle applies
-// (drafts, `isVisible`, `missing: 'hide'`, `urlsFor`); this only names them.
+// (drafts, `isVisible`, `untranslated: 'hide'`, `urlsFor`); this only names them.
 import type { Brick, CollectionBrick, Locale } from '@lupinum/ginko'
 import { isVisible, todayIn, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
@@ -35,7 +35,7 @@ export interface Publicness {
 export function publicness(site: Doc<'sites'>, key: string, row: Doc<'entries'>, locale: Locale): Publicness {
   const schema = site.schema as Schema
   const brick = schema.bricks[key]!
-  const zone = schema.timezone
+  const zone = schema.timeZone
   const reasons: Reason[] = []
   const done = (): Publicness => ({ public: reasons.every((r) => !r.blocking), reasons })
   const reason = (code: Reason['code'], blocking: boolean, message: HistoryMsg, action?: ReasonAction): Reason =>

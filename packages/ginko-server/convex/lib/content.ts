@@ -1,7 +1,7 @@
 // Pure content rules of the write path (SPEC part 3 "Übersetzungs-Abdrücke", 4.2 save).
 // No Convex here, so every rule is testable with plain data.
 import type { Field, Fields, Json, Locale } from '@lupinum/ginko'
-import { effectiveAlt, isTranslatable, printOf, stableJson } from '@lupinum/ginko/internal'
+import { effectiveAlt, isTranslatable, markdownTrees, printOf, stableJson } from '@lupinum/ginko/internal'
 
 export type Data = Record<string, Json>
 export type Prints = Record<string, Record<string, string>>
@@ -190,6 +190,16 @@ export function remapFileIds(fields: Fields, data: Data, map: ReadonlyMap<string
 
 export function byteSize(value: unknown): number {
   return new TextEncoder().encode(JSON.stringify(value ?? null)).byteLength
+}
+
+/**
+ * What a row stores beside `data` and `prints`: the trees of its Markdown texts, which the bundle serves
+ * (`trees` in schema.ts), and its size for the budget. The trees count: one `## a` line of text is a
+ * tree several times its length, and the bundle reads and sends the trees.
+ */
+export async function storageOf(fields: Fields, data: Data, prints: Prints): Promise<{ trees: string; bytes: number }> {
+  const trees = JSON.stringify(await markdownTrees(fields, data))
+  return { trees, bytes: byteSize(data) + byteSize(prints) + new TextEncoder().encode(trees).byteLength }
 }
 
 function isRecord(v: unknown): v is Record<string, Json> {

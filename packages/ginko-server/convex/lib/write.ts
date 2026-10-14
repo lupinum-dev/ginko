@@ -1,12 +1,13 @@
 // Steps 6 and 7 of the shared write flow (SPEC 4.1): check files and budget, then write
 // the entry with its revisions, the change row and the file references in one place.
-import type { Field, FileField, Fields, Json } from '@lupinum/ginko'
+import type { Field, Fields, Json } from '@lupinum/ginko'
+import type { FileField } from '@lupinum/ginko/internal'
 import { checkLinks, fileProblem, linkTargets, stableJson, type LinkIssue, type Schema, type ValidateOptions } from '@lupinum/ginko/internal'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { bundleOf, type NewItem } from '../bundle'
 import { byOf, fail, type Actor } from './access'
-import { byteSize, fileIdsOf, usesOf, type Data, type Prints, type Use } from './content'
+import { fileIdsOf, storageOf, usesOf, type Data, type Prints, type Use } from './content'
 import type { Recorded } from './history'
 
 export { SITE_BUDGET as BUDGET } from '@lupinum/ginko/internal'
@@ -201,7 +202,7 @@ export interface EntryWrite {
 export async function commitEntry(ctx: MutationCtx, w: EntryWrite) {
   const { actor, entry } = w
   const site = actor.site
-  const bytes = byteSize(w.data) + byteSize(w.prints)
+  const { trees, bytes } = await storageOf(w.fields, w.data, w.prints)
   if (bytes > BUDGET.entryBytes) fail('TOO_LARGE', 'errors.entryTooLarge')
   const siteBytes = site.bytes - entry.bytes + bytes
   if (siteBytes > BUDGET.siteBytes) fail('TOO_LARGE', 'errors.siteStorageLimitReached')
@@ -210,7 +211,7 @@ export async function commitEntry(ctx: MutationCtx, w: EntryWrite) {
   const fieldRevs = { ...entry.fieldRevs }
   for (const root of w.roots) fieldRevs[root] = rev
   const contentRev = entry.state === 'draft' ? site.contentRev : site.contentRev + 1
-  await ctx.db.patch(entry._id, { data: w.data, prints: w.prints, rev, fieldRevs, bytes })
+  await ctx.db.patch(entry._id, { data: w.data, prints: w.prints, trees, rev, fieldRevs, bytes })
   await ctx.db.patch(site._id, { contentRev, bytes: siteBytes })
 
   const pick = (data: Data) => Object.fromEntries(w.roots.filter((r) => data[r] !== undefined).map((r) => [r, data[r]!]))

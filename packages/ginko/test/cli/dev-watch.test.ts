@@ -1,4 +1,4 @@
-// `ginko dev` with fake child processes: no Convex, no dev server. Only the config watcher and the pushes are real.
+// `pnpm local:dev` with fake child processes: no Convex, no dev server. Only the config watcher and the pushes are real.
 import { EventEmitter } from 'node:events'
 import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -17,7 +17,7 @@ const { runOnce } = await import('../../src/cli/local.ts')
 const CORE = pathToFileURL(join(import.meta.dirname, '../../src/core/index.ts')).href
 const config = (extra = '') => `import { collection, defineSite, f } from '${CORE}'
 export default defineSite({
-  site: 'demo', name: 'Demo', url: 'https://demo.example', timezone: 'Europe/Vienna',
+  site: 'demo', name: 'Demo', url: 'https://demo.example', timeZone: 'Europe/Vienna',
   locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
   bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 })${extra} }, max: 20, order: 'manual' }) },
 })
@@ -69,8 +69,8 @@ const atomicSave = (source: string) => {
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'ginko-dev-'))
-  mkdirSync(join(dir, 'apps/platform'), { recursive: true })
-  writeFileSync(join(dir, 'apps/platform/package.json'), '{"name":"@ginko/platform"}\n')
+  mkdirSync(join(dir, 'packages/ginko-server'), { recursive: true })
+  writeFileSync(join(dir, 'packages/ginko-server/package.json'), '{"name":"@lupinum/ginko-server"}\n')
   mkdirSync(join(dir, 'sites/demo'), { recursive: true })
   configPath = join(dir, 'sites/demo/ginko.config.ts')
   writeFileSync(configPath, config())
@@ -93,7 +93,7 @@ afterEach(async () => {
   vi.clearAllMocks()
 })
 
-describe('ginko dev watches the config', { timeout: 60_000 }, () => {
+describe('local:dev watches the config', { timeout: 60_000 }, () => {
   it('a save during the first push is pushed afterwards', async () => {
     start()
     await waitFor(() => pushes.length === 1, 'first push')
@@ -108,7 +108,7 @@ describe('ginko dev watches the config', { timeout: 60_000 }, () => {
     start()
     await waitFor(() => pushes.length === 1, 'first push')
     pushes[0]!.finish()
-    await waitFor(() => lines.some((l) => l.includes('ginko dev is running')), 'ready')
+    await waitFor(() => lines.some((l) => l.includes('local:dev is running')), 'ready')
     atomicSave(withField('second'))
     await waitFor(() => pushes.length === 2, 'push after the first rename')
     pushes[1]!.finish()
@@ -122,7 +122,7 @@ describe('ginko dev watches the config', { timeout: 60_000 }, () => {
     start()
     await waitFor(() => pushes.length === 1, 'first push')
     pushes[0]!.finish()
-    await waitFor(() => lines.some((l) => l.includes('ginko dev is running')), 'ready')
+    await waitFor(() => lines.some((l) => l.includes('local:dev is running')), 'ready')
     writeFileSync(configPath, withField('alpha'))
     await waitFor(() => pushes.length === 2, 'second push')
     writeFileSync(configPath, withField('beta'))
@@ -142,12 +142,12 @@ describe('ginko dev watches the config', { timeout: 60_000 }, () => {
     start()
     await waitFor(() => pushes.length === 1, 'first push')
     pushes[0]!.finish()
-    await waitFor(() => lines.some((l) => l.includes('ginko dev is running')), 'ready')
+    await waitFor(() => lines.some((l) => l.includes('local:dev is running')), 'ready')
     expect(lines.join('\n')).toMatch(/imports.*restarting/)
   })
 })
 
-describe('ginko dev with another target than the local one', () => {
+describe('local:dev with another target than the local one', () => {
   it('stops before it starts any process', async () => {
     vi.stubEnv('CONVEX_DEPLOYMENT', 'dev:something-cloud')
     await expect(runDev({ configPath, log: () => undefined })).rejects.toThrow(/stopped.*dev:something-cloud/)

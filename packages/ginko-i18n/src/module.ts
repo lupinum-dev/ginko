@@ -3,14 +3,16 @@ import { join } from 'node:path'
 import { addComponent, addImports, addPlugin, addServerHandler, addServerImports, addNitroPlugin, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, hasNuxtModule, updateTemplates } from '@nuxt/kit'
 import type { NuxtPage } from '@nuxt/schema'
 import { cachedNegotiatedPaths } from './cache-rules.ts'
-import { compileTree, mergeTrees, type RawTree } from './core/compiler.ts'
+import { MANIFEST_VERSION, type Manifest, type ManifestSource } from './manifest.ts'
+import { compileTree, mergeTrees, sourceProblem, type RawTree } from './core/compiler.ts'
 import { inUserZone, isExcluded, localizePath, resolveConfig, type LocaleConfig, type LocaleInput, type Strategy } from './core/locales.ts'
 import type { Params } from './core/messages.ts'
 
-export type { Alternate, AlternatesResolver, TypedTranslator } from './runtime/types'
+export type { Alternate, AlternatesResolver, I18n, ServerI18n, TypedTranslator } from './runtime/types'
 
 export interface ModuleOptions {
   locales: (string | LocaleInput)[]
+  /** The URL code of the default locale (`'de'`, not `'de-AT'`). Default: the first locale. */
   defaultLocale?: string
   strategy?: Strategy
   /** Head tags: html lang/dir, canonical, hreflang + x-default, og:locale. */
@@ -19,7 +21,7 @@ export interface ModuleOptions {
   baseUrl?: string
   /** Parameters every message can use, e.g. `{ tone: 'sie' }`. */
   params?: Params
-  /** Extra unprefixed paths. `/api/**` and Nuxt internals are always excluded. */
+  /** Extra unprefixed paths: exact (`/studio`) or a prefix (`/admin/**`). `/api/**` and Nuxt internals are always excluded. */
   exclude?: string[]
   /** Paths whose locale comes from the user (cookie, then Accept-Language), not the URL: `['/app/**']`. Same syntax as `exclude`. */
   userLocale?: string[]
@@ -34,8 +36,8 @@ export interface PageI18n {
   locales?: string[]
 }
 
-export interface MessageSource { namespace?: string, dir: string }
-interface ResolvedSource extends MessageSource { origin: 'library' | 'layer' | 'app' }
+/** A library's messages: `dir` holds `<code>.json` files, read under the key `namespace` (required). */
+export interface MessageSource { namespace: string, dir: string }
 
 declare module '@nuxt/schema' {
   interface NuxtHooks {
@@ -92,7 +94,7 @@ function localizePages(pages: NuxtPage[], config: LocaleConfig): NuxtPage[] {
 }
 
 export default defineNuxtModule<ModuleOptions>({
-  meta: { name: '@lupinum/ginko-i18n', configKey: 'i18n', compatibility: { nuxt: '>=4.6.0' } },
+  meta: { name: '@lupinum/ginko-i18n', configKey: 'i18n', compatibility: { nuxt: '^4.6.0' } },
   defaults: { locales: [], seo: true, params: {} },
   async setup(options, nuxt) {
     const unknown = Object.keys(options).filter(k => !KNOWN.has(k))
@@ -118,16 +120,20 @@ export default defineNuxtModule<ModuleOptions>({
       console.warn('[ginko-i18n] No baseUrl: canonical and hreflang will use relative URLs. Fix: set i18n.baseUrl.')
 
     // Messages: library sources first, then layers from the deepest to the app, so the app wins per key.
-    const collectSources = async (): Promise<ResolvedSource[]> => {
-      const sources: ResolvedSource[] = []
+    const collectSources = async (): Promise<ManifestSource[]> => {
+      const sources: ManifestSource[] = []
       const libraries: MessageSource[] = []
       await nuxt.callHook('ginko-i18n:sources', libraries)
-      for (const lib of libraries) sources.push({ ...lib, origin: 'library' })
+      for (const lib of libraries) {
+        const problem = sourceProblem(lib)
+        if (problem) throw new Error(problem)
+        sources.push({ ...lib, origin: 'library' })
+      }
       const layers = [...nuxt.options._layers].reverse()
       layers.forEach((layer, index) => sources.push({ dir: join(layer.config.rootDir, 'i18n'), origin: index === layers.length - 1 ? 'app' : 'layer' }))
       return sources
     }
-    const loadMessages = (sources: ResolvedSource[]) => {
+    const loadMessages = (sources: ManifestSource[]) => {
       const raw: Record<string, RawTree[]> = {}
       for (const source of sources) {
         for (const [code, tree] of Object.entries(readDir(source.dir))) {
@@ -155,7 +161,7 @@ export default defineNuxtModule<ModuleOptions>({
       }
     }
     // Read sources after all modules ran: a library registered after this module would be missed otherwise.
-    let sources: ResolvedSource[] = []
+    let sources: ManifestSource[] = []
     let state = loadMessages([])
     nuxt.hook('modules:done', async () => {
       sources = await collectSources()
@@ -244,8 +250,11 @@ declare module '#app' {
   interface PageMeta {
     /** Translated paths or a subset of locales; \`false\` keeps the page unlocalized. */
     i18n?: PageI18n | false
-    /** Per-locale paths of a dynamic page, resolved before render (CMS and content slugs). */
-    alternates?: AlternatesResolver
+    /**
+     * Per-locale paths of a dynamic page, resolved before render (CMS and content slugs). Not inside
+     * \`i18n\`: Nuxt reads \`i18n\` at build time only while it is plain data, and a function would drop its \`paths\`.
+     */
+    i18nAlternates?: AlternatesResolver
   }
 }
 
@@ -259,7 +268,7 @@ export {}
       filename: 'ginko-i18n/manifest.json',
       write: true,
       getContents: () => JSON.stringify({
-        version: 1,
+        version: MANIFEST_VERSION,
         rootDir: nuxt.options.rootDir,
         locales: config.locales,
         defaultLocale: config.defaultLocale,
@@ -267,7 +276,7 @@ export {}
         params: options.params ?? {},
         sources,
         srcDirs: [...new Set(nuxt.options._layers.map(l => l.config.srcDir).filter(Boolean))],
-      }, null, 2),
+      } satisfies Manifest, null, 2),
     })
 
     // Nuxt prefetches every dynamic chunk; a visitor needs only their own locale's messages.

@@ -1,4 +1,4 @@
-// Compiles i18n/<locale>.json into src/core/messages.compiled.ts, so core needs no ICU parser at runtime
+// Compiles i18n/<code>.json into src/core/messages.compiled.ts, so core needs no ICU parser at runtime
 // (sites import core; the parser would ship to every browser). Run after editing a catalog:
 //   node packages/ginko/scripts/compile-messages.ts
 import { readFileSync, writeFileSync } from 'node:fs'

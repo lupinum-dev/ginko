@@ -6,7 +6,7 @@ export default defineSite({
   site: 'saas',
   name: 'Taktwerk',
   url: 'https://ginko-demo-saas.vercel.app',
-  timezone: 'Europe/Berlin',
+  timeZone: 'Europe/Berlin',
   locales: ['de', 'en', 'fr'],
   languages: { de: 'de-DE', en: 'en-GB', fr: 'fr-FR' },
   currency: 'EUR',
@@ -145,8 +145,7 @@ export default defineSite({
       },
       max: 5,
       order: 'manual',
-      visible: { mode: 'active', field: 'until' },
-      autoRemoveExpired: true,
+      visible: { mode: 'until', field: 'until', deleteExpired: true },
       tasks: [
         { id: 'add', label: 'Ankündigung hinzufügen', kind: 'create' },
         { id: 'remove', label: 'Ankündigung entfernen', kind: 'remove' },

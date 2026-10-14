@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   vite: { define: { __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'true' } },
   i18n: {
     locales: ['de-AT', 'en-GB'],
-    defaultLocale: 'de-AT',
+    defaultLocale: 'de',
     strategy,
     baseUrl: 'https://example.test',
     params: { tone: 'sie' },

@@ -9,7 +9,7 @@ export default defineSite({
   site: 'restaurant',
   name: 'Gasthaus zur Linde',
   url: 'https://ginko-demo-restaurant.vercel.app',
-  timezone: 'Europe/Vienna',
+  timeZone: 'Europe/Vienna',
   locales: ['de', 'en'],
   languages: { de: 'de-AT', en: 'en-GB' },
   currency: 'EUR',
