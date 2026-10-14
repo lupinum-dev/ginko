@@ -197,6 +197,22 @@ describe('agent door: tool catalog', () => {
     expect(read.data.stale[entry]).toEqual(['name'])
   })
 
+  // Wrong behaviour caught: an answer limit below the entry limit, so the assistant cannot read an entry the Studio saved.
+  it('ginko_read returns a legal text of 280 KB, which the Studio can save', async () => {
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    await s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      const schema = site.schema as { bricks: { legal: { fields: { imprint: { max?: number } } } } }
+      schema.bricks.legal.fields.imprint.max = 300_000
+      await ctx.db.patch(s.site, { schema })
+    })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `${'Impressum '.repeat(28_000)}Ende` } } })
+    const read = await call(s, key, 'ginko_read', { brick: 'legal' })
+    expect(read.isError).toBe(false)
+    expect(JSON.stringify(read.data)).toContain('Ende')
+  })
+
   it('ginko_draft creates a draft that is not on the website', async () => {
     const s = await setup()
     await patchSchema(s, (schema) => { (schema.bricks.events as { drafts?: boolean }).drafts = true })

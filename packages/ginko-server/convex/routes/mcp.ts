@@ -2,7 +2,7 @@
 // JSON answer out, no SSE, no session. Order: key and rate limit, then the method. Tool failures are
 // tool results with `isError` and the English message, so the assistant can tell the person.
 import type { Json } from '@lupinum/ginko'
-import { coreMessage, sha256 } from '@lupinum/ginko/internal'
+import { coreMessage, sha256, SITE_BUDGET } from '@lupinum/ginko/internal'
 import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'
 import type { Id } from '../_generated/dataModel'
@@ -11,8 +11,8 @@ import { READ_TOOLS } from '../lib/agentTools'
 import { t, type MessageKey } from '../lib/i18n'
 
 const PROTOCOL = '2025-06-18'
-/** SPEC 16: answers stay under 256 KiB. */
-const ANSWER_MAX = 256 * 1024
+/** An answer holds at least one whole entry the Studio can save (SITE_BUDGET.entryBytes) plus room for its wrapping. */
+const ANSWER_MAX = SITE_BUDGET.entryBytes + 64 * 1024
 const BODY_MAX = 512 * 1024
 const KEY = /^ginko_agent_[a-z0-9]{32}$/
 
