@@ -107,7 +107,7 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
     })
   }
   const problems = [
-    ...(refused.length ? [`These images cannot go into the Files library (it takes JPEG, PNG, WebP and HEIC, and PDF files): ${refused.join(', ')}. Convert them, for example to WebP, and run local:files-export again.`] : []),
+    ...(refused.length ? [`These images cannot go into the Files library (it takes JPEG, PNG and WebP images and PDF files): ${refused.join(', ')}. Convert them, for example to WebP, and run local:files-export again.`] : []),
     ...(tooLarge.length ? [`These files are larger than the Files library takes (images ${limitOf('image') / 1024 / 1024} MB, PDF files ${limitOf('file') / 1024 / 1024} MB): ${tooLarge.join(', ')}. Make them smaller and run local:files-export again.`] : []),
   ]
   // Nothing is written before every file passed: a refused export leaves the folder as it was.

@@ -102,7 +102,7 @@ describe('local:files-export', () => {
     const avif = site({ 'public/images/b.avif': Buffer.from('AAAAHGZ0eXBhdmlmAAAAAG1pZjFhdmlmbWlhZgAAANZtZXRhAAAAAAAAACFoZGxyAAAAAAAAAABwaWN0AAAAAAAAAAAAAAAAAAAAACJpbG9jAAAAAERAAAEAAQAAAAAA+gABAAAAAAAAACMAAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABhdjAxAAAAAA5waXRtAAAAAAABAAAAVmlwcnAAAAA4aXBjbwAAAAxhdjFDgSACAAAAABRpc3BlAAAAAAAAAAMAAAACAAAAEHBpeGkAAAAAAwgICAAAABZpcG1hAAAAAAAAAAEAAQOBAgMAAAArbWRhdBIACgg4BCtICGg0gDIVGUJjBMAANAAAkEDJHGFSyVivY+eA', 'base64'), 'content/authors/1.anna.md': '---\nname: Anna\navatar:\n  src: /images/b.avif\n  alt: Ein Bild\n---\n' })
     const refused = await run(['files-export', '--config', avif.config, avif.out])
     expect(refused.code).toBe(1)
-    expect(JSON.stringify(refused.json)).toMatch(/JPEG, PNG, WebP.*: \/images\/b\.avif\. Convert them/)
+    expect(JSON.stringify(refused.json)).toMatch(/\(it takes JPEG, PNG and WebP images and PDF files\): \/images\/b\.avif\. Convert them/)
     expect(existsSync(avif.out)).toBe(false)
   })
 })
