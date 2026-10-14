@@ -118,3 +118,13 @@ test('an event shows its start time in the page language, one without a time sho
   await page.goto('/en/events/wine-evening-ebner')
   await expect(page.locator('.when')).toHaveText('16 October 2026, 7:00 pm')
 })
+
+// Wrong behaviour caught: a 404 said its canonical address was the missing URL and linked hreflang
+// alternates to other missing URLs, so search engines were invited to index error pages.
+test('a 404 page has no canonical or alternates and is noindex', async ({ page }) => {
+  const response = await page.goto('/gibt-es-nicht')
+  expect(response?.status()).toBe(404)
+  await expect(page.locator('link[rel=canonical]')).toHaveCount(0)
+  await expect(page.locator('link[rel=alternate][hreflang]')).toHaveCount(0)
+  await expect(page.locator('meta[name=robots]')).toHaveAttribute('content', 'noindex')
+})

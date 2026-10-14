@@ -1,5 +1,5 @@
 import { shallowReactive } from 'vue'
-import { defineNuxtPlugin, isPrerendered, loadPayload, useHead, useRequestEvent, useRoute, useRouter, useState } from '#imports'
+import { defineNuxtPlugin, isPrerendered, loadPayload, useError, useHead, useRequestEvent, useRoute, useRouter, useState } from '#imports'
 import { config } from '#ginko-i18n/config.mjs'
 import { loaders } from '#ginko-i18n/loaders.mjs'
 import { alternatesOf, inUserZone, localeFromPath, ogLocale, type MessageTree } from '@lupinum/ginko-i18n/core'
@@ -107,9 +107,12 @@ export default defineNuxtPlugin({
       nuxtApp.hook('app:created', () => {
         const route = useRoute()
         const i18n = useI18n()
+        const error = useError()
         useHead(() => {
           const code = currentLocale(route.path, c, userLocale.value)
           const locale = c.locales.find(l => l.code === code)!
+          // An error page is not a page of the site: no address to prefer, no translations, not indexed.
+          if (error.value) return { htmlAttrs: { lang: locale.language, dir: locale.dir }, meta: [{ name: 'robots', content: 'noindex' }] }
           // User-locale zone: one URL for every locale, so only `lang` and `dir`; no canonical or hreflang.
           if (inUserZone(route.path, c)) return { htmlAttrs: { lang: locale.language, dir: locale.dir } }
           const translated = i18n.alternates.value.filter(a => a.translated)
