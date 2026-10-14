@@ -12,7 +12,7 @@ import { Textarea } from '@studio/components/ui/textarea'
 import { computed, nextTick, ref } from 'vue'
 import { useTextOf } from '../composables/useTextOf'
 import { byText } from '../utils/who'
-import { msToZoned, zonedToMs } from '../utils/when'
+import { msToZoned, whenFull, zonedToMs } from '../utils/when'
 import type { DiffField, ProposalRow } from '../utils/review'
 import ChangeDiff from './ChangeDiff.vue'
 
@@ -41,7 +41,7 @@ const staleReason = computed(() => {
   return text ? textOf(msg, text) : ''
 })
 const who = computed(() => byText(props.proposal.author, props.proposal.via, props.proposal.agent, t))
-const when = computed(() => format.date(props.proposal.createdAt, { timeZone: props.timeZone, day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }))
+const when = computed(() => whenFull(props.proposal.createdAt, props.timeZone, format))
 
 const mode = ref<'later' | 'reject' | null>(null)
 const at = ref('')

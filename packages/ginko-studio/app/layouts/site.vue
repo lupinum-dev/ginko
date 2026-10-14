@@ -19,7 +19,7 @@ const { data: deletion } = useConvexQuery(api.sites.deletion, () => ({ site: slu
 // The slash menu of Markdown fields offers the components of this site's schema.
 provide(EDITOR_COMPONENTS, () => (data.value?.site.schema as { components?: ComponentRegistry } | undefined)?.components)
 // Labels and prices under this layout read the site's main language and currency.
-provideStudioSite({ main: () => data.value?.site.schema.locales[0] ?? '', currency: () => data.value?.site.schema.currency ?? 'EUR' })
+provideStudioSite({ main: () => data.value?.site.schema.locales[0] ?? '', currency: () => data.value?.site.schema.currency ?? 'EUR', timeZone: () => data.value?.site.schema.timeZone ?? 'Europe/Vienna' })
 // Date fields under this layout count "today" and weeks in the site's zone and week (`schema.week`).
 provide('ginko:timeZone', computed(() => data.value?.site.schema.timeZone ?? 'Europe/Vienna'))
 // While the site loads there is no schema yet.

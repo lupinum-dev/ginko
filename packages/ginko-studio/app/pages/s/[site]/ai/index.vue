@@ -4,6 +4,7 @@
 import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
 import { api } from '#convex/api'
 import { opErrorOf } from '../../../../composables/useOps'
+import { whenText } from '../../../../utils/when'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
 
@@ -21,7 +22,7 @@ const keys = computed(() => list.data.value ?? [])
 const createKey = useConvexMutation(api.agent.createKey)
 const revokeKey = useConvexMutation(api.agent.revokeKey)
 
-const when = (ms: number) => format.date(new Date(ms), { timeZone: s.schema.value?.timeZone ?? 'Europe/Vienna', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+const when = (ms: number) => whenText(ms, s.schema.value?.timeZone ?? 'Europe/Vienna', format)
 
 // Creating: a name, then the key once. Leaving the page loses it; that is said next to it.
 const label = ref('Claude Code')

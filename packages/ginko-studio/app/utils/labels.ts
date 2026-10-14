@@ -20,18 +20,18 @@ export function studioLocale(main: Locale): Locale {
 /** The text of a label for the person at a Studio screen. */
 export const shownLabel = (label: Label, main: Locale): string => labelOf(label, studioLocale(main), main)
 
-/** The site facts every screen under the site layout needs for labels and prices. */
-export interface StudioSite { main: () => Locale; currency: () => Currency }
+/** The site facts every screen under the site layout needs for labels, prices and times. */
+export interface StudioSite { main: () => Locale; currency: () => Currency; timeZone: () => string }
 export const STUDIO_SITE = Symbol('ginko:studio-site') as InjectionKey<StudioSite>
 
 export function provideStudioSite(site: StudioSite): void {
   provide(STUDIO_SITE, site)
 }
 
-/** Label text and money settings of the current site; without a site layout (tests) the first text of a label and EUR. */
-export function useStudioSite(): { shown: (label: Label) => string; main: () => Locale; currency: () => Currency; locale: () => Locale } {
-  const site = inject(STUDIO_SITE, { main: () => '', currency: () => 'EUR' })
+/** Label text, money settings and time zone of the current site; without a site layout (tests) the first text of a label, EUR and UTC. */
+export function useStudioSite(): { shown: (label: Label) => string; main: () => Locale; currency: () => Currency; timeZone: () => string; locale: () => Locale } {
+  const site = inject(STUDIO_SITE, { main: () => '', currency: () => 'EUR', timeZone: () => 'UTC' })
   // Read once in setup, so `shown` also works in getters and handlers that run later (useHead, after an await).
   const { locale } = useI18n()
-  return { shown: (label) => labelOf(label, locale.value, site.main()), main: site.main, currency: site.currency, locale: () => locale.value }
+  return { shown: (label) => labelOf(label, locale.value, site.main()), main: site.main, currency: site.currency, timeZone: site.timeZone, locale: () => locale.value }
 }

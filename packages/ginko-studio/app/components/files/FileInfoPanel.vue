@@ -13,6 +13,7 @@ import { useStudioSite } from '../../utils/labels'
 import type { FilesLibrary, UsedIn } from '../../composables/useFilesLibrary'
 import { fieldsText, sizeText } from './util'
 import { whoText } from '../../utils/who'
+import { whenFull } from '../../utils/when'
 
 /** `showAlt: false` in the picker: it asks for the description itself, one field instead of two. */
 const props = withDefaults(defineProps<{ id: string; lib: FilesLibrary; locales: string[]; inTrash: boolean; showAlt?: boolean }>(), { showAlt: true })
@@ -87,7 +88,7 @@ const whereOf = (use: UsedIn) => [
 ].join(' · ')
 const typeText = computed(() => (info.value ? (info.value.kind === 'image' ? info.value.mime.replace('image/', '').toUpperCase() : 'PDF') : ''))
 const dimensions = computed(() => (info.value?.width && info.value.height ? `${info.value.width} × ${info.value.height}` : null))
-const uploaded = computed(() => (info.value ? format.date(info.value.createdAt, { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''))
+const uploaded = computed(() => (info.value ? whenFull(info.value.createdAt, site.timeZone(), format) : ''))
 </script>
 
 <template>

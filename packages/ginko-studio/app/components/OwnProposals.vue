@@ -9,6 +9,7 @@ import type { Schema } from '@lupinum/ginko/internal'
 import { opErrorOf } from '../composables/useOps'
 import { useTextOf } from '../composables/useTextOf'
 import { whoText } from '../utils/who'
+import { whenFull } from '../utils/when'
 
 const props = defineProps<{ site: string; schema: Schema; filter: 'all' | 'mine' | 'ai' | 'entry'; entry?: string }>()
 const { t, format } = useI18n()
@@ -35,7 +36,7 @@ const textOf = useTextOf(() => ({ timeZone: props.schema.timeZone, main: props.s
 const line = (p: Row) => textOf(p.msg, p.sentence)
 const rejectedText = (p: Row) => t('history.rejectedBy', { who: p.decidedBy ? whoText(p.decidedBy, t) : t('who.member'), reason: textOf(p.reasonMsg, p.reason ?? '') })
 const notLiveText = (p: Row) => t('history.notLiveBecause', { when: when(p.at!), reason: textOf(p.reasonMsg, p.reason ?? '') })
-const when = (at: number) => format.date(at, { timeZone: props.schema.timeZone, day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+const when = (at: number) => whenFull(at, props.schema.timeZone, format)
 
 const busy = ref<string | null>(null)
 async function withdraw(proposal: string) {

@@ -6,6 +6,7 @@ import { api } from '#convex/api'
 import type { Schema } from '@lupinum/ginko/internal'
 import { useTextOf } from '../composables/useTextOf'
 import { byText } from '../utils/who'
+import { whenFull } from '../utils/when'
 import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
 
@@ -40,13 +41,14 @@ let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => { timer = setInterval(() => { now.value = Date.now() }, 60_000) })
 onUnmounted(() => clearInterval(timer))
 
+const fullDate = (at: number) => whenFull(at, props.schema.timeZone, format)
 /** "just now", "5 min ago", "2 h ago", then the date and time in the site's time zone. */
 function when(at: number): string {
   const diff = now.value - at
   if (diff < 60_000) return t('entry.changes.justNow')
   if (diff < 3_600_000) return t('entry.changes.minutesAgo', { count: Math.floor(diff / 60_000) })
   if (diff < 86_400_000) return t('entry.changes.hoursAgo', { count: Math.floor(diff / 3_600_000) })
-  return format.date(at, { timeZone: props.schema.timeZone, day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return fullDate(at)
 }
 
 /** The line in the Studio's language, dates in the site's zone; rows from before `msg` show their German sentence. */
@@ -80,7 +82,6 @@ function toggleShow(id: string) {
 }
 const confirming = ref<string | null>(null)
 const canRevert = (change: Change) => change.kind === 'save' && !!change.entry && (props.manager || taskFor(change) !== undefined)
-const fullDate = (at: number) => format.date(at, { timeZone: props.schema.timeZone, day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 async function revert(change: Change) {
   busy.value = change._id
   try {

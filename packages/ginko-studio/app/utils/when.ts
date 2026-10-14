@@ -31,7 +31,15 @@ export function msToZoned(ms: number, timeZone: string): string {
   return shifted.toISOString().slice(0, 16)
 }
 
-/** "14. Okt., 09:00" in the site's time zone and the Studio's language, as the server writes it in the history. */
+/** One clock for every Studio time and language: 24 hours, two-digit hour ("02:30"), as the server's `::HHmm` history lines. */
+const CLOCK = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } as const
+
+/** "14. Okt., 09:00" in the site's time zone and the Studio's language: short, for toasts, status and lists. */
 export function whenText(ms: number, timeZone: string, format: Words['format']): string {
-  return format.date(ms, { timeZone, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: false })
+  return format.date(ms, { timeZone, day: 'numeric', month: 'short', ...CLOCK })
+}
+
+/** "14.10.2026, 09:00" in the site's time zone: with the year, for History, reviews and files. */
+export function whenFull(ms: number, timeZone: string, format: Words['format']): string {
+  return format.date(ms, { timeZone, day: 'numeric', month: 'numeric', year: 'numeric', ...CLOCK })
 }

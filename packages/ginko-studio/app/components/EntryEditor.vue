@@ -7,7 +7,7 @@ import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
 import { displayValue, fileIdsIn, languageName, publishQuestion, titleOf } from '../utils/content'
 import { shownLabel } from '../utils/labels'
-import { msToZoned, zonedToMs } from '../utils/when'
+import { msToZoned, whenText, zonedToMs } from '../utils/when'
 import { opErrorOf } from '../composables/useOps'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { EllipsisIcon } from '@lucide/vue'
@@ -246,7 +246,7 @@ const statusText = computed(() => {
   if (!props.entry || (!drafts.value && state.value === 'live')) return ''
   if (state.value === 'live') return t('entry.status.online')
   return props.entry.publishAt
-    ? t('entry.status.onlineFrom', { when: format.date(props.entry.publishAt, { timeZone: timeZone.value, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) })
+    ? t('entry.status.onlineFrom', { when: whenText(props.entry.publishAt, timeZone.value, format) })
     : t('entry.status.draft')
 })
 /** Publishing belongs to the brick's create and edit tasks (staff need one of them). */
