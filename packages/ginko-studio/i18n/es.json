@@ -117,6 +117,7 @@
     },
     "conflict": {
       "changed": "Alguien ha cambiado {fields} mientras tanto.",
+      "changedBy": "{who} ha cambiado {fields} mientras tanto.",
       "thisEntry": "esta entrada",
       "item": "{field}: guardado ahora como “{stored}”, tu texto “{mine}”",
       "keepMine": "Guardar mis cambios",

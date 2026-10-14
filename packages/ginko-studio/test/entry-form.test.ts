@@ -46,6 +46,7 @@ vi.stubGlobal('useOps', () => ({
 
 const { useEntryForm } = await import('../app/composables/useEntryForm')
 const { useKeptEntry } = await import('../app/composables/useKeptEntry')
+const { default: ConflictPanel } = await import('../app/components/ConflictPanel.vue')
 
 const brick = {
   kind: 'collection', label: 'Gerichte',
@@ -138,5 +139,21 @@ describe('useEntryForm', () => {
     expect(calls).toEqual([
       ['save', { entry: 'e1', baseRev: 6, fields: { sides: [salad, { _id: 'r2', name: 'Frittatensuppe' }, { _id: 'r3', name: 'Kaspressknödel' }] } }],
     ])
+  })
+})
+
+describe('ConflictPanel', () => {
+  // Wrong behaviour caught: the server says who saved the name meanwhile, but the panel says "jemand", so she
+  // cannot ask that person before choosing a version.
+  test('one person changed every conflicting field: the heading names them', () => {
+    const data = { ...stored.data, name: 'Schnitzel vom Schwein' }
+    const panel = mount(ConflictPanel, {
+      props: {
+        conflict: { fields: ['name'], data, by: { name: { email: 'koch@example.com' } } },
+        draft: { ...stored.data, name: 'Schnitzel mit Preiselbeeren' }, baseline: stored.data,
+        fields: (brick as { fields: never }).fields, locale: 'de', main: 'de', canKeepBoth: false,
+      },
+    })
+    expect(panel.find('strong').text()).toBe('koch@example.com hat inzwischen Name geändert.')
   })
 })

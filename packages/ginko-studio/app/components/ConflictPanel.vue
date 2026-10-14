@@ -3,9 +3,11 @@
      hinzugefügt", "anna@… hat „…“ entfernt"), and when no row was changed by both, "Beides behalten" saves
      both. Used by Alles bearbeiten and Schnell ändern. -->
 <script setup lang="ts">
+import { useI18n } from '#imports'
 import type { Fields, Json, Locale } from '@lupinum/ginko'
 import { mergeRows, rowDiffs } from '@lupinum/ginko/internal'
 import { Button } from '@studio/components/ui/button'
+import { computed } from 'vue'
 import { displayValue, rowTitle, type Data } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { whoText, type Who } from '../utils/who'
@@ -30,6 +32,17 @@ const whoOf = (key: string) => {
   const who = props.conflict.by?.[key]
   return who ? whoText(who, t) : t('entry.conflict.someone')
 }
+
+/** The heading names the person when one person changed every conflicting field, else "jemand". */
+const heading = computed(() => {
+  const fields = props.conflict.fields.map(shownField).join(', ') || t('entry.conflict.thisEntry')
+  const names = new Set(props.conflict.fields.map((key) => {
+    const who = props.conflict.by?.[key]
+    return who && whoText(who, t)
+  }))
+  const [only] = names
+  return names.size === 1 && only ? t('entry.conflict.changedBy', { who: only, fields }) : t('entry.conflict.changed', { fields })
+})
 
 /** A row by its first text column, else "Zeile n" by its place in the first of `lists` that holds it. */
 function rowName(key: string, id: string, ...lists: (Json | undefined)[]): string {
@@ -71,7 +84,7 @@ const items = computed(() => props.conflict.fields.map((key) => {
 
 <template>
   <div class="grid gap-2 rounded-md bg-warning/10 p-3" role="alert">
-    <p><strong>{{ t('entry.conflict.changed', { fields: conflict.fields.map(shownField).join(', ') || t('entry.conflict.thisEntry') }) }}</strong></p>
+    <p><strong>{{ heading }}</strong></p>
     <ul class="m-0 list-disc pl-[18px]">
       <li v-for="item in items" :key="item.key">
         <template v-if="item.lines">

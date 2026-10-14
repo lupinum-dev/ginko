@@ -117,6 +117,7 @@
     },
     "conflict": {
       "changed": "Someone has changed {fields} in the meantime.",
+      "changedBy": "{who} has changed {fields} in the meantime.",
       "thisEntry": "this entry",
       "item": "{field}: saved now as “{stored}”, your input “{mine}”",
       "keepMine": "Save my changes",
