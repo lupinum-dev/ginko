@@ -2,6 +2,7 @@
 // retention of trash and replaced files. One test per realistic failure.
 import { describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
+import type { Schema } from '@lupinum/ginko/internal'
 import type { Id } from '../convex/_generated/dataModel'
 import { CORPUS_NOW } from './clock'
 import { errorOf, opId, postUpload, setup, upload } from './setup'
@@ -355,6 +356,24 @@ describe('uploads.sweep with the library', () => {
     for (const phase of ['storage', 'processing', 'failed', 'ready'] as const) await s.t.mutation(internal.uploads.sweep, { phase })
     const left = await s.t.run((ctx) => ctx.db.query('uploads').collect())
     expect(left.map((r) => r._id).sort()).toEqual([kept, foldered, trashed].sort())
+  })
+
+  // Wrong behaviour caught: a picture placed in a Markdown text had no file reference, so the sweep purged it after
+  // 7 days and the published text showed a hole.
+  it('keeps an image that a Markdown text uses', async () => {
+    vi.setSystemTime(new Date('2026-10-01T00:00:00Z'))
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.legal!.fields.imprint as { profile: string }).profile = 'rich'
+      await ctx.db.patch(s.site, { schema })
+    })
+    const id = await readyImage(s)
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `![Hund]($file.${id})` } }, sentence: 'x' })
+    vi.setSystemTime(new Date('2026-10-09T00:00:00Z'))
+    for (const phase of ['storage', 'processing', 'failed', 'ready'] as const) await s.t.mutation(internal.uploads.sweep, { phase })
+    expect(await s.t.run((ctx) => ctx.db.get(id))).not.toBeNull()
+    expect(await fileRefsOf(s, id)).toHaveLength(1)
   })
 
   it('does not delete the storage of a replaced file as an orphan', async () => {

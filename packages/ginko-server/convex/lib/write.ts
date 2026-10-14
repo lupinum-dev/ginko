@@ -108,12 +108,12 @@ export async function refsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, 
 }
 
 /**
- * The Files library descriptions of the images in `data`, for `usesOf` and validate(): one read per
- * image file. Ids that are no upload give no text.
+ * The Files library descriptions of the images in `data` (image fields and Markdown references), for `usesOf` and
+ * validate(): one read per file. Ids that are no upload give no text.
  */
 async function altsFor(ctx: QueryCtx, fields: Fields, data: Data): Promise<(file: string) => Record<string, string> | undefined> {
   const found = new Map<string, Record<string, string>>()
-  for (const id of fileIdsOf(fields, data, 'image')) {
+  for (const id of fileIdsOf(fields, data)) {
     const key = ctx.db.normalizeId('uploads', id)
     const alt = key ? (await ctx.db.get(key))?.alt : undefined
     if (alt) found.set(id, alt)
@@ -126,9 +126,23 @@ export async function entryUses(ctx: QueryCtx, fields: Fields, data: Data, local
   return usesOf(fields, data, locales, await altsFor(ctx, fields, data))
 }
 
-/** The options validate() takes from the database: the entries a ref field points to and the library descriptions of the images. */
-export async function lookupsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, data: Data): Promise<Pick<ValidateOptions, 'refs' | 'fileAlt'>> {
-  return { refs: await refsFor(ctx, site, fields, data), fileAlt: await altsFor(ctx, fields, data) }
+/** The files of `data` that are ready uploads of this site outside the trash: what a `$file.<id>` in a text may name. */
+async function liveUploadsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, data: Data): Promise<(file: string) => boolean> {
+  const live = new Set<string>()
+  for (const id of fileIdsOf(fields, data)) {
+    const key = ctx.db.normalizeId('uploads', id)
+    const upload = key ? await ctx.db.get(key) : null
+    if (upload && upload.site === site && upload.status === 'ready' && !upload.trashedAt) live.add(id)
+  }
+  return (file) => live.has(file)
+}
+
+/**
+ * The options validate() takes from the database: the entries a ref field points to, the library descriptions of the
+ * images, and the live uploads the Markdown texts may reference.
+ */
+export async function lookupsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, data: Data): Promise<Pick<ValidateOptions, 'refs' | 'fileAlt' | 'uploads'>> {
+  return { refs: await refsFor(ctx, site, fields, data), fileAlt: await altsFor(ctx, fields, data), uploads: await liveUploadsFor(ctx, site, fields, data) }
 }
 
 /** A file upload in a file field: the field's path in the entry (`doc`, `files.0.doc`), the upload ID and the field's rules. */

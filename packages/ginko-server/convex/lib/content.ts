@@ -1,7 +1,7 @@
 // Pure content rules of the write path (SPEC part 3 "Übersetzungs-Abdrücke", 4.2 save).
 // No Convex here, so every rule is testable with plain data.
 import type { Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { effectiveAlt, isTranslatable, markdownTrees, printOf, stableJson, type Schema } from '@lupinum/ginko/internal'
+import { effectiveAlt, fileImagesWithoutAlt, fileRefsIn, isTranslatable, markdownTrees, printOf, stableJson, type Schema } from '@lupinum/ginko/internal'
 
 export type Data = Record<string, Json>
 export type Prints = Record<string, Record<string, string>>
@@ -118,12 +118,16 @@ export function rootOf(leaf: string): string {
   return leaf.split('.')[0]!
 }
 
-/** Upload IDs referenced anywhere in a value (image and file fields store `{ file }`); `only` keeps those of one field type. */
+/**
+ * Upload IDs referenced anywhere in a value: image and file fields store `{ file }`, Markdown texts hold `$file.<id>`.
+ * `only` keeps those of one field type (no Markdown references).
+ */
 export function fileIdsOf(fields: Fields, data: Data, only?: 'image' | 'file'): Set<string> {
   const ids = new Set<string>()
   const walk = (field: Field, value: Json | undefined) => {
     if (value === undefined || value === null) return
     if ((field.type === 'image' || field.type === 'file') && (!only || field.type === only) && typeof asRecord(value).file === 'string') ids.add(asRecord(value).file as string)
+    if (field.type === 'markdown' && !only) for (const text of textsOf(value)) for (const id of fileRefsIn(text)) ids.add(id)
     if (field.type === 'list' && Array.isArray(value)) for (const row of value) for (const [k, inner] of Object.entries(field.of)) walk(inner, asRecord(row)[k])
   }
   for (const [name, field] of Object.entries(fields)) walk(field, data[name])
@@ -136,7 +140,9 @@ export interface Use { path: string; missingAlt: boolean }
 /**
  * Every use of a file in an entry, by upload ID. The same walk as `fileIdsOf`, so the file
  * references and their `uses` can never disagree. An image needs an effective description (its own text, else the library text) in each
- * of the site's `locales`; a file (PDF) has none.
+ * of the site's `locales`; a file (PDF) has none. A Markdown text that references a file is one use at the text's
+ * path; it lacks a description where a language's text shows the file as `![]($file.<id>)` and the library has no
+ * text for that language.
  */
 export function usesOf(fields: Fields, data: Data, locales: readonly Locale[], fileAlt?: (file: string) => Record<string, string> | undefined): Map<string, Use[]> {
   const out = new Map<string, Use[]>()
@@ -149,6 +155,16 @@ export function usesOf(fields: Fields, data: Data, locales: readonly Locale[], f
       const library = fileAlt?.(file)
       const missingAlt = field.type === 'image' && locales.some((l) => !effectiveAlt(alt, library, l))
       out.set(file, [...(out.get(file) ?? []), { path, missingAlt }])
+    }
+    if (field.type === 'markdown') {
+      // A text for every language (translate: false) is checked against each of them.
+      const texts: [readonly Locale[], string][] = typeof value === 'string' ? [[locales, value]] : Object.entries(asRecord(value)).flatMap(([l, t]) => (typeof t === 'string' && locales.includes(l) ? [[[l], t] as [Locale[], string]] : []))
+      const files = new Set(texts.flatMap(([, text]) => [...fileRefsIn(text)]))
+      for (const file of files) {
+        const library = fileAlt?.(file)
+        const missingAlt = texts.some(([langs, text]) => fileImagesWithoutAlt(text).has(file) && langs.some((l) => !effectiveAlt(undefined, library, l)))
+        out.set(file, [...(out.get(file) ?? []), { path, missingAlt }])
+      }
     }
     if (field.type === 'list' && Array.isArray(value)) {
       value.forEach((row, i) => {
@@ -244,6 +260,11 @@ export async function treesOf(fields: Fields, data: Data): Promise<{ json: strin
   const trees = await markdownTrees(fields, data)
   const json = Object.keys(trees).length ? JSON.stringify(trees) : ''
   return { json, bytes: new TextEncoder().encode(json).byteLength }
+}
+
+/** The texts of a Markdown value: one string, or one per language. */
+function textsOf(value: Json): string[] {
+  return typeof value === 'string' ? [value] : Object.values(asRecord(value)).filter((text): text is string => typeof text === 'string')
 }
 
 function isRecord(v: unknown): v is Record<string, Json> {

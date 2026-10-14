@@ -141,7 +141,8 @@ export function fixedTools(actor: Actor): ToolDef[] {
   tools.push(
     {
       name: 'ginko_file_usage',
-      description: 'Shows where a file (image or PDF) is used: entry, brick, label, paths, and whether an image lacks its description.',
+      description: 'Shows where a file (image or PDF) is used: entry, brick, label, paths, and whether an image lacks its description. '
+        + 'A Markdown text names a file by its ID as $file.<ID>, e.g. ![Short description]($file.<ID>) for an image; never write a storage address.',
       inputSchema: object({ file: { type: 'string', description: 'ID of the file' } }, ['file']),
     },
     {
