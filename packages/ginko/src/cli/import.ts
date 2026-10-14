@@ -175,13 +175,15 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
   if (Object.keys(refs).length > 0) {
     if (Buffer.byteLength(JSON.stringify(refs)) > IDS_BYTES) throw new CliError('Too many references between entries for one call.')
     let cursor: string | undefined
+    let changed = 0
     for (;;) {
       const page = await run('seed:importRefs', { site, ids: refs, ...(cursor === undefined ? {} : { cursor }) })
+      if (isObject(page) && typeof page.changed === 'number') changed += page.changed
       if (!isObject(page) || page.done === true) break
       if (typeof page.cursor !== 'string') throw new CliError('The platform did not return a cursor for the references.')
       cursor = page.cursor
     }
-    log(`References between ${Object.keys(refs).length} entries updated.`)
+    log(`References updated in ${changed} entries.`)
   }
   return { entries: data.entries.length, files: data.files.length }
 }

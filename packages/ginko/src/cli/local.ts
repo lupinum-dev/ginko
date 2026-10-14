@@ -7,18 +7,23 @@ import { dirname, join } from 'node:path'
 import { CliError, isObject } from './model.ts'
 
 /**
- * Walks up from the site folder to the monorepo and returns its Convex project, packages/ginko-server:
+ * Walks up from the site folder (then from the working directory) to the monorepo and returns its Convex project, packages/ginko-server:
  * the folder with convex.json, where `convex dev` runs and writes .env.local.
  */
 export function findBackend(from: string, command = 'local:dev'): string {
-  let dir = from
-  for (;;) {
-    const candidate = join(dir, 'packages', 'ginko-server')
-    if (existsSync(join(candidate, 'package.json'))) return candidate
-    const parent = dirname(dir)
-    if (parent === dir) throw new CliError(`packages/ginko-server was not found. \`${command}\` must run in the Ginko monorepo.`, 'USAGE')
-    dir = parent
+  // Above the site first (sites/<name> in the monorepo), then above the working directory, so a site in its own
+  // repository runs with `pnpm local:dev --config <path>` from the monorepo root.
+  for (const start of [from, process.cwd()]) {
+    let dir = start
+    for (;;) {
+      const candidate = join(dir, 'packages', 'ginko-server')
+      if (existsSync(join(candidate, 'package.json'))) return candidate
+      const parent = dirname(dir)
+      if (parent === dir) break
+      dir = parent
+    }
   }
+  throw new CliError(`packages/ginko-server was not found. Run \`${command}\` from the Ginko monorepo.`, 'USAGE')
 }
 
 /** The Convex deployment that a command writes to. Empty values are missing, not guessed. */
