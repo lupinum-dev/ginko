@@ -12,7 +12,7 @@ Add Ginko 0.4, the first release: one content system for Nuxt websites, from Mar
 
 Owners, staff and AI agents edit the same content. All seven packages release together under one version. It starts at 0.4 because `@lupinum/ginko-content` and `@lupinum/ginko-docs` already published an older, unrelated line up to 0.3. Until 1.0, a minor version (0.4 → 0.5) may contain breaking changes; the changelog names each one and how to update.
 
-Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm create ginko@latest my-site`; the documentation explains every step.
+Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+ or Nuxt 5 (tested on its nightly until it is released). Start a site with `npm create ginko@latest my-site`; the documentation explains every step.
 
 **Public API**
 
@@ -32,7 +32,8 @@ Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm creat
 - Link check before any HTML exists: route links, anchors, snippets and redirected paths, in the build, the dev terminal, `ginko check` and the agent tools. On the platform a save, a new entry or a scheduled publish that adds a broken link is stopped, and History says why. External links are checked on request (`linkCheck.external`), at build and in `ginko check` (never in dev), with a 7-day cache.
 - Images: WebP copies at 480, 960 and 1600 px, made at upload on the platform and at build for files. `<GinkoImage>` and Markdown images get `srcset` and `sizes`.
 - Redirects from `redirectFrom` (301) and site rules in `redirects` (301 by default, `status` 302/307/308 per rule).
-- SEO from the bundle: title template, canonical, Open Graph, `<html lang>`, hreflang with `x-default`, sitemap with `lastmod`, images and alternates, robots.txt with `noindex` on preview hosts, JSON-LD. With `nuxt-og-image` installed, every page without its own image gets a generated share card.
+- SEO from the bundle, with no other module: title template, canonical, Open Graph with `og:url`, `<html lang>`, hreflang with `x-default`, sitemap with `lastmod`, images and alternates, robots.txt with `noindex` on preview hosts, JSON-LD. With `nuxt-og-image` (in every starter), every page gets a generated share card in the brand colour `seo.color`, with the site's logo and the page's image.
+- Works with the Nuxt SEO modules (`@nuxtjs/seo` or single ones, in any order): Ginko leaves them sitemap, robots.txt and JSON-LD defaults and hands them its pages with hreflang, the site's address, name and languages, and `noindex` on preview hosts. `nuxt-ai-ready` stays off while Ginko serves `/llms.txt`. Requires `nuxt-og-image` 7.
 - Search index built in plain JS at build time, one record per heading section, loaded lazily per language.
 - Agent output: `/llms.txt`, `/llms-full.txt`, a `.md` twin for every entry page (collections with a `route`), and a Markdown 404 that suggests pages. The normal address always answers with HTML.
 - Render modes: Git-only sites prerender everything; platform sites refresh changed pages after a publish; previews render with `noindex`.
@@ -42,7 +43,7 @@ Requirements: Node 22.18+, 24 or 26, and Nuxt 4.6+. Start a site with `npm creat
 **Languages (`@lupinum/ginko-i18n`)**
 
 - The only locale authority: routes, alternates, hreflang, messages with plurals, and formatters for dates, ranges, relative time, numbers, currency and lists, each in the site's time zone.
-- Works on its own in any Nuxt 4.6+ app, without the rest of Ginko.
+- Works on its own in any Nuxt 4.6+ or Nuxt 5 app, without the rest of Ginko.
 
 **Components and docs (`@lupinum/ginko-components`, `@lupinum/ginko-docs`)**
 
@@ -66,7 +67,7 @@ The platform is a hosted service, not an npm package. A site connects to it with
 **Presets (`@lupinum/ginko-preset-gastro`, `create-ginko`)**
 
 - Gastro: opening hours with exceptions, seasons, holidays and new hours from a date; lunch week with planning ahead and an optional PDF; menu with prices from a date; notices that expire; events; JSON-LD for Restaurant, Menu, opening hours and Event; a printable lunch sheet.
-- `create-ginko` starts a new site, plain or with `--preset gastro|docs`. Starters install with npm, pnpm 11 and bun, carry a `typecheck` script and a page description, and create-ginko warns on an unsupported Node.
+- `create-ginko` starts a new site, plain or with `--preset gastro|docs`. Starters install with npm, pnpm 11 and bun, carry a `typecheck` script, a page description and share cards (`nuxt-og-image` with Takumi, Nuxt 4.6.1 or later; set `NUXT_APP_SECRET` where the site runs, `.env` has one), and create-ginko warns on an unsupported Node.
 
 **Not in 0.4**
 

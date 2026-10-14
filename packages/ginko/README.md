@@ -10,7 +10,7 @@ events) or from Markdown files in your repo (with [`@lupinum/ginko-content`](htt
 npm create ginko my-site
 ```
 
-Or add it to an existing Nuxt 4.6+ site:
+Or add it to an existing Nuxt 4.6+ or Nuxt 5 site:
 
 ```bash
 npm install @lupinum/ginko @lupinum/ginko-content
@@ -51,7 +51,7 @@ date: 2026-11-05
 
 ```ts
 // nuxt.config.ts
-import ginko from './ginko.config'
+import ginko from './ginko.config.ts'
 
 export default defineNuxtConfig({ modules: ['@lupinum/ginko/nuxt'], ginko })
 ```

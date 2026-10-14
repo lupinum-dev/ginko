@@ -15,7 +15,7 @@ const icons = [
 ].map((name) => `lucide:${name}`)
 
 export default defineNuxtConfig({
-  modules: ['@lupinum/ginko-components', '@nuxt/icon', here('./modules/pages')],
+  modules: ['@lupinum/ginko-components', '@nuxt/icon', '@lupinum/ginko-docs/pages'],
   // Tells @lupinum/ginko to keep each page's repository path (`source`) in the served bundle, for "Edit this page".
   // A config hook, not one in modules/pages.ts: it is registered before any module runs, whatever the module order.
   hooks: { 'ginko:files': (options) => { options.keepSource = true } },

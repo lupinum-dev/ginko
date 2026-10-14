@@ -94,7 +94,10 @@ function localizePages(pages: NuxtPage[], config: LocaleConfig): NuxtPage[] {
 }
 
 export default defineNuxtModule<ModuleOptions>({
-  meta: { name: '@lupinum/ginko-i18n', configKey: 'i18n', compatibility: { nuxt: '^4.6.0' } },
+  meta: { name: '@lupinum/ginko-i18n', configKey: 'i18n', compatibility: { nuxt: '^4.6.0 || ^5.0.0-0' } },
+  // @nuxtjs/sitemap pairs locales by stripping the prefix, which is wrong for translated slugs (it would list
+  // /en/about as the de-AT version of itself), so its `autoI18n` is off by default, in any module order (D13).
+  moduleDependencies: { '@nuxtjs/sitemap': { optional: true, defaults: { autoI18n: false } } },
   defaults: { locales: [], seo: true, params: {} },
   async setup(options, nuxt) {
     const unknown = Object.keys(options).filter(k => !KNOWN.has(k))
@@ -388,22 +391,26 @@ export {}
         console.warn(`[ginko-i18n] routeRules "${pattern}" caches ${path}, whose language comes from Accept-Language or a cookie. Cached copies ignore those, so visitors get the wrong language. Fix: exclude that path from the cache rule, or put the locale in the URL.`)
     })
 
-    // @nuxtjs/sitemap pairs locales by stripping the prefix, which is wrong for translated slugs
-    // (it would list /en/about as the de-AT version of itself). So its `autoI18n` is off, its own
-    // discovery stays on, and a server plugin attaches our explicit alternates (D13).
-    if (hasNuxtModule('@nuxtjs/sitemap')) {
-      // `sitemap` is typed only when @nuxtjs/sitemap is installed; this module must build without it.
-      const options = nuxt.options as unknown as { sitemap?: { autoI18n?: unknown } }
-      options.sitemap = { ...options.sitemap, autoI18n: false }
+    // With @nuxtjs/sitemap a server plugin attaches our explicit alternates (D13). On its own, that module's page
+    // discovery stays on; on a Ginko site, Ginko turns it off and supplies every URL (Ginko D4). Decided once every
+    // module is installed: @nuxtjs/seo and nuxt-ai-ready bring @nuxtjs/sitemap as their dependency.
+    nuxt.hook('modules:done', () => {
+      if (!nuxt.options._installedModules.some(m => m.meta?.name === '@nuxtjs/sitemap' && !m.meta.disabled)) return
       addTemplate({ filename: 'ginko-i18n/sitemap.mjs', write: true, getContents: () => `export const entries = ${JSON.stringify(sitemapEntries)}\n` })
       // A plain function, no Nitro API: the same file serves Nitro 2 (Nuxt 4) and Nitro 3 (Nuxt 5).
       const sitemapPlugin = join(runtime, 'server/plugins/sitemap')
       addNitroPlugin({ nitro2: sitemapPlugin, nitro3: sitemapPlugin })
-    }
+    })
+
+    // The request's language for nuxt-site-config, which the Nuxt SEO modules read; a no-op without it.
+    const siteConfigPlugin = join(runtime, 'server/plugins/site-config')
+    addNitroPlugin({ nitro2: siteConfigPlugin, nitro3: siteConfigPlugin })
 
     addPlugin({ src: join(runtime, 'plugin'), mode: 'all' })
     addImports([
-      { name: 'useI18n', from: join(runtime, 'composables') },
+      // Priority: nuxt-seo-utils (in @nuxtjs/seo) registers a placeholder `useI18n` when @nuxtjs/i18n is
+      // missing. Without it the placeholder wins and every page that translates crashes.
+      { name: 'useI18n', from: join(runtime, 'composables'), priority: 10 },
       { name: 'useLocaleSuggestion', from: join(runtime, 'composables') },
       { name: 'addAlternatesResolver', from: join(runtime, 'composables') },
     ])

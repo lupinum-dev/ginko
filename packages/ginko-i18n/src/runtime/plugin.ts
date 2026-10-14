@@ -121,6 +121,8 @@ export default defineNuxtPlugin({
               ...alternatesOf(Object.fromEntries(translated.map(a => [a.code, a.path])), c).map(a => ({ rel: 'alternate' as const, hreflang: a.hreflang, href: url(a.path) })),
             ],
             meta: [
+              // Share links point at the canonical address, like search engines.
+              { property: 'og:url', content: url(route.path) },
               { property: 'og:locale', content: ogLocale(locale.language) },
               ...translated.filter(a => !a.current).map(a => ({ property: 'og:locale:alternate', content: ogLocale(a.language) })),
             ],

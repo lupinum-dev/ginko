@@ -48,7 +48,7 @@ Limits of the layer:
 
 ```ts
 // nuxt.config.ts
-import ginko from './ginko.config'
+import ginko from './ginko.config.ts'
 
 export default defineNuxtConfig({ extends: ['@lupinum/ginko-docs'], modules: ['@lupinum/ginko/nuxt'], ginko })
 ```
@@ -187,9 +187,8 @@ components: { ...components, /* the site's own components; same name wins */ },
 - **Components:** the layer loads the Vue side of `@lupinum/ginko-components`. Pass the registry in the site's
   `components` (see above): only then does Ginko check the tags and props in the pages. Without a registry, the
   check accepts any tag, so a misspelled `::calout` goes through without an error.
-- **Title:** pages get the title `Page · Site name` from Ginko (`seo.titleTemplate` in `defineSite`). If the site
-  already sets `app.head.titleTemplate` in `nuxt.config.ts`, set `seo: { titleTemplate: '%s' }` so the name is not
-  added twice.
+- **Title:** pages get the title `Page · Site name` from Ginko (`seo.titleTemplate` in `defineSite`). A
+  `titleTemplate` in `app.head` or from nuxt-seo-utils does not apply to them, so the name is never added twice.
 - **Styling:** map the site's design tokens to the token names above (leave out the ones the site already defines
   under the same name, often `--font-sans` and `--font-mono`). Two layout tokens line the docs up with the site:
   - `--docs-max`: the width of the site's content container, so the sidebar starts where the header's logo does.

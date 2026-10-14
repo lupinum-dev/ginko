@@ -1,15 +1,15 @@
 // The blog feed of one language, read from the build-time file bundle (what /__ginko/files/<locale>.json serves).
 // Only file blogs have a feed: posts that live on the platform are not in that bundle.
+import { createError, useRuntimeConfig, type RequestEvent } from 'nuxt/server'
 import schema from '#ginko/schema'
 import fileBundles from '#ginko/files'
 import locales from '#ginko/locales'
 import type { Brick } from '@lupinum/ginko'
 import { isVisible, todayIn } from '@lupinum/ginko/internal'
-import type { H3Event } from 'h3'
 import { rssXml } from './rss'
 
-export function serveBlogFeed(event: H3Event, locale: string) {
-  const config = useRuntimeConfig(event).public.ginko as { name: string; url: string; locales: string[]; timeZone: string; seo: { description?: string } }
+export function serveBlogFeed(event: RequestEvent, locale: string) {
+  const config = useRuntimeConfig().public.ginko as { name: string; url: string; locales: string[]; timeZone: string; seo: { description?: string } }
   const bundle = config.locales.includes(locale) ? fileBundles[locale as keyof typeof fileBundles] : undefined
   const posts = bundle?.bricks.posts
   const def = schema.bricks.posts as Brick | undefined
@@ -30,6 +30,6 @@ export function serveBlogFeed(event: H3Event, locale: string) {
   const page = base + route.replace('/[slug]', '')
   // RSS <language> is the BCP 47 tag of the locale (`languages` in the config), like the page head.
   const language = locales.locales.find((l) => l.code === locale)?.language ?? locale
-  setResponseHeader(event, 'content-type', 'application/rss+xml; charset=utf-8')
+  event.res.headers.set('content-type', 'application/rss+xml; charset=utf-8')
   return rssXml({ title: `${config.name} Blog`, link: page, self: `${page}/rss.xml`, description: config.seo.description ?? `${config.name} Blog`, language, items })
 }

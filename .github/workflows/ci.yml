@@ -50,6 +50,23 @@ jobs:
       - run: corepack enable pnpm
       - run: node scripts/audit-deps.mjs
 
+  # The released packages on Nuxt 5 (internals/decisions.md D3): the starters and the docs site, installed from
+  # the tarballs on the Nuxt 5 nightly that packages/ginko-i18n/browser/apps/n5 pins.
+  nuxt5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:pack --nuxt5
+
   # ginko-i18n browser suites (routing, hydration, SEO, zones; DECISIONS.md D3): the only proof for the
   # module setup, plugin and middleware. They take 10–20 minutes, so they run only when a pull request
   # changes packages/ginko-i18n.
@@ -95,7 +112,7 @@ jobs:
   ci:
     name: ci
     if: always()
-    needs: [check, audit, i18n-browser]
+    needs: [check, audit, nuxt5, i18n-browser]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

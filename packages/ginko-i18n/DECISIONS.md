@@ -176,8 +176,10 @@ That is wrong for translated slugs.
 
 **Now:** Ginko core serves its own `/sitemap.xml` from the bundle, with the same explicit alternates.
 ginko-i18n still turns `autoI18n` off and attaches alternates through the `sitemap:input` hook when a
-site installs `@nuxtjs/sitemap` instead, and Ginko's own route steps aside then (2026-10-12). Those
-alternates cover static pages only: pages with a dynamic segment need the site's own sitemap source.
+site installs `@nuxtjs/sitemap` instead, and Ginko's own route steps aside then (2026-10-12). Used on
+its own, ginko-i18n covers static pages only: pages with a dynamic segment need the site's own sitemap
+source. On a Ginko site, Ginko hands `@nuxtjs/sitemap` every page and entry with its alternates and turns
+the module's page discovery off (Ginko D4, 2026-10-14).
 
 ## D14. Release through the monorepo
 
@@ -193,8 +195,9 @@ monorepo's Changesets setup (RELEASING.md).
 `nuxt/server`, never from `h3` or `#imports`. Nitro plugins register through `addNitroPlugin` with
 separate `nitro2` and `nitro3` files where they need Nitro APIs. The browser suites build test apps
 on Nuxt 4.6.0 (`n4`, `n4c5` with Nuxt 5 compatibility) and a pinned Nuxt 5 nightly (`n5`); CI runs
-them for pull requests that change this package. Until Nuxt 5 is released, the peer range is
-`^4.6.0` only.
+them for pull requests that change this package. The peer range and the module's `compatibility`
+are both `^4.6.0 || ^5.0.0-0` (Ginko D3): with `^4.6.0` alone, Nuxt switches the module off on
+Nuxt 5 (`NUXT_B8013`) and npm refuses the install.
 
 **Why:** Nuxt 5 is planned for Q4 2026 and is not released yet (npm `latest` is 4.6.1 on
 2026-10-11). Nuxt 4.6 is the first version whose `nuxt/server` API runs unchanged on Nuxt 5, so a
