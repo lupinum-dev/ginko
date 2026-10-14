@@ -62,7 +62,7 @@ export async function insertCorpus(ctx: MutationCtx, site: Doc<'sites'>, corpus:
       }
     }
   }
-  await ctx.db.patch(site._id, { bytes, treeBytes, entryCount: count, orderRevs, contentRev: site.contentRev + 1 })
+  await ctx.db.patch(site._id, { bytes, trashBytes: 0, treeBytes, entryCount: count, orderRevs, contentRev: site.contentRev + 1 })
   return { count }
 }
 

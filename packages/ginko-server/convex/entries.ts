@@ -14,7 +14,7 @@ import { countersOf, DELETED_KEPT, softRemove, storageSums, writeCounters, type 
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
 import { taskFor } from './lib/agentTools'
-import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, syncEntryRefs, syncFileRefs } from './lib/write'
+import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
 
 const underRoot = (leaf: string, root: string) => leaf === root || leaf.startsWith(`${root}.`)
@@ -576,6 +576,8 @@ export const restore = mutation({
       if (live >= brick.max) fail('INVALID', 'errors.collectionFull', { max: brick.max }, { max: brick.max })
       const c = countersOf(actor.site)
       if (c.entryCount >= BUDGET.entries) fail('TOO_LARGE', 'errors.siteEntryLimitReached')
+      // The trash does not count toward the site's budget, so a restore needs room for the entry again.
+      if (c.bytes + entry.bytes > BUDGET.siteBytes) fail('TOO_LARGE', 'errors.restoreNoRoom', { limit: sizeText(BUDGET.siteBytes) })
       // The trash keeps no trees: they are made again.
       const trees = await treesOf(brick.fields, entry.data as Data)
       if (c.treeBytes + trees.bytes > BUDGET.treeBytes) fail('TOO_LARGE', 'errors.entryTooComplex')
@@ -587,6 +589,8 @@ export const restore = mutation({
       })
       await putTrees(ctx, actor.site._id, entry._id, trees.json)
       c.entryCount += 1
+      c.bytes += entry.bytes
+      c.trashBytes -= entry.bytes
       c.treeBytes += trees.bytes
       // A restored draft stays out of the bundle (its schedule went with the removal).
       if (entry.state !== 'draft') c.contentRev += 1
@@ -932,7 +936,7 @@ export const migrateStorage = internalMutation({
   },
 })
 
-/** The last step of `migrateStorage`: per site (one per run), `bytes` and `treeBytes` become the sums over its entries. */
+/** The last step of `migrateStorage`: per site (one per run), `bytes`, `trashBytes` and `treeBytes` become the sums over its entries. */
 export const recountStorage = internalMutation({
   args: { cursor: v.optional(v.union(v.string(), v.null())) },
   handler: async (ctx, args): Promise<null> => {
@@ -959,11 +963,11 @@ export const storageStatus = internalQuery({
     for (const site of page.page) {
       const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).collect()
       const sums = storageSums(rows)
-      const counters = { bytes: site.bytes, treeBytes: site.treeBytes }
+      const counters = { bytes: site.bytes, trashBytes: site.trashBytes, treeBytes: site.treeBytes }
       sites.push({
         site: site.slug,
         legacyRows: rows.filter((row) => row.trees !== undefined || row.treeBytes === undefined).length,
-        countersMatch: counters.bytes === sums.bytes && counters.treeBytes === sums.treeBytes,
+        countersMatch: counters.bytes === sums.bytes && counters.trashBytes === sums.trashBytes && counters.treeBytes === sums.treeBytes,
         counters,
         sums,
         overLimit: rows.filter((row) => entryBytes(row.data, row.prints) > BUDGET.entryBytes).map((row) => row._id),

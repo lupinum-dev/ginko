@@ -140,7 +140,7 @@ describe('GET /bundle/<site>', () => {
     await s.t.run(async (ctx) => {
       for (const part of await ctx.db.query('entryTrees').collect()) await ctx.db.delete(part._id)
       await ctx.db.patch(entry, { trees: '{}', bytes: 99_999, treeBytes: undefined })
-      await ctx.db.patch(s.site, { bytes: 1, treeBytes: undefined })
+      await ctx.db.patch(s.site, { bytes: 1, trashBytes: undefined, treeBytes: undefined })
     })
     vi.useFakeTimers()
     await s.t.mutation(internal.entries.migrateStorage, {})
@@ -389,7 +389,7 @@ describe('retention (daily)', () => {
     expect(change).toMatchObject({ kind: 'remove', actor: 'system' })
   })
 
-  it('keeps entryCount = live entries and bytes = stored rows through soft and hard delete', async () => {
+  it('keeps entryCount and bytes = live entries and trashBytes = removed ones through soft and hard delete', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(NOW)
     const { t, entries, site } = await setup()
@@ -404,6 +404,7 @@ describe('retention (daily)', () => {
     expect(rows.filter((r) => !r.deletedAt).length).toBeGreaterThan(10)
     expect(rows.some((r) => r._id === entries['notice-urlaub'])).toBe(false)
     expect(counters!.entryCount).toBe(rows.filter((r) => !r.deletedAt).length)
-    expect(counters!.bytes).toBe(rows.reduce((n, r) => n + r.bytes, 0))
+    expect(counters!.bytes).toBe(rows.filter((r) => !r.deletedAt).reduce((n, r) => n + r.bytes, 0))
+    expect(counters!.trashBytes).toBe(rows.filter((r) => r.deletedAt).reduce((n, r) => n + r.bytes, 0))
   })
 })

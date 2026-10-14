@@ -273,7 +273,8 @@ describe('export → import round trip (SPEC 12)', () => {
     const prodRows = await prod.t.run((ctx) => ctx.db.query('entries').collect())
     expect(rows.entries).toHaveLength(prodRows.length)
     expect(rows.site.entryCount).toBe(rows.entries.filter((e) => !e.deletedAt).length)
-    expect(rows.site.bytes).toBe(rows.entries.reduce((sum, e) => sum + e.bytes, 0))
+    expect(rows.site.bytes).toBe(rows.entries.filter((e) => !e.deletedAt).reduce((sum, e) => sum + e.bytes, 0))
+    expect(rows.site.trashBytes).toBe(rows.entries.filter((e) => e.deletedAt).reduce((sum, e) => sum + e.bytes, 0))
     expect(rows.site.orderRevs.menu).toBe(1)
   })
 

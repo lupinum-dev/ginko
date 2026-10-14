@@ -52,6 +52,7 @@
     "siteEntryLimitReached": "The site has reached its limit of 2000 entries.",
     "entryTooLarge": "This entry is too large: {used} of at most {limit}. Shorten it by about {over} to save it.",
     "siteStorageLimitReached": "The site's storage is full ({used} of {limit}). Shorten or remove entries. Changes that do not add anything can always be saved.",
+    "restoreNoRoom": "There is no room to restore this entry: the site's storage is full ({limit}). Shorten or remove other entries first.",
     "entryTooComplex": "The texts of this site have too much formatting to be delivered (for example very many headings or list items). Simplify this text.",
     "removedEntryCannotCopy": "A removed entry cannot be copied. Restore it first.",
     "entryChangedMeanwhile": "This entry has been changed since.",

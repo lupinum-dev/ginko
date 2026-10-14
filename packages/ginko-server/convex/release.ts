@@ -308,7 +308,7 @@ export const release = internalMutation({
     const updated = new Map(updates.map((u) => [u.entry._id, u]))
     const tooLarge = [...created.map((c) => c.bytes), ...entries.map((e) => updated.get(e._id)?.bytes ?? e.bytes)].find((b) => b > BUDGET.entryBytes)
     if (tooLarge !== undefined) fail('TOO_LARGE', 'errors.entryTooLarge', overBudget(tooLarge, BUDGET.entryBytes))
-    // entryCount counts live entries only (SPEC 4.2 remove); removed rows stay in `bytes` until hard deletion.
+    // entryCount and bytes count live entries only (SPEC 4.2 remove); removed ones are in trashBytes.
     const entryCount = entries.filter((e) => !e.deletedAt).length + created.length
     const after = storageSums([
       ...entries.map((e) => { const u = updated.get(e._id); return u ? { deletedAt: e.deletedAt, bytes: u.bytes, treeBytes: u.trees.bytes } : e }),
@@ -381,7 +381,7 @@ export const devPush = internalMutation({
     if (!site) {
       const id = await ctx.db.insert('sites', {
         slug: args.site, name: next.name, url: next.url, previewOrigins: ['http://localhost:3000'], schema: next as unknown as Json,
-        schemaRev: 1, contentRev: 1, orderRevs: {}, entryCount: 0, bytes: 0, treeBytes: 0, release: null,
+        schemaRev: 1, contentRev: 1, orderRevs: {}, entryCount: 0, bytes: 0, trashBytes: 0, treeBytes: 0, release: null,
       })
       await createMissingSingles(ctx, (await ctx.db.get(id))!, next)
       return { schemaRev: 1, changes: [], warnings: [] }

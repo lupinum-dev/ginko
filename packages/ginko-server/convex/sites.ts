@@ -177,6 +177,7 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
     orderRevs: {},
     entryCount: 0,
     bytes: 0,
+    trashBytes: 0,
     treeBytes: 0,
     release: null,
   })

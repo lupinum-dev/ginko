@@ -122,7 +122,7 @@ export const importClear = internalMutation({
       ?? (await ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', site._id)).first())
     if (left) return { done: false }
     const orderRevs = Object.fromEntries(Object.keys((site.schema as Schema).bricks).map((brick) => [brick, 0]))
-    await ctx.db.patch(site._id, { bytes: 0, treeBytes: 0, entryCount: 0, orderRevs, contentRev: site.contentRev + 1 })
+    await ctx.db.patch(site._id, { bytes: 0, trashBytes: 0, treeBytes: 0, entryCount: 0, orderRevs, contentRev: site.contentRev + 1 })
     return { done: true }
   },
 })
@@ -210,6 +210,7 @@ export const importExport = internalMutation({
     const ids: Record<string, Id<'entries'>> = {}
     const known = new Set<string>(uploads.values())
     let bytes = 0
+    let trashBytes = 0
     let treeBytes = 0
     let live = 0
     const orderRevs: Record<string, number> = { ...site.orderRevs }
@@ -241,11 +242,11 @@ export const importExport = internalMutation({
         await ctx.db.patch(id, { publishAt: row.publishAt, publishJob: await ctx.scheduler.runAt(row.publishAt, internal.entries.publishDue, { entry: id, at: row.publishAt }) })
       }
       ids[row.id] = id
-      bytes += size
       if (row.deletedAt === undefined) {
         live++
+        bytes += size
         treeBytes += trees.bytes
-      }
+      } else trashBytes += size
       orderRevs[row.brick] = 1
       for (const [name, field] of Object.entries(def.fields)) {
         if (field.type !== 'slug') continue
@@ -256,7 +257,7 @@ export const importExport = internalMutation({
       await syncEntryRefs(ctx, site._id, id, new Map([...usesOf(def.fields, data, schema.locales)].filter(([file]) => known.has(file))))
     }
     await ctx.db.patch(site._id, {
-      bytes: site.bytes + bytes, treeBytes: (site.treeBytes ?? 0) + treeBytes, entryCount: site.entryCount + live, orderRevs,
+      bytes: site.bytes + bytes, trashBytes: (site.trashBytes ?? 0) + trashBytes, treeBytes: (site.treeBytes ?? 0) + treeBytes, entryCount: site.entryCount + live, orderRevs,
     })
     return { entries: args.entries.length, files: args.files.length, ids }
   },
@@ -302,6 +303,7 @@ export const importRefs = internalMutation({
     // 25 entries of up to 480 KiB stay under the 16 MiB a mutation may read.
     const page = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).paginate({ numItems: 25, cursor: args.cursor ?? null })
     let delta = 0
+    let trashDelta = 0
     let changed = 0
     for (const entry of page.page) {
       const def = schema.bricks[entry.brick]
@@ -310,10 +312,11 @@ export const importRefs = internalMutation({
       if (same(data, entry.data)) continue
       const size = entry.bytes + byteSize(data) - byteSize(entry.data)
       await ctx.db.patch(entry._id, { data, bytes: size })
-      delta += size - entry.bytes
+      if (entry.deletedAt === undefined) delta += size - entry.bytes
+      else trashDelta += size - entry.bytes
       changed++
     }
-    if (delta !== 0) await ctx.db.patch(site._id, { bytes: site.bytes + delta })
+    if (delta !== 0 || trashDelta !== 0) await ctx.db.patch(site._id, { bytes: site.bytes + delta, trashBytes: (site.trashBytes ?? 0) + trashDelta })
     return { done: page.isDone, cursor: page.continueCursor, changed }
   },
 })

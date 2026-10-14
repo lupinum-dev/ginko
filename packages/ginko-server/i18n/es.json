@@ -52,6 +52,7 @@
     "siteEntryLimitReached": "El sitio ha alcanzado su límite de 2000 entradas.",
     "entryTooLarge": "Esta entrada es demasiado grande: {used} de {limit} como máximo. Acórtala unos {over} para poder guardarla.",
     "siteStorageLimitReached": "El almacenamiento del sitio está lleno ({used} de {limit}). Acorta o elimina entradas. Los cambios que no añaden nada siempre se pueden guardar.",
+    "restoreNoRoom": "No hay espacio para restaurar esta entrada: el almacenamiento del sitio está lleno ({limit}). Acorta o elimina primero otras entradas.",
     "entryTooComplex": "Los textos de este sitio tienen demasiado formato para publicarse (por ejemplo, muchísimos títulos o elementos de lista). Simplifica este texto.",
     "removedEntryCannotCopy": "Una entrada eliminada no se puede copiar. Restáurala primero.",
     "entryChangedMeanwhile": "Esta entrada se ha cambiado desde entonces.",

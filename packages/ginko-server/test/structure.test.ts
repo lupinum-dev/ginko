@@ -83,6 +83,33 @@ describe('entries.remove and restore', () => {
     expect(await as.stranger.query(api.entries.removed, { site: 'andere', brick: 'notices' })).toEqual([])
   })
 
+  // Wrong behaviour caught: a removed entry keeps counting against the site's budget for 30 days, so removing frees nothing.
+  it('removing an entry frees its bytes at once; restoring takes them back', async () => {
+    const { t, as, entries, site } = await setup()
+    const entry = entries['notice-ausgebucht']!
+    const [before, row] = await t.run(async (ctx) => [(await ctx.db.get(site))!, (await ctx.db.get(entry))!] as const)
+    await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })
+    expect(await t.run((ctx) => ctx.db.get(site))).toMatchObject({ bytes: before.bytes - row.bytes, trashBytes: row.bytes })
+    await as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry, lifeRev: 2 })
+    expect(await t.run((ctx) => ctx.db.get(site))).toMatchObject({ bytes: before.bytes, trashBytes: 0 })
+  })
+
+  // Wrong behaviour caught: the trash grows without bound (a member loops create and remove), or a removal fails when it is full.
+  it('a removal that fills the trash past its cap deletes the oldest removed entry for good', async () => {
+    const { t, as, entries, site } = await setup()
+    const oldest = entries['notice-weinabend']!
+    const removed = entries['notice-ausgebucht']!
+    await t.run(async (ctx) => {
+      await ctx.db.patch(oldest, { deletedAt: Date.now() - 60_000, bytes: 1000 })
+      await ctx.db.patch(site, { trashBytes: 4 * 1024 * 1024 - 10 })
+    })
+    await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: removed, lifeRev: 1 })
+    const row = await t.run((ctx) => ctx.db.get(removed))
+    expect(await t.run((ctx) => ctx.db.get(oldest))).toBeNull()
+    expect(row?.deletedAt).toBeDefined()
+    expect(await t.run((ctx) => ctx.db.get(site))).toMatchObject({ trashBytes: 4 * 1024 * 1024 - 10 - 1000 + row!.bytes })
+  })
+
   it('a restore with a stale lifeRev is CHANGED_SINCE; the current lifeRev restores', async () => {
     const { as, entries } = await setup()
     const entry = entries['menu-saibling']!

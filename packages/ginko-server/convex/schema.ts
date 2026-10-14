@@ -24,12 +24,14 @@ export default defineSchema({
     contentRev: v.number(),
     orderRevs: v.record(v.string(), v.number()),
     entryCount: v.number(),
-    /** Budget bytes (core `entryBytes`) of every stored entry, removed ones included until retention deletes them (SPEC 3, 12). */
+    /** Budget bytes (core `entryBytes`) of the live entries, drafts included (SPEC 3). */
     bytes: v.number(),
     /**
-     * Bytes of the live entries' Markdown trees (`entryTrees`); bounded by SITE_BUDGET.treeBytes so the bundle read stays in
-     * Convex's limits. Optional until `entries:migrateStorage` ran everywhere (internals/migrations.md).
+     * Budget bytes of the removed entries in the trash; capped (lib/lifecycle `TRASH_BYTES`). Optional and
+     * `treeBytes` too until `entries:migrateStorage` ran everywhere (internals/migrations.md).
      */
+    trashBytes: v.optional(v.number()),
+    /** Bytes of the live entries' Markdown trees (`entryTrees`); bounded by SITE_BUDGET.treeBytes so the bundle read stays in Convex's limits. */
     treeBytes: v.optional(v.number()),
     release: v.union(v.null(), v.object({ commit: v.string(), schemaRev: v.number(), contentRev: v.number(), at: v.number() })),
     /** Vercel bypass token of the site; never returned by a query. */
@@ -102,7 +104,8 @@ export default defineSchema({
     publishJob: v.optional(v.id('_scheduled_functions')),
   })
     .index('by_site_brick_order', ['site', 'brick', 'order'])
-    .index('by_site_brick_deleted', ['site', 'brick', 'deletedAt']),
+    .index('by_site_brick_deleted', ['site', 'brick', 'deletedAt'])
+    .index('by_site_deleted', ['site', 'deletedAt']),
 
   /**
    * The trees of an entry's Markdown texts (core `markdownTrees`) as JSON text, split into parts below Convex's 1 MiB
