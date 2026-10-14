@@ -126,15 +126,15 @@ async function revoke(id: string) {
             <div class="grid min-w-0 gap-0.5">
               <p class="font-medium [overflow-wrap:anywhere]">{{ k.label }}</p>
               <p class="text-[13px] text-muted-foreground">
-                {{ t('site.ai.createdAt', { when: when(k.createdAt) }) }}<template v-if="k.revokedAt">{{ t('site.ai.revokedAt', { when: when(k.revokedAt) }) }}</template><template v-else>{{ k.lastUsedAt ? t('site.ai.lastUsedAt', { when: when(k.lastUsedAt) }) : t('site.ai.neverUsed') }}</template>
+                {{ t('site.keys.createdAt', { when: when(k.createdAt) }) }}<template v-if="k.revokedAt">{{ t('site.ai.revokedAt', { when: when(k.revokedAt) }) }}</template><template v-else>{{ k.lastUsedAt ? t('site.keys.lastUsedAt', { when: when(k.lastUsedAt) }) : t('site.keys.neverUsed') }}</template>
               </p>
             </div>
-            <Button v-if="!k.revokedAt && confirming !== k.id" type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="confirming = k.id">{{ t('site.ai.revokeKey') }}</Button>
+            <Button v-if="!k.revokedAt && confirming !== k.id" type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="confirming = k.id">{{ t('site.keys.revoke') }}</Button>
           </div>
           <div v-if="!k.revokedAt && confirming === k.id" class="grid gap-2 rounded-md bg-warning/12 px-3 py-2.5">
             <p>{{ t('site.ai.revokeConfirm', { label: k.label }) }}</p>
             <div class="flex flex-wrap gap-2">
-              <Button type="button" variant="destructive" size="sm" @click="revoke(k.id)">{{ t('site.ai.revokeKey') }}</Button>
+              <Button type="button" variant="destructive" size="sm" @click="revoke(k.id)">{{ t('site.keys.revoke') }}</Button>
               <Button type="button" variant="ghost" size="sm" @click="confirming = null">{{ t('site.common.cancel') }}</Button>
             </div>
           </div>

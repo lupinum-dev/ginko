@@ -264,7 +264,9 @@
       "role": "Rol",
       "rights": "Permisos",
       "sendInvite": "Enviar invitación",
-      "inviteSent": "Invitación enviada a {email}."
+      "inviteSent": "Invitación enviada a {email}.",
+      "keysOfMember": "Claves que creó {email} ({count})",
+      "keysStay": "Estas claves pertenecen al sitio y siguen funcionando hasta que las revoques. Si una clave aún se necesita, por ejemplo para la publicación automática, consérvala."
     },
     "ai": {
       "heading": "Conectar IA",
@@ -290,12 +292,19 @@
       "createKey": "Crear clave",
       "yourKeys": "Tus claves",
       "noneYet": "Ninguna todavía.",
-      "createdAt": "Creada {when}",
       "revokedAt": ", revocada {when}",
+      "revokeConfirm": "Después, “{label}” ya no podrá hacer cambios."
+    },
+    "keys": {
+      "heading": "Claves de publicación",
+      "lead": "Los programas usan estas claves para publicar el sitio, por ejemplo la publicación automática. El soporte del sitio configura las claves nuevas.",
+      "createdAt": "Creada {when}",
+      "createdBy": "Creada {when} por {who}",
       "lastUsedAt": ", último uso {when}",
       "neverUsed": ", nunca usada",
-      "revokeKey": "Revocar",
-      "revokeConfirm": "Después, “{label}” ya no podrá hacer cambios."
+      "revoke": "Revocar",
+      "revokeConfirm": "Después, los programas con “{label}” ya no podrán publicar.",
+      "revoked": "Clave “{label}” revocada."
     },
     "history": {
       "heading": "Historial",

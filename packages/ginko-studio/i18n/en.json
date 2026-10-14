@@ -264,7 +264,9 @@
       "role": "Role",
       "rights": "Rights",
       "sendInvite": "Send invitation",
-      "inviteSent": "Invitation sent to {email}."
+      "inviteSent": "Invitation sent to {email}.",
+      "keysOfMember": "Keys {email} created ({count})",
+      "keysStay": "These keys belong to the site and keep working until you revoke them. If a key is still needed, for example for automatic publishing, keep it."
     },
     "ai": {
       "heading": "Connect AI",
@@ -290,12 +292,19 @@
       "createKey": "Create key",
       "yourKeys": "Your keys",
       "noneYet": "None yet.",
-      "createdAt": "Created {when}",
       "revokedAt": ", revoked {when}",
+      "revokeConfirm": "“{label}” cannot make any changes after that."
+    },
+    "keys": {
+      "heading": "Publishing keys",
+      "lead": "Programs use these keys to publish the site, for example automatic publishing. Site support sets up new keys.",
+      "createdAt": "Created {when}",
+      "createdBy": "Created {when} by {who}",
       "lastUsedAt": ", last used {when}",
       "neverUsed": ", never used",
-      "revokeKey": "Revoke",
-      "revokeConfirm": "“{label}” cannot make any changes after that."
+      "revoke": "Revoke",
+      "revokeConfirm": "Programs using “{label}” can no longer publish after that.",
+      "revoked": "Key “{label}” revoked."
     },
     "history": {
       "heading": "History",

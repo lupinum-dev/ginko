@@ -264,7 +264,9 @@
       "role": "Rolle",
       "rights": "Rechte",
       "sendInvite": "Einladung senden",
-      "inviteSent": "Einladung an {email} gesendet."
+      "inviteSent": "Einladung an {email} gesendet.",
+      "keysOfMember": "Schlüssel, die {email} erstellt hat ({count})",
+      "keysStay": "Diese Schlüssel gehören zur Seite und funktionieren weiter, bis du sie widerrufst. Wird ein Schlüssel noch gebraucht, zum Beispiel für die automatische Veröffentlichung, lass ihn bestehen."
     },
     "ai": {
       "heading": "Mit KI verbinden",
@@ -290,12 +292,19 @@
       "createKey": "Schlüssel erstellen",
       "yourKeys": "Deine Schlüssel",
       "noneYet": "Noch keiner.",
-      "createdAt": "Erstellt {when}",
       "revokedAt": ", widerrufen {when}",
+      "revokeConfirm": "„{label}“ kann danach nichts mehr ändern."
+    },
+    "keys": {
+      "heading": "Schlüssel für Veröffentlichungen",
+      "lead": "Mit diesen Schlüsseln veröffentlichen Programme die Seite, zum Beispiel die automatische Veröffentlichung. Neue Schlüssel richtet die Website-Betreuung ein.",
+      "createdAt": "Erstellt {when}",
+      "createdBy": "Erstellt {when} von {who}",
       "lastUsedAt": ", zuletzt benutzt {when}",
       "neverUsed": ", noch nie benutzt",
-      "revokeKey": "Widerrufen",
-      "revokeConfirm": "„{label}“ kann danach nichts mehr ändern."
+      "revoke": "Widerrufen",
+      "revokeConfirm": "Programme mit „{label}“ können danach nicht mehr veröffentlichen.",
+      "revoked": "Schlüssel „{label}“ widerrufen."
     },
     "history": {
       "heading": "Verlauf",

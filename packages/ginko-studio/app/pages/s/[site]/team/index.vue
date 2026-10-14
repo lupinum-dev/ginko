@@ -1,10 +1,11 @@
-<!-- Team (UI.md 7): members with their rights, open invitations, and the invite form. Owners and admins only;
+<!-- Team (UI.md 7): members with their rights, open invitations, the invite form, and the site's publishing keys. Owners and admins only;
      the members query is skipped for everyone else, so the server never answers them. -->
 <script setup lang="ts">
 import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
 import { api } from '#convex/api'
 import { opErrorOf } from '../../../../composables/useOps'
 import { shownLabel } from '../../../../utils/labels'
+import { whoText } from '../../../../utils/who'
 import { Button } from '@studio/components/ui/button'
 import { Badge } from '@studio/components/ui/badge'
 import { Input } from '@studio/components/ui/input'
@@ -20,11 +21,13 @@ const { show } = useToast()
 const team = useConvexQuery(api.members.list, () => (s.isManager.value ? { site: s.slug.value } : 'skip'))
 const members = computed(() => team.data.value?.members ?? [])
 const invites = computed(() => team.data.value?.invites ?? [])
+const keys = computed(() => team.data.value?.keys ?? [])
 
 const removeMember = useConvexMutation(api.members.remove)
 const saveRights = useConvexMutation(api.members.setGrants)
 const revokeInvite = useConvexMutation(api.invites.revoke)
 const createInvite = useConvexMutation(api.invites.create)
+const revokePushKey = useConvexMutation(api.release.revokePushKey)
 
 const roleLabel = (role: 'owner' | 'staff') => (role === 'owner' ? t('site.role.owner') : t('site.role.staff'))
 const noEmail = computed(() => t('site.team.noEmail'))
@@ -135,6 +138,32 @@ async function sendInvite() {
   }
 }
 
+// Publishing keys belong to the site and outlive the person who made them (removing a member does not end them).
+// The keys list asks once before revoking; in a member's remove confirmation one click revokes, as that panel already asks.
+type Key = (typeof keys.value)[number]
+const keysOf = (member: string) => keys.value.filter((k) => k.member === member)
+/** A day, never a time: the server stamps "last used" at most once an hour. */
+const day = (ms: number) => format.date(new Date(ms), { timeZone: s.schema.value?.timeZone ?? 'Europe/Vienna', day: 'numeric', month: 'short', year: 'numeric' })
+const usedText = (k: Key) => (k.lastUsedAt ? t('site.keys.lastUsedAt', { when: day(k.lastUsedAt) }) : t('site.keys.neverUsed'))
+const confirmingKey = ref<string | null>(null)
+const keyError = ref<{ id: string; message: string } | null>(null)
+
+function startRevoke(id: string) {
+  keyError.value = null
+  confirmingKey.value = id
+}
+
+async function revokeKey(key: Key) {
+  keyError.value = null
+  try {
+    await revokePushKey.mutate({ site: s.slug.value, key: key.id })
+    confirmingKey.value = null
+    show(t('site.keys.revoked', { label: key.label }))
+  } catch (error) {
+    keyError.value = { id: key.id, message: opErrorOf(error).message }
+  }
+}
+
 /** The last owner cannot be removed (the server refuses), so the button is not offered. */
 const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role === 'owner').length)
 </script>
@@ -173,6 +202,22 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
 
             <div v-else-if="confirming === m.id" class="grid gap-2 rounded-md bg-warning/12 px-3 py-2.5">
               <p><I18nT k="site.team.losesAccess" :params="{ email: m.email ?? noEmail, site: s.site.value?.name ?? t('site.fallback.site') }"><template #email="{ text }"><strong>{{ text }}</strong></template></I18nT></p>
+              <template v-if="keysOf(m.id).length">
+                <p class="font-medium">{{ t('site.team.keysOfMember', { email: m.email ?? noEmail, count: keysOf(m.id).length }) }}</p>
+                <ul class="m-0 grid list-none gap-2 p-0">
+                  <li v-for="k in keysOf(m.id)" :key="k.id" class="grid gap-1">
+                    <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                      <div class="grid min-w-0 gap-0.5">
+                        <p class="font-medium [overflow-wrap:anywhere]">{{ k.label }}</p>
+                        <p class="text-[13px] text-muted-foreground">{{ t('site.keys.createdAt', { when: day(k.createdAt) }) }}{{ usedText(k) }}</p>
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="revokeKey(k)">{{ t('site.keys.revoke') }}</Button>
+                    </div>
+                    <p v-if="keyError?.id === k.id" class="font-semibold text-destructive" role="alert">{{ keyError.message }}</p>
+                  </li>
+                </ul>
+                <p class="text-[13px] text-muted-foreground">{{ t('site.team.keysStay') }}</p>
+              </template>
               <div class="flex flex-wrap gap-2">
                 <Button type="button" variant="destructive" size="sm" :disabled="memberBusy" @click="confirmRemove(m.id)">{{ t('site.common.remove') }}</Button>
                 <Button type="button" variant="ghost" size="sm" :disabled="memberBusy" @click="confirming = null">{{ t('site.common.cancel') }}</Button>
@@ -225,6 +270,30 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
             <Button type="button" variant="ghost" :disabled="sending" @click="inviting = false">{{ t('site.common.cancel') }}</Button>
           </div>
         </form>
+      </section>
+
+      <section v-if="keys.length" class="grid gap-3 py-6" aria-labelledby="keys-title">
+        <h2 id="keys-title" class="text-base font-semibold tracking-tight">{{ t('site.keys.heading') }}</h2>
+        <p class="text-[13px] text-muted-foreground">{{ t('site.keys.lead') }}</p>
+        <ul class="m-0 list-none overflow-hidden rounded-xl border p-0">
+          <li v-for="k in keys" :key="k.id" class="grid gap-2 border-b px-4 py-3 last:border-b-0">
+            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div class="grid min-w-0 gap-0.5">
+                <p class="font-medium [overflow-wrap:anywhere]">{{ k.label }}</p>
+                <p class="text-[13px] text-muted-foreground [overflow-wrap:anywhere]">{{ t('site.keys.createdBy', { when: day(k.createdAt), who: whoText(k.by, t) }) }}{{ usedText(k) }}</p>
+              </div>
+              <Button v-if="confirmingKey !== k.id" type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="startRevoke(k.id)">{{ t('site.keys.revoke') }}</Button>
+            </div>
+            <div v-if="confirmingKey === k.id" class="grid gap-2 rounded-md bg-warning/12 px-3 py-2.5">
+              <p>{{ t('site.keys.revokeConfirm', { label: k.label }) }}</p>
+              <div class="flex flex-wrap gap-2">
+                <Button type="button" variant="destructive" size="sm" @click="revokeKey(k)">{{ t('site.keys.revoke') }}</Button>
+                <Button type="button" variant="ghost" size="sm" @click="confirmingKey = null">{{ t('site.common.cancel') }}</Button>
+              </div>
+            </div>
+            <p v-if="keyError?.id === k.id" class="font-semibold text-destructive" role="alert">{{ keyError.message }}</p>
+          </li>
+        </ul>
       </section>
 
       <DeleteSite v-if="s.site.value" :slug="s.slug.value" :name="s.site.value.name" />
