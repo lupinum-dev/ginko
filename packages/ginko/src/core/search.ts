@@ -1,6 +1,7 @@
-// Site search: sections of the bundle's items, indexed with MiniSearch and the stemmer of the index's language.
-// The engine choice lives in this one file. It imports MiniSearch, so the core index does not export it: sites reach
-// it through `@lupinum/ginko/search`, Ginko's own packages also through `@lupinum/ginko/internal`. Pure: no Node APIs, runs in Convex too.
+// The site search engine: MiniSearch with the stemmer of the index's language. The engine choice lives in this one
+// file; no MiniSearch type leaves it. It imports MiniSearch, so the browser reaches it only through
+// `@lupinum/ginko/search`; the core index does not export it. Imports no other core file, so the browser chunk carries
+// only the engine. Pure: no Node APIs, runs in Convex too. The records come from search-sections.ts.
 import MiniSearch from 'minisearch'
 
 export interface SearchRecord {

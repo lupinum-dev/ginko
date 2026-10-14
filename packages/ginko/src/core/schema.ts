@@ -208,7 +208,8 @@ const SITE_KEYS = {
  * `schema` is the site's serialized schema, passed by callers that already have it.
  */
 export function checkSite(site: SiteInput, schema: Schema = serializeSchema(site)): string[] {
-  const problems: string[] = []
+  // A typo in a top-level key (`redirect`) would otherwise change nothing, silently.
+  const problems = Object.keys(site).filter((key) => !Object.hasOwn(SITE_KEYS, key)).map((key) => `Unknown key “${key}”. Known keys: ${Object.keys(SITE_KEYS).join(', ')}.`)
   for (const [locale, language] of Object.entries(site.languages ?? {})) {
     if (!site.locales.includes(locale)) problems.push(`languages: locale “${locale}” is not in locales.`)
     if (!isLocale(language)) problems.push(`languages.${locale}: invalid language “${String(language)}” (expected a canonical language tag such as “de-AT” or “en-US”).`)

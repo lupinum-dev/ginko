@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildIndex } from '@lupinum/ginko/internal'
+import { buildIndex } from '@lupinum/ginko/internal/search'
 import { loadIndex, search } from '@lupinum/ginko/search'
 import { handleMcp, type DocsMcpDeps } from '../server/mcp/handler'
 import { docsAskLinks, docsEditUrl, docsMarkdownPath, docsStudioUrl } from '../app/lib/docsPage'

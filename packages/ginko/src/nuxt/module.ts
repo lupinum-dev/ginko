@@ -36,11 +36,10 @@ export default defineNuxtModule<SiteInput>({
   meta: { name: '@lupinum/ginko', configKey: 'ginko', compatibility: { nuxt: '^4.6.0' } },
   async setup(site, nuxt) {
     if (!site?.site || !site.bricks) throw new Error('[ginko] Option `ginko` is missing: the result of defineSite() from ginko.config.ts.')
-    // The same check as `ginko check`, so an invalid config fails the build.
-    const problems = siteProblems(site)
-    if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
-    // The serialized schema is the site's own contract: used at runtime for defaults.
+    // The serialized schema is the site's own contract: checked at build (the same check as `ginko check`), used at runtime for defaults.
     const schema = serializeSchema(site)
+    const problems = checkSite(site, schema)
+    if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
     const sources = {
       platform: Object.values(schema.bricks).some((b) => b.source !== 'files'),
       files: Object.values(schema.bricks).some((b) => b.source === 'files'),
@@ -223,7 +222,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     // What is served to everyone: no expired entries, no repo paths (kept only for the docs layer's "Edit this page" link).
     const now = new Date()
     bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, content.withMarkdownRefs(content.publicBundle(bundle!, schema, now, fileOptions), schema, trees)]))
-    searches = Object.fromEntries(Object.entries(bundles).map(([locale, bundle]) => [locale, content.searchIndex(bundle!, trees, schema)]))
+    searches = Object.fromEntries(await Promise.all(Object.entries(bundles).map(async ([locale, bundle]) => [locale, await content.searchIndex(bundle!, trees, schema)])))
   }
   await build()
   // A static host has no server: when every brick is a file brick the site can be prerendered, so the redirects are also route rules (exact paths only; patterns need the middleware).
