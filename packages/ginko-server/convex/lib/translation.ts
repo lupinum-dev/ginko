@@ -9,7 +9,9 @@ import { valueAt, type Data, type Prints } from './content'
 export interface LeafStatus {
   missing: string[]
   outdated: string[]
-  /** `untranslated: 'hide'` and a required leaf is missing or outdated: the bundle leaves the entry out in this language. */
+  /** A required leaf is missing (an outdated one still counts as translated): a routed entry has no page in this language. */
+  untranslated: boolean
+  /** Untranslated in a collection whose mode is `'hide'`: the bundle leaves the entry out in this language. */
   hidden: boolean
 }
 
@@ -27,5 +29,5 @@ export function splitFallback(data: Data, leaves: readonly string[], locale: str
 
 export function leafStatus(schema: Schema, brick: string, row: { _id: string; data: unknown; prints: unknown }, locale: Locale): LeafStatus {
   const resolved = resolveEntry(schema, brick, { id: row._id, data: row.data as Data, prints: row.prints as Prints }, { locale, files: () => undefined })
-  return { ...splitFallback(row.data as Data, resolved.fallback, locale), hidden: resolved.hidden }
+  return { ...splitFallback(row.data as Data, resolved.fallback, locale), untranslated: resolved.untranslated, hidden: resolved.hidden }
 }

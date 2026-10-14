@@ -45,8 +45,18 @@ export interface ResolveContext {
 export interface ResolvedEntry {
   data: Record<string, unknown>
   fallback: string[]
-  /** `untranslated: 'hide'` and a required translatable leaf is missing or outdated in this locale. */
+  /**
+   * A required translatable leaf has no text in this locale (an outdated one counts as translated). Never for the
+   * main locale or an unknown one; slugs and image descriptions never count, they fall back by design.
+   */
+  untranslated: boolean
+  /** `untranslated` in a collection whose mode is `'hide'` (`untranslatedMode`): the bundle leaves the entry out of this locale. */
   hidden: boolean
+}
+
+/** Pages (collections with a route) leave an untranslated entry out of that language; parts of pages fall back to the main language. */
+export function untranslatedMode(brick: CollectionBrick): 'hide' | 'fallback' {
+  return brick.untranslated ?? (brick.route ? 'hide' : 'fallback')
 }
 
 /** The print that marks a translation as fresh for the current main-language value. */
@@ -59,7 +69,7 @@ export function resolveEntry(schema: Schema, brickKey: string, entry: StoredEntr
   const brick = schema.bricks[brickKey]!
   const main = schema.locales[0]!
   const fallback: string[] = []
-  const flags = { hidden: false, canHide: brick.kind === 'collection' && brick.untranslated === 'hide' }
+  const flags = { untranslated: false }
   const state: State = { schema, brickKey, entry, ctx, main, fallback, flags }
   const data = resolveFields(brick.fields, entry.data, '', state)
   // Retired fields (SPEC 2.5) are projected after the live fields are resolved.
@@ -73,13 +83,14 @@ export function resolveEntry(schema: Schema, brickKey: string, entry: StoredEntr
         if (leaf === rule.from || leaf.startsWith(`${rule.from}.`)) fallback.push(name + leaf.slice(rule.from.length))
       }
     } else if (entry.data[name] !== undefined) {
-      data[name] = resolveValue(field, entry.data[name], name, { ...state, flags: { hidden: false, canHide: false } })
+      data[name] = resolveValue(field, entry.data[name], name, { ...state, flags: { untranslated: false } })
     } else if ('value' in rule) {
-      // Same fallback reporting as stored values; a constant never hides the entry.
-      data[name] = resolveValue(field, rule.value, name, { ...state, flags: { hidden: false, canHide: false } })
+      // Same fallback reporting as stored values; a constant never makes the entry untranslated.
+      data[name] = resolveValue(field, rule.value, name, { ...state, flags: { untranslated: false } })
     }
   }
-  return { data, fallback, hidden: flags.hidden }
+  const hidden = flags.untranslated && brick.kind === 'collection' && untranslatedMode(brick) === 'hide'
+  return { data, fallback, untranslated: flags.untranslated, hidden }
 }
 
 interface State {
@@ -89,8 +100,8 @@ interface State {
   ctx: ResolveContext
   main: Locale
   fallback: string[]
-  /** Hiding is decided per leaf: a required leaf whose translation is missing or outdated. */
-  flags: { hidden: boolean; canHide: boolean }
+  /** Decided per leaf: a required leaf whose translation is missing. */
+  flags: { untranslated: boolean }
 }
 
 function resolveFields(fields: Fields, stored: Record<string, Json> | undefined, path: string, state: State) {
@@ -155,14 +166,15 @@ function altOf(own: Json, library: Record<string, string> | undefined, leaf: str
   // No own text in this language, but the library has one: it is the real text, not a fallback.
   if (!markAllFallback && locale !== state.main && fromLibrary(locale)) return fromLibrary(locale)
   // The main language's library text stands in for a missing own one, so translations compare against it.
+  // A description is required in the main language only: a missing translation falls back and never makes the entry untranslated.
   const main = fromLibrary(state.main)
-  return (localized(main ? { ...map, [state.main]: main } : map, leaf, state, field) as string | undefined) ?? ''
+  return (localized(main ? { ...map, [state.main]: main } : map, leaf, { ...state, flags: { untranslated: false } }, field) as string | undefined) ?? ''
 }
 
 /**
  * One locale of a translatable leaf. Unknown requested locale: main language, every leaf
  * marked fallback, nothing hidden. Slugs are identities fixed at creation, never "stale":
- * a missing slug falls back to the main slug, the same rule `urlsFor` uses.
+ * a missing slug falls back to the main slug, the same rule `routeUrls` uses.
  */
 function localized(value: Json, leaf: string, state: State, field: Field): unknown {
   const map = (value ?? {}) as Partial<Record<Locale, Json>>
@@ -178,8 +190,11 @@ function localized(value: Json, leaf: string, state: State, field: Field): unkno
   const print = state.entry.prints?.[leaf]?.[locale]
   const stale = !missing && field.type !== 'slug' && print !== printOf(mainValue)
   if (missing || stale) {
-    if (mainValue !== undefined && mainValue !== null && mainValue !== '') state.fallback.push(leaf)
-    if (state.flags.canHide && !field.optional) state.flags.hidden = true
+    if (mainValue !== undefined && mainValue !== null && mainValue !== '') {
+      state.fallback.push(leaf)
+      // An outdated translation still counts as one: a typo fix in the main language never takes a page away.
+      if (missing && !field.optional && field.type !== 'slug') state.flags.untranslated = true
+    }
     return mainValue
   }
   return own
@@ -288,7 +303,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
       // The file of this locale ("edit this page" opens the translation), else the main-language file.
       const source = entry.sources?.[locale] ?? entry.sources?.[main]
       if (source !== undefined) item.source = source
-      if (brick.route && isVisible(brick, r.data, input.today)) item.urls = urlsFor(schema, key, brick, entry, input.files)
+      if (brick.route && isVisible(brick, r.data, input.today)) item.urls = urlsFor(schema, key, brick, entry)
       items.push(item)
     }
     bricks[key] = { kind: 'collection', items }
@@ -308,18 +323,34 @@ export function buildBundle(input: BuildBundleInput): Bundle {
   }
 }
 
-/** URL per locale where the entry exists (respects `untranslated: 'hide'`); the slug falls back to the main language. */
-export function urlsFor(schema: Schema, key: string, brick: CollectionBrick, entry: StoredEntry, files: (id: string) => FileInfo | undefined): Partial<Record<Locale, string>> {
+/**
+ * Every locale's address of the entry from the route and slug (a locale without its own slug takes the main one),
+ * translated or not: for cache refresh and URL clash checks.
+ */
+export function routeUrls(schema: Schema, brick: CollectionBrick, entry: StoredEntry): Partial<Record<Locale, string>> {
   const slugField = Object.entries(brick.fields).find(([, field]) => field.type === 'slug' && !field.retired)?.[0]
   if (!slugField || !brick.route) return {}
   const slugs = (entry.data[slugField] ?? {}) as Partial<Record<Locale, string>>
   const main = schema.locales[0]!
   const urls: Partial<Record<Locale, string>> = {}
   for (const locale of schema.locales) {
-    if (locale !== main && brick.untranslated === 'hide' && resolveEntry(schema, key, entry, { locale, files }).hidden) continue
     const slug = slugs[locale] || slugs[main]
     const route = brick.route[locale]
     if (slug && route) urls[locale] = route.replace('[slug]', slug)
+  }
+  return urls
+}
+
+/**
+ * The URLs where the entry is a page: `routeUrls` without the locales where it is untranslated, whatever the
+ * mode. In `'fallback'` mode such an entry stays in that locale's lists but has no page there.
+ */
+export function urlsFor(schema: Schema, key: string, brick: CollectionBrick, entry: StoredEntry): Partial<Record<Locale, string>> {
+  const urls = routeUrls(schema, brick, entry)
+  const main = schema.locales[0]!
+  // No files needed: only texts make an entry untranslated (image descriptions never do).
+  for (const locale of schema.locales) {
+    if (locale !== main && urls[locale] && resolveEntry(schema, key, entry, { locale, files: () => undefined }).untranslated) delete urls[locale]
   }
   return urls
 }
@@ -328,9 +359,9 @@ export function urlsFor(schema: Schema, key: string, brick: CollectionBrick, ent
 export interface UrlClash { url: string; locale: Locale; first: string; second: string }
 
 /**
- * Entries that share a URL in one locale. Takes the `urlsFor` results of all entries (of all bricks:
+ * Entries that share a URL in one locale. Takes the `routeUrls` results of all entries (of all bricks:
  * two bricks with `route: '/[slug]'` clash too); this catches clashes that slugs alone miss, because
- * `urlsFor` lets a locale without its own slug fall back to the main slug. One clash per later entry and URL.
+ * `routeUrls` lets a locale without its own slug fall back to the main slug. One clash per later entry and URL.
  */
 export function urlClashes(entries: Iterable<{ id: string; urls: Partial<Record<Locale, string>> }>): UrlClash[] {
   const owner = new Map<string, string>()

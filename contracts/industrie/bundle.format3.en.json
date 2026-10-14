@@ -139,18 +139,18 @@
                 [
                   "p",
                   {},
-                  "Die Brunner Präzisionstechnik GmbH erweitert ihre Fertigung in Steyr um fünf CNC-Fräsen. Die Investition sichert zwölf Arbeitsplätze in der Zerspanung."
+                  "Brunner Präzisionstechnik GmbH is adding five CNC mills to its production in Steyr. The investment secures twelve jobs in machining."
                 ],
                 [
                   "p",
                   {},
-                  "Rückfragen an ",
+                  "Questions go to ",
                   [
                     "a",
                     {
                       "href": "mailto:marketing@brunner-praezision.example"
                     },
-                    "die Marketing-Abteilung"
+                    "the marketing department"
                   ],
                   "."
                 ]
@@ -168,83 +168,10 @@
               "size": 238112
             }
           },
-          "fallback": [
-            "body"
-          ],
+          "fallback": [],
           "urls": {
             "de": "/aktuelles/investition-cnc-fraesen",
             "en": "/en/news/investment-cnc-mills"
-          }
-        },
-        {
-          "id": "news-zulieferertag",
-          "data": {
-            "title": "Brunner beim Zulieferertag Oberösterreich",
-            "slug": "zulieferertag-2026",
-            "date": "2026-09-15",
-            "body": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Wir zeigen Drehteile für die Medizintechnik. Termine und Anmeldung: ",
-                  [
-                    "a",
-                    {
-                      "href": "https://zulieferer.example/termine"
-                    },
-                    "Veranstaltungsseite"
-                  ]
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            }
-          },
-          "fallback": [
-            "title",
-            "slug",
-            "body"
-          ],
-          "urls": {
-            "de": "/aktuelles/zulieferertag-2026",
-            "en": "/en/news/zulieferertag-2026"
-          }
-        },
-        {
-          "id": "news-logistik",
-          "data": {
-            "title": "Neuer Standort für die Logistik",
-            "slug": "neuer-standort-logistik",
-            "date": "2026-08-20",
-            "body": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Die Logistik zieht im Frühjahr 2027 in eine neue Halle am Werksrand."
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            }
-          },
-          "fallback": [
-            "title",
-            "slug",
-            "body"
-          ],
-          "urls": {
-            "de": "/aktuelles/neuer-standort-logistik",
-            "en": "/en/news/neuer-standort-logistik"
           }
         }
       ]
@@ -434,7 +361,7 @@
               {
                 "_id": "pspSerie02",
                 "name": "Materials",
-                "value": "Stahl, Edelstahl 1.4301"
+                "value": "Steel, stainless steel 1.4301"
               }
             ],
             "datasheet": {
@@ -444,9 +371,7 @@
             }
           },
           "fallback": [
-            "specs.pspSerie01.value",
-            "specs.pspSerie01.unit",
-            "specs.pspSerie02.value"
+            "specs.pspSerie01.unit"
           ],
           "urls": {
             "de": "/produkte/drehteile-serie-600",
@@ -454,52 +379,22 @@
           }
         },
         {
-          "id": "prod-baugruppen",
-          "data": {
-            "name": "Kundenspezifische Baugruppen",
-            "slug": "baugruppen",
-            "summary": "Montage von Baugruppen nach Kundenzeichnung.",
-            "images": [],
-            "specs": [
-              {
-                "_id": "pspBaugr01",
-                "name": "Qualitätsnorm",
-                "value": "ISO 9001"
-              }
-            ]
-          },
-          "fallback": [
-            "name",
-            "slug",
-            "summary",
-            "specs.pspBaugr01.name",
-            "specs.pspBaugr01.value"
-          ],
-          "urls": {
-            "de": "/produkte/baugruppen",
-            "en": "/en/products/baugruppen"
-          }
-        },
-        {
           "id": "prod-spannsysteme",
           "data": {
             "name": "Clamping systems",
             "slug": "clamping-systems",
-            "summary": "Spannvorrichtungen für Fräs- und Drehmaschinen.",
+            "summary": "Clamping fixtures for milling machines and lathes.",
             "images": [],
             "specs": [
               {
                 "_id": "pspSpann01",
-                "name": "Wiederholgenauigkeit",
-                "value": "0,005",
+                "name": "Repeatability",
+                "value": "0.005",
                 "unit": "mm"
               }
             ]
           },
           "fallback": [
-            "summary",
-            "specs.pspSpann01.name",
-            "specs.pspSpann01.value",
             "specs.pspSpann01.unit"
           ],
           "urls": {

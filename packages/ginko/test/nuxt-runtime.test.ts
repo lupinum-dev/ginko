@@ -117,9 +117,13 @@ describe('useGinkoSeo', () => {
 })
 
 describe('entry helpers', () => {
-  test('a routed item gets the url of the current locale', () => {
-    const [item] = withUrl([{ id: 'x', fallback: ['title'], urls: { de: '/veranstaltungen/a', en: '/en/events/a' } }], 'en')
-    expect(item!.url).toBe('/en/events/a')
+  // Wrong behaviour caught: an entry listed in English under `untranslated: 'fallback'` has no English page, and its link goes nowhere.
+  test.each([
+    ['its own page in the current locale', { de: '/veranstaltungen/a', en: '/en/events/a' }, '/en/events/a'],
+    ['the main-language page when it has none there', { de: '/veranstaltungen/a' }, '/veranstaltungen/a'],
+  ])('a routed item links to %s', (_name, urls, url) => {
+    const [item] = withUrl([{ id: 'x', fallback: ['title'], urls }], 'en', 'de')
+    expect(item!.url).toBe(url)
   })
 
   test('useGinkoLang gives the language tag of the main locale (de-AT) only for a fallen-back field', () => {
@@ -226,9 +230,11 @@ describe('agentRequest', () => {
 })
 
 describe('sitemapXml', () => {
-  test('lists 7 static pages per locale and the visible routed entries, 18 URLs in total', () => {
+  test('lists 7 static pages per locale and the visible routed entries where they are translated, 17 URLs in total', () => {
     const xml = sitemapXml(schema, bundles, '2026-10-08')
-    expect(xml.match(/<url>/g)).toHaveLength(18)
+    expect(xml.match(/<url>/g)).toHaveLength(17)
+    // martinigans is German only: no English page.
+    expect(xml).not.toContain('/en/events/martini-gansl')
     expect(xml).toContain('<loc>https://ginko-demo-restaurant.vercel.app/en/events/wine-evening-ebner</loc>')
   })
 
@@ -239,7 +245,7 @@ describe('sitemapXml', () => {
   test('drops an entry after its last day (weinabend 2026-10-16)', () => {
     const xml = sitemapXml(schema, bundles, '2026-10-17')
     expect(xml).not.toContain('weinabend')
-    expect(xml.match(/<url>/g)).toHaveLength(16)
+    expect(xml.match(/<url>/g)).toHaveLength(15)
   })
 
   test('links an entry to its URL in every locale it has', () => {
@@ -260,9 +266,9 @@ describe('sitemapXml', () => {
   test('gives an entry URL its updatedAt as lastmod in every locale; static pages have none', () => {
     const xml = sitemapXml(schema, bundles, '2026-10-08')
     const base = 'https://ginko-demo-restaurant.vercel.app'
-    expect(xml).toContain(`<loc>${base}/veranstaltungen/martini-gansl</loc><lastmod>2026-10-01T14:30:00.000Z</lastmod>`)
-    expect(xml).toContain(`<loc>${base}/en/events/martini-gansl</loc><lastmod>2026-10-01T14:30:00.000Z</lastmod>`)
-    expect(xml.match(/<lastmod>/g)).toHaveLength(4)
+    expect(xml).toContain(`<loc>${base}/veranstaltungen/weinabend-ebner</loc><lastmod>2026-09-20T08:15:00.000Z</lastmod>`)
+    expect(xml).toContain(`<loc>${base}/en/events/wine-evening-ebner</loc><lastmod>2026-09-20T08:15:00.000Z</lastmod>`)
+    expect(xml.match(/<lastmod>/g)).toHaveLength(3)
     expect(xml).toContain(`<url><loc>${base}/en</loc><xhtml:link`)
   })
 

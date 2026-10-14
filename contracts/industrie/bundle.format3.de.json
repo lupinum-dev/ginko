@@ -201,8 +201,7 @@
           },
           "fallback": [],
           "urls": {
-            "de": "/aktuelles/zulieferertag-2026",
-            "en": "/en/news/zulieferertag-2026"
+            "de": "/aktuelles/zulieferertag-2026"
           }
         },
         {
@@ -229,8 +228,7 @@
           },
           "fallback": [],
           "urls": {
-            "de": "/aktuelles/neuer-standort-logistik",
-            "en": "/en/news/neuer-standort-logistik"
+            "de": "/aktuelles/neuer-standort-logistik"
           }
         }
       ]
@@ -441,8 +439,7 @@
           },
           "fallback": [],
           "urls": {
-            "de": "/produkte/baugruppen",
-            "en": "/en/products/baugruppen"
+            "de": "/produkte/baugruppen"
           }
         },
         {

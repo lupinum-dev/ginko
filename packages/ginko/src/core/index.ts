@@ -9,7 +9,7 @@ export { validate, isDate, fileProblem, SHAPE_CODES, type ValidateOptions, type 
 export { diffSchema, type SchemaChange, type SchemaDiff } from './diff.ts'
 export { rowDiffs, mergeRows, type RowDiff } from './rows.ts'
 export { releaseData, fieldsChanged } from './release.ts'
-export { resolveEntry, buildBundle, servedBundle, applyDefaults, defaultsFor, isVisible, visibleUntil, deletesExpired, sortEntries, urlsFor, urlClashes, blockedSlugs, type UrlClash, printOf, type StoredEntry, type FileInfo, type ResolveContext, type BuildBundleInput } from './resolve.ts'
+export { resolveEntry, buildBundle, servedBundle, applyDefaults, defaultsFor, isVisible, visibleUntil, deletesExpired, sortEntries, untranslatedMode, routeUrls, urlsFor, urlClashes, blockedSlugs, type UrlClash, printOf, type StoredEntry, type FileInfo, type ResolveContext, type BuildBundleInput } from './resolve.ts'
 export { BUNDLE_FORMAT, isBundle, bundleFits, knownBricks, withFileBricks, markdownTrees, type MarkdownTrees, type Bundle, type BundleBrick, type BundleItem } from './bundle.ts'
 export { withMarkdownRefs, fileMarkdownRef, platformMarkdownRef, type MarkdownRefOf } from './markdown-refs.ts'
 export { isSafeHref, safeHref } from './href.ts'

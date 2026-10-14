@@ -49,6 +49,12 @@ describe('resolveRouteLinks', () => {
     expect(props['data-broken']).toBe(broken)
   })
 
+  // Wrong behaviour caught: under `untranslated: 'fallback'` a link in an English text to a German-only entry is broken.
+  it('links an entry without a page in the bundle\'s locale to its main-language page', () => {
+    const english: Bundle = { ...withText(link('$blog.hallo')), locale: 'en' }
+    expect(textOf(resolveRouteLinks(english, schema)).nodes[0][2][1]).toEqual({ href: '/blog/hallo' })
+  })
+
   it('does not mutate the input', () => {
     const input = withText(link('$page.menu'))
     resolveRouteLinks(input, schema)

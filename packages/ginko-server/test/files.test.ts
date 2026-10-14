@@ -25,7 +25,8 @@ const pdf = (s: Setup, name = 'karte.pdf', content = '%PDF-1.4 karte') => upload
 async function useImage(s: Setup, file: Id<'uploads'>, alt: Record<string, string>) {
   const created = await s.as.owner.mutation(api.entries.create, {
     site, opId: opId(), brick: 'events',
-    data: { title: { de: 'Weinabend' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'hi' }, image: { file, alt } },
+    // Translated, so the English bundle has the entry (an untranslated event has no English page).
+    data: { title: { de: 'Weinabend', en: 'Wine evening' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'hi', en: 'hi' }, image: { file, alt } },
   }) as { entry: Id<'entries'> }
   return created.entry
 }

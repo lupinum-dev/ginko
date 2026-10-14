@@ -106,6 +106,10 @@ export function collection<const F extends Fields, const R extends Record<Locale
   order: 'manual' | { field: keyof F & string; dir?: 'asc' | 'desc' }
   route?: R
   visible?: Visibility<FieldsOfType<F, 'date' | 'daterange'>>
+  /**
+   * A required translatable field is missing in a language: `'hide'` (default with a `route`) leaves the entry out
+   * there; `'fallback'` (default without) shows the main language and links to the main-language page.
+   */
   untranslated?: 'fallback' | 'hide'
   /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`firstDayOfWeek`). */
   plans?: { brick: string; field: FieldsOfType<F, 'date'> }

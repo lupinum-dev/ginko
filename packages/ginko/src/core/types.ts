@@ -155,8 +155,10 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   route?: R
   visible?: Visibility
   /**
-   * What an entry does in a language where a translatable required field is missing or outdated: `'fallback'`
-   * (default) shows the main language there, `'hide'` leaves the entry out of that language.
+   * What an entry does in a language where a translatable required field is missing (an outdated translation still
+   * counts): `'hide'` leaves it out of that language (no page, not in lists, sitemap or hreflang); `'fallback'` shows
+   * the main language there and, with a `route`, links to the main-language page. Default: `'hide'` with a `route`,
+   * else `'fallback'` (`untranslatedMode`).
    */
   untranslated?: 'fallback' | 'hide'
   /** Entries of this collection plan weeks of the single brick `brick`; `field` (a date field here) holds the first day of the week (`week.firstDay`). A planned week counts as entered for the weekly upkeep rule. */

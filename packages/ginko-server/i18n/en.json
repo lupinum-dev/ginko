@@ -264,6 +264,7 @@
     "notVisible": "The entry’s date has passed, so the website no longer shows it.",
     "translationHidden": "For {locale}, translations that “{brick}” requires {what, select, both {are missing or outdated} missing {are missing} other {are outdated}}. The entry does not appear there.",
     "translationFallback": "For {locale}, translations {what, select, both {are missing or outdated} missing {are missing} other {are outdated}}. The website shows the text in the main language ({main}) there instead.",
+    "translationFallbackMainPage": "Translations for {locale} are missing. The entry appears in the lists there in the main language ({main}) and links to its main-language page. It gets its own {locale} page once its required fields are translated.",
     "notReleased": "The structure of the website has never been released. Only after the first release is the content meant for the website."
   },
   "mail": {

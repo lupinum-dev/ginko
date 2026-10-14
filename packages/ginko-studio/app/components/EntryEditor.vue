@@ -368,7 +368,7 @@ async function doUnpublish() {
 // Preview: the entry's own page when it has a route, else the site's first page in this language.
 const previewPath = computed(() => {
   if (props.brick.kind === 'collection' && props.brick.route && props.entry) {
-    const url = urlsFor(props.schema, props.brickKey, props.brick as CollectionBrick, { id: props.entry._id, data: props.entry.data as never }, () => undefined)[locale.value]
+    const url = urlsFor(props.schema, props.brickKey, props.brick as CollectionBrick, { id: props.entry._id, data: props.entry.data as never })[locale.value]
     if (url) return url
   }
   return Object.values(props.schema.pages)[0]?.[locale.value] ?? '/'

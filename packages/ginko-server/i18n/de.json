@@ -264,6 +264,7 @@
     "notVisible": "Das Datum des Eintrags ist vorbei, deshalb zeigt ihn die Website nicht mehr.",
     "translationHidden": "Für {locale} {what, select, both {fehlen oder sind veraltet} missing {fehlen} other {sind veraltet}} Übersetzungen, die „{brick}“ verlangt. Der Eintrag erscheint dort deshalb nicht.",
     "translationFallback": "Für {locale} {what, select, both {fehlen oder sind veraltet} missing {fehlen} other {sind veraltet}} Übersetzungen. Die Website zeigt dort stattdessen den Text in der Hauptsprache ({main}).",
+    "translationFallbackMainPage": "Für {locale} fehlen Übersetzungen. Der Eintrag steht dort in den Listen in der Hauptsprache ({main}) und verlinkt auf seine Seite in der Hauptsprache. Eine eigene Seite auf {locale} bekommt er, sobald die Pflichtfelder übersetzt sind.",
     "notReleased": "Die Struktur der Website wurde noch nie veröffentlicht. Erst nach dem ersten Release ist der Inhalt für die Website bestimmt."
   },
   "mail": {

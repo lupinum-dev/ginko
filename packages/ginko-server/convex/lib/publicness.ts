@@ -1,6 +1,6 @@
 // "Why is this not public?" (SPEC 4.2 entries.whyNotPublic): every reason, in plain words, that an
 // entry is missing on the website in one language. The rules are the ones the bundle applies
-// (drafts, `isVisible`, `untranslated: 'hide'`, `urlsFor`); this only names them.
+// (drafts, `isVisible`, `untranslatedMode`, `urlsFor`); this only names them.
 import type { Brick, CollectionBrick, Locale } from '@lupinum/ginko'
 import { isVisible, todayIn, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
@@ -61,9 +61,12 @@ export function publicness(site: Doc<'sites'>, key: string, row: Doc<'entries'>,
     const status = leafStatus(schema, key, row, locale)
     if (status.missing.length || status.outdated.length) {
       const what = status.missing.length && status.outdated.length ? 'both' : status.missing.length ? 'missing' : 'outdated'
+      const main = schema.locales[0]!
+      // Opt-in `untranslated: 'fallback'` on a routed collection: listed in this language, linked to its main-language page.
+      const fallback = status.untranslated && route ? 'publicness.translationFallbackMainPage' : 'publicness.translationFallback'
       reasons.push(status.hidden
         ? reason('translation_hidden', true, msg('publicness.translationHidden', { locale, what, brick: brick.label }), 'translate')
-        : reason('translation_fallback', false, msg('publicness.translationFallback', { locale, what, main: schema.locales[0]! }), 'translate'))
+        : reason('translation_fallback', false, msg(fallback, { locale, what, main }), 'translate'))
     }
   }
   if (site.release === null) {
@@ -73,7 +76,7 @@ export function publicness(site: Doc<'sites'>, key: string, row: Doc<'entries'>,
   const out = done()
   if (out.public && route) {
     const entry = { id: row._id, order: row.order, data: row.data as Data, prints: row.prints }
-    const path = urlsFor(schema, key, brick as CollectionBrick, entry, () => undefined)[locale]
+    const path = urlsFor(schema, key, brick as CollectionBrick, entry)[locale]
     if (path) return { ...out, path, url: `${schema.url.replace(/\/+$/, '')}${path}` }
   }
   return out

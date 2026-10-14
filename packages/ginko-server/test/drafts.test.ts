@@ -61,7 +61,7 @@ describe('drafts in the public bundle', () => {
     const published = await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 1 })
     expect(published).toMatchObject({ state: 'live', lifeRev: 2, contentRev: before!.contentRev + 1 })
     const shown = await s.bundle()
-    expect(shown.bricks.events!.items!.find((i) => i.id === draft.entry)!.urls).toEqual({ de: '/veranstaltungen/wildwoche', en: '/en/events/wildwoche' })
+    expect(shown.bricks.events!.items!.find((i) => i.id === draft.entry)!.urls).toEqual({ de: '/veranstaltungen/wildwoche' })
 
     const withdrawn = await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 2 })
     expect(withdrawn).toMatchObject({ state: 'draft', lifeRev: 3, contentRev: before!.contentRev + 2 })

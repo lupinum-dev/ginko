@@ -5,7 +5,7 @@ import type {
   Brick, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, urlClashes, urlsFor, validate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, routeUrls, urlClashes, validate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -480,8 +480,9 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       // Only reachable when drafts are on (dev): the site can mark the entry as a draft.
       if (mainView.draft) entry.data.draft = true
 
-      // A locale without its own slug takes the main one (`urlsFor`), so the URL can clash although the written slugs differ.
-      const urls = brick.kind === 'collection' ? urlsFor(schema, key, brick, entry, (fileId) => files[fileId]) : {}
+      // A locale without its own slug takes the main one (`routeUrls`), so the URL can clash although the written slugs differ.
+      // Every locale counts, translated or not: the entry gets that page as soon as it is translated.
+      const urls = brick.kind === 'collection' ? routeUrls(schema, brick, entry) : {}
       const urlClash = urlClashes([...urlOwners, { id, urls }]).find((c) => c.second === id)
       if (urlClash) {
         errors.push({ file: rels[urlClash.locale] ?? mainRel, path: slugKey, message: `URL “${urlClash.url}” is already taken by “${urlClash.first}”.` })

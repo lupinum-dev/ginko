@@ -107,12 +107,11 @@ export function useGinkoWeek(): WeekInfo {
  */
 export function useGinko<K extends BrickKey>(brick: K): ComputedRef<BrickValue<Bricks[K]>> {
   const bundle = useVisibleBundle([brick])
-  const locale = useGinkoLocale()
   return computed(() => {
     const value = bundle.value.bricks[brick]
     const def = schema.bricks[brick] as Brick | undefined
     if (value?.kind === 'collection' && def) {
-      return { items: def.kind === 'collection' && def.route ? withUrl(value.items, locale.value) : value.items } as BrickValue<Bricks[K]>
+      return { items: def.kind === 'collection' && def.route ? withUrl(value.items, bundle.value.locale, bundle.value.mainLocale) : value.items } as BrickValue<Bricks[K]>
     }
     // The bundle is checked against this schema on load (bundleFits), so its brick has this shape.
     return value as unknown as BrickValue<Bricks[K]>
@@ -135,10 +134,10 @@ function useVisibleBundle(bricks: MaybeRefOrGetter<readonly BrickKey[]>): Comput
   })
 }
 
-/** Items of a core result get the `url` of the current locale when the brick has a route. */
-function withRouteUrl(brick: string, items: BundleItem[], locale: Locale): BundleItem[] {
+/** Items of a core result get the `url` of the bundle's locale when the brick has a route (`withUrl`). */
+function withRouteUrl(brick: string, items: BundleItem[], bundle: Bundle): BundleItem[] {
   const def = schema.bricks[brick] as Brick | undefined
-  return def?.kind === 'collection' && def.route ? withUrl(items, locale) : items
+  return def?.kind === 'collection' && def.route ? withUrl(items, bundle.locale, bundle.mainLocale) : items
 }
 
 /**
@@ -148,21 +147,19 @@ function withRouteUrl(brick: string, items: BundleItem[], locale: Locale): Bundl
  */
 export function useGinkoQuery<K extends CollectionKey>(brick: K, q: MaybeRefOrGetter<Query<GinkoData<K>>> = {}): ComputedRef<Omit<QueryResult, 'items'> & { items: GinkoItem<K>[] }> {
   const bundle = useVisibleBundle([brick])
-  const locale = useGinkoLocale()
   return computed(() => {
     const result = query(bundle.value, brick, toValue(q) as Query, schema)
     // The core returns bundle items; their typed shape is the brick's GinkoItem (same cast as useGinko).
-    return { ...result, items: withRouteUrl(brick, result.items, locale.value) } as never
+    return { ...result, items: withRouteUrl(brick, result.items, bundle.value) } as never
   })
 }
 
 /** The entries before and after `id` among the visible ones, in `options.order` (the `Query` order) or bundle order. */
 export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRefOrGetter<string>, options: Pick<Query<GinkoData<K>>, 'order'> = {}): ComputedRef<{ prev?: GinkoItem<K>; next?: GinkoItem<K> }> {
   const bundle = useVisibleBundle([brick])
-  const locale = useGinkoLocale()
   return computed(() => {
     const { prev, next } = neighbors(bundle.value, brick, toValue(id), options.order as Query['order'])
-    const one = (item?: BundleItem) => item && withRouteUrl(brick, [item], locale.value)[0]
+    const one = (item?: BundleItem) => item && withRouteUrl(brick, [item], bundle.value)[0]
     return { prev: one(prev), next: one(next) } as never
   })
 }
@@ -194,7 +191,8 @@ export function useGinkoLang(): (item: { fallback?: readonly string[] }, path: s
 }
 
 /**
- * The visible entry whose slug in the current locale is `slug`; otherwise a real 404 (SPEC 8). `slug` may be a
+ * The visible entry whose slug in the current locale is `slug`; otherwise a real 404 (SPEC 8). An entry without a
+ * page in this locale (untranslated) is a 404 too, also when a list links it to its main-language page. `slug` may be a
  * getter such as `() => route.params.slug`, so a reused page follows client navigation; an array (catch-all
  * route) is joined with `/`. The 404 is thrown on every read of the value while no entry matches, not at the call.
  */
@@ -206,7 +204,7 @@ export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: MaybeRefO
     const route = def.kind === 'collection' ? def.route?.[locale.value] : undefined
     const value = toValue(slug)
     const path = value === undefined ? undefined : route?.replace('[slug]', Array.isArray(value) ? value.join('/') : value)
-    return (items.value as { items: (BundleItem & { url?: string })[] }).items.find((i) => path && i.url === path)
+    return (items.value as { items: BundleItem[] }).items.find((i) => path && i.urls?.[locale.value] === path)
   })
   // A getter ref, not a computed that throws: such a computed throws only on the first read after a change and then
   // returns its last value. When other code reads the entry before the template (such as the useAsyncData key of

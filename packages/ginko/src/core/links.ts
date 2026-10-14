@@ -69,7 +69,9 @@ function routeTarget(bundle: Bundle, schema: Pages, ref: string): string | undef
   const head = ref.slice(0, dot)
   const rest = ref.slice(dot + 1)
   if (head === 'page') return Object.hasOwn(schema.pages, rest) ? schema.pages[rest]![bundle.locale] : undefined
-  return find(bundle, head, rest)?.urls?.[bundle.locale]
+  // An entry listed in this locale without its own page there (`untranslated: 'fallback'`) links to its main-language page.
+  const urls = find(bundle, head, rest)?.urls
+  return urls?.[bundle.locale] ?? urls?.[bundle.mainLocale]
 }
 
 /**

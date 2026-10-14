@@ -108,6 +108,13 @@ test('a detail page links the entry in the other language, also in the head', as
   await expect(page.locator('link[rel=alternate][hreflang=de-AT]')).toHaveAttribute('href', /\/veranstaltungen\/weinabend-ebner$/)
 })
 
+// Wrong behaviour caught: a German-only event was served under /en with German text, lang="en" and an English hreflang.
+test('a German-only event has no English page and no English alternate', async ({ page, request }) => {
+  expect((await request.get('/en/events/martini-gansl')).status()).toBe(404)
+  await page.goto('/veranstaltungen/martini-gansl')
+  await expect(page.locator('link[rel=alternate][hreflang=en-GB]')).toHaveCount(0)
+})
+
 // Wrong behaviour caught: the stored start time is not shown (or shown in the wrong format or shifted by the
 // site time zone), or an event without a time gets a stray time.
 test('an event shows its start time in the page language, one without a time shows the date only', async ({ page }) => {

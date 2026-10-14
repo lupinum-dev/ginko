@@ -304,6 +304,8 @@ describe('sites.translationStatus', () => {
   // Wrong behaviour caught: the status counts a text as translated that the bundle still serves in German (or the reverse).
   it('counts missing and outdated English texts the way the bundle does', async () => {
     const s = await studioSetup()
+    // The English bundle then keeps the German-only events too, so every entry has a fallback list to compare with.
+    await s.patchSchema((schema) => { (schema.bricks.events as { untranslated?: string }).untranslated = 'fallback' })
     const status = await s.as.owner.query(api.sites.translationStatus, { site })
     expect(status).toMatchObject({ main: 'de', locales: ['en'] })
     const menu = status.bricks.find((b) => b.brick === 'menu')!.locales.en!
@@ -384,18 +386,18 @@ describe('entries.whyNotPublic', () => {
     expect(result.reasons[0]).toMatchObject({ action: 'restore', sentence: expect.stringContaining('7. November 2026') })
   })
 
-  it('a missing translation: German instead, or hidden when the brick hides', async () => {
+  it('a missing translation: hidden by default on a page, listed with the German page under opt-in fallback', async () => {
     const s = await studioSetup({ release: true })
-    const fallback = await why(s, s.entries.martinigans!, 'en')
-    expect(codes(fallback)).toEqual(['translation_fallback'])
-    expect(fallback).toMatchObject({ public: true, reasons: [{ blocking: false, action: 'translate', sentence: expect.stringContaining('Hauptsprache (de)') }] })
-    expect(fallback.url).toBe('https://ginko-demo-restaurant.vercel.app/en/events/martini-gansl')
-
-    await s.patchSchema((schema) => { (schema.bricks.events as { untranslated?: string }).untranslated = 'hide' })
     const hidden = await why(s, s.entries.martinigans!, 'en')
     expect(codes(hidden)).toEqual(['translation_hidden'])
     expect(hidden).toMatchObject({ public: false })
     expect(hidden.url).toBeUndefined()
+
+    await s.patchSchema((schema) => { (schema.bricks.events as { untranslated?: string }).untranslated = 'fallback' })
+    const fallback = await why(s, s.entries.martinigans!, 'en')
+    expect(codes(fallback)).toEqual(['translation_fallback'])
+    expect(fallback).toMatchObject({ public: true, reasons: [{ blocking: false, action: 'translate', msg: { key: 'publicness.translationFallbackMainPage' }, sentence: expect.stringContaining('verlinkt auf seine Seite in der Hauptsprache') }] })
+    expect(fallback.url).toBeUndefined()
     // In the main language the entry is fine.
     expect(codes(await why(s, s.entries.martinigans!))).toEqual([])
   })

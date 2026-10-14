@@ -23,7 +23,10 @@ export function agentRequest(path: string): { page: string; asMarkdown: boolean 
   return page === undefined ? { page: path, asMarkdown: false } : { page, asMarkdown: true }
 }
 
-/** The items of a routed brick, each with `url`: its address in `locale`. */
-export function withUrl<T extends { urls?: Partial<Record<string, string>> }>(items: T[], locale: Locale): (T & { url?: string })[] {
-  return items.map((item) => ({ ...item, url: item.urls?.[locale] }))
+/**
+ * The items of a routed brick, each with `url`: its address in `locale`. An entry without a page there (listed under
+ * `untranslated: 'fallback'`) links to its page in the main language `main`.
+ */
+export function withUrl<T extends { urls?: Partial<Record<string, string>> }>(items: T[], locale: Locale, main: Locale): (T & { url?: string })[] {
+  return items.map((item) => ({ ...item, url: item.urls?.[locale] ?? item.urls?.[main] }))
 }

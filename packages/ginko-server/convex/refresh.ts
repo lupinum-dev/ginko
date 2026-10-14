@@ -1,7 +1,7 @@
 // "Sofort von der Seite nehmen" (SPEC 4.4): asks the site to re-render every page that a
 // change may have made stale, and checks each answer against the revision it must show.
 import type { Json } from '@lupinum/ginko'
-import { urlsFor, type Schema } from '@lupinum/ginko/internal'
+import { routeUrls, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { action, internalMutation, internalQuery } from './_generated/server'
@@ -62,10 +62,9 @@ export const plan = internalQuery({
     for (const [key, brick] of Object.entries(schema.bricks)) {
       if (brick.kind !== 'collection' || !brick.route) continue
       const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', key)).collect()
-      // `untranslated: 'fallback'` keeps every locale in the URL map, including locales that are hidden today.
-      const everywhere = { ...brick, untranslated: 'fallback' as const }
+      // Every locale's address, also where the entry is untranslated today: a removed translation must purge its page.
       for (const row of rows) {
-        const urls = urlsFor(schema, key, everywhere, { id: row._id, order: row.order, data: row.data, prints: row.prints }, () => undefined)
+        const urls = routeUrls(schema, brick, { id: row._id, order: row.order, data: row.data, prints: row.prints })
         for (const url of Object.values(urls)) if (url) routed.add(url)
       }
     }

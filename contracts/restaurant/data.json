@@ -437,7 +437,8 @@
         },
         "start": "19:00",
         "description": {
-          "de": "Sechs Weine aus dem Kamptal, dazu eine Brettljause. Plätze gibt es über [die Reservierungsseite](https://reservierung.gasthaus-linde.example/weinabend)."
+          "de": "Sechs Weine aus dem Kamptal, dazu eine Brettljause. Plätze gibt es über [die Reservierungsseite](https://reservierung.gasthaus-linde.example/weinabend).",
+          "en": "Six wines from the Kamptal with a cold platter. Book your seat on [the reservation page](https://reservierung.gasthaus-linde.example/weinabend)."
         },
         "price": {
           "amount": 3800
@@ -454,6 +455,9 @@
       "prints": {
         "title": {
           "en": "42189d98685e51a0d6f469528ba46759913635ef6bc4db3f5c8d85dcb61c7d11"
+        },
+        "description": {
+          "en": "d87280906b1d2d2dc75d2033b871994d42bdcd82505702b87bda07b39d2bfc2d"
         },
         "slug": {
           "en": "e65ca0691736b59e40357664f1a82cd977954a2595a4a2a29227f01b535c4582"

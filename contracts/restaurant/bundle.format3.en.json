@@ -398,38 +398,6 @@
       "kind": "collection",
       "items": [
         {
-          "id": "sommerfest",
-          "data": {
-            "title": "Sommerfest im Gastgarten",
-            "slug": "sommerfest-gastgarten",
-            "when": {
-              "from": "2026-06-20",
-              "to": "2026-06-21"
-            },
-            "description": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Musik, Grillstation und Kinderprogramm."
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            }
-          },
-          "fallback": [
-            "title",
-            "slug",
-            "description"
-          ],
-          "updatedAt": "2026-10-05T09:00:00.000Z"
-        },
-        {
           "id": "weinabend",
           "data": {
             "title": "Wine evening with winemaker Lena Ebner",
@@ -444,13 +412,13 @@
                 [
                   "p",
                   {},
-                  "Sechs Weine aus dem Kamptal, dazu eine Brettljause. Plätze gibt es über ",
+                  "Six wines from the Kamptal with a cold platter. Book your seat on ",
                   [
                     "a",
                     {
                       "href": "https://reservierung.gasthaus-linde.example/weinabend"
                     },
-                    "die Reservierungsseite"
+                    "the reservation page"
                   ],
                   "."
                 ]
@@ -474,54 +442,11 @@
               "height": 1067
             }
           },
-          "fallback": [
-            "description"
-          ],
+          "fallback": [],
           "updatedAt": "2026-09-20T08:15:00.000Z",
           "urls": {
             "de": "/veranstaltungen/weinabend-ebner",
             "en": "/en/events/wine-evening-ebner"
-          }
-        },
-        {
-          "id": "martinigans",
-          "data": {
-            "title": "Martini-Gansl",
-            "slug": "martini-gansl",
-            "when": {
-              "from": "2026-11-11",
-              "to": "2026-11-11"
-            },
-            "description": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Gansl mit Blaukraut und Semmelknödel. Nur mit Reservierung."
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            },
-            "price": {
-              "amount": 5490,
-              "currency": "EUR"
-            },
-            "booking": "https://reservierung.gasthaus-linde.example/martini"
-          },
-          "fallback": [
-            "title",
-            "slug",
-            "description"
-          ],
-          "updatedAt": "2026-10-01T14:30:00.000Z",
-          "urls": {
-            "de": "/veranstaltungen/martini-gansl",
-            "en": "/en/events/martini-gansl"
           }
         }
       ]
