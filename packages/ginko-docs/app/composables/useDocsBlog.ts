@@ -27,6 +27,6 @@ export function useDocsBlog() {
     changelogPath: computed(() => localePath(CHANGELOG_PATH)),
     posts: () => read<Post>('posts'),
     changelog: () => read<ChangelogEntry>('changelog'),
-    post: (slug: string) => (useGinkoEntry as unknown as (b: string, s: string) => ComputedRef<Post>)('posts', slug),
+    post: (slug: string) => (useGinkoEntry as unknown as (b: string, s: string) => Readonly<Ref<Post>>)('posts', slug),
   }
 }

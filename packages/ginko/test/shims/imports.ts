@@ -1,10 +1,10 @@
 // Test stand-in for Nuxt's '#imports': just the state, route, config and error helpers the runtime
 // composables call. Vue is the package's own, so composables and tests share one instance.
-import { computed, ref, toValue, type Ref } from 'vue'
+import { computed, ref, toRef, toValue, type Ref } from 'vue'
 import { createFormatters, createTranslator } from '@lupinum/ginko-i18n/core'
 import { compileCatalogs } from '@lupinum/ginko-i18n/compile'
 
-export { computed, ref, toValue }
+export { computed, ref, toRef, toValue }
 
 const states = new Map<string, Ref<unknown>>()
 

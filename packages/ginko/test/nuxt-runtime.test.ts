@@ -187,6 +187,19 @@ describe('collection composables', () => {
     expect(() => entry.value).toThrow(expect.objectContaining({ statusCode: 404 }))
   })
 
+  // Wrong behaviour caught: a Vue computed throws only on the first read after a change, then returns its last value.
+  // When other code read the missing entry first (the useAsyncData key of useGinkoMarkdown), the template got the
+  // old entry and the page kept showing it instead of the 404.
+  test('useGinkoEntry answers 404 on every read of a missing slug', () => {
+    today('2026-10-08')
+    const slug = ref('weinabend-ebner')
+    const entry = useGinkoEntry('events' as never, () => slug.value)
+    expect((entry.value as { id: string }).id).toBe('weinabend')
+    slug.value = 'gibt-es-nicht'
+    expect(() => entry.value).toThrow(expect.objectContaining({ statusCode: 404 }))
+    expect(() => entry.value).toThrow(expect.objectContaining({ statusCode: 404 }))
+  })
+
   test('useGinkoBreadcrumbs gives the trail for the route path', () => {
     today('2026-10-08')
     routePath.value = '/veranstaltungen/martini-gansl'

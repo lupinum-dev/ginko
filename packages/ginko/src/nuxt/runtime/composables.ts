@@ -1,7 +1,7 @@
 /// <reference path="./schema.d.ts" />
 // What a site page uses (SPEC 8 "Composables"). Everything reads one state, `ginko:bundle`,
 // which the plugin fills per locale (or the preview fills by message), so nothing here fetches.
-import { computed, createError, toValue, useI18n, useHead, useRoute, useRuntimeConfig, useState, type ComputedRef, type MaybeRefOrGetter, type Ref } from '#imports'
+import { computed, createError, toRef, toValue, useI18n, useHead, useRoute, useRuntimeConfig, useState, type ComputedRef, type MaybeRefOrGetter, type Ref } from '#imports'
 import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
 import { useSchemaOrg } from '#ginko/schema-org'
@@ -196,17 +196,23 @@ export function useGinkoLang(): (item: { fallback?: readonly string[] }, path: s
 /**
  * The visible entry whose slug in the current locale is `slug`; otherwise a real 404 (SPEC 8). `slug` may be a
  * getter such as `() => route.params.slug`, so a reused page follows client navigation; an array (catch-all
- * route) is joined with `/`. The 404 is thrown when the value is read, not at the call.
+ * route) is joined with `/`. The 404 is thrown on every read of the value while no entry matches, not at the call.
  */
-export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: MaybeRefOrGetter<string | string[] | undefined>): ComputedRef<GinkoItem<K>> {
+export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: MaybeRefOrGetter<string | string[] | undefined>): Readonly<Ref<GinkoItem<K>>> {
   const items = useGinko(brick)
   const locale = useGinkoLocale()
-  return computed(() => {
+  const entry = computed(() => {
     const def = schema.bricks[brick]!
     const route = def.kind === 'collection' ? def.route?.[locale.value] : undefined
     const value = toValue(slug)
     const path = value === undefined ? undefined : route?.replace('[slug]', Array.isArray(value) ? value.join('/') : value)
-    const item = (items.value as { items: (BundleItem & { url?: string })[] }).items.find((i) => path && i.url === path)
+    return (items.value as { items: (BundleItem & { url?: string })[] }).items.find((i) => path && i.url === path)
+  })
+  // A getter ref, not a computed that throws: such a computed throws only on the first read after a change and then
+  // returns its last value. When other code reads the entry before the template (such as the useAsyncData key of
+  // useGinkoMarkdown, a sync watcher), the template would get the old entry instead of the 404.
+  return toRef(() => {
+    const item = entry.value
     // Fatal: on the client, Nuxt opens the error page only for a fatal error, so a navigation to a missing slug shows the 404.
     if (!item) throw createError({ statusCode: 404, statusMessage: 'Not found', fatal: true })
     return item as never
