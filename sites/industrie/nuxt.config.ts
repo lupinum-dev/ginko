@@ -1,4 +1,4 @@
-import ginko from './ginko.config'
+import ginko from './ginko.config.ts'
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-01',

@@ -48,7 +48,7 @@ Limits of the layer:
 
 ```ts
 // nuxt.config.ts
-import ginko from './ginko.config'
+import ginko from './ginko.config.ts'
 
 export default defineNuxtConfig({ extends: ['@lupinum/ginko-docs'], modules: ['@lupinum/ginko/nuxt'], ginko })
 ```

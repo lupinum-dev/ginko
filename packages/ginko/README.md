@@ -51,7 +51,7 @@ date: 2026-11-05
 
 ```ts
 // nuxt.config.ts
-import ginko from './ginko.config'
+import ginko from './ginko.config.ts'
 
 export default defineNuxtConfig({ modules: ['@lupinum/ginko/nuxt'], ginko })
 ```

@@ -27,7 +27,7 @@ declare module '@nuxt/schema' {
 /**
  * `@lupinum/ginko/nuxt` (SPEC part 8). The site passes its `defineSite` result:
  *
- *   import ginko from './ginko.config'
+ *   import ginko from './ginko.config.ts'
  *   export default defineNuxtConfig({ modules: ['@lupinum/ginko/nuxt'], ginko })
  *
  * The platform origin comes from `NUXT_PUBLIC_GINKO_PLATFORM` (default in dev: http://localhost:3100).
