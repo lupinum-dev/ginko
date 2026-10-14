@@ -45,7 +45,7 @@ The platform and Studio locally, on a local Convex backend (never a cloud deploy
 
 ```bash
 pnpm --filter @ginko/platform convex                               # keep it running; runs in packages/ginko-server, writes its .env.local
-node --experimental-strip-types scripts/setup-local.ts           # once per new backend: env vars, signing key
+node --experimental-strip-types scripts/setup-local.ts           # once per new backend: env vars, signing key (local:dev does this itself)
 node --experimental-strip-types scripts/push-local.ts             # the restaurant site (or: saas, docs, …)
 node --experimental-strip-types scripts/seed-local.ts             # demo content, owner and cook invites
 cd apps/platform && pnpm e2e                                       # Studio tests; starts Nuxt on 3100, the site on 3000

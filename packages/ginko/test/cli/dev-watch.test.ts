@@ -37,7 +37,8 @@ let finished: Promise<number> | undefined
 /** `convex run` is gated: the test decides when each push ends. */
 function fakeConvex() {
   vi.mocked(runOnce).mockImplementation(async (_command, args) => {
-    if (args[1] !== 'run') return ''
+    // The sign-in setup before the platform starts (env list/set/get, the signing key) answers nothing here.
+    if (args[2] !== 'release:devPush') return ''
     const schema = JSON.parse(args[3]!).schema as { bricks: { menu: { fields: Record<string, unknown> } } }
     running++
     maxRunning = Math.max(maxRunning, running)

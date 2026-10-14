@@ -2,7 +2,8 @@
 // `local:pull`): finding packages/ginko-server (the Convex project), confirming that the Convex CLI points at the
 // LOCAL backend before any write, and running `npx convex run` against exactly that deployment.
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { randomBytes } from 'node:crypto'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { CliError, isObject } from './model.ts'
 
@@ -88,9 +89,13 @@ export function readDeploymentTarget(backendDir: string): DeploymentTarget {
 }
 
 function parseEnvFile(path: string): Record<string, string> {
-  if (!existsSync(path)) return {}
+  return existsSync(path) ? parseEnvText(readFileSync(path, 'utf8')) : {}
+}
+
+/** NAME=value lines, as in an env file and in `convex env list`. */
+function parseEnvText(text: string): Record<string, string> {
   const values: Record<string, string> = {}
-  for (const line of readFileSync(path, 'utf8').split('\n')) {
+  for (const line of text.split('\n')) {
     const match = /^([A-Z_]+)=(.*)$/.exec(line.trim())
     if (match) values[match[1]!] = match[2]!.replace(/^["']|["']$/g, '')
   }
@@ -108,6 +113,60 @@ export function targetEnv(target: DeploymentTarget): NodeJS.ProcessEnv {
   }
 }
 
+/** The deployment the Convex CLI selects in backendDir. Throws before anything is written when it is not the local backend. */
+export function confirmLocal(backendDir: string, command = 'local:dev'): DeploymentTarget {
+  const target = readDeploymentTarget(backendDir)
+  const problem = localDeploymentError(target, command)
+  if (problem) throw new CliError(problem, 'USAGE')
+  return target
+}
+
+/** The address the local Studio runs on (apps/platform `pnpm dev`, the e2e tests). */
+export const LOCAL_STUDIO = 'http://localhost:3100'
+
+/**
+ * Prepares the LOCAL backend for sign-in: the environment variables the platform needs (only those still missing;
+ * GINKO_LOCAL must be 1), the same proxy secret and site URL in backendDir/.env.local for the Nuxt side, and the auth
+ * signing key. Run it before the platform starts: the platform reads .env.local once. Returns the admin address to sign
+ * in with (the first of GINKO_ADMIN_EMAILS; an operator's own value is kept). `run` is runOnce outside tests.
+ */
+export async function prepareLocalBackend(backendDir: string, command: string, log: (line: string) => void, run: typeof runOnce): Promise<string> {
+  const env = targetEnv(confirmLocal(backendDir, command))
+  const convex = (...args: string[]) => run('npx', ['convex', ...args], backendDir, env)
+  const envFile = join(backendDir, '.env.local')
+  const before = existsSync(envFile) ? readFileSync(envFile, 'utf8') : ''
+  const local = parseEnvText(before)
+  const secret = () => randomBytes(32).toString('hex')
+  const wanted: Record<string, () => string> = {
+    GINKO_LOCAL: () => '1',
+    GINKO_MAIL: () => 'outbox',
+    SITE_URL: () => LOCAL_STUDIO,
+    GINKO_ADMIN_EMAILS: () => 'admin@example.test',
+    BETTER_AUTH_SECRETS: () => `0:${secret()}`,
+    BCN_AUTH_PROXY_IP_SECRET: () => local.BCN_AUTH_PROXY_IP_SECRET || secret(),
+  }
+  const have = parseEnvText(await convex('env', 'list'))
+  for (const [name, value] of Object.entries(wanted)) {
+    // The platform reads GINKO_LOCAL inside Convex (SPEC 5.3): a backend with another value must not keep it.
+    if (name === 'GINKO_LOCAL' ? have[name] === '1' : have[name] !== undefined) continue
+    await convex('env', 'set', name, value())
+    log(`set ${name}`)
+  }
+  // The Nuxt side must send the same proxy secret and know the same site URL, or sign-in returns 403.
+  let file = before
+  for (const name of ['BCN_AUTH_PROXY_IP_SECRET', 'SITE_URL']) {
+    const value = (await convex('env', 'get', name)).trim()
+    if (local[name] === value) continue
+    const line = `${name}=${value}`
+    const pattern = new RegExp(`^${name}=.*$`, 'm')
+    file = pattern.test(file) ? file.replace(pattern, line) : `${file.replace(/\n?$/, '\n')}${line}\n`
+    log(`wrote ${name} to packages/ginko-server/.env.local`)
+  }
+  if (file !== before) writeFileSync(envFile, file)
+  await convex('run', 'auth:ensureSigningKey')
+  return (await convex('env', 'get', 'GINKO_ADMIN_EMAILS')).split(',')[0]!.trim()
+}
+
 /** Runs one function of the local platform with JSON arguments and returns its JSON result. */
 export type Runner = (fn: string, args: Record<string, unknown>) => Promise<unknown>
 
@@ -117,10 +176,7 @@ export type Runner = (fn: string, args: Record<string, unknown>) => Promise<unkn
  */
 export function connectLocal(from: string, command: string): Runner {
   const backendDir = findBackend(from, command)
-  const target = readDeploymentTarget(backendDir)
-  const problem = localDeploymentError(target, command)
-  if (problem) throw new CliError(problem, 'USAGE')
-  const env = targetEnv(target)
+  const env = targetEnv(confirmLocal(backendDir, command))
   return async (fn, args) => parseOutput(await runOnce('npx', ['convex', 'run', fn, JSON.stringify(args)], backendDir, env))
 }
 

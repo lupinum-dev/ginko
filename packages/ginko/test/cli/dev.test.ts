@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest'
-import { knownTargetError, localDeploymentError, parseOutput } from '../../src/cli/local.ts'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { knownTargetError, localDeploymentError, parseOutput, prepareLocalBackend } from '../../src/cli/local.ts'
 
 describe('localDeploymentError', () => {
   it.each([
@@ -45,5 +48,49 @@ describe('parseOutput', () => {
     ['no JSON', 'nothing here', undefined],
   ])('%s', (_name, output, expected) => {
     expect(parseOutput(output)).toEqual(expected)
+  })
+})
+
+describe('prepareLocalBackend', () => {
+  // The Convex CLI reads these from the shell first; the temp backend's .env.local must decide here.
+  beforeEach(() => {
+    for (const key of ['CONVEX_DEPLOYMENT', 'CONVEX_URL', 'CONVEX_DEPLOY_KEY', 'CONVEX_SELF_HOSTED_ADMIN_KEY', 'CONVEX_SELF_HOSTED_URL']) vi.stubEnv(key, '')
+  })
+  afterEach(() => { vi.unstubAllEnvs() })
+
+  /** A backend folder with this .env.local and a fake `npx convex` (the process boundary) that records its args. */
+  function backend(envLocal: string) {
+    const dir = mkdtempSync(join(tmpdir(), 'ginko-backend-'))
+    writeFileSync(join(dir, '.env.local'), envLocal)
+    const calls: string[][] = []
+    const values: Record<string, string> = { GINKO_ADMIN_EMAILS: 'admin@example.test', SITE_URL: 'http://localhost:3100', BCN_AUTH_PROXY_IP_SECRET: 'proxy-secret' }
+    const run = async (_command: string, args: string[]) => {
+      calls.push(args.slice(1))
+      const [verb, sub, name] = args.slice(1)
+      if (verb === 'env' && sub === 'list') return 'GINKO_LOCAL=1\n'
+      if (verb === 'env' && sub === 'get') return `${values[name!] ?? ''}\n`
+      return ''
+    }
+    return { dir, calls, run }
+  }
+
+  // Wrong behaviour caught: local:dev starts a Studio where nobody can sign in (no mail way, no admin, no proxy secret).
+  it('a fresh backend gets the sign-in variables and names the admin', async () => {
+    const { dir, calls, run } = backend('CONVEX_DEPLOYMENT=anonymous-agent\n')
+    const admin = await prepareLocalBackend(dir, 'local:dev', () => undefined, run)
+    expect(calls.filter((c) => c[0] === 'env' && c[1] === 'set').map((c) => c[2])).toEqual(['GINKO_MAIL', 'SITE_URL', 'GINKO_ADMIN_EMAILS', 'BETTER_AUTH_SECRETS', 'BCN_AUTH_PROXY_IP_SECRET'])
+    expect(calls.some((c) => c.join(' ') === 'run auth:ensureSigningKey')).toBe(true)
+    expect(readFileSync(join(dir, '.env.local'), 'utf8')).toBe('CONVEX_DEPLOYMENT=anonymous-agent\nBCN_AUTH_PROXY_IP_SECRET=proxy-secret\nSITE_URL=http://localhost:3100\n')
+    expect(admin).toBe('admin@example.test')
+  })
+
+  // Wrong behaviour caught: the sign-in setup writes secrets and settings into a cloud deployment.
+  it.each([
+    ['a cloud deployment', 'CONVEX_DEPLOYMENT=dev:review-cloud-example\n', 'dev:review-cloud-example'],
+    ['a deploy key next to the anonymous deployment', 'CONVEX_DEPLOYMENT=anonymous-agent\nCONVEX_DEPLOY_KEY=prod:key\n', 'CONVEX_DEPLOY_KEY is set'],
+  ])('stops before any Convex command when the target is %s', async (_name, envLocal, expected) => {
+    const { dir, calls, run } = backend(envLocal)
+    await expect(prepareLocalBackend(dir, 'local:dev', () => undefined, run)).rejects.toThrow(expected)
+    expect(calls).toEqual([])
   })
 })

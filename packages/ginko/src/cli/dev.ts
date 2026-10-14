@@ -6,7 +6,7 @@ import { watch, type FSWatcher } from 'node:fs'
 import { basename, dirname } from 'node:path'
 import { platformSchema, serializeSchema, type Schema, type SchemaChange } from '../core/index.ts'
 import { loadConfig } from './config.ts'
-import { findBackend, knownTargetError, localDeploymentError, parseResult, readDeploymentTarget, runOnce, targetEnv, type DeploymentTarget } from './local.ts'
+import { confirmLocal, findBackend, knownTargetError, LOCAL_STUDIO, parseResult, prepareLocalBackend, readDeploymentTarget, runOnce, targetEnv, type DeploymentTarget } from './local.ts'
 import { CliError } from './model.ts'
 import { explainRejected } from './report.ts'
 
@@ -87,14 +87,13 @@ export async function runDev(input: DevInput): Promise<number> {
     })
   })
   let target: DeploymentTarget
+  let admin: string
   try {
     await backend
     // Confirm the deployment that the Convex CLI selected before any write. Only then every command gets it explicitly.
-    target = readDeploymentTarget(backendDir)
-    const problem = localDeploymentError(target)
-    if (problem) throw new CliError(problem, 'USAGE')
-    // The platform reads GINKO_LOCAL inside Convex, so the backend needs it too (SPEC 5.3).
-    await runOnce('npx', ['convex', 'env', 'set', 'GINKO_LOCAL', '1'], backendDir, targetEnv(target))
+    target = confirmLocal(backendDir)
+    // Before the platform starts: it reads the synced packages/ginko-server/.env.local once.
+    admin = await prepareLocalBackend(backendDir, 'local:dev', log, runOnce)
   } catch (error) {
     stop(1)
     throw error
@@ -123,6 +122,7 @@ export async function runDev(input: DevInput): Promise<number> {
   })
   await pushLatest()
   log(`local:dev is running. Config: ${input.configPath}. Press Ctrl-C to stop everything.`)
+  log(`Studio: ${LOCAL_STUDIO} — sign in as ${admin}, codes: pnpm outbox ${admin}`)
   log('Changes to files that the config imports take effect only after restarting `pnpm local:dev`.')
   return exited
 }
