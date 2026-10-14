@@ -3,13 +3,16 @@
 // Server-safe: no Nuxt app imports, no global fetch helper. Failures are plain errors with `statusCode: 503`;
 // the app plugin and the sitemap route turn them into Nuxt errors with their own `createError`.
 import schema from '#ginko/schema'
-import { BUNDLE_FORMAT, bundleFits, isBundle, knownBricks, withFileBricks, type Bundle, type Locale } from '../../internal.ts'
+import { BUNDLE_FORMAT, bundleFits, isBundle, knownBricks, SITE_BUDGET, withFileBricks, type Bundle, type Locale } from '../../internal.ts'
 import type { GinkoPublicConfig } from './shared.ts'
 
 /** A platform that does not answer in time is a failure, not a page that never loads. */
 const TIMEOUT_MS = 10_000
-/** Twice the site budget (SPEC 3: 4 MiB of content): anything bigger is not a bundle of this site. */
-const MAX_CHARS = 8 * 1024 * 1024
+/**
+ * Larger than any bundle the platform's budget allows (SPEC 3): a site's text plus its Markdown trees, which count apart
+ * from it, and half again for the bundle's own JSON and file URLs. Anything bigger is not a bundle of this site.
+ */
+const MAX_CHARS = (SITE_BUDGET.siteBytes + SITE_BUDGET.treeBytes) * 1.5
 
 /**
  * The bundle a page reads: the platform's, the site's own file bricks (CONTENT.md), or both merged.
