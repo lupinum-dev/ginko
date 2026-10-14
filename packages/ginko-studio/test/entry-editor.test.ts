@@ -17,8 +17,9 @@ vi.stubGlobal('useRoute', () => ({ query: {} }))
 vi.stubGlobal('onBeforeRouteLeave', () => {})
 vi.stubGlobal('onBeforeRouteUpdate', () => {})
 vi.stubGlobal('useToast', () => ({ show: () => {} }))
-vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined) }))
+vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
 vi.stubGlobal('useConvexMutation', () => ({ mutate: async () => ({}) }))
+vi.stubGlobal('useConvexAuth', () => ({ user: ref({ id: 'u1' }) }))
 // Nothing is saved here: the writes are never called.
 vi.stubGlobal('useOps', () => ({}))
 
