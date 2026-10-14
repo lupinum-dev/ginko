@@ -569,7 +569,6 @@
     "liveHint": "Auf der Website in etwa einer Minute.",
     "undo": "Rückgängig",
     "undone": "Rückgängig gemacht.",
-    "undoNotPossible": "Geht nicht mehr: Das wurde danach noch einmal geändert.",
     "published": "Veröffentlicht.",
     "scheduled": "Geplant: online ab {time}.",
     "unpublished": "Zurückgezogen. In etwa einer Minute nicht mehr auf der Website.",
@@ -645,7 +644,13 @@
     "notApproved": "Nicht freigegeben",
     "rejectedBy": "{who} hat abgelehnt: „{reason}“",
     "notLive": "Nicht live gegangen",
-    "notLiveBecause": "Geplant für {when}. {reason}"
+    "notLiveBecause": "Geplant für {when}. {reason}",
+    "undoBlocked": {
+      "changed": "Danach erneut geändert, Rückgängig geht nicht mehr",
+      "removed": "Eintrag entfernt, erst wiederherstellen",
+      "schema": "Die Felder wurden seither umgebaut"
+    },
+    "loadFailed": "Der Verlauf konnte nicht geladen werden. Bitte die Seite neu laden."
   },
   "basics": {
     "search": {

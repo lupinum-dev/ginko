@@ -8,7 +8,7 @@ import { internal } from './_generated/api'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, authorizeWriter, byOf, checkRev, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor, type By } from './lib/access'
 import { fileIdsOf, leavesOf, mergeField, nextPrints, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
-import { msg, recorded, type HistoryMsg, type Recorded } from './lib/history'
+import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
 import { isLocale, t } from './lib/i18n'
 import { countersOf, DELETED_KEPT, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
@@ -163,7 +163,7 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     const change = changeId ? await ctx.db.get(changeId) : null
     if (!change || change.site !== actor.site._id) fail('NOT_FOUND', 'errors.changeNotFound')
     // Structural changes (remove, restore, reorder) and releases are not undoable (SPEC 4.2).
-    if (change.kind !== 'save' || !change.entry || change.undoneBy) fail('NOT_UNDOABLE', 'errors.changeNotUndoable')
+    if (change.kind !== 'save' || !change.entry) fail('NOT_UNDOABLE', 'errors.changeNotUndoable')
     const entry = await entryOf(ctx, actor, change.entry)
     const schema = actor.site.schema as Schema
     const brick = brickOf(schema, entry)
@@ -173,10 +173,12 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     refuseDirectWrite(actor, taskBrick, args.task)
     await refuseAgentUndo(ctx, actor, entry)
 
-    if (entry.deletedAt) fail('NOT_UNDOABLE', 'errors.entryDeletedSince')
-    if (roots.some((r) => entry.fieldRevs[r] !== change.entryRev)) fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhileNoUndo', undefined, current(entry))
     const migrated = await ctx.db.query('migrationsApplied').withIndex('by_site_id', (q) => q.eq('site', actor.site._id)).collect()
-    if (migrated.some((m) => m.brick === entry.brick && m._creationTime > change.at)) fail('NOT_UNDOABLE', 'errors.schemaChangedSinceChange')
+    const block = undoBlockOf(change, entry, migrated)
+    if (block === 'undone') fail('NOT_UNDOABLE', 'errors.changeNotUndoable')
+    if (block === 'removed') fail('NOT_UNDOABLE', 'errors.entryDeletedSince')
+    if (block === 'changed') fail('CHANGED_SINCE', 'errors.someoneChangedMeanwhileNoUndo', undefined, current(entry))
+    if (block === 'schema') fail('NOT_UNDOABLE', 'errors.schemaChangedSinceChange')
 
     // Values and prints come back exactly; an undo never confirms a translation.
     const before = (change.before ?? {}) as Data

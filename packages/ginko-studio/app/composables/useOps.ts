@@ -72,8 +72,8 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
       if (isProposal(result)) return sentForApproval()
       show(t('ops.undone'))
     } catch (error) {
-      const e = opErrorOf(error)
-      show(e.code === 'NOT_UNDOABLE' ? t('ops.undoNotPossible') : e.message, { tone: 'err' })
+      // One message, the server's: it says why (saved again since, removed, fields restructured).
+      show(opErrorOf(error).message, { tone: 'err' })
     }
   }
 

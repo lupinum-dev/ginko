@@ -569,7 +569,6 @@
     "liveHint": "En el sitio web en aproximadamente un minuto.",
     "undo": "Deshacer",
     "undone": "Deshecho.",
-    "undoNotPossible": "Ya no se puede deshacer: se cambió de nuevo después.",
     "published": "Publicado.",
     "scheduled": "Programado: en línea desde {time}.",
     "unpublished": "Quitado de la web. Dejará de estar en el sitio web en aproximadamente un minuto.",
@@ -645,7 +644,13 @@
     "notApproved": "No aprobado",
     "rejectedBy": "{who} lo rechazó: «{reason}»",
     "notLive": "No se publicó",
-    "notLiveBecause": "Planificado para {when}. {reason}"
+    "notLiveBecause": "Planificado para {when}. {reason}",
+    "undoBlocked": {
+      "changed": "Cambiado de nuevo después, ya no se puede deshacer",
+      "removed": "Entrada eliminada, restáurala primero",
+      "schema": "Los campos se reestructuraron desde entonces"
+    },
+    "loadFailed": "No se pudo cargar el historial. Vuelve a cargar la página."
   },
   "basics": {
     "search": {

@@ -1,6 +1,8 @@
 <!-- One page of the change log (UI.md 7). Each page is its own live query, so an undo on an older
      page updates its row at once. Rückgängig shows only on saves that are not undone yet, and for
-     staff only when one of their granted edit tasks covers every field of the change. -->
+     staff only when one of their granted edit tasks covers every field of the change. A save the
+     server would refuse to undo (`undoBlocked`: saved again, removed, fields restructured) says why
+     instead. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Schema } from '@lupinum/ginko/internal'
@@ -73,6 +75,15 @@ function canUndo(change: Change): boolean {
   return change.kind === 'save' && !change.undoneBy && (props.manager || taskFor(change) !== undefined)
 }
 
+/** Why the server would refuse an undo of this save (an undone one keeps its badge instead). */
+function undoBlockedText(change: Change): string | undefined {
+  const block = change.undoBlocked
+  if (block === 'changed') return t('history.undoBlocked.changed')
+  if (block === 'removed') return t('history.undoBlocked.removed')
+  if (block === 'schema') return t('history.undoBlocked.schema')
+  return undefined
+}
+
 /** A save of an entry can be shown field by field and, as a normal new save, be gone back to. */
 const showing = ref(new Set<string>())
 function toggleShow(id: string) {
@@ -105,7 +116,7 @@ async function undo(change: Change) {
 
 <template>
   <div class="mb-3 last:mb-0">
-    <p v-if="page.error.value" class="font-semibold text-destructive" role="alert">{{ opErrorOf(page.error.value).message }}</p>
+    <p v-if="page.error.value && !rows.length" class="font-semibold text-destructive" role="alert">{{ t('history.loadFailed') }}</p>
     <ol v-if="rows.length" class="m-0 list-none overflow-hidden rounded-xl border p-0">
       <li v-for="change in rows" :key="change._id" class="grid gap-2 border-b px-4 py-3 last:border-b-0">
         <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -115,14 +126,17 @@ async function undo(change: Change) {
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <Badge v-if="change.undoneBy" variant="soft">{{ t('entry.changes.undone') }}</Badge>
-            <Button
-              v-if="!change.undoneBy && canUndo(change)"
-              type="button"
-              variant="secondary"
-              size="sm"
-              :disabled="busy === change._id"
-              @click="undo(change)"
-            >{{ t('entry.changes.undo') }}</Button>
+            <template v-if="canUndo(change)">
+              <span v-if="undoBlockedText(change)" class="text-[13px] text-muted-foreground">{{ undoBlockedText(change) }}</span>
+              <Button
+                v-else
+                type="button"
+                variant="secondary"
+                size="sm"
+                :disabled="busy === change._id"
+                @click="undo(change)"
+              >{{ t('entry.changes.undo') }}</Button>
+            </template>
             <Button
               v-if="change.fields?.length"
               type="button"

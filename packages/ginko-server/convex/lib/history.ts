@@ -3,6 +3,7 @@
 // the row keeps `sentence`, the German rendering, as the fallback for rows written before `msg`.
 import type { Label } from '@lupinum/ginko'
 import { labelOf, type Schema } from '@lupinum/ginko/internal'
+import type { Doc } from '../_generated/dataModel'
 import { storedSentence } from './input'
 import { t, type MessageKey } from './i18n'
 
@@ -44,4 +45,24 @@ export function historyText(message: HistoryMsg, locale: string, where: Where | 
 /** The row fields `msg` and `sentence` (German, cut to the stored length) for a message. */
 export function recorded(message: HistoryMsg, where?: Where): Recorded {
   return { msg: message, sentence: storedSentence(historyText(message, 'de', where)) }
+}
+
+/** Why a save can no longer be undone: undone already, its entry removed, a field saved again since, or the fields restructured since. */
+export type UndoBlock = 'undone' | 'removed' | 'changed' | 'schema'
+
+/**
+ * The one rule for "can this save still be undone": the undo mutation refuses with it, and the
+ * history list shows it, so the list never offers an undo the server refuses. `migrated` are the
+ * site's applied migrations. A full validation of the old values stays a refusal at undo time.
+ */
+export function undoBlockOf(
+  change: Pick<Doc<'changes'>, 'undoneBy' | 'fields' | 'entryRev' | 'at'>,
+  entry: Pick<Doc<'entries'>, 'deletedAt' | 'fieldRevs' | 'brick'> | null,
+  migrated: Pick<Doc<'migrationsApplied'>, 'brick' | '_creationTime'>[],
+): UndoBlock | undefined {
+  if (change.undoneBy) return 'undone'
+  if (!entry || entry.deletedAt) return 'removed'
+  if ((change.fields ?? []).some((root) => entry.fieldRevs[root] !== change.entryRev)) return 'changed'
+  if (migrated.some((m) => m.brick === entry.brick && m._creationTime > change.at)) return 'schema'
+  return undefined
 }

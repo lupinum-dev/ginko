@@ -2,11 +2,12 @@
 import type { Json } from '@lupinum/ginko'
 import type { Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
-import type { Doc } from './_generated/dataModel'
+import type { Doc, Id } from './_generated/dataModel'
 import { query, type QueryCtx } from './_generated/server'
 import { labeler } from './lib/names'
 import { actorFor, fail, type Actor } from './lib/access'
 import { diffFields } from './lib/diff'
+import { undoBlockOf, type UndoBlock } from './lib/history'
 
 const PAGE_SIZE = 50
 /**
@@ -23,11 +24,35 @@ const PAGE_BYTES = 2 * 1024 * 1024
  */
 async function summaries(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]) {
   const names = await labeler(ctx, actor)
+  const blocks = await undoBlocks(ctx, actor, rows)
   const out = []
   for (const { before: _before, after: _after, printsBefore: _printsBefore, printsAfter: _printsAfter, ...change } of rows) {
-    out.push({ ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey) })
+    out.push({ ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null })
   }
   return out
+}
+
+/**
+ * Why each save on the page can no longer be undone (undoBlockOf, the rule the undo mutation uses).
+ * Each entry is read once; the entries of a site fit in its storage budget, so this stays well
+ * under the read limit, and the list follows later saves live.
+ */
+async function undoBlocks(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]): Promise<Map<Id<'changes'>, UndoBlock>> {
+  const blocks = new Map<Id<'changes'>, UndoBlock>()
+  if (!rows.some((row) => row.kind === 'save' && row.entry)) return blocks
+  const migrated = await ctx.db.query('migrationsApplied').withIndex('by_site_id', (q) => q.eq('site', actor.site._id)).collect()
+  const entries = new Map<Id<'entries'>, Doc<'entries'> | null>()
+  for (const change of rows) {
+    if (change.kind !== 'save' || !change.entry) continue
+    let entry = entries.get(change.entry)
+    if (entry === undefined) {
+      entry = await ctx.db.get(change.entry)
+      entries.set(change.entry, entry)
+    }
+    const block = undoBlockOf(change, entry, migrated)
+    if (block) blocks.set(change._id, block)
+  }
+  return blocks
 }
 
 /**

@@ -101,6 +101,14 @@ describe('changes.list filters', () => {
     expect(await rows('owner', { by: 'ai', brick: 'menu' })).toEqual([])
     expect(await rows('cook', { by: 'me' })).toEqual(['u-koch:menu:ui'])
   })
+
+  it('an older save whose field was saved again offers no undo and says why', async () => {
+    const s = await setup()
+    const c1 = await save(s, s.entries['menu-saibling']!, { price: { amount: 1450 } })
+    const c2 = await save(s, s.entries['menu-saibling']!, { price: { amount: 1500 } })
+    const page = (await s.as.owner.query(api.changes.list, { site: 'restaurant', entry: s.entries['menu-saibling']! })).page
+    expect(page.map((r) => [r._id, r.undoBlocked])).toEqual([[c2, null], [c1, 'changed']])
+  })
 })
 
 /** Three saves touching different fields of one dish, an hour apart. Returns the entry, its first data and the three changes. */

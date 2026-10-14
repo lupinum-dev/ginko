@@ -569,7 +569,6 @@
     "liveHint": "On the website in about a minute.",
     "undo": "Undo",
     "undone": "Undone.",
-    "undoNotPossible": "Can no longer be undone: it was changed again afterwards.",
     "published": "Published.",
     "scheduled": "Scheduled: online from {time}.",
     "unpublished": "Unpublished. Not on the website in about a minute.",
@@ -645,7 +644,13 @@
     "notApproved": "Not approved",
     "rejectedBy": "{who} rejected it: “{reason}”",
     "notLive": "Did not go live",
-    "notLiveBecause": "Planned for {when}. {reason}"
+    "notLiveBecause": "Planned for {when}. {reason}",
+    "undoBlocked": {
+      "changed": "Changed again since, can no longer be undone",
+      "removed": "Entry removed, restore it first",
+      "schema": "The fields were restructured since"
+    },
+    "loadFailed": "History could not be loaded. Please reload the page."
   },
   "basics": {
     "search": {
