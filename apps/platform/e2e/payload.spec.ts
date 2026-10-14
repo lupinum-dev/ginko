@@ -15,7 +15,9 @@ test('a page payload holds only the texts it shows, and a client navigation load
   expect(payload).not.toContain('Inhaberin Maria Ebner')
 
   // A client navigation to the imprint loads that one text from the site's platform text route.
+  // Wait for hydration first: a click before it is a full page load, whose server render carries the text itself.
   await page.goto(`${SITE}/`)
+  await page.waitForFunction(() => (window as unknown as { useNuxtApp?: () => { isHydrating: boolean } }).useNuxtApp?.().isHydrating === false)
   const text = page.waitForResponse((response) => /\/__ginko\/platform\/de\/\d+\.\d+\/md\/legal\/legal\/imprint\.json$/.test(new URL(response.url()).pathname) && response.ok())
   await page.getByRole('contentinfo').getByRole('link', { name: 'Impressum' }).click()
   await text
