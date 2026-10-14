@@ -10,11 +10,13 @@ import type { Field, Fields, Json, Schema } from './types.ts'
 
 /**
  * A reference to a library file in a Markdown text; group 1 is the upload ID. Only where a text can name a file: a
- * link or image destination (`]($file.x)`, `[ref]: $file.x`, also inside `<…>`) and a component attribute value
- * (`{src="$file.x"}`). The same words elsewhere are text: `mv "$file" "$file.bak"` in a shell example names no file.
- * The match is the reference alone, so a replace keeps what stands before it.
+ * link or image destination (`]($file.x)`, `[ref]: $file.x`, also inside `<…>`), a component attribute value
+ * (`{src="$file.x"}`) and a prop in the YAML block of a component (`src: $file.x`), which the editor writes for a
+ * component with more than three props. The same words elsewhere are text: `mv "$file" "$file.bak"` in a shell
+ * example names no file. A prose line that looks like a YAML prop (`Hinweis: $file.x`) matches too; the server keeps
+ * only IDs that have the form of an upload ID. The match is the reference alone, so a replace keeps what stands before it.
  */
-export const FILE_REF = /(?<=\]\(\s*<?|^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*<?|=["']?)\$file\.([A-Za-z0-9_-]+)/gm
+export const FILE_REF = /(?<=\]\(\s*<?|^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*<?|=["']?|^[ \t]*[A-Za-z_][\w:-]*:[ \t]*["']?)\$file\.([A-Za-z0-9_-]+)/gm
 
 /** A whole attribute or destination value that is a file reference. */
 const WHOLE_REF = /^\$file\.([A-Za-z0-9_-]+)$/

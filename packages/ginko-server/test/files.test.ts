@@ -2,7 +2,7 @@
 // retention of trash and replaced files. One test per realistic failure.
 import { describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
-import type { Schema } from '@lupinum/ginko/internal'
+import { remapFileIds, type Schema } from '@lupinum/ginko/internal'
 import type { Id } from '../convex/_generated/dataModel'
 import { CORPUS_NOW } from './clock'
 import { errorOf, opId, postUpload, setup, upload } from './setup'
@@ -374,6 +374,25 @@ describe('uploads.sweep with the library', () => {
     for (const phase of ['storage', 'processing', 'failed', 'ready'] as const) await s.t.mutation(internal.uploads.sweep, { phase })
     expect(await s.t.run((ctx) => ctx.db.get(id))).not.toBeNull()
     expect(await fileRefsOf(s, id)).toHaveLength(1)
+  })
+
+  // Wrong behaviour caught: a picture in the YAML props of a component (what the editor writes for more than three
+  // props) was no reference to the server: the save was refused as a missing file, and a restored backup kept the old IDs.
+  it('counts a picture in the YAML props of a component: the text saves, the file is used, a backup remaps it', async () => {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.legal!.fields.imprint as { profile: string }).profile = 'page'
+      const text = { type: 'text', label: { de: 'Text' }, optional: true }
+      schema.components = { figure: { kind: 'block', label: { de: 'Bild' }, describe: { de: 'Ein Bild' }, props: { src: { type: 'image', label: { de: 'Bild' } }, alt: text, caption: text, credit: text } } } as Schema['components']
+      await ctx.db.patch(s.site, { schema })
+    })
+    const id = await readyImage(s)
+    const figure = (file: string) => `::figure\n\`\`\`yaml [props]\nsrc: $file.${file}\nalt: Hund\ncaption: Ein Hund\ncredit: Romi\n\`\`\`\n::\n`
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: figure(id) } }, sentence: 'x' })
+    expect(await fileRefsOf(s, id)).toHaveLength(1)
+    const fields = (await s.t.run(async (ctx) => (await ctx.db.get(s.site))!.schema as Schema)).bricks.legal!.fields
+    expect(remapFileIds(fields, { imprint: { de: figure(id) } }, new Map([[id, 'neu']]))).toEqual({ imprint: { de: figure('neu') } })
   })
 
   // Wrong behaviour caught: `$file.<word>` in a shell example counted as a library file, so the text was refused as a
