@@ -8,6 +8,8 @@ import { textIn } from '@lupinum/ginko-editor'
 import { displayValue, formatDay, taskRef, titleOf, type Task } from '../../../utils/content'
 import { shownLabel } from '../../../utils/labels'
 import { Button } from '@studio/components/ui/button'
+import { api } from '#convex/api'
+import EntryRemoveDialog, { type EntryUses } from '../../../components/EntryRemoveDialog.vue'
 
 definePageMeta({ layout: 'site', convexAuth: true })
 
@@ -162,10 +164,30 @@ function picked(entry: Entry) {
 }
 
 const removing = ref<string | null>(null)
+const convex = useConvex()
+/** An entry other entries point at (N5): the remove question with their list; unused entries go at once, as before. */
+const askRemove = ref<{ key: string; entry: Entry; task: Task; uses: EntryUses } | null>(null)
 async function removeEntry(key: string, entry: Entry, task: Task) {
   removing.value = entry._id
   try {
-    await ops.removeEntry(entry._id, entry.lifeRev, taskRef(key, task), titleOf(s.schema.value!.bricks[key]!, entry.data, s.main.value))
+    // A failed lookup does not stop the removal: it only warns, and the trash keeps the entry for 30 days.
+    const uses = await convex.query(api.entries.usedBy, { site: s.slug.value, entry: entry._id }).catch(() => [])
+    if (uses.length) askRemove.value = { key, entry, task, uses }
+    else await removeNow(key, entry, task)
+  } finally {
+    removing.value = null
+  }
+}
+async function removeNow(key: string, entry: Entry, task: Task) {
+  await ops.removeEntry(entry._id, entry.lifeRev, taskRef(key, task), titleOf(s.schema.value!.bricks[key]!, entry.data, s.main.value))
+}
+async function confirmRemove() {
+  const ask = askRemove.value
+  if (!ask) return
+  removing.value = ask.entry._id
+  try {
+    await removeNow(ask.key, ask.entry, ask.task)
+    askRemove.value = null
   } finally {
     removing.value = null
   }
@@ -258,6 +280,12 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       :may-restore="s.isManager.value || !!sections.find((x) => x.key === open!.key)?.remove"
       :existing="s.schema.value.bricks[open.key]!.kind === 'collection' ? s.entriesOf(open.key).filter((e) => isVisible(s.schema.value!.bricks[open!.key]!, e.data, s.today.value)) : undefined"
       @close="open = null"
+    />
+    <EntryRemoveDialog
+      v-if="askRemove && s.schema.value"
+      :open="true" :slug="s.slug.value" :uses="askRemove.uses" :busy="removing === askRemove.entry._id"
+      :title="titleOf(s.schema.value.bricks[askRemove.key]!, askRemove.entry.data, s.main.value)"
+      @update:open="askRemove = null" @confirm="confirmRemove"
     />
     <PickSheet
       v-if="picking && s.schema.value"

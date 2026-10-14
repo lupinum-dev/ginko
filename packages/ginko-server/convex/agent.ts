@@ -7,7 +7,7 @@ import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { bundleOf } from './bundle'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
-import { createAs, labelOf, removeAs, revertAs, saveAs, undoAs, versionAtAs } from './entries'
+import { createAs, labelOf, removeAs, revertAs, saveAs, undoAs, usesOfEntry, versionAtAs } from './entries'
 import { usageAs } from './files'
 import { ownAs } from './proposals'
 import { actorFor, entryOf, fail, memberOf, type Actor } from './lib/access'
@@ -405,7 +405,10 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
     if (confirm !== true) fail('INVALID', 'errors.removeNeedsConfirm')
     const result = await removeAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, lifeRev: entry.lifeRev })
     if (proposed(result)) return { text: PROPOSED, result }
-    return { text: 'Removed. The person can restore it in the platform for 30 days.', result }
+    // The same warning as the platform's remove dialog: entries that point at it show without it now.
+    const uses = await usesOfEntry(ctx, actor, entry)
+    const note = uses.length ? ` Note: ${uses.length} ${uses.length === 1 ? 'entry pointed' : 'entries pointed'} at it (${uses.map((u) => `“${u.title}”`).join(', ')}); they now show without it until it is restored.` : ''
+    return { text: `Removed. The person can restore it in the platform for 30 days.${note}`, result }
   }
 
   const taskFields = tool.task.fields

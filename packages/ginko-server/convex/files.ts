@@ -3,7 +3,7 @@
 // and replace. Everything is scoped to one site; an id of another site is NOT_FOUND, never a hint.
 // Rights: all members read and upload; everything that changes the library is for owner and admin.
 // Library actions write no `changes` rows (those are the content history, SPEC 3).
-import type { Field, Fields, Json, Label } from '@lupinum/ginko'
+import type { Json, Label } from '@lupinum/ginko'
 import { ALT_MAX, effectiveAlt, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -11,7 +11,7 @@ import { internalMutation, mutation, query, type QueryCtx } from './_generated/s
 import { labeler } from './lib/names'
 import { labelOf } from './entries'
 import { actorFor, fail, type Actor } from './lib/access'
-import { usesOf, valueAt, type Data } from './lib/content'
+import { fieldLabelAt, usesOf, valueAt, type Data } from './lib/content'
 import { cleanName } from './lib/files'
 import { entryUses, same } from './lib/write'
 
@@ -65,23 +65,6 @@ const kindOfUpload = (row: Doc<'uploads'>) => (row.mime.startsWith('image/') ? '
 async function entryRefsOf(ctx: QueryCtx, file: Id<'uploads'>) {
   const refs = await ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', file)).collect()
   return refs.filter((r) => r.holder === 'entry')
-}
-
-/** The label of the field at a content path (`hero`, `rows.<id>.image`): the leaf field's own label, so a use reads "Title image" and not a path. */
-function fieldLabelAt(schema: Schema, brick: string, path: string): Label | null {
-  let fields: Fields | undefined = Object.hasOwn(schema.bricks, brick) ? schema.bricks[brick]!.fields : undefined
-  let label: Label | null = null
-  const keys = path.split('.')
-  for (let i = 0; fields && i < keys.length; i++) {
-    const field: Field | undefined = Object.hasOwn(fields, keys[i]!) ? fields[keys[i]!] : undefined
-    if (!field) return label
-    label = field.label
-    if (field.type === 'list' && i + 2 < keys.length) {
-      fields = field.of
-      i += 1
-    } else fields = undefined
-  }
-  return label
 }
 
 async function usedInOf(ctx: QueryCtx, schema: Schema, refs: Doc<'fileRefs'>[], library?: Record<string, string>) {

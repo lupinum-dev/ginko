@@ -16,6 +16,7 @@ import ScheduleField from './ScheduleField.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
 import ConflictPanel from './ConflictPanel.vue'
+import EntryRemoveDialog from './EntryRemoveDialog.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
 import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
@@ -23,7 +24,6 @@ import { useMediaQuery } from '@vueuse/core'
 import { OWN_BOTTOM_BAR } from '../utils/siteLinks'
 import { provideRefs } from './fields/refs'
 import { Button } from '@studio/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@studio/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
 import { Badge } from '@studio/components/ui/badge'
 import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
@@ -237,6 +237,8 @@ async function remove() {
   }
 }
 const askRemove = ref(false)
+/** Entries that point at this one (N5), looked up only while the remove question is open. */
+const removeUses = useConvexQuery(api.entries.usedBy, () => (askRemove.value && props.entry ? { site: props.site.slug, entry: props.entry._id } : 'skip'))
 
 // Someone else removed the entry (N1): restore and save, save as a new entry, or discard.
 const mayCreate = computed(() => props.brick.kind === 'collection' && (!props.tasks || !!props.tasks.create))
@@ -514,18 +516,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
       </form>
 
       <!-- The destructive action sits in "Mehr", away from Speichern and Vorschau; the question stays. -->
-      <Dialog v-model:open="askRemove">
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{{ t('entry.remove.title') }}</DialogTitle>
-            <DialogDescription>{{ t('entry.remove.text', { title }) }}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" @click="askRemove = false">{{ t('entry.cancel') }}</Button>
-            <Button type="button" variant="destructive" :disabled="removing" @click="remove">{{ t('entry.remove.confirm') }}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :busy="removing" @confirm="remove" />
     </div>
 
     <PreviewPane

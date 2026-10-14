@@ -10,6 +10,7 @@ import type { Runner } from '../../../packages/ginko/src/cli/local.ts'
 import type { Fields } from '@lupinum/ginko'
 import type { Schema } from '@lupinum/ginko/internal'
 import { remapEntryRefs } from '../convex/lib/content'
+import { api } from '../convex/_generated/api'
 import { errorOf, setup } from './setup'
 
 type Setup = Awaited<ReturnType<typeof setup>>
@@ -127,6 +128,31 @@ describe('import keeps references between entries', () => {
     expect(await errorOf(call('seed:importRefs', { site: 'restaurant', ids }))).toMatchObject({ code: 'TOO_LARGE', message: 'Eintrag posts/many ist zu groß (684 KB, höchstens 480 KB).' })
     const post = (await entriesOf(s, s.site)).find((e) => e.brick === 'posts')!
     expect(post.data).toEqual({ more: Array<string>(20000).fill('authors/a') })
+  })
+})
+
+describe('entries.usedBy', () => {
+  // Wrong behaviour caught: removing an author gives no warning, and the posts that show it silently lose it.
+  it('lists the live posts that point at an author, by ref, refs or list row', async () => {
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const anna = await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(s.site))!
+      const schema = row.schema as { bricks: Record<string, { fields: Record<string, unknown> }> }
+      schema.bricks.posts!.fields.title = { type: 'text', label }
+      await ctx.db.patch(s.site, { schema })
+      const insert = (brick: string, data: Record<string, unknown>, deletedAt?: number) => ctx.db.insert('entries', {
+        site: s.site, brick, kind: 'item', order: 1, data, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, bytes: 2, ...(deletedAt ? { deletedAt } : {}),
+      })
+      const author = await insert('authors', { name: 'Anna' })
+      await insert('posts', { title: 'P1', author, more: [author] })
+      await insert('posts', { title: 'P2', credits: [{ _id: 'r1', who: author, role: true }] })
+      await insert('posts', { title: 'P3', author }, Date.now())
+      await insert('posts', { title: 'P4', more: ['someone-else'] })
+      return author
+    })
+    const uses = await s.as.owner.query(api.entries.usedBy, { site: 'restaurant', entry: anna })
+    expect(uses.map((u) => [u.title, u.paths])).toEqual([['P1', ['author', 'more']], ['P2', ['credits.r1.who']]])
   })
 })
 

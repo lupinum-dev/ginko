@@ -1,7 +1,7 @@
 // Pure content rules of the write path (SPEC part 3 "Übersetzungs-Abdrücke", 4.2 save).
 // No Convex here, so every rule is testable with plain data.
-import type { Field, Fields, Json, Locale } from '@lupinum/ginko'
-import { effectiveAlt, isTranslatable, markdownTrees, printOf, stableJson } from '@lupinum/ginko/internal'
+import type { Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
+import { effectiveAlt, isTranslatable, markdownTrees, printOf, stableJson, type Schema } from '@lupinum/ginko/internal'
 
 export type Data = Record<string, Json>
 export type Prints = Record<string, Record<string, string>>
@@ -193,6 +193,44 @@ export function remapFileIds(fields: Fields, data: Data, map: ReadonlyMap<string
   const out: Data = { ...data }
   for (const [name, field] of Object.entries(fields)) if (out[name] !== undefined) out[name] = walk(field, out[name])!
   return out
+}
+
+/** An entry ID in a `ref` field: its root field, its content path (`author`, `credits.<row id>.who`) and the brick it points to. */
+export interface RefId { root: string; path: string; to: string; id: string }
+
+/** Every entry ID the `ref` fields of `data` hold: a single ID, a list with `multiple`, also in list rows. */
+export function refIdsIn(fields: Fields, data: Data): RefId[] {
+  const out: RefId[] = []
+  const walk = (root: string, path: string, field: Field, value: Json | undefined) => {
+    if (field.type === 'ref') for (const id of [value].flat()) if (typeof id === 'string') out.push({ root, path, to: field.to, id })
+    if (field.type === 'list' && Array.isArray(value)) {
+      value.forEach((row, i) => {
+        if (!isRecord(row)) return
+        // Rows are named by `_id` like `usesOf` and `valueAt`; a row without one by its index.
+        const key = typeof row._id === 'string' ? row._id : String(i)
+        for (const [k, inner] of Object.entries(field.of)) walk(root, `${path}.${key}.${k}`, inner, row[k])
+      })
+    }
+  }
+  for (const [name, field] of Object.entries(fields)) walk(name, name, field, data[name])
+  return out
+}
+
+/** The label of the field at a content path (`hero`, `rows.<id>.image`): the leaf field's own label, so a use reads "Title image" and not a path. */
+export function fieldLabelAt(schema: Schema, brick: string, path: string): Label | null {
+  let fields: Fields | undefined = Object.hasOwn(schema.bricks, brick) ? schema.bricks[brick]!.fields : undefined
+  let label: Label | null = null
+  const keys = path.split('.')
+  for (let i = 0; fields && i < keys.length; i++) {
+    const field: Field | undefined = Object.hasOwn(fields, keys[i]!) ? fields[keys[i]!] : undefined
+    if (!field) return label
+    label = field.label
+    if (field.type === 'list' && i + 2 < keys.length) {
+      fields = field.of
+      i += 1
+    } else fields = undefined
+  }
+  return label
 }
 
 /**

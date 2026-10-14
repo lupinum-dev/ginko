@@ -7,7 +7,7 @@ import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { bundleOf, type NewItem } from '../bundle'
 import { byOf, fail, type Actor } from './access'
-import { fileIdsOf, treesOf, usesOf, type Data, type Prints, type Use } from './content'
+import { fileIdsOf, refIdsIn, treesOf, usesOf, type Data, type Prints, type Use } from './content'
 import type { Recorded } from './history'
 import { putTrees } from './trees'
 
@@ -98,14 +98,8 @@ export async function brokenNewLinks(ctx: QueryCtx, site: Doc<'sites'>, edits: L
 
 /** The `refs` callback for validate(): looks up every entry the data points to (live entries of the target brick on this site). */
 export async function refsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, data: Data): Promise<NonNullable<ValidateOptions['refs']>> {
-  const wanted: { to: string; id: string }[] = []
-  const walk = (field: Field, value: Json | undefined) => {
-    if (field.type === 'ref') for (const id of [value].flat()) if (typeof id === 'string') wanted.push({ to: field.to, id })
-    if (field.type === 'list' && Array.isArray(value)) for (const row of value) for (const [k, inner] of Object.entries(field.of)) walk(inner, (row as Data)[k])
-  }
-  for (const [name, field] of Object.entries(fields)) walk(field, data[name])
   const found = new Set<string>()
-  for (const { to, id } of wanted) {
+  for (const { to, id } of refIdsIn(fields, data)) {
     const key = ctx.db.normalizeId('entries', id)
     const row = key ? await ctx.db.get(key) : null
     if (row && row.site === site && row.brick === to && !row.deletedAt) found.add(`${to}\n${id}`)

@@ -167,7 +167,10 @@
     "remove": {
       "title": "Eintrag entfernen",
       "text": "„{title}“ wird von der Website entfernt. Wiederherstellen geht 30 Tage lang.",
-      "confirm": "Entfernen"
+      "confirm": "Entfernen",
+      "usedIn": "„{title}“ wird in {count, plural, one {# Eintrag} other {# Einträgen}} verwendet. Dort fehlt es auf der Website, bis du es wiederherstellst.",
+      "confirmAnyway": "Trotzdem entfernen",
+      "checking": "Prüft, wo der Eintrag verwendet wird …"
     },
     "discard": {
       "question": "Änderungen verwerfen?",

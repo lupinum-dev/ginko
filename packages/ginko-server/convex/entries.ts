@@ -7,7 +7,7 @@ import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, authorizeWriter, byOf, checkRev, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor, type By } from './lib/access'
-import { fileIdsOf, leavesOf, mergeField, nextPrints, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
+import { fieldLabelAt, fileIdsOf, leavesOf, mergeField, nextPrints, refIdsIn, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { labeler, type Who } from './lib/names'
 import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
 import { isLocale, t } from './lib/i18n'
@@ -861,6 +861,47 @@ export const reorder = mutation({
     })
   },
 })
+
+/**
+ * The live entries that point at an entry through a `ref` field (a single ref, a `multiple` list, a list
+ * row), drafts too, in the shape of a file's "Used in" (files.ts), so the Studio shows both lists alike.
+ * Removing still works: the entry goes to the trash, and these entries show without it until it is back.
+ * The referring bricks are read whole; they are part of the site, which its storage budget bounds.
+ * Refs in retired fields are not counted: the website no longer shows them. Any member may read (SPEC 2.7).
+ */
+export const usedBy = query({
+  args: { site: v.string(), entry: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    return usesOfEntry(ctx, actor, await entryOf(ctx, actor, args.entry))
+  },
+})
+
+/** `usedBy` for an entry of the actor's site already loaded; the agent door's remove names the same uses. */
+export async function usesOfEntry(ctx: QueryCtx, actor: Actor, target: Doc<'entries'>) {
+  const schema = actor.site.schema as Schema
+  const out: { entry: string; brick: string; title: string; paths: string[]; fieldLabels: (Label | null)[]; locale: null; missingAlt: false; deleted: false; state: 'draft' | 'live' }[] = []
+  for (const [key, brick] of Object.entries(schema.bricks)) {
+    if (brick.retired) continue
+    const fields = Object.fromEntries(Object.entries(brick.fields).filter(([, field]) => !field.retired && pointsAt(field, target.brick)))
+    if (!Object.keys(fields).length) continue
+    const rows = await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', actor.site._id).eq('brick', key).eq('deletedAt', undefined)).collect()
+    for (const row of rows) {
+      if (row._id === target._id) continue
+      const paths = refIdsIn(fields, row.data as Data).filter((ref) => ref.to === target.brick && ref.id === target._id).map((ref) => ref.path)
+      if (!paths.length) continue
+      out.push({
+        entry: row._id, brick: key, title: labelOf(schema, key, row.data as Data), paths, fieldLabels: paths.map((path) => fieldLabelAt(schema, key, path)),
+        locale: null, missingAlt: false, deleted: false, state: stateOf(row),
+      })
+    }
+  }
+  return out
+}
+
+/** A `ref` field to `brick`, or a list with such a column. */
+const pointsAt = (field: Field, brick: string): boolean =>
+  (field.type === 'ref' && field.to === brick) || (field.type === 'list' && Object.values(field.of).some((inner) => !inner.retired && pointsAt(inner, brick)))
 
 /** Removed entries of a brick that can still be restored (30 days, SPEC 12), newest first. Any member may read (SPEC 2.7). */
 export const removed = query({
