@@ -271,9 +271,12 @@ export interface BuildBundleInput {
 /**
  * The bundle a site receives: `buildBundle` with every Markdown text as its tree. The platform's
  * bundle endpoint, the Studio preview and the contract fixtures all serve this, never `buildBundle` alone.
+ * In another language, links to entries left out of it go to their main-language page (`resolveRouteLinks`).
  */
 export async function servedBundle(input: BuildBundleInput): Promise<Bundle> {
-  return resolveRouteLinks(await withMarkdownTrees(buildBundle(input), input.schema), input.schema)
+  const bundle = buildBundle(input)
+  const main = bundle.locale === bundle.mainLocale ? undefined : buildBundle({ ...input, requestedLocale: bundle.mainLocale })
+  return resolveRouteLinks(await withMarkdownTrees(bundle, input.schema), input.schema, main)
 }
 
 export function buildBundle(input: BuildBundleInput): Bundle {

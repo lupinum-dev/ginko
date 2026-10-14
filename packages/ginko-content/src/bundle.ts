@@ -42,13 +42,14 @@ export async function buildFileBundles(options: BuildOptions): Promise<BuildResu
   const { entries, files: fileInfo, images, errors } = await readContent(contentDir, publicDir, files, options)
   const imageFiles = new Set<string>()
   if (options.imageDir) await addVariants(fileInfo, images, publicDir, options.imageDir, imageFiles)
+  const build = (locale: Locale) => buildBundle({
+    schema: files, requestedLocale: locale, entries, files: (id) => fileInfo[id],
+    schemaRev: 0, contentRev: 0, generatedAt: now.toISOString(), today: todayIn(schema.timeZone, now),
+  })
+  // Links to an entry left out of a language (not translated) go to its main-language page.
+  const main = build(schema.locales[0]!)
   const bundles: Partial<Record<Locale, Bundle>> = {}
-  for (const locale of schema.locales) {
-    bundles[locale] = resolveRouteLinks(buildBundle({
-      schema: files, requestedLocale: locale, entries, files: (id) => fileInfo[id],
-      schemaRev: 0, contentRev: 0, generatedAt: now.toISOString(), today: todayIn(schema.timeZone, now),
-    }), files)
-  }
+  for (const locale of schema.locales) bundles[locale] = resolveRouteLinks(locale === main.locale ? main : build(locale), files, main)
   return { bundles, images, imageFiles, errors }
 }
 

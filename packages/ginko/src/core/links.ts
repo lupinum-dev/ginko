@@ -63,24 +63,27 @@ function find(bundle: Bundle, brick: string, ref: string): BundleItem | undefine
 }
 
 /** The path a `$…` link points to in the bundle's locale, or undefined. `ref` has no `$` and no `#anchor`. */
-function routeTarget(bundle: Bundle, schema: Pages, ref: string): string | undefined {
+function routeTarget(bundle: Bundle, schema: Pages, ref: string, main: Bundle | undefined): string | undefined {
   const dot = ref.indexOf('.')
   if (dot < 1) return undefined
   const head = ref.slice(0, dot)
   const rest = ref.slice(dot + 1)
   if (head === 'page') return Object.hasOwn(schema.pages, rest) ? schema.pages[rest]![bundle.locale] : undefined
-  // An entry listed in this locale without its own page there (`untranslated: 'fallback'`) links to its main-language page.
-  const urls = find(bundle, head, rest)?.urls
+  // An entry without its own page in this locale links to its main-language page: listed here under
+  // `untranslated: 'fallback'`, or left out of this locale (only in the main-language bundle).
+  const urls = (find(bundle, head, rest) ?? (main && find(main, head, rest)))?.urls
   return urls?.[bundle.locale] ?? urls?.[bundle.mainLocale]
 }
 
 /**
  * The bundle with `$…` links turned into paths and `::snippet` components replaced by their text.
  * `$page.<key>` is a page of `schema.pages`; `$<brick>.<slug-or-id>` is an entry's URL; a `#anchor` is kept.
+ * `main` is the main-language bundle (from `buildBundle`, links unresolved): an entry left out of this locale because
+ * it is not translated (`untranslated: 'hide'`) is found there, and the link goes to its main-language page.
  * What cannot be resolved stays as it is and gets `data-broken: true`. A snippet is the `body` of the entry
  * `snippets/<name>` of the collection `snippets`; a snippet inside a snippet stays as it is. No mutation.
  */
-export function resolveRouteLinks(bundle: Bundle, schema: Pages): Bundle {
+export function resolveRouteLinks(bundle: Bundle, schema: Pages, main?: Bundle): Bundle {
   const hasSnippets = Object.hasOwn(schema.bricks, 'snippets') && schema.bricks.snippets!.kind === 'collection'
   const snippetNodes = (name: string): Json[] | undefined => {
     const body = hasSnippets ? find(bundle, 'snippets', name)?.data.body : undefined
@@ -97,7 +100,7 @@ export function resolveRouteLinks(bundle: Bundle, schema: Pages): Bundle {
     const href = props.href
     if (tag === 'a' && typeof href === 'string' && href.startsWith('$')) {
       const hash = href.indexOf('#')
-      const target = routeTarget(bundle, schema, hash === -1 ? href.slice(1) : href.slice(1, hash))
+      const target = routeTarget(bundle, schema, hash === -1 ? href.slice(1) : href.slice(1, hash), main)
       next = target === undefined ? { ...props, 'data-broken': true } : { ...props, href: target + (hash === -1 ? '' : href.slice(hash)) }
     }
     return [[tag, next, ...resolve(children, nested)] as Json]

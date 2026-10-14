@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
   buildBundle, checkSchema, diffSchema, isSafeHref, migrationFingerprint, printOf, resolveEntry,
-  serializeSchema, sortEntries, validate, type BundleBrick, type BundleItem, type CollectionBrick,
+  serializeSchema, servedBundle, sortEntries, validate, type BundleBrick, type BundleItem, type CollectionBrick,
   type Field, type Fields, type Issue, type Json, type Locale, type Schema, type StoredEntry,
 } from '../../src/core/index.ts'
 
@@ -150,6 +150,18 @@ describe('resolve.ts urlsFor: an untranslated page has no URL in that language',
     if (mode) collectionOf(s, 'events').untranslated = mode
     const items = itemsOf(build(s, { events: [event] }, 'en').bricks.events)
     expect(items.map((i) => ({ id: i.id, urls: i.urls }))).toEqual(expected)
+  })
+
+  // Wrong behaviour caught: an English text that links to a German-only event gets a dead `$events.…` link.
+  it('a link in another language to an entry left out of it goes to the main-language page', async () => {
+    const de = '[Gansl]($events.martini-gansl)'
+    const legal: StoredEntry = { id: 'legal', data: { imprint: { de, en: '[Goose]($events.martini-gansl)' } }, prints: { imprint: { en: printOf(de) } } }
+    const bundle = await servedBundle({
+      schema: base(), requestedLocale: 'en', entries: { events: [martinigans()], legal: [legal] }, files: noFiles,
+      schemaRev: 1, contentRev: 1, generatedAt: '2026-10-08T00:00:00.000Z', today: TODAY,
+    })
+    const imprint = bundle.bricks.legal?.kind === 'single' ? bundle.bricks.legal.data.imprint : undefined
+    expect(imprint).toMatchObject({ nodes: [['p', {}, ['a', { href: '/veranstaltungen/martini-gansl' }, 'Goose']]] })
   })
 
   it('an image description missing in English does not make the entry untranslated', () => {
