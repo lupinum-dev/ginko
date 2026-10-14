@@ -267,6 +267,9 @@
       "noEntries": "No entries yet.",
       "moveUp": "Move {title} up",
       "moveDown": "Move {title} down",
+      "showMore": "Show {count} more",
+      "shownOf": "{shown} of {total} entries",
+      "searching": "Searching …",
       "removed": "Removed (can be restored for 30 days)",
       "restore": "Restore"
     },

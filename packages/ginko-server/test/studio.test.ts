@@ -309,27 +309,26 @@ describe('sites.translationStatus', () => {
     const status = await s.as.owner.query(api.sites.translationStatus, { site })
     expect(status).toMatchObject({ main: 'de', locales: ['en'] })
     const menu = status.bricks.find((b) => b.brick === 'menu')!.locales.en!
-    const menuEntry = (key: string) => menu.entries.find((e) => e.entry === s.entries[key])
-    // "Frittatensuppe" has no English name; the print of the schnitzel's English name no longer fits the German one.
-    expect(menuEntry('menu-frittaten')).toMatchObject({ missing: ['description', 'name'], outdated: [] })
-    expect(menuEntry('menu-schnitzel')).toMatchObject({ outdated: expect.arrayContaining(['name']) })
     expect(menu.missing + menu.outdated + menu.ok).toBe(8)
+    // "Frittatensuppe" has no English name; the print of the schnitzel's English name no longer fits the German one.
+    const english = async (key: string) => (await s.as.owner.query(api.entries.get, { site, entry: s.entries[key]! }))!.translation.en
+    expect(await english('menu-frittaten')).toEqual({ missing: ['description', 'name'], outdated: [] })
+    expect((await english('menu-schnitzel'))!.outdated).toEqual(expect.arrayContaining(['name']))
 
-    // The bundle's fallback lists of English, split the same way, give the same numbers.
+    // The bundle's fallback lists of English give the same entries and numbers as the list rows and the status.
     const bundle = (await (await s.t.fetch('/bundle/restaurant?format=3&locale=en')).json()) as { bricks: Record<string, { items?: { id: string; fallback: string[] }[] }> }
     for (const brick of status.bricks.filter((b) => b.kind === 'collection')) {
-      const detail = brick.locales.en!
       const withFallback = (bundle.bricks[brick.brick]!.items ?? []).filter((item) => item.fallback.length)
-      expect(detail.entries.map((e) => e.entry).sort(), brick.brick).toEqual(withFallback.map((i) => i.id).sort())
-      for (const item of withFallback) {
-        const entry = detail.entries.find((e) => e.entry === item.id)!
-        expect([...entry.missing, ...entry.outdated].sort(), `${brick.brick} ${item.id}`).toEqual([...item.fallback].sort())
-      }
+      const rows = (await s.as.owner.query(api.entries.list, { site, brick: brick.brick, limit: 2000 })).rows
+      const gaps = new Map(rows.map((row) => [row._id as string, row.gaps.reduce((sum, g) => sum + g.missing + g.outdated, 0)]))
+      expect([...gaps].filter(([, count]) => count).map(([id]) => id).sort(), brick.brick).toEqual(withFallback.map((i) => i.id).sort())
+      for (const item of withFallback) expect(gaps.get(item.id), `${brick.brick} ${item.id}`).toBe(item.fallback.length)
+      const detail = brick.locales.en!
       expect(detail.missing + detail.outdated, brick.brick).toBe(withFallback.length)
     }
   })
 
-  it('leaves out removed entries and drafts, and bounds the list but not the totals', async () => {
+  it('leaves out removed entries and drafts', async () => {
     const s = await studioSetup({ drafts: true })
     const base = (await s.as.owner.query(api.sites.translationStatus, { site })).bricks.find((b) => b.brick === 'events')!.locales.en!
     await s.createEvent('Entwurf ohne Übersetzung')

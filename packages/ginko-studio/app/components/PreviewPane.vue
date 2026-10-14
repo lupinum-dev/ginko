@@ -72,10 +72,13 @@ async function send() {
 }
 
 let timer: ReturnType<typeof setTimeout> | undefined
-watch(() => [props.editing, props.entries, props.locale, props.revision], () => {
+function sendSoon() {
   clearTimeout(timer)
   timer = setTimeout(send, 250)
-}, { deep: true })
+}
+// The form's values change inside one object; the entries come as a new list with every update, so they need no deep watch.
+watch(() => props.editing, sendSoon, { deep: true })
+watch(() => [props.entries, props.locale, props.revision], sendSoon)
 watch(() => props.locale, () => { session.value = crypto.randomUUID() })
 watch(src, () => { ready.value = false; waitForReady() })
 

@@ -267,6 +267,9 @@
       "noEntries": "Noch keine Einträge.",
       "moveUp": "{title} nach oben",
       "moveDown": "{title} nach unten",
+      "showMore": "{count} weitere anzeigen",
+      "shownOf": "{shown} von {total} Einträgen",
+      "searching": "Suche …",
       "removed": "Entfernt (30 Tage wiederherstellbar)",
       "restore": "Wiederherstellen"
     },

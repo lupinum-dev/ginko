@@ -15,7 +15,6 @@ the exact condition for removing it and the tracking issue when there is one. Re
     `sites.treeBytes` are optional.
   - `convex/bundle.ts` `storedTrees`: falls back to the legacy `entries.trees`; `updatedAt` falls back to
     `_creationTime` for a row without `contentAt`.
-  - `convex/sites.ts` `get`: strips the legacy `trees` from the entries it returns.
   - `?? 0` on `treeBytes` and `trashBytes` in `lib/lifecycle.ts` `countersOf`, `lib/write.ts` `commitEntry`,
     `release.ts` and `seed.ts`.
 - **Dependents:** every deployment with entries written before the introduction date (local backends, hosted
@@ -30,8 +29,7 @@ the exact condition for removing it and the tracking issue when there is one. Re
   4. Hosted production needs Matthias's OK at each step: `npx convex export --prod` first, then deploy, then
      `npx convex run --prod entries:migrateStorage`, then `storageStatus` with `--prod`.
   5. Contract step: remove `entries.trees` from the schema, make `entries.treeBytes`, `entries.contentAt`,
-     `sites.trashBytes` and `sites.treeBytes` required, delete the fallbacks and the `?? 0` above and the strip in
-     `sites.get`, and give the rows that tests insert directly (`packages/ginko-server/test/setup.ts` and others) the
+     `sites.trashBytes` and `sites.treeBytes` required, delete the fallbacks and the `?? 0` above, and give the rows that tests insert directly (`packages/ginko-server/test/setup.ts` and others) the
      new fields. Convex refuses this deploy while any row still has `trees`, which is a safety net.
 - **Rollback after step 2:** the code before this change parses rows without `trees` per request (slower, correct);
   run its `entries:rebuildTrees` to restore its trees and counters.

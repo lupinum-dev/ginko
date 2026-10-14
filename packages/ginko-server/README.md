@@ -11,7 +11,7 @@ reference host.
 
 This package is the Convex project: its `convex.json` points the Convex CLI at `convex/` (with `sharp` as an
 external package). `apps/platform` is the host for the UI; it extends `@lupinum/ginko-studio`. Function names
-stay the same (`api.sites.get` and so on), so existing deployments and data stay valid.
+stay the same (`api.sites.meta` and so on), so existing deployments and data stay valid.
 
 Run every `npx convex` command of the platform in `packages/ginko-server`, never in another folder. The Convex CLI
 keeps `sharp` out of the bundle only when it runs next to the `package.json` that lists it; from `apps/platform` it

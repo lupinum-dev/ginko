@@ -2,7 +2,7 @@
      one-line state from the data and the task buttons. Generic: nothing here knows the restaurant. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Json } from '@lupinum/ginko'
-import { isVisible, visibleUntil, plannedWeeks, plansThisWeek, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
+import { visibleUntil, plannedWeeks, plansThisWeek, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../composables/useSiteData'
 import { textIn } from '@lupinum/ginko-editor'
 import { displayValue, formatDay, taskRef, titleOf, type Task } from '../../../utils/content'
@@ -13,7 +13,7 @@ import EntryRemoveDialog, { type EntryUses } from '../../../components/EntryRemo
 
 definePageMeta({ layout: 'site', convexAuth: true })
 
-const { t, format } = useI18n()
+const { t, format, locale } = useI18n()
 const s = await useSiteData()
 useHead(() => ({ title: t('site.title.quick', { site: s.site.value?.name ?? t('site.fallback.site') }) }))
 const ops = useOps(s.slug)
@@ -29,14 +29,36 @@ interface Section {
   listed: Entry[]
 }
 
-const sections = computed<Section[]>(() => s.bricks.value.flatMap(([key, brick]) => {
+/** A collection whose entries only show for a time: Schnell ändern lists them. */
+const isTimed = (brick: Brick) => brick.kind === 'collection' && !!brick.visible && brick.visible.mode !== 'always'
+/** The bricks with tasks this person may do, in schema order. */
+const withTasks = computed(() => s.bricks.value.filter(([key, brick]) => (brick.tasks ?? []).some((t) => s.may(key, t))))
+/**
+ * The entries this page shows or reads its state from (small by design): the singles with tasks, the collections
+ * that plan one of them ahead, and the timed collections with tasks. Nothing else of the site is read here.
+ */
+const shownBricks = computed(() => {
+  const keys = new Set<string>()
+  for (const [key, brick] of withTasks.value) {
+    if (brick.kind === 'single') {
+      keys.add(key)
+      for (const [k, b] of s.bricks.value) if (b.kind === 'collection' && b.plans?.brick === key) keys.add(k)
+    } else if (isTimed(brick)) keys.add(key)
+  }
+  return [...keys]
+})
+const shownRead = useConvexQuery(api.entries.ofBricks, () => (shownBricks.value.length ? { site: s.slug.value, bricks: shownBricks.value } : 'skip'))
+/** A collection's live entries in the site's order; a single's one entry. */
+const entriesOf = (key: string): Entry[] => (shownRead.data.value ?? []).filter((e) => e.brick === key)
+const singleOf = (key: string): Entry | undefined => entriesOf(key)[0]
+
+const sections = computed<Section[]>(() => withTasks.value.map(([key, brick]) => {
   const tasks = (brick.tasks ?? []).filter((t) => s.may(key, t))
-  if (!tasks.length) return []
   const remove = tasks.find((t) => t.kind === 'remove')
-  const timed = brick.kind === 'collection' && !!brick.visible && brick.visible.mode !== 'always'
-  const listed = timed ? s.entriesOf(key) : []
+  const timed = isTimed(brick)
+  const listed = timed ? entriesOf(key) : []
   const buttons = tasks.filter((t) => t.kind !== 'remove' || !(timed && listed.length <= 10))
-  return [{ key, brick, tasks, buttons, remove, listed }]
+  return { key, brick, tasks, buttons, remove, listed }
 }))
 
 // An owner or admin without quick tasks has nothing to do here: Alles bearbeiten is the place.
@@ -75,7 +97,7 @@ function timing(brick: CollectionBrick, entry: Entry): { text: string; dim: bool
 
 /** A single's date field preset to @today shows "Heute: <task>" with Aufheben (UI.md 3). */
 function todayFlag(key: string, brick: Brick, tasks: Task[]) {
-  const entry = s.single(key)
+  const entry = singleOf(key)
   if (!entry) return undefined
   for (const t of tasks) {
     if (t.kind !== 'edit' || !t.prefill) continue
@@ -103,21 +125,21 @@ function plannedNow(key: string, task = weeklyTask(s.schema.value!.bricks[key]!)
   if (!task) return undefined
   for (const [k, b] of Object.entries(schema.bricks)) {
     if (b.kind !== 'collection' || b.plans?.brick !== key) continue
-    const entry = s.entriesOf(k).find((e) => e.state !== 'draft' && plansThisWeek(schema, key, task, k, e.data as Record<string, Json>, start))
+    const entry = entriesOf(k).find((e) => e.state !== 'draft' && plansThisWeek(schema, key, task, k, e.data as Record<string, Json>, start))
     if (entry) return { key: k, entry, field: b.plans.field, start }
   }
   return undefined
 }
 
 function weekState(key: string, brick: Brick) {
-  const entry = s.single(key)
+  const entry = singleOf(key)
   if (!entry) return undefined
   const plan = plannedNow(key)
   if (plan) {
     const field = s.schema.value!.bricks[plan.key]!.fields[plan.field]
     return { current: true, text: t('site.quick.plannedWeek', { label: field ? shownLabel(field.label, s.main.value) : '', date: formatDay(plan.start, format) }) }
   }
-  const state = staleOf(brick, entry.data, s.today.value, s.schema.value!.week, plannedWeeks(s.schema.value!, key, (k) => s.entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
+  const state = staleOf(brick, entry.data, s.today.value, s.schema.value!.week, plannedWeeks(s.schema.value!, key, (k) => entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
   if (!state) return undefined
   return { current: state.current, text: state.stored ? `${shownLabel(brick.fields[state.field]!.label, s.main.value)} ${formatDay(state.stored, format)}` : t('site.quick.notFilled') }
 }
@@ -125,11 +147,21 @@ function weekState(key: string, brick: Brick) {
 // The open sheet: a task, and for edit tasks the entry.
 const open = ref<{ key: string; task: Task; entryId?: string } | null>(null)
 /** The open task's entry, live: the sheet sees changes others save meanwhile, and keeps it when someone removes it (N1). */
+const openRead = useConvexQuery(api.entries.get, () => (open.value?.entryId ? { site: s.slug.value, entry: open.value.entryId } : 'skip'))
 const { entry: openEntry, removed: openRemoved } = useKeptEntry(
   () => open.value?.entryId,
-  () => (open.value?.entryId ? s.entries.value.find((e) => e._id === open.value!.entryId) : undefined),
+  () => { const e = openRead.data.value; return e && !e.deleted && e._id === open.value?.entryId ? e : undefined },
 )
+/** A create task points out a new entry that is already there (same title, still on the website). */
+const twinRead = useConvexQuery(api.entries.titles, () => (open.value?.task.kind === 'create' && s.schema.value?.bricks[open.value.key]?.kind === 'collection' ? { site: s.slug.value, brick: open.value.key, language: locale.value } : 'skip'))
+const existing = computed(() => {
+  const brick = open.value ? s.schema.value?.bricks[open.value.key] : undefined
+  if (!brick || !twinRead.data.value) return undefined
+  return twinRead.data.value.filter((e) => e.until === undefined || e.until >= s.today.value).map((e) => e.title ?? shownLabel(brick.label, s.main.value))
+})
 const picking = ref<{ key: string; task: Task } | null>(null)
+// The pick list groups by a choice field and shows prices, so it reads the entries of its one brick while open.
+const pickRead = useConvexQuery(api.entries.ofBricks, () => (picking.value ? { site: s.slug.value, bricks: [picking.value.key] } : 'skip'))
 
 // Closing the sheets returns the focus to the button that started the task; the sheets are removed, so the browser has nowhere to put it back.
 let launcher: HTMLElement | null = null
@@ -154,7 +186,7 @@ function start(key: string, task: Task) {
     picking.value = { key, task }
     return
   }
-  open.value = { key, task, entryId: task.kind === 'edit' ? s.single(key)?._id : undefined }
+  open.value = { key, task, entryId: task.kind === 'edit' ? singleOf(key)?._id : undefined }
 }
 function picked(entry: Entry) {
   const p = picking.value!
@@ -251,7 +283,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
           <Button v-if="sec.remove" type="button" variant="ghost" size="sm" :disabled="removing === e._id" :aria-label="t('site.quick.removeNamed', { title: titleOf(sec.brick, e.data, s.main.value) })" @click="removeEntry(sec.key, e, sec.remove)">{{ t('site.common.remove') }}</Button>
         </li>
       </ul>
-      <p v-else-if="sec.brick.kind === 'collection' && sec.brick.visible && sec.brick.visible.mode !== 'always'" class="text-muted-foreground">{{ t('site.quick.nothingNow') }}</p>
+      <p v-else-if="shownRead.data.value && isTimed(sec.brick)" class="text-muted-foreground">{{ t('site.quick.nothingNow') }}</p>
 
       <!-- Phone: the main task full width, the others in two columns; from sm they wrap in one row. Quick tasks are
            secondary (row D); only a task the week still needs (the menu is not set for this week) is filled. -->
@@ -264,8 +296,9 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
     </section>
     </div>
 
+    <!-- An edit task opens once its entry is here, so the form starts from the stored values. -->
     <TaskSheet
-      v-if="open && s.schema.value"
+      v-if="open && s.schema.value && (!open.entryId || openEntry)"
       :site="s.slug.value"
       :brick-key="open.key"
       :brick="s.schema.value.bricks[open.key]!"
@@ -274,11 +307,10 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       :main="s.main.value"
       :locales="s.schema.value.locales"
       :schema="s.schema.value"
-      :entries="s.entries.value"
       :remove-task="sections.find((x) => x.key === open!.key)?.remove"
       :removed="openRemoved"
       :may-restore="s.isManager.value || !!sections.find((x) => x.key === open!.key)?.remove"
-      :existing="s.schema.value.bricks[open.key]!.kind === 'collection' ? s.entriesOf(open.key).filter((e) => isVisible(s.schema.value!.bricks[open!.key]!, e.data, s.today.value)) : undefined"
+      :existing="existing"
       @close="open = null"
     />
     <EntryRemoveDialog
@@ -288,10 +320,10 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       @update:open="askRemove = null" @confirm="confirmRemove"
     />
     <PickSheet
-      v-if="picking && s.schema.value"
+      v-if="picking && s.schema.value && pickRead.data.value"
       :brick="s.schema.value.bricks[picking.key]!"
       :task="picking.task"
-      :entries="s.entriesOf(picking.key)"
+      :entries="pickRead.data.value"
       :main="s.main.value"
       @pick="picked"
       @close="picking = null"

@@ -334,7 +334,7 @@ describe('refresh.record (Phase 5 review)', () => {
     const { as } = await setup()
     const ok = { path: '/', status: 200, rev: '1.1', ok: true }
     const failed = { path: '/menu', status: 500, rev: '1.0', ok: false }
-    const lastRefreshAt = async () => (await as.owner.query(api.sites.get, { site: 'restaurant' })).site.lastRefreshAt
+    const lastRefreshAt = async () => (await as.owner.query(api.sites.meta, { site: 'restaurant' })).site.lastRefreshAt
     vi.setSystemTime(NOW)
     await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly', result: { results: [ok, failed], limited: false } })
     expect(await lastRefreshAt()).toBeNull()

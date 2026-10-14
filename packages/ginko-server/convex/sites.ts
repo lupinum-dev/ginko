@@ -7,8 +7,6 @@ import { actorFor, currentUser, fail, memberOf, type Actor } from './lib/access'
 import { NAME_MAX, SLUG } from './lib/input'
 import { isFetchableSiteUrl } from './lib/siteUrl'
 import { leafStatus } from './lib/translation'
-import { labelOf } from './entries'
-import type { Data } from './lib/content'
 
 /** The sites the signed-in user may open, with their role. Admins see every site. A site being deleted is listed for owners and admins only (they can cancel). */
 export const mine = query({
@@ -113,38 +111,6 @@ export const meta = query({
       },
       role: actor.role,
       grants: actor.grants,
-    }
-  },
-})
-
-/** One site with its schema, its live entries, and the caller's own role and grants. `refreshToken` is never returned. */
-export const get = query({
-  args: { site: v.string() },
-  handler: async (ctx, args) => {
-    const actor = await actorFor(ctx, args.site)
-    const site = actor.site
-    const entries = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).collect()
-    return {
-      site: {
-        slug: site.slug,
-        name: site.name,
-        url: site.url,
-        previewOrigins: site.previewOrigins,
-        schema: site.schema,
-        schemaRev: site.schemaRev,
-        contentRev: site.contentRev,
-        entryCount: site.entryCount,
-        bytes: site.bytes,
-        release: site.release,
-        /** The site setting for agent review (SPEC 17); null: the config's `agents.review` decides. */
-        agentReview: site.agentReview ?? null,
-        /** When the live site last proved it shows the current revision (an urgent refresh that every page confirmed); null: never. */
-        lastRefreshAt: site.lastRefreshAt ?? null,
-      },
-      role: actor.role,
-      grants: actor.grants,
-      // Legacy Markdown trees on a row (until `entries:migrateStorage` moved them) are for the bundle; the Studio edits the texts.
-      entries: entries.filter((entry) => entry.deletedAt === undefined).map(({ trees: _trees, ...entry }) => entry),
     }
   },
 })
@@ -254,14 +220,12 @@ export const setRefreshToken = internalMutation({
   },
 })
 
-/** Entries named per brick and language in the translation status; the totals always count all. */
-export const TRANSLATION_LIST_MAX = 200
-
 /**
  * Translation status (SPEC 4.2): per brick and per language other than the main one, how many entries
- * have every text (`ok`), at least one missing text (`missing`), or only outdated ones (`outdated`),
- * and which texts. It uses the rule of the bundle (`resolveEntry`), so it matches what ginko_read
- * reports; like the bundle it counts live entries and singles, not drafts. Any member may read.
+ * have every text (`ok`), at least one missing text (`missing`), or only outdated ones (`outdated`).
+ * It uses the rule of the bundle (`resolveEntry`), so it matches what ginko_read reports; like the bundle
+ * it counts live entries and singles, not drafts. Which texts an entry lacks comes with the entry itself
+ * (entries.list `gaps`, entries.get `translation`). Any member may read.
  */
 export const translationStatus = query({
   args: { site: v.string() },
@@ -274,17 +238,15 @@ export const translationStatus = query({
       if (def.retired) continue
       const rows = (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', key)).collect())
         .filter((row) => !row.deletedAt && row.state !== 'draft')
-      const locales: Record<string, { missing: number; outdated: number; ok: number; entries: { entry: string; label: string; missing: string[]; outdated: string[] }[]; truncated: boolean }> = {}
+      const locales: Record<string, { missing: number; outdated: number; ok: number }> = {}
       for (const locale of foreign) {
-        const out = { missing: 0, outdated: 0, ok: 0, entries: [] as { entry: string; label: string; missing: string[]; outdated: string[] }[], truncated: false }
+        const out = { missing: 0, outdated: 0, ok: 0 }
         for (const row of rows) {
           const status = leafStatus(schema, key, row, locale)
-          if (!status.missing.length && !status.outdated.length) { out.ok += 1; continue }
           // One count per entry: a missing text outweighs an outdated one.
           if (status.missing.length) out.missing += 1
-          else out.outdated += 1
-          if (out.entries.length >= TRANSLATION_LIST_MAX) { out.truncated = true; continue }
-          out.entries.push({ entry: row._id, label: labelOf(schema, key, row.data as Data), missing: status.missing, outdated: status.outdated })
+          else if (status.outdated.length) out.outdated += 1
+          else out.ok += 1
         }
         locales[locale] = out
       }

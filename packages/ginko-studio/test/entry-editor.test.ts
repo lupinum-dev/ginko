@@ -32,7 +32,7 @@ const schema = serializeSchema(defineSite({
 // Wrong behaviour caught: a new draft is asked about as "Neuer Eintrag" (the page heading), or by its brick label "Blog" while empty.
 test('a never saved draft is asked about by the title typed so far', async () => {
   const wrapper = mount(EntryEditor, {
-    props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entries: [], canRemove: false },
+    props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, canRemove: false },
     global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
   })
   await wrapper.findAll('button').find((b) => b.text() === 'Veröffentlichen …')!.trigger('click')

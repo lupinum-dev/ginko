@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
-import { defineComponent, h, shallowRef } from 'vue'
+import { computed, defineComponent, h, shallowRef } from 'vue'
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { TRANSLATION, type TranslationState } from '@lupinum/ginko-editor'
 import type { Field, Json } from '@lupinum/ginko'
@@ -42,7 +42,7 @@ describe('FieldFrame', () => {
 
 const speisen = [{ id: 'k1', title: 'Schnitzel' }, { id: 'k2', title: 'Gulasch' }, { id: 'k3', title: 'Strudel' }]
 function refs(present = speisen): RefOptions {
-  return { options: () => present, brickLabel: () => 'Speisen' }
+  return { options: () => computed(() => present), brickLabel: () => 'Speisen' }
 }
 const refField = (extra: Partial<Extract<Field, { type: 'ref' }>> = {}) => ({ type: 'ref', label: 'Gericht', to: 'dishes', ...extra }) as Extract<Field, { type: 'ref' }>
 

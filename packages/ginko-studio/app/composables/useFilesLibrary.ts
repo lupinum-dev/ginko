@@ -67,7 +67,7 @@ export function useFilesLibrary(): FilesLibrary {
   const { t } = useI18n()
   const textOf = useTextOf()
 
-  const site = useConvexQuery(api.sites.get, () => ({ site: slug.value }))
+  const site = useConvexQuery(api.sites.meta, () => ({ site: slug.value }))
   const canManage = computed(() => site.data.value?.role === 'owner' || site.data.value?.role === 'admin')
 
   const folderQuery = useConvexQuery(api.files.folders, () => ({ site: slug.value }))

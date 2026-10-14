@@ -34,10 +34,10 @@ export function resetAll(): Record<string, string> {
   return Object.fromEntries(json.links.map((l) => [l.email, l.link]))
 }
 
-/** Resets the content only; members stay signed in and keep their rights. */
-export function resetContent() {
+/** Resets the content only; members stay signed in and keep their rights. `many` adds copies (seed-local `--many`). */
+export function resetContent(many?: { brick: string; count: number }) {
   assertLocal()
-  script('seed-local.ts', '--content')
+  script('seed-local.ts', '--content', ...(many ? ['--many', `${many.brick}=${many.count}`] : []))
 }
 
 /** The newest sign-in code mailed to `email` (local outbox, GINKO_MAIL=outbox). */

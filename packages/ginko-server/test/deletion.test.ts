@@ -83,7 +83,7 @@ describe('delete site', () => {
     const pushKey = (await s.as.owner.mutation(api.release.createPushKey, { site: 'restaurant', label: 'ci', scopes: ['release'] })).key
     const agentKey = await s.as.owner.mutation(api.agent.createKey, { site: 'restaurant', label: 'ai' })
     const open = async () => ({
-      studio: await s.as.owner.query(api.sites.get, { site: 'restaurant' }).then(() => 'open', () => 'closed'),
+      studio: await s.as.owner.query(api.sites.meta, { site: 'restaurant' }).then(() => 'open', () => 'closed'),
       cook: await s.as.cook.query(api.entries.trash, { site: 'restaurant' }).then(() => 'open', () => 'closed'),
       bundle: (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).status,
       push: !!(await s.t.query(internal.release.pushKey, { hash: sha256(pushKey) })),

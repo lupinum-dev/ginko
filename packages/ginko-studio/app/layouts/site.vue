@@ -13,8 +13,8 @@ const { t, format } = useI18n()
 const slug = computed(() => String(route.params.site))
 // Every form under this layout (Schnell ändern, Alles bearbeiten) uploads to this site.
 provideGinkoAssets(useConvexGinkoAssets(slug))
-const { data, error } = useConvexQuery(api.sites.get, () => ({ site: slug.value }))
-// A site whose deletion has started opens for nothing but cancelling it (`sites.get` is refused for everyone then).
+const { data, error } = useConvexQuery(api.sites.meta, () => ({ site: slug.value }))
+// A site whose deletion has started opens for nothing but cancelling it (`sites.meta` is refused for everyone then).
 const { data: deletion } = useConvexQuery(api.sites.deletion, () => ({ site: slug.value }))
 // The slash menu of Markdown fields offers the components of this site's schema.
 provide(EDITOR_COMPONENTS, () => (data.value?.site.schema as { components?: ComponentRegistry } | undefined)?.components)
@@ -50,7 +50,7 @@ onMounted(() => {
   window.addEventListener('keydown', onShortcut)
 })
 onBeforeUnmount(() => window.removeEventListener('keydown', onShortcut))
-// "Update website now" for owner and admin, with "Last update" under it (`sites.get` `lastRefreshAt`).
+// "Update website now" for owner and admin, with "Last update" under it (`sites.meta` `lastRefreshAt`).
 const siteUpdate = useUpdateSite(() => slug.value)
 const lastRefresh = computed(() => data.value?.site.lastRefreshAt)
 const base = computed(() => `/s/${slug.value}`)

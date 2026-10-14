@@ -203,17 +203,17 @@ describe('members.remove and setGrants', () => {
 })
 
 describe('sites and changes reads', () => {
-  it('sites.get never contains refreshToken', async () => {
+  it('sites.meta never contains refreshToken', async () => {
     const { t, as, site } = await setup()
     await t.run((ctx) => ctx.db.patch(site, { refreshToken: 'vercel-bypass-secret' }))
-    const result = await as.owner.query(api.sites.get, { site: 'restaurant' })
+    const result = await as.owner.query(api.sites.meta, { site: 'restaurant' })
     expect(result.site).not.toHaveProperty('refreshToken')
     expect(JSON.stringify(result)).not.toContain('vercel-bypass-secret')
   })
 
-  it('sites.get of another site is FORBIDDEN', async () => {
+  it('sites.meta of another site is FORBIDDEN', async () => {
     const { as } = await setup()
-    expect((await errorOf(as.stranger.query(api.sites.get, { site: 'restaurant' }))).code).toBe('FORBIDDEN')
+    expect((await errorOf(as.stranger.query(api.sites.meta, { site: 'restaurant' }))).code).toBe('FORBIDDEN')
   })
 
   it('changes.list of another site is FORBIDDEN', async () => {

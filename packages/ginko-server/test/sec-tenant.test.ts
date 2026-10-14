@@ -106,7 +106,6 @@ const calls: Call[] = [
   { fn: 'uploads.get', kind: 'query', args: (site, f) => ({ site, upload: f.file }) },
   { fn: 'uploads.urls', kind: 'query', args: (site, f) => ({ site, ids: [f.file] }) },
   { fn: 'tasks.prefill', kind: 'query', args: (site, f) => ({ site, task: 'menu.edit', entry: f.entry }) },
-  { fn: 'sites.get', kind: 'query', args: (site) => ({ site }) },
   { fn: 'sites.meta', kind: 'query', args: (site) => ({ site }) },
   { fn: 'sites.setAgentReview', kind: 'mutation', args: (site) => ({ site, review: false }) },
   { fn: 'sites.deletion', kind: 'query', args: (site) => ({ site }) },
@@ -149,7 +148,7 @@ describe('tenant isolation: owner of "andere" against "restaurant"', () => {
           const result = c.kind === 'query' ? await s.as.stranger.query(ref, args) : await s.as.stranger.mutation(ref, args)
           const text = JSON.stringify(result)
           const hit = SECRETS.filter((x) => text.includes(x)).concat([f.entry, f.file, f.folder, f.change, f.proposal, f.member].filter((x) => text.includes(x)))
-          if (hit.length && !['uploads.urls', 'sites.get', 'sites.meta', 'sites.translationStatus'].includes(name)) leaks.push(`${c.fn}: ${hit.join(',')}`)
+          if (hit.length && !['uploads.urls', 'sites.meta'].includes(name)) leaks.push(`${c.fn}: ${hit.join(',')}`)
         } catch {
           // Refused: the expected answer for a stranger.
         }

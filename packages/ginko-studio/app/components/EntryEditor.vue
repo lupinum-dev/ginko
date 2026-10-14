@@ -22,7 +22,7 @@ import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
 import { useMediaQuery } from '@vueuse/core'
 import { OWN_BOTTOM_BAR } from '../utils/siteLinks'
-import { provideRefs } from './fields/refs'
+import { provideSiteRefs } from '../composables/useSiteRefs'
 import { Button } from '@studio/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
 import { Badge } from '@studio/components/ui/badge'
@@ -40,7 +40,6 @@ const props = defineProps<{
   brick: Brick
   /** None = a new entry of a collection. */
   entry?: Entry
-  entries: Entry[]
   /** Staff work through tasks (SPEC 2.7): the task refs that allow saving, creating and removing here, and the fields the save task covers. Owners pass none. */
   tasks?: { save?: string; fields?: readonly string[]; create?: string; remove?: string }
   canRemove: boolean
@@ -58,7 +57,7 @@ const { t, format, locale: uiLocale } = useI18n()
 
 const main = computed(() => props.schema.locales[0]!)
 // Ref fields list the entries of their target brick by title.
-provideRefs(() => props.schema, () => props.entries, () => main.value)
+provideSiteRefs(() => props.site.slug, () => props.schema, () => main.value)
 // A link from a translation badge opens the entry in that language (?lang=en).
 const wantedLocale = String(useRoute().query.lang ?? '')
 const locale = ref<Locale>(props.schema.locales.includes(wantedLocale) ? wantedLocale : main.value)
@@ -152,11 +151,9 @@ function translation(path: string): 'missing' | 'stale' | 'fine' | undefined {
   return mainValue !== undefined && print !== printOf(mainValue) ? 'stale' : 'fine'
 }
 /** Whether the stored entry has missing or outdated texts in language `l` (a dot on the language switch). */
-const { data: trStatus } = useConvexQuery(api.sites.translationStatus, () => (props.entry && props.schema.locales.length > 1 ? { site: props.site.slug } : 'skip'))
 function gapIn(l: Locale) {
-  if (!props.entry || l === main.value) return false
-  const hit = trStatus.value?.bricks.find((b) => b.brick === props.brickKey)?.locales[l]?.entries.find((x) => x.entry === props.entry!._id)
-  return !!hit && hit.missing.length + hit.outdated.length > 0
+  const gap = l === main.value ? undefined : props.entry?.translation?.[l]
+  return !!gap && gap.missing.length + gap.outdated.length > 0
 }
 function confirmTranslation(path: string) {
   if (!confirm.value.includes(path)) confirm.value = [...confirm.value, path]
@@ -375,8 +372,11 @@ const previewPath = computed(() => {
 })
 const showPreview = ref(false)
 
+// The preview builds the site from all its entries, so it reads them only while it is open.
+const previewRead = useConvexQuery(api.entries.ofBricks, () => (showPreview.value ? { site: props.site.slug, bricks: Object.keys(props.schema.bricks) } : 'skip'))
+const previewEntries = computed(() => previewRead.data.value ?? [])
 // The preview needs the URLs of every referenced photo and PDF, also of one uploaded just now.
-const fileIds = computed(() => [...fileIdsIn([props.entries.map((e) => e.data), draft.value])].sort())
+const fileIds = computed(() => [...fileIdsIn([previewEntries.value.map((e) => e.data), draft.value])].sort())
 const { data: fileInfo } = useConvexQuery(api.uploads.urls, () => (showPreview.value && fileIds.value.length ? { site: props.site.slug, ids: fileIds.value } : 'skip'))
 function files(id: string) {
   const f = fileInfo.value?.[id]
@@ -524,7 +524,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
       class="preview-col"
       :site="site"
       :schema="schema"
-      :entries="entries"
+      :entries="previewEntries"
       :editing="{ brick: brickKey, entry: entry?._id, data: draft }"
       :locale="locale"
       :path="previewPath"

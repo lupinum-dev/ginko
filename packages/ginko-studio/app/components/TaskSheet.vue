@@ -8,7 +8,7 @@ import GinkoField from './fields/GinkoField.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
 import ConflictPanel from './ConflictPanel.vue'
-import { provideRefs } from './fields/refs'
+import { provideSiteRefs } from '../composables/useSiteRefs'
 import { Button } from '@studio/components/ui/button'
 import { XIcon } from '@lucide/vue'
 import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
@@ -31,17 +31,16 @@ const props = defineProps<{
   removed?: boolean
   /** The person may restore a removed entry (owners, admins, staff with the remove task). */
   mayRestore?: boolean
-  /** The brick's current entries, to point out a new one that already exists. */
-  existing?: Entry[]
-  /** The whole site, so ref fields can list the entries they point to. */
-  schema?: Schema
-  entries?: Entry[]
+  /** The titles of the brick's current entries, to point out a new one that already exists. */
+  existing?: string[]
+  /** The site's schema, so ref fields can list the entries they point to. */
+  schema: Schema
 }>()
 const emit = defineEmits<{ close: [] }>()
 const { t } = useI18n()
 const shown = (label: LabelText) => shownLabel(label, props.main)
 
-provideRefs(() => props.schema ?? { bricks: {} } as unknown as Schema, () => props.entries ?? [], () => props.main)
+provideSiteRefs(() => props.site, () => props.schema, () => props.main)
 const fields = computed(() => taskFields(props.brick, props.task))
 const isCreate = computed(() => props.task.kind === 'create')
 const ref_ = computed(() => taskRef(props.brickKey, props.task))
@@ -79,7 +78,7 @@ watch(prefill, (p) => {
 const twin = computed(() => {
   if (!isCreate.value || !props.existing?.length) return undefined
   const mine = titleOf(props.brick, draft.value, props.main).trim().toLowerCase()
-  return props.existing.find((e) => titleOf(props.brick, e.data, props.main).trim().toLowerCase() === mine)
+  return props.existing.find((title) => title.trim().toLowerCase() === mine)
 })
 
 const confirmClose = ref(false)
@@ -174,7 +173,7 @@ function onCancel(event: Event) {
             @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
           />
           <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
-          <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: titleOf(brick, twin.data, main) }) }}</p>
+          <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
           <GinkoField
             v-for="(field, key) in fields"
             v-show="isShown(field, draft)"

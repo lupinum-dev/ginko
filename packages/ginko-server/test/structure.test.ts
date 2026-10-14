@@ -76,8 +76,7 @@ describe('entries.remove and restore', () => {
     const notice = entries['notice-ausgebucht']!
     const life = (await as.owner.query(api.entries.removed, { site: 'restaurant', brick: 'notices' }))
     expect(life).toEqual([])
-    const before = await as.owner.query(api.sites.get, { site: 'restaurant' })
-    const lifeRev = before.entries.find((e) => e._id === notice)!.lifeRev
+    const lifeRev = (await as.owner.query(api.entries.get, { site: 'restaurant', entry: notice }))!.lifeRev
     await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: notice, lifeRev })
     expect((await as.cook.query(api.entries.removed, { site: 'restaurant', brick: 'notices' })).map((e) => e._id)).toEqual([notice])
     expect(await as.stranger.query(api.entries.removed, { site: 'andere', brick: 'notices' })).toEqual([])

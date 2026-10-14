@@ -122,7 +122,6 @@ const publicCalls: Call[] = [
   { fn: 'sites.deletion', kind: 'query', args: () => SITE },
   { fn: 'sites.startDeletion', kind: 'mutation', args: () => ({ ...SITE, confirm: 'restaurant' }) },
   { fn: 'sites.cancelDeletion', kind: 'mutation', args: () => SITE },
-  { fn: 'sites.get', kind: 'query', args: () => SITE },
   { fn: 'sites.meta', kind: 'query', args: () => SITE },
   { fn: 'sites.setAgentReview', kind: 'mutation', args: () => ({ ...SITE, review: false }) },
   { fn: 'sites.create', kind: 'mutation', args: () => ({ slug: 'neu-seite', name: 'Neu', url: 'https://example.com' }) },
@@ -178,15 +177,15 @@ describe('1. no identity and forged identity', () => {
   it('an identity with a subject that has no account is refused even when the session id is real', async () => {
     const s = await setup()
     const ghost = s.t.withIdentity({ subject: 'u-ghost', sid: 's-u-wirtin', email: 'wirtin@example.com' })
-    expect(await outcome(ghost.query(api.sites.get, SITE))).not.toBe('ok')
+    expect(await outcome(ghost.query(api.sites.meta, SITE))).not.toBe('ok')
   })
 
   it('a signed-in person who is no member of any site sees no site and no account data of others', async () => {
     const s = await setup()
     const nobody = as(s, 'u-neu', 'neu@example.com')
     expect(await nobody.query(api.sites.mine, {})).toEqual([])
-    expect(await outcome(nobody.query(api.sites.get, SITE))).toBe('FORBIDDEN')
-    expect(await outcome(nobody.query(api.sites.get, { site: 'does-not-exist' }))).toBe('FORBIDDEN')
+    expect(await outcome(nobody.query(api.sites.meta, SITE))).toBe('FORBIDDEN')
+    expect(await outcome(nobody.query(api.sites.meta, { site: 'does-not-exist' }))).toBe('FORBIDDEN')
   })
 })
 
@@ -434,7 +433,6 @@ type Fx = Awaited<ReturnType<typeof fixtures>>
 type CrossCall = { fn: string; kind: 'query' | 'mutation'; args: (site: string, f: Fx) => Record<string, unknown> }
 const o = () => opId()
 const cross: CrossCall[] = [
-  { fn: 'sites.get', kind: 'query', args: (site) => ({ site }) },
   { fn: 'sites.meta', kind: 'query', args: (site) => ({ site }) },
   { fn: 'entries.list', kind: 'query', args: (site) => ({ site, brick: 'menu', search: 'Saibling' }) },
   { fn: 'entries.get', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },

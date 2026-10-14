@@ -302,7 +302,6 @@ describe('readers that treat a draft apart', () => {
     expect(snapshot.entries.find((e) => e.id === draft.entry)).toMatchObject({ state: 'draft', publishAt: at })
     expect(snapshot.entries.find((e) => e.id === s.entries.weinabend)).not.toHaveProperty('state')
 
-    const read = await s.as.cook.query(api.sites.get, { site: 'restaurant' })
-    expect(read.entries.find((e) => e._id === draft.entry)).toMatchObject({ state: 'draft', publishAt: at })
+    expect(await s.as.cook.query(api.entries.get, { site: 'restaurant', entry: draft.entry })).toMatchObject({ state: 'draft', publishAt: at })
   })
 })

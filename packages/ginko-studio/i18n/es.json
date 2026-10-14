@@ -267,6 +267,9 @@
       "noEntries": "Aún no hay entradas.",
       "moveUp": "Subir {title}",
       "moveDown": "Bajar {title}",
+      "showMore": "Mostrar {count} más",
+      "shownOf": "{shown} de {total} entradas",
+      "searching": "Buscando…",
       "removed": "Eliminado (se puede restaurar durante 30 días)",
       "restore": "Restaurar"
     },
