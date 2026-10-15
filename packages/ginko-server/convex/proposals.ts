@@ -234,6 +234,8 @@ export const reject = mutation({
     if (p.status !== 'open' && !(p.status === 'scheduled' && !p.release)) fail('CHANGED_SINCE', 'errors.proposalNoLongerOpen', undefined, { status: p.status })
     if (p.job) await ctx.scheduler.cancel(p.job)
     await ctx.db.patch(p._id, { status: 'rejected', reason, decidedBy: actor.user.id, decidedAt: Date.now(), job: undefined, release: undefined })
+    // A rejection needs the author to act, often the same day; an approval needs nothing (decisions: email on rejection only).
+    if (p.author !== actor.user.id) await mailRejected(ctx, p, reason)
     return { proposal: p._id, status: 'rejected' }
   },
 })
@@ -665,6 +667,25 @@ async function mailNotLive(ctx: MutationCtx, siteId: Id<'sites'>, approver: stri
     to: member.email,
     subject: t(locale, 'mail.notLive.subject', { site: site.name }),
     text: t(locale, 'mail.notLive.text', { site: site.name, what: typeof what === 'string' ? what : historyText(what, locale, site.schema as Schema), path: `${siteOrigin()}/s/${site.slug}/history` }),
+  })
+}
+
+/**
+ * Tells the author at once that their proposal was not approved, with the approver's reason and a link that reopens
+ * it in its task (Schnell ändern), else Schnell ändern itself. In the author's language.
+ */
+async function mailRejected(ctx: MutationCtx, p: Doc<'proposals'>, reason: string) {
+  const site = await ctx.db.get(p.site)
+  if (!site || !mailAvailable()) return
+  const member = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).filter((q) => q.eq(q.field('user'), p.author)).first()
+  if (!member?.email) return
+  const locale = await localeOfUser(ctx, member.user)
+  const task = taskOf(p.args)
+  const fix = p.op === 'save' && p.entry && task ? `?task=${encodeURIComponent(task)}&reopen=${p._id}` : ''
+  await queueMail(ctx, {
+    to: member.email,
+    subject: t(locale, 'mail.rejected.subject', { site: site.name }),
+    text: t(locale, 'mail.rejected.text', { site: site.name, what: p.msg ? historyText(p.msg as HistoryMsg, locale, site.schema as Schema) : p.sentence, reason, path: `${siteOrigin()}/s/${site.slug}${fix}` }),
   })
 }
 

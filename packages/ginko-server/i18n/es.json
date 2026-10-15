@@ -294,6 +294,10 @@
     "notLive": {
       "subject": "No se publicó: un cambio planificado para {site}",
       "text": "Hola:\n\nun cambio que planificaste para «{site}» no se publicó porque ya no encaja:\n\n{what}\n\nEl motivo está en el historial: {path}\n"
+    },
+    "rejected": {
+      "subject": "No aprobado: tu cambio para {site}",
+      "text": "Hola:\n\ntu cambio para «{site}» no se aprobó:\n\n{what}\n\nMotivo: «{reason}»\n\nCorregir: {path}\n"
     }
   },
   "content": {

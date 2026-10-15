@@ -302,6 +302,18 @@ describe('the author follows up on their own proposal', () => {
     expect(await own()).toBeNull()
     expect(await rejected()).toEqual([])
   })
+
+  // Wrong behaviour caught: the cook was never told that his week was not approved, and found out from the website.
+  it('a rejection mails the author at once with the reason and a link that reopens the proposal', async () => {
+    const s = await approvalSetup()
+    const { proposal } = await cookNote(s, 'Suppe inklusive')
+    await s.as.owner.mutation(api.proposals.reject, { proposal, reason: 'Bitte mit Preis.' })
+    const mails = (await s.rows('outbox')).filter((m) => m.to === 'koch@example.com')
+    expect(mails).toHaveLength(1)
+    expect(mails[0]!.subject).toContain('Nicht freigegeben')
+    expect(mails[0]!.text).toContain('„Bitte mit Preis.“')
+    expect(mails[0]!.text).toContain(`https://ginko.test/s/restaurant?task=lunch.lunchWeek&reopen=${proposal}`)
+  })
 })
 
 describe('reading', () => {
@@ -571,7 +583,8 @@ describe('digest mail', () => {
     const { proposal } = (await s.cookPrice(s.saibling, 1450)) as Proposed
     await s.as.owner.mutation(api.proposals.reject, { proposal, reason: 'Nein.' })
     await s.advanceTo(NOW + 11 * MINUTE)
-    expect(await s.rows('outbox')).toHaveLength(0)
+    // Only the cook's rejection mail: no digest to the owner.
+    expect((await s.rows('outbox')).map((m) => m.to)).toEqual(['koch@example.com'])
   })
 })
 
