@@ -24,6 +24,8 @@ const stored: Entry = {
 }
 /** The next save is refused with this error (a conflict), as the server does. */
 let refuseNext: unknown
+/** The next save becomes a proposal, as for a task that needs approval. */
+let proposeNext = false
 /** While set, the next save waits for it, as a save on its way does. */
 let landing: Promise<void> | undefined
 /** The live list's view of the entry: undefined once someone removed it. */
@@ -40,6 +42,11 @@ vi.stubGlobal('useOps', () => ({
     refuseNext = undefined
     if (refused) throw refused
     calls.push(['save', { entry: args.entry, baseRev: args.baseRev, fields: args.fields }])
+    // A save that needs approval writes nothing: no new revision.
+    if (proposeNext) {
+      proposeNext = false
+      return {}
+    }
     return { rev: 7 }
   },
   createEntry: async (args: { data: unknown }) => {
@@ -290,6 +297,19 @@ describe('TaskSheet', () => {
     expect(noteOf(sheet)).toBe('Suppe inklusive')
     expect(sheet.find('[data-test="own-proposal"]').exists()).toBe(false)
     sheet.unmount()
+
+    // The same for a proposal the sheet has just sent.
+    const sent = await lunchSheet('2026-10-12')
+    await sent.get('#f-note').setValue('Suppe und Salat inklusive')
+    proposeNext = true
+    await sent.get('form').trigger('submit')
+    await flushPromises()
+    answered.get('proposals.ownFor')!.value = ownProposal()
+    await flushPromises()
+    answered.get('proposals.ownFor')!.value = null
+    await flushPromises()
+    expect(noteOf(sent)).toBe('Suppe inklusive')
+    sent.unmount()
   })
 
   // Wrong behaviour caught: with the input set back to the website's values, the banner still promised that Speichern

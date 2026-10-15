@@ -121,11 +121,11 @@ watch([prefill, own, ownError], ([p]) => {
 }, { immediate: true })
 
 // "Zurückziehen" (here or in Verlauf), a decision, or a change that makes it no longer fit ends the open proposal the
-// untouched form shows: the form goes back to the stored values, so nothing suggests the old ones are on their way and
-// Speichern does not send them again. Typed input stays.
+// untouched form shows (it started from it, or just sent it): the form goes back to the stored values, so nothing
+// suggests the old ones are on their way and Speichern does not send them again. Typed input stays.
 const startable = (o: typeof mine.value) => o?.status === 'open' && o.fits
 watch(mine, (now, before) => {
-  if (!fromProposal.value || !startable(before) || startable(now) || dirty.value || !prefill.value) return
+  if (!(fromProposal.value || waiting.value) || !startable(before) || startable(now) || dirty.value || !prefill.value) return
   form.load(prefill.value as Data)
   fromProposal.value = false
 })
