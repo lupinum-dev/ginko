@@ -32,10 +32,11 @@ export const isProposal = (result: unknown): result is { proposal: string; statu
  * What a failed call means for the person. A server error (`fail()` in ginko-server) keeps its code and details,
  * and its text in the Studio's language (messageOf). A call that a cancel or a closed sheet stopped has an empty
  * message: the person's own action stopped it, so nothing is shown. A sign-out meanwhile says so, and an
- * UploadError keeps its text. Anything else (a timeout, "Unknown Convex error") gets a generic text; the
+ * UploadError keeps its text. Anything else (a timeout, "Unknown Convex error") gets a generic text, or `fallback`
+ * where the generic one ("Deine Eingaben sind noch da") does not fit, such as a list that failed to load; the
  * technical one goes to the console for us.
  */
-export function opErrorOf(error: unknown): OpError {
+export function opErrorOf(error: unknown, fallback?: string): OpError {
   const { t } = useI18n()
   if (error instanceof UploadError) return { code: 'UPLOAD', message: error.message }
   const e = normalizeConvexError(error)
@@ -47,7 +48,7 @@ export function opErrorOf(error: unknown): OpError {
   if (isConvexCallError(error, 'CANCELLED')) return { code: 'CANCELLED', message: '' }
   if (isConvexCallError(error, 'IDENTITY_CHANGED')) return { code: 'IDENTITY_CHANGED', message: t('errors.signedOut') }
   console.error(error)
-  return { code: e.code ?? 'UNKNOWN', message: t('problem.generic') }
+  return { code: e.code ?? 'UNKNOWN', message: fallback ?? t('problem.generic') }
 }
 
 /**

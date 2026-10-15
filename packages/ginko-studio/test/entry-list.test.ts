@@ -112,3 +112,14 @@ test('a list answer that fails after a page loaded says why, does not stay dimme
   expect(wrapper.find('ol').attributes('aria-busy')).toBe(undefined)
   expect(wrapper.find('button:not([aria-label])').attributes('disabled')).toBe('')
 })
+
+// Wrong behaviour caught: a list that failed to load for a reason the server did not name said "Deine Eingaben sind
+// noch da. Bitte noch einmal versuchen.", the text for a failed save, although nothing was typed.
+test('a list that fails without a server message says it could not load', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), { global: { mocks: { shownLabel }, stubs } })
+  await flushPromises()
+  vi.spyOn(console, 'error').mockImplementationOnce(() => undefined)
+  fail(normalizeConvexError(new Error('Connection lost while action was in flight'), { functionName: 'entries:list' }))
+  await flushPromises()
+  expect(wrapper.find('[role="alert"]').text()).toBe('Das ließ sich nicht laden. Bitte lade die Seite neu.')
+})

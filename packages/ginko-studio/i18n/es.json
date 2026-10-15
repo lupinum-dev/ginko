@@ -532,7 +532,6 @@
     "clear": "Quitar",
     "remove": "Eliminar",
     "cancel": "Cancelar",
-    "retry": "Reintentar",
     "uploading": "Subiendo …",
     "slug": {
       "label": "Dirección web (URL)",
@@ -772,7 +771,10 @@
       "listLabel": "Vistas guardadas",
       "optionsFor": "Opciones de la vista {name}",
       "noMatch": "Ninguna entrada coincide."
-    }
+    },
+    "loadMore": "Mostrar más",
+    "retry": "Reintentar",
+    "loadFailed": "No se pudo cargar. Vuelve a cargar la página."
   },
   "files": {
     "title": "Archivos",
@@ -845,7 +847,6 @@
       "trash": "La Papelera está vacía. Los archivos eliminados se quedan aquí 30 días.",
       "none": "No se encontraron archivos."
     },
-    "loadMore": "Mostrar más",
     "loadMoreFailed": "No se pudieron cargar más archivos.",
     "uploadTooSlow": "La subida está tardando demasiado. Inténtalo de nuevo.",
     "loading": "Cargando …",

@@ -323,7 +323,7 @@ const emptyText = computed(() => {
         @quicklook="openLook"
       />
       <p v-if="list.moreError.value" class="text-sm font-medium text-destructive" role="alert">{{ list.moreError.value }}</p>
-      <Button v-if="list.hasMore.value" type="button" variant="secondary" class="justify-self-start" :disabled="loadingMore" @click="more">{{ list.moreError.value ? t('fields.retry') : t('files.loadMore') }}</Button>
+      <Button v-if="list.hasMore.value" type="button" variant="secondary" class="justify-self-start" :disabled="loadingMore" @click="more">{{ list.moreError.value ? t('basics.retry') : t('basics.loadMore') }}</Button>
     </div>
 
     <!-- Info panel: a column on a wide screen, a bottom sheet below. -->

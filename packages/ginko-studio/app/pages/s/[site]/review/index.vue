@@ -82,7 +82,7 @@ async function remove(release: string, proposal: string) {
   <div class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid gap-4">
     <h1 class="text-xl font-semibold tracking-tight">{{ t('review.heading') }}</h1>
     <SiteZoneNote v-if="s.schema.value" :zone="s.schema.value.timeZone" class="-mt-2" />
-    <p v-if="list.error.value" class="font-medium text-destructive" role="alert">{{ opErrorOf(list.error.value).message }}</p>
+    <p v-if="list.error.value" class="font-medium text-destructive" role="alert">{{ opErrorOf(list.error.value, t('basics.loadFailed')).message }}</p>
     <p v-if="problem" class="font-medium text-destructive" role="alert">{{ problem }}</p>
 
     <template v-if="s.schema.value">
@@ -94,7 +94,7 @@ async function remove(release: string, proposal: string) {
         />
       </ul>
       <p v-else-if="list.isExhausted.value && !releases.length" class="py-6 text-muted-foreground">{{ t('review.empty') }}</p>
-      <Button v-if="list.canLoadMore.value || list.isLoadingMore.value" type="button" variant="secondary" class="justify-self-start" :disabled="!list.canLoadMore.value" @click="list.loadMore(PAGE)">{{ t('files.loadMore') }}</Button>
+      <Button v-if="list.canLoadMore.value || list.isLoadingMore.value" type="button" variant="secondary" class="justify-self-start" :disabled="!list.canLoadMore.value" @click="list.loadMore(PAGE)">{{ t('basics.loadMore') }}</Button>
 
       <section v-if="releases.length" class="grid gap-3" :aria-label="t('review.releases')">
         <h2 class="text-base font-semibold tracking-tight">{{ t('review.releases') }}</h2>

@@ -532,7 +532,6 @@
     "clear": "Clear",
     "remove": "Remove",
     "cancel": "Cancel",
-    "retry": "Try again",
     "uploading": "Uploading …",
     "slug": {
       "label": "Web address (URL)",
@@ -772,7 +771,10 @@
       "listLabel": "Saved views",
       "optionsFor": "Options for view {name}",
       "noMatch": "No entries match."
-    }
+    },
+    "loadMore": "Show more",
+    "retry": "Try again",
+    "loadFailed": "This could not be loaded. Please reload the page."
   },
   "files": {
     "title": "Files",
@@ -845,7 +847,6 @@
       "trash": "Trash is empty. Removed files stay here for 30 days.",
       "none": "No files found."
     },
-    "loadMore": "Show more",
     "loadMoreFailed": "Could not load more files.",
     "uploadTooSlow": "The upload is taking too long. Please try again.",
     "loading": "Loading …",

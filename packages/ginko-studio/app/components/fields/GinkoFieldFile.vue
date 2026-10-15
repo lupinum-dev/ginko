@@ -89,7 +89,7 @@ function remove() {
         <Button type="button" variant="ghost" :disabled="sending" @click="remove">{{ t('fields.remove') }}</Button>
       </template>
       <Button type="button" variant="secondary" :disabled="sending" @click="libraryOpen = true">{{ t('files.picker.choose') }}</Button>
-      <Button v-if="error && retryFile" type="button" variant="outline" :disabled="sending" @click="retry">{{ t('fields.retry') }}</Button>
+      <Button v-if="error && retryFile" type="button" variant="outline" :disabled="sending" @click="retry">{{ t('basics.retry') }}</Button>
     </div>
     <LibraryPicker v-if="libraryOpen" v-model:open="libraryOpen" kind="pdf" locale="" @choose="fromLibrary" />
     <input ref="picker" class="sr-only" type="file" tabindex="-1" aria-hidden="true" :accept="acceptOf('file')" @change="onPicked">

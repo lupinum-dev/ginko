@@ -39,7 +39,7 @@ async function purge() {
 <template>
   <section aria-labelledby="removed-title">
     <h1 id="removed-title" class="text-xl font-semibold tracking-tight">{{ t('basics.removed.title') }}</h1>
-    <p v-if="list.error.value" class="mt-3 font-medium text-destructive" role="alert">{{ opErrorOf(list.error.value).message }}</p>
+    <p v-if="list.error.value" class="mt-3 font-medium text-destructive" role="alert">{{ opErrorOf(list.error.value, t('basics.loadFailed')).message }}</p>
     <p v-if="list.status.value === 'success' && !list.data.value?.length" class="mt-3 text-muted-foreground">{{ t('basics.removed.empty') }}</p>
     <ul v-else class="mt-4 grid list-none gap-1.5 p-0">
       <li v-for="item in list.data.value" :key="item.entry" class="flex items-center justify-between gap-3 rounded-md border border-dashed py-1.5 pr-2 pl-3.5">
@@ -53,7 +53,7 @@ async function purge() {
         </span>
       </li>
     </ul>
-    <Button v-if="list.canLoadMore.value || list.isLoadingMore.value" type="button" variant="secondary" class="mt-3" :disabled="!list.canLoadMore.value" @click="list.loadMore(PAGE)">{{ t('files.loadMore') }}</Button>
+    <Button v-if="list.canLoadMore.value || list.isLoadingMore.value" type="button" variant="secondary" class="mt-3" :disabled="!list.canLoadMore.value" @click="list.loadMore(PAGE)">{{ t('basics.loadMore') }}</Button>
     <Dialog v-model:open="asking">
       <DialogContent class="sm:max-w-lg">
         <DialogHeader>

@@ -116,7 +116,7 @@ function setAlt(text: string) {
       </template>
       <!-- A failed server check offers retry too: with no file of this visit, retry opens the picker. -->
       <Button type="button" variant="secondary" :disabled="sending" @click="libraryOpen = true">{{ t('files.picker.choose') }}</Button>
-      <Button v-if="error || failedMessage" type="button" variant="outline" :disabled="sending" @click="retry">{{ t('fields.retry') }}</Button>
+      <Button v-if="error || failedMessage" type="button" variant="outline" :disabled="sending" @click="retry">{{ t('basics.retry') }}</Button>
     </div>
     <LibraryPicker v-if="libraryOpen" v-model:open="libraryOpen" kind="image" :locale="locale" @choose="fromLibrary" />
     <input ref="picker" class="sr-only" type="file" tabindex="-1" aria-hidden="true" :accept="acceptOf('image')" @change="onPicked">
