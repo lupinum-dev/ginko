@@ -3,7 +3,7 @@ import { printOf } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, setup } from './setup'
+import { errorOf, firstPage, opId, setup } from './setup'
 
 const dish = (name: string) => ({ category: 'starters', name: { de: name }, price: { amount: 900 }, allergens: ['A'], veg: 'none' })
 const event = (title: string) => ({
@@ -114,7 +114,7 @@ describe('entries.remove and restore', () => {
     const { t, as, entries, site } = await setup()
     const entry = entries['notice-ausgebucht']!
     await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })
-    const [trash] = await as.owner.query(api.entries.trash, { site: 'restaurant' }).then((r) => r.items)
+    const [trash] = await as.owner.query(api.entries.trash, { site: 'restaurant', paginationOpts: firstPage }).then((r) => r.page)
     expect(trash).toMatchObject({ entry, mayPurge: true })
     expect(await errorOf(as.cook.mutation(api.entries.purge, { site: 'restaurant', opId: opId(), entry, lifeRev: 2 }))).toMatchObject({ code: 'FORBIDDEN', message: 'Endgültig löschen dürfen nur Inhaber und Admins.' })
 

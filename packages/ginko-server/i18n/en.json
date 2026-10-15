@@ -67,7 +67,6 @@
     "collectionAutoSorted": "This collection is sorted automatically.",
     "notYourTask": "That is not one of your tasks.",
     "brickNotFound": "This brick does not exist.",
-    "cursorInvalid": "The cursor is not valid.",
     "languageNotOnSite": "The language “{locale}” does not exist on this site.",
     "fileLibraryOwnersOnly": "Only owners and admins can change the file library.",
     "tooManyFiles": "Too many files at once.",

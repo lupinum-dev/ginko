@@ -14,8 +14,8 @@ const incomplete = (key: string) => {
   const status = translation.value?.bricks.find((b) => b.brick === key)
   return (translation.value?.locales ?? []).some((locale) => (status?.locales[locale]?.missing ?? 0) + (status?.locales[locale]?.outdated ?? 0) > 0)
 }
-const { data: trash } = useConvexQuery(api.entries.trash, () => ({ site: props.slug }))
-const removedCount = computed(() => trash.value?.total ?? 0)
+const { data: removed } = useConvexQuery(api.entries.trashCount, () => ({ site: props.slug }))
+const removedCount = computed(() => removed.value ?? 0)
 </script>
 
 <template>

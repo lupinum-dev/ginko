@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import { historyText } from '../convex/lib/history'
-import { errorOf, opId, people, setup, upload } from './setup'
+import { errorOf, firstPage, opId, people, setup, upload } from './setup'
 
 const NOW = Date.parse('2026-10-08T10:00:00Z')
 const DAY = 24 * 60 * 60 * 1000
@@ -239,25 +239,24 @@ describe('entries.trash', () => {
   it('lists a removed entry with purgeAt and who removed it, and no live one', async () => {
     const s = await studioSetup()
     await s.remove(s.entries['menu-frittaten']!)
-    const trash = await s.as.owner.query(api.entries.trash, { site })
-    expect(trash.nextCursor).toBeNull()
-    expect(trash.items).toEqual([expect.objectContaining({
+    const trash = await s.as.owner.query(api.entries.trash, { site, paginationOpts: firstPage })
+    expect(trash.isDone).toBe(true)
+    expect(trash.page).toEqual([expect.objectContaining({
       entry: s.entries['menu-frittaten'], brick: 'menu', brickLabel: 'Speisekarte', label: 'Frittatensuppe', lifeRev: 2,
       deletedAt: NOW, purgeAt: NOW + 30 * DAY, deletedBy: { actor: people.owner, email: 'wirtin@example.com' }, mayRestore: true,
     })])
-    expect((await s.as.owner.query(api.entries.trash, { site, brick: 'events' })).items).toEqual([])
-    expect((await errorOf(s.as.owner.query(api.entries.trash, { site, brick: 'contact' }))).code).toBe('INVALID')
-    expect((await errorOf(s.as.stranger.query(api.entries.trash, { site }))).code).toBe('FORBIDDEN')
+    expect((await s.as.owner.query(api.entries.trash, { site, brick: 'events', paginationOpts: firstPage })).page).toEqual([])
+    expect((await errorOf(s.as.owner.query(api.entries.trash, { site, brick: 'contact', paginationOpts: firstPage }))).code).toBe('INVALID')
+    expect((await errorOf(s.as.stranger.query(api.entries.trash, { site, paginationOpts: firstPage }))).code).toBe('FORBIDDEN')
   })
 
-  it('total counts the removed entries of every collection, also when brick narrows the list', async () => {
+  it('brick narrows the list; trashCount counts the removed entries of every collection', async () => {
     const s = await studioSetup()
     await s.remove(s.entries['menu-frittaten']!)
     await s.remove((await s.createEvent('Wildwoche')).entry)
-    const narrowed = await s.as.owner.query(api.entries.trash, { site, brick: 'menu' })
-    expect(narrowed.items.map((item) => item.label)).toEqual(['Frittatensuppe'])
-    expect(narrowed.total).toBe(2)
-    expect((await s.as.owner.query(api.entries.trash, { site })).total).toBe(2)
+    const narrowed = await s.as.owner.query(api.entries.trash, { site, brick: 'menu', paginationOpts: firstPage })
+    expect(narrowed.page.map((item) => item.label)).toEqual(['Frittatensuppe'])
+    expect(await s.as.owner.query(api.entries.trashCount, { site })).toBe(2)
   })
 
   it('pages newest first', async () => {
@@ -267,7 +266,7 @@ describe('entries.trash', () => {
       vi.setSystemTime(Date.now() + 1000)
       await s.remove(s.entries[id]!)
     }
-    const all = (await s.as.owner.query(api.entries.trash, { site })).items.map((i) => i.entry)
+    const all = (await s.as.owner.query(api.entries.trash, { site, paginationOpts: firstPage })).page.map((i) => i.entry)
     expect(all).toEqual([...ids].reverse().map((id) => s.entries[id]))
   })
 
@@ -278,13 +277,13 @@ describe('entries.trash', () => {
     await s.remove(entry)
     const restore = (as = s.as.cook, task: string | undefined = 'menu.remove') => as.mutation(api.entries.restore, { site, opId: opId(), entry, lifeRev: 2, ...(task ? { task } : {}) })
 
-    expect((await s.as.cook.query(api.entries.trash, { site })).items[0]).toMatchObject({ mayRestore: true, task: 'menu.remove' })
+    expect((await s.as.cook.query(api.entries.trash, { site, paginationOpts: firstPage })).page[0]).toMatchObject({ mayRestore: true, task: 'menu.remove' })
     // Without the remove grant the cook neither sees "restore" nor may restore.
     await s.t.run(async (ctx) => {
       const member = (await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', people.cook).eq('site', s.site)).unique())!
       await ctx.db.patch(member._id, { grants: member.grants.filter((g) => g !== 'menu.remove') })
     })
-    expect((await s.as.cook.query(api.entries.trash, { site })).items[0]).toMatchObject({ mayRestore: false })
+    expect((await s.as.cook.query(api.entries.trash, { site, paginationOpts: firstPage })).page[0]).toMatchObject({ mayRestore: false })
     expect((await errorOf(restore())).code).toBe('FORBIDDEN')
     await s.t.run(async (ctx) => {
       const member = (await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', people.cook).eq('site', s.site)).unique())!
@@ -292,11 +291,11 @@ describe('entries.trash', () => {
     })
     // With the flag the cook must propose instead.
     await s.patchSchema((schema) => { for (const task of schema.bricks.menu!.tasks ?? []) (task as { needsApproval?: boolean }).needsApproval = true })
-    expect((await s.as.cook.query(api.entries.trash, { site })).items[0]).toMatchObject({ mayRestore: false })
+    expect((await s.as.cook.query(api.entries.trash, { site, paginationOpts: firstPage })).page[0]).toMatchObject({ mayRestore: false })
     expect((await errorOf(restore())).code).toBe('FORBIDDEN')
     // The owner restores, and the trash is empty.
     await restore(s.as.owner, undefined)
-    expect((await s.as.owner.query(api.entries.trash, { site })).items).toEqual([])
+    expect((await s.as.owner.query(api.entries.trash, { site, paginationOpts: firstPage })).page).toEqual([])
   })
 })
 

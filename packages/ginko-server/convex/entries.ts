@@ -2,6 +2,7 @@
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
 import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, listHaystack, listSort, deletesExpired, isVisible, ordered, searchable, sha256, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, validate, visibleUntil, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { paginationOptsValidator } from 'convex/server'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
@@ -1082,46 +1083,41 @@ export const ofBricks = query({
 
 const TRASH_PAGE = 50
 
+/** The collections whose removed entries the trash shows (not retired ones); `only` narrows them to one. */
+const trashBricks = (schema: Schema, only?: string) =>
+  Object.entries(schema.bricks).filter(([key, def]) => def.kind === 'collection' && !def.retired && (only === undefined || only === key)).map(([key]) => key)
+
 /**
- * The trash (SPEC 12): removed entries that can still be restored, newest first, across bricks or in
- * one. `cursor` is the `nextCursor` of the page before. Any member may read; `mayRestore` says
+ * The trash (SPEC 12): removed entries that can still be restored, newest first, across bricks or in one. A
+ * paginated query (`useConvexPaginatedQuery`), at most 50 entries a page. Any member may read; `mayRestore` says
  * whether this person can use `restore` (staff needs the remove task, and it must not need approval).
  */
 export const trash = query({
-  args: { site: v.string(), brick: v.optional(v.string()), cursor: v.optional(v.string()) },
+  args: { site: v.string(), brick: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     const actor = await actorFor(ctx, args.site)
     const schema = actor.site.schema as Schema
     if (args.brick !== undefined && !(Object.hasOwn(schema.bricks, args.brick) && schema.bricks[args.brick]!.kind === 'collection')) fail('INVALID', 'errors.brickNotFound')
-    const cursor = args.cursor === undefined ? undefined : /^(\d+):(.+)$/.exec(args.cursor)
-    if (args.cursor !== undefined && !cursor) fail('INVALID', 'errors.cursorInvalid')
-    const before = cursor ? { at: Number(cursor[1]), id: cursor[2]! } : undefined
-
-    const keys = Object.entries(schema.bricks).filter(([key, def]) => def.kind === 'collection' && !def.retired && (args.brick === undefined || args.brick === key)).map(([key]) => key)
-    const rows: Doc<'entries'>[] = []
-    for (const key of keys) {
-      // Absent deletedAt sorts before numbers, so the lower bound keeps live entries out. Rows of one millisecond can straddle a page, so a few more are read.
-      const found = await ctx.db.query('entries')
-        .withIndex('by_site_brick_deleted', (q) => (before ? q.eq('site', actor.site._id).eq('brick', key).gt('deletedAt', 0).lte('deletedAt', before.at) : q.eq('site', actor.site._id).eq('brick', key).gt('deletedAt', 0)))
-        .order('desc')
-        .take(TRASH_PAGE + 25)
-      rows.push(...found)
-    }
-    const newestFirst = (a: Doc<'entries'>, b: Doc<'entries'>) => b.deletedAt! - a.deletedAt! || (a._id < b._id ? 1 : a._id > b._id ? -1 : 0)
-    const page = rows
-      .filter((row) => !before || row.deletedAt! < before.at || (row.deletedAt === before.at && row._id < before.id))
-      .sort(newestFirst)
-    const shown = page.slice(0, TRASH_PAGE)
-    const last = shown[shown.length - 1]
-
-    // The badge "Removed (n)": every removed entry of the site, whatever `brick` narrows the list to.
-    let total = 0
-    for (const [key, def] of Object.entries(schema.bricks)) {
-      if (def.kind !== 'collection' || def.retired) continue
-      total += (await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', actor.site._id).eq('brick', key).gt('deletedAt', 0)).collect()).length
+    const site = actor.site._id
+    const brick = args.brick
+    const keys = trashBricks(schema, brick)
+    // Absent deletedAt sorts before numbers, so the lower bound keeps live entries out.
+    const rows = (brick === undefined
+      ? ctx.db.query('entries').withIndex('by_site_deleted', (q) => q.eq('site', site).gt('deletedAt', 0))
+      : ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', site).eq('brick', brick).gt('deletedAt', 0)))
+      .filter((q) => (keys.length ? q.or(...keys.map((key) => q.eq(q.field('brick'), key))) : false))
+      .order('desc')
+    const opts = args.paginationOpts
+    let result
+    try {
+      result = await rows.paginate({ ...opts, numItems: Math.min(opts.numItems, TRASH_PAGE) })
+    } catch (error) {
+      // The cursor comes from the client; the database refuses one it did not hand out.
+      if (opts.cursor === null) throw error
+      fail('INVALID', 'errors.pageMarkerInvalid')
     }
 
-    const items = await Promise.all(shown.map(async (row) => {
+    const page = await Promise.all(result.page.map(async (row) => {
       const removal = (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', row._id)).order('desc').take(5)).find((change) => change.kind === 'remove')
       const member = removal && removal.actor !== 'system'
         ? await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', removal.actor).eq('site', actor.site._id)).unique()
@@ -1136,7 +1132,21 @@ export const trash = query({
         ...(task === undefined ? {} : { task }),
       }
     }))
-    return { items, total, nextCursor: page.length > TRASH_PAGE && last ? `${last.deletedAt}:${last._id}` : null }
+    return { ...result, page }
+  },
+})
+
+/**
+ * The badge "Removed (n)": every removed entry the trash shows, whatever area is open. It reads the whole trash,
+ * which SITE_BUDGET.trashBytes bounds (the oldest removed entries go early past it).
+ */
+export const trashCount = query({
+  args: { site: v.string() },
+  handler: async (ctx, args): Promise<number> => {
+    const actor = await actorFor(ctx, args.site)
+    const keys = new Set(trashBricks(actor.site.schema as Schema))
+    const removed = await ctx.db.query('entries').withIndex('by_site_deleted', (q) => q.eq('site', actor.site._id).gt('deletedAt', 0)).collect()
+    return removed.filter((row) => keys.has(row.brick)).length
   },
 })
 

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-// How full a site is: the band above every page, and "Jetzt löschen" in the trash. The German catalog is the real one; Nuxt's
-// auto-imports become globals, Convex and the writes are replaced.
+// How full a site is: the band above every page, and the trash ("Jetzt löschen", every removed entry reachable). The German
+// catalog is the real one; Nuxt's auto-imports become globals, Convex and the writes are replaced.
 import { flushPromises, mount } from '@vue/test-utils'
 import { computed, ref } from 'vue'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
@@ -19,16 +19,23 @@ beforeAll(() => {
 })
 afterEach(() => { document.body.innerHTML = '' })
 
-const trashed = (mayPurge: boolean) => ({
-  items: [{ entry: 'e1', brick: 'dishes', brickLabel: 'Gerichte', label: 'Kürbissuppe', lifeRev: 3, deletedAt: 0, purgeAt: Date.UTC(2026, 10, 14), wasDraft: false, deletedBy: null, mayRestore: true, mayPurge }],
-  total: 1, nextCursor: null,
-})
+const removed = (mayPurge: boolean) => ({ entry: 'e1', brick: 'dishes', brickLabel: 'Gerichte', label: 'Kürbissuppe', lifeRev: 3, deletedAt: 0, purgeAt: Date.UTC(2026, 10, 14), wasDraft: false, deletedBy: null, mayRestore: true, mayPurge })
+
+/** The trash's paginated query in this state; returns its `loadMore`. */
+function trashQuery(state: { data?: unknown[]; status?: 'success' | 'error'; error?: unknown; canLoadMore?: boolean }) {
+  const loadMore = vi.fn(async () => {})
+  vi.stubGlobal('useConvexPaginatedQuery', () => ({
+    data: computed(() => state.data), status: computed(() => state.status ?? 'success'), error: computed(() => state.error),
+    canLoadMore: computed(() => state.canLoadMore ?? false), isLoadingMore: computed(() => false), loadMore,
+  }))
+  return loadMore
+}
 
 // Wrong behaviour caught: "Jetzt löschen" deletes at the first click, sends a stale lifeRev, or shows for staff (the server refuses them).
 test('an owner deletes a removed entry for good after one question; staff see no button for it', async () => {
   const purgeEntry = vi.fn(async () => true)
   vi.stubGlobal('useOps', () => ({ purgeEntry, restoreEntry: vi.fn() }))
-  vi.stubGlobal('useConvexQuery', () => ({ data: ref(trashed(true)) }))
+  trashQuery({ data: [removed(true)] })
   mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, attachTo: document.body })
 
   // A screen reader names the entry, not only "Jetzt löschen" once per row.
@@ -43,10 +50,19 @@ test('an owner deletes a removed entry for good after one question; staff see no
   expect(purgeEntry).toHaveBeenCalledWith('e1', 3, 'Kürbissuppe')
 
   document.body.innerHTML = ''
-  vi.stubGlobal('useConvexQuery', () => ({ data: ref(trashed(false)) }))
+  trashQuery({ data: [removed(false)] })
   mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, attachTo: document.body })
   expect(button('Wiederherstellen')).toBeDefined()
   expect(button('Jetzt löschen')).toBeUndefined()
+})
+
+// Wrong behaviour caught: removed entries past the first 50 cannot be reached, so they cannot be restored.
+test('more removed entries load with Mehr anzeigen', () => {
+  vi.stubGlobal('useOps', () => ({}))
+  const loadMore = trashQuery({ data: [removed(true)], canLoadMore: true })
+  mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, attachTo: document.body })
+  button('Mehr anzeigen')!.click()
+  expect(loadMore).toHaveBeenCalledWith(50)
 })
 
 // Wrong behaviour caught: the site budget is found only when a save is refused, or the full band can be hidden while saves fail.
