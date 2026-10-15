@@ -353,8 +353,8 @@
       "revokedAt": ", revoked {when}",
       "revokeConfirm": "“{label}” cannot make any changes after that.",
       "reviewOn": "Changes wait for approval.",
-      "reviewOff": "Changes go online right away.",
-      "reviewLikeYou": "What waits for approval when you do it waits here too. Everything else goes online right away."
+      "reviewOff": "Changes go online without approval.",
+      "reviewLikeYou": "What waits for approval when you do it waits here too. Everything else goes online without approval."
     },
     "keys": {
       "heading": "Publishing keys",

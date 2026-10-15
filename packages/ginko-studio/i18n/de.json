@@ -353,8 +353,8 @@
       "revokedAt": ", widerrufen {when}",
       "revokeConfirm": "„{label}“ kann danach nichts mehr ändern.",
       "reviewOn": "Änderungen warten auf Freigabe.",
-      "reviewOff": "Änderungen gehen sofort online.",
-      "reviewLikeYou": "Was bei dir auf Freigabe wartet, wartet auch hier. Alles andere geht sofort online."
+      "reviewOff": "Änderungen gehen ohne Freigabe online.",
+      "reviewLikeYou": "Was bei dir auf Freigabe wartet, wartet auch hier. Alles andere geht ohne Freigabe online."
     },
     "keys": {
       "heading": "Schlüssel für Veröffentlichungen",

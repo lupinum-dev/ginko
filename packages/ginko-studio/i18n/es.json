@@ -353,8 +353,8 @@
       "revokedAt": ", revocada {when}",
       "revokeConfirm": "Después, “{label}” ya no podrá hacer cambios.",
       "reviewOn": "Los cambios esperan aprobación.",
-      "reviewOff": "Los cambios se publican al momento.",
-      "reviewLikeYou": "Lo que espera aprobación cuando lo haces tú también espera aquí. Lo demás se publica al momento."
+      "reviewOff": "Los cambios se publican sin aprobación.",
+      "reviewLikeYou": "Lo que espera aprobación cuando lo haces tú también espera aquí. Lo demás se publica sin aprobación."
     },
     "keys": {
       "heading": "Claves de publicación",

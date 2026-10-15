@@ -28,20 +28,20 @@ const bricks: [string, { tasks: Task[] }][] = [
 const key = (id: string, reviewEffective: boolean) => ({ id, label: id, createdAt: Date.UTC(2026, 9, 1), lastUsedAt: null, revokedAt: null, review: null, reviewEffective })
 
 // Wrong behaviour caught: an agency site read "zum Beispiel „Setz Heute ausgebucht“ oder „Trag das Mittagsmenü vom
-// Foto ein“", and nothing said whether the assistant's changes go online at once or wait for approval; a cook whose
-// lunch menu needs approval read "sofort online".
+// Foto ein“", and nothing said whether the assistant's changes need approval; a cook whose lunch menu needs approval
+// read that they go online without. The line names approval only: a change to a draft does not go online at all.
 test.each([
   {
     name: 'an owner: her own tasks as examples, and each key says whether it waits',
     role: 'owner', grants: [], keys: [key('Claude Code', false), key('ChatGPT', true)],
     examples: 'zum Beispiel „Beitrag schreiben“ oder „Frage hinzufügen“.',
-    lines: ['Änderungen gehen sofort online.', 'Änderungen warten auf Freigabe.'],
+    lines: ['Änderungen gehen ohne Freigabe online.', 'Änderungen warten auf Freigabe.'],
   },
   {
     name: 'staff with one task that needs approval: the generic examples, and the key waits where she would',
     role: 'staff', grants: ['faq.add'], keys: [key('Claude Code', false)],
     examples: 'zum Beispiel „Korrigier einen Tippfehler“ oder „Kürz den ersten Absatz“.',
-    lines: ['Was bei dir auf Freigabe wartet, wartet auch hier. Alles andere geht sofort online.'],
+    lines: ['Was bei dir auf Freigabe wartet, wartet auch hier. Alles andere geht ohne Freigabe online.'],
   },
 ])('$name', async ({ role, grants, keys: rows, examples, lines }) => {
   keys.value = rows
