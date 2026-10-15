@@ -3,8 +3,8 @@
 @import "./tokens.css";
 
 /* This template's accent and fonts (DESIGN.md "Your accent"). Everything else comes from tokens.css.
-   nonprofit: green. White text on the accent 5.0:1 light; #052e16 on the dark accent 11.6:1; the accent on the page
-   5.0:1 light and 13.2:1 dark. The focus ring and links in text use the accent. */
+   nonprofit: green. White on the accent 5.0:1 light; the accent on the page 5.0:1 light; #052e16 on the dark accent
+   10.6:1; the dark accent on the page 14.0:1. The focus ring and links in text use the accent. */
 :root {
   --brand: #15803d;
   --brand-foreground: #ffffff;
@@ -15,9 +15,14 @@
 .dark {
   --brand: #86efac;
   --brand-foreground: #052e16;
+  /* The closing band in dark mode: a deep green instead of the light accent, so it does not outshine the page.
+     #f0fdf4 on #14532d 8.7:1. */
+  --brand-surface: #14532d;
+  --brand-surface-foreground: #f0fdf4;
 }
 
-/* Arabic: Inter has no Arabic letters, so Arabic pages use Noto Sans Arabic (Latin words in it fall back to Inter).
+/* Arabic: Inter has no Arabic letters, so Arabic pages use Noto Sans Arabic; its file has Arabic letters only, so
+   Latin words in it fall back to Inter (nuxt.config.ts: `fallbacks: []`).
    Joined letters must not be spaced apart, and Arabic needs more room between lines than the Latin headings. */
 :lang(ar) {
   --font-body: "Noto Sans Arabic", "Inter", ui-sans-serif, system-ui, sans-serif;
