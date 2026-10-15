@@ -50,7 +50,7 @@ function grantLines(grants: string[]): string[] {
 const editing = ref<{ id: string; grants: string[] } | null>(null)
 const confirming = ref<string | null>(null)
 const rowError = ref<{ id: string; message: string } | null>(null)
-const memberBusy = ref(false)
+const memberBusy = computed(() => saveRights.pending.value || removeMember.pending.value)
 
 function startEdit(id: string, grants: string[]) {
   rowError.value = null
@@ -67,26 +67,20 @@ function startRemove(id: string) {
 async function saveEditing() {
   const edit = editing.value
   if (!edit) return
-  memberBusy.value = true
   try {
     await saveRights.mutate({ site: s.slug.value, member: edit.id, grants: edit.grants })
     editing.value = null
   } catch (error) {
     rowError.value = { id: edit.id, message: opErrorOf(error).message }
-  } finally {
-    memberBusy.value = false
   }
 }
 
 async function confirmRemove(id: string) {
-  memberBusy.value = true
   try {
     await removeMember.mutate({ site: s.slug.value, member: id })
     confirming.value = null
   } catch (error) {
     rowError.value = { id, message: opErrorOf(error).message }
-  } finally {
-    memberBusy.value = false
   }
 }
 
@@ -108,7 +102,6 @@ const validUntil = (expiresAt: number) => t('site.team.validUntil', { date: form
 const inviting = ref(false)
 const form = reactive<{ email: string; role: 'owner' | 'staff'; grants: string[] }>({ email: '', role: 'staff', grants: [] })
 const formError = ref<string | null>(null)
-const sending = ref(false)
 
 function openForm() {
   form.email = ''
@@ -121,7 +114,6 @@ function openForm() {
 async function sendInvite() {
   const email = form.email.trim()
   formError.value = null
-  sending.value = true
   try {
     await createInvite.mutate({
       site: s.slug.value,
@@ -133,8 +125,6 @@ async function sendInvite() {
     inviting.value = false
   } catch (error) {
     formError.value = opErrorOf(error).message
-  } finally {
-    sending.value = false
   }
 }
 
@@ -266,8 +256,8 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
 
           <p v-if="formError" class="font-semibold text-destructive" role="alert">{{ formError }}</p>
           <div class="flex flex-wrap gap-2">
-            <Button type="submit" :disabled="sending">{{ t('site.team.sendInvite') }}</Button>
-            <Button type="button" variant="ghost" :disabled="sending" @click="inviting = false">{{ t('site.common.cancel') }}</Button>
+            <Button type="submit" :disabled="createInvite.pending.value">{{ t('site.team.sendInvite') }}</Button>
+            <Button type="button" variant="ghost" :disabled="createInvite.pending.value" @click="inviting = false">{{ t('site.common.cancel') }}</Button>
           </div>
         </form>
       </section>

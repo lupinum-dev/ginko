@@ -2,7 +2,6 @@
 // Owner and admin only (the server checks). One call at a time; the result is honest: done, or what failed.
 import { api } from '#convex/api'
 import { useConvexAction, useI18n } from '#imports'
-import { ref } from 'vue'
 import { opErrorOf } from './useOps'
 import { useToast } from './useToast'
 
@@ -10,11 +9,9 @@ export function useUpdateSite(site: () => string) {
   const { t } = useI18n()
   const { show } = useToast()
   const refresh = useConvexAction(api.refresh.urgentRefresh)
-  const running = ref(false)
 
   async function run() {
-    if (running.value) return
-    running.value = true
+    if (refresh.pending.value) return
     try {
       const result = await refresh.run({ site: site(), opId: crypto.randomUUID() })
       const failed = result.results.filter((row) => !row.ok).length
@@ -22,9 +19,7 @@ export function useUpdateSite(site: () => string) {
       else show(result.limited ? `${t('basics.update.partly')} ${t('basics.update.fallback')}` : t('basics.update.done'))
     } catch (error) {
       show(`${opErrorOf(error).message} ${t('basics.update.fallback')}`, { tone: 'err' })
-    } finally {
-      running.value = false
     }
   }
-  return { run, running }
+  return { run, running: refresh.pending }
 }

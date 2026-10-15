@@ -9,22 +9,18 @@ import { opErrorOf } from '../composables/useOps'
 
 const props = defineProps<{ slug: string, name: string }>()
 const { t } = useI18n()
-const { mutate: start } = useConvexMutation(api.sites.startDeletion)
+const { mutate: start, pending } = useConvexMutation(api.sites.startDeletion)
 const typed = ref('')
-const busy = ref(false)
 const problem = ref('')
 const matches = computed(() => typed.value === props.slug)
 
 async function submit() {
   if (!matches.value) return
-  busy.value = true
   problem.value = ''
   try {
     await start({ site: props.slug, confirm: typed.value })
   } catch (e) {
     problem.value = opErrorOf(e).message
-  } finally {
-    busy.value = false
   }
 }
 </script>
@@ -39,7 +35,7 @@ async function submit() {
         <Input id="delete-site-confirm" v-model="typed" autocomplete="off" autocapitalize="off" spellcheck="false" />
       </div>
       <p v-if="problem" class="font-semibold text-destructive" role="alert">{{ problem }}</p>
-      <Button type="submit" variant="destructive" class="justify-self-start" :disabled="!matches || busy">{{ t('site.delete.button') }}</Button>
+      <Button type="submit" variant="destructive" class="justify-self-start" :disabled="!matches || pending">{{ t('site.delete.button') }}</Button>
     </form>
   </section>
 </template>

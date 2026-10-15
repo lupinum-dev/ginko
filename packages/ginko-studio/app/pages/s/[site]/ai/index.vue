@@ -26,21 +26,17 @@ const when = (ms: number) => whenText(ms, s.schema.value?.timeZone ?? 'Europe/Vi
 
 // Creating: a name, then the key once. Leaving the page loses it; that is said next to it.
 const label = ref('Claude Code')
-const creating = ref(false)
 const formError = ref<string | null>(null)
 const fresh = ref<{ key: string; label: string } | null>(null)
 
 async function create() {
   formError.value = null
-  creating.value = true
   try {
     const name = label.value.trim()
     const made = await createKey.mutate({ site: s.slug.value, label: name })
     fresh.value = { key: made.key, label: name }
   } catch (error) {
     formError.value = opErrorOf(error).message
-  } finally {
-    creating.value = false
   }
 }
 
@@ -114,7 +110,7 @@ async function revoke(id: string) {
           <p id="key-label-hint" class="text-[13px] text-muted-foreground">{{ t('site.ai.labelHint') }}</p>
         </div>
         <p v-if="formError" class="font-semibold text-destructive" role="alert">{{ formError }}</p>
-        <div class="flex flex-wrap gap-2"><Button type="submit" :disabled="creating">{{ t('site.ai.createKey') }}</Button></div>
+        <div class="flex flex-wrap gap-2"><Button type="submit" :disabled="createKey.pending.value">{{ t('site.ai.createKey') }}</Button></div>
       </form>
     </section>
 
