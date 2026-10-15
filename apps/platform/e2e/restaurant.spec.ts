@@ -158,7 +158,8 @@ test.describe('Unterwegs (break-it 9)', () => {
     test.skip(page.viewportSize()!.width >= 640, 'The row stays on one line from 640 px.')
     await page.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
     await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
-    await page.getByRole('button', { name: 'Mehr' }).click()
+    // The entry's own "Mehr", not the tab bar's "Mehr" at the bottom of a phone.
+    await page.getByRole('main').getByRole('button', { name: 'Mehr', exact: true }).click()
     await page.getByRole('menuitem', { name: 'Eintrag entfernen' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click()
     await expect(page.locator('[data-sonner-toast]')).toContainText('entfernt')
