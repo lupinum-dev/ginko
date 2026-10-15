@@ -10,7 +10,7 @@ usePageSeo(() => ({ title: t('title'), description: t('lead') }))
   <div>
     <BlockPageHeader :title="t('title')" :lead="t('lead')" />
     <div class="mx-auto max-w-page px-gutter">
-      <BlockCards v-if="cards.length" :items="cards" />
+      <BlockCards v-if="cards.length" :items="cards" heading-level="h2" />
       <BlockEmpty v-else :title="t('empty')" path="content/projects/" />
     </div>
   </div>

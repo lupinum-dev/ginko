@@ -1,9 +1,10 @@
 // Synced from templates/_features/projects/app/bricks/projects.ts by `pnpm templates sync`. Edit the source, not this copy.
 import { collection, f, type BrickSource, type RouteTemplate } from '@lupinum/ginko'
 
-// Projects: what an organisation works on, one Markdown file each in content/projects/ (`1.clean-banks.md`,
-// translations `1.clean-banks.de.md`). The number sets the order. A campaign has an end date (`ends`): it leaves the
-// site after that day by itself, and the Studio's Today page lists campaigns that end within 7 days.
+// Projects: what an organisation works on, one Markdown file each in content/projects/ (`1.my-project.md`,
+// translations `1.my-project.de.md`). The number sets the order. A campaign has an end date (`ends`): it leaves the
+// site after that day by itself, and the Studio's Today page lists campaigns that end within 7 days. A project may
+// have one button below its title (`actionLabel` and `actionUrl`, both needed), for example "Donate now".
 // `gallery` (optional) names the site's gallery brick: a project can then point to photos of it.
 export function projects<const R extends Record<string, RouteTemplate>>(o: { route: R, source?: BrickSource, gallery?: string }) {
   const fields = {
@@ -18,6 +19,12 @@ export function projects<const R extends Record<string, RouteTemplate>>(o: { rou
       optional: true,
       hint: { de: 'Nur für Aktionen: Danach verschwindet das Projekt von der Website.', en: 'Campaigns only: the project leaves the site after this day.', fr: 'Pour les campagnes : le projet quitte le site après ce jour.' },
     }),
+    actionLabel: f.text({ de: 'Button-Text', en: 'Button text', fr: 'Texte du bouton' }, {
+      max: 40,
+      optional: true,
+      hint: { de: 'Ein Button unter dem Titel, zum Beispiel „Jetzt spenden“. Braucht auch die Adresse.', en: 'One button below the title, for example “Donate now”. Needs the address too.', fr: 'Un bouton sous le titre, par exemple « Faire un don ». Il faut aussi l’adresse.' },
+    }),
+    actionUrl: f.text({ de: 'Button-Adresse', en: 'Button address', fr: 'Adresse du bouton' }, { format: 'url', optional: true, translate: false }),
     ...(o.gallery ? { gallery: f.ref({ de: 'Galerie', en: 'Gallery', fr: 'Galerie' }, { to: o.gallery, optional: true }) } : {}),
     body: f.markdown({ de: 'Text', en: 'Text', fr: 'Texte' }, { profile: 'page' }),
   }
@@ -31,7 +38,7 @@ export function projects<const R extends Record<string, RouteTemplate>>(o: { rou
     status: { count: true },
     fields,
     tasks: [
-      { id: 'edit', kind: 'edit', pick: true, fields: ['title', 'summary', 'image', 'ends', 'body'], label: { de: 'Projekt bearbeiten', en: 'Edit a project', fr: 'Modifier un projet' } },
+      { id: 'edit', kind: 'edit', pick: true, fields: ['title', 'summary', 'image', 'ends', 'actionLabel', 'actionUrl', 'body'], label: { de: 'Projekt bearbeiten', en: 'Edit a project', fr: 'Modifier un projet' } },
       { id: 'add', kind: 'create', label: { de: 'Projekt hinzufügen', en: 'Add a project', fr: 'Ajouter un projet' } },
     ],
   })

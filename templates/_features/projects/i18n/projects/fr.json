@@ -1,7 +1,7 @@
 {
   "title": "Projets",
   "lead": "Ce sur quoi nous travaillons.",
-  "until": "Campagne jusqu’au {date}",
+  "until": "Jusqu’au {date}",
   "empty": "Pas encore de projets",
   "all": "Tous les projets"
 }

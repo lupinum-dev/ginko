@@ -1,7 +1,7 @@
 {
   "title": "Projects",
   "lead": "What we work on.",
-  "until": "Campaign until {date}",
+  "until": "Until {date}",
   "empty": "No projects yet",
   "all": "All projects"
 }
