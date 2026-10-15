@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   found: { entries: [] as unknown[], bricks: [] as unknown[], tasks: [] as unknown[] },
   /** While true, a new search has no answer yet (as on a slow connection); the test answers by setting it false. */
   slow: { value: false },
+  /** While true, a new search fails (a timeout). */
+  failing: false,
 }))
 vi.mock('#imports', async (original) => {
   const { ref, watch } = await import('vue')
@@ -21,18 +23,22 @@ vi.mock('#imports', async (original) => {
   return {
     ...(await original<Record<string, unknown>>()),
     navigateTo: mocks.navigateTo,
-    // Answers like better-convex: with keepPreviousData the last answer stays, stale, until the new one arrives.
+    // Answers like better-convex: with keepPreviousData the last answer stays, stale, until the new one arrives; a
+    // failed answer keeps it too, next to the error. New arguments clear the error.
     useConvexQuery: (_query: unknown, args: () => unknown, options?: { keepPreviousData?: boolean }) => {
       const data = ref<unknown>()
       const isStale = ref(false)
+      const error = ref<unknown>()
       watch([args, slow], ([a, waiting]) => {
+        error.value = undefined
         if (a === 'skip') { data.value = undefined; isStale.value = false; return }
         mocks.asked.push(a)
+        if (mocks.failing) { error.value = new Error('Function execution timed out'); isStale.value = data.value !== undefined; return }
         if (!waiting) { data.value = mocks.found; isStale.value = false; return }
         if (!options?.keepPreviousData) data.value = undefined
         isStale.value = data.value !== undefined
       }, { immediate: true })
-      return { data, isStale }
+      return { data, isStale, error }
     },
   }
 })
@@ -49,6 +55,14 @@ const schema = {
 
 const mountPalette = (props: { role: string; grants: string[] }) =>
   mount(CommandPalette, { props: { open: true, slug: 's', schema, ...props }, attachTo: document.body })
+/** Types into the filter and waits past the pause before searching. */
+const typeQuery = async (text: string) => {
+  const input = document.body.querySelector('input')!
+  input.value = text
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+  await new Promise((resolve) => setTimeout(resolve, 250))
+  await nextTick()
+}
 const optionTexts = () => [...document.body.querySelectorAll('[role="option"]')].map((el) => (el.children.length ? [...el.children].map((c) => c.textContent).join(' ') : el.textContent?.trim()))
 
 beforeAll(() => {
@@ -56,7 +70,7 @@ beforeAll(() => {
   globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as never
   Element.prototype.scrollIntoView ??= () => {}
 })
-beforeEach(() => { mocks.navigateTo.mockClear(); mocks.asked.length = 0; mocks.slow.value = false; localStorage.clear() })
+beforeEach(() => { mocks.navigateTo.mockClear(); mocks.asked.length = 0; mocks.slow.value = false; mocks.failing = false; localStorage.clear() })
 afterEach(() => { document.body.innerHTML = '' })
 
 describe('CommandPalette', () => {
@@ -99,16 +113,9 @@ describe('CommandPalette', () => {
     mocks.found = { entries: [schnitzel], bricks: [], tasks: [] }
     mountPalette({ role: 'owner', grants: [] })
     await flushPromises()
-    const input = document.body.querySelector('input')!
-    const type = async (text: string) => {
-      input.value = text
-      input.dispatchEvent(new Event('input', { bubbles: true }))
-      await new Promise((resolve) => setTimeout(resolve, 250))
-      await nextTick()
-    }
-    await type('sch')
+    await typeQuery('sch')
     mocks.slow.value = true
-    await type('schw')
+    await typeQuery('schw')
     expect(mocks.asked).toContainEqual({ site: 's', query: 'schw' })
     expect(optionTexts()).toEqual(['Schnitzel Speisekarte Online'])
     expect(document.body.textContent).not.toContain('Nichts gefunden')
@@ -116,6 +123,28 @@ describe('CommandPalette', () => {
     mocks.found = { entries: [{ ...schnitzel, entry: 'e2', label: 'Schweinsbraten' }], bricks: [], tasks: [] }
     mocks.slow.value = false
     await nextTick()
+    expect(optionTexts()).toEqual(['Schweinsbraten Speisekarte Online'])
+  })
+
+  // Wrong behaviour caught: a failed search left the result area blank, or showed the last word's results as if they
+  // matched the new one.
+  test('a failed search says so instead of showing the last results, and Erneut versuchen asks again', async () => {
+    const schnitzel = { entry: 'e1', brick: 'menu', brickLabel: 'Speisekarte', label: 'Schnitzel', snippet: '', state: 'live' }
+    mocks.found = { entries: [schnitzel], bricks: [], tasks: [] }
+    mountPalette({ role: 'owner', grants: [] })
+    await flushPromises()
+    await typeQuery('sch')
+    mocks.failing = true
+    await typeQuery('schw')
+    expect(optionTexts()).toEqual([])
+    expect(document.body.querySelector('[role="status"]')?.textContent).toBe('Die Suche hat gerade nicht geklappt. Erneut versuchen')
+
+    mocks.failing = false
+    mocks.found = { entries: [{ ...schnitzel, entry: 'e2', label: 'Schweinsbraten' }], bricks: [], tasks: [] }
+    const before = mocks.asked.length
+    ;[...document.body.querySelectorAll('button')].find((b) => b.textContent === 'Erneut versuchen')!.click()
+    await flushPromises()
+    expect(mocks.asked.slice(before)).toEqual([{ site: 's', query: 'schw' }])
     expect(optionTexts()).toEqual(['Schweinsbraten Speisekarte Online'])
   })
 })

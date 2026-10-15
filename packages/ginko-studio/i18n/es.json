@@ -717,7 +717,8 @@
       "areas": "Áreas",
       "newIn": "Nuevo en {area}",
       "review": "Revisar",
-      "empty": "No se encontró nada para “{query}”."
+      "empty": "No se encontró nada para “{query}”.",
+      "failed": "La búsqueda no ha funcionado ahora mismo."
     },
     "update": {
       "menu": "Actualizar el sitio web ahora",
