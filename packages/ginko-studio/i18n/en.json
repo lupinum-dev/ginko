@@ -357,7 +357,7 @@
     },
     "storage": {
       "near": "Storage almost full: {used} of {limit} used.",
-      "full": "Storage full: {used} of {limit} used. You can still save shorter texts, but not add entries.",
+      "full": "Storage full: {used} of {limit} used. You can keep editing entries as long as they do not get longer, but you cannot add new ones.",
       "entries": "{count} of {limit} entries used.",
       "entriesFull": "{count} of {limit} entries used. You cannot add new entries.",
       "hint": "To make room, remove entries or shorten long texts. Removed entries do not count.",

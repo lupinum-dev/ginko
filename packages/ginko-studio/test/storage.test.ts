@@ -62,7 +62,7 @@ test('the storage band warns from 80 %, and once full it cannot be hidden', asyn
 
   // de-AT groups thousands with a space.
   const full = notice(4 * MB, 1640)
-  expect(full.text()).toBe('Speicher voll: 4 MB von 4 MB belegt. Kürzere Texte lassen sich weiter speichern, neue Einträge nicht. 1 640 von 2 000 Einträgen angelegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.')
+  expect(full.text()).toBe('Speicher voll: 4 MB von 4 MB belegt. Du kannst Einträge weiter bearbeiten, solange sie nicht länger werden, aber keine neuen anlegen. 1 640 von 2 000 Einträgen angelegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.')
   expect(full.find('button').exists()).toBe(false)
 })
 

@@ -357,7 +357,7 @@
     },
     "storage": {
       "near": "Almacenamiento casi lleno: {used} de {limit} ocupados.",
-      "full": "Almacenamiento lleno: {used} de {limit} ocupados. Puedes seguir guardando textos más cortos, pero no añadir entradas.",
+      "full": "Almacenamiento lleno: {used} de {limit} ocupados. Puedes seguir editando entradas mientras no crezcan, pero no añadir nuevas.",
       "entries": "{count} de {limit} entradas creadas.",
       "entriesFull": "{count} de {limit} entradas creadas. No puedes añadir entradas nuevas.",
       "hint": "Para hacer espacio, elimina entradas o acorta textos largos. Las entradas eliminadas no cuentan.",
@@ -634,7 +634,7 @@
       "offline": "Sin conexión. Inténtalo de nuevo.",
       "aborted": "Cancelado."
     },
-    "purged": "“{title}” eliminado definitivamente."
+    "purged": "“{title}” eliminada definitivamente."
   },
   "review": {
     "title": "{site} · Por revisar",

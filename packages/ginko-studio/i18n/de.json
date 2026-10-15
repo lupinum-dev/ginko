@@ -357,7 +357,7 @@
     },
     "storage": {
       "near": "Speicher fast voll: {used} von {limit} belegt.",
-      "full": "Speicher voll: {used} von {limit} belegt. Kürzere Texte lassen sich weiter speichern, neue Einträge nicht.",
+      "full": "Speicher voll: {used} von {limit} belegt. Du kannst Einträge weiter bearbeiten, solange sie nicht länger werden, aber keine neuen anlegen.",
       "entries": "{count} von {limit} Einträgen angelegt.",
       "entriesFull": "{count} von {limit} Einträgen angelegt. Neue Einträge kannst du nicht mehr anlegen.",
       "hint": "Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.",
