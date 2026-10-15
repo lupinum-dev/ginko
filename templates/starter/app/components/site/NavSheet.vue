@@ -5,8 +5,10 @@ import { ArrowRight, Menu } from '@lucide/vue'
 // The navigation on phones: a sheet from the inline start (the right in right-to-left languages). reka-ui keeps the
 // focus inside while open and returns it to the button on close. After a navigation the sheet closes and the focus
 // moves to the new page's content instead, so keyboard and screen reader users start there, not in the header.
-// The language switch sits at the top, with full names, since the header has no room for it on phones.
-defineProps<{ links: { key: string, label: string, to: string }[] }>()
+// The language switch sits at the top, with full names, since the header has no room for it on phones. `wide`: the
+// header shows the links only from `lg` (more than 4), so the sheet stays until then; from `md` the header has the
+// language codes, so the sheet leaves them out.
+defineProps<{ links: { key: string, label: string, to: string }[], wide?: boolean }>()
 const { t } = useI18n('site')
 const open = ref(false)
 const route = useRoute()
@@ -26,14 +28,14 @@ function returnFocus(event: Event) {
 <template>
   <Sheet v-model:open="open">
     <SheetTrigger as-child>
-      <Button variant="ghost" size="icon" class="md:hidden">
+      <Button variant="ghost" size="icon" :class="wide ? 'lg:hidden' : 'md:hidden'">
         <Menu aria-hidden="true" />
         <span class="sr-only">{{ t('nav.open') }}</span>
       </Button>
     </SheetTrigger>
     <SheetContent side="start" :close-label="t('close')" :aria-describedby="undefined" class="px-6 pt-5 pb-8" @close-auto-focus="returnFocus">
       <SheetTitle class="flex h-11 items-center text-small text-muted-foreground">{{ t('nav.title') }}</SheetTitle>
-      <SiteLanguageSwitch names class="mb-4 text-small" />
+      <SiteLanguageSwitch names class="mb-4 text-small md:hidden" />
       <nav v-if="links.length" :aria-label="t('nav.label')">
         <ul class="flex flex-col border-t">
           <li v-for="link in links" :key="link.key" class="border-b">

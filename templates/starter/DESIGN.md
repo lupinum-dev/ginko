@@ -65,7 +65,8 @@ as `seo.color` in `ginko.config.ts` too: it fills the share cards. The accents o
 it keeps its contrast (used by `BlockCta`).
 
 Dark mode: `@nuxtjs/color-mode` puts `.dark` on `<html>` (first visit: the system setting); `dark:` utilities and
-`color-scheme` follow it.
+`color-scheme` follow it. Printing always uses the light neutrals (paper is white), and the header, notices and
+footer are left out (`print:hidden`), so any page prints as its content.
 
 ## Type
 
@@ -133,7 +134,7 @@ the 150 kB budget leaves) and, for this type scale, its configuration, because i
 a component's `class` prop only adds classes: to change one the component sets, change the component.
 
 `app/components/site/`: `SiteHeader` (name or logo, up to 6 links, language switch, theme toggle; the links move into
-`SiteNavSheet` below `md`), `SiteFooter`, `SiteSkipLink`, `SiteLogo`, `SiteNavLink`, `SiteThemeToggle`,
+`SiteNavSheet` below `md`, or below `lg` when there are more than 4), `SiteFooter`, `SiteSkipLink`, `SiteLogo`, `SiteNavLink`, `SiteThemeToggle`,
 `SiteLanguageSwitch` (the same page in each language), `SiteNotice` (up to two notices above the header).
 
 `app/components/block/` and two more:

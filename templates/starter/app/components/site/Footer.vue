@@ -19,7 +19,7 @@ const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
 </script>
 
 <template>
-  <footer class="mt-section bg-muted">
+  <footer class="mt-section bg-muted print:hidden">
     <div class="mx-auto grid max-w-page gap-10 px-gutter py-14 md:grid-cols-3">
       <div class="flex flex-col gap-3">
         <p class="font-display text-body font-semibold">{{ name }}</p>
