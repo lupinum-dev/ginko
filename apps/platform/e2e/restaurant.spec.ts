@@ -154,6 +154,22 @@ test.describe('Wirtin', () => {
     await expect(sheet.getByText('Änderungen verwerfen?')).toHaveCount(0)
     await expect(sheet.getByLabel('Titel')).toHaveValue('Kürbisabend')
   })
+
+  // Wrong behaviour caught (WS-6): a long reason widened its card past the sheet, which then scrolled sideways and cut
+  // off the arrows, the remove button and the edge of "Grund".
+  test('27. a long reason in "Betriebsurlaub und Ausnahmen" keeps the row inside the sheet', async ({ page }) => {
+    await openQuick(page)
+    await page.getByRole('button', { name: 'Betriebsurlaub und Ausnahmen' }).click()
+    const sheet = page.locator('dialog[open]')
+    await sheet.getByRole('button', { name: 'Ausnahme hinzufügen' }).click()
+    const row = sheet.locator('[data-row]').last()
+    await row.getByLabel('Grund').fill('Betriebsurlaub – ab 18. November sind wir wieder für euch da.')
+    const remove = row.getByRole('button', { name: /entfernen$/ })
+    await expect(remove).toBeVisible()
+    const [sheetBox, removeBox] = await Promise.all([sheet.boundingBox(), remove.boundingBox()])
+    expect(removeBox!.x + removeBox!.width).toBeLessThanOrEqual(sheetBox!.x + sheetBox!.width)
+    expect(await row.locator('h3').evaluate((title) => title.scrollWidth > title.clientWidth)).toBe(true)
+  })
 })
 
 test.describe('Unterwegs (break-it 9)', () => {
