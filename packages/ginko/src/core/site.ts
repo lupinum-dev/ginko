@@ -2,7 +2,7 @@ import type { ComponentRegistry } from './components.ts'
 import type { LinkConfig } from './links.ts'
 import type { Redirect } from './redirects.ts'
 import type {
-  Brick, BrickSource, CollectionBrick, Currency, Fields, Json, Label, Locale, RetiredRule, SingleBrick, Task, Visibility,
+  Brick, BrickSource, CollectionBrick, CollectionStatus, Currency, Fields, Json, Label, Locale, RetiredRule, SingleBrick, SingleStatus, Task, Visibility,
 } from './types.ts'
 
 export interface MigrationContext {
@@ -97,7 +97,7 @@ type Planned<F> = { field: keyof F & string; next: keyof F & string; from: keyof
 /** A collection's detail page per locale: a path with `[slug]` where the entry's slug goes, e.g. `/blog/[slug]`. */
 export type RouteTemplate = `/${string}[slug]${string}`
 
-export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly Task<F>[]; planned?: Planned<F> }): SingleBrick<F> {
+export function single<const F extends Fields>(input: { label: Label; describe?: Label; source?: BrickSource; fields: F; layout?: 'sections' | 'tabs'; tasks?: readonly Task<F>[]; planned?: Planned<F>; status?: SingleStatus }): SingleBrick<F> {
   // A task's prefill is typed by the brick's fields here and stored as JSON; TypeScript cannot relate the two for a generic `F`.
   return { kind: 'single', ...input, tasks: input.tasks as readonly Task[] | undefined }
 }
@@ -123,6 +123,8 @@ export function collection<const F extends Fields, const R extends Record<Locale
   /** Entries plan weeks of the single brick `brick`; `field` (a date field of this collection) holds the first day of the week (`firstDayOfWeek`). */
   plans?: { brick: string; field: FieldsOfType<F, 'date'> }
   drafts?: boolean
+  /** The status line on the Studio's Today page (see `CollectionStatus`). */
+  status?: CollectionStatus<FieldsOfType<F, 'date' | 'daterange'>, keyof F & string>
 }): CollectionBrick<F, R> {
   // See single(): the prefill types of the tasks.
   return { kind: 'collection', ...input, tasks: input.tasks as readonly Task[] | undefined }

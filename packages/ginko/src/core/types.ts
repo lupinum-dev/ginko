@@ -117,6 +117,28 @@ export type Visibility<K extends string = string> =
   | { mode: 'always' }
   | { mode: 'until'; field: K; days?: number; deleteExpired?: boolean }
 
+/**
+ * The one-line status of a collection on the Studio's Today page, computed on the server from the live entries:
+ * `next` the first entry whose date (a `date`, or a `daterange` that has not ended) is today or later; `count` how many
+ * entries end within 7 days (needs `visible: { mode: 'until' }`); `missing` how many entries leave an optional field
+ * without a default empty; `age` the newest entry by a date field and how long ago that is. A status also says when a
+ * section is due: entries end within 7 days, entries miss the field, or the next entry is within 7 days and misses a
+ * required text. Changing it changes no stored data.
+ */
+export type CollectionStatus<D extends string = string, K extends string = string> =
+  | { next: D }
+  | { count: true }
+  | { missing: K }
+  | { age: D }
+
+/**
+ * The status of a single brick on the Studio's Today page: `hours` shows today's opening hours ("Open today
+ * 11:30–14:30", "Closed today") from the brick's `week`, `exceptions`, `closedOn` and `holidays` fields.
+ */
+export type SingleStatus = { hours: true }
+
+export type BrickStatus = CollectionStatus | SingleStatus
+
 /** Where a brick's content comes from: the platform (default) or Markdown files in the site's repo (CONTENT.md). */
 export type BrickSource = 'files'
 
@@ -139,6 +161,8 @@ export interface SingleBrick<F extends Fields = Fields> {
    * task on the value in effect.
    */
   planned?: { field: string; next: string; from: string }
+  /** The status line on the Studio's Today page (see `SingleStatus`). */
+  status?: SingleStatus
   /** @internal Platform-managed: set when the brick is listed in `retired`. Do not set it. */
   retired?: true
 }
@@ -179,6 +203,8 @@ export interface CollectionBrick<F extends Fields = Fields, R extends Partial<Re
   plans?: { brick: string; field: string }
   /** Entries can be saved as drafts and are shown only once published. */
   drafts?: boolean
+  /** The status line on the Studio's Today page (see `CollectionStatus`). Without one, a collection with drafts shows its drafts and scheduled entries. */
+  status?: CollectionStatus
   /** @internal Platform-managed: set when the brick is listed in `retired`. Do not set it. */
   retired?: true
 }

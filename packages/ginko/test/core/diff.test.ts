@@ -121,6 +121,8 @@ const allowed: Row[] = [
       node(s, 'bricks.menu').layout = 'tabs'
     },
   },
+  { name: 'a status line added', mutate: (s) => { node(s, 'bricks.events').status = { next: 'when' } } },
+  { name: 'a status line removed', prod: (s) => { node(s, 'bricks.events').status = { next: 'when' } }, mutate: (s) => { delete node(s, 'bricks.events').status } },
   { name: 'needsApproval set on a task', mutate: (s) => { (node(s, 'bricks.hours').tasks as { needsApproval?: boolean }[])[0]!.needsApproval = true } },
   { name: 'agent review switched on', mutate: (s) => { s.agents = { review: true } } },
   { name: 'tasks changed', mutate: (s) => { node(s, 'bricks.hours').tasks = [] } },

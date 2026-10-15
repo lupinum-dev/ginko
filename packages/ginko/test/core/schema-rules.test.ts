@@ -651,3 +651,48 @@ describe('grants by area (SPEC 2.7)', () => {
     ])
   })
 })
+
+describe('status (Today page status line)', () => {
+  const set = (brick: string, status: unknown) => (s: Schema) => { node(s, `bricks.${brick}`).status = status }
+  // Wrong behaviour caught: a status naming a missing, retired or wrongly typed field passes the release check and the
+  // Today page computes nothing (or throws) for it; or a valid status is refused.
+  it.each<[string, (s: Schema) => void, string[]]>([
+    ['next on a daterange', set('events', { next: 'when' }), []],
+    ['age on a daterange', set('events', { age: 'when' }), []],
+    ['missing on an optional field without a default', set('events', { missing: 'image' }), []],
+    ['count on a collection with visible until', set('notices', { count: true }), []],
+    ['hours on the hours single', set('hours', { hours: true }), []],
+    ['next on a missing field', set('events', { next: 'date' }), ['events: status.next names “date”, which is not a field of the brick.']],
+    ['age on a text field', set('events', { age: 'title' }), ['events: status.age needs a date or daterange field, “title” is a text field.']],
+    ['missing on a required field', set('events', { missing: 'title' }), ['events: status.missing needs an optional field without a default, “title” is not.']],
+    ['missing on an optional field with a default', (s) => { node(s, 'bricks.events.fields.soldOut').default = false; set('events', { missing: 'soldOut' })(s) }, ['events: status.missing needs an optional field without a default, “soldOut” is not.']],
+    ['count without visible until', set('menu', { count: true }), ['menu: status { count: true } needs visible: { mode: \'until\' }.']],
+    ['count that is not true', set('notices', { count: 1 }), ['notices: status.count must be true.']],
+    ['two kinds at once', set('events', { next: 'when', age: 'when' }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
+    ['hours on a collection', set('events', { hours: true }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
+    ['next on a single', set('hours', { next: 'closedOn' }), ['hours: status must be { hours: true }.']],
+    ['hours on a single without the hours fields', set('contact', { hours: true }), ['week', 'exceptions', 'closedOn', 'holidays'].map((name) => `contact: status { hours: true } needs the live field “${name}”.`)],
+    ['hours with closedOn of another type', (s) => { node(s, 'bricks.hours.fields.closedOn').type = 'text'; set('hours', { hours: true })(s) }, ['hours: status { hours: true } needs “closedOn” to be a date field.']],
+    ['a field retired while the status still names it', (s) => {
+      set('events', { missing: 'image' })(s)
+      node(s, 'bricks.events.fields.image').retired = true
+      s.retired['events.image'] = { drop: true }
+    }, ['events: status.missing names the retired field “image”; remove the status or name another field.']],
+  ])('%s', (_name, mutate, expected) => {
+    const s = base()
+    mutate(s)
+    const problems = checkSchema(s).filter((p) => p.includes('status'))
+    expect(problems).toEqual(expected)
+  })
+
+  // Wrong behaviour caught: the site config refuses a status the stored schema accepts, or loses it in serializeSchema.
+  it('collection() and single() carry the status into the stored schema', () => {
+    const input = site({ until: f.date('Bis', optional) }, {
+      bricks: {
+        menu: collection({ label: 'Karte', fields: { name: f.text('Name'), until: f.date('Bis', optional) }, max: 20, order: 'manual', visible: { mode: 'until', field: 'until' }, status: { count: true } }),
+      },
+    })
+    expect(serializeSchema(input).bricks.menu!.status).toEqual({ count: true })
+    expect(problemsOf(input)).toEqual([])
+  })
+})

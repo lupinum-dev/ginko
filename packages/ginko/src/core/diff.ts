@@ -132,6 +132,8 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
   if (stableJson(before.tasks ?? []) !== stableJson(after.tasks ?? [])) ok(`${key}.tasks`, 'tasks', msg('diff.tasksChanged'))
   // A rule on stored values, not a stored shape: no value changes when it comes, goes or names other fields.
   if (stableJson(before.planned ?? null) !== stableJson(after.planned ?? null)) ok(`${key}.planned`, 'planned', msg('diff.valueChanged', { name: 'planned' }))
+  // Presentation only, like a label: the Today page's status line reads the data, it stores nothing.
+  if (stableJson(before.status ?? null) !== stableJson(after.status ?? null)) ok(`${key}.status`, 'text', msg('diff.textChanged'))
   if (before.kind === 'collection' && after.kind === 'collection') {
     if (after.max < before.max) no(`${key}.max`, 'maxLowered', msg('diff.maxLowered', { at: key }), fx('keepMax'))
     else if (after.max > before.max) ok(`${key}.max`, 'maxRaised', msg('diff.maxRaised'))

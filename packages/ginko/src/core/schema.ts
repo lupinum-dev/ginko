@@ -7,7 +7,7 @@ import { weekInfoOf } from './time.ts'
 import { componentProblems, type ComponentRegistry } from './components.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
-import { isPrefillToken, PREFILL_TOKENS, type Brick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema } from './types.ts'
+import { isPrefillToken, PREFILL_TOKENS, type Brick, type CollectionBrick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema } from './types.ts'
 import { coreMessage } from './messages.ts'
 import { checkValue } from './validate.ts'
 
@@ -21,7 +21,7 @@ const UNSAFE_PATH = /\.\.|\/\/|[?#]/
 // The serialized schema grammar. Unknown properties are rejected here and in diffSchema (deny by default).
 export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timeZone', 'locales', 'currency', 'week', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor'])
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'retired'])
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'group'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
@@ -314,6 +314,7 @@ function schemaProblems(schema: Schema): string[] {
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
     }
     if (brick.planned !== undefined) problems.push(...plannedProblems(key, brick))
+    if (brick.status !== undefined) problems.push(...statusProblems(key, brick))
     // Drafts need entries that can wait for publishing; a single brick has one entry that is always live (SPEC 15).
     if (brick.kind === 'single' && 'drafts' in brick) problems.push(`${key}: drafts are only allowed for collections.`)
     if (brick.kind === 'single' && 'plans' in brick) problems.push(`${key}: plans are only allowed for collections.`)
@@ -442,6 +443,42 @@ function plansProblems(key: string, plans: unknown, fields: Fields, schema: Sche
     if (!Object.hasOwn(fields, f) || fields[f]!.type !== target!.fields[f]?.type) problems.push(`${key}: plans: the weekly task of “${String(brick)}” edits “${f}”, so this collection needs “${f}” of the same type.`)
   }
   return problems
+}
+
+/** The fields `{ hours: true }` reads, with their types: the stored names of the hours brick. */
+const HOURS_FIELDS = { week: 'list', exceptions: 'list', closedOn: 'date', holidays: 'choice' } as const
+
+/**
+ * A status line (`status`): exactly one kind; a collection takes next, count, missing or age, a single takes hours. The
+ * field it names must be live (a retired field needs the status removed first) and of the right type.
+ */
+function statusProblems(key: string, brick: Brick): string[] {
+  const status: unknown = brick.status
+  const kinds = brick.kind === 'collection' ? ['next', 'count', 'missing', 'age'] : ['hours']
+  const shape = brick.kind === 'collection' ? '{ next }, { count: true }, { missing } or { age }' : '{ hours: true }'
+  if (typeof status !== 'object' || status === null || Array.isArray(status)) return [`${key}: status must be ${shape}.`]
+  const entries = Object.entries(status)
+  if (entries.length !== 1 || !kinds.includes(entries[0]![0])) return [`${key}: status must be ${shape}.`]
+  const [kind, value] = entries[0]!
+  if (kind === 'count' || kind === 'hours') {
+    if (value !== true) return [`${key}: status.${kind} must be true.`]
+    if (kind === 'count') {
+      const vis = (brick as CollectionBrick).visible
+      return vis?.mode === 'until' ? [] : [`${key}: status { count: true } needs visible: { mode: 'until' }.`]
+    }
+    const problems: string[] = []
+    for (const [name, type] of Object.entries(HOURS_FIELDS)) {
+      const field = Object.hasOwn(brick.fields, name) ? brick.fields[name] : undefined
+      if (!field || field.retired) problems.push(`${key}: status { hours: true } needs the live field “${name}”.`)
+      else if (field.type !== type) problems.push(`${key}: status { hours: true } needs “${name}” to be a ${type} field.`)
+    }
+    return problems
+  }
+  const field = typeof value === 'string' && Object.hasOwn(brick.fields, value) ? brick.fields[value] : undefined
+  if (!field) return [`${key}: status.${kind} names “${String(value)}”, which is not a field of the brick.`]
+  if (field.retired) return [`${key}: status.${kind} names the retired field “${value}”; remove the status or name another field.`]
+  if (kind === 'missing') return field.optional && field.default === undefined ? [] : [`${key}: status.missing needs an optional field without a default, “${value}” is not.`]
+  return field.type === 'date' || field.type === 'daterange' ? [] : [`${key}: status.${kind} needs a date or daterange field, “${value}” is a ${field.type} field.`]
 }
 
 /**
