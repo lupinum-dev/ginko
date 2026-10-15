@@ -1,6 +1,6 @@
-// An RSS 2.0 document as a pure function, so it is unit tested without Nitro.
+// An RSS 2.0 document as a pure function: the blog feed of ginko-docs and of the templates (`_features/blog`).
 
-export interface FeedItem {
+export interface RssItem {
   title: string
   /** Absolute. */
   link: string
@@ -10,7 +10,7 @@ export interface FeedItem {
   authors: string[]
 }
 
-export interface Feed {
+export interface RssFeed {
   title: string
   /** Absolute address of the page the feed belongs to. */
   link: string
@@ -18,7 +18,7 @@ export interface Feed {
   self: string
   description: string
   language: string
-  items: FeedItem[]
+  items: RssItem[]
 }
 
 const escapeXml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;')
@@ -27,7 +27,7 @@ const rfc822 = (day: string) => new Date(`${day}T00:00:00Z`).toUTCString()
 const tag = (name: string, value: string) => `<${name}>${escapeXml(value)}</${name}>`
 
 /** Title and description only, as plain text: the feed links to the page for the full post. */
-export function rssXml(feed: Feed): string {
+export function rssXml(feed: RssFeed): string {
   const items = feed.items.map((item) => [
     '    <item>',
     `      ${tag('title', item.title)}`,

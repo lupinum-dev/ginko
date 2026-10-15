@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rssXml } from '../server/lib/rss'
+import { rssXml } from '@lupinum/ginko/basics'
 
 const feed = {
   title: 'A & B <Blog>', link: 'https://x.test/blog', self: 'https://x.test/blog/rss.xml', description: 'd', language: 'de',
