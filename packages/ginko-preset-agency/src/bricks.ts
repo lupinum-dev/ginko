@@ -293,8 +293,8 @@ export function company<const E extends Fields = {}>(o: CompanyOptions<E> = {}) 
   const brick = withExtras(single({
     label: o.label ?? both('Firmendaten', 'Company details'),
     describe: both(
-      'Name, Anschrift und Kontakt deiner Firma. Die Website zeigt sie überall, wo diese Angaben stehen, zum Beispiel im Impressum.',
-      'Your company’s name, address and contact details. The website shows them wherever these details appear, for example in the imprint.',
+      'Name, Anschrift und Kontakt deiner Firma, zum Beispiel für das Impressum. Steht eine Angabe auch im Text einer Seite, änderst du sie dort.',
+      'Your company’s name, address and contact details, for example for the imprint. Where a detail also appears in a page’s text, change it there.',
     ),
     ...sourceOf(o),
     fields: {
