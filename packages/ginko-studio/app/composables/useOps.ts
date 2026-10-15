@@ -99,7 +99,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
 
   /** `draft`: the entry was never on the website, so the message does not mention it (SPEC 15). True when the entry is gone; false when the removal went to approval. */
   async function removeEntry(entry: string, lifeRev: number, task?: string, label = t('ops.removed'), draft = false) {
-    const result = await remove.mutate({ site: site.value, opId: opId(), task, entry, lifeRev }) as { lifeRev: number }
+    const result = await remove.mutate({ site: site.value, opId: opId(), task, entry, lifeRev })
     if (isProposal(result)) { sentForApproval(); return false }
     show(draft ? label : `${label} ${t('ops.liveHint')}`, { action: { label: t('ops.undo'), run: async () => { await restoreEntry(entry, result.lifeRev, task, t('ops.restored'), draft) } } })
     return true
@@ -108,7 +108,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   /** True when the entry is back; false when the restore went to approval or failed (the message says which). */
   async function restoreEntry(entry: string, lifeRev: number, task?: string, label = t('ops.restored'), draft = false) {
     try {
-      const result = await restore.mutate({ site: site.value, opId: opId(), task, entry, lifeRev }) as { lifeRev: number }
+      const result = await restore.mutate({ site: site.value, opId: opId(), task, entry, lifeRev })
       if (isProposal(result)) { sentForApproval(); return false }
       show(draft ? label : `${label} ${t('ops.liveHint')}`, { action: { label: t('ops.undo'), run: async () => { await removeEntry(entry, result.lifeRev, task, t('ops.removed'), draft) } } })
       return true
@@ -120,7 +120,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
 
   /** `at` absent: online now. Undo takes it back to a draft (SPEC 15). `timeZone` words the scheduled time. */
   async function publishEntry(entry: string, lifeRev: number, opts: { at?: number; task?: string; timeZone: string }) {
-    const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, at: opts.at }) as { lifeRev: number }
+    const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, at: opts.at })
     if (isProposal(result)) { sentForApproval(); return result }
     const text = opts.at === undefined ? `${t('ops.published')} ${t('ops.liveHint')}` : t('ops.scheduled', { time: whenText(opts.at, opts.timeZone, format) })
     const back = { task: opts.task, timeZone: opts.timeZone, wasLive: opts.at === undefined, at: opts.at }
@@ -130,7 +130,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
 
   /** A live entry goes back to being a draft; a scheduled draft (`wasLive: false`, its time in `at`) loses its time. */
   async function unpublishEntry(entry: string, lifeRev: number, opts: { task?: string; timeZone: string; wasLive: boolean; at?: number }) {
-    const result = await unpublish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev }) as { lifeRev: number; contentRev: number }
+    const result = await unpublish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev })
     if (isProposal(result)) { sentForApproval(); return result }
     const text = opts.wasLive ? t('ops.unpublished') : t('ops.scheduleCleared')
     // Undo restores what was: live again, or the old time while it is still ahead.
@@ -165,9 +165,9 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   /** Goes back to the version after `change` as a normal save (UI.md 10.5); undo works like for any save. */
   async function revertEntry(entry: string, change: string, task?: string) {
     try {
-      const result = await revert.mutate({ site: site.value, opId: opId(), task, entry, change }) as { change?: string; proposal?: string }
-      if (result.proposal) sentForApproval()
-      else if (!result.change) show(t('history.alreadyThere'))
+      const result = await revert.mutate({ site: site.value, opId: opId(), task, entry, change })
+      if (isProposal(result)) sentForApproval()
+      else if (!('change' in result)) show(t('history.alreadyThere'))
       else {
         const made = result.change
         show(`${t('history.reverted')} ${t('ops.liveHint')}`, { action: { label: t('ops.undo'), run: () => undoChange(made, task) } })
@@ -184,16 +184,16 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     /** Saves changed root fields. Throws OpError; on success shows the message with Rückgängig. */
     async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean }) {
       try {
-        const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm }) as { change?: string; rev?: number; proposal?: string }
+        const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm })
         // A change that needs a yes writes nothing yet (SPEC 17): say so instead of "Saved".
         if (isProposal(result)) {
           sentForApproval()
-          return { proposal: result.proposal } as { proposal: string; rev?: undefined }
+          return { proposal: result.proposal }
         }
-        const change = result.change
+        const change = 'change' in result ? result.change : undefined
         // A draft is not on the website, so the message does not promise it (SPEC 15).
         show(args.draft ? t('ops.draftSaved') : `${t('ops.saved')} ${t('ops.liveHint')}`, change ? { action: { label: t('ops.undo'), run: () => undoChange(change, args.task) } } : {})
-        return { proposal: undefined, rev: result.rev as number }
+        return { proposal: undefined, rev: result.rev }
       } catch (error) {
         throw opErrorOf(error)
       }
@@ -201,10 +201,10 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     /** `removeTask` is the brick's remove task (staff need it to undo the creation). */
     async createEntry(args: { brick: string; data: Record<string, Json>; task?: string; removeTask?: string; op: string; label?: string; publish?: { at?: number }; timeZone?: string }) {
       try {
-        const result = await create.mutate({ site: site.value, opId: args.op, task: args.task, brick: args.brick, data: args.data, publish: args.publish }) as { entry: string; state: 'draft' | 'live'; publishAt?: number }
+        const result = await create.mutate({ site: site.value, opId: args.op, task: args.task, brick: args.brick, data: args.data, publish: args.publish })
         if (isProposal(result)) {
           sentForApproval()
-          return { proposal: result.proposal } as { proposal: string; entry?: undefined }
+          return { proposal: result.proposal }
         }
         // A collection with drafts makes a draft unless asked to publish (SPEC 15); the message says which.
         const text = result.state === 'live' ? `${args.label ?? t('ops.created')} ${t('ops.liveHint')}`

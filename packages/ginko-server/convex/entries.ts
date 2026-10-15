@@ -75,7 +75,7 @@ const saveArgs = {
 export const save = mutation({ args: saveArgs, handler: async (ctx, args) => saveAs(ctx, await actorFor(ctx, args.site), args) })
 
 /** `save` for an actor already known: the platform's signed-in person, or the agent door's key (SPEC 16). */
-export async function saveAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof saveArgs>): Promise<Json> {
+export async function saveAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof saveArgs>) {
   checkRev(args.baseRev)
   return idempotent(ctx, actor, args, () => saveNow(ctx, actor, args))
 }
@@ -94,8 +94,14 @@ function saveMsg(schema: Schema, brick: Schema['bricks'][string], entry: Doc<'en
     : msg('history.changedEntry', { fields, title: labelOf(schema, entry.brick, entry.data as Data) })
 }
 
+/**
+ * The answer of a save or revert that had nothing to write: the entry as it is, and no history row. A named type, so
+ * the answers that wrote one keep `change` as a required field instead of an optional one (which JSON cannot hold).
+ */
+type Unchanged = { entry: Id<'entries'>; rev: number; contentRev: number; warnings: Json[] }
+
 /** The save itself, steps 3 to 7 of SPEC 4.1 without the repeated-op step: `revert` wraps it in its own and words the line (`line`). */
-async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof saveArgs>, line?: HistoryMsg): Promise<Json> {
+async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof saveArgs>, line?: HistoryMsg) {
   const entry = await entryOf(ctx, actor, args.entry)
   const schema = actor.site.schema as Schema
   const brick = brickOf(schema, entry)
@@ -141,8 +147,8 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   const printsOf = (p: Prints, root: string) => Object.fromEntries(Object.entries(p).filter(([leaf]) => underRoot(leaf, root)))
   const changed = roots.filter((r) => !same(data[r], before[r]) || !same(printsOf(prints, r), printsOf(entry.prints, r)))
   if (!changed.length) {
-    const result: Json = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
-    return result
+    const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
+    return unchanged
   }
 
   const { errors, warnings } = await validate(schema, entry.brick, data, { mode: 'patch', changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
@@ -157,20 +163,18 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   // Everything is checked: a change that needs a yes becomes a proposal and writes nothing (SPEC 17).
   if (await needsProposal(ctx, actor, 'save', args.task, taskBrick, entry)) {
     const pick = (d: Data) => Object.fromEntries(changed.filter((r) => d[r] !== undefined).map((r) => [r, d[r]!]))
-    const result: Json = await propose(ctx, actor, {
+    return await propose(ctx, actor, {
       op: 'save', brick: entry.brick, entry: entry._id, args: args as unknown as Json,
       base: { rev: entry.rev, fieldRevs: Object.fromEntries(changed.map((r) => [r, entry.fieldRevs[r] ?? 0])) },
       before: pick(before) as Json, after: pick(data) as Json, ...history,
     })
-    return result
   }
 
   const written = await commitEntry(ctx, {
     actor, entry, fields: brick.fields, roots: changed, data, prints,
     kind: onlyConfirm ? 'confirm' : 'save', history, opId: args.opId,
   })
-  const result: Json = { entry: entry._id, rev: written.rev, contentRev: written.contentRev, change: written.change, warnings: warnings as unknown as Json }
-  return result
+  return { entry: entry._id, rev: written.rev, contentRev: written.contentRev, change: written.change, warnings: warnings as unknown as Json }
 }
 
 const undoArgs = { site: v.string(), opId: v.string(), task: v.optional(v.string()), change: v.string() }
@@ -276,7 +280,7 @@ export const revert = mutation({ args: revertArgs, handler: async (ctx, args) =>
  * Goes back to the version after `change` as a new, normal save: rights, validation, prints, file
  * references, proposals and undo all apply. Only fields that differ from now are written.
  */
-export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof revertArgs>): Promise<Json> {
+export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof revertArgs>) {
   return idempotent(ctx, actor, args, async () => {
     const { entry, change, data, touched } = await versionOf(ctx, actor, args.entry, args.change)
     if (entry.deletedAt) fail('INVALID', 'errors.entryDeletedRestoreFirst')
@@ -291,8 +295,8 @@ export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
       if (!same(data[root], now[root])) fields[root] = data[root] ?? null
     }
     if (!Object.keys(fields).length) {
-      const result: Json = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
-      return result
+      const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
+      return unchanged
     }
     return saveNow(ctx, actor, {
       site: args.site, opId: args.opId, ...(args.task === undefined ? {} : { task: args.task }),
@@ -405,7 +409,7 @@ const createArgs = {
 export const create = mutation({ args: createArgs, handler: async (ctx, args) => createAs(ctx, await actorFor(ctx, args.site), args) })
 
 /** `create` for an actor already known: the platform's signed-in person, or the agent door's key (SPEC 16). */
-export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof createArgs>): Promise<Json> {
+export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof createArgs>) {
   return idempotent(ctx, actor, args, async () => {
     const schema = actor.site.schema as Schema
     const brick = structuralBrick(schema, args.brick)
@@ -441,11 +445,10 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     if (await needsProposal(ctx, actor, 'create', args.task, args.brick, { state: draft && at === undefined ? 'draft' : 'live' })) {
       // A proposal that would go live with a broken link is refused now, not only when approved. The entry does not exist yet: it joins the link check under a temporary id.
       if (!draft || at !== undefined) await checkNewLinks(ctx, actor.site, [{ entry: { _id: 'proposed' as Id<'entries'>, brick: args.brick }, fields: brick.fields, before: {}, after: data, isNew: true }])
-      const result: Json = await propose(ctx, actor, {
+      return await propose(ctx, actor, {
         op: 'create', brick: args.brick, args: args as unknown as Json, base: {}, after: data as Json,
         ...recorded(msg('history.createProposal', { title: labelOf(schema, args.brick, data) }), schema),
       })
-      return result
     }
 
     for (const expired of removing) {
@@ -480,8 +483,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     if (files.size) await syncFileRefs(ctx, actor.site._id, 'change', change, files)
     await writeCounters(ctx, actor.site._id, c)
 
-    const result: Json = { entry, rev: 1, contentRev: c.contentRev, state: draft ? 'draft' : 'live', ...(at === undefined ? {} : { publishAt: at }) }
-    return result
+    return { entry, rev: 1, contentRev: c.contentRev, state: draft ? 'draft' : 'live', ...(at === undefined ? {} : { publishAt: at }) }
   })
 }
 
@@ -537,7 +539,7 @@ export const duplicate = mutation({ args: duplicateArgs, handler: async (ctx, ar
  * Creates a copy of an entry. Rights, limits, checks, file references and the approval policy are
  * those of `create`; in a collection with `drafts` the copy is a draft. Staff names the create task.
  */
-export async function duplicateAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof duplicateArgs>): Promise<Json> {
+export async function duplicateAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof duplicateArgs>) {
   const entry = await entryOf(ctx, actor, args.entry)
   const schema = actor.site.schema as Schema
   const brick = structuralBrick(schema, entry.brick)
@@ -554,7 +556,7 @@ const removeArgs = { site: v.string(), opId: v.string(), task: v.optional(v.stri
 export const remove = mutation({ args: removeArgs, handler: async (ctx, args) => removeAs(ctx, await actorFor(ctx, args.site), args) })
 
 /** `remove` for an actor already known: the platform's signed-in person, or the agent door's key (SPEC 16). */
-export async function removeAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof removeArgs>): Promise<Json> {
+export async function removeAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof removeArgs>) {
   checkRev(args.lifeRev)
   return idempotent(ctx, actor, args, async () => {
     const entry = await entryOf(ctx, actor, args.entry)
@@ -565,25 +567,23 @@ export async function removeAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
 
     const label = labelOf(schema, entry.brick, entry.data as Data)
     if (await needsProposal(ctx, actor, 'remove', args.task, entry.brick, entry)) {
-      const result: Json = await propose(ctx, actor, {
+      return await propose(ctx, actor, {
         op: 'remove', brick: entry.brick, entry: entry._id, args: args as unknown as Json, base: { lifeRev: entry.lifeRev },
         before: entry.data as Json, ...recorded(msg('history.removeProposal', { title: label }), schema),
       })
-      return result
     }
 
     const c = countersOf(actor.site)
     await softRemove(ctx, c, entry, args.opId, byOf(actor), recorded(msg('history.removed', { title: label }), schema))
     await writeCounters(ctx, actor.site._id, c)
     // The new lifeRev lets the UI undo this at once (restore after remove, remove after restore).
-    const result: Json = { entry: entry._id, contentRev: c.contentRev, lifeRev: entry.lifeRev + 1 }
-    return result
+    return { entry: entry._id, contentRev: c.contentRev, lifeRev: entry.lifeRev + 1 }
   })
 }
 
 export const restore = mutation({
   args: { site: v.string(), opId: v.string(), task: v.optional(v.string()), entry: v.string(), lifeRev: v.number() },
-  handler: async (ctx, args): Promise<Json> => {
+  handler: async (ctx, args) => {
     const actor = await actorFor(ctx, args.site)
     checkRev(args.lifeRev)
     return idempotent(ctx, actor, args, async () => {
@@ -624,8 +624,7 @@ export const restore = mutation({
       })
       await writeCounters(ctx, actor.site._id, c)
       // The new lifeRev lets the UI undo this at once (restore after remove, remove after restore).
-      const result: Json = { entry: entry._id, contentRev: c.contentRev, lifeRev: entry.lifeRev + 1 }
-      return result
+      return { entry: entry._id, contentRev: c.contentRev, lifeRev: entry.lifeRev + 1 }
     })
   },
 })
@@ -697,7 +696,7 @@ const publishArgs = {
 export const publish = mutation({ args: publishArgs, handler: async (ctx, args) => publishAs(ctx, await actorFor(ctx, args.site), args) })
 
 /** `publish` for an actor already known: the platform's signed-in person, or the agent door's key (SPEC 16). */
-export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof publishArgs>): Promise<Json> {
+export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof publishArgs>) {
   checkRev(args.lifeRev)
   return idempotent(ctx, actor, args, async () => {
     const entry = await entryOf(ctx, actor, args.entry)
@@ -712,12 +711,11 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
 
     const label = labelOf(schema, entry.brick, entry.data as Data)
     if (await needsProposal(ctx, actor, 'publish', args.task, entry.brick, entry)) {
-      const result: Json = await propose(ctx, actor, {
+      return await propose(ctx, actor, {
         op: 'publish', brick: entry.brick, entry: entry._id, args: args as unknown as Json, base: { lifeRev: entry.lifeRev },
         before: { state: 'draft' }, after: args.at === undefined ? { state: 'live' } : { state: 'draft', publishAt: args.at },
         ...recorded(args.at === undefined ? msg('history.publishProposal', { title: label }) : msg('history.publishProposalScheduled', { title: label, at: args.at }), schema),
       })
-      return result
     }
     const c = countersOf(actor.site)
     let change: Id<'changes'>
@@ -734,11 +732,10 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
       })
     }
     await writeCounters(ctx, actor.site._id, c)
-    const result: Json = {
+    return {
       entry: entry._id, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, contentRev: c.contentRev, change,
       state: args.at === undefined ? 'live' : 'draft', ...(args.at === undefined ? {} : { publishAt: args.at }),
     }
-    return result
   })
 }
 
@@ -747,7 +744,7 @@ const unpublishArgs = { site: v.string(), opId: v.string(), task: v.optional(v.s
 export const unpublish = mutation({ args: unpublishArgs, handler: async (ctx, args) => unpublishAs(ctx, await actorFor(ctx, args.site), args) })
 
 /** `unpublish` for an actor already known: the platform's signed-in person, or the agent door's key (SPEC 16). */
-export async function unpublishAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof unpublishArgs>): Promise<Json> {
+export async function unpublishAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof unpublishArgs>) {
   checkRev(args.lifeRev)
   return idempotent(ctx, actor, args, async () => {
     const entry = await entryOf(ctx, actor, args.entry)
@@ -761,12 +758,11 @@ export async function unpublishAs(ctx: MutationCtx, actor: Actor, args: ObjectTy
 
     const label = labelOf(schema, entry.brick, entry.data as Data)
     if (await needsProposal(ctx, actor, 'unpublish', args.task, entry.brick, entry)) {
-      const result: Json = await propose(ctx, actor, {
+      return await propose(ctx, actor, {
         op: 'unpublish', brick: entry.brick, entry: entry._id, args: args as unknown as Json, base: { lifeRev: entry.lifeRev },
         before: { state: wasLive ? 'live' : 'draft' }, after: { state: 'draft' },
         ...recorded(msg(wasLive ? 'history.unpublishProposal' : 'history.unscheduleProposal', { title: label }), schema),
       })
-      return result
     }
 
     const c = countersOf(actor.site)
@@ -779,8 +775,7 @@ export async function unpublishAs(ctx: MutationCtx, actor: Actor, args: ObjectTy
       ...recorded(msg(wasLive ? 'history.unpublished' : 'history.unscheduled', { title: label }), schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: Date.now(),
     })
     await writeCounters(ctx, actor.site._id, c)
-    const result: Json = { entry: entry._id, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, contentRev: c.contentRev, change, state: 'draft' }
-    return result
+    return { entry: entry._id, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, contentRev: c.contentRev, change, state: 'draft' }
   })
 }
 

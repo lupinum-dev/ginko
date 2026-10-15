@@ -9,7 +9,7 @@ import { languageName, previewFileIds, publishQuestion, titleOf } from '../utils
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
-import { opErrorOf } from '../composables/useOps'
+import { isProposal, opErrorOf } from '../composables/useOps'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { EllipsisIcon } from '@lucide/vue'
 import WhyNotPublic from './WhyNotPublic.vue'
@@ -273,9 +273,9 @@ async function duplicate() {
   if (!props.entry) return
   duplicating.value = true
   try {
-    const result = await duplicateEntry.mutate({ site: props.site.slug, opId: crypto.randomUUID(), task: props.tasks?.create, entry: props.entry._id }) as { entry?: string; state?: string }
-    // Without `entry` the copy waits for approval: nothing to open yet.
-    if (!result.entry) return useToast().show(t('basics.duplicate.sent'))
+    const result = await duplicateEntry.mutate({ site: props.site.slug, opId: crypto.randomUUID(), task: props.tasks?.create, entry: props.entry._id })
+    // A proposal: the copy waits for approval, nothing to open yet.
+    if (isProposal(result)) return useToast().show(t('basics.duplicate.sent'))
     useToast().show(result.state === 'draft' ? t('basics.duplicate.done') : t('ops.created'))
     await navigateTo(`/s/${props.site.slug}/all/${props.brickKey}/${result.entry}`)
   } catch (error) {
