@@ -13,3 +13,5 @@ playwright-report
 .breakit
 .packs
 /release
+# create-ginko's copy of templates/ (packages/create-ginko/build.mjs)
+/packages/create-ginko/templates
