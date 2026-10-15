@@ -2,7 +2,7 @@
 // The ⌘K palette: what an empty query offers, and that typing searches and Enter opens. Only the Convex query and
 // navigation are replaced; the translator is ginko-i18n's real one (the Studio's German catalog, via the test shim).
 import { flushPromises, mount } from '@vue/test-utils'
-import { computed, nextTick } from 'vue'
+import { nextTick } from 'vue'
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Schema } from '@lupinum/ginko/internal'
 import CommandPalette from '../app/components/CommandPalette.vue'
@@ -11,19 +11,31 @@ const mocks = vi.hoisted(() => ({
   navigateTo: vi.fn(),
   asked: [] as unknown[],
   found: { entries: [] as unknown[], bricks: [] as unknown[], tasks: [] as unknown[] },
+  /** While true, a new search has no answer yet (as on a slow connection); the test answers by setting it false. */
+  slow: { value: false },
 }))
-vi.mock('#imports', async (original) => ({
-  ...(await original<Record<string, unknown>>()),
-  navigateTo: mocks.navigateTo,
-  useConvexQuery: (_query: unknown, args: () => unknown) => ({
-    data: computed(() => {
-      const a = args()
-      if (a === 'skip') return undefined
-      mocks.asked.push(a)
-      return mocks.found
-    }),
-  }),
-}))
+vi.mock('#imports', async (original) => {
+  const { ref, watch } = await import('vue')
+  const slow = ref(false)
+  mocks.slow = slow
+  return {
+    ...(await original<Record<string, unknown>>()),
+    navigateTo: mocks.navigateTo,
+    // Answers like better-convex: with keepPreviousData the last answer stays, stale, until the new one arrives.
+    useConvexQuery: (_query: unknown, args: () => unknown, options?: { keepPreviousData?: boolean }) => {
+      const data = ref<unknown>()
+      const isStale = ref(false)
+      watch([args, slow], ([a, waiting]) => {
+        if (a === 'skip') { data.value = undefined; isStale.value = false; return }
+        mocks.asked.push(a)
+        if (!waiting) { data.value = mocks.found; isStale.value = false; return }
+        if (!options?.keepPreviousData) data.value = undefined
+        isStale.value = data.value !== undefined
+      }, { immediate: true })
+      return { data, isStale }
+    },
+  }
+})
 
 const create = (id: string) => ({ id, kind: 'create', label: 'Neu' })
 const schema = {
@@ -44,7 +56,7 @@ beforeAll(() => {
   globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as never
   Element.prototype.scrollIntoView ??= () => {}
 })
-beforeEach(() => { mocks.navigateTo.mockClear(); mocks.asked.length = 0; localStorage.clear() })
+beforeEach(() => { mocks.navigateTo.mockClear(); mocks.asked.length = 0; mocks.slow.value = false; localStorage.clear() })
 afterEach(() => { document.body.innerHTML = '' })
 
 describe('CommandPalette', () => {
@@ -79,5 +91,31 @@ describe('CommandPalette', () => {
     await flushPromises()
     expect(mocks.navigateTo).toHaveBeenCalledWith('/s/s/all/menu/e1', undefined)
     expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false])
+  })
+
+  // Wrong behaviour caught: the results vanish between keystrokes while the next search loads.
+  test('while the next search loads, the last results stay', async () => {
+    const schnitzel = { entry: 'e1', brick: 'menu', brickLabel: 'Speisekarte', label: 'Schnitzel', snippet: '', state: 'live' }
+    mocks.found = { entries: [schnitzel], bricks: [], tasks: [] }
+    mountPalette({ role: 'owner', grants: [] })
+    await flushPromises()
+    const input = document.body.querySelector('input')!
+    const type = async (text: string) => {
+      input.value = text
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await new Promise((resolve) => setTimeout(resolve, 250))
+      await nextTick()
+    }
+    await type('sch')
+    mocks.slow.value = true
+    await type('schw')
+    expect(mocks.asked).toContainEqual({ site: 's', query: 'schw' })
+    expect(optionTexts()).toEqual(['Schnitzel Speisekarte Online'])
+    expect(document.body.textContent).not.toContain('Nichts gefunden')
+
+    mocks.found = { entries: [{ ...schnitzel, entry: 'e2', label: 'Schweinsbraten' }], bricks: [], tasks: [] }
+    mocks.slow.value = false
+    await nextTick()
+    expect(optionTexts()).toEqual(['Schweinsbraten Speisekarte Online'])
   })
 })

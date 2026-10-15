@@ -37,9 +37,10 @@ watch(() => props.open, (open) => {
   else { query.value = ''; asked.value = '' }
 }, { immediate: true })
 
-const { data } = useConvexQuery(api.search.studio, () => (props.open && asked.value ? { site: props.slug, query: asked.value } : 'skip'))
+// While the next search loads, the last results stay on screen.
+const { data, isStale } = useConvexQuery(api.search.studio, () => (props.open && asked.value ? { site: props.slug, query: asked.value } : 'skip'), { keepPreviousData: true })
 const searching = computed(() => !!query.value.trim())
-const nothing = computed(() => !!asked.value && !!data.value && !data.value.entries.length && !data.value.bricks.length)
+const nothing = computed(() => !!asked.value && !isStale.value && !!data.value && !data.value.entries.length && !data.value.bricks.length)
 
 const site = (path: string) => `/s/${props.slug}${path}`
 interface Item { value: string; label: string; area?: string; state?: string; run: () => void }
