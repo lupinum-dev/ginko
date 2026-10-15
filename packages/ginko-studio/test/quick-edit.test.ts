@@ -63,17 +63,25 @@ test('a row\'s "Entfernen" stays disabled while its removal runs, also when anot
   expect(removeButton('Neue Karte').attributes('disabled')).toBeDefined()
 })
 
-// Wrong behaviour caught: a timed collection of 450 events listed every one, expired ones too: a page of 32,000 px (volume-11).
-test('a long timed collection lists 50 current entries and the expired ones only on request', async () => {
-  listed = [...Array.from({ length: 52 }, (_, i) => notice(`n${i}`, `Hinweis ${i}`)), notice('x1', 'Alt 1', '2026-10-01'), notice('x2', 'Alt 2', '2026-10-02')]
+const DAY = 86_400_000
+// Wrong behaviour caught: a timed collection of 450 events listed every one, expired ones too: a page of 32,000 px; or
+// past 50 expired entries the oldest showed and the rest could not be reached (volume-11).
+test.each([
+  // current, expired, rows before / after "Abgelaufene anzeigen", area link before / after, first expired row shown
+  [52, 2, 50, 52, true, true, 'Alt 0'],
+  [30, 120, 30, 80, false, true, 'Alt 70'],
+])('%i current and %i expired entries: %i rows, then %i', async (current, expiredCount, before, after, linkBefore, linkAfter, firstExpired) => {
+  // The expired ones ended one day after another, the last on 2026-09-28 at most: "Alt 119" ended last.
+  const ended = (i: number) => new Date(Date.UTC(2026, 5, 1) + i * DAY).toISOString().slice(0, 10)
+  listed = [...Array.from({ length: current }, (_, i) => notice(`n${i}`, `Hinweis ${i}`)), ...Array.from({ length: expiredCount }, (_, i) => notice(`x${i}`, `Alt ${i}`, ended(i)))]
   const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
     global: { stubs: { TaskSheet: true, PickSheet: true, I18nT: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
   })
   await flushPromises()
-  expect(wrapper.findAll('li')).toHaveLength(50)
-  expect(wrapper.get('a[href="/s/restaurant/all/notices"]').text()).toBe('Alle in „Hinweise“ ansehen')
-  const expired = wrapper.findAll('button').find((b) => b.text() === 'Abgelaufene anzeigen (2)')!
-  await expired.trigger('click')
-  expect(wrapper.findAll('li').map((li) => li.find('.font-medium').text()).slice(-2)).toEqual(['Alt 1', 'Alt 2'])
+  const allIn = () => wrapper.find('a[href="/s/restaurant/all/notices"]')
+  const titles = () => wrapper.findAll('li').map((li) => li.find('.font-medium').text())
+  expect([titles().length, allIn().exists()]).toEqual([before, linkBefore])
+  await wrapper.findAll('button').find((b) => b.text() === `Abgelaufene anzeigen (${expiredCount})`)!.trigger('click')
+  expect([titles().length, allIn().exists() && allIn().text(), titles()[Math.min(current, 50)]]).toEqual([after, linkAfter && 'Alle in „Hinweise“ ansehen', firstExpired])
   expect(wrapper.findAll('button').some((b) => b.text().startsWith('Abgelaufene anzeigen'))).toBe(false)
 })

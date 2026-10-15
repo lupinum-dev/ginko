@@ -86,16 +86,18 @@ const LISTED = 50
 /** Sections whose expired entries the person asked to see. */
 const expiredShown = reactive(new Set<string>())
 // What is on the website now or later comes first, at most LISTED (the area list has the rest); the expired entries
-// follow only on request, at most LISTED too (stable order within each group). A collection of 450 events stays a
-// short page.
+// follow only on request: the LISTED that ended last, in the list's order. A collection of 450 events stays a short
+// page, and the area list is linked whenever a group is cut.
 const listings = computed(() => Object.fromEntries(sections.value.map((sec) => {
   const rows = sec.listed.map((e) => ({ e, target: rowTarget(sec, e), dim: timing(sec.brick as CollectionBrick, e).dim }))
   const current = rows.filter((r) => !r.dim)
   const expired = rows.filter((r) => r.dim)
   const showExpired = expiredShown.has(sec.key)
+  const endOf = (r: (typeof rows)[number]) => visibleUntil(sec.brick, r.e.data) ?? ''
+  const latest = new Set(expired.toSorted((a, b) => endOf(b).localeCompare(endOf(a))).slice(0, LISTED))
   return [sec.key, {
-    rows: [...current.slice(0, LISTED), ...(showExpired ? expired.slice(0, LISTED) : [])],
-    more: current.length > LISTED,
+    rows: [...current.slice(0, LISTED), ...(showExpired ? expired.filter((r) => latest.has(r)) : [])],
+    more: current.length > LISTED || (showExpired && expired.length > LISTED),
     hiddenExpired: showExpired ? 0 : expired.length,
   }]
 })))
