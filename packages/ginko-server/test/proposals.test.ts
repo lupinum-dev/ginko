@@ -514,12 +514,14 @@ describe('digest mail', () => {
     expect(mails[0]!.text).toContain('koch@example.com: Preis von „Frittatensuppe“ geändert')
     expect(mails[0]!.text).toContain('https://ginko.test/s/restaurant/review')
 
-    // The next proposal starts the next digest; the two already mailed are not listed again.
+    // The next proposal starts the next digest; the two already mailed are not listed again. The cook has set a name
+    // meanwhile: the mail names them as the Studio does, with the address they verified.
+    await s.as.cook.mutation(api.account.setName, { name: 'Franz Koch' })
     await s.cookPrice(s.saibling, 1500)
     await s.advanceTo(NOW + 25 * MINUTE)
     const later = await s.rows('outbox')
     expect(later).toHaveLength(2)
-    expect(later[1]!.text).toContain('Preis von „Gebeizter Saibling“ geändert')
+    expect(later[1]!.text).toContain('Franz Koch (koch@example.com): Preis von „Gebeizter Saibling“ geändert')
     expect(later[1]!.text).not.toContain('Frittaten')
   })
 
