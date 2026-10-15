@@ -5,6 +5,7 @@
 // No Nuxt here, so unit tests load it directly; `useTextOf` binds it to the Studio's translator.
 import { coreMessage, labelOf } from '@lupinum/ginko/internal'
 import type { Params } from '@lupinum/ginko-i18n/core'
+import { twiceOnClock } from './when'
 
 export interface StoredMsg {
   key: string
@@ -41,6 +42,8 @@ function translate(msg: StoredMsg, env: TextEnv): string | undefined {
       params[name] = labelOf(value as Record<string, string>, env.locale, env.main ?? env.locale)
     }
   }
+  // The server's catalog adds the zone to a time the clock shows twice (`{twice, select, yes …}`), as its own renderer does.
+  if (typeof params.at === 'number' && env.timeZone && twiceOnClock(params.at, env.timeZone)) params.twice = 'yes'
   const full = `server.${msg.key}`
   const server = env.t(full, params, env.timeZone ? { timeZone: env.timeZone } : undefined)
   if (server !== full) return server

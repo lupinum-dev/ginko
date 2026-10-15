@@ -32,14 +32,30 @@ export const msg = (key: MessageKey, params?: Record<string, Param>): HistoryMsg
 const isMsg = (value: Param): value is HistoryMsg =>
   typeof value === 'object' && typeof value.key === 'string' && Object.keys(value).every((k) => k === 'key' || k === 'params')
 
+const HOUR = 3_600_000
+const walls = new Map<string, Intl.DateTimeFormat>()
+const wall = (ms: number, timeZone: string) => {
+  let reader = walls.get(timeZone)
+  if (!reader) walls.set(timeZone, reader = new Intl.DateTimeFormat('en-US', { timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }))
+  return reader.format(ms)
+}
+
+/**
+ * Whether the clock in `timeZone` shows the time of `ms` twice: the hour the clocks go back. The catalog's
+ * `{twice, select, yes …}` then adds the zone's short name ("02:30 MEZ"); the Studio's `textOf` follows the same rule.
+ */
+const twiceOnClock = (ms: number, timeZone: string) => [ms - HOUR, ms + HOUR].some((other) => wall(other, timeZone) === wall(ms, timeZone))
+
 /** The text of a message in `locale`: nested messages first, labels in `locale` (else the main language), dates in the site's zone. */
 export function historyText(message: HistoryMsg, locale: string, where: Where | undefined): string {
   const main = where?.locales[0] ?? 'de'
+  const timeZone = where?.timeZone ?? 'UTC'
   const params = Object.fromEntries(Object.entries(message.params ?? {}).map(([name, value]) => [
     name,
     typeof value === 'string' || typeof value === 'number' ? value : isMsg(value) ? historyText(value, locale, where) : labelOf(value, locale, main),
   ]))
-  return t(locale, message.key as MessageKey, params, { timeZone: where?.timeZone ?? 'UTC' })
+  if (typeof params.at === 'number' && twiceOnClock(params.at, timeZone)) params.twice = 'yes'
+  return t(locale, message.key as MessageKey, params, { timeZone })
 }
 
 /** The row fields `msg` and `sentence` (German, cut to the stored length) for a message. */

@@ -56,8 +56,11 @@ export function msToZoned(ms: number, timeZone: string): string {
 /** One clock for every Studio time and language: 24 hours, two-digit hour ("02:30"), as the server's `::HHmm` history lines. */
 const CLOCK = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } as const
 
-/** The night the clocks go back reads 02:30 twice: then the zone's short name says which one ("02:30 MEZ"). */
-const zoneIfTwice = (ms: number, timeZone: string) => (zonedTimes(msToZoned(ms, timeZone), timeZone)?.length === 2 ? { timeZoneName: 'short' } as const : {})
+/** Whether the clock in `timeZone` shows the time of `ms` twice: 02:30 on the night the clocks go back. */
+export const twiceOnClock = (ms: number, timeZone: string) => zonedTimes(msToZoned(ms, timeZone), timeZone)?.length === 2
+
+/** Then the zone's short name says which one ("02:30 MEZ"). */
+const zoneIfTwice = (ms: number, timeZone: string) => (twiceOnClock(ms, timeZone) ? { timeZoneName: 'short' } as const : {})
 
 /** "14. Okt., 09:00" in the site's time zone and the Studio's language: short, for toasts, status and lists. */
 export function whenText(ms: number, timeZone: string, format: Words['format']): string {
