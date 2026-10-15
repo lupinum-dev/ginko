@@ -5,9 +5,10 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { expect, test, vi } from 'vitest'
-import { collection, defineSite, f } from '@lupinum/ginko'
+import { collection, defineSite, f, single } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
+import { TRANSLATION } from '@lupinum/ginko-editor'
 import { useEntryForm } from '../app/composables/useEntryForm'
 import EntryEditor from '../app/components/EntryEditor.vue'
 import PreviewPane from '../app/components/PreviewPane.vue'
@@ -122,4 +123,43 @@ test('closing the remove question returns the focus to "Mehr"', async () => {
   expect(document.querySelector('[role="dialog"]')).toBeNull()
   expect(document.activeElement).toBe(more.element)
   wrapper.unmount()
+})
+
+// Wrong behaviour caught (Astra 11): a row someone removed meanwhile still had its translation confirmed with "Passt so",
+// and the save named a text that no longer exists, which the server refuses (leafNotTranslatable): nothing saved.
+test('a confirmed translation of a row removed meanwhile is left out of the save', async () => {
+  const bilingual = serializeSchema(defineSite({
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    pages: { home: { de: '/', en: '/en' } },
+    bricks: { lunch: single({ label: 'Mittagsmenü', fields: { days: f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { dish: f.text('Gericht') } }) } }) },
+  }))
+  const day = (id: string, de: string) => ({ _id: id, dish: { de, en: 'Soup' } })
+  const entry = (rev: number, days: unknown[]) => ({ _id: 'l1', brick: 'lunch', kind: 'single', order: 0, rev, lifeRev: 1, fieldRevs: { days: rev }, prints: {}, data: { days } })
+  const saveEntry = vi.fn(async () => ({ rev: 3 }))
+  vi.stubGlobal('useOps', () => ({ opId: () => 'op1', saveEntry }))
+  vi.stubGlobal('useRoute', () => ({ query: { lang: 'en' } }))
+  // The fields: "Passt so" on both rows' dish, as GinkoField offers it in the English view.
+  const Fields = vue.defineComponent({
+    setup: () => {
+      const translation = inject(TRANSLATION)!
+      return () => vue.h('div', ['days.d1.dish', 'days.d2.dish'].map((leaf) => vue.h('button', { type: 'button', 'data-leaf': leaf, onClick: () => translation.confirm!(leaf) }, 'Passt so')))
+    },
+  })
+  try {
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema: bilingual, brickKey: 'lunch', brick: bilingual.bricks.lunch!, entry: entry(1, [day('d1', 'Suppe'), day('d2', 'Brühe')]), canRemove: false },
+      global: { stubs: { EntryFields: Fields, PreviewPane: true, NuxtLink: true } },
+    })
+    for (const button of wrapper.findAll('button[data-leaf]')) await button.trigger('click')
+    // Someone removes the first day meanwhile.
+    await wrapper.setProps({ entry: entry(2, [day('d2', 'Brühe')]) })
+    await flushPromises()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(saveEntry).toHaveBeenCalledTimes(1)
+    expect((saveEntry.mock.calls[0] as unknown as [{ confirm?: string[] }])[0].confirm).toEqual(['days.d2.dish'])
+  } finally {
+    vi.stubGlobal('useOps', () => ({}))
+    vi.stubGlobal('useRoute', () => ({ query: {} }))
+  }
 })
