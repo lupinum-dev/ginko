@@ -162,3 +162,16 @@ test('a save, a create and a publish add what the other languages show; a draft 
     'Published. On the website in about a minute. In English, the page appears only once all needed texts are translated.',
   ])
 })
+
+// Wrong behaviour caught: a new entry saved as a draft, planned or published says the same thing ("Created."), so the
+// person cannot tell whether it is on the website; a planned one shows a time in the wrong zone.
+test.each([
+  ['published', { publish: {} }, { entry: 'e', state: 'live' }, 'Published. On the website in about a minute.'],
+  ['a draft', {}, { entry: 'e', state: 'draft' }, 'Saved as a draft.'],
+  ['planned', { publish: { at: Date.parse('2026-10-16T07:00:00Z') } }, { entry: 'e', state: 'draft', publishAt: Date.parse('2026-10-16T07:00:00Z') }, 'Scheduled. Goes live 16 Oct, 09:00.'],
+])('creating an entry with drafts, %s, says so', async (_name, options, result, text) => {
+  mocks.toasts.length = 0
+  mocks.results.set('entries.create', result)
+  await ops.createEntry({ brick: 'b', data: {}, op: 'o', main: 'de', timeZone: 'Europe/Vienna', label: 'Saved.', ...options })
+  expect(mocks.toasts.map((t) => t.text)).toEqual([text])
+})

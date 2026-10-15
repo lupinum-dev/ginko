@@ -259,9 +259,10 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
           return { proposal: result.proposal }
         }
         // A collection with drafts makes a draft unless asked to publish (SPEC 15); the message says which.
-        const text = result.state === 'live' ? [args.label ?? t('ops.created'), liveText(result), noteOf(result.translation, args.main)].filter(Boolean).join(' ')
-          : result.publishAt !== undefined ? t('ops.draftScheduled', { time: whenText(result.publishAt, args.timeZone ?? 'Europe/Vienna', format) })
-          : t('ops.draftNotOnSite')
+        const lead = args.publish ? t('ops.published') : args.label ?? t('ops.created')
+        const text = result.state === 'live' ? [lead, liveText(result), noteOf(result.translation, args.main)].filter(Boolean).join(' ')
+          : result.publishAt !== undefined ? t('ops.scheduledGoesLive', { date: whenText(result.publishAt, args.timeZone ?? 'Europe/Vienna', format) })
+          : t('ops.draftCreated')
         // A new entry starts at lifeRev 1; undo removes it (a draft or a scheduled one was never on the website).
         show(text, { action: { label: t('ops.undo'), run: async () => { await removeEntry(result.entry, 1, args.removeTask, t('ops.removed'), result.state !== 'live').catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
         return { proposal: undefined, entry: result.entry }

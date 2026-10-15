@@ -440,3 +440,119 @@ describe('languages', () => {
     wrapper.unmount()
   })
 })
+
+// The publish step (TEMPLATES 7.3): what a create task on a collection with drafts offers, and the save each button makes.
+describe('publish step', () => {
+  const posts = serializeSchema(defineSite({
+    site: 'blog', name: 'Blog', url: 'https://blog.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    pages: { home: { de: '/' } },
+    bricks: {
+      posts: collection({
+        label: 'Beiträge', drafts: true, fields: { title: f.text('Titel', { translate: false }) },
+        tasks: [{ id: 'write', label: 'Beitrag schreiben', kind: 'create' }, { id: 'fix', label: 'Beitrag ändern', kind: 'edit', fields: ['title'], pick: true }],
+      }),
+      notes: collection({ label: 'Notizen', fields: { title: f.text('Titel', { translate: false }) }, tasks: [{ id: 'add', label: 'Notiz anlegen', kind: 'create' }] }),
+    },
+  }))
+  const mountStep = (key: 'posts' | 'notes', opts: { task?: number; approval?: boolean; entry?: unknown } = {}) => {
+    const brick = posts.bricks[key]!
+    return mount(TaskSheet, {
+      props: { site: 'blog', brickKey: key, brick, task: brick.tasks![opts.task ?? 0]!, main: 'de', locales: ['de'], schema: posts, approval: opts.approval, entry: opts.entry as never },
+      global: { stubs: { GinkoField: FieldStub } },
+      attachTo: document.body,
+    })
+  }
+  const footer = (wrapper: ReturnType<typeof mountStep>) => wrapper.get('footer').findAll('button').map((b) => b.text())
+  const press = (wrapper: ReturnType<typeof mountStep>, label: string) => wrapper.get('footer').findAll('button').find((b) => b.text() === label)!.trigger('click')
+  const open = async (wrapper: ReturnType<typeof mountStep>) => {
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.get('input[name="title"]').setValue('Neuer Beitrag')
+  }
+  /** What the last save sent: the publish argument of the create call. */
+  const sentPublish = () => (ops.createEntry.mock.calls.at(-1) as unknown as [{ publish?: { at?: number } }])[0].publish
+
+  // Wrong behaviour caught: a collection without drafts shows publish buttons for something that is live anyway, or a
+  // drafts collection keeps one "Speichern" that quietly makes a draft nobody finds.
+  test.each([
+    ['without drafts', 'notes', 0, false, ['Speichern', 'Abbrechen']],
+    ['with drafts', 'posts', 0, false, ['Veröffentlichen', 'Als Entwurf speichern', 'Später veröffentlichen', 'Abbrechen']],
+    ['with drafts and needsApproval', 'posts', 0, true, ['Zur Prüfung senden', 'Als Entwurf speichern', 'Später veröffentlichen', 'Abbrechen']],
+    ['an edit task on a drafts collection', 'posts', 1, false, ['Speichern', 'Abbrechen']],
+  ] as const)('the footer %s', async (_, key, task, approval, buttons) => {
+    const wrapper = mountStep(key, { task, approval, entry: task === 1 ? { _id: 'p1', brick: 'posts', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { title: 'Alt' } } : undefined })
+    answer({ data: {} })
+    await flushPromises()
+    expect(footer(wrapper)).toEqual(buttons)
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: "Als Entwurf speichern" published, or "Veröffentlichen" left the entry a draft.
+  test.each([
+    ['Veröffentlichen', false, {}],
+    ['Zur Prüfung senden', true, {}],
+    ['Als Entwurf speichern', false, undefined],
+    ['Als Entwurf speichern', true, undefined],
+  ] as const)('"%s" (needsApproval: %s) creates with publish %j', async (label, approval, publish) => {
+    const wrapper = mountStep('posts', { approval })
+    await open(wrapper)
+    await press(wrapper, label)
+    await flushPromises()
+    expect(ops.createEntry).toHaveBeenCalledTimes(1)
+    expect(sentPublish()).toEqual(publish)
+    expect(ops.createEntry.mock.calls[0]).toMatchObject([{ brick: 'posts', data: { title: 'Neuer Beitrag' }, timeZone: 'Europe/Vienna' }])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: the time was read in the browser's zone, or "Später veröffentlichen" went online at once.
+  test.each([
+    ['without approval', false, 'Planen'],
+    ['with needsApproval (the proposal stores the time)', true, 'Zur Prüfung senden'],
+  ] as const)('"Später veröffentlichen" asks for date and time in the site zone and sends them %s', async (_, approval, confirm) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(Date.parse('2026-10-15T10:00:00Z'))
+    try {
+      const wrapper = mountStep('posts', { approval })
+      await open(wrapper)
+      expect(wrapper.find('input[type="datetime-local"]').exists()).toBe(false)
+      await press(wrapper, 'Später veröffentlichen')
+      await wrapper.get('input[type="datetime-local"]').setValue('2026-10-16T09:00')
+      await wrapper.get('[data-test="publish-later"]').findAll('button').find((b) => b.text() === confirm)!.trigger('click')
+      await flushPromises()
+      expect(sentPublish()).toEqual({ at: Date.parse('2026-10-16T07:00:00Z') }) // 09:00 in Vienna, summer time
+      wrapper.unmount()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // Wrong behaviour caught: a time in the past reached the server, which refused it after the person had left the sheet.
+  test('a planned time that has passed is named and nothing is sent', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(Date.parse('2026-10-15T10:00:00Z'))
+    try {
+      const wrapper = mountStep('posts')
+      await open(wrapper)
+      await press(wrapper, 'Später veröffentlichen')
+      await wrapper.get('input[type="datetime-local"]').setValue('2026-10-14T09:00')
+      await wrapper.get('[data-test="publish-later"]').findAll('button').find((b) => b.text() === 'Planen')!.trigger('click')
+      await flushPromises()
+      expect(wrapper.get('[data-test="publish-later"] [role="alert"]').text()).toBe('Bitte einen Zeitpunkt in der Zukunft wählen.')
+      expect(ops.createEntry).not.toHaveBeenCalled()
+      wrapper.unmount()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // Wrong behaviour caught: Ctrl+S on the publish step put the entry on the website.
+  test('Ctrl+S keeps the entry a draft', async () => {
+    const wrapper = mountStep('posts')
+    await open(wrapper)
+    await wrapper.get('form').trigger('keydown', { key: 's', ctrlKey: true })
+    await flushPromises()
+    expect(ops.createEntry).toHaveBeenCalledTimes(1)
+    expect(sentPublish()).toBeUndefined()
+    wrapper.unmount()
+  })
+})
