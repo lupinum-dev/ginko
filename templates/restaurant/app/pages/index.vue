@@ -4,18 +4,21 @@ import { restaurantJsonLd } from '@lupinum/ginko-preset-gastro'
 import { ArrowRight, Mail, MapPin, Phone } from '@lucide/vue'
 
 // The home page answers the first questions on the first screen: open now, the menu, how to reserve (phone and email,
-// no form). Below: today's lunch, a few dishes, the next events, photos, and the hours with the address.
+// no form) and where (the address with a map link). Below: today's lunch, a few dishes, the next events, photos, and
+// the hours with the address.
 const home = useGinko('home')
 const site = useGinko('site')
 const gallery = useGinko('gallery')
 const { groups } = useMenu()
-const { lunch, todayDish } = useLunch()
-const { ctx, today } = useHours()
-const { name, url } = useGinkoSite()
+const { lunch, days } = useLunch()
+const { ctx, today, now } = useHours()
+const { name, url, timeZone } = useGinkoSite()
 const { t, language } = useI18n('home')
 const path = useGinkoPath()
 const langOf = useGinkoLang()
 const country: string = useRuntimeConfig().public.ginko.country
+const { t: tm } = useI18n('menu')
+const allergenName = useAllergenName()
 
 const contact = computed(() => site.value.data)
 const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
@@ -26,10 +29,20 @@ const address = computed(() => [contact.value.street, [contact.value.postalCode,
 // "Open in maps": a link to OpenStreetMap with the address, no embedded map (nothing loads from another company).
 const maps = computed(() => (address.value.length ? `https://www.openstreetmap.org/search?query=${encodeURIComponent([...address.value, country].join(', '))}` : undefined))
 
+// Today's lunch while it is served; once today's lunch time is over, tomorrow's dish (or nothing), so the card never
+// offers a dish the kitchen no longer serves. The lead says when lunch is served; a key under the card names the
+// allergen letters, since a phone has no hover (hidden from screen readers, which read each letter's name already).
+const lunchCard = computed(() => {
+  const day = days.value.find((d) => d.today && !d.closed)
+  if (day && !(day.served && clockIn(timeZone, now.value) >= day.served.to)) return { day, title: t('lunch') }
+  const tomorrow = days.value.find((d) => d.date === plusDays(today.value, 1) && !d.closed)
+  return tomorrow ? { day: tomorrow, title: t('lunchTomorrow') } : undefined
+})
+const lunchAllergens = computed(() => allergenList(lunchCard.value?.day.allergens.map(String)).map((code) => `${code} ${allergenName(code)}`).join(', '))
+
 // The house for search engines: a Restaurant with address, phone, opening hours (the same rule as the page) and the
 // menu with today's prices.
 const absolute = (p: string) => new URL(p, url).href
-const { t: tm } = useI18n('menu')
 const restaurant = computed(() => restaurantJsonLd({
   name,
   url: absolute(path('home')),
@@ -61,19 +74,27 @@ usePageSeo(() => ({ home: true, description: home.value.data.lead, image: home.v
       <template #status>
         <HoursToday />
       </template>
-      <p v-if="contact.email" class="text-small text-muted-foreground">
-        {{ t('orEmail') }}
-        <a :href="`mailto:${contact.email}`" class="font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ contact.email }}</a>
-      </p>
+      <div class="flex flex-col text-small text-muted-foreground">
+        <p v-if="contact.email">
+          {{ t('orEmail') }}
+          <a :href="`mailto:${contact.email}`" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ contact.email }}</a>
+        </p>
+        <p v-if="address.length" class="flex flex-wrap items-center gap-x-2">
+          <MapPin class="size-4 shrink-0" aria-hidden="true" />
+          <span>{{ address.join(', ') }}</span>
+          <a v-if="maps" :href="maps" rel="noopener" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ t('maps') }}</a>
+        </p>
+      </div>
     </BlockHero>
 
-    <BlockSection v-if="todayDish" :title="t('lunch')">
+    <BlockSection v-if="lunchCard" :title="lunchCard.title" :lead="lunchCard.day.served ? tm('lunch.served', { from: lunchCard.day.served.from, to: lunchCard.day.served.to }) : undefined">
       <div class="flex flex-col gap-4 rounded-block border p-6">
         <div class="flex items-baseline justify-between gap-6">
-          <p class="text-lead font-medium" :lang="langOf(lunch, `days.${todayDish._id}.dish`)">{{ todayDish.dish }}</p>
-          <p v-if="todayDish.price" class="shrink-0 text-lead tabular-nums">{{ formatMoney(todayDish.price, language) }}</p>
+          <p class="text-lead font-medium" :lang="langOf(lunch, `days.${lunchCard.day._id}.dish`)">{{ lunchCard.day.dish }}</p>
+          <p v-if="lunchCard.day.price" class="shrink-0 text-lead tabular-nums">{{ formatMoney(lunchCard.day.price, language) }}</p>
         </div>
-        <MenuAllergens :codes="todayDish.allergens.map(String)" />
+        <MenuAllergens :codes="lunchCard.day.allergens.map(String)" />
+        <p v-if="lunchAllergens" class="text-xs text-muted-foreground" aria-hidden="true">{{ tm('allergens.label', { names: lunchAllergens }) }}</p>
         <NuxtLink :to="path('lunch')" class="inline-flex min-h-11 items-center gap-2 self-start font-medium text-primary underline-offset-4 hover:underline">
           {{ t('lunchWeek') }}
           <ArrowRight class="size-4 rtl:-scale-x-100" aria-hidden="true" />
@@ -109,7 +130,7 @@ usePageSeo(() => ({ home: true, description: home.value.data.lead, image: home.v
       <div class="grid gap-12 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-24">
         <div class="flex flex-col gap-4">
           <h3 class="text-body font-semibold">{{ t('hours') }}</h3>
-          <HoursTable />
+          <HoursTable :level="4" />
         </div>
         <div class="flex flex-col gap-4">
           <h3 class="text-body font-semibold">{{ t('address') }}</h3>

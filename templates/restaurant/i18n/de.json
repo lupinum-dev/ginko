@@ -4,6 +4,7 @@
     "orEmail": "Oder schreiben Sie uns:",
     "menu": "Zur Speisekarte",
     "lunch": "Heute zu Mittag",
+    "lunchTomorrow": "Morgen zu Mittag",
     "lunchWeek": "Das Mittagsmenü der Woche",
     "dishes": "Aus der Speisekarte",
     "dishesLead": "Wiener Klassiker, so gekocht, wie wir sie selbst gern essen.",
@@ -19,5 +20,12 @@
   },
   "events": {
     "lead": "Weinabende, Kochkurse und mehr in unserem Haus."
+  },
+  "reservations": {
+    "call": "{phone} anrufen",
+    "email": "E-Mail schreiben"
+  },
+  "menu": {
+    "lead": "Wiener Klassiker aus unserer Küche. Fragen Sie nach den Tagesempfehlungen."
   }
 }

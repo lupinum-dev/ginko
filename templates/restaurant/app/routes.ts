@@ -24,6 +24,7 @@ export const slugs: Record<`/${string}`, Partial<Record<SiteLocale, `/${string}`
   '/lunch': { de: '/mittagsmenue', it: '/pranzo' },
   '/events': { de: '/veranstaltungen', it: '/eventi' },
   '/gallery': { de: '/galerie', it: '/galleria' },
+  '/reservations': { de: '/reservierung', it: '/prenotazioni' },
   '/legal': { de: '/rechtliches', it: '/legale' },
 }
 

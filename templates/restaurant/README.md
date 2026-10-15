@@ -94,14 +94,15 @@ the order.
 | A price change from a date | `nextPrice` and `priceFrom` in its file; the menu announces it two weeks ahead |
 | Lunch of the week (Monday to Friday, `weekOf` = its Monday) | `content/lunch.md` |
 | Events (date, start time, price, photo, text) | `content/events/<n>.<name>.md`; it leaves the site after its last day |
-| Notices above the header ("Fully booked tonight") | `content/notices/<n>.<name>.md`: `text`, `until` (the last day it shows) |
+| Notices above the header ("Fully booked tonight") | `content/notices/<n>.<name>.md`: `text`, `until` (the last day it shows). Something that is always true (groups book by phone) belongs on a page, not in a notice |
 | Photos of the gallery | `content/gallery.md` (and the alt texts in each translation, same order) |
-| Pages (About, Reservations, …) | `content/pages/<n>.<name>.md`; a translation sets its own address with `slug:` |
+| Reservations page: title, lead and text (the call and email buttons and the opening hours come from `content/site.md` and `content/hours.md`) | `content/reservations.md` |
+| Pages (About, …) | `content/pages/<n>.<name>.md`; a translation sets its own address with `slug:` |
 | Name, address, email, phone (footer, reservation buttons, search engines) | `content/site.md` |
 | Privacy policy, terms, imprint | `content/legal/` (placeholders: replace them before you go live) |
 | Site name, description for search engines, country | `ginko.config.ts` (`name`, `seo.description`, `country`) |
 | Navigation, the line under the name in the footer, footer links, profiles elsewhere | `app/app.config.ts` |
-| Texts of the home page sections | `i18n/<language>.json` |
+| Texts of the home page sections and the reservation buttons | `i18n/<language>.json` |
 | Texts of buttons, labels, allergen names | `i18n/<feature>/<language>.json`; to change one, set it under the feature's key in `i18n/<language>.json` (as `events.lead` there does) |
 
 Allergens use the EU letters as Austrian menus write them: A gluten, B crustaceans, C egg, D fish, E peanuts, F soy,
@@ -151,14 +152,20 @@ prefix.
 - **Remove one:** start fresh with `npm create ginko@latest my-restaurant -- --template restaurant --locales en,de`.
   By hand: delete it from `locales` and from the maps in `app/routes.ts` and `languages` in `ginko.config.ts`, then
   delete its files (`*.it.md`, `i18n/it.json`, `i18n/*/it.json`).
-- **Add one** (for example French): add `'fr'` to `locales` and `languages`, its addresses to `slugs`, translations
-  `content/**/*.fr.md` (pages without one stay in the main language), `i18n/fr.json` and `i18n/<feature>/fr.json` for
-  each feature folder in `i18n/`.
+- **Add one** (for example French): add `'fr'` to `locales` and `languages`, its addresses to `slugs`, `i18n/fr.json`
+  and `i18n/<feature>/fr.json` for each feature folder in `i18n/`, and the content in French. An entry with its own
+  address (a page, an event, a legal text) without its `.fr.md` is left out of the French site: no page, no link, not
+  in the sitemap. So translate at least `content/legal/*.fr.md` (without them the French site has no imprint, which
+  Austria and Germany require), `content/pages/*.fr.md` and `content/events/*.fr.md`. Everything else (dishes,
+  notices, hour plans and the single files `site`, `home`, `reservations`, `gallery`, `hours`, `lunch`) shows the main
+  language's text until it has a `.fr.md`. Add `fr` labels to `nav`, `footer` and `tagline` in `app/app.config.ts`:
+  a link without one shows the main language's label, and the footer shows no tagline.
 
 ## Add a booking or contact form
 
 The site sends no data to other companies, so it has no form: guests reserve by phone or email. To add online
-booking, link to a booking service of your choice from the Reservations page (Markdown link) or set `booking` on an
+booking, link to a booking service of your choice from the reservations page (a Markdown link in
+`content/reservations.md`) or set `booking` on an
 event (its page then shows "Book a place" instead of phone and email). Name the service in your privacy policy.
 
 ## Remove a feature
@@ -166,7 +173,7 @@ event (its page then shows "Book a place" instead of phone and email). Name the 
 | Feature | Delete |
 |---|---|
 | Lunch of the week | `content/lunch*.md`, the `lunch` brick and the `lunch` page in `ginko.config.ts`, `app/pages/lunch.vue`, `app/components/menu/LunchDays.vue`, `useLunch` in `app/composables/useMenu.ts`, the "Today's lunch" section in `app/pages/index.vue`, the `lunch` entry of `nav` and `slugs` |
-| Events | `content/events/`, the `events` brick and page in `ginko.config.ts`, `app/pages/events/`, `app/components/event/`, `app/composables/useEvents.ts`, `i18n/events/`, `<EventUpcoming />` in `app/pages/index.vue`, the `events` entry of `nav` and `slugs` |
+| Events | `content/events/`, the `events` brick and page in `ginko.config.ts`, `app/pages/events/`, `app/components/event/`, `app/composables/useEvents.ts`, `i18n/events/`, the `events` key in each `i18n/<language>.json`, `<EventUpcoming />` in `app/pages/index.vue`, the `events` entry of `nav` and `slugs` |
 | Gallery | `content/gallery*.md`, the `gallery` brick and page in `ginko.config.ts`, `app/pages/gallery.vue`, `app/components/block/Gallery.vue`, `app/components/site/Lightbox.vue`, `i18n/gallery/`, the gallery section in `app/pages/index.vue`, the `gallery` entry of `footer` and `slugs` |
 | Winter hours | `content/hourPlans/` (keep the `hourPlans` brick: without entries it shows nothing) |
 | Notices | `content/notices/` (keep the brick: without entries nothing shows) |

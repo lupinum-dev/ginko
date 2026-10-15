@@ -3,8 +3,8 @@
 @import "./tokens.css";
 
 /* This template's accent and fonts (DESIGN.md "Your accent"). Everything else comes from tokens.css.
-   restaurant: orange-700 / orange-300. Text on the accent 5.2:1 light, 9.6:1 dark; the accent on the page 5.2:1 light,
-   11.6:1 dark. The focus ring and links in text use the accent. */
+   restaurant: orange-700 / orange-300. Text on the accent 5.2:1 light, 9.3:1 dark; the accent on the page 5.2:1 light,
+   11.7:1 dark. The focus ring and links in text use the accent. */
 :root {
   --brand: #c2410c;
   --brand-foreground: #ffffff;

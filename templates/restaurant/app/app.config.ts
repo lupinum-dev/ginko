@@ -12,6 +12,8 @@ export default defineAppConfig({
       de: 'Ein Gasthaus in Familienhand in Wien, mit Wiener Küche und Gastgarten.',
       it: 'Un Gasthaus di famiglia a Vienna, con cucina viennese e giardino.',
     },
+    // The schema.org type of the home page's organisation. This home page replaces it with `Restaurant` (a kind of
+    // LocalBusiness, with opening hours and the menu: restaurantJsonLd in app/pages/index.vue); remove that, and this applies.
     organization: 'LocalBusiness',
     // At most 6. A page of ginko.config.ts `pages` with its label per language (the page's title), or an entry of
     // content/pages/ by id (`pages/<file name without number>`).
@@ -20,7 +22,7 @@ export default defineAppConfig({
       { page: 'lunch', label: { en: 'Lunch', de: 'Mittagsmenü', it: 'Pranzo' } },
       { page: 'events', label: { en: 'Events', de: 'Veranstaltungen', it: 'Eventi' } },
       { entry: 'pages/about' },
-      { entry: 'pages/reservations' },
+      { page: 'reservations', label: { en: 'Reservations', de: 'Reservierung', it: 'Prenotazioni' } },
     ],
     footer: [{ page: 'gallery', label: { en: 'Gallery', de: 'Galerie', it: 'Galleria' } }],
     // For example { label: 'Instagram', url: 'https://www.instagram.com/…' }.

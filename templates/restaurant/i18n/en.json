@@ -4,6 +4,7 @@
     "orEmail": "Or write to us:",
     "menu": "See the menu",
     "lunch": "Today’s lunch",
+    "lunchTomorrow": "Tomorrow’s lunch",
     "lunchWeek": "This week’s lunch",
     "dishes": "From the menu",
     "dishesLead": "Viennese classics, cooked the way we like to eat them ourselves.",
@@ -19,5 +20,12 @@
   },
   "events": {
     "lead": "Wine evenings, cooking classes and more at our house."
+  },
+  "reservations": {
+    "call": "Call {phone}",
+    "email": "Send an email"
+  },
+  "menu": {
+    "lead": "Viennese classics from our kitchen. Ask us about today’s specials."
   }
 }
