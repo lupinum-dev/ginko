@@ -19,10 +19,10 @@ const props = defineProps<{
   /** The form being edited: its brick, its entry (none = new), and the unsaved values. */
   editing?: { brick: string; entry?: string; data: Data }
   locale: Locale
-  /** The page to show first; undefined while a new entry has no address yet (see `waitsFor`). */
+  /** The page to show first; undefined while the entry has no page to show (see `notice`). */
   path?: string
-  /** The label of the field a new entry's address is made from, while it is empty: no page is shown until it is filled. */
-  waitsFor?: string
+  /** Shown in place of the page while `path` is undefined: why there is none (no address yet, not translated). */
+  notice?: string
   files?: (id: string) => FileInfo | undefined
   /** Changes when the files behind `files` change (an upload became ready), so the bundle is sent again. */
   revision?: string
@@ -110,7 +110,7 @@ onBeforeUnmount(() => { window.removeEventListener('message', onMessage); clearT
       <span class="truncate text-muted-foreground">{{ path }}</span>
     </header>
     <div v-if="!path" class="grid place-content-center p-6 text-center" role="status">
-      <p class="max-w-[36ch] text-sm text-muted-foreground">{{ t('entry.preview.needsTitle', { field: waitsFor ?? '' }) }}</p>
+      <p class="max-w-[36ch] text-sm text-muted-foreground">{{ notice }}</p>
     </div>
     <div v-else class="relative min-h-0">
       <iframe ref="frame" :key="session" :src="src" :title="t('entry.preview.frameTitle')" />

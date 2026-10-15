@@ -164,6 +164,8 @@
       "frameTitle": "Preview of the website",
       "stuck": "The preview does not load. Saving still works as usual.",
       "needsTitle": "The preview shows the page once “{field}” is filled in.",
+      "untranslated": "Not translated into {language} yet. Until then, the entry does not show on the website in this language.",
+      "untranslatedListed": "Not translated into {language} yet. Until then, the entry has no page of its own in this language. Lists show it in {main}.",
       "openSite": "Open website"
     },
     "remove": {

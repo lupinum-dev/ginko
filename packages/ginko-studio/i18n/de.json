@@ -164,6 +164,8 @@
       "frameTitle": "Vorschau der Website",
       "stuck": "Die Vorschau lädt nicht. Speichern funktioniert trotzdem wie gewohnt.",
       "needsTitle": "Die Vorschau zeigt die Seite, sobald „{field}“ ausgefüllt ist.",
+      "untranslated": "Noch nicht auf {language} übersetzt. Bis dahin ist der Eintrag auf der Website in dieser Sprache nicht zu sehen.",
+      "untranslatedListed": "Noch nicht auf {language} übersetzt. Bis dahin hat der Eintrag in dieser Sprache keine eigene Seite. Listen zeigen ihn auf {main}.",
       "openSite": "Website öffnen"
     },
     "remove": {

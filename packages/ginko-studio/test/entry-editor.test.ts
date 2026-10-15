@@ -163,3 +163,38 @@ test.each([
     vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
   }
 })
+
+// Wrong behaviour caught: the preview of an entry not translated into the language shown fell back to the site's first
+// page (/en/about-us) without a word, so the person saw an unrelated page (romi-10, J7 in another language).
+test.each([
+  ['hidden', undefined, 'Noch nicht auf Englisch übersetzt. Bis dahin ist der Eintrag auf der Website in dieser Sprache nicht zu sehen.'],
+  ['listed in the main language', 'fallback' as const, 'Noch nicht auf Englisch übersetzt. Bis dahin hat der Eintrag in dieser Sprache keine eigene Seite. Listen zeigen ihn auf Deutsch.'],
+])('the English preview of an untranslated new entry says it is %s there, and shows its page once translated', async (_name, untranslated, text) => {
+  vi.useFakeTimers()
+  vi.stubGlobal('useRoute', () => ({ query: { lang: 'en' } }))
+  try {
+    const routed = serializeSchema(defineSite({
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+      pages: { about: { de: '/ueber-uns', en: '/en/about-us' } },
+      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', route: { de: '/blog/[slug]', en: '/en/blog/[slug]' }, ...(untranslated ? { untranslated } : {}), fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+    }))
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref([]), error: ref(undefined) }))
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema: routed, brickKey: 'blog', brick: routed.bricks.blog!, canRemove: false },
+      global: { stubs: { EntryFields: true, NuxtLink: true }, components: { PreviewPane } },
+    })
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Neuer Beitrag' })
+    await vi.advanceTimersByTimeAsync(300)
+    await wrapper.findAll('button').find((b) => b.text() === 'Vorschau')!.trigger('click')
+    expect(wrapper.find('iframe').exists()).toBe(false)
+    expect(wrapper.text()).toContain(text)
+
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Neuer Beitrag', en: 'New post' })
+    await vi.advanceTimersByTimeAsync(300)
+    expect(new URL(wrapper.get('iframe').attributes('src')!).searchParams.get('path')).toBe('/en/blog/new-post')
+  } finally {
+    vi.useRealTimers()
+    vi.stubGlobal('useRoute', () => ({ query: {} }))
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
+  }
+})

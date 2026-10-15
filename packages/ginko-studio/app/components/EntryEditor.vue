@@ -2,7 +2,7 @@
      status, a sticky save bar, and the preview beside it on wide screens. Same engine as the tasks. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, textIn, urlsFor, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, routeUrls, textIn, untranslatedMode, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
 import { draftSlugs, languageName, leafTranslation, previewFileIds, publishQuestion, titleOf } from '../utils/content'
@@ -391,15 +391,33 @@ const previewWaitsFor = computed(() => {
   if (slug?.type !== 'slug' || textIn(typed.value[slug.from], main.value).trim()) return undefined
   return shown(props.brick.fields[slug.from]!.label)
 })
-// Preview: the entry's own page when it has a route, else the site's first page in this language.
+/**
+ * The entry's addresses per language as the preview shows it, the typed values over the stored ones (a task form
+ * holds only some fields), so a translation typed just now gives it its page: `routed` from the route alone, `pages`
+ * without the languages it is untranslated in (core urlsFor). Undefined for a brick without a route.
+ */
+const previewUrls = computed(() => {
+  const brick = props.brick
+  if (brick.kind !== 'collection' || !brick.route) return undefined
+  const entry = { id: props.entry?._id ?? 'new', data: { ...props.entry?.data, ...typed.value, ...newSlugs.value } as never }
+  return { routed: routeUrls(props.schema, brick, entry), pages: urlsFor(props.schema, props.brickKey, brick, entry) }
+})
+/** Why the preview shows no page: a new entry's address cannot be made yet, or the entry has no page in this language until it is translated. */
+const previewNotice = computed(() => {
+  const urls = previewUrls.value
+  if (!urls) return undefined
+  if (previewWaitsFor.value) return t('entry.preview.needsTitle', { field: previewWaitsFor.value })
+  if (!urls.routed[locale.value] || urls.pages[locale.value]) return undefined
+  const language = languageName(locale.value, uiLocale.value)
+  // How the site treats it there (core untranslatedMode): left out, or listed in the main language without a page.
+  return untranslatedMode(props.brick as CollectionBrick) === 'hide'
+    ? t('entry.preview.untranslated', { language })
+    : t('entry.preview.untranslatedListed', { language, main: languageName(main.value, uiLocale.value) })
+})
+// Preview: the entry's own page when it has one in this language, else the site's first page in this language.
 const previewPath = computed(() => {
-  if (props.brick.kind === 'collection' && props.brick.route) {
-    if (previewWaitsFor.value) return undefined
-    const data = props.entry ? props.entry.data : previewData.value
-    const url = urlsFor(props.schema, props.brickKey, props.brick as CollectionBrick, { id: props.entry?._id ?? 'new', data: data as never })[locale.value]
-    if (url) return url
-  }
-  return Object.values(props.schema.pages)[0]?.[locale.value] ?? '/'
+  if (previewNotice.value) return undefined
+  return previewUrls.value?.pages[locale.value] ?? Object.values(props.schema.pages)[0]?.[locale.value] ?? '/'
 })
 const showPreview = ref(false)
 
@@ -561,7 +579,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
       :editing="{ brick: brickKey, entry: entry?._id, data: previewData }"
       :locale="locale"
       :path="previewPath"
-      :waits-for="previewWaitsFor"
+      :notice="previewNotice"
       :files="files"
       :revision="fileIds.join(',') + ':' + (fileInfo ? Object.values(fileInfo).filter(Boolean).length : 0)"
     />

@@ -164,6 +164,8 @@
       "frameTitle": "Vista previa del sitio web",
       "stuck": "La vista previa no carga. Guardar sigue funcionando como siempre.",
       "needsTitle": "La vista previa muestra la página en cuanto rellenes “{field}”.",
+      "untranslated": "Aún no está traducido al {language}. Hasta entonces, la entrada no aparece en el sitio web en este idioma.",
+      "untranslatedListed": "Aún no está traducido al {language}. Hasta entonces, la entrada no tiene página propia en este idioma. Las listas la muestran en {main}.",
       "openSite": "Abrir sitio web"
     },
     "remove": {
