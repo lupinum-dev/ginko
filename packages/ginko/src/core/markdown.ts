@@ -16,6 +16,7 @@ import toc from 'comark/plugins/toc'
 import { bare, coreMessage, msg, type Described } from './messages.ts'
 import { checkComponentTree, componentSlotNodes, isBlockedTag, type ComponentRegistry } from './components.ts'
 import { isSafeHref } from './href.ts'
+import { withoutCode } from './file-refs.ts'
 import type { Json } from './types.ts'
 
 /**
@@ -303,33 +304,36 @@ function referenceDefinitions(onDrop: () => void) {
   }))()
 }
 
-/** An HTML comment; spaces before it go with it, so `a <!-- x --> b` reads `a b`. */
-const HTML_COMMENT = /[ \t]*<!--[\s\S]*?-->/g
-/** Tags whose text is shown as written: a comment there is text. */
-const LITERAL_TAGS = new Set(['pre', 'code', 'math', 'mermaid'])
+const HTML_COMMENT = /<!--[\s\S]*?-->/g
 
 /**
  * Raw HTML is never parsed, so an HTML comment (`<!-- TODO -->`) would be shown as text. It is a note for the people
- * who edit the text: the stored text keeps it, the tree drops it (a paragraph that was only a comment goes entirely).
- * The `<!-- more -->` line stays for moreMarker, which runs next. `onDrop` notes that the tree does not show the whole text.
+ * who edit the text: the stored text keeps it, the parsed text loses it before tokenizing, so a comment around
+ * formatting or around whole paragraphs goes too. Code keeps it (the same scan as for file references). Its line
+ * breaks stay, so problem lines still count in the stored text. A `<!-- more -->` line stays for moreMarker.
+ * `onDrop` notes that the tree does not show the whole text.
  */
 function htmlComments(onDrop: () => void) {
-  const cleaned = (list: Node[]): Node[] => list.flatMap((node): Node[] => {
-    if (typeof node === 'string') {
-      const text = node.replace(HTML_COMMENT, '')
-      if (text === node) return [node]
-      onDrop()
-      return text ? [text] : []
-    }
-    const [tag, props, ...children] = node
-    if (tag === null || LITERAL_TAGS.has(tag) || (tag === 'p' && children.length === 1 && children[0] === MORE_MARKER)) return [node]
-    const kept = cleaned(children)
-    return tag === 'p' && kept.length === 0 && children.length > 0 ? [] : [[tag, props, ...kept]]
-  })
   return defineComarkPlugin(() => ({
     name: 'ginko-comments',
-    post(state) {
-      if (state.markdown.includes('<!--')) state.tree.nodes = cleaned(state.tree.nodes)
+    pre(state) {
+      const text = state.markdown
+      if (!text.includes('<!--')) return
+      let out = ''
+      let last = 0
+      for (const match of withoutCode(text).matchAll(HTML_COMMENT)) {
+        const lineStart = text.lastIndexOf('\n', match.index) + 1
+        const lineEnd = text.indexOf('\n', match.index)
+        if (text.slice(lineStart, lineEnd === -1 ? undefined : lineEnd).trim() === MORE_MARKER) continue
+        // Spaces before it go with it, so `a <!-- x --> b` reads `a b`.
+        let start = match.index
+        while (start > last && (text[start - 1] === ' ' || text[start - 1] === '\t')) start--
+        out += text.slice(last, start) + match[0].replace(/[^\n]/g, '')
+        last = match.index + match[0].length
+      }
+      if (last === 0) return
+      state.markdown = out + text.slice(last)
+      onDrop()
     },
   }))()
 }

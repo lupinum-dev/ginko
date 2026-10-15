@@ -43,7 +43,7 @@ const blank = (code: string) => code.replace(/[^\n]/g, ' ')
  * The text with its code blanked out, the length kept so positions stay: fenced code blocks and inline code. A
  * `$file.<id>` there is text (the tree shows it as code), not a file the text uses.
  */
-function withoutCode(text: string): string {
+export function withoutCode(text: string): string {
   let fence: string | undefined
   const lines = text.split('\n').map((line) => {
     const match = FENCE.exec(line)

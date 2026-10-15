@@ -104,10 +104,16 @@ describe('parseMarkdown profiles', () => {
     expect(fileRefsIn(text)).toEqual(new Set(['k57logo']))
   })
 
-  // Wrong behaviour caught: `<!-- TODO -->` was shown on the site as a paragraph of text.
-  test('HTML comments are notes in the stored text: the tree leaves them out, code keeps them', async () => {
-    const { value } = await parseMarkdown('Text <!-- TODO --> mehr\n\n<!--\nnur für uns\n-->\n\n`<!-- Code -->`', { profile: 'rich' })
-    expect(value.nodes).toEqual([['p', {}, 'Text mehr'], ['p', {}, ['code', {}, '<!-- Code -->']]])
+  // Wrong behaviour caught: `<!-- TODO -->` was shown on the site as a paragraph of text, also when it held
+  // formatting or commented out whole paragraphs.
+  test.each([
+    ['a comment in a line, one alone and one in code', 'Text <!-- TODO --> mehr\n\n<!--\nnur für uns\n-->\n\n`<!-- Code -->`', [['p', {}, 'Text mehr'], ['p', {}, ['code', {}, '<!-- Code -->']]]],
+    ['formatting inside a comment', 'Text <!-- TODO: **fix** this --> weiter', [['p', {}, 'Text weiter']]],
+    ['a commented-out section of two paragraphs', 'Eins\n\n<!--\nAlt\n\nAuch alt\n-->\n\nZwei', [['p', {}, 'Eins'], ['p', {}, 'Zwei']]],
+  ])('HTML comments are notes in the stored text, the tree leaves them out: %s', async (_name, text, nodes) => {
+    const { value, body } = await parseMarkdown(text, { profile: 'rich' })
+    expect(value.nodes).toEqual(nodes)
+    expect(body).toBe(text)
   })
 
   test('raw HTML stays text, so it never becomes an element', async () => {
