@@ -97,3 +97,35 @@ test('the preview sends the site only once its entries have loaded', async () =>
     vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
   }
 })
+
+// Wrong behaviour caught: while a save waited for the network, the bar said "Speichert …" next to "Nicht gespeichert"
+// and nothing said the input was safe, so people clicked again or closed the tab.
+test('a save on its way shows no "Nicht gespeichert"; without network the bar says the input is kept', async () => {
+  let land!: () => void
+  vi.stubGlobal('useOps', () => ({ opId: () => 'op1', createEntry: () => new Promise((resolve) => { land = () => resolve({ entry: 'e1' }) }) }))
+  try {
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, canRemove: false },
+      global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+    })
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Herbstfest' })
+    await flushPromises()
+    expect(wrapper.get('.bar').text()).toContain('Nicht gespeichert')
+
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.get('.bar').text()).toContain('Speichert …')
+    expect(wrapper.get('.bar').text()).not.toContain('Nicht gespeichert')
+    expect(wrapper.find('.bar [role="status"]').exists()).toBe(false)
+
+    window.dispatchEvent(new Event('offline'))
+    await flushPromises()
+    expect(wrapper.get('.bar [type="submit"]').text()).toBe('Wartet auf Verbindung …')
+    expect(wrapper.get('.bar [role="status"]').text()).toBe('Keine Verbindung. Deine Eingaben sind in diesem Browser gesichert und werden gespeichert, sobald du wieder online bist.')
+    window.dispatchEvent(new Event('online'))
+    land()
+    await flushPromises()
+  } finally {
+    vi.stubGlobal('useOps', () => ({}))
+  }
+})

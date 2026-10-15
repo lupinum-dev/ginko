@@ -11,6 +11,7 @@ import { clearLocalDraft, localDraftKey, readLocalDraft, useLocalDraftWriter, wr
 import { BLOCKERS, FLUSHERS, type Issue } from '@lupinum/ginko-editor'
 import { mergeRows, stableJson } from '@lupinum/ginko/internal'
 import type { Who } from '../utils/who'
+import { useOnline } from '@vueuse/core'
 
 /** Stored values are JSON; a JSON copy also unwraps Vue's proxies (structuredClone cannot). */
 export const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value ?? null)) ?? value
@@ -56,8 +57,11 @@ export function useEntryForm(o: EntryFormOptions) {
   /** The last save went to approval (SPEC 17): the input stays, nothing changed on the website, so no new rev. Cleared by the next edit. */
   const waiting = ref(false)
   // A save does not fail while the connection is down: Convex sends it once it is back. Until then the button says so.
+  // Both signals count: Convex notices a lost network only when its socket closes, which can take up to a minute (its
+  // inactivity check); the browser's own signal comes at once. A slow save on a working connection is not offline.
   const { isConnected } = useConvexConnectionState()
-  const offline = computed(() => busy.value && !isConnected.value)
+  const online = useOnline()
+  const offline = computed(() => busy.value && (!isConnected.value || !online.value))
   /** Leaves to confirm as translated without a change (Alles bearbeiten, foreign locale). */
   const confirm = ref<string[]>([])
   const blockers = reactive(new Map<string, string>())

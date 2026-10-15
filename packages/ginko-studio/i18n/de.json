@@ -116,6 +116,7 @@
     },
     "save": {
       "waiting": "Wartet auf Verbindung …",
+      "offlineKept": "Keine Verbindung. Deine Eingaben sind in diesem Browser gesichert und werden gespeichert, sobald du wieder online bist.",
       "saving": "Speichert …",
       "draft": "Entwurf speichern",
       "save": "Speichern"

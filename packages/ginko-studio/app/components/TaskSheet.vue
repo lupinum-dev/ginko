@@ -193,6 +193,7 @@ function onCancel(event: Event) {
 
       <footer class="flex flex-wrap items-center gap-2 border-t bg-card px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <p v-if="waiting && !dirty && !confirmClose" class="basis-full font-medium text-warning" role="status">{{ t('history.waiting') }}</p>
+        <p v-if="offline" class="basis-full text-sm font-medium text-warning" role="status">{{ t('entry.save.offlineKept') }}</p>
         <template v-if="confirmClose">
           <p class="basis-full font-semibold" role="alert">{{ t('entry.discard.question') }}</p>
           <Button type="button" variant="destructive" @click="discardAndClose">{{ t('entry.discard.confirm') }}</Button>

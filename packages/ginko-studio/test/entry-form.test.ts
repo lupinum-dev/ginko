@@ -197,6 +197,23 @@ describe('saving while the connection is down', () => {
       vi.useRealTimers()
     }
   })
+
+  // Wrong behaviour caught: with the network gone, the button said "Wird gespeichert …" for up to a minute, because
+  // the Convex socket notices a lost network only when it closes or after its 60 s check.
+  test('the browser going offline during a save waits at once, also while the Convex socket still looks open', async () => {
+    let land!: () => void
+    landing = new Promise((resolve) => { land = resolve })
+    const form = mountForm()
+    form.setField('name', 'Kalbsschnitzel')
+    const saving = form.save()
+    await vue.nextTick()
+    window.dispatchEvent(new Event('offline'))
+    expect([connected.value, form.busy.value, form.offline.value]).toEqual([true, true, true])
+    window.dispatchEvent(new Event('online'))
+    expect(form.offline.value).toBe(false)
+    land()
+    expect(await saving).toBe(true)
+  })
 })
 
 describe('ConflictPanel', () => {

@@ -504,7 +504,9 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           <Button v-if="isDraft && !publishing && !removed" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
           <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
           <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>
-          <span v-else-if="dirty" class="font-medium text-warning">{{ t('entry.unsaved') }}</span>
+          <!-- While a save runs the button says what happens; text typed meanwhile is "Nicht gespeichert" once it ends. -->
+          <span v-else-if="dirty && !busy" class="font-medium text-warning">{{ t('entry.unsaved') }}</span>
+          <p v-if="offline" class="basis-full text-sm font-medium text-warning" role="status">{{ t('entry.save.offlineKept') }}</p>
           <Button type="button" variant="ghost" class="ml-auto" :aria-pressed="showPreview" @click="showPreview = !showPreview">{{ showPreview ? t('entry.preview.close') : t('entry.preview.label') }}</Button>
           <template v-if="drafts && entry && state === 'live' && !removed">
             <Button v-if="!askUnpublish" type="button" variant="ghost" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
