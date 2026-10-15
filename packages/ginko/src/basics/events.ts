@@ -8,8 +8,9 @@ import type { Field, Fields, Label, Locale, Task } from '../core/types.ts'
 import { both, sourceOf, type BasicsOptions } from './hours-bricks.ts'
 import { offerPrice, postalAddress, type Money, type PostalAddressInput } from './offer.ts'
 
-/** Options of `events()`: the detail page per locale is required. */
-export interface EventsOptions extends BasicsOptions { route: Record<Locale, RouteTemplate> }
+/** Options of `events()`: the detail page per locale. Without `route` the events have no pages (no links, no
+ *  sitemap entries); a site can still list them, and the Studio's Today page still shows the next one. */
+export interface EventsOptions extends BasicsOptions { route?: Record<Locale, RouteTemplate> }
 
 /**
  * @internal The events collection with a preset's booking label and the fields it adds after `start`; sites use
@@ -44,7 +45,7 @@ export function eventsBrick<const E extends Fields>(opts: EventsOptions, booking
     order: { field: 'when', dir: 'asc' },
     // `extra` keeps the fields generic, so the type cannot see that `when` is still the daterange.
     visible: { mode: 'until', field: 'when' as never },
-    route: opts.route,
+    ...(opts.route ? { route: opts.route } : {}),
     tasks: tasks as unknown as readonly Task<typeof fields>[],
   })
 }

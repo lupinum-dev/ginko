@@ -24,20 +24,20 @@ const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
   <footer class="mt-section bg-muted print:hidden">
     <div class="mx-auto grid max-w-page gap-10 px-gutter py-14 md:grid-cols-3">
       <div class="flex flex-col gap-3">
-        <p class="font-display text-body font-semibold">{{ name }}</p>
+        <p class="font-display text-body font-semibold"><bdi>{{ name }}</bdi></p>
         <p v-if="tagline" class="max-w-xs text-small text-muted-foreground">{{ tagline }}</p>
         <ul v-if="config.socials.length" class="flex flex-wrap gap-x-5 gap-y-1 text-small" :aria-label="t('footer.links')">
           <li v-for="social in config.socials" :key="social.url">
-            <a :href="safeHref(social.url)" rel="me noopener" class="inline-flex min-h-11 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{{ social.label }}</a>
+            <a :href="safeHref(social.url)" rel="me noopener" class="inline-flex min-h-11 min-w-11 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{{ social.label }}</a>
           </li>
         </ul>
       </div>
 
-      <nav v-if="pages.length" aria-labelledby="footer-pages" class="flex flex-col gap-2">
+      <nav v-if="pages.length" aria-labelledby="footer-pages" class="flex flex-col gap-2 print:hidden">
         <h2 id="footer-pages" class="text-small font-semibold">{{ t('footer.pages') }}</h2>
         <ul class="flex flex-col text-small">
           <li v-for="link in pages" :key="link.key">
-            <SiteNavLink :to="link.to" class="inline-flex min-h-11 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline aria-[current=page]:text-foreground aria-[current=page]:underline">{{ link.label }}</SiteNavLink>
+            <SiteNavLink :to="link.to" class="inline-flex min-h-11 min-w-11 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline aria-[current=page]:text-foreground aria-[current=page]:underline">{{ link.label }}</SiteNavLink>
           </li>
         </ul>
       </nav>
@@ -48,26 +48,28 @@ const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
           <component :is="status" />
         </div>
         <address class="flex flex-col text-small text-muted-foreground not-italic">
-          <span v-if="contact.city" class="py-2">
-            <template v-if="contact.legalName">{{ contact.legalName }}<br></template>
-            <template v-if="contact.street">{{ contact.street }}<br></template>
-            {{ contact.postalCode }} {{ contact.city }}
+          <!-- Each line keeps the direction of its own text (bdi), so a Latin address keeps its order and its full
+               stops on a right-to-left page; email and phone are always left to right. -->
+          <span v-if="contact.city" class="flex flex-col py-2">
+            <span v-if="contact.legalName"><bdi>{{ contact.legalName }}</bdi></span>
+            <span v-if="contact.street"><bdi>{{ contact.street }}</bdi></span>
+            <span><bdi>{{ contact.postalCode }} {{ contact.city }}</bdi></span>
           </span>
-          <a v-if="contact.email" :href="`mailto:${contact.email}`" class="inline-flex min-h-11 items-center underline-offset-4 hover:text-foreground hover:underline">{{ contact.email }}</a>
-          <a v-if="contact.phone" :href="tel(contact.phone)" class="inline-flex min-h-11 items-center tabular-nums underline-offset-4 hover:text-foreground hover:underline">{{ contact.phone }}</a>
+          <a v-if="contact.email" :href="`mailto:${contact.email}`" dir="ltr" class="inline-flex min-h-11 items-center self-start underline-offset-4 hover:text-foreground hover:underline">{{ contact.email }}</a>
+          <a v-if="contact.phone" :href="tel(contact.phone)" dir="ltr" class="inline-flex min-h-11 items-center self-start tabular-nums underline-offset-4 hover:text-foreground hover:underline">{{ contact.phone }}</a>
         </address>
       </div>
     </div>
 
     <div class="border-t">
       <div class="mx-auto flex max-w-page flex-col gap-2 px-gutter py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-        <p>© {{ year }} {{ contact.legalName || name }}</p>
-        <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-8">
+        <p>© {{ year }} <bdi>{{ contact.legalName || name }}</bdi></p>
+        <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-8 print:hidden">
           <SiteLanguageSwitch names />
           <nav v-if="legal.items.length" :aria-label="t('footer.legal')">
             <ul class="flex flex-wrap gap-x-5">
               <li v-for="item in legal.items" :key="item.id">
-                <SiteNavLink :to="item.urls?.[locale] ?? ''" class="inline-flex min-h-11 items-center underline-offset-4 hover:text-foreground hover:underline aria-[current=page]:text-foreground aria-[current=page]:underline">{{ item.data.title }}</SiteNavLink>
+                <SiteNavLink :to="item.urls?.[locale] ?? ''" class="inline-flex min-h-11 min-w-11 items-center underline-offset-4 hover:text-foreground hover:underline aria-[current=page]:text-foreground aria-[current=page]:underline">{{ item.data.title }}</SiteNavLink>
               </li>
             </ul>
           </nav>

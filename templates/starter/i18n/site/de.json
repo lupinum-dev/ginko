@@ -28,5 +28,12 @@
     "failed": "Etwas ist schiefgelaufen",
     "failedText": "Bitte laden Sie die Seite neu. Wenn der Fehler bleibt, versuchen Sie es später noch einmal.",
     "home": "Zur Startseite"
+  },
+  "imprint": {
+    "address": "Anschrift",
+    "registry": "Registereintrag",
+    "vat": "Umsatzsteuer-ID",
+    "email": "E-Mail",
+    "phone": "Telefon"
   }
 }

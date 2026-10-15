@@ -9,6 +9,7 @@ export { posts, authors, changelog, postJsonLd, type PostsOptions, type Changelo
 export { jobs, jobJsonLd, type JobsOptions, type JobJsonLdInput } from './jobs.ts'
 export { faq, faqJsonLd } from './faq.ts'
 export { downloads } from './downloads.ts'
+export { rssXml, type RssFeed, type RssItem } from './rss.ts'
 // The platform twin of a files config: tools and tests check that a site can move to the Studio.
 export { withoutFiles } from '../core/site.ts'
 

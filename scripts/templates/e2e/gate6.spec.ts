@@ -1,10 +1,11 @@
-// Gate 6 (TEMPLATES.md §9): budgets in Chromium at 390 on the built server: gzip(script bodies) ≤ 150 kB, the LCP
+// Gate 6 (TEMPLATES.md §9): budgets in Chromium at 390 on the built server: gzip(script bodies) ≤ 150 kB (a feature
+// template's `ginko.scriptBudget` in package.json, at most 170), the LCP
 // resource ≤ 200 kB, CLS ≤ 0.1 until load + 1 s. No Lighthouse.
 import { gzipSync } from 'node:zlib'
 import { expect, site, sitePages, test } from './helpers.ts'
 
 const KB = 1024
-const BUDGET = { scripts: 150 * KB, lcp: 200 * KB, cls: 0.1 }
+const BUDGET = { scripts: Number(process.env.TEMPLATE_SCRIPT_BUDGET ?? 150) * KB, lcp: 200 * KB, cls: 0.1 }
 
 test('budgets on every page at 390', async ({ browser }) => {
   test.setTimeout(600_000)

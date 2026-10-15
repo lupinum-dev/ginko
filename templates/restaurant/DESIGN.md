@@ -62,7 +62,10 @@ as `seo.color` in `ginko.config.ts` too: it fills the share cards. The accents o
 | events | `#be123c` | `#ffffff` | `#fda4af` | `#4c0519` | Inter |
 
 `.surface-primary` turns a band into the accent colour and swaps text, buttons and the focus ring, so everything in
-it keeps its contrast (used by `BlockCta`).
+it keeps its contrast (used by `BlockCta`). A template may give the band its own colour with `--brand-surface` and
+`--brand-surface-foreground` in `main.css` (text on it ≥ 4.5:1). Use it in `.dark` when the dark accent is a light
+tint: a full-width band of it is the loudest surface on a near-black page. nonprofit: `#14532d` with `#f0fdf4`
+(8.7:1) in dark mode; buttons and links keep `#86efac`.
 
 Dark mode: `@nuxtjs/color-mode` puts `.dark` on `<html>` (first visit: the system setting); `dark:` utilities and
 `color-scheme` follow it. Printing always uses the light neutrals (paper is white), and the header, notices and

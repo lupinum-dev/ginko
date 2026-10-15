@@ -28,9 +28,13 @@ async function rewriteTsSpecifiers() {
         if (!existsSync(resolve(dirname(path), spec!))) throw new Error(`dist/nuxt/runtime/${file} imports ${spec}, which is not in dist`)
       }
     }
+    // Server files keep the `.d.ts` too: Nitro writes its auto-imports (getGinkoItems) without an extension, and
+    // TypeScript pairs an extensionless `items` only with `items.d.ts`. The app's files must not: the site's types
+    // augment `composables.d.mts`, and a second declaration file would be a second module without them.
     if (file.endsWith('.d.ts')) {
       await writeFile(path.replace(/\.d\.ts$/, '.d.mts'), rewritten)
-      await rm(path)
+      if (!file.startsWith('server/')) await rm(path)
+      else if (rewritten !== source) await writeFile(path, rewritten)
     } else if (rewritten !== source) await writeFile(path, rewritten)
   }
   // Module declarations, not a module: copied unchanged; module.ts adds it to the site's types.

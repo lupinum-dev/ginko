@@ -5,10 +5,14 @@ import { ArrowRight, Menu } from '@lucide/vue'
 // The navigation on phones: a sheet from the inline start (the right in right-to-left languages). reka-ui keeps the
 // focus inside while open and returns it to the button on close. After a navigation the sheet closes and the focus
 // moves to the new page's content instead, so keyboard and screen reader users start there, not in the header.
-// The language switch sits at the top, with full names, since the header has no room for it on phones. `wide`: the
-// header shows the links only from `xl` (more than 4), so the sheet stays until then; from `md` the header has the
-// language codes, so the sheet leaves them out.
-defineProps<{ links: { key: string, label: string, to: string }[], wide?: boolean }>()
+// The language switch sits at the top, with full names, since the header has no room for it on phones; from `md` the
+// header has the language codes, so the sheet leaves them out. The footer links (`more`: team, reports) follow the
+// menu as a second, quieter list, so they are one tap away on a phone too. `until`: the header shows its own links
+// from this breakpoint up, so the menu button hides there.
+type Link = { key: string, label: string, to: string }
+withDefaults(defineProps<{ links: Link[], more?: Link[], until?: 'md' | 'lg' | 'xl' }>(), { more: () => [], until: 'md' })
+// Whole class names, so Tailwind finds them in the source.
+const buttonHidden = { md: 'md:hidden', lg: 'lg:hidden', xl: 'xl:hidden' } as const
 const { t } = useI18n('site')
 const open = ref(false)
 const route = useRoute()
@@ -28,7 +32,7 @@ function returnFocus(event: Event) {
 <template>
   <Sheet v-model:open="open">
     <SheetTrigger as-child>
-      <Button variant="ghost" size="icon" :class="wide ? 'xl:hidden' : 'md:hidden'">
+      <Button variant="ghost" size="icon" class="print:hidden" :class="buttonHidden[until]">
         <Menu aria-hidden="true" />
         <span class="sr-only">{{ t('nav.open') }}</span>
       </Button>
@@ -46,6 +50,13 @@ function returnFocus(event: Event) {
           </li>
         </ul>
       </nav>
+      <ul v-if="more.length" class="mt-4 flex flex-col">
+        <li v-for="link in more" :key="link.key">
+          <SiteNavLink :to="link.to" class="flex min-h-11 items-center text-small text-muted-foreground underline-offset-4 hover:text-foreground hover:underline aria-[current=page]:text-foreground aria-[current=page]:underline">
+            {{ link.label }}
+          </SiteNavLink>
+        </li>
+      </ul>
     </SheetContent>
   </Sheet>
 </template>

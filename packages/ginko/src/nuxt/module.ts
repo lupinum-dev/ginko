@@ -1,4 +1,4 @@
-import { addComponent, addComponentsDir, addImports, addNitroPlugin, addPlugin, addServerHandler, addServerTemplate, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, extendPages, installModule, tryResolveModule } from '@nuxt/kit'
+import { addComponent, addComponentsDir, addImports, addNitroPlugin, addPlugin, addServerHandler, addServerImports, addServerTemplate, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, extendPages, installModule, tryResolveModule } from '@nuxt/kit'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { basename, join, relative, resolve as resolvePath } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -191,6 +191,8 @@ export default defineNuxtModule<SiteInput>({
     addComponent({ name: 'GinkoMarkdown', export: 'GinkoMarkdown', filePath: resolve(`./runtime/GinkoMarkdown.${runtimeExt}`) })
     addComponent({ name: 'GinkoImage', export: 'GinkoImage', filePath: resolve(`./runtime/GinkoImage.${runtimeExt}`) })
     for (const name of ['useGinkoMarkdown', 'fetchGinkoMarkdown']) addImports({ name, from: resolve(`./runtime/markdown.${runtimeExt}`) })
+    // Server routes of the site (a feed, a calendar) read entries with the same visibility rule as the pages.
+    addServerImports([{ name: 'getGinkoItems', from: resolve(`./runtime/server/items.${runtimeExt}`) }, { name: 'GinkoServerItem', from: resolve(`./runtime/server/items.${runtimeExt}`), type: true }])
   },
 })
 

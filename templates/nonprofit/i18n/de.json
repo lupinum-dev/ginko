@@ -1,0 +1,33 @@
+{
+  "home": {
+    "title": "Flussputz in Musterstadt",
+    "projects": "Aktuelle Projekte",
+    "news": "Neuigkeiten",
+    "voices": "Stimmen",
+    "partners": "Mit wem wir arbeiten",
+    "cta": {
+      "title": "Kommen Sie zu einer Aufräumaktion.",
+      "text": "Ohne Anmeldung. Bringen Sie feste Schuhe mit; Handschuhe, Greifzangen und Säcke haben wir.",
+      "action": "Mitmachen"
+    }
+  },
+  "blog": {
+    "lead": "Was wir am Fluss getan haben und was als Nächstes kommt."
+  },
+  "projects": {
+    "lead": "Woran wir das ganze Jahr arbeiten, und Aktionen, die bis zu einem festen Tag laufen.",
+    "until": "Aktion bis {date}"
+  },
+  "people": {
+    "lead": "Der Vorstand, von der Mitgliederversammlung gewählt, und unser Koordinator."
+  },
+  "downloads": {
+    "title": "Berichte",
+    "lead": "Unsere Jahresberichte und andere Dokumente zum Lesen und Speichern."
+  },
+  "event": {
+    "next": "Nächster Termin",
+    "time": "{start}–{end} Uhr",
+    "separator": ", "
+  }
+}

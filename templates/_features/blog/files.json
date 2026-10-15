@@ -1,0 +1,12 @@
+[
+  "app/components/blog/Byline.vue",
+  "app/components/blog/PostList.vue",
+  "app/composables/useBlog.ts",
+  "app/pages/news/[slug].vue",
+  "app/pages/news/index.vue",
+  "i18n/blog/ar.json",
+  "i18n/blog/de.json",
+  "i18n/blog/en.json",
+  "i18n/blog/fr.json",
+  "server/middleware/news-feed.ts"
+]

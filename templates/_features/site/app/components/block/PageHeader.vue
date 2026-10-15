@@ -1,5 +1,6 @@
 <script setup lang="ts">
-/** The first section of every page except home: the page's one h1, an optional lead and a meta line (a date). */
+/** The first section of every page except home: the page's one h1, an optional lead and a meta line (a date). The
+ *  slot takes more below them, such as a post's authors. */
 defineProps<{
   title: string
   lead?: string
@@ -13,6 +14,7 @@ defineProps<{
       <h1 class="text-h1">{{ title }}</h1>
       <p v-if="lead" class="text-lead text-muted-foreground">{{ lead }}</p>
       <p v-if="meta" class="text-small text-muted-foreground tabular-nums">{{ meta }}</p>
+      <slot />
     </div>
   </header>
 </template>

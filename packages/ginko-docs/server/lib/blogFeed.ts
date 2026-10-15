@@ -6,7 +6,7 @@ import fileBundles from '#ginko/files'
 import locales from '#ginko/locales'
 import type { Brick } from '@lupinum/ginko'
 import { isVisible, todayIn } from '@lupinum/ginko/internal'
-import { rssXml } from './rss'
+import { rssXml } from '@lupinum/ginko/basics'
 
 export function serveBlogFeed(event: RequestEvent, locale: string) {
   const config = useRuntimeConfig().public.ginko as { name: string; url: string; locales: string[]; timeZone: string; seo: { description?: string } }

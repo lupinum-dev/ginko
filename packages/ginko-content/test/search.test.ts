@@ -57,6 +57,16 @@ describe('search sections', () => {
     ])
   })
 
+  it('gives each section its own id when its heading has no anchor (Arabic script)', async () => {
+    // Wrong behaviour caught: the build stops with "duplicate ID" for a page with two Arabic headings.
+    const { records } = await build({
+      'content/docs/1.einstieg.md': md('title: Einstieg', 'Vorspann.\n\n## ما وجدناه\n\nنص.\n\n## ما التالي\n\nنص آخر.'),
+    })
+    expect(records.map((r) => r.heading)).toEqual([undefined, 'ما وجدناه', 'ما التالي'])
+    expect(new Set(records.map((r) => r.id)).size).toBe(3)
+    expect(records[1]).toMatchObject({ id: 'docs/einstieg#1', url: '/doku/einstieg' })
+  })
+
   it('indexes longtext fields such as the description but not short text fields such as a badge or an icon name', async () => {
     // Wrong behaviour caught: "Neu lucide:languages" (badge, icon) ends up in the indexed text and is found by search.
     const { records, find } = await build({

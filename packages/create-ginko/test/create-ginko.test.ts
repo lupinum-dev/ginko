@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -9,6 +9,12 @@ const cli = fileURLToPath(new URL('../index.mjs', import.meta.url))
 const version = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')).version
 const work = mkdtempSync(join(tmpdir(), 'create-ginko-test-'))
 afterAll(() => rmSync(work, { recursive: true, force: true }))
+/** The repository's templates: the folders of templates/ with a package.json, sorted. */
+const repoTemplates = (() => {
+  const root = fileURLToPath(new URL('../../../templates/', import.meta.url))
+  return readdirSync(root).filter((name) => !name.startsWith('_') && existsSync(join(root, name, 'package.json'))).sort()
+})()
+
 // The bundled copies of the repository's templates (build.mjs), as `pnpm pack` makes them.
 beforeAll(() => {
   const build = spawnSync('node', [fileURLToPath(new URL('../build.mjs', import.meta.url))], { encoding: 'utf8' })
@@ -135,8 +141,8 @@ describe('create-ginko', () => {
     ['a preset name that is an object key', ['bad-proto', '--preset', 'toString'], 'Unknown preset "toString"'],
     ['an unknown language', ['bad-lang', '--locale', 'fr'], 'Choose one of: en, de.'],
     ['two languages for the plain starter', ['bad-two-langs', '--locales', 'en,de'], 'The plain starter has one language.'],
-    // The list that follows depends on which templates are built.
-    ['an unknown template', ['bad-template', '--template', 'shop'], 'Unknown template "shop". Choose one of: '],
+    // Every template of the repository (a folder with a package.json, as build.mjs copies them), in name order.
+    ['an unknown template', ['bad-template', '--template', 'shop'], `Unknown template "shop". Choose one of: ${repoTemplates.join(', ')}.`],
     ['a locale the template does not have', ['bad-locale', '--template', 'starter', '--locales', 'en,fr'], 'Unknown locale "fr". The starter template has: en, de.'],
     ['--template with --preset', ['bad-both', '--template', 'starter', '--preset', 'gastro'], 'Use --template or --preset, not both.'],
     ['--template dropped by npm (only its value arrives)', ['bad-npm-template', 'starter'], 'npm create ginko@latest bad-npm-template -- --template starter'],

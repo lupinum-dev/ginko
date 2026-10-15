@@ -3,6 +3,8 @@ title: "Nettoyage d’automne : ce que nous avons trouvé sur les berges"
 slug: nettoyage-automne
 description: "Des bénévoles ont nettoyé la berge entre les deux ponts. La plupart des déchets étaient petits."
 tags: ["nettoyage"]
+image:
+  alt: "Une bénévole gantée retire une bouteille en plastique de la rivière et la met dans un sac"
 ---
 
 Un samedi matin de septembre, des bénévoles de tous âges ont nettoyé la berge entre les deux ponts.
