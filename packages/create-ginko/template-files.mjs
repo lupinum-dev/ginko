@@ -146,6 +146,48 @@ function pruneConfigMaps(source, locale) {
   return out + source.slice(from)
 }
 
+/** The top-level keys of a Markdown frontmatter or YAML file, each with its lines (a key's own line and the indented
+ *  lines below it); lines before the first key form a block without key. Undefined for other files. */
+function fieldBlocks(text, isMarkdown) {
+  const lines = text.split('\n')
+  let start = 0
+  let end = lines.length
+  if (isMarkdown) {
+    if (lines[0]?.trim() !== '---') return undefined
+    start = 1
+    end = lines.findIndex((line, i) => i > 0 && line.trim() === '---')
+    if (end < 0) return undefined
+  }
+  const blocks = []
+  for (let i = start; i < end; i++) {
+    const key = /^([^\s#:-][^:]*):/.exec(lines[i])?.[1]
+    if (key !== undefined || !blocks.length) blocks.push({ key, lines: [lines[i]] })
+    else blocks.at(-1).lines.push(lines[i])
+  }
+  const join = (list) => [...lines.slice(0, start), ...list.flatMap((b) => b.lines), ...lines.slice(end)].join('\n')
+  return { blocks, join }
+}
+
+/**
+ * The texts of a main file and its translation after they swap roles (a new main language). Fields only the main file
+ * has (the language-independent ones, such as a date or a choice, which a translation must not repeat, and any field
+ * the translation left to the main text) move to the new main file, so both pages show what they showed before. When
+ * the translation sets its own `slug`, the old main file keeps its address from the file name as `slug`.
+ */
+function swapFields(mainText, translatedText, name) {
+  const isMarkdown = name.endsWith('.md')
+  const main = fieldBlocks(mainText, isMarkdown)
+  const translated = fieldBlocks(translatedText, isMarkdown)
+  if (!textTypes.includes(name.split('.').at(-1)) || !main || !translated) return [mainText, translatedText]
+  const own = new Set(translated.blocks.map((b) => b.key))
+  const moved = main.blocks.filter((b) => b.key !== undefined && !own.has(b.key))
+  const kept = main.blocks.filter((b) => !moved.includes(b))
+  if (own.has('slug') && !main.blocks.some((b) => b.key === 'slug')) {
+    kept.push({ key: 'slug', lines: [`slug: ${name.split('/').at(-1).split('.').at(-2)}`] })
+  }
+  return [main.join(kept), translated.join([...translated.blocks, ...moved])]
+}
+
 /** The locale suffix of a content path (`1.about.de.md` → `de`), if it is one of `locales`. */
 function suffixOf(name, locales) {
   const parts = name.split('.')
@@ -178,6 +220,9 @@ export function pruneLocales(dir, authored, chosen) {
       if (suffixOf(name, authored) || !existsSync(join(content, name))) continue
       const translation = join(content, withSuffix(name, main))
       if (!existsSync(translation)) continue
+      const [mainText, translated] = swapFields(readFileSync(join(content, name), 'utf8'), readFileSync(translation, 'utf8'), name)
+      writeFileSync(join(content, name), mainText)
+      writeFileSync(translation, translated)
       if (chosen.includes(authoredMain)) renameSync(join(content, name), join(content, withSuffix(name, authoredMain)))
       else rmSync(join(content, name))
       renameSync(translation, join(content, name))
