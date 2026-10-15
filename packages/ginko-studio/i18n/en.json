@@ -268,7 +268,13 @@
       "nothingNow": "Nothing entered right now.",
       "removeNamed": "Remove {title}",
       "allIn": "See all in “{brick}”",
-      "showExpired": "Show expired ({count})"
+      "showExpired": "Show expired ({count})",
+      "drafts": {
+        "heading": "Not saved yet",
+        "titled": "“{title}” · {time}",
+        "untitled": "{area}: New entry · {time}",
+        "continue": "Continue editing"
+      }
     },
     "all": {
       "heading": "Edit everything",

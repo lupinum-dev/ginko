@@ -268,7 +268,13 @@
       "nothingNow": "No hay nada introducido por ahora.",
       "removeNamed": "Eliminar {title}",
       "allIn": "Ver todo en «{brick}»",
-      "showExpired": "Mostrar caducadas ({count})"
+      "showExpired": "Mostrar caducadas ({count})",
+      "drafts": {
+        "heading": "Aún sin guardar",
+        "titled": "“{title}” · {time}",
+        "untitled": "{area}: entrada nueva · {time}",
+        "continue": "Seguir editando"
+      }
     },
     "all": {
       "heading": "Editar todo",

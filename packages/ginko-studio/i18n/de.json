@@ -268,7 +268,13 @@
       "nothingNow": "Gerade nichts eingetragen.",
       "removeNamed": "{title} entfernen",
       "allIn": "Alle in „{brick}“ ansehen",
-      "showExpired": "Abgelaufene anzeigen ({count})"
+      "showExpired": "Abgelaufene anzeigen ({count})",
+      "drafts": {
+        "heading": "Noch nicht gespeichert",
+        "titled": "„{title}“ · {time}",
+        "untitled": "{area}: Neuer Eintrag · {time}",
+        "continue": "Weiter bearbeiten"
+      }
     },
     "all": {
       "heading": "Alles bearbeiten",

@@ -13,6 +13,9 @@ export interface LocalDraft {
   locale: string
   /** An edit: only the changed root fields. A new entry: the whole form. */
   fields: Data
+  /** The entry's area and its title as typed, for the list on Heute (records written before had neither). */
+  brick?: string
+  title?: string
 }
 
 const PREFIX = 'ginko:draft:v1:'
@@ -67,6 +70,19 @@ export function readLocalDraft(key: string, now = Date.now()): LocalDraft | unde
     // No storage, no local copy.
   }
   return undefined
+}
+
+/** This person's unsaved input on this site, newest first, with the target of its key: the list on Heute. */
+export function listLocalDrafts(site: string, user: string, now = Date.now()): (LocalDraft & { target: string })[] {
+  const prefix = localDraftKey(site, user, '')
+  try {
+    return records(now).filter((r) => r.key.startsWith(prefix)).reverse().flatMap((r) => {
+      const record = parse(localStorage.getItem(r.key))
+      return record ? [{ ...record, target: r.key.slice(prefix.length) }] : []
+    })
+  } catch {
+    return []
+  }
 }
 
 export function writeLocalDraft(key: string, record: LocalDraft) {
