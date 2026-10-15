@@ -21,6 +21,8 @@ const langs = { en: 'English', de: 'German' }
 // The templates bundled into this package (build.mjs); none in a repository checkout before `pnpm build`.
 const templatesDir = new URL('./templates/', import.meta.url)
 const templates = existsSync(templatesDir) ? readdirSync(templatesDir).filter((name) => statSync(new URL(name, templatesDir)).isDirectory()).sort() : []
+/** Each bundled template's languages, from its manifest (build.mjs). */
+const templateLocales = Object.fromEntries(templates.map((name) => [name, JSON.parse(readFileSync(new URL(`${name}.json`, templatesDir), 'utf8')).locales]))
 const command = 'npm create ginko@latest'
 const usage = `Usage: ${command} <folder> -- [--template <name>] [--locales <codes>]
 
@@ -181,7 +183,7 @@ if (moved) console.log(`The sample dates in ${moved} content file${moved === 1 ?
 if (preset) console.log(presets[preset].note)
 // npm keeps options for itself unless they come after --; pnpm, yarn and bun pass them on.
 const example = pm === 'npm' ? `${command} my-site -- --template ${templates[0] ?? 'starter'}` : `${pm} create ginko my-site --template ${templates[0] ?? 'starter'}`
-console.log(`Templates: ${templates.join(', ')}; languages: --locales en,de.${pm === 'npm' ? ' With npm, put -- before them:' : ''}
+console.log(`Templates (languages for --locales): ${templates.map((name) => `${name} (${templateLocales[name].join(', ')})`).join(', ')}.${pm === 'npm' ? ' With npm, put -- before the options:' : ''}
   ${example}
 
 Next:
