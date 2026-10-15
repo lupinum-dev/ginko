@@ -28,7 +28,7 @@ import ImageBubble from './ImageBubble.vue'
 import ImageDialog from './ImageDialog.vue'
 import SlashMenu from './SlashMenu.vue'
 import SourceToggle from './SourceToggle.vue'
-import { refuseImage, useImageUploads } from './useImageUploads.ts'
+import { useImageUploads } from './useImageUploads.ts'
 import { useStudioSite } from '../../utils/labels'
 import { isModKey } from '../../utils/keys'
 
@@ -115,14 +115,13 @@ const uploads = useImageUploads({
 })
 /**
  * "Bild hochladen" in the image dialog: the picture goes in at the cursor, like a dropped one, and asks for its
- * description when it is ready. With `replace` it takes that picture's place; a file refused at once leaves it there.
+ * description when it is ready. With `replace` it takes that picture's place once it is ready; until then, and when the
+ * upload fails, the old picture stays.
  */
 const uploadAt = assets
   ? (file: File, replace?: number) => {
       const current = editor.value
-      if (!current) return
-      if (replace !== undefined && !refuseImage(file, t)) current.view.dispatch(current.state.tr.delete(replace, replace + 1))
-      uploads.handle([file], replace ?? current.state.selection.from)
+      if (current) uploads.handle([file], replace ?? current.state.selection.from, replace !== undefined)
     }
   : undefined
 

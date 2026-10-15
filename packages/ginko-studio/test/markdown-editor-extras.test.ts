@@ -11,6 +11,7 @@ import { toast } from 'vue-sonner'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { computed, reactive } from 'vue'
 import { EDITOR_COMPONENTS, EDITOR_LINK_TARGETS } from '../app/components/editor/context.ts'
+import ImageDialog from '../app/components/editor/ImageDialog.vue'
 import MarkdownEditor from '../app/components/editor/MarkdownEditor.vue'
 import { REFS } from '../app/components/fields/refs.ts'
 
@@ -111,6 +112,27 @@ describe('pictures by paste', () => {
     expect(vi.mocked(toast.error).mock.calls[0]![0]).toBe('Die Datei ist zu groß (höchstens 20 MB).')
     expect(sent).toHaveLength(0)
     expect(editor.view.dom.textContent).not.toContain('wird hochgeladen')
+  })
+
+  // Wrong behaviour caught: "Bild ersetzen" with an upload removed the old picture before the upload ran, so a failed
+  // upload left the text without any picture; a successful one must still take the old one's place, once.
+  test.each([
+    ['the server fails it', { status: 'failed', error: 'Das Bild ließ sich nicht verarbeiten.' } as UploadState, 'https://x.test/hof.png'],
+    ['it is ready', { status: 'ready' } as UploadState, 'https://cdn.test/u1.png'],
+  ])('a replacing upload keeps the old picture until it is ready, then takes its place (%s)', async (_name, state, shown) => {
+    const { assets, states, sent } = fakeAssets()
+    const wrapper = await mounted({ text: 'Eins ![Hof](https://x.test/hof.png) zwei\n', assets })
+    const editor = editorOf(wrapper)
+    let pos = -1
+    editor.state.doc.descendants((node, at) => { if (node.type.name === 'image') pos = at })
+    const upload = wrapper.findComponent(ImageDialog).props('upload') as (file: File, replace?: number) => void
+    upload(png(), pos)
+    await until(() => sent.length === 1)
+    expect(editor.view.dom.textContent).toContain('wird hochgeladen')
+    expect([...editor.view.dom.querySelectorAll('img')].map((img) => img.getAttribute('src'))).toEqual(['https://x.test/hof.png'])
+    states.u1 = state
+    await until(() => !editor.view.dom.textContent!.includes('wird hochgeladen'))
+    expect([...editor.view.dom.querySelectorAll('img')].map((img) => img.getAttribute('src'))).toEqual([shown])
   })
 
   // Wrong behaviour caught: a picture whose library file is described counts as undescribed in the editor, so a text the
