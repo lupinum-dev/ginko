@@ -50,14 +50,15 @@ export const SLASH_TEXT_GROUP = 'Text'
 export const SLASH_COMPONENT_GROUP = 'Komponenten'
 
 /** The words for the three heading levels, here and in the toolbar of the Studio. */
-export const HEADING_LABELS = { 2: 'Überschrift', 3: 'Zwischenüberschrift', 4: 'Kleine Überschrift' } as const
+export const HEADING_LABELS = { 2: 'Überschrift', 3: 'Unterüberschrift', 4: 'Kleine Überschrift' } as const
 
 const heading = (level: 2 | 3 | 4): SlashItem => ({
   id: `heading${level}`,
   label: HEADING_LABELS[level],
-  describe: level === 2 ? 'Große Überschrift für einen neuen Abschnitt' : level === 3 ? 'Kleinere Überschrift im Abschnitt' : 'Kleinste Überschrift',
+  describe: level === 2 ? 'Große Überschrift für einen neuen Abschnitt' : level === 3 ? 'Kleinere Überschrift innerhalb eines Abschnitts' : 'Kleinste Überschrift',
   group: SLASH_TEXT_GROUP,
-  keywords: ['titel', 'heading', `h${level}`],
+  // "Zwischenüberschrift" is the usual word for a section heading, so search finds level 2 with it.
+  keywords: ['titel', 'heading', `h${level}`, ...(level === 2 ? ['zwischenüberschrift'] : [])],
   run: (editor) => { editor.chain().focus().setHeading({ level }).run() },
 })
 

@@ -5,7 +5,7 @@ import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, L
 import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { languageName, leafTranslation, previewFileIds, publishQuestion, titleOf } from '../utils/content'
+import { languageName, leafTranslation, previewFileIds, publishQuestion, taskRef, titleOf, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -106,10 +106,32 @@ const form = useEntryForm({
 })
 const { draft, baseline, issues, problem, conflict, busy, offline, waiting, dirty, confirm, localOffer } = form
 
+/**
+ * A new entry starts like the brick's create task in Schnell ändern: its title and its prefill (e.g. today's date).
+ * With several create tasks the general one counts (no prefill); "Heute ausgebucht" fills in values for its own case
+ * only. Staff get it only when it is the create task they work with.
+ */
+const createTask = computed(() => {
+  if (props.entry || props.brick.kind !== 'collection') return undefined
+  const creates = (props.brick.tasks ?? []).filter((task): task is Extract<Task, { kind: 'create' }> => task.kind === 'create')
+  const general = creates.length === 1 ? creates[0] : creates.find((task) => !task.prefill)
+  if (!general || (props.tasks && props.tasks.create !== taskRef(props.brickKey, general))) return undefined
+  return general
+})
+const createPrefill = useConvexQuery(api.tasks.prefill, () => (createTask.value ? { site: props.site.slug, task: taskRef(props.brickKey, createTask.value) } : 'skip'), { server: false })
+/** The server resolves the prefill (tokens such as @today in the site's time zone); only fields of this form. */
+const prefilled = computed<Record<string, Json>>(() => {
+  const values = createTask.value ? createPrefill.data.value : undefined
+  if (!values || typeof values !== 'object' || Array.isArray(values)) return {}
+  return Object.fromEntries(Object.entries(values).filter(([key]) => key in fields.value))
+})
+
 function start() {
-  form.load(props.entry ? { ...props.entry.data } : defaultsFor(fields.value))
+  form.load(props.entry ? { ...props.entry.data } : { ...defaultsFor(fields.value), ...prefilled.value })
 }
 start()
+// The prefill arrives after the form opened: it fills the new form unless the person has typed already.
+watch(prefilled, () => { if (!props.entry && !dirty.value) start() })
 // Another entry opened, or a language switch with nothing unsaved: start from the stored state.
 watch(() => props.entry?._id, start)
 watch(locale, () => { if (!dirty.value) start() })
@@ -179,7 +201,11 @@ watch(draft, () => {
 provide(TRANSLATION, { state: translation, source: sourceText, confirm: confirmTranslation, mainName: () => languageName(main.value, uiLocale.value) })
 
 const shown = (label: LabelText) => shownLabel(label, main.value)
-const title = computed(() => props.brick.kind === 'single' ? shown(props.brick.label) : props.entry ? titleOf(props.brick, props.entry.data, main.value) : t('entry.newEntry'))
+const title = computed(() => {
+  if (props.brick.kind === 'single') return shown(props.brick.label)
+  if (props.entry) return titleOf(props.brick, props.entry.data, main.value)
+  return createTask.value ? shown(createTask.value.label) : t('entry.newIn', { brick: shown(props.brick.label) })
+})
 const savedOnce = ref(false)
 const formEl = ref<HTMLFormElement | null>(null)
 // After a refused save, the first field with an error gets the focus (its message is read with it).

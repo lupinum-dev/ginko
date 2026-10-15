@@ -99,6 +99,50 @@ test('the preview sends the site only once its entries have loaded', async () =>
 })
 
 const site = { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }
+/** useConvexQuery that answers `name` with `data` (once its arguments are not 'skip'), and every other query with nothing. */
+function answering(name: string, data: vue.Ref<unknown>, asked: unknown[] = []) {
+  return (query: unknown, args: unknown) => {
+    const value = typeof args === 'function' ? args() : args
+    if (String(query) !== name || value === 'skip') return { data: ref(undefined), error: ref(undefined) }
+    asked.push(value)
+    return { data, error: ref(undefined) }
+  }
+}
+
+// Wrong behaviour caught (J9, romi-13): Alles bearbeiten opened a new post empty and titled "Neuer Eintrag", while the
+// task sheet started with today's date, so the first save failed on the required date.
+test('a new entry starts like its create task: the task title and the prefill the server resolves', async () => {
+  const posts = serializeSchema(defineSite({
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    pages: { home: { de: '/' } },
+    bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', tasks: [{ id: 'write', label: 'Beitrag schreiben', kind: 'create', prefill: { date: '@today' } }], fields: { title: f.text('Titel'), date: f.date('Datum') } }) },
+  }))
+  const prefill = ref<unknown>(undefined)
+  const asked: unknown[] = []
+  vi.stubGlobal('useConvexQuery', answering('tasks.prefill', prefill, asked))
+  try {
+    const wrapper = mount(EntryEditor, {
+      props: { site, schema: posts, brickKey: 'blog', brick: posts.bricks.blog!, canRemove: false },
+      global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+    })
+    expect(wrapper.get('h1').text()).toBe('Beitrag schreiben')
+    expect(asked).toEqual([{ site: 'restaurant', task: 'blog.write' }])
+    // The answer arrives after the form opened.
+    prefill.value = { date: '2026-10-15' }
+    await flushPromises()
+    expect(wrapper.findComponent({ name: 'EntryFields' }).props('draft')).toEqual({ date: '2026-10-15' })
+  } finally {
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
+  }
+
+  // Without a create task the heading names the area.
+  const plain = mount(EntryEditor, {
+    props: { site, schema, brickKey: 'blog', brick: schema.bricks.blog!, canRemove: false },
+    global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+  })
+  expect(plain.get('h1').text()).toBe('Neu in Blog')
+})
+
 // Wrong behaviour caught (media-13): a name or year that is the same in English had to be retyped, the copy took only
 // the first 400 characters, or wrote into the German text; and no tab said where the missing texts were.
 test('in English, "Gleich wie Deutsch" copies the whole German text, and the tab with the missing text is marked', async () => {
