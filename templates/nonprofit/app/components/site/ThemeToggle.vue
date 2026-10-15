@@ -20,7 +20,7 @@ function toggle() {
 </script>
 
 <template>
-  <Button variant="ghost" size="icon" :aria-pressed="mounted ? dark : undefined" @click="toggle">
+  <Button variant="ghost" size="icon" class="print:hidden" :aria-pressed="mounted ? dark : undefined" @click="toggle">
     <Moon class="dark:hidden" aria-hidden="true" />
     <Sun class="hidden dark:block" aria-hidden="true" />
     <span class="sr-only">{{ t('theme') }}</span>

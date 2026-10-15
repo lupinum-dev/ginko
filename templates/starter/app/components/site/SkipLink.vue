@@ -8,7 +8,7 @@ const { t } = useI18n('site')
 <template>
   <a
     href="#main"
-    class="fixed start-3 top-3 z-60 -translate-y-24 rounded-md bg-primary px-4 py-3 font-medium text-primary-foreground focus:translate-y-0"
+    class="fixed start-3 top-3 z-60 print:hidden -translate-y-24 rounded-md bg-primary px-4 py-3 font-medium text-primary-foreground focus:translate-y-0"
   >
     {{ t('skip') }}
   </a>
