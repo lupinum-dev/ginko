@@ -110,3 +110,17 @@ test('a cancelled website update stays silent', async () => {
   await useUpdateSite(() => 'demo').run()
   expect(mocks.toasts).toEqual([])
 })
+
+// Wrong behaviour caught: the message after saving ignores what the server says about the other languages, so a
+// German edit that leaves German texts on the English site reads as fully done (onboard-3, P5).
+test('a save and a create add what the other languages show; a draft save does not', async () => {
+  const translation = [{ locale: 'en', page: 'shown', missing: 1, outdated: 0 }]
+  mocks.toasts.length = 0
+  mocks.results.set('entries.save', { entry: 'e', rev: 2, change: 'c1', translation })
+  mocks.results.set('entries.create', { entry: 'e', state: 'live', translation })
+  await ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o', main: 'de' })
+  await ops.createEntry({ brick: 'b', data: {}, op: 'o', main: 'de' })
+  await ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o', main: 'de', draft: true })
+  const note = 'The English website shows the new texts in German until they are translated.'
+  expect(mocks.toasts.map((t) => t.text)).toEqual([`Saved. On the website in about a minute. ${note}`, `Created. On the website in about a minute. ${note}`, 'Draft saved.'])
+})

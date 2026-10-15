@@ -28,5 +28,7 @@ export interface TranslationState {
   confirm: (leaf: string) => void
   /** "Deutsch": the main language's name, for the source line and the hints. */
   mainName: () => string
+  /** The note under a leaf whose translation is missing: what the website shows without it. */
+  missingNote: (leaf: string) => string
 }
 export const TRANSLATION = Symbol('ginko:translation') as InjectionKey<TranslationState>

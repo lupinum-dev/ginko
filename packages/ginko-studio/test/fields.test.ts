@@ -140,7 +140,8 @@ describe('translation side by side', () => {
   const field = { type: 'text', label: 'Gericht' } as Field
   function translated(state: 'stale' | 'fine' | 'missing') {
     const confirm = vi.fn()
-    const translation: TranslationState = { state: () => state, source: () => 'Kürbissuppe', confirm, mainName: () => 'Deutsch' }
+    const missingNote = (leaf: string) => (leaf === 'dish' ? 'Noch nicht übersetzt. Ohne diesen Text erscheint die Seite nicht auf Englisch.' : '')
+    const translation: TranslationState = { state: () => state, source: () => 'Kürbissuppe', confirm, mainName: () => 'Deutsch', missingNote }
     const wrapper = mount(GinkoField, {
       props: { field, modelValue: { de: 'Kürbissuppe', en: 'Pumpkin soup' }, path: 'dish', locale: 'en', locales: ['de', 'en'], issues: [] },
       global: { provide: { [TRANSLATION as symbol]: translation } },
@@ -165,9 +166,16 @@ describe('translation side by side', () => {
     expect(wrapper.text()).not.toContain('geändert seit Übersetzung')
   })
 
+  // Wrong behaviour caught: every missing translation said "Die Website zeigt hier den Text auf Deutsch", also on a page that is not online in English (romi-4).
+  test('a missing translation shows what the editor says the website does without it', () => {
+    const { wrapper } = translated('missing')
+    expect(wrapper.get('[data-slot="translation-source"]').text()).toContain('Ohne diesen Text erscheint die Seite nicht auf Englisch.')
+    expect(wrapper.text()).not.toContain('zeigt hier den Text')
+  })
+
   // Wrong behaviour caught: a picture replaced on the English tab drops its German description, which that tab cannot fix (media-16).
   test('a picture in another language offers only its description; the picture itself is changed in the main language', () => {
-    const translation: TranslationState = { state: () => 'missing', source: () => 'Wald', confirm: vi.fn(), mainName: () => 'Deutsch' }
+    const translation: TranslationState = { state: () => 'missing', source: () => 'Wald', confirm: vi.fn(), mainName: () => 'Deutsch', missingNote: () => 'Noch nicht übersetzt.' }
     const assets: GinkoAssets = { state: () => ref(undefined), details: () => ref(undefined), upload: async () => 'unused' }
     const wrapper = mount(GinkoField, {
       props: { field: { type: 'image', label: 'Foto' } as Field, modelValue: { file: 'f1', alt: { de: 'Wald' } }, path: 'photo', locale: 'en', locales: ['de', 'en'], issues: [] },

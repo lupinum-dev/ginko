@@ -5,7 +5,7 @@ import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, L
 import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { languageName, leafTranslation, previewFileIds, publishQuestion, titleOf } from '../utils/content'
+import { languageName, leafTranslation, missingNote, previewFileIds, publishQuestion, titleOf, translationLines } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -175,8 +175,17 @@ watch(draft, () => {
   if (kept.length !== confirm.value.length) confirm.value = kept
 }, { deep: true })
 
+// What the website shows in the open foreign language now (the stored entry; none for a draft), for the notes under
+// untranslated fields and the lines under the language switch. The server decides it (lib/translation.ts).
+const storedTranslation = computed(() => (foreign.value ? props.entry?.translation?.[locale.value] : undefined))
+const languageNames = computed(() => ({ lang: languageName(locale.value, uiLocale.value), main: languageName(main.value, uiLocale.value) }))
+const translationState = computed(() => translationLines(storedTranslation.value, t, languageNames.value))
+
 // Lists show the same state per cell (Phase 11: confirming translations inside lists).
-provide(TRANSLATION, { state: translation, source: sourceText, confirm: confirmTranslation, mainName: () => languageName(main.value, uiLocale.value) })
+provide(TRANSLATION, {
+  state: translation, source: sourceText, confirm: confirmTranslation, mainName: () => languageNames.value.main,
+  missingNote: (leaf) => missingNote(storedTranslation.value, leaf, t, languageNames.value),
+})
 
 const shown = (label: LabelText) => shownLabel(label, main.value)
 const title = computed(() => props.brick.kind === 'single' ? shown(props.brick.label) : props.entry ? titleOf(props.brick, props.entry.data, main.value) : t('entry.newEntry'))
@@ -453,6 +462,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           </ToggleGroupItem>
         </ToggleGroup>
         <p v-if="foreign" class="text-sm text-muted-foreground">{{ t('entry.foreignHint') }}</p>
+        <p v-for="line in translationState" :key="line" class="text-sm text-muted-foreground" data-slot="translation-state">{{ line }}</p>
       </header>
 
       <form ref="formEl" class="grid gap-6" novalidate @submit.prevent="save">

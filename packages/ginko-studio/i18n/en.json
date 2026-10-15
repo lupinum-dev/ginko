@@ -100,6 +100,12 @@
     "saveBeforeLanguage": "Save first, then switch the language.",
     "groupHasIssues": "Errors in this section",
     "foreignHint": "Only texts that need a translation are shown here. All other fields apply to every language.",
+    "translationState": {
+      "hidden": "This page is not online in {lang} yet. It appears once the marked texts are translated.",
+      "mainPage": "This page has no {lang} version yet. Until then, the website links to the {main} page.",
+      "missing": "Where a translation is missing, the {lang} website shows the {main} text.",
+      "outdated": "Where the {main} text changed, the {lang} website still shows the old translation."
+    },
     "twin": "This entry already exists: “{title}”. Saving creates a second one.",
     "saveContinues": "Still saving. If you are offline, it is saved as soon as the connection is back.",
     "notSaved": "Not saved: {reason}",
@@ -542,7 +548,9 @@
     "translation": {
       "changedSince": "{name} changed since the translation",
       "fitsAsIs": "Keep as is",
-      "notTranslated": "Not translated yet. The website shows the text from {name} here."
+      "notTranslated": "Not translated yet.",
+      "notTranslatedShowsMain": "Not translated yet. The website shows the {name} text here.",
+      "notTranslatedBlocks": "Not translated yet. Without this text, the page does not appear in {lang}."
     },
     "date": {
       "workWeek": "Current work week",
@@ -608,6 +616,12 @@
     "draftNotOnSite": "Draft saved. Not on the website yet.",
     "draftScheduled": "Draft saved, online from {time}.",
     "liveHint": "On the website in about a minute.",
+    "translation": {
+      "hidden": "In {langs}, the page appears only once all needed texts are translated.",
+      "mainPage": "Until it is translated, the {langs} website links to the {main} page.",
+      "missing": "The {langs} website shows the new texts in {main} until they are translated.",
+      "outdated": "The {langs} website still shows the old translation until it is updated."
+    },
     "undo": "Undo",
     "undone": "Undone.",
     "pictureBackFromTrash": "The picture “{name}” was in the Files trash and is back.",

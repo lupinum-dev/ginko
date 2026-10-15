@@ -107,7 +107,7 @@ const altOnly = computed(() => (translation && props.locale !== props.locales[0]
           <Badge variant="outline" class="h-auto border-warning py-1 whitespace-normal text-warning">{{ t('fields.translation.changedSince', { name: translation.mainName() }) }}</Badge>
           <Button type="button" variant="outline" size="sm" @click="translation.confirm(leaf!)">{{ t('fields.translation.fitsAsIs') }}</Button>
         </div>
-        <p v-else-if="trState === 'missing'" class="text-warning">{{ t('fields.translation.notTranslated', { name: translation.mainName() }) }}</p>
+        <p v-else-if="trState === 'missing'" class="text-warning">{{ translation.missingNote(leaf!) }}</p>
       </div>
     </template>
 

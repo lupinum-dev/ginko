@@ -100,6 +100,12 @@
     "saveBeforeLanguage": "Guarda primero y luego cambia el idioma.",
     "groupHasIssues": "Errores en esta sección",
     "foreignHint": "Aquí solo se muestran los textos que necesitan traducción. Los demás campos valen para todos los idiomas.",
+    "translationState": {
+      "hidden": "Esta página aún no está en línea en {lang}. Aparecerá en cuanto se traduzcan los textos marcados.",
+      "mainPage": "Esta página aún no tiene versión en {lang}. Hasta entonces, el sitio web enlaza a la página en {main}.",
+      "missing": "Donde falta una traducción, el sitio web en {lang} muestra el texto en {main}.",
+      "outdated": "Donde cambió el texto en {main}, el sitio web en {lang} todavía muestra la traducción anterior."
+    },
     "twin": "Esta entrada ya existe: “{title}”. Al guardar se crea una segunda.",
     "saveContinues": "Todavía guardando. Si no tienes conexión, se guardará en cuanto vuelva.",
     "notSaved": "Sin guardar: {reason}",
@@ -542,7 +548,9 @@
     "translation": {
       "changedSince": "{name} ha cambiado desde la traducción",
       "fitsAsIs": "Dejar como está",
-      "notTranslated": "Aún sin traducir. El sitio web muestra aquí el texto de {name}."
+      "notTranslated": "Aún sin traducir.",
+      "notTranslatedShowsMain": "Aún sin traducir. El sitio web muestra aquí el texto en {name}.",
+      "notTranslatedBlocks": "Aún sin traducir. Sin este texto, la página no aparece en {lang}."
     },
     "date": {
       "workWeek": "Semana laboral actual",
@@ -608,6 +616,12 @@
     "draftNotOnSite": "Borrador guardado. Aún no está en el sitio web.",
     "draftScheduled": "Borrador guardado, en línea desde {time}.",
     "liveHint": "En el sitio web en aproximadamente un minuto.",
+    "translation": {
+      "hidden": "En {langs}, la página solo aparece cuando todos los textos necesarios estén traducidos.",
+      "mainPage": "Hasta que se traduzca, el sitio web en {langs} enlaza a la página en {main}.",
+      "missing": "El sitio web en {langs} muestra los textos nuevos en {main} hasta que se traduzcan.",
+      "outdated": "El sitio web en {langs} todavía muestra la traducción anterior hasta que se actualice."
+    },
     "undo": "Deshacer",
     "undone": "Deshecho.",
     "pictureBackFromTrash": "La imagen «{name}» estaba en la papelera de archivos y ha vuelto.",

@@ -100,6 +100,12 @@
     "saveBeforeLanguage": "Erst speichern, dann die Sprache wechseln.",
     "groupHasIssues": "Fehler in diesem Bereich",
     "foreignHint": "Hier stehen nur Texte, die übersetzt werden. Alle anderen Felder gelten für jede Sprache.",
+    "translationState": {
+      "hidden": "Auf {lang} ist diese Seite noch nicht online. Sie erscheint, sobald die markierten Texte übersetzt sind.",
+      "mainPage": "Auf {lang} hat diese Seite noch keine eigene Fassung. Bis dahin verlinkt die Website auf die Seite auf {main}.",
+      "missing": "Wo eine Übersetzung fehlt, zeigt die Website auf {lang} den Text auf {main}.",
+      "outdated": "Wo der Text auf {main} geändert wurde, zeigt die Website auf {lang} noch die alte Übersetzung."
+    },
     "twin": "Diesen Eintrag gibt es schon: „{title}“. Speichern legt einen zweiten an.",
     "saveContinues": "Speichern läuft weiter. Ohne Verbindung wird es übernommen, sobald sie wieder da ist.",
     "notSaved": "Nicht gespeichert: {reason}",
@@ -542,7 +548,9 @@
     "translation": {
       "changedSince": "{name} geändert seit Übersetzung",
       "fitsAsIs": "Passt so",
-      "notTranslated": "Noch nicht übersetzt. Die Website zeigt hier den Text auf {name}."
+      "notTranslated": "Noch nicht übersetzt.",
+      "notTranslatedShowsMain": "Noch nicht übersetzt. Die Website zeigt hier den Text auf {name}.",
+      "notTranslatedBlocks": "Noch nicht übersetzt. Ohne diesen Text erscheint die Seite nicht auf {lang}."
     },
     "date": {
       "workWeek": "Aktuelle Arbeitswoche",
@@ -608,6 +616,12 @@
     "draftNotOnSite": "Entwurf gespeichert. Noch nicht auf der Website.",
     "draftScheduled": "Entwurf gespeichert, online ab {time}.",
     "liveHint": "Auf der Website in etwa einer Minute.",
+    "translation": {
+      "hidden": "Auf {langs} erscheint die Seite erst, wenn alle nötigen Texte übersetzt sind.",
+      "mainPage": "Auf {langs} verlinkt die Website bis zur Übersetzung auf die Seite auf {main}.",
+      "missing": "Auf {langs} zeigt die Website die neuen Texte auf {main}, bis sie übersetzt sind.",
+      "outdated": "Auf {langs} zeigt die Website noch die alte Übersetzung, bis sie angepasst ist."
+    },
     "undo": "Rückgängig",
     "undone": "Rückgängig gemacht.",
     "pictureBackFromTrash": "Das Bild „{name}“ war im Papierkorb der Dateibibliothek und ist wieder da.",
