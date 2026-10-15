@@ -2,5 +2,6 @@
   "app/components/block/Gallery.vue",
   "app/components/site/Lightbox.vue",
   "i18n/gallery/de.json",
-  "i18n/gallery/en.json"
+  "i18n/gallery/en.json",
+  "i18n/gallery/it.json"
 ]
