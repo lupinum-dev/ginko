@@ -108,16 +108,18 @@ function refuseOtherWeek(schema: Schema, task: string | undefined, taskBrick: st
 
 /**
  * A collection that plans a single ahead (`plans`) holds one entry per week: a second plan for the same week would
- * never show (the site takes the first). Refused at the week field, so the Studio shows it there. `self` is the entry
- * being saved, `changed` its changed fields (a save that keeps the week is not checked); the trash does not count.
+ * never show (the site takes the first). Checked on every write that can put a plan on a week: create, save, restore
+ * and undo. `self` is the entry being written, `changed` its changed fields (a write that keeps the week is not
+ * checked); the trash does not count. A create or save is refused at the week field, so the Studio's form shows it
+ * there; a restore or undo has no form, so its message says it (`whole`).
  */
-async function refuseSecondPlan(ctx: QueryCtx, actor: Actor, brickKey: string, brick: Brick, data: Data, saved?: { self: Id<'entries'>; changed: readonly string[] }) {
+async function refuseSecondPlan(ctx: QueryCtx, actor: Actor, brickKey: string, brick: Brick, data: Data, o: { self?: Id<'entries'>; changed?: readonly string[]; whole?: boolean } = {}) {
   const field = brick.kind === 'collection' ? brick.plans?.field : undefined
-  if (!field || data[field] === undefined || (saved && !saved.changed.includes(field))) return
+  if (!field || data[field] === undefined || (o.changed && !o.changed.includes(field))) return
   const rows = await rowsOf(ctx, actor.site._id, brickKey)
-  if (!rows.some((r) => r._id !== saved?.self && !r.deletedAt && same((r.data as Data)[field], data[field]))) return
+  if (!rows.some((r) => r._id !== o.self && !r.deletedAt && same((r.data as Data)[field], data[field]))) return
   const issue = { path: field, code: 'weekAlreadyPlanned', key: 'errors.weekAlreadyPlanned', message: t(DEFAULT_LOCALE, 'errors.weekAlreadyPlanned') }
-  fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: [issue] })
+  fail('INVALID', o.whole ? 'errors.weekAlreadyPlanned' : 'errors.pleaseCheckMarkedFields', undefined, { errors: [issue] })
 }
 
 /**
@@ -249,6 +251,8 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     const restoredFiles = await untrashFilesOf(ctx, actor.site._id, brick.fields, entry.data as Data, data)
     const { errors } = await validate(schema, entry.brick, data, { mode: 'patch', changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('NOT_UNDOABLE', 'errors.oldVersionNoLongerFitsSchema', undefined, { errors: errors as unknown as Json })
+    // Moving a plan back to a week that was planned again since would hide one of the two.
+    await refuseSecondPlan(ctx, actor, entry.brick, brick, data, { self: entry._id, changed: roots, whole: true })
     await checkNewFiles(ctx, actor.site._id, brick.fields, entry.data as Data, data)
     if (stateOf(entry) === 'live') await checkNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before: entry.data as Data, after: data }])
 
@@ -641,6 +645,8 @@ export const restore = mutation({
       const rows = await rowsOf(ctx, actor.site._id, entry.brick)
       const live = rows.filter((r) => !r.deletedAt).length
       if (live >= brick.max) fail('INVALID', 'errors.collectionFull', { max: brick.max }, { max: brick.max })
+      // A plan whose week was planned again while it was in the trash would hide one of the two.
+      await refuseSecondPlan(ctx, actor, entry.brick, brick, entry.data as Data, { whole: true })
       const c = countersOf(actor.site)
       if (c.entryCount >= BUDGET.entries) fail('TOO_LARGE', 'errors.siteEntryLimitReached')
       // The trash does not count toward the site's budget, so a restore needs room for the entry again.

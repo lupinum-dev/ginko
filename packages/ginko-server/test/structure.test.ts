@@ -341,6 +341,23 @@ describe('one planned week per week', () => {
     // The plan itself keeps its week when other fields change.
     await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunchPlans.edit', entry: next.entry, baseRev: 1, fields: { weekOf: '2026-10-19', note: { de: 'Mit Suppe' } } })
   })
+
+  // Wrong behaviour caught: restoring a removed plan, or undoing the move of a plan, put a second plan on a week that had
+  // been planned again meanwhile, and the website silently showed only one of them.
+  it('restoring a plan or undoing its move onto a week planned again meanwhile is refused', async () => {
+    const { t, as, entries } = await setup()
+    const kw42 = (await t.run((ctx) => ctx.db.get(entries['plan-kw42']!)))!.data
+    const create = (weekOf: string) => as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'lunchPlans.planNext', brick: 'lunchPlans', data: { ...kw42, weekOf } }) as Promise<{ entry: Id<'entries'> }>
+    const taken = { code: 'INVALID', key: 'errors.weekAlreadyPlanned' }
+    const first = await create('2026-10-19')
+    const removed = await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: first.entry, lifeRev: 1 }) as { lifeRev: number }
+    const second = await create('2026-10-19')
+    expect(await errorOf(as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry: first.entry, lifeRev: removed.lifeRev }))).toMatchObject(taken)
+
+    const moved = await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunchPlans.edit', entry: second.entry, baseRev: 1, fields: { weekOf: '2026-10-26' } }) as { change: Id<'changes'> }
+    await create('2026-10-19')
+    expect(await errorOf(as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: moved.change }))).toMatchObject(taken)
+  })
 })
 
 // Astra phase 5 review, findings in entries.ts.
