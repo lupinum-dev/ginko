@@ -34,7 +34,16 @@ export interface ImportInput {
   again?: string
   /** Largest size of one call's arguments. Default BATCH_BYTES; tests lower it to get several batches. */
   batchBytes?: number
+  /** Waits between the tries of a local import (RETRY_WAITS_MS). Default: a timer; tests do not wait. */
+  sleep?: (ms: number) => Promise<void>
 }
+
+/**
+ * Waits before the 2nd to 4th try of a LOCAL import after a passing problem (`passing`), such as Convex's 1 s limit on a
+ * busy machine. A local import may run again from the start: it stores the batches again, clears the site and imports
+ * everything. The hosted import does not retry: it needs an empty site.
+ */
+export const RETRY_WAITS_MS = [2_000, 5_000, 15_000] as const
 
 async function readExport(dir: string): Promise<SiteExport> {
   let text: string
@@ -169,7 +178,20 @@ export async function importSite(input: ImportInput): Promise<{ entries: number;
   if (problems.length > 0) {
     throw new CliError(['The platform would refuse this export:', ...problems.map((p) => `  ✗ ${p}`), 'Nothing was imported. Fix these entries in export.json, then run the command again.'].join('\n'))
   }
-  if (!input.prod) return importInto(input, data, site)
+  if (!input.prod) {
+    const sleep = input.sleep ?? ((ms: number) => new Promise<void>((done) => setTimeout(done, ms)))
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await importInto(input, data, site)
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error)
+        const wait = RETRY_WAITS_MS[attempt]
+        if (wait === undefined || !passing(reason)) throw error
+        log(`${reason.split('\n')[0]}\nTrying again in ${wait / 1000} s (try ${attempt + 2} of ${RETRY_WAITS_MS.length + 1}).`)
+        await sleep(wait)
+      }
+    }
+  }
 
   // Hosted: the schema comes from `ginko release`, never from here.
   const status = await run('seed:importStatus', { site })
