@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { compileTree } from '@lupinum/ginko-i18n/compile'
 
-const LOCALES = ['de', 'en', 'es']
+const LOCALES = ['de', 'en', 'es', 'fr', 'it', 'ar']
 const read = (locale: string) => JSON.parse(readFileSync(new URL(`../i18n/${locale}.json`, import.meta.url), 'utf8'))
 
 export function compiledSource(): string {
