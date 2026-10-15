@@ -1,5 +1,6 @@
 <!-- Photos with their alt text. `strip` is the short row on the home page; otherwise a masonry of all.
-     GinkoImage writes a srcset from the platform's smaller copies, so a phone does not load the original. -->
+     GinkoImage writes a srcset from the platform's smaller copies, so a phone does not load the original.
+     Only the masonry's first row loads at once (with high priority): the strip sits far below the first screen. -->
 <script setup lang="ts">
 import { safeHref, type ImageValue } from '@lupinum/ginko'
 
@@ -15,7 +16,7 @@ const shown = computed(() => props.images.filter((row) => safeHref(row.image?.ur
 <template>
   <ul :class="['photos', { strip }]">
     <li v-for="(row, i) in shown" :key="row._id">
-      <GinkoImage :image="row.image" :sizes="sizes" :eager="i < 2" :lang="langOf({ fallback }, `images.${row._id}.image.alt`)" />
+      <GinkoImage :image="row.image" :sizes="sizes" :eager="!strip && i < 2" :lang="langOf({ fallback }, `images.${row._id}.image.alt`)" />
     </li>
   </ul>
 </template>

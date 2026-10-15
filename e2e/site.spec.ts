@@ -130,6 +130,16 @@ test('the menu leaves out a dish off the menu and marks one sold out today; a fu
   expect((await page.locator('script[type="application/ld+json"]').allTextContents()).join()).toContain('https://schema.org/SoldOut')
 })
 
+// Wrong behaviour caught: the home page's photo strip, far below the first screen, loaded at once with high priority and
+// competed with the stylesheet and fonts. Only the gallery's first row loads at once.
+test('the photo strip on the home page loads lazily; the first gallery photos load at once', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('.strip img').first()).toHaveAttribute('loading', 'lazy')
+  await expect(page.locator('.strip img[fetchpriority]')).toHaveCount(0)
+  await page.goto('/galerie')
+  await expect(page.locator('.photos img[fetchpriority=high]')).toHaveCount(2)
+})
+
 // Astra phase 7: untranslated texts must keep their language, and allergen letters need a visible key.
 test('fallback alt texts keep their language, and the lunch page explains the allergen letters', async ({ page }) => {
   await page.goto('/en/gallery')
