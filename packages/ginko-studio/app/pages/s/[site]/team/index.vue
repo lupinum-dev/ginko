@@ -1,5 +1,5 @@
-<!-- Team (UI.md 7): members with their rights, open invitations, the invite form, and the site's publishing keys. Owners and admins only;
-     the members query is skipped for everyone else, so the server never answers them. -->
+<!-- Team (UI.md 7): members with their rights, open invitations, the invite form, and the site's publishing keys (made here,
+     shown once). Owners and admins only; the members query is skipped for everyone else, so the server never answers them. -->
 <script setup lang="ts">
 import type { Label } from '@lupinum/ginko'
 import { grantGroups } from '@lupinum/ginko/internal'
@@ -11,6 +11,8 @@ import { whoText } from '../../../../utils/who'
 import { Button } from '@studio/components/ui/button'
 import { Badge } from '@studio/components/ui/badge'
 import { Input } from '@studio/components/ui/input'
+import { Label as UiLabel } from '@studio/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@studio/components/ui/radio-group'
 import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
 
 definePageMeta({ layout: 'site' })
@@ -30,6 +32,7 @@ const saveRights = useConvexMutation(api.members.setGrants)
 const revokeInvite = useConvexMutation(api.invites.revoke)
 const createInvite = useConvexMutation(api.invites.create)
 const revokePushKey = useConvexMutation(api.release.revokePushKey)
+const createPushKey = useConvexMutation(api.release.createPushKey)
 
 const roleLabel = (role: 'owner' | 'staff') => (role === 'owner' ? t('site.role.owner') : t('site.role.staff'))
 const noEmail = computed(() => t('site.team.noEmail'))
@@ -163,6 +166,50 @@ async function revokeKey(key: Key) {
   }
 }
 
+// A new key: a name and what it is for, then the key once (the server stores only its hash). The two purposes are the
+// scope sets the CLI needs: publishing (`ginko release` with its check, and the backup) or backing up only (`ginko
+// export`, `local:pull`), which cannot change the site.
+const SCOPES = { release: ['release', 'check', 'pull', 'export'], export: ['export'] } as const
+type Purpose = keyof typeof SCOPES
+const PURPOSES = Object.keys(SCOPES) as Purpose[]
+const purposeText = (purpose: Purpose) => (purpose === 'release' ? t('site.keys.purposeRelease') : t('site.keys.purposeExport'))
+/** What a listed key is for, read from its scopes; a key with another set (made by an operator) gets no line. */
+function purposeOf(scopes: string[]): string | null {
+  if (scopes.includes('release')) return purposeText('release')
+  return scopes.length && scopes.every((scope) => scope === 'export' || scope === 'pull') ? purposeText('export') : null
+}
+const keyForm = reactive<{ open: boolean; label: string; purpose: Purpose }>({ open: false, label: 'CI', purpose: 'release' })
+const keyFormError = ref<string | null>(null)
+const freshKey = ref<{ key: string; label: string } | null>(null)
+
+function openKeyForm() {
+  keyForm.label = 'CI'
+  keyForm.purpose = 'release'
+  keyFormError.value = null
+  keyForm.open = true
+}
+
+async function createKey() {
+  keyFormError.value = null
+  try {
+    const label = keyForm.label.trim()
+    const made = await createPushKey.mutate({ site: s.slug.value, label, scopes: [...SCOPES[keyForm.purpose]] })
+    freshKey.value = { key: made.key, label }
+    keyForm.open = false
+  } catch (error) {
+    keyFormError.value = opErrorOf(error).message
+  }
+}
+
+async function copyKey(key: string) {
+  try {
+    await navigator.clipboard.writeText(key)
+    show(t('site.keys.copied'))
+  } catch {
+    show(t('site.ai.copyFailed'))
+  }
+}
+
 /** The last owner cannot be removed (the server refuses), so the button is not offered. */
 const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role === 'owner').length)
 </script>
@@ -287,14 +334,27 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
         </form>
       </section>
 
-      <section v-if="keys.length" class="grid gap-3 py-6" aria-labelledby="keys-title">
+      <section class="grid gap-3 py-6" aria-labelledby="keys-title">
         <h2 id="keys-title" class="text-base font-semibold tracking-tight">{{ t('site.keys.heading') }}</h2>
         <p class="text-[13px] text-muted-foreground">{{ t('site.keys.lead') }}</p>
-        <ul class="m-0 list-none overflow-hidden rounded-xl border p-0">
+
+        <!-- The new key, once: leaving the page or "Fertig" loses it. -->
+        <div v-if="freshKey" class="grid gap-3 rounded-xl border border-primary bg-card p-4">
+          <p class="font-medium [overflow-wrap:anywhere]">{{ freshKey.label }}</p>
+          <p class="rounded-md bg-warning/12 px-3 py-2.5 font-medium">{{ t('site.keys.once') }}</p>
+          <pre class="m-0 select-all whitespace-pre-wrap rounded-md border bg-muted px-3 py-2.5 text-sm [overflow-wrap:anywhere]">{{ freshKey.key }}</pre>
+          <div class="flex flex-wrap gap-2">
+            <Button type="button" size="sm" @click="copyKey(freshKey.key)">{{ t('site.keys.copy') }}</Button>
+            <Button type="button" variant="secondary" size="sm" @click="freshKey = null">{{ t('site.common.done') }}</Button>
+          </div>
+        </div>
+
+        <p v-if="!keys.length && !freshKey" class="text-[13px] text-muted-foreground">{{ t('site.keys.none') }}</p>
+        <ul v-if="keys.length" class="m-0 list-none overflow-hidden rounded-xl border p-0">
           <li v-for="k in keys" :key="k.id" class="grid gap-2 border-b px-4 py-3 last:border-b-0">
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
               <div class="grid min-w-0 gap-0.5">
-                <p class="font-medium [overflow-wrap:anywhere]">{{ k.label }}</p>
+                <p class="flex flex-wrap items-center gap-2 font-medium"><span class="[overflow-wrap:anywhere]">{{ k.label }}</span><Badge v-if="purposeOf(k.scopes)" as="span" variant="soft">{{ purposeOf(k.scopes) }}</Badge></p>
                 <p class="text-[13px] text-muted-foreground [overflow-wrap:anywhere]">{{ t('site.keys.createdBy', { when: day(k.createdAt), who: whoText(k.by, t) }) }}{{ usedText(k) }}</p>
               </div>
               <Button v-if="confirmingKey !== k.id" type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="startRevoke(k.id)">{{ t('site.keys.revoke') }}</Button>
@@ -309,6 +369,30 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
             <p v-if="keyError?.id === k.id" class="font-semibold text-destructive" role="alert">{{ keyError.message }}</p>
           </li>
         </ul>
+
+        <Button v-if="!keyForm.open && !freshKey" type="button" variant="secondary" class="justify-self-start" @click="openKeyForm">{{ t('site.keys.new') }}</Button>
+        <form v-else-if="keyForm.open" class="grid gap-4 rounded-xl border bg-card p-4" @submit.prevent="createKey">
+          <div class="grid gap-1.5">
+            <div :class="CONTAINED_FIELD">
+              <label for="key-label" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('site.keys.name') }}</label>
+              <Input id="key-label" v-model="keyForm.label" maxlength="60" required autocomplete="off" aria-describedby="key-label-hint" :aria-invalid="!!keyFormError" />
+            </div>
+            <p id="key-label-hint" class="text-[13px] text-muted-foreground">{{ t('site.keys.nameHint') }}</p>
+          </div>
+          <div class="grid gap-2">
+            <p id="key-purpose-label" class="text-sm font-medium">{{ t('site.keys.purpose') }}</p>
+            <RadioGroup :model-value="keyForm.purpose" class="grid gap-2" aria-labelledby="key-purpose-label" @update:model-value="(next) => { if (next === 'release' || next === 'export') keyForm.purpose = next }">
+              <UiLabel v-for="purpose in PURPOSES" :key="purpose" :for="`key-purpose-${purpose}`" class="min-h-10 cursor-pointer gap-2 rounded-md border border-input px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11">
+                <RadioGroupItem :id="`key-purpose-${purpose}`" :value="purpose" />{{ purposeText(purpose) }}
+              </UiLabel>
+            </RadioGroup>
+          </div>
+          <p v-if="keyFormError" class="font-semibold text-destructive" role="alert">{{ keyFormError }}</p>
+          <div class="flex flex-wrap gap-2">
+            <Button type="submit" :disabled="createPushKey.pending.value">{{ t('site.keys.create') }}</Button>
+            <Button type="button" variant="ghost" :disabled="createPushKey.pending.value" @click="keyForm.open = false">{{ t('site.common.cancel') }}</Button>
+          </div>
+        </form>
       </section>
 
       <DeleteSite v-if="s.site.value" :slug="s.slug.value" :name="s.site.value.name" />

@@ -20,21 +20,34 @@ vi.stubGlobal('useSiteData', async () => ({
 }))
 const team = {
   members: [] as { id: string; email: string; role: 'owner' | 'staff'; grants: string[]; you: boolean }[],
-  keys: [],
+  keys: [] as { id: string; label: string; scopes: string[]; by: { email: string }; member: null; createdAt: number; lastUsedAt: null }[],
   invites: [{ id: 'i1', email: 'anna@example.test', role: 'staff', grants: [] as string[], expiresAt: Date.UTC(2026, 9, 22) }],
 }
 vi.stubGlobal('useConvexQuery', () => ({ data: ref(team), error: ref(undefined) }))
 const calls: string[] = []
+const sent = new Map<string, unknown>()
+/** What a quick server answers, by function; `{}` for the others. */
+const answers: Record<string, unknown> = { 'release.createPushKey': { id: 'k1', key: 'ginko_restaurant_abcdefghijkmnpqrstuvwxyz23456789ab' } }
 /** true: mutations answer at once, as a quick server does. */
 let settles = false
 vi.stubGlobal('useConvexMutation', (fn: unknown) => {
   const pending = ref(false)
-  return { pending, mutate: () => { calls.push(String(fn)); pending.value = true; return settles ? Promise.resolve({}).finally(() => { pending.value = false }) : new Promise(() => {}) } }
+  return {
+    pending,
+    mutate: (args: unknown) => {
+      calls.push(String(fn))
+      sent.set(String(fn), args)
+      pending.value = true
+      return settles ? Promise.resolve(answers[String(fn)] ?? {}).finally(() => { pending.value = false }) : new Promise(() => {})
+    },
+  }
 })
 
 beforeEach(() => {
   calls.length = 0
+  sent.clear()
   toasts.length = 0
+  team.keys = []
   settles = false
   team.members = []
   team.invites[0]!.grants = []
@@ -93,5 +106,25 @@ test('an open invitation lists the rights it gives', async () => {
   const wrapper = mountPage()
   await flushPromises()
   expect(wrapper.get('section[aria-labelledby="invites-title"] li li').text()).toBe('Häufige Fragen: Frage hinzufügen')
+  wrapper.unmount()
+})
+
+// Wrong behaviour caught (admin-2): the keys section showed only with keys and offered no way to make one, so a site's
+// admin could not set up the automatic publishing or a backup; and a backup key must not be able to publish.
+test('a manager makes a backup-only key and sees it once', async () => {
+  settles = true
+  const wrapper = mountPage()
+  await flushPromises()
+  const keys = () => wrapper.get('section[aria-labelledby="keys-title"]')
+  expect(keys().text()).toContain('Noch keine Schlüssel.')
+  await keys().findAll('button').find((b) => b.text() === 'Neuer Schlüssel')!.trigger('click')
+  await keys().get('#key-label').setValue('GitHub Actions')
+  await keys().get('#key-purpose-export').trigger('click')
+  await keys().get('form').trigger('submit')
+  await flushPromises()
+  expect(sent.get('release.createPushKey')).toEqual({ site: 'restaurant', label: 'GitHub Actions', scopes: ['export'] })
+  expect(keys().get('pre').text()).toBe('ginko_restaurant_abcdefghijkmnpqrstuvwxyz23456789ab')
+  await keys().findAll('button').find((b) => b.text() === 'Fertig')!.trigger('click')
+  expect(keys().find('pre').exists()).toBe(false)
   wrapper.unmount()
 })
