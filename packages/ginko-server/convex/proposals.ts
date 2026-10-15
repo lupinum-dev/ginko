@@ -382,7 +382,9 @@ async function followUp(ctx: QueryCtx, recent: Doc<'proposals'>[], entry: Id<'en
 
 /**
  * The signed-in person's own proposal for an entry that a task sheet starts from (`followUp`): the fields it sent,
- * and for a rejection who rejected it and why. `null` when there is nothing to follow up.
+ * and for a rejection who rejected it and why. `fits` is false for an open one whose fields someone changed since
+ * (`staleReason`): the sheet then starts from the stored values, so sending again does not bring the old ones back
+ * with a fresh base. `null` when there is nothing to follow up.
  */
 export const ownFor = query({
   args: { site: v.string(), entry: v.string() },
@@ -395,6 +397,8 @@ export const ownFor = query({
     const sent = p.args as { fields?: Record<string, Json> }
     return {
       proposal: p._id, status: p.status, task: taskOf(p.args) ?? null, fields: sent.fields ?? {}, createdAt: p.createdAt,
+      // A rejection `followUp` returns fits already.
+      fits: p.status !== 'open' || (await staleReason(ctx, p)) === null,
       decidedAt: p.decidedAt ?? null, decidedBy: p.decidedBy ? await names.who(p.decidedBy) : null, reason: p.reason ?? null,
     }
   },

@@ -258,7 +258,7 @@ describe('TaskSheet', () => {
   /** The cook's own proposal for this week's lunch (proposals.ownFor), sent on Monday 12.10.2026 at 10:00 in Vienna. */
   const ownProposal = (over: Record<string, unknown> = {}) => ({
     proposal: 'p1', status: 'open', task: 'lunch.lunchWeek', fields: { weekOf: '2026-10-12', note: { de: 'Suppe und Salat inklusive' } },
-    createdAt: Date.UTC(2026, 9, 12, 8), decidedAt: null, decidedBy: null, reason: null, ...over,
+    createdAt: Date.UTC(2026, 9, 12, 8), decidedAt: null, decidedBy: null, reason: null, fits: true, ...over,
   })
   const noteOf = (sheet: Awaited<ReturnType<typeof sheetOf>>) => (sheet.get('#f-note').element as HTMLInputElement).value
 
@@ -270,6 +270,15 @@ describe('TaskSheet', () => {
     expect(sheet.get('[data-test="own-proposal"]').text()).toBe('Wartet auf Freigabe, eingereicht 12.10.2026, 10:00. Wenn du speicherst, ersetzt das deinen Vorschlag.Zurückziehen')
     // The days are the proposal's, not last week's.
     expect(sheet.text()).not.toContain('Das ist noch die Woche ab')
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: the sheet started from a waiting proposal whose note the owner had changed since, so Speichern
+  // proposed the cook's old note again over the owner's newer one.
+  test('an open own proposal that no longer fits: the sheet starts from the stored values and says why', async () => {
+    const sheet = await lunchSheet('2026-10-12', { 'proposals.ownFor': ownProposal({ fits: false }) })
+    expect(noteOf(sheet)).toBe('Suppe inklusive')
+    expect(sheet.get('[data-test="own-proposal"]').text()).toBe('Dein Vorschlag (eingereicht 12.10.2026, 10:00) passt nicht mehr: Inzwischen hat jemand das geändert. Hier siehst du den aktuellen Stand.Zurückziehen')
     sheet.unmount()
   })
 

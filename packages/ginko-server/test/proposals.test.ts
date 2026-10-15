@@ -303,6 +303,17 @@ describe('the author follows up on their own proposal', () => {
     expect(await rejected()).toEqual([])
   })
 
+  // Wrong behaviour caught: the sheet started from a waiting proposal whose field the owner had changed since, so
+  // sending it again proposed the old value over the newer one with a fresh base, which no longer goes stale.
+  it('ownFor says when an open proposal no longer fits', async () => {
+    const s = await approvalSetup()
+    const own = () => s.as.cook.query(api.proposals.ownFor, { site: 'restaurant', entry: s.entries.lunch! })
+    await cookNote(s, 'Suppe inklusive')
+    expect(await own()).toMatchObject({ status: 'open', fits: true })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.lunch!, baseRev: 1, fields: { note: { de: 'Suppe und Salat inklusive' } } })
+    expect(await own()).toMatchObject({ status: 'open', fits: false })
+  })
+
   // Wrong behaviour caught: the cook was never told that his week was not approved, and found out from the website.
   it('a rejection mails the author at once with the reason and a link that reopens the proposal', async () => {
     const s = await approvalSetup()

@@ -115,7 +115,8 @@ watch([prefill, own, ownError], ([p]) => {
   // A new entry starts from the schema defaults; choices without a default stay unset on purpose (UI.md 5).
   const start: Data = isCreate.value ? { ...defaultsFor(fields.value) } : {}
   const o = mine.value
-  if (o && (o.status === 'open' || o.proposal === props.reopen)) loadProposal({ ...start, ...(p as Data) }, o)
+  // An open proposal that no longer fits (someone changed its fields since) is not where the form starts: its banner says so.
+  if (o && ((o.status === 'open' && o.fits) || o.proposal === props.reopen)) loadProposal({ ...start, ...(p as Data) }, o)
   else form.load({ ...start, ...(p as Data) })
 }, { immediate: true })
 
@@ -250,7 +251,7 @@ function onCancel(event: Event) {
             @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
           />
           <div v-if="mine?.status === 'open'" class="flex flex-wrap items-center justify-between gap-x-3 rounded-md bg-warning/10 py-1 pr-1 pl-3" role="status" data-test="own-proposal">
-            <p class="py-1.5 font-semibold text-warning">{{ t('entry.pending', { when: whenFull(mine.createdAt, schema.timeZone, format) }) }}</p>
+            <p class="py-1.5 font-semibold text-warning">{{ t(mine.fits ? 'entry.pending' : 'entry.pendingStale', { when: whenFull(mine.createdAt, schema.timeZone, format) }) }}</p>
             <ProposalWithdraw :proposal="mine.proposal" />
           </div>
           <div v-else-if="mine?.status === 'rejected'" class="grid gap-2 rounded-md bg-warning/10 px-3 py-2.5" data-test="own-proposal">

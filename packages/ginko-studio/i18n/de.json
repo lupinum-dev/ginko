@@ -218,6 +218,7 @@
     "oldWeek": "Das ist noch die Woche ab {date}. Prüfe jeden Tag, bevor du speicherst.",
     "copyThisWeek": "Von dieser Woche übernehmen",
     "pending": "Wartet auf Freigabe, eingereicht {when}. Wenn du speicherst, ersetzt das deinen Vorschlag.",
+    "pendingStale": "Dein Vorschlag (eingereicht {when}) passt nicht mehr: Inzwischen hat jemand das geändert. Hier siehst du den aktuellen Stand.",
     "reopenProposal": "Deinen Vorschlag wieder öffnen"
   },
   "site": {

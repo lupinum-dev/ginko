@@ -218,6 +218,7 @@
     "oldWeek": "Esta sigue siendo la semana del {date}. Revisa cada día antes de guardar.",
     "copyThisWeek": "Copiar de esta semana",
     "pending": "Esperando aprobación, enviado el {when}. Si guardas, sustituyes tu propuesta.",
+    "pendingStale": "Tu propuesta (enviada el {when}) ya no encaja: alguien lo ha cambiado desde entonces. Aquí ves el estado actual.",
     "reopenProposal": "Volver a abrir tu propuesta"
   },
   "site": {

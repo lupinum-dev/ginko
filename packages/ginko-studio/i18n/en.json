@@ -218,6 +218,7 @@
     "oldWeek": "This is still the week of {date}. Check every day before you save.",
     "copyThisWeek": "Copy from this week",
     "pending": "Waiting for approval, sent {when}. Saving replaces your proposal.",
+    "pendingStale": "Your proposal (sent {when}) no longer fits: someone has changed this since. This shows the current state.",
     "reopenProposal": "Reopen your proposal"
   },
   "site": {
