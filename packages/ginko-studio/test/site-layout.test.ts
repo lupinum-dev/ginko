@@ -8,6 +8,7 @@ import { normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import { useI18n } from '#imports'
 import { isNoAccess, isSignInRequired, opErrorOf } from '../app/composables/useOps'
 import { localDraftKey, writeLocalDraft } from '../app/composables/useLocalDraft'
+import { readRecentSites } from '../app/composables/useRecentEntries'
 import { siteOrigin } from '../app/utils/origin'
 import { useBottomBar } from '../app/composables/useBottomBar'
 import SiteLayout from '../app/layouts/site.vue'
@@ -110,6 +111,21 @@ test.each([
     ...(note ? ['Was du hier noch nicht gespeichert hattest, ist nicht auf der Website. Wirst du wieder eingeladen, bekommst du es in diesem Browser zurück.'] : []),
     'Wenn du hier etwas ändern sollst, frag die Inhaberin, ob sie dich (wieder) einlädt.Meine Seiten',
   ].join(''))
+})
+
+// Wrong behaviour caught: a mistyped address, an unknown site or one the person was removed from went into "Zuletzt
+// geöffnet" before the site answered, and pushed real sites out of its three places.
+test.each([
+  { name: 'a site that opens goes first once it has answered', answer: () => { meta.data.value = lastAnswer }, recent: ['restaurant', 'garden', 'saas'] },
+  { name: 'a refused site is not remembered', answer: () => { meta.error.value = noAccess() }, recent: ['garden', 'saas', 'docs'] },
+])('Zuletzt geöffnet: $name', async ({ answer, recent }) => {
+  localStorage.setItem('ginko:recent-sites', JSON.stringify(['garden', 'saas', 'docs']))
+  mountLayout()
+  await flushPromises()
+  expect(readRecentSites()).toEqual(['garden', 'saas', 'docs'])
+  answer()
+  await flushPromises()
+  expect(readRecentSites()).toEqual(recent)
 })
 
 // Wrong behaviour caught: the phone tab bar lay over the entry editor's save bar, or stayed away after the editor closed.

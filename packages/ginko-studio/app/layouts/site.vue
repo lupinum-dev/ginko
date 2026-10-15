@@ -14,12 +14,12 @@ import { rememberSite } from '../composables/useRecentEntries'
 const route = useRoute()
 const { t, format } = useI18n()
 const slug = computed(() => String(route.params.site))
-// "Meine Seiten" lists the sites opened last in this browser first (storage exists in the browser only).
-onMounted(() => rememberSite(slug.value))
-watch(slug, rememberSite)
 // Every form under this layout (Schnell ändern, Alles bearbeiten) uploads to this site.
 provideGinkoAssets(useConvexGinkoAssets(slug))
 const { data, error } = useConvexQuery(api.sites.meta, () => ({ site: slug.value }))
+// "Meine Seiten" lists the sites opened last in this browser first. Only a site that answered counts, so a mistyped
+// address or a site the person was removed from does not push real ones out (storage exists in the browser only).
+watch(() => data.value?.site.slug, (opened) => { if (opened) rememberSite(opened) }, { immediate: true })
 // A site whose deletion has started opens for nothing but cancelling it (`sites.meta` is refused for everyone then).
 const { data: deletion } = useConvexQuery(api.sites.deletion, () => ({ site: slug.value }))
 // The slash menu of Markdown fields offers the components of this site's schema.
