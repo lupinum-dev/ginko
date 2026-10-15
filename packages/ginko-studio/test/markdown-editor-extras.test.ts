@@ -156,6 +156,8 @@ describe('Markdown source', () => {
     editor.commands.insertContent(' rich')
     await wrapper.get('button[aria-label="Markdown"]').trigger('click')
     await until(() => wrapper.find('textarea').exists())
+    // Above the source the switch shows its word from the md viewport on only: on a phone it squeezed the note beside it.
+    expect(wrapper.get('button[aria-label="Markdown"] span').classes()).toEqual(['hidden', 'md:inline'])
     const area = wrapper.get('textarea')
     expect((area.element as HTMLTextAreaElement).value).toBe('Eins rich\n')
     await area.setValue('Eins rich **source**\n')
