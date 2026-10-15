@@ -169,7 +169,11 @@ export function attributeProblem(tag: string, name: string, value: unknown, regi
   return (bound ? check === anyValue : check(value)) ? undefined : 'blocked'
 }
 
-export const UNSAFE_LINK = msg('markdown.unsafeLink').message
+// Pure: a bundle that never reads it (the browser's Markdown renderer) leaves out the message catalogs.
+export const UNSAFE_LINK = /* @__PURE__ */ unsafeLinkText()
+function unsafeLinkText(): string {
+  return msg('markdown.unsafeLink').message
+}
 const MAX_NODES = 20000
 
 /** A short description of what the profile allows, for agent tools and editor hints. */

@@ -20,7 +20,8 @@ export interface SchemaDiff {
 }
 
 const fx = (key: Extract<CoreKey, `diff.fix.${string}`> extends `diff.fix.${infer K}` ? K : never) => msg(`diff.fix.${key}`)
-const NEW_FIELD_FIX = fx('newField')
+// Pure: a bundle that never diffs schemas (the browser) leaves the message catalogs out.
+const NEW_FIELD_FIX = /* @__PURE__ */ fx('newField')
 
 /**
  * Production schemas only grow (SPEC 2.4). Everything not explicitly allowed is rejected.
