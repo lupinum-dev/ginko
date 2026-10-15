@@ -100,7 +100,7 @@ describe('local:files-export', () => {
     const author = exported.entries.find((e) => e.id === 'authors/anna')!
     expect(author.data.avatar).toEqual({ file: H, alt: { de: 'Ein Bild' } })
     expect(author.data.bio).toEqual({ de: `\n![Anna im Garten]($file.${H})\n`, en: `\n![Anna in the garden]($file.${H})\n` })
-    expect(author.prints.bio).toEqual({ en: printOf(author.data.bio!.de) })
+    expect(author.prints.bio).toEqual({ en: printOf(`\n![Anna im Garten]($file.${H})\n`) })
 
     const avif = site({ 'public/images/b.avif': Buffer.from('AAAAHGZ0eXBhdmlmAAAAAG1pZjFhdmlmbWlhZgAAANZtZXRhAAAAAAAAACFoZGxyAAAAAAAAAABwaWN0AAAAAAAAAAAAAAAAAAAAACJpbG9jAAAAAERAAAEAAQAAAAAA+gABAAAAAAAAACMAAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABhdjAxAAAAAA5waXRtAAAAAAABAAAAVmlwcnAAAAA4aXBjbwAAAAxhdjFDgSACAAAAABRpc3BlAAAAAAAAAAMAAAACAAAAEHBpeGkAAAAAAwgICAAAABZpcG1hAAAAAAAAAAEAAQOBAgMAAAArbWRhdBIACgg4BCtICGg0gDIVGUJjBMAANAAAkEDJHGFSyVivY+eA', 'base64'), 'content/authors/1.anna.md': '---\nname: Anna\navatar:\n  src: /images/b.avif\n  alt: Ein Bild\n---\n' })
     const refused = await run(['files-export', '--config', avif.config, avif.out])
