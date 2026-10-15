@@ -125,7 +125,7 @@ describe('import keeps references between entries', () => {
     await withRefBricks(s, s.site)
     const call = (fn: string, args: Record<string, unknown>) => s.t.mutation(makeFunctionReference<'mutation'>(fn), args)
     const { ids } = (await call('seed:importExport', { site: 'restaurant', files: [], entries: manyRefs })) as { ids: [string, string][] }
-    expect(await errorOf(call('seed:importRefs', { site: 'restaurant', ids: Object.fromEntries(ids) }))).toMatchObject({ code: 'TOO_LARGE', message: 'Eintrag „posts/many“ ist zu groß (684 KB, höchstens 480 KB).' })
+    expect(await errorOf(call('seed:importRefs', { site: 'restaurant', ids: ids.map(([from, to]) => ({ from, to })) }))).toMatchObject({ code: 'TOO_LARGE', message: 'Eintrag „posts/many“ ist zu groß (684 KB, höchstens 480 KB).' })
     const post = (await entriesOf(s, s.site)).find((e) => e.brick === 'posts')!
     expect(post.data).toEqual({ more: Array<string>(20000).fill('authors/a') })
   })
@@ -173,13 +173,14 @@ const tooManyFields = (value: unknown): boolean => Array.isArray(value)
   : typeof value === 'object' && value !== null && (Object.keys(value).length > 1024 || Object.values(value).some(tooManyFields))
 
 describe('import of a big site', () => {
-  // Wrong behaviour caught: one batch of many small entries answers with one object field per entry, which Convex
-  // refuses past 1024, so the import stops at the same point on every run.
-  it('imports an export with 1,990 small entries', async () => {
+  // Wrong behaviour caught: one batch of many small entries answers with one object field per entry, or the reference
+  // rewrite takes one object field per referenced entry; Convex refuses either past 1024, so the import stops at the
+  // same point on every run.
+  it('imports an export with 1,990 small entries that each point at the next one', async () => {
     vi.stubEnv('GINKO_LOCAL', '1')
     const s = await setup()
     // A collection holds at most 500 entries: four of them.
-    const bricks = Object.fromEntries([0, 1, 2, 3].map((n) => [`faq${n}`, { kind: 'collection', label, max: 500, fields: { question: { type: 'text', label } } }]))
+    const bricks = Object.fromEntries([0, 1, 2, 3].map((n) => [`faq${n}`, { kind: 'collection', label, max: 500, fields: { question: { type: 'text', label }, next: { type: 'ref', to: `faq${(n + 1) % 4}`, label } } }]))
     await s.t.run(async (ctx) => {
       const schema = (await ctx.db.get(s.site))!.schema as { bricks: Record<string, unknown> }
       Object.assign(schema.bricks, bricks)
@@ -188,7 +189,8 @@ describe('import of a big site', () => {
     const dir = await mkdtemp(join(tmpdir(), 'ginko-big-test-'))
     dirs.push(dir)
     const entries = Array.from({ length: 1990 }, (_, i) => ({
-      id: `faq${i % 4}/q${i}`, brick: `faq${i % 4}`, kind: 'item', order: i, data: { question: { de: `Frage ${i}: ${'x'.repeat(300)}` } }, prints: {}, rev: 1,
+      id: `faq${i % 4}/q${i}`, brick: `faq${i % 4}`, kind: 'item', order: i, prints: {}, rev: 1,
+      data: { question: { de: `Frage ${i}: ${'x'.repeat(300)}` }, ...(i < 1989 ? { next: `faq${(i + 1) % 4}/q${i + 1}` } : {}) },
     }))
     await writeFile(join(dir, 'export.json'), JSON.stringify({
       format: 1, site: 'restaurant', name: 'R', schema: { locales: ['de', 'en'], bricks, migrations: [], retired: {} }, schemaRev: 1, contentRev: 1,
@@ -201,7 +203,13 @@ describe('import of a big site', () => {
       return result
     }
     await importSite({ dir, run: limited, upload, log: () => undefined })
-    expect((await entriesOf(s, s.site)).length).toBe(1990)
+    const rows = await entriesOf(s, s.site)
+    expect(rows.length).toBe(1990)
+    // Each `next` names the new ID of the entry with the following number.
+    const numberOf = (entry: { data: { question: { de: string } } } | undefined) => Number(/^Frage (\d+):/.exec(entry?.data.question.de ?? '')?.[1])
+    const byId = new Map<string, (typeof rows)[number]>(rows.map((e) => [e._id, e]))
+    const pointsRight = rows.filter((e) => numberOf(byId.get(e.data.next)) === numberOf(e) + 1)
+    expect(pointsRight.length).toBe(1989)
   }, 60_000)
 })
 
@@ -238,7 +246,7 @@ describe('hosted import guard', () => {
     await withRefBricks(s, s.other)
 
     // Not local and not open: refused, also for the file upload and the clear.
-    for (const [fn, args] of [['seed:importExport', { site: 'andere', files: [], entries: [] }], ['seed:uploadUrl', { site: 'andere' }], ['seed:importRefs', { site: 'andere', ids: {} }], ['seed:importClear', { site: 'andere' }]] as const) {
+    for (const [fn, args] of [['seed:importExport', { site: 'andere', files: [], entries: [] }], ['seed:uploadUrl', { site: 'andere' }], ['seed:importRefs', { site: 'andere', ids: [] }], ['seed:importClear', { site: 'andere' }]] as const) {
       expect([fn, (await errorOf(call(fn, args))).code]).toEqual([fn, 'FORBIDDEN'])
     }
     // A site with content cannot be opened; the empty one can.

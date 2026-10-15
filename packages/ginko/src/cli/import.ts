@@ -68,9 +68,9 @@ async function readFileOf(dir: string, file: SiteExport['files'][number]): Promi
 }
 
 /** The IDs the export's entries are referenced by in other entries' data: only these need a new ID there. */
-function referencedIds(entries: ExportEntry[], ids: Record<string, string>): Record<string, string> {
+function referencedIds(entries: ExportEntry[], ids: Map<string, string>): { from: string; to: string }[] {
   const text = JSON.stringify(entries.map((e) => e.data))
-  return Object.fromEntries(Object.entries(ids).filter(([exported]) => text.includes(JSON.stringify(exported))))
+  return [...ids].filter(([exported]) => text.includes(JSON.stringify(exported))).map(([from, to]) => ({ from, to }))
 }
 
 /** A catalog message read from the platform's JSON; parameters that are not text, numbers or messages are left out. */
@@ -93,7 +93,7 @@ function warningText(warning: Record<string, unknown>): string | undefined {
   return `${warning.id} ${warning.path}: ${english(message)}`
 }
 
-/** Largest size of the `ids` argument of one importRefs call (a command-line argument). */
+/** Largest size of the `ids` argument of one importRefs call (a command-line argument); more pairs go in further calls. */
 const IDS_BYTES = 100_000
 
 /** Length of a Convex document ID, which every referenced entry ID becomes in step 6. */
@@ -275,13 +275,13 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
 
   // 5. Import the stored batches; each answers with the new ID of every entry, as [exported ID, new ID] pairs.
   let done = 0
-  const ids: Record<string, string> = {}
+  const ids = new Map<string, string>()
   let warnings = 0
   let firstWarning: string | undefined
   for (const batch of storedBatches) {
     const result = await run('seed:importBatch', { site, batch: batch.id })
     if (isObject(result) && Array.isArray(result.ids)) {
-      for (const pair of result.ids as unknown[]) if (Array.isArray(pair) && typeof pair[0] === 'string' && typeof pair[1] === 'string') ids[pair[0]] = pair[1]
+      for (const pair of result.ids as unknown[]) if (Array.isArray(pair) && typeof pair[0] === 'string' && typeof pair[1] === 'string') ids.set(pair[0], pair[1])
     }
     if (isObject(result) && typeof result.warnings === 'number') warnings += result.warnings
     if (isObject(result) && isObject(result.firstWarning)) firstWarning ??= warningText(result.firstWarning)
@@ -295,21 +295,29 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
   // Originals (local:files-export) go through the upload pipeline after their batch; the bundle serves only ready files.
   if (data.files.some((file) => file.original)) log('Images are being processed; they appear on the site in a moment.')
 
-  // 6. References between entries still name the exported IDs.
-  const refs = referencedIds(data.entries, ids)
-  if (Object.keys(refs).length > 0) {
-    if (Buffer.byteLength(JSON.stringify(refs)) > IDS_BYTES) throw new CliError('Too many references between entries for one call.')
+  // 6. References between entries still name the exported IDs. Each part of the pairs goes once through all entries.
+  const parts: { from: string; to: string }[][] = []
+  let part: { from: string; to: string }[] = []
+  let partBytes = 2
+  for (const pair of referencedIds(data.entries, ids)) {
+    const bytes = Buffer.byteLength(JSON.stringify(pair)) + 1
+    if (part.length > 0 && partBytes + bytes > IDS_BYTES) { parts.push(part); part = []; partBytes = 2 }
+    part.push(pair)
+    partBytes += bytes
+  }
+  if (part.length > 0) parts.push(part)
+  const changed = new Set<string>()
+  for (const refs of parts) {
     let cursor: string | undefined
-    let changed = 0
     for (;;) {
       const page = await run('seed:importRefs', { site, ids: refs, ...(cursor === undefined ? {} : { cursor }) })
-      if (isObject(page) && typeof page.changed === 'number') changed += page.changed
+      if (isObject(page) && Array.isArray(page.changed)) for (const id of page.changed) if (typeof id === 'string') changed.add(id)
       if (!isObject(page) || page.done === true) break
       if (typeof page.cursor !== 'string') throw new CliError('The platform did not return a cursor for the references.')
       cursor = page.cursor
     }
-    log(`References updated in ${changed} entries.`)
   }
+  if (parts.length > 0) log(`References updated in ${changed.size} entries.`)
   return { entries: data.entries.length, files: data.files.length }
 }
 

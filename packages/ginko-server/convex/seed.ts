@@ -430,22 +430,24 @@ export const isImportAllowed = internalQuery({
 /**
  * Import step 3 (after the last batch): entries got new IDs, so the entry references in `data` (`ref` fields, also in list
  * rows) still name the exported IDs. This rewrites every ID found in `ids` (exported ID → new ID); unknown IDs stay.
- * Entry references live only in `data`, so nothing else needs to follow, but the entry's `bytes` and the site's budget
- * do (the IDs differ in length). One call handles one page; the CLI repeats it with the returned `cursor` until `done`.
+ * `ids` is a list of pairs, not an object: Convex refuses an object with more than 1024 fields. Entry references live
+ * only in `data`, so nothing else needs to follow, but the entry's `bytes` and the site's budget do (the IDs differ in
+ * length). One call handles one page and names the entries it changed; the CLI repeats it with the returned `cursor`
+ * until `done`, and once per part of the pairs when they do not fit one call.
  */
 export const importRefs = internalMutation({
-  args: { site: v.string(), ids: v.record(v.string(), v.string()), cursor: v.optional(v.string()) },
+  args: { site: v.string(), ids: v.array(v.object({ from: v.string(), to: v.string() })), cursor: v.optional(v.string()) },
   handler: async (ctx, args) => {
     await requireImportAllowed(ctx, args.site)
     const site = await siteBySlug(ctx, args.site)
     const schema = site.schema as Schema
-    const ids = new Map(Object.entries(args.ids))
-    const exportedOf = new Map(Object.entries(args.ids).map(([exported, id]) => [id, exported]))
+    const ids = new Map(args.ids.map(({ from, to }) => [from, to]))
+    const exportedOf = new Map(args.ids.map(({ from, to }) => [to, from]))
     // 25 entries of up to 480 KiB stay under the 16 MiB a mutation may read.
     const page = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).paginate({ numItems: 25, cursor: args.cursor ?? null })
     let delta = 0
     let trashDelta = 0
-    let changed = 0
+    const changed: Id<'entries'>[] = []
     for (const entry of page.page) {
       const def = schema.bricks[entry.brick]
       if (!def) continue
@@ -460,7 +462,7 @@ export const importRefs = internalMutation({
       await ctx.db.patch(entry._id, { data, bytes: size })
       if (entry.deletedAt === undefined) delta += size - entry.bytes
       else trashDelta += size - entry.bytes
-      changed++
+      changed.push(entry._id)
     }
     const bytes = site.bytes + delta
     const trashBytes = (site.trashBytes ?? 0) + trashDelta
