@@ -19,6 +19,8 @@ const atMax = computed(() => props.field.max !== undefined && (values.value?.len
 function toggle(value: string, on: boolean) {
   const current = values.value ?? []
   const next = on ? [...current, value] : current.filter((v) => v !== value)
+  // Unchecking the last option of a required field leaves it unset: only a tap on "Keine" answers "none".
+  if (next.length === 0 && !props.field.optional) return emit('update:modelValue', undefined)
   const order = props.field.options.map((o) => o.value)
   emit('update:modelValue', next.sort((a, b) => order.indexOf(a) - order.indexOf(b)))
 }

@@ -6,6 +6,7 @@ import { TRANSLATION, type TranslationState } from '@lupinum/ginko-editor'
 import type { Field, Json } from '@lupinum/ginko'
 import FieldFrame from '../app/components/fields/FieldFrame.vue'
 import GinkoField from '../app/components/fields/GinkoField.vue'
+import GinkoFieldChoices from '../app/components/fields/GinkoFieldChoices.vue'
 import GinkoFieldDate from '../app/components/fields/GinkoFieldDate.vue'
 import GinkoFieldList from '../app/components/fields/GinkoFieldList.vue'
 import GinkoFieldRef from '../app/components/fields/GinkoFieldRef.vue'
@@ -134,6 +135,25 @@ describe('list rows', () => {
     const [closed, open] = wrapper.findAll('li')
     expect(closed!.find('input[type="time"]').exists()).toBe(false)
     expect(open!.find('input[type="time"]').exists()).toBe(true)
+  })
+})
+
+describe('choices', () => {
+  // Wrong behaviour caught: unchecking the last allergen ticked "Keine" by itself, so a cook who then tapped "Keine" to
+  // confirm cleared the answer, and a dish could say "no allergens" without anyone choosing it.
+  test('a required field: unchecking the last option leaves it unset, and only "Keine" stores none', async () => {
+    const field = { type: 'choices', label: 'Allergene', options: [{ value: 'A', label: 'Gluten' }, { value: 'L', label: 'Laktose' }] } as Extract<Field, { type: 'choices' }>
+    const value = shallowRef<Json | undefined>(['L'])
+    const wrapper = mount(defineComponent({
+      setup: () => () => h(GinkoFieldChoices, { id: 'f-al', field, modelValue: value.value, invalid: false, 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
+    }))
+    await wrapper.get('#f-al-L').trigger('click')
+    expect(value.value).toBeUndefined()
+    expect(wrapper.text()).toContain('Noch nicht angegeben.')
+    expect(wrapper.get('#f-al-none').attributes('data-state')).toBe('unchecked')
+    await wrapper.get('#f-al-none').trigger('click')
+    expect(value.value).toEqual([])
+    expect(wrapper.text()).not.toContain('Noch nicht angegeben.')
   })
 })
 
