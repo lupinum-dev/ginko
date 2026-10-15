@@ -237,6 +237,8 @@ describe('a files site with every basic', () => {
     const twin = withoutFiles(config)
     expect(checkSite(config)).toEqual([])
     expect(checkSite(twin)).toEqual([])
+    // @ts-expect-error The twin's type has no `source` either: a tool that reads it must not see 'files'.
+    expect(twin.bricks.site.source).toBeUndefined()
     expect(Object.values(twin.bricks).filter((b) => Object.hasOwn(b, 'source'))).toEqual([])
     expect(Object.values(config.bricks).every((b) => b.source === 'files')).toBe(true)
   })
