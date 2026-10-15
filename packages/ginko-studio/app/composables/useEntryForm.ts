@@ -401,7 +401,7 @@ export function useEntryForm(o: EntryFormOptions) {
     reconcile()
   }
 
-  /** "Verwerfen" on the offer: the copy goes, the form stays as it is. */
+  /** "Nicht wiederherstellen" on the offer: the copy goes for good, the form stays as it is. */
   function dropLocal() {
     const key = localKey.value
     if (key) clearLocalDraft(key)

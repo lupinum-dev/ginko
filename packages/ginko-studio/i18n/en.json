@@ -191,7 +191,7 @@
     "localDraft": {
       "offer": "Restore your unsaved changes from {time}?",
       "restore": "Restore",
-      "discard": "Discard",
+      "discard": "Do not restore",
       "restoredConflict": "Restored. Someone changed {fields} in the meantime; please decide below."
     },
     "pick": {

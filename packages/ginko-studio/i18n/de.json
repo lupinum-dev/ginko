@@ -191,7 +191,7 @@
     "localDraft": {
       "offer": "Ungespeicherte Änderungen vom {time} wiederherstellen?",
       "restore": "Wiederherstellen",
-      "discard": "Verwerfen",
+      "discard": "Nicht wiederherstellen",
       "restoredConflict": "Wiederhergestellt. Inzwischen hat jemand {fields} geändert, bitte unten entscheiden."
     },
     "pick": {
