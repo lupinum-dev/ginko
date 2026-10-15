@@ -282,6 +282,19 @@ describe('a link to a page of the site', () => {
   })
 })
 
+describe('the link field', () => {
+  // Wrong behaviour caught: the page list took Home and End and cancelled them, so the caret did not move in a long address.
+  test('Home and End move the caret in the typed address', async () => {
+    const wrapper = await mounted({ text: 'Mehr dazu\n' })
+    editorOf(wrapper).commands.setTextSelection({ from: 1, to: 10 })
+    await wrapper.get('button[aria-label="Link"]').trigger('click')
+    await until(() => !!document.querySelector('input[placeholder="Seite suchen oder https://…"]'))
+    const input = document.querySelector<HTMLInputElement>('input[placeholder="Seite suchen oder https://…"]')!
+    const press = (key: string) => { const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }); input.dispatchEvent(event); return event.defaultPrevented }
+    expect([press('Home'), press('End')]).toEqual([false, false])
+  })
+})
+
 describe('the toolbar', () => {
   // Wrong behaviour caught: a picture could only be added from the block type list labelled "Text" or the "/" menu, so
   // people found no way to add one.

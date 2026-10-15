@@ -94,12 +94,15 @@ const refocus = () => { if (!props.editor.isDestroyed) props.editor.commands.foc
           <Label :for="inputId">{{ t('editor.link.label') }}</Label>
           <!-- Enter on a highlighted page picks it (the list handles it); otherwise Enter submits the typed address. -->
           <Command class="gap-2 overflow-visible bg-transparent">
-            <ListboxFilter
-              :id="inputId" ref="input" :model-value="text" autocapitalize="off" autocomplete="off" spellcheck="false" :placeholder="t('editor.link.placeholder')"
-              :aria-invalid="error !== ''" :aria-describedby="error ? errorId : undefined"
-              class="h-10 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/80 aria-invalid:border-destructive aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 pointer-coarse:h-11"
-              @update:model-value="onText"
-            />
+            <!-- Home and End move the caret in the typed address; the list would take them (and cancel them) even when none shows. -->
+            <div class="contents" @keydown.home.capture.stop @keydown.end.capture.stop>
+              <ListboxFilter
+                :id="inputId" ref="input" :model-value="text" autocapitalize="off" autocomplete="off" spellcheck="false" :placeholder="t('editor.link.placeholder')"
+                :aria-invalid="error !== ''" :aria-describedby="error ? errorId : undefined"
+                class="h-10 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/80 aria-invalid:border-destructive aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 pointer-coarse:h-11"
+                @update:model-value="onText"
+              />
+            </div>
             <LinkTargetList :query="query" :current="target?.href" @pick="pick" @found="found" />
           </Command>
           <p v-if="error" :id="errorId" role="alert" class="text-sm text-destructive">{{ error }}</p>
