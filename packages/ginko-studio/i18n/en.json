@@ -120,7 +120,7 @@
     },
     "save": {
       "waiting": "Waiting for connection …",
-      "offlineKept": "No connection. Your input is kept in this browser and will be saved as soon as you are back online.",
+      "offlineKept": "No connection. Your input is kept in this browser. Keep this page open and it is saved as soon as you are back online.",
       "saving": "Saving …",
       "draft": "Save draft",
       "save": "Save"

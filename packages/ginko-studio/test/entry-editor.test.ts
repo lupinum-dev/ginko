@@ -122,7 +122,7 @@ test('a save on its way shows no "Nicht gespeichert"; without network the bar sa
     window.dispatchEvent(new Event('offline'))
     await flushPromises()
     expect(wrapper.get('.bar [type="submit"]').text()).toBe('Wartet auf Verbindung …')
-    expect(wrapper.get('.bar [role="status"]').text()).toBe('Keine Verbindung. Deine Eingaben sind in diesem Browser gesichert und werden gespeichert, sobald du wieder online bist.')
+    expect(wrapper.get('.bar [role="status"]').text()).toBe('Keine Verbindung. Deine Eingaben sind in diesem Browser gesichert. Lass diese Seite offen, dann wird gespeichert, sobald du wieder online bist.')
     window.dispatchEvent(new Event('online'))
     land()
     await flushPromises()
