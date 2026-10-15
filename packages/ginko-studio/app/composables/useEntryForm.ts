@@ -26,7 +26,8 @@ export interface EntryFormOptions {
   main: () => Locale
   /** Locale the translatable values are saved in (the main language in Schnell ändern). */
   locale: () => Locale
-  task?: () => string | undefined
+  /** The task of the save; `roots`: the root fields a save of the existing entry changes. */
+  task?: (roots?: readonly string[]) => string | undefined
   removeTask?: () => string | undefined
   /** The edited entry is a draft (SPEC 15): saving says so instead of promising the website. */
   draft?: () => boolean
@@ -188,7 +189,9 @@ export function useEntryForm(o: EntryFormOptions) {
         const roots = changedRoots(baseline.value, submitted).filter((k) => keys().includes(k))
         if (!roots.length && !confirm.value.length) return true
         const values = Object.fromEntries(roots.map((k) => [k, submitted[k] ?? null]))
-        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task: o.task?.(), locale: o.locale(), ...(confirm.value.length ? { confirm: confirm.value } : {}) }
+        // The server checks the task against the changed fields and the confirmed ones (entries.ts saveNow).
+        const task = o.task?.([...new Set([...roots, ...confirm.value.map((leaf) => leaf.split('.')[0]!)])])
+        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task, locale: o.locale(), ...(confirm.value.length ? { confirm: confirm.value } : {}) }
         const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false })
         if (result.rev === undefined) {
           // Nothing was written: the stored state, base and rev stay; only the input counts as handed in.

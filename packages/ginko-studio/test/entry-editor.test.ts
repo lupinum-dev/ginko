@@ -9,6 +9,7 @@ import { collection, defineSite, f } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import { useEntryForm } from '../app/composables/useEntryForm'
+import { allAccess } from '../app/composables/useAll'
 import EntryEditor from '../app/components/EntryEditor.vue'
 import PreviewPane from '../app/components/PreviewPane.vue'
 
@@ -121,4 +122,36 @@ test.each([
   await flushPromises()
   expect(wrapper.get('[role="status"]').text()).toBe(note)
   expect(wrapper.find('button[type="submit"]').exists()).toBe(false)
+})
+
+// Wrong behaviour caught: on an entry they created, staff who also hold an edit task saved every change through the
+// create task, so a typo fix waited for approval when only the create task needs it (the agent door saved it
+// directly through the edit task).
+test('staff save an entry they created through the edit task that covers the change, and through the create task otherwise', async () => {
+  const brick = { ...schema.bricks.blog!, tasks: [
+    { id: 'write', label: 'Beitrag schreiben', kind: 'create' as const, needsApproval: true },
+    { id: 'title', label: 'Titel ändern', kind: 'edit' as const, fields: ['title'] },
+  ] }
+  const { tasksFor } = allAccess({ isManager: ref(false), bricks: ref([['blog', brick]]), may: () => true } as never)
+  const sent: (string | undefined)[] = []
+  vi.stubGlobal('useOps', () => ({ opId: () => `op${sent.length}`, saveEntry: async ({ task }: { task?: string }) => ({ rev: sent.push(task) + 1 }) }))
+  try {
+    const entry = { _id: 'e1', brick: 'blog', kind: 'item' as const, order: 1, data: { title: { de: 'Herbstfest' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live' as const, own: true }
+    const wrapper = mount(EntryEditor, {
+      props: {
+        site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick, entry,
+        tasks: tasksFor('blog', brick, entry), canRemove: false,
+      },
+      global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+    })
+    await flushPromises()
+    for (const [field, value] of [['title', 'Herbstfest am 26.'], ['body', 'Mit Musik.']] as const) {
+      wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', field, { de: value })
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+    }
+    expect(sent).toEqual(['blog.title', 'blog.write'])
+  } finally {
+    vi.stubGlobal('useOps', () => ({}))
+  }
 })

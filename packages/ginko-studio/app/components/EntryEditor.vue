@@ -43,9 +43,10 @@ const props = defineProps<{
   entry?: Entry
   /**
    * Staff work through tasks (SPEC 2.7): the task refs that allow saving, creating and removing here, the fields the
-   * save task covers (none: every field), and the tasks of this brick they hold. Owners pass none.
+   * save task covers (none: every field), and the tasks of this brick they hold. `saveFor` picks the task of one save
+   * by the fields it changes (an entry they created, useAll.ts). Owners pass none.
    */
-  tasks?: { save?: string; fields?: readonly string[]; create?: string; remove?: string; held?: readonly Task[] }
+  tasks?: { save?: string; saveFor?: (roots: readonly string[]) => string | undefined; fields?: readonly string[]; create?: string; remove?: string; held?: readonly Task[] }
   canRemove: boolean
   /** Someone removed `entry` while it was open (useKeptEntry): the form keeps the input and offers a way out. */
   removed?: boolean
@@ -90,7 +91,7 @@ const form = useEntryForm({
   entry: () => props.entry,
   main: () => main.value,
   locale: () => locale.value,
-  task: () => (props.entry ? props.tasks?.save : props.tasks?.create),
+  task: (roots) => (!props.entry ? props.tasks?.create : roots && props.tasks?.saveFor ? props.tasks.saveFor(roots) : props.tasks?.save),
   removeTask: () => props.tasks?.remove,
   draft: () => props.entry?.state === 'draft',
   timeZone: () => props.schema.timeZone,
