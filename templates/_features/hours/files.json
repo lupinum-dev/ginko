@@ -3,6 +3,7 @@
   "app/components/hours/Today.vue",
   "app/components/site/FooterStatus.vue",
   "app/composables/useHours.ts",
+  "app/utils/hours.ts",
   "i18n/hours/de.json",
   "i18n/hours/en.json",
   "i18n/hours/it.json"

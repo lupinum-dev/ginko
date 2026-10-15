@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hoursNow } from '../../templates/_features/hours/app/composables/useHours.ts'
+import { hoursNow } from '../../templates/_features/hours/app/utils/hours.ts'
 
 const open = (ranges: [string, string][]) => ({ state: 'open', ranges }) as unknown as Parameters<typeof hoursNow>[0]
 const closed = { state: 'closed' } as unknown as Parameters<typeof hoursNow>[0]
