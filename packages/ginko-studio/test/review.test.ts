@@ -165,6 +165,7 @@ describe('ChangeRows', () => {
     for (const [name, fn] of Object.entries({ computed, ref, useI18n, onMounted: () => {}, onUnmounted: () => {} })) vi.stubGlobal(name, fn)
     vi.stubGlobal('useConvexPaginatedQuery', () => ({ data: ref([save]), error: ref(undefined), status: ref('success'), canLoadMore: ref(false), isLoadingMore: ref(false) }))
     vi.stubGlobal('useOps', () => ({}))
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
     const schema = { timeZone: 'Europe/Vienna', locales: ['de'], bricks: { events: { kind: 'collection', label: 'Veranstaltungen', fields: {}, tasks: [{ id: 'add', label: 'Veranstaltung hinzufügen', kind: 'create' }] } } }
     try {
       const wrapper = mount(ChangeRows, { props: { site: 's', schema: schema as never, manager: false, grants: new Set(['events.add']) } })
