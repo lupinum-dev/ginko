@@ -43,5 +43,13 @@ export function kindOf(mime: string | undefined) {
   const key = (mime ?? '').split(';')[0]!.trim().toLowerCase()
   if (!Object.hasOwn(UPLOAD_TYPES, key)) return undefined
   const type = key as UploadType
-  return { mime: type, limit: UPLOAD_TYPES[type].limit, signature: SIGNATURES[type] }
+  return { mime: type, kind: UPLOAD_TYPES[type].kind, limit: UPLOAD_TYPES[type].limit, signature: SIGNATURES[type] }
+}
+
+/**
+ * The allowed type of `kind` that the bytes prove, or undefined. The declared type only names the kind: a JPEG saved
+ * as `.png` (common for downloaded or forwarded photos) is a JPEG, and an image never passes as a PDF or back.
+ */
+export function typeOfBytes(kind: 'image' | 'file', bytes: Uint8Array): UploadType | undefined {
+  return (Object.keys(SIGNATURES) as UploadType[]).find((type) => UPLOAD_TYPES[type].kind === kind && SIGNATURES[type](bytes))
 }

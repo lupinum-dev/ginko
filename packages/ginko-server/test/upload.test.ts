@@ -95,6 +95,13 @@ describe('uploads.prepare and POST /upload', () => {
     expect(await storedFiles(s.t)).toHaveLength(0)
   })
 
+  // Wrong behaviour caught: a JPEG saved as .png (downloaded or forwarded photos) was refused as "wrong content".
+  it('stores a photo as the type its bytes prove, whatever its name or declared type says', async () => {
+    const s = await setup()
+    const id = await upload(s, { type: 'image/png', content: jpeg(16), name: 'foto.png', ready: false })
+    expect((await s.t.run((ctx) => ctx.db.get(id)))!.mime).toBe('image/jpeg')
+  })
+
   it('deletes the stored file when register refuses it (blank file name)', async () => {
     const s = await setup()
     const response = await postUpload(s, { name: '   ' })
