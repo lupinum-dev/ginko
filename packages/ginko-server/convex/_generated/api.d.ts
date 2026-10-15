@@ -42,6 +42,7 @@ import type * as lib_publicness from "../lib/publicness.js";
 import type * as lib_reminders from "../lib/reminders.js";
 import type * as lib_search from "../lib/search.js";
 import type * as lib_siteUrl from "../lib/siteUrl.js";
+import type * as lib_status from "../lib/status.js";
 import type * as lib_translation from "../lib/translation.js";
 import type * as lib_trees from "../lib/trees.js";
 import type * as lib_write from "../lib/write.js";
@@ -109,6 +110,7 @@ declare const fullApi: ApiFromModules<{
   "lib/reminders": typeof lib_reminders;
   "lib/search": typeof lib_search;
   "lib/siteUrl": typeof lib_siteUrl;
+  "lib/status": typeof lib_status;
   "lib/translation": typeof lib_translation;
   "lib/trees": typeof lib_trees;
   "lib/write": typeof lib_write;
