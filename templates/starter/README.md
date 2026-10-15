@@ -108,10 +108,13 @@ Notices show newest first: put the newest one at the top (the smallest number). 
 frontmatter. It appears at `/services` (`/de/<slug>` for the German file). Add `{ entry: 'pages/services' }` to `nav`
 in `app/app.config.ts` to put it in the menu.
 
-**A page with its own layout:** add a Vue file in `app/pages/`, for example `app/pages/team.vue`, and register its
-address in `ginko.config.ts` under `pages` (`team: localized('/team')`). For a German address, add
-`definePageMeta({ i18n: { paths: { de: '/team' } } })` to the page. Start it with `<BlockPageHeader>` and call
-`usePageSeo()`, like `app/pages/[...slug].vue`.
+**A page with its own layout:** add a Vue file in `app/pages/`, for example `app/pages/team.vue`. It answers at
+`/team` and `/de/team`. Start it with `<BlockPageHeader>` and call `usePageSeo()`, like `app/pages/[...slug].vue`, and
+register it in `ginko.config.ts` under `pages` (`team: localized('/team')`), so `useGinkoPath()('team')` links to it.
+
+For a German address of its own, add `definePageMeta({ i18n: { paths: { de: '/mannschaft' } } })` to the page (the
+path without `/de`; the page then answers at `/de/mannschaft`) and register both addresses:
+`team: { en: '/team', de: '/de/mannschaft' }`.
 
 ## Add or remove a language
 

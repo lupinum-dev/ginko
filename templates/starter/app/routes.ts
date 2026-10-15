@@ -1,6 +1,6 @@
 // The languages of this site and the web address of each page per language (TEMPLATES T8). The first language is
 // the main one: its addresses have no prefix, the others start with /<code>. `npm create ginko -- --locales` edits
-// the `locales` list and removes the entries of dropped languages from the maps below.
+// the `locales` list; a map of slugs per language added here loses the entries of dropped languages too.
 export const locales = ['en', 'de'] as const
 export type SiteLocale = (typeof locales)[number]
 
