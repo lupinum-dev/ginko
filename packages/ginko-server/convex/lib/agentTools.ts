@@ -145,7 +145,9 @@ export function fixedTools(actor: Actor): ToolDef[] {
     if (foreign.length) {
       tools.push({
         name: 'ginko_translate',
-        description: `Writes translations of an entry into a foreign language (${foreign.join(', ')}); you change the main language ${main} with the tasks. `
+        // Not every entry has a task that changes its main language (events have add and remove only; the creator rule
+        // reaches only translate, revert and undo here), so the text promises no such path.
+        description: `Writes translations of an entry into a foreign language (${foreign.join(', ')}). The main language ${main} changes only through a task that changes entries; where there is none, the person changes it in the platform. `
           + 'Only translatable text fields, each with the text in the target language. "confirm" names fields whose existing translation may stay although the main text changed.',
         inputSchema: object({
           entry,
