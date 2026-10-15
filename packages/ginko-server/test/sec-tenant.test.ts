@@ -1,4 +1,4 @@
-// Tenant isolation: the owner of site "andere" calls every public query and mutation with the restaurant's ids,
+// Tenant isolation: the owner of site "andere" calls every public query, mutation and action with the restaurant's ids,
 // once naming the restaurant and once naming "andere". Wrong behaviour caught: any answer that carries the
 // restaurant's content, or any change to the restaurant's rows. Add a call here when a public function is added.
 import type { Schema } from '@lupinum/ginko/internal'
@@ -47,7 +47,7 @@ async function fixtures(s: S) {
 }
 
 type Fx = Awaited<ReturnType<typeof fixtures>>
-type Call = { fn: string; kind: 'query' | 'mutation'; args: (site: string, f: Fx) => Record<string, unknown> }
+type Call = { fn: string; kind: 'query' | 'mutation' | 'action'; args: (site: string, f: Fx) => Record<string, unknown> }
 const o = () => opId()
 const calls: Call[] = [
   { fn: 'changes.list', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
@@ -131,6 +131,8 @@ const calls: Call[] = [
   { fn: 'views.save', kind: 'mutation', args: (site, f) => ({ site, id: f.view, brick: 'menu', name: 'pwned', query: {} }) },
   { fn: 'views.remove', kind: 'mutation', args: (site, f) => ({ site, id: f.view }) },
   { fn: 'views.list', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
+  // Against "andere" it stops at the missing refresh key, before anything is fetched.
+  { fn: 'refresh.urgentRefresh', kind: 'action', args: (site) => ({ site, opId: o() }) },
 ]
 
 const SECRETS = ['GEHEIM', 'Saibling', 'Frittaten', 'Gasthaus', 'koch@example.com', 'wirtin@example.com', 'geheim@example.com']
@@ -149,7 +151,7 @@ async function snapshot(s: S) {
 
 describe('tenant isolation: owner of "andere" against "restaurant"', () => {
   for (const target of ['restaurant', 'andere'] as const) {
-    it(`every public query/mutation, site="${target}" with restaurant ids`, async () => {
+    it(`every public query/mutation/action, site="${target}" with restaurant ids`, async () => {
       const s = await setup()
       const f = await fixtures(s)
       const before = await snapshot(s)
@@ -157,10 +159,10 @@ describe('tenant isolation: owner of "andere" against "restaurant"', () => {
       for (const c of calls) {
         const name = c.fn.split('#')[0]!
         const [mod, fnName] = name.split('.') as [keyof typeof api, string]
-        const ref = (api[mod] as unknown as Record<string, FunctionReference<'query' | 'mutation'>>)[fnName]!
+        const ref = (api[mod] as unknown as Record<string, FunctionReference<'query' | 'mutation' | 'action'>>)[fnName]!
         const args = c.args(target, f)
         try {
-          const result = c.kind === 'query' ? await s.as.stranger.query(ref, args) : await s.as.stranger.mutation(ref, args)
+          const result = c.kind === 'query' ? await s.as.stranger.query(ref, args) : c.kind === 'mutation' ? await s.as.stranger.mutation(ref, args) : await s.as.stranger.action(ref, args)
           const text = JSON.stringify(result)
           const hit = SECRETS.filter((x) => text.includes(x)).concat([f.entry, f.file, f.folder, f.change, f.proposal, f.member, f.removed, f.user].filter((x) => text.includes(x)))
           if (hit.length && !['uploads.urls', 'sites.meta'].includes(name)) leaks.push(`${c.fn}: ${hit.join(',')}`)
@@ -195,7 +197,7 @@ const NO_SITE: Record<string, string> = {
 }
 
 // Wrong behaviour caught: a new public function ships without a tenant probe, because nobody added it to `calls`.
-it('the call list names every public query and mutation, or says why it takes no site', async () => {
+it('the call list names every public query, mutation and action, or says why it takes no site', async () => {
   const probed = new Set([...calls.map((c) => c.fn.split('#')[0]!), ...Object.keys(NO_SITE)])
   expect([...probed].sort()).toEqual(await publicFunctions())
 })

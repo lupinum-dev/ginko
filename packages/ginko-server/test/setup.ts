@@ -140,7 +140,7 @@ export async function revokeSession(t: Backend, person: Person) {
 export const opId = () => crypto.randomUUID()
 
 /**
- * Every exported public query and mutation of convex/, as `module.name`, sorted. The access tests compare their
+ * Every exported public query, mutation and action of convex/, as `module.name`, sorted. The access tests compare their
  * call lists with it, so a new public function cannot ship without a probe. `*.config.ts` registers no function.
  */
 export async function publicFunctions(): Promise<string[]> {
@@ -149,8 +149,8 @@ export async function publicFunctions(): Promise<string[]> {
     if (path.endsWith('.config.ts')) continue
     const module = path.slice('../convex/'.length).replace(/\.[jt]s$/, '')
     for (const [name, value] of Object.entries(await load() as Record<string, unknown>)) {
-      const fn = value as { isPublic?: boolean; isQuery?: boolean; isMutation?: boolean }
-      if (typeof value === 'function' && fn.isPublic && (fn.isQuery || fn.isMutation)) out.push(`${module}.${name}`)
+      const fn = value as { isPublic?: boolean; isQuery?: boolean; isMutation?: boolean; isAction?: boolean }
+      if (typeof value === 'function' && fn.isPublic && (fn.isQuery || fn.isMutation || fn.isAction)) out.push(`${module}.${name}`)
     }
   }
   return out.sort()

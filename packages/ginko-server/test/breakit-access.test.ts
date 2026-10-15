@@ -45,7 +45,7 @@ const as = (s: S, subject: string, email?: string) => s.t.withIdentity({ subject
 // 1. No identity, forged identity
 // ---------------------------------------------------------------------------------------------
 
-type Call = { fn: string; kind: 'query' | 'mutation'; args: (s: S) => Record<string, unknown> }
+type Call = { fn: string; kind: 'query' | 'mutation' | 'action'; args: (s: S) => Record<string, unknown> }
 const SITE = { site: 'restaurant' }
 const publicCalls: Call[] = [
   { fn: 'account.settings', kind: 'query', args: () => ({}) },
@@ -134,30 +134,26 @@ const publicCalls: Call[] = [
   { fn: 'views.save', kind: 'mutation', args: () => ({ ...SITE, brick: 'menu', name: 'x', query: {} }) },
   { fn: 'views.remove', kind: 'mutation', args: () => ({ ...SITE, id: 'x' }) },
   { fn: 'views.list', kind: 'query', args: () => ({ ...SITE, brick: 'menu' }) },
+  { fn: 'refresh.urgentRefresh', kind: 'action', args: () => ({ ...SITE, opId: opId() }) },
 ]
 
 function ref(fn: string) {
   const [mod, name] = fn.split('.') as [keyof typeof api, string]
-  return (api[mod] as unknown as Record<string, FunctionReference<'query' | 'mutation'>>)[name]!
+  return (api[mod] as unknown as Record<string, FunctionReference<'query' | 'mutation' | 'action'>>)[name]!
 }
 async function run(client: S['t'], c: Call, s: S) {
   const r = ref(c.fn)
-  return c.kind === 'query' ? client.query(r, c.args(s)) : client.mutation(r, c.args(s))
+  return c.kind === 'query' ? client.query(r, c.args(s)) : c.kind === 'mutation' ? client.mutation(r, c.args(s)) : client.action(r, c.args(s))
 }
 
 describe('1. no identity and forged identity', () => {
-  it('every public query and mutation refuses a caller without identity, changing nothing', async () => {
+  it('every public query, mutation and action refuses a caller without identity, changing nothing', async () => {
     const s = await setup()
     const before = JSON.stringify([await rows(s, 'entries'), await rows(s, 'memberships'), await rows(s, 'invites'), await rows(s, 'sites')])
     const open: string[] = []
     for (const c of publicCalls) if ((await outcome(run(s.t, c, s))) === 'ok') open.push(c.fn)
     expect(open).toEqual([])
     expect(JSON.stringify([await rows(s, 'entries'), await rows(s, 'memberships'), await rows(s, 'invites'), await rows(s, 'sites')])).toBe(before)
-  })
-
-  it('urgentRefresh (action) refuses a caller without identity', async () => {
-    const s = await setup()
-    expect(await outcome(s.t.action(api.refresh.urgentRefresh, { site: 'restaurant', opId: opId() }))).toBe('FORBIDDEN')
   })
 
   // The list above purges a live entry, which fails anyway; here the entry really is removed, so only access stops it.
@@ -170,7 +166,7 @@ describe('1. no identity and forged identity', () => {
   })
 
   // Wrong behaviour caught: a new public function ships without a no-identity probe, because nobody added it to the list.
-  it('the list names every public query and mutation, or says why it answers without identity', async () => {
+  it('the list names every public query, mutation and action, or says why it answers without identity', async () => {
     const open: Record<string, string> = { 'mail.signInAvailable': 'the sign-in page asks it before anyone is signed in; it says only whether mail is set up' }
     expect([...new Set([...publicCalls.map((c) => c.fn), ...Object.keys(open)])].sort()).toEqual(await publicFunctions())
   })
