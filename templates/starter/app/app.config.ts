@@ -6,6 +6,8 @@ export default defineAppConfig({
   site: {
     // shortName: 'Site',
     // logo: { src: '/logo.svg', width: 120, height: 32 },
+    // One line under the name in the footer, per language.
+    tagline: { en: 'One line about what you do.', de: 'Eine Zeile dazu, was Sie tun.' },
     organization: 'Organization',
     // Entries of content/pages/ by id (`pages/<file name without number>`), at most 6.
     nav: [{ entry: 'pages/about' }, { entry: 'pages/contact' }],

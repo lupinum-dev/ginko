@@ -10,6 +10,8 @@ export interface SiteAppConfig {
   shortName?: string
   /** A logo file in public/ with its size in pixels. Without it, the header shows the name. */
   logo?: { src: string, width: number, height: number }
+  /** One line under the name in the footer, per language code: `{ en: '…', de: '…' }`. A language without one shows none. */
+  tagline?: Record<string, string>
   /** The schema.org type of the organisation on the home page. */
   organization: 'Organization' | 'LocalBusiness' | 'NGO'
   /** The header navigation: at most 6 items. The footer repeats it. */

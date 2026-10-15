@@ -13,6 +13,7 @@ test('the footer links every legal text, and each opens with its title and date'
     expect.soft(response?.status(), `${href} status`).toBe(200)
     await expect.soft(page.locator('h1'), `${href} title`).toHaveText(text)
     await expect.soft(page.locator('main header p').last(), `${href} shows its date`).toContainText(/\d/)
+    await expect.soft(page.locator('footer nav').last().locator('a[aria-current="page"]'), `${href} marked as current in the footer`).toHaveText(text)
   }
 })
 

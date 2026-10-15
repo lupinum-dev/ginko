@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { safeHref } from '@lupinum/ginko'
 
-// Identity and contact from content/site.md, the navigation, more links and profiles from app.config.ts, and the
-// legal texts from content/legal/.
+// Identity and contact from content/site.md, the tagline, navigation, more links and profiles from app.config.ts,
+// and the legal texts from content/legal/. One muted background, no border: the bottom bar's line divides inside it.
 const config = useSiteAppConfig()
 const { name } = useGinkoSite()
 const site = useGinko('site')
@@ -11,15 +11,17 @@ const locale = useGinkoLocale()
 const pages = useSiteLinks(() => [...config.nav, ...config.footer])
 const { t } = useI18n('site')
 const contact = computed(() => site.value.data)
+const tagline = computed(() => config.tagline?.[locale.value])
 const year = useGinkoToday().value.slice(0, 4)
 const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
 </script>
 
 <template>
-  <footer class="mt-section border-t bg-muted">
-    <div class="mx-auto grid max-w-page gap-10 px-gutter py-14 sm:grid-cols-2 lg:grid-cols-4">
-      <div class="flex flex-col gap-3 lg:col-span-2">
+  <footer class="mt-section bg-muted">
+    <div class="mx-auto grid max-w-page gap-10 px-gutter py-14 md:grid-cols-3">
+      <div class="flex flex-col gap-3">
         <p class="font-display text-body font-semibold">{{ name }}</p>
+        <p v-if="tagline" class="max-w-xs text-small text-muted-foreground">{{ tagline }}</p>
         <ul v-if="config.socials.length" class="flex flex-wrap gap-x-5 gap-y-1 text-small" :aria-label="t('footer.links')">
           <li v-for="social in config.socials" :key="social.url">
             <a :href="safeHref(social.url)" rel="me noopener" class="inline-flex min-h-11 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{{ social.label }}</a>
@@ -31,7 +33,7 @@ const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
         <h2 id="footer-pages" class="text-small font-semibold">{{ t('footer.pages') }}</h2>
         <ul class="flex flex-col text-small">
           <li v-for="link in pages" :key="link.key">
-            <NuxtLink :to="link.to" class="inline-flex min-h-11 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{{ link.label }}</NuxtLink>
+            <SiteNavLink :to="link.to" class="inline-flex min-h-11 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline aria-[current=page]:text-foreground aria-[current=page]:underline">{{ link.label }}</SiteNavLink>
           </li>
         </ul>
       </nav>
@@ -56,7 +58,7 @@ const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
         <nav v-if="legal.items.length" :aria-label="t('footer.legal')">
           <ul class="flex flex-wrap gap-x-5">
             <li v-for="item in legal.items" :key="item.id">
-              <NuxtLink :to="item.urls?.[locale] ?? ''" class="inline-flex min-h-11 items-center underline-offset-4 hover:text-foreground hover:underline">{{ item.data.title }}</NuxtLink>
+              <SiteNavLink :to="item.urls?.[locale] ?? ''" class="inline-flex min-h-11 items-center underline-offset-4 hover:text-foreground hover:underline aria-[current=page]:text-foreground aria-[current=page]:underline">{{ item.data.title }}</SiteNavLink>
             </li>
           </ul>
         </nav>

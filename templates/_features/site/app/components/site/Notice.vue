@@ -9,7 +9,7 @@ const { t } = useI18n('site')
 </script>
 
 <template>
-  <section v-if="shown.length" :aria-label="t('notice')" class="border-b bg-muted">
+  <section v-if="shown.length" :aria-label="t('notice')" class="bg-muted">
     <ul class="mx-auto flex max-w-page flex-col gap-1 px-gutter py-2.5">
       <li v-for="notice in shown" :key="notice.id" class="flex items-start gap-2.5 text-small">
         <Info class="mt-0.5 size-4 shrink-0" aria-hidden="true" />

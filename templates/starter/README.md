@@ -80,7 +80,7 @@ Every text is a Markdown file. The main language has no suffix (`about.md`); a t
 | Name, address, email, phone (footer, search engines) | `content/site.md` |
 | Privacy policy, terms, imprint | `content/legal/` (placeholders: replace them before you go live) |
 | Site name, description for search engines | `ginko.config.ts` (`name`, `seo.description`) |
-| Menu, footer links, profiles elsewhere | `app/app.config.ts` |
+| Menu, the line under the name in the footer, footer links, profiles elsewhere | `app/app.config.ts` |
 | Texts of buttons and labels | `i18n/site/<language>.json`; to change one, set it under `"site"` in `i18n/<language>.json` |
 
 Notices show newest first: put the newest one at the top (the smallest number). At most two show at once.
