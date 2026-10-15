@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { api } from '#convex/api'
 import { Skeleton } from '@studio/components/ui/skeleton'
+import { localDraftKey, readLocalDraft } from '../../../../../composables/useLocalDraft'
 
 definePageMeta({ layout: 'site' })
 const route = useRoute()
@@ -15,10 +16,23 @@ const access = computed(() => (brick.value ? tasksFor(key.value, brick.value) : 
 // Only this entry is read: a save of another entry sends this page nothing.
 const read = useConvexQuery(api.entries.get, () => (id.value === 'new' ? 'skip' : { site: s.slug.value, entry: id.value }))
 // Kept after someone else removes it, so the editor and the person's input stay (N1).
-const { entry, removed: entryRemoved } = useKeptEntry(
+const { entry: kept, removed: keptRemoved } = useKeptEntry(
   () => (id.value === 'new' ? undefined : id.value),
   () => { const e = read.data.value; return e && !e.deleted && e._id === id.value ? e : undefined },
 )
+// Opened again (a reload) after someone removed it, while this browser still holds unsaved input for it: the editor
+// opens on the removed entry with the same banner as above, so the input can be restored and copied out or saved
+// with the entry. Browser storage only after mount (no hydration mismatch).
+const auth = useConvexAuth()
+const mounted = ref(false)
+onMounted(() => { mounted.value = true })
+const removedWithDraft = computed(() => {
+  const e = read.data.value
+  const user = auth.user.value?.id
+  return mounted.value && e?.deleted && e._id === id.value && user && readLocalDraft(localDraftKey(s.slug.value, user, e._id)) ? e : undefined
+})
+const entry = computed(() => kept.value ?? removedWithDraft.value)
+const entryRemoved = computed(() => keptRemoved.value || !!removedWithDraft.value)
 /** The entry is still on its way (the answer may still be the one for the entry opened before): placeholders, not "this entry does not exist". */
 const answered = computed(() => read.data.value === null || read.data.value?._id === id.value || !!read.error.value)
 const loading = computed(() => id.value !== 'new' && !entry.value && !answered.value)
