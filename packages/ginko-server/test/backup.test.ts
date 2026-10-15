@@ -165,6 +165,22 @@ describe('GET /export', () => {
   })
 })
 
+describe('backup.download (Studio, Team > Sicherung)', () => {
+  // Wrong behaviour caught (admin-3): an owner without the CLI had no way to get a copy; a staff member must not get
+  // every entry (also of areas they cannot open); and the Studio's ZIP must hold what `ginko export` and the import read.
+  it('refuses staff and gives owners and admins the snapshot GET /export gives', async () => {
+    const { s } = await production()
+    expect(await errorOf(s.as.cook.query(api.backup.download, { site: 'restaurant' }))).toMatchObject({ code: 'FORBIDDEN', key: 'errors.backupOwnersOnly' })
+    const { exportedAt: _, ...fromCli } = await s.t.query(internal.backup.snapshot, { site: s.site })
+    for (const who of ['owner', 'admin'] as const) {
+      const { exportedAt, ...answer } = await s.as[who].query(api.backup.download, { site: 'restaurant' })
+      expect(answer).toEqual(fromCli)
+      expect(typeof exportedAt).toBe('string')
+    }
+    expect(fromCli.files).toHaveLength(2)
+  })
+})
+
 describe('ginko export', () => {
   it('writes export.json and every file, prints one JSON line and never the key', async () => {
     const { s, kitchen, dining } = await production()

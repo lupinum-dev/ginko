@@ -70,6 +70,7 @@
     "brickNotFound": "Este bloque no existe.",
     "languageNotOnSite": "El idioma “{locale}” no existe en este sitio.",
     "fileLibraryOwnersOnly": "Solo los propietarios y administradores pueden cambiar la biblioteca de archivos.",
+    "backupOwnersOnly": "Solo los propietarios y administradores pueden descargar una copia de seguridad.",
     "tooManyFiles": "Demasiados archivos a la vez.",
     "folderNameRequired": "La carpeta necesita un nombre.",
     "folderNameTooLong": "El nombre de la carpeta es demasiado largo (máximo {folderNameMax} caracteres).",

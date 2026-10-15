@@ -50,6 +50,7 @@ type Fx = Awaited<ReturnType<typeof fixtures>>
 type Call = { fn: string; kind: 'query' | 'mutation' | 'action'; args: (site: string, f: Fx) => Record<string, unknown> }
 const o = () => opId()
 const calls: Call[] = [
+  { fn: 'backup.download', kind: 'query', args: (site) => ({ site }) },
   { fn: 'changes.list', kind: 'query', args: (site, f) => ({ site, paginationOpts: firstPage, entry: f.entry }) },
   { fn: 'changes.list#nofilter', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage }) },
   { fn: 'changes.get', kind: 'query', args: (site, f) => ({ site, change: f.change }) },
@@ -165,7 +166,9 @@ describe('tenant isolation: owner of "andere" against "restaurant"', () => {
         const args = c.args(target, f)
         try {
           const result = c.kind === 'query' ? await s.as.stranger.query(ref, args) : c.kind === 'mutation' ? await s.as.stranger.mutation(ref, args) : await s.as.stranger.action(ref, args)
-          const text = JSON.stringify(result)
+          // A backup carries the caller's own schema, which "andere" shares with the restaurant (a default names the
+          // Gasthaus); the rest of it must hold nothing of the restaurant.
+          const text = JSON.stringify(name === 'backup.download' ? { ...(result as object), schema: null } : result)
           const hit = SECRETS.filter((x) => text.includes(x)).concat([f.entry, f.file, f.folder, f.change, f.proposal, f.member, f.removed, f.user].filter((x) => text.includes(x)))
           if (hit.length && !['uploads.urls', 'sites.meta'].includes(name)) leaks.push(`${c.fn}: ${hit.join(',')}`)
         } catch {

@@ -70,6 +70,7 @@
     "brickNotFound": "This brick does not exist.",
     "languageNotOnSite": "The language “{locale}” does not exist on this site.",
     "fileLibraryOwnersOnly": "Only owners and admins can change the file library.",
+    "backupOwnersOnly": "Only owners and admins can download a backup.",
     "tooManyFiles": "Too many files at once.",
     "folderNameRequired": "The folder needs a name.",
     "folderNameTooLong": "The folder name is too long (at most {folderNameMax} characters).",

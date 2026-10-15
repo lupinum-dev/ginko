@@ -58,6 +58,7 @@ const publicCalls: Call[] = [
   { fn: 'agent.keys', kind: 'query', args: () => SITE },
   { fn: 'agent.revokeKey', kind: 'mutation', args: () => ({ ...SITE, key: 'x' }) },
   { fn: 'agent.setKeyReview', kind: 'mutation', args: () => ({ ...SITE, key: 'x', review: false }) },
+  { fn: 'backup.download', kind: 'query', args: () => SITE },
   { fn: 'changes.list', kind: 'query', args: () => ({ ...SITE, paginationOpts: firstPage }) },
   { fn: 'changes.get', kind: 'query', args: () => ({ ...SITE, change: 'x' }) },
   { fn: 'entries.save', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-saibling'], baseRev: 1, fields: { price: { amount: 1 } } }) },

@@ -70,6 +70,7 @@
     "brickNotFound": "Diesen Baustein gibt es nicht.",
     "languageNotOnSite": "Die Sprache „{locale}“ gibt es auf dieser Seite nicht.",
     "fileLibraryOwnersOnly": "Die Dateibibliothek dürfen nur Inhaber und Admins ändern.",
+    "backupOwnersOnly": "Eine Sicherung dürfen nur Inhaber und Admins herunterladen.",
     "fileNotFound": "Diese Datei gibt es nicht.",
     "tooManyFiles": "Zu viele Dateien auf einmal.",
     "folderNotFound": "Diesen Ordner gibt es nicht.",
