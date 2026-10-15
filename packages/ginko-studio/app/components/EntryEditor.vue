@@ -496,7 +496,8 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           </template>
         </template>
 
-        <div class="bar sticky bottom-0 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background py-3">
+        <!-- z-20: above the text toolbar (z-5) and a card's settings button (z-10) that scroll under it; below popovers and the docked phone bar. -->
+        <div class="bar sticky bottom-0 z-20 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background py-3">
           <!-- The live region must be in the accessibility tree before its text appears, so empty means sr-only (no space), not hidden. -->
           <p :class="['basis-full text-sm empty:sr-only', size?.over ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ size?.text }}</p>
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
