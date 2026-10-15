@@ -5,9 +5,6 @@ description: "Pupils now test the river water with us once a month."
 date: 2026-09-22
 authors: [people/lukas-hoffmann]
 tags: ["water", "schools"]
-image:
-  src: /media/forest-stream.jpg
-  alt: "Clear water of a stream between mossy fallen trees in a green forest"
 ---
 
 Pupils from a secondary school near the river now test the water with us once a month. They measure temperature, pH and nitrate with simple test kits and add the results to a shared table.
