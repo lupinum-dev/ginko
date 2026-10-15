@@ -10,8 +10,8 @@ import { useI18n } from '#imports'
 import { shownLabel } from '../app/utils/labels'
 import ListPage from '../app/pages/s/[site]/all/[brick]/index.vue'
 
-const { computed, defineComponent, h, onBeforeUnmount, ref, shallowRef, Suspense, toValue, watch } = vue
-Object.entries({ computed, onBeforeUnmount, ref, shallowRef, watch, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
+const { computed, defineComponent, h, onBeforeUnmount, ref, Suspense, toValue, watch } = vue
+Object.entries({ computed, onBeforeUnmount, ref, watch, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 const schema = serializeSchema(defineSite({
   site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
@@ -30,14 +30,16 @@ vi.stubGlobal('useSiteData', async () => ({
 }))
 vi.stubGlobal('allAccess', () => ({ editable: computed(() => [['dishes', brick]]), tasksFor: () => ({ all: true }) }))
 
-// entries.list answers like Convex: new arguments subscribe again, and the answer arrives later (`answer`).
+// entries.list answers like better-convex: new arguments subscribe again, and the answer arrives later (`answer`).
+// With keepPreviousData the last answer stays, marked stale, until then.
 const answers: { search?: string }[] = []
 const list = { data: ref<unknown>(), pending: ref(true), isStale: ref(false) }
-vi.stubGlobal('useConvexQuery', (fn: string, args: () => unknown) => {
+vi.stubGlobal('useConvexQuery', (fn: string, args: () => unknown, options?: { keepPreviousData?: boolean }) => {
   if (String(fn) !== 'entries.list') return { data: ref(undefined), pending: ref(false), isStale: ref(false) }
   watch(() => JSON.stringify(toValue(args)), (now) => {
     answers.push(JSON.parse(now) as { search?: string })
-    list.data.value = undefined
+    if (!options?.keepPreviousData) list.data.value = undefined
+    list.isStale.value = list.data.value !== undefined
     list.pending.value = true
   }, { immediate: true })
   return list
@@ -45,6 +47,7 @@ vi.stubGlobal('useConvexQuery', (fn: string, args: () => unknown) => {
 const answer = (page: { rows: { _id: string; title: string; state: string; dates: object; gaps: [] }[]; total: number }) => {
   list.data.value = page
   list.pending.value = false
+  list.isStale.value = false
 }
 
 // Wrong behaviour caught: while a cleared search loads, the last (empty) answer hid the search box under the

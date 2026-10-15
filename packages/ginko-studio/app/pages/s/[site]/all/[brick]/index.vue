@@ -38,15 +38,13 @@ const limit = ref(PAGE)
 watch([key, asked, sort], () => { limit.value = PAGE })
 const list = useConvexQuery(api.entries.list, () => (brick.value?.kind === 'collection' && allowed.value
   ? { site: s.slug.value, brick: key.value, ...(asked.value ? { search: asked.value } : {}), ...(sort.value ? { sort: sort.value } : {}), limit: limit.value, language: uiLocale.value }
-  : 'skip'))
-// While a new answer loads (another search, more rows), the last one stays on screen, dimmed.
-const last = shallowRef<NonNullable<typeof list.data.value>>()
-watch(() => list.data.value, (page) => { if (page) last.value = page }, { immediate: true })
-watch(key, () => { last.value = undefined })
-const page = computed(() => list.data.value ?? last.value)
+  : 'skip'), { keepPreviousData: true })
+// While a new answer loads (another search, more rows), the last one stays on screen, dimmed. Nuxt keys the page
+// by its path, so each area has its own list and never shows another area's last answer.
+const page = computed(() => list.data.value)
 const rows = computed(() => page.value?.rows ?? [])
 const total = computed(() => page.value?.total ?? 0)
-const loading = computed(() => list.pending.value || list.isStale.value)
+const loading = computed(() => list.isStale.value)
 type Row = (typeof rows.value)[number]
 
 const single = useConvexQuery(api.entries.single, () => (brick.value?.kind === 'single' && allowed.value ? { site: s.slug.value, brick: key.value } : 'skip'))
