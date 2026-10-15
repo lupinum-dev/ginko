@@ -144,6 +144,9 @@ async function undo(change: Change) {
               :aria-expanded="showing.has(change._id)"
               @click="toggleShow(change._id)"
             >{{ showing.has(change._id) ? t('history.hideChanges') : t('history.showChanges') }}</Button>
+            <Button v-if="change.kind === 'remove' && change.entry" as-child variant="ghost" size="sm">
+              <NuxtLink :to="`/s/${site}/all?removed`">{{ t('history.openTrash') }}</NuxtLink>
+            </Button>
             <Button
               v-if="canRevert(change) && confirming !== change._id"
               type="button"

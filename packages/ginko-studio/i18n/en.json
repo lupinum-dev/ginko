@@ -167,9 +167,9 @@
     },
     "remove": {
       "title": "Remove entry",
-      "text": "“{title}” is removed from the website. You can restore it for 30 days.",
+      "text": "“{title}” leaves the website. You find it in the trash for 30 days and can restore it there.",
       "confirm": "Remove",
-      "usedIn": "“{title}” is used in {count, plural, one {# entry} other {# entries}}. The website leaves it out there until you restore it.",
+      "usedIn": "“{title}” is used in {count, plural, one {one place} other {# places}}. They stay online but no longer show “{title}”. You can restore it from the trash for 30 days.",
       "confirmAnyway": "Remove anyway",
       "checking": "Checking where this entry is used …",
       "trashFull": "The trash is full. Removing this deletes these older entries for good:"
@@ -277,7 +277,7 @@
       "showMore": "Show {count} more",
       "shownOf": "{shown} of {total} entries",
       "searching": "Searching …",
-      "removed": "Removed (can be restored for 30 days)",
+      "removed": "In the trash (can be restored for 30 days)",
       "restore": "Restore"
     },
     "area": {
@@ -615,8 +615,8 @@
     "unpublished": "Unpublished. Not on the website in about a minute.",
     "scheduleCleared": "Schedule removed. The entry stays a draft.",
     "created": "Created.",
-    "removed": "Removed.",
-    "removedNamed": "“{title}” removed.",
+    "removed": "Now in the trash.",
+    "removedNamed": "“{title}” is now in the trash.",
     "restored": "Restored.",
     "entryGone": "This entry was removed in the meantime.",
     "leaveConfirm": "Your changes are not saved yet. Leave anyway?",
@@ -676,6 +676,7 @@
     "noMatches": "No changes match this filter.",
     "showChanges": "Show changes",
     "hideChanges": "Hide changes",
+    "openTrash": "Open trash",
     "revert": "Back to this version",
     "revertConfirm": "Go back to the version of {date}? This is saved as a new change, so you can undo it.",
     "reverted": "Went back to the earlier version.",
@@ -739,9 +740,9 @@
       "translate": "Edit translation"
     },
     "removed": {
-      "link": "Removed",
-      "title": "Removed entries",
-      "empty": "Nothing was removed.",
+      "link": "Trash",
+      "title": "Trash",
+      "empty": "The trash is empty.",
       "until": "Deleted for good on {date}",
       "deleteNow": "Delete now",
       "deleteNowNamed": "Delete now: “{title}”",

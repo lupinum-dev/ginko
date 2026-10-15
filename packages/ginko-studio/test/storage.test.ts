@@ -119,7 +119,7 @@ test('a failed trash load shows the error, not an empty trash', () => {
   trashQuery({ status: 'error', error: normalizeConvexError(new ConvexError({ code: 'FORBIDDEN', message: 'Kein Zugriff.' }), { functionName: 'entries:trash' }) })
   mount(RemovedList, { props: { slug: 'restaurant', schema: undefined }, attachTo: document.body })
   expect(document.body.querySelector('[role="alert"]')?.textContent).toBe('Kein Zugriff.')
-  expect(text()).not.toContain('Nichts wurde entfernt.')
+  expect(text()).not.toContain('Der Papierkorb ist leer.')
 })
 
 // Wrong behaviour caught: the site budget is found only when a save is refused, or the full band can be hidden while saves fail.

@@ -167,9 +167,9 @@
     },
     "remove": {
       "title": "Eintrag entfernen",
-      "text": "„{title}“ wird von der Website entfernt. Wiederherstellen geht 30 Tage lang.",
+      "text": "„{title}“ geht von der Website. Du findest es 30 Tage lang im Papierkorb und kannst es dort wiederherstellen.",
       "confirm": "Entfernen",
-      "usedIn": "„{title}“ wird in {count, plural, one {# Eintrag} other {# Einträgen}} verwendet. Dort fehlt der Eintrag auf der Website, bis du ihn wiederherstellst.",
+      "usedIn": "„{title}“ wird an {count, plural, one {einer Stelle} other {# Stellen}} verwendet. Diese bleiben online, zeigen „{title}“ aber nicht mehr. Du kannst es 30 Tage lang aus dem Papierkorb wiederherstellen.",
       "confirmAnyway": "Trotzdem entfernen",
       "checking": "Prüft, wo der Eintrag verwendet wird …",
       "trashFull": "Der Papierkorb ist voll. Wenn du entfernst, werden diese älteren Einträge endgültig gelöscht:"
@@ -277,7 +277,7 @@
       "showMore": "{count} weitere anzeigen",
       "shownOf": "{shown} von {total} Einträgen",
       "searching": "Suche …",
-      "removed": "Entfernt (30 Tage wiederherstellbar)",
+      "removed": "Im Papierkorb (30 Tage wiederherstellbar)",
       "restore": "Wiederherstellen"
     },
     "area": {
@@ -615,8 +615,8 @@
     "unpublished": "Zurückgezogen. In etwa einer Minute nicht mehr auf der Website.",
     "scheduleCleared": "Zeitplan aufgehoben. Der Eintrag bleibt ein Entwurf.",
     "created": "Angelegt.",
-    "removed": "Entfernt.",
-    "removedNamed": "„{title}“ entfernt.",
+    "removed": "Liegt jetzt im Papierkorb.",
+    "removedNamed": "„{title}“ liegt jetzt im Papierkorb.",
     "restored": "Wiederhergestellt.",
     "entryGone": "Dieser Eintrag wurde inzwischen entfernt.",
     "leaveConfirm": "Deine Änderungen sind noch nicht gespeichert. Trotzdem weggehen?",
@@ -676,6 +676,7 @@
     "noMatches": "Keine Änderungen für diesen Filter.",
     "showChanges": "Änderungen anzeigen",
     "hideChanges": "Änderungen ausblenden",
+    "openTrash": "Papierkorb öffnen",
     "revert": "Zurück zu dieser Version",
     "revertConfirm": "Zurück zur Version vom {date}? Das wird als neue Änderung gespeichert, du kannst es rückgängig machen.",
     "reverted": "Zur früheren Version zurückgegangen.",
@@ -739,9 +740,9 @@
       "translate": "Übersetzung bearbeiten"
     },
     "removed": {
-      "link": "Entfernt",
-      "title": "Entfernte Einträge",
-      "empty": "Nichts wurde entfernt.",
+      "link": "Papierkorb",
+      "title": "Papierkorb",
+      "empty": "Der Papierkorb ist leer.",
       "until": "Wird am {date} endgültig gelöscht",
       "deleteNow": "Jetzt löschen",
       "deleteNowNamed": "Jetzt löschen: „{title}“",

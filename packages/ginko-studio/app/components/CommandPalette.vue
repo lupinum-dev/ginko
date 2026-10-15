@@ -51,6 +51,8 @@ const actions = computed<Item[]>(() => [
   })),
   { value: 'files', label: t('nav.files'), run: () => go(site('/files')) },
   { value: 'history', label: t('nav.history'), run: () => go(site('/history')) },
+  // Removed entries of every area; the page itself says what the person may restore.
+  { value: 'trash', label: t('basics.removed.link'), run: () => go(site('/all?removed')) },
   ...(manager.value ? [
     { value: 'review', label: t('basics.palette.review'), run: () => go(site('/review')) },
     { value: 'update', label: t('basics.update.menu'), run: () => emit('update') },
