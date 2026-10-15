@@ -329,4 +329,26 @@ describe('languages', () => {
     expect([language(wrapper, view).attributes('data-state'), document.activeElement?.id, wrapper.text().split('Das passt so nicht.').length - 1]).toEqual(['on', input, 1])
     wrapper.unmount()
   })
+
+  // Wrong behaviour caught: a German text changed in the sheet left its English looking current, with no dot on
+  // Englisch, although the save makes that English outdated.
+  test('a German reason changed in the sheet marks its English as outdated until the English changes too', async () => {
+    const { data, entry } = hours()
+    const wrapper = sheet('hours', entry)
+    answer({ data })
+    await flushPromises()
+    const gap = () => language(wrapper, 'Englisch').text().includes('Übersetzung unvollständig')
+    expect(gap()).toBe(false)
+    await wrapper.get('#f-exceptions-r1-reason').setValue('Winterpause')
+    expect(gap()).toBe(true)
+
+    await language(wrapper, 'Englisch').trigger('click')
+    await flushPromises()
+    const source = wrapper.get('[data-slot="translation-source"]')
+    // No "Passt so": the sheet saves every language at once, and that confirmation belongs to Alles bearbeiten.
+    expect([source.text().includes('Deutsch geändert seit Übersetzung'), source.findAll('button').length]).toEqual([true, 0])
+    await wrapper.get('#f-exceptions-r1-reason').setValue('Winter break')
+    expect([wrapper.text().includes('geändert seit Übersetzung'), gap()]).toEqual([false, false])
+    wrapper.unmount()
+  })
 })

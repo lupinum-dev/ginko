@@ -25,7 +25,8 @@ export const FLUSHERS = Symbol('ginko:flushers') as InjectionKey<Set<() => Promi
 export interface TranslationState {
   state: (leaf: string) => 'missing' | 'stale' | 'fine' | undefined
   source: (leaf: string) => string
-  confirm: (leaf: string) => void
+  /** "Passt so": keeps an outdated translation as current. Without it, the outdated note shows without that button. */
+  confirm?: (leaf: string) => void
   /** "Deutsch": the main language's name, for the source line and the hints. */
   mainName: () => string
   /**

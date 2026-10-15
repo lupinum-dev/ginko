@@ -4,7 +4,7 @@
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Label as LabelText, Locale } from '@lupinum/ginko'
-import { defaultsFor, isShown, type Schema } from '@lupinum/ginko/internal'
+import { defaultsFor, isShown, leavesOf, stableJson, type Schema } from '@lupinum/ginko/internal'
 import { textIn, TRANSLATION } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
@@ -17,7 +17,7 @@ import { XIcon } from '@lucide/vue'
 import { ConfigProvider, injectConfigProviderContext } from 'reka-ui'
 import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
-import { hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingIn, taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
+import { hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { opErrorOf } from '../composables/useOps'
 
@@ -102,7 +102,6 @@ const foreign = computed(() => lang.value !== props.main)
 const toTranslate = computed(() => Object.fromEntries(Object.entries(fields.value).filter(([, field]) => hasTranslation(field))))
 const shownFields = computed(() => (foreign.value ? toTranslate.value : fields.value))
 const multilingual = computed(() => props.locales.length > 1 && Object.keys(toTranslate.value).length > 0)
-const gapIn = (l: Locale) => l !== props.main && missingIn(toTranslate.value, draft.value, props.main, l)
 /** Input still waiting in an editor's pause goes into the language it was typed in. */
 async function switchLanguage(next: Locale) {
   if (next === lang.value) return
@@ -111,16 +110,29 @@ async function switchLanguage(next: Locale) {
 }
 /** The entry's name for the hints: what is typed, over the stored entry an edit task changes. */
 const entryName = () => titleOf(props.brick, { ...(isCreate.value ? {} : props.entry?.data), ...draft.value }, props.main)
-// The sheet's own translation view: no "Passt so" (outdated translations are confirmed in Alles bearbeiten), the
-// German as typed here as the source.
+const textsAt = (data: Data, leaf: string) => {
+  const value = leafValue(data, leaf)
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined
+}
+/**
+ * A text's state in language `l` once saved: missing, or outdated when its main text changed here while its text in `l`
+ * stayed (the save keeps that translation, made from the old main text). A text typed here counts as current.
+ */
+function stateIn(leaf: string, l: Locale): 'missing' | 'stale' | 'fine' {
+  const now = textsAt(draft.value, leaf)
+  const was = textsAt(baseline.value, leaf)
+  const changed = (locale: Locale) => stableJson(now?.[locale] ?? null) !== stableJson(was?.[locale] ?? null)
+  const state = leafTranslation({ draft: now, locale: l, main: props.main, storedMain: undefined, print: undefined, confirmed: false })
+  return state === 'fine' && now?.[l] && changed(props.main) && !changed(l) ? 'stale' : state
+}
+/** A dot on a language whose texts are missing or outdated (the fields shown, as the switch shows them). */
+const gapIn = (l: Locale) => l !== props.main && Object.entries(toTranslate.value).some(([key, field]) => isShown(field, draft.value)
+  && [...leavesOf(field, draft.value[key], key).keys()].some((leaf) => stateIn(leaf, l) !== 'fine'))
+// The sheet's own translation view: the German as typed here as the source, and no "Passt so" (the sheet saves every
+// language at once; an outdated translation is confirmed in Alles bearbeiten, in its own language).
 provide(TRANSLATION, {
-  state: (leaf) => {
-    if (!foreign.value) return undefined
-    const value = leafValue(draft.value, leaf)
-    return leafTranslation({ draft: value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined, locale: lang.value, main: props.main, storedMain: undefined, print: undefined, confirmed: false })
-  },
+  state: (leaf) => (foreign.value ? stateIn(leaf, lang.value) : undefined),
   source: (leaf) => textIn(leafValue(draft.value, leaf), props.main).slice(0, 400),
-  confirm: () => {},
   mainName: () => languageName(props.main, uiLocale.value),
   hiddenWithout: (leaf) => (hidesUntranslated(props.brick, leaf) ? { title: entryName(), language: languageName(lang.value, uiLocale.value) } : undefined),
 })

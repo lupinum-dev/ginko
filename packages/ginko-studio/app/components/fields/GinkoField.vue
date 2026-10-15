@@ -108,7 +108,7 @@ const missingText = computed(() => {
         <p class="whitespace-pre-wrap [overflow-wrap:anywhere]">{{ translation.source(leaf!) || '–' }}</p>
         <div v-if="trState === 'stale'" class="flex flex-wrap items-center gap-2">
           <Badge variant="outline" class="h-auto border-warning py-1 whitespace-normal text-warning">{{ t('fields.translation.changedSince', { name: translation.mainName() }) }}</Badge>
-          <Button type="button" variant="outline" size="sm" @click="translation.confirm(leaf!)">{{ t('fields.translation.fitsAsIs') }}</Button>
+          <Button v-if="translation.confirm" type="button" variant="outline" size="sm" @click="translation.confirm(leaf!)">{{ t('fields.translation.fitsAsIs') }}</Button>
         </div>
         <p v-else-if="trState === 'missing'" class="text-warning">{{ missingText }}</p>
       </div>

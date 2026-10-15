@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { entryTitle, fileRefsIn, isShown, isTranslatable, leavesOf, ordered, printOf, stableJson, untranslatedMode, type Schema } from '@lupinum/ginko/internal'
+import { entryTitle, fileRefsIn, isTranslatable, leavesOf, ordered, printOf, stableJson, untranslatedMode, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { shownLabel } from './labels'
 import type { Words } from './when'
@@ -186,13 +186,6 @@ export function leafTranslation(input: { draft: Record<string, unknown> | undefi
   if (isEmpty(input.draft?.[input.locale])) return isEmpty(input.draft?.[input.main]) ? 'fine' : 'missing'
   if (input.confirmed) return 'fine'
   return input.storedMain !== undefined && input.print !== printOf(input.storedMain) ? 'stale' : 'fine'
-}
-
-
-/** Whether a text the form shows has a main-language text and none in `locale` (the dot on a language in a quick-task sheet). */
-export function missingIn(fields: Fields, data: Data, main: Locale, locale: Locale): boolean {
-  return Object.entries(fields).some(([key, field]) => isShown(field, data)
-    && [...leavesOf(field, data[key], key).values()].some((texts) => !isEmpty(texts[main]) && isEmpty(texts[locale])))
 }
 
 /**
