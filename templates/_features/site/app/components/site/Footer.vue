@@ -1,0 +1,66 @@
+<script setup lang="ts">
+import { safeHref } from '@lupinum/ginko'
+
+// Identity and contact from content/site.md, the navigation, more links and profiles from app.config.ts, and the
+// legal texts from content/legal/.
+const config = useSiteAppConfig()
+const { name } = useGinkoSite()
+const site = useGinko('site')
+const legal = useGinko('legal')
+const locale = useGinkoLocale()
+const pages = useSiteLinks(() => [...config.nav, ...config.footer])
+const { t } = useI18n('site')
+const contact = computed(() => site.value.data)
+const year = useGinkoToday().value.slice(0, 4)
+const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
+</script>
+
+<template>
+  <footer class="mt-section border-t bg-muted">
+    <div class="mx-auto grid max-w-page gap-10 px-gutter py-14 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="flex flex-col gap-3 lg:col-span-2">
+        <p class="font-display text-body font-semibold">{{ name }}</p>
+        <ul v-if="config.socials.length" class="flex flex-wrap gap-x-5 gap-y-1 text-small" :aria-label="t('footer.links')">
+          <li v-for="social in config.socials" :key="social.url">
+            <a :href="safeHref(social.url)" rel="me noopener" class="inline-flex min-h-11 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{{ social.label }}</a>
+          </li>
+        </ul>
+      </div>
+
+      <nav v-if="pages.length" aria-labelledby="footer-pages" class="flex flex-col gap-2">
+        <h2 id="footer-pages" class="text-small font-semibold">{{ t('footer.pages') }}</h2>
+        <ul class="flex flex-col text-small">
+          <li v-for="link in pages" :key="link.key">
+            <NuxtLink :to="link.to" class="inline-flex min-h-11 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{{ link.label }}</NuxtLink>
+          </li>
+        </ul>
+      </nav>
+
+      <div v-if="contact.email || contact.phone || contact.city" class="flex flex-col gap-2">
+        <h2 class="text-small font-semibold">{{ t('footer.contact') }}</h2>
+        <address class="flex flex-col text-small text-muted-foreground not-italic">
+          <span v-if="contact.city" class="py-2">
+            <template v-if="contact.legalName">{{ contact.legalName }}<br></template>
+            <template v-if="contact.street">{{ contact.street }}<br></template>
+            {{ contact.postalCode }} {{ contact.city }}
+          </span>
+          <a v-if="contact.email" :href="`mailto:${contact.email}`" class="inline-flex min-h-11 items-center underline-offset-4 hover:text-foreground hover:underline">{{ contact.email }}</a>
+          <a v-if="contact.phone" :href="tel(contact.phone)" class="inline-flex min-h-11 items-center tabular-nums underline-offset-4 hover:text-foreground hover:underline">{{ contact.phone }}</a>
+        </address>
+      </div>
+    </div>
+
+    <div class="border-t">
+      <div class="mx-auto flex max-w-page flex-col gap-2 px-gutter py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <p>© {{ year }} {{ contact.legalName || name }}</p>
+        <nav v-if="legal.items.length" :aria-label="t('footer.legal')">
+          <ul class="flex flex-wrap gap-x-5">
+            <li v-for="item in legal.items" :key="item.id">
+              <NuxtLink :to="item.urls?.[locale] ?? ''" class="inline-flex min-h-11 items-center underline-offset-4 hover:text-foreground hover:underline">{{ item.data.title }}</NuxtLink>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </footer>
+</template>
