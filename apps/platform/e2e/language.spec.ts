@@ -35,3 +35,16 @@ test('the language picked on "My sites" is saved on the account and wins over th
   await expect(page.getByRole('heading', { name: 'Meine Seiten', level: 1 })).toBeVisible()
   await context.close()
 })
+
+// Wrong behaviour caught: a wrong or old Studio address showed Nuxt's English "Page not found" with no Studio frame and
+// no way back to the site.
+test('an unknown Studio address says so in the browser\'s language and leads back to the site', async ({ browser, baseURL }) => {
+  const owner = await browser.newContext({ baseURL, locale: 'de-DE', storageState: STATE.owner })
+  const page = await owner.newPage()
+  await page.goto('/s/restaurant/doesnotexist', { waitUntil: 'networkidle' })
+  await expect(page.getByRole('heading', { name: 'Diese Adresse gibt es im Studio nicht.', level: 1 })).toBeVisible()
+  await page.getByRole('link', { name: 'Heute' }).click()
+  await expect(page).toHaveURL(/\/s\/restaurant$/)
+  await expect(page.getByRole('heading', { name: 'Heute', level: 1 })).toBeVisible()
+  await owner.close()
+})

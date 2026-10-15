@@ -67,7 +67,16 @@
     "generic": "Das hat nicht geklappt. Deine Eingaben sind noch da. Bitte noch einmal versuchen."
   },
   "errors": {
-    "signedOut": "Du wurdest abgemeldet. Melde dich wieder an und versuche es noch einmal."
+    "signedOut": "Du wurdest abgemeldet. Melde dich wieder an und versuche es noch einmal.",
+    "notFound": {
+      "title": "Diese Adresse gibt es im Studio nicht.",
+      "text": "Vielleicht ist der Link alt oder hat einen Tippfehler."
+    },
+    "other": {
+      "title": "Hier ist etwas schiefgelaufen.",
+      "text": "Lade die Seite neu. Was du gespeichert hast, ist nicht verloren."
+    },
+    "reload": "Neu laden"
   },
   "invite": {
     "titleShort": "Einladung",

@@ -67,7 +67,16 @@
     "generic": "No ha funcionado. Lo que escribiste sigue aquí. Inténtalo de nuevo."
   },
   "errors": {
-    "signedOut": "Se cerró tu sesión. Vuelve a iniciar sesión e inténtalo de nuevo."
+    "signedOut": "Se cerró tu sesión. Vuelve a iniciar sesión e inténtalo de nuevo.",
+    "notFound": {
+      "title": "Esta dirección no existe en el Studio.",
+      "text": "Puede que el enlace sea antiguo o tenga una errata."
+    },
+    "other": {
+      "title": "Algo ha salido mal aquí.",
+      "text": "Vuelve a cargar la página. Lo que guardaste no se ha perdido."
+    },
+    "reload": "Volver a cargar"
   },
   "invite": {
     "titleShort": "Invitación",

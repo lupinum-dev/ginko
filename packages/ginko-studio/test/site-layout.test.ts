@@ -11,10 +11,14 @@ import { localDraftKey, writeLocalDraft } from '../app/composables/useLocalDraft
 import { siteOrigin } from '../app/utils/origin'
 import { useBottomBar } from '../app/composables/useBottomBar'
 import SiteLayout from '../app/layouts/site.vue'
+import ErrorPage from '../app/error.vue'
 
 const { computed, defineComponent, h, inject, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } = vue
 Object.entries({ computed, inject, nextTick, onBeforeUnmount, onMounted, provide, ref, watch, useI18n, isNoAccess, isSignInRequired, opErrorOf, siteOrigin }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
-vi.stubGlobal('useRoute', () => ({ params: { site: 'restaurant' }, fullPath: '/s/restaurant/all/dishes/e1' }))
+// The error page reads `path`; the layout reads the rest.
+const route = { params: { site: 'restaurant' }, fullPath: '/s/restaurant/all/dishes/e1', path: '/s/restaurant/all/dishes/e1' }
+vi.stubGlobal('useRoute', () => route)
+vi.stubGlobal('useHead', () => {})
 vi.stubGlobal('useConvexGinkoAssets', () => ({}))
 vi.stubGlobal('useUpdateSite', () => ({ running: ref(false), run: () => {} }))
 const reloadNuxtApp = vi.fn()
@@ -120,4 +124,28 @@ test('the phone tab bar gives way while the entry editor\'s save bar is open', a
   useBottomBar().value = 0
   await nextTick()
   expect(tabs()).toBe(true)
+})
+
+// Wrong behaviour caught: a wrong or old Studio address showed Nuxt's English "Page not found" with no Studio frame and
+// no way back to the site.
+test.each([
+  { name: 'an unknown address under a site leads back to its start page', status: 404, path: '/s/restaurant/settings', text: 'Diese Adresse gibt es im Studio nicht.Vielleicht ist der Link alt oder hat einen Tippfehler.HeuteMeine Seiten', links: ['/s/restaurant', '/?all'] },
+  { name: 'a failure outside a site offers to reload', status: 500, path: '/', text: 'Hier ist etwas schiefgelaufen.Lade die Seite neu. Was du gespeichert hast, ist nicht verloren.Neu ladenMeine Seiten', links: ['/?all'] },
+])('the error page: $name', async ({ status, path, text, links }) => {
+  const before = route.path
+  route.path = path
+  try {
+    const wrapper = mount(ErrorPage, {
+      props: { error: { status, statusCode: status } as never },
+      global: { stubs: { NuxtLayout: { template: '<div><slot /></div>' }, Button: { template: '<button type="button"><slot /></button>' }, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    })
+    expect(wrapper.get('main').text()).toBe(text)
+    expect(wrapper.findAll('a').map((a) => a.attributes('href'))).toEqual(links)
+    if (status !== 404) {
+      await wrapper.get('button').trigger('click')
+      expect(reloadNuxtApp).toHaveBeenCalledWith({ force: true })
+    }
+  } finally {
+    route.path = before
+  }
 })

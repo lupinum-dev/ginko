@@ -67,7 +67,16 @@
     "generic": "That did not work. Your input is still here. Please try again."
   },
   "errors": {
-    "signedOut": "You were signed out. Sign in and try again."
+    "signedOut": "You were signed out. Sign in and try again.",
+    "notFound": {
+      "title": "This address does not exist in the Studio.",
+      "text": "The link may be old or have a typo."
+    },
+    "other": {
+      "title": "Something went wrong here.",
+      "text": "Reload the page. What you saved is not lost."
+    },
+    "reload": "Reload"
   },
   "invite": {
     "titleShort": "Invitation",
