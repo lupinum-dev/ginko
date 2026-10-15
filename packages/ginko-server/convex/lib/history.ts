@@ -63,7 +63,10 @@ export function recorded(message: HistoryMsg, where?: Where): Recorded {
   return { msg: message, sentence: storedSentence(historyText(message, 'de', where)) }
 }
 
-/** Why a save can no longer be undone: undone already, its entry removed, a field saved again since, or the fields restructured since. */
+/**
+ * Why a save can no longer be undone: undone already, its entry removed, a field changed since (another value or other
+ * prints than the save left, see asSaved), or the fields restructured since.
+ */
 export type UndoBlock = 'undone' | 'removed' | 'changed' | 'schema'
 
 /** The prints of the leaves under `root`, as one comparable text. */
