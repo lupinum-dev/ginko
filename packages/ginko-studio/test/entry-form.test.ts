@@ -357,6 +357,24 @@ describe('TaskSheet', () => {
     sheet.unmount()
   })
 
+  // Wrong behaviour caught: "Von dieser Woche übernehmen" and "Deinen Vorschlag wieder öffnen" replaced what the person
+  // had typed without asking, and closing the sheet then no longer asked either.
+  test('the copy and reopen buttons are offered only while nothing is typed', async () => {
+    const offered = (sheet: Awaited<ReturnType<typeof sheetOf>>, label: string) => sheet.findAll('button').some((b) => b.text() === label)
+    const plan = await sheetOf({ brickKey: 'lunchPlans', task: 'planNext', prefill: { weekOf: '2026-10-19' }, copyFrom: 'l1' })
+    expect(offered(plan, 'Von dieser Woche übernehmen')).toBe(true)
+    await plan.get('#f-note').setValue('Mit Suppe')
+    expect(offered(plan, 'Von dieser Woche übernehmen')).toBe(false)
+    plan.unmount()
+
+    const rejected = ownProposal({ status: 'rejected', decidedAt: Date.UTC(2026, 9, 12, 9), decidedBy: { kind: 'member' }, reason: 'Bitte mit Preis.' })
+    const sheet = await lunchSheet('2026-10-12', { 'proposals.ownFor': rejected })
+    expect(offered(sheet, 'Deinen Vorschlag wieder öffnen')).toBe(true)
+    await sheet.get('#f-note').setValue('Suppe')
+    expect(offered(sheet, 'Deinen Vorschlag wieder öffnen')).toBe(false)
+    sheet.unmount()
+  })
+
   // Wrong behaviour caught: "Nächste Woche planen" could not take over this week, so the owner retyped every dish; and a
   // new dish in a new week went out with the old or "Keine" allergens because nothing asked about them.
   test('"Von dieser Woche übernehmen" fills next week\'s days; a changed dish with unchanged allergens blocks Speichern', async () => {

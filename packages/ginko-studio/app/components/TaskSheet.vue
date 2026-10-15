@@ -276,12 +276,13 @@ function onCancel(event: Event) {
           </div>
           <div v-else-if="mine?.status === 'rejected'" class="grid gap-2 rounded-md bg-warning/10 px-3 py-2.5" data-test="own-proposal">
             <p class="font-semibold text-warning [overflow-wrap:anywhere]">{{ t('history.rejectedBy', { who: mine.decidedBy ? whoText(mine.decidedBy, t) : t('who.member'), reason: mine.reason ?? '' }) }}</p>
-            <Button v-if="!fromProposal" type="button" variant="outline" size="sm" class="justify-self-start" @click="reopenOwn">{{ t('entry.reopenProposal') }}</Button>
+            <Button v-if="!fromProposal && !dirty" type="button" variant="outline" size="sm" class="justify-self-start" @click="reopenOwn">{{ t('entry.reopenProposal') }}</Button>
           </div>
           <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
           <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
           <p v-if="oldWeek" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.oldWeek', { date: formatDay(oldWeek, format) }) }}</p>
-          <Button v-if="isCreate && copyFrom && !copied" type="button" variant="outline" class="justify-self-start" :disabled="copying" @click="copyThisWeek">{{ t('entry.copyThisWeek') }}</Button>
+          <!-- Like "Deinen Vorschlag wieder öffnen" above, it replaces the form's values: offered only before anything is typed. -->
+          <Button v-if="isCreate && copyFrom && !copied && !dirty" type="button" variant="outline" class="justify-self-start" :disabled="copying" @click="copyThisWeek">{{ t('entry.copyThisWeek') }}</Button>
           <template v-for="(field, key) in fields" :key="key">
             <div v-if="key === fixedWeek" class="grid gap-1" data-slot="field" data-test="fixed-week">
               <p class="text-sm font-medium">{{ shown(field.label) }}</p>
