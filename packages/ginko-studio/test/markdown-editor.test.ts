@@ -137,6 +137,28 @@ describe('MarkdownEditor', () => {
     expect(wrapper.find('[role="search"]').exists()).toBe(false)
   })
 
+  // Wrong behaviour caught: after a text style from the list, the list took the focus back onto its own button, so the
+  // next typed words went nowhere. In a browser TipTap's focus (one frame) lands before the list's close animation ends;
+  // a synchronous requestAnimationFrame while the list closes gives happy-dom the same order.
+  test('after a block type from the list, the focus is back in the text', async () => {
+    const wrapper = await mounted('Eins\n')
+    editorOf(wrapper).commands.focus('end')
+    const trigger = wrapper.get('[role="combobox"][aria-label="Blocktyp"]').element
+    trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' }))
+    for (let i = 0; i < 50 && !document.querySelector('[role="option"]'); i++) { await wait(20); await flushPromises() }
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((o) => o.textContent?.trim() === 'Zwischenüberschrift')!
+    const frame = window.requestAnimationFrame
+    window.requestAnimationFrame = (callback) => { callback(performance.now()); return 0 }
+    try {
+      option.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, pointerType: 'mouse' }))
+      for (let i = 0; i < 50 && document.querySelector('[role="option"]'); i++) { await wait(20); await flushPromises() }
+    } finally { window.requestAnimationFrame = frame }
+    await wait(50)
+    expect(editorOf(wrapper).isActive('heading', { level: 3 })).toBe(true)
+    expect(document.activeElement).toBe(wrapper.get('[role="textbox"]').element)
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught: with the find bar open, closing the field (a save that closes the sheet, a language switch)
   // threw in the bar's teardown, and Vue left the sheet half closed with an empty text.
   test('the field closes cleanly while find and replace is open', async () => {

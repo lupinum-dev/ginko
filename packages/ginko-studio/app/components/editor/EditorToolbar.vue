@@ -70,6 +70,12 @@ const current = computed(() => {
 function choose(value: unknown) {
   all.value.find((b) => b.value === value)?.run()
 }
+// After a block type, typing goes on in the text; the list would put the focus back on its own button once it has closed.
+// The picture block opens its own dialog, which keeps the focus and gives it back to the text itself.
+function backToText(event: Event) {
+  event.preventDefault()
+  if (!imageOpen.value && !props.editor.isDestroyed) props.editor.commands.focus()
+}
 
 // Docked: the bar is taken out of the flow (a spacer of its height stays, so the page does not jump) and put on the
 // bottom edge of the visual viewport, which the keyboard shrinks.
@@ -107,7 +113,7 @@ const style = computed(() => (place.value ? { transform: `translate(${place.valu
     >
       <Select v-if="all.length > 1" :model-value="current" @update:model-value="choose">
         <SelectTrigger size="sm" class="w-44 shrink-0 [@media(pointer:coarse)]:w-24 [@media(pointer:coarse)]:data-[size=sm]:h-11" :aria-label="t('editor.toolbar.blockType')"><SelectValue /></SelectTrigger>
-        <SelectContent>
+        <SelectContent @close-auto-focus="backToText">
           <template v-for="(group, i) in groups" :key="i">
             <SelectSeparator v-if="i > 0" />
             <SelectGroup>
