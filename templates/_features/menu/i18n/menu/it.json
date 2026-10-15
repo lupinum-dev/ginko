@@ -1,0 +1,49 @@
+{
+  "title": "Menù",
+  "lead": "Gli allergeni sono indicati con lettere accanto a ogni piatto. La legenda è alla fine del menù.",
+  "print": "Stampa il menù",
+  "printNow": "Stampa",
+  "back": "Torna al menù",
+  "categories": {
+    "starters": "Antipasti",
+    "soups": "Zuppe",
+    "mains": "Piatti principali",
+    "desserts": "Dolci",
+    "drinks": "Bevande"
+  },
+  "diet": {
+    "vegetarian": "vegetariano",
+    "vegan": "vegano"
+  },
+  "soldOut": "esaurito oggi",
+  "priceFrom": "dal {date}: {price}",
+  "empty": "Nessun piatto nel menù",
+  "allergens": {
+    "title": "Allergeni",
+    "label": "Allergeni: {names}",
+    "none": "senza allergeni",
+    "ask": "Se avete un’allergia o un’intolleranza, ditecelo quando ordinate.",
+    "A": "Glutine",
+    "B": "Crostacei",
+    "C": "Uova",
+    "D": "Pesce",
+    "E": "Arachidi",
+    "F": "Soia",
+    "G": "Latte",
+    "H": "Frutta a guscio",
+    "L": "Sedano",
+    "M": "Senape",
+    "N": "Sesamo",
+    "O": "Solfiti",
+    "P": "Lupini",
+    "R": "Molluschi"
+  },
+  "lunch": {
+    "title": "Pranzo",
+    "today": "Oggi",
+    "closed": "Chiuso",
+    "pending": "Il menù del pranzo di questa settimana arriverà a breve.",
+    "todayTitle": "Il pranzo di oggi",
+    "week": "Il pranzo della settimana"
+  }
+}

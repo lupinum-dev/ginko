@@ -1,0 +1,15 @@
+[
+  "app/components/menu/AllergenKey.vue",
+  "app/components/menu/Allergens.vue",
+  "app/components/menu/Diet.vue",
+  "app/components/menu/Dish.vue",
+  "app/components/menu/LunchDays.vue",
+  "app/composables/useMenu.ts",
+  "app/layouts/print.vue",
+  "app/pages/lunch.vue",
+  "app/pages/menu/index.vue",
+  "app/pages/menu/print.vue",
+  "i18n/menu/de.json",
+  "i18n/menu/en.json",
+  "i18n/menu/it.json"
+]

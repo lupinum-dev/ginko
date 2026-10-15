@@ -1,0 +1,49 @@
+{
+  "title": "Speisekarte",
+  "lead": "Die Allergene stehen als Buchstaben bei jedem Gericht. Die Erklärung finden Sie am Ende der Karte.",
+  "print": "Speisekarte drucken",
+  "printNow": "Drucken",
+  "back": "Zurück zur Speisekarte",
+  "categories": {
+    "starters": "Vorspeisen",
+    "soups": "Suppen",
+    "mains": "Hauptspeisen",
+    "desserts": "Nachspeisen",
+    "drinks": "Getränke"
+  },
+  "diet": {
+    "vegetarian": "vegetarisch",
+    "vegan": "vegan"
+  },
+  "soldOut": "heute aus",
+  "priceFrom": "ab {date}: {price}",
+  "empty": "Noch keine Gerichte auf der Karte",
+  "allergens": {
+    "title": "Allergene",
+    "label": "Allergene: {names}",
+    "none": "keine Allergene",
+    "ask": "Wenn Sie eine Allergie oder Unverträglichkeit haben, sagen Sie es uns bitte bei der Bestellung.",
+    "A": "Gluten",
+    "B": "Krebstiere",
+    "C": "Ei",
+    "D": "Fisch",
+    "E": "Erdnuss",
+    "F": "Soja",
+    "G": "Milch",
+    "H": "Schalenfrüchte",
+    "L": "Sellerie",
+    "M": "Senf",
+    "N": "Sesam",
+    "O": "Sulfite",
+    "P": "Lupinen",
+    "R": "Weichtiere"
+  },
+  "lunch": {
+    "title": "Mittagsmenü",
+    "today": "Heute",
+    "closed": "Geschlossen",
+    "pending": "Das Mittagsmenü dieser Woche folgt in Kürze.",
+    "todayTitle": "Heute zu Mittag",
+    "week": "Mittagsmenü der Woche"
+  }
+}
