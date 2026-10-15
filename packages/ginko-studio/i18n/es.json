@@ -20,6 +20,7 @@
     "signOutOthersFailed": "No se pudo cerrar la sesión en los otros dispositivos. Inténtalo de nuevo.",
     "signIn": "Iniciar sesión",
     "noAccessHelp": "Si necesitas cambiar algo aquí, pide al propietario que te invite (de nuevo).",
+    "noAccessUnsaved": "Lo que aún no habías guardado aquí no está en el sitio web. Si te vuelven a invitar, lo recuperas en este navegador.",
     "toReview": "Por revisar ({count})",
     "short": {
       "quick": "Hoy",

@@ -20,6 +20,7 @@
     "signOutOthersFailed": "Die anderen Geräte konnten nicht abgemeldet werden. Bitte versuche es noch einmal.",
     "signIn": "Anmelden",
     "noAccessHelp": "Wenn du hier etwas ändern sollst, frag die Inhaberin, ob sie dich (wieder) einlädt.",
+    "noAccessUnsaved": "Was du hier noch nicht gespeichert hattest, ist nicht auf der Website. Wirst du wieder eingeladen, bekommst du es in diesem Browser zurück.",
     "toReview": "Zu prüfen ({count})",
     "short": {
       "quick": "Heute",

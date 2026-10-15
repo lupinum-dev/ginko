@@ -20,6 +20,7 @@
     "signOutOthersFailed": "The other devices could not be signed out. Please try again.",
     "signIn": "Sign in",
     "noAccessHelp": "If you need to change something here, ask the owner to invite you (again).",
+    "noAccessUnsaved": "Anything you had not saved here is not on the website. If you are invited again, you get it back in this browser.",
     "toReview": "To review ({count})",
     "short": {
       "quick": "Today",

@@ -1,39 +1,44 @@
 // @vitest-environment happy-dom
 // The frame of every site page. The German catalog is the real one; Nuxt's auto-imports become globals, Convex is replaced.
-import { mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
-import { beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { ConvexError } from 'convex/values'
 import { normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import { useI18n } from '#imports'
 import { isNoAccess, isSignInRequired, opErrorOf } from '../app/composables/useOps'
+import { localDraftKey, writeLocalDraft } from '../app/composables/useLocalDraft'
 import { siteOrigin } from '../app/utils/origin'
 import SiteLayout from '../app/layouts/site.vue'
 
-const { computed, inject, onBeforeUnmount, onMounted, provide, ref } = vue
-Object.entries({ computed, inject, onBeforeUnmount, onMounted, provide, ref, useI18n, isNoAccess, isSignInRequired, opErrorOf, siteOrigin }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
+const { computed, defineComponent, h, inject, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } = vue
+Object.entries({ computed, inject, nextTick, onBeforeUnmount, onMounted, provide, ref, watch, useI18n, isNoAccess, isSignInRequired, opErrorOf, siteOrigin }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 vi.stubGlobal('useRoute', () => ({ params: { site: 'restaurant' }, fullPath: '/s/restaurant/all/dishes/e1' }))
 vi.stubGlobal('useConvexGinkoAssets', () => ({}))
 vi.stubGlobal('useUpdateSite', () => ({ running: ref(false), run: () => {} }))
 const reloadNuxtApp = vi.fn()
 vi.stubGlobal('reloadNuxtApp', reloadNuxtApp)
 // The browser still holds its token: the client says signed in.
-vi.stubGlobal('useConvexAuth', () => ({ status: ref('authenticated') }))
+vi.stubGlobal('useConvexAuth', () => ({ status: ref('authenticated'), user: ref({ id: 'u1' }) }))
 // sites.meta answers what the test sets; the other queries of the layout (deletion, review count) have nothing.
 const meta = { data: ref<unknown>(), error: ref<unknown>() }
 vi.stubGlobal('useConvexQuery', (fn: unknown) => (String(fn) === 'sites.meta' ? meta : { data: ref(undefined), error: ref(undefined) }))
+// Every layout shares the answer above, so the last test's layout must not react to the next test's.
+enableAutoUnmount(afterEach)
 beforeEach(() => {
   meta.data.value = undefined
   meta.error.value = undefined
   reloadNuxtApp.mockClear()
+  localStorage.clear()
 })
 
 const lastAnswer = {
   site: { slug: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', previewOrigins: [], schema: { locales: ['de'], currency: 'EUR', timeZone: 'Europe/Vienna' }, bytes: 0, entryCount: 3, lastRefreshAt: null },
   role: 'owner', grants: [],
 }
-const mountLayout = () => mount(SiteLayout, {
-  slots: { default: '<form class="open-form">Gericht bearbeiten</form>' },
+const noAccess = () => normalizeConvexError(new ConvexError({ code: 'FORBIDDEN', key: 'errors.noAccess', message: 'Kein Zugriff auf diese Seite.' }), { functionName: 'sites:meta' })
+const mountLayout = (page: unknown = '<form class="open-form">Gericht bearbeiten</form>') => mount(SiteLayout, {
+  slots: { default: page as string },
   global: {
     // Auto-imports the template uses.
     mocks: { opErrorOf },
@@ -66,7 +71,7 @@ test.each([
   if (data) meta.data.value = lastAnswer
   meta.error.value = error === 'timeout'
     ? normalizeConvexError(new Error('Function execution timed out'), { functionName: 'sites:meta' })
-    : normalizeConvexError(new ConvexError({ code: 'FORBIDDEN', key: 'errors.noAccess', message: 'Kein Zugriff auf diese Seite.' }), { functionName: 'sites:meta' })
+    : noAccess()
   const wrapper = mountLayout()
   expect(wrapper.find('[role="alert"]').exists() ? wrapper.get('[role="alert"]').text() : undefined).toBe(alert)
   expect(wrapper.find('.open-form').exists()).toBe(form)
@@ -75,4 +80,29 @@ test.each([
     // Forced: Nuxt ignores a second reload of the same page within 10 s otherwise, so a second try did nothing.
     expect(reloadNuxtApp).toHaveBeenCalledWith({ force: true })
   }
+})
+
+// Wrong behaviour caught: a member removed while typing saw only "Kein Zugriff auf diese Seite." and could not know
+// whether her text went online or that this browser keeps it; or a person with nothing left here was promised it back.
+test.each([
+  { name: 'input of this site left behind: the page says it is not online and comes back', site: 'restaurant', note: true },
+  { name: 'input only of another site: no promise', site: 'garden', note: false },
+])('removed from the team while a form is open, $name', async ({ site, note }) => {
+  meta.data.value = lastAnswer
+  // The open form writes its copy as it closes, in the same render that shows the access page.
+  const OpenForm = defineComponent({
+    setup() {
+      onBeforeUnmount(() => writeLocalDraft(localDraftKey(site, 'u1', 'e1'), { v: 1, savedAt: Date.now(), baseRev: 3, locale: 'de', fields: { name: 'Kalbsschnitzel' } }))
+      return () => h('form', { class: 'open-form' })
+    },
+  })
+  const wrapper = mountLayout(OpenForm)
+  meta.error.value = noAccess()
+  await flushPromises()
+  expect(wrapper.find('.open-form').exists()).toBe(false)
+  expect(wrapper.get('[role="alert"]').text()).toBe([
+    'Kein Zugriff auf diese Seite.',
+    ...(note ? ['Was du hier noch nicht gespeichert hattest, ist nicht auf der Website. Wirst du wieder eingeladen, bekommst du es in diesem Browser zurück.'] : []),
+    'Wenn du hier etwas ändern sollst, frag die Inhaberin, ob sie dich (wieder) einlädt.Meine Seiten',
+  ].join(''))
 })

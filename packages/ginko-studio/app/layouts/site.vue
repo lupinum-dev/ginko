@@ -7,6 +7,7 @@ import { CircleCheckIcon, FileTextIcon, HistoryIcon, ImageIcon, SearchIcon, Spar
 import { OWN_BOTTOM_BAR, type SiteLink } from '../utils/siteLinks'
 import { EDITOR_COMPONENTS } from '@studio/components/editor/context'
 import { provideStudioSite } from '../utils/labels'
+import { localDraftKeys } from '../composables/useLocalDraft'
 
 const route = useRoute()
 const { t, format } = useI18n()
@@ -30,9 +31,19 @@ provide('ginko:week', computed(() => data.value?.site.schema.week ?? DEFAULT_WEE
 // do, and the unsaved input of an open form stays in this browser. A failure (a timeout, a reconnect burst, a deploy)
 // keeps the last answer and the open form: better-convex keeps the last data on an error, the server checks every
 // write, and the next write anywhere on the site runs this query again, which clears the error.
-const { status } = useConvexAuth()
+const { status, user } = useConvexAuth()
 const signedOut = computed(() => status.value === 'anonymous' || isSignInRequired(error.value))
 const noAccess = computed(() => !signedOut.value && isNoAccess(error.value))
+// A member removed while typing learns that her unsaved input is not online and comes back in this browser if she is
+// invited again. The open form writes its copy while it unmounts, in the render that shows the access page, so the
+// check waits a tick; storage exists only in the browser, so a page that opens without access checks once mounted.
+const unsavedHere = ref(false)
+const checkUnsaved = () => {
+  const id = user.value?.id
+  unsavedHere.value = noAccess.value && !!id && localDraftKeys(id, slug.value).length > 0
+}
+watch(noAccess, () => nextTick(checkUnsaved))
+onMounted(checkUnsaved)
 /** A failure with no last answer: nothing is open yet, so a reload loses nothing. */
 const notLoaded = computed(() => !!error.value && !data.value && !signedOut.value && !noAccess.value)
 // `force`: a second try within Nuxt's 10 s guard must reload too.
@@ -127,6 +138,7 @@ const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.va
       <SiteDeleting v-else-if="deletion" :slug="slug" :name="deletion.name" :at="deletion.at" />
       <div v-else-if="noAccess" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
         <p class="text-xl font-bold">{{ opErrorOf(error).message }}</p>
+        <p v-if="unsavedHere">{{ t('nav.noAccessUnsaved') }}</p>
         <p>{{ t('nav.noAccessHelp') }}</p>
         <Button as-child variant="outline"><NuxtLink to="/?all">{{ t('nav.mySites') }}</NuxtLink></Button>
       </div>
