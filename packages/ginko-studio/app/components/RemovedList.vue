@@ -5,20 +5,28 @@
      on the website afterwards. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
-import { SITE_BUDGET } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, type Schema } from '@lupinum/ginko/internal'
 import { Button } from '@studio/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@studio/components/ui/dialog'
 import { opErrorOf } from '../composables/useOps'
 import { sizeText } from '../utils/size'
 import UsedInList from './UsedInList.vue'
+import { useStudioSite } from '../utils/labels'
 
-const props = defineProps<{ slug: string; timeZone: string }>()
+const props = defineProps<{ slug: string; schema: Schema | undefined }>()
 const { t, format } = useI18n()
+const { shown } = useStudioSite()
+const timeZone = computed(() => props.schema?.timeZone ?? 'Europe/Vienna')
 const PAGE = 50
 const list = useConvexPaginatedQuery(api.entries.trash, () => ({ site: props.slug }), { initialNumItems: PAGE })
 const ops = useOps(computed(() => props.slug))
 
 type Item = NonNullable<typeof list.data.value>[number]
+/** The area in the Studio's language; the server names it in the site's main language. */
+const areaOf = (item: Item) => {
+  const def = props.schema?.bricks[item.brick]
+  return def ? shown(def.label) : item.brickLabel
+}
 const asking = ref(false)
 /** The entry the question is about; kept after closing, so the title stays while the dialog fades out. */
 const target = ref<Item>()
@@ -53,7 +61,7 @@ async function purge() {
       <li v-for="item in list.data.value" :key="item.entry" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-md border border-dashed py-1.5 pr-2 pl-3.5 sm:flex-nowrap">
         <span class="min-w-0 flex-1">
           <span class="block truncate font-semibold">{{ item.label }}</span>
-          <span class="block text-sm text-muted-foreground">{{ item.brickLabel }} · {{ t('basics.removed.until', { date: format.date(item.purgeAt, { timeZone, dateStyle: 'medium' }) }) }}</span>
+          <span class="block text-sm text-muted-foreground">{{ areaOf(item) }} · {{ t('basics.removed.until', { date: format.date(item.purgeAt, { timeZone, dateStyle: 'medium' }) }) }}</span>
         </span>
         <!-- Phones: the buttons move under the title and date, so the title keeps the full width. -->
         <span class="flex shrink-0 flex-wrap gap-1 max-sm:basis-full sm:justify-end">

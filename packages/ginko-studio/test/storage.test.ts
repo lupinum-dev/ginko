@@ -4,11 +4,13 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { computed, ref } from 'vue'
 import { afterEach, beforeAll, expect, test, vi } from 'vitest'
-import { useI18n } from '#imports'
+import { i18nLocale, useI18n } from '#imports'
 import RemovedList from '../app/components/RemovedList.vue'
 import StorageNotice from '../app/components/StorageNotice.vue'
 import { ConvexError } from 'convex/values'
 import { normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
+import { collection, defineSite, f } from '@lupinum/ginko'
+import { serializeSchema } from '@lupinum/ginko/internal'
 
 const text = () => document.body.textContent ?? ''
 const button = (label: string) => [...document.body.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)
@@ -44,7 +46,7 @@ test('an owner deletes a removed entry for good after one question; staff see no
   const purgeEntry = vi.fn(async () => true)
   vi.stubGlobal('useOps', () => ({ purgeEntry, restoreEntry: vi.fn() }))
   trashQuery({ data: [removed(true)] })
-  mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, attachTo: document.body })
+  mount(RemovedList, { props: { slug: 'restaurant', schema: undefined }, attachTo: document.body })
 
   // A screen reader names the entry, not only "Jetzt löschen" once per row.
   expect(button('Jetzt löschen')!.getAttribute('aria-label')).toBe('Jetzt löschen: „Kürbissuppe“')
@@ -59,9 +61,28 @@ test('an owner deletes a removed entry for good after one question; staff see no
 
   document.body.innerHTML = ''
   trashQuery({ data: [removed(false)] })
-  mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, attachTo: document.body })
+  mount(RemovedList, { props: { slug: 'restaurant', schema: undefined }, attachTo: document.body })
   expect(button('Wiederherstellen')).toBeDefined()
   expect(button('Jetzt löschen')).toBeUndefined()
+})
+
+// Wrong behaviour caught: in an English Studio for a German site, each removed entry named its area in German
+// ("Autoren") while the navigation beside it said "Authors".
+test('a removed entry names its area in the language of the Studio', () => {
+  vi.stubGlobal('useOps', () => ({ purgeEntry: vi.fn(), restoreEntry: vi.fn() }))
+  trashQuery({ data: [removed(true)] })
+  const schema = serializeSchema(defineSite({
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    pages: { home: { de: '/', en: '/en' } },
+    bricks: { dishes: collection({ label: { de: 'Gerichte', en: 'Dishes' }, fields: { title: f.text('Name') } }) },
+  }))
+  i18nLocale.value = 'en'
+  try {
+    mount(RemovedList, { props: { slug: 'restaurant', schema }, attachTo: document.body })
+    expect(text()).toContain('Dishes ·')
+  } finally {
+    i18nLocale.value = 'de'
+  }
 })
 
 // Wrong behaviour caught: "Jetzt löschen" deletes an author that posts still use without a word, and the posts keep a
@@ -72,7 +93,7 @@ test('the delete-for-good question lists the entries that still use the entry', 
   usedBy.value = [{ entry: 'p1', brick: 'posts', title: 'Herbstmenü', paths: ['author'], fieldLabels: [{ de: 'Autorin' }], locale: null, missingAlt: false, deleted: false, state: 'live' }]
   trashQuery({ data: [removed(true)] })
   const stubs = { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } }
-  mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, global: { stubs }, attachTo: document.body })
+  mount(RemovedList, { props: { slug: 'restaurant', schema: undefined }, global: { stubs }, attachTo: document.body })
 
   button('Jetzt löschen')!.click()
   await flushPromises()
@@ -87,7 +108,7 @@ test('the delete-for-good question lists the entries that still use the entry', 
 test('more removed entries load with Mehr anzeigen', () => {
   vi.stubGlobal('useOps', () => ({}))
   const loadMore = trashQuery({ data: [removed(true)], canLoadMore: true })
-  mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, attachTo: document.body })
+  mount(RemovedList, { props: { slug: 'restaurant', schema: undefined }, attachTo: document.body })
   button('Mehr anzeigen')!.click()
   expect(loadMore).toHaveBeenCalledWith(50)
 })
@@ -96,7 +117,7 @@ test('more removed entries load with Mehr anzeigen', () => {
 test('a failed trash load shows the error, not an empty trash', () => {
   vi.stubGlobal('useOps', () => ({}))
   trashQuery({ status: 'error', error: normalizeConvexError(new ConvexError({ code: 'FORBIDDEN', message: 'Kein Zugriff.' }), { functionName: 'entries:trash' }) })
-  mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, attachTo: document.body })
+  mount(RemovedList, { props: { slug: 'restaurant', schema: undefined }, attachTo: document.body })
   expect(document.body.querySelector('[role="alert"]')?.textContent).toBe('Kein Zugriff.')
   expect(text()).not.toContain('Nichts wurde entfernt.')
 })
