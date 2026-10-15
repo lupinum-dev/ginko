@@ -6,7 +6,7 @@ import { defineSite, f, single } from '@lupinum/ginko'
 import { events, legal, site } from '@lupinum/ginko/basics'
 import { gallery, hourPlans, hours, lunch, menu, notices } from '@lupinum/ginko-preset-gastro'
 import { pages } from './app/bricks/pages.ts'
-import { locales, localized, translated } from './app/routes.ts'
+import { locales, localized } from './app/routes.ts'
 import { siteUrl } from './site-url.ts'
 
 const lunchBrick = lunch({ source: 'files' })
@@ -25,11 +25,11 @@ export default defineSite({
   currency: 'EUR',
   pages: {
     home: localized('/'),
-    menu: translated('/menu'),
-    lunch: translated('/lunch'),
-    events: translated('/events'),
-    gallery: translated('/gallery'),
-    reservations: translated('/reservations'),
+    menu: localized('/menu'),
+    lunch: localized('/lunch'),
+    events: localized('/events'),
+    gallery: localized('/gallery'),
+    reservations: localized('/reservations'),
   },
   bricks: {
     // The home page: title, lead and photo of the first screen (content/home.md).
@@ -57,7 +57,7 @@ export default defineSite({
     // Restaurant JSON-LD. The country comes from `country` above.
     site: site({ source: 'files' }),
     // Privacy policy, terms and imprint: one file per text in content/legal/.
-    legal: legal({ source: 'files', route: translated('/legal/[slug]') }),
+    legal: legal({ source: 'files', route: localized('/legal/[slug]') }),
     // Short lines at the top of every page ("Fully booked tonight"), each until a date.
     notices: notices({ source: 'files' }),
     // The usual week (two periods a day), closures such as the summer holiday, and what happens on public holidays.
@@ -69,7 +69,7 @@ export default defineSite({
     // This week's lunch, Monday to Friday. In the Studio the cook enters the week and the owner approves it.
     lunch: { ...lunchBrick, tasks: lunchBrick.tasks?.map((task) => ({ ...task, needsApproval: true })) },
     // Wine evenings, cooking classes and the like. An event leaves the site after its last day.
-    events: events({ source: 'files', route: translated('/events/[slug]') }),
+    events: events({ source: 'files', route: localized('/events/[slug]') }),
     // Photos of the house, the food and the garden.
     gallery: gallery({ source: 'files' }),
     // Free pages such as About: content/pages/.

@@ -139,10 +139,10 @@ frontmatter. It appears at `/groups` (`/de/<slug>` for the German file). Add `{ 
 
 **A page with its own layout:** add a Vue file in `app/pages/`, for example `app/pages/wine.vue`. It answers at
 `/wine`, `/de/wine` and `/it/wine`. Start it with `<BlockPageHeader>` and call `usePageSeo()`, like
-`app/pages/gallery.vue`, and register it in `ginko.config.ts` under `pages` (`wine: translated('/wine')`), so
-`useGinkoPath()('wine')` links to it. For addresses of its own per language, add a line to `slugs` in
-`app/routes.ts`: `'/wine': { de: '/weine', it: '/vini' }`. The site's pages and `ginko.config.ts` both read that
-table, so each address is written once.
+`app/pages/gallery.vue`, and register it in `ginko.config.ts` under `pages` (`wine: localized('/wine')`), so
+`useGinkoPath()('wine')` links to it. For a word of its own per language, add it to `segments` in `app/routes.ts`:
+`wine: { en: 'wine', de: 'weine', it: 'vini' }`. `localized()` in `ginko.config.ts` and `modules/page-paths.ts`
+(which gives the page file its addresses) both read that table, so each word is written once.
 
 ## Add or remove a language
 
@@ -152,7 +152,7 @@ prefix.
 - **Remove one:** start fresh with `npm create ginko@latest my-restaurant -- --template restaurant --locales en,de`.
   By hand: delete it from `locales` and from the maps in `app/routes.ts` and `languages` in `ginko.config.ts`, then
   delete its files (`*.it.md`, `i18n/it.json`, `i18n/*/it.json`).
-- **Add one** (for example French): add `'fr'` to `locales` and `languages`, its addresses to `slugs`, `i18n/fr.json`
+- **Add one** (for example French): add `'fr'` to `locales` and `languages`, its words to `segments`, `i18n/fr.json`
   and `i18n/<feature>/fr.json` for each feature folder in `i18n/`, and the content in French. An entry with its own
   address (a page, an event, a legal text) without its `.fr.md` is left out of the French site: no page, no link, not
   in the sitemap. So translate at least `content/legal/*.fr.md` (without them the French site has no imprint, which
@@ -172,12 +172,12 @@ event (its page then shows "Book a place" instead of phone and email). Name the 
 
 | Feature | Delete |
 |---|---|
-| Lunch of the week | `content/lunch*.md`, the `lunch` brick and the `lunch` page in `ginko.config.ts`, `app/pages/lunch.vue`, `app/components/menu/LunchDays.vue`, `useLunch` in `app/composables/useMenu.ts`, the "Today's lunch" section in `app/pages/index.vue`, the `lunch` entry of `nav` and `slugs` |
-| Events | `content/events/`, the `events` brick and page in `ginko.config.ts`, `app/pages/events/`, `app/components/event/`, `app/composables/useEvents.ts`, `i18n/events/`, the `events` key in each `i18n/<language>.json`, `<EventUpcoming />` in `app/pages/index.vue`, the `events` entry of `nav` and `slugs` |
-| Gallery | `content/gallery*.md`, the `gallery` brick and page in `ginko.config.ts`, `app/pages/gallery.vue`, `app/components/block/Gallery.vue`, `app/components/site/Lightbox.vue`, `i18n/gallery/`, the gallery section in `app/pages/index.vue`, the `gallery` entry of `footer` and `slugs` |
+| Lunch of the week | `content/lunch*.md`, the `lunch` brick and the `lunch` page in `ginko.config.ts`, `app/pages/lunch.vue`, `app/components/menu/LunchDays.vue`, `useLunch` in `app/composables/useMenu.ts`, the "Today's lunch" section in `app/pages/index.vue`, the `lunch` entry of `nav` and `segments` |
+| Events | `content/events/`, the `events` brick and page in `ginko.config.ts`, `app/pages/events/`, `app/components/event/`, `app/composables/useEvents.ts`, `i18n/events/`, the `events` key in each `i18n/<language>.json`, `<EventUpcoming />` in `app/pages/index.vue`, the `events` entry of `nav` and `segments` |
+| Gallery | `content/gallery*.md`, the `gallery` brick and page in `ginko.config.ts`, `app/pages/gallery.vue`, `app/components/block/Gallery.vue`, `app/components/site/Lightbox.vue`, `i18n/gallery/`, the gallery section in `app/pages/index.vue`, the `gallery` entry of `footer` and `segments` |
 | Winter hours | `content/hourPlans/` (keep the `hourPlans` brick: without entries it shows nothing) |
 | Notices | `content/notices/` (keep the brick: without entries nothing shows) |
-| Print version of the menu | `app/pages/menu/print.vue`, `app/layouts/print.vue`, the print link in `app/pages/menu/index.vue`, `/menu/print` in `slugs` |
+| Print version of the menu | `app/pages/menu/print.vue`, `app/layouts/print.vue`, the print link in `app/pages/menu/index.vue`, the word `print` in `segments` |
 | A legal text | its files in `content/legal/` |
 | A language | see "Add or remove a language" |
 | Dark mode | `<SiteThemeToggle />` in `app/components/site/Header.vue`, `app/components/site/ThemeToggle.vue`, and `@nuxtjs/color-mode` with its `colorMode` options in `nuxt.config.ts` and `package.json` |
