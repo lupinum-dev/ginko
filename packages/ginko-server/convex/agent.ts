@@ -521,12 +521,14 @@ async function draftThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<st
 }
 
 /**
- * The task a revert of this change goes through. The fields a later change touched are the ones a revert can write: a
+ * The task a revert of this change goes through: none for owners and admins (a full revert), else the staff task. The fields a later change touched are the ones a revert can write: a
  * staff task must cover them. `ginko_version_at` and `ginko_revert` both ask here, so the preview shows what the save writes.
  */
 async function revertTaskFor(ctx: QueryCtx, actor: Actor, entryId: string, changeId: string) {
-  const { fields } = await versionAtAs(ctx, actor, { entry: entryId, change: changeId })
   const entry = await entryOf(ctx, actor, entryId)
+  // Owners and admins revert in full, with no task, as the Studio does for managers (ChangeRows.vue).
+  if (actor.role !== 'staff') return { entry, task: undefined }
+  const { fields } = await versionAtAs(ctx, actor, { entry: entryId, change: changeId })
   return { entry, task: taskFor(actor, entry.brick, 'edit', fields, entry) }
 }
 

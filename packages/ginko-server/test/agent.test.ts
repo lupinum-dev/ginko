@@ -371,23 +371,39 @@ describe('agent door: tool catalog', () => {
     expect((await entryRow(s, entry))!.data.price).toEqual({ amount: 2500 })
   })
 
-  // Wrong behaviour caught: the agent preview of ginko_revert showed the week changing back, but a staff agent reverts
-  // through the weekly task, which keeps this week, so the preview promised a change the revert does not make.
-  it('ginko_version_at for a staff agent leaves out the week the weekly task keeps, as ginko_revert does', async () => {
-    vi.setSystemTime(new Date('2026-10-16T08:00:00Z'))
-    const s = await setup()
-    const lunch = s.entries.lunch!
-    const first = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: lunch, baseRev: 1, fields: { note: { de: 'Alt' } } }) as { change: Id<'changes'>; rev: number }
-    vi.setSystemTime(new Date('2026-10-17T06:00:00Z'))
-    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, baseRev: first.rev, fields: { weekOf: '2026-10-19', note: { de: 'Neu' } } })
-    const cook = await keyOf(s, 'cook')
-    const diff = (await call(s, cook, 'ginko_version_at', { entry: lunch, change: first.change })).data.diff as { field: string }[]
-    expect(diff.map((d) => d.field)).toEqual(['note'])
-    // The revert through the same door writes the note and keeps the new week (the cook's revert waits for approval).
-    const done = await call(s, await keyOf(s, 'owner'), 'ginko_revert', { entry: lunch, change: first.change })
-    expect(done.isError).toBe(false)
-    const data = (await entryRow(s, lunch))!.data
-    expect([data.weekOf, data.note]).toEqual(['2026-10-19', { de: 'Alt' }])
+  // Wrong behaviour caught: a preview made for one actor and a revert made by another disagreed. A staff agent reverts
+  // through the weekly task, which keeps this week; an owner or admin reverts in full, as the Studio does, week included.
+  describe('ginko_version_at and ginko_revert agree per actor', () => {
+    const lunchChanges = async () => {
+      vi.setSystemTime(new Date('2026-10-16T08:00:00Z'))
+      const s = await setup()
+      const lunch = s.entries.lunch!
+      const first = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: lunch, baseRev: 1, fields: { note: { de: 'Alt' } } }) as { change: Id<'changes'>; rev: number }
+      vi.setSystemTime(new Date('2026-10-17T06:00:00Z'))
+      await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, baseRev: first.rev, fields: { weekOf: '2026-10-19', note: { de: 'Neu' } } })
+      return { s, lunch, first }
+    }
+
+    it('the cook\'s revert proposal writes exactly the fields of the cook\'s preview, without the week', async () => {
+      const { s, lunch, first } = await lunchChanges()
+      const cook = await keyOf(s, 'cook')
+      const diff = (await call(s, cook, 'ginko_version_at', { entry: lunch, change: first.change })).data.diff as { field: string }[]
+      expect(diff.map((d) => d.field)).toEqual(['note'])
+      const done = await call(s, cook, 'ginko_revert', { entry: lunch, change: first.change })
+      expect(done.isError).toBe(false)
+      const proposals = await s.t.run((ctx) => ctx.db.query('proposals').collect())
+      expect(proposals.map((p) => Object.keys(p.args.fields as object))).toEqual([diff.map((d) => d.field)])
+    })
+
+    it('the owner\'s preview includes the week and the owner\'s revert sets it back', async () => {
+      const { s, lunch, first } = await lunchChanges()
+      const owner = await keyOf(s, 'owner')
+      const diff = (await call(s, owner, 'ginko_version_at', { entry: lunch, change: first.change })).data.diff as { field: string }[]
+      expect(diff.map((d) => d.field).sort()).toEqual(['note', 'weekOf'])
+      expect((await call(s, owner, 'ginko_revert', { entry: lunch, change: first.change })).isError).toBe(false)
+      const data = (await entryRow(s, lunch))!.data
+      expect([data.weekOf, data.note]).toEqual(['2026-10-05', { de: 'Alt' }])
+    })
   })
 
   it('with review on, ginko_undo cannot take back a live save past the review', async () => {
