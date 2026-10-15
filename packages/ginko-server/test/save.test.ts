@@ -76,6 +76,44 @@ describe('entries.save', () => {
   })
 })
 
+describe('staff change the entries they created (SPEC 2.7)', () => {
+  // Wrong behaviour caught: the cook adds an event with "Veranstaltung hinzufügen" (no edit task exists for events) and
+  // can then not correct its date: the server refused every save of it. Others' events must stay theirs.
+  it('the creator saves and undoes with the create task; entries of others, removing and a lost create right stay refused', async () => {
+    const { t, as, site, entries } = await setup()
+    await t.run(async (ctx) => {
+      const cook = (await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site)).collect()).find((m) => m.user === 'u-koch')!
+      await ctx.db.patch(cook._id, { grants: ['events.add'] })
+    })
+    const event = { title: { de: 'Weinabend' }, when: { from: '2026-10-25', to: '2026-10-25' }, description: { de: 'Mit Musik.' } }
+    const made = (await as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'events.add', brick: 'events', data: event })) as { entry: Id<'entries'> }
+    const theirs = (await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: event })) as { entry: Id<'entries'> }
+    const save = (entry: Id<'entries'>, baseRev = 1) => as.cook.mutation(api.entries.save, {
+      site: 'restaurant', opId: opId(), task: 'events.add', entry, baseRev, fields: { when: { from: '2026-10-26', to: '2026-10-26' } },
+    }) as Promise<{ change: string }>
+
+    expect(await as.cook.query(api.entries.get, { site: 'restaurant', entry: made.entry })).toMatchObject({ own: true })
+    expect(await as.cook.query(api.entries.get, { site: 'restaurant', entry: theirs.entry })).not.toHaveProperty('own')
+    const saved = await save(made.entry)
+    expect((await t.run((ctx) => ctx.db.get(made.entry)))!.data.when).toEqual({ from: '2026-10-26', to: '2026-10-26' })
+    await as.cook.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), task: 'events.add', change: saved.change })
+    expect((await t.run((ctx) => ctx.db.get(made.entry)))!.data.when).toEqual({ from: '2026-10-25', to: '2026-10-25' })
+
+    const refused = {
+      others: (await errorOf(save(theirs.entry))).code,
+      seeded: (await errorOf(save(entries.weinabend!))).code,
+      remove: (await errorOf(as.cook.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), task: 'events.add', entry: made.entry, lifeRev: 1 }))).code,
+    }
+    expect(refused).toEqual({ others: 'FORBIDDEN', seeded: 'FORBIDDEN', remove: 'FORBIDDEN' })
+    // Rights never outlive their grant: without the create task the own entry is read-only too.
+    await t.run(async (ctx) => {
+      const cook = (await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site)).collect()).find((m) => m.user === 'u-koch')!
+      await ctx.db.patch(cook._id, { grants: ['events.remove'] })
+    })
+    expect((await errorOf(save(made.entry, 3))).code).toBe('FORBIDDEN')
+  })
+})
+
 describe('translations (SPEC 3 prints)', () => {
   it('a German change makes the English name stale; confirm makes it fresh again; undo restores the old print', async () => {
     const { t, as, entries } = await setup()

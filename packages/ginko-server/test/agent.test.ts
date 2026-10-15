@@ -144,6 +144,10 @@ const names = async (s: Setup, key: string) => ((await rpc(s, key, 'tools/list')
 const saveOwner = (s: Setup, entry: Id<'entries'>, fields: Record<string, unknown>, baseRev: number) =>
   s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev, fields, sentence: 'Test' }) as Promise<{ change: string; rev: number }>
 const entryRow = (s: Setup, id: Id<'entries'>) => s.t.run((ctx) => ctx.db.get(id))
+const grantCook = (s: Setup, grants: string[]) => s.t.run(async (ctx) => {
+  const member = await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', 'u-koch').eq('site', s.site)).unique()
+  await ctx.db.patch(member!._id, { grants })
+})
 const patchSchema = (s: Setup, edit: (schema: Schema) => void) => s.t.run(async (ctx) => {
   const schema = (await ctx.db.get(s.site))!.schema as Schema
   edit(schema)
@@ -151,24 +155,42 @@ const patchSchema = (s: Setup, edit: (schema: Schema) => void) => s.t.run(async 
 })
 
 describe('agent door: tool catalog', () => {
-  it('a staff key lists only the tools it may use: no draft without drafts, no revert or translate without an edit task', async () => {
+  it('a staff key lists only the tools it may use: no draft without drafts, no revert or translate without an edit or create task', async () => {
     const s = await setup()
     const cook = await keyOf(s, 'cook')
     const plain = await names(s, cook)
     expect(plain).toContain('ginko_revert')
     expect(plain).not.toContain('ginko_draft')
 
-    // Only "Gericht hinzufügen" is left, and menu has drafts now.
-    await s.t.run(async (ctx) => {
-      const member = await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', 'u-koch').eq('site', s.site)).unique()
-      await ctx.db.patch(member!._id, { grants: ['menu.add'] })
-    })
+    // Only "Gericht hinzufügen" is left, and menu has drafts now. Revert and translate stay for the dishes the cook adds.
+    await grantCook(s, ['menu.add'])
     await patchSchema(s, (schema) => { (schema.bricks.menu as { drafts?: boolean }).drafts = true })
     const narrow = await names(s, cook)
     expect(narrow).toContain('ginko_draft')
-    expect(narrow).not.toContain('ginko_revert')
-    expect(narrow).not.toContain('ginko_translate')
+    expect(narrow).toContain('ginko_revert')
+    expect(narrow).toContain('ginko_translate')
     expect(await names(s, await keyOf(s, 'owner'))).toContain('ginko_draft')
+
+    // Only "Gericht entfernen": nothing to change.
+    await grantCook(s, ['menu.remove'])
+    const removeOnly = await names(s, cook)
+    expect(removeOnly).not.toContain('ginko_revert')
+    expect(removeOnly).not.toContain('ginko_translate')
+  })
+
+  // Wrong behaviour caught: the door decides the creator rule on its own (or not at all), so an assistant translates
+  // the events of others with the cook's key, or cannot translate the event the cook just added.
+  it("a key translates the entries its person created with a create task, never other people's", async () => {
+    const s = await setup()
+    await grantCook(s, ['events.add'])
+    const key = await keyOf(s, 'cook')
+    const made = await call(s, key, 'task_events_add', { title: 'Weinabend', when: { from: '2026-10-25', to: '2026-10-25' }, description: 'Mit Musik.' })
+    expect(made.isError).toBe(false)
+    const own = await call(s, key, 'ginko_translate', { entry: made.data.entry, locale: 'en', fields: { title: 'Wine evening' } })
+    expect(own.isError).toBe(false)
+    expect((await entryRow(s, made.data.entry))!.data.title).toEqual({ de: 'Weinabend', en: 'Wine evening' })
+    const others = await call(s, key, 'ginko_translate', { entry: s.entries.weinabend, locale: 'en', fields: { title: 'Wine evening' } })
+    expect(others.isError).toBe(true)
   })
 
   // Wrong behaviour caught: the host cannot tell a read from a write, or takes an overwrite or undo for an additive change

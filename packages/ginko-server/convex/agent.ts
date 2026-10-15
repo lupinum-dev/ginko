@@ -464,7 +464,7 @@ async function translateThroughDoor(ctx: MutationCtx, actor: Actor, input: Recor
   const roots = [...new Set([...Object.keys(fields), ...confirm as string[]])]
   const label = `Translation (${locale}): ${roots.map((k) => labelIn(brick.fields[k]!.label, main, main)).join(', ')}`
   const result = await saveAs(ctx, actor, {
-    site: actor.site.slug, opId, task: taskFor(actor, entry.brick, 'edit', roots), entry: entry._id, baseRev: entry.rev, fields, locale,
+    site: actor.site.slug, opId, task: taskFor(actor, entry.brick, 'edit', roots, entry), entry: entry._id, baseRev: entry.rev, fields, locale,
     ...(confirm.length ? { confirm: confirm as string[] } : {}), sentence: label,
   })
   return savedAs(result, label)
@@ -495,7 +495,7 @@ async function revertThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<s
   // The fields a later change touched are the ones a revert can write: a staff task must cover them.
   const { fields } = await versionAtAs(ctx, actor, { entry: input.entry, change: input.change }) as { fields: string[] }
   const entry = await entryOf(ctx, actor, input.entry)
-  const result = await revertAs(ctx, actor, { site: actor.site.slug, opId, task: taskFor(actor, entry.brick, 'edit', fields), entry: entry._id, change: input.change })
+  const result = await revertAs(ctx, actor, { site: actor.site.slug, opId, task: taskFor(actor, entry.brick, 'edit', fields, entry), entry: entry._id, change: input.change })
   return savedAs(result, 'Back to the earlier state')
 }
 
@@ -515,6 +515,7 @@ async function undoThroughDoor(ctx: MutationCtx, actor: Actor, raw: Json | undef
     if (removal) await ctx.db.patch(change._id, { undoneBy: removal._id })
     return { text: 'Undone: the entry is removed.', result }
   }
-  const result = await undoAs(ctx, actor, { site, opId, task: taskFor(actor, change.brick, 'edit', change.fields ?? []), change: change._id })
+  const entry = change.entry ? await ctx.db.get(change.entry) : null
+  const result = await undoAs(ctx, actor, { site, opId, task: taskFor(actor, change.brick, 'edit', change.fields ?? [], entry), change: change._id })
   return { text: `Undone: ${lineFor(change, actor.site.schema as Schema)}.`, result }
 }

@@ -3,7 +3,8 @@
 // A tool is listed only when the person may use it; agent.ts checks the same list again at call time.
 import type { Brick, CollectionBrick, Json, Task } from '@lupinum/ginko'
 import { labelOf, type Schema } from '@lupinum/ginko/internal'
-import type { Actor } from './access'
+import type { Doc } from '../_generated/dataModel'
+import { createdBy, type Actor } from './access'
 
 export const HISTORY_MAX = 50
 export const SEARCH_MAX = 20
@@ -34,14 +35,21 @@ export function describeTask(brick: Brick, task: Task, main: string): string {
   return `${labelOf(task.label, main, main)} (${labelOf(brick.label, main, main)}). ${what}`
 }
 
-/** A granted task of the brick and kind for staff (admins and owners need none), e.g. to undo through the door. */
-export function taskFor(actor: Actor, brick: string, kind: Task['kind'], fields: readonly string[] = []): string | undefined {
+/**
+ * A granted task of the brick and kind for staff (admins and owners need none), e.g. to undo through the door. For a
+ * change of an entry the person created (`entry`), their create task of the brick serves when no edit task covers it
+ * (lib/access.ts `authorize`).
+ */
+export function taskFor(actor: Actor, brick: string, kind: Task['kind'], fields: readonly string[] = [], entry?: Pick<Doc<'entries'>, 'createdBy'> | null): string | undefined {
   const covers = (task: Task) => task.kind === kind && (task.kind !== 'edit' || fields.every((f) => task.fields.includes(f)))
-  return taskTools(actor).find((t) => t.brick === brick && covers(t.task))?.ref
+  const tools = taskTools(actor).filter((t) => t.brick === brick)
+  const found = tools.find((t) => covers(t.task))?.ref
+  if (found || kind !== 'edit' || !createdBy(actor, entry)) return found
+  return tools.find((t) => t.task.kind === 'create')?.ref
 }
 
-/** Whether the person changes existing entries at all: owners and admins always, staff with an `edit` task. */
-export const mayEdit = (actor: Actor): boolean => actor.role !== 'staff' || taskTools(actor).some((t) => t.task.kind === 'edit')
+/** Whether the person changes existing entries at all: owners and admins always, staff with an `edit` task, or a `create` task for the entries they made. */
+export const mayEdit = (actor: Actor): boolean => actor.role !== 'staff' || taskTools(actor).some((t) => t.task.kind === 'edit' || t.task.kind === 'create')
 
 /** The collections whose entries start as drafts and where this person may create entries. */
 export function draftBricks(actor: Actor): string[] {
