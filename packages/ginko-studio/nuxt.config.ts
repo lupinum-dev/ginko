@@ -62,7 +62,8 @@ export default defineNuxtConfig({
       // The module looks for app/convex-auth.ts in the host app; it lives in this layer.
       client: here('./app/convex-auth.ts'),
       redirectTo: '/login',
-      // Every page needs a signed-in person; only /login opts out (`convexAuth: 'guest'`).
+      // Every page needs a signed-in person; only /login (`convexAuth: 'guest'`) and /invite/[token] (public,
+      // `convexAuth: false`: it explains the invite before sign-in) opt out.
       routes: 'protected',
       defaultQueryAuth: 'required',
     },
