@@ -203,6 +203,7 @@
     "uploadTooLarge": "The file is too large (photos at most {imageMb} MB, PDFs at most {fileMb} MB).",
     "uploadWrongType": "This file type is not allowed ({types}).",
     "uploadWrongContent": "The content does not match the file type.",
+    "uploadEmpty": "The file is empty.",
     "uploadFailed": "The upload failed. Please try again.",
     "uploadMissing": "The uploaded file is missing. Please upload it again.",
     "uploadRetrying": "The photo could not be processed. We are trying again.",

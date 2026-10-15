@@ -6,7 +6,7 @@
 import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'
 import { httpAction, type ActionCtx } from '../_generated/server'
-import { kindOf, TOO_LARGE, typeOfBytes, WRONG_CONTENT, WRONG_TYPE } from '../lib/files'
+import { EMPTY, kindOf, TOO_LARGE, typeOfBytes, WRONG_CONTENT, WRONG_TYPE } from '../lib/files'
 import { t, type MessageKey } from '../lib/i18n'
 
 /** Only the platform UI (`SITE_URL`, the origin sign-in uses too) may call this route from the browser (CORS). */
@@ -43,6 +43,7 @@ async function receive(ctx: ActionCtx, request: Request): Promise<Response> {
   if (declared !== null && Number(declared) > kind.limit) return reply(request, 413, { code: 'UPLOAD_REJECTED', ...TOO_LARGE })
   const bytes = new Uint8Array(await request.arrayBuffer())
   if (bytes.byteLength > kind.limit) return reply(request, 413, { code: 'UPLOAD_REJECTED', ...TOO_LARGE })
+  if (bytes.byteLength === 0) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...EMPTY })
   const mime = typeOfBytes(kind.kind, bytes)
   if (!mime) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...WRONG_CONTENT })
 

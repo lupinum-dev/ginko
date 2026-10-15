@@ -16,6 +16,7 @@ const SIGNATURES: Record<UploadType, (bytes: Uint8Array) => boolean> = {
 export const TOO_LARGE = { key: 'errors.uploadTooLarge', params: { imageMb: formatMb(limitOf('image')), fileMb: formatMb(limitOf('file')) } } as const
 export const WRONG_TYPE = { key: 'errors.uploadWrongType', params: { types: Object.values(UPLOAD_TYPES).map((t) => t.label).join(', ') } } as const
 export const WRONG_CONTENT = { key: 'errors.uploadWrongContent' } as const
+export const EMPTY = { key: 'errors.uploadEmpty' } as const
 
 const NAME_FALLBACK = 'datei'
 const NAME_MAX = 120
