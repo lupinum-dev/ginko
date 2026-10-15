@@ -20,7 +20,7 @@
   },
   "notice": "Notice",
   "updated": "Last updated {date}",
-  "empty": "Add a file to {path}.",
+  "empty": "Add a file to <code>{path}</code>.",
   "error": {
     "code": "Error {code}",
     "notFound": "Page not found",

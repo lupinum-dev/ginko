@@ -7,7 +7,6 @@ defineProps<{
   text?: string
   path?: string
 }>()
-const { t } = useI18n('site')
 </script>
 
 <template>
@@ -16,7 +15,9 @@ const { t } = useI18n('site')
     <p class="text-body font-medium">{{ title }}</p>
     <p v-if="text" class="text-muted-foreground">{{ text }}</p>
     <p v-if="path" class="text-small text-muted-foreground">
-      {{ t('empty', { path }) }}
+      <I18nT k="site.empty" :params="{ path }">
+        <template #code="{ text: file }"><code class="wrap-anywhere">{{ file }}</code></template>
+      </I18nT>
     </p>
   </div>
 </template>

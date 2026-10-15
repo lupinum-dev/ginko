@@ -20,7 +20,7 @@
   },
   "notice": "Hinweis",
   "updated": "Stand: {date}",
-  "empty": "Legen Sie eine Datei in {path} an.",
+  "empty": "Legen Sie eine Datei in <code>{path}</code> an.",
   "error": {
     "code": "Fehler {code}",
     "notFound": "Seite nicht gefunden",
