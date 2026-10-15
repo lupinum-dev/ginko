@@ -357,13 +357,22 @@ describe('sites.translationStatus', () => {
     expect(menu.outdated).toBeGreaterThan(0)
   })
 
-  it('leaves out removed entries and drafts', async () => {
+  // Wrong behaviour caught (overview): the list of open translations misses a page that is not online in English
+  // because of them, or lists a draft that is not on the website yet (admin-4, A11).
+  it('leaves out removed entries and drafts, and lists the entries with a gap', async () => {
     const s = await studioSetup({ drafts: true })
     const base = (await s.as.owner.query(api.sites.translationStatus, { site })).bricks.find((b) => b.brick === 'events')!.locales.en!
-    await s.createEvent('Entwurf ohne Übersetzung')
+    const draft = await s.createEvent('Entwurf ohne Übersetzung')
+    const live = await s.createEvent('Wildwoche', {}, {})
     await s.remove(s.entries.sommerfest!)
-    const after = (await s.as.owner.query(api.sites.translationStatus, { site })).bricks.find((b) => b.brick === 'events')!.locales.en!
-    expect(after.missing + after.outdated + after.ok).toBe(base.missing + base.outdated + base.ok - 1)
+    const status = await s.as.owner.query(api.sites.translationStatus, { site })
+    const after = status.bricks.find((b) => b.brick === 'events')!.locales.en!
+    // One live entry more, one removed.
+    expect(after.missing + after.outdated + after.ok).toBe(base.missing + base.outdated + base.ok)
+    expect(status.entries).toContainEqual({ brick: 'events', entry: live.entry, title: 'Wildwoche', locale: 'en', missing: 2, outdated: 0, hidden: true })
+    expect(status.entries.map((e) => e.entry)).not.toContain(draft.entry)
+    expect(status.entries.map((e) => e.entry)).not.toContain(s.entries.sommerfest)
+    expect(status.truncated).toBe(false)
   })
 })
 
