@@ -448,10 +448,10 @@ describe('publish step', () => {
     pages: { home: { de: '/' } },
     bricks: {
       posts: collection({
-        label: 'Beiträge', drafts: true, fields: { title: f.text('Titel', { translate: false }) },
+        label: 'Beiträge', max: 50, order: 'manual', drafts: true, fields: { title: f.text('Titel', { translate: false }) },
         tasks: [{ id: 'write', label: 'Beitrag schreiben', kind: 'create' }, { id: 'fix', label: 'Beitrag ändern', kind: 'edit', fields: ['title'], pick: true }],
       }),
-      notes: collection({ label: 'Notizen', fields: { title: f.text('Titel', { translate: false }) }, tasks: [{ id: 'add', label: 'Notiz anlegen', kind: 'create' }] }),
+      notes: collection({ label: 'Notizen', max: 50, order: 'manual', fields: { title: f.text('Titel', { translate: false }) }, tasks: [{ id: 'add', label: 'Notiz anlegen', kind: 'create' }] }),
     },
   }))
   const mountStep = (key: 'posts' | 'notes', opts: { task?: number; approval?: boolean; entry?: unknown } = {}) => {
