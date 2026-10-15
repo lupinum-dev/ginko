@@ -542,7 +542,8 @@
     "translation": {
       "changedSince": "{name} changed since the translation",
       "fitsAsIs": "Keep as is",
-      "notTranslated": "Not translated yet. The website shows the text from {name} here."
+      "notTranslated": "Not translated yet. The website shows the text from {name} here.",
+      "notTranslatedHidden": "Not translated yet. Without this text, “{title}” is missing from the website in {lang}."
     },
     "date": {
       "workWeek": "Current work week",

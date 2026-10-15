@@ -93,6 +93,11 @@ const leaf = computed(() => {
   return undefined
 })
 const trState = computed(() => (leaf.value ? translation?.state(leaf.value) : undefined))
+/** A page (an event) is left out of the language while a required text is missing; a part of a page shows the main language. */
+const missingText = computed(() => {
+  const hidden = leaf.value ? translation?.hiddenWithout?.(leaf.value) : undefined
+  return hidden ? t('fields.translation.notTranslatedHidden', { title: hidden.title, lang: hidden.language }) : t('fields.translation.notTranslated', { name: translation?.mainName() ?? '' })
+})
 </script>
 
 <template>
@@ -105,7 +110,7 @@ const trState = computed(() => (leaf.value ? translation?.state(leaf.value) : un
           <Badge variant="outline" class="h-auto border-warning py-1 whitespace-normal text-warning">{{ t('fields.translation.changedSince', { name: translation.mainName() }) }}</Badge>
           <Button type="button" variant="outline" size="sm" @click="translation.confirm(leaf!)">{{ t('fields.translation.fitsAsIs') }}</Button>
         </div>
-        <p v-else-if="trState === 'missing'" class="text-warning">{{ t('fields.translation.notTranslated', { name: translation.mainName() }) }}</p>
+        <p v-else-if="trState === 'missing'" class="text-warning">{{ missingText }}</p>
       </div>
     </template>
 

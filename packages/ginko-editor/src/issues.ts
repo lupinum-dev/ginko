@@ -19,8 +19,8 @@ export const BLOCKERS = Symbol('ginko:blockers') as InjectionKey<Map<string, str
 export const FLUSHERS = Symbol('ginko:flushers') as InjectionKey<Set<() => Promise<void>>>
 
 /**
- * Set by Alles bearbeiten in a foreign language: the translation state of one translatable leaf, by its
- * path (`name`, or `days.<rowId>.dish` inside a list), the main-language text, and "Passt so".
+ * Set by a form in a foreign language (Alles bearbeiten, a quick-task sheet): the translation state of one translatable
+ * leaf, by its path (`name`, or `days.<rowId>.dish` inside a list), the main-language text, and "Passt so".
  */
 export interface TranslationState {
   state: (leaf: string) => 'missing' | 'stale' | 'fine' | undefined
@@ -28,5 +28,11 @@ export interface TranslationState {
   confirm: (leaf: string) => void
   /** "Deutsch": the main language's name, for the source line and the hints. */
   mainName: () => string
+  /**
+   * Set when the website leaves the whole entry out of this language while the leaf has no text there (a page, such
+   * as an event): the entry's title and the language's name ("Englisch"), so the hint says what goes missing instead
+   * of promising the main-language text.
+   */
+  hiddenWithout?: (leaf: string) => { title: string; language: string } | undefined
 }
 export const TRANSLATION = Symbol('ginko:translation') as InjectionKey<TranslationState>

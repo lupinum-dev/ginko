@@ -5,7 +5,7 @@ import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, L
 import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { languageName, leafTranslation, previewFileIds, publishQuestion, titleOf } from '../utils/content'
+import { hidesUntranslated, languageName, leafTranslation, previewFileIds, publishQuestion, titleOf } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -176,7 +176,10 @@ watch(draft, () => {
 }, { deep: true })
 
 // Lists show the same state per cell (Phase 11: confirming translations inside lists).
-provide(TRANSLATION, { state: translation, source: sourceText, confirm: confirmTranslation, mainName: () => languageName(main.value, uiLocale.value) })
+provide(TRANSLATION, {
+  state: translation, source: sourceText, confirm: confirmTranslation, mainName: () => languageName(main.value, uiLocale.value),
+  hiddenWithout: (leaf) => (hidesUntranslated(props.brick, leaf) ? { title: title.value, language: languageName(locale.value, uiLocale.value) } : undefined),
+})
 
 const shown = (label: LabelText) => shownLabel(label, main.value)
 const title = computed(() => props.brick.kind === 'single' ? shown(props.brick.label) : props.entry ? titleOf(props.brick, props.entry.data, main.value) : t('entry.newEntry'))

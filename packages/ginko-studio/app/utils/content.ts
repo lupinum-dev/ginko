@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { entryTitle, fileRefsIn, ordered, printOf, stableJson, type Schema } from '@lupinum/ginko/internal'
+import { entryTitle, fileRefsIn, isTranslatable, ordered, printOf, stableJson, untranslatedMode, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { shownLabel } from './labels'
 import type { Words } from './when'
@@ -164,3 +164,17 @@ export function leafTranslation(input: { draft: Record<string, unknown> | undefi
   return input.storedMain !== undefined && input.print !== printOf(input.storedMain) ? 'stale' : 'fine'
 }
 
+
+/**
+ * Whether the website leaves the whole entry out of a language while this leaf has no text there (`name`, `image.alt`,
+ * or `days.<rowId>.dish` in a list). It mirrors core resolve.ts `localized()`: a required text of a collection whose
+ * untranslated entries are hidden (`untranslatedMode`, pages by default) makes the entry untranslated; slugs and image
+ * descriptions never do, and parts of pages fall back to the main language instead.
+ */
+export function hidesUntranslated(brick: Brick, leaf: string): boolean {
+  if (brick.kind !== 'collection' || untranslatedMode(brick) !== 'hide' || leaf.endsWith('.alt')) return false
+  const [root, , column] = leaf.split('.')
+  const top = brick.fields[root!]
+  const field = column === undefined ? top : top?.type === 'list' ? top.of[column] : undefined
+  return !!field && isTranslatable(field) && !field.optional && field.type !== 'slug'
+}

@@ -174,9 +174,9 @@ describe('the focus after a remove button goes', () => {
 
 describe('translation side by side', () => {
   const field = { type: 'text', label: 'Gericht' } as Field
-  function translated(state: 'stale' | 'fine' | 'missing') {
+  function translated(state: 'stale' | 'fine' | 'missing', hiddenWithout?: TranslationState['hiddenWithout']) {
     const confirm = vi.fn()
-    const translation: TranslationState = { state: () => state, source: () => 'Kürbissuppe', confirm, mainName: () => 'Deutsch' }
+    const translation: TranslationState = { state: () => state, source: () => 'Kürbissuppe', confirm, mainName: () => 'Deutsch', hiddenWithout }
     const wrapper = mount(GinkoField, {
       props: { field, modelValue: { de: 'Kürbissuppe', en: 'Pumpkin soup' }, path: 'dish', locale: 'en', locales: ['de', 'en'], issues: [] },
       global: { provide: { [TRANSLATION as symbol]: translation } },
@@ -199,5 +199,15 @@ describe('translation side by side', () => {
     const { wrapper } = translated('fine')
     expect(wrapper.get('[data-slot="translation-source"]').text()).toContain('Kürbissuppe')
     expect(wrapper.text()).not.toContain('geändert seit Übersetzung')
+  })
+
+  // Wrong behaviour caught (WS-8): an event without its English title said the website shows the German text there,
+  // while the English site leaves the whole event out.
+  test.each([
+    ['a part of a page shows the main language', undefined, 'Noch nicht übersetzt. Die Website zeigt hier den Text auf Deutsch.'],
+    ['a page is left out of the language', () => ({ title: 'Krampuslauf', language: 'Englisch' }), 'Noch nicht übersetzt. Ohne diesen Text fehlt „Krampuslauf“ auf der Website auf Englisch.'],
+  ] as const)('a missing translation where %s says so', (_, hiddenWithout, text) => {
+    const { wrapper } = translated('missing', hiddenWithout)
+    expect(wrapper.get('[data-slot="translation-source"] p.text-warning').text()).toBe(text)
   })
 })

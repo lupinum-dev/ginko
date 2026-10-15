@@ -542,7 +542,8 @@
     "translation": {
       "changedSince": "{name} ha cambiado desde la traducción",
       "fitsAsIs": "Dejar como está",
-      "notTranslated": "Aún sin traducir. El sitio web muestra aquí el texto de {name}."
+      "notTranslated": "Aún sin traducir. El sitio web muestra aquí el texto de {name}.",
+      "notTranslatedHidden": "Aún sin traducir. Sin este texto, “{title}” no aparece en el sitio web en {lang}."
     },
     "date": {
       "workWeek": "Semana laboral actual",
