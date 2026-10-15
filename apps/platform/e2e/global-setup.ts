@@ -25,13 +25,14 @@ async function checkPreviewSite() {
 
 export default async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0]!.use.baseURL!
+  // The push comes first: on a new backend the site has no content to serve before it (503).
+  const links = resetAll()
   // After Playwright's webServer started or reused port 3000, so this sees what the tests will see.
   await checkPreviewSite()
-  const links = resetAll()
   const browser = await chromium.launch()
   for (const [who, email] of [['owner', 'wirtin@example.test'], ['cook', 'koch@example.test']] as const) {
-    // A stored session that the backend no longer knows (reset, expired) still opens the invite page,
-    // but accepting fails. So: try the stored session once, else start clean and sign in.
+    // The invite page is public: a stored session that the backend no longer knows (reset, expired) opens it signed
+    // out, without "Einladung annehmen". So: try the stored session once, else sign in first and open it again.
     const accepted = existsSync(STATE[who]) && await accept(STATE[who])
     if (!accepted && !await accept(undefined)) throw new Error(`global setup: ${email} could not accept the invitation`)
 
@@ -40,11 +41,8 @@ export default async function globalSetup(config: FullConfig) {
       const context = await browser.newContext({ baseURL, locale: config.projects[0]!.use.locale, ...(state ? { storageState: state } : {}) })
       const page = await context.newPage()
       try {
+        if (!state) await signIn(page, email)
         await page.goto(links[email]!, { waitUntil: 'networkidle' })
-        if (new URL(page.url()).pathname.startsWith('/login')) {
-          await signIn(page, email)
-          await page.goto(links[email]!, { waitUntil: 'networkidle' })
-        }
         await page.getByRole('button', { name: 'Einladung annehmen' }).click()
         await page.waitForURL(/\/s\/restaurant/, { timeout: state ? 10_000 : 30_000 })
         await context.storageState({ path: STATE[who] })

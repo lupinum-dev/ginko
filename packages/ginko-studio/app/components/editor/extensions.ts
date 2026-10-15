@@ -48,6 +48,7 @@ export function studioExtensions({ slashItems, slash, openLink, bus, problems }:
     // Every profile has links (the link mark comes with StarterKit, so it is not an extension of its own in `base`).
     extensions.push(Extension.create({ name: 'ginkoLinkKey', addKeyboardShortcuts() { return { 'Mod-k': () => { openLink(); return true } } } }))
     if (problems) extensions.push(problemsExtension(problems))
+    extensions.push(escapeExtension())
     // A click (or tap) on a link opens its address instead of following it: the address is visible and can be changed.
     extensions.push(Extension.create({
       name: 'ginkoLinkClick',
@@ -116,6 +117,34 @@ export function studioExtensions({ slashItems, slash, openLink, bus, problems }:
     }
     return extensions
   }
+}
+
+/**
+ * Escape that nothing in the text takes (the slash menu, the block keymap) reaches the page uncancelled. ProseMirror
+ * cancels every Escape it gets, so a task sheet never heard the key and neither closed nor asked "Änderungen
+ * verwerfen?" while the focus was in a text. Here the editor's key handlers still get Escape first, as ProseMirror would
+ * call them; only its blanket cancel goes. Last in line, so other DOM key handlers of the editor run before it.
+ */
+function escapeExtension(): AnyExtension {
+  return Extension.create({
+    name: 'ginkoEscape',
+    priority: 1,
+    addProseMirrorPlugins() {
+      return [new Plugin({
+        key: new PluginKey('ginkoEscape'),
+        props: {
+          handleDOMEvents: {
+            keydown: (view, event) => {
+              // Same gate as ProseMirror's own key handling: no edit keys while composing or in a read-only text.
+              if (event.key !== 'Escape' || event.isComposing || view.composing || !view.editable) return false
+              if (view.someProp('handleKeyDown', (handle) => handle(view, event))) event.preventDefault()
+              return true
+            },
+          },
+        },
+      })]
+    },
+  })
 }
 
 /**

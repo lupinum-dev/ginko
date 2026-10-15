@@ -33,10 +33,12 @@ test.describe('Wirtin', () => {
     await expect(page.getByLabel('Geschlossen am')).toHaveValue(today())
     await page.getByLabel('Grund für die Gäste').fill('Geschlossene Gesellschaft')
     await page.getByRole('button', { name: 'Speichern' }).click()
-    await expect(page.getByText('ist für heute eingetragen.')).toBeVisible()
-    await expect(page.getByText('„Geschlossene Gesellschaft“')).toBeVisible()
+    // Today's hours line stands in for the flag sentence and names the reason once (TEMPLATES.md §7.1, D46).
+    const closedToday = page.getByText('Heute geschlossen · Geschlossene Gesellschaft', { exact: true })
+    await expect(closedToday).toBeVisible()
+    await expect(page.getByText('Geschlossene Gesellschaft')).toHaveCount(1)
     await page.getByRole('button', { name: 'Aufheben' }).click()
-    await expect(page.getByText('ist für heute eingetragen.')).toHaveCount(0)
+    await expect(closedToday).toHaveCount(0)
 
     // Tomorrow: the state names the day, and reopening the task keeps tomorrow instead of closing today.
     await page.getByRole('button', { name: 'Heute geschlossen' }).click()
@@ -497,12 +499,16 @@ test.describe('Anmelden und Einladung', () => {
   // Better Auth limits code mails per minute; sign-in looks the same at both widths, so it runs once.
   test.skip(({ viewport }) => (viewport?.width ?? 0) > 500, 'sign-in runs at phone width only')
 
-  // Every Studio page is protected by default (convex.auth.routes 'protected'); only /login opts out.
+  // Every Studio page is protected by default (convex.auth.routes 'protected'); /login and the invite page opt out.
+  // The invite page is public (3f7a05a4): it explains the invite before sign-in; an unknown one says so, signed out too.
   test('an anonymous visitor of a Studio page is sent to the sign-in, with the way back', async ({ page }) => {
-    for (const path of ['/', '/s/restaurant/team', '/invite/any-token']) {
+    for (const path of ['/', '/s/restaurant/team']) {
       await page.goto(path, { waitUntil: 'networkidle' })
       await expect(page).toHaveURL((url) => url.pathname === '/login' && url.searchParams.get('redirect') === path)
     }
+    await page.goto('/invite/any-token', { waitUntil: 'networkidle' })
+    await expect(page).toHaveURL((url) => url.pathname === '/invite/any-token')
+    await expect(page.getByText('Diese Einladung ist abgelaufen oder schon benutzt. Bitte frag nach einer neuen.')).toBeVisible()
   })
 
   test('8. a wrong code is refused with a clear message', async ({ page }) => {
@@ -531,15 +537,18 @@ test.describe('Anmelden und Einladung', () => {
     const mails = execFileSync('npx', ['convex', 'data', 'outbox', '--limit', '30', '--order', 'desc', '--format', 'jsonLines'], { cwd: serverDir, encoding: 'utf8' })
     const link = mails.trim().split('\n').map((l) => JSON.parse(l) as { to: string; text: string }).find((m) => m.to === email)!.text.match(/(http\S+\/invite\/\S+)/)![1]!
 
-    await page.goto('/login', { waitUntil: 'networkidle' })
-    await page.getByLabel('E-Mail-Adresse').fill(email)
+    // Signed out, the link shows the invite and starts the sign-in with the invited address, then comes back (3f7a05a4).
+    await page.goto(link, { waitUntil: 'networkidle' })
+    await expect(page.getByText('Gasthaus zur Linde lädt dich als Mitarbeiter ein.')).toBeVisible()
+    const invitePath = new URL(link).pathname
+    await page.getByRole('button', { name: 'Anmelden' }).click()
+    await expect(page).toHaveURL((url) => url.pathname === '/login' && url.searchParams.get('redirect') === invitePath)
+    await expect(page.getByLabel('E-Mail-Adresse')).toHaveValue(email)
     await page.getByRole('button', { name: 'Code senden' }).click()
     await page.getByLabel('Code').waitFor()
     await page.getByLabel('Code').fill(codeFor(email))
     await page.getByRole('button', { name: 'Anmelden' }).click()
-    await page.waitForURL((url) => !url.pathname.startsWith('/login'))
-    await page.goto(link, { waitUntil: 'networkidle' })
-    await expect(page.getByText('Gasthaus zur Linde lädt dich als Mitarbeiter ein.')).toBeVisible()
+    await page.waitForURL((url) => url.pathname === invitePath)
     await page.getByRole('button', { name: 'Einladung annehmen' }).click()
     await page.waitForURL(/\/s\/restaurant$/)
     await expect(page.getByRole('button', { name: 'Mittagsmenü dieser Woche' })).toBeVisible()

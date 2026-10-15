@@ -95,10 +95,15 @@ test.describe('Dateien', () => {
     const picker = page.getByRole('dialog')
     await picker.getByRole('button', { name: photo }).click()
     const use = picker.getByRole('button', { name: 'Dieses Foto verwenden' })
-    await expect(picker.getByLabel('Bildbeschreibung')).toBeVisible()
-    await expect(use).toBeDisabled()
-    await picker.getByLabel('Bildbeschreibung').fill('Gedeckter Tisch im Garten')
-    await expect(use).toBeEnabled()
+    const alt = picker.getByLabel('Bildbeschreibung')
+    await expect(alt).toHaveValue('')
+    // Without a description the button says why instead of being disabled (d57b9a4f), and the picker stays open.
+    await use.click()
+    await expect(picker.getByRole('alert')).toHaveText('Beschreibe das Bild kurz, für Menschen, die es nicht sehen.')
+    await expect(alt).toBeFocused()
+    await expect(picker).toBeVisible()
+    await alt.fill('Gedeckter Tisch im Garten')
+    await expect(picker.getByRole('alert')).toHaveCount(0)
     await use.click()
     await expect(picker).toHaveCount(0)
     await expect(page.getByLabel('Bildbeschreibung')).toHaveValue('Gedeckter Tisch im Garten')
@@ -266,11 +271,13 @@ const WORDS = {
     locale: 'de-DE', lunchTask: 'Mittagsmenü dieser Woche', tuesday: 'Dienstag', dish: 'Gericht', rightAgain: 'Ja, stimmt', save: 'Speichern', sent: 'Zur Freigabe gesendet.',
     reviewLink: 'Prüfen (1 zu prüfen)', approve: 'Freigeben', approved: 'Freigegeben. Auf der Website in etwa einer Minute.', nothingWaits: 'Nichts wartet auf deine Entscheidung.',
     search: 'Suche und Aktionen', rowChanged: /Kürbisgulasch/, waiting: 'Wartet auf Freigabe', palettePlaceholder: 'Einträge und Bereiche suchen …',
+    approvedByYou: 'Freigabe: Du',
   },
   en: {
     locale: 'en-US', lunchTask: 'This week’s lunch menu', tuesday: 'Tuesday', dish: 'Dish', rightAgain: 'Yes, correct', save: 'Save', sent: 'Sent for approval.',
     reviewLink: 'Review (1 to review)', approve: 'Approve', approved: 'Approved. On the website in about a minute.', nothingWaits: 'Nothing waits for your decision.',
     search: 'Search and actions', rowChanged: /Kürbisgulasch/, waiting: 'Waiting for approval', palettePlaceholder: 'Search entries and areas…',
+    approvedByYou: 'Approval: You',
   },
 }
 type Lang = keyof typeof WORDS
@@ -355,12 +362,16 @@ for (const lang of ['de', 'en'] as const) {
       // Live: the lunch entry holds the dish now.
       await open(ownerPage, '/s/restaurant/all/lunch')
       await expect(ownerPage.locator('li', { has: ownerPage.getByRole('heading', { name: w.tuesday }) }).getByLabel(w.dish)).toHaveValue(dish)
+      // The owner's History names who made the change (an owner sees the cook's address) and the owner as the approver.
+      await open(ownerPage, '/s/restaurant/history')
+      await expect(ownerPage.locator('main ol li').first()).toContainText('koch@example.test')
+      await expect(ownerPage.locator('main ol li').first()).toContainText(w.approvedByYou)
       await owner.close()
 
-      // The cook's History: nothing waits any more, and the change is there as done.
+      // The cook's History: nothing waits any more, and the change is there as done, as their own ("Du", ce0c081d).
       await open(cookPage, '/s/restaurant/history')
       await expect(cookPage.getByRole('heading', { name: WORDS.de.waiting })).toHaveCount(0)
-      await expect(cookPage.locator('main ol li').first()).toContainText('koch@example.test')
+      await expect(cookPage.locator('main ol li').first()).toContainText('Du · Freigabe: Ein Mitglied')
       await cook.close()
     })
 

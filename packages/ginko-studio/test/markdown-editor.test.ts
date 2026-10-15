@@ -27,6 +27,17 @@ function type(editor: Editor, value: string) {
 }
 
 describe('MarkdownEditor', () => {
+  // Wrong behaviour caught (restaurant e2e 26): ProseMirror cancelled every Escape in the text, so a task sheet around
+  // the editor never closed or asked "Änderungen verwerfen?" while the focus was in a text.
+  test('Escape that the text does not use is not cancelled, so the sheet around it gets it', async () => {
+    const wrapper = await mounted('Eins\n')
+    editorOf(wrapper).commands.focus('end')
+    const key = new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true, cancelable: true })
+    wrapper.get('[role="textbox"]').element.dispatchEvent(key)
+    expect(key.defaultPrevented).toBe(false)
+    wrapper.unmount()
+  })
+
   test('focus and blur without an edit keep the stored text as written', async () => {
     const wrapper = await mounted('- a\n- b\n\n**fett** text\n')
     const box = wrapper.get('[role="textbox"]')
