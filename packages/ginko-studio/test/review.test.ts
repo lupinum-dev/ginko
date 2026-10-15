@@ -4,6 +4,7 @@ import { useI18n } from '#imports'
 import { describe, expect, test, vi } from 'vitest'
 import { computed, ref } from 'vue'
 import ChangeDiff from '../app/components/ChangeDiff.vue'
+import ChangeRows from '../app/components/ChangeRows.vue'
 import OwnProposals from '../app/components/OwnProposals.vue'
 import ReviewRow from '../app/components/ReviewRow.vue'
 import type { Id } from '../../ginko-server/convex/_generated/dataModel'
@@ -134,6 +135,25 @@ describe('OwnProposals', () => {
     finish[0]!()
     await flushPromises()
     expect(wrapper.findAll('button').map((button) => button.attributes('disabled') !== undefined)).toEqual([false, true])
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('ChangeRows', () => {
+  // Wrong behaviour caught: Verlauf showed an approved change with only the cook's name, and offered the cook a
+  // "Rückgängig" that the server refuses for a task that needs approval.
+  test('an approved change names the approver; staff whose task needs approval go back with a new version, not Rückgängig', () => {
+    for (const [name, fn] of Object.entries({ computed, ref, onMounted: () => {}, onUnmounted: () => {}, useI18n })) vi.stubGlobal(name, fn)
+    vi.stubGlobal('useOps', () => ({}))
+    const change = {
+      _id: 'c1', kind: 'save', brick: 'lunch', entry: 'l1', fields: ['note'], at: Date.now(), sentence: 'Hinweis von „Mittagsmenü“ geändert', msg: null,
+      who: { email: 'koch@example.com' }, agent: null, approver: { email: 'wirtin@example.com' }, undoBlocked: null,
+    }
+    vi.stubGlobal('useConvexPaginatedQuery', () => ({ data: computed(() => [change]), error: ref(null), status: ref('success'), canLoadMore: ref(false), isLoadingMore: ref(false), loadMore: () => {} }))
+    const schema = { timeZone: 'Europe/Vienna', locales: ['de'], bricks: { lunch: { tasks: [{ id: 'lunchWeek', label: 'Mittagsmenü dieser Woche', kind: 'edit', fields: ['weekOf', 'days', 'note'], needsApproval: true }] } } }
+    const wrapper = mount(ChangeRows, { props: { site: 's', schema: schema as never, manager: false, grants: new Set(['lunch.lunchWeek']), filter: 'all' }, global: { stubs: { ChangeDetail: true } } })
+    expect(wrapper.get('li p.text-\\[13px\\]').text()).toBe('koch@example.com · Freigabe: wirtin@example.com · gerade eben')
+    expect(wrapper.findAll('button').map((b) => b.text())).toEqual(['Änderungen anzeigen', 'Zurück zu dieser Version'])
     vi.unstubAllGlobals()
   })
 })

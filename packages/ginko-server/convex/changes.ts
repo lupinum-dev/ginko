@@ -20,15 +20,19 @@ const PAGE_BYTES = 2 * 1024 * 1024
 
 /**
  * The rows without before/after/prints (those are for undo and the release, not for the list: the
- * history page shows the message), with who did it as data (`Who`, lib/names.ts) and, for a change
- * through the agent door, the label of that person's key (SPEC 16).
+ * history page shows the message), with who did it and who approved it as data (`Who`, lib/names.ts) and,
+ * for a change through the agent door, the label of that person's key (SPEC 16).
  */
 async function summaries(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]) {
   const names = await labeler(ctx, actor)
   const blocks = await undoBlocks(ctx, actor, rows)
   const out = []
   for (const { before: _before, after: _after, printsBefore: _printsBefore, printsAfter: _printsAfter, ...change } of rows) {
-    out.push({ ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null })
+    out.push({
+      ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null,
+      // An applied proposal: the owner or admin who approved it ("Freigabe: …").
+      approver: change.approvedBy ? await names.who(change.approvedBy) : null,
+    })
   }
   return out
 }

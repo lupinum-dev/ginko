@@ -697,7 +697,8 @@
       "removed": "Entry removed, restore it first",
       "schema": "The fields were restructured since"
     },
-    "loadFailed": "History could not be loaded. Please reload the page."
+    "loadFailed": "History could not be loaded. Please reload the page.",
+    "approval": "Approval: {who}"
   },
   "basics": {
     "search": {

@@ -697,7 +697,8 @@
       "removed": "Entrada eliminada, restáurala primero",
       "schema": "Los campos se reestructuraron desde entonces"
     },
-    "loadFailed": "No se pudo cargar el historial. Vuelve a cargar la página."
+    "loadFailed": "No se pudo cargar el historial. Vuelve a cargar la página.",
+    "approval": "Aprobación: {who}"
   },
   "basics": {
     "search": {

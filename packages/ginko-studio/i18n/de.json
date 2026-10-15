@@ -697,7 +697,8 @@
       "removed": "Eintrag entfernt, erst wiederherstellen",
       "schema": "Die Felder wurden seither umgebaut"
     },
-    "loadFailed": "Der Verlauf konnte nicht geladen werden. Bitte die Seite neu laden."
+    "loadFailed": "Der Verlauf konnte nicht geladen werden. Bitte die Seite neu laden.",
+    "approval": "Freigabe: {who}"
   },
   "basics": {
     "search": {
