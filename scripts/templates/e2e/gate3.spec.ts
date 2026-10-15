@@ -42,10 +42,12 @@ test('the language switch leads to the same page in each other language', async 
   test.skip(site.locales.length < 2, 'one language: no switch')
   await open(page, '/')
   for (const locale of site.locales.slice(1)) {
-    const link = page.locator(`header a[hreflang="${locale}"], header a[lang="${locale}"]`).first()
+    // By language: a regional hreflang or lang (`de-AT`) counts as `de`.
+    const language = locale.split('-')[0]
+    const link = page.locator(`header a[hreflang|="${language}"], header a[lang|="${language}"]`).first()
     await expect(link, `switch to ${locale}`).toBeVisible()
     await Promise.all([page.waitForURL((url) => url.pathname !== '/'), link.click()])
-    await expect(page.locator('html')).toHaveAttribute('lang', new RegExp(`^${locale}`))
+    await expect(page.locator('html')).toHaveAttribute('lang', new RegExp(`^${language}(-|$)`))
     await open(page, '/')
   }
 })
