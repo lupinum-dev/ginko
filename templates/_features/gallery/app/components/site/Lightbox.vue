@@ -6,9 +6,9 @@ import { DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogRoot, Di
 /**
  * The one lightbox of a gallery: the photo as large as fits, its alt text as caption, previous and next (buttons and
  * arrow keys), and Escape to close. reka-ui keeps the focus inside and the page still; on close the focus returns
- * to the photo that is shown last.
+ * to the photo that is shown last (`focusPhoto`, from the gallery that opened it).
  */
-const props = defineProps<{ images: ImageValue[] }>()
+const props = defineProps<{ images: ImageValue[], focusPhoto: (index: number) => void }>()
 const open = defineModel<boolean>('open', { required: true })
 const index = defineModel<number>('index', { required: true })
 const { t } = useI18n('gallery')
@@ -21,7 +21,7 @@ function onKey(event: KeyboardEvent) {
 }
 function returnFocus(event: Event) {
   event.preventDefault()
-  document.querySelectorAll<HTMLElement>('main [aria-haspopup="dialog"]')[index.value]?.focus()
+  props.focusPhoto(index.value)
 }
 </script>
 

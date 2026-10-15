@@ -7,6 +7,7 @@ import type { ImageValue } from '@lupinum/ginko'
  */
 const props = defineProps<{ images: ImageValue[] }>()
 const { t } = useI18n('gallery')
+const list = useTemplateRef<HTMLUListElement>('list')
 const open = ref(false)
 const index = ref(0)
 const ratio = (image: ImageValue) => (image.width && image.height ? image.width / image.height : 1.5)
@@ -14,11 +15,15 @@ function show(i: number) {
   index.value = i
   open.value = true
 }
+/** After the lightbox closes: the photo shown last, in this gallery (a page may hold more than one). */
+function focusPhoto(i: number) {
+  list.value?.querySelectorAll<HTMLElement>(':scope > li > button')[i]?.focus()
+}
 </script>
 
 <template>
   <div>
-    <ul class="flex flex-wrap gap-2 md:gap-3 after:grow-[10]">
+    <ul ref="list" class="flex flex-wrap gap-2 md:gap-3 after:grow-10">
       <li
         v-for="(image, i) in props.images"
         :key="image.url"
@@ -35,12 +40,12 @@ function show(i: number) {
           <GinkoImage
             :image="image"
             sizes="(min-width: 768px) 40vw, 80vw"
-            class="w-full object-cover transition-transform duration-300 ease-out hover:scale-[1.02]"
+            class="w-full object-cover"
             :style="{ aspectRatio: String(ratio(image)) }"
           />
         </button>
       </li>
     </ul>
-    <SiteLightbox v-model:open="open" v-model:index="index" :images="props.images" />
+    <SiteLightbox v-model:open="open" v-model:index="index" :images="props.images" :focus-photo="focusPhoto" />
   </div>
 </template>
