@@ -22,7 +22,7 @@ vi.mock('#imports', async () => {
 })
 vi.mock('../app/composables/useToast', () => ({ useToast: () => ({ show: (text: string, opts?: { action?: unknown }) => mocks.toasts.push({ text, action: opts?.action }) }) }))
 
-import { opErrorOf, provideLastingOps, useOps } from '../app/composables/useOps'
+import { isSignInRequired, opErrorOf, provideLastingOps, useOps } from '../app/composables/useOps'
 import { useUpdateSite } from '../app/composables/useUpdateSite'
 
 const holder: { lasting?: unknown } = {}
@@ -85,6 +85,22 @@ describe('failed calls', () => {
       logged.mockRestore()
     }
   })
+})
+
+// Wrong behaviour caught: every page asked whether "no error" meant a sign-out, and better-convex logged an
+// "unclassified error: undefined" on the dev server for each of them, hiding real errors.
+test('no error is no sign-out and logs nothing', () => {
+  // better-convex logs unclassified errors only when NODE_ENV is development, as on the dev server.
+  vi.stubEnv('NODE_ENV', 'development')
+  const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    expect(isSignInRequired(undefined)).toBe(false)
+    expect(isSignInRequired(normalizeConvexError(new ConvexError({ code: 'FORBIDDEN', key: 'errors.signInRequired', message: 'Bitte melde dich an.' }), { functionName: 'sites:meta' }))).toBe(true)
+    expect(logged).not.toHaveBeenCalled()
+  } finally {
+    logged.mockRestore()
+    vi.unstubAllEnvs()
+  }
 })
 
 // Wrong behaviour caught: a cancelled "Update website now" showed the fallback sentence alone as an error toast.

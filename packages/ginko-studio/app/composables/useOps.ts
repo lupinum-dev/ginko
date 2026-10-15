@@ -58,8 +58,10 @@ export function opErrorOf(error: unknown, fallback?: string): OpError {
 /** The server refused a call because nobody is signed in: the session ended on the server (signed out everywhere,
  *  revoked) while this browser still holds its token, so the auth state alone still says signed in. */
 export function isSignInRequired(error: unknown): boolean {
+  // No error is no sign-out; normalizing nothing would log an "unclassified error" on every page in development.
+  if (error === undefined || error === null) return false
   const e = normalizeConvexError(error)
-  return e.kind === 'server' && !!e.data && typeof e.data === 'object' && (e.data as { key?: unknown }).key === 'errors.signInRequired'
+  return e.kind === 'server' && typeof e.data === 'object' && e.data !== null && 'key' in e.data && e.data.key === 'errors.signInRequired'
 }
 
 /**
