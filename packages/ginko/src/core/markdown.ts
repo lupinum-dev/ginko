@@ -381,8 +381,10 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
         const [tag, props, ...children] = node
         const component = registry && Object.hasOwn(registry, tag) ? registry[tag]! : undefined
         // comark makes a `span` of `[text]` that is no link: a typo in a link or picture (`![Bild(datei)`) or brackets
-        // meant as text. Say that instead of "unknown component span" (checkComponentTree leaves it to this check).
-        if (tag === 'span' && !component) {
+        // meant as text. Where the span was refused before (any profile but `page`; `page` with a registry), say that
+        // instead of "unknown component span" (checkComponentTree leaves it to this check). `page` without a registry
+        // accepts any tag that is not blocked, the span too, and keeps doing so.
+        if (tag === 'span' && !component && (profile !== 'page' || registry)) {
           const text = textOf(node)
           fail(msg('markdown.bracketText', { text: text.length > BRACKET_TEXT_MAX ? `${text.slice(0, BRACKET_TEXT_MAX - 1)}…` : text }))
           children.forEach(visit)

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { fileRefsIn, parseMarkdown, plainText, type MarkdownProfile } from '../../src/core/index.ts'
+import { fileRefsIn, parseMarkdown, plainText, type ComponentRegistry, type MarkdownProfile } from '../../src/core/index.ts'
 
 describe('parseMarkdown profiles', () => {
   // Each row: text, profile, does the profile refuse it.
@@ -123,13 +123,15 @@ describe('parseMarkdown profiles', () => {
   })
 
   // Wrong behaviour caught: a picture line without its "]" (or "[sic]" as text) was reported as the unknown
-  // component "span", which does not point at the typo.
-  test.each<[string, MarkdownProfile, string[]]>([
-    ['![Drohne auf Moos($file.x)', 'page', ['„[Drohne auf Moos($file.x)“ ist weder Link noch Bild: Es fehlt „]“ oder die Adresse in runden Klammern. Eckige Klammern als Text: \\[ und \\].']],
-    ['Er sagte [sic] dazu.', 'basic', ['„[sic“ ist weder Link noch Bild: Es fehlt „]“ oder die Adresse in runden Klammern. Eckige Klammern als Text: \\[ und \\].']],
-    ['Er sagte \\[sic\\] dazu.', 'basic', []],
-  ])('%j as %s: text in square brackets names the brackets', async (text, profile, problems) => {
-    expect((await parseMarkdown(text, { profile, components: {} })).problems).toEqual(problems)
+  // component "span", which does not point at the typo. A page text without a component registry accepted "[sic]"
+  // before and must keep doing so: a stored text of such a site would otherwise fail its save and its build.
+  test.each<[string, MarkdownProfile, ComponentRegistry | undefined, string[]]>([
+    ['![Drohne auf Moos($file.x)', 'page', {}, ['„[Drohne auf Moos($file.x)“ ist weder Link noch Bild: Es fehlt „]“ oder die Adresse in runden Klammern. Eckige Klammern als Text: \\[ und \\].']],
+    ['Er sagte [sic] dazu.', 'basic', {}, ['„[sic“ ist weder Link noch Bild: Es fehlt „]“ oder die Adresse in runden Klammern. Eckige Klammern als Text: \\[ und \\].']],
+    ['Er sagte \\[sic\\] dazu.', 'basic', {}, []],
+    ['Er sagte [sic] dazu.', 'page', undefined, []],
+  ])('%j as %s: text in square brackets names the brackets', async (text, profile, components, problems) => {
+    expect((await parseMarkdown(text, { profile, components })).problems).toEqual(problems)
   })
 
   test('a field value has no frontmatter: --- is a divider, not metadata', async () => {
