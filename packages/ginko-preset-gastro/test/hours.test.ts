@@ -1,6 +1,6 @@
 // The "Heute" board and the hours table decide open or closed from one rule (`hoursOn`); a wrong order tells guests the house is open on a holiday.
 import { describe, expect, it } from 'vitest'
-import { austrianHolidays, holidayOn, hoursOn, todayState, upcomingClosures, upcomingPlans, weekOf, type DayHours, type Exception, type HourPlan } from '../src/hours.ts'
+import { austrianHolidays, holidayOn, hoursOn, noticesOn, todayState, upcomingClosures, upcomingPlans, weekOf, type DayHours, type Exception, type HourPlan, type HoursData } from '../src/hours.ts'
 
 const week: DayHours[] = [
   { day: 'mo', closed: true },
@@ -18,6 +18,21 @@ describe('todayState', () => {
     ['a closure spanning New Year covers a Thursday inside it', { week, exceptions: [winter] }, '2026-12-31', { kind: 'closed', reason: 'Betriebsurlaub', field: 'exceptions.x2.reason' }],
   ] as const)('%s', (_name, hours, today, expected) => {
     expect(todayState({ hours: hours as never }, today)).toEqual(expected)
+  })
+})
+
+// Wrong behaviour caught: under "Heute geschlossen" the board still said "Heute sind wir ausgebucht." (a notice that ends today).
+describe('noticesOn', () => {
+  const notices = (today: string) => [{ id: 'n-today', data: { until: today } }, { id: 'n-later', data: { until: '2026-10-20' } }, { id: 'n-open', data: {} }]
+  it.each<[string, Partial<HoursData>, string, string[]]>([
+    ['the owner closed today: the notice that ends today goes', { closedOn: '2026-10-08' }, '2026-10-08', ['n-later', 'n-open']],
+    ['an open day keeps every notice', {}, '2026-10-08', ['n-today', 'n-later', 'n-open']],
+    ['a closing exception over today counts like the switch', { exceptions: [{ ...holiday, when: { from: '2026-10-07', to: '2026-10-09' } }] }, '2026-10-08', ['n-later', 'n-open']],
+    ['a closure set for another day hides nothing today', { closedOn: '2026-10-09' }, '2026-10-08', ['n-today', 'n-later', 'n-open']],
+    ['a rest day hides nothing', {}, '2026-10-05', ['n-today', 'n-later', 'n-open']],
+  ])('%s', (_name, extra, today, expected) => {
+    const ctx = { hours: { week, exceptions: [], ...extra }, calendar: 'none' as const }
+    expect(noticesOn(notices(today), ctx, today).map((n) => n.id)).toEqual(expected)
   })
 })
 

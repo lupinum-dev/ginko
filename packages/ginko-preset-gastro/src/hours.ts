@@ -154,6 +154,16 @@ export function todayState(ctx: HoursContext, today: string): TodayState {
   return { kind: 'restDay' }
 }
 
+/**
+ * The notices to show on `today`. A notice that ends today (`until` is today) is about today, so a closure today wins
+ * over it: on a day the owner closed ("Heute geschlossen" or a closing exception), such a notice ("Heute sind wir
+ * ausgebucht.") is left out. Rest days and public holidays do not hide notices, and notices that end later stay.
+ */
+export function noticesOn<N extends { data: { until?: string | null } }>(notices: readonly N[], ctx: HoursContext, today: string): N[] {
+  if (todayState(ctx, today).kind !== 'closed') return [...notices]
+  return notices.filter((n) => n.data.until !== today)
+}
+
 /** Public holidays on which the house is closed, starting after `today` and within `days` days. */
 export function upcomingHolidayClosures(ctx: HoursContext, today: string, days: number): HolidayClosure[] {
   const out: HolidayClosure[] = []

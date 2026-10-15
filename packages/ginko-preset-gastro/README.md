@@ -75,6 +75,7 @@ the stored data, the same in the week, in hour plans and in exceptions.
 | `weekdayNames` | `{ de, en }`: the weekday name per `mo`, `tu`, `we`, `th`, `fr`, `sa`, `su`. |
 | `hoursOn({ hours, plans?, calendar? }, date)` | What applies on a date (`YYYY-MM-DD`): `{ closed, times, reason?, source, field?, holiday? }`. The one rule every display builds on. |
 | `todayState(ctx, today)` | `{ kind: 'open', times }`, `{ kind: 'closed', reason }`, `{ kind: 'holiday', holiday }` or `{ kind: 'restDay' }`. |
+| `noticesOn(notices, ctx, today)` | The notices to show today: on a day the owner closed, a notice that ends today ("Fully booked today") is left out, because the closure wins. |
 | `upcomingClosures(ctx, today, days)` | The owner's closing exceptions and the public holidays that close the house, in the next `days` days. |
 | `upcomingHolidayClosures(ctx, today, days)` | Only the closing public holidays. |
 | `upcomingPlans(plans, today, days)` | Hour plans that start in the next `days` days, with their start date. |

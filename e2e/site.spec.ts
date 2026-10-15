@@ -2,7 +2,7 @@
 import { expect, test } from '@playwright/test'
 import { todayIn } from '../packages/ginko/src/core/index.ts'
 
-const platform = 'http://localhost:3999'
+const platform = `http://localhost:${process.env.FAKE_PLATFORM_PORT ?? 3999}`
 test.afterEach(async ({ request }) => { await request.get(`${platform}/__control?mode=ok`) })
 
 test('renders the bundle and proves its revision', async ({ page }) => {
@@ -90,6 +90,19 @@ test('the Heute board moves to the new day at midnight in Vienna without a reloa
   const before = await board.textContent()
   await page.clock.runFor(120_000)
   await expect(board).not.toHaveText(before!)
+})
+
+// Wrong behaviour caught: on a day the owner closed, the site still said "Heute sind wir ausgebucht.", showed today's
+// normal hours in the table and tagged today's lunch "Heute", so a guest read the house as open.
+test('a closure today wins on the board, in the hours table and in the lunch week', async ({ page, request }) => {
+  await request.get(`${platform}/__control?mode=closedToday`)
+  await page.goto('/')
+  await expect(page.locator('[data-test=status]')).toContainText('Heute geschlossen')
+  await expect(page.locator('[data-test=notice]').filter({ hasText: 'Heute sind wir ausgebucht.' })).toHaveCount(0)
+  await expect(page.locator('.hours tr.today td')).toHaveText('Heute geschlossen')
+  // On the weekend the lunch list is the coming week, without a row for today.
+  const weekend = [0, 6].includes(new Date(`${todayIn('Europe/Vienna')}T12:00:00Z`).getUTCDay())
+  if (!weekend) await expect(page.locator('[data-test=lunch][aria-current=date] .tag')).toHaveText('Heute geschlossen')
 })
 
 // Astra phase 7: untranslated texts must keep their language, and allergen letters need a visible key.

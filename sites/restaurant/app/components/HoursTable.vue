@@ -1,6 +1,6 @@
-<!-- The weekly opening hours, today's row marked, plus the closures still ahead. -->
+<!-- The weekly opening hours, today's row marked with what applies today (a closure or special hours win), plus the closures still ahead. -->
 <script setup lang="ts">
-import { hoursOn, spansOf, spansText, timesOf, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type Weekday } from '../utils/site'
+import { hoursOn, spansOf, spansText, timesOf, todayState, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type Weekday } from '../utils/site'
 
 const langOf = useGinkoLang()
 
@@ -22,6 +22,12 @@ const reasonOf = (e: Exception | HolidayClosure) => ('holiday' in e ? e.holiday[
 const special = (e: Exception) => spansText(spansOf(e), t('and'))
 const itemOf = (id?: string) => hourPlans.value.items.find((p) => p.id === id)!
 const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
+// Today's row says what applies today, by the same rule as the Heute board: a closure, a holiday or special hours.
+const todayCell = computed(() => {
+  const state = todayState(ctx.value, today.value)
+  if (state.kind === 'open') return spansText(state.times, t('and'))
+  return state.kind === 'restDay' ? t('closedDay') : t('closedToday')
+})
 </script>
 
 <template>
@@ -31,7 +37,7 @@ const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
       <tbody>
         <tr v-for="d in week" :key="d.day" :class="{ today: d.day === todayKey }">
           <th scope="row">{{ labels.weekdays[d.day as Weekday] }}</th>
-          <td>{{ cell(d) }}</td>
+          <td>{{ d.day === todayKey ? todayCell : cell(d) }}</td>
         </tr>
       </tbody>
     </table>

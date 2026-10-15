@@ -1,5 +1,5 @@
 // A stand-in for the platform's bundle endpoint (SPEC 6), for site end-to-end tests.
-// Serves contracts/<site>/bundle.format3.<locale>.json. Control: GET /__control?mode=ok|503|hang|huge|proto|nofiles (also clears
+// Serves contracts/<site>/bundle.format3.<locale>.json. Control: GET /__control?mode=ok|503|hang|huge|proto|nofiles|closedToday (also clears
 // the recorded requests and messages), GET /__control/requests (the bundle requests seen, to check minRev
 // forwarding) and GET /__control/messages (the navigate messages the preview page sent to the parent).
 // GET /__parent?src=<preview url> is a page that frames the site preview like the platform does. On
@@ -87,6 +87,12 @@ createServer((req, res) => {
     const bundle = JSON.parse(readFileSync(file, 'utf8'))
     // The lunch week is always the current one, as the owner would keep it (the corpus week is 2026-10-05).
     if (bundle.bricks.lunch?.data?.weekOf) bundle.bricks.lunch.data.weekOf = workWeekOf(todayIn('Europe/Vienna'), DEFAULT_WEEK)
+    // `closedToday`: the owner closed today ("Heute geschlossen"), and the first notice ends today ("Heute sind wir ausgebucht.").
+    if (mode === 'closedToday' && match[1] === 'restaurant') {
+      const today = todayIn('Europe/Vienna')
+      Object.assign(bundle.bricks.hours.data, { closedOn: today, closedNote: 'Wasserrohrbruch' })
+      bundle.bricks.notices.items[0].data.until = today
+    }
     return res.end(JSON.stringify(bundle))
   }
   res.statusCode = 404
