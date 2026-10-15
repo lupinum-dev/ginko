@@ -144,11 +144,13 @@ const draftAt = (path: string) => valueAt(draft.value, path)
 function translation(path: string): 'missing' | 'stale' | 'fine' | undefined {
   if (!foreign.value) return undefined
   const value = draftAt(path)
+  const stored = storedAt(path) as Record<string, unknown> | undefined
   return leafTranslation({
     draft: value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined,
     locale: locale.value,
     main: main.value,
-    storedMain: (storedAt(path) as Record<string, unknown> | undefined)?.[main.value],
+    storedMain: stored?.[main.value],
+    storedForeign: stored?.[locale.value],
     print: props.entry?.prints[path]?.[locale.value],
     confirmed: confirm.value.includes(path),
   })

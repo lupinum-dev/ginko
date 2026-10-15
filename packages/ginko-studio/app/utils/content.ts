@@ -216,13 +216,14 @@ const isEmpty = (value: unknown) => value === undefined || value === null || val
 
 /**
  * Translation state of one leaf in a foreign language: `missing` when the main language has a text and this language
- * has none, `stale` when the main-language text changed since the translation (its print no longer matches), else
- * `fine`. A leaf that is empty in the main language too has nothing to translate. `confirmed`: the person said the
- * translation fits as it is.
+ * has none, `stale` when the stored translation was made for an older main-language text (its print no longer
+ * matches), else `fine`. A leaf that is empty in the main language too has nothing to translate. `confirmed`: the
+ * person said the translation fits as it is. A text typed here (`draft` differs from `storedForeign`) is saved as a
+ * fresh translation, so only an untouched stored one can be stale.
  */
-export function leafTranslation(input: { draft: Record<string, unknown> | undefined; locale: string; main: string; storedMain: unknown; print: string | undefined; confirmed: boolean }): 'missing' | 'stale' | 'fine' {
+export function leafTranslation(input: { draft: Record<string, unknown> | undefined; locale: string; main: string; storedMain: unknown; storedForeign: unknown; print: string | undefined; confirmed: boolean }): 'missing' | 'stale' | 'fine' {
   if (isEmpty(input.draft?.[input.locale])) return isEmpty(input.draft?.[input.main]) ? 'fine' : 'missing'
-  if (input.confirmed) return 'fine'
+  if (input.confirmed || input.draft?.[input.locale] !== input.storedForeign) return 'fine'
   return input.storedMain !== undefined && input.print !== printOf(input.storedMain) ? 'stale' : 'fine'
 }
 
