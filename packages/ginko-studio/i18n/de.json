@@ -88,7 +88,7 @@
     "accepting": "Nimmt an …"
   },
   "entry": {
-    "newEntry": "Neuer Eintrag",
+    "newIn": "Neu in {brick}",
     "more": "Mehr",
     "removeEntry": "Eintrag entfernen …",
     "language": "Sprache",
@@ -396,7 +396,7 @@
     "blocks": {
       "text": "Text",
       "h2": "Überschrift",
-      "h3": "Zwischenüberschrift",
+      "h3": "Unterüberschrift",
       "h4": "Kleine Überschrift",
       "bulletList": "Aufzählung",
       "orderedList": "Nummerierte Liste",
@@ -426,8 +426,8 @@
           "describe": "Große Überschrift für einen neuen Abschnitt"
         },
         "heading3": {
-          "label": "Zwischenüberschrift",
-          "describe": "Kleinere Überschrift im Abschnitt"
+          "label": "Unterüberschrift",
+          "describe": "Kleinere Überschrift innerhalb eines Abschnitts"
         },
         "heading4": {
           "label": "Kleine Überschrift",

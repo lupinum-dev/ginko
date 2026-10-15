@@ -88,7 +88,7 @@
     "accepting": "Accepting …"
   },
   "entry": {
-    "newEntry": "New entry",
+    "newIn": "New in {brick}",
     "more": "More",
     "removeEntry": "Remove entry …",
     "language": "Language",

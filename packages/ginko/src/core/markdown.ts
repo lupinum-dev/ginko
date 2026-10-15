@@ -22,9 +22,10 @@ import type { Json } from './types.ts'
 /**
  * In page state the tree is replaced by `ref`, the site path that serves it (withMarkdownRefs), so a page's
  * payload carries only the texts it shows (CONTENT.md, Phase 14). The toc comes with the loaded tree; page
- * state no longer carries it, `toc` stays optional here so the type does not change.
+ * state no longer carries it, `toc` stays optional here so the type does not change. `words` is the tree's word
+ * count (`wordsOf`), so a list page can show a reading time without loading every text.
  */
-export type MarkdownValue = MarkdownTree | { ref: string; toc?: MarkdownToc }
+export type MarkdownValue = MarkdownTree | { ref: string; toc?: MarkdownToc; words?: number }
 
 /**
  * The parsed tree: comark nodes (`[tag, props, ...children]` or a string). `summary` holds the nodes
@@ -262,6 +263,17 @@ export function textBlocks(tree: MarkdownTree | readonly Json[]): TextBlock[] {
 /** All text of a tree (or of a node list), for excerpts and search. Blocks are separated by a line break; code blocks are left out. */
 export function plainText(tree: MarkdownTree | readonly Json[]): string {
   return textBlocks(tree).map((b) => b.text).join('\n').trim()
+}
+
+/**
+ * The number of words of a text, e.g. for a reading time: of the tree's `plainText`, or the count a `{ ref }` carries
+ * in page state. `undefined` for a ref without a count or no value.
+ */
+export function wordsOf(value: MarkdownValue | null | undefined): number | undefined {
+  if (!value) return undefined
+  if (!('nodes' in value)) return value.words
+  const text = plainText(value)
+  return text ? text.split(/\s+/u).length : 0
 }
 
 const MORE_MARKER = '<!-- more -->'

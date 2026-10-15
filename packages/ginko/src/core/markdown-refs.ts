@@ -2,7 +2,7 @@
 // from the site path in `ref` only where a page renders it. One function for file and platform bricks, so a ref in
 // page state always matches the path the site's route serves.
 import type { Bundle } from './bundle.ts'
-import type { MarkdownTree, MarkdownValue } from './markdown.ts'
+import { wordsOf, type MarkdownTree, type MarkdownValue } from './markdown.ts'
 import type { Locale, Schema } from './types.ts'
 
 /** The ref of one markdown field: `brick` and `id` name the entry (a single's id is its brick), `field` the field. */
@@ -25,9 +25,10 @@ export function platformMarkdownRef(locale: Locale, rev: string, brick: string, 
 }
 
 /**
- * The bundle for page state: every markdown field that holds its tree becomes `{ ref }` (values that are refs
+ * The bundle for page state: every markdown field that holds its tree becomes `{ ref, words }` (values that are refs
  * already stay). `trees` collects the trees by their ref, for the route that serves them. The tree keeps its own
- * toc, so a page reads the toc of the text it loaded. Markdown inside `list` fields stays inline.
+ * toc, so a page reads the toc of the text it loaded; `words` lets a list show a reading time without the tree.
+ * Markdown inside `list` fields stays inline.
  */
 export function withMarkdownRefs(bundle: Bundle, schema: Pick<Schema, 'bricks'>, trees: Map<string, MarkdownTree>, refOf: MarkdownRefOf): Bundle {
   const swap = (brick: string, id: string, data: Record<string, unknown>) => {
@@ -37,7 +38,7 @@ export function withMarkdownRefs(bundle: Bundle, schema: Pick<Schema, 'bricks'>,
       if (field.type !== 'markdown' || !value || !('nodes' in value)) continue
       const ref = refOf(brick, id, name)
       trees.set(ref, value)
-      out[name] = { ref }
+      out[name] = { ref, words: wordsOf(value) }
     }
     return out
   }
