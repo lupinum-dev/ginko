@@ -3,8 +3,10 @@
 //   sync                     copies the shared sources of templates/_features/<feature> (the files its files.json lists)
 //                            into every template whose package.json names the feature in "ginko": { "features" }, and
 //                            sets the @lupinum/* ranges (T3)
-//   sync --check             fails on drift from the shared sources, a stale range, a lockfile inside a template, or
-//                            fewer than 90 days of future sample dates (T10)
+//                            and deletes synced copies whose source left its files.json
+//   sync --check             fails on drift from the shared sources, a synced copy no feature brings any more, a stale
+//                            range, a lockfile inside a template, fewer than 90 days of future sample dates (T10), or
+//                            a share card colour (seo.color) that differs from the light --brand of main.css
 //   test <name> [--only <gate>] [--mode single|multi]
 //                            gates 1–6 of §9 on packed tarballs, outside this workspace, with one test instant on
 //                            every clock (GINKO_TEST_NOW, default: the template's sampleAnchor at 10:00 UTC)
@@ -91,6 +93,24 @@ export function syncedContent(feature: string, file: string, source: string): st
   return `${line}\n${source}`
 }
 
+const SYNCED_HEADER = /^(?:#!.*\n)?(?:<!--|\/\/|\/\*) Synced from templates\/_features\//
+
+/** Code files in a template that carry the synced header but are not in `wanted`: their source left its files.json. */
+function staleSyncs(dir: string, wanted: Map<string, string>): string[] {
+  const stale: string[] = []
+  const walk = (rel: string) => {
+    for (const entry of readdirSync(join(dir, rel), { withFileTypes: true })) {
+      const path = rel ? `${rel}/${entry.name}` : entry.name
+      if (entry.isDirectory()) {
+        if (!entry.name.startsWith('.') && entry.name !== 'node_modules') walk(path)
+      }
+      else if (COMMENTED[extname(entry.name)] && !wanted.has(path) && SYNCED_HEADER.test(readFileSync(join(dir, path), 'utf8').slice(0, 400))) stale.push(path)
+    }
+  }
+  walk('')
+  return stale
+}
+
 /** Every file the features of each template bring: template → (path in the template → expected content). */
 function expectedSyncs(root: string, names: string[]): { files: Map<string, Map<string, string>>; problems: string[] } {
   const files = new Map<string, Map<string, string>>()
@@ -143,6 +163,10 @@ export function sync(root = repoRoot, next: string | null = nextVersion(root)): 
       writeFileSync(path, content)
       changed.push(`templates/${name}/${file}`)
     }
+    for (const file of staleSyncs(join(root, 'templates', name), files.get(name)!)) {
+      rmSync(join(root, 'templates', name, file))
+      changed.push(`templates/${name}/${file} (deleted)`)
+    }
     const path = join(root, 'templates', name, 'package.json')
     const pkg = readJson<Pkg>(path)
     let edited = false
@@ -160,10 +184,16 @@ export function sync(root = repoRoot, next: string | null = nextVersion(root)): 
   return changed
 }
 
-/** The date fields a template moves (create-ginko's manifest), read from its config. */
-async function shiftOf(root: string, name: string) {
-  const site = (await import(pathToFileURL(join(root, 'templates', name, 'ginko.config.ts')).href)).default
-  return manifestOf(site)
+/** A template's ginko.config.ts. */
+async function configOf(root: string, name: string): Promise<Parameters<typeof manifestOf>[0] & { seo?: { color?: string } }> {
+  return (await import(pathToFileURL(join(root, 'templates', name, 'ginko.config.ts')).href)).default
+}
+
+/** A problem when the share card colour (seo.color) is not the light accent (`--brand` in `:root` of main.css). */
+function cardColourProblem(name: string, dir: string, color: string | undefined): string | undefined {
+  const css = join(dir, 'app/assets/css/main.css')
+  const brand = existsSync(css) ? /:root\s*\{[^}]*--brand:\s*(#[\da-f]{3,8})\b/i.exec(readFileSync(css, 'utf8'))?.[1] : undefined
+  if (brand && color?.toLowerCase() !== brand.toLowerCase()) return `${name}: seo.color in ginko.config.ts is ${color ?? 'not set'}; set it to ${brand}, the light --brand of app/assets/css/main.css, so the share cards carry the accent`
 }
 
 /** `sync --check`: the problems, empty when the templates match their sources and rules. `today` is `YYYY-MM-DD`. */
@@ -180,6 +210,7 @@ export async function syncCheck(root = repoRoot, { next = nextVersion(root), tod
       if (!existsSync(path)) problems.push(`${name}: ${file} is missing; run pnpm templates sync`)
       else if (readFileSync(path, 'utf8') !== content) problems.push(`${name}: ${file} differs from its source in templates/_features; edit the source and run pnpm templates sync`)
     }
+    for (const file of staleSyncs(dir, files.get(name)!)) problems.push(`${name}: ${file} is a synced copy, but no feature's files.json lists it any more; run pnpm templates sync to delete it`)
     const pkg = readJson<Pkg>(join(dir, 'package.json'))
     for (const [, dep, range] of lupinumDeps(pkg, group)) {
       if (!accepted.includes(range)) problems.push(`${name}: ${dep} is "${range}"; expected ${accepted.join(' or ')} (run pnpm templates sync)`)
@@ -187,7 +218,10 @@ export async function syncCheck(root = repoRoot, { next = nextVersion(root), tod
     for (const lock of lockfiles) if (existsSync(join(dir, lock))) problems.push(`${name}: ${lock} must not be committed in a template (install from the repository root)`)
     const anchor = pkg.ginko?.sampleAnchor
     if (!anchor || !/^\d{4}-\d{2}-\d{2}$/.test(anchor)) problems.push(`${name}: package.json needs "ginko": { "sampleAnchor": "YYYY-MM-DD" }`)
-    const { shift } = await shiftOf(root, name)
+    const config = await configOf(root, name)
+    const colour = cardColourProblem(name, dir, config.seo?.color)
+    if (colour) problems.push(colour)
+    const { shift } = manifestOf(config)
     const last = sampleDates(dir, shift).at(-1)
     if (Object.keys(shift).length) {
       const days = last ? (Date.parse(last) - Date.parse(today)) / 864e5 : -Infinity
@@ -250,7 +284,7 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
   const now = process.env.GINKO_TEST_NOW ?? `${anchor}T10:00:00Z`
   const clockEnv = { NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${join(root, 'scripts/templates/clock.mjs')}`.trim(), GINKO_TEST_NOW: now }
   const secret = randomBytes(32).toString('hex')
-  const { locales } = await shiftOf(root, name)
+  const { locales } = manifestOf(await configOf(root, name))
   const results: Result[] = []
   /** A result of a requested gate; a failed setup step (`blocks`) is recorded whatever the gate, since later gates need it. */
   const record = (gate: number, mode: Result['mode'], check: string, ok: boolean, detail?: string, blocks = false) => {

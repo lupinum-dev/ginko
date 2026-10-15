@@ -92,8 +92,8 @@ Notices show newest first: put the newest one at the top (the smallest number). 
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 120, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name. `shortName` replaces a long name on phones.
 - **Colour.** `--brand` and `--brand-foreground` in `app/assets/css/main.css`, once for light and once for dark
-  (`.dark`). Keep text on the colour at 4.5:1 or more; `DESIGN.md` has the rules and the colours of the other
-  templates.
+  (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). Keep text
+  on the colour at 4.5:1 or more; `DESIGN.md` has the rules and the colours of the other templates.
 - **Fonts.** `--font-body` (and optionally `--font-heading`) in `main.css`. `@nuxt/fonts` downloads the font at build
   time and serves it from your site.
 - **Organisation type.** `organization` in `app/app.config.ts` (`Organization`, `LocalBusiness` or `NGO`) tells

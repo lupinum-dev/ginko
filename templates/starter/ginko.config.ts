@@ -10,7 +10,8 @@ import { siteUrl } from './site-url.ts'
 export default defineSite({
   site: 'starter',
   name: 'My site',
-  seo: { description: 'A new website, built with Ginko.' },
+  // `color` fills the share cards: the light `--brand` of app/assets/css/main.css.
+  seo: { description: 'A new website, built with Ginko.', color: '#18181b' },
   url: siteUrl('https://example.com'),
   timeZone: 'Europe/Berlin',
   locales,
