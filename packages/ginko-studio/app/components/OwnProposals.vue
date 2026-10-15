@@ -6,18 +6,16 @@
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Schema } from '@lupinum/ginko/internal'
-import { opErrorOf } from '../composables/useOps'
 import { useTextOf } from '../composables/useTextOf'
 import { whoText } from '../utils/who'
 import { whenFull } from '../utils/when'
+import ProposalWithdraw from './ProposalWithdraw.vue'
 
 const props = defineProps<{ site: string; schema: Schema; filter: 'all' | 'mine' | 'ai' | 'entry'; entry?: string }>()
 const { t, format } = useI18n()
-const { show } = useToast()
 
 // The server picks the rows (own open ones, own recent rejections, recent failed plans); the History filter narrows them.
 const mine = useConvexQuery(api.proposals.mine, () => ({ site: props.site }))
-const withdrawMutation = useConvexMutation(api.proposals.withdraw)
 type Row = NonNullable<typeof mine.data.value>['open'][number]
 const matches = (p: Row) => (props.filter !== 'mine' || p.mine) && (props.filter !== 'ai' || p.via === 'agent') && (props.filter !== 'entry' || p.entry === props.entry)
 const rows = computed(() => (mine.data.value?.open ?? []).filter(matches))
@@ -29,19 +27,6 @@ const line = (p: Row) => textOf(p.msg, p.sentence)
 const rejectedText = (p: Row) => t('history.rejectedBy', { who: p.decidedBy ? whoText(p.decidedBy, t) : t('who.member'), reason: textOf(p.reasonMsg, p.reason ?? '') })
 const notLiveText = (p: Row) => t('history.notLiveBecause', { when: when(p.at!), reason: textOf(p.reasonMsg, p.reason ?? '') })
 const when = (at: number) => whenFull(at, props.schema.timeZone, format)
-
-const busy = ref<string | null>(null)
-async function withdraw(proposal: string) {
-  busy.value = proposal
-  try {
-    await withdrawMutation.mutate({ proposal })
-    show(t('history.withdrawn'))
-  } catch (e) {
-    show(opErrorOf(e).message, { tone: 'err' })
-  } finally {
-    busy.value = null
-  }
-}
 </script>
 
 <template>
@@ -53,7 +38,7 @@ async function withdraw(proposal: string) {
           <p class="font-medium">{{ line(p) }}</p>
           <p class="text-[13px] text-muted-foreground">{{ when(p.createdAt) }}</p>
         </div>
-        <Button type="button" variant="ghost" class="h-11" :disabled="busy === p.proposal" @click="withdraw(p.proposal)">{{ t('history.withdraw') }}</Button>
+        <ProposalWithdraw :proposal="p.proposal" />
       </li>
     </ul>
   </section>

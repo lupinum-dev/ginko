@@ -1,7 +1,10 @@
 // @vitest-environment happy-dom
-import { mount } from '@vue/test-utils'
-import { describe, expect, test } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { useI18n } from '#imports'
+import { describe, expect, test, vi } from 'vitest'
+import { computed, ref } from 'vue'
 import ChangeDiff from '../app/components/ChangeDiff.vue'
+import OwnProposals from '../app/components/OwnProposals.vue'
 import ReviewRow from '../app/components/ReviewRow.vue'
 import type { Id } from '../../ginko-server/convex/_generated/dataModel'
 import type { DiffField, ProposalRow } from '../app/utils/review'
@@ -89,5 +92,36 @@ describe('ReviewRow actions', () => {
     expect(actions(wrapper)).toEqual(['Ablehnen…'])
     expect(wrapper.text()).toContain('Passt nicht mehr')
     expect(wrapper.text()).toContain('Inzwischen hat jemand das geändert.')
+  })
+})
+
+describe('OwnProposals', () => {
+  // Wrong behaviour caught: Withdraw on row A, then on row B; when A finishes, B's button turns on again while B still runs.
+  test('each Withdraw stays disabled while its own call runs', async () => {
+    const waiting = [row({ proposal: 'a' as Id<'proposals'>, mine: true }), row({ proposal: 'b' as Id<'proposals'>, mine: true })]
+    const finish: (() => void)[] = []
+    // The components use Nuxt's auto-imports.
+    for (const [name, fn] of Object.entries({ computed, ref, useI18n })) vi.stubGlobal(name, fn)
+    vi.stubGlobal('useToast', () => ({ show: () => {} }))
+    vi.stubGlobal('useConvexQuery', () => ({ data: computed(() => ({ open: waiting, rejected: [], notLive: [] })) }))
+    // Like the library: `pending` is true while the newest call of this mutation runs.
+    vi.stubGlobal('useConvexMutation', () => {
+      const pending = ref(false)
+      return {
+        pending: computed(() => pending.value),
+        mutate: () => {
+          pending.value = true
+          return new Promise((resolve) => finish.push(() => { pending.value = false; resolve({}) }))
+        },
+      }
+    })
+    const wrapper = mount(OwnProposals, { props: { site: 's', schema: { timeZone: 'Europe/Vienna', locales: ['de'], bricks: {} } as never, filter: 'all' } })
+    const [a, b] = wrapper.findAll('button')
+    await a!.trigger('click')
+    await b!.trigger('click')
+    finish[0]!()
+    await flushPromises()
+    expect(wrapper.findAll('button').map((button) => button.attributes('disabled') !== undefined)).toEqual([false, true])
+    vi.unstubAllGlobals()
   })
 })
