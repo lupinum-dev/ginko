@@ -380,7 +380,8 @@
       "replace": "Reemplazar",
       "replaceAll": "Reemplazar todo",
       "count": "{current} de {total}",
-      "none": "Sin coincidencias"
+      "none": "Sin coincidencias",
+      "replaced": "{count, plural, one {# coincidencia reemplazada} other {# coincidencias reemplazadas}}"
     },
     "toolbar": {
       "label": "Formato",

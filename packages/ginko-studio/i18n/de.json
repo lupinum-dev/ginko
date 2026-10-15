@@ -380,7 +380,8 @@
       "replace": "Ersetzen",
       "replaceAll": "Alle ersetzen",
       "count": "{current} von {total}",
-      "none": "Keine Treffer"
+      "none": "Keine Treffer",
+      "replaced": "{count, plural, one {# Stelle ersetzt} other {# Stellen ersetzt}}"
     },
     "toolbar": {
       "label": "Formatierung",

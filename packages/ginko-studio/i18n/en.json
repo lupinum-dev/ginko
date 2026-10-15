@@ -380,7 +380,8 @@
       "replace": "Replace",
       "replaceAll": "Replace all",
       "count": "{current} of {total}",
-      "none": "No matches"
+      "none": "No matches",
+      "replaced": "{count, plural, one {Replaced # match} other {Replaced # matches}}"
     },
     "toolbar": {
       "label": "Formatting",

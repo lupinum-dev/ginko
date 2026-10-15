@@ -82,7 +82,7 @@ declare module '@tiptap/core' {
       findPrev: () => ReturnType
       /** Replaces the current match; the next match becomes current. */
       replaceCurrent: (text: string) => ReturnType
-      /** Replaces every match in one transaction: one undo step. */
+      /** Replaces every match in one transaction: one undo step. The first replaced place is selected and scrolled to. */
       replaceAll: (text: string) => ReturnType
     }
   }
@@ -116,7 +116,12 @@ export const SearchExtension = Extension.create({
       replaceAll: (text) => ({ state, tr, dispatch }) => {
         const search = getSearch(state)
         if (!search.matches.length) return false
-        if (dispatch) for (const m of [...search.matches].reverse()) tr.insertText(text, m.from, m.to)
+        if (dispatch) {
+          for (const m of [...search.matches].reverse()) tr.insertText(text, m.from, m.to)
+          // Later matches are replaced first, so the first one still starts where it did.
+          const first = search.matches[0]!
+          tr.setSelection(TextSelection.create(tr.doc, first.from, first.from + text.length)).scrollIntoView()
+        }
         return true
       },
     }

@@ -121,8 +121,9 @@ describe('MarkdownEditor', () => {
     expect(inline.get('[role="textbox"]').attributes('aria-multiline')).toBeUndefined()
   })
 
-  // Wrong behaviour caught: Ctrl+F in the field opened the browser's page search, and "Alle ersetzen" did not reach the saved text.
-  test('Ctrl+F opens find and replace; "Alle ersetzen" changes the text, Esc closes the bar', async () => {
+  // Wrong behaviour caught: Ctrl+F in the field opened the browser's page search, and "Alle ersetzen" did not reach the saved
+  // text or only said "Keine Treffer" afterwards, so nobody could tell whether it worked.
+  test('Ctrl+F opens find and replace; "Alle ersetzen" changes the text and says how often, Esc closes the bar', async () => {
     const wrapper = await mounted('Apfel und apfel\n\nBirne\n')
     await wrapper.get('[role="textbox"]').trigger('keydown', { key: 'f', ctrlKey: true })
     expect(wrapper.find('[role="search"]').exists()).toBe(true)
@@ -131,6 +132,7 @@ describe('MarkdownEditor', () => {
     await wrapper.get('input[aria-label="Ersetzen durch"]').setValue('Kiwi')
     const all = wrapper.findAll('[role="search"] button').find((b) => b.text() === 'Alle ersetzen')!
     await all.trigger('click')
+    expect(wrapper.get('[role="search"]').text()).toContain('2 Stellen ersetzt')
     await wait(350)
     expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual(['Kiwi und Kiwi\n\nBirne\n'])
     await wrapper.get('input[aria-label="Suchen"]').trigger('keydown', { key: 'Escape' })
