@@ -88,8 +88,9 @@ export const register = internalMutation({
     folder: v.optional(v.id('folders')), library: v.optional(v.boolean()),
   },
   handler: async (ctx, { library, ...args }) => {
+    // A long name is shortened by cleanName (extension kept); only a missing one is refused.
     const given = args.name.trim()
-    if (!given || given.length > 200) fail('INVALID', 'errors.fileNameInvalid')
+    if (!given) fail('INVALID', 'errors.fileNameInvalid')
     // A library upload, or one put straight into a folder, is kept: the 7-day sweep leaves it alone.
     const id = await ctx.db.insert('uploads', { ...args, name: cleanName(given), attempts: 0, status: 'processing', kept: !!(library || args.folder) })
     await ctx.scheduler.runAfter(0, internal.uploadsNode.run, { upload: id })

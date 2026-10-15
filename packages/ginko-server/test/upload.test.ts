@@ -121,6 +121,7 @@ describe('uploads.prepare and POST /upload', () => {
     ['only a separator', 'ordner/', 'datei'],
     ['only a control character', '\u0000', 'datei'],
     ['150 characters', `${'x'.repeat(146)}.pdf`, `${'x'.repeat(116)}.pdf`],
+    ['250 characters', `${'x'.repeat(246)}.pdf`, `${'x'.repeat(116)}.pdf`],
   ])('stores the name of %s cleaned (F15)', async (_case, given, stored) => {
     const s = await setup()
     const id = await upload(s, { name: given })
