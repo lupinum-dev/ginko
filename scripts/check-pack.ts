@@ -195,6 +195,7 @@ const created: Record<string, Check[]> = {
   'template-starter': [['/', /<h1[^>]*>My site<\/h1>/], ['/about', /<h1[^>]*>About<\/h1>/], ['/sitemap.xml', /<urlset/]],
   'template-restaurant': [['/', /<h1[^>]*>\s*Viennese cooking in a family Gasthaus/], ['/menu', /Liptauer with dark bread/], ['/de/speisekarte', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
   'template-nonprofit': [['/', /<h1[^>]*>\s*We look after the river/], ['/news', /A new home for our tools/], ['/ar', /<html[^>]*dir="rtl"/], ['/sitemap.xml', /<urlset/]],
+  'template-events': [['/', /<h1[^>]*>\s*Open Data Days/], ['/programme', /Finding stories in public budgets/], ['/de/vortragende', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
 }
 for (const name of ['starter', ...readdirSync(join(root, 'packages/create-ginko/presets'))]) {
   if (!created[name]) failures.push(`check:pack has no URL check for the create-ginko preset folder ${name}`)
