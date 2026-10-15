@@ -179,6 +179,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   if (moved.length) {
     const rows = (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()).filter((r) => r.locale === locale)
     for (const { slug } of moved) {
+      // The slugs rows hold no field key: this pairs them by language only, which is exact while a brick has one slug field.
       const row = rows.shift()
       if (row) await ctx.db.patch(row._id, { slug })
       else await ctx.db.insert('slugs', { site: actor.site._id, brick: entry.brick, locale: locale!, slug, entry: entry._id })
