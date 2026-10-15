@@ -1,11 +1,15 @@
 <!-- Synced from templates/_features/events/app/pages/events/[slug].vue by `pnpm templates sync`. Edit the source, not this copy. -->
 <script setup lang="ts">
+import type { Component } from 'vue'
 import { safeHref } from '@lupinum/ginko'
 import { ArrowLeft, Mail, Phone } from '@lucide/vue'
 
 // One event: date with weekday and time (site time zone), place, price, the description, and how to take part: the
 // booking link, else phone and email of the business (content/site.md); "fully booked" replaces both. Event JSON-LD
 // with the time zone offset. An unknown or past event is a 404.
+// A feature may show more after the description with app/components/event/Programme.vue (prop `id`: the event's
+// entry id); the sessions feature brings it: the event's programme. Without that file, nothing is added.
+const EventProgramme = Object.values(import.meta.glob<Component>('~/components/event/Programme.vue', { eager: true, import: 'default' }))[0]
 const route = useRoute()
 const event = useGinkoEntry('events', () => route.params.slug)
 const site = useGinko('site')
@@ -77,7 +81,6 @@ const place = computed(() => event.value.data.location || (event.value.data.onli
     <div :lang="langOf(event, 'description')">
       <ProseBody :value="event.data.description" />
     </div>
-    <!-- A programme (the sessions brick of @lupinum/ginko/basics, one row per talk or slot) goes here, after the
-         description: the events template adds it. -->
+    <component :is="EventProgramme" v-if="EventProgramme" :id="event.id" />
   </article>
 </template>

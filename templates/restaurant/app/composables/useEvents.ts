@@ -1,6 +1,6 @@
 // Synced from templates/_features/events/app/composables/useEvents.ts by `pnpm templates sync`. Edit the source, not this copy.
 import { formatMoney, safeHref, type ImageValue, type MarkdownTree, type Money } from '@lupinum/ginko'
-import { eventJsonLd } from '@lupinum/ginko/basics'
+import { eventJsonLd, type SessionJsonLdInput } from '@lupinum/ginko/basics'
 
 /** What the events feature reads of an entry of the `events` brick (`events()` of `@lupinum/ginko/basics`). */
 export interface EventFacts {
@@ -64,16 +64,16 @@ export function useUpcomingEvents(limit?: () => number | undefined) {
 }
 
 /**
- * schema.org Event for an event page: dates with the site's time zone offset, the place (the event's own, else the
- * business from content/site.md), price, booking link or "sold out". `description` is the page's Markdown tree.
+ * A builder of schema.org Event: dates with the site's time zone offset, the place (the event's own, else the business
+ * from content/site.md), price, booking link or "sold out"; `description` is the page's Markdown tree, `sessions` the
+ * programme (each a `subEvent`). For pages that describe several events; one event page uses useEventJsonLd.
  */
-export function useEventJsonLd(event: () => EventFacts & { url: string }, description: () => MarkdownTree | null | undefined) {
+export function useEventLd() {
   const site = useGinko('site')
   const { name, url, timeZone } = useGinkoSite()
   const country: string = useRuntimeConfig().public.ginko.country
   const absolute = (path: string) => new URL(path, url).href
-  return computed(() => {
-    const e = event()
+  return (e: EventFacts & { url: string }, extra: { description?: MarkdownTree | null, sessions?: SessionJsonLdInput[] } = {}) => {
     const own = site.value.data
     const location = e.location
       ? { name: e.location }
@@ -88,11 +88,18 @@ export function useEventJsonLd(event: () => EventFacts & { url: string }, descri
       location,
       online: safeHref(e.online ?? undefined),
       country: country || undefined,
-      description: description() ?? undefined,
+      description: extra.description ?? undefined,
       image: e.image ? absolute(e.image.url) : undefined,
       price: e.price ?? undefined,
       booking: safeHref(e.booking ?? undefined),
       soldOut: e.soldOut === true,
+      sessions: extra.sessions,
     })
-  })
+  }
+}
+
+/** schema.org Event for an event page (useEventLd), with the page's Markdown tree as `description`. */
+export function useEventJsonLd(event: () => EventFacts & { url: string }, description: () => MarkdownTree | null | undefined) {
+  const build = useEventLd()
+  return computed(() => build(event(), { description: description() }))
 }
