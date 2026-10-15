@@ -1,8 +1,9 @@
 // The translation state of one field in the English view of the Studio form: what the hint under the German text says.
 import { describe, expect, it } from 'vitest'
-import { printOf } from '@lupinum/ginko/internal'
+import { collection, defineSite, f, type CollectionBrick } from '@lupinum/ginko'
+import { printOf, serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
-import { languageLabel, leafTranslation, missingNote, translationLines, translationNote, type StoredTranslation, type TranslationPage } from '../app/utils/content'
+import { languageLabel, leafTranslation, missingNote, pageOf, translationLines, translationNote, type StoredTranslation, type TranslationPage } from '../app/utils/content'
 
 describe('leafTranslation', () => {
   const base = { locale: 'en', main: 'de', confirmed: false }
@@ -74,5 +75,36 @@ describe('what the Studio says the website shows in another language', () => {
   // Wrong behaviour caught: a Spanish heading or language button reads "inglés", as the name stands inside a sentence.
   it('a language name standing alone starts with a capital in every language', () => {
     expect([languageLabel('en', 'es'), languageLabel('en', 'de'), languageLabel('de', 'en')]).toEqual(['Inglés', 'Englisch', 'German'])
+  })
+})
+
+describe('the address line of a translation', () => {
+  const schema = serializeSchema(defineSite({
+    site: 'wirt', name: 'Wirt', url: 'https://wirt.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    pages: { home: { de: '/', en: '/en' } },
+    bricks: {
+      events: collection({
+        label: 'Veranstaltungen', max: 30, order: { field: 'when', dir: 'asc' }, visible: { mode: 'until', field: 'when' },
+        route: { de: '/veranstaltungen/[slug]', en: '/en/events/[slug]' },
+        fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), when: f.date('Wann') },
+      }),
+    },
+  }))
+  const events = schema.bricks.events as CollectionBrick
+  const entry = (when: string, extra: { state?: 'draft' | 'live'; title?: Record<string, string> } = {}) => ({
+    _id: 'e1', state: extra.state, prints: { title: { en: printOf('Wildwoche') } },
+    data: { title: extra.title ?? { de: 'Wildwoche', en: 'Game week' }, slug: { de: 'wildwoche', en: 'game-week' }, when },
+  })
+  const site = { released: true, today: '2026-10-08' }
+
+  // Wrong behaviour caught: "Seite ansehen" links a past event or a site before its first release, which opens a 404.
+  it.each([
+    ['an upcoming event of a released site', entry('2026-11-20'), site, { path: '/en/events/game-week', online: true }],
+    ['a past event', entry('2026-06-20'), site, { path: '/en/events/game-week', online: false }],
+    ['a draft', entry('2026-11-20', { state: 'draft' }), site, { path: '/en/events/game-week', online: false }],
+    ['a site that was never released', entry('2026-11-20'), { ...site, released: false }, { path: '/en/events/game-week', online: false }],
+    ['an event not translated yet', entry('2026-11-20', { title: { de: 'Wildwoche' } }), site, undefined],
+  ])('%s', (_, stored, where, page) => {
+    expect(pageOf(schema, 'events', events, stored, 'en', where)).toEqual(page)
   })
 })

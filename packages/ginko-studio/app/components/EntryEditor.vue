@@ -2,10 +2,10 @@
      status, a sticky save bar, and the preview beside it on wide screens. Same engine as the tasks. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, urlsFor, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, todayIn, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { languageLabel, languageName, leafTranslation, missingNote, previewFileIds, publishQuestion, titleOf, translationLines } from '../utils/content'
+import { languageLabel, languageName, leafTranslation, missingNote, pageOf, previewFileIds, publishQuestion, titleOf, translationLines } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -36,7 +36,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@studio/components/ui/
 import { RadioGroup, RadioGroupItem } from '@studio/components/ui/radio-group'
 
 const props = defineProps<{
-  site: { slug: string; url: string; previewOrigins: string[]; schemaRev: number; contentRev: number; name: string }
+  /** `release`: the site's last release, null before the first (nothing of it is online yet). */
+  site: { slug: string; url: string; previewOrigins: string[]; schemaRev: number; contentRev: number; name: string; release: object | null }
   schema: Schema
   brickKey: string
   brick: Brick
@@ -175,12 +176,15 @@ function sourceText(path: string): string {
   return typeof text === 'string' ? text : ''
 }
 
-/** The entry's page in the open language: none while it is not translated there; a link only while it is online. */
+// The link opens the local site on a local platform; the browser decides, so only after mount (no hydration mismatch).
+const mounted = ref(false)
+onMounted(() => { mounted.value = true })
+/** The entry's page in the open language: none while it is not translated there; a link only while the website shows it. */
 function address() {
   if (!props.entry || props.brick.kind !== 'collection') return undefined
-  const path = urlsFor(props.schema, props.brickKey, props.brick, { id: props.entry._id, data: props.entry.data as never, prints: props.entry.prints })[locale.value]
-  if (!path) return undefined
-  return props.entry.state === 'draft' ? { path } : { path, href: `${siteOrigin(props.site)}${path}` }
+  const page = pageOf(props.schema, props.brickKey, props.brick, props.entry, locale.value, { released: !!props.site.release, today: todayIn(props.schema.timeZone) })
+  if (!page) return undefined
+  return page.online && mounted.value ? { path: page.path, href: `${siteOrigin(props.site)}${page.path}` } : { path: page.path }
 }
 
 // A confirmed leaf whose row was removed meanwhile would make the save INVALID: drop it (Astra 11).

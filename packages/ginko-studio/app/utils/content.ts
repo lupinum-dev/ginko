@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
-import { formatMoney, type Brick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { entryTitle, fileRefsIn, ordered, printOf, stableJson, type Schema } from '@lupinum/ginko/internal'
+import { formatMoney, type Brick, type CollectionBrick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
+import { entryTitle, fileRefsIn, isVisible, ordered, printOf, stableJson, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import type { api } from '#convex/api'
 import type { FunctionReturnType } from 'convex/server'
@@ -166,6 +166,20 @@ export type StoredTranslation = NonNullable<FunctionReturnType<typeof api.entrie
 
 /** What the website shows of an entry in a foreign language: nothing yet (`hidden`), a link to its main-language page (`mainPage`), or the entry (`shown`). */
 export type TranslationPage = StoredTranslation['page']
+
+/**
+ * The page of an entry in one language (the address line of a translation): none while the entry has no page there
+ * (its required texts are not translated yet); `online` only while the website shows it: the site has a release, the
+ * entry is no draft, and its date has not passed (`today` in the site's zone, core isVisible).
+ */
+export function pageOf(
+  schema: Schema, key: string, brick: CollectionBrick, entry: { _id: string; data: Data; prints?: Record<string, Record<string, string>>; state?: 'draft' | 'live' },
+  locale: Locale, site: { released: boolean; today: string },
+): { path: string; online: boolean } | undefined {
+  const path = urlsFor(schema, key, brick, { id: entry._id, data: entry.data, prints: entry.prints })[locale]
+  if (!path) return undefined
+  return { path, online: site.released && entry.state !== 'draft' && isVisible(brick, entry.data, site.today) }
+}
 
 /** The language names the translation notes use: the foreign one (`lang`) and the main one, in the Studio's language. */
 export interface LanguageNames { lang: string; main: string }
