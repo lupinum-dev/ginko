@@ -128,7 +128,7 @@ const missingText = computed(() => {
 </script>
 
 <template>
-  <FieldFrame :id="id" :label="label" :hint="hint" :optional="!!field.optional" :errors="errors.map((e) => messageOf(e))" :group="isGroup" :inline="field.type === 'boolean'" :contained="contained" :short="['number', 'money', 'time'].includes(field.type)" :count="showCount ? `${text.length}/${max}` : undefined">
+  <FieldFrame :id="id" :label="label" :hint="hint" :optional="!!field.optional && field.type !== 'boolean'" :errors="errors.map((e) => messageOf(e))" :group="isGroup" :inline="field.type === 'boolean'" :contained="contained" :short="['number', 'money', 'time'].includes(field.type)" :count="showCount ? `${text.length}/${max}` : undefined">
     <template v-if="trState && translation" #source>
       <div class="grid gap-2 rounded-md bg-muted p-3 text-sm" data-slot="translation-source">
         <p class="text-xs font-semibold text-muted-foreground">{{ translation.mainName() }}</p>
@@ -162,7 +162,7 @@ const missingText = computed(() => {
       <Textarea v-else-if="field.type === 'longtext'" :id="id" class="min-h-24" :model-value="text" :maxlength="max" :aria-invalid="invalid" :aria-describedby="describedBy" @update:model-value="set(String($event))" />
       <GinkoFieldNumber v-else-if="field.type === 'number'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldMoney v-else-if="field.type === 'money'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
-      <Switch v-else-if="field.type === 'boolean'" :id="id" :model-value="value === true" :aria-describedby="describedBy" @update:model-value="set($event === true)" />
+      <Switch v-else-if="field.type === 'boolean'" :id="id" :model-value="(value ?? field.default) === true" :aria-describedby="describedBy" @update:model-value="set($event === true)" />
       <GinkoFieldDate v-else-if="field.type === 'date'" :id="id" :model-value="value" :invalid="invalid" :described-by="describedBy" :optional="!!field.optional" :weeks="weeks" @update:model-value="set" />
       <Input v-else-if="field.type === 'time'" :id="id" type="time" :model-value="typeof value === 'string' ? value : ''" :aria-invalid="invalid" :aria-describedby="describedBy" @update:model-value="set(String($event) || undefined)" />
       <GinkoFieldDaterange v-else-if="field.type === 'daterange'" :id="id" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />

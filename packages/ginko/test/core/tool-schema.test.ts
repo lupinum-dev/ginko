@@ -19,7 +19,7 @@ describe('taskInputSchema', () => {
       type: 'object',
       properties: {
         text: { type: 'string', description: 'Text', maxLength: 140, default: 'Heute sind wir ausgebucht.' },
-        until: { type: 'string', description: 'Gilt bis (YYYY-MM-DD)', pattern: '^\\d{4}-\\d{2}-\\d{2}$', default: '2026-10-10' },
+        until: { type: 'string', description: 'Gilt bis — Leer lassen, wenn der Hinweis bleiben soll, bis du ihn entfernst. (YYYY-MM-DD)', pattern: '^\\d{4}-\\d{2}-\\d{2}$', default: '2026-10-10' },
       },
       required: [],
       additionalProperties: false,

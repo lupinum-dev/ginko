@@ -112,6 +112,70 @@
         "exceptions.exHeilAb01.reason"
       ]
     },
+    "hourPlans": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "plan-winter",
+          "data": {
+            "label": "Winterzeiten",
+            "from": "2026-11-01",
+            "to": "2027-03-31",
+            "yearly": true,
+            "week": [
+              {
+                "_id": "wpmo000000",
+                "day": "mo",
+                "closed": true
+              },
+              {
+                "_id": "wptu000000",
+                "day": "tu",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpwe000000",
+                "day": "we",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpth000000",
+                "day": "th",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpfr000000",
+                "day": "fr",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpsa000000",
+                "day": "sa",
+                "closed": false,
+                "from1": "11:30",
+                "to1": "22:00"
+              },
+              {
+                "_id": "wpsu000000",
+                "day": "su",
+                "closed": true
+              }
+            ]
+          },
+          "fallback": [
+            "label"
+          ]
+        }
+      ]
+    },
     "notices": {
       "kind": "collection",
       "items": [
@@ -136,7 +200,7 @@
         {
           "id": "notice-urlaub",
           "data": {
-            "text": "Betriebsurlaub vom 22. Dezember bis 6. Jänner.",
+            "text": "Betriebsurlaub vom 27. Dezember bis 6. Jänner.",
             "until": "2026-09-30"
           },
           "fallback": [
@@ -225,6 +289,97 @@
         "days.ldwe000000.dish",
         "days.ldfr000000.dish",
         "note"
+      ]
+    },
+    "lunchPlans": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "plan-kw42",
+          "data": {
+            "weekOf": "2026-10-12",
+            "days": [
+              {
+                "_id": "ldmo000000",
+                "day": "mo",
+                "dish": "Gulaschsuppe mit Gebäck",
+                "price": {
+                  "amount": 1090,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "L"
+                ]
+              },
+              {
+                "_id": "ldtu000000",
+                "day": "tu",
+                "dish": "Krautfleckerl mit Speck",
+                "price": {
+                  "amount": 1590,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "L",
+                  "M"
+                ]
+              },
+              {
+                "_id": "ldwe000000",
+                "day": "we",
+                "dish": "Topfenknödel mit Zwetschkenröster",
+                "price": {
+                  "amount": 1150,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "C",
+                  "G"
+                ]
+              },
+              {
+                "_id": "ldth000000",
+                "day": "th",
+                "dish": "Gebratene Forelle mit Mandelbutter",
+                "price": {
+                  "amount": 1490,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "D",
+                  "G",
+                  "H"
+                ]
+              },
+              {
+                "_id": "ldfr000000",
+                "day": "fr",
+                "dish": "Spinatknödel mit brauner Butter",
+                "price": {
+                  "amount": 1250,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "C",
+                  "G"
+                ]
+              }
+            ],
+            "note": "Alle Gerichte inklusive Beilagensalat."
+          },
+          "fallback": [
+            "days.ldmo000000.dish",
+            "days.ldtu000000.dish",
+            "days.ldwe000000.dish",
+            "days.ldth000000.dish",
+            "days.ldfr000000.dish",
+            "note"
+          ]
+        }
       ]
     },
     "menu": {
@@ -514,24 +669,44 @@
             [
               "p",
               {},
-              "Gasthaus zur Linde, Inhaberin Maria Ebner",
-              [
-                "br",
-                {}
-              ],
-              "Dorfstraße 12, 5020 Salzburg"
+              "Inhaberin: Maria Ebner (Einzelunternehmen)"
             ],
             [
               "p",
               {},
-              "Kontakt: ",
+              "Unternehmensgegenstand: Gastgewerbe (Gasthaus)",
+              [
+                "br",
+                {}
+              ],
+              "UID-Nummer: ATU00000000",
+              [
+                "br",
+                {}
+              ],
+              "Gewerbebehörde: Magistrat der Stadt Salzburg",
+              [
+                "br",
+                {}
+              ],
+              "Mitglied der Wirtschaftskammer Salzburg, Fachgruppe Gastronomie",
+              [
+                "br",
+                {}
+              ],
+              "Berufsrecht: Gewerbeordnung, abrufbar unter ",
               [
                 "a",
                 {
-                  "href": "mailto:office@gasthaus-linde.example"
+                  "href": "https://www.ris.bka.gv.at"
                 },
-                "office@gasthaus-linde.example"
+                "ris.bka.gv.at"
               ]
+            ],
+            [
+              "p",
+              {},
+              "Offenlegung nach § 25 Mediengesetz: Medieninhaberin ist Maria Ebner. Die Website informiert über das Gasthaus zur Linde, seine Speisen und Veranstaltungen."
             ]
           ],
           "toc": {
@@ -569,161 +744,6 @@
         "description": "Austrian inn cooking in Salzburg: lunch menu, menu and events."
       },
       "fallback": []
-    },
-    "hourPlans": {
-      "kind": "collection",
-      "items": [
-        {
-          "id": "plan-winter",
-          "data": {
-            "label": "Winterzeiten",
-            "from": "2026-11-01",
-            "to": "2027-03-31",
-            "yearly": true,
-            "week": [
-              {
-                "_id": "wpmo000000",
-                "day": "mo",
-                "closed": true
-              },
-              {
-                "_id": "wptu000000",
-                "day": "tu",
-                "closed": false,
-                "from1": "17:00",
-                "to1": "21:30"
-              },
-              {
-                "_id": "wpwe000000",
-                "day": "we",
-                "closed": false,
-                "from1": "17:00",
-                "to1": "21:30"
-              },
-              {
-                "_id": "wpth000000",
-                "day": "th",
-                "closed": false,
-                "from1": "17:00",
-                "to1": "21:30"
-              },
-              {
-                "_id": "wpfr000000",
-                "day": "fr",
-                "closed": false,
-                "from1": "17:00",
-                "to1": "21:30"
-              },
-              {
-                "_id": "wpsa000000",
-                "day": "sa",
-                "closed": false,
-                "from1": "11:30",
-                "to1": "22:00"
-              },
-              {
-                "_id": "wpsu000000",
-                "day": "su",
-                "closed": true
-              }
-            ]
-          },
-          "fallback": [
-            "label"
-          ]
-        }
-      ]
-    },
-    "lunchPlans": {
-      "kind": "collection",
-      "items": [
-        {
-          "id": "plan-kw42",
-          "data": {
-            "weekOf": "2026-10-12",
-            "days": [
-              {
-                "_id": "ldmo000000",
-                "day": "mo",
-                "dish": "Gulaschsuppe mit Gebäck",
-                "price": {
-                  "amount": 1090,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "A",
-                  "L"
-                ]
-              },
-              {
-                "_id": "ldtu000000",
-                "day": "tu",
-                "dish": "Krautfleckerl mit Speck",
-                "price": {
-                  "amount": 1590,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "A",
-                  "L",
-                  "M"
-                ]
-              },
-              {
-                "_id": "ldwe000000",
-                "day": "we",
-                "dish": "Topfenknödel mit Zwetschkenröster",
-                "price": {
-                  "amount": 1150,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "A",
-                  "C",
-                  "G"
-                ]
-              },
-              {
-                "_id": "ldth000000",
-                "day": "th",
-                "dish": "Gebratene Forelle mit Mandelbutter",
-                "price": {
-                  "amount": 1490,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "D",
-                  "G",
-                  "H"
-                ]
-              },
-              {
-                "_id": "ldfr000000",
-                "day": "fr",
-                "dish": "Spinatknödel mit brauner Butter",
-                "price": {
-                  "amount": 1250,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "A",
-                  "C",
-                  "G"
-                ]
-              }
-            ],
-            "note": "Alle Gerichte inklusive Beilagensalat."
-          },
-          "fallback": [
-            "days.ldmo000000.dish",
-            "days.ldtu000000.dish",
-            "days.ldwe000000.dish",
-            "days.ldth000000.dish",
-            "days.ldfr000000.dish",
-            "note"
-          ]
-        }
-      ]
     }
   }
 }

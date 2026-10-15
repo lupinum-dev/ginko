@@ -127,7 +127,7 @@
       "missing": "Donde falta una traducción, el sitio web en {lang} muestra el texto en {main}.",
       "outdated": "Donde cambió el texto en {main}, el sitio web en {lang} todavía muestra la traducción anterior."
     },
-    "twin": "Esta entrada ya existe: “{title}”. Al guardar se crea una segunda.",
+    "twin": "“{title}” ya existe. Al guardar se crea una segunda entrada.",
     "weekFixed": "Esta tarea siempre cubre la semana en curso.",
     "saveContinues": "Todavía guardando. Si no tienes conexión, se guardará en cuanto vuelva.",
     "notSaved": "Sin guardar: {reason}",
@@ -298,7 +298,7 @@
     "status": {
       "draft": "Borrador",
       "onlineFrom": "En línea desde {when}",
-      "expired": "caducado",
+      "expired": "caducado el {date}",
       "ended": "terminado",
       "until": "hasta {date}",
       "untilToday": "hasta hoy",
@@ -307,6 +307,7 @@
     "quick": {
       "nothingForYou": "Todavía no tienes tareas aquí. Pide los permisos que necesitas a la persona que te invitó.",
       "todayDone": "<task>{task}</task> está completado para hoy.",
+      "dayDone": "<task>{field} {date}</task> está completado.",
       "flagText": "“{text}”",
       "clearToday": "Quitar",
       "notFilled": "Aún sin completar",

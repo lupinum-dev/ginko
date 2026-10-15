@@ -122,9 +122,21 @@ export const admit = internalMutation({
   },
 })
 
+/**
+ * The prefilled values of a task, resolved against the entry an edit changes, so a day already set stays (`prefillAs`).
+ * Only the prefilled fields: the stored values of the task's other fields are not written again.
+ */
+async function prefillOf(ctx: QueryCtx, actor: Actor, tool: TaskTool, entry?: Id<'entries'>): Promise<Record<string, Json>> {
+  const values = await prefillAs(ctx, actor, { site: actor.site.slug, task: tool.ref, ...(entry ? { entry } : {}) }) as Record<string, Json>
+  const keys = Object.keys(('prefill' in tool.task && tool.task.prefill) || {})
+  return Object.fromEntries(Object.entries(values).filter(([key]) => keys.includes(key)))
+}
+
 async function inputSchemaOf(ctx: QueryCtx, actor: Actor, tool: TaskTool): Promise<JsonSchemaObject> {
   const schema = actor.site.schema as Schema
-  const prefill = await prefillAs(ctx, actor, { site: actor.site.slug, task: tool.ref }) as Record<string, Json>
+  // An edit of a single offers what it would write there now; a picked entry is known only at the call.
+  const single = tool.task.kind === 'edit' ? await singleOf(ctx, actor, tool.brick) : undefined
+  const prefill = await prefillOf(ctx, actor, tool, single?._id)
   return taskInputSchema(schema.bricks[tool.brick]!, tool.task, { mainLocale: schema.locales[0]!, currency: schema.currency, prefill })
 }
 
@@ -208,9 +220,15 @@ async function targetOf(ctx: MutationCtx, actor: Actor, brick: string, picked: J
     if (entry.brick !== brick) fail('NOT_FOUND', 'errors.entryNotFound')
     return entry
   }
-  const entry = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', brick)).first()
-  if (!entry || entry.kind !== 'single') fail('INVALID', 'errors.entryIdMissing')
+  const entry = await singleOf(ctx, actor, brick)
+  if (!entry) fail('INVALID', 'errors.entryIdMissing')
   return entry
+}
+
+/** The entry of a single brick; undefined for a collection. */
+async function singleOf(ctx: QueryCtx, actor: Actor, brick: string): Promise<Doc<'entries'> | undefined> {
+  const entry = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', brick)).first()
+  return entry?.kind === 'single' ? entry : undefined
 }
 
 /** The newest change row of an entry: the one the operation just wrote. */
@@ -410,10 +428,8 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
   const { entry: picked, confirm, ...values } = input
   const main = schema.locales[0]!
   // Prefilled values count when the assistant leaves a field out: the tool offers them as defaults.
-  const prefill = await prefillAs(ctx, actor, { site, task: tool.ref }) as Record<string, Json>
-
   if (tool.task.kind === 'create') {
-    const data = { ...prefill, ...fromToolInput(brick.fields, values, { mainLocale: main, currency: schema.currency, newRowId }) }
+    const data = { ...await prefillOf(ctx, actor, tool), ...fromToolInput(brick.fields, values, { mainLocale: main, currency: schema.currency, newRowId }) }
     const result = await createAs(ctx, actor, { site, opId, task: tool.ref, brick: tool.brick, data })
     if (proposed(result)) return { text: PROPOSED, result }
     const { entry: id, state, liveFrom } = result as { entry: Id<'entries'>; state: 'draft' | 'live'; liveFrom?: string }
@@ -436,8 +452,10 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
 
   const taskFields = tool.task.fields
   const stored = entry.data as Record<string, Json>
-  // The task opens on the entry as the Studio's sheet does: besides the presets, a planned change whose day has come
-  // is the value in effect and its spent plan is cleared (`prefillAs`), so a new value does not hide behind it.
+  // The task opens on the entry as the Studio's sheet does: its presets resolved on the entry (`prefill`, so a closure
+  // day already set stays), and a planned change whose day has come is the value in effect with its spent plan cleared
+  // (`opened`, from `prefillAs`), so a new value does not hide behind it.
+  const prefill = await prefillOf(ctx, actor, tool, entry._id)
   const opened = await prefillAs(ctx, actor, { site, task: tool.ref, entry: entry._id }) as Record<string, Json>
   const fields = {
     ...Object.fromEntries(Object.entries(opened).filter(([k, value]) => taskFields.includes(k) && (Object.hasOwn(prefill, k) || !same(value, stored[k])))),

@@ -1,6 +1,6 @@
-<!-- The weekly opening hours, today's row marked, plus the closures still ahead. -->
+<!-- The weekly opening hours, today's row marked with what applies today (a closure or special hours win), plus the closures still ahead. -->
 <script setup lang="ts">
-import { hoursOn, spansOf, spansText, timesOf, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type Weekday } from '../utils/site'
+import { closedOnClosure, hoursOn, spansOf, spansText, timesOf, todayState, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type Weekday } from '../utils/site'
 
 const langOf = useGinkoLang()
 
@@ -10,18 +10,32 @@ const { hours, hourPlans, data, plans, ctx } = useHours()
 
 // Special hours are listed only where they apply: a closure over the same day wins (see hoursOn).
 const shown = (e: Exception) => spansOf(e).length > 0 && hoursOn(ctx.value, e.when.from).field === `exceptions.${e._id}.reason`
-// The week that applies today (a running season replaces the standard week), then the plans that start soon.
+// The week that applies today (a running season replaces the standard week), then the plans that start soon, each
+// headed with its dates (a season with its end, "new hours from a date" with its start only).
 const week = computed(() => weekFor(ctx.value, today.value).week)
 const coming = computed(() => upcomingPlans(plans.value, today.value, 120))
-const ahead = computed(() => [
+// A day set in "Geschlossen am" (closedOn) after today is listed like a closure; today's row shows today's.
+const closedOn = computed(() => closedOnClosure(data.value, today.value))
+const ahead = computed<Array<(Exception & { field?: string }) | HolidayClosure>>(() => [
   ...data.value.exceptions.filter((e) => e.when.to >= today.value && (e.closed || shown(e))),
+  ...(closedOn.value ? [closedOn.value] : []),
   ...upcomingHolidayClosures(ctx.value, today.value, 90),
 ].sort((a, b) => a.when.from.localeCompare(b.when.from)))
 const todayKey = computed(() => weekdayOf(today.value))
 const reasonOf = (e: Exception | HolidayClosure) => ('holiday' in e ? e.holiday[lang.value] : e.reason)
+const reasonLang = (e: (Exception & { field?: string }) | HolidayClosure) => ('holiday' in e ? lang.value : langOf(hours.value, e.field ?? `exceptions.${e._id}.reason`))
 const special = (e: Exception) => spansText(spansOf(e), t('and'))
 const itemOf = (id?: string) => hourPlans.value.items.find((p) => p.id === id)!
+const dayMonth = { day: 'numeric', month: 'long' } as const
+// A season's dates wrap only after the dash, never inside a date ("1. November 2026–" / "31. März 2027" on a phone).
+const planDates = (c: { starts: string; ends?: string }) => (c.ends ? format.range(c.starts, c.ends, dayMonth).replace(/ /g, '\u00a0') : t('fromDate', { date: format.date(c.starts, dayMonth) }))
 const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
+// Today's row says what applies today, by the same rule as the Heute board: a closure, a holiday or special hours.
+const todayCell = computed(() => {
+  const state = todayState(ctx.value, today.value)
+  if (state.kind === 'open') return spansText(state.times, t('and'))
+  return state.kind === 'restDay' ? t('closedDay') : t('closedToday')
+})
 </script>
 
 <template>
@@ -31,12 +45,12 @@ const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
       <tbody>
         <tr v-for="d in week" :key="d.day" :class="{ today: d.day === todayKey }">
           <th scope="row">{{ labels.weekdays[d.day as Weekday] }}</th>
-          <td>{{ cell(d) }}</td>
+          <td>{{ d.day === todayKey ? todayCell : cell(d) }}</td>
         </tr>
       </tbody>
     </table>
     <div v-for="c in coming" :key="c.plan._id" class="plan">
-      <h3>{{ t('fromDate', { date: format.date(c.starts, { day: 'numeric', month: 'long' }) }) }}<template v-if="c.plan.label">: <span :lang="langOf(itemOf(c.plan._id), 'label')">{{ c.plan.label }}</span></template></h3>
+      <h3>{{ planDates(c) }}<template v-if="c.plan.label">: <span :lang="langOf(itemOf(c.plan._id), 'label')">{{ c.plan.label }}</span></template></h3>
       <table>
         <tbody>
           <tr v-for="d in c.plan.week" :key="d.day">
@@ -51,8 +65,10 @@ const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
       <ul>
         <li v-for="e in ahead" :key="e._id">
           <span class="when">{{ format.range(e.when.from, e.when.to) }}</span>
-          <span>
-            <span :lang="'holiday' in e ? lang : langOf(hours, `exceptions.${e._id}.reason`)">{{ reasonOf(e) }}</span><template v-if="e.closed">, {{ t('closedFromTo') }}</template><template v-else>, {{ special(e) }}</template>
+          <!-- The owner's reason and the state on their own lines: a reason is free text and may end in a full stop. -->
+          <span class="what">
+            <span v-if="reasonOf(e)" :lang="reasonLang(e)">{{ reasonOf(e) }}</span>
+            <span class="state">{{ e.closed ? t('closed') : special(e) }}</span>
           </span>
         </li>
       </ul>
@@ -75,5 +91,7 @@ tr.today th::after { content: ''; display: inline-block; width: 8px; height: 8px
 ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 li { display: grid; gap: 0 16px; }
 .when { font-weight: 700; }
+.what > span { display: block; }
+.state { color: var(--ink-2); }
 @media (min-width: 720px) { li { grid-template-columns: 18rem 1fr; } }
 </style>

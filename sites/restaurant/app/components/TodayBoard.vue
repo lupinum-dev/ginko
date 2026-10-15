@@ -2,7 +2,7 @@
      It is the one coloured region of the site, the first thing a guest checks at lunchtime. -->
 <script setup lang="ts">
 import { formatMoney, startOfWeek } from '@lupinum/ginko'
-import { spansText, todayState, upcomingClosures, weekdayOf } from '../utils/site'
+import { noticesOn, spansText, todayState, upcomingClosures, weekdayOf } from '../utils/site'
 
 const langOf = useGinkoLang()
 
@@ -14,6 +14,8 @@ const { lunch, current: lunchCurrent } = useLunchWeek()
 const { hours, data: h, ctx } = useHours()
 
 const state = computed(() => todayState(ctx.value, today.value))
+// A closure today wins over a notice that ends today ("Heute sind wir ausgebucht." under "Heute geschlossen").
+const shown = computed(() => noticesOn(notices.value.items, ctx.value, today.value))
 const closures = computed(() => upcomingClosures(ctx.value, today.value, h.value.holidayNoticeDays))
 // Only the menu of the week that contains today counts (a planned week wins); on the weekend the coming week is not today's dish.
 const dish = computed(() => {
@@ -37,8 +39,8 @@ const dish = computed(() => {
       <span v-else-if="state.kind === 'closed' && state.reason" class="status-reason" data-test="note" :lang="langOf(hours, state.field)">{{ state.reason }}</span>
     </p>
 
-    <ul v-if="notices.items.length" class="notices">
-      <li v-for="n in notices.items" :key="n.id" data-test="notice" :lang="langOf(n, 'text')">{{ n.data.text }}</li>
+    <ul v-if="shown.length" class="notices">
+      <li v-for="n in shown" :key="n.id" data-test="notice" :lang="langOf(n, 'text')">{{ n.data.text }}</li>
     </ul>
 
     <div v-if="dish" class="lunch">
@@ -52,7 +54,7 @@ const dish = computed(() => {
     </div>
 
     <p v-for="c in closures" :key="c._id" class="closure">
-      {{ t('upcomingClosure') }}: {{ format.range(c.when.from, c.when.to, { day: 'numeric', month: 'long' }) }} {{ t('closedFromTo') }}<template v-if="'holiday' in c"> ({{ c.holiday[lang] }})</template><template v-else-if="c.reason"> (<span :lang="langOf(hours, `exceptions.${c._id}.reason`)">{{ c.reason }}</span>)</template>
+      {{ t('upcomingClosure') }}: {{ format.range(c.when.from, c.when.to, { day: 'numeric', month: 'long' }) }} {{ t('closedFromTo') }}<template v-if="'holiday' in c"> ({{ c.holiday[lang] }})</template><template v-else-if="c.reason"> (<span :lang="langOf(hours, c.field)">{{ c.reason }}</span>)</template>
     </p>
   </section>
 </template>

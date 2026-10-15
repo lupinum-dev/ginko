@@ -127,7 +127,7 @@
       "missing": "Where a translation is missing, the {lang} website shows the {main} text.",
       "outdated": "Where the {main} text changed, the {lang} website still shows the old translation."
     },
-    "twin": "This entry already exists: “{title}”. Saving creates a second one.",
+    "twin": "“{title}” already exists. Saving creates a second one.",
     "weekFixed": "This task always covers the current week.",
     "saveContinues": "Still saving. If you are offline, it is saved as soon as the connection is back.",
     "notSaved": "Not saved: {reason}",
@@ -298,7 +298,7 @@
     "status": {
       "draft": "Draft",
       "onlineFrom": "Online from {when}",
-      "expired": "expired",
+      "expired": "expired on {date}",
       "ended": "ended",
       "until": "until {date}",
       "untilToday": "until today",
@@ -307,6 +307,7 @@
     "quick": {
       "nothingForYou": "There are no tasks for you here yet. Ask the person who invited you for the rights you need.",
       "todayDone": "<task>{task}</task> is filled in for today.",
+      "dayDone": "<task>{field} {date}</task> is filled in.",
       "flagText": "“{text}”",
       "clearToday": "Clear",
       "notFilled": "Not filled in yet",

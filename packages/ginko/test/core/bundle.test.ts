@@ -364,7 +364,7 @@ it('withMarkdownRefs: a platform text becomes only its ref and word count in pag
   const legal = out.bricks.legal
   const tree = trees.get('/__ginko/platform/de/1.1/md/legal/legal/imprint.json')!
   expect(legal?.kind === 'single' && legal.data.imprint).toEqual({ ref: '/__ginko/platform/de/1.1/md/legal/legal/imprint.json', words: wordsOf(tree) })
-  expect(tree.nodes[0]).toEqual(['p', {}, 'Gasthaus zur Linde, Inhaberin Maria Ebner', ['br', {}], 'Dorfstraße 12, 5020 Salzburg'])
+  expect(tree.nodes[0]).toEqual(['p', {}, 'Inhaberin: Maria Ebner (Einzelunternehmen)'])
   expect(wordsOf(tree)).toBeGreaterThan(8)
   expect(wordsOf((await parseMarkdown('Ein **kurzer** Text.\n\n## Mit Titel')).value)).toBe(5)
   expect(wordsOf({ ref: '/x', words: 7 })).toBe(7)

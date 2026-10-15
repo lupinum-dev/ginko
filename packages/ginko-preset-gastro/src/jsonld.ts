@@ -55,8 +55,10 @@ export interface EventJsonLdInput {
   price?: Money
   /** The site’s currency (ISO 4217), used for a price that carries none. There is no default. */
   currency?: string
-  /** Absolute URL where visitors book. */
+  /** Absolute URL where visitors book. Left out when the event is fully booked. */
   booking?: string
+  /** Fully booked (the events brick's `soldOut`): the offer says `SoldOut` and has no booking link. */
+  soldOut?: boolean
 }
 
 function addressOf(a: NonNullable<RestaurantJsonLdInput['address']>) {
@@ -137,9 +139,12 @@ export function restaurantJsonLd(input: RestaurantJsonLdInput): Record<string, u
   }
 }
 
-/** schema.org Event for one event of the events brick. Offers are given only with a price. */
+/** schema.org Event for one event of the events brick. Offers are given with a price, or to say it is fully booked. */
 export function eventJsonLd(input: EventJsonLdInput): Record<string, unknown> {
   const description = input.description ? plainText(input.description) : ''
+  const offers = input.soldOut
+    ? { '@type': 'Offer', ...(input.price ? offerPrice(input.price, input.currency) : {}), availability: 'https://schema.org/SoldOut' }
+    : input.price ? { '@type': 'Offer', ...offerPrice(input.price, input.currency), ...(input.booking ? { url: input.booking } : {}) } : undefined
   return {
     '@context': 'https://schema.org',
     '@type': 'Event',
@@ -152,6 +157,6 @@ export function eventJsonLd(input: EventJsonLdInput): Record<string, unknown> {
     url: input.url,
     ...(input.image ? { image: input.image } : {}),
     ...(description ? { description } : {}),
-    ...(input.price ? { offers: { '@type': 'Offer', ...offerPrice(input.price, input.currency), ...(input.booking ? { url: input.booking } : {}) } } : {}),
+    ...(offers ? { offers } : {}),
   }
 }

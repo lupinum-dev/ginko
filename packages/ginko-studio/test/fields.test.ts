@@ -356,3 +356,18 @@ describe('translation side by side', () => {
     expect(wrapper.get('[data-slot="translation-source"] p.text-warning').text()).toBe(text)
   })
 })
+
+// Wrong behaviour caught: a dish saved before "Auf der Karte" existed showed the switch off although the website shows
+// the dish (a missing value means the field's default), and a switch read "(optional)" although it is always on or off.
+describe('switch', () => {
+  test.each([
+    ['nothing stored, default on: on', undefined, true, 'true'],
+    ['stored off, default on: off', false, true, 'false'],
+    ['nothing stored, no default: off', undefined, undefined, 'false'],
+  ] as const)('%s', (_name, modelValue, def, checked) => {
+    const field = { type: 'boolean', label: 'Auf der Karte', optional: true, ...(def === undefined ? {} : { default: def }) } as Field
+    const wrapper = mount(GinkoField, { props: { field, modelValue, path: 'onMenu', locale: 'de', locales: ['de'], issues: [] } })
+    expect(wrapper.get('[data-slot="switch"]').attributes('aria-checked')).toBe(checked)
+    expect(wrapper.text()).not.toContain('(optional)')
+  })
+})

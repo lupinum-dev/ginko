@@ -127,7 +127,7 @@
       "missing": "Wo eine Übersetzung fehlt, zeigt die Website auf {lang} den Text auf {main}.",
       "outdated": "Wo der Text auf {main} geändert wurde, zeigt die Website auf {lang} noch die alte Übersetzung."
     },
-    "twin": "Diesen Eintrag gibt es schon: „{title}“. Speichern legt einen zweiten an.",
+    "twin": "„{title}“ gibt es schon. Speichern legt einen zweiten Eintrag an.",
     "weekFixed": "Diese Aufgabe gilt immer für die laufende Woche.",
     "saveContinues": "Speichern läuft weiter. Ohne Verbindung wird es übernommen, sobald sie wieder da ist.",
     "notSaved": "Nicht gespeichert: {reason}",
@@ -298,7 +298,7 @@
     "status": {
       "draft": "Entwurf",
       "onlineFrom": "Online ab {when}",
-      "expired": "abgelaufen",
+      "expired": "abgelaufen am {date}",
       "ended": "vorbei",
       "until": "bis {date}",
       "untilToday": "bis heute",
@@ -307,6 +307,7 @@
     "quick": {
       "nothingForYou": "Für dich gibt es hier noch keine Aufgaben. Frag die Person, die dich eingeladen hat, nach den passenden Rechten.",
       "todayDone": "<task>{task}</task> ist für heute eingetragen.",
+      "dayDone": "<task>{field} {date}</task> ist eingetragen.",
       "flagText": "„{text}“",
       "clearToday": "Aufheben",
       "notFilled": "Noch nicht ausgefüllt",

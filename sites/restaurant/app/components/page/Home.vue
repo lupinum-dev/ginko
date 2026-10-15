@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { priceOn, restaurantJsonLd } from '@lupinum/ginko-preset-gastro'
+import { dishOn, priceOn, restaurantJsonLd } from '@lupinum/ginko-preset-gastro'
 import { siteName, telHref } from '../../utils/site'
 
 const path = useGinkoPath()
@@ -12,11 +12,12 @@ const menu = useGinko('menu')
 const seo = useGinko('seo')
 const { url: siteUrl } = useGinkoSite()
 
-// Restaurant JSON-LD for search engines: hours from the same rule as the page, menu with today's prices.
+// Restaurant JSON-LD for search engines: hours from the same rule as the page, the dishes on the menu with today's prices.
 const restaurantLd = computed(() => {
+  const dishes = menu.value.items.filter((i) => dishOn(i.data, today.value).shown)
   const sections = ['starters', 'soups', 'mains', 'desserts', 'drinks'].map((key) => ({
     name: labels.value.categories[key]!,
-    items: menu.value.items.filter((i) => i.data.category === key).map((i) => ({ name: i.data.name, description: i.data.description, price: priceOn(i.data, today.value) })),
+    items: dishes.filter((i) => i.data.category === key).map((i) => ({ name: i.data.name, description: i.data.description, price: priceOn(i.data, today.value) })),
   }))
   return restaurantJsonLd({
     name: siteName,

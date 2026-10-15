@@ -12,7 +12,7 @@ test('a page payload holds only the texts it shows, and a client navigation load
   const html = await (await request.get(`${SITE}/`)).text()
   const payload = /<script[^>]*id="__NUXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(html)?.[1]
   expect(payload).toBeTruthy()
-  expect(payload).not.toContain('Inhaberin Maria Ebner')
+  expect(payload).not.toContain('Inhaberin: Maria Ebner')
 
   // A client navigation to the imprint loads that one text from the site's platform text route.
   // Wait for hydration first: a click before it is a full page load, whose server render carries the text itself.
@@ -21,5 +21,5 @@ test('a page payload holds only the texts it shows, and a client navigation load
   const text = page.waitForResponse((response) => /\/__ginko\/platform\/de\/\d+\.\d+\/md\/legal\/legal\/imprint\.json$/.test(new URL(response.url()).pathname) && response.ok())
   await page.getByRole('contentinfo').getByRole('link', { name: 'Impressum' }).click()
   await text
-  await expect(page.getByText('Gasthaus zur Linde, Inhaberin Maria Ebner')).toBeVisible()
+  await expect(page.getByText('Inhaberin: Maria Ebner (Einzelunternehmen)')).toBeVisible()
 })

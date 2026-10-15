@@ -60,7 +60,8 @@ export default defineSite({
           },
           max: 20, default: [],
         }),
-        closedOn: f.date('Heute geschlossen am', { optional: true }),
+        // A single day, today or later; the website lists a later one with the exceptions ahead.
+        closedOn: f.date('Geschlossen am', { optional: true, hint: 'Ein einzelner Tag. Für mehrere Tage nimm „Betriebsferien eintragen“.' }),
         closedNote: f.text('Hinweis zur Schließung', { max: 140, optional: true }),
       },
       tasks: [

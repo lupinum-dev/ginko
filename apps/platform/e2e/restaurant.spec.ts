@@ -27,16 +27,28 @@ test.describe('Wirtin', () => {
     await expect(notice(page, 'Heute sind wir ausgebucht.')).toHaveCount(before)
   })
 
-  test('2. "Heute geschlossen" with a reason shows the state, and Aufheben ends it', async ({ page }) => {
+  test('2. "Heute geschlossen" with a reason shows the state, and Aufheben ends it; a closure for tomorrow stays when reopened', async ({ page }) => {
     await openQuick(page)
     await page.getByRole('button', { name: 'Heute geschlossen' }).click()
-    await expect(page.getByLabel('Heute geschlossen am')).toHaveValue(today())
-    await page.getByLabel('Hinweis zur Schließung').fill('Geschlossene Gesellschaft')
+    await expect(page.getByLabel('Geschlossen am')).toHaveValue(today())
+    await page.getByLabel('Grund für die Gäste').fill('Geschlossene Gesellschaft')
     await page.getByRole('button', { name: 'Speichern' }).click()
     await expect(page.getByText('ist für heute eingetragen.')).toBeVisible()
     await expect(page.getByText('„Geschlossene Gesellschaft“')).toBeVisible()
     await page.getByRole('button', { name: 'Aufheben' }).click()
     await expect(page.getByText('ist für heute eingetragen.')).toHaveCount(0)
+
+    // Tomorrow: the state names the day, and reopening the task keeps tomorrow instead of closing today.
+    await page.getByRole('button', { name: 'Heute geschlossen' }).click()
+    await page.getByRole('button', { name: 'Morgen' }).click()
+    await page.getByRole('button', { name: 'Speichern' }).click()
+    await expect(page.getByText(/Geschlossen am .+ ist eingetragen\./)).toBeVisible()
+    await page.getByRole('button', { name: 'Heute geschlossen' }).click()
+    await expect(page.getByLabel('Geschlossen am')).toHaveValue(addDays(today(), 1))
+    // The sheet's own X: the save toast's "Meldung schließen" is still on screen.
+    await page.getByRole('dialog').getByRole('button', { name: 'Schließen', exact: true }).click()
+    await page.getByRole('button', { name: 'Aufheben' }).click()
+    await expect(page.getByText(/Geschlossen am .+ ist eingetragen\./)).toHaveCount(0)
   })
 
   test('3. the weekly lunch starts this Monday from last week, and a new dish asks for its allergens', async ({ page }) => {

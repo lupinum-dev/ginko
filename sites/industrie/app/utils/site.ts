@@ -140,10 +140,17 @@ export function todayState(hours: { week: DayHours[]; exceptions: Exception[]; c
   return { kind: 'open', times: timesOf(day, and) }
 }
 
-/** Exceptions that are still running or start within `days` days from today, soonest first. */
-export function exceptionsAhead(exceptions: Exception[], today: string, days: number): Exception[] {
+/**
+ * Exceptions that are still running or start within `days` days from today, and the day set in "Geschlossen am"
+ * (`closedOn`) when it is after today (today's is the board's state), soonest first. `field` is the bundle path of
+ * each reason, for its language.
+ */
+export function exceptionsAhead(hours: { exceptions: Exception[]; closedOn?: string; closedNote?: string }, today: string, days: number): Array<Exception & { field: string }> {
   const limit = new Date(`${today}T12:00:00Z`)
   limit.setUTCDate(limit.getUTCDate() + days)
   const until = limit.toISOString().slice(0, 10)
-  return exceptions.filter((e) => e.when.to >= today && e.when.from <= until).sort((a, b) => a.when.from.localeCompare(b.when.from))
+  const ahead = hours.exceptions.filter((e) => e.when.to >= today && e.when.from <= until).map((e) => ({ ...e, field: `exceptions.${e._id}.reason` }))
+  const day = hours.closedOn
+  if (day && day > today && day <= until) ahead.push({ _id: 'closedOn', when: { from: day, to: day }, reason: hours.closedNote ?? '', closed: true, field: 'closedNote' })
+  return ahead.sort((a, b) => a.when.from.localeCompare(b.when.from))
 }

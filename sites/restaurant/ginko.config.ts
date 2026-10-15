@@ -23,10 +23,15 @@ export default defineSite({
     privacy: { de: '/datenschutz', en: '/en/privacy' },
   },
   bricks: {
+    // Schnell ändern lists bricks in this order, so each plan sits right after the brick it plans.
     hours: hours(),
+    // Seasons and "new hours from a date"; data only, no page of its own.
+    hourPlans: hourPlans(),
     notices: notices(),
     // The cook enters the week's lunch menu; it goes live once the owner approves it (SPEC 17).
     lunch: { ...lunchBrick, tasks: lunchBrick.tasks?.map((task) => ({ ...task, needsApproval: true })) },
+    // Lunch weeks planned ahead, shown from their first day of the week (lunchWeekOn).
+    lunchPlans: lunchPlans(),
     menu: menu(),
     events: events({ route: { de: '/veranstaltungen/[slug]', en: '/en/events/[slug]' } }),
     gallery: gallery(),
@@ -58,9 +63,5 @@ export default defineSite({
         image: f.image('Vorschaubild', { optional: true }),
       },
     }),
-    // Seasons and "new hours from a date"; data only, no page of its own. Last, so schema positions of the other bricks stay.
-    hourPlans: hourPlans(),
-    // Lunch weeks planned ahead; last as well. Shown from their first day of the week (lunchWeekOn).
-    lunchPlans: lunchPlans(),
   },
 })

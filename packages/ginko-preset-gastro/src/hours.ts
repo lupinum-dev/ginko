@@ -154,6 +154,16 @@ export function todayState(ctx: HoursContext, today: string): TodayState {
   return { kind: 'restDay' }
 }
 
+/**
+ * The notices to show on `today`. A notice that ends today (`until` is today) is about today, so a closure today wins
+ * over it: on a day the owner closed ("Heute geschlossen" or a closing exception), such a notice ("Heute sind wir
+ * ausgebucht.") is left out. Rest days and public holidays do not hide notices, and notices that end later stay.
+ */
+export function noticesOn<N extends { data: { until?: string | null } }>(notices: readonly N[], ctx: HoursContext, today: string): N[] {
+  if (todayState(ctx, today).kind !== 'closed') return [...notices]
+  return notices.filter((n) => n.data.until !== today)
+}
+
 /** Public holidays on which the house is closed, starting after `today` and within `days` days. */
 export function upcomingHolidayClosures(ctx: HoursContext, today: string, days: number): HolidayClosure[] {
   const out: HolidayClosure[] = []
@@ -168,20 +178,48 @@ export function upcomingHolidayClosures(ctx: HoursContext, today: string, days: 
 }
 
 /**
- * Closures that start after `today` and within `days` days: the owner's closing exceptions and the public
- * holidays that close the house (by `ctx.calendar`). A holiday entry has `holiday` instead of `reason`.
+ * The day set in "closed on" (`closedOn`) as a closure, when it is after `today`: `_id` `'closedOn'`, its note as
+ * `reason`, `field` `'closedNote'`. A closure today is today's state (`todayState`); a past day no longer counts.
  */
-export function upcomingClosures(ctx: HoursContext, today: string, days: number): Array<Exception | HolidayClosure> {
+export function closedOnClosure(hours: Pick<HoursData, 'closedOn' | 'closedNote'>, today: string): (Exception & { field: string }) | undefined {
+  const day = hours.closedOn
+  return day && day > today ? { _id: 'closedOn', when: { from: day, to: day }, reason: hours.closedNote ?? '', closed: true, field: 'closedNote' } : undefined
+}
+
+/**
+ * Closures that start after `today` and within `days` days: the owner's closing exceptions, the day set in "closed
+ * on" (`closedOnClosure`), and the public holidays that close the house (by `ctx.calendar`). A holiday entry has
+ * `holiday` instead of `reason`. An owner's closure has `field`, the bundle path of its reason, so the page can set the
+ * reason's language.
+ */
+export function upcomingClosures(ctx: HoursContext, today: string, days: number): Array<(Exception & { field: string }) | HolidayClosure> {
   const until = addDays(today, days)
-  const closures: Array<Exception | HolidayClosure> = (ctx.hours.exceptions ?? []).filter((e) => e.closed && e.when.from > today && e.when.from <= until)
+  const { hours } = ctx
+  const closures: Array<(Exception & { field: string }) | HolidayClosure> = (hours.exceptions ?? [])
+    .filter((e) => e.closed && e.when.from > today && e.when.from <= until)
+    .map((e) => ({ ...e, field: `exceptions.${e._id}.reason` }))
+  const closedOn = closedOnClosure(hours, today)
+  if (closedOn && closedOn.when.from <= until) closures.push(closedOn)
   closures.push(...upcomingHolidayClosures(ctx, today, days))
   return closures.sort((a, b) => a.when.from.localeCompare(b.when.from))
 }
 
-/** Plans that start after `today` and within `days` days, with their start date (yearly: next occurrence). */
-export function upcomingPlans(plans: HourPlan[], today: string, days: number): Array<{ plan: HourPlan; starts: string }> {
+/** The last day of a plan that starts on `starts`: its `to`, or for a yearly plan the next `to` month-day from there. */
+function endOf(plan: HourPlan, starts: string): string | undefined {
+  if (!plan.to || !plan.yearly) return plan.to
+  const year = Number(starts.slice(0, 4))
+  const md = plan.to.slice(5)
+  // A season that wraps New Year (November to March) ends in the year after its start.
+  return `${md < plan.from.slice(5) ? year + 1 : year}-${md}`
+}
+
+/**
+ * Plans that start after `today` and within `days` days, with their start date (yearly: next occurrence) and, when the
+ * plan has an end, its last day `ends` (yearly: the end of that occurrence).
+ */
+export function upcomingPlans(plans: HourPlan[], today: string, days: number): Array<{ plan: HourPlan; starts: string; ends?: string }> {
   const until = addDays(today, days)
-  const out: Array<{ plan: HourPlan; starts: string }> = []
+  const out: Array<{ plan: HourPlan; starts: string; ends?: string }> = []
   for (const plan of plans) {
     let starts = plan.from
     if (plan.yearly) {
@@ -190,7 +228,8 @@ export function upcomingPlans(plans: HourPlan[], today: string, days: number): A
       starts = `${year}-${md}` > today ? `${year}-${md}` : `${year + 1}-${md}`
       if (plan.from > starts) starts = plan.from
     }
-    if (starts > today && starts <= until) out.push({ plan, starts })
+    const ends = endOf(plan, starts)
+    if (starts > today && starts <= until) out.push({ plan, starts, ...(ends ? { ends } : {}) })
   }
   return out.sort((a, b) => a.starts.localeCompare(b.starts))
 }

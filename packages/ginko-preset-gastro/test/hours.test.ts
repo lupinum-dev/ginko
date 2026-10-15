@@ -1,6 +1,6 @@
 // The "Heute" board and the hours table decide open or closed from one rule (`hoursOn`); a wrong order tells guests the house is open on a holiday.
 import { describe, expect, it } from 'vitest'
-import { austrianHolidays, holidayOn, hoursOn, todayState, upcomingClosures, upcomingPlans, weekOf, type DayHours, type Exception, type HourPlan } from '../src/hours.ts'
+import { austrianHolidays, holidayOn, hoursOn, noticesOn, todayState, upcomingClosures, upcomingPlans, weekOf, type DayHours, type Exception, type HourPlan, type HoursData } from '../src/hours.ts'
 
 const week: DayHours[] = [
   { day: 'mo', closed: true },
@@ -21,12 +21,40 @@ describe('todayState', () => {
   })
 })
 
+// Wrong behaviour caught: under "Heute geschlossen" the board still said "Heute sind wir ausgebucht." (a notice that ends today).
+describe('noticesOn', () => {
+  const notices = (today: string) => [{ id: 'n-today', data: { until: today } }, { id: 'n-later', data: { until: '2026-10-20' } }, { id: 'n-open', data: {} }]
+  it.each<[string, Partial<HoursData>, string, string[]]>([
+    ['the owner closed today: the notice that ends today goes', { closedOn: '2026-10-08' }, '2026-10-08', ['n-later', 'n-open']],
+    ['an open day keeps every notice', {}, '2026-10-08', ['n-today', 'n-later', 'n-open']],
+    ['a closing exception over today counts like the switch', { exceptions: [{ ...holiday, when: { from: '2026-10-07', to: '2026-10-09' } }] }, '2026-10-08', ['n-later', 'n-open']],
+    ['a closure set for another day hides nothing today', { closedOn: '2026-10-09' }, '2026-10-08', ['n-today', 'n-later', 'n-open']],
+    ['a rest day hides nothing', {}, '2026-10-05', ['n-today', 'n-later', 'n-open']],
+  ])('%s', (_name, extra, today, expected) => {
+    const ctx = { hours: { week, exceptions: [], ...extra }, calendar: 'none' as const }
+    expect(noticesOn(notices(today), ctx, today).map((n) => n.id)).toEqual(expected)
+  })
+})
+
 describe('upcomingClosures', () => {
   it('shows a closure only within the notice days and before it starts', () => {
     const ctx = (exceptions: Exception[]) => ({ hours: { week, exceptions }, calendar: 'none' as const })
     expect(upcomingClosures(ctx([winter, holiday]), '2026-10-12', 14).map((e) => e._id)).toEqual(['x1'])
     expect(upcomingClosures(ctx([holiday]), '2026-10-26', 14)).toEqual([])
     expect(upcomingClosures(ctx([holiday]), '2026-10-01', 14)).toEqual([])
+  })
+
+  // Wrong behaviour caught: a closure set for tomorrow ("Geschlossen am") was not announced until it was today.
+  it.each([
+    ['tomorrow is announced, with the note and its field', '2026-10-09', [{ _id: 'closedOn', when: { from: '2026-10-09', to: '2026-10-09' }, reason: 'Hochzeit', closed: true, field: 'closedNote' }]],
+    ['today is not listed: today’s state shows it', '2026-10-08', []],
+    ['beyond the notice days it is not listed yet', '2026-10-30', []],
+  ] as const)('closedOn: %s', (_name, closedOn, expected) => {
+    expect(upcomingClosures({ hours: { week, exceptions: [], closedOn, closedNote: 'Hochzeit' }, calendar: 'none' }, '2026-10-08', 14)).toEqual(expected)
+  })
+
+  it('names the field of an exception’s reason, for its language', () => {
+    expect(upcomingClosures({ hours: { week, exceptions: [holiday] }, calendar: 'none' }, '2026-10-20', 14)).toEqual([{ ...holiday, field: 'exceptions.x1.reason' }])
   })
 })
 
@@ -124,5 +152,16 @@ describe('upcomingClosures with holidays', () => {
 describe('upcomingPlans', () => {
   it('finds the next start of a yearly plan and ignores plans already running', () => {
     expect(upcomingPlans([winterPlan, summer], '2026-10-08', 60).map((p) => [p.plan._id, p.starts])).toEqual([['p1', '2026-11-01']])
+  })
+  // Wrong behaviour caught: the site heads a coming season with its start only, or ends a yearly season in the wrong year.
+  it.each([
+    ['yearly winter wraps into the next year', winterPlan, '2026-10-15', { starts: '2026-11-01', ends: '2027-03-31' }],
+    ['yearly winter, a later year', winterPlan, '2027-10-15', { starts: '2027-11-01', ends: '2028-03-31' }],
+    ['yearly summer ends in the same year', summer, '2027-05-01', { starts: '2027-06-01', ends: '2027-08-31' }],
+    ['one-off plan ends on its last day', { ...summer, yearly: false, from: '2026-11-01', to: '2026-12-15' }, '2026-10-15', { starts: '2026-11-01', ends: '2026-12-15' }],
+    ['new hours from a date have no end', { ...summer, yearly: false, from: '2026-11-01', to: undefined }, '2026-10-15', { starts: '2026-11-01', ends: undefined }],
+  ])('%s', (_, plan, today, expected) => {
+    const [found] = upcomingPlans([plan], today, 120)
+    expect({ starts: found?.starts, ends: found?.ends }).toEqual(expected)
   })
 })
