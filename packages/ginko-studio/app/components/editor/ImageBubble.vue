@@ -37,9 +37,9 @@ const description = computed(() => {
   return library ? t('editor.image.descriptionFromFiles', { text: library }) : t('editor.image.noDescriptionYet')
 })
 
-// While the text or the menu itself (Tab from the text) has the focus.
+// While the text or the menu itself (Tab from the text) has the focus; not once the editor is gone (see EditorBubble).
 const shouldShow = ({ editor, state, element }: { editor: Editor; state: Editor['state']; element: HTMLElement }) =>
-  isPicture(state.selection) && editor.isEditable && (editor.view.hasFocus() || element.contains(document.activeElement))
+  !editor.isDestroyed && isPicture(state.selection) && editor.isEditable && (editor.view.hasFocus() || element.contains(document.activeElement))
 
 function act(action: 'describe' | 'replace' | 'caption') {
   const pos = picture.value?.pos
