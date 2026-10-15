@@ -134,6 +134,7 @@ describe('fileRefsIn', () => {
     ['a tilde fence with a longer close', '~~~\n![Doku]($file.fremd)\n~~~~', []],
     ['inline code', 'So geht es: `![x]($file.k57a)`', []],
     ['a picture after inline code', '`Code` und ![Hund]($file.k57a)', ['k57a']],
+    ['an escaped backtick is no code', 'Geht\\`s gut? ![x]($file.k57a) Ja, geht\\`s.', ['k57a']],
     ['a picture after a closed fence', '```\nx\n```\n\n![Hund]($file.k57a)', ['k57a']],
     ['the YAML props block of a component', '::figure\n```yaml [props]\nsrc: $file.k57a\n```\n::', ['k57a']],
   ])('%s', (_name, text, ids) => {

@@ -31,8 +31,11 @@ export const fileRefOf = (value: string): string | undefined => WHOLE_REF.exec(v
 const FENCE = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/
 /** A component's YAML props block (```yaml [props]) is no code: its `src: $file.x` is a reference. */
 const PROPS_FENCE = /^yaml\s+\[props\]/
-/** Inline code: a run of backticks up to the same run, within one paragraph. */
-const INLINE_CODE = /(?<!`)(`+)(?!`)(?:[^\n]|\n(?![ \t]*\n))*?(?<!`)\1(?!`)/g
+/**
+ * Inline code: a run of backticks up to the same run, within one paragraph. An escaped backtick (`\``, which the editor
+ * writes for a typed one) opens none; after an escaped backslash (`\\``) the code then counts as text, the safe side.
+ */
+const INLINE_CODE = /(?<![`\\])(`+)(?!`)(?:[^\n]|\n(?![ \t]*\n))*?(?<!`)\1(?!`)/g
 
 const blank = (code: string) => code.replace(/[^\n]/g, ' ')
 
