@@ -479,10 +479,13 @@
       }
     },
     "link": {
-      "label": "Link (web address)",
+      "label": "Page or web address",
+      "placeholder": "Search a page or https://…",
+      "ownPages": "Website pages",
+      "noPage": "No page found.",
       "apply": "Apply",
       "remove": "Remove link",
-      "refused": "This link is not allowed. Use a web address (https://…), an email address (mailto:) or a phone number (tel:)."
+      "refused": "Choose a page from the list, or enter a web address (https://…), an email address (mailto:) or a phone number (tel:)."
     },
     "image": {
       "insertTitle": "Insert image",

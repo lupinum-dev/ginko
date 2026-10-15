@@ -479,10 +479,13 @@
       }
     },
     "link": {
-      "label": "Link (Webadresse)",
+      "label": "Seite oder Webadresse",
+      "placeholder": "Seite suchen oder https://…",
+      "ownPages": "Seiten der Website",
+      "noPage": "Keine Seite gefunden.",
       "apply": "Übernehmen",
       "remove": "Link entfernen",
-      "refused": "Dieser Link ist nicht erlaubt. Erlaubt sind Webadressen (https://…), E-Mail (mailto:) und Telefon (tel:)."
+      "refused": "Wähle eine Seite aus der Liste oder gib eine Webadresse (https://…), E-Mail (mailto:) oder Telefon (tel:) ein."
     },
     "image": {
       "insertTitle": "Bild einfügen",

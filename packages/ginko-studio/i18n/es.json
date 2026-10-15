@@ -479,10 +479,13 @@
       }
     },
     "link": {
-      "label": "Enlace (dirección web)",
+      "label": "Página o dirección web",
+      "placeholder": "Busca una página o https://…",
+      "ownPages": "Páginas del sitio web",
+      "noPage": "No se encontró ninguna página.",
       "apply": "Aplicar",
       "remove": "Quitar enlace",
-      "refused": "Este enlace no está permitido. Usa una dirección web (https://…), un correo electrónico (mailto:) o un teléfono (tel:)."
+      "refused": "Elige una página de la lista o escribe una dirección web (https://…), un correo electrónico (mailto:) o un teléfono (tel:)."
     },
     "image": {
       "insertTitle": "Insertar imagen",

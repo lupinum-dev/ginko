@@ -10,8 +10,9 @@ import { EditorContent } from '@tiptap/vue-3'
 import { toast } from 'vue-sonner'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { computed, reactive } from 'vue'
-import { EDITOR_COMPONENTS } from '../app/components/editor/context.ts'
+import { EDITOR_COMPONENTS, EDITOR_LINK_TARGETS } from '../app/components/editor/context.ts'
 import MarkdownEditor from '../app/components/editor/MarkdownEditor.vue'
+import { REFS } from '../app/components/fields/refs.ts'
 
 vi.mock('vue-sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), dismiss: vi.fn() } }))
 
@@ -37,9 +38,9 @@ function fakeAssets(upload?: GinkoAssets['upload']) {
   return { assets, states, sent }
 }
 
-interface Options { text: string; profile?: string; max?: number; assets?: GinkoAssets; blockers?: Map<string, string>; contentLocale?: string }
-async function mounted({ text, profile = 'page', max, assets, blockers, contentLocale }: Options) {
-  const provide: Record<symbol, unknown> = { [EDITOR_COMPONENTS as symbol]: () => components }
+interface Options { text: string; profile?: string; max?: number; assets?: GinkoAssets; blockers?: Map<string, string>; contentLocale?: string; provide?: Record<symbol, unknown> }
+async function mounted({ text, profile = 'page', max, assets, blockers, contentLocale, provide: extra }: Options) {
+  const provide: Record<symbol, unknown> = { [EDITOR_COMPONENTS as symbol]: () => components, ...extra }
   if (assets) provide[GINKO_ASSETS as symbol] = assets
   if (blockers) provide[BLOCKERS as symbol] = blockers
   const field = { type: 'markdown', label: 'Text', profile, ...(max ? { max } : {}) } as never
@@ -229,5 +230,32 @@ describe('a pasted address on an empty line', () => {
     editor.commands.insertContent('x')
     await flushPromises()
     expect(wrapper.text()).not.toContain('Als Weiterlesen-Link zeigen')
+  })
+})
+
+describe('a link to a page of the site', () => {
+  // Wrong behaviour caught: the only way to link an own page was to copy its address from the website, which stored a
+  // URL tied to one host (http://localhost:3000/…) and one language.
+  test('typing a title lists the page; picking it stores the route link, which works on every host and in every language', async () => {
+    const provide = {
+      [EDITOR_LINK_TARGETS as symbol]: () => ({ pages: { home: { de: '/' }, kontakt: { de: '/kontakt' } }, routed: ['referenzen'] }),
+      [REFS as symbol]: { options: (brick: () => string) => computed(() => (brick() === 'referenzen' ? [{ id: 'k57gs', title: 'Gesäuse Nationalpark' }] : [])), brickLabel: () => 'Referenzen' },
+    }
+    const wrapper = await mounted({ text: 'Mehr dazu\n', provide })
+    const editor = editorOf(wrapper)
+    editor.commands.setTextSelection({ from: 1, to: 10 })
+    await wrapper.get('button[aria-label="Link"]').trigger('click')
+    await until(() => !!document.querySelector('input[placeholder="Seite suchen oder https://…"]'))
+    const input = document.querySelector<HTMLInputElement>('input[placeholder="Seite suchen oder https://…"]')!
+    input.value = 'gesause'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await until(() => [...document.querySelectorAll('[role="option"]')].some((o) => o.textContent?.includes('Gesäuse Nationalpark')))
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((o) => o.textContent?.includes('Gesäuse Nationalpark'))!
+    expect(option.textContent).toContain('Referenzen')
+    option.click()
+    await flushPromises()
+    expect(editor.getAttributes('link').href).toBe('$referenzen.k57gs')
+    await wait(350)
+    expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual(['[Mehr dazu]($referenzen.k57gs)\n'])
   })
 })

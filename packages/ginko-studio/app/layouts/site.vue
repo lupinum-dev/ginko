@@ -5,7 +5,7 @@ import { DEFAULT_WEEK, type ComponentRegistry, type Schema } from '@lupinum/gink
 import { provideGinkoAssets } from '@lupinum/ginko-editor'
 import { CircleCheckIcon, FileTextIcon, HistoryIcon, ImageIcon, SearchIcon, SparklesIcon, SquareArrowOutUpRightIcon, SunIcon, UsersIcon } from '@lucide/vue'
 import { OWN_BOTTOM_BAR, type SiteLink } from '../utils/siteLinks'
-import { EDITOR_COMPONENTS } from '@studio/components/editor/context'
+import { EDITOR_COMPONENTS, EDITOR_LINK_TARGETS } from '@studio/components/editor/context'
 import { provideStudioSite } from '../utils/labels'
 import { isModKey } from '../utils/keys'
 
@@ -19,6 +19,11 @@ const { data, error } = useConvexQuery(api.sites.meta, () => ({ site: slug.value
 const { data: deletion } = useConvexQuery(api.sites.deletion, () => ({ site: slug.value }))
 // The slash menu of Markdown fields offers the components of this site's schema.
 provide(EDITOR_COMPONENTS, () => (data.value?.site.schema as { components?: ComponentRegistry } | undefined)?.components)
+// Their link dialog offers the site's own pages: the static ones and the entries of collections with a page.
+provide(EDITOR_LINK_TARGETS, () => {
+  const schema = data.value?.site.schema as Schema | undefined
+  return schema && { pages: schema.pages, routed: Object.entries(schema.bricks).filter(([, b]) => b.kind === 'collection' && !!b.route).map(([key]) => key) }
+})
 // Labels and prices under this layout read the site's main language and currency.
 provideStudioSite({ main: () => data.value?.site.schema.locales[0] ?? '', currency: () => data.value?.site.schema.currency ?? 'EUR', timeZone: () => data.value?.site.schema.timeZone ?? 'Europe/Vienna' })
 // Date fields under this layout count "today" and weeks in the site's zone and week (`schema.week`).
