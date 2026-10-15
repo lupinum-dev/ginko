@@ -1,6 +1,6 @@
 // Studio basics (SPEC 4.2): search, saved views, duplicate, trash, translation status and "why is this
 // not public?". One test per realistic failure. The clock is fixed because event visibility depends on today.
-import type { Schema } from '@lupinum/ginko/internal'
+import { isVisible, type Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
@@ -345,34 +345,51 @@ describe('sites.translationStatus', () => {
 
     // The bundle's fallback lists of English give the same entries and numbers as the missing texts of the list rows and
     // the status. An outdated translation stays on the website (D6), so it is no fallback, but the Studio still counts it.
-    const bundle = (await (await s.t.fetch('/bundle/restaurant?format=3&locale=en')).json()) as { bricks: Record<string, { items?: { id: string; fallback: string[] }[] }> }
+    const bundle = (await (await s.t.fetch('/bundle/restaurant?format=3&locale=en')).json()) as { bricks: Record<string, { items?: { id: string; data: Record<string, unknown>; fallback: string[] }[] }> }
+    const schema = (await s.t.run((ctx) => ctx.db.get(s.site)))!.schema as Schema
     for (const brick of status.bricks.filter((b) => b.kind === 'collection')) {
       const withFallback = (bundle.bricks[brick.brick]!.items ?? []).filter((item) => item.fallback.length)
       const rows = (await s.as.owner.query(api.entries.list, { site, brick: brick.brick, limit: 2000 })).rows
       const missing = new Map(rows.map((row) => [row._id as string, row.gaps.reduce((sum, g) => sum + g.missing, 0)]))
       expect([...missing].filter(([, count]) => count).map(([id]) => id).sort(), brick.brick).toEqual(withFallback.map((i) => i.id).sort())
       for (const item of withFallback) expect(missing.get(item.id), `${brick.brick} ${item.id}`).toBe(item.fallback.length)
-      expect(brick.locales.en!.missing, brick.brick).toBe(withFallback.length)
+      // The status counts what the site shows: the bundle still holds a past event, its listings leave it out.
+      const shown = withFallback.filter((item) => isVisible(schema.bricks[brick.brick]!, item.data, '2026-10-08'))
+      expect(brick.locales.en!.missing, brick.brick).toBe(shown.length)
     }
     expect(menu.outdated).toBeGreaterThan(0)
   })
 
   // Wrong behaviour caught (overview): the list of open translations misses a page that is not online in English
-  // because of them, or lists a draft that is not on the website yet (admin-4, A11).
-  it('leaves out removed entries and drafts, and lists the entries with a gap', async () => {
+  // because of them, or lists a draft that is not on the website yet (admin-4, A11), or a past event the site no
+  // longer shows in any language, so weekly events pile up as open translations.
+  it('leaves out removed entries, drafts and past events, and lists the entries with a gap', async () => {
     const s = await studioSetup({ drafts: true })
     const base = (await s.as.owner.query(api.sites.translationStatus, { site })).bricks.find((b) => b.brick === 'events')!.locales.en!
     const draft = await s.createEvent('Entwurf ohne Übersetzung')
     const live = await s.createEvent('Wildwoche', {}, {})
-    await s.remove(s.entries.sommerfest!)
+    await s.remove(s.entries.martinigans!)
     const status = await s.as.owner.query(api.sites.translationStatus, { site })
     const after = status.bricks.find((b) => b.brick === 'events')!.locales.en!
     // One live entry more, one removed.
     expect(after.missing + after.outdated + after.ok).toBe(base.missing + base.outdated + base.ok)
     expect(status.entries).toContainEqual({ brick: 'events', entry: live.entry, title: 'Wildwoche', locale: 'en', missing: 2, outdated: 0, hidden: true })
     expect(status.entries.map((e) => e.entry)).not.toContain(draft.entry)
+    expect(status.entries.map((e) => e.entry)).not.toContain(s.entries.martinigans)
+    // The summer festival (June, German only) is over.
     expect(status.entries.map((e) => e.entry)).not.toContain(s.entries.sommerfest)
     expect(status.truncated).toBe(false)
+  })
+
+  // Wrong behaviour caught: the list for staff is cut at 200 rows before their own areas come, so it says
+  // "Alles übersetzt." while the menu says "N offen".
+  it('gives staff the areas of their tasks only, in the list and in the counts', async () => {
+    const s = await studioSetup()
+    const status = await s.as.cook.query(api.sites.translationStatus, { site })
+    expect(status.bricks.map((b) => b.brick).sort()).toEqual(['lunch', 'menu'])
+    expect([...new Set(status.entries.map((e) => e.brick))].sort()).toEqual(['lunch', 'menu'])
+    const owner = await s.as.owner.query(api.sites.translationStatus, { site })
+    expect(owner.bricks.map((b) => b.brick)).toEqual(expect.arrayContaining(['menu', 'lunch', 'events', 'hours']))
   })
 })
 
