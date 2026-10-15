@@ -24,12 +24,19 @@ provideStudioSite({ main: () => data.value?.site.schema.locales[0] ?? '', curren
 provide('ginko:timeZone', computed(() => data.value?.site.schema.timeZone ?? 'Europe/Vienna'))
 // While the site loads there is no schema yet.
 provide('ginko:week', computed(() => data.value?.site.schema.week ?? DEFAULT_WEEK))
-// Signed out in another tab, or removed from the team while working here: no page, sheet or button
-// stays usable (break-it 9). The page says what happened and what to do. A session ended on the server (signed out
-// everywhere, revoked) leaves the token here, so only the server's answer tells (auth-1). The unsaved input of an
-// open form stays in this browser and is offered back after signing in.
+// Only a refusal replaces the page: signed out (in another tab, or the session ended on the server, which leaves the
+// token here, so only the server's answer tells, auth-1), no access (removed from the team, an unknown site), or the
+// site being deleted. Then no page, sheet or button stays usable (break-it 9); the page says what happened and what to
+// do, and the unsaved input of an open form stays in this browser. A failure (a timeout, a reconnect burst, a deploy)
+// keeps the last answer and the open form: better-convex keeps the last data on an error, the server checks every
+// write, and the next write anywhere on the site runs this query again, which clears the error.
 const { status } = useConvexAuth()
 const signedOut = computed(() => status.value === 'anonymous' || isSignInRequired(error.value))
+const noAccess = computed(() => !signedOut.value && isNoAccess(error.value))
+/** A failure with no last answer: nothing is open yet, so a reload loses nothing. */
+const notLoaded = computed(() => !!error.value && !data.value && !signedOut.value && !noAccess.value)
+// `force`: a second try within Nuxt's 10 s guard must reload too.
+const reload = () => reloadNuxtApp({ force: true })
 // "Seite ansehen" opens the local site on a local platform; the browser decides, so after mount (no hydration mismatch).
 const mounted = ref(false)
 onMounted(() => { mounted.value = true })
@@ -71,8 +78,8 @@ const initial = computed(() => (data.value?.site.name ?? '').trim().charAt(0).to
 const ownBottomBar = ref(0)
 provide(OWN_BOTTOM_BAR, ownBottomBar)
 const showTabs = computed(() => ownBottomBar.value === 0)
-// Signed out or no access: no site to navigate, so no rail, bars or site name (the message offers the way out).
-const blocked = computed(() => signedOut.value || !!error.value || !!deletion.value)
+// Signed out, no access or not loaded: no site to navigate, so no rail, bars or site name (the message offers the way out).
+const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.value || !!deletion.value)
 </script>
 
 <template>
@@ -118,10 +125,17 @@ const blocked = computed(() => signedOut.value || !!error.value || !!deletion.va
         <Button as-child><NuxtLink :to="`/login?redirect=${encodeURIComponent(route.fullPath)}`" external>{{ t('nav.signIn') }}</NuxtLink></Button>
       </div>
       <SiteDeleting v-else-if="deletion" :slug="slug" :name="deletion.name" :at="deletion.at" />
-      <div v-else-if="error" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
+      <div v-else-if="noAccess" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
         <p class="text-xl font-bold">{{ opErrorOf(error).message }}</p>
         <p>{{ t('nav.noAccessHelp') }}</p>
         <Button as-child variant="outline"><NuxtLink to="/?all">{{ t('nav.mySites') }}</NuxtLink></Button>
+      </div>
+      <div v-else-if="notLoaded" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
+        <p class="text-xl font-bold">{{ t('basics.notLoaded') }}</p>
+        <div class="flex flex-wrap gap-2">
+          <Button type="button" @click="reload">{{ t('basics.retry') }}</Button>
+          <Button as-child variant="outline"><NuxtLink to="/?all">{{ t('nav.mySites') }}</NuxtLink></Button>
+        </div>
       </div>
       <template v-else>
         <!-- Above every page, so every role sees it (a manager without tasks never sees Schnell ändern). -->
