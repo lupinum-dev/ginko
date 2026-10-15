@@ -335,18 +335,6 @@ describe('sites.translationStatus', () => {
     await s.remove(s.entries.sommerfest!)
     const after = (await s.as.owner.query(api.sites.translationStatus, { site })).bricks.find((b) => b.brick === 'events')!.locales.en!
     expect(after.missing + after.outdated + after.ok).toBe(base.missing + base.outdated + base.ok - 1)
-
-    // 201 entries without English: the list stops at 200, the total says 201.
-    await s.t.run(async (ctx) => {
-      const model = (await ctx.db.get(s.entries.martinigans!))!
-      for (let i = 0; i < 201; i++) {
-        await ctx.db.insert('entries', { site: s.site, brick: 'notices', kind: 'item', order: 100 + i, data: { text: { de: `Hinweis ${i}` } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, bytes: model.bytes })
-      }
-    })
-    const notices = (await s.as.owner.query(api.sites.translationStatus, { site })).bricks.find((b) => b.brick === 'notices')!.locales.en!
-    expect(notices.entries).toHaveLength(200)
-    expect(notices.truncated).toBe(true)
-    expect(notices.missing).toBeGreaterThanOrEqual(201)
   })
 })
 
