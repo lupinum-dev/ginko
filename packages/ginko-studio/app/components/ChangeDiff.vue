@@ -6,7 +6,7 @@
 import { api } from '#convex/api'
 import { useI18n } from '#imports'
 import type { Fields, Json, Locale } from '@lupinum/ginko'
-import { fileRefOf } from '@lupinum/ginko/internal'
+import { fileRefOf, isShown, ordered } from '@lupinum/ginko/internal'
 import { GinkoMarkdown } from '@lupinum/ginko/vue'
 import { computedAsync } from '@vueuse/core'
 import { computed, defineComponent, h } from 'vue'
@@ -39,12 +39,14 @@ function show(d: DiffField, value: Json | null): string {
 }
 
 type RowDiff = NonNullable<DiffField['rows']>[number]
-interface Cell { key: string; label: string; before?: string; after?: string }
+interface Cell { key: string; label: string; before?: string; after?: string; kept?: boolean }
 
 function columnsOf(d: DiffField): Fields {
   const field = props.fields && Object.hasOwn(props.fields, d.field) ? props.fields[d.field] : undefined
   return field?.type === 'list' ? field.of : {}
 }
+
+const filled = (value: Json | undefined) => value !== undefined && value !== null && value !== ''
 
 /** One cell value of a row; a column the schema no longer has shows plain text. */
 function cellText(columns: Fields, key: string, value: Json | undefined): string {
@@ -52,7 +54,8 @@ function cellText(columns: Fields, key: string, value: Json | undefined): string
   return value === undefined || value === null || value === '' ? t('ops.value.empty') : typeof value === 'string' || typeof value === 'number' ? String(value) : t('ops.value.changed')
 }
 
-/** A changed row by its name (first text column, else the item label) and its changed cells as old → new. Added and removed rows list their filled cells. */
+/** A changed row by its name (first text column, else the item label): its changed cells as old → new, then its other
+ *  shown, filled cells as they stay (the allergens next to a new dish). Added and removed rows list their filled cells. */
 function rowView(d: DiffField, row: RowDiff) {
   const columns = columnsOf(d)
   const list = props.fields && Object.hasOwn(props.fields, d.field) ? props.fields[d.field] : undefined
@@ -60,11 +63,21 @@ function rowView(d: DiffField, row: RowDiff) {
   const named = rowTitle(columns, row.before ?? row.after, props.locale, { t, format })
   const title = named?.text || (list?.type === 'list' ? shown(list.itemLabel) : '')
   const label = (key: string) => (Object.hasOwn(columns, key) ? shown(columns[key]!.label) : key)
-  const skip = (key: string) => key === '_id'
-  const cells: Cell[] = row.change === 'changed'
-    ? (row.fields ?? []).filter((k) => !skip(k)).map((key) => ({ key, label: label(key), before: cellText(columns, key, (row.before as Record<string, Json>)?.[key]), after: cellText(columns, key, (row.after as Record<string, Json>)?.[key]) }))
-    : Object.keys(columns).filter((key) => key !== named?.key && data && data[key] !== undefined && data[key] !== null && data[key] !== '').map((key) => ({ key, label: label(key), after: cellText(columns, key, data![key]) }))
+  const cells: Cell[] = row.change === 'changed' ? changedCells(columns, row, named?.key, label) : Object.keys(columns).filter((key) => key !== named?.key && data && filled(data[key])).map((key) => ({ key, label: label(key), after: cellText(columns, key, data![key]) }))
   return { id: row.id, change: row.change, title, cells }
+}
+
+function changedCells(columns: Fields, row: RowDiff, titleKey: string | undefined, label: (key: string) => string): Cell[] {
+  const before = (row.before ?? {}) as Record<string, Json>
+  const after = (row.after ?? {}) as Record<string, Json>
+  const changed = new Set((row.fields ?? []).filter((k) => k !== '_id'))
+  const keys = [...ordered(columns).map(([k]) => k), ...[...changed].filter((k) => !Object.hasOwn(columns, k))]
+  return keys.flatMap((key): Cell[] => {
+    if (changed.has(key)) return [{ key, label: label(key), before: cellText(columns, key, before[key]), after: cellText(columns, key, after[key]) }]
+    const column = columns[key]
+    if (key === '_id' || key === titleKey || !column || column.retired || !isShown(column, after) || (!filled(before[key]) && !filled(after[key]))) return []
+    return [{ key, label: label(key), after: cellText(columns, key, after[key]), kept: true }]
+  })
 }
 
 const asText = (value: Json | null): string => (typeof value === 'string' ? value : '')
@@ -150,7 +163,7 @@ const richParts = { img: DiffPicture, a: DiffLink }
               <span class="shrink-0">{{ `→ ` }}</span>
               <span class="min-w-0 break-words font-medium">{{ c.after }}</span>
             </template>
-            <span v-else class="truncate">{{ c.after }}</span>
+            <span v-else :class="['truncate', c.kept && 'text-muted-foreground']">{{ c.after }}</span>
           </p>
         </li>
         <li v-if="d.reordered">{{ t('review.diff.reordered') }}</li>

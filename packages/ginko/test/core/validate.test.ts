@@ -132,6 +132,54 @@ describe('calendar dates, times and ranges (SPEC 2.2, 2.3)', () => {
   })
 })
 
+describe('a week start (lunch.weekOf, lunchPlans.weekOf)', () => {
+  const sundayFirst = { ...schema, week: { firstDay: 7 as const, weekend: [6, 7] } }
+  // Wrong behaviour caught: a lunch week saved as a Thursday is stored and never shows, because the site looks for the
+  // week that starts on the week's first day.
+  it.each([
+    ['lunch', 'a Monday', schema, '2026-10-12', []],
+    ['lunch', 'a Thursday', schema, '2026-10-15', [['weekOf', 'NOT_WEEK_START']]],
+    ['lunchPlans', 'a Monday', schema, '2026-10-12', []],
+    ['lunchPlans', 'a Thursday', schema, '2026-10-15', [['weekOf', 'NOT_WEEK_START']]],
+    ['lunchPlans', 'a Sunday on a Sunday-first site', sundayFirst, '2026-10-11', []],
+    ['lunchPlans', 'a Monday on a Sunday-first site', sundayFirst, '2026-10-12', [['weekOf', 'NOT_WEEK_START']]],
+  ] as const)('%s: %s', async (brick, _name, s, weekOf, expected) => {
+    expect(pairs((await validate(s, brick, lunch({ weekOf }), check('create'))).errors)).toEqual(expected)
+  })
+
+  // Wrong behaviour caught: an old week stored mid-week blocks every later save that does not touch the week.
+  it('a save of the days only warns about a stored mid-week start', async () => {
+    const result = await validate(schema, 'lunch', lunch({ weekOf: '2026-10-15' }), check('patch', new Set(['days'])))
+    expect([pairs(result.errors), pairs(result.warnings)]).toEqual([[], [['weekOf', 'NOT_WEEK_START']]])
+  })
+})
+
+describe('a planned price (menu, `planned`)', () => {
+  const plan = { nextPrice: { amount: 1390 }, priceFrom: '2026-11-01' }
+  // Wrong behaviour caught: a planned price without its date is stored and never applies, and nobody is told; or a
+  // date without a price is kept as if a change were planned.
+  it.each([
+    ['price and date', plan, []],
+    ['no plan', {}, []],
+    ['a price without a date', { nextPrice: plan.nextPrice }, [['priceFrom', 'REQUIRED']]],
+    ['a date without a price', { priceFrom: plan.priceFrom }, [['nextPrice', 'REQUIRED']]],
+  ] as const)('%s', async (_name, over, expected) => {
+    expect(pairs((await validate(schema, 'menu', menuEntry(over), check('create'))).errors)).toEqual(expected)
+  })
+
+  // Wrong behaviour caught: a plan stored by halves before the rule blocks every later save of the dish or a release;
+  // or a save that sets half a plan gets through because only the other half is missing.
+  it.each([
+    ['patch of the plan', check('patch', new Set(['nextPrice'])), [['priceFrom', 'REQUIRED']], []],
+    ['patch of the name only', check('patch', new Set(['name'])), [], [['priceFrom', 'REQUIRED']]],
+    ['release of stored data', check('release'), [], [['priceFrom', 'REQUIRED']]],
+  ] as const)('%s', async (_name, opts, errors, warnings) => {
+    const result = await validate(schema, 'menu', menuEntry({ nextPrice: plan.nextPrice }), opts)
+    expect(pairs(result.errors)).toEqual(errors)
+    expect(pairs(result.warnings)).toEqual(warnings)
+  })
+})
+
 describe('numbers and money (SPEC 2.2, 2.3)', () => {
   // Wrong behaviour caught: a value between two steps (14.5 with step 1) or outside min/max is saved.
   it.each([

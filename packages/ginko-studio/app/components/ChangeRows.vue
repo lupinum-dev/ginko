@@ -1,7 +1,8 @@
 <!-- The change log (UI.md 7), one paginated query: older pages load on demand and every loaded page
      stays live, so an undo on an older page updates its row at once. Rückgängig shows only on saves that are not undone yet, and for
      staff only when one of their granted edit tasks covers every field of the change, or when the change is of an entry
-     they created (`own`) and they still hold its create task (SPEC 2.7). A save the
+     they created (`own`) and they still hold its create task (SPEC 2.7); undo only with such a task without approval
+     (with approval, going back to a version becomes a proposal instead). An approved change names the approver. A save the
      server would refuse to undo (`undoBlocked`: saved again, removed, fields restructured) says why
      instead. "Zurück zu dieser Version" shows what it changes before it saves. -->
 <script setup lang="ts">
@@ -9,7 +10,7 @@ import { api } from '#convex/api'
 import type { Schema } from '@lupinum/ginko/internal'
 import { opErrorOf } from '../composables/useOps'
 import { useTextOf } from '../composables/useTextOf'
-import { byText } from '../utils/who'
+import { byText, whoText } from '../utils/who'
 import { whenFull } from '../utils/when'
 import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
@@ -60,21 +61,22 @@ const sentenceOf = (change: Change) => textOf(change.msg, change.sentence)
 const actorName = (change: Change) => byText(change.who, change.via, change.agent, t)
 
 /**
- * The task a staff member needs to undo or revert this save: one granted edit task that covers all its fields, else,
- * for an entry they created, their create task of the brick (lib/access.ts `authorize`, the agent door's `taskFor`).
- * Owners and admins need none.
+ * The task a staff member needs to go back on this save: one granted edit task that covers all its fields, else, for an
+ * entry they created, their create task of the brick (lib/access.ts `authorize`, the agent door's `taskFor`). `direct`
+ * asks for one without approval (undo writes at once, which the server refuses on such a task). Owners and admins need none.
  */
-function taskFor(change: Change): string | undefined {
+function taskFor(change: Change, direct = false): string | undefined {
   if (props.manager) return undefined
   const fields = change.fields ?? []
-  const held = (props.schema.bricks[change.brick]?.tasks ?? []).filter((task) => props.grants.has(`${change.brick}.${task.id}`))
+  const held = (props.schema.bricks[change.brick]?.tasks ?? [])
+    .filter((task) => props.grants.has(`${change.brick}.${task.id}`) && !(direct && task.needsApproval))
   const found = held.find((task) => task.kind === 'edit' && fields.every((field) => task.fields.includes(field)))
     ?? (change.own ? held.find((task) => task.kind === 'create') : undefined)
   return found ? `${change.brick}.${found.id}` : undefined
 }
 
 function canUndo(change: Change): boolean {
-  return change.kind === 'save' && !change.undoneBy && (props.manager || taskFor(change) !== undefined)
+  return change.kind === 'save' && !change.undoneBy && (props.manager || taskFor(change, true) !== undefined)
 }
 
 /** Why the server would refuse an undo of this save (an undone one keeps its badge instead). */
@@ -132,7 +134,7 @@ async function whileBusy(id: string, run: () => Promise<unknown>) {
   }
 }
 async function undo(change: Change) {
-  await whileBusy(change._id, () => ops.undoChange(change._id, taskFor(change)))
+  await whileBusy(change._id, () => ops.undoChange(change._id, taskFor(change, true)))
 }
 </script>
 
@@ -144,7 +146,7 @@ async function undo(change: Change) {
         <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <div class="grid min-w-0 gap-0.5">
             <p class="font-medium">{{ sentenceOf(change) }}</p>
-            <p class="text-[13px] text-muted-foreground">{{ actorName(change) }} · <span :title="fullDate(change.at)">{{ when(change.at) }}</span></p>
+            <p class="text-[13px] text-muted-foreground">{{ actorName(change) }}<template v-if="change.approver"> · {{ t('history.approval', { who: whoText(change.approver, t) }) }}</template> · <span :title="fullDate(change.at)">{{ when(change.at) }}</span></p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <Badge v-if="change.undoneBy" variant="soft">{{ t('entry.changes.undone') }}</Badge>

@@ -16,6 +16,7 @@ import { fixedTools, HISTORY_MAX, PROPOSE, REQUEST_ID, SEARCH_MAX, linksIn, task
 import type { Data } from './lib/content'
 import { leafStatus } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
+import { same } from './lib/write'
 import { effectiveReview } from './lib/policy'
 import { secret } from './release'
 import { prefillAs } from './tasks'
@@ -343,12 +344,15 @@ export const stale = internalQuery({
   },
 })
 
+/** When a write shows on the website: in about a minute, or from the day of a week planned ahead or a planned price (`liveFrom`). */
+const liveText = (liveFrom: string | undefined) => (liveFrom ? `On the website from ${liveFrom}.` : 'Live on the website in about a minute.')
+
 /** The sentence for the person after a save-like write: proposed, unchanged, or done with the change to undo. */
 function savedAs(result: Json, label: string): { text: string; result: Json } {
   if (proposed(result)) return { text: PROPOSED, result }
-  const change = (result as { change?: string }).change
+  const { change, liveFrom } = result as { change?: string; liveFrom?: string }
   return {
-    text: change ? `Done: ${label}. Live on the website in about a minute. To undo: ginko_undo with change ${change}.` : 'Nothing changed: the values were already like this.',
+    text: change ? `Done: ${label}. ${liveText(liveFrom)} To undo: ginko_undo with change ${change}.` : 'Nothing changed: the values were already like this.',
     result,
   }
 }
@@ -412,9 +416,9 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
     const data = { ...prefill, ...fromToolInput(brick.fields, values, { mainLocale: main, currency: schema.currency, newRowId }) }
     const result = await createAs(ctx, actor, { site, opId, task: tool.ref, brick: tool.brick, data })
     if (proposed(result)) return { text: PROPOSED, result }
-    const { entry: id, state } = result as { entry: Id<'entries'>; state: 'draft' | 'live' }
+    const { entry: id, state, liveFrom } = result as { entry: Id<'entries'>; state: 'draft' | 'live'; liveFrom?: string }
     // A collection with drafts makes a draft (SPEC 15); publishing stays with the person in the platform.
-    const where = state === 'draft' ? 'Saved as a draft, not on the website yet. The person publishes it in the platform.' : 'Live on the website in about a minute.'
+    const where = state === 'draft' ? 'Saved as a draft, not on the website yet. The person publishes it in the platform.' : liveText(liveFrom)
     const change = await lastChangeOf(ctx, id)
     return { text: `Done: ${labelIn(tool.task.label, main, main)}. New entry ${id}. ${where} To undo: ginko_undo with change ${change?._id}.`, result: { ...(result as object), change: change?._id ?? null } }
   }
@@ -432,8 +436,11 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
 
   const taskFields = tool.task.fields
   const stored = entry.data as Record<string, Json>
+  // The task opens on the entry as the Studio's sheet does: besides the presets, a planned change whose day has come
+  // is the value in effect and its spent plan is cleared (`prefillAs`), so a new value does not hide behind it.
+  const opened = await prefillAs(ctx, actor, { site, task: tool.ref, entry: entry._id }) as Record<string, Json>
   const fields = {
-    ...Object.fromEntries(Object.entries(prefill).filter(([k]) => taskFields.includes(k))),
+    ...Object.fromEntries(Object.entries(opened).filter(([k, value]) => taskFields.includes(k) && (Object.hasOwn(prefill, k) || !same(value, stored[k])))),
     ...fromToolInput(Object.fromEntries(taskFields.map((f) => [f, brick.fields[f]!])), values, { mainLocale: main, currency: schema.currency, stored, newRowId }),
   }
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')

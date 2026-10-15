@@ -128,6 +128,7 @@
       "outdated": "Wo der Text auf {main} geändert wurde, zeigt die Website auf {lang} noch die alte Übersetzung."
     },
     "twin": "Diesen Eintrag gibt es schon: „{title}“. Speichern legt einen zweiten an.",
+    "weekFixed": "Diese Aufgabe gilt immer für die laufende Woche.",
     "saveContinues": "Speichern läuft weiter. Ohne Verbindung wird es übernommen, sobald sie wieder da ist.",
     "notSaved": "Nicht gespeichert: {reason}",
     "notSavedReopen": "Nicht gespeichert. Bitte die Aufgabe noch einmal öffnen.",
@@ -253,6 +254,12 @@
       "near": "Dieser Eintrag belegt {used} von {limit}.",
       "over": "Dieser Eintrag ist zu groß: {used} von {limit}. Kürze ihn um etwa {over}, dann lässt er sich speichern."
     },
+    "oldWeek": "Das ist noch die Woche ab {date}. Prüfe jeden Tag, bevor du speicherst.",
+    "copyThisWeek": "Von dieser Woche übernehmen",
+    "pending": "Wartet auf Freigabe, eingereicht {when}. Wenn du speicherst, ersetzt das deinen Vorschlag.",
+    "pendingStale": "Dein Vorschlag (eingereicht {when}) passt nicht mehr: Inzwischen hat jemand das geändert. Hier siehst du den aktuellen Stand.",
+    "pendingSame": "Wartet auf Freigabe, eingereicht {when}. Deine Eingaben sind wieder wie auf der Website: Um den Vorschlag zu verwerfen, zieh ihn zurück.",
+    "reopenProposal": "Deinen Vorschlag wieder öffnen",
     "shrunk": {
       "text": "„{field}“ ist viel kürzer als vorher: {after} statt {before} Zeichen.",
       "files": "{count, plural, one {# Datei} other {# Dateien}} weniger."
@@ -309,6 +316,9 @@
       "removeNamed": "{title} entfernen",
       "allIn": "Alle in „{brick}“ ansehen",
       "showExpired": "Abgelaufene anzeigen ({count})",
+      "waiting": "Wartet auf Freigabe, eingereicht {when}.",
+      "rejected": "Nicht freigegeben: „{reason}“",
+      "fix": "Korrigieren",
       "drafts": {
         "heading": "Noch nicht gespeichert",
         "titled": "„{title}“ · {time}",
@@ -659,8 +669,9 @@
       "whatChanged": "Was hat sich geändert?"
     },
     "date": {
-      "workWeek": "Aktuelle Arbeitswoche",
-      "nextWorkWeek": "Folgende Arbeitswoche",
+      "thisWeek": "Diese Woche",
+      "nextWeek": "Nächste Woche",
+      "weekAfterNext": "Übernächste Woche",
       "today": "Heute",
       "tomorrow": "Morgen"
     },
@@ -724,6 +735,7 @@
     "draftNotOnSite": "Entwurf gespeichert. Noch nicht auf der Website.",
     "draftScheduled": "Entwurf gespeichert, online ab {time}.",
     "liveHint": "Auf der Website in etwa einer Minute.",
+    "liveFrom": "Auf der Website ab {date}.",
     "translation": {
       "hidden": "Auf {langs} erscheint die Seite erst, wenn alle nötigen Texte übersetzt sind.",
       "mainPage": "Auf {langs} verlinkt die Website bis zur Übersetzung auf die Seite auf {main}.",
@@ -780,7 +792,7 @@
     "reason": "Warum? Das sieht, wer die Änderung vorgeschlagen hat.",
     "mine": "Du hast das vorgeschlagen",
     "stale": "Passt nicht mehr",
-    "approved": "Freigegeben. Auf der Website in etwa einer Minute.",
+    "approved": "Freigegeben.",
     "rejected": "Abgelehnt.",
     "sent": "Zur Freigabe gesendet. Die Inhaberin oder der Inhaber entscheidet.",
     "diff": {
@@ -823,7 +835,9 @@
       "removed": "Eintrag entfernt, erst wiederherstellen",
       "schema": "Die Felder wurden seither umgebaut"
     },
-    "loadFailed": "Der Verlauf konnte nicht geladen werden. Bitte die Seite neu laden."
+    "loadFailed": "Der Verlauf konnte nicht geladen werden. Bitte die Seite neu laden.",
+    "fix": "Korrigieren",
+    "approval": "Freigabe: {who}"
   },
   "basics": {
     "search": {

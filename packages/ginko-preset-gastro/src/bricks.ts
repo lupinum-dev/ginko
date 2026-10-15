@@ -233,22 +233,30 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
         { value: 'none', label: both('nicht vegetarisch', 'not vegetarian') }, { value: 'vegetarian', label: both('vegetarisch', 'vegetarian') }, { value: 'vegan', label: both('vegan', 'vegan') },
       ],
     }),
-    // A planned price change: the site shows `nextPrice` from `priceFrom` on (see `priceOn`).
-    nextPrice: f.money(both('Neuer Preis', 'New price'), { optional: true }),
-    priceFrom: f.date(both('Neuer Preis gilt ab', 'New price applies from'), { optional: true }),
+    // A planned price change: the site shows `nextPrice` from `priceFrom` on (`planned` below, `priceOn`).
+    nextPrice: f.money(both('Geplanter Preis', 'Planned price'), {
+      optional: true,
+      hint: both('Gilt ab dem Datum darunter. Bis dahin bleibt der Preis oben.', 'Applies from the date below. Until then the price above stays.'),
+    }),
+    priceFrom: f.date(both('Geplanter Preis gilt ab', 'Planned price applies from'), { optional: true }),
   }
-  // `allergens` exists only when the set is not 'none', which the type cannot see here.
-  const dishFields = (choices ? ['category', 'name', 'description', 'price', 'allergens', 'veg'] : ['category', 'name', 'description', 'price', 'veg']) as readonly (keyof typeof fields & string)[]
+  // The plan sits right under the price in every task that shows the price. `allergens` exists only when the set is
+  // not 'none', which the type cannot see here.
+  const dishFields = (choices
+    ? ['category', 'name', 'description', 'price', 'nextPrice', 'priceFrom', 'allergens', 'veg']
+    : ['category', 'name', 'description', 'price', 'nextPrice', 'priceFrom', 'veg']) as readonly (keyof typeof fields & string)[]
   return collection({
     label: both('Speisekarte', 'Menu'),
     ...sourceOf(opts),
     fields,
+    // The platform checks that a plan has both its price and its date, and opens "Preis ändern" on the price in effect.
+    planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' },
     max: 150,
     order: 'manual',
     tasks: [
       { id: 'edit', label: both('Gericht bearbeiten', 'Edit a dish'), kind: 'edit', pick: true, fields: dishFields },
-      { id: 'price', label: both('Preis ändern', 'Change a price'), kind: 'edit', pick: true, fields: ['price'] },
-      { id: 'priceFrom', label: both('Preis ab …', 'Price from …'), kind: 'edit', pick: true, fields: ['nextPrice', 'priceFrom'] },
+      // One sheet for the price and its plan, so a new price never hides behind a planned one.
+      { id: 'price', label: both('Preis ändern', 'Change a price'), kind: 'edit', pick: true, fields: ['price', 'nextPrice', 'priceFrom'] },
       { id: 'add', label: both('Gericht hinzufügen', 'Add a dish'), kind: 'create' },
       { id: 'remove', label: both('Gericht entfernen', 'Remove a dish'), kind: 'remove' },
     ],

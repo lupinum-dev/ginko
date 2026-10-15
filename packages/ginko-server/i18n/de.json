@@ -178,6 +178,7 @@
     "onlyAdminsCreateSites": "Nur Admins legen Seiten an.",
     "tokenTooShort": "Der Token braucht mindestens 32 Zeichen.",
     "taskNotFound": "Diese Aufgabe gibt es nicht.",
+    "weeklyTaskThisWeek": "Diese Aufgabe gilt nur für die laufende Woche. Öffne sie neu, falls die Woche inzwischen gewechselt hat.",
     "brickNotFoundAnymore": "Diesen Baustein gibt es nicht (mehr).",
     "viewOnlyForCollections": "Eine Ansicht gibt es nur für Sammlungen.",
     "viewInvalid": "Die Ansicht ist ungültig.",
@@ -213,7 +214,8 @@
     "uploadHeicUnreadable": "HEIC-Fotos kann die Dateibibliothek nicht lesen. Speichere das Foto als JPEG (auf dem iPhone: Einstellungen › Kamera › Formate › „Maximale Kompatibilität“) und lade es noch einmal hoch.",
     "uploadNotAnImage": "Diese Datei ist kein lesbares Bild.",
     "uploadTooManyPixels": "Dieses Bild hat zu viele Pixel. Verkleinere es (zum Beispiel auf 8000 Pixel Breite) und lade es noch einmal hoch.",
-    "siteUrlNotAllowed": "Diese Adresse der Website ist nicht erlaubt. Sie muss eine öffentliche https://-Adresse sein."
+    "siteUrlNotAllowed": "Diese Adresse der Website ist nicht erlaubt. Sie muss eine öffentliche https://-Adresse sein.",
+    "weekAlreadyPlanned": "Für diese Woche gibt es schon einen Plan. Öffne die geplante Woche, um sie zu ändern."
   },
   "history": {
     "changedSingle": "{label}: {fields} geändert",
@@ -298,6 +300,10 @@
     "notLive": {
       "subject": "Nicht live gegangen: eine geplante Änderung für {site}",
       "text": "Hallo,\n\neine Änderung, die du für „{site}“ geplant hast, ist nicht live gegangen, weil sie nicht mehr passt:\n\n{what}\n\nDen Grund findest du im Verlauf: {path}\n"
+    },
+    "rejected": {
+      "subject": "Nicht freigegeben: deine Änderung für {site}",
+      "text": "Hallo,\n\ndeine Änderung für „{site}“ wurde nicht freigegeben:\n\n{what}\n\nGrund: „{reason}“\n\nKorrigieren: {path}\n"
     }
   },
   "content": {

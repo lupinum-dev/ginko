@@ -43,7 +43,10 @@ test.describe('Wirtin', () => {
     await openQuick(page)
     await page.getByRole('button', { name: 'Mittagsmenü dieser Woche' }).click()
     const sheet = page.getByRole('dialog')
-    await expect(sheet.getByLabel('Woche ab')).toHaveValue(workWeekOf(today(), DEFAULT_WEEK))
+    // The weekly task always covers this week: the week is shown, not asked.
+    const monday = new Date(`${workWeekOf(today(), DEFAULT_WEEK)}T12:00:00Z`).toLocaleDateString('de', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    await expect(sheet.locator('[data-test="fixed-week"]')).toContainText(monday)
+    await expect(sheet.locator('input[type="date"]')).toHaveCount(0)
     const tuesday = sheet.locator('li', { has: page.getByRole('heading', { name: 'Dienstag' }) })
     await tuesday.getByLabel('Gericht').fill('Rindsgulasch mit Semmelknödel')
     await expect(tuesday.getByText('Sind die Allergene noch richtig?')).toBeVisible()

@@ -93,6 +93,17 @@ describe('agent door', () => {
     expect(listed.page[0]).toMatchObject({ who: { self: true }, agent: 'Claude Code' })
   })
 
+  // Wrong behaviour caught: from the day of a planned price on, the assistant's new price was stored next to the spent
+  // plan, so the website kept showing the planned price while the answer said the new one was live.
+  it('a price set on or after the day of a planned price replaces the spent plan', async () => {
+    vi.setSystemTime(new Date('2026-10-18T10:00:00Z'))
+    const s = await setup()
+    const done = await call(s, await keyOf(s, 'owner'), 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 23.5 })
+    expect(done.text).toContain('Live on the website in about a minute.')
+    const data = (await entryRow(s, s.entries['menu-schnitzel']!))!.data
+    expect([data.price, data.nextPrice, data.priceFrom]).toEqual([{ amount: 2350 }, undefined, undefined])
+  })
+
   it('the cook\'s key sees only the menu and lunch tasks and cannot run another task', async () => {
     const s = await setup()
     const key = await keyOf(s, 'cook')
@@ -355,6 +366,21 @@ describe('agent door: tool catalog', () => {
     const undone = await call(s, await keyOf(s, 'owner'), 'ginko_undo', { change: saved.change })
     expect(undone).toMatchObject({ isError: true, text: expect.stringContaining('ginko_revert') })
     expect((await entryRow(s, entry))!.data.price).toEqual({ amount: 2500 })
+  })
+
+  // Wrong behaviour caught: the second call withdrew the first proposal, because both went through "Gericht
+  // bearbeiten"; the price proposal was gone and nobody was told. A later call on the same field still replaces it.
+  it('with review on, two edits of one dish with different fields both wait; the same field again replaces its proposal', async () => {
+    const s = await setup()
+    await s.t.run((ctx) => ctx.db.patch(s.site, { agentReview: true }))
+    const key = await keyOf(s, 'owner')
+    const entry = s.entries['menu-saibling']!
+    const statuses = async () => (await s.t.run((ctx) => ctx.db.query('proposals').collect())).map((p) => p.status)
+    await call(s, key, 'task_menu_edit', { entry, price: 25 })
+    await call(s, key, 'task_menu_edit', { entry, description: 'Mit Erdäpfeln' })
+    expect(await statuses()).toEqual(['open', 'open'])
+    await call(s, key, 'task_menu_edit', { entry, description: 'Mit Petersilerdäpfeln' })
+    expect(await statuses()).toEqual(['open', 'withdrawn', 'open'])
   })
 
   it('ginko_proposals lists only the caller\'s own proposals, even for an owner who could see all', async () => {

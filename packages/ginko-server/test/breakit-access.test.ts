@@ -112,6 +112,7 @@ const publicCalls: Call[] = [
   { fn: 'proposals.withdraw', kind: 'mutation', args: () => ({ proposal: 'x' }) },
   { fn: 'proposals.list', kind: 'query', args: () => ({ ...SITE, paginationOpts: firstPage }) },
   { fn: 'proposals.mine', kind: 'query', args: () => SITE },
+  { fn: 'proposals.ownFor', kind: 'query', args: (s) => ({ ...SITE, entry: s.entries['menu-saibling'] }) },
   { fn: 'proposals.count', kind: 'query', args: () => SITE },
   { fn: 'proposals.get', kind: 'query', args: () => ({ ...SITE, proposal: 'x' }) },
   { fn: 'proposals.releases', kind: 'query', args: () => SITE },
@@ -264,7 +265,8 @@ describe('2. staff (the cook) outside the grants', () => {
     ['a task that does not exist', { task: 'menu.superuser' }],
     ['a task ref with an extra segment', { task: 'menu.price.x' }],
     ['an empty task', { task: '' }],
-    ['a task the cook is not granted (menu.priceFrom)', { task: 'menu.priceFrom', fields: { nextPrice: { amount: 2000 } } }],
+    // "Preis ab …" became part of "Preis ändern"; an old tab or agent that still sends it is refused.
+    ['a task that was merged away (menu.priceFrom)', { task: 'menu.priceFrom', fields: { nextPrice: { amount: 2000 } } }],
   ])('entries.save refuses %s', async (_label, over) => {
     const s = await setup()
     const code = await outcome(saveMenu(s, 'cook', { task: 'menu.price', ...over }))
@@ -504,6 +506,7 @@ const cross: CrossCall[] = [
   { fn: 'views.remove', kind: 'mutation', args: (site, f) => ({ site, id: f.view }) },
   { fn: 'proposals.list', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage }) },
   { fn: 'proposals.mine', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'proposals.ownFor', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
   { fn: 'proposals.releases', kind: 'query', args: (site) => ({ site }) },
   { fn: 'sites.translationStatus', kind: 'query', args: (site) => ({ site }) },
 ]

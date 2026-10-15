@@ -2,7 +2,7 @@
 // The form engine of Schnell ändern and Alles bearbeiten (useEntryForm), mounted in a small component. The Nuxt
 // auto-imports are Vue's own; only the Studio's writes (useOps), the toast and the signed-in person are replaced.
 // Browser storage is happy-dom's real localStorage.
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Entry } from '../app/composables/useSiteData'
@@ -25,6 +25,8 @@ const stored: Entry = {
 }
 /** The next save is refused with this error (a conflict), as the server does. */
 let refuseNext: unknown
+/** The next save becomes a proposal, as for a task that needs approval. */
+let proposeNext = false
 /** While set, the next save waits for it, as a save on its way does. */
 let landing: Promise<void> | undefined
 /** The live list's view of the entry: undefined once someone removed it. */
@@ -41,6 +43,11 @@ vi.stubGlobal('useOps', () => ({
     refuseNext = undefined
     if (refused) throw refused
     calls.push(['save', { entry: args.entry, baseRev: args.baseRev, fields: args.fields }])
+    // A save that needs approval writes nothing: no new revision.
+    if (proposeNext) {
+      proposeNext = false
+      return {}
+    }
     return { rev: 7 }
   },
   createEntry: async (args: { data: unknown }) => {
@@ -291,5 +298,197 @@ describe('ConflictPanel', () => {
       },
     })
     expect(panel.find('strong').text()).toBe(heading)
+  })
+})
+
+describe('TaskSheet', () => {
+  /** The sheet's live reads by function name: a test changes one to play the server's next answer. */
+  const answered = new Map<string, vue.Ref<unknown>>()
+  /** This week's lunch as stored: Montag with its dish and allergens. */
+  const thisWeek = {
+    weekOf: '2026-10-12', note: { de: 'Suppe inklusive' },
+    days: [{ _id: 'ldmo000000', day: 'mo', dish: { de: 'Gulasch' }, allergens: ['A'] }, { _id: 'ldtu000000', day: 'tu', dish: { de: 'Fisch' }, allergens: ['D'] }],
+  }
+
+  /**
+   * A sheet of the restaurant: `task` of `brickKey`, on `data` as the stored entry (none for a create task); the
+   * server's prefill is `prefill`, other queries answer from `answers` by function name, and a one-off read
+   * (`useConvex().query`) gets this week's lunch.
+   */
+  async function sheetOf(o: { brickKey: string; task: string; data?: Record<string, unknown>; prefill: Record<string, unknown>; answers?: Record<string, unknown>; copyFrom?: string; reopen?: string }) {
+    const { serializeSchema } = await import('@lupinum/ginko/internal')
+    const { default: restaurant } = await import('../../../sites/restaurant/ginko.config.ts')
+    const { useI18n } = await import('#imports')
+    const { useEntryForm } = await import('../app/composables/useEntryForm')
+    const { default: TaskSheet } = await import('../app/components/TaskSheet.vue')
+    vi.stubGlobal('useI18n', useI18n)
+    vi.stubGlobal('useEntryForm', useEntryForm)
+    // No own proposal unless the test gives one.
+    const answers: Record<string, unknown> = { 'proposals.ownFor': null, ...o.answers }
+    answered.clear()
+    vi.stubGlobal('useConvexQuery', (fn: unknown) => {
+      const data = vue.ref(String(fn) === 'tasks.prefill' ? o.prefill : answers[String(fn)])
+      answered.set(String(fn), data)
+      return { data, error: vue.ref(undefined) }
+    })
+    vi.stubGlobal('useConvexMutation', () => ({ pending: vue.ref(false), mutate: async () => ({}) }))
+    vi.stubGlobal('useConvex', () => ({ query: async (fn: unknown) => (String(fn) === 'entries.get' ? { ...stored, _id: 'l1', brick: 'lunch', kind: 'single', data: thisWeek } : undefined) }))
+    HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) { this.open = true }
+    const schema = serializeSchema(restaurant)
+    const brick = schema.bricks[o.brickKey]!
+    const entry = o.data ? { ...stored, _id: 'l1', brick: o.brickKey, kind: brick.kind === 'single' ? 'single' : 'item', data: o.data } as Entry : undefined
+    const sheet = mount(TaskSheet, {
+      props: { site: 'restaurant', brickKey: o.brickKey, brick, task: brick.tasks!.find((t) => t.id === o.task)!, entry, main: 'de', locales: ['de', 'en'], schema, copyFrom: o.copyFrom, reopen: o.reopen },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    return sheet
+  }
+  /** "Mittagsmenü dieser Woche" on a lunch entry of `storedWeek`; the server's prefill gives this week (12.10.2026). */
+  const lunchSheet = (storedWeek: string, answers: Record<string, unknown> = {}, reopen?: string) => sheetOf({
+    brickKey: 'lunch', task: 'lunchWeek', data: { weekOf: storedWeek, days: [], note: { de: 'Suppe inklusive' } }, prefill: { weekOf: '2026-10-12', days: [], note: { de: 'Suppe inklusive' } }, answers, reopen,
+  })
+  /** The cook's own proposal for this week's lunch (proposals.ownFor), sent on Monday 12.10.2026 at 10:00 in Vienna. */
+  const ownProposal = (over: Record<string, unknown> = {}) => ({
+    proposal: 'p1', status: 'open', task: 'lunch.lunchWeek', fields: { weekOf: '2026-10-12', note: { de: 'Suppe und Salat inklusive' } },
+    createdAt: Date.UTC(2026, 9, 12, 8), decidedAt: null, decidedBy: null, reason: null, fits: true, ...over,
+  })
+  const noteOf = (sheet: Awaited<ReturnType<typeof sheetOf>>) => (sheet.get('#f-note').element as HTMLInputElement).value
+
+  // Wrong behaviour caught: after sending, the cook's sheet opened on the old week again, so he thought nothing was
+  // saved and typed the whole week a second time.
+  test('with an open own proposal the sheet starts from it and says it waits for approval', async () => {
+    const sheet = await lunchSheet('2026-10-05', { 'proposals.ownFor': ownProposal() })
+    expect(noteOf(sheet)).toBe('Suppe und Salat inklusive')
+    expect(sheet.get('[data-test="own-proposal"]').text()).toBe('Wartet auf Freigabe, eingereicht 12.10.2026, 10:00. Wenn du speicherst, ersetzt das deinen Vorschlag.Zurückziehen')
+    // The days are the proposal's, not last week's.
+    expect(sheet.text()).not.toContain('Das ist noch die Woche ab')
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: after "Zurückziehen" the sheet kept the withdrawn values with nothing saying they were not on
+  // their way, closing did not ask, and Speichern sent the withdrawn proposal again.
+  test('once the own proposal is withdrawn, the untouched sheet shows the stored values again', async () => {
+    const sheet = await lunchSheet('2026-10-12', { 'proposals.ownFor': ownProposal() })
+    expect(noteOf(sheet)).toBe('Suppe und Salat inklusive')
+    answered.get('proposals.ownFor')!.value = null
+    await flushPromises()
+    expect(noteOf(sheet)).toBe('Suppe inklusive')
+    expect(sheet.find('[data-test="own-proposal"]').exists()).toBe(false)
+    sheet.unmount()
+
+    // The same for a proposal the sheet has just sent.
+    const sent = await lunchSheet('2026-10-12')
+    await sent.get('#f-note').setValue('Suppe und Salat inklusive')
+    proposeNext = true
+    await sent.get('form').trigger('submit')
+    await flushPromises()
+    answered.get('proposals.ownFor')!.value = ownProposal()
+    await flushPromises()
+    answered.get('proposals.ownFor')!.value = null
+    await flushPromises()
+    expect(noteOf(sent)).toBe('Suppe inklusive')
+    sent.unmount()
+  })
+
+  // Wrong behaviour caught: with the input set back to the website's values, the banner still promised that Speichern
+  // replaces the proposal, but Speichern had nothing to send and the proposal stayed.
+  test('input set back to the stored values points to Zurückziehen', async () => {
+    const sheet = await lunchSheet('2026-10-12', { 'proposals.ownFor': ownProposal() })
+    await sheet.get('#f-note').setValue('Suppe inklusive')
+    expect(sheet.get('[data-test="own-proposal"]').text()).toBe('Wartet auf Freigabe, eingereicht 12.10.2026, 10:00. Deine Eingaben sind wieder wie auf der Website: Um den Vorschlag zu verwerfen, zieh ihn zurück.Zurückziehen')
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: the sheet started from a waiting proposal whose note the owner had changed since, so Speichern
+  // proposed the cook's old note again over the owner's newer one.
+  test('an open own proposal that no longer fits: the sheet starts from the stored values and says why', async () => {
+    const sheet = await lunchSheet('2026-10-12', { 'proposals.ownFor': ownProposal({ fits: false }) })
+    expect(noteOf(sheet)).toBe('Suppe inklusive')
+    expect(sheet.get('[data-test="own-proposal"]').text()).toBe('Dein Vorschlag (eingereicht 12.10.2026, 10:00) passt nicht mehr: Inzwischen hat jemand das geändert. Hier siehst du den aktuellen Stand.Zurückziehen')
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: a proposal of last week's lunch, still undecided on Monday, filled this week's sheet with
+  // last week's dishes and allergens, and nothing said they were old.
+  test.each([
+    ['for the week stored then', '2026-10-05', { note: { de: 'Suppe und Salat inklusive' } }],
+    ['with its own week', '2026-09-28', { weekOf: '2026-10-05', note: { de: 'Suppe und Salat inklusive' } }],
+  ])('an own proposal sent last week %s: the sheet says its days are that week\'s', async (_name, storedWeek, fields) => {
+    const sheet = await lunchSheet(storedWeek, { 'proposals.ownFor': ownProposal({ fields, createdAt: Date.UTC(2026, 9, 8, 8) }) })
+    expect(noteOf(sheet)).toBe('Suppe und Salat inklusive')
+    expect(sheet.text()).toContain('Das ist noch die Woche ab 5.10.2026. Prüfe jeden Tag, bevor du speicherst.')
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: a rejection was a dead end: the cook had to type the whole week again to fix one dish.
+  test('a rejected own proposal shows the reason and reopens with its values, at once when the sheet is opened for it', async () => {
+    const rejected = ownProposal({ status: 'rejected', decidedAt: Date.UTC(2026, 9, 12, 9), decidedBy: { kind: 'member' }, reason: 'Bitte mit Preis.' })
+    const sheet = await lunchSheet('2026-10-12', { 'proposals.ownFor': rejected })
+    expect(noteOf(sheet)).toBe('Suppe inklusive')
+    expect(sheet.get('[data-test="own-proposal"]').text()).toContain('Ein Mitglied hat abgelehnt: „Bitte mit Preis.“')
+    await sheet.findAll('button').find((b) => b.text() === 'Deinen Vorschlag wieder öffnen')!.trigger('click')
+    expect(noteOf(sheet)).toBe('Suppe und Salat inklusive')
+    sheet.unmount()
+
+    const opened = await lunchSheet('2026-10-12', { 'proposals.ownFor': rejected }, 'p1')
+    expect(noteOf(opened)).toBe('Suppe und Salat inklusive')
+    opened.unmount()
+  })
+
+  // Wrong behaviour caught: "Mittagsmenü dieser Woche" offered "Folgende Arbeitswoche" and a free date, so saving
+  // before Monday moved the website's lunch menu to next week and the rest of this week was gone.
+  test('the weekly task shows its week as text, with no date to change', async () => {
+    const sheet = await lunchSheet('2026-10-05')
+    expect(sheet.find('input[type="date"]').exists()).toBe(false)
+    expect(sheet.get('[data-test="fixed-week"]').text()).toBe('Woche ab12.10.2026Diese Aufgabe gilt immer für die laufende Woche.')
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: the sheet opened with this week's date and last week's dishes and allergens, and nothing
+  // said they were old, so a rushed cook published last week's allergens as this week's.
+  test.each([
+    ['last week', '2026-10-05', true],
+    ['this week', '2026-10-12', false],
+  ])('a stored week from %s (%s): the sheet says the days are still that week\'s: %s', async (_name, storedWeek, notice) => {
+    const sheet = await lunchSheet(storedWeek)
+    expect(sheet.text().includes('Das ist noch die Woche ab 5.10.2026. Prüfe jeden Tag, bevor du speicherst.')).toBe(notice)
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: "Von dieser Woche übernehmen" and "Deinen Vorschlag wieder öffnen" replaced what the person
+  // had typed without asking, and closing the sheet then no longer asked either.
+  test('the copy and reopen buttons are offered only while nothing is typed', async () => {
+    const offered = (sheet: Awaited<ReturnType<typeof sheetOf>>, label: string) => sheet.findAll('button').some((b) => b.text() === label)
+    const plan = await sheetOf({ brickKey: 'lunchPlans', task: 'planNext', prefill: { weekOf: '2026-10-19' }, copyFrom: 'l1' })
+    expect(offered(plan, 'Von dieser Woche übernehmen')).toBe(true)
+    await plan.get('#f-note').setValue('Mit Suppe')
+    expect(offered(plan, 'Von dieser Woche übernehmen')).toBe(false)
+    plan.unmount()
+
+    const rejected = ownProposal({ status: 'rejected', decidedAt: Date.UTC(2026, 9, 12, 9), decidedBy: { kind: 'member' }, reason: 'Bitte mit Preis.' })
+    const sheet = await lunchSheet('2026-10-12', { 'proposals.ownFor': rejected })
+    expect(offered(sheet, 'Deinen Vorschlag wieder öffnen')).toBe(true)
+    await sheet.get('#f-note').setValue('Suppe')
+    expect(offered(sheet, 'Deinen Vorschlag wieder öffnen')).toBe(false)
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: "Nächste Woche planen" could not take over this week, so the owner retyped every dish; and a
+  // new dish in a new week went out with the old or "Keine" allergens because nothing asked about them.
+  test('"Von dieser Woche übernehmen" fills next week\'s days; a changed dish with unchanged allergens blocks Speichern', async () => {
+    calls.length = 0
+    const sheet = await sheetOf({ brickKey: 'lunchPlans', task: 'planNext', prefill: { weekOf: '2026-10-19' }, copyFrom: 'l1' })
+    await sheet.findAll('button').find((b) => b.text() === 'Von dieser Woche übernehmen')!.trigger('click')
+    await flushPromises()
+    const dish = (row: string) => sheet.get(`[data-row="${row}"] input[type="text"]`)
+    expect((dish('ldmo000000').element as HTMLInputElement).value).toBe('Gulasch')
+    expect((sheet.get('input[type="date"]').element as HTMLInputElement).value).toBe('2026-10-19')
+    await dish('ldmo000000').setValue('Schnitzel')
+    await sheet.get('form').trigger('submit')
+    await flushPromises()
+    expect(sheet.get('[role="alert"]').text()).toBe('Bitte bestätige bei „Montag“: Sind die Allergene noch richtig?')
+    expect(calls).toEqual([])
+    sheet.unmount()
   })
 })

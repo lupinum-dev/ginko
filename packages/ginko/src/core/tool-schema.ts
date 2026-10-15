@@ -5,6 +5,7 @@ import { effectiveMax, effectiveProfile, isTranslatable } from './fields.ts'
 import { describeProfile } from './markdown.ts'
 import { minorDigits } from './money.ts'
 import { labelOf } from './labels.ts'
+import { createAsks } from './stale.ts'
 import type { Brick, Currency, Field, Fields, Json, Label, Locale, Task } from './types.ts'
 
 /** The JSON Schema subset the tools use. */
@@ -44,7 +45,7 @@ const TIME = '^\\d{2}:\\d{2}$'
 export function taskInputSchema(brick: Brick, task: Task, ctx: ToolSchemaContext): JsonSchemaObject {
   const fields: Fields = {}
   if (task.kind === 'edit') for (const key of task.fields) { const field = brick.fields[key]; if (field) fields[key] = field }
-  if (task.kind === 'create') for (const [key, field] of Object.entries(brick.fields)) if (field.type !== 'slug') fields[key] = field
+  if (task.kind === 'create') for (const [key, field] of Object.entries(brick.fields)) if (createAsks(brick, key)) fields[key] = field
   const schema = objectOf(fields, ctx, ctx.prefill)
   const pick = task.kind === 'remove' || (task.kind === 'edit' && task.pick === true)
   if (pick) {

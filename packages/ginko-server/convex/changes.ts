@@ -22,8 +22,8 @@ type ReadEntry = (id: Id<'entries'>) => Promise<Doc<'entries'> | null>
 
 /**
  * The rows without before/after/prints (those are for undo and the release, not for the list: the
- * history page shows the message), with who did it as data (`Who`, lib/names.ts) and, for a change
- * through the agent door, the label of that person's key (SPEC 16). `inTrash`: a removal whose entry is
+ * history page shows the message), with who did it and who approved it as data (`Who`, lib/names.ts) and,
+ * for a change through the agent door, the label of that person's key (SPEC 16). `inTrash`: a removal whose entry is
  * still in the trash (not restored, not deleted for good), so the Studio links there only while it is. `own` marks a
  * save of an entry the reader created: staff undo and revert it with their create task (lib/access.ts `authorize`),
  * as entries.get says.
@@ -43,6 +43,8 @@ async function summaries(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]) {
     const inTrash = change.kind === 'remove' && !!change.entry && !!(await readEntry(change.entry))?.deletedAt
     out.push({
       ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null, inTrash,
+      // An applied proposal: the owner or admin who approved it ("Freigabe: …").
+      approver: change.approvedBy ? await names.who(change.approvedBy) : null,
       ...(own.has(change._id) ? { own: true as const } : {}),
     })
   }

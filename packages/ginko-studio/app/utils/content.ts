@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type CollectionBrick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { entryTitle, fileRefsIn, isTranslatable, isVisible, leavesOf, ordered, printOf, slugBases, stableJson, untranslatedMode, urlsFor, type Schema } from '@lupinum/ginko/internal'
+import { createAsks, entryTitle, fileRefsIn, isTranslatable, isVisible, leavesOf, ordered, printOf, slugBases, stableJson, untranslatedMode, urlsFor, weeklyTask, weekStartField, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import type { api } from '#convex/api'
 import type { FunctionReturnType } from 'convex/server'
@@ -72,14 +72,17 @@ export function changedRoots(before: Data, after: Data): string[] {
   return [...keys].filter((k) => stableJson(before[k] ?? null) !== stableJson(after[k] ?? null))
 }
 
-/** The fields a task shows: `edit` its fields; `create` every live field except the slug. */
+/**
+ * The fields a task shows: `edit` its fields; `create` every live field it asks for (`createAsks`: not the slug, and
+ * not the plan of a planned change, which is made later with the task that changes the value).
+ */
 export function taskFields(brick: Brick, task: Task): Fields {
   const keys = task.kind === 'edit' ? task.fields : ordered(brick.fields).map(([k]) => k)
   const out: Fields = {}
   for (const key of keys) {
     const field = brick.fields[key]
     if (!field || field.retired) continue
-    if (task.kind === 'create' && field.type === 'slug') continue
+    if (task.kind === 'create' && !createAsks(brick, key)) continue
     out[key] = field
   }
   return out
@@ -173,6 +176,21 @@ export function changedTextLanguages(fields: Fields, before: Data, after: Data):
     }
   }
   return out
+}
+
+/** A week shortcut of a date field, as weeks after this work week: 0 this week, 1 next week, 2 the week after. */
+export type WeekOffset = 0 | 1 | 2
+
+/**
+ * The week shortcuts of the date field `key`, when it holds a week start (core `weekStartField`); undefined for any
+ * other date (it gets Heute/Morgen). A planned week is ahead (next week, the week after), the weekly single's week is
+ * this one, any other week start this week or next.
+ */
+export function weekShortcuts(brick: Brick, key: string): readonly WeekOffset[] | undefined {
+  if (weekStartField(brick) !== key) return undefined
+  if (brick.kind === 'collection' && brick.plans) return [1, 2]
+  if (brick.kind === 'single' && weeklyTask(brick)?.field === key) return [0]
+  return [0, 1]
 }
 
 /** "brick.task" (SPEC 2.7 TaskRef). */

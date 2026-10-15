@@ -57,6 +57,15 @@ export function workWeekOf(date: string, week: WeekInfo): string {
   return placeInWeek(isoDay(date), week) > lastWorkday ? addDays(own, 7) : own
 }
 
+/**
+ * The first day on which `weekStart` is the work week (`workWeekOf`): the day a week planned ahead starts to show.
+ * Monday-first with Saturday and Sunday off: the Saturday before.
+ */
+export function firstDayShown(weekStart: string, week: WeekInfo): string {
+  for (let day = addDays(weekStart, -6); day < weekStart; day = addDays(day, 1)) if (workWeekOf(day, week) === weekStart) return day
+  return weekStart
+}
+
 export function resolveToken(token: string, timeZone: string, week: WeekInfo, now: Date = new Date()): string | undefined {
   const today = todayIn(timeZone, now)
   if (token === '@today') return today

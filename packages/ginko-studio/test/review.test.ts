@@ -38,10 +38,22 @@ describe('ChangeDiff', () => {
     expect(text).not.toContain('Hausgemacht')
   })
 
-  // Wrong behaviour caught: the owner approves a lunch menu change without seeing which day or dish changed.
-  test('a list shows each changed row by name with old → new cells, added rows with + and removed rows with −', () => {
-    const days = { days: { type: 'list', label: 'Tage', itemLabel: 'Tag', max: 5, of: { day: { type: 'choice', label: 'Tag', options: [{ value: 'tu', label: 'Dienstag' }, { value: 'we', label: 'Mittwoch' }, { value: 'th', label: 'Donnerstag' }] }, dish: { type: 'text', label: 'Gericht' } } } } as never
-    const tue = { _id: 'a', day: 'tu', dish: 'Tafelspitz' }
+  // Wrong behaviour caught: the owner approves a lunch menu change without seeing which day or dish changed, or
+  // approves a new dish without seeing the allergens that stay on its day.
+  test('a list shows each changed row by name with old → new cells and its other cells, added rows with + and removed rows with −', () => {
+    const days = {
+      days: {
+        type: 'list', label: 'Tage', itemLabel: 'Tag', max: 5,
+        of: {
+          day: { pos: 0, type: 'choice', label: 'Tag', options: [{ value: 'tu', label: 'Dienstag' }, { value: 'we', label: 'Mittwoch' }, { value: 'th', label: 'Donnerstag' }, { value: 'fr', label: 'Freitag' }] },
+          dish: { pos: 1, type: 'text', label: 'Gericht' },
+          allergens: { pos: 2, type: 'choices', label: 'Allergene', options: [{ value: 'A', label: 'A Gluten' }, { value: 'C', label: 'C Eier' }] },
+          fish: { pos: 3, type: 'text', label: 'Fisch der Woche', optional: true, showWhen: { field: 'day', is: 'fr' } },
+          side: { pos: 4, type: 'text', label: 'Beilage', optional: true },
+        },
+      },
+    } as never
+    const tue = { _id: 'a', day: 'tu', dish: 'Tafelspitz', allergens: ['A', 'C'], fish: 'Forelle' }
     const wed = { _id: 'b', day: 'we', dish: 'Schnitzel' }
     const thu = { _id: 'c', day: 'th', dish: 'Fisch' }
     const rows: DiffField[] = [{
@@ -54,7 +66,7 @@ describe('ChangeDiff', () => {
     }]
     const lines = mount(ChangeDiff, { props: { diff: rows, fields: days, locale: 'de' } }).findAll('li p').map((p) => p.text().replace(/\s+/g, ' '))
     expect(lines).toEqual([
-      'Dienstag', 'Gericht: Tafelspitz → Kürbisgulasch',
+      'Dienstag', 'Gericht: Tafelspitz → Kürbisgulasch', 'Allergene: A Gluten, C Eier',
       '+ Mittwoch', 'Gericht: Schnitzel',
       '− Donnerstag', 'Gericht: Fisch',
     ])
@@ -85,7 +97,7 @@ describe('ChangeDiff', () => {
 })
 
 const row = (over: Partial<ProposalRow> = {}): ProposalRow => ({
-  proposal: 'p1' as Id<'proposals'>, op: 'save', brick: 'menu', entry: null, sentence: 'Preis geändert', msg: null, status: 'open', author: { email: 'a@b.at' }, mine: false, via: 'ui', agent: null,
+  proposal: 'p1' as Id<'proposals'>, op: 'save', brick: 'menu', entry: null, task: null, sentence: 'Preis geändert', msg: null, status: 'open', author: { email: 'a@b.at' }, mine: false, via: 'ui', agent: null,
   createdAt: Date.UTC(2026, 9, 8, 10), at: null, release: null, decidedBy: null, decidedAt: null, reason: null, reasonMsg: null, change: null,
   canDecide: true, conflict: null, conflictMsg: null, ...over,
 })
@@ -143,13 +155,46 @@ describe('OwnProposals', () => {
         },
       }
     })
-    const wrapper = mount(OwnProposals, { props: { site: 's', schema: { timeZone: 'Europe/Vienna', locales: ['de'], bricks: {} } as never, filter: 'all' } })
+    const wrapper = mount(OwnProposals, { props: { site: 's', schema: { timeZone: 'Europe/Vienna', locales: ['de'], bricks: {} } as never, filter: 'all', manager: false, grants: new Set<string>() } })
     const [a, b] = wrapper.findAll('button')
     await a!.trigger('click')
     await b!.trigger('click')
     finish[0]!()
     await flushPromises()
     expect(wrapper.findAll('button').map((button) => button.attributes('disabled') !== undefined)).toEqual([false, true])
+    vi.unstubAllGlobals()
+  })
+
+  // Wrong behaviour caught: an owner's rejected assistant proposal offered "Korrigieren", which opened the task on the
+  // stored values: the Studio reopens only its own proposals.
+  test('"Korrigieren" is offered for a rejected proposal made in the Studio, not for an assistant\'s', () => {
+    const rejected = (proposal: string, via: 'ui' | 'agent') => row({ proposal: proposal as Id<'proposals'>, status: 'rejected', mine: true, via, entry: 'm1' as Id<'entries'>, task: 'menu.price', reason: 'Nein.', decidedAt: Date.UTC(2026, 9, 8, 11) })
+    for (const [name, fn] of Object.entries({ computed, ref, useI18n })) vi.stubGlobal(name, fn)
+    vi.stubGlobal('useConvexQuery', () => ({ data: computed(() => ({ open: [], rejected: [rejected('ui1', 'ui'), rejected('ai1', 'agent')], notLive: [] })) }))
+    const wrapper = mount(OwnProposals, {
+      props: { site: 's', schema: { timeZone: 'Europe/Vienna', locales: ['de'], bricks: {} } as never, filter: 'all', manager: true, grants: new Set<string>() },
+      global: { stubs: { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    })
+    expect(wrapper.findAll('a').map((a) => a.attributes('href'))).toEqual(['/s/s?task=menu.price&reopen=ui1'])
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('ChangeRows', () => {
+  // Wrong behaviour caught: Verlauf showed an approved change with only the cook's name, and offered the cook a
+  // "Rückgängig" that the server refuses for a task that needs approval.
+  test('an approved change names the approver; staff whose task needs approval go back with a new version, not Rückgängig', () => {
+    for (const [name, fn] of Object.entries({ computed, ref, onMounted: () => {}, onUnmounted: () => {}, useI18n })) vi.stubGlobal(name, fn)
+    vi.stubGlobal('useOps', () => ({}))
+    const change = {
+      _id: 'c1', kind: 'save', brick: 'lunch', entry: 'l1', fields: ['note'], at: Date.now(), sentence: 'Hinweis von „Mittagsmenü“ geändert', msg: null,
+      who: { email: 'koch@example.com' }, agent: null, approver: { email: 'wirtin@example.com' }, undoBlocked: null,
+    }
+    vi.stubGlobal('useConvexPaginatedQuery', () => ({ data: computed(() => [change]), error: ref(null), status: ref('success'), canLoadMore: ref(false), isLoadingMore: ref(false), loadMore: () => {} }))
+    const schema = { timeZone: 'Europe/Vienna', locales: ['de'], bricks: { lunch: { tasks: [{ id: 'lunchWeek', label: 'Mittagsmenü dieser Woche', kind: 'edit', fields: ['weekOf', 'days', 'note'], needsApproval: true }] } } }
+    const wrapper = mount(ChangeRows, { props: { site: 's', schema: schema as never, manager: false, grants: new Set(['lunch.lunchWeek']), filter: 'all' }, global: { stubs: { ChangeDetail: true } } })
+    expect(wrapper.get('li p.text-\\[13px\\]').text()).toBe('koch@example.com · Freigabe: wirtin@example.com · gerade eben')
+    expect(wrapper.findAll('button').map((b) => b.text())).toEqual(['Änderungen anzeigen', 'Zurück zu dieser Version'])
     vi.unstubAllGlobals()
   })
 })

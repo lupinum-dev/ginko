@@ -56,7 +56,7 @@ const filters = computed<{ id: Filter; label: string }[]>(() => [
       >
         <ToggleGroupItem v-for="f in filters" :key="f.id" :value="f.id" class="px-3">{{ f.label }}</ToggleGroupItem>
       </ToggleGroup>
-      <OwnProposals :site="s.slug.value" :schema="s.schema.value" :filter="filter" :entry="entry" />
+      <OwnProposals :site="s.slug.value" :schema="s.schema.value" :filter="filter" :entry="entry" :manager="s.isManager.value" :grants="s.grants.value" />
       <ChangeRows
         :site="s.slug.value"
         :schema="s.schema.value"

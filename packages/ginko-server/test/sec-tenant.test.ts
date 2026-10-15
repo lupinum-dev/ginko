@@ -113,6 +113,7 @@ const calls: Call[] = [
   { fn: 'proposals.withdraw', kind: 'mutation', args: (_s, f) => ({ proposal: f.proposal }) },
   { fn: 'proposals.list', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage }) },
   { fn: 'proposals.mine', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'proposals.ownFor', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
   { fn: 'proposals.count', kind: 'query', args: (site) => ({ site }) },
   { fn: 'proposals.get', kind: 'query', args: (site, f) => ({ site, proposal: f.proposal }) },
   { fn: 'proposals.releases', kind: 'query', args: (site) => ({ site }) },

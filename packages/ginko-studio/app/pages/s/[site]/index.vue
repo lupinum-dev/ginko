@@ -2,11 +2,13 @@
      one-line state from the data and the task buttons. Generic: nothing here knows the restaurant. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Json } from '@lupinum/ginko'
-import { visibleUntil, plannedWeeks, plansThisWeek, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
+import { visibleUntil, plannedWeeks, plansThisWeek, resolveToken, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../composables/useSiteData'
 import { textIn } from '@lupinum/ginko-editor'
 import { displayValue, formatDay, taskRef, titleOf, type Task } from '../../../utils/content'
 import { shownLabel } from '../../../utils/labels'
+import { whenFull } from '../../../utils/when'
+import { useTextOf } from '../../../composables/useTextOf'
 import { Button } from '@studio/components/ui/button'
 import { api } from '#convex/api'
 import EntryRemoveDialog, { type EntryUses, type TrashOverflow } from '../../../components/EntryRemoveDialog.vue'
@@ -45,7 +47,11 @@ const shownBricks = computed(() => {
     if (brick.kind === 'single') {
       keys.add(key)
       for (const [k, b] of s.bricks.value) if (b.kind === 'collection' && b.plans?.brick === key) keys.add(k)
-    } else if (isTimed(brick)) keys.add(key)
+    } else if (isTimed(brick)) {
+      keys.add(key)
+      // A week planned ahead can start from the one the single shows this week ("Von dieser Woche übernehmen").
+      if (brick.plans) keys.add(brick.plans.brick)
+    }
   }
   return [...keys]
 })
@@ -184,8 +190,21 @@ function weekState(key: string, brick: Brick) {
   return { current: state.current, text: state.stored ? `${shownLabel(brick.fields[state.field]!.label, s.main.value)} ${formatDay(state.stored, format)}` : t('site.quick.notFilled') }
 }
 
-// The open sheet: a task, and for edit tasks the entry.
-const open = ref<{ key: string; task: Task; entryId?: string } | null>(null)
+// The person's own proposals (proposals.mine): each section says what of theirs waits for approval, and what was not
+// approved, with "Korrigieren" to fix it in its task. The server keeps a rejection only while it is the thing to fix.
+const ownRead = useConvexQuery(api.proposals.mine, () => ({ site: s.slug.value }), { server: false })
+type OwnRow = NonNullable<typeof ownRead.data.value>['open'][number]
+const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone ?? 'UTC', main: s.main.value }))
+const ownLine = (p: OwnRow) => textOf(p.msg, p.sentence)
+const ownWhen = (at: number) => whenFull(at, s.schema.value?.timeZone ?? 'UTC', format)
+/** Own open proposals and rejections still to fix, made in the Studio through a task of `key` (an agent's are in Verlauf). */
+function ownOf(key: string) {
+  const of = (p: OwnRow) => p.via === 'ui' && !!p.task?.startsWith(`${key}.`)
+  return { waiting: (ownRead.data.value?.open ?? []).filter(of), rejected: (ownRead.data.value?.rejected ?? []).filter(of) }
+}
+
+// The open sheet: a task, and for edit tasks the entry; `reopen` is a rejected own proposal it starts from.
+const open = ref<{ key: string; task: Task; entryId?: string; reopen?: string } | null>(null)
 /** The open task's entry, live: the sheet sees changes others save meanwhile, and keeps it when someone removes it (N1). */
 const openRead = useConvexQuery(api.entries.get, () => (open.value?.entryId ? { site: s.slug.value, entry: open.value.entryId } : 'skip'))
 const { entry: openEntry, removed: openRemoved } = useKeptEntry(
@@ -198,6 +217,18 @@ const existing = computed(() => {
   const brick = open.value ? s.schema.value?.bricks[open.value.key] : undefined
   if (!brick || !twinRead.data.value) return undefined
   return twinRead.data.value.filter((e) => e.until === undefined || e.until >= s.today.value).map((e) => e.title ?? shownLabel(brick.label, s.main.value))
+})
+/** A new planned week starts from the entry the website shows this week: the week planned for it, else the single when it is this week's. */
+const copyFrom = computed(() => {
+  const o = open.value
+  const schema = s.schema.value
+  const brick = o && schema ? schema.bricks[o.key] : undefined
+  if (!o || o.task.kind !== 'create' || brick?.kind !== 'collection' || !brick.plans) return undefined
+  const plan = plannedNow(brick.plans.brick)
+  if (plan) return plan.entry._id
+  const single = singleOf(brick.plans.brick)
+  const weekly = weeklyTask(schema!.bricks[brick.plans.brick]!)
+  return single && weekly && single.data[weekly.field] === workWeekOf(s.today.value, schema!.week) ? single._id : undefined
 })
 const picking = ref<{ key: string; task: Task } | null>(null)
 // The pick list groups by a choice field and shows prices, so it reads the entries of its one brick while open: slim
@@ -213,9 +244,29 @@ watch([open, picking], ([sheet, pick]) => {
   nextTick(() => { if (button.isConnected) button.focus() })
 })
 
+/**
+ * "Nächste Woche planen" when that week is planned already: the person's edit task on that plan. A second plan for
+ * the same week would never show (the server refuses it).
+ */
+function planOfWeek(key: string, task: Task): { task: Task; entry: Entry } | undefined {
+  const schema = s.schema.value!
+  const brick = schema.bricks[key]!
+  if (task.kind !== 'create' || brick.kind !== 'collection' || !brick.plans) return undefined
+  const token = task.prefill?.[brick.plans.field]
+  const week = typeof token === 'string' ? resolveToken(token, schema.timeZone, schema.week) : undefined
+  const edit = sections.value.find((x) => x.key === key)?.tasks.find((t) => t.kind === 'edit')
+  const entry = week && entriesOf(key).find((e) => e.state !== 'draft' && e.data[brick.plans!.field] === week)
+  return edit && entry ? { task: edit, entry } : undefined
+}
+
 function start(key: string, task: Task) {
   if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) launcher = document.activeElement
   const brick = s.schema.value!.bricks[key]!
+  const planned = planOfWeek(key, task)
+  if (planned) {
+    open.value = { key, task: planned.task, entryId: planned.entry._id }
+    return
+  }
   // "This week" while a planned week covers it: the same task edits that planned week (the one the website shows),
   // not the single's own fields, which would save without showing anywhere. The server allows it with this task.
   const plan = task.kind === 'edit' && brick.kind === 'single' ? plannedNow(key, task) : undefined
@@ -229,6 +280,29 @@ function start(key: string, task: Task) {
   }
   open.value = { key, task, entryId: task.kind === 'edit' ? singleOf(key)?._id : undefined }
 }
+/** The task a rejected proposal was made with, when the person still holds it. */
+const fixTask = (key: string, p: OwnRow) => (p.entry ? sections.value.find((x) => x.key === key)?.tasks.find((t) => taskRef(key, t) === p.task) : undefined)
+/** "Korrigieren": the rejected proposal's task on its entry, starting from the proposal's values. */
+function fix(key: string, p: OwnRow) {
+  const task = fixTask(key, p)
+  if (!task || !p.entry) return
+  if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) launcher = document.activeElement
+  open.value = { key, task, entryId: p.entry, reopen: p.proposal }
+}
+// "Korrigieren" in Verlauf and the rejection mail link here with ?task=<brick.task>&reopen=<proposal>: opened once,
+// then the address drops it. A rejection that is no longer to fix (fixed, or changed since) opens nothing.
+const route = useRoute()
+let linked: string | undefined
+watch([() => route.query.reopen, () => ownRead.data.value, () => s.schema.value], () => {
+  const { task, reopen } = route.query
+  if (typeof reopen !== 'string') linked = undefined
+  if (typeof task !== 'string' || typeof reopen !== 'string' || reopen === linked || !ownRead.data.value || !s.schema.value) return
+  linked = reopen
+  const p = ownRead.data.value.rejected.find((r) => r.proposal === reopen && r.task === task && r.via === 'ui')
+  if (p) fix(task.split('.')[0]!, p)
+  navigateTo({ path: route.path, query: {} }, { replace: true })
+}, { immediate: true })
+
 function picked(entry: Entry) {
   const p = picking.value!
   picking.value = null
@@ -314,6 +388,11 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
           {{ weekState(sec.key, sec.brick)!.text }}<template v-if="!weekState(sec.key, sec.brick)!.current">{{ t('site.quick.notThisWeek') }}</template>
         </p>
       </template>
+      <p v-for="p in ownOf(sec.key).waiting" :key="p.proposal" class="text-sm text-muted-foreground" data-test="own-waiting">{{ ownLine(p) }} · {{ t('site.quick.waiting', { when: ownWhen(p.createdAt) }) }}</p>
+      <div v-for="p in ownOf(sec.key).rejected" :key="p.proposal" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md bg-warning/10 px-3 py-2.5" data-test="own-rejected">
+        <p class="min-w-0 flex-1 [overflow-wrap:anywhere]"><span class="block">{{ ownLine(p) }}</span><span class="block font-semibold text-warning">{{ t('site.quick.rejected', { reason: p.reason ?? '' }) }}</span></p>
+        <Button v-if="fixTask(sec.key, p)" type="button" variant="outline" size="sm" @click="fix(sec.key, p)">{{ t('site.quick.fix') }}</Button>
+      </div>
 
       <ul v-if="listings[sec.key]?.rows.length" tabindex="-1" class="m-0 list-none overflow-hidden rounded-xl border p-0">
         <li v-for="{ e, target } in listings[sec.key]!.rows" :key="e._id" class="group/row flex items-center gap-2 border-b px-4 py-3 last:border-b-0" :data-dim="timing(sec.brick as CollectionBrick, e).dim || undefined">
@@ -364,6 +443,8 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       :removed="openRemoved"
       :may-restore="s.isManager.value || !!sections.find((x) => x.key === open!.key)?.remove"
       :existing="existing"
+      :copy-from="copyFrom"
+      :reopen="open.reopen"
       @close="open = null"
     />
     <EntryRemoveDialog
@@ -378,6 +459,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       :task="picking.task"
       :entries="pickRead.data.value"
       :main="s.main.value"
+      :today="s.today.value"
       @pick="picked"
       @close="picking = null"
     />

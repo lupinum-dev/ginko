@@ -17,6 +17,7 @@ import { historyText, msg, type HistoryMsg, type Param } from './lib/history'
 import { localeOfUser, t, type MessageKey } from './lib/i18n'
 import { queueMail, mailAvailable, siteOrigin } from './mail'
 import { labeler, namer, type Labeler } from './lib/names'
+import { taskOf } from './lib/policy'
 
 const PAGE_SIZE = 50
 /** SPEC 17: a release groups at most this many proposals. */
@@ -76,7 +77,7 @@ const staleBecause = (key: MessageKey, params?: Record<string, Param>): Stale =>
   return { reason: historyText(message, 'de', undefined), msg: message }
 }
 
-type Applied = { ok: true; change?: Id<'changes'> } | ({ ok: false } & Stale)
+type Applied = { ok: true; change?: Id<'changes'>; liveFrom?: string } | ({ ok: false } & Stale)
 
 /** A refusal of the operation (`fail`: code, catalog key, params) as the reason: its own text, then the ask to propose again. */
 function reasonOf(data: { code?: string; key?: string; params?: Record<string, string | number> }): Stale {
@@ -107,11 +108,11 @@ async function applyNow(ctx: MutationCtx, p: Doc<'proposals'>, approver: string)
       case 'publish': result = await publishAs(ctx, actor, args); break
       case 'unpublish': result = await unpublishAs(ctx, actor, args); break
     }
-    const data = result as { change?: Id<'changes'>; entry?: Id<'entries'> }
+    const data = result as { change?: Id<'changes'>; entry?: Id<'entries'>; liveFrom?: string }
     // Only a save can end without a change (the values were already there); every other operation writes one.
     const entry = data.entry ?? p.entry
     const change = data.change ?? (p.op !== 'save' && entry ? (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry)).order('desc').first())?._id : undefined)
-    return { ok: true, ...(change ? { change } : {}) }
+    return { ok: true, ...(change ? { change } : {}), ...(data.liveFrom ? { liveFrom: data.liveFrom } : {}) }
   } catch (error) {
     if (error instanceof ConvexError && typeof error.data === 'object' && error.data !== null && 'code' in error.data) return { ok: false, ...reasonOf(error.data as { code?: string; key?: string; params?: Record<string, string | number> }) }
     throw error
@@ -195,7 +196,8 @@ export const approve = mutation({
       return { proposal: p._id, status: 'stale', reason: applied.reason, reasonMsg: applied.msg }
     }
     await markApplied(ctx, p, by, applied.change)
-    return { proposal: p._id, status: 'applied', change: applied.change ?? null }
+    // A week planned ahead or a planned price: the approver is told from when it shows.
+    return { proposal: p._id, status: 'applied', change: applied.change ?? null, ...(applied.liveFrom ? { liveFrom: applied.liveFrom } : {}) }
   },
 })
 
@@ -232,6 +234,8 @@ export const reject = mutation({
     if (p.status !== 'open' && !(p.status === 'scheduled' && !p.release)) fail('CHANGED_SINCE', 'errors.proposalNoLongerOpen', undefined, { status: p.status })
     if (p.job) await ctx.scheduler.cancel(p.job)
     await ctx.db.patch(p._id, { status: 'rejected', reason, decidedBy: actor.user.id, decidedAt: Date.now(), job: undefined, release: undefined })
+    // A rejection needs the author to act, often the same day; an approval needs nothing (decisions: email on rejection only).
+    if (p.author !== actor.user.id) await mailRejected(ctx, p, reason)
     return { proposal: p._id, status: 'rejected' }
   },
 })
@@ -252,7 +256,7 @@ export const withdraw = mutation({
 
 async function summary(p: Doc<'proposals'>, actor: Actor, names: Labeler) {
   return {
-    proposal: p._id, op: p.op, brick: p.brick, entry: p.entry ?? null, sentence: p.sentence, msg: p.msg ?? null, status: p.status,
+    proposal: p._id, op: p.op, brick: p.brick, entry: p.entry ?? null, task: taskOf(p.args) ?? null, sentence: p.sentence, msg: p.msg ?? null, status: p.status,
     author: await names.who(p.author), mine: p.author === actor.user.id, via: p.via, agent: await names.key(p.agentKey),
     createdAt: p.createdAt, at: p.at ?? null, release: p.release ?? null,
     decidedBy: p.decidedBy ? await names.who(p.decidedBy) : null, decidedAt: p.decidedAt ?? null, reason: p.reason ?? null, reasonMsg: p.reasonMsg ?? null,
@@ -347,10 +351,55 @@ export const mine = query({
       : await ownDocs(ctx, actor, 'stale', since)
     const names = await labeler(ctx, actor)
     const rows = (docs: Doc<'proposals'>[]) => Promise.all(docs.map((p) => summary(p, actor, names)))
+    // A rejected save stays only while it is still the thing to fix (`followUp`): not after a newer proposal on the
+    // entry, nor after a later change of its fields.
+    const recent = await ownDocs(ctx, actor)
+    const rejected = []
+    for (const p of await ownDocs(ctx, actor, 'rejected', since)) {
+      if (p.op !== 'save' || !p.entry || p.via !== 'ui' || (await followUp(ctx, recent, p.entry))?._id === p._id) rejected.push(p)
+    }
     return {
       open: await rows(await ownDocs(ctx, actor, 'open')),
-      rejected: await rows(await ownDocs(ctx, actor, 'rejected', since)),
+      rejected: await rows(rejected),
       notLive: await rows(stale.filter((p) => p.at !== undefined)),
+    }
+  },
+})
+
+/**
+ * The author's proposal to follow up on for one entry in the Studio, from their newest own proposals (`ownDocs`): their
+ * newest save of the entry made in the Studio (an agent's proposals are reviewed in the inbox) when it is open, or when
+ * it was rejected in the last two weeks and still fits (`staleReason`). A newer own proposal on the entry, or a later
+ * change of those fields, makes an older rejection moot.
+ */
+async function followUp(ctx: QueryCtx, recent: Doc<'proposals'>[], entry: Id<'entries'>): Promise<Doc<'proposals'> | null> {
+  const p = recent.find((r) => r.op === 'save' && r.via === 'ui' && r.entry === entry)
+  if (!p) return null
+  if (p.status === 'open') return p
+  if (p.status !== 'rejected' || (p.decidedAt ?? 0) <= Date.now() - RECENT_MS) return null
+  return (await staleReason(ctx, p)) ? null : p
+}
+
+/**
+ * The signed-in person's own proposal for an entry that a task sheet starts from (`followUp`): the fields it sent,
+ * and for a rejection who rejected it and why. `fits` is false for an open one whose fields someone changed since
+ * (`staleReason`): the sheet then starts from the stored values, so sending again does not bring the old ones back
+ * with a fresh base. `null` when there is nothing to follow up.
+ */
+export const ownFor = query({
+  args: { site: v.string(), entry: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await siteActor(ctx, args.site)
+    const entry = ctx.db.normalizeId('entries', args.entry)
+    const p = entry ? await followUp(ctx, await ownDocs(ctx, actor), entry) : null
+    if (!p) return null
+    const names = await labeler(ctx, actor)
+    const sent = p.args as { fields?: Record<string, Json> }
+    return {
+      proposal: p._id, status: p.status, task: taskOf(p.args) ?? null, fields: sent.fields ?? {}, createdAt: p.createdAt,
+      // A rejection `followUp` returns fits already.
+      fits: p.status !== 'open' || (await staleReason(ctx, p)) === null,
+      decidedAt: p.decidedAt ?? null, decidedBy: p.decidedBy ? await names.who(p.decidedBy) : null, reason: p.reason ?? null,
     }
   },
 })
@@ -622,6 +671,26 @@ async function mailNotLive(ctx: MutationCtx, siteId: Id<'sites'>, approver: stri
     to: member.email,
     subject: t(locale, 'mail.notLive.subject', { site: site.name }),
     text: t(locale, 'mail.notLive.text', { site: site.name, what: typeof what === 'string' ? what : historyText(what, locale, site.schema as Schema), path: `${siteOrigin()}/s/${site.slug}/history` }),
+  })
+}
+
+/**
+ * Tells the author at once that their proposal was not approved, with the approver's reason and a link that reopens
+ * it in its task (Schnell ändern), else Schnell ändern itself. An assistant's proposal is not reopened in the Studio
+ * (`followUp`): its link is Verlauf, which lists it with the reason. In the author's language.
+ */
+async function mailRejected(ctx: MutationCtx, p: Doc<'proposals'>, reason: string) {
+  const site = await ctx.db.get(p.site)
+  if (!site || !mailAvailable()) return
+  const member = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).filter((q) => q.eq(q.field('user'), p.author)).first()
+  if (!member?.email) return
+  const locale = await localeOfUser(ctx, member.user)
+  const task = taskOf(p.args)
+  const fix = p.via === 'agent' ? '/history' : p.op === 'save' && p.entry && task ? `?task=${encodeURIComponent(task)}&reopen=${p._id}` : ''
+  await queueMail(ctx, {
+    to: member.email,
+    subject: t(locale, 'mail.rejected.subject', { site: site.name }),
+    text: t(locale, 'mail.rejected.text', { site: site.name, what: p.msg ? historyText(p.msg as HistoryMsg, locale, site.schema as Schema) : p.sentence, reason, path: `${siteOrigin()}/s/${site.slug}${fix}` }),
   })
 }
 

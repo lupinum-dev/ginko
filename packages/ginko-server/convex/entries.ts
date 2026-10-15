@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, ordered, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, urlsFor, validate, visibleUntil, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, liveFrom, ordered, resolveToken, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, urlsFor, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -11,7 +11,7 @@ import { actorFor, authorize, authorizeWriter, byOf, checkRev, createdBy, entryO
 import { fieldLabelAt, fileIdsOf, mergeField, nextPrints, refIdsIn, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { labeler, type Who } from './lib/names'
 import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
-import { isLocale, t } from './lib/i18n'
+import { DEFAULT_LOCALE, isLocale, t } from './lib/i18n'
 import { countersOf, DELETED_KEPT, overflowingTrash, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
@@ -114,6 +114,34 @@ function saveMsg(schema: Schema, brick: Schema['bricks'][string], entry: Doc<'en
 }
 
 /**
+ * The weekly task (`weeklyTask`, "this week's lunch") always covers the current week: a week start it writes must be
+ * today's work week in the site's time zone. Checked on every save, so a proposal made last week and approved after
+ * the week changed goes stale instead of moving the website's week.
+ */
+function refuseOtherWeek(schema: Schema, task: string | undefined, taskBrick: string, fields: Record<string, unknown>) {
+  const brick = Object.hasOwn(schema.bricks, taskBrick) ? schema.bricks[taskBrick] : undefined
+  const weekly = brick ? weeklyTask(brick) : undefined
+  if (!weekly || task !== `${taskBrick}.${weekly.task.id}` || !Object.hasOwn(fields, weekly.field)) return
+  if (fields[weekly.field] !== resolveToken('@workWeek', schema.timeZone, schema.week)) fail('INVALID', 'errors.weeklyTaskThisWeek', undefined, { field: weekly.field })
+}
+
+/**
+ * A collection that plans a single ahead (`plans`) holds one entry per week: a second plan for the same week would
+ * never show (the site takes the first). Checked on every write that can put a plan on a week: create, save, restore
+ * and undo. `self` is the entry being written, `changed` its changed fields (a write that keeps the week is not
+ * checked); the trash does not count. A create or save is refused at the week field, so the Studio's form shows it
+ * there; a restore or undo has no form, so its message says it (`whole`).
+ */
+async function refuseSecondPlan(ctx: QueryCtx, actor: Actor, brickKey: string, brick: Brick, data: Data, o: { self?: Id<'entries'>; changed?: readonly string[]; whole?: boolean } = {}) {
+  const field = brick.kind === 'collection' ? brick.plans?.field : undefined
+  if (!field || data[field] === undefined || (o.changed && !o.changed.includes(field))) return
+  const rows = await rowsOf(ctx, actor.site._id, brickKey)
+  if (!rows.some((r) => r._id !== o.self && !r.deletedAt && same((r.data as Data)[field], data[field]))) return
+  const issue = { path: field, code: 'weekAlreadyPlanned', key: 'errors.weekAlreadyPlanned', message: t(DEFAULT_LOCALE, 'errors.weekAlreadyPlanned') }
+  fail('INVALID', o.whole ? 'errors.weekAlreadyPlanned' : 'errors.pleaseCheckMarkedFields', undefined, { errors: [issue] })
+}
+
+/**
  * The answer of a save or revert that had nothing to write: the entry as it is, and no history row. A named type, so
  * the answers that wrote one keep `change` as a required field instead of an optional one (which JSON cannot hold).
  */
@@ -139,6 +167,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   // A planned week is edited with the weekly task of the single it stands in for (`taskBrickOf`).
   const taskBrick = taskBrickOf(schema, args.task, entry)
   authorize(actor, schema, { task: args.task, brick: taskBrick, kind: 'edit', fields: roots, entry })
+  refuseOtherWeek(schema, args.task, taskBrick, args.fields)
 
   if (entry.deletedAt) fail('CHANGED_SINCE', 'errors.thisEntryDeletedSince', undefined, current(entry))
   // A base above the entry's revision was never read, so it cannot vouch for anything.
@@ -173,6 +202,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
 
   const { errors, warnings } = await validate(schema, entry.brick, data, { mode: 'patch', changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
   if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
+  await refuseSecondPlan(ctx, actor, entry.brick, brick, data, { self: entry._id, changed })
   await checkNewFiles(ctx, actor.site._id, brick.fields, before, data)
   // A draft is not online yet: its links are checked when it goes live.
   if (stateOf(entry) === 'live') await checkNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before, after: data }])
@@ -205,7 +235,9 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   }
   // What the other languages show now (the Studio's message after saving); a draft is not on the website.
   const translation = stateOf(entry) === 'draft' ? [] : translationNotes(schema, entry.brick, { _id: entry._id, data, prints }, before, changed, locale)
-  return { entry: entry._id, rev: written.rev, contentRev: written.contentRev, change: written.change, warnings: warnings as unknown as Json, translation }
+  // A week planned ahead or a planned price shows later than "in about a minute": the Studio says from when.
+  const from = stateOf(entry) === 'live' ? liveFrom(schema, entry.brick, data, changed, todayIn(schema.timeZone)) : undefined
+  return { entry: entry._id, rev: written.rev, contentRev: written.contentRev, change: written.change, warnings: warnings as unknown as Json, translation, ...(from ? { liveFrom: from } : {}) }
 }
 
 const undoArgs = { site: v.string(), opId: v.string(), task: v.optional(v.string()), change: v.string() }
@@ -250,6 +282,8 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     const restoredFiles = await untrashFilesOf(ctx, actor.site._id, brick.fields, entry.data as Data, data)
     const { errors } = await validate(schema, entry.brick, data, { mode: 'patch', changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('NOT_UNDOABLE', 'errors.oldVersionNoLongerFitsSchema', undefined, { errors: errors as unknown as Json })
+    // Moving a plan back to a week that was planned again since would hide one of the two.
+    await refuseSecondPlan(ctx, actor, entry.brick, brick, data, { self: entry._id, changed: roots, whole: true })
     await checkNewFiles(ctx, actor.site._id, brick.fields, entry.data as Data, data)
     if (stateOf(entry) === 'live') await checkNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before: entry.data as Data, after: data }])
 
@@ -343,6 +377,10 @@ export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const brick = brickOf(schema, entry)
     const now = entry.data as Data
     const fields = revertFields(brick, touched, data, now)
+    // Through the weekly task the version's values come back for this week: the task always covers it (`refuseOtherWeek`).
+    const taskBrick = taskBrickOf(schema, args.task, entry)
+    const weekly = Object.hasOwn(schema.bricks, taskBrick) ? weeklyTask(schema.bricks[taskBrick]!) : undefined
+    if (weekly && args.task === `${taskBrick}.${weekly.task.id}`) delete fields[weekly.field]
     if (!Object.keys(fields).length) {
       const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
       return unchanged
@@ -514,6 +552,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const prints = nextPrints({ fields: brick.fields, roots: Object.keys(brick.fields), before: {}, after: data, prints: {}, main: schema.locales[0]!, confirm: undefined })
     const { errors } = await validate(schema, args.brick, data, { mode: 'create', ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
+    await refuseSecondPlan(ctx, actor, args.brick, brick, data)
 
     const rows = await rowsOf(ctx, actor.site._id, args.brick)
     const removing = roomPlan(actor, brick, rows)
@@ -578,7 +617,9 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
 
     // What the other languages show of the new entry (the Studio's message after saving); a draft is not on the website.
     const translation = draft ? [] : translationNotes(schema, args.brick, { _id: entry, data, prints }, {}, Object.keys(brick.fields))
-    return { entry, rev: 1, contentRev: c.contentRev, state: draft ? 'draft' : 'live', ...(at === undefined ? {} : { publishAt: at }), translation }
+    // A new planned week shows from its first day; the Studio says from when.
+    const from = draft ? undefined : liveFrom(schema, args.brick, data, Object.keys(data), todayIn(schema.timeZone))
+    return { entry, rev: 1, contentRev: c.contentRev, state: draft ? 'draft' : 'live', ...(at === undefined ? {} : { publishAt: at }), translation, ...(from ? { liveFrom: from } : {}) }
   })
 }
 
@@ -693,6 +734,8 @@ export const restore = mutation({
       const rows = await rowsOf(ctx, actor.site._id, entry.brick)
       const live = rows.filter((r) => !r.deletedAt).length
       if (live >= brick.max) fail('INVALID', 'errors.collectionFull', { max: brick.max }, { max: brick.max })
+      // A plan whose week was planned again while it was in the trash would hide one of the two.
+      await refuseSecondPlan(ctx, actor, entry.brick, brick, entry.data as Data, { whole: true })
       const c = countersOf(actor.site)
       if (c.entryCount >= BUDGET.entries) fail('TOO_LARGE', 'errors.siteEntryLimitReached')
       // The trash does not count toward the site's budget, so a restore needs room for the entry again.

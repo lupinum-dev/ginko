@@ -176,6 +176,7 @@
     "onlyAdminsCreateSites": "Only admins create sites.",
     "tokenTooShort": "The token needs at least 32 characters.",
     "taskNotFound": "This task does not exist.",
+    "weeklyTaskThisWeek": "This task only covers the current week. Open it again if the week has changed since.",
     "folderNotFound": "This folder does not exist.",
     "fileNotFound": "This file does not exist.",
     "brickNotFoundAnymore": "This brick does not exist (anymore).",
@@ -213,7 +214,8 @@
     "uploadHeicUnreadable": "The Files library cannot read HEIC photos. Save the photo as JPEG (on an iPhone: Settings › Camera › Formats › “Most Compatible”) and upload it again.",
     "uploadNotAnImage": "This file is not a readable image.",
     "uploadTooManyPixels": "This image has too many pixels. Make it smaller (for example 8,000 pixels wide) and upload it again.",
-    "siteUrlNotAllowed": "This site address cannot be used. It must be a public https:// address."
+    "siteUrlNotAllowed": "This site address cannot be used. It must be a public https:// address.",
+    "weekAlreadyPlanned": "This week is already planned. Open the planned week to change it."
   },
   "history": {
     "changedSingle": "{label}: {fields} changed",
@@ -298,6 +300,10 @@
     "notLive": {
       "subject": "Did not go live: a planned change for {site}",
       "text": "Hello,\n\na change you planned for “{site}” did not go live, because it no longer fits:\n\n{what}\n\nThe reason is in the history: {path}\n"
+    },
+    "rejected": {
+      "subject": "Not approved: your change for {site}",
+      "text": "Hello,\n\nyour change for “{site}” was not approved:\n\n{what}\n\nReason: “{reason}”\n\nFix it: {path}\n"
     }
   },
   "content": {

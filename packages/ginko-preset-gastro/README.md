@@ -83,7 +83,7 @@ the stored data, the same in the week, in hour plans and in exceptions.
 | `timesOf(day, and)` | One day's opening times as text: `11:30–14:00 and 17:30–22:00` (empty when closed). |
 | `spansOf(times)`, `spansText(spans, and)` | The time spans of a day, and the spans joined as text. |
 | `lunchWeekOn(main, planned, today, week)` | The lunch week to show today: a planned week, the main `lunch` data, or nothing. `week` is the site's week info. |
-| `priceOn(item, date)` | The price on a date. `nextPrice` counts from `priceFrom` on. |
+| `priceOn(item, date)` | The price on a date. `nextPrice` counts from `priceFrom` on. `menu()` states this rule as `planned`, so the platform keeps price and date together and its task "Preis ändern" shows the plan. |
 | `upcomingPrice(item, today, days)` | `{ from, price }` for a price change in the next `days` days, else `undefined`. |
 | `restaurantJsonLd(input)` | schema.org `Restaurant` data. Prices are in minor units (cents), so `1250` is `12.50`. |
 | `eventJsonLd(input)` | schema.org `Event` data for one event. Same price rule. |

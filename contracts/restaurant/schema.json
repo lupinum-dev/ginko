@@ -1035,21 +1035,30 @@
         "nextPrice": {
           "type": "money",
           "label": {
-            "de": "Neuer Preis",
-            "en": "New price"
+            "de": "Geplanter Preis",
+            "en": "Planned price"
           },
           "optional": true,
+          "hint": {
+            "de": "Gilt ab dem Datum darunter. Bis dahin bleibt der Preis oben.",
+            "en": "Applies from the date below. Until then the price above stays."
+          },
           "pos": 6
         },
         "priceFrom": {
           "type": "date",
           "label": {
-            "de": "Neuer Preis gilt ab",
-            "en": "New price applies from"
+            "de": "Geplanter Preis gilt ab",
+            "en": "Planned price applies from"
           },
           "optional": true,
           "pos": 7
         }
+      },
+      "planned": {
+        "field": "price",
+        "next": "nextPrice",
+        "from": "priceFrom"
       },
       "max": 150,
       "order": "manual",
@@ -1067,6 +1076,8 @@
             "name",
             "description",
             "price",
+            "nextPrice",
+            "priceFrom",
             "allergens",
             "veg"
           ]
@@ -1080,18 +1091,7 @@
           "kind": "edit",
           "pick": true,
           "fields": [
-            "price"
-          ]
-        },
-        {
-          "id": "priceFrom",
-          "label": {
-            "de": "Preis ab …",
-            "en": "Price from …"
-          },
-          "kind": "edit",
-          "pick": true,
-          "fields": [
+            "price",
             "nextPrice",
             "priceFrom"
           ]

@@ -7,7 +7,7 @@ import { describe, expect, test, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({ results: new Map<string, unknown>(), toasts: [] as { text: string; action?: unknown }[], actionError: undefined as unknown }))
 vi.mock('#imports', async () => {
-  const { createTranslator } = await import('@lupinum/ginko-i18n/core')
+  const { createFormatters, createTranslator } = await import('@lupinum/ginko-i18n/core')
   const { compileCatalogs } = await import('@lupinum/ginko-i18n/compile')
   // The server's error texts join under `server`, as modules/server-messages.ts does.
   const catalogs = compileCatalogs({
@@ -16,7 +16,7 @@ vi.mock('#imports', async () => {
   })
   const { ref } = await import('vue')
   return {
-    useI18n: () => ({ t: createTranslator({ messages: catalogs.en, fallback: catalogs.de, language: 'en', timeZone: 'Europe/Vienna' }).t, format: {}, locale: { value: 'en' } }),
+    useI18n: () => ({ t: createTranslator({ messages: catalogs.en, fallback: catalogs.de, language: 'en', timeZone: 'Europe/Vienna' }).t, format: createFormatters('en-GB', { timeZone: 'Europe/Vienna' }), locale: { value: 'en' } }),
     useConvexAction: () => ({ pending: ref(false), run: async () => { throw mocks.actionError } }),
   }
 })
@@ -80,6 +80,21 @@ test.each([
   mocks.results.set('entries.remove', { entry: 'e', lifeRev: 2 })
   await run()
   expect(mocks.toasts.map((toast) => toast.text)).toEqual([text])
+})
+
+describe('when it shows on the website', () => {
+  // Wrong behaviour caught: a week planned for next week or a price planned for November was saved with "On the website
+  // in about a minute", so the owner took it for live now; an approval of one said the same.
+  test.each([
+    ['a save', 'entries.save', { entry: 'e', rev: 2, change: 'c1', liveFrom: '2026-10-17' }, () => ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o' }), 'Saved. On the website from Saturday 17 October.'],
+    ['a new planned week', 'entries.create', { entry: 'e', state: 'live', liveFrom: '2026-10-17' }, () => ops.createEntry({ brick: 'b', data: {}, op: 'o' }), 'Created. On the website from Saturday 17 October.'],
+    ['a save that shows now', 'entries.save', { entry: 'e', rev: 2, change: 'c1' }, () => ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o' }), 'Saved. On the website in about a minute.'],
+  ])('%s', async (_name, mutation, result, run, text) => {
+    mocks.toasts.length = 0
+    mocks.results.set(mutation, result)
+    await run()
+    expect(mocks.toasts.map((t) => t.text)).toEqual([text])
+  })
 })
 
 describe('failed calls', () => {

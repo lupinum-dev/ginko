@@ -53,6 +53,13 @@ describe('taskInputSchema', () => {
     expect(Object.keys(schema.properties)).not.toContain('slug')
     expect(schema.required).toEqual(['title', 'when', 'description'])
   })
+
+  // Wrong behaviour caught: the assistant's "Gericht hinzufügen" offered a planned price, which the Studio's sheet does
+  // not ask for before the dish has a price to change.
+  it('a create task leaves out the plan of a planned change', () => {
+    const schema = taskInputSchema(bricks.menu!, task('menu', 'add'), ctx)
+    expect(Object.keys(schema.properties)).toEqual(['category', 'name', 'description', 'price', 'allergens', 'veg'])
+  })
 })
 
 describe('fromToolInput', () => {

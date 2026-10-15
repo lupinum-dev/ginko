@@ -176,6 +176,7 @@
     "onlyAdminsCreateSites": "Solo los administradores crean sitios.",
     "tokenTooShort": "El token necesita al menos 32 caracteres.",
     "taskNotFound": "Esta tarea no existe.",
+    "weeklyTaskThisWeek": "Esta tarea solo cubre la semana en curso. Vuelve a abrirla si la semana ha cambiado desde entonces.",
     "folderNotFound": "Esta carpeta no existe.",
     "fileNotFound": "Este archivo no existe.",
     "brickNotFoundAnymore": "Este bloque no existe (ya).",
@@ -213,7 +214,8 @@
     "uploadHeicUnreadable": "La biblioteca de archivos no puede leer fotos HEIC. Guarda la foto como JPEG (en el iPhone: Ajustes › Cámara › Formatos › «Más compatible») y súbela de nuevo.",
     "uploadNotAnImage": "Este archivo no es una imagen legible.",
     "uploadTooManyPixels": "Esta imagen tiene demasiados píxeles. Redúcela (por ejemplo, a 8000 píxeles de ancho) y súbela de nuevo.",
-    "siteUrlNotAllowed": "Esta dirección del sitio no se puede usar. Debe ser una dirección pública con https://."
+    "siteUrlNotAllowed": "Esta dirección del sitio no se puede usar. Debe ser una dirección pública con https://.",
+    "weekAlreadyPlanned": "Esta semana ya está planificada. Abre la semana planificada para cambiarla."
   },
   "history": {
     "changedSingle": "{label}: cambio en {fields}",
@@ -298,6 +300,10 @@
     "notLive": {
       "subject": "No se publicó: un cambio planificado para {site}",
       "text": "Hola:\n\nun cambio que planificaste para «{site}» no se publicó porque ya no encaja:\n\n{what}\n\nEl motivo está en el historial: {path}\n"
+    },
+    "rejected": {
+      "subject": "No aprobado: tu cambio para {site}",
+      "text": "Hola:\n\ntu cambio para «{site}» no se aprobó:\n\n{what}\n\nMotivo: «{reason}»\n\nCorregir: {path}\n"
     }
   },
   "content": {

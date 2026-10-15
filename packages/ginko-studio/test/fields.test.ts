@@ -6,6 +6,7 @@ import { BLOCKERS, GINKO_ASSETS, TRANSLATION, type GinkoAssets, type Translation
 import type { Field, Json } from '@lupinum/ginko'
 import FieldFrame from '../app/components/fields/FieldFrame.vue'
 import GinkoField from '../app/components/fields/GinkoField.vue'
+import GinkoFieldChoices from '../app/components/fields/GinkoFieldChoices.vue'
 import GinkoFieldDate from '../app/components/fields/GinkoFieldDate.vue'
 import GinkoFieldList from '../app/components/fields/GinkoFieldList.vue'
 import GinkoFieldRef from '../app/components/fields/GinkoFieldRef.vue'
@@ -206,6 +207,66 @@ describe('the focus after a remove button goes', () => {
     await flushPromises()
     expect(document.activeElement).toBe(focus())
     wrapper.unmount()
+  })
+})
+
+describe('a list with default rows', () => {
+  // Wrong behaviour caught: a new week's days hold the placeholder "Wird noch bekannt gegeben", and typing the dish
+  // appended to it, so the cook had to clear every day first (or the site showed both texts).
+  test('a cell that still holds its default text is selected on focus, so typing replaces it', async () => {
+    const placeholder = { de: 'Wird noch bekannt gegeben' }
+    const field = { type: 'list', label: 'Tage', itemLabel: 'Tag', max: 5, of: { dish: { type: 'text', label: 'Gericht' } }, default: [{ _id: 'mo', dish: placeholder }, { _id: 'tu', dish: placeholder }] } as Extract<Field, { type: 'list' }>
+    const wrapper = mount(GinkoFieldList, { props: { id: 'f-days', field, modelValue: [{ _id: 'mo', dish: placeholder }, { _id: 'tu', dish: { de: 'Gulasch' } }], path: 'days', locale: 'de', locales: ['de'], issues: [] }, attachTo: document.body })
+    const [mo, tu] = wrapper.findAll('input').map((i) => i.element as HTMLInputElement)
+    mo!.focus()
+    expect([mo!.selectionStart, mo!.selectionEnd]).toEqual([0, 'Wird noch bekannt gegeben'.length])
+    tu!.setSelectionRange(3, 3)
+    tu!.focus()
+    expect([tu!.selectionStart, tu!.selectionEnd]).toEqual([3, 3])
+    wrapper.unmount()
+  })
+})
+
+describe('choices', () => {
+  // Wrong behaviour caught: unchecking the last allergen ticked "Keine" by itself, so a cook who then tapped "Keine" to
+  // confirm cleared the answer, and a dish could say "no allergens" without anyone choosing it.
+  test('a required field: unchecking the last option leaves it unset, and only "Keine" stores none', async () => {
+    const field = { type: 'choices', label: 'Allergene', options: [{ value: 'A', label: 'Gluten' }, { value: 'L', label: 'Laktose' }] } as Extract<Field, { type: 'choices' }>
+    const value = shallowRef<Json | undefined>(['L'])
+    const wrapper = mount(defineComponent({
+      setup: () => () => h(GinkoFieldChoices, { id: 'f-al', field, modelValue: value.value, invalid: false, 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
+    }))
+    await wrapper.get('#f-al-L').trigger('click')
+    expect(value.value).toBeUndefined()
+    expect(wrapper.text()).toContain('Noch nicht angegeben.')
+    expect(wrapper.get('#f-al-none').attributes('data-state')).toBe('unchecked')
+    await wrapper.get('#f-al-none').trigger('click')
+    expect(value.value).toEqual([])
+    expect(wrapper.text()).not.toContain('Noch nicht angegeben.')
+  })
+})
+
+describe('week fields', () => {
+  // Wrong behaviour caught: "Nächste Woche planen" offered this week (which hides the main menu), and a week picked as
+  // a Thursday was stored as one, so it never showed.
+  test('a planned week offers next week and the week after, and a picked Thursday becomes its Monday', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-14T10:00:00Z'))
+    try {
+      const value = shallowRef<Json | undefined>(undefined)
+      const wrapper = mount(defineComponent({
+        setup: () => () => h(GinkoFieldDate, { id: 'f-week', modelValue: value.value, invalid: false, weeks: [1, 2], 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
+      }))
+      expect(wrapper.findAll('button').map((b) => b.text())).toEqual(['Nächste Woche', 'Übernächste Woche'])
+      await wrapper.findAll('button')[1]!.trigger('click')
+      expect(value.value).toBe('2026-10-26')
+      await wrapper.get('input').setValue('2026-10-22')
+      await wrapper.get('input').trigger('blur')
+      expect(value.value).toBe('2026-10-19')
+      expect((wrapper.get('input').element as HTMLInputElement).value).toBe('2026-10-19')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

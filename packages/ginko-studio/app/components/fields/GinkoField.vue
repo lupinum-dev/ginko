@@ -24,7 +24,7 @@ import { Input } from '@studio/components/ui/input'
 import { Switch } from '@studio/components/ui/switch'
 import { Textarea } from '@studio/components/ui/textarea'
 import { useStudioSite } from '../../utils/labels'
-import { languageName } from '../../utils/content'
+import { languageName, type WeekOffset } from '../../utils/content'
 import { useElementSize } from '@vueuse/core'
 import MarkdownEditor from '@studio/components/editor/MarkdownEditor.vue'
 
@@ -37,8 +37,8 @@ const props = defineProps<{
   issues: readonly Issue[]
   /** The value when the form opened, for lists that ask "Noch richtig?". */
   baseline?: Json
-  /** A date that starts a week (task preset @workWeek/@nextWorkWeek). */
-  weeks?: boolean
+  /** A date that starts a week: its week shortcuts (`weekShortcuts`). */
+  weeks?: readonly WeekOffset[]
   /** The page address of the entry per language (`/veranstaltungen/[slug]`), for the preview under a slug field. */
   route?: Partial<Record<string, string>>
 }>()

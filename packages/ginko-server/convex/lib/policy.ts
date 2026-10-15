@@ -7,6 +7,7 @@ import { internal } from '../_generated/api'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { fail, type Actor } from './access'
+import { rootOf } from './content'
 import type { Recorded } from './history'
 
 export type ProposalOp = Doc<'proposals'>['op']
@@ -91,9 +92,13 @@ export interface NewProposal extends Recorded {
   after?: Json
 }
 
-/** Stores the proposal and makes sure the site's digest mail is scheduled. The result tells the caller that nothing was written. */
+/**
+ * Stores the proposal and makes sure the site's digest mail is scheduled. The result tells the caller that nothing was written.
+ * A save can replace the author's older open save of the same entry (`withdrawReplaced`).
+ */
 export async function propose(ctx: MutationCtx, actor: Actor, p: NewProposal): Promise<{ proposal: Id<'proposals'>; status: 'open' }> {
   if (byteSize([p.args, p.before, p.after]) > PROPOSAL_BYTES) fail('TOO_LARGE', 'errors.proposalTooLarge')
+  if (p.op === 'save' && p.entry) await withdrawReplaced(ctx, actor, p.entry, p.args)
   const open = await ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', actor.site._id).eq('status', 'open')).take(OPEN_MAX)
   if (open.length >= OPEN_MAX) fail('INVALID', 'errors.tooManyOpenProposals', { openMax: OPEN_MAX })
   const proposal = await ctx.db.insert('proposals', {
@@ -104,6 +109,40 @@ export async function propose(ctx: MutationCtx, actor: Actor, p: NewProposal): P
   })
   await scheduleDigest(ctx, actor.site._id)
   return { proposal, status: 'open' }
+}
+
+/** The task a proposal was made with (`args.task`), if any. */
+export const taskOf = (args: unknown): string | undefined => {
+  const task = (args as { task?: unknown } | null)?.task
+  return typeof task === 'string' ? task : undefined
+}
+
+/** What a save writes: its task, its language (the main one when none is given) and its root fields, confirmed leaves by their root. */
+function scopeOf(schema: Schema, args: unknown) {
+  const a = (args ?? {}) as { locale?: unknown; fields?: unknown; confirm?: unknown }
+  const fields = typeof a.fields === 'object' && a.fields !== null ? Object.keys(a.fields) : []
+  const confirm = Array.isArray(a.confirm) ? a.confirm.filter((c): c is string => typeof c === 'string') : []
+  return { task: taskOf(args), locale: typeof a.locale === 'string' ? a.locale : schema.locales[0], roots: new Set([...fields, ...confirm.map(rootOf)]) }
+}
+
+/**
+ * A save supersedes the author's older open saves of the same entry through the same task, door and language whose
+ * fields it all writes again: the Studio's sheet starts from the open proposal, so sending it again carries every value
+ * of it, and an assistant that sets the same field again means the newer value. The older one is withdrawn instead of
+ * going stale when the newer one is approved. One with a field the new save leaves out stays open, since nothing
+ * replaces that value (two edits of one dish through one task, a revert of only some fields).
+ */
+async function withdrawReplaced(ctx: MutationCtx, actor: Actor, entry: Id<'entries'>, args: Json) {
+  const schema = actor.site.schema as Schema
+  const via = actor.agentKey ? 'agent' : 'ui'
+  const now = scopeOf(schema, args)
+  const open = await ctx.db.query('proposals').withIndex('by_site_author_status_decided', (q) => q.eq('site', actor.site._id).eq('author', actor.user.id).eq('status', 'open')).take(OPEN_MAX)
+  for (const old of open) {
+    if (old.op !== 'save' || old.entry !== entry || old.via !== via) continue
+    const was = scopeOf(schema, old.args)
+    if (was.task !== now.task || was.locale !== now.locale || [...was.roots].some((r) => !now.roots.has(r))) continue
+    await ctx.db.patch(old._id, { status: 'withdrawn', decidedBy: actor.user.id, decidedAt: Date.now(), release: undefined })
+  }
 }
 
 /** The first open proposal schedules the digest; proposals created before it runs ride along. A lost job is replaced after an hour. */

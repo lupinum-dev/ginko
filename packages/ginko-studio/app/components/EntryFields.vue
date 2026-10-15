@@ -4,6 +4,7 @@ import type { Field, Json, Locale } from '@lupinum/ginko'
 import { isShown } from '@lupinum/ginko/internal'
 import type { Issue } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
+import type { WeekOffset } from '../utils/content'
 
 defineProps<{
   entries: [string, Field][]
@@ -13,8 +14,8 @@ defineProps<{
   locales: readonly Locale[]
   issues: Issue[]
   route?: Partial<Record<Locale, string>>
-  /** Date fields that take a week start: they get "Current work week" and "Following work week" (a planned week's start). */
-  weeks?: readonly string[]
+  /** The week shortcuts of a field that takes a week start (`weekShortcuts`); undefined for any other field. */
+  weeks?: (key: string) => readonly WeekOffset[] | undefined
 }>()
 const emit = defineEmits<{ update: [key: string, value: Json | undefined] }>()
 </script>
@@ -22,6 +23,6 @@ const emit = defineEmits<{ update: [key: string, value: Json | undefined] }>()
 <template>
   <GinkoField
     v-for="[key, field] in entries" v-show="isShown(field, draft)" :key="key" :field="field" :model-value="draft[key]" :baseline="baseline[key]" :path="key"
-    :locale="locale" :locales="locales" :issues="issues" :route="route" :weeks="weeks?.includes(key)" @update:model-value="emit('update', key, $event)"
+    :locale="locale" :locales="locales" :issues="issues" :route="route" :weeks="weeks?.(key)" @update:model-value="emit('update', key, $event)"
   />
 </template>
