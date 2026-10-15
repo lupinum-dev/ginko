@@ -1,6 +1,8 @@
 <!-- Team (UI.md 7): members with their rights, open invitations, the invite form, and the site's publishing keys. Owners and admins only;
      the members query is skipped for everyone else, so the server never answers them. -->
 <script setup lang="ts">
+import type { Label } from '@lupinum/ginko'
+import { grantGroups } from '@lupinum/ginko/internal'
 import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
 import { api } from '#convex/api'
 import { opErrorOf } from '../../../../composables/useOps'
@@ -32,18 +34,13 @@ const revokePushKey = useConvexMutation(api.release.revokePushKey)
 const roleLabel = (role: 'owner' | 'staff') => (role === 'owner' ? t('site.role.owner') : t('site.role.staff'))
 const noEmail = computed(() => t('site.team.noEmail'))
 
-/** Staff rights as "Speisekarte: Preis ändern, Gericht hinzufügen". Grants of removed bricks or tasks have no effect (SPEC 2.7), so they are not shown. */
+/**
+ * Staff rights as "Speisekarte: Preis ändern, Gericht hinzufügen", read as the invite mail and the invite page read
+ * them (core `grantGroups`). Grants of removed bricks or tasks have no effect (SPEC 2.7), so they are not shown.
+ */
 function grantLines(grants: string[]): string[] {
-  const lines = new Map<string, string[]>()
-  for (const grant of grants) {
-    const dot = grant.indexOf('.')
-    const found = s.bricks.value.find(([key]) => key === grant.slice(0, dot))
-    const task = found?.[1].tasks?.find((t) => t.id === grant.slice(dot + 1))
-    if (!found || !task) continue
-    const label = shownLabel(found[1].label, s.main.value)
-    lines.set(label, [...(lines.get(label) ?? []), shownLabel(task.label, s.main.value)])
-  }
-  return [...lines].map(([label, tasks]) => `${label}: ${tasks.join(', ')}`)
+  const shown = (label: Label) => shownLabel(label, s.main.value)
+  return grantGroups({ bricks: s.schema.value?.bricks ?? {} }, grants).map((g) => `${shown(g.label)}: ${g.tasks.map(shown).join(', ')}`)
 }
 
 /** Member rows: one open editor, one open confirmation, and one error message at a time. */
