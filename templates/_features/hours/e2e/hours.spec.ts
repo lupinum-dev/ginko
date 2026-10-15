@@ -8,12 +8,18 @@ const nodes = (page: import('@playwright/test').Page) => page.locator('script[ty
   return Array.isArray(data) ? data : data['@graph'] ?? [data]
 }))
 
-test('the home page says whether the house is open and marks today in the hours table', async ({ page }) => {
+test('the home page says whether the place is open, the same in the server’s HTML and after hydration', async ({ page, browser }) => {
   await open(page, '/')
-  // Wrong behaviour caught: a server and a browser that disagree about "now" (hydration), or a missing hours line.
-  const line = page.locator('main p').filter({ hasText: /open|closed|opening hours/i }).first()
+  const line = page.locator('main [data-hours-now]').first()
   await expect(line, 'an hours line in the first screen').toBeVisible()
-  const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'long', timeZone: 'Europe/Vienna' }).format(new Date(site.now))
+  // The same page without JavaScript shows the server's render: the line the visitor sees before hydration.
+  const plain = await browser.newPage({ javaScriptEnabled: false })
+  await plain.goto(page.url())
+  const server = await plain.locator('main [data-hours-now]').first().innerText()
+  await plain.close()
+  // Wrong behaviour caught: a server and a browser that disagree about "now" or the zone, so the line flips after load.
+  expect(await line.innerText(), 'the line after hydration').toBe(server)
+  const weekday = new Intl.DateTimeFormat(site.language, { weekday: 'long', timeZone: site.timeZone }).format(new Date(site.now))
   // Wrong behaviour caught: today's row taken from the UTC date or the browser's zone instead of the site's.
   await expect(page.locator('tr[aria-current="date"] th'), 'today’s row').toContainText(weekday)
 })
