@@ -80,6 +80,15 @@ describe('pruneLocales', () => {
     pruneLocales(dir, ['en', 'de'], ['de', 'en'])
     expect(read(dir, 'content/legal/1.privacy.md')).toBe('---\ntitle: Datenschutz\nslug: datenschutz\nlegalType: privacy\nupdatedAt: 2026-10-15\n---\n\nText\n')
     expect(read(dir, 'content/legal/1.privacy.en.md')).toBe('---\ntitle: Privacy\nslug: privacy\n---\n\nText\n')
+    // An image both files describe: its file moves to the new main file, each keeps its own alt text.
+    const image = folder({
+      'app/routes.ts': "export const locales = ['en', 'de'] as const\n",
+      'content/home.md': '---\ntitle: Home\nimage:\n  src: /media/a.jpg\n  alt: A river\n---\n',
+      'content/home.de.md': '---\ntitle: Start\nimage:\n  alt: Ein Fluss\n---\n',
+    })
+    pruneLocales(image, ['en', 'de'], ['de', 'en'])
+    expect(read(image, 'content/home.md')).toBe('---\ntitle: Start\nimage:\n  alt: Ein Fluss\n  src: /media/a.jpg\n---\n')
+    expect(read(image, 'content/home.en.md')).toBe('---\ntitle: Home\nimage:\n  alt: A river\n---\n')
     // German only: the English file goes, its date stays with the German text.
     const only = folder({ 'app/routes.ts': "export const locales = ['en', 'de'] as const\n", 'content/notices/1.a.md': '---\ntext: Hi\nuntil: 2027-01-29\n---\n', 'content/notices/1.a.de.md': '---\ntext: Hallo\n---\n' })
     pruneLocales(only, ['en', 'de'], ['de'])

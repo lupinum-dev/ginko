@@ -186,6 +186,18 @@ function swapFields(mainText, translatedText, name) {
   const own = new Set(translated.blocks.map((b) => b.key))
   const moved = main.blocks.filter((b) => b.key !== undefined && !own.has(b.key))
   const kept = main.blocks.filter((b) => !moved.includes(b))
+  // A field both files have can still hold parts only the main file sets: an image's `src` (the translation gives
+  // only its `alt`). Those indented lines move too.
+  for (const block of kept) {
+    const other = translated.blocks.find((b) => b.key !== undefined && b.key === block.key)
+    if (!other) continue
+    const subKey = (line) => /^ {2}([^\s#:-][^:]*):/.exec(line)?.[1]
+    const theirs = new Set(other.lines.slice(1).map(subKey).filter(Boolean))
+    const parts = block.lines.slice(1).filter((line) => subKey(line) !== undefined && !theirs.has(subKey(line)))
+    if (!parts.length) continue
+    block.lines = block.lines.filter((line) => !parts.includes(line))
+    other.lines = [...other.lines, ...parts]
+  }
   if (own.has('slug') && !main.blocks.some((b) => b.key === 'slug')) {
     kept.push({ key: 'slug', lines: [`slug: ${name.split('/').at(-1).split('.').at(-2)}`] })
   }
