@@ -23,6 +23,7 @@ import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
 import { refDebounced, useMediaQuery } from '@vueuse/core'
 import { OWN_BOTTOM_BAR } from '../utils/siteLinks'
+import { siteOrigin } from '../utils/origin'
 import { provideSiteRefs } from '../composables/useSiteRefs'
 import { Button } from '@studio/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
@@ -64,12 +65,15 @@ const wantedLocale = String(useRoute().query.lang ?? '')
 const locale = ref<Locale>(props.schema.locales.includes(wantedLocale) ? wantedLocale : main.value)
 const foreign = computed(() => locale.value !== main.value)
 
-/** All live fields; a new entry has no slug yet; a foreign language shows only translatable ones. */
+/**
+ * All live fields; a new entry has no slug yet; a foreign language shows only translatable ones, and the address the
+ * page has there (display only: the form never sends a slug, the server makes it from the translated title).
+ */
 const fields = computed<Fields>(() => Object.fromEntries(ordered(props.brick.fields).filter(([key, f]) => {
   if (f.retired) return false
   if (!props.entry && f.type === 'slug') return false
   if (props.entry && props.tasks?.fields && !props.tasks.fields.includes(key)) return false
-  if (foreign.value) return hasTranslation(f)
+  if (foreign.value) return hasTranslation(f) || (f.type === 'slug' && props.brick.kind === 'collection' && !!props.brick.route?.[locale.value])
   return true
 })))
 
@@ -171,6 +175,14 @@ function sourceText(path: string): string {
   return typeof text === 'string' ? text : ''
 }
 
+/** The entry's page in the open language: none while it is not translated there; a link only while it is online. */
+function address() {
+  if (!props.entry || props.brick.kind !== 'collection') return undefined
+  const path = urlsFor(props.schema, props.brickKey, props.brick, { id: props.entry._id, data: props.entry.data as never, prints: props.entry.prints })[locale.value]
+  if (!path) return undefined
+  return props.entry.state === 'draft' ? { path } : { path, href: `${siteOrigin(props.site)}${path}` }
+}
+
 // A confirmed leaf whose row was removed meanwhile would make the save INVALID: drop it (Astra 11).
 watch(draft, () => {
   const kept = confirm.value.filter((path) => draftAt(path) !== undefined)
@@ -189,6 +201,7 @@ provide(TRANSLATION, {
   missingNote: (leaf) => missingNote(storedTranslation.value, leaf, t, languageNames.value),
   // History shows the main-language text before and after each change of this entry.
   changesUrl: () => (props.entry ? `/s/${props.site.slug}/history?entry=${props.entry._id}` : undefined),
+  address,
 })
 
 const shown = (label: LabelText) => shownLabel(label, main.value)

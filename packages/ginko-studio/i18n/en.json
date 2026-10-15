@@ -543,7 +543,9 @@
     "slug": {
       "label": "Web address (URL)",
       "pageAt": "The page is at {address}",
-      "generated": "Generated from the title when created."
+      "generated": "Generated from the title when created.",
+      "fromTranslation": "Made from the {lang} title once the page is translated.",
+      "view": "View page"
     },
     "translation": {
       "changedSince": "{name} changed since the translation",

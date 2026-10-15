@@ -69,6 +69,8 @@ const isSlug = computed(() => props.field.type === 'slug')
 const { t, locale: uiLocale } = useI18n()
 const label = computed(() => (isSlug.value ? t('fields.slug.label') : shown(props.field.label)))
 const hint = computed(() => {
+  // In another language the address is the page's own there, or none while the page is not translated (foreign-address).
+  if (isSlug.value && foreignTab.value) return address.value ? t('fields.slug.pageAt', { address: address.value.path }) : undefined
   const pattern = props.route?.[props.locale] ?? Object.values(props.route ?? {})[0]
   if (isSlug.value && pattern && text.value) return t('fields.slug.pageAt', { address: pattern.replace('[slug]', text.value) })
   return props.field.hint === undefined ? undefined : shown(props.field.hint)
@@ -99,6 +101,9 @@ const foreignTab = computed(() => !!translation && props.locale !== props.locale
 const foreignName = computed(() => languageName(props.locale, uiLocale.value))
 // A picture applies to every language: a translation edits only its description (new-picture-alt).
 const altOnly = computed(() => (foreignTab.value ? translation!.mainName() : undefined))
+const address = computed(() => (isSlug.value && foreignTab.value ? translation!.address() : undefined))
+// An entry without its own slug in this language is reached by the main-language one (core routeUrls).
+const foreignSlug = computed(() => text.value || String((props.modelValue as Record<string, Json> | undefined)?.[props.locales[0]!] ?? ''))
 
 // The whole main-language text: Markdown as the editor shows it (headings, links, pictures), long texts folded to
 // about twelve lines with "Ganzen Text zeigen". The fold shows only when the text is longer than that.
@@ -163,6 +168,13 @@ const copyable = computed(() => trState.value === 'missing' && !!source.value &&
       <GinkoFieldImage v-else-if="field.type === 'image'" :id="id" :field="field" :model-value="value" :locale="locale" :alt-only="altOnly" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldFile v-else-if="field.type === 'file'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldRef v-else-if="field.type === 'ref'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
+      <template v-else-if="field.type === 'slug' && foreignTab">
+        <p v-if="address" :id="id" class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-muted px-3 py-2.5 text-sm text-muted-foreground">
+          <span class="font-mono [overflow-wrap:anywhere]">{{ foreignSlug }}</span>
+          <a v-if="address.href" :href="address.href" target="_blank" rel="noopener" class="font-medium text-primary underline underline-offset-2">{{ t('fields.slug.view') }}<span class="sr-only"> {{ t('nav.newTab') }}</span></a>
+        </p>
+        <p v-else :id="id" class="rounded-md bg-muted px-3 py-2.5 text-sm text-muted-foreground">{{ t('fields.slug.fromTranslation', { lang: foreignName }) }}</p>
+      </template>
       <p v-else-if="field.type === 'slug'" :id="id" class="rounded-md bg-muted px-3 py-2.5 font-mono text-sm text-muted-foreground">{{ text || t('fields.slug.generated') }}</p>
     </template>
   </FieldFrame>

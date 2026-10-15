@@ -141,7 +141,7 @@ describe('translation side by side', () => {
   function translated(state: 'stale' | 'fine' | 'missing') {
     const confirm = vi.fn()
     const missingNote = (leaf: string) => (leaf === 'dish' ? 'Noch nicht übersetzt. Ohne diesen Text erscheint die Seite nicht auf Englisch.' : '')
-    const translation: TranslationState = { state: () => state, source: () => 'Kürbissuppe', confirm, mainName: () => 'Deutsch', missingNote, changesUrl: () => '/s/wirt/history?entry=e1' }
+    const translation: TranslationState = { state: () => state, source: () => 'Kürbissuppe', confirm, mainName: () => 'Deutsch', missingNote, changesUrl: () => '/s/wirt/history?entry=e1', address: () => undefined }
     const wrapper = mount(GinkoField, {
       props: { field, modelValue: { de: 'Kürbissuppe', en: 'Pumpkin soup' }, path: 'dish', locale: 'en', locales: ['de', 'en'], issues: [] },
       global: { provide: { [TRANSLATION as symbol]: translation } },
@@ -177,7 +177,7 @@ describe('translation side by side', () => {
   // missed its end, links and pictures, and rebuilt every heading by hand (romi-8, P9). Copying must fill only English.
   test('a Markdown text shows whole and formatted; a missing translation can start from it', async () => {
     const german = `## Anfahrt\n\n${'Mit dem Bus fährst du bis zur Haltestelle am Ötscher. '.repeat(10).trim()}\n\nDer letzte Satz steht ganz am Ende.\n`
-    const translation: TranslationState = { state: () => 'missing', source: () => german, confirm: vi.fn(), mainName: () => 'Deutsch', missingNote: () => 'Noch nicht übersetzt.', changesUrl: () => undefined }
+    const translation: TranslationState = { state: () => 'missing', source: () => german, confirm: vi.fn(), mainName: () => 'Deutsch', missingNote: () => 'Noch nicht übersetzt.', changesUrl: () => undefined, address: () => undefined }
     const ClientOnly = defineComponent((_, { slots }) => () => slots.default?.())
     const wrapper = mount(GinkoField, {
       props: { field: { type: 'markdown', label: 'Text', profile: 'basic' } as Field, modelValue: { de: german }, path: 'body', locale: 'en', locales: ['de', 'en'], issues: [] },
@@ -197,7 +197,7 @@ describe('translation side by side', () => {
 
   // Wrong behaviour caught: a picture replaced on the English tab drops its German description, which that tab cannot fix (media-16).
   test('a picture in another language offers only its description; the picture itself is changed in the main language', () => {
-    const translation: TranslationState = { state: () => 'missing', source: () => 'Wald', confirm: vi.fn(), mainName: () => 'Deutsch', missingNote: () => 'Noch nicht übersetzt.', changesUrl: () => undefined }
+    const translation: TranslationState = { state: () => 'missing', source: () => 'Wald', confirm: vi.fn(), mainName: () => 'Deutsch', missingNote: () => 'Noch nicht übersetzt.', changesUrl: () => undefined, address: () => undefined }
     const assets: GinkoAssets = { state: () => ref(undefined), details: () => ref(undefined), upload: async () => 'unused' }
     const wrapper = mount(GinkoField, {
       props: { field: { type: 'image', label: 'Foto' } as Field, modelValue: { file: 'f1', alt: { de: 'Wald' } }, path: 'photo', locale: 'en', locales: ['de', 'en'], issues: [] },

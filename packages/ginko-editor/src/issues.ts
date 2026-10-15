@@ -33,5 +33,7 @@ export interface TranslationState {
   missingNote: (leaf: string) => string
   /** Where the entry's history shows what changed in the main language ("Was hat sich geändert?"). */
   changesUrl: () => string | undefined
+  /** The entry's page in the open language (none while it is not translated), and its link while it is online. */
+  address: () => { path: string; href?: string } | undefined
 }
 export const TRANSLATION = Symbol('ginko:translation') as InjectionKey<TranslationState>
