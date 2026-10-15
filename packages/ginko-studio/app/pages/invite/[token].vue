@@ -28,8 +28,15 @@ const name = ref('')
 async function run() {
   error.value = ''
   try {
-    if (askName.value && name.value.trim()) await setName({ name: name.value })
     const result = await accept({ token })
+    // The name is optional: when it cannot be saved, the invite still counts, and "Meine Seiten" sets it later.
+    if (askName.value && name.value.trim()) {
+      try {
+        await setName({ name: name.value })
+      } catch (e) {
+        useToast().show(opErrorOf(e).message, { tone: 'err' })
+      }
+    }
     await navigateTo(`/s/${result.site}`, { replace: true })
   } catch (e) {
     const failure = opErrorOf(e)

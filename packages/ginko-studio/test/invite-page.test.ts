@@ -39,3 +39,36 @@ test('signed out, the invite page names the rights and starts the sign-in with t
   await flushPromises()
   expect((login.get('#email').element as HTMLInputElement).value).toBe('neu@example.com')
 })
+
+// Wrong behaviour caught: the optional name was saved before the invite was accepted; when the name failed (a server
+// limit), the invitee could not accept until they cleared the optional field.
+test('signed in, the invite is accepted also when the optional name cannot be saved', async () => {
+  const toasts: string[] = []
+  const calls: string[] = []
+  vi.stubGlobal('useToast', () => ({ show: (text: string) => toasts.push(text) }))
+  vi.stubGlobal('opErrorOf', () => ({ code: 'INVALID', message: 'Der Name ist zu lang.' }))
+  vi.stubGlobal('useConvexQuery', (fn: unknown) => ({
+    data: ref(String(fn) === 'invites.peek' ? { ...offer, email: undefined, forYou: true } : { remindByMail: true }), pending: ref(false),
+  }))
+  vi.stubGlobal('useConvexMutation', (fn: unknown) => ({
+    mutate: async () => {
+      calls.push(String(fn))
+      if (String(fn) === 'account.setName') throw new Error('too long')
+      return { site: 'linde' }
+    },
+    pending: ref(false),
+  }))
+  try {
+    const invite = mount(inSuspense(InvitePage), { global: { stubs: { I18nT: true, SignOut: true } } })
+    await flushPromises()
+    await invite.get('#invite-name').setValue('Franz')
+    await invite.findAll('button').find((b) => b.text() === 'Einladung annehmen')!.trigger('click')
+    await flushPromises()
+    expect(calls).toEqual(['invites.accept', 'account.setName'])
+    expect(navigateTo).toHaveBeenLastCalledWith('/s/linde', { replace: true })
+    expect(toasts).toEqual(['Der Name ist zu lang.'])
+  } finally {
+    vi.stubGlobal('useConvexQuery', (fn: unknown) => ({ data: ref(String(fn) === 'invites.peek' ? offer : true), pending: ref(false) }))
+    vi.stubGlobal('useConvexMutation', () => ({ mutate: async () => ({}), pending: ref(false) }))
+  }
+})
