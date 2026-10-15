@@ -32,10 +32,12 @@ export function usePageSeo(input: () => PageSeoInput) {
         url,
         type: config.organization,
         logo: config.logo ? absolute(config.logo.src) : undefined,
-        sameAs: config.socials.map((social: { url: string }) => social.url),
+        sameAs: config.socials.map((social) => social.url),
       })
       return { title: page.title, description: page.description, image: page.image, jsonLd: [organization, ...own] }
     }
+    // WebPage and a two-step BreadcrumbList are written here: no documented export of @lupinum/ginko builds them
+    // (core's breadcrumbLd takes navigation nodes and is internal). Move them to /basics when a second feature needs them.
     const here = absolute(route.path)
     const webPage = { '@context': 'https://schema.org', '@type': 'WebPage', name: page.title, url: here, description: page.description, inLanguage: language.value }
     const breadcrumbs = {
