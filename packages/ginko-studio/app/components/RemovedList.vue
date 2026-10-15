@@ -1,12 +1,14 @@
 <!-- Everything removed on the site, all areas, newest first, with the day it is deleted for good (UI.md 10.6);
-     older ones load with "Mehr anzeigen".
+     older ones load with "Mehr anzeigen". A line under the heading says that a full trash deletes the oldest early.
      Owners and admins can also delete an entry for good now ("Jetzt löschen"), after one question: it frees the
      trash at once and cannot be undone. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
+import { SITE_BUDGET } from '@lupinum/ginko/internal'
 import { Button } from '@studio/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@studio/components/ui/dialog'
 import { opErrorOf } from '../composables/useOps'
+import { sizeText } from '../utils/size'
 
 const props = defineProps<{ slug: string; timeZone: string }>()
 const { t, format } = useI18n()
@@ -39,6 +41,7 @@ async function purge() {
 <template>
   <section aria-labelledby="removed-title">
     <h1 id="removed-title" class="text-xl font-semibold tracking-tight">{{ t('basics.removed.title') }}</h1>
+    <p class="mt-1 text-sm text-muted-foreground">{{ t('basics.removed.keeps', { limit: sizeText(SITE_BUDGET.trashBytes, format.number) }) }}</p>
     <p v-if="list.error.value" class="mt-3 font-medium text-destructive" role="alert">{{ opErrorOf(list.error.value, t('basics.loadFailed')).message }}</p>
     <p v-if="list.status.value === 'success' && !list.data.value?.length" class="mt-3 text-muted-foreground">{{ t('basics.removed.empty') }}</p>
     <ul v-else class="mt-4 grid list-none gap-1.5 p-0">

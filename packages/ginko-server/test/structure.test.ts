@@ -96,8 +96,9 @@ describe('entries.remove and restore', () => {
     expect(await t.run((ctx) => ctx.db.get(site))).toMatchObject({ bytes: before.bytes, trashBytes: 0 })
   })
 
-  // Wrong behaviour caught: the trash grows without bound (a member loops create and remove), or a removal fails when it is full.
-  it('a removal that fills the trash past its cap deletes the oldest removed entry for good', async () => {
+  // Wrong behaviour caught: the trash grows without bound (a member loops create and remove), a removal fails when it is
+  // full, or it deletes older removed entries early without naming them first.
+  it('a removal that fills the trash past its cap deletes the oldest removed entry for good, named before', async () => {
     const { t, as, entries, site } = await setup()
     const oldest = entries['notice-weinabend']!
     const removed = entries['notice-ausgebucht']!
@@ -105,6 +106,7 @@ describe('entries.remove and restore', () => {
       await ctx.db.patch(oldest, { deletedAt: Date.now() - 60_000, bytes: 1000 })
       await ctx.db.patch(site, { trashBytes: 4 * 1024 * 1024 - 10 })
     })
+    expect(await as.cook.query(api.entries.trashOverflow, { site: 'restaurant', entry: removed })).toEqual([{ entry: oldest, brick: 'notices', title: 'Weinabend am 16. Oktober: nur noch wenige Plätze.' }])
     await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: removed, lifeRev: 1 })
     const row = await t.run((ctx) => ctx.db.get(removed))
     expect(await t.run((ctx) => ctx.db.get(oldest))).toBeNull()

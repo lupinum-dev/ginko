@@ -173,7 +173,8 @@
       "confirm": "Remove",
       "usedIn": "“{title}” is used in {count, plural, one {# entry} other {# entries}}. The website leaves it out there until you restore it.",
       "confirmAnyway": "Remove anyway",
-      "checking": "Checking where this entry is used …"
+      "checking": "Checking where this entry is used …",
+      "trashFull": "The trash is full. Removing this deletes these older entries for good:"
     },
     "discard": {
       "question": "Discard changes?",
@@ -745,7 +746,8 @@
       "deleteNowNamed": "Delete now: “{title}”",
       "confirmTitle": "Delete “{title}” for good?",
       "confirmBody": "You cannot restore it afterwards. The history still shows earlier versions for up to a year.",
-      "confirm": "Delete for good"
+      "confirm": "Delete for good",
+      "keeps": "Removed entries stay for 30 days as long as the trash holds no more than {limit}. When it is full, the oldest go first."
     },
     "translation": {
       "missing": "{lang}: {count, plural, one {# text missing} other {# texts missing}}",

@@ -9,7 +9,7 @@ import { displayValue, formatDay, taskRef, titleOf, type Task } from '../../../u
 import { shownLabel } from '../../../utils/labels'
 import { Button } from '@studio/components/ui/button'
 import { api } from '#convex/api'
-import EntryRemoveDialog, { type EntryUses } from '../../../components/EntryRemoveDialog.vue'
+import EntryRemoveDialog, { type EntryUses, type TrashOverflow } from '../../../components/EntryRemoveDialog.vue'
 
 definePageMeta({ layout: 'site' })
 
@@ -201,14 +201,20 @@ function picked(entry: Entry) {
 /** Entries whose removal is on its way, one per row: a row that finishes does not unlock another that still runs. */
 const removing = reactive(new Set<string>())
 const convex = useConvex()
-/** An entry other entries point at (N5): the remove question with their list; unused entries go at once, as before. */
-const askRemove = ref<{ key: string; entry: Entry; task: Task; uses: EntryUses } | null>(null)
+/**
+ * An entry other entries point at (N5), or one whose removal deletes older removed entries for good (a full trash): the
+ * remove question with those lists. Other entries go at once, as before.
+ */
+const askRemove = ref<{ key: string; entry: Entry; task: Task; uses: EntryUses; overflow: TrashOverflow } | null>(null)
 async function removeEntry(key: string, entry: Entry, task: Task) {
   removing.add(entry._id)
   try {
-    // A failed lookup does not stop the removal: it only warns, and the trash keeps the entry for 30 days.
-    const uses = await convex.query(api.entries.usedBy, { site: s.slug.value, entry: entry._id }).catch(() => [])
-    if (uses.length) askRemove.value = { key, entry, task, uses }
+    // A failed lookup does not stop the removal: it only warns.
+    const [uses, overflow] = await Promise.all([
+      convex.query(api.entries.usedBy, { site: s.slug.value, entry: entry._id }).catch(() => []),
+      convex.query(api.entries.trashOverflow, { site: s.slug.value, entry: entry._id }).catch(() => []),
+    ])
+    if (uses.length || overflow.length) askRemove.value = { key, entry, task, uses, overflow }
     else await removeNow(key, entry, task)
   } finally {
     removing.delete(entry._id)
@@ -319,7 +325,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
     />
     <EntryRemoveDialog
       v-if="askRemove && s.schema.value"
-      :open="true" :slug="s.slug.value" :uses="askRemove.uses" :busy="removing.has(askRemove.entry._id)"
+      :open="true" :slug="s.slug.value" :uses="askRemove.uses" :overflow="askRemove.overflow" :busy="removing.has(askRemove.entry._id)"
       :title="titleOf(s.schema.value.bricks[askRemove.key]!, askRemove.entry.data, s.main.value)"
       @update:open="askRemove = null" @confirm="confirmRemove"
     />

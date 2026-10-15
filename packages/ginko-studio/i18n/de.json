@@ -173,7 +173,8 @@
       "confirm": "Entfernen",
       "usedIn": "„{title}“ wird in {count, plural, one {# Eintrag} other {# Einträgen}} verwendet. Dort fehlt der Eintrag auf der Website, bis du ihn wiederherstellst.",
       "confirmAnyway": "Trotzdem entfernen",
-      "checking": "Prüft, wo der Eintrag verwendet wird …"
+      "checking": "Prüft, wo der Eintrag verwendet wird …",
+      "trashFull": "Der Papierkorb ist voll. Wenn du entfernst, werden diese älteren Einträge endgültig gelöscht:"
     },
     "discard": {
       "question": "Änderungen verwerfen?",
@@ -745,7 +746,8 @@
       "deleteNowNamed": "Jetzt löschen: „{title}“",
       "confirmTitle": "„{title}“ endgültig löschen?",
       "confirmBody": "Du kannst den Eintrag danach nicht mehr wiederherstellen. Der Verlauf zeigt frühere Fassungen noch bis zu einem Jahr.",
-      "confirm": "Endgültig löschen"
+      "confirm": "Endgültig löschen",
+      "keeps": "Entfernte Einträge bleiben 30 Tage, solange der Papierkorb nicht mehr als {limit} fasst. Ist er voll, gehen die ältesten zuerst."
     },
     "translation": {
       "missing": "{lang}: {count, plural, one {# Text fehlt} other {# Texte fehlen}}",

@@ -12,7 +12,7 @@ import { fieldLabelAt, fileIdsOf, mergeField, nextPrints, refIdsIn, rootOf, tree
 import { labeler, type Who } from './lib/names'
 import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
 import { isLocale, t } from './lib/i18n'
-import { countersOf, DELETED_KEPT, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
+import { countersOf, DELETED_KEPT, overflowingTrash, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
 import { taskFor } from './lib/agentTools'
@@ -1139,6 +1139,22 @@ export const trash = query({
       }
     }))
     return { ...result, page }
+  },
+})
+
+/**
+ * The removed entries that removing `entry` now would delete for good, oldest first, because the trash would pass
+ * SITE_BUDGET.trashBytes (lib/lifecycle softRemove): the remove question names them. Usually none. Any member may ask.
+ */
+export const trashOverflow = query({
+  args: { site: v.string(), entry: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    const entry = await entryOf(ctx, actor, args.entry)
+    if (entry.deletedAt) return []
+    const schema = actor.site.schema as Schema
+    const rows = await overflowingTrash(ctx, actor.site._id, (actor.site.trashBytes ?? 0) + entry.bytes)
+    return rows.map((row) => ({ entry: row._id, brick: row.brick, title: labelOf(schema, row.brick, row.data as Data) }))
   },
 })
 

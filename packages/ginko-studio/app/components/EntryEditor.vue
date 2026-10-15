@@ -252,6 +252,8 @@ async function remove() {
 const askRemove = ref(false)
 /** Entries that point at this one (N5), looked up only while the remove question is open. */
 const removeUses = useConvexQuery(api.entries.usedBy, () => (askRemove.value && props.entry ? { site: props.site.slug, entry: props.entry._id } : 'skip'))
+/** The older removed entries this removal would delete for good (a full trash), looked up the same way. */
+const removeOverflow = useConvexQuery(api.entries.trashOverflow, () => (askRemove.value && props.entry ? { site: props.site.slug, entry: props.entry._id } : 'skip'))
 
 // Someone else removed the entry (N1): restore and save, save as a new entry, or discard.
 const mayCreate = computed(() => props.brick.kind === 'collection' && (!props.tasks || !!props.tasks.create))
@@ -534,7 +536,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
       </form>
 
       <!-- The destructive action sits in "Mehr", away from Speichern and Vorschau; the question stays. -->
-      <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :busy="removing" @confirm="remove" />
+      <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :overflow="removeOverflow.error.value ? [] : removeOverflow.data.value" :busy="removing" @confirm="remove" />
     </div>
 
     <PreviewPane

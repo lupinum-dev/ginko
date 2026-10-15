@@ -173,7 +173,8 @@
       "confirm": "Eliminar",
       "usedIn": "«{title}» se usa en {count, plural, one {# entrada} other {# entradas}}. El sitio web no lo mostrará allí hasta que restaures la entrada.",
       "confirmAnyway": "Eliminar de todos modos",
-      "checking": "Comprobando dónde se usa esta entrada …"
+      "checking": "Comprobando dónde se usa esta entrada …",
+      "trashFull": "La papelera está llena. Si la eliminas, estas entradas más antiguas se borrarán definitivamente:"
     },
     "discard": {
       "question": "¿Descartar los cambios?",
@@ -745,7 +746,8 @@
       "deleteNowNamed": "Eliminar ahora: “{title}”",
       "confirmTitle": "¿Eliminar “{title}” definitivamente?",
       "confirmBody": "Después no podrás restaurarla. El historial sigue mostrando versiones anteriores hasta un año.",
-      "confirm": "Eliminar definitivamente"
+      "confirm": "Eliminar definitivamente",
+      "keeps": "Las entradas eliminadas se guardan 30 días mientras la papelera no supere los {limit}. Si se llena, las más antiguas se borran primero."
     },
     "translation": {
       "missing": "{lang}: {count, plural, one {falta # texto} other {faltan # textos}}",

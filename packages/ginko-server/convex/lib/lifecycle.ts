@@ -2,7 +2,7 @@
 // so a removal writes the same fields and counters wherever it happens.
 import { SITE_BUDGET } from '@lupinum/ginko/internal'
 import type { Doc, Id } from '../_generated/dataModel'
-import type { MutationCtx } from '../_generated/server'
+import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { By } from './access'
 import type { Recorded } from './history'
 import { dropTrees } from './trees'
@@ -65,11 +65,23 @@ export async function softRemove(ctx: MutationCtx, c: Counters, entry: Doc<'entr
     site: entry.site, entry: entry._id, brick: entry.brick, ...by, opId, kind: 'remove', ...history,
     entryRev: entry.rev + 1, contentRev: c.contentRev, at,
   })
-  while (c.trashBytes > SITE_BUDGET.trashBytes) {
-    const oldest = await ctx.db.query('entries').withIndex('by_site_deleted', (q) => q.eq('site', entry.site).gt('deletedAt', 0)).first()
-    if (!oldest) break
-    await purgeEntry(ctx, c, oldest)
+  for (const oldest of await overflowingTrash(ctx, entry.site, c.trashBytes)) await purgeEntry(ctx, c, oldest)
+}
+
+/**
+ * The removed entries of a site, oldest first, that a trash of `trashBytes` deletes for good to get back within
+ * SITE_BUDGET.trashBytes. `softRemove` deletes exactly these; entries.trashOverflow names them before a removal.
+ */
+export async function overflowingTrash(ctx: QueryCtx, site: Id<'sites'>, trashBytes: number): Promise<Doc<'entries'>[]> {
+  const out: Doc<'entries'>[] = []
+  let bytes = trashBytes
+  if (bytes <= SITE_BUDGET.trashBytes) return out
+  for await (const row of ctx.db.query('entries').withIndex('by_site_deleted', (q) => q.eq('site', site).gt('deletedAt', 0))) {
+    out.push(row)
+    bytes -= row.bytes
+    if (bytes <= SITE_BUDGET.trashBytes) break
   }
+  return out
 }
 
 /** Deletes a removed entry for good: its slugs, file references, trees and the row. Its changes stay for a year (SPEC 12). */
