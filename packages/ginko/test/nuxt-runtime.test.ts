@@ -63,7 +63,7 @@ describe('useGinkoSeo', () => {
     ['site image becomes absolute', { title: 'Menü' }, 'Menü | Restaurant', 'og:image', 'https://restaurant.test/og.png'],
     ['page image path becomes absolute', { title: 'Menü', image: '/a.png' }, 'Menü | Restaurant', 'og:image', 'https://restaurant.test/a.png'],
     ['absolute page image stays', { title: 'Menü', image: 'https://cdn.test/a.png' }, 'Menü | Restaurant', 'og:image', 'https://cdn.test/a.png'],
-    ['noindex sets robots', { title: 'Menü', noindex: true }, 'Menü | Restaurant', 'robots', 'noindex, nofollow'],
+    ['noindex sets robots', { title: 'Menü', noindex: true }, 'Menü | Restaurant', 'robots', 'noindex, follow'],
   ])('%s', (_label, input, title, key, value) => {
     const head = run('/speisekarte', input)
     expect(head.title).toBe(title)

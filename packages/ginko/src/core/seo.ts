@@ -25,7 +25,7 @@ export function seoHead(input: SeoInput): SeoHead {
 
   const meta: SeoHead['meta'] = [
     { name: 'description', content: description ?? '' },
-    { name: 'robots', content: noindex ? 'noindex, nofollow' : '' },
+    { name: 'robots', content: noindex ? 'noindex, follow' : '' },
     { property: 'og:title', content: title ?? siteName },
     { property: 'og:description', content: description ?? '' },
     { property: 'og:type', content: input.type ?? 'website' },
