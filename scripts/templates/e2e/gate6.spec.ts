@@ -1,7 +1,7 @@
 // Gate 6 (TEMPLATES.md §9): budgets in Chromium at 390 on the built server: gzip(script bodies) ≤ 150 kB, the LCP
 // resource ≤ 200 kB, CLS ≤ 0.1 until load + 1 s. No Lighthouse.
 import { gzipSync } from 'node:zlib'
-import { expect, sitePages, test } from './helpers.ts'
+import { expect, site, sitePages, test } from './helpers.ts'
 
 const KB = 1024
 const BUDGET = { scripts: 150 * KB, lcp: 200 * KB, cls: 0.1 }
@@ -12,6 +12,8 @@ test('budgets on every page at 390', async ({ browser }) => {
     // A fresh context per page: nothing comes from the cache.
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
     const page = await context.newPage()
+    // The fixture's clock is on the default page only; this page gets the same test instant (T10).
+    await page.clock.install({ time: new Date(site.now) })
     await page.addInitScript(() => {
       const w = window as unknown as { __cls: number; __lcp?: { url: string; size: number } }
       w.__cls = 0

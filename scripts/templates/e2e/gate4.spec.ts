@@ -72,9 +72,9 @@ test('accordions and lightboxes work with the keyboard on every page that has th
     if (await accordion.isVisible()) {
       await accordion.focus()
       await page.keyboard.press('Enter')
-      await expect.soft(accordion.locator('xpath=..'), `${path} accordion opens with Enter`).toHaveJSProperty('open', true).catch(async () => {
-        await expect.soft(accordion, `${path} accordion opens with Enter`).toHaveAttribute('aria-expanded', 'true')
-      })
+      // A <summary> opens its <details>; an ARIA trigger (reka's Accordion) says so in aria-expanded.
+      if (await accordion.evaluate((el) => el.tagName === 'SUMMARY')) await expect.soft(accordion.locator('xpath=..'), `${path} accordion opens with Enter`).toHaveJSProperty('open', true)
+      else await expect.soft(accordion, `${path} accordion opens with Enter`).toHaveAttribute('aria-expanded', 'true')
     }
     const lightbox = page.locator('main [aria-haspopup="dialog"]').first()
     if (await lightbox.isVisible()) {
