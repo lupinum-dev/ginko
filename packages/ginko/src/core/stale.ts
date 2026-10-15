@@ -115,6 +115,16 @@ export function duePlan(brick: Pick<Brick, 'planned'>, data: Record<string, Json
 }
 
 /**
+ * Whether a create task asks for `key`: every field of the brick but the address (made from the title) and the plan of
+ * a planned change (`planned`), which needs a value in effect to replace. The Studio's sheet and the agent door's tool
+ * both use this rule.
+ */
+export function createAsks(brick: Pick<Brick, 'fields' | 'planned'>, key: string): boolean {
+  const field = Object.hasOwn(brick.fields, key) ? brick.fields[key] : undefined
+  return !!field && field.type !== 'slug' && key !== brick.planned?.next && key !== brick.planned?.from
+}
+
+/**
  * The day a save shows on the website when that is later than `today` (the site's time zone), else undefined (it shows
  * at once): a week planned ahead (`plans`) from its first shown day (`firstDayShown`); a save that changed only the
  * plan of a planned change (`planned`) from the plan's date. `changed` are the root fields the save wrote.

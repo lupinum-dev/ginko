@@ -15,7 +15,7 @@ export { withMarkdownRefs, fileMarkdownRef, platformMarkdownRef, type MarkdownRe
 export { isSafeHref, safeHref } from './href.ts'
 export { slugify, uniqueSlug, SLUG_PATTERN } from './slug.ts'
 export { todayIn, startOfWeek, workWeekOf, firstDayShown, weekInfoOf, DEFAULT_WEEK, addDays, resolveToken, type WeekInfo } from './time.ts'
-export { duePlan, liveFrom, plannedWeeks, plansThisWeek, staleOf, weekStartField, weeklyTask, type WeekState } from './stale.ts'
+export { createAsks, duePlan, liveFrom, plannedWeeks, plansThisWeek, staleOf, weekStartField, weeklyTask, type WeekState } from './stale.ts'
 export { sha256, stableJson } from './sha256.ts'
 export { leavesOf, carryPrints, type Prints } from './prints.ts'
 export { formatMoney, minorDigits } from './money.ts'

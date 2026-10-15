@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { entryTitle, fileRefsIn, ordered, printOf, stableJson, weeklyTask, weekStartField, type Schema } from '@lupinum/ginko/internal'
+import { createAsks, entryTitle, fileRefsIn, ordered, printOf, stableJson, weeklyTask, weekStartField, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { shownLabel } from './labels'
 import type { Words } from './when'
@@ -51,17 +51,16 @@ export function changedRoots(before: Data, after: Data): string[] {
 }
 
 /**
- * The fields a task shows: `edit` its fields; `create` every live field except the slug and a planned change
- * (`planned`): a new entry starts with its value, and a plan is made later with the task that changes the value.
+ * The fields a task shows: `edit` its fields; `create` every live field it asks for (`createAsks`: not the slug, and
+ * not the plan of a planned change, which is made later with the task that changes the value).
  */
 export function taskFields(brick: Brick, task: Task): Fields {
   const keys = task.kind === 'edit' ? task.fields : ordered(brick.fields).map(([k]) => k)
-  const plan = task.kind === 'create' && brick.planned ? [brick.planned.next, brick.planned.from] : []
   const out: Fields = {}
   for (const key of keys) {
     const field = brick.fields[key]
     if (!field || field.retired) continue
-    if (task.kind === 'create' && (field.type === 'slug' || plan.includes(key))) continue
+    if (task.kind === 'create' && !createAsks(brick, key)) continue
     out[key] = field
   }
   return out
