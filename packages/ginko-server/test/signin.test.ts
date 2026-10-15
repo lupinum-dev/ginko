@@ -1,6 +1,6 @@
 // Sign-in codes (SPEC 10): mail.queueCode is what the Better Auth `email` hook calls.
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { api, internal } from '../convex/_generated/api'
+import { api, components, internal } from '../convex/_generated/api'
 import { setup } from './setup'
 
 beforeEach(() => {
@@ -92,4 +92,16 @@ it('an invited address cannot sign up or sign in with a password', async () => {
   expect((await post('email-otp/send-verification-otp', { email: 'gast@example.com', type: 'sign-in' })).ok).toBe(true)
   const codes = await s.t.run((ctx) => ctx.db.query('outbox').collect())
   expect(codes.filter((m) => m.to === 'gast@example.com' && m.subject === 'Dein Anmeldecode')).toHaveLength(1)
+})
+
+// better-convex audit 15 Oct: a user row whose address was never proven (a password sign-up from before codes were
+// the only way in) must not take the invitation that follows that address.
+it('an unproven address gets no invitation', async () => {
+  const s = await setup()
+  await s.as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'gast@example.com', role: 'staff', grants: [] })
+  const now = Date.now()
+  await s.t.mutation(components.betterAuth.adapter.create, { model: 'user', data: { id: 'u-gast', name: 'Gast', email: 'gast@example.com', emailVerified: false, image: null, createdAt: now, updatedAt: now } })
+  await s.t.mutation(components.betterAuth.adapter.create, { model: 'session', data: { id: 's-u-gast', token: 'token-u-gast', userId: 'u-gast', expiresAt: now + 60_000, createdAt: now, updatedAt: now, ipAddress: null, userAgent: null } })
+  const gast = s.t.withIdentity({ subject: 'u-gast', email: 'gast@example.com' })
+  expect(await gast.query(api.invites.mine, {})).toEqual([])
 })

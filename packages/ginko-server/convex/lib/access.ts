@@ -22,7 +22,8 @@ export interface User { id: string; email?: string }
 export async function currentUser(ctx: QueryCtx | ActionCtx): Promise<User> {
   const user = await auth.getUser(ctx)
   if (!user) fail('FORBIDDEN', 'errors.signInRequired')
-  return { id: user.id, ...(user.email ? { email: user.email } : {}) }
+  // Invites and admin rights follow the email, so only a proven address counts.
+  return { id: user.id, ...(user.email && user.emailVerified ? { email: user.email } : {}) }
 }
 
 export interface Actor {
