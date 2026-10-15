@@ -1,0 +1,9 @@
+[
+  "app/components/event/Upcoming.vue",
+  "app/composables/useEvents.ts",
+  "app/pages/events/[slug].vue",
+  "app/pages/events/index.vue",
+  "i18n/events/de.json",
+  "i18n/events/en.json",
+  "i18n/events/it.json"
+]

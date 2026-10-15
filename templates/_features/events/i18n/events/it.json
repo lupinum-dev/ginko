@@ -1,0 +1,17 @@
+{
+  "title": "Eventi",
+  "lead": "Che cosa c’è in programma, con data, ora e prezzo.",
+  "upcoming": "Prossimamente",
+  "all": "Tutti gli eventi",
+  "none": "Al momento non sono previsti eventi. Tornate a trovarci presto.",
+  "soldOut": "Tutto esaurito",
+  "date": "Data",
+  "time": "Ora",
+  "place": "Luogo",
+  "price": "Prezzo",
+  "online": "Online",
+  "book": "Prenotate un posto",
+  "reserve": "Prenotate il vostro posto per telefono o per e-mail.",
+  "call": "Chiamateci al {phone}",
+  "email": "Scriveteci un’e-mail"
+}
