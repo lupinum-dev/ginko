@@ -22,7 +22,7 @@ export default defineConfig({
             { find: /^#ginko\/schema$/, replacement: fileURLToPath(new URL('packages/ginko/test/shims/schema.ts', import.meta.url)) },
           ],
         },
-        test: { name: 'packages', include: ['packages/*/test/**/*.test.ts', 'sites/*/test/**/*.test.ts'], exclude: ['packages/ginko-server/**', '**/node_modules/**'] },
+        test: { name: 'packages', include: ['packages/*/test/**/*.test.ts', 'sites/*/test/**/*.test.ts', 'scripts/test/**/*.test.ts'], exclude: ['packages/ginko-server/**', '**/node_modules/**'] },
       },
       // convex-test runs Convex functions in the edge-runtime environment (see its docs).
       {
