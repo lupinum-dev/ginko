@@ -31,6 +31,8 @@ You cannot do more than they can, and everything you change is shown in their hi
 - Removing needs `confirm: true`. Ask the person first.
 - A change is online in about a minute. The answer names a `change` ID.
   Take it back with `ginko_undo({ change })`.
+- Give each change a `request_id` of your own (letters, digits, `_` and `-`). When an answer gets lost, send the same call
+  with the same `request_id` again: the change runs only once, and you get the first answer.
 - `ginko_draft({ brick, fields })` makes a draft in bricks that have drafts. A draft is not on the website.
   The person publishes it in the platform. You cannot publish.
 
