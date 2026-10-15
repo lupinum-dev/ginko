@@ -218,8 +218,9 @@
         },
         "closedOn": {
           "type": "date",
-          "label": "Heute geschlossen am",
+          "label": "Geschlossen am",
           "optional": true,
+          "hint": "Ein einzelner Tag. Für mehrere Tage nimm „Betriebsferien eintragen“.",
           "pos": 2
         },
         "closedNote": {
