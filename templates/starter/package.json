@@ -28,6 +28,6 @@
   },
   "ginko": {
     "sampleAnchor": "2026-10-15",
-    "features": []
+    "features": ["site", "pages"]
   }
 }
