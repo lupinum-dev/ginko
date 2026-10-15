@@ -248,12 +248,13 @@ export function upcomingPlans(plans: HourPlan[], today: string, days: number): A
 
 /**
  * Today's line of the hours (the Studio's status, SPEC templates 7.1): the opening ranges, closed (with the owner's
- * reason or the holiday's names), or unknown. Unknown: the data is not hours (no week row for today), an open day has
- * no times, or a site calendar in code (`holidays: 'custom'`) could decide the day and only the site can run it.
+ * text in `reason`, or the public holiday in `holiday`), or unknown. Unknown: the data is not hours (no week row for
+ * today), an open day has no times, a site calendar in code (`holidays: 'custom'`) could decide the day and only the
+ * site can run it, or the schema stores no calendar and today is an Austrian public holiday (see `HoursLineContext`).
  */
 export type HoursLine =
   | { state: 'open'; ranges: Array<[from: string, to: string]> }
-  | { state: 'closed'; reason?: string | Record<string, string> }
+  | { state: 'closed'; reason?: string | Record<string, string>; holiday?: HolidayNames }
   | { state: 'unknown' }
 
 export interface HoursLineContext {
@@ -263,7 +264,11 @@ export interface HoursLineContext {
   now?: Date
   /** Entries of the hour plans (`hourPlans()`), if the site has them. */
   plans?: HourPlan[]
-  /** `schema.holidays`. Absent: no public holidays. */
+  /**
+   * `schema.holidays`. Absent: a schema released before `country` existed. Its site may close on Austrian holidays
+   * (the gastro preset's 0.4 default) or on none (the neutral basics), and the schema cannot tell which; on a day where
+   * the two differ the line is unknown rather than wrong.
+   */
   holidays?: StoredHolidays
 }
 
@@ -283,18 +288,27 @@ export function hoursLine(data: unknown, ctx: HoursLineContext): HoursLine {
   const hours = asHours(data)
   if (!hours) return { state: 'unknown' }
   const today = todayIn(ctx.timeZone, ctx.now)
-  const custom = ctx.holidays === 'custom'
-  const calendar = ctx.holidays === undefined || ctx.holidays === 'custom' ? 'none' : ctx.holidays
-  const rule = hoursOn({ hours, plans: ctx.plans, calendar }, today)
+  if (ctx.holidays === undefined) {
+    const [none, at] = [lineOn(hours, today, ctx.plans, 'none'), lineOn(hours, today, ctx.plans, 'AT')]
+    return JSON.stringify(none) === JSON.stringify(at) ? none : { state: 'unknown' }
+  }
+  const rule = hoursOn({ hours, plans: ctx.plans, calendar: ctx.holidays === 'custom' ? 'none' : ctx.holidays }, today)
   // An owner's rule decides before any holiday; below it, a calendar only the site's code knows could.
-  const owner = rule.source === 'today' || rule.source === 'exception'
-  if (custom && !owner) return { state: 'unknown' }
+  if (ctx.holidays === 'custom' && rule.source !== 'today' && rule.source !== 'exception') return { state: 'unknown' }
+  return lineOf(rule, hours, today, ctx.plans)
+}
+
+function lineOn(hours: HoursData, today: string, plans: HourPlan[] | undefined, calendar: 'none' | 'AT'): HoursLine {
+  return lineOf(hoursOn({ hours, plans, calendar }, today), hours, today, plans)
+}
+
+function lineOf(rule: DayRule, hours: HoursData, today: string, plans: HourPlan[] | undefined): HoursLine {
   if (rule.source === 'week' || rule.source === 'plan') {
-    if (!weekFor({ hours, plans: ctx.plans }, today).week.some((d) => d.day === weekdayOf(today))) return { state: 'unknown' }
+    if (!weekFor({ hours, plans }, today).week.some((d) => d.day === weekdayOf(today))) return { state: 'unknown' }
   }
   if (rule.closed) {
-    const reason: string | Record<string, string> | undefined = rule.holiday ? { ...rule.holiday } : isText(rule.reason) ? rule.reason : undefined
-    return reason ? { state: 'closed', reason } : { state: 'closed' }
+    if (rule.holiday) return { state: 'closed', holiday: { de: rule.holiday.de, en: rule.holiday.en } }
+    return isText(rule.reason) ? { state: 'closed', reason: rule.reason } : { state: 'closed' }
   }
   const ranges = rule.times.filter((s) => TIME.test(s.from) && TIME.test(s.to)).map((s): [string, string] => [s.from, s.to])
   return ranges.length ? { state: 'open', ranges } : { state: 'unknown' }

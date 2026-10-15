@@ -1,6 +1,7 @@
 // Today's hours line for the Studio (SPEC templates 7.1). Wrong behaviour caught: the owner reads "open" on a day the
 // website says "closed" (a closure, a holiday), the line uses the server's date instead of the site's, or it guesses
-// when it cannot know (a holiday calendar in the site's code, broken data).
+// when it cannot know (a holiday calendar in the site's code, no stored calendar on a holiday, broken data), and a holiday
+// is told apart from the owner's own closure text.
 import { describe, expect, it } from 'vitest'
 import { hoursLine, type HoursLineContext } from '../../src/basics/index.ts'
 
@@ -22,8 +23,12 @@ describe('hoursLine', () => {
     ['a closing exception', hours({ exceptions: [{ _id: 'x1', when: { from: '2026-10-13', to: '2026-10-20' }, reason: 'Urlaub', closed: true }] }), at('2026-10-14T08:00:00Z'), { state: 'closed', reason: 'Urlaub' }],
     ['special hours', hours({ exceptions: [{ _id: 'x1', when: { from: '2026-10-13', to: '2026-10-13' }, reason: 'Feier', closed: false, from1: '11:00', to1: '15:00' }] }), at('2026-10-13T08:00:00Z'), { state: 'open', ranges: [['11:00', '15:00']] }],
     // 1 Nov 2026 (a Sunday) is All Saints' Day in Austria.
-    ['a public holiday, closed', hours(), at('2026-11-01T08:00:00Z', { holidays: 'AT' }), { state: 'closed', reason: { de: 'Allerheiligen', en: 'All Saints’ Day' } }],
-    ['the same day without a calendar', hours(), at('2026-11-01T08:00:00Z'), { state: 'open', ranges: both }],
+    ['a public holiday, closed', hours(), at('2026-11-01T08:00:00Z', { holidays: 'AT' }), { state: 'closed', holiday: { de: 'Allerheiligen', en: 'All Saints’ Day' } }],
+    ['the same day with no public holidays', hours(), at('2026-11-01T08:00:00Z', { holidays: 'none' }), { state: 'open', ranges: both }],
+    // No stored calendar: a gastro site released before `country` still closes on Austrian holidays, a basics site does not.
+    ['the same day, no calendar stored', hours(), at('2026-11-01T08:00:00Z'), { state: 'unknown' }],
+    ['the same day, no calendar stored, open on holidays', hours({ holidays: 'normal' }), at('2026-11-01T08:00:00Z'), { state: 'open', ranges: both }],
+    ['a closure on that day, no calendar stored', hours({ closedOn: '2026-11-01', closedNote: 'Feiertag' }), at('2026-11-01T08:00:00Z'), { state: 'closed', reason: 'Feiertag' }],
     ['a calendar in code could decide', hours(), at('2026-11-01T08:00:00Z', { holidays: 'custom' }), { state: 'unknown' }],
     ['a closure decides before any calendar', hours({ closedOn: '2026-11-01' }), at('2026-11-01T08:00:00Z', { holidays: 'custom' }), { state: 'closed' }],
     ['a plan from today', hours(), at('2026-11-03T08:00:00Z', { plans: [winter] }), { state: 'open', ranges: [['17:00', '21:30']] }],
