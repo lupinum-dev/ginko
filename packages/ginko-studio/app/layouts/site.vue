@@ -9,10 +9,14 @@ import { useBottomBar } from '../composables/useBottomBar'
 import { EDITOR_COMPONENTS } from '@studio/components/editor/context'
 import { provideStudioSite } from '../utils/labels'
 import { localDraftKeys } from '../composables/useLocalDraft'
+import { rememberSite } from '../composables/useRecentEntries'
 
 const route = useRoute()
 const { t, format } = useI18n()
 const slug = computed(() => String(route.params.site))
+// "Meine Seiten" lists the sites opened last in this browser first (storage exists in the browser only).
+onMounted(() => rememberSite(slug.value))
+watch(slug, rememberSite)
 // Every form under this layout (Schnell ändern, Alles bearbeiten) uploads to this site.
 provideGinkoAssets(useConvexGinkoAssets(slug))
 const { data, error } = useConvexQuery(api.sites.meta, () => ({ site: slug.value }))

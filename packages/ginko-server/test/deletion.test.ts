@@ -102,12 +102,14 @@ describe('delete site', () => {
     // Only the owner can see the deletion and cancel it.
     expect(await s.as.owner.query(api.sites.deletion, { site: 'restaurant' })).toEqual({ name: 'Gasthaus zur Linde', at })
     expect(await s.as.cook.query(api.sites.deletion, { site: 'restaurant' })).toBeNull()
-    expect((await s.as.owner.query(api.sites.mine, {})).map((x) => x.slug)).toEqual(['restaurant'])
+    // "Meine Seiten" marks it (it listed the site like any other).
+    expect((await s.as.owner.query(api.sites.mine, {})).map((x) => [x.slug, x.deleting])).toEqual([['restaurant', true]])
     expect(await s.as.cook.query(api.sites.mine, {})).toEqual([])
 
     await s.as.owner.mutation(api.sites.cancelDeletion, { site: 'restaurant' })
     expect(await open()).toEqual({ studio: 'open', cook: 'open', bundle: 200, push: true, agent: true })
     expect(await s.as.owner.query(api.sites.deletion, { site: 'restaurant' })).toBeNull()
+    expect((await s.as.owner.query(api.sites.mine, {})).map((x) => [x.slug, x.deleting])).toEqual([['restaurant', false]])
   })
 
   // Wrong behaviour caught: staff or a stranger deletes a customer's site; an admin cannot rescue one.

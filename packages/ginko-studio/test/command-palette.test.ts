@@ -15,9 +15,11 @@ const mocks = vi.hoisted(() => ({
   slow: { value: false },
   /** While true, a new search fails (a timeout). */
   failing: false,
+  /** The person's sites (sites.mine). */
+  sites: [] as unknown[],
 }))
 vi.mock('#imports', async (original) => {
-  const { ref, watch } = await import('vue')
+  const { computed, ref, watch } = await import('vue')
   const slow = ref(false)
   mocks.slow = slow
   return {
@@ -25,7 +27,8 @@ vi.mock('#imports', async (original) => {
     navigateTo: mocks.navigateTo,
     // Answers like better-convex: with keepPreviousData the last answer stays, stale, until the new one arrives; a
     // failed answer keeps it too, next to the error. New arguments clear the error.
-    useConvexQuery: (_query: unknown, args: () => unknown, options?: { keepPreviousData?: boolean }) => {
+    useConvexQuery: (query: unknown, args: () => unknown, options?: { keepPreviousData?: boolean }) => {
+      if (String(query) === 'sites.mine') return { data: computed(() => (args() === 'skip' ? undefined : mocks.sites)), isStale: ref(false), error: ref() }
       const data = ref<unknown>()
       const isStale = ref(false)
       const error = ref<unknown>()
@@ -70,7 +73,7 @@ beforeAll(() => {
   globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as never
   Element.prototype.scrollIntoView ??= () => {}
 })
-beforeEach(() => { mocks.navigateTo.mockClear(); mocks.asked.length = 0; mocks.slow.value = false; mocks.failing = false; localStorage.clear() })
+beforeEach(() => { mocks.navigateTo.mockClear(); mocks.asked.length = 0; mocks.slow.value = false; mocks.failing = false; mocks.sites = []; localStorage.clear() })
 afterEach(() => { document.body.innerHTML = '' })
 
 describe('CommandPalette', () => {
@@ -105,6 +108,27 @@ describe('CommandPalette', () => {
     await flushPromises()
     expect(mocks.navigateTo).toHaveBeenCalledWith('/s/s/all/menu/e1', undefined)
     expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false])
+  })
+
+  // Wrong behaviour caught: an agency inside one site typed another site's name and got "Nichts gefunden".
+  test('typing another site\'s name lists it under Seiten, and Enter opens it', async () => {
+    mocks.found = { entries: [], bricks: [], tasks: [] }
+    mocks.sites = [
+      { slug: 's', name: 'Gasthaus am See', url: 'https://see.test', role: 'admin', deleting: false },
+      { slug: 'linde', name: 'Gasthaus zur Linde', url: 'https://linde.test', role: 'admin', deleting: false },
+      { slug: 'lupinum', name: 'Lupinum', url: 'https://lupinum.test', role: 'admin', deleting: false },
+    ]
+    mountPalette({ role: 'owner', grants: [] })
+    await flushPromises()
+    await typeQuery('gast')
+    // The open site is not offered: there is nowhere to switch.
+    expect(optionTexts()).toEqual(['Gasthaus zur Linde linde.test'])
+    expect([...document.body.querySelectorAll('[role="group"]')].map((g) => g.textContent)).toEqual(['SeitenGasthaus zur Lindelinde.test'])
+    expect(document.body.textContent).not.toContain('Nichts gefunden')
+
+    document.body.querySelector('input')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await flushPromises()
+    expect(mocks.navigateTo).toHaveBeenCalledWith('/s/linde', undefined)
   })
 
   // Wrong behaviour caught: the results vanish between keystrokes while the next search loads.

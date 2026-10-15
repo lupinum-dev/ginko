@@ -1,6 +1,7 @@
 <!-- ⌘K / Ctrl+K on every site page (UI.md 10.6). Empty: the last entries opened, then actions. Typing: search.studio
-     (entries by title in all languages, areas by label). Enter opens, ⌘/Ctrl+Enter opens in a new tab. The server decides
-     what matches, so the Command's own client-side filter is not used (the filter field is a plain ListboxFilter). -->
+     (entries by title in all languages, areas by label), and the person's other sites by name or address. Enter opens,
+     ⌘/Ctrl+Enter opens in a new tab. The server decides what matches, so the Command's own client-side filter is not
+     used (the filter field is a plain ListboxFilter). -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import { navigateTo, useConvexQuery, useI18n } from '#imports'
@@ -15,10 +16,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { readRecent, type RecentEntry } from '../composables/useRecentEntries'
 import { creatableBricks, entryPath } from '../utils/basics'
 import { shownLabel } from '../utils/labels'
+import { bySiteName, siteHost, siteMatches } from '../utils/sites'
 
 const props = defineProps<{ open: boolean; slug: string; schema: Schema | undefined; role: string | undefined; grants: readonly string[] }>()
 const emit = defineEmits<{ 'update:open': [open: boolean]; update: [] }>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const manager = computed(() => props.role === 'owner' || props.role === 'admin')
 const main = computed(() => props.schema?.locales[0] ?? '')
@@ -43,7 +45,7 @@ const { data, isStale, error } = useConvexQuery(api.search.studio, () => (props.
 const searching = computed(() => !!query.value.trim())
 // A failed search keeps the last answer, which belongs to another word: it is hidden, and the palette says so.
 const failed = computed(() => searching.value && !!asked.value && !!error.value)
-const nothing = computed(() => !failed.value && !!asked.value && !isStale.value && !!data.value && !data.value.entries.length && !data.value.bricks.length)
+const nothing = computed(() => !failed.value && !!asked.value && !isStale.value && !!data.value && !data.value.entries.length && !data.value.bricks.length && !sites.value.length)
 /**
  * Asks again with the same word: dropping the subscription for a tick and taking it up again makes Convex run the query
  * anew, because the palette is its only subscriber with these arguments. No reload: the page under the palette may hold
@@ -81,6 +83,12 @@ const entries = computed<Item[]>(() => (searching.value && !failed.value ? data.
   run: () => go(entryPath(props.slug, props.schema, e.brick, e.entry)),
 })))
 const areas = computed<Item[]>(() => (searching.value && !failed.value ? data.value?.bricks ?? [] : []).map((b) => ({ value: `area:${b.brick}`, label: areaLabel(b.brick, b.label), run: () => go(site(`/all/${b.brick}`)) })))
+// Switching sites (an agency has dozens): the person's other sites, asked only while the palette is open, matched here.
+const { data: mySites } = useConvexQuery(api.sites.mine, () => (props.open ? {} : 'skip'))
+const sites = computed<Item[]>(() => (searching.value ? mySites.value ?? [] : [])
+  .filter((s) => s.slug !== props.slug && siteMatches(s, query.value))
+  .toSorted(bySiteName(locale.value))
+  .map((s) => ({ value: `site:${s.slug}`, label: s.name, area: siteHost(s.url), run: () => go(`/s/${s.slug}`) })))
 
 /** `inNewTab`: ⌘Enter / Ctrl+Enter. */
 let newTab = false
@@ -100,7 +108,7 @@ function pick(item: Item, event: { detail?: { originalEvent?: Event } }) {
 const highlighted = ref<HTMLElement>()
 function onEnter(event: KeyboardEvent) {
   if (highlighted.value?.isConnected) return
-  const first = searching.value ? (entries.value[0] ?? areas.value[0]) : undefined
+  const first = searching.value ? (entries.value[0] ?? areas.value[0] ?? sites.value[0]) : undefined
   if (!first) return
   event.preventDefault()
   pick(first, { detail: { originalEvent: event } })
@@ -142,6 +150,12 @@ function onEnter(event: KeyboardEvent) {
           </CommandGroup>
           <CommandGroup v-if="areas.length" :heading="t('basics.palette.areas')">
             <CommandItem v-for="item in areas" :key="item.value" :value="item.value" class="min-h-10 rounded-md data-[highlighted]:bg-muted data-[highlighted]:text-foreground" @select="pick(item, $event)">{{ item.label }}</CommandItem>
+          </CommandGroup>
+          <CommandGroup v-if="sites.length" :heading="t('basics.palette.sites')">
+            <CommandItem v-for="item in sites" :key="item.value" :value="item.value" class="min-h-10 rounded-md data-[highlighted]:bg-muted data-[highlighted]:text-foreground" @select="pick(item, $event)">
+              <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+              <span class="shrink-0 text-xs text-muted-foreground">{{ item.area }}</span>
+            </CommandItem>
           </CommandGroup>
           <p v-if="nothing" class="py-6 text-center text-sm" role="status">{{ t('basics.palette.empty', { query: asked }) }}</p>
           <p v-if="failed" class="py-6 text-center text-sm" role="status">

@@ -2,27 +2,29 @@
 import { isCurrency, isLocale, isTimeZone, labelOf as labelIn, MAX_LOCALES, weekInfoOf, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
+import type { Doc } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, currentUser, fail, memberOf, type Actor } from './lib/access'
 import { NAME_MAX, SLUG } from './lib/input'
 import { isFetchableSiteUrl } from './lib/siteUrl'
 import { leafStatus } from './lib/translation'
 
-/** The sites the signed-in user may open, with their role. Admins see every site. A site being deleted is listed for owners and admins only (they can cancel). */
+/**
+ * The sites the signed-in user may open, with their role. Admins see every site. A site being deleted is listed for
+ * owners and admins only (they can cancel), marked `deleting`. The order is the database's; the Studio sorts by name.
+ */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
     const user = await currentUser(ctx)
+    const row = (site: Doc<'sites'>, role: 'admin' | Doc<'memberships'>['role']) => ({ slug: site.slug, name: site.name, url: site.url, role, deleting: !!site.deleting })
     const admin = await ctx.db.query('admins').withIndex('by_user', (q) => q.eq('user', user.id)).unique()
-    if (admin) {
-      const sites = await ctx.db.query('sites').collect()
-      return sites.map((site) => ({ slug: site.slug, name: site.name, url: site.url, role: 'admin' as const }))
-    }
+    if (admin) return (await ctx.db.query('sites').collect()).map((site) => row(site, 'admin'))
     const memberships = await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', user.id)).collect()
     const sites = await Promise.all(memberships.map((member) => ctx.db.get(member.site)))
     return memberships.flatMap((member, index) => {
       const site = sites[index]
-      return site && (!site.deleting || member.role === 'owner') ? [{ slug: site.slug, name: site.name, url: site.url, role: member.role }] : []
+      return site && (!site.deleting || member.role === 'owner') ? [row(site, member.role)] : []
     })
   },
 })
