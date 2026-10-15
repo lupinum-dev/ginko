@@ -1,0 +1,53 @@
+{
+  "home": {
+    "title": "Industrial pumps and pumping stations",
+    "sales": "Contact sales",
+    "catalogue": "Products and services",
+    "products": "Products and services",
+    "allProducts": "All products and services",
+    "references": "References",
+    "referencesLead": "Towns, water boards and plants that run our pumps.",
+    "news": "News",
+    "next": "Jobs and trade fairs",
+    "jobs": {
+      "title": "Jobs at Halden Pumps",
+      "count": "{count, plural, one {# open position} other {# open positions}}",
+      "none": "No open positions",
+      "text": "Build, sell and service pumps with us: in the workshop, in sales or on the road."
+    },
+    "cta": {
+      "title": "Tell us what you need to pump.",
+      "text": "Our sales engineers suggest a pump or a complete station and send you a quote. Or call us directly:"
+    }
+  },
+  "services": {
+    "title": "Products and services",
+    "lead": "Pumps and pumping stations, and the service that keeps them running. Most products are built to order: ask us for a quote. Prices plus VAT.",
+    "all": "All products and services",
+    "enquire": "Request a quote",
+    "subject": "Quote request: {title}",
+    "price": "Price (plus VAT)"
+  },
+  "jobs": {
+    "lead": "Open positions at our works in Musterstadt and in field service, with the last day to apply."
+  },
+  "blog": {
+    "lead": "Projects, new products and what happens at our works."
+  },
+  "people": {
+    "title": "Contact",
+    "lead": "Call or write to the right person directly. For anything else, our office answers the main number and email at the foot of every page."
+  },
+  "downloads": {
+    "lead": "Product sheets and other documents to read and keep."
+  },
+  "events": {
+    "title": "Trade fairs",
+    "lead": "Where you can meet us and see our pumps.",
+    "upcoming": "Coming up",
+    "all": "All trade fairs",
+    "none": "No trade fairs are planned right now. Our sales team is glad to visit you instead.",
+    "book": "Get a free ticket",
+    "reserve": "Meet our team at the stand: arrange a time by phone or email."
+  }
+}

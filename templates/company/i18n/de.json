@@ -1,0 +1,55 @@
+{
+  "home": {
+    "title": "Industriepumpen und Pumpstationen",
+    "sales": "Vertrieb kontaktieren",
+    "catalogue": "Produkte und Leistungen",
+    "products": "Produkte und Leistungen",
+    "allProducts": "Alle Produkte und Leistungen",
+    "references": "Referenzen",
+    "referencesLead": "Städte, Wasserverbände und Werke, die mit unseren Pumpen arbeiten.",
+    "news": "Aktuelles",
+    "next": "Karriere und Messen",
+    "jobs": {
+      "title": "Karriere bei Halden Pumps",
+      "count": "{count, plural, one {# offene Stelle} other {# offene Stellen}}",
+      "none": "Keine offenen Stellen",
+      "text": "Bauen, verkaufen und warten Sie Pumpen mit uns: in der Werkstatt, im Vertrieb oder im Außendienst."
+    },
+    "cta": {
+      "title": "Sagen Sie uns, was Sie fördern müssen.",
+      "text": "Unsere Vertriebsingenieure schlagen Ihnen eine Pumpe oder eine komplette Station vor und senden Ihnen ein Angebot. Oder rufen Sie uns direkt an:"
+    }
+  },
+  "services": {
+    "title": "Produkte und Leistungen",
+    "lead": "Pumpen und Pumpstationen und der Service, der sie am Laufen hält. Die meisten Produkte fertigen wir auf Bestellung: Fragen Sie uns nach einem Angebot. Preise zzgl. MwSt.",
+    "all": "Alle Produkte und Leistungen",
+    "enquire": "Angebot anfragen",
+    "subject": "Angebotsanfrage: {title}",
+    "price": "Preis (zzgl. MwSt.)"
+  },
+  "jobs": {
+    "title": "Karriere",
+    "lead": "Offene Stellen in unserem Werk in Musterstadt und im Außendienst, mit dem letzten Tag für Ihre Bewerbung."
+  },
+  "blog": {
+    "title": "Aktuelles",
+    "lead": "Projekte, neue Produkte und was in unserem Werk passiert."
+  },
+  "people": {
+    "title": "Kontakt",
+    "lead": "Rufen Sie direkt die richtige Person an oder schreiben Sie ihr. Für alles andere erreichen Sie unser Büro über die Telefonnummer und E-Mail-Adresse am Fuß jeder Seite."
+  },
+  "downloads": {
+    "lead": "Produktblätter und andere Dokumente zum Lesen und Speichern."
+  },
+  "events": {
+    "title": "Messen",
+    "lead": "Wo Sie uns treffen und unsere Pumpen sehen können.",
+    "upcoming": "Demnächst",
+    "all": "Alle Messen",
+    "none": "Derzeit sind keine Messen geplant. Unser Vertrieb besucht Sie gern vor Ort.",
+    "book": "Kostenloses Ticket holen",
+    "reserve": "Treffen Sie unser Team am Stand: Vereinbaren Sie einen Termin telefonisch oder per E-Mail."
+  }
+}
