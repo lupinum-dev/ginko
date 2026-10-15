@@ -35,7 +35,7 @@ export function quotes(o: { source?: BrickSource } = {}) {
       role: f.text({ de: 'Rolle', en: 'Role', fr: 'Fonction' }, {
         max: 120,
         optional: true,
-        hint: { de: 'Zum Beispiel „Lehrerin an einer Partnerschule“.', en: 'For example “Teacher at a partner school”.', fr: 'Par exemple « Enseignante dans une école partenaire ».' },
+        hint: { de: 'Zum Beispiel „Kundin seit 2021“.', en: 'For example “Customer since 2021”.', fr: 'Par exemple « Cliente depuis 2021 ».' },
       }),
     },
     tasks: [
