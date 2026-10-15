@@ -47,7 +47,12 @@ export const markdownStorageUrls = internalMutation({
       })) as Data
       if (stableJson(data) === stableJson(row.data)) continue
       const trees = row.deletedAt === undefined ? await treesOf(brick.fields, data) : { json: '', bytes: 0 }
-      await ctx.db.patch(row._id, { data, bytes: entryBytes(data, row.prints), treeBytes: trees.bytes })
+      // A changed field raises its revision like a save: a Studio draft that still holds the old addresses gets a
+      // conflict instead of saving over the migrated text.
+      const rev = row.rev + 1
+      const fieldRevs = { ...row.fieldRevs }
+      for (const root of Object.keys(data)) if (stableJson(data[root] ?? null) !== stableJson(row.data[root] ?? null)) fieldRevs[root] = rev
+      await ctx.db.patch(row._id, { data, rev, fieldRevs, bytes: entryBytes(data, row.prints), treeBytes: trees.bytes })
       await putTrees(ctx, row.site, row._id, trees.json)
       await syncEntryRefs(ctx, row.site, row._id, await entryUses(ctx, brick.fields, data, schema.locales))
       if (row.deletedAt === undefined && row.state !== 'draft') touched.add(row.site)

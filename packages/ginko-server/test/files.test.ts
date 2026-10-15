@@ -440,6 +440,27 @@ describe('migrations.markdownStorageUrls', () => {
     expect(row!.data).toEqual({ imprint: { de: `![Hund]($file.${id})\n\n![Weg](https://alt.example/api/storage/unbekannt)` } })
     expect(await fileRefsOf(s, id)).toHaveLength(1)
   })
+
+  // Wrong behaviour caught: the migration changed the text without raising the entry's revision, so a Studio draft
+  // opened before it saved the old storage address over the migrated text.
+  it('raises the revision of a changed text, so an older draft gets a conflict', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.legal!.fields.imprint as { profile: string }).profile = 'rich'
+      await ctx.db.patch(s.site, { schema })
+    })
+    const id = await readyImage(s)
+    const token = await s.t.run(async (ctx) => (await ctx.storage.getUrl((await ctx.db.get(id))!.processedId!))!.split('/api/storage/')[1])
+    await s.t.run(async (ctx) => ctx.db.patch(s.entries.legal!, { data: { ...(await ctx.db.get(s.entries.legal!))!.data, imprint: { de: `![Hund](/api/storage/${token})` } } }))
+    await s.t.mutation(internal.migrations.markdownStorageUrls, {})
+    // Only the migration's own pages, which follow at once; the timers stay before anything later (sign-in expiry).
+    for (let i = 0; i < 10; i++) { vi.advanceTimersByTime(1); await s.t.finishInProgressScheduledFunctions() }
+    expect(await s.t.run(async (ctx) => (await ctx.db.get(s.entries.legal!))!.data.imprint)).toEqual({ de: `![Hund]($file.${id})` })
+    const stale = s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `![Hund](/api/storage/${token}) Neu` } }, sentence: 'x' })
+    expect((await errorOf(stale)).code).toBe('CHANGED_SINCE')
+  })
 })
 
 /** A ready image with two variant files, stored widest first to show that the bundle sorts them. */
