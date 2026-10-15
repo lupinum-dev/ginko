@@ -522,6 +522,17 @@ describe('entries.whyNotPublic', () => {
     expect(codes(await why(s, s.entries.martinigans!))).toEqual([])
   })
 
+  // Wrong behaviour caught: "Für en sind veraltet Übersetzungen.": a language code instead of its name, and broken German.
+  it('an outdated translation names the language and says the website keeps it', async () => {
+    const s = await studioSetup({ release: true })
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries['menu-marillen']!, baseRev: 1, locale: 'de', fields: { name: { de: 'Marillenknödel mit Butterbrösel' } } })
+    const result = await why(s, s.entries['menu-marillen']!, 'en')
+    expect(codes(result)).toEqual(['no_route', 'translation_fallback'])
+    const reason = result.reasons[1]!
+    expect(reason.sentence).toBe('Für Englisch sind Übersetzungen veraltet. Die Website zeigt dort noch die ältere Übersetzung.')
+    expect(historyText(reason.msg, 'en', { locales: ['de', 'en'], timeZone: 'Europe/Vienna' })).toBe('For English, translations are outdated. The website still shows the older translation there.')
+  })
+
   it('a brick without a route', async () => {
     const s = await studioSetup({ release: true })
     const result = await why(s, s.entries['menu-saibling']!)

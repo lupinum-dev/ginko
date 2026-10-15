@@ -6,6 +6,7 @@ import { isVisible, todayIn, urlsFor, type Schema } from '@lupinum/ginko/interna
 import type { Doc } from '../_generated/dataModel'
 import type { Data } from './content'
 import { historyText, msg, type HistoryMsg } from './history'
+import { languageLabel } from './i18n'
 import { DELETED_KEPT } from './lifecycle'
 import { leafStatus } from './translation'
 
@@ -61,13 +62,15 @@ export function publicness(site: Doc<'sites'>, key: string, row: Doc<'entries'>,
     const status = leafStatus(schema, key, row, locale)
     if (status.missing.length || status.outdated.length) {
       const what = status.missing.length && status.outdated.length ? 'both' : status.missing.length ? 'missing' : 'outdated'
-      const main = schema.locales[0]!
+      // Languages by name in the reader's language, never as codes.
+      const lang = languageLabel(locale)
+      const main = languageLabel(schema.locales[0]!)
       // Opt-in `untranslated: 'fallback'` on a routed collection: listed in this language, linked to its main-language page.
       const fallback = status.page === 'mainPage' ? 'publicness.translationFallbackMainPage' : 'publicness.translationFallback'
       // Only a missing text hides an entry; an outdated one never does (D5).
       reasons.push(status.page === 'hidden'
-        ? reason('translation_hidden', true, msg('publicness.translationHidden', { locale, what: 'missing', brick: brick.label }), 'translate')
-        : reason('translation_fallback', false, msg(fallback, { locale, what, main }), 'translate'))
+        ? reason('translation_hidden', true, msg('publicness.translationHidden', { locale: lang, brick: brick.label }), 'translate')
+        : reason('translation_fallback', false, msg(fallback, { locale: lang, what, main }), 'translate'))
     }
   }
   if (site.release === null) {

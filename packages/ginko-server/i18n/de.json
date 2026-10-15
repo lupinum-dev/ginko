@@ -264,8 +264,8 @@
     "noRouteLocale": "„{brick}“ hat in dieser Sprache keine eigene Seite. Die Einträge erscheinen nur innerhalb anderer Seiten.",
     "noRoute": "„{brick}“ hat keine eigene Seite. Die Einträge erscheinen nur innerhalb anderer Seiten.",
     "notVisible": "Das Datum des Eintrags ist vorbei, deshalb zeigt ihn die Website nicht mehr.",
-    "translationHidden": "Für {locale} {what, select, both {fehlen oder sind veraltet} missing {fehlen} other {sind veraltet}} Übersetzungen, die „{brick}“ verlangt. Der Eintrag erscheint dort deshalb nicht.",
-    "translationFallback": "Für {locale} {what, select, both {fehlen oder sind veraltet} missing {fehlen} other {sind veraltet}} Übersetzungen. {what, select, missing {Die Website zeigt dort stattdessen den Text in der Hauptsprache ({main}).} both {Wo eine fehlt, zeigt die Website dort den Text in der Hauptsprache ({main}), sonst noch die ältere Übersetzung.} other {Die Website zeigt dort noch die ältere Übersetzung.}}",
+    "translationHidden": "Für {locale} fehlen Übersetzungen, die „{brick}“ verlangt. Der Eintrag erscheint dort deshalb nicht.",
+    "translationFallback": "Für {locale} {what, select, both {fehlen Übersetzungen oder sind veraltet} missing {fehlen Übersetzungen} other {sind Übersetzungen veraltet}}. {what, select, missing {Die Website zeigt dort stattdessen den Text in der Hauptsprache ({main}).} both {Wo eine fehlt, zeigt die Website dort den Text in der Hauptsprache ({main}), sonst noch die ältere Übersetzung.} other {Die Website zeigt dort noch die ältere Übersetzung.}}",
     "translationFallbackMainPage": "Für {locale} fehlen Übersetzungen. Der Eintrag steht dort in den Listen in der Hauptsprache ({main}) und verlinkt auf seine Seite in der Hauptsprache. Eine eigene Seite auf {locale} bekommt er, sobald die Pflichtfelder übersetzt sind.",
     "notReleased": "Die Struktur der Website wurde noch nie veröffentlicht. Erst nach dem ersten Release ist der Inhalt für die Website bestimmt."
   },
