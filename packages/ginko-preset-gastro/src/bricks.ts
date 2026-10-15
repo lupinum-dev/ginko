@@ -109,7 +109,7 @@ export function hours(opts: GastroOptions = {}) {
     },
     tasks: [
       { id: 'closedToday', label: both('Heute geschlossen', 'Closed today'), kind: 'edit', fields: ['closedOn', 'closedNote'], prefill: { closedOn: '@today' } },
-      { id: 'holiday', label: both('Betriebsurlaub und Ausnahmen', 'Holiday closure and exceptions'), kind: 'edit', fields: ['exceptions'] },
+      { id: 'holiday', label: both('Betriebsurlaub und Ausnahmen', 'Holiday closures and exceptions'), kind: 'edit', fields: ['exceptions'] },
       { id: 'holidaySetting', label: both('Öffnungszeiten an Feiertagen', 'Opening hours on public holidays'), kind: 'edit', fields: ['holidays'] },
     ],
   })
@@ -118,7 +118,7 @@ export function hours(opts: GastroOptions = {}) {
 /** Own weekly hours for a date range: a season (yearly) or "new hours from a date" (open end). */
 export function hourPlans(opts: GastroOptions = {}) {
   return collection({
-    label: both('Öffnungszeiten ab Datum und Saisonen', 'Hours from a date and seasons'),
+    label: both('Öffnungszeiten ab Datum', 'Opening hours from a date'),
     ...sourceOf(opts),
     fields: {
       label: f.text(both('Name', 'Name'), { max: 80 }),
@@ -220,7 +220,7 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
     category: f.choice(both('Kategorie', 'Category'), {
       options: [
         { value: 'starters', label: both('Vorspeisen', 'Starters') }, { value: 'soups', label: both('Suppen', 'Soups') },
-        { value: 'mains', label: both('Hauptspeisen', 'Mains') }, { value: 'desserts', label: both('Desserts', 'Desserts') },
+        { value: 'mains', label: both('Hauptspeisen', 'Mains') }, { value: 'desserts', label: both('Nachspeisen', 'Desserts') },
         { value: 'drinks', label: both('Getränke', 'Drinks') },
       ],
     }),

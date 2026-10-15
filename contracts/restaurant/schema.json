@@ -429,7 +429,7 @@
           "id": "holiday",
           "label": {
             "de": "Betriebsurlaub und Ausnahmen",
-            "en": "Holiday closure and exceptions"
+            "en": "Holiday closures and exceptions"
           },
           "kind": "edit",
           "fields": [
@@ -852,7 +852,7 @@
             {
               "value": "desserts",
               "label": {
-                "de": "Desserts",
+                "de": "Nachspeisen",
                 "en": "Desserts"
               }
             },
@@ -1406,8 +1406,8 @@
     "hourPlans": {
       "kind": "collection",
       "label": {
-        "de": "Öffnungszeiten ab Datum und Saisonen",
-        "en": "Hours from a date and seasons"
+        "de": "Öffnungszeiten ab Datum",
+        "en": "Opening hours from a date"
       },
       "fields": {
         "label": {
