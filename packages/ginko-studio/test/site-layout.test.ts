@@ -25,7 +25,8 @@ vi.stubGlobal('useUpdateSite', () => ({ running: ref(false), run: () => {} }))
 const reloadNuxtApp = vi.fn()
 vi.stubGlobal('reloadNuxtApp', reloadNuxtApp)
 // The browser still holds its token: the client says signed in.
-vi.stubGlobal('useConvexAuth', () => ({ status: ref('authenticated'), user: ref({ id: 'u1' }) }))
+const user = ref<{ id: string }>()
+vi.stubGlobal('useConvexAuth', () => ({ status: ref('authenticated'), user }))
 // sites.meta answers what the test sets; the other queries of the layout (deletion, review count) have nothing.
 const meta = { data: ref<unknown>(), error: ref<unknown>() }
 vi.stubGlobal('useConvexQuery', (fn: unknown) => (String(fn) === 'sites.meta' ? meta : { data: ref(undefined), error: ref(undefined) }))
@@ -36,6 +37,7 @@ beforeEach(() => {
   meta.error.value = undefined
   reloadNuxtApp.mockClear()
   localStorage.clear()
+  user.value = { id: 'u1' }
 })
 
 const lastAnswer = {
@@ -111,6 +113,21 @@ test.each([
     ...(note ? ['Was du hier noch nicht gespeichert hattest, ist nicht auf der Website. Wirst du wieder eingeladen, bekommst du es in diesem Browser zurück.'] : []),
     'Wenn du hier etwas ändern sollst, frag die Inhaberin, ob sie dich (wieder) einlädt.Meine Seiten',
   ].join(''))
+})
+
+// Wrong behaviour caught: a page that opened without access while the person was still loading never showed the
+// note, though this browser kept her input for the site.
+test('opened without access before the person is known: the note shows once she is', async () => {
+  user.value = undefined
+  writeLocalDraft(localDraftKey('restaurant', 'u1', 'e1'), { v: 1, savedAt: Date.now(), baseRev: 3, locale: 'de', fields: { name: 'Kalbsschnitzel' } })
+  meta.error.value = noAccess()
+  const wrapper = mountLayout()
+  await flushPromises()
+  const note = 'Was du hier noch nicht gespeichert hattest'
+  expect(wrapper.get('[role="alert"]').text()).not.toContain(note)
+  user.value = { id: 'u1' }
+  await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toContain(note)
 })
 
 // Wrong behaviour caught: a mistyped address, an unknown site or one the person was removed from went into "Zuletzt

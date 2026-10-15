@@ -41,13 +41,14 @@ const signedOut = computed(() => status.value === 'anonymous' || isSignInRequire
 const noAccess = computed(() => !signedOut.value && isNoAccess(error.value))
 // A member removed while typing learns that her unsaved input is not online and comes back in this browser if she is
 // invited again. The open form writes its copy while it unmounts, in the render that shows the access page, so the
-// check waits a tick; storage exists only in the browser, so a page that opens without access checks once mounted.
+// check waits a tick; storage exists only in the browser, so a page that opens without access checks once mounted,
+// and again when the person is known (she may still be loading then).
 const unsavedHere = ref(false)
 const checkUnsaved = () => {
   const id = user.value?.id
   unsavedHere.value = noAccess.value && !!id && localDraftKeys(id, slug.value).length > 0
 }
-watch(noAccess, () => nextTick(checkUnsaved))
+watch([noAccess, () => user.value?.id], () => nextTick(checkUnsaved))
 onMounted(checkUnsaved)
 /** A failure with no last answer: nothing is open yet, so a reload loses nothing. */
 const notLoaded = computed(() => !!error.value && !data.value && !signedOut.value && !noAccess.value)
