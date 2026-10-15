@@ -27,8 +27,12 @@ const tickets = computed(() => {
 })
 // "Open in maps": a link to OpenStreetMap with the place, no embedded map (nothing loads from another company).
 const maps = computed(() => (event.value?.data.location ? `https://www.openstreetmap.org/search?query=${encodeURIComponent(event.value.data.location)}` : undefined))
-// A few sessions with speakers, in programme order: the talks rather than the coffee breaks.
-const highlights = computed(() => rows.value.filter((row) => row.speakers.length).slice(0, 4))
+// The next few sessions with speakers, in programme order: the talks rather than the coffee breaks, and on an event day
+// only those still to start, so they do not repeat "now and next" (the same clock).
+const { at } = useSessionClock()
+const highlights = computed(() => rows.value
+  .filter((row) => row.speakers.length && (row.date > at.value.date || (row.date === at.value.date && row.from > at.value.clock)))
+  .slice(0, 4))
 usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.data.lead, image: home.value.data.image ?? undefined }))
 </script>
 

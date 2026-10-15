@@ -16,7 +16,7 @@ const state = computed(() => nowAndNext(rows.value, at.value.date, at.value.cloc
 </script>
 
 <template>
-  <BlockSection v-if="state.day" :title="t('nowNext.title')" :lead="t('nowNext.at', { time: at.clock })" data-now-next>
+  <BlockSection v-if="state.day" :title="t('nowNext.title')" :lead="t('nowNext.at', { time: at.clock })" :side="false" data-now-next>
     <div class="flex flex-col gap-8">
       <div class="grid gap-8 md:grid-cols-2 md:gap-12">
         <div class="flex flex-col" data-now>
