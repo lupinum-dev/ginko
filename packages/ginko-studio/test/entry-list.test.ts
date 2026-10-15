@@ -6,6 +6,8 @@ import * as vue from 'vue'
 import { expect, test, vi } from 'vitest'
 import { collection, defineSite, f } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
+import { ConvexError } from 'convex/values'
+import { normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import { useI18n } from '#imports'
 import { shownLabel } from '../app/utils/labels'
 import ListPage from '../app/pages/s/[site]/all/[brick]/index.vue'
@@ -33,14 +35,15 @@ vi.stubGlobal('allAccess', () => ({ editable: computed(() => [['dishes', brick]]
 // entries.list answers like better-convex: new arguments subscribe again, and the answer arrives later (`answer`).
 // With keepPreviousData the last answer stays, marked stale, until then.
 const answers: { search?: string }[] = []
-const list = { data: ref<unknown>(), pending: ref(true), isStale: ref(false) }
+const list = { data: ref<unknown>(), pending: ref(true), isStale: ref(false), error: ref<unknown>() }
 vi.stubGlobal('useConvexQuery', (fn: string, args: () => unknown, options?: { keepPreviousData?: boolean }) => {
-  if (String(fn) !== 'entries.list') return { data: ref(undefined), pending: ref(false), isStale: ref(false) }
+  if (String(fn) !== 'entries.list') return { data: ref(undefined), pending: ref(false), isStale: ref(false), error: ref() }
   watch(() => JSON.stringify(toValue(args)), (now) => {
     answers.push(JSON.parse(now) as { search?: string })
     if (!options?.keepPreviousData) list.data.value = undefined
     list.isStale.value = list.data.value !== undefined
     list.pending.value = true
+    list.error.value = undefined
   }, { immediate: true })
   return list
 })
@@ -49,6 +52,13 @@ const answer = (page: { rows: { _id: string; title: string; state: string; dates
   list.pending.value = false
   list.isStale.value = false
 }
+// A failed answer keeps the last data, still stale (better-convex rc.3: isStale covers pending or errored).
+const fail = (error: unknown) => {
+  list.error.value = error
+  list.pending.value = false
+  list.isStale.value = list.data.value !== undefined
+}
+const stubs = { AllShell: { template: '<div><slot /></div>' }, SavedViews: { name: 'SavedViews', props: ['search'], emits: ['update:search'], template: '<input class="views" />' }, TranslationBadges: true, EntryEditor: true, NuxtLink: true }
 
 // Wrong behaviour caught: while a cleared search loads, the last (empty) answer hid the search box under the
 // person's cursor and said "Noch keine Einträge." for a collection that has entries.
@@ -56,7 +66,7 @@ test('clearing a search with no match keeps the search box and shows no empty st
   vi.useFakeTimers()
   try {
     const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), {
-      global: { mocks: { shownLabel }, stubs: { AllShell: { template: '<div><slot /></div>' }, SavedViews: { name: 'SavedViews', props: ['search'], emits: ['update:search'], template: '<input class="views" />' }, TranslationBadges: true, EntryEditor: true, NuxtLink: true } },
+      global: { mocks: { shownLabel }, stubs },
     })
     await flushPromises()
     answer({ rows: [{ _id: 'e1', title: 'Saibling', state: 'published', dates: {}, gaps: [] }], total: 1 })
@@ -76,4 +86,22 @@ test('clearing a search with no match keeps the search box and shows no empty st
   } finally {
     vi.useRealTimers()
   }
+})
+
+// Wrong behaviour caught: when "Mehr anzeigen" fails (access removed, a server error), the kept list stayed dimmed
+// as if loading, the button stayed disabled and nothing said what went wrong.
+test('a list answer that fails after a page loaded says why and does not stay dimmed', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), { global: { mocks: { shownLabel }, stubs } })
+  await flushPromises()
+  const rows = Array.from({ length: 50 }, (_, i) => ({ _id: `e${i}`, title: `Gericht ${i}`, state: 'published', dates: {}, gaps: [] as [] }))
+  answer({ rows, total: 60 })
+  await flushPromises()
+
+  await wrapper.find('button:not([aria-label])').trigger('click')
+  fail(normalizeConvexError(new ConvexError({ code: 'FORBIDDEN', message: 'Du hast keinen Zugriff auf diesen Bereich.' }), { functionName: 'entries:list' }))
+  await flushPromises()
+
+  expect(wrapper.find('[role="alert"]').text()).toBe('Du hast keinen Zugriff auf diesen Bereich.')
+  expect(wrapper.find('ol').attributes('aria-busy')).toBe(undefined)
+  expect(wrapper.find('button:not([aria-label])').attributes('disabled')).toBe(undefined)
 })

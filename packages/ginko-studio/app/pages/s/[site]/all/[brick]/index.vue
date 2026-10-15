@@ -6,6 +6,7 @@ import { isVisible } from '@lupinum/ginko/internal'
 import { languageName, relevantDate, titleOf } from '../../../../../utils/content'
 import type { ListSort } from '../../../../../components/SavedViews.vue'
 import { whenText } from '../../../../../utils/when'
+import { opErrorOf } from '../../../../../composables/useOps'
 import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
 
@@ -40,11 +41,12 @@ const list = useConvexQuery(api.entries.list, () => (brick.value?.kind === 'coll
   ? { site: s.slug.value, brick: key.value, ...(asked.value ? { search: asked.value } : {}), ...(sort.value ? { sort: sort.value } : {}), limit: limit.value, language: uiLocale.value }
   : 'skip'), { keepPreviousData: true })
 // While a new answer loads (another search, more rows), the last one stays on screen, dimmed. Nuxt keys the page
-// by its path, so each area has its own list and never shows another area's last answer.
+// by its path, so each area has its own list and never shows another area's last answer. When the new answer
+// fails, the last one also stays (better-convex marks it stale): the page says why and does not dim it as loading.
 const page = computed(() => list.data.value)
 const rows = computed(() => page.value?.rows ?? [])
 const total = computed(() => page.value?.total ?? 0)
-const loading = computed(() => list.isStale.value)
+const loading = computed(() => list.isStale.value && !list.error.value)
 type Row = (typeof rows.value)[number]
 
 const single = useConvexQuery(api.entries.single, () => (brick.value?.kind === 'single' && allowed.value ? { site: s.slug.value, brick: key.value } : 'skip'))
@@ -96,7 +98,8 @@ const ops = useOps(s.slug)
       <!-- While an answer loads, the last page can be an empty search: the box stays (it may hold the focus) and no empty state shows. -->
       <SavedViews v-if="total || asked || search || (page && loading)" v-model:search="search" v-model:sort="sort" :slug="s.slug.value" :brick-key="key" :brick="brick" />
       <p class="sr-only" aria-live="polite">{{ loading && asked ? t('site.all.searching') : '' }}</p>
-      <p v-if="!page || (!total && loading)" class="text-muted-foreground" role="status">{{ t('entry.loading') }}</p>
+      <p v-if="list.error.value" class="font-semibold text-destructive" role="alert">{{ opErrorOf(list.error.value).message }}</p>
+      <p v-if="!page || (!total && loading)" v-show="!list.error.value" class="text-muted-foreground" role="status">{{ t('entry.loading') }}</p>
       <p v-else-if="!total && !asked" class="text-muted-foreground">{{ t('site.all.noEntries') }}</p>
       <p v-else-if="!total" class="text-muted-foreground">{{ t('basics.views.noMatch') }}</p>
       <template v-else>
