@@ -6,9 +6,9 @@ import type { Doc } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, currentUser, fail, memberOf, type Actor } from './lib/access'
 import { NAME_MAX, SLUG } from './lib/input'
+import { isReminded, weeklyBricks } from './lib/reminders'
 import { isFetchableSiteUrl } from './lib/siteUrl'
 import { leafStatus } from './lib/translation'
-import { isReminded, weeklyRefs } from './reminders'
 
 /**
  * The sites the signed-in user may open, with their role. Admins see every site. A site being deleted is listed for
@@ -22,7 +22,7 @@ export const mine = query({
     const memberships = await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', user.id)).collect()
     const row = (site: Doc<'sites'>, role: 'admin' | Doc<'memberships'>['role']) => {
       const member = memberships.find((m) => m.site === site._id)
-      const weekly = !!member && weeklyRefs(site.schema as Schema).some((ref) => isReminded(member, ref))
+      const weekly = !!member && weeklyBricks(site.schema as Schema).some(({ ref }) => isReminded(member, ref))
       return { slug: site.slug, name: site.name, url: site.url, role, deleting: !!site.deleting, weekly }
     }
     const admin = await ctx.db.query('admins').withIndex('by_user', (q) => q.eq('user', user.id)).unique()

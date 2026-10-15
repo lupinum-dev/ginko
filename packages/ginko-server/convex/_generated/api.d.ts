@@ -39,6 +39,7 @@ import type * as lib_list from "../lib/list.js";
 import type * as lib_names from "../lib/names.js";
 import type * as lib_policy from "../lib/policy.js";
 import type * as lib_publicness from "../lib/publicness.js";
+import type * as lib_reminders from "../lib/reminders.js";
 import type * as lib_search from "../lib/search.js";
 import type * as lib_siteUrl from "../lib/siteUrl.js";
 import type * as lib_translation from "../lib/translation.js";
@@ -105,6 +106,7 @@ declare const fullApi: ApiFromModules<{
   "lib/names": typeof lib_names;
   "lib/policy": typeof lib_policy;
   "lib/publicness": typeof lib_publicness;
+  "lib/reminders": typeof lib_reminders;
   "lib/search": typeof lib_search;
   "lib/siteUrl": typeof lib_siteUrl;
   "lib/translation": typeof lib_translation;
