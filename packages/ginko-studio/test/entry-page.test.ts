@@ -18,7 +18,7 @@ Object.entries({ computed, onMounted, ref, shallowRef, watch, useI18n, useKeptEn
 const schema = serializeSchema(defineSite({
   site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
   pages: { home: { de: '/' } },
-  bricks: { dishes: collection({ label: 'Gerichte', max: 500, fields: { title: f.text('Name') } }) },
+  bricks: { dishes: collection({ label: 'Gerichte', max: 500, order: 'manual', fields: { title: f.text('Name') } }) },
 }))
 const brick = schema.bricks.dishes!
 
