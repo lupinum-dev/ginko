@@ -33,10 +33,22 @@ describe('ChangeDiff', () => {
     expect(text).not.toContain('Hausgemacht')
   })
 
-  // Wrong behaviour caught: the owner approves a lunch menu change without seeing which day or dish changed.
-  test('a list shows each changed row by name with old → new cells, added rows with + and removed rows with −', () => {
-    const days = { days: { type: 'list', label: 'Tage', itemLabel: 'Tag', max: 5, of: { day: { type: 'choice', label: 'Tag', options: [{ value: 'tu', label: 'Dienstag' }, { value: 'we', label: 'Mittwoch' }, { value: 'th', label: 'Donnerstag' }] }, dish: { type: 'text', label: 'Gericht' } } } } as never
-    const tue = { _id: 'a', day: 'tu', dish: 'Tafelspitz' }
+  // Wrong behaviour caught: the owner approves a lunch menu change without seeing which day or dish changed, or
+  // approves a new dish without seeing the allergens that stay on its day.
+  test('a list shows each changed row by name with old → new cells and its other cells, added rows with + and removed rows with −', () => {
+    const days = {
+      days: {
+        type: 'list', label: 'Tage', itemLabel: 'Tag', max: 5,
+        of: {
+          day: { pos: 0, type: 'choice', label: 'Tag', options: [{ value: 'tu', label: 'Dienstag' }, { value: 'we', label: 'Mittwoch' }, { value: 'th', label: 'Donnerstag' }, { value: 'fr', label: 'Freitag' }] },
+          dish: { pos: 1, type: 'text', label: 'Gericht' },
+          allergens: { pos: 2, type: 'choices', label: 'Allergene', options: [{ value: 'A', label: 'A Gluten' }, { value: 'C', label: 'C Eier' }] },
+          fish: { pos: 3, type: 'text', label: 'Fisch der Woche', optional: true, showWhen: { field: 'day', is: 'fr' } },
+          side: { pos: 4, type: 'text', label: 'Beilage', optional: true },
+        },
+      },
+    } as never
+    const tue = { _id: 'a', day: 'tu', dish: 'Tafelspitz', allergens: ['A', 'C'], fish: 'Forelle' }
     const wed = { _id: 'b', day: 'we', dish: 'Schnitzel' }
     const thu = { _id: 'c', day: 'th', dish: 'Fisch' }
     const rows: DiffField[] = [{
@@ -49,7 +61,7 @@ describe('ChangeDiff', () => {
     }]
     const lines = mount(ChangeDiff, { props: { diff: rows, fields: days, locale: 'de' } }).findAll('li p').map((p) => p.text().replace(/\s+/g, ' '))
     expect(lines).toEqual([
-      'Dienstag', 'Gericht: Tafelspitz → Kürbisgulasch',
+      'Dienstag', 'Gericht: Tafelspitz → Kürbisgulasch', 'Allergene: A Gluten, C Eier',
       '+ Mittwoch', 'Gericht: Schnitzel',
       '− Donnerstag', 'Gericht: Fisch',
     ])
