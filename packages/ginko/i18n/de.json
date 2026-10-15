@@ -24,6 +24,7 @@
     "badTime": "„{label}“ ist keine gültige Uhrzeit.",
     "badDateRange": "„{label}“ ist kein gültiger Zeitraum.",
     "dateRangeOrder": "„{label}“: „von“ liegt nach „bis“.",
+    "timeOrder": "„{end}“ muss nach „{start}“ liegen.",
     "notWeekStart": "„{label}“ muss der erste Tag einer Woche sein.",
     "badChoice": "„{label}“ hat einen ungültigen Wert.",
     "badChoices": "„{label}“ hat ungültige Werte.",

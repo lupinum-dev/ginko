@@ -112,7 +112,7 @@ function ruleIssues(schema: Schema, brick: Brick, data: unknown): RuleIssue[] {
     if (field.type !== 'time' || !field.after) continue
     const [start, end] = [data[field.after], data[name]]
     if (typeof start === 'string' && typeof end === 'string' && timePattern.test(start) && timePattern.test(end) && end <= start) {
-      out.push({ issue: issue(name, 'TIME_ORDER', 'dateRangeOrder', { label: `${shown(brick.fields[field.after]!, main)} – ${shown(field, main)}` }), touches: [field.after, name] })
+      out.push({ issue: issue(name, 'TIME_ORDER', 'timeOrder', { start: shown(brick.fields[field.after]!, main), end: shown(field, main) }), touches: [field.after, name] })
     }
   }
   const week = weekStartField(brick)

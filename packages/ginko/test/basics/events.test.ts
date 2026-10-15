@@ -2,7 +2,7 @@
 // the winter offset in summer), a cancelled session still looks scheduled, a session that ends before it starts is
 // saved, and the sessions brick does not pass the platform's schema check.
 import { describe, expect, it } from 'vitest'
-import { collection, defineSite, f, serializeSchema, checkSchema, validate, type Issue } from '../../src/core/index.ts'
+import { collection, coreMessage, defineSite, f, serializeSchema, checkSchema, validate, type Issue } from '../../src/core/index.ts'
 import { eventJsonLd, events, sessions, sessionsInOrder, type EventJsonLdInput } from '../../src/basics/index.ts'
 
 const event = (over: Partial<EventJsonLdInput> = {}): EventJsonLdInput => ({
@@ -80,6 +80,13 @@ describe('sessions', () => {
   ])('a session that %s', async (_, from, to, errors) => {
     const result = await validate(serializeSchema(site(false)), 'sessions', session(from, to), { mode: 'create' })
     expect(pairs(result.errors)).toEqual(errors)
+  })
+
+  // The owner reads this on a phone during the event: it names the two fields of the form, and equal times are wrong too.
+  it('says the end must be later than the start, with the field labels', async () => {
+    const [error] = (await validate(serializeSchema(site(false)), 'sessions', session('09:30', '09:30'), { mode: 'create' })).errors
+    expect(coreMessage('en', error!.key, error!.params)).toBe('“Ende” must be later than “Beginn”.')
+    expect(error!.message).toBe('„Ende“ muss nach „Beginn“ liegen.')
   })
 
   it('a time order needs another time field of the brick', () => {

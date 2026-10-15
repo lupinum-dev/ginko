@@ -215,6 +215,19 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“: „von“ liegt nach „bis“."
    ],
+   "timeOrder": [
+    "„",
+    [
+     "a",
+     "end"
+    ],
+    "“ muss nach „",
+    [
+     "a",
+     "start"
+    ],
+    "“ liegen."
+   ],
    "notWeekStart": [
     "„",
     [
@@ -1472,6 +1485,19 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: “from” is after “to”."
    ],
+   "timeOrder": [
+    "“",
+    [
+     "a",
+     "end"
+    ],
+    "” must be later than “",
+    [
+     "a",
+     "start"
+    ],
+    "”."
+   ],
    "notWeekStart": [
     "“",
     [
@@ -2728,6 +2754,19 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "”: “desde” es posterior a “hasta”."
+   ],
+   "timeOrder": [
+    "“",
+    [
+     "a",
+     "end"
+    ],
+    "” debe ser posterior a “",
+    [
+     "a",
+     "start"
+    ],
+    "”."
    ],
    "notWeekStart": [
     "“",
