@@ -8,6 +8,8 @@
 //   test <name> [--only <gate>] [--mode single|multi]
 //                            gates 1–6 of §9 on packed tarballs, outside this workspace, with one test instant on
 //                            every clock (GINKO_TEST_NOW, default: the template's sampleAnchor at 10:00 UTC)
+//   test <name> --platform   gate 7: the template's Studio jobs on a local platform (Convex, Studio :3100, site :3000);
+//                            see scripts/templates/platform.ts
 //   dev <name>               nuxt dev on port 3600 + the template's place in T1
 //
 // GINKO_KEEP_WORK=1 keeps the work folder of `test` for a look; it is deleted otherwise.
@@ -21,6 +23,7 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { lockfiles, manifestOf, notCopied, sampleDates } from '../packages/create-ginko/template-files.mjs'
+import { platformGate } from './templates/platform.ts'
 
 const execFile = promisify(execFileCallback)
 export const repoRoot = join(import.meta.dirname, '..')
@@ -430,7 +433,7 @@ function dev(name: string) {
 
 async function main(argv: string[]) {
   const [command, ...rest] = argv
-  const usage = 'Usage: pnpm templates sync [--check] | test <name> [--only <gate>] [--mode single|multi] | dev <name>'
+  const usage = 'Usage: pnpm templates sync [--check] | test <name> [--only <gate>] [--mode single|multi] | test <name> --platform | dev <name>'
   const option = (flag: string) => {
     const i = rest.indexOf(flag)
     return i === -1 ? undefined : rest[i + 1]
@@ -455,6 +458,12 @@ async function main(argv: string[]) {
   }
   if (command === 'test') {
     const name = needName()
+    if (rest.includes('--platform')) {
+      const steps = await platformGate(name, repoRoot)
+      const failed = steps.filter((s) => !s.ok)
+      console.log(`\ntemplates test ${name} --platform: ${steps.length - failed.length} passed, ${failed.length} failed\n  gate 7: ${failed.length ? `FAIL (${failed.map((s) => s.check).join('; ')})` : 'PASS'}`)
+      process.exit(failed.length ? 1 : 0)
+    }
     const only = option('--only')
     const mode = option('--mode')
     if (only !== undefined && !GATES.includes(Number(only))) { console.error(`--only takes a gate: ${GATES.join(', ')}\n${usage}`); process.exit(2) }

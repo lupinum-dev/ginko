@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { type Result, sync, syncCheck, withUnrun } from '../templates.ts'
+import { studioSpecDirs } from '../templates/platform.ts'
 
 const work = mkdtempSync(join(tmpdir(), 'templates-script-'))
 afterAll(() => rmSync(work, { recursive: true, force: true }))
@@ -103,5 +104,22 @@ describe('test --only', () => {
     { gates: [3], modes: ['multi'] as const, results: [gate3], failed: [] },
   ])('gates $gates in $modes', ({ gates, modes, results, failed }) => {
     expect(withUnrun(results, gates, [...modes]).filter((r) => !r.ok).map((r) => r.detail)).toEqual(failed)
+  })
+})
+
+describe('test --platform', () => {
+  // Wrong behaviour caught: gate 7 runs the Studio specs of a feature the template does not sync (a failing job it
+  // does not have), or skips the template's own folder, or counts a folder without a spec as a proven job.
+  it('picks the Studio specs of the synced features and of the template itself', () => {
+    const root = repo((files) => {
+      files['templates/_features/site/e2e/studio/notice.spec.ts'] = ''
+      files['templates/_features/pages/e2e/studio/page.spec.ts'] = ''
+      files['templates/_features/menu/e2e/studio/dish.spec.ts'] = ''
+      files['templates/_features/hours/e2e/studio/README.md'] = ''
+      files['templates/_features/demo/e2e/studio/own.spec.ts'] = ''
+    })
+    expect(studioSpecDirs(root, 'demo', ['site', 'pages', 'hours'])).toEqual([
+      'templates/_features/site/e2e/studio', 'templates/_features/pages/e2e/studio', 'templates/_features/demo/e2e/studio',
+    ])
   })
 })
