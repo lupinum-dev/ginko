@@ -10,10 +10,6 @@ import { projects } from './app/bricks/projects.ts'
 import { locales, localized } from './app/routes.ts'
 import { siteUrl } from './site-url.ts'
 
-// Events have no page yet: the events pages come with a later version of this template. Until then the brick keeps
-// its content (content/events/) and its Today line, without an address, so no link and no sitemap entry leads nowhere.
-const { route: _eventsRoute, ...eventsWithoutPage } = events({ source: 'files', route: localized('/events/[slug]') })
-
 export default defineSite({
   site: 'nonprofit',
   name: 'River Commons',
@@ -65,9 +61,10 @@ export default defineSite({
     projects: projects({ source: 'files', route: localized('/projects/[slug]') }),
     // The board and the staff (content/people/). No photos: the site shows initials.
     people: people({ source: 'files' }),
-    // Clean-ups, meetings and other dates (content/events/). An event leaves the site after its last day; Today shows
-    // the next one.
-    events: { ...eventsWithoutPage, status: { next: 'when' } },
+    // Clean-ups, meetings and other dates (content/events/). An event leaves the site after its last day; the home
+    // page and Get involved show the next one, and so does Today. No `route` yet: the events pages come with a later
+    // version of this template, so no link and no sitemap entry leads nowhere.
+    events: { ...events({ source: 'files' }), status: { next: 'when' } },
     // Reports and other PDFs, newest first (content/downloads/, the files in public/reports/).
     downloads: downloads({ source: 'files' }),
     // Partner logos on the home page (content/logos/, the files in public/logos/).

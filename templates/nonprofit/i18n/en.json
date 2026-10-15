@@ -1,11 +1,12 @@
 {
   "home": {
+    "title": "River clean-ups in Musterstadt",
     "projects": "Current projects",
     "news": "Latest news",
     "voices": "In their words",
     "partners": "Who we work with",
     "cta": {
-      "title": "Come to the next clean-up.",
+      "title": "Come to a clean-up.",
       "text": "No sign-up needed. Bring sturdy shoes; we bring gloves, grabbers and bags.",
       "action": "Get involved"
     }
@@ -14,7 +15,8 @@
     "lead": "What we did on the river, and what comes next."
   },
   "projects": {
-    "lead": "What we work on all year, and campaigns that run until a set day."
+    "lead": "What we work on all year, and campaigns that run until a set day.",
+    "until": "Campaign until {date}"
   },
   "people": {
     "lead": "The board, elected by the members' meeting, and our coordinator."
@@ -22,5 +24,10 @@
   "downloads": {
     "title": "Reports",
     "lead": "Our annual reports and other documents, to read and keep."
+  },
+  "event": {
+    "next": "Next date",
+    "time": "{start}–{end}",
+    "separator": ", "
   }
 }

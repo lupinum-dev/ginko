@@ -15,7 +15,6 @@ export const segments: Record<string, Partial<Record<SiteLocale, string>>> = {
   team: { en: 'team', de: 'team', fr: 'equipe', ar: 'fariq' },
   reports: { en: 'reports', de: 'berichte', fr: 'rapports', ar: 'taqarir' },
   legal: { en: 'legal', de: 'rechtliches', fr: 'informations-legales', ar: 'qanuni' },
-  events: { en: 'events', de: 'termine', fr: 'evenements', ar: 'faaliyat' },
 }
 
 /** The path prefix of a language: none for the main language, `/de` for German as a second language. */

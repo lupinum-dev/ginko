@@ -1,11 +1,12 @@
 {
   "home": {
+    "title": "Nettoyage de la rivière à Musterstadt",
     "projects": "Projets en cours",
     "news": "Dernières actualités",
     "voices": "Ils en parlent",
     "partners": "Nos partenaires",
     "cta": {
-      "title": "Venez au prochain nettoyage.",
+      "title": "Venez à un nettoyage.",
       "text": "Sans inscription. Apportez de bonnes chaussures ; nous apportons les gants, les pinces et les sacs.",
       "action": "Participer"
     }
@@ -14,7 +15,8 @@
     "lead": "Ce que nous avons fait sur la rivière, et ce qui vient ensuite."
   },
   "projects": {
-    "lead": "Ce sur quoi nous travaillons toute l’année, et les campagnes qui durent jusqu’à une date fixe."
+    "lead": "Ce sur quoi nous travaillons toute l’année, et les campagnes qui durent jusqu’à une date fixe.",
+    "until": "Campagne jusqu’au {date}"
   },
   "people": {
     "lead": "Le bureau, élu par l’assemblée générale, et notre coordinateur."
@@ -22,5 +24,10 @@
   "downloads": {
     "title": "Rapports",
     "lead": "Nos rapports annuels et d’autres documents, à lire et à garder."
+  },
+  "event": {
+    "next": "Prochain rendez-vous",
+    "time": "{start}–{end}",
+    "separator": ", "
   }
 }
