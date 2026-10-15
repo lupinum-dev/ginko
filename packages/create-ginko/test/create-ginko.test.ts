@@ -135,7 +135,8 @@ describe('create-ginko', () => {
     ['a preset name that is an object key', ['bad-proto', '--preset', 'toString'], 'Unknown preset "toString"'],
     ['an unknown language', ['bad-lang', '--locale', 'fr'], 'Choose one of: en, de.'],
     ['two languages for the plain starter', ['bad-two-langs', '--locales', 'en,de'], 'The plain starter has one language.'],
-    ['an unknown template', ['bad-template', '--template', 'shop'], 'Unknown template "shop". Choose one of: starter.'],
+    // The list that follows depends on which templates are built.
+    ['an unknown template', ['bad-template', '--template', 'shop'], 'Unknown template "shop". Choose one of: '],
     ['a locale the template does not have', ['bad-locale', '--template', 'starter', '--locales', 'en,fr'], 'Unknown locale "fr". The starter template has: en, de.'],
     ['--template with --preset', ['bad-both', '--template', 'starter', '--preset', 'gastro'], 'Use --template or --preset, not both.'],
     ['--template dropped by npm (only its value arrives)', ['bad-npm-template', 'starter'], 'npm create ginko@latest bad-npm-template -- --template starter'],
