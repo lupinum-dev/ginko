@@ -85,6 +85,36 @@ describe('local:import', () => {
   })
 })
 
+/** An answer with `count` small FAQ entries and no files. */
+const faqs = (count: number): ExportAnswer => ({
+  ...answer([]),
+  schema: { locales: ['de'], bricks: { faq: { kind: 'collection', label: 'FAQ', max: 2000, fields: { question: { type: 'text', label: 'Frage' } } } } } as unknown as ExportAnswer['schema'],
+  entries: Array.from({ length: count }, (_, i) => ({ id: `faq/q${i}`, brick: 'faq', kind: 'item' as const, order: i, data: { question: { de: `Frage ${i}` } }, prints: {}, rev: 1 })),
+})
+
+describe('local:import batches', () => {
+  // Wrong behaviour caught: 1,000 small entries fit 1 MB, so a cut by bytes alone sends them in one call, which runs
+  // past Convex's 1 s on a busy machine.
+  it('cuts 1,000 small entries into batches of at most 400', async () => {
+    const { batches } = await roundTrip(faqs(1000))
+    expect(batches.map((b) => b.entries.length)).toEqual([400, 400, 200])
+  })
+
+  // Wrong behaviour caught: a refusal of the platform comes back on every run, yet the message says that a rerun finishes.
+  it.each([
+    { error: 'Function execution timed out (maximum duration: 1s)', hint: '\nRun the same command again to finish.' },
+    { error: 'Uncaught ConvexError: {"code":"INVALID","message":"Der Eintrag „faq/q1“ kommt zweimal vor."}', hint: '' },
+  ])('after “$error” says to run again only when that can finish', async ({ error, hint }) => {
+    const dir = join(await tmp(), 'out')
+    await exportSite({ platform: { exportSite: async () => faqs(1) } as unknown as Platform, site: 'linde', dir, fetch: async () => new Response(bytes), log: () => {} })
+    const run = async (fn: string) => {
+      if (fn === 'seed:importBatch') throw new Error(error)
+      return fn === 'seed:uploadUrl' ? 'http://local/upload' : { done: true }
+    }
+    await expect(importSite({ dir, run, upload: async () => 's', log: () => {} })).rejects.toMatchObject({ message: `${error}\nThe local site is only partly imported.${hint}` })
+  })
+})
+
 describe('ops:import', () => {
   it('needs the literal --prod and a --site before it talks to any deployment', async () => {
     const { main } = await import('../../src/cli/monorepo.ts')
