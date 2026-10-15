@@ -8,8 +8,8 @@ const { t } = useI18n('site')
 const path = useGinkoPath()
 const notFound = computed(() => props.error.statusCode === 404)
 const title = computed(() => (notFound.value ? t('error.notFound') : t('error.failed')))
-const { name } = useGinkoSite()
-useHead(() => ({ title: `${title.value} · ${name}`, meta: [{ name: 'robots', content: 'noindex' }] }))
+// The title through seo.titleTemplate of ginko.config.ts, like every other page.
+useGinkoSeo(() => ({ title: title.value, noindex: true }))
 
 /** Leaves the error state, so the next page renders normally. */
 function home() {
