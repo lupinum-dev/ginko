@@ -87,6 +87,7 @@ const calls: Call[] = [
   { fn: 'entries.remove', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
   { fn: 'entries.purge', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.removed, lifeRev: 2 }) },
   { fn: 'entries.usedBy', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
+  { fn: 'entries.trashOverflow', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
   { fn: 'entries.restore', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
   { fn: 'entries.publish', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
   { fn: 'entries.unpublish', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
