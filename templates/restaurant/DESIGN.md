@@ -160,6 +160,23 @@ notices above the header).
 - Every image has a real width, height and alt text, and a fixed ratio per block, so nothing jumps while loading.
 - Right-to-left: only logical utilities (`ms-`, `pe-`, `start-`, `text-start`); arrows get `rtl:-scale-x-100`.
 
+## Patterns of the features
+
+In templates that have these features (`templates/_features/` in the Ginko repository):
+
+- **Open now** (`hours`): `HoursToday` says open or closed in words, the dot only repeats it. It stands above the h1 on
+  the home page, under the call and email buttons on a page for getting in touch, and at the top of the footer's
+  contact column on every page (`app/components/site/FooterStatus.vue`). Opening times never break inside a span:
+  a narrow screen breaks between "11:30–14:00 and" and "17:30–22:00".
+- **Where** (home): one quiet line under the hero's actions: a pin icon, the address, and an "Open in maps" link
+  (`text-small`, muted, the link at least 44 px tall). No embedded map.
+- **Getting in touch** (a reservations page): right under `BlockPageHeader`, one primary button (call) and one
+  secondary (email), `size="lg"`, full width below `sm`; the open-now line under them; text and the opening hours
+  below.
+- **A long list** (the menu): under the header, a row of links to its sections (`text-small`, accent, at least 44 px
+  tall), so a phone reaches the desserts in one tap; each section has an `id`.
+- **Photos on phones** (`gallery`): one column at full width, each photo 3:2; justified rows from `sm`.
+
 ## Do and don't
 
 | Do | Don't |
