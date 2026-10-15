@@ -29,9 +29,11 @@ const canManage = props.lib.canManage
 const error = ref<string | null>(null)
 const name = ref('')
 watch(() => info.value?.name, (value) => { name.value = value ?? '' }, { immediate: true })
-/** "Gespeichert" under the name after a rename, like the alt text; the next keystroke or another file clears it. */
+/**
+ * "Gespeichert" under the name after a rename, like the alt text; the next keystroke clears it. Another file gets a
+ * panel of its own (FilesBrowser keys it by id), so a rename that answers late never marks the next file.
+ */
 const savedName = ref(false)
-watch(() => props.id, () => { savedName.value = false })
 
 async function run(action: () => Promise<unknown>) {
   error.value = null
