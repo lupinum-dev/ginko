@@ -324,17 +324,15 @@ const plainObject = (value: Json | undefined): Record<string, Json> =>
 
 const textOf = (value: Json | undefined): string => (typeof value === 'string' ? value : '')
 
-/** Label of an entry for history lines: its first text field in the main language. */
+/**
+ * Label of an entry for history lines, proposals, search hits and file uses: its title as the Studio shows it (core
+ * `entryTitle`, so a planned week is "Woche ab 19.10.2026"), else the brick's label, in the main language.
+ */
 export function labelOf(schema: Schema, brickKey: string, data: Data): string {
   const brick = Object.hasOwn(schema.bricks, brickKey) ? schema.bricks[brickKey] : undefined
+  if (!brick) return brickKey
   const main = schema.locales[0]!
-  // The first text field in config order (stored objects lose key order), like the editor's titles.
-  for (const [name, field] of ordered(brick?.fields ?? {})) {
-    if (field.type !== 'text') continue
-    const text = textOf(plainObject(data[name])[main] ?? data[name])
-    if (text) return text
-  }
-  return brick ? labelIn(brick.label, main, main) : brickKey
+  return titleOf(schema, brick, data, undefined) ?? labelIn(brick.label, main, main)
 }
 
 function structuralBrick(schema: Schema, key: string): CollectionBrick {
