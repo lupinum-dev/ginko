@@ -140,10 +140,21 @@ const dialog = ref<HTMLDialogElement | null>(null)
 // A nested ConfigProvider replaces the whole context: pass on what app.vue sets (today only useId).
 const reka = injectConfigProviderContext({})
 onMounted(() => dialog.value?.showModal())
+/**
+ * The view that shows an issue: a text in another language there (`name.en`, `days.<rowId>.dish.en`, `image.alt.en`),
+ * anything else in the main language, which shows every field (`name.de`, a list column such as `exceptions.<rowId>.when`).
+ */
+function viewOf(path: string): Locale {
+  const other = props.locales.find((l) => l !== props.main && path.endsWith(`.${l}`))
+  return other && Object.hasOwn(toTranslate.value, path.split('.')[0]!) ? other : props.main
+}
+/** Each view marks only its own issues: a German error never sits on the English input, nor the other way round. */
+const shownIssues = computed(() => issues.value.filter((issue) => viewOf(issue.path) === lang.value))
 watch(issues, (list) => {
   if (!list.length) return
-  // An error in a field the other language does not show: back to the main language, where every field is.
-  if (foreign.value && list.some((issue) => !Object.hasOwn(toTranslate.value, issue.path.split('.')[0]!))) lang.value = props.main
+  // The view of the errors; with errors in several, the main language first (fixing a text there clears its others).
+  const views = new Set(list.map((issue) => viewOf(issue.path)))
+  lang.value = views.size === 1 ? [...views][0]! : props.main
   nextTick(() => dialog.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
 })
 
@@ -285,7 +296,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
               :path="String(key)"
               :locale="lang"
               :locales="locales"
-              :issues="issues"
+              :issues="shownIssues"
               @update:model-value="form.setField(String(key), $event)"
             />
           </template>

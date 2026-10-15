@@ -211,7 +211,7 @@ describe('languages', () => {
       }),
       hours: single({
         label: 'Öffnungszeiten',
-        fields: { exceptions: f.list('Ausnahmen', { itemLabel: 'Ausnahme', max: 10, fields: { reason: f.text('Grund'), closed: f.boolean('Geschlossen') } }) },
+        fields: { exceptions: f.list('Ausnahmen', { itemLabel: 'Ausnahme', max: 10, fields: { reason: f.text('Grund'), from: f.date('Ab', { optional: true }), closed: f.boolean('Geschlossen') } }) },
         tasks: [{ id: 'holiday', label: 'Betriebsurlaub', kind: 'edit', fields: ['exceptions'] }],
       }),
       lunch: single({
@@ -230,6 +230,11 @@ describe('languages', () => {
   }
   const value = (wrapper: ReturnType<typeof sheet>, id: string) => (wrapper.get(`#${id}`).element as HTMLInputElement).value
   const language = (wrapper: ReturnType<typeof sheet>, name: string) => wrapper.findAll('[role="group"] button, [role="radio"]').find((b) => b.text().startsWith(name))!
+  /** The stored hours with one exception that has both languages. */
+  const hours = () => {
+    const data = { exceptions: [{ _id: 'r1', reason: { de: 'Betriebsurlaub', en: 'Company holiday' }, closed: true }] }
+    return { data, entry: { _id: 'h1', brick: 'hours', kind: 'single', order: 0, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data } }
+  }
 
   // Wrong behaviour caught (WD-4, WS-8, F6): a quick task stored German only, so a new dish showed German on the English
   // site; with a switch, input typed in one language must not land in the other or get lost on the way.
@@ -298,6 +303,30 @@ describe('languages', () => {
     await flushPromises()
     const [sent] = ops.saveEntry.mock.calls[0] as unknown as [{ fields: { days: { dish: unknown }[] } }]
     expect(sent.fields.days[0]!.dish).toEqual({ de: 'Kürbiscremesuppe', en: 'Pumpkin cream soup' })
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: an error on a column the English view does not show, or on the German text, stayed in the
+  // English view: "Bitte prüfe die markierten Felder." with nothing marked, or the German error on the English input.
+  // And an English error after a switch back to German showed on the German input.
+  test.each([
+    { path: 'exceptions.r1.from', from: 'Englisch', view: 'Deutsch', input: 'f-exceptions-r1-from' },
+    { path: 'exceptions.r1.reason.de', from: 'Englisch', view: 'Deutsch', input: 'f-exceptions-r1-reason' },
+    { path: 'exceptions.r1.reason.en', from: 'Deutsch', view: 'Englisch', input: 'f-exceptions-r1-reason' },
+  ])('an error at $path, saved in the $from view, shows once in the $view view with its input focused', async ({ path, from, view, input }) => {
+    const { data, entry } = hours()
+    const wrapper = sheet('hours', entry)
+    answer({ data })
+    await flushPromises()
+    await wrapper.get('#f-exceptions-r1-reason').setValue('Winterpause')
+    if (from === 'Englisch') {
+      await language(wrapper, 'Englisch').trigger('click')
+      await flushPromises()
+    }
+    ops.saveEntry.mockRejectedValueOnce({ code: 'INVALID', message: 'Bitte prüfe die markierten Felder.', details: { errors: [{ path, code: 'FORMAT', message: 'Das passt so nicht.' }] } })
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect([language(wrapper, view).attributes('data-state'), document.activeElement?.id, wrapper.text().split('Das passt so nicht.').length - 1]).toEqual(['on', input, 1])
     wrapper.unmount()
   })
 })
