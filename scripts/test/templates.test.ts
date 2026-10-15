@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
-import { type Result, sync, syncCheck, withUnrun } from '../templates.ts'
+import { type Result, sync, syncCheck, test as testTemplate, withUnrun } from '../templates.ts'
 import { studioJob } from '../templates/e2e/studio.ts'
 import { studioSpecDirs } from '../templates/platform.ts'
 
@@ -122,6 +122,16 @@ describe('test --only', () => {
     { gates: [3], modes: ['multi'] as const, results: [gate3], failed: [] },
   ])('gates $gates in $modes', ({ gates, modes, results, failed }) => {
     expect(withUnrun(results, gates, [...modes]).filter((r) => !r.ok).map((r) => r.detail)).toEqual(failed)
+  })
+})
+
+describe('test', () => {
+  // Wrong behaviour caught: an error outside a gate's steps (here: the template's package.json cannot be read) ends
+  // the script with a stack trace and no summary, or the gates count as skipped instead of failed.
+  it('turns an error of the run into a failed result with its reason', async () => {
+    const results = withUnrun(await testTemplate('no-such-template', [1, 3], ['multi']), [1, 3], ['multi'])
+    expect(results.map((r) => [r.gate, r.ok, r.check])).toEqual([[0, false, 'run'], [1, false, 'did not run'], [3, false, 'did not run']])
+    expect(results[0]!.detail).toContain('templates/no-such-template/package.json')
   })
 })
 

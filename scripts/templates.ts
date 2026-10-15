@@ -13,7 +13,8 @@
 //   test <name> --platform   gate 7: the template's Studio jobs on a local platform (Convex, Studio :3100, site :3000);
 //                            see scripts/templates/platform.ts
 //
-// `test` takes the machine-wide heavy-run lock and waits for a calm machine first (scripts/lib/runs.ts).
+// `test` takes the machine-wide heavy-run lock and waits for a calm machine first (scripts/lib/runs.ts). An error of
+// the run itself (install, build, server start, global setup, a crash of this script) is a failed gate with its reason.
 //   dev <name>               nuxt dev on port 3600 + the template's place in T1
 //
 // GINKO_KEEP_WORK=1 keeps the work folder of `test` for a look; it is deleted otherwise.
@@ -28,7 +29,7 @@ import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { lockfiles, manifestOf, notCopied, sampleDates } from '../packages/create-ginko/template-files.mjs'
 import { heavyLock, waitForCalm } from './lib/runs.ts'
-import { platformGate } from './templates/platform.ts'
+import { platformGate, type Step } from './templates/platform.ts'
 
 const execFile = promisify(execFileCallback)
 export const repoRoot = join(import.meta.dirname, '..')
@@ -282,7 +283,23 @@ async function run(cmd: string, args: string[], cwd: string, env: Record<string,
   return `${stdout}${stderr}`
 }
 
-async function test(name: string, gates: number[], modes: Mode[]): Promise<Result[]> {
+/**
+ * Gates 1–6 for one template. Any error outside a step (a missing file, a crash of this script) is a failed result
+ * `run` (gate 0) with its reason, never a missing or skipped gate.
+ */
+export async function test(name: string, gates: number[], modes: Mode[]): Promise<Result[]> {
+  const results: Result[] = []
+  try {
+    await runGates(name, gates, modes, results)
+  } catch (error) {
+    const detail = error instanceof Error ? error.stack ?? error.message : String(error)
+    results.push({ gate: 0, mode: 'both', check: 'run', ok: false, detail })
+    console.log(`FAIL run (the test stopped)\n${detail.split('\n').slice(0, 40).map((l) => `     ${l}`).join('\n')}`)
+  }
+  return results
+}
+
+async function runGates(name: string, gates: number[], modes: Mode[], results: Result[]) {
   const root = repoRoot
   const templateDir = join(root, 'templates', name)
   const pkg = readJson<Pkg>(join(templateDir, 'package.json'))
@@ -291,7 +308,6 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
   const clockEnv = { NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${join(root, 'scripts/templates/clock.mjs')}`.trim(), GINKO_TEST_NOW: now }
   const secret = randomBytes(32).toString('hex')
   const { locales } = manifestOf(await configOf(root, name))
-  const results: Result[] = []
   /** A result of a requested gate; a failed setup step (`blocks`) is recorded whatever the gate, since later gates need it. */
   const record = (gate: number, mode: Result['mode'], check: string, ok: boolean, detail?: string, blocks = false) => {
     if (!gates.includes(gate) && (ok || !blocks)) return
@@ -328,7 +344,7 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
         tarball[dep] = out.startsWith('/') ? out : join(tgz, out)
       }
     }, true)
-    if (!packed) return results
+    if (!packed) return
     /** Points the site's Ginko packages (also nested ones, via npm overrides) at the tarballs. */
     const useTarballs = (siteDir: string) => {
       const path = join(siteDir, 'package.json')
@@ -390,8 +406,13 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
 
     for (const mode of modes) {
       const dir = dirs[mode]
-      if (!dir) continue
       const browserGates = gates.filter((gate) => gate >= 3 && (gate === 3 || mode === 'multi'))
+      // A gate of this mode that cannot run fails with the reason, so the summary never shows it green or leaves it out.
+      const cannotRun = (gates: number[], reason: string) => { for (const gate of gates) record(gate, mode, 'did not run', false, reason) }
+      if (!dir) {
+        cannotRun(gates.filter((gate) => gate === 2 || browserGates.includes(gate)), `the ${mode} site was not installed (see gate 1)`)
+        continue
+      }
       // Gate 2: types, lint, build, ginko check, platform-ready, sync --check. The build also serves gates 3–6.
       if (gates.includes(2)) await step(2, mode, 'vue-tsc (nuxt typecheck)', () => run('npx', ['nuxt', 'typecheck'], dir))
       if (gates.includes(2)) await step(2, mode, 'eslint', () => run('npx', ['eslint', '.'], dir))
@@ -404,7 +425,11 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
           if (problems.length) throw new Error(problems.join('\n'))
         })
       }
-      if (!built || !browserGates.length) continue
+      if (!browserGates.length) continue
+      if (!built) {
+        cannotRun(browserGates, `the ${mode} site did not build (see gate 2 nuxt build)`)
+        continue
+      }
       // Gates 3–6 against the built server, with the test clock on the server and in the browser.
       const port = await freePort()
       const server = spawn('node', ['.output/server/index.mjs'], { cwd: dir, env: { ...process.env, ...clockEnv, PORT: String(port), NUXT_APP_SECRET: secret }, stdio: 'ignore' })
@@ -428,7 +453,8 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
           const specs = [`scripts/templates/e2e/gate${gate}.spec.ts`, ...(gate === 3 ? (pkg.ginko?.features ?? []).map((f) => `templates/_features/${f}/e2e/`).filter((dir) => existsSync(join(root, dir))) : [])]
           const out = spawnSync(join(root, 'node_modules/.bin/playwright'), ['test', '-c', 'scripts/templates/playwright.config.ts', '--output', join(work, `pw-${mode}-${gate}`), ...specs],
             { cwd: root, env: { ...process.env, ...env }, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
-          const text = `${out.stdout}${out.stderr}`.replace(/\u001b\[[0-9;]*m/g, '')
+          // Playwright that cannot start (no binary, a broken config) or a failing global setup is a failed gate too.
+          const text = `${out.stdout ?? ''}${out.stderr ?? ''}${out.error ? `\ncould not run Playwright: ${out.error.message}` : ''}`.replace(/\u001b\[[0-9;]*m/g, '')
           // The whole report next to the screenshots; the console shows its start.
           mkdirSync(shots, { recursive: true })
           writeFileSync(join(shots, `gate${gate}.log`), text)
@@ -441,7 +467,6 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
   } finally {
     cleanup()
   }
-  return results
 }
 
 /** T4: the platform variant of the config (core `withoutFiles`: no `source` on any brick) passes checkSite. */
@@ -499,7 +524,13 @@ async function main(argv: string[]) {
     await heavyLock(`pnpm templates test ${rest.join(' ')}`)
     await waitForCalm()
     if (rest.includes('--platform')) {
-      const steps = await platformGate(name, repoRoot)
+      let steps: Step[]
+      try {
+        steps = await platformGate(name, repoRoot)
+      } catch (error) {
+        steps = [{ check: 'gate 7 run', ok: false, detail: error instanceof Error ? error.stack ?? error.message : String(error) }]
+        console.log(`FAIL gate 7 run\n${steps[0]!.detail}`)
+      }
       const failed = steps.filter((s) => !s.ok)
       console.log(`\ntemplates test ${name} --platform: ${steps.length - failed.length} passed, ${failed.length} failed\n  gate 7: ${failed.length ? `FAIL (${failed.map((s) => s.check).join('; ')})` : 'PASS'}`)
       process.exit(failed.length ? 1 : 0)
@@ -513,9 +544,10 @@ async function main(argv: string[]) {
     const results = withUnrun(await test(name, gates, modes), gates, modes)
     const failed = results.filter((r) => !r.ok)
     console.log(`\ntemplates test ${name}: ${results.length - failed.length} passed, ${failed.length} failed`)
-    for (const gate of GATES) {
+    for (const gate of [0, ...GATES]) {
       const own = results.filter((r) => r.gate === gate)
-      if (own.length) console.log(`  gate ${gate}: ${own.every((r) => r.ok) ? 'PASS' : `FAIL (${own.filter((r) => !r.ok).map((r) => r.check === 'did not run' ? r.detail : `${r.mode} ${r.check.split(',')[0]}`).join('; ')})`}`)
+      const label = gate === 0 ? 'run' : `gate ${gate}`
+      if (own.length) console.log(`  ${label}: ${own.every((r) => r.ok) ? 'PASS' : `FAIL (${own.filter((r) => !r.ok).map((r) => r.check === 'did not run' ? r.detail : gate === 0 ? r.detail!.split('\n')[0] : `${r.mode} ${r.check.split(',')[0]}`).join('; ')})`}`)
     }
     process.exit(failed.length ? 1 : 0)
   }
