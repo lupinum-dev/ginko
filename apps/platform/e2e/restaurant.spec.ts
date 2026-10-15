@@ -152,6 +152,28 @@ test.describe('Unterwegs (break-it 9)', () => {
     await expect(page.getByText('„Preis“ fehlt.')).toHaveCount(0)
   })
 
+  // Wrong behaviour caught: on a phone the buttons squeeze a removed entry's title to a few letters, so nobody can tell
+  // which entry "Jetzt löschen" deletes for good.
+  test('25. on a phone a removed entry keeps its title on the full width, with the buttons below', async ({ page }) => {
+    test.skip(page.viewportSize()!.width >= 640, 'The row stays on one line from 640 px.')
+    await page.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
+    await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
+    await page.getByRole('button', { name: 'Mehr' }).click()
+    await page.getByRole('menuitem', { name: 'Eintrag entfernen' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click()
+    await expect(page.locator('[data-sonner-toast]')).toContainText('entfernt')
+
+    await page.goto('/s/restaurant/all?removed', { waitUntil: 'networkidle' })
+    const row = page.getByRole('listitem').filter({ hasText: 'Wiener Schnitzel vom Kalb' })
+    const title = row.getByText('Wiener Schnitzel vom Kalb', { exact: true })
+    await expect(title).toBeVisible()
+    const [rowBox, titleBox, buttonBox] = await Promise.all([row.boundingBox(), title.boundingBox(), row.getByRole('button', { name: 'Wiederherstellen' }).boundingBox()])
+    // The title gets the row's width (less its padding), and the buttons start below the title and the date line.
+    expect(titleBox!.width).toBeGreaterThan(rowBox!.width - 40)
+    expect(buttonBox!.y).toBeGreaterThan(titleBox!.y + titleBox!.height)
+    expect(await title.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+  })
+
   test('23. after a reload the typed name comes back with "Wiederherstellen"', async ({ page }) => {
     await page.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
     await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
