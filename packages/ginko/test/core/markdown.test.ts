@@ -125,3 +125,18 @@ describe('parseMarkdown profiles', () => {
     expect(file.body).toBe('Text')
   })
 })
+
+describe('fileRefsIn', () => {
+  // Wrong behaviour caught: a `$file.<id>` in code counted as a picture: another site's ID in a code example blocked
+  // the save, and an own file named only in inline code could not go to the trash.
+  test.each([
+    ['fenced code', '```md\n![Doku]($file.fremd)\n```', []],
+    ['a tilde fence with a longer close', '~~~\n![Doku]($file.fremd)\n~~~~', []],
+    ['inline code', 'So geht es: `![x]($file.k57a)`', []],
+    ['a picture after inline code', '`Code` und ![Hund]($file.k57a)', ['k57a']],
+    ['a picture after a closed fence', '```\nx\n```\n\n![Hund]($file.k57a)', ['k57a']],
+    ['the YAML props block of a component', '::figure\n```yaml [props]\nsrc: $file.k57a\n```\n::', ['k57a']],
+  ])('%s', (_name, text, ids) => {
+    expect([...fileRefsIn(text)]).toEqual(ids)
+  })
+})

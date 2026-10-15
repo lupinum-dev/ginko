@@ -27,19 +27,55 @@ const MARKDOWN_IMAGE_REF = /!\[([^\]]*)\]\(\s*<?\$file\.([A-Za-z0-9_-]+)/g
 /** The upload ID when the whole `value` is a file reference (`$file.<id>`), else undefined. */
 export const fileRefOf = (value: string): string | undefined => WHOLE_REF.exec(value)?.[1]
 
-/** The upload IDs a text references. */
+/** A code fence line: up to 3 spaces, then 3 or more backticks or tildes (group 1). */
+const FENCE = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/
+/** A component's YAML props block (```yaml [props]) is no code: its `src: $file.x` is a reference. */
+const PROPS_FENCE = /^yaml\s+\[props\]/
+/** Inline code: a run of backticks up to the same run, within one paragraph. */
+const INLINE_CODE = /(?<!`)(`+)(?!`)(?:[^\n]|\n(?![ \t]*\n))*?(?<!`)\1(?!`)/g
+
+const blank = (code: string) => code.replace(/[^\n]/g, ' ')
+
+/**
+ * The text with its code blanked out, the length kept so positions stay: fenced code blocks and inline code. A
+ * `$file.<id>` there is text (the tree shows it as code), not a file the text uses.
+ */
+function withoutCode(text: string): string {
+  let fence: string | undefined
+  const lines = text.split('\n').map((line) => {
+    const match = FENCE.exec(line)
+    if (fence === undefined) {
+      if (!match || PROPS_FENCE.test(match[2]!.trim())) return line
+      fence = match[1]!
+      return blank(line)
+    }
+    if (match && match[1]![0] === fence[0] && match[1]!.length >= fence.length && !match[2]!.trim()) fence = undefined
+    return blank(line)
+  })
+  return lines.join('\n').replace(INLINE_CODE, blank)
+}
+
+/** The upload IDs a text references; code is text. */
 export function fileRefsIn(text: string): Set<string> {
-  return new Set([...text.matchAll(FILE_REF)].map((m) => m[1]!))
+  return new Set([...withoutCode(text).matchAll(FILE_REF)].map((m) => m[1]!))
 }
 
 /** The upload IDs of the Markdown images in a text (`![alt]($file.<id>)`) that have no description of their own. */
 export function fileImagesWithoutAlt(text: string): Set<string> {
-  return new Set([...text.matchAll(MARKDOWN_IMAGE_REF)].filter((m) => m[1]!.trim() === '').map((m) => m[2]!))
+  return new Set([...withoutCode(text).matchAll(MARKDOWN_IMAGE_REF)].filter((m) => m[1]!.trim() === '').map((m) => m[2]!))
 }
 
-/** The text with every reference whose ID is in `map` pointing at its new ID. Unknown IDs stay as they are. */
+/** The text with every reference whose ID is in `map` pointing at its new ID. Unknown IDs, and words in code, stay as they are. */
 export function rewriteFileRefs(text: string, map: ReadonlyMap<string, string>): string {
-  return text.replace(FILE_REF, (whole, id: string) => (map.has(id) ? `$file.${map.get(id)!}` : whole))
+  let out = ''
+  let last = 0
+  for (const match of withoutCode(text).matchAll(FILE_REF)) {
+    const to = map.get(match[1]!)
+    if (to === undefined) continue
+    out += `${text.slice(last, match.index)}$file.${to}`
+    last = match.index + match[0].length
+  }
+  return out + text.slice(last)
 }
 
 /**
