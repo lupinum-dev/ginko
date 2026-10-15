@@ -136,6 +136,7 @@ test('Heute lists this person\'s unsaved input on this site, newest first, and e
     expect(rows[1]!.get('a').attributes('href')).toBe('/s/restaurant/all/notices/e7')
     await rows[0]!.get('button').trigger('click')
     expect(wrapper.findComponent({ name: 'TaskSheet' }).props()).toMatchObject({ brickKey: 'notices', task: { id: 'add' } })
+    wrapper.unmount()
   } finally {
     localStorage.clear()
   }
@@ -156,6 +157,7 @@ test('Alles bearbeiten lists the unsaved input too; input typed in a quick task\
     await flushPromises()
     const rows = wrapper.get('section[aria-labelledby="local-drafts"]').findAll('li')
     expect(rows.map((li) => [li.find('span').text().replace(/ · .*/, ''), li.get('a').attributes('href')])).toEqual([['„Betriebsurlaub“', '/s/restaurant/all/notices/e7']])
+    wrapper.unmount()
   } finally {
     localStorage.clear()
     manager = false

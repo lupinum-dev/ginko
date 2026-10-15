@@ -186,6 +186,7 @@ describe('ChangeRows', () => {
   test('an approved change names the approver; staff whose task needs approval go back with a new version, not Rückgängig', () => {
     for (const [name, fn] of Object.entries({ computed, ref, onMounted: () => {}, onUnmounted: () => {}, useI18n })) vi.stubGlobal(name, fn)
     vi.stubGlobal('useOps', () => ({}))
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
     const change = {
       _id: 'c1', kind: 'save', brick: 'lunch', entry: 'l1', fields: ['note'], at: Date.now(), sentence: 'Hinweis von „Mittagsmenü“ geändert', msg: null,
       who: { email: 'koch@example.com' }, agent: null, approver: { email: 'wirtin@example.com' }, undoBlocked: null,

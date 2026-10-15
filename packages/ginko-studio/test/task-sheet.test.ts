@@ -19,6 +19,7 @@ const toasts: string[] = []
 vi.stubGlobal('useToast', () => ({ show: (text: string) => toasts.push(text) }))
 vi.stubGlobal('useConvexAuth', () => ({ user: ref({ id: 'u1' }) }))
 vi.stubGlobal('useConvexConnectionState', () => ({ isConnected: ref(true) }))
+vi.stubGlobal('useConvex', () => ({ query: async () => null }))
 // The writes record what the form sends.
 const ops = { opId: () => crypto.randomUUID(), createEntry: vi.fn(async () => ({ entry: 'new1' })), saveEntry: vi.fn(async () => ({ rev: 2 })) }
 vi.stubGlobal('useOps', () => ops)
@@ -29,7 +30,8 @@ vi.stubGlobal('useOps', () => ops)
  */
 const prefill = { live: false, asked: 0, data: shallowRef<unknown>(), error: shallowRef<unknown>() }
 vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => {
-  if (String(fn) !== 'tasks.prefill') return { data: ref(undefined), error: ref(undefined) }
+  // No own proposal on the entry (proposals.ownFor answers null): the form starts from the prefill.
+  if (String(fn) !== 'tasks.prefill') return { data: ref(String(fn) === 'proposals.ownFor' ? null : undefined), error: ref(undefined) }
   watch(() => toValue(args), (now) => {
     prefill.live = now !== 'skip'
     prefill.data.value = undefined

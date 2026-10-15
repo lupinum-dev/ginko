@@ -136,8 +136,8 @@ describe('approving', () => {
     const [change] = await s.rows('changes')
     expect(change).toMatchObject({ kind: 'save', actor: 'u-koch', approvedBy: 'u-wirtin', fields: ['price'], entryRev: 2 })
     expect(await s.proposalRow(proposal)).toMatchObject({ status: 'applied', decidedBy: 'u-wirtin', change: change!._id })
-    // Verlauf names both: who made it, who approved it.
-    expect((await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })).page[0]).toMatchObject({ who: { email: 'koch@example.com' }, approver: { email: 'wirtin@example.com' } })
+    // Verlauf names both: who made it, who approved it (the reading owner herself: `self`, lib/names.ts).
+    expect((await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })).page[0]).toMatchObject({ who: { email: 'koch@example.com' }, approver: { self: true } })
 
     await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change!._id })
     expect((await s.row(s.saibling))!.data.price).toEqual({ amount: 1350 })
