@@ -107,14 +107,16 @@ const blocked = computed(() => signedOut.value || !!error.value || !!deletion.va
           <a :href="viewUrl" target="_blank" rel="noopener">{{ t('nav.viewSite') }}<SquareArrowOutUpRightIcon aria-hidden="true" /><span class="sr-only"> {{ t('nav.newTab') }}</span></a>
         </Button>
       </div>
-      <main id="studio-main" tabindex="-1" class="outline-none">
-      <div v-if="signedOut" class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
+      <!-- The phone tab bar is fixed over the end of the page: every page ends 7.5rem (pb-30) above the bottom, so its last
+           button ("weitere anzeigen") stays tappable. The entry editor brings its own sticky bar instead of the tab bar. -->
+      <main id="studio-main" tabindex="-1" :class="['outline-none', showTabs ? 'pb-30' : 'pb-6']">
+      <div v-if="signedOut" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
         <p class="text-xl font-bold">{{ t('nav.signedOutTitle') }}</p>
         <p>{{ t('nav.signedOutText') }}</p>
         <Button as-child><NuxtLink :to="`/login?redirect=${encodeURIComponent(route.fullPath)}`">{{ t('nav.signIn') }}</NuxtLink></Button>
       </div>
       <SiteDeleting v-else-if="deletion" :slug="slug" :name="deletion.name" :at="deletion.at" />
-      <div v-else-if="error" class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
+      <div v-else-if="error" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
         <p class="text-xl font-bold">{{ opErrorOf(error).message }}</p>
         <p>{{ t('nav.noAccessHelp') }}</p>
         <Button as-child variant="outline"><NuxtLink to="/?all">{{ t('nav.mySites') }}</NuxtLink></Button>

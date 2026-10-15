@@ -159,7 +159,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
 </script>
 
 <template>
-  <div class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8">
+  <div class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8">
     <h1 class="mb-5 text-xl font-semibold tracking-tight">{{ t('site.team.heading') }}</h1>
     <p v-if="s.schema.value && !s.isManager.value" class="py-6 text-muted-foreground">{{ t('site.team.ownersOnly') }}</p>
 

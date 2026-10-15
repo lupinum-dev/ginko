@@ -21,7 +21,7 @@ async function undo() {
 </script>
 
 <template>
-  <div class="grid w-full max-w-[760px] justify-items-start gap-3 px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8">
+  <div class="grid w-full max-w-[760px] justify-items-start gap-3 px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8">
     <div class="grid w-full gap-3 rounded-md bg-warning/12 px-4 py-3" role="status">
       <p class="font-semibold">{{ t('site.deleting.text', { site: name, date }) }}</p>
       <p v-if="problem" class="font-semibold text-destructive" role="alert">{{ problem }}</p>

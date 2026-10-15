@@ -14,7 +14,7 @@ const locales = computed(() => (s.schema.value?.locales ?? []) as string[])
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-[90rem] px-4 pt-4 pb-24 md:px-6 md:pt-8">
+  <div class="mx-auto w-full max-w-[90rem] px-4 pt-4 md:px-6 md:pt-8">
     <h1 class="mb-5 text-xl font-semibold tracking-tight">{{ t('files.title') }}</h1>
     <FilesBrowser v-if="s.schema.value" :lib="lib" mode="page" :locales="locales" />
   </div>

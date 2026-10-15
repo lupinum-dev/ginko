@@ -79,7 +79,7 @@ async function remove(release: string, proposal: string) {
 </script>
 
 <template>
-  <div class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid gap-4">
+  <div class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid gap-4">
     <h1 class="text-xl font-semibold tracking-tight">{{ t('review.heading') }}</h1>
     <SiteZoneNote v-if="s.schema.value" :zone="s.schema.value.timeZone" class="-mt-2" />
     <p v-if="list.error.value" class="font-medium text-destructive" role="alert">{{ opErrorOf(list.error.value, t('basics.loadFailed')).message }}</p>
