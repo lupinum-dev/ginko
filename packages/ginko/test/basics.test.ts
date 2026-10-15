@@ -54,6 +54,18 @@ describe('basics factories', () => {
     expect(jobs().visible).toEqual({ mode: 'until', field: 'validUntil' })
   })
 
+  // Wrong behaviour caught: a template with a people() brick cannot name its writers there, so it needs a second,
+  // differently shaped authors brick; or the docs default moves away from `authors`.
+  it('points post authors at the authors brick, or at the brick the option names', () => {
+    expect(posts().fields.authors.to).toBe('authors')
+    expect(posts({ authors: 'people' }).fields.authors.to).toBe('people')
+    const site = defineSite({
+      site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Berlin', locales: ['en'], currency: 'EUR', pages: { home: { en: '/' } },
+      bricks: { people: people(), posts: posts({ authors: 'people' }) },
+    })
+    expect(checkSite(site)).toEqual([])
+  })
+
   it('labels every brick, field, option and task in German, English, Spanish and French', () => {
     const missing: string[] = []
     const check = (path: string, label: Label | undefined) => {

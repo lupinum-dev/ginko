@@ -11,10 +11,16 @@ export interface PostsOptions<R extends Record<Locale, RouteTemplate> | undefine
   route?: R
   /** Most posts (default 500). */
   max?: number
+  /**
+   * The brick the post's `authors` name (default `'authors'`, the shape of `@lupinum/ginko-docs`). A site with a
+   * `people()` brick passes `'people'`, so a writer is one entry for the team page and the byline.
+   */
+  authors?: string
 }
 
 /**
- * Posts, newest first. `authors` names entries of the `authors` brick (add `authors: authors()` to `bricks`).
+ * Posts, newest first. `authors` names entries of the `authors` brick (add `authors: authors()` to `bricks`), or of
+ * the brick given as the `authors` option (for example `people`).
  * Files: `content/posts/<name>[.<locale>].md`.
  */
 export function posts<const R extends Record<Locale, RouteTemplate> | undefined = undefined>(o: PostsOptions<R> = {}) {
@@ -29,7 +35,7 @@ export function posts<const R extends Record<Locale, RouteTemplate> | undefined 
       title: f.text(t('Titel', 'Title', 'Título', 'Titre')),
       description: f.longtext(t('Beschreibung', 'Description', 'Descripción', 'Description'), { optional: true }),
       date: f.date(t('Datum', 'Date', 'Fecha', 'Date')),
-      authors: f.refs(t('Autorinnen und Autoren', 'Authors', 'Autores', 'Auteurs'), { to: 'authors', optional: true }),
+      authors: f.refs(t('Autorinnen und Autoren', 'Authors', 'Autores', 'Auteurs'), { to: o.authors ?? 'authors', optional: true }),
       image: f.image(t('Bild', 'Image', 'Imagen', 'Image'), { optional: true }),
       tags: f.list(t('Schlagwörter', 'Tags', 'Etiquetas', 'Mots-clés'), { itemLabel: tag, fields: { tag: f.text(tag, { max: 40 }) }, max: 10, optional: true }),
       slug: f.slug(t('Adresse', 'Address', 'Dirección', 'Adresse'), { from: 'title' }),
