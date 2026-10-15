@@ -12,6 +12,8 @@
 //                            every clock (GINKO_TEST_NOW, default: the template's sampleAnchor at 10:00 UTC)
 //   test <name> --platform   gate 7: the template's Studio jobs on a local platform (Convex, Studio :3100, site :3000);
 //                            see scripts/templates/platform.ts
+//
+// `test` takes the machine-wide heavy-run lock and waits for a calm machine first (scripts/lib/runs.ts).
 //   dev <name>               nuxt dev on port 3600 + the template's place in T1
 //
 // GINKO_KEEP_WORK=1 keeps the work folder of `test` for a look; it is deleted otherwise.
@@ -25,6 +27,7 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { lockfiles, manifestOf, notCopied, sampleDates } from '../packages/create-ginko/template-files.mjs'
+import { heavyLock, waitForCalm } from './lib/runs.ts'
 import { platformGate } from './templates/platform.ts'
 
 const execFile = promisify(execFileCallback)
@@ -492,6 +495,9 @@ async function main(argv: string[]) {
   }
   if (command === 'test') {
     const name = needName()
+    // One heavy run per machine, on a calm machine (scripts/lib/runs.ts); the lock goes when this process ends.
+    await heavyLock(`pnpm templates test ${rest.join(' ')}`)
+    await waitForCalm()
     if (rest.includes('--platform')) {
       const steps = await platformGate(name, repoRoot)
       const failed = steps.filter((s) => !s.ok)
