@@ -74,7 +74,7 @@ test('a session ended on the server shows the signed-out page with a sign-in lin
 test.each([
   { name: 'a failure with a last answer keeps the page and the open form', error: 'timeout', data: true, alert: undefined, form: true },
   { name: 'a failure with no answer yet says so and offers to try again', error: 'timeout', data: false, alert: 'Das ließ sich nicht laden.Erneut versuchenMeine Seiten', form: false },
-  { name: 'a refused access replaces the page, also with a last answer', error: 'noAccess', data: true, alert: 'Kein Zugriff auf diese Seite.Wenn du hier etwas ändern sollst, frag die Inhaberin, ob sie dich (wieder) einlädt.Meine Seiten', form: false },
+  { name: 'a refused access replaces the page, also with a last answer', error: 'noAccess', data: true, alert: 'Kein Zugriff auf diese Seite.Brauchst du hier Zugang, frag die Person, die dich eingeladen hat.Meine Seiten', form: false },
 ])('$name', ({ error, data, alert, form }) => {
   if (data) meta.data.value = lastAnswer
   meta.error.value = error === 'timeout'
@@ -111,7 +111,7 @@ test.each([
   expect(wrapper.get('[role="alert"]').text()).toBe([
     'Kein Zugriff auf diese Seite.',
     ...(note ? ['Was du hier noch nicht gespeichert hattest, ist nicht auf der Website. Wirst du wieder eingeladen, bekommst du es in diesem Browser zurück.'] : []),
-    'Wenn du hier etwas ändern sollst, frag die Inhaberin, ob sie dich (wieder) einlädt.Meine Seiten',
+    'Brauchst du hier Zugang, frag die Person, die dich eingeladen hat.Meine Seiten',
   ].join(''))
 })
 

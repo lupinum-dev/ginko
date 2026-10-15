@@ -20,7 +20,7 @@
     "signedOutOthers": "Signed out on all other devices. You stay signed in here.",
     "signOutOthersFailed": "The other devices could not be signed out. Please try again.",
     "signIn": "Sign in",
-    "noAccessHelp": "If you need to change something here, ask the owner to invite you (again).",
+    "noAccessHelp": "If you need access here, ask the person who invited you.",
     "noAccessUnsaved": "Anything you had not saved here is not on the website. If you are invited again, you get it back in this browser.",
     "more": "More",
     "account": "Account",
