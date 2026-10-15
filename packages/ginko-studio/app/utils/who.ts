@@ -11,11 +11,15 @@ type T = ((key: `who.${Kind}` | 'who.you' | 'who.viaAi') => string) & ((key: 'wh
 /** Whether the reader did it: sentences about them read "Du hast …", not "{who} hat …". */
 export const isYou = (who: Who | null | undefined): boolean => !!who && 'self' in who
 
-/** The person in the Studio's language: "Du", the name they set, their email, or "A team member", "Site support", … */
+/**
+ * The person in the Studio's language: "Du", the name they set, their email, or "A team member", "Site support", …
+ * Readers who may see addresses (owners and admins; the server sends `email` only to them) get the address after the
+ * name: a name is whatever the person typed, and the address is the identity they verified.
+ */
 export function whoText(who: Who, t: T): string {
   if ('self' in who) return t('who.you')
-  if ('name' in who && who.name) return who.name
-  return 'email' in who ? who.email : t(`who.${who.kind}`)
+  if ('email' in who) return who.name ? `${who.name} (${who.email})` : who.email
+  return 'name' in who && who.name ? who.name : t(`who.${who.kind}`)
 }
 
 /** The person, plus "via AI (label)" when an AI key made the change. */

@@ -88,6 +88,12 @@ describe('ReviewRow actions', () => {
     expect(actions(wrapper)).toEqual([])
   })
 
+  // Wrong behaviour caught: a member who calls themselves like a colleague ("Maria Huber") is shown to the owner who
+  // decides only by that name; the verified address that named them before is gone.
+  test('a proposal names its author by the name they set and, for the owner, their address', () => {
+    expect(mountRow(row({ author: { email: 'koch@b.at', name: 'Maria Huber' } })).text()).toContain('Maria Huber (koch@b.at)')
+  })
+
   test('a proposal that no longer fits can only be rejected, and shows why', () => {
     const wrapper = mountRow(row({ conflict: 'Inzwischen hat jemand das geändert.', conflictMsg: null }), { diff })
     expect(actions(wrapper)).toEqual(['Ablehnen…'])
