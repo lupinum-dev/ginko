@@ -131,7 +131,8 @@ const ops = useOps(s.slug)
           </li>
         </ol>
         <div v-if="total > rows.length" class="mt-3 flex flex-wrap items-center gap-3">
-          <Button type="button" variant="outline" :disabled="loading" @click="limit = rows.length + PAGE">{{ t('site.all.showMore', { count: Math.min(PAGE, total - rows.length) }) }}</Button>
+          <!-- After a failed answer the same limit would ask again with the same arguments and do nothing; the alert says why. -->
+          <Button type="button" variant="outline" :disabled="loading || !!list.error.value" @click="limit = rows.length + PAGE">{{ t('site.all.showMore', { count: Math.min(PAGE, total - rows.length) }) }}</Button>
           <p class="text-sm text-muted-foreground">{{ t('site.all.shownOf', { shown: rows.length, total }) }}</p>
         </div>
       </template>

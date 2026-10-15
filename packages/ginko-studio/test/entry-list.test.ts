@@ -95,8 +95,9 @@ test('clearing a search with no match keeps the search box and shows no empty st
 })
 
 // Wrong behaviour caught: when "Mehr anzeigen" fails (access removed, a server error), the kept list stayed dimmed
-// as if loading, the button stayed disabled and nothing said what went wrong.
-test('a list answer that fails after a page loaded says why and does not stay dimmed', async () => {
+// as if loading and nothing said what went wrong; or the button came back enabled although a click asks for the
+// same rows again and does nothing.
+test('a list answer that fails after a page loaded says why, does not stay dimmed and offers no dead button', async () => {
   const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), { global: { mocks: { shownLabel }, stubs } })
   await flushPromises()
   const rows = Array.from({ length: 50 }, (_, i) => ({ _id: `e${i}`, title: `Gericht ${i}`, state: 'published', dates: {}, gaps: [] as [] }))
@@ -109,5 +110,5 @@ test('a list answer that fails after a page loaded says why and does not stay di
 
   expect(wrapper.find('[role="alert"]').text()).toBe('Du hast keinen Zugriff auf diesen Bereich.')
   expect(wrapper.find('ol').attributes('aria-busy')).toBe(undefined)
-  expect(wrapper.find('button:not([aria-label])').attributes('disabled')).toBe(undefined)
+  expect(wrapper.find('button:not([aria-label])').attributes('disabled')).toBe('')
 })
