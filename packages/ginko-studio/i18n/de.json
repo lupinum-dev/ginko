@@ -542,8 +542,7 @@
     "translation": {
       "changedSince": "{name} geändert seit Übersetzung",
       "fitsAsIs": "Passt so",
-      "notTranslated": "Noch nicht übersetzt. Die Website zeigt hier den Text auf {name}.",
-      "useMain": "Gleich wie {name}"
+      "notTranslated": "Noch nicht übersetzt. Die Website zeigt hier den Text auf {name}."
     },
     "date": {
       "workWeek": "Aktuelle Arbeitswoche",

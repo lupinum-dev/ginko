@@ -184,11 +184,11 @@ function confirmTranslation(path: string) {
   if (!confirm.value.includes(path)) confirm.value = [...confirm.value, path]
 }
 
-/** The main-language text of a translatable leaf (Markdown as written), whole: "Gleich wie Deutsch" copies it. */
+/** The main-language text shown above a translation (Markdown as written). */
 function sourceText(path: string): string {
   const value = storedAt(path) as Record<string, unknown> | undefined
   const text = value?.[main.value]
-  return typeof text === 'string' ? text : ''
+  return typeof text === 'string' ? text.slice(0, 400) : ''
 }
 
 // A confirmed leaf whose row was removed meanwhile would make the save INVALID: drop it (Astra 11).
@@ -218,13 +218,7 @@ const wide = useMediaQuery('(min-width: 768px)', { ssrWidth: 1024 })
 const tabbed = computed(() => props.brick.layout === 'tabs' && wide.value)
 const activeTab = ref('')
 watch(visibleGroups, (list) => { if (!list.some((g) => g.id === activeTab.value)) activeTab.value = list[0]?.id ?? '' }, { immediate: true })
-const rootedIn = (g: FieldGroup, path: string) => g.fields.some(([key]) => path === key || path.startsWith(`${key}.`))
-const groupHasIssue = (g: FieldGroup) => issues.value.some((i) => rootedIn(g, i.path))
-/** In a foreign language: the group holds a stored missing or outdated text that is still open in the form (a tab marker). */
-const groupHasGap = (g: FieldGroup) => {
-  const gap = foreign.value ? props.entry?.translation?.[locale.value] : undefined
-  return !!gap && [...gap.missing, ...gap.outdated].some((path) => rootedIn(g, path) && translation(path) !== 'fine')
-}
+const groupHasIssue = (g: FieldGroup) => g.fields.some(([key]) => issues.value.some((i) => i.path === key || i.path.startsWith(`${key}.`)))
 // A refused save shows the first tab that holds an error.
 watch(issues, () => { const first = visibleGroups.value.find(groupHasIssue); if (tabbed.value && first) activeTab.value = first.id })
 const setField = (key: string, value: Json | undefined) => form.setField(key, value)
@@ -511,7 +505,6 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
               <TabsTrigger v-for="g in visibleGroups" :key="g.id" :value="g.id" class="-mb-px flex-none rounded-none border-0 border-b-2 border-transparent px-0 pt-1 pb-2 text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:border-primary dark:data-[state=active]:bg-transparent">
                 {{ shown(g.label) }}
                 <span v-if="groupHasIssue(g)" class="size-2 rounded-full bg-destructive" role="img" :aria-label="t('entry.groupHasIssues')" />
-                <span v-if="groupHasGap(g)" class="size-2 rounded-full bg-warning" role="img" :aria-label="t('basics.translation.incomplete')" :title="t('basics.translation.incomplete')" />
               </TabsTrigger>
             </TabsList>
             <TabsContent v-for="g in visibleGroups" :key="g.id" :value="g.id" force-mount class="grid gap-4 pt-4 data-[state=inactive]:hidden">
@@ -523,10 +516,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           <template v-for="g in visibleGroups" :key="g.id">
             <Separator />
             <section class="grid gap-4">
-              <h2 class="flex items-center gap-2 text-base font-semibold">
-                {{ shown(g.label) }}
-                <span v-if="groupHasGap(g)" class="size-2 rounded-full bg-warning" role="img" :aria-label="t('basics.translation.incomplete')" :title="t('basics.translation.incomplete')" />
-              </h2>
+              <h2 class="text-base font-semibold">{{ shown(g.label) }}</h2>
               <EntryFields v-bind="fieldProps" :entries="g.fields" @update="setField" />
             </section>
           </template>
