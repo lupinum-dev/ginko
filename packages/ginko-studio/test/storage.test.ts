@@ -74,7 +74,7 @@ test('a removed entry names its area in the language of the Studio', () => {
   const schema = serializeSchema(defineSite({
     site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
     pages: { home: { de: '/', en: '/en' } },
-    bricks: { dishes: collection({ label: { de: 'Gerichte', en: 'Dishes' }, fields: { title: f.text('Name') } }) },
+    bricks: { dishes: collection({ label: { de: 'Gerichte', en: 'Dishes' }, max: 50, order: 'manual', fields: { title: f.text('Name') } }) },
   }))
   i18nLocale.value = 'en'
   try {
