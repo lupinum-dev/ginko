@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import { postJsonLd } from '@lupinum/ginko/basics'
+import { ArrowRight } from '@lucide/vue'
 
-// One post: title, summary, date, authors (initials and role), cover (3:2), text and tags, with BlogPosting JSON-LD.
+// One post: title, summary, date, authors (initials and role), cover (3:2), text and tags, with BlogPosting JSON-LD,
+// and a link on to all news, so a visitor who comes from a share or the feed does not end above the footer.
 const route = useRoute()
 const entry = useGinkoEntry('posts', () => route.params.slug)
 const posts = useBlogPosts()
 const tagPath = useTagPath()
+const path = useGinkoPath()
 const { url } = useGinkoSite()
 const { t, format, language } = useI18n('blog')
-// The entry is visible (useGinkoEntry answers 404 otherwise), so the list has it.
-const post = computed(() => posts.value.find((item) => item.id === entry.value.id)!)
+// Read the entry first: it answers 404 for an unknown or hidden slug, also in a language whose list is empty (there
+// `find` never calls its callback). Past that line the entry is visible, so the list has it.
+const post = computed(() => {
+  const id = entry.value.id
+  return posts.value.find((item) => item.id === id)!
+})
 const absolute = (path: string) => new URL(path, url).href
 usePageSeo(() => ({
   title: post.value.title,
@@ -46,6 +53,11 @@ usePageSeo(() => ({
           <NuxtLink :to="tagPath(tag)" class="inline-flex min-h-11 items-center rounded-md border px-4 text-small transition-colors duration-150 hover:bg-accent">{{ tag }}</NuxtLink>
         </li>
       </ul>
+    </div>
+    <div class="mx-auto max-w-page px-gutter pt-10">
+      <NuxtLink :to="path('news')" class="inline-flex min-h-11 items-center gap-2 font-medium text-primary underline-offset-4 hover:underline">
+        {{ t('latest') }}<ArrowRight class="size-4 rtl:-scale-x-100" aria-hidden="true" />
+      </NuxtLink>
     </div>
   </article>
 </template>
