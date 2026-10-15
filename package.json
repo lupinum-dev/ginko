@@ -14,7 +14,7 @@
     "test": "vitest run",
     "i18n:browser": "bash packages/ginko-i18n/browser/build-all.sh && node packages/ginko-i18n/browser/attack.mjs && node packages/ginko-i18n/browser/zone-attack.mjs && node packages/ginko-i18n/browser/edge-attack.mjs && node packages/ginko-i18n/browser/content-attack.mjs",
     "check:contracts": "node --experimental-strip-types scripts/contracts.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @lupinum/ginko-i18n typecheck && pnpm --filter @lupinum/ginko-components typecheck && pnpm --filter @ginko-demo/restaurant typecheck && pnpm --filter starter typecheck && pnpm --filter nonprofit typecheck && pnpm --filter @ginko-demo/industrie typecheck && pnpm --filter @ginko-demo/saas typecheck && pnpm --filter @ginko-demo/docs typecheck && pnpm --filter @ginko/platform typecheck",
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @lupinum/ginko-i18n typecheck && pnpm --filter @lupinum/ginko-components typecheck && pnpm --filter @ginko-demo/restaurant typecheck && pnpm --filter starter typecheck && pnpm --filter nonprofit typecheck && pnpm --filter company typecheck && pnpm --filter @ginko-demo/industrie typecheck && pnpm --filter @ginko-demo/saas typecheck && pnpm --filter @ginko-demo/docs typecheck && pnpm --filter @ginko/platform typecheck",
     "e2e": "playwright test",
     "e2e:platform": "node --experimental-strip-types scripts/e2e-platform.ts",
     "outbox": "node --experimental-strip-types scripts/outbox.ts",
