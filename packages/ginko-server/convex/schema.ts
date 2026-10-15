@@ -225,7 +225,9 @@ export default defineSchema({
     mailedAt: v.optional(v.number()),
   })
     .index('by_site', ['site']).index('by_site_status', ['site', 'status']).index('by_site_author', ['site', 'author'])
-    .index('by_site_author_status', ['site', 'author', 'status']).index('by_release', ['release']).index('by_decided', ['decidedAt']),
+    // decidedAt last, so History reads "decided in the last two weeks" as a range; open rows have none and keep creation order.
+    .index('by_site_status_decided', ['site', 'status', 'decidedAt']).index('by_site_author_status_decided', ['site', 'author', 'status', 'decidedAt'])
+    .index('by_release', ['release']).index('by_decided', ['decidedAt']),
 
   /** A group of proposals approved together, all or none (SPEC 17). */
   releases: defineTable({

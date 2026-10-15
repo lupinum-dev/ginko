@@ -304,10 +304,16 @@ export const list = query({
   },
 })
 
-/** The actor's own proposals of one status (else of any), newest first (50 at most). */
-async function ownDocs(ctx: QueryCtx, actor: Actor, wanted?: Doc<'proposals'>['status']) {
+/**
+ * The actor's own proposals of one status (else of any), 50 at most: newest first; of one decided status the
+ * latest decided first. `since` keeps only those decided after it.
+ */
+async function ownDocs(ctx: QueryCtx, actor: Actor, wanted?: Doc<'proposals'>['status'], since?: number) {
   const own = wanted
-    ? ctx.db.query('proposals').withIndex('by_site_author_status', (q) => q.eq('site', actor.site._id).eq('author', actor.user.id).eq('status', wanted))
+    ? ctx.db.query('proposals').withIndex('by_site_author_status_decided', (q) => {
+        const status = q.eq('site', actor.site._id).eq('author', actor.user.id).eq('status', wanted)
+        return since === undefined ? status : status.gt('decidedAt', since)
+      })
     : ctx.db.query('proposals').withIndex('by_site_author', (q) => q.eq('site', actor.site._id).eq('author', actor.user.id))
   return own.order('desc').take(PAGE_SIZE)
 }
@@ -332,17 +338,19 @@ export const mine = query({
   args: { site: v.string() },
   handler: async (ctx, args) => {
     const actor = await siteActor(ctx, args.site)
+    // The window is an index range over decidedAt, so a proposal created long ago and decided today is not
+    // crowded out by 50 newer ones. Convex does not re-run a query as time passes: a row may stay past day 14
+    // until something else changes the result.
     const since = Date.now() - RECENT_MS
-    const recent = (p: Doc<'proposals'>) => (p.decidedAt ?? 0) > since
     const stale = isApprover(actor)
-      ? await ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', actor.site._id).eq('status', 'stale')).order('desc').take(PAGE_SIZE)
-      : await ownDocs(ctx, actor, 'stale')
+      ? await ctx.db.query('proposals').withIndex('by_site_status_decided', (q) => q.eq('site', actor.site._id).eq('status', 'stale').gt('decidedAt', since)).order('desc').take(PAGE_SIZE)
+      : await ownDocs(ctx, actor, 'stale', since)
     const names = await labeler(ctx, actor)
     const rows = (docs: Doc<'proposals'>[]) => Promise.all(docs.map((p) => summary(p, actor, names)))
     return {
       open: await rows(await ownDocs(ctx, actor, 'open')),
-      rejected: await rows((await ownDocs(ctx, actor, 'rejected')).filter(recent)),
-      notLive: await rows(stale.filter((p) => p.at !== undefined && recent(p))),
+      rejected: await rows(await ownDocs(ctx, actor, 'rejected', since)),
+      notLive: await rows(stale.filter((p) => p.at !== undefined)),
     }
   },
 })

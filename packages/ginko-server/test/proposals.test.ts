@@ -308,6 +308,23 @@ describe('reading', () => {
     const mine = await s.as.owner.query(api.proposals.mine, { site: 'restaurant' })
     expect(mine.open.map((p) => p.sentence)).toEqual(['Meins'])
   })
+
+  // Wrong behaviour caught: a plan made weeks ago that failed today, or an old proposal rejected today, is hidden behind 50 newer-created ones decided long ago.
+  it('mine finds what was decided in the last two weeks, however long ago it was created', async () => {
+    const s = await approvalSetup()
+    const base = { site: s.site, op: 'save' as const, brick: 'menu', args: {}, base: {}, via: 'ui' as const, author: people.owner, createdAt: NOW }
+    const longAgo = NOW - 20 * 24 * HOUR
+    await s.t.run(async (ctx) => {
+      await ctx.db.insert('proposals', { ...base, sentence: 'Geplant', status: 'stale', at: NOW - HOUR, decidedAt: NOW - HOUR })
+      await ctx.db.insert('proposals', { ...base, sentence: 'Abgelehnt', status: 'rejected', decidedAt: NOW - HOUR })
+      for (let i = 0; i < 50; i++) {
+        await ctx.db.insert('proposals', { ...base, sentence: `S${i}`, status: 'stale', at: longAgo, decidedAt: longAgo })
+        await ctx.db.insert('proposals', { ...base, sentence: `R${i}`, status: 'rejected', decidedAt: longAgo })
+      }
+    })
+    const mine = await s.as.owner.query(api.proposals.mine, { site: 'restaurant' })
+    expect([mine.notLive.map((p) => p.sentence), mine.rejected.map((p) => p.sentence)]).toEqual([['Geplant'], ['Abgelehnt']])
+  })
 })
 
 describe('releases', () => {
