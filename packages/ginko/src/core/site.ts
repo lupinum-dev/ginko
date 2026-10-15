@@ -1,4 +1,5 @@
 import type { ComponentRegistry } from './components.ts'
+import type { HolidaysOption } from './holidays.ts'
 import type { LinkConfig } from './links.ts'
 import type { Redirect } from './redirects.ts'
 import type {
@@ -38,6 +39,16 @@ export interface SiteInput {
    */
   firstDayOfWeek?: 1 | 2 | 3 | 4 | 5 | 6 | 7
   currency: Currency
+  /**
+   * The country of the site (ISO 3166-1 alpha-2, e.g. `AT`). It picks the public-holiday calendar (`calendar`) and is
+   * the default `addressCountry` of JSON-LD. A country Ginko has no calendar for keeps no public holidays (`ginko check` warns).
+   */
+  country?: string
+  /**
+   * Which public holidays count for opening hours: `AT`, `DE` (nationwide only), `SG`, `none`, or your own function
+   * `(year) => Holiday[]`. Default: the calendar of `country`. Stored in the schema as `holidays` (a function as `custom`).
+   */
+  calendar?: HolidaysOption
   /**
    * Static pages by key: `{ menu: { de: '/speisekarte', en: '/en/menu' } }`. A plain path is the page in
    * the main locale only. The home page is the page whose main-locale path is `/`. The sitemap pairs a page's locales by key.

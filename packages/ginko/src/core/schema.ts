@@ -4,6 +4,7 @@ import { sha256 } from './sha256.ts'
 import { formatMb, limitOf } from './uploads.ts'
 import { weeklyTask } from './stale.ts'
 import { weekInfoOf } from './time.ts'
+import { CALENDAR_NAMES, holidaysOf, STORED_HOLIDAYS } from './holidays.ts'
 import { componentProblems, type ComponentRegistry } from './components.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
@@ -19,10 +20,10 @@ const LINK_HEADS = new Set(['page', 'file'])
 const UNSAFE_PATH = /\.\.|\/\/|[?#]/
 
 // The serialized schema grammar. Unknown properties are rejected here and in diffSchema (deny by default).
-export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timeZone', 'locales', 'currency', 'week', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
+export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timeZone', 'locales', 'currency', 'week', 'holidays', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor'])
 export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'retired'])
-export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'group'])
+export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'group', 'after'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
 
@@ -55,6 +56,8 @@ export function serializeSchema(site: SiteInput): Schema {
     currency: site.currency,
     // Computed once here; the server, the Studio and the site all read `schema.week`.
     week: weekInfoOf(site.languages?.[site.locales[0]] ?? site.locales[0], site.firstDayOfWeek),
+    // Like `week`: resolved once, so the server and the Studio never run the site's code to know its holidays.
+    ...withHolidays(site),
     pages: Object.fromEntries(Object.entries(site.pages).map(([key, page]) => [key, typeof page === 'string' ? { [site.locales[0]]: page } : page])),
     bricks,
     migrations,
@@ -62,6 +65,12 @@ export function serializeSchema(site: SiteInput): Schema {
     ...(site.components ? { components: storedComponents(site.components, site.locales) } : {}),
     ...(site.agents?.review !== undefined ? { agents: { review: site.agents.review } } : {}),
   }, [], []) as Schema
+}
+
+/** `{ holidays }` when the config sets `calendar` or `country`; nothing otherwise, so a 0.4 schema stays as it was. */
+function withHolidays(site: SiteInput): { holidays?: NonNullable<Schema['holidays']> } {
+  const holidays = holidaysOf(site)
+  return holidays === undefined ? {} : { holidays }
 }
 
 // Defaults and prefills are written in the input form (`f.text('Name', { default: 'Linde' })`) and stored in the
@@ -211,7 +220,7 @@ export function mainLocale(schema: Pick<Schema, 'locales'>): Locale {
 const SITE_KEYS = {
   site: true, name: true, url: true, timeZone: true, locales: true, languages: true, firstDayOfWeek: true, currency: true,
   pages: true, bricks: true, linkCheck: true, redirects: true, seo: true, agents: true, components: true, migrations: true,
-  retired: true,
+  retired: true, country: true, calendar: true,
 } satisfies Record<keyof SiteInput, true>
 
 /**
@@ -225,6 +234,10 @@ export function checkSite(site: SiteInput, schema: Schema = serializeSchema(site
   for (const [locale, language] of Object.entries(site.languages ?? {})) {
     if (!site.locales.includes(locale)) problems.push(`languages: locale “${locale}” is not in locales.`)
     if (!isLocale(language)) problems.push(`languages.${locale}: invalid language “${String(language)}” (expected a canonical language tag such as “de-AT” or “en-US”).`)
+  }
+  if (site.country !== undefined && !/^[A-Z]{2}$/.test(String(site.country))) problems.push(`country: invalid country “${String(site.country)}” (expected an ISO 3166-1 code such as “AT” or “DE”).`)
+  if (site.calendar !== undefined && typeof site.calendar !== 'function' && !CALENDAR_NAMES.includes(site.calendar)) {
+    problems.push(`calendar: unknown calendar “${String(site.calendar)}” (expected AT, DE, SG, none or a function (year) => holidays).`)
   }
   // The share cards' brand colour; any other format would draw them grey without a word.
   const color = site.seo?.color
@@ -265,6 +278,7 @@ function schemaProblems(schema: Schema): string[] {
   if (!isSiteUrl(schema.url)) problems.push(`Invalid site url “${String(schema.url)}” (expected an absolute http(s) address such as “https://linde.example”).`)
   if (!isTimeZone(schema.timeZone)) problems.push(`Invalid time zone “${String(schema.timeZone)}” (expected for example “Europe/Vienna”).`)
   if (!isWeek(schema.week)) problems.push('week must be { firstDay: 1 to 7, weekend: [days 1 to 7] } (1 = Monday, 7 = Sunday).')
+  if (schema.holidays !== undefined && !STORED_HOLIDAYS.includes(schema.holidays)) problems.push(`holidays must be one of ${STORED_HOLIDAYS.join(', ')}.`)
   if (!isCurrency(schema.currency)) problems.push(`Invalid currency “${String(schema.currency)}” (expected an ISO 4217 code such as “EUR” or “JPY”).`)
   const pageOwner = new Map<string, string>()
   for (const [key, paths] of Object.entries(schema.pages)) {
@@ -666,6 +680,11 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
       break
     }
     case 'file': if (!(field.maxBytes > 0 && field.maxBytes <= limitOf('file'))) problems.push(`${path}: maxBytes at most ${formatMb(limitOf('file'))} MB.`); break
+    case 'time':
+      if (field.after !== undefined && (!topLevel || siblings[field.after]?.type !== 'time' || field.after === path.split('.').pop())) {
+        problems.push(`${path}.after: “${String(field.after)}” is not another time field of the brick.`)
+      }
+      break
     case 'slug': {
       const source = siblings[field.from]
       if (!source || !['text', 'longtext'].includes(source.type)) problems.push(`${path}: from must be a text field.`)

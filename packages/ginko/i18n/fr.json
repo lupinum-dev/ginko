@@ -24,6 +24,7 @@
     "badTime": "« {label} » n’est pas une heure valide.",
     "badDateRange": "« {label} » n’est pas une période valide.",
     "dateRangeOrder": "« {label} » : « du » est après « au ».",
+    "timeOrder": "« {end} » doit être après « {start} ».",
     "notWeekStart": "« {label} » doit être le premier jour d’une semaine.",
     "badChoice": "« {label} » a une valeur non valide.",
     "badChoices": "« {label} » a des valeurs non valides.",

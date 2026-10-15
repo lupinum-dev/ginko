@@ -54,6 +54,7 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
   }
   for (const k of ['name', 'url'] as const) if (prod[k] !== next[k]) ok(k, k, msg('diff.valueChanged', { name: k }))
   if (stableJson(prod.week) !== stableJson(next.week)) ok('week', 'week', msg('diff.valueChanged', { name: 'week' }))
+  if ((prod.holidays ?? null) !== (next.holidays ?? null)) ok('holidays', 'holidays', msg('diff.valueChanged', { name: 'holidays' }))
   if (stableJson(prod.pages) !== stableJson(next.pages)) ok('pages', 'pages', msg('diff.pagesChanged'))
   // A policy, not a data contract: switching agent review on or off changes no stored shape (SPEC 17).
   if (stableJson((prod.agents ?? null) as Json) !== stableJson((next.agents ?? null) as Json)) ok('agents', 'agents', msg('diff.agentsChanged'))
@@ -203,7 +204,7 @@ function diffField(at: string, old: Field, next: Field, newFills: Set<string>, o
     if (onGrid) ok(at, 'minLowered', msg('diff.minLowered'))
     else no(at, 'minOffGrid', msg('diff.minOffGrid', { at, step }), fx('minOnGrid'))
   }
-  for (const k of ['step', 'format', 'currency', 'from', 'accept', 'to', 'multiple'] as const) {
+  for (const k of ['step', 'format', 'currency', 'from', 'accept', 'to', 'multiple', 'after'] as const) {
     if (stableJson(o[k] ?? null) !== stableJson(n[k] ?? null)) no(at, `${k}Changed`, msg('diff.propChanged', { at, prop: k }))
   }
   if ((old.type === 'choice' || old.type === 'choices') && (next.type === 'choice' || next.type === 'choices')) {

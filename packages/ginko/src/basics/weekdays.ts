@@ -1,4 +1,4 @@
-// Calendar arithmetic on YYYY-MM-DD strings (no time zone involved).
+// Weekdays and calendar arithmetic on YYYY-MM-DD strings (no time zone involved).
 
 export const weekdayKeys = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const
 export type Weekday = (typeof weekdayKeys)[number]

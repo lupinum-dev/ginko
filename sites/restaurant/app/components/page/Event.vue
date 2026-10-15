@@ -11,7 +11,7 @@ const { t, language } = useI18n()
 const eventWhen = useEventWhen()
 const event = useGinkoEntry('events', () => props.slug)
 const contact = useGinko('contact')
-const { url: siteUrl } = useGinkoSite()
+const { url: siteUrl, timeZone } = useGinkoSite()
 // In page state the description is `{ ref }`; the same text <GinkoMarkdown> shows below, loaded once.
 const description = await useGinkoMarkdown(() => event.value.data.description)
 
@@ -23,6 +23,8 @@ const eventLd = computed(() => {
     url: new URL(event.value.url, siteUrl).href,
     when: e.when,
     start: e.start,
+    // The start with the site's offset (+01:00 or +02:00), not as a time without a zone.
+    timeZone,
     location: { name: siteName, address: { street: contact.value.data.street, postalCode: contact.value.data.postalCode, city: contact.value.data.city, country: 'AT' } },
     description: description.value ?? undefined,
     image: e.image ? new URL(e.image.url, siteUrl).href : undefined,

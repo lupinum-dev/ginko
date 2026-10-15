@@ -2,7 +2,8 @@
 // the texts of its own locales when its main locale is `de` or `en` (exactly: `de-CH` does not count); otherwise it
 // starts without the prefilled texts (`serializeSchema`).
 import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate, type Task } from '@lupinum/ginko'
-import type { ChoicesField, DateField, ListField } from '@lupinum/ginko/internal'
+import { gallery } from '@lupinum/ginko/basics'
+import { eventsBrick, hourPlansBrick, hoursBrick, noticesBrick, weekdays, type ChoicesField, type DateField, type HoursTexts, type ListField, type WeekRow } from '@lupinum/ginko/internal'
 import { allergenNames } from './names.ts'
 
 /** Allergen codes on dishes: the EU list of 14, none at all (the field is left out), or your own list. */
@@ -11,11 +12,7 @@ export type AllergenSet = 'EU' | 'none' | readonly ChoiceOption[]
 /** A schema label in both languages. The editor sees the one for their language, and a site in another language falls back to English. */
 const both = (de: string, en: string) => ({ de, en })
 
-export const weekdays = [
-  { value: 'mo', label: both('Montag', 'Monday') }, { value: 'tu', label: both('Dienstag', 'Tuesday') }, { value: 'we', label: both('Mittwoch', 'Wednesday') },
-  { value: 'th', label: both('Donnerstag', 'Thursday') }, { value: 'fr', label: both('Freitag', 'Friday') }, { value: 'sa', label: both('Samstag', 'Saturday') },
-  { value: 'su', label: both('Sonntag', 'Sunday') },
-] as const
+export { weekdays }
 
 // The 14 EU allergens (LMIV) with the letter codes used in Austria.
 export const allergensEU: readonly ChoiceOption[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'L', 'M', 'N', 'O', 'P', 'R'].map((code) => ({
@@ -43,7 +40,7 @@ export interface GastroOptions {
 const sourceOf = (opts: GastroOptions) => (opts.source ? { source: opts.source } : {})
 
 // Row IDs in defaults are fixed so every fresh site starts with the same, stable rows.
-const weekDefault = weekdays.map((d) => ({
+const weekDefault: WeekRow[] = weekdays.map((d) => ({
   _id: `wk${d.value}000000`,
   day: d.value,
   closed: d.value === 'mo',
@@ -56,139 +53,57 @@ const soldOutText = { de: 'Heute sind wir ausgebucht.', en: 'We are fully booked
 
 const lunchDefault = weekdays.slice(0, 5).map((d) => ({ _id: `ld${d.value}000000`, day: d.value, dish: lunchPlaceholder }))
 
-/** Times only on a day that is not closed (a closed day keeps its stored times). */
-const open = { field: 'closed', not: true } as const
+// The restaurant wording of the hours bricks (the basics are neutral): pinned here, because labels and hints are part
+// of every gastro site's stored schema.
+const hoursTexts: HoursTexts = {
+  hours: both('Öffnungszeiten', 'Opening hours'),
+  week: both('Wochenplan', 'Weekly hours'), day: both('Tag', 'Day'), closed: both('Ruhetag', 'Closed all day'),
+  opens: both('Öffnet um', 'Opens at'), closes: both('Schließt um', 'Closes at'), opensAgain: both('Öffnet wieder um', 'Opens again at'),
+  opensAgainHint: both('Nur wenn du untertags eine Pause machst.', 'Only if you close for a break during the day.'),
+  closesAgain: both('Schließt wieder um', 'Closes again at'),
+  exceptions: both('Betriebsurlaub und Ausnahmen', 'Holiday closures and exceptions'), exception: both('Ausnahme', 'Exception'), dates: both('Zeitraum', 'Dates'),
+  reason: both('Grund', 'Reason'),
+  reasonHint: both('Kurz, z. B. „Betriebsurlaub“ oder „Hochzeit“. Steht so auf der Website.', 'Keep it short, e.g. “Annual holiday” or “Wedding party”. Shown like this on the website.'),
+  exceptionClosed: both('Geschlossen', 'Closed'),
+  closedOn: both('Geschlossen am', 'Closed on'),
+  closedOnHint: both('Ein einzelner Tag. Für mehrere Tage nimm „Betriebsurlaub und Ausnahmen“.', 'A single day. For several days, use “Holiday closure and exceptions”.'),
+  closedNote: both('Grund für die Gäste', 'Reason for guests'),
+  closedNoteHint: both('Steht auf der Website, z. B. „Wegen eines Wasserrohrbruchs“.', 'Shown on the website, e.g. “Because of a burst water pipe”.'),
+  noticeDays: both('Schließungen ankündigen (Tage vorher)', 'Announce closures (days ahead)'),
+  noticeDaysHint: both('So viele Tage vorher kündigt die Website eine Schließung oder einen geschlossenen Feiertag an.', 'How many days ahead the website announces a closure or a public holiday when you are closed.'),
+  holidays: both('An Feiertagen', 'On public holidays'),
+  holidaySunday: both('wie am Sonntag', 'same as Sunday'), holidayClosed: both('geschlossen', 'closed'), holidayNormal: both('normale Zeiten des Wochentags', 'the weekday’s usual hours'),
+  holidaysHint: both(
+    'Gilt für alle gesetzlichen Feiertage. „Wie am Sonntag“ nimmt die Sonntagszeiten, die an dem Tag gelten. Für andere Zeiten an einem einzelnen Feiertag, z. B. am 26.12., trag unter „Betriebsurlaub und Ausnahmen“ eine Ausnahme ein.',
+    'Applies to every public holiday. “Same as Sunday” uses the Sunday hours that apply on that day. For other hours on a single holiday, such as 26 December, add an exception under “Holiday closure and exceptions”.',
+  ),
+  closedToday: both('Heute geschlossen', 'Closed today'), holidaySetting: both('Öffnungszeiten an Feiertagen', 'Opening hours on public holidays'),
+  plans: both('Öffnungszeiten ab Datum', 'Opening hours from a date'), planName: both('Name', 'Name'), planFrom: both('Gilt ab', 'Applies from'),
+  planTo: both('Gilt bis', 'Applies until'), yearly: both('Jedes Jahr wiederholen', 'Repeat every year'),
+  planAdd: both('Neue Öffnungszeiten ab …', 'New opening hours from …'), planEdit: both('Öffnungszeiten ab Datum bearbeiten', 'Edit hours from a date'),
+  planRemove: both('Öffnungszeiten ab Datum entfernen', 'Remove hours from a date'),
+}
 
 /**
- * The two opening periods of a day (the stored limit). Neutral words, not "lunch" and "evening": a winter plan keeps
- * 17:00–21:30 in the first period, and the owner must not read that as lunch.
+ * Weekly hours, closures and the owner's choice for public holidays (the basics `hours` with restaurant wording and
+ * times). Which holidays count is `calendar` or `country` in the context of the hours rules (`hoursOn`, `todayState`);
+ * neither means Austria.
  */
-function timeFields() {
-  return {
-    from1: f.time(both('Öffnet um', 'Opens at'), { optional: true, showWhen: open }),
-    to1: f.time(both('Schließt um', 'Closes at'), { optional: true, showWhen: open }),
-    from2: f.time(both('Öffnet wieder um', 'Opens again at'), {
-      optional: true, showWhen: open,
-      hint: both('Nur wenn du untertags eine Pause machst.', 'Only if you close for a break during the day.'),
-    }),
-    to2: f.time(both('Schließt wieder um', 'Closes again at'), { optional: true, showWhen: open }),
-  }
-}
-
-/** One 7-row week, shared by the standard hours and the hour plans. */
-function weekField() {
-  return f.list(both('Wochenplan', 'Weekly hours'), {
-    itemLabel: both('Tag', 'Day'),
-    fields: {
-      day: f.choice(both('Tag', 'Day'), { options: weekdays }),
-      closed: f.boolean(both('Ruhetag', 'Closed all day')),
-      ...timeFields(),
-    },
-    min: 7, max: 7, unique: 'day', default: weekDefault,
-  })
-}
-
-/** Weekly hours, closures and the owner's choice for public holidays. Which holidays count is `calendar` in the context of the hours rules (`hoursOn`, `todayState`). */
 export function hours(opts: GastroOptions = {}) {
-  return single({
-    label: both('Öffnungszeiten', 'Opening hours'),
-    ...sourceOf(opts),
-    fields: {
-      week: weekField(),
-      exceptions: f.list(both('Betriebsurlaub und Ausnahmen', 'Holiday closures and exceptions'), {
-        itemLabel: both('Ausnahme', 'Exception'),
-        fields: {
-          when: f.daterange(both('Zeitraum', 'Dates')),
-          reason: f.text(both('Grund', 'Reason'), {
-            max: 140,
-            hint: both('Kurz, z. B. „Betriebsurlaub“ oder „Hochzeit“. Steht so auf der Website.', 'Keep it short, e.g. “Annual holiday” or “Wedding party”. Shown like this on the website.'),
-          }),
-          // A new exception is a closure unless the owner says otherwise.
-          closed: f.boolean(both('Geschlossen', 'Closed'), { default: true }),
-          // Special hours: "Geschlossen" off and times set, e.g. 24.12. from 11:00 to 14:00.
-          ...timeFields(),
-        },
-        max: 20, default: [],
-      }),
-      // Optional: "Aufheben" in the Studio clears it, and saving it empty lifts the closure.
-      closedOn: f.date(both('Geschlossen am', 'Closed on'), {
-        optional: true,
-        hint: both('Ein einzelner Tag. Für mehrere Tage nimm „Betriebsurlaub und Ausnahmen“.', 'A single day. For several days, use “Holiday closure and exceptions”.'),
-      }),
-      closedNote: f.text(both('Grund für die Gäste', 'Reason for guests'), {
-        max: 140, optional: true,
-        hint: both('Steht auf der Website, z. B. „Wegen eines Wasserrohrbruchs“.', 'Shown on the website, e.g. “Because of a burst water pipe”.'),
-      }),
-      holidayNoticeDays: f.number(both('Schließungen ankündigen (Tage vorher)', 'Announce closures (days ahead)'), {
-        min: 0, max: 60, step: 1, default: 14,
-        hint: both('So viele Tage vorher kündigt die Website eine Schließung oder einen geschlossenen Feiertag an.', 'How many days ahead the website announces a closure or a public holiday when you are closed.'),
-      }),
-      // The holiday calendar is code (`calendar` in the hours context), so the hint says what the choice covers and
-      // where a single holiday gets other hours.
-      holidays: f.choice(both('An Feiertagen', 'On public holidays'), {
-        options: [
-          { value: 'sunday', label: both('wie am Sonntag', 'same as Sunday') }, { value: 'closed', label: both('geschlossen', 'closed') },
-          { value: 'normal', label: both('normale Zeiten des Wochentags', 'the weekday’s usual hours') },
-        ],
-        optional: true, default: 'sunday',
-        hint: both(
-          'Gilt für alle gesetzlichen Feiertage. „Wie am Sonntag“ nimmt die Sonntagszeiten, die an dem Tag gelten. Für andere Zeiten an einem einzelnen Feiertag, z. B. am 26.12., trag unter „Betriebsurlaub und Ausnahmen“ eine Ausnahme ein.',
-          'Applies to every public holiday. “Same as Sunday” uses the Sunday hours that apply on that day. For other hours on a single holiday, such as 26 December, add an exception under “Holiday closure and exceptions”.',
-        ),
-      }),
-    },
-    tasks: [
-      { id: 'closedToday', label: both('Heute geschlossen', 'Closed today'), kind: 'edit', fields: ['closedOn', 'closedNote'], prefill: { closedOn: '@today' } },
-      // The lead time sits under the list, so the owner sees when guests first read about a closure.
-      { id: 'holiday', label: both('Betriebsurlaub und Ausnahmen', 'Holiday closures and exceptions'), kind: 'edit', fields: ['exceptions', 'holidayNoticeDays'] },
-      { id: 'holidaySetting', label: both('Öffnungszeiten an Feiertagen', 'Opening hours on public holidays'), kind: 'edit', fields: ['holidays'] },
-    ],
-  })
+  return hoursBrick(hoursTexts, weekDefault, opts)
 }
 
 /** Own weekly hours for a date range: a season (yearly) or "new hours from a date" (open end). */
 export function hourPlans(opts: GastroOptions = {}) {
-  return collection({
-    label: both('Öffnungszeiten ab Datum', 'Opening hours from a date'),
-    ...sourceOf(opts),
-    fields: {
-      label: f.text(both('Name', 'Name'), { max: 80 }),
-      from: f.date(both('Gilt ab', 'Applies from')),
-      to: f.date(both('Gilt bis', 'Applies until'), { optional: true }),
-      yearly: f.boolean(both('Jedes Jahr wiederholen', 'Repeat every year'), { default: false }),
-      week: weekField(),
-    },
-    max: 12,
-    order: { field: 'from', dir: 'asc' },
-    tasks: [
-      { id: 'add', label: both('Neue Öffnungszeiten ab …', 'New opening hours from …'), kind: 'create' },
-      { id: 'edit', label: both('Öffnungszeiten ab Datum bearbeiten', 'Edit hours from a date'), kind: 'edit', pick: true, fields: ['label', 'from', 'to', 'yearly', 'week'] },
-      { id: 'remove', label: both('Öffnungszeiten ab Datum entfernen', 'Remove hours from a date'), kind: 'remove' },
-    ],
-  })
+  return hourPlansBrick(hoursTexts, weekDefault, opts)
 }
 
+/** The basics notices with "Fully booked today" as the first quick task. */
 export function notices(opts: GastroOptions = {}) {
-  return collection({
-    label: both('Hinweise', 'Notices'),
-    ...sourceOf(opts),
-    fields: {
-      text: f.text(both('Text', 'Text'), { max: 140 }),
-      until: f.date(both('Gilt bis', 'Shown until'), {
-        optional: true,
-        hint: both('Leer lassen, wenn der Hinweis bleiben soll, bis du ihn entfernst.', 'Leave empty to keep the notice until you remove it.'),
-      }),
-    },
-    max: 5,
-    order: 'manual',
-    visible: { mode: 'until', field: 'until', deleteExpired: true },
-    tasks: [
-      // The weekly job first: it becomes the main quick task.
-      { id: 'soldOut', label: both('Heute ausgebucht', 'Fully booked today'), kind: 'create', prefill: { text: soldOutText, until: '@today' } },
-      { id: 'add', label: both('Hinweis hinzufügen', 'Add a notice'), kind: 'create' },
-      { id: 'remove', label: both('Hinweis entfernen', 'Remove a notice'), kind: 'remove' },
-    ],
-  })
+  return noticesBrick(opts, [
+    // The weekly job first: it becomes the main quick task.
+    { id: 'soldOut', label: both('Heute ausgebucht', 'Fully booked today'), kind: 'create', prefill: { text: soldOutText, until: '@today' } },
+  ])
 }
 
 /** The list of lunch days; `allergens` left out when the set is `'none'`. */
@@ -320,42 +235,10 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
   })
 }
 
+/** The basics events as in 0.4: no end time, place or online address, and a reservation link. */
 export function events(opts: GastroOptions & { route: Record<Locale, RouteTemplate> }) {
-  return collection({
-    label: both('Veranstaltungen', 'Events'),
-    ...sourceOf(opts),
-    fields: {
-      title: f.text(both('Titel', 'Title'), { max: 120 }),
-      slug: f.slug(both('Adresse', 'Web address'), { from: 'title' }),
-      when: f.daterange(both('Wann', 'When')),
-      // The clock time of the first day. `when` stays the order and visibility field.
-      start: f.time(both('Beginn', 'Starts at'), { optional: true }),
-      description: f.markdown(both('Beschreibung', 'Description'), { profile: 'basic', max: 5000 }),
-      price: f.money(both('Preis', 'Price'), { optional: true }),
-      booking: f.text(both('Reservierungs-Link', 'Booking link'), { format: 'url', optional: true }),
-      image: f.image(both('Bild', 'Image'), { optional: true }),
-      // The site shows "Ausgebucht" instead of the booking link. Optional: a missing value means bookable.
-      soldOut: f.boolean(both('Ausgebucht', 'Fully booked'), { optional: true }),
-    },
-    max: 30,
-    order: { field: 'when', dir: 'asc' },
-    visible: { mode: 'until', field: 'when' },
-    route: opts.route,
-    tasks: [
-      { id: 'add', label: both('Veranstaltung hinzufügen', 'Add an event'), kind: 'create' },
-      { id: 'soldOut', label: both('Veranstaltung ausgebucht', 'Event fully booked'), kind: 'edit', pick: true, fields: ['soldOut'] },
-      { id: 'remove', label: both('Veranstaltung entfernen', 'Remove an event'), kind: 'remove' },
-    ],
-  })
+  return eventsBrick(opts, both('Reservierungs-Link', 'Booking link'), {})
 }
 
-export function gallery(opts: GastroOptions = {}) {
-  return single({
-    label: both('Galerie', 'Gallery'),
-    ...sourceOf(opts),
-    fields: {
-      images: f.list(both('Bilder', 'Images'), { itemLabel: both('Bild', 'Image'), fields: { image: f.image(both('Bild', 'Image')) }, max: 24, default: [] }),
-    },
-    tasks: [{ id: 'edit', label: both('Fotos bearbeiten', 'Edit photos'), kind: 'edit', fields: ['images'] }],
-  })
-}
+/** The basics gallery. */
+export { gallery }

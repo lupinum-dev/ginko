@@ -3,6 +3,7 @@ import type { MarkdownProfile } from './markdown.ts'
 import type { ValueInput } from './fields.ts'
 import type { Msg } from './messages.ts'
 import type { WeekInfo } from './time.ts'
+import type { StoredHolidays } from './holidays.ts'
 // The schema as plain data. This is what `ginko.config.ts` describes, what
 // `ginko release` sends, and what the platform stores. SPEC.md part 2.
 
@@ -58,7 +59,11 @@ export interface NumberField extends FieldBase { type: 'number'; min: number; ma
 export interface MoneyField extends FieldBase { type: 'money'; min?: number; max?: number; currency?: Currency }
 export interface BooleanField extends FieldBase { type: 'boolean' }
 export interface DateField extends FieldBase { type: 'date' }
-export interface TimeField extends FieldBase { type: 'time' }
+export interface TimeField extends FieldBase {
+  type: 'time'
+  /** Another time field of the brick that this one must be later than (an end after its start), checked when both are set. */
+  after?: string
+}
 export interface DateRangeField extends FieldBase { type: 'daterange' }
 export interface ChoiceField<V extends string = string> extends FieldBase { type: 'choice'; options: readonly { value: V; label: Label }[] }
 export interface ChoicesField<V extends string = string> extends FieldBase { type: 'choices'; options: readonly { value: V; label: Label }[]; max?: number }
@@ -212,6 +217,8 @@ export interface Schema {
   currency: Currency
   /** First day of the week and weekend days of the site (computed once from the main language or `firstDayOfWeek`). */
   week: WeekInfo
+  /** The public-holiday calendar of the site (`calendar`, else from `country`); absent when the config sets neither. */
+  holidays?: StoredHolidays
   /** Static pages by key, each with its path per locale (the home page is the one whose main-locale path is `/`). */
   pages: Record<string, Partial<Record<Locale, string>>>
   bricks: Record<string, Brick>

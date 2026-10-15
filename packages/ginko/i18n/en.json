@@ -24,6 +24,7 @@
     "badTime": "“{label}” is not a valid time.",
     "badDateRange": "“{label}” is not a valid period.",
     "dateRangeOrder": "“{label}”: “from” is after “to”.",
+    "timeOrder": "“{end}” must be later than “{start}”.",
     "notWeekStart": "“{label}” must be the first day of a week.",
     "badChoice": "“{label}” has an invalid value.",
     "badChoices": "“{label}” has invalid values.",

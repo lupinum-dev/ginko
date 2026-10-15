@@ -13,6 +13,8 @@ export default defineSite({
   locales: ['de', 'en'],
   languages: { de: 'de-AT', en: 'en-GB' },
   currency: 'EUR',
+  // Austrian public holidays for the opening hours (stored as `holidays: 'AT'`).
+  country: 'AT',
   pages: {
     home: { de: '/', en: '/en' },
     menu: { de: '/speisekarte', en: '/en/menu' },
