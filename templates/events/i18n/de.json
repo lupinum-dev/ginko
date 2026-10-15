@@ -1,0 +1,34 @@
+{
+  "home": {
+    "title": "Konferenz über offene Daten in Wien",
+    "tickets": "Tickets kaufen",
+    "programme": "Programm",
+    "maps": "In der Karte öffnen",
+    "highlights": "Aus dem Programm",
+    "speakers": "Vortragende",
+    "sponsors": "Sponsoren und Partner",
+    "sponsoring": "Sponsor werden",
+    "questions": "Fragen",
+    "allQuestions": "Alle Fragen",
+    "lastYear": "Im Vorjahr"
+  },
+  "faq": {
+    "title": "Häufige Fragen",
+    "lead": "Anreise, Barrierefreiheit, Tickets, Essen und der Verhaltenskodex.",
+    "empty": "Noch keine Fragen"
+  },
+  "events": {
+    "title": "Termine",
+    "lead": "Die Konferenz und unsere weiteren Termine, mit Uhrzeit und Ort.",
+    "all": "Alle Termine",
+    "book": "Tickets kaufen"
+  },
+  "sessions": {
+    "programme": {
+      "lead": "Vorträge, Workshops und Pausen nach Tagen, mit Uhrzeit, Raum und Vortragenden. Alle Zeiten in Wiener Zeit."
+    },
+    "speakers": {
+      "lead": "Die Menschen, die Vorträge halten, Workshops leiten und auf dem Podium sitzen."
+    }
+  }
+}
