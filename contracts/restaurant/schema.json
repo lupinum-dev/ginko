@@ -787,6 +787,10 @@
             "en": "Shown until"
           },
           "optional": true,
+          "hint": {
+            "de": "Leer lassen, wenn der Hinweis bleiben soll, bis du ihn entfernst.",
+            "en": "Leave empty to keep the notice until you remove it."
+          },
           "pos": 1
         }
       },

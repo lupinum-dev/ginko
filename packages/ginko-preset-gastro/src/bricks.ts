@@ -174,7 +174,10 @@ export function notices(opts: GastroOptions = {}) {
     ...sourceOf(opts),
     fields: {
       text: f.text(both('Text', 'Text'), { max: 140 }),
-      until: f.date(both('Gilt bis', 'Shown until'), { optional: true }),
+      until: f.date(both('Gilt bis', 'Shown until'), {
+        optional: true,
+        hint: both('Leer lassen, wenn der Hinweis bleiben soll, bis du ihn entfernst.', 'Leave empty to keep the notice until you remove it.'),
+      }),
     },
     max: 5,
     order: 'manual',
