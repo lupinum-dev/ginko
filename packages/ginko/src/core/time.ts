@@ -7,6 +7,29 @@ export function todayIn(timeZone: string, now: Date = new Date()): string {
   return `${get('year')}-${get('month')}-${get('day')}`
 }
 
+/** Minutes `timeZone` is ahead of UTC at `instant` (60 for Vienna in winter, 120 in summer). */
+function offsetAt(timeZone: string, instant: number): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(new Date(instant))
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0)
+  const local = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'))
+  return Math.round((local - Math.floor(instant / 1000) * 1000) / 60_000)
+}
+
+/**
+ * A wall-clock time in `timeZone` as ISO 8601 with its offset: `2026-12-03` `19:30` in Europe/Vienna →
+ * `2026-12-03T19:30:00+01:00` (`+02:00` in summer). In the hour a clock change skips or repeats, the offset is one of
+ * the two (no event is planned for a time that does not exist).
+ */
+export function zonedDateTime(date: string, time: string, timeZone: string): string {
+  const naive = Date.parse(`${date}T${time}:00Z`)
+  const minutes = offsetAt(timeZone, naive - offsetAt(timeZone, naive) * 60_000)
+  const sign = minutes < 0 ? '-' : '+'
+  const abs = Math.abs(minutes)
+  return `${date}T${time}:00${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`
+}
+
 export function addDays(date: string, days: number): string {
   const d = new Date(`${date}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() + days)

@@ -1,8 +1,12 @@
 // Runtime config and helpers without Nuxt imports, so the module's unit tests can load them.
-import { markdownRequestPath, type Locale, type SiteInput } from '../../internal.ts'
+import { markdownRequestPath, type Locale, type SiteInput, type StoredHolidays } from '../../internal.ts'
 
 export interface GinkoPublicConfig {
   site: string; name: string; url: string; platform: string; locales: Locale[]; mainLocale: Locale; timeZone: string
+  /** `country` of the site config (ISO 3166-1), or '' when unset. */
+  country: string
+  /** The stored holiday calendar (`AT`, `DE`, `SG`, `none`, `custom`), or '' when the config sets neither `calendar` nor `country`. */
+  holidays: StoredHolidays | ''
   /** `seo` of the site config (`useGinkoSeo` defaults). */
   seo: NonNullable<SiteInput['seo']>
   /** `agents` of the site config (llms.txt, Markdown routes). */

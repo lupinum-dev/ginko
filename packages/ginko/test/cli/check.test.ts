@@ -74,6 +74,17 @@ describe('ginko check and links in content files', () => {
     expect((await runCheck(siteWith('Siehe [Start]($page.home).', { ...config, seo: { image: 'https://cdn.example/og.png' } }))).code).toBe(0)
   })
 
+  // Wrong behaviour caught: a French site silently gets no public holidays in its opening hours.
+  it.each([
+    [{ country: 'FR' }, true],
+    [{ country: 'FR', calendar: 'none' }, false],
+    [{ country: 'AT' }, false],
+  ])('warns about a country without a holiday calendar: %o', async (over, warns) => {
+    const { code, lines } = await runCheck(siteWith('Siehe [Start]($page.home).', { ...config, ...over }))
+    expect(code).toBe(0)
+    expect(lines.some((l) => l.startsWith('Warning: Ginko has no public-holiday calendar for country “FR”'))).toBe(warns)
+  })
+
   it('prints only the OK line for a clean site and exits 0', async () => {
     const { code, lines, result } = await runCheck(siteWith('Siehe [Start]($page.home).'))
     expect(lines).toEqual(['OK: schema and links are fine.'])

@@ -2,7 +2,7 @@
 // It reads the state and never writes.
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { checkSite, effectiveMax, isTranslatable, largestEntryBytes, largestFieldBytes, platformSchema, serializeSchema, SITE_BUDGET, type SiteInput } from '../core/index.ts'
+import { calendarOfCountry, checkSite, effectiveMax, isTranslatable, largestEntryBytes, largestFieldBytes, platformSchema, serializeSchema, SITE_BUDGET, type SiteInput } from '../core/index.ts'
 import type { Fetch } from '../nuxt/external-links.ts'
 import { checkFileLinks } from './content-links.ts'
 import { CliError } from './model.ts'
@@ -32,6 +32,7 @@ export async function check(input: {
     return false
   }
   warnEntrySize(input.config, input.log)
+  warnNoCalendar(input.config, input.log)
   const image = checkSeoImage(input.config, input.root, input.log)
   const links = await checkFileLinks({ config: input.config, root: input.root, log: input.log, fetch: input.fetch }) && image
   if (!input.connect) {
@@ -69,6 +70,12 @@ function warnEntrySize(config: SiteInput, log: (line: string) => void) {
     const uncounted = fields.filter(({ field }) => field.type === 'ref' && field.multiple && field.max === undefined).map((f) => f.name)
     log(`Warning: brick “${key}” can hold about ${kib(max)} per entry (largest: ${largest.join(', ')}); the entry limit is ${kib(SITE_BUDGET.entryBytes)}. Lower a max so a full entry fits.${uncounted.length ? ` Not counted: ${uncounted.join(', ')} (entries without a max).` : ''}`)
   }
+}
+
+/** A country without a built-in calendar keeps no public holidays (`holidays: 'none'`): a warning, so the owner is not surprised. */
+function warnNoCalendar(config: SiteInput, log: (line: string) => void) {
+  if (config.country === undefined || config.calendar !== undefined || calendarOfCountry(config.country)) return
+  log(`Warning: Ginko has no public-holiday calendar for country “${config.country}”, so opening hours count no public holidays (stored as holidays: 'none'). Set \`calendar\` in ginko.config.ts to your own function (year) => holidays, or to 'none' to keep it so.`)
 }
 
 /** `seo.image` as a path (`/og.png`) must exist in public/: otherwise every page points its share image at a 404. Absolute URLs are not fetched. */

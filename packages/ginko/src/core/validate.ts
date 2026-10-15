@@ -107,6 +107,14 @@ function ruleIssues(schema: Schema, brick: Brick, data: unknown): RuleIssue[] {
     const field = missing && Object.hasOwn(brick.fields, missing) ? brick.fields[missing] : undefined
     if (missing && field) out.push({ issue: issue(missing, 'REQUIRED', 'fieldMissing', { label: shown(field, main) }), touches: [plan.next, plan.from] })
   }
+  // An end time after its start (`after`), e.g. a session from 10:00 to 11:30. Equal times are an empty slot.
+  for (const [name, field] of Object.entries(brick.fields)) {
+    if (field.type !== 'time' || !field.after) continue
+    const [start, end] = [data[field.after], data[name]]
+    if (typeof start === 'string' && typeof end === 'string' && timePattern.test(start) && timePattern.test(end) && end <= start) {
+      out.push({ issue: issue(name, 'TIME_ORDER', 'dateRangeOrder', { label: `${shown(brick.fields[field.after]!, main)} – ${shown(field, main)}` }), touches: [field.after, name] })
+    }
+  }
   const week = weekStartField(brick)
   const start = week ? data[week] : undefined
   if (week && isDate(start) && startOfWeek(start, schema.week ?? DEFAULT_WEEK) !== start) {
