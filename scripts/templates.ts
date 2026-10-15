@@ -404,16 +404,12 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
   return results
 }
 
-/**
- * T4: the config with `source` removed from every brick (the platform variant) passes checkSite. Core has no
- * `withoutFiles` helper yet, so the variant is made here; replace this with the core helper once it exists.
- */
+/** T4: the platform variant of the config (core `withoutFiles`: no `source` on any brick) passes checkSite. */
 async function platformReady(siteDir: string) {
   const probe = join(siteDir, '.platform-ready.mjs')
-  writeFileSync(probe, `import { checkSite } from '@lupinum/ginko/internal'
+  writeFileSync(probe, `import { checkSite, withoutFiles } from '@lupinum/ginko/internal'
 const site = (await import('./ginko.config.ts')).default
-const bricks = Object.fromEntries(Object.entries(site.bricks).map(([key, { source, ...brick }]) => [key, brick]))
-const problems = checkSite({ ...site, bricks })
+const problems = checkSite(withoutFiles(site))
 if (problems.length) { console.error(problems.join('\\n')); process.exit(1) }
 `)
   try {
