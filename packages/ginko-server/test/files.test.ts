@@ -2,7 +2,7 @@
 // retention of trash and replaced files. One test per realistic failure.
 import { describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
-import { remapFileIds, type Schema } from '@lupinum/ginko/internal'
+import { printOf, remapFileIds, type Schema } from '@lupinum/ginko/internal'
 import type { Id } from '../convex/_generated/dataModel'
 import { CORPUS_NOW } from './clock'
 import { errorOf, opId, postUpload, setup, upload } from './setup'
@@ -426,18 +426,21 @@ describe('uploads.sweep with the library', () => {
 
 describe('migrations.markdownStorageUrls', () => {
   // Wrong behaviour caught: the one-time rewrite misses an address written on another host (local vs. production),
-  // replaces an address it cannot match with a broken reference, or leaves the file without its reference.
+  // replaces an address it cannot match with a broken reference, leaves the file without its reference, or marks the
+  // English text as outdated although only the picture's address changed.
   it('turns a storage address in a text into the file reference, on any host, and leaves unknown addresses alone', async () => {
     vi.useFakeTimers({ toFake: ['Date', 'setTimeout'] })
     const s = await setup()
     const id = await readyImage(s)
     const token = await s.t.run(async (ctx) => (await ctx.storage.getUrl((await ctx.db.get(id))!.processedId!))!.split('/api/storage/')[1])
     const text = `![Hund](http://127.0.0.1:3210/api/storage/${token})\n\n![Weg](https://alt.example/api/storage/unbekannt)`
-    await s.t.run((ctx) => ctx.db.patch(s.entries.legal!, { data: { imprint: { de: text } } }))
+    await s.t.run((ctx) => ctx.db.patch(s.entries.legal!, { data: { imprint: { de: text, en: 'Imprint' } }, prints: { imprint: { en: printOf(text) } } }))
     await s.t.mutation(internal.migrations.markdownStorageUrls, {})
     await s.t.finishAllScheduledFunctions(vi.runAllTimers)
     const row = await s.t.run((ctx) => ctx.db.get(s.entries.legal!))
-    expect(row!.data).toEqual({ imprint: { de: `![Hund]($file.${id})\n\n![Weg](https://alt.example/api/storage/unbekannt)` } })
+    const migrated = `![Hund]($file.${id})\n\n![Weg](https://alt.example/api/storage/unbekannt)`
+    expect(row!.data).toEqual({ imprint: { de: migrated, en: 'Imprint' } })
+    expect(row!.prints).toEqual({ imprint: { en: printOf(migrated) } })
     expect(await fileRefsOf(s, id)).toHaveLength(1)
   })
 

@@ -14,7 +14,7 @@ import type { ErrorParams } from './lib/fail'
 import { DEFAULT_LOCALE, t, type MessageKey } from './lib/i18n'
 import { badKey } from './lib/input'
 import { normalizeEmail } from './members'
-import { remapEntryRefs, treesOf, usesOf, type Data } from './lib/content'
+import { carryPrints, remapEntryRefs, treesOf, usesOf, type Data, type Prints } from './lib/content'
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
 import { cleanName, kindOf, WRONG_TYPE } from './lib/files'
 import { deleteStorage } from './lib/library'
@@ -297,7 +297,7 @@ export const importExport = internalMutation({
     // removed ones too (a restore must be able to save them), the live entries against the site, the removed ones
     // against the trash.
     const problems: ImportProblem[] = []
-    const rows: { row: (typeof args.entries)[number]; fields: Fields; data: Data; size: number; trees: { json: string; bytes: number } }[] = []
+    const rows: { row: (typeof args.entries)[number]; fields: Fields; data: Data; prints: Prints; size: number; trees: { json: string; bytes: number } }[] = []
     let bytes = 0
     let trashBytes = 0
     let treeBytes = 0
@@ -312,6 +312,8 @@ export const importExport = internalMutation({
         continue
       }
       const data = remapFileIds(def.fields, row.data as Data, uploads)
+      // New file IDs change the main-language text a translation was made from, not its meaning.
+      const prints = carryPrints(def.fields, row.data as Data, data, row.prints, schema.locales[0]!)
       const checked = await validate(schema, row.brick, data, { mode: 'restore' })
       if (checked.errors.length) problems.push({ code: 'INVALID', key: 'errors.importEntryInvalid', params: { id: row.id, path: checked.errors[0]!.path, count: checked.errors.length } })
       const warning = checked.warnings[0]
@@ -319,7 +321,7 @@ export const importExport = internalMutation({
         warnings++
         firstWarning ??= { id: row.id, brick: row.brick, path: warning.path, key: warning.key, ...(warning.params ? { params: warning.params } : {}) }
       }
-      const size = entryBytes(data, row.prints)
+      const size = entryBytes(data, prints)
       if (size > BUDGET.entryBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importEntryTooLarge', params: { id: row.id, used: sizeText(size), limit: sizeText(BUDGET.entryBytes) } })
       // The trash keeps no trees.
       const trees = row.deletedAt === undefined ? await treesOf(def.fields, data) : { json: '', bytes: 0 }
@@ -328,7 +330,7 @@ export const importExport = internalMutation({
         bytes += size
         treeBytes += trees.bytes
       } else trashBytes += size
-      rows.push({ row, fields: def.fields, data, size, trees })
+      rows.push({ row, fields: def.fields, data, prints, size, trees })
     }
     if (site.entryCount + live > BUDGET.entries) problems.push({ code: 'TOO_LARGE', key: 'errors.siteEntryLimitReached', params: {} })
     if (site.bytes + bytes > BUDGET.siteBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importSiteTooLarge', params: { used: sizeText(site.bytes + bytes), limit: sizeText(BUDGET.siteBytes) } })
@@ -342,11 +344,11 @@ export const importExport = internalMutation({
     // 2. Store.
     const ids: Record<string, Id<'entries'>> = {}
     const known = new Set<string>(uploads.values())
-    for (const { row, fields, data, size, trees } of rows) {
+    for (const { row, fields, data, prints, size, trees } of rows) {
       const id = await ctx.db.insert('entries', {
         site: site._id, brick: row.brick, kind: row.kind, order: row.order, data, rev: row.rev,
         fieldRevs: Object.fromEntries(Object.keys(fields).map((f) => [f, row.rev])),
-        lifeRev: row.deletedAt === undefined ? 1 : 2, prints: row.prints, bytes: size, treeBytes: trees.bytes, contentAt: row.contentAt ?? Date.now(),
+        lifeRev: row.deletedAt === undefined ? 1 : 2, prints, bytes: size, treeBytes: trees.bytes, contentAt: row.contentAt ?? Date.now(),
         ...(row.deletedAt === undefined ? {} : { deletedAt: row.deletedAt }),
         ...(row.state === 'draft' ? { state: 'draft' as const } : {}),
       })

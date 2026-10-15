@@ -5,7 +5,7 @@ import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalMutation, type MutationCtx } from './_generated/server'
-import { treesOf, type Data } from './lib/content'
+import { carryPrints, treesOf, type Data, type Prints } from './lib/content'
 import { putTrees } from './lib/trees'
 import { entryUses, syncEntryRefs } from './lib/write'
 
@@ -51,7 +51,9 @@ export const markdownStorageUrls = internalMutation({
       const rev = row.rev + 1
       const fieldRevs = { ...row.fieldRevs }
       for (const root of Object.keys(data)) if (stableJson(data[root] ?? null) !== stableJson(row.data[root] ?? null)) fieldRevs[root] = rev
-      await ctx.db.patch(row._id, { data, rev, fieldRevs, bytes: entryBytes(data, row.prints), treeBytes: trees.bytes })
+      // The same picture under its new name: a translation that was current stays current.
+      const prints = carryPrints(brick.fields, row.data as Data, data, row.prints as Prints, schema.locales[0]!)
+      await ctx.db.patch(row._id, { data, rev, fieldRevs, prints, bytes: entryBytes(data, prints), treeBytes: trees.bytes })
       await putTrees(ctx, row.site, row._id, trees.json)
       await syncEntryRefs(ctx, row.site, row._id, await entryUses(ctx, brick.fields, data, schema.locales))
       if (row.deletedAt === undefined && row.state !== 'draft') touched.add(row.site)

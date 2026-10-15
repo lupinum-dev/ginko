@@ -113,6 +113,26 @@ export function nextPrints(input: {
   return out
 }
 
+/**
+ * Prints after a rewrite that keeps the meaning, such as the new file IDs an import gives the files a text points at:
+ * a translation that was current for the old main-language value stays current for the new one. Other prints stay.
+ */
+export function carryPrints(fields: Fields, before: Data, after: Data, prints: Prints, main: Locale): Prints {
+  const out: Prints = Object.fromEntries(Object.entries(prints).map(([leaf, byLocale]) => [leaf, { ...byLocale }]))
+  for (const [root, field] of Object.entries(fields)) {
+    if (stableJson(before[root] ?? null) === stableJson(after[root] ?? null)) continue
+    const old = leavesOf(field, before[root], root)
+    for (const [leaf, values] of leavesOf(field, after[root], root)) {
+      const was = old.get(leaf)
+      const kept = out[leaf]
+      if (!was || !kept) continue
+      const current = printOf(was[main])
+      for (const locale of Object.keys(kept)) if (kept[locale] === current) kept[locale] = printOf(values[main])
+    }
+  }
+  return out
+}
+
 /** The root field of a leaf path (`days.k3Fd9aZ0qx.dish` → `days`). */
 export function rootOf(leaf: string): string {
   return leaf.split('.')[0]!

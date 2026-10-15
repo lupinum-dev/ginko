@@ -18,6 +18,7 @@ import { createPlatform } from '../../../packages/ginko/src/cli/platform.ts'
 import type { SiteExport } from '../../../packages/ginko/src/cli/model.ts'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
+import { printOf } from '@lupinum/ginko/internal'
 import { errorOf, setup } from './setup'
 
 type Setup = Awaited<ReturnType<typeof setup>>
@@ -335,6 +336,32 @@ describe('import of local:files-export originals', () => {
     const uploads = await s.t.run((ctx) => ctx.db.query('uploads').collect())
     expect(uploads.map((u) => ({ status: u.status, width: u.width, height: u.height, processed: u.processedId !== u.storageId, variants: u.variants?.map((x) => x.width) })))
       .toEqual([{ status: 'ready', width: 2400, height: 1600, processed: true, variants: [480, 960, 1600] }])
+  })
+})
+
+describe('import of a text with a library picture', () => {
+  // Wrong behaviour caught: the import gives the picture a new file ID inside the German text, so every English text
+  // with a picture showed "German changed since the translation" right after the import (v7 case studies).
+  it('keeps a current translation current when the picture gets its new file ID', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2])
+    const hash = createHash('sha256').update(bytes).digest('hex')
+    const de = `Wein und Jause.\n\n![Ein Hund]($file.${hash})`
+    const event = {
+      id: 'e1', brick: 'events', kind: 'item' as const, order: 1, rev: 1,
+      data: { title: { de: 'Weinabend', en: 'Wine evening' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de, en: `Wine and a cold platter.\n\n![A dog]($file.${hash})` } },
+      prints: { title: { en: printOf('Weinabend') }, description: { en: printOf(de) } },
+    }
+    await s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', entries: [event],
+      files: [{ id: hash, storageId: await s.t.run((ctx) => ctx.storage.store(new Blob([bytes], { type: 'image/webp' }))), name: 'hund.webp', mime: 'image/webp', size: bytes.byteLength, sha256: hash }],
+    })
+    const events = await s.t.run((ctx) => ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'events')).collect())
+    const row = events.find((e) => (e.data as { description: { de: string } }).description.de.startsWith('Wein und Jause'))
+    const description = (row!.data as { description: { de: string } }).description.de
+    expect(description).not.toContain(hash)
+    expect(row!.prints).toEqual({ title: { en: printOf('Weinabend') }, description: { en: printOf(description) } })
   })
 })
 
