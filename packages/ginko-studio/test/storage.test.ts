@@ -65,6 +65,15 @@ test('more removed entries load with Mehr anzeigen', () => {
   expect(loadMore).toHaveBeenCalledWith(50)
 })
 
+// Wrong behaviour caught: a trash that failed to load looks like an empty one.
+test('a failed trash load shows the error, not an empty trash', () => {
+  vi.stubGlobal('useOps', () => ({}))
+  trashQuery({ status: 'error', error: { data: { code: 'FORBIDDEN', message: 'Kein Zugriff.' } } })
+  mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, attachTo: document.body })
+  expect(document.body.querySelector('[role="alert"]')?.textContent).toBe('Kein Zugriff.')
+  expect(text()).not.toContain('Nichts wurde entfernt.')
+})
+
 // Wrong behaviour caught: the site budget is found only when a save is refused, or the full band can be hidden while saves fail.
 test('the storage band warns from 80 %, and once full it cannot be hidden', async () => {
   const MB = 1024 * 1024
