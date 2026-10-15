@@ -11,7 +11,7 @@ const asCook = { storageState: STATE.cook }
 test.beforeEach(() => resetContent())
 
 const notice = (page: Page, text: string) => page.locator('section', { has: page.getByRole('heading', { name: 'Hinweise' }) }).getByText(text, { exact: true })
-const toast = (page: Page) => page.locator('[data-sonner-toast]').filter({ hasText: /Gespeichert|Entfernt|Rückgängig/ })
+const toast = (page: Page) => page.locator('[data-sonner-toast]').filter({ hasText: /Gespeichert|Papierkorb|Rückgängig/ })
 
 test.describe('Wirtin', () => {
   test.use(asOwner)
@@ -162,7 +162,7 @@ test.describe('Unterwegs (break-it 9)', () => {
     await page.getByRole('main').getByRole('button', { name: 'Mehr', exact: true }).click()
     await page.getByRole('menuitem', { name: 'Eintrag entfernen' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click()
-    await expect(page.locator('[data-sonner-toast]')).toContainText('entfernt')
+    await expect(page.locator('[data-sonner-toast]')).toContainText('im Papierkorb')
 
     await page.goto('/s/restaurant/all?removed', { waitUntil: 'networkidle' })
     const row = page.getByRole('listitem').filter({ hasText: 'Wiener Schnitzel vom Kalb' })
@@ -358,7 +358,7 @@ test.describe('Gleichzeitig (Astra phase 8)', () => {
     await other.getByRole('button', { name: 'Mehr' }).click()
     await other.getByRole('menuitem', { name: 'Eintrag entfernen' }).click()
     await other.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click()
-    await expect(other.locator('[data-sonner-toast]')).toContainText('entfernt')
+    await expect(other.locator('[data-sonner-toast]')).toContainText('im Papierkorb')
     await other.close()
 
     await expect(page.getByRole('alert').filter({ hasText: 'Jemand hat diesen Eintrag entfernt.' })).toContainText('Jemand hat diesen Eintrag entfernt. Deine Änderungen sind noch da.')
