@@ -106,7 +106,10 @@ export function hours(opts: GastroOptions = {}) {
         max: 140, optional: true,
         hint: both('Steht auf der Website, z. B. „Wegen eines Wasserrohrbruchs“.', 'Shown on the website, e.g. “Because of a burst water pipe”.'),
       }),
-      holidayNoticeDays: f.number(both('Hinweis vor Ausnahmen (Tage)', 'Show notice before closures (days)'), { min: 0, max: 60, step: 1, default: 14 }),
+      holidayNoticeDays: f.number(both('Schließungen ankündigen (Tage vorher)', 'Announce closures (days ahead)'), {
+        min: 0, max: 60, step: 1, default: 14,
+        hint: both('So viele Tage vorher kündigt die Website eine Schließung oder einen geschlossenen Feiertag an.', 'How many days ahead the website announces a closure or a public holiday when you are closed.'),
+      }),
       holidays: f.choice(both('An Feiertagen', 'On public holidays'), {
         options: [
           { value: 'sunday', label: both('wie Sonntag', 'same as Sunday') }, { value: 'closed', label: both('geschlossen', 'closed') }, { value: 'normal', label: both('normal', 'normal hours') },
@@ -116,7 +119,8 @@ export function hours(opts: GastroOptions = {}) {
     },
     tasks: [
       { id: 'closedToday', label: both('Heute geschlossen', 'Closed today'), kind: 'edit', fields: ['closedOn', 'closedNote'], prefill: { closedOn: '@today' } },
-      { id: 'holiday', label: both('Betriebsurlaub und Ausnahmen', 'Holiday closure and exceptions'), kind: 'edit', fields: ['exceptions'] },
+      // The lead time sits under the list, so the owner sees when guests first read about a closure.
+      { id: 'holiday', label: both('Betriebsurlaub und Ausnahmen', 'Holiday closure and exceptions'), kind: 'edit', fields: ['exceptions', 'holidayNoticeDays'] },
       { id: 'holidaySetting', label: both('Öffnungszeiten an Feiertagen', 'Opening hours on public holidays'), kind: 'edit', fields: ['holidays'] },
     ],
   })

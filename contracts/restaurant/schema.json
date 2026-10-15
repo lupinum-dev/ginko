@@ -374,13 +374,17 @@
         "holidayNoticeDays": {
           "type": "number",
           "label": {
-            "de": "Hinweis vor Ausnahmen (Tage)",
-            "en": "Show notice before closures (days)"
+            "de": "Schließungen ankündigen (Tage vorher)",
+            "en": "Announce closures (days ahead)"
           },
           "min": 0,
           "max": 60,
           "step": 1,
           "default": 14,
+          "hint": {
+            "de": "So viele Tage vorher kündigt die Website eine Schließung oder einen geschlossenen Feiertag an.",
+            "en": "How many days ahead the website announces a closure or a public holiday when you are closed."
+          },
           "pos": 4
         },
         "holidays": {
@@ -441,7 +445,8 @@
           },
           "kind": "edit",
           "fields": [
-            "exceptions"
+            "exceptions",
+            "holidayNoticeDays"
           ]
         },
         {
