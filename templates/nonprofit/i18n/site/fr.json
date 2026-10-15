@@ -28,5 +28,12 @@
     "failed": "Une erreur s’est produite",
     "failedText": "Veuillez recharger la page. Si l’erreur persiste, réessayez plus tard.",
     "home": "Aller à l’accueil"
+  },
+  "imprint": {
+    "address": "Adresse",
+    "registry": "Immatriculation",
+    "vat": "Numéro de TVA",
+    "email": "E-mail",
+    "phone": "Téléphone"
   }
 }

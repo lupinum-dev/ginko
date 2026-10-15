@@ -28,5 +28,12 @@
     "failed": "Something went wrong",
     "failedText": "Please reload the page. If the error stays, try again later.",
     "home": "Go to the home page"
+  },
+  "imprint": {
+    "address": "Address",
+    "registry": "Register",
+    "vat": "VAT number",
+    "email": "Email",
+    "phone": "Phone"
   }
 }
