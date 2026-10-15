@@ -80,6 +80,9 @@ body {
   hyphens: auto;
 }
 
+/* A hyphen inside a link would read as part of the address ("ris.b-ka.gv.at"); it still breaks instead of overflowing. */
+a { hyphens: manual; }
+
 ::selection { background: var(--bluete); color: var(--ink); }
 
 h1, h2, h3 {
