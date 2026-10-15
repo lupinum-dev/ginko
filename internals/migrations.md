@@ -3,6 +3,18 @@
 Temporary compatibility code that is still active. Each entry says why it exists, since when, what depends on it,
 the exact condition for removing it and the tracking issue when there is one. Remove the code and its entry together.
 
+Run each step on a local backend in `packages/ginko-server` with `pnpm exec better-convex convex run <function> '{}'`.
+Hosted production needs Matthias's OK at each step, in this order:
+
+1. Back up production before the release that brings the code reaches the production branch: in the Convex
+   dashboard (the production deployment's backups), or with the plain Convex CLI
+   `npx convex export --path <file>.zip` in the production checkout's `packages/ginko-server` (the `better-convex`
+   wrapper has no `export`; the key in that `.env.local` must be allowed to export). A merge deploys Convex by itself,
+   so a backup after the merge is too late.
+2. Merge to the production branch. The Vercel production build deploys Convex, then builds the Studio.
+3. In the production checkout (see the [`ginko-server` README](../packages/ginko-server/README.md)), run the step
+   with `pnpm exec better-convex convex run <function> '{}'`.
+
 ## Entry storage: trees in `entryTrees`, text-only budget, separate trash (`entries:migrateStorage`)
 
 - **Why:** Markdown trees moved from the entry row (`entries.trees`) to the `entryTrees` table, the budget counts only
@@ -22,12 +34,11 @@ the exact condition for removing it and the tracking issue when there is one. Re
   so the budget checks are stricter, never looser; the trees guard sees only trees written since.
 - **Steps:**
   1. Deploy this code (expand step). Writers already put trees into `entryTrees` and clear `entries.trees`.
-  2. `npx convex run entries:migrateStorage` (10 entries per run, schedules itself, then `recountStorage` sets each
+  2. `pnpm exec better-convex convex run entries:migrateStorage '{}'` (10 entries per run, schedules itself, then `recountStorage` sets each
      site's `bytes`, `trashBytes` and `treeBytes` to the sums over its entries). Running it again is safe.
-  3. Check with `npx convex run entries:storageStatus` (one site per call; pass the returned `cursor` until
+  3. Check with `pnpm exec better-convex convex run entries:storageStatus '{}'` (one site per call; pass the returned `cursor` until
      `isDone`): every site `legacyRows: 0`, `countersMatch: true`, `overLimit: []`.
-  4. Hosted production needs Matthias's OK at each step: `npx convex export --prod` first, then deploy, then
-     `npx convex run --prod entries:migrateStorage`, then `storageStatus` with `--prod`.
+  4. Hosted production: steps 2 and 3 as described at the top (backup, merge, then run in the production checkout).
   5. Contract step: remove `entries.trees` from the schema, make `entries.treeBytes`, `entries.contentAt`,
      `sites.trashBytes` and `sites.treeBytes` required, delete the fallbacks and the `?? 0` above, and give the rows that tests insert directly (`packages/ginko-server/test/setup.ts` and others) the
      new fields. Convex refuses this deploy while any row still has `trees`, which is a safety net.
@@ -46,9 +57,9 @@ the exact condition for removing it and the tracking issue when there is one. Re
 - **Dependents:** every deployment with sites created before the introduction date (local backends, hosted production).
 - **Steps:**
   1. Deploy this code. Nothing writes `orderRevs` from now on.
-  2. `npx convex run sites:dropOrderRevs` (one call; it reports how many sites it cleared; running it again is safe).
-     Hosted production needs Matthias's OK: `npx convex export --prod` first, then
-     `npx convex run --prod sites:dropOrderRevs`.
+  2. `pnpm exec better-convex convex run sites:dropOrderRevs '{}'` (one call; it reports how many sites it cleared;
+     running it again is safe). Hosted production as described at the top (backup, merge, then run in the production
+     checkout).
   3. Contract step: remove `orderRevs` from `convex/schema.ts` and delete `dropOrderRevs`. Convex refuses this deploy
      while any site still has the field, which is a safety net.
 - **Removal condition:** `sites:dropOrderRevs` answered `cleared: 0` on every deployment (local backends included, or
@@ -71,10 +82,10 @@ the exact condition for removing it and the tracking issue when there is one. Re
 - **Dependents:** every deployment whose texts hold storage addresses: local backends with pictures pasted into texts,
   and possibly hosted production. Run it before the next daily sweep where a pasted picture is younger than 7 days.
 - **Steps:**
-  1. Local: `npx convex run migrations:markdownStorageUrls` (10 entries per run, schedules itself; running it again
-     is safe). Then `npx convex run entries:storageStatus` until `isDone`: `countersMatch: true` for every site.
-  2. Hosted production only with Matthias's OK, after `npx convex export --prod`:
-     `npx convex run --prod migrations:markdownStorageUrls`, then `storageStatus` with `--prod`.
+  1. Local: `pnpm exec better-convex convex run migrations:markdownStorageUrls '{}'` (10 entries per run, schedules
+     itself; running it again is safe). Then `pnpm exec better-convex convex run entries:storageStatus '{}'` until
+     `isDone` (pass the returned `cursor`): `countersMatch: true` for every site.
+  2. Hosted production: step 1 as described at the top (backup, merge, then run in the production checkout).
 - **Removal condition:** the migration ran on every local backend that keeps its data and on hosted production. Then
   delete `convex/migrations.ts`, its line in `convex/_generated/api.d.ts`, its test in
   `packages/ginko-server/test/files.test.ts` and this entry.
