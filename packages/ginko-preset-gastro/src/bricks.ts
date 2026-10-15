@@ -120,11 +120,18 @@ export function hours(opts: GastroOptions = {}) {
         min: 0, max: 60, step: 1, default: 14,
         hint: both('So viele Tage vorher kündigt die Website eine Schließung oder einen geschlossenen Feiertag an.', 'How many days ahead the website announces a closure or a public holiday when you are closed.'),
       }),
+      // The holiday calendar is code (`calendar` in the hours context), so the hint says what the choice covers and
+      // where a single holiday gets other hours.
       holidays: f.choice(both('An Feiertagen', 'On public holidays'), {
         options: [
-          { value: 'sunday', label: both('wie Sonntag', 'same as Sunday') }, { value: 'closed', label: both('geschlossen', 'closed') }, { value: 'normal', label: both('normal', 'normal hours') },
+          { value: 'sunday', label: both('wie am Sonntag', 'same as Sunday') }, { value: 'closed', label: both('geschlossen', 'closed') },
+          { value: 'normal', label: both('normale Zeiten des Wochentags', 'the weekday’s usual hours') },
         ],
         optional: true, default: 'sunday',
+        hint: both(
+          'Gilt für alle gesetzlichen Feiertage. „Wie am Sonntag“ nimmt die Sonntagszeiten, die an dem Tag gelten. Für andere Zeiten an einem einzelnen Feiertag, z. B. am 26.12., trag unter „Betriebsurlaub und Ausnahmen“ eine Ausnahme ein.',
+          'Applies to every public holiday. “Same as Sunday” uses the Sunday hours that apply on that day. For other hours on a single holiday, such as 26 December, add an exception under “Holiday closure and exceptions”.',
+        ),
       }),
     },
     tasks: [

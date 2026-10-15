@@ -403,11 +403,15 @@
           },
           "optional": true,
           "default": "sunday",
+          "hint": {
+            "de": "Gilt für alle gesetzlichen Feiertage. „Wie am Sonntag“ nimmt die Sonntagszeiten, die an dem Tag gelten. Für andere Zeiten an einem einzelnen Feiertag, z. B. am 26.12., trag unter „Betriebsurlaub und Ausnahmen“ eine Ausnahme ein.",
+            "en": "Applies to every public holiday. “Same as Sunday” uses the Sunday hours that apply on that day. For other hours on a single holiday, such as 26 December, add an exception under “Holiday closure and exceptions”."
+          },
           "options": [
             {
               "value": "sunday",
               "label": {
-                "de": "wie Sonntag",
+                "de": "wie am Sonntag",
                 "en": "same as Sunday"
               }
             },
@@ -421,8 +425,8 @@
             {
               "value": "normal",
               "label": {
-                "de": "normal",
-                "en": "normal hours"
+                "de": "normale Zeiten des Wochentags",
+                "en": "the weekday’s usual hours"
               }
             }
           ],
