@@ -118,12 +118,17 @@ describe('library picker in the image field', () => {
     await flushPromises()
   }
 
-  test('a photo without alt text asks for it, then the chosen file id and alt text go to the field', async () => {
+  // Wrong behaviour caught: the button stayed disabled without saying why.
+  test('a photo without alt text says why it cannot be used yet, then the chosen file id and alt text go to the field', async () => {
     library.altSuggestion = null
     const wrapper = mountField()
     await openAndChoose()
-    expect((button('Dieses Foto verwenden') as HTMLButtonElement).disabled).toBe(true)
+    button('Dieses Foto verwenden')!.click()
+    await flushPromises()
     const alt = document.body.querySelector('#picker-alt') as HTMLInputElement
+    expect([alt.value, alt.getAttribute('aria-invalid'), document.activeElement === alt]).toEqual(['', 'true', true])
+    expect(document.body.querySelector('[role="alert"]')!.textContent).toBe('Beschreibe das Bild kurz, für Menschen, die es nicht sehen.')
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
     alt.value = 'Das Team beim Mittagessen'
     alt.dispatchEvent(new Event('input', { bubbles: true }))
     await flushPromises()
@@ -132,16 +137,20 @@ describe('library picker in the image field', () => {
     expect(wrapper.emitted('update:modelValue')).toEqual([[{ file: 'f1', alt: { de: 'Das Team beim Mittagessen' } }]])
   })
 
-  // Wrong behaviour caught: the library text is copied into the field, so a later fix in the library no longer reaches this use.
-  test('a photo with library text in the field language is chosen at once and the field keeps its own alt empty', async () => {
-    library.alt = { de: 'Aus der Bibliothek' }
-    library.altSuggestion = { de: 'Vorschlag' }
+  // Wrong behaviour caught: a library text (or a suggestion) was used unseen, wrong or not, and went live.
+  // The library text is not copied into the field, so a later fix in the library still reaches this use.
+  test.each([
+    ['library text', { de: 'Aus der Bibliothek' }, { de: 'Vorschlag' }, 'Aus der Bibliothek', { de: '' }],
+    ['suggestion', {}, { de: 'Vorhanden', en: 'Existing' }, 'Vorhanden', { de: 'Vorhanden', en: 'Existing' }],
+  ])('the %s shows in the field before the photo is used', async (_name, alt, suggestion, shown, stored) => {
+    library.alt = alt
+    library.altSuggestion = suggestion
     const wrapper = mountField()
     await openAndChoose()
-    expect(document.body.querySelector('#picker-alt')).toBeNull()
+    expect((document.body.querySelector('#picker-alt') as HTMLInputElement).value).toBe(shown)
     button('Dieses Foto verwenden')!.click()
     await flushPromises()
-    expect(wrapper.emitted('update:modelValue')).toEqual([[{ file: 'f1', alt: { de: '' } }]])
+    expect(wrapper.emitted('update:modelValue')).toEqual([[{ file: 'f1', alt: stored }]])
   })
 
   // Wrong behaviour caught: the field still demands its own text although the library's applies.
@@ -158,15 +167,6 @@ describe('library picker in the image field', () => {
     expect(document.body.querySelector('#t-alt-hint')!.textContent).toBe('Leer lassen, dann gilt die Beschreibung aus den Dateien.')
   })
 
-  test('a photo that already has alt text in the field language is chosen at once with it', async () => {
-    library.altSuggestion = { de: 'Vorhanden', en: 'Existing' }
-    const wrapper = mountField()
-    await openAndChoose()
-    expect(document.body.querySelector('#picker-alt')).toBeNull()
-    button('Dieses Foto verwenden')!.click()
-    await flushPromises()
-    expect(wrapper.emitted('update:modelValue')).toEqual([[{ file: 'f1', alt: { de: 'Vorhanden', en: 'Existing' } }]])
-  })
 })
 
 describe('info panel alt text', () => {
@@ -218,8 +218,12 @@ describe('library pictures in a Markdown text', () => {
     await flushPromises()
   }
 
-  // Wrong behaviour caught: the text gets the file's storage address (it breaks when the file is replaced), or a picture without description.
-  test('"Aus Dateibibliothek wählen" in the image dialog puts the file reference with the library description into the text', async () => {
+  // Wrong behaviour caught: the text gets the file's storage address (it breaks when the file is replaced), or the
+  // library description is copied into the text, unseen and frozen in one language.
+  test.each([
+    ['the library description unchanged', undefined, 'Eins![]($file.f1)\n'],
+    ['an edited description', 'Neu', 'Eins![Neu]($file.f1)\n'],
+  ])('"Aus Dateibibliothek wählen" in the image dialog puts the file reference into the text, with %s', async (_name, typed, markdown) => {
     library.alt = { de: 'Das Team beim Mittagessen' }
     const handle = await createGinkoEditor({ text: 'Eins\n', profile: 'rich', element: document.createElement('div') })
     if (handle.mode !== 'rich') throw new Error('expected rich')
@@ -229,9 +233,12 @@ describe('library pictures in a Markdown text', () => {
     const dialog = mount(ImageDialog, { props: { editor: markRaw(handle.editor), open: true, images, locale: 'de' }, attachTo: document.body })
     await flushPromises()
     await choose('Aus Dateibibliothek wählen')
+    const alt = document.body.querySelector('#picker-alt') as HTMLInputElement
+    expect(alt.value).toBe('Das Team beim Mittagessen')
+    if (typed) { alt.value = typed; alt.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises() }
     button('Dieses Foto verwenden')!.click()
     await flushPromises()
-    expect(await handle.markdown()).toBe('Eins![Das Team beim Mittagessen]($file.f1)\n')
+    expect(await handle.markdown()).toBe(markdown)
     dialog.unmount()
     handle.destroy()
   })

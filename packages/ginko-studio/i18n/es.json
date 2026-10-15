@@ -864,7 +864,8 @@
     "picker": {
       "choose": "Elegir de la biblioteca",
       "usePhoto": "Usar esta foto",
-      "useFile": "Usar este archivo"
+      "useFile": "Usar este archivo",
+      "altFromLibrary": "Esta descripción viene de Archivos. Si la cambias aquí, solo se aplica en este lugar."
     }
   },
   "who": {

@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@studio/components/ui/input'
 import { Label } from '@studio/components/ui/label'
 import type { Chosen } from '../files/LibraryPickerBody.vue'
-import { textAltOf } from '../files/util'
 
 const props = defineProps<{
   editor: Editor
@@ -81,13 +80,14 @@ function insert() {
 }
 
 /**
- * A picture from the library goes in at once: the picker has made sure it has a description in this language. The
- * text carries the description itself (the editor checks every picture of a text for one).
+ * A picture from the library goes in at once: the picker has shown its description and made sure it has one in this
+ * language. The library's text applies when the page is built, in every language; the text holds its own description
+ * only when the person wrote one.
  */
 function fromLibrary(chosen: Chosen) {
   libraryOpen.value = false
   open.value = false
-  props.editor.chain().focus().setImage({ src: `$file.${chosen.id}`, alt: textAltOf(chosen, props.locale ?? '') }).run()
+  props.editor.chain().focus().setImage({ src: `$file.${chosen.id}`, alt: chosen.alt?.[props.locale ?? '']?.trim() ?? '' }).run()
 }
 
 function picked(event: Event) {

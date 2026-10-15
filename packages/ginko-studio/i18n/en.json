@@ -864,7 +864,8 @@
     "picker": {
       "choose": "Choose from library",
       "usePhoto": "Use this photo",
-      "useFile": "Use this file"
+      "useFile": "Use this file",
+      "altFromLibrary": "This description comes from Files. A change here applies to this place only."
     }
   },
   "who": {

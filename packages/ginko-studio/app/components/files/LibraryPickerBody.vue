@@ -1,20 +1,20 @@
 <!-- The inside of the picker (UI.md 10.3): the Finder with Recent selected, single select, and the
-     primary button. A chosen photo without alt text (library or suggested) in the field's language asks for it before the
-     picker closes (the alt rule of the image field). -->
+     primary button. A selected photo shows its description in the field's language before it is used: the library's,
+     else a suggestion, else empty. Without one it asks for it before the picker closes (the alt rule of the image field). -->
 <script setup lang="ts">
 import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from '#imports'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
 import { Label } from '@studio/components/ui/label'
 import { useFilesLibrary } from '../../composables/useFilesLibrary'
 import FilesBrowser from './FilesBrowser.vue'
-import type { PickKind } from './util'
+import { ownAlt, type PickKind } from './util'
 
 /**
- * `alt`: what a field stores as its own description (empty when the library's applies). `libraryAlt`: the library's
- * description in the picker's language, for a place that must carry the text itself (a picture in a Markdown text).
+ * `alt`: what a place stores as its own description (empty when the library's applies). `libraryAlt`: the library's
+ * description in the picker's language, for a place that must carry the text itself (a component's `alt` prop).
  */
 export interface Chosen { id: string; alt?: Record<string, string>; libraryAlt?: string }
 
@@ -30,20 +30,35 @@ const suggested = computed(() => {
   const alt = known.value?.altSuggestion ?? {}
   return Object.fromEntries(Object.entries(alt).filter(([, text]) => typeof text === 'string')) as Record<string, string>
 })
-/** The description written in the Files library: it applies to every use, so the field keeps its own text empty. */
+/** The description written in the Files library: it applies to every use, so a place keeps its own text empty. */
 const libraryAlt = computed(() => known.value?.alt?.[props.locale]?.trim() ?? '')
-const needsAlt = computed(() => props.kind === 'image' && known.value !== null && !libraryAlt.value && !suggested.value[props.locale]?.trim())
+const describing = computed(() => props.kind === 'image' && known.value !== null)
 const altText = ref('')
-watch(selectedId, () => { altText.value = '' })
+const altMissing = ref(false)
+const altInput = ref<InstanceType<typeof Input>>()
+// Each selected photo starts from the text that would apply.
+watch(() => known.value?.id, () => {
+  altText.value = libraryAlt.value || suggested.value[props.locale]?.trim() || ''
+  altMissing.value = false
+})
 
-const ready = computed(() => known.value !== null && known.value.url !== null && (!needsAlt.value || altText.value.trim() !== ''))
+const ready = computed(() => known.value !== null && known.value.url !== null)
 
-function choose() {
+async function choose() {
   const file = known.value
   if (!file || !ready.value) return
-  emit('choose', props.kind === 'image'
-    ? { id: file.id, alt: libraryAlt.value ? {} : { ...suggested.value, ...(needsAlt.value ? { [props.locale]: altText.value.trim() } : {}) }, ...(libraryAlt.value ? { libraryAlt: libraryAlt.value } : {}) }
-    : { id: file.id })
+  if (props.kind !== 'image') { emit('choose', { id: file.id }); return }
+  const typed = altText.value.trim()
+  if (!typed && !libraryAlt.value) {
+    altMissing.value = true
+    await nextTick()
+    const el = (altInput.value?.$el ?? altInput.value) as HTMLInputElement | undefined
+    el?.focus()
+    return
+  }
+  if (!libraryAlt.value) { emit('choose', { id: file.id, alt: { ...suggested.value, [props.locale]: typed } }); return }
+  const own = ownAlt(typed, libraryAlt.value)
+  emit('choose', { id: file.id, alt: own ? { [props.locale]: own } : {}, libraryAlt: libraryAlt.value })
 }
 </script>
 
@@ -52,12 +67,19 @@ function choose() {
     <div class="max-h-[55vh] min-h-0 overflow-y-auto">
       <FilesBrowser :lib="lib" mode="picker" :kind="kind" :locales="[locale]" @select="selectedId = $event" />
     </div>
-    <div v-if="needsAlt" class="grid gap-1.5">
-      <div :class="CONTAINED_FIELD">
-        <Label for="picker-alt" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('files.altLabel') }}</Label>
-        <Input id="picker-alt" v-model="altText" type="text" required aria-required="true" aria-describedby="picker-alt-hint" />
+    <div v-if="describing && known" class="flex items-start gap-3">
+      <img v-if="known.url" :src="known.url" alt="" class="size-12 shrink-0 rounded-md border object-cover">
+      <div class="grid min-w-0 flex-1 gap-1.5">
+        <div :class="CONTAINED_FIELD">
+          <Label for="picker-alt" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('files.altLabel') }}</Label>
+          <Input
+            id="picker-alt" ref="altInput" v-model="altText" type="text" :required="!libraryAlt" :aria-required="!libraryAlt" :aria-invalid="altMissing"
+            :aria-describedby="altMissing ? 'picker-alt-error picker-alt-hint' : 'picker-alt-hint'" @update:model-value="altMissing = false"
+          />
+        </div>
+        <p v-if="altMissing" id="picker-alt-error" role="alert" class="text-sm text-destructive">{{ t('editor.image.descriptionRequired') }}</p>
+        <p id="picker-alt-hint" class="text-sm text-muted-foreground">{{ libraryAlt ? t('files.picker.altFromLibrary') : t('files.altHint') }}</p>
       </div>
-      <p id="picker-alt-hint" class="text-sm text-muted-foreground">{{ t('files.altHint') }}</p>
     </div>
     <div class="flex flex-wrap justify-end gap-2">
       <Button type="button" variant="outline" @click="emit('cancel')">{{ t('files.cancel') }}</Button>
