@@ -7,12 +7,13 @@ import { defineCatalog, type KeysOf, type Params, type TranslateOptions } from '
 import de from '../../i18n/de.json'
 import en from '../../i18n/en.json'
 import es from '../../i18n/es.json'
+import fr from '../../i18n/fr.json'
 import type { QueryCtx } from '../_generated/server'
 
 export type MessageKey = KeysOf<typeof de>
 
 export const DEFAULT_LOCALE = 'de'
-export const CATALOGS: Record<string, RawTree> = { de, en, es }
+export const CATALOGS: Record<string, RawTree> = { de, en, es, fr }
 export const LOCALES = Object.keys(CATALOGS)
 
 /** Compiled once when the module loads, not per call. */
