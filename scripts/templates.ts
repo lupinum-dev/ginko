@@ -273,7 +273,8 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
       await run('node', [join(root, 'packages/create-ginko/build.mjs')], root)
       const dirs = packageDirs(root)
       for (const dep of fixedGroup(root)) {
-        const out = (await run('pnpm', ['pack', '--pack-destination', tgz], dirs[dep]!)).trim().split('\n').at(-1)!
+        // The build steps of prepack print to the same streams; the tarball's path is the line that ends in .tgz.
+        const out = (await run('pnpm', ['pack', '--pack-destination', tgz], dirs[dep]!)).trim().split('\n').findLast((line) => line.trim().endsWith('.tgz'))!.trim()
         tarball[dep] = out.startsWith('/') ? out : join(tgz, out)
       }
     })
@@ -321,7 +322,7 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
       const site = readJson<Pkg>(join(pnpmDir, 'package.json'))
       const overrides = Object.entries(site.overrides ?? {}).map(([dep, spec]) => `  '${dep}': '${spec}'`).join('\n')
       writeFileSync(join(pnpmDir, 'pnpm-workspace.yaml'), `${readFileSync(join(pnpmDir, 'pnpm-workspace.yaml'), 'utf8')}\noverrides:\n${overrides}\n`)
-      await run('pnpm', ['install', '--ignore-workspace-root-check'], pnpmDir)
+      await run('pnpm', ['install'], pnpmDir)
     })
     if (multiOk && locales.length > 1 && gates.includes(2)) {
       // The main-language swap (T8): the second locale first, built once.
@@ -378,8 +379,11 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
           const specs = [`scripts/templates/e2e/gate${gate}.spec.ts`, ...(gate === 3 ? (pkg.ginko?.features ?? []).map((f) => `templates/_features/${f}/e2e/`).filter((dir) => existsSync(join(root, dir))) : [])]
           const out = spawnSync(join(root, 'node_modules/.bin/playwright'), ['test', '-c', 'scripts/templates/playwright.config.ts', '--output', join(work, `pw-${mode}-${gate}`), ...specs],
             { cwd: root, env: { ...process.env, ...env }, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
-          const text = `${out.stdout}${out.stderr}`
-          record(gate, mode, ['', '', '', 'e2e', 'axe light + dark, keyboard path', `layout at 390 and 1440, screenshots in ${relative(root, shots)}`, 'budgets (scripts gzip, LCP resource, CLS)'][gate]!, out.status === 0, text.replace(/\u001b\[[0-9;]*m/g, ''))
+          const text = `${out.stdout}${out.stderr}`.replace(/\u001b\[[0-9;]*m/g, '')
+          // The whole report next to the screenshots; the console shows its start.
+          mkdirSync(shots, { recursive: true })
+          writeFileSync(join(shots, `gate${gate}.log`), text)
+          record(gate, mode, ['', '', '', 'e2e', 'axe light + dark, keyboard path', `layout at 390 and 1440, screenshots in ${relative(root, shots)}`, 'budgets (scripts gzip, LCP resource, CLS)'][gate]!, out.status === 0, `${text}\n(full report: ${relative(root, join(shots, `gate${gate}.log`))})`)
         }
       } finally {
         server.kill()
