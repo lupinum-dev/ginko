@@ -1,9 +1,10 @@
 {
   "title": "Menù",
-  "lead": "Gli allergeni sono indicati con lettere accanto a ogni piatto. La legenda è alla fine del menù.",
+  "lead": "I nostri piatti e le nostre bevande, con i prezzi di oggi.",
   "print": "Stampa il menù",
   "printNow": "Stampa",
   "back": "Torna al menù",
+  "jump": "Categorie",
   "categories": {
     "starters": "Antipasti",
     "soups": "Zuppe",
@@ -18,8 +19,11 @@
   "soldOut": "esaurito oggi",
   "priceFrom": "dal {date}: {price}",
   "empty": "Nessun piatto nel menù",
+  "prices": "Tutti i prezzi sono IVA inclusa.",
+  "asOf": "Aggiornato al {date}",
   "allergens": {
     "title": "Allergeni",
+    "lead": "Le lettere accanto a ogni piatto ne indicano gli allergeni.",
     "label": "Allergeni: {names}",
     "none": "senza allergeni",
     "ask": "Se avete un’allergia o un’intolleranza, ditecelo quando ordinate.",
@@ -43,6 +47,7 @@
     "today": "Oggi",
     "closed": "Chiuso",
     "pending": "Il menù del pranzo di questa settimana arriverà a breve.",
+    "served": "Il pranzo è servito dalle {from} alle {to}.",
     "todayTitle": "Il pranzo di oggi",
     "week": "Il pranzo della settimana"
   }

@@ -2,7 +2,7 @@
 import { formatMoney } from '@lupinum/ginko'
 
 /** The lunch days of the week shown: weekday and date, the dish, its price and allergen letters. Today is marked in
- *  words; a day the house is closed says "Closed" instead of a dish. */
+ *  words; a day the place is closed says "Closed" instead of a dish. */
 const { lunch, days } = useLunch()
 const { t, format, language } = useI18n('menu')
 const langOf = useGinkoLang()
