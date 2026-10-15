@@ -21,6 +21,7 @@
     "./vue": "./src/vue.ts",
     "./internal/search": "./src/internal-search.ts",
     "./search": "./src/search.ts",
+    "./basics": "./src/basics/index.ts",
     "./nuxt": "./src/nuxt/module.ts"
   },
   "bin": {
@@ -56,6 +57,10 @@
       "./search": {
         "types": "./dist/search.d.mts",
         "import": "./dist/search.mjs"
+      },
+      "./basics": {
+        "types": "./dist/basics.d.mts",
+        "import": "./dist/basics.mjs"
       },
       "./nuxt": {
         "types": "./dist/nuxt/module.d.mts",
