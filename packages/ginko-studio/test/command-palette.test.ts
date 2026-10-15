@@ -151,17 +151,21 @@ describe('CommandPalette', () => {
   })
 
   // Wrong behaviour caught: a failed search left the result area blank, or showed the last word's results as if they
-  // matched the new one.
-  test('a failed search says so instead of showing the last results, and Erneut versuchen asks again', async () => {
+  // matched the new one; or Enter then switched to a site whose name matched, though the word was meant for an entry.
+  test('a failed search says so instead of showing the last results, Enter opens nothing, and Erneut versuchen asks again', async () => {
     const schnitzel = { entry: 'e1', brick: 'menu', brickLabel: 'Speisekarte', label: 'Schnitzel', snippet: '', state: 'live' }
     mocks.found = { entries: [schnitzel], bricks: [], tasks: [] }
+    mocks.sites = [{ slug: 'schwan', name: 'Schwanenwirt', url: 'https://schwan.test', role: 'admin', deleting: false }]
     mountPalette({ role: 'owner', grants: [] })
     await flushPromises()
     await typeQuery('sch')
     mocks.failing = true
     await typeQuery('schw')
-    expect(optionTexts()).toEqual([])
+    expect(optionTexts()).toEqual(['Schwanenwirt schwan.test'])
     expect(document.body.querySelector('[role="status"]')?.textContent).toBe('Die Suche hat gerade nicht geklappt. Erneut versuchen')
+    document.body.querySelector('input')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await flushPromises()
+    expect(mocks.navigateTo).not.toHaveBeenCalled()
 
     mocks.failing = false
     mocks.found = { entries: [{ ...schnitzel, entry: 'e2', label: 'Schweinsbraten' }], bricks: [], tasks: [] }
@@ -169,6 +173,6 @@ describe('CommandPalette', () => {
     ;[...document.body.querySelectorAll('button')].find((b) => b.textContent === 'Erneut versuchen')!.click()
     await flushPromises()
     expect(mocks.asked.slice(before)).toEqual([{ site: 's', query: 'schw' }])
-    expect(optionTexts()).toEqual(['Schweinsbraten Speisekarte Online'])
+    expect(optionTexts()).toEqual(['Schweinsbraten Speisekarte Online', 'Schwanenwirt schwan.test'])
   })
 })

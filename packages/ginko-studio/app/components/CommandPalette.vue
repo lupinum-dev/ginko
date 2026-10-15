@@ -105,10 +105,11 @@ function pick(item: Item, event: { detail?: { originalEvent?: Event } }) {
 
 // Typing highlights the first item at once, but the list is replaced when the answer arrives, so that item is gone.
 // Enter then opens the first result; with a highlighted item still on screen (arrow keys, pointer) the Command opens that one.
+// After a failed search Enter opens nothing: the word may have been meant for an entry, not a site whose name matches.
 const highlighted = ref<HTMLElement>()
 function onEnter(event: KeyboardEvent) {
   if (highlighted.value?.isConnected) return
-  const first = searching.value ? (entries.value[0] ?? areas.value[0] ?? sites.value[0]) : undefined
+  const first = searching.value && !failed.value ? (entries.value[0] ?? areas.value[0] ?? sites.value[0]) : undefined
   if (!first) return
   event.preventDefault()
   pick(first, { detail: { originalEvent: event } })
