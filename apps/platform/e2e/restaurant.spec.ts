@@ -45,7 +45,8 @@ test.describe('Wirtin', () => {
     await expect(page.getByText(/Geschlossen am .+ ist eingetragen\./)).toBeVisible()
     await page.getByRole('button', { name: 'Heute geschlossen' }).click()
     await expect(page.getByLabel('Geschlossen am')).toHaveValue(addDays(today(), 1))
-    await page.getByRole('button', { name: 'Schließen' }).click()
+    // The sheet's own X: the save toast's "Meldung schließen" is still on screen.
+    await page.getByRole('dialog').getByRole('button', { name: 'Schließen', exact: true }).click()
     await page.getByRole('button', { name: 'Aufheben' }).click()
     await expect(page.getByText(/Geschlossen am .+ ist eingetragen\./)).toHaveCount(0)
   })
