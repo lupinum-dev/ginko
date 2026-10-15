@@ -260,6 +260,16 @@ describe('retired fields are projected into the bundle (SPEC 2.5)', () => {
     retire(s, 'seo.description', { value: { de: 'Alt' } })
     expect(resolve(s, 'seo', { id: 'seo', data }, locale).data.description).toBe(description)
   })
+
+  // Wrong behaviour caught: every entry lists a retired text as an outdated translation, which nobody can edit in the Studio.
+  it('never lists a retired value as outdated: a translated constant, or a stored text with an old print', () => {
+    const s = base()
+    retire(s, 'seo.description', { value: { de: 'Alt', en: 'Old' } })
+    const constant = resolve(s, 'seo', { id: 'seo', data: { title: { de: 'T', en: 'T' } }, prints: { title: { en: printOf('T') } } }, 'en')
+    expect([constant.data.description, constant.outdated]).toEqual(['Old', []])
+    const stored = resolve(s, 'seo', { id: 'seo', data: { title: { de: 'T', en: 'T' }, description: { de: 'Neu', en: 'New' } }, prints: { title: { en: printOf('T') }, description: { en: printOf('Alt') } } }, 'en')
+    expect([stored.data.description, stored.outdated]).toEqual(['New', []])
+  })
 })
 
 describe('collections: hidden entries have no URL (SPEC 2.1, 6)', () => {

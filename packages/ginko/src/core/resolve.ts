@@ -92,10 +92,11 @@ export function resolveEntry(schema: Schema, brickKey: string, entry: StoredEntr
         if (leaf === rule.from || leaf.startsWith(`${rule.from}.`)) fallback.push(name + leaf.slice(rule.from.length))
       }
     } else if (entry.data[name] !== undefined) {
-      data[name] = resolveValue(field, entry.data[name], name, { ...state, blocking: [] })
+      // Nobody can edit a retired value any more, so it is never listed as outdated or as keeping the entry off a language.
+      data[name] = resolveValue(field, entry.data[name], name, { ...state, blocking: [], outdated: [] })
     } else if ('value' in rule) {
-      // Same fallback reporting as stored values; a constant never makes the entry untranslated.
-      data[name] = resolveValue(field, rule.value, name, { ...state, blocking: [] })
+      // Same fallback reporting as stored values; a constant never makes the entry untranslated, and has no prints.
+      data[name] = resolveValue(field, rule.value, name, { ...state, blocking: [], outdated: [] })
     }
   }
   const hidden = blocking.length > 0 && brick.kind === 'collection' && untranslatedMode(brick) === 'hide'
