@@ -488,7 +488,15 @@
       "fromLibrary": "Choose from Files library",
       "upload": "Upload image",
       "orAddress": "Or enter a web address",
-      "missing": "Image not found"
+      "missing": "Image not found",
+      "descriptionIs": "Description: {text}",
+      "descriptionFromFiles": "Description from Files: {text}",
+      "noDescriptionYet": "No description yet",
+      "editDescription": "Edit description",
+      "replace": "Replace image",
+      "replaceSubmit": "Replace",
+      "caption": "Caption",
+      "actions": "Image"
     },
     "text": {
       "tooLong": "The text is too long (at most {max} characters).",

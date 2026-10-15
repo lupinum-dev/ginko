@@ -488,7 +488,15 @@
       "fromLibrary": "Aus Dateibibliothek wählen",
       "upload": "Bild hochladen",
       "orAddress": "Oder Webadresse eingeben",
-      "missing": "Bild nicht gefunden"
+      "missing": "Bild nicht gefunden",
+      "descriptionIs": "Beschreibung: {text}",
+      "descriptionFromFiles": "Beschreibung aus den Dateien: {text}",
+      "noDescriptionYet": "Noch keine Beschreibung",
+      "editDescription": "Beschreibung ändern",
+      "replace": "Bild ersetzen",
+      "replaceSubmit": "Ersetzen",
+      "caption": "Bildunterschrift",
+      "actions": "Bild"
     },
     "text": {
       "tooLong": "Der Text ist zu lang (höchstens {max} Zeichen).",

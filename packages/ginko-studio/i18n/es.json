@@ -488,7 +488,15 @@
       "fromLibrary": "Elegir de la biblioteca de archivos",
       "upload": "Subir imagen",
       "orAddress": "O introduce una dirección web",
-      "missing": "Imagen no encontrada"
+      "missing": "Imagen no encontrada",
+      "descriptionIs": "Descripción: {text}",
+      "descriptionFromFiles": "Descripción de Archivos: {text}",
+      "noDescriptionYet": "Aún sin descripción",
+      "editDescription": "Cambiar descripción",
+      "replace": "Reemplazar imagen",
+      "replaceSubmit": "Reemplazar",
+      "caption": "Pie de foto",
+      "actions": "Imagen"
     },
     "text": {
       "tooLong": "El texto es demasiado largo (máximo {max} caracteres).",

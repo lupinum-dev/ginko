@@ -1,12 +1,15 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
+import type { Editor } from '@tiptap/core'
+import { EditorContent } from '@tiptap/vue-3'
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
-import { markRaw, ref } from 'vue'
+import { computed, markRaw, ref } from 'vue'
 import { components } from '@lupinum/ginko-components/registry'
 import { createGinkoEditor, GINKO_ASSETS, useFileImages, type GinkoAssets } from '@lupinum/ginko-editor'
 import ComponentSettings from '../app/components/editor/ComponentSettings.vue'
 import { EDITOR_FILES } from '../app/components/editor/context.ts'
 import ImageDialog from '../app/components/editor/ImageDialog.vue'
+import MarkdownEditor from '../app/components/editor/MarkdownEditor.vue'
 import GinkoFieldImage from '../app/components/fields/GinkoFieldImage.vue'
 import FileInfoPanel from '../app/components/files/FileInfoPanel.vue'
 import FileRemoveDialog from '../app/components/files/FileRemoveDialog.vue'
@@ -241,6 +244,61 @@ describe('library pictures in a Markdown text', () => {
     expect(await handle.markdown()).toBe(markdown)
     dialog.unmount()
     handle.destroy()
+  })
+
+  // Wrong behaviour caught: "Beschreibung ändern" at a picture with a library description demanded one of its own and
+  // copied the library text into the text, frozen in one language.
+  test.each([
+    ['unchanged', undefined, 'Eins![]($file.f0)\n'],
+    ['edited', 'Neu', 'Eins![Neu]($file.f0)\n'],
+  ])('the description step of a library picture starts from the library text (%s)', async (_name, typed, markdown) => {
+    const described: GinkoAssets = { ...assets, details: (ids) => computed(() => Object.fromEntries(ids.value.map((id) => [id, { url: `https://files.test/${id}.jpg`, name: `${id}.jpg`, size: 1, width: 1, height: 1, alt: { de: 'Hof im Winter' } }]))) }
+    const handle = await createGinkoEditor({ text: 'Eins![]($file.f0)\n', profile: 'rich', element: document.createElement('div') })
+    if (handle.mode !== 'rich') throw new Error('expected rich')
+    const images = useFileImages(described, () => 'Bild nicht gefunden')
+    images.want('$file.f0')
+    await flushPromises()
+    const dialog = mount(ImageDialog, { props: { editor: markRaw(handle.editor), open: false, describe: 5, images, locale: 'de' }, attachTo: document.body })
+    await dialog.setProps({ open: true })
+    await flushPromises()
+    const alt = document.body.querySelector('[role="dialog"] input') as HTMLInputElement
+    expect(alt.value).toBe('Hof im Winter')
+    if (typed) { alt.value = typed; alt.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises() }
+    button('Fertig')!.click()
+    await flushPromises()
+    expect(await handle.markdown()).toBe(markdown)
+    dialog.unmount()
+    handle.destroy()
+  })
+
+  // Wrong behaviour caught: a selected picture offered nothing (a swap meant delete and insert again), or a replace added
+  // a second picture or kept the old description with the new photo.
+  test.each([
+    ['its library description', 'Eins ![]($file.f0) zwei\n', 'Beschreibung aus den Dateien: Hof im Winter'],
+    ['its own description', 'Eins ![Hof]($file.f0) zwei\n', 'Beschreibung: Hof'],
+  ])('a selected picture shows %s; "Bild ersetzen" puts a library photo in its place, in one step', async (_name, source, shown) => {
+    library.alt = { de: 'Das Team beim Mittagessen' }
+    const described: GinkoAssets = { ...assets, details: (ids) => computed(() => Object.fromEntries(ids.value.map((id) => [id, { url: `https://files.test/${id}.jpg`, name: `${id}.jpg`, size: 1, width: 1, height: 1, alt: { de: id === 'f0' ? 'Hof im Winter' : 'Das Team beim Mittagessen' } }]))) }
+    const wrapper = mount(MarkdownEditor, {
+      props: { id: 't', field: { type: 'markdown', label: 'Text', profile: 'rich' } as never, modelValue: source, invalid: false, contentLocale: 'de' },
+      global: { provide: { [GINKO_ASSETS as symbol]: described } }, attachTo: document.body,
+    })
+    await vi.waitFor(() => expect(document.body.querySelector('.ginko-editor img')).not.toBeNull())
+    const editor = wrapper.findComponent(EditorContent).props('editor') as Editor
+    let pos = -1
+    editor.state.doc.descendants((node, at) => { if (node.type.name === 'image') pos = at })
+    editor.commands.setNodeSelection(pos)
+    editor.commands.focus()
+    await vi.waitFor(() => expect(document.body.querySelector('[role="toolbar"][aria-label="Bild"]')?.textContent).toContain(shown))
+    button('Bild ersetzen')!.click()
+    await vi.waitFor(() => expect(document.body.querySelector('[role="dialog"] h2')?.textContent).toBe('Bild ersetzen'))
+    let steps = 0
+    editor.on('transaction', ({ transaction }) => { if (transaction.docChanged) steps++ })
+    await choose('Aus Dateibibliothek wählen')
+    button('Dieses Foto verwenden')!.click()
+    await vi.waitFor(() => expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual(['Eins ![]($file.f1) zwei\n']))
+    expect(steps).toBe(1)
+    wrapper.unmount()
   })
 
   // Wrong behaviour caught: the figure stores an address instead of the library file, or the description typed in the picker is lost.
