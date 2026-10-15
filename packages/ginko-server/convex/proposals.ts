@@ -4,6 +4,7 @@
 // write path. A change that no longer fits (revision moved on) becomes `stale` and writes nothing.
 import type { Json } from '@lupinum/ginko'
 import type { Schema } from '@lupinum/ginko/internal'
+import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
@@ -261,6 +262,12 @@ async function summary(p: Doc<'proposals'>, actor: Actor, names: Labeler) {
   }
 }
 
+/** A row of the inbox: an open or scheduled one carries `conflict` (and its message `conflictMsg`), why it would be stale if decided now. */
+async function inboxRow(ctx: QueryCtx, p: Doc<'proposals'>, actor: Actor, names: Labeler) {
+  const conflict = p.status === 'open' || p.status === 'scheduled' ? await staleReason(ctx, p) : null
+  return { ...(await summary(p, actor, names)), conflict: conflict?.reason ?? null, conflictMsg: conflict?.msg ?? null }
+}
+
 /** Open proposals this person has to look at: for an approver all of the site, for an author their own. */
 async function openCount(ctx: QueryCtx, actor: Actor): Promise<number> {
   const open = await ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', actor.site._id).eq('status', 'open')).collect()
@@ -269,12 +276,11 @@ async function openCount(ctx: QueryCtx, actor: Actor): Promise<number> {
 
 /**
  * Proposals of a site, newest first (`order: 'oldest'` reverses it). Approvers see all of them, authors their own.
- * `status` narrows; `cursor` pages. Every row of an open or scheduled proposal carries `conflict` (and its
- * message `conflictMsg`): why it would be stale if decided now, so the inbox needs no `get` per row.
- * `total` is the number of open proposals this person may see, whatever `status` filters.
+ * `status` narrows. A paginated query (`useConvexPaginatedQuery`), at most 50 rows a page. Every row is an
+ * `inboxRow`, so the inbox needs no `get` per row. `count` is the number of open ones.
  */
 export const list = query({
-  args: { site: v.string(), status: v.optional(status), order: v.optional(v.union(v.literal('newest'), v.literal('oldest'))), cursor: v.optional(v.string()) },
+  args: { site: v.string(), status: v.optional(status), order: v.optional(v.union(v.literal('newest'), v.literal('oldest'))), paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     const actor = await siteActor(ctx, args.site)
     const site = actor.site._id
@@ -284,30 +290,62 @@ export const list = query({
         ? ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', site).eq('status', wanted))
         : ctx.db.query('proposals').withIndex('by_site', (q) => q.eq('site', site))
       : ctx.db.query('proposals').withIndex('by_site_author', (q) => q.eq('site', site).eq('author', actor.user.id)).filter((q) => (wanted ? q.eq(q.field('status'), wanted) : true))
+    const opts = args.paginationOpts
     let page
     try {
-      page = await rows.order(args.order === 'oldest' ? 'asc' : 'desc').paginate({ cursor: args.cursor ?? null, numItems: PAGE_SIZE })
+      page = await rows.order(args.order === 'oldest' ? 'asc' : 'desc').paginate({ ...opts, numItems: Math.min(opts.numItems, PAGE_SIZE) })
     } catch (error) {
       // The cursor comes from the client; the database refuses one it did not hand out.
-      if (args.cursor === undefined) throw error
+      if (opts.cursor === null) throw error
       fail('INVALID', 'errors.pageMarkerInvalid')
     }
     const names = await labeler(ctx, actor)
-    const rowsOut = await Promise.all(page.page.map(async (p) => {
-      const conflict = p.status === 'open' || p.status === 'scheduled' ? await staleReason(ctx, p) : null
-      return { ...(await summary(p, actor, names)), conflict: conflict?.reason ?? null, conflictMsg: conflict?.msg ?? null }
-    }))
-    return { ...page, page: rowsOut, total: await openCount(ctx, actor) }
+    return { ...page, page: await Promise.all(page.page.map((p) => inboxRow(ctx, p, actor, names))) }
   },
 })
 
+/** The actor's own proposals of one status (else of any), newest first (50 at most). */
+async function ownDocs(ctx: QueryCtx, actor: Actor, wanted?: Doc<'proposals'>['status']) {
+  const own = wanted
+    ? ctx.db.query('proposals').withIndex('by_site_author_status', (q) => q.eq('site', actor.site._id).eq('author', actor.user.id).eq('status', wanted))
+    : ctx.db.query('proposals').withIndex('by_site_author', (q) => q.eq('site', actor.site._id).eq('author', actor.user.id))
+  return own.order('desc').take(PAGE_SIZE)
+}
+
 /** The actor's own proposals, newest first (50 at most), also for an approver: the agent door tells a person what of theirs still waits (SPEC 16). */
 export async function ownAs(ctx: QueryCtx, actor: Actor, wanted?: Doc<'proposals'>['status']) {
-  const rows = await ctx.db.query('proposals').withIndex('by_site_author', (q) => q.eq('site', actor.site._id).eq('author', actor.user.id))
-    .filter((q) => (wanted ? q.eq(q.field('status'), wanted) : true)).order('desc').take(PAGE_SIZE)
+  const rows = await ownDocs(ctx, actor, wanted)
   const names = await labeler(ctx, actor)
   return Promise.all(rows.map((p) => summary(p, actor, names)))
 }
+
+/** Long enough to be read after a weekend off; older rejections and failed plans are only in the approver's history. */
+const RECENT_MS = 14 * 24 * 60 * 60 * 1000
+
+/**
+ * The top of History (UI.md 10.4), also for an approver: the person's own open proposals (`open`), their own
+ * proposals rejected in the last two weeks (`rejected`), and planned changes that did not go live in the last
+ * two weeks because they no longer fitted at their time (`notLive`): for an approver of the whole site, who
+ * planned them, else their own. Each list reads at most 50 rows through an index.
+ */
+export const mine = query({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await siteActor(ctx, args.site)
+    const since = Date.now() - RECENT_MS
+    const recent = (p: Doc<'proposals'>) => (p.decidedAt ?? 0) > since
+    const stale = isApprover(actor)
+      ? await ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', actor.site._id).eq('status', 'stale')).order('desc').take(PAGE_SIZE)
+      : await ownDocs(ctx, actor, 'stale')
+    const names = await labeler(ctx, actor)
+    const rows = (docs: Doc<'proposals'>[]) => Promise.all(docs.map((p) => summary(p, actor, names)))
+    return {
+      open: await rows(await ownDocs(ctx, actor, 'open')),
+      rejected: await rows((await ownDocs(ctx, actor, 'rejected')).filter(recent)),
+      notLive: await rows(stale.filter((p) => p.at !== undefined && recent(p))),
+    }
+  },
+})
 
 /** "Zu prüfen (n)": open proposals a signed-in approver has to look at; for authors their own open ones. */
 export const count = query({
@@ -352,22 +390,24 @@ export const get = query({
 
 // ---- Releases: proposals approved together, all or none ----
 
-const releaseSummary = async (ctx: QueryCtx, r: Doc<'releases'>) => {
+/** A release with every member as an `inboxRow`, so the inbox shows the members whichever page of `list` is loaded. */
+const releaseSummary = async (ctx: QueryCtx, r: Doc<'releases'>, actor: Actor, names: Labeler) => {
   const members = await ctx.db.query('proposals').withIndex('by_release', (q) => q.eq('release', r._id)).collect()
   return {
     release: r._id, name: r.name, status: r.status, at: r.at ?? null, createdAt: r.createdAt, decidedAt: r.decidedAt ?? null,
-    proposals: members.map((p) => ({ proposal: p._id, sentence: p.sentence, msg: p.msg ?? null, status: p.status, reason: p.reason ?? null, reasonMsg: p.reasonMsg ?? null })),
+    proposals: await Promise.all(members.map((p) => inboxRow(ctx, p, actor, names))),
   }
 }
 
-/** The site's releases, newest first, each with its proposals. Approvers only: staff sees proposals, not their grouping. */
+/** The site's releases, newest first (50 at most), each with its proposals. Approvers only: staff sees proposals, not their grouping. */
 export const releases = query({
   args: { site: v.string() },
   handler: async (ctx, args) => {
     const actor = await siteActor(ctx, args.site)
     if (!isApprover(actor)) fail('FORBIDDEN', 'errors.ownersOnly')
     const rows = await ctx.db.query('releases').withIndex('by_site', (q) => q.eq('site', actor.site._id)).order('desc').take(50)
-    return Promise.all(rows.map((r) => releaseSummary(ctx, r)))
+    const names = await labeler(ctx, actor)
+    return Promise.all(rows.map((r) => releaseSummary(ctx, r, actor, names)))
   },
 })
 

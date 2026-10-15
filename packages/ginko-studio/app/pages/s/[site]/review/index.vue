@@ -18,16 +18,16 @@ const { show } = useToast()
 // Staff decide nothing: back to the quick edit.
 if (!s.isManager.value) await navigateTo(`/s/${s.slug.value}`)
 
-const list = useConvexQuery(api.proposals.list, () => (s.isManager.value ? { site: s.slug.value, status: 'open' as const, order: 'oldest' as const } : 'skip'))
+const PAGE = 50
+const list = useConvexPaginatedQuery(api.proposals.list, () => (s.isManager.value ? { site: s.slug.value, status: 'open' as const, order: 'oldest' as const } : 'skip'), { initialNumItems: PAGE })
 const releaseList = useConvexQuery(api.proposals.releases, () => (s.isManager.value ? { site: s.slug.value } : 'skip'))
 const approveRelease = useConvexMutation(api.proposals.approveRelease)
 const removeFromRelease = useConvexMutation(api.proposals.removeFromRelease)
 
-// The server lists the oldest first (`order: 'oldest'`).
-const rows = computed(() => list.data.value?.page ?? [])
-const loose = computed(() => rows.value.filter((p) => !p.release))
+// The server lists the oldest first (`order: 'oldest'`). Members of a release come with the release, whichever pages are loaded.
+const loose = computed(() => (list.data.value ?? []).filter((p) => !p.release))
 const releases = computed(() => (releaseList.data.value ?? []).filter((r) => r.status === 'open' || r.status === 'stale'))
-const byId = computed(() => new Map(rows.value.map((p) => [p.proposal as string, p] as const)))
+const shownIds = computed(() => new Set([...loose.value, ...releases.value.flatMap((r) => r.proposals)].map((p) => p.proposal as string)))
 
 const openIds = ref(new Set<string>())
 function toggle(id: string) {
@@ -39,7 +39,7 @@ onMounted(() => {
   const id = useRoute().hash.slice(1)
   if (!id) return
   openIds.value = new Set([id])
-  watch(() => byId.value.has(id), (found) => { if (found) nextTick(() => document.getElementById(id)?.scrollIntoView()) }, { immediate: true })
+  watch(() => shownIds.value.has(id), (found) => { if (found) nextTick(() => document.getElementById(id)?.scrollIntoView()) }, { immediate: true })
 })
 
 /** A release member that is no longer open, in the Studio's language. */
@@ -96,7 +96,8 @@ async function remove(release: string, proposal: string) {
           :open="openIds.has(p.proposal)" @toggle="toggle(p.proposal)"
         />
       </ul>
-      <p v-else-if="list.status.value === 'success' && !releases.length" class="py-6 text-muted-foreground">{{ t('review.empty') }}</p>
+      <p v-else-if="list.isExhausted.value && !releases.length" class="py-6 text-muted-foreground">{{ t('review.empty') }}</p>
+      <Button v-if="list.canLoadMore.value || list.isLoadingMore.value" type="button" variant="secondary" class="justify-self-start" :disabled="!list.canLoadMore.value" @click="list.loadMore(PAGE)">{{ t('files.loadMore') }}</Button>
 
       <section v-if="releases.length" class="grid gap-3" :aria-label="t('review.releases')">
         <h2 class="text-base font-semibold tracking-tight">{{ t('review.releases') }}</h2>
@@ -115,8 +116,8 @@ async function remove(release: string, proposal: string) {
           <ul class="m-0 list-none p-0">
             <template v-for="m in r.proposals" :key="m.proposal">
               <ReviewItem
-                v-if="byId.get(m.proposal)"
-                :site="s.slug.value" :schema="s.schema.value" :proposal="byId.get(m.proposal)!" in-release
+                v-if="m.status === 'open'"
+                :site="s.slug.value" :schema="s.schema.value" :proposal="m" in-release
                 :open="openIds.has(m.proposal)" @toggle="toggle(m.proposal)"
               />
               <li v-else class="flex flex-wrap items-center gap-2 border-b px-4 py-3 text-[13px] text-muted-foreground last:border-b-0">

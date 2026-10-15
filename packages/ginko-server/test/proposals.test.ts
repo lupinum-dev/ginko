@@ -5,7 +5,7 @@ import type { Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, people, setup } from './setup'
+import { errorOf, firstPage, opId, people, setup } from './setup'
 
 const NOW = Date.parse('2026-10-08T10:00:00Z')
 const MINUTE = 60 * 1000
@@ -269,10 +269,10 @@ describe('reading', () => {
     await s.t.run((ctx) => ctx.db.insert('proposals', {
       site: s.site, op: 'save', brick: 'menu', args: {}, base: {}, sentence: 'Fremd', author: 'u-anderer', via: 'ui', status: 'open', createdAt: NOW,
     }))
-    const all = await s.as.owner.query(api.proposals.list, { site: 'restaurant' })
+    const all = await s.as.owner.query(api.proposals.list, { site: 'restaurant', paginationOpts: firstPage })
     expect(all.page.map((p) => p.sentence).sort()).toEqual(['Fremd', 'Preis von „Gebeizter Saibling“ geändert'])
-    expect((await s.as.cook.query(api.proposals.list, { site: 'restaurant' })).page.map((p) => p.sentence)).toEqual(['Preis von „Gebeizter Saibling“ geändert'])
-    expect((await s.as.owner.query(api.proposals.list, { site: 'restaurant', status: 'applied' })).page).toEqual([])
+    expect((await s.as.cook.query(api.proposals.list, { site: 'restaurant', paginationOpts: firstPage })).page.map((p) => p.sentence)).toEqual(['Preis von „Gebeizter Saibling“ geändert'])
+    expect((await s.as.owner.query(api.proposals.list, { site: 'restaurant', status: 'applied', paginationOpts: firstPage })).page).toEqual([])
     expect(await s.as.owner.query(api.proposals.count, { site: 'restaurant' })).toBe(2)
     expect(await s.as.cook.query(api.proposals.count, { site: 'restaurant' })).toBe(1)
 
@@ -280,21 +280,33 @@ describe('reading', () => {
     expect(detail).toMatchObject({ diff: [{ field: 'price', before: { amount: 1350 }, after: { amount: 1450 } }], conflict: null, canDecide: true })
     await s.ownerPrice(s.saibling, 1500)
     expect((await s.as.owner.query(api.proposals.get, { site: 'restaurant', proposal })).conflict).toEqual(expect.stringContaining('Inzwischen'))
-    expect((await errorOf(s.as.stranger.query(api.proposals.list, { site: 'restaurant' }))).code).toBe('FORBIDDEN')
+    expect((await errorOf(s.as.stranger.query(api.proposals.list, { site: 'restaurant', paginationOpts: firstPage }))).code).toBe('FORBIDDEN')
   })
 
-  it('a row whose entry changed after the proposal conflicts; newest first, order oldest reverses, total counts the open ones', async () => {
+  it('a row whose entry changed after the proposal conflicts; newest first, order oldest reverses', async () => {
     const s = await approvalSetup()
     const first = (await s.cookPrice(s.saibling, 1450)) as Proposed
     const second = (await s.cookPrice(s.frittaten, 950)) as Proposed
     await s.ownerPrice(s.saibling, 1500)
-    const newest = await s.as.owner.query(api.proposals.list, { site: 'restaurant' })
+    const newest = await s.as.owner.query(api.proposals.list, { site: 'restaurant', paginationOpts: firstPage })
     expect(newest.page.map((p) => [p.proposal, p.conflict, p.conflictMsg?.key ?? null])).toEqual([
       [second.proposal, null, null],
       [first.proposal, 'Inzwischen hat jemand das geändert. Bitte schlage die Änderung neu vor.', 'history.staleChanged'],
     ])
-    expect(newest.total).toBe(2)
-    expect((await s.as.owner.query(api.proposals.list, { site: 'restaurant', order: 'oldest' })).page.map((p) => p.proposal)).toEqual([first.proposal, second.proposal])
+    expect((await s.as.owner.query(api.proposals.list, { site: 'restaurant', order: 'oldest', paginationOpts: firstPage })).page.map((p) => p.proposal)).toEqual([first.proposal, second.proposal])
+  })
+
+  // Wrong behaviour caught: History hides the approver's own waiting proposal once 50 newer ones of others exist.
+  it('mine shows an approver their own older open proposal behind more than 50 newer ones', async () => {
+    const s = await approvalSetup()
+    const base = { site: s.site, op: 'save' as const, brick: 'menu', args: {}, base: {}, via: 'agent' as const, status: 'open' as const, createdAt: NOW }
+    await s.t.run(async (ctx) => {
+      // The owner's own agent proposed first ("show me first"); then the cook sent 51 more.
+      await ctx.db.insert('proposals', { ...base, sentence: 'Meins', author: people.owner })
+      for (let i = 0; i < 51; i++) await ctx.db.insert('proposals', { ...base, sentence: `P${i}`, author: people.cook })
+    })
+    const mine = await s.as.owner.query(api.proposals.mine, { site: 'restaurant' })
+    expect(mine.open.map((p) => p.sentence)).toEqual(['Meins'])
   })
 })
 

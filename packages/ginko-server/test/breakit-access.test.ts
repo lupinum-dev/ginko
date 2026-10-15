@@ -108,7 +108,8 @@ const publicCalls: Call[] = [
   { fn: 'proposals.approve', kind: 'mutation', args: () => ({ proposal: 'x' }) },
   { fn: 'proposals.reject', kind: 'mutation', args: () => ({ proposal: 'x', reason: 'x' }) },
   { fn: 'proposals.withdraw', kind: 'mutation', args: () => ({ proposal: 'x' }) },
-  { fn: 'proposals.list', kind: 'query', args: () => SITE },
+  { fn: 'proposals.list', kind: 'query', args: () => ({ ...SITE, paginationOpts: firstPage }) },
+  { fn: 'proposals.mine', kind: 'query', args: () => SITE },
   { fn: 'proposals.count', kind: 'query', args: () => SITE },
   { fn: 'proposals.get', kind: 'query', args: () => ({ ...SITE, proposal: 'x' }) },
   { fn: 'proposals.releases', kind: 'query', args: () => SITE },
@@ -367,7 +368,7 @@ describe('2. staff (the cook) outside the grants', () => {
     const id = (await rows(s, 'proposals'))[0]!._id
     expect(await outcome(s.as.cook.query(api.proposals.get, { ...SITE, proposal: id }))).toBe('NOT_FOUND')
     expect(await outcome(s.as.cook.mutation(api.proposals.withdraw, { proposal: id }))).toBe('FORBIDDEN')
-    expect((await s.as.cook.query(api.proposals.list, SITE)).page).toEqual([])
+    expect((await s.as.cook.query(api.proposals.list, { ...SITE, paginationOpts: firstPage })).page).toEqual([])
   })
 
   it('staff cannot take review off their own agent key, only owners and admins can', async () => {
@@ -495,7 +496,8 @@ const cross: CrossCall[] = [
   { fn: 'views.list', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
   { fn: 'views.save', kind: 'mutation', args: (site, f) => ({ site, id: f.view, brick: 'menu', name: 'pwned', query: {} }) },
   { fn: 'views.remove', kind: 'mutation', args: (site, f) => ({ site, id: f.view }) },
-  { fn: 'proposals.list', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'proposals.list', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage }) },
+  { fn: 'proposals.mine', kind: 'query', args: (site) => ({ site }) },
   { fn: 'proposals.releases', kind: 'query', args: (site) => ({ site }) },
   { fn: 'sites.translationStatus', kind: 'query', args: (site) => ({ site }) },
 ]

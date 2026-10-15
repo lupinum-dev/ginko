@@ -15,22 +15,14 @@ const props = defineProps<{ site: string; schema: Schema; filter: 'all' | 'mine'
 const { t, format } = useI18n()
 const { show } = useToast()
 
-const list = useConvexQuery(api.proposals.list, () => ({ site: props.site, status: 'open' as const }))
-const rejectedList = useConvexQuery(api.proposals.list, () => ({ site: props.site, status: 'rejected' as const }))
-const staleList = useConvexQuery(api.proposals.list, () => ({ site: props.site, status: 'stale' as const }))
+// The server picks the rows (own open ones, own recent rejections, recent failed plans); the History filter narrows them.
+const mine = useConvexQuery(api.proposals.mine, () => ({ site: props.site }))
 const withdrawMutation = useConvexMutation(api.proposals.withdraw)
-
-// proposals.list gives approvers every open proposal: History shows the ones the person made.
-type Row = NonNullable<typeof list.data.value>['page'][number]
+type Row = NonNullable<typeof mine.data.value>['open'][number]
 const matches = (p: Row) => (props.filter !== 'mine' || p.mine) && (props.filter !== 'ai' || p.via === 'agent') && (props.filter !== 'entry' || p.entry === props.entry)
-const shownHere = (p: Row) => p.mine && matches(p)
-const rows = computed(() => (list.data.value?.page ?? []).filter(shownHere))
-/** Long enough to be read after a weekend off; older rejections are only in the approver's history. */
-const REJECTED_DAYS = 14
-const recent = (p: Row) => (p.decidedAt ?? 0) > Date.now() - REJECTED_DAYS * 86_400_000
-const rejected = computed(() => (rejectedList.data.value?.page ?? []).filter((p) => shownHere(p) && recent(p)))
-/** A stale proposal with `at` was planned and failed at its time; the approver who planned it needs to know too. */
-const notLive = computed(() => (staleList.data.value?.page ?? []).filter((p) => p.at !== null && matches(p) && recent(p)))
+const rows = computed(() => (mine.data.value?.open ?? []).filter(matches))
+const rejected = computed(() => (mine.data.value?.rejected ?? []).filter(matches))
+const notLive = computed(() => (mine.data.value?.notLive ?? []).filter(matches))
 
 const textOf = useTextOf(() => ({ timeZone: props.schema.timeZone, main: props.schema.locales[0] }))
 const line = (p: Row) => textOf(p.msg, p.sentence)
