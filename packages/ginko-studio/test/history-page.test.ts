@@ -60,3 +60,13 @@ test('a Rückgängig row can be gone back to, and the question shows what that c
   expect(question.text()).toContain('Zum Stand direkt nach dieser Änderung (')
   expect(question.text()).toMatch(/Das ändert sich:\s*Titel\s*Vorher\s*Impressum neu\s*Nachher\s*Impressum/)
 })
+
+// Wrong behaviour caught: "Papierkorb öffnen" stayed on a removal after the entry was restored or deleted for good, and
+// led to a trash that did not hold it.
+test('a removal links to the trash only while its entry is still there', () => {
+  const removal = (id: string, inTrash: boolean) => ({ _id: id, kind: 'remove', entry: 'e1', brick: 'legal', at: Date.UTC(2026, 9, 8, 10), msg: null, sentence: '„Impressum“ entfernt', who: { email: 'anna@example.test' }, agent: null, undoBlocked: null, inTrash })
+  changes.value = [removal('c2', true), removal('c1', false)]
+  const wrapper = mount(ChangeRows, { props: { site: 'restaurant', schema, manager: true, grants: new Set<string>() }, global: { stubs: { ChangeDetail: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } })
+  const rows = wrapper.findAll('li')
+  expect(rows.map((row) => row.findAll('a').map((a) => [a.text(), a.attributes('href')]))).toEqual([[['Papierkorb öffnen', '/s/restaurant/all?removed']], []])
+})

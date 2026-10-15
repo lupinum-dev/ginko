@@ -123,6 +123,19 @@ describe('changes.list filters', () => {
     await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: a })
     expect((await s.t.run((ctx) => ctx.db.get(entry)))!.data.price).toEqual({ amount: 1350 })
   })
+
+  // Wrong behaviour caught: "Papierkorb öffnen" stayed on a removal after the entry was restored, and led to a trash
+  // that no longer held it.
+  it('a removal says whether its entry is still in the trash', async () => {
+    const s = await setup()
+    const entry = s.entries['menu-saibling']!
+    const removed = (await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })) as { lifeRev: number }
+    const inTrash = async () => ((await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage, entry })).page as { kind: string; inTrash: boolean }[])
+      .filter((r) => r.kind === 'remove').map((r) => r.inTrash)
+    expect(await inTrash()).toEqual([true])
+    await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry, lifeRev: removed.lifeRev })
+    expect(await inTrash()).toEqual([false])
+  })
 })
 
 /** Three saves touching different fields of one dish, an hour apart. Returns the entry, its first data and the three changes. */
