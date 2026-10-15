@@ -1,10 +1,13 @@
 <!-- Synced from templates/_features/site/app/components/site/Footer.vue by `pnpm templates sync`. Edit the source, not this copy. -->
 <script setup lang="ts">
+import type { Component } from 'vue'
 import { safeHref } from '@lupinum/ginko'
 
 // Identity and contact from content/site.md, the tagline, navigation, more links and profiles from app.config.ts,
 // the language switch, and the legal texts from content/legal/. One muted background, no border: the bottom bar's
-// line divides inside it.
+// line divides inside it. A feature may bring `app/components/site/FooterStatus.vue` (the hours feature: open now);
+// the contact column then shows it first, on every page, without a copy of this footer per template.
+const status = Object.values(import.meta.glob<Component>('./FooterStatus.vue', { eager: true, import: 'default' }))[0]
 const config = useSiteAppConfig()
 const { name } = useGinkoSite()
 const site = useGinko('site')
@@ -42,6 +45,9 @@ const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
 
       <div v-if="contact.email || contact.phone || contact.city" class="flex flex-col gap-2">
         <h2 class="text-small font-semibold">{{ t('footer.contact') }}</h2>
+        <div v-if="status" class="py-2">
+          <component :is="status" />
+        </div>
         <address class="flex flex-col text-small text-muted-foreground not-italic">
           <span v-if="contact.city" class="py-2">
             <template v-if="contact.legalName">{{ contact.legalName }}<br></template>
