@@ -328,7 +328,7 @@ async function versionOf(ctx: QueryCtx, actor: Actor, entryId: string, changeId:
 
 /**
  * What going back to `data` writes: the touched fields whose value differs from now (`null` removes one), without
- * the address (it is fixed) and fields the schema no longer has. `revert` saves exactly these; `versionAt` shows them.
+ * the address (it is fixed) and fields the schema no longer has.
  */
 function revertFields(brick: Brick | undefined, touched: string[], data: Data, now: Data): Record<string, Json> {
   const fields: Record<string, Json> = {}
@@ -341,23 +341,38 @@ function revertFields(brick: Brick | undefined, touched: string[], data: Data, n
 }
 
 /**
+ * What a revert through `task` writes: `revertFields`, minus the week a weekly task is fixed to. Through the weekly task
+ * the version's values come back for this week: the task always covers it (`refuseOtherWeek`). `revert` saves exactly
+ * these and `versionAt` shows exactly these, so the preview never promises a week change the save will not make.
+ */
+function revertWrites(schema: Schema, entry: Doc<'entries'>, touched: string[], data: Data, task: string | undefined): Record<string, Json> {
+  const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
+  const fields = revertFields(brick, touched, data, entry.data as Data)
+  const taskBrick = taskBrickOf(schema, task, entry)
+  const weekly = Object.hasOwn(schema.bricks, taskBrick) ? weeklyTask(schema.bricks[taskBrick]!) : undefined
+  if (weekly && task === `${taskBrick}.${weekly.task.id}`) delete fields[weekly.field]
+  return fields
+}
+
+/**
  * The entry right after a change (`data`; `fields` names the ones a later change touched), plus `diff`: what going
  * back to it changes, field by field, with now as `before` and that version as `after`. Empty: it is the current
  * version. One answer for the Studio (`versionAt`, shown before the person confirms) and the agent door
- * (`ginko_version_at`), for an actor already known (SPEC 16).
+ * (`ginko_version_at`), for an actor already known (SPEC 16). With the `task` the revert will use, the diff leaves out
+ * what that task keeps (the week of the weekly task, `revertWrites`).
  */
-export async function versionAtAs(ctx: QueryCtx, actor: Actor, args: { entry: string; change: string }) {
+export async function versionAtAs(ctx: QueryCtx, actor: Actor, args: { entry: string; change: string; task?: string | undefined }) {
   const { entry, change, data, touched } = await versionOf(ctx, actor, args.entry, args.change)
   const schema = actor.site.schema as Schema
   const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
   const now = entry.data as Data
-  const fields = revertFields(brick, touched, data, now)
+  const fields = revertWrites(schema, entry, touched, data, args.task)
   const pick = (from: Data) => Object.fromEntries(Object.keys(fields).filter((root) => from[root] !== undefined).map((root) => [root, from[root]!]))
   return { entry: entry._id, change: change._id, at: change.at, data, fields: touched, diff: diffFields(brick?.fields, pick(now), pick(data), schema.locales[0]!) }
 }
 
 export const versionAt = query({
-  args: { site: v.string(), entry: v.string(), change: v.string() },
+  args: { site: v.string(), task: v.optional(v.string()), entry: v.string(), change: v.string() },
   handler: async (ctx, args) => versionAtAs(ctx, await actorFor(ctx, args.site), args),
 })
 
@@ -376,11 +391,7 @@ export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const schema = actor.site.schema as Schema
     const brick = brickOf(schema, entry)
     const now = entry.data as Data
-    const fields = revertFields(brick, touched, data, now)
-    // Through the weekly task the version's values come back for this week: the task always covers it (`refuseOtherWeek`).
-    const taskBrick = taskBrickOf(schema, args.task, entry)
-    const weekly = Object.hasOwn(schema.bricks, taskBrick) ? weeklyTask(schema.bricks[taskBrick]!) : undefined
-    if (weekly && args.task === `${taskBrick}.${weekly.task.id}`) delete fields[weekly.field]
+    const fields = revertWrites(schema, entry, touched, data, args.task)
     if (!Object.keys(fields).length) {
       const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
       return unchanged
