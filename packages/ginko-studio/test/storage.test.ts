@@ -7,6 +7,8 @@ import { afterEach, beforeAll, expect, test, vi } from 'vitest'
 import { useI18n } from '#imports'
 import RemovedList from '../app/components/RemovedList.vue'
 import StorageNotice from '../app/components/StorageNotice.vue'
+import { ConvexError } from 'convex/values'
+import { normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 
 const text = () => document.body.textContent ?? ''
 const button = (label: string) => [...document.body.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)
@@ -68,7 +70,7 @@ test('more removed entries load with Mehr anzeigen', () => {
 // Wrong behaviour caught: a trash that failed to load looks like an empty one.
 test('a failed trash load shows the error, not an empty trash', () => {
   vi.stubGlobal('useOps', () => ({}))
-  trashQuery({ status: 'error', error: { data: { code: 'FORBIDDEN', message: 'Kein Zugriff.' } } })
+  trashQuery({ status: 'error', error: normalizeConvexError(new ConvexError({ code: 'FORBIDDEN', message: 'Kein Zugriff.' }), { functionName: 'entries:trash' }) })
   mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, attachTo: document.body })
   expect(document.body.querySelector('[role="alert"]')?.textContent).toBe('Kein Zugriff.')
   expect(text()).not.toContain('Nichts wurde entfernt.')
