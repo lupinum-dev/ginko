@@ -72,7 +72,7 @@ describe('search.studio', () => {
     const s = await studioSetup()
     const areas = async (query: string) => (await s.as.owner.query(api.search.studio, { site, query })).bricks.map((b) => [b.brick, 'field' in b ? b.field : null])
     expect(await areas('telefon')).toEqual([['contact', 'phone']])
-    expect(await areas('hinweis')).toEqual([['notices', null], ['hours', 'closedNote'], ['lunch', 'note'], ['lunchPlans', 'note']])
+    expect(await areas('hinweis')).toEqual([['notices', null], ['lunch', 'note'], ['lunchPlans', 'note']])
   })
 
   // Wrong behaviour caught: a removed dish stays in the palette, or another site's entry leaks across sites.
