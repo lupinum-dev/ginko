@@ -90,8 +90,16 @@ function toggleShow(id: string) {
   showing.value = next
 }
 const confirming = ref<string | null>(null)
-/** Every row that wrote values can be gone back to, an undo too: it holds the state before a bad save. */
-const canRevert = (change: Change) => (change.kind === 'save' || change.kind === 'undo') && !!change.entry && !!change.fields?.length && (props.manager || taskFor(change) !== undefined)
+/**
+ * Every row that wrote values can be gone back to: a save, an undo (it holds the state before a bad save) and the
+ * creation (the entry as it was made). A creation names no fields, so no staff task can be checked against it:
+ * owners and admins only.
+ */
+function canRevert(change: Change): boolean {
+  if (!change.entry) return false
+  if (change.kind === 'create') return props.manager
+  return (change.kind === 'save' || change.kind === 'undo') && !!change.fields?.length && (props.manager || taskFor(change) !== undefined)
+}
 // What going back changes, read while the question is open (one row at a time).
 const version = useConvexQuery(api.entries.versionAt, () => {
   const change = rows.value.find((c) => c._id === confirming.value)

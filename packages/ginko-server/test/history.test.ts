@@ -205,6 +205,17 @@ describe('entries.revert', () => {
     expect((await s.t.run((ctx) => ctx.db.get(entry)))!.data).toEqual(after1)
   })
 
+  // The Studio offers going back to a creation (the entry as it was made): the server must take it like any change.
+  it('a creation can be gone back to', async () => {
+    const s = await setup()
+    const { entry } = (await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: { text: { de: 'Heute Ruhetag' } } })) as { entry: Id<'entries'> }
+    await save(s, entry, { text: { de: 'Morgen Ruhetag' } })
+    const created = (await changeRows(s)).find((r) => r.kind === 'create' && r.entry === entry)!
+    expect((await versionAt(s, entry, created._id)).fields).toEqual(['text'])
+    await revert(s, entry, created._id)
+    expect((await s.t.run((ctx) => ctx.db.get(entry)))!.data.text).toEqual({ de: 'Heute Ruhetag' })
+  })
+
   it('without a difference nothing is written', async () => {
     const s = await setup()
     const { entry, c3 } = await threeSaves(s)

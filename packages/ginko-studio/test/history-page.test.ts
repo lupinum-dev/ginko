@@ -2,8 +2,10 @@
 // Verlauf: the page of one entry's history. The German catalog is the real one; Nuxt's auto-imports become globals,
 // Convex is replaced.
 import { flushPromises, mount } from '@vue/test-utils'
+import { ConvexError } from 'convex/values'
+import { normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import * as vue from 'vue'
-import { expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { collection, defineSite, f } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
@@ -25,9 +27,13 @@ vi.stubGlobal('useHead', () => {})
 vi.stubGlobal('useRoute', () => ({ params: { site: 'restaurant' }, query: { entry: 'e1' } }))
 vi.stubGlobal('useStudioSite', () => ({ shown: (label: Record<string, string>) => label.de }))
 vi.stubGlobal('useSiteData', async () => ({ slug: ref('restaurant'), schema: ref(schema), site: ref({ name: 'Restaurant' }), main: ref('de'), isManager: ref(true), grants: ref(new Set()) }))
-/** What each Convex query answers, by name (the test API shim names them, e.g. "entries.get"). */
+/** What each Convex query answers, by name (the test API shim names them, e.g. "entries.get"), and the ones that fail. */
 const answers: Record<string, unknown> = { 'entries.get': { _id: 'e1', brick: 'legal', data: { title: { de: 'Datenschutzerklärung' } } } }
-vi.stubGlobal('useConvexQuery', (query: unknown, args: () => unknown) => ({ data: computed(() => (args() === 'skip' ? undefined : answers[String(query)])), error: ref() }))
+const failures: Record<string, unknown> = {}
+vi.stubGlobal('useConvexQuery', (query: unknown, args: () => unknown) => ({
+  data: computed(() => (args() === 'skip' ? undefined : answers[String(query)])),
+  error: computed(() => (args() === 'skip' ? undefined : failures[String(query)])),
+}))
 /** The rows of the history list. */
 const changes = ref<unknown[]>([])
 vi.stubGlobal('useConvexPaginatedQuery', () => ({ data: changes, status: ref('success'), error: ref(), canLoadMore: ref(false), isLoadingMore: ref(false), loadMore: () => {} }))
@@ -69,4 +75,41 @@ test('a removal links to the trash only while its entry is still there', () => {
   const wrapper = mount(ChangeRows, { props: { site: 'restaurant', schema, manager: true, grants: new Set<string>() }, global: { stubs: { ChangeDetail: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } })
   const rows = wrapper.findAll('li')
   expect(rows.map((row) => row.findAll('a').map((a) => [a.text(), a.attributes('href')]))).toEqual([[['Papierkorb öffnen', '/s/restaurant/all?removed']], []])
+})
+
+// Wrong behaviour caught: going back to the version that is already current offered a button that saves nothing; a
+// failed lookup asked to go back without showing what that changes. A creation (the entry as it was made) could
+// not be gone back to at all.
+describe('going back to a version', () => {
+  const row = (kind: string, fields?: string[]) => ({ _id: 'c2', kind, entry: 'e1', brick: 'legal', ...(fields ? { fields } : {}), at: Date.UTC(2026, 9, 8, 10), msg: null, sentence: 'x', who: { email: 'anna@example.test' }, agent: null, undoBlocked: null, inTrash: false })
+  const open = (manager = true) => mount(ChangeRows, { props: { site: 'restaurant', schema, manager, grants: new Set<string>(), filter: 'entry', entry: 'e1' }, global: { components: { ChangeDiff }, stubs: { ChangeDetail: true, NuxtLink: true } } })
+  const buttons = (el: { findAll: (s: string) => { text: () => string }[] }) => el.findAll('button').map((b) => b.text())
+
+  test.each([
+    ['is the current one', { change: 'c2', diff: [] }, undefined, 'Das ist schon der aktuelle Stand.'],
+    ['cannot be read', undefined, normalizeConvexError(new ConvexError({ code: 'NOT_FOUND', key: 'errors.versionNotFound', message: 'Diese Version gibt es nicht mehr.' }), { functionName: 'entries:versionAt' }), 'Diese Version gibt es nicht mehr.'],
+  ])('that %s offers no button to go back', async (_name, answer, failure, text) => {
+    changes.value = [row('save', ['title'])]
+    answers['entries.versionAt'] = answer
+    failures['entries.versionAt'] = failure
+    try {
+      const wrapper = open()
+      await wrapper.findAll('button').find((b) => b.text() === 'Zurück zu dieser Version')!.trigger('click')
+      const question = wrapper.get('[role="group"]')
+      expect(question.text()).toContain(text)
+      expect(question.find('[role="alert"]').exists()).toBe(!!failure)
+      expect(buttons(question)).toEqual(['Abbrechen'])
+    } finally {
+      delete failures['entries.versionAt']
+    }
+  })
+
+  test.each([
+    [true, ['Zurück zu dieser Version']],
+    // Staff edit through tasks of named fields; a creation names none, so no task can be checked against it.
+    [false, []],
+  ])('a creation can be gone back to by owners and admins (manager: %s)', (manager, shown) => {
+    changes.value = [row('create')]
+    expect(buttons(open(manager))).toEqual(shown)
+  })
 })
