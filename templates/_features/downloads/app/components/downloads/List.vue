@@ -8,7 +8,11 @@ defineProps<{ items: GinkoItem<'downloads'>[] }>()
 const { t, format, language } = useI18n('downloads')
 const { mainLocale } = useGinkoSite()
 const base = (tag: string) => tag.toLowerCase().split('-')[0]!
+/** The document's language as a BCP 47 tag (`en`, `de-AT`), or undefined. The field is free text: a word such as
+ *  "Englisch" is no tag, so it never becomes an hreflang; the list then shows it as written. */
+const tagOf = (code: string | undefined) => (code && /^[a-z]{2,3}(-[a-z\d]{2,8})*$/i.test(code) ? code : undefined)
 function languageOf(code: string | undefined): string | undefined {
+  if (code && !tagOf(code)) return code
   const tag = code || mainLocale
   if (base(tag) === base(language.value)) return undefined
   try {
@@ -34,7 +38,7 @@ function sizeOf(bytes: number) {
           <a
             :href="item.data.file.url"
             :type="item.data.file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : undefined"
-            :hreflang="item.data.language || mainLocale"
+            :hreflang="tagOf(item.data.language) ?? (item.data.language ? undefined : mainLocale)"
             class="underline-offset-4 after:absolute after:inset-0 group-hover:underline"
           >{{ item.data.title }}</a>
         </h2>
