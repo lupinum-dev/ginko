@@ -18,7 +18,7 @@ const { t } = useI18n('site')
           <li v-for="link in links" :key="link.key">
             <SiteNavLink
               :to="link.to"
-              class="inline-flex min-h-11 items-center rounded-md px-3 text-small font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground aria-[current=page]:text-foreground"
+              class="inline-flex min-h-11 items-center rounded-md px-3 text-small font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground aria-[current=page]:text-foreground underline-offset-4 aria-[current=page]:underline"
             >
               {{ link.label }}
             </SiteNavLink>
