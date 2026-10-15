@@ -27,6 +27,8 @@ export interface GinkoEditorOptions {
   fileImages?: GinkoExtensionsOptions['fileImages']
   /** Open as Markdown source although the text could be shown rich (the person chose the source view). */
   forceSource?: boolean
+  /** False shows the text without letting anyone change it (the main-language text beside a translation). Default true. */
+  editable?: boolean
 }
 
 interface Base {
@@ -68,7 +70,7 @@ const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringif
  * of them fails, the result is in `source` mode: no document, the text is kept as it is.
  */
 export async function createGinkoEditor(options: GinkoEditorOptions): Promise<GinkoEditorHandle> {
-  const { text, profile, components, element, extend, onImageFiles, onUrlPasted, fileImages, forceSource } = options
+  const { text, profile, components, element, extend, onImageFiles, onUrlPasted, fileImages, forceSource, editable = true } = options
   const parseOptions = { profile, components }
   const parsed = await parseMarkdown(text, parseOptions)
   const listeners = new Set<() => void>()
@@ -113,7 +115,7 @@ export async function createGinkoEditor(options: GinkoEditorOptions): Promise<Gi
   // The document ends with an empty paragraph after a last list, table or component, so the cursor can go below it.
   // It is not part of the text: markdown() leaves it out. It is already in the initial document, so `dirty` stays false.
   if (profile !== 'inline' && doc.content?.at(-1)?.type !== 'paragraph') doc = { ...doc, content: [...(doc.content ?? []), { type: 'paragraph' }] }
-  const editor = new Editor({ element, extensions, content: doc, editable: true })
+  const editor = new Editor({ element, extensions, content: doc, editable })
   const initial = editor.state.doc
   editor.on('update', notify)
   return {

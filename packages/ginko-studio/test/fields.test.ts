@@ -141,7 +141,7 @@ describe('translation side by side', () => {
   function translated(state: 'stale' | 'fine' | 'missing') {
     const confirm = vi.fn()
     const missingNote = (leaf: string) => (leaf === 'dish' ? 'Noch nicht übersetzt. Ohne diesen Text erscheint die Seite nicht auf Englisch.' : '')
-    const translation: TranslationState = { state: () => state, source: () => 'Kürbissuppe', confirm, mainName: () => 'Deutsch', missingNote }
+    const translation: TranslationState = { state: () => state, source: () => 'Kürbissuppe', confirm, mainName: () => 'Deutsch', missingNote, changesUrl: () => '/s/wirt/history?entry=e1' }
     const wrapper = mount(GinkoField, {
       props: { field, modelValue: { de: 'Kürbissuppe', en: 'Pumpkin soup' }, path: 'dish', locale: 'en', locales: ['de', 'en'], issues: [] },
       global: { provide: { [TRANSLATION as symbol]: translation } },
@@ -149,14 +149,14 @@ describe('translation side by side', () => {
     return { wrapper, confirm }
   }
 
-  test('shows the main-language value next to the input; a changed value gets the badge and "Passt so"', async () => {
+  test('shows the main-language value next to the input; a changed value gets the badge and "Englisch stimmt noch"', async () => {
     const { wrapper, confirm } = translated('stale')
     const box = wrapper.get('[data-slot="translation-source"]')
     expect(box.text()).toContain('Deutsch')
     expect(box.text()).toContain('Kürbissuppe')
     expect(box.text()).toContain('Deutsch geändert seit Übersetzung')
     expect((wrapper.get('input').element as HTMLInputElement).value).toBe('Pumpkin soup')
-    await box.findAll('button').find((b) => b.text() === 'Passt so')!.trigger('click')
+    await box.findAll('button').find((b) => b.text() === 'Englisch stimmt noch')!.trigger('click')
     expect(confirm).toHaveBeenCalledWith('dish')
   })
 
@@ -173,9 +173,31 @@ describe('translation side by side', () => {
     expect(wrapper.text()).not.toContain('zeigt hier den Text')
   })
 
+  // Wrong behaviour caught: the German text beside a translation was raw Markdown cut at 400 characters, so translators
+  // missed its end, links and pictures, and rebuilt every heading by hand (romi-8, P9). Copying must fill only English.
+  test('a Markdown text shows whole and formatted; a missing translation can start from it', async () => {
+    const german = `## Anfahrt\n\n${'Mit dem Bus fährst du bis zur Haltestelle am Ötscher. '.repeat(10).trim()}\n\nDer letzte Satz steht ganz am Ende.\n`
+    const translation: TranslationState = { state: () => 'missing', source: () => german, confirm: vi.fn(), mainName: () => 'Deutsch', missingNote: () => 'Noch nicht übersetzt.', changesUrl: () => undefined }
+    const ClientOnly = defineComponent((_, { slots }) => () => slots.default?.())
+    const wrapper = mount(GinkoField, {
+      props: { field: { type: 'markdown', label: 'Text', profile: 'basic' } as Field, modelValue: { de: german }, path: 'body', locale: 'en', locales: ['de', 'en'], issues: [] },
+      global: { provide: { [TRANSLATION as symbol]: translation }, components: { ClientOnly } },
+      attachTo: document.body,
+    })
+    const box = () => wrapper.get('[data-slot="translation-source"]')
+    for (let i = 0; i < 100 && !box().find('h2').exists(); i++) { await new Promise((r) => setTimeout(r, 20)); await flushPromises() }
+    expect(german.length).toBeGreaterThan(400)
+    expect(box().get('h2').text()).toBe('Anfahrt')
+    expect(box().text()).toContain('Der letzte Satz steht ganz am Ende.')
+    expect(box().text()).not.toContain('##')
+    await box().findAll('button').find((b) => b.text() === 'Text auf Deutsch übernehmen')!.trigger('click')
+    expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual([{ de: german, en: german }])
+    wrapper.unmount()
+  })
+
   // Wrong behaviour caught: a picture replaced on the English tab drops its German description, which that tab cannot fix (media-16).
   test('a picture in another language offers only its description; the picture itself is changed in the main language', () => {
-    const translation: TranslationState = { state: () => 'missing', source: () => 'Wald', confirm: vi.fn(), mainName: () => 'Deutsch', missingNote: () => 'Noch nicht übersetzt.' }
+    const translation: TranslationState = { state: () => 'missing', source: () => 'Wald', confirm: vi.fn(), mainName: () => 'Deutsch', missingNote: () => 'Noch nicht übersetzt.', changesUrl: () => undefined }
     const assets: GinkoAssets = { state: () => ref(undefined), details: () => ref(undefined), upload: async () => 'unused' }
     const wrapper = mount(GinkoField, {
       props: { field: { type: 'image', label: 'Foto' } as Field, modelValue: { file: 'f1', alt: { de: 'Wald' } }, path: 'photo', locale: 'en', locales: ['de', 'en'], issues: [] },

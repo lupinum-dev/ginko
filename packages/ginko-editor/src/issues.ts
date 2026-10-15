@@ -20,15 +20,18 @@ export const FLUSHERS = Symbol('ginko:flushers') as InjectionKey<Set<() => Promi
 
 /**
  * Set by Alles bearbeiten in a foreign language: the translation state of one translatable leaf, by its
- * path (`name`, or `days.<rowId>.dish` inside a list), the main-language text, and "Passt so".
+ * path (`name`, or `days.<rowId>.dish` inside a list), the main-language text, and "Englisch stimmt noch".
  */
 export interface TranslationState {
   state: (leaf: string) => 'missing' | 'stale' | 'fine' | undefined
+  /** The whole stored main-language text of a leaf (Markdown as written). */
   source: (leaf: string) => string
   confirm: (leaf: string) => void
   /** "Deutsch": the main language's name, for the source line and the hints. */
   mainName: () => string
   /** The note under a leaf whose translation is missing: what the website shows without it. */
   missingNote: (leaf: string) => string
+  /** Where the entry's history shows what changed in the main language ("Was hat sich geändert?"). */
+  changesUrl: () => string | undefined
 }
 export const TRANSLATION = Symbol('ginko:translation') as InjectionKey<TranslationState>

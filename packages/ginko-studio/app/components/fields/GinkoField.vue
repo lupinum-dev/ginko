@@ -1,7 +1,7 @@
 <!-- One field of any type (UI.md 5): label, hint, the control, its errors. Translatable values are
      edited in `locale`; the rest of the Localized value stays as it is. -->
 <script setup lang="ts">
-import { computed, inject } from 'vue'
+import { computed, inject, ref } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json, Locale } from '@lupinum/ginko'
 import { isTranslatable } from '@lupinum/ginko/internal'
@@ -24,6 +24,8 @@ import { Input } from '@studio/components/ui/input'
 import { Switch } from '@studio/components/ui/switch'
 import { Textarea } from '@studio/components/ui/textarea'
 import { useStudioSite } from '../../utils/labels'
+import { languageName } from '../../utils/content'
+import { useElementSize } from '@vueuse/core'
 import MarkdownEditor from '@studio/components/editor/MarkdownEditor.vue'
 
 const props = defineProps<{
@@ -64,7 +66,7 @@ function set(next: Json | undefined) {
 const text = computed(() => (typeof value.value === 'string' ? value.value : ''))
 // A slug is the web address of the entry: the Studio names it that way, whatever the schema calls it.
 const isSlug = computed(() => props.field.type === 'slug')
-const { t } = useI18n()
+const { t, locale: uiLocale } = useI18n()
 const label = computed(() => (isSlug.value ? t('fields.slug.label') : shown(props.field.label)))
 const hint = computed(() => {
   const pattern = props.route?.[props.locale] ?? Object.values(props.route ?? {})[0]
@@ -93,8 +95,22 @@ const leaf = computed(() => {
   return undefined
 })
 const trState = computed(() => (leaf.value ? translation?.state(leaf.value) : undefined))
+const foreignTab = computed(() => !!translation && props.locale !== props.locales[0])
+const foreignName = computed(() => languageName(props.locale, uiLocale.value))
 // A picture applies to every language: a translation edits only its description (new-picture-alt).
-const altOnly = computed(() => (translation && props.locale !== props.locales[0] ? translation.mainName() : undefined))
+const altOnly = computed(() => (foreignTab.value ? translation!.mainName() : undefined))
+
+// The whole main-language text: Markdown as the editor shows it (headings, links, pictures), long texts folded to
+// about twelve lines with "Ganzen Text zeigen". The fold shows only when the text is longer than that.
+const source = computed(() => (leaf.value && translation ? translation.source(leaf.value) : ''))
+const sourceInner = ref<HTMLElement>()
+const { height: sourceHeight } = useElementSize(sourceInner)
+const FOLD_PX = 288
+const foldable = computed(() => (props.field.type === 'markdown' || props.field.type === 'longtext') && sourceHeight.value > FOLD_PX)
+const folded = ref(true)
+// A missing text can start from the main-language one: names and years that stay, or a Markdown body with its
+// headings, links and pictures, translated in place. Never for pictures or choices.
+const copyable = computed(() => trState.value === 'missing' && !!source.value && ['text', 'longtext', 'markdown'].includes(props.field.type))
 </script>
 
 <template>
@@ -102,12 +118,28 @@ const altOnly = computed(() => (translation && props.locale !== props.locales[0]
     <template v-if="trState && translation" #source>
       <div class="grid gap-2 rounded-md bg-muted p-3 text-sm" data-slot="translation-source">
         <p class="text-xs font-semibold text-muted-foreground">{{ translation.mainName() }}</p>
-        <p class="whitespace-pre-wrap [overflow-wrap:anywhere]">{{ translation.source(leaf!) || '–' }}</p>
+        <div :id="`${id}-source-text`" :class="foldable && folded && 'max-h-72 overflow-hidden [mask-image:linear-gradient(to_bottom,black_80%,transparent)]'">
+          <div ref="sourceInner">
+            <ClientOnly v-if="field.type === 'markdown' && source">
+              <MarkdownEditor :id="`${id}-source`" readonly :field="field" :model-value="source" :invalid="false" :content-locale="locales[0]" />
+            </ClientOnly>
+            <p v-else class="whitespace-pre-wrap [overflow-wrap:anywhere]">{{ source || '–' }}</p>
+          </div>
+        </div>
+        <Button v-if="foldable" type="button" variant="link" size="sm" class="h-auto justify-self-start px-0" :aria-expanded="!folded" :aria-controls="`${id}-source-text`" @click="folded = !folded">
+          {{ folded ? t('fields.translation.showAll') : t('fields.translation.showLess') }}
+        </Button>
         <div v-if="trState === 'stale'" class="flex flex-wrap items-center gap-2">
           <Badge variant="outline" class="h-auto border-warning py-1 whitespace-normal text-warning">{{ t('fields.translation.changedSince', { name: translation.mainName() }) }}</Badge>
-          <Button type="button" variant="outline" size="sm" @click="translation.confirm(leaf!)">{{ t('fields.translation.fitsAsIs') }}</Button>
+          <Button type="button" variant="outline" size="sm" @click="translation.confirm(leaf!)">{{ t('fields.translation.fitsAsIs', { lang: foreignName }) }}</Button>
+          <Button v-if="translation.changesUrl()" as-child variant="link" size="sm" class="px-0">
+            <NuxtLink :to="translation.changesUrl()">{{ t('fields.translation.whatChanged') }}</NuxtLink>
+          </Button>
         </div>
-        <p v-else-if="trState === 'missing'" class="text-warning">{{ translation.missingNote(leaf!) }}</p>
+        <template v-else-if="trState === 'missing'">
+          <p class="text-warning">{{ translation.missingNote(leaf!) }}</p>
+          <Button v-if="copyable" type="button" variant="outline" size="sm" class="justify-self-start" @click="set(source)">{{ t('fields.translation.useSource', { name: translation.mainName() }) }}</Button>
+        </template>
       </div>
     </template>
 

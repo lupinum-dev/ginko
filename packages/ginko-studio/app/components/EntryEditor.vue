@@ -164,11 +164,11 @@ function confirmTranslation(path: string) {
   if (!confirm.value.includes(path)) confirm.value = [...confirm.value, path]
 }
 
-/** The main-language text shown above a translation (Markdown as written). */
+/** The main-language text shown above a translation: all of it, Markdown as written (the field shows it rich). */
 function sourceText(path: string): string {
   const value = storedAt(path) as Record<string, unknown> | undefined
   const text = value?.[main.value]
-  return typeof text === 'string' ? text.slice(0, 400) : ''
+  return typeof text === 'string' ? text : ''
 }
 
 // A confirmed leaf whose row was removed meanwhile would make the save INVALID: drop it (Astra 11).
@@ -187,6 +187,8 @@ const translationState = computed(() => translationLines(storedTranslation.value
 provide(TRANSLATION, {
   state: translation, source: sourceText, confirm: confirmTranslation, mainName: () => languageNames.value.main,
   missingNote: (leaf) => missingNote(storedTranslation.value, leaf, t, languageNames.value),
+  // History shows the main-language text before and after each change of this entry.
+  changesUrl: () => (props.entry ? `/s/${props.site.slug}/history?entry=${props.entry._id}` : undefined),
 })
 
 const shown = (label: LabelText) => shownLabel(label, main.value)

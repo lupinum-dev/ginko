@@ -547,10 +547,14 @@
     },
     "translation": {
       "changedSince": "{name} changed since the translation",
-      "fitsAsIs": "Keep as is",
+      "fitsAsIs": "{lang} is still right",
       "notTranslated": "Not translated yet.",
       "notTranslatedShowsMain": "Not translated yet. The website shows the {name} text here.",
-      "notTranslatedBlocks": "Not translated yet. Without this text, the page does not appear in {lang}."
+      "notTranslatedBlocks": "Not translated yet. Without this text, the page does not appear in {lang}.",
+      "useSource": "Copy the {name} text",
+      "showAll": "Show the whole text",
+      "showLess": "Show less",
+      "whatChanged": "What changed?"
     },
     "date": {
       "workWeek": "Current work week",

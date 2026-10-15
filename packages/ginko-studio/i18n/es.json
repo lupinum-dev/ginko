@@ -547,10 +547,14 @@
     },
     "translation": {
       "changedSince": "{name} ha cambiado desde la traducción",
-      "fitsAsIs": "Dejar como está",
+      "fitsAsIs": "El texto en {lang} sigue bien",
       "notTranslated": "Aún sin traducir.",
       "notTranslatedShowsMain": "Aún sin traducir. El sitio web muestra aquí el texto en {name}.",
-      "notTranslatedBlocks": "Aún sin traducir. Sin este texto, la página no aparece en {lang}."
+      "notTranslatedBlocks": "Aún sin traducir. Sin este texto, la página no aparece en {lang}.",
+      "useSource": "Copiar el texto en {name}",
+      "showAll": "Mostrar todo el texto",
+      "showLess": "Mostrar menos",
+      "whatChanged": "¿Qué ha cambiado?"
     },
     "date": {
       "workWeek": "Semana laboral actual",
