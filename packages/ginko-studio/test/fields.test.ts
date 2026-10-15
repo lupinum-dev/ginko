@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
-import { computed, defineComponent, h, shallowRef } from 'vue'
+import { computed, defineComponent, h, shallowRef, type Component } from 'vue'
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { TRANSLATION, type TranslationState } from '@lupinum/ginko-editor'
 import type { Field, Json } from '@lupinum/ginko'
 import FieldFrame from '../app/components/fields/FieldFrame.vue'
 import GinkoField from '../app/components/fields/GinkoField.vue'
+import GinkoFieldDate from '../app/components/fields/GinkoFieldDate.vue'
 import GinkoFieldList from '../app/components/fields/GinkoFieldList.vue'
 import GinkoFieldRef from '../app/components/fields/GinkoFieldRef.vue'
 import { REFS, type RefOptions } from '../app/components/fields/refs'
@@ -133,6 +134,41 @@ describe('list rows', () => {
     const [closed, open] = wrapper.findAll('li')
     expect(closed!.find('input[type="time"]').exists()).toBe(false)
     expect(open!.find('input[type="time"]').exists()).toBe(true)
+  })
+})
+
+// Wrong behaviour caught: the pressed button went away with what it removed and the focus fell to <body>, outside the
+// quick-task sheet, so keyboard and screen-reader users lost their place (WCAG 2.4.3).
+describe('the focus after a remove button goes', () => {
+  const list = { type: 'list', label: 'Ausnahmen', itemLabel: 'Ausnahme', max: 10, of: { reason: { type: 'text', label: 'Grund' } } } as Extract<Field, { type: 'list' }>
+  const rows = (...reasons: string[]) => reasons.map((reason, i) => ({ _id: `r${i}`, reason }))
+  const listProps = { id: 'f-ex', field: list, path: 'ex', locale: 'de', locales: ['de'], issues: [] }
+  /** The field with its value fed back, as a form does. */
+  function hosted(component: Component, props: Record<string, unknown>, initial: Json) {
+    const value = shallowRef<Json | undefined>(initial)
+    const Host = defineComponent({ setup: () => () => h(component, { ...props, modelValue: value.value, 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }) })
+    return mount(Host, { global: { provide: { [REFS as symbol]: refs() } }, attachTo: document.body })
+  }
+  const byText = (text: string) => () => [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === text)!
+  const byLabel = (label: string) => () => document.querySelector<HTMLElement>(`[aria-label="${label}"]`)!
+  const byId = (id: string) => () => document.getElementById(id)!
+
+  test.each([
+    { case: 'Leeren in an optional date', component: GinkoFieldDate, props: { id: 'f-day', invalid: false, optional: true }, value: '2026-10-20', press: byText('Leeren'), focus: byId('f-day') },
+    { case: 'Leeren in an optional ref', component: GinkoFieldRef, props: { id: 'f-ref', field: refField({ optional: true }), invalid: false }, value: 'k1', press: byText('Leeren'), focus: byId('f-ref') },
+    { case: 'Entfernen of an entry that is gone', component: GinkoFieldRef, props: { id: 'f-ref', field: refField(), invalid: false }, value: 'weg', press: byText('Entfernen'), focus: byId('f-ref') },
+    { case: 'a chip of a full ref list', component: GinkoFieldRef, props: { id: 'f-ref', field: refField({ multiple: true, max: 2 }), invalid: false }, value: ['k1', 'k2'], press: byLabel('Schnitzel entfernen'), focus: byId('f-ref') },
+    { case: 'the first of two list rows', component: GinkoFieldList, props: listProps, value: rows('Winterpause', 'Hochzeit'), press: byLabel('Winterpause entfernen'), focus: byLabel('Hochzeit entfernen') },
+    { case: 'the last of two list rows', component: GinkoFieldList, props: listProps, value: rows('Winterpause', 'Hochzeit'), press: byLabel('Hochzeit entfernen'), focus: byLabel('Winterpause entfernen') },
+    { case: 'the only list row', component: GinkoFieldList, props: listProps, value: rows('Winterpause'), press: byLabel('Winterpause entfernen'), focus: byText('Ausnahme hinzufügen') },
+  ])('$case: the focus moves on to a control that stays', async ({ component, props, value, press, focus }) => {
+    const wrapper = hosted(component as Component, props, value)
+    const button = press()
+    button.focus()
+    button.click()
+    await flushPromises()
+    expect(document.activeElement).toBe(focus())
+    wrapper.unmount()
   })
 })
 

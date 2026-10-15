@@ -2,7 +2,7 @@
      weekdays) show that column as the row title and allow no add/remove/move. When a text in a row
      changed but its required choices did not, the choices must be confirmed ("Noch richtig?"). -->
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, reactive, watchEffect } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, reactive, ref, watchEffect } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json, Locale } from '@lupinum/ginko'
 import { defaultsFor, isShown, ordered, stableJson } from '@lupinum/ginko/internal'
@@ -71,6 +71,7 @@ function move(index: number, by: -1 | 1) {
   next.splice(index + by, 0, row!)
   update(next)
 }
+const root = ref<HTMLElement>()
 /** Removing needs no question: the row comes back with "Rückgängig", at the same position. */
 function removeRow(index: number) {
   const row = rows.value[index]
@@ -78,6 +79,13 @@ function removeRow(index: number) {
   const title = rowTitle(row, index)
   update(rows.value.filter((_, i) => i !== index))
   useToast().show(t('fields.list.removed', { title }), { action: { label: t('fields.list.undo'), run: () => restoreRow(row, index) } })
+  // The pressed button went with its row: the focus moves to the remove button now in its place (the previous row's
+  // after the last row), or to the add button when there is none to press, never to <body>.
+  nextTick(() => {
+    const buttons = root.value?.querySelectorAll<HTMLButtonElement>('[data-remove]') ?? []
+    const next = buttons[Math.min(index, buttons.length - 1)]
+    ;(next && !next.disabled ? next : root.value?.querySelector<HTMLElement>('[data-add]'))?.focus()
+  })
 }
 function restoreRow(row: Row, index: number) {
   if (rows.value.some((r) => r._id === row._id)) return
@@ -123,7 +131,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
 </script>
 
 <template>
-  <div class="grid gap-3" role="group" :aria-labelledby="`${id}-label`">
+  <div ref="root" class="grid gap-3" role="group" :aria-labelledby="`${id}-label`">
     <p v-for="e in listIssues" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
     <ol v-if="rows.length" class="m-0 grid list-none gap-3 p-0">
       <li v-for="(row, index) in rows" :key="row._id" class="grid gap-4 rounded-md border bg-card p-3 sm:p-4" :data-row="row._id">
@@ -134,7 +142,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
           <div v-if="!fixed" class="-my-1 -mr-2 flex shrink-0">
             <Button type="button" variant="ghost" size="icon" :disabled="index === 0" :aria-label="t('fields.list.up', { title: rowTitle(row, index) })" @click="move(index, -1)"><ArrowUpIcon aria-hidden="true" /></Button>
             <Button type="button" variant="ghost" size="icon" :disabled="index === rows.length - 1" :aria-label="t('fields.list.down', { title: rowTitle(row, index) })" @click="move(index, 1)"><ArrowDownIcon aria-hidden="true" /></Button>
-            <Button type="button" variant="ghost" size="icon" class="hover:text-destructive" :disabled="rows.length <= min" :aria-label="t('fields.list.remove', { title: rowTitle(row, index) })" @click="removeRow(index)"><Trash2Icon aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="icon" class="hover:text-destructive" data-remove :disabled="rows.length <= min" :aria-label="t('fields.list.remove', { title: rowTitle(row, index) })" @click="removeRow(index)"><Trash2Icon aria-hidden="true" /></Button>
           </div>
         </div>
         <p v-for="e in rowIssues(row)" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
@@ -151,6 +159,6 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
         </div>
       </li>
     </ol>
-    <Button v-if="!fixed && rows.length < max" type="button" variant="outline" class="justify-self-start" @click="addRow"><PlusIcon aria-hidden="true" />{{ t('fields.list.add', { item: labelText(field.itemLabel) }) }}</Button>
+    <Button v-if="!fixed && rows.length < max" type="button" variant="outline" class="justify-self-start" data-add @click="addRow"><PlusIcon aria-hidden="true" />{{ t('fields.list.add', { item: labelText(field.itemLabel) }) }}</Button>
   </div>
 </template>

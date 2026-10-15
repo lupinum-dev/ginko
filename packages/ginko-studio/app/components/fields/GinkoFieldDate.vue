@@ -1,7 +1,7 @@
 <!-- A calendar date with "Heute"/"Morgen" in the site's time zone (UI.md 5). The browser's own date
      picker is the control: on a phone it is the system wheel, on a laptop a calendar popup. -->
 <script setup lang="ts">
-import { computed, inject, ref, type Ref } from 'vue'
+import { computed, inject, nextTick, ref, type Ref } from 'vue'
 import { useI18n } from '#imports'
 import type { Json, WeekInfo } from '@lupinum/ginko'
 import { addDays, DEFAULT_WEEK, workWeekOf } from '@lupinum/ginko/internal'
@@ -20,6 +20,11 @@ const value = computed(() => (typeof props.modelValue === 'string' ? props.model
 const quick = computed(() => props.weeks
   ? [{ label: t('fields.date.workWeek'), date: workWeekOf(today.value, week.value) }, { label: t('fields.date.nextWorkWeek'), date: addDays(workWeekOf(today.value, week.value), 7) }]
   : [{ label: t('fields.date.today'), date: today.value }, { label: t('fields.date.tomorrow'), date: addDays(today.value, 1) }])
+/** "Leeren" hides itself once the field is empty: the focus goes to the date, not to <body>. */
+function clear() {
+  emit('update:modelValue', undefined)
+  nextTick(() => document.getElementById(props.id)?.focus())
+}
 </script>
 
 <template>
@@ -27,7 +32,7 @@ const quick = computed(() => props.weeks
     <Input :id="id" type="date" class="w-full sm:w-48" :model-value="value" :aria-invalid="invalid" :aria-describedby="describedBy" @update:model-value="emit('update:modelValue', String($event) || undefined)" />
     <div class="flex gap-2">
       <Button v-for="q in quick" :key="q.label" type="button" variant="outline" class="aria-pressed:border-primary aria-pressed:bg-accent" :aria-pressed="value === q.date" @click="emit('update:modelValue', q.date)">{{ q.label }}</Button>
-      <Button v-if="optional && value" type="button" variant="ghost" @click="emit('update:modelValue', undefined)">{{ t('fields.clear') }}</Button>
+      <Button v-if="optional && value" type="button" variant="ghost" @click="clear">{{ t('fields.clear') }}</Button>
     </div>
   </div>
 </template>

@@ -2,7 +2,7 @@
      A combobox with search lists the target's entries by title. Several: chips plus the combobox, `max`
      respected. An ID whose entry is gone shows "Eintrag gibt es nicht mehr" with a remove button. -->
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useI18n } from '#imports'
 import { CheckIcon, ChevronsUpDownIcon, PlusIcon, XIcon } from '@lucide/vue'
 import type { Field, Json } from '@lupinum/ginko'
@@ -39,6 +39,8 @@ function remove(id: string) {
     const next = ids.value.filter((x) => x !== id)
     emit('update:modelValue', props.field.optional || next.length ? next : [])
   } else emit('update:modelValue', undefined)
+  // The pressed button went with what it removed; the combobox is there afterwards (no longer full, no longer gone).
+  nextTick(() => document.getElementById(props.id)?.focus())
 }
 const single = computed(() => ids.value[0])
 const singleMissing = computed(() => single.value !== undefined && !titleById.value.has(single.value))
