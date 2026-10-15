@@ -93,6 +93,8 @@ const leaf = computed(() => {
   return undefined
 })
 const trState = computed(() => (leaf.value ? translation?.state(leaf.value) : undefined))
+// Names, years and places are often the same in every language: one click takes the main-language text as it is.
+const canUseMain = computed(() => trState.value === 'missing' && (props.field.type === 'text' || props.field.type === 'longtext') && !!translation?.source(leaf.value!))
 </script>
 
 <template>
@@ -100,12 +102,13 @@ const trState = computed(() => (leaf.value ? translation?.state(leaf.value) : un
     <template v-if="trState && translation" #source>
       <div class="grid gap-2 rounded-md bg-muted p-3 text-sm" data-slot="translation-source">
         <p class="text-xs font-semibold text-muted-foreground">{{ translation.mainName() }}</p>
-        <p class="whitespace-pre-wrap [overflow-wrap:anywhere]">{{ translation.source(leaf!) || '–' }}</p>
+        <p class="whitespace-pre-wrap [overflow-wrap:anywhere]">{{ translation.source(leaf!).slice(0, 400) || '–' }}</p>
         <div v-if="trState === 'stale'" class="flex flex-wrap items-center gap-2">
           <Badge variant="outline" class="h-auto border-warning py-1 whitespace-normal text-warning">{{ t('fields.translation.changedSince', { name: translation.mainName() }) }}</Badge>
           <Button type="button" variant="outline" size="sm" @click="translation.confirm(leaf!)">{{ t('fields.translation.fitsAsIs') }}</Button>
         </div>
         <p v-else-if="trState === 'missing'" class="text-warning">{{ t('fields.translation.notTranslated', { name: translation.mainName() }) }}</p>
+        <Button v-if="canUseMain" type="button" variant="outline" size="sm" class="justify-self-start" @click="set(translation.source(leaf!))">{{ t('fields.translation.useMain', { name: translation.mainName() }) }}</Button>
       </div>
     </template>
 
