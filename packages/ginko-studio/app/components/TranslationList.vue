@@ -6,7 +6,7 @@ import { api } from '#convex/api'
 import type { Brick } from '@lupinum/ginko'
 import { Badge } from '@studio/components/ui/badge'
 import { opErrorOf } from '../composables/useOps'
-import { languageName } from '../utils/content'
+import { languageLabel } from '../utils/content'
 import { useStudioSite } from '../utils/labels'
 
 const props = defineProps<{ slug: string; bricks: [string, Brick][] }>()
@@ -39,7 +39,7 @@ const linkOf = (row: Row) => areas.value.get(row.brick)!.kind === 'single'
     <p v-else-if="!status.data.value" class="mt-3 text-muted-foreground" role="status">{{ t('entry.loading') }}</p>
     <p v-else-if="!sections.length" class="mt-3 text-muted-foreground">{{ t('site.translations.none') }}</p>
     <section v-for="section in sections" :key="section.locale" class="mt-6" :aria-labelledby="`translations-${section.locale}`">
-      <h2 :id="`translations-${section.locale}`" class="mb-2 text-base font-semibold">{{ languageName(section.locale, uiLocale) }}</h2>
+      <h2 :id="`translations-${section.locale}`" class="mb-2 text-base font-semibold">{{ languageLabel(section.locale, uiLocale) }}</h2>
       <ul class="m-0 list-none overflow-hidden rounded-xl border bg-card p-0">
         <li v-for="row in section.rows" :key="row.entry" class="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1.5 border-b px-4 py-3 last:border-b-0 sm:flex-nowrap">
           <div class="min-w-0 flex-1">

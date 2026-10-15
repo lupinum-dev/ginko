@@ -119,6 +119,12 @@ export function languageName(locale: string, language: string): string {
   }
 }
 
+/** The language name standing alone (a heading, a button): capitalized, also where the language writes it in lower case ("Inglés"). */
+export function languageLabel(locale: string, language: string): string {
+  const name = languageName(locale, language)
+  return name.charAt(0).toLocaleUpperCase(language) + name.slice(1)
+}
+
 /**
  * Upload ids referenced anywhere in stored data: `{ file: id }` of image and file fields and, with `texts`, `$file.<id>`
  * in Markdown texts, in lists too.

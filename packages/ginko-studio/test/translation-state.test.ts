@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { printOf } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
-import { leafTranslation, missingNote, translationLines, translationNote, type StoredTranslation, type TranslationPage } from '../app/utils/content'
+import { languageLabel, leafTranslation, missingNote, translationLines, translationNote, type StoredTranslation, type TranslationPage } from '../app/utils/content'
 
 describe('leafTranslation', () => {
   const base = { locale: 'en', main: 'de', confirmed: false }
@@ -69,5 +69,10 @@ describe('what the Studio says the website shows in another language', () => {
       'Auf Spanisch zeigt die Website noch die alte Übersetzung, bis sie angepasst ist.',
     ].join(' '))
     expect(translationNote([], t, 'de', 'de')).toBe('')
+  })
+
+  // Wrong behaviour caught: a Spanish heading or language button reads "inglés", as the name stands inside a sentence.
+  it('a language name standing alone starts with a capital in every language', () => {
+    expect([languageLabel('en', 'es'), languageLabel('en', 'de'), languageLabel('de', 'en')]).toEqual(['Inglés', 'Englisch', 'German'])
   })
 })

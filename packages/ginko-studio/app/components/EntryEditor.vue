@@ -5,7 +5,7 @@ import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, L
 import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { languageName, leafTranslation, missingNote, previewFileIds, publishQuestion, titleOf, translationLines } from '../utils/content'
+import { languageLabel, languageName, leafTranslation, missingNote, previewFileIds, publishQuestion, titleOf, translationLines } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -474,7 +474,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           @update:model-value="(next) => typeof next === 'string' && next && switchLanguage(next)"
         >
           <ToggleGroupItem v-for="l in schema.locales" :key="l" :value="l" :aria-disabled="dirty && l !== locale ? 'true' : undefined" class="px-4">
-            {{ languageName(l, uiLocale) }}
+            {{ languageLabel(l, uiLocale) }}
             <template v-if="gapIn(l)">
               <span class="size-1.5 rounded-full bg-warning" aria-hidden="true" />
               <span class="sr-only">({{ t('basics.translation.incomplete') }})</span>
