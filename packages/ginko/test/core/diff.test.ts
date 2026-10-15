@@ -384,6 +384,8 @@ describe('checkSchema: retired fields (SPEC 2.5)', () => {
       mutate: (s: Schema) => {
         fieldsOf(s, 'hours').weekAlt = { type: 'list', label: 'Alt', itemLabel: 'Tag', max: 7, of: { day: { type: 'choice', label: 'Tag', options: [{ value: 'mo', label: 'Montag' }] } } }
         retire(s, 'hours.exceptions', { from: 'weekAlt' })
+        // The hours status line reads exceptions; without it this row is only about the mirror.
+        delete node(s, 'bricks.hours').status
       },
       problems: ['retired: “hours.exceptions” cannot mirror “weekAlt”: different columns.'],
     },
