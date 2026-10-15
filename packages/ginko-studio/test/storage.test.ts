@@ -128,16 +128,16 @@ test('the storage band warns from 80 %, and once full it cannot be hidden', asyn
   const notice = (bytes: number, entryCount = 10) => mount(StorageNotice, { props: { slug: 'restaurant', bytes, entryCount, manager: true } })
   expect(notice(1 * MB).text()).toBe('')
   // One byte under the limit is not "4 MB von 4 MB" (volume-6).
-  expect(notice(4 * MB - 1).text()).toBe('Speicher fast voll: 3,9 MB von 4 MB belegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.')
+  expect(notice(4 * MB - 1).text()).toBe('Textspeicher fast voll: 3,9 MB von 4 MB belegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge, Bilder und PDFs zählen nicht mit.')
 
   const near = notice(3.3 * MB)
-  expect(near.text()).toBe('Speicher fast voll: 3,3 MB von 4 MB belegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.')
+  expect(near.text()).toBe('Textspeicher fast voll: 3,3 MB von 4 MB belegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge, Bilder und PDFs zählen nicht mit.')
   await near.get('button[aria-label="Hinweis ausblenden"]').trigger('click')
   expect(near.text()).toBe('')
 
   // de-AT groups thousands with a space.
   const full = notice(4 * MB, 1640)
-  expect(full.text()).toBe('Speicher voll: 4 MB von 4 MB belegt. Du kannst Einträge weiter bearbeiten, solange sie nicht länger werden, aber keine neuen anlegen. 1 640 von 2 000 Einträgen angelegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.')
+  expect(full.text()).toBe('Textspeicher voll: 4 MB von 4 MB belegt. Du kannst Einträge weiter bearbeiten, solange sie nicht länger werden, aber keine neuen anlegen. 1 640 von 2 000 Einträgen angelegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge, Bilder und PDFs zählen nicht mit.')
   expect(full.find('button').exists()).toBe(false)
 })
 
@@ -155,12 +155,12 @@ test('a band about the entry count alone asks only to remove entries', () => {
 test('the band names the limit that is reached first', () => {
   const MB = 1024 * 1024
   const band = mount(StorageNotice, { props: { slug: 'restaurant', bytes: 3.8 * MB, entryCount: 2000, manager: true } })
-  expect(band.text()).toBe('2 000 von 2 000 Einträgen angelegt. Neue Einträge kannst du nicht mehr anlegen. Speicher fast voll: 3,8 MB von 4 MB belegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.')
+  expect(band.text()).toBe('2 000 von 2 000 Einträgen angelegt. Neue Einträge kannst du nicht mehr anlegen. Textspeicher fast voll: 3,8 MB von 4 MB belegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge, Bilder und PDFs zählen nicht mit.')
 })
 
 // Wrong behaviour caught: an editor hides the warning that only an owner or admin is meant to dismiss.
 test('only an owner or admin can hide the storage warning', () => {
   const near = mount(StorageNotice, { props: { slug: 'restaurant', bytes: 3.3 * 1024 * 1024, entryCount: 10, manager: false } })
-  expect(near.text()).toContain('Speicher fast voll')
+  expect(near.text()).toContain('Textspeicher fast voll')
   expect(near.find('button').exists()).toBe(false)
 })

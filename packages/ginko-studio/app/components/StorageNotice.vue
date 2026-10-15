@@ -1,13 +1,14 @@
-<!-- How full the site is (SPEC 3 budget), on every page and for every role: from 80 % of the storage or of the
+<!-- How full the site is (SPEC 3 budget), on every page and for every role: from 80 % of the text storage or of the
      entry count a warning band, at 100 % a red one. An owner or admin can hide the warning for this browser session;
-     the full band stays, because new entries and growing saves now fail. Removed entries count neither. -->
+     the full band stays, because new entries and growing saves now fail. Removed entries count neither, nor do files
+     (they have no site limit). The team page states the usage below 80 % too. -->
 <script setup lang="ts">
 import { useI18n } from '#imports'
 import { computed, onMounted, ref } from 'vue'
 import { SITE_BUDGET } from '@lupinum/ginko/internal'
 import { XIcon } from '@lucide/vue'
 import { Button } from '@studio/components/ui/button'
-import { sizeText } from '../utils/size'
+import { budgetSizeText, sizeText } from '../utils/size'
 
 const props = defineProps<{ slug: string; bytes: number; entryCount: number; /** Owner or admin. */ manager: boolean }>()
 const { t, format } = useI18n()
@@ -21,7 +22,7 @@ const level = computed<Level>(() => (storage.value === 'full' || entries.value =
 const text = computed(() => {
   const lines: string[] = []
   // Just under the limit, "near" rounds down: 1 byte short of 4 MB is "3,9 MB von 4 MB", not "4 MB von 4 MB".
-  if (storage.value) lines.push(t(storage.value === 'full' ? 'site.storage.full' : 'site.storage.near', { used: sizeText(props.bytes, format.number, storage.value === 'full' ? 'up' : 'down'), limit: sizeText(SITE_BUDGET.siteBytes, format.number) }))
+  if (storage.value) lines.push(t(storage.value === 'full' ? 'site.storage.full' : 'site.storage.near', { used: budgetSizeText(props.bytes, SITE_BUDGET.siteBytes, format.number), limit: sizeText(SITE_BUDGET.siteBytes, format.number) }))
   // The limit that is reached comes first: a full entry count leads, a storage only near comes after it.
   const count = t(entries.value === 'full' ? 'site.storage.entriesFull' : 'site.storage.entries', { count: format.number(props.entryCount), limit: format.number(SITE_BUDGET.entries) })
   if (entries.value === 'full' && storage.value !== 'full') lines.unshift(count)

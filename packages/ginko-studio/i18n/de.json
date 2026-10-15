@@ -372,13 +372,14 @@
       "loadOlder": "Ältere laden"
     },
     "storage": {
-      "near": "Speicher fast voll: {used} von {limit} belegt.",
-      "full": "Speicher voll: {used} von {limit} belegt. Du kannst Einträge weiter bearbeiten, solange sie nicht länger werden, aber keine neuen anlegen.",
+      "near": "Textspeicher fast voll: {used} von {limit} belegt.",
+      "full": "Textspeicher voll: {used} von {limit} belegt. Du kannst Einträge weiter bearbeiten, solange sie nicht länger werden, aber keine neuen anlegen.",
       "entries": "{count} von {limit} Einträgen angelegt.",
       "entriesFull": "{count} von {limit} Einträgen angelegt. Neue Einträge kannst du nicht mehr anlegen.",
-      "hint": "Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.",
+      "hint": "Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge, Bilder und PDFs zählen nicht mit.",
       "entriesHint": "Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.",
-      "dismiss": "Hinweis ausblenden"
+      "dismiss": "Hinweis ausblenden",
+      "usage": "Textspeicher: {used} von {limit} belegt, {count} von {max} Einträgen. Bilder und PDFs zählen nicht mit."
     }
   },
   "editor": {

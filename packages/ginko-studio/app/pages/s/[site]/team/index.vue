@@ -6,6 +6,8 @@ import { api } from '#convex/api'
 import { opErrorOf } from '../../../../composables/useOps'
 import { shownLabel } from '../../../../utils/labels'
 import { whoText } from '../../../../utils/who'
+import { budgetSizeText, sizeText } from '../../../../utils/size'
+import { SITE_BUDGET } from '@lupinum/ginko/internal'
 import { Button } from '@studio/components/ui/button'
 import { Badge } from '@studio/components/ui/badge'
 import { Input } from '@studio/components/ui/input'
@@ -154,6 +156,15 @@ async function revokeKey(key: Key) {
   }
 }
 
+// How full the site is, also below the 80 % warning (StorageNotice). The limit is for text: files have none.
+const usage = computed(() => {
+  const site = s.site.value
+  return site && t('site.storage.usage', {
+    used: budgetSizeText(site.bytes, SITE_BUDGET.siteBytes, format.number), limit: sizeText(SITE_BUDGET.siteBytes, format.number),
+    count: format.number(site.entryCount), max: format.number(SITE_BUDGET.entries),
+  })
+})
+
 /** The last owner cannot be removed (the server refuses), so the button is not offered. */
 const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role === 'owner').length)
 </script>
@@ -286,6 +297,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
         </ul>
       </section>
 
+      <p v-if="usage" class="py-6 text-[13px] text-muted-foreground">{{ usage }}</p>
       <DeleteSite v-if="s.site.value" :slug="s.slug.value" :name="s.site.value.name" />
     </template>
   </div>

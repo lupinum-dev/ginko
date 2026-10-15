@@ -372,13 +372,14 @@
       "loadOlder": "Load older"
     },
     "storage": {
-      "near": "Storage almost full: {used} of {limit} used.",
-      "full": "Storage full: {used} of {limit} used. You can keep editing entries as long as they do not get longer, but you cannot add new ones.",
+      "near": "Text storage almost full: {used} of {limit} used.",
+      "full": "Text storage full: {used} of {limit} used. You can keep editing entries as long as they do not get longer, but you cannot add new ones.",
       "entries": "{count} of {limit} entries used.",
       "entriesFull": "{count} of {limit} entries used. You cannot add new entries.",
-      "hint": "To make room, remove entries or shorten long texts. Removed entries do not count.",
+      "hint": "To make room, remove entries or shorten long texts. Removed entries, pictures and PDFs do not count.",
       "entriesHint": "To make room, remove entries. Removed entries do not count.",
-      "dismiss": "Hide notice"
+      "dismiss": "Hide notice",
+      "usage": "Text storage: {used} of {limit} used, {count} of {max} entries. Pictures and PDFs do not count."
     }
   },
   "editor": {

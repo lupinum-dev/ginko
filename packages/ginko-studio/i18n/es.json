@@ -372,13 +372,14 @@
       "loadOlder": "Cargar anteriores"
     },
     "storage": {
-      "near": "Almacenamiento casi lleno: {used} de {limit} ocupados.",
-      "full": "Almacenamiento lleno: {used} de {limit} ocupados. Puedes seguir editando entradas mientras no crezcan, pero no añadir nuevas.",
+      "near": "Espacio para textos casi lleno: {used} de {limit} ocupados.",
+      "full": "Espacio para textos lleno: {used} de {limit} ocupados. Puedes seguir editando entradas mientras no crezcan, pero no añadir nuevas.",
       "entries": "{count} de {limit} entradas creadas.",
       "entriesFull": "{count} de {limit} entradas creadas. No puedes añadir entradas nuevas.",
-      "hint": "Para hacer espacio, elimina entradas o acorta textos largos. Las entradas eliminadas no cuentan.",
+      "hint": "Para hacer espacio, elimina entradas o acorta textos largos. Las entradas eliminadas, las imágenes y los PDF no cuentan.",
       "entriesHint": "Para hacer espacio, elimina entradas. Las entradas eliminadas no cuentan.",
-      "dismiss": "Ocultar aviso"
+      "dismiss": "Ocultar aviso",
+      "usage": "Espacio para textos: {used} de {limit} ocupados, {count} de {max} entradas. Las imágenes y los PDF no cuentan."
     }
   },
   "editor": {
