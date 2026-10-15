@@ -4,6 +4,7 @@ import { useI18n } from '#imports'
 import { describe, expect, test, vi } from 'vitest'
 import { computed, ref } from 'vue'
 import ChangeDiff from '../app/components/ChangeDiff.vue'
+import ChangeRows from '../app/components/ChangeRows.vue'
 import OwnProposals from '../app/components/OwnProposals.vue'
 import ReviewRow from '../app/components/ReviewRow.vue'
 import type { Id } from '../../ginko-server/convex/_generated/dataModel'
@@ -123,5 +124,26 @@ describe('OwnProposals', () => {
     await flushPromises()
     expect(wrapper.findAll('button').map((button) => button.attributes('disabled') !== undefined)).toEqual([false, true])
     vi.unstubAllGlobals()
+  })
+})
+
+describe('ChangeRows', () => {
+  // Wrong behaviour caught: the cook adds an event with "Veranstaltung hinzufügen" (no edit task exists for events),
+  // changes its date, and finds no Rückgängig in the history, although the server and the agent door allow it.
+  test.each([
+    { own: true, undo: true },
+    { own: false, undo: false },
+  ])('staff with only a create task undo a save of an entry they created (own: $own)', async ({ own, undo }) => {
+    const save = { _id: 'c1', kind: 'save', brick: 'events', entry: 'e1', fields: ['when'], at: Date.now(), who: { self: true }, agent: null, undoBlocked: null, sentence: 'Datum geändert', ...(own ? { own } : {}) }
+    for (const [name, fn] of Object.entries({ computed, ref, useI18n, onMounted: () => {}, onUnmounted: () => {} })) vi.stubGlobal(name, fn)
+    vi.stubGlobal('useConvexPaginatedQuery', () => ({ data: ref([save]), error: ref(undefined), status: ref('success'), canLoadMore: ref(false), isLoadingMore: ref(false) }))
+    vi.stubGlobal('useOps', () => ({}))
+    const schema = { timeZone: 'Europe/Vienna', locales: ['de'], bricks: { events: { kind: 'collection', label: 'Veranstaltungen', fields: {}, tasks: [{ id: 'add', label: 'Veranstaltung hinzufügen', kind: 'create' }] } } }
+    try {
+      const wrapper = mount(ChangeRows, { props: { site: 's', schema: schema as never, manager: false, grants: new Set(['events.add']) } })
+      expect(wrapper.findAll('button').some((button) => button.text() === 'Rückgängig')).toBe(undo)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

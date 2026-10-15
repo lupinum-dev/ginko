@@ -6,7 +6,7 @@ import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { query, type QueryCtx } from './_generated/server'
 import { labeler } from './lib/names'
-import { actorFor, fail, type Actor } from './lib/access'
+import { actorFor, createdBy, fail, type Actor } from './lib/access'
 import { diffFields } from './lib/diff'
 import { undoBlockOf, type UndoBlock } from './lib/history'
 
@@ -21,26 +21,31 @@ const PAGE_BYTES = 2 * 1024 * 1024
 /**
  * The rows without before/after/prints (those are for undo and the release, not for the list: the
  * history page shows the message), with who did it as data (`Who`, lib/names.ts) and, for a change
- * through the agent door, the label of that person's key (SPEC 16).
+ * through the agent door, the label of that person's key (SPEC 16). `own` marks a save of an entry the reader
+ * created: staff undo and revert it with their create task (lib/access.ts `authorize`), as entries.get says.
  */
 async function summaries(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]) {
   const names = await labeler(ctx, actor)
-  const blocks = await undoBlocks(ctx, actor, rows)
+  const { blocks, own } = await saveFacts(ctx, actor, rows)
   const out = []
   for (const { before: _before, after: _after, printsBefore: _printsBefore, printsAfter: _printsAfter, ...change } of rows) {
-    out.push({ ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null })
+    out.push({
+      ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null,
+      ...(own.has(change._id) ? { own: true as const } : {}),
+    })
   }
   return out
 }
 
 /**
- * Why each save on the page can no longer be undone (undoBlockOf, the rule the undo mutation uses).
- * Each entry is read once; the entries of a site fit in its storage budget, so this stays well
- * under the read limit, and the list follows later saves live.
+ * For each save on the page: why it can no longer be undone (undoBlockOf, the rule the undo mutation uses), and
+ * whether the reader created its entry (`createdBy`). Each entry is read once; the entries of a site fit in its
+ * storage budget, so this stays well under the read limit, and the list follows later saves live.
  */
-async function undoBlocks(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]): Promise<Map<Id<'changes'>, UndoBlock>> {
+async function saveFacts(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]): Promise<{ blocks: Map<Id<'changes'>, UndoBlock>; own: Set<Id<'changes'>> }> {
   const blocks = new Map<Id<'changes'>, UndoBlock>()
-  if (!rows.some((row) => row.kind === 'save' && row.entry)) return blocks
+  const own = new Set<Id<'changes'>>()
+  if (!rows.some((row) => row.kind === 'save' && row.entry)) return { blocks, own }
   const migrated = await ctx.db.query('migrationsApplied').withIndex('by_site_id', (q) => q.eq('site', actor.site._id)).collect()
   const entries = new Map<Id<'entries'>, Doc<'entries'> | null>()
   for (const change of rows) {
@@ -52,8 +57,9 @@ async function undoBlocks(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]): 
     }
     const block = undoBlockOf(change, entry, migrated)
     if (block) blocks.set(change._id, block)
+    if (createdBy(actor, entry)) own.add(change._id)
   }
-  return blocks
+  return { blocks, own }
 }
 
 /**

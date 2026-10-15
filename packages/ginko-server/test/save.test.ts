@@ -3,7 +3,7 @@ import { entryBytes } from '@lupinum/ginko/internal'
 import { describe, expect, it } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, setup, upload } from './setup'
+import { errorOf, firstPage, opId, setup, upload } from './setup'
 
 describe('entries.save', () => {
   it('writes a price, bumps rev, fieldRevs and contentRev, and logs one change', async () => {
@@ -96,6 +96,11 @@ describe('staff change the entries they created (SPEC 2.7)', () => {
     expect(await as.cook.query(api.entries.get, { site: 'restaurant', entry: theirs.entry })).not.toHaveProperty('own')
     const saved = await save(made.entry)
     expect((await t.run((ctx) => ctx.db.get(made.entry)))!.data.when).toEqual({ from: '2026-10-26', to: '2026-10-26' })
+    // The history marks the saves of the cook's own entry, so the Studio offers undo and revert there too.
+    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: theirs.entry, baseRev: 1, fields: { description: { de: 'Mit Jazz.' } } })
+    const history = (await as.cook.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })).page.filter((c) => c.kind === 'save')
+    expect(history.filter((c) => c.entry === made.entry || c.entry === theirs.entry).map((c) => ({ mine: c.entry === made.entry, own: c.own ?? false })))
+      .toEqual([{ mine: false, own: false }, { mine: true, own: true }])
     await as.cook.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), task: 'events.add', change: saved.change })
     expect((await t.run((ctx) => ctx.db.get(made.entry)))!.data.when).toEqual({ from: '2026-10-25', to: '2026-10-25' })
 
