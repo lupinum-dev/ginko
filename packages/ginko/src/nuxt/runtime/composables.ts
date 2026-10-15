@@ -6,7 +6,7 @@ import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
 import { useSchemaOrg } from '#ginko/schema-org'
 import {
-  applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, query, seoHead, todayIn, websiteLd,
+  applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, websiteLd,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
 } from '../../internal.ts'
 import { withUrl, type GinkoPublicConfig } from './shared.ts'
@@ -282,7 +282,10 @@ export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
     if (!useSchemaOrg && home !== undefined && trim(route.path) === trim(path(home as GinkoPageKey, locale.value))) {
       const lang = i18n.locales.find((l) => l.code === locale.value)?.language ?? locale.value
       ld.unshift(websiteLd({ name: config.name, url: config.url, lang }))
-      if (seo.organization) ld.splice(1, 0, organizationLd({ name: config.name, url: config.url, ...seo.organization, logo: seo.organization.logo && absolute(seo.organization.logo) }))
+      // A page that writes its own organisation node (`siteJsonLd` of the `site()` brick) has the one with the address
+      // and contact: a second node from `seo.organization` would describe the same organisation twice.
+      const own = ld.some((node) => (ORGANIZATION_TYPES as readonly unknown[]).includes(node['@type']))
+      if (seo.organization && !own) ld.splice(1, 0, organizationLd({ name: config.name, url: config.url, ...seo.organization, logo: seo.organization.logo && absolute(seo.organization.logo) }))
     }
     return {
       title: head.title,

@@ -7,6 +7,7 @@ import { ref } from 'vue'
 import type { Locale } from '../src/index.ts'
 import type { Bundle, Schema } from '../src/internal.ts'
 import { agentRequest, withUrl } from '../src/nuxt/runtime/shared.ts'
+import { siteJsonLd } from '../src/basics/index.ts'
 import { BUNDLE_STATE, TODAY_STATE, useGinkoLang, useGinkoBreadcrumbs, useGinkoEntry, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, useGinkoPath } from '../src/nuxt/runtime/composables.ts'
 import * as shim from './shims/imports.ts'
 import { i18nLocale, routePath, seoConfig, useState } from './shims/imports.ts'
@@ -107,6 +108,12 @@ describe('useGinkoSeo', () => {
     expect(JSON.parse(home.script[1]!.innerHTML)).toMatchObject({ logo: 'https://restaurant.test/logo.png', sameAs: ['https://social.test/r'] })
     expect(run('/', { title: 'Home' }, {}).script.map((s) => JSON.parse(s.innerHTML)['@type'])).toStrictEqual(['WebSite'])
     expect(run('/speisekarte', { jsonLd: [own] }).script).toHaveLength(1)
+  })
+
+  test('a home page with its own organisation node (siteJsonLd) gets no second one from seo.organization', () => {
+    const own = siteJsonLd({ city: 'Linz' }, { name: 'Restaurant', url: 'https://restaurant.test', type: 'LocalBusiness' })
+    const types = run('/', { title: 'Home', jsonLd: [own] }).script.map((s) => JSON.parse(s.innerHTML)['@type'])
+    expect(types).toStrictEqual(['WebSite', 'LocalBusiness'])
   })
 
   test('a "<" in JSON-LD cannot close the script element', () => {

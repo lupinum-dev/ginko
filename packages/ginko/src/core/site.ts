@@ -57,6 +57,7 @@ export interface SiteInput {
     image?: string
     /** The brand colour, `#rrggbb` or `#rgb`: the background of generated share cards (nuxt-og-image). */
     color?: string
+    /** The home page's Organization JSON-LD. A page with its own (`siteJsonLd` of `@lupinum/ginko/basics`) gets none from here. */
     organization?: { logo?: string; sameAs?: string[] }
   }
   /** Text for AI agents (`/llms.txt`, `<page>.md`) and the agent door's default. Only `review` is part of the schema contract. */
@@ -83,6 +84,19 @@ type RetiredInput<S extends SiteInput> = { [P in keyof S['retired']]: P extends 
 export function defineSite<const S extends SiteInput>(site: S & { retired?: RetiredInput<S> }): S {
   return site
 }
+
+/**
+ * `site` as it runs on the platform: every brick without `source`, so the owner edits it in the Studio. A template
+ * that reads its content from files and this twin must both pass `checkSite`; tools and tests use it to prove that a
+ * files site can move to the platform without changing its bricks.
+ */
+export function withoutFiles<const S extends SiteInput>(site: S): WithoutFiles<S> {
+  const bricks = Object.fromEntries(Object.entries(site.bricks).map(([key, { source: _, ...brick }]) => [key, brick]))
+  return { ...site, bricks } as WithoutFiles<S>
+}
+
+/** `S` with no `source` on any brick. */
+export type WithoutFiles<S extends SiteInput> = Omit<S, 'bricks'> & { bricks: { [K in keyof S['bricks']]: Omit<S['bricks'][K], 'source'> } }
 
 /** The names of the fields in `F` whose type is one of `T`. */
 type FieldsOfType<F, T extends string> = { [K in keyof F]: F[K] extends { type: T } ? K : never }[keyof F] & string
