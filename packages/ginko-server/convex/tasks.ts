@@ -36,5 +36,12 @@ export async function prefillAs(ctx: QueryCtx, actor: Actor, args: ObjectType<ty
     const data = entry.data as Record<string, Json>
     stored = Object.fromEntries(task.fields.filter((f) => data[f] !== undefined).map((f): [string, Json] => [f, data[f]!]))
   }
+  // A day already set that has not passed stays: reopening "Heute geschlossen" keeps tomorrow's closure instead of
+  // moving it to today. Only @today does this; a week token always gives the week the task is for.
+  for (const [key, raw] of Object.entries(prefill)) {
+    const kept = stored[key]
+    const today = values[key]
+    if (raw === '@today' && typeof kept === 'string' && typeof today === 'string' && kept >= today) delete values[key]
+  }
   return { ...stored, ...values }
 }

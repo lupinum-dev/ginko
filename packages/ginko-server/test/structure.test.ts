@@ -244,6 +244,20 @@ describe('tasks.prefill', () => {
     expect(values).toEqual({ text: { de: 'Heute sind wir ausgebucht.', en: 'We are fully booked today.' }, until: '2026-10-12' })
   })
 
+  // Wrong behaviour caught: reopening "Heute geschlossen" put today over the closure set for tomorrow, so saving
+  // closed today and dropped tomorrow's closure.
+  it.each([
+    ['a closure set for tomorrow stays', '2026-10-09', '2026-10-09'],
+    ['a closure set for today stays today', '2026-10-08', '2026-10-08'],
+    ['a past closure gives way to today', '2026-10-07', '2026-10-08'],
+  ])('closedToday: %s', async (_name, stored, expected) => {
+    const { t, as, entries } = await setup()
+    const hours = (await t.run((ctx) => ctx.db.get(entries.hours!)))!
+    await t.run((ctx) => ctx.db.patch(entries.hours!, { data: { ...hours.data, closedOn: stored } }))
+    const values = await as.owner.query(api.tasks.prefill, { site: 'restaurant', task: 'hours.closedToday', entry: entries.hours! })
+    expect(values).toMatchObject({ closedOn: expected })
+  })
+
   it('lunchWeek: weekOf is the Monday of this week, the stored days stay', async () => {
     vi.setSystemTime(new Date('2026-10-11T23:30:00Z'))
     const { t, as, entries } = await setup()
