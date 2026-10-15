@@ -146,7 +146,7 @@ describe('a list in a foreign language', () => {
   } as Extract<Field, { type: 'list' }>
   const stored = [{ _id: 'd1', dish: { de: 'Kürbissuppe' }, allergens: ['g'] }]
 
-  test.each([
+  test.each<{ locale: string; typed: Record<string, string>; allergens: boolean; buttons: boolean; blocked: boolean }>([
     { locale: 'en', typed: { de: 'Kürbissuppe', en: 'Pumpkin soup' }, allergens: false, buttons: false, blocked: false },
     { locale: 'de', typed: { de: 'Kürbiscremesuppe' }, allergens: true, buttons: true, blocked: true },
   ])('$locale: allergens shown $allergens, row buttons $buttons, "Noch richtig?" $blocked', async ({ locale, typed, allergens, buttons, blocked }) => {
