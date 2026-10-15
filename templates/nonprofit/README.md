@@ -76,27 +76,29 @@ the start of a file name sets the order.
 |---|---|
 | Home page: mission, lead, photo | `content/home.md` (and `home.de.md`, `home.fr.md`, `home.ar.md`) |
 | News | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/jana-becker]`), `tags`, `image` (the cover, 3:2); `draft: true` keeps a post off the site |
-| Projects and campaigns | `content/projects/<n>.<name>.md`: `title`, `summary`, `image`, the text; `ends` for a campaign (the last day it shows) |
+| Projects and campaigns | `content/projects/<n>.<name>.md`: `title`, `summary`, `image`, the text; `ends` for a campaign (the last day it shows); `actionLabel` and `actionUrl` for a button below the title ("Donate now") |
 | Team and board | `content/people/<n>.<name>.md`: `name`, `role`, `bio`, `email`, `phone`; no photo needed, the site shows initials |
 | Reports to download | `content/downloads/<name>.md`: `title`, `summary`, `date`, `file` (a PDF in `public/reports/`), `language` (`en`, when the file is not in your main language) |
 | Partner logos | `content/logos/<n>.<name>.md`: `name`, `image` (an SVG or PNG in `public/logos/`), `url` |
 | Quotes on the home page | `content/quotes/<n>.<name>.md`: `text`, `name`, `role`; the home page shows the first |
-| About, Get involved, Donate and other pages | `content/pages/<n>.<name>.md`; each translation sets its own address with `slug:` |
+| About, Get involved, Donate and other pages | `content/pages/<n>.<name>.md`; each translation sets its own address with `slug:`. `actionLabel` and `actionUrl` add one button below the title (the Donate page's "Donate online") |
 | Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters), `until` (the last day it shows) |
-| Events | `content/events/` (no page yet: see "Events" below) |
+| Events | `content/events/<n>.<name>.md`: `title`, `when`, `start`, `end`, `location`; the next one shows on the home page and on Get involved (no events pages yet: see "Events" below) |
 | Name, address, register entry, email, phone | `content/site.md` (footer, imprint, search engines) |
 | Privacy policy, terms, imprint | `content/legal/` (placeholders for Germany: replace them before you go live) |
 | Site name, description for search engines | `ginko.config.ts` (`name`, `seo.description`) |
 | Menu, footer links, the line under the name in the footer | `app/app.config.ts` |
-| Section titles and texts of the home page and the lists | `i18n/<language>.json`; the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins |
+| The home page's title in search results and tabs, section titles and texts of the home page and the lists | `i18n/<language>.json` (`home.title` is "River clean-ups in Musterstadt"); the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins |
 
 Each language has a news feed at `<news page>/rss.xml` (`/news/rss.xml`, `/de/aktuelles/rss.xml`, …) with the title,
 summary, date and authors of every post that is online.
 
 Notices show newest first: put the newest one at the top (the smallest number). At most two show at once.
 
-**Events.** The clean-ups and meetings in `content/events/` are kept, and the Studio's Today page shows the next one,
-but this version of the template has no events page yet. A later version adds the list and the event pages.
+**Events.** The next event in `content/events/` shows in the closing band of the home page and at the top of the
+Get involved page, with its weekday, date, time and place; with no coming event both hide it. Past events leave the
+site by themselves. This version of the template has no events pages yet; a later version adds the list and a page
+per event.
 
 ## Make it yours
 
@@ -139,24 +141,32 @@ prefix. Arabic is written right to left: the layout turns around by itself (the 
 - **Remove one:** start fresh with `npm create ginko@latest my-site -- --template nonprofit --locales en,de`, or
   delete it from `locales` and from the maps in `app/routes.ts` and `languages` in `ginko.config.ts`, then delete its
   files (`*.fr.md`, `i18n/fr.json`, `i18n/*/fr.json`).
-- **Add one** (for example Spanish): add `'es'` to `locales` and a word per address in `app/routes.ts`, add
-  `content/**/*.es.md` translations (pages without one stay in the main language), `i18n/es.json` and the texts of
-  every `i18n/<feature>/en.json` translated as `i18n/<feature>/es.json`.
+- **Add one** (for example Spanish): add `'es'` to `locales` and a word per address in `app/routes.ts`, its tag to
+  `languages` in `ginko.config.ts` (`es: 'es-ES'`), and the Spanish labels of `nav`, `footer` and `tagline` in
+  `app/app.config.ts` (without them they show in the main language). Add `i18n/es.json` and the texts of every
+  `i18n/<feature>/en.json` translated as `i18n/<feature>/es.json`.
+- **Translate the content** as `content/**/*.es.md`. A page, legal text, post or project shows in the new language
+  only once it has its translation file: without one it is not on the Spanish site, the menu leaves it out, and links
+  to it lead to its page in the main language. Translate at least the legal texts (`content/legal/`) before the
+  language goes live.
 
 ## Add a donation form or a contact form
 
-The site sends no data to other companies, so it has no forms. The Donate page links to your donation service (a
-Markdown link in `content/pages/3.donate.md`); a contact form works the same way: link to a form service of your
-choice. Name the service in your privacy policy.
+The site sends no data to other companies, so it has no forms. The Donate page's button leads to your donation
+service (`actionUrl` in `content/pages/3.donate.md`, the label per language in `actionLabel`); a contact form works
+the same way: link to a form service of your choice. Name the service in your privacy policy.
 
 ## Remove a feature
+
+Links in the content name pages by their key (`[annual report]($page.downloads)`). After you remove a page, search
+`content/` for `$page.<key>` and remove or change those links: the build stops on a link that leads nowhere.
 
 | Feature | Delete |
 |---|---|
 | Projects | `content/projects/`, the `projects` brick and `pages.projects` in `ginko.config.ts`, its `nav` item, the "Current projects" section in `app/pages/index.vue`, `app/pages/projects/`, `app/bricks/projects.ts`, `app/composables/useProjects.ts`, `i18n/projects/`, and `"projects"` in `package.json` → `ginko.features` |
-| News | `content/posts/`, the `posts` brick and `pages.news`, its `nav` item, the "Latest news" section on the home page, `app/pages/news/`, `app/components/blog/`, `app/composables/useBlog.ts`, `server/middleware/news-feed.ts`, `i18n/blog/`, `"blog"` in `ginko.features` |
-| Team | `content/people/`, `pages.team`, its `footer` item, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, `"people"` in `ginko.features`; keep the `people` brick while posts name authors |
-| Reports | `content/downloads/`, `public/reports/`, the `downloads` brick and `pages.downloads`, its `footer` item, `app/pages/downloads.vue`, `app/components/downloads/`, `i18n/downloads/`, `"downloads"` in `ginko.features` |
+| News | `content/posts/`, the `posts` brick and `pages.news`, its `nav` item, the "Latest news" section on the home page, `app/pages/news/`, `app/components/blog/`, `app/composables/useBlog.ts`, `server/middleware/news-feed.ts`, `i18n/blog/`, `"blog"` in `ginko.features`; the links to `$page.news` in `content/pages/2.get-involved*.md` |
+| Team | `content/people/`, `pages.team`, its `footer` item, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, `"people"` in `ginko.features`; the links to `$page.team` in `content/pages/1.about*.md`; keep the `people` brick while posts name authors |
+| Reports | `content/downloads/`, `public/reports/`, the `downloads` brick and `pages.downloads`, its `footer` item, `app/pages/downloads.vue`, `app/components/downloads/`, `i18n/downloads/`, `"downloads"` in `ginko.features`; the links to `$page.downloads` in `content/pages/1.about*.md` and `3.donate*.md`, and the notice about the annual report in `content/notices/` |
 | Logos and quotes | `content/logos/`, `content/quotes/`, `public/logos/`, the `logos` and `quotes` bricks, their sections on the home page, `app/bricks/logos-quotes.ts`, `app/components/block/Logos.vue`, `Quote.vue`, `"logos-quotes"` in `ginko.features` |
 | Notices | `content/notices/`, the `notices` brick, `<SiteNotice />` in `app/layouts/default.vue`, `app/components/site/Notice.vue` |
 | A language | see "Add or remove a language" |
