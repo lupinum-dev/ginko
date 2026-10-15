@@ -250,6 +250,12 @@ async function remove() {
   }
 }
 const askRemove = ref(false)
+const moreButton = ref<{ $el: HTMLElement } | null>(null)
+/** The remove question opens from a menu item that leaves with the menu: closing it hands the focus back to "Mehr". */
+function focusMore(event: Event) {
+  event.preventDefault()
+  moreButton.value?.$el.focus()
+}
 /** Entries that point at this one (N5), looked up only while the remove question is open. */
 const removeUses = useConvexQuery(api.entries.usedBy, () => (askRemove.value && props.entry ? { site: props.site.slug, entry: props.entry._id } : 'skip'))
 /** The older removed entries this removal would delete for good (a full trash), looked up the same way. */
@@ -415,7 +421,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           <h1 class="text-xl font-semibold tracking-tight">{{ title }}</h1>
           <DropdownMenu v-if="entry && !removed">
             <DropdownMenuTrigger as-child>
-              <Button type="button" variant="ghost" class="-mr-2 shrink-0"><EllipsisIcon aria-hidden="true" />{{ t('entry.more') }}</Button>
+              <Button ref="moreButton" type="button" variant="ghost" class="-mr-2 shrink-0"><EllipsisIcon aria-hidden="true" />{{ t('entry.more') }}</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem v-if="canDuplicate" class="min-h-9 pointer-coarse:min-h-11" :disabled="duplicating" @select="duplicate">{{ t('basics.duplicate.menu') }}</DropdownMenuItem>
@@ -536,7 +542,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
       </form>
 
       <!-- The destructive action sits in "Mehr", away from Speichern and Vorschau; the question stays. -->
-      <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :overflow="removeOverflow.error.value ? [] : removeOverflow.data.value" :busy="removing" @confirm="remove" />
+      <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :overflow="removeOverflow.error.value ? [] : removeOverflow.data.value" :busy="removing" @confirm="remove" @close-auto-focus="focusMore" />
     </div>
 
     <PreviewPane

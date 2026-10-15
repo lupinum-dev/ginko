@@ -97,3 +97,29 @@ test('the preview sends the site only once its entries have loaded', async () =>
     vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
   }
 })
+
+// Wrong behaviour caught (A13): closing "Mehr" › "Eintrag entfernen …" with Escape sent the focus to the start of the
+// page (reka returns it to the menu item, which left with the menu), and a keyboard user tabbed some 20 stops back.
+test('closing the remove question returns the focus to "Mehr"', async () => {
+  // reka-ui positions the menu with it; happy-dom has none.
+  globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as never
+  const entry = { _id: 'e1', brick: 'blog', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { title: { de: 'Herbstfest' } } }
+  const wrapper = mount(EntryEditor, {
+    props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: true },
+    global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+    attachTo: document.body,
+  })
+  const more = wrapper.findAll('button').find((b) => b.text() === 'Mehr')!
+  ;(more.element as HTMLElement).focus()
+  await more.trigger('keydown', { key: 'Enter' })
+  await flushPromises()
+  ;[...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((i) => i.textContent?.startsWith('Eintrag entfernen'))!.click()
+  await flushPromises()
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Eintrag entfernen')
+
+  document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+  await flushPromises()
+  expect(document.querySelector('[role="dialog"]')).toBeNull()
+  expect(document.activeElement).toBe(more.element)
+  wrapper.unmount()
+})

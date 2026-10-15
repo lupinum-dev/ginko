@@ -23,13 +23,14 @@ const props = defineProps<{
   overflow: TrashOverflow | undefined
   busy?: boolean
 }>()
-const emit = defineEmits<{ 'update:open': [open: boolean]; confirm: [] }>()
+/** closeAutoFocus: reka's, before it returns the focus to what was focused when the dialog opened (see EntryEditor). */
+const emit = defineEmits<{ 'update:open': [open: boolean]; confirm: []; closeAutoFocus: [event: Event] }>()
 const { t } = useI18n()
 </script>
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="sm:max-w-lg">
+    <DialogContent class="sm:max-w-lg" @close-auto-focus="emit('closeAutoFocus', $event)">
       <DialogHeader>
         <DialogTitle>{{ t('entry.remove.title') }}</DialogTitle>
         <DialogDescription v-if="!uses || !overflow">{{ t('entry.remove.checking') }}</DialogDescription>
