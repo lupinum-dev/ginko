@@ -271,8 +271,11 @@
   },
   "mail": {
     "invite": {
-      "subject": "Invitación a {site}",
-      "text": "Te han invitado a {site}.\n\nEnlace (válido durante {days, plural, one {# día} other {# días}}): {link}\n"
+      "subject": "Invitación a {site} de {inviter}",
+      "text": "Hola:\n\n{inviter} te invita a editar el sitio web {site} ({url}). Se hace con Ginko, el programa para el contenido de este sitio.\n\n{rights}\n\nPara aceptar la invitación:\n1. Abre este enlace: {link}\n2. Inicia sesión con esta dirección de correo. Te enviamos un código; no necesitas contraseña.\n\nEl enlace es válido durante {days, plural, one {# día} other {# días}}. Si no esperabas esta invitación, puedes borrar este correo.\n",
+      "rightsOwner": "Como propietario puedes cambiarlo todo y gestionar el equipo.",
+      "rightsStaff": "Puedes:\n{lines}",
+      "rightsNone": "{inviter} decidirá qué áreas puedes cambiar."
     },
     "code": {
       "subject": "Tu código de inicio de sesión",

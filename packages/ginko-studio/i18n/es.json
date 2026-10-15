@@ -77,12 +77,17 @@
   "invite": {
     "titleShort": "Invitación",
     "title": "Aceptar invitación",
+    "heading": "Invitación a {site}",
     "lead": "<site>{site}</site> te invita como {role}.",
     "role": {
       "owner": "propietario",
       "staff": "miembro del personal",
       "admin": "administrador"
     },
+    "rightsOwner": "Como propietario puedes cambiarlo todo y gestionar el equipo.",
+    "rightsStaff": "Puedes:",
+    "rightsNone": "Las áreas que puedes cambiar se decidirán más adelante.",
+    "signInHint": "Inicia sesión con <email>{email}</email>. Te enviamos un código; no necesitas contraseña.",
     "otherEmail": "Esta invitación es para otro correo electrónico. Inicia sesión con ese correo.",
     "expired": "Esta invitación ha caducado o ya se usó. Pide una nueva.",
     "accepting": "Aceptando …"

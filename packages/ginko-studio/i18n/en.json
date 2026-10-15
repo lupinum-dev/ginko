@@ -77,12 +77,17 @@
   "invite": {
     "titleShort": "Invitation",
     "title": "Accept invitation",
+    "heading": "Invitation to {site}",
     "lead": "<site>{site}</site> invites you as {role}.",
     "role": {
       "owner": "an owner",
       "staff": "a staff member",
       "admin": "an admin"
     },
+    "rightsOwner": "As an owner you can change everything and manage the team.",
+    "rightsStaff": "You may:",
+    "rightsNone": "Which areas you may change will be set later.",
+    "signInHint": "Sign in with <email>{email}</email>. We send you a code; you do not need a password.",
     "otherEmail": "This invitation is for another email address. Sign in with that address.",
     "expired": "This invitation has expired or was already used. Please ask for a new one.",
     "accepting": "Accepting …"

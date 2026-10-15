@@ -25,7 +25,7 @@ it("an invitee's first code comes in the inviter's language", async () => {
   await s.as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'guest@example.com', role: 'staff', grants: [] })
   await s.t.mutation(internal.mail.queueCode, { to: 'guest@example.com', otp: '123456' })
   const mails = await s.t.run((ctx) => ctx.db.query('outbox').collect())
-  expect(mails.map((m) => m.subject)).toEqual(['Invitation to Gasthaus zur Linde', 'Your sign-in code'])
+  expect(mails.map((m) => m.subject)).toEqual(['Invitation to Gasthaus zur Linde from wirtin@example.com', 'Your sign-in code'])
 })
 
 // Astra phase 8: without a mail way, sign-in is off and every code request fails the same (no hint about the address).
@@ -64,7 +64,7 @@ it('with GINKO_MAIL=resend, a code is sent through Resend and not stored, except
   expect((init.headers as Record<string, string>).authorization).toBe('Bearer re_test')
   expect(JSON.parse(init.body as string)).toEqual({ from: 'Ginko <onboarding@resend.dev>', to: ['wirtin@example.com'], subject: 'Dein Anmeldecode', text: 'Dein Anmeldecode: 654321\n\nEr ist 5 Minuten gültig.\n' })
   const kept = await s.t.run((ctx) => ctx.db.query('outbox').collect())
-  expect(kept.map((m) => [m.to, m.subject])).toEqual([['koechin@example.test', 'Einladung zu Gasthaus zur Linde'], ['koechin@example.test', 'Dein Anmeldecode']])
+  expect(kept.map((m) => [m.to, m.subject])).toEqual([['koechin@example.test', 'Einladung zu Gasthaus zur Linde von wirtin@example.com'], ['koechin@example.test', 'Dein Anmeldecode']])
 })
 
 // Wrong behaviour caught: a short Resend outage (503) loses a sign-in code for good, or a refused request (400) goes out again,

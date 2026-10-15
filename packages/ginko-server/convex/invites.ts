@@ -1,13 +1,14 @@
 // Invitations (SPEC 10). A link carries a random token; only its sha256 is stored. Accepting needs
 // a signed-in user with the invited email. Owners invite staff, admins invite owners and staff.
-import { sha256, type Schema } from '@lupinum/ginko/internal'
+import { grantGroups, labelOf, sha256, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { internalQuery, mutation, query, type MutationCtx } from './_generated/server'
 import { windowOf } from './bundle'
+import { auth } from './auth'
 import { actorFor, currentUser, fail, type Actor } from './lib/access'
 import { isEmail } from './lib/input'
-import { localeOfUser, t } from './lib/i18n'
+import { DEFAULT_LOCALE, localeOfUser, t } from './lib/i18n'
 import { queueMail, siteOrigin } from './mail'
 import { adminEmails, checkGrants, normalizeEmail } from './members'
 
@@ -33,6 +34,12 @@ async function countInvite(ctx: MutationCtx, actor: Actor) {
   if (row && row.count >= INVITE_LIMIT) fail('RATE_LIMITED', 'errors.tooManyInvites', { max: INVITE_LIMIT })
   if (row) await ctx.db.patch(row._id, { count: row.count + 1 })
   else await ctx.db.insert('rateWindows', { site, kind: 'invite', window: hour, count: 1 })
+}
+
+/** Staff rights as "Speisekarte: Preis ändern, Gericht hinzufügen", one line per area, in `locale` (else the site's main language). */
+function rightLines(schema: Schema, grants: string[], locale: string): string[] {
+  const main = schema.locales[0]!
+  return grantGroups(schema, grants).map((g) => `${labelOf(g.label, locale, main)}: ${g.tasks.map((task) => labelOf(task, locale, main)).join(', ')}`)
 }
 
 /** Owners invite staff only; admins may also invite owners (SPEC 2.7). */
@@ -80,29 +87,45 @@ export const create = mutation({
       expiresAt: Date.now() + INVITE_DAYS * DAY_MS,
       locale,
     })
+    // The mail says who invites, to which website, with which rights, and how signing in works, so it does not read
+    // like phishing (SPEC 10). The inviter is named by their proven address; without one, by the site.
+    const inviter = actor.user.email ?? actor.site.name
+    const lines = rightLines(actor.site.schema as Schema, grants, locale)
+    const rights = args.role === 'owner' ? t(locale, 'mail.invite.rightsOwner')
+      : lines.length ? t(locale, 'mail.invite.rightsStaff', { lines: lines.map((line) => `- ${line}`).join('\n') })
+      : t(locale, 'mail.invite.rightsNone', { inviter })
     // Sending is checked in the same mutation: without a mail the invite is not created.
     await queueMail(ctx, {
       to: email,
-      subject: t(locale, 'mail.invite.subject', { site: actor.site.name }),
-      text: t(locale, 'mail.invite.text', { site: actor.site.name, days: INVITE_DAYS, link: `${siteOrigin()}/invite/${token}` }),
+      subject: t(locale, 'mail.invite.subject', { site: actor.site.name, inviter }),
+      text: t(locale, 'mail.invite.text', { site: actor.site.name, url: actor.site.url, inviter, rights, days: INVITE_DAYS, link: `${siteOrigin()}/invite/${token}` }),
     })
     return { invite: id }
   },
 })
 
 /**
- * What an open invite offers, for the page before accepting (UI.md 6): the site's name, the role, and
- * whether it is for the signed-in address. Only who holds the link can ask; the invited address is not returned.
+ * What an open invite offers, for the page before accepting (UI.md 6): the site's name and address, the role, the
+ * rights in `language` (else the invite's), and whether it is for the signed-in address. The page is public, as the
+ * invitee is usually not signed in yet; only who holds the unguessable link can ask. A signed-out caller also gets the
+ * invited address, so the sign-in page starts with it: the link went only to that mailbox, and accepting still needs
+ * that address signed in. A signed-in caller never gets it.
  */
 export const peek = query({
-  args: { token: v.string() },
+  args: { token: v.string(), language: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const user = await currentUser(ctx)
+    const user = await auth.getUser(ctx)
     const invite = await ctx.db.query('invites').withIndex('by_tokenHash', (q) => q.eq('tokenHash', sha256(args.token))).unique()
     if (!invite || invite.acceptedAt !== undefined || invite.expiresAt <= Date.now()) return null
     const site = (await ctx.db.get(invite.site))!
     if (site.deleting) return null
-    return { site: site.name, role: invite.role, forYou: !!user.email && normalizeEmail(user.email) === invite.email }
+    const rights = invite.role === 'staff' ? rightLines(site.schema as Schema, invite.grants, args.language ?? invite.locale ?? DEFAULT_LOCALE) : []
+    return {
+      site: site.name, url: site.url, role: invite.role, rights,
+      ...(user ? {} : { email: invite.email }),
+      // Invites follow the email, so only a proven address counts (as in `currentUser`).
+      forYou: !!user?.email && user.emailVerified && normalizeEmail(user.email) === invite.email,
+    }
   },
 })
 

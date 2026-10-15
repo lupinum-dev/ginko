@@ -77,12 +77,17 @@
   "invite": {
     "titleShort": "Einladung",
     "title": "Einladung annehmen",
+    "heading": "Einladung zu {site}",
     "lead": "<site>{site}</site> lädt dich als {role} ein.",
     "role": {
       "owner": "Inhaber",
       "staff": "Mitarbeiter",
       "admin": "Admin"
     },
+    "rightsOwner": "Als Inhaber kannst du alles ändern und das Team verwalten.",
+    "rightsStaff": "Du darfst:",
+    "rightsNone": "Welche Bereiche du ändern darfst, wird noch festgelegt.",
+    "signInHint": "Melde dich mit <email>{email}</email> an. Wir schicken dir einen Code, ein Passwort brauchst du nicht.",
     "otherEmail": "Diese Einladung gilt für eine andere E-Mail-Adresse. Melde dich mit dieser an.",
     "expired": "Diese Einladung ist abgelaufen oder schon benutzt. Bitte frag nach einer neuen.",
     "accepting": "Nimmt an …"

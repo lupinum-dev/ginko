@@ -98,7 +98,6 @@ const publicCalls: Call[] = [
   { fn: 'files.restore', kind: 'mutation', args: () => ({ ...SITE, files: ['x'] }) },
   { fn: 'files.replace', kind: 'mutation', args: () => ({ ...SITE, file: 'x', upload: 'y' }) },
   { fn: 'invites.create', kind: 'mutation', args: () => ({ ...SITE, email: 'a@example.com', role: 'staff', grants: [] }) },
-  { fn: 'invites.peek', kind: 'query', args: () => ({ token: 'x' }) },
   { fn: 'invites.accept', kind: 'mutation', args: () => ({ token: 'x' }) },
   { fn: 'invites.mine', kind: 'query', args: () => ({}) },
   { fn: 'invites.acceptMine', kind: 'mutation', args: () => ({ invite: 'x' }) },
@@ -169,7 +168,10 @@ describe('1. no identity and forged identity', () => {
 
   // Wrong behaviour caught: a new public function ships without a no-identity probe, because nobody added it to the list.
   it('the list names every public query, mutation and action, or says why it answers without identity', async () => {
-    const open: Record<string, string> = { 'mail.signInAvailable': 'the sign-in page asks it before anyone is signed in; it says only whether mail is set up' }
+    const open: Record<string, string> = {
+      'mail.signInAvailable': 'the sign-in page asks it before anyone is signed in; it says only whether mail is set up',
+      'invites.peek': 'the invite page asks it before the invitee is signed in; only the holder of the unguessable link gets an answer',
+    }
     expect([...new Set([...publicCalls.map((c) => c.fn), ...Object.keys(open)])].sort()).toEqual(await publicFunctions())
   })
 
