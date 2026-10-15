@@ -38,19 +38,27 @@ test('an unknown address answers 404 and is not indexed', async ({ page }) => {
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
 })
 
-test('the language switch leads to the same page in each other language', async ({ page }) => {
-  test.skip(site.locales.length < 2, 'one language: no switch')
-  await open(page, '/')
-  for (const locale of site.locales.slice(1)) {
-    // By language: a regional hreflang or lang (`de-AT`) counts as `de`.
-    const language = locale.split('-')[0]
-    const link = page.locator(`header a[hreflang|="${language}"], header a[lang|="${language}"]`).first()
-    await expect(link, `switch to ${locale}`).toBeVisible()
-    await Promise.all([page.waitForURL((url) => url.pathname !== '/'), link.click()])
-    await expect(page.locator('html')).toHaveAttribute('lang', new RegExp(`^${language}(-|$)`))
-    await open(page, '/')
-  }
-})
+// Phones: the switch is in the nav sheet (full names); from `md` up: codes in the header. A link counts for a locale
+// when its hreflang or lang has that language, also with a region (`de-AT` counts as `de`).
+for (const [width, where] of [[390, 'the nav sheet'], [1440, 'the header']] as const) {
+  test(`the language switch in ${where} (${width} px) leads to each other language`, async ({ page }) => {
+    test.skip(site.locales.length < 2, 'one language: no switch')
+    await page.setViewportSize({ width, height: 900 })
+    for (const locale of site.locales.slice(1)) {
+      await open(page, '/')
+      let scope = page.locator('header')
+      if (width < 768) {
+        await navToggle(page).click()
+        scope = page.getByRole('dialog')
+      }
+      const language = locale.split('-')[0]
+      const link = scope.locator(`a[hreflang|="${language}"], a[lang|="${language}"]`).first()
+      await expect(link, `switch to ${locale} in ${where}`).toBeVisible()
+      await Promise.all([page.waitForURL((url) => url.pathname !== '/'), link.click()])
+      await expect(page.locator('html')).toHaveAttribute('lang', new RegExp(`^${language}(-|$)`))
+    }
+  })
+}
 
 test('the theme toggle switches between light and dark', async ({ page }) => {
   await open(page, '/')
