@@ -1,7 +1,7 @@
 // Task queries (SPEC 2.7). `prefill` gives the starting values of a task's form. The server
 // resolves date tokens in the site's time zone; mutations never apply these values.
 import type { Json } from '@lupinum/ginko'
-import { resolveToken, type Schema } from '@lupinum/ginko/internal'
+import { duePlan, resolveToken, todayIn, type Schema } from '@lupinum/ginko/internal'
 import { v, type ObjectType } from 'convex/values'
 import { query, type QueryCtx } from './_generated/server'
 import { actorFor, entryOf, fail, taskBrickOf, type Actor } from './lib/access'
@@ -35,6 +35,10 @@ export async function prefillAs(ctx: QueryCtx, actor: Actor, args: ObjectType<ty
     if (taskBrickOf(schema, args.task, entry) !== brickKey) fail('NOT_FOUND', 'errors.entryNotFound')
     const data = entry.data as Record<string, Json>
     stored = Object.fromEntries(task.fields.filter((f) => data[f] !== undefined).map((f): [string, Json] => [f, data[f]!]))
+    // A planned change whose day has come is what the site shows: the task opens on it, and saving drops the spent plan.
+    const plan = brick.planned
+    const due = plan && [plan.field, plan.next, plan.from].every((f) => task.fields.includes(f)) ? duePlan(brick, data, todayIn(schema.timeZone)) : undefined
+    if (plan && due !== undefined) stored = { ...stored, [plan.field]: due, [plan.next]: null, [plan.from]: null }
   }
   return { ...stored, ...values }
 }

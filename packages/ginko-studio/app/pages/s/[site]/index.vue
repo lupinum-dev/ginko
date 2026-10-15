@@ -370,6 +370,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       :task="picking.task"
       :entries="pickRead.data.value"
       :main="s.main.value"
+      :today="s.today.value"
       @pick="picked"
       @close="picking = null"
     />

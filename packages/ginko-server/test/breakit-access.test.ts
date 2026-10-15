@@ -260,7 +260,8 @@ describe('2. staff (the cook) outside the grants', () => {
     ['a task that does not exist', { task: 'menu.superuser' }],
     ['a task ref with an extra segment', { task: 'menu.price.x' }],
     ['an empty task', { task: '' }],
-    ['a task the cook is not granted (menu.priceFrom)', { task: 'menu.priceFrom', fields: { nextPrice: { amount: 2000 } } }],
+    // "Preis ab …" became part of "Preis ändern"; an old tab or agent that still sends it is refused.
+    ['a task that was merged away (menu.priceFrom)', { task: 'menu.priceFrom', fields: { nextPrice: { amount: 2000 } } }],
   ])('entries.save refuses %s', async (_label, over) => {
     const s = await setup()
     const code = await outcome(saveMenu(s, 'cook', { task: 'menu.price', ...over }))

@@ -1,5 +1,5 @@
 import { workWeekOf, type WeekInfo } from './time.ts'
-import type { Json, Schema, Task } from './types.ts'
+import type { Brick, Json, Schema, Task } from './types.ts'
 
 export interface WeekState {
   /** The edit task that fixes it. */
@@ -80,4 +80,17 @@ export function plansThisWeek(
   const plan = Object.hasOwn(schema.bricks, entryBrick) ? schema.bricks[entryBrick] : undefined
   if (single?.kind !== 'single' || plan?.kind !== 'collection' || plan.retired || plan.plans?.brick !== singleKey) return false
   return weeklyTask(single)?.task.id === task.id && data[plan.plans.field] === thisWeek
+}
+
+/**
+ * The value of a planned change (`planned`) once its day has come: `next` when `from` is `today` or earlier, else
+ * undefined. From that day the site shows it in place of `field`, so a task opens on it and the Studio lists it.
+ * `today` is in the site's time zone.
+ */
+export function duePlan(brick: Pick<Brick, 'planned'>, data: Record<string, Json>, today: string): Json | undefined {
+  const plan = brick.planned
+  if (!plan) return undefined
+  const next = data[plan.next]
+  const from = data[plan.from]
+  return next !== undefined && next !== null && typeof from === 'string' && from <= today ? next : undefined
 }

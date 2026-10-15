@@ -516,6 +516,34 @@ describe('plans (weeks planned ahead)', () => {
   })
 })
 
+describe('planned (a change from a date on)', () => {
+  const dish = (planned: unknown, priceTask: readonly string[] = ['price', 'nextPrice', 'priceFrom']) => site({}, {
+    bricks: {
+      menu: collection({
+        label: 'Karte', max: 20, order: 'manual',
+        fields: { name: f.text('Name', { max: 120 }), price: f.money('Preis'), nextPrice: f.money('Geplanter Preis', optional), priceFrom: f.date('Gilt ab', optional), note: f.text('Hinweis', { max: 20, optional: true }) },
+        planned: planned as never,
+        tasks: [{ id: 'price', label: 'Preis ändern', kind: 'edit', pick: true, fields: priceTask as never }],
+      }),
+    },
+  })
+  const rule = { field: 'price', next: 'nextPrice', from: 'priceFrom' }
+
+  // Wrong behaviour caught: a task changes the price without seeing the planned one, so the new price is replaced on
+  // the plan's date and nobody saw it coming; or a rule naming fields that cannot hold a plan ships and never applies.
+  it.each([
+    ['a valid rule', rule, undefined, []],
+    ['a price task blind to its plan', rule, ['price'], ['menu.price: the task changes “price”, so it must also show its plan “nextPrice” and “priceFrom”.']],
+    ['a missing field', { ...rule, next: 'nope' }, undefined, ['menu: planned.next names “nope”, which is not a field of the brick.']],
+    ['a next of another type', { ...rule, next: 'note' }, ['price', 'note', 'priceFrom'], ['menu: planned.next “note” needs the type of “price” (money).']],
+    ['a from that is not a date', { ...rule, from: 'note' }, ['price', 'nextPrice', 'note'], ['menu: planned.from “note” must be a date field.']],
+    ['a required next', { ...rule, next: 'price', field: 'nextPrice' }, undefined, ['menu: planned.next “price” and planned.from “priceFrom” must be optional.']],
+    ['one field twice', { ...rule, next: 'price' }, undefined, ['menu: planned needs three different fields.', 'menu: planned.next “price” and planned.from “priceFrom” must be optional.']],
+  ])('%s', (_name, planned, priceTask, expected) => {
+    expect(problemsOf(dish(planned, priceTask))).toEqual(expected)
+  })
+})
+
 describe('approvals (SPEC 17)', () => {
   const withTasks = (needsApproval: unknown, over: Partial<SiteInput> = {}) => site({}, {
     bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual', tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create', needsApproval } as never] }) },

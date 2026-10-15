@@ -5,7 +5,7 @@ import { labelOf } from './labels.ts'
 import { bare, DEFAULT_LOCALE, msg, type CoreKey, type Described, type Msg } from './messages.ts'
 import { roundedMb, type UploadType } from './uploads.ts'
 import { SLUG_PATTERN } from './slug.ts'
-import type { Field, FileField, Fields, Issue, Json, Locale, MarkdownField, Schema } from './types.ts'
+import type { Brick, Field, FileField, Fields, Issue, Json, Locale, MarkdownField, Schema } from './types.ts'
 
 /**
  * Codes of values the Studio and the site cannot read at all (wrong shape, unknown names). A `restore` refuses only
@@ -17,6 +17,8 @@ export interface ValidateOptions {
   /**
    * create/release: everything strict. patch: only paths under `changed` are errors, the rest are warnings.
    * restore (backup import, never a Studio path): only SHAPE_CODES are errors, the rest are warnings.
+   * The rules across fields (`ruleIssues`: a plan set by halves) bind what is written now: errors in create, and in
+   * patch when the save touches one of their fields. Stored data that breaks one (release, restore) only warns.
    */
   mode: 'create' | 'patch' | 'release' | 'restore'
   /** Leaf paths changed by a patch, e.g. `closedNote` or `days.k3Fd9aZ0qx.dish`. */
@@ -63,8 +65,10 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
     }
     if (opts.uploads) issues.push(...fileRefIssues(value.nodes, path, label, locale, schema, opts.uploads, opts.fileAlt))
   }
-  if (opts.mode === 'restore') return { errors: issues.filter((i) => SHAPE_CODES.has(i.code)), warnings: issues.filter((i) => !SHAPE_CODES.has(i.code)) }
-  if (opts.mode !== 'patch') return { errors: issues, warnings: [] }
+  const rules = ruleIssues(schema, brick, data)
+  if (opts.mode === 'restore') return { errors: issues.filter((i) => SHAPE_CODES.has(i.code)), warnings: [...issues.filter((i) => !SHAPE_CODES.has(i.code)), ...rules.map((r) => r.issue)] }
+  if (opts.mode === 'release') return { errors: issues, warnings: rules.map((r) => r.issue) }
+  if (opts.mode === 'create') return { errors: [...issues, ...rules.map((r) => r.issue)], warnings: [] }
   const changed = opts.changed ?? new Set<string>()
   const errors: Issue[] = []
   const warnings: Issue[] = []
@@ -74,7 +78,32 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
     if (related || issue.code === 'UNKNOWN_FIELD') errors.push(issue)
     else warnings.push(issue)
   }
+  for (const { issue, touches } of rules) {
+    if (touches.some((field) => [...changed].some((c) => c === field || c.startsWith(`${field}.`)))) errors.push(issue)
+    else warnings.push(issue)
+  }
   return { errors, warnings }
+}
+
+/** An issue of a rule across fields, with the fields whose change makes it the saver's to fix. */
+interface RuleIssue { issue: Issue; touches: string[] }
+
+/**
+ * The rules that span fields of a brick: a planned change (`planned`) has both its value and its date, or neither (a
+ * value without a date never applies, a date without a value changes nothing).
+ */
+function ruleIssues(schema: Schema, brick: Brick, data: unknown): RuleIssue[] {
+  if (!isRecord(data)) return []
+  const out: RuleIssue[] = []
+  const main = schema.locales[0]!
+  const plan = brick.planned
+  if (plan) {
+    const set = (key: string) => data[key] !== undefined && data[key] !== null
+    const missing = set(plan.next) && !set(plan.from) ? plan.from : set(plan.from) && !set(plan.next) ? plan.next : undefined
+    const field = missing && Object.hasOwn(brick.fields, missing) ? brick.fields[missing] : undefined
+    if (missing && field) out.push({ issue: issue(missing, 'REQUIRED', 'fieldMissing', { label: shown(field, main) }), touches: [plan.next, plan.from] })
+  }
+  return out
 }
 
 /** One issue per kind and text: a `$file` reference to no live upload, a picture that is a PDF, and a Markdown image without any description. */

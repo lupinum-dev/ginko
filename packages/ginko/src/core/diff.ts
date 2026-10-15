@@ -130,6 +130,8 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
   if (!sameLabel(before.describe ?? '', after.describe ?? '')) ok(`${key}.describe`, 'text', msg('diff.textChanged'))
   if ((before.layout ?? 'sections') !== (after.layout ?? 'sections')) ok(`${key}.layout`, 'text', msg('diff.textChanged'))
   if (stableJson(before.tasks ?? []) !== stableJson(after.tasks ?? [])) ok(`${key}.tasks`, 'tasks', msg('diff.tasksChanged'))
+  // A rule on stored values, not a stored shape: no value changes when it comes, goes or names other fields.
+  if (stableJson(before.planned ?? null) !== stableJson(after.planned ?? null)) ok(`${key}.planned`, 'planned', msg('diff.valueChanged', { name: 'planned' }))
   if (before.kind === 'collection' && after.kind === 'collection') {
     if (after.max < before.max) no(`${key}.max`, 'maxLowered', msg('diff.maxLowered', { at: key }), fx('keepMax'))
     else if (after.max > before.max) ok(`${key}.max`, 'maxRaised', msg('diff.maxRaised'))

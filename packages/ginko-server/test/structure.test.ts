@@ -252,6 +252,24 @@ describe('tasks.prefill', () => {
     expect(values).toEqual({ ...lunch!.data, weekOf: '2026-10-12' })
   })
 
+  // Wrong behaviour caught: from the day of a planned price on, "Preis ändern" still opened on the old price, which the
+  // website no longer shows, so a change there did nothing visible; and the spent plan stayed stored.
+  it('menu.price opens on the planned price once its day has come, without the spent plan; saving it as it opened clears the plan', async () => {
+    const schnitzel = { price: { amount: 2190 }, nextPrice: { amount: 2290 }, priceFrom: '2026-10-18' }
+    vi.setSystemTime(new Date('2026-10-17T20:00:00Z'))
+    const { t, as, entries } = await setup()
+    const entry = entries['menu-schnitzel']!
+    expect(await as.cook.query(api.tasks.prefill, { site: 'restaurant', task: 'menu.price', entry })).toEqual(schnitzel)
+
+    // 22:00 UTC is already Sunday 18 October in Vienna.
+    vi.setSystemTime(new Date('2026-10-17T22:30:00Z'))
+    const due = { price: { amount: 2290 }, nextPrice: null, priceFrom: null }
+    expect(await as.cook.query(api.tasks.prefill, { site: 'restaurant', task: 'menu.price', entry })).toEqual(due)
+    await as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: due })
+    const data = (await t.run((ctx) => ctx.db.get(entry)))!.data
+    expect([data.price, data.nextPrice, data.priceFrom]).toEqual([{ amount: 2290 }, undefined, undefined])
+  })
+
   // Wrong behaviour caught: a week planned for today is what the website shows, but the cook's weekly task could
   // only edit the single, so the cook's change never appeared (or the cook was refused the planned week).
   it('lunchWeek fills the week planned for this week; a week planned for later is not the task\'s', async () => {

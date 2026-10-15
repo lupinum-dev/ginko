@@ -50,14 +50,18 @@ export function changedRoots(before: Data, after: Data): string[] {
   return [...keys].filter((k) => stableJson(before[k] ?? null) !== stableJson(after[k] ?? null))
 }
 
-/** The fields a task shows: `edit` its fields; `create` every live field except the slug. */
+/**
+ * The fields a task shows: `edit` its fields; `create` every live field except the slug and a planned change
+ * (`planned`): a new entry starts with its value, and a plan is made later with the task that changes the value.
+ */
 export function taskFields(brick: Brick, task: Task): Fields {
   const keys = task.kind === 'edit' ? task.fields : ordered(brick.fields).map(([k]) => k)
+  const plan = task.kind === 'create' && brick.planned ? [brick.planned.next, brick.planned.from] : []
   const out: Fields = {}
   for (const key of keys) {
     const field = brick.fields[key]
     if (!field || field.retired) continue
-    if (task.kind === 'create' && field.type === 'slug') continue
+    if (task.kind === 'create' && (field.type === 'slug' || plan.includes(key))) continue
     out[key] = field
   }
   return out

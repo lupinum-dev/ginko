@@ -132,6 +132,32 @@ describe('calendar dates, times and ranges (SPEC 2.2, 2.3)', () => {
   })
 })
 
+describe('a planned price (menu, `planned`)', () => {
+  const plan = { nextPrice: { amount: 1390 }, priceFrom: '2026-11-01' }
+  // Wrong behaviour caught: a planned price without its date is stored and never applies, and nobody is told; or a
+  // date without a price is kept as if a change were planned.
+  it.each([
+    ['price and date', plan, []],
+    ['no plan', {}, []],
+    ['a price without a date', { nextPrice: plan.nextPrice }, [['priceFrom', 'REQUIRED']]],
+    ['a date without a price', { priceFrom: plan.priceFrom }, [['nextPrice', 'REQUIRED']]],
+  ] as const)('%s', async (_name, over, expected) => {
+    expect(pairs((await validate(schema, 'menu', menuEntry(over), check('create'))).errors)).toEqual(expected)
+  })
+
+  // Wrong behaviour caught: a plan stored by halves before the rule blocks every later save of the dish or a release;
+  // or a save that sets half a plan gets through because only the other half is missing.
+  it.each([
+    ['patch of the plan', check('patch', new Set(['nextPrice'])), [['priceFrom', 'REQUIRED']], []],
+    ['patch of the name only', check('patch', new Set(['name'])), [], [['priceFrom', 'REQUIRED']]],
+    ['release of stored data', check('release'), [], [['priceFrom', 'REQUIRED']]],
+  ] as const)('%s', async (_name, opts, errors, warnings) => {
+    const result = await validate(schema, 'menu', menuEntry({ nextPrice: plan.nextPrice }), opts)
+    expect(pairs(result.errors)).toEqual(errors)
+    expect(pairs(result.warnings)).toEqual(warnings)
+  })
+})
+
 describe('numbers and money (SPEC 2.2, 2.3)', () => {
   // Wrong behaviour caught: a value between two steps (14.5 with step 1) or outside min/max is saved.
   it.each([

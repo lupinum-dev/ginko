@@ -21,7 +21,7 @@ const UNSAFE_PATH = /\.\.|\/\/|[?#]/
 // The serialized schema grammar. Unknown properties are rejected here and in diffSchema (deny by default).
 export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timeZone', 'locales', 'currency', 'week', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor'])
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'drafts', 'retired'])
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'group'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
@@ -300,6 +300,7 @@ function schemaProblems(schema: Schema): string[] {
       }
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
     }
+    if (brick.planned !== undefined) problems.push(...plannedProblems(key, brick))
     // Drafts need entries that can wait for publishing; a single brick has one entry that is always live (SPEC 15).
     if (brick.kind === 'single' && 'drafts' in brick) problems.push(`${key}: drafts are only allowed for collections.`)
     if (brick.kind === 'single' && 'plans' in brick) problems.push(`${key}: plans are only allowed for collections.`)
@@ -426,6 +427,40 @@ function plansProblems(key: string, plans: unknown, fields: Fields, schema: Sche
   const task = weekly?.task.kind === 'edit' ? weekly.task : undefined
   for (const f of task?.fields ?? []) {
     if (!Object.hasOwn(fields, f) || fields[f]!.type !== target!.fields[f]?.type) problems.push(`${key}: plans: the weekly task of “${String(brick)}” edits “${f}”, so this collection needs “${f}” of the same type.`)
+  }
+  return problems
+}
+
+/**
+ * A planned change (`planned`): three different fields of the brick, `next` of the type of `field`, `from` a date, both
+ * optional (no plan is the normal state). An edit task that changes `field` must show the plan too, so nobody changes a
+ * price without seeing that another one is planned.
+ */
+function plannedProblems(key: string, brick: Brick): string[] {
+  const planned: unknown = brick.planned
+  if (typeof planned !== 'object' || planned === null || Array.isArray(planned)) return [`${key}: planned must be an object with field, next and from.`]
+  const p = planned as Record<string, unknown>
+  const problems: string[] = []
+  for (const k of Object.keys(p)) if (!['field', 'next', 'from'].includes(k)) problems.push(`${key}.planned: unknown property “${k}”.`)
+  const named = (role: 'field' | 'next' | 'from') => {
+    const name = p[role]
+    const field = typeof name === 'string' && Object.hasOwn(brick.fields, name) ? brick.fields[name] : undefined
+    if (!field || field.retired) problems.push(`${key}: planned.${role} names “${String(name)}”, which is not a field of the brick.`)
+    return field
+  }
+  const field = named('field')
+  const next = named('next')
+  const from = named('from')
+  if (!field || !next || !from) return problems
+  const [f, n, d] = [p.field as string, p.next as string, p.from as string]
+  if (new Set([f, n, d]).size < 3) problems.push(`${key}: planned needs three different fields.`)
+  if (next.type !== field.type) problems.push(`${key}: planned.next “${n}” needs the type of “${f}” (${field.type}).`)
+  if (from.type !== 'date') problems.push(`${key}: planned.from “${d}” must be a date field.`)
+  if (!next.optional || !from.optional) problems.push(`${key}: planned.next “${n}” and planned.from “${d}” must be optional.`)
+  for (const task of brick.tasks ?? []) {
+    if (task.kind === 'edit' && task.fields.includes(f) && !(task.fields.includes(n) && task.fields.includes(d))) {
+      problems.push(`${key}.${task.id}: the task changes “${f}”, so it must also show its plan “${n}” and “${d}”.`)
+    }
   }
   return problems
 }

@@ -3,14 +3,17 @@
 // real one; Nuxt's auto-imports become globals, and Convex and the writes are replaced.
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
-import { expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { collection, defineSite, f } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
+import restaurant from '../../../sites/restaurant/ginko.config.ts'
 import QuickPage from '../app/pages/s/[site]/index.vue'
+import PickSheet from '../app/components/PickSheet.vue'
+import { taskFields } from '../app/utils/content'
 
-const { computed, defineComponent, h, nextTick, reactive, ref, Suspense, watch, watchEffect } = vue
-Object.entries({ computed, nextTick, reactive, ref, watch, watchEffect, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
+const { computed, defineComponent, h, nextTick, onMounted, reactive, ref, Suspense, watch, watchEffect } = vue
+Object.entries({ computed, nextTick, onMounted, reactive, ref, watch, watchEffect, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 const schema = serializeSchema(defineSite({
   site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
@@ -90,4 +93,29 @@ test.each([
   await nextTick()
   expect(document.activeElement).toBe(wrapper.get('ul').element)
   wrapper.unmount()
+})
+
+describe('a planned price (menu, `planned`)', () => {
+  const dishes = serializeSchema(restaurant).bricks.menu!
+  const task = (id: string) => dishes.tasks!.find((t) => t.id === id)!
+
+  // Wrong behaviour caught: "Gericht hinzufügen" asks for a planned price before the dish exists, and "Preis ändern"
+  // changes the price without showing the plan that replaces it on its date.
+  test('"Gericht hinzufügen" shows no plan; "Preis ändern" shows the price with its plan', () => {
+    expect(Object.keys(taskFields(dishes, task('add')))).toEqual(['category', 'name', 'description', 'price', 'allergens', 'veg'])
+    expect(Object.keys(taskFields(dishes, task('price')))).toEqual(['price', 'nextPrice', 'priceFrom'])
+  })
+
+  // Wrong behaviour caught: from the day of a planned price on, the pick list of "Preis ändern" still showed the old
+  // price, which the website no longer shows.
+  test.each([
+    ['the day before the plan', '2026-10-17', '21,90'],
+    ['the day of the plan', '2026-10-18', '22,90'],
+  ])('%s (%s): the pick list shows %s', async (_name, today, price) => {
+    HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) { this.open = true }
+    const schnitzel = { _id: 's1', brick: 'menu', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { category: 'mains', name: { de: 'Schnitzel' }, price: { amount: 2190 }, nextPrice: { amount: 2290 }, priceFrom: '2026-10-18' } }
+    const wrapper = mount(PickSheet, { props: { brick: dishes, task: task('price'), entries: [schnitzel] as never, main: 'de', today } })
+    expect(wrapper.get('li').text()).toContain(price)
+    wrapper.unmount()
+  })
 })
