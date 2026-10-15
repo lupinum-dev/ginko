@@ -76,3 +76,16 @@ describe('"Mehr anzeigen"', () => {
     logged.mockRestore()
   })
 })
+
+describe('upload into the library', () => {
+  // Wrong behaviour caught: a file the server never finished checking counts as uploaded after a minute.
+  test('a file the server does not finish checking fails after a minute', async () => {
+    vi.useFakeTimers()
+    const sent = library().upload(new File(['x'], 'team.jpg', { type: 'image/jpeg' }))
+    const outcome = sent.then(() => 'uploaded', (error: Error) => error.message)
+    await vi.advanceTimersByTimeAsync(0)
+    checks[0]?.({ status: 'pending', error: null })
+    await vi.advanceTimersByTimeAsync(61_000)
+    expect(await outcome).toBe('Das Hochladen dauert zu lange. Versuche es noch einmal.')
+  })
+})

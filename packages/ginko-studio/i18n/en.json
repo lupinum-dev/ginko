@@ -847,6 +847,7 @@
     },
     "loadMore": "Show more",
     "loadMoreFailed": "Could not load more files.",
+    "uploadTooSlow": "The upload is taking too long. Please try again.",
     "loading": "Loading …",
     "gone": "This file no longer exists.",
     "previous": "Previous file",

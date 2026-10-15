@@ -847,6 +847,7 @@
     },
     "loadMore": "Mehr anzeigen",
     "loadMoreFailed": "Weitere Dateien ließen sich nicht laden.",
+    "uploadTooSlow": "Das Hochladen dauert zu lange. Versuche es noch einmal.",
     "loading": "Wird geladen …",
     "gone": "Diese Datei gibt es nicht mehr.",
     "previous": "Vorherige Datei",

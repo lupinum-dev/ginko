@@ -6,7 +6,7 @@ import type { FunctionReturnType } from 'convex/server'
 import { computed, ref, watch, type Ref } from 'vue'
 import { opErrorOf } from './useOps'
 import { useTextOf } from './useTextOf'
-import { useUpload } from './useUpload'
+import { UploadError, useUpload } from './useUpload'
 
 export type LibFile = FunctionReturnType<typeof api.files.list>['files'][number]
 export type FileInfo = FunctionReturnType<typeof api.files.info>
@@ -59,7 +59,8 @@ export interface FilesLibrary {
 }
 
 const key = (query: ListQuery) => `${query.view}|${query.folder === undefined ? '*' : query.folder ?? ''}|${query.search?.trim() ?? ''}`
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+/** How long the server may take to check an uploaded file before the Studio stops waiting. */
+const CHECK_TIMEOUT = 60_000
 
 export function useFilesLibrary(): FilesLibrary {
   const route = useRoute()
@@ -131,13 +132,27 @@ export function useFilesLibrary(): FilesLibrary {
     const send = file.type === 'application/pdf' ? sendFile : sendImage
     const folder = target?.folder ?? undefined
     const id = await send(slug.value, file, undefined, { library: true, ...(folder ? { folder } : {}) })
-    // A file counts when the server has checked it; a failed one reports its reason.
-    for (let i = 0; i < 120; i++) {
-      const state = await convex.query(api.uploads.get, { site: slug.value, upload: id })
-      if (state.status === 'ready') return id
-      if (state.status === 'failed') throw new Error(textOf(state.error ? { key: state.error } : null, t('ops.upload.failed')))
-      await sleep(500)
-    }
+    // A file counts when the server has checked it; a failed one reports its reason, and one that takes too long says so.
+    await new Promise<void>((resolve, reject) => {
+      let done = false
+      let timer: ReturnType<typeof setTimeout> | undefined
+      let stop: (() => void) | undefined
+      const finish = (error?: Error) => {
+        if (done) return
+        done = true
+        clearTimeout(timer)
+        stop?.()
+        if (error) reject(error)
+        else resolve()
+      }
+      stop = convex.onUpdate(api.uploads.get, { site: slug.value, upload: id }, (state) => {
+        if (state.status === 'ready') finish()
+        else if (state.status === 'failed') finish(new UploadError(textOf(state.error ? { key: state.error } : null, t('ops.upload.failed'))))
+      }, (error) => finish(error))
+      // The answer can arrive before onUpdate returns.
+      if (done) stop?.()
+      else timer = setTimeout(() => finish(new UploadError(t('files.uploadTooSlow'))), CHECK_TIMEOUT)
+    })
     return id
   }
 
