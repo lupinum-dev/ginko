@@ -1,10 +1,12 @@
-// Signing out (the account menu, "Meine Seiten", the invite page): one flow for every button.
+// Signing out (the account menu, "Meine Seiten", the invite page): one flow for every button, and signing out the
+// person's other devices (the account menu).
 import { useI18n } from '#imports'
 import { forgetLocalDrafts, localDraftKeys } from './useLocalDraft'
 
 export function useSignOut() {
   const { client, user } = useConvexAuth()
   const { t } = useI18n()
+  const { show } = useToast()
   const busy = ref(false)
 
   /**
@@ -25,5 +27,25 @@ export function useSignOut() {
     }
   }
 
-  return { busy, signOut }
+  /**
+   * Ends every other session of this person (a lost laptop, a shared computer); this one stays. Their next call is refused
+   * at once (currentUser reads the live session), and the layout shows them signed out. Nothing is lost, so no question:
+   * the unsaved input on those devices waits for the next sign-in there. Not revokeSessions: that ends this one too.
+   */
+  async function signOutOthers() {
+    busy.value = true
+    try {
+      // Better Auth answers a refusal with `error`; it does not throw.
+      const result = await client.revokeOtherSessions()
+      if (result.error) throw result.error
+      show(t('nav.signedOutOthers'))
+    } catch (error) {
+      console.error(error)
+      show(t('nav.signOutOthersFailed'), { tone: 'err' })
+    } finally {
+      busy.value = false
+    }
+  }
+
+  return { busy, signOut, signOutOthers }
 }

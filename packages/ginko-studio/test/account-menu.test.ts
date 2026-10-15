@@ -60,3 +60,19 @@ test.each([
   expect(localStorage.getItem(own) !== null).toBe(mine && !signedOut)
   expect(localStorage.getItem(other)).not.toBe(null)
 })
+
+// Wrong behaviour caught: "sign out on other devices" also signed out this device (signOut, revokeSessions), or failed
+// and said nothing, so a person with a lost laptop believed it was locked out.
+test('Auf anderen Geräten abmelden ends only the other sessions and says whether it worked', async () => {
+  const wrapper = mountMenu()
+  await click(wrapper, 'Auf anderen Geräten abmelden')
+  expect(client.revokeOtherSessions).toHaveBeenCalledTimes(1)
+  expect([client.signOut, client.revokeSessions, navigateTo].map((fn) => fn.mock.calls.length)).toEqual([0, 0, 0])
+  expect(toasts).toEqual([['Auf allen anderen Geräten abgemeldet. Hier bleibst du angemeldet.', undefined]])
+
+  // Better Auth answers a refusal with an error; it does not throw.
+  client.revokeOtherSessions.mockResolvedValueOnce({ data: null, error: { status: 500, message: 'Internal Server Error' } })
+  vi.spyOn(console, 'error').mockImplementationOnce(() => undefined)
+  await click(wrapper, 'Auf anderen Geräten abmelden')
+  expect(toasts.at(-1)).toEqual(['Die anderen Geräte konnten nicht abgemeldet werden. Bitte versuche es noch einmal.', { tone: 'err' }])
+})
