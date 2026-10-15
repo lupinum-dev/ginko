@@ -159,7 +159,7 @@ test.describe('Wirtin', () => {
   // off the arrows, the remove button and the edge of "Grund".
   test('27. a long reason in "Betriebsurlaub und Ausnahmen" keeps the row inside the sheet', async ({ page }) => {
     await openQuick(page)
-    await page.getByRole('button', { name: 'Betriebsurlaub und Ausnahmen' }).click()
+    await page.getByRole('button', { name: 'Betriebsurlaub und Ausnahmen', exact: true }).click()
     const sheet = page.locator('dialog[open]')
     await sheet.getByRole('button', { name: 'Ausnahme hinzufügen' }).click()
     const row = sheet.locator('[data-row]').last()
