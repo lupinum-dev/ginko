@@ -71,14 +71,17 @@ describe('entries.create', () => {
 })
 
 describe('entries.remove and restore', () => {
-  it('removed lists the restorable entries of the site only, never live ones or those of another site', async () => {
+  // Wrong behaviour caught: the area list reads the whole data of every removed entry only to show their titles.
+  it('removed lists the restorable entries of the site only, with only their title, never live ones or those of another site', async () => {
+    vi.setSystemTime(new Date('2026-10-05T10:00:00Z'))
     const { as, entries } = await setup()
     const notice = entries['notice-ausgebucht']!
     const life = (await as.owner.query(api.entries.removed, { site: 'restaurant', brick: 'notices' }))
     expect(life).toEqual([])
     const lifeRev = (await as.owner.query(api.entries.get, { site: 'restaurant', entry: notice }))!.lifeRev
     await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: notice, lifeRev })
-    expect((await as.cook.query(api.entries.removed, { site: 'restaurant', brick: 'notices' })).map((e) => e._id)).toEqual([notice])
+    expect(await as.cook.query(api.entries.removed, { site: 'restaurant', brick: 'notices' }))
+      .toEqual([{ _id: notice, title: 'Heute sind wir ausgebucht.', lifeRev: 2, deletedAt: Date.parse('2026-10-05T10:00:00Z') }])
     expect(await as.stranger.query(api.entries.removed, { site: 'andere', brick: 'notices' })).toEqual([])
   })
 

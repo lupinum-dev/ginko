@@ -3,7 +3,7 @@
 import { PlusIcon } from '@lucide/vue'
 import { api } from '#convex/api'
 import { isVisible } from '@lupinum/ginko/internal'
-import { languageName, relevantDate, titleOf } from '../../../../../utils/content'
+import { languageName, relevantDate } from '../../../../../utils/content'
 import type { ListSort } from '../../../../../components/SavedViews.vue'
 import { whenText } from '../../../../../utils/when'
 import { opErrorOf } from '../../../../../composables/useOps'
@@ -140,7 +140,7 @@ const ops = useOps(s.slug)
         <h2 id="removed-title" class="mb-2 text-[15px] font-semibold text-muted-foreground">{{ t('site.all.removed') }}</h2>
         <ul class="m-0 grid list-none gap-1.5 p-0">
           <li v-for="e in removed" :key="e._id" class="flex items-center justify-between gap-3 rounded-md border border-dashed py-1.5 pr-2 pl-3.5 text-muted-foreground">
-            <span>{{ titleOf(brick, e.data as never, s.main.value) }}</span>
+            <span>{{ e.title ?? shown(brick.label) }}</span>
             <Button type="button" variant="outline" size="sm" @click="ops.restoreEntry(e._id, e.lifeRev, access?.all ? undefined : access?.remove)">{{ t('site.all.restore') }}</Button>
           </li>
         </ul>

@@ -929,17 +929,22 @@ export async function usesOfEntry(ctx: QueryCtx, actor: Actor, target: Doc<'entr
 const pointsAt = (field: Field, brick: string): boolean =>
   (field.type === 'ref' && field.to === brick) || (field.type === 'list' && Object.values(field.of).some((inner) => !inner.retired && pointsAt(inner, brick)))
 
-/** Removed entries of a brick that can still be restored (30 days, SPEC 12), newest first. Any member may read (SPEC 2.7). */
+/**
+ * Removed entries of a brick that can still be restored (30 days, SPEC 12), newest first, with only what the area list
+ * shows: the title (null while untitled, as in `list`) and what a restore needs. Any member may read (SPEC 2.7).
+ */
 export const removed = query({
   args: { site: v.string(), brick: v.string() },
   handler: async (ctx, args) => {
     const actor = await actorFor(ctx, args.site)
+    const schema = actor.site.schema as Schema
+    const brick = Object.hasOwn(schema.bricks, args.brick) ? schema.bricks[args.brick] : undefined
     // Absent deletedAt sorts before numbers, so the lower bound keeps live entries out.
     const rows = await ctx.db.query('entries')
       .withIndex('by_site_brick_deleted', (q) => q.eq('site', actor.site._id).eq('brick', args.brick).gt('deletedAt', 0))
       .order('desc')
       .take(100)
-    return rows.map((e) => ({ _id: e._id, data: e.data, lifeRev: e.lifeRev, deletedAt: e.deletedAt! }))
+    return rows.map((e) => ({ _id: e._id, title: brick ? titleOf(schema, brick, e.data as Data, undefined) : null, lifeRev: e.lifeRev, deletedAt: e.deletedAt! }))
   },
 })
 
