@@ -182,14 +182,15 @@ async function restoreRemoved(lifeRev: number) {
   // Without input the sheet stays open on the restored entry; with input it closes like after Speichern.
   if (typed) await finish(ok)
 }
+/** Closed while a save is on its way: the save goes on, and a failure still says so (finish). */
+function leaveWhileSaving() {
+  leftWhileSaving = true
+  show(t('entry.saveContinues'))
+  emit('close')
+}
 function requestClose() {
   // A save on its way cannot be taken back by closing; say so instead of offering "Verwerfen" (break-it 9).
-  if (busy.value) {
-    leftWhileSaving = true
-    show(t('entry.saveContinues'))
-    emit('close')
-    return
-  }
+  if (busy.value) return leaveWhileSaving()
   // A removed entry: the input stays on this device (the banner says so and has its own "Verwerfen").
   if (dirty.value && !confirmClose.value && !removedHere.value) {
     confirmClose.value = true
@@ -200,6 +201,11 @@ function requestClose() {
 /** "Verwerfen" (after "Änderungen verwerfen?", or on a removed entry): the input goes, and so does its local copy. */
 function discardAndClose() {
   form.discard()
+  emit('close')
+}
+/** The browser closed the dialog itself (a second back gesture it no longer lets the page refuse): nothing can ask first. */
+function onBrowserClose() {
+  if (busy.value) return leaveWhileSaving()
   emit('close')
 }
 /** A close request that is not the Escape key (Android's back gesture): the same guard. */
@@ -228,8 +234,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
-  <!-- @close: the browser closed the dialog itself (a second back gesture it no longer lets the page refuse). -->
-  <dialog ref="dialog" :class="SHEET_DIALOG" aria-labelledby="sheet-title" @cancel="onCancel" @close="emit('close')">
+  <dialog ref="dialog" :class="SHEET_DIALOG" aria-labelledby="sheet-title" @cancel="onCancel" @close="onBrowserClose">
     <ConfigProvider :teleport-to="dialog ?? undefined" :use-id="reka.useId">
       <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()">
         <header class="flex items-start justify-between gap-3 border-b bg-card pt-4 pb-3 pr-3 pl-5">

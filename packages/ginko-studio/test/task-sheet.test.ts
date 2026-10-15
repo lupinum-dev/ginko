@@ -15,7 +15,8 @@ const { computed, defineComponent, h, inject, nextTick, onBeforeUnmount, onMount
 Object.entries({ computed, inject, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, watch, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 vi.stubGlobal('onBeforeRouteLeave', () => {})
 vi.stubGlobal('onBeforeRouteUpdate', () => {})
-vi.stubGlobal('useToast', () => ({ show: () => {} }))
+const toasts: string[] = []
+vi.stubGlobal('useToast', () => ({ show: (text: string) => toasts.push(text) }))
 vi.stubGlobal('useConvexAuth', () => ({ user: ref({ id: 'u1' }) }))
 vi.stubGlobal('useConvexConnectionState', () => ({ isConnected: ref(true) }))
 // The writes record what the form sends.
@@ -100,6 +101,7 @@ globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {
 afterEach(() => {
   document.body.innerHTML = ''
   prefill.asked = 0
+  toasts.length = 0
   ops.createEntry.mockClear()
   ops.saveEntry.mockClear()
 })
@@ -174,6 +176,26 @@ test('Escape closes an open popover first, then asks before the typed input goes
 
   wrapper.get('dialog').element.dispatchEvent(new Event('close'))
   expect(wrapper.emitted('close')).toHaveLength(1)
+  wrapper.unmount()
+})
+
+// Wrong behaviour caught: the browser closed the sheet itself while a save was on its way (a second back gesture), and
+// when that save failed later nobody heard of it: the input was gone without a word.
+test('a save on its way when the browser closes the sheet still reports its failure', async () => {
+  const wrapper = mountSheet()
+  answer({ data: {} })
+  await flushPromises()
+  await wrapper.get('input[name="text"]').setValue('Küche ab 18 Uhr')
+  let fail!: (error: unknown) => void
+  ops.createEntry.mockImplementationOnce(() => new Promise((_, reject) => { fail = reject }))
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+
+  wrapper.get('dialog').element.dispatchEvent(new Event('close'))
+  fail({ code: 'FORBIDDEN', message: 'Das darfst du nicht.' })
+  await flushPromises()
+  expect(wrapper.emitted('close')).toHaveLength(1)
+  expect(toasts).toEqual(['Speichern läuft weiter. Ohne Verbindung wird es übernommen, sobald sie wieder da ist.', 'Nicht gespeichert: Das darfst du nicht.'])
   wrapper.unmount()
 })
 
