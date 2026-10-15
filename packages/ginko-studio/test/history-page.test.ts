@@ -30,8 +30,10 @@ vi.stubGlobal('useSiteData', async () => ({ slug: ref('restaurant'), schema: ref
 /** What each Convex query answers, by name (the test API shim names them, e.g. "entries.get"), and the ones that fail. */
 const answers: Record<string, unknown> = { 'entries.get': { _id: 'e1', brick: 'legal', data: { title: { de: 'Datenschutzerklärung' } } } }
 const failures: Record<string, unknown> = {}
+/** The arguments each query was last asked with. */
+const asked: Record<string, unknown> = {}
 vi.stubGlobal('useConvexQuery', (query: unknown, args: () => unknown) => ({
-  data: computed(() => (args() === 'skip' ? undefined : answers[String(query)])),
+  data: computed(() => { asked[String(query)] = args(); return args() === 'skip' ? undefined : answers[String(query)] }),
   error: computed(() => (args() === 'skip' ? undefined : failures[String(query)])),
 }))
 /** The rows of the history list. */
@@ -102,6 +104,25 @@ describe('going back to a version', () => {
     } finally {
       delete failures['entries.versionAt']
     }
+  })
+
+  // Wrong behaviour caught: the preview was read without the task the revert uses, so staff on the weekly lunch task saw
+  // the week change in the preview that the save does not make.
+  test('the preview is asked for with the task the revert will use', async () => {
+    const withTasks = serializeSchema(defineSite({
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+      pages: { home: { de: '/' } },
+      bricks: { legal: collection({ label: 'Rechtliches', max: 10, order: 'manual', fields: { title: f.text('Titel') }, tasks: [{ id: 'fix', label: 'Titel', kind: 'edit', fields: ['title'] }] }) },
+    }))
+    changes.value = [row('save', ['title'])]
+    answers['entries.versionAt'] = { change: 'c2', diff: [] }
+    const taskOf = (manager: boolean) => (mount(ChangeRows, { props: { site: 'restaurant', schema: withTasks, manager, grants: new Set(['legal.fix']), filter: 'entry', entry: 'e1' }, global: { components: { ChangeDiff }, stubs: { ChangeDetail: true, NuxtLink: true } } }))
+    const staff = taskOf(false)
+    await staff.findAll('button').find((b) => b.text() === 'Zurück zu dieser Version')!.trigger('click')
+    expect(asked['entries.versionAt']).toEqual({ site: 'restaurant', task: 'legal.fix', entry: 'e1', change: 'c2' })
+    const owner = taskOf(true)
+    await owner.findAll('button').find((b) => b.text() === 'Zurück zu dieser Version')!.trigger('click')
+    expect(asked['entries.versionAt']).toEqual({ site: 'restaurant', entry: 'e1', change: 'c2' })
   })
 
   test.each([

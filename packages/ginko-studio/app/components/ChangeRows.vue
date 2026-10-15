@@ -106,10 +106,13 @@ function canRevert(change: Change): boolean {
   if (change.kind === 'create') return props.manager
   return (change.kind === 'save' || change.kind === 'undo') && !!change.fields?.length && (props.manager || taskFor(change) !== undefined)
 }
-// What going back changes, read while the question is open (one row at a time).
+// What going back changes, read while the question is open (one row at a time). With the task the revert uses, so
+// the preview leaves out what that task keeps (the week of the weekly task).
 const version = useConvexQuery(api.entries.versionAt, () => {
   const change = rows.value.find((c) => c._id === confirming.value)
-  return change?.entry ? { site: props.site, entry: change.entry, change: change._id } : 'skip'
+  if (!change?.entry) return 'skip'
+  const task = taskFor(change)
+  return { site: props.site, ...(task === undefined ? {} : { task }), entry: change.entry, change: change._id }
 })
 /** The answer for the open question; the one of the row asked before does not count. */
 const versionShown = computed(() => (version.data.value?.change === confirming.value ? version.data.value : undefined))
