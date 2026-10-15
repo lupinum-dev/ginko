@@ -2,10 +2,11 @@
      stays live, so an undo on an older page updates its row at once. Rückgängig shows only on saves that are not undone yet, and for
      staff only when one of their granted edit tasks covers every field of the change. A save the
      server would refuse to undo (`undoBlocked`: saved again, removed, fields restructured) says why
-     instead. -->
+     instead. "Zurück zu dieser Version" shows what it changes before it saves. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Schema } from '@lupinum/ginko/internal'
+import { opErrorOf } from '../composables/useOps'
 import { useTextOf } from '../composables/useTextOf'
 import { byText } from '../utils/who'
 import { whenFull } from '../utils/when'
@@ -89,7 +90,24 @@ function toggleShow(id: string) {
   showing.value = next
 }
 const confirming = ref<string | null>(null)
-const canRevert = (change: Change) => change.kind === 'save' && !!change.entry && (props.manager || taskFor(change) !== undefined)
+/**
+ * Every row that wrote values can be gone back to: a save, an undo (it holds the state before a bad save) and the
+ * creation (the entry as it was made). A creation names no fields, so no staff task can be checked against it:
+ * owners and admins only.
+ */
+function canRevert(change: Change): boolean {
+  if (!change.entry) return false
+  if (change.kind === 'create') return props.manager
+  return (change.kind === 'save' || change.kind === 'undo') && !!change.fields?.length && (props.manager || taskFor(change) !== undefined)
+}
+// What going back changes, read while the question is open (one row at a time).
+const version = useConvexQuery(api.entries.versionAt, () => {
+  const change = rows.value.find((c) => c._id === confirming.value)
+  return change?.entry ? { site: props.site, entry: change.entry, change: change._id } : 'skip'
+})
+/** The answer for the open question; the one of the row asked before does not count. */
+const versionShown = computed(() => (version.data.value?.change === confirming.value ? version.data.value : undefined))
+const fieldsOf = (brick: string) => (Object.hasOwn(props.schema.bricks, brick) ? props.schema.bricks[brick]!.fields : undefined)
 async function revert(change: Change) {
   await whileBusy(change._id, async () => {
     await ops.revertEntry(change.entry!, change._id, taskFor(change))
@@ -144,6 +162,9 @@ async function undo(change: Change) {
               :aria-expanded="showing.has(change._id)"
               @click="toggleShow(change._id)"
             >{{ showing.has(change._id) ? t('history.hideChanges') : t('history.showChanges') }}</Button>
+            <Button v-if="change.inTrash" as-child variant="ghost" size="sm">
+              <NuxtLink :to="`/s/${site}/all?removed`">{{ t('history.openTrash') }}</NuxtLink>
+            </Button>
             <Button
               v-if="canRevert(change) && confirming !== change._id"
               type="button"
@@ -153,16 +174,24 @@ async function undo(change: Change) {
           </div>
         </div>
         <div v-if="confirming === change._id" class="grid gap-2" role="group" :aria-label="t('history.revert')">
-          <p>{{ t('history.revertConfirm', { date: fullDate(change.at) }) }}</p>
+          <p v-if="versionShown && !versionShown.diff.length">{{ t('history.alreadyThere') }}</p>
+          <template v-else>
+            <p>{{ t('history.revertConfirm', { date: fullDate(change.at) }) }}</p>
+            <p v-if="version.error.value" class="font-medium text-destructive" role="alert">{{ opErrorOf(version.error.value).message }}</p>
+            <template v-else-if="versionShown">
+              <p class="font-medium">{{ t('history.revertChanges') }}</p>
+              <ChangeDiff :diff="versionShown.diff" :fields="fieldsOf(change.brick)" :locale="schema.locales[0]!" :site="site" />
+            </template>
+          </template>
           <div class="flex flex-wrap gap-2">
-            <Button type="button" size="sm" :disabled="busy.has(change._id)" @click="revert(change)">{{ t('history.revert') }}</Button>
+            <Button v-if="versionShown?.diff.length" type="button" size="sm" :disabled="busy.has(change._id)" @click="revert(change)">{{ t('history.revert') }}</Button>
             <Button type="button" variant="ghost" size="sm" @click="confirming = null">{{ t('entry.cancel') }}</Button>
           </div>
         </div>
         <ChangeDetail v-if="showing.has(change._id)" :site="site" :change="change._id" :brick="change.brick" :schema="schema" />
       </li>
     </ol>
-    <p v-else-if="list.status.value === 'success'" class="py-6 text-muted-foreground">{{ filter && filter !== 'all' ? t('history.noMatches') : t('entry.changes.empty') }}</p>
+    <p v-else-if="list.status.value === 'success'" class="py-6 text-muted-foreground">{{ filter === 'entry' ? t('history.entryEmpty') : filter && filter !== 'all' ? t('history.noMatches') : t('entry.changes.empty') }}</p>
     <div v-if="list.canLoadMore.value || list.isLoadingMore.value" class="pt-4">
       <Button type="button" variant="outline" :disabled="!list.canLoadMore.value" @click="list.loadMore(PAGE)">{{ t('site.history.loadOlder') }}</Button>
     </div>

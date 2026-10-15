@@ -9,6 +9,10 @@ import ReviewRow from '../app/components/ReviewRow.vue'
 import type { Id } from '../../ginko-server/convex/_generated/dataModel'
 import type { DiffField, ProposalRow } from '../app/utils/review'
 
+/** What `uploads.urls` answers for the pictures of a rich text diff (the only query ChangeDiff asks). */
+const pictureUrls = ref<Record<string, { url: string }>>({})
+vi.stubGlobal('useConvexQuery', (_query: unknown, args: () => unknown) => ({ data: computed(() => (args() === 'skip' ? undefined : pictureUrls.value)) }))
+
 const fields = {
   price: { type: 'money', label: 'Preis', currency: 'EUR' },
   text: { type: 'longtext', label: 'Beschreibung' },
@@ -53,6 +57,23 @@ describe('ChangeDiff', () => {
       '+ Mittwoch', 'Gericht: Schnitzel',
       '− Donnerstag', 'Gericht: Fisch',
     ])
+  })
+
+  // Wrong behaviour caught: a rich text showed its Markdown codes ("## …", "- …") and internal file ids to editors who
+  // do not know Markdown, so they could not tell which heading, bullet or picture was lost (R9, A8, romi-16).
+  test('a rich text shows its changed blocks formatted: a heading as a heading, a bullet as a bullet, a picture as a thumbnail', async () => {
+    pictureUrls.value = { f1: { url: 'https://files.test/wald.jpg' } }
+    const body = { body: { type: 'markdown', label: 'Text' } } as never
+    const before = '## Was ihr bekommt\n\n- Konzeption\n- Dreh\n\n![Wald im Gesäuse]($file.f1)'
+    const rich: DiffField[] = [{ field: 'body', label: 'Text', kind: 'markdown', before: { de: before }, after: { de: '- Konzeption' }, locales: [{ locale: 'de', before, after: '- Konzeption' }] }]
+    const wrapper = mount(ChangeDiff, { props: { diff: rich, fields: body, locale: 'de', site: 'restaurant' } })
+    await flushPromises()
+    expect(wrapper.get('del h2').text()).toBe('Was ihr bekommt')
+    expect(wrapper.get('del li').text()).toBe('Dreh')
+    expect(wrapper.get('del img').attributes('src')).toBe('https://files.test/wald.jpg')
+    expect(wrapper.text()).toContain('Wald im Gesäuse')
+    expect(wrapper.text()).not.toContain('Konzeption')
+    expect(wrapper.text()).not.toMatch(/##|- |\$file\./)
   })
 
   test('the list field no longer shows a count as Vorher and Nachher', () => {

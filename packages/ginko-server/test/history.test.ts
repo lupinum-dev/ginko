@@ -109,6 +109,33 @@ describe('changes.list filters', () => {
     const page = (await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage, entry: s.entries['menu-saibling']! })).page
     expect(page.map((r) => [r._id, r.undoBlocked])).toEqual([[c2, null], [c1, 'changed']])
   })
+
+  // Wrong behaviour caught: after two bad saves, undoing the newer one left the older one "changed since", although its
+  // field held exactly what it wrote, so the person could not step back further (R6).
+  it('once the newer save is undone, the older one can be undone again, step by step', async () => {
+    const s = await setup()
+    const entry = s.entries['menu-saibling']!
+    const a = await save(s, entry, { price: { amount: 1450 } })
+    const b = await save(s, entry, { price: { amount: 1500 } })
+    await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: b })
+    const page = (await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage, entry })).page
+    expect(page.find((r) => r._id === a)!.undoBlocked).toBeNull()
+    await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: a })
+    expect((await s.t.run((ctx) => ctx.db.get(entry)))!.data.price).toEqual({ amount: 1350 })
+  })
+
+  // Wrong behaviour caught: "Papierkorb öffnen" stayed on a removal after the entry was restored, and led to a trash
+  // that no longer held it.
+  it('a removal says whether its entry is still in the trash', async () => {
+    const s = await setup()
+    const entry = s.entries['menu-saibling']!
+    const removed = (await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry, lifeRev: 1 })) as { lifeRev: number }
+    const inTrash = async () => ((await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage, entry })).page as { kind: string; inTrash: boolean }[])
+      .filter((r) => r.kind === 'remove').map((r) => r.inTrash)
+    expect(await inTrash()).toEqual([true])
+    await s.as.owner.mutation(api.entries.restore, { site: 'restaurant', opId: opId(), entry, lifeRev: removed.lifeRev })
+    expect(await inTrash()).toEqual([false])
+  })
 })
 
 /** Three saves touching different fields of one dish, an hour apart. Returns the entry, its first data and the three changes. */
@@ -134,6 +161,17 @@ describe('entries.versionAt', () => {
     expect((await versionAt(s, entry, c1)).data).toEqual({ ...start, name: { ...(start.name as object), de: 'Saibling gebeizt' } })
     expect((await versionAt(s, entry, c2)).data).toEqual({ ...start, name: now.name, price: { amount: 1450 } })
     expect((await versionAt(s, entry, c3)).data).toEqual(now)
+  })
+
+  // Wrong behaviour caught: "Zurück zu dieser Version" asked only about a date; the person could not see what it changes.
+  it('says what going back changes: now before, the version after, only the fields that differ', async () => {
+    const s = await setup()
+    const { entry, start, c1 } = await threeSaves(s)
+    const { diff } = (await versionAt(s, entry, c1)) as unknown as { diff: Diff[] }
+    expect(diff).toEqual([
+      { field: 'price', label: 'Preis', kind: 'money', before: { amount: 1450 }, after: start.price },
+      { field: 'veg', label: expect.any(String), kind: 'choice', before: 'vegan', after: start.veg ?? null },
+    ])
   })
 
   it('a change that is gone, or belongs to another entry, is NOT_FOUND', async () => {
@@ -165,6 +203,17 @@ describe('entries.revert', () => {
     expect((await s.t.run((ctx) => ctx.db.get(entry)))!.data).toEqual({ ...after1, price: start.price, veg: start.veg })
     await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: row._id })
     expect((await s.t.run((ctx) => ctx.db.get(entry)))!.data).toEqual(after1)
+  })
+
+  // The Studio offers going back to a creation (the entry as it was made): the server must take it like any change.
+  it('a creation can be gone back to', async () => {
+    const s = await setup()
+    const { entry } = (await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'notices', data: { text: { de: 'Heute Ruhetag' } } })) as { entry: Id<'entries'> }
+    await save(s, entry, { text: { de: 'Morgen Ruhetag' } })
+    const created = (await changeRows(s)).find((r) => r.kind === 'create' && r.entry === entry)!
+    expect((await versionAt(s, entry, created._id)).fields).toEqual(['text'])
+    await revert(s, entry, created._id)
+    expect((await s.t.run((ctx) => ctx.db.get(entry)))!.data.text).toEqual({ de: 'Heute Ruhetag' })
   })
 
   it('without a difference nothing is written', async () => {
@@ -241,6 +290,17 @@ describe('history messages', () => {
     const days = ((await s.t.run((ctx) => ctx.db.get(entry)))!.data as { days: Record<string, Json>[] }).days
     const change = await save(s, entry, { days: days.map((d, i) => (i === 0 ? { ...d, price: { amount: 1190 } } : d)) })
     expect((await changeRows(s)).find((r) => r._id === change)).toMatchObject({ sentence: 'Tage von „Woche ab 12.10.2026“ geändert' })
+  })
+
+  // Wrong behaviour caught: the line of an English-only save read like a change of the German text (romi-16).
+  it('a save that changes only another language names it; one that also changes the main language does not', async () => {
+    const s = await setup()
+    const entry = s.entries['menu-saibling']!
+    const english = await save(s, entry, { name: { en: 'Smoked char' } }, { locale: 'en' })
+    const both = await save(s, entry, { name: { de: 'Saibling', en: 'Char' }, price: { amount: 1450 } })
+    const rows = await changeRows(s)
+    expect(rows.find((r) => r._id === english)).toMatchObject({ msg: { key: 'history.changedEntryIn', params: { languages: 'EN' } }, sentence: 'Name von „Gebeizter Saibling“ geändert (EN)' })
+    expect(rows.find((r) => r._id === both)).toMatchObject({ msg: { key: 'history.changedEntry' } })
   })
 
   it('the client sentence is ignored: the server words the line from what changed', async () => {

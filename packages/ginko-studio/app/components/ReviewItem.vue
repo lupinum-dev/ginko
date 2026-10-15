@@ -70,6 +70,7 @@ async function reject(reason: string) {
     :locale="schema.locales[0]!"
     :time-zone="schema.timeZone"
     :in-release="inRelease"
+    :site="site"
     @toggle="emit('toggle')"
     @approve="approve"
     @reject="reject"

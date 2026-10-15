@@ -2,10 +2,10 @@
      status, a sticky save bar, and the preview beside it on wide screens. Same engine as the tasks. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, todayIn, urlsFor, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, textIn, todayIn, untranslatedMode, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { hasTranslation, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, type Task } from '../utils/content'
+import { draftSlugs, hasTranslation, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -422,13 +422,44 @@ async function doUnpublish() {
   }
 }
 
-// Preview: the entry's own page when it has a route, else the site's first page in this language.
+// A new entry has no address yet: the preview gives it the one the server will make from its title (draftSlugs), so
+// the site finds it on its own page. Read after the typing pause, so the page does not reload on every key.
+const newSlugs = computed(() => (props.entry ? undefined : draftSlugs(props.brick, props.schema.locales, typed.value)))
+const previewData = computed(() => (newSlugs.value ? { ...draft.value, ...newSlugs.value } : draft.value))
+/** The label of the field a new entry's address is made from, while it is empty: there is no page to show yet. */
+const previewWaitsFor = computed(() => {
+  if (props.entry || props.brick.kind !== 'collection' || !props.brick.route) return undefined
+  const slug = Object.values(props.brick.fields).find((field) => field.type === 'slug' && !field.retired)
+  if (slug?.type !== 'slug' || textIn(typed.value[slug.from], main.value).trim()) return undefined
+  return shown(props.brick.fields[slug.from]!.label)
+})
+/**
+ * The entry's addresses per language as the preview shows it, the typed values over the stored ones (a task form
+ * holds only some fields), so a translation typed just now gives it its page: `routed` from the route alone, `pages`
+ * without the languages it is untranslated in (core urlsFor). Undefined for a brick without a route.
+ */
+const previewUrls = computed(() => {
+  const brick = props.brick
+  if (brick.kind !== 'collection' || !brick.route) return undefined
+  const entry = { id: props.entry?._id ?? 'new', data: { ...props.entry?.data, ...typed.value, ...newSlugs.value } as never }
+  return { routed: routeUrls(props.schema, brick, entry), pages: urlsFor(props.schema, props.brickKey, brick, entry) }
+})
+/** Why the preview shows no page: a new entry's address cannot be made yet, or the entry has no page in this language until it is translated. */
+const previewNotice = computed(() => {
+  const urls = previewUrls.value
+  if (!urls) return undefined
+  if (previewWaitsFor.value) return t('entry.preview.needsTitle', { field: previewWaitsFor.value })
+  if (!urls.routed[locale.value] || urls.pages[locale.value]) return undefined
+  const language = languageName(locale.value, uiLocale.value)
+  // How the site treats it there (core untranslatedMode): left out, or listed in the main language without a page.
+  return untranslatedMode(props.brick as CollectionBrick) === 'hide'
+    ? t('entry.preview.untranslated', { language })
+    : t('entry.preview.untranslatedListed', { language, main: languageName(main.value, uiLocale.value) })
+})
+// Preview: the entry's own page when it has one in this language, else the site's first page in this language.
 const previewPath = computed(() => {
-  if (props.brick.kind === 'collection' && props.brick.route && props.entry) {
-    const url = urlsFor(props.schema, props.brickKey, props.brick as CollectionBrick, { id: props.entry._id, data: props.entry.data as never })[locale.value]
-    if (url) return url
-  }
-  return Object.values(props.schema.pages)[0]?.[locale.value] ?? '/'
+  if (previewNotice.value) return undefined
+  return previewUrls.value?.pages[locale.value] ?? Object.values(props.schema.pages)[0]?.[locale.value] ?? '/'
 })
 const showPreview = ref(false)
 
@@ -576,7 +607,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
       </form>
 
       <!-- The destructive action sits in "Mehr", away from Speichern and Vorschau; the question stays. -->
-      <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :overflow="removeOverflow.error.value ? [] : removeOverflow.data.value" :busy="removing" @confirm="remove" @close-auto-focus="focusMore" />
+      <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :overflow="removeOverflow.error.value ? [] : removeOverflow.data.value" :busy="removing" :draft="entry?.state === 'draft'" @confirm="remove" @close-auto-focus="focusMore" />
     </div>
 
     <PreviewPane
@@ -585,9 +616,10 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
       :site="site"
       :schema="schema"
       :entries="previewEntries"
-      :editing="{ brick: brickKey, entry: entry?._id, data: draft }"
+      :editing="{ brick: brickKey, entry: entry?._id, data: previewData }"
       :locale="locale"
       :path="previewPath"
+      :notice="previewNotice"
       :files="files"
       :revision="fileIds.join(',') + ':' + (fileInfo ? Object.values(fileInfo).filter(Boolean).length : 0)"
     />

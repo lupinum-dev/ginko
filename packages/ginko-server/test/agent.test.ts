@@ -317,8 +317,9 @@ describe('agent door: tool catalog', () => {
     const key = await keyOf(s, 'owner')
     expect((await call(s, key, 'ginko_overview')).data.hint).toBe('Changes made with this key wait for approval.')
 
+    // Wrong behaviour caught: the agent saw the old values but not what ginko_revert would change, as the Studio does.
     const version = await call(s, key, 'ginko_version_at', { entry, change: first.change })
-    expect(version.data).toMatchObject({ fields: ['price'], data: { price: { amount: 2300 } } })
+    expect(version.data).toMatchObject({ fields: ['price'], data: { price: { amount: 2300 } }, diff: [{ field: 'price', before: { amount: 2500 }, after: { amount: 2300 } }] })
     const done = await call(s, key, 'ginko_revert', { entry, change: first.change })
     expect(done).toMatchObject({ isError: false, text: 'Proposed, waiting for approval.' })
     expect((await entryRow(s, entry))!.data.price).toEqual({ amount: 2500 })

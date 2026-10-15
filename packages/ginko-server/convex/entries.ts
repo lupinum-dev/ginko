@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, ordered, searchable, sha256, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, urlsFor, validate, visibleUntil, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, ordered, searchable, sha256, slugBases, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, urlsFor, validate, visibleUntil, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -20,6 +20,7 @@ import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
 import { editorEntry, editorEntryWithTranslation, listRow, slimEntry, titleOf } from './lib/list'
+import { diffFields, localeDiffs } from './lib/diff'
 
 const underRoot = (leaf: string, root: string) => leaf === root || leaf.startsWith(`${root}.`)
 
@@ -82,17 +83,34 @@ export async function saveAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
 }
 
 /**
- * The history line of a save, built from what changed: "{brick}: {fields} changed" for a single,
- * "{fields} changed in “{title}”" for an entry. The field names are one label per locale, joined, so every
- * reader gets their own language. The title is the entry's before the save, like the Studio showed it.
+ * The languages a save changed when it changed only translations: the upper-case codes (as the diff tags them), or
+ * undefined when it changed the main language or a field that has no languages.
  */
-function saveMsg(schema: Schema, brick: Schema['bricks'][string], entry: Doc<'entries'>, roots: string[], onlyConfirm: boolean): HistoryMsg {
+function onlyTranslations(schema: Schema, brick: Schema['bricks'][string], roots: string[], before: Data, after: Data): string | undefined {
+  const main = schema.locales[0]!
+  const changed = new Set<string>()
+  for (const root of roots) {
+    if (!isTranslatable(brick.fields[root]!)) return undefined
+    for (const { locale } of localeDiffs(before[root] ?? null, after[root] ?? null)) changed.add(locale)
+  }
+  if (!changed.size || changed.has(main)) return undefined
+  return schema.locales.filter((l) => changed.has(l)).map((l) => l.toUpperCase()).join(', ')
+}
+
+/**
+ * The history line of a save, built from what changed: "{brick}: {fields} changed" for a single,
+ * "{fields} changed in “{title}”" for an entry, with the languages in brackets when only translations changed.
+ * The field names are one label per locale, joined, so every reader gets their own language. The title is the
+ * entry's before the save, like the Studio showed it.
+ */
+function saveMsg(schema: Schema, brick: Schema['bricks'][string], entry: Doc<'entries'>, roots: string[], after: Data, onlyConfirm: boolean): HistoryMsg {
   if (onlyConfirm) return msg('history.translationConfirmed')
   const main = schema.locales[0]!
   const fields: Label = Object.fromEntries(schema.locales.map((l) => [l, roots.map((k) => labelIn(brick.fields[k]!.label, l, main)).join(', ')]))
-  return brick.kind === 'single'
-    ? msg('history.changedSingle', { label: brick.label, fields })
-    : msg('history.changedEntry', { fields, title: labelOf(schema, entry.brick, entry.data as Data) })
+  const languages = onlyTranslations(schema, brick, roots, entry.data as Data, after)
+  if (brick.kind === 'single') return languages ? msg('history.changedSingleIn', { label: brick.label, fields, languages }) : msg('history.changedSingle', { label: brick.label, fields })
+  const title = labelOf(schema, entry.brick, entry.data as Data)
+  return languages ? msg('history.changedEntryIn', { fields, title, languages }) : msg('history.changedEntry', { fields, title })
 }
 
 /**
@@ -160,7 +178,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   if (stateOf(entry) === 'live') await checkNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before, after: data }])
 
   const onlyConfirm = Object.keys(args.fields).length === 0
-  const history = recorded(line ?? saveMsg(schema, brick, entry, changed, onlyConfirm), schema)
+  const history = recorded(line ?? saveMsg(schema, brick, entry, changed, data, onlyConfirm), schema)
 
   // Everything is checked: a change that needs a yes becomes a proposal and writes nothing (SPEC 17).
   if (await needsProposal(ctx, actor, 'save', args.task, taskBrick, entry)) {
@@ -274,11 +292,34 @@ async function versionOf(ctx: QueryCtx, actor: Actor, entryId: string, changeId:
   return { entry, change, data, touched: [...touched] }
 }
 
-/** `versionAt` for an actor already known: the platform's signed-in person, or the agent door's key (SPEC 16). */
-export async function versionAtAs(ctx: QueryCtx, actor: Actor, args: { entry: string; change: string }): Promise<Json> {
+/**
+ * What going back to `data` writes: the touched fields whose value differs from now (`null` removes one), without
+ * the address (it is fixed) and fields the schema no longer has. `revert` saves exactly these; `versionAt` shows them.
+ */
+function revertFields(brick: Brick | undefined, touched: string[], data: Data, now: Data): Record<string, Json> {
+  const fields: Record<string, Json> = {}
+  for (const root of touched) {
+    const field = brick && Object.hasOwn(brick.fields, root) ? brick.fields[root] : undefined
+    if (!field || field.retired || field.type === 'slug') continue
+    if (!same(data[root], now[root])) fields[root] = data[root] ?? null
+  }
+  return fields
+}
+
+/**
+ * The entry right after a change (`data`; `fields` names the ones a later change touched), plus `diff`: what going
+ * back to it changes, field by field, with now as `before` and that version as `after`. Empty: it is the current
+ * version. One answer for the Studio (`versionAt`, shown before the person confirms) and the agent door
+ * (`ginko_version_at`), for an actor already known (SPEC 16).
+ */
+export async function versionAtAs(ctx: QueryCtx, actor: Actor, args: { entry: string; change: string }) {
   const { entry, change, data, touched } = await versionOf(ctx, actor, args.entry, args.change)
-  const result: Json = { entry: entry._id, change: change._id, at: change.at, data, fields: touched }
-  return result
+  const schema = actor.site.schema as Schema
+  const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
+  const now = entry.data as Data
+  const fields = revertFields(brick, touched, data, now)
+  const pick = (from: Data) => Object.fromEntries(Object.keys(fields).filter((root) => from[root] !== undefined).map((root) => [root, from[root]!]))
+  return { entry: entry._id, change: change._id, at: change.at, data, fields: touched, diff: diffFields(brick?.fields, pick(now), pick(data), schema.locales[0]!) }
 }
 
 export const versionAt = query({
@@ -301,13 +342,7 @@ export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const schema = actor.site.schema as Schema
     const brick = brickOf(schema, entry)
     const now = entry.data as Data
-    const fields: Record<string, Json> = {}
-    for (const root of touched) {
-      // A field the schema no longer has cannot be written; the address is fixed.
-      const field = Object.hasOwn(brick.fields, root) ? brick.fields[root] : undefined
-      if (!field || field.retired || field.type === 'slug') continue
-      if (!same(data[root], now[root])) fields[root] = data[root] ?? null
-    }
+    const fields = revertFields(brick, touched, data, now)
     if (!Object.keys(fields).length) {
       const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
       return unchanged
@@ -397,11 +432,10 @@ async function slugsFor(ctx: MutationCtx, actor: Actor, brick: string, fields: F
   for (const [name, field] of Object.entries(fields)) {
     if (field.type !== 'slug') continue
     const from = plainObject(data[field.from])
+    const bases = slugBases(schema.locales, Object.fromEntries(schema.locales.map((locale) => [locale, textOf(from[locale])])))
     const made: Record<string, string> = {}
     for (const locale of schema.locales) {
-      const own = textOf(from[locale])
-      const base = locale === main ? slugify(textOf(from[main])) : own ? slugify(own) : made[main]!
-      made[locale] = await freeSlug(ctx, actor, brick, locale, base)
+      made[locale] = await freeSlug(ctx, actor, brick, locale, bases[locale] ?? made[main]!)
     }
     out[name] = made
     for (const [locale, slug] of Object.entries(made)) rows.push({ locale, slug })

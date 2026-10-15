@@ -18,39 +18,40 @@ const PAGE_SIZE = 50
  */
 const PAGE_BYTES = 2 * 1024 * 1024
 
+type ReadEntry = (id: Id<'entries'>) => Promise<Doc<'entries'> | null>
+
 /**
  * The rows without before/after/prints (those are for undo and the release, not for the list: the
  * history page shows the message), with who did it as data (`Who`, lib/names.ts) and, for a change
- * through the agent door, the label of that person's key (SPEC 16).
+ * through the agent door, the label of that person's key (SPEC 16). `inTrash`: a removal whose entry is
+ * still in the trash (not restored, not deleted for good), so the Studio links there only while it is.
  */
 async function summaries(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]) {
   const names = await labeler(ctx, actor)
-  const blocks = await undoBlocks(ctx, actor, rows)
+  // Each entry is read once; the entries of a site fit in its storage budget, so this stays well under the read
+  // limit, and the list follows later saves, restores and removals live.
+  const read = new Map<Id<'entries'>, Promise<Doc<'entries'> | null>>()
+  const readEntry: ReadEntry = (id) => {
+    if (!read.has(id)) read.set(id, ctx.db.get(id))
+    return read.get(id)!
+  }
+  const blocks = await undoBlocks(ctx, actor, rows, readEntry)
   const out = []
   for (const { before: _before, after: _after, printsBefore: _printsBefore, printsAfter: _printsAfter, ...change } of rows) {
-    out.push({ ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null })
+    const inTrash = change.kind === 'remove' && !!change.entry && !!(await readEntry(change.entry))?.deletedAt
+    out.push({ ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null, inTrash })
   }
   return out
 }
 
-/**
- * Why each save on the page can no longer be undone (undoBlockOf, the rule the undo mutation uses).
- * Each entry is read once; the entries of a site fit in its storage budget, so this stays well
- * under the read limit, and the list follows later saves live.
- */
-async function undoBlocks(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]): Promise<Map<Id<'changes'>, UndoBlock>> {
+/** Why each save on the page can no longer be undone (undoBlockOf, the rule the undo mutation uses). */
+async function undoBlocks(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[], readEntry: ReadEntry): Promise<Map<Id<'changes'>, UndoBlock>> {
   const blocks = new Map<Id<'changes'>, UndoBlock>()
   if (!rows.some((row) => row.kind === 'save' && row.entry)) return blocks
   const migrated = await ctx.db.query('migrationsApplied').withIndex('by_site_id', (q) => q.eq('site', actor.site._id)).collect()
-  const entries = new Map<Id<'entries'>, Doc<'entries'> | null>()
   for (const change of rows) {
     if (change.kind !== 'save' || !change.entry) continue
-    let entry = entries.get(change.entry)
-    if (entry === undefined) {
-      entry = await ctx.db.get(change.entry)
-      entries.set(change.entry, entry)
-    }
-    const block = undoBlockOf(change, entry, migrated)
+    const block = undoBlockOf(change, await readEntry(change.entry), migrated)
     if (block) blocks.set(change._id, block)
   }
   return blocks

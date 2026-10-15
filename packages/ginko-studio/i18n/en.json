@@ -182,13 +182,17 @@
       "close": "Close preview",
       "frameTitle": "Preview of the website",
       "stuck": "The preview does not load. Saving still works as usual.",
+      "needsTitle": "The preview shows the page once “{field}” is filled in.",
+      "untranslated": "Not translated into {language} yet. Until then, the entry does not show on the website in this language.",
+      "untranslatedListed": "Not translated into {language} yet. Until then, the entry has no page of its own in this language. Lists show it in {main}.",
       "openSite": "Open website"
     },
     "remove": {
       "title": "Remove entry",
-      "text": "“{title}” is removed from the website. You can restore it for 30 days.",
+      "text": "“{title}” leaves the website. You find it in the trash for 30 days and can restore it there.",
+      "textDraft": "“{title}” goes to the trash. You can restore it for 30 days.",
       "confirm": "Remove",
-      "usedIn": "“{title}” is used in {count, plural, one {# entry} other {# entries}}. The website leaves it out there until you restore it.",
+      "usedIn": "“{title}” is used in {count, plural, one {one place} other {# places}}. They stay online but no longer show “{title}”. You can restore it from the trash for 30 days.",
       "confirmAnyway": "Remove anyway",
       "checking": "Checking where this entry is used …",
       "trashFull": "The trash is full. Removing this deletes these older entries for good:"
@@ -297,7 +301,7 @@
       "showMore": "Show {count} more",
       "shownOf": "{shown} of {total} entries",
       "searching": "Searching …",
-      "removed": "Removed (can be restored for 30 days)",
+      "removed": "In the trash (can be restored for 30 days)",
       "restore": "Restore"
     },
     "area": {
@@ -664,8 +668,9 @@
     "unpublished": "Unpublished. Not on the website in about a minute.",
     "scheduleCleared": "Schedule removed. The entry stays a draft.",
     "created": "Created.",
-    "removed": "Removed.",
-    "removedNamed": "“{title}” removed.",
+    "removed": "Now in the trash.",
+    "removedNamed": "“{title}” is now in the trash.",
+    "removedLiveHint": "Off the website in about a minute.",
     "restored": "Restored.",
     "entryGone": "This entry was removed in the meantime.",
     "leaveConfirm": "Your changes are not saved yet. Leave anyway?",
@@ -711,7 +716,8 @@
     "diff": {
       "before": "Before",
       "after": "After",
-      "reordered": "The order changed"
+      "reordered": "The order changed",
+      "picture": "Picture"
     }
   },
   "history": {
@@ -722,13 +728,18 @@
       "ai": "Via AI",
       "entry": "This entry"
     },
+    "entryHeading": "History: {title}",
+    "backToEntry": "Back to “{title}”",
     "noMatches": "No changes match this filter.",
+    "entryEmpty": "No changes yet. What is saved from now on shows up here.",
     "showChanges": "Show changes",
     "hideChanges": "Hide changes",
+    "openTrash": "Open trash",
     "revert": "Back to this version",
-    "revertConfirm": "Go back to the version of {date}? This is saved as a new change, so you can undo it.",
+    "revertConfirm": "Go back to how it was right after this change ({date})? This is saved as a new change, so you can undo it.",
+    "revertChanges": "This changes:",
     "reverted": "Went back to the earlier version.",
-    "alreadyThere": "The entry already has this version.",
+    "alreadyThere": "This is already the current version.",
     "waiting": "Waiting for approval",
     "withdraw": "Withdraw",
     "withdrawn": "Withdrawn.",
@@ -737,7 +748,7 @@
     "notLive": "Did not go live",
     "notLiveBecause": "Planned for {when}. {reason}",
     "undoBlocked": {
-      "changed": "Changed again since, can no longer be undone",
+      "changed": "Changed again since. Go back to an earlier version instead.",
       "removed": "Entry removed, restore it first",
       "schema": "The fields were restructured since"
     },
@@ -790,9 +801,9 @@
       "translate": "Edit translation"
     },
     "removed": {
-      "link": "Removed",
-      "title": "Removed entries",
-      "empty": "Nothing was removed.",
+      "link": "Trash",
+      "title": "Trash",
+      "empty": "No removed entries. Removed files are in the trash under Files.",
       "until": "Deleted for good on {date}",
       "deleteNow": "Delete now",
       "deleteNowNamed": "Delete now: “{title}”",

@@ -29,6 +29,11 @@ const canManage = props.lib.canManage
 const error = ref<string | null>(null)
 const name = ref('')
 watch(() => info.value?.name, (value) => { name.value = value ?? '' }, { immediate: true })
+/**
+ * "Gespeichert" under the name after a rename, like the alt text; the next keystroke clears it. Another file gets a
+ * panel of its own (FilesBrowser keys it by id), so a rename that answers late never marks the next file.
+ */
+const savedName = ref(false)
 
 async function run(action: () => Promise<unknown>) {
   error.value = null
@@ -45,7 +50,7 @@ function saveName() {
     name.value = info.value?.name ?? ''
     return
   }
-  void run(() => props.lib.rename(props.id, given))
+  void run(() => props.lib.rename(props.id, given).then(() => { savedName.value = true }))
 }
 
 function focusAt(event: MouseEvent) {
@@ -112,9 +117,12 @@ const uploaded = computed(() => (info.value ? whenFull(info.value.createdAt, sit
     <div v-else class="grid h-32 place-items-center rounded-md bg-muted"><FileTextIcon class="size-12 text-muted-foreground" aria-hidden="true" /></div>
     <p v-if="canManage && info.kind === 'image' && !inTrash" class="text-xs text-muted-foreground">{{ t('files.focusHint') }}</p>
 
-    <div :class="CONTAINED_FIELD">
-      <Label for="file-name" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('files.info.name') }}</Label>
-      <Input id="file-name" v-model="name" :disabled="!canManage || inTrash" @blur="saveName" @keydown.enter.prevent="($event.target as HTMLInputElement).blur()" />
+    <div class="grid gap-1">
+      <div :class="CONTAINED_FIELD">
+        <Label for="file-name" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('files.info.name') }}</Label>
+        <Input id="file-name" v-model="name" :disabled="!canManage || inTrash" @input="savedName = false" @blur="saveName" @keydown.enter.prevent="($event.target as HTMLInputElement).blur()" />
+      </div>
+      <p v-if="savedName" class="text-xs text-muted-foreground" role="status">{{ t('files.info.saved') }}</p>
     </div>
 
     <div v-if="info.kind === 'image' && showAlt" class="grid gap-2">

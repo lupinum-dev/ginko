@@ -81,14 +81,24 @@ describe('CommandPalette', () => {
     localStorage.setItem('ginko:recent:s', JSON.stringify([{ to: '/s/s/all/menu/e1', label: 'Schnitzel', area: 'Speisekarte' }]))
     const staff = mountPalette({ role: 'staff', grants: ['events.add'] })
     await flushPromises()
-    expect(optionTexts()).toEqual(['Schnitzel Speisekarte', 'Neu: Veranstaltungen', 'Dateien', 'Verlauf'])
+    expect(optionTexts()).toEqual(['Schnitzel Speisekarte', 'Neu: Veranstaltungen', 'Dateien', 'Verlauf', 'Papierkorb'])
     staff.unmount()
     document.body.innerHTML = ''
 
     mountPalette({ role: 'owner', grants: [] })
     await flushPromises()
     // Owners also get Review and Update website now; a single (Kontakt) has nothing to create.
-    expect(optionTexts()).toEqual(['Schnitzel Speisekarte', 'Neu: Veranstaltungen', 'Neu: Speisekarte', 'Dateien', 'Verlauf', 'Prüfen', 'Website jetzt aktualisieren'])
+    expect(optionTexts()).toEqual(['Schnitzel Speisekarte', 'Neu: Veranstaltungen', 'Neu: Speisekarte', 'Dateien', 'Verlauf', 'Papierkorb', 'Prüfen', 'Website jetzt aktualisieren'])
+  })
+
+  // Wrong behaviour caught: a removed entry has no findable way back; the trash link shows only in the area list once something is removed.
+  test('"Papierkorb" opens the removed entries', async () => {
+    mountPalette({ role: 'staff', grants: [] })
+    await flushPromises()
+    const trash = [...document.body.querySelectorAll<HTMLElement>('[role="option"]')].find((el) => el.textContent?.trim() === 'Papierkorb')!
+    trash.click()
+    await flushPromises()
+    expect(mocks.navigateTo).toHaveBeenCalledWith('/s/s/all?removed', undefined)
   })
 
   test('typing searches the site and Enter opens the first result', async () => {

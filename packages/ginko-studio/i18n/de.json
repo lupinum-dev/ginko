@@ -182,13 +182,17 @@
       "close": "Vorschau schließen",
       "frameTitle": "Vorschau der Website",
       "stuck": "Die Vorschau lädt nicht. Speichern funktioniert trotzdem wie gewohnt.",
+      "needsTitle": "Die Vorschau zeigt die Seite, sobald „{field}“ ausgefüllt ist.",
+      "untranslated": "Noch nicht auf {language} übersetzt. Bis dahin ist der Eintrag auf der Website in dieser Sprache nicht zu sehen.",
+      "untranslatedListed": "Noch nicht auf {language} übersetzt. Bis dahin hat der Eintrag in dieser Sprache keine eigene Seite. Listen zeigen ihn auf {main}.",
       "openSite": "Website öffnen"
     },
     "remove": {
       "title": "Eintrag entfernen",
-      "text": "„{title}“ wird von der Website entfernt. Wiederherstellen geht 30 Tage lang.",
+      "text": "„{title}“ geht von der Website. Du findest es 30 Tage lang im Papierkorb und kannst es dort wiederherstellen.",
+      "textDraft": "„{title}“ kommt in den Papierkorb. Du kannst es 30 Tage lang wiederherstellen.",
       "confirm": "Entfernen",
-      "usedIn": "„{title}“ wird in {count, plural, one {# Eintrag} other {# Einträgen}} verwendet. Dort fehlt der Eintrag auf der Website, bis du ihn wiederherstellst.",
+      "usedIn": "„{title}“ wird an {count, plural, one {einer Stelle} other {# Stellen}} verwendet. Diese bleiben online, zeigen „{title}“ aber nicht mehr. Du kannst es 30 Tage lang aus dem Papierkorb wiederherstellen.",
       "confirmAnyway": "Trotzdem entfernen",
       "checking": "Prüft, wo der Eintrag verwendet wird …",
       "trashFull": "Der Papierkorb ist voll. Wenn du entfernst, werden diese älteren Einträge endgültig gelöscht:"
@@ -297,7 +301,7 @@
       "showMore": "{count} weitere anzeigen",
       "shownOf": "{shown} von {total} Einträgen",
       "searching": "Suche …",
-      "removed": "Entfernt (30 Tage wiederherstellbar)",
+      "removed": "Im Papierkorb (30 Tage wiederherstellbar)",
       "restore": "Wiederherstellen"
     },
     "area": {
@@ -664,8 +668,9 @@
     "unpublished": "Zurückgezogen. In etwa einer Minute nicht mehr auf der Website.",
     "scheduleCleared": "Zeitplan aufgehoben. Der Eintrag bleibt ein Entwurf.",
     "created": "Angelegt.",
-    "removed": "Entfernt.",
-    "removedNamed": "„{title}“ entfernt.",
+    "removed": "Liegt jetzt im Papierkorb.",
+    "removedNamed": "„{title}“ liegt jetzt im Papierkorb.",
+    "removedLiveHint": "In etwa einer Minute nicht mehr auf der Website.",
     "restored": "Wiederhergestellt.",
     "entryGone": "Dieser Eintrag wurde inzwischen entfernt.",
     "leaveConfirm": "Deine Änderungen sind noch nicht gespeichert. Trotzdem weggehen?",
@@ -711,7 +716,8 @@
     "diff": {
       "before": "Vorher",
       "after": "Nachher",
-      "reordered": "Die Reihenfolge wurde geändert"
+      "reordered": "Die Reihenfolge wurde geändert",
+      "picture": "Bild"
     }
   },
   "history": {
@@ -722,13 +728,18 @@
       "ai": "Über KI",
       "entry": "Dieser Eintrag"
     },
+    "entryHeading": "Verlauf: {title}",
+    "backToEntry": "Zurück zu „{title}“",
     "noMatches": "Keine Änderungen für diesen Filter.",
+    "entryEmpty": "Noch keine Änderungen. Was ab jetzt gespeichert wird, steht hier.",
     "showChanges": "Änderungen anzeigen",
     "hideChanges": "Änderungen ausblenden",
+    "openTrash": "Papierkorb öffnen",
     "revert": "Zurück zu dieser Version",
-    "revertConfirm": "Zurück zur Version vom {date}? Das wird als neue Änderung gespeichert, du kannst es rückgängig machen.",
+    "revertConfirm": "Zum Stand direkt nach dieser Änderung ({date}) zurück? Das wird als neue Änderung gespeichert, du kannst es rückgängig machen.",
+    "revertChanges": "Das ändert sich:",
     "reverted": "Zur früheren Version zurückgegangen.",
-    "alreadyThere": "Der Eintrag hat diese Version schon.",
+    "alreadyThere": "Das ist schon der aktuelle Stand.",
     "waiting": "Wartet auf Freigabe",
     "withdraw": "Zurückziehen",
     "withdrawn": "Zurückgezogen.",
@@ -737,7 +748,7 @@
     "notLive": "Nicht live gegangen",
     "notLiveBecause": "Geplant für {when}. {reason}",
     "undoBlocked": {
-      "changed": "Danach erneut geändert, Rückgängig geht nicht mehr",
+      "changed": "Danach noch einmal geändert. Geh stattdessen zu einer früheren Version zurück.",
       "removed": "Eintrag entfernt, erst wiederherstellen",
       "schema": "Die Felder wurden seither umgebaut"
     },
@@ -790,9 +801,9 @@
       "translate": "Übersetzung bearbeiten"
     },
     "removed": {
-      "link": "Entfernt",
-      "title": "Entfernte Einträge",
-      "empty": "Nichts wurde entfernt.",
+      "link": "Papierkorb",
+      "title": "Papierkorb",
+      "empty": "Keine entfernten Einträge. Entfernte Dateien liegen im Papierkorb unter Dateien.",
       "until": "Wird am {date} endgültig gelöscht",
       "deleteNow": "Jetzt löschen",
       "deleteNowNamed": "Jetzt löschen: „{title}“",

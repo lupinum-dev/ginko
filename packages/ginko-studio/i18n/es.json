@@ -182,13 +182,17 @@
       "close": "Cerrar vista previa",
       "frameTitle": "Vista previa del sitio web",
       "stuck": "La vista previa no carga. Guardar sigue funcionando como siempre.",
+      "needsTitle": "La vista previa muestra la página en cuanto rellenes “{field}”.",
+      "untranslated": "Aún no está traducido al {language}. Hasta entonces, la entrada no aparece en el sitio web en este idioma.",
+      "untranslatedListed": "Aún no está traducido al {language}. Hasta entonces, la entrada no tiene página propia en este idioma. Las listas la muestran en {main}.",
       "openSite": "Abrir sitio web"
     },
     "remove": {
       "title": "Eliminar entrada",
-      "text": "“{title}” se elimina del sitio web. Puedes restaurarla durante 30 días.",
+      "text": "“{title}” sale del sitio web. La encuentras durante 30 días en la papelera y puedes restaurarla allí.",
+      "textDraft": "“{title}” va a la papelera. Puedes restaurarla durante 30 días.",
       "confirm": "Eliminar",
-      "usedIn": "«{title}» se usa en {count, plural, one {# entrada} other {# entradas}}. El sitio web no lo mostrará allí hasta que restaures la entrada.",
+      "usedIn": "“{title}” se usa en {count, plural, one {un lugar} other {# lugares}}. Siguen en línea, pero ya no muestran “{title}”. Puedes restaurarla desde la papelera durante 30 días.",
       "confirmAnyway": "Eliminar de todos modos",
       "checking": "Comprobando dónde se usa esta entrada …",
       "trashFull": "La papelera está llena. Si la eliminas, estas entradas más antiguas se borrarán definitivamente:"
@@ -297,7 +301,7 @@
       "showMore": "Mostrar {count} más",
       "shownOf": "{shown} de {total} entradas",
       "searching": "Buscando…",
-      "removed": "Eliminado (se puede restaurar durante 30 días)",
+      "removed": "En la papelera (se puede restaurar durante 30 días)",
       "restore": "Restaurar"
     },
     "area": {
@@ -664,8 +668,9 @@
     "unpublished": "Quitado de la web. Dejará de estar en el sitio web en aproximadamente un minuto.",
     "scheduleCleared": "Programación quitada. La entrada sigue como borrador.",
     "created": "Creado.",
-    "removed": "Eliminado.",
-    "removedNamed": "“{title}” eliminado.",
+    "removed": "Ahora está en la papelera.",
+    "removedNamed": "“{title}” está ahora en la papelera.",
+    "removedLiveHint": "Dejará de estar en el sitio web en aproximadamente un minuto.",
     "restored": "Restaurado.",
     "entryGone": "Esta entrada se eliminó mientras tanto.",
     "leaveConfirm": "Tus cambios aún no están guardados. ¿Salir de todos modos?",
@@ -711,7 +716,8 @@
     "diff": {
       "before": "Antes",
       "after": "Después",
-      "reordered": "El orden cambió"
+      "reordered": "El orden cambió",
+      "picture": "Imagen"
     }
   },
   "history": {
@@ -722,13 +728,18 @@
       "ai": "Vía IA",
       "entry": "Esta entrada"
     },
+    "entryHeading": "Historial: {title}",
+    "backToEntry": "Volver a “{title}”",
     "noMatches": "Ningún cambio coincide con este filtro.",
+    "entryEmpty": "Todavía no hay cambios. Lo que se guarde a partir de ahora aparece aquí.",
     "showChanges": "Mostrar cambios",
     "hideChanges": "Ocultar cambios",
+    "openTrash": "Abrir papelera",
     "revert": "Volver a esta versión",
-    "revertConfirm": "¿Volver a la versión del {date}? Se guarda como un cambio nuevo, así que puedes deshacerlo.",
+    "revertConfirm": "¿Volver al estado justo después de este cambio ({date})? Se guarda como un cambio nuevo, así que puedes deshacerlo.",
+    "revertChanges": "Esto cambia:",
     "reverted": "Se volvió a la versión anterior.",
-    "alreadyThere": "La entrada ya tiene esta versión.",
+    "alreadyThere": "Esta ya es la versión actual.",
     "waiting": "Esperando aprobación",
     "withdraw": "Retirar",
     "withdrawn": "Retirado.",
@@ -737,7 +748,7 @@
     "notLive": "No se publicó",
     "notLiveBecause": "Planificado para {when}. {reason}",
     "undoBlocked": {
-      "changed": "Cambiado de nuevo después, ya no se puede deshacer",
+      "changed": "Cambiado de nuevo después. Vuelve mejor a una versión anterior.",
       "removed": "Entrada eliminada, restáurala primero",
       "schema": "Los campos se reestructuraron desde entonces"
     },
@@ -790,9 +801,9 @@
       "translate": "Editar traducción"
     },
     "removed": {
-      "link": "Eliminadas",
-      "title": "Entradas eliminadas",
-      "empty": "No se eliminó nada.",
+      "link": "Papelera",
+      "title": "Papelera",
+      "empty": "No hay entradas eliminadas. Los archivos eliminados están en la papelera de Archivos.",
       "until": "Se borrará definitivamente el {date}",
       "deleteNow": "Eliminar ahora",
       "deleteNowNamed": "Eliminar ahora: “{title}”",

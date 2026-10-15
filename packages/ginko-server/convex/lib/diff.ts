@@ -23,7 +23,8 @@ export interface FieldDiff {
 const isRecord = (value: Json | null | undefined): value is Record<string, Json> => typeof value === 'object' && value !== null && !Array.isArray(value)
 const differs = (a: Json | null | undefined, b: Json | null | undefined) => stableJson((a ?? null) as Json) !== stableJson((b ?? null) as Json)
 
-function localeDiffs(before: Json | null, after: Json | null): LocaleDiff[] {
+/** The locales whose value differs between two values of a translatable field. */
+export function localeDiffs(before: Json | null, after: Json | null): LocaleDiff[] {
   const a = isRecord(before) ? before : {}
   const b = isRecord(after) ? after : {}
   return [...new Set([...Object.keys(a), ...Object.keys(b)])]

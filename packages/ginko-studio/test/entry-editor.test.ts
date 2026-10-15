@@ -291,3 +291,104 @@ test('while the editor is open the toast sits above its save bar, and goes back 
     window.ResizeObserver = observer
   }
 })
+
+// Wrong behaviour caught: "Vorschau" on a new, unsaved post showed the site's first page (/ueber-uns), not the post,
+// so the person thought the post was lost; on a collection without drafts saving publishes at once (romi-10, J7).
+test('the preview of a new entry shows its own page once the title is typed, and says what it waits for until then', async () => {
+  vi.useFakeTimers()
+  try {
+    const routed = serializeSchema(defineSite({
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+      pages: { about: { de: '/ueber-uns' } },
+      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', route: { de: '/blog/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+    }))
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref([]), error: ref(undefined) }))
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema: routed, brickKey: 'blog', brick: routed.bricks.blog!, canRemove: false },
+      global: { stubs: { EntryFields: true, NuxtLink: true }, components: { PreviewPane } },
+    })
+    await wrapper.findAll('button').find((b) => b.text() === 'Vorschau')!.trigger('click')
+    expect(wrapper.find('iframe').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Die Vorschau zeigt die Seite, sobald „Titel“ ausgefüllt ist.')
+
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Neuer Beitrag' })
+    await vi.advanceTimersByTimeAsync(300)
+    const frame = wrapper.get('iframe').element
+    expect(new URL(frame.getAttribute('src')!).searchParams.get('path')).toBe('/blog/neuer-beitrag')
+    // The site gets the new entry at that address: it finds the post there.
+    const source = new MessageChannel().port1
+    const post = vi.spyOn(source, 'postMessage').mockImplementation(() => {})
+    Object.defineProperty(frame, 'contentWindow', { value: source })
+    const session = new URL(frame.getAttribute('src')!).searchParams.get('session')
+    window.dispatchEvent(new MessageEvent('message', { source, origin: 'https://restaurant.test', data: { type: 'ginko:ready', session } }))
+    await vi.advanceTimersByTimeAsync(300)
+    const sent = post.mock.calls.at(-1)![0] as { bundle: { bricks: { blog: { items: { id: string; urls?: Record<string, string> }[] } } } }
+    expect(sent.bundle.bricks.blog.items.find((item) => item.id === 'new')?.urls).toEqual({ de: '/blog/neuer-beitrag' })
+  } finally {
+    vi.useRealTimers()
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
+  }
+})
+
+// Wrong behaviour caught: removing a draft asked as if it "leaves the website", where it never was.
+test.each([
+  ['live' as const, '„Herbstfest“ geht von der Website. Du findest es 30 Tage lang im Papierkorb und kannst es dort wiederherstellen.'],
+  ['draft' as const, '„Herbstfest“ kommt in den Papierkorb. Du kannst es 30 Tage lang wiederherstellen.'],
+])('the remove question of a %s entry says where it goes', async (state, text) => {
+  vi.stubGlobal('useConvexQuery', () => ({ data: ref([]), error: ref(undefined) }))
+  try {
+    const entry = { _id: 'e1', brick: 'blog', kind: 'item' as const, order: 1, data: { title: { de: 'Herbstfest' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state }
+    const pass = { template: '<div><slot /></div>' }
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: true },
+      global: {
+        stubs: {
+          EntryFields: true, PreviewPane: true, NuxtLink: true,
+          DropdownMenu: pass, DropdownMenuTrigger: pass, DropdownMenuContent: pass,
+          Dialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' }, DialogContent: pass, DialogTitle: pass, DialogDescription: pass,
+          DropdownMenuItem: { emits: ['select'], template: '<button type="button" @click="$emit(\'select\')"><slot /></button>' },
+        },
+      },
+    })
+    await wrapper.findAll('button').find((b) => b.text() === 'Eintrag entfernen …')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain(text)
+  } finally {
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
+  }
+})
+
+// Wrong behaviour caught: the preview of an entry not translated into the language shown fell back to the site's first
+// page (/en/about-us) without a word, so the person saw an unrelated page (romi-10, J7 in another language).
+test.each([
+  ['hidden', undefined, 'Noch nicht auf Englisch übersetzt. Bis dahin ist der Eintrag auf der Website in dieser Sprache nicht zu sehen.'],
+  ['listed in the main language', 'fallback' as const, 'Noch nicht auf Englisch übersetzt. Bis dahin hat der Eintrag in dieser Sprache keine eigene Seite. Listen zeigen ihn auf Deutsch.'],
+])('the English preview of an untranslated new entry says it is %s there, and shows its page once translated', async (_name, untranslated, text) => {
+  vi.useFakeTimers()
+  vi.stubGlobal('useRoute', () => ({ query: { lang: 'en' } }))
+  try {
+    const routed = serializeSchema(defineSite({
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+      pages: { about: { de: '/ueber-uns', en: '/en/about-us' } },
+      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', route: { de: '/blog/[slug]', en: '/en/blog/[slug]' }, ...(untranslated ? { untranslated } : {}), fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+    }))
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref([]), error: ref(undefined) }))
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema: routed, brickKey: 'blog', brick: routed.bricks.blog!, canRemove: false },
+      global: { stubs: { EntryFields: true, NuxtLink: true }, components: { PreviewPane } },
+    })
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Neuer Beitrag' })
+    await vi.advanceTimersByTimeAsync(300)
+    await wrapper.findAll('button').find((b) => b.text() === 'Vorschau')!.trigger('click')
+    expect(wrapper.find('iframe').exists()).toBe(false)
+    expect(wrapper.text()).toContain(text)
+
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Neuer Beitrag', en: 'New post' })
+    await vi.advanceTimersByTimeAsync(300)
+    expect(new URL(wrapper.get('iframe').attributes('src')!).searchParams.get('path')).toBe('/en/blog/new-post')
+  } finally {
+    vi.useRealTimers()
+    vi.stubGlobal('useRoute', () => ({ query: {} }))
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
+  }
+})

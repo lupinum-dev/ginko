@@ -2,7 +2,7 @@
 // each team member reads it in their own Studio language and dates in the site's time zone. Next to it
 // the row keeps `sentence`, the German rendering, as the fallback for rows written before `msg`.
 import type { Label } from '@lupinum/ginko'
-import { labelOf, type Schema } from '@lupinum/ginko/internal'
+import { labelOf, stableJson, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import { storedSentence } from './input'
 import { t, type MessageKey } from './i18n'
@@ -63,8 +63,27 @@ export function recorded(message: HistoryMsg, where?: Where): Recorded {
   return { msg: message, sentence: storedSentence(historyText(message, 'de', where)) }
 }
 
-/** Why a save can no longer be undone: undone already, its entry removed, a field saved again since, or the fields restructured since. */
+/**
+ * Why a save can no longer be undone: undone already, its entry removed, a field changed since (another value or other
+ * prints than the save left, see asSaved), or the fields restructured since.
+ */
 export type UndoBlock = 'undone' | 'removed' | 'changed' | 'schema'
+
+/** The prints of the leaves under `root`, as one comparable text. */
+const printsUnder = (prints: Record<string, unknown> | undefined, root: string) =>
+  stableJson(Object.fromEntries(Object.entries(prints ?? {}).filter(([leaf]) => leaf === root || leaf.startsWith(`${root}.`))))
+
+/**
+ * Whether a field of the entry is still as the save left it. A later write of the field (its revision moved on) counts
+ * only when it left another value or other prints: after the newer save is undone, the older one is undoable again,
+ * while a later "Passt so" (prints only) still blocks it. An absent value and null compare equal (stableJson).
+ */
+function asSaved(change: Pick<Doc<'changes'>, 'entryRev' | 'after' | 'printsAfter'>, entry: Pick<Doc<'entries'>, 'fieldRevs' | 'data' | 'prints'>, root: string) {
+  if (entry.fieldRevs[root] === change.entryRev) return true
+  const after: Record<string, unknown> | undefined = change.after
+  const data: Record<string, unknown> = entry.data
+  return !!after && stableJson(data[root]) === stableJson(after[root]) && printsUnder(entry.prints, root) === printsUnder(change.printsAfter, root)
+}
 
 /**
  * The one rule for "can this save still be undone": the undo mutation refuses with it, and the
@@ -72,13 +91,13 @@ export type UndoBlock = 'undone' | 'removed' | 'changed' | 'schema'
  * site's applied migrations. A full validation of the old values stays a refusal at undo time.
  */
 export function undoBlockOf(
-  change: Pick<Doc<'changes'>, 'undoneBy' | 'fields' | 'entryRev' | 'at'>,
-  entry: Pick<Doc<'entries'>, 'deletedAt' | 'fieldRevs' | 'brick'> | null,
+  change: Pick<Doc<'changes'>, 'undoneBy' | 'fields' | 'entryRev' | 'at' | 'after' | 'printsAfter'>,
+  entry: Pick<Doc<'entries'>, 'deletedAt' | 'fieldRevs' | 'brick' | 'data' | 'prints'> | null,
   migrated: Pick<Doc<'migrationsApplied'>, 'brick' | '_creationTime'>[],
 ): UndoBlock | undefined {
   if (change.undoneBy) return 'undone'
   if (!entry || entry.deletedAt) return 'removed'
-  if ((change.fields ?? []).some((root) => entry.fieldRevs[root] !== change.entryRev)) return 'changed'
+  if ((change.fields ?? []).some((root) => !asSaved(change, entry, root))) return 'changed'
   if (migrated.some((m) => m.brick === entry.brick && m._creationTime > change.at)) return 'schema'
   return undefined
 }

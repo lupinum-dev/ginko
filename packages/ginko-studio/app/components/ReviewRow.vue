@@ -27,6 +27,8 @@ const props = defineProps<{
   locale: Locale
   timeZone: string
   inRelease?: boolean
+  /** The site, for the thumbnails of pictures in a rich text. */
+  site?: string
 }>()
 const emit = defineEmits<{ toggle: []; approve: [at?: number]; reject: [reason: string] }>()
 const { t, format } = useI18n()
@@ -95,7 +97,7 @@ function sendReject() {
     <div v-if="proposal.mine && !proposal.canDecide"><Badge variant="soft">{{ t('review.mine') }}</Badge></div>
 
     <div v-if="open" class="grid gap-3">
-      <ChangeDiff v-if="detail" :diff="detail.diff" :fields="fields" :locale="props.locale" />
+      <ChangeDiff v-if="detail" :diff="detail.diff" :fields="fields" :locale="props.locale" :site="props.site" />
       <template v-if="proposal.canDecide">
         <div v-if="!mode" class="flex flex-wrap gap-2">
           <Button v-if="!stale && !inRelease" type="button" size="sm" :disabled="busy" @click="emit('approve')">{{ t('review.approve') }}</Button>

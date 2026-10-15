@@ -442,7 +442,10 @@ test.describe('Prüfen und Verlauf', () => {
 
       const before = await rows.count()
       await rows.nth(1).getByRole('button', { name: 'Zurück zu dieser Version' }).click()
-      await expect(rows.nth(1).getByText(/^Zurück zur Version vom .*\?/)).toBeVisible()
+      await expect(rows.nth(1).getByText(/^Zum Stand direkt nach dieser Änderung \(.*\) zurück\?/)).toBeVisible()
+      // The question shows what going back changes: now (25,00) before, that version (23,50) after.
+      await expect(rows.nth(1).getByRole('group')).toContainText('Das ändert sich:')
+      await expect(rows.nth(1).getByRole('group')).toContainText('25,00')
       await rows.nth(1).getByRole('group').getByRole('button', { name: 'Zurück zu dieser Version' }).click()
       await expect(rows).toHaveCount(before + 1)
 
@@ -456,6 +459,24 @@ test.describe('Prüfen und Verlauf', () => {
       // Undo is a save of its own at the top; the row it undid is marked.
       await expect(rows.first()).toContainText('Rückgängig: ')
       await expect(rows.nth(1)).toContainText('Rückgängig gemacht')
+      // The undo row holds the current state too: going back to it has nothing to change.
+      await rows.first().getByRole('button', { name: 'Zurück zu dieser Version' }).click()
+      await expect(rows.first().getByRole('group')).toContainText('Das ist schon der aktuelle Stand.')
+      await expect(rows.first().getByRole('group').getByRole('button', { name: 'Zurück zu dieser Version' })).toHaveCount(0)
+      await rows.first().getByRole('group').getByRole('button', { name: 'Abbrechen' }).click()
+
+      // After a later save the undo row is a step back (R6): going back to it shows what changes and saves it.
+      await setPrice('26,00')
+      await open(page, '/s/restaurant/history')
+      const undoRow = rows.nth(1)
+      await expect(undoRow).toContainText('Rückgängig: ')
+      await undoRow.getByRole('button', { name: 'Zurück zu dieser Version' }).click()
+      await expect(undoRow.getByRole('group')).toContainText('Das ändert sich:')
+      await expect(undoRow.getByRole('group')).toContainText('26,00')
+      await expect(undoRow.getByRole('group')).toContainText('25,00')
+      const count = await rows.count()
+      await undoRow.getByRole('group').getByRole('button', { name: 'Zurück zu dieser Version' }).click()
+      await expect(rows).toHaveCount(count + 1)
       await open(page, '/s/restaurant/all/menu')
       await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
       await expect(priceField()).toHaveValue('25,00')

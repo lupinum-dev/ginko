@@ -252,7 +252,7 @@ async function removeEntry(key: string, entry: Entry, task: Task) {
   }
 }
 async function removeNow(key: string, entry: Entry, task: Task) {
-  await ops.removeEntry(entry._id, entry.lifeRev, taskRef(key, task), titleOf(s.schema.value!.bricks[key]!, entry.data, s.main.value))
+  await ops.removeEntry(entry._id, entry.lifeRev, taskRef(key, task), titleOf(s.schema.value!.bricks[key]!, entry.data, s.main.value), entry.state === 'draft')
 }
 async function confirmRemove() {
   const ask = askRemove.value
@@ -360,7 +360,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
     />
     <EntryRemoveDialog
       v-if="askRemove && s.schema.value"
-      :open="true" :slug="s.slug.value" :uses="askRemove.uses" :overflow="askRemove.overflow" :busy="removing.has(askRemove.entry._id)"
+      :open="true" :slug="s.slug.value" :uses="askRemove.uses" :overflow="askRemove.overflow" :busy="removing.has(askRemove.entry._id)" :draft="askRemove.entry.state === 'draft'"
       :title="titleOf(s.schema.value.bricks[askRemove.key]!, askRemove.entry.data, s.main.value)"
       @update:open="askRemove = null" @confirm="confirmRemove"
     />
