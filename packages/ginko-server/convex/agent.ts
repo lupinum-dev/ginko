@@ -312,7 +312,8 @@ export const lookup = internalQuery({
         return { text: hits.length ? `${hits.length} hits.` : 'Nothing found.', result: hits }
       }
       case 'ginko_version_at': {
-        const version = await versionAtAs(ctx, actor, { entry: text(input.entry, 'entry'), change: text(input.change, 'change') })
+        const { task } = await revertTaskFor(ctx, actor, text(input.entry, 'entry'), text(input.change, 'change'))
+        const version = await versionAtAs(ctx, actor, { entry: text(input.entry, 'entry'), change: text(input.change, 'change'), task })
         return { text: 'This is how the entry looked after that change.', result: { ...version, diff: version.diff as unknown as Json } }
       }
       case 'ginko_file_usage': {
@@ -519,13 +520,21 @@ async function draftThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<st
   }
 }
 
+/**
+ * The task a revert of this change goes through. The fields a later change touched are the ones a revert can write: a
+ * staff task must cover them. `ginko_version_at` and `ginko_revert` both ask here, so the preview shows what the save writes.
+ */
+async function revertTaskFor(ctx: QueryCtx, actor: Actor, entryId: string, changeId: string) {
+  const { fields } = await versionAtAs(ctx, actor, { entry: entryId, change: changeId })
+  const entry = await entryOf(ctx, actor, entryId)
+  return { entry, task: taskFor(actor, entry.brick, 'edit', fields, entry) }
+}
+
 /** ginko_revert: `entries.revert` (a normal save, so rights, review and undo apply). */
 async function revertThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
   if (typeof input.entry !== 'string' || typeof input.change !== 'string') fail('INVALID', 'errors.entryAndChangeIdRequired')
-  // The fields a later change touched are the ones a revert can write: a staff task must cover them.
-  const { fields } = await versionAtAs(ctx, actor, { entry: input.entry, change: input.change })
-  const entry = await entryOf(ctx, actor, input.entry)
-  const result = await revertAs(ctx, actor, { site: actor.site.slug, opId, task: taskFor(actor, entry.brick, 'edit', fields, entry), entry: entry._id, change: input.change })
+  const { entry, task } = await revertTaskFor(ctx, actor, input.entry, input.change)
+  const result = await revertAs(ctx, actor, { site: actor.site.slug, opId, task, entry: entry._id, change: input.change })
   return savedAs(result, 'Back to the earlier state')
 }
 

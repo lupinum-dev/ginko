@@ -357,7 +357,7 @@ describe('the weekly task covers this week only', () => {
   // the weekly task keeps this week, so staff were promised a change the save does not make.
   it('the preview through the weekly task leaves out the week, as the revert does', async () => {
     vi.setSystemTime(new Date('2026-10-16T08:00:00Z'))
-    const { as, entries } = await setup()
+    const { t, as, entries } = await setup()
     const lunch = entries.lunch!
     const first = await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: lunch, baseRev: 1, fields: { note: { de: 'Alt' } } }) as { change: Id<'changes'>; rev: number }
     vi.setSystemTime(new Date('2026-10-17T06:00:00Z'))
@@ -365,6 +365,10 @@ describe('the weekly task covers this week only', () => {
     const preview = async (task?: string) => ((await as.owner.query(api.entries.versionAt, { site: 'restaurant', entry: lunch, change: first.change, ...(task ? { task } : {}) })) as unknown as { diff: { field: string }[] }).diff.map((d) => d.field)
     expect(await preview()).toEqual(expect.arrayContaining(['weekOf', 'note']))
     expect(await preview('lunch.lunchWeek')).toEqual(['note'])
+    // The preview names what the revert writes: the revert changes the note and keeps the new week.
+    await as.owner.mutation(api.entries.revert, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, change: first.change })
+    const data = (await t.run((ctx) => ctx.db.get(lunch)))!.data
+    expect([data.weekOf, data.note]).toEqual(['2026-10-19', { de: 'Alt' }])
   })
 })
 
