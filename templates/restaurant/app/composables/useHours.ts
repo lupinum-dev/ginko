@@ -1,7 +1,7 @@
 // Synced from templates/_features/hours/app/composables/useHours.ts by `pnpm templates sync`. Edit the source, not this copy.
 import {
-  calendarOfCountry, hoursLine, hoursOn, openingHoursJsonLd, upcomingClosures, upcomingPlans, weekFor,
-  type DayHours, type HourPlan, type HoursContext, type HoursData, type Weekday,
+  calendarOfCountry, hoursLine, hoursOn, spansText, upcomingClosures, upcomingPlans, weekFor,
+  type DayHours, type HourPlan, type HoursContext, type HoursData, type Span, type Weekday,
 } from '@lupinum/ginko/basics'
 
 /** The days of the week in storage order. */
@@ -13,6 +13,12 @@ const HOLIDAY_SETTINGS = ['sunday', 'closed', 'normal'] as const
 export function plusDays(date: string, days: number): string {
   const time = Date.parse(`${date}T12:00:00Z`) + days * 864e5
   return new Date(time).toISOString().slice(0, 10)
+}
+
+/** Opening spans as text ("11:30–14:00 and 17:30–22:00"), each span kept on one line by a word joiner on both sides
+ *  of its dash: a narrow screen breaks between two spans, never inside one. */
+export function spansLine(spans: Span[], and: string): string {
+  return spansText(spans, and).replaceAll('–', '\u2060–\u2060')
 }
 
 /** The clock time (`HH:MM`, 24 h) of an instant in a time zone. */
@@ -31,8 +37,14 @@ export type HoursNow =
   | { kind: 'closed', reason?: string, holiday?: { de: string, en: string } }
   | { kind: 'unknown' }
 
-/** Today's state at `clock` from the hours line of the basics (`hoursLine`). A span that ends at or before it starts runs past midnight. */
-export function hoursNow(line: ReturnType<typeof hoursLine>, clock: string, locale: string): HoursNow {
+/**
+ * Today's state at `clock` from the hours line of the basics (`hoursLine`). A span that ends at or before it starts
+ * runs past midnight: today's from its start on, and `yesterday`'s (the previous day's spans) until its end, whatever
+ * today holds, so at 01:00 after a Saturday 18:00–02:00 the place is still open.
+ */
+export function hoursNow(line: ReturnType<typeof hoursLine>, clock: string, locale: string, yesterday: readonly Span[] = []): HoursNow {
+  const carried = yesterday.find(({ from, to }) => to <= from && clock < to)
+  if (carried) return { kind: 'open', until: carried.to }
   if (line.state === 'unknown') return { kind: 'unknown' }
   if (line.state === 'closed') {
     const reason = typeof line.reason === 'string' ? line.reason : line.reason?.[locale] ?? Object.values(line.reason ?? {})[0]
@@ -83,10 +95,14 @@ export function useHours() {
   const ctx = computed<HoursContext>(() => ({ hours: data.value, plans: plans.value, country }))
 
   const line = computed(() => hoursLine(data.value, { timeZone, now: new Date(now.value), plans: plans.value, holidays: calendarOfCountry(country) ?? 'none' }))
-  const state = computed(() => hoursNow(line.value, clockIn(timeZone, now.value), locale.value))
+  const yesterday = computed(() => {
+    const rule = hoursOn(ctx.value, plusDays(today.value, -1))
+    return rule.closed ? [] : rule.times
+  })
+  const state = computed(() => hoursNow(line.value, clockIn(timeZone, now.value), locale.value, yesterday.value))
   /** Today's opening spans (empty when closed). */
   const todayRule = computed(() => hoursOn(ctx.value, today.value))
-  /** The next day after today on which the house opens, within two weeks, with its first opening time. */
+  /** The next day after today on which the place opens, within two weeks, with its first opening time. */
   const nextOpen = computed(() => {
     for (let i = 1; i <= 14; i++) {
       const date = plusDays(today.value, i)
@@ -109,8 +125,6 @@ export function useHours() {
     ...data.value.exceptions.filter((e) => e.closed && e.when.from <= today.value && e.when.to > today.value),
     ...upcomingClosures(ctx.value, today.value, 90),
   ])
-  /** `openingHoursSpecification` (+ special days) for the LocalBusiness node of the home page. */
-  const jsonLd = computed(() => openingHoursJsonLd(ctx.value, today.value))
 
-  return { hours, ctx, now, today, line, state, todayRule, nextOpen, week, comingPlans, closures, jsonLd }
+  return { hours, ctx, now, today, state, todayRule, nextOpen, week, comingPlans, closures }
 }

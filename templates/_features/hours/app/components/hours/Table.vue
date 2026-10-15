@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { spansOf, spansText, weekdayOf, type DayHours, type HourPlan } from '@lupinum/ginko/basics'
+import { spansOf, weekdayOf, type DayHours, type HourPlan } from '@lupinum/ginko/basics'
 import { ChevronDown } from '@lucide/vue'
 
 /**
  * The week's opening hours with today marked (today's row says what applies today: a closure or other hours win),
  * the hours that start soon (winter hours, new hours from a date; folded, one line each), the rule for public holidays
- * and the closures ahead. Times in tabular numbers. Place it in a section that gives the heading ("Opening hours").
+ * and the closures ahead. Times in tabular numbers; a span never breaks across lines. Place it in a section that gives
+ * the heading ("Opening hours"); `level` is the heading level of "Closures" inside it (default 3, under an h2).
  */
+const props = withDefaults(defineProps<{ level?: 3 | 4 }>(), { level: 3 })
 const { hours, week, today, todayRule, comingPlans, closures, ctx } = useHours()
 const { t, format, locale } = useI18n('hours')
 const langOf = useGinkoLang()
@@ -15,9 +17,16 @@ const langOf = useGinkoLang()
 const REFERENCE: Record<string, string> = { mo: '2024-01-01', tu: '2024-01-02', we: '2024-01-03', th: '2024-01-04', fr: '2024-01-05', sa: '2024-01-06', su: '2024-01-07' }
 const weekday = (key: string) => format.date(REFERENCE[key] ?? REFERENCE.mo!, { weekday: 'long' })
 const todayKey = computed(() => weekdayOf(today.value))
-const timesOf = (day: DayHours) => (day.closed || !spansOf(day).length ? t('closed') : spansText(spansOf(day), t('and')))
-const todayTimes = computed(() => (todayRule.value.closed ? t('closed') : spansText(todayRule.value.times, t('and'))))
+const timesOf = (day: DayHours) => (day.closed || !spansOf(day).length ? t('closed') : spansLine(spansOf(day), t('and')))
+const todayTimes = computed(() => (todayRule.value.closed ? t('closed') : spansLine(todayRule.value.times, t('and'))))
 const dayMonth = { day: 'numeric', month: 'long' } as const
+/** Two dates as a range: Intl's short form in one year ("1–15 November"); across a year each date in full, joined by
+ *  a spaced dash ("1 November 2026 – 31 March 2027"; Intl writes "01 novembre" in Italian there). */
+const dateRange = (from: string, to: string) => {
+  if (from.slice(0, 4) === to.slice(0, 4)) return format.range(from, to, dayMonth)
+  const full = { ...dayMonth, year: 'numeric' } as const
+  return `${format.date(from, full)} – ${format.date(to, full)}`
+}
 const holidayRule = computed(() => {
   const rule = ctx.value.hours.holidays ?? 'sunday'
   return rule === 'normal' ? undefined : t(rule === 'closed' ? 'holidays.closed' : 'holidays.sunday')
@@ -38,7 +47,7 @@ function comingEnd(plan: HourPlan | undefined) {
   return `${today.value.slice(5) > md ? year + 1 : year}-${md}`
 }
 const planTitle = (plan: HourPlan, starts: string, ends?: string) => {
-  const dates = ends ? format.range(starts, ends, dayMonth) : t('from', { date: format.date(starts, dayMonth) })
+  const dates = ends ? dateRange(starts, ends) : t('from', { date: format.date(starts, dayMonth) })
   return plan.label ? `${dates}: ${plan.label}` : dates
 }
 const reasonOf = (closure: (typeof closures.value)[number]) => {
@@ -77,7 +86,7 @@ const reasonLang = (closure: (typeof closures.value)[number]) => ('holiday' in c
     </div>
 
     <details v-for="coming in comingPlans" :key="coming.plan._id ?? coming.starts" class="group flex flex-col gap-3">
-      <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 font-semibold [&::-webkit-details-marker]:hidden">
+      <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 font-semibold tabular-nums [&::-webkit-details-marker]:hidden">
         {{ planTitle(coming.plan, coming.starts, coming.ends) }}
         <ChevronDown class="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" aria-hidden="true" />
       </summary>
@@ -93,10 +102,10 @@ const reasonLang = (closure: (typeof closures.value)[number]) => ('holiday' in c
     </details>
 
     <div v-if="closures.length" class="flex flex-col gap-3">
-      <h3 class="text-body font-semibold">{{ t('closures') }}</h3>
+      <component :is="`h${props.level}`" class="text-body font-semibold">{{ t('closures') }}</component>
       <ul class="flex flex-col">
         <li v-for="closure in closures" :key="closure._id" class="flex flex-wrap justify-between gap-x-6 border-b py-2 first:border-t">
-          <span class="tabular-nums">{{ format.range(closure.when.from, closure.when.to, dayMonth) }}</span>
+          <span class="tabular-nums">{{ dateRange(closure.when.from, closure.when.to) }}</span>
           <span class="text-muted-foreground"><span :lang="reasonLang(closure)">{{ reasonOf(closure) || t('closedDays') }}</span></span>
         </li>
       </ul>

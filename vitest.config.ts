@@ -15,6 +15,8 @@ export default defineConfig({
             { find: /^@studio\//, replacement: fileURLToPath(new URL('packages/ginko-studio/app/', import.meta.url)) },
             // The stylesheets of ginko-components (see the Studio's nuxt.config.ts); tests do not need their content.
             { find: /^@ginko-components\//, replacement: fileURLToPath(new URL('packages/ginko-components/src/runtime/', import.meta.url)) },
+            // Feature code of the templates (templates/_features) imports the basics by package name, as a template does.
+            { find: /^@lupinum\/ginko\/basics$/, replacement: fileURLToPath(new URL('packages/ginko/src/basics/index.ts', import.meta.url)) },
             { find: /^#imports$/, replacement: fileURLToPath(new URL('packages/ginko/test/shims/imports.ts', import.meta.url)) },
             { find: /^#convex\/api$/, replacement: fileURLToPath(new URL('packages/ginko-studio/test/shims/convex-api.ts', import.meta.url)) },
             { find: /^#ginko\/og$/, replacement: fileURLToPath(new URL('packages/ginko/test/shims/og.ts', import.meta.url)) },

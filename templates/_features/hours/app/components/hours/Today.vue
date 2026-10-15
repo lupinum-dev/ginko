@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { spansText } from '@lupinum/ginko/basics'
-
 /**
  * The answer to "are you open?": open now and until when, opening later today, or closed today with the owner's
  * reason or the public holiday, then today's times or the next opening. The state is a word, the dot only repeats it.
- * The clock moves on every minute, so a page left open stays true.
+ * The clock moves on every minute, so a page left open stays true. `small`: in small text, for the footer.
  */
+defineProps<{ small?: boolean }>()
 const { state, todayRule, nextOpen, now } = useHours()
 const { t, format, locale } = useI18n('hours')
 
@@ -33,7 +32,7 @@ const detail = computed(() => {
 })
 // Today's spans while they still matter; once the day is over or closed, the next opening instead.
 const times = computed(() => (state.value.kind === 'open' || state.value.kind === 'later') && todayRule.value.times.length
-  ? t('todayTimes', { times: spansText(todayRule.value.times, t('and')) })
+  ? t('todayTimes', { times: spansLine(todayRule.value.times, t('and')) })
   : undefined)
 const next = computed(() => (state.value.kind === 'over' || state.value.kind === 'closed') && nextOpen.value
   ? t('now.next', { day: format.date(nextOpen.value.date, { weekday: 'long', day: 'numeric', month: 'long' }), time: nextOpen.value.from })
@@ -41,8 +40,8 @@ const next = computed(() => (state.value.kind === 'over' || state.value.kind ===
 </script>
 
 <template>
-  <div class="flex flex-col gap-1">
-    <p class="flex flex-wrap items-center gap-x-2 text-body tabular-nums">
+  <div class="flex flex-col gap-1" data-hours-now>
+    <p class="flex flex-wrap items-center gap-x-2 tabular-nums" :class="small ? 'text-small' : 'text-body'">
       <span class="inline-flex items-center gap-2 font-semibold">
         <span class="size-2.5 shrink-0 rounded-full" :class="open ? 'bg-success' : 'bg-muted-foreground'" aria-hidden="true" />
         {{ headline }}
