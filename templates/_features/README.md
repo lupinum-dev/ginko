@@ -36,4 +36,6 @@ export default defineSite({
 
 Texts of shared components live in `i18n/<feature>/<code>.json` and are read as the namespace `<feature>`
 (`useI18n('site')`); a template overrides one under the same key in its own `i18n/<code>.json`. Content samples that
-differ per template (`content/site.md`, notices, pages) belong to the template, not to a feature.
+differ per template (`content/site.md`, notices, pages) belong to the template, not to a feature. Feature content in a
+language (`content/legal/1.privacy.de.md`: a two-letter suffix, optionally with a region) is copied only into
+templates that have that locale; the main-language file (no suffix) always is.

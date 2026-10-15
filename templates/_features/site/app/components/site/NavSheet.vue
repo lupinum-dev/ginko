@@ -4,6 +4,7 @@ import { ArrowRight, Menu } from '@lucide/vue'
 // The navigation on phones: a sheet from the inline start (the right in right-to-left languages). reka-ui keeps the
 // focus inside while open and returns it to the button on close. After a navigation the sheet closes and the focus
 // moves to the new page's content instead, so keyboard and screen reader users start there, not in the header.
+// The language switch sits at the top, with full names, since the header has no room for it on phones.
 defineProps<{ links: { key: string, label: string, to: string }[] }>()
 const { t } = useI18n('site')
 const open = ref(false)
@@ -31,7 +32,8 @@ function returnFocus(event: Event) {
     </SheetTrigger>
     <SheetContent side="start" :close-label="t('close')" :aria-describedby="undefined" class="px-6 pt-5 pb-8" @close-auto-focus="returnFocus">
       <SheetTitle class="flex h-11 items-center text-small text-muted-foreground">{{ t('nav.title') }}</SheetTitle>
-      <nav :aria-label="t('nav.label')">
+      <SiteLanguageSwitch names class="mb-4 text-small" />
+      <nav v-if="links.length" :aria-label="t('nav.label')">
         <ul class="flex flex-col border-t">
           <li v-for="link in links" :key="link.key" class="border-b">
             <SiteNavLink :to="link.to" class="flex min-h-14 items-center justify-between gap-4 py-3 text-h3 font-medium underline-offset-4 aria-[current=page]:underline">

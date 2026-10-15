@@ -35,9 +35,9 @@ function repo(change: (files: Record<string, string>) => void = () => {}) {
 }
 
 describe('templates sync', () => {
-  it('copies the feature files, with a source comment in code files only, and sets the next minor range', () => {
+  it('copies the feature files, with a source comment in code files only, and sets the next minor range', async () => {
     const root = repo()
-    expect(sync(root, '0.5.0').sort()).toEqual([
+    expect((await sync(root, '0.5.0')).sort()).toEqual([
       'templates/demo/app/assets/css/base.css', 'templates/demo/app/components/SiteHeader.vue', 'templates/demo/app/lib/utils.ts',
       'templates/demo/content/legal/1.privacy.md', 'templates/demo/package.json',
     ])
@@ -48,29 +48,43 @@ describe('templates sync', () => {
     // Content carries no comment: the manifest knows where it came from.
     expect(read('content/legal/1.privacy.md')).toBe('---\ntitle: Privacy\n---\n')
     expect(JSON.parse(read('package.json')).dependencies).toEqual({ '@lupinum/ginko': '^0.5.0', nuxt: '^4.6.1' })
-    expect(sync(root, '0.5.0')).toEqual([])
+    expect(await sync(root, '0.5.0')).toEqual([])
   })
 
-  it('deletes a synced copy whose source left files.json, and keeps the template\'s own files', () => {
+  it('deletes a synced copy whose source left files.json, and keeps the template\'s own files', async () => {
     const root = repo()
-    sync(root, null)
+    await sync(root, null)
     writeFileSync(join(root, 'templates/demo/app/components/Own.vue'), '<template><p /></template>\n')
     writeFileSync(join(root, 'templates/_features/site/files.json'), JSON.stringify(['app/lib/utils.ts', 'app/assets/css/base.css', 'content/legal/1.privacy.md']))
-    expect(sync(root, null)).toEqual(['templates/demo/app/components/SiteHeader.vue (deleted)'])
+    expect(await sync(root, null)).toEqual(['templates/demo/app/components/SiteHeader.vue (deleted)'])
     expect(existsSync(join(root, 'templates/demo/app/components/SiteHeader.vue'))).toBe(false)
     expect(existsSync(join(root, 'templates/demo/app/components/Own.vue'))).toBe(true)
+  })
+
+  it('copies feature content only in the template\'s languages, and the check agrees', async () => {
+    // Wrong behaviour caught: a template without French gets content/legal/1.privacy.fr.md, a page in a language
+    // the site does not have, or the check asks for it.
+    const root = repo((files) => {
+      files['templates/_features/site/files.json'] = JSON.stringify(['content/legal/1.privacy.md', 'content/legal/1.privacy.de.md', 'content/legal/1.privacy.fr.md'])
+      files['templates/_features/site/content/legal/1.privacy.de.md'] = '---\ntitle: Datenschutz\n---\n'
+      files['templates/_features/site/content/legal/1.privacy.fr.md'] = '---\ntitle: Confidentialité\n---\n'
+      files['templates/demo/ginko.config.ts'] = files['templates/demo/ginko.config.ts']!.replace("locales: ['en']", "locales: ['en', 'de']")
+    })
+    expect((await sync(root, null)).sort()).toEqual(['templates/demo/content/legal/1.privacy.de.md', 'templates/demo/content/legal/1.privacy.md'])
+    expect(existsSync(join(root, 'templates/demo/content/legal/1.privacy.fr.md'))).toBe(false)
+    expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([])
   })
 })
 
 describe('templates sync --check', () => {
-  const synced = () => {
+  const synced = async () => {
     const root = repo()
-    sync(root, null)
+    await sync(root, null)
     return root
   }
 
   it('passes right after sync', async () => {
-    expect(await syncCheck(synced(), { next: null, today: TODAY })).toEqual([])
+    expect(await syncCheck(await synced(), { next: null, today: TODAY })).toEqual([])
   })
 
   // Wrong behaviour caught: each of these reaches a user who copies the template, and the check lets it through.
@@ -94,7 +108,7 @@ describe('templates sync --check', () => {
       writeFileSync(path, readFileSync(path, 'utf8').replace('2027-03-02', '2026-12-01').replace('2027-03-01', '2026-11-30'))
     }, 'demo: the last sample date (2026-12-01) is 47 days ahead of 2026-10-15; it must be at least 90 days ahead'],
   ])('fails on %s', async (_name, breakIt, problem) => {
-    const root = synced()
+    const root = await synced()
     breakIt(root)
     const problems = await syncCheck(root, { next: null, today: TODAY })
     expect(problems).toHaveLength(1)
@@ -103,7 +117,7 @@ describe('templates sync --check', () => {
 
   it('accepts the next minor range while the release is pending', async () => {
     const root = repo()
-    sync(root, '0.5.0')
+    await sync(root, '0.5.0')
     expect(await syncCheck(root, { next: '0.5.0', today: TODAY })).toEqual([])
     expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([])
   })

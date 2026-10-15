@@ -1,10 +1,11 @@
 <!-- Synced from templates/_features/site/app/components/site/Header.vue by `pnpm templates sync`. Edit the source, not this copy. -->
 <script setup lang="ts">
 // Name or logo, the navigation (at most 6 links; in a sheet below `md`), the language switch and the theme toggle.
+// Below `md` the language switch moves into the sheet, so the sheet opens for a site with languages but no links too.
 const config = useSiteAppConfig()
 const links = useSiteLinks(() => config.nav)
+const { t, alternates } = useI18n('site')
 const path = useGinkoPath()
-const { t } = useI18n('site')
 </script>
 
 <template>
@@ -27,9 +28,9 @@ const { t } = useI18n('site')
         </ul>
       </nav>
       <div class="flex items-center gap-1">
-        <SiteLanguageSwitch />
+        <SiteLanguageSwitch class="max-md:hidden" />
         <SiteThemeToggle />
-        <SiteNavSheet v-if="links.length" :links="links" />
+        <SiteNavSheet v-if="links.length || alternates.length > 1" :links="links" />
       </div>
     </div>
   </header>
