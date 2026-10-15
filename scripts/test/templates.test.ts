@@ -116,6 +116,11 @@ describe('templates sync --check', () => {
       // The second line is isolated (U+2068 … U+2069) and passes; the first would show as ".River Commons e.V".
       writeFileSync(join(root, 'templates/demo/content/pages/1.donate.ar.md'), '---\ntitle: "تبرّعوا"\n---\n\nRiver Commons e.V.\\\n\u2068River Commons e.V.\u2069\\\nIBAN: DE00 0000\n')
     }, 'demo: content/pages/1.donate.ar.md:5: "River Commons e.V." ends in punctuation'],
+    ['the email of content/site.md written out in a page text', (root: string) => {
+      mkdirSync(join(root, 'templates/demo/content/pages'), { recursive: true })
+      writeFileSync(join(root, 'templates/demo/content/site.md'), '---\nemail: hello@example.com\nphone: \'+43 1 000 00 00\'\n---\n')
+      writeFileSync(join(root, 'templates/demo/content/pages/1.contact.md'), '---\ntitle: Contact\n---\n\nWrite to [us](mailto:hello@example.com).\n')
+    }, 'demo: content/pages/1.contact.md: "hello@example.com" is the value of content/site.md'],
     ['a lockfile in the template', (root: string) => writeFileSync(join(root, 'templates/demo/package-lock.json'), '{}'), 'demo: package-lock.json must not be committed'],
     ['sample dates less than 90 days ahead', (root: string) => {
       const path = join(root, 'templates/demo/content/events/1.fair.md')

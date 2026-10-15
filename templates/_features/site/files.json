@@ -9,6 +9,7 @@
   "app/components/block/Hero.vue",
   "app/components/block/PageHeader.vue",
   "app/components/block/Section.vue",
+  "app/components/site/Contact.vue",
   "app/components/site/Footer.vue",
   "app/components/site/Header.vue",
   "app/components/site/LanguageSwitch.vue",

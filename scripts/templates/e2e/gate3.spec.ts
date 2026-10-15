@@ -21,6 +21,32 @@ test('home and every page of the sitemap answer 200 with one h1 and a JSON-LD ty
   }
 })
 
+// The footer is the page that shows the contact details on every page. Wrong behaviour caught: a footer or imprint
+// with a copy of the address in code or in a text, so a change in content/site.md leaves the page behind.
+test('every page shows the email and phone of content/site.md in its footer', async ({ page }) => {
+  const { email, phone } = site.contact
+  test.skip(!email && !phone, 'content/site.md has neither email nor phone')
+  for (const path of await sitePages()) {
+    await open(page, path)
+    const footer = page.locator('footer')
+    if (email) await expect.soft(footer.locator(`a[href="mailto:${email}"]`), `${path}: footer email link`).toHaveText(email)
+    if (phone) await expect.soft(footer.locator(`a[href^="tel:"]`), `${path}: footer phone link`).toHaveText(phone)
+  }
+})
+
+// The imprint repeats them as text from the same file. It is the legal text with the imprint rows.
+test('the imprint shows the email and phone of content/site.md', async ({ page }) => {
+  const { email, phone } = site.contact
+  test.skip(!email && !phone, 'content/site.md has neither email nor phone')
+  await open(page, '/')
+  const imprint = page.locator('footer nav[aria-label] a').filter({ hasText: /imprint|impressum|note legali|mentions légales|بيانات/i }).first()
+  test.skip(await imprint.count() === 0, 'the template has no imprint')
+  await imprint.click()
+  const main = page.locator('main')
+  if (email) await expect(main, 'imprint email').toContainText(email)
+  if (phone) await expect(main, 'imprint phone').toContainText(phone)
+})
+
 test('llms.txt lists the site pages and each link answers 200', async ({ request }) => {
   const response = await request.get('/llms.txt')
   expect(response.status()).toBe(200)

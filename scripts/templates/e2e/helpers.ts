@@ -12,6 +12,8 @@ export const site = {
   timeZone: process.env.TEMPLATE_TIME_ZONE ?? 'UTC',
   currency: process.env.TEMPLATE_CURRENCY ?? '',
   language: process.env.TEMPLATE_LANGUAGE ?? 'en',
+  /** The sample email and phone of content/site.md (either may be missing). */
+  contact: JSON.parse(process.env.TEMPLATE_CONTACT || '{}') as { email?: string; phone?: string },
 }
 
 /** Every test starts the browser clock at the test instant; it keeps running (T10: one instant on all clocks). */

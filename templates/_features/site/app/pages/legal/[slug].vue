@@ -1,17 +1,17 @@
 <script setup lang="ts">
 // One legal text (content/legal/): privacy policy, terms, imprint. Address: /legal/<slug> in every language.
 // The imprint starts with the details of content/site.md (name, address, register, VAT number, email, phone), so the
-// owner writes them once; the text below adds what site.md cannot hold. Shown when site.md has an address. Email and
-// phone are text here: the footer of every page links them.
+// owner writes them once; the text below adds what site.md cannot hold. A detail site.md does not have is left out.
+// Email and phone are text here: the footer of every page links them.
 const route = useRoute()
 const entry = useGinkoEntry('legal', () => route.params.slug)
 const site = useGinko('site')
 const { t, format } = useI18n('site')
 const details = computed(() => {
   const d = site.value.data
-  if (entry.value.data.legalType !== 'imprint' || !d.city) return []
+  if (entry.value.data.legalType !== 'imprint') return []
   return [
-    [t('imprint.address'), [d.legalName, d.street, `${d.postalCode ?? ''} ${d.city}`].filter(Boolean).join('\n')],
+    [t('imprint.address'), [d.legalName, d.street, d.city ? `${d.postalCode ?? ''} ${d.city}` : undefined].filter(Boolean).join('\n')],
     [t('imprint.registry'), [d.registryCourt, d.registryNumber].filter(Boolean).join(', ')],
     [t('imprint.vat'), d.vatId],
     [t('imprint.email'), d.email],

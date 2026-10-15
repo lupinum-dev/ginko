@@ -254,6 +254,36 @@ export function bidiProblems(dir: string): string[] {
   })
 }
 
+/** The email and phone of a template's content/site.md (its main-language file), for the checks that look for them on a page. */
+export function siteContact(dir: string): { email?: string; phone?: string } {
+  const file = join(dir, 'content/site.md')
+  const text = existsSync(file) ? readFileSync(file, 'utf8') : ''
+  const value = (key: string) => new RegExp(`^${key}:[ \\t]*(.+?)[ \\t]*$`, 'm').exec(text)?.[1]?.replace(/^(['"])(.*)\1$/, '$2')
+  return { email: value('email'), phone: value('phone') }
+}
+
+/**
+ * The email and phone of content/site.md written out by hand in another content file, a page or a text of the template
+ * (T-contact): the footer, the imprint and the contact blocks read them from the site brick, so a copy goes stale when
+ * the owner changes the brick.
+ */
+export function copiedContactProblems(dir: string): string[] {
+  const values = Object.values(siteContact(dir)).filter((value): value is string => !!value)
+  if (!values.length) return []
+  const found: string[] = []
+  for (const folder of ['content', 'app', 'i18n']) {
+    const base = join(dir, folder)
+    if (!existsSync(base)) continue
+    for (const file of readdirSync(base, { recursive: true }).map(String)) {
+      const path = `${folder}/${file}`
+      if (!/\.(md|vue|ts|json)$/.test(file) || /^content\/site(\.[a-z-]+)?\.md$/.test(path) || !statSync(join(base, file)).isFile()) continue
+      const text = readFileSync(join(base, file), 'utf8')
+      for (const value of values) if (text.includes(value)) found.push(`${path}: "${value}" is the value of content/site.md; read it from the site brick (useGinko('site')) instead of writing it out`)
+    }
+  }
+  return found
+}
+
 /** `sync --check`: the problems, empty when the templates match their sources and rules. `today` is `YYYY-MM-DD`. */
 export async function syncCheck(root = repoRoot, { next = nextVersion(root), today = new Date().toISOString().slice(0, 10), only }: { next?: string | null; today?: string; only?: string } = {}): Promise<string[]> {
   const names = templateNames(root).filter((name) => !only || name === only)
@@ -277,6 +307,7 @@ export async function syncCheck(root = repoRoot, { next = nextVersion(root), tod
     const anchor = pkg.ginko?.sampleAnchor
     if (!anchor || !/^\d{4}-\d{2}-\d{2}$/.test(anchor)) problems.push(`${name}: package.json needs "ginko": { "sampleAnchor": "YYYY-MM-DD" }`)
     for (const problem of bidiProblems(dir)) problems.push(`${name}: ${problem}`)
+    for (const problem of copiedContactProblems(dir)) problems.push(`${name}: ${problem}`)
     // The unknown-class lint (ui feature, eslint.tailwind.mjs) only works when the template's own eslint config loads it.
     if (pkg.ginko?.features?.includes('ui') && !(existsSync(join(dir, 'eslint.config.mjs')) && readFileSync(join(dir, 'eslint.config.mjs'), 'utf8').includes('tailwindClassesConfig'))) {
       problems.push(`${name}: eslint.config.mjs must pass tailwindClassesConfig (from ./eslint.tailwind.mjs) to withNuxt, so lint fails on a Tailwind class the theme does not have`)
@@ -508,6 +539,8 @@ async function runGates(name: string, gates: number[], modes: Mode[], results: R
             // What the feature specs compare against: the site's zone ("today"), currency and main language.
             TEMPLATE_TIME_ZONE: config.timeZone ?? 'UTC', TEMPLATE_CURRENCY: config.currency ?? '', TEMPLATE_LANGUAGE: config.languages?.[locales[0]!] ?? locales[0]!,
             // Gate 6: kB of gzip script per page; 150 for the starter, a feature template sets its own (at most 170).
+            // The sample email and phone of content/site.md: gate 3 looks for them on the page that shows contact details.
+            TEMPLATE_CONTACT: JSON.stringify(siteContact(templateDir)),
             TEMPLATE_SCRIPT_BUDGET: String(Math.min(pkg.ginko?.scriptBudget ?? 150, 170)),
           }
           // Gate 3 also runs the e2e specs of the template's features (templates/_features/<feature>/e2e/).
