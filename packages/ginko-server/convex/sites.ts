@@ -1,5 +1,5 @@
 // Site queries for the UI and the admin-only creation of a site (SPEC 4.2, 10).
-import { isCurrency, isLocale, isTimeZone, labelOf as labelIn, MAX_LOCALES, weekInfoOf, type Schema } from '@lupinum/ginko/internal'
+import { isCurrency, isLocale, isTimeZone, isVisible, labelOf as labelIn, MAX_LOCALES, ordered, todayIn, weekInfoOf, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
@@ -7,6 +7,8 @@ import { actorFor, currentUser, fail, memberOf, type Actor } from './lib/access'
 import { NAME_MAX, SLUG } from './lib/input'
 import { isFetchableSiteUrl } from './lib/siteUrl'
 import { leafStatus } from './lib/translation'
+import { titleOf } from './lib/list'
+import type { Data } from './lib/content'
 
 /** The sites the signed-in user may open, with their role. Admins see every site. A site being deleted is listed for owners and admins only (they can cancel). */
 export const mine = query({
@@ -222,39 +224,57 @@ export const setRefreshToken = internalMutation({
   },
 })
 
+/** The most entries the translation overview lists; the counts stay complete beyond it. */
+const TRANSLATION_ROWS = 200
+
 /**
  * Translation status (SPEC 4.2): per brick and per language other than the main one, how many entries
  * have every text (`ok`), at least one missing text (`missing`), or only outdated ones (`outdated`).
- * It uses the rule of the bundle (`resolveEntry`), so it matches what ginko_read reports; like the bundle
- * it counts live entries and singles, not drafts. Which texts an entry lacks comes with the entry itself
- * (entries.list `gaps`, entries.get `translation`). Any member may read.
+ * It uses the rule of the bundle (`resolveEntry`), so it matches what ginko_read reports. It counts what the
+ * website shows: live entries and singles, not drafts, and no entry whose date has passed (`isVisible`, as the
+ * site's listings). `entries` lists the entries with a gap for the Studio's overview ("Übersetzungen"), by
+ * brick in config order and then the site's order, at most TRANSLATION_ROWS (`truncated`): the title (null for
+ * a single and an untitled entry: the Studio shows the area), how many texts are missing or outdated, and
+ * whether the gap keeps the page off the website in that language (`hidden`). Titles of planned weeks are in
+ * `language`. Any member may read; staff get the areas of their tasks (as in Alles bearbeiten), so the list
+ * and the count cover the same entries.
  */
 export const translationStatus = query({
-  args: { site: v.string() },
+  args: { site: v.string(), language: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const actor = await actorFor(ctx, args.site)
     const schema = actor.site.schema as Schema
     const foreign = schema.locales.slice(1)
     const bricks = []
-    for (const [key, def] of Object.entries(schema.bricks)) {
-      if (def.retired) continue
+    const entries: { brick: string; entry: string; title: string | null; locale: string; missing: number; outdated: number; hidden: boolean }[] = []
+    let truncated = false
+    const today = todayIn(schema.timeZone)
+    const opens = (key: string, tasks: readonly { id: string }[] = []) => actor.role !== 'staff' || tasks.some((t) => actor.grants.includes(`${key}.${t.id}`))
+    for (const [key, def] of ordered(schema.bricks)) {
+      if (def.retired || !opens(key, def.tasks)) continue
       const rows = (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', key)).collect())
-        .filter((row) => !row.deletedAt && row.state !== 'draft')
+        .filter((row) => !row.deletedAt && row.state !== 'draft' && isVisible(def, row.data as Data, today))
       const locales: Record<string, { missing: number; outdated: number; ok: number }> = {}
-      for (const locale of foreign) {
-        const out = { missing: 0, outdated: 0, ok: 0 }
-        for (const row of rows) {
+      for (const locale of foreign) locales[locale] = { missing: 0, outdated: 0, ok: 0 }
+      for (const row of rows) {
+        for (const locale of foreign) {
           const status = leafStatus(schema, key, row, locale)
+          const out = locales[locale]!
           // One count per entry: a missing text outweighs an outdated one.
           if (status.missing.length) out.missing += 1
           else if (status.outdated.length) out.outdated += 1
           else out.ok += 1
+          if (!status.missing.length && !status.outdated.length) continue
+          if (entries.length >= TRANSLATION_ROWS) { truncated = true; continue }
+          entries.push({
+            brick: key, entry: row._id, title: def.kind === 'single' ? null : titleOf(schema, def, row.data as Data, args.language),
+            locale, missing: status.missing.length, outdated: status.outdated.length, hidden: status.page === 'hidden',
+          })
         }
-        locales[locale] = out
       }
       bricks.push({ brick: key, label: labelIn(def.label, schema.locales[0]!, schema.locales[0]!), kind: def.kind, locales })
     }
-    return { main: schema.locales[0]!, locales: foreign, bricks }
+    return { main: schema.locales[0]!, locales: foreign, bricks, entries, truncated }
   },
 })
 

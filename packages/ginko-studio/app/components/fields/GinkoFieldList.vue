@@ -1,6 +1,7 @@
 <!-- A list as row cards (UI.md 5). Fixed lists (min = max with a unique choice column, e.g. the
      weekdays) show that column as the row title and allow no add/remove/move. When a text in a row
-     changed but its required choices did not, the choices must be confirmed ("Noch richtig?"). -->
+     changed but its required choices did not, the choices must be confirmed ("Noch richtig?").
+     In another language (Alles bearbeiten), rows are added in the main language only. -->
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, reactive, watchEffect } from 'vue'
 import { useI18n } from '#imports'
@@ -8,7 +9,7 @@ import type { Field, Json, Locale } from '@lupinum/ginko'
 import { defaultsFor, isShown, ordered, stableJson } from '@lupinum/ginko/internal'
 import GinkoField from './GinkoField.vue'
 import { messageOf } from '@studio/utils/messageOf'
-import { BLOCKERS, issuesUnder, type Issue, newRowId, textIn } from '@lupinum/ginko-editor'
+import { BLOCKERS, TRANSLATION, issuesUnder, type Issue, newRowId, textIn } from '@lupinum/ginko-editor'
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, Trash2Icon } from '@lucide/vue'
 import { Button } from '@studio/components/ui/button'
 import { useToast } from '../../composables/useToast'
@@ -28,6 +29,10 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 const blockers = inject(BLOCKERS, undefined)
+const translation = inject(TRANSLATION, undefined)
+// The rows belong to the main language: a row added on another language's tab could get neither its main-language
+// texts nor its pictures there, so it could never be saved. Removing stays possible (its translations go with it).
+const foreignTab = computed(() => !!translation && props.locale !== props.locales[0])
 const { shown: labelText } = useStudioSite()
 const { t } = useI18n()
 
@@ -149,6 +154,9 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
         </div>
       </li>
     </ol>
-    <Button v-if="!fixed && rows.length < max" type="button" variant="outline" class="justify-self-start" @click="addRow"><PlusIcon aria-hidden="true" />{{ t('fields.list.add', { item: labelText(field.itemLabel) }) }}</Button>
+    <template v-if="!fixed && rows.length < max">
+      <p v-if="foreignTab" class="text-sm text-muted-foreground">{{ t('fields.list.addInMain', { name: translation!.mainName() }) }}</p>
+      <Button v-else type="button" variant="outline" class="justify-self-start" @click="addRow"><PlusIcon aria-hidden="true" />{{ t('fields.list.add', { item: labelText(field.itemLabel) }) }}</Button>
+    </template>
   </div>
 </template>

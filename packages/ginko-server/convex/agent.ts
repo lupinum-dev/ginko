@@ -14,7 +14,7 @@ import { actorFor, entryOf, fail, idempotent, memberOf, type Actor } from './lib
 import { searchEntries as searchAll, searchTexts } from './lib/search'
 import { fixedTools, HISTORY_MAX, PROPOSE, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, taskTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
 import type { Data } from './lib/content'
-import { splitFallback } from './lib/translation'
+import { leafStatus } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
 import { effectiveReview } from './lib/policy'
 import { secret } from './release'
@@ -322,17 +322,22 @@ export const lookup = internalQuery({
   },
 })
 
-/** ginko_read in another language: which of the leaves delivered in the main language have a translation that is only outdated. */
+/**
+ * ginko_read in another language: the outdated translations per entry, which the bundle delivers as they are (D6).
+ * Only the entries the bundle holds: not removed, not drafts, not left out of this language.
+ */
 export const stale = internalQuery({
-  args: { key: v.id('agentKeys'), brick: v.string(), locale: v.string(), fallback: v.record(v.string(), v.array(v.string())) },
-  handler: async (ctx, { key, brick, locale, fallback }): Promise<Record<string, string[]>> => {
+  args: { key: v.id('agentKeys'), brick: v.string(), locale: v.string() },
+  handler: async (ctx, { key, brick, locale }): Promise<Record<string, string[]>> => {
     const actor = await actorOrFail(ctx, key)
+    const schema = actor.site.schema as Schema
     const out: Record<string, string[]> = {}
-    const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', brick)).collect()
+    if (!Object.hasOwn(schema.bricks, brick)) return out
+    const rows = await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', actor.site._id).eq('brick', brick).eq('deletedAt', undefined)).collect()
     for (const row of rows) {
-      // `fallback` holds the bundle's list: missing and outdated leaves. A leaf that has a value in this language is outdated.
-      const leaves = splitFallback(row.data as Data, fallback[row._id] ?? (row.kind === 'single' ? fallback.single : undefined) ?? [], locale).outdated
-      if (leaves.length) out[row._id] = leaves
+      if (row.state === 'draft') continue
+      const status = leafStatus(schema, brick, row, locale)
+      if (status.page !== 'hidden' && status.outdated.length) out[row._id] = status.outdated
     }
     return out
   },

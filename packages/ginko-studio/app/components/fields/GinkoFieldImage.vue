@@ -13,7 +13,14 @@ import { Input } from '@studio/components/ui/input'
 import { Label } from '@studio/components/ui/label'
 import type { Chosen } from '../files/LibraryPickerBody.vue'
 
-const props = defineProps<{ id: string; field: Field; modelValue: Json | undefined; invalid: boolean; describedBy?: string; locale: string }>()
+const props = defineProps<{
+  id: string; field: Field; modelValue: Json | undefined; invalid: boolean; describedBy?: string; locale: string
+  /**
+   * The name of the main language when this is a translation (Alles bearbeiten in another language): a picture
+   * applies to every language, so here only its description is edited and the picture is changed in the main language.
+   */
+  altOnly?: string
+}>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 
 const { t } = useI18n()
@@ -108,7 +115,8 @@ function setAlt(text: string) {
       <img class="block h-auto max-h-56 w-auto max-w-full rounded-md object-contain" :src="ready.url" :alt="altText.trim() || libraryAlt">
     </figure>
 
-    <div class="flex flex-wrap gap-2">
+    <p v-if="altOnly" class="text-sm text-muted-foreground">{{ t('fields.image.chooseInMain', { name: altOnly }) }}</p>
+    <div v-else class="flex flex-wrap gap-2">
       <Button v-if="!fileId" type="button" variant="secondary" :disabled="sending" @click="pick">{{ t('fields.image.pick') }}</Button>
       <template v-else>
         <Button type="button" variant="secondary" :disabled="sending" @click="pick">{{ t('fields.image.other') }}</Button>
@@ -118,7 +126,7 @@ function setAlt(text: string) {
       <Button type="button" variant="secondary" :disabled="sending" @click="libraryOpen = true">{{ t('files.picker.choose') }}</Button>
       <Button v-if="error || failedMessage" type="button" variant="outline" :disabled="sending" @click="retry">{{ t('basics.retry') }}</Button>
     </div>
-    <LibraryPicker v-if="libraryOpen" v-model:open="libraryOpen" kind="image" :locale="locale" @choose="fromLibrary" />
+    <LibraryPicker v-if="libraryOpen && !altOnly" v-model:open="libraryOpen" kind="image" :locale="locale" @choose="fromLibrary" />
     <input ref="picker" class="sr-only" type="file" tabindex="-1" aria-hidden="true" :accept="acceptOf('image')" @change="onPicked">
 
     <div v-if="fileId" class="grid gap-1.5">

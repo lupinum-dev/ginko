@@ -2,10 +2,10 @@
      status, a sticky save bar, and the preview beside it on wide screens. Same engine as the tasks. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, urlsFor, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, todayIn, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { languageName, leafTranslation, previewFileIds, publishQuestion, taskRef, titleOf, type Task } from '../utils/content'
+import { languageLabel, languageName, leafTranslation, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -23,6 +23,7 @@ import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
 import { refDebounced, useMediaQuery } from '@vueuse/core'
 import { OWN_BOTTOM_BAR } from '../utils/siteLinks'
+import { siteOrigin } from '../utils/origin'
 import { provideSiteRefs } from '../composables/useSiteRefs'
 import { Button } from '@studio/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
@@ -35,7 +36,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@studio/components/ui/
 import { RadioGroup, RadioGroupItem } from '@studio/components/ui/radio-group'
 
 const props = defineProps<{
-  site: { slug: string; url: string; previewOrigins: string[]; schemaRev: number; contentRev: number; name: string }
+  /** `release`: the site's last release, null before the first (nothing of it is online yet). */
+  site: { slug: string; url: string; previewOrigins: string[]; schemaRev: number; contentRev: number; name: string; release: object | null }
   schema: Schema
   brickKey: string
   brick: Brick
@@ -64,12 +66,15 @@ const wantedLocale = String(useRoute().query.lang ?? '')
 const locale = ref<Locale>(props.schema.locales.includes(wantedLocale) ? wantedLocale : main.value)
 const foreign = computed(() => locale.value !== main.value)
 
-/** All live fields; a new entry has no slug yet; a foreign language shows only translatable ones. */
+/**
+ * All live fields; a new entry has no slug yet; a foreign language shows only translatable ones, and the address the
+ * page has there (display only: the form never sends a slug, the server makes it from the translated title).
+ */
 const fields = computed<Fields>(() => Object.fromEntries(ordered(props.brick.fields).filter(([key, f]) => {
   if (f.retired) return false
   if (!props.entry && f.type === 'slug') return false
   if (props.entry && props.tasks?.fields && !props.tasks.fields.includes(key)) return false
-  if (foreign.value) return hasTranslation(f)
+  if (foreign.value) return hasTranslation(f) || (f.type === 'slug' && props.brick.kind === 'collection' && !!props.brick.route?.[locale.value])
   return true
 })))
 
@@ -166,11 +171,13 @@ const draftAt = (path: string) => valueAt(draft.value, path)
 function translation(path: string): 'missing' | 'stale' | 'fine' | undefined {
   if (!foreign.value) return undefined
   const value = draftAt(path)
+  const stored = storedAt(path) as Record<string, unknown> | undefined
   return leafTranslation({
     draft: value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined,
     locale: locale.value,
     main: main.value,
-    storedMain: (storedAt(path) as Record<string, unknown> | undefined)?.[main.value],
+    storedMain: stored?.[main.value],
+    storedForeign: stored?.[locale.value],
     print: props.entry?.prints[path]?.[locale.value],
     confirmed: confirm.value.includes(path),
   })
@@ -184,11 +191,22 @@ function confirmTranslation(path: string) {
   if (!confirm.value.includes(path)) confirm.value = [...confirm.value, path]
 }
 
-/** The main-language text shown above a translation (Markdown as written). */
+/** The main-language text shown above a translation: all of it, Markdown as written (the field shows it rich). */
 function sourceText(path: string): string {
   const value = storedAt(path) as Record<string, unknown> | undefined
   const text = value?.[main.value]
-  return typeof text === 'string' ? text.slice(0, 400) : ''
+  return typeof text === 'string' ? text : ''
+}
+
+// The link opens the local site on a local platform; the browser decides, so only after mount (no hydration mismatch).
+const mounted = ref(false)
+onMounted(() => { mounted.value = true })
+/** The entry's page in the open language: none while it is not translated there; a link only while the website shows it. */
+function address() {
+  if (!props.entry || props.brick.kind !== 'collection') return undefined
+  const page = pageOf(props.schema, props.brickKey, props.brick, props.entry, locale.value, { released: !!props.site.release, today: todayIn(props.schema.timeZone) })
+  if (!page) return undefined
+  return page.online && mounted.value ? { path: page.path, href: `${siteOrigin(props.site)}${page.path}` } : { path: page.path }
 }
 
 // A confirmed leaf whose row was removed meanwhile would make the save INVALID: drop it (Astra 11).
@@ -197,8 +215,20 @@ watch(draft, () => {
   if (kept.length !== confirm.value.length) confirm.value = kept
 }, { deep: true })
 
+// What the website shows in the open foreign language now (the stored entry; none for a draft), for the notes under
+// untranslated fields and the lines under the language switch. The server decides it (lib/translation.ts).
+const storedTranslation = computed(() => (foreign.value ? props.entry?.translation?.[locale.value] : undefined))
+const languageNames = computed(() => ({ lang: languageName(locale.value, uiLocale.value), main: languageName(main.value, uiLocale.value) }))
+const translationState = computed(() => translationLines(storedTranslation.value, t, languageNames.value))
+
 // Lists show the same state per cell (Phase 11: confirming translations inside lists).
-provide(TRANSLATION, { state: translation, source: sourceText, confirm: confirmTranslation, mainName: () => languageName(main.value, uiLocale.value) })
+provide(TRANSLATION, {
+  state: translation, source: sourceText, confirm: confirmTranslation, mainName: () => languageNames.value.main,
+  missingNote: (leaf) => missingNote(storedTranslation.value, leaf, t, languageNames.value),
+  // History shows the main-language text before and after each change of this entry.
+  changesUrl: () => (props.entry ? `/s/${props.site.slug}/history?entry=${props.entry._id}` : undefined),
+  address,
+})
 
 const shown = (label: LabelText) => shownLabel(label, main.value)
 const title = computed(() => {
@@ -219,6 +249,9 @@ const tabbed = computed(() => props.brick.layout === 'tabs' && wide.value)
 const activeTab = ref('')
 watch(visibleGroups, (list) => { if (!list.some((g) => g.id === activeTab.value)) activeTab.value = list[0]?.id ?? '' }, { immediate: true })
 const groupHasIssue = (g: FieldGroup) => g.fields.some(([key]) => issues.value.some((i) => i.path === key || i.path.startsWith(`${key}.`)))
+// In another language, a tab whose fields miss a translation or hold an outdated one says so, like the language switch.
+const gapRoots = computed(() => new Set([...(storedTranslation.value?.missing ?? []), ...(storedTranslation.value?.outdated ?? [])].map((leaf) => leaf.split('.')[0]!)))
+const groupHasGap = (g: FieldGroup) => g.fields.some(([key]) => gapRoots.value.has(key))
 // A refused save shows the first tab that holds an error.
 watch(issues, () => { const first = visibleGroups.value.find(groupHasIssue); if (tabbed.value && first) activeTab.value = first.id })
 const setField = (key: string, value: Json | undefined) => form.setField(key, value)
@@ -381,7 +414,7 @@ async function doPublish() {
     }
     // Unsaved input goes into the draft first; saving does not change lifeRev.
     if (dirty.value && !(await form.save())) return
-    await ops.publishEntry(props.entry._id, props.entry.lifeRev, { at: ms, task: publishTask.value, timeZone: timeZone.value })
+    await ops.publishEntry(props.entry._id, props.entry.lifeRev, { at: ms, task: publishTask.value, timeZone: timeZone.value, main: main.value })
     publishing.value = false
   } catch (error) {
     publishError.value = opErrorOf(error).message
@@ -396,7 +429,7 @@ async function doUnpublish() {
   publishBusy.value = true
   publishError.value = ''
   try {
-    await ops.unpublishEntry(props.entry._id, props.entry.lifeRev, { task: publishTask.value, timeZone: timeZone.value, wasLive: state.value === 'live', at: props.entry.publishAt })
+    await ops.unpublishEntry(props.entry._id, props.entry.lifeRev, { task: publishTask.value, timeZone: timeZone.value, wasLive: state.value === 'live', at: props.entry.publishAt, main: main.value })
     askUnpublish.value = false
     publishing.value = false
   } catch (error) {
@@ -471,7 +504,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           @update:model-value="(next) => typeof next === 'string' && next && switchLanguage(next)"
         >
           <ToggleGroupItem v-for="l in schema.locales" :key="l" :value="l" :aria-disabled="dirty && l !== locale ? 'true' : undefined" class="px-4">
-            {{ languageName(l, uiLocale) }}
+            {{ languageLabel(l, uiLocale) }}
             <template v-if="gapIn(l)">
               <span class="size-1.5 rounded-full bg-warning" aria-hidden="true" />
               <span class="sr-only">({{ t('basics.translation.incomplete') }})</span>
@@ -479,6 +512,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           </ToggleGroupItem>
         </ToggleGroup>
         <p v-if="foreign" class="text-sm text-muted-foreground">{{ t('entry.foreignHint') }}</p>
+        <p v-for="line in translationState" :key="line" class="text-sm text-muted-foreground" data-slot="translation-state">{{ line }}</p>
       </header>
 
       <form ref="formEl" class="grid gap-6" novalidate @submit.prevent="save">
@@ -505,6 +539,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
               <TabsTrigger v-for="g in visibleGroups" :key="g.id" :value="g.id" class="-mb-px flex-none rounded-none border-0 border-b-2 border-transparent px-0 pt-1 pb-2 text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:border-primary dark:data-[state=active]:bg-transparent">
                 {{ shown(g.label) }}
                 <span v-if="groupHasIssue(g)" class="size-2 rounded-full bg-destructive" role="img" :aria-label="t('entry.groupHasIssues')" />
+                <span v-if="groupHasGap(g)" class="size-2 rounded-full bg-warning" role="img" :aria-label="t('entry.groupHasGaps')" />
               </TabsTrigger>
             </TabsList>
             <TabsContent v-for="g in visibleGroups" :key="g.id" :value="g.id" force-mount class="grid gap-4 pt-4 data-[state=inactive]:hidden">

@@ -43,6 +43,8 @@ const liveProps = computed(() => ({
   ...EDITOR_PROPS[tag.value],
 }))
 
+// A text shown for reading only (the main-language text beside a translation): no settings, no selecting.
+const editable = props.editor.isEditable
 const open = ref(false)
 const requiredFirst = ref(false)
 const titleId = useId()
@@ -88,7 +90,7 @@ async function remove() {
  */
 function select(event: MouseEvent) {
   const target = event.target as HTMLElement
-  if (target.closest('[data-node-view-content], .ginko-settings')) return
+  if (!editable || target.closest('[data-node-view-content], .ginko-settings')) return
   const pos = props.getPos()
   if (pos === undefined) return
   editor().commands.setNodeSelection(pos)
@@ -131,7 +133,7 @@ function noFollow(event: MouseEvent) {
       <PopoverAnchor as-child>
         <div ref="frame" class="ginko-block-frame relative">
           <!-- contenteditable=false: the button is not part of the text. Visible on hover, on focus, while selected or open, and on touch. -->
-          <div class="ginko-settings absolute top-1.5 right-1.5 z-10" contenteditable="false">
+          <div v-if="editable" class="ginko-settings absolute top-1.5 right-1.5 z-10" contenteditable="false">
             <PopoverTrigger as-child>
               <Button
                 type="button" variant="ghost" size="sm" :aria-label="t('editor.block.settingsFor', { label })"

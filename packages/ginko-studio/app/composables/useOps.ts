@@ -7,6 +7,7 @@ import { isConvexCallError, normalizeConvexError } from '@lupinum/better-convex-
 import type { InjectionKey } from 'vue'
 import type { Json } from '@lupinum/ginko'
 import { whenText } from '../utils/when'
+import { translationNote } from '../utils/content'
 import { UploadError } from './useUpload'
 import { messageOf, type Described } from '../utils/messageOf'
 import type { Who } from '../utils/who'
@@ -86,8 +87,8 @@ export function provideLastingOps() {
 
 export function useOps(site: Ref<string> | ComputedRef<string>) {
   const { show } = useToast()
-  // Read once in setup; `t` and `format` follow the language later, so the handlers below may use them after an await.
-  const { t, format } = useI18n()
+  // Read once in setup; `t`, `format` and `locale` follow the language later, so the handlers below may use them after an await.
+  const { t, format, locale: language } = useI18n()
   const save = useConvexMutation(api.entries.save)
   const create = useConvexMutation(api.entries.create)
   const revert = useConvexMutation(api.entries.revert)
@@ -99,6 +100,9 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   const sentForApproval = () => show(t('review.sent'))
 
   const opId = () => crypto.randomUUID()
+
+  /** What the other languages show after a save, create or publish (the server's `translation`); `main` is the site's main locale. */
+  const noteOf = (notes: Parameters<typeof translationNote>[0], main: string) => translationNote(notes, t, language.value, main)
 
   /** `text` and a sentence per picture that came back from the Files trash with the old version. */
   const withRestored = (text: string, result: unknown) =>
@@ -136,24 +140,29 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     }
   }
 
-  /** `at` absent: online now. Undo takes it back to a draft (SPEC 15). `timeZone` words the scheduled time. */
-  async function publishEntry(entry: string, lifeRev: number, opts: { at?: number; task?: string; timeZone: string }) {
+  /**
+   * `at` absent: online now, and the message says what the other languages show (`main`: the site's main locale).
+   * Undo takes it back to a draft (SPEC 15). `timeZone` words the scheduled time.
+   */
+  async function publishEntry(entry: string, lifeRev: number, opts: { at?: number; task?: string; timeZone: string; main: string }) {
     const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, at: opts.at })
     if (isProposal(result)) { sentForApproval(); return result }
-    const text = opts.at === undefined ? `${t('ops.published')} ${t('ops.liveHint')}` : t('ops.scheduled', { time: whenText(opts.at, opts.timeZone, format) })
-    const back = { task: opts.task, timeZone: opts.timeZone, wasLive: opts.at === undefined, at: opts.at }
+    const text = opts.at === undefined
+      ? [t('ops.published'), t('ops.liveHint'), noteOf(result.translation, opts.main)].filter(Boolean).join(' ')
+      : t('ops.scheduled', { time: whenText(opts.at, opts.timeZone, format) })
+    const back = { task: opts.task, timeZone: opts.timeZone, wasLive: opts.at === undefined, at: opts.at, main: opts.main }
     show(text, { action: { label: t('ops.undo'), run: async () => { await unpublishEntry(entry, result.lifeRev, back).catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
     return result
   }
 
-  /** A live entry goes back to being a draft; a scheduled draft (`wasLive: false`, its time in `at`) loses its time. */
-  async function unpublishEntry(entry: string, lifeRev: number, opts: { task?: string; timeZone: string; wasLive: boolean; at?: number }) {
+  /** A live entry goes back to being a draft; a scheduled draft (`wasLive: false`, its time in `at`) loses its time. `main` as for publishEntry (its undo). */
+  async function unpublishEntry(entry: string, lifeRev: number, opts: { task?: string; timeZone: string; wasLive: boolean; at?: number; main: string }) {
     const result = await unpublish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev })
     if (isProposal(result)) { sentForApproval(); return result }
     const text = opts.wasLive ? t('ops.unpublished') : t('ops.scheduleCleared')
     // Undo restores what was: live again, or the old time while it is still ahead.
     const at = !opts.wasLive && opts.at !== undefined && opts.at > Date.now() ? opts.at : undefined
-    show(text, { action: { label: t('ops.undo'), run: async () => { await publishEntry(entry, result.lifeRev, { task: opts.task, timeZone: opts.timeZone, at }).catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
+    show(text, { action: { label: t('ops.undo'), run: async () => { await publishEntry(entry, result.lifeRev, { task: opts.task, timeZone: opts.timeZone, at, main: opts.main }).catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
     return result
   }
 
@@ -199,8 +208,11 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     opId,
     revertEntry,
     moveEntry,
-    /** Saves changed root fields. Throws OpError; on success shows the message with Rückgängig. */
-    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean }) {
+    /**
+     * Saves changed root fields. Throws OpError; on success shows the message with Rückgängig. The message also says
+     * what the other languages show now (the server's `translation`), named from the site's `main` locale.
+     */
+    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main: string }) {
       try {
         const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm })
         // A change that needs a yes writes nothing yet (SPEC 17): say so instead of "Saved".
@@ -210,14 +222,15 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
         }
         const change = 'change' in result ? result.change : undefined
         // A draft is not on the website, so the message does not promise it (SPEC 15).
-        show(args.draft ? t('ops.draftSaved') : `${t('ops.saved')} ${t('ops.liveHint')}`, change ? { action: { label: t('ops.undo'), run: () => undoChange(change, args.task) } } : {})
+        const text = args.draft ? t('ops.draftSaved') : [t('ops.saved'), t('ops.liveHint'), noteOf('translation' in result ? result.translation : undefined, args.main)].filter(Boolean).join(' ')
+        show(text, change ? { action: { label: t('ops.undo'), run: () => undoChange(change, args.task) } } : {})
         return { proposal: undefined, rev: result.rev }
       } catch (error) {
         throw opErrorOf(error)
       }
     },
-    /** `removeTask` is the brick's remove task (staff need it to undo the creation). */
-    async createEntry(args: { brick: string; data: Record<string, Json>; task?: string; removeTask?: string; op: string; label?: string; publish?: { at?: number }; timeZone?: string }) {
+    /** `removeTask` is the brick's remove task (staff need it to undo the creation). `main` as for saveEntry. */
+    async createEntry(args: { brick: string; data: Record<string, Json>; task?: string; removeTask?: string; op: string; label?: string; publish?: { at?: number }; timeZone?: string; main: string }) {
       try {
         const result = await create.mutate({ site: site.value, opId: args.op, task: args.task, brick: args.brick, data: args.data, publish: args.publish })
         if (isProposal(result)) {
@@ -225,7 +238,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
           return { proposal: result.proposal }
         }
         // A collection with drafts makes a draft unless asked to publish (SPEC 15); the message says which.
-        const text = result.state === 'live' ? `${args.label ?? t('ops.created')} ${t('ops.liveHint')}`
+        const text = result.state === 'live' ? [args.label ?? t('ops.created'), t('ops.liveHint'), noteOf(result.translation, args.main)].filter(Boolean).join(' ')
           : result.publishAt !== undefined ? t('ops.draftScheduled', { time: whenText(result.publishAt, args.timeZone ?? 'Europe/Vienna', format) })
           : t('ops.draftNotOnSite')
         // A new entry starts at lifeRev 1; undo removes it.

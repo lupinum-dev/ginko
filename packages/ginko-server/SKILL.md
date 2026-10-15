@@ -50,8 +50,9 @@ You cannot do more than they can, and everything you change is shown in their hi
 
 - `ginko_translate({ entry, locale, fields })` writes the text in a foreign language, for example `{ "name": "Veal schnitzel" }`.
   It never changes the main language and refuses it.
-- `ginko_read` in a foreign language marks texts in `fallback` (missing or outdated) and, for outdated ones, in `stale`.
-  An outdated translation was written for an older main text. Translate it again, or list it in `confirm` if it is still right.
+- `ginko_read` in a foreign language marks missing texts in `fallback` (the website shows the main language there) and
+  outdated ones in `stale`. An outdated translation was written for an older main text, and the website still shows it.
+  Translate it again, or list it in `confirm` if it is still right.
 - Translate whole texts, keep the tone and the format (Markdown stays Markdown).
 
 ## Files

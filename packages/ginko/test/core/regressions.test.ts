@@ -171,7 +171,7 @@ describe('resolve.ts urlsFor: an untranslated page has no URL in that language',
     event.data.image = { file: 'f1', alt: { de: 'Gans' } }
     event.prints = { title: { en: printOf('Martini-Gansl') }, description: { en: printOf('Gansl mit Rotkraut') } }
     const r = resolveEntry(s, 'events', event, { locale: 'en', files: () => ({ url: '/gans.jpg', name: 'gans.jpg', size: 1, width: 4, height: 3 }) })
-    expect([r.untranslated, r.fallback]).toEqual([false, ['slug', 'image.alt']])
+    expect([r.blocking, r.fallback]).toEqual([[], ['slug', 'image.alt']])
   })
 })
 

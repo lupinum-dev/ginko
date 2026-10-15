@@ -5,7 +5,7 @@ import { api } from '#convex/api'
 import type { Brick } from '@lupinum/ginko'
 import { ordered, type Schema } from '@lupinum/ginko/internal'
 import { useToday } from '@lupinum/ginko-editor'
-import { taskRef, type Data, type Task } from '../utils/content'
+import { taskRef, type Data, type StoredTranslation, type Task } from '../utils/content'
 
 /** An entry as an editor reads it (server lib/list.ts editorEntry). */
 export interface Entry {
@@ -23,8 +23,8 @@ export interface Entry {
   publishAt?: number
   /** Someone removed it (it is in the trash); a form open on it keeps the input (N1). */
   deleted?: boolean
-  /** Per foreign language, the texts that are missing or outdated (entries.get and entries.single only). */
-  translation?: Record<string, { missing: string[]; outdated: string[] }>
+  /** Per foreign language, its translation state as the website shows it (entries.get and entries.single only; none for drafts). */
+  translation?: Record<string, StoredTranslation>
 }
 
 export async function useSiteData() {

@@ -1,8 +1,10 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
-import { formatMoney, type Brick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { entryTitle, fileRefsIn, ordered, printOf, stableJson, type Schema } from '@lupinum/ginko/internal'
+import { formatMoney, type Brick, type CollectionBrick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
+import { entryTitle, fileRefsIn, isVisible, ordered, printOf, stableJson, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
+import type { api } from '#convex/api'
+import type { FunctionReturnType } from 'convex/server'
 import { shownLabel } from './labels'
 import type { Words } from './when'
 
@@ -119,6 +121,12 @@ export function languageName(locale: string, language: string): string {
   }
 }
 
+/** The language name standing alone (a heading, a button): capitalized, also where the language writes it in lower case ("Inglés"). */
+export function languageLabel(locale: string, language: string): string {
+  const name = languageName(locale, language)
+  return name.charAt(0).toLocaleUpperCase(language) + name.slice(1)
+}
+
 /**
  * Upload ids referenced anywhere in stored data: `{ file: id }` of image and file fields and, with `texts`, `$file.<id>`
  * in Markdown texts, in lists too.
@@ -150,17 +158,94 @@ export function previewFileIds(draft: unknown, entries: readonly unknown[]): str
   return [...ids].slice(0, MAX_FILES)
 }
 
+/**
+ * A foreign language's state of the stored entry, as `entries.get` sends it (server lib/translation.ts `LeafStatus`):
+ * missing and outdated texts, the missing ones its page waits for, and what the website shows (`page`).
+ */
+export type StoredTranslation = NonNullable<FunctionReturnType<typeof api.entries.get>>['translation'][string]
+
+/** What the website shows of an entry in a foreign language: nothing yet (`hidden`), a link to its main-language page (`mainPage`), or the entry (`shown`). */
+export type TranslationPage = StoredTranslation['page']
+
+/**
+ * The page of an entry in one language (the address line of a translation): none while the entry has no page there
+ * (its required texts are not translated yet); `online` only while the website shows it: the site has a release, the
+ * entry is no draft, and its date has not passed (`today` in the site's zone, core isVisible).
+ */
+export function pageOf(
+  schema: Schema, key: string, brick: CollectionBrick, entry: { _id: string; data: Data; prints?: Record<string, Record<string, string>>; state?: 'draft' | 'live' },
+  locale: Locale, site: { released: boolean; today: string },
+): { path: string; online: boolean } | undefined {
+  const path = urlsFor(schema, key, brick, { id: entry._id, data: entry.data, prints: entry.prints })[locale]
+  if (!path) return undefined
+  return { path, online: site.released && entry.state !== 'draft' && isVisible(brick, entry.data, site.today) }
+}
+
+/** The language names the translation notes use: the foreign one (`lang`) and the main one, in the Studio's language. */
+export interface LanguageNames { lang: string; main: string }
+
+/**
+ * The note under a field whose translation is missing, from the stored state (what the website shows now). Without
+ * one (a draft) it only says so; on a page that is not online in the language, it names the texts the page waits for.
+ */
+export function missingNote(stored: StoredTranslation | undefined, leaf: string, t: Words['t'], names: LanguageNames): string {
+  if (!stored) return t('fields.translation.notTranslated')
+  if (stored.page === 'shown') return t('fields.translation.notTranslatedShowsMain', { name: names.main })
+  return stored.blocking.includes(leaf) ? t('fields.translation.notTranslatedBlocks', { lang: names.lang }) : t('fields.translation.notTranslated')
+}
+
+/** The lines under the language switch: whether the page is online in this language, and what shows where a text is missing or outdated. */
+export function translationLines(stored: StoredTranslation | undefined, t: Words['t'], names: LanguageNames): string[] {
+  if (!stored) return []
+  if (stored.page === 'hidden') return [t('entry.translationState.hidden', { lang: names.lang })]
+  if (stored.page === 'mainPage') return [t('entry.translationState.mainPage', { lang: names.lang, main: names.main })]
+  return [
+    ...(stored.missing.length ? [t('entry.translationState.missing', { lang: names.lang, main: names.main })] : []),
+    ...(stored.outdated.length ? [t('entry.translationState.outdated', { lang: names.lang, main: names.main })] : []),
+  ]
+}
+
+/** One language in the answer of a save, create or publish (server lib/translation.ts `translationNotes`). */
+export type TranslationNote = Extract<FunctionReturnType<typeof api.entries.create>, { translation: unknown }>['translation'][number]
+
+/**
+ * The sentences the message after a save adds about the other languages: one per kind, the languages of a kind
+ * named together ("Englisch und Französisch"). A language counts once, for its most important kind: a page that is
+ * not online, then a link to the main-language page, then missing texts, then outdated ones. `language` is the
+ * Studio's language, `main` the site's main locale.
+ */
+export function translationNote(notes: readonly TranslationNote[] | undefined, t: Words['t'], language: string, main: string): string {
+  const kinds = { hidden: [] as string[], mainPage: [] as string[], missing: [] as string[], outdated: [] as string[] }
+  for (const note of notes ?? []) {
+    const kind = note.page !== 'shown' ? note.page : note.missing ? 'missing' : note.outdated ? 'outdated' : undefined
+    if (kind) kinds[kind].push(languageName(note.locale, language))
+  }
+  const list = (names: string[]) => {
+    try {
+      return new Intl.ListFormat(language, { type: 'conjunction' }).format(names)
+    } catch {
+      return names.join(', ')
+    }
+  }
+  const mainName = languageName(main, language)
+  return (Object.entries(kinds) as [keyof typeof kinds, string[]][])
+    .filter(([, names]) => names.length)
+    .map(([kind, names]) => t(`ops.translation.${kind}`, { langs: list(names), main: mainName }))
+    .join(' ')
+}
+
 const isEmpty = (value: unknown) => value === undefined || value === null || value === ''
 
 /**
  * Translation state of one leaf in a foreign language: `missing` when the main language has a text and this language
- * has none, `stale` when the main-language text changed since the translation (its print no longer matches), else
- * `fine`. A leaf that is empty in the main language too has nothing to translate. `confirmed`: the person said the
- * translation fits as it is.
+ * has none, `stale` when the stored translation was made for an older main-language text (its print no longer
+ * matches), else `fine`. A leaf that is empty in the main language too has nothing to translate. `confirmed`: the
+ * person said the translation fits as it is. A text typed here (`draft` differs from `storedForeign`) is saved as a
+ * fresh translation, so only an untouched stored one can be stale.
  */
-export function leafTranslation(input: { draft: Record<string, unknown> | undefined; locale: string; main: string; storedMain: unknown; print: string | undefined; confirmed: boolean }): 'missing' | 'stale' | 'fine' {
+export function leafTranslation(input: { draft: Record<string, unknown> | undefined; locale: string; main: string; storedMain: unknown; storedForeign: unknown; print: string | undefined; confirmed: boolean }): 'missing' | 'stale' | 'fine' {
   if (isEmpty(input.draft?.[input.locale])) return isEmpty(input.draft?.[input.main]) ? 'fine' : 'missing'
-  if (input.confirmed) return 'fine'
+  if (input.confirmed || input.draft?.[input.locale] !== input.storedForeign) return 'fine'
   return input.storedMain !== undefined && input.print !== printOf(input.storedMain) ? 'stale' : 'fine'
 }
 

@@ -21,6 +21,20 @@ const catalog = defineCatalog<MessageKey>(compileCatalogs(CATALOGS), { defaultLo
 export const isLocale = (value: unknown): value is string => catalog.isLocale(value)
 
 /**
+ * The name of a site language (`en`) in every language the server writes, as a label that a message renders in its
+ * reader's language ("Englisch", "English", "inglés"). The code stays where the runtime knows no name for it.
+ */
+export function languageLabel(code: string): Record<string, string> {
+  return Object.fromEntries(LOCALES.map((reader) => {
+    try {
+      return [reader, new Intl.DisplayNames(reader, { type: 'language' }).of(code) ?? code]
+    } catch {
+      return [reader, code]
+    }
+  }))
+}
+
+/**
  * The text for `key` in `locale`. An unknown locale gets German; a key missing there falls back to German.
  * `options.timeZone` is the zone of the dates in `params` (a site's zone), not the reader's.
  */

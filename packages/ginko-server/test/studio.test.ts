@@ -1,6 +1,6 @@
 // Studio basics (SPEC 4.2): search, saved views, duplicate, trash, translation status and "why is this
 // not public?". One test per realistic failure. The clock is fixed because event visibility depends on today.
-import type { Schema } from '@lupinum/ginko/internal'
+import { isVisible, type Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
@@ -340,29 +340,134 @@ describe('sites.translationStatus', () => {
     expect(menu.missing + menu.outdated + menu.ok).toBe(8)
     // "Frittatensuppe" has no English name; the print of the schnitzel's English name no longer fits the German one.
     const english = async (key: string) => (await s.as.owner.query(api.entries.get, { site, entry: s.entries[key]! }))!.translation.en
-    expect(await english('menu-frittaten')).toEqual({ missing: ['description', 'name'], outdated: [] })
+    expect(await english('menu-frittaten')).toEqual({ missing: ['description', 'name'], outdated: [], blocking: ['name'], page: 'shown' })
     expect((await english('menu-schnitzel'))!.outdated).toEqual(expect.arrayContaining(['name']))
 
-    // The bundle's fallback lists of English give the same entries and numbers as the list rows and the status.
-    const bundle = (await (await s.t.fetch('/bundle/restaurant?format=3&locale=en')).json()) as { bricks: Record<string, { items?: { id: string; fallback: string[] }[] }> }
+    // The bundle's fallback lists of English give the same entries and numbers as the missing texts of the list rows and
+    // the status. An outdated translation stays on the website (D6), so it is no fallback, but the Studio still counts it.
+    const bundle = (await (await s.t.fetch('/bundle/restaurant?format=3&locale=en')).json()) as { bricks: Record<string, { items?: { id: string; data: Record<string, unknown>; fallback: string[] }[] }> }
+    const schema = (await s.t.run((ctx) => ctx.db.get(s.site)))!.schema as Schema
     for (const brick of status.bricks.filter((b) => b.kind === 'collection')) {
       const withFallback = (bundle.bricks[brick.brick]!.items ?? []).filter((item) => item.fallback.length)
       const rows = (await s.as.owner.query(api.entries.list, { site, brick: brick.brick, limit: 2000 })).rows
-      const gaps = new Map(rows.map((row) => [row._id as string, row.gaps.reduce((sum, g) => sum + g.missing + g.outdated, 0)]))
-      expect([...gaps].filter(([, count]) => count).map(([id]) => id).sort(), brick.brick).toEqual(withFallback.map((i) => i.id).sort())
-      for (const item of withFallback) expect(gaps.get(item.id), `${brick.brick} ${item.id}`).toBe(item.fallback.length)
-      const detail = brick.locales.en!
-      expect(detail.missing + detail.outdated, brick.brick).toBe(withFallback.length)
+      const missing = new Map(rows.map((row) => [row._id as string, row.gaps.reduce((sum, g) => sum + g.missing, 0)]))
+      expect([...missing].filter(([, count]) => count).map(([id]) => id).sort(), brick.brick).toEqual(withFallback.map((i) => i.id).sort())
+      for (const item of withFallback) expect(missing.get(item.id), `${brick.brick} ${item.id}`).toBe(item.fallback.length)
+      // The status counts what the site shows: the bundle still holds a past event, its listings leave it out.
+      const shown = withFallback.filter((item) => isVisible(schema.bricks[brick.brick]!, item.data, '2026-10-08'))
+      expect(brick.locales.en!.missing, brick.brick).toBe(shown.length)
     }
+    expect(menu.outdated).toBeGreaterThan(0)
   })
 
-  it('leaves out removed entries and drafts', async () => {
+  // Wrong behaviour caught (overview): the list of open translations misses a page that is not online in English
+  // because of them, or lists a draft that is not on the website yet (admin-4, A11), or a past event the site no
+  // longer shows in any language, so weekly events pile up as open translations.
+  it('leaves out removed entries, drafts and past events, and lists the entries with a gap', async () => {
     const s = await studioSetup({ drafts: true })
     const base = (await s.as.owner.query(api.sites.translationStatus, { site })).bricks.find((b) => b.brick === 'events')!.locales.en!
-    await s.createEvent('Entwurf ohne Übersetzung')
-    await s.remove(s.entries.sommerfest!)
-    const after = (await s.as.owner.query(api.sites.translationStatus, { site })).bricks.find((b) => b.brick === 'events')!.locales.en!
-    expect(after.missing + after.outdated + after.ok).toBe(base.missing + base.outdated + base.ok - 1)
+    const draft = await s.createEvent('Entwurf ohne Übersetzung')
+    const live = await s.createEvent('Wildwoche', {}, {})
+    await s.remove(s.entries.martinigans!)
+    const status = await s.as.owner.query(api.sites.translationStatus, { site })
+    const after = status.bricks.find((b) => b.brick === 'events')!.locales.en!
+    // One live entry more, one removed.
+    expect(after.missing + after.outdated + after.ok).toBe(base.missing + base.outdated + base.ok)
+    expect(status.entries).toContainEqual({ brick: 'events', entry: live.entry, title: 'Wildwoche', locale: 'en', missing: 2, outdated: 0, hidden: true })
+    expect(status.entries.map((e) => e.entry)).not.toContain(draft.entry)
+    expect(status.entries.map((e) => e.entry)).not.toContain(s.entries.martinigans)
+    // The summer festival (June, German only) is over.
+    expect(status.entries.map((e) => e.entry)).not.toContain(s.entries.sommerfest)
+    expect(status.truncated).toBe(false)
+  })
+
+  // Wrong behaviour caught: the list for staff is cut at 200 rows before their own areas come, so it says
+  // "Alles übersetzt." while the menu says "N offen".
+  it('gives staff the areas of their tasks only, in the list and in the counts', async () => {
+    const s = await studioSetup()
+    const status = await s.as.cook.query(api.sites.translationStatus, { site })
+    expect(status.bricks.map((b) => b.brick).sort()).toEqual(['lunch', 'menu'])
+    expect([...new Set(status.entries.map((e) => e.brick))].sort()).toEqual(['lunch', 'menu'])
+    const owner = await s.as.owner.query(api.sites.translationStatus, { site })
+    expect(owner.bricks.map((b) => b.brick)).toEqual(expect.arrayContaining(['menu', 'lunch', 'events', 'hours']))
+  })
+})
+
+describe('the answer of a save says what the other languages show', () => {
+  // Wrong behaviour caught: the message after saving claims a German fallback for a page that is missing in English,
+  // or says nothing about the German text a new FAQ question or an outdated translation shows there (romi-4, P5).
+  it('a hidden page, a new text shown in the main language, an outdated translation, and nothing for a date', async () => {
+    const s = await studioSetup()
+    const created = await s.createEvent('Wildwoche') as { entry: Id<'entries'>; translation: unknown }
+    expect(created.translation).toEqual([{ locale: 'en', page: 'hidden', missing: 2, outdated: 0 }])
+    const save = (entry: Id<'entries'>, fields: Record<string, unknown>, baseRev = 1) =>
+      s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev, locale: 'de', fields }) as Promise<{ translation: unknown }>
+    expect((await save(created.entry, { title: { de: 'Wildwochen' } })).translation).toEqual([{ locale: 'en', page: 'hidden', missing: 1, outdated: 0 }])
+    expect((await save(created.entry, { when: { from: '2026-11-21', to: '2026-11-21' } }, 2)).translation).toEqual([])
+
+    const dish = await s.as.owner.mutation(api.entries.create, { site, opId: opId(), brick: 'menu', data: { category: 'mains', name: { de: 'Kürbisgulasch' }, price: { amount: 1490 }, allergens: [], veg: 'vegan' } }) as { translation: unknown }
+    expect(dish.translation).toEqual([{ locale: 'en', page: 'shown', missing: 1, outdated: 0 }])
+    expect((await save(s.entries['menu-saibling']!, { name: { de: 'Gebeizter Bachsaibling' } })).translation).toEqual([{ locale: 'en', page: 'shown', missing: 0, outdated: 1 }])
+  })
+
+  // Wrong behaviour caught: a German-only draft goes online through "Veröffentlichen" and the message does not say
+  // that its page is missing on the English site (romi-4, reached through publishing).
+  it('publishing a draft now says it too; a scheduled publish says nothing yet', async () => {
+    const s = await studioSetup({ drafts: true })
+    const publish = (entry: Id<'entries'>, at?: number) =>
+      s.as.owner.mutation(api.entries.publish, { site, opId: opId(), entry, lifeRev: 1, ...(at ? { at } : {}) }) as Promise<{ translation: unknown }>
+    const now = await s.createEvent('Wildwoche')
+    expect((await publish(now.entry)).translation).toEqual([{ locale: 'en', page: 'hidden', missing: 2, outdated: 0 }])
+    const later = await s.createEvent('Rehwoche')
+    expect((await publish(later.entry, NOW + DAY)).translation).toEqual([])
+  })
+
+  // Wrong behaviour caught: a save in English also reports the French page, which that save did not touch.
+  it('a save in another language names only that language', async () => {
+    const s = await studioSetup()
+    await s.patchSchema((schema) => { schema.locales.push('fr') })
+    const save = (locale: string, fields: Record<string, unknown>, baseRev: number) =>
+      s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries['menu-frittaten']!, baseRev, locale, fields }) as Promise<{ translation: unknown }>
+    expect((await save('en', { name: { en: 'Pancake soup' } }, 1)).translation).toEqual([])
+    expect((await save('de', { name: { de: 'Frittatensuppe vom Rind' } }, 2)).translation).toEqual([
+      { locale: 'en', page: 'shown', missing: 0, outdated: 1 }, { locale: 'fr', page: 'shown', missing: 1, outdated: 0 },
+    ])
+  })
+})
+
+describe('the address of a page in another language', () => {
+  // Wrong behaviour caught: an entry made in German keeps its German address in English for good, or a later English
+  // title edit moves an English page that is already online and breaks its links (romi-12, media-14).
+  it('comes from the translated title until the page is online there, then stays', async () => {
+    const s = await studioSetup()
+    const saveEnglish = (entry: Id<'entries'>, baseRev: number, fields: Record<string, unknown>) =>
+      s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev, locale: 'en', fields })
+    const slugRows = (entry: Id<'entries'>) => s.t.run(async (ctx) =>
+      (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry)).collect()).map((r) => `${r.locale}:${r.slug}`).sort())
+    const slugOf = async (entry: Id<'entries'>) => (await s.row(entry))!.data.slug
+
+    const wild = await s.createEvent('Wildwoche')
+    expect(await slugOf(wild.entry)).toEqual({ de: 'wildwoche', en: 'wildwoche' })
+    await saveEnglish(wild.entry, 1, { title: { en: 'Game week' } })
+    expect(await slugOf(wild.entry)).toEqual({ de: 'wildwoche', en: 'game-week' })
+    expect(await slugRows(wild.entry)).toEqual(['de:wildwoche', 'en:game-week'])
+
+    // The same English title on another entry takes the next free address.
+    const deer = await s.createEvent('Rehwoche')
+    await saveEnglish(deer.entry, 1, { title: { en: 'Game week' } })
+    expect(await slugOf(deer.entry)).toEqual({ de: 'rehwoche', en: 'game-week-2' })
+
+    // With its description the page is online in English: a new English title keeps the address.
+    await saveEnglish(wild.entry, 2, { description: { en: 'Venison all week' } })
+    await saveEnglish(wild.entry, 3, { title: { en: 'Game weeks' } })
+    expect(await slugOf(wild.entry)).toEqual({ de: 'wildwoche', en: 'game-week' })
+    expect(await slugRows(wild.entry)).toEqual(['de:wildwoche', 'en:game-week'])
+
+    // A language without pages of this kind has no address to make.
+    await s.patchSchema((schema) => { delete (schema.bricks.events as { route: Record<string, string> }).route.en })
+    const hare = await s.createEvent('Hasenwoche')
+    await saveEnglish(hare.entry, 1, { title: { en: 'Hare week' } })
+    expect(await slugOf(hare.entry)).toEqual({ de: 'hasenwoche', en: 'hasenwoche' })
   })
 })
 
@@ -415,6 +520,17 @@ describe('entries.whyNotPublic', () => {
     expect(fallback.url).toBeUndefined()
     // In the main language the entry is fine.
     expect(codes(await why(s, s.entries.martinigans!))).toEqual([])
+  })
+
+  // Wrong behaviour caught: "Für en sind veraltet Übersetzungen.": a language code instead of its name, and broken German.
+  it('an outdated translation names the language and says the website keeps it', async () => {
+    const s = await studioSetup({ release: true })
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries['menu-marillen']!, baseRev: 1, locale: 'de', fields: { name: { de: 'Marillenknödel mit Butterbrösel' } } })
+    const result = await why(s, s.entries['menu-marillen']!, 'en')
+    expect(codes(result)).toEqual(['no_route', 'translation_fallback'])
+    const reason = result.reasons[1]!
+    expect(reason.sentence).toBe('Für Englisch sind Übersetzungen veraltet. Die Website zeigt dort noch die ältere Übersetzung.')
+    expect(historyText(reason.msg, 'en', { locales: ['de', 'en'], timeZone: 'Europe/Vienna' })).toBe('For English, translations are outdated. The website still shows the older translation there.')
   })
 
   it('a brick without a route', async () => {

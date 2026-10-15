@@ -1,7 +1,8 @@
 <!-- A Markdown field as a rich-text editor (TipTap, headless core in @lupinum/ginko-editor). What it saves is
      always `handle.markdown()`: untouched blocks stay byte for byte. A text the editor cannot show without
      changing it opens as Markdown source instead; "Markdown" in the toolbar switches by hand, both ways.
-     Pasted and dropped content is cleaned or uploaded by the core's paste hooks; problems show at their block. -->
+     Pasted and dropped content is cleaned or uploaded by the core's paste hooks; problems show at their block.
+     `readonly` shows a text for reading only (the main-language text beside a translation): no tools, no output. -->
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, provide, reactive, ref, watch, watchEffect } from 'vue'
 import { useI18n } from '#imports'
@@ -34,6 +35,8 @@ const props = defineProps<{
   id: string; field: Extract<Field, { type: 'markdown' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string
   /** The language of the text (the Studio's own language is `locale`): pictures from the library take their description in it. */
   contentLocale?: string
+  /** Shown, not edited: no toolbar, menus, counter or source switch, and nothing goes to the form. */
+  readonly?: boolean
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 
@@ -116,12 +119,15 @@ const { handle, mode, editor, problemMessages, open, markdown } = useGinkoEditor
   profile: profile.value,
   components: registry?.(),
   forceSource: wantSource.value,
+  editable: !props.readonly,
   // TipTap mounts into this element; EditorContent moves it into the page.
   element: document.createElement('div'),
   onImageFiles: (files, pos) => uploads.handle(files, pos),
   fileImages,
   onUrlPasted: ({ url, pos }) => showChip(url, pos),
-  extend: studioExtensions({ slashItems: items, slash, bus, openLink: () => { linkOpen.value = true }, problems: { registry: () => registry?.(), fix, t, text: coreText, described } }),
+  extend: props.readonly
+    ? studioExtensions({ slashItems: () => [], slash, bus, openLink: () => {} })
+    : studioExtensions({ slashItems: items, slash, bus, openLink: () => { linkOpen.value = true }, problems: { registry: () => registry?.(), fix, t, text: coreText, described } }),
 }))
 
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -146,7 +152,7 @@ async function flush() {
 /** Hands the current Markdown to the parent when it differs from what the parent has. */
 async function emitMarkdown() {
   const current = handle.value
-  if (!current) return
+  if (!current || props.readonly) return
   // Nothing was changed since the text was opened, and nothing was handed out: leave the stored text alone.
   if (!current.dirty && lastEmitted === opened) return
   const next = await markdown()
@@ -201,7 +207,7 @@ watch(() => props.modelValue, (value) => {
 watchEffect(() => {
   editor.value?.setOptions({
     editorProps: {
-      attributes: {
+      attributes: props.readonly ? { id: props.id, class: 'ginko-prose' } : {
         id: props.id,
         role: 'textbox',
         ...(multiline.value ? { 'aria-multiline': 'true' } : {}),
@@ -218,12 +224,12 @@ watchEffect(() => {
 })
 
 // The form awaits this before it saves, so nothing typed in the pause is lost.
-const flushers = inject(FLUSHERS, undefined)
+const flushers = props.readonly ? undefined : inject(FLUSHERS, undefined)
 flushers?.add(flush)
 onBeforeUnmount(() => { flushers?.delete(flush); void flush() })
 
 // Things that stop a save: a text over the limit, a picture without description. (The upload itself blocks in useImageUploads.)
-const blockers = inject(BLOCKERS, undefined)
+const blockers = props.readonly ? undefined : inject(BLOCKERS, undefined)
 const tick = useEditorTick(() => editor.value)
 const undescribed = computed(() => { void tick.value; return editor.value ? docProblems(editor.value.state.doc, undefined, described).some((p) => p.kind === 'image') : false })
 watchEffect(() => {
@@ -321,8 +327,13 @@ const frame = 'relative rounded-md border border-input bg-background transition-
 <template>
   <!-- minmax(0, 1fr): the toolbar scrolls inside the frame instead of making the frame (and the page) wider than the screen. -->
   <div class="grid grid-cols-[minmax(0,1fr)] gap-1.5">
+    <!-- For reading only: the text as the editor shows it, or as written when it cannot show it. -->
+    <p v-if="readonly && mode === 'source'" :id="id" class="font-mono text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">{{ sourceText }}</p>
+    <EditorContent v-else-if="readonly && mode === 'rich' && editor" :editor="editor as VueEditor" :class="['ginko-editor is-readonly', multiline ? 'is-multiline' : 'is-inline']" />
+    <div v-else-if="readonly" class="min-h-6" aria-hidden="true" />
+
     <!-- Markdown source -->
-    <div v-if="mode === 'source'" class="grid gap-3">
+    <div v-else-if="mode === 'source'" class="grid gap-3">
       <div class="flex items-start gap-2">
         <Alert v-if="!wantSource" role="note" class="flex-1">
           <div class="col-start-2 grid gap-0.5">
@@ -368,12 +379,13 @@ const frame = 'relative rounded-md border border-input bg-background transition-
     <!-- Until the editor is open: a box of the same size, so the page does not jump. -->
     <div v-else :class="[frame, multiline ? 'min-h-[11.5rem]' : 'min-h-10']" aria-hidden="true" />
 
-    <p v-if="showCount" :class="['justify-self-end text-xs', reached ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ t('editor.text.counter', { count, limit }) }}</p>
+    <p v-if="showCount && !readonly" :class="['justify-self-end text-xs', reached ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ t('editor.text.counter', { count, limit }) }}</p>
   </div>
 </template>
 
 <style scoped>
 /* Content styles, from the Studio tokens. Scoped to this editor. */
+.ginko-editor.is-readonly :deep(.ginko-prose) { min-height: 0; padding: 0; }
 .ginko-editor :deep(.ginko-prose) { padding: 0.5rem 0.75rem; outline: none; overflow-wrap: anywhere; font-size: 1rem; line-height: 1.6; }
 @media (min-width: 768px) { .ginko-editor :deep(.ginko-prose) { font-size: 0.875rem; } }
 .is-multiline :deep(.ginko-prose) { min-height: 8rem; }

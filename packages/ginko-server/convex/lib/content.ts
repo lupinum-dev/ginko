@@ -11,7 +11,8 @@ export type Data = Record<string, Json>
  * Replaces one root field. With `locale`, translatable leaves are taken only in that
  * locale from `next`; every other locale keeps its stored value. A leaf whose `next` has no
  * entry for `locale` stays as stored; `null` or "" removes that locale's value. List rows are
- * matched by `_id`; the row structure (order, added, removed rows) comes from `next`.
+ * matched by `_id`; the row structure (order, added, removed rows) comes from `next`. An image
+ * with another file than the stored one keeps only the descriptions in `next`.
  * Returns undefined when nothing is left of the field.
  */
 export function mergeField(field: Field, stored: Json | undefined, next: Json, locale: Locale | undefined): Json | undefined {
@@ -19,7 +20,9 @@ export function mergeField(field: Field, stored: Json | undefined, next: Json, l
   if (!locale) return isTranslatable(field) && isRecord(next) ? withoutEmpty(next) : next
   if (isTranslatable(field)) return mergeLocalized(stored, next, locale)
   if (field.type === 'image' && isRecord(next)) {
-    return { ...next, alt: mergeLocalized(asRecord(stored).alt, next.alt, locale) ?? {} } as Json
+    // A description belongs to its picture: the other languages' texts of an old picture must not describe a new one.
+    const kept = next.file === asRecord(stored).file ? asRecord(stored).alt : undefined
+    return { ...next, alt: mergeLocalized(kept, next.alt, locale) ?? {} } as Json
   }
   if (field.type === 'list' && Array.isArray(next)) {
     const oldRows = new Map((Array.isArray(stored) ? stored : []).filter(isRecord).map((r) => [r._id, r]))

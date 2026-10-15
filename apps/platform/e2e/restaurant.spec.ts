@@ -193,7 +193,7 @@ test.describe('Unterwegs (break-it 9)', () => {
 test.describe('Übersetzen (Phase 11)', () => {
   test.use(asOwner)
 
-  test('17. a changed German dish asks to check its English translation, and "Passt so" confirms it', async ({ page }) => {
+  test('17. a changed German dish asks to check its English translation, and "Englisch stimmt noch" confirms it', async ({ page }) => {
     await page.goto('/s/restaurant/all/lunch', { waitUntil: 'networkidle' })
     const monday = page.locator('li', { has: page.getByRole('heading', { name: 'Montag' }) })
     await monday.getByLabel('Gericht').fill('Kürbiscremesuppe mit Kernöl und Croutons')
@@ -203,7 +203,7 @@ test.describe('Übersetzen (Phase 11)', () => {
     await page.getByRole('button', { name: 'Englisch' }).click()
     await expect(monday.getByText('Deutsch geändert seit Übersetzung')).toBeVisible()
     await expect(monday.getByText('Kürbiscremesuppe mit Kernöl und Croutons')).toBeVisible()
-    await monday.getByRole('button', { name: 'Passt so' }).click()
+    await monday.getByRole('button', { name: 'Englisch stimmt noch' }).click()
     await page.getByRole('button', { name: 'Speichern', exact: true }).click()
     await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
     await expect(monday.getByText('Deutsch geändert seit Übersetzung')).toHaveCount(0)
@@ -228,7 +228,7 @@ test.describe('Übersetzen in Listen (Astra 11)', () => {
     await first.getByLabel('Grund').fill('Betriebsurlaub im Winter')
     await save()
     await page.getByRole('button', { name: 'Englisch' }).click()
-    await first.getByRole('button', { name: 'Passt so' }).click()
+    await first.getByRole('button', { name: 'Englisch stimmt noch' }).click()
     await first.getByRole('button', { name: /entfernen$/ }).click()
     await save()
   })

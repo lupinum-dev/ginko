@@ -209,6 +209,29 @@ describe('save with a locale (F02, F03)', () => {
     await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 1, locale: 'en', fields: { image: { file, alt: { de: 'Foto', en: 'Photo' } } }, sentence: 'x' })
     expect((await s.t.run((ctx) => ctx.db.get(created.entry)))!.data.image).toEqual({ file, alt: { de: 'Foto', en: 'Photo' } })
   })
+
+  // Wrong behaviour caught: after a new picture is saved in German, the English page keeps describing the old one (media-16).
+  it('a new picture keeps only the description of the saved language; the same picture keeps every language', async () => {
+    const s = await setup()
+    const [laptop, forest] = [await readyImage(s), await readyImage(s)]
+    const created = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'events', data: event({ image: { file: laptop, alt: { de: 'Laptop', en: 'Laptop' } } }) }) as { entry: Id<'entries'> }
+    const stored = async (entry: Id<'entries'>) => (await s.t.run((ctx) => ctx.db.get(entry)))!
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 1, locale: 'de', fields: { image: { file: laptop, alt: { de: 'Laptop auf dem Tisch' } } } })
+    expect((await stored(created.entry)).data.image).toEqual({ file: laptop, alt: { de: 'Laptop auf dem Tisch', en: 'Laptop' } })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: created.entry, baseRev: 2, locale: 'de', fields: { image: { file: forest, alt: { de: 'Wald' } } } })
+    expect((await stored(created.entry)).data.image).toEqual({ file: forest, alt: { de: 'Wald' } })
+    expect((await stored(created.entry)).prints['image.alt']).toBeUndefined()
+
+    // The same rule for a picture in a list row; the other rows keep their descriptions.
+    const lake = await readyImage(s)
+    const gallery = s.entries.gallery!
+    // The seeded gallery names files that do not exist here.
+    await s.t.run((ctx) => ctx.db.patch(gallery, { data: { images: [] }, prints: {} }))
+    const row = (id: string, file: string, alt: Record<string, string>) => ({ _id: id, image: { file, alt } })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: gallery, baseRev: 1, fields: { images: [row('rowLaptop1', laptop, { de: 'Laptop', en: 'Laptop' }), row('rowForest2', forest, { de: 'Wald', en: 'Forest' })] } })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: gallery, baseRev: 2, locale: 'de', fields: { images: [row('rowLaptop1', lake, { de: 'See' }), row('rowForest2', forest, { de: 'Wald' })] } })
+    expect((await stored(gallery)).data.images).toEqual([row('rowLaptop1', lake, { de: 'See' }), row('rowForest2', forest, { de: 'Wald', en: 'Forest' })])
+  })
 })
 
 describe('a file in an image field is an image (F04)', () => {

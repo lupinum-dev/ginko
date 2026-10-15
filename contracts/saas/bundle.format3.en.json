@@ -221,7 +221,7 @@
                 [
                   "p",
                   {},
-                  "Verbessert: Ladezeit der Wochenübersicht."
+                  "Improved: loading time of the weekly overview."
                 ]
               ],
               "toc": {
@@ -232,9 +232,7 @@
               }
             }
           },
-          "fallback": [
-            "body"
-          ]
+          "fallback": []
         },
         {
           "id": "cl-2130",
@@ -286,20 +284,7 @@
                 [
                   "p",
                   {},
-                  "Pausen gehören in den Stundenzettel, sonst fehlen Minuten in der Abrechnung."
-                ],
-                [
-                  "p",
-                  {},
-                  "Welcher Tarif passt, sehen Sie unter ",
-                  [
-                    "a",
-                    {
-                      "href": "/preise"
-                    },
-                    "Preise"
-                  ],
-                  "."
+                  "Breaks belong on the timesheet, or minutes go missing in payroll."
                 ]
               ],
               "toc": {
@@ -310,9 +295,7 @@
               }
             }
           },
-          "fallback": [
-            "body"
-          ],
+          "fallback": [],
           "urls": {
             "de": "/blog/pausen-richtig-abrechnen",
             "en": "/en/blog/billing-breaks-correctly",
@@ -376,7 +359,7 @@
                 [
                   "p",
                   {},
-                  "Ja. Stempelungen werden auf dem Handy gespeichert und später übertragen."
+                  "Yes. Clock-ins are saved on the phone and sent later."
                 ]
               ],
               "toc": {
@@ -387,9 +370,7 @@
               }
             }
           },
-          "fallback": [
-            "answer"
-          ]
+          "fallback": []
         },
         {
           "id": "faq-test",

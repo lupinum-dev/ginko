@@ -77,10 +77,9 @@ async function callTool(ctx: ActionCtx, key: Id<'agentKeys'>, name: string, args
       if (typeof bundle === 'string') return toolText('The website cannot be read right now.', undefined, true)
       const brick = typeof args.brick === 'string' && Object.hasOwn(bundle.bricks, args.brick) ? bundle.bricks[args.brick] : undefined
       if (!brick) return toolText(`There is no brick “${String(args.brick)}”. The brick keys are in ginko_overview.`, undefined, true)
-      // In another language, `stale` names the texts whose translation exists but is outdated (the rest of `fallback` is missing).
+      // In another language, `fallback` names the missing translations and `stale` the outdated ones, which the website still shows.
       if (bundle.locale !== bundle.mainLocale) {
-        const fallback = Object.fromEntries(brick.kind === 'collection' ? brick.items.map((i) => [i.id, i.fallback]) : [['single', brick.fallback]])
-        const stale = await ctx.runQuery(internal.agent.stale, { key, brick: String(args.brick), locale: bundle.locale, fallback })
+        const stale = await ctx.runQuery(internal.agent.stale, { key, brick: String(args.brick), locale: bundle.locale })
         if (Object.keys(stale).length) return toolText(`Content of “${String(args.brick)}” (${bundle.locale}).`, { ...brick, stale })
       }
       return toolText(`Content of “${String(args.brick)}” (${bundle.locale}).`, brick)

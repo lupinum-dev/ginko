@@ -192,7 +192,7 @@
           {
             "_id": "ldth000000",
             "day": "th",
-            "dish": "Gebackener Saibling mit Petersilienerdäpfeln",
+            "dish": "Baked char with parsley potatoes",
             "price": {
               "amount": 1490,
               "currency": "EUR"
@@ -223,7 +223,6 @@
       "fallback": [
         "days.ldtu000000.dish",
         "days.ldwe000000.dish",
-        "days.ldth000000.dish",
         "days.ldfr000000.dish",
         "note"
       ]
@@ -278,7 +277,7 @@
           "id": "menu-schnitzel",
           "data": {
             "category": "mains",
-            "name": "Wiener Schnitzel vom Kalb",
+            "name": "Viennese schnitzel of veal",
             "description": "With potato and cucumber salad",
             "price": {
               "amount": 2190,
@@ -296,9 +295,7 @@
             },
             "priceFrom": "2026-10-18"
           },
-          "fallback": [
-            "name"
-          ]
+          "fallback": []
         },
         {
           "id": "menu-risotto",

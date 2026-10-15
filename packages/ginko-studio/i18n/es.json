@@ -28,7 +28,9 @@
     },
     "more": "Más",
     "account": "Cuenta",
-    "toReviewCount": "{count} por revisar"
+    "toReviewCount": "{count} por revisar",
+    "translations": "Traducciones",
+    "translationsOpen": "{count, plural, one {# pendiente} other {# pendientes}}"
   },
   "sites": {
     "title": "Mis sitios",
@@ -100,6 +102,12 @@
     "saveBeforeLanguage": "Guarda primero y luego cambia el idioma.",
     "groupHasIssues": "Errores en esta sección",
     "foreignHint": "Aquí solo se muestran los textos que necesitan traducción. Los demás campos valen para todos los idiomas.",
+    "translationState": {
+      "hidden": "Esta página aún no está en línea en {lang}. Aparecerá en cuanto se traduzcan los textos marcados.",
+      "mainPage": "Esta página aún no tiene versión en {lang}. Hasta entonces, el sitio web enlaza a la página en {main}.",
+      "missing": "Donde falta una traducción, el sitio web en {lang} muestra el texto en {main}.",
+      "outdated": "Donde cambió el texto en {main}, el sitio web en {lang} todavía muestra la traducción anterior."
+    },
     "twin": "Esta entrada ya existe: “{title}”. Al guardar se crea una segunda.",
     "saveContinues": "Todavía guardando. Si no tienes conexión, se guardará en cuanto vuelva.",
     "notSaved": "Sin guardar: {reason}",
@@ -213,7 +221,8 @@
     "size": {
       "near": "Esta entrada ocupa {used} de {limit}.",
       "over": "Esta entrada es demasiado grande: {used} de {limit}. Acórtala unos {over} para poder guardarla."
-    }
+    },
+    "groupHasGaps": "Falta la traducción o está desactualizada"
   },
   "site": {
     "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",
@@ -366,6 +375,13 @@
       "hint": "Para hacer espacio, elimina entradas o acorta textos largos. Las entradas eliminadas no cuentan.",
       "entriesHint": "Para hacer espacio, elimina entradas. Las entradas eliminadas no cuentan.",
       "dismiss": "Ocultar aviso"
+    },
+    "translations": {
+      "heading": "Traducciones",
+      "lede": "Lo que falta en otro idioma o ya no coincide después de un cambio.",
+      "notOnline": "Aún no está en línea",
+      "none": "Todo está traducido.",
+      "truncated": "Se muestran los primeros {count}."
     }
   },
   "editor": {
@@ -537,12 +553,20 @@
     "slug": {
       "label": "Dirección web (URL)",
       "pageAt": "La página está en {address}",
-      "generated": "Se genera a partir del título al crear."
+      "generated": "Se genera a partir del título al crear.",
+      "fromTranslation": "Se crea a partir del título en {lang} cuando la página esté traducida.",
+      "view": "Ver página"
     },
     "translation": {
-      "changedSince": "{name} ha cambiado desde la traducción",
-      "fitsAsIs": "Dejar como está",
-      "notTranslated": "Aún sin traducir. El sitio web muestra aquí el texto de {name}."
+      "changedSince": "El texto en {name} ha cambiado desde la traducción",
+      "fitsAsIs": "El texto en {lang} sigue bien",
+      "notTranslated": "Aún sin traducir.",
+      "notTranslatedShowsMain": "Aún sin traducir. El sitio web muestra aquí el texto en {name}.",
+      "notTranslatedBlocks": "Aún sin traducir. Sin este texto, la página no aparece en {lang}.",
+      "useSource": "Copiar el texto en {name}",
+      "showAll": "Mostrar todo el texto",
+      "showLess": "Mostrar menos",
+      "whatChanged": "¿Qué ha cambiado?"
     },
     "date": {
       "workWeek": "Semana laboral actual",
@@ -572,7 +596,8 @@
       "other": "Otra foto",
       "alt": "Descripción de la imagen",
       "altHint": "¿Qué se ve en la foto? Para las personas que no pueden ver la imagen.",
-      "altFromLibrary": "Déjalo vacío para usar la descripción de Archivos."
+      "altFromLibrary": "Déjalo vacío para usar la descripción de Archivos.",
+      "chooseInMain": "La imagen en sí la cambias en {name}."
     },
     "money": {
       "negative": "Un precio no puede ser negativo.",
@@ -598,6 +623,7 @@
       "confirmBlocker": "Confirma para “{title}”: ¿sigue todo correcto en {label}?",
       "changed": "{changed} ha cambiado. ¿Sigue todo correcto en {label}?",
       "add": "Añadir {item}",
+      "addInMain": "Para añadir más, cambia a {name}.",
       "text": "Texto"
     }
   },
@@ -607,6 +633,12 @@
     "draftNotOnSite": "Borrador guardado. Aún no está en el sitio web.",
     "draftScheduled": "Borrador guardado, en línea desde {time}.",
     "liveHint": "En el sitio web en aproximadamente un minuto.",
+    "translation": {
+      "hidden": "En {langs}, la página solo aparece cuando todos los textos necesarios estén traducidos.",
+      "mainPage": "Hasta que se traduzca, el sitio web en {langs} enlaza a la página en {main}.",
+      "missing": "El sitio web en {langs} muestra los textos nuevos en {main} hasta que se traduzcan.",
+      "outdated": "El sitio web en {langs} todavía muestra la traducción anterior hasta que se actualice."
+    },
     "undo": "Deshacer",
     "undone": "Deshecho.",
     "pictureBackFromTrash": "La imagen «{name}» estaba en la papelera de archivos y ha vuelto.",
@@ -752,8 +784,8 @@
       "usedIn": "Estas entradas todavía la usan. Después faltará allí en el sitio web:"
     },
     "translation": {
-      "missing": "{lang}: {count, plural, one {falta # texto} other {faltan # textos}}",
-      "outdated": "{lang}: {count, plural, one {# texto por actualizar} other {# textos por actualizar}}",
+      "missing": "{count, plural, one {Falta # texto} other {Faltan # textos}} en {lang}",
+      "outdated": "{count, plural, one {# texto por actualizar} other {# textos por actualizar}} en {lang}",
       "open": "Abrir {title} en {language}",
       "incomplete": "Traducción incompleta"
     },

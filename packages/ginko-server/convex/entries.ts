@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, ordered, searchable, sha256, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, validate, visibleUntil, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, ordered, searchable, sha256, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, urlsFor, validate, visibleUntil, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -15,6 +15,7 @@ import { isLocale, t } from './lib/i18n'
 import { countersOf, DELETED_KEPT, overflowingTrash, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
+import { translationNotes } from './lib/translation'
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
@@ -138,6 +139,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
     if (merged === undefined) delete data[key]
     else data[key] = merged
   }
+  const moved = locale !== undefined && locale !== main ? await foreignSlugs(ctx, actor, entry, brick, locale, before, data) : []
   for (const leaf of confirm) {
     if (!leavesOf(brick.fields[rootOf(leaf)]!, data[rootOf(leaf)], rootOf(leaf)).has(leaf)) fail('INVALID', 'errors.leafNotTranslatable', { leaf }, { leaf })
   }
@@ -174,7 +176,18 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
     actor, entry, fields: brick.fields, roots: changed, data, prints,
     kind: onlyConfirm ? 'confirm' : 'save', history, opId: args.opId,
   })
-  return { entry: entry._id, rev: written.rev, contentRev: written.contentRev, change: written.change, warnings: warnings as unknown as Json }
+  if (moved.length) {
+    const rows = (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry._id)).collect()).filter((r) => r.locale === locale)
+    for (const { slug } of moved) {
+      // The slugs rows hold no field key: this pairs them by language only, which is exact while a brick has one slug field.
+      const row = rows.shift()
+      if (row) await ctx.db.patch(row._id, { slug })
+      else await ctx.db.insert('slugs', { site: actor.site._id, brick: entry.brick, locale: locale!, slug, entry: entry._id })
+    }
+  }
+  // What the other languages show now (the Studio's message after saving); a draft is not on the website.
+  const translation = stateOf(entry) === 'draft' ? [] : translationNotes(schema, entry.brick, { _id: entry._id, data, prints }, before, changed, locale)
+  return { entry: entry._id, rev: written.rev, contentRev: written.contentRev, change: written.change, warnings: warnings as unknown as Json, translation }
 }
 
 const undoArgs = { site: v.string(), opId: v.string(), task: v.optional(v.string()), change: v.string() }
@@ -358,8 +371,25 @@ const lifeStateOf = (entry: Doc<'entries'>): Json => ({
 })
 
 /**
+ * The first free slug from `base` in one brick and locale: not used by another entry of the brick (removed ones keep
+ * theirs until they are deleted for good), and no URL of a static page or of another brick's entry. `own` is the entry
+ * the slug is for: its own slug in that locale is free for it.
+ */
+async function freeSlug(ctx: MutationCtx, actor: Actor, brick: string, locale: Locale, base: string, own?: Id<'entries'>) {
+  const schema = actor.site.schema as Schema
+  const rowsOf = (key: string) => ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', actor.site._id).eq('brick', key).eq('locale', locale)).collect()
+  const taken = new Set((await rowsOf(brick)).filter((r) => r.entry !== own).map((r) => r.slug))
+  // Other bricks and static pages may own the URL this slug would make.
+  const others: Record<string, string[]> = {}
+  for (const [key, other] of Object.entries(schema.bricks)) if (key !== brick && other.kind === 'collection' && other.route) others[key] = (await rowsOf(key)).map((r) => r.slug)
+  for (const slug of blockedSlugs(schema, brick, locale, others)) taken.add(slug)
+  return uniqueSlug(base, (s) => taken.has(s))
+}
+
+/**
  * Slugs of a new entry (SPEC 2.2): per locale from its `from` field, unique in the brick and
- * locale. A missing foreign value takes the main-language slug of the same entry.
+ * locale. A missing foreign value takes the main-language slug of the same entry until the
+ * translated title is saved (`foreignSlugs`).
  */
 async function slugsFor(ctx: MutationCtx, actor: Actor, brick: string, fields: Fields, data: Data) {
   const schema = actor.site.schema as Schema
@@ -371,20 +401,39 @@ async function slugsFor(ctx: MutationCtx, actor: Actor, brick: string, fields: F
     const from = plainObject(data[field.from])
     const made: Record<string, string> = {}
     for (const locale of schema.locales) {
-      const slugsOf = async (key: string) => (await ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', actor.site._id).eq('brick', key).eq('locale', locale)).collect()).map((r) => r.slug)
-      const taken = new Set(await slugsOf(brick))
-      // Other bricks and static pages may own the URL this slug would make.
-      const others: Record<string, string[]> = {}
-      for (const [key, other] of Object.entries(schema.bricks)) if (key !== brick && other.kind === 'collection' && other.route) others[key] = await slugsOf(key)
-      for (const slug of blockedSlugs(schema, brick, locale, others)) taken.add(slug)
       const own = textOf(from[locale])
       const base = locale === main ? slugify(textOf(from[main])) : own ? slugify(own) : made[main]!
-      made[locale] = uniqueSlug(base, (s) => taken.has(s))
+      made[locale] = await freeSlug(ctx, actor, brick, locale, base)
     }
     out[name] = made
     for (const [locale, slug] of Object.entries(made)) rows.push({ locale, slug })
   }
   return { data: out, slugs: rows }
+}
+
+/**
+ * A foreign address comes from the translated title (SPEC 2.2, decisions.md): an entry made in the main language has
+ * the main slug in every other language. While the entry has no page in `locale`, a new title there makes its slug
+ * there anew; once the page is online, its address stays. The main slug never changes. Writes into `data` and returns
+ * the new slugs, whose rows the caller moves once the save is written.
+ */
+async function foreignSlugs(ctx: MutationCtx, actor: Actor, entry: Doc<'entries'>, brick: Schema['bricks'][string], locale: Locale, before: Data, data: Data) {
+  const schema = actor.site.schema as Schema
+  const made: { key: string; slug: string }[] = []
+  if (brick.kind !== 'collection' || !brick.route?.[locale]) return made
+  if (urlsFor(schema, entry.brick, brick, { id: entry._id, data: before, prints: entry.prints as Prints })[locale]) return made
+  for (const [key, field] of Object.entries(brick.fields)) {
+    if (field.type !== 'slug' || field.retired) continue
+    const from = Object.hasOwn(brick.fields, field.from) ? brick.fields[field.from]! : undefined
+    if (!from || from.retired || !isTranslatable(from)) continue
+    const title = textOf(plainObject(data[field.from])[locale])
+    if (!title || title === textOf(plainObject(before[field.from])[locale])) continue
+    const slug = await freeSlug(ctx, actor, entry.brick, locale, slugify(title), entry._id)
+    if (slug === plainObject(data[key])[locale]) continue
+    data[key] = { ...plainObject(data[key]), [locale]: slug }
+    made.push({ key, slug })
+  }
+  return made
 }
 
 /**
@@ -493,7 +542,9 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     if (files.size) await syncFileRefs(ctx, actor.site._id, 'change', change, files)
     await writeCounters(ctx, actor.site._id, c)
 
-    return { entry, rev: 1, contentRev: c.contentRev, state: draft ? 'draft' : 'live', ...(at === undefined ? {} : { publishAt: at }) }
+    // What the other languages show of the new entry (the Studio's message after saving); a draft is not on the website.
+    const translation = draft ? [] : translationNotes(schema, args.brick, { _id: entry, data, prints }, {}, Object.keys(brick.fields))
+    return { entry, rev: 1, contentRev: c.contentRev, state: draft ? 'draft' : 'live', ...(at === undefined ? {} : { publishAt: at }), translation }
   })
 }
 
@@ -742,9 +793,11 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
       })
     }
     await writeCounters(ctx, actor.site._id, c)
+    // What the other languages show of the entry that went online now (the Studio's message after publishing, as after a create).
+    const translation = args.at === undefined ? translationNotes(schema, entry.brick, entry, {}, Object.keys(structuralBrick(schema, entry.brick).fields)) : []
     return {
       entry: entry._id, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, contentRev: c.contentRev, change,
-      state: args.at === undefined ? 'live' : 'draft', ...(args.at === undefined ? {} : { publishAt: args.at }),
+      state: args.at === undefined ? 'live' : 'draft', ...(args.at === undefined ? {} : { publishAt: args.at }), translation,
     }
   })
 }

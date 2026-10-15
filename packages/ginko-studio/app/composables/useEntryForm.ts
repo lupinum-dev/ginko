@@ -179,7 +179,7 @@ export function useEntryForm(o: EntryFormOptions) {
         const data = asNew ? Object.fromEntries(Object.entries(submitted).filter(([k]) => fields[k] && !fields[k].retired && fields[k].type !== 'slug')) : submitted
         const task = asNew ? asNew.task : o.task?.()
         const op = opFor({ brick: o.brickKey(), data, task, publish })
-        const result = await ops.createEntry({ brick: o.brickKey(), data: data as Record<string, Json>, task, removeTask: o.removeTask?.(), op, label: t('ops.saved'), publish, timeZone: o.timeZone?.() })
+        const result = await ops.createEntry({ brick: o.brickKey(), data: data as Record<string, Json>, task, removeTask: o.removeTask?.(), op, label: t('ops.saved'), publish, timeZone: o.timeZone?.(), main: o.main() })
         if (result.entry === undefined) waiting.value = true
         else created.value = result.entry
         // Saved: what was sent no longer counts as open input (a second Speichern would create another).
@@ -189,7 +189,7 @@ export function useEntryForm(o: EntryFormOptions) {
         if (!roots.length && !confirm.value.length) return true
         const values = Object.fromEntries(roots.map((k) => [k, submitted[k] ?? null]))
         const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task: o.task?.(), locale: o.locale(), ...(confirm.value.length ? { confirm: confirm.value } : {}) }
-        const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false })
+        const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false, main: o.main() })
         if (result.rev === undefined) {
           // Nothing was written: the stored state, base and rev stay; only the input counts as handed in.
           waiting.value = true
