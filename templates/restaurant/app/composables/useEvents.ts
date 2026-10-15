@@ -12,6 +12,8 @@ export interface EventFacts {
   online?: string | null
   price?: Money | null
   booking?: string | null
+  /** The last day the booking link shows (ticket sales that close before the event). */
+  bookingUntil?: string | null
   soldOut?: boolean | null
   image?: ImageValue | null
 }
@@ -25,20 +27,46 @@ export function wholeMoney(money: Money, language: string): string {
 }
 
 /**
+ * The booking link while booking is open: none when the event is fully booked or `bookingUntil` (a date in the site's
+ * time zone, the last day it shows) has passed. `today`: YYYY-MM-DD in the site's time zone.
+ */
+export function bookingHref(event: Pick<EventFacts, 'booking' | 'bookingUntil' | 'soldOut'>, today: string): string | undefined {
+  if (event.soldOut || (event.bookingUntil && today > event.bookingUntil)) return undefined
+  return safeHref(event.booking ?? undefined)
+}
+
+/** bookingHref at today's date in the site's time zone (the server's day, carried to the browser). */
+export function useEventBooking() {
+  const today = useGinkoToday()
+  return (event: Pick<EventFacts, 'booking' | 'bookingUntil' | 'soldOut'>) => bookingHref(event, today.value)
+}
+
+/** Booking has closed before the event (`bookingUntil` passed): say so instead of offering another way to book. */
+export function useBookingClosed() {
+  const today = useGinkoToday()
+  return (event: Pick<EventFacts, 'booking' | 'bookingUntil' | 'soldOut'>) =>
+    Boolean(!event.soldOut && safeHref(event.booking ?? undefined) && event.bookingUntil && today.value > event.bookingUntil)
+}
+
+/**
  * Texts of an event in the page's language: the date with its weekday (a range for several days) and the clock times
  * as the owner entered them, in the site's time zone; the price; "fully booked".
  */
 export function useEventText() {
   const { t, format, language } = useI18n('events')
+  const weekday = (date: string) => format.date(date, { weekday: 'short' })
   const long = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' } as const
   const short = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' } as const
   const dates = (event: EventFacts, style: 'long' | 'short' = 'long') => {
     const options = style === 'long' ? long : short
     return event.when.from === event.when.to ? format.date(event.when.from, options) : format.range(event.when.from, event.when.to, options)
   }
+  // `start` is the clock time of the first day and `end` of the last: over several days "Thu 09:00 – Fri 16:00", so
+  // the range never reads as the hours of each day.
   const times = (event: EventFacts) => {
-    if (event.start && event.end) return `${event.start}–${event.end}`
-    return event.start ?? undefined
+    if (!event.start || !event.end) return event.start ?? undefined
+    if (event.when.from === event.when.to) return `${event.start}–${event.end}`
+    return `${weekday(event.when.from)} ${event.start} – ${weekday(event.when.to)} ${event.end}`
   }
   /** "Fri, 29 Jan 2027 · 19:00" */
   const when = (event: EventFacts, style: 'long' | 'short' = 'long') => [dates(event, style), times(event)].filter(Boolean).join(' · ')
@@ -72,6 +100,7 @@ export function useEventLd() {
   const site = useGinko('site')
   const { name, url, timeZone } = useGinkoSite()
   const country: string = useRuntimeConfig().public.ginko.country
+  const booking = useEventBooking()
   const absolute = (path: string) => new URL(path, url).href
   return (e: EventFacts & { url: string }, extra: { description?: MarkdownTree | null, sessions?: SessionJsonLdInput[] } = {}) => {
     const own = site.value.data
@@ -91,15 +120,18 @@ export function useEventLd() {
       description: extra.description ?? undefined,
       image: e.image ? absolute(e.image.url) : undefined,
       price: e.price ?? undefined,
-      booking: safeHref(e.booking ?? undefined),
+      booking: booking(e),
       soldOut: e.soldOut === true,
       sessions: extra.sessions,
     })
   }
 }
 
-/** schema.org Event for an event page (useEventLd), with the page's Markdown tree as `description`. */
-export function useEventJsonLd(event: () => EventFacts & { url: string }, description: () => MarkdownTree | null | undefined) {
+/**
+ * schema.org Event for an event page (useEventLd), with the page's Markdown tree as `description` and, when a feature
+ * gives them, its sessions as `subEvent`.
+ */
+export function useEventJsonLd(event: () => EventFacts & { url: string }, description: () => MarkdownTree | null | undefined, sessions?: () => SessionJsonLdInput[] | undefined) {
   const build = useEventLd()
-  return computed(() => build(event(), { description: description() }))
+  return computed(() => build(event(), { description: description(), sessions: sessions?.() }))
 }
