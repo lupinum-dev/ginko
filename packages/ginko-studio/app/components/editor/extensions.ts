@@ -135,7 +135,8 @@ function escapeExtension(): AnyExtension {
         props: {
           handleDOMEvents: {
             keydown: (view, event) => {
-              if (event.key !== 'Escape' || event.isComposing) return false
+              // Same gate as ProseMirror's own key handling: no edit keys while composing or in a read-only text.
+              if (event.key !== 'Escape' || event.isComposing || view.composing || !view.editable) return false
               if (view.someProp('handleKeyDown', (handle) => handle(view, event))) event.preventDefault()
               return true
             },
