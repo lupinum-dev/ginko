@@ -270,21 +270,26 @@ function project(main, translated) {
   return main === undefined || nested(main) ? undefined : main
 }
 
-/** A field that both files have and whose value is nested: the two blocks after the swap, or undefined. */
-function swapNested(mainBlock, translatedBlock) {
+/**
+ * A field that both files have and whose value is nested: the two blocks after the swap, or undefined. A field the
+ * small reader cannot read stops the copy with the file and field named: swapped as a whole, a nested field would lose
+ * its photo or prices in the new main file and fail the build later, far from the cause.
+ */
+function swapNested(mainBlock, translatedBlock, name) {
   if (mainBlock.lines.length < 2 && translatedBlock.lines.length < 2) return undefined
+  const key = mainBlock.key
+  let main, translated
   try {
-    const [main, translated] = [mainBlock, translatedBlock].map((block) => readNested(block.lines))
-    const [m, t] = [main.get(mainBlock.key), translated.get(translatedBlock.key)]
-    if (!nested(m) || !nested(t)) return undefined
-    const key = mainBlock.key
-    return {
-      main: { key, lines: writeNested(new Map([[key, project(m, t)]]), 0) },
-      translated: { key, lines: writeNested(new Map([[key, overlay(m, t)]]), 0) },
-    }
+    [main, translated] = [mainBlock, translatedBlock].map((block) => readNested(block.lines))
   }
-  catch {
-    return undefined
+  catch (error) {
+    throw new Error(`content/${name}: cannot swap the field "${key}" for the new main language (${error.message}). Write it in plain YAML (one "key: value" per line, lists with "- "), or copy the template with its own main language.`)
+  }
+  const [m, t] = [main.get(key), translated.get(translatedBlock.key)]
+  if (!nested(m) || !nested(t)) return undefined
+  return {
+    main: { key, lines: writeNested(new Map([[key, project(m, t)]]), 0) },
+    translated: { key, lines: writeNested(new Map([[key, overlay(m, t)]]), 0) },
   }
 }
 
@@ -307,7 +312,7 @@ function swapFields(mainText, translatedText, name) {
   let theirs = translated.blocks
   for (const block of theirs) {
     const mine = block.key === undefined ? undefined : kept.find((b) => b.key === block.key)
-    const swapped = mine && swapNested(mine, block)
+    const swapped = mine && swapNested(mine, block, name)
     if (!swapped) continue
     kept = kept.map((b) => (b === mine ? swapped.main : b))
     theirs = theirs.map((b) => (b === block ? swapped.translated : b))

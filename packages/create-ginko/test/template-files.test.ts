@@ -100,6 +100,17 @@ describe('pruneLocales', () => {
     expect(read(dir, 'content/lunch.en.md')).toBe('---\ndays:\n  - dish: "Pasta: with cabbage"\n  - dish: Beef\nimage:\n  alt: A table\nnote: |\n  Salad\n  included\n---\n')
   })
 
+  // Wrong behaviour caught: a nested field the reader cannot read swapped as a whole without a word, so the build of
+  // the new site fails later on "set in the main-language file only" with no hint at the cause.
+  it('names the file and field when it cannot read a nested field', () => {
+    const dir = folder({
+      'app/routes.ts': "export const locales = ['en', 'de'] as const\n",
+      'content/gallery.md': '---\nimages:\n  - image:\n      src: /media/a.jpg\n      ? alt\n---\n',
+      'content/gallery.de.md': '---\nimages:\n  - image:\n      alt: Ein Tisch\n---\n',
+    })
+    expect(() => pruneLocales(dir, ['en', 'de'], ['de', 'en'])).toThrow('content/gallery.md: cannot swap the field "images"')
+  })
+
   it('without app/routes.ts, rewrites the locales list in ginko.config.ts', () => {
     const dir = folder({ 'ginko.config.ts': "export default defineSite({\n  locales: ['en', 'de'],\n  languages: { de: 'de-AT', en: 'en-GB' },\n})\n" })
     pruneLocales(dir, ['en', 'de'], ['en'])
