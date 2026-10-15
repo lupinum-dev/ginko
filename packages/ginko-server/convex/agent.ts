@@ -339,10 +339,10 @@ export const stale = internalQuery({
   },
 })
 
-/** The sentence for the person after a save-like write: proposed, unchanged, or done with the change to undo. */
 /** When a write shows on the website: in about a minute, or from the day of a week planned ahead or a planned price (`liveFrom`). */
 const liveText = (liveFrom: string | undefined) => (liveFrom ? `On the website from ${liveFrom}.` : 'Live on the website in about a minute.')
 
+/** The sentence for the person after a save-like write: proposed, unchanged, or done with the change to undo. */
 function savedAs(result: Json, label: string): { text: string; result: Json } {
   if (proposed(result)) return { text: PROPOSED, result }
   const { change, liveFrom } = result as { change?: string; liveFrom?: string }
