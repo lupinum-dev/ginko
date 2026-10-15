@@ -89,23 +89,26 @@ function toggleShow(id: string) {
 const confirming = ref<string | null>(null)
 const canRevert = (change: Change) => change.kind === 'save' && !!change.entry && (props.manager || taskFor(change) !== undefined)
 async function revert(change: Change) {
-  busy.value = change._id
-  try {
+  await whileBusy(change._id, async () => {
     await ops.revertEntry(change.entry!, change._id, taskFor(change))
     confirming.value = null
-  } finally {
-    busy.value = null
-  }
+  })
 }
 
-const busy = ref<string | null>(null)
-async function undo(change: Change) {
-  busy.value = change._id
+// One set for all loaded pages: each row stays disabled until its own undo or revert answered.
+const busy = ref(new Set<string>())
+async function whileBusy(id: string, run: () => Promise<unknown>) {
+  busy.value = new Set(busy.value).add(id)
   try {
-    await ops.undoChange(change._id, taskFor(change))
+    await run()
   } finally {
-    busy.value = null
+    const next = new Set(busy.value)
+    next.delete(id)
+    busy.value = next
   }
+}
+async function undo(change: Change) {
+  await whileBusy(change._id, () => ops.undoChange(change._id, taskFor(change)))
 }
 </script>
 
@@ -128,7 +131,7 @@ async function undo(change: Change) {
                 type="button"
                 variant="secondary"
                 size="sm"
-                :disabled="busy === change._id"
+                :disabled="busy.has(change._id)"
                 @click="undo(change)"
               >{{ t('entry.changes.undo') }}</Button>
             </template>
@@ -150,7 +153,7 @@ async function undo(change: Change) {
         <div v-if="confirming === change._id" class="grid gap-2" role="group" :aria-label="t('history.revert')">
           <p>{{ t('history.revertConfirm', { date: fullDate(change.at) }) }}</p>
           <div class="flex flex-wrap gap-2">
-            <Button type="button" size="sm" :disabled="busy === change._id" @click="revert(change)">{{ t('history.revert') }}</Button>
+            <Button type="button" size="sm" :disabled="busy.has(change._id)" @click="revert(change)">{{ t('history.revert') }}</Button>
             <Button type="button" variant="ghost" size="sm" @click="confirming = null">{{ t('entry.cancel') }}</Button>
           </div>
         </div>
