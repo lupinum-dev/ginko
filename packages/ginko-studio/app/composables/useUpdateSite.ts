@@ -18,7 +18,9 @@ export function useUpdateSite(site: () => string) {
       if (failed) show(`${t('basics.update.pagesFailed', { count: failed })} ${t('basics.update.fallback')}`, { tone: 'err' })
       else show(result.limited ? `${t('basics.update.partly')} ${t('basics.update.fallback')}` : t('basics.update.done'))
     } catch (error) {
-      show(`${opErrorOf(error).message} ${t('basics.update.fallback')}`, { tone: 'err' })
+      // A cancelled call (CANCELLED) has no message and stays silent.
+      const failure = opErrorOf(error)
+      if (failure.message) show(`${failure.message} ${t('basics.update.fallback')}`, { tone: 'err' })
     }
   }
   return { run, running: refresh.pending }

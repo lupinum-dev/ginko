@@ -5,7 +5,7 @@ import { ConvexError } from 'convex/values'
 import { ConvexCallError, normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import { describe, expect, test, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ results: new Map<string, unknown>(), toasts: [] as { text: string; action?: unknown }[] }))
+const mocks = vi.hoisted(() => ({ results: new Map<string, unknown>(), toasts: [] as { text: string; action?: unknown }[], actionError: undefined as unknown }))
 vi.mock('#imports', async () => {
   const { createTranslator } = await import('@lupinum/ginko-i18n/core')
   const { compileCatalogs } = await import('@lupinum/ginko-i18n/compile')
@@ -14,10 +14,16 @@ vi.mock('#imports', async () => {
     de: { ...(await import('../i18n/de.json')).default, server: (await import('../../ginko-server/i18n/de.json')).default },
     en: { ...(await import('../i18n/en.json')).default, server: (await import('../../ginko-server/i18n/en.json')).default },
   })
-  return { useI18n: () => ({ t: createTranslator({ messages: catalogs.en, fallback: catalogs.de, language: 'en', timeZone: 'Europe/Vienna' }).t, format: {}, locale: { value: 'en' } }) }
+  const { ref } = await import('vue')
+  return {
+    useI18n: () => ({ t: createTranslator({ messages: catalogs.en, fallback: catalogs.de, language: 'en', timeZone: 'Europe/Vienna' }).t, format: {}, locale: { value: 'en' } }),
+    useConvexAction: () => ({ pending: ref(false), run: async () => { throw mocks.actionError } }),
+  }
 })
+vi.mock('../app/composables/useToast', () => ({ useToast: () => ({ show: (text: string, opts?: { action?: unknown }) => mocks.toasts.push({ text, action: opts?.action }) }) }))
 
 import { opErrorOf, provideLastingOps, useOps } from '../app/composables/useOps'
+import { useUpdateSite } from '../app/composables/useUpdateSite'
 
 const holder: { lasting?: unknown } = {}
 vi.stubGlobal('useToast', () => ({ show: (text: string, opts?: { action?: unknown }) => mocks.toasts.push({ text, action: opts?.action }) }))
@@ -79,4 +85,12 @@ describe('failed calls', () => {
       logged.mockRestore()
     }
   })
+})
+
+// Wrong behaviour caught: a cancelled "Update website now" showed the fallback sentence alone as an error toast.
+test('a cancelled website update stays silent', async () => {
+  mocks.toasts.length = 0
+  mocks.actionError = new ConvexCallError({ kind: 'unknown', code: 'CANCELLED', message: 'Convex action cancelled: its owning scope was disposed.', functionName: 'refresh:urgentRefresh', outcome: 'not-sent' })
+  await useUpdateSite(() => 'demo').run()
+  expect(mocks.toasts).toEqual([])
 })
