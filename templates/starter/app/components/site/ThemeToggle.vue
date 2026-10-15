@@ -9,8 +9,11 @@ const colorMode = useColorMode()
 const mounted = ref(false)
 onMounted(() => { mounted.value = true })
 const dark = computed(() => colorMode.value === 'dark')
+// Toggling back to the system's own scheme stores `system` again, so the site follows the system from then on.
 function toggle() {
-  colorMode.preference = dark.value ? 'light' : 'dark'
+  const next = dark.value ? 'light' : 'dark'
+  const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  colorMode.preference = next === system ? 'system' : next
 }
 </script>
 
