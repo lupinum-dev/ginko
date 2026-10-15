@@ -7,14 +7,18 @@ export function todayIn(timeZone: string, now: Date = new Date()): string {
   return `${get('year')}-${get('month')}-${get('day')}`
 }
 
-/** Minutes `timeZone` is ahead of UTC at `instant` (60 for Vienna in winter, 120 in summer). */
-function offsetAt(timeZone: string, instant: number): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
+const readers = new Map<string, Intl.DateTimeFormat>()
+
+/** How far `timeZone` is ahead of UTC at the instant `ms`, in ms (+1 h for Vienna in winter, +2 h in summer). */
+export function zoneOffset(timeZone: string, ms: number): number {
+  let reader = readers.get(timeZone)
+  if (!reader) readers.set(timeZone, reader = new Intl.DateTimeFormat('en-US', {
     timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
-  }).formatToParts(new Date(instant))
+  }))
+  const parts = reader.formatToParts(ms)
   const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0)
   const local = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'))
-  return Math.round((local - Math.floor(instant / 1000) * 1000) / 60_000)
+  return local - Math.floor(ms / 1000) * 1000
 }
 
 /**
@@ -24,7 +28,7 @@ function offsetAt(timeZone: string, instant: number): number {
  */
 export function zonedDateTime(date: string, time: string, timeZone: string): string {
   const naive = Date.parse(`${date}T${time}:00Z`)
-  const minutes = offsetAt(timeZone, naive - offsetAt(timeZone, naive) * 60_000)
+  const minutes = Math.round(zoneOffset(timeZone, naive - zoneOffset(timeZone, naive)) / 60_000)
   const sign = minutes < 0 ? '-' : '+'
   const abs = Math.abs(minutes)
   return `${date}T${time}:00${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`

@@ -11,3 +11,5 @@ export { eventsBrick } from './basics/events.ts'
 export { offerPrice, postalAddress, type PostalAddressInput } from './basics/offer.ts'
 // Today's hours line for the Studio status (computed on the server).
 export { hoursLine, type HoursLine, type HoursLineContext } from './basics/hours.ts'
+// The one zone-offset reading: core writes event times with it, the Studio reads drafts' times with it.
+export { zoneOffset } from './core/time.ts'

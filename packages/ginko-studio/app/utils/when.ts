@@ -1,23 +1,11 @@
 // Points in time for drafts (SPEC 15): "Online ab …" is entered and shown in the site's time zone,
 // whatever zone the laptop is in.
+import { zoneOffset } from '@lupinum/ginko/internal'
 import type { useI18n } from '#imports'
 
 /** The Studio's translator and formatters, from `useI18n()` at setup. Plain functions take it as an argument. */
 // `<''>` keeps the root namespace: ReturnType would widen the generic namespace and accept wrong keys.
 export type Words = Pick<ReturnType<typeof useI18n<''>>, 't' | 'format'>
-
-const readers = new Map<string, Intl.DateTimeFormat>()
-
-/** Offset of `timeZone` from UTC at `ms`, in ms (e.g. +2 h for Vienna in summer). */
-function offsetAt(ms: number, timeZone: string): number {
-  let reader = readers.get(timeZone)
-  if (!reader) readers.set(timeZone, reader = new Intl.DateTimeFormat('en-US', {
-    timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
-  }))
-  const parts = Object.fromEntries(reader.formatToParts(ms).map((p) => [p.type, p.value]))
-  const asUtc = Date.UTC(+parts.year!, +parts.month! - 1, +parts.day!, +parts.hour!, +parts.minute!, +parts.second!)
-  return asUtc - Math.floor(ms / 1000) * 1000
-}
 
 const DAY = 86_400_000
 
@@ -30,7 +18,7 @@ export function zonedTimes(local: string, timeZone: string): number[] | undefine
   if (!m) return undefined
   const wall = Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!)
   // The offsets a day before and after cover both sides of a switch; the round trip keeps only real readings.
-  const guesses = new Set([wall - offsetAt(wall - DAY, timeZone), wall - offsetAt(wall + DAY, timeZone)])
+  const guesses = new Set([wall - zoneOffset(timeZone, wall - DAY), wall - zoneOffset(timeZone, wall + DAY)])
   return [...guesses].filter((ms) => msToZoned(ms, timeZone) === local).sort((a, b) => a - b)
 }
 
@@ -49,7 +37,7 @@ export const deviceZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone
 
 /** ms → `2026-10-14T09:00` in `timeZone`, for an `<input type="datetime-local">`. */
 export function msToZoned(ms: number, timeZone: string): string {
-  const shifted = new Date(ms + offsetAt(ms, timeZone))
+  const shifted = new Date(ms + zoneOffset(timeZone, ms))
   return shifted.toISOString().slice(0, 16)
 }
 
