@@ -63,9 +63,10 @@ export function publicness(site: Doc<'sites'>, key: string, row: Doc<'entries'>,
       const what = status.missing.length && status.outdated.length ? 'both' : status.missing.length ? 'missing' : 'outdated'
       const main = schema.locales[0]!
       // Opt-in `untranslated: 'fallback'` on a routed collection: listed in this language, linked to its main-language page.
-      const fallback = status.untranslated && route ? 'publicness.translationFallbackMainPage' : 'publicness.translationFallback'
-      reasons.push(status.hidden
-        ? reason('translation_hidden', true, msg('publicness.translationHidden', { locale, what, brick: brick.label }), 'translate')
+      const fallback = status.page === 'mainPage' ? 'publicness.translationFallbackMainPage' : 'publicness.translationFallback'
+      // Only a missing text hides an entry; an outdated one never does (D5).
+      reasons.push(status.page === 'hidden'
+        ? reason('translation_hidden', true, msg('publicness.translationHidden', { locale, what: 'missing', brick: brick.label }), 'translate')
         : reason('translation_fallback', false, msg(fallback, { locale, what, main }), 'translate'))
     }
   }

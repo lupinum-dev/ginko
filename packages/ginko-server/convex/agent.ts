@@ -337,7 +337,7 @@ export const stale = internalQuery({
     for (const row of rows) {
       if (row.state === 'draft') continue
       const status = leafStatus(schema, brick, row, locale)
-      if (!status.hidden && status.outdated.length) out[row._id] = status.outdated
+      if (status.page !== 'hidden' && status.outdated.length) out[row._id] = status.outdated
     }
     return out
   },

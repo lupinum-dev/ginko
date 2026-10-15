@@ -15,6 +15,7 @@ import { isLocale, t } from './lib/i18n'
 import { countersOf, DELETED_KEPT, overflowingTrash, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
+import { translationNotes } from './lib/translation'
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
@@ -174,7 +175,9 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
     actor, entry, fields: brick.fields, roots: changed, data, prints,
     kind: onlyConfirm ? 'confirm' : 'save', history, opId: args.opId,
   })
-  return { entry: entry._id, rev: written.rev, contentRev: written.contentRev, change: written.change, warnings: warnings as unknown as Json }
+  // What the other languages show now (the Studio's message after saving); a draft is not on the website.
+  const translation = stateOf(entry) === 'draft' ? [] : translationNotes(schema, entry.brick, { _id: entry._id, data, prints }, before, changed, locale)
+  return { entry: entry._id, rev: written.rev, contentRev: written.contentRev, change: written.change, warnings: warnings as unknown as Json, translation }
 }
 
 const undoArgs = { site: v.string(), opId: v.string(), task: v.optional(v.string()), change: v.string() }
@@ -493,7 +496,9 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     if (files.size) await syncFileRefs(ctx, actor.site._id, 'change', change, files)
     await writeCounters(ctx, actor.site._id, c)
 
-    return { entry, rev: 1, contentRev: c.contentRev, state: draft ? 'draft' : 'live', ...(at === undefined ? {} : { publishAt: at }) }
+    // What the other languages show of the new entry (the Studio's message after saving); a draft is not on the website.
+    const translation = draft ? [] : translationNotes(schema, args.brick, { _id: entry, data, prints }, {}, Object.keys(brick.fields))
+    return { entry, rev: 1, contentRev: c.contentRev, state: draft ? 'draft' : 'live', ...(at === undefined ? {} : { publishAt: at }), translation }
   })
 }
 

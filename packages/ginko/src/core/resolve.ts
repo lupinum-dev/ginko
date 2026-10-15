@@ -53,11 +53,12 @@ export interface ResolvedEntry {
    */
   outdated: string[]
   /**
-   * A required translatable leaf has no text in this locale (an outdated one counts as translated). Never for the
-   * main locale or an unknown one; slugs and image descriptions never count, they fall back by design.
+   * The required translatable leaves without text in this locale (an outdated one counts as translated): while there
+   * is one, the entry has no page in this locale. Never for the main locale or an unknown one; slugs and image
+   * descriptions never count, they fall back by design.
    */
-  untranslated: boolean
-  /** `untranslated` in a collection whose mode is `'hide'` (`untranslatedMode`): the bundle leaves the entry out of this locale. */
+  blocking: string[]
+  /** `blocking` is not empty in a collection whose mode is `'hide'` (`untranslatedMode`): the bundle leaves the entry out of this locale. */
   hidden: boolean
 }
 
@@ -77,8 +78,8 @@ export function resolveEntry(schema: Schema, brickKey: string, entry: StoredEntr
   const main = schema.locales[0]!
   const fallback: string[] = []
   const outdated: string[] = []
-  const flags = { untranslated: false }
-  const state: State = { schema, brickKey, entry, ctx, main, fallback, outdated, flags }
+  const blocking: string[] = []
+  const state: State = { schema, brickKey, entry, ctx, main, fallback, outdated, blocking }
   const data = resolveFields(brick.fields, entry.data, '', state)
   // Retired fields (SPEC 2.5) are projected after the live fields are resolved.
   for (const [name, field] of Object.entries(brick.fields)) {
@@ -91,14 +92,14 @@ export function resolveEntry(schema: Schema, brickKey: string, entry: StoredEntr
         if (leaf === rule.from || leaf.startsWith(`${rule.from}.`)) fallback.push(name + leaf.slice(rule.from.length))
       }
     } else if (entry.data[name] !== undefined) {
-      data[name] = resolveValue(field, entry.data[name], name, { ...state, flags: { untranslated: false } })
+      data[name] = resolveValue(field, entry.data[name], name, { ...state, blocking: [] })
     } else if ('value' in rule) {
       // Same fallback reporting as stored values; a constant never makes the entry untranslated.
-      data[name] = resolveValue(field, rule.value, name, { ...state, flags: { untranslated: false } })
+      data[name] = resolveValue(field, rule.value, name, { ...state, blocking: [] })
     }
   }
-  const hidden = flags.untranslated && brick.kind === 'collection' && untranslatedMode(brick) === 'hide'
-  return { data, fallback, outdated, untranslated: flags.untranslated, hidden }
+  const hidden = blocking.length > 0 && brick.kind === 'collection' && untranslatedMode(brick) === 'hide'
+  return { data, fallback, outdated, blocking, hidden }
 }
 
 interface State {
@@ -109,8 +110,8 @@ interface State {
   main: Locale
   fallback: string[]
   outdated: string[]
-  /** Decided per leaf: a required leaf whose translation is missing. */
-  flags: { untranslated: boolean }
+  /** Required leaves whose translation is missing. Retired fields and image descriptions get a list of their own that is dropped. */
+  blocking: string[]
 }
 
 function resolveFields(fields: Fields, stored: Record<string, Json> | undefined, path: string, state: State) {
@@ -177,7 +178,7 @@ function altOf(own: Json, library: Record<string, string> | undefined, leaf: str
   // The main language's library text stands in for a missing own one, so translations compare against it.
   // A description is required in the main language only: a missing translation falls back and never makes the entry untranslated.
   const main = fromLibrary(state.main)
-  return (localized(main ? { ...map, [state.main]: main } : map, leaf, { ...state, flags: { untranslated: false } }, field) as string | undefined) ?? ''
+  return (localized(main ? { ...map, [state.main]: main } : map, leaf, { ...state, blocking: [] }, field) as string | undefined) ?? ''
 }
 
 const isEmpty = (value: Json | undefined) => value === undefined || value === null || value === ''
@@ -203,7 +204,7 @@ function localized(value: Json, leaf: string, state: State, field: Field): unkno
   if (isEmpty(own)) {
     if (!isEmpty(mainValue)) {
       state.fallback.push(leaf)
-      if (!field.optional && field.type !== 'slug') state.flags.untranslated = true
+      if (!field.optional && field.type !== 'slug') state.blocking.push(leaf)
     }
     return mainValue
   }
@@ -369,7 +370,7 @@ export function urlsFor(schema: Schema, key: string, brick: CollectionBrick, ent
   const main = schema.locales[0]!
   // No files needed: only texts make an entry untranslated (image descriptions never do).
   for (const locale of schema.locales) {
-    if (locale !== main && urls[locale] && resolveEntry(schema, key, entry, { locale, files: () => undefined }).untranslated) delete urls[locale]
+    if (locale !== main && urls[locale] && resolveEntry(schema, key, entry, { locale, files: () => undefined }).blocking.length) delete urls[locale]
   }
   return urls
 }

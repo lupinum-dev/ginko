@@ -120,6 +120,16 @@ describe('resolveEntry: translations and fallback (SPEC 6)', () => {
     expect(r.outdated).toEqual(outdated)
   })
 
+  // Wrong behaviour caught: the Studio cannot tell which texts keep a page off the English site, or marks an optional one as needed.
+  it('lists the missing required texts as blocking, but not a missing optional text', () => {
+    const event: StoredEntry = { id: 'e1', data: { title: { de: 'Fest' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'x', en: 'x' } }, prints: { description: { en: printOf('x') } } }
+    const r = resolve(base(), 'events', event, 'en')
+    expect([r.blocking, r.fallback, r.hidden]).toEqual([['title'], ['title'], true])
+    const withNote = dish('k1', { de: 'Tafelspitz', en: 'Boiled beef' }, { name: { en: printOf('Tafelspitz') } })
+    const d = resolve(base(), 'menu', { ...withNote, data: { ...withNote.data, description: { de: 'Mit Kren' } } }, 'en')
+    expect([d.blocking, d.fallback]).toEqual([[], ['description']])
+  })
+
   // Wrong behaviour caught: a list row's missing translation is reported without its row id, so the editor cannot find it.
   it('lists a list-row leaf with its row id, e.g. days.<id>.dish', () => {
     const lunch: StoredEntry = {

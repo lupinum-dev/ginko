@@ -4,7 +4,7 @@ import type { Brick, Locale } from '@lupinum/ginko'
 import { entryTitle, labelOf, ordered, type Schema } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { Data } from './content'
-import { leafStatus } from './translation'
+import { leafStatus, type LeafStatus } from './translation'
 
 /**
  * The fields a list row shows beside its title: the field `visible` reads (expired or not) and the first date or date
@@ -91,14 +91,14 @@ export function slimEntry(brick: Brick, row: Doc<'entries'>) {
   return { ...entry, data: Object.fromEntries(Object.entries(entry.data).filter(([key]) => keep(key))), prints: {} }
 }
 
-/** `editorEntry` with the texts each foreign language misses or has outdated (the language switch shows a dot). */
+/**
+ * `editorEntry` with each foreign language's translation state: the texts it misses or has outdated (the language
+ * switch shows a dot), the missing ones that keep the entry from having a page there, and what the website shows.
+ */
 export function editorEntryWithTranslation(schema: Schema, row: Doc<'entries'>) {
-  const translation: Record<Locale, { missing: string[]; outdated: string[] }> = {}
+  const translation: Record<Locale, LeafStatus> = {}
   if (row.state !== 'draft' && row.deletedAt === undefined && Object.hasOwn(schema.bricks, row.brick)) {
-    for (const locale of schema.locales.slice(1)) {
-      const { missing, outdated } = leafStatus(schema, row.brick, row, locale)
-      translation[locale] = { missing, outdated }
-    }
+    for (const locale of schema.locales.slice(1)) translation[locale] = leafStatus(schema, row.brick, row, locale)
   }
   return { ...editorEntry(row), translation }
 }

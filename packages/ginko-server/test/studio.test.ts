@@ -340,7 +340,7 @@ describe('sites.translationStatus', () => {
     expect(menu.missing + menu.outdated + menu.ok).toBe(8)
     // "Frittatensuppe" has no English name; the print of the schnitzel's English name no longer fits the German one.
     const english = async (key: string) => (await s.as.owner.query(api.entries.get, { site, entry: s.entries[key]! }))!.translation.en
-    expect(await english('menu-frittaten')).toEqual({ missing: ['description', 'name'], outdated: [] })
+    expect(await english('menu-frittaten')).toEqual({ missing: ['description', 'name'], outdated: [], blocking: ['name'], page: 'shown' })
     expect((await english('menu-schnitzel'))!.outdated).toEqual(expect.arrayContaining(['name']))
 
     // The bundle's fallback lists of English give the same entries and numbers as the missing texts of the list rows and
@@ -364,6 +364,24 @@ describe('sites.translationStatus', () => {
     await s.remove(s.entries.sommerfest!)
     const after = (await s.as.owner.query(api.sites.translationStatus, { site })).bricks.find((b) => b.brick === 'events')!.locales.en!
     expect(after.missing + after.outdated + after.ok).toBe(base.missing + base.outdated + base.ok - 1)
+  })
+})
+
+describe('the answer of a save says what the other languages show', () => {
+  // Wrong behaviour caught: the message after saving claims a German fallback for a page that is missing in English,
+  // or says nothing about the German text a new FAQ question or an outdated translation shows there (romi-4, P5).
+  it('a hidden page, a new text shown in the main language, an outdated translation, and nothing for a date', async () => {
+    const s = await studioSetup()
+    const created = await s.createEvent('Wildwoche') as { entry: Id<'entries'>; translation: unknown }
+    expect(created.translation).toEqual([{ locale: 'en', page: 'hidden', missing: 2, outdated: 0 }])
+    const save = (entry: Id<'entries'>, fields: Record<string, unknown>, baseRev = 1) =>
+      s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev, locale: 'de', fields }) as Promise<{ translation: unknown }>
+    expect((await save(created.entry, { title: { de: 'Wildwochen' } })).translation).toEqual([{ locale: 'en', page: 'hidden', missing: 1, outdated: 0 }])
+    expect((await save(created.entry, { when: { from: '2026-11-21', to: '2026-11-21' } }, 2)).translation).toEqual([])
+
+    const dish = await s.as.owner.mutation(api.entries.create, { site, opId: opId(), brick: 'menu', data: { category: 'mains', name: { de: 'Kürbisgulasch' }, price: { amount: 1490 }, allergens: [], veg: 'vegan' } }) as { translation: unknown }
+    expect(dish.translation).toEqual([{ locale: 'en', page: 'shown', missing: 1, outdated: 0 }])
+    expect((await save(s.entries['menu-saibling']!, { name: { de: 'Gebeizter Bachsaibling' } })).translation).toEqual([{ locale: 'en', page: 'shown', missing: 0, outdated: 1 }])
   })
 })
 
