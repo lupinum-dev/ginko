@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { exportSite } from '../../src/cli/export.ts'
 import { importSite } from '../../src/cli/import.ts'
-import { runOnce } from '../../src/cli/local.ts'
+import { failureOf, runOnce } from '../../src/cli/local.ts'
 import type { ExportAnswer } from '../../src/cli/model.ts'
 import type { Platform } from '../../src/cli/platform.ts'
 
@@ -132,6 +132,13 @@ describe('local:import batches', () => {
     const done = await importSite({ dir, run, upload: async () => 's', log: () => {}, sleep: async (ms) => { waits.push(ms) } })
     expect(done.entries).toBe(1)
     expect(waits).toEqual([2_000])
+  })
+
+  // Wrong behaviour caught: the monorepo CLI logs its progress to stderr and its error last; a failed step reported its
+  // first progress line ("Schema … pushed") as the reason, and the real error was lost.
+  it('reports the end of stderr when it is not a Convex error', () => {
+    expect(failureOf('Schema “events” pushed to the local platform.\nImporting 12 entries\nSite “linde” was not found.\n'))
+      .toBe('Schema “events” pushed to the local platform. | Importing 12 entries | Site “linde” was not found.')
   })
 })
 

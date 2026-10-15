@@ -213,7 +213,8 @@ export function parseResult(output: string): Record<string, unknown> | undefined
  * The reason in the stderr of a failed `convex run`. A function error is one line, "Uncaught ConvexError: …", above a
  * stack trace that is not useful here. A system error spans lines: "✖ Failed to run function …:", then
  * "Error: [Request ID: …] Server Error", then the cause ("Function execution timed out (maximum duration: 1s)"), all in
- * colour codes; its first line alone hides the cause.
+ * colour codes; its first line alone hides the cause. Anything else (the monorepo CLI logs its progress to stderr and its
+ * error last) gives its last three lines.
  */
 export function failureOf(stderr: string): string {
   const lines = stderr.replace(/\u001b\[[0-9;]*m/g, '').split('\n').map((line) => line.trim()).filter(Boolean)
@@ -221,7 +222,7 @@ export function failureOf(stderr: string): string {
   if (uncaught) return uncaught
   const failed = lines.findIndex((line) => line.includes('Failed to run function'))
   if (failed >= 0) return lines.slice(failed).filter((line) => !line.startsWith('at ')).join(' ')
-  return lines[0] ?? ''
+  return lines.slice(-3).join(' | ')
 }
 
 /** Runs a command to its end and returns its stdout. A failing command throws with the reason in its stderr. */
