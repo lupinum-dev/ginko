@@ -853,6 +853,7 @@
     },
     "loadMoreFailed": "Weitere Dateien ließen sich nicht laden.",
     "uploadTooSlow": "Das Hochladen dauert zu lange. Versuche es noch einmal.",
+    "uploadFailedFile": "„{name}“: {message}",
     "loading": "Wird geladen …",
     "gone": "Diese Datei gibt es nicht mehr.",
     "previous": "Vorherige Datei",

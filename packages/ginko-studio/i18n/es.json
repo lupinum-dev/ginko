@@ -853,6 +853,7 @@
     },
     "loadMoreFailed": "No se pudieron cargar más archivos.",
     "uploadTooSlow": "La subida está tardando demasiado. Inténtalo de nuevo.",
+    "uploadFailedFile": "«{name}»: {message}",
     "loading": "Cargando …",
     "gone": "Este archivo ya no existe.",
     "previous": "Archivo anterior",

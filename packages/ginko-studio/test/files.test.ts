@@ -55,6 +55,26 @@ describe('the files list', () => {
   })
 })
 
+describe('upload into the library', () => {
+  // Wrong behaviour caught: in a batch, each failure overwrote the one before and named no file, so the person did not
+  // learn which files were missing.
+  test('names every file of a batch that failed, also when a later one succeeds', async () => {
+    const reasons: Record<string, string> = { 'IMG_0001.HEIC': 'HEIC geht nicht.', 'riesig.png': 'Zu viele Pixel.' }
+    const lib = {
+      slug: ref('restaurant'), canManage: ref(true), folders: ref([]), missingAlt: ref(null), errorText: (e: unknown) => (e as Error).message,
+      list: () => ({ files: ref([]), pending: ref(false), error: ref(null), hasMore: ref(false), moreError: ref(null), more: async () => {} }),
+      upload: async (file: File) => { if (reasons[file.name]) throw new Error(reasons[file.name]); return 'u1' },
+      info: () => ref(undefined),
+    }
+    mount(FilesBrowser, { props: { lib: lib as never, mode: 'page', locales: ['de'] }, attachTo: document.body })
+    const input = document.body.querySelector<HTMLInputElement>('input[type="file"]')!
+    Object.defineProperty(input, 'files', { value: ['IMG_0001.HEIC', 'riesig.png', 'ok.jpg'].map((name) => new File(['x'], name)) })
+    input.dispatchEvent(new Event('change'))
+    await flushPromises()
+    expect([...document.body.querySelectorAll('[role="alert"] li')].map((li) => li.textContent)).toEqual(['„IMG_0001.HEIC“: HEIC geht nicht.', '„riesig.png“: Zu viele Pixel.'])
+  })
+})
+
 describe('remove rule of the library', () => {
   const stubs = { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } }
   const base = { open: true, slug: 'restaurant' }

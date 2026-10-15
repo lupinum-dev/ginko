@@ -144,8 +144,12 @@ const input = ref<HTMLInputElement | null>(null)
 const uploading = ref(0)
 const accept = computed(() => (props.kind === 'image' ? acceptOf('image') : props.kind === 'pdf' ? acceptOf('file') : `${acceptOf('image')},${acceptOf('file')}`))
 
+/** The files of the last upload that failed, each with its reason: one line per file, so none hides another. */
+const failedUploads = ref<{ name: string; message: string }[]>([])
+
 async function upload(incoming: File[]) {
   error.value = null
+  failedUploads.value = []
   for (const file of incoming) {
     uploading.value++
     try {
@@ -154,7 +158,7 @@ async function upload(incoming: File[]) {
       anchor = id
       emit('uploaded', id)
     } catch (e) {
-      error.value = lib.errorText(e)
+      failedUploads.value = [...failedUploads.value, { name: file.name, message: lib.errorText(e) }]
     } finally {
       uploading.value--
     }
@@ -310,6 +314,9 @@ const emptyText = computed(() => {
 
       <p v-if="uploading" class="text-sm font-medium text-muted-foreground" role="status">{{ t('files.uploading') }}</p>
       <p v-if="error" class="text-sm font-medium text-destructive" role="alert">{{ error }}</p>
+      <ul v-if="failedUploads.length" class="grid gap-1 text-sm font-medium text-destructive" role="alert">
+        <li v-for="(failed, i) in failedUploads" :key="i">{{ t('files.uploadFailedFile', { name: failed.name, message: failed.message }) }}</li>
+      </ul>
 
       <p v-if="list.error.value" class="text-sm font-medium text-destructive" role="alert">{{ list.error.value }}</p>
       <p v-else-if="list.pending.value" class="text-sm text-muted-foreground" role="status">{{ t('files.loading') }}</p>
