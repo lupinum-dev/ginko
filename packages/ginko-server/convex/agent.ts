@@ -294,7 +294,7 @@ export const lookup = internalQuery({
       }
       case 'ginko_version_at': {
         const version = await versionAtAs(ctx, actor, { entry: text(input.entry, 'entry'), change: text(input.change, 'change') })
-        return { text: 'This is how the entry looked after that change.', result: version }
+        return { text: 'This is how the entry looked after that change.', result: { ...version, diff: version.diff as unknown as Json } }
       }
       case 'ginko_file_usage': {
         const usage = await usageAs(ctx, actor, text(input.file, 'file'))
@@ -493,7 +493,7 @@ async function draftThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<st
 async function revertThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
   if (typeof input.entry !== 'string' || typeof input.change !== 'string') fail('INVALID', 'errors.entryAndChangeIdRequired')
   // The fields a later change touched are the ones a revert can write: a staff task must cover them.
-  const { fields } = await versionAtAs(ctx, actor, { entry: input.entry, change: input.change }) as { fields: string[] }
+  const { fields } = await versionAtAs(ctx, actor, { entry: input.entry, change: input.change })
   const entry = await entryOf(ctx, actor, input.entry)
   const result = await revertAs(ctx, actor, { site: actor.site.slug, opId, task: taskFor(actor, entry.brick, 'edit', fields), entry: entry._id, change: input.change })
   return savedAs(result, 'Back to the earlier state')

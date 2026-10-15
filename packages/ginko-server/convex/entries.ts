@@ -293,29 +293,25 @@ function revertFields(brick: Brick | undefined, touched: string[], data: Data, n
   return fields
 }
 
-/** `versionAt` for an actor already known: the platform's signed-in person, or the agent door's key (SPEC 16). */
-export async function versionAtAs(ctx: QueryCtx, actor: Actor, args: { entry: string; change: string }): Promise<Json> {
+/**
+ * The entry right after a change (`data`; `fields` names the ones a later change touched), plus `diff`: what going
+ * back to it changes, field by field, with now as `before` and that version as `after`. Empty: it is the current
+ * version. One answer for the Studio (`versionAt`, shown before the person confirms) and the agent door
+ * (`ginko_version_at`), for an actor already known (SPEC 16).
+ */
+export async function versionAtAs(ctx: QueryCtx, actor: Actor, args: { entry: string; change: string }) {
   const { entry, change, data, touched } = await versionOf(ctx, actor, args.entry, args.change)
-  const result: Json = { entry: entry._id, change: change._id, at: change.at, data, fields: touched }
-  return result
+  const schema = actor.site.schema as Schema
+  const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
+  const now = entry.data as Data
+  const fields = revertFields(brick, touched, data, now)
+  const pick = (from: Data) => Object.fromEntries(Object.keys(fields).filter((root) => from[root] !== undefined).map((root) => [root, from[root]!]))
+  return { entry: entry._id, change: change._id, at: change.at, data, fields: touched, diff: diffFields(brick?.fields, pick(now), pick(data), schema.locales[0]!) }
 }
 
-/**
- * The entry right after a change, plus `diff`: what going back to it changes, field by field, with now as `before`
- * and that version as `after` (the Studio shows it before the person confirms). Empty: it is the current version.
- */
 export const versionAt = query({
   args: { site: v.string(), entry: v.string(), change: v.string() },
-  handler: async (ctx, args) => {
-    const actor = await actorFor(ctx, args.site)
-    const { entry, change, data, touched } = await versionOf(ctx, actor, args.entry, args.change)
-    const schema = actor.site.schema as Schema
-    const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
-    const now = entry.data as Data
-    const fields = revertFields(brick, touched, data, now)
-    const pick = (from: Data) => Object.fromEntries(Object.keys(fields).filter((root) => from[root] !== undefined).map((root) => [root, from[root]!]))
-    return { entry: entry._id, change: change._id, at: change.at, data, fields: touched, diff: diffFields(brick?.fields, pick(now), pick(data), schema.locales[0]!) }
-  },
+  handler: async (ctx, args) => versionAtAs(ctx, await actorFor(ctx, args.site), args),
 })
 
 const revertArgs = { site: v.string(), opId: v.string(), task: v.optional(v.string()), entry: v.string(), change: v.string() }

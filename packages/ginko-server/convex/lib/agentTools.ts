@@ -122,7 +122,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
     },
     {
       name: 'ginko_version_at',
-      description: 'Shows how an entry looked right after an earlier change (fields in storage format). Changes nothing. "fields" names the fields that changed since.',
+      description: 'Shows how an entry looked right after an earlier change (fields in storage format). Changes nothing. "fields" names the fields that changed since; "diff" lists what ginko_revert would change, with now as "before" and that version as "after" (empty: it is the current state).',
       inputSchema: object({ entry, change }, ['entry', 'change']),
       annotations: READS,
     },
