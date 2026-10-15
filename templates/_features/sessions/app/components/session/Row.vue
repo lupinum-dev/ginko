@@ -6,7 +6,7 @@ import { MapPin } from '@lucide/vue'
  * and its state as a word ("Sold out", "Cancelled"; nothing while it takes place). Every value comes from the
  * session's entry (useSessions). `heading`: the level of the title under the list's own heading.
  */
-withDefaults(defineProps<{ session: SessionRow, day?: boolean, heading?: 'h3' | 'h4' }>(), { heading: 'h3' })
+withDefaults(defineProps<{ session: SessionEntry, day?: boolean, heading?: 'h3' | 'h4' }>(), { heading: 'h3' })
 const { time, status, shortDay } = useSessionText()
 </script>
 

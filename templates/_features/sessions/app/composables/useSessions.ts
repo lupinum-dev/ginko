@@ -1,7 +1,7 @@
 import { sessionsInOrder, type SessionStatus } from '@lupinum/ginko/basics'
 
 /** A session as the programme, a speaker's page and "now and next" show it: every value read from its entry. */
-export interface SessionRow {
+export interface SessionEntry {
   id: string
   /** The id of its event (`events/<name>`). */
   event: string
@@ -25,7 +25,7 @@ const STATUSES: SessionStatus[] = ['open', 'soldOut', 'cancelled']
 export function useSessions() {
   const sessions = useGinko('sessions')
   const people = useGinko('people')
-  return computed<SessionRow[]>(() => {
+  return computed<SessionEntry[]>(() => {
     const byId = new Map(people.value.items.map((person) => [person.id, person]))
     return sessionsInOrder(sessions.value.items).map((session) => ({
       id: session.id,
@@ -48,8 +48,8 @@ export function useSessions() {
 export function useSessionText() {
   const { t, format } = useI18n('sessions')
   // A narrow screen breaks before or after a time span, never inside it (word joiners around the dash).
-  const time = (session: Pick<SessionRow, 'from' | 'to'>) => `${session.from}⁠–⁠${session.to}`
-  const status = (session: Pick<SessionRow, 'status'>) => (session.status === 'open' ? undefined : t(`status.${session.status}`))
+  const time = (session: Pick<SessionEntry, 'from' | 'to'>) => `${session.from}⁠–⁠${session.to}`
+  const status = (session: Pick<SessionEntry, 'status'>) => (session.status === 'open' ? undefined : t(`status.${session.status}`))
   /** "Thursday, 19 November": the heading of a day. */
   const day = (date: string) => format.date(date, { weekday: 'long', day: 'numeric', month: 'long' })
   /** "Thu, 19 Nov": the day next to a time in a list. */
@@ -77,7 +77,7 @@ export function useSessionClock() {
  * schema.org Event per event that has sessions (useEventLd of the events feature), each session a `subEvent` with the
  * site's time zone offset, read from the same rows as the programme. For the programme page.
  */
-export function useProgrammeJsonLd(rows: () => SessionRow[]) {
+export function useProgrammeJsonLd(rows: () => SessionEntry[]) {
   const events = useGinko('events')
   const build = useEventLd()
   return computed(() => events.value.items.flatMap((event) => {

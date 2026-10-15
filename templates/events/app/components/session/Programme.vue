@@ -5,7 +5,7 @@
  * heading level of the days (2 on the programme page, 3 under a section's h2); the sessions' titles are one below.
  * Each day has an id (`day-2026-11-19`) for the day links at the top of the programme page.
  */
-const props = withDefaults(defineProps<{ rows: SessionRow[], level?: 2 | 3 }>(), { level: 2 })
+const props = withDefaults(defineProps<{ rows: SessionEntry[], level?: 2 | 3 }>(), { level: 2 })
 const { day } = useSessionText()
 const days = computed(() => byDay(props.rows))
 </script>
