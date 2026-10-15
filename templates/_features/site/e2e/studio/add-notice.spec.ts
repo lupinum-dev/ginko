@@ -3,17 +3,20 @@
 import { expect, test } from '@playwright/test'
 import { job, studio } from '../../../../../scripts/templates/e2e/studio.ts'
 
-// The template's names for this job come from "notice": { brick, textField } in templates/_studio/<template>/jobs.json:
-// brick = key of the notices brick in ginko.config.ts, textField = regex for the label of the notice text (the Studio adds "(optional)").
-const NOTICE = job('notice', ['brick', 'textField'])
+// The template's names for this job come from "notice": { createTask, textField } in
+// templates/_studio/<template>/jobs.json: createTask = the label of the notices create task (basics notices():
+// "Hinweis hinzufügen"), textField = regex for the label of the notice text.
+const NOTICE = job('notice', ['createTask', 'textField'])
 
 test('the owner adds a notice and the home page shows it', async ({ page, request }) => {
   const text = `Gate seven notice ${Date.now()}`
-  await page.goto(`/s/${studio.site}/all/${NOTICE.brick}`)
-  await page.getByLabel(new RegExp(NOTICE.textField)).fill(text)
-  await page.getByRole('button', { name: 'Speichern' }).click()
-  await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
-  await expect(page.getByText('Nicht gespeichert')).toHaveCount(0)
+  // Task buttons live on the site's Today page (the Studio start page), not on the brick's list.
+  await page.goto(`/s/${studio.site}`, { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: NOTICE.createTask }).click()
+  const sheet = page.getByRole('dialog')
+  await sheet.getByLabel(new RegExp(NOTICE.textField)).fill(text)
+  await sheet.getByRole('button', { name: 'Speichern' }).click()
+  await expect(sheet).toHaveCount(0)
 
   await expect.poll(async () => (await request.get(`${studio.siteUrl}/`)).text(), { timeout: 60_000 }).toContain(text)
 })
