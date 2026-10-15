@@ -549,7 +549,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
       </form>
 
       <!-- The destructive action sits in "Mehr", away from Speichern and Vorschau; the question stays. -->
-      <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :overflow="removeOverflow.error.value ? [] : removeOverflow.data.value" :busy="removing" @confirm="remove" />
+      <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :overflow="removeOverflow.error.value ? [] : removeOverflow.data.value" :busy="removing" :draft="entry?.state === 'draft'" @confirm="remove" />
     </div>
 
     <PreviewPane

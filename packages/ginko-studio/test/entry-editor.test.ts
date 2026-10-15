@@ -135,3 +135,31 @@ test('the preview of a new entry shows its own page once the title is typed, and
     vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
   }
 })
+
+// Wrong behaviour caught: removing a draft asked as if it "leaves the website", where it never was.
+test.each([
+  ['live' as const, '„Herbstfest“ geht von der Website. Du findest es 30 Tage lang im Papierkorb und kannst es dort wiederherstellen.'],
+  ['draft' as const, '„Herbstfest“ kommt in den Papierkorb. Du kannst es 30 Tage lang wiederherstellen.'],
+])('the remove question of a %s entry says where it goes', async (state, text) => {
+  vi.stubGlobal('useConvexQuery', () => ({ data: ref([]), error: ref(undefined) }))
+  try {
+    const entry = { _id: 'e1', brick: 'blog', kind: 'item' as const, order: 1, data: { title: { de: 'Herbstfest' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state }
+    const pass = { template: '<div><slot /></div>' }
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: true },
+      global: {
+        stubs: {
+          EntryFields: true, PreviewPane: true, NuxtLink: true,
+          DropdownMenu: pass, DropdownMenuTrigger: pass, DropdownMenuContent: pass,
+          Dialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' }, DialogContent: pass, DialogTitle: pass, DialogDescription: pass,
+          DropdownMenuItem: { emits: ['select'], template: '<button type="button" @click="$emit(\'select\')"><slot /></button>' },
+        },
+      },
+    })
+    await wrapper.findAll('button').find((b) => b.text() === 'Eintrag entfernen …')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain(text)
+  } finally {
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
+  }
+})

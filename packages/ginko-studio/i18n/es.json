@@ -169,6 +169,7 @@
     "remove": {
       "title": "Eliminar entrada",
       "text": "“{title}” sale del sitio web. La encuentras durante 30 días en la papelera y puedes restaurarla allí.",
+      "textDraft": "“{title}” va a la papelera. Puedes restaurarla durante 30 días.",
       "confirm": "Eliminar",
       "usedIn": "“{title}” se usa en {count, plural, one {un lugar} other {# lugares}}. Siguen en línea, pero ya no muestran “{title}”. Puedes restaurarla desde la papelera durante 30 días.",
       "confirmAnyway": "Eliminar de todos modos",

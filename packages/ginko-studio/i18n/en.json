@@ -169,6 +169,7 @@
     "remove": {
       "title": "Remove entry",
       "text": "“{title}” leaves the website. You find it in the trash for 30 days and can restore it there.",
+      "textDraft": "“{title}” goes to the trash. You can restore it for 30 days.",
       "confirm": "Remove",
       "usedIn": "“{title}” is used in {count, plural, one {one place} other {# places}}. They stay online but no longer show “{title}”. You can restore it from the trash for 30 days.",
       "confirmAnyway": "Remove anyway",

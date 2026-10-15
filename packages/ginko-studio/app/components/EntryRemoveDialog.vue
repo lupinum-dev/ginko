@@ -22,6 +22,8 @@ const props = defineProps<{
   /** The removed entries this removal deletes for good (a full trash); undefined while they are being looked up. */
   overflow: TrashOverflow | undefined
   busy?: boolean
+  /** A draft was never on the website: the question does not say it leaves it (SPEC 15). */
+  draft?: boolean
 }>()
 const emit = defineEmits<{ 'update:open': [open: boolean]; confirm: [] }>()
 const { t } = useI18n()
@@ -34,7 +36,7 @@ const { t } = useI18n()
         <DialogTitle>{{ t('entry.remove.title') }}</DialogTitle>
         <DialogDescription v-if="!uses || !overflow">{{ t('entry.remove.checking') }}</DialogDescription>
         <DialogDescription v-else-if="uses.length">{{ t('entry.remove.usedIn', { title, count: uses.length }) }}</DialogDescription>
-        <DialogDescription v-else>{{ t('entry.remove.text', { title }) }}</DialogDescription>
+        <DialogDescription v-else>{{ t(draft ? 'entry.remove.textDraft' : 'entry.remove.text', { title }) }}</DialogDescription>
       </DialogHeader>
       <div v-if="uses?.length" class="max-h-80 overflow-y-auto">
         <UsedInList :slug="slug" :uses="uses" />

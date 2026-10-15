@@ -169,6 +169,7 @@
     "remove": {
       "title": "Eintrag entfernen",
       "text": "„{title}“ geht von der Website. Du findest es 30 Tage lang im Papierkorb und kannst es dort wiederherstellen.",
+      "textDraft": "„{title}“ kommt in den Papierkorb. Du kannst es 30 Tage lang wiederherstellen.",
       "confirm": "Entfernen",
       "usedIn": "„{title}“ wird an {count, plural, one {einer Stelle} other {# Stellen}} verwendet. Diese bleiben online, zeigen „{title}“ aber nicht mehr. Du kannst es 30 Tage lang aus dem Papierkorb wiederherstellen.",
       "confirmAnyway": "Trotzdem entfernen",
