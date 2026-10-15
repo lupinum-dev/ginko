@@ -216,9 +216,11 @@ describe('ConflictPanel', () => {
 })
 
 describe('TaskSheet', () => {
-  // Wrong behaviour caught: "Mittagsmenü dieser Woche" offered "Folgende Arbeitswoche" and a free date, so saving
-  // before Monday moved the website's lunch menu to next week and the rest of this week was gone.
-  test('the weekly task shows its week as text, with no date to change', async () => {
+  /**
+   * The restaurant's "Mittagsmenü dieser Woche" on a lunch entry whose stored week is `storedWeek`; the server's prefill
+   * gives this week (12.10.2026). Other queries answer from `answers` by function name.
+   */
+  async function lunchSheet(storedWeek: string, answers: Record<string, unknown> = {}) {
     const { serializeSchema } = await import('@lupinum/ginko/internal')
     const { default: restaurant } = await import('../../../sites/restaurant/ginko.config.ts')
     const { useI18n } = await import('#imports')
@@ -226,16 +228,35 @@ describe('TaskSheet', () => {
     const { default: TaskSheet } = await import('../app/components/TaskSheet.vue')
     vi.stubGlobal('useI18n', useI18n)
     vi.stubGlobal('useEntryForm', useEntryForm)
-    const lunchData = { weekOf: '2026-10-05', days: [], note: { de: 'Suppe inklusive' } }
-    vi.stubGlobal('useConvexQuery', () => ({ data: vue.ref({ ...lunchData, weekOf: '2026-10-12' }), error: vue.ref(undefined) }))
+    const lunchData = { weekOf: storedWeek, days: [], note: { de: 'Suppe inklusive' } }
+    const prefill = { ...lunchData, weekOf: '2026-10-12' }
+    vi.stubGlobal('useConvexQuery', (fn: unknown) => ({ data: vue.ref(String(fn) === 'tasks.prefill' ? prefill : answers[String(fn)]), error: vue.ref(undefined) }))
     HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) { this.open = true }
     const schema = serializeSchema(restaurant)
     const lunch = schema.bricks.lunch!
     const entry = { ...stored, _id: 'l1', brick: 'lunch', kind: 'single', data: lunchData } as Entry
     const sheet = mount(TaskSheet, { props: { site: 'restaurant', brickKey: 'lunch', brick: lunch, task: lunch.tasks![0]!, entry, main: 'de', locales: ['de', 'en'], schema } })
     await vue.nextTick()
+    return sheet
+  }
+
+  // Wrong behaviour caught: "Mittagsmenü dieser Woche" offered "Folgende Arbeitswoche" and a free date, so saving
+  // before Monday moved the website's lunch menu to next week and the rest of this week was gone.
+  test('the weekly task shows its week as text, with no date to change', async () => {
+    const sheet = await lunchSheet('2026-10-05')
     expect(sheet.find('input[type="date"]').exists()).toBe(false)
     expect(sheet.get('[data-test="fixed-week"]').text()).toBe('Woche ab12.10.2026Diese Aufgabe gilt immer für die laufende Woche.')
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: the sheet opened with this week's date and last week's dishes and allergens, and nothing
+  // said they were old, so a rushed cook published last week's allergens as this week's.
+  test.each([
+    ['last week', '2026-10-05', true],
+    ['this week', '2026-10-12', false],
+  ])('a stored week from %s (%s): the sheet says the days are still that week\'s: %s', async (_name, storedWeek, notice) => {
+    const sheet = await lunchSheet(storedWeek)
+    expect(sheet.text().includes('Das ist noch die Woche ab 5.10.2026. Prüfe jeden Tag, bevor du speicherst.')).toBe(notice)
     sheet.unmount()
   })
 })

@@ -67,6 +67,12 @@ const form = useEntryForm({
   removed: () => !isCreate.value && !!props.removed,
 })
 const { draft, baseline, ready, issues, problem, conflict, busy, offline, waiting, dirty, localOffer } = form
+/** The weekly task opened on an entry of an older week: its days are still that week's, so a rushed save would publish them as this week's. */
+const oldWeek = computed(() => {
+  const key = fixedWeek.value
+  const stored = key ? props.entry?.data[key] : undefined
+  return ready.value && typeof stored === 'string' && stored !== draft.value[key!] ? stored : undefined
+})
 
 // Prefill (SPEC 2.7): stored values of the task's fields, then the task's preset, resolved on the server.
 const prefillArgs = computed(() => ({ site: props.site, task: ref_.value, ...(props.entry && !isCreate.value ? { entry: props.entry._id } : {}) }))
@@ -178,6 +184,7 @@ function onCancel(event: Event) {
           />
           <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
           <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
+          <p v-if="oldWeek" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.oldWeek', { date: formatDay(oldWeek, format) }) }}</p>
           <template v-for="(field, key) in fields" :key="key">
             <div v-if="key === fixedWeek" class="grid gap-1" data-slot="field" data-test="fixed-week">
               <p class="text-sm font-medium">{{ shown(field.label) }}</p>

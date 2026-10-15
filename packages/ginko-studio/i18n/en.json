@@ -214,7 +214,8 @@
     "size": {
       "near": "This entry uses {used} of {limit}.",
       "over": "This entry is too large: {used} of {limit}. Shorten it by about {over} to save it."
-    }
+    },
+    "oldWeek": "This is still the week of {date}. Check every day before you save."
   },
   "site": {
     "zoneNote": "All times are in the website's time zone ({zone}).",
