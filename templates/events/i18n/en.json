@@ -10,7 +10,9 @@
     "sponsoring": "Become a sponsor",
     "questions": "Questions",
     "allQuestions": "All questions",
-    "lastYear": "Last year"
+    "lastYear": "Last year",
+    "ctaTitle": "One ticket for the whole conference",
+    "ctaText": "{price}. Reduced prices in the ticket shop."
   },
   "faq": {
     "title": "FAQ",
@@ -21,7 +23,8 @@
     "title": "Dates",
     "lead": "The conference and our other dates, with time and place.",
     "all": "All dates",
-    "book": "Get tickets"
+    "book": "Get tickets",
+    "bookingClosed": "Ticket sales have ended."
   },
   "sessions": {
     "programme": {

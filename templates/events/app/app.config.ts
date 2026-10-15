@@ -18,7 +18,7 @@ export default defineAppConfig({
       { page: 'programme', label: { en: 'Programme', de: 'Programm' } },
       { page: 'speakers', label: { en: 'Speakers', de: 'Vortragende' } },
       { entry: 'pages/venue' },
-      { page: 'faq', label: { en: 'FAQ', de: 'Häufige Fragen' } },
+      { page: 'faq', label: { en: 'FAQ', de: 'Fragen' } },
     ],
     footer: [
       { page: 'events', label: { en: 'Dates', de: 'Termine' } },

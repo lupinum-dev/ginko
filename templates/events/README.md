@@ -78,8 +78,8 @@ file. The number at the start of a file name sets the order.
 | On the site | File |
 |---|---|
 | Home page: title, lead, photo | `content/home.md` (and `home.de.md`) |
-| The conference and other dates: title, days (`when`), `start` (first day), `end` (last day), `location`, `price`, `booking` (the ticket shop), `soldOut`, the text | `content/events/<n>.<name>.md`; the home page shows the first coming event that has sessions, and an event leaves the site after its last day |
-| The programme: one file per session with `event` (`events/open-data-days`), `date`, `from`, `to`, `title`, `room`, `speakers` (`[people/lena-hofer]`), `status` (`open`, `soldOut` or `cancelled`) | `content/sessions/<name>.md`; the translation holds only the `title` |
+| The conference and other dates: title, days (`when`), `start` (first day), `end` (last day), `location`, `price`, `booking` (the ticket shop), `bookingUntil` (the last day of ticket sales), `soldOut`, `draft: true` (not on the site yet, with its sessions), the text | `content/events/<n>.<name>.md`; the home page shows the first coming event that has sessions, and an event leaves the site after its last day |
+| The programme: one file per session with `event` (`events/open-data-days`), `date`, `from`, `to`, `title`, `summary` (one or two sentences: what it is about, who it is for), `room`, `speakers` (`[people/lena-hofer]`), `status` (`open`, `soldOut` or `cancelled`) | `content/sessions/<name>.md`; the translation holds only the `title` and `summary`; "From the programme" on the home page shows the next sessions that have a summary |
 | Speakers: `name`, `slug` (the address), `role`, `bio`, `photo` (optional; without one the site shows initials) | `content/people/<n>.<name>.md`; the number sets the order on the speakers page and the home page (the first four) |
 | Questions and answers | `content/faq/<n>.<name>.md`: `question`, `answer`; the home page shows the first three |
 | Sponsor and partner logos | `content/logos/<n>.<name>.md`: `name`, `image` (an SVG or PNG in `public/logos/`), `url` |
@@ -97,17 +97,21 @@ nothing else. The programme, the speaker pages, "now and next", the event page a
 read that one file, so they cannot disagree. Write a room's name only in the main file, never in a translation: a
 room is a name on a sign (Festsaal, Studio), and a second copy in another language would stay behind when the room
 changes. `status: soldOut` shows "Sold out", `status: cancelled` shows "Cancelled"; a cancelled session stays in the
-programme, so people who planned to go see it.
+programme, so people who planned to go see it, but never shows under "now" or "next".
 
 **Dates and times.** All times are in the site's time zone (`timeZone: 'Europe/Vienna'` in `ginko.config.ts`), as
 they are on the printed programme; search engines get them with the right offset for summer or winter time. A
-session leaves the programme the day after its `date`. "Now and next" shows on the home page on days that have
-sessions: the sessions running now and the ones that start next, as of the minute the page was loaded, and it moves
-on every minute while the page is open.
+session leaves the programme the day after its `date`. On days that have sessions the home page puts "now and next"
+right below the dates and the place (without the lead and the photo): the sessions running now and the ones that
+start next, as of the minute the page was loaded, and it moves on every minute while the page is open. The programme
+page then says "Now" next to the running sessions and greys out the finished ones. `start` in the event's file is the
+time of the first day and `end` of the last one: a two-day event shows "Thu 09:00 – Fri 16:00".
 
 **Tickets.** The site sells nothing: `booking` in the event's file is the address of your ticket shop, and "Get
-tickets" leads there. When the event is full, set `soldOut: true`: the button gives way to "Fully booked". An event
-without `booking` shows the organiser's phone and email instead.
+tickets" leads there: on the home page, in the closing band with the price, on the programme and on the event page.
+`bookingUntil` is the last day of ticket sales; after it the links give way to "Ticket sales have ended", and the
+programme becomes the main button. When the event is full, set `soldOut: true`: the button gives way to "Fully
+booked". An event without `booking` shows the organiser's phone and email instead.
 
 Notices show newest first: put the newest one at the top (the smallest number). At most two show at once.
 
@@ -175,7 +179,7 @@ Links in the content name pages by their key (`[questions page]($page.faq)`). Af
 
 | Feature | Delete |
 |---|---|
-| Programme and speakers | `content/sessions/`, `content/people/`, the `sessions` and `people` bricks and `pages.programme` and `pages.speakers` in `ginko.config.ts`, their `nav` items, "Now and next", "From the programme" and "Speakers" on the home page and `useSessions` there, `app/pages/programme.vue`, `app/pages/speakers/`, `app/components/session/`, `app/components/event/Programme.vue`, `app/composables/useSessions.ts`, `app/utils/sessions.ts`, `i18n/sessions/`, and `"sessions"` in `package.json` → `ginko.features`; the home page then shows the next event |
+| Programme and speakers | `content/sessions/`, `content/people/`, the `sessions` and `people` bricks and `pages.programme` and `pages.speakers` in `ginko.config.ts`, their `nav` items, "Now and next", "From the programme" and "Speakers" on the home page with `useSessions`, `useNowAndNext` and `useSessionClock` there, the hero's "Programme" button (`programme` in `app/pages/index.vue`; make the venue the second button), the `sessions` block in `i18n/<language>.json` and the `home.programme`, `home.highlights` and `home.speakers` texts, `app/pages/programme.vue`, `app/pages/speakers/`, `app/components/session/`, `app/components/event/Programme.vue`, `app/composables/useSessions.ts`, `app/utils/sessions.ts`, `i18n/sessions/`, and `"sessions"` in `package.json` → `ginko.features`; the home page then shows the next event |
 | Questions and answers | `content/faq/`, the `faq` brick and `pages.faq`, its `nav` item, "Questions" on the home page, `app/pages/faq.vue`, `app/components/block/Faq.vue`, `app/components/ui/accordion/`, `"faq"` in `ginko.features`; the link to `$page.faq` in `content/pages/1.venue*.md` |
 | Sponsor logos | `content/logos/`, `public/logos/`, the `logos` brick, "Sponsors and partners" on the home page, `app/bricks/logos-quotes.ts`, `app/components/block/Logos.vue`, `Quote.vue`, `"logos-quotes"` in `ginko.features`; and the Sponsoring page (`content/pages/3.sponsoring*.md`, its `footer` item) if you want none |
 | Last year's photos | `content/gallery.md`, `public/media/talk.jpg`, `workshop-tables.jpg`, `coffee-break.jpg`, the `gallery` brick, "Last year" on the home page, `app/components/block/Gallery.vue`, `app/components/site/Lightbox.vue`, `i18n/gallery/`, `"gallery"` in `ginko.features` |
