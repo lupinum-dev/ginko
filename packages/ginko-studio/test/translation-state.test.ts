@@ -43,6 +43,12 @@ describe('what the Studio says the website shows in another language', () => {
     expect(missingNote(state, leaf, t, names)).toBe(note)
   })
 
+  // Wrong behaviour caught: a cleared required text of an entry that is online in English said the website shows the German
+  // text, but the collection hides untranslated entries, so the entry vanishes from the English site.
+  it('field note: a needed text of an online entry that the website hides without it', () => {
+    expect(missingNote(stored('shown', ['title']), 'title', t, names, 'Kürbisabend')).toBe('Noch nicht übersetzt. Ohne diesen Text fehlt „Kürbisabend“ auf der Website auf Englisch.')
+  })
+
   it.each([
     ['a page that is not online', stored('hidden', ['title'], ['title'], ['body']), ['Auf Englisch ist diese Seite noch nicht online. Sie erscheint, sobald die markierten Texte übersetzt sind.']],
     ['missing and outdated texts of a shown entry', stored('shown', [], ['teaser'], ['body']), [

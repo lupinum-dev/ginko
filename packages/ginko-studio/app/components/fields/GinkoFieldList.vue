@@ -41,7 +41,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 const blockers = inject(BLOCKERS, undefined)
 const translation = inject(TRANSLATION, undefined)
 // The rows belong to the main language: a row added on another language's tab could get neither its main-language
-// texts nor its pictures there, so it could never be saved. Removing stays possible (its translations go with it).
+// texts nor its pictures there, so it could never be saved. So rows are added, removed and moved only in the main language.
 const foreignTab = computed(() => !!translation && props.locale !== props.locales[0])
 const { shown: labelText } = useStudioSite()
 const { t } = useI18n()

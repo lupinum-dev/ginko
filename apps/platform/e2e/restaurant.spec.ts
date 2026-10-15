@@ -159,7 +159,7 @@ test.describe('Wirtin', () => {
 
     await text.getByText('Gemütlicher Abend').selectText()
     await sheet.getByRole('toolbar', { name: 'Formatierung' }).getByRole('button', { name: 'Link', exact: true }).click()
-    const address = sheet.getByLabel('Link (Webadresse)')
+    const address = sheet.getByLabel('Seite oder Webadresse')
     await expect(address).toBeFocused()
     await address.fill('example.org')
     await sheet.getByRole('button', { name: 'Übernehmen' }).click()

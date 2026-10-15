@@ -5,7 +5,7 @@ import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale }
 import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, textIn, todayIn, untranslatedMode, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { draftSlugs, hasTranslation, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
+import { draftSlugs, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -207,7 +207,7 @@ const translationState = computed(() => translationLines(storedTranslation.value
 // Lists show the same state per cell (Phase 11: confirming translations inside lists).
 provide(TRANSLATION, {
   state: translation, source: sourceText, confirm: confirmTranslation, mainName: () => languageNames.value.main,
-  missingNote: (leaf) => missingNote(storedTranslation.value, leaf, t, languageNames.value),
+  missingNote: (leaf) => missingNote(storedTranslation.value, leaf, t, languageNames.value, hidesUntranslated(props.brick, leaf) ? title.value : undefined),
   // History shows the main-language text before and after each change of this entry.
   changesUrl: () => (props.entry ? `/s/${props.site.slug}/history?entry=${props.entry._id}` : undefined),
   address,
