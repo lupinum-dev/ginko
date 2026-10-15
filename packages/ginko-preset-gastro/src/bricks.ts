@@ -2,7 +2,7 @@
 // the texts of its own locales when its main locale is `de` or `en` (exactly: `de-CH` does not count); otherwise it
 // starts without the prefilled texts (`serializeSchema`).
 import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate, type Task } from '@lupinum/ginko'
-import type { ChoicesField, ListField } from '@lupinum/ginko/internal'
+import type { ChoicesField, DateField, ListField } from '@lupinum/ginko/internal'
 import { allergenNames } from './names.ts'
 
 /** Allergen codes on dishes: the EU list of 14, none at all (the field is left out), or your own list. */
@@ -285,10 +285,10 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
   // `allergens` exists only when the set is not 'none', which the type cannot see here.
   const dishFields = (choices ? ['category', 'name', 'description', 'price', 'allergens', 'veg', 'onMenu'] : ['category', 'name', 'description', 'price', 'veg', 'onMenu']) as readonly (keyof typeof fields & string)[]
   // The allergen set keeps `fields` generic, so the type cannot check a prefill against it (as with `dishFields`).
-  // `soldOutOn` is a date field of every menu, and the schema check rejects a date token on any other field.
-  const soldOut = {
+  // `satisfies` checks the task against its one date field first; the cast only widens it to the generic fields.
+  const soldOut = ({
     id: 'soldOut', label: both('Gericht heute aus', 'Dish sold out today'), kind: 'edit', pick: true, fields: ['soldOutOn'], prefill: { soldOutOn: '@today' },
-  } as unknown as Task<typeof fields>
+  } satisfies Task<{ soldOutOn: DateField }>) as unknown as Task<typeof fields>
   return collection({
     label: both('Speisekarte', 'Menu'),
     ...sourceOf(opts),
