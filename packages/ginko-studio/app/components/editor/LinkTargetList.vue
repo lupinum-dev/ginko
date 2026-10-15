@@ -25,7 +25,8 @@ const locale = inject(EDITOR_FILES, undefined)?.locale()
 const refs = useRefs()
 const lists = (targets?.routed ?? []).map((brick) => ({ brick, area: refs.brickLabel(brick), entries: refs.options(() => brick) }))
 const all = computed<LinkTarget[]>(() => [
-  // By the entry id, not its address: a later change of the address keeps the link working.
+  // By the entry id, not its address: a later change of the address keeps the link working, and an import rewrites the
+  // id with the entry's new one (seed.ts importRefs).
   ...lists.flatMap(({ brick, area, entries }) => entries.value.map((e) => ({ href: `$${brick}.${e.id}`, label: e.title, area }))),
   ...Object.entries(targets?.pages ?? {}).map(([key, paths]) => ({ href: `$page.${key}`, label: (locale && paths[locale]) || Object.values(paths)[0] || key, area: '' })),
 ])

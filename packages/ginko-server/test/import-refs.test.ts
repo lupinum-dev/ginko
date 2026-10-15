@@ -8,8 +8,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { checkImport, importSite } from '../../../packages/ginko/src/cli/import.ts'
 import type { Runner } from '../../../packages/ginko/src/cli/local.ts'
 import type { Fields } from '@lupinum/ginko'
-import type { Schema } from '@lupinum/ginko/internal'
+import { printOf, type Schema } from '@lupinum/ginko/internal'
 import { remapEntryRefs } from '../convex/lib/content'
+import { readTreesJson } from '../convex/lib/trees'
 import { api } from '../convex/_generated/api'
 import { errorOf, setup } from './setup'
 
@@ -46,30 +47,35 @@ afterEach(async () => {
   for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true })
 })
 
-/** The site with two more bricks in its stored schema: `authors` (collection) and `posts` with the ref fields above. */
+/** The bricks of the tests below: `authors`, `posts` with the ref fields above, and `notes` with a text. */
+const refBricks = {
+  authors: { kind: 'collection', label, fields: { name: { type: 'text', label } } },
+  posts: { kind: 'collection', label, fields },
+  notes: { kind: 'collection', label, fields: { body: { type: 'markdown', label } } },
+}
+
+/** The site with the bricks above in its stored schema. */
 async function withRefBricks(s: Setup, site: Setup['site']) {
   await s.t.run(async (ctx) => {
     const row = (await ctx.db.get(site))!
     const schema = row.schema as { bricks: Record<string, unknown> }
-    schema.bricks.authors = { kind: 'collection', label, fields: { name: { type: 'text', label } } }
-    schema.bricks.posts = { kind: 'collection', label, fields }
+    Object.assign(schema.bricks, structuredClone(refBricks))
     await ctx.db.patch(site, { schema })
   })
 }
 
-async function exportFolder() {
+const exported = (id: string, brick: string, order: number, data: unknown, prints = {}) => ({ id, brick, kind: 'item', order, data, prints, rev: 1 })
+
+async function exportFolder(entries = [
+  // The post comes first on purpose: its author is imported after it.
+  exported('posts/hello', 'posts', 1, { author: 'authors/anna', more: ['authors/anna'], credits: [{ _id: 'r1', who: 'authors/anna', role: true }] }),
+  exported('authors/anna', 'authors', 1, { name: { de: 'Anna' } }),
+]) {
   const dir = await mkdtemp(join(tmpdir(), 'ginko-refs-test-'))
   dirs.push(dir)
-  const entry = (id: string, brick: string, order: number, data: unknown) => ({ id, brick, kind: 'item', order, data, prints: {}, rev: 1 })
-  const bricks = { authors: { kind: 'collection', label, fields: { name: { type: 'text', label } } }, posts: { kind: 'collection', label, fields } }
   await writeFile(join(dir, 'export.json'), JSON.stringify({
-    format: 1, site: 'restaurant', name: 'R', schema: { locales: ['de', 'en'], bricks, migrations: [], retired: {} }, schemaRev: 1, contentRev: 1,
-    exportedAt: '2026-10-11T00:00:00.000Z', files: [],
-    entries: [
-      // The post comes first on purpose: its author is imported after it.
-      entry('posts/hello', 'posts', 1, { author: 'authors/anna', more: ['authors/anna'], credits: [{ _id: 'r1', who: 'authors/anna', role: true }] }),
-      entry('authors/anna', 'authors', 1, { name: { de: 'Anna' } }),
-    ],
+    format: 1, site: 'restaurant', name: 'R', schema: { locales: ['de', 'en'], bricks: refBricks, migrations: [], retired: {} }, schemaRev: 1, contentRev: 1,
+    exportedAt: '2026-10-11T00:00:00.000Z', files: [], entries,
   }))
   return dir
 }
@@ -102,6 +108,33 @@ describe('import keeps references between entries', () => {
     expect(post.data).toEqual({ author: anna._id, more: [anna._id], credits: [{ _id: 'r1', who: anna._id, role: true }] })
     const site = (await s.t.run((ctx) => ctx.db.get(s.site)))!
     expect(site.bytes).toBe(rows.reduce((sum, e) => sum + e.bytes, 0))
+  })
+
+  // Wrong behaviour caught: a link to an entry (`$authors.<id>`, what the Studio's link dialog stores) kept the exported
+  // ID after a restore or `local:pull`, so the site showed it as broken; or the stored text changed while the served
+  // trees kept the old ID, or a translation that was current became outdated.
+  it('points a link in a text at the new id, in the stored text and its served trees, and a current translation stays current', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const old = 'k17anna00000000000000000000000000'
+    const body = { de: `Von [Anna]($authors.${old}#bio), siehe [Karte]($page.menu).`, en: `By [Anna]($authors.${old}#bio).` }
+    const { run, upload } = runnerOf(s)
+    await importSite({ dir: await exportFolder([
+      exported('k17note00000000000000000000000000', 'notes', 1, { body }, { body: { en: printOf(body.de) } }),
+      exported(old, 'authors', 1, { name: { de: 'Anna' } }),
+    ]), run, upload, log: () => undefined })
+
+    const rows = await entriesOf(s, s.site)
+    const anna = rows.find((e) => e.brick === 'authors')!
+    const note = rows.find((e) => e.brick === 'notes')!
+    const now = { de: `Von [Anna]($authors.${anna._id}#bio), siehe [Karte]($page.menu).`, en: `By [Anna]($authors.${anna._id}#bio).` }
+    expect(note.data).toEqual({ body: now })
+    const trees = await s.t.run((ctx) => readTreesJson(ctx, note._id))
+    expect([trees.includes(`$authors.${anna._id}#bio`), trees.includes(old)]).toEqual([true, false])
+    expect(note.prints).toEqual({ body: { en: printOf(now.de) } })
+    const site = (await s.t.run((ctx) => ctx.db.get(s.site)))!
+    expect([site.bytes, site.treeBytes]).toEqual([rows.reduce((sum, e) => sum + e.bytes, 0), rows.reduce((sum, e) => sum + (e.treeBytes ?? 0), 0)])
   })
 
   // A post that names a short files-export ID 20000 times: 234 KiB in the export, 684 KiB once each `authors/a` is a
