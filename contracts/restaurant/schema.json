@@ -54,7 +54,9 @@
         "en": "Opening hours"
       },
       "status": {
-        "hours": true
+        "hours": {
+          "plans": "hourPlans"
+        }
       },
       "fields": {
         "week": {

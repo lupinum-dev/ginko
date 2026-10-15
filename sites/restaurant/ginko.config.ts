@@ -26,7 +26,7 @@ export default defineSite({
   },
   bricks: {
     // Schnell ändern lists bricks in this order, so each plan sits right after the brick it plans.
-    hours: hours(),
+    hours: hours({ plans: 'hourPlans' }),
     // Seasons and "new hours from a date"; data only, no page of its own.
     hourPlans: hourPlans(),
     notices: notices(),

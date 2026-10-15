@@ -91,3 +91,21 @@ Hosted production needs Matthias's OK at each step, in this order:
   delete `convex/migrations.ts`, its line in `convex/_generated/api.d.ts`, its test in
   `packages/ginko-server/test/files.test.ts` and this entry.
 - **Tracking issue:** none yet.
+
+## Hour plans found by shape (`hourPlanKeys` in `convex/lib/status.ts`)
+
+- **Why:** the hours single now names its hour plans in the stored schema (`status: { hours: { plans: '<key>' } }`,
+  basics and gastro `hours({ plans })`), and the server reads the plans of that key only. A schema stored before the
+  link has `status: { hours: true }` and no key; for it the server still takes every live collection shaped like
+  `hourPlans()` (a list `week`, a date `from`, a switch `yearly`), as it did before.
+- **Introduced:** 16 October 2026.
+- **Compatibility code:** the `{ hours: true }` branch of `hourPlanKeys` in `packages/ginko-server/convex/lib/status.ts`.
+  `{ hours: true }` itself stays valid: a site without hour plans keeps it.
+- **Dependents:** sites whose config has `hours()` and `hourPlans()` but no `plans` option: the templates with opening
+  hours (restaurant, local-business) until they pass `hours({ plans: 'hourPlans' })`, and every hosted or local site
+  whose last pushed schema predates its config's `plans` (nothing changes for it until its next push).
+- **Removal condition:** every template and site in this repository that has `hourPlans()` passes `plans` to
+  `hours()`, and a query over hosted production (and local backends that keep their data) finds no site whose stored
+  schema has `status: { hours: true }` together with a live collection of the hour-plan shape. Then the branch returns
+  no keys for `{ hours: true }`; delete it, this entry and the shape lookup's mention in the doc comment.
+- **Tracking issue:** none yet.

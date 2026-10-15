@@ -329,7 +329,7 @@ function schemaProblems(schema: Schema): string[] {
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
     }
     if (brick.planned !== undefined) problems.push(...plannedProblems(key, brick))
-    if (brick.status !== undefined) problems.push(...statusProblems(key, brick))
+    if (brick.status !== undefined) problems.push(...statusProblems(key, brick, schema))
     // Drafts need entries that can wait for publishing; a single brick has one entry that is always live (SPEC 15).
     if (brick.kind === 'single' && 'drafts' in brick) problems.push(`${key}: drafts are only allowed for collections.`)
     if (brick.kind === 'single' && 'plans' in brick) problems.push(`${key}: plans are only allowed for collections.`)
@@ -487,30 +487,46 @@ function plansProblems(key: string, plans: unknown, fields: Fields, schema: Sche
 
 /** The fields `{ hours: true }` reads, with their types: the stored names of the hours brick. */
 const HOURS_FIELDS = { week: 'list', exceptions: 'list', closedOn: 'date', holidays: 'choice' } as const
+/** The fields of an hour plan (`hourPlans()`), with their types: what `{ hours: { plans } }` reads of each entry. */
+const HOUR_PLAN_FIELDS = { week: 'list', from: 'date', yearly: 'boolean' } as const
+
+/** True when `brick` is a live collection with the live fields of `hourPlans()`. */
+export function isHourPlans(brick: Brick): boolean {
+  return brick.kind === 'collection' && !brick.retired
+    && Object.entries(HOUR_PLAN_FIELDS).every(([name, type]) => Object.hasOwn(brick.fields, name) && !brick.fields[name]!.retired && brick.fields[name]!.type === type)
+}
 
 /**
  * A status line (`status`): exactly one kind; a collection takes next, count, missing or age, a single takes hours. The
- * field it names must be live (a retired field needs the status removed first) and of the right type.
+ * field it names must be live (a retired field needs the status removed first) and of the right type. `hours` may
+ * name the hour plans: a live collection of the site with the fields of `hourPlans()`.
  */
-function statusProblems(key: string, brick: Brick): string[] {
+function statusProblems(key: string, brick: Brick, schema: Schema): string[] {
   const status: unknown = brick.status
   const kinds = brick.kind === 'collection' ? ['next', 'count', 'missing', 'age'] : ['hours']
-  const shape = brick.kind === 'collection' ? '{ next }, { count: true }, { missing } or { age }' : '{ hours: true }'
+  const shape = brick.kind === 'collection' ? '{ next }, { count: true }, { missing } or { age }' : '{ hours: true } or { hours: { plans } }'
   if (typeof status !== 'object' || status === null || Array.isArray(status)) return [`${key}: status must be ${shape}.`]
   const entries = Object.entries(status)
   if (entries.length !== 1 || !kinds.includes(entries[0]![0])) return [`${key}: status must be ${shape}.`]
   const [kind, value] = entries[0]!
-  if (kind === 'count' || kind === 'hours') {
-    if (value !== true) return [`${key}: status.${kind} must be true.`]
-    if (kind === 'count') {
-      const vis = (brick as CollectionBrick).visible
-      return vis?.mode === 'until' ? [] : [`${key}: status { count: true } needs visible: { mode: 'until' }.`]
-    }
+  if (kind === 'count') {
+    if (value !== true) return [`${key}: status.count must be true.`]
+    const vis = (brick as CollectionBrick).visible
+    return vis?.mode === 'until' ? [] : [`${key}: status { count: true } needs visible: { mode: 'until' }.`]
+  }
+  if (kind === 'hours') {
     const problems: string[] = []
+    if (value !== true) {
+      const plans = typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 1 ? (value as { plans?: unknown }).plans : undefined
+      if (typeof plans !== 'string') return [`${key}: status.hours must be true or { plans: '<key of the hour plans>' }.`]
+      const target = Object.hasOwn(schema.bricks, plans) ? schema.bricks[plans]! : undefined
+      if (!target || target.retired) problems.push(`${key}: status.hours.plans names “${plans}”, which is not a live brick of the site.`)
+      else if (!isHourPlans(target)) problems.push(`${key}: status.hours.plans names “${plans}”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).`)
+    }
     for (const [name, type] of Object.entries(HOURS_FIELDS)) {
       const field = Object.hasOwn(brick.fields, name) ? brick.fields[name] : undefined
-      if (!field || field.retired) problems.push(`${key}: status { hours: true } needs the live field “${name}”.`)
-      else if (field.type !== type) problems.push(`${key}: status { hours: true } needs “${name}” to be a ${type} field.`)
+      if (!field || field.retired) problems.push(`${key}: status { hours } needs the live field “${name}”.`)
+      else if (field.type !== type) problems.push(`${key}: status { hours } needs “${name}” to be a ${type} field.`)
     }
     return problems
   }

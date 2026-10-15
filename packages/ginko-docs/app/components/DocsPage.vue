@@ -3,8 +3,8 @@ import { docsEditUrl, docsIssueUrl, docsStudioUrl } from '../lib/docsPage'
 import { markdownComponents } from '../lib/markdownComponents'
 // One doc: breadcrumbs, title, lead and page actions, the text with the layer's Markdown components, the edit
 // link and date, previous/next; the table of contents beside it (or in the docs bar, see doc.vue).
-import type { ItemOf } from '@lupinum/ginko'
-import { articleLd, breadcrumbLd } from '@lupinum/ginko/internal'
+import { breadcrumbJsonLd, type ItemOf } from '@lupinum/ginko'
+import { articleLd } from '@lupinum/ginko/internal'
 import type { docsCollection } from '@lupinum/ginko-docs/config'
 
 // `source` (the page's repository path) is in the bundle because this layer asks for it (hook `ginko:files`, nuxt.config.ts).
@@ -24,7 +24,7 @@ useGinkoSeo(() => ({
   jsonLd: [
     // articleLd fixes the type to Article; docs are TechArticle.
     { ...articleLd({ title: props.doc.data.title, url: new URL(route.path, site.url).href, description: props.doc.data.description, modified: props.doc.updatedAt, lang: language.value }), '@type': 'TechArticle' },
-    ...(crumbs.value.length > 1 ? [breadcrumbLd(crumbs.value.map((c) => ({ ...c, children: [] })), new URL(site.url).origin)] : []),
+    ...(crumbs.value.length > 1 ? [breadcrumbJsonLd(crumbs.value, site.url)] : []),
   ],
 }))
 

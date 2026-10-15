@@ -14,7 +14,7 @@ export { rssXml, type RssFeed, type RssItem } from './rss.ts'
 export { withoutFiles } from '../core/site.ts'
 
 // Hours, holidays, notices, events, sessions, gallery (country-aware holidays: T6).
-export { hours, hourPlans } from './hours-bricks.ts'
+export { hours, hourPlans, type HoursOptions } from './hours-bricks.ts'
 export {
   calendarIn, closedOnClosure, holidayOn, hoursLine, hoursOn, noticesOn, planOn, spansOf, spansText, timesOf, todayState, upcomingClosures,
   upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, weekOf,

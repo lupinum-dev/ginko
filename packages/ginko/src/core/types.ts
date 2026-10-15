@@ -142,8 +142,10 @@ export type CollectionStatus<D extends string = string, K extends string = strin
 /**
  * The status of a single brick on the Studio's Today page: `hours` shows today's opening hours ("Open today
  * 11:30–14:30", "Closed today") from the brick's `week`, `exceptions`, `closedOn` and `holidays` fields.
+ * `{ hours: { plans: 'hourPlans' } }` also reads the site's hour plans (a collection of `hourPlans()`, by its key): the
+ * line follows the plan that applies today.
  */
-export type SingleStatus = { hours: true }
+export type SingleStatus = { hours: true | { plans: string } }
 
 export type BrickStatus = CollectionStatus | SingleStatus
 

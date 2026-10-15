@@ -9,9 +9,9 @@ import { hoursOn, type DayHours, type HoursContext } from '../src/index.ts'
 describe('gastro bricks over the basics', () => {
   it('store what 0.4 stored for the restaurant fixture, plus the hours status', () => {
     const bricks = serializeSchema(site).bricks
-    // The one addition since 0.4: the hours single declares its Today status line.
+    // The one addition since 0.4: the hours single declares its Today status line (with the fixture's hour plans).
     const { status, ...hours } = bricks.hours!
-    expect(status).toEqual({ hours: true })
+    expect(status).toEqual({ hours: { plans: 'hourPlans' } })
     const moved = Object.fromEntries(['hours', 'hourPlans', 'notices', 'events', 'gallery'].map((key) => [key, key === 'hours' ? hours : bricks[key]]))
     // sha256 of the five bricks in contracts/restaurant/schema.json before the move (commit 4384ea59).
     expect(sha256(stableJson(JSON.parse(JSON.stringify(moved))))).toBe('b0b2bd1b9bf8e6a9b777b97beab057057ce213dbe1e4ee38101e9f855252e8a3')

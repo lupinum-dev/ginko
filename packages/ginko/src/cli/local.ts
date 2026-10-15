@@ -209,7 +209,23 @@ export function parseResult(output: string): Record<string, unknown> | undefined
   return isObject(value) ? value : undefined
 }
 
-/** Runs a command to its end and returns its stdout. A failing command throws with the end of its stderr. */
+/**
+ * The reason in the stderr of a failed `convex run`. A function error is one line, "Uncaught ConvexError: …", above a
+ * stack trace that is not useful here. A system error spans lines: "✖ Failed to run function …:", then
+ * "Error: [Request ID: …] Server Error", then the cause ("Function execution timed out (maximum duration: 1s)"), all in
+ * colour codes; its first line alone hides the cause. Anything else (the monorepo CLI logs its progress to stderr and its
+ * error last) gives its last three lines.
+ */
+export function failureOf(stderr: string): string {
+  const lines = stderr.replace(/\u001b\[[0-9;]*m/g, '').split('\n').map((line) => line.trim()).filter(Boolean)
+  const uncaught = lines.find((line) => line.startsWith('Uncaught'))
+  if (uncaught) return uncaught
+  const failed = lines.findIndex((line) => line.includes('Failed to run function'))
+  if (failed >= 0) return lines.slice(failed).filter((line) => !line.startsWith('at ')).join(' ')
+  return lines.slice(-3).join(' | ')
+}
+
+/** Runs a command to its end and returns its stdout. A failing command throws with the reason in its stderr. */
 export function runOnce(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {
   return new Promise((done, fail) => {
     const child = spawn(command, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -220,10 +236,7 @@ export function runOnce(command: string, args: string[], cwd: string, env: NodeJ
     child.on('error', fail)
     child.on('close', (code) => {
       if (code === 0) return done(out)
-      // convex run prints its error as "Uncaught ConvexError: …" above a stack trace; the stack is not useful here.
-      const lines = err.split('\n').map((line) => line.trim()).filter(Boolean)
-      const reason = lines.find((line) => line.startsWith('Uncaught')) ?? lines[0] ?? ''
-      fail(new CliError(`${command} ${args.slice(0, 2).join(' ')} exited with code ${code}: ${reason.trim()}`))
+      fail(new CliError(`${command} ${args.slice(0, 2).join(' ')} exited with code ${code}: ${failureOf(err)}`))
     })
   })
 }

@@ -120,11 +120,16 @@ export function organizationLd(o: OrganizationLdInput): Record<string, unknown> 
   })
 }
 
-export function breadcrumbLd(nodes: NavNode[], origin: string): Record<string, unknown> {
+/**
+ * A schema.org BreadcrumbList from the first step (usually the home page) to the page itself. Each step has a `title`
+ * and a `path` of the site, as the nodes of `useGinkoBreadcrumbs` do; `siteUrl` (`useGinkoSite().url`) makes the
+ * paths absolute.
+ */
+export function breadcrumbJsonLd(steps: readonly Pick<NavNode, 'title' | 'path'>[], siteUrl: string): Record<string, unknown> {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: nodes.map((node, i) => ({ '@type': 'ListItem', position: i + 1, name: node.title, item: origin + node.path })),
+    itemListElement: steps.map((step, i) => ({ '@type': 'ListItem', position: i + 1, name: step.title, item: new URL(step.path, siteUrl).href })),
   }
 }
 

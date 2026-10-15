@@ -105,6 +105,24 @@ describe('sites.today', () => {
     expect(states.find((x) => x.brick === 'hours')).toEqual(expected && { brick: 'hours', ...expected })
   })
 
+  // Wrong behaviour caught: the hours line reads a collection that only looks like hour plans (a second set of weeks,
+  // say for the terrace) instead of the plans the hours name, and tells the owner the restaurant is closed today.
+  it('hours: follows the hour plans the status names, not another collection of the same shape', async () => {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = structuredClone((await ctx.db.get(s.site))!.schema) as Schema
+      schema.bricks.terracePlans = structuredClone(schema.bricks.hourPlans!)
+      schema.bricks.hours!.status = { hours: { plans: 'hourPlans' } }
+      await ctx.db.patch(s.site, { schema })
+    })
+    const closedWeek = allWeek.map((day) => ({ ...day, closed: true }))
+    await replaceEntries(s, 'hours', [{ data: { week: allWeek, exceptions: [] } }])
+    await replaceEntries(s, 'hourPlans', [])
+    await replaceEntries(s, 'terracePlans', [{ data: { label: 'Terrasse geschlossen', from: '2026-01-01', yearly: false, week: closedWeek } }])
+    const states = await s.as.owner.query(api.sites.today, { site: 'restaurant' })
+    expect(states.find((x) => x.brick === 'hours')).toEqual({ brick: 'hours', line: { kind: 'hours', today: { ranges: [['11:30', '14:30']] } }, due: false })
+  })
+
   // Wrong behaviour caught: staff see the state of areas they have no task on, or other people's drafts.
   it('gives staff only the bricks they have a task on, and only their own drafts', async () => {
     const s = await setup()

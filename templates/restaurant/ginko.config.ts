@@ -61,7 +61,7 @@ export default defineSite({
     // Short lines at the top of every page ("Fully booked tonight"), each until a date.
     notices: notices({ source: 'files' }),
     // The usual week (two periods a day), closures such as the summer holiday, and what happens on public holidays.
-    hours: hours({ source: 'files' }),
+    hours: hours({ source: 'files', plans: 'hourPlans' }),
     // Other weekly hours for a date range, such as winter hours that repeat every year.
     hourPlans: hourPlans({ source: 'files' }),
     // The menu: one file per dish with category, price, allergens (EU letters A–R) and vegetarian or vegan.

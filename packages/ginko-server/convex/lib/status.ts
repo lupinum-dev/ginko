@@ -1,13 +1,13 @@
 // The status lines of the Today page (UI.md 3, `status` on a brick): computed here with core `brickStatus` and the
 // weekly upkeep rule `staleOf`, shown by the Studio (sites.today) and mailed when due (reminders.ts) in the same words.
 import type { Brick, Json } from '@lupinum/ginko'
-import { brickStatus, hoursLine, labelOf, plannedWeeks, staleOf, type HourPlan, type HoursToday, type Schema, type StatusLine } from '@lupinum/ginko/internal'
+import { brickStatus, hoursLine, isHourPlans, labelOf, plannedWeeks, staleOf, type HourPlan, type HoursToday, type Schema, type StatusLine } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { QueryCtx } from '../_generated/server'
 import { t } from './i18n'
 
 /**
- * The opening hours of a single with `status: { hours: true }` (basics `hours()`) on `today` (`YYYY-MM-DD`, the site's
+ * The opening hours of a single with `status: { hours }` (basics `hours()`) on `today` (`YYYY-MM-DD`, the site's
  * day), by the basics rules with the site's stored `holidays` and its hour plans. A public holiday's name stands where
  * an owner's reason would. `null` (no line, not due) when the hours are entered and only a holiday calendar the server
  * cannot run could decide the day; `unknown` (due) is for hours missing for that day.
@@ -22,12 +22,17 @@ export function hoursToday(data: Record<string, Json>, today: string, schema: Sc
 }
 
 /**
- * The hour plans of `hourPlans()` ("other hours from a date"): live entries of the collections shaped like it (a `week`
- * list, a `from` date and a `yearly` switch). The schema has no link from hours to its plans, so the shape decides.
+ * The keys of the hour plans (`hourPlans()`) that the hours `brick` reads: the collection its status names
+ * (`{ hours: { plans } }`). A schema stored before that link (`{ hours: true }`) gets every live collection shaped like
+ * hour plans, as before; see internals/migrations.md ("Hour plans found by shape").
  */
-function isHourPlans(brick: Brick): boolean {
-  const f = brick.fields
-  return brick.kind === 'collection' && !brick.retired && f.week?.type === 'list' && f.from?.type === 'date' && f.yearly?.type === 'boolean'
+function hourPlanKeys(schema: Schema, brick: Brick): string[] {
+  const link = brick.status && 'hours' in brick.status ? brick.status.hours : undefined
+  if (typeof link === 'object') {
+    const target = Object.hasOwn(schema.bricks, link.plans) ? schema.bricks[link.plans]! : undefined
+    return target && isHourPlans(target) ? [link.plans] : []
+  }
+  return Object.entries(schema.bricks).filter(([, b]) => isHourPlans(b)).map(([key]) => key)
 }
 
 export interface BrickState {
@@ -61,8 +66,8 @@ export async function statesOf(ctx: Pick<QueryCtx, 'db'>, site: Doc<'sites'>, ke
     let hours: HoursToday | null = null
     if (brick.status && 'hours' in brick.status && single) {
       const plans: HourPlan[] = []
-      for (const [k, b] of Object.entries(schema.bricks)) {
-        if (isHourPlans(b)) for (const row of await rowsOf(k)) if (row.state !== 'draft') plans.push({ _id: row._id, ...(row.data as unknown as Omit<HourPlan, '_id'>) })
+      for (const k of hourPlanKeys(schema, brick)) {
+        for (const row of await rowsOf(k)) if (row.state !== 'draft') plans.push({ _id: row._id, ...(row.data as unknown as Omit<HourPlan, '_id'>) })
       }
       hours = hoursToday(single.data as Record<string, Json>, today, schema, plans)
     }

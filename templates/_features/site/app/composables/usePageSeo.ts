@@ -1,3 +1,4 @@
+import { breadcrumbJsonLd } from '@lupinum/ginko'
 import { siteJsonLd } from '@lupinum/ginko/basics'
 
 export interface PageSeoInput {
@@ -41,18 +42,8 @@ export function usePageSeo(input: () => PageSeoInput) {
       })
       return { title: page.title, description: page.description, image: page.image, noindex: page.noindex, jsonLd: [{ ...organization, ...page.organization }, ...own] }
     }
-    // WebPage and a two-step BreadcrumbList are written here: no documented export of @lupinum/ginko builds them
-    // (core's breadcrumbLd takes navigation nodes and is internal). Move them to /basics when a second feature needs them.
-    const here = absolute(route.path)
-    const webPage = { '@context': 'https://schema.org', '@type': 'WebPage', name: page.title, url: here, description: page.description, inLanguage: language.value }
-    const breadcrumbs = {
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: t('home'), item: absolute(path('home')) },
-        { '@type': 'ListItem', position: 2, name: page.title, item: here },
-      ],
-    }
+    const webPage = { '@context': 'https://schema.org', '@type': 'WebPage', name: page.title, url: absolute(route.path), description: page.description, inLanguage: language.value }
+    const breadcrumbs = breadcrumbJsonLd([{ title: t('home'), path: path('home') }, { title: page.title ?? name, path: route.path }], url)
     return { title: page.title, description: page.description, image: page.image, noindex: page.noindex, jsonLd: [webPage, breadcrumbs, ...own] }
   })
 }

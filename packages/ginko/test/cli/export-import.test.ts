@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { exportSite } from '../../src/cli/export.ts'
 import { importSite } from '../../src/cli/import.ts'
+import { failureOf, runOnce } from '../../src/cli/local.ts'
 import type { ExportAnswer } from '../../src/cli/model.ts'
 import type { Platform } from '../../src/cli/platform.ts'
 
@@ -111,7 +112,33 @@ describe('local:import batches', () => {
       if (fn === 'seed:importBatch') throw new Error(error)
       return fn === 'seed:uploadUrl' ? 'http://local/upload' : { done: true }
     }
-    await expect(importSite({ dir, run, upload: async () => 's', log: () => {} })).rejects.toMatchObject({ message: `${error}\nThe local site is only partly imported.${hint}` })
+    await expect(importSite({ dir, run, upload: async () => 's', log: () => {}, sleep: async () => {} })).rejects.toMatchObject({ message: `${error}\nThe local site is only partly imported.${hint}` })
+  })
+
+  // Wrong behaviour caught: on a busy machine Convex stops a function after 1 s. `convex run` prints the cause on its
+  // third stderr line; the import read only the first ("Failed to run function"), took it for a refusal and stopped.
+  it('tries again after Convex\'s time limit and finishes', async () => {
+    const dir = join(await tmp(), 'out')
+    await exportSite({ platform: { exportSite: async () => faqs(1) } as unknown as Platform, site: 'linde', dir, fetch: async () => new Response(bytes), log: () => {} })
+    // The stderr of `convex run` after the time limit, as the Convex CLI prints it (colour codes included).
+    const stderr = '\u001b[31m✖\u001b[39m Failed to run function "seed:importBatch":\n\u001b[31mError: [Request ID: 7071c5e5b2cd467c] Server Error\u001b[39m\n\u001b[31mFunction execution timed out (maximum duration: 1s)\u001b[39m\n'
+    const timeout: unknown = await runOnce(process.execPath, ['-e', 'process.stderr.write(process.env.STDERR); process.exit(1)'], dir, { ...process.env, STDERR: stderr }).catch((error: unknown) => error)
+    let failures = 1
+    const run = async (fn: string) => {
+      if (fn === 'seed:importBatch' && failures-- > 0) throw timeout
+      return fn === 'seed:uploadUrl' ? 'http://local/upload' : { done: true }
+    }
+    const waits: number[] = []
+    const done = await importSite({ dir, run, upload: async () => 's', log: () => {}, sleep: async (ms) => { waits.push(ms) } })
+    expect(done.entries).toBe(1)
+    expect(waits).toEqual([2_000])
+  })
+
+  // Wrong behaviour caught: the monorepo CLI logs its progress to stderr and its error last; a failed step reported its
+  // first progress line ("Schema … pushed") as the reason, and the real error was lost.
+  it('reports the end of stderr when it is not a Convex error', () => {
+    expect(failureOf('Schema “events” pushed to the local platform.\nImporting 12 entries\nSite “linde” was not found.\n'))
+      .toBe('Schema “events” pushed to the local platform. | Importing 12 entries | Site “linde” was not found.')
   })
 })
 
