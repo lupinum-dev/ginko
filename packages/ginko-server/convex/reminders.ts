@@ -76,7 +76,9 @@ async function remindSite(ctx: MutationCtx, site: Doc<'sites'>, schema: Schema, 
       const state = states.get(key)
       const line = state?.due && state.line ? state.line : undefined
       if (!line) continue
-      due.push({ key, refs, line: (locale) => t(locale, 'mail.weekly.item', { brick: label(locale), line: statusText(locale, schema, brick, line) }) })
+      // The line is about the coming day, which the Today page's words call "today"; the mail names it tomorrow.
+      const words = (locale: string) => line.kind === 'hours' && 'unknown' in line.today ? t(locale, 'mail.weekly.hoursUnknown') : statusText(locale, schema, brick, line)
+      due.push({ key, refs, line: (locale) => t(locale, 'mail.weekly.item', { brick: label(locale), line: words(locale) }) })
     }
   }
   if (!due.length) return 0

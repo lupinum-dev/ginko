@@ -291,7 +291,8 @@
       "subject": "„{site}“: {count, plural, one {# Punkt} other {# Punkte}} für die kommende Woche",
       "text": "Hallo,\n\nfür „{site}“ ist für die kommende Woche etwas zu tun:\n\n{items}\n\nJetzt ansehen: {link}\n\nDiese Erinnerung kommt jede Woche am Abend vor Wochenbeginn, solange etwas zu tun ist. Ausschalten: „Erinnerungen per E-Mail“ unter {settings}\n",
       "item": "– {brick}: {line}",
-      "week": "für nächste Woche noch nicht eingetragen"
+      "week": "für nächste Woche noch nicht eingetragen",
+      "hoursUnknown": "für morgen keine Öffnungszeiten eingetragen"
     },
     "digest": {
       "subject": "{count, plural, one {Zu prüfen: # Vorschlag für {site}} other {Zu prüfen: # Vorschläge für {site}}}",

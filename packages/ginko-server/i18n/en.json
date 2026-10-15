@@ -291,7 +291,8 @@
       "subject": "“{site}”: {count, plural, one {# thing} other {# things}} for the coming week",
       "text": "Hello,\n\nfor “{site}”, something needs doing for the coming week:\n\n{items}\n\nOpen it now: {link}\n\nThis reminder comes every week on the evening before it starts, as long as something is due. To switch it off, use “Email reminders” at {settings}\n",
       "item": "– {brick}: {line}",
-      "week": "not filled in for next week yet"
+      "week": "not filled in for next week yet",
+      "hoursUnknown": "no opening hours entered for tomorrow"
     },
     "digest": {
       "subject": "{count, plural, one {To review: # proposal for {site}} other {To review: # proposals for {site}}}",

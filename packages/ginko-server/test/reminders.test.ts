@@ -110,6 +110,19 @@ describe('reminders.sweep', () => {
     expect(await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA + 20 * 60 * 1000 })).toEqual({ sent: 0 })
   })
 
+  // Wrong behaviour caught: the Sunday mail says "today" about the coming Monday when no hours are entered for it.
+  it('names the coming day when no opening hours are entered for it', async () => {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const hours = (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'hours')).first())!
+      const data = hours.data as { week: { day: string }[] }
+      await ctx.db.patch(hours._id, { data: { ...data, week: data.week.filter((d) => d.day !== 'mo') } })
+    })
+    await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })
+    const sent = await mails(s.t)
+    expect(sent.find((m) => m.to === 'wirtin@example.com')!.text).toContain('– Öffnungszeiten: für morgen keine Öffnungszeiten eingetragen\n')
+  })
+
   // Wrong behaviour caught: a created but unreleased site had no `week` in its schema, so the hourly sweep threw for all sites.
   it('still mails when another site is created but not released yet', async () => {
     const s = await setupUnplanned()

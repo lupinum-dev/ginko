@@ -291,7 +291,8 @@
       "subject": "“{site}”: {count, plural, one {# cosa} other {# cosas}} para la próxima semana",
       "text": "Hola:\n\nen “{site}” hay algo pendiente para la próxima semana:\n\n{items}\n\nÁbrelo ahora: {link}\n\nEste recordatorio llega cada semana la tarde antes de que empiece, mientras haya algo pendiente. Para desactivarlo, usa “Recordatorios por correo” en {settings}\n",
       "item": "– {brick}: {line}",
-      "week": "aún sin completar para la próxima semana"
+      "week": "aún sin completar para la próxima semana",
+      "hoursUnknown": "sin horario de apertura para mañana"
     },
     "digest": {
       "subject": "{count, plural, one {Por revisar: # propuesta para {site}} other {Por revisar: # propuestas para {site}}}",
