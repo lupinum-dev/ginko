@@ -98,12 +98,13 @@ async function applyNow(ctx: MutationCtx, p: Doc<'proposals'>, approver: string)
   if (!author) return { ok: false, ...staleBecause('history.staleAuthorLeft') }
   const actor: Actor = { ...author, approvedBy: approver, ...(p.agentKey ? { agentKey: p.agentKey } : {}) }
   // A new op ID per proposal: a retry of the same apply finds its stored result.
-  const args = { ...(p.args as object), opId: `p-${p._id}` } as never
+  const { copy, ...stored } = p.args as { copy?: boolean }
+  const args = { ...stored, opId: `p-${p._id}` } as never
   try {
     let result: Json
     switch (p.op) {
       case 'save': result = await saveAs(ctx, actor, args); break
-      case 'create': result = await createAs(ctx, actor, args); break
+      case 'create': result = await createAs(ctx, actor, args, copy ? { copy } : {}); break
       case 'remove': result = await removeAs(ctx, actor, args); break
       case 'publish': result = await publishAs(ctx, actor, args); break
       case 'unpublish': result = await unpublishAs(ctx, actor, args); break

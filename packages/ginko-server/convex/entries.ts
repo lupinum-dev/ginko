@@ -577,7 +577,8 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
       // A proposal that would go live with a broken link is refused now, not only when approved. The entry does not exist yet: it joins the link check under a temporary id.
       if (!draft || at !== undefined) await checkNewLinks(ctx, actor.site, [{ entry: { _id: 'proposed' as Id<'entries'>, brick: args.brick }, fields: brick.fields, before: {}, after: data, isNew: true }])
       return await propose(ctx, actor, {
-        op: 'create', brick: args.brick, args: args as unknown as Json, base: {}, after: data as Json,
+        // A copy keeps its flag, so applying the proposal skips the fields check like the direct write.
+        op: 'create', brick: args.brick, args: (opts.copy ? { ...args, copy: true } : args) as unknown as Json, base: {}, after: data as Json,
         ...recorded(msg('history.createProposal', { title: labelOf(schema, args.brick, data) }), schema),
       })
     }
