@@ -216,7 +216,7 @@
     },
     "shrunk": {
       "text": "“{field}” is much shorter than before: {after} instead of {before} characters.",
-      "images": "{count, plural, one {# image} other {# images}} fewer."
+      "files": "{count, plural, one {# file} other {# files}} fewer."
     }
   },
   "site": {

@@ -128,11 +128,11 @@ test('Ctrl+S in the form saves a change once, and an unchanged form not at all',
 })
 
 // Wrong behaviour caught: a slip in Markdown mode replaced a long text with one line, and the save bar said nothing
-// until the site had lost two paragraphs and four photos.
-const PICTURES = ['k1', 'k2', 'k3', 'k4'].map((id) => `![Bild]($file.${id})`).join('\n\n')
+// until the site had lost two paragraphs and four photos; or a lost link to a price list was counted as a picture.
+const PICTURES = ['k1', 'k2', 'k3'].map((id) => `![Bild]($file.${id})`).join('\n\n') + '\n\n[Preisliste]($file.k4)'
 const long = (pictures: boolean, length: number) => { const start = pictures ? `${PICTURES}\n\n` : ''; return start + 'x'.repeat(length - start.length) }
 test.each([
-  { before: long(true, 2400), after: 'y'.repeat(80), hint: /„Geschichte“ ist viel kürzer als vorher: 80 statt 2\D?400 Zeichen\. 4 Bilder weniger\./ },
+  { before: long(true, 2400), after: 'y'.repeat(80), hint: /„Geschichte“ ist viel kürzer als vorher: 80 statt 2\D?400 Zeichen\. 4 Dateien weniger\./ },
   { before: long(true, 2400), after: long(true, 1500), hint: undefined },
   { before: 'x'.repeat(200), after: 'y'.repeat(10), hint: undefined },
 ])('the save bar points out a text that lost most of its length ($before.length → $after.length characters)', async ({ before, after, hint }) => {
