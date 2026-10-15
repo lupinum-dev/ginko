@@ -1,10 +1,11 @@
 // Pure content rules of the write path (SPEC part 3 "Übersetzungs-Abdrücke", 4.2 save).
 // No Convex here, so every rule is testable with plain data.
 import type { Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { effectiveAlt, fileImagesWithoutAlt, fileRefsIn, isTranslatable, markdownTrees, printOf, stableJson, type Schema } from '@lupinum/ginko/internal'
+import { effectiveAlt, fileImagesWithoutAlt, fileRefsIn, isTranslatable, leavesOf, markdownTrees, printOf, stableJson, type Prints, type Schema } from '@lupinum/ginko/internal'
+
+export type { Prints }
 
 export type Data = Record<string, Json>
-export type Prints = Record<string, Record<string, string>>
 
 /**
  * Replaces one root field. With `locale`, translatable leaves are taken only in that
@@ -60,20 +61,6 @@ export function withoutLocale(stored: Json | undefined, locale: Locale): Json | 
   return Object.keys(rest).length ? rest : undefined
 }
 
-/** Every translatable leaf of a root field: path → Localized value. Paths match resolveEntry's fallback paths. */
-export function leavesOf(field: Field, value: Json | undefined, path: string, out: Map<string, Record<string, Json>> = new Map()) {
-  if (value === undefined || value === null) return out
-  if (isTranslatable(field)) out.set(path, asRecord(value))
-  else if (field.type === 'image') out.set(`${path}.alt`, asRecord(asRecord(value).alt))
-  else if (field.type === 'list' && Array.isArray(value)) {
-    for (const row of value) {
-      if (!isRecord(row)) continue
-      for (const [key, inner] of Object.entries(field.of)) leavesOf(inner, row[key], `${path}.${String(row._id)}.${key}`, out)
-    }
-  }
-  return out
-}
-
 /**
  * New prints for the changed roots. A foreign leaf that changed in this save, or is listed
  * in `confirm` for `locale`, gets the print of its current main value. Unchanged foreign
@@ -108,26 +95,6 @@ export function nextPrints(input: {
       // A removed translation has no print any more.
       for (const locale of Object.keys(kept)) if (values[locale] === undefined || values[locale] === null) delete kept[locale]
       if (Object.keys(kept).length) out[leaf] = kept
-    }
-  }
-  return out
-}
-
-/**
- * Prints after a rewrite that keeps the meaning, such as the new file IDs an import gives the files a text points at:
- * a translation that was current for the old main-language value stays current for the new one. Other prints stay.
- */
-export function carryPrints(fields: Fields, before: Data, after: Data, prints: Prints, main: Locale): Prints {
-  const out: Prints = Object.fromEntries(Object.entries(prints).map(([leaf, byLocale]) => [leaf, { ...byLocale }]))
-  for (const [root, field] of Object.entries(fields)) {
-    if (stableJson(before[root] ?? null) === stableJson(after[root] ?? null)) continue
-    const old = leavesOf(field, before[root], root)
-    for (const [leaf, values] of leavesOf(field, after[root], root)) {
-      const was = old.get(leaf)
-      const kept = out[leaf]
-      if (!was || !kept) continue
-      const current = printOf(was[main])
-      for (const locale of Object.keys(kept)) if (kept[locale] === current) kept[locale] = printOf(values[main])
     }
   }
   return out

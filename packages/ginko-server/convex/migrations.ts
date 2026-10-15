@@ -1,11 +1,11 @@
 // One-time migrations of stored content, run by hand (`npx convex run migrations:<name>`). Each works in small pages,
 // schedules itself and is safe to run again. Every one has its entry in internals/migrations.md; remove both together.
-import { entryBytes, mapMarkdownTexts, stableJson, type Schema } from '@lupinum/ginko/internal'
+import { carryPrints, entryBytes, mapMarkdownTexts, stableJson, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalMutation, type MutationCtx } from './_generated/server'
-import { carryPrints, treesOf, type Data, type Prints } from './lib/content'
+import { treesOf, type Data, type Prints } from './lib/content'
 import { putTrees } from './lib/trees'
 import { entryUses, syncEntryRefs } from './lib/write'
 

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { main } from '../../src/cli/monorepo.ts'
 import { parseExport } from '../../src/cli/model.ts'
 import type { CliDeps } from '../../src/cli/run.ts'
-import { collection, defineSite, f } from '../../src/core/index.ts'
+import { collection, defineSite, f, printOf } from '../../src/core/index.ts'
 
 // `blog` is a platform brick (no `source`): files-export reads content/<key>/ for every brick anyway.
 const config = defineSite({
@@ -82,12 +82,14 @@ describe('local:files-export', () => {
   })
 
   // Wrong behaviour caught: the export wrote no files and kept public/ paths, so on the platform every image of the
-  // content vanished without an error; a type the Files library cannot hold went through unnoticed.
+  // content vanished without an error; a type the Files library cannot hold went through unnoticed; or the English text
+  // showed as outdated because the German one got the file ID after its translation print was taken.
   it('exports a frontmatter image as a file and points the entry at it', async () => {
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEElEQVQImWPQr/WCIAY4CwA5GgXF89GPfAAAAABJRU5ErkJggg==', 'base64')
     const H = createHash('sha256').update(png).digest('hex')
     const anna = '---\nname: Anna\navatar:\n  src: /images/a.png\n  alt: Ein Bild\n---\n\n![Anna im Garten](/images/team/a-copy.png)\n'
-    const s = site({ 'public/images/a.png': png, 'public/images/team/a-copy.png': png, 'content/authors/1.anna.md': anna })
+    const annaEn = '---\nname: Anna\n---\n\n![Anna in the garden](/images/team/a-copy.png)\n'
+    const s = site({ 'public/images/a.png': png, 'public/images/team/a-copy.png': png, 'content/authors/1.anna.md': anna, 'content/authors/1.anna.en.md': annaEn })
     const { code, json } = await run(['files-export', '--config', s.config, s.out])
     expect([code, json.files]).toEqual([0, 1])
     const exported = parseExport(JSON.parse(readFileSync(join(s.out, 'export.json'), 'utf8')), 'path', 'invalid')
@@ -97,7 +99,8 @@ describe('local:files-export', () => {
     expect(readFileSync(join(s.out, `files/${H}.png`))).toEqual(png)
     const author = exported.entries.find((e) => e.id === 'authors/anna')!
     expect(author.data.avatar).toEqual({ file: H, alt: { de: 'Ein Bild' } })
-    expect(author.data.bio).toEqual({ de: `\n![Anna im Garten]($file.${H})\n` })
+    expect(author.data.bio).toEqual({ de: `\n![Anna im Garten]($file.${H})\n`, en: `\n![Anna in the garden]($file.${H})\n` })
+    expect(author.prints.bio).toEqual({ en: printOf(author.data.bio!.de) })
 
     const avif = site({ 'public/images/b.avif': Buffer.from('AAAAHGZ0eXBhdmlmAAAAAG1pZjFhdmlmbWlhZgAAANZtZXRhAAAAAAAAACFoZGxyAAAAAAAAAABwaWN0AAAAAAAAAAAAAAAAAAAAACJpbG9jAAAAAERAAAEAAQAAAAAA+gABAAAAAAAAACMAAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABhdjAxAAAAAA5waXRtAAAAAAABAAAAVmlwcnAAAAA4aXBjbwAAAAxhdjFDgSACAAAAABRpc3BlAAAAAAAAAAMAAAACAAAAEHBpeGkAAAAAAwgICAAAABZpcG1hAAAAAAAAAAEAAQOBAgMAAAArbWRhdBIACgg4BCtICGg0gDIVGUJjBMAANAAAkEDJHGFSyVivY+eA', 'base64'), 'content/authors/1.anna.md': '---\nname: Anna\navatar:\n  src: /images/b.avif\n  alt: Ein Bild\n---\n' })
     const refused = await run(['files-export', '--config', avif.config, avif.out])

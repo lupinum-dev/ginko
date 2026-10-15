@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, posix, resolve, sep } from 'node:path'
 import type { Fields, Json } from '../core/types.ts'
-import { imageInfo, imagePropsOf, limitOf, mapMarkdownTexts, parseMarkdown, remapFileIds, serializeSchema, UPLOAD_TYPES, type Schema, type UploadType } from '../core/index.ts'
+import { carryPrints, imageInfo, imagePropsOf, limitOf, mapMarkdownTexts, parseMarkdown, remapFileIds, serializeSchema, UPLOAD_TYPES, type Schema, type UploadType } from '../core/index.ts'
 import { loadConfig } from './config.ts'
 import { CliError, type ExportEntry, type ExportFolder, type SiteExport } from './model.ts'
 
@@ -121,7 +121,10 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
   let kept = 0
   for (const entry of entries) {
     const fields = schema.bricks[entry.brick]!.fields
+    const before = entry.data
     entry.data = mapMarkdownTexts(fields, remapFileIds(fields, entry.data, ids), (text) => toFileRefs(text, refs, imageProps))
+    // The same pictures under their file IDs: translations read from the files stay current.
+    entry.prints = carryPrints(fields, before, entry.data, entry.prints, schema.locales[0]!)
     for (const text of markdownTexts(fields, entry.data)) kept += [...await localSources(text, imageProps)].filter((src) => ids.has(src)).length
   }
   if (kept > 0) input.log(`Warning: ${kept} image(s) inside Markdown texts keep their public/ path, written in a form this export cannot rewrite; the site must keep serving them.`)

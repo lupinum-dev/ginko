@@ -1,14 +1,14 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, listHaystack, listSort, deletesExpired, isVisible, ordered, searchable, sha256, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, validate, visibleUntil, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, ordered, searchable, sha256, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, validate, visibleUntil, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, authorize, authorizeWriter, byOf, checkRev, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor, type By } from './lib/access'
-import { fieldLabelAt, fileIdsOf, leavesOf, mergeField, nextPrints, refIdsIn, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
+import { fieldLabelAt, fileIdsOf, mergeField, nextPrints, refIdsIn, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { labeler, type Who } from './lib/names'
 import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
 import { isLocale, t } from './lib/i18n'
