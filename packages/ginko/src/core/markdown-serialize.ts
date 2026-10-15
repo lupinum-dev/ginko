@@ -244,10 +244,12 @@ export async function serializeMarkdown(nodes: readonly Json[], options: Seriali
  * True when `text` survives a trip through comark's renderer: parse, render the whole tree, parse
  * again gives the same nodes. The editor opens a text in source mode when this is false. The
  * `<!-- more -->` line is not part of the nodes, so it does not count here (serializeMarkdown with
- * `original` keeps it). Frontmatter is read and ignored.
+ * `original` keeps it). A text with parts the tree does not show (`hidden`) is never stable: written
+ * from the tree, it would lose them. Frontmatter is read and ignored.
  */
 export async function isStableMarkdown(text: string, options: ParseOptions = {}): Promise<boolean> {
   const first = await parseMarkdown(text, options)
+  if (first.hidden) return false
   const again = await parseMarkdown(await render(first.value.nodes, {}), { ...options, frontmatter: false })
   return JSON.stringify(first.value.nodes) === JSON.stringify(again.value.nodes)
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { parseMarkdown, plainText, type MarkdownProfile } from '../../src/core/index.ts'
+import { fileRefsIn, parseMarkdown, plainText, type MarkdownProfile } from '../../src/core/index.ts'
 
 describe('parseMarkdown profiles', () => {
   // Each row: text, profile, does the profile refuse it.
@@ -89,6 +89,19 @@ describe('parseMarkdown profiles', () => {
   test('plainText leaves out code blocks', async () => {
     const { value } = await parseMarkdown('Vorher\n\n```ts\nconst a = 1\n```\n\nNachher', { profile: 'rich' })
     expect(plainText(value)).toBe('Vorher\nNachher')
+  })
+
+  // Wrong behaviour caught: a reference definition became a nameless `component` node, so the text was refused with
+  // "Komponente „component“ gibt es nicht", also when it defined a picture of the Files library.
+  test('reference links and images resolve, and their definitions leave the tree', async () => {
+    const text = 'Siehe die [Anleitung][g].\n\n![Logo][l]\n\n[g]: https://example.com/guide\n[l]: $file.k57logo'
+    const { value, problems } = await parseMarkdown(text, { profile: 'rich' })
+    expect(problems).toEqual([])
+    expect(value.nodes).toEqual([
+      ['p', {}, 'Siehe die ', ['a', { href: 'https://example.com/guide' }, 'Anleitung'], '.'],
+      ['p', {}, ['img', { src: '$file.k57logo', alt: 'Logo' }]],
+    ])
+    expect(fileRefsIn(text)).toEqual(new Set(['k57logo']))
   })
 
   test('raw HTML stays text, so it never becomes an element', async () => {

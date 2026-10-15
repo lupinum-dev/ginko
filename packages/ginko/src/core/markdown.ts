@@ -201,6 +201,11 @@ export interface ParsedMarkdown {
   problems: string[]
   /** The same problems with catalog key and parameters (`coreMessage(locale, key, params)`), in the same order. */
   problemMessages: MarkdownProblem[]
+  /**
+   * True when the text has parts the tree does not show: link reference definitions (`[g]: https://…`, resolved into
+   * their links and images). A text written from the tree would lose them.
+   */
+  hidden?: true
 }
 
 /** A problem of a text; `line` (1-based, in the parsed text, frontmatter included) when it belongs to one line. */
@@ -211,9 +216,10 @@ export async function parseMarkdown(text: string, options: ParseOptions = {}): P
   const problems: MarkdownProblem[] = []
   let body = text
   let summary: Node[] | undefined
+  let hidden = false
   const plugins = [
     ...(options.frontmatter ? [frontmatter(), defineComarkPlugin(() => ({ name: 'ginko-body', pre(state) { body = state.markdown.replace(/^\r?\n/, '') } }))()] : []),
-    alert(), taskList(), components(), attributes(),
+    alert(), taskList(), components(), attributes(), referenceDefinitions(() => { hidden = true }),
     // Every profile parses these; profileCheck refuses the tags a profile does not allow, so `$a$` in a
     // `basic` field is reported, not silently kept. Footnotes must run before the check (`[^1]` is a `span` until then).
     emoji(), footnotes(), math(), mermaid(),
@@ -229,7 +235,7 @@ export async function parseMarkdown(text: string, options: ParseOptions = {}): P
   const tree = await parseComark(text, { registerDefaultPlugins: false, autoClose: false, plugins })
   // JSON round-trip: the value goes into a JSON bundle, so drop anything that is not plain data.
   const value: MarkdownTree = JSON.parse(JSON.stringify({ nodes: tree.nodes, toc: (tree.meta as { toc?: MarkdownToc }).toc, summary }))
-  return { frontmatter: tree.frontmatter as Record<string, unknown>, value, body, problems: problems.map((p) => p.message), problemMessages: problems }
+  return { frontmatter: tree.frontmatter as Record<string, unknown>, value, body, problems: problems.map((p) => p.message), problemMessages: problems, ...(hidden ? { hidden: true } : {}) }
 }
 
 /** One top-level block of a text: its text, and for an h2 or h3 also its level and anchor. Code blocks (`pre`) are not blocks. */
@@ -272,6 +278,27 @@ function moreMarker(set: (nodes: Node[]) => void) {
       set(state.tree.nodes.slice(0, at))
       state.tree.nodes.splice(at, 1)
     },
+  }))()
+}
+
+/**
+ * A link reference definition (`[g]: https://…`) gives the address of `[Text][g]` and `![Logo][g]`; comark resolves those
+ * into the link or image itself, so the address passes the same checks as an inline one. The definition has no node of
+ * its own (comark would make it a nameless `component`), so its token is dropped; `onDrop` notes that the tree does not
+ * show the whole text.
+ */
+function referenceDefinitions(onDrop: () => void) {
+  return defineComarkPlugin(() => ({
+    name: 'ginko-references',
+    markdownItPlugins: [(md) => {
+      // comark types `md` with markdown-it's types, which are not installed here: the state is typed by what this reads.
+      md.core.ruler.push('ginko-references', (state: { tokens: Array<{ type: string }> }) => {
+        const kept = state.tokens.filter((token) => token.type !== 'reference')
+        if (kept.length === state.tokens.length) return
+        state.tokens = kept
+        onDrop()
+      })
+    }],
   }))()
 }
 
