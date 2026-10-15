@@ -216,7 +216,9 @@
   },
   "history": {
     "changedSingle": "{label}: cambio en {fields}",
+    "changedSingleIn": "{label}: cambio en {fields} ({languages})",
     "changedEntry": "Cambio en {fields} de “{title}”",
+    "changedEntryIn": "Cambio en {fields} de “{title}” ({languages})",
     "translationConfirmed": "Traducción confirmada",
     "undo": "Deshecho: {what}",
     "revert": "Vuelta a la versión del {when, date, ::yMMMd}, {when, time, ::HHmm}",

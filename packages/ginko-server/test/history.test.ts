@@ -258,6 +258,17 @@ describe('history messages', () => {
     shows(undone, 'Rückgängig: Zurück zur Version vom 08.10.2026 12:00', 'Undone: Back to the version of Oct 8, 2026, 12:00')
   })
 
+  // Wrong behaviour caught: the line of an English-only save read like a change of the German text (romi-16).
+  it('a save that changes only another language names it; one that also changes the main language does not', async () => {
+    const s = await setup()
+    const entry = s.entries['menu-saibling']!
+    const english = await save(s, entry, { name: { en: 'Smoked char' } }, { locale: 'en' })
+    const both = await save(s, entry, { name: { de: 'Saibling', en: 'Char' }, price: { amount: 1450 } })
+    const rows = await changeRows(s)
+    expect(rows.find((r) => r._id === english)).toMatchObject({ msg: { key: 'history.changedEntryIn', params: { languages: 'EN' } }, sentence: 'Name von „Gebeizter Saibling“ geändert (EN)' })
+    expect(rows.find((r) => r._id === both)).toMatchObject({ msg: { key: 'history.changedEntry' } })
+  })
+
   it('the client sentence is ignored: the server words the line from what changed', async () => {
     const s = await setup()
     const change = await save(s, s.entries['menu-saibling']!, { price: { amount: 1450 } })

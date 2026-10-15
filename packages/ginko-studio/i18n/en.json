@@ -662,7 +662,8 @@
     "diff": {
       "before": "Before",
       "after": "After",
-      "reordered": "The order changed"
+      "reordered": "The order changed",
+      "picture": "Picture"
     }
   },
   "history": {

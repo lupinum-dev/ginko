@@ -12,6 +12,6 @@ const fields = computed(() => (Object.hasOwn(props.schema.bricks, props.brick) ?
 <template>
   <div class="w-full">
     <p v-if="detail.error.value" class="font-medium text-destructive" role="alert">{{ opErrorOf(detail.error.value).message }}</p>
-    <ChangeDiff v-else-if="detail.data.value" :diff="detail.data.value.diff" :fields="fields" :locale="schema.locales[0]!" />
+    <ChangeDiff v-else-if="detail.data.value" :diff="detail.data.value.diff" :fields="fields" :locale="schema.locales[0]!" :site="site" />
   </div>
 </template>

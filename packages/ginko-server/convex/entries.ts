@@ -19,7 +19,7 @@ import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
 import { editorEntry, editorEntryWithTranslation, listRow, slimEntry, titleOf } from './lib/list'
-import { diffFields } from './lib/diff'
+import { diffFields, localeDiffs } from './lib/diff'
 
 const underRoot = (leaf: string, root: string) => leaf === root || leaf.startsWith(`${root}.`)
 
@@ -82,17 +82,34 @@ export async function saveAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
 }
 
 /**
- * The history line of a save, built from what changed: "{brick}: {fields} changed" for a single,
- * "{fields} changed in “{title}”" for an entry. The field names are one label per locale, joined, so every
- * reader gets their own language. The title is the entry's before the save, like the Studio showed it.
+ * The languages a save changed when it changed only translations: the upper-case codes (as the diff tags them), or
+ * undefined when it changed the main language or a field that has no languages.
  */
-function saveMsg(schema: Schema, brick: Schema['bricks'][string], entry: Doc<'entries'>, roots: string[], onlyConfirm: boolean): HistoryMsg {
+function onlyTranslations(schema: Schema, brick: Schema['bricks'][string], roots: string[], before: Data, after: Data): string | undefined {
+  const main = schema.locales[0]!
+  const changed = new Set<string>()
+  for (const root of roots) {
+    if (!isTranslatable(brick.fields[root]!)) return undefined
+    for (const { locale } of localeDiffs(before[root] ?? null, after[root] ?? null)) changed.add(locale)
+  }
+  if (!changed.size || changed.has(main)) return undefined
+  return schema.locales.filter((l) => changed.has(l)).map((l) => l.toUpperCase()).join(', ')
+}
+
+/**
+ * The history line of a save, built from what changed: "{brick}: {fields} changed" for a single,
+ * "{fields} changed in “{title}”" for an entry, with the languages in brackets when only translations changed.
+ * The field names are one label per locale, joined, so every reader gets their own language. The title is the
+ * entry's before the save, like the Studio showed it.
+ */
+function saveMsg(schema: Schema, brick: Schema['bricks'][string], entry: Doc<'entries'>, roots: string[], after: Data, onlyConfirm: boolean): HistoryMsg {
   if (onlyConfirm) return msg('history.translationConfirmed')
   const main = schema.locales[0]!
   const fields: Label = Object.fromEntries(schema.locales.map((l) => [l, roots.map((k) => labelIn(brick.fields[k]!.label, l, main)).join(', ')]))
-  return brick.kind === 'single'
-    ? msg('history.changedSingle', { label: brick.label, fields })
-    : msg('history.changedEntry', { fields, title: labelOf(schema, entry.brick, entry.data as Data) })
+  const languages = onlyTranslations(schema, brick, roots, entry.data as Data, after)
+  if (brick.kind === 'single') return languages ? msg('history.changedSingleIn', { label: brick.label, fields, languages }) : msg('history.changedSingle', { label: brick.label, fields })
+  const title = labelOf(schema, entry.brick, entry.data as Data)
+  return languages ? msg('history.changedEntryIn', { fields, title, languages }) : msg('history.changedEntry', { fields, title })
 }
 
 /**
@@ -159,7 +176,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   if (stateOf(entry) === 'live') await checkNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before, after: data }])
 
   const onlyConfirm = Object.keys(args.fields).length === 0
-  const history = recorded(line ?? saveMsg(schema, brick, entry, changed, onlyConfirm), schema)
+  const history = recorded(line ?? saveMsg(schema, brick, entry, changed, data, onlyConfirm), schema)
 
   // Everything is checked: a change that needs a yes becomes a proposal and writes nothing (SPEC 17).
   if (await needsProposal(ctx, actor, 'save', args.task, taskBrick, entry)) {

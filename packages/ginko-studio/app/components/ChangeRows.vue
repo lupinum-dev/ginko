@@ -172,7 +172,7 @@ async function undo(change: Change) {
             <p v-if="version.error.value" class="font-medium text-destructive" role="alert">{{ opErrorOf(version.error.value).message }}</p>
             <template v-else-if="versionShown">
               <p class="font-medium">{{ t('history.revertChanges') }}</p>
-              <ChangeDiff :diff="versionShown.diff" :fields="fieldsOf(change.brick)" :locale="schema.locales[0]!" />
+              <ChangeDiff :diff="versionShown.diff" :fields="fieldsOf(change.brick)" :locale="schema.locales[0]!" :site="site" />
             </template>
           </template>
           <div class="flex flex-wrap gap-2">
