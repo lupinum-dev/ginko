@@ -71,7 +71,9 @@
     "languageNotOnSite": "La langue « {locale} » n’existe pas sur ce site.",
     "fileLibraryOwnersOnly": "Seuls les propriétaires et les administrateurs peuvent modifier la bibliothèque de fichiers.",
     "backupOwnersOnly": "Seuls les propriétaires et les administrateurs peuvent télécharger une sauvegarde.",
+    "fileNotFound": "Ce fichier n’existe pas.",
     "tooManyFiles": "Trop de fichiers à la fois.",
+    "folderNotFound": "Ce dossier n’existe pas.",
     "folderNameRequired": "Le dossier doit avoir un nom.",
     "folderNameTooLong": "Le nom du dossier est trop long ({folderNameMax} caractères au maximum).",
     "folderNameTaken": "Un dossier « {name} » existe déjà ici.",
@@ -177,8 +179,6 @@
     "tokenTooShort": "Le jeton doit comporter au moins 32 caractères.",
     "taskNotFound": "Cette tâche n’existe pas.",
     "weeklyTaskThisWeek": "Cette tâche ne couvre que la semaine en cours. Rouvrez-la si la semaine a changé depuis.",
-    "folderNotFound": "Ce dossier n’existe pas.",
-    "fileNotFound": "Ce fichier n’existe pas.",
     "brickNotFoundAnymore": "Ce bloc n’existe pas (ou plus).",
     "viewOnlyForCollections": "Une vue n’existe que pour les collections.",
     "viewInvalid": "La vue n’est pas valide.",
@@ -240,6 +240,7 @@
     "publishStoppedBrokenLink": "« {title} » n’est pas passé en ligne : le lien « {link} » ne mène nulle part.",
     "published": "« {title} » publié",
     "publishedDue": "« {title} » publié (comme prévu)",
+    "publishedLate": "« {title} » publié tout de suite (l’heure prévue était déjà passée au moment de l’approbation)",
     "scheduled": "« {title} » : en ligne à partir du {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "unpublishProposal": "Mettre « {title} » hors ligne",
     "unscheduleProposal": "« {title} » : annuler la planification",
@@ -310,5 +311,18 @@
   },
   "content": {
     "copyOf": "{text} (copie)"
+  },
+  "status": {
+    "next": "Prochain : {title} · {date}",
+    "ending": "{count, plural, one {# se termine} other {# se terminent}} dans les 7 jours",
+    "online": "{count} en ligne",
+    "missing": "{count, plural, one {# entrée} other {# entrées}} sans {field}",
+    "age": "Le plus récent : {title} · il y a {weeks, plural, one {# semaine} other {# semaines}}",
+    "ageThisWeek": "Le plus récent : {title} · cette semaine",
+    "open": "Ouvert aujourd’hui {ranges}",
+    "closed": "Fermé aujourd’hui",
+    "closedBecause": "Fermé aujourd’hui · {reason}",
+    "hoursUnknown": "Aucun horaire d’ouverture saisi pour aujourd’hui.",
+    "drafts": "{drafts, plural, one {# brouillon} other {# brouillons}} · planifiés : {scheduled}"
   }
 }

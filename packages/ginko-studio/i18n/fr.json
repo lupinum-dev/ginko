@@ -188,7 +188,11 @@
       "timeTwiceFirst": "La première fois ({time})",
       "timeTwiceSecond": "La deuxième fois ({time})",
       "timePickOne": "Choisissez laquelle des deux heures vous voulez dire.",
-      "timeMissing": "Cette heure n’existe pas ce jour-là, car les horloges avancent. Choisissez une autre heure."
+      "timeMissing": "Cette heure n’existe pas ce jour-là, car les horloges avancent. Choisissez une autre heure.",
+      "go": "Publier",
+      "review": "Envoyer pour relecture",
+      "asDraft": "Enregistrer comme brouillon",
+      "laterOpen": "Publier plus tard"
     },
     "unpublish": {
       "button": "Mettre hors ligne",
@@ -320,6 +324,7 @@
       "waiting": "En attente d’approbation, envoyé {when}.",
       "rejected": "Non approuvé : « {reason} »",
       "fix": "Corriger",
+      "toReview": "{count, plural, one {# modification attend} other {# modifications attendent}} votre relecture",
       "drafts": {
         "heading": "Pas encore enregistré",
         "titled": "« {title} » · {time}",
@@ -469,6 +474,11 @@
       "notOnline": "Pas encore en ligne",
       "none": "Tout est traduit.",
       "truncated": "Affichage des {count} premiers."
+    },
+    "drafts": {
+      "since": "Brouillon depuis le {date}",
+      "goesLive": "En ligne le {date}",
+      "all": "Tous les brouillons dans Contenu"
     }
   },
   "editor": {
@@ -733,8 +743,6 @@
   "ops": {
     "saved": "Enregistré.",
     "draftSaved": "Brouillon enregistré.",
-    "draftNotOnSite": "Brouillon enregistré. Pas encore sur le site web.",
-    "draftScheduled": "Brouillon enregistré, en ligne à partir du {time}.",
     "liveHint": "Sur le site web dans environ une minute.",
     "liveFrom": "Sur le site web à partir du {date}.",
     "translation": {
@@ -774,7 +782,9 @@
       "offline": "Pas de connexion. Réessayez.",
       "aborted": "Annulé."
     },
-    "purged": "« {title} » supprimé définitivement."
+    "purged": "« {title} » supprimé définitivement.",
+    "draftCreated": "Enregistré comme brouillon.",
+    "scheduledGoesLive": "Planifié. En ligne le {date}."
   },
   "review": {
     "title": "{site} · Relecture",
