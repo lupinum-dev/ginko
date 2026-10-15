@@ -6,7 +6,7 @@
 import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'
 import { httpAction, type ActionCtx } from '../_generated/server'
-import { EMPTY, kindOf, TOO_LARGE, typeOfBytes, WRONG_CONTENT, WRONG_TYPE } from '../lib/files'
+import { EMPTY, HEIC, isHeic, kindOf, TOO_LARGE, typeOfBytes, WRONG_CONTENT, WRONG_TYPE } from '../lib/files'
 import { t, type MessageKey } from '../lib/i18n'
 
 /** Only the platform UI (`SITE_URL`, the origin sign-in uses too) may call this route from the browser (CORS). */
@@ -37,6 +37,7 @@ async function receive(ctx: ActionCtx, request: Request): Promise<Response> {
 
   const name = url.searchParams.get('name') ?? ''
   const type = request.headers.get('Content-Type') ?? ''
+  if (isHeic({ name, mime: type })) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...HEIC })
   const kind = kindOf(type)
   if (!kind) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...WRONG_TYPE })
   const declared = request.headers.get('Content-Length')
@@ -45,7 +46,7 @@ async function receive(ctx: ActionCtx, request: Request): Promise<Response> {
   if (bytes.byteLength > kind.limit) return reply(request, 413, { code: 'UPLOAD_REJECTED', ...TOO_LARGE })
   if (bytes.byteLength === 0) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...EMPTY })
   const mime = typeOfBytes(kind.kind, bytes)
-  if (!mime) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...WRONG_CONTENT })
+  if (!mime) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...(isHeic({ bytes }) ? HEIC : WRONG_CONTENT) })
 
   const storageId = await ctx.storage.store(new Blob([bytes], { type: mime }))
   try {

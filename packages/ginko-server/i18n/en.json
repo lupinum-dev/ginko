@@ -207,7 +207,7 @@
     "uploadFailed": "The upload failed. Please try again.",
     "uploadMissing": "The uploaded file is missing. Please upload it again.",
     "uploadRetrying": "The photo could not be processed. We are trying again.",
-    "uploadHeicUnreadable": "This HEIC photo cannot be read. Please save it as JPEG or PNG and upload it again.",
+    "uploadHeicUnreadable": "The Files library cannot read HEIC photos. Save the photo as JPEG (on an iPhone: Settings › Camera › Formats › “Most Compatible”) and upload it again.",
     "uploadNotAnImage": "This file is not a readable image.",
     "siteUrlNotAllowed": "This site address cannot be used. It must be a public https:// address."
   },

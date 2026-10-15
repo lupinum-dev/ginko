@@ -1,6 +1,7 @@
 <!-- One file in detail (UI.md 10.3): preview with focus point, name, alt text, facts, where it is used and
      the actions. Everything that changes the library is for owner and admin (`canManage`). -->
 <script setup lang="ts">
+import { acceptOf } from '@lupinum/ginko/internal'
 import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from '#imports'
@@ -157,7 +158,7 @@ const uploaded = computed(() => (info.value ? whenFull(info.value.createdAt, sit
             <Button type="button" variant="outline" :disabled="replacing" @click="picker?.click()">{{ replacing ? t('files.uploading') : t('files.replace') }}</Button>
             <p class="text-xs text-muted-foreground">{{ t('files.replaceNote') }}</p>
           </div>
-          <input ref="picker" class="sr-only" type="file" tabindex="-1" aria-hidden="true" :accept="info.kind === 'image' ? 'image/jpeg,image/png,image/webp,image/heic' : 'application/pdf'" @change="replaceWith">
+          <input ref="picker" class="sr-only" type="file" tabindex="-1" aria-hidden="true" :accept="acceptOf(info.kind === 'image' ? 'image' : 'file')" @change="replaceWith">
         </template>
         <Button v-if="info.url" as-child variant="outline"><a :href="info.url" :download="info.name">{{ t('files.download') }}</a></Button>
         <template v-if="canManage">

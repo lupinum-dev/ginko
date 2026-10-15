@@ -25,7 +25,7 @@ export interface FilesExportInput {
 /** Where readContent serves images that lie next to a Markdown file (ginko-content IMAGE_URL_PREFIX). */
 const CONTENT_IMAGE_PREFIX = '/_ginko/img/'
 
-const EXTENSIONS: Record<UploadType, string> = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/heic': '.heic', 'application/pdf': '.pdf' }
+const EXTENSIONS: Record<UploadType, string> = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'application/pdf': '.pdf' }
 
 export async function filesExport(input: FilesExportInput): Promise<{ dir: string; site: string; entries: number; bricks: Record<string, number>; files: number }> {
   const config = await loadConfig(input.config)
@@ -84,6 +84,7 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
   const folders = new Map<string, ExportFolder>()
   const ids = new Map<string, string>()
   const refused: string[] = []
+  const heic: string[] = []
   const tooLarge: string[] = []
   const missing: string[] = []
   const bytesOf = new Map<string, Uint8Array>()
@@ -93,7 +94,7 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
     const info = imageInfo(bytes)
     const mime = info?.type === 'jpeg' ? 'image/jpeg' : info?.type === 'png' ? 'image/png' : info?.type === 'webp' ? 'image/webp'
       : !info && bytes.subarray(0, 5).toString('latin1') === '%PDF-' ? 'application/pdf' : undefined
-    if (!mime) { refused.push(src); continue }
+    if (!mime) { (/\.hei[cf]$/i.test(abs) ? heic : refused).push(src); continue }
     if (bytes.byteLength > limitOf(UPLOAD_TYPES[mime].kind)) { tooLarge.push(src); continue }
     const id = createHash('sha256').update(bytes).digest('hex')
     ids.set(src, id)
@@ -107,6 +108,7 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
     })
   }
   const problems = [
+    ...(heic.length ? [`The Files library cannot read HEIC photos: ${heic.join(', ')}. Save each photo as JPEG (on an iPhone: Settings › Camera › Formats › “Most Compatible”) and run local:files-export again.`] : []),
     ...(refused.length ? [`These images cannot go into the Files library (it takes JPEG, PNG and WebP images and PDF files): ${refused.join(', ')}. Convert them, for example to WebP, and run local:files-export again.`] : []),
     ...(tooLarge.length ? [`These files are larger than the Files library takes (images ${limitOf('image') / 1024 / 1024} MB, PDF files ${limitOf('file') / 1024 / 1024} MB): ${tooLarge.join(', ')}. Make them smaller and run local:files-export again.`] : []),
   ]

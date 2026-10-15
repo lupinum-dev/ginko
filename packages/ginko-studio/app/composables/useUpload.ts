@@ -4,10 +4,13 @@
 // limits request size). Returns a function that resolves with the upload id.
 import { api } from '#convex/api'
 import { useI18n } from '#imports'
+import { acceptOf } from '@lupinum/ginko/internal'
 import { useTextOf } from './useTextOf'
 
 const MB = 1024 * 1024
-const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic']
+const IMAGE_TYPES = acceptOf('image').split(',')
+/** An iPhone photo in HEIC: the Files library cannot read it, so it is refused before it is sent. */
+const HEIC = /\.hei[cf]$|^image\/hei[cf]/i
 
 /** A refused or failed upload; its message is already the text to show, in the Studio's language. */
 export class UploadError extends Error {
@@ -25,6 +28,9 @@ export function useUpload(kind: 'image' | 'file' = 'image') {
 
   /** Throws an UploadError whose message is the text to show in the Studio's language; after `signal` aborts, an AbortError. */
   return async function send(site: string, file: File, signal?: AbortSignal, target: UploadTarget = {}): Promise<string> {
+    if (kind === 'image' && (HEIC.test(file.name) || HEIC.test(file.type))) {
+      throw new UploadError(textOf({ key: 'errors.uploadHeicUnreadable' }, t('ops.upload.notImage')))
+    }
     if (kind === 'image' ? !IMAGE_TYPES.includes(file.type) : file.type !== 'application/pdf') {
       throw new UploadError(kind === 'image' ? t('ops.upload.notImage') : t('ops.upload.notPdf'))
     }

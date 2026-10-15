@@ -2,6 +2,7 @@
      (`mode="page"`) and the picker inside an image or file field (`mode="picker"`: Recent first,
      single select, no info panel; the picker reports the chosen file). -->
 <script setup lang="ts">
+import { acceptOf } from '@lupinum/ginko/internal'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { useI18n } from '#imports'
@@ -141,7 +142,7 @@ async function run(action: () => Promise<unknown>) {
 
 const input = ref<HTMLInputElement | null>(null)
 const uploading = ref(0)
-const accept = computed(() => (props.kind === 'image' ? 'image/jpeg,image/png,image/webp,image/heic' : props.kind === 'pdf' ? 'application/pdf' : 'image/jpeg,image/png,image/webp,image/heic,application/pdf'))
+const accept = computed(() => (props.kind === 'image' ? acceptOf('image') : props.kind === 'pdf' ? acceptOf('file') : `${acceptOf('image')},${acceptOf('file')}`))
 
 async function upload(incoming: File[]) {
   error.value = null

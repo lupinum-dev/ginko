@@ -628,7 +628,7 @@
       "items": "{count, plural, one {# entrada} other {# entradas}}"
     },
     "upload": {
-      "notImage": "Elige una foto (JPEG, PNG, WebP o HEIC).",
+      "notImage": "Elige una foto (JPEG, PNG o WebP).",
       "notPdf": "Elige un archivo PDF.",
       "photoTooLarge": "La foto es demasiado grande (20 MB como máximo).",
       "fileTooLarge": "El archivo es demasiado grande (10 MB como máximo).",

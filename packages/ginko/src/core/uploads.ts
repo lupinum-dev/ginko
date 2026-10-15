@@ -6,7 +6,6 @@ export const UPLOAD_TYPES = {
   'image/jpeg': { label: 'JPEG', kind: 'image', limit: 20 * MB },
   'image/png': { label: 'PNG', kind: 'image', limit: 20 * MB },
   'image/webp': { label: 'WebP', kind: 'image', limit: 20 * MB },
-  'image/heic': { label: 'HEIC', kind: 'image', limit: 20 * MB },
   'application/pdf': { label: 'PDF', kind: 'file', limit: 10 * MB },
 } as const satisfies Record<string, { label: string; kind: 'image' | 'file'; limit: number }>
 

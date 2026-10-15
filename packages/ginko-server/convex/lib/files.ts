@@ -8,8 +8,21 @@ const SIGNATURES: Record<UploadType, (bytes: Uint8Array) => boolean> = {
   'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
   'image/png': (b) => b[0] === 0x89 && at(b, 1, 'PNG'),
   'image/webp': (b) => at(b, 0, 'RIFF') && at(b, 8, 'WEBP'),
-  'image/heic': (b) => at(b, 4, 'ftyp'),
   'application/pdf': (b) => at(b, 0, '%PDF-'),
+}
+
+/** The brands of an HEIC/HEIF photo (an ISO media file: `ftyp` at byte 4, the main brand at byte 8). */
+const HEIF_BRANDS = ['heic', 'heix', 'heim', 'heis', 'hevc', 'hevx', 'mif1', 'msf1']
+
+/**
+ * An HEIC photo (iPhone) by its name, its declared type or its bytes. The image processing here (sharp) cannot read
+ * one, so it is refused at once with a message that says how to send a JPEG instead.
+ */
+export function isHeic(file: { name?: string; mime?: string; bytes?: Uint8Array }): boolean {
+  if (/\.hei[cf]$/i.test(file.name?.trim() ?? '')) return true
+  if (/^image\/hei[cf](-sequence)?$/i.test((file.mime ?? '').split(';')[0]!.trim())) return true
+  const b = file.bytes
+  return !!b && at(b, 4, 'ftyp') && HEIF_BRANDS.some((brand) => at(b, 8, brand))
 }
 
 /** Why the route refuses a file, as a catalog message (the Studio shows it in the person's language). */
@@ -17,6 +30,7 @@ export const TOO_LARGE = { key: 'errors.uploadTooLarge', params: { imageMb: form
 export const WRONG_TYPE = { key: 'errors.uploadWrongType', params: { types: Object.values(UPLOAD_TYPES).map((t) => t.label).join(', ') } } as const
 export const WRONG_CONTENT = { key: 'errors.uploadWrongContent' } as const
 export const EMPTY = { key: 'errors.uploadEmpty' } as const
+export const HEIC = { key: 'errors.uploadHeicUnreadable' } as const
 
 const NAME_FALLBACK = 'datei'
 const NAME_MAX = 120

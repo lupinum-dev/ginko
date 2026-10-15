@@ -88,6 +88,7 @@ describe('uploads.prepare and POST /upload', () => {
     ['an unsupported type', 'application/zip', 'PK\u0003\u0004 kein Bild', 415, 'errors.uploadWrongType'],
     ['text sent as PNG', 'image/png', 'Dies ist Text, kein PNG.', 415, 'errors.uploadWrongContent'],
     ['an empty file', 'image/jpeg', '', 415, 'errors.uploadEmpty'],
+    ['an iPhone photo in HEIC (sharp here cannot read it)', 'image/heic', '\u0000\u0000\u0000\u0018ftypheic', 415, 'errors.uploadHeicUnreadable'],
     ['an image over 20 MB', 'image/jpeg', jpeg(20 * MB + 1), 413, 'errors.uploadTooLarge'],
   ])('refuses %s and stores nothing; the reason is a catalog key the Studio translates', async (_name, type, content, status, key) => {
     const s = await setup()

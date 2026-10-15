@@ -207,7 +207,7 @@
     "uploadFailed": "Der Upload ist fehlgeschlagen. Bitte versuche es noch einmal.",
     "uploadMissing": "Die hochgeladene Datei fehlt. Bitte lade sie erneut hoch.",
     "uploadRetrying": "Das Bild konnte nicht verarbeitet werden. Wir versuchen es erneut.",
-    "uploadHeicUnreadable": "Dieses HEIC-Foto kann nicht gelesen werden. Bitte speichere es als JPEG oder PNG und lade es erneut hoch.",
+    "uploadHeicUnreadable": "HEIC-Fotos kann die Dateibibliothek nicht lesen. Speichere das Foto als JPEG (auf dem iPhone: Einstellungen › Kamera › Formate › „Maximale Kompatibilität“) und lade es noch einmal hoch.",
     "uploadNotAnImage": "Diese Datei ist kein lesbares Bild.",
     "siteUrlNotAllowed": "Diese Adresse der Website ist nicht erlaubt. Sie muss eine öffentliche https://-Adresse sein."
   },
