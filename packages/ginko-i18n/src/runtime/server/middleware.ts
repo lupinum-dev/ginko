@@ -12,9 +12,11 @@ export default defineEventHandler((event) => {
   const path = url.pathname.slice(c.base.length) || '/'
 
   // One URL per page. vue-router ignores a trailing slash and matches `/EN/about` (rendering it in the
-  // default locale), and `//blog` reads as a protocol-relative URL with the host `blog`.
+  // default locale), and `//blog` reads as a protocol-relative URL with the host `blog`. h3 1 (Nuxt 4) already turns
+  // `//blog` into `/blog` in getRequestURL, so a doubled leading slash is read from the path as requested.
+  const requested = event.path.split('?')[0] ?? ''
   if (!isExcluded(path, c)) {
-    const clean = cleanPath(path, c)
+    const clean = cleanPath(/^[/\\]{2}/.test(requested) && !c.base ? requested : path, c)
     if (clean) return sendRedirect(event, `${c.base}${clean}${url.search}`, 301)
   }
 
