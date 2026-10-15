@@ -91,14 +91,15 @@ export function useImageUploads(o: ImageUploadOptions) {
   let waiting = 0
   let counter = 0
 
-  function handle(files: File[], pos: number): boolean {
+  /** With `replace`, `pos` is a picture the first file replaces once it is ready ("Bild ersetzen"); until then it stays. */
+  function handle(files: File[], pos: number, replace = false): boolean {
     const editor = o.editor()
     if (!editor || !editor.schema.nodes.image) return false
-    for (const file of files) {
+    for (const [i, file] of files.entries()) {
       const refusal = refuseImage(file, t)
       if (refusal) { o.fail(refusal); continue }
       const slot = `upload-${++counter}`
-      if (!startUpload(editor, slot, pos, t('editor.upload.uploading'))) continue
+      if (!startUpload(editor, slot, pos, t('editor.upload.uploading'), replace && i === 0)) continue
       waiting++
       working.value = true
       queue = queue.then(() => run(file, slot, editor)).finally(() => { if (--waiting === 0) working.value = false })

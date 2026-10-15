@@ -2,6 +2,7 @@
 // lose it. The form offers it back ("Restore your unsaved changes?") and never applies it silently.
 // Storage can be blocked or full (private window), so every access is guarded: then there is simply
 // no local copy. Two tabs on the same entry write the same key; the last write wins.
+import { onBeforeUnmount, onMounted, watch } from 'vue'
 import type { Data } from '../utils/content'
 
 export interface LocalDraft {
@@ -15,6 +16,9 @@ export interface LocalDraft {
   fields: Data
   /** An edit: the stored values of those fields the input started from, so a restore brings back only the person's changes. */
   base?: Data
+  /** The entry's area and its title as typed, for the list on Heute (records written before had neither). */
+  brick?: string
+  title?: string
 }
 
 const PREFIX = 'ginko:draft:v1:'
@@ -69,6 +73,19 @@ export function readLocalDraft(key: string, now = Date.now()): LocalDraft | unde
     // No storage, no local copy.
   }
   return undefined
+}
+
+/** This person's unsaved input on this site, newest first, with the target of its key: the list on Heute. */
+export function listLocalDrafts(site: string, user: string, now = Date.now()): (LocalDraft & { target: string })[] {
+  const prefix = localDraftKey(site, user, '')
+  try {
+    return records(now).filter((r) => r.key.startsWith(prefix)).reverse().flatMap((r) => {
+      const record = parse(localStorage.getItem(r.key))
+      return record ? [{ ...record, target: r.key.slice(prefix.length) }] : []
+    })
+  } catch {
+    return []
+  }
 }
 
 export function writeLocalDraft(key: string, record: LocalDraft) {

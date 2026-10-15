@@ -237,6 +237,10 @@
       "near": "Esta entrada ocupa {used} de {limit}.",
       "over": "Esta entrada es demasiado grande: {used} de {limit}. Acórtala unos {over} para poder guardarla."
     },
+    "shrunk": {
+      "text": "“{field}” es mucho más corto que antes: {after} en lugar de {before} caracteres.",
+      "files": "{count, plural, one {# archivo} other {# archivos}} menos."
+    },
     "groupHasGaps": "Falta la traducción o está desactualizada"
   },
   "site": {
@@ -288,7 +292,13 @@
       "nothingNow": "No hay nada introducido por ahora.",
       "removeNamed": "Eliminar {title}",
       "allIn": "Ver todo en «{brick}»",
-      "showExpired": "Mostrar caducadas ({count})"
+      "showExpired": "Mostrar caducadas ({count})",
+      "drafts": {
+        "heading": "Aún sin guardar",
+        "titled": "“{title}” · {time}",
+        "untitled": "{area}: entrada nueva · {time}",
+        "continue": "Seguir editando"
+      }
     },
     "all": {
       "heading": "Contenido",
@@ -415,11 +425,13 @@
       "replace": "Reemplazar",
       "replaceAll": "Reemplazar todo",
       "count": "{current} de {total}",
-      "none": "Sin coincidencias"
+      "none": "Sin coincidencias",
+      "replaced": "{count, plural, one {# coincidencia reemplazada} other {# coincidencias reemplazadas}}"
     },
     "toolbar": {
       "label": "Formato",
-      "blockType": "Tipo de bloque"
+      "blockType": "Tipo de bloque",
+      "more": "Más herramientas"
     },
     "marks": {
       "bold": "Negrita",
@@ -439,7 +451,6 @@
       "blockquote": "Cita",
       "horizontalRule": "Separador",
       "table": "Tabla",
-      "image": "Imagen",
       "codeBlock": "Bloque de código"
     },
     "source": {
@@ -503,10 +514,13 @@
       }
     },
     "link": {
-      "label": "Enlace (dirección web)",
+      "label": "Página o dirección web",
+      "placeholder": "Busca una página o https://…",
+      "ownPages": "Páginas del sitio web",
+      "noPage": "No se encontró ninguna página.",
       "apply": "Aplicar",
       "remove": "Quitar enlace",
-      "refused": "Este enlace no está permitido. Usa una dirección web (https://…), un correo electrónico (mailto:) o un teléfono (tel:)."
+      "refused": "Elige una página de la lista o escribe una dirección web (https://…), un correo electrónico (mailto:) o un teléfono (tel:)."
     },
     "image": {
       "insertTitle": "Insertar imagen",
@@ -523,7 +537,15 @@
       "fromLibrary": "Elegir de la biblioteca de archivos",
       "upload": "Subir imagen",
       "orAddress": "O introduce una dirección web",
-      "missing": "Imagen no encontrada"
+      "missing": "Imagen no encontrada",
+      "descriptionIs": "Descripción: {text}",
+      "descriptionFromFiles": "Descripción de Archivos: {text}",
+      "noDescriptionYet": "Aún sin descripción",
+      "editDescription": "Cambiar descripción",
+      "replace": "Reemplazar imagen",
+      "replaceSubmit": "Reemplazar",
+      "caption": "Pie de foto",
+      "actions": "Imagen"
     },
     "text": {
       "tooLong": "El texto es demasiado largo (máximo {max} caracteres).",
@@ -548,7 +570,8 @@
       "noSettings": "Este bloque no tiene ajustes.",
       "required": "Campos obligatorios",
       "more": "Más ajustes",
-      "remove": "Eliminar"
+      "remove": "Eliminar",
+      "addChild": "Añadir {label}"
     },
     "prop": {
       "optional": "(opcional)",
@@ -859,6 +882,7 @@
     "folderName": "Nombre de la carpeta",
     "createFolder": "Crear",
     "search": "Buscar archivos",
+    "searchAll": "Buscando en todos los archivos",
     "layoutGrid": "Cuadrícula",
     "layoutList": "Lista",
     "upload": "Subir",
@@ -926,7 +950,8 @@
     "picker": {
       "choose": "Elegir de la biblioteca",
       "usePhoto": "Usar esta foto",
-      "useFile": "Usar este archivo"
+      "useFile": "Usar este archivo",
+      "altFromLibrary": "Esta descripción viene de Archivos. Si la cambias aquí, solo se aplica en este lugar."
     }
   },
   "who": {

@@ -5,7 +5,7 @@ import type { Brick, Fields, Json, Locale } from '@lupinum/ginko'
 import { useI18n } from '#imports'
 import type { Entry } from './useSiteData'
 import type { OpError } from './useOps'
-import { changedRoots, changedTextLanguages, ownChangesOver, type Data } from '../utils/content'
+import { changedRoots, changedTextLanguages, ownChangesOver, typedTitle, type Data } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { clearLocalDraft, localDraftKey, readLocalDraft, useLocalDraftWriter, writeLocalDraft, type LocalDraft } from './useLocalDraft'
 import { BLOCKERS, FLUSHERS, type Issue } from '@lupinum/ginko-editor'
@@ -375,7 +375,10 @@ export function useEntryForm(o: EntryFormOptions) {
     const fields: Data = isCreate.value ? copy(draft.value) : Object.fromEntries(changed.value.map((k) => [k, copy(draft.value[k] ?? null)]))
     if (!dirty.value || !Object.keys(fields).length) return clearLocalDraft(key)
     const base = isCreate.value ? undefined : Object.fromEntries(Object.keys(fields).map((k) => [k, copy(baseline.value[k] ?? null)]))
-    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, ...(base ? { base } : {}) })
+    // Area and title name the input on Heute; a single is named by its area.
+    const brick = o.brick()
+    const title = brick.kind === 'collection' ? typedTitle(brick, draft.value, o.main()) : undefined
+    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, brick: o.brickKey(), ...(title ? { title } : {}), ...(base ? { base } : {}) })
   }
   // Typed back to what was there: the next write removes the copy (a save removes it at once, in write()).
   const localWriter = useLocalDraftWriter(() => draft.value, keepLocal)

@@ -10,6 +10,8 @@ import { shownLabel } from '../../../utils/labels'
 import { Button } from '@studio/components/ui/button'
 import { api } from '#convex/api'
 import EntryRemoveDialog, { type EntryUses, type TrashOverflow } from '../../../components/EntryRemoveDialog.vue'
+import LocalDraftList from '../../../components/LocalDraftList.vue'
+import { allAccess } from '../../../composables/useAll'
 
 definePageMeta({ layout: 'site' })
 
@@ -63,6 +65,11 @@ const sections = computed<Section[]>(() => withTasks.value.map(([key, brick]) =>
   const buttons = tasks.filter((t) => t.kind !== 'remove' || !(timed && listed.length <= 10))
   return { key, brick, tasks, buttons, remove, listed }
 }))
+
+/** Unsaved input kept in this browser opens where it was typed: Alles bearbeiten, or a create task's sheet here. */
+const { editable } = allAccess(s)
+const openable = computed(() => editable.value.map(([key]) => key))
+const createTaskOf = (key: string, id: string) => sections.value.find((sec) => sec.key === key)?.tasks.find((t) => t.id === id && t.kind === 'create')
 
 // An owner or admin without quick tasks has nothing to do here: Alles bearbeiten is the place.
 watchEffect(() => {
@@ -288,6 +295,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       <h1 class="text-xl font-semibold tracking-tight">{{ t('nav.quick') }}</h1>
       <p v-if="s.today.value" class="mt-0.5 text-[13px] text-muted-foreground">{{ format.date(s.today.value, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }}</p>
     </header>
+    <LocalDraftList v-if="s.schema.value" :slug="s.slug.value" :schema="s.schema.value" :main="s.main.value" :bricks="openable" :task-of="createTaskOf" @task="(key, task) => start(key, task)" />
     <p v-if="!sections.length && s.schema.value" class="py-6 text-muted-foreground">{{ t('site.quick.nothingForYou') }}</p>
 
     <div class="grid gap-7">

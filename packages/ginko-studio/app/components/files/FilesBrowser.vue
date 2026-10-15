@@ -57,10 +57,14 @@ function setLayout(value: 'grid' | 'list') {
   } catch { /* private window: the choice lasts for this visit */ }
 }
 
-const list = lib.list(() => ({ view: view.value, ...(folder.value ? { folder: folder.value } : {}), search: searchNow.value }))
+// A search looks in every folder: a photo is found wherever it was filed. The views keep their own scope.
+const searching = computed(() => !!searchNow.value.trim())
+const list = lib.list(() => ({ view: view.value, ...(folder.value && !searching.value ? { folder: folder.value } : {}), search: searchNow.value }))
 const wanted = (file: LibFile) => !props.kind || file.kind === props.kind
 const files = computed(() => list.files.value.filter(wanted))
 const folderName = computed(() => lib.folders.value.find((f) => f.id === folder.value)?.name ?? t('files.views.all'))
+/** Where the files shown come from: the open folder or view, or every file while searching. */
+const scope = computed(() => (searching.value && view.value === 'all' ? t('files.searchAll') : folder.value ? folderName.value : t(`files.views.${view.value}`)))
 const inTrash = computed(() => view.value === 'trash')
 
 // A picker filtered to one type can show few files per page: read on while the page looks empty.
@@ -86,6 +90,10 @@ function setView(next: ListView) {
 function setFolder(id: string) {
   view.value = 'all'
   folder.value = id
+  // A search would cover every folder: the folder asked for shows its files.
+  clearTimeout(searchTimer)
+  search.value = ''
+  searchNow.value = ''
   clear()
 }
 
@@ -279,13 +287,15 @@ const emptyText = computed(() => {
 <template>
   <div
     class="relative grid min-h-0 gap-4 md:grid-cols-[13.75rem_minmax(0,1fr)]"
-    :class="panelOpen && desktop ? 'lg:grid-cols-[13.75rem_minmax(0,1fr)_20rem]' : ''"
+    :class="[panelOpen && desktop ? 'lg:grid-cols-[13.75rem_minmax(0,1fr)_20rem]' : '', picker && 'md:h-[55vh] md:grid-rows-[minmax(0,1fr)]']"
     @dragenter="dragenter"
     @dragover="dragover"
     @dragleave="dragleave"
     @drop="drop"
   >
+    <!-- In the picker (from md) the sidebar and the files scroll each on their own: a folder low in the list keeps the files in view. -->
     <FilesSidebar
+      :class="picker && 'md:min-h-0 md:overflow-y-auto'"
       :view="view"
       :folder="folder"
       :folders="lib.folders.value"
@@ -298,7 +308,7 @@ const emptyText = computed(() => {
       @drop="dropOnFolder"
     />
 
-    <div class="grid min-h-0 min-w-0 content-start gap-3">
+    <div class="grid min-h-0 min-w-0 content-start gap-3" :class="picker && 'md:overflow-y-auto md:pr-1'">
       <div class="flex flex-wrap items-center gap-2">
         <div class="relative min-w-40 flex-1">
           <SearchIcon class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
@@ -312,6 +322,7 @@ const emptyText = computed(() => {
         <input ref="input" class="sr-only" type="file" tabindex="-1" aria-hidden="true" :multiple="!picker" :accept="accept" @change="chosenFiles">
       </div>
 
+      <p data-scope class="text-sm font-medium">{{ scope }}</p>
       <p v-if="uploading" class="text-sm font-medium text-muted-foreground" role="status">{{ t('files.uploading') }}</p>
       <p v-if="error" class="text-sm font-medium text-destructive" role="alert">{{ error }}</p>
       <!-- The alert wraps the list: on the <ul> itself the role would replace its list role. -->

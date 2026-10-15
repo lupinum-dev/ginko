@@ -20,6 +20,9 @@ import type { Entry } from '../composables/useSiteData'
 import { hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { opErrorOf } from '../composables/useOps'
+import { isModKey } from '../utils/keys'
+import { shrunkHint, shrunkTexts } from '../utils/shrunk'
+import { refDebounced } from '@vueuse/core'
 
 const props = defineProps<{
   site: string
@@ -42,7 +45,7 @@ const props = defineProps<{
   schema: Schema
 }>()
 const emit = defineEmits<{ close: [] }>()
-const { t, locale: uiLocale } = useI18n()
+const { t, format, locale: uiLocale } = useI18n()
 const shown = (label: LabelText) => shownLabel(label, props.main)
 
 provideSiteRefs(() => props.site, () => props.schema, () => props.main)
@@ -137,6 +140,10 @@ provide(TRANSLATION, {
   hiddenWithout: (leaf) => (hidesUntranslated(props.brick, leaf) ? { title: entryName(), language: languageName(lang.value, uiLocale.value) } : undefined),
 })
 
+/** Long texts that lost most of their length (a slip, or a rewrite): a hint, never a block. After the typing pause, as in Alles bearbeiten. */
+const typed = refDebounced(draft, 300)
+const shrunk = computed(() => (dirty.value ? shrunkTexts(fields.value, baseline.value, typed.value, props.main).map((s) => shrunkHint(s, shown(fields.value[s.key]!.label), { t, format })) : []))
+
 /** A new entry with the same name as one that is already there (e.g. a second "Heute ausgebucht"). */
 const twin = computed(() => {
   if (!isCreate.value || !props.existing?.length) return undefined
@@ -190,6 +197,14 @@ async function save() {
     nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
   }
   await finish(await form.save())
+}
+/** Cmd/Ctrl+S anywhere in the sheet's form saves like the button, never the browser's "Save page as". */
+function onFormKey(event: KeyboardEvent) {
+  if (!isModKey(event, 's')) return
+  event.preventDefault()
+  // Asked "Änderungen verwerfen?": saving is the clear answer, so the question goes and the save runs.
+  confirmClose.value = false
+  save()
 }
 async function keepMine() {
   await finish(await form.keepMine())
@@ -259,7 +274,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 <template>
   <dialog ref="dialog" :class="SHEET_DIALOG" aria-labelledby="sheet-title" @cancel="onCancel" @close="onBrowserClose">
     <ConfigProvider :teleport-to="dialog ?? undefined" :use-id="reka.useId">
-      <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()">
+      <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()" @keydown="onFormKey">
         <header class="flex items-start justify-between gap-3 border-b bg-card pt-4 pb-3 pr-3 pl-5">
           <div class="grid min-w-0 gap-2">
             <div>
@@ -323,8 +338,9 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             <Button type="button" variant="outline" @click="confirmClose = false">{{ t('entry.discard.keepEditing') }}</Button>
           </template>
           <template v-else>
+            <p v-if="shrunk.length" id="sheet-shrunk" class="basis-full text-sm text-muted-foreground">{{ shrunk.join(' ') }}</p>
             <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-            <Button type="submit" class="flex-1" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
+            <Button type="submit" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
             <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>
           </template>
         </footer>

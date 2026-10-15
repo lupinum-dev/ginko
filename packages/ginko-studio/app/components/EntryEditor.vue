@@ -9,6 +9,8 @@ import { draftSlugs, hasTranslation, languageName, leafTranslation, leafValue, m
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
+import { isModKey } from '../utils/keys'
+import { shrunkHint, shrunkTexts } from '../utils/shrunk'
 import { isProposal, opErrorOf } from '../composables/useOps'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { EllipsisIcon } from '@lucide/vue'
@@ -247,6 +249,9 @@ const size = computed(() => {
   return undefined
 })
 
+/** Long texts that lost most of their length since the last save (a slip, or a rewrite): a hint, never a block. */
+const shrunk = computed(() => (dirty.value ? shrunkTexts(fields.value, baseline.value, typed.value, locale.value).map((s) => shrunkHint(s, shown(fields.value[s.key]!.label), { t, format })) : []))
+
 async function save() {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
   if (busy.value || props.removed || (!dirty.value && props.entry)) return
@@ -254,6 +259,12 @@ async function save() {
     if (!waiting.value) savedOnce.value = true
     if (form.created.value) emit('created', form.created.value)
   }
+}
+/** Cmd/Ctrl+S anywhere in the form saves like the button (its guards included), never the browser's "Save page as". */
+function onFormKey(event: KeyboardEvent) {
+  if (!isModKey(event, 's')) return
+  event.preventDefault()
+  save()
 }
 
 async function keepMine() {
@@ -523,7 +534,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <p v-for="line in translationState" :key="line" class="text-sm text-muted-foreground" data-slot="translation-state">{{ line }}</p>
       </header>
 
-      <form ref="formEl" class="grid gap-6" novalidate @submit.prevent="save">
+      <form ref="formEl" class="grid gap-6" novalidate @submit.prevent="save" @keydown="onFormKey">
         <EntryGoneBanner
           v-if="removed && entry && !removingSelf"
           :site="site.slug" :brick-key="brickKey" :entry="entry" :dirty="dirty" :busy="busy"
@@ -565,11 +576,13 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           </template>
         </template>
 
-        <div ref="barEl" class="bar sticky bottom-0 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background py-3">
+        <!-- z-20: above the text toolbar (z-5) and a card's settings button (z-10) that scroll under it; below popovers and the docked phone bar. -->
+        <div ref="barEl" class="bar sticky bottom-0 z-20 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background py-3">
           <!-- The live region must be in the accessibility tree before its text appears, so empty means sr-only (no space), not hidden. -->
           <p :class="['basis-full text-sm empty:sr-only', size?.over ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ size?.text }}</p>
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-          <Button type="submit" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
+          <p v-if="shrunk.length" id="entry-shrunk" class="basis-full text-sm text-muted-foreground">{{ shrunk.join(' ') }}</p>
+          <Button type="submit" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'entry-shrunk' : undefined" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
           <Button v-if="isDraft && !publishing && !removed" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
           <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
           <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>

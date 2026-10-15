@@ -63,7 +63,8 @@
     "unsafeLink": "Link is not allowed (only http, https, mailto, tel or /path).",
     "oneParagraph": "Only one paragraph is allowed here.",
     "tooComplex": "Text is too complex (at most {max} elements).",
-    "componentNotClosed": "The component “{tag}” is not closed: a line with “{close}” is missing after its content."
+    "componentNotClosed": "The component “{tag}” is not closed: a line with “{close}” is missing after its content.",
+    "bracketText": "“[{text}” is neither a link nor an image: a “]” or the address in round brackets is missing. Square brackets as text: \\[ and \\]."
   },
   "component": {
     "or": "{first} or {second}",

@@ -1,12 +1,15 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
+import type { Editor } from '@tiptap/core'
+import { EditorContent } from '@tiptap/vue-3'
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
-import { markRaw, ref } from 'vue'
+import { computed, markRaw, ref } from 'vue'
 import { components } from '@lupinum/ginko-components/registry'
 import { createGinkoEditor, GINKO_ASSETS, useFileImages, type GinkoAssets } from '@lupinum/ginko-editor'
 import ComponentSettings from '../app/components/editor/ComponentSettings.vue'
-import { EDITOR_FILES } from '../app/components/editor/context.ts'
+import { EDITOR_COMPONENTS, EDITOR_FILES } from '../app/components/editor/context.ts'
 import ImageDialog from '../app/components/editor/ImageDialog.vue'
+import MarkdownEditor from '../app/components/editor/MarkdownEditor.vue'
 import GinkoFieldImage from '../app/components/fields/GinkoFieldImage.vue'
 import FileInfoPanel from '../app/components/files/FileInfoPanel.vue'
 import FileRemoveDialog from '../app/components/files/FileRemoveDialog.vue'
@@ -52,6 +55,29 @@ describe('the files list', () => {
     await flushPromises()
     expect(document.body.querySelector('[role="alert"]')?.textContent).toBe('Du hast keinen Zugriff auf diese Seite.')
     expect(text()).not.toContain('Wird geladen')
+  })
+
+  // Wrong behaviour caught: a search while a folder was open looked only in that folder, and nothing said where it looked.
+  test('a search looks in every folder and says so; an open folder shows its name above the files', async () => {
+    let asked!: () => Record<string, unknown>
+    const lib = {
+      slug: ref('restaurant'), canManage: ref(true), folders: ref([{ id: 'd1', name: 'Ausflüge', parent: null }]), missingAlt: ref(null), errorText: String,
+      list: (args: () => Record<string, unknown>) => { asked = args; return { files: ref([]), pending: ref(false), error: ref(null), hasMore: ref(false), moreError: ref(null), more: async () => {} } },
+    }
+    const wrapper = mount(FilesBrowser, { props: { lib: lib as never, mode: 'page', locales: ['de'] }, attachTo: document.body })
+    await wrapper.findAll('nav button').find((b) => b.text() === 'Ausflüge')!.trigger('click')
+    expect(asked()).toMatchObject({ view: 'all', folder: 'd1' })
+    expect(wrapper.get('[data-scope]').text()).toBe('Ausflüge')
+    vi.useFakeTimers()
+    try {
+      await wrapper.get('input[type="search"]').setValue('wald')
+      await vi.advanceTimersByTimeAsync(300)
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(asked()).toEqual({ view: 'all', search: 'wald' })
+    expect(wrapper.get('[data-scope]').text()).toBe('Suche in allen Dateien')
+    wrapper.unmount()
   })
 })
 
@@ -118,12 +144,17 @@ describe('library picker in the image field', () => {
     await flushPromises()
   }
 
-  test('a photo without alt text asks for it, then the chosen file id and alt text go to the field', async () => {
+  // Wrong behaviour caught: the button stayed disabled without saying why.
+  test('a photo without alt text says why it cannot be used yet, then the chosen file id and alt text go to the field', async () => {
     library.altSuggestion = null
     const wrapper = mountField()
     await openAndChoose()
-    expect((button('Dieses Foto verwenden') as HTMLButtonElement).disabled).toBe(true)
+    button('Dieses Foto verwenden')!.click()
+    await flushPromises()
     const alt = document.body.querySelector('#picker-alt') as HTMLInputElement
+    expect([alt.value, alt.getAttribute('aria-invalid'), document.activeElement === alt]).toEqual(['', 'true', true])
+    expect(document.body.querySelector('[role="alert"]')!.textContent).toBe('Beschreibe das Bild kurz, für Menschen, die es nicht sehen.')
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
     alt.value = 'Das Team beim Mittagessen'
     alt.dispatchEvent(new Event('input', { bubbles: true }))
     await flushPromises()
@@ -132,16 +163,20 @@ describe('library picker in the image field', () => {
     expect(wrapper.emitted('update:modelValue')).toEqual([[{ file: 'f1', alt: { de: 'Das Team beim Mittagessen' } }]])
   })
 
-  // Wrong behaviour caught: the library text is copied into the field, so a later fix in the library no longer reaches this use.
-  test('a photo with library text in the field language is chosen at once and the field keeps its own alt empty', async () => {
-    library.alt = { de: 'Aus der Bibliothek' }
-    library.altSuggestion = { de: 'Vorschlag' }
+  // Wrong behaviour caught: a library text (or a suggestion) was used unseen, wrong or not, and went live.
+  // The library text is not copied into the field, so a later fix in the library still reaches this use.
+  test.each([
+    ['library text', { de: 'Aus der Bibliothek' }, { de: 'Vorschlag' }, 'Aus der Bibliothek', { de: '' }],
+    ['suggestion', {}, { de: 'Vorhanden', en: 'Existing' }, 'Vorhanden', { de: 'Vorhanden', en: 'Existing' }],
+  ])('the %s shows in the field before the photo is used', async (_name, alt, suggestion, shown, stored) => {
+    library.alt = alt
+    library.altSuggestion = suggestion
     const wrapper = mountField()
     await openAndChoose()
-    expect(document.body.querySelector('#picker-alt')).toBeNull()
+    expect((document.body.querySelector('#picker-alt') as HTMLInputElement).value).toBe(shown)
     button('Dieses Foto verwenden')!.click()
     await flushPromises()
-    expect(wrapper.emitted('update:modelValue')).toEqual([[{ file: 'f1', alt: { de: '' } }]])
+    expect(wrapper.emitted('update:modelValue')).toEqual([[{ file: 'f1', alt: stored }]])
   })
 
   // Wrong behaviour caught: the field still demands its own text although the library's applies.
@@ -158,15 +193,6 @@ describe('library picker in the image field', () => {
     expect(document.body.querySelector('#t-alt-hint')!.textContent).toBe('Leer lassen, dann gilt die Beschreibung aus den Dateien.')
   })
 
-  test('a photo that already has alt text in the field language is chosen at once with it', async () => {
-    library.altSuggestion = { de: 'Vorhanden', en: 'Existing' }
-    const wrapper = mountField()
-    await openAndChoose()
-    expect(document.body.querySelector('#picker-alt')).toBeNull()
-    button('Dieses Foto verwenden')!.click()
-    await flushPromises()
-    expect(wrapper.emitted('update:modelValue')).toEqual([[{ file: 'f1', alt: { de: 'Vorhanden', en: 'Existing' } }]])
-  })
 })
 
 describe('info panel alt text', () => {
@@ -218,8 +244,12 @@ describe('library pictures in a Markdown text', () => {
     await flushPromises()
   }
 
-  // Wrong behaviour caught: the text gets the file's storage address (it breaks when the file is replaced), or a picture without description.
-  test('"Aus Dateibibliothek wählen" in the image dialog puts the file reference with the library description into the text', async () => {
+  // Wrong behaviour caught: the text gets the file's storage address (it breaks when the file is replaced), or the
+  // library description is copied into the text, unseen and frozen in one language.
+  test.each([
+    ['the library description unchanged', undefined, 'Eins![]($file.f1)\n'],
+    ['an edited description', 'Neu', 'Eins![Neu]($file.f1)\n'],
+  ])('"Aus Dateibibliothek wählen" in the image dialog puts the file reference into the text, with %s', async (_name, typed, markdown) => {
     library.alt = { de: 'Das Team beim Mittagessen' }
     const handle = await createGinkoEditor({ text: 'Eins\n', profile: 'rich', element: document.createElement('div') })
     if (handle.mode !== 'rich') throw new Error('expected rich')
@@ -229,11 +259,115 @@ describe('library pictures in a Markdown text', () => {
     const dialog = mount(ImageDialog, { props: { editor: markRaw(handle.editor), open: true, images, locale: 'de' }, attachTo: document.body })
     await flushPromises()
     await choose('Aus Dateibibliothek wählen')
+    const alt = document.body.querySelector('#picker-alt') as HTMLInputElement
+    expect(alt.value).toBe('Das Team beim Mittagessen')
+    if (typed) { alt.value = typed; alt.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises() }
     button('Dieses Foto verwenden')!.click()
     await flushPromises()
-    expect(await handle.markdown()).toBe('Eins![Das Team beim Mittagessen]($file.f1)\n')
+    expect(await handle.markdown()).toBe(markdown)
     dialog.unmount()
     handle.destroy()
+  })
+
+  // Wrong behaviour caught: "Beschreibung ändern" at a picture with a library description demanded one of its own and
+  // copied the library text into the text, frozen in one language.
+  test.each([
+    ['unchanged', undefined, 'Eins![]($file.f0)\n'],
+    ['edited', 'Neu', 'Eins![Neu]($file.f0)\n'],
+  ])('the description step of a library picture starts from the library text (%s)', async (_name, typed, markdown) => {
+    const described: GinkoAssets = { ...assets, details: (ids) => computed(() => Object.fromEntries(ids.value.map((id) => [id, { url: `https://files.test/${id}.jpg`, name: `${id}.jpg`, size: 1, width: 1, height: 1, alt: { de: 'Hof im Winter' } }]))) }
+    const handle = await createGinkoEditor({ text: 'Eins![]($file.f0)\n', profile: 'rich', element: document.createElement('div') })
+    if (handle.mode !== 'rich') throw new Error('expected rich')
+    const images = useFileImages(described, () => 'Bild nicht gefunden')
+    images.want('$file.f0')
+    await flushPromises()
+    const dialog = mount(ImageDialog, { props: { editor: markRaw(handle.editor), open: false, describe: 5, images, locale: 'de' }, attachTo: document.body })
+    await dialog.setProps({ open: true })
+    await flushPromises()
+    const alt = document.body.querySelector('[role="dialog"] input') as HTMLInputElement
+    expect(alt.value).toBe('Hof im Winter')
+    if (typed) { alt.value = typed; alt.dispatchEvent(new Event('input', { bubbles: true })); await flushPromises() }
+    button('Fertig')!.click()
+    await flushPromises()
+    expect(await handle.markdown()).toBe(markdown)
+    dialog.unmount()
+    handle.destroy()
+  })
+
+  // Wrong behaviour caught: a picture with its own description was told "Diese Beschreibung kommt aus den Dateien".
+  test.each([
+    ['the library\'s', '![]($file.f0)', 'Hof im Winter', 'Diese Beschreibung kommt aus den Dateien. Änderst du sie hier, gilt das nur an dieser Stelle.'],
+    ['its own', '![Hof]($file.f0)', 'Hof', 'Leer lassen, dann gilt die Beschreibung aus den Dateien.'],
+  ])('the description step of a library picture with %s description says where it comes from', async (_name, picture, value, hint) => {
+    const described: GinkoAssets = { ...assets, details: (ids) => computed(() => Object.fromEntries(ids.value.map((id) => [id, { url: `https://files.test/${id}.jpg`, name: `${id}.jpg`, size: 1, width: 1, height: 1, alt: { de: 'Hof im Winter' } }]))) }
+    const handle = await createGinkoEditor({ text: `Eins${picture}\n`, profile: 'rich', element: document.createElement('div') })
+    if (handle.mode !== 'rich') throw new Error('expected rich')
+    const images = useFileImages(described, () => 'Bild nicht gefunden')
+    images.want('$file.f0')
+    await flushPromises()
+    const dialog = mount(ImageDialog, { props: { editor: markRaw(handle.editor), open: false, describe: 5, images, locale: 'de' }, attachTo: document.body })
+    await dialog.setProps({ open: true })
+    await flushPromises()
+    const alt = document.body.querySelector('[role="dialog"] input') as HTMLInputElement
+    expect([alt.value, document.getElementById(alt.getAttribute('aria-describedby')!)?.textContent]).toEqual([value, hint])
+    dialog.unmount()
+    handle.destroy()
+  })
+
+  // Wrong behaviour caught: a selected picture offered nothing (a swap meant delete and insert again), or a replace added
+  // a second picture or kept the old description with the new photo.
+  test.each([
+    ['its library description', 'Eins ![]($file.f0) zwei\n', 'Beschreibung aus den Dateien: Hof im Winter'],
+    ['its own description', 'Eins ![Hof]($file.f0) zwei\n', 'Beschreibung: Hof'],
+  ])('a selected picture shows %s; "Bild ersetzen" puts a library photo in its place, in one step', async (_name, source, shown) => {
+    library.alt = { de: 'Das Team beim Mittagessen' }
+    const described: GinkoAssets = { ...assets, details: (ids) => computed(() => Object.fromEntries(ids.value.map((id) => [id, { url: `https://files.test/${id}.jpg`, name: `${id}.jpg`, size: 1, width: 1, height: 1, alt: { de: id === 'f0' ? 'Hof im Winter' : 'Das Team beim Mittagessen' } }]))) }
+    const wrapper = mount(MarkdownEditor, {
+      props: { id: 't', field: { type: 'markdown', label: 'Text', profile: 'rich' } as never, modelValue: source, invalid: false, contentLocale: 'de' },
+      global: { provide: { [GINKO_ASSETS as symbol]: described } }, attachTo: document.body,
+    })
+    await vi.waitFor(() => expect(document.body.querySelector('.ginko-editor img')).not.toBeNull())
+    const editor = wrapper.findComponent(EditorContent).props('editor') as Editor
+    let pos = -1
+    editor.state.doc.descendants((node, at) => { if (node.type.name === 'image') pos = at })
+    editor.commands.setNodeSelection(pos)
+    editor.commands.focus()
+    await vi.waitFor(() => expect(document.body.querySelector('[role="toolbar"][aria-label="Bild"]')?.textContent).toContain(shown))
+    button('Bild ersetzen')!.click()
+    await vi.waitFor(() => expect(document.body.querySelector('[role="dialog"] h2')?.textContent).toBe('Bild ersetzen'))
+    let steps = 0
+    editor.on('transaction', ({ transaction }) => { if (transaction.docChanged) steps++ })
+    await choose('Aus Dateibibliothek wählen')
+    button('Dieses Foto verwenden')!.click()
+    await vi.waitFor(() => expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual(['Eins ![]($file.f1) zwei\n']))
+    expect(steps).toBe(1)
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: "Bildunterschrift" showed in a rich text, which cannot hold the site's figure block, and did
+  // nothing there; in a page text it turns the picture into the figure, with its description, and opens its settings.
+  test.each([
+    ['rich', false],
+    ['page', true],
+  ])('a selected picture in a %s text offers "Bildunterschrift": %s', async (profile, offered) => {
+    const wrapper = mount(MarkdownEditor, {
+      props: { id: 't', field: { type: 'markdown', label: 'Text', profile } as never, modelValue: 'Eins\n\n![Hof]($file.f0)\n', invalid: false, contentLocale: 'de' },
+      global: { provide: { [GINKO_ASSETS as symbol]: assets, [EDITOR_COMPONENTS as symbol]: () => components } }, attachTo: document.body,
+    })
+    await vi.waitFor(() => expect(document.body.querySelector('.ginko-editor [role="textbox"]')).not.toBeNull())
+    const editor = wrapper.findComponent(EditorContent).props('editor') as Editor
+    let pos = -1
+    editor.state.doc.descendants((node, at) => { if (node.type.name === 'image') pos = at })
+    editor.commands.setNodeSelection(pos)
+    editor.commands.focus()
+    await vi.waitFor(() => expect(document.body.querySelector('[role="toolbar"][aria-label="Bild"]')?.textContent).toContain('Beschreibung: Hof'))
+    expect(button('Bildunterschrift') !== undefined).toBe(offered)
+    if (offered) {
+      button('Bildunterschrift')!.click()
+      await vi.waitFor(() => expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('Bildunterschrift'))
+      await vi.waitFor(() => expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual(['Eins\n\n::figure{src="$file.f0" alt="Hof"}\n::\n']))
+    }
+    wrapper.unmount()
   })
 
   // Wrong behaviour caught: the figure stores an address instead of the library file, or the description typed in the picker is lost.

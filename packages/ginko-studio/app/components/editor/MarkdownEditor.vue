@@ -9,7 +9,7 @@ import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
 import { coreMessage, effectiveAlt, effectiveMax, effectiveProfile, type Msg } from '@lupinum/ginko/internal'
 import {
-  BLOCKERS, docProblems, FLUSHERS, GINKO_ASSETS, linkCardTag, makeLinkCard, missingRequired, slashItems, SLASH_COMPONENT_GROUP, sourceProblems, useFileImages, useGinkoEditor,
+  BLOCKERS, docProblems, figureTag, FLUSHERS, GINKO_ASSETS, linkCardTag, makeFigure, makeLinkCard, missingRequired, slashItems, SLASH_COMPONENT_GROUP, sourceProblems, useFileImages, useGinkoEditor,
   type DocProblem, type SlashItem, type SourceProblem,
 } from '@lupinum/ginko-editor'
 import { GripVertical } from '@lucide/vue'
@@ -25,11 +25,13 @@ import EditorBubble from './EditorBubble.vue'
 import EditorToolbar from './EditorToolbar.vue'
 import FindBar from './FindBar.vue'
 import { createSlashState, studioExtensions } from './extensions.ts'
+import ImageBubble from './ImageBubble.vue'
 import ImageDialog from './ImageDialog.vue'
 import SlashMenu from './SlashMenu.vue'
 import SourceToggle from './SourceToggle.vue'
 import { useImageUploads } from './useImageUploads.ts'
 import { useStudioSite } from '../../utils/labels'
+import { isModKey } from '../../utils/keys'
 
 const props = defineProps<{
   id: string; field: Extract<Field, { type: 'markdown' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string
@@ -71,7 +73,14 @@ const findOpen = ref(false)
 const dragHandle = canHover()
 /** Position of an image that waits for its description (the dialog then asks for the description only). */
 const describePos = ref<number | null>(null)
-watch(imageOpen, (isOpen) => { if (!isOpen) describePos.value = null })
+/** Position of an image that a new picture replaces ("Bild ersetzen"). */
+const replacePos = ref<number | null>(null)
+watch(imageOpen, (isOpen) => { if (!isOpen) { describePos.value = null; replacePos.value = null } })
+function openImage(mode: { describe?: number; replace?: number }) {
+  describePos.value = mode.describe ?? null
+  replacePos.value = mode.replace ?? null
+  imageOpen.value = true
+}
 const slash = reactive(createSlashState())
 const bus = createSettingsBus()
 // The core names the entries of the built-in blocks in German; the Studio shows them in the person's language, so the
@@ -86,7 +95,7 @@ const items = () => slashItems({
   profile: profile.value,
   components: registry?.(),
   locale: locale.value,
-  pickImage: () => { describePos.value = null; imageOpen.value = true },
+  pickImage: () => { openImage({}) },
   // A component whose example leaves a required prop empty: select it and ask for those props at once.
   onNeedsProps: ({ editor: target, pos, missing }) => { target.commands.setNodeSelection(pos); bus.request = { pos, missing } },
 }).map(localized)
@@ -104,11 +113,20 @@ const described = (src: string) => Boolean(props.contentLocale && effectiveAlt(u
 const uploads = useImageUploads({
   id: () => props.id,
   editor: () => editor.value,
-  describe: (pos) => { describePos.value = pos; imageOpen.value = true },
+  describe: (pos) => { openImage({ describe: pos }) },
   fail: (message) => toast.show(message, { tone: 'err' }),
 })
-/** "Bild hochladen" in the image dialog: the picture goes in at the cursor, like a dropped one. */
-const uploadAtCursor = assets ? (file: File) => { const current = editor.value; if (current) uploads.handle([file], current.state.selection.from) } : undefined
+/**
+ * "Bild hochladen" in the image dialog: the picture goes in at the cursor, like a dropped one, and asks for its
+ * description when it is ready. With `replace` it takes that picture's place once it is ready; until then, and when the
+ * upload fails, the old picture stays.
+ */
+const uploadAt = assets
+  ? (file: File, replace?: number) => {
+      const current = editor.value
+      if (current) uploads.handle([file], replace ?? current.state.selection.from, replace !== undefined)
+    }
+  : undefined
 
 /** A bare address pasted on an empty line: the chip near the caret offers a link card (when the site has one). */
 const cardTag = computed(() => linkCardTag(registry?.()))
@@ -244,12 +262,32 @@ onBeforeUnmount(() => { blockers?.delete(`${props.id}-max`); blockers?.delete(`$
 function fix(problem: DocProblem) {
   const current = editor.value
   if (!current) return
-  if (problem.kind === 'image') { describePos.value = problem.pos; imageOpen.value = true; return }
+  if (problem.kind === 'image') { openImage({ describe: problem.pos }); return }
   const node = current.state.doc.nodeAt(problem.pos)
   if (!node) return
   current.commands.setNodeSelection(problem.pos)
   const registered = registry?.()
   bus.request = { pos: problem.pos, missing: registered ? missingRequired(registered, String(node.attrs.tag), node.attrs.props) : [] }
+}
+
+// --- a picture with a caption: the site's figure block ------------------------------------------------------------
+// Only a text that takes blocks (the page profile) can hold the figure: elsewhere the editor has no component node.
+const captionTag = computed(() => (editor.value && 'component' in editor.value.schema.nodes ? figureTag(registry?.()) : undefined))
+/** "Bildunterschrift" at a picture: it becomes the site's figure block, whose settings open for the caption. */
+function toFigure(pos: number) {
+  const current = editor.value
+  const registered = registry?.()
+  const tag = captionTag.value
+  const image = current?.state.doc.nodeAt(pos)
+  if (!current || !registered || !tag || image?.type.name !== 'image') return
+  // The block's description is its own text (it has no library fallback): the picture's own, else the library's.
+  const own = String(image.attrs.alt ?? '').trim()
+  const alt = own || (props.contentLocale ? effectiveAlt(undefined, fileImages?.file(String(image.attrs.src ?? ''))?.alt, props.contentLocale) : '')
+  const at = makeFigure(current, pos, tag, registered, alt)
+  const figure = at === undefined ? undefined : current.state.doc.nodeAt(at)
+  if (at === undefined || !figure) return
+  current.commands.setNodeSelection(at)
+  bus.request = { pos: at, missing: missingRequired(registered, tag, figure.attrs.props) }
 }
 
 // --- the chip for a pasted address ---------------------------------------------------------------------------------
@@ -281,7 +319,7 @@ const cardLabel = computed(() => { const label = cardTag.value ? registry?.()?.[
 
 // Ctrl/Cmd+F inside the field opens find and replace instead of the browser's page search.
 function onFrameKey(event: KeyboardEvent) {
-  if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'f') { event.preventDefault(); findOpen.value = true }
+  if (isModKey(event, 'f')) { event.preventDefault(); findOpen.value = true }
 }
 
 // --- phone: the toolbar above the keyboard -------------------------------------------------------------------------
@@ -325,7 +363,7 @@ const frame = 'relative rounded-md border border-input bg-background transition-
 </script>
 
 <template>
-  <!-- minmax(0, 1fr): the toolbar scrolls inside the frame instead of making the frame (and the page) wider than the screen. -->
+  <!-- minmax(0, 1fr): the frame (and the page) never gets wider than its column; the toolbar fits its own width. -->
   <div class="grid grid-cols-[minmax(0,1fr)] gap-1.5">
     <!-- For reading only: the text as the editor shows it, or as written when it cannot show it. -->
     <p v-if="readonly && mode === 'source'" :id="id" class="font-mono text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">{{ sourceText }}</p>
@@ -366,9 +404,15 @@ const frame = 'relative rounded-md border border-input bg-background transition-
         <GripVertical class="size-4 text-muted-foreground" aria-hidden="true" />
       </DragHandle>
       <EditorBubble :editor="editor" :profile="profile" @link="linkOpen = true" />
-      <ImageDialog
-        v-if="'image' in editor.schema.nodes" v-model:open="imageOpen" :editor="editor" :describe="describePos" :images="fileImages" :locale="contentLocale ?? ''" :upload="uploadAtCursor"
-      />
+      <template v-if="'image' in editor.schema.nodes">
+        <ImageBubble
+          :editor="editor" :images="fileImages" :locale="contentLocale ?? ''" :caption="captionTag !== undefined"
+          @describe="openImage({ describe: $event })" @replace="openImage({ replace: $event })" @caption="toFigure"
+        />
+        <ImageDialog
+          v-model:open="imageOpen" :editor="editor" :describe="describePos" :replace="replacePos" :images="fileImages" :locale="contentLocale ?? ''" :upload="uploadAt"
+        />
+      </template>
       <SlashMenu :state="slash" />
       <Button
         v-if="chip && cardTag" type="button" variant="secondary" size="sm" class="absolute z-10 shadow-md [@media(pointer:coarse)]:h-11"
@@ -409,6 +453,8 @@ const frame = 'relative rounded-md border border-input bg-background transition-
 .ginko-editor :deep(hr) { margin: 1em 0; border: 0; border-top: 1px solid var(--border); }
 .ginko-editor :deep(hr.ProseMirror-selectednode) { border-top-color: var(--ring); }
 .ginko-editor :deep(img) { max-width: 100%; height: auto; }
+/* A selected picture (with a library file the node view's span is selected, else the img itself). */
+.ginko-editor :deep(:is(.ginko-image.ProseMirror-selectednode img, img.ProseMirror-selectednode)) { outline: 2px solid var(--ring); outline-offset: 2px; }
 .ginko-editor :deep(table) { margin: 0.75em 0; border-collapse: collapse; table-layout: fixed; width: 100%; }
 .ginko-editor :deep(th), .ginko-editor :deep(td) { border: 1px solid var(--border); padding: 0.25rem 0.5rem; text-align: left; vertical-align: top; }
 .ginko-editor :deep(th) { background: var(--muted); font-weight: 600; }

@@ -237,6 +237,10 @@
       "near": "This entry uses {used} of {limit}.",
       "over": "This entry is too large: {used} of {limit}. Shorten it by about {over} to save it."
     },
+    "shrunk": {
+      "text": "“{field}” is much shorter than before: {after} instead of {before} characters.",
+      "files": "{count, plural, one {# file} other {# files}} fewer."
+    },
     "groupHasGaps": "Translation missing or outdated"
   },
   "site": {
@@ -288,7 +292,13 @@
       "nothingNow": "Nothing entered right now.",
       "removeNamed": "Remove {title}",
       "allIn": "See all in “{brick}”",
-      "showExpired": "Show expired ({count})"
+      "showExpired": "Show expired ({count})",
+      "drafts": {
+        "heading": "Not saved yet",
+        "titled": "“{title}” · {time}",
+        "untitled": "{area}: New entry · {time}",
+        "continue": "Continue editing"
+      }
     },
     "all": {
       "heading": "Content",
@@ -415,11 +425,13 @@
       "replace": "Replace",
       "replaceAll": "Replace all",
       "count": "{current} of {total}",
-      "none": "No matches"
+      "none": "No matches",
+      "replaced": "{count, plural, one {Replaced # match} other {Replaced # matches}}"
     },
     "toolbar": {
       "label": "Formatting",
-      "blockType": "Block type"
+      "blockType": "Block type",
+      "more": "More tools"
     },
     "marks": {
       "bold": "Bold",
@@ -439,7 +451,6 @@
       "blockquote": "Quote",
       "horizontalRule": "Divider",
       "table": "Table",
-      "image": "Image",
       "codeBlock": "Code block"
     },
     "source": {
@@ -503,10 +514,13 @@
       }
     },
     "link": {
-      "label": "Link (web address)",
+      "label": "Page or web address",
+      "placeholder": "Search a page or https://…",
+      "ownPages": "Website pages",
+      "noPage": "No page found.",
       "apply": "Apply",
       "remove": "Remove link",
-      "refused": "This link is not allowed. Use a web address (https://…), an email address (mailto:) or a phone number (tel:)."
+      "refused": "Choose a page from the list, or enter a web address (https://…), an email address (mailto:) or a phone number (tel:)."
     },
     "image": {
       "insertTitle": "Insert image",
@@ -523,7 +537,15 @@
       "fromLibrary": "Choose from Files library",
       "upload": "Upload image",
       "orAddress": "Or enter a web address",
-      "missing": "Image not found"
+      "missing": "Image not found",
+      "descriptionIs": "Description: {text}",
+      "descriptionFromFiles": "Description from Files: {text}",
+      "noDescriptionYet": "No description yet",
+      "editDescription": "Edit description",
+      "replace": "Replace image",
+      "replaceSubmit": "Replace",
+      "caption": "Caption",
+      "actions": "Image"
     },
     "text": {
       "tooLong": "The text is too long (at most {max} characters).",
@@ -548,7 +570,8 @@
       "noSettings": "This block has no settings.",
       "required": "Required fields",
       "more": "More settings",
-      "remove": "Remove"
+      "remove": "Remove",
+      "addChild": "Add {label}"
     },
     "prop": {
       "optional": "(optional)",
@@ -859,6 +882,7 @@
     "folderName": "Folder name",
     "createFolder": "Create",
     "search": "Search files",
+    "searchAll": "Searching all files",
     "layoutGrid": "Grid",
     "layoutList": "List",
     "upload": "Upload",
@@ -926,7 +950,8 @@
     "picker": {
       "choose": "Choose from library",
       "usePhoto": "Use this photo",
-      "useFile": "Use this file"
+      "useFile": "Use this file",
+      "altFromLibrary": "This description comes from Files. A change here applies to this place only."
     }
   },
   "who": {

@@ -17,5 +17,11 @@ export const fieldsText = (use: { paths: string[]; fieldLabels: (Label | null)[]
 /** The drag payload that moves files into a folder. */
 export const DRAG_TYPE = 'application/x-ginko-files'
 
-/** The description that a picture in a Markdown text carries itself: the picker's own text, else the library's. */
+/** The description a component's `alt` prop stores (it has no library fallback): the picker's own text, else the library's. */
 export const textAltOf = (chosen: Chosen, locale: string) => chosen.alt?.[locale]?.trim() || chosen.libraryAlt || ''
+
+/**
+ * The description a place keeps as its own: what was typed, or nothing when it is the library's text (that applies
+ * anyway, in every language, and a later fix in Files still reaches this place).
+ */
+export const ownAlt = (typed: string, library: string) => (typed.trim() === library.trim() ? '' : typed.trim())

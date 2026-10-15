@@ -8,7 +8,7 @@
 // storage; a batch stays under a mutation's limits.
 import { readFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
-import { byteSize, entryBytes, markdownTrees, routeUrls, SITE_BUDGET, urlClashes, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
+import { byteSize, entryBytes, entryLinkRefs, markdownTrees, routeUrls, SITE_BUDGET, urlClashes, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
 import type { Runner } from './local.ts'
 import { CliError, isObject, parseExport, type ExportEntry, type SiteExport } from './model.ts'
 import { english, explainRejected, kib } from './report.ts'
@@ -67,10 +67,17 @@ async function readFileOf(dir: string, file: SiteExport['files'][number]): Promi
   return bytes
 }
 
-/** The IDs the export's entries are referenced by in other entries' data: only these need a new ID there. */
+/**
+ * The IDs the export's entries are referenced by in other entries' data, as a whole value (a `ref` field) or as a link in
+ * a text (`[Anna]($authors.<id>)`): only these need a new ID there. Every text value is looked at, which only overestimates.
+ */
 function referencedIds(entries: ExportEntry[], ids: Map<string, string>): { from: string; to: string }[] {
-  const text = JSON.stringify(entries.map((e) => e.data))
-  return [...ids].filter(([exported]) => text.includes(JSON.stringify(exported))).map(([from, to]) => ({ from, to }))
+  const linked = new Set<string>()
+  const text = JSON.stringify(entries.map((e) => e.data), (_key, value: unknown) => {
+    if (typeof value === 'string') for (const ref of entryLinkRefs(value)) linked.add(ref)
+    return value
+  })
+  return [...ids].filter(([exported]) => linked.has(exported) || text.includes(JSON.stringify(exported))).map(([from, to]) => ({ from, to }))
 }
 
 /** A catalog message read from the platform's JSON; parameters that are not text, numbers or messages are left out. */

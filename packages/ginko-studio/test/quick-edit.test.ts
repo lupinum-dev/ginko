@@ -7,10 +7,12 @@ import { expect, test, vi } from 'vitest'
 import { collection, defineSite, f } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
+import AllPage from '../app/pages/s/[site]/all/index.vue'
 import QuickPage from '../app/pages/s/[site]/index.vue'
+import { localDraftKey, writeLocalDraft } from '../app/composables/useLocalDraft'
 
-const { computed, defineComponent, h, nextTick, reactive, ref, Suspense, watch, watchEffect } = vue
-Object.entries({ computed, nextTick, reactive, ref, watch, watchEffect, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
+const { computed, defineComponent, h, nextTick, onMounted, reactive, ref, Suspense, watch, watchEffect } = vue
+Object.entries({ computed, nextTick, onMounted, reactive, ref, watch, watchEffect, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 const schema = serializeSchema(defineSite({
   site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
@@ -20,7 +22,7 @@ const schema = serializeSchema(defineSite({
       label: 'Hinweise', max: 20, order: 'manual',
       fields: { text: f.text('Text'), until: f.date('Gilt bis', { optional: true }) },
       visible: { mode: 'until', field: 'until' },
-      tasks: [{ id: 'remove', label: 'Hinweis entfernen', kind: 'remove' }],
+      tasks: [{ id: 'remove', label: 'Hinweis entfernen', kind: 'remove' }, { id: 'add', label: 'Hinweis hinzufügen', kind: 'create' }],
     }),
   },
 }))
@@ -31,10 +33,13 @@ vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})
 vi.stubGlobal('navigateTo', () => {})
 vi.stubGlobal('useToast', () => ({ show: () => {} }))
+let manager = false
 vi.stubGlobal('useSiteData', async () => ({
   slug: ref('restaurant'), schema: ref(schema), site: ref({ name: 'Restaurant' }), main: ref('de'), today: ref('2026-10-15'),
-  isManager: ref(false), may: () => true, bricks: computed(() => Object.entries(schema.bricks)),
+  isManager: ref(manager), may: () => true, bricks: computed(() => Object.entries(schema.bricks)),
 }))
+vi.stubGlobal('useRoute', () => ({ query: {} }))
+vi.stubGlobal('useConvexAuth', () => ({ user: ref({ id: 'u1' }) }))
 vi.stubGlobal('useKeptEntry', () => ({ entry: ref(undefined), removed: ref(false) }))
 vi.stubGlobal('useConvexQuery', (fn: unknown) => ({
   data: ref(String(fn) === 'entries.ofBricks' ? listed : undefined),
@@ -90,4 +95,54 @@ test.each([
   await nextTick()
   expect(document.activeElement).toBe(wrapper.get('ul').element)
   wrapper.unmount()
+})
+
+// Wrong behaviour caught: after a crash or reload the unsaved input waited on this device, but only the entry itself
+// offered it, so people had to remember what they had been editing. Another person's or site's input must not show.
+test('Heute lists this person\'s unsaved input on this site, newest first, and each row continues where it was typed', async () => {
+  listed = []
+  const now = Date.now()
+  const draft = (site: string, user: string, target: string, minutesAgo: number, extra: { brick?: string; title?: string }) =>
+    writeLocalDraft(localDraftKey(site, user, target), { v: 1, savedAt: now - minutesAgo * 60_000, baseRev: 1, locale: 'de', fields: { text: { de: 'x' } }, ...extra })
+  draft('restaurant', 'u1', 'e7', 30, { brick: 'notices', title: 'Betriebsurlaub' })
+  draft('restaurant', 'u1', 'task:notices.add', 5, { brick: 'notices' })
+  draft('restaurant', 'u2', 'e8', 1, { brick: 'notices', title: 'Fremde Eingabe' })
+  draft('andere-seite', 'u1', 'e9', 1, { brick: 'notices', title: 'Andere Website' })
+  draft('restaurant', 'u1', 'e10', 15 * 24 * 60, { brick: 'notices', title: 'Zu alt' })
+  try {
+    const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
+      global: { stubs: { TaskSheet: { name: 'TaskSheet', props: ['task', 'brickKey'], template: '<div />' }, PickSheet: true, I18nT: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    })
+    await flushPromises()
+    const section = wrapper.get('section[aria-labelledby="local-drafts"]')
+    expect(section.get('h2').text()).toBe('Noch nicht gespeichert')
+    const rows = section.findAll('li')
+    expect(rows.map((li) => li.find('span').text().replace(/ · .*/, ''))).toEqual(['Hinweise: Neuer Eintrag', '„Betriebsurlaub“'])
+    expect(rows[1]!.get('a').attributes('href')).toBe('/s/restaurant/all/notices/e7')
+    await rows[0]!.get('button').trigger('click')
+    expect(wrapper.findComponent({ name: 'TaskSheet' }).props()).toMatchObject({ brickKey: 'notices', task: { id: 'add' } })
+  } finally {
+    localStorage.clear()
+  }
+})
+
+// Wrong behaviour caught: an owner or admin of a site without quick tasks is sent from Heute to Alles bearbeiten, so they
+// never saw the unsaved input of the entries they edit there.
+test('Alles bearbeiten lists the unsaved input too; input typed in a quick task\'s sheet stays on Heute', async () => {
+  manager = true
+  const draft = (target: string, extra: { brick?: string; title?: string }) =>
+    writeLocalDraft(localDraftKey('restaurant', 'u1', target), { v: 1, savedAt: Date.now(), baseRev: 1, locale: 'de', fields: { text: { de: 'x' } }, ...extra })
+  draft('e7', { brick: 'notices', title: 'Betriebsurlaub' })
+  draft('task:notices.add', { brick: 'notices' })
+  try {
+    const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(AllPage) }) }), {
+      global: { stubs: { AllShell: { template: '<div><slot /></div>' }, AllNav: true, RemovedList: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    })
+    await flushPromises()
+    const rows = wrapper.get('section[aria-labelledby="local-drafts"]').findAll('li')
+    expect(rows.map((li) => [li.find('span').text().replace(/ · .*/, ''), li.get('a').attributes('href')])).toEqual([['„Betriebsurlaub“', '/s/restaurant/all/notices/e7']])
+  } finally {
+    localStorage.clear()
+    manager = false
+  }
 })

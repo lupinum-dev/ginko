@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 // The slash menu entries: which ones a profile offers, the filter, and that an inserted component survives the trip to Markdown.
 import { components } from '@lupinum/ginko-components/registry'
-import type { MarkdownProfile } from '@lupinum/ginko/internal'
+import { f } from '@lupinum/ginko'
+import { defineComponents, type MarkdownProfile } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
 import { describe, expect, test } from 'vitest'
 import { createGinkoEditor, filterSlashItems, slashItems, toggleTaskList } from '../src/core/index.ts'
@@ -47,6 +48,29 @@ describe('slashItems', () => {
     expect(callout.attrs!.props).toEqual({ type: 'info' })
     expect(callout.content).toEqual([{ type: 'paragraph', attrs: { props: {}, bare: true, placeholder: 'Hier steht der Hinweis.' } }])
     expect(handle.editor.state.selection.$from.parent.attrs.placeholder).toBe('Hier steht der Hinweis.')
+    handle.destroy()
+  })
+
+  // Wrong behaviour caught: a site's own blocks without an editor example (a gallery, a figure) were missing from the
+  // menu without a trace ("Nichts gefunden"), so they could not be inserted at all.
+  test('a block without an example is listed and inserts its bare tag; one with a required prop asks for it', async () => {
+    const registry = defineComponents({
+      gallery: { kind: 'block', label: 'Galerie', describe: 'Bilder nebeneinander', props: {}, children: ['figure'] },
+      figure: { kind: 'block', label: 'Abbildung', describe: 'Ein Bild', props: { src: f.image('Bild'), caption: f.text('Bildunterschrift', { optional: true, max: 200 }) } },
+    })
+    const items = slashItems({ profile: 'page', components: registry })
+    expect(items.filter((i) => i.id.startsWith('component:')).map((i) => i.id)).toEqual(['component:gallery', 'component:figure'])
+    const handle = await createGinkoEditor({ text: '', profile: 'page', components: registry, element: document.createElement('div') })
+    if (handle.mode !== 'rich') throw new Error('expected rich')
+    const asked: string[][] = []
+    const withAsk = slashItems({ profile: 'page', components: registry, onNeedsProps: ({ missing }) => { asked.push(missing) } })
+    await withAsk.find((i) => i.id === 'component:gallery')!.run(handle.editor)
+    expect(await handle.markdown()).toBe('::gallery\n::')
+    expect(asked).toEqual([])
+    handle.editor.commands.setTextSelection(handle.editor.state.doc.content.size)
+    handle.editor.commands.insertContent({ type: 'paragraph' })
+    await withAsk.find((i) => i.id === 'component:figure')!.run(handle.editor)
+    expect(asked).toEqual([['src']])
     handle.destroy()
   })
 

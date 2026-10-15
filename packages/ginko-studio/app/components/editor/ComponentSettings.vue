@@ -66,7 +66,10 @@ function pick(key: string, field: PropFieldType, picked: { src: string; alt: str
 
 <template>
   <div class="grid gap-4">
-    <h2 :id="titleId" class="text-sm font-semibold">{{ def ? labelText(def.label) : tag }}</h2>
+    <div class="grid gap-1">
+      <h2 :id="titleId" class="text-sm font-semibold">{{ def ? labelText(def.label) : tag }}</h2>
+      <p v-if="def" class="text-xs text-muted-foreground">{{ labelText(def.describe) }}</p>
+    </div>
 
     <p v-if="!fields.length" class="text-sm text-muted-foreground">{{ t('editor.block.noSettings') }}</p>
 

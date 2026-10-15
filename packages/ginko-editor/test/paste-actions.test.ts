@@ -6,7 +6,7 @@ import { Slice } from '@tiptap/pm/model'
 import { TextSelection } from '@tiptap/pm/state'
 import { describe, expect, test, vi } from 'vitest'
 import {
-  cancelUpload, createGinkoEditor, docProblems, finishUpload, isUploading, linkCardTag, makeLinkCard, sourceProblems, startUpload,
+  cancelUpload, createGinkoEditor, docProblems, figureTag, finishUpload, isUploading, linkCardTag, makeFigure, makeLinkCard, sourceProblems, startUpload,
   type GinkoEditorOptions, type GinkoRichEditor,
 } from '../src/core/index.ts'
 
@@ -78,6 +78,26 @@ describe('a pasted address', () => {
   test('a registry without a component that takes just an address has no link card', () => {
     expect(linkCardTag(undefined)).toBeUndefined()
     expect(linkCardTag({ box: { kind: 'block', label: 'Box', describe: '', props: {} } } as never)).toBeUndefined()
+  })
+})
+
+describe('a picture with a caption', () => {
+  // Wrong behaviour caught: turning a picture into the figure block left an empty paragraph behind, lost the text around
+  // a picture inside a line, or put the block somewhere else.
+  test.each([
+    ['alone in its paragraph', 'Eins\n\n![Hof](/hof.png)\n\nZwei\n', 'Eins\n\n::figure{src="/hof.png" alt="Hof"}\n::\n\nZwei\n'],
+    ['at the start of a line', '![Hof](/hof.png) danach\n', '::figure{src="/hof.png" alt="Hof"}\n::\n\ndanach\n'],
+    ['at the end of a line', 'davor ![Hof](/hof.png)\n', 'davor\n\n::figure{src="/hof.png" alt="Hof"}\n::\n'],
+    ['inside a line', 'davor ![Hof](/hof.png) danach\n', 'davor\n\n::figure{src="/hof.png" alt="Hof"}\n::\n\ndanach\n'],
+  ])('a picture %s becomes the figure block at its place', async (_name, text, markdown) => {
+    const handle = await open(text, 'page')
+    const tag = figureTag(components)
+    expect(tag).toBe('figure')
+    let pos = -1
+    handle.editor.state.doc.descendants((node, at) => { if (node.type.name === 'image') pos = at })
+    const at = makeFigure(handle.editor, pos, tag!, components, 'Hof')
+    expect(handle.editor.state.doc.nodeAt(at!)?.attrs.tag).toBe('figure')
+    expect(await handle.markdown()).toBe(markdown)
   })
 })
 

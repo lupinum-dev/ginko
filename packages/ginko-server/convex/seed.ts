@@ -4,7 +4,7 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Fields } from '@lupinum/ginko'
-import { byteSize, carryPrints, entryBytes, fitsBudget, remapFileIds, routeUrls, stableJson, urlClashes, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
+import { carryPrints, entryBytes, fitsBudget, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -429,11 +429,12 @@ export const isImportAllowed = internalQuery({
 
 /**
  * Import step 3 (after the last batch): entries got new IDs, so the entry references in `data` (`ref` fields, also in list
- * rows) still name the exported IDs. This rewrites every ID found in `ids` (exported ID → new ID); unknown IDs stay.
- * `ids` is a list of pairs, not an object: Convex refuses an object with more than 1024 fields. Entry references live
- * only in `data`, so nothing else needs to follow, but the entry's `bytes` and the site's budget do (the IDs differ in
- * length). One call handles one page and names the entries it changed; the CLI repeats it with the returned `cursor`
- * until `done`, and once per part of the pairs when they do not fit one call.
+ * rows, and links in Markdown texts, `[Anna]($authors.<id>)`) still name the exported IDs. This rewrites every ID found in
+ * `ids` (exported ID → new ID); unknown IDs and slugs stay. `ids` is a list of pairs, not an object: Convex refuses an
+ * object with more than 1024 fields. The entry's `bytes` and the site's budget follow (the IDs differ in length); a text
+ * with a rewritten link also gets its trees parsed again (the bundle serves those) and keeps a translation current that
+ * was current before. One call handles one page and names the entries it changed; the CLI repeats it with the returned
+ * `cursor` until `done`, and once per part of the pairs when they do not fit one call.
  */
 export const importRefs = internalMutation({
   args: { site: v.string(), ids: v.array(v.object({ from: v.string(), to: v.string() })), cursor: v.optional(v.string()) },
@@ -447,28 +448,42 @@ export const importRefs = internalMutation({
     const page = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).paginate({ numItems: 25, cursor: args.cursor ?? null })
     let delta = 0
     let trashDelta = 0
+    let treeDelta = 0
     const changed: Id<'entries'>[] = []
     for (const entry of page.page) {
       const def = schema.bricks[entry.brick]
       if (!def) continue
-      const data = remapEntryRefs(def.fields, entry.data as Data, ids)
+      const refs = remapEntryRefs(def.fields, entry.data as Data, ids)
+      const data = mapMarkdownTexts(def.fields, refs, (text) => rewriteEntryLinks(text, ids)) as Data
       if (same(data, entry.data)) continue
-      const size = entry.bytes + byteSize(data) - byteSize(entry.data)
+      // New IDs in a link change the main-language text a translation was made from, not its meaning.
+      const texts = !same(data, refs)
+      const prints = texts ? carryPrints(def.fields, entry.data as Data, data, entry.prints as Prints, schema.locales[0]!) : entry.prints
+      const size = entry.bytes + entryBytes(data, prints) - entryBytes(entry.data, entry.prints)
       // A path ID from `ginko files-export` is shorter than a Convex ID: an entry with many references grows here. The CLI
       // checks this before it clears anything (checkImport); this is the platform's own guard.
       if (!fitsBudget(size, entry.bytes, BUDGET.entryBytes)) {
         fail('TOO_LARGE', 'errors.importEntryTooLarge', { id: exportedOf.get(entry._id) ?? entry._id, used: sizeText(size), limit: sizeText(BUDGET.entryBytes) })
       }
-      await ctx.db.patch(entry._id, { data, bytes: size })
+      // The trash keeps no trees.
+      const trees = texts && entry.deletedAt === undefined ? await treesOf(def.fields, data) : undefined
+      await ctx.db.patch(entry._id, { data, prints, bytes: size, ...(trees ? { treeBytes: trees.bytes } : {}) })
+      if (trees) {
+        await putTrees(ctx, site._id, entry._id, trees.json)
+        treeDelta += trees.bytes - (entry.treeBytes ?? 0)
+      }
       if (entry.deletedAt === undefined) delta += size - entry.bytes
       else trashDelta += size - entry.bytes
       changed.push(entry._id)
     }
     const bytes = site.bytes + delta
     const trashBytes = (site.trashBytes ?? 0) + trashDelta
+    const treeBytes = (site.treeBytes ?? 0) + treeDelta
     if (!fitsBudget(bytes, site.bytes, BUDGET.siteBytes)) fail('TOO_LARGE', 'errors.importSiteTooLarge', { used: sizeText(bytes), limit: sizeText(BUDGET.siteBytes) })
     if (!fitsBudget(trashBytes, site.trashBytes ?? 0, BUDGET.trashBytes)) fail('TOO_LARGE', 'errors.importTrashTooLarge', { used: sizeText(trashBytes), limit: sizeText(BUDGET.trashBytes) })
-    if (delta !== 0 || trashDelta !== 0) await ctx.db.patch(site._id, { bytes, trashBytes })
+    // The bundle reads every live entry's trees: past the guard, every public page would fail.
+    if (!fitsBudget(treeBytes, site.treeBytes ?? 0, BUDGET.treeBytes)) fail('TOO_LARGE', 'errors.entryTooComplex')
+    if (delta !== 0 || trashDelta !== 0 || treeDelta !== 0) await ctx.db.patch(site._id, { bytes, trashBytes, treeBytes })
     return { done: page.isDone, cursor: page.continueCursor, changed }
   },
 })

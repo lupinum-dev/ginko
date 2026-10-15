@@ -3,11 +3,12 @@
 import { components } from '@lupinum/ginko-components/registry'
 import { f } from '@lupinum/ginko'
 import { defineComponents, type ComponentRegistry } from '@lupinum/ginko/internal'
-import { componentMode } from '@lupinum/ginko-editor'
+import { componentMode, GINKO_ASSETS, type GinkoAssets } from '@lupinum/ginko-editor'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/core'
 import { EditorContent } from '@tiptap/vue-3'
 import { afterEach, describe, expect, test } from 'vitest'
+import { computed } from 'vue'
 import { EDITOR_COMPONENTS } from '../app/components/editor/context.ts'
 import { LIVE_TAGS } from '../app/components/editor/liveComponents.ts'
 import MarkdownEditor from '../app/components/editor/MarkdownEditor.vue'
@@ -36,10 +37,10 @@ const testRegistry: ComponentRegistry = {
 }
 
 const open: Array<{ unmount(): void }> = []
-async function mounted(modelValue: string, registry: ComponentRegistry = components) {
+async function mounted(modelValue: string, registry: ComponentRegistry = components, assets?: GinkoAssets) {
   const wrapper = mount(MarkdownEditor, {
     props: { id: 't', field, modelValue, invalid: false },
-    global: { provide: { [EDITOR_COMPONENTS as symbol]: () => registry } },
+    global: { provide: { [EDITOR_COMPONENTS as symbol]: () => registry, ...(assets ? { [GINKO_ASSETS as symbol]: assets } : {}) } },
     attachTo: document.body,
   })
   open.push(wrapper)
@@ -90,6 +91,27 @@ describe('live or card', () => {
     expect(card.text()).toContain('Reiter')
     expect(card.text()).toContain('Name: npm')
     expect(wrapper.get('[data-component="callout"] button').attributes('aria-label')).toBe('Einstellungen: Hinweisbox')
+  })
+
+  // Wrong behaviour caught: a block without text showed its label over an empty box, which owners read as missing
+  // (legal) data, and a picture of a card showed only as a file name.
+  test.each([
+    ['a data block without text: its description, no box', '::business-contact\n::\n', 'business-contact', 'Zeigt Firmenname und Anschrift. Die Angaben stehen fest in der Website.', true, undefined],
+    ['a picture from the library: its thumbnail', '::figure{src="$file.f1" alt="A"}\n::\n', 'figure', 'Ein Bild mit Bildunterschrift. Ein Klick vergrößert das Bild.', true, 'https://cdn.test/f1.png'],
+    ['a block with text: the box, no description', ':::tabs\n::tab{title="npm"}\nInhalt\n::\n:::\n', 'tab', 'Ein Reiter innerhalb einer Reitergruppe.', false, undefined],
+  ])('%s', async (_name, source, tag, describe, described, thumbnail) => {
+    const registry: ComponentRegistry = { ...components, ...defineComponents({ 'business-contact': { kind: 'block', label: 'Kontaktdaten', describe: 'Zeigt Firmenname und Anschrift. Die Angaben stehen fest in der Website.', props: {} } }) }
+    const assets: GinkoAssets = {
+      state: () => computed(() => undefined),
+      details: (ids) => computed(() => Object.fromEntries(ids.value.map((id) => [id, { url: `https://cdn.test/${id}.png`, name: `${id}.png`, size: 1, width: 1, height: 1 }]))),
+      upload: async () => 'u1',
+    }
+    const wrapper = await mounted(source, registry, assets)
+    const card = wrapper.get(`[data-component="${tag}"]`)
+    expect(card.find('.ginko-block-content').classes('hidden')).toBe(described)
+    expect(card.get('.ginko-block-card').text().includes(describe)).toBe(described)
+    if (thumbnail) await until(() => card.find('img').exists())
+    expect(card.find('img').exists() ? card.get('img').attributes('src') : undefined).toBe(thumbnail)
   })
 
   // Bug caught: the parser took any `class`, so a stored `::callout{class="fixed inset-0 z-50"}` opened rich and the live
@@ -215,5 +237,38 @@ describe('required props after an insert', () => {
     await wait(200)
     expect(dialog()).toBeNull()
     expect(propsOf(editorOf(wrapper))).toMatchObject({ href: '/' })
+  })
+})
+
+describe('containers', () => {
+  // A site's own container without editor examples: a gallery takes photos only.
+  const withGallery: ComponentRegistry = {
+    ...components,
+    ...defineComponents({
+      gallery: { kind: 'block', label: 'Galerie', describe: 'Bilder nebeneinander.', props: {}, children: ['photo'] },
+      photo: { kind: 'block', label: 'Abbildung', describe: 'Ein Bild.', props: { src: f.image('Bild'), caption: f.text('Bildunterschrift', { optional: true, max: 200 }) } },
+    }),
+  }
+  const childrenOf = (editor: Editor, tag: string) => {
+    let found: Array<{ tag: string; props: unknown; content: unknown }> = []
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === 'component' && node.attrs.tag === tag) found = (node.toJSON().content ?? []).map((c: { attrs: { tag: string; props: unknown }; content?: unknown }) => ({ tag: c.attrs.tag, props: c.attrs.props, content: c.content }))
+    })
+    return found
+  }
+
+  // Wrong behaviour caught: a gallery could not grow in the editor; its content has no empty line to type "/" in.
+  test.each([
+    ['gallery', ':::gallery\n::photo{src="/a.png"}\n::\n:::\n', 'Abbildung hinzufügen', 'photo', 'src', undefined],
+    ['tabs', ':::tabs\n::tab{title="npm"}\nInhalt\n::\n:::\n', 'Reiter hinzufügen', 'tab', 'title', [{ type: 'paragraph', attrs: { props: {}, bare: true, placeholder: 'Inhalt des ersten Reiters.' } }]],
+  ])('%s: the add button appends one child at the end and asks for its required props', async (tag, source, button, child, prop, content) => {
+    const wrapper = await mounted(source, withGallery)
+    const add = wrapper.get(`[data-component="${tag}"]`).findAll('button').find((b) => b.text() === button)!
+    await add.trigger('click')
+    await until(() => childrenOf(editorOf(wrapper), tag).length === 2)
+    const added = childrenOf(editorOf(wrapper), tag)[1]!
+    expect(added).toEqual({ tag: child, props: {}, content })
+    await until(() => dialog() !== null)
+    expect(dialog()!.querySelector(`section [data-prop="${prop}"]`)).not.toBeNull()
   })
 })

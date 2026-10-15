@@ -1,6 +1,7 @@
 // Files of the Files library inside Markdown texts: `$file.<uploadId>` is the one way a text names one, as an image
 // source (`![Hund]($file.k57…)`), a component image prop (`::figure{src="$file.k57…"}`) or a link. The text keeps the
-// reference; the served bundle gets the file's current URL, size and variants. Pure: works on texts, data and bundles.
+// reference; the served bundle gets the file's current URL, size and variants. Links to entries (`$authors.<id>`) are
+// rewritten here too: an import gives entries new IDs as it gives files new ones. Pure: works on texts, data and bundles.
 import type { Bundle } from './bundle.ts'
 import type { ComponentRegistry } from './components.ts'
 import { effectiveAlt } from './fields.ts'
@@ -76,6 +77,31 @@ export function rewriteFileRefs(text: string, map: ReadonlyMap<string, string>):
     const to = map.get(match[1]!)
     if (to === undefined) continue
     out += `${text.slice(last, match.index)}$file.${to}`
+    last = match.index + match[0].length
+  }
+  return out + text.slice(last)
+}
+
+/**
+ * A link to an entry or page in a Markdown text: a link destination (`[Anna]($authors.<id>)`, `[a]: $authors.<id>`, also
+ * inside `<…>`), the only place `resolveRouteLinks` resolves one. Group 1 is the area (or `page`), group 2 the entry's
+ * ID or slug, which ends where the link's address does (`#anchor`, `)`, a title).
+ */
+const ENTRY_LINK = /(?<=\]\(\s*<?|^[ \t]{0,3}\[[^\]\n]+\]:[ \t]*<?)\$([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)(?![\w.-])/gm
+
+/** The entry IDs and slugs that a text links to (`$authors.<ref>`); page links and words in code are left out. */
+export function entryLinkRefs(text: string): Set<string> {
+  return new Set([...withoutCode(text).matchAll(ENTRY_LINK)].filter((m) => m[1] !== 'page').map((m) => m[2]!))
+}
+
+/** The text with every link to an entry whose ID is in `map` pointing at its new ID. Slugs, unknown IDs and words in code stay as they are. */
+export function rewriteEntryLinks(text: string, map: ReadonlyMap<string, string>): string {
+  let out = ''
+  let last = 0
+  for (const match of withoutCode(text).matchAll(ENTRY_LINK)) {
+    const to = match[1] === 'page' ? undefined : map.get(match[2]!)
+    if (to === undefined) continue
+    out += `${text.slice(last, match.index)}$${match[1]}.${to}`
     last = match.index + match[0].length
   }
   return out + text.slice(last)

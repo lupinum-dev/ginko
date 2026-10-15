@@ -6,10 +6,11 @@ import { provideGinkoAssets } from '@lupinum/ginko-editor'
 import { CircleCheckIcon, FileTextIcon, HistoryIcon, ImageIcon, SearchIcon, SparklesIcon, SquareArrowOutUpRightIcon, SunIcon, UsersIcon } from '@lucide/vue'
 import type { SiteLink } from '../utils/siteLinks'
 import { useBottomBar } from '../composables/useBottomBar'
-import { EDITOR_COMPONENTS } from '@studio/components/editor/context'
+import { EDITOR_COMPONENTS, EDITOR_LINK_TARGETS } from '@studio/components/editor/context'
 import { provideStudioSite } from '../utils/labels'
 import { localDraftKeys } from '../composables/useLocalDraft'
 import { rememberSite } from '../composables/useRecentEntries'
+import { isModKey } from '../utils/keys'
 
 const route = useRoute()
 const { t, format } = useI18n()
@@ -24,6 +25,11 @@ watch(() => data.value?.site.slug, (opened) => { if (opened) rememberSite(opened
 const { data: deletion } = useConvexQuery(api.sites.deletion, () => ({ site: slug.value }))
 // The slash menu of Markdown fields offers the components of this site's schema.
 provide(EDITOR_COMPONENTS, () => (data.value?.site.schema as { components?: ComponentRegistry } | undefined)?.components)
+// Their link dialog offers the site's own pages: the static ones and the entries of collections with a page.
+provide(EDITOR_LINK_TARGETS, () => {
+  const schema = data.value?.site.schema as Schema | undefined
+  return schema && { pages: schema.pages, routed: Object.entries(schema.bricks).filter(([, b]) => b.kind === 'collection' && !!b.route).map(([key]) => key) }
+})
 // Labels and prices under this layout read the site's main language and currency.
 provideStudioSite({ main: () => data.value?.site.schema.locales[0] ?? '', currency: () => data.value?.site.schema.currency ?? 'EUR', timeZone: () => data.value?.site.schema.timeZone ?? 'Europe/Vienna' })
 // Date fields under this layout count "today" and weeks in the site's zone and week (`schema.week`).
@@ -66,7 +72,7 @@ const paletteOpen = ref(false)
 const apple = ref(true)
 const shortcut = computed(() => (apple.value ? t('basics.search.shortcutMac') : t('basics.search.shortcutOther')))
 function onShortcut(event: KeyboardEvent) {
-  if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
+  if (isModKey(event, 'k')) {
     event.preventDefault()
     paletteOpen.value = !paletteOpen.value
   }

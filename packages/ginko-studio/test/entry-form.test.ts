@@ -62,8 +62,8 @@ const { default: ConflictPanel } = await import('../app/components/ConflictPanel
 const brick = {
   kind: 'collection', label: 'Gerichte',
   fields: {
-    name: { type: 'text', label: 'Name' }, description: { type: 'longtext', label: 'Beschreibung' },
-    sides: { type: 'list', label: 'Beilagen', of: { name: { type: 'text', label: 'Name' } } },
+    name: { type: 'text', label: 'Name', pos: 0 }, description: { type: 'longtext', label: 'Beschreibung', pos: 1 },
+    sides: { type: 'list', label: 'Beilagen', pos: 2, of: { name: { type: 'text', label: 'Name' } } },
   },
 } as never
 
@@ -119,7 +119,7 @@ describe('useEntryForm', () => {
   })
 
   // Wrong behaviour caught: a reload, crash or closed tab loses the typed input; or the copy comes back silently
-  // and overwrites what someone saved meanwhile.
+  // and overwrites what someone saved meanwhile; or the copy does not name its area and title, so Heute cannot list it.
   test('after a reload the typed name is offered back; "Wiederherstellen" restores it and a name saved meanwhile is a conflict', async () => {
     const before = mountForm()
     before.setField('name', 'Schnitzel mit Preiselbeeren')
@@ -131,7 +131,7 @@ describe('useEntryForm', () => {
 
     const after = mountForm()
     expect(after.draft.value.name).toBe('Kalbsschnitzel')
-    expect(after.localOffer.value?.fields).toEqual({ name: 'Schnitzel mit Preiselbeeren' })
+    expect(after.localOffer.value).toMatchObject({ fields: { name: 'Schnitzel mit Preiselbeeren' }, brick: 'dishes', title: 'Schnitzel mit Preiselbeeren' })
 
     await after.restoreLocal()
     expect(after.draft.value.name).toBe('Schnitzel mit Preiselbeeren')
