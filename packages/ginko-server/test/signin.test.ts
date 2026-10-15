@@ -67,6 +67,25 @@ it('with GINKO_MAIL=resend, a code is sent through Resend and not stored, except
   expect(kept.map((m) => [m.to, m.subject])).toEqual([['koechin@example.test', 'Einladung zu Gasthaus zur Linde'], ['koechin@example.test', 'Dein Anmeldecode']])
 })
 
+// Wrong behaviour caught: a short Resend outage (503) loses a sign-in code for good, or a refused request (400) goes out again.
+it('a code mail that Resend refuses with 503 goes out on the retry; one refused with 400 is not sent again', async () => {
+  const s = await setup()
+  vi.stubEnv('GINKO_MAIL', 'resend')
+  vi.stubEnv('GINKO_MAIL_FROM', 'Ginko <onboarding@resend.dev>')
+  vi.stubEnv('RESEND_API_KEY', 're_test')
+  const statuses = [503, 200, 400]
+  const fetch = vi.fn(async () => new Response('{}', { status: statuses.shift() }))
+  vi.stubGlobal('fetch', fetch)
+  vi.useFakeTimers()
+  await s.t.mutation(internal.mail.queueCode, { to: 'wirtin@example.com', otp: '654321' })
+  await s.t.finishAllScheduledFunctions(vi.runAllTimers)
+  await s.t.mutation(internal.mail.queueCode, { to: 'koch@example.com', otp: '111111' })
+  await s.t.finishAllScheduledFunctions(vi.runAllTimers)
+  vi.unstubAllGlobals()
+  const sentTo = fetch.mock.calls.map((call) => (JSON.parse((call as unknown as [string, RequestInit])[1].body as string) as { to: string[] }).to[0])
+  expect(sentTo).toEqual(['wirtin@example.com', 'wirtin@example.com', 'koch@example.com'])
+})
+
 /** POSTs to the Better Auth route as the Studio's auth proxy sends it: the visitor IP, signed with the shared proxy secret. */
 async function authPost(s: Awaited<ReturnType<typeof setup>>, path: string, body: object) {
   const secret = 'x'.repeat(32)

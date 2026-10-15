@@ -1493,6 +1493,7 @@ describe('8. sign-in: who gets an account and a code', () => {
     expect(source).toMatch(/beforeUserCreate[\s\S]*internal\.invites\.mayJoin[\s\S]*allowed:\s*false/)
     const mail = readFileSync(new URL('../convex/mail.ts', import.meta.url), 'utf8')
     expect(mail).toMatch(/known\s*&&\s*!\(await ctx\.runQuery\(internal\.invites\.mayJoin/)
+    expect(mail).toMatch(/CODE_LIFETIME_MS\s*=\s*5\s*\*\s*60\s*\*\s*1000\b/)
   })
 })
 

@@ -47,7 +47,14 @@ export const signInAvailable = query({
   handler: async () => mailAvailable(),
 })
 
-export async function queueMail(ctx: MutationCtx, mail: Mail) {
+/** How long a sign-in code works: auth.ts `emailOTP.expiresIn` (breakit-access pins both). Its mail is not sent again after that. */
+export const CODE_LIFETIME_MS = 5 * 60 * 1000
+/** The waits before the 1st, 2nd and 3rd retry of a mail Resend could not take: short for a code, longer for the rest. */
+const CODE_RETRY_MS = [5_000, 30_000, 2 * 60_000]
+const MAIL_RETRY_MS = [60_000, 10 * 60_000, 60 * 60_000]
+
+/** `until`: a sign-in code's end of life; its mail is retried only before that. */
+export async function queueMail(ctx: MutationCtx, mail: Mail, until?: number) {
   const way = mailWay()
   if (!way) fail('INVALID', 'errors.signInNotSetUp')
   if (way === 'outbox' || isTestAddress(mail.to)) {
@@ -55,19 +62,41 @@ export async function queueMail(ctx: MutationCtx, mail: Mail) {
     return
   }
   // Sent once this mutation commits, so a refused mutation sends nothing. The mail is not stored in a table.
-  await ctx.scheduler.runAfter(0, internal.mail.send, mail)
+  await ctx.scheduler.runAfter(0, internal.mail.send, { ...mail, ...(until === undefined ? {} : { until }) })
 }
 
-/** Delivery through Resend. A refusal is logged without the mail text, which may hold a sign-in code. */
-export const send = internalAction({
-  args: { to: v.string(), subject: v.string(), text: v.string() },
-  handler: async (_ctx, mail) => {
-    const response = await fetch('https://api.resend.com/emails', {
+/** One try at Resend. A network error, 429 or 5xx may pass on a retry; any other refusal is the request's own fault. */
+async function deliver(mail: Mail): Promise<{ sent: true } | { sent: false; retry: boolean; reason: string }> {
+  let response: Response
+  try {
+    response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'content-type': 'application/json' },
       body: JSON.stringify({ from: process.env.GINKO_MAIL_FROM, to: [mail.to], subject: mail.subject, text: mail.text }),
     })
-    if (!response.ok) throw new Error(`Resend refused the mail "${mail.subject}": ${response.status} ${(await response.text()).slice(0, 300)}`)
+  } catch (error) {
+    return { sent: false, retry: true, reason: `network error: ${String(error).slice(0, 200)}` }
+  }
+  if (response.ok) return { sent: true }
+  return { sent: false, retry: response.status === 429 || response.status >= 500, reason: `${response.status} ${(await response.text()).slice(0, 300)}` }
+}
+
+/**
+ * Delivery through Resend, retried up to 3 times on a passing failure (Convex does not retry actions). A sign-in
+ * code is retried only while it still works. A failure is logged without the mail text, which may hold a code.
+ */
+export const send = internalAction({
+  args: { to: v.string(), subject: v.string(), text: v.string(), until: v.optional(v.number()), attempt: v.optional(v.number()) },
+  handler: async (ctx, { until, attempt = 0, ...mail }) => {
+    const outcome = await deliver(mail)
+    if (outcome.sent) return
+    const wait = (until === undefined ? MAIL_RETRY_MS : CODE_RETRY_MS)[attempt]
+    if (outcome.retry && wait !== undefined && (until === undefined || Date.now() + wait < until)) {
+      console.warn(`Mail "${mail.subject}" not sent (${outcome.reason}); retry ${attempt + 1} in ${wait / 1000} s.`)
+      await ctx.scheduler.runAfter(wait, internal.mail.send, { ...mail, attempt: attempt + 1, ...(until === undefined ? {} : { until }) })
+      return
+    }
+    throw new Error(`Resend refused the mail "${mail.subject}": ${outcome.reason}`)
   },
 })
 
@@ -96,6 +125,6 @@ export const queueCode = internalMutation({
     // invite's language, else German.
     const invite = known ? null : await ctx.db.query('invites').withIndex('by_email', (q) => q.eq('email', email)).order('desc').first()
     const locale = invite?.locale ?? await localeOfUser(ctx, typeof known?.id === 'string' ? known.id : undefined)
-    await queueMail(ctx, { to: email, subject: t(locale, 'mail.code.subject'), text: t(locale, 'mail.code.text', { code: args.otp }) })
+    await queueMail(ctx, { to: email, subject: t(locale, 'mail.code.subject'), text: t(locale, 'mail.code.text', { code: args.otp }) }, Date.now() + CODE_LIFETIME_MS)
   },
 })
