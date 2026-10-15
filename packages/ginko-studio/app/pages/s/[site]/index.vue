@@ -252,7 +252,7 @@ async function removeEntry(key: string, entry: Entry, task: Task) {
   }
 }
 async function removeNow(key: string, entry: Entry, task: Task) {
-  await ops.removeEntry(entry._id, entry.lifeRev, taskRef(key, task), titleOf(s.schema.value!.bricks[key]!, entry.data, s.main.value))
+  await ops.removeEntry(entry._id, entry.lifeRev, taskRef(key, task), titleOf(s.schema.value!.bricks[key]!, entry.data, s.main.value), entry.state === 'draft')
 }
 async function confirmRemove() {
   const ask = askRemove.value

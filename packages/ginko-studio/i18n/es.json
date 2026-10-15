@@ -618,6 +618,7 @@
     "created": "Creado.",
     "removed": "Ahora está en la papelera.",
     "removedNamed": "“{title}” está ahora en la papelera.",
+    "removedLiveHint": "Dejará de estar en el sitio web en aproximadamente un minuto.",
     "restored": "Restaurado.",
     "entryGone": "Esta entrada se eliminó mientras tanto.",
     "leaveConfirm": "Tus cambios aún no están guardados. ¿Salir de todos modos?",

@@ -618,6 +618,7 @@
     "created": "Angelegt.",
     "removed": "Liegt jetzt im Papierkorb.",
     "removedNamed": "„{title}“ liegt jetzt im Papierkorb.",
+    "removedLiveHint": "In etwa einer Minute nicht mehr auf der Website.",
     "restored": "Wiederhergestellt.",
     "entryGone": "Dieser Eintrag wurde inzwischen entfernt.",
     "leaveConfirm": "Deine Änderungen sind noch nicht gespeichert. Trotzdem weggehen?",

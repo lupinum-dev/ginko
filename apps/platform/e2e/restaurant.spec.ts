@@ -162,7 +162,7 @@ test.describe('Unterwegs (break-it 9)', () => {
     await page.getByRole('main').getByRole('button', { name: 'Mehr', exact: true }).click()
     await page.getByRole('menuitem', { name: 'Eintrag entfernen' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click()
-    await expect(page.locator('[data-sonner-toast]')).toContainText('im Papierkorb')
+    await expect(page.locator('[data-sonner-toast]')).toContainText('„Wiener Schnitzel vom Kalb“ liegt jetzt im Papierkorb. In etwa einer Minute nicht mehr auf der Website.')
 
     await page.goto('/s/restaurant/all?removed', { waitUntil: 'networkidle' })
     const row = page.getByRole('listitem').filter({ hasText: 'Wiener Schnitzel vom Kalb' })

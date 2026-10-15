@@ -65,6 +65,23 @@ describe('writes that become proposals', () => {
   })
 })
 
+// Wrong behaviour caught: next to "Now in the trash", the save hint "On the website in about a minute." read as if
+// the removed entry came back; and a draft, never on the website, was said to leave it (also on the undo of a create).
+test.each([
+  ['a live entry', () => ops.removeEntry('e', 1), 'Now in the trash. Off the website in about a minute.'],
+  ['a draft', () => ops.removeEntry('e', 1, undefined, undefined, true), 'Now in the trash.'],
+  ['a new draft, through Undo', async () => {
+    mocks.results.set('entries.create', { entry: 'e', state: 'draft' })
+    await ops.createEntry({ brick: 'b', data: {}, op: 'o' })
+    await (mocks.toasts.pop()!.action as { run: () => Promise<void> }).run()
+  }, 'Now in the trash.'],
+])('removing %s says where it went', async (_name, run, text) => {
+  mocks.toasts.length = 0
+  mocks.results.set('entries.remove', { entry: 'e', lifeRev: 2 })
+  await run()
+  expect(mocks.toasts.map((toast) => toast.text)).toEqual([text])
+})
+
 describe('failed calls', () => {
   const errors = [{ path: 'name', message: 'Bitte ausfüllen.', code: 'required' }]
   // Wrong behaviour caught: a call that a closed sheet cancelled, or a sign-out in another tab, shows "That did not

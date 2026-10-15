@@ -115,11 +115,15 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     }
   }
 
-  /** `draft`: the entry was never on the website, so the message does not mention it (SPEC 15). True when the entry is gone; false when the removal went to approval. */
+  /**
+   * `draft`: the entry was never on the website, so the message does not mention it (SPEC 15); a live one says when it
+   * leaves the website (not `liveHint`, which next to "trash" reads as if it came back). True when the entry is gone;
+   * false when the removal went to approval.
+   */
   async function removeEntry(entry: string, lifeRev: number, task?: string, label = t('ops.removed'), draft = false) {
     const result = await remove.mutate({ site: site.value, opId: opId(), task, entry, lifeRev })
     if (isProposal(result)) { sentForApproval(); return false }
-    show(draft ? label : `${label} ${t('ops.liveHint')}`, { action: { label: t('ops.undo'), run: async () => { await restoreEntry(entry, result.lifeRev, task, t('ops.restored'), draft) } } })
+    show(draft ? label : `${label} ${t('ops.removedLiveHint')}`, { action: { label: t('ops.undo'), run: async () => { await restoreEntry(entry, result.lifeRev, task, t('ops.restored'), draft) } } })
     return true
   }
 
@@ -228,8 +232,8 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
         const text = result.state === 'live' ? `${args.label ?? t('ops.created')} ${t('ops.liveHint')}`
           : result.publishAt !== undefined ? t('ops.draftScheduled', { time: whenText(result.publishAt, args.timeZone ?? 'Europe/Vienna', format) })
           : t('ops.draftNotOnSite')
-        // A new entry starts at lifeRev 1; undo removes it.
-        show(text, { action: { label: t('ops.undo'), run: async () => { await removeEntry(result.entry, 1, args.removeTask, t('ops.removed')).catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
+        // A new entry starts at lifeRev 1; undo removes it (a draft or a scheduled one was never on the website).
+        show(text, { action: { label: t('ops.undo'), run: async () => { await removeEntry(result.entry, 1, args.removeTask, t('ops.removed'), result.state !== 'live').catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
         return { proposal: undefined, entry: result.entry }
       } catch (error) {
         throw opErrorOf(error)
