@@ -42,14 +42,22 @@ set environment variables and run functions. Your working checkout's `.env.local
 
 First launch, in this order:
 
-1. In the production checkout, set the Convex environment variables (table below), for example
-   `pnpm exec better-convex convex env set SITE_URL https://platform.example`. Give a secret on standard input:
-   `printf '1:%s' "$(openssl rand -base64 32)" | pnpm exec better-convex convex env set BETTER_AUTH_SECRETS`.
-2. In Vercel, set the Studio's environment variables (see the [`ginko-studio` README](../ginko-studio/README.md))
-   and `CONVEX_DEPLOY_KEY`: a deploy-only key (only the `deployment:deploy` permission), in the **Production**
-   environment only and marked Sensitive. A preview build runs the code of any branch; with this key it could deploy
-   that code to production. `SITE_URL` and `BCN_AUTH_PROXY_IP_SECRET` must be the same in Convex and Vercel, or
-   sign-in fails with 403.
+1. In the production checkout, set the Convex environment variables (table below). Give secrets on standard input,
+   and make the proxy secret once, because Vercel needs the same value in step 2:
+
+   ```bash
+   export BCN_AUTH_PROXY_IP_SECRET="$(openssl rand -base64 32)"
+   pnpm exec better-convex convex env set SITE_URL https://platform.example
+   printf '1:%s' "$(openssl rand -base64 32)" | pnpm exec better-convex convex env set BETTER_AUTH_SECRETS
+   printf '%s' "$BCN_AUTH_PROXY_IP_SECRET" | pnpm exec better-convex convex env set BCN_AUTH_PROXY_IP_SECRET
+   ```
+
+   Do not print or commit the proxy secret.
+2. In Vercel, set the Studio's environment variables (see the [`ginko-studio` README](../ginko-studio/README.md)),
+   with `BCN_AUTH_PROXY_IP_SECRET` from step 1 (Sensitive), and `CONVEX_DEPLOY_KEY`: a deploy-only key (only the
+   `deployment:deploy` permission), in the **Production** environment only and marked Sensitive. A preview build
+   runs the code of any branch; with this key it could deploy that code to production. `SITE_URL` and
+   `BCN_AUTH_PROXY_IP_SECRET` must be the same in Convex and Vercel, or sign-in fails with 403.
 3. Deploy the production branch on Vercel. The build log shows the Convex deploy first, then the Nuxt build.
 4. Create the auth signing key once, before the first sign-in:
    `pnpm exec better-convex convex run auth:ensureSigningKey '{}'`. Check that
@@ -75,17 +83,18 @@ new functions until they reload.
 
 New image uploads get WebP copies at 480, 960 and 1600 px wide (only those narrower than the image). Images
 uploaded before that have none; make them once per deployment with
-`pnpm exec better-convex convex run images:backfillVariants '{}'` (for production, in the production checkout). It works through 20 files at a time and schedules itself until all are done;
-running it again is safe.
+`pnpm exec better-convex convex run images:backfillVariants '{}'` (for production, in the production checkout). It
+works through 20 files at a time and schedules itself until all are done; running it again is safe.
 
 ## Markdown trees
 
 Every live entry stores the parsed trees of its Markdown texts in the `entryTrees` table, so the public bundle parses
 nothing. An entry keeps the trees of the parser it was saved with. After an update that changes the parser's output
 (comark, its plugins or Ginko's Markdown rules), write them again once per deployment with
-`pnpm exec better-convex convex run entries:migrateStorage '{}'` (for production, in the production checkout). It works through 10 entries at a time and
-schedules itself until all are done, then recounts every site's byte counters; running it again is safe.
-`pnpm exec better-convex convex run entries:storageStatus '{}'` checks the result, one site per call (pass the returned `cursor`).
+`pnpm exec better-convex convex run entries:migrateStorage '{}'` (for production, in the production checkout). It
+works through 10 entries at a time and schedules itself until all are done, then recounts every site's byte
+counters; running it again is safe. `pnpm exec better-convex convex run entries:storageStatus '{}'` checks the
+result, one site per call (pass the returned `cursor`).
 
 ## Environment variables
 
@@ -94,7 +103,7 @@ Set them in the Convex deployment (not in `.env.local`).
 | Name | Purpose |
 | --- | --- |
 | `SITE_URL` | Public origin of the platform UI, the same value as the UI's `SITE_URL`. Used for sign-in, mail links and the upload CORS check. |
-| `BETTER_AUTH_SECRETS` | Required. Signing secrets for sessions, as `<version>:<secret>` (for example `0:` and 64 hex characters). |
+| `BETTER_AUTH_SECRETS` | Required. Signing secrets for sessions, as `<version>:<secret>`, for example `1:` followed by `openssl rand -base64 32`; rotate as `2:new,1:old`. Only Convex needs it, not Vercel. |
 | `BCN_AUTH_PROXY_IP_SECRET` | Required. The same secret as in the UI: it proves that the UI set the client IP header. |
 | `GINKO_ADMIN_EMAILS` | Comma-separated addresses. The first sign-in with one of them makes an admin. |
 | `GINKO_MAIL` | How mail is sent: `resend` (hosted) or `outbox` (local and test sink). |
