@@ -13,6 +13,11 @@ export type DateStyle = 'short' | 'medium' | 'long' | 'full'
 export interface FormatterOptions {
   /** IANA time zone (`Europe/Vienna`) for timestamps. Calendar dates always use UTC. Default `UTC`. */
   timeZone?: string
+  /**
+   * The tag for dates (`date`, `range`) when it differs from `language`: a regional variant (`en-GB` orders
+   * 25/10/2026) while numbers and words stay in `language`. Default `language`.
+   */
+  dateLanguage?: string
 }
 
 type DateInput = Date | number | string
@@ -46,18 +51,19 @@ const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number, number][] = [
 
 export function createFormatters(language: string, options: FormatterOptions = {}) {
   const zone = options.timeZone ?? 'UTC'
+  const dates = options.dateLanguage ?? language
   const zoneFor = (value: DateInput) => (isCalendarDate(value) ? 'UTC' : zone)
   return {
     /** `8. Oktober 2026`. A style or Intl options; a calendar date (`2026-10-08`) never shifts a day. */
     date: (value: DateInput, options: DateStyle | Intl.DateTimeFormatOptions = 'long') =>
-      spaces(dateFormat(language, zoneFor(value), options).format(toDate(value))),
+      spaces(dateFormat(dates, zoneFor(value), options).format(toDate(value))),
     /**
      * `20.–21. Juni 2026` / `20–21 June 2026`; one day stays one date. Same options as `date`.
      * If either end is a calendar date, the whole range uses UTC so that date keeps its day.
      */
     range: (from: DateInput, to: DateInput, options: DateStyle | Intl.DateTimeFormatOptions = 'long') => {
       const [start, end] = [toDate(from), toDate(to)]
-      const format = dateFormat(language, isCalendarDate(from) || isCalendarDate(to) ? 'UTC' : zone, options)
+      const format = dateFormat(dates, isCalendarDate(from) || isCalendarDate(to) ? 'UTC' : zone, options)
       if (start.getTime() === end.getTime()) return spaces(format.format(start))
       // Between two day numbers the dash stands without spaces ("20–21 June").
       return spaces(format.formatRange(start, end)).replace(/(\d\.?)\s?[–-]\s?(\d)/, '$1–$2')

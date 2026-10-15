@@ -56,12 +56,14 @@ export function useI18n<NS extends string = ''>(namespace?: NS): I18n<NS> {
   const zone = computed(() => inUserZone(route.path, c))
   const locale = computed(() => state.fixedLocale ?? currentLocale(route.path, c, state.userLocale.value))
   const current = computed(() => c.locales.find(l => l.code === locale.value)!)
-  // A user-locale zone (an app) formats dates and numbers in the region of the person's browser when it reads the same
-  // language (`en` in an en-GB browser: 25/10/2026). URL-localized pages keep the tag the site chose.
-  const formatLanguage = computed(() => zone.value ? regionalLanguage(current.value.language, state.browserLanguage.value) : current.value.language)
+  // A user-locale zone (an app) writes dates in the region of the person's browser when it reads the same language
+  // (`en` in an en-GB browser: 25/10/2026); numbers and words stay in the locale's language. URL-localized pages keep
+  // the tag the site chose.
+  const dateLanguage = computed(() => zone.value ? regionalLanguage(current.value.language, state.browserLanguage.value) : current.value.language)
   const translator = computed(() => createTranslator({
     messages: state.messages[locale.value],
-    language: formatLanguage.value,
+    language: current.value.language,
+    dateLanguage: dateLanguage.value,
     params: c.params,
     timeZone: c.timeZone,
     onMissing: import.meta.dev ? key => console.warn(`[ginko-i18n] Missing message "${key}" (${locale.value})`) : undefined,
@@ -101,7 +103,7 @@ export function useI18n<NS extends string = ''>(namespace?: NS): I18n<NS> {
   }
 
   // A plain object, not a computed: `format.date(…)` reads the current language like `t` does, in script and template.
-  const formatters = () => createFormatters(formatLanguage.value, { timeZone: c.timeZone })
+  const formatters = () => createFormatters(current.value.language, { timeZone: c.timeZone, dateLanguage: dateLanguage.value })
   const format: Formatters = {
     date: (...args) => formatters().date(...args),
     range: (...args) => formatters().range(...args),

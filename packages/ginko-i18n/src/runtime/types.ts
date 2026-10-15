@@ -113,7 +113,7 @@ export interface I18nState {
   userLocale: Ref<string>
   /**
    * The person's first browser language (`useState('ginko-i18n:browser-language')`): Accept-Language on the server,
-   * from the payload on the client. User-locale zones format dates and numbers in its region (`regionalLanguage`).
+   * from the payload on the client. User-locale zones format dates in its region (`regionalLanguage`).
    */
   browserLanguage: Ref<string | undefined>
   /** Set while rendering an island: its page's locale, since islands have no route of their own. */

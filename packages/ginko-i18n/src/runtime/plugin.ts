@@ -31,7 +31,7 @@ export default defineNuxtPlugin({
       const fromEvent = import.meta.server ? useRequestEvent()?.context.locale : undefined
       return typeof fromEvent === 'string' && c.locales.some(l => l.code === fromEvent) ? fromEvent : c.defaultLocale
     })
-    // The browser's first language, for the region of dates and numbers in user-locale zones. One source like the
+    // The browser's first language, for the region of dates in user-locale zones. One source like the
     // locale: the request header on the server, the payload on the client (`navigator` only without server rendering).
     const browserLanguage = useState<string | undefined>('ginko-i18n:browser-language', () => {
       if (import.meta.client) return navigator.language

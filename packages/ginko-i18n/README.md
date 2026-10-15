@@ -294,9 +294,9 @@ hydration mismatch. Set the cookie from the user's account setting when they sig
 (`ginko_locale=en; Path=/; Max-Age=31536000; SameSite=Lax`), so the first render already has the
 right language.
 
-Dates and numbers in a zone follow the region of the browser's first language when it is the same
-language and the locale names no region: `en` reads 25/10/2026 in an `en-GB` browser and 10/25/2026 in
-an `en-US` one. A locale with a region (`de-AT`) keeps it.
+Dates in a zone follow the region of the browser's first language when it is the same language and the
+locale names no region: `en` reads 25/10/2026 in an `en-GB` browser and 10/25/2026 in an `en-US` one.
+Numbers and words stay in the locale's language, and a locale with a region (`de-AT`) keeps it.
 
 `switchLocale(code)` changes the language:
 
@@ -473,16 +473,16 @@ Framework-free and parser-free. See [Outside Nuxt](#outside-nuxt).
 
 | Export | Meaning |
 | --- | --- |
-| `createTranslator({ messages, fallback?, language, timeZone?, params?, onMissing? })` | A `Translator` (`t`, `parts`, `has`) for one locale. Lookup: `messages`, then `fallback`, then the key itself. |
+| `createTranslator({ messages, fallback?, language, timeZone?, dateLanguage?, params?, onMissing? })` | A `Translator` (`t`, `parts`, `has`) for one locale. Lookup: `messages`, then `fallback`, then the key itself. `dateLanguage` writes the dates in messages in another tag (`en-GB`). |
 | `defineCatalog<K>(trees, { defaultLocale, params? })` | A `Catalog`: `t(locale, key, params?, options?)`, `translator(locale)`, `locales`, `defaultLocale`, `isLocale(value)`. An unknown locale gets the default; a full tag (`en-US`) finds its language. |
 | `KeysOf<typeof catalog>` | The dotted keys of a source catalog type: `'mail.invite.subject' \| …`. |
-| `createFormatters(language, { timeZone? })` | The `format` object of `useI18n()`. |
+| `createFormatters(language, { timeZone?, dateLanguage? })` | The `format` object of `useI18n()`. `dateLanguage` writes `date` and `range` in another tag (`en-GB`); numbers and words stay in `language`. |
 | `resolveConfig({ locales, defaultLocale?, strategy?, exclude?, userLocale? })` | The resolved locale config for the functions below. |
 | `localizePath(path, code, config)` | Adds the prefix: `/about` → `/en/about`. |
 | `stripLocale(path, config)` | Removes it: `/en/about` → `/about`. |
 | `localeFromPath(path, config)` | The code a path belongs to, or `undefined` (`/de/x` under `prefix_except_default`). |
 | `negotiateLocale(header, config)` | The best code for an `Accept-Language` header, or `undefined`. |
-| `regionalLanguage(language, browser)` | The tag that formats dates and numbers in a user-locale zone: the browser's regional variant of `language` (`en` + `en-GB` → `en-GB`), else `language`. |
+| `regionalLanguage(language, browser)` | The tag that formats dates in a user-locale zone: the browser's regional variant of `language` (`en` + `en-GB` → `en-GB`), else `language`. |
 | `isExcluded(path, config)` | Whether the path never gets a prefix (`exclude`, `/api/**`, Nuxt internals). |
 | `inUserZone(path, config)` | Whether the path is in a user-locale zone (`userLocale`). |
 | `canonicalCase(path, config)` | The path with its prefix in the code's own case (`/EN/about` → `/en/about`), or `undefined` when it is already right. |

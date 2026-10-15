@@ -58,7 +58,7 @@ function nativeName(language: string): string {
 }
 
 /**
- * The tag that formats dates and numbers for `language` in a user-locale zone, where `browser` is the person's first
+ * The tag that formats dates for `language` in a user-locale zone, where `browser` is the person's first
  * browser language (Accept-Language, `navigator.language`): its regional variant when it is the same language and
  * `language` names no region itself (`en` read in an `en-GB` browser formats as `en-GB`: 25/10/2026), else `language`.
  */

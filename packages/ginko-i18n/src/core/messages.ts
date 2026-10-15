@@ -1,7 +1,7 @@
 // Messages are ICU MessageFormat (arguments, plural, selectordinal, select, number, tags).
 // The build parses them once with the FormatJS parser into a compact tree; this file only interprets
 // that tree, so browsers and Convex never ship a parser.
-import { createFormatters, type Formatters } from './format.ts'
+import { createFormatters, type FormatterOptions, type Formatters } from './format.ts'
 
 /** Compiled node. A plain string is literal text. */
 export type Node
@@ -46,9 +46,9 @@ function show(value: unknown): string {
   return value == null ? '' : String(value)
 }
 
-export function formatParts(message: CompiledMessage, params: Params, language: string, timeZone = 'UTC'): Part[] {
+export function formatParts(message: CompiledMessage, params: Params, language: string, options: FormatterOptions = {}): Part[] {
   if (typeof message === 'string') return [message]
-  const format = createFormatters(language, { timeZone })
+  const format = createFormatters(language, options)
   const out: Part[] = []
   const walk = (nodes: Node[], pound: number | undefined, into: Part[]) => {
     for (const node of nodes) {
@@ -138,6 +138,8 @@ export function createTranslator(options: {
   language: string
   /** Zone for dates that are not calendar dates (`YYYY-MM-DD` is always UTC). Default `UTC`. */
   timeZone?: string
+  /** The tag for dates in messages when it differs from `language` (see `FormatterOptions.dateLanguage`). */
+  dateLanguage?: string
   params?: Params
   onMissing?: (key: string) => void
 }): Translator {
@@ -148,7 +150,7 @@ export function createTranslator(options: {
       options.onMissing?.(key)
       return [key]
     }
-    return formatParts(message, { ...options.params, ...params }, options.language, call?.timeZone ?? options.timeZone)
+    return formatParts(message, { ...options.params, ...params }, options.language, { timeZone: call?.timeZone ?? options.timeZone, dateLanguage: options.dateLanguage })
   }
   return {
     parts,
