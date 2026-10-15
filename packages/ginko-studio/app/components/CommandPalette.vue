@@ -84,11 +84,14 @@ const entries = computed<Item[]>(() => (searching.value && !failed.value ? data.
 })))
 const areas = computed<Item[]>(() => (searching.value && !failed.value ? data.value?.bricks ?? [] : []).map((b) => ({ value: `area:${b.brick}`, label: areaLabel(b.brick, b.label), run: () => go(site(`/all/${b.brick}`)) })))
 // Switching sites (an agency has dozens): the person's other sites, asked only while the palette is open, matched here.
+// A site being deleted opens on its deletion page, so it says so, as in "Meine Seiten".
 const { data: mySites } = useConvexQuery(api.sites.mine, () => (props.open ? {} : 'skip'))
 const sites = computed<Item[]>(() => (searching.value ? mySites.value ?? [] : [])
   .filter((s) => s.slug !== props.slug && siteMatches(s, query.value))
   .toSorted(bySiteName(locale.value))
-  .map((s) => ({ value: `site:${s.slug}`, label: s.name, area: siteHost(s.url), run: () => go(`/s/${s.slug}`) })))
+  .map((s) => ({
+    value: `site:${s.slug}`, label: s.name, area: s.deleting ? `${siteHost(s.url)} · ${t('sites.deleting')}` : siteHost(s.url), run: () => go(`/s/${s.slug}`),
+  })))
 
 /** `inNewTab`: ⌘Enter / Ctrl+Enter. */
 let newTab = false

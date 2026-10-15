@@ -110,20 +110,22 @@ describe('CommandPalette', () => {
     expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false])
   })
 
-  // Wrong behaviour caught: an agency inside one site typed another site's name and got "Nichts gefunden".
+  // Wrong behaviour caught: an agency inside one site typed another site's name and got "Nichts gefunden"; or picked a
+  // site being deleted, offered like any other, and landed on its deletion page.
   test('typing another site\'s name lists it under Seiten, and Enter opens it', async () => {
     mocks.found = { entries: [], bricks: [], tasks: [] }
     mocks.sites = [
       { slug: 's', name: 'Gasthaus am See', url: 'https://see.test', role: 'admin', deleting: false },
       { slug: 'linde', name: 'Gasthaus zur Linde', url: 'https://linde.test', role: 'admin', deleting: false },
+      { slug: 'alt', name: 'Gasthof Alt', url: 'https://alt.test', role: 'admin', deleting: true },
       { slug: 'lupinum', name: 'Lupinum', url: 'https://lupinum.test', role: 'admin', deleting: false },
     ]
     mountPalette({ role: 'owner', grants: [] })
     await flushPromises()
     await typeQuery('gast')
     // The open site is not offered: there is nowhere to switch.
-    expect(optionTexts()).toEqual(['Gasthaus zur Linde linde.test'])
-    expect([...document.body.querySelectorAll('[role="group"]')].map((g) => g.textContent)).toEqual(['SeitenGasthaus zur Lindelinde.test'])
+    expect(optionTexts()).toEqual(['Gasthaus zur Linde linde.test', 'Gasthof Alt alt.test · Wird gelöscht'])
+    expect([...document.body.querySelectorAll('[role="group"]')].map((g) => g.textContent)).toEqual(['SeitenGasthaus zur Lindelinde.testGasthof Altalt.test · Wird gelöscht'])
     expect(document.body.textContent).not.toContain('Nichts gefunden')
 
     document.body.querySelector('input')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
