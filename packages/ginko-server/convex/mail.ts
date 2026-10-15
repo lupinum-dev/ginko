@@ -62,16 +62,21 @@ export async function queueMail(ctx: MutationCtx, mail: Mail, until?: number) {
     return
   }
   // Sent once this mutation commits, so a refused mutation sends nothing. The mail is not stored in a table.
-  await ctx.scheduler.runAfter(0, internal.mail.send, { ...mail, ...(until === undefined ? {} : { until }) })
+  // `key` stays the same through every retry, so Resend sends a mail it already took after a 5xx only once.
+  await ctx.scheduler.runAfter(0, internal.mail.send, { ...mail, key: crypto.randomUUID(), ...(until === undefined ? {} : { until }) })
 }
 
-/** One try at Resend. A network error, 429 or 5xx may pass on a retry; any other refusal is the request's own fault. */
-async function deliver(mail: Mail): Promise<{ sent: true } | { sent: false; retry: boolean; reason: string }> {
+/**
+ * One try at Resend. A network error, 429 or 5xx may pass on a retry; any other refusal is the request's own fault.
+ * Resend may have taken the mail before such a failure: with the same `key` (Idempotency-Key, kept 24 h, longer than all
+ * retries) it does not send it again.
+ */
+async function deliver(mail: Mail, key: string | undefined): Promise<{ sent: true } | { sent: false; retry: boolean; reason: string }> {
   let response: Response
   try {
     response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+      headers: { authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'content-type': 'application/json', ...(key === undefined ? {} : { 'idempotency-key': key }) },
       body: JSON.stringify({ from: process.env.GINKO_MAIL_FROM, to: [mail.to], subject: mail.subject, text: mail.text }),
     })
   } catch (error) {
@@ -86,14 +91,15 @@ async function deliver(mail: Mail): Promise<{ sent: true } | { sent: false; retr
  * code is retried only while it still works. A failure is logged without the mail text, which may hold a code.
  */
 export const send = internalAction({
-  args: { to: v.string(), subject: v.string(), text: v.string(), until: v.optional(v.number()), attempt: v.optional(v.number()) },
-  handler: async (ctx, { until, attempt = 0, ...mail }) => {
-    const outcome = await deliver(mail)
+  // `key` is optional only for a mail queued before keys existed.
+  args: { to: v.string(), subject: v.string(), text: v.string(), key: v.optional(v.string()), until: v.optional(v.number()), attempt: v.optional(v.number()) },
+  handler: async (ctx, { key, until, attempt = 0, ...mail }) => {
+    const outcome = await deliver(mail, key)
     if (outcome.sent) return
     const wait = (until === undefined ? MAIL_RETRY_MS : CODE_RETRY_MS)[attempt]
     if (outcome.retry && wait !== undefined && (until === undefined || Date.now() + wait < until)) {
       console.warn(`Mail "${mail.subject}" not sent (${outcome.reason}); retry ${attempt + 1} in ${wait / 1000} s.`)
-      await ctx.scheduler.runAfter(wait, internal.mail.send, { ...mail, attempt: attempt + 1, ...(until === undefined ? {} : { until }) })
+      await ctx.scheduler.runAfter(wait, internal.mail.send, { ...mail, key, attempt: attempt + 1, ...(until === undefined ? {} : { until }) })
       return
     }
     throw new Error(`Resend refused the mail "${mail.subject}": ${outcome.reason}`)

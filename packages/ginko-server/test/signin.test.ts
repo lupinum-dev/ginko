@@ -67,8 +67,9 @@ it('with GINKO_MAIL=resend, a code is sent through Resend and not stored, except
   expect(kept.map((m) => [m.to, m.subject])).toEqual([['koechin@example.test', 'Einladung zu Gasthaus zur Linde'], ['koechin@example.test', 'Dein Anmeldecode']])
 })
 
-// Wrong behaviour caught: a short Resend outage (503) loses a sign-in code for good, or a refused request (400) goes out again.
-it('a code mail that Resend refuses with 503 goes out on the retry; one refused with 400 is not sent again', async () => {
+// Wrong behaviour caught: a short Resend outage (503) loses a sign-in code for good, or a refused request (400) goes out again,
+// or the retry has no Idempotency-Key, so a mail Resend took before its 503 arrives twice.
+it('a code mail that Resend refuses with 503 goes out on the retry with the same key; one refused with 400 is not sent again', async () => {
   const s = await setup()
   vi.stubEnv('GINKO_MAIL', 'resend')
   vi.stubEnv('GINKO_MAIL_FROM', 'Ginko <onboarding@resend.dev>')
@@ -84,6 +85,10 @@ it('a code mail that Resend refuses with 503 goes out on the retry; one refused 
   vi.unstubAllGlobals()
   const sentTo = fetch.mock.calls.map((call) => (JSON.parse((call as unknown as [string, RequestInit])[1].body as string) as { to: string[] }).to[0])
   expect(sentTo).toEqual(['wirtin@example.com', 'wirtin@example.com', 'koch@example.com'])
+  const keys = fetch.mock.calls.map((call) => ((call as unknown as [string, RequestInit])[1].headers as Record<string, string>)['idempotency-key'])
+  expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/)
+  expect(keys[1]).toBe(keys[0])
+  expect(keys[2]).not.toBe(keys[0])
 })
 
 /** POSTs to the Better Auth route as the Studio's auth proxy sends it: the visitor IP, signed with the shared proxy secret. */
