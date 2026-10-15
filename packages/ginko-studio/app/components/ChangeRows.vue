@@ -1,6 +1,7 @@
 <!-- The change log (UI.md 7), one paginated query: older pages load on demand and every loaded page
      stays live, so an undo on an older page updates its row at once. Rückgängig shows only on saves that are not undone yet, and for
-     staff only when one of their granted edit tasks covers every field of the change. A save the
+     staff only when one of their granted edit tasks covers every field of the change, or when the change is of an entry
+     they created (`own`) and they still hold its create task (SPEC 2.7). A save the
      server would refuse to undo (`undoBlocked`: saved again, removed, fields restructured) says why
      instead. "Zurück zu dieser Version" shows what it changes before it saves. -->
 <script setup lang="ts">
@@ -58,14 +59,17 @@ const sentenceOf = (change: Change) => textOf(change.msg, change.sentence)
 /** Who made the change, and the AI key when one did. */
 const actorName = (change: Change) => byText(change.who, change.via, change.agent, t)
 
-/** The edit task a staff member needs to undo this save: one granted task that covers all its fields. Owners and admins need none. */
+/**
+ * The task a staff member needs to undo or revert this save: one granted edit task that covers all its fields, else,
+ * for an entry they created, their create task of the brick (lib/access.ts `authorize`, the agent door's `taskFor`).
+ * Owners and admins need none.
+ */
 function taskFor(change: Change): string | undefined {
   if (props.manager) return undefined
   const fields = change.fields ?? []
-  const brick = props.schema.bricks[change.brick]
-  const found = brick?.tasks?.find((task) => task.kind === 'edit'
-    && props.grants.has(`${change.brick}.${task.id}`)
-    && fields.every((field) => task.fields.includes(field)))
+  const held = (props.schema.bricks[change.brick]?.tasks ?? []).filter((task) => props.grants.has(`${change.brick}.${task.id}`))
+  const found = held.find((task) => task.kind === 'edit' && fields.every((field) => task.fields.includes(field)))
+    ?? (change.own ? held.find((task) => task.kind === 'create') : undefined)
   return found ? `${change.brick}.${found.id}` : undefined
 }
 

@@ -45,8 +45,12 @@ const props = defineProps<{
   brick: Brick
   /** None = a new entry of a collection. */
   entry?: Entry
-  /** Staff work through tasks (SPEC 2.7): the task refs that allow saving, creating and removing here, and the fields the save task covers. Owners pass none. */
-  tasks?: { save?: string; fields?: readonly string[]; create?: string; remove?: string }
+  /**
+   * Staff work through tasks (SPEC 2.7): the task refs that allow saving, creating and removing here, the fields the
+   * save task covers (none: every field), and the tasks of this brick they hold. `saveFor` picks the task of one save
+   * by the fields it changes (an entry they created, useAll.ts). Owners pass none.
+   */
+  tasks?: { save?: string; saveFor?: (roots: readonly string[]) => string | undefined; fields?: readonly string[]; create?: string; remove?: string; held?: readonly Task[] }
   canRemove: boolean
   /** Someone removed `entry` while it was open (useKeptEntry): the form keeps the input and offers a way out. */
   removed?: boolean
@@ -88,7 +92,7 @@ const form = useEntryForm({
   entry: () => props.entry,
   main: () => main.value,
   locale: () => locale.value,
-  task: () => (props.entry ? props.tasks?.save : props.tasks?.create),
+  task: (roots) => (!props.entry ? props.tasks?.create : roots && props.tasks?.saveFor ? props.tasks.saveFor(roots) : props.tasks?.save),
   removeTask: () => props.tasks?.remove,
   draft: () => props.entry?.state === 'draft',
   timeZone: () => props.schema.timeZone,
@@ -210,6 +214,14 @@ provide(TRANSLATION, {
 })
 
 const shown = (label: LabelText) => shownLabel(label, main.value)
+/**
+ * Staff without a right to change this entry (no edit task, and not one they created with their create task): the
+ * form shows no fields and no Speichern, but a note that says why and whom to ask. Vorschau, Mehr and publishing stay.
+ */
+const readOnly = computed(() => !!props.entry && !!props.tasks && !props.tasks.save)
+const readOnlyNote = computed(() => props.tasks?.create
+  ? t('entry.readOnlyOthers')
+  : t('entry.readOnly', { area: shown(props.brick.label), tasks: (props.tasks?.held ?? []).map((task) => shown(task.label)).join(', ') }))
 const title = computed(() => {
   if (props.brick.kind === 'single') return shown(props.brick.label)
   if (props.entry) return titleOf(props.brick, props.entry.data, main.value)
@@ -549,6 +561,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
         />
         <p v-if="problem" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ problem }}</p>
+        <p v-if="readOnly" class="rounded-md bg-muted px-3 py-2.5 text-muted-foreground" role="status">{{ readOnlyNote }}</p>
 
         <EntryFields v-bind="fieldProps" :entries="grouped.ungrouped" @update="setField" />
         <template v-if="tabbed">
@@ -582,12 +595,14 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
           <p :class="['basis-full text-sm empty:sr-only', size?.over ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ size?.text }}</p>
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
           <p v-if="shrunk.length" id="entry-shrunk" class="basis-full text-sm text-muted-foreground">{{ shrunk.join(' ') }}</p>
-          <Button type="submit" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'entry-shrunk' : undefined" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
+          <Button v-if="!readOnly" type="submit" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'entry-shrunk' : undefined" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
           <Button v-if="isDraft && !publishing && !removed" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
-          <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
-          <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>
-          <!-- While a save runs the button says what happens; text typed meanwhile is "Nicht gespeichert" once it ends. -->
-          <span v-else-if="dirty && !busy" class="font-medium text-warning">{{ t('entry.unsaved') }}</span>
+          <template v-if="!readOnly">
+            <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
+            <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>
+            <!-- While a save runs the button says what happens; text typed meanwhile is "Nicht gespeichert" once it ends. -->
+            <span v-else-if="dirty && !busy" class="font-medium text-warning">{{ t('entry.unsaved') }}</span>
+          </template>
           <p v-if="offline" class="basis-full text-sm font-medium text-warning" role="status">{{ t('entry.save.offlineKept') }}</p>
           <Button type="button" variant="ghost" class="ml-auto" :aria-pressed="showPreview" @click="showPreview = !showPreview">{{ showPreview ? t('entry.preview.close') : t('entry.preview.label') }}</Button>
           <template v-if="drafts && entry && state === 'live' && !removed">

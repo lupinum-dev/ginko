@@ -32,7 +32,10 @@
     "title": "Meine Seiten",
     "invitedTo": "Einladung zu <site>{site}</site> als {role}",
     "accept": "Einladung annehmen",
-    "empty": "Du hast noch keinen Zugang zu einer Seite. Bitte frag nach einer Einladung.",
+    "name": "Dein Name",
+    "nameHint": "So sieht dein Team, wer etwas geändert hat.",
+    "nameSaved": "Name gespeichert.",
+    "empty": "Du hast zurzeit keinen Zugang zu einer Website. Brauchst du einen, frag die Person, die dich eingeladen hat.",
     "search": "Seite suchen",
     "recent": "Zuletzt geöffnet",
     "all": "Alle Seiten",
@@ -89,15 +92,21 @@
   "invite": {
     "titleShort": "Einladung",
     "title": "Einladung annehmen",
+    "heading": "Einladung zu {site}",
     "lead": "<site>{site}</site> lädt dich als {role} ein.",
     "role": {
       "owner": "Inhaber",
       "staff": "Mitarbeiter",
       "admin": "Admin"
     },
+    "rightsOwner": "Als Inhaber kannst du alles ändern und das Team verwalten.",
+    "rightsStaff": "Du darfst:",
+    "rightsNone": "Welche Bereiche du ändern darfst, wird noch festgelegt.",
+    "signInHint": "Melde dich mit <email>{email}</email> an. Wir schicken dir einen Code, ein Passwort brauchst du nicht.",
     "otherEmail": "Diese Einladung gilt für eine andere E-Mail-Adresse. Melde dich mit dieser an.",
     "expired": "Diese Einladung ist abgelaufen oder schon benutzt. Bitte frag nach einer neuen.",
-    "accepting": "Nimmt an …"
+    "accepting": "Nimmt an …",
+    "nameHint": "Freiwillig. So sieht dein Team, wer etwas geändert hat."
   },
   "entry": {
     "newIn": "Neu in {brick}",
@@ -122,6 +131,8 @@
     "saveContinues": "Speichern läuft weiter. Ohne Verbindung wird es übernommen, sobald sie wieder da ist.",
     "notSaved": "Nicht gespeichert: {reason}",
     "notSavedReopen": "Nicht gespeichert. Bitte die Aufgabe noch einmal öffnen.",
+    "readOnly": "Diesen Eintrag kannst du nicht ändern. Deine Rechte in „{area}“: {tasks}. Muss hier etwas geändert werden, frag die Person, die dich eingeladen hat.",
+    "readOnlyOthers": "Diesen Eintrag kannst du nicht ändern: Hier änderst du nur Einträge, die du selbst angelegt hast. Muss hier etwas geändert werden, frag die Person, die dich eingeladen hat.",
     "status": {
       "online": "Online",
       "onlineFrom": "Online ab {when}",
@@ -137,6 +148,7 @@
     "conflict": {
       "changed": "Inzwischen hat jemand {fields} geändert.",
       "changedBy": "{who} hat inzwischen {fields} geändert.",
+      "changedByYou": "Du hast {fields} inzwischen in einem anderen Fenster geändert.",
       "thisEntry": "diesen Eintrag",
       "item": "{field}: jetzt gespeichert „{stored}“, deine Eingabe „{mine}“",
       "keepMine": "Meine Eingaben speichern",
@@ -150,7 +162,11 @@
         "theyAdded": "{who} hat „{row}“ hinzugefügt",
         "theyRemoved": "{who} hat „{row}“ entfernt",
         "theyChanged": "{who} hat „{row}“ geändert",
+        "otherWindowAdded": "In einem anderen Fenster hast du „{row}“ hinzugefügt",
+        "otherWindowRemoved": "In einem anderen Fenster hast du „{row}“ entfernt",
+        "otherWindowChanged": "In einem anderen Fenster hast du „{row}“ geändert",
         "clash": "„{row}“ habt ihr beide geändert, bitte eine Version wählen.",
+        "clashYou": "„{row}“ hast du in beiden Fenstern geändert, bitte eine Version wählen.",
         "untitled": "Zeile {n}"
       }
     },
@@ -282,7 +298,7 @@
       "noEnd": "ohne Ablauf"
     },
     "quick": {
-      "nothingForYou": "Für dich gibt es hier keine Aufgaben. Frag die Inhaberin nach den passenden Rechten.",
+      "nothingForYou": "Für dich gibt es hier noch keine Aufgaben. Frag die Person, die dich eingeladen hat, nach den passenden Rechten.",
       "todayDone": "<task>{task}</task> ist für heute eingetragen.",
       "flagText": "„{text}“",
       "clearToday": "Aufheben",
@@ -302,7 +318,9 @@
     },
     "all": {
       "heading": "Inhalte",
+      "headingStaff": "Deine Bereiche",
       "lede": "Alle Bereiche der Website mit allen Feldern. Wähle einen Bereich.",
+      "ledeStaff": "Die Bereiche der Website, in denen du etwas ändern darfst.",
       "allAreas": "Alle Bereiche",
       "new": "Neu",
       "noEntries": "Noch keine Einträge.",
@@ -316,7 +334,7 @@
     },
     "area": {
       "missing": "Diesen Bereich gibt es nicht.",
-      "noAccess": "Diesen Bereich darfst du nicht bearbeiten. Frag die Inhaberin, wenn du hier etwas ändern musst."
+      "noAccess": "Diesen Bereich kannst du nicht bearbeiten. Musst du hier etwas ändern, frag die Person, die dich eingeladen hat."
     },
     "entry": {
       "missing": "Diesen Eintrag gibt es nicht (mehr)."
@@ -335,15 +353,23 @@
       "heading": "Team",
       "ownersOnly": "Nur Inhaber sehen das Team.",
       "members": "Mitglieder",
+      "you": "Du",
       "noEmail": "Ohne E-Mail-Adresse",
       "noRights": "Keine Rechte.",
+      "supportText": "Hat Zugang zu allem, um die Website zu pflegen und dir zu helfen.",
       "changeRights": "Rechte ändern",
       "losesAccess": "<email>{email}</email> verliert den Zugang zu {site}.",
+      "memberRemoved": "{email} hat keinen Zugang mehr.",
       "openInvites": "Offene Einladungen",
       "validUntil": "gültig bis {date}",
       "revokeInvite": "Zurückziehen",
+      "inviteRevoked": "Einladung an {email} zurückgezogen.",
       "invite": "Einladen",
       "role": "Rolle",
+      "roleHelp": {
+        "staff": "Die Person ändert nur, was du unten anhakst.",
+        "owner": "Die Person kann alles ändern, das Team verwalten und die Seite löschen."
+      },
       "rights": "Rechte",
       "sendInvite": "Einladung senden",
       "inviteSent": "Einladung an {email} gesendet.",
@@ -382,13 +408,24 @@
     },
     "keys": {
       "heading": "Schlüssel für Veröffentlichungen",
-      "lead": "Mit diesen Schlüsseln veröffentlichen Programme die Seite, zum Beispiel die automatische Veröffentlichung. Neue Schlüssel richtet die Website-Betreuung ein.",
+      "lead": "Mit einem Schlüssel veröffentlicht die automatische Veröffentlichung (CI) deine Seite oder macht eine Sicherung.",
+      "none": "Noch keine Schlüssel.",
+      "new": "Neuer Schlüssel",
+      "name": "Name",
+      "nameHint": "Zum Beispiel „GitHub Actions“.",
+      "purpose": "Wofür?",
+      "purposeRelease": "Veröffentlichen und sichern",
+      "purposeExport": "Nur sichern",
+      "create": "Schlüssel erstellen",
+      "once": "Du siehst diesen Schlüssel nur jetzt. Speichere ihn als GINKO_KEY in den Einstellungen deiner CI.",
+      "copy": "Schlüssel kopieren",
+      "copied": "Schlüssel kopiert.",
       "createdAt": "Erstellt {when}",
       "createdBy": "{who} · erstellt {when}",
       "lastUsedAt": ", zuletzt benutzt {when}",
       "neverUsed": ", noch nie benutzt",
       "revoke": "Widerrufen",
-      "revokeConfirm": "Programme mit „{label}“ können danach nicht mehr veröffentlichen.",
+      "revokeConfirm": "Programme mit „{label}“ können danach weder veröffentlichen noch sichern.",
       "revoked": "Schlüssel „{label}“ widerrufen."
     },
     "history": {
@@ -404,6 +441,16 @@
       "entriesHint": "Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.",
       "dismiss": "Hinweis ausblenden",
       "usage": "Textspeicher: {used} von {limit} belegt, {count} von {max} Einträgen. Bilder und PDFs zählen nicht mit."
+    },
+    "backup": {
+      "heading": "Sicherung",
+      "lead": "Lädt alle Inhalte (auch Entwürfe und den Papierkorb) und alle Bilder und PDFs als ZIP-Datei. Team, Verlauf und Schlüssel sind nicht dabei.",
+      "button": "Sicherung herunterladen",
+      "size": "{count, plural, one {# Datei} other {# Dateien}}, zusammen {size}.",
+      "progress": "Lädt {done} von {total} Dateien …",
+      "done": "Sicherung heruntergeladen.",
+      "tooBig": "Mit {size} ist die Sicherung zu groß für diesen Browser. In Chrome oder Edge geht es.",
+      "failed": "Die Sicherung ist nicht vollständig: „{name}“ ließ sich nicht laden. Versuch es noch einmal."
     },
     "translations": {
       "heading": "Übersetzungen",
@@ -768,6 +815,7 @@
     "withdrawn": "Zurückgezogen.",
     "notApproved": "Nicht freigegeben",
     "rejectedBy": "{who} hat abgelehnt: „{reason}“",
+    "rejectedByYou": "Du hast abgelehnt: „{reason}“",
     "notLive": "Nicht live gegangen",
     "notLiveBecause": "Geplant für {when}. {reason}",
     "undoBlocked": {
@@ -956,6 +1004,7 @@
   },
   "who": {
     "member": "Ein Mitglied",
+    "you": "Du",
     "platform": "Website-Betreuung",
     "former": "Ehemaliges Mitglied",
     "system": "System",

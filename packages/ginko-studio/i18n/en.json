@@ -32,7 +32,10 @@
     "title": "My sites",
     "invitedTo": "<site>{site}</site> invites you as {role}.",
     "accept": "Accept invitation",
-    "empty": "You do not have access to a site yet. Please ask for an invitation.",
+    "name": "Your name",
+    "nameHint": "This is how your team sees who changed something.",
+    "nameSaved": "Name saved.",
+    "empty": "You currently have no access to a website. If you need it, ask the person who invited you.",
     "search": "Find a site",
     "recent": "Recently opened",
     "all": "All sites",
@@ -89,15 +92,21 @@
   "invite": {
     "titleShort": "Invitation",
     "title": "Accept invitation",
+    "heading": "Invitation to {site}",
     "lead": "<site>{site}</site> invites you as {role}.",
     "role": {
       "owner": "an owner",
       "staff": "a staff member",
       "admin": "an admin"
     },
+    "rightsOwner": "As an owner you can change everything and manage the team.",
+    "rightsStaff": "You may:",
+    "rightsNone": "Which areas you may change will be set later.",
+    "signInHint": "Sign in with <email>{email}</email>. We send you a code; you do not need a password.",
     "otherEmail": "This invitation is for another email address. Sign in with that address.",
     "expired": "This invitation has expired or was already used. Please ask for a new one.",
-    "accepting": "Accepting …"
+    "accepting": "Accepting …",
+    "nameHint": "Optional. This is how your team sees who changed something."
   },
   "entry": {
     "newIn": "New in {brick}",
@@ -122,6 +131,8 @@
     "saveContinues": "Still saving. If you are offline, it is saved as soon as the connection is back.",
     "notSaved": "Not saved: {reason}",
     "notSavedReopen": "Not saved. Please open the task again.",
+    "readOnly": "You cannot change this entry. Your rights in “{area}”: {tasks}. If something here needs changing, ask the person who invited you.",
+    "readOnlyOthers": "You cannot change this entry: here you only change entries you added yourself. If something here needs changing, ask the person who invited you.",
     "status": {
       "online": "Online",
       "onlineFrom": "Online from {when}",
@@ -137,6 +148,7 @@
     "conflict": {
       "changed": "Someone has changed {fields} in the meantime.",
       "changedBy": "{who} has changed {fields} in the meantime.",
+      "changedByYou": "You changed {fields} in another window in the meantime.",
       "thisEntry": "this entry",
       "item": "{field}: saved now as “{stored}”, your input “{mine}”",
       "keepMine": "Save my changes",
@@ -150,7 +162,11 @@
         "theyAdded": "{who} added “{row}”",
         "theyRemoved": "{who} removed “{row}”",
         "theyChanged": "{who} changed “{row}”",
+        "otherWindowAdded": "In another window, you added “{row}”",
+        "otherWindowRemoved": "In another window, you removed “{row}”",
+        "otherWindowChanged": "In another window, you changed “{row}”",
         "clash": "You both changed “{row}”; please choose one version.",
+        "clashYou": "You changed “{row}” in both windows; please choose one version.",
         "untitled": "Row {n}"
       }
     },
@@ -282,7 +298,7 @@
       "noEnd": "no end date"
     },
     "quick": {
-      "nothingForYou": "You have no tasks here. Ask the owner for the rights you need.",
+      "nothingForYou": "There are no tasks for you here yet. Ask the person who invited you for the rights you need.",
       "todayDone": "<task>{task}</task> is filled in for today.",
       "flagText": "“{text}”",
       "clearToday": "Clear",
@@ -302,7 +318,9 @@
     },
     "all": {
       "heading": "Content",
+      "headingStaff": "Your areas",
       "lede": "All areas of the site with all fields. Choose an area.",
+      "ledeStaff": "The areas of the website where you may change something.",
       "allAreas": "All areas",
       "new": "New",
       "noEntries": "No entries yet.",
@@ -316,7 +334,7 @@
     },
     "area": {
       "missing": "This area does not exist.",
-      "noAccess": "You may not edit this area. Ask the owner if you need to change something here."
+      "noAccess": "You cannot edit this area. If you need to change something here, ask the person who invited you."
     },
     "entry": {
       "missing": "This entry does not exist (anymore)."
@@ -335,15 +353,23 @@
       "heading": "Team",
       "ownersOnly": "Only owners can see the team.",
       "members": "Members",
+      "you": "You",
       "noEmail": "No email address",
       "noRights": "No rights.",
+      "supportText": "Has access to everything to look after the website and help you.",
       "changeRights": "Change rights",
       "losesAccess": "<email>{email}</email> will lose access to {site}.",
+      "memberRemoved": "{email} no longer has access.",
       "openInvites": "Open invitations",
       "validUntil": "valid until {date}",
       "revokeInvite": "Revoke",
+      "inviteRevoked": "Invitation to {email} revoked.",
       "invite": "Invite",
       "role": "Role",
+      "roleHelp": {
+        "staff": "They change only what you tick below.",
+        "owner": "They can change everything, manage the team and delete the site."
+      },
       "rights": "Rights",
       "sendInvite": "Send invitation",
       "inviteSent": "Invitation sent to {email}.",
@@ -382,13 +408,24 @@
     },
     "keys": {
       "heading": "Publishing keys",
-      "lead": "Programs use these keys to publish the site, for example automatic publishing. Site support sets up new keys.",
+      "lead": "With a key, automatic publishing (CI) publishes your site or makes a backup.",
+      "none": "No keys yet.",
+      "new": "New key",
+      "name": "Name",
+      "nameHint": "For example “GitHub Actions”.",
+      "purpose": "What for?",
+      "purposeRelease": "Publish and back up",
+      "purposeExport": "Back up only",
+      "create": "Create key",
+      "once": "You see this key only now. Save it as GINKO_KEY in your CI settings.",
+      "copy": "Copy key",
+      "copied": "Key copied.",
       "createdAt": "Created {when}",
       "createdBy": "{who} · created {when}",
       "lastUsedAt": ", last used {when}",
       "neverUsed": ", never used",
       "revoke": "Revoke",
-      "revokeConfirm": "Programs using “{label}” can no longer publish after that.",
+      "revokeConfirm": "Programs using “{label}” can then neither publish nor back up.",
       "revoked": "Key “{label}” revoked."
     },
     "history": {
@@ -404,6 +441,16 @@
       "entriesHint": "To make room, remove entries. Removed entries do not count.",
       "dismiss": "Hide notice",
       "usage": "Text storage: {used} of {limit} used, {count} of {max} entries. Pictures and PDFs do not count."
+    },
+    "backup": {
+      "heading": "Backup",
+      "lead": "Downloads all content (drafts and trash included) and all pictures and PDFs as a ZIP file. Team, history and keys are not included.",
+      "button": "Download backup",
+      "size": "{count, plural, one {# file} other {# files}}, {size} in total.",
+      "progress": "Loading {done} of {total} files …",
+      "done": "Backup downloaded.",
+      "tooBig": "At {size}, the backup is too large for this browser. It works in Chrome or Edge.",
+      "failed": "The backup is incomplete: “{name}” could not be loaded. Please try again."
     },
     "translations": {
       "heading": "Translations",
@@ -768,6 +815,7 @@
     "withdrawn": "Withdrawn.",
     "notApproved": "Not approved",
     "rejectedBy": "{who} rejected it: “{reason}”",
+    "rejectedByYou": "You rejected it: “{reason}”",
     "notLive": "Did not go live",
     "notLiveBecause": "Planned for {when}. {reason}",
     "undoBlocked": {
@@ -956,6 +1004,7 @@
   },
   "who": {
     "member": "A team member",
+    "you": "You",
     "platform": "Site support",
     "former": "Former member",
     "system": "System",

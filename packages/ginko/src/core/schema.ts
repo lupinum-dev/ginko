@@ -7,7 +7,7 @@ import { weekInfoOf } from './time.ts'
 import { componentProblems, type ComponentRegistry } from './components.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
-import { isPrefillToken, PREFILL_TOKENS, type Brick, type Currency, type Field, type Fields, type Json, type Locale, type Schema } from './types.ts'
+import { isPrefillToken, PREFILL_TOKENS, type Brick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema } from './types.ts'
 import { coreMessage } from './messages.ts'
 import { checkValue } from './validate.ts'
 
@@ -183,6 +183,19 @@ export function platformSchema(schema: Schema): Schema {
 /** Entries of bricks or fields in config order (`pos`), for anything that shows them in sequence. */
 export function ordered<T extends { pos?: number }>(record: Record<string, T>): [string, T][] {
   return Object.entries(record).sort(([a, x], [b, y]) => (x.pos ?? Number.MAX_SAFE_INTEGER) - (y.pos ?? Number.MAX_SAFE_INTEGER) || a.localeCompare(b))
+}
+
+/**
+ * A staff member's rights (`brick.task` grants, SPEC 2.7) by area: the live bricks in schema order, each with the
+ * labels of its granted tasks in task order. A grant whose brick or task is gone or retired grants nothing and is
+ * left out. The one reading of grants for the Team page, the invite mail and the invite page.
+ */
+export function grantGroups(schema: Pick<Schema, 'bricks'>, grants: readonly string[]): { brick: string; label: Label; tasks: Label[] }[] {
+  const held = new Set(grants)
+  return ordered(schema.bricks)
+    .filter(([, brick]) => !brick.retired)
+    .map(([key, brick]) => ({ brick: key, label: brick.label, tasks: (brick.tasks ?? []).filter((task) => held.has(`${key}.${task.id}`)).map((task) => task.label) }))
+    .filter((group) => group.tasks.length > 0)
 }
 
 /** Exact source text: a changed literal inside the function must change the fingerprint. */

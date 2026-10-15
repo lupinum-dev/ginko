@@ -276,4 +276,20 @@ describe('ConflictPanel', () => {
     })
     expect(panel.find('strong').text()).toBe('koch@example.com hat inzwischen Name geändert.')
   })
+
+  // Wrong behaviour caught (R10): her own save from a second tab read "anna@lupinum.test hat inzwischen Beschreibung
+  // geändert.", as if someone else had changed it; a colleague with a name was named by address.
+  test.each([
+    [{ self: true } as const, 'Du hast Name inzwischen in einem anderen Fenster geändert.'],
+    [{ kind: 'member', name: 'Jonas' } as const, 'Jonas hat inzwischen Name geändert.'],
+  ])('the heading for a save by %o', (who, heading) => {
+    const panel = mount(ConflictPanel, {
+      props: {
+        conflict: { fields: ['name'], data: { ...stored.data, name: 'Schnitzel vom Schwein' }, by: { name: who } },
+        draft: { ...stored.data, name: 'Schnitzel mit Preiselbeeren' }, baseline: stored.data,
+        fields: (brick as { fields: never }).fields, locale: 'de', main: 'de', canKeepBoth: false,
+      },
+    })
+    expect(panel.find('strong').text()).toBe(heading)
+  })
 })

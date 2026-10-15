@@ -87,7 +87,7 @@ const ops = useOps(s.slug)
 <template>
   <AllShell :slug="s.slug.value" :bricks="editable" :current="key" :back="{ to: `/s/${s.slug.value}/all`, label: t('site.all.allAreas') }">
     <p v-if="!brick" class="text-destructive">{{ t('site.area.missing') }}</p>
-    <p v-else-if="!editable.some(([k]) => k === key)" class="text-destructive">{{ t('site.area.noAccess') }}</p>
+    <p v-else-if="!editable.some(([k]) => k === key)" class="text-muted-foreground">{{ t('site.area.noAccess') }}</p>
     <template v-else-if="brick.kind === 'single'">
       <EntryEditor
         v-if="single.data.value && s.site.value && s.schema.value"

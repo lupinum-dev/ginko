@@ -6,7 +6,7 @@ import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { query, type QueryCtx } from './_generated/server'
 import { labeler } from './lib/names'
-import { actorFor, fail, type Actor } from './lib/access'
+import { actorFor, createdBy, fail, type Actor } from './lib/access'
 import { diffFields } from './lib/diff'
 import { undoBlockOf, type UndoBlock } from './lib/history'
 
@@ -24,7 +24,9 @@ type ReadEntry = (id: Id<'entries'>) => Promise<Doc<'entries'> | null>
  * The rows without before/after/prints (those are for undo and the release, not for the list: the
  * history page shows the message), with who did it as data (`Who`, lib/names.ts) and, for a change
  * through the agent door, the label of that person's key (SPEC 16). `inTrash`: a removal whose entry is
- * still in the trash (not restored, not deleted for good), so the Studio links there only while it is.
+ * still in the trash (not restored, not deleted for good), so the Studio links there only while it is. `own` marks a
+ * save of an entry the reader created: staff undo and revert it with their create task (lib/access.ts `authorize`),
+ * as entries.get says.
  */
 async function summaries(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]) {
   const names = await labeler(ctx, actor)
@@ -35,26 +37,35 @@ async function summaries(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]) {
     if (!read.has(id)) read.set(id, ctx.db.get(id))
     return read.get(id)!
   }
-  const blocks = await undoBlocks(ctx, actor, rows, readEntry)
+  const { blocks, own } = await saveFacts(ctx, actor, rows, readEntry)
   const out = []
   for (const { before: _before, after: _after, printsBefore: _printsBefore, printsAfter: _printsAfter, ...change } of rows) {
     const inTrash = change.kind === 'remove' && !!change.entry && !!(await readEntry(change.entry))?.deletedAt
-    out.push({ ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null, inTrash })
+    out.push({
+      ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null, inTrash,
+      ...(own.has(change._id) ? { own: true as const } : {}),
+    })
   }
   return out
 }
 
-/** Why each save on the page can no longer be undone (undoBlockOf, the rule the undo mutation uses). */
-async function undoBlocks(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[], readEntry: ReadEntry): Promise<Map<Id<'changes'>, UndoBlock>> {
+/**
+ * For each save on the page: why it can no longer be undone (undoBlockOf, the rule the undo mutation uses), and
+ * whether the reader created its entry (`createdBy`).
+ */
+async function saveFacts(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[], readEntry: ReadEntry): Promise<{ blocks: Map<Id<'changes'>, UndoBlock>; own: Set<Id<'changes'>> }> {
   const blocks = new Map<Id<'changes'>, UndoBlock>()
-  if (!rows.some((row) => row.kind === 'save' && row.entry)) return blocks
+  const own = new Set<Id<'changes'>>()
+  if (!rows.some((row) => row.kind === 'save' && row.entry)) return { blocks, own }
   const migrated = await ctx.db.query('migrationsApplied').withIndex('by_site_id', (q) => q.eq('site', actor.site._id)).collect()
   for (const change of rows) {
     if (change.kind !== 'save' || !change.entry) continue
-    const block = undoBlockOf(change, await readEntry(change.entry), migrated)
+    const entry = await readEntry(change.entry)
+    const block = undoBlockOf(change, entry, migrated)
     if (block) blocks.set(change._id, block)
+    if (createdBy(actor, entry)) own.add(change._id)
   }
-  return blocks
+  return { blocks, own }
 }
 
 /**

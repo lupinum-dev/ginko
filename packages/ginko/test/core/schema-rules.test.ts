@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import { plan } from '../../src/cli/plan.ts'
 import {
-  buildBundle, checkSchema, checkSite, isShown, collection, defineComponents, defineSite, diffSchema, f, isCurrency, isLocale, labelOf, platformSchema, serializeSchema, single, validate,
+  buildBundle, checkSchema, checkSite, isShown, collection, defineComponents, defineSite, diffSchema, f, grantGroups, isCurrency, isLocale, labelOf, platformSchema, serializeSchema, single, validate,
   type Fields, type RouteTemplate, type Schema, type SiteInput,
 } from '../../src/core/index.ts'
 
@@ -607,5 +607,19 @@ describe('group and layout (display only)', () => {
   it('rejects an unknown layout', () => {
     const input = site({}, { bricks: { menu: collection({ label: 'Karte', layout: 'columns' as never, fields: { name: f.text('Name') }, max: 20, order: 'manual' }) } })
     expect(problemsOf(input)).toContain('menu: layout must be “sections” or “tabs”.')
+  })
+})
+
+describe('grants by area (SPEC 2.7)', () => {
+  // Wrong behaviour caught: the Team page or the invite mail lists a right of a removed area or task as granted,
+  // or lists areas in the order the owner ticked them instead of the site's.
+  it('lists live bricks in schema order with their granted tasks, and drops grants of a retired brick or a removed task', () => {
+    const schema = base()
+    schema.bricks.events!.retired = true
+    const groups = grantGroups(schema, ['menu.add', 'events.add', 'notices.add', 'menu.price', 'menu.gone', 'nobrick.add'])
+    expect(groups.map((g) => [g.brick, labelOf(g.label, 'de', 'de'), g.tasks.map((t) => labelOf(t, 'de', 'de'))])).toEqual([
+      ['notices', 'Hinweise', ['Hinweis hinzufügen']],
+      ['menu', 'Speisekarte', ['Preis ändern', 'Gericht hinzufügen']],
+    ])
   })
 })

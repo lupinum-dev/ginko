@@ -78,16 +78,22 @@ describe('invites.accept', () => {
   })
 
   // Break-it 9: the page before accepting names the site and the role, and says when the link is for another address.
-  it('peek names site and role, tells whether the invite is for this address, and is null once used', async () => {
+  // Wrong behaviour caught (onboard-4): a signed-out invitee was sent to a bare sign-in page with no word about the
+  // invite, typed another address and waited for a code that never came.
+  it('peek names site, address, role and rights, also signed out, tells whether the invite is for this address, and is null once used', async () => {
     const { t, as } = await setup()
-    await as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'neu@example.com', role: 'staff', grants: [] })
+    await as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'neu@example.com', role: 'staff', grants: ['menu.add', 'menu.price'] })
     const token = await tokenMailedTo(t, 'neu@example.com')
     const invited = t.withIdentity({ subject: 'u-neu', email: 'neu@example.com' })
     const stranger = t.withIdentity({ subject: 'u-anders', email: 'anders@example.com' })
-    expect(await invited.query(api.invites.peek, { token })).toEqual({ site: 'Gasthaus zur Linde', role: 'staff', forYou: true })
-    expect(await stranger.query(api.invites.peek, { token })).toEqual({ site: 'Gasthaus zur Linde', role: 'staff', forYou: false })
+    const offer = { site: 'Gasthaus zur Linde', url: 'https://ginko-demo-restaurant.vercel.app', role: 'staff', rights: ['Speisekarte: Preis ändern, Gericht hinzufügen'] }
+    expect(await t.query(api.invites.peek, { token })).toEqual({ ...offer, email: 'neu@example.com', forYou: false })
+    expect(await t.query(api.invites.peek, { token, language: 'en' })).toMatchObject({ rights: ['Menu: Change a price, Add a dish'] })
+    expect(await invited.query(api.invites.peek, { token })).toEqual({ ...offer, forYou: true })
+    expect(await stranger.query(api.invites.peek, { token })).toEqual({ ...offer, forYou: false })
     await invited.mutation(api.invites.accept, { token })
     expect(await invited.query(api.invites.peek, { token })).toBeNull()
+    expect(await t.query(api.invites.peek, { token })).toBeNull()
   })
 
   it('a second accept of the same link is NOT_FOUND', async () => {
@@ -160,12 +166,15 @@ describe('invites.create', () => {
     expect(await t.run((ctx) => ctx.db.query('invites').collect())).toHaveLength(0)
   })
 
-  it('the invite mail carries the link, and only the token hash is stored', async () => {
+  // Wrong behaviour caught (onboard-4, admin-7): a mail that names no sender, website or rights reads like phishing.
+  it('the invite mail names the inviter, the website and the rights, carries the link, and only the token hash is stored', async () => {
     const { t, as } = await setup()
     await as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'neu@example.com', role: 'staff', grants: ['menu.price'] })
     const mails = await t.run((ctx) => ctx.db.query('outbox').collect())
     expect(mails).toHaveLength(1)
-    expect(mails[0]).toMatchObject({ to: 'neu@example.com', subject: expect.stringContaining('Einladung zu') })
+    expect(mails[0]).toMatchObject({ to: 'neu@example.com', subject: 'Einladung zu Gasthaus zur Linde von wirtin@example.com' })
+    expect(mails[0]!.text).toContain('wirtin@example.com lädt dich ein, die Website Gasthaus zur Linde (https://ginko-demo-restaurant.vercel.app) zu bearbeiten.')
+    expect(mails[0]!.text).toContain('Du darfst:\n- Speisekarte: Preis ändern\n')
     const token = await tokenMailedTo(t, 'neu@example.com')
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/)
     const invite = await t.run((ctx) => ctx.db.query('invites').unique())
@@ -189,6 +198,15 @@ describe('invites.create', () => {
 })
 
 describe('members.remove and setGrants', () => {
+  // Wrong behaviour caught (A17): the Team page cannot tell the caller's own row, so it offers an owner to remove themselves.
+  it("members.list marks only the caller's own membership as you", async () => {
+    const { as } = await setup()
+    const rows = async (who: typeof as.owner) => (await who.query(api.members.list, { site: 'restaurant' })).members.map((m) => [m.email, m.you])
+    expect(await rows(as.owner)).toEqual([['wirtin@example.com', true], ['koch@example.com', false]])
+    // A platform admin has no membership row.
+    expect(await rows(as.admin)).toEqual([['wirtin@example.com', false], ['koch@example.com', false]])
+  })
+
   it('the last owner cannot be removed', async () => {
     const { t, as } = await setup()
     const owner = await t.run((ctx) => ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', people.owner)).unique())
@@ -274,13 +292,21 @@ describe('changes.list who and paging (Phase 9: F08, F09, F16, F17)', () => {
     expect(page.map((c) => c.who)).toEqual([{ kind: 'platform' }, { kind: 'former' }])
   })
 
-  it('staff see colleagues as kind member and their own changes by email; owners and admins see emails', async () => {
+  // Wrong behaviour caught (R10, romi-16): the reader's own change came back as their email ("anna@… hat inzwischen
+  // Beschreibung geändert" for her own other window), and people had no names, so the history read as a list of addresses.
+  it('the reader is self, a colleague has the name they set; staff never get a colleague\'s email, managers do', async () => {
     const s = await setup()
+    await s.as.owner.mutation(api.account.setName, { name: '  Maria   Huber ' })
     await save(s, 'owner', 1)
     await save(s, 'cook', 2)
     const whoFor = async (person: 'owner' | 'cook' | 'admin') => (await s.as[person].query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })).page.map((c) => c.who)
-    expect(await whoFor('cook')).toEqual([{ email: 'koch@example.com' }, { kind: 'member' }])
-    expect(await whoFor('owner')).toEqual([{ email: 'koch@example.com' }, { email: 'wirtin@example.com' }])
+    expect(await whoFor('cook')).toEqual([{ self: true }, { kind: 'member', name: 'Maria Huber' }])
+    expect(await whoFor('owner')).toEqual([{ email: 'koch@example.com' }, { self: true }])
+    expect(await whoFor('admin')).toEqual([{ email: 'koch@example.com' }, { email: 'wirtin@example.com', name: 'Maria Huber' }])
+    expect((await s.as.owner.query(api.members.list, { site: 'restaurant' })).members.map((m) => m.name)).toEqual(['Maria Huber', null])
+
+    // An empty name removes it: the team sees the email again.
+    await s.as.owner.mutation(api.account.setName, { name: ' ' })
     expect(await whoFor('admin')).toEqual([{ email: 'koch@example.com' }, { email: 'wirtin@example.com' }])
   })
 

@@ -7,7 +7,7 @@
 import { api } from '#convex/api'
 import type { Schema } from '@lupinum/ginko/internal'
 import { useTextOf } from '../composables/useTextOf'
-import { whoText } from '../utils/who'
+import { isYou, whoText } from '../utils/who'
 import { whenFull } from '../utils/when'
 import ProposalWithdraw from './ProposalWithdraw.vue'
 
@@ -24,7 +24,10 @@ const notLive = computed(() => (mine.data.value?.notLive ?? []).filter(matches))
 
 const textOf = useTextOf(() => ({ timeZone: props.schema.timeZone, main: props.schema.locales[0] }))
 const line = (p: Row) => textOf(p.msg, p.sentence)
-const rejectedText = (p: Row) => t('history.rejectedBy', { who: p.decidedBy ? whoText(p.decidedBy, t) : t('who.member'), reason: textOf(p.reasonMsg, p.reason ?? '') })
+const rejectedText = (p: Row) => {
+  const reason = textOf(p.reasonMsg, p.reason ?? '')
+  return isYou(p.decidedBy) ? t('history.rejectedByYou', { reason }) : t('history.rejectedBy', { who: p.decidedBy ? whoText(p.decidedBy, t) : t('who.member'), reason })
+}
 const notLiveText = (p: Row) => t('history.notLiveBecause', { when: when(p.at!), reason: textOf(p.reasonMsg, p.reason ?? '') })
 const when = (at: number) => whenFull(at, props.schema.timeZone, format)
 </script>

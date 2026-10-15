@@ -16,7 +16,7 @@ import { diffFields } from './lib/diff'
 import { historyText, msg, type HistoryMsg, type Param } from './lib/history'
 import { localeOfUser, t, type MessageKey } from './lib/i18n'
 import { queueMail, mailAvailable, siteOrigin } from './mail'
-import { labeler, type Labeler } from './lib/names'
+import { labeler, namer, type Labeler } from './lib/names'
 
 const PAGE_SIZE = 50
 /** SPEC 17: a release groups at most this many proposals. */
@@ -643,18 +643,22 @@ export const sendDigest = internalMutation({
     if (!open.length || !mailAvailable()) return null
     const members = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).collect()
     const emailOf = new Map(members.map((m) => [m.user as string, m.email]))
+    const nameOf = namer(ctx)
     const schema = site.schema as Schema
-    const who: { author: string; viaAgent: boolean; ai: string | null; sentence: string; msg?: HistoryMsg }[] = []
+    const who: { author: string; name?: string; viaAgent: boolean; ai: string | null; sentence: string; msg?: HistoryMsg }[] = []
     for (const p of open) {
       // The key's label ("Claude Code"); null when the key is gone, then the line says only "via AI".
       const ai = p.agentKey ? (await ctx.db.get(p.agentKey))?.label ?? null : null
-      who.push({ author: p.author, viaAgent: p.via === 'agent', ai, sentence: p.sentence, ...(p.msg ? { msg: p.msg as HistoryMsg } : {}) })
+      const name = await nameOf(p.author)
+      who.push({ author: p.author, ...(name ? { name } : {}), viaAgent: p.via === 'agent', ai, sentence: p.sentence, ...(p.msg ? { msg: p.msg as HistoryMsg } : {}) })
     }
     // Each owner gets the mail in their own language.
     for (const owner of members.filter((m) => m.role === 'owner' && m.email)) {
       const locale = await localeOfUser(ctx, owner.user)
       const lines = who.map((w) => {
-        const name = emailOf.get(w.author) ?? t(locale, 'mail.digest.someone')
+        // As the Studio shows people to owners: the name the person set, with the address they verified.
+        const email = emailOf.get(w.author)
+        const name = email ? (w.name ? `${w.name} (${email})` : email) : w.name ?? t(locale, 'mail.digest.someone')
         const via = !w.viaAgent ? '' : ` ${w.ai ? t(locale, 'mail.digest.viaAi', { ai: w.ai }) : t(locale, 'mail.digest.viaAiUnnamed')}`
         return `- ${name}${via}: ${w.msg ? historyText(w.msg, locale, schema) : w.sentence}`
       })

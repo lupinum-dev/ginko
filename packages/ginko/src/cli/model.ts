@@ -124,6 +124,22 @@ export interface SiteExport extends Omit<ExportAnswer, 'files'> {
   files: (ExportFileInfo & { path: string })[]
 }
 
+// The layout of an export folder. `ginko export` writes it, and the Studio's backup ZIP holds the same folder
+// (through @lupinum/ginko/internal), so one import reads both.
+const EXTENSIONS: Record<string, string> = {
+  'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/avif': '.avif', 'application/pdf': '.pdf',
+}
+
+/** The folder `ginko export` writes to when no folder is given: `ginko-export-<site>-<YYYY-MM-DD>` (UTC). */
+export function defaultDir(site: string, now: Date): string {
+  return `ginko-export-${site}-${now.toISOString().slice(0, 10)}`
+}
+
+/** Where a file lies in the export folder, relative to it. */
+export function pathOf(file: { id: string; mime: string }): string {
+  return `files/${file.id}${EXTENSIONS[file.mime] ?? ''}`
+}
+
 /**
  * Checks the shape of an export. `locator` is the key that says where a file is: `url` (platform) or `path` (folder).
  * A bad platform answer is UNAVAILABLE (as in parseReleaseState); a bad local export.json is INVALID.

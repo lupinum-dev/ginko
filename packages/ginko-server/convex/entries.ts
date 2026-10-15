@@ -7,7 +7,7 @@ import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internal } from './_generated/api'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
-import { actorFor, authorize, authorizeWriter, byOf, checkRev, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor, type By } from './lib/access'
+import { actorFor, authorize, authorizeWriter, byOf, checkRev, createdBy, entryOf, fail, idempotent, SYSTEM, taskBrickOf, type Actor, type By } from './lib/access'
 import { fieldLabelAt, fileIdsOf, mergeField, nextPrints, refIdsIn, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { labeler, type Who } from './lib/names'
 import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
@@ -138,7 +138,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   const roots = [...new Set([...Object.keys(args.fields), ...confirm.map(rootOf)])]
   // A planned week is edited with the weekly task of the single it stands in for (`taskBrickOf`).
   const taskBrick = taskBrickOf(schema, args.task, entry)
-  authorize(actor, schema, { task: args.task, brick: taskBrick, kind: 'edit', fields: roots })
+  authorize(actor, schema, { task: args.task, brick: taskBrick, kind: 'edit', fields: roots, entry })
 
   if (entry.deletedAt) fail('CHANGED_SINCE', 'errors.thisEntryDeletedSince', undefined, current(entry))
   // A base above the entry's revision was never read, so it cannot vouch for anything.
@@ -225,7 +225,7 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     const brick = brickOf(schema, entry)
     const roots = change.fields ?? []
     const taskBrick = taskBrickOf(schema, args.task, entry)
-    authorize(actor, schema, { task: args.task, brick: taskBrick, kind: 'edit', fields: roots })
+    authorize(actor, schema, { task: args.task, brick: taskBrick, kind: 'edit', fields: roots, entry })
     refuseDirectWrite(actor, taskBrick, args.task)
     await refuseAgentUndo(ctx, actor, entry)
 
@@ -552,6 +552,8 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
       // A draft's `contentAt` is set again when it goes live.
       contentAt: Date.now(),
       ...(draft ? { state: 'draft' as const } : {}),
+      // Staff always create through a create task, and may change what they created with it later (`authorize`).
+      ...(actor.role === 'staff' ? { createdBy: actor.user.id } : {}),
     })
     await putTrees(ctx, actor.site._id, entry, trees.json)
     if (at !== undefined) await ctx.db.patch(entry, { publishAt: at, publishJob: await ctx.scheduler.runAt(at, internal.entries.publishDue, { entry, at }) })
@@ -1117,7 +1119,8 @@ export const get = query({
     const id = ctx.db.normalizeId('entries', args.entry)
     const row = id ? await ctx.db.get(id) : null
     if (!row || row.site !== actor.site._id) return null
-    return editorEntryWithTranslation(actor.site.schema as Schema, row)
+    // `own`: the person created it, so staff may change it with their create task (lib/access.ts `authorize`).
+    return { ...editorEntryWithTranslation(actor.site.schema as Schema, row), ...(createdBy(actor, row) ? { own: true } : {}) }
   },
 })
 

@@ -515,6 +515,9 @@ importers:
       class-variance-authority:
         specifier: 0.7.1
         version: 0.7.1
+      client-zip:
+        specifier: 2.5.1
+        version: 2.5.1
       clsx:
         specifier: 2.1.1
         version: 2.1.1
@@ -4036,6 +4039,9 @@ packages:
   clickable-path@0.1.1:
     resolution: {integrity: sha512-ROn/mdV2pR8WFdpJjFDCSouLRg9myf95xacO1iy8G/AVO/x5y124pjF3EaoWrTBRWC3vh0DPqa/MhKyx3mMeKg==}
     engines: {node: '>=22.1.0'}
+
+  client-zip@2.5.1:
+    resolution: {integrity: sha512-yOvNSBsQX1B7wtdvIVXJEIIShrlPiX+adhli7sWvQhsx3nX1DjvpSt+AwOxaX+3DCsT/Yx0nRy5hIjRLIYfebw==}
 
   cliui@9.0.1:
     resolution: {integrity: sha512-k7ndgKhwoQveBL+/1tqGJYNz097I7WOvwbmmU2AR5+magtbjPWQTS1C5vzGkBC8Ym8UWRzfKUzUUqFLypY4Q+w==}
@@ -11920,6 +11926,8 @@ snapshots:
       clsx: 2.1.1
 
   clickable-path@0.1.1: {}
+
+  client-zip@2.5.1: {}
 
   cliui@9.0.1:
     dependencies:

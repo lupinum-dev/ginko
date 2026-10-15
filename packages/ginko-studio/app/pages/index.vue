@@ -65,6 +65,23 @@ async function toggleRemind(on: boolean) {
     problem.value = opErrorOf(e).message
   }
 }
+// The name the person's teams see instead of their email (history, conflicts, files). Saved on "Speichern".
+const { mutate: setName, pending: savingName } = useConvexMutation(api.account.setName)
+const { show } = useToast()
+const name = ref('')
+watch(() => settings.value?.name, (saved) => { name.value = saved ?? '' }, { immediate: true })
+const nameChanged = computed(() => !!settings.value && name.value.trim() !== (settings.value.name ?? ''))
+async function saveName() {
+  problem.value = ''
+  try {
+    await setName({ name: name.value })
+    show(t('sites.nameSaved'))
+    // Saved, "Speichern" goes away with the focus on it: the focus stays in the name field.
+    document.getElementById('own-name')?.focus()
+  } catch (e) {
+    problem.value = opErrorOf(e).message
+  }
+}
 async function pickLocale(code: string) {
   problem.value = ''
   try {
@@ -108,6 +125,12 @@ async function pickLocale(code: string) {
         <p v-else class="text-muted-foreground" role="status">{{ t('sites.noMatch', { query: search.trim() }) }}</p>
       </section>
     </template>
+    <form v-if="settings" class="grid gap-2" @submit.prevent="saveName">
+      <label for="own-name" class="font-medium">{{ t('sites.name') }}</label>
+      <Input id="own-name" v-model="name" maxlength="60" autocomplete="name" aria-describedby="own-name-hint" />
+      <p id="own-name-hint" class="text-[13px] text-muted-foreground">{{ t('sites.nameHint') }}</p>
+      <Button v-if="nameChanged" type="submit" size="sm" class="justify-self-start" :disabled="savingName">{{ t('site.common.save') }}</Button>
+    </form>
     <div v-if="settings && reminders" class="flex items-start gap-3.5">
       <Switch id="remind" class="mt-0.5" :model-value="settings.remindByMail" @update:model-value="toggleRemind" />
       <label for="remind" class="grid cursor-pointer gap-0.5">

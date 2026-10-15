@@ -10,6 +10,7 @@ import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { useEntryForm } from '../app/composables/useEntryForm'
+import { allAccess } from '../app/composables/useAll'
 import EntryEditor from '../app/components/EntryEditor.vue'
 import PreviewPane from '../app/components/PreviewPane.vue'
 import AppToast from '../app/components/AppToast.vue'
@@ -446,5 +447,62 @@ test.each([
     else expect(bar).not.toContain('kürzer als vorher')
   } finally {
     vi.useRealTimers()
+  }
+})
+
+// Wrong behaviour caught: staff without a right to change an entry opened it and saw only the title, a dead Speichern and
+// no word why, so it looked as if the text was deleted (J2).
+test.each([
+  {
+    held: [{ id: 'write', label: 'Beitrag schreiben', kind: 'create' as const }], create: 'blog.write',
+    note: 'Diesen Eintrag kannst du nicht ändern: Hier änderst du nur Einträge, die du selbst angelegt hast. Muss hier etwas geändert werden, frag die Person, die dich eingeladen hat.',
+  },
+  {
+    held: [{ id: 'remove', label: 'Beitrag entfernen', kind: 'remove' as const }], create: undefined,
+    note: 'Diesen Eintrag kannst du nicht ändern. Deine Rechte in „Blog“: Beitrag entfernen. Muss hier etwas geändert werden, frag die Person, die dich eingeladen hat.',
+  },
+])('staff who may not change an entry see why and whom to ask, and no Speichern ($held.0.id)', async ({ held, create, note }) => {
+  const entry = { _id: 'e1', brick: 'blog', kind: 'item' as const, order: 1, data: { title: { de: 'Herbstfest' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live' as const }
+  const wrapper = mount(EntryEditor, {
+    props: {
+      site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry,
+      tasks: { save: undefined, fields: [], create, held }, canRemove: false,
+    },
+    global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+  })
+  await flushPromises()
+  expect(wrapper.get('[role="status"]').text()).toBe(note)
+  expect(wrapper.find('button[type="submit"]').exists()).toBe(false)
+})
+
+// Wrong behaviour caught: on an entry they created, staff who also hold an edit task saved every change through the
+// create task, so a typo fix waited for approval when only the create task needs it (the agent door saved it
+// directly through the edit task).
+test('staff save an entry they created through the edit task that covers the change, and through the create task otherwise', async () => {
+  const brick = { ...schema.bricks.blog!, tasks: [
+    { id: 'write', label: 'Beitrag schreiben', kind: 'create' as const, needsApproval: true },
+    { id: 'title', label: 'Titel ändern', kind: 'edit' as const, fields: ['title'] },
+  ] }
+  const { tasksFor } = allAccess({ isManager: ref(false), bricks: ref([['blog', brick]]), may: () => true } as never)
+  const sent: (string | undefined)[] = []
+  vi.stubGlobal('useOps', () => ({ opId: () => `op${sent.length}`, saveEntry: async ({ task }: { task?: string }) => ({ rev: sent.push(task) + 1 }) }))
+  try {
+    const entry = { _id: 'e1', brick: 'blog', kind: 'item' as const, order: 1, data: { title: { de: 'Herbstfest' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live' as const, own: true }
+    const wrapper = mount(EntryEditor, {
+      props: {
+        site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick, entry,
+        tasks: tasksFor('blog', brick, entry), canRemove: false,
+      },
+      global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+    })
+    await flushPromises()
+    for (const [field, value] of [['title', 'Herbstfest am 26.'], ['body', 'Mit Musik.']] as const) {
+      wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', field, { de: value })
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+    }
+    expect(sent).toEqual(['blog.title', 'blog.write'])
+  } finally {
+    vi.stubGlobal('useOps', () => ({}))
   }
 })

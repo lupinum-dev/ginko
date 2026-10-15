@@ -1,7 +1,8 @@
 <!-- Someone saved fields the person is editing (UI.md 3.2): their value next to the person's input, and the
      choice of one version. A list says row by row what each side added, removed or changed ("Du hast „…“
-     hinzugefügt", "anna@… hat „…“ entfernt"), and when no row was changed by both, "Beides behalten" saves
-     both. Used by Alles bearbeiten and Schnell ändern. -->
+     hinzugefügt", "Anna hat „…“ entfernt"), and when no row was changed by both, "Beides behalten" saves
+     both. When the other save was the person's own (another window or tab), it says so instead of naming them.
+     Used by Alles bearbeiten and Schnell ändern. -->
 <script setup lang="ts">
 import { useI18n } from '#imports'
 import type { Fields, Json, Locale } from '@lupinum/ginko'
@@ -10,7 +11,7 @@ import { Button } from '@studio/components/ui/button'
 import { computed } from 'vue'
 import { displayValue, rowTitle, type Data } from '../utils/content'
 import { shownLabel } from '../utils/labels'
-import { whoText, type Who } from '../utils/who'
+import { isYou, whoText, type Who } from '../utils/who'
 
 const props = defineProps<{
   conflict: { fields: string[]; data: Data; by?: Record<string, Who> }
@@ -33,12 +34,16 @@ const whoOf = (key: string) => {
   return who ? whoText(who, t) : t('entry.conflict.someone')
 }
 
+/** Whether the stored side of `key` is the person's own save from another window. */
+const yoursElsewhere = (key: string) => isYou(props.conflict.by?.[key])
+
 /** The heading names the person when one person changed every conflicting field, else "jemand". */
 const heading = computed(() => {
   const fields = props.conflict.fields.map(shownField).join(', ') || t('entry.conflict.thisEntry')
+  if (props.conflict.fields.length && props.conflict.fields.every(yoursElsewhere)) return t('entry.conflict.changedByYou', { fields })
   const names = new Set(props.conflict.fields.map((key) => {
     const who = props.conflict.by?.[key]
-    return who && whoText(who, t)
+    return who && !isYou(who) ? whoText(who, t) : undefined
   }))
   const [only] = names
   return names.size === 1 && only ? t('entry.conflict.changedBy', { who: only, fields }) : t('entry.conflict.changed', { fields })
@@ -61,6 +66,7 @@ function rowName(key: string, id: string, ...lists: (Json | undefined)[]): strin
 
 const YOU = { added: 'entry.conflict.row.youAdded', removed: 'entry.conflict.row.youRemoved', changed: 'entry.conflict.row.youChanged' } as const
 const THEY = { added: 'entry.conflict.row.theyAdded', removed: 'entry.conflict.row.theyRemoved', changed: 'entry.conflict.row.theyChanged' } as const
+const ELSEWHERE = { added: 'entry.conflict.row.otherWindowAdded', removed: 'entry.conflict.row.otherWindowRemoved', changed: 'entry.conflict.row.otherWindowChanged' } as const
 
 /** One line per field; a list instead gets one line per row each side changed, and one per row both changed. */
 const items = computed(() => props.conflict.fields.map((key) => {
@@ -72,8 +78,11 @@ const items = computed(() => props.conflict.fields.map((key) => {
     const { clashes } = mergeRows(base, mine, stored)
     const lines = [
       ...rowDiffs(base, mine).rows.filter((r) => !clashes.includes(r.id)).map((r) => t(YOU[r.change], { row: rowName(key, r.id, r.change === 'removed' ? base : mine) })),
-      ...rowDiffs(base, stored).rows.filter((r) => !clashes.includes(r.id)).map((r) => t(THEY[r.change], { who: whoOf(key), row: rowName(key, r.id, r.change === 'removed' ? base : stored) })),
-      ...clashes.map((id) => t('entry.conflict.row.clash', { row: rowName(key, id, stored, mine, base) })),
+      ...rowDiffs(base, stored).rows.filter((r) => !clashes.includes(r.id)).map((r) => {
+        const row = rowName(key, r.id, r.change === 'removed' ? base : stored)
+        return yoursElsewhere(key) ? t(ELSEWHERE[r.change], { row }) : t(THEY[r.change], { who: whoOf(key), row })
+      }),
+      ...clashes.map((id) => t(yoursElsewhere(key) ? 'entry.conflict.row.clashYou' : 'entry.conflict.row.clash', { row: rowName(key, id, stored, mine, base) })),
     ]
     if (lines.length) return { key, label: shownField(key), lines }
   }

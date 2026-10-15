@@ -108,6 +108,11 @@ export default defineSchema({
     publishAt: v.optional(v.number()),
     /** The scheduled `entries.publishDue` run that belongs to `publishAt`. */
     publishJob: v.optional(v.id('_scheduled_functions')),
+    /**
+     * The staff member (user id) who created the entry through a create task: they may change it later with that
+     * task (lib/access.ts `authorize`). Absent for entries of owners and admins, and for entries made before it existed.
+     */
+    createdBy: v.optional(v.string()),
   })
     .index('by_site_brick_order', ['site', 'brick', 'order'])
     .index('by_site_brick_deleted', ['site', 'brick', 'deletedAt'])
@@ -351,8 +356,9 @@ export default defineSchema({
   /**
    * `locale`: the Studio language the person chose; it wins over the browser. `seenLocale`: the browser's language at the
    * last visit without a choice, only for mails (sign-in code, reminders), so they come in a language the person reads.
+   * `name`: how the person's teams see them in history, conflicts, files and keys (`lib/names.ts`); without it, their email.
    */
-  userSettings: defineTable({ user: v.string(), remindByMail: v.boolean(), locale: v.optional(v.string()), seenLocale: v.optional(v.string()) }).index('by_user', ['user']),
+  userSettings: defineTable({ user: v.string(), remindByMail: v.boolean(), locale: v.optional(v.string()), seenLocale: v.optional(v.string()), name: v.optional(v.string()) }).index('by_user', ['user']),
 
   /** One sent reminder mail (SPEC 10): the work week it was for, so a sweep that runs again sends nothing twice. */
   reminders: defineTable({ site: v.id('sites'), brick: v.string(), week: v.string(), user: v.string(), at: v.number() })

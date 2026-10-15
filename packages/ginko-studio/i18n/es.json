@@ -32,7 +32,10 @@
     "title": "Mis sitios",
     "invitedTo": "<site>{site}</site> te invita como {role}.",
     "accept": "Aceptar invitación",
-    "empty": "Todavía no tienes acceso a ningún sitio. Pide una invitación.",
+    "name": "Tu nombre",
+    "nameHint": "Así ve tu equipo quién cambió algo.",
+    "nameSaved": "Nombre guardado.",
+    "empty": "Ahora mismo no tienes acceso a ningún sitio. Si lo necesitas, pregunta a la persona que te invitó.",
     "search": "Buscar un sitio",
     "recent": "Abiertos recientemente",
     "all": "Todos los sitios",
@@ -89,15 +92,21 @@
   "invite": {
     "titleShort": "Invitación",
     "title": "Aceptar invitación",
+    "heading": "Invitación a {site}",
     "lead": "<site>{site}</site> te invita como {role}.",
     "role": {
       "owner": "propietario",
       "staff": "miembro del personal",
       "admin": "administrador"
     },
+    "rightsOwner": "Como propietario puedes cambiarlo todo y gestionar el equipo.",
+    "rightsStaff": "Puedes:",
+    "rightsNone": "Las áreas que puedes cambiar se decidirán más adelante.",
+    "signInHint": "Inicia sesión con <email>{email}</email>. Te enviamos un código; no necesitas contraseña.",
     "otherEmail": "Esta invitación es para otro correo electrónico. Inicia sesión con ese correo.",
     "expired": "Esta invitación ha caducado o ya se usó. Pide una nueva.",
-    "accepting": "Aceptando …"
+    "accepting": "Aceptando …",
+    "nameHint": "Opcional. Así ve tu equipo quién cambió algo."
   },
   "entry": {
     "newIn": "Nuevo en {brick}",
@@ -122,6 +131,8 @@
     "saveContinues": "Todavía guardando. Si no tienes conexión, se guardará en cuanto vuelva.",
     "notSaved": "Sin guardar: {reason}",
     "notSavedReopen": "Sin guardar. Abre la tarea de nuevo.",
+    "readOnly": "No puedes cambiar esta entrada. Tus permisos en «{area}»: {tasks}. Si hay que cambiar algo aquí, pregunta a la persona que te invitó.",
+    "readOnlyOthers": "No puedes cambiar esta entrada: aquí solo cambias las entradas que añadiste tú. Si hay que cambiar algo aquí, pregunta a la persona que te invitó.",
     "status": {
       "online": "En línea",
       "onlineFrom": "En línea desde {when}",
@@ -137,6 +148,7 @@
     "conflict": {
       "changed": "Alguien ha cambiado {fields} mientras tanto.",
       "changedBy": "{who} ha cambiado {fields} mientras tanto.",
+      "changedByYou": "Mientras tanto cambiaste {fields} en otra ventana.",
       "thisEntry": "esta entrada",
       "item": "{field}: guardado ahora como “{stored}”, tu texto “{mine}”",
       "keepMine": "Guardar mis cambios",
@@ -150,7 +162,11 @@
         "theyAdded": "{who} añadió «{row}»",
         "theyRemoved": "{who} eliminó «{row}»",
         "theyChanged": "{who} cambió «{row}»",
+        "otherWindowAdded": "En otra ventana añadiste «{row}»",
+        "otherWindowRemoved": "En otra ventana quitaste «{row}»",
+        "otherWindowChanged": "En otra ventana cambiaste «{row}»",
         "clash": "Ambos cambiasteis «{row}»; elige una versión.",
+        "clashYou": "Cambiaste «{row}» en las dos ventanas; elige una versión.",
         "untitled": "Fila {n}"
       }
     },
@@ -282,7 +298,7 @@
       "noEnd": "sin fecha de fin"
     },
     "quick": {
-      "nothingForYou": "No tienes tareas aquí. Pide al propietario los permisos que necesitas.",
+      "nothingForYou": "Todavía no tienes tareas aquí. Pide los permisos que necesitas a la persona que te invitó.",
       "todayDone": "<task>{task}</task> está completado para hoy.",
       "flagText": "“{text}”",
       "clearToday": "Quitar",
@@ -302,7 +318,9 @@
     },
     "all": {
       "heading": "Contenido",
+      "headingStaff": "Tus áreas",
       "lede": "Todas las áreas del sitio con todos sus campos. Elige un área.",
+      "ledeStaff": "Las áreas del sitio en las que puedes cambiar algo.",
       "allAreas": "Todas las áreas",
       "new": "Nuevo",
       "noEntries": "Aún no hay entradas.",
@@ -316,7 +334,7 @@
     },
     "area": {
       "missing": "Esta área no existe.",
-      "noAccess": "No puedes editar esta área. Pregunta al propietario si necesitas cambiar algo aquí."
+      "noAccess": "No puedes editar esta área. Si necesitas cambiar algo aquí, pregunta a la persona que te invitó."
     },
     "entry": {
       "missing": "Esta entrada ya no existe."
@@ -335,15 +353,23 @@
       "heading": "Equipo",
       "ownersOnly": "Solo los propietarios pueden ver el equipo.",
       "members": "Miembros",
+      "you": "Tú",
       "noEmail": "Sin correo electrónico",
       "noRights": "Sin permisos.",
+      "supportText": "Tiene acceso a todo para cuidar el sitio web y ayudarte.",
       "changeRights": "Cambiar permisos",
       "losesAccess": "<email>{email}</email> perderá el acceso a {site}.",
+      "memberRemoved": "{email} ya no tiene acceso.",
       "openInvites": "Invitaciones abiertas",
       "validUntil": "válida hasta {date}",
       "revokeInvite": "Revocar",
+      "inviteRevoked": "Invitación a {email} revocada.",
       "invite": "Invitar",
       "role": "Rol",
+      "roleHelp": {
+        "staff": "Esta persona solo cambia lo que marques abajo.",
+        "owner": "Esta persona puede cambiarlo todo, gestionar el equipo y borrar el sitio."
+      },
       "rights": "Permisos",
       "sendInvite": "Enviar invitación",
       "inviteSent": "Invitación enviada a {email}.",
@@ -382,13 +408,24 @@
     },
     "keys": {
       "heading": "Claves de publicación",
-      "lead": "Los programas usan estas claves para publicar el sitio, por ejemplo la publicación automática. El soporte del sitio configura las claves nuevas.",
+      "lead": "Con una clave, la publicación automática (CI) publica tu sitio o hace una copia de seguridad.",
+      "none": "Aún no hay claves.",
+      "new": "Nueva clave",
+      "name": "Nombre",
+      "nameHint": "Por ejemplo «GitHub Actions».",
+      "purpose": "¿Para qué?",
+      "purposeRelease": "Publicar y hacer copias de seguridad",
+      "purposeExport": "Solo copias de seguridad",
+      "create": "Crear clave",
+      "once": "Solo ves esta clave ahora. Guárdala como GINKO_KEY en la configuración de tu CI.",
+      "copy": "Copiar clave",
+      "copied": "Clave copiada.",
       "createdAt": "Creada {when}",
       "createdBy": "{who} · creada {when}",
       "lastUsedAt": ", último uso {when}",
       "neverUsed": ", nunca usada",
       "revoke": "Revocar",
-      "revokeConfirm": "Después, los programas con “{label}” ya no podrán publicar.",
+      "revokeConfirm": "Después, los programas con “{label}” ya no podrán publicar ni hacer copias de seguridad.",
       "revoked": "Clave “{label}” revocada."
     },
     "history": {
@@ -404,6 +441,16 @@
       "entriesHint": "Para hacer espacio, elimina entradas. Las entradas eliminadas no cuentan.",
       "dismiss": "Ocultar aviso",
       "usage": "Espacio para textos: {used} de {limit} ocupados, {count} de {max} entradas. Las imágenes y los PDF no cuentan."
+    },
+    "backup": {
+      "heading": "Copia de seguridad",
+      "lead": "Descarga todo el contenido (también borradores y papelera) y todas las imágenes y PDF como archivo ZIP. El equipo, el historial y las claves no se incluyen.",
+      "button": "Descargar copia de seguridad",
+      "size": "{count, plural, one {# archivo} other {# archivos}}, {size} en total.",
+      "progress": "Cargando {done} de {total} archivos …",
+      "done": "Copia de seguridad descargada.",
+      "tooBig": "Con {size}, la copia de seguridad es demasiado grande para este navegador. En Chrome o Edge funciona.",
+      "failed": "La copia de seguridad está incompleta: no se pudo cargar «{name}». Inténtalo de nuevo."
     },
     "translations": {
       "heading": "Traducciones",
@@ -768,6 +815,7 @@
     "withdrawn": "Retirado.",
     "notApproved": "No aprobado",
     "rejectedBy": "{who} lo rechazó: «{reason}»",
+    "rejectedByYou": "Lo rechazaste: «{reason}»",
     "notLive": "No se publicó",
     "notLiveBecause": "Planificado para {when}. {reason}",
     "undoBlocked": {
@@ -956,6 +1004,7 @@
   },
   "who": {
     "member": "Un miembro del equipo",
+    "you": "Tú",
     "platform": "Soporte del sitio",
     "former": "Antiguo miembro",
     "system": "Sistema",

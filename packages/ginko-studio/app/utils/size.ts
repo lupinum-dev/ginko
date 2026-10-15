@@ -1,5 +1,5 @@
-// File and content sizes as people read them: 1024-based, "340 KB" below a megabyte, "2,4 MB" above it (one
-// decimal at most, in the Studio's language).
+// File and content sizes as people read them: 1024-based, "340 KB" below a megabyte, "2,4 MB" above it, "1,5 GB" from
+// a gigabyte (a whole backup; one decimal at most, in the Studio's language).
 
 /** `format.number` of useI18n. */
 type NumberFormat = (value: number, options?: Intl.NumberFormatOptions) => string
@@ -12,7 +12,8 @@ type NumberFormat = (value: number, options?: Intl.NumberFormatOptions) => strin
 export function sizeText(bytes: number, number: NumberFormat, rounding: 'up' | 'down' | 'nearest' = 'nearest'): string {
   const round = { up: Math.ceil, down: Math.floor, nearest: Math.round }[rounding]
   if (bytes < 1024 * 1024) return `${number(Math.max(1, round(bytes / 1024)))} KB`
-  return `${number(round(bytes / (1024 * 1024) * 10) / 10, { maximumFractionDigits: 1 })} MB`
+  if (bytes < 1024 ** 3) return `${number(round(bytes / (1024 * 1024) * 10) / 10, { maximumFractionDigits: 1 })} MB`
+  return `${number(round(bytes / 1024 ** 3 * 10) / 10, { maximumFractionDigits: 1 })} GB`
 }
 
 /** "3,9 MB" of a budget: never rounded across the limit ("4 MB" only when it is reached). */

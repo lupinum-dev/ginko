@@ -51,6 +51,7 @@
     "@vueuse/core": "15.0.0",
     "better-auth": "catalog:",
     "class-variance-authority": "0.7.1",
+    "client-zip": "2.5.1",
     "clsx": "2.1.1",
     "convex": "catalog:",
     "nuxt": "4.6.0",
