@@ -39,6 +39,18 @@ async function requireImportAllowed(ctx: QueryCtx, slug: string) {
   if (!(await importAllowed(ctx, slug))) fail('FORBIDDEN', 'errors.importClosed')
 }
 
+/**
+ * Empties Better Auth's rate-limit buckets. The local backend sees no client IP, so all requests share one bucket per
+ * path, and a bucket only empties after 10 s without a request: an e2e run that never pauses that long got 429 on its
+ * 301st token request and was sent to the sign-in. A reset starts the next test with empty buckets. Local only.
+ */
+async function dropRateLimits(ctx: MutationCtx) {
+  const page = await ctx.runQuery(components.betterAuth.adapter.findMany, { model: 'rateLimit', select: ['id'], paginationOpts: { cursor: null, numItems: 100 } })
+  const ids = page.page.map((row) => String(row.id))
+  // By id, like cleanup.ts: `deleteMany` touches at most 128 rows at once.
+  if (ids.length) await ctx.runMutation(components.betterAuth.adapter.deleteMany, { model: 'rateLimit', where: [{ field: 'id', operator: 'in', value: ids }] })
+}
+
 export const reset = internalMutation({
   args: {
     site: v.string(),
@@ -80,6 +92,7 @@ export const reset = internalMutation({
 
     const { count } = await insertCorpus(ctx, site, args.corpus as Corpus)
     const links = await invitePeople(ctx, site, args.people ?? [], 'seed')
+    await dropRateLimits(ctx)
     return { entries: count, links }
   },
 })
