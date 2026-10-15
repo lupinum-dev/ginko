@@ -313,6 +313,7 @@
       "you": "Tú",
       "noEmail": "Sin correo electrónico",
       "noRights": "Sin permisos.",
+      "supportText": "Tiene acceso a todo para cuidar el sitio web y ayudarte.",
       "changeRights": "Cambiar permisos",
       "losesAccess": "<email>{email}</email> perderá el acceso a {site}.",
       "memberRemoved": "{email} ya no tiene acceso.",
@@ -322,6 +323,10 @@
       "inviteRevoked": "Invitación a {email} revocada.",
       "invite": "Invitar",
       "role": "Rol",
+      "roleHelp": {
+        "staff": "Esta persona solo cambia lo que marques abajo.",
+        "owner": "Esta persona puede cambiarlo todo, gestionar el equipo y borrar el sitio."
+      },
       "rights": "Permisos",
       "sendInvite": "Enviar invitación",
       "inviteSent": "Invitación enviada a {email}.",

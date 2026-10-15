@@ -226,6 +226,11 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
 
             <p v-if="rowError?.id === m.id" class="font-semibold text-destructive" role="alert">{{ rowError.message }}</p>
           </li>
+          <!-- The platform's admins have access without a membership: the owner sees that the agency can help. -->
+          <li v-if="team.data.value?.support" class="grid gap-0.5 px-4 py-3">
+            <p class="font-medium">{{ t('who.platform') }}</p>
+            <p class="text-[13px] text-muted-foreground">{{ t('site.team.supportText') }}</p>
+          </li>
         </ul>
       </section>
 
@@ -237,6 +242,11 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
             <div class="grid min-w-0 gap-0.5">
               <p class="font-medium [overflow-wrap:anywhere]">{{ i.email }}</p>
               <p class="text-[13px] text-muted-foreground">{{ roleLabel(i.role) }}, {{ validUntil(i.expiresAt) }}</p>
+              <!-- The rights ticked when inviting, so they can be checked before the person accepts. -->
+              <ul v-if="i.role === 'staff'" class="m-0 grid list-none gap-0.5 p-0 text-[13px] text-muted-foreground">
+                <li v-for="line in grantLines(i.grants)" :key="line">{{ line }}</li>
+                <li v-if="!grantLines(i.grants).length">{{ t('site.team.noRights') }}</li>
+              </ul>
             </div>
             <Button type="button" variant="secondary" size="sm" :disabled="revokeInvite.pending.value" @click="revoke(i.id, i.email)">{{ t('site.team.revokeInvite') }}</Button>
           </li>
@@ -251,16 +261,19 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
             <Input id="invite-email" v-model="form.email" type="email" autocomplete="off" required :aria-invalid="!!formError" />
           </div>
 
-          <div class="grid gap-2">
+          <!-- Only admins choose a role: owners invite staff only (the server's rule), so they get no one-option switch. -->
+          <div v-if="s.role.value === 'admin'" class="grid gap-2">
             <p id="invite-role-label" class="text-sm font-medium">{{ t('site.team.role') }}</p>
             <ToggleGroup type="single" variant="segmented" aria-labelledby="invite-role-label" :model-value="form.role" @update:model-value="(next) => next && (form.role = next as 'owner' | 'staff')">
               <ToggleGroupItem value="staff" class="px-3">{{ t('site.role.staff') }}</ToggleGroupItem>
-              <ToggleGroupItem v-if="s.role.value === 'admin'" value="owner" class="px-3">{{ t('site.role.owner') }}</ToggleGroupItem>
+              <ToggleGroupItem value="owner" class="px-3">{{ t('site.role.owner') }}</ToggleGroupItem>
             </ToggleGroup>
+            <p class="text-[13px] text-muted-foreground">{{ form.role === 'owner' ? t('site.team.roleHelp.owner') : t('site.team.roleHelp.staff') }}</p>
           </div>
 
           <div v-if="form.role === 'staff'" class="grid gap-2">
             <p class="text-sm font-medium">{{ t('site.team.rights') }}</p>
+            <p v-if="s.role.value !== 'admin'" class="text-[13px] text-muted-foreground">{{ t('site.team.roleHelp.staff') }}</p>
             <GrantsChecklist v-model="form.grants" :bricks="s.bricks.value" />
           </div>
 

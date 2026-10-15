@@ -14,8 +14,9 @@ vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})
 const toasts: string[] = []
 vi.stubGlobal('useToast', () => ({ show: (text: string) => toasts.push(text) }))
+const faq = { kind: 'collection', label: 'Häufige Fragen', fields: {}, tasks: [{ id: 'add', label: 'Frage hinzufügen', kind: 'create' }] }
 vi.stubGlobal('useSiteData', async () => ({
-  slug: ref('restaurant'), schema: ref({ timeZone: 'Europe/Vienna' }), site: ref({ name: 'Restaurant' }), main: ref('de'), bricks: ref([]), isManager: ref(true), role: ref('owner'),
+  slug: ref('restaurant'), schema: ref({ timeZone: 'Europe/Vienna', bricks: { faq } }), site: ref({ name: 'Restaurant' }), main: ref('de'), bricks: ref([['faq', faq]]), isManager: ref(true), role: ref('owner'),
 }))
 const team = {
   members: [] as { id: string; email: string; role: 'owner' | 'staff'; grants: string[]; you: boolean }[],
@@ -36,6 +37,7 @@ beforeEach(() => {
   toasts.length = 0
   settles = false
   team.members = []
+  team.invites[0]!.grants = []
 })
 
 const mountPage = () => mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(TeamPage) }) }), {
@@ -81,5 +83,15 @@ test('the own row is marked "Du" and offers no removal', async () => {
   expect(own!.text()).toContain('Du')
   expect(own!.findAll('button').map((b) => b.text())).not.toContain('Entfernen')
   expect(other!.findAll('button').map((b) => b.text())).toContain('Entfernen')
+  wrapper.unmount()
+})
+
+// Wrong behaviour caught (onboard-8): an open invitation showed only address and role, so the owner could not check
+// the rights they ticked before the person accepts.
+test('an open invitation lists the rights it gives', async () => {
+  team.invites[0]!.grants = ['faq.add']
+  const wrapper = mountPage()
+  await flushPromises()
+  expect(wrapper.get('section[aria-labelledby="invites-title"] li li').text()).toBe('Häufige Fragen: Frage hinzufügen')
   wrapper.unmount()
 })

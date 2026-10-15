@@ -50,8 +50,9 @@ async function ownersOf(ctx: QueryCtx | MutationCtx, site: Id<'sites'>) {
 }
 
 /**
- * The team page: members, open invites, and the site's live push keys. Push keys belong to the site and outlive
- * their maker, so each names who made it (`by`) and, while that person is on the team, their membership (`member`).
+ * The team page: members, open invites, whether the platform's support has access (`support`), and the site's live
+ * push keys. Push keys belong to the site and outlive their maker, so each names who made it (`by`) and, while that
+ * person is on the team, their membership (`member`).
  */
 export const list = query({
   args: { site: v.string() },
@@ -62,6 +63,8 @@ export const list = query({
     const pushKeys = await ctx.db.query('pushKeys').withIndex('by_site', (q) => q.eq('site', actor.site._id)).collect()
     const memberOfUser = new Map(members.map((m) => [m.user as string, m._id]))
     const names = await labeler(ctx, actor)
+    // Platform admins (the agency's support) pass every check on every site but have no membership: the page says so.
+    const support = (await ctx.db.query('admins').first()) !== null
     // Keys made with `release:bootstrapKey` come from the platform's operators.
     const by = async (createdBy: string): Promise<Who> => (createdBy === 'bootstrap' ? { kind: 'platform' } : names.who(createdBy))
     return {
@@ -70,6 +73,7 @@ export const list = query({
       invites: invites
         .filter((i) => i.acceptedAt === undefined)
         .map((i) => ({ id: i._id, email: i.email, role: i.role, grants: i.grants, expiresAt: i.expiresAt })),
+      support,
       keys: await Promise.all(
         pushKeys
           .filter((k) => k.revokedAt === undefined)

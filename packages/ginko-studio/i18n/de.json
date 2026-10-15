@@ -313,6 +313,7 @@
       "you": "Du",
       "noEmail": "Ohne E-Mail-Adresse",
       "noRights": "Keine Rechte.",
+      "supportText": "Hat Zugang zu allem, um die Website zu pflegen und dir zu helfen.",
       "changeRights": "Rechte ändern",
       "losesAccess": "<email>{email}</email> verliert den Zugang zu {site}.",
       "memberRemoved": "{email} hat keinen Zugang mehr.",
@@ -322,6 +323,10 @@
       "inviteRevoked": "Einladung an {email} zurückgezogen.",
       "invite": "Einladen",
       "role": "Rolle",
+      "roleHelp": {
+        "staff": "Die Person ändert nur, was du unten anhakst.",
+        "owner": "Die Person kann alles ändern, das Team verwalten und die Seite löschen."
+      },
       "rights": "Rechte",
       "sendInvite": "Einladung senden",
       "inviteSent": "Einladung an {email} gesendet.",

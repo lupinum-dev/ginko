@@ -313,6 +313,7 @@
       "you": "You",
       "noEmail": "No email address",
       "noRights": "No rights.",
+      "supportText": "Has access to everything to look after the website and help you.",
       "changeRights": "Change rights",
       "losesAccess": "<email>{email}</email> will lose access to {site}.",
       "memberRemoved": "{email} no longer has access.",
@@ -322,6 +323,10 @@
       "inviteRevoked": "Invitation to {email} revoked.",
       "invite": "Invite",
       "role": "Role",
+      "roleHelp": {
+        "staff": "They change only what you tick below.",
+        "owner": "They can change everything, manage the team and delete the site."
+      },
       "rights": "Rights",
       "sendInvite": "Send invitation",
       "inviteSent": "Invitation sent to {email}.",
