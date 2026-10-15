@@ -139,6 +139,19 @@ const seoHead = (lang: string) => (html: string) => {
   return problems.length ? problems.join(', ') : undefined
 }
 
+/**
+ * The core's message catalogs (every language, about 20 kB gzip) belong to the server, the CLI and the Studio. In the
+ * built site they reach the browser when a module that page code imports calls a translation at load time. Checked
+ * on the scripts the first page loads (entry and module preloads), from the tarballs' dist as sites get it.
+ */
+async function catalogsInScripts(siteDir: string, port: number, path: string): Promise<string[]> {
+  const html = await (await fetch(`http://localhost:${port}${path}`)).text()
+  const scripts = [...html.matchAll(/<(?:script[^>]*\ssrc|link[^>]*rel="modulepreload"[^>]*\shref)="([^"]+\.js)"/g)].map((m) => m[1]!)
+  const bodies = await Promise.all(scripts.map(async (src) => [src, await (await fetch(`http://localhost:${port}${src}`)).text()] as const))
+  // A key of the core catalogs (i18n/<code>.json, issues.unknownBrick): no other code names it.
+  return bodies.filter(([, body]) => body.includes('unknownBrick')).map(([src]) => `${siteDir} ${path}: ${src} carries the core message catalogs into the browser`)
+}
+
 async function serve(siteDir: string, port: number, checks: Check[]) {
   const server = spawn('node', ['.output/server/index.mjs'], { cwd: siteDir, env: { ...process.env, PORT: String(port) }, stdio: 'ignore' })
   const failures: string[] = []
@@ -150,6 +163,7 @@ async function serve(siteDir: string, port: number, checks: Check[]) {
       const problem = res.status !== 200 ? String(res.status) : typeof expect === 'function' ? expect(body) : expect.test(body) ? undefined : 'no match'
       if (problem) failures.push(`${siteDir} ${path}: ${problem}`)
     }
+    failures.push(...await catalogsInScripts(siteDir, port, checks[0]![0]))
     // The share card of the first page, rendered by nuxt-og-image with Ginko's template. Its URL starts with the site's
     // own address, so only the path is asked for here. A site without nuxt-og-image (a template that has none yet) has no card.
     const pkg = JSON.parse(readFileSync(join(siteDir, 'package.json'), 'utf8'))
@@ -178,7 +192,7 @@ const created: Record<string, Check[]> = {
   docs: [['/docs/getting-started', /class="docs-sidebar/]],
   'docs-de': [['/docs/einstieg', /lang="de"[\s\S]*class="docs-sidebar[\s\S]*Seiten schreiben/]],
   // The templates (templates/<name>, bundled by create-ginko's prepack), all languages.
-  'template-starter': [['/', /<h1>Greenfield Community Garden<\/h1>/], ['/events', /New year tidy-up/], ['/sitemap.xml', /<urlset/]],
+  'template-starter': [['/', /<h1[^>]*>My site<\/h1>/], ['/about', /<h1[^>]*>About<\/h1>/], ['/sitemap.xml', /<urlset/]],
 }
 for (const name of ['starter', ...readdirSync(join(root, 'packages/create-ginko/presets'))]) {
   if (!created[name]) failures.push(`check:pack has no URL check for the create-ginko preset folder ${name}`)

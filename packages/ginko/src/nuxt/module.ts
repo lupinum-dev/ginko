@@ -3,6 +3,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:f
 import { basename, join, relative, resolve as resolvePath } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Nuxt } from 'nuxt/schema'
+import { appSchema } from './app-schema.ts'
 import { fileLinkIssues } from './external-links.ts'
 import { checkI18nOptions } from './i18n.ts'
 import { listsNuxtSeo, nuxtSeoDependencies, runsNuxtSeo } from './nuxt-seo.ts'
@@ -134,7 +135,8 @@ export default defineNuxtModule<SiteInput>({
     // the template is written after `modules:done`, when every module is known.
     addTemplate({ filename: 'ginko/schema-org.mjs', getContents: () => (runsNuxtSeo('nuxt-schema-org', nuxt) ? `export { useSchemaOrg } from '#imports'` : 'export const useSchemaOrg = undefined') })
     nuxt.options.alias['#ginko/schema-org'] = resolve(nuxt.options.buildDir, 'ginko/schema-org.mjs')
-    addTemplate({ filename: 'ginko/schema.mjs', getContents: () => `export default ${JSON.stringify(schema)}` })
+    // The app's copy leaves out the editors' texts (app-schema.ts): it is part of every page's script.
+    addTemplate({ filename: 'ginko/schema.mjs', getContents: () => `export default ${JSON.stringify(appSchema(schema))}` })
     nuxt.options.alias['#ginko/schema'] = resolve(nuxt.options.buildDir, 'ginko/schema.mjs')
     // The server build does not see the alias above: the sitemap route imports the schema as a Nitro virtual module.
     addServerTemplate({ filename: '#ginko/schema', getContents: () => `export default ${JSON.stringify(schema)}` })

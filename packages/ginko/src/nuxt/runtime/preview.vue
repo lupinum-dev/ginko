@@ -1,10 +1,11 @@
 <script setup lang="ts">
 // The preview shell (SPEC 8 "Vorschau"). It announces itself to the platform that frames it,
-// and once the platform sends a bundle (handled by the plugin) it opens the target route.
+// and once the platform sends a bundle (taken by its listener, preview-listener.ts) it opens the target route.
 // It never fetches: the bundle comes only by message.
-import { definePageMeta, navigateTo, onBeforeUnmount, onMounted, ref, useRequestHeaders, useRoute, useRouter, useRuntimeConfig, useState, watch } from '#imports'
+import { definePageMeta, navigateTo, onBeforeUnmount, onMounted, ref, useNuxtApp, useRequestHeaders, useRoute, useRouter, useRuntimeConfig, useState, watch } from '#imports'
 import { coreMessage, type Bundle, type Locale } from '../../internal.ts'
 import { BUNDLE_STATE, PREVIEW_STATE } from './composables.ts'
+import { listenToPlatform } from './preview-listener.ts'
 import type { GinkoPublicConfig } from './shared.ts'
 
 // No layout: a site's layout may read content, and the preview has none until the platform sends it.
@@ -15,6 +16,8 @@ const router = useRouter()
 const config = useRuntimeConfig().public.ginko as GinkoPublicConfig
 const bundles = useState<Partial<Record<Locale, Bundle>>>(BUNDLE_STATE, () => ({}))
 const preview = useState<{ session: string; locale: Locale } | null>(PREVIEW_STATE, () => null)
+// Before onMounted announces the page: the platform answers with the bundle.
+if (import.meta.client) listenToPlatform(useNuxtApp(), config, bundles, preview)
 // The owner reads this inside the Studio: their browser language, taken once on the server so hydration matches.
 const reader = useState('ginko:preview-reader', () => (import.meta.server ? useRequestHeaders(['accept-language'])['accept-language']?.split(/[,;]/)[0] : navigator.language) || 'en')
 

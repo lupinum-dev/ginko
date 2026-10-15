@@ -22,7 +22,8 @@ export const DEFAULT_LOCALE = 'de'
 /** The raw catalogs by language, in the shape `@lupinum/ginko-i18n` reads. */
 export const coreCatalogs = { de, en, es, fr, it, ar } as const
 
-const catalog = defineCatalog<CoreKey>(compiled, { defaultLocale: DEFAULT_LOCALE })
+// Pure: a bundle that never translates (the browser) leaves the compiled catalogs out.
+const catalog = /* @__PURE__ */ defineCatalog<CoreKey>(compiled, { defaultLocale: DEFAULT_LOCALE })
 
 const isMsg = (value: unknown): value is Msg => typeof value === 'object' && value !== null && typeof (value as Msg).key === 'string'
 
