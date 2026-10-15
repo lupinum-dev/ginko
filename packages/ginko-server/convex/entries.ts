@@ -1137,8 +1137,10 @@ export const trash = query({
 })
 
 /**
- * The badge "Removed (n)": every removed entry the trash shows, whatever area is open. It reads the whole trash,
- * which SITE_BUDGET.trashBytes bounds (the oldest removed entries go early past it).
+ * The badge "Removed (n)": every removed entry the trash shows, whatever area is open. It reads the whole trash.
+ * SITE_BUDGET.trashBytes bounds the trash's data bytes, not its number of entries: many small removed entries
+ * within the 30 days can still pass Convex's read limits. A site counter cannot replace this read as it is, since
+ * the trash hides the removed entries of retired bricks.
  */
 export const trashCount = query({
   args: { site: v.string() },
