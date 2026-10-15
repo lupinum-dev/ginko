@@ -13,15 +13,21 @@ export function useSignOut() {
    * Signs out of this browser and deletes the person's unsaved input kept here, so it does not stay behind on a shared
    * computer. That input may belong to a form still open in another tab, so it goes only after a yes (window.confirm,
    * like the form's own leave question). A session that ended elsewhere (revoked, expired) keeps it for the next sign-in.
+   * A refused sign-out keeps the session, so it keeps the input too and stays on the page.
    */
   async function signOut() {
     const id = user.value?.id
     if (id && localDraftKeys(id).length > 0 && !window.confirm(t('nav.signOutDrafts'))) return
     busy.value = true
     try {
-      await client.signOut()
+      // Better Auth answers a refusal with `error`; it does not throw.
+      const result = await client.signOut()
+      if (result.error) throw result.error
       if (id) forgetLocalDrafts(id)
       await navigateTo('/login')
+    } catch (error) {
+      console.error(error)
+      show(t('nav.signOutFailed'), { tone: 'err' })
     } finally {
       busy.value = false
     }

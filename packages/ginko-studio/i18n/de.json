@@ -15,6 +15,7 @@
     "areas": "Bereiche",
     "signOut": "Abmelden",
     "signOutDrafts": "In diesem Browser sind noch ungespeicherte Änderungen. Beim Abmelden werden sie gelöscht. Trotzdem abmelden?",
+    "signOutFailed": "Abmelden hat nicht geklappt. Bitte versuche es noch einmal.",
     "signOutOthers": "Auf anderen Geräten abmelden",
     "signedOutOthers": "Auf allen anderen Geräten abgemeldet. Hier bleibst du angemeldet.",
     "signOutOthersFailed": "Die anderen Geräte konnten nicht abgemeldet werden. Bitte versuche es noch einmal.",

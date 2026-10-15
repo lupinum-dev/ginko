@@ -15,6 +15,7 @@
     "areas": "Áreas",
     "signOut": "Cerrar sesión",
     "signOutDrafts": "En este navegador hay cambios sin guardar. Al cerrar sesión se eliminarán. ¿Cerrar sesión de todos modos?",
+    "signOutFailed": "No se pudo cerrar la sesión. Inténtalo de nuevo.",
     "signOutOthers": "Cerrar sesión en otros dispositivos",
     "signedOutOthers": "Sesión cerrada en todos los demás dispositivos. Aquí sigues con la sesión iniciada.",
     "signOutOthersFailed": "No se pudo cerrar la sesión en los otros dispositivos. Inténtalo de nuevo.",
