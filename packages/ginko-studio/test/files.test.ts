@@ -294,6 +294,26 @@ describe('library pictures in a Markdown text', () => {
     handle.destroy()
   })
 
+  // Wrong behaviour caught: a picture with its own description was told "Diese Beschreibung kommt aus den Dateien".
+  test.each([
+    ['the library\'s', '![]($file.f0)', 'Hof im Winter', 'Diese Beschreibung kommt aus den Dateien. Änderst du sie hier, gilt das nur an dieser Stelle.'],
+    ['its own', '![Hof]($file.f0)', 'Hof', 'Leer lassen, dann gilt die Beschreibung aus den Dateien.'],
+  ])('the description step of a library picture with %s description says where it comes from', async (_name, picture, value, hint) => {
+    const described: GinkoAssets = { ...assets, details: (ids) => computed(() => Object.fromEntries(ids.value.map((id) => [id, { url: `https://files.test/${id}.jpg`, name: `${id}.jpg`, size: 1, width: 1, height: 1, alt: { de: 'Hof im Winter' } }]))) }
+    const handle = await createGinkoEditor({ text: `Eins${picture}\n`, profile: 'rich', element: document.createElement('div') })
+    if (handle.mode !== 'rich') throw new Error('expected rich')
+    const images = useFileImages(described, () => 'Bild nicht gefunden')
+    images.want('$file.f0')
+    await flushPromises()
+    const dialog = mount(ImageDialog, { props: { editor: markRaw(handle.editor), open: false, describe: 5, images, locale: 'de' }, attachTo: document.body })
+    await dialog.setProps({ open: true })
+    await flushPromises()
+    const alt = document.body.querySelector('[role="dialog"] input') as HTMLInputElement
+    expect([alt.value, document.getElementById(alt.getAttribute('aria-describedby')!)?.textContent]).toEqual([value, hint])
+    dialog.unmount()
+    handle.destroy()
+  })
+
   // Wrong behaviour caught: a selected picture offered nothing (a swap meant delete and insert again), or a replace added
   // a second picture or kept the old description with the new photo.
   test.each([

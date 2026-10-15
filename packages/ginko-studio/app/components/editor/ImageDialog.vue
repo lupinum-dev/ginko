@@ -151,7 +151,8 @@ const refocus = () => { if (!props.editor.isDestroyed) props.editor.commands.foc
             @input="errors.alt = undefined"
           />
           <p v-if="errors.alt" role="alert" class="text-sm text-destructive">{{ errors.alt }}</p>
-          <p v-if="libraryAlt" :id="hintId" class="text-sm text-muted-foreground">{{ t('files.picker.altFromLibrary') }}</p>
+          <!-- The field shows the library's text, or the picture's own one, which an empty field gives up for the library's. -->
+          <p v-if="libraryAlt" :id="hintId" class="text-sm text-muted-foreground">{{ alt.trim() === libraryAlt ? t('files.picker.altFromLibrary') : t('fields.image.altFromLibrary') }}</p>
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" @click="open = false">{{ target ? t('editor.image.later') : t('editor.image.cancel') }}</Button>
