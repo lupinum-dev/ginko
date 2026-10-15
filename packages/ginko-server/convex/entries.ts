@@ -18,7 +18,7 @@ import { publicness } from './lib/publicness'
 import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
-import { editorEntry, editorEntryWithTranslation, listRow, titleOf } from './lib/list'
+import { editorEntry, editorEntryWithTranslation, listRow, slimEntry, titleOf } from './lib/list'
 
 const underRoot = (leaf: string, root: string) => leaf === root || leaf.startsWith(`${root}.`)
 
@@ -1060,9 +1060,10 @@ export const titles = query({
 /**
  * The live entries of the named bricks for an editor (lib/list.ts editorEntry), each collection in the site's order:
  * Schnell ändern's sections and the preview, which builds the site from them. Names the schema lacks are skipped.
+ * `slim`: collection entries carry only their titles and dates (lib/list.ts slimEntry), as Schnell ändern needs.
  */
 export const ofBricks = query({
-  args: { site: v.string(), bricks: v.array(v.string()) },
+  args: { site: v.string(), bricks: v.array(v.string()), slim: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const actor = await actorFor(ctx, args.site)
     const schema = actor.site.schema as Schema
@@ -1070,7 +1071,7 @@ export const ofBricks = query({
     for (const key of new Set(args.bricks)) {
       const brick = Object.hasOwn(schema.bricks, key) ? schema.bricks[key]! : undefined
       if (!brick) continue
-      for (const row of await liveRowsOf(ctx, actor.site._id, key, brick)) out.push(editorEntry(row))
+      for (const row of await liveRowsOf(ctx, actor.site._id, key, brick)) out.push(args.slim && brick.kind === 'collection' ? slimEntry(brick, row) : editorEntry(row))
     }
     return out
   },

@@ -77,6 +77,18 @@ export function editorEntry(row: Doc<'entries'>) {
   }
 }
 
+/**
+ * `editorEntry` of a collection entry with only what a row of Schnell ändern reads: the text fields its title comes
+ * from and the dates that plan or time it. Long texts, lists and files stay out, so a timed collection near the site
+ * budget does not send megabytes on every change; a sheet that edits the entry reads it whole (entries.get).
+ */
+export function slimEntry(brick: Brick, row: Doc<'entries'>) {
+  const dates = new Set([brick.kind === 'collection' ? brick.plans?.field : undefined, brick.kind === 'collection' && brick.visible?.mode === 'until' ? brick.visible.field : undefined])
+  const keep = (key: string) => dates.has(key) || brick.fields[key]?.type === 'text' || brick.fields[key]?.type === 'longtext'
+  const entry = editorEntry(row)
+  return { ...entry, data: Object.fromEntries(Object.entries(entry.data).filter(([key]) => keep(key))), prints: {} }
+}
+
 /** `editorEntry` with the texts each foreign language misses or has outdated (the language switch shows a dot). */
 export function editorEntryWithTranslation(schema: Schema, row: Doc<'entries'>) {
   const translation: Record<Locale, { missing: string[]; outdated: string[] }> = {}

@@ -47,9 +47,10 @@ const shownBricks = computed(() => {
   }
   return [...keys]
 })
-// Read in the browser only: a timed collection may hold most of the site's budget (2000 entries, 4 MiB gave a 4.3 MiB
-// answer), past the 1 MiB a server-rendered query may send.
-const shownRead = useConvexQuery(api.entries.ofBricks, () => (shownBricks.value.length ? { site: s.slug.value, bricks: shownBricks.value } : 'skip'), { server: false })
+// Slim rows: collection entries carry only their titles and dates, so a timed collection near the site budget stays a
+// small live answer; a sheet reads the entry it edits whole (openRead). Still read in the browser only: 2,000 entries
+// with long text titles can pass the 1 MiB a server-rendered query may send.
+const shownRead = useConvexQuery(api.entries.ofBricks, () => (shownBricks.value.length ? { site: s.slug.value, bricks: shownBricks.value, slim: true } : 'skip'), { server: false })
 /** A collection's live entries in the site's order; a single's one entry. */
 const entriesOf = (key: string): Entry[] => (shownRead.data.value ?? []).filter((e) => e.brick === key)
 const singleOf = (key: string): Entry | undefined => entriesOf(key)[0]

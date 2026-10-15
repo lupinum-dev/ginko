@@ -414,6 +414,17 @@ describe('entries.whyNotPublic', () => {
 })
 
 describe('Studio reads at volume', () => {
+  // Wrong behaviour caught: Schnell ändern subscribes to whole entries (long texts, images) of a timed collection, so a
+  // collection near the site budget resends megabytes on every change.
+  it('slim rows carry only the titles and dates of collection entries; singles stay whole', async () => {
+    const s = await studioSetup()
+    const rows = await s.as.owner.query(api.entries.ofBricks, { site, bricks: ['events', 'contact'], slim: true })
+    const weinabend = rows.find((row) => row._id === s.entries.weinabend)!
+    expect(Object.keys(weinabend.data).sort()).toEqual(['booking', 'title', 'when'])
+    expect(weinabend.prints).toEqual({})
+    expect(Object.keys(rows.find((row) => row.brick === 'contact')!.data).sort()).toEqual(['city', 'email', 'phone', 'postalCode', 'street'])
+  })
+
   /** `count` notices without English ("Hinweis 0" …) inserted straight into the brick, as an imported site holds them. */
   async function manyNotices(s: Awaited<ReturnType<typeof studioSetup>>, count: number) {
     await s.t.run(async (ctx) => {
