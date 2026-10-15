@@ -29,6 +29,9 @@ const reasonOf = (e: Exception | HolidayClosure) => ('holiday' in e ? e.holiday[
 const reasonLang = (e: (Exception & { field?: string }) | HolidayClosure) => ('holiday' in e ? lang.value : langOf(hours.value, e.field ?? `exceptions.${e._id}.reason`))
 const special = (e: Exception) => spansText(spansOf(e), t('and'))
 const itemOf = (id?: string) => hourPlans.value.items.find((p) => p.id === id)!
+const dayMonth = { day: 'numeric', month: 'long' } as const
+// A season's dates wrap only after the dash, never inside a date ("1. November 2026–" / "31. März 2027" on a phone).
+const planDates = (c: { starts: string; ends?: string }) => (c.ends ? format.range(c.starts, c.ends, dayMonth).replace(/ /g, '\u00a0') : t('fromDate', { date: format.date(c.starts, dayMonth) }))
 const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
 // Today's row says what applies today, by the same rule as the Heute board: a closure, a holiday or special hours.
 const todayCell = computed(() => {
@@ -50,7 +53,7 @@ const todayCell = computed(() => {
       </tbody>
     </table>
     <div v-for="c in coming" :key="c.plan._id" class="plan">
-      <h3>{{ c.ends ? format.range(c.starts, c.ends, { day: 'numeric', month: 'long' }) : t('fromDate', { date: format.date(c.starts, { day: 'numeric', month: 'long' }) }) }}<template v-if="c.plan.label">: <span :lang="langOf(itemOf(c.plan._id), 'label')">{{ c.plan.label }}</span></template></h3>
+      <h3>{{ planDates(c) }}<template v-if="c.plan.label">: <span :lang="langOf(itemOf(c.plan._id), 'label')">{{ c.plan.label }}</span></template></h3>
       <table>
         <tbody>
           <tr v-for="d in c.plan.week" :key="d.day">
