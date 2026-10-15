@@ -623,6 +623,7 @@
       "confirmBlocker": "Confirma para “{title}”: ¿sigue todo correcto en {label}?",
       "changed": "{changed} ha cambiado. ¿Sigue todo correcto en {label}?",
       "add": "Añadir {item}",
+      "addInMain": "Para añadir más, cambia a {name}.",
       "text": "Texto"
     }
   },

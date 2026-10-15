@@ -623,6 +623,7 @@
       "confirmBlocker": "Please confirm for “{title}”: are the {label} still correct?",
       "changed": "{changed} changed. Are the {label} still correct?",
       "add": "Add {item}",
+      "addInMain": "You add more in {name}.",
       "text": "Text"
     }
   },

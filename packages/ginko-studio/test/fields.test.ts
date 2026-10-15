@@ -105,12 +105,12 @@ describe('list rows', () => {
   } as Extract<Field, { type: 'list' }>
   const rowsOf = (...reasons: string[]) => reasons.map((reason, i) => ({ _id: `r${i}`, reason, closed: false }))
 
-  function host(initial: Json) {
+  function host(initial: Json, opts: { locale?: string; translation?: TranslationState } = {}) {
     const value = shallowRef<Json | undefined>(initial)
     const Host = defineComponent({
-      setup: () => () => h(GinkoFieldList, { id: 'f-ex', field, modelValue: value.value, path: 'ex', locale: 'de', locales: ['de'], issues: [], 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
+      setup: () => () => h(GinkoFieldList, { id: 'f-ex', field, modelValue: value.value, path: 'ex', locale: opts.locale ?? 'de', locales: ['de', 'en'], issues: [], 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
     })
-    return { wrapper: mount(Host), value }
+    return { wrapper: mount(Host, { global: { provide: opts.translation ? { [TRANSLATION as symbol]: opts.translation } : {} } }), value }
   }
 
   test('removing a row offers "Rückgängig", which puts the row back at the same position', async () => {
@@ -133,6 +133,16 @@ describe('list rows', () => {
     const [closed, open] = wrapper.findAll('li')
     expect(closed!.find('input[type="time"]').exists()).toBe(false)
     expect(open!.find('input[type="time"]').exists()).toBe(true)
+  })
+
+  // Wrong behaviour caught: a row added on the English tab can get neither its German texts nor its pictures there,
+  // so the form can never be saved and the only way out is to remove the row again.
+  test('in another language a row is added in the main language; removing stays', () => {
+    const translation: TranslationState = { state: () => 'fine', source: () => '', confirm: vi.fn(), mainName: () => 'Deutsch', missingNote: () => '', changesUrl: () => undefined, address: () => undefined }
+    const { wrapper } = host(rowsOf('Winterpause'), { locale: 'en', translation })
+    expect(wrapper.findAll('button').some((b) => b.text() === 'Ausnahme hinzufügen')).toBe(false)
+    expect(wrapper.text()).toContain('Hinzufügen kannst du auf Deutsch.')
+    expect(wrapper.find('[aria-label="Winterpause entfernen"]').exists()).toBe(true)
   })
 })
 

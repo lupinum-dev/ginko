@@ -623,6 +623,7 @@
       "confirmBlocker": "Bitte bestätige bei „{title}“: Sind die {label} noch richtig?",
       "changed": "{changed} geändert. Sind die {label} noch richtig?",
       "add": "{item} hinzufügen",
+      "addInMain": "Hinzufügen kannst du auf {name}.",
       "text": "Text"
     }
   },
