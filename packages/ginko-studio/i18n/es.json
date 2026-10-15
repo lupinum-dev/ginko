@@ -216,7 +216,9 @@
       "over": "Esta entrada es demasiado grande: {used} de {limit}. Acórtala unos {over} para poder guardarla."
     },
     "oldWeek": "Esta sigue siendo la semana del {date}. Revisa cada día antes de guardar.",
-    "copyThisWeek": "Copiar de esta semana"
+    "copyThisWeek": "Copiar de esta semana",
+    "pending": "Esperando aprobación, enviado el {when}. Si guardas, sustituyes tu propuesta.",
+    "reopenProposal": "Volver a abrir tu propuesta"
   },
   "site": {
     "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",
@@ -267,7 +269,10 @@
       "nothingNow": "No hay nada introducido por ahora.",
       "removeNamed": "Eliminar {title}",
       "allIn": "Ver todo en «{brick}»",
-      "showExpired": "Mostrar caducadas ({count})"
+      "showExpired": "Mostrar caducadas ({count})",
+      "waiting": "Esperando aprobación, enviado el {when}.",
+      "rejected": "No aprobado: «{reason}»",
+      "fix": "Corregir"
     },
     "all": {
       "heading": "Editar todo",
@@ -698,6 +703,7 @@
       "schema": "Los campos se reestructuraron desde entonces"
     },
     "loadFailed": "No se pudo cargar el historial. Vuelve a cargar la página.",
+    "fix": "Corregir",
     "approval": "Aprobación: {who}"
   },
   "basics": {

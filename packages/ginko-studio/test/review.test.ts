@@ -76,7 +76,7 @@ describe('ChangeDiff', () => {
 })
 
 const row = (over: Partial<ProposalRow> = {}): ProposalRow => ({
-  proposal: 'p1' as Id<'proposals'>, op: 'save', brick: 'menu', entry: null, sentence: 'Preis geändert', msg: null, status: 'open', author: { email: 'a@b.at' }, mine: false, via: 'ui', agent: null,
+  proposal: 'p1' as Id<'proposals'>, op: 'save', brick: 'menu', entry: null, task: null, sentence: 'Preis geändert', msg: null, status: 'open', author: { email: 'a@b.at' }, mine: false, via: 'ui', agent: null,
   createdAt: Date.UTC(2026, 9, 8, 10), at: null, release: null, decidedBy: null, decidedAt: null, reason: null, reasonMsg: null, change: null,
   canDecide: true, conflict: null, conflictMsg: null, ...over,
 })
@@ -128,7 +128,7 @@ describe('OwnProposals', () => {
         },
       }
     })
-    const wrapper = mount(OwnProposals, { props: { site: 's', schema: { timeZone: 'Europe/Vienna', locales: ['de'], bricks: {} } as never, filter: 'all' } })
+    const wrapper = mount(OwnProposals, { props: { site: 's', schema: { timeZone: 'Europe/Vienna', locales: ['de'], bricks: {} } as never, filter: 'all', manager: false, grants: new Set<string>() } })
     const [a, b] = wrapper.findAll('button')
     await a!.trigger('click')
     await b!.trigger('click')

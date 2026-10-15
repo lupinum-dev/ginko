@@ -34,16 +34,22 @@ let schema = notices
 
 vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})
-vi.stubGlobal('navigateTo', () => {})
+const navigated: unknown[] = []
+vi.stubGlobal('navigateTo', (to: unknown) => { navigated.push(to) })
 vi.stubGlobal('useToast', () => ({ show: () => {} }))
 vi.stubGlobal('useSiteData', async () => ({
   slug: ref('restaurant'), schema: ref(schema), site: ref({ name: 'Restaurant' }), main: ref('de'), today: ref('2026-10-15'),
   isManager: ref(false), may: () => true, bricks: computed(() => Object.entries(schema.bricks)),
 }))
+/** The page's address: Verlauf and the rejection mail link here with ?task=&reopen=. */
+const route = reactive({ path: '/s/restaurant', query: {} as Record<string, string> })
+vi.stubGlobal('useRoute', () => route)
+/** The person's own proposals (proposals.mine). */
+let own: unknown = { open: [], rejected: [], notLive: [] }
 vi.stubGlobal('useKeptEntry', (_id: unknown, live: () => unknown) => ({ entry: computed(live), removed: ref(false) }))
 // The page's live reads: the listed entries, and the one entry a sheet opens on.
 vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => ({
-  data: String(fn) === 'entries.ofBricks' ? ref(listed) : computed(() => {
+  data: String(fn) === 'entries.ofBricks' ? ref(listed) : String(fn) === 'proposals.mine' ? ref(own) : computed(() => {
     const a = typeof args === 'function' ? args() : args
     return String(fn) === 'entries.get' && a !== 'skip' ? listed.find((e) => (e as { _id: string })._id === (a as { entry: string }).entry) : undefined
   }),
@@ -70,6 +76,7 @@ test('a row\'s "Entfernen" stays disabled while its removal runs, also when anot
   await flushPromises()
   expect(removeButton('Heute geschlossen').attributes('disabled')).toBeUndefined()
   expect(removeButton('Neue Karte').attributes('disabled')).toBeDefined()
+  wrapper.unmount()
 })
 
 const DAY = 86_400_000
@@ -152,6 +159,51 @@ describe('planning a week ahead (lunchPlans)', () => {
     } finally {
       schema = notices
       vi.useRealTimers()
+    }
+  })
+})
+
+describe('own proposals on Schnell ändern', () => {
+  const lunch = { _id: 'lunch1', brick: 'lunch', kind: 'single', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { weekOf: '2026-10-12', days: [] } }
+  const proposal = (over: Record<string, unknown>) => ({
+    proposal: 'p1', op: 'save', brick: 'lunch', entry: 'lunch1', task: 'lunch.lunchWeek', via: 'ui', sentence: 'Hinweis von „Mittagsmenü“ geändert', msg: null, status: 'open',
+    createdAt: Date.UTC(2026, 9, 15, 8), decidedAt: null, decidedBy: null, reason: null, ...over,
+  })
+  const sheet = { props: ['brickKey', 'task', 'entry', 'reopen'], template: '<p data-test="sheet">{{ brickKey }}.{{ task.id }} on {{ entry?._id }}, reopen {{ reopen }}</p>' }
+  async function page() {
+    const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
+      global: { stubs: { TaskSheet: sheet, PickSheet: true, I18nT: true, NuxtLink: true } },
+    })
+    await flushPromises()
+    return wrapper
+  }
+
+  // Wrong behaviour caught: after sending, the cook's card still showed only the old week, so he thought nothing was
+  // saved; a rejection was never shown to him, and fixing it meant typing the whole week again.
+  test('a waiting proposal says so; a rejection shows the reason, and Korrigieren opens the task on it', async () => {
+    schema = serializeSchema(restaurant)
+    listed = [lunch]
+    own = { open: [proposal({ proposal: 'p2', brick: 'menu', entry: 'm1', task: 'menu.price', sentence: 'Preis von „Saibling“ geändert' })], rejected: [proposal({ status: 'rejected', reason: 'Bitte mit Preis.' })], notLive: [] }
+    try {
+      const wrapper = await page()
+      expect(wrapper.get('[data-test="own-waiting"]').text()).toBe('Preis von „Saibling“ geändert · Wartet auf Freigabe, eingereicht 15.10.2026, 10:00.')
+      const rejected = wrapper.get('[data-test="own-rejected"]')
+      expect(rejected.text()).toContain('Nicht freigegeben: „Bitte mit Preis.“')
+      await rejected.get('button').trigger('click')
+      expect(wrapper.get('[data-test="sheet"]').text()).toBe('lunch.lunchWeek on lunch1, reopen p1')
+      wrapper.unmount()
+
+      // The link from Verlauf or the rejection mail opens it at once, and only once.
+      route.query = { task: 'lunch.lunchWeek', reopen: 'p1' }
+      navigated.length = 0
+      const linked = await page()
+      expect(linked.get('[data-test="sheet"]').text()).toBe('lunch.lunchWeek on lunch1, reopen p1')
+      expect(navigated).toEqual([{ path: '/s/restaurant', query: {} }])
+      linked.unmount()
+    } finally {
+      schema = notices
+      own = { open: [], rejected: [], notLive: [] }
+      route.query = {}
     }
   })
 })

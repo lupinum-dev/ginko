@@ -216,7 +216,9 @@
       "over": "Dieser Eintrag ist zu groß: {used} von {limit}. Kürze ihn um etwa {over}, dann lässt er sich speichern."
     },
     "oldWeek": "Das ist noch die Woche ab {date}. Prüfe jeden Tag, bevor du speicherst.",
-    "copyThisWeek": "Von dieser Woche übernehmen"
+    "copyThisWeek": "Von dieser Woche übernehmen",
+    "pending": "Wartet auf Freigabe, eingereicht {when}. Wenn du speicherst, ersetzt das deinen Vorschlag.",
+    "reopenProposal": "Deinen Vorschlag wieder öffnen"
   },
   "site": {
     "zoneNote": "Alle Zeiten in der Zeitzone der Website ({zone}).",
@@ -267,7 +269,10 @@
       "nothingNow": "Gerade nichts eingetragen.",
       "removeNamed": "{title} entfernen",
       "allIn": "Alle in „{brick}“ ansehen",
-      "showExpired": "Abgelaufene anzeigen ({count})"
+      "showExpired": "Abgelaufene anzeigen ({count})",
+      "waiting": "Wartet auf Freigabe, eingereicht {when}.",
+      "rejected": "Nicht freigegeben: „{reason}“",
+      "fix": "Korrigieren"
     },
     "all": {
       "heading": "Alles bearbeiten",
@@ -698,6 +703,7 @@
       "schema": "Die Felder wurden seither umgebaut"
     },
     "loadFailed": "Der Verlauf konnte nicht geladen werden. Bitte die Seite neu laden.",
+    "fix": "Korrigieren",
     "approval": "Freigabe: {who}"
   },
   "basics": {

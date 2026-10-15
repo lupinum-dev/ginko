@@ -7,6 +7,8 @@ import type { Entry } from '../../../composables/useSiteData'
 import { textIn } from '@lupinum/ginko-editor'
 import { displayValue, formatDay, taskRef, titleOf, type Task } from '../../../utils/content'
 import { shownLabel } from '../../../utils/labels'
+import { whenFull } from '../../../utils/when'
+import { useTextOf } from '../../../composables/useTextOf'
 import { Button } from '@studio/components/ui/button'
 import { api } from '#convex/api'
 import EntryRemoveDialog, { type EntryUses, type TrashOverflow } from '../../../components/EntryRemoveDialog.vue'
@@ -181,8 +183,21 @@ function weekState(key: string, brick: Brick) {
   return { current: state.current, text: state.stored ? `${shownLabel(brick.fields[state.field]!.label, s.main.value)} ${formatDay(state.stored, format)}` : t('site.quick.notFilled') }
 }
 
-// The open sheet: a task, and for edit tasks the entry.
-const open = ref<{ key: string; task: Task; entryId?: string } | null>(null)
+// The person's own proposals (proposals.mine): each section says what of theirs waits for approval, and what was not
+// approved, with "Korrigieren" to fix it in its task. The server keeps a rejection only while it is the thing to fix.
+const ownRead = useConvexQuery(api.proposals.mine, () => ({ site: s.slug.value }), { server: false })
+type OwnRow = NonNullable<typeof ownRead.data.value>['open'][number]
+const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone ?? 'UTC', main: s.main.value }))
+const ownLine = (p: OwnRow) => textOf(p.msg, p.sentence)
+const ownWhen = (at: number) => whenFull(at, s.schema.value?.timeZone ?? 'UTC', format)
+/** Own open proposals and rejections still to fix, made in the Studio through a task of `key` (an agent's are in Verlauf). */
+function ownOf(key: string) {
+  const of = (p: OwnRow) => p.via === 'ui' && !!p.task?.startsWith(`${key}.`)
+  return { waiting: (ownRead.data.value?.open ?? []).filter(of), rejected: (ownRead.data.value?.rejected ?? []).filter(of) }
+}
+
+// The open sheet: a task, and for edit tasks the entry; `reopen` is a rejected own proposal it starts from.
+const open = ref<{ key: string; task: Task; entryId?: string; reopen?: string } | null>(null)
 /** The open task's entry, live: the sheet sees changes others save meanwhile, and keeps it when someone removes it (N1). */
 const openRead = useConvexQuery(api.entries.get, () => (open.value?.entryId ? { site: s.slug.value, entry: open.value.entryId } : 'skip'))
 const { entry: openEntry, removed: openRemoved } = useKeptEntry(
@@ -258,6 +273,29 @@ function start(key: string, task: Task) {
   }
   open.value = { key, task, entryId: task.kind === 'edit' ? singleOf(key)?._id : undefined }
 }
+/** The task a rejected proposal was made with, when the person still holds it. */
+const fixTask = (key: string, p: OwnRow) => (p.entry ? sections.value.find((x) => x.key === key)?.tasks.find((t) => taskRef(key, t) === p.task) : undefined)
+/** "Korrigieren": the rejected proposal's task on its entry, starting from the proposal's values. */
+function fix(key: string, p: OwnRow) {
+  const task = fixTask(key, p)
+  if (!task || !p.entry) return
+  if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) launcher = document.activeElement
+  open.value = { key, task, entryId: p.entry, reopen: p.proposal }
+}
+// "Korrigieren" in Verlauf and the rejection mail link here with ?task=<brick.task>&reopen=<proposal>: opened once,
+// then the address drops it. A rejection that is no longer to fix (fixed, or changed since) opens nothing.
+const route = useRoute()
+let linked: string | undefined
+watch([() => route.query.reopen, () => ownRead.data.value, () => s.schema.value], () => {
+  const { task, reopen } = route.query
+  if (typeof reopen !== 'string') linked = undefined
+  if (typeof task !== 'string' || typeof reopen !== 'string' || reopen === linked || !ownRead.data.value || !s.schema.value) return
+  linked = reopen
+  const p = ownRead.data.value.rejected.find((r) => r.proposal === reopen && r.task === task)
+  if (p) fix(task.split('.')[0]!, p)
+  navigateTo({ path: route.path, query: {} }, { replace: true })
+}, { immediate: true })
+
 function picked(entry: Entry) {
   const p = picking.value!
   picking.value = null
@@ -342,6 +380,11 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
           {{ weekState(sec.key, sec.brick)!.text }}<template v-if="!weekState(sec.key, sec.brick)!.current">{{ t('site.quick.notThisWeek') }}</template>
         </p>
       </template>
+      <p v-for="p in ownOf(sec.key).waiting" :key="p.proposal" class="text-sm text-muted-foreground" data-test="own-waiting">{{ ownLine(p) }} · {{ t('site.quick.waiting', { when: ownWhen(p.createdAt) }) }}</p>
+      <div v-for="p in ownOf(sec.key).rejected" :key="p.proposal" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md bg-warning/10 px-3 py-2.5" data-test="own-rejected">
+        <p class="min-w-0 flex-1 [overflow-wrap:anywhere]"><span class="block">{{ ownLine(p) }}</span><span class="block font-semibold text-warning">{{ t('site.quick.rejected', { reason: p.reason ?? '' }) }}</span></p>
+        <Button v-if="fixTask(sec.key, p)" type="button" variant="outline" size="sm" @click="fix(sec.key, p)">{{ t('site.quick.fix') }}</Button>
+      </div>
 
       <ul v-if="listings[sec.key]?.rows.length" tabindex="-1" class="m-0 list-none overflow-hidden rounded-xl border p-0">
         <li v-for="{ e, target } in listings[sec.key]!.rows" :key="e._id" class="group/row flex items-center gap-2 border-b px-4 py-3 last:border-b-0" :data-dim="timing(sec.brick as CollectionBrick, e).dim || undefined">
@@ -393,6 +436,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       :may-restore="s.isManager.value || !!sections.find((x) => x.key === open!.key)?.remove"
       :existing="existing"
       :copy-from="copyFrom"
+      :reopen="open.reopen"
       @close="open = null"
     />
     <EntryRemoveDialog

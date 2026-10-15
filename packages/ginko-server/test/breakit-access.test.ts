@@ -111,6 +111,7 @@ const publicCalls: Call[] = [
   { fn: 'proposals.withdraw', kind: 'mutation', args: () => ({ proposal: 'x' }) },
   { fn: 'proposals.list', kind: 'query', args: () => ({ ...SITE, paginationOpts: firstPage }) },
   { fn: 'proposals.mine', kind: 'query', args: () => SITE },
+  { fn: 'proposals.ownFor', kind: 'query', args: (s) => ({ ...SITE, entry: s.entries['menu-saibling'] }) },
   { fn: 'proposals.count', kind: 'query', args: () => SITE },
   { fn: 'proposals.get', kind: 'query', args: () => ({ ...SITE, proposal: 'x' }) },
   { fn: 'proposals.releases', kind: 'query', args: () => SITE },
@@ -501,6 +502,7 @@ const cross: CrossCall[] = [
   { fn: 'views.remove', kind: 'mutation', args: (site, f) => ({ site, id: f.view }) },
   { fn: 'proposals.list', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage }) },
   { fn: 'proposals.mine', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'proposals.ownFor', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
   { fn: 'proposals.releases', kind: 'query', args: (site) => ({ site }) },
   { fn: 'sites.translationStatus', kind: 'query', args: (site) => ({ site }) },
 ]

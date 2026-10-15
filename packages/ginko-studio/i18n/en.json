@@ -216,7 +216,9 @@
       "over": "This entry is too large: {used} of {limit}. Shorten it by about {over} to save it."
     },
     "oldWeek": "This is still the week of {date}. Check every day before you save.",
-    "copyThisWeek": "Copy from this week"
+    "copyThisWeek": "Copy from this week",
+    "pending": "Waiting for approval, sent {when}. Saving replaces your proposal.",
+    "reopenProposal": "Reopen your proposal"
   },
   "site": {
     "zoneNote": "All times are in the website's time zone ({zone}).",
@@ -267,7 +269,10 @@
       "nothingNow": "Nothing entered right now.",
       "removeNamed": "Remove {title}",
       "allIn": "See all in “{brick}”",
-      "showExpired": "Show expired ({count})"
+      "showExpired": "Show expired ({count})",
+      "waiting": "Waiting for approval, sent {when}.",
+      "rejected": "Not approved: “{reason}”",
+      "fix": "Fix it"
     },
     "all": {
       "heading": "Edit everything",
@@ -698,6 +703,7 @@
       "schema": "The fields were restructured since"
     },
     "loadFailed": "History could not be loaded. Please reload the page.",
+    "fix": "Fix it",
     "approval": "Approval: {who}"
   },
   "basics": {

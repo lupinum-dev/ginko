@@ -227,7 +227,7 @@ describe('TaskSheet', () => {
    * server's prefill is `prefill`, other queries answer from `answers` by function name, and a one-off read
    * (`useConvex().query`) gets this week's lunch.
    */
-  async function sheetOf(o: { brickKey: string; task: string; data?: Record<string, unknown>; prefill: Record<string, unknown>; answers?: Record<string, unknown>; copyFrom?: string }) {
+  async function sheetOf(o: { brickKey: string; task: string; data?: Record<string, unknown>; prefill: Record<string, unknown>; answers?: Record<string, unknown>; copyFrom?: string; reopen?: string }) {
     const { serializeSchema } = await import('@lupinum/ginko/internal')
     const { default: restaurant } = await import('../../../sites/restaurant/ginko.config.ts')
     const { useI18n } = await import('#imports')
@@ -235,22 +235,57 @@ describe('TaskSheet', () => {
     const { default: TaskSheet } = await import('../app/components/TaskSheet.vue')
     vi.stubGlobal('useI18n', useI18n)
     vi.stubGlobal('useEntryForm', useEntryForm)
-    vi.stubGlobal('useConvexQuery', (fn: unknown) => ({ data: vue.ref(String(fn) === 'tasks.prefill' ? o.prefill : o.answers?.[String(fn)]), error: vue.ref(undefined) }))
+    // No own proposal unless the test gives one.
+    const answers: Record<string, unknown> = { 'proposals.ownFor': null, ...o.answers }
+    vi.stubGlobal('useConvexQuery', (fn: unknown) => ({ data: vue.ref(String(fn) === 'tasks.prefill' ? o.prefill : answers[String(fn)]), error: vue.ref(undefined) }))
+    vi.stubGlobal('useConvexMutation', () => ({ pending: vue.ref(false), mutate: async () => ({}) }))
     vi.stubGlobal('useConvex', () => ({ query: async (fn: unknown) => (String(fn) === 'entries.get' ? { ...stored, _id: 'l1', brick: 'lunch', kind: 'single', data: thisWeek } : undefined) }))
     HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) { this.open = true }
     const schema = serializeSchema(restaurant)
     const brick = schema.bricks[o.brickKey]!
     const entry = o.data ? { ...stored, _id: 'l1', brick: o.brickKey, kind: brick.kind === 'single' ? 'single' : 'item', data: o.data } as Entry : undefined
     const sheet = mount(TaskSheet, {
-      props: { site: 'restaurant', brickKey: o.brickKey, brick, task: brick.tasks!.find((t) => t.id === o.task)!, entry, main: 'de', locales: ['de', 'en'], schema, copyFrom: o.copyFrom },
+      props: { site: 'restaurant', brickKey: o.brickKey, brick, task: brick.tasks!.find((t) => t.id === o.task)!, entry, main: 'de', locales: ['de', 'en'], schema, copyFrom: o.copyFrom, reopen: o.reopen },
       attachTo: document.body,
     })
     await flushPromises()
     return sheet
   }
   /** "Mittagsmenü dieser Woche" on a lunch entry of `storedWeek`; the server's prefill gives this week (12.10.2026). */
-  const lunchSheet = (storedWeek: string, answers: Record<string, unknown> = {}) => sheetOf({
-    brickKey: 'lunch', task: 'lunchWeek', data: { weekOf: storedWeek, days: [], note: { de: 'Suppe inklusive' } }, prefill: { weekOf: '2026-10-12', days: [], note: { de: 'Suppe inklusive' } }, answers,
+  const lunchSheet = (storedWeek: string, answers: Record<string, unknown> = {}, reopen?: string) => sheetOf({
+    brickKey: 'lunch', task: 'lunchWeek', data: { weekOf: storedWeek, days: [], note: { de: 'Suppe inklusive' } }, prefill: { weekOf: '2026-10-12', days: [], note: { de: 'Suppe inklusive' } }, answers, reopen,
+  })
+  /** The cook's own proposal for this week's lunch (proposals.ownFor), sent on Monday 12.10.2026 at 10:00 in Vienna. */
+  const ownProposal = (over: Record<string, unknown> = {}) => ({
+    proposal: 'p1', status: 'open', task: 'lunch.lunchWeek', fields: { weekOf: '2026-10-12', note: { de: 'Suppe und Salat inklusive' } },
+    createdAt: Date.UTC(2026, 9, 12, 8), decidedAt: null, decidedBy: null, reason: null, ...over,
+  })
+  const noteOf = (sheet: Awaited<ReturnType<typeof sheetOf>>) => (sheet.get('#f-note').element as HTMLInputElement).value
+
+  // Wrong behaviour caught: after sending, the cook's sheet opened on the old week again, so he thought nothing was
+  // saved and typed the whole week a second time.
+  test('with an open own proposal the sheet starts from it and says it waits for approval', async () => {
+    const sheet = await lunchSheet('2026-10-05', { 'proposals.ownFor': ownProposal() })
+    expect(noteOf(sheet)).toBe('Suppe und Salat inklusive')
+    expect(sheet.get('[data-test="own-proposal"]').text()).toBe('Wartet auf Freigabe, eingereicht 12.10.2026, 10:00. Wenn du speicherst, ersetzt das deinen Vorschlag.Zurückziehen')
+    // The days are the proposal's, not last week's.
+    expect(sheet.text()).not.toContain('Das ist noch die Woche ab')
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: a rejection was a dead end: the cook had to type the whole week again to fix one dish.
+  test('a rejected own proposal shows the reason and reopens with its values, at once when the sheet is opened for it', async () => {
+    const rejected = ownProposal({ status: 'rejected', decidedAt: Date.UTC(2026, 9, 12, 9), decidedBy: { kind: 'member' }, reason: 'Bitte mit Preis.' })
+    const sheet = await lunchSheet('2026-10-12', { 'proposals.ownFor': rejected })
+    expect(noteOf(sheet)).toBe('Suppe inklusive')
+    expect(sheet.get('[data-test="own-proposal"]').text()).toContain('Ein Mitglied hat abgelehnt: „Bitte mit Preis.“')
+    await sheet.findAll('button').find((b) => b.text() === 'Deinen Vorschlag wieder öffnen')!.trigger('click')
+    expect(noteOf(sheet)).toBe('Suppe und Salat inklusive')
+    sheet.unmount()
+
+    const opened = await lunchSheet('2026-10-12', { 'proposals.ownFor': rejected }, 'p1')
+    expect(noteOf(opened)).toBe('Suppe und Salat inklusive')
+    opened.unmount()
   })
 
   // Wrong behaviour caught: "Mittagsmenü dieser Woche" offered "Folgende Arbeitswoche" and a free date, so saving

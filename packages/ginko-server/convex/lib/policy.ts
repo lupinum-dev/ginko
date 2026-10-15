@@ -91,9 +91,14 @@ export interface NewProposal extends Recorded {
   after?: Json
 }
 
-/** Stores the proposal and makes sure the site's digest mail is scheduled. The result tells the caller that nothing was written. */
+/**
+ * Stores the proposal and makes sure the site's digest mail is scheduled. The result tells the caller that nothing was written.
+ * A save replaces the author's open save of the same entry through the same task and door: the sheet sent it again
+ * starting from that proposal, so the older one is withdrawn instead of going stale when the newer one is approved.
+ */
 export async function propose(ctx: MutationCtx, actor: Actor, p: NewProposal): Promise<{ proposal: Id<'proposals'>; status: 'open' }> {
   if (byteSize([p.args, p.before, p.after]) > PROPOSAL_BYTES) fail('TOO_LARGE', 'errors.proposalTooLarge')
+  if (p.op === 'save' && p.entry) await withdrawReplaced(ctx, actor, p.entry, taskOf(p.args))
   const open = await ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', actor.site._id).eq('status', 'open')).take(OPEN_MAX)
   if (open.length >= OPEN_MAX) fail('INVALID', 'errors.tooManyOpenProposals', { openMax: OPEN_MAX })
   const proposal = await ctx.db.insert('proposals', {
@@ -104,6 +109,21 @@ export async function propose(ctx: MutationCtx, actor: Actor, p: NewProposal): P
   })
   await scheduleDigest(ctx, actor.site._id)
   return { proposal, status: 'open' }
+}
+
+/** The task a proposal was made with (`args.task`), if any. */
+export const taskOf = (args: unknown): string | undefined => {
+  const task = (args as { task?: unknown } | null)?.task
+  return typeof task === 'string' ? task : undefined
+}
+
+async function withdrawReplaced(ctx: MutationCtx, actor: Actor, entry: Id<'entries'>, task: string | undefined) {
+  const via = actor.agentKey ? 'agent' : 'ui'
+  const open = await ctx.db.query('proposals').withIndex('by_site_author_status_decided', (q) => q.eq('site', actor.site._id).eq('author', actor.user.id).eq('status', 'open')).take(OPEN_MAX)
+  for (const old of open) {
+    if (old.op !== 'save' || old.entry !== entry || old.via !== via || taskOf(old.args) !== task) continue
+    await ctx.db.patch(old._id, { status: 'withdrawn', decidedBy: actor.user.id, decidedAt: Date.now(), release: undefined })
+  }
 }
 
 /** The first open proposal schedules the digest; proposals created before it runs ride along. A lost job is replaced after an hour. */

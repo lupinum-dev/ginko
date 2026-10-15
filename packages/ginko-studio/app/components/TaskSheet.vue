@@ -1,5 +1,6 @@
 <!-- The task form (UI.md 3.1, 3.2): only the task's fields, prefilled by the server, saved with one
-     opId per attempt. Conflicts keep the person's input and show the new state next to it. -->
+     opId per attempt. Conflicts keep the person's input and show the new state next to it. The person's own
+     proposal on the entry (SPEC 17) is where an edit starts while it waits; a rejected one can be reopened. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Json, Label as LabelText, Locale } from '@lupinum/ginko'
@@ -8,6 +9,7 @@ import GinkoField from './fields/GinkoField.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
 import ConflictPanel from './ConflictPanel.vue'
+import ProposalWithdraw from './ProposalWithdraw.vue'
 import { provideSiteRefs } from '../composables/useSiteRefs'
 import { Button } from '@studio/components/ui/button'
 import { XIcon } from '@lucide/vue'
@@ -15,6 +17,8 @@ import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
 import { formatDay, taskFields, taskRef, titleOf, weekShortcuts, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
+import { whenFull } from '../utils/when'
+import { whoText } from '../utils/who'
 
 const props = defineProps<{
   site: string
@@ -37,6 +41,8 @@ const props = defineProps<{
   schema: Schema
   /** A create task that plans a week ahead: the entry the website shows this week, to start from ("Von dieser Woche übernehmen"). */
   copyFrom?: string
+  /** Opened to fix this rejected own proposal ("Korrigieren"): the form starts from its values. */
+  reopen?: string
 }>()
 const emit = defineEmits<{ close: [] }>()
 const { t, format } = useI18n()
@@ -69,22 +75,45 @@ const form = useEntryForm({
   removed: () => !isCreate.value && !!props.removed,
 })
 const { draft, baseline, initial, ready, issues, problem, conflict, busy, offline, waiting, dirty, localOffer } = form
+/** The form holds the values of an own proposal, not the stored ones. */
+const fromProposal = ref(false)
 /** The weekly task opened on an entry of an older week: its days are still that week's, so a rushed save would publish them as this week's. */
 const oldWeek = computed(() => {
   const key = fixedWeek.value
   const stored = key ? props.entry?.data[key] : undefined
-  return ready.value && typeof stored === 'string' && stored !== draft.value[key!] ? stored : undefined
+  return ready.value && !fromProposal.value && typeof stored === 'string' && stored !== draft.value[key!] ? stored : undefined
 })
 
 // Prefill (SPEC 2.7): stored values of the task's fields, then the task's preset, resolved on the server.
 const prefillArgs = computed(() => ({ site: props.site, task: ref_.value, ...(props.entry && !isCreate.value ? { entry: props.entry._id } : {}) }))
 const { data: prefill, error: prefillError } = useConvexQuery(api.tasks.prefill, prefillArgs, { server: false })
-watch(prefill, (p) => {
-  if (!p || ready.value) return
+
+// The person's own proposal on the entry through this task (proposals.ownFor): an open one is where the form starts,
+// so sending again replaces it with what they see; a rejected one can be reopened to fix it.
+const ownArgs = () => (props.entry && !isCreate.value ? { site: props.site, entry: props.entry._id } : 'skip' as const)
+const { data: own, error: ownError } = useConvexQuery(api.proposals.ownFor, ownArgs, { server: false })
+const mine = computed(() => (own.value && own.value.task === ref_.value ? own.value : null))
+/** The proposal's values of this task's fields; the weekly task keeps this week. */
+const proposedValues = (o: NonNullable<typeof mine.value>): Data =>
+  Object.fromEntries(Object.entries(o.fields as Data).filter(([k]) => Object.hasOwn(fields.value, k) && k !== fixedWeek.value))
+
+watch([prefill, own, ownError], ([p]) => {
+  // Both answers first, so the form does not start on the stored values and jump; a failed proposal read does not hold it up.
+  if (!p || ready.value || (ownArgs() !== 'skip' && own.value === undefined && !ownError.value)) return
   // A new entry starts from the schema defaults; choices without a default stay unset on purpose (UI.md 5).
   const start: Data = isCreate.value ? { ...defaultsFor(fields.value) } : {}
-  form.load({ ...start, ...(p as Data) })
+  const o = mine.value
+  const proposed = o && (o.status === 'open' || o.proposal === props.reopen) ? proposedValues(o) : undefined
+  form.load({ ...start, ...(p as Data), ...proposed })
+  fromProposal.value = !!proposed
 }, { immediate: true })
+
+/** "Deinen Vorschlag wieder öffnen": the rejected values, to fix what the approver asked for. */
+function reopenOwn() {
+  if (!mine.value || !prefill.value) return
+  form.load({ ...(prefill.value as Data), ...proposedValues(mine.value) })
+  fromProposal.value = true
+}
 
 // "Von dieser Woche übernehmen": a new planned week starts from this week's days and note, its own week stays. The
 // copied values are the form's start, so a dish changed without its allergens asks "Noch richtig?" like an edit does.
@@ -210,6 +239,14 @@ function onCancel(event: Event) {
             :can-keep-both="!!form.listMerge.value"
             @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
           />
+          <div v-if="mine?.status === 'open'" class="flex flex-wrap items-center justify-between gap-x-3 rounded-md bg-warning/10 py-1 pr-1 pl-3" role="status" data-test="own-proposal">
+            <p class="py-1.5 font-semibold text-warning">{{ t('entry.pending', { when: whenFull(mine.createdAt, schema.timeZone, format) }) }}</p>
+            <ProposalWithdraw :proposal="mine.proposal" />
+          </div>
+          <div v-else-if="mine?.status === 'rejected'" class="grid gap-2 rounded-md bg-warning/10 px-3 py-2.5" data-test="own-proposal">
+            <p class="font-semibold text-warning [overflow-wrap:anywhere]">{{ t('history.rejectedBy', { who: mine.decidedBy ? whoText(mine.decidedBy, t) : t('who.member'), reason: mine.reason ?? '' }) }}</p>
+            <Button v-if="!fromProposal" type="button" variant="outline" size="sm" class="justify-self-start" @click="reopenOwn">{{ t('entry.reopenProposal') }}</Button>
+          </div>
           <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
           <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
           <p v-if="oldWeek" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.oldWeek', { date: formatDay(oldWeek, format) }) }}</p>
@@ -238,7 +275,7 @@ function onCancel(event: Event) {
       </div>
 
       <footer class="flex flex-wrap items-center gap-2 border-t bg-card px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <p v-if="waiting && !dirty && !confirmClose" class="basis-full font-medium text-warning" role="status">{{ t('history.waiting') }}</p>
+        <p v-if="waiting && !dirty && !confirmClose && mine?.status !== 'open'" class="basis-full font-medium text-warning" role="status">{{ t('history.waiting') }}</p>
         <template v-if="confirmClose">
           <p class="basis-full font-semibold" role="alert">{{ t('entry.discard.question') }}</p>
           <Button type="button" variant="destructive" @click="discardAndClose">{{ t('entry.discard.confirm') }}</Button>

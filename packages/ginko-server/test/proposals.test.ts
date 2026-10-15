@@ -264,6 +264,46 @@ describe('rejecting and withdrawing', () => {
   })
 })
 
+describe('the author follows up on their own proposal', () => {
+  /** The cook's note on this week's lunch, through the weekly task (it needs approval in the restaurant). */
+  const cookNote = (s: Setup, de: string) =>
+    s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: s.entries.lunch!, baseRev: 1, fields: { note: { de } } }) as Promise<Proposed>
+
+  // Wrong behaviour caught: sending the week again left two open proposals of the cook for the same week, and approving
+  // one made the other stale.
+  it('a second save through the same task replaces the author\'s open proposal on that entry, and only that one', async () => {
+    const s = await approvalSetup()
+    const first = await cookNote(s, 'Suppe inklusive')
+    const other = (await s.cookPrice(s.saibling, 1450)) as Proposed
+    const second = await cookNote(s, 'Suppe und Salat inklusive')
+    expect(await s.proposalRow(first.proposal)).toMatchObject({ status: 'withdrawn', decidedBy: people.cook })
+    expect([(await s.proposalRow(second.proposal))!.status, (await s.proposalRow(other.proposal))!.status]).toEqual(['open', 'open'])
+  })
+
+  // Wrong behaviour caught: after sending, the cook's sheet showed the old week, so he thought nothing was saved; a
+  // rejection was a dead end; an old rejection stayed on top of Verlauf after he sent the fix or the owner changed it.
+  it('ownFor gives the open proposal, then the rejection with its reason, until a newer proposal or a change of those fields', async () => {
+    const s = await approvalSetup()
+    const own = () => s.as.cook.query(api.proposals.ownFor, { site: 'restaurant', entry: s.entries.lunch! })
+    const rejected = async () => (await s.as.cook.query(api.proposals.mine, { site: 'restaurant' })).rejected.map((p) => p.proposal)
+    const first = await cookNote(s, 'Suppe inklusive')
+    expect(await own()).toMatchObject({ proposal: first.proposal, status: 'open', task: 'lunch.lunchWeek', fields: { note: { de: 'Suppe inklusive' } } })
+    await s.as.owner.mutation(api.proposals.reject, { proposal: first.proposal, reason: 'Bitte mit Preis.' })
+    expect(await own()).toMatchObject({ proposal: first.proposal, status: 'rejected', reason: 'Bitte mit Preis.', decidedBy: { kind: 'member' } })
+    expect(await rejected()).toEqual([first.proposal])
+
+    const second = await cookNote(s, 'Suppe inklusive, 12 Euro')
+    expect(await own()).toMatchObject({ proposal: second.proposal, status: 'open' })
+    expect(await rejected()).toEqual([])
+
+    await s.as.owner.mutation(api.proposals.reject, { proposal: second.proposal, reason: 'Zu teuer.' })
+    expect(await rejected()).toEqual([second.proposal])
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.lunch!, baseRev: 1, fields: { note: { de: 'Suppe inklusive, 11 Euro' } } })
+    expect(await own()).toBeNull()
+    expect(await rejected()).toEqual([])
+  })
+})
+
 describe('reading', () => {
   it('approvers see every proposal, authors only their own; get returns before and after per field; count is "Zu prüfen"', async () => {
     const s = await approvalSetup()
@@ -375,7 +415,8 @@ describe('releases', () => {
   it('two proposals for the same field in one release block it: the second would not fit after the first', async () => {
     const s = await approvalSetup()
     const a = (await s.cookPrice(s.saibling, 1450)) as Proposed
-    const b = (await s.cookPrice(s.saibling, 1600)) as Proposed
+    // Through another task: a second save through the same task would replace the first proposal.
+    const b = (await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.edit', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1600 } } })) as Proposed
     const { release } = await s.as.owner.mutation(api.proposals.createRelease, { site: 'restaurant', name: 'Doppelt' }) as { release: Id<'releases'> }
     for (const p of [a, b]) await s.as.owner.mutation(api.proposals.addToRelease, { release, proposal: p.proposal })
     expect(await s.as.owner.mutation(api.proposals.approveRelease, { release })).toMatchObject({ status: 'stale', stale: [{ proposal: b.proposal }] })

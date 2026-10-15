@@ -17,6 +17,7 @@ import { historyText, msg, type HistoryMsg, type Param } from './lib/history'
 import { localeOfUser, t, type MessageKey } from './lib/i18n'
 import { queueMail, mailAvailable, siteOrigin } from './mail'
 import { labeler, type Labeler } from './lib/names'
+import { taskOf } from './lib/policy'
 
 const PAGE_SIZE = 50
 /** SPEC 17: a release groups at most this many proposals. */
@@ -253,7 +254,7 @@ export const withdraw = mutation({
 
 async function summary(p: Doc<'proposals'>, actor: Actor, names: Labeler) {
   return {
-    proposal: p._id, op: p.op, brick: p.brick, entry: p.entry ?? null, sentence: p.sentence, msg: p.msg ?? null, status: p.status,
+    proposal: p._id, op: p.op, brick: p.brick, entry: p.entry ?? null, task: taskOf(p.args) ?? null, sentence: p.sentence, msg: p.msg ?? null, status: p.status,
     author: await names.who(p.author), mine: p.author === actor.user.id, via: p.via, agent: await names.key(p.agentKey),
     createdAt: p.createdAt, at: p.at ?? null, release: p.release ?? null,
     decidedBy: p.decidedBy ? await names.who(p.decidedBy) : null, decidedAt: p.decidedAt ?? null, reason: p.reason ?? null, reasonMsg: p.reasonMsg ?? null,
@@ -348,10 +349,51 @@ export const mine = query({
       : await ownDocs(ctx, actor, 'stale', since)
     const names = await labeler(ctx, actor)
     const rows = (docs: Doc<'proposals'>[]) => Promise.all(docs.map((p) => summary(p, actor, names)))
+    // A rejected save stays only while it is still the thing to fix (`followUp`): not after a newer proposal on the
+    // entry, nor after a later change of its fields.
+    const recent = await ownDocs(ctx, actor)
+    const rejected = []
+    for (const p of await ownDocs(ctx, actor, 'rejected', since)) {
+      if (p.op !== 'save' || !p.entry || p.via !== 'ui' || (await followUp(ctx, recent, p.entry))?._id === p._id) rejected.push(p)
+    }
     return {
       open: await rows(await ownDocs(ctx, actor, 'open')),
-      rejected: await rows(await ownDocs(ctx, actor, 'rejected', since)),
+      rejected: await rows(rejected),
       notLive: await rows(stale.filter((p) => p.at !== undefined)),
+    }
+  },
+})
+
+/**
+ * The author's proposal to follow up on for one entry in the Studio, from their newest own proposals (`ownDocs`): their
+ * newest save of the entry made in the Studio (an agent's proposals are reviewed in the inbox) when it is open, or when
+ * it was rejected in the last two weeks and still fits (`staleReason`). A newer own proposal on the entry, or a later
+ * change of those fields, makes an older rejection moot.
+ */
+async function followUp(ctx: QueryCtx, recent: Doc<'proposals'>[], entry: Id<'entries'>): Promise<Doc<'proposals'> | null> {
+  const p = recent.find((r) => r.op === 'save' && r.via === 'ui' && r.entry === entry)
+  if (!p) return null
+  if (p.status === 'open') return p
+  if (p.status !== 'rejected' || (p.decidedAt ?? 0) <= Date.now() - RECENT_MS) return null
+  return (await staleReason(ctx, p)) ? null : p
+}
+
+/**
+ * The signed-in person's own proposal for an entry that a task sheet starts from (`followUp`): the fields it sent,
+ * and for a rejection who rejected it and why. `null` when there is nothing to follow up.
+ */
+export const ownFor = query({
+  args: { site: v.string(), entry: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await siteActor(ctx, args.site)
+    const entry = ctx.db.normalizeId('entries', args.entry)
+    const p = entry ? await followUp(ctx, await ownDocs(ctx, actor), entry) : null
+    if (!p) return null
+    const names = await labeler(ctx, actor)
+    const sent = p.args as { fields?: Record<string, Json> }
+    return {
+      proposal: p._id, status: p.status, task: taskOf(p.args) ?? null, fields: sent.fields ?? {}, createdAt: p.createdAt,
+      decidedAt: p.decidedAt ?? null, decidedBy: p.decidedBy ? await names.who(p.decidedBy) : null, reason: p.reason ?? null,
     }
   },
 })
