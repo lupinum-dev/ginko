@@ -1,6 +1,6 @@
 <!-- The weekly opening hours, today's row marked with what applies today (a closure or special hours win), plus the closures still ahead. -->
 <script setup lang="ts">
-import { hoursOn, spansOf, spansText, timesOf, todayState, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type Weekday } from '../utils/site'
+import { closedOnClosure, hoursOn, spansOf, spansText, timesOf, todayState, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type Weekday } from '../utils/site'
 
 const langOf = useGinkoLang()
 
@@ -15,13 +15,10 @@ const shown = (e: Exception) => spansOf(e).length > 0 && hoursOn(ctx.value, e.wh
 const week = computed(() => weekFor(ctx.value, today.value).week)
 const coming = computed(() => upcomingPlans(plans.value, today.value, 120))
 // A day set in "Geschlossen am" (closedOn) after today is listed like a closure; today's row shows today's.
-const closedOn = computed<Array<Exception & { field: string }>>(() => {
-  const { closedOn: day, closedNote } = data.value
-  return day && day > today.value ? [{ _id: 'closedOn', when: { from: day, to: day }, reason: closedNote ?? '', closed: true, field: 'closedNote' }] : []
-})
+const closedOn = computed(() => closedOnClosure(data.value, today.value))
 const ahead = computed<Array<(Exception & { field?: string }) | HolidayClosure>>(() => [
   ...data.value.exceptions.filter((e) => e.when.to >= today.value && (e.closed || shown(e))),
-  ...closedOn.value,
+  ...(closedOn.value ? [closedOn.value] : []),
   ...upcomingHolidayClosures(ctx.value, today.value, 90),
 ].sort((a, b) => a.when.from.localeCompare(b.when.from)))
 const todayKey = computed(() => weekdayOf(today.value))

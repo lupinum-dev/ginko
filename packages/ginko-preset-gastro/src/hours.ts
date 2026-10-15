@@ -178,10 +178,19 @@ export function upcomingHolidayClosures(ctx: HoursContext, today: string, days: 
 }
 
 /**
+ * The day set in "closed on" (`closedOn`) as a closure, when it is after `today`: `_id` `'closedOn'`, its note as
+ * `reason`, `field` `'closedNote'`. A closure today is today's state (`todayState`); a past day no longer counts.
+ */
+export function closedOnClosure(hours: Pick<HoursData, 'closedOn' | 'closedNote'>, today: string): (Exception & { field: string }) | undefined {
+  const day = hours.closedOn
+  return day && day > today ? { _id: 'closedOn', when: { from: day, to: day }, reason: hours.closedNote ?? '', closed: true, field: 'closedNote' } : undefined
+}
+
+/**
  * Closures that start after `today` and within `days` days: the owner's closing exceptions, the day set in "closed
- * on" (`closedOn`, `_id` `'closedOn'`, its note as `reason`), and the public holidays that close the house (by
- * `ctx.calendar`). A holiday entry has `holiday` instead of `reason`. An owner's closure has `field`, the bundle path of
- * its reason, so the page can set the reason's language.
+ * on" (`closedOnClosure`), and the public holidays that close the house (by `ctx.calendar`). A holiday entry has
+ * `holiday` instead of `reason`. An owner's closure has `field`, the bundle path of its reason, so the page can set the
+ * reason's language.
  */
 export function upcomingClosures(ctx: HoursContext, today: string, days: number): Array<(Exception & { field: string }) | HolidayClosure> {
   const until = addDays(today, days)
@@ -189,9 +198,8 @@ export function upcomingClosures(ctx: HoursContext, today: string, days: number)
   const closures: Array<(Exception & { field: string }) | HolidayClosure> = (hours.exceptions ?? [])
     .filter((e) => e.closed && e.when.from > today && e.when.from <= until)
     .map((e) => ({ ...e, field: `exceptions.${e._id}.reason` }))
-  if (hours.closedOn && hours.closedOn > today && hours.closedOn <= until) {
-    closures.push({ _id: 'closedOn', when: { from: hours.closedOn, to: hours.closedOn }, reason: hours.closedNote ?? '', closed: true, field: 'closedNote' })
-  }
+  const closedOn = closedOnClosure(hours, today)
+  if (closedOn && closedOn.when.from <= until) closures.push(closedOn)
   closures.push(...upcomingHolidayClosures(ctx, today, days))
   return closures.sort((a, b) => a.when.from.localeCompare(b.when.from))
 }

@@ -3,7 +3,7 @@
 export { allergensEU, events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from './bricks.ts'
 export { allergenNames, weekdayNames } from './names.ts'
 export {
-  hoursOn, noticesOn, spansOf, spansText, timesOf, todayState, upcomingClosures, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor,
+  closedOnClosure, hoursOn, noticesOn, spansOf, spansText, timesOf, todayState, upcomingClosures, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor,
   type DayHours, type DayRule, type Exception, type Holiday, type HolidayClosure, type HoursContext, type HoursData, type HoursSource, type HourPlan, type Span,
   type TodayState, type Weekday,
 } from './hours.ts'
