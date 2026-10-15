@@ -93,6 +93,19 @@ describe('agent door', () => {
     expect(listed.page[0]).toMatchObject({ who: { email: 'wirtin@example.com' }, agent: 'Claude Code' })
   })
 
+  // Wrong behaviour caught: the door put today over a closure set for tomorrow when the assistant changed only the
+  // reason, so the site closed today and tomorrow's closure was gone; the tool also offered today as the default.
+  it('"Heute geschlossen" with only a reason keeps a closure set for tomorrow', async () => {
+    const s = await setup()
+    const hours = (await s.t.run((ctx) => ctx.db.get(s.entries.hours!)))!
+    await s.t.run((ctx) => ctx.db.patch(s.entries.hours!, { data: { ...hours.data, closedOn: '2026-10-09' } }))
+    const key = await keyOf(s, 'owner')
+    const tools = (await rpc(s, key, 'tools/list')).body.result.tools as { name: string; inputSchema: { properties: Record<string, { default?: unknown }> } }[]
+    expect(tools.find((t) => t.name === 'task_hours_closedToday')!.inputSchema.properties.closedOn!.default).toBe('2026-10-09')
+    expect((await call(s, key, 'task_hours_closedToday', { closedNote: 'Wegen einer Hochzeit' })).isError).toBe(false)
+    expect((await s.t.run((ctx) => ctx.db.get(s.entries.hours!)))!.data).toMatchObject({ closedOn: '2026-10-09' })
+  })
+
   it('the cook\'s key sees only the menu and lunch tasks and cannot run another task', async () => {
     const s = await setup()
     const key = await keyOf(s, 'cook')
