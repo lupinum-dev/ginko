@@ -56,9 +56,12 @@ export function msToZoned(ms: number, timeZone: string): string {
 /** One clock for every Studio time and language: 24 hours, two-digit hour ("02:30"), as the server's `::HHmm` history lines. */
 const CLOCK = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } as const
 
+/** The night the clocks go back reads 02:30 twice: then the zone's short name says which one ("02:30 MEZ"). */
+const zoneIfTwice = (ms: number, timeZone: string) => (zonedTimes(msToZoned(ms, timeZone), timeZone)?.length === 2 ? { timeZoneName: 'short' } as const : {})
+
 /** "14. Okt., 09:00" in the site's time zone and the Studio's language: short, for toasts, status and lists. */
 export function whenText(ms: number, timeZone: string, format: Words['format']): string {
-  return format.date(ms, { timeZone, day: 'numeric', month: 'short', ...CLOCK })
+  return format.date(ms, { timeZone, day: 'numeric', month: 'short', ...CLOCK, ...zoneIfTwice(ms, timeZone) })
 }
 
 /** "02:30 MESZ": a clock with its zone's short name, to tell the two 02:30 of the night the clocks go back apart. */
@@ -68,5 +71,5 @@ export function clockWithZone(ms: number, timeZone: string, format: Words['forma
 
 /** "14.10.2026, 09:00" in the site's time zone: with the year, for History, reviews and files. */
 export function whenFull(ms: number, timeZone: string, format: Words['format']): string {
-  return format.date(ms, { timeZone, day: 'numeric', month: 'numeric', year: 'numeric', ...CLOCK })
+  return format.date(ms, { timeZone, day: 'numeric', month: 'numeric', year: 'numeric', ...CLOCK, ...zoneIfTwice(ms, timeZone) })
 }

@@ -4,7 +4,7 @@ import { compileCatalogs } from '@lupinum/ginko-i18n/compile'
 import { describe, expect, it } from 'vitest'
 import server from '../../ginko-server/i18n/de.json'
 import { textOf } from '../app/utils/textOf.ts'
-import { msToZoned, whenText, zonedTimes } from '../app/utils/when.ts'
+import { msToZoned, whenFull, whenText, zonedTimes } from '../app/utils/when.ts'
 
 describe('zonedTimes / msToZoned', () => {
   it.each([
@@ -37,5 +37,15 @@ describe('whenText', () => {
     const t = createTranslator({ messages, language: 'de', timeZone: 'UTC' }).t
     expect(whenText(at, 'Europe/Vienna', createFormatters('de'))).toBe('24. Okt., 02:30')
     expect(textOf({ key: 'history.scheduled', params: { title: 'X', at } }, '', { t, locale: 'de', timeZone: 'Europe/Vienna' })).toBe('Eintrag „X“: online ab 24. Okt., 02:30')
+  })
+
+  // Wrong behaviour caught: the second 02:30 of the night the clocks go back read "25. Okt., 02:30", like the first (regress-9).
+  it.each([
+    [Date.UTC(2026, 9, 25, 0, 30), '25. Okt., 02:30 MESZ', '25.10.2026, 02:30 MESZ'],
+    [Date.UTC(2026, 9, 25, 1, 30), '25. Okt., 02:30 MEZ', '25.10.2026, 02:30 MEZ'],
+    [Date.UTC(2026, 9, 25, 8, 0), '25. Okt., 09:00', '25.10.2026, 09:00'],
+  ])('%i reads %s', (at, short, full) => {
+    const format = createFormatters('de')
+    expect([whenText(at, 'Europe/Vienna', format), whenFull(at, 'Europe/Vienna', format)]).toEqual([short, full])
   })
 })
