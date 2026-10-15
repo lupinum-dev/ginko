@@ -251,11 +251,13 @@ export function upcomingPlans(plans: HourPlan[], today: string, days: number): A
  * text in `reason`, or the public holiday in `holiday`), or unknown. Unknown: the data is not hours (no week row for
  * today), an open day has no times, a site calendar in code (`holidays: 'custom'`) could decide the day and only the
  * site can run it, or the schema stores no calendar and today is an Austrian public holiday (see `HoursLineContext`).
+ * `calendar`: the hours of today are entered and only a holiday calendar the line cannot run is in the way, so nothing
+ * is missing for the owner to enter.
  */
 export type HoursLine =
   | { state: 'open'; ranges: Array<[from: string, to: string]> }
   | { state: 'closed'; reason?: string | Record<string, string>; holiday?: HolidayNames }
-  | { state: 'unknown' }
+  | { state: 'unknown'; calendar?: true }
 
 export interface HoursLineContext {
   /** The site's IANA time zone: "today" is the date there. */
@@ -290,12 +292,15 @@ export function hoursLine(data: unknown, ctx: HoursLineContext): HoursLine {
   const today = todayIn(ctx.timeZone, ctx.now)
   if (ctx.holidays === undefined) {
     const [none, at] = [lineOn(hours, today, ctx.plans, 'none'), lineOn(hours, today, ctx.plans, 'AT')]
-    return JSON.stringify(none) === JSON.stringify(at) ? none : { state: 'unknown' }
+    if (JSON.stringify(none) === JSON.stringify(at)) return none
+    // Hours missing for today stay missing whatever the calendar; otherwise only the calendar is in doubt.
+    return none.state === 'unknown' ? none : at.state === 'unknown' ? at : { state: 'unknown', calendar: true }
   }
   const rule = hoursOn({ hours, plans: ctx.plans, calendar: ctx.holidays === 'custom' ? 'none' : ctx.holidays }, today)
+  const line = lineOf(rule, hours, today, ctx.plans)
   // An owner's rule decides before any holiday; below it, a calendar only the site's code knows could.
-  if (ctx.holidays === 'custom' && rule.source !== 'today' && rule.source !== 'exception') return { state: 'unknown' }
-  return lineOf(rule, hours, today, ctx.plans)
+  if (ctx.holidays === 'custom' && line.state !== 'unknown' && rule.source !== 'today' && rule.source !== 'exception') return { state: 'unknown', calendar: true }
+  return line
 }
 
 function lineOn(hours: HoursData, today: string, plans: HourPlan[] | undefined, calendar: 'none' | 'AT'): HoursLine {

@@ -76,10 +76,10 @@ describe('sites.today', () => {
 
   // Wrong behaviour caught: the owner reads "open" on a day the site is closed (a closure, a public holiday of the
   // stored calendar), the reason is lost, a day with no hours entered is not due, or the line ignores the stored
-  // `holidays` and counts Austrian holidays for a site that set none. 2026-10-26 is the Austrian National Day (a Monday).
+  // `holidays` and counts Austrian holidays for a site that set none, or a calendar in code makes entered hours due. 2026-10-26 is the Austrian National Day (a Monday).
   const week = (days: string[]) => ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'].filter((d) => days.includes(d)).map((day) => ({ _id: day, day, closed: false, from1: '11:30', to1: '14:30' }))
   const allWeek = week(['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'])
-  it.each<[string, { now?: string; holidays?: string; data: Record<string, Json> }, { line: unknown; due: boolean }]>([
+  it.each<[string, { now?: string; holidays?: string; data: Record<string, Json> }, { line: unknown; due: boolean } | undefined]>([
     ['open today', { data: { week: allWeek, exceptions: [] } }, { line: { kind: 'hours', today: { ranges: [['11:30', '14:30']] } }, due: false }],
     ['closed today with the owner\'s reason', { data: { week: allWeek, exceptions: [], closedOn: '2026-10-08', closedNote: 'Wasserrohrbruch' } }, { line: { kind: 'hours', today: { closed: true, reason: 'Wasserrohrbruch' } }, due: false }],
     ['closed on a public holiday of the stored calendar', { now: '2026-10-26T10:00:00Z', data: { week: allWeek, exceptions: [], holidays: 'closed' } },
@@ -87,6 +87,9 @@ describe('sites.today', () => {
     ['open on that day when the site stores no holidays', { now: '2026-10-26T10:00:00Z', holidays: 'none', data: { week: allWeek, exceptions: [], holidays: 'closed' } },
       { line: { kind: 'hours', today: { ranges: [['11:30', '14:30']] } }, due: false }],
     ['no hours entered for today is due', { data: { week: week(['mo', 'tu']), exceptions: [] } }, { line: { kind: 'hours', today: { unknown: true } }, due: true }],
+    // The site's calendar is code the server cannot run; the week is entered, so there is nothing to do.
+    ['a full week with a calendar in code is not due', { holidays: 'custom', data: { week: allWeek, exceptions: [] } }, undefined],
+    ['no hours entered for today with a calendar in code is due', { holidays: 'custom', data: { week: week(['mo', 'tu']), exceptions: [] } }, { line: { kind: 'hours', today: { unknown: true } }, due: true }],
   ])('hours: %s', async (_name, given, expected) => {
     if (given.now) vi.setSystemTime(Date.parse(given.now))
     const s = await setup()
@@ -99,7 +102,7 @@ describe('sites.today', () => {
     await replaceEntries(s, 'hours', [{ data: given.data }])
     await replaceEntries(s, 'hourPlans', [])
     const states = await s.as.owner.query(api.sites.today, { site: 'restaurant' })
-    expect(states.find((x) => x.brick === 'hours')).toEqual({ brick: 'hours', ...expected })
+    expect(states.find((x) => x.brick === 'hours')).toEqual(expected && { brick: 'hours', ...expected })
   })
 
   // Wrong behaviour caught: staff see the state of areas they have no task on, or other people's drafts.

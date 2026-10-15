@@ -9,13 +9,14 @@ import { t } from './i18n'
 /**
  * The opening hours of a single with `status: { hours: true }` (basics `hours()`) on `today` (`YYYY-MM-DD`, the site's
  * day), by the basics rules with the site's stored `holidays` and its hour plans. A public holiday's name stands where
- * an owner's reason would.
+ * an owner's reason would. `null` (no line, not due) when the hours are entered and only a holiday calendar the server
+ * cannot run could decide the day; `unknown` (due) is for hours missing for that day.
  */
-export function hoursToday(data: Record<string, Json>, today: string, schema: Schema, plans: readonly HourPlan[]): HoursToday {
+export function hoursToday(data: Record<string, Json>, today: string, schema: Schema, plans: readonly HourPlan[]): HoursToday | null {
   // hoursLine reads "today" from a clock in a zone; noon UTC of the given day is that day in UTC.
   const line = hoursLine(data, { timeZone: 'UTC', now: new Date(`${today}T12:00:00Z`), plans: [...plans], ...(schema.holidays !== undefined ? { holidays: schema.holidays } : {}) })
   if (line.state === 'open') return { ranges: line.ranges }
-  if (line.state === 'unknown') return { unknown: true }
+  if (line.state === 'unknown') return line.calendar ? null : { unknown: true }
   const reason = line.reason ?? (line.holiday && { de: line.holiday.de, en: line.holiday.en })
   return reason ? { closed: true, reason } : { closed: true }
 }
