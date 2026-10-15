@@ -259,3 +259,40 @@ describe('a link to a page of the site', () => {
     expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual(['[Mehr dazu]($referenzen.k57gs)\n'])
   })
 })
+
+describe('the toolbar', () => {
+  // Wrong behaviour caught: a picture could only be added from the block type list labelled "Text" or the "/" menu, so
+  // people found no way to add one.
+  test('its "Bild einfügen" button opens the picture dialog', async () => {
+    const { assets } = fakeAssets()
+    const wrapper = await mounted({ text: 'Eins\n', assets })
+    await wrapper.get('[role="toolbar"] button[aria-label="Bild einfügen"]').trigger('click')
+    await until(() => document.querySelector('[role="dialog"]')?.textContent?.includes('Bild einfügen') === true)
+  })
+
+  // Wrong behaviour caught: on a phone or in a narrow column the row was wider than its frame, and Suchen and Markdown sat
+  // behind an invisible sideways scroll.
+  test('a narrow row keeps every tool reachable: what does not fit is under "Weitere Werkzeuge"', async () => {
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(private report: (entries: { contentRect: { width: number } }[]) => void) {}
+      observe() { this.report([{ contentRect: { width: 330 } }]) }
+      unobserve() {}
+      disconnect() {}
+    })
+    try {
+      const { assets } = fakeAssets()
+      const wrapper = await mounted({ text: 'Eins\n', assets })
+      await flushPromises()
+      const inRow = () => wrapper.findAll('[role="toolbar"] button').map((b) => b.attributes('aria-label'))
+      expect(inRow()).toEqual(['Blocktyp', 'Fett', 'Kursiv', 'Link', 'Bild einfügen', 'Aufzählung', 'Nummerierte Liste', 'Weitere Werkzeuge'])
+      await wrapper.get('button[aria-label="Weitere Werkzeuge"]').trigger('click')
+      await until(() => document.querySelectorAll('[role="menu"] [role^="menuitem"]').length > 0)
+      const items = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role^="menuitem"]')]
+      expect(items.map((i) => i.textContent?.trim())).toEqual(['Durchgestrichen', 'Code', 'Suchen', 'Markdown'])
+      items.find((i) => i.textContent?.trim() === 'Suchen')!.click()
+      await until(() => wrapper.find('[role="search"]').exists())
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+})

@@ -357,7 +357,7 @@ const frame = 'relative rounded-md border border-input bg-background transition-
 </script>
 
 <template>
-  <!-- minmax(0, 1fr): the toolbar scrolls inside the frame instead of making the frame (and the page) wider than the screen. -->
+  <!-- minmax(0, 1fr): the frame (and the page) never gets wider than its column; the toolbar fits its own width. -->
   <div class="grid grid-cols-[minmax(0,1fr)] gap-1.5">
     <!-- Markdown source -->
     <div v-if="mode === 'source'" class="grid gap-3">

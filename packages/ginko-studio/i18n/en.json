@@ -395,7 +395,8 @@
     },
     "toolbar": {
       "label": "Formatting",
-      "blockType": "Block type"
+      "blockType": "Block type",
+      "more": "More tools"
     },
     "marks": {
       "bold": "Bold",
@@ -415,7 +416,6 @@
       "blockquote": "Quote",
       "horizontalRule": "Divider",
       "table": "Table",
-      "image": "Image",
       "codeBlock": "Code block"
     },
     "source": {
