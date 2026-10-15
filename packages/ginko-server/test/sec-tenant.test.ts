@@ -5,7 +5,7 @@ import type { Schema } from '@lupinum/ginko/internal'
 import type { FunctionReference } from 'convex/server'
 import { describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
-import { opId, setup, upload } from './setup'
+import { opId, publicFunctions, setup, upload } from './setup'
 
 type S = Awaited<ReturnType<typeof setup>>
 
@@ -30,7 +30,20 @@ async function fixtures(s: S) {
   const pushKey = await s.as.owner.mutation(api.release.createPushKey, { site: 'restaurant', label: 'ci', scopes: ['release'] })
   const agentKey = await s.as.owner.mutation(api.agent.createKey, { site: 'restaurant', label: 'ownerkey' })
   const view = (await s.as.owner.mutation(api.views.save, { site: 'restaurant', brick: 'menu', name: 'GEHEIM-VIEW', query: {} }) as { id: string }).id
-  return { entry, file: file as string, folder: folder as string, change: save.change, proposal: proposal.proposal, release, member: member as string, invite, pushKey, agentKey, view }
+  // A removed entry for entries.purge, and a notice that points at the Saibling, so entries.usedBy has a use to leak.
+  const removed = s.entries['menu-schnitzel']!
+  await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: removed, lifeRev: 1 })
+  const user = s.entries['notice-ausgebucht']!
+  await s.t.run(async (ctx) => {
+    const site = (await ctx.db.get(s.site))!
+    const schema = site.schema as Schema
+    schema.bricks.notices!.fields.dish = { type: 'ref', to: 'menu', label: { de: 'Gericht' } }
+    await ctx.db.patch(s.site, { schema })
+    const row = (await ctx.db.get(user))!
+    await ctx.db.patch(user, { data: { ...row.data, dish: entry } })
+  })
+  expect(await s.as.owner.query(api.entries.usedBy, { site: 'restaurant', entry })).toMatchObject([{ entry: user }])
+  return { entry, file: file as string, folder: folder as string, change: save.change, proposal: proposal.proposal, release, member: member as string, invite, pushKey, agentKey, view, removed, user }
 }
 
 type Fx = Awaited<ReturnType<typeof fixtures>>
@@ -72,6 +85,8 @@ const calls: Call[] = [
   { fn: 'entries.create', kind: 'mutation', args: (site) => ({ site, opId: o(), brick: 'menu', data: {} }) },
   { fn: 'entries.duplicate', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry }) },
   { fn: 'entries.remove', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
+  { fn: 'entries.purge', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.removed, lifeRev: 2 }) },
+  { fn: 'entries.usedBy', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
   { fn: 'entries.restore', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
   { fn: 'entries.publish', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
   { fn: 'entries.unpublish', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
@@ -147,7 +162,7 @@ describe('tenant isolation: owner of "andere" against "restaurant"', () => {
         try {
           const result = c.kind === 'query' ? await s.as.stranger.query(ref, args) : await s.as.stranger.mutation(ref, args)
           const text = JSON.stringify(result)
-          const hit = SECRETS.filter((x) => text.includes(x)).concat([f.entry, f.file, f.folder, f.change, f.proposal, f.member].filter((x) => text.includes(x)))
+          const hit = SECRETS.filter((x) => text.includes(x)).concat([f.entry, f.file, f.folder, f.change, f.proposal, f.member, f.removed, f.user].filter((x) => text.includes(x)))
           if (hit.length && !['uploads.urls', 'sites.meta'].includes(name)) leaks.push(`${c.fn}: ${hit.join(',')}`)
         } catch {
           // Refused: the expected answer for a stranger.
@@ -159,4 +174,28 @@ describe('tenant isolation: owner of "andere" against "restaurant"', () => {
       expect(after).toEqual(before)
     })
   }
+})
+
+/**
+ * Public functions that take no site, so no other site's owner can name one: each acts only on the caller's own
+ * account, or on an invite whose secret token (or invited address) is the permission.
+ */
+const NO_SITE: Record<string, string> = {
+  'account.settings': "the caller's own settings",
+  'account.setRemindByMail': "the caller's own settings",
+  'account.sawLocale': "the caller's own settings",
+  'account.setLocale': "the caller's own settings",
+  'account.deleteAccount': "the caller's own account",
+  'invites.peek': 'the token is the permission (breakit-access: invitation tokens)',
+  'invites.accept': 'the token and the invited address are the permission (breakit-access: invitation tokens)',
+  'invites.mine': "invites to the caller's own address",
+  'sites.mine': "the caller's own memberships",
+  'sites.create': 'makes a new site for the caller',
+  'mail.signInAvailable': 'answers only whether mail is set up',
+}
+
+// Wrong behaviour caught: a new public function ships without a tenant probe, because nobody added it to `calls`.
+it('the call list names every public query and mutation, or says why it takes no site', async () => {
+  const probed = new Set([...calls.map((c) => c.fn.split('#')[0]!), ...Object.keys(NO_SITE)])
+  expect([...probed].sort()).toEqual(await publicFunctions())
 })

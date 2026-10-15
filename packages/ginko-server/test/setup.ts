@@ -139,6 +139,23 @@ export async function revokeSession(t: Backend, person: Person) {
 /** A fresh op id per user action. */
 export const opId = () => crypto.randomUUID()
 
+/**
+ * Every exported public query and mutation of convex/, as `module.name`, sorted. The access tests compare their
+ * call lists with it, so a new public function cannot ship without a probe. `*.config.ts` registers no function.
+ */
+export async function publicFunctions(): Promise<string[]> {
+  const out: string[] = []
+  for (const [path, load] of Object.entries(modules)) {
+    if (path.endsWith('.config.ts')) continue
+    const module = path.slice('../convex/'.length).replace(/\.[jt]s$/, '')
+    for (const [name, value] of Object.entries(await load() as Record<string, unknown>)) {
+      const fn = value as { isPublic?: boolean; isQuery?: boolean; isMutation?: boolean }
+      if (typeof value === 'function' && fn.isPublic && (fn.isQuery || fn.isMutation)) out.push(`${module}.${name}`)
+    }
+  }
+  return out.sort()
+}
+
 /** Reads the ConvexError data of a rejected call: `{ code, message, details? }`. */
 export async function errorOf(call: Promise<unknown>): Promise<{ code: string; message: string; details?: unknown }> {
   try {

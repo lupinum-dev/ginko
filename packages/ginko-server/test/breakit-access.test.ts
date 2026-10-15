@@ -6,7 +6,7 @@ import type { FunctionReference } from 'convex/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, setup } from './setup'
+import { errorOf, opId, publicFunctions, setup } from './setup'
 
 type S = Awaited<ReturnType<typeof setup>>
 
@@ -67,6 +67,7 @@ const publicCalls: Call[] = [
   { fn: 'entries.duplicate', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-saibling'] }) },
   { fn: 'entries.remove', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-saibling'], lifeRev: 1 }) },
   { fn: 'entries.restore', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-saibling'], lifeRev: 1 }) },
+  { fn: 'entries.purge', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-saibling'], lifeRev: 1 }) },
   { fn: 'entries.publish', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-saibling'], lifeRev: 1 }) },
   { fn: 'entries.unpublish', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-saibling'], lifeRev: 1 }) },
   { fn: 'entries.move', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-frittaten'], direction: 'up' }) },
@@ -157,6 +158,21 @@ describe('1. no identity and forged identity', () => {
   it('urgentRefresh (action) refuses a caller without identity', async () => {
     const s = await setup()
     expect(await outcome(s.t.action(api.refresh.urgentRefresh, { site: 'restaurant', opId: opId() }))).toBe('FORBIDDEN')
+  })
+
+  // The list above purges a live entry, which fails anyway; here the entry really is removed, so only access stops it.
+  it('entries.purge refuses a caller without identity, and the removed entry stays', async () => {
+    const s = await setup()
+    const entry = s.entries['menu-saibling']!
+    await s.as.owner.mutation(api.entries.remove, { ...SITE, opId: opId(), entry, lifeRev: 1 })
+    expect(await outcome(s.t.mutation(api.entries.purge, { ...SITE, opId: opId(), entry, lifeRev: 2 }))).toBe('FORBIDDEN')
+    expect(await s.t.run((ctx) => ctx.db.get(entry))).toMatchObject({ lifeRev: 2 })
+  })
+
+  // Wrong behaviour caught: a new public function ships without a no-identity probe, because nobody added it to the list.
+  it('the list names every public query and mutation, or says why it answers without identity', async () => {
+    const open: Record<string, string> = { 'mail.signInAvailable': 'the sign-in page asks it before anyone is signed in; it says only whether mail is set up' }
+    expect([...new Set([...publicCalls.map((c) => c.fn), ...Object.keys(open)])].sort()).toEqual(await publicFunctions())
   })
 
   it('an identity with a made-up session id gets no access (owner subject, session that does not exist)', async () => {
@@ -448,6 +464,7 @@ const cross: CrossCall[] = [
   { fn: 'entries.save', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, baseRev: 1, fields: { price: { amount: 1 } } }) },
   { fn: 'entries.undo', kind: 'mutation', args: (site, f) => ({ site, opId: o(), change: f.change }) },
   { fn: 'entries.remove', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
+  { fn: 'entries.purge', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
   { fn: 'entries.duplicate', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry }) },
   { fn: 'entries.publish', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
   { fn: 'entries.move', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, direction: 'down' }) },
