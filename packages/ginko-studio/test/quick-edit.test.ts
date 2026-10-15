@@ -127,20 +127,27 @@ describe('a planned price (menu, `planned`)', () => {
 })
 
 describe('planning a week ahead (lunchPlans)', () => {
+  const lunch = { _id: 'lunch1', brick: 'lunch', kind: 'single', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { weekOf: '2026-10-12', days: [] } }
+  const plan = { _id: 'p19', brick: 'lunchPlans', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { weekOf: '2026-10-19' } }
   // Wrong behaviour caught: with next week already planned, "Nächste Woche planen" opened an empty new week, which saved
-  // a second plan for the same week that the website never showed, and gave no way to the plan that was there.
-  test('"Nächste Woche planen" with next week planned opens "Geplante Woche bearbeiten" on that plan', async () => {
+  // a second plan for the same week that the website never showed, and gave no way to the plan that was there. Without
+  // a plan, the new week had no way to start from this week's days.
+  test.each([
+    ['next week planned', [lunch, plan], 'lunchPlans.edit on p19, copy from -'],
+    ['next week not planned', [lunch], 'lunchPlans.planNext on -, copy from lunch1'],
+  ])('"Nächste Woche planen", %s: opens %s', async (_name, entries, opened) => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(new Date('2026-10-15T10:00:00Z'))
     schema = serializeSchema(restaurant)
-    listed = [{ _id: 'p19', brick: 'lunchPlans', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { weekOf: '2026-10-19' } }]
+    listed = entries
     try {
+      const sheet = { props: ['brickKey', 'task', 'entry', 'copyFrom'], template: '<p data-test="sheet">{{ brickKey }}.{{ task.id }} on {{ entry?._id ?? "-" }}, copy from {{ copyFrom ?? "-" }}</p>' }
       const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
-        global: { stubs: { TaskSheet: { props: ['brickKey', 'task', 'entry'], template: '<p data-test="sheet">{{ brickKey }}.{{ task.id }} on {{ entry?._id }}</p>' }, PickSheet: true, I18nT: true, NuxtLink: true } },
+        global: { stubs: { TaskSheet: sheet, PickSheet: true, I18nT: true, NuxtLink: true } },
       })
       await flushPromises()
       await wrapper.findAll('button').find((b) => b.text() === 'Nächste Woche planen')!.trigger('click')
-      expect(wrapper.get('[data-test="sheet"]').text()).toBe('lunchPlans.edit on p19')
+      expect(wrapper.get('[data-test="sheet"]').text()).toBe(opened)
       wrapper.unmount()
     } finally {
       schema = notices

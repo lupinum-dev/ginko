@@ -43,7 +43,11 @@ const shownBricks = computed(() => {
     if (brick.kind === 'single') {
       keys.add(key)
       for (const [k, b] of s.bricks.value) if (b.kind === 'collection' && b.plans?.brick === key) keys.add(k)
-    } else if (isTimed(brick)) keys.add(key)
+    } else if (isTimed(brick)) {
+      keys.add(key)
+      // A week planned ahead can start from the one the single shows this week ("Von dieser Woche übernehmen").
+      if (brick.plans) keys.add(brick.plans.brick)
+    }
   }
   return [...keys]
 })
@@ -191,6 +195,18 @@ const existing = computed(() => {
   const brick = open.value ? s.schema.value?.bricks[open.value.key] : undefined
   if (!brick || !twinRead.data.value) return undefined
   return twinRead.data.value.filter((e) => e.until === undefined || e.until >= s.today.value).map((e) => e.title ?? shownLabel(brick.label, s.main.value))
+})
+/** A new planned week starts from the entry the website shows this week: the week planned for it, else the single when it is this week's. */
+const copyFrom = computed(() => {
+  const o = open.value
+  const schema = s.schema.value
+  const brick = o && schema ? schema.bricks[o.key] : undefined
+  if (!o || o.task.kind !== 'create' || brick?.kind !== 'collection' || !brick.plans) return undefined
+  const plan = plannedNow(brick.plans.brick)
+  if (plan) return plan.entry._id
+  const single = singleOf(brick.plans.brick)
+  const weekly = weeklyTask(schema!.bricks[brick.plans.brick]!)
+  return single && weekly && single.data[weekly.field] === workWeekOf(s.today.value, schema!.week) ? single._id : undefined
 })
 const picking = ref<{ key: string; task: Task } | null>(null)
 // The pick list groups by a choice field and shows prices, so it reads the entries of its one brick while open: slim
@@ -376,6 +392,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       :removed="openRemoved"
       :may-restore="s.isManager.value || !!sections.find((x) => x.key === open!.key)?.remove"
       :existing="existing"
+      :copy-from="copyFrom"
       @close="open = null"
     />
     <EntryRemoveDialog

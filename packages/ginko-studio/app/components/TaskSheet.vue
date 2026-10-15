@@ -35,6 +35,8 @@ const props = defineProps<{
   existing?: string[]
   /** The site's schema, so ref fields can list the entries they point to. */
   schema: Schema
+  /** A create task that plans a week ahead: the entry the website shows this week, to start from ("Von dieser Woche übernehmen"). */
+  copyFrom?: string
 }>()
 const emit = defineEmits<{ close: [] }>()
 const { t, format } = useI18n()
@@ -66,7 +68,7 @@ const form = useEntryForm({
   draft: () => !isCreate.value && props.entry?.state === 'draft',
   removed: () => !isCreate.value && !!props.removed,
 })
-const { draft, baseline, ready, issues, problem, conflict, busy, offline, waiting, dirty, localOffer } = form
+const { draft, baseline, initial, ready, issues, problem, conflict, busy, offline, waiting, dirty, localOffer } = form
 /** The weekly task opened on an entry of an older week: its days are still that week's, so a rushed save would publish them as this week's. */
 const oldWeek = computed(() => {
   const key = fixedWeek.value
@@ -83,6 +85,32 @@ watch(prefill, (p) => {
   const start: Data = isCreate.value ? { ...defaultsFor(fields.value) } : {}
   form.load({ ...start, ...(p as Data) })
 }, { immediate: true })
+
+// "Von dieser Woche übernehmen": a new planned week starts from this week's days and note, its own week stays. The
+// copied values are the form's start, so a dish changed without its allergens asks "Noch richtig?" like an edit does.
+const convex = useConvex()
+const copying = ref(false)
+const copied = ref(false)
+async function copyThisWeek() {
+  const plans = props.brick.kind === 'collection' ? props.brick.plans : undefined
+  const weekly = plans && Object.hasOwn(props.schema.bricks, plans.brick) ? weeklyTask(props.schema.bricks[plans.brick]!) : undefined
+  if (!props.copyFrom || !plans || !weekly || weekly.task.kind !== 'edit') return
+  copying.value = true
+  try {
+    // Slim rows have no lists: the source is read whole.
+    const source = await convex.query(api.entries.get, { site: props.site, entry: props.copyFrom })
+    if (!source || source.deleted) return
+    const keys = weekly.task.fields.filter((k) => k !== weekly.field && k !== plans.field && Object.hasOwn(fields.value, k))
+    const week: Data = {}
+    for (const k of keys) if (source.data[k] !== undefined) week[k] = source.data[k]
+    form.load({ ...draft.value, ...week })
+    copied.value = true
+  } catch (e) {
+    problem.value = opErrorOf(e).message
+  } finally {
+    copying.value = false
+  }
+}
 
 /** A new entry with the same name as one that is already there (e.g. a second "Heute ausgebucht"). */
 const twin = computed(() => {
@@ -185,6 +213,7 @@ function onCancel(event: Event) {
           <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
           <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
           <p v-if="oldWeek" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.oldWeek', { date: formatDay(oldWeek, format) }) }}</p>
+          <Button v-if="isCreate && copyFrom && !copied" type="button" variant="outline" class="justify-self-start" :disabled="copying" @click="copyThisWeek">{{ t('entry.copyThisWeek') }}</Button>
           <template v-for="(field, key) in fields" :key="key">
             <div v-if="key === fixedWeek" class="grid gap-1" data-slot="field" data-test="fixed-week">
               <p class="text-sm font-medium">{{ shown(field.label) }}</p>
@@ -196,7 +225,7 @@ function onCancel(event: Event) {
               v-show="isShown(field, draft)"
               :field="field"
               :model-value="draft[key]"
-              :baseline="baseline[key]"
+              :baseline="isCreate ? initial[key] : baseline[key]"
               :weeks="weekShortcuts(brick, String(key))"
               :path="String(key)"
               :locale="main"

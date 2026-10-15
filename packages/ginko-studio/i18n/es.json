@@ -215,7 +215,8 @@
       "near": "Esta entrada ocupa {used} de {limit}.",
       "over": "Esta entrada es demasiado grande: {used} de {limit}. Acórtala unos {over} para poder guardarla."
     },
-    "oldWeek": "Esta sigue siendo la semana del {date}. Revisa cada día antes de guardar."
+    "oldWeek": "Esta sigue siendo la semana del {date}. Revisa cada día antes de guardar.",
+    "copyThisWeek": "Copiar de esta semana"
   },
   "site": {
     "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",

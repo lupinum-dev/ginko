@@ -2,7 +2,7 @@
      weekdays) show that column as the row title and allow no add/remove/move. When a text in a row
      changed but its required choices did not, the choices must be confirmed ("Noch richtig?"). -->
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, reactive, watchEffect } from 'vue'
+import { computed, inject, onBeforeUnmount, reactive, ref, watchEffect } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json, Locale } from '@lupinum/ginko'
 import { defaultsFor, isShown, ordered, stableJson } from '@lupinum/ginko/internal'
@@ -118,6 +118,26 @@ watchEffect(() => {
 })
 onBeforeUnmount(() => { if (blockers) for (const k of [...blockers.keys()]) if (k.startsWith(`${props.path}.`)) blockers.delete(k) })
 
+/**
+ * A text cell that still holds the text of the list default's row (the placeholder "Wird noch bekannt gegeben") is
+ * selected on focus, so typing replaces it. The placeholder stays a value: the site shows it for days not known yet.
+ */
+const defaultRows = computed(() => new Map((Array.isArray(props.field.default) ? (props.field.default as Row[]) : []).map((r) => [r._id, r])))
+const keepSelection = ref(false)
+function selectPlaceholder(row: Row, key: string, event: FocusEvent) {
+  const input = event.target
+  const start = defaultRows.value.get(row._id)?.[key]
+  if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) || !textKeys.value.includes(key) || start === undefined) return
+  if (!input.value || textIn(row[key], props.locale) !== textIn(start, props.locale)) return
+  input.setSelectionRange(0, input.value.length)
+  keepSelection.value = true
+}
+/** The mouse button going up after a click into the cell would put the caret there and drop the selection. */
+function holdSelection(event: MouseEvent) {
+  if (keepSelection.value) event.preventDefault()
+  keepSelection.value = false
+}
+
 const rowIssues = (row: Row) => issuesUnder(props.issues, `${props.path}.${row._id}`).filter((i) => i.path === `${props.path}.${row._id}`)
 const listIssues = computed(() => props.issues.filter((i) => i.path === props.path))
 </script>
@@ -138,7 +158,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
         <p v-for="e in rowIssues(row)" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
         <div class="grid gap-4">
           <template v-for="[key, sub] in columns" :key="key">
-            <div v-if="shown(row, sub)" :class="{ 'rounded-md bg-warning/10 p-3': needsCheck(row, key) }">
+            <div v-if="shown(row, sub)" :class="{ 'rounded-md bg-warning/10 p-3': needsCheck(row, key) }" @focusin="selectPlaceholder(row, key, $event)" @mouseup="holdSelection" @focusout="keepSelection = false">
               <GinkoField :field="sub" :model-value="row[key]" :path="`${path}.${row._id}.${key}`" :locale="locale" :locales="locales" :issues="issues" @update:model-value="setCell(index, key, $event)" />
               <div v-if="needsCheck(row, key)" class="check mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-warning">
                 <p>{{ t('fields.list.changed', { changed: changedLabel(row), label: labelText(sub.label) }) }}</p>

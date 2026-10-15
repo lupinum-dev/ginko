@@ -215,7 +215,8 @@
       "near": "Dieser Eintrag belegt {used} von {limit}.",
       "over": "Dieser Eintrag ist zu groß: {used} von {limit}. Kürze ihn um etwa {over}, dann lässt er sich speichern."
     },
-    "oldWeek": "Das ist noch die Woche ab {date}. Prüfe jeden Tag, bevor du speicherst."
+    "oldWeek": "Das ist noch die Woche ab {date}. Prüfe jeden Tag, bevor du speicherst.",
+    "copyThisWeek": "Von dieser Woche übernehmen"
   },
   "site": {
     "zoneNote": "Alle Zeiten in der Zeitzone der Website ({zone}).",

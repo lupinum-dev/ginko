@@ -138,6 +138,23 @@ describe('list rows', () => {
   })
 })
 
+describe('a list with default rows', () => {
+  // Wrong behaviour caught: a new week's days hold the placeholder "Wird noch bekannt gegeben", and typing the dish
+  // appended to it, so the cook had to clear every day first (or the site showed both texts).
+  test('a cell that still holds its default text is selected on focus, so typing replaces it', async () => {
+    const placeholder = { de: 'Wird noch bekannt gegeben' }
+    const field = { type: 'list', label: 'Tage', itemLabel: 'Tag', max: 5, of: { dish: { type: 'text', label: 'Gericht' } }, default: [{ _id: 'mo', dish: placeholder }, { _id: 'tu', dish: placeholder }] } as Extract<Field, { type: 'list' }>
+    const wrapper = mount(GinkoFieldList, { props: { id: 'f-days', field, modelValue: [{ _id: 'mo', dish: placeholder }, { _id: 'tu', dish: { de: 'Gulasch' } }], path: 'days', locale: 'de', locales: ['de'], issues: [] }, attachTo: document.body })
+    const [mo, tu] = wrapper.findAll('input').map((i) => i.element as HTMLInputElement)
+    mo!.focus()
+    expect([mo!.selectionStart, mo!.selectionEnd]).toEqual([0, 'Wird noch bekannt gegeben'.length])
+    tu!.setSelectionRange(3, 3)
+    tu!.focus()
+    expect([tu!.selectionStart, tu!.selectionEnd]).toEqual([3, 3])
+    wrapper.unmount()
+  })
+})
+
 describe('choices', () => {
   // Wrong behaviour caught: unchecking the last allergen ticked "Keine" by itself, so a cook who then tapped "Keine" to
   // confirm cleared the answer, and a dish could say "no allergens" without anyone choosing it.

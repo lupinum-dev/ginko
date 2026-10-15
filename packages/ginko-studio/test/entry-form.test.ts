@@ -2,7 +2,7 @@
 // The form engine of Schnell ändern and Alles bearbeiten (useEntryForm), mounted in a small component. The Nuxt
 // auto-imports are Vue's own; only the Studio's writes (useOps), the toast and the signed-in person are replaced.
 // Browser storage is happy-dom's real localStorage.
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Entry } from '../app/composables/useSiteData'
@@ -216,11 +216,18 @@ describe('ConflictPanel', () => {
 })
 
 describe('TaskSheet', () => {
+  /** This week's lunch as stored: Montag with its dish and allergens. */
+  const thisWeek = {
+    weekOf: '2026-10-12', note: { de: 'Suppe inklusive' },
+    days: [{ _id: 'ldmo000000', day: 'mo', dish: { de: 'Gulasch' }, allergens: ['A'] }, { _id: 'ldtu000000', day: 'tu', dish: { de: 'Fisch' }, allergens: ['D'] }],
+  }
+
   /**
-   * The restaurant's "Mittagsmenü dieser Woche" on a lunch entry whose stored week is `storedWeek`; the server's prefill
-   * gives this week (12.10.2026). Other queries answer from `answers` by function name.
+   * A sheet of the restaurant: `task` of `brickKey`, on `data` as the stored entry (none for a create task); the
+   * server's prefill is `prefill`, other queries answer from `answers` by function name, and a one-off read
+   * (`useConvex().query`) gets this week's lunch.
    */
-  async function lunchSheet(storedWeek: string, answers: Record<string, unknown> = {}) {
+  async function sheetOf(o: { brickKey: string; task: string; data?: Record<string, unknown>; prefill: Record<string, unknown>; answers?: Record<string, unknown>; copyFrom?: string }) {
     const { serializeSchema } = await import('@lupinum/ginko/internal')
     const { default: restaurant } = await import('../../../sites/restaurant/ginko.config.ts')
     const { useI18n } = await import('#imports')
@@ -228,17 +235,23 @@ describe('TaskSheet', () => {
     const { default: TaskSheet } = await import('../app/components/TaskSheet.vue')
     vi.stubGlobal('useI18n', useI18n)
     vi.stubGlobal('useEntryForm', useEntryForm)
-    const lunchData = { weekOf: storedWeek, days: [], note: { de: 'Suppe inklusive' } }
-    const prefill = { ...lunchData, weekOf: '2026-10-12' }
-    vi.stubGlobal('useConvexQuery', (fn: unknown) => ({ data: vue.ref(String(fn) === 'tasks.prefill' ? prefill : answers[String(fn)]), error: vue.ref(undefined) }))
+    vi.stubGlobal('useConvexQuery', (fn: unknown) => ({ data: vue.ref(String(fn) === 'tasks.prefill' ? o.prefill : o.answers?.[String(fn)]), error: vue.ref(undefined) }))
+    vi.stubGlobal('useConvex', () => ({ query: async (fn: unknown) => (String(fn) === 'entries.get' ? { ...stored, _id: 'l1', brick: 'lunch', kind: 'single', data: thisWeek } : undefined) }))
     HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) { this.open = true }
     const schema = serializeSchema(restaurant)
-    const lunch = schema.bricks.lunch!
-    const entry = { ...stored, _id: 'l1', brick: 'lunch', kind: 'single', data: lunchData } as Entry
-    const sheet = mount(TaskSheet, { props: { site: 'restaurant', brickKey: 'lunch', brick: lunch, task: lunch.tasks![0]!, entry, main: 'de', locales: ['de', 'en'], schema } })
-    await vue.nextTick()
+    const brick = schema.bricks[o.brickKey]!
+    const entry = o.data ? { ...stored, _id: 'l1', brick: o.brickKey, kind: brick.kind === 'single' ? 'single' : 'item', data: o.data } as Entry : undefined
+    const sheet = mount(TaskSheet, {
+      props: { site: 'restaurant', brickKey: o.brickKey, brick, task: brick.tasks!.find((t) => t.id === o.task)!, entry, main: 'de', locales: ['de', 'en'], schema, copyFrom: o.copyFrom },
+      attachTo: document.body,
+    })
+    await flushPromises()
     return sheet
   }
+  /** "Mittagsmenü dieser Woche" on a lunch entry of `storedWeek`; the server's prefill gives this week (12.10.2026). */
+  const lunchSheet = (storedWeek: string, answers: Record<string, unknown> = {}) => sheetOf({
+    brickKey: 'lunch', task: 'lunchWeek', data: { weekOf: storedWeek, days: [], note: { de: 'Suppe inklusive' } }, prefill: { weekOf: '2026-10-12', days: [], note: { de: 'Suppe inklusive' } }, answers,
+  })
 
   // Wrong behaviour caught: "Mittagsmenü dieser Woche" offered "Folgende Arbeitswoche" and a free date, so saving
   // before Monday moved the website's lunch menu to next week and the rest of this week was gone.
@@ -257,6 +270,24 @@ describe('TaskSheet', () => {
   ])('a stored week from %s (%s): the sheet says the days are still that week\'s: %s', async (_name, storedWeek, notice) => {
     const sheet = await lunchSheet(storedWeek)
     expect(sheet.text().includes('Das ist noch die Woche ab 5.10.2026. Prüfe jeden Tag, bevor du speicherst.')).toBe(notice)
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: "Nächste Woche planen" could not take over this week, so the owner retyped every dish; and a
+  // new dish in a new week went out with the old or "Keine" allergens because nothing asked about them.
+  test('"Von dieser Woche übernehmen" fills next week\'s days; a changed dish with unchanged allergens blocks Speichern', async () => {
+    calls.length = 0
+    const sheet = await sheetOf({ brickKey: 'lunchPlans', task: 'planNext', prefill: { weekOf: '2026-10-19' }, copyFrom: 'l1' })
+    await sheet.findAll('button').find((b) => b.text() === 'Von dieser Woche übernehmen')!.trigger('click')
+    await flushPromises()
+    const dish = (row: string) => sheet.get(`[data-row="${row}"] input[type="text"]`)
+    expect((dish('ldmo000000').element as HTMLInputElement).value).toBe('Gulasch')
+    expect((sheet.get('input[type="date"]').element as HTMLInputElement).value).toBe('2026-10-19')
+    await dish('ldmo000000').setValue('Schnitzel')
+    await sheet.get('form').trigger('submit')
+    await flushPromises()
+    expect(sheet.get('[role="alert"]').text()).toBe('Bitte bestätige bei „Montag“: Sind die Allergene noch richtig?')
+    expect(calls).toEqual([])
     sheet.unmount()
   })
 })
