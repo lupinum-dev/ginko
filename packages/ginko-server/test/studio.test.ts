@@ -261,6 +261,33 @@ describe('entries.trash', () => {
     expect(await hasTrash()).toBe(true)
   })
 
+  // Wrong behaviour caught: a page reads every big removed entry and its saved versions at once and passes Convex's
+  // 16 MiB read limit, so the trash does not load and cannot be emptied.
+  it('pages big removed entries by bytes, and each row still names who removed it', async () => {
+    const s = await studioSetup()
+    const big = 'x'.repeat(470 * 1024)
+    await s.t.run(async (ctx) => {
+      for (let i = 0; i < 7; i++) {
+        const entry = await ctx.db.insert('entries', {
+          site: s.site, brick: 'menu', kind: 'item', order: 100 + i, data: { name: { de: `Groß ${i}` }, note: big }, rev: 4, fieldRevs: {}, lifeRev: 2, prints: {}, bytes: big.length, deletedAt: NOW - i,
+        })
+        const change = { site: s.site, entry, brick: 'menu', actor: people.owner, opId: opId(), sentence: '', contentRev: 1 }
+        for (let save = 0; save < 3; save++) await ctx.db.insert('changes', { ...change, kind: 'save', fields: ['note'], before: { note: big }, after: { note: `${big}${save}` }, at: NOW - 10_000 + save })
+        await ctx.db.insert('changes', { ...change, kind: 'remove', at: NOW - i })
+      }
+    })
+    const pages = []
+    let cursor: string | null = null
+    for (;;) {
+      const page: { page: { label: string; deletedBy: unknown }[]; isDone: boolean; continueCursor: string } = await s.as.owner.query(api.entries.trash, { site, paginationOpts: { numItems: 50, cursor } })
+      pages.push(page.page.map((item) => item.label))
+      expect(page.page.every((item) => (item.deletedBy as { actor?: string } | null)?.actor === people.owner)).toBe(true)
+      if (page.isDone) break
+      cursor = page.continueCursor
+    }
+    expect(pages).toEqual([['Groß 0', 'Groß 1', 'Groß 2', 'Groß 3', 'Groß 4'], ['Groß 5', 'Groß 6']])
+  })
+
   it('pages newest first', async () => {
     const s = await studioSetup()
     const ids = ['menu-saibling', 'menu-frittaten', 'menu-schnitzel'] as const

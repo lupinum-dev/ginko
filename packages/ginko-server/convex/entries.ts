@@ -1078,6 +1078,8 @@ export const ofBricks = query({
 })
 
 const TRASH_PAGE = 50
+/** Bytes of removed entries one trash page reads at most (as changes.list): fewer rows when they are large. */
+const TRASH_PAGE_BYTES = 2 * 1024 * 1024
 
 /** The collections whose removed entries the trash shows (not retired ones); `only` narrows them to one. */
 const trashBricks = (schema: Schema, only?: string) =>
@@ -1106,7 +1108,7 @@ export const trash = query({
     const opts = args.paginationOpts
     let result
     try {
-      result = await rows.paginate({ ...opts, numItems: Math.min(opts.numItems, TRASH_PAGE) })
+      result = await rows.paginate({ ...opts, numItems: Math.min(opts.numItems, TRASH_PAGE), maximumBytesRead: TRASH_PAGE_BYTES })
     } catch (error) {
       // The cursor comes from the client; the database refuses one it did not hand out.
       if (opts.cursor === null) throw error
@@ -1114,7 +1116,10 @@ export const trash = query({
     }
 
     const page = await Promise.all(result.page.map(async (row) => {
-      const removal = (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', row._id)).order('desc').take(5)).find((change) => change.kind === 'remove')
+      // Every write refuses a removed entry, so its newest change is the removal (none after an import). Older changes
+      // can hold the full before and after of a 480 KiB entry: reading them made the page pass Convex's read limit.
+      const newest = await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', row._id)).order('desc').first()
+      const removal = newest?.kind === 'remove' ? newest : undefined
       const member = removal && removal.actor !== 'system'
         ? await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', removal.actor).eq('site', actor.site._id)).unique()
         : null
