@@ -105,6 +105,29 @@ test('a closure today wins on the board, in the hours table and in the lunch wee
   if (!weekend) await expect(page.locator('[data-test=lunch][aria-current=date] .tag')).toHaveText('Heute geschlossen')
 })
 
+// Wrong behaviour caught: a day set in "Geschlossen am" for tomorrow was not announced until it was today.
+test('a closure set for tomorrow is announced on the board and in the hours table', async ({ page, request }) => {
+  await request.get(`${platform}/__control?mode=closedTomorrow`)
+  await page.goto('/')
+  await expect(page.locator('.closure').filter({ hasText: 'Wasserrohrbruch' })).toContainText('geschlossen')
+  await expect(page.locator('.hours .exceptions li').filter({ hasText: 'Wasserrohrbruch' })).toContainText('Wasserrohrbruch, geschlossen')
+})
+
+// Wrong behaviour caught: a dish taken off the menu after its season was still listed (with its allergen letters), a
+// dish sold out today was not marked, and a fully booked event still offered "Platz reservieren".
+test('the menu leaves out a dish off the menu and marks one sold out today; a fully booked event cannot be booked', async ({ page, request }) => {
+  await request.get(`${platform}/__control?mode=availability`)
+  await page.goto('/speisekarte')
+  await expect(page.getByRole('heading', { name: 'Frittatensuppe' })).toHaveCount(0)
+  // L is Frittatensuppe's letter only.
+  await expect(page.locator('.legend dt').filter({ hasText: /^L$/ })).toHaveCount(0)
+  await expect(page.locator('.dish').filter({ hasText: 'Wiener Schnitzel vom Kalb' }).locator('[data-test=sold-out]')).toHaveText('heute aus')
+  await page.goto('/veranstaltungen/martini-gansl')
+  await expect(page.locator('[data-test=fully-booked]')).toHaveText('Ausgebucht')
+  await expect(page.getByRole('link', { name: 'Platz reservieren' })).toHaveCount(0)
+  expect((await page.locator('script[type="application/ld+json"]').allTextContents()).join()).toContain('https://schema.org/SoldOut')
+})
+
 // Astra phase 7: untranslated texts must keep their language, and allergen letters need a visible key.
 test('fallback alt texts keep their language, and the lunch page explains the allergen letters', async ({ page }) => {
   await page.goto('/en/gallery')

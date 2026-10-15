@@ -1,5 +1,5 @@
 // A stand-in for the platform's bundle endpoint (SPEC 6), for site end-to-end tests.
-// Serves contracts/<site>/bundle.format3.<locale>.json. Control: GET /__control?mode=ok|503|hang|huge|proto|nofiles|closedToday (also clears
+// Serves contracts/<site>/bundle.format3.<locale>.json. Control: GET /__control?mode=ok|503|hang|huge|proto|nofiles|closedToday|closedTomorrow|availability (also clears
 // the recorded requests and messages), GET /__control/requests (the bundle requests seen, to check minRev
 // forwarding) and GET /__control/messages (the navigate messages the preview page sent to the parent).
 // GET /__parent?src=<preview url> is a page that frames the site preview like the platform does. On
@@ -8,7 +8,7 @@
 import { createServer } from 'node:http'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { DEFAULT_WEEK, todayIn, workWeekOf } from '../packages/ginko/src/core/time.ts'
+import { addDays, DEFAULT_WEEK, todayIn, workWeekOf } from '../packages/ginko/src/core/time.ts'
 
 const root = fileURLToPath(new URL('../contracts/', import.meta.url))
 const port = Number(process.env.FAKE_PLATFORM_PORT ?? 3999)
@@ -87,11 +87,22 @@ createServer((req, res) => {
     const bundle = JSON.parse(readFileSync(file, 'utf8'))
     // The lunch week is always the current one, as the owner would keep it (the corpus week is 2026-10-05).
     if (bundle.bricks.lunch?.data?.weekOf) bundle.bricks.lunch.data.weekOf = workWeekOf(todayIn('Europe/Vienna'), DEFAULT_WEEK)
-    // `closedToday`: the owner closed today ("Heute geschlossen"), and the first notice ends today ("Heute sind wir ausgebucht.").
-    if (mode === 'closedToday' && match[1] === 'restaurant') {
+    if (match[1] === 'restaurant') {
       const today = todayIn('Europe/Vienna')
-      Object.assign(bundle.bricks.hours.data, { closedOn: today, closedNote: 'Wasserrohrbruch' })
-      bundle.bricks.notices.items[0].data.until = today
+      const data = (brick, id) => bundle.bricks[brick].items.find((item) => item.id === id).data
+      // `closedToday`: the owner closed today ("Heute geschlossen"), and the first notice ends today ("Heute sind wir ausgebucht.").
+      if (mode === 'closedToday') {
+        Object.assign(bundle.bricks.hours.data, { closedOn: today, closedNote: 'Wasserrohrbruch' })
+        bundle.bricks.notices.items[0].data.until = today
+      }
+      // `closedTomorrow`: "Geschlossen am" is set for tomorrow.
+      if (mode === 'closedTomorrow') Object.assign(bundle.bricks.hours.data, { closedOn: addDays(today, 1), closedNote: 'Wasserrohrbruch' })
+      // `availability`: Frittatensuppe is off the menu, the Schnitzel sold out today, the Martini-Gansl fully booked.
+      if (mode === 'availability') {
+        data('menu', 'menu-frittaten').onMenu = false
+        data('menu', 'menu-schnitzel').soldOutOn = today
+        data('events', 'martinigans').soldOut = true
+      }
     }
     return res.end(JSON.stringify(bundle))
   }
