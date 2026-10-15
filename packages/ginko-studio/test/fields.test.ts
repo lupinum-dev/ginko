@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
-import { computed, defineComponent, h, shallowRef } from 'vue'
+import { computed, defineComponent, h, ref, shallowRef } from 'vue'
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
-import { TRANSLATION, type TranslationState } from '@lupinum/ginko-editor'
+import { GINKO_ASSETS, TRANSLATION, type GinkoAssets, type TranslationState } from '@lupinum/ginko-editor'
 import type { Field, Json } from '@lupinum/ginko'
 import FieldFrame from '../app/components/fields/FieldFrame.vue'
 import GinkoField from '../app/components/fields/GinkoField.vue'
@@ -163,5 +163,18 @@ describe('translation side by side', () => {
     const { wrapper } = translated('fine')
     expect(wrapper.get('[data-slot="translation-source"]').text()).toContain('Kürbissuppe')
     expect(wrapper.text()).not.toContain('geändert seit Übersetzung')
+  })
+
+  // Wrong behaviour caught: a picture replaced on the English tab drops its German description, which that tab cannot fix (media-16).
+  test('a picture in another language offers only its description; the picture itself is changed in the main language', () => {
+    const translation: TranslationState = { state: () => 'missing', source: () => 'Wald', confirm: vi.fn(), mainName: () => 'Deutsch' }
+    const assets: GinkoAssets = { state: () => ref(undefined), details: () => ref(undefined), upload: async () => 'unused' }
+    const wrapper = mount(GinkoField, {
+      props: { field: { type: 'image', label: 'Foto' } as Field, modelValue: { file: 'f1', alt: { de: 'Wald' } }, path: 'photo', locale: 'en', locales: ['de', 'en'], issues: [] },
+      global: { provide: { [TRANSLATION as symbol]: translation, [GINKO_ASSETS as symbol]: assets } },
+    })
+    expect(wrapper.text()).toContain('Das Bild selbst änderst du auf Deutsch.')
+    expect(wrapper.findAll('button').map((b) => b.text())).toEqual([])
+    expect(wrapper.find('#f-photo-alt').exists()).toBe(true)
   })
 })

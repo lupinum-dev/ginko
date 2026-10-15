@@ -93,6 +93,8 @@ const leaf = computed(() => {
   return undefined
 })
 const trState = computed(() => (leaf.value ? translation?.state(leaf.value) : undefined))
+// A picture applies to every language: a translation edits only its description (new-picture-alt).
+const altOnly = computed(() => (translation && props.locale !== props.locales[0] ? translation.mainName() : undefined))
 </script>
 
 <template>
@@ -126,7 +128,7 @@ const trState = computed(() => (leaf.value ? translation?.state(leaf.value) : un
         <MarkdownEditor :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" :content-locale="locale" @update:model-value="set" />
         <template #fallback><div class="min-h-[11.5rem] rounded-md border border-input bg-background" aria-hidden="true" /></template>
       </ClientOnly>
-      <GinkoFieldImage v-else-if="field.type === 'image'" :id="id" :field="field" :model-value="value" :locale="locale" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
+      <GinkoFieldImage v-else-if="field.type === 'image'" :id="id" :field="field" :model-value="value" :locale="locale" :alt-only="altOnly" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldFile v-else-if="field.type === 'file'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldRef v-else-if="field.type === 'ref'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <p v-else-if="field.type === 'slug'" :id="id" class="rounded-md bg-muted px-3 py-2.5 font-mono text-sm text-muted-foreground">{{ text || t('fields.slug.generated') }}</p>
