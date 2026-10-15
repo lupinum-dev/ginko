@@ -3,6 +3,8 @@
 import { formatMoney, type Brick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
 import { entryTitle, fileRefsIn, ordered, printOf, stableJson, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
+import type { api } from '#convex/api'
+import type { FunctionReturnType } from 'convex/server'
 import { shownLabel } from './labels'
 import type { Words } from './when'
 
@@ -157,13 +159,13 @@ export function previewFileIds(draft: unknown, entries: readonly unknown[]): str
 }
 
 /**
- * What the website shows of an entry in a foreign language (server lib/translation.ts): nothing until its required
- * texts are translated (`hidden`), a link to its main-language page (`mainPage`), or the entry itself (`shown`).
+ * A foreign language's state of the stored entry, as `entries.get` sends it (server lib/translation.ts `LeafStatus`):
+ * missing and outdated texts, the missing ones its page waits for, and what the website shows (`page`).
  */
-export type TranslationPage = 'hidden' | 'mainPage' | 'shown'
+export type StoredTranslation = NonNullable<FunctionReturnType<typeof api.entries.get>>['translation'][string]
 
-/** A foreign language's state of the stored entry (entries.get): missing and outdated texts, the missing ones its page waits for. */
-export interface StoredTranslation { missing: string[]; outdated: string[]; blocking: string[]; page: TranslationPage }
+/** What the website shows of an entry in a foreign language: nothing yet (`hidden`), a link to its main-language page (`mainPage`), or the entry (`shown`). */
+export type TranslationPage = StoredTranslation['page']
 
 /** The language names the translation notes use: the foreign one (`lang`) and the main one, in the Studio's language. */
 export interface LanguageNames { lang: string; main: string }
@@ -189,8 +191,8 @@ export function translationLines(stored: StoredTranslation | undefined, t: Words
   ]
 }
 
-/** One language in the answer of a save or create (server `translationNotes`). */
-export interface TranslationNote { locale: string; page: TranslationPage; missing: number; outdated: number }
+/** One language in the answer of a save, create or publish (server lib/translation.ts `translationNotes`). */
+export type TranslationNote = Extract<FunctionReturnType<typeof api.entries.create>, { translation: unknown }>['translation'][number]
 
 /**
  * The sentences the message after a save adds about the other languages: one per kind, the languages of a kind
