@@ -40,10 +40,12 @@ function sizeOf(bytes: number) {
           >{{ item.data.title }}</a>
         </h2>
         <p v-if="item.data.summary" class="text-muted-foreground">{{ item.data.summary }}</p>
+        <!-- Each part in its own bdi, so a Latin file type next to a number keeps its order on a right-to-left page. -->
         <p class="text-small text-muted-foreground tabular-nums">
           <time :datetime="item.data.date">{{ format.date(item.data.date) }}</time>
-          <span aria-hidden="true"> · </span><span class="sr-only">, </span>{{ t('file', { type: typeOf(item.data.file.name), size: sizeOf(item.data.file.size) }) }}
-          <template v-if="languageOf(item.data.language)"><span aria-hidden="true"> · </span><span class="sr-only">, </span>{{ t('in', { language: languageOf(item.data.language)! }) }}</template>
+          <template v-for="part in [typeOf(item.data.file.name), sizeOf(item.data.file.size), languageOf(item.data.language) && t('in', { language: languageOf(item.data.language)! })].filter(Boolean)" :key="part">
+            <span aria-hidden="true"> · </span><span class="sr-only">, </span><bdi>{{ part }}</bdi>
+          </template>
         </p>
       </div>
       <Download class="mt-1 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />

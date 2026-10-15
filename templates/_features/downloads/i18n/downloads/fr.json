@@ -1,7 +1,6 @@
 {
   "title": "Téléchargements",
   "lead": "Des documents à lire et à garder.",
-  "file": "{type}, {size}",
   "in": "en {language}",
   "empty": "Pas encore de documents"
 }
