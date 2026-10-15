@@ -15,8 +15,6 @@
     "list": "Liste",
     "signOut": "Abmelden",
     "signIn": "Anmelden",
-    "signedOutTitle": "Du bist abgemeldet.",
-    "signedOutText": "Was hier noch nicht gespeichert war, ist nicht mehr da. Melde dich wieder an, dann geht es hier weiter.",
     "noAccessHelp": "Wenn du hier etwas ändern sollst, frag die Inhaberin, ob sie dich (wieder) einlädt.",
     "toReview": "Zu prüfen ({count})",
     "short": {

@@ -25,9 +25,11 @@ provide('ginko:timeZone', computed(() => data.value?.site.schema.timeZone ?? 'Eu
 // While the site loads there is no schema yet.
 provide('ginko:week', computed(() => data.value?.site.schema.week ?? DEFAULT_WEEK))
 // Signed out in another tab, or removed from the team while working here: no page, sheet or button
-// stays usable (break-it 9). The page says what happened and what to do.
+// stays usable (break-it 9). The page says what happened and what to do. A session ended on the server (signed out
+// everywhere, revoked) leaves the token here, so only the server's answer tells (auth-1). The unsaved input of an
+// open form stays in this browser and is offered back after signing in.
 const { status } = useConvexAuth()
-const signedOut = computed(() => status.value === 'anonymous')
+const signedOut = computed(() => status.value === 'anonymous' || isSignInRequired(error.value))
 // "Seite ansehen" opens the local site on a local platform; the browser decides, so after mount (no hydration mismatch).
 const mounted = ref(false)
 onMounted(() => { mounted.value = true })
@@ -111,9 +113,9 @@ const blocked = computed(() => signedOut.value || !!error.value || !!deletion.va
            button ("weitere anzeigen") stays tappable. The entry editor brings its own sticky bar instead of the tab bar. -->
       <main id="studio-main" tabindex="-1" :class="['outline-none', showTabs ? 'pb-30' : 'pb-6']">
       <div v-if="signedOut" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
-        <p class="text-xl font-bold">{{ t('nav.signedOutTitle') }}</p>
-        <p>{{ t('nav.signedOutText') }}</p>
-        <Button as-child><NuxtLink :to="`/login?redirect=${encodeURIComponent(route.fullPath)}`">{{ t('nav.signIn') }}</NuxtLink></Button>
+        <p class="text-xl font-bold">{{ t('errors.signedOut') }}</p>
+        <!-- A full page load: the server checks the session, where the client may still think it is signed in. -->
+        <Button as-child><NuxtLink :to="`/login?redirect=${encodeURIComponent(route.fullPath)}`" external>{{ t('nav.signIn') }}</NuxtLink></Button>
       </div>
       <SiteDeleting v-else-if="deletion" :slug="slug" :name="deletion.name" :at="deletion.at" />
       <div v-else-if="error" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">

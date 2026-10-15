@@ -55,6 +55,13 @@ export function opErrorOf(error: unknown, fallback?: string): OpError {
   return { code: e.code ?? 'UNKNOWN', message: fallback ?? t('problem.generic') }
 }
 
+/** The server refused a call because nobody is signed in: the session ended on the server (signed out everywhere,
+ *  revoked) while this browser still holds its token, so the auth state alone still says signed in. */
+export function isSignInRequired(error: unknown): boolean {
+  const e = normalizeConvexError(error)
+  return e.kind === 'server' && !!e.data && typeof e.data === 'object' && (e.data as { key?: unknown }).key === 'errors.signInRequired'
+}
+
 /**
  * Undo, remove and restore run from the message at the bottom, after the sheet that saved is gone.
  * A mutation belongs to the component that created it and is cancelled with it, so these three are

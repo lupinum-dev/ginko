@@ -15,8 +15,6 @@
     "list": "Lista",
     "signOut": "Cerrar sesión",
     "signIn": "Iniciar sesión",
-    "signedOutTitle": "Has cerrado sesión.",
-    "signedOutText": "Lo que no se haya guardado se pierde. Inicia sesión de nuevo para seguir aquí.",
     "noAccessHelp": "Si necesitas cambiar algo aquí, pide al propietario que te invite (de nuevo).",
     "toReview": "Por revisar ({count})",
     "short": {

@@ -15,8 +15,6 @@
     "list": "List",
     "signOut": "Sign out",
     "signIn": "Sign in",
-    "signedOutTitle": "You are signed out.",
-    "signedOutText": "Anything not saved here is gone. Sign in again to continue here.",
     "noAccessHelp": "If you need to change something here, ask the owner to invite you (again).",
     "toReview": "To review ({count})",
     "short": {
