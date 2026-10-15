@@ -106,6 +106,8 @@ test('the storage band warns from 80 %, and once full it cannot be hidden', asyn
   const MB = 1024 * 1024
   const notice = (bytes: number, entryCount = 10) => mount(StorageNotice, { props: { slug: 'restaurant', bytes, entryCount, manager: true } })
   expect(notice(1 * MB).text()).toBe('')
+  // One byte under the limit is not "4 MB von 4 MB" (volume-6).
+  expect(notice(4 * MB - 1).text()).toBe('Speicher fast voll: 3,9 MB von 4 MB belegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.')
 
   const near = notice(3.3 * MB)
   expect(near.text()).toBe('Speicher fast voll: 3,3 MB von 4 MB belegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.')

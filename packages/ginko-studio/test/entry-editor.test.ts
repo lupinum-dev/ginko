@@ -46,12 +46,14 @@ test('a never saved draft is asked about by the title typed so far', async () =>
 })
 
 // Wrong behaviour caught: the entry limit spans all fields and languages, so no field counter shows it and the
-// person learns of it only when Save is refused. Just over the limit, rounding said "480 KB von 480 KB" (volume-6).
+// person learns of it only when Save is refused. Just over or under the limit, rounding said "480 KB von 480 KB" (volume-6).
 test.each([
   { body: 500 * 1024 - 100, text: 'Dieser Eintrag ist zu groß: 500 KB von 480 KB. Kürze ihn um etwa 20 KB, dann lässt er sich speichern.' },
   // A few bytes over (the form's other bytes are fewer than 40).
   { body: 480 * 1024 - 19, text: 'Dieser Eintrag ist zu groß: 481 KB von 480 KB. Kürze ihn um etwa 1 KB, dann lässt er sich speichern.' },
-])('the save bar says how much to cut when the entry is over the limit ($body bytes of text)', async ({ body, text }) => {
+  // A few bytes under.
+  { body: 480 * 1024 - 60, text: 'Dieser Eintrag belegt 479 KB von 480 KB.' },
+])('the save bar says how full the entry is near the limit and how much to cut over it ($body bytes of text)', async ({ body, text }) => {
   vi.useFakeTimers()
   try {
     const wrapper = mount(EntryEditor, {

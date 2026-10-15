@@ -206,8 +206,8 @@ const size = computed(() => {
   const used = entryBytes({ ...props.entry?.data, ...typed.value }, props.entry?.prints ?? {})
   const limit = SITE_BUDGET.entryBytes
   const text = (bytes: number) => sizeText(bytes, format.number)
-  if (used > limit) return { over: true, text: t('entry.size.over', { used: sizeText(used, format.number, true), limit: text(limit), over: sizeText(used - limit, format.number, true) }) }
-  if (used >= limit * 0.8) return { over: false, text: t('entry.size.near', { used: text(used), limit: text(limit) }) }
+  if (used > limit) return { over: true, text: t('entry.size.over', { used: sizeText(used, format.number, 'up'), limit: text(limit), over: sizeText(used - limit, format.number, 'up') }) }
+  if (used >= limit * 0.8) return { over: false, text: t('entry.size.near', { used: sizeText(used, format.number, 'down'), limit: text(limit) }) }
   return undefined
 })
 

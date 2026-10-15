@@ -19,9 +19,9 @@ const entries = computed(() => levelOf(props.entryCount, SITE_BUDGET.entries))
 const level = computed<Level>(() => (storage.value === 'full' || entries.value === 'full' ? 'full' : storage.value ?? entries.value))
 
 const text = computed(() => {
-  const size = (bytes: number) => sizeText(bytes, format.number)
   const lines: string[] = []
-  if (storage.value) lines.push(t(storage.value === 'full' ? 'site.storage.full' : 'site.storage.near', { used: size(props.bytes), limit: size(SITE_BUDGET.siteBytes) }))
+  // Just under the limit, "near" rounds down: 1 byte short of 4 MB is "3,9 MB von 4 MB", not "4 MB von 4 MB".
+  if (storage.value) lines.push(t(storage.value === 'full' ? 'site.storage.full' : 'site.storage.near', { used: sizeText(props.bytes, format.number, storage.value === 'full' ? 'up' : 'down'), limit: sizeText(SITE_BUDGET.siteBytes, format.number) }))
   // The limit that is reached comes first: a full entry count leads, a storage only near comes after it.
   const count = t(entries.value === 'full' ? 'site.storage.entriesFull' : 'site.storage.entries', { count: format.number(props.entryCount), limit: format.number(SITE_BUDGET.entries) })
   if (entries.value === 'full' && storage.value !== 'full') lines.unshift(count)
