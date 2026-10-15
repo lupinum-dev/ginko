@@ -1,0 +1,35 @@
+{
+  "title": "Stellen",
+  "lead": "Offene Stellen, mit dem letzten Tag für Ihre Bewerbung.",
+  "all": "Alle Stellen",
+  "none": "Derzeit sind keine Stellen offen.",
+  "applyBy": "Bewerbung bis {date}",
+  "location": "Ort",
+  "employmentLabel": "Anstellung",
+  "workplaceLabel": "Arbeitsort",
+  "deadline": "Bewerbung bis",
+  "employment": {
+    "fullTime": "Vollzeit",
+    "partTime": "Teilzeit",
+    "freelance": "Freie Mitarbeit",
+    "internship": "Praktikum",
+    "apprenticeship": "Ausbildung"
+  },
+  "workplace": {
+    "onsite": "Vor Ort",
+    "hybrid": "Hybrid",
+    "remote": "Remote"
+  },
+  "applyEmail": "Per E-Mail bewerben",
+  "applyOnline": "Online bewerben",
+  "subject": "Bewerbung: {title}",
+  "how": "So bewerben Sie sich",
+  "howEmail": "Senden Sie Ihre Bewerbung bis zum {date} an {email}. Ein kurzes Anschreiben und Ihr Lebenslauf genügen.",
+  "howOnline": "Bewerben Sie sich bis zum {date} auf unserer Bewerbungsseite.",
+  "openSubject": "Initiativbewerbung",
+  "open": {
+    "text": "Wir freuen uns trotzdem über Menschen, die bei uns arbeiten möchten. Senden Sie uns ein kurzes Anschreiben und Ihren Lebenslauf per E-Mail.",
+    "more": "Keine passende Stelle dabei?",
+    "action": "Initiativ bewerben"
+  }
+}
