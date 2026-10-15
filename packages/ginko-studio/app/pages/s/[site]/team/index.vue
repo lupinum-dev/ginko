@@ -201,7 +201,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
                         <p class="font-medium [overflow-wrap:anywhere]">{{ k.label }}</p>
                         <p class="text-[13px] text-muted-foreground">{{ t('site.keys.createdAt', { when: day(k.createdAt) }) }}{{ usedText(k) }}</p>
                       </div>
-                      <Button type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="revokeKey(k)">{{ t('site.keys.revoke') }}</Button>
+                      <Button type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" :disabled="revokePushKey.pending.value" @click="revokeKey(k)">{{ t('site.keys.revoke') }}</Button>
                     </div>
                     <p v-if="keyError?.id === k.id" class="font-semibold text-destructive" role="alert">{{ keyError.message }}</p>
                   </li>
@@ -228,7 +228,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
               <p class="font-medium [overflow-wrap:anywhere]">{{ i.email }}</p>
               <p class="text-[13px] text-muted-foreground">{{ roleLabel(i.role) }}, {{ validUntil(i.expiresAt) }}</p>
             </div>
-            <Button type="button" variant="secondary" size="sm" @click="revoke(i.id)">{{ t('site.team.revokeInvite') }}</Button>
+            <Button type="button" variant="secondary" size="sm" :disabled="revokeInvite.pending.value" @click="revoke(i.id)">{{ t('site.team.revokeInvite') }}</Button>
           </li>
         </ul>
       </section>
@@ -277,7 +277,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
             <div v-if="confirmingKey === k.id" class="grid gap-2 rounded-md bg-warning/12 px-3 py-2.5">
               <p>{{ t('site.keys.revokeConfirm', { label: k.label }) }}</p>
               <div class="flex flex-wrap gap-2">
-                <Button type="button" variant="destructive" size="sm" @click="revokeKey(k)">{{ t('site.keys.revoke') }}</Button>
+                <Button type="button" variant="destructive" size="sm" :disabled="revokePushKey.pending.value" @click="revokeKey(k)">{{ t('site.keys.revoke') }}</Button>
                 <Button type="button" variant="ghost" size="sm" @click="confirmingKey = null">{{ t('site.common.cancel') }}</Button>
               </div>
             </div>
