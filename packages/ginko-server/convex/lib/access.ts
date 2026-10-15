@@ -73,17 +73,25 @@ export const byOf = (actor: Actor): By => ({
 
 /**
  * Step 4 (SPEC 2.7): admin and owner may do everything on the site. Staff needs a granted
- * task of this brick and kind whose fields cover every touched root field. One exception: staff
+ * task of this brick and kind whose fields cover every touched root field. A create task without `fields` fills every
+ * field; with `fields` it covers those, its prefill keys and the fields that have a default. One exception: staff
  * may change (never remove) an entry they created themselves (`createdBy`, set by `createAs`) with
- * a create task of its brick that they still hold. A create task fills every field, so it covers
- * every field of the change too. The platform and the agent door both decide this here.
+ * a create task of its brick that they still hold, within what that task covers. The platform and the agent door both
+ * decide this here.
  */
 export function authorize(actor: Actor, schema: Schema, need: { task?: string; brick: string; kind: Task['kind']; fields?: string[]; entry?: Pick<Doc<'entries'>, 'createdBy'> }) {
   if (actor.role !== 'staff') return
   const task = grantedTask(actor, schema, need.brick, need.task)
-  if (need.kind === 'edit' && task?.kind === 'create' && createdBy(actor, need.entry)) return
-  const fieldsOk = task?.kind !== 'edit' || (need.fields ?? []).every((f) => task.fields.includes(f))
-  if (!task || task.kind !== need.kind || !fieldsOk) fail('FORBIDDEN', 'errors.notYourTask')
+  const covers = (held: Task) => (need.fields ?? []).every((f) => held.kind === 'edit' ? held.fields.includes(f) : held.kind !== 'create' || createCovers(schema, need.brick, held, f))
+  if (need.kind === 'edit' && task?.kind === 'create' && createdBy(actor, need.entry) && covers(task)) return
+  if (!task || task.kind !== need.kind || !covers(task)) fail('FORBIDDEN', 'errors.notYourTask')
+}
+
+/** Whether a create task covers the root field `key`: all fields without `fields`, else those, its prefill and the fields with a default. */
+function createCovers(schema: Schema, brickKey: string, task: Extract<Task, { kind: 'create' }>, key: string): boolean {
+  if (!task.fields || task.fields.includes(key)) return true
+  const field = schema.bricks[brickKey]?.fields[key]
+  return Object.hasOwn(task.prefill ?? {}, key) || field?.default !== undefined
 }
 
 /** Whether `actor` created this entry. Entries made before `createdBy` existed, and by owners or admins, have none. */

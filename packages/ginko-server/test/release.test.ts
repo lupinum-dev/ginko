@@ -46,6 +46,8 @@ const SUBTITLE_MIGRATION = { id: '2026-11-menu-subtitle', brick: 'menu', fills: 
 function withSubtitle(schema: Schema): Schema {
   const next = copy(schema)
   next.bricks.menu!.fields.subtitle = { type: 'text', label: 'Untertitel', max: 200, translate: false }
+  // A required field with no default must be asked by the create task, which lists its fields.
+  for (const task of next.bricks.menu!.tasks ?? []) if (task.kind === 'create' && task.fields) task.fields = [...task.fields, 'subtitle']
   next.migrations.push(SUBTITLE_MIGRATION)
   return next
 }
@@ -409,6 +411,7 @@ describe('release regressions (Phase 5 review)', () => {
     // The same ID with another target and fingerprint is a changed migration.
     const changed = copy(await storedSchema(s))
     changed.bricks.menu!.fields.tagline = { type: 'text', label: 'Slogan', max: 200, translate: false }
+    for (const task of changed.bricks.menu!.tasks ?? []) if (task.kind === 'create' && task.fields) task.fields = [...task.fields, 'tagline']
     changed.migrations.push({ id: SUBTITLE_MIGRATION.id, brick: 'menu', fills: 'tagline', fingerprint: sha256('other source') })
     const error = await errorOf(release(s, { schema: changed, writes: await menuWrites(s, { tagline: 'Slogan' }) }))
     expect(error).toMatchObject({ code: 'MIGRATION_CHANGED' })

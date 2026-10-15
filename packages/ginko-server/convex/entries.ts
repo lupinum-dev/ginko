@@ -538,11 +538,12 @@ const createArgs = {
 export const create = mutation({ args: createArgs, handler: async (ctx, args) => createAs(ctx, await actorFor(ctx, args.site), args) })
 
 /** `create` for an actor already known: the platform's signed-in person, or the agent door's key (SPEC 16). */
-export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof createArgs>) {
+export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof createArgs>, opts: { copy?: boolean } = {}) {
   return idempotent(ctx, actor, args, async () => {
     const schema = actor.site.schema as Schema
     const brick = structuralBrick(schema, args.brick)
-    authorize(actor, schema, { task: args.task, brick: args.brick, kind: 'create' })
+    // A create task that lists `fields` writes only those (`authorize`); a copy carries over what the entry already holds.
+    authorize(actor, schema, { task: args.task, brick: args.brick, kind: 'create', ...(opts.copy ? {} : { fields: Object.keys(args.data) }) })
 
     // Retired fields are not writable (SPEC 4.1 step 3); validation skips them, so reject them here.
     for (const key of Object.keys(args.data)) liveField(brick, key)
@@ -684,7 +685,7 @@ export async function duplicateAs(ctx: MutationCtx, actor: Actor, args: ObjectTy
   return createAs(ctx, actor, {
     site: args.site, opId: args.opId, ...(args.task === undefined ? {} : { task: args.task }),
     brick: entry.brick, data: copyOf(brick, entry.data as Data, args.opId, schema.locales[0]!),
-  })
+  }, { copy: true })
 }
 
 const removeArgs = { site: v.string(), opId: v.string(), task: v.optional(v.string()), entry: v.string(), lifeRev: v.number() }

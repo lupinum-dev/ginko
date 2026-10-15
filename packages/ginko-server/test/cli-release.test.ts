@@ -19,7 +19,14 @@ const COMMIT = 'a1b2c3d4e5f6a7b8c9d0a1b2c3d4e5f6a1b2c3d4'
 const menu = restaurant.bricks.menu
 const withTitle: SiteInput = {
   ...restaurant,
-  bricks: { ...restaurant.bricks, menu: { ...menu, fields: { ...menu.fields, title: f.text('Titel', { max: 120 }) } } },
+  bricks: {
+    ...restaurant.bricks,
+    menu: {
+      ...menu, fields: { ...menu.fields, title: f.text('Titel', { max: 120 }) },
+      // A required field with no default must be asked by the create task, which lists its fields.
+      tasks: menu.tasks.map((task) => (task.kind === 'create' ? { ...task, fields: [...task.fields, 'title'] } : task)),
+    },
+  },
   migrations: { '2026-11-menu-title': { brick: 'menu', fills: 'title', compute: (entry) => entry.name } },
 }
 
@@ -122,7 +129,9 @@ describe('ginko release and check against the platform (SPEC 5.1, 5.3)', () => {
     const { platform, posts } = await platformFor(s)
     const fields = { ...menu.fields }
     delete (fields as Record<string, unknown>).allergens
-    const removed: SiteInput = { ...restaurant, bricks: { ...restaurant.bricks, menu: { ...menu, fields } } }
+    // The create task no longer lists the field either, so the only problem left is the missing retirement.
+    const tasks = menu.tasks.map((task) => (task.kind === 'create' ? { ...task, fields: task.fields.filter((name) => name !== 'allergens') } : task))
+    const removed: SiteInput = { ...restaurant, bricks: { ...restaurant.bricks, menu: { ...menu, fields, tasks } } }
     const error = await release(inputFor(platform, removed)).catch((e: unknown) => e)
     expect(error).toBeInstanceOf(CliError)
     expect((error as Error).message).toContain('menu.allergens')
