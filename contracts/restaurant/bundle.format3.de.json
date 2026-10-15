@@ -108,6 +108,68 @@
       },
       "fallback": []
     },
+    "hourPlans": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "plan-winter",
+          "data": {
+            "label": "Winterzeiten",
+            "from": "2026-11-01",
+            "to": "2027-03-31",
+            "yearly": true,
+            "week": [
+              {
+                "_id": "wpmo000000",
+                "day": "mo",
+                "closed": true
+              },
+              {
+                "_id": "wptu000000",
+                "day": "tu",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpwe000000",
+                "day": "we",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpth000000",
+                "day": "th",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpfr000000",
+                "day": "fr",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpsa000000",
+                "day": "sa",
+                "closed": false,
+                "from1": "11:30",
+                "to1": "22:00"
+              },
+              {
+                "_id": "wpsu000000",
+                "day": "su",
+                "closed": true
+              }
+            ]
+          },
+          "fallback": []
+        }
+      ]
+    },
     "notices": {
       "kind": "collection",
       "items": [
@@ -213,6 +275,90 @@
         "note": "Alle Gerichte inklusive Beilagensalat."
       },
       "fallback": []
+    },
+    "lunchPlans": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "plan-kw42",
+          "data": {
+            "weekOf": "2026-10-12",
+            "days": [
+              {
+                "_id": "ldmo000000",
+                "day": "mo",
+                "dish": "Gulaschsuppe mit Gebäck",
+                "price": {
+                  "amount": 1090,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "L"
+                ]
+              },
+              {
+                "_id": "ldtu000000",
+                "day": "tu",
+                "dish": "Krautfleckerl mit Speck",
+                "price": {
+                  "amount": 1590,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "L",
+                  "M"
+                ]
+              },
+              {
+                "_id": "ldwe000000",
+                "day": "we",
+                "dish": "Topfenknödel mit Zwetschkenröster",
+                "price": {
+                  "amount": 1150,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "C",
+                  "G"
+                ]
+              },
+              {
+                "_id": "ldth000000",
+                "day": "th",
+                "dish": "Gebratene Forelle mit Mandelbutter",
+                "price": {
+                  "amount": 1490,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "D",
+                  "G",
+                  "H"
+                ]
+              },
+              {
+                "_id": "ldfr000000",
+                "day": "fr",
+                "dish": "Spinatknödel mit brauner Butter",
+                "price": {
+                  "amount": 1250,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "C",
+                  "G"
+                ]
+              }
+            ],
+            "note": "Alle Gerichte inklusive Beilagensalat."
+          },
+          "fallback": []
+        }
+      ]
     },
     "menu": {
       "kind": "collection",
@@ -600,152 +746,6 @@
         "description": "Wirtshausküche in Salzburg: Mittagsmenü, Speisekarte und Veranstaltungen."
       },
       "fallback": []
-    },
-    "hourPlans": {
-      "kind": "collection",
-      "items": [
-        {
-          "id": "plan-winter",
-          "data": {
-            "label": "Winterzeiten",
-            "from": "2026-11-01",
-            "to": "2027-03-31",
-            "yearly": true,
-            "week": [
-              {
-                "_id": "wpmo000000",
-                "day": "mo",
-                "closed": true
-              },
-              {
-                "_id": "wptu000000",
-                "day": "tu",
-                "closed": false,
-                "from1": "17:00",
-                "to1": "21:30"
-              },
-              {
-                "_id": "wpwe000000",
-                "day": "we",
-                "closed": false,
-                "from1": "17:00",
-                "to1": "21:30"
-              },
-              {
-                "_id": "wpth000000",
-                "day": "th",
-                "closed": false,
-                "from1": "17:00",
-                "to1": "21:30"
-              },
-              {
-                "_id": "wpfr000000",
-                "day": "fr",
-                "closed": false,
-                "from1": "17:00",
-                "to1": "21:30"
-              },
-              {
-                "_id": "wpsa000000",
-                "day": "sa",
-                "closed": false,
-                "from1": "11:30",
-                "to1": "22:00"
-              },
-              {
-                "_id": "wpsu000000",
-                "day": "su",
-                "closed": true
-              }
-            ]
-          },
-          "fallback": []
-        }
-      ]
-    },
-    "lunchPlans": {
-      "kind": "collection",
-      "items": [
-        {
-          "id": "plan-kw42",
-          "data": {
-            "weekOf": "2026-10-12",
-            "days": [
-              {
-                "_id": "ldmo000000",
-                "day": "mo",
-                "dish": "Gulaschsuppe mit Gebäck",
-                "price": {
-                  "amount": 1090,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "A",
-                  "L"
-                ]
-              },
-              {
-                "_id": "ldtu000000",
-                "day": "tu",
-                "dish": "Krautfleckerl mit Speck",
-                "price": {
-                  "amount": 1590,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "A",
-                  "L",
-                  "M"
-                ]
-              },
-              {
-                "_id": "ldwe000000",
-                "day": "we",
-                "dish": "Topfenknödel mit Zwetschkenröster",
-                "price": {
-                  "amount": 1150,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "A",
-                  "C",
-                  "G"
-                ]
-              },
-              {
-                "_id": "ldth000000",
-                "day": "th",
-                "dish": "Gebratene Forelle mit Mandelbutter",
-                "price": {
-                  "amount": 1490,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "D",
-                  "G",
-                  "H"
-                ]
-              },
-              {
-                "_id": "ldfr000000",
-                "day": "fr",
-                "dish": "Spinatknödel mit brauner Butter",
-                "price": {
-                  "amount": 1250,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "A",
-                  "C",
-                  "G"
-                ]
-              }
-            ],
-            "note": "Alle Gerichte inklusive Beilagensalat."
-          },
-          "fallback": []
-        }
-      ]
     }
   }
 }

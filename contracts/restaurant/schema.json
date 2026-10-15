@@ -479,6 +479,291 @@
       ],
       "pos": 0
     },
+    "hourPlans": {
+      "kind": "collection",
+      "label": {
+        "de": "Öffnungszeiten ab Datum und Saisonen",
+        "en": "Hours from a date and seasons"
+      },
+      "fields": {
+        "label": {
+          "type": "text",
+          "label": {
+            "de": "Name",
+            "en": "Name"
+          },
+          "max": 80,
+          "pos": 0
+        },
+        "from": {
+          "type": "date",
+          "label": {
+            "de": "Gilt ab",
+            "en": "Applies from"
+          },
+          "pos": 1
+        },
+        "to": {
+          "type": "date",
+          "label": {
+            "de": "Gilt bis",
+            "en": "Applies until"
+          },
+          "optional": true,
+          "pos": 2
+        },
+        "yearly": {
+          "type": "boolean",
+          "label": {
+            "de": "Jedes Jahr wiederholen",
+            "en": "Repeat every year"
+          },
+          "default": false,
+          "pos": 3
+        },
+        "week": {
+          "type": "list",
+          "label": {
+            "de": "Wochenplan",
+            "en": "Weekly hours"
+          },
+          "itemLabel": {
+            "de": "Tag",
+            "en": "Day"
+          },
+          "of": {
+            "day": {
+              "type": "choice",
+              "label": {
+                "de": "Tag",
+                "en": "Day"
+              },
+              "options": [
+                {
+                  "value": "mo",
+                  "label": {
+                    "de": "Montag",
+                    "en": "Monday"
+                  }
+                },
+                {
+                  "value": "tu",
+                  "label": {
+                    "de": "Dienstag",
+                    "en": "Tuesday"
+                  }
+                },
+                {
+                  "value": "we",
+                  "label": {
+                    "de": "Mittwoch",
+                    "en": "Wednesday"
+                  }
+                },
+                {
+                  "value": "th",
+                  "label": {
+                    "de": "Donnerstag",
+                    "en": "Thursday"
+                  }
+                },
+                {
+                  "value": "fr",
+                  "label": {
+                    "de": "Freitag",
+                    "en": "Friday"
+                  }
+                },
+                {
+                  "value": "sa",
+                  "label": {
+                    "de": "Samstag",
+                    "en": "Saturday"
+                  }
+                },
+                {
+                  "value": "su",
+                  "label": {
+                    "de": "Sonntag",
+                    "en": "Sunday"
+                  }
+                }
+              ],
+              "pos": 0
+            },
+            "closed": {
+              "type": "boolean",
+              "label": {
+                "de": "Ruhetag",
+                "en": "Closed all day"
+              },
+              "pos": 1
+            },
+            "from1": {
+              "type": "time",
+              "label": {
+                "de": "Öffnet um",
+                "en": "Opens at"
+              },
+              "optional": true,
+              "showWhen": {
+                "field": "closed",
+                "not": true
+              },
+              "pos": 2
+            },
+            "to1": {
+              "type": "time",
+              "label": {
+                "de": "Schließt um",
+                "en": "Closes at"
+              },
+              "optional": true,
+              "showWhen": {
+                "field": "closed",
+                "not": true
+              },
+              "pos": 3
+            },
+            "from2": {
+              "type": "time",
+              "label": {
+                "de": "Öffnet wieder um",
+                "en": "Opens again at"
+              },
+              "optional": true,
+              "showWhen": {
+                "field": "closed",
+                "not": true
+              },
+              "hint": {
+                "de": "Nur wenn du untertags eine Pause machst.",
+                "en": "Only if you close for a break during the day."
+              },
+              "pos": 4
+            },
+            "to2": {
+              "type": "time",
+              "label": {
+                "de": "Schließt wieder um",
+                "en": "Closes again at"
+              },
+              "optional": true,
+              "showWhen": {
+                "field": "closed",
+                "not": true
+              },
+              "pos": 5
+            }
+          },
+          "min": 7,
+          "max": 7,
+          "unique": "day",
+          "default": [
+            {
+              "_id": "wkmo000000",
+              "day": "mo",
+              "closed": true
+            },
+            {
+              "_id": "wktu000000",
+              "day": "tu",
+              "closed": false,
+              "from1": "11:30",
+              "to1": "14:00",
+              "from2": "17:30",
+              "to2": "22:00"
+            },
+            {
+              "_id": "wkwe000000",
+              "day": "we",
+              "closed": false,
+              "from1": "11:30",
+              "to1": "14:00",
+              "from2": "17:30",
+              "to2": "22:00"
+            },
+            {
+              "_id": "wkth000000",
+              "day": "th",
+              "closed": false,
+              "from1": "11:30",
+              "to1": "14:00",
+              "from2": "17:30",
+              "to2": "22:00"
+            },
+            {
+              "_id": "wkfr000000",
+              "day": "fr",
+              "closed": false,
+              "from1": "11:30",
+              "to1": "14:00",
+              "from2": "17:30",
+              "to2": "22:00"
+            },
+            {
+              "_id": "wksa000000",
+              "day": "sa",
+              "closed": false,
+              "from1": "11:30",
+              "to1": "14:00",
+              "from2": "17:30",
+              "to2": "22:00"
+            },
+            {
+              "_id": "wksu000000",
+              "day": "su",
+              "closed": false,
+              "from1": "11:30",
+              "to1": "14:00",
+              "from2": "17:30",
+              "to2": "22:00"
+            }
+          ],
+          "pos": 4
+        }
+      },
+      "max": 12,
+      "order": {
+        "field": "from",
+        "dir": "asc"
+      },
+      "tasks": [
+        {
+          "id": "add",
+          "label": {
+            "de": "Neue Öffnungszeiten ab …",
+            "en": "New opening hours from …"
+          },
+          "kind": "create"
+        },
+        {
+          "id": "edit",
+          "label": {
+            "de": "Öffnungszeiten ab Datum bearbeiten",
+            "en": "Edit hours from a date"
+          },
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "label",
+            "from",
+            "to",
+            "yearly",
+            "week"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": {
+            "de": "Öffnungszeiten ab Datum entfernen",
+            "en": "Remove hours from a date"
+          },
+          "kind": "remove"
+        }
+      ],
+      "pos": 1
+    },
     "notices": {
       "kind": "collection",
       "label": {
@@ -545,7 +830,7 @@
           "kind": "remove"
         }
       ],
-      "pos": 1
+      "pos": 2
     },
     "lunch": {
       "kind": "single",
@@ -841,7 +1126,320 @@
           "needsApproval": true
         }
       ],
-      "pos": 2
+      "pos": 3
+    },
+    "lunchPlans": {
+      "kind": "collection",
+      "label": {
+        "de": "Mittagsmenü vorausplanen",
+        "en": "Plan the lunch menu ahead"
+      },
+      "fields": {
+        "weekOf": {
+          "type": "date",
+          "label": {
+            "de": "Woche ab",
+            "en": "Week starting"
+          },
+          "pos": 0
+        },
+        "days": {
+          "type": "list",
+          "label": {
+            "de": "Tage",
+            "en": "Days"
+          },
+          "itemLabel": {
+            "de": "Tag",
+            "en": "Day"
+          },
+          "of": {
+            "day": {
+              "type": "choice",
+              "label": {
+                "de": "Tag",
+                "en": "Day"
+              },
+              "options": [
+                {
+                  "value": "mo",
+                  "label": {
+                    "de": "Montag",
+                    "en": "Monday"
+                  }
+                },
+                {
+                  "value": "tu",
+                  "label": {
+                    "de": "Dienstag",
+                    "en": "Tuesday"
+                  }
+                },
+                {
+                  "value": "we",
+                  "label": {
+                    "de": "Mittwoch",
+                    "en": "Wednesday"
+                  }
+                },
+                {
+                  "value": "th",
+                  "label": {
+                    "de": "Donnerstag",
+                    "en": "Thursday"
+                  }
+                },
+                {
+                  "value": "fr",
+                  "label": {
+                    "de": "Freitag",
+                    "en": "Friday"
+                  }
+                }
+              ],
+              "pos": 0
+            },
+            "dish": {
+              "type": "text",
+              "label": {
+                "de": "Gericht",
+                "en": "Dish"
+              },
+              "max": 200,
+              "pos": 1
+            },
+            "price": {
+              "type": "money",
+              "label": {
+                "de": "Preis",
+                "en": "Price"
+              },
+              "optional": true,
+              "pos": 2
+            },
+            "allergens": {
+              "type": "choices",
+              "label": {
+                "de": "Allergene",
+                "en": "Allergens"
+              },
+              "options": [
+                {
+                  "value": "A",
+                  "label": {
+                    "de": "A Gluten",
+                    "en": "A Gluten"
+                  }
+                },
+                {
+                  "value": "B",
+                  "label": {
+                    "de": "B Krebstiere",
+                    "en": "B Crustaceans"
+                  }
+                },
+                {
+                  "value": "C",
+                  "label": {
+                    "de": "C Ei",
+                    "en": "C Egg"
+                  }
+                },
+                {
+                  "value": "D",
+                  "label": {
+                    "de": "D Fisch",
+                    "en": "D Fish"
+                  }
+                },
+                {
+                  "value": "E",
+                  "label": {
+                    "de": "E Erdnuss",
+                    "en": "E Peanuts"
+                  }
+                },
+                {
+                  "value": "F",
+                  "label": {
+                    "de": "F Soja",
+                    "en": "F Soy"
+                  }
+                },
+                {
+                  "value": "G",
+                  "label": {
+                    "de": "G Milch",
+                    "en": "G Milk"
+                  }
+                },
+                {
+                  "value": "H",
+                  "label": {
+                    "de": "H Schalenfrüchte",
+                    "en": "H Tree nuts"
+                  }
+                },
+                {
+                  "value": "L",
+                  "label": {
+                    "de": "L Sellerie",
+                    "en": "L Celery"
+                  }
+                },
+                {
+                  "value": "M",
+                  "label": {
+                    "de": "M Senf",
+                    "en": "M Mustard"
+                  }
+                },
+                {
+                  "value": "N",
+                  "label": {
+                    "de": "N Sesam",
+                    "en": "N Sesame"
+                  }
+                },
+                {
+                  "value": "O",
+                  "label": {
+                    "de": "O Sulfite",
+                    "en": "O Sulphites"
+                  }
+                },
+                {
+                  "value": "P",
+                  "label": {
+                    "de": "P Lupinen",
+                    "en": "P Lupin"
+                  }
+                },
+                {
+                  "value": "R",
+                  "label": {
+                    "de": "R Weichtiere",
+                    "en": "R Molluscs"
+                  }
+                }
+              ],
+              "pos": 3
+            }
+          },
+          "min": 5,
+          "max": 5,
+          "unique": "day",
+          "default": [
+            {
+              "_id": "ldmo000000",
+              "day": "mo",
+              "dish": {
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
+              },
+              "allergens": []
+            },
+            {
+              "_id": "ldtu000000",
+              "day": "tu",
+              "dish": {
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
+              },
+              "allergens": []
+            },
+            {
+              "_id": "ldwe000000",
+              "day": "we",
+              "dish": {
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
+              },
+              "allergens": []
+            },
+            {
+              "_id": "ldth000000",
+              "day": "th",
+              "dish": {
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
+              },
+              "allergens": []
+            },
+            {
+              "_id": "ldfr000000",
+              "day": "fr",
+              "dish": {
+                "de": "Wird noch bekannt gegeben",
+                "en": "To be announced"
+              },
+              "allergens": []
+            }
+          ],
+          "pos": 1
+        },
+        "note": {
+          "type": "text",
+          "label": {
+            "de": "Hinweis",
+            "en": "Note"
+          },
+          "max": 200,
+          "optional": true,
+          "pos": 2
+        }
+      },
+      "max": 3,
+      "order": {
+        "field": "weekOf",
+        "dir": "asc"
+      },
+      "visible": {
+        "mode": "until",
+        "field": "weekOf",
+        "days": 6,
+        "deleteExpired": true
+      },
+      "plans": {
+        "brick": "lunch",
+        "field": "weekOf"
+      },
+      "tasks": [
+        {
+          "id": "planNext",
+          "label": {
+            "de": "Nächste Woche planen",
+            "en": "Plan next week"
+          },
+          "kind": "create",
+          "prefill": {
+            "weekOf": "@nextWorkWeek"
+          }
+        },
+        {
+          "id": "edit",
+          "label": {
+            "de": "Geplante Woche bearbeiten",
+            "en": "Edit a planned week"
+          },
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "weekOf",
+            "days",
+            "note"
+          ]
+        },
+        {
+          "id": "remove",
+          "label": {
+            "de": "Geplante Woche entfernen",
+            "en": "Remove a planned week"
+          },
+          "kind": "remove"
+        }
+      ],
+      "pos": 4
     },
     "menu": {
       "kind": "collection",
@@ -1185,7 +1783,7 @@
           "kind": "remove"
         }
       ],
-      "pos": 3
+      "pos": 5
     },
     "events": {
       "kind": "collection",
@@ -1320,7 +1918,7 @@
           "kind": "remove"
         }
       ],
-      "pos": 4
+      "pos": 6
     },
     "gallery": {
       "kind": "single",
@@ -1367,7 +1965,7 @@
           ]
         }
       ],
-      "pos": 5
+      "pos": 7
     },
     "contact": {
       "kind": "single",
@@ -1437,7 +2035,7 @@
           "pos": 4
         }
       },
-      "pos": 6
+      "pos": 8
     },
     "legal": {
       "kind": "single",
@@ -1463,7 +2061,7 @@
           "pos": 1
         }
       },
-      "pos": 7
+      "pos": 9
     },
     "seo": {
       "kind": "single",
@@ -1494,604 +2092,6 @@
           "pos": 2
         }
       },
-      "pos": 8
-    },
-    "hourPlans": {
-      "kind": "collection",
-      "label": {
-        "de": "Öffnungszeiten ab Datum und Saisonen",
-        "en": "Hours from a date and seasons"
-      },
-      "fields": {
-        "label": {
-          "type": "text",
-          "label": {
-            "de": "Name",
-            "en": "Name"
-          },
-          "max": 80,
-          "pos": 0
-        },
-        "from": {
-          "type": "date",
-          "label": {
-            "de": "Gilt ab",
-            "en": "Applies from"
-          },
-          "pos": 1
-        },
-        "to": {
-          "type": "date",
-          "label": {
-            "de": "Gilt bis",
-            "en": "Applies until"
-          },
-          "optional": true,
-          "pos": 2
-        },
-        "yearly": {
-          "type": "boolean",
-          "label": {
-            "de": "Jedes Jahr wiederholen",
-            "en": "Repeat every year"
-          },
-          "default": false,
-          "pos": 3
-        },
-        "week": {
-          "type": "list",
-          "label": {
-            "de": "Wochenplan",
-            "en": "Weekly hours"
-          },
-          "itemLabel": {
-            "de": "Tag",
-            "en": "Day"
-          },
-          "of": {
-            "day": {
-              "type": "choice",
-              "label": {
-                "de": "Tag",
-                "en": "Day"
-              },
-              "options": [
-                {
-                  "value": "mo",
-                  "label": {
-                    "de": "Montag",
-                    "en": "Monday"
-                  }
-                },
-                {
-                  "value": "tu",
-                  "label": {
-                    "de": "Dienstag",
-                    "en": "Tuesday"
-                  }
-                },
-                {
-                  "value": "we",
-                  "label": {
-                    "de": "Mittwoch",
-                    "en": "Wednesday"
-                  }
-                },
-                {
-                  "value": "th",
-                  "label": {
-                    "de": "Donnerstag",
-                    "en": "Thursday"
-                  }
-                },
-                {
-                  "value": "fr",
-                  "label": {
-                    "de": "Freitag",
-                    "en": "Friday"
-                  }
-                },
-                {
-                  "value": "sa",
-                  "label": {
-                    "de": "Samstag",
-                    "en": "Saturday"
-                  }
-                },
-                {
-                  "value": "su",
-                  "label": {
-                    "de": "Sonntag",
-                    "en": "Sunday"
-                  }
-                }
-              ],
-              "pos": 0
-            },
-            "closed": {
-              "type": "boolean",
-              "label": {
-                "de": "Ruhetag",
-                "en": "Closed all day"
-              },
-              "pos": 1
-            },
-            "from1": {
-              "type": "time",
-              "label": {
-                "de": "Öffnet um",
-                "en": "Opens at"
-              },
-              "optional": true,
-              "showWhen": {
-                "field": "closed",
-                "not": true
-              },
-              "pos": 2
-            },
-            "to1": {
-              "type": "time",
-              "label": {
-                "de": "Schließt um",
-                "en": "Closes at"
-              },
-              "optional": true,
-              "showWhen": {
-                "field": "closed",
-                "not": true
-              },
-              "pos": 3
-            },
-            "from2": {
-              "type": "time",
-              "label": {
-                "de": "Öffnet wieder um",
-                "en": "Opens again at"
-              },
-              "optional": true,
-              "showWhen": {
-                "field": "closed",
-                "not": true
-              },
-              "hint": {
-                "de": "Nur wenn du untertags eine Pause machst.",
-                "en": "Only if you close for a break during the day."
-              },
-              "pos": 4
-            },
-            "to2": {
-              "type": "time",
-              "label": {
-                "de": "Schließt wieder um",
-                "en": "Closes again at"
-              },
-              "optional": true,
-              "showWhen": {
-                "field": "closed",
-                "not": true
-              },
-              "pos": 5
-            }
-          },
-          "min": 7,
-          "max": 7,
-          "unique": "day",
-          "default": [
-            {
-              "_id": "wkmo000000",
-              "day": "mo",
-              "closed": true
-            },
-            {
-              "_id": "wktu000000",
-              "day": "tu",
-              "closed": false,
-              "from1": "11:30",
-              "to1": "14:00",
-              "from2": "17:30",
-              "to2": "22:00"
-            },
-            {
-              "_id": "wkwe000000",
-              "day": "we",
-              "closed": false,
-              "from1": "11:30",
-              "to1": "14:00",
-              "from2": "17:30",
-              "to2": "22:00"
-            },
-            {
-              "_id": "wkth000000",
-              "day": "th",
-              "closed": false,
-              "from1": "11:30",
-              "to1": "14:00",
-              "from2": "17:30",
-              "to2": "22:00"
-            },
-            {
-              "_id": "wkfr000000",
-              "day": "fr",
-              "closed": false,
-              "from1": "11:30",
-              "to1": "14:00",
-              "from2": "17:30",
-              "to2": "22:00"
-            },
-            {
-              "_id": "wksa000000",
-              "day": "sa",
-              "closed": false,
-              "from1": "11:30",
-              "to1": "14:00",
-              "from2": "17:30",
-              "to2": "22:00"
-            },
-            {
-              "_id": "wksu000000",
-              "day": "su",
-              "closed": false,
-              "from1": "11:30",
-              "to1": "14:00",
-              "from2": "17:30",
-              "to2": "22:00"
-            }
-          ],
-          "pos": 4
-        }
-      },
-      "max": 12,
-      "order": {
-        "field": "from",
-        "dir": "asc"
-      },
-      "tasks": [
-        {
-          "id": "add",
-          "label": {
-            "de": "Neue Öffnungszeiten ab …",
-            "en": "New opening hours from …"
-          },
-          "kind": "create"
-        },
-        {
-          "id": "edit",
-          "label": {
-            "de": "Öffnungszeiten ab Datum bearbeiten",
-            "en": "Edit hours from a date"
-          },
-          "kind": "edit",
-          "pick": true,
-          "fields": [
-            "label",
-            "from",
-            "to",
-            "yearly",
-            "week"
-          ]
-        },
-        {
-          "id": "remove",
-          "label": {
-            "de": "Öffnungszeiten ab Datum entfernen",
-            "en": "Remove hours from a date"
-          },
-          "kind": "remove"
-        }
-      ],
-      "pos": 9
-    },
-    "lunchPlans": {
-      "kind": "collection",
-      "label": {
-        "de": "Mittagsmenü vorausplanen",
-        "en": "Plan the lunch menu ahead"
-      },
-      "fields": {
-        "weekOf": {
-          "type": "date",
-          "label": {
-            "de": "Woche ab",
-            "en": "Week starting"
-          },
-          "pos": 0
-        },
-        "days": {
-          "type": "list",
-          "label": {
-            "de": "Tage",
-            "en": "Days"
-          },
-          "itemLabel": {
-            "de": "Tag",
-            "en": "Day"
-          },
-          "of": {
-            "day": {
-              "type": "choice",
-              "label": {
-                "de": "Tag",
-                "en": "Day"
-              },
-              "options": [
-                {
-                  "value": "mo",
-                  "label": {
-                    "de": "Montag",
-                    "en": "Monday"
-                  }
-                },
-                {
-                  "value": "tu",
-                  "label": {
-                    "de": "Dienstag",
-                    "en": "Tuesday"
-                  }
-                },
-                {
-                  "value": "we",
-                  "label": {
-                    "de": "Mittwoch",
-                    "en": "Wednesday"
-                  }
-                },
-                {
-                  "value": "th",
-                  "label": {
-                    "de": "Donnerstag",
-                    "en": "Thursday"
-                  }
-                },
-                {
-                  "value": "fr",
-                  "label": {
-                    "de": "Freitag",
-                    "en": "Friday"
-                  }
-                }
-              ],
-              "pos": 0
-            },
-            "dish": {
-              "type": "text",
-              "label": {
-                "de": "Gericht",
-                "en": "Dish"
-              },
-              "max": 200,
-              "pos": 1
-            },
-            "price": {
-              "type": "money",
-              "label": {
-                "de": "Preis",
-                "en": "Price"
-              },
-              "optional": true,
-              "pos": 2
-            },
-            "allergens": {
-              "type": "choices",
-              "label": {
-                "de": "Allergene",
-                "en": "Allergens"
-              },
-              "options": [
-                {
-                  "value": "A",
-                  "label": {
-                    "de": "A Gluten",
-                    "en": "A Gluten"
-                  }
-                },
-                {
-                  "value": "B",
-                  "label": {
-                    "de": "B Krebstiere",
-                    "en": "B Crustaceans"
-                  }
-                },
-                {
-                  "value": "C",
-                  "label": {
-                    "de": "C Ei",
-                    "en": "C Egg"
-                  }
-                },
-                {
-                  "value": "D",
-                  "label": {
-                    "de": "D Fisch",
-                    "en": "D Fish"
-                  }
-                },
-                {
-                  "value": "E",
-                  "label": {
-                    "de": "E Erdnuss",
-                    "en": "E Peanuts"
-                  }
-                },
-                {
-                  "value": "F",
-                  "label": {
-                    "de": "F Soja",
-                    "en": "F Soy"
-                  }
-                },
-                {
-                  "value": "G",
-                  "label": {
-                    "de": "G Milch",
-                    "en": "G Milk"
-                  }
-                },
-                {
-                  "value": "H",
-                  "label": {
-                    "de": "H Schalenfrüchte",
-                    "en": "H Tree nuts"
-                  }
-                },
-                {
-                  "value": "L",
-                  "label": {
-                    "de": "L Sellerie",
-                    "en": "L Celery"
-                  }
-                },
-                {
-                  "value": "M",
-                  "label": {
-                    "de": "M Senf",
-                    "en": "M Mustard"
-                  }
-                },
-                {
-                  "value": "N",
-                  "label": {
-                    "de": "N Sesam",
-                    "en": "N Sesame"
-                  }
-                },
-                {
-                  "value": "O",
-                  "label": {
-                    "de": "O Sulfite",
-                    "en": "O Sulphites"
-                  }
-                },
-                {
-                  "value": "P",
-                  "label": {
-                    "de": "P Lupinen",
-                    "en": "P Lupin"
-                  }
-                },
-                {
-                  "value": "R",
-                  "label": {
-                    "de": "R Weichtiere",
-                    "en": "R Molluscs"
-                  }
-                }
-              ],
-              "pos": 3
-            }
-          },
-          "min": 5,
-          "max": 5,
-          "unique": "day",
-          "default": [
-            {
-              "_id": "ldmo000000",
-              "day": "mo",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            },
-            {
-              "_id": "ldtu000000",
-              "day": "tu",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            },
-            {
-              "_id": "ldwe000000",
-              "day": "we",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            },
-            {
-              "_id": "ldth000000",
-              "day": "th",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            },
-            {
-              "_id": "ldfr000000",
-              "day": "fr",
-              "dish": {
-                "de": "Wird noch bekannt gegeben",
-                "en": "To be announced"
-              },
-              "allergens": []
-            }
-          ],
-          "pos": 1
-        },
-        "note": {
-          "type": "text",
-          "label": {
-            "de": "Hinweis",
-            "en": "Note"
-          },
-          "max": 200,
-          "optional": true,
-          "pos": 2
-        }
-      },
-      "max": 3,
-      "order": {
-        "field": "weekOf",
-        "dir": "asc"
-      },
-      "visible": {
-        "mode": "until",
-        "field": "weekOf",
-        "days": 6,
-        "deleteExpired": true
-      },
-      "plans": {
-        "brick": "lunch",
-        "field": "weekOf"
-      },
-      "tasks": [
-        {
-          "id": "planNext",
-          "label": {
-            "de": "Nächste Woche planen",
-            "en": "Plan next week"
-          },
-          "kind": "create",
-          "prefill": {
-            "weekOf": "@nextWorkWeek"
-          }
-        },
-        {
-          "id": "edit",
-          "label": {
-            "de": "Geplante Woche bearbeiten",
-            "en": "Edit a planned week"
-          },
-          "kind": "edit",
-          "pick": true,
-          "fields": [
-            "weekOf",
-            "days",
-            "note"
-          ]
-        },
-        {
-          "id": "remove",
-          "label": {
-            "de": "Geplante Woche entfernen",
-            "en": "Remove a planned week"
-          },
-          "kind": "remove"
-        }
-      ],
       "pos": 10
     }
   },

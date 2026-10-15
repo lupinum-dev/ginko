@@ -10,7 +10,8 @@ const { hours, hourPlans, data, plans, ctx } = useHours()
 
 // Special hours are listed only where they apply: a closure over the same day wins (see hoursOn).
 const shown = (e: Exception) => spansOf(e).length > 0 && hoursOn(ctx.value, e.when.from).field === `exceptions.${e._id}.reason`
-// The week that applies today (a running season replaces the standard week), then the plans that start soon.
+// The week that applies today (a running season replaces the standard week), then the plans that start soon, each
+// headed with its dates (a season with its end, "new hours from a date" with its start only).
 const week = computed(() => weekFor(ctx.value, today.value).week)
 const coming = computed(() => upcomingPlans(plans.value, today.value, 120))
 // A day set in "Geschlossen am" (closedOn) after today is listed like a closure; today's row shows today's.
@@ -49,7 +50,7 @@ const todayCell = computed(() => {
       </tbody>
     </table>
     <div v-for="c in coming" :key="c.plan._id" class="plan">
-      <h3>{{ t('fromDate', { date: format.date(c.starts, { day: 'numeric', month: 'long' }) }) }}<template v-if="c.plan.label">: <span :lang="langOf(itemOf(c.plan._id), 'label')">{{ c.plan.label }}</span></template></h3>
+      <h3>{{ c.ends ? format.range(c.starts, c.ends, { day: 'numeric', month: 'long' }) : t('fromDate', { date: format.date(c.starts, { day: 'numeric', month: 'long' }) }) }}<template v-if="c.plan.label">: <span :lang="langOf(itemOf(c.plan._id), 'label')">{{ c.plan.label }}</span></template></h3>
       <table>
         <tbody>
           <tr v-for="d in c.plan.week" :key="d.day">
