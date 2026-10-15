@@ -104,7 +104,7 @@ const form = useEntryForm({
     return true
   },
 })
-const { draft, baseline, issues, problem, conflict, busy, slow, waiting, dirty, confirm, localOffer } = form
+const { draft, baseline, issues, problem, conflict, busy, offline, waiting, dirty, confirm, localOffer } = form
 
 function start() {
   form.load(props.entry ? { ...props.entry.data } : defaultsFor(fields.value))
@@ -496,7 +496,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           <!-- The live region must be in the accessibility tree before its text appears, so empty means sr-only (no space), not hidden. -->
           <p :class="['basis-full text-sm empty:sr-only', size?.over ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ size?.text }}</p>
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-          <Button type="submit" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (slow ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
+          <Button type="submit" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
           <Button v-if="isDraft && !publishing && !removed" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
           <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
           <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>

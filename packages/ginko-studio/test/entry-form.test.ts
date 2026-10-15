@@ -11,6 +11,9 @@ for (const name of ['ref', 'shallowRef', 'computed', 'reactive', 'watch', 'nextT
 vi.stubGlobal('onBeforeRouteLeave', () => {})
 vi.stubGlobal('onBeforeRouteUpdate', () => {})
 vi.stubGlobal('useConvexAuth', () => ({ user: vue.ref({ id: 'u1' }) }))
+/** The Convex WebSocket, as useConvexConnectionState reports it. */
+const connected = vue.ref(true)
+vi.stubGlobal('useConvexConnectionState', () => ({ isConnected: connected }))
 const toasts: string[] = []
 vi.stubGlobal('useToast', () => ({ show: (text: string) => toasts.push(text) }))
 
@@ -21,11 +24,14 @@ const stored: Entry = {
 }
 /** The next save is refused with this error (a conflict), as the server does. */
 let refuseNext: unknown
+/** While set, the next save waits for it, as a save on its way does. */
+let landing: Promise<void> | undefined
 /** The live list's view of the entry: undefined once someone removed it. */
 const live = vue.shallowRef<Entry | undefined>(stored)
 vi.stubGlobal('useOps', () => ({
   opId: () => 'op',
   saveEntry: async (args: { entry: string; baseRev: number; fields: unknown }) => {
+    await landing
     const refused = refuseNext
     refuseNext = undefined
     if (refused) throw refused
@@ -78,6 +84,8 @@ beforeEach(() => {
   toasts.length = 0
   live.value = stored
   refuseNext = undefined
+  landing = undefined
+  connected.value = true
   localStorage.clear()
 })
 
@@ -139,6 +147,30 @@ describe('useEntryForm', () => {
     expect(calls).toEqual([
       ['save', { entry: 'e1', baseRev: 6, fields: { sides: [salad, { _id: 'r2', name: 'Frittatensuppe' }, { _id: 'r3', name: 'Kaspressknödel' }] } }],
     ])
+  })
+})
+
+describe('saving while the connection is down', () => {
+  // Wrong behaviour caught: a slow save on a working connection says "Wartet auf Verbindung …", or a save sent
+  // while the connection is down says "Wird gespeichert …".
+  test('the button waits for the connection only while a save is on its way and the connection is down', async () => {
+    vi.useFakeTimers()
+    try {
+      let land!: () => void
+      landing = new Promise((resolve) => { land = resolve })
+      const form = mountForm()
+      form.setField('name', 'Kalbsschnitzel')
+      const saving = form.save()
+      await vi.advanceTimersByTimeAsync(5000)
+      expect([form.busy.value, form.offline.value]).toEqual([true, false])
+      connected.value = false
+      expect(form.offline.value).toBe(true)
+      land()
+      expect(await saving).toBe(true)
+      expect(form.offline.value).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

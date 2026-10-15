@@ -62,7 +62,7 @@ const form = useEntryForm({
   draft: () => !isCreate.value && props.entry?.state === 'draft',
   removed: () => !isCreate.value && !!props.removed,
 })
-const { draft, baseline, ready, issues, problem, conflict, busy, slow, waiting, dirty, localOffer } = form
+const { draft, baseline, ready, issues, problem, conflict, busy, offline, waiting, dirty, localOffer } = form
 
 // Prefill (SPEC 2.7): stored values of the task's fields, then the task's preset, resolved on the server.
 const prefillArgs = computed(() => ({ site: props.site, task: ref_.value, ...(props.entry && !isCreate.value ? { entry: props.entry._id } : {}) }))
@@ -200,7 +200,7 @@ function onCancel(event: Event) {
         </template>
         <template v-else>
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-          <Button type="submit" class="flex-1" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (slow ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
+          <Button type="submit" class="flex-1" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
           <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>
         </template>
       </footer>

@@ -21,6 +21,7 @@ vi.stubGlobal('useToast', () => ({ show: () => {} }))
 vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
 vi.stubGlobal('useConvexMutation', () => ({ mutate: async () => ({}) }))
 vi.stubGlobal('useConvexAuth', () => ({ user: ref({ id: 'u1' }) }))
+vi.stubGlobal('useConvexConnectionState', () => ({ isConnected: ref(true) }))
 // Nothing is saved here: the writes are never called.
 vi.stubGlobal('useOps', () => ({}))
 

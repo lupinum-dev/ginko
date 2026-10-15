@@ -55,7 +55,9 @@ export function useEntryForm(o: EntryFormOptions) {
   const busy = ref(false)
   /** The last save went to approval (SPEC 17): the input stays, nothing changed on the website, so no new rev. Cleared by the next edit. */
   const waiting = ref(false)
-  const slow = ref(false)
+  // A save does not fail while the connection is down: Convex sends it once it is back. Until then the button says so.
+  const { isConnected } = useConvexConnectionState()
+  const offline = computed(() => busy.value && !isConnected.value)
   /** Leaves to confirm as translated without a change (Alles bearbeiten, foreign locale). */
   const confirm = ref<string[]>([])
   const blockers = reactive(new Map<string, string>())
@@ -154,8 +156,6 @@ export function useEntryForm(o: EntryFormOptions) {
       return false
     }
     busy.value = true
-    slow.value = false
-    const timer = setTimeout(() => { slow.value = true }, 4000)
     const op = ops.opId()
     // Read now: a sheet closed while the save waits for the connection is gone when it lands.
     const key = localKey.value
@@ -198,9 +198,7 @@ export function useEntryForm(o: EntryFormOptions) {
       showError(e as OpError)
       return false
     } finally {
-      clearTimeout(timer)
       busy.value = false
-      slow.value = false
     }
   }
   const created = ref<string | null>(null)
@@ -398,5 +396,5 @@ export function useEntryForm(o: EntryFormOptions) {
     localOffer.value = null
   }
 
-  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, slow, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
+  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, offline, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
 }
