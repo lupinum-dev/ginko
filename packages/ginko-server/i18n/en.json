@@ -287,9 +287,11 @@
       "subject": "Your sign-in code",
       "text": "Your sign-in code: {code}\n\nIt is valid for 5 minutes.\n"
     },
-    "reminder": {
-      "subject": "{brick} for next week is still missing",
-      "text": "Hello,\n\nfor “{site}”, “{brick}” is not filled in for next week yet. When the week starts, your guests would still see the old week.\n\nFill it in now: {link}\n\nThis reminder comes every week on the evening before it starts, as long as something is missing. To switch it off, use “Email reminders” at {settings}\n"
+    "weekly": {
+      "subject": "“{site}”: {count, plural, one {# thing} other {# things}} for the coming week",
+      "text": "Hello,\n\nfor “{site}”, something needs doing for the coming week:\n\n{items}\n\nOpen it now: {link}\n\nThis reminder comes every week on the evening before it starts, as long as something is due. To switch it off, use “Email reminders” at {settings}\n",
+      "item": "– {brick}: {line}",
+      "week": "not filled in for next week yet"
     },
     "digest": {
       "subject": "{count, plural, one {To review: # proposal for {site}} other {To review: # proposals for {site}}}",
@@ -305,10 +307,6 @@
     "rejected": {
       "subject": "Not approved: your change for {site}",
       "text": "Hello,\n\nyour change for “{site}” was not approved:\n\n{what}\n\nReason: “{reason}”\n\nFix it: {path}\n"
-    },
-    "statusReminder": {
-      "subject": "{brick}: {line}",
-      "text": "Hello,\n\nfor “{site}”, “{brick}” needs a look: {line}\n\nOpen it now: {link}\n\nThis reminder comes every week on the evening before it starts, as long as something is due. To switch it off, use “Email reminders” at {settings}\n"
     }
   },
   "content": {

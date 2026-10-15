@@ -18,7 +18,7 @@ afterEach(() => {
 type Backend = Awaited<ReturnType<typeof setup>>
 
 async function mails(t: Backend['t']) {
-  return (await t.run((ctx) => ctx.db.query('outbox').collect())).filter((m) => m.subject.startsWith('Mittagsmenü'))
+  return t.run((ctx) => ctx.db.query('outbox').collect())
 }
 
 /** The restaurant corpus without its planned lunch week, so the lunch brick alone decides. */
@@ -54,10 +54,24 @@ describe('reminders.sweep', () => {
     const sent = await mails(s.t)
     expect(sent.map((m) => m.to).sort()).toEqual(['koch@example.com', 'wirtin@example.com'])
     expect(sent[0]).toMatchObject({
-      subject: 'Mittagsmenü für nächste Woche fehlt noch',
-      text: expect.stringContaining('https://ginko.test/s/restaurant'),
+      subject: '„Gasthaus zur Linde“: 1 Punkt für die kommende Woche',
+      text: expect.stringContaining('– Mittagsmenü: für nächste Woche noch nicht eingetragen\n'),
     })
+    expect(sent[0]!.text).toContain('https://ginko.test/s/restaurant')
     expect(sent[0]!.text).toContain('Erinnerungen per E-Mail')
+  })
+
+  // Wrong behaviour caught: a person gets one mail per due item on the same Sunday (decision C: one mail per person and
+  // site), or the combined mail lists an item they cannot fix.
+  it('puts the lunch week and every due status line into one mail per person', async () => {
+    const s = await setupUnplanned()
+    await setStatus(s, 'notices', { count: true })
+    expect(await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })).toEqual({ sent: 2 })
+    const sent = Object.fromEntries((await mails(s.t)).map((m) => [m.to, m]))
+    expect(sent['wirtin@example.com']!.subject).toBe('„Gasthaus zur Linde“: 2 Punkte für die kommende Woche')
+    expect(sent['wirtin@example.com']!.text).toContain('– Mittagsmenü: für nächste Woche noch nicht eingetragen\n– Hinweise: 1 endet in den nächsten 7 Tagen\n')
+    expect(sent['koch@example.com']!.subject).toBe('„Gasthaus zur Linde“: 1 Punkt für die kommende Woche')
+    expect(sent['koch@example.com']!.text).not.toContain('Hinweise')
   })
 
   // Wrong behaviour caught: "Meine Seiten" offered the reminder mail to everyone, also where it can never mail them.
@@ -90,8 +104,8 @@ describe('reminders.sweep', () => {
     // The corpus notice "Weinabend" shows until 2026-10-16, inside the week from Monday 2026-10-12.
     expect(await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })).toEqual({ sent: 1 })
     const sent = await s.t.run((ctx) => ctx.db.query('outbox').collect())
-    expect(sent.map((m) => [m.to, m.subject])).toEqual([['wirtin@example.com', 'Hinweise: 1 endet in den nächsten 7 Tagen']])
-    expect(sent[0]!.text).toContain('1 endet in den nächsten 7 Tagen')
+    expect(sent.map((m) => [m.to, m.subject])).toEqual([['wirtin@example.com', '„Gasthaus zur Linde“: 1 Punkt für die kommende Woche']])
+    expect(sent[0]!.text).toContain('– Hinweise: 1 endet in den nächsten 7 Tagen')
     expect(sent[0]!.text).toContain('https://ginko.test/s/restaurant')
     expect(await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA + 20 * 60 * 1000 })).toEqual({ sent: 0 })
   })

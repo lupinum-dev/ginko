@@ -286,9 +286,11 @@
       "subject": "Votre code de connexion",
       "text": "Votre code de connexion : {code}\n\nIl est valable 5 minutes.\n"
     },
-    "reminder": {
-      "subject": "{brick} pour la semaine prochaine est encore manquant",
-      "text": "Bonjour,\n\npour « {site} », « {brick} » n’est pas encore rempli pour la semaine prochaine. Au début de la semaine, vos clients verraient encore l’ancienne semaine.\n\nRemplissez-le maintenant : {link}\n\nCe rappel arrive chaque semaine, la veille au soir, tant qu’il manque quelque chose. Pour le désactiver, utilisez « Rappels par e-mail » sur {settings}\n"
+    "weekly": {
+      "subject": "« {site} » : {count, plural, one {# point} other {# points}} pour la semaine à venir",
+      "text": "Bonjour,\n\npour « {site} », il y a quelque chose à faire pour la semaine à venir :\n\n{items}\n\nOuvrez-le maintenant : {link}\n\nCe rappel arrive chaque semaine, la veille au soir, tant qu’il reste quelque chose à faire. Pour le désactiver, utilisez « Rappels par e-mail » sur {settings}\n",
+      "item": "– {brick} : {line}",
+      "week": "pas encore rempli pour la semaine prochaine"
     },
     "digest": {
       "subject": "{count, plural, one {À relire : # proposition pour {site}} other {À relire : # propositions pour {site}}}",

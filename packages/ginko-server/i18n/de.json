@@ -287,9 +287,11 @@
       "subject": "Dein Anmeldecode",
       "text": "Dein Anmeldecode: {code}\n\nEr ist 5 Minuten gültig.\n"
     },
-    "reminder": {
-      "subject": "{brick} für nächste Woche fehlt noch",
-      "text": "Hallo,\n\nfür „{site}“ ist „{brick}“ noch nicht für nächste Woche eingetragen, zu Wochenbeginn sähen deine Gäste sonst die alte Woche.\n\nJetzt eintragen: {link}\n\nDiese Erinnerung kommt jede Woche am Abend vor Wochenbeginn, solange etwas fehlt. Ausschalten: „Erinnerungen per E-Mail“ unter {settings}\n"
+    "weekly": {
+      "subject": "„{site}“: {count, plural, one {# Punkt} other {# Punkte}} für die kommende Woche",
+      "text": "Hallo,\n\nfür „{site}“ ist für die kommende Woche etwas zu tun:\n\n{items}\n\nJetzt ansehen: {link}\n\nDiese Erinnerung kommt jede Woche am Abend vor Wochenbeginn, solange etwas zu tun ist. Ausschalten: „Erinnerungen per E-Mail“ unter {settings}\n",
+      "item": "– {brick}: {line}",
+      "week": "für nächste Woche noch nicht eingetragen"
     },
     "digest": {
       "subject": "{count, plural, one {Zu prüfen: # Vorschlag für {site}} other {Zu prüfen: # Vorschläge für {site}}}",
@@ -305,10 +307,6 @@
     "rejected": {
       "subject": "Nicht freigegeben: deine Änderung für {site}",
       "text": "Hallo,\n\ndeine Änderung für „{site}“ wurde nicht freigegeben:\n\n{what}\n\nGrund: „{reason}“\n\nKorrigieren: {path}\n"
-    },
-    "statusReminder": {
-      "subject": "{brick}: {line}",
-      "text": "Hallo,\n\nfür „{site}“ ist bei „{brick}“ etwas zu tun: {line}\n\nJetzt ansehen: {link}\n\nDiese Erinnerung kommt jede Woche am Abend vor Wochenbeginn, solange etwas zu tun ist. Ausschalten: „Erinnerungen per E-Mail“ unter {settings}\n"
     }
   },
   "content": {

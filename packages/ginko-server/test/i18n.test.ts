@@ -65,8 +65,8 @@ describe('mail', () => {
     await s.as.cook.mutation(api.account.setLocale, { locale: 'en' })
     await s.t.mutation(internal.reminders.sweep, { now: Date.parse('2026-10-11T15:30:00Z') })
     const sent = await s.t.run((ctx) => ctx.db.query('outbox').collect())
-    expect(sent.find((m) => m.to === 'koch@example.com')).toMatchObject({ subject: 'Lunch menu for next week is still missing' })
-    expect(sent.find((m) => m.to === 'wirtin@example.com')).toMatchObject({ subject: 'Mittagsmenü für nächste Woche fehlt noch' })
+    expect(sent.find((m) => m.to === 'koch@example.com')).toMatchObject({ subject: '“Gasthaus zur Linde”: 1 thing for the coming week' })
+    expect(sent.find((m) => m.to === 'wirtin@example.com')).toMatchObject({ subject: '„Gasthaus zur Linde“: 1 Punkt für die kommende Woche' })
   })
 
   // Wrong behaviour caught: a person who never picked a language gets German mail although their Studio is English;
@@ -82,8 +82,8 @@ describe('mail', () => {
     expect((await s.as.owner.query(api.account.settings, {})).locale).toBeNull()
     await s.t.mutation(internal.reminders.sweep, { now: Date.parse('2026-10-11T15:30:00Z') })
     const sent = await s.t.run((ctx) => ctx.db.query('outbox').collect())
-    expect(sent.find((m) => m.to === 'wirtin@example.com')).toMatchObject({ subject: 'Lunch menu for next week is still missing' })
-    expect(sent.find((m) => m.to === 'koch@example.com')).toMatchObject({ subject: 'Mittagsmenü für nächste Woche fehlt noch' })
+    expect(sent.find((m) => m.to === 'wirtin@example.com')).toMatchObject({ subject: '“Gasthaus zur Linde”: 1 thing for the coming week' })
+    expect(sent.find((m) => m.to === 'koch@example.com')).toMatchObject({ subject: '„Gasthaus zur Linde“: 1 Punkt für die kommende Woche' })
   })
 
   // Wrong behaviour caught: the invitee gets the mail in the language of the site's default, not of the person who invited.

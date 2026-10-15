@@ -287,9 +287,11 @@
       "subject": "Tu código de inicio de sesión",
       "text": "Tu código de inicio de sesión: {code}\n\nEs válido durante 5 minutos.\n"
     },
-    "reminder": {
-      "subject": "Aún falta {brick} de la próxima semana",
-      "text": "Hola:\n\nen “{site}”, “{brick}” aún no está completado para la próxima semana. Cuando empiece la semana, tus clientes seguirían viendo la semana anterior.\n\nCompleta ahora: {link}\n\nEste recordatorio llega cada semana la tarde antes de que empiece, mientras falte algo. Para desactivarlo, usa “Recordatorios por correo” en {settings}\n"
+    "weekly": {
+      "subject": "“{site}”: {count, plural, one {# cosa} other {# cosas}} para la próxima semana",
+      "text": "Hola:\n\nen “{site}” hay algo pendiente para la próxima semana:\n\n{items}\n\nÁbrelo ahora: {link}\n\nEste recordatorio llega cada semana la tarde antes de que empiece, mientras haya algo pendiente. Para desactivarlo, usa “Recordatorios por correo” en {settings}\n",
+      "item": "– {brick}: {line}",
+      "week": "aún sin completar para la próxima semana"
     },
     "digest": {
       "subject": "{count, plural, one {Por revisar: # propuesta para {site}} other {Por revisar: # propuestas para {site}}}",
@@ -305,10 +307,6 @@
     "rejected": {
       "subject": "No aprobado: tu cambio para {site}",
       "text": "Hola:\n\ntu cambio para «{site}» no se aprobó:\n\n{what}\n\nMotivo: «{reason}»\n\nCorregir: {path}\n"
-    },
-    "statusReminder": {
-      "subject": "{brick}: {line}",
-      "text": "Hola:\n\nen “{site}”, “{brick}” necesita tu atención: {line}\n\nÁbrelo ahora: {link}\n\nEste recordatorio llega cada semana la tarde antes de que empiece, mientras haya algo pendiente. Para desactivarlo, usa “Recordatorios por correo” en {settings}\n"
     }
   },
   "content": {
