@@ -7,10 +7,10 @@ import { ref } from 'vue'
 import type { Locale } from '../src/index.ts'
 import type { Bundle, Schema } from '../src/internal.ts'
 import { agentRequest, withUrl } from '../src/nuxt/runtime/shared.ts'
-import { siteJsonLd } from '../src/basics/index.ts'
+import { jobJsonLd, siteJsonLd } from '../src/basics/index.ts'
 import { BUNDLE_STATE, TODAY_STATE, useGinkoLang, useGinkoBreadcrumbs, useGinkoEntry, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, useGinkoPath } from '../src/nuxt/runtime/composables.ts'
 import * as shim from './shims/imports.ts'
-import { i18nLocale, routePath, seoConfig, useState } from './shims/imports.ts'
+import { i18nLocale, routePath, seoConfig, siteCountry, useState } from './shims/imports.ts'
 import { installOgImage } from './shims/og.ts'
 import { installSchemaOrg } from './shims/schema-org.ts'
 import siteSchema from './shims/schema.ts'
@@ -114,6 +114,22 @@ describe('useGinkoSeo', () => {
     const own = siteJsonLd({ city: 'Linz' }, { name: 'Restaurant', url: 'https://restaurant.test', type: 'LocalBusiness' })
     const types = run('/', { title: 'Home', jsonLd: [own] }).script.map((s) => JSON.parse(s.innerHTML)['@type'])
     expect(types).toStrictEqual(['WebSite', 'LocalBusiness'])
+  })
+
+  // Wrong behaviour caught: the site's `country` (ginko.config.ts) never reaches the JSON-LD, so every page that uses
+  // siteJsonLd or jobJsonLd has to repeat it; or the default overrides a country the page passed.
+  test('the site country fills addressCountry and remote applicants where the page left them out', () => {
+    siteCountry.value = 'DE'
+    try {
+      const job = jobJsonLd({ title: 'Koch', url: 'https://restaurant.test/jobs/koch', description: 'Kochen', datePosted: '2026-10-01', validUntil: '2026-11-01', remote: 'remote', location: 'Linz', organization: { name: 'Restaurant', url: 'https://restaurant.test' } })
+      const nodes = run('/', { title: 'Home', jsonLd: [siteJsonLd({ city: 'Linz' }, { name: 'Restaurant', url: 'https://restaurant.test', type: 'LocalBusiness' }), job, siteJsonLd({ city: 'Wien' }, { name: 'B', url: 'https://b.test', country: 'AT' })] }).script.map((s) => JSON.parse(s.innerHTML))
+      expect(nodes[1].address.addressCountry).toBe('DE')
+      expect(nodes[2].jobLocation.address.addressCountry).toBe('DE')
+      expect(nodes[2].applicantLocationRequirements).toStrictEqual({ '@type': 'Country', name: 'DE' })
+      expect(nodes[3].address.addressCountry).toBe('AT')
+    } finally {
+      siteCountry.value = ''
+    }
   })
 
   test('a "<" in JSON-LD cannot close the script element', () => {

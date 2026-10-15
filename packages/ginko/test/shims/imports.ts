@@ -63,9 +63,11 @@ export function useHead(input: unknown) {
 
 /** `seo` of the site config; tests set it. */
 export const seoConfig: Record<string, unknown> = {}
+/** `country` of the site config ('' when unset); tests set it. */
+export const siteCountry = { value: '' }
 
 export function useRuntimeConfig() {
-  return { public: { ginko: { site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', seo: seoConfig, platform: 'https://platform.test', locales: ['de', 'en'], mainLocale: 'de', timeZone: 'Europe/Vienna' } } }
+  return { public: { ginko: { site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', seo: seoConfig, platform: 'https://platform.test', locales: ['de', 'en'], mainLocale: 'de', timeZone: 'Europe/Vienna', country: siteCountry.value } } }
 }
 
 export function createError(options: { statusCode: number; statusMessage: string; fatal?: boolean }) {

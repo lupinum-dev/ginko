@@ -55,7 +55,7 @@ export interface SiteData {
 }
 
 export interface SiteJsonLdOptions extends Pick<OrganizationLdInput, 'name' | 'url' | 'type' | 'logo' | 'sameAs'> {
-  /** The site's country (ISO 3166 code such as `DE`), written as `addressCountry`. Left out when not given. */
+  /** ISO 3166 code such as `DE`, written as `addressCountry`. Default (in `useGinkoSeo`): `country` of the site config. */
   country?: string
 }
 

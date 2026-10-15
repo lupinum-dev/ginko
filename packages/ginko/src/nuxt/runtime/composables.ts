@@ -6,7 +6,7 @@ import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
 import { useSchemaOrg } from '#ginko/schema-org'
 import {
-  applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, websiteLd,
+  applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, websiteLd, withCountry,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
 } from '../../internal.ts'
 import { withUrl, type GinkoPublicConfig } from './shared.ts'
@@ -268,7 +268,9 @@ export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
     })
   }
   // With nuxt-schema-org the page's JSON-LD joins that module's graph; `@context` belongs to the graph, not to a node.
-  if (useSchemaOrg) useSchemaOrg(computed(() => (toValue(input).jsonLd ?? []).map(({ '@context': _context, ...node }) => node)))
+  // The page's JSON-LD with the site's `country` where a builder left it out (siteJsonLd, jobJsonLd).
+  const pageLd = () => (toValue(input).jsonLd ?? []).map((node) => withCountry(node, config.country))
+  if (useSchemaOrg) useSchemaOrg(computed(() => pageLd().map(({ '@context': _context, ...node }) => node)))
   const trim = (p: string) => (p.length > 1 ? p.replace(/\/$/, '') : p)
   useHead(() => {
     const page = toValue(input)
@@ -276,7 +278,7 @@ export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
     const raw = generated ? undefined : (page.image ?? seo.image)
     const image = raw === undefined ? undefined : typeof raw === 'string' ? { url: absolute(raw) } : { ...raw, url: absolute(raw.url) }
     const head = seoHead({ siteName: config.name, titleTemplate: seo.titleTemplate, title: page.title, description: page.description ?? seo.description, image, type: page.type, noindex: page.noindex })
-    const ld = useSchemaOrg ? [] : [...(page.jsonLd ?? [])]
+    const ld = useSchemaOrg ? [] : pageLd()
     // The home page is the page whose main-language path is `/`.
     const home = Object.keys(schema.pages).find((key) => schema.pages[key]?.[config.mainLocale] === '/')
     if (!useSchemaOrg && home !== undefined && trim(route.path) === trim(path(home as GinkoPageKey, locale.value))) {

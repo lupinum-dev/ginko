@@ -76,7 +76,10 @@ export interface JobJsonLdInput {
   location?: string
   /** The employer: the site's name and address. */
   organization: { name: string; url: string; logo?: string }
-  /** The site's country (ISO 3166 code such as `DE`): `addressCountry`, and where remote applicants must live. */
+  /**
+   * ISO 3166 code such as `DE`: `addressCountry`, and where remote applicants must live. Default (in `useGinkoSeo`):
+   * `country` of the site config.
+   */
   country?: string
 }
 

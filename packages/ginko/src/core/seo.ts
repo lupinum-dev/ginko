@@ -69,6 +69,22 @@ export function websiteLd(o: { name: string; url: string; lang: string }): Recor
   return { '@context': 'https://schema.org', '@type': 'WebSite', name: o.name, url: o.url, inLanguage: o.lang }
 }
 
+/**
+ * `node` with the site's `country` (ISO 3166 code) where a builder left it out: `addressCountry` of every PostalAddress,
+ * and where remote applicants of a remote JobPosting must live. The Nuxt module applies it to a page's JSON-LD, so
+ * `siteJsonLd` and `jobJsonLd` need no `country` (an explicit one wins). An empty `country` changes nothing.
+ */
+export function withCountry<T>(node: T, country: string): T {
+  if (!country || node === null || typeof node !== 'object') return node
+  if (Array.isArray(node)) return node.map((item) => withCountry(item, country)) as T
+  const out: Record<string, unknown> = Object.fromEntries(Object.entries(node).map(([key, value]) => [key, withCountry(value, country)]))
+  if (out['@type'] === 'PostalAddress' && out.addressCountry === undefined) out.addressCountry = country
+  if (out['@type'] === 'JobPosting' && out.jobLocationType === 'TELECOMMUTE' && out.applicantLocationRequirements === undefined) {
+    out.applicantLocationRequirements = { '@type': 'Country', name: country }
+  }
+  return out as T
+}
+
 /** The schema.org types `organizationLd` writes. A page whose JSON-LD has a node of one of them is the site's organisation node. */
 export const ORGANIZATION_TYPES = ['Organization', 'LocalBusiness', 'NGO'] as const
 
