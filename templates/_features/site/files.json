@@ -23,14 +23,11 @@
   "app/error.vue",
   "app/layouts/default.vue",
   "app/pages/legal/[slug].vue",
-  "content/legal/1.privacy.de.md",
-  "content/legal/1.privacy.md",
-  "content/legal/2.terms.de.md",
-  "content/legal/2.terms.md",
-  "content/legal/3.imprint.de.md",
-  "content/legal/3.imprint.md",
+  "i18n/site/ar.json",
   "i18n/site/de.json",
   "i18n/site/en.json",
+  "i18n/site/fr.json",
   "modules/feature-messages.ts",
+  "modules/page-paths.ts",
   "site-url.ts"
 ]
