@@ -9,7 +9,7 @@ export { defineSite, single, collection, type SiteInput, type Migration, type Mi
 export type { LinkConfig } from './core/links.ts'
 export type { Redirect } from './core/redirects.ts'
 export { defineComponents, type ComponentDef, type ComponentRegistry } from './core/components.ts'
-export type { SeoImage } from './core/seo.ts'
+export { breadcrumbJsonLd, type SeoImage } from './core/seo.ts'
 export { f } from './core/fields.ts'
 export { formatMoney } from './core/money.ts'
 export { safeHref } from './core/href.ts'
