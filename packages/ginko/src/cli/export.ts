@@ -5,7 +5,7 @@
 // that has it is complete.
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { CliError, type SiteExport } from './model.ts'
+import { CliError, pathOf, type SiteExport } from './model.ts'
 import { PUSH_KEY_FORMAT, type Platform } from './platform.ts'
 
 export interface ExportInput {
@@ -18,25 +18,11 @@ export interface ExportInput {
   log: (line: string) => void
 }
 
-const EXTENSIONS: Record<string, string> = {
-  'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/avif': '.avif', 'application/pdf': '.pdf',
-}
-
 /** The site named by a push key `ginko_<site>_<32>`. The key is not part of any message. */
 export function siteOfKey(key: string): string {
   const match = PUSH_KEY_FORMAT.exec(key.trim())
   if (!match) throw new CliError('GINKO_KEY is not a valid key.', 'USAGE')
   return match[1]!
-}
-
-/** The folder `ginko export` writes to when no folder is given: `ginko-export-<site>-<YYYY-MM-DD>` in the working folder. */
-export function defaultDir(site: string, now: Date): string {
-  return `ginko-export-${site}-${now.toISOString().slice(0, 10)}`
-}
-
-/** Where a file lies in the export folder, relative to it. */
-export function pathOf(file: { id: string; mime: string }): string {
-  return `files/${file.id}${EXTENSIONS[file.mime] ?? ''}`
 }
 
 /** Refuses a folder that already holds something; a missing or empty one is fine. */
