@@ -280,6 +280,10 @@
                 "en": "Reason"
               },
               "max": 140,
+              "hint": {
+                "de": "Kurz, z. B. „Betriebsurlaub“ oder „Hochzeit“. Steht so auf der Website.",
+                "en": "Keep it short, e.g. “Annual holiday” or “Wedding party”. Shown like this on the website."
+              },
               "pos": 1
             },
             "closed": {

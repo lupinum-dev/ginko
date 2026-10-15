@@ -99,7 +99,10 @@ export function hours(opts: GastroOptions = {}) {
         itemLabel: both('Ausnahme', 'Exception'),
         fields: {
           when: f.daterange(both('Zeitraum', 'Dates')),
-          reason: f.text(both('Grund', 'Reason'), { max: 140 }),
+          reason: f.text(both('Grund', 'Reason'), {
+            max: 140,
+            hint: both('Kurz, z. B. „Betriebsurlaub“ oder „Hochzeit“. Steht so auf der Website.', 'Keep it short, e.g. “Annual holiday” or “Wedding party”. Shown like this on the website.'),
+          }),
           // A new exception is a closure unless the owner says otherwise.
           closed: f.boolean(both('Geschlossen', 'Closed'), { default: true }),
           // Special hours: "Geschlossen" off and times set, e.g. 24.12. from 11:00 to 14:00.

@@ -64,8 +64,10 @@ const todayCell = computed(() => {
       <ul>
         <li v-for="e in ahead" :key="e._id">
           <span class="when">{{ format.range(e.when.from, e.when.to) }}</span>
-          <span>
-            <template v-if="reasonOf(e)"><span :lang="reasonLang(e)">{{ reasonOf(e) }}</span>, </template><template v-if="e.closed">{{ t('closedFromTo') }}</template><template v-else>{{ special(e) }}</template>
+          <!-- The owner's reason and the state on their own lines: a reason is free text and may end in a full stop. -->
+          <span class="what">
+            <span v-if="reasonOf(e)" :lang="reasonLang(e)">{{ reasonOf(e) }}</span>
+            <span class="state">{{ e.closed ? t('closed') : special(e) }}</span>
           </span>
         </li>
       </ul>
@@ -88,5 +90,7 @@ tr.today th::after { content: ''; display: inline-block; width: 8px; height: 8px
 ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 li { display: grid; gap: 0 16px; }
 .when { font-weight: 700; }
+.what > span { display: block; }
+.state { color: var(--ink-2); }
 @media (min-width: 720px) { li { grid-template-columns: 18rem 1fr; } }
 </style>

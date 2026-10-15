@@ -110,7 +110,7 @@ test('a closure set for tomorrow is announced on the board and in the hours tabl
   await request.get(`${platform}/__control?mode=closedTomorrow`)
   await page.goto('/')
   await expect(page.locator('.closure').filter({ hasText: 'Wasserrohrbruch' })).toContainText('geschlossen')
-  await expect(page.locator('.hours .exceptions li').filter({ hasText: 'Wasserrohrbruch' })).toContainText('Wasserrohrbruch, geschlossen')
+  await expect(page.locator('.hours .exceptions li').filter({ hasText: 'Wasserrohrbruch' }).locator('.state')).toHaveText('Geschlossen')
 })
 
 // Wrong behaviour caught: a dish taken off the menu after its season was still listed (with its allergen letters), a

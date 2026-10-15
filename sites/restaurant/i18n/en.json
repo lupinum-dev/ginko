@@ -31,6 +31,7 @@
   "closedDay": "Closed",
   "exceptions": "Holidays and closures",
   "upcomingClosure": "Please note",
+  "closed": "Closed",
   "closedFromTo": "closed",
   "fromDate": "From {date}",
   "visit": "Find us",
