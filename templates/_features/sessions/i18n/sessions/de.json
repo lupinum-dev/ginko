@@ -4,7 +4,9 @@
     "lead": "Alle Programmpunkte nach Tagen, mit Uhrzeit, Raum und Vortragenden.",
     "days": "Tage",
     "all": "Ganzes Programm",
-    "empty": "Noch keine Programmpunkte"
+    "empty": "Noch keine Programmpunkte",
+    "tickets": "Tickets kaufen",
+    "now": "Zum aktuellen Programmpunkt"
   },
   "status": {
     "soldOut": "Ausgebucht",
@@ -16,7 +18,9 @@
     "now": "Jetzt",
     "next": "Als Nächstes, ab {time} Uhr",
     "nothing": "Gerade läuft nichts.",
-    "over": "Das Programm für heute ist zu Ende."
+    "over": "Das Programm für heute ist zu Ende.",
+    "before": "Das Programm beginnt um {time} Uhr.",
+    "later": "Das war der heutige Tag. Weiter geht es am {day} um {time} Uhr."
   },
   "speakers": {
     "title": "Vortragende",

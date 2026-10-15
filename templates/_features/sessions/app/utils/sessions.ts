@@ -29,18 +29,35 @@ export function byDay<S extends { date: string }>(sessions: readonly S[]): { dat
   return days
 }
 
+/** What nowAndNext says about a moment of an event day. */
+export interface NowAndNext<S> {
+  /** The date has sessions; otherwise the rest is empty and the home page shows nothing. */
+  day: boolean
+  /** The sessions running at the clock, from their start up to, not including, their end. */
+  now: S[]
+  /** The sessions with the next start time after the clock on the same day, all of them when several rooms start together. */
+  next: S[]
+  /** Nothing has started yet today: the programme begins with `next`. */
+  before: boolean
+  /** The day's last session has ended. */
+  over: boolean
+  /** The first session of the next date with sessions, for "the programme continues on …" when the day is over. */
+  later?: S
+}
+
 /**
- * What is on at `clock` on `date` and what comes next, from sessions in programme order. Only on a day with sessions
- * (`day: false` otherwise, and the home page shows nothing). `now`: the sessions running at the clock (from its start
- * up to, not including, its end). `next`: the sessions with the next start time after the clock on the same day,
- * all of them when several rooms start together. `over`: the day's last session has ended. A cancelled session counts
- * like the others, so its room and time still show with the word "cancelled".
+ * What is on at `clock` on `date` and what comes next, from sessions in programme order. Only on a day with sessions.
+ * A cancelled session is never "now" or "next", and its start time does not count as the next one: a visitor who scans
+ * "now" would walk to its room. The programme still shows it with the word "cancelled".
  */
-export function nowAndNext<S extends SessionTimes>(sessions: readonly S[], date: string, clock: string): { day: boolean, now: S[], next: S[], over: boolean } {
-  const today = sessions.filter((s) => s.date === date)
-  if (!today.length) return { day: false, now: [], next: [], over: false }
+export function nowAndNext<S extends SessionTimes>(sessions: readonly S[], date: string, clock: string): NowAndNext<S> {
+  if (!sessions.some((s) => s.date === date)) return { day: false, now: [], next: [], before: false, over: false }
+  const held = sessions.filter((s) => s.status !== 'cancelled')
+  const today = held.filter((s) => s.date === date)
   const now = today.filter((s) => s.from <= clock && clock < s.to)
   const start = today.map((s) => s.from).filter((from) => from > clock).sort()[0]
   const next = start ? today.filter((s) => s.from === start) : []
-  return { day: true, now, next, over: !now.length && !next.length }
+  const over = !now.length && !next.length
+  const later = over ? held.find((s) => s.date > date) : undefined
+  return { day: true, now, next, before: today.every((s) => s.from > clock), over, ...(later ? { later } : {}) }
 }

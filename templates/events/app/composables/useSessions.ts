@@ -1,5 +1,5 @@
 // Synced from templates/_features/sessions/app/composables/useSessions.ts by `pnpm templates sync`. Edit the source, not this copy.
-import { sessionsInOrder, type SessionStatus } from '@lupinum/ginko/basics'
+import { sessionsInOrder, type SessionJsonLdInput, type SessionStatus } from '@lupinum/ginko/basics'
 
 /** A session as the programme, a speaker's page and "now and next" show it: every value read from its entry. */
 export interface SessionEntry {
@@ -7,6 +7,8 @@ export interface SessionEntry {
   /** The id of its event (`events/<name>`). */
   event: string
   title: string
+  /** One or two sentences: what it is about and who it is for. */
+  summary?: string
   date: string
   from: string
   to: string
@@ -16,22 +18,28 @@ export interface SessionEntry {
   speakers: { id: string, name: string, to?: string }[]
 }
 
+// A stored status this code does not know (`UnknownChoice`: added by a later release of basics) shows as open.
 const STATUSES: SessionStatus[] = ['open', 'soldOut', 'cancelled']
 
 /**
- * The sessions still to come (the brick hides a session after its day) in programme order: by date, then start time
- * (`sessionsInOrder`), with their speakers from `people`. The one place that reads the `sessions` brick, so the
- * programme, the speaker pages, "now and next" and the JSON-LD show the same time and room.
+ * The sessions still to come (the brick hides a session after its day) of the events on the site, in programme order:
+ * by date, then start time (`sessionsInOrder`), with their speakers from `people`. A session of an event that is not
+ * on the site (a draft, past, or without this language) is left out too: the reference to its event does not hide
+ * it. The one place that reads the `sessions` brick, so the programme, the speaker pages, "now and next" and the
+ * JSON-LD show the same sessions, times and rooms.
  */
 export function useSessions() {
   const sessions = useGinko('sessions')
+  const events = useGinko('events')
   const people = useGinko('people')
   return computed<SessionEntry[]>(() => {
+    const shown = new Set(events.value.items.map((event) => event.id))
     const byId = new Map(people.value.items.map((person) => [person.id, person]))
-    return sessionsInOrder(sessions.value.items).map((session) => ({
+    return sessionsInOrder(sessions.value.items).filter((session) => shown.has(session.data.event)).map((session) => ({
       id: session.id,
       event: session.data.event,
       title: session.data.title,
+      summary: session.data.summary ?? undefined,
       date: session.data.date,
       from: session.data.from,
       to: session.data.to,
@@ -75,25 +83,29 @@ export function useSessionClock() {
 }
 
 /**
- * schema.org Event per event that has sessions (useEventLd of the events feature), each session a `subEvent` with the
- * site's time zone offset, read from the same rows as the programme. For the programme page.
+ * "Now and next" at the clock of useSessionClock: the sessions running now, the next ones, whether the day is over and
+ * the first session of the next day with sessions. `state.day` is false on a day without sessions.
  */
-export function useProgrammeJsonLd(rows: () => SessionEntry[]) {
-  const events = useGinko('events')
-  const build = useEventLd()
-  return computed(() => events.value.items.flatMap((event) => {
-    const own = rows().filter((row) => row.event === event.id)
-    if (!own.length) return []
-    return [build({ ...event.data, url: event.url ?? '/' }, {
-      sessions: own.map((row) => ({
-        title: row.title,
-        date: row.date,
-        from: row.from,
-        to: row.to,
-        room: row.room,
-        speakers: row.speakers.map((speaker) => speaker.name),
-        status: row.status,
-      })),
-    })]
-  }))
+export function useNowAndNext() {
+  const rows = useSessions()
+  const { at, tick } = useSessionClock()
+  const state = computed(() => nowAndNext(rows.value, at.value.date, at.value.clock))
+  return { state, at, tick }
+}
+
+/**
+ * The sessions of one event for its Event JSON-LD (each a `subEvent`): the events feature's event page reads this
+ * function when the sessions feature is there, so the event page describes the whole programme.
+ */
+export function useSessionsLd(event: () => string) {
+  const rows = useSessions()
+  return computed<SessionJsonLdInput[]>(() => rows.value.filter((row) => row.event === event()).map((row) => ({
+    title: row.title,
+    date: row.date,
+    from: row.from,
+    to: row.to,
+    room: row.room,
+    speakers: row.speakers.map((speaker) => speaker.name),
+    status: row.status,
+  })))
 }

@@ -4,7 +4,9 @@
     "lead": "Every session by day, with time, room and speakers.",
     "days": "Days",
     "all": "Full programme",
-    "empty": "No sessions yet"
+    "empty": "No sessions yet",
+    "tickets": "Get tickets",
+    "now": "Go to what is on now"
   },
   "status": {
     "soldOut": "Sold out",
@@ -16,7 +18,9 @@
     "now": "Now",
     "next": "Next, from {time}",
     "nothing": "Nothing is on right now.",
-    "over": "That was today’s programme."
+    "over": "That was today’s programme.",
+    "before": "The programme starts at {time}.",
+    "later": "That was today. The programme continues on {day} at {time}."
   },
   "speakers": {
     "title": "Speakers",

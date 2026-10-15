@@ -34,7 +34,7 @@ usePageSeo(() => ({
         {{ t('speakers.all') }}
       </NuxtLink>
     </div>
-    <header class="mx-auto max-w-page px-gutter pt-4 pb-8 md:pb-12">
+    <header class="mx-auto max-w-page px-gutter pt-4">
       <div class="flex max-w-3xl flex-col gap-5">
         <GinkoImage
           v-if="person.data.photo"
@@ -52,7 +52,7 @@ usePageSeo(() => ({
     <BlockSection :title="t('speakers.sessions')" :side="false">
       <ul v-if="talks.length" class="flex flex-col divide-y border-y">
         <li v-for="session in talks" :key="session.id">
-          <SessionRow :session="session" day />
+          <SessionRow :session="session" day :self="person.id" />
         </li>
       </ul>
       <p v-else class="text-muted-foreground">{{ t('speakers.none') }}</p>
