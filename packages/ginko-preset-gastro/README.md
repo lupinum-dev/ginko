@@ -1,7 +1,7 @@
 # @lupinum/ginko-preset-gastro
 
 Restaurant bricks for [Ginko](https://github.com/lupinum-dev/ginko) sites, with the owner's quick tasks
-built in: "Closed today", "Fully booked today", the lunch menu of the week, a price change.
+built in: "Closed today", "Fully booked today", "Dish sold out today", the lunch menu of the week, a price change.
 
 - **Bricks:** `hours()`, `hourPlans()`, `notices()`, `lunch()`, `lunchPlans()`, `menu()`, `events({ route })`, `gallery()`.
 - **Allergens:** the 14 EU allergens with the Austrian letter codes (`allergensEU`), and visitor names in
@@ -63,7 +63,12 @@ These are all the public names. Everything else in the package is internal and c
 
 **Brick factories.** `hours`, `hourPlans`, `notices`, `lunch`, `lunchPlans`, `menu`, `events`, `gallery`: see [Options](#options).
 Their stored field names (`week`, `exceptions`, `closedOn`, `closedNote`, `holidayNoticeDays`, `holidays`, `from1` to `to2`,
-`weekOf`, `days`, `nextPrice`, `priceFrom` and so on) are the data of your site. They do not change.
+`weekOf`, `days`, `nextPrice`, `priceFrom`, `onMenu`, `soldOutOn`, `soldOut` and so on) are the data of your site. They do not change.
+
+Availability: a dish has `onMenu` ("On the menu", off after its season; the dish stays saved) and `soldOutOn` (a date:
+sold out on that day only, quick task "Dish sold out today"). An event has `soldOut` ("Fully booked", quick task "Event
+fully booked"): show it instead of the booking link. All three are optional, so older entries and Markdown files stay
+valid: a missing field means on the menu, not sold out, and bookable.
 
 A day has at most two opening periods (`from1`–`to1` and `from2`–`to2`, labelled lunch and evening). This is a limit of
 the stored data, the same in the week, in hour plans and in exceptions.
@@ -84,10 +89,11 @@ the stored data, the same in the week, in hour plans and in exceptions.
 | `timesOf(day, and)` | One day's opening times as text: `11:30–14:00 and 17:30–22:00` (empty when closed). |
 | `spansOf(times)`, `spansText(spans, and)` | The time spans of a day, and the spans joined as text. |
 | `lunchWeekOn(main, planned, today, week)` | The lunch week to show today: a planned week, the main `lunch` data, or nothing. `week` is the site's week info. |
+| `dishOn(dish, date)` | `{ shown, soldOut }`: `shown` is false for a dish taken off the menu (leave it out of the menu, the allergen key and the JSON-LD), `soldOut` is true on its `soldOutOn` day. |
 | `priceOn(item, date)` | The price on a date. `nextPrice` counts from `priceFrom` on. |
 | `upcomingPrice(item, today, days)` | `{ from, price }` for a price change in the next `days` days, else `undefined`. |
 | `restaurantJsonLd(input)` | schema.org `Restaurant` data. Prices are in minor units (cents), so `1250` is `12.50`. |
-| `eventJsonLd(input)` | schema.org `Event` data for one event. Same price rule. |
+| `eventJsonLd(input)` | schema.org `Event` data for one event. Same price rule. With `soldOut: true` the offer says `SoldOut` and has no booking link. |
 
 Types: `HoursData`, `HoursContext`, `DayHours`, `DayRule` (what `hoursOn` returns), `HoursSource`, `Span`, `Exception`, `HourPlan`,
 `HolidayClosure`, `TodayState`, `Weekday`, `Holiday`,

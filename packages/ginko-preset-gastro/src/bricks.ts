@@ -1,7 +1,7 @@
 // Restaurant bricks with the owner's quick tasks. Labels and prefilled texts come in German and English. The site keeps
 // the texts of its own locales when its main locale is `de` or `en` (exactly: `de-CH` does not count); otherwise it
 // starts without the prefilled texts (`serializeSchema`).
-import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate } from '@lupinum/ginko'
+import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate, type Task } from '@lupinum/ginko'
 import type { ChoicesField, ListField } from '@lupinum/ginko/internal'
 import { allergenNames } from './names.ts'
 
@@ -240,12 +240,28 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
         { value: 'none', label: both('nicht vegetarisch', 'not vegetarian') }, { value: 'vegetarian', label: both('vegetarisch', 'vegetarian') }, { value: 'vegan', label: both('vegan', 'vegan') },
       ],
     }),
+    // Availability (see `dishOn`) is optional, so dishes stored before it and Markdown files stay valid: a missing
+    // `onMenu` means on the menu, a missing `soldOutOn` (below) means not sold out.
+    onMenu: f.boolean(both('Auf der Karte', 'On the menu'), {
+      optional: true, default: true,
+      hint: both('Ausschalten, wenn es das Gericht eine Zeit lang nicht gibt, z. B. nach der Saison. Es bleibt gespeichert, und du kannst es wieder einschalten.', 'Turn this off when the dish is not offered for a while, e.g. after its season. It stays saved, and you can turn it back on.'),
+    }),
     // A planned price change: the site shows `nextPrice` from `priceFrom` on (see `priceOn`).
     nextPrice: f.money(both('Neuer Preis', 'New price'), { optional: true }),
     priceFrom: f.date(both('Neuer Preis gilt ab', 'New price applies from'), { optional: true }),
+    // Sold out on one day only: the next day the dish is back by itself.
+    soldOutOn: f.date(both('Aus am', 'Sold out on'), {
+      optional: true,
+      hint: both('An diesem Tag steht das Gericht auf der Website als „heute aus“. Am nächsten Tag ist es wieder normal da.', 'On that day the website shows the dish as “sold out today”. The next day it is back as usual.'),
+    }),
   }
   // `allergens` exists only when the set is not 'none', which the type cannot see here.
-  const dishFields = (choices ? ['category', 'name', 'description', 'price', 'allergens', 'veg'] : ['category', 'name', 'description', 'price', 'veg']) as readonly (keyof typeof fields & string)[]
+  const dishFields = (choices ? ['category', 'name', 'description', 'price', 'allergens', 'veg', 'onMenu'] : ['category', 'name', 'description', 'price', 'veg', 'onMenu']) as readonly (keyof typeof fields & string)[]
+  // The allergen set keeps `fields` generic, so the type cannot check a prefill against it (as with `dishFields`).
+  // `soldOutOn` is a date field of every menu, and the schema check rejects a date token on any other field.
+  const soldOut = {
+    id: 'soldOut', label: both('Gericht heute aus', 'Dish sold out today'), kind: 'edit', pick: true, fields: ['soldOutOn'], prefill: { soldOutOn: '@today' },
+  } as unknown as Task<typeof fields>
   return collection({
     label: both('Speisekarte', 'Menu'),
     ...sourceOf(opts),
@@ -253,6 +269,8 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
     max: 150,
     order: 'manual',
     tasks: [
+      // The daily job first: it becomes the main quick task.
+      soldOut,
       { id: 'edit', label: both('Gericht bearbeiten', 'Edit a dish'), kind: 'edit', pick: true, fields: dishFields },
       { id: 'price', label: both('Preis ändern', 'Change a price'), kind: 'edit', pick: true, fields: ['price'] },
       { id: 'priceFrom', label: both('Preis ab …', 'Price from …'), kind: 'edit', pick: true, fields: ['nextPrice', 'priceFrom'] },
@@ -276,6 +294,8 @@ export function events(opts: GastroOptions & { route: Record<Locale, RouteTempla
       price: f.money(both('Preis', 'Price'), { optional: true }),
       booking: f.text(both('Reservierungs-Link', 'Booking link'), { format: 'url', optional: true }),
       image: f.image(both('Bild', 'Image'), { optional: true }),
+      // The site shows "Ausgebucht" instead of the booking link. Optional: a missing value means bookable.
+      soldOut: f.boolean(both('Ausgebucht', 'Fully booked'), { optional: true }),
     },
     max: 30,
     order: { field: 'when', dir: 'asc' },
@@ -283,6 +303,7 @@ export function events(opts: GastroOptions & { route: Record<Locale, RouteTempla
     route: opts.route,
     tasks: [
       { id: 'add', label: both('Veranstaltung hinzufügen', 'Add an event'), kind: 'create' },
+      { id: 'soldOut', label: both('Veranstaltung ausgebucht', 'Event fully booked'), kind: 'edit', pick: true, fields: ['soldOut'] },
       { id: 'remove', label: both('Veranstaltung entfernen', 'Remove an event'), kind: 'remove' },
     ],
   })

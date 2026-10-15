@@ -23,6 +23,7 @@ const month = (date: string) => new Intl.DateTimeFormat(lang.value === 'de' ? 'd
         <p class="meta">
           <span>{{ eventWhen(e.data.when, e.data.start) }}</span>
           <span v-if="e.data.price" class="price">{{ formatMoney(e.data.price, language) }}</span>
+          <span v-if="e.data.soldOut" class="booked" data-test="fully-booked">{{ t('fullyBooked') }}</span>
         </p>
       </div>
     </li>
@@ -41,4 +42,5 @@ h3 a { color: var(--ink); text-decoration: none; }
 h3 a::after { content: ''; position: absolute; inset: 0; }
 .event:hover h3 a { text-decoration: underline; text-decoration-thickness: 2px; }
 .meta { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 6px; color: var(--ink-2); }
+.booked { font-weight: 700; color: var(--ink); }
 </style>

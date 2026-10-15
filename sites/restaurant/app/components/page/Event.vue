@@ -28,6 +28,7 @@ const eventLd = computed(() => {
     image: e.image ? new URL(e.image.url, siteUrl).href : undefined,
     price: e.price,
     booking: safeHref(e.booking),
+    soldOut: e.soldOut === true,
   })
 })
 useGinkoSeo(() => ({ title: event.value.data.title, image: event.value.data.image?.url, jsonLd: [eventLd.value] }))
@@ -40,10 +41,11 @@ useGinkoSeo(() => ({ title: event.value.data.title, image: event.value.data.imag
     <p class="facts">
       <span class="when">{{ eventWhen(event.data.when, event.data.start) }}</span>
       <span v-if="event.data.price" class="price">{{ t('price') }}: {{ formatMoney(event.data.price, language) }}</span>
+      <span v-if="event.data.soldOut" class="booked" data-test="fully-booked">{{ t('fullyBooked') }}</span>
     </p>
     <img v-if="safeHref(event.data.image?.url)" class="image" :src="safeHref(event.data.image?.url)" :alt="event.data.image!.alt" :lang="langOf(event, 'image.alt')" :width="event.data.image!.width" :height="event.data.image!.height">
     <GinkoMarkdown :value="event.data.description" class="prose" :lang="langOf(event, 'description')" />
-    <a v-if="safeHref(event.data.booking)" class="button book" :href="safeHref(event.data.booking)" rel="noopener">{{ t('book') }}</a>
+    <a v-if="!event.data.soldOut && safeHref(event.data.booking)" class="button book" :href="safeHref(event.data.booking)" rel="noopener">{{ t('book') }}</a>
   </article>
 </template>
 
@@ -52,6 +54,7 @@ useGinkoSeo(() => ({ title: event.value.data.title, image: event.value.data.imag
 .page-title { margin-top: 12px; max-width: 22ch; }
 .facts { display: flex; flex-wrap: wrap; gap: 4px 24px; margin: 16px 0 28px; font-size: 1.2rem; }
 .when { font-weight: 700; color: var(--linde-ink); }
+.booked { padding: 0 10px; border-radius: 999px; background: var(--bluete); color: var(--ink); font-weight: 700; }
 .image { border-radius: var(--radius); margin-bottom: 28px; max-height: 32rem; width: 100%; object-fit: cover; }
 .book { margin-top: 28px; }
 </style>

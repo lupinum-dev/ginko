@@ -1040,6 +1040,20 @@
           ],
           "pos": 5
         },
+        "onMenu": {
+          "type": "boolean",
+          "label": {
+            "de": "Auf der Karte",
+            "en": "On the menu"
+          },
+          "optional": true,
+          "default": true,
+          "hint": {
+            "de": "Ausschalten, wenn es das Gericht eine Zeit lang nicht gibt, z. B. nach der Saison. Es bleibt gespeichert, und du kannst es wieder einschalten.",
+            "en": "Turn this off when the dish is not offered for a while, e.g. after its season. It stays saved, and you can turn it back on."
+          },
+          "pos": 6
+        },
         "nextPrice": {
           "type": "money",
           "label": {
@@ -1047,7 +1061,7 @@
             "en": "New price"
           },
           "optional": true,
-          "pos": 6
+          "pos": 7
         },
         "priceFrom": {
           "type": "date",
@@ -1056,12 +1070,40 @@
             "en": "New price applies from"
           },
           "optional": true,
-          "pos": 7
+          "pos": 8
+        },
+        "soldOutOn": {
+          "type": "date",
+          "label": {
+            "de": "Aus am",
+            "en": "Sold out on"
+          },
+          "optional": true,
+          "hint": {
+            "de": "An diesem Tag steht das Gericht auf der Website als „heute aus“. Am nächsten Tag ist es wieder normal da.",
+            "en": "On that day the website shows the dish as “sold out today”. The next day it is back as usual."
+          },
+          "pos": 9
         }
       },
       "max": 150,
       "order": "manual",
       "tasks": [
+        {
+          "id": "soldOut",
+          "label": {
+            "de": "Gericht heute aus",
+            "en": "Dish sold out today"
+          },
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "soldOutOn"
+          ],
+          "prefill": {
+            "soldOutOn": "@today"
+          }
+        },
         {
           "id": "edit",
           "label": {
@@ -1076,7 +1118,8 @@
             "description",
             "price",
             "allergens",
-            "veg"
+            "veg",
+            "onMenu"
           ]
         },
         {
@@ -1202,6 +1245,15 @@
           },
           "optional": true,
           "pos": 7
+        },
+        "soldOut": {
+          "type": "boolean",
+          "label": {
+            "de": "Ausgebucht",
+            "en": "Fully booked"
+          },
+          "optional": true,
+          "pos": 8
         }
       },
       "max": 30,
@@ -1225,6 +1277,18 @@
             "en": "Add an event"
           },
           "kind": "create"
+        },
+        {
+          "id": "soldOut",
+          "label": {
+            "de": "Veranstaltung ausgebucht",
+            "en": "Event fully booked"
+          },
+          "kind": "edit",
+          "pick": true,
+          "fields": [
+            "soldOut"
+          ]
         },
         {
           "id": "remove",
