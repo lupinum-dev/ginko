@@ -27,20 +27,19 @@ export const markdownStorageUrls = internalMutation({
   args: { cursor: v.optional(v.union(v.string(), v.null())) },
   handler: async (ctx, args): Promise<{ changed: number }> => {
     const page = await ctx.db.query('entries').paginate({ cursor: args.cursor ?? null, numItems: 10 })
-    const sites = new Map<Id<'sites'>, { site: Doc<'sites'> | null; uploads: Map<string, Id<'uploads'>> | undefined }>()
+    const sites = new Map<Id<'sites'>, { site: Doc<'sites'> | null } & TokenScan>()
     const touched = new Set<Id<'sites'>>()
     let changed = 0
     for (const row of page.page) {
-      if (!sites.has(row.site)) sites.set(row.site, { site: await ctx.db.get(row.site), uploads: undefined })
+      if (!sites.has(row.site)) sites.set(row.site, { site: await ctx.db.get(row.site), found: new Map() })
       const known = sites.get(row.site)!
       const schema = known.site?.schema as Schema | undefined
       const brick = schema && Object.hasOwn(schema.bricks, row.brick) ? schema.bricks[row.brick]! : undefined
       if (!schema || !brick) continue
-      let found = false
-      mapMarkdownTexts(brick.fields, row.data, (text) => { if (text.includes('/api/storage/')) found = true; return text })
-      if (!found) continue
-      known.uploads ??= await uploadTokens(ctx, row.site)
-      const uploads = known.uploads
+      const tokens = new Set<string>()
+      mapMarkdownTexts(brick.fields, row.data, (text) => { for (const m of text.matchAll(STORAGE_URL)) tokens.add(m[1]!); return text })
+      if (!tokens.size) continue
+      const uploads = await uploadTokens(ctx, row.site, tokens, known)
       const data = mapMarkdownTexts(brick.fields, row.data, (text) => text.replace(STORAGE_URL, (url, token: string) => {
         const upload = uploads.get(token)
         return upload ? `$file.${upload}` : url
@@ -69,15 +68,24 @@ export const markdownStorageUrls = internalMutation({
   },
 })
 
-/** Token of every current storage address of the site's uploads → the upload. */
-async function uploadTokens(ctx: MutationCtx, site: Id<'sites'>): Promise<Map<string, Id<'uploads'>>> {
-  const out = new Map<string, Id<'uploads'>>()
-  for (const upload of await ctx.db.query('uploads').withIndex('by_site', (q) => q.eq('site', site)).collect()) {
-    const stored = [upload.processedId, upload.storageId, ...(upload.variants ?? []).map((variant) => variant.storageId)]
-    for (const id of stored) {
+/** What one run learned of a site's storage addresses: token → upload, and the site's uploads not yet read. */
+interface TokenScan { found: Map<string, Id<'uploads'>>; rest?: AsyncIterator<Doc<'uploads'>> }
+
+/**
+ * The uploads behind `tokens` (storage address tokens of one text) among the current addresses of the site's uploads
+ * (original, processed file, variants). Reads the site's uploads only until every token is known and remembers what it
+ * read in `scan` for the next entry of the run, so a run asks for the address of each file at most once.
+ */
+async function uploadTokens(ctx: MutationCtx, site: Id<'sites'>, tokens: ReadonlySet<string>, scan: TokenScan): Promise<Map<string, Id<'uploads'>>> {
+  scan.rest ??= ctx.db.query('uploads').withIndex('by_site', (q) => q.eq('site', site))[Symbol.asyncIterator]()
+  while ([...tokens].some((token) => !scan.found.has(token))) {
+    const next = await scan.rest.next()
+    if (next.done) break
+    const upload = next.value
+    for (const id of [upload.processedId, upload.storageId, ...(upload.variants ?? []).map((variant) => variant.storageId)]) {
       const token = id === undefined ? undefined : tokenOf(await ctx.storage.getUrl(id))
-      if (token && !out.has(token)) out.set(token, upload._id)
+      if (token && !scan.found.has(token)) scan.found.set(token, upload._id)
     }
   }
-  return out
+  return scan.found
 }
