@@ -317,4 +317,22 @@ describe('budget (SPEC 3)', () => {
     await t.run((ctx) => ctx.db.patch(site, { bytes: 5 * 1024 * 1024 }))
     await expect(as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev: 2, fields: { imprint: { de: 'kurz' } } })).resolves.toMatchObject({ rev: 3 })
   })
+
+  // Wrong behaviour caught: 1 byte over the site budget said "4 MB von 4 MB" while refusing the save (volume-6).
+  it('a save just over the site budget names a used size above the limit', async () => {
+    const { t, as, entries, site } = await setup()
+    const save = (baseRev: number, de: string) => as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: entries.legal!, baseRev, fields: { imprint: { de } } })
+    const bytes = () => t.run(async (ctx) => (await ctx.db.get(entries.legal!))!.bytes)
+    // The entry's size with the longer text, then back to the shorter one.
+    await save(1, 'Impressum lang')
+    const longer = await bytes()
+    await save(2, 'Impressum')
+    const shorter = await bytes()
+    // The longer text again would take the site exactly 1 byte over its 4 MB.
+    await t.run((ctx) => ctx.db.patch(site, { bytes: 4 * 1024 * 1024 + 1 - longer + shorter }))
+    expect(await errorOf(save(3, 'Impressum lang'))).toMatchObject({
+      code: 'TOO_LARGE',
+      message: 'Der Speicher der Seite ist voll (4.1 MB von 4 MB). Kürze oder entferne Einträge. Änderungen, die nichts vergrößern, lassen sich immer speichern.',
+    })
+  })
 })

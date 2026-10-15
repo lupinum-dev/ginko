@@ -14,15 +14,22 @@ import { putTrees } from './trees'
 export { SITE_BUDGET as BUDGET } from '@lupinum/ginko/internal'
 import { SITE_BUDGET as BUDGET } from '@lupinum/ginko/internal'
 
-/** "340 KB", "4.2 MB": sizes in error texts, on the same 1024 base as the Studio's `sizeText` (components/files/util.ts). */
-export function sizeText(bytes: number): string {
-  const kb = Math.max(1, Math.round(bytes / 1024))
+/**
+ * "340 KB", "4.2 MB": sizes in error texts, on the same 1024 base as the Studio's `sizeText` (utils/size.ts). `up` rounds
+ * up, for a size over a limit and the amount to cut.
+ */
+export function sizeText(bytes: number, up = false): string {
+  const round = up ? Math.ceil : Math.round
+  const kb = Math.max(1, round(bytes / 1024))
   if (kb < 1024) return `${kb} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} MB`
+  return `${(round(bytes / (1024 * 1024) * 10) / 10).toFixed(1).replace(/\.0$/, '')} MB`
 }
 
-/** The params of a budget error: how much is used, the limit, and how much is over it. */
-export const overBudget = (used: number, limit: number) => ({ used: sizeText(used), limit: sizeText(limit), over: sizeText(used - limit) })
+/**
+ * The params of a budget error: how much is used, the limit, and how much is over it. Used and over round up, so
+ * 1 byte over 480 KB reads "481 KB von höchstens 480 KB … etwa 1 KB", never "480 KB von höchstens 480 KB".
+ */
+export const overBudget = (used: number, limit: number) => ({ used: sizeText(used, true), limit: sizeText(limit), over: sizeText(used - limit, true) })
 
 /** The `$file.<id>` words of Markdown texts that can name an upload: those with the form of an uploads ID. */
 export const uploadIdsOf = (ctx: QueryCtx): IsUploadId => (id) => ctx.db.normalizeId('uploads', id) !== null

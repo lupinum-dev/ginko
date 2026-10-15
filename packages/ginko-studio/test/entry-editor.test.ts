@@ -46,17 +46,21 @@ test('a never saved draft is asked about by the title typed so far', async () =>
 })
 
 // Wrong behaviour caught: the entry limit spans all fields and languages, so no field counter shows it and the
-// person learns of it only when Save is refused.
-test('the save bar says how much to cut when the entry is over the limit', async () => {
+// person learns of it only when Save is refused. Just over the limit, rounding said "480 KB von 480 KB" (volume-6).
+test.each([
+  { body: 500 * 1024 - 100, text: 'Dieser Eintrag ist zu groß: 500 KB von 480 KB. Kürze ihn um etwa 20 KB, dann lässt er sich speichern.' },
+  // A few bytes over (the form's other bytes are fewer than 40).
+  { body: 480 * 1024 - 19, text: 'Dieser Eintrag ist zu groß: 481 KB von 480 KB. Kürze ihn um etwa 1 KB, dann lässt er sich speichern.' },
+])('the save bar says how much to cut when the entry is over the limit ($body bytes of text)', async ({ body, text }) => {
   vi.useFakeTimers()
   try {
     const wrapper = mount(EntryEditor, {
       props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, canRemove: false },
       global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
     })
-    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'body', { de: 'x'.repeat(500 * 1024 - 100) })
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'body', { de: 'x'.repeat(body) })
     await vi.advanceTimersByTimeAsync(300)
-    expect(wrapper.get('.bar p').text()).toBe('Dieser Eintrag ist zu groß: 500 KB von 480 KB. Kürze ihn um etwa 20 KB, dann lässt er sich speichern.')
+    expect(wrapper.get('.bar p').text()).toBe(text)
   } finally {
     vi.useRealTimers()
   }
