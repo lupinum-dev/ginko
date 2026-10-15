@@ -26,7 +26,7 @@ export interface PostsOptions<R extends Record<Locale, RouteTemplate> | undefine
 export function posts<const R extends Record<Locale, RouteTemplate> | undefined = undefined>(o: PostsOptions<R> = {}) {
   const tag = t('Schlagwort', 'Tag', 'Etiqueta', 'Mot-clé')
   return collection({
-    label: o.label ?? t('Beiträge', 'Posts', 'Entradas', 'Articles'),
+    label: o.label ?? t('Beiträge', 'Posts', 'Artículos', 'Articles'),
     ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
