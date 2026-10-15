@@ -5,19 +5,17 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { manifestOf } from './template-files.mjs'
+import { manifestOf, notCopied } from './template-files.mjs'
 
 const source = fileURLToPath(new URL('../../templates/', import.meta.url))
 const out = fileURLToPath(new URL('./templates/', import.meta.url))
-// Build output, installs, secrets, lockfiles and test results never reach a new site.
-const skip = new Set(['node_modules', '.nuxt', '.output', '.data', '.env', 'test-results', 'pnpm-lock.yaml', 'package-lock.json', 'yarn.lock', 'bun.lock', 'bun.lockb'])
 
 rmSync(out, { recursive: true, force: true })
 mkdirSync(out)
 const names = readdirSync(source).filter((name) => !name.startsWith('_') && existsSync(join(source, name, 'package.json')) && statSync(join(source, name)).isDirectory())
 for (const name of names) {
   const target = join(out, name)
-  cpSync(join(source, name), target, { recursive: true, filter: (path) => !skip.has(basename(path)) })
+  cpSync(join(source, name), target, { recursive: true, filter: (path) => !notCopied.has(basename(path)) })
   // npm drops .gitignore from published packages; create-ginko renames it back.
   if (existsSync(join(target, '.gitignore'))) renameSync(join(target, '.gitignore'), join(target, 'gitignore'))
   const site = (await import(pathToFileURL(join(source, name, 'ginko.config.ts')).href)).default

@@ -1,3 +1,7 @@
+/** Lockfiles: a template commits none, and a new site makes its own. */
+export const lockfiles: readonly string[]
+/** Build output, installs, secrets, lockfiles and test results: never copied out of a template. */
+export const notCopied: ReadonlySet<string>
 export interface TemplateManifest {
   locales: string[]
   /** Brick key → the date and daterange fields that create-ginko moves to today. */

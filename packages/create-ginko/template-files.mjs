@@ -3,6 +3,11 @@
 import { existsSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
+/** Lockfiles: a template commits none (it installs from the repository root), and a new site makes its own. */
+export const lockfiles = ['pnpm-lock.yaml', 'package-lock.json', 'yarn.lock', 'bun.lock', 'bun.lockb', 'npm-shrinkwrap.json']
+/** Build output, installs, secrets, lockfiles and test results: never copied out of a template into a new site. */
+export const notCopied = new Set(['node_modules', '.nuxt', '.output', '.data', '.env', 'test-results', ...lockfiles])
+
 /** File types that `@lupinum/ginko-content` reads and whose top-level keys this module can find (no JSON, no CSV). */
 const textTypes = ['md', 'yml', 'yaml']
 
@@ -106,7 +111,7 @@ export function sampleDates(dir, shift) {
   return dates.sort()
 }
 
-/** Removes `<locale>: '…'` entries (one-line string values) from the object literals of a source file. */
+/** Removes `<locale>: '…'` entries (one-line string values) from the object literals of a source fragment. */
 function pruneMaps(source, locale) {
   const key = `(?<q>['"]?)${locale}\\k<q>\\s*:\\s*(?:'[^'\\n]*'|"[^"\\n]*")`
   return source
@@ -118,6 +123,29 @@ function pruneMaps(source, locale) {
     .replace(new RegExp(`\\{\\s*${key}\\s*\\}`, 'g'), '{}')
 }
 
+/**
+ * Applies pruneMaps only inside the locale maps of ginko.config.ts: the object after `languages:`, `route:` and
+ * `pages:` (whose values are paths or path maps). Other objects there, such as a field label `{ de: '…', en: '…' }`
+ * in the Studio's languages, stay whole.
+ */
+function pruneConfigMaps(source, locale) {
+  let out = ''
+  let from = 0
+  for (const match of source.matchAll(/\b(?:languages|route|pages)\s*:\s*\{/g)) {
+    const open = match.index + match[0].length - 1
+    if (open < from) continue
+    let depth = 0
+    let close = open
+    for (; close < source.length; close++) {
+      if (source[close] === '{') depth++
+      else if (source[close] === '}' && --depth === 0) break
+    }
+    out += source.slice(from, open) + pruneMaps(source.slice(open, close + 1), locale)
+    from = close + 1
+  }
+  return out + source.slice(from)
+}
+
 /** The locale suffix of a content path (`1.about.de.md` → `de`), if it is one of `locales`. */
 function suffixOf(name, locales) {
   const parts = name.split('.')
@@ -127,11 +155,12 @@ const withSuffix = (path, locale) => path.replace(/(\.[^./]+)$/, `.${locale}$1`)
 
 /**
  * Keeps the languages `chosen` (a subset of the template's `authored` locales; the first is the new main language) and
- * removes the others: their content files, `i18n/<locale>.json`, and their entries in the locale maps of
- * `ginko.config.ts` and `app/routes.ts`. The `locales` list there (in `app/routes.ts` if it exists, else in
+ * removes the others: their content files, `i18n/<locale>.json`, and their entries in the locale maps: every map
+ * in `app/routes.ts`, and `languages`, `route` and `pages` in `ginko.config.ts`. The `locales` list there (in `app/routes.ts` if it exists, else in
  * `ginko.config.ts`) becomes `chosen`. When the main language changes, the main files (no suffix) and the new main
  * language's files (`.<locale>.md`) swap names; a file without a translation stays as it is.
- * Contract for templates: URL prefixes derive from the locales list in code, so the swap needs no route edits.
+ * Contract for templates: URL prefixes derive from the locales list in code, so the swap needs no route edits, and
+ * `app/routes.ts` holds only locale maps (route slugs), no other object keyed by a language code.
  */
 export function pruneLocales(dir, authored, chosen) {
   const unknown = chosen.filter((locale) => !authored.includes(locale))
@@ -160,7 +189,7 @@ export function pruneLocales(dir, authored, chosen) {
   if (!list) throw new Error('The template names no locales list (`locales: [...]` or `const locales = [...]`) in app/routes.ts or ginko.config.ts.')
   for (const path of sources) {
     let source = readFileSync(path, 'utf8')
-    for (const locale of dropped) source = pruneMaps(source, locale)
+    for (const locale of dropped) source = path.endsWith('routes.ts') ? pruneMaps(source, locale) : pruneConfigMaps(source, locale)
     if (path === list) source = source.replace(/(\blocales\s*[:=]\s*\[)[^\]]*(\])/, (_, open, close) => `${open}${chosen.map((l) => `'${l}'`).join(', ')}${close}`)
     writeFileSync(path, source)
   }

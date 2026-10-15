@@ -73,6 +73,14 @@ describe('pruneLocales', () => {
     expect(read(dir, 'ginko.config.ts')).toBe("export default defineSite({\n  locales: ['en'],\n  languages: { en: 'en-GB' },\n})\n")
   })
 
+  // Wrong behaviour caught: dropping the site language `de` also strips the German Studio label of a field, which is
+  // not a site locale map.
+  it('prunes only the locale maps of ginko.config.ts, not a field label keyed by language', () => {
+    const dir = folder({ 'ginko.config.ts': "export default defineSite({\n  locales: ['en', 'de'],\n  languages: { en: 'en-GB', de: 'de-AT' },\n  pages: { home: { en: '/', de: '/de' } },\n  bricks: { posts: collection({ label: { de: 'Beiträge', en: 'Posts' }, route: { en: '/posts/[slug]', de: '/de/beitraege/[slug]' } }) },\n})\n" })
+    pruneLocales(dir, ['en', 'de'], ['en'])
+    expect(read(dir, 'ginko.config.ts')).toBe("export default defineSite({\n  locales: ['en'],\n  languages: { en: 'en-GB' },\n  pages: { home: { en: '/' } },\n  bricks: { posts: collection({ label: { de: 'Beiträge', en: 'Posts' }, route: { en: '/posts/[slug]' } }) },\n})\n")
+  })
+
   it('refuses a locale the template does not have and changes nothing', () => {
     const dir = folder(trilingual)
     expect(() => pruneLocales(dir, ['en', 'de', 'fr'], ['en', 'it'])).toThrow('Unknown locale "it". This template has: en, de, fr.')
