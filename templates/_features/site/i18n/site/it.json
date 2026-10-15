@@ -2,9 +2,9 @@
   "skip": "Vai al contenuto",
   "home": "Pagina iniziale",
   "nav": {
-    "label": "Menu principale",
-    "open": "Apri il menu",
-    "title": "Menu"
+    "label": "Navigazione principale",
+    "open": "Apri la navigazione",
+    "title": "Navigazione"
   },
   "close": "Chiudi",
   "theme": "Tema scuro",

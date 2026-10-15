@@ -7,8 +7,8 @@ export interface PageSeoInput {
   image?: GinkoSeoInput['image']
   /** The home page: the organisation from the `site` brick instead of WebPage and BreadcrumbList. */
   home?: boolean
-  /** Home page: more properties of the organisation, which win over those from content/site.md (a `Restaurant`
-   *  type, opening hours, a menu). */
+  /** Home page: more properties of the organisation, which win over those from content/site.md (a subtype such as
+   *  `Restaurant`, opening hours, a menu). */
   organization?: Record<string, unknown>
   /** Keeps the page out of search engines (a print version). */
   noindex?: boolean
