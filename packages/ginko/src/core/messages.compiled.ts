@@ -3787,7 +3787,7 @@ export const compiled: Record<string, MessageTree> = {
     "newFieldOnly": "Añade un campo nuevo.",
     "newSite": "Crea un sitio nuevo.",
     "moneyFields": "Añade campos de dinero nuevos con una `currency` fija.",
-    "planMigration": "Planifica una migración con tu desarrollador.",
+    "planMigration": "Planifica una migración con tu equipo de desarrollo.",
     "keepLocale": "Conserva el idioma; las páginas en ese idioma se pueden ocultar.",
     "keepLocaleOrder": "Conserva el orden de los idiomas existentes.",
     "keepTimezone": "Conserva la zona horaria.",
@@ -3798,7 +3798,7 @@ export const compiled: Record<string, MessageTree> = {
     "defaultOrOptional": "Define un valor `default` o haz el campo opcional.",
     "keepProperty": "Conserva la propiedad.",
     "keepMax": "Conserva max.",
-    "keepRoute": "Conserva la route.",
+    "keepRoute": "Conserva la dirección (route).",
     "defaultMigrationOrOptional": "Define un valor `default`, escribe una migración o haz el campo opcional.",
     "keepDefinition": "Deja la definición como está; solo pueden cambiar los textos.",
     "keepDefault": "Conserva el valor predeterminado.",
@@ -3811,43 +3811,43 @@ export const compiled: Record<string, MessageTree> = {
   "preview": {
    "notFound": "Esta página no existe.",
    "failed": "La vista previa no se carga.",
-   "loading": "Cargando la vista previa …"
+   "loading": "Cargando la vista previa…"
   }
  },
  "fr": {
   "issues": {
    "unknownBrick": [
-    "Le bloc « ",
+    "Le bloc « ",
     [
      "a",
      "brick"
     ],
-    " » n’existe pas."
+    " » n’existe pas."
    ],
    "markdown": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » : ",
+    " » : ",
     [
      "a",
      "problem"
     ]
    ],
    "markdownAt": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " », ligne ",
+    " », ligne ",
     [
      "a",
      "line"
     ],
-    " : ",
+    " : ",
     [
      "a",
      "problem"
@@ -3856,52 +3856,52 @@ export const compiled: Record<string, MessageTree> = {
    "notObject": "Un objet est attendu.",
    "unknownField": "Champ inconnu.",
    "fieldMissing": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » est manquant."
+    " » est manquant."
    ],
    "notLocalized": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » doit être enregistré par langue."
+    " » doit être enregistré par langue."
    ],
    "unknownLocale": [
-    "La langue « ",
+    "La langue « ",
     [
      "a",
      "locale"
     ],
-    " » n’est pas configurée."
+    " » n’est pas configurée."
    ],
    "fieldEmpty": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » est vide."
+    " » est vide."
    ],
    "notText": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » doit être du texte."
+    " » doit être du texte."
    ],
    "tooLong": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » est trop long (au maximum ",
+    " » est trop long (au maximum ",
     [
      "a",
      "max"
@@ -3909,44 +3909,44 @@ export const compiled: Record<string, MessageTree> = {
     " caractères)."
    ],
    "controlChars": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » contient des caractères de contrôle invisibles."
+    " » contient des caractères de contrôle invisibles."
    ],
    "badFormat": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » n’a pas un format valide."
+    " » n’a pas un format valide."
    ],
    "badSlug": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » n’est pas une adresse valide."
+    " » n’est pas une adresse valide."
    ],
    "notNumber": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » doit être un nombre."
+    " » doit être un nombre."
    ],
    "outOfRange": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » doit être compris entre ",
+    " » doit être compris entre ",
     [
      "a",
      "min"
@@ -3959,12 +3959,12 @@ export const compiled: Record<string, MessageTree> = {
     "."
    ],
    "badStep": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » ne correspond pas au pas de ",
+    " » ne correspond pas au pas de ",
     [
      "a",
      "step"
@@ -3972,113 +3972,113 @@ export const compiled: Record<string, MessageTree> = {
     "."
    ],
    "notMoney": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » doit être un montant en centimes."
+    " » doit être un montant en centimes."
    ],
    "moneyOutOfRange": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » est hors des limites."
+    " » est hors des limites."
    ],
    "notBoolean": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » doit être oui ou non."
+    " » doit être oui ou non."
    ],
    "badDate": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » n’est pas une date valide."
+    " » n’est pas une date valide."
    ],
    "badTime": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » n’est pas une heure valide."
+    " » n’est pas une heure valide."
    ],
    "badDateRange": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » n’est pas une période valide."
+    " » n’est pas une période valide."
    ],
    "dateRangeOrder": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » : « du » est après « au »."
+    " » : « du » est après « au »."
    ],
    "timeOrder": [
-    "« ",
+    "« ",
     [
      "a",
      "end"
     ],
-    " » doit être après « ",
+    " » doit être après « ",
     [
      "a",
      "start"
     ],
-    " »."
+    " »."
    ],
    "notWeekStart": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » doit être le premier jour d’une semaine."
+    " » doit être le premier jour d’une semaine."
    ],
    "badChoice": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » a une valeur non valide."
+    " » a une valeur non valide."
    ],
    "badChoices": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » a des valeurs non valides."
+    " » a des valeurs non valides."
    ],
    "duplicateValues": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » contient des valeurs en double."
+    " » contient des valeurs en double."
    ],
    "tooManyChosen": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » : ",
+    " » : ",
     [
      "a",
      "max"
@@ -4086,52 +4086,52 @@ export const compiled: Record<string, MessageTree> = {
     " au maximum."
    ],
    "notIdList": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » doit être une liste d’identifiants d’entrées."
+    " » doit être une liste d’identifiants d’entrées."
    ],
    "notId": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » doit être un identifiant d’entrée."
+    " » doit être un identifiant d’entrée."
    ],
    "duplicateEntries": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » contient des entrées en double."
+    " » contient des entrées en double."
    ],
    "refGone": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » : l’entrée n’existe plus."
+    " » : l’entrée n’existe plus."
    ],
    "notList": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » doit être une liste."
+    " » doit être une liste."
    ],
    "tooManyRows": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » contient trop d’éléments (",
+    " » contient trop d’éléments (",
     [
      "a",
      "max"
@@ -4139,12 +4139,12 @@ export const compiled: Record<string, MessageTree> = {
     " au maximum)."
    ],
    "tooFewRows": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » exige au moins ",
+    " » exige au moins ",
     [
      "a",
      "min"
@@ -4152,25 +4152,25 @@ export const compiled: Record<string, MessageTree> = {
     " éléments."
    ],
    "duplicateRowValue": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » : « ",
+    " » : « ",
     [
      "a",
      "value"
     ],
-    " » apparaît plusieurs fois."
+    " » apparaît plusieurs fois."
    ],
    "badRowId": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » : la ligne ",
+    " » : la ligne ",
     [
      "a",
      "row"
@@ -4178,66 +4178,66 @@ export const compiled: Record<string, MessageTree> = {
     " n’a pas d’identifiant valide."
    ],
    "duplicateRowId": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » : un identifiant de ligne apparaît deux fois."
+    " » : un identifiant de ligne apparaît deux fois."
    ],
    "notImage": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » n’est pas une image valide."
+    " » n’est pas une image valide."
    ],
    "altMissing": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » : la description de l’image (texte alternatif) est manquante."
+    " » : la description de l’image (texte alternatif) est manquante."
    ],
    "fileRefMissing": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » : une image du texte n’est plus dans la bibliothèque de fichiers. Choisissez-la de nouveau."
+    " » : une image du texte n’est plus dans la bibliothèque de fichiers. Choisissez-la de nouveau."
    ],
-   "fileRefPdf": "Un PDF ne peut pas être affiché comme image. Ajoutez plutôt un lien : [texte]($file.…).",
+   "fileRefPdf": "Un PDF ne peut pas être affiché comme image. Ajoutez plutôt un lien : [texte]($file.…).",
    "markdownImageAltMissing": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » : une image du texte n’a pas de description. Décrivez-la en quelques mots pour les personnes qui ne la voient pas."
+    " » : une image du texte n’a pas de description. Décrivez-la en quelques mots pour les personnes qui ne la voient pas."
    ],
    "altTooLong": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » : le texte alternatif est trop long."
+    " » : le texte alternatif est trop long."
    ],
    "notFile": [
-    "« ",
+    "« ",
     [
      "a",
      "label"
     ],
-    " » n’est pas un fichier valide."
+    " » n’est pas un fichier valide."
    ]
   },
   "file": {
    "typeNotAllowed": [
-    "Ce type de fichier n’est pas autorisé (autorisés : ",
+    "Ce type de fichier n’est pas autorisé (autorisés : ",
     [
      "a",
      "allowed"
@@ -4261,20 +4261,20 @@ export const compiled: Record<string, MessageTree> = {
     "page": "aussi composants"
    },
    "tagBlocked": [
-    "« ",
+    "« ",
     [
      "a",
      "tag"
     ],
-    " » n’est pas autorisé."
+    " » n’est pas autorisé."
    ],
    "tagNotInProfile": [
-    "« ",
+    "« ",
     [
      "a",
      "tag"
     ],
-    " » n’est pas autorisé ici (",
+    " » n’est pas autorisé ici (",
     [
      "a",
      "allowed"
@@ -4282,12 +4282,12 @@ export const compiled: Record<string, MessageTree> = {
     ")."
    ],
    "propBlocked": [
-    "La propriété « ",
+    "La propriété « ",
     [
      "a",
      "prop"
     ],
-    " » n’est pas autorisée."
+    " » n’est pas autorisée."
    ],
    "unsafeLink": "Lien non autorisé (uniquement http, https, mailto, tel ou /chemin).",
    "oneParagraph": "Un seul paragraphe est autorisé ici.",
@@ -4300,25 +4300,25 @@ export const compiled: Record<string, MessageTree> = {
     " éléments au maximum)."
    ],
    "componentNotClosed": [
-    "Le composant « ",
+    "Le composant « ",
     [
      "a",
      "tag"
     ],
-    " » n’est pas refermé : il manque une ligne avec « ",
+    " » n’est pas refermé : il manque une ligne avec « ",
     [
      "a",
      "close"
     ],
-    " » après son contenu."
+    " » après son contenu."
    ],
    "bracketText": [
-    "« [",
+    "« [",
     [
      "a",
      "text"
     ],
-    " » n’est ni un lien ni une image : il manque un « ] » ou l’adresse entre parenthèses. Crochets en tant que texte : \\[ et \\]."
+    " » n’est ni un lien ni une image : il manque un « ] » ou l’adresse entre parenthèses. Crochets en tant que texte : \\[ et \\]."
    ]
   },
   "component": {
@@ -4345,92 +4345,92 @@ export const compiled: Record<string, MessageTree> = {
     ]
    ],
    "quoted": [
-    "« ",
+    "« ",
     [
      "a",
      "name"
     ],
-    " »"
+    " »"
    ],
    "unknown": [
-    "Le composant « ",
+    "Le composant « ",
     [
      "a",
      "tag"
     ],
-    " » n’existe pas."
+    " » n’existe pas."
    ],
    "propUnknown": [
-    "Composant « ",
+    "Composant « ",
     [
      "a",
      "tag"
     ],
-    " » : la propriété « ",
+    " » : la propriété « ",
     [
      "a",
      "prop"
     ],
-    " » n’existe pas."
+    " » n’existe pas."
    ],
    "propInvalid": [
-    "Composant « ",
+    "Composant « ",
     [
      "a",
      "tag"
     ],
-    " » : la propriété « ",
+    " » : la propriété « ",
     [
      "a",
      "prop"
     ],
-    " » ",
+    " » ",
     [
      "a",
      "problem"
     ]
    ],
    "propMissing": [
-    "Composant « ",
+    "Composant « ",
     [
      "a",
      "tag"
     ],
-    " » : la propriété « ",
+    " » : la propriété « ",
     [
      "a",
      "prop"
     ],
-    " » est manquante."
+    " » est manquante."
    ],
    "propEmpty": [
-    "Composant « ",
+    "Composant « ",
     [
      "a",
      "tag"
     ],
-    " » : la propriété « ",
+    " » : la propriété « ",
     [
      "a",
      "prop"
     ],
-    " » est vide."
+    " » est vide."
    ],
    "blockInParagraph": [
-    "Le composant « ",
+    "Le composant « ",
     [
      "a",
      "tag"
     ],
-    " » est un bloc et n’a pas sa place dans un paragraphe."
+    " » est un bloc et n’a pas sa place dans un paragraphe."
    ],
    "parentOnly": [
-    "Le composant « ",
+    "Le composant « ",
     [
      "a",
      "tag"
     ],
-    " » ne peut apparaître que dans ",
+    " » ne peut apparaître que dans ",
     [
      "a",
      "parents"
@@ -4438,17 +4438,17 @@ export const compiled: Record<string, MessageTree> = {
     "."
    ],
    "slotUnknown": [
-    "Composant « ",
+    "Composant « ",
     [
      "a",
      "tag"
     ],
-    " » : la zone « ",
+    " » : la zone « ",
     [
      "a",
      "slot"
     ],
-    " » n’existe pas (autorisées : ",
+    " » n’existe pas (autorisées : ",
     [
      "a",
      "allowed"
@@ -4456,38 +4456,38 @@ export const compiled: Record<string, MessageTree> = {
     ")."
    ],
    "noSlots": [
-    "Composant « ",
+    "Composant « ",
     [
      "a",
      "tag"
     ],
-    " » : n’a pas de zones, « ",
+    " » : n’a pas de zones, « ",
     [
      "a",
      "slot"
     ],
-    " » n’est pas autorisé."
+    " » n’est pas autorisé."
    ],
    "childNotAllowed": [
-    "Le composant « ",
+    "Le composant « ",
     [
      "a",
      "tag"
     ],
-    " » ne peut contenir que ",
+    " » ne peut contenir que ",
     [
      "a",
      "children"
     ],
-    ", pas « ",
+    ", pas « ",
     [
      "a",
      "child"
     ],
-    " »."
+    " »."
    ],
    "prop": {
-    "notBoolean": "doit être « true » ou « false ».",
+    "notBoolean": "doit être « true » ou « false ».",
     "notNumber": "doit être un nombre.",
     "outOfRange": [
      "doit être comprise entre ",
@@ -4520,7 +4520,7 @@ export const compiled: Record<string, MessageTree> = {
      " caractères au maximum)."
     ],
     "badChoice": [
-     "a une valeur non valide (autorisées : ",
+     "a une valeur non valide (autorisées : ",
      [
       "a",
       "allowed"
@@ -4528,7 +4528,7 @@ export const compiled: Record<string, MessageTree> = {
      ")."
     ],
     "badChoices": [
-     "a des valeurs non valides (autorisées : ",
+     "a des valeurs non valides (autorisées : ",
      [
       "a",
       "allowed"
@@ -4551,12 +4551,12 @@ export const compiled: Record<string, MessageTree> = {
   },
   "links": {
    "snippetMissing": [
-    "Extrait de texte « ",
+    "Extrait de texte « ",
     [
      "a",
      "name"
     ],
-    " » introuvable (entrée snippets/",
+    " » introuvable (entrée snippets/",
     [
      "a",
      "name"
@@ -4598,7 +4598,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "anchor"
     ],
-    " est manquante : aucun titre n’a cet identifiant."
+    " est manquante : aucun titre n’a cet identifiant."
    ],
    "externalBroken": [
     "Le lien externe ",
@@ -4617,12 +4617,12 @@ export const compiled: Record<string, MessageTree> = {
   "editor": {
    "component": {
     "unknown": [
-     "« ",
+     "« ",
      [
       "a",
       "tag"
      ],
-     " » n’existe pas ici."
+     " » n’existe pas ici."
     ],
     "more": [
      [
@@ -4684,7 +4684,7 @@ export const compiled: Record<string, MessageTree> = {
     "imageNoDescription": "L’image n’a pas de description."
    },
    "source": {
-    "unstable": "Le texte changerait à l’enregistrement ; il est donc modifié en Markdown.",
+    "unstable": "Le texte changerait à l’enregistrement ; il est donc modifié en Markdown.",
     "lossy": "Le texte ne peut pas être affiché dans l’éditeur sans perte.",
     "failed": [
      "Le texte ne peut pas être affiché dans l’éditeur (",
@@ -4702,7 +4702,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "name"
     ],
-    " : ",
+    " : ",
     [
      "a",
      "value"
@@ -4710,7 +4710,7 @@ export const compiled: Record<string, MessageTree> = {
     "."
    ],
    "freshLocales": [
-    "Langues : ",
+    "Langues : ",
     [
      "a",
      "locales"
@@ -4721,21 +4721,21 @@ export const compiled: Record<string, MessageTree> = {
    "currencyChanged": "La devise du site ne peut pas être modifiée.",
    "mainLocaleChanged": "La langue principale ne peut pas être modifiée.",
    "localeRemoved": [
-    "La langue « ",
+    "La langue « ",
     [
      "a",
      "locale"
     ],
-    " » ne peut pas être supprimée."
+    " » ne peut pas être supprimée."
    ],
    "localeOrder": "Les nouvelles langues vont à la fin de la liste.",
    "localeAdded": [
-    "Nouvelle langue « ",
+    "Nouvelle langue « ",
     [
      "a",
      "locale"
     ],
-    " »."
+    " »."
    ],
    "timezoneChanged": "Le fuseau horaire ne peut pas être modifié.",
    "valueChanged": [
@@ -4749,186 +4749,186 @@ export const compiled: Record<string, MessageTree> = {
    "agentsChanged": "La relecture des modifications par IA a changé.",
    "tasksChanged": "Les tâches ont changé.",
    "retiredBack": [
-    "« ",
+    "« ",
     [
      "a",
      "path"
     ],
-    " » a été retiré et ne peut pas revenir."
+    " » a été retiré et ne peut pas revenir."
    ],
    "unretired": [
-    "« ",
+    "« ",
     [
      "a",
      "path"
     ],
-    " » a été retiré."
+    " » a été retiré."
    ],
    "retiredRuleChanged": [
-    "La règle de « ",
+    "La règle de « ",
     [
      "a",
      "path"
     ],
-    " » ne peut pas être modifiée."
+    " » ne peut pas être modifiée."
    ],
    "retiredNow": [
-    "« ",
+    "« ",
     [
      "a",
      "path"
     ],
-    " » est en cours de retrait."
+    " » est en cours de retrait."
    ],
    "migrationChanged": [
-    "La migration « ",
+    "La migration « ",
     [
      "a",
      "id"
     ],
-    " » a changé."
+    " » a changé."
    ],
    "migrationFillsExisting": [
-    "La migration « ",
+    "La migration « ",
     [
      "a",
      "id"
     ],
-    " » remplit « ",
+    " » remplit « ",
     [
      "a",
      "target"
     ],
-    " », qui existe déjà."
+    " », qui existe déjà."
    ],
    "migrationAdded": [
-    "Nouvelle migration « ",
+    "Nouvelle migration « ",
     [
      "a",
      "id"
     ],
-    " »."
+    " »."
    ],
    "migrationDropped": [
-    "La migration « ",
+    "La migration « ",
     [
      "a",
      "id"
     ],
-    " » n’est plus dans la configuration."
+    " » n’est plus dans la configuration."
    ],
    "brickRemoved": [
-    "Le bloc « ",
+    "Le bloc « ",
     [
      "a",
      "key"
     ],
-    " » est manquant."
+    " » est manquant."
    ],
    "brickAdded": [
-    "Nouveau bloc « ",
+    "Nouveau bloc « ",
     [
      "a",
      "key"
     ],
-    " »."
+    " »."
    ],
    "singleWithoutDefault": [
-    "Nouveau bloc unique : le champ obligatoire « ",
+    "Nouveau bloc unique : le champ obligatoire « ",
     [
      "a",
      "name"
     ],
-    " » a besoin d’une valeur par défaut."
+    " » a besoin d’une valeur par défaut."
    ],
    "unknownChange": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : la propriété « ",
+    " » : la propriété « ",
     [
      "a",
      "prop"
     ],
-    " » a changé, ce qui n’est pas autorisé."
+    " » a changé, ce qui n’est pas autorisé."
    ],
    "kindChanged": [
-    "« ",
+    "« ",
     [
      "a",
      "key"
     ],
-    " » passe de bloc unique à collection, ou l’inverse."
+    " » passe de bloc unique à collection, ou l’inverse."
    ],
    "textChanged": "Le texte a changé.",
    "maxLowered": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : max ne peut pas être abaissé."
+    " » : max ne peut pas être abaissé."
    ],
    "maxRaised": "max a été relevé.",
    "routeAdded": "Nouvelles pages de détail.",
    "routeAddedLocale": "Adresse pour la nouvelle langue.",
    "routeChanged": [
-    "« ",
+    "« ",
     [
      "a",
      "key"
     ],
-    " » : les adresses (route) ne peuvent pas être modifiées."
+    " » : les adresses (route) ne peuvent pas être modifiées."
    ],
    "fieldRemoved": [
-    "Le champ « ",
+    "Le champ « ",
     [
      "a",
      "at"
     ],
-    " » est manquant."
+    " » est manquant."
    ],
    "fieldAdded": [
-    "Nouveau champ « ",
+    "Nouveau champ « ",
     [
      "a",
      "at"
     ],
-    " »."
+    " »."
    ],
    "fieldAddedDefault": [
-    "Nouveau champ obligatoire « ",
+    "Nouveau champ obligatoire « ",
     [
      "a",
      "at"
     ],
-    " » avec valeur par défaut."
+    " » avec valeur par défaut."
    ],
    "fieldAddedMigration": [
-    "Nouveau champ obligatoire « ",
+    "Nouveau champ obligatoire « ",
     [
      "a",
      "at"
     ],
-    " », rempli par une migration."
+    " », rempli par une migration."
    ],
    "requiredWithoutDefault": [
-    "Nouveau champ obligatoire « ",
+    "Nouveau champ obligatoire « ",
     [
      "a",
      "at"
     ],
-    " » sans valeur par défaut ni migration."
+    " » sans valeur par défaut ni migration."
    ],
    "typeChanged": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : type ",
+    " » : type ",
     [
      "a",
      "from"
@@ -4941,61 +4941,61 @@ export const compiled: Record<string, MessageTree> = {
     "."
    ],
    "retiredFieldChanged": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : un champ retiré garde sa définition de production."
+    " » : un champ retiré garde sa définition de production."
    ],
    "madeRequired": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : facultatif → obligatoire."
+    " » : facultatif → obligatoire."
    ],
    "madeOptional": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » est désormais facultatif."
+    " » est désormais facultatif."
    ],
    "translationChanged": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : la traductibilité a changé."
+    " » : la traductibilité a changé."
    ],
    "defaultChanged": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : la valeur par défaut ne peut pas être modifiée."
+    " » : la valeur par défaut ne peut pas être modifiée."
    ],
    "minRaised": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : min ne peut pas être relevé."
+    " » : min ne peut pas être relevé."
    ],
    "minLowered": "min a été abaissé.",
    "minOffGrid": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : min ne peut être abaissé que d’un multiple du pas de ",
+    " » : min ne peut être abaissé que d’un multiple du pas de ",
     [
      "a",
      "step"
@@ -5003,12 +5003,12 @@ export const compiled: Record<string, MessageTree> = {
     "."
    ],
    "propChanged": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : ",
+    " » : ",
     [
      "a",
      "prop"
@@ -5016,73 +5016,73 @@ export const compiled: Record<string, MessageTree> = {
     " ne peut pas être modifié."
    ],
    "optionRemoved": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : l’option « ",
+    " » : l’option « ",
     [
      "a",
      "option"
     ],
-    " » est manquante."
+    " » est manquante."
    ],
    "optionRenamed": "Option renommée.",
    "optionAdded": [
-    "Nouvelle option « ",
+    "Nouvelle option « ",
     [
      "a",
      "option"
     ],
-    " »."
+    " »."
    ],
    "uniqueChanged": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : unique ne peut être ni défini ni modifié."
+    " » : unique ne peut être ni défini ni modifié."
    ],
    "uniqueDropped": [
-    "« ",
+    "« ",
     [
      "a",
      "at"
     ],
-    " » : unique a été retiré."
+    " » : unique a été retiré."
    ],
    "fix": {
     "newField": "Ajoutez un nouveau champ, remplissez-le avec une migration et listez l’ancien champ sous `retired`.",
     "newFieldOnly": "Ajoutez un nouveau champ.",
     "newSite": "Créez un nouveau site.",
     "moneyFields": "Ajoutez de nouveaux champs monétaires avec une `currency` fixe.",
-    "planMigration": "Prévoyez une migration avec votre développeur.",
-    "keepLocale": "Conservez la langue ; les pages dans cette langue peuvent être masquées.",
+    "planMigration": "Prévoyez une migration avec votre équipe de développement.",
+    "keepLocale": "Conservez la langue ; les pages dans cette langue peuvent être masquées.",
     "keepLocaleOrder": "Conservez l’ordre des langues existantes.",
     "keepTimezone": "Conservez le fuseau horaire.",
     "keepRule": "Laissez la règle telle quelle.",
     "newMigrationId": "Une correction reçoit un nouvel identifiant.",
-    "fillNewFieldsOnly": "Remplissez uniquement de nouveaux champs ; pour un champ existant, ajoutez un nouveau champ.",
+    "fillNewFieldsOnly": "Remplissez uniquement de nouveaux champs ; pour un champ existant, ajoutez un nouveau champ.",
     "retireBrick": "Listez le bloc sous `retired` au lieu de le supprimer.",
     "defaultOrOptional": "Définissez une valeur `default` ou rendez le champ facultatif.",
     "keepProperty": "Conservez la propriété.",
     "keepMax": "Conservez max.",
-    "keepRoute": "Conservez la route.",
+    "keepRoute": "Conservez l’adresse (route).",
     "defaultMigrationOrOptional": "Définissez une valeur `default`, écrivez une migration ou rendez le champ facultatif.",
-    "keepDefinition": "Laissez la définition telle quelle ; seuls les textes peuvent changer.",
+    "keepDefinition": "Laissez la définition telle quelle ; seuls les textes peuvent changer.",
     "keepDefault": "Conservez la valeur par défaut.",
     "keepMin": "Conservez min.",
     "minOnGrid": "Abaissez min pour que la différence soit un multiple de step.",
-    "keepOption": "Conservez l’option ; elle peut être renommée (label).",
+    "keepOption": "Conservez l’option ; elle peut être renommée (label).",
     "newList": "Ajoutez une nouvelle liste et remplissez-la avec une migration."
    }
   },
   "preview": {
    "notFound": "Cette page n’existe pas.",
    "failed": "L’aperçu ne se charge pas.",
-   "loading": "Chargement de l’aperçu …"
+   "loading": "Chargement de l’aperçu…"
   }
  },
  "it": {
@@ -5124,15 +5124,15 @@ export const compiled: Record<string, MessageTree> = {
      "problem"
     ]
    ],
-   "notObject": "Ci si aspetta un oggetto.",
+   "notObject": "È previsto un oggetto.",
    "unknownField": "Campo sconosciuto.",
    "fieldMissing": [
-    "“",
+    "Manca “",
     [
      "a",
      "label"
     ],
-    "” manca."
+    "”."
    ],
    "notLocalized": [
     "“",
@@ -5667,12 +5667,12 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "tag"
     ],
-    "”: la proprietà “",
+    "”: manca la proprietà “",
     [
      "a",
      "prop"
     ],
-    "” manca."
+    "”."
    ],
    "propEmpty": [
     "Componente “",
@@ -5926,11 +5926,12 @@ export const compiled: Record<string, MessageTree> = {
    },
    "prop": {
     "missing": [
+     "Manca ",
      [
       "a",
       "label"
      ],
-     " manca."
+     "."
     ],
     "empty": [
      [
@@ -6089,12 +6090,12 @@ export const compiled: Record<string, MessageTree> = {
     "” non è più nella configurazione."
    ],
    "brickRemoved": [
-    "Il blocco “",
+    "Manca il blocco “",
     [
      "a",
      "key"
     ],
-    "” manca."
+    "”."
    ],
    "brickAdded": [
     "Nuovo blocco “",
@@ -6123,7 +6124,7 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "prop"
     ],
-    "” è cambiata, e non è consentito."
+    "” è cambiata, ma non è consentito."
    ],
    "kindChanged": [
     "“",
@@ -6154,12 +6155,12 @@ export const compiled: Record<string, MessageTree> = {
     "”: gli indirizzi (route) non possono essere modificati."
    ],
    "fieldRemoved": [
-    "Il campo “",
+    "Manca il campo “",
     [
      "a",
      "at"
     ],
-    "” manca."
+    "”."
    ],
    "fieldAdded": [
     "Nuovo campo “",
@@ -6292,12 +6293,12 @@ export const compiled: Record<string, MessageTree> = {
      "a",
      "at"
     ],
-    "”: l’opzione “",
+    "”: manca l’opzione “",
     [
      "a",
      "option"
     ],
-    "” manca."
+    "”."
    ],
    "optionRenamed": "Opzione rinominata.",
    "optionAdded": [
@@ -6329,7 +6330,7 @@ export const compiled: Record<string, MessageTree> = {
     "newFieldOnly": "Aggiungi un nuovo campo.",
     "newSite": "Crea un nuovo sito.",
     "moneyFields": "Aggiungi nuovi campi di denaro con una `currency` fissa.",
-    "planMigration": "Pianifica una migrazione con il tuo sviluppatore.",
+    "planMigration": "Pianifica una migrazione con il tuo team di sviluppo.",
     "keepLocale": "Mantieni la lingua; le pagine in quella lingua possono essere nascoste.",
     "keepLocaleOrder": "Mantieni l’ordine delle lingue esistenti.",
     "keepTimezone": "Mantieni il fuso orario.",
@@ -6340,7 +6341,7 @@ export const compiled: Record<string, MessageTree> = {
     "defaultOrOptional": "Imposta un valore `default` o rendi il campo facoltativo.",
     "keepProperty": "Mantieni la proprietà.",
     "keepMax": "Mantieni max.",
-    "keepRoute": "Mantieni la route.",
+    "keepRoute": "Mantieni l’indirizzo (route).",
     "defaultMigrationOrOptional": "Imposta un valore `default`, scrivi una migrazione o rendi il campo facoltativo.",
     "keepDefinition": "Lascia la definizione com’è; possono cambiare solo i testi.",
     "keepDefault": "Mantieni il valore predefinito.",
@@ -6353,38 +6354,38 @@ export const compiled: Record<string, MessageTree> = {
   "preview": {
    "notFound": "Questa pagina non esiste.",
    "failed": "L’anteprima non si carica.",
-   "loading": "Caricamento dell’anteprima …"
+   "loading": "Caricamento dell’anteprima…"
   }
  },
  "ar": {
   "issues": {
    "unknownBrick": [
-    "الكتلة “",
+    "الكتلة «",
     [
      "a",
      "brick"
     ],
-    "” غير موجودة."
+    "» غير موجودة."
    ],
    "markdown": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "”: ",
+    "»: ",
     [
      "a",
      "problem"
     ]
    ],
    "markdownAt": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "”، السطر ",
+    "»، السطر ",
     [
      "a",
      "line"
@@ -6395,100 +6396,134 @@ export const compiled: Record<string, MessageTree> = {
      "problem"
     ]
    ],
-   "notObject": "المتوقع كائن.",
+   "notObject": "يُتوقَّع كائن.",
    "unknownField": "حقل غير معروف.",
    "fieldMissing": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "” مفقود."
+    "» مفقود."
    ],
    "notLocalized": [
-    "يجب حفظ “",
+    "يجب حفظ «",
     [
      "a",
      "label"
     ],
-    "” لكل لغة."
+    "» لكل لغة."
    ],
    "unknownLocale": [
-    "اللغة “",
+    "اللغة «",
     [
      "a",
      "locale"
     ],
-    "” غير مُعدّة."
+    "» غير مُعدّة."
    ],
    "fieldEmpty": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "” فارغ."
+    "» فارغ."
    ],
    "notText": [
-    "يجب أن يكون “",
+    "يجب أن يكون «",
     [
      "a",
      "label"
     ],
-    "” نصًّا."
+    "» نصًّا."
    ],
    "tooLong": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "” طويل جدًّا (الحد الأقصى ",
+    "» طويل جدًّا (الحد الأقصى ",
     [
-     "a",
-     "max"
+     "p",
+     "max",
+     0,
+     {
+      "zero": [
+       [
+        "#"
+       ],
+       " حرف"
+      ],
+      "one": [
+       "حرف واحد"
+      ],
+      "two": [
+       "حرفان"
+      ],
+      "few": [
+       [
+        "#"
+       ],
+       " أحرف"
+      ],
+      "many": [
+       [
+        "#"
+       ],
+       " حرفًا"
+      ],
+      "other": [
+       [
+        "#"
+       ],
+       " حرف"
+      ]
+     },
+     0
     ],
-    " حرفًا)."
+    ")."
    ],
    "controlChars": [
-    "يحتوي “",
+    "يحتوي «",
     [
      "a",
      "label"
     ],
-    "” على أحرف تحكّم غير مرئية."
+    "» على أحرف تحكّم غير مرئية."
    ],
    "badFormat": [
-    "تنسيق “",
+    "تنسيق «",
     [
      "a",
      "label"
     ],
-    "” غير صالح."
+    "» غير صالح."
    ],
    "badSlug": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "” ليس عنوانًا صالحًا."
+    "» ليس عنوانًا صالحًا."
    ],
    "notNumber": [
-    "يجب أن يكون “",
+    "يجب أن يكون «",
     [
      "a",
      "label"
     ],
-    "” رقمًا."
+    "» رقمًا."
    ],
    "outOfRange": [
-    "يجب أن تكون قيمة “",
+    "يجب أن تكون قيمة «",
     [
      "a",
      "label"
     ],
-    "” بين ",
+    "» بين ",
     [
      "a",
      "min"
@@ -6501,12 +6536,12 @@ export const compiled: Record<string, MessageTree> = {
     "."
    ],
    "badStep": [
-    "لا تتوافق قيمة “",
+    "لا تتوافق قيمة «",
     [
      "a",
      "label"
     ],
-    "” مع حجم الخطوة ",
+    "» مع حجم الخطوة ",
     [
      "a",
      "step"
@@ -6514,113 +6549,113 @@ export const compiled: Record<string, MessageTree> = {
     "."
    ],
    "notMoney": [
-    "يجب أن يكون “",
+    "يجب أن يكون «",
     [
      "a",
      "label"
     ],
-    "” مبلغًا بالسنتات."
+    "» مبلغًا بالسنتات."
    ],
    "moneyOutOfRange": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "” خارج الحدود المسموح بها."
+    "» خارج الحدود المسموح بها."
    ],
    "notBoolean": [
-    "يجب أن تكون قيمة “",
+    "يجب أن تكون قيمة «",
     [
      "a",
      "label"
     ],
-    "” نعم أو لا."
+    "» نعم أو لا."
    ],
    "badDate": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "” ليس تاريخًا صالحًا."
+    "» ليس تاريخًا صالحًا."
    ],
    "badTime": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "” ليس وقتًا صالحًا."
+    "» ليس وقتًا صالحًا."
    ],
    "badDateRange": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "” ليس فترة صالحة."
+    "» ليس فترة صالحة."
    ],
    "dateRangeOrder": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "”: تاريخ “من” بعد تاريخ “إلى”."
+    "»: تاريخ «من» بعد تاريخ «إلى»."
    ],
    "timeOrder": [
-    "يجب أن يكون “",
+    "يجب أن يكون «",
     [
      "a",
      "end"
     ],
-    "” بعد “",
+    "» بعد «",
     [
      "a",
      "start"
     ],
-    "”."
+    "»."
    ],
    "notWeekStart": [
-    "يجب أن يكون “",
+    "يجب أن يكون «",
     [
      "a",
      "label"
     ],
-    "” اليوم الأول من أسبوع."
+    "» اليوم الأول من أسبوع."
    ],
    "badChoice": [
-    "قيمة “",
+    "قيمة «",
     [
      "a",
      "label"
     ],
-    "” غير صالحة."
+    "» غير صالحة."
    ],
    "badChoices": [
-    "قيم “",
+    "قيم «",
     [
      "a",
      "label"
     ],
-    "” غير صالحة."
+    "» غير صالحة."
    ],
    "duplicateValues": [
-    "يحتوي “",
+    "يحتوي «",
     [
      "a",
      "label"
     ],
-    "” على قيم مكرّرة."
+    "» على قيم مكرّرة."
    ],
    "tooManyChosen": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "”: الحد الأقصى ",
+    "»: الحد الأقصى ",
     [
      "a",
      "max"
@@ -6628,52 +6663,52 @@ export const compiled: Record<string, MessageTree> = {
     "."
    ],
    "notIdList": [
-    "يجب أن يكون “",
+    "يجب أن يكون «",
     [
      "a",
      "label"
     ],
-    "” قائمة بمعرّفات الإدخالات."
+    "» قائمة بمعرّفات الإدخالات."
    ],
    "notId": [
-    "يجب أن يكون “",
+    "يجب أن يكون «",
     [
      "a",
      "label"
     ],
-    "” معرّف إدخال."
+    "» معرّف إدخال."
    ],
    "duplicateEntries": [
-    "يحتوي “",
+    "يحتوي «",
     [
      "a",
      "label"
     ],
-    "” على إدخالات مكرّرة."
+    "» على إدخالات مكرّرة."
    ],
    "refGone": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "”: الإدخال لم يعد موجودًا."
+    "»: الإدخال لم يعد موجودًا."
    ],
    "notList": [
-    "يجب أن يكون “",
+    "يجب أن يكون «",
     [
      "a",
      "label"
     ],
-    "” قائمة."
+    "» قائمة."
    ],
    "tooManyRows": [
-    "يحتوي “",
+    "يحتوي «",
     [
      "a",
      "label"
     ],
-    "” على عناصر كثيرة جدًّا (الحد الأقصى ",
+    "» على عناصر كثيرة جدًّا (الحد الأقصى ",
     [
      "a",
      "max"
@@ -6681,38 +6716,72 @@ export const compiled: Record<string, MessageTree> = {
     ")."
    ],
    "tooFewRows": [
-    "يحتاج “",
+    "يحتاج «",
     [
      "a",
      "label"
     ],
-    "” إلى ",
+    "» إلى ",
     [
-     "a",
-     "min"
+     "p",
+     "min",
+     0,
+     {
+      "zero": [
+       [
+        "#"
+       ],
+       " عنصر"
+      ],
+      "one": [
+       "عنصر واحد"
+      ],
+      "two": [
+       "عنصرين"
+      ],
+      "few": [
+       [
+        "#"
+       ],
+       " عناصر"
+      ],
+      "many": [
+       [
+        "#"
+       ],
+       " عنصرًا"
+      ],
+      "other": [
+       [
+        "#"
+       ],
+       " عنصر"
+      ]
+     },
+     0
     ],
-    " عناصر على الأقل."
+    " على الأقل."
    ],
    "duplicateRowValue": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "”: القيمة “",
+    "»: القيمة «",
     [
      "a",
      "value"
     ],
-    "” تتكرّر أكثر من مرة."
+    "» تتكرّر أكثر من مرة."
    ],
    "badRowId": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "”: معرّف الصف ",
+    "»: معرّف الصف ",
     [
      "a",
      "row"
@@ -6720,61 +6789,61 @@ export const compiled: Record<string, MessageTree> = {
     " غير صالح."
    ],
    "duplicateRowId": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "”: معرّف الصف مكرّر."
+    "»: معرّف الصف مكرّر."
    ],
    "notImage": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "” ليس صورة صالحة."
+    "» ليس صورة صالحة."
    ],
    "altMissing": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "”: وصف الصورة (النص البديل) مفقود."
+    "»: وصف الصورة (النص البديل) مفقود."
    ],
    "fileRefMissing": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "”: صورة في النص لم تعد في مكتبة الملفات. اخترها من جديد."
+    "»: صورة في النص لم تعد في مكتبة الملفات. اخترها من جديد."
    ],
    "fileRefPdf": "لا يمكن عرض ملف PDF كصورة. أضِف رابطًا إليه بدلًا من ذلك: [النص]($file.…).",
    "markdownImageAltMissing": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "”: صورة في النص بلا وصف. صِفها بإيجاز لمن لا يستطيع رؤيتها."
+    "»: صورة في النص بلا وصف. صِفها بإيجاز لمن لا يستطيع رؤيتها."
    ],
    "altTooLong": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "”: النص البديل طويل جدًّا."
+    "»: النص البديل طويل جدًّا."
    ],
    "notFile": [
-    "“",
+    "«",
     [
      "a",
      "label"
     ],
-    "” ليس ملفًّا صالحًا."
+    "» ليس ملفًّا صالحًا."
    ]
   },
   "file": {
@@ -6803,20 +6872,20 @@ export const compiled: Record<string, MessageTree> = {
     "page": "وكذلك المكوّنات"
    },
    "tagBlocked": [
-    "“",
+    "«",
     [
      "a",
      "tag"
     ],
-    "” غير مسموح به."
+    "» غير مسموح به."
    ],
    "tagNotInProfile": [
-    "“",
+    "«",
     [
      "a",
      "tag"
     ],
-    "” غير مسموح به هنا (",
+    "» غير مسموح به هنا (",
     [
      "a",
      "allowed"
@@ -6824,43 +6893,77 @@ export const compiled: Record<string, MessageTree> = {
     ")."
    ],
    "propBlocked": [
-    "الخاصية “",
+    "الخاصية «",
     [
      "a",
      "prop"
     ],
-    "” غير مسموح بها."
+    "» غير مسموح بها."
    ],
    "unsafeLink": "الرابط غير مسموح به (المسموح فقط: http أو https أو mailto أو tel أو /مسار).",
    "oneParagraph": "يُسمح هنا بفقرة واحدة فقط.",
    "tooComplex": [
     "النص معقّد جدًّا (الحد الأقصى ",
     [
-     "a",
-     "max"
+     "p",
+     "max",
+     0,
+     {
+      "zero": [
+       [
+        "#"
+       ],
+       " عنصر"
+      ],
+      "one": [
+       "عنصر واحد"
+      ],
+      "two": [
+       "عنصران"
+      ],
+      "few": [
+       [
+        "#"
+       ],
+       " عناصر"
+      ],
+      "many": [
+       [
+        "#"
+       ],
+       " عنصرًا"
+      ],
+      "other": [
+       [
+        "#"
+       ],
+       " عنصر"
+      ]
+     },
+     0
     ],
-    " عنصرًا)."
+    ")."
    ],
    "componentNotClosed": [
-    "المكوّن “",
+    "المكوّن «",
     [
      "a",
      "tag"
     ],
-    "” غير مغلق: ينقص بعد محتواه سطر يحتوي على “",
+    "» غير مغلق: ينقص بعد محتواه سطر يحتوي على «",
     [
      "a",
      "close"
     ],
-    "”."
+    "»."
    ],
    "bracketText": [
-    "“[",
+    "«[",
     [
      "a",
      "text"
     ],
-    "” ليس رابطًا ولا صورة: ينقص “]” أو العنوان بين قوسين دائريين. لكتابة الأقواس المربعة كنص: \\[ و\\]."
+    "» ليس رابطًا ولا صورة: ينقص «]» أو العنوان بين قوسين دائريين. لكتابة الأقواس المربعة كنص: \\[ و\\]."
    ]
   },
   "component": {
@@ -6887,92 +6990,92 @@ export const compiled: Record<string, MessageTree> = {
     ]
    ],
    "quoted": [
-    "“",
+    "«",
     [
      "a",
      "name"
     ],
-    "”"
+    "»"
    ],
    "unknown": [
-    "المكوّن “",
+    "المكوّن «",
     [
      "a",
      "tag"
     ],
-    "” غير موجود."
+    "» غير موجود."
    ],
    "propUnknown": [
-    "المكوّن “",
+    "المكوّن «",
     [
      "a",
      "tag"
     ],
-    "”: الخاصية “",
+    "»: الخاصية «",
     [
      "a",
      "prop"
     ],
-    "” غير موجودة."
+    "» غير موجودة."
    ],
    "propInvalid": [
-    "المكوّن “",
+    "المكوّن «",
     [
      "a",
      "tag"
     ],
-    "”: الخاصية “",
+    "»: الخاصية «",
     [
      "a",
      "prop"
     ],
-    "” ",
+    "» ",
     [
      "a",
      "problem"
     ]
    ],
    "propMissing": [
-    "المكوّن “",
+    "المكوّن «",
     [
      "a",
      "tag"
     ],
-    "”: الخاصية “",
+    "»: الخاصية «",
     [
      "a",
      "prop"
     ],
-    "” مفقودة."
+    "» مفقودة."
    ],
    "propEmpty": [
-    "المكوّن “",
+    "المكوّن «",
     [
      "a",
      "tag"
     ],
-    "”: الخاصية “",
+    "»: الخاصية «",
     [
      "a",
      "prop"
     ],
-    "” فارغة."
+    "» فارغة."
    ],
    "blockInParagraph": [
-    "المكوّن “",
+    "المكوّن «",
     [
      "a",
      "tag"
     ],
-    "” كتلة ولا يصح وضعه داخل فقرة."
+    "» كتلة ولا يصح وضعه داخل فقرة."
    ],
    "parentOnly": [
-    "يمكن أن يظهر المكوّن “",
+    "يمكن أن يظهر المكوّن «",
     [
      "a",
      "tag"
     ],
-    "” داخل ",
+    "» داخل ",
     [
      "a",
      "parents"
@@ -6980,17 +7083,17 @@ export const compiled: Record<string, MessageTree> = {
     " فقط."
    ],
    "slotUnknown": [
-    "المكوّن “",
+    "المكوّن «",
     [
      "a",
      "tag"
     ],
-    "”: المنطقة “",
+    "»: المنطقة «",
     [
      "a",
      "slot"
     ],
-    "” غير موجودة (المسموح: ",
+    "» غير موجودة (المسموح: ",
     [
      "a",
      "allowed"
@@ -6998,38 +7101,38 @@ export const compiled: Record<string, MessageTree> = {
     ")."
    ],
    "noSlots": [
-    "المكوّن “",
+    "المكوّن «",
     [
      "a",
      "tag"
     ],
-    "”: ليس له مناطق، و“",
+    "»: ليس له مناطق، و«",
     [
      "a",
      "slot"
     ],
-    "” غير مسموح بها."
+    "» غير مسموح بها."
    ],
    "childNotAllowed": [
-    "يمكن أن يحتوي المكوّن “",
+    "يمكن أن يحتوي المكوّن «",
     [
      "a",
      "tag"
     ],
-    "” على ",
+    "» على ",
     [
      "a",
      "children"
     ],
-    " فقط، وليس على “",
+    " فقط، وليس على «",
     [
      "a",
      "child"
     ],
-    "”."
+    "»."
    ],
    "prop": {
-    "notBoolean": "يجب أن تكون “true” أو “false”.",
+    "notBoolean": "يجب أن تكون «true» أو «false».",
     "notNumber": "يجب أن تكون رقمًا.",
     "outOfRange": [
      "يجب أن تكون بين ",
@@ -7056,10 +7159,44 @@ export const compiled: Record<string, MessageTree> = {
     "tooLong": [
      "طويلة جدًّا (الحد الأقصى ",
      [
-      "a",
-      "max"
+      "p",
+      "max",
+      0,
+      {
+       "zero": [
+        [
+         "#"
+        ],
+        " حرف"
+       ],
+       "one": [
+        "حرف واحد"
+       ],
+       "two": [
+        "حرفان"
+       ],
+       "few": [
+        [
+         "#"
+        ],
+        " أحرف"
+       ],
+       "many": [
+        [
+         "#"
+        ],
+        " حرفًا"
+       ],
+       "other": [
+        [
+         "#"
+        ],
+        " حرف"
+       ]
+      },
+      0
      ],
-     " حرفًا)."
+     ")."
     ],
     "badChoice": [
      "قيمتها غير صالحة (المسموح: ",
@@ -7081,10 +7218,44 @@ export const compiled: Record<string, MessageTree> = {
     "tooManyChosen": [
      "تقبل ",
      [
-      "a",
-      "max"
+      "p",
+      "max",
+      0,
+      {
+       "zero": [
+        [
+         "#"
+        ],
+        " قيمة"
+       ],
+       "one": [
+        "قيمة واحدة"
+       ],
+       "two": [
+        "قيمتين"
+       ],
+       "few": [
+        [
+         "#"
+        ],
+        " قيم"
+       ],
+       "many": [
+        [
+         "#"
+        ],
+        " قيمة"
+       ],
+       "other": [
+        [
+         "#"
+        ],
+        " قيمة"
+       ]
+      },
+      0
      ],
-     " قيم كحد أقصى."
+     " كحد أقصى."
     ],
     "badImage": "يجب أن تكون مسارًا أو عنوان ويب.",
     "notId": "يجب أن تكون معرّف إدخال.",
@@ -7093,12 +7264,12 @@ export const compiled: Record<string, MessageTree> = {
   },
   "links": {
    "snippetMissing": [
-    "مقتطف النص “",
+    "مقتطف النص «",
     [
      "a",
      "name"
     ],
-    "” غير موجود (الإدخال snippets/",
+    "» غير موجود (الإدخال snippets/",
     [
      "a",
      "name"
@@ -7159,12 +7330,12 @@ export const compiled: Record<string, MessageTree> = {
   "editor": {
    "component": {
     "unknown": [
-     "“",
+     "«",
      [
       "a",
       "tag"
      ],
-     "” غير موجود هنا."
+     "» غير موجود هنا."
     ],
     "more": [
      [
@@ -7278,21 +7449,21 @@ export const compiled: Record<string, MessageTree> = {
    "currencyChanged": "لا يمكن تغيير عملة الموقع.",
    "mainLocaleChanged": "لا يمكن تغيير اللغة الرئيسية.",
    "localeRemoved": [
-    "لا يمكن حذف اللغة “",
+    "لا يمكن حذف اللغة «",
     [
      "a",
      "locale"
     ],
-    "”."
+    "»."
    ],
    "localeOrder": "تُضاف اللغات الجديدة في نهاية القائمة.",
    "localeAdded": [
-    "لغة جديدة “",
+    "لغة جديدة «",
     [
      "a",
      "locale"
     ],
-    "”."
+    "»."
    ],
    "timezoneChanged": "لا يمكن تغيير المنطقة الزمنية.",
    "valueChanged": [
@@ -7307,191 +7478,191 @@ export const compiled: Record<string, MessageTree> = {
    "agentsChanged": "تغيّرت مراجعة تغييرات الذكاء الاصطناعي.",
    "tasksChanged": "تغيّرت المهام.",
    "retiredBack": [
-    "تم إيقاف “",
+    "تم إيقاف «",
     [
      "a",
      "path"
     ],
-    "” ولا يمكن إعادته."
+    "» ولا يمكن إعادته."
    ],
    "unretired": [
-    "تم إيقاف “",
+    "تم إيقاف «",
     [
      "a",
      "path"
     ],
-    "”."
+    "»."
    ],
    "retiredRuleChanged": [
-    "لا يمكن تغيير قاعدة “",
+    "لا يمكن تغيير قاعدة «",
     [
      "a",
      "path"
     ],
-    "”."
+    "»."
    ],
    "retiredNow": [
-    "يجري إيقاف “",
+    "يجري إيقاف «",
     [
      "a",
      "path"
     ],
-    "”."
+    "»."
    ],
    "migrationChanged": [
-    "تغيّر الترحيل “",
+    "تغيّر الترحيل «",
     [
      "a",
      "id"
     ],
-    "”."
+    "»."
    ],
    "migrationFillsExisting": [
-    "الترحيل “",
+    "الترحيل «",
     [
      "a",
      "id"
     ],
-    "” يملأ “",
+    "» يملأ «",
     [
      "a",
      "target"
     ],
-    "” وهو موجود بالفعل."
+    "» وهو موجود بالفعل."
    ],
    "migrationAdded": [
-    "ترحيل جديد “",
+    "ترحيل جديد «",
     [
      "a",
      "id"
     ],
-    "”."
+    "»."
    ],
    "migrationDropped": [
-    "الترحيل “",
+    "الترحيل «",
     [
      "a",
      "id"
     ],
-    "” لم يعد في الإعدادات."
+    "» لم يعد في الإعدادات."
    ],
    "brickRemoved": [
-    "الكتلة “",
+    "الكتلة «",
     [
      "a",
      "key"
     ],
-    "” مفقودة."
+    "» مفقودة."
    ],
    "brickAdded": [
-    "كتلة جديدة “",
+    "كتلة جديدة «",
     [
      "a",
      "key"
     ],
-    "”."
+    "»."
    ],
    "singleWithoutDefault": [
-    "كتلة مفردة جديدة: الحقل المطلوب “",
+    "كتلة مفردة جديدة: الحقل المطلوب «",
     [
      "a",
      "name"
     ],
-    "” يحتاج إلى قيمة افتراضية."
+    "» يحتاج إلى قيمة افتراضية."
    ],
    "unknownChange": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: تغيّرت الخاصية “",
+    "»: تغيّرت الخاصية «",
     [
      "a",
      "prop"
     ],
-    "” وهذا غير مسموح به."
+    "» وهذا غير مسموح به."
    ],
    "kindChanged": [
-    "“",
+    "«",
     [
      "a",
      "key"
     ],
-    "” تنتقل من كتلة مفردة إلى مجموعة أو العكس."
+    "» ينتقل من كتلة مفردة إلى مجموعة أو العكس."
    ],
    "textChanged": "تغيّر النص.",
    "maxLowered": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: لا يمكن خفض max."
+    "»: لا يمكن خفض max."
    ],
    "maxRaised": "تم رفع max.",
    "routeAdded": "صفحات تفاصيل جديدة.",
    "routeAddedLocale": "عنوان للغة الجديدة.",
    "routeChanged": [
-    "“",
+    "«",
     [
      "a",
      "key"
     ],
-    "”: لا يمكن تغيير العناوين (route)."
+    "»: لا يمكن تغيير العناوين (route)."
    ],
    "fieldRemoved": [
-    "الحقل “",
+    "الحقل «",
     [
      "a",
      "at"
     ],
-    "” مفقود."
+    "» مفقود."
    ],
    "fieldAdded": [
-    "حقل جديد “",
+    "حقل جديد «",
     [
      "a",
      "at"
     ],
-    "”."
+    "»."
    ],
    "fieldAddedDefault": [
-    "حقل مطلوب جديد “",
+    "حقل مطلوب جديد «",
     [
      "a",
      "at"
     ],
-    "” بقيمة افتراضية."
+    "» بقيمة افتراضية."
    ],
    "fieldAddedMigration": [
-    "حقل مطلوب جديد “",
+    "حقل مطلوب جديد «",
     [
      "a",
      "at"
     ],
-    "” يملؤه ترحيل."
+    "» يملؤه ترحيل."
    ],
    "requiredWithoutDefault": [
-    "حقل مطلوب جديد “",
+    "حقل مطلوب جديد «",
     [
      "a",
      "at"
     ],
-    "” بلا قيمة افتراضية أو ترحيل."
+    "» بلا قيمة افتراضية أو ترحيل."
    ],
    "typeChanged": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: النوع ",
+    "»: النوع ",
     [
      "a",
      "from"
     ],
-    " ← ",
+    " → ",
     [
      "a",
      "to"
@@ -7499,61 +7670,61 @@ export const compiled: Record<string, MessageTree> = {
     "."
    ],
    "retiredFieldChanged": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: الحقل الموقوف يحتفظ بتعريفه في الإنتاج."
+    "»: الحقل الموقوف يحتفظ بتعريفه في الإنتاج."
    ],
    "madeRequired": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: اختياري ← مطلوب."
+    "»: اختياري ← مطلوب."
    ],
    "madeOptional": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "” أصبح اختياريًّا."
+    "» أصبح اختياريًّا."
    ],
    "translationChanged": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: تغيّرت قابلية الترجمة."
+    "»: تغيّرت قابلية الترجمة."
    ],
    "defaultChanged": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: لا يمكن تغيير القيمة الافتراضية."
+    "»: لا يمكن تغيير القيمة الافتراضية."
    ],
    "minRaised": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: لا يمكن رفع min."
+    "»: لا يمكن رفع min."
    ],
    "minLowered": "تم خفض min.",
    "minOffGrid": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: يمكن خفض min بمضاعف حجم الخطوة ",
+    "»: يمكن خفض min بمضاعف حجم الخطوة ",
     [
      "a",
      "step"
@@ -7561,12 +7732,12 @@ export const compiled: Record<string, MessageTree> = {
     " فقط."
    ],
    "propChanged": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: لا يمكن تغيير ",
+    "»: لا يمكن تغيير ",
     [
      "a",
      "prop"
@@ -7574,49 +7745,49 @@ export const compiled: Record<string, MessageTree> = {
     "."
    ],
    "optionRemoved": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: الخيار “",
+    "»: الخيار «",
     [
      "a",
      "option"
     ],
-    "” مفقود."
+    "» مفقود."
    ],
    "optionRenamed": "تمت إعادة تسمية الخيار.",
    "optionAdded": [
-    "خيار جديد “",
+    "خيار جديد «",
     [
      "a",
      "option"
     ],
-    "”."
+    "»."
    ],
    "uniqueChanged": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: لا يمكن تعيين unique أو تغييره."
+    "»: لا يمكن تعيين unique أو تغييره."
    ],
    "uniqueDropped": [
-    "“",
+    "«",
     [
      "a",
      "at"
     ],
-    "”: تمت إزالة unique."
+    "»: تمت إزالة unique."
    ],
    "fix": {
     "newField": "أضِف حقلًا جديدًا، واملأه بترحيل، وأدرج الحقل القديم تحت `retired`.",
     "newFieldOnly": "أضِف حقلًا جديدًا.",
     "newSite": "أنشئ موقعًا جديدًا.",
     "moneyFields": "أضِف حقول مال جديدة بعملة `currency` ثابتة.",
-    "planMigration": "خطّط لترحيل مع المطوّر لديك.",
+    "planMigration": "خطّط لترحيل مع فريق التطوير لديك.",
     "keepLocale": "أبقِ اللغة؛ يمكن إخفاء الصفحات بهذه اللغة.",
     "keepLocaleOrder": "أبقِ ترتيب اللغات الحالية.",
     "keepTimezone": "أبقِ المنطقة الزمنية.",
@@ -7627,7 +7798,7 @@ export const compiled: Record<string, MessageTree> = {
     "defaultOrOptional": "عيّن قيمة `default` أو اجعل الحقل اختياريًّا.",
     "keepProperty": "أبقِ الخاصية.",
     "keepMax": "أبقِ max.",
-    "keepRoute": "أبقِ route.",
+    "keepRoute": "أبقِ العنوان (route).",
     "defaultMigrationOrOptional": "عيّن قيمة `default` أو اكتب ترحيلًا أو اجعل الحقل اختياريًّا.",
     "keepDefinition": "اترك التعريف كما هو؛ يمكن تغيير النصوص فقط.",
     "keepDefault": "أبقِ القيمة الافتراضية.",
@@ -7640,7 +7811,7 @@ export const compiled: Record<string, MessageTree> = {
   "preview": {
    "notFound": "هذه الصفحة غير موجودة.",
    "failed": "تعذّر تحميل المعاينة.",
-   "loading": "جارٍ تحميل المعاينة …"
+   "loading": "جارٍ تحميل المعاينة…"
   }
  }
 }

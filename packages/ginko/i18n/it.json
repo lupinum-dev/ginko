@@ -3,9 +3,9 @@
     "unknownBrick": "Il blocco “{brick}” non esiste.",
     "markdown": "“{label}”: {problem}",
     "markdownAt": "“{label}”, riga {line}: {problem}",
-    "notObject": "Ci si aspetta un oggetto.",
+    "notObject": "È previsto un oggetto.",
     "unknownField": "Campo sconosciuto.",
-    "fieldMissing": "“{label}” manca.",
+    "fieldMissing": "Manca “{label}”.",
     "notLocalized": "“{label}” deve essere salvato per lingua.",
     "unknownLocale": "La lingua “{locale}” non è configurata.",
     "fieldEmpty": "“{label}” è vuoto.",
@@ -75,7 +75,7 @@
     "unknown": "Il componente “{tag}” non esiste.",
     "propUnknown": "Componente “{tag}”: la proprietà “{prop}” non esiste.",
     "propInvalid": "Componente “{tag}”: la proprietà “{prop}” {problem}",
-    "propMissing": "Componente “{tag}”: la proprietà “{prop}” manca.",
+    "propMissing": "Componente “{tag}”: manca la proprietà “{prop}”.",
     "propEmpty": "Componente “{tag}”: la proprietà “{prop}” è vuota.",
     "blockInParagraph": "Il componente “{tag}” è un blocco e non può stare in un paragrafo.",
     "parentOnly": "Il componente “{tag}” può comparire solo in {parents}.",
@@ -112,7 +112,7 @@
       "more": "{first} Controlla {count, plural, one {# altra impostazione} other {# altre impostazioni}}."
     },
     "prop": {
-      "missing": "{label} manca.",
+      "missing": "Manca {label}.",
       "empty": "{label} è vuoto.",
       "invalid": "{label} {problem}"
     },
@@ -147,10 +147,10 @@
     "migrationFillsExisting": "La migrazione “{id}” riempie “{target}”, che esiste già.",
     "migrationAdded": "Nuova migrazione “{id}”.",
     "migrationDropped": "La migrazione “{id}” non è più nella configurazione.",
-    "brickRemoved": "Il blocco “{key}” manca.",
+    "brickRemoved": "Manca il blocco “{key}”.",
     "brickAdded": "Nuovo blocco “{key}”.",
     "singleWithoutDefault": "Nuovo blocco singolo: il campo obbligatorio “{name}” ha bisogno di un valore predefinito.",
-    "unknownChange": "“{at}”: la proprietà “{prop}” è cambiata, e non è consentito.",
+    "unknownChange": "“{at}”: la proprietà “{prop}” è cambiata, ma non è consentito.",
     "kindChanged": "“{key}” passa da blocco singolo a raccolta, o viceversa.",
     "textChanged": "Il testo è cambiato.",
     "maxLowered": "“{at}”: max non può essere abbassato.",
@@ -158,7 +158,7 @@
     "routeAdded": "Nuove pagine di dettaglio.",
     "routeAddedLocale": "Indirizzo per la nuova lingua.",
     "routeChanged": "“{key}”: gli indirizzi (route) non possono essere modificati.",
-    "fieldRemoved": "Il campo “{at}” manca.",
+    "fieldRemoved": "Manca il campo “{at}”.",
     "fieldAdded": "Nuovo campo “{at}”.",
     "fieldAddedDefault": "Nuovo campo obbligatorio “{at}” con valore predefinito.",
     "fieldAddedMigration": "Nuovo campo obbligatorio “{at}”, riempito da una migrazione.",
@@ -173,7 +173,7 @@
     "minLowered": "min è stato abbassato.",
     "minOffGrid": "“{at}”: min può essere abbassato solo di un multiplo del passo {step}.",
     "propChanged": "“{at}”: {prop} non può essere modificato.",
-    "optionRemoved": "“{at}”: l’opzione “{option}” manca.",
+    "optionRemoved": "“{at}”: manca l’opzione “{option}”.",
     "optionRenamed": "Opzione rinominata.",
     "optionAdded": "Nuova opzione “{option}”.",
     "uniqueChanged": "“{at}”: unique non può essere impostato né modificato.",
@@ -183,7 +183,7 @@
       "newFieldOnly": "Aggiungi un nuovo campo.",
       "newSite": "Crea un nuovo sito.",
       "moneyFields": "Aggiungi nuovi campi di denaro con una `currency` fissa.",
-      "planMigration": "Pianifica una migrazione con il tuo sviluppatore.",
+      "planMigration": "Pianifica una migrazione con il tuo team di sviluppo.",
       "keepLocale": "Mantieni la lingua; le pagine in quella lingua possono essere nascoste.",
       "keepLocaleOrder": "Mantieni l’ordine delle lingue esistenti.",
       "keepTimezone": "Mantieni il fuso orario.",
@@ -194,7 +194,7 @@
       "defaultOrOptional": "Imposta un valore `default` o rendi il campo facoltativo.",
       "keepProperty": "Mantieni la proprietà.",
       "keepMax": "Mantieni max.",
-      "keepRoute": "Mantieni la route.",
+      "keepRoute": "Mantieni l’indirizzo (route).",
       "defaultMigrationOrOptional": "Imposta un valore `default`, scrivi una migrazione o rendi il campo facoltativo.",
       "keepDefinition": "Lascia la definizione com’è; possono cambiare solo i testi.",
       "keepDefault": "Mantieni il valore predefinito.",
@@ -207,6 +207,6 @@
   "preview": {
     "notFound": "Questa pagina non esiste.",
     "failed": "L’anteprima non si carica.",
-    "loading": "Caricamento dell’anteprima …"
+    "loading": "Caricamento dell’anteprima…"
   }
 }

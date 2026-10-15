@@ -183,7 +183,7 @@
       "newFieldOnly": "Añade un campo nuevo.",
       "newSite": "Crea un sitio nuevo.",
       "moneyFields": "Añade campos de dinero nuevos con una `currency` fija.",
-      "planMigration": "Planifica una migración con tu desarrollador.",
+      "planMigration": "Planifica una migración con tu equipo de desarrollo.",
       "keepLocale": "Conserva el idioma; las páginas en ese idioma se pueden ocultar.",
       "keepLocaleOrder": "Conserva el orden de los idiomas existentes.",
       "keepTimezone": "Conserva la zona horaria.",
@@ -194,7 +194,7 @@
       "defaultOrOptional": "Define un valor `default` o haz el campo opcional.",
       "keepProperty": "Conserva la propiedad.",
       "keepMax": "Conserva max.",
-      "keepRoute": "Conserva la route.",
+      "keepRoute": "Conserva la dirección (route).",
       "defaultMigrationOrOptional": "Define un valor `default`, escribe una migración o haz el campo opcional.",
       "keepDefinition": "Deja la definición como está; solo pueden cambiar los textos.",
       "keepDefault": "Conserva el valor predeterminado.",
@@ -207,6 +207,6 @@
   "preview": {
     "notFound": "Esta página no existe.",
     "failed": "La vista previa no se carga.",
-    "loading": "Cargando la vista previa …"
+    "loading": "Cargando la vista previa…"
   }
 }
