@@ -127,6 +127,14 @@ test('a band about the entry count alone asks only to remove entries', () => {
   expect(full.text()).toBe('2 000 von 2 000 Einträgen angelegt. Neue Einträge kannst du nicht mehr anlegen. Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.')
 })
 
+// Wrong behaviour caught: a full entry count with storage only near began with "Speicher fast voll", hiding the limit
+// that blocks new entries (volume-7).
+test('the band names the limit that is reached first', () => {
+  const MB = 1024 * 1024
+  const band = mount(StorageNotice, { props: { slug: 'restaurant', bytes: 3.8 * MB, entryCount: 2000, manager: true } })
+  expect(band.text()).toBe('2 000 von 2 000 Einträgen angelegt. Neue Einträge kannst du nicht mehr anlegen. Speicher fast voll: 3,8 MB von 4 MB belegt. Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.')
+})
+
 // Wrong behaviour caught: an editor hides the warning that only an owner or admin is meant to dismiss.
 test('only an owner or admin can hide the storage warning', () => {
   const near = mount(StorageNotice, { props: { slug: 'restaurant', bytes: 3.3 * 1024 * 1024, entryCount: 10, manager: false } })
