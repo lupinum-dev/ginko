@@ -97,6 +97,19 @@ test.describe('Wirtin', () => {
     await expect(sizeLine).not.toHaveCSS('display', 'none')
   })
 
+  // Wrong behaviour caught: after a text style the focus went back to the style button, and the next typed words were lost.
+  test('26. after "Zwischenüberschrift" typing goes on in the text', async ({ page }) => {
+    await page.goto('/s/restaurant/all/events/new', { waitUntil: 'networkidle' })
+    const text = page.getByRole('textbox', { name: 'Beschreibung' })
+    await text.click()
+    await page.keyboard.type('Gemütlicher Abend')
+    await page.keyboard.press('Enter')
+    await page.getByRole('combobox', { name: 'Blocktyp' }).click()
+    await page.getByRole('option', { name: 'Zwischenüberschrift' }).click()
+    await page.keyboard.type('Programm')
+    await expect(text.getByRole('heading', { name: 'Programm' })).toBeVisible()
+  })
+
   test('13. she changes the phone number herself; a number with letters is refused', async ({ page }) => {
     await page.goto('/s/restaurant/all', { waitUntil: 'networkidle' })
     await page.getByRole('link', { name: 'Adresse und Kontakt' }).first().click()
