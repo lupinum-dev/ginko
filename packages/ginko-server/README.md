@@ -60,7 +60,9 @@ First launch, in this order:
      in `x-ginko-site-token` is not counted in the public rate limit.
 6. Sign in once with an address from `GINKO_ADMIN_EMAILS`: that makes the first admin, who invites owners.
 
-Later releases need no manual step. Keep each Convex change compatible with the previous Studio: open tabs call the
+Later releases need no manual step, except the one-time runs listed in
+[`internals/migrations.md`](../../internals/migrations.md), which run in the production checkout after the release
+that brings them. Keep each Convex change compatible with the previous Studio: open tabs call the
 new functions until they reload.
 
 ## Image variants (srcset)
