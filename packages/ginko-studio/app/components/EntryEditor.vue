@@ -9,6 +9,7 @@ import { languageName, leafTranslation, previewFileIds, publishQuestion, titleOf
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
+import { isModKey } from '../utils/keys'
 import { isProposal, opErrorOf } from '../composables/useOps'
 import { TRANSLATION } from '@lupinum/ginko-editor'
 import { EllipsisIcon } from '@lucide/vue'
@@ -218,6 +219,12 @@ async function save() {
     if (!waiting.value) savedOnce.value = true
     if (form.created.value) emit('created', form.created.value)
   }
+}
+/** Cmd/Ctrl+S anywhere in the form saves like the button (its guards included), never the browser's "Save page as". */
+function onFormKey(event: KeyboardEvent) {
+  if (!isModKey(event, 's')) return
+  event.preventDefault()
+  save()
 }
 
 async function keepMine() {
@@ -455,7 +462,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
         <p v-if="foreign" class="text-sm text-muted-foreground">{{ t('entry.foreignHint') }}</p>
       </header>
 
-      <form ref="formEl" class="grid gap-6" novalidate @submit.prevent="save">
+      <form ref="formEl" class="grid gap-6" novalidate @submit.prevent="save" @keydown="onFormKey">
         <EntryGoneBanner
           v-if="removed && entry && !removingSelf"
           :site="site.slug" :brick-key="brickKey" :entry="entry" :dirty="dirty" :busy="busy"
@@ -501,7 +508,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           <!-- The live region must be in the accessibility tree before its text appears, so empty means sr-only (no space), not hidden. -->
           <p :class="['basis-full text-sm empty:sr-only', size?.over ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ size?.text }}</p>
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-          <Button type="submit" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
+          <Button type="submit" aria-keyshortcuts="Meta+S Control+S" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
           <Button v-if="isDraft && !publishing && !removed" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
           <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
           <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>

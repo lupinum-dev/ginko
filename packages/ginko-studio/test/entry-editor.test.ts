@@ -97,3 +97,32 @@ test('the preview sends the site only once its entries have loaded', async () =>
     vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
   }
 })
+
+// Wrong behaviour caught: Cmd/Ctrl+S in a changed form did nothing here, and in a browser it opened "Save page as".
+test('Ctrl+S in the form saves a change once, and an unchanged form not at all', async () => {
+  const saveEntry = vi.fn(async () => ({ rev: 2 }))
+  vi.stubGlobal('useOps', () => ({ opId: () => 'op1', saveEntry }))
+  try {
+    const entry = { _id: 'e1', brick: 'blog', kind: 'item', order: 0, data: { title: { de: 'Alt' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live' } as const
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false },
+      global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+    })
+    const pressSave = async () => {
+      const event = new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true })
+      wrapper.get('form').element.dispatchEvent(event)
+      await flushPromises()
+      return event
+    }
+    expect((await pressSave()).defaultPrevented).toBe(true)
+    expect(saveEntry).not.toHaveBeenCalled()
+
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Neu' })
+    await flushPromises()
+    await pressSave()
+    expect(saveEntry).toHaveBeenCalledTimes(1)
+    expect(saveEntry.mock.calls[0]![0]).toMatchObject({ entry: 'e1', fields: { title: { de: 'Neu' } } })
+  } finally {
+    vi.stubGlobal('useOps', () => ({}))
+  }
+})

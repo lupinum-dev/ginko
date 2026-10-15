@@ -7,6 +7,7 @@ import { CircleCheckIcon, FileTextIcon, HistoryIcon, ImageIcon, SearchIcon, Spar
 import { OWN_BOTTOM_BAR, type SiteLink } from '../utils/siteLinks'
 import { EDITOR_COMPONENTS } from '@studio/components/editor/context'
 import { provideStudioSite } from '../utils/labels'
+import { isModKey } from '../utils/keys'
 
 const route = useRoute()
 const { t, format } = useI18n()
@@ -42,7 +43,7 @@ const paletteOpen = ref(false)
 const apple = ref(true)
 const shortcut = computed(() => (apple.value ? t('basics.search.shortcutMac') : t('basics.search.shortcutOther')))
 function onShortcut(event: KeyboardEvent) {
-  if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
+  if (isModKey(event, 'k')) {
     event.preventDefault()
     paletteOpen.value = !paletteOpen.value
   }

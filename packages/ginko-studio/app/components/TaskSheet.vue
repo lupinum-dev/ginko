@@ -15,6 +15,7 @@ import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
 import { taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
+import { isModKey } from '../utils/keys'
 
 const props = defineProps<{
   site: string
@@ -103,6 +104,14 @@ async function save() {
   if (form.blockers.size) nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
   await finish(await form.save())
 }
+/** Cmd/Ctrl+S anywhere in the sheet's form saves like the button, never the browser's "Save page as". */
+function onFormKey(event: KeyboardEvent) {
+  if (!isModKey(event, 's')) return
+  event.preventDefault()
+  // Asked "Änderungen verwerfen?": saving is the clear answer, so the question goes and the save runs.
+  confirmClose.value = false
+  save()
+}
 async function keepMine() {
   await finish(await form.keepMine())
 }
@@ -145,7 +154,7 @@ function onCancel(event: Event) {
 
 <template>
   <dialog ref="dialog" :class="SHEET_DIALOG" aria-labelledby="sheet-title" @cancel="onCancel">
-    <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()">
+    <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()" @keydown="onFormKey">
       <header class="flex items-start justify-between gap-3 border-b bg-card pt-4 pb-3 pr-3 pl-5">
         <div>
           <h2 id="sheet-title" class="text-lg font-semibold">{{ shown(task.label) }}</h2>
@@ -200,7 +209,7 @@ function onCancel(event: Event) {
         </template>
         <template v-else>
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-          <Button type="submit" class="flex-1" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
+          <Button type="submit" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
           <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>
         </template>
       </footer>

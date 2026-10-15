@@ -30,6 +30,7 @@ import SlashMenu from './SlashMenu.vue'
 import SourceToggle from './SourceToggle.vue'
 import { refuseImage, useImageUploads } from './useImageUploads.ts'
 import { useStudioSite } from '../../utils/labels'
+import { isModKey } from '../../utils/keys'
 
 const props = defineProps<{
   id: string; field: Extract<Field, { type: 'markdown' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string
@@ -312,7 +313,7 @@ const cardLabel = computed(() => { const label = cardTag.value ? registry?.()?.[
 
 // Ctrl/Cmd+F inside the field opens find and replace instead of the browser's page search.
 function onFrameKey(event: KeyboardEvent) {
-  if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'f') { event.preventDefault(); findOpen.value = true }
+  if (isModKey(event, 'f')) { event.preventDefault(); findOpen.value = true }
 }
 
 // --- phone: the toolbar above the keyboard -------------------------------------------------------------------------
