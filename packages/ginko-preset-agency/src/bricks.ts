@@ -1,7 +1,7 @@
 // Content types an agency or studio website needs. Labels come in German and English.
 // Every factory returns a brick for `bricks: { <key>: services() }`. For file content the brick key is the folder name,
 // so a site that keeps `content/leistungen/` writes `leistungen: services()`.
-import { collection, f, type CollectionBrick, type Field, type Fields, type Label, type Locale, type RouteTemplate } from '@lupinum/ginko'
+import { collection, f, single, type CollectionBrick, type Field, type Fields, type Label, type Locale, type RouteTemplate, type SingleBrick } from '@lupinum/ginko'
 import type { MarkdownField } from '@lupinum/ginko/internal'
 
 export type Routes = Record<Locale, RouteTemplate>
@@ -35,9 +35,11 @@ const both = (de: string, en: string) => ({ de, en })
 /** The hint of every `description`: where the text shows, so people know how much to write. */
 const descriptionHint = both('Ein bis zwei Sätze. Erscheint bei Google und wenn jemand den Link teilt.', 'One or two sentences. Shown on Google and when someone shares the link.')
 
+const sourceOf = (o: { source?: 'files' | 'platform' }) => ((o.source ?? 'files') === 'files' ? { source: 'files' as const } : {})
+
 /** Brick settings that every factory shares. */
 function common(o: BrickOptions<any>, label: Label, max: number) {
-  return { label: o.label ?? label, max: o.max ?? max, ...((o.source ?? 'files') === 'files' ? { source: 'files' as const } : {}) }
+  return { label: o.label ?? label, max: o.max ?? max, ...sourceOf(o) }
 }
 
 /**
@@ -46,10 +48,12 @@ function common(o: BrickOptions<any>, label: Label, max: number) {
  * TypeScript would otherwise infer `E` from the expected brick type (loose `Fields`), and `Omit` would then drop every
  * preset field from the site's types.
  */
-function withExtras<B extends Fields, R extends Routes | undefined, E extends Fields>(brick: CollectionBrick<B, R>, o: BrickOptions<E>): CollectionBrick<Omit<B, keyof NoInfer<E>> & NoInfer<E>, R> {
+function withExtras<B extends Fields, R extends Routes | undefined, E extends Fields>(brick: CollectionBrick<B, R>, o: Pick<BrickOptions<E>, 'extra' | 'fieldLabels'>): CollectionBrick<Omit<B, keyof NoInfer<E>> & NoInfer<E>, R>
+function withExtras<B extends Fields, E extends Fields>(brick: SingleBrick<B>, o: Pick<BrickOptions<E>, 'extra' | 'fieldLabels'>): SingleBrick<Omit<B, keyof NoInfer<E>> & NoInfer<E>>
+function withExtras(brick: CollectionBrick | SingleBrick, o: Pick<BrickOptions<Fields>, 'extra' | 'fieldLabels'>): CollectionBrick | SingleBrick {
   const merged: Record<string, Field> = { ...brick.fields, ...o.extra }
   for (const [name, label] of Object.entries(o.fieldLabels ?? {})) if (merged[name]) merged[name] = { ...merged[name], label }
-  return { ...brick, fields: merged as Omit<B, keyof NoInfer<E>> & NoInfer<E> }
+  return { ...brick, fields: merged }
 }
 
 const routeOf = (defaults: Routes, o: RoutedOptions<any>): Routes => ({ ...defaults, ...o.route })
@@ -275,4 +279,36 @@ export function jobs<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
       body: bodyOf(both('Beschreibung', 'Description'), o),
     },
   }), o)
+}
+
+export type CompanyOptions<E extends Fields = {}> = Pick<BrickOptions<E>, 'label' | 'source' | 'fieldLabels' | 'extra'>
+
+/**
+ * The company's legal name, address, contact and register data: one place the owner keeps current, read by the
+ * site's imprint, contact boxes and footer. Every field is optional, so the brick can join a live site (a new single
+ * needs no value). One edit task covers every field, `extra` ones included. `telHref` turns `phone` into a dial link.
+ */
+export function company<const E extends Fields = {}>(o: CompanyOptions<E> = {}) {
+  const plain = { optional: true, translate: false } as const
+  const brick = withExtras(single({
+    label: o.label ?? both('Firmendaten', 'Company details'),
+    describe: both(
+      'Name, Anschrift und Kontakt deiner Firma. Die Website zeigt sie überall, wo diese Angaben stehen, zum Beispiel im Impressum.',
+      'Your company’s name, address and contact details. The website shows them wherever these details appear, for example in the imprint.',
+    ),
+    ...sourceOf(o),
+    fields: {
+      legalName: f.text(both('Firmenname', 'Company name'), { ...plain, hint: both('Wie im Firmenbuch, z. B. Muster GmbH.', 'As registered, e.g. Example Ltd.') }),
+      street: f.text(both('Straße und Hausnummer', 'Street and number'), plain),
+      postalCode: f.text(both('Postleitzahl', 'Postcode'), { ...plain, max: 10 }),
+      city: f.text(both('Ort', 'Town or city'), plain),
+      country: f.text(both('Land', 'Country'), { optional: true }),
+      email: f.text(both('E-Mail', 'Email'), { optional: true, format: 'email' }),
+      phone: f.text(both('Telefon', 'Phone'), { optional: true, format: 'tel', hint: both('Mit Ländervorwahl, z. B. +43 1 234 56 78.', 'With country code, e.g. +43 1 234 56 78.') }),
+      registryNumber: f.text(both('Firmenbuchnummer', 'Company register number'), { ...plain, hint: both('z. B. FN 123456 a', 'e.g. FN 123456 a') }),
+      registryCourt: f.text(both('Firmenbuchgericht', 'Commercial court'), { optional: true }),
+      vatId: f.text(both('UID-Nummer', 'VAT ID'), plain),
+    },
+  }), o)
+  return { ...brick, tasks: [{ id: 'edit', label: both('Firmendaten ändern', 'Change company details'), kind: 'edit' as const, fields: Object.keys(brick.fields) }] }
 }

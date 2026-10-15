@@ -1,8 +1,8 @@
 // A preset that fails the core's schema check breaks every site that declares it, and a wrong expiry rule shows closed jobs.
 import { defineSite, f, type CollectionBrick, type SiteInput } from '@lupinum/ginko'
-import { checkSchema, serializeSchema } from '@lupinum/ginko/internal'
+import { checkSchema, diffSchema, serializeSchema } from '@lupinum/ginko/internal'
 import { describe, expect, it } from 'vitest'
-import { authors, blog, caseStudies, faq, jobs, legal, openJobs, services, team } from '../src/index.ts'
+import { authors, blog, caseStudies, company, faq, jobs, legal, openJobs, services, team, telHref } from '../src/index.ts'
 
 const siteWith = (bricks: Record<string, any>, locales: SiteInput['locales'] = ['de', 'en']) =>
   defineSite({
@@ -25,9 +25,22 @@ describe('openJobs', () => {
   })
 })
 
+// A dial link that loses the leading + calls a local number instead of the company abroad.
+describe('telHref', () => {
+  it.each([
+    ['+43 681 20303240', '+4368120303240'],
+    [' +43 (0)1 234-56 78 ', '+43012345678'],
+    ['0681 / 20303240', '068120303240'],
+    ['', ''],
+    [undefined, ''],
+  ])('%s → %s', (phone, expected) => {
+    expect(telHref(phone)).toBe(expected)
+  })
+})
+
 describe('every factory passes the core schema check', () => {
   const all = {
-    default: () => ({ services: services(), caseStudies: caseStudies(), blog: blog(), authors: authors(), legal: legal(), faq: faq(), team: team(), jobs: jobs() }),
+    default: () => ({ services: services(), caseStudies: caseStudies(), blog: blog(), authors: authors(), legal: legal(), faq: faq(), team: team(), jobs: jobs(), company: company() }),
     'custom routes, keys and extra fields': () => ({
       leistungen: services({ route: { de: '/angebot/[slug]', en: '/en/offer/[slug]' }, extra: { color: f.text('Farbe', { optional: true }) } }),
       referenzen: caseStudies({ route: { de: '/projekte/[slug]', en: '/en/work/[slug]' } }),
@@ -37,6 +50,7 @@ describe('every factory passes the core schema check', () => {
       faq: faq({ source: 'platform', max: 10 }),
       team: team({ extra: { slug: f.slug('Adresse', { from: 'name' }) }, route: { de: '/team/[slug]', en: '/en/team/[slug]' } }),
       stellen: jobs({ route: { de: '/jobs/[slug]', en: '/en/jobs/[slug]' }, label: 'Offene Stellen' }),
+      firma: company({ source: 'platform', extra: { region: f.text('Region', { optional: true, translate: false }) }, fieldLabels: { vatId: 'UID' } }),
     }),
     'without relations': () => ({ blog: blog({ authorsBrick: false }) }),
   }
@@ -64,6 +78,19 @@ describe('every factory passes the core schema check', () => {
   })
 })
 
+// The release refuses a new single with a field that is required and has no default (diff.ts singleWithoutDefault),
+// so a live site could never add Firmendaten. Its edit task must also reach the site's own extra fields.
+describe('company', () => {
+  it('joins a live site without a refused change, and its task edits every field', () => {
+    const before = serializeSchema(siteWith({ blog: blog({ authorsBrick: false }) }))
+    const firma = company({ extra: { region: f.text('Region', { optional: true, translate: false }) } })
+    const after = serializeSchema(siteWith({ blog: blog({ authorsBrick: false }), firma }))
+    expect(diffSchema(before, after).rejected).toEqual([])
+    expect(firma.tasks).toEqual([expect.objectContaining({ kind: 'edit', fields: Object.keys(firma.fields) })])
+    expect(firma.tasks[0]!.fields).toContain('region')
+  })
+})
+
 describe('labels', () => {
   it('come in German and English', () => {
     expect(services().label).toEqual({ de: 'Leistungen', en: 'Services' })
@@ -85,6 +112,7 @@ describe('a config like lupinum-v7 can be expressed', () => {
     rechtliches: legal({ route: { de: '/[slug]' } }),
     authors: authors(),
     faq: faq(),
+    firma: company({ source: 'platform' }),
   }, ['de'])
   const schema = serializeSchema(v7)
 
@@ -107,6 +135,7 @@ describe('a config like lupinum-v7 can be expressed', () => {
     ['rechtliches', ['title', 'description', 'slug', 'legalType', 'updatedAt', 'body']],
     ['authors', ['name', 'slug', 'role', 'bio', 'avatar', 'links']],
     ['faq', ['question', 'answer']],
+    ['firma', ['legalName', 'street', 'postalCode', 'city', 'country', 'email', 'phone', 'registryNumber', 'registryCourt', 'vatId']],
   ])('%s has the fields v7 uses', (key, names) => {
     expect(names.filter((name) => !(name in schema.bricks[key]!.fields))).toEqual([])
   })
