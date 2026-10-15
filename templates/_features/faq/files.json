@@ -1,3 +1,8 @@
 [
-  "app/components/block/Faq.vue"
+  "app/components/block/Faq.vue",
+  "app/components/ui/accordion/Accordion.vue",
+  "app/components/ui/accordion/AccordionContent.vue",
+  "app/components/ui/accordion/AccordionItem.vue",
+  "app/components/ui/accordion/AccordionTrigger.vue",
+  "app/components/ui/accordion/index.ts"
 ]
