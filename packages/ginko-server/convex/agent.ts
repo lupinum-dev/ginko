@@ -339,11 +339,14 @@ export const stale = internalQuery({
 })
 
 /** The sentence for the person after a save-like write: proposed, unchanged, or done with the change to undo. */
+/** When a write shows on the website: in about a minute, or from the day of a week planned ahead or a planned price (`liveFrom`). */
+const liveText = (liveFrom: string | undefined) => (liveFrom ? `On the website from ${liveFrom}.` : 'Live on the website in about a minute.')
+
 function savedAs(result: Json, label: string): { text: string; result: Json } {
   if (proposed(result)) return { text: PROPOSED, result }
-  const change = (result as { change?: string }).change
+  const { change, liveFrom } = result as { change?: string; liveFrom?: string }
   return {
-    text: change ? `Done: ${label}. Live on the website in about a minute. To undo: ginko_undo with change ${change}.` : 'Nothing changed: the values were already like this.',
+    text: change ? `Done: ${label}. ${liveText(liveFrom)} To undo: ginko_undo with change ${change}.` : 'Nothing changed: the values were already like this.',
     result,
   }
 }
@@ -407,9 +410,9 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
     const data = { ...prefill, ...fromToolInput(brick.fields, values, { mainLocale: main, currency: schema.currency, newRowId }) }
     const result = await createAs(ctx, actor, { site, opId, task: tool.ref, brick: tool.brick, data })
     if (proposed(result)) return { text: PROPOSED, result }
-    const { entry: id, state } = result as { entry: Id<'entries'>; state: 'draft' | 'live' }
+    const { entry: id, state, liveFrom } = result as { entry: Id<'entries'>; state: 'draft' | 'live'; liveFrom?: string }
     // A collection with drafts makes a draft (SPEC 15); publishing stays with the person in the platform.
-    const where = state === 'draft' ? 'Saved as a draft, not on the website yet. The person publishes it in the platform.' : 'Live on the website in about a minute.'
+    const where = state === 'draft' ? 'Saved as a draft, not on the website yet. The person publishes it in the platform.' : liveText(liveFrom)
     const change = await lastChangeOf(ctx, id)
     return { text: `Done: ${labelIn(tool.task.label, main, main)}. New entry ${id}. ${where} To undo: ginko_undo with change ${change?._id}.`, result: { ...(result as object), change: change?._id ?? null } }
   }

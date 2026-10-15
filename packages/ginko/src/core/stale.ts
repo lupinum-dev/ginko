@@ -1,4 +1,4 @@
-import { workWeekOf, type WeekInfo } from './time.ts'
+import { firstDayShown, workWeekOf, type WeekInfo } from './time.ts'
 import type { Brick, Json, Schema, Task } from './types.ts'
 
 export interface WeekState {
@@ -112,4 +112,24 @@ export function duePlan(brick: Pick<Brick, 'planned'>, data: Record<string, Json
   const next = data[plan.next]
   const from = data[plan.from]
   return next !== undefined && next !== null && typeof from === 'string' && from <= today ? next : undefined
+}
+
+/**
+ * The day a save shows on the website when that is later than `today` (the site's time zone), else undefined (it shows
+ * at once): a week planned ahead (`plans`) from its first shown day (`firstDayShown`); a save that changed only the
+ * plan of a planned change (`planned`) from the plan's date. `changed` are the root fields the save wrote.
+ */
+export function liveFrom(schema: Pick<Schema, 'bricks' | 'week'>, brickKey: string, data: Record<string, Json>, changed: readonly string[], today: string): string | undefined {
+  const brick = Object.hasOwn(schema.bricks, brickKey) ? schema.bricks[brickKey] : undefined
+  if (!brick) return undefined
+  if (brick.kind === 'collection' && brick.plans) {
+    const start = data[brick.plans.field]
+    const first = typeof start === 'string' ? firstDayShown(start, schema.week) : undefined
+    return first && first > today ? first : undefined
+  }
+  const plan = brick.planned
+  if (!plan || !changed.length || !changed.every((root) => root === plan.next || root === plan.from)) return undefined
+  const from = data[plan.from]
+  const next = data[plan.next]
+  return next !== undefined && next !== null && typeof from === 'string' && from > today ? from : undefined
 }

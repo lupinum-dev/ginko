@@ -609,6 +609,7 @@
     "draftNotOnSite": "Borrador guardado. Aún no está en el sitio web.",
     "draftScheduled": "Borrador guardado, en línea desde {time}.",
     "liveHint": "En el sitio web en aproximadamente un minuto.",
+    "liveFrom": "En el sitio web a partir del {date}.",
     "undo": "Deshacer",
     "undone": "Deshecho.",
     "pictureBackFromTrash": "La imagen «{name}» estaba en la papelera de archivos y ha vuelto.",
@@ -658,7 +659,7 @@
     "reason": "¿Por qué? El autor lo verá.",
     "mine": "Lo propusiste tú",
     "stale": "Ya no encaja",
-    "approved": "Aprobado. En el sitio web en aproximadamente un minuto.",
+    "approved": "Aprobado.",
     "rejected": "Rechazado.",
     "sent": "Enviado para aprobación. Decide el propietario.",
     "diff": {

@@ -609,6 +609,7 @@
     "draftNotOnSite": "Draft saved. Not on the website yet.",
     "draftScheduled": "Draft saved, online from {time}.",
     "liveHint": "On the website in about a minute.",
+    "liveFrom": "On the website from {date}.",
     "undo": "Undo",
     "undone": "Undone.",
     "pictureBackFromTrash": "The picture “{name}” was in the Files trash and is back.",
@@ -658,7 +659,7 @@
     "reason": "Why? The author sees this.",
     "mine": "You proposed this",
     "stale": "No longer fits",
-    "approved": "Approved. On the website in about a minute.",
+    "approved": "Approved.",
     "rejected": "Rejected.",
     "sent": "Sent for approval. The owner decides.",
     "diff": {

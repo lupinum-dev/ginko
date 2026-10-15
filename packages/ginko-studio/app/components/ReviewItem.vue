@@ -31,12 +31,12 @@ async function approve(at?: number) {
   busy.value = true
   error.value = ''
   try {
-    const result = await approveMutation.mutate({ proposal: props.proposal.proposal, at }) as { status: string; change?: string | null; reason?: string; reasonMsg?: { key: string; params?: Record<string, unknown> } | null }
+    const result = await approveMutation.mutate({ proposal: props.proposal.proposal, at }) as { status: string; change?: string | null; liveFrom?: string; reason?: string; reasonMsg?: { key: string; params?: Record<string, unknown> } | null }
     if (result.status === 'stale') show(result.reason ? textOf(result.reasonMsg, result.reason) : t('review.stale'), { tone: 'err' })
     else if (result.status === 'scheduled' && at !== undefined) show(t('ops.scheduled', { time: whenText(at, props.schema.timeZone, format) }))
     else {
       const change = result.change
-      show(t('review.approved'), change ? { action: { label: t('ops.undo'), run: () => ops.undoChange(change) } } : {})
+      show(`${t('review.approved')} ${ops.liveText(result)}`, change ? { action: { label: t('ops.undo'), run: () => ops.undoChange(change) } } : {})
     }
   } catch (e) {
     error.value = opErrorOf(e).message

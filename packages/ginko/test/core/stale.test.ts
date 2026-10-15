@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_WEEK, plannedWeeks, staleOf, weekInfoOf, type Schema, type Task } from '../../src/core/index.ts'
+import restaurant from '../../../../sites/restaurant/ginko.config.ts'
+import { DEFAULT_WEEK, liveFrom, plannedWeeks, serializeSchema, staleOf, weekInfoOf, type Schema, type Task } from '../../src/core/index.ts'
 
 const lunch = {
   fields: { weekOf: { type: 'date' }, note: { type: 'text' } },
@@ -48,5 +49,23 @@ describe('staleOf (weekly upkeep)', () => {
   it('is undefined without a week task', () => {
     expect(staleOf({ fields: lunch.fields, tasks: [{ id: 'e', label: 'E', kind: 'edit', fields: ['note'] }] }, {}, '2026-10-11', DEFAULT_WEEK)).toBeUndefined()
     expect(staleOf({ fields: lunch.fields }, {}, '2026-10-11', DEFAULT_WEEK)).toBeUndefined()
+  })
+})
+
+describe('liveFrom (when a save shows on the website)', () => {
+  const schema = serializeSchema(restaurant)
+  const plan = { price: { amount: 2190 }, nextPrice: { amount: 2290 }, priceFrom: '2026-11-01' }
+  // Wrong behaviour caught: a week planned for 19 October or a price planned for 1 November is saved with "On the
+  // website in about a minute", so the owner believes it is live now; or a change that is live now gets a later date.
+  it.each([
+    ['a planned week, saved on Wednesday', 'lunchPlans', { weekOf: '2026-10-19' }, ['days'], '2026-10-14', '2026-10-17'],
+    ['a planned week, saved on the Saturday it starts to show', 'lunchPlans', { weekOf: '2026-10-19' }, ['days'], '2026-10-17', undefined],
+    ['only the planned price', 'menu', plan, ['nextPrice', 'priceFrom'], '2026-10-14', '2026-11-01'],
+    ['the price and its plan', 'menu', plan, ['price', 'nextPrice', 'priceFrom'], '2026-10-14', undefined],
+    ['a planned price due today', 'menu', { ...plan, priceFrom: '2026-10-14' }, ['nextPrice', 'priceFrom'], '2026-10-14', undefined],
+    ['a plan removed', 'menu', { price: plan.price }, ['nextPrice', 'priceFrom'], '2026-10-14', undefined],
+    ['this week\'s lunch', 'lunch', { weekOf: '2026-10-19' }, ['weekOf'], '2026-10-17', undefined],
+  ] as const)('%s', (_name, brick, data, changed, today, expected) => {
+    expect(liveFrom(schema, brick, data, changed, today)).toBe(expected)
   })
 })

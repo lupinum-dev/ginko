@@ -100,6 +100,15 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
 
   const opId = () => crypto.randomUUID()
 
+  /**
+   * When a write shows on the website: "in about a minute", or the day the server names (`liveFrom`) for a week planned
+   * ahead or a planned price, so nobody takes it for live now.
+   */
+  const liveText = (result: unknown) => {
+    const from = typeof result === 'object' && result !== null && 'liveFrom' in result && typeof result.liveFrom === 'string' ? result.liveFrom : undefined
+    return from ? t('ops.liveFrom', { date: format.date(from, { weekday: 'long', day: 'numeric', month: 'long' }) }) : t('ops.liveHint')
+  }
+
   /** `text` and a sentence per picture that came back from the Files trash with the old version. */
   const withRestored = (text: string, result: unknown) =>
     [text, ...restoredFilesOf(result).map((name) => t('ops.pictureBackFromTrash', { name: String(name) }))].join(' ')
@@ -188,7 +197,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
       else if (!('change' in result)) show(t('history.alreadyThere'))
       else {
         const made = result.change
-        show(withRestored(`${t('history.reverted')} ${t('ops.liveHint')}`, result), { action: { label: t('ops.undo'), run: () => undoChange(made, task) } })
+        show(withRestored(`${t('history.reverted')} ${liveText(result)}`, result), { action: { label: t('ops.undo'), run: () => undoChange(made, task) } })
       }
     } catch (error) {
       show(opErrorOf(error).message, { tone: 'err' })
@@ -197,6 +206,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
 
   return {
     opId,
+    liveText,
     revertEntry,
     moveEntry,
     /** Saves changed root fields. Throws OpError; on success shows the message with Rückgängig. */
@@ -210,7 +220,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
         }
         const change = 'change' in result ? result.change : undefined
         // A draft is not on the website, so the message does not promise it (SPEC 15).
-        show(args.draft ? t('ops.draftSaved') : `${t('ops.saved')} ${t('ops.liveHint')}`, change ? { action: { label: t('ops.undo'), run: () => undoChange(change, args.task) } } : {})
+        show(args.draft ? t('ops.draftSaved') : `${t('ops.saved')} ${liveText(result)}`, change ? { action: { label: t('ops.undo'), run: () => undoChange(change, args.task) } } : {})
         return { proposal: undefined, rev: result.rev }
       } catch (error) {
         throw opErrorOf(error)
@@ -225,7 +235,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
           return { proposal: result.proposal }
         }
         // A collection with drafts makes a draft unless asked to publish (SPEC 15); the message says which.
-        const text = result.state === 'live' ? `${args.label ?? t('ops.created')} ${t('ops.liveHint')}`
+        const text = result.state === 'live' ? `${args.label ?? t('ops.created')} ${liveText(result)}`
           : result.publishAt !== undefined ? t('ops.draftScheduled', { time: whenText(result.publishAt, args.timeZone ?? 'Europe/Vienna', format) })
           : t('ops.draftNotOnSite')
         // A new entry starts at lifeRev 1; undo removes it.

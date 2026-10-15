@@ -76,7 +76,7 @@ const staleBecause = (key: MessageKey, params?: Record<string, Param>): Stale =>
   return { reason: historyText(message, 'de', undefined), msg: message }
 }
 
-type Applied = { ok: true; change?: Id<'changes'> } | ({ ok: false } & Stale)
+type Applied = { ok: true; change?: Id<'changes'>; liveFrom?: string } | ({ ok: false } & Stale)
 
 /** A refusal of the operation (`fail`: code, catalog key, params) as the reason: its own text, then the ask to propose again. */
 function reasonOf(data: { code?: string; key?: string; params?: Record<string, string | number> }): Stale {
@@ -107,11 +107,11 @@ async function applyNow(ctx: MutationCtx, p: Doc<'proposals'>, approver: string)
       case 'publish': result = await publishAs(ctx, actor, args); break
       case 'unpublish': result = await unpublishAs(ctx, actor, args); break
     }
-    const data = result as { change?: Id<'changes'>; entry?: Id<'entries'> }
+    const data = result as { change?: Id<'changes'>; entry?: Id<'entries'>; liveFrom?: string }
     // Only a save can end without a change (the values were already there); every other operation writes one.
     const entry = data.entry ?? p.entry
     const change = data.change ?? (p.op !== 'save' && entry ? (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry)).order('desc').first())?._id : undefined)
-    return { ok: true, ...(change ? { change } : {}) }
+    return { ok: true, ...(change ? { change } : {}), ...(data.liveFrom ? { liveFrom: data.liveFrom } : {}) }
   } catch (error) {
     if (error instanceof ConvexError && typeof error.data === 'object' && error.data !== null && 'code' in error.data) return { ok: false, ...reasonOf(error.data as { code?: string; key?: string; params?: Record<string, string | number> }) }
     throw error
@@ -195,7 +195,8 @@ export const approve = mutation({
       return { proposal: p._id, status: 'stale', reason: applied.reason, reasonMsg: applied.msg }
     }
     await markApplied(ctx, p, by, applied.change)
-    return { proposal: p._id, status: 'applied', change: applied.change ?? null }
+    // A week planned ahead or a planned price: the approver is told from when it shows.
+    return { proposal: p._id, status: 'applied', change: applied.change ?? null, ...(applied.liveFrom ? { liveFrom: applied.liveFrom } : {}) }
   },
 })
 

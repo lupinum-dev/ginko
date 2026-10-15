@@ -609,6 +609,7 @@
     "draftNotOnSite": "Entwurf gespeichert. Noch nicht auf der Website.",
     "draftScheduled": "Entwurf gespeichert, online ab {time}.",
     "liveHint": "Auf der Website in etwa einer Minute.",
+    "liveFrom": "Auf der Website ab {date}.",
     "undo": "Rückgängig",
     "undone": "Rückgängig gemacht.",
     "pictureBackFromTrash": "Das Bild „{name}“ war im Papierkorb der Dateibibliothek und ist wieder da.",
@@ -658,7 +659,7 @@
     "reason": "Warum? Das sieht, wer die Änderung vorgeschlagen hat.",
     "mine": "Du hast das vorgeschlagen",
     "stale": "Passt nicht mehr",
-    "approved": "Freigegeben. Auf der Website in etwa einer Minute.",
+    "approved": "Freigegeben.",
     "rejected": "Abgelehnt.",
     "sent": "Zur Freigabe gesendet. Die Inhaberin oder der Inhaber entscheidet.",
     "diff": {

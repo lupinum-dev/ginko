@@ -270,6 +270,20 @@ describe('tasks.prefill', () => {
     expect([data.price, data.nextPrice, data.priceFrom]).toEqual([{ amount: 2290 }, undefined, undefined])
   })
 
+  // Wrong behaviour caught: the Studio said "On the website in about a minute" for a price planned for November and a
+  // week planned for next week, because the write did not say when it shows.
+  it('a save of only the planned price and a new planned week answer from when they show', async () => {
+    const { t, as, entries } = await setup()
+    const price = await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: entries['menu-saibling']!, baseRev: 1, fields: { nextPrice: { amount: 2500 }, priceFrom: '2026-11-01' } })
+    expect(price).toMatchObject({ liveFrom: '2026-11-01' })
+    const kw42 = (await t.run((ctx) => ctx.db.get(entries['plan-kw42']!)))!.data
+    const week = await as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'lunchPlans.planNext', brick: 'lunchPlans', data: { ...kw42, weekOf: '2026-10-19' } })
+    // Thursday 8 October: the week of Monday 19 shows from Saturday 17.
+    expect(week).toMatchObject({ state: 'live', liveFrom: '2026-10-17' })
+    const now = await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: entries['menu-saibling']!, baseRev: 2, fields: { price: { amount: 2400 } } })
+    expect(now).not.toHaveProperty('liveFrom')
+  })
+
   // Wrong behaviour caught: a week planned for today is what the website shows, but the cook's weekly task could
   // only edit the single, so the cook's change never appeared (or the cook was refused the planned week).
   it('lunchWeek fills the week planned for this week; a week planned for later is not the task\'s', async () => {
