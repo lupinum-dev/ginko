@@ -506,3 +506,36 @@ test('staff save an entry they created through the edit task that covers the cha
     vi.stubGlobal('useOps', () => ({}))
   }
 })
+
+// Wrong behaviour caught: the field note of a cleared required text of an entry that is online in English said the website
+// shows the German text, although the brick hides untranslated entries, so the entry vanishes from the English site.
+// EntryEditor must hand the note the brick (hidesUntranslated) and the entry's main-language title.
+test('Alles bearbeiten on the English tab says a cleared title takes the entry off the English site', async () => {
+  vi.stubGlobal('useRoute', () => ({ query: { lang: 'en' } }))
+  try {
+    const routed = serializeSchema(defineSite({
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+      pages: { home: { de: '/', en: '/en' } },
+      bricks: { events: collection({ label: 'Events', max: 50, order: 'manual', route: { de: '/events/[slug]', en: '/en/events/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+    }))
+    const entry = { _id: 'e1', brick: 'events', kind: 'item', order: 0, data: { title: { de: 'Kürbisabend', en: 'Pumpkin night' } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live', translation: { en: { page: 'shown', blocking: [], missing: [], outdated: [] } } } as const
+    // The fields: the note under the title, as GinkoField reads it from the translation view.
+    const Fields = vue.defineComponent({
+      emits: ['update'],
+      setup: () => {
+        const translation = inject(TRANSLATION)!
+        return () => vue.h('p', { 'data-leaf': 'title' }, translation.missingNote!('title'))
+      },
+    })
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema: routed, brickKey: 'events', brick: routed.bricks.events!, entry, canRemove: false },
+      global: { stubs: { EntryFields: Fields, PreviewPane: true, NuxtLink: true } },
+    })
+    // The English title is cleared; the server's state for the stored entry now lists it as blocking.
+    await wrapper.setProps({ entry: { ...entry, data: { title: { de: 'Kürbisabend' } }, translation: { en: { page: 'shown', blocking: ['title'], missing: ['title'], outdated: [] } } } })
+    await flushPromises()
+    expect(wrapper.get('[data-leaf="title"]').text()).toBe('Noch nicht übersetzt. Ohne diesen Text fehlt „Kürbisabend“ auf der Website auf Englisch.')
+  } finally {
+    vi.stubGlobal('useRoute', () => ({ query: {} }))
+  }
+})
