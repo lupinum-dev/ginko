@@ -227,7 +227,8 @@ describe('agent door: tool catalog', () => {
     expect((await s.t.run((ctx) => ctx.db.query('changes').order('desc').first()))).toMatchObject({ via: 'agent', fields: ['name'] })
   })
 
-  // Wrong behaviour caught: the assistant reads the outdated English name as missing, or not at all.
+  // Wrong behaviour caught: the assistant reads the outdated English name as missing, or not at all; or it is told
+  // to fix the English text of a draft that ginko_read does not even list.
   it('ginko_read in English marks a translation as stale once the German text changed, and still delivers it', async () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')
@@ -239,6 +240,14 @@ describe('agent door: tool catalog', () => {
     expect(read.data.stale[entry]).toEqual(['name'])
     const item = read.data.items.find((i: { id: string }) => i.id === entry)
     expect([item.data.name, item.fallback]).toEqual(['Veal schnitzel', []])
+
+    // Taken back to a draft, it is off the website: neither its item nor its outdated text is reported.
+    await patchSchema(s, (schema) => { (schema.bricks.menu as { drafts?: boolean }).drafts = true })
+    const lifeRev = (await s.t.run((ctx) => ctx.db.get(entry)))!.lifeRev
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry, lifeRev })
+    const drafted = await call(s, key, 'ginko_read', { brick: 'menu', locale: 'en' })
+    expect(drafted.data.items.map((i: { id: string }) => i.id)).not.toContain(entry)
+    expect(drafted.data.stale?.[entry]).toBeUndefined()
   })
 
   // Wrong behaviour caught: an answer limit below the entry limit, so the assistant cannot read an entry the Studio saved.

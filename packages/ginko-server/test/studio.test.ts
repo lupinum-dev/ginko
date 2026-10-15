@@ -421,6 +421,18 @@ describe('the answer of a save says what the other languages show', () => {
     const later = await s.createEvent('Rehwoche')
     expect((await publish(later.entry, NOW + DAY)).translation).toEqual([])
   })
+
+  // Wrong behaviour caught: a save in English also reports the French page, which that save did not touch.
+  it('a save in another language names only that language', async () => {
+    const s = await studioSetup()
+    await s.patchSchema((schema) => { schema.locales.push('fr') })
+    const save = (locale: string, fields: Record<string, unknown>, baseRev: number) =>
+      s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries['menu-frittaten']!, baseRev, locale, fields }) as Promise<{ translation: unknown }>
+    expect((await save('en', { name: { en: 'Pancake soup' } }, 1)).translation).toEqual([])
+    expect((await save('de', { name: { de: 'Frittatensuppe vom Rind' } }, 2)).translation).toEqual([
+      { locale: 'en', page: 'shown', missing: 0, outdated: 1 }, { locale: 'fr', page: 'shown', missing: 1, outdated: 0 },
+    ])
+  })
 })
 
 describe('the address of a page in another language', () => {
@@ -450,6 +462,12 @@ describe('the address of a page in another language', () => {
     await saveEnglish(wild.entry, 3, { title: { en: 'Game weeks' } })
     expect(await slugOf(wild.entry)).toEqual({ de: 'wildwoche', en: 'game-week' })
     expect(await slugRows(wild.entry)).toEqual(['de:wildwoche', 'en:game-week'])
+
+    // A language without pages of this kind has no address to make.
+    await s.patchSchema((schema) => { delete (schema.bricks.events as { route: Record<string, string> }).route.en })
+    const hare = await s.createEvent('Hasenwoche')
+    await saveEnglish(hare.entry, 1, { title: { en: 'Hare week' } })
+    expect(await slugOf(hare.entry)).toEqual({ de: 'hasenwoche', en: 'hasenwoche' })
   })
 })
 
