@@ -121,9 +121,24 @@ function loadProposal(start: Data, o: NonNullable<typeof mine.value>) {
   proposalWeek.value = fixedWeek.value ? (o.fields as Data)[fixedWeek.value] : undefined
 }
 
-// The stored values the form started from (the prefill, plus the schema defaults of a new entry). The prefill query
-// is skipped once the form has loaded, so reopenOwn and the `mine` watch below read this copy, not `prefill`.
+// The values the form started from (the prefill, plus the schema defaults of a new entry). The prefill query is skipped
+// once the form has loaded, so reopenOwn and the `mine` watch below cannot read `prefill`. The seed is frozen, so they
+// read `startValues()`: the live stored values under the seed's preset.
 const seed = shallowRef<Data>()
+/** The fields whose seed differs from what the entry stored at load: the task's preset (or schema default) set them. */
+const presetKeys = new Set<string>()
+/** What an untouched form shows now: the live entry's values, except the fields the task presets, which keep the preset. */
+function startValues(): Data {
+  const start = { ...seed.value }
+  if (isCreate.value || !props.entry) return start
+  for (const k of Object.keys(fields.value)) {
+    if (presetKeys.has(k)) continue
+    const stored = props.entry.data[k]
+    if (stored === undefined) delete start[k]
+    else start[k] = stored
+  }
+  return start
+}
 watch([prefill, own, ownError], ([p]) => {
   // Both answers first, so the form does not start on the stored values and jump; a failed proposal read does not hold it up.
   if (!p || ready.value || (ownArgs() !== 'skip' && own.value === undefined && !ownError.value)) return
@@ -131,6 +146,8 @@ watch([prefill, own, ownError], ([p]) => {
   const start: Data = isCreate.value ? { ...defaultsFor(fields.value) } : {}
   const o = mine.value
   seed.value = { ...start, ...(p as Data) }
+  presetKeys.clear()
+  if (props.entry && !isCreate.value) for (const k of Object.keys(fields.value)) if (stableJson(seed.value[k] ?? null) !== stableJson(props.entry.data[k] ?? null)) presetKeys.add(k)
   // An open proposal that no longer fits (someone changed its fields since) is not where the form starts: its banner says so.
   if (o && ((o.status === 'open' && o.fits) || o.proposal === props.reopen)) loadProposal(seed.value, o)
   else form.load(seed.value)
@@ -200,7 +217,7 @@ const shrunk = computed(() => (dirty.value ? shrunkTexts(fields.value, baseline.
 const startable = (o: typeof mine.value) => o?.status === 'open' && o.fits
 watch(mine, (now, before) => {
   if (!(fromProposal.value || waiting.value) || !startable(before) || startable(now) || dirty.value || !seed.value) return
-  form.load(seed.value)
+  form.load(startValues())
   fromProposal.value = false
 })
 /**
@@ -217,7 +234,7 @@ const pendingText = computed(() => {
 /** "Deinen Vorschlag wieder öffnen": the rejected values, to fix what the approver asked for. */
 function reopenOwn() {
   if (!mine.value || !seed.value) return
-  loadProposal(seed.value, mine.value)
+  loadProposal(startValues(), mine.value)
 }
 
 // "Von dieser Woche übernehmen": a new planned week starts from this week's days and note, its own week stays. The

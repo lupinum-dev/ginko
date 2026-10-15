@@ -208,27 +208,27 @@ describe('own proposal', () => {
   const site = serializeSchema(defineSite({
     site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
     pages: { home: { de: '/' } },
-    bricks: { banner: single({ label: 'Banner', fields: { text: f.text('Text', { translate: false }) }, tasks: [{ id: 'say', label: 'Banner ändern', kind: 'edit', fields: ['text'] }] }) },
+    bricks: { banner: single({ label: 'Banner', fields: { text: f.text('Text', { translate: false }), note: f.text('Notiz', { translate: false }) }, tasks: [{ id: 'say', label: 'Banner ändern', kind: 'edit', fields: ['text', 'note'] }] }) },
   }))
   const proposal = (status: 'open' | 'rejected', fits = true) =>
     ({ task: 'banner.say', status, fits, proposal: 'p1', fields: { text: 'Vorschlag' }, createdAt: 1_700_000_000_000, reason: 'Zu lang' })
+  const entryOf = (text: string, rev = 1, note = 'Notiz') => ({ _id: 'b1', brick: 'banner', kind: 'single', order: 0, rev, lifeRev: rev, fieldRevs: {}, prints: {}, data: { text, note } })
   const mountEdit = () => {
     const brick = site.bricks.banner!
-    const data = { text: 'Gespeichert' }
-    const entry = { _id: 'b1', brick: 'banner', kind: 'single', order: 0, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data }
+    const entry = entryOf('Gespeichert')
     return mount(TaskSheet, {
       props: { site: 'restaurant', brickKey: 'banner', brick, task: brick.tasks![0]!, entry: entry as never, main: 'de', locales: ['de'], schema: site },
       global: { stubs: { GinkoField: FieldStub, ProposalWithdraw: true } },
       attachTo: document.body,
     })
   }
-  const text = (wrapper: ReturnType<typeof mountEdit>) => (wrapper.get('input[name="text"]').element as HTMLInputElement).value
+  const text = (wrapper: ReturnType<typeof mountEdit>, name = 'text') => (wrapper.get(`input[name="${name}"]`).element as HTMLInputElement).value
 
   // Wrong behaviour caught: after the prefill query stopped, "Deinen Vorschlag wieder öffnen" did nothing.
   test('"Deinen Vorschlag wieder öffnen" puts the rejected values back in the form', async () => {
     ownProposal.value = proposal('rejected')
     const wrapper = mountEdit()
-    answer({ data: { text: 'Gespeichert' } })
+    answer({ data: { text: 'Gespeichert', note: 'Notiz' } })
     await flushPromises()
     expect(text(wrapper)).toBe('Gespeichert')
     const reopen = wrapper.findAll('button').find((b) => b.text() === 'Deinen Vorschlag wieder öffnen')!
@@ -241,12 +241,48 @@ describe('own proposal', () => {
   test('an untouched sheet goes back to the stored values when its open proposal goes away', async () => {
     ownProposal.value = proposal('open')
     const wrapper = mountEdit()
-    answer({ data: { text: 'Gespeichert' } })
+    answer({ data: { text: 'Gespeichert', note: 'Notiz' } })
     await flushPromises()
     expect(text(wrapper)).toBe('Vorschlag')
     ownProposal.value = null
     await flushPromises()
     expect(text(wrapper)).toBe('Gespeichert')
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: the reset used the stored values from when the sheet opened, so a change someone else saved
+  // meanwhile showed as the person's own edit, and Speichern would have undone it.
+  test.each([
+    ['is withdrawn', null],
+    ['is decided', proposal('rejected')],
+    ['stops fitting', proposal('open', false)],
+  ])('an untouched sheet shows the current stored values, clean, when its open proposal %s', async (_, after) => {
+    ownProposal.value = proposal('open')
+    const wrapper = mountEdit()
+    answer({ data: { text: 'Gespeichert', note: 'Notiz' } })
+    await flushPromises()
+    expect(text(wrapper)).toBe('Vorschlag')
+    await wrapper.setProps({ entry: entryOf('Von anderen', 2, 'Neue Notiz') as never })
+    ownProposal.value = after
+    await flushPromises()
+    expect(text(wrapper)).toBe('Von anderen')
+    expect(text(wrapper, 'note')).toBe('Neue Notiz')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(ops.saveEntry).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: the reopened form started from the stored values of the time the sheet opened.
+  test('"Deinen Vorschlag wieder öffnen" lays the rejected values over the current stored ones', async () => {
+    ownProposal.value = proposal('rejected')
+    const wrapper = mountEdit()
+    answer({ data: { text: 'Gespeichert', note: 'Notiz' } })
+    await flushPromises()
+    await wrapper.setProps({ entry: entryOf('Gespeichert', 2, 'Neue Notiz') as never })
+    await wrapper.findAll('button').find((b) => b.text() === 'Deinen Vorschlag wieder öffnen')!.trigger('click')
+    expect(text(wrapper)).toBe('Vorschlag')
+    expect(text(wrapper, 'note')).toBe('Neue Notiz')
     wrapper.unmount()
   })
 })
