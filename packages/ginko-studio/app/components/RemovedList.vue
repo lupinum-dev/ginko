@@ -1,7 +1,8 @@
 <!-- Everything removed on the site, all areas, newest first, with the day it is deleted for good (UI.md 10.6);
      older ones load with "Mehr anzeigen". A line under the heading says that a full trash deletes the oldest early.
      Owners and admins can also delete an entry for good now ("Jetzt löschen"), after one question: it frees the
-     trash at once and cannot be undone. -->
+     trash at once and cannot be undone. The question lists the entries that still use it (N5): there it is missing
+     on the website afterwards. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import { SITE_BUDGET } from '@lupinum/ginko/internal'
@@ -9,6 +10,7 @@ import { Button } from '@studio/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@studio/components/ui/dialog'
 import { opErrorOf } from '../composables/useOps'
 import { sizeText } from '../utils/size'
+import UsedInList from './UsedInList.vue'
 
 const props = defineProps<{ slug: string; timeZone: string }>()
 const { t, format } = useI18n()
@@ -24,6 +26,9 @@ function ask(item: Item) {
   target.value = item
   asking.value = true
 }
+/** Entries that still point at the target, looked up only while the question is open; a failed lookup only warns less. */
+const usesQuery = useConvexQuery(api.entries.usedBy, () => (asking.value && target.value ? { site: props.slug, entry: target.value.entry } : 'skip'))
+const uses = computed(() => (usesQuery.error.value ? [] : usesQuery.data.value))
 const busy = ref(false)
 async function purge() {
   const item = target.value
@@ -63,9 +68,16 @@ async function purge() {
           <DialogTitle>{{ t('basics.removed.confirmTitle', { title: target?.label ?? '' }) }}</DialogTitle>
           <DialogDescription>{{ t('basics.removed.confirmBody') }}</DialogDescription>
         </DialogHeader>
+        <p v-if="!uses" class="text-sm text-muted-foreground">{{ t('entry.remove.checking') }}</p>
+        <div v-else-if="uses.length" class="grid gap-1 text-sm">
+          <p>{{ t('basics.removed.usedIn') }}</p>
+          <div class="max-h-80 overflow-y-auto">
+            <UsedInList :slug="slug" :uses="uses" />
+          </div>
+        </div>
         <DialogFooter>
           <Button type="button" variant="outline" @click="asking = false">{{ t('entry.cancel') }}</Button>
-          <Button type="button" variant="destructive" :disabled="busy" @click="purge">{{ t('basics.removed.confirm') }}</Button>
+          <Button type="button" variant="destructive" :disabled="busy || !uses" @click="purge">{{ t('basics.removed.confirm') }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

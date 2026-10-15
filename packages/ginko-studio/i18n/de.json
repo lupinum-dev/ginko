@@ -747,7 +747,8 @@
       "confirmTitle": "„{title}“ endgültig löschen?",
       "confirmBody": "Du kannst den Eintrag danach nicht mehr wiederherstellen. Der Verlauf zeigt frühere Fassungen noch bis zu einem Jahr.",
       "confirm": "Endgültig löschen",
-      "keeps": "Entfernte Einträge bleiben 30 Tage, solange der Papierkorb nicht mehr als {limit} fasst. Ist er voll, gehen die ältesten zuerst."
+      "keeps": "Entfernte Einträge bleiben 30 Tage, solange der Papierkorb nicht mehr als {limit} fasst. Ist er voll, gehen die ältesten zuerst.",
+      "usedIn": "Diese Einträge verwenden ihn noch. Dort fehlt er danach auf der Website:"
     },
     "translation": {
       "missing": "{lang}: {count, plural, one {# Text fehlt} other {# Texte fehlen}}",

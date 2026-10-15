@@ -13,13 +13,19 @@ import { normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 const text = () => document.body.textContent ?? ''
 const button = (label: string) => [...document.body.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)
 
+/** What entries.usedBy answers while the delete-for-good question is open. */
+const usedBy = ref<unknown[]>([])
+
 beforeAll(() => {
   // reka-ui positions popups with these; happy-dom has neither.
   globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as never
   Element.prototype.scrollIntoView ??= () => {}
   Object.entries({ computed, ref, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
+  vi.stubGlobal('useConvexQuery', (_fn: unknown, args: () => unknown) => ({
+    data: computed(() => (args() === 'skip' ? undefined : usedBy.value)), error: computed(() => undefined),
+  }))
 })
-afterEach(() => { document.body.innerHTML = '' })
+afterEach(() => { document.body.innerHTML = ''; usedBy.value = [] })
 
 const removed = (mayPurge: boolean) => ({ entry: 'e1', brick: 'dishes', brickLabel: 'Gerichte', label: 'Kürbissuppe', lifeRev: 3, deletedAt: 0, purgeAt: Date.UTC(2026, 10, 14), wasDraft: false, deletedBy: null, mayRestore: true, mayPurge })
 
@@ -56,6 +62,25 @@ test('an owner deletes a removed entry for good after one question; staff see no
   mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, attachTo: document.body })
   expect(button('Wiederherstellen')).toBeDefined()
   expect(button('Jetzt löschen')).toBeUndefined()
+})
+
+// Wrong behaviour caught: "Jetzt löschen" deletes an author that posts still use without a word, and the posts keep a
+// reference to an entry that no longer exists.
+test('the delete-for-good question lists the entries that still use the entry', async () => {
+  const purgeEntry = vi.fn(async () => true)
+  vi.stubGlobal('useOps', () => ({ purgeEntry, restoreEntry: vi.fn() }))
+  usedBy.value = [{ entry: 'p1', brick: 'posts', title: 'Herbstmenü', paths: ['author'], fieldLabels: [{ de: 'Autorin' }], locale: null, missingAlt: false, deleted: false, state: 'live' }]
+  trashQuery({ data: [removed(true)] })
+  const stubs = { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } }
+  mount(RemovedList, { props: { slug: 'restaurant', timeZone: 'Europe/Vienna' }, global: { stubs }, attachTo: document.body })
+
+  button('Jetzt löschen')!.click()
+  await flushPromises()
+  expect(text()).toContain('Diese Einträge verwenden ihn noch. Dort fehlt er danach auf der Website:')
+  expect(document.body.querySelector('a[href="/s/restaurant/all/posts/p1"]')?.textContent).toBe('Herbstmenü')
+  button('Endgültig löschen')!.click()
+  await flushPromises()
+  expect(purgeEntry).toHaveBeenCalledWith('e1', 3, 'Kürbissuppe')
 })
 
 // Wrong behaviour caught: removed entries past the first 50 cannot be reached, so they cannot be restored.

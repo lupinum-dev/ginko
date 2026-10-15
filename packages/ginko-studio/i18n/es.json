@@ -747,7 +747,8 @@
       "confirmTitle": "¿Eliminar “{title}” definitivamente?",
       "confirmBody": "Después no podrás restaurarla. El historial sigue mostrando versiones anteriores hasta un año.",
       "confirm": "Eliminar definitivamente",
-      "keeps": "Las entradas eliminadas se guardan 30 días mientras la papelera no supere los {limit}. Si se llena, las más antiguas se borran primero."
+      "keeps": "Las entradas eliminadas se guardan 30 días mientras la papelera no supere los {limit}. Si se llena, las más antiguas se borran primero.",
+      "usedIn": "Estas entradas todavía la usan. Después faltará allí en el sitio web:"
     },
     "translation": {
       "missing": "{lang}: {count, plural, one {falta # texto} other {faltan # textos}}",

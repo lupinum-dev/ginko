@@ -747,7 +747,8 @@
       "confirmTitle": "Delete “{title}” for good?",
       "confirmBody": "You cannot restore it afterwards. The history still shows earlier versions for up to a year.",
       "confirm": "Delete for good",
-      "keeps": "Removed entries stay for 30 days as long as the trash holds no more than {limit}. When it is full, the oldest go first."
+      "keeps": "Removed entries stay for 30 days as long as the trash holds no more than {limit}. When it is full, the oldest go first.",
+      "usedIn": "These entries still use it. It will be missing there on the website:"
     },
     "translation": {
       "missing": "{lang}: {count, plural, one {# text missing} other {# texts missing}}",
