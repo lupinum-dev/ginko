@@ -1,0 +1,14 @@
+{
+  "title": "Services",
+  "lead": "What we offer, with prices.",
+  "all": "All services",
+  "empty": "No services yet",
+  "price": "Price",
+  "onRequest": "On request",
+  "duration": "Duration",
+  "specs": "Key facts",
+  "enquire": "Send an enquiry",
+  "subject": "Enquiry: {title}",
+  "call": "Call {phone}",
+  "sheet": "Product sheet"
+}

@@ -1,0 +1,14 @@
+{
+  "title": "Leistungen",
+  "lead": "Was wir anbieten, mit Preisen.",
+  "all": "Alle Leistungen",
+  "empty": "Noch keine Leistungen",
+  "price": "Preis",
+  "onRequest": "Auf Anfrage",
+  "duration": "Dauer",
+  "specs": "Eckdaten",
+  "enquire": "Anfrage senden",
+  "subject": "Anfrage: {title}",
+  "call": "{phone} anrufen",
+  "sheet": "Produktblatt"
+}
