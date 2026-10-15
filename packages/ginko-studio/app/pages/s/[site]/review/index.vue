@@ -48,12 +48,10 @@ const lineOf = (m: { sentence: string; msg: HistoryMsg | null }) => textOf(m.msg
 /** A stale reason in the Studio's language; the German text when the server sent no message. */
 const reasonOf = (m: { reason?: string | null; reasonMsg?: HistoryMsg | null }) => textOf(m.reasonMsg, m.reason ?? '')
 
-const busy = ref<string | null>(null)
 const blocked = ref<Record<string, { proposal: string; sentence: string; reason: string; reasonMsg?: HistoryMsg | null }[]>>({})
 const problem = ref('')
 
 async function approveAll(release: string) {
-  busy.value = release
   problem.value = ''
   try {
     const result = await approveRelease.mutate({ release }) as { status: string; at?: number; stale?: { proposal: string; sentence: string; reason: string; reasonMsg?: HistoryMsg | null }[] }
@@ -65,8 +63,6 @@ async function approveAll(release: string) {
     const stale = (error.details as { stale?: { proposal: string; sentence: string; reason: string; reasonMsg?: HistoryMsg | null }[] } | undefined)?.stale
     if (stale) blocked.value = { ...blocked.value, [release]: stale }
     else problem.value = error.message
-  } finally {
-    busy.value = null
   }
 }
 
@@ -104,7 +100,7 @@ async function remove(release: string, proposal: string) {
         <div v-for="r in releases" :key="r.release" class="overflow-hidden rounded-xl border">
           <div class="flex flex-wrap items-center gap-2 border-b px-4 py-3">
             <h3 class="min-w-0 flex-1 font-medium">{{ r.name }}<span v-if="r.at" class="text-[13px] font-normal text-muted-foreground"> · {{ t('review.plannedAt', { time: whenText(r.at, s.schema.value.timeZone, format) }) }}</span></h3>
-            <Button type="button" size="sm" :disabled="busy === r.release" @click="approveAll(r.release)">{{ t('review.approveRelease') }}</Button>
+            <Button type="button" size="sm" :disabled="approveRelease.pending.value" @click="approveAll(r.release)">{{ t('review.approveRelease') }}</Button>
           </div>
           <div v-if="blocked[r.release]?.length" class="grid gap-1 border-b bg-warning/12 px-4 py-3" role="alert">
             <p class="font-medium">{{ t('review.releaseBlocked') }}</p>
