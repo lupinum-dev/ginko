@@ -792,9 +792,11 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
       })
     }
     await writeCounters(ctx, actor.site._id, c)
+    // What the other languages show of the entry that went online now (the Studio's message after publishing, as after a create).
+    const translation = args.at === undefined ? translationNotes(schema, entry.brick, entry, {}, Object.keys(structuralBrick(schema, entry.brick).fields)) : []
     return {
       entry: entry._id, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, contentRev: c.contentRev, change,
-      state: args.at === undefined ? 'live' : 'draft', ...(args.at === undefined ? {} : { publishAt: args.at }),
+      state: args.at === undefined ? 'live' : 'draft', ...(args.at === undefined ? {} : { publishAt: args.at }), translation,
     }
   })
 }

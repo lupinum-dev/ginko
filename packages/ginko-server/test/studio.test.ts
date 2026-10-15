@@ -409,6 +409,18 @@ describe('the answer of a save says what the other languages show', () => {
     expect(dish.translation).toEqual([{ locale: 'en', page: 'shown', missing: 1, outdated: 0 }])
     expect((await save(s.entries['menu-saibling']!, { name: { de: 'Gebeizter Bachsaibling' } })).translation).toEqual([{ locale: 'en', page: 'shown', missing: 0, outdated: 1 }])
   })
+
+  // Wrong behaviour caught: a German-only draft goes online through "Veröffentlichen" and the message does not say
+  // that its page is missing on the English site (romi-4, reached through publishing).
+  it('publishing a draft now says it too; a scheduled publish says nothing yet', async () => {
+    const s = await studioSetup({ drafts: true })
+    const publish = (entry: Id<'entries'>, at?: number) =>
+      s.as.owner.mutation(api.entries.publish, { site, opId: opId(), entry, lifeRev: 1, ...(at ? { at } : {}) }) as Promise<{ translation: unknown }>
+    const now = await s.createEvent('Wildwoche')
+    expect((await publish(now.entry)).translation).toEqual([{ locale: 'en', page: 'hidden', missing: 2, outdated: 0 }])
+    const later = await s.createEvent('Rehwoche')
+    expect((await publish(later.entry, NOW + DAY)).translation).toEqual([])
+  })
 })
 
 describe('the address of a page in another language', () => {
