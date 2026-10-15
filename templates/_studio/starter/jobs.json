@@ -1,0 +1,4 @@
+{
+  "notice": { "brick": "notice", "textField": "^Text" },
+  "page": { "brick": "pages", "title": "About", "path": "/about", "bodyField": "Text" }
+}

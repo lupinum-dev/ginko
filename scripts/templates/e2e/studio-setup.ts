@@ -7,6 +7,8 @@ export default async function setup(config: FullConfig) {
   const { baseURL, locale } = config.projects[0]!.use
   const browser = await chromium.launch()
   const context = await browser.newContext({ baseURL, locale })
+  // The Studio runs in dev mode: the first page after sign-in is compiled on request, which is slow on a busy machine.
+  context.setDefaultTimeout(120_000)
   await signIn(await context.newPage(), process.env.TEMPLATE_ADMIN!)
   await context.storageState({ path: process.env.TEMPLATE_AUTH! })
   await browser.close()
