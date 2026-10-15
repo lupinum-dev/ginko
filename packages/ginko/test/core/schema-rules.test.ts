@@ -692,6 +692,11 @@ describe('status (Today page status line)', () => {
     ['missing on an optional field without a default', set('events', { missing: 'image' }), []],
     ['count on a collection with visible until', set('notices', { count: true }), []],
     ['hours on the hours single', set('hours', { hours: true }), []],
+    ['hours linked to the hour plans', set('hours', { hours: { plans: 'hourPlans' } }), []],
+    ['hours linked to a missing brick', set('hours', { hours: { plans: 'seasons' } }), ['hours: status.hours.plans names “seasons”, which is not a live brick of the site.']],
+    ['hours linked to a collection that is not hour plans', set('hours', { hours: { plans: 'events' } }), ['hours: status.hours.plans names “events”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).']],
+    ['hours linked to hour plans without yearly', (s) => { node(s, 'bricks.hourPlans.fields.yearly').type = 'text'; set('hours', { hours: { plans: 'hourPlans' } })(s) }, ['hours: status.hours.plans names “hourPlans”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).']],
+    ['hours with a link of another form', set('hours', { hours: 'hourPlans' }), ['hours: status.hours must be true or { plans: \'<key of the hour plans>\' }.']],
     ['next on a missing field', set('events', { next: 'date' }), ['events: status.next names “date”, which is not a field of the brick.']],
     ['age on a text field', set('events', { age: 'title' }), ['events: status.age needs a date or daterange field, “title” is a text field.']],
     ['missing on a required field', set('events', { missing: 'title' }), ['events: status.missing needs an optional field without a default, “title” is not.']],
@@ -700,9 +705,9 @@ describe('status (Today page status line)', () => {
     ['count that is not true', set('notices', { count: 1 }), ['notices: status.count must be true.']],
     ['two kinds at once', set('events', { next: 'when', age: 'when' }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
     ['hours on a collection', set('events', { hours: true }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
-    ['next on a single', set('hours', { next: 'closedOn' }), ['hours: status must be { hours: true }.']],
-    ['hours on a single without the hours fields', set('contact', { hours: true }), ['week', 'exceptions', 'closedOn', 'holidays'].map((name) => `contact: status { hours: true } needs the live field “${name}”.`)],
-    ['hours with closedOn of another type', (s) => { node(s, 'bricks.hours.fields.closedOn').type = 'text'; set('hours', { hours: true })(s) }, ['hours: status { hours: true } needs “closedOn” to be a date field.']],
+    ['next on a single', set('hours', { next: 'closedOn' }), ['hours: status must be { hours: true } or { hours: { plans } }.']],
+    ['hours on a single without the hours fields', set('contact', { hours: true }), ['week', 'exceptions', 'closedOn', 'holidays'].map((name) => `contact: status { hours } needs the live field “${name}”.`)],
+    ['hours with closedOn of another type', (s) => { node(s, 'bricks.hours.fields.closedOn').type = 'text'; set('hours', { hours: true })(s) }, ['hours: status { hours } needs “closedOn” to be a date field.']],
     ['a field retired while the status still names it', (s) => {
       set('events', { missing: 'image' })(s)
       node(s, 'bricks.events.fields.image').retired = true

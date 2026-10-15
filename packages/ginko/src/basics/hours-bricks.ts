@@ -8,6 +8,15 @@ import { sourceOf, type BasicsOptions } from './shared.ts'
 
 export { sourceOf, type BasicsOptions }
 
+/** Options of `hours()`. */
+export interface HoursOptions extends BasicsOptions {
+  /**
+   * The key of the site's hour plans (`hourPlans()`), for example `'hourPlans'`. The Studio's line for today then follows
+   * the plan that applies today. The release check refuses a key that is not a collection of hour plans.
+   */
+  plans?: string
+}
+
 /** A schema label in both languages. */
 export const both = (de: string, en: string) => ({ de, en })
 
@@ -98,12 +107,13 @@ function weekField(t: HoursTexts, week: readonly WeekRow[]) {
 }
 
 /** @internal The hours single with a preset's texts and default week; sites use `hours()`. */
-export function hoursBrick(t: HoursTexts, week: readonly WeekRow[], opts: BasicsOptions) {
+export function hoursBrick(t: HoursTexts, week: readonly WeekRow[], opts: HoursOptions) {
   return single({
     label: opts.label ?? t.hours,
     ...sourceOf(opts),
-    // Today's hours on the Studio's Today page (closed, open from … to …, or due when nothing is entered for today).
-    status: { hours: true },
+    // Today's hours on the Studio's Today page (closed, open from … to …, or due when nothing is entered for today),
+    // with the hour plans when the site names them.
+    status: { hours: opts.plans ? { plans: opts.plans } : true },
     fields: {
       week: weekField(t, week),
       exceptions: f.list(t.exceptions, {
@@ -166,7 +176,7 @@ export function hourPlansBrick(t: HoursTexts, week: readonly WeekRow[], opts: Ba
  * Weekly hours (two periods a day), closures, a closed day and the owner's choice for public holidays. Which holidays
  * count is the site's `country` or `calendar`; pass it to the rules (`hoursOn`, `todayState`) as `ctx.country` or `ctx.calendar`.
  */
-export function hours(opts: BasicsOptions = {}) {
+export function hours(opts: HoursOptions = {}) {
   return hoursBrick(neutral, officeWeek, opts)
 }
 

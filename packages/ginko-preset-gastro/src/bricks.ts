@@ -2,7 +2,7 @@
 // the texts of its own locales when its main locale is `de` or `en` (exactly: `de-CH` does not count); otherwise it
 // starts without the prefilled texts (`serializeSchema`).
 import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate, type Task } from '@lupinum/ginko'
-import { gallery } from '@lupinum/ginko/basics'
+import { gallery, type HoursOptions } from '@lupinum/ginko/basics'
 import { eventsBrick, hourPlansBrick, hoursBrick, noticesBrick, weekdays, type ChoicesField, type DateField, type HoursTexts, type ListField, type WeekRow } from '@lupinum/ginko/internal'
 import { allergenNames } from './names.ts'
 
@@ -87,9 +87,9 @@ const hoursTexts: HoursTexts = {
 /**
  * Weekly hours, closures and the owner's choice for public holidays (the basics `hours` with restaurant wording and
  * times). Which holidays count is `calendar` or `country` in the context of the hours rules (`hoursOn`, `todayState`);
- * neither means Austria.
+ * neither means Austria. `plans`: the key of the site's `hourPlans()`, so the Studio's line for today follows them.
  */
-export function hours(opts: GastroOptions = {}) {
+export function hours(opts: GastroOptions & Pick<HoursOptions, 'plans'> = {}) {
   return hoursBrick(hoursTexts, weekDefault, opts)
 }
 
