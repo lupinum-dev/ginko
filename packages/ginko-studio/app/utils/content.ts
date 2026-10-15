@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type CollectionBrick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { entryTitle, fileRefsIn, isVisible, ordered, printOf, stableJson, urlsFor, type Schema } from '@lupinum/ginko/internal'
+import { entryTitle, fileRefsIn, isTranslatable, isVisible, leavesOf, ordered, printOf, stableJson, untranslatedMode, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import type { api } from '#convex/api'
 import type { FunctionReturnType } from 'convex/server'
@@ -61,6 +61,96 @@ export function taskFields(brick: Brick, task: Task): Fields {
     if (!field || field.retired) continue
     if (task.kind === 'create' && field.type === 'slug') continue
     out[key] = field
+  }
+  return out
+}
+
+/** A field with text to translate: translatable itself, an image (alt text), or a list with such columns (Astra phase 8). */
+export function hasTranslation(f: Field): boolean {
+  if (f.type === 'list') return Object.values(f.of).some(hasTranslation)
+  return (isTranslatable(f) && f.type !== 'slug') || f.type === 'image'
+}
+
+/**
+ * The value at a leaf path: `name`, `image.alt`, or inside a list `days.<rowId>.dish` and
+ * `images.<rowId>.image.alt` (the paths of the server's leavesOf and of the prints).
+ */
+export function leafValue(data: Record<string, unknown> | undefined, path: string): unknown {
+  const [root, ...rest] = path.split('.')
+  let value: unknown = data?.[root!]
+  if (rest.length && rest[0] !== 'alt') {
+    const [rowId, column, ...tail] = rest
+    const row = Array.isArray(value) ? value.find((r) => (r as { _id?: string })._id === rowId) : undefined
+    value = (row as Record<string, unknown> | undefined)?.[column!]
+    if (tail[0] === 'alt') value = (value as { alt?: unknown } | undefined)?.alt
+  } else if (rest[0] === 'alt') {
+    value = (value as { alt?: unknown } | undefined)?.alt
+  }
+  return value
+}
+
+const isRecord = (value: unknown): value is Record<string, Json> => typeof value === 'object' && value !== null && !Array.isArray(value)
+const same = (a: unknown, b: unknown) => stableJson(a ?? null) === stableJson(b ?? null)
+
+/** `theirs` with the languages that differ between `base` and `mine` taken from `mine` (absent there: removed). */
+function textsOver(base: Record<string, Json>, mine: Record<string, Json>, theirs: Json | undefined): Record<string, Json> {
+  const out = { ...(isRecord(theirs) ? theirs : {}) }
+  for (const l of new Set([...Object.keys(base), ...Object.keys(mine)])) {
+    if (same(base[l], mine[l])) continue
+    if (mine[l] === undefined) delete out[l]
+    else out[l] = mine[l]
+  }
+  return out
+}
+
+/**
+ * The person's own changes to one root field (`base` → `mine`) over someone else's newer value (`theirs`), for "Meine
+ * behalten" and for a restored local copy. A form that saves every language sends whole texts, so a text keeps the
+ * languages the person did not change, also in a list row both still have and in a photo description. Everything else
+ * (a number, the photo itself, which rows a list has and their order) comes from `mine`, as it always did.
+ */
+export function ownChangesOver(field: Field, base: Json | undefined, mine: Json | undefined, theirs: Json | undefined): Json | undefined {
+  if (isTranslatable(field)) {
+    if (!isRecord(base) || !isRecord(mine)) return mine
+    const texts = textsOver(base, mine, theirs)
+    return Object.keys(texts).length ? texts : undefined
+  }
+  if (field.type === 'image' && isRecord(mine) && isRecord(base) && isRecord(mine.alt) && isRecord(base.alt)) {
+    return { ...mine, alt: textsOver(base.alt, mine.alt, isRecord(theirs) ? theirs.alt : undefined) }
+  }
+  if (field.type === 'list' && Array.isArray(mine) && Array.isArray(base) && Array.isArray(theirs)) {
+    const byId = (rows: Json[]) => new Map(rows.filter(isRecord).map((row) => [row._id, row]))
+    const [was, now] = [byId(base), byId(theirs)]
+    return mine.map((row) => {
+      const b = isRecord(row) ? was.get(row._id) : undefined
+      const t = isRecord(row) ? now.get(row._id) : undefined
+      if (!isRecord(row) || !b || !t) return row
+      const out: Record<string, Json> = { ...row }
+      for (const [key, inner] of Object.entries(field.of)) {
+        const value = ownChangesOver(inner, b[key], row[key], t[key])
+        if (value === undefined) delete out[key]
+        else out[key] = value
+      }
+      return out
+    })
+  }
+  return mine
+}
+
+/**
+ * The languages of the texts that `after` sets differently from `before` (root fields of `fields`, a text in a list row,
+ * a photo description). A text of a removed row does not count: it goes in every language with its row.
+ */
+export function changedTextLanguages(fields: Fields, before: Data, after: Data): Set<string> {
+  const out = new Set<string>()
+  for (const [key, value] of Object.entries(after)) {
+    const field = fields[key]
+    if (!field) continue
+    const was = leavesOf(field, before[key], key)
+    for (const [leaf, now] of leavesOf(field, value, key)) {
+      const old = was.get(leaf) ?? {}
+      for (const l of new Set([...Object.keys(old), ...Object.keys(now)])) if (!same(old[l], now[l])) out.add(l)
+    }
   }
   return out
 }
@@ -249,3 +339,16 @@ export function leafTranslation(input: { draft: Record<string, unknown> | undefi
   return input.storedMain !== undefined && input.print !== printOf(input.storedMain) ? 'stale' : 'fine'
 }
 
+/**
+ * Whether the website leaves the whole entry out of a language while this leaf has no text there (`name`, `image.alt`,
+ * or `days.<rowId>.dish` in a list). It mirrors core resolve.ts `localized()`: a required text of a collection whose
+ * untranslated entries are hidden (`untranslatedMode`, pages by default) makes the entry untranslated; slugs and image
+ * descriptions never do, and parts of pages fall back to the main language instead.
+ */
+export function hidesUntranslated(brick: Brick, leaf: string): boolean {
+  if (brick.kind !== 'collection' || untranslatedMode(brick) !== 'hide' || leaf.endsWith('.alt')) return false
+  const [root, , column] = leaf.split('.')
+  const top = brick.fields[root!]
+  const field = column === undefined ? top : top?.type === 'list' ? top.of[column] : undefined
+  return !!field && isTranslatable(field) && !field.optional && field.type !== 'slug'
+}

@@ -15,6 +15,8 @@ export interface StoredMsg {
 export interface TextEnv {
   /** Studio translator; a key it does not know comes back as itself. */
   t: (key: string, params?: Params, options?: { timeZone?: string }) => string
+  /** Whether the Studio's catalog has a key. Core messages are not in it, and in development `t` warns about each miss. */
+  has?: (key: string) => boolean
   /** The reader's language. */
   locale: string
   /** The site's zone: dates in the text are the site's, wherever the reader sits. */
@@ -45,8 +47,10 @@ function translate(msg: StoredMsg, env: TextEnv): string | undefined {
   // The server's catalog adds the zone to a time the clock shows twice (`{twice, select, yes …}`), as its own renderer does.
   if (typeof params.at === 'number' && env.timeZone && twiceOnClock(params.at, env.timeZone)) params.twice = 'yes'
   const full = `server.${msg.key}`
-  const server = env.t(full, params, env.timeZone ? { timeZone: env.timeZone } : undefined)
-  if (server !== full) return server
+  if (env.has?.(full) !== false) {
+    const server = env.t(full, params, env.timeZone ? { timeZone: env.timeZone } : undefined)
+    if (server !== full) return server
+  }
   try {
     const core = coreMessage(env.locale, msg.key, params)
     return core === msg.key ? undefined : core

@@ -61,6 +61,15 @@ describe('search.studio', () => {
     expect(english.bricks.map((b) => b.brick)).toEqual(['events'])
   })
 
+  // Wrong behaviour caught (WS-7): "Telefon" found nothing, so the owner could not find where the phone number is; or
+  // an area found by one of its fields outranks the areas named after the word.
+  it('finds an area by the label of one of its fields, after the areas found by their own name', async () => {
+    const s = await studioSetup()
+    const areas = async (query: string) => (await s.as.owner.query(api.search.studio, { site, query })).bricks.map((b) => [b.brick, 'field' in b ? b.field : null])
+    expect(await areas('telefon')).toEqual([['contact', 'phone']])
+    expect(await areas('hinweis')).toEqual([['notices', null], ['hours', 'closedNote'], ['lunch', 'note'], ['lunchPlans', 'note']])
+  })
+
   // Wrong behaviour caught: a removed dish stays in the palette, or another site's entry leaks across sites.
   it('never finds a deleted entry or an entry of another site', async () => {
     const s = await studioSetup()

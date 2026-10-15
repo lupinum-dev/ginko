@@ -199,7 +199,7 @@
     "localDraft": {
       "offer": "Restore your unsaved changes from {time}?",
       "restore": "Restore",
-      "discard": "Discard",
+      "discard": "Do not restore",
       "restoredConflict": "Restored. Someone changed {fields} in the meantime; please decide below."
     },
     "pick": {
@@ -561,6 +561,7 @@
       "changedSince": "{name} changed since the translation",
       "fitsAsIs": "{lang} is still right",
       "notTranslated": "Not translated yet.",
+      "notTranslatedHidden": "Not translated yet. Without this text, “{title}” is missing from the website in {lang}.",
       "notTranslatedShowsMain": "Not translated yet. The website shows the {name} text here.",
       "notTranslatedBlocks": "Not translated yet. Without this text, the page does not appear in {lang}.",
       "useSource": "Copy the {name} text",
@@ -597,6 +598,7 @@
       "alt": "Image description",
       "altHint": "What can be seen in the photo? For people who cannot see the image.",
       "altFromLibrary": "Leave empty to use the description from Files.",
+      "noneToTranslate": "No photo yet, so nothing to translate.",
       "chooseInMain": "You change the picture itself in {name}."
     },
     "money": {
@@ -623,7 +625,7 @@
       "confirmBlocker": "Please confirm for “{title}”: are the {label} still correct?",
       "changed": "{changed} changed. Are the {label} still correct?",
       "add": "Add {item}",
-      "addInMain": "You add more in {name}.",
+      "addInMain": "You add, remove and reorder rows in {name}.",
       "text": "Text"
     }
   },
@@ -810,7 +812,8 @@
     },
     "loadMore": "Show more",
     "retry": "Try again",
-    "loadFailed": "This could not be loaded. Please reload the page."
+    "loadFailed": "This could not be loaded. Please reload the page.",
+    "notLoaded": "This could not be loaded."
   },
   "files": {
     "title": "Files",

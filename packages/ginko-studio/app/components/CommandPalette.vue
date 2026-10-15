@@ -1,5 +1,5 @@
 <!-- ⌘K / Ctrl+K on every site page (UI.md 10.6). Empty: the last entries opened, then actions. Typing: search.studio
-     (entries by title in all languages, areas by label). Enter opens, ⌘/Ctrl+Enter opens in a new tab. The server decides
+     (entries by title in all languages, areas by label or by a field's label, which then shows next to the area). Enter opens, ⌘/Ctrl+Enter opens in a new tab. The server decides
      what matches, so the Command's own client-side filter is not used (the filter field is a plain ListboxFilter). -->
 <script setup lang="ts">
 import { api } from '#convex/api'
@@ -43,7 +43,7 @@ const searching = computed(() => !!query.value.trim())
 const nothing = computed(() => !!asked.value && !isStale.value && !!data.value && !data.value.entries.length && !data.value.bricks.length)
 
 const site = (path: string) => `/s/${props.slug}${path}`
-interface Item { value: string; label: string; area?: string; state?: string; run: () => void }
+interface Item { value: string; label: string; area?: string; state?: string; detail?: string; run: () => void }
 
 const actions = computed<Item[]>(() => [
   ...creatableBricks(props.schema ?? ({ bricks: {} } as Schema), props.role, props.grants).map(([key, brick]) => ({
@@ -66,7 +66,14 @@ const entries = computed<Item[]>(() => (searching.value ? data.value?.entries ??
   value: `entry:${e.entry}`, label: e.label, area: areaLabel(e.brick, e.brickLabel), state: e.state === 'draft' ? t('entry.status.draft') : t('entry.status.online'),
   run: () => go(entryPath(props.slug, props.schema, e.brick, e.entry)),
 })))
-const areas = computed<Item[]>(() => (searching.value ? data.value?.bricks ?? [] : []).map((b) => ({ value: `area:${b.brick}`, label: areaLabel(b.brick, b.label), run: () => go(site(`/all/${b.brick}`)) })))
+/** The field an area was found by ("Telefon" in "Adresse und Kontakt"), in the Studio language. */
+const fieldLabel = (brick: string, field: string) => {
+  const def = props.schema?.bricks[brick]?.fields[field]
+  return def ? shownLabel(def.label, main.value) : undefined
+}
+const areas = computed<Item[]>(() => (searching.value ? data.value?.bricks ?? [] : []).map((b) => ({
+  value: `area:${b.brick}`, label: areaLabel(b.brick, b.label), detail: 'field' in b && b.field ? fieldLabel(b.brick, b.field) : undefined, run: () => go(site(`/all/${b.brick}`)),
+})))
 
 /** `inNewTab`: ⌘Enter / Ctrl+Enter. */
 let newTab = false
@@ -127,7 +134,10 @@ function onEnter(event: KeyboardEvent) {
             </CommandItem>
           </CommandGroup>
           <CommandGroup v-if="areas.length" :heading="t('basics.palette.areas')">
-            <CommandItem v-for="item in areas" :key="item.value" :value="item.value" class="min-h-10 rounded-md data-[highlighted]:bg-muted data-[highlighted]:text-foreground" @select="pick(item, $event)">{{ item.label }}</CommandItem>
+            <CommandItem v-for="item in areas" :key="item.value" :value="item.value" class="min-h-10 rounded-md data-[highlighted]:bg-muted data-[highlighted]:text-foreground" @select="pick(item, $event)">
+              <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+              <span v-if="item.detail" class="shrink-0 text-xs text-muted-foreground">{{ item.detail }}</span>
+            </CommandItem>
           </CommandGroup>
           <p v-if="nothing" class="py-6 text-center text-sm" role="status">{{ t('basics.palette.empty', { query: asked }) }}</p>
         </CommandList>

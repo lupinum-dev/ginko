@@ -199,7 +199,7 @@
     "localDraft": {
       "offer": "¿Restaurar los cambios sin guardar de {time}?",
       "restore": "Restaurar",
-      "discard": "Descartar",
+      "discard": "No restaurar",
       "restoredConflict": "Restaurado. Alguien cambió {fields} mientras tanto; decide abajo."
     },
     "pick": {
@@ -561,6 +561,7 @@
       "changedSince": "El texto en {name} ha cambiado desde la traducción",
       "fitsAsIs": "El texto en {lang} sigue bien",
       "notTranslated": "Aún sin traducir.",
+      "notTranslatedHidden": "Aún sin traducir. Sin este texto, “{title}” no aparece en el sitio web en {lang}.",
       "notTranslatedShowsMain": "Aún sin traducir. El sitio web muestra aquí el texto en {name}.",
       "notTranslatedBlocks": "Aún sin traducir. Sin este texto, la página no aparece en {lang}.",
       "useSource": "Copiar el texto en {name}",
@@ -597,6 +598,7 @@
       "alt": "Descripción de la imagen",
       "altHint": "¿Qué se ve en la foto? Para las personas que no pueden ver la imagen.",
       "altFromLibrary": "Déjalo vacío para usar la descripción de Archivos.",
+      "noneToTranslate": "Aún no hay foto, así que no hay nada que traducir.",
       "chooseInMain": "La imagen en sí la cambias en {name}."
     },
     "money": {
@@ -623,7 +625,7 @@
       "confirmBlocker": "Confirma para “{title}”: ¿sigue todo correcto en {label}?",
       "changed": "{changed} ha cambiado. ¿Sigue todo correcto en {label}?",
       "add": "Añadir {item}",
-      "addInMain": "Para añadir más, cambia a {name}.",
+      "addInMain": "Para añadir, quitar o mover filas, cambia a {name}.",
       "text": "Texto"
     }
   },
@@ -810,7 +812,8 @@
     },
     "loadMore": "Mostrar más",
     "retry": "Reintentar",
-    "loadFailed": "No se pudo cargar. Vuelve a cargar la página."
+    "loadFailed": "No se pudo cargar. Vuelve a cargar la página.",
+    "notLoaded": "No se pudo cargar."
   },
   "files": {
     "title": "Archivos",

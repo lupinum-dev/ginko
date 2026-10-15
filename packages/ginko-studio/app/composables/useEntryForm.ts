@@ -5,7 +5,7 @@ import type { Brick, Fields, Json, Locale } from '@lupinum/ginko'
 import { useI18n } from '#imports'
 import type { Entry } from './useSiteData'
 import type { OpError } from './useOps'
-import { changedRoots, type Data } from '../utils/content'
+import { changedRoots, changedTextLanguages, ownChangesOver, type Data } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { clearLocalDraft, localDraftKey, readLocalDraft, useLocalDraftWriter, writeLocalDraft, type LocalDraft } from './useLocalDraft'
 import { BLOCKERS, FLUSHERS, type Issue } from '@lupinum/ginko-editor'
@@ -24,8 +24,14 @@ export interface EntryFormOptions {
   /** The edited entry; none when creating. */
   entry: () => Entry | undefined
   main: () => Locale
-  /** Locale the translatable values are saved in (the main language in Schnell ändern). */
+  /** Locale the translatable values are saved in, and the language of local copies. */
   locale: () => Locale
+  /**
+   * The form edits every language of its texts (the quick-task sheet's language switch): a save sends whole values
+   * without `locale`, so one Speichern stores all languages, and a translation nobody touched keeps its print. The
+   * per-root conflict check guards those whole values; "Meine behalten" sends only the person's own languages.
+   */
+  allLanguages?: boolean
   task?: () => string | undefined
   removeTask?: () => string | undefined
   /** The edited entry is a draft (SPEC 15): saving says so instead of promising the website. */
@@ -159,10 +165,14 @@ export function useEntryForm(o: EntryFormOptions) {
     return unconfirmed.op
   }
 
+  /** Typing from the last moments may still wait in an editor's pause: this hands it to the draft. */
+  async function flush() {
+    await Promise.all([...flushers].map((run) => run()))
+  }
+
   async function write(rev: number, publish?: { at?: number }, asNew?: { task?: string }): Promise<boolean> {
     if (busy.value) return false
-    // Typing from the last moments may still wait in an editor's pause: take it before reading the draft.
-    await Promise.all([...flushers].map((flush) => flush()))
+    await flush()
     if (blockers.size) {
       problem.value = [...new Set(blockers.values())].join(' ')
       return false
@@ -188,7 +198,7 @@ export function useEntryForm(o: EntryFormOptions) {
         const roots = changedRoots(baseline.value, submitted).filter((k) => keys().includes(k))
         if (!roots.length && !confirm.value.length) return true
         const values = Object.fromEntries(roots.map((k) => [k, submitted[k] ?? null]))
-        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task: o.task?.(), locale: o.locale(), ...(confirm.value.length ? { confirm: confirm.value } : {}) }
+        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task: o.task?.(), ...(o.allLanguages ? {} : { locale: o.locale() }), ...(confirm.value.length ? { confirm: confirm.value } : {}) }
         const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false, main: o.main() })
         if (result.rev === undefined) {
           // Nothing was written: the stored state, base and rev stay; only the input counts as handed in.
@@ -243,12 +253,15 @@ export function useEntryForm(o: EntryFormOptions) {
   watch(() => o.entry()?.rev, reconcile)
   watch(busy, (now) => { if (!now) reconcile() })
 
-  /** The person's own changes over the current server state; untouched fields take the server's values. */
+  /**
+   * The person's own changes over the current server state; untouched fields take the server's values. A changed text
+   * keeps the languages someone else changed meanwhile (a whole-value save would send the old ones back).
+   */
   async function keepMine() {
     const c = conflict.value
     if (!c) return false
-    const mine = Object.fromEntries(changed.value.map((k) => [k, draft.value[k]]))
     const theirs = storedOf(c.data)
+    const mine = Object.fromEntries(changed.value.map((k) => [k, ownChangesOver(o.fields()[k]!, baseline.value[k], draft.value[k], theirs[k])]))
     baseline.value = copy(theirs)
     draft.value = copy({ ...theirs, ...mine } as Data)
     baseRev.value = c.rev
@@ -341,6 +354,9 @@ export function useEntryForm(o: EntryFormOptions) {
   function offerOf(key: string | undefined): LocalDraft | null {
     const record = key ? readLocalDraft(key) : undefined
     if (!key || !record || (record.locale !== o.locale() && !o.otherLocale)) return null
+    // Texts typed in another language than the copy's own (a quick-task sheet holds every language): a form that saves
+    // one language would drop them, so only a form that saves every language offers the copy.
+    if (!o.allLanguages && record.base && [...changedTextLanguages(o.brick().fields, record.base, record.fields)].some((l) => l !== record.locale)) return null
     const own = keys().filter((k) => Object.hasOwn(record.fields, k))
     if (own.some((k) => !same(draft.value[k], record.fields[k]))) return record
     // Nothing new in it (saved meanwhile): drop it, unless it holds fields this form does not show.
@@ -354,7 +370,8 @@ export function useEntryForm(o: EntryFormOptions) {
     if (!key || localOffer.value) return
     const fields: Data = isCreate.value ? copy(draft.value) : Object.fromEntries(changed.value.map((k) => [k, copy(draft.value[k] ?? null)]))
     if (!dirty.value || !Object.keys(fields).length) return clearLocalDraft(key)
-    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields })
+    const base = isCreate.value ? undefined : Object.fromEntries(Object.keys(fields).map((k) => [k, copy(baseline.value[k] ?? null)]))
+    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, ...(base ? { base } : {}) })
   }
   // Typed back to what was there: the next write removes the copy (a save removes it at once, in write()).
   const localWriter = useLocalDraftWriter(() => draft.value, keepLocal)
@@ -378,17 +395,18 @@ export function useEntryForm(o: EntryFormOptions) {
     }
     if (!record) return
     localOffer.value = null
-    const { fields, baseRev: copyBase } = record
+    const { fields, base, baseRev: copyBase } = record
     const own = keys().filter((k) => Object.hasOwn(fields, k))
+    const entry = o.entry()
     const next = { ...draft.value }
     for (const k of own) {
-      const value = fields[k]
+      // Only the person's changes over what is stored now: a text keeps the languages someone else saved meanwhile.
+      const value = entry && base && Object.hasOwn(base, k) ? ownChangesOver(o.fields()[k]!, base[k] ?? undefined, fields[k] ?? undefined, entry.data[k]) : fields[k]
       if (value === null || value === undefined) delete next[k]
       else next[k] = copy(value)
     }
     draft.value = next
     waiting.value = false
-    const entry = o.entry()
     if (!entry) return
     const clash = own.filter((k) => (entry.fieldRevs[k] ?? 0) > copyBase && !same(entry.data[k], next[k]))
     // The copy's base: a save of a root changed after it is refused as a conflict, never overwrites it.
@@ -401,12 +419,12 @@ export function useEntryForm(o: EntryFormOptions) {
     reconcile()
   }
 
-  /** "Verwerfen" on the offer: the copy goes, the form stays as it is. */
+  /** "Nicht wiederherstellen" on the offer: the copy goes for good, the form stays as it is. */
   function dropLocal() {
     const key = localKey.value
     if (key) clearLocalDraft(key)
     localOffer.value = null
   }
 
-  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, offline, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
+  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, offline, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, flush, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
 }

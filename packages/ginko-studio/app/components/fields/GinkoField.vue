@@ -99,9 +99,10 @@ const leaf = computed(() => {
 const trState = computed(() => (leaf.value ? translation?.state(leaf.value) : undefined))
 const foreignTab = computed(() => !!translation && props.locale !== props.locales[0])
 const foreignName = computed(() => languageName(props.locale, uiLocale.value))
-// A picture applies to every language: a translation edits only its description (new-picture-alt).
-const altOnly = computed(() => (foreignTab.value ? translation!.mainName() : undefined))
-const address = computed(() => (isSlug.value && foreignTab.value ? translation!.address() : undefined))
+// A picture applies to every language: another language edits only its description (new-picture-alt), also in a form
+// without the translation view.
+const altOnly = computed(() => (props.locale !== props.locales[0] ? (translation?.mainName() ?? languageName(props.locales[0]!, uiLocale.value)) : undefined))
+const address = computed(() => (isSlug.value && foreignTab.value ? translation!.address?.() : undefined))
 // An entry without its own slug in this language is reached by the main-language one (core routeUrls).
 const foreignSlug = computed(() => text.value || String((props.modelValue as Record<string, Json> | undefined)?.[props.locales[0]!] ?? ''))
 
@@ -116,6 +117,14 @@ const folded = ref(true)
 // A missing text can start from the main-language one: names and years that stay, or a Markdown body with its
 // headings, links and pictures, translated in place. Never for pictures or choices.
 const copyable = computed(() => trState.value === 'missing' && !!source.value && ['text', 'longtext', 'markdown'].includes(props.field.type))
+// What the website shows while the text is missing: the stored entry's state where the form has it (Alles bearbeiten);
+// otherwise a page (an event) is left out of the language, and a part of a page shows the main language.
+const missingText = computed(() => {
+  if (!leaf.value || !translation) return ''
+  if (translation.missingNote) return translation.missingNote(leaf.value)
+  const hidden = translation.hiddenWithout?.(leaf.value)
+  return hidden ? t('fields.translation.notTranslatedHidden', { title: hidden.title, lang: hidden.language }) : t('fields.translation.notTranslatedShowsMain', { name: translation.mainName() })
+})
 </script>
 
 <template>
@@ -136,13 +145,13 @@ const copyable = computed(() => trState.value === 'missing' && !!source.value &&
         </Button>
         <div v-if="trState === 'stale'" class="flex flex-wrap items-center gap-2">
           <Badge variant="outline" class="h-auto border-warning py-1 whitespace-normal text-warning">{{ t('fields.translation.changedSince', { name: translation.mainName() }) }}</Badge>
-          <Button type="button" variant="outline" size="sm" @click="translation.confirm(leaf!)">{{ t('fields.translation.fitsAsIs', { lang: foreignName }) }}</Button>
-          <Button v-if="translation.changesUrl()" as-child variant="link" size="sm" class="px-0">
-            <NuxtLink :to="translation.changesUrl()">{{ t('fields.translation.whatChanged') }}</NuxtLink>
+          <Button v-if="translation.confirm" type="button" variant="outline" size="sm" @click="translation.confirm(leaf!)">{{ t('fields.translation.fitsAsIs', { lang: foreignName }) }}</Button>
+          <Button v-if="translation.changesUrl?.()" as-child variant="link" size="sm" class="px-0">
+            <NuxtLink :to="translation.changesUrl?.()">{{ t('fields.translation.whatChanged') }}</NuxtLink>
           </Button>
         </div>
         <template v-else-if="trState === 'missing'">
-          <p class="text-warning">{{ translation.missingNote(leaf!) }}</p>
+          <p class="text-warning">{{ missingText }}</p>
           <Button v-if="copyable" type="button" variant="outline" size="sm" class="justify-self-start" @click="set(source)">{{ t('fields.translation.useSource', { name: translation.mainName() }) }}</Button>
         </template>
       </div>

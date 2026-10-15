@@ -1,20 +1,25 @@
 <!-- The task form (UI.md 3.1, 3.2): only the task's fields, prefilled by the server, saved with one
-     opId per attempt. Conflicts keep the person's input and show the new state next to it. -->
+     opId per attempt. Conflicts keep the person's input and show the new state next to it. On a site
+     with more languages, a switch shows the texts to translate; one Speichern stores every language. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Label as LabelText, Locale } from '@lupinum/ginko'
-import { defaultsFor, isShown, type Schema } from '@lupinum/ginko/internal'
+import { defaultsFor, isShown, leavesOf, stableJson, type Schema } from '@lupinum/ginko/internal'
+import { textIn, TRANSLATION } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
+import LanguageSwitch from './LanguageSwitch.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
 import ConflictPanel from './ConflictPanel.vue'
 import { provideSiteRefs } from '../composables/useSiteRefs'
 import { Button } from '@studio/components/ui/button'
 import { XIcon } from '@lucide/vue'
+import { ConfigProvider, injectConfigProviderContext } from 'reka-ui'
 import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
-import { taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
+import { hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
+import { opErrorOf } from '../composables/useOps'
 
 const props = defineProps<{
   site: string
@@ -37,7 +42,7 @@ const props = defineProps<{
   schema: Schema
 }>()
 const emit = defineEmits<{ close: [] }>()
-const { t } = useI18n()
+const { t, locale: uiLocale } = useI18n()
 const shown = (label: LabelText) => shownLabel(label, props.main)
 
 provideSiteRefs(() => props.site, () => props.schema, () => props.main)
@@ -55,8 +60,9 @@ const form = useEntryForm({
   // A create task makes a new entry even when one is passed.
   entry: () => (isCreate.value ? undefined : props.entry),
   main: () => props.main,
-  // Schnell ändern edits translatable texts in the main language only (UI.md 3.1).
+  // Every language in one save (the switch below); local copies stay with the main language and hold whole values.
   locale: () => props.main,
+  allLanguages: true,
   task: () => ref_.value,
   removeTask: () => (props.removeTask ? taskRef(props.brickKey, props.removeTask) : undefined),
   draft: () => !isCreate.value && props.entry?.state === 'draft',
@@ -64,8 +70,11 @@ const form = useEntryForm({
 })
 const { draft, baseline, ready, issues, problem, conflict, busy, offline, waiting, dirty, localOffer } = form
 
-// Prefill (SPEC 2.7): stored values of the task's fields, then the task's preset, resolved on the server.
-const prefillArgs = computed(() => ({ site: props.site, task: ref_.value, ...(props.entry && !isCreate.value ? { entry: props.entry._id } : {}) }))
+// Prefill (SPEC 2.7): stored values of the task's fields, then the task's preset, resolved on the server. It seeds
+// the form once, so it is asked for only until the form has loaded: a later run (every save on the site starts one)
+// can no longer fail into the open form. Later server changes reach the form through `entry` (useEntryForm).
+const retrying = ref(false)
+const prefillArgs = computed(() => (ready.value || retrying.value ? 'skip' : { site: props.site, task: ref_.value, ...(props.entry && !isCreate.value ? { entry: props.entry._id } : {}) }))
 const { data: prefill, error: prefillError } = useConvexQuery(api.tasks.prefill, prefillArgs, { server: false })
 watch(prefill, (p) => {
   if (!p || ready.value) return
@@ -73,6 +82,60 @@ watch(prefill, (p) => {
   const start: Data = isCreate.value ? { ...defaultsFor(fields.value) } : {}
   form.load({ ...start, ...(p as Data) })
 }, { immediate: true })
+/** A refusal the server names keeps its own text; anything else (the connection) says it did not load. */
+const prefillProblem = computed(() => (prefillError.value ? opErrorOf(prefillError.value, t('basics.notLoaded')).message : ''))
+/**
+ * "Erneut versuchen": Convex keeps one subscription per query and arguments, and only this sheet asks for this
+ * prefill, so dropping it for a tick and asking again makes the server run it again (better-convex has no retry on
+ * purpose). Not a reload: the page behind the sheet may hold input of its own.
+ */
+async function retry() {
+  retrying.value = true
+  await nextTick()
+  retrying.value = false
+}
+
+// Languages (UI.md 3.1): the sheet opens in the main language with every field of the task. Another language shows the
+// texts to translate; German input made there still counts and is saved with the rest.
+const lang = ref<Locale>(props.main)
+const foreign = computed(() => lang.value !== props.main)
+const toTranslate = computed(() => Object.fromEntries(Object.entries(fields.value).filter(([, field]) => hasTranslation(field))))
+const shownFields = computed(() => (foreign.value ? toTranslate.value : fields.value))
+const multilingual = computed(() => props.locales.length > 1 && Object.keys(toTranslate.value).length > 0)
+/** Input still waiting in an editor's pause goes into the language it was typed in. */
+async function switchLanguage(next: Locale) {
+  if (next === lang.value) return
+  await form.flush()
+  lang.value = next
+}
+/** The entry's name for the hints: what is typed, over the stored entry an edit task changes. */
+const entryName = () => titleOf(props.brick, { ...(isCreate.value ? {} : props.entry?.data), ...draft.value }, props.main)
+const textsAt = (data: Data, leaf: string) => {
+  const value = leafValue(data, leaf)
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined
+}
+/**
+ * A text's state in language `l` once saved: missing, or outdated when its main text changed here while its text in `l`
+ * stayed (the save keeps that translation, made from the old main text). A text typed here counts as current.
+ */
+function stateIn(leaf: string, l: Locale): 'missing' | 'stale' | 'fine' {
+  const now = textsAt(draft.value, leaf)
+  const was = textsAt(baseline.value, leaf)
+  const changed = (locale: Locale) => stableJson(now?.[locale] ?? null) !== stableJson(was?.[locale] ?? null)
+  const state = leafTranslation({ draft: now, locale: l, main: props.main, storedMain: undefined, storedForeign: undefined, print: undefined, confirmed: false })
+  return state === 'fine' && now?.[l] && changed(props.main) && !changed(l) ? 'stale' : state
+}
+/** A dot on a language whose texts are missing or outdated (the fields shown, as the switch shows them). */
+const gapIn = (l: Locale) => l !== props.main && Object.entries(toTranslate.value).some(([key, field]) => isShown(field, draft.value)
+  && [...leavesOf(field, draft.value[key], key).keys()].some((leaf) => stateIn(leaf, l) !== 'fine'))
+// The sheet's own translation view: the German as typed here as the source, and no "Englisch stimmt noch" (the sheet saves every
+// language at once; an outdated translation is confirmed in Alles bearbeiten, in its own language).
+provide(TRANSLATION, {
+  state: (leaf) => (foreign.value ? stateIn(leaf, lang.value) : undefined),
+  source: (leaf) => textIn(leafValue(draft.value, leaf), props.main),
+  mainName: () => languageName(props.main, uiLocale.value),
+  hiddenWithout: (leaf) => (hidesUntranslated(props.brick, leaf) ? { title: entryName(), language: languageName(lang.value, uiLocale.value) } : undefined),
+})
 
 /** A new entry with the same name as one that is already there (e.g. a second "Heute ausgebucht"). */
 const twin = computed(() => {
@@ -83,8 +146,29 @@ const twin = computed(() => {
 
 const confirmClose = ref(false)
 const dialog = ref<HTMLDialogElement | null>(null)
+// The sheet is a modal <dialog> in the browser's top layer: anything rendered into <body> lies beneath it, unseen and
+// out of reach. So every reka portal in the sheet (lists, menus, popovers, tooltips, the library picker; node views
+// too, through EditorContent) and the slash menu render into the <dialog> instead, next to the <form>, never inside it.
+// A nested ConfigProvider replaces the whole context: pass on what app.vue sets (today only useId).
+const reka = injectConfigProviderContext({})
 onMounted(() => dialog.value?.showModal())
-watch(issues, (list) => { if (list.length) nextTick(() => dialog.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()) })
+/**
+ * The view that shows an issue: a text in another language there (`name.en`, `days.<rowId>.dish.en`, `image.alt.en`),
+ * anything else in the main language, which shows every field (`name.de`, a list column such as `exceptions.<rowId>.when`).
+ */
+function viewOf(path: string): Locale {
+  const other = props.locales.find((l) => l !== props.main && path.endsWith(`.${l}`))
+  return other && Object.hasOwn(toTranslate.value, path.split('.')[0]!) ? other : props.main
+}
+/** Each view marks only its own issues: a German error never sits on the English input, nor the other way round. */
+const shownIssues = computed(() => issues.value.filter((issue) => viewOf(issue.path) === lang.value))
+watch(issues, (list) => {
+  if (!list.length) return
+  // The view of the errors; with errors in several, the main language first (fixing a text there clears its others).
+  const views = new Set(list.map((issue) => viewOf(issue.path)))
+  lang.value = views.size === 1 ? [...views][0]! : props.main
+  nextTick(() => dialog.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+})
 
 // Closed while a save was still on its way (offline): the save goes on, and its outcome still reaches the person.
 const { show } = useToast()
@@ -100,7 +184,11 @@ async function finish(ok: boolean) {
 async function save() {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
   if (busy.value || !ready.value || removedHere.value) return
-  if (form.blockers.size) nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
+  if (form.blockers.size) {
+    // "Noch richtig?" asks about the choices next to a changed German text, which only the main language shows.
+    await switchLanguage(props.main)
+    nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
+  }
   await finish(await form.save())
 }
 async function keepMine() {
@@ -117,14 +205,15 @@ async function restoreRemoved(lifeRev: number) {
   // Without input the sheet stays open on the restored entry; with input it closes like after Speichern.
   if (typed) await finish(ok)
 }
+/** Closed while a save is on its way: the save goes on, and a failure still says so (finish). */
+function leaveWhileSaving() {
+  leftWhileSaving = true
+  show(t('entry.saveContinues'))
+  emit('close')
+}
 function requestClose() {
   // A save on its way cannot be taken back by closing; say so instead of offering "Verwerfen" (break-it 9).
-  if (busy.value) {
-    leftWhileSaving = true
-    show(t('entry.saveContinues'))
-    emit('close')
-    return
-  }
+  if (busy.value) return leaveWhileSaving()
   // A removed entry: the input stays on this device (the banner says so and has its own "Verwerfen").
   if (dirty.value && !confirmClose.value && !removedHere.value) {
     confirmClose.value = true
@@ -137,73 +226,108 @@ function discardAndClose() {
   form.discard()
   emit('close')
 }
+/** The browser closed the dialog itself (a second back gesture it no longer lets the page refuse): nothing can ask first. */
+function onBrowserClose() {
+  if (busy.value) return leaveWhileSaving()
+  emit('close')
+}
+/** A close request that is not the Escape key (Android's back gesture): the same guard. */
 function onCancel(event: Event) {
   event.preventDefault()
   requestClose()
 }
+// Escape is the sheet's own key and never becomes the browser's close request: that request asked about discarding
+// while only a list was being closed, and Chrome lets a page refuse it just once per user activation, after which the
+// <dialog> closed under a sheet the app still held open. On the document, so a key pressed with focus on <body> counts.
+function onKeydown(event: KeyboardEvent) {
+  // Taken already: the component-block keymap, the find bar, the slash menu.
+  if (event.key !== 'Escape' || event.isComposing || event.defaultPrevented) return
+  // A list, popover or picker in the sheet closes first (Escape closes the innermost layer). reka closes it in a window
+  // listener that runs after this one and skips a cancelled key, so the key is cancelled after reka's turn; cancelled
+  // it must be, or the browser also asks the dialog to close.
+  if (dialog.value?.querySelector('[data-dismissable-layer]:not([data-state="closed"])')) {
+    window.addEventListener('keydown', (later) => { if (later === event) later.preventDefault() }, { once: true })
+    return
+  }
+  event.preventDefault()
+  requestClose()
+}
+onMounted(() => document.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
-  <dialog ref="dialog" :class="SHEET_DIALOG" aria-labelledby="sheet-title" @cancel="onCancel">
-    <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()">
-      <header class="flex items-start justify-between gap-3 border-b bg-card pt-4 pb-3 pr-3 pl-5">
-        <div>
-          <h2 id="sheet-title" class="text-lg font-semibold">{{ shown(task.label) }}</h2>
-          <p v-if="entry && brick.kind === 'collection'" class="mt-0.5 text-sm text-muted-foreground">{{ titleOf(brick, entry.data, main) }}</p>
+  <dialog ref="dialog" :class="SHEET_DIALOG" aria-labelledby="sheet-title" @cancel="onCancel" @close="onBrowserClose">
+    <ConfigProvider :teleport-to="dialog ?? undefined" :use-id="reka.useId">
+      <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()">
+        <header class="flex items-start justify-between gap-3 border-b bg-card pt-4 pb-3 pr-3 pl-5">
+          <div class="grid min-w-0 gap-2">
+            <div>
+              <h2 id="sheet-title" class="text-lg font-semibold">{{ shown(task.label) }}</h2>
+              <p v-if="entry && brick.kind === 'collection'" class="mt-0.5 text-sm text-muted-foreground">{{ titleOf(brick, entry.data, main) }}</p>
+            </div>
+            <LanguageSwitch v-if="ready && multilingual" class="justify-self-start" :locales="locales" :model-value="lang" :gap="gapIn" @update:model-value="switchLanguage" />
+          </div>
+          <Button type="button" variant="ghost" size="icon" class="flex-none rounded-full" :aria-label="t('entry.close')" @click="requestClose">
+            <XIcon aria-hidden="true" />
+          </Button>
+        </header>
+
+        <div class="grid content-start gap-5 overflow-auto px-5 pt-[18px] pb-6">
+          <template v-if="!ready">
+            <template v-if="prefillError">
+              <p :class="PROBLEM" role="alert">{{ prefillProblem }}</p>
+              <Button type="button" variant="outline" class="justify-self-start" @click="retry">{{ t('basics.retry') }}</Button>
+            </template>
+            <p v-else class="text-muted-foreground">{{ t('entry.loading') }}</p>
+          </template>
+          <template v-else>
+            <EntryGoneBanner
+              v-if="removedHere && entry"
+              :site="site" :brick-key="brickKey" :entry="entry" :dirty="dirty" :busy="busy" :may-restore="!!mayRestore"
+              @restore="restoreRemoved" @discard="discardAndClose"
+            />
+            <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
+            <ConflictPanel
+              v-if="conflict"
+              :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="main" :main="main"
+              :can-keep-both="!!form.listMerge.value"
+              @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
+            />
+            <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
+            <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
+            <p v-if="foreign" class="text-sm text-muted-foreground">{{ t('entry.foreignHint') }}</p>
+            <GinkoField
+              v-for="(field, key) in shownFields"
+              v-show="isShown(field, draft)"
+              :key="`${lang}:${key}`"
+              :field="field"
+              :model-value="draft[key]"
+              :baseline="baseline[key]"
+              :weeks="weekFields.has(String(key))"
+              :path="String(key)"
+              :locale="lang"
+              :locales="locales"
+              :issues="shownIssues"
+              @update:model-value="form.setField(String(key), $event)"
+            />
+          </template>
         </div>
-        <Button type="button" variant="ghost" size="icon" class="flex-none rounded-full" :aria-label="t('entry.close')" @click="requestClose">
-          <XIcon aria-hidden="true" />
-        </Button>
-      </header>
 
-      <div class="grid content-start gap-5 overflow-auto px-5 pt-[18px] pb-6">
-        <p v-if="prefillError" :class="PROBLEM" role="alert">{{ opErrorOf(prefillError).message }}</p>
-        <p v-else-if="!ready" class="text-muted-foreground">{{ t('entry.loading') }}</p>
-        <template v-else>
-          <EntryGoneBanner
-            v-if="removedHere && entry"
-            :site="site" :brick-key="brickKey" :entry="entry" :dirty="dirty" :busy="busy" :may-restore="!!mayRestore"
-            @restore="restoreRemoved" @discard="discardAndClose"
-          />
-          <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
-          <ConflictPanel
-            v-if="conflict"
-            :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="main" :main="main"
-            :can-keep-both="!!form.listMerge.value"
-            @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
-          />
-          <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
-          <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
-          <GinkoField
-            v-for="(field, key) in fields"
-            v-show="isShown(field, draft)"
-            :key="key"
-            :field="field"
-            :model-value="draft[key]"
-            :baseline="baseline[key]"
-            :weeks="weekFields.has(String(key))"
-            :path="String(key)"
-            :locale="main"
-            :locales="locales"
-            :issues="issues"
-            @update:model-value="form.setField(String(key), $event)"
-          />
-        </template>
-      </div>
-
-      <footer class="flex flex-wrap items-center gap-2 border-t bg-card px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <p v-if="waiting && !dirty && !confirmClose" class="basis-full font-medium text-warning" role="status">{{ t('history.waiting') }}</p>
-        <template v-if="confirmClose">
-          <p class="basis-full font-semibold" role="alert">{{ t('entry.discard.question') }}</p>
-          <Button type="button" variant="destructive" @click="discardAndClose">{{ t('entry.discard.confirm') }}</Button>
-          <Button type="button" variant="outline" @click="confirmClose = false">{{ t('entry.discard.keepEditing') }}</Button>
-        </template>
-        <template v-else>
-          <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-          <Button type="submit" class="flex-1" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
-          <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>
-        </template>
-      </footer>
-    </form>
+        <footer class="flex flex-wrap items-center gap-2 border-t bg-card px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <p v-if="waiting && !dirty && !confirmClose" class="basis-full font-medium text-warning" role="status">{{ t('history.waiting') }}</p>
+          <template v-if="confirmClose">
+            <p class="basis-full font-semibold" role="alert">{{ t('entry.discard.question') }}</p>
+            <Button type="button" variant="destructive" @click="discardAndClose">{{ t('entry.discard.confirm') }}</Button>
+            <Button type="button" variant="outline" @click="confirmClose = false">{{ t('entry.discard.keepEditing') }}</Button>
+          </template>
+          <template v-else>
+            <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
+            <Button type="submit" class="flex-1" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
+            <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>
+          </template>
+        </footer>
+      </form>
+    </ConfigProvider>
   </dialog>
 </template>

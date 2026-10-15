@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { collection, defineSite, f, type CollectionBrick } from '@lupinum/ginko'
 import { printOf, serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
-import { languageLabel, leafTranslation, missingNote, pageOf, translationLines, translationNote, type StoredTranslation, type TranslationPage } from '../app/utils/content'
+import { hidesUntranslated, languageLabel, leafTranslation, missingNote, pageOf, translationLines, translationNote, type StoredTranslation, type TranslationPage } from '../app/utils/content'
 
 describe('leafTranslation', () => {
   const base = { locale: 'en', main: 'de', confirmed: false }
@@ -106,5 +106,36 @@ describe('the address line of a translation', () => {
     ['an event not translated yet', entry('2026-11-20', { title: { de: 'Wildwoche' } }), site, undefined],
   ])('%s', (_, stored, where, page) => {
     expect(pageOf(schema, 'events', events, stored, 'en', where)).toEqual(page)
+  })
+})
+
+describe('hidesUntranslated', () => {
+  const fields = {
+    title: f.text('Titel'),
+    slug: f.slug('Adresse', { from: 'title' }),
+    note: f.text('Hinweis', { optional: true }),
+    image: f.image('Bild', { optional: true }),
+    program: f.list('Programm', { itemLabel: 'Punkt', max: 10, fields: { what: f.text('Was'), extra: f.text('Zusatz', { optional: true }) } }),
+  }
+  const { bricks } = serializeSchema(defineSite({
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    pages: { home: { de: '/', en: '/en' } },
+    bricks: {
+      events: collection({ label: 'Veranstaltungen', max: 30, order: 'manual', fields, route: { de: '/termine/[slug]', en: '/en/events/[slug]' } }),
+      notices: collection({ label: 'Hinweise', max: 30, order: 'manual', fields: { title: f.text('Text') } }),
+    },
+  }))
+  // Wrong behaviour caught (WS-8): the hint under an English event title said the website shows the German text, while
+  // the English site leaves the event out until its required texts are translated.
+  it.each([
+    ['required title of a page', 'events', 'title', true],
+    ['optional text of a page', 'events', 'note', false],
+    ['the web address', 'events', 'slug', false],
+    ['an image description', 'events', 'image.alt', false],
+    ['required column in a list of a page', 'events', 'program.r1.what', true],
+    ['optional column in a list of a page', 'events', 'program.r1.extra', false],
+    ['required text of a collection without pages', 'notices', 'title', false],
+  ] as const)('%s', (_, brick, leaf, expected) => {
+    expect(hidesUntranslated(bricks[brick]!, leaf)).toBe(expected)
   })
 })

@@ -1,12 +1,22 @@
 <!-- A list as row cards (UI.md 5). Fixed lists (min = max with a unique choice column, e.g. the
      weekdays) show that column as the row title and allow no add/remove/move. When a text in a row
      changed but its required choices did not, the choices must be confirmed ("Noch richtig?").
-     In another language (Alles bearbeiten), rows are added in the main language only. -->
+     In a foreign language the list shows only the columns to translate: rows are added, removed and
+     moved in the main language, where a new row gets its required texts. -->
+<script lang="ts">
+/**
+ * "Noch richtig?" confirmations per form (keyed by its blockers): the quick-task sheet shows a list again for each
+ * language, and a confirmation given in one must not be asked for again after a switch.
+ */
+const confirmations = new WeakMap<Map<string, string>, Map<string, string>>()
+</script>
+
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, reactive, watchEffect } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, reactive, ref, watchEffect } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json, Locale } from '@lupinum/ginko'
 import { defaultsFor, isShown, ordered, stableJson } from '@lupinum/ginko/internal'
+import { hasTranslation } from '../../utils/content'
 import GinkoField from './GinkoField.vue'
 import { messageOf } from '@studio/utils/messageOf'
 import { BLOCKERS, TRANSLATION, issuesUnder, type Issue, newRowId, textIn } from '@lupinum/ginko-editor'
@@ -44,7 +54,11 @@ const uniqueKey = computed(() => props.field.unique)
 const uniqueField = computed(() => (uniqueKey.value ? props.field.of[uniqueKey.value] : undefined))
 /** In a fixed list the unique choice names the row and is not edited. */
 const titleKey = computed(() => (fixed.value && uniqueField.value?.type === 'choice' ? uniqueKey.value : undefined))
-const columns = computed(() => ordered(props.field.of).filter(([k, f]) => k !== titleKey.value && !f.retired))
+const live = computed(() => ordered(props.field.of).filter(([k, f]) => k !== titleKey.value && !f.retired))
+const main = computed(() => props.locales[0] ?? props.locale)
+const foreign = computed(() => props.locale !== main.value)
+/** The columns shown: in a foreign language only those with text to translate. */
+const columns = computed(() => (foreign.value ? live.value.filter(([, f]) => hasTranslation(f)) : live.value))
 
 function rowTitle(row: Row, index: number): string {
   if (titleKey.value && uniqueField.value?.type === 'choice') {
@@ -76,6 +90,7 @@ function move(index: number, by: -1 | 1) {
   next.splice(index + by, 0, row!)
   update(next)
 }
+const root = ref<HTMLElement>()
 /** Removing needs no question: the row comes back with "Rückgängig", at the same position. */
 function removeRow(index: number) {
   const row = rows.value[index]
@@ -83,6 +98,13 @@ function removeRow(index: number) {
   const title = rowTitle(row, index)
   update(rows.value.filter((_, i) => i !== index))
   useToast().show(t('fields.list.removed', { title }), { action: { label: t('fields.list.undo'), run: () => restoreRow(row, index) } })
+  // The pressed button went with its row: the focus moves to the remove button now in its place (the previous row's
+  // after the last row), or to the add button when there is none to press, never to <body>.
+  nextTick(() => {
+    const buttons = root.value?.querySelectorAll<HTMLButtonElement>('[data-remove]') ?? []
+    const next = buttons[Math.min(index, buttons.length - 1)]
+    ;(next && !next.disabled ? next : root.value?.querySelector<HTMLElement>('[data-add]'))?.focus()
+  })
 }
 function restoreRow(row: Row, index: number) {
   if (rows.value.some((r) => r._id === row._id)) return
@@ -92,26 +114,30 @@ function restoreRow(row: Row, index: number) {
 }
 function addRow() { update([...rows.value, { ...defaultsFor(props.field.of), _id: newRowId() } as Row]) }
 
-// "Noch richtig?": a required choices column next to a changed text column.
+// "Noch richtig?": a required choices column next to a changed text column. Only a change in the main language asks:
+// a translation does not change the dish. In a foreign language the choices are not shown, so the question waits there
+// until the main language shows again (the sheet switches back on Speichern).
 const before = computed(() => new Map((Array.isArray(props.baseline) ? (props.baseline as Row[]) : []).map((r) => [r._id, r])))
-const checkKeys = computed(() => columns.value.filter(([, f]) => f.type === 'choices' && !f.optional).map(([k]) => k))
-const textKeys = computed(() => columns.value.filter(([, f]) => f.type === 'text' || f.type === 'longtext').map(([k]) => k))
+const checkKeys = computed(() => live.value.filter(([, f]) => f.type === 'choices' && !f.optional).map(([k]) => k))
+const textKeys = computed(() => live.value.filter(([, f]) => f.type === 'text' || f.type === 'longtext').map(([k]) => k))
 /** Confirmations hold the texts that were reviewed; a later change of the text asks again (Astra phase 8). */
-const confirmed = reactive(new Map<string, string>())
-const textsOf = (row: Row) => textKeys.value.map((k) => textIn(row[k], props.locale)).join('\u0000')
+const confirmed = (blockers && confirmations.get(blockers)) ?? reactive(new Map<string, string>())
+if (blockers) confirmations.set(blockers, confirmed)
+const confirmKey = (row: Row, key: string) => `${props.path}.${row._id}.${key}`
+const textsOf = (row: Row) => textKeys.value.map((k) => textIn(row[k], main.value)).join('\u0000')
 function needsCheck(row: Row, key: string): boolean {
   if (!checkKeys.value.includes(key)) return false
   const old = before.value.get(row._id)
-  if (!old || confirmed.get(`${row._id}.${key}`) === textsOf(row)) return false
-  const textChanged = textKeys.value.some((k) => textIn(row[k], props.locale) !== textIn(old[k], props.locale))
+  if (!old || confirmed.get(confirmKey(row, key)) === textsOf(row)) return false
+  const textChanged = textKeys.value.some((k) => textIn(row[k], main.value) !== textIn(old[k], main.value))
   return textChanged && stableJson(row[key] ?? null) === stableJson(old[key] ?? null)
 }
 function changedLabel(row: Row): string {
   const old = before.value.get(row._id)
-  const key = textKeys.value.find((k) => old && textIn(row[k], props.locale) !== textIn(old[k], props.locale))
+  const key = textKeys.value.find((k) => old && textIn(row[k], main.value) !== textIn(old[k], main.value))
   return key ? labelText(props.field.of[key]!.label) : t('fields.list.text')
 }
-function confirm(row: Row, key: string) { confirmed.set(`${row._id}.${key}`, textsOf(row)) }
+function confirm(row: Row, key: string) { confirmed.set(confirmKey(row, key), textsOf(row)) }
 watchEffect(() => {
   if (!blockers) return
   for (const k of [...blockers.keys()]) if (k.startsWith(`${props.path}.`)) blockers.delete(k)
@@ -128,16 +154,18 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
 </script>
 
 <template>
-  <div class="grid gap-3" role="group" :aria-labelledby="`${id}-label`">
+  <div ref="root" class="grid gap-3" role="group" :aria-labelledby="`${id}-label`">
     <p v-for="e in listIssues" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
     <ol v-if="rows.length" class="m-0 grid list-none gap-3 p-0">
       <li v-for="(row, index) in rows" :key="row._id" class="grid gap-4 rounded-md border bg-card p-3 sm:p-4" :data-row="row._id">
-        <div class="flex items-center justify-between gap-2">
-          <h3 class="m-0 min-w-0 flex-1 truncate text-sm font-semibold">{{ rowTitle(row, index) }}</h3>
-          <div v-if="!fixed" class="-my-1 -mr-2 flex shrink-0">
+        <!-- A grid, not a flex row: a flex row counts the whole one-line title into its narrowest width, so a long
+             title ("Betriebsurlaub – ab 18. November …") widened every form around it and the sheet scrolled sideways. -->
+        <div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+          <h3 class="m-0 truncate text-sm font-semibold">{{ rowTitle(row, index) }}</h3>
+          <div v-if="!fixed && !foreign" class="-my-1 -mr-2 flex shrink-0">
             <Button type="button" variant="ghost" size="icon" :disabled="index === 0" :aria-label="t('fields.list.up', { title: rowTitle(row, index) })" @click="move(index, -1)"><ArrowUpIcon aria-hidden="true" /></Button>
             <Button type="button" variant="ghost" size="icon" :disabled="index === rows.length - 1" :aria-label="t('fields.list.down', { title: rowTitle(row, index) })" @click="move(index, 1)"><ArrowDownIcon aria-hidden="true" /></Button>
-            <Button type="button" variant="ghost" size="icon" class="hover:text-destructive" :disabled="rows.length <= min" :aria-label="t('fields.list.remove', { title: rowTitle(row, index) })" @click="removeRow(index)"><Trash2Icon aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="icon" class="hover:text-destructive" data-remove :disabled="rows.length <= min" :aria-label="t('fields.list.remove', { title: rowTitle(row, index) })" @click="removeRow(index)"><Trash2Icon aria-hidden="true" /></Button>
           </div>
         </div>
         <p v-for="e in rowIssues(row)" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
@@ -156,7 +184,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
     </ol>
     <template v-if="!fixed && rows.length < max">
       <p v-if="foreignTab" class="text-sm text-muted-foreground">{{ t('fields.list.addInMain', { name: translation!.mainName() }) }}</p>
-      <Button v-else type="button" variant="outline" class="justify-self-start" @click="addRow"><PlusIcon aria-hidden="true" />{{ t('fields.list.add', { item: labelText(field.itemLabel) }) }}</Button>
+      <Button v-else-if="!foreign" type="button" variant="outline" class="justify-self-start" data-add @click="addRow"><PlusIcon aria-hidden="true" />{{ t('fields.list.add', { item: labelText(field.itemLabel) }) }}</Button>
     </template>
   </div>
 </template>

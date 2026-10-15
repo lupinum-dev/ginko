@@ -43,7 +43,7 @@ const schema = {
   bricks: {
     events: { kind: 'collection', label: { de: 'Veranstaltungen' }, fields: {}, tasks: [create('add')] },
     menu: { kind: 'collection', label: { de: 'Speisekarte' }, fields: {}, tasks: [create('add')] },
-    contact: { kind: 'single', label: { de: 'Kontakt' }, fields: {} },
+    contact: { kind: 'single', label: { de: 'Kontakt' }, fields: { phone: { type: 'text', label: { de: 'Telefon' } } } },
   },
 } as unknown as Schema
 
@@ -91,6 +91,19 @@ describe('CommandPalette', () => {
     await flushPromises()
     expect(mocks.navigateTo).toHaveBeenCalledWith('/s/s/all/menu/e1', undefined)
     expect(wrapper.emitted('update:open')?.at(-1)).toEqual([false])
+  })
+
+  // Wrong behaviour caught (WS-7): an area found by "Telefon" showed only its name, so nothing said why it was listed.
+  test('an area found by one of its fields names that field next to it', async () => {
+    mocks.found = { entries: [], bricks: [{ brick: 'contact', label: 'Kontakt', kind: 'single', field: 'phone' }, { brick: 'events', label: 'Veranstaltungen', kind: 'collection' }], tasks: [] }
+    mountPalette({ role: 'owner', grants: [] })
+    await flushPromises()
+    const input = document.body.querySelector('input')!
+    input.value = 'telefon'
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    await nextTick()
+    expect(optionTexts()).toEqual(['Kontakt Telefon', 'Veranstaltungen'])
   })
 
   // Wrong behaviour caught: the results vanish between keystrokes while the next search loads.

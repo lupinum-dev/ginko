@@ -111,6 +111,65 @@ test.describe('Wirtin', () => {
     await page.getByRole('button', { name: 'Speichern', exact: true }).click()
     await expect(toast(page)).toContainText('Gespeichert')
   })
+
+  // Wrong behaviour caught (romi-1, J1, P4): a quick-task sheet is a modal <dialog> in the browser's top layer, and the
+  // text style list and the link box opened in <body> beneath it, unseen and not clickable; on a phone the typed web
+  // address replaced the selected words. And (romi-2, J5): Escape that closed a list also asked "Änderungen verwerfen?".
+  test('26. "Veranstaltung hinzufügen": the text style list and the link box open inside the sheet, and Escape closes them first', async ({ page }) => {
+    await openQuick(page)
+    await page.getByRole('button', { name: 'Veranstaltung hinzufügen' }).click()
+    const sheet = page.locator('dialog[open]')
+    await sheet.getByLabel('Titel').fill('Kürbisabend')
+    const text = sheet.getByRole('textbox', { name: 'Beschreibung', exact: true })
+    await text.click()
+    await page.keyboard.type('Gemütlicher Abend')
+    await page.keyboard.press('Enter')
+
+    await sheet.getByRole('combobox', { name: 'Blocktyp' }).click()
+    await sheet.getByRole('option', { name: 'Zwischenüberschrift', exact: true }).click()
+    await expect(text.locator('h3')).toHaveCount(1)
+
+    await text.getByText('Gemütlicher Abend').selectText()
+    await sheet.getByRole('toolbar', { name: 'Formatierung' }).getByRole('button', { name: 'Link', exact: true }).click()
+    const address = sheet.getByLabel('Link (Webadresse)')
+    await expect(address).toBeFocused()
+    await address.fill('example.org')
+    await sheet.getByRole('button', { name: 'Übernehmen' }).click()
+    await expect(text.getByRole('link', { name: 'Gemütlicher Abend' })).toBeVisible()
+
+    // The title is typed, so closing the sheet would ask; closing a list or the link box must not.
+    await sheet.getByRole('combobox', { name: 'Blocktyp' }).click()
+    await expect(sheet.getByRole('listbox')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('listbox')).toHaveCount(0)
+    await sheet.getByRole('toolbar', { name: 'Formatierung' }).getByRole('button', { name: 'Link', exact: true }).click()
+    await expect(address).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(address).toHaveCount(0)
+    await expect(page.getByText('Änderungen verwerfen?')).toHaveCount(0)
+
+    await page.keyboard.press('Escape')
+    await expect(sheet.getByText('Änderungen verwerfen?')).toBeVisible()
+    await sheet.getByRole('button', { name: 'Weiter bearbeiten' }).click()
+    await expect(sheet.getByText('Änderungen verwerfen?')).toHaveCount(0)
+    await expect(sheet.getByLabel('Titel')).toHaveValue('Kürbisabend')
+  })
+
+  // Wrong behaviour caught (WS-6): a long reason widened its card past the sheet, which then scrolled sideways and cut
+  // off the arrows, the remove button and the edge of "Grund".
+  test('27. a long reason in "Betriebsurlaub und Ausnahmen" keeps the row inside the sheet', async ({ page }) => {
+    await openQuick(page)
+    await page.getByRole('button', { name: 'Betriebsurlaub und Ausnahmen', exact: true }).click()
+    const sheet = page.locator('dialog[open]')
+    await sheet.getByRole('button', { name: 'Ausnahme hinzufügen' }).click()
+    const row = sheet.locator('[data-row]').last()
+    await row.getByLabel('Grund').fill('Betriebsurlaub – ab 18. November sind wir wieder für euch da.')
+    const remove = row.getByRole('button', { name: /entfernen$/ })
+    await expect(remove).toBeVisible()
+    const [sheetBox, removeBox] = await Promise.all([sheet.boundingBox(), remove.boundingBox()])
+    expect(removeBox!.x + removeBox!.width).toBeLessThanOrEqual(sheetBox!.x + sheetBox!.width)
+    expect(await row.locator('h3').evaluate((title) => title.scrollWidth > title.clientWidth)).toBe(true)
+  })
 })
 
 test.describe('Unterwegs (break-it 9)', () => {
@@ -213,24 +272,25 @@ test.describe('Übersetzen (Phase 11)', () => {
 test.describe('Übersetzen in Listen (Astra 11)', () => {
   test.use(asOwner)
 
-  test('18. a confirmed translation in a removed list row does not block saving the rest', async ({ page }) => {
-    await page.goto('/s/restaurant/all/hours', { waitUntil: 'networkidle' })
-    const first = page.getByRole('group', { name: 'Betriebsurlaub und Ausnahmen' }).locator('[data-row]').first()
-    const save = async () => {
-      await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-      await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
-    }
-    // An English reason, then a German change: the English one is outdated.
-    await page.getByRole('button', { name: 'Englisch' }).click()
+  // Wrong behaviour caught (WD-4, F6): a quick task stored German only, so the English site showed the German reason;
+  // the English view could also remove or add rows, which belong to the main language.
+  test('18. an English reason typed in the "Betriebsurlaub und Ausnahmen" sheet is saved next to the German one', async ({ page }) => {
+    await openQuick(page)
+    await page.getByRole('button', { name: 'Betriebsurlaub und Ausnahmen', exact: true }).click()
+    const sheet = page.locator('dialog[open]')
+    const first = sheet.locator('[data-row]').first()
+    const german = await first.getByLabel('Grund').inputValue()
+    await sheet.getByRole('button', { name: 'Englisch' }).click()
+    await expect(first.getByRole('button', { name: /entfernen$/ })).toHaveCount(0)
     await first.getByLabel('Grund').fill('Winter holidays')
-    await save()
-    await page.getByRole('button', { name: 'Deutsch' }).click()
-    await first.getByLabel('Grund').fill('Betriebsurlaub im Winter')
-    await save()
+    await sheet.getByRole('button', { name: 'Speichern', exact: true }).click()
+    await expect(toast(page)).toContainText('Gespeichert')
+
+    await page.goto('/s/restaurant/all/hours', { waitUntil: 'networkidle' })
+    const row = page.getByRole('group', { name: 'Betriebsurlaub und Ausnahmen' }).locator('[data-row]').first()
+    await expect(row.getByLabel('Grund')).toHaveValue(german)
     await page.getByRole('button', { name: 'Englisch' }).click()
-    await first.getByRole('button', { name: 'Englisch stimmt noch' }).click()
-    await first.getByRole('button', { name: /entfernen$/ }).click()
-    await save()
+    await expect(row.getByLabel('Grund')).toHaveValue('Winter holidays')
   })
 })
 

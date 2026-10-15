@@ -6,6 +6,7 @@ import { mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Entry } from '../app/composables/useSiteData'
+import type { EntryFormOptions } from '../app/composables/useEntryForm'
 
 for (const name of ['ref', 'shallowRef', 'computed', 'reactive', 'watch', 'nextTick', 'provide', 'onMounted', 'onBeforeUnmount'] as const) vi.stubGlobal(name, vue[name])
 vi.stubGlobal('onBeforeRouteLeave', () => {})
@@ -66,15 +67,15 @@ const brick = {
   },
 } as never
 
-/** The entry page: the entry from the live list, kept when it leaves it (as [entry].vue does). */
-function mountForm() {
+/** The entry page: the entry from the live list, kept when it leaves it (as [entry].vue does). `options`: a quick-task sheet's. */
+function mountForm(options: Partial<EntryFormOptions> = {}) {
   let form!: ReturnType<typeof useEntryForm>
   mount(vue.defineComponent({
     setup() {
       const { entry, removed } = useKeptEntry(() => 'e1', () => live.value)
       form = useEntryForm({
         site: vue.ref('restaurant'), brickKey: () => 'dishes', brick: () => brick, fields: () => (brick as { fields: never }).fields,
-        entry: () => entry.value, removed: () => removed.value, main: () => 'de', locale: () => 'de',
+        entry: () => entry.value, removed: () => removed.value, main: () => 'de', locale: () => 'de', ...options,
       })
       form.load({ ...entry.value!.data })
       return () => vue.h('div')
@@ -153,6 +154,50 @@ describe('useEntryForm', () => {
     expect(calls).toEqual([
       ['save', { entry: 'e1', baseRev: 6, fields: { sides: [salad, { _id: 'r2', name: 'Frittatensuppe' }, { _id: 'r3', name: 'Kaspressknödel' }] } }],
     ])
+  })
+})
+
+// A quick-task sheet edits every language of its texts and saves them whole (allLanguages).
+describe('a form that saves every language', () => {
+  const named = (rev: number, name: Record<string, string>) => ({ ...stored, rev, fieldRevs: { ...stored.fieldRevs, name: rev }, data: { ...stored.data, name } })
+  const before = named(5, { de: 'Kalbsschnitzel', en: 'Veal schnitzel' })
+  /** The cook's English, saved in Alles bearbeiten while the sheet was open. */
+  const theirs = named(6, { de: 'Kalbsschnitzel', en: 'Viennese veal schnitzel' })
+
+  // Wrong behaviour caught: "Meine behalten" sent the person's whole text, with the English as it was when the sheet
+  // opened, so the English someone saved meanwhile was gone without a word; also when a copy restored after a reload
+  // met that change.
+  test.each(['in the open form', 'after a reload'])('"Meine behalten" keeps the English someone else saved meanwhile (%s)', async (when) => {
+    live.value = before
+    let form = mountForm({ allLanguages: true })
+    form.setField('name', { de: 'Wiener Schnitzel', en: 'Veal schnitzel' })
+    if (when === 'after a reload') {
+      await vue.nextTick()
+      window.dispatchEvent(new Event('pagehide'))
+      live.value = theirs
+      form = mountForm({ allLanguages: true })
+      await form.restoreLocal()
+    } else {
+      refuseNext = { code: 'CHANGED_SINCE', message: 'Inzwischen hat jemand das geändert.', details: { rev: 6, conflicts: ['name'], data: theirs.data } }
+      expect(await form.save()).toBe(false)
+    }
+    expect(form.conflict.value?.fields).toEqual(['name'])
+
+    expect(await form.keepMine()).toBe(true)
+    expect(calls).toEqual([['save', { entry: 'e1', baseRev: 6, fields: { name: { de: 'Wiener Schnitzel', en: 'Viennese veal schnitzel' } } }]])
+  })
+
+  // Wrong behaviour caught: a copy from the sheet holds English typed there; Alles bearbeiten in German offered it and
+  // saved only its German, and the English went for good with the copy.
+  test.each([
+    { typed: 'German only', name: { de: 'Wiener Schnitzel', en: 'Veal schnitzel' }, offered: true },
+    { typed: 'English too', name: { de: 'Kalbsschnitzel', en: 'Viennese veal schnitzel' }, offered: false },
+  ])('a copy from the sheet with $typed is offered in a German-only form: $offered', async ({ name, offered }) => {
+    live.value = before
+    mountForm({ allLanguages: true }).setField('name', name)
+    await vue.nextTick()
+    window.dispatchEvent(new Event('pagehide'))
+    expect([!!mountForm().localOffer.value, !!mountForm({ allLanguages: true }).localOffer.value]).toEqual([offered, true])
   })
 })
 

@@ -1,11 +1,12 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
-import { computed, defineComponent, h, ref, shallowRef } from 'vue'
+import { computed, defineComponent, h, reactive, ref, shallowRef, type Component } from 'vue'
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
-import { GINKO_ASSETS, TRANSLATION, type GinkoAssets, type TranslationState } from '@lupinum/ginko-editor'
+import { BLOCKERS, GINKO_ASSETS, TRANSLATION, type GinkoAssets, type TranslationState } from '@lupinum/ginko-editor'
 import type { Field, Json } from '@lupinum/ginko'
 import FieldFrame from '../app/components/fields/FieldFrame.vue'
 import GinkoField from '../app/components/fields/GinkoField.vue'
+import GinkoFieldDate from '../app/components/fields/GinkoFieldDate.vue'
 import GinkoFieldList from '../app/components/fields/GinkoFieldList.vue'
 import GinkoFieldRef from '../app/components/fields/GinkoFieldRef.vue'
 import { REFS, type RefOptions } from '../app/components/fields/refs'
@@ -136,22 +137,88 @@ describe('list rows', () => {
   })
 
   // Wrong behaviour caught: a row added on the English tab can get neither its German texts nor its pictures there,
-  // so the form can never be saved and the only way out is to remove the row again.
-  test('in another language a row is added in the main language; removing stays', () => {
+  // so the form can never be saved; and a row removed there would remove the German row too (rows are shared).
+  test('in another language rows are added, removed and moved in the main language', () => {
     const translation: TranslationState = { state: () => 'fine', source: () => '', confirm: vi.fn(), mainName: () => 'Deutsch', missingNote: () => '', changesUrl: () => undefined, address: () => undefined }
     const { wrapper } = host(rowsOf('Winterpause'), { locale: 'en', translation })
     expect(wrapper.findAll('button').some((b) => b.text() === 'Ausnahme hinzufügen')).toBe(false)
-    expect(wrapper.text()).toContain('Hinzufügen kannst du auf Deutsch.')
-    expect(wrapper.find('[aria-label="Winterpause entfernen"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Zeilen hinzufügen, entfernen und verschieben kannst du auf Deutsch.')
+    expect(wrapper.find('[aria-label="Winterpause entfernen"]').exists()).toBe(false)
+  })
+})
+
+// Wrong behaviour caught: translating a lunch dish asked "Noch richtig?" about its allergens and blocked Speichern, and
+// the English view could add a row that lacks its required German dish.
+describe('a list in a foreign language', () => {
+  const days = {
+    type: 'list', label: 'Tage', itemLabel: 'Tag', max: 5,
+    of: { dish: { type: 'text', label: 'Gericht' }, allergens: { type: 'choices', label: 'Allergene', options: [{ value: 'a', label: 'Gluten' }, { value: 'g', label: 'Milch' }] } },
+  } as Extract<Field, { type: 'list' }>
+  const stored = [{ _id: 'd1', dish: { de: 'Kürbissuppe' }, allergens: ['g'] }]
+
+  test.each<{ locale: string; typed: Record<string, string>; allergens: boolean; buttons: boolean; blocked: boolean }>([
+    { locale: 'en', typed: { de: 'Kürbissuppe', en: 'Pumpkin soup' }, allergens: false, buttons: false, blocked: false },
+    { locale: 'de', typed: { de: 'Kürbiscremesuppe' }, allergens: true, buttons: true, blocked: true },
+  ])('$locale: allergens shown $allergens, row buttons $buttons, "Noch richtig?" $blocked', async ({ locale, typed, allergens, buttons, blocked }) => {
+    const blockers = reactive(new Map<string, string>())
+    const value = shallowRef<Json | undefined>(stored)
+    const Host = defineComponent({
+      setup: () => () => h(GinkoFieldList, { id: 'f-days', field: days, modelValue: value.value, baseline: stored, path: 'days', locale, locales: ['de', 'en'], issues: [], 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
+    })
+    const wrapper = mount(Host, { global: { provide: { [BLOCKERS as symbol]: blockers } } })
+    value.value = [{ ...stored[0]!, dish: typed }]
+    await flushPromises()
+    expect([wrapper.text().includes('Gericht'), wrapper.text().includes('Allergene')]).toEqual([true, allergens])
+    expect([wrapper.find('[data-remove]').exists(), wrapper.find('[data-add]').exists()]).toEqual([buttons, buttons])
+    expect(blockers.size > 0).toBe(blocked)
+  })
+})
+
+// Wrong behaviour caught: the pressed button went away with what it removed and the focus fell to <body>, outside the
+// quick-task sheet, so keyboard and screen-reader users lost their place (WCAG 2.4.3).
+describe('the focus after a remove button goes', () => {
+  const list = { type: 'list', label: 'Ausnahmen', itemLabel: 'Ausnahme', max: 10, of: { reason: { type: 'text', label: 'Grund' } } } as Extract<Field, { type: 'list' }>
+  const rows = (...reasons: string[]) => reasons.map((reason, i) => ({ _id: `r${i}`, reason }))
+  const listProps = { id: 'f-ex', field: list, path: 'ex', locale: 'de', locales: ['de'], issues: [] }
+  /** The field with its value fed back, as a form does. */
+  function hosted(component: Component, props: Record<string, unknown>, initial: Json) {
+    const value = shallowRef<Json | undefined>(initial)
+    const Host = defineComponent({ setup: () => () => h(component, { ...props, modelValue: value.value, 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }) })
+    return mount(Host, { global: { provide: { [REFS as symbol]: refs() } }, attachTo: document.body })
+  }
+  const byText = (text: string) => () => [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === text)!
+  const byLabel = (label: string) => () => document.querySelector<HTMLElement>(`[aria-label="${label}"]`)!
+  const byId = (id: string) => () => document.getElementById(id)!
+
+  test.each([
+    { case: 'Leeren in an optional date', component: GinkoFieldDate, props: { id: 'f-day', invalid: false, optional: true }, value: '2026-10-20', press: byText('Leeren'), focus: byId('f-day') },
+    { case: 'Leeren in an optional ref', component: GinkoFieldRef, props: { id: 'f-ref', field: refField({ optional: true }), invalid: false }, value: 'k1', press: byText('Leeren'), focus: byId('f-ref') },
+    { case: 'Entfernen of an entry that is gone', component: GinkoFieldRef, props: { id: 'f-ref', field: refField(), invalid: false }, value: 'weg', press: byText('Entfernen'), focus: byId('f-ref') },
+    { case: 'a chip of a full ref list', component: GinkoFieldRef, props: { id: 'f-ref', field: refField({ multiple: true, max: 2 }), invalid: false }, value: ['k1', 'k2'], press: byLabel('Schnitzel entfernen'), focus: byId('f-ref') },
+    { case: 'the first of two list rows', component: GinkoFieldList, props: listProps, value: rows('Winterpause', 'Hochzeit'), press: byLabel('Winterpause entfernen'), focus: byLabel('Hochzeit entfernen') },
+    { case: 'the last of two list rows', component: GinkoFieldList, props: listProps, value: rows('Winterpause', 'Hochzeit'), press: byLabel('Hochzeit entfernen'), focus: byLabel('Winterpause entfernen') },
+    { case: 'the only list row', component: GinkoFieldList, props: listProps, value: rows('Winterpause'), press: byLabel('Winterpause entfernen'), focus: byText('Ausnahme hinzufügen') },
+  ])('$case: the focus moves on to a control that stays', async ({ component, props, value, press, focus }) => {
+    const wrapper = hosted(component as Component, props, value)
+    const button = press()
+    button.focus()
+    button.click()
+    await flushPromises()
+    expect(document.activeElement).toBe(focus())
+    wrapper.unmount()
   })
 })
 
 describe('translation side by side', () => {
   const field = { type: 'text', label: 'Gericht' } as Field
-  function translated(state: 'stale' | 'fine' | 'missing') {
+  // Alles bearbeiten passes what the stored entry says; a quick-task sheet passes only `hiddenWithout`.
+  const editorView: Partial<TranslationState> = {
+    missingNote: (leaf) => (leaf === 'dish' ? 'Noch nicht übersetzt. Ohne diesen Text erscheint die Seite nicht auf Englisch.' : ''),
+    changesUrl: () => '/s/wirt/history?entry=e1', address: () => undefined,
+  }
+  function translated(state: 'stale' | 'fine' | 'missing', view: Partial<TranslationState> = editorView) {
     const confirm = vi.fn()
-    const missingNote = (leaf: string) => (leaf === 'dish' ? 'Noch nicht übersetzt. Ohne diesen Text erscheint die Seite nicht auf Englisch.' : '')
-    const translation: TranslationState = { state: () => state, source: () => 'Kürbissuppe', confirm, mainName: () => 'Deutsch', missingNote, changesUrl: () => '/s/wirt/history?entry=e1', address: () => undefined }
+    const translation: TranslationState = { state: () => state, source: () => 'Kürbissuppe', confirm, mainName: () => 'Deutsch', ...view }
     const wrapper = mount(GinkoField, {
       props: { field, modelValue: { de: 'Kürbissuppe', en: 'Pumpkin soup' }, path: 'dish', locale: 'en', locales: ['de', 'en'], issues: [] },
       global: { provide: { [TRANSLATION as symbol]: translation } },
@@ -216,5 +283,15 @@ describe('translation side by side', () => {
     expect(wrapper.text()).toContain('Das Bild selbst änderst du auf Deutsch.')
     expect(wrapper.findAll('button').map((b) => b.text())).toEqual([])
     expect(wrapper.find('#f-photo-alt').exists()).toBe(true)
+  })
+
+  // Wrong behaviour caught (WS-8): an event without its English title said the website shows the German text there,
+  // while the English site leaves the whole event out.
+  test.each([
+    ['a part of a page shows the main language', undefined, 'Noch nicht übersetzt. Die Website zeigt hier den Text auf Deutsch.'],
+    ['a page is left out of the language', () => ({ title: 'Krampuslauf', language: 'Englisch' }), 'Noch nicht übersetzt. Ohne diesen Text fehlt „Krampuslauf“ auf der Website auf Englisch.'],
+  ] as const)('a missing translation where %s says so', (_, hiddenWithout, text) => {
+    const { wrapper } = translated('missing', { hiddenWithout })
+    expect(wrapper.get('[data-slot="translation-source"] p.text-warning').text()).toBe(text)
   })
 })

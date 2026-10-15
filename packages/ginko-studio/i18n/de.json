@@ -199,7 +199,7 @@
     "localDraft": {
       "offer": "Ungespeicherte Änderungen vom {time} wiederherstellen?",
       "restore": "Wiederherstellen",
-      "discard": "Verwerfen",
+      "discard": "Nicht wiederherstellen",
       "restoredConflict": "Wiederhergestellt. Inzwischen hat jemand {fields} geändert, bitte unten entscheiden."
     },
     "pick": {
@@ -561,6 +561,7 @@
       "changedSince": "{name} geändert seit Übersetzung",
       "fitsAsIs": "{lang} stimmt noch",
       "notTranslated": "Noch nicht übersetzt.",
+      "notTranslatedHidden": "Noch nicht übersetzt. Ohne diesen Text fehlt „{title}“ auf der Website auf {lang}.",
       "notTranslatedShowsMain": "Noch nicht übersetzt. Die Website zeigt hier den Text auf {name}.",
       "notTranslatedBlocks": "Noch nicht übersetzt. Ohne diesen Text erscheint die Seite nicht auf {lang}.",
       "useSource": "Text auf {name} übernehmen",
@@ -597,6 +598,7 @@
       "alt": "Bildbeschreibung",
       "altHint": "Was ist auf dem Foto zu sehen? Für Menschen, die das Bild nicht sehen.",
       "altFromLibrary": "Leer lassen, dann gilt die Beschreibung aus den Dateien.",
+      "noneToTranslate": "Noch kein Foto, also nichts zu übersetzen.",
       "chooseInMain": "Das Bild selbst änderst du auf {name}."
     },
     "money": {
@@ -623,7 +625,7 @@
       "confirmBlocker": "Bitte bestätige bei „{title}“: Sind die {label} noch richtig?",
       "changed": "{changed} geändert. Sind die {label} noch richtig?",
       "add": "{item} hinzufügen",
-      "addInMain": "Hinzufügen kannst du auf {name}.",
+      "addInMain": "Zeilen hinzufügen, entfernen und verschieben kannst du auf {name}.",
       "text": "Text"
     }
   },
@@ -810,7 +812,8 @@
     },
     "loadMore": "Mehr anzeigen",
     "retry": "Erneut versuchen",
-    "loadFailed": "Das ließ sich nicht laden. Bitte lade die Seite neu."
+    "loadFailed": "Das ließ sich nicht laden. Bitte lade die Seite neu.",
+    "notLoaded": "Das ließ sich nicht laden."
   },
   "files": {
     "title": "Dateien",

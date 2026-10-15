@@ -233,6 +233,16 @@ describe('history messages', () => {
     shows(undone, 'Rückgängig: Zurück zur Version vom 08.10.2026 12:00', 'Undone: Back to the version of Oct 8, 2026, 12:00')
   })
 
+  // Wrong behaviour caught (F12): History named a planned lunch week by its note ("Tage von „Alle Gerichte inklusive
+  // Beilagensalat.“ geändert"), while the Studio names the same entry by its week.
+  it('a planned week is named by its week, as the Studio names it', async () => {
+    const s = await setup()
+    const entry = s.entries['plan-kw42']!
+    const days = ((await s.t.run((ctx) => ctx.db.get(entry)))!.data as { days: Record<string, Json>[] }).days
+    const change = await save(s, entry, { days: days.map((d, i) => (i === 0 ? { ...d, price: { amount: 1190 } } : d)) })
+    expect((await changeRows(s)).find((r) => r._id === change)).toMatchObject({ sentence: 'Tage von „Woche ab 12.10.2026“ geändert' })
+  })
+
   it('the client sentence is ignored: the server words the line from what changed', async () => {
     const s = await setup()
     const change = await save(s, s.entries['menu-saibling']!, { price: { amount: 1450 } })

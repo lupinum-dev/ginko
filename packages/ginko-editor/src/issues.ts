@@ -19,21 +19,31 @@ export const BLOCKERS = Symbol('ginko:blockers') as InjectionKey<Map<string, str
 export const FLUSHERS = Symbol('ginko:flushers') as InjectionKey<Set<() => Promise<void>>>
 
 /**
- * Set by Alles bearbeiten in a foreign language: the translation state of one translatable leaf, by its
- * path (`name`, or `days.<rowId>.dish` inside a list), the main-language text, and "Englisch stimmt noch".
+ * Set by a form in a foreign language (Alles bearbeiten, a quick-task sheet): the translation state of one translatable
+ * leaf, by its path (`name`, or `days.<rowId>.dish` inside a list), the main-language text, and "Englisch stimmt noch".
  */
 export interface TranslationState {
   state: (leaf: string) => 'missing' | 'stale' | 'fine' | undefined
   /** The whole stored main-language text of a leaf (Markdown as written). */
   source: (leaf: string) => string
-  confirm: (leaf: string) => void
+  /** "Englisch stimmt noch": keeps an outdated translation as current. Without it, the outdated note shows without that button. */
+  confirm?: (leaf: string) => void
   /** "Deutsch": the main language's name, for the source line and the hints. */
   mainName: () => string
-  /** The note under a leaf whose translation is missing: what the website shows without it. */
-  missingNote: (leaf: string) => string
+  /**
+   * The note under a leaf whose translation is missing: what the website shows without it, from the stored entry's
+   * translation state (Alles bearbeiten). Without it, `hiddenWithout` or the main-language fallback decides the note.
+   */
+  missingNote?: (leaf: string) => string
   /** Where the entry's history shows what changed in the main language ("Was hat sich geändert?"). */
-  changesUrl: () => string | undefined
+  changesUrl?: () => string | undefined
   /** The entry's page in the open language (none while it is not translated), and its link while it is online. */
-  address: () => { path: string; href?: string } | undefined
+  address?: () => { path: string; href?: string } | undefined
+  /**
+   * Set when the website leaves the whole entry out of this language while the leaf has no text there (a page, such
+   * as an event): the entry's title and the language's name ("Englisch"), so the hint says what goes missing instead
+   * of promising the main-language text.
+   */
+  hiddenWithout?: (leaf: string) => { title: string; language: string } | undefined
 }
 export const TRANSLATION = Symbol('ginko:translation') as InjectionKey<TranslationState>
