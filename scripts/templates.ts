@@ -1,7 +1,7 @@
 // The templates in templates/<name> (spec ginko-internal specs/TEMPLATES.md, §2 and §9). Run: pnpm templates <command>
 //
 //   sync                     copies the shared sources of templates/_features/<feature> (the files its files.json lists;
-//                            content only in the template's locales) into every template whose package.json names the
+//                            content and texts only in the template's locales) into every template whose package.json names the
 //                            feature in "ginko": { "features" }, and sets the @lupinum/* ranges (T3)
 //                            and deletes synced copies whose source left its files.json
 //   sync --check             fails on drift from the shared sources, a synced copy no feature brings any more, a stale
@@ -112,20 +112,26 @@ function staleSyncs(dir: string, wanted: Map<string, string>): string[] {
 }
 
 /**
- * The language of a feature content file, from its suffix (`content/legal/1.privacy.de.md` → `de`); undefined for a
- * main-language file (`1.privacy.md`) and for files outside content/. A suffix is a language when it is a two-letter
- * code, optionally with a region (`pt-BR`), so feature content keeps its other dotted names free of such parts.
+ * The language of a feature file: a content file by its suffix (`content/legal/1.privacy.de.md` → `de`), a
+ * translation of the feature's texts by its name (`i18n/site/de.json` → `de`). Undefined for a main-language content
+ * file (`1.privacy.md`) and for every other file. A suffix is a language when it is a two-letter code, optionally with
+ * a region (`pt-BR`), so feature content keeps its other dotted names free of such parts.
  */
 export function contentLocale(file: string): string | undefined {
+  const code = /^[a-z]{2}(?:-[A-Za-z]{2,4})?$/
+  if (file.startsWith('i18n/')) {
+    const name = /^i18n\/[^/]+\/([^/]+)\.json$/.exec(file)?.[1]
+    return name && code.test(name) ? name : undefined
+  }
   if (!file.startsWith('content/')) return undefined
   const parts = file.split('/').at(-1)!.split('.')
   const suffix = parts.length > 2 ? parts.at(-2)! : ''
-  return /^[a-z]{2}(?:-[A-Za-z]{2,4})?$/.test(suffix) ? suffix : undefined
+  return code.test(suffix) ? suffix : undefined
 }
 
 /**
- * Every file the features of each template bring: template → (path in the template → expected content). Content in a
- * language the template does not have stays out (a template without `fr` gets no `.fr.md`).
+ * Every file the features of each template bring: template → (path in the template → expected content). Content and
+ * texts in a language the template does not have stay out (a template without `fr` gets no `.fr.md`, no `fr.json`).
  */
 async function expectedSyncs(root: string, names: string[]): Promise<{ files: Map<string, Map<string, string>>; problems: string[] }> {
   const files = new Map<string, Map<string, string>>()
