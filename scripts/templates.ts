@@ -1,8 +1,8 @@
 // The templates in templates/<name> (spec ginko-internal specs/TEMPLATES.md, §2 and §9). Run: pnpm templates <command>
 //
-//   sync                     copies the shared sources of templates/_features/<feature> (the files its files.json lists)
-//                            into every template whose package.json names the feature in "ginko": { "features" }, and
-//                            sets the @lupinum/* ranges (T3)
+//   sync                     copies the shared sources of templates/_features/<feature> (the files its files.json lists;
+//                            content only in the template's locales) into every template whose package.json names the
+//                            feature in "ginko": { "features" }, and sets the @lupinum/* ranges (T3)
 //                            and deletes synced copies whose source left its files.json
 //   sync --check             fails on drift from the shared sources, a synced copy no feature brings any more, a stale
 //                            range, a lockfile inside a template, fewer than 90 days of future sample dates (T10), or
@@ -111,13 +111,29 @@ function staleSyncs(dir: string, wanted: Map<string, string>): string[] {
   return stale
 }
 
-/** Every file the features of each template bring: template → (path in the template → expected content). */
-function expectedSyncs(root: string, names: string[]): { files: Map<string, Map<string, string>>; problems: string[] } {
+/**
+ * The language of a feature content file, from its suffix (`content/legal/1.privacy.de.md` → `de`); undefined for a
+ * main-language file (`1.privacy.md`) and for files outside content/. A suffix is a language when it is a two-letter
+ * code, optionally with a region (`pt-BR`), so feature content keeps its other dotted names free of such parts.
+ */
+export function contentLocale(file: string): string | undefined {
+  if (!file.startsWith('content/')) return undefined
+  const parts = file.split('/').at(-1)!.split('.')
+  const suffix = parts.length > 2 ? parts.at(-2)! : ''
+  return /^[a-z]{2}(?:-[A-Za-z]{2,4})?$/.test(suffix) ? suffix : undefined
+}
+
+/**
+ * Every file the features of each template bring: template → (path in the template → expected content). Content in a
+ * language the template does not have stays out (a template without `fr` gets no `.fr.md`).
+ */
+async function expectedSyncs(root: string, names: string[]): Promise<{ files: Map<string, Map<string, string>>; problems: string[] }> {
   const files = new Map<string, Map<string, string>>()
   const problems: string[] = []
   for (const name of names) {
     const wanted = new Map<string, string>()
     const owner = new Map<string, string>()
+    const { locales } = manifestOf(await configOf(root, name))
     for (const feature of readJson<Pkg>(join(root, 'templates', name, 'package.json')).ginko?.features ?? []) {
       const dir = join(root, 'templates/_features', feature)
       const manifest = join(dir, 'files.json')
@@ -126,6 +142,8 @@ function expectedSyncs(root: string, names: string[]): { files: Map<string, Map<
         continue
       }
       for (const file of readJson<string[]>(manifest)) {
+        const locale = contentLocale(file)
+        if (locale && !locales.includes(locale)) continue
         const source = join(dir, file)
         if (!existsSync(source)) problems.push(`templates/_features/${feature}/files.json lists ${file}, which does not exist`)
         else if (owner.has(file)) problems.push(`${name}: ${file} comes from both ${owner.get(file)} and ${feature}`)
@@ -147,9 +165,9 @@ function lupinumDeps(pkg: Pkg, group: string[]): [field: 'dependencies' | 'devDe
 }
 
 /** `sync`: writes the shared sources and the ranges into the templates. Returns what it changed. `next`: see nextVersion. */
-export function sync(root = repoRoot, next: string | null = nextVersion(root)): string[] {
+export async function sync(root = repoRoot, next: string | null = nextVersion(root)): Promise<string[]> {
   const names = templateNames(root)
-  const { files, problems } = expectedSyncs(root, names)
+  const { files, problems } = await expectedSyncs(root, names)
   if (problems.length) throw new Error(problems.join('\n'))
   const group = fixedGroup(root)
   const current = readJson<Pkg>(join(packageDirs(root)[group[0]!]!, 'package.json')).version!
@@ -199,7 +217,7 @@ function cardColourProblem(name: string, dir: string, color: string | undefined)
 /** `sync --check`: the problems, empty when the templates match their sources and rules. `today` is `YYYY-MM-DD`. */
 export async function syncCheck(root = repoRoot, { next = nextVersion(root), today = new Date().toISOString().slice(0, 10), only }: { next?: string | null; today?: string; only?: string } = {}): Promise<string[]> {
   const names = templateNames(root).filter((name) => !only || name === only)
-  const { files, problems } = expectedSyncs(root, names)
+  const { files, problems } = await expectedSyncs(root, names)
   const group = fixedGroup(root)
   const current = readJson<Pkg>(join(packageDirs(root)[group[0]!]!, 'package.json')).version!
   const { accepted } = ranges(current, next)
@@ -483,7 +501,7 @@ async function main(argv: string[]) {
     process.exit(problems.length ? 1 : 0)
   }
   if (command === 'sync') {
-    const changed = sync()
+    const changed = await sync()
     console.log(changed.length ? `templates sync changed:\n${changed.join('\n')}` : 'templates sync: nothing to change')
     return
   }
