@@ -125,17 +125,21 @@
 }
 
 /* A band on the accent colour (BlockCta). Text, secondary text, buttons and the focus ring switch, so every part
-   inside keeps its contrast. */
+   inside keeps its contrast. main.css may give the band its own colour with `--brand-surface` and
+   `--brand-surface-foreground` (for example a deep shade in `.dark`, where a full band of the light accent would be
+   the loudest thing on the page); without them the band is `--brand`. */
 .surface-primary {
-  --background: var(--brand);
-  --foreground: var(--brand-foreground);
-  --muted-foreground: var(--brand-foreground);
-  --border: color-mix(in oklab, var(--brand-foreground) 30%, transparent);
-  --input: var(--brand-foreground);
-  --accent: color-mix(in oklab, var(--brand-foreground) 12%, transparent);
-  --ring: var(--brand-foreground);
-  --primary: var(--brand-foreground);
-  --primary-foreground: var(--brand);
+  --band: var(--brand-surface, var(--brand));
+  --band-foreground: var(--brand-surface-foreground, var(--brand-foreground));
+  --background: var(--band);
+  --foreground: var(--band-foreground);
+  --muted-foreground: var(--band-foreground);
+  --border: color-mix(in oklab, var(--band-foreground) 30%, transparent);
+  --input: var(--band-foreground);
+  --accent: color-mix(in oklab, var(--band-foreground) 12%, transparent);
+  --ring: var(--band-foreground);
+  --primary: var(--band-foreground);
+  --primary-foreground: var(--band);
   background-color: var(--background);
   color: var(--foreground);
 }
@@ -307,5 +311,23 @@
 
   .prose img {
     border-radius: var(--radius-block);
+  }
+}
+
+/* Print: the page's content with its address. Navigation, language and theme controls, the notices, the skip link and
+   the closing band carry `print:hidden` in their components; the header stays at the top of the first page only. A
+   link to another site prints its address after the text, and list items and figures do not break across pages. */
+@media print {
+  .prose a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    color: var(--muted-foreground);
+  }
+
+  .prose :is(li, figure, blockquote, pre) {
+    break-inside: avoid;
+  }
+
+  .prose :is(h2, h3) {
+    break-after: avoid;
   }
 }
