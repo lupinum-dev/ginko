@@ -130,13 +130,18 @@ test.describe('Unterwegs (break-it 9)', () => {
     await expect(page.getByRole('dialog').getByLabel('Text')).toHaveValue('Küche ab 18 Uhr')
   })
 
-  test('15. closing a sheet while the save waits for the connection says the save goes on', async ({ page, context }) => {
+  // Wrong behaviour caught: a lost network left "Speichert …" for up to a minute (Convex notices only when its socket
+  // closes, and setOffline keeps it open) with no word that the input is kept.
+  test('15. without network the sheet says the save waits and the input is kept; closing it says the save goes on', async ({ page, context }) => {
     await openQuick(page)
     await page.getByRole('button', { name: 'Hinweis hinzufügen' }).click()
-    await page.getByRole('dialog').getByLabel('Text').fill('Offline gespeichert')
+    const sheet = page.getByRole('dialog')
+    await sheet.getByLabel('Text').fill('Offline gespeichert')
     await context.setOffline(true)
-    await page.getByRole('dialog').getByRole('button', { name: 'Speichern' }).click()
-    await page.getByRole('dialog').getByRole('button', { name: 'Abbrechen' }).click()
+    await sheet.getByRole('button', { name: 'Speichern' }).click()
+    await expect(sheet.getByRole('button', { name: 'Wartet auf Verbindung …' })).toBeVisible()
+    await expect(sheet.getByRole('status').filter({ hasText: 'Lass diese Seite offen' })).toBeVisible()
+    await sheet.getByRole('button', { name: 'Abbrechen' }).click()
     await expect(page.getByText('Speichern läuft weiter.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Verwerfen' })).toHaveCount(0)
     await context.setOffline(false)
