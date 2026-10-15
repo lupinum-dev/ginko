@@ -55,8 +55,17 @@ describe('taskInputSchema', () => {
   })
 
   // Wrong behaviour caught: the assistant's "Gericht hinzufügen" offered a planned price, which the Studio's sheet does
-  // not ask for before the dish has a price to change.
-  it('a create task leaves out the plan of a planned change', () => {
+  // not ask for before the dish has a price to change. Without `fields` the task asks every field but that plan.
+  it('a create task without fields leaves out the plan of a planned change', () => {
+    const { fields: _fields, ...open } = task('menu', 'add') as Extract<Task, { kind: 'create' }>
+    const schema = taskInputSchema(bricks.menu!, open, ctx)
+    const keys = Object.keys(schema.properties)
+    expect(keys).toEqual(expect.arrayContaining(['name', 'price', 'onMenu', 'soldOutOn']))
+    expect(keys).not.toContain('nextPrice')
+    expect(keys).not.toContain('priceFrom')
+  })
+
+  it('the gastro add task offers the fields it lists', () => {
     const schema = taskInputSchema(bricks.menu!, task('menu', 'add'), ctx)
     expect(Object.keys(schema.properties)).toEqual(['category', 'name', 'description', 'price', 'allergens', 'veg'])
   })
