@@ -9,10 +9,15 @@ fails on drift. Edit the files here, never the copies. Files not in `files.json`
 | Feature | Brings | Needs in the template |
 |---|---|---|
 | `ui` | `DESIGN.md`, `components.json`, `app/assets/css/tokens.css`, `app/lib/utils.ts`, `app/components/ui/` (shadcn-vue: button, sheet) | packages `tailwindcss`, `@tailwindcss/vite`, `tw-animate-css`, `shadcn-nuxt`, `reka-ui`, `@vueuse/core`, `class-variance-authority`, `clsx`, `@lucide/vue`; `app/assets/css/main.css` that imports tailwindcss, tw-animate-css and `./tokens.css` and sets `--brand`, `--brand-foreground` (light and `.dark`) and `--font-body`; `seo.color` in `ginko.config.ts` equal to the light `--brand` (`sync --check` compares them); `shadcn: { prefix: '', componentDir: './app/components/ui' }` and the Tailwind Vite plugin in `nuxt.config.ts` |
-| `site` | layout, header, phone nav sheet, footer, skip link, logo, theme toggle, language switch, notice bar, `/legal/<slug>` page, `error.vue`, `usePageSeo` (title, share card, JSON-LD), the blocks (Hero, PageHeader, Section, Cards, Features, Cta, Empty), `ProseBody`, `InitialsAvatar`, legal placeholder texts (en, de), its texts in `i18n/site/`, `modules/feature-messages.ts`, `site-url.ts` | `ui`; bricks `site`, `legal` (route `localized('/legal/[slug]')`), `notices` from `@lupinum/ginko/basics` and a `home` page; `app/app.config.ts` with `site` (`SiteAppConfig`); `app/routes.ts` (`locales`, `localized`); modules `@lupinum/ginko/nuxt`, `@nuxt/fonts`, `@nuxtjs/color-mode` (`classSuffix: ''`), `nuxt-og-image` + `@takumi-rs/core`; `checkSiteUrl` in a `build:before` hook |
+| `site` | layout, header, phone nav sheet, footer, skip link, logo, theme toggle, language switch, notice bar, `/legal/<slug>` page, `error.vue`, `usePageSeo` (title, share card, JSON-LD), the blocks (Hero, PageHeader, Section, Cards, Features, Cta, Empty), `ProseBody`, `InitialsAvatar`, its texts in `i18n/site/`, `modules/feature-messages.ts`, `modules/page-paths.ts` (each Vue page's address per language from `ginko.config.ts`), `site-url.ts` | `ui`; bricks `site`, `legal` (route `localized('/legal/[slug]')`), `notices` from `@lupinum/ginko/basics` and a `home` page; `app/app.config.ts` with `site` (`SiteAppConfig`); `app/routes.ts` (`locales`, `localized`); modules `@lupinum/ginko/nuxt`, `@nuxt/fonts`, `@nuxtjs/color-mode` (`classSuffix: ''`), `nuxt-og-image` + `@takumi-rs/core`; `checkSiteUrl` in a `build:before` hook |
 | `pages` | the `pages` brick (`app/bricks/pages.ts`) and the catch-all page `app/pages/[...slug].vue` | `site`; `pages: pages({ route: localized('/[slug]'), source: 'files' })`; content in `content/pages/` |
 | `gallery` | `BlockGallery` (justified rows) and `SiteLightbox`, texts in `i18n/gallery/` | `ui`, `site`; the `gallery` brick from basics |
 | `faq` | `BlockFaq` and the shadcn-vue accordion it is built on (`app/components/ui/accordion/`) | `ui`, `site`; the `faq` brick from basics; `faqJsonLd(items)` in the page's `usePageSeo({ jsonLd })` |
+| `blog` | news list (`news/index.vue`, page key `news`; `?tag=` filters), post page (`news/[slug].vue`: date, authors with initials, cover 3:2, tags, BlogPosting JSON-LD), `BlogPostList`, `BlogByline`, `useBlogPosts`, the RSS feed per language at `<news page>/rss.xml` (`server/middleware/news-feed.ts`), texts in `i18n/blog/` | `site`; `posts({ authors: 'people', route })` from basics and a `people` brick; `pages.news`; drafts are `draft: true` in a file (never built) |
+| `people` | team page (`team.vue`, page key `team`) with `PeopleList` (photo 4:5 or `InitialsAvatar`, role, bio, contact) and Person JSON-LD, texts in `i18n/people/` | `site`; `people()` from basics; `pages.team` |
+| `downloads` | documents page (`downloads.vue`, page key `downloads`) with `DownloadsList` (direct links, date, type and size, the document's language when it differs from the page's), texts in `i18n/downloads/` | `site`; `downloads()` from basics; `pages.downloads`; the files in `public/` |
+| `projects` | the `projects` brick (`app/bricks/projects.ts`: title, slug, summary, image, `ends` for campaigns with `visible` until it, optional `gallery` ref, body; Today: campaigns ending within 7 days), list (`projects/index.vue`, page key `projects`) and project page, `useProjectCards`, texts in `i18n/projects/` | `site`; `projects({ route })`; `pages.projects` |
+| `logos-quotes` | the `logos` (name, image, url) and `quotes` (text, name, role; no photo) bricks (`app/bricks/logos-quotes.ts`), `BlockLogos` (one height, own widths) and `BlockQuote` | `site`; `logos()` and `quotes()` in `bricks`; the logo files in `public/` |
 
 The brick wiring of the `site` feature in `ginko.config.ts`:
 
@@ -35,7 +40,12 @@ export default defineSite({
 ```
 
 Texts of shared components live in `i18n/<feature>/<code>.json` and are read as the namespace `<feature>`
-(`useI18n('site')`); a template overrides one under the same key in its own `i18n/<code>.json`. Content samples that
-differ per template (`content/site.md`, notices, pages) belong to the template, not to a feature. Feature content in a
-language (`content/legal/1.privacy.de.md`: a two-letter suffix, optionally with a region) is copied only into
-templates that have that locale; the main-language file (no suffix) always is.
+(`useI18n('site')`); a template overrides one under the same key in its own `i18n/<code>.json`. A feature's texts and
+its content in a language (`content/x/1.y.de.md`: a two-letter suffix, optionally with a region) are copied only into
+templates that have that locale; main-language content (no suffix) always is. Content samples that differ per template
+(`content/site.md`, notices, pages, the legal texts) belong to the template, not to a feature: the starter's
+`content/legal/` holds the generic placeholders, a template for one country writes its own.
+
+Feature pages keep their file name in every template (`news/index.vue`); the template gives the address per language
+in `ginko.config.ts` (`pages.news: localized('/news')`, words per language in `app/routes.ts`), and
+`modules/page-paths.ts` (site) applies it to the page. A feature page lists its page key in the table above.

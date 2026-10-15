@@ -1,0 +1,7 @@
+{
+  "title": "Downloads",
+  "lead": "Documents to read and keep.",
+  "file": "{type}, {size}",
+  "in": "in {language}",
+  "empty": "No documents yet"
+}
