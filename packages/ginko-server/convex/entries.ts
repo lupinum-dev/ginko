@@ -543,7 +543,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const schema = actor.site.schema as Schema
     const brick = structuralBrick(schema, args.brick)
     // A create task that lists `fields` writes only those (`authorize`); a copy carries over what the entry already holds.
-    authorize(actor, schema, { task: args.task, brick: args.brick, kind: 'create', ...(opts.copy ? {} : { fields: Object.keys(args.data) }) })
+    authorize(actor, schema, { task: args.task, brick: args.brick, kind: 'create', ...(opts.copy ? {} : { fields: Object.keys(args.data), values: args.data as Record<string, Json> }) })
 
     // Retired fields are not writable (SPEC 4.1 step 3); validation skips them, so reject them here.
     for (const key of Object.keys(args.data)) liveField(brick, key)
