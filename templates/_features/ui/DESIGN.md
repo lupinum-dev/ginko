@@ -17,7 +17,7 @@ and the fonts differ.
 
 | What | File |
 |---|---|
-| Your accent and fonts | `app/assets/css/main.css` (`--brand`, `--brand-foreground`, `--font-body`, optional `--font-heading`) |
+| Your accent and fonts | `app/assets/css/main.css` (`--brand`, `--brand-foreground`, `--font-body`, optional `--font-heading`); the light accent again as `seo.color` in `ginko.config.ts` (share cards) |
 | Neutral colours, type scale, spacing, radii, shadow, focus, motion | `app/assets/css/tokens.css` (shared by all templates; do not edit) |
 | Name, logo, navigation, footer links, profiles | `app/app.config.ts` |
 | Components | `app/components/ui/` (shadcn-vue), `app/components/site/`, `app/components/block/` |
@@ -46,8 +46,8 @@ shadcn names, so shadcn-vue components work unchanged. Light / dark:
 
 **Your accent.** `--brand` and `--brand-foreground` in `main.css`, once in `:root` (light) and once in `.dark`. The
 values and their contrast are written next to them. Rules: text on the accent ≥ 4.5:1; the accent on the background
-≥ 4.5:1 in both modes, because links in text use it; in dark mode use a light tint of the accent. The accents of the
-Ginko templates:
+≥ 4.5:1 in both modes, because links in text use it; in dark mode use a light tint of the accent. Set the light value
+as `seo.color` in `ginko.config.ts` too: it fills the share cards. The accents of the Ginko templates:
 
 | Template | Light | Text on it | Dark | Text on it | Headings |
 |---|---|---|---|---|---|
@@ -75,8 +75,8 @@ is optional (`--font-heading`). Right-to-left languages add their own face on `:
 | Utility | Size | Line height |
 |---|---|---|
 | `text-h1` | `clamp(2.25rem, 1.5rem + 3.2vw, 4rem)` | 1.05, tracking −0.025em; one per page |
-| `text-h2` | `clamp(1.75rem, 1.35rem + 1.7vw, 2.75rem)` | 1.1, tracking −0.02em |
-| `text-h3` | `clamp(1.2rem, 1.1rem + 0.45vw, 1.45rem)` | 1.3 |
+| `text-h2` | `clamp(1.75rem, 1.35rem + 1.7vw, 2.75rem)` | 1.1, tracking −0.02em; sentences such as the `BlockCta` title |
+| `text-h3` | `clamp(1.2rem, 1.1rem + 0.45vw, 1.45rem)` | 1.3; section labels and `##` in Markdown |
 | `text-lead` | `clamp(1.125rem, 1.06rem + 0.3vw, 1.3125rem)` | 1.5 |
 | `text-body` | `1.0625rem` | 1.6 |
 | `text-small` | `0.9375rem` | 1.5 |
@@ -112,14 +112,20 @@ dialog, `ease-out`. With `prefers-reduced-motion`, transitions and animations ar
 | Component | Variants |
 |---|---|
 | `Button` | `primary` (default), `secondary`, `ghost`, `link`; sizes `md` (default, 44 px), `lg` (48 px), `icon` (44 px) |
-| `Badge` | `secondary` (default), `outline`, `primary` |
 | `Sheet` | `side="start"` (default) or `end`: logical sides, so it opens from the right in right-to-left languages |
-| `Dialog`, `Accordion`, `DropdownMenu`, `Separator` | as in shadcn-vue, on these tokens |
+| `Accordion` | as in shadcn-vue, on these tokens; only in templates with questions and answers (`BlockFaq`) |
 
-Nothing else until a feature needs it. To add one: `npx shadcn-vue@latest add <name>`, then change
-`import { cn } from 'cn'` to `import { cn } from '@/lib/utils'`, remove the `cn` package the CLI adds, and replace
-Tailwind default classes (`text-sm`, `shadow-lg`, `rounded-lg`, `bg-black/80`) with the tokens above. Icons come from
-`@lucide/vue` (what the CLI installs; `lucide-vue-next` is deprecated).
+Nothing else until a feature needs it. To add one: `npx shadcn-vue@latest add <name>`, then:
+
+1. Change `import { cn } from 'cn'` to `import { cn } from '@/lib/utils'` and remove the `cn` package the CLI adds.
+2. Replace Tailwind default classes (`text-sm`, `shadow-lg`, `rounded-lg`, `bg-black/80`) with the tokens above. They
+   give no error, they just do nothing.
+3. The `Button` here has other variant names than shadcn-vue's: where the new component uses `buttonVariants`, change
+   `variant: 'default'` to `'primary'` and `'outline'` to `'secondary'`, and `size: 'default'` or `'sm'` to `'md'`.
+   For anything else, add a variant to `app/components/ui/button/index.ts` and to the table above.
+4. Run `npm run typecheck` and look at the component in light and dark.
+
+Icons come from `@lucide/vue` (what the CLI installs; `lucide-vue-next` is deprecated).
 
 `cn` (`app/lib/utils.ts`) only joins classes. shadcn's usual `cn` also resolves conflicts (a `class="text-small"` on
 a component that sets `text-h3` wins); that needs tailwind-merge (about 8 kB of JavaScript on every page, more than
@@ -134,9 +140,9 @@ a component's `class` prop only adds classes: to change one the component sets, 
 
 | Component | Use |
 |---|---|
-| `BlockHero` | home only: the page's h1, a lead, one primary and one secondary action, an optional photo (16:9; 4:5 from `lg`) |
+| `BlockHero` | home only: the page's h1, a lead, one primary and one secondary action, an optional photo (16:9) |
 | `BlockPageHeader` | every other page: h1, lead, optional meta line |
-| `BlockSection` | a short heading, optional lead, content; from `lg` heading 4 and content 8 of 12 columns, or full width |
+| `BlockSection` | a short label as heading (`text-h3`, the size of a Markdown `##`), optional lead, content; from `lg` heading 4 and content 8 of 12 columns, or full width |
 | `BlockCards` | 2–4 per row; the whole card is one link; photos 3:2 |
 | `BlockFeatures` | 2–6 items divided by lines, no cards |
 | `BlockCta` | a closing band on the accent; one per page, not on legal, contact or error pages |
