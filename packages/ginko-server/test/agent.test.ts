@@ -227,7 +227,8 @@ describe('agent door: tool catalog', () => {
     expect((await s.t.run((ctx) => ctx.db.query('changes').order('desc').first()))).toMatchObject({ via: 'agent', fields: ['name'] })
   })
 
-  it('ginko_read in English marks a translation as stale once the German text changed', async () => {
+  // Wrong behaviour caught: the assistant reads the outdated English name as missing, or not at all.
+  it('ginko_read in English marks a translation as stale once the German text changed, and still delivers it', async () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')
     const entry = s.entries['menu-schnitzel']!
@@ -236,6 +237,8 @@ describe('agent door: tool catalog', () => {
     await saveOwner(s, entry, { name: { de: 'Schnitzel Wiener Art', en: 'Veal schnitzel' } }, 2)
     const read = await call(s, key, 'ginko_read', { brick: 'menu', locale: 'en' })
     expect(read.data.stale[entry]).toEqual(['name'])
+    const item = read.data.items.find((i: { id: string }) => i.id === entry)
+    expect([item.data.name, item.fallback]).toEqual(['Veal schnitzel', []])
   })
 
   // Wrong behaviour caught: an answer limit below the entry limit, so the assistant cannot read an entry the Studio saved.

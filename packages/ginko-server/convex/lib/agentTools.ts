@@ -93,7 +93,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
     {
       name: 'ginko_read',
       description: 'Reads the published content of a brick as the website shows it. Collections include the entry IDs. Drafts are not in it. '
-        + 'For another language, "fallback" lists the texts that are missing or outdated, and "stale" the outdated translations among them. '
+        + 'For another language, "fallback" lists the texts shown in the main language because their translation is missing; "stale" lists outdated translations, which the website still shows until they are translated again or confirmed. '
         + 'By default, an entry with its own page is left out of a language until its required texts are translated there; read the main language to find it.',
       inputSchema: object({ brick: { type: 'string', description: 'Key of the brick (from ginko_overview)' }, locale: { type: 'string', description: `Language; default is the main language (${main})` } }, ['brick']),
       annotations: READS,

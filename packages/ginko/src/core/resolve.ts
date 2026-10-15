@@ -45,7 +45,13 @@ export interface ResolveContext {
 
 export interface ResolvedEntry {
   data: Record<string, unknown>
+  /** Leaves delivered in the main language because their translation is missing. */
   fallback: string[]
+  /**
+   * Leaves whose translation was made for an older main-language text. They are delivered as they are, until someone
+   * translates them again or confirms them (D6); the Studio lists them.
+   */
+  outdated: string[]
   /**
    * A required translatable leaf has no text in this locale (an outdated one counts as translated). Never for the
    * main locale or an unknown one; slugs and image descriptions never count, they fall back by design.
@@ -70,8 +76,9 @@ export function resolveEntry(schema: Schema, brickKey: string, entry: StoredEntr
   const brick = schema.bricks[brickKey]!
   const main = schema.locales[0]!
   const fallback: string[] = []
+  const outdated: string[] = []
   const flags = { untranslated: false }
-  const state: State = { schema, brickKey, entry, ctx, main, fallback, flags }
+  const state: State = { schema, brickKey, entry, ctx, main, fallback, outdated, flags }
   const data = resolveFields(brick.fields, entry.data, '', state)
   // Retired fields (SPEC 2.5) are projected after the live fields are resolved.
   for (const [name, field] of Object.entries(brick.fields)) {
@@ -91,7 +98,7 @@ export function resolveEntry(schema: Schema, brickKey: string, entry: StoredEntr
     }
   }
   const hidden = flags.untranslated && brick.kind === 'collection' && untranslatedMode(brick) === 'hide'
-  return { data, fallback, untranslated: flags.untranslated, hidden }
+  return { data, fallback, outdated, untranslated: flags.untranslated, hidden }
 }
 
 interface State {
@@ -101,6 +108,7 @@ interface State {
   ctx: ResolveContext
   main: Locale
   fallback: string[]
+  outdated: string[]
   /** Decided per leaf: a required leaf whose translation is missing. */
   flags: { untranslated: boolean }
 }
@@ -172,10 +180,15 @@ function altOf(own: Json, library: Record<string, string> | undefined, leaf: str
   return (localized(main ? { ...map, [state.main]: main } : map, leaf, { ...state, flags: { untranslated: false } }, field) as string | undefined) ?? ''
 }
 
+const isEmpty = (value: Json | undefined) => value === undefined || value === null || value === ''
+
 /**
  * One locale of a translatable leaf. Unknown requested locale: main language, every leaf
- * marked fallback, nothing hidden. Slugs are identities fixed at creation, never "stale":
- * a missing slug falls back to the main slug, the same rule `routeUrls` uses.
+ * marked fallback, nothing hidden. A missing translation falls back to the main language. An
+ * outdated one (its print is of an older main-language text) stays as it is and is listed in
+ * `outdated` (D6): a typo fix in the main language never turns a translated text into the main
+ * language, nor takes a page away. Slugs are identities fixed at creation, never outdated: a
+ * missing slug falls back to the main slug, the same rule `routeUrls` uses.
  */
 function localized(value: Json, leaf: string, state: State, field: Field): unknown {
   const map = (value ?? {}) as Partial<Record<Locale, Json>>
@@ -187,17 +200,17 @@ function localized(value: Json, leaf: string, state: State, field: Field): unkno
   }
   if (locale === state.main) return mainValue
   const own = map[locale]
-  const missing = own === undefined || own === null || own === ''
-  const print = state.entry.prints?.[leaf]?.[locale]
-  const stale = !missing && field.type !== 'slug' && print !== printOf(mainValue)
-  if (missing || stale) {
-    if (mainValue !== undefined && mainValue !== null && mainValue !== '') {
+  if (isEmpty(own)) {
+    if (!isEmpty(mainValue)) {
       state.fallback.push(leaf)
-      // An outdated translation still counts as one: a typo fix in the main language never takes a page away.
-      if (missing && !field.optional && field.type !== 'slug') state.flags.untranslated = true
+      if (!field.optional && field.type !== 'slug') state.flags.untranslated = true
     }
     return mainValue
   }
+  if (field.type === 'slug' || state.entry.prints?.[leaf]?.[locale] === printOf(mainValue)) return own
+  // The main language no longer has this text: its old translation goes too.
+  if (isEmpty(mainValue)) return mainValue
+  state.outdated.push(leaf)
   return own
 }
 

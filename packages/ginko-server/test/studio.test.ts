@@ -343,17 +343,18 @@ describe('sites.translationStatus', () => {
     expect(await english('menu-frittaten')).toEqual({ missing: ['description', 'name'], outdated: [] })
     expect((await english('menu-schnitzel'))!.outdated).toEqual(expect.arrayContaining(['name']))
 
-    // The bundle's fallback lists of English give the same entries and numbers as the list rows and the status.
+    // The bundle's fallback lists of English give the same entries and numbers as the missing texts of the list rows and
+    // the status. An outdated translation stays on the website (D6), so it is no fallback, but the Studio still counts it.
     const bundle = (await (await s.t.fetch('/bundle/restaurant?format=3&locale=en')).json()) as { bricks: Record<string, { items?: { id: string; fallback: string[] }[] }> }
     for (const brick of status.bricks.filter((b) => b.kind === 'collection')) {
       const withFallback = (bundle.bricks[brick.brick]!.items ?? []).filter((item) => item.fallback.length)
       const rows = (await s.as.owner.query(api.entries.list, { site, brick: brick.brick, limit: 2000 })).rows
-      const gaps = new Map(rows.map((row) => [row._id as string, row.gaps.reduce((sum, g) => sum + g.missing + g.outdated, 0)]))
-      expect([...gaps].filter(([, count]) => count).map(([id]) => id).sort(), brick.brick).toEqual(withFallback.map((i) => i.id).sort())
-      for (const item of withFallback) expect(gaps.get(item.id), `${brick.brick} ${item.id}`).toBe(item.fallback.length)
-      const detail = brick.locales.en!
-      expect(detail.missing + detail.outdated, brick.brick).toBe(withFallback.length)
+      const missing = new Map(rows.map((row) => [row._id as string, row.gaps.reduce((sum, g) => sum + g.missing, 0)]))
+      expect([...missing].filter(([, count]) => count).map(([id]) => id).sort(), brick.brick).toEqual(withFallback.map((i) => i.id).sort())
+      for (const item of withFallback) expect(missing.get(item.id), `${brick.brick} ${item.id}`).toBe(item.fallback.length)
+      expect(brick.locales.en!.missing, brick.brick).toBe(withFallback.length)
     }
+    expect(menu.outdated).toBeGreaterThan(0)
   })
 
   it('leaves out removed entries and drafts', async () => {

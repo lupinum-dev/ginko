@@ -86,13 +86,16 @@ describe('resolveEntry: translations and fallback (SPEC 6)', () => {
       locale: 'en' as const,
       data: 'Tafelspitz',
       fallback: ['name'],
+      outdated: [],
     },
+    // Wrong behaviour caught: a typo fix in German turns the English text German (P5).
     {
-      name: 'a stale translation (print of an older main value) falls back',
+      name: 'an outdated translation (print of an older main value) is delivered as it is and listed as outdated, not as fallback',
       entry: dish('k1', { de: 'Tafelspitz', en: 'Boiled beef' }, { name: { en: printOf('Tafelspitz alt') } }),
       locale: 'en' as const,
-      data: 'Tafelspitz',
-      fallback: ['name'],
+      data: 'Boiled beef',
+      fallback: [],
+      outdated: ['name'],
     },
     {
       name: 'a fresh translation (print matches the main value) is used',
@@ -100,6 +103,7 @@ describe('resolveEntry: translations and fallback (SPEC 6)', () => {
       locale: 'en' as const,
       data: 'Boiled beef',
       fallback: [],
+      outdated: [],
     },
     {
       name: 'the main language never falls back',
@@ -107,11 +111,13 @@ describe('resolveEntry: translations and fallback (SPEC 6)', () => {
       locale: 'de' as const,
       data: 'Tafelspitz',
       fallback: [],
+      outdated: [],
     },
-  ])('$name', ({ entry, locale, data, fallback }) => {
+  ])('$name', ({ entry, locale, data, fallback, outdated }) => {
     const r = resolve(base(), 'menu', entry, locale)
     expect(r.data.name).toBe(data)
     expect(r.fallback).toEqual(fallback)
+    expect(r.outdated).toEqual(outdated)
   })
 
   // Wrong behaviour caught: a list row's missing translation is reported without its row id, so the editor cannot find it.
@@ -125,14 +131,17 @@ describe('resolveEntry: translations and fallback (SPEC 6)', () => {
     expect(r.fallback).toEqual(['days.k3Fd9aZ0qx.dish'])
   })
 
-  // Wrong behaviour caught: the stored tree of an outdated translation goes online while its leaf is listed as fallback.
-  it('serves the stored tree of the text it picks: the main language tree for an outdated translation', async () => {
+  // Wrong behaviour caught: the English imprint text is served with the German tree (or the reverse).
+  it('serves the stored tree of the text it picks: the translation tree for a fresh or outdated translation, the main one for a missing one', async () => {
     const s = base()
     const data = { imprint: { de: 'Wirtin **Maria**', en: 'Landlady **Maria**' } }
     const trees = await markdownTrees(brickOf(s, 'legal').fields, data)
     const legal = (print: string): StoredEntry => ({ id: 'legal', data, prints: { imprint: { en: printOf(print) } }, trees })
     expect(resolve(s, 'legal', legal('Wirtin **Maria**'), 'en').data.imprint).toEqual((await parseMarkdown('Landlady **Maria**')).value)
-    expect(resolve(s, 'legal', legal('Wirtin'), 'en').data.imprint).toEqual((await parseMarkdown('Wirtin **Maria**')).value)
+    expect(resolve(s, 'legal', legal('Wirtin'), 'en').data.imprint).toEqual((await parseMarkdown('Landlady **Maria**')).value)
+    const german = { de: data.imprint.de }
+    const untranslated: StoredEntry = { id: 'legal', data: { imprint: german }, trees: await markdownTrees(brickOf(s, 'legal').fields, { imprint: german }) }
+    expect(resolve(s, 'legal', untranslated, 'en').data.imprint).toEqual((await parseMarkdown('Wirtin **Maria**')).value)
   })
 })
 

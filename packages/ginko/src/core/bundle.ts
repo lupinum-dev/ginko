@@ -7,7 +7,7 @@ export const BUNDLE_FORMAT = 3
 export interface BundleItem {
   id: string
   data: Record<string, unknown>
-  /** Leaves delivered in the main language because the requested translation is missing or outdated. */
+  /** Leaves delivered in the main language because the requested translation is missing. */
   fallback: string[]
   /** Only for collections with `route`, only visible entries, only locales where the entry exists. */
   urls?: Partial<Record<Locale, string>>

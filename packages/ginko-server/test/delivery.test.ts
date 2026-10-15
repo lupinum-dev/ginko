@@ -45,16 +45,17 @@ afterEach(() => {
 })
 
 describe('GET /bundle/<site>', () => {
-  it('a stale English translation is delivered in German and its leaf is listed as fallback', async () => {
+  // Wrong behaviour caught: a German typo fix turns the English text German (P5, D6).
+  it('an outdated English translation is delivered in English and its leaf is not listed as fallback', async () => {
     const { t, entries } = await setup()
     const response = await t.fetch('/bundle/restaurant?format=3&locale=en')
     expect(response.status).toBe(200)
     const bundle = (await response.json()) as Bundle
     expect(bundle.locale).toBe('en')
     const item = bundle.bricks.menu!.items!.find((i) => i.id === entries['menu-schnitzel'])!
-    const germanName = (corpus.menu as { id: string; data: { name: { de: string } } }[]).find((r) => r.id === 'menu-schnitzel')!.data.name.de
-    expect(item.data.name).toBe(germanName)
-    expect(item.fallback).toContain('name')
+    const name = (corpus.menu as { id: string; data: { name: { en: string } } }[]).find((r) => r.id === 'menu-schnitzel')!.data.name
+    expect(item.data.name).toBe(name.en)
+    expect(item.fallback).not.toContain('name')
   })
 
   it('a markdown field stored as a string is delivered as a parsed tree', async () => {
