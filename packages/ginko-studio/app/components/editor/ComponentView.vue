@@ -6,8 +6,9 @@
 import { computed, nextTick, onMounted, onUpdated, ref, toRaw, useId, watch } from 'vue'
 import { useI18n } from '#imports'
 import { Settings2 } from '@lucide/vue'
-import type { ComponentRegistry } from '@lupinum/ginko/internal'
-import { componentMode, propsSummary, type ComponentProps } from '@lupinum/ginko-editor'
+import { fileRefOf, type ComponentRegistry } from '@lupinum/ginko/internal'
+import { componentMode, GINKO_ASSETS, propsSummary, type ComponentProps } from '@lupinum/ginko-editor'
+import { inject } from 'vue'
 import { NodeViewContent, NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { Button } from '@studio/components/ui/button'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
@@ -27,7 +28,15 @@ const label = computed(() => (def.value ? shown(def.value.label) : tag.value))
 const values = computed(() => (props.node.attrs.props ?? {}) as ComponentProps)
 const mode = computed(() => componentMode(tag.value, options.components, LIVE_TAGS))
 const live = computed(() => (mode.value === 'live' ? LIVE_COMPONENTS[tag.value] : undefined))
-const summary = computed(() => propsSummary(values.value, def.value))
+// Pictures from the Files library show their file names in the summary (where the editor has a file source).
+const assets = inject(GINKO_ASSETS, undefined)
+const fileIds = computed(() => Object.entries(values.value).flatMap(([name, raw]) => {
+  const field = def.value?.props[name.replace(/^:/, '')]
+  const id = field?.type === 'image' && typeof raw === 'string' ? fileRefOf(raw) : undefined
+  return id ? [id] : []
+}))
+const files = assets ? assets.details(fileIds) : ref(undefined)
+const summary = computed(() => propsSummary(values.value, def.value, (id) => files.value?.[id]?.name))
 // The component gets the props as the page gives them: `:open` (a bare attribute) arrives as `open`.
 const liveProps = computed(() => ({
   ...Object.fromEntries(Object.entries(values.value).map(([name, raw]) => [name.replace(/^:/, ''), raw])),
