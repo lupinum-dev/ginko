@@ -240,6 +240,7 @@
     "publishStoppedBrokenLink": "«{title}» no se publicó: el enlace «{link}» no lleva a ninguna parte.",
     "published": "Se publicó “{title}”",
     "publishedDue": "Se publicó “{title}” (según lo programado)",
+    "publishedLate": "Se publicó “{title}” de inmediato (la hora programada ya había pasado al aprobarlo)",
     "scheduled": "“{title}”: en línea desde {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "unpublishProposal": "Quitar de la web “{title}”",
     "unscheduleProposal": "“{title}”: cancelar la programación",
