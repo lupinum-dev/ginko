@@ -1,4 +1,4 @@
-import type { Component, InjectionKey, Ref } from 'vue'
+import type { Component } from 'vue'
 
 /** One view of a site in the rail and the phone tab bar. */
 export interface SiteLink {
@@ -16,7 +16,3 @@ export interface SiteLink {
 
 export const isSiteLinkActive = (path: string, link: SiteLink) =>
   link.exact ? path.replace(/\/$/, '') === link.to : path === link.to || path.startsWith(`${link.to}/`)
-
-/** How many open screens carry their own bar at the bottom (the entry editor's save bar). The site layout provides it
- *  and hides the phone tab bar while it is above zero, whatever the route. */
-export const OWN_BOTTOM_BAR: InjectionKey<Ref<number>> = Symbol('ownBottomBar')

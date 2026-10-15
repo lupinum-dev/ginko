@@ -21,8 +21,8 @@ import EntryRemoveDialog from './EntryRemoveDialog.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
 import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
-import { refDebounced, useMediaQuery } from '@vueuse/core'
-import { OWN_BOTTOM_BAR } from '../utils/siteLinks'
+import { refDebounced, useElementSize, useMediaQuery } from '@vueuse/core'
+import { useBottomBar } from '../composables/useBottomBar'
 import { provideSiteRefs } from '../composables/useSiteRefs'
 import { Button } from '@studio/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
@@ -401,10 +401,15 @@ function files(id: string) {
   return f ? { url: f.url, name: f.name, size: f.size, alt: f.alt, ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}) } : undefined
 }
 
-// The save bar sits at the bottom: the layout hides the phone tab bar while this editor is open.
-const ownBottomBar = inject(OWN_BOTTOM_BAR, undefined)
-onMounted(() => { if (ownBottomBar) ownBottomBar.value++ })
-onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
+// The save bar sits at the bottom: while this editor is open, the layout hides the phone tab bar and the toast sits
+// above the bar (its height changes with the publish panel and the notes in it).
+const barEl = ref<HTMLElement>()
+const { height: barHeight } = useElementSize(barEl, undefined, { box: 'border-box' })
+const bottomBar = useBottomBar()
+// Above 0 from mount to unmount, also before the browser first reports the bar's height, so the tab bar never flashes.
+onMounted(() => { bottomBar.value ||= 1 })
+watch(barHeight, (height) => { bottomBar.value = Math.max(1, Math.ceil(height)) })
+onBeforeUnmount(() => { bottomBar.value = 0 })
 </script>
 
 <template>
@@ -496,7 +501,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           </template>
         </template>
 
-        <div class="bar sticky bottom-0 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background py-3">
+        <div ref="barEl" class="bar sticky bottom-0 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background py-3">
           <!-- The live region must be in the accessibility tree before its text appears, so empty means sr-only (no space), not hidden. -->
           <p :class="['basis-full text-sm empty:sr-only', size?.over ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ size?.text }}</p>
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->

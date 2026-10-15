@@ -4,7 +4,8 @@ import { api } from '#convex/api'
 import { DEFAULT_WEEK, type ComponentRegistry, type Schema } from '@lupinum/ginko/internal'
 import { provideGinkoAssets } from '@lupinum/ginko-editor'
 import { CircleCheckIcon, FileTextIcon, HistoryIcon, ImageIcon, SearchIcon, SparklesIcon, SquareArrowOutUpRightIcon, SunIcon, UsersIcon } from '@lucide/vue'
-import { OWN_BOTTOM_BAR, type SiteLink } from '../utils/siteLinks'
+import type { SiteLink } from '../utils/siteLinks'
+import { useBottomBar } from '../composables/useBottomBar'
 import { EDITOR_COMPONENTS } from '@studio/components/editor/context'
 import { provideStudioSite } from '../utils/labels'
 import { localDraftKeys } from '../composables/useLocalDraft'
@@ -86,9 +87,8 @@ const links = computed<SiteLink[]>(() => [
 const siteName = computed(() => data.value?.site.name ?? '…')
 const initial = computed(() => (data.value?.site.name ?? '').trim().charAt(0).toUpperCase() || '·')
 // The entry editor has its own bar at the bottom (save), so phones show no tab bar while one is open.
-const ownBottomBar = ref(0)
-provide(OWN_BOTTOM_BAR, ownBottomBar)
-const showTabs = computed(() => ownBottomBar.value === 0)
+const bottomBar = useBottomBar()
+const showTabs = computed(() => bottomBar.value === 0)
 // Signed out, no access or not loaded: no site to navigate, so no rail, bars or site name (the message offers the way out).
 const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.value || !!deletion.value)
 </script>

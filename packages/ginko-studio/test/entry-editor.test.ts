@@ -11,8 +11,9 @@ import { useI18n } from '#imports'
 import { useEntryForm } from '../app/composables/useEntryForm'
 import EntryEditor from '../app/components/EntryEditor.vue'
 import PreviewPane from '../app/components/PreviewPane.vue'
+import AppToast from '../app/components/AppToast.vue'
 
-const { computed, inject, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch } = vue
+const { computed, defineComponent, inject, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch } = vue
 Object.entries({ computed, inject, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch, useI18n, useEntryForm }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 vi.stubGlobal('useRoute', () => ({ query: {} }))
 vi.stubGlobal('onBeforeRouteLeave', () => {})
@@ -127,5 +128,35 @@ test('a save on its way shows no "Nicht gespeichert"; without network the bar sa
     await flushPromises()
   } finally {
     vi.stubGlobal('useOps', () => ({}))
+  }
+})
+
+// Wrong behaviour caught: the toast after a save ("Gespeichert … Rückgängig") sat on top of the save bar, so the bar
+// showed only "G…"; or it stayed up there after the editor closed.
+test('while the editor is open the toast sits above its save bar, and goes back down when it closes', async () => {
+  const Toaster = defineComponent({ name: 'Toaster', props: ['offset', 'mobileOffset'], render: () => null })
+  // happy-dom lays nothing out: its observer reports the save bar 72px high, as a browser would.
+  const observer = window.ResizeObserver
+  window.ResizeObserver = class {
+    constructor(private report: ResizeObserverCallback) {}
+    observe(el: Element) { queueMicrotask(() => this.report([{ borderBoxSize: [{ inlineSize: 600, blockSize: el.classList.contains('bar') ? 72 : 0 }] }] as never, this as never)) }
+    unobserve() {}
+    disconnect() {}
+  } as never
+  try {
+    const toast = mount(AppToast, { global: { components: { Toaster } } })
+    const editor = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, canRemove: false },
+      global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+    })
+    await flushPromises()
+    expect(toast.getComponent(Toaster).props()).toEqual({ offset: { bottom: '84px' }, mobileOffset: { bottom: '84px' } })
+
+    editor.unmount()
+    await flushPromises()
+    // Back to the defaults: phones above the tab bar again.
+    expect(toast.getComponent(Toaster).props()).toEqual({ offset: undefined, mobileOffset: { bottom: 'calc(4.75rem + env(safe-area-inset-bottom))' } })
+  } finally {
+    window.ResizeObserver = observer
   }
 })

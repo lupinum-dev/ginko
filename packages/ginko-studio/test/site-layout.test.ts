@@ -9,6 +9,7 @@ import { useI18n } from '#imports'
 import { isNoAccess, isSignInRequired, opErrorOf } from '../app/composables/useOps'
 import { localDraftKey, writeLocalDraft } from '../app/composables/useLocalDraft'
 import { siteOrigin } from '../app/utils/origin'
+import { useBottomBar } from '../app/composables/useBottomBar'
 import SiteLayout from '../app/layouts/site.vue'
 
 const { computed, defineComponent, h, inject, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } = vue
@@ -105,4 +106,18 @@ test.each([
     ...(note ? ['Was du hier noch nicht gespeichert hattest, ist nicht auf der Website. Wirst du wieder eingeladen, bekommst du es in diesem Browser zurück.'] : []),
     'Wenn du hier etwas ändern sollst, frag die Inhaberin, ob sie dich (wieder) einlädt.Meine Seiten',
   ].join(''))
+})
+
+// Wrong behaviour caught: the phone tab bar lay over the entry editor's save bar, or stayed away after the editor closed.
+test('the phone tab bar gives way while the entry editor\'s save bar is open', async () => {
+  meta.data.value = lastAnswer
+  const wrapper = mountLayout()
+  const tabs = () => wrapper.find('site-tab-bar-stub').exists()
+  expect(tabs()).toBe(true)
+  useBottomBar().value = 72
+  await nextTick()
+  expect(tabs()).toBe(false)
+  useBottomBar().value = 0
+  await nextTick()
+  expect(tabs()).toBe(true)
 })
