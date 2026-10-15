@@ -73,8 +73,8 @@ export function changedRoots(before: Data, after: Data): string[] {
 }
 
 /**
- * The fields a task shows: `edit` its fields; `create` every live field it asks for (`createAsks`: not the slug, and
- * not the plan of a planned change, which is made later with the task that changes the value).
+ * The fields a task shows: `edit` its fields; `create` every live field it asks for (`createAsks`: its `fields`, else all but the slug and
+ * the plan of a planned change, which is made later with the task that changes the value).
  */
 export function taskFields(brick: Brick, task: Task): Fields {
   const keys = task.kind === 'edit' ? task.fields : ordered(brick.fields).map(([k]) => k)
@@ -82,7 +82,7 @@ export function taskFields(brick: Brick, task: Task): Fields {
   for (const key of keys) {
     const field = brick.fields[key]
     if (!field || field.retired) continue
-    if (task.kind === 'create' && !createAsks(brick, key)) continue
+    if (task.kind === 'create' && !createAsks(brick, key, task)) continue
     out[key] = field
   }
   return out

@@ -538,11 +538,12 @@ const createArgs = {
 export const create = mutation({ args: createArgs, handler: async (ctx, args) => createAs(ctx, await actorFor(ctx, args.site), args) })
 
 /** `create` for an actor already known: the platform's signed-in person, or the agent door's key (SPEC 16). */
-export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof createArgs>) {
+export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof createArgs>, opts: { copy?: boolean } = {}) {
   return idempotent(ctx, actor, args, async () => {
     const schema = actor.site.schema as Schema
     const brick = structuralBrick(schema, args.brick)
-    authorize(actor, schema, { task: args.task, brick: args.brick, kind: 'create' })
+    // A create task that lists `fields` writes only those (`authorize`); a copy carries over what the entry already holds.
+    authorize(actor, schema, { task: args.task, brick: args.brick, kind: 'create', ...(opts.copy ? {} : { fields: Object.keys(args.data), values: args.data as Record<string, Json> }) })
 
     // Retired fields are not writable (SPEC 4.1 step 3); validation skips them, so reject them here.
     for (const key of Object.keys(args.data)) liveField(brick, key)
@@ -576,7 +577,8 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
       // A proposal that would go live with a broken link is refused now, not only when approved. The entry does not exist yet: it joins the link check under a temporary id.
       if (!draft || at !== undefined) await checkNewLinks(ctx, actor.site, [{ entry: { _id: 'proposed' as Id<'entries'>, brick: args.brick }, fields: brick.fields, before: {}, after: data, isNew: true }])
       return await propose(ctx, actor, {
-        op: 'create', brick: args.brick, args: args as unknown as Json, base: {}, after: data as Json,
+        // A copy keeps its flag, so applying the proposal skips the fields check like the direct write.
+        op: 'create', brick: args.brick, args: (opts.copy ? { ...args, copy: true } : args) as unknown as Json, base: {}, after: data as Json,
         ...recorded(msg('history.createProposal', { title: labelOf(schema, args.brick, data) }), schema),
       })
     }
@@ -684,7 +686,7 @@ export async function duplicateAs(ctx: MutationCtx, actor: Actor, args: ObjectTy
   return createAs(ctx, actor, {
     site: args.site, opId: args.opId, ...(args.task === undefined ? {} : { task: args.task }),
     brick: entry.brick, data: copyOf(brick, entry.data as Data, args.opId, schema.locales[0]!),
-  })
+  }, { copy: true })
 }
 
 const removeArgs = { site: v.string(), opId: v.string(), task: v.optional(v.string()), entry: v.string(), lifeRev: v.number() }

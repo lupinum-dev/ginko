@@ -126,6 +126,24 @@ describe('when a write needs a yes', () => {
 })
 
 describe('approving', () => {
+  // Wrong behaviour caught: the proposal of a copy forgets it is a copy, so on approval the create task's fields check
+  // refuses the carried-over soldOutOn and the approved copy goes stale.
+  it('an approved copy made through a create task with fields is created with what the original holds', async () => {
+    const s = await approvalSetup()
+    await s.t.run(async (ctx) => {
+      const entry = (await ctx.db.get(s.saibling))!
+      await ctx.db.patch(s.saibling, { data: { ...entry.data, soldOutOn: '2026-10-20' } })
+    })
+    const before = (await s.rows('proposals')).length
+    const { proposal } = await s.as.cook.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), task: 'menu.add', entry: s.saibling }) as Proposed
+    expect((await s.rows('proposals')).length).toBe(before + 1)
+    const done = await s.as.owner.mutation(api.proposals.approve, { proposal })
+    expect(done).not.toMatchObject({ status: 'stale' })
+    expect(await s.proposalRow(proposal)).toMatchObject({ status: 'applied' })
+    const copy = (await s.t.run((ctx) => ctx.db.query('entries').collect())).find((e) => e.brick === 'menu' && e._id !== s.saibling && e.data.soldOutOn === '2026-10-20')
+    expect(copy).toBeDefined()
+  })
+
   it('applies through the normal path: the change names the author and the approver, and it can be undone', async () => {
     const s = await approvalSetup()
     const { proposal } = (await s.cookPrice(s.saibling, 1450)) as Proposed

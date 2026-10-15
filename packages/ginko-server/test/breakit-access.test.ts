@@ -281,6 +281,33 @@ describe('2. staff (the cook) outside the grants', () => {
     expect(code).toBe('FORBIDDEN')
   })
 
+  // Wrong behaviour caught: "Gericht hinzufügen" lists the fields it asks for, but a cook (or a crafted request) still
+  // writes any other field through it, such as the sold-out day or a planned price.
+  it.each([
+    ['soldOutOn', { soldOutOn: '2026-10-20' }],
+    ['onMenu: false (a defaulted field takes only its default)', { onMenu: false }],
+    ['a planned price', { nextPrice: { amount: 2000 }, priceFrom: '2026-11-01' }],
+  ])('entries.create through a create task with fields refuses %s, and takes the listed fields and the default', async (_label, extra) => {
+    const s = await setup()
+    const dish = { category: 'starters', name: { de: 'Suppe' }, price: { amount: 700 }, allergens: [], veg: 'none' }
+    const create = (data: Record<string, unknown>) => outcome(s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data }))
+    const before = (await rows(s, 'entries')).length
+    expect(await create({ ...dish, ...extra })).toBe('FORBIDDEN')
+    expect((await rows(s, 'entries')).length).toBe(before)
+    expect(await create({ ...dish, onMenu: true })).toBe('ok')
+  })
+
+  // Wrong behaviour caught: "Gericht hinzufügen" lists fields, and the creator's later edit through it was cut to that
+  // list too, so a cook could no longer take their own dish off the menu or mark it sold out (D1: the creator edits every field of it).
+  it('a cook who created a dish through a create task with fields still changes onMenu and soldOutOn on it', async () => {
+    const s = await setup()
+    const dish = { category: 'starters', name: { de: 'Suppe' }, price: { amount: 700 }, allergens: [], veg: 'none' }
+    const made = (await s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish })) as { entry: Id<'entries'>; rev: number }
+    const code = await outcome(s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.add', entry: made.entry, baseRev: made.rev, fields: { onMenu: false, soldOutOn: '2026-10-20' } }))
+    expect(code).toBe('ok')
+    expect((await s.t.run((ctx) => ctx.db.get(made.entry)))!.data).toMatchObject({ onMenu: false, soldOutOn: '2026-10-20' })
+  })
+
   it('entries.create / duplicate / remove / restore / move refuse a cook without the matching task', async () => {
     const s = await setup()
     const notice = s.entries['notice-ausgebucht']!

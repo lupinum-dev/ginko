@@ -7,7 +7,7 @@ import { weekInfoOf } from './time.ts'
 import { componentProblems, type ComponentRegistry } from './components.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
-import { isPrefillToken, PREFILL_TOKENS, type Brick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema } from './types.ts'
+import { isPrefillToken, PREFILL_TOKENS, type Brick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema, type Task } from './types.ts'
 import { coreMessage } from './messages.ts'
 import { checkValue } from './validate.ts'
 
@@ -311,6 +311,7 @@ function schemaProblems(schema: Schema): string[] {
         else if (!token) for (const p of checkValue(schema, field, value, path)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
         else if (field.type !== 'date') problems.push(`${path}: “${value}” needs a date field.`)
       }
+      if (task.kind === 'create' && task.fields !== undefined) problems.push(...createFieldsProblems(`${key}.${task.id}.fields`, task, brick))
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
     }
     if (brick.planned !== undefined) problems.push(...plannedProblems(key, brick))
@@ -423,6 +424,31 @@ function isWeek(week: unknown): boolean {
   if (typeof week !== 'object' || week === null) return false
   const { firstDay, weekend } = week as { firstDay?: unknown; weekend?: unknown }
   return isIsoDay(firstDay) && Array.isArray(weekend) && weekend.length <= 6 && weekend.every(isIsoDay)
+}
+
+/**
+ * A create task that lists `fields` names fields the brick has and can ask for, and leaves no required field without a
+ * value: the slug is made from the title, the plan of a planned change belongs to a dish that already has a price, a
+ * retired field is gone, and a field with a default or a prefill has a value.
+ */
+function createFieldsProblems(path: string, task: Extract<Task, { kind: 'create' }>, brick: Brick): string[] {
+  if (!Array.isArray(task.fields)) return [`${path}: must be a list of field names.`]
+  const fields = brick.fields
+  const listed: readonly string[] = task.fields
+  const problems: string[] = []
+  for (const name of listed) {
+    const field = Object.hasOwn(fields, name) ? fields[name] : undefined
+    if (!field) problems.push(`${path}: “${name}” is not a field of this brick.`)
+    else if (field.type === 'slug') problems.push(`${path}: “${name}” is the address and is made from “${field.from}”, so the task cannot ask for it.`)
+    else if (brick.planned && (name === brick.planned.next || name === brick.planned.from)) problems.push(`${path}: “${name}” is the plan of a planned change, so the task cannot ask for it.`)
+    else if (field.retired) problems.push(`${path}: “${name}” is retired, so the task cannot ask for it.`)
+  }
+  const prefilled = Object.keys(task.prefill ?? {})
+  for (const [name, field] of Object.entries(fields)) {
+    if (field.optional || field.default !== undefined || field.type === 'slug' || field.retired) continue
+    if (!listed.includes(name) && !prefilled.includes(name)) problems.push(`${path}: “${name}” is required and has no default, so the task must ask for it.`)
+  }
+  return problems
 }
 
 /** A collection that plans weeks of a single brick: the target must have a weekly task, the field must be a date here. */

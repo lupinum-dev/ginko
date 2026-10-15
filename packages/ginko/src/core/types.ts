@@ -95,11 +95,14 @@ export const isPrefillToken = (value: unknown): value is PrefillToken => PREFILL
  * A quick task of a brick. `needsApproval: true`: what staff does with this task goes live only after an owner or
  * admin approves it (SPEC 17). `F` is the fields of the brick: in `single()` and `collection()` a task names only
  * fields the brick has, and a prefill is written like that field's value (see `ValueInput`). The release check
- * reports a token on a field that is not a `date`.
+ * reports a token on a field that is not a `date`. A `create` task may list `fields`: it then asks for and writes only
+ * those (besides its prefill and the fields' defaults), like an `edit` task. Without `fields` it asks for every field
+ * but the slug and the plan of a planned change. The release check wants every required field without a default
+ * (and not a slug) in `fields` or in the prefill.
  */
 export type Task<F extends Fields = Fields> =
   | { id: string; label: Label; kind: 'edit'; fields: readonly (keyof F & string)[]; pick?: boolean; prefill?: Prefill<F>; needsApproval?: boolean }
-  | { id: string; label: Label; kind: 'create'; prefill?: Prefill<F>; needsApproval?: boolean }
+  | { id: string; label: Label; kind: 'create'; fields?: readonly (keyof F & string)[]; prefill?: Prefill<F>; needsApproval?: boolean }
   | { id: string; label: Label; kind: 'remove'; needsApproval?: boolean }
 
 /** Prefill values by field name. Without known fields (the stored schema) any JSON or token. */

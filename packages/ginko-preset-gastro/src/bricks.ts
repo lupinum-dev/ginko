@@ -290,6 +290,11 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
   const dishFields = (choices
     ? ['category', 'name', 'description', 'price', 'nextPrice', 'priceFrom', 'allergens', 'veg', 'onMenu']
     : ['category', 'name', 'description', 'price', 'nextPrice', 'priceFrom', 'veg', 'onMenu']) as readonly (keyof typeof fields & string)[]
+  // A new dish is on the menu and cannot be sold out yet, so "add" does not ask for `onMenu` and `soldOutOn`; the plan
+  // fields wait for "Preis ändern". Same cast as `dishFields`.
+  const addFields = (choices
+    ? ['category', 'name', 'description', 'price', 'allergens', 'veg']
+    : ['category', 'name', 'description', 'price', 'veg']) as readonly (keyof typeof fields & string)[]
   // The allergen set keeps `fields` generic, so the type cannot check a prefill against it (as with `dishFields`).
   // `satisfies` checks the task against its one date field first; the cast only widens it to the generic fields.
   const soldOut = ({
@@ -309,7 +314,7 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
       { id: 'edit', label: both('Gericht bearbeiten', 'Edit a dish'), kind: 'edit', pick: true, fields: dishFields },
       // One sheet for the price and its plan, so a new price never hides behind a planned one.
       { id: 'price', label: both('Preis ändern', 'Change a price'), kind: 'edit', pick: true, fields: ['price', 'nextPrice', 'priceFrom'] },
-      { id: 'add', label: both('Gericht hinzufügen', 'Add a dish'), kind: 'create' },
+      { id: 'add', label: both('Gericht hinzufügen', 'Add a dish'), kind: 'create', fields: addFields },
       { id: 'remove', label: both('Gericht entfernen', 'Remove a dish'), kind: 'remove' },
     ],
   })

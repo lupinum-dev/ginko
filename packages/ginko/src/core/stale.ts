@@ -115,12 +115,13 @@ export function duePlan(brick: Pick<Brick, 'planned'>, data: Record<string, Json
 }
 
 /**
- * Whether a create task asks for `key`: every field of the brick but the address (made from the title) and the plan of
- * a planned change (`planned`), which needs a value in effect to replace. The Studio's sheet and the agent door's tool
- * both use this rule.
+ * Whether a create task asks for `key`. With `task.fields`: only those fields. Without: every field of the brick. Never
+ * the address (made from the title) or the plan of a planned change (`planned`), which needs a value in effect to
+ * replace. The Studio's sheet and the agent door's tool both use this rule.
  */
-export function createAsks(brick: Pick<Brick, 'fields' | 'planned'>, key: string): boolean {
+export function createAsks(brick: Pick<Brick, 'fields' | 'planned'>, key: string, task?: Pick<Extract<Task, { kind: 'create' }>, 'fields'>): boolean {
   const field = Object.hasOwn(brick.fields, key) ? brick.fields[key] : undefined
+  if (task?.fields && !task.fields.includes(key)) return false
   return !!field && field.type !== 'slug' && key !== brick.planned?.next && key !== brick.planned?.from
 }
 
