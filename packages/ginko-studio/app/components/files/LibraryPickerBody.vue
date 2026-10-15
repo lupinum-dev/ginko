@@ -64,7 +64,8 @@ async function choose() {
 
 <template>
   <div class="grid min-h-0 gap-4">
-    <div class="max-h-[55vh] min-h-0 overflow-y-auto">
+    <!-- Phones: one column that scrolls. From md the browser has its own height and scrolls its two columns apart. -->
+    <div class="max-h-[55vh] min-h-0 overflow-y-auto md:max-h-none md:overflow-visible">
       <FilesBrowser :lib="lib" mode="picker" :kind="kind" :locales="[locale]" @select="selectedId = $event" />
     </div>
     <div v-if="describing && known" class="flex items-start gap-3">

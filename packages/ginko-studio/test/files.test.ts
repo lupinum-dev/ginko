@@ -56,6 +56,29 @@ describe('the files list', () => {
     expect(document.body.querySelector('[role="alert"]')?.textContent).toBe('Du hast keinen Zugriff auf diese Seite.')
     expect(text()).not.toContain('Wird geladen')
   })
+
+  // Wrong behaviour caught: a search while a folder was open looked only in that folder, and nothing said where it looked.
+  test('a search looks in every folder and says so; an open folder shows its name above the files', async () => {
+    let asked!: () => Record<string, unknown>
+    const lib = {
+      slug: ref('restaurant'), canManage: ref(true), folders: ref([{ id: 'd1', name: 'Ausflüge', parent: null }]), missingAlt: ref(null), errorText: String,
+      list: (args: () => Record<string, unknown>) => { asked = args; return { files: ref([]), pending: ref(false), error: ref(null), hasMore: ref(false), moreError: ref(null), more: async () => {} } },
+    }
+    const wrapper = mount(FilesBrowser, { props: { lib: lib as never, mode: 'page', locales: ['de'] }, attachTo: document.body })
+    await wrapper.findAll('nav button').find((b) => b.text() === 'Ausflüge')!.trigger('click')
+    expect(asked()).toMatchObject({ view: 'all', folder: 'd1' })
+    expect(wrapper.get('[data-scope]').text()).toBe('Ausflüge')
+    vi.useFakeTimers()
+    try {
+      await wrapper.get('input[type="search"]').setValue('wald')
+      await vi.advanceTimersByTimeAsync(300)
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(asked()).toEqual({ view: 'all', search: 'wald' })
+    expect(wrapper.get('[data-scope]').text()).toBe('Suche in allen Dateien')
+    wrapper.unmount()
+  })
 })
 
 describe('upload into the library', () => {

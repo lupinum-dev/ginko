@@ -816,6 +816,7 @@
     "folderName": "Name des Ordners",
     "createFolder": "Anlegen",
     "search": "Dateien suchen",
+    "searchAll": "Suche in allen Dateien",
     "layoutGrid": "Raster",
     "layoutList": "Liste",
     "upload": "Hochladen",

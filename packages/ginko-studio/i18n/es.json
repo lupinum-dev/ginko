@@ -816,6 +816,7 @@
     "folderName": "Nombre de la carpeta",
     "createFolder": "Crear",
     "search": "Buscar archivos",
+    "searchAll": "Buscando en todos los archivos",
     "layoutGrid": "Cuadrícula",
     "layoutList": "Lista",
     "upload": "Subir",
