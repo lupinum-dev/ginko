@@ -34,10 +34,11 @@ Hosted production needs Matthias's OK at each step, in this order:
   so the budget checks are stricter, never looser; the trees guard sees only trees written since.
 - **Steps:**
   1. Deploy this code (expand step). Writers already put trees into `entryTrees` and clear `entries.trees`.
-  2. `pnpm exec better-convex convex run entries:migrateStorage '{}'` (10 entries per run, schedules itself, then `recountStorage` sets each
-     site's `bytes`, `trashBytes` and `treeBytes` to the sums over its entries). Running it again is safe.
-  3. Check with `pnpm exec better-convex convex run entries:storageStatus '{}'` (one site per call; pass the returned `cursor` until
-     `isDone`): every site `legacyRows: 0`, `countersMatch: true`, `overLimit: []`.
+  2. `pnpm exec better-convex convex run entries:migrateStorage '{}'` (10 entries per run, schedules itself, then
+     `recountStorage` sets each site's `bytes`, `trashBytes` and `treeBytes` to the sums over its entries). Running it
+     again is safe.
+  3. Check with `pnpm exec better-convex convex run entries:storageStatus '{}'` (one site per call; pass the returned
+     `cursor` until `isDone`): every site `legacyRows: 0`, `countersMatch: true`, `overLimit: []`.
   4. Hosted production: steps 2 and 3 as described at the top (backup, merge, then run in the production checkout).
   5. Contract step: remove `entries.trees` from the schema, make `entries.treeBytes`, `entries.contentAt`,
      `sites.trashBytes` and `sites.treeBytes` required, delete the fallbacks and the `?? 0` above, and give the rows that tests insert directly (`packages/ginko-server/test/setup.ts` and others) the
