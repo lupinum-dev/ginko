@@ -197,19 +197,20 @@ function picked(entry: Entry) {
   open.value = { key: p.key, task: p.task, entryId: entry._id }
 }
 
-const removing = ref<string | null>(null)
+/** Entries whose removal is on its way, one per row: a row that finishes does not unlock another that still runs. */
+const removing = reactive(new Set<string>())
 const convex = useConvex()
 /** An entry other entries point at (N5): the remove question with their list; unused entries go at once, as before. */
 const askRemove = ref<{ key: string; entry: Entry; task: Task; uses: EntryUses } | null>(null)
 async function removeEntry(key: string, entry: Entry, task: Task) {
-  removing.value = entry._id
+  removing.add(entry._id)
   try {
     // A failed lookup does not stop the removal: it only warns, and the trash keeps the entry for 30 days.
     const uses = await convex.query(api.entries.usedBy, { site: s.slug.value, entry: entry._id }).catch(() => [])
     if (uses.length) askRemove.value = { key, entry, task, uses }
     else await removeNow(key, entry, task)
   } finally {
-    removing.value = null
+    removing.delete(entry._id)
   }
 }
 async function removeNow(key: string, entry: Entry, task: Task) {
@@ -218,12 +219,12 @@ async function removeNow(key: string, entry: Entry, task: Task) {
 async function confirmRemove() {
   const ask = askRemove.value
   if (!ask) return
-  removing.value = ask.entry._id
+  removing.add(ask.entry._id)
   try {
     await removeNow(ask.key, ask.entry, ask.task)
     askRemove.value = null
   } finally {
-    removing.value = null
+    removing.delete(ask.entry._id)
   }
 }
 
@@ -282,7 +283,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
             <span class="font-medium group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground">{{ titleOf(sec.brick, e.data, s.main.value) }}</span>
             <span class="text-[13px] text-muted-foreground">{{ timing(sec.brick as CollectionBrick, e).text }}</span>
           </span>
-          <Button v-if="sec.remove" type="button" variant="ghost" size="sm" :disabled="removing === e._id" :aria-label="t('site.quick.removeNamed', { title: titleOf(sec.brick, e.data, s.main.value) })" @click="removeEntry(sec.key, e, sec.remove)">{{ t('site.common.remove') }}</Button>
+          <Button v-if="sec.remove" type="button" variant="ghost" size="sm" :disabled="removing.has(e._id)" :aria-label="t('site.quick.removeNamed', { title: titleOf(sec.brick, e.data, s.main.value) })" @click="removeEntry(sec.key, e, sec.remove)">{{ t('site.common.remove') }}</Button>
         </li>
       </ul>
       <p v-else-if="shownRead.data.value && isTimed(sec.brick)" class="text-muted-foreground">{{ t('site.quick.nothingNow') }}</p>
@@ -317,7 +318,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
     />
     <EntryRemoveDialog
       v-if="askRemove && s.schema.value"
-      :open="true" :slug="s.slug.value" :uses="askRemove.uses" :busy="removing === askRemove.entry._id"
+      :open="true" :slug="s.slug.value" :uses="askRemove.uses" :busy="removing.has(askRemove.entry._id)"
       :title="titleOf(s.schema.value.bricks[askRemove.key]!, askRemove.entry.data, s.main.value)"
       @update:open="askRemove = null" @confirm="confirmRemove"
     />
