@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { entryTitle, fileRefsIn, ordered, stableJson, type Schema } from '@lupinum/ginko/internal'
+import { entryTitle, fileRefsIn, ordered, printOf, stableJson, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { shownLabel } from './labels'
 import type { Words } from './when'
@@ -149,3 +149,18 @@ export function previewFileIds(draft: unknown, entries: readonly unknown[]): str
   fileIdsIn(entries, ids, true)
   return [...ids].slice(0, MAX_FILES)
 }
+
+const isEmpty = (value: unknown) => value === undefined || value === null || value === ''
+
+/**
+ * Translation state of one leaf in a foreign language: `missing` when the main language has a text and this language
+ * has none, `stale` when the main-language text changed since the translation (its print no longer matches), else
+ * `fine`. A leaf that is empty in the main language too has nothing to translate. `confirmed`: the person said the
+ * translation fits as it is.
+ */
+export function leafTranslation(input: { draft: Record<string, unknown> | undefined; locale: string; main: string; storedMain: unknown; print: string | undefined; confirmed: boolean }): 'missing' | 'stale' | 'fine' {
+  if (isEmpty(input.draft?.[input.locale])) return isEmpty(input.draft?.[input.main]) ? 'fine' : 'missing'
+  if (input.confirmed) return 'fine'
+  return input.storedMain !== undefined && input.print !== printOf(input.storedMain) ? 'stale' : 'fine'
+}
+

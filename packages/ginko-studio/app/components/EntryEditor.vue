@@ -2,10 +2,10 @@
      status, a sticky save bar, and the preview beside it on wide screens. Same engine as the tasks. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, printOf, urlsFor, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { languageName, previewFileIds, publishQuestion, titleOf } from '../utils/content'
+import { languageName, leafTranslation, previewFileIds, publishQuestion, titleOf } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -144,12 +144,14 @@ const draftAt = (path: string) => valueAt(draft.value, path)
 function translation(path: string): 'missing' | 'stale' | 'fine' | undefined {
   if (!foreign.value) return undefined
   const value = draftAt(path)
-  const own = value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>)[locale.value] : undefined
-  if (own === undefined || own === '') return 'missing'
-  if (confirm.value.includes(path)) return 'fine'
-  const mainValue = (storedAt(path) as Record<string, unknown> | undefined)?.[main.value]
-  const print = props.entry?.prints[path]?.[locale.value]
-  return mainValue !== undefined && print !== printOf(mainValue) ? 'stale' : 'fine'
+  return leafTranslation({
+    draft: value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined,
+    locale: locale.value,
+    main: main.value,
+    storedMain: (storedAt(path) as Record<string, unknown> | undefined)?.[main.value],
+    print: props.entry?.prints[path]?.[locale.value],
+    confirmed: confirm.value.includes(path),
+  })
 }
 /** Whether the stored entry has missing or outdated texts in language `l` (a dot on the language switch). */
 function gapIn(l: Locale) {
