@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { entryTitle, fileRefsIn, isTranslatable, ordered, printOf, stableJson, untranslatedMode, type Schema } from '@lupinum/ginko/internal'
+import { entryTitle, fileRefsIn, isShown, isTranslatable, leavesOf, ordered, printOf, stableJson, untranslatedMode, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { shownLabel } from './labels'
 import type { Words } from './when'
@@ -61,6 +61,30 @@ export function taskFields(brick: Brick, task: Task): Fields {
     out[key] = field
   }
   return out
+}
+
+/** A field with text to translate: translatable itself, an image (alt text), or a list with such columns (Astra phase 8). */
+export function hasTranslation(f: Field): boolean {
+  if (f.type === 'list') return Object.values(f.of).some(hasTranslation)
+  return (isTranslatable(f) && f.type !== 'slug') || f.type === 'image'
+}
+
+/**
+ * The value at a leaf path: `name`, `image.alt`, or inside a list `days.<rowId>.dish` and
+ * `images.<rowId>.image.alt` (the paths of the server's leavesOf and of the prints).
+ */
+export function leafValue(data: Record<string, unknown> | undefined, path: string): unknown {
+  const [root, ...rest] = path.split('.')
+  let value: unknown = data?.[root!]
+  if (rest.length && rest[0] !== 'alt') {
+    const [rowId, column, ...tail] = rest
+    const row = Array.isArray(value) ? value.find((r) => (r as { _id?: string })._id === rowId) : undefined
+    value = (row as Record<string, unknown> | undefined)?.[column!]
+    if (tail[0] === 'alt') value = (value as { alt?: unknown } | undefined)?.alt
+  } else if (rest[0] === 'alt') {
+    value = (value as { alt?: unknown } | undefined)?.alt
+  }
+  return value
 }
 
 /** "brick.task" (SPEC 2.7 TaskRef). */
@@ -164,6 +188,12 @@ export function leafTranslation(input: { draft: Record<string, unknown> | undefi
   return input.storedMain !== undefined && input.print !== printOf(input.storedMain) ? 'stale' : 'fine'
 }
 
+
+/** Whether a text the form shows has a main-language text and none in `locale` (the dot on a language in a quick-task sheet). */
+export function missingIn(fields: Fields, data: Data, main: Locale, locale: Locale): boolean {
+  return Object.entries(fields).some(([key, field]) => isShown(field, data)
+    && [...leavesOf(field, data[key], key).values()].some((texts) => !isEmpty(texts[main]) && isEmpty(texts[locale])))
+}
 
 /**
  * Whether the website leaves the whole entry out of a language while this leaf has no text there (`name`, `image.alt`,

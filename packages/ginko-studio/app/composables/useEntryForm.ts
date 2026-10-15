@@ -24,8 +24,13 @@ export interface EntryFormOptions {
   /** The edited entry; none when creating. */
   entry: () => Entry | undefined
   main: () => Locale
-  /** Locale the translatable values are saved in (the main language in Schnell ändern). */
+  /** Locale the translatable values are saved in, and the language of local copies. */
   locale: () => Locale
+  /**
+   * The form edits every language of its texts (the quick-task sheet's language switch): a save sends whole values
+   * without `locale`, so one Speichern stores all languages, and a translation nobody touched keeps its print.
+   */
+  allLanguages?: boolean
   task?: () => string | undefined
   removeTask?: () => string | undefined
   /** The edited entry is a draft (SPEC 15): saving says so instead of promising the website. */
@@ -159,10 +164,14 @@ export function useEntryForm(o: EntryFormOptions) {
     return unconfirmed.op
   }
 
+  /** Typing from the last moments may still wait in an editor's pause: this hands it to the draft. */
+  async function flush() {
+    await Promise.all([...flushers].map((run) => run()))
+  }
+
   async function write(rev: number, publish?: { at?: number }, asNew?: { task?: string }): Promise<boolean> {
     if (busy.value) return false
-    // Typing from the last moments may still wait in an editor's pause: take it before reading the draft.
-    await Promise.all([...flushers].map((flush) => flush()))
+    await flush()
     if (blockers.size) {
       problem.value = [...new Set(blockers.values())].join(' ')
       return false
@@ -188,7 +197,7 @@ export function useEntryForm(o: EntryFormOptions) {
         const roots = changedRoots(baseline.value, submitted).filter((k) => keys().includes(k))
         if (!roots.length && !confirm.value.length) return true
         const values = Object.fromEntries(roots.map((k) => [k, submitted[k] ?? null]))
-        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task: o.task?.(), locale: o.locale(), ...(confirm.value.length ? { confirm: confirm.value } : {}) }
+        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task: o.task?.(), ...(o.allLanguages ? {} : { locale: o.locale() }), ...(confirm.value.length ? { confirm: confirm.value } : {}) }
         const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false })
         if (result.rev === undefined) {
           // Nothing was written: the stored state, base and rev stay; only the input counts as handed in.
@@ -408,5 +417,5 @@ export function useEntryForm(o: EntryFormOptions) {
     localOffer.value = null
   }
 
-  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, offline, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
+  return { draft, baseline, initial, baseRev, ready, issues, problem, conflict, busy, offline, waiting, confirm, blockers, isCreate, changed, dirty, created, localOffer, load, setField, flush, save, saveAsNew, restoreAndSave, discard, restoreLocal, dropLocal, keepMine, takeTheirs, listMerge, mergeLists }
 }

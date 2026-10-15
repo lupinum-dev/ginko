@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
-import { computed, defineComponent, h, shallowRef, type Component } from 'vue'
+import { computed, defineComponent, h, reactive, shallowRef, type Component } from 'vue'
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
-import { TRANSLATION, type TranslationState } from '@lupinum/ginko-editor'
+import { BLOCKERS, TRANSLATION, type TranslationState } from '@lupinum/ginko-editor'
 import type { Field, Json } from '@lupinum/ginko'
 import FieldFrame from '../app/components/fields/FieldFrame.vue'
 import GinkoField from '../app/components/fields/GinkoField.vue'
@@ -134,6 +134,33 @@ describe('list rows', () => {
     const [closed, open] = wrapper.findAll('li')
     expect(closed!.find('input[type="time"]').exists()).toBe(false)
     expect(open!.find('input[type="time"]').exists()).toBe(true)
+  })
+})
+
+// Wrong behaviour caught: translating a lunch dish asked "Noch richtig?" about its allergens and blocked Speichern, and
+// the English view could add a row that lacks its required German dish.
+describe('a list in a foreign language', () => {
+  const days = {
+    type: 'list', label: 'Tage', itemLabel: 'Tag', max: 5,
+    of: { dish: { type: 'text', label: 'Gericht' }, allergens: { type: 'choices', label: 'Allergene', options: [{ value: 'a', label: 'Gluten' }, { value: 'g', label: 'Milch' }] } },
+  } as Extract<Field, { type: 'list' }>
+  const stored = [{ _id: 'd1', dish: { de: 'Kürbissuppe' }, allergens: ['g'] }]
+
+  test.each([
+    { locale: 'en', typed: { de: 'Kürbissuppe', en: 'Pumpkin soup' }, allergens: false, buttons: false, blocked: false },
+    { locale: 'de', typed: { de: 'Kürbiscremesuppe' }, allergens: true, buttons: true, blocked: true },
+  ])('$locale: allergens shown $allergens, row buttons $buttons, "Noch richtig?" $blocked', async ({ locale, typed, allergens, buttons, blocked }) => {
+    const blockers = reactive(new Map<string, string>())
+    const value = shallowRef<Json | undefined>(stored)
+    const Host = defineComponent({
+      setup: () => () => h(GinkoFieldList, { id: 'f-days', field: days, modelValue: value.value, baseline: stored, path: 'days', locale, locales: ['de', 'en'], issues: [], 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
+    })
+    const wrapper = mount(Host, { global: { provide: { [BLOCKERS as symbol]: blockers } } })
+    value.value = [{ ...stored[0]!, dish: typed }]
+    await flushPromises()
+    expect([wrapper.text().includes('Gericht'), wrapper.text().includes('Allergene')]).toEqual([true, allergens])
+    expect([wrapper.find('[data-remove]').exists(), wrapper.find('[data-add]').exists()]).toEqual([buttons, buttons])
+    expect(blockers.size > 0).toBe(blocked)
   })
 })
 

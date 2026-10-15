@@ -272,24 +272,25 @@ test.describe('Übersetzen (Phase 11)', () => {
 test.describe('Übersetzen in Listen (Astra 11)', () => {
   test.use(asOwner)
 
-  test('18. a confirmed translation in a removed list row does not block saving the rest', async ({ page }) => {
-    await page.goto('/s/restaurant/all/hours', { waitUntil: 'networkidle' })
-    const first = page.getByRole('group', { name: 'Betriebsurlaub und Ausnahmen' }).locator('[data-row]').first()
-    const save = async () => {
-      await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-      await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
-    }
-    // An English reason, then a German change: the English one is outdated.
-    await page.getByRole('button', { name: 'Englisch' }).click()
+  // Wrong behaviour caught (WD-4, F6): a quick task stored German only, so the English site showed the German reason;
+  // the English view could also remove or add rows, which belong to the main language.
+  test('18. an English reason typed in the "Betriebsurlaub und Ausnahmen" sheet is saved next to the German one', async ({ page }) => {
+    await openQuick(page)
+    await page.getByRole('button', { name: 'Betriebsurlaub und Ausnahmen', exact: true }).click()
+    const sheet = page.locator('dialog[open]')
+    const first = sheet.locator('[data-row]').first()
+    const german = await first.getByLabel('Grund').inputValue()
+    await sheet.getByRole('button', { name: 'Englisch' }).click()
+    await expect(first.getByRole('button', { name: /entfernen$/ })).toHaveCount(0)
     await first.getByLabel('Grund').fill('Winter holidays')
-    await save()
-    await page.getByRole('button', { name: 'Deutsch' }).click()
-    await first.getByLabel('Grund').fill('Betriebsurlaub im Winter')
-    await save()
+    await sheet.getByRole('button', { name: 'Speichern', exact: true }).click()
+    await expect(toast(page)).toContainText('Gespeichert')
+
+    await page.goto('/s/restaurant/all/hours', { waitUntil: 'networkidle' })
+    const row = page.getByRole('group', { name: 'Betriebsurlaub und Ausnahmen' }).locator('[data-row]').first()
+    await expect(row.getByLabel('Grund')).toHaveValue(german)
     await page.getByRole('button', { name: 'Englisch' }).click()
-    await first.getByRole('button', { name: 'Passt so' }).click()
-    await first.getByRole('button', { name: /entfernen$/ }).click()
-    await save()
+    await expect(row.getByLabel('Grund')).toHaveValue('Winter holidays')
   })
 })
 

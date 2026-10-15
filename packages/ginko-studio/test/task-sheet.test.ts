@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
 // The quick-task sheet (TaskSheet) with the real form engine and the German catalog. Nuxt's auto-imports become
-// globals; Convex, the writes and the toast are replaced, and each field is a plain input.
+// globals; Convex, the writes and the toast are replaced, and each field is a plain input unless a test needs the real
+// fields (languages).
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
-import { afterEach, expect, test, vi } from 'vitest'
-import { collection, defineSite, f } from '@lupinum/ginko'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { collection, defineSite, f, single } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import { Popover, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
@@ -17,8 +18,9 @@ vi.stubGlobal('onBeforeRouteUpdate', () => {})
 vi.stubGlobal('useToast', () => ({ show: () => {} }))
 vi.stubGlobal('useConvexAuth', () => ({ user: ref({ id: 'u1' }) }))
 vi.stubGlobal('useConvexConnectionState', () => ({ isConnected: ref(true) }))
-// Nothing is saved here: the writes are never called.
-vi.stubGlobal('useOps', () => ({}))
+// The writes record what the form sends.
+const ops = { opId: () => crypto.randomUUID(), createEntry: vi.fn(async () => ({ entry: 'new1' })), saveEntry: vi.fn(async () => ({ rev: 2 })) }
+vi.stubGlobal('useOps', () => ops)
 
 /**
  * The prefill query as Convex serves it: while the sheet asks for it (args, not 'skip') it is live and gets the
@@ -98,6 +100,8 @@ globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {
 afterEach(() => {
   document.body.innerHTML = ''
   prefill.asked = 0
+  ops.createEntry.mockClear()
+  ops.saveEntry.mockClear()
 })
 
 // Wrong behaviour caught (J4): a failed refresh of the prefill, long after the form loaded, replaced every field with
@@ -171,4 +175,107 @@ test('Escape closes an open popover first, then asks before the typed input goes
   wrapper.get('dialog').element.dispatchEvent(new Event('close'))
   expect(wrapper.emitted('close')).toHaveLength(1)
   wrapper.unmount()
+})
+
+describe('languages', () => {
+  const bilingual = serializeSchema(defineSite({
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR',
+    pages: { home: { de: '/', en: '/en' } },
+    bricks: {
+      dishes: collection({
+        label: 'Speisen', max: 50, order: 'manual',
+        fields: { name: f.text('Name'), price: f.money('Preis') },
+        tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create' }],
+      }),
+      hours: single({
+        label: 'Öffnungszeiten',
+        fields: { exceptions: f.list('Ausnahmen', { itemLabel: 'Ausnahme', max: 10, fields: { reason: f.text('Grund'), closed: f.boolean('Geschlossen') } }) },
+        tasks: [{ id: 'holiday', label: 'Betriebsurlaub', kind: 'edit', fields: ['exceptions'] }],
+      }),
+      lunch: single({
+        label: 'Mittagsmenü',
+        fields: { days: f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { dish: f.text('Gericht'), allergens: f.choices('Allergene', { options: [{ value: 'a', label: 'Gluten' }, { value: 'g', label: 'Milch' }] }) } }) },
+        tasks: [{ id: 'week', label: 'Mittagsmenü dieser Woche', kind: 'edit', fields: ['days'] }],
+      }),
+    },
+  }))
+  const sheet = (brickKey: 'dishes' | 'hours' | 'lunch', entry?: unknown) => {
+    const brick = bilingual.bricks[brickKey]!
+    return mount(TaskSheet, {
+      props: { site: 'restaurant', brickKey, brick, task: brick.tasks![0]!, entry: entry as never, main: 'de', locales: ['de', 'en'], schema: bilingual },
+      attachTo: document.body,
+    })
+  }
+  const value = (wrapper: ReturnType<typeof sheet>, id: string) => (wrapper.get(`#${id}`).element as HTMLInputElement).value
+  const language = (wrapper: ReturnType<typeof sheet>, name: string) => wrapper.findAll('[role="group"] button, [role="radio"]').find((b) => b.text().startsWith(name))!
+
+  // Wrong behaviour caught (WD-4, WS-8, F6): a quick task stored German only, so a new dish showed German on the English
+  // site; with a switch, input typed in one language must not land in the other or get lost on the way.
+  test('"Gericht hinzufügen" stores the German and the English name in one Speichern', async () => {
+    const wrapper = sheet('dishes')
+    answer({ data: {} })
+    await flushPromises()
+    await wrapper.get('#f-name').setValue('Kürbissuppe')
+    expect(language(wrapper, 'Englisch').text()).toContain('Übersetzung unvollständig')
+
+    await language(wrapper, 'Englisch').trigger('click')
+    await flushPromises()
+    // Only texts to translate: the price applies to every language.
+    expect([value(wrapper, 'f-name'), wrapper.find('#f-price').exists()]).toEqual(['', false])
+    expect(wrapper.text()).toContain('Kürbissuppe')
+    await wrapper.get('#f-name').setValue('Pumpkin soup')
+    expect(language(wrapper, 'Englisch').text()).not.toContain('Übersetzung unvollständig')
+
+    await language(wrapper, 'Deutsch').trigger('click')
+    await flushPromises()
+    expect(value(wrapper, 'f-name')).toBe('Kürbissuppe')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(ops.createEntry).toHaveBeenCalledTimes(1)
+    expect((ops.createEntry.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0].data.name).toEqual({ de: 'Kürbissuppe', en: 'Pumpkin soup' })
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: the save went out with the German locale, and the server kept only the German of each text,
+  // silently dropping the English typed in the sheet.
+  test('an English reason typed in an edit task is saved with every language, not in German only', async () => {
+    const stored = { exceptions: [{ _id: 'r1', reason: { de: 'Betriebsurlaub' }, closed: true }] }
+    const wrapper = sheet('hours', { _id: 'h1', brick: 'hours', kind: 'single', order: 0, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: stored })
+    answer({ data: stored })
+    await flushPromises()
+    await language(wrapper, 'Englisch').trigger('click')
+    await flushPromises()
+    await wrapper.get('#f-exceptions-r1-reason').setValue('Company holiday')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    const [sent] = ops.saveEntry.mock.calls[0] as unknown as [Record<string, unknown> & { fields: { exceptions: { reason: unknown }[] } }]
+    expect(['locale' in sent, sent.fields.exceptions[0]!.reason]).toEqual([false, { de: 'Betriebsurlaub', en: 'Company holiday' }])
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: the English view does not show the allergens, so a changed German dish went out from there
+  // without "Noch richtig?"; or a "Ja, stimmt" given in German was asked for again after a look at the English.
+  test('"Noch richtig?" about a changed German dish is asked in German before an English Speichern, and only once', async () => {
+    const stored = { days: [{ _id: 'd1', dish: { de: 'Kürbissuppe' }, allergens: ['g'] }] }
+    const wrapper = sheet('lunch', { _id: 'l1', brick: 'lunch', kind: 'single', order: 0, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: stored })
+    answer({ data: stored })
+    await flushPromises()
+    await wrapper.get('#f-days-d1-dish').setValue('Kürbiscremesuppe')
+    await language(wrapper, 'Englisch').trigger('click')
+    await flushPromises()
+    await wrapper.get('#f-days-d1-dish').setValue('Pumpkin cream soup')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    const confirm = () => wrapper.findAll('.check button').find((b) => b.text() === 'Ja, stimmt')
+    expect([ops.saveEntry.mock.calls.length, value(wrapper, 'f-days-d1-dish'), document.activeElement === confirm()?.element]).toEqual([0, 'Kürbiscremesuppe', true])
+
+    await confirm()!.trigger('click')
+    await language(wrapper, 'Englisch').trigger('click')
+    await flushPromises()
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    const [sent] = ops.saveEntry.mock.calls[0] as unknown as [{ fields: { days: { dish: unknown }[] } }]
+    expect(sent.fields.days[0]!.dish).toEqual({ de: 'Kürbiscremesuppe', en: 'Pumpkin cream soup' })
+    wrapper.unmount()
+  })
 })

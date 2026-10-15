@@ -1,10 +1,13 @@
 <!-- The task form (UI.md 3.1, 3.2): only the task's fields, prefilled by the server, saved with one
-     opId per attempt. Conflicts keep the person's input and show the new state next to it. -->
+     opId per attempt. Conflicts keep the person's input and show the new state next to it. On a site
+     with more languages, a switch shows the texts to translate; one Speichern stores every language. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Label as LabelText, Locale } from '@lupinum/ginko'
 import { defaultsFor, isShown, type Schema } from '@lupinum/ginko/internal'
+import { textIn, TRANSLATION } from '@lupinum/ginko-editor'
 import GinkoField from './fields/GinkoField.vue'
+import LanguageSwitch from './LanguageSwitch.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
 import ConflictPanel from './ConflictPanel.vue'
@@ -14,7 +17,7 @@ import { XIcon } from '@lucide/vue'
 import { ConfigProvider, injectConfigProviderContext } from 'reka-ui'
 import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
-import { taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
+import { hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingIn, taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { opErrorOf } from '../composables/useOps'
 
@@ -39,7 +42,7 @@ const props = defineProps<{
   schema: Schema
 }>()
 const emit = defineEmits<{ close: [] }>()
-const { t } = useI18n()
+const { t, locale: uiLocale } = useI18n()
 const shown = (label: LabelText) => shownLabel(label, props.main)
 
 provideSiteRefs(() => props.site, () => props.schema, () => props.main)
@@ -57,8 +60,9 @@ const form = useEntryForm({
   // A create task makes a new entry even when one is passed.
   entry: () => (isCreate.value ? undefined : props.entry),
   main: () => props.main,
-  // Schnell ändern edits translatable texts in the main language only (UI.md 3.1).
+  // Every language in one save (the switch below); local copies stay with the main language and hold whole values.
   locale: () => props.main,
+  allLanguages: true,
   task: () => ref_.value,
   removeTask: () => (props.removeTask ? taskRef(props.brickKey, props.removeTask) : undefined),
   draft: () => !isCreate.value && props.entry?.state === 'draft',
@@ -91,6 +95,36 @@ async function retry() {
   retrying.value = false
 }
 
+// Languages (UI.md 3.1): the sheet opens in the main language with every field of the task. Another language shows the
+// texts to translate; German input made there still counts and is saved with the rest.
+const lang = ref<Locale>(props.main)
+const foreign = computed(() => lang.value !== props.main)
+const toTranslate = computed(() => Object.fromEntries(Object.entries(fields.value).filter(([, field]) => hasTranslation(field))))
+const shownFields = computed(() => (foreign.value ? toTranslate.value : fields.value))
+const multilingual = computed(() => props.locales.length > 1 && Object.keys(toTranslate.value).length > 0)
+const gapIn = (l: Locale) => l !== props.main && missingIn(toTranslate.value, draft.value, props.main, l)
+/** Input still waiting in an editor's pause goes into the language it was typed in. */
+async function switchLanguage(next: Locale) {
+  if (next === lang.value) return
+  await form.flush()
+  lang.value = next
+}
+/** The entry's name for the hints: what is typed, over the stored entry an edit task changes. */
+const entryName = () => titleOf(props.brick, { ...(isCreate.value ? {} : props.entry?.data), ...draft.value }, props.main)
+// The sheet's own translation view: no "Passt so" (outdated translations are confirmed in Alles bearbeiten), the
+// German as typed here as the source.
+provide(TRANSLATION, {
+  state: (leaf) => {
+    if (!foreign.value) return undefined
+    const value = leafValue(draft.value, leaf)
+    return leafTranslation({ draft: value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined, locale: lang.value, main: props.main, storedMain: undefined, print: undefined, confirmed: false })
+  },
+  source: (leaf) => textIn(leafValue(draft.value, leaf), props.main).slice(0, 400),
+  confirm: () => {},
+  mainName: () => languageName(props.main, uiLocale.value),
+  hiddenWithout: (leaf) => (hidesUntranslated(props.brick, leaf) ? { title: entryName(), language: languageName(lang.value, uiLocale.value) } : undefined),
+})
+
 /** A new entry with the same name as one that is already there (e.g. a second "Heute ausgebucht"). */
 const twin = computed(() => {
   if (!isCreate.value || !props.existing?.length) return undefined
@@ -106,7 +140,12 @@ const dialog = ref<HTMLDialogElement | null>(null)
 // A nested ConfigProvider replaces the whole context: pass on what app.vue sets (today only useId).
 const reka = injectConfigProviderContext({})
 onMounted(() => dialog.value?.showModal())
-watch(issues, (list) => { if (list.length) nextTick(() => dialog.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()) })
+watch(issues, (list) => {
+  if (!list.length) return
+  // An error in a field the other language does not show: back to the main language, where every field is.
+  if (foreign.value && list.some((issue) => !Object.hasOwn(toTranslate.value, issue.path.split('.')[0]!))) lang.value = props.main
+  nextTick(() => dialog.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+})
 
 // Closed while a save was still on its way (offline): the save goes on, and its outcome still reaches the person.
 const { show } = useToast()
@@ -122,7 +161,11 @@ async function finish(ok: boolean) {
 async function save() {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
   if (busy.value || !ready.value || removedHere.value) return
-  if (form.blockers.size) nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
+  if (form.blockers.size) {
+    // "Noch richtig?" asks about the choices next to a changed German text, which only the main language shows.
+    await switchLanguage(props.main)
+    nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
+  }
   await finish(await form.save())
 }
 async function keepMine() {
@@ -190,9 +233,12 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
     <ConfigProvider :teleport-to="dialog ?? undefined" :use-id="reka.useId">
       <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()">
         <header class="flex items-start justify-between gap-3 border-b bg-card pt-4 pb-3 pr-3 pl-5">
-          <div>
-            <h2 id="sheet-title" class="text-lg font-semibold">{{ shown(task.label) }}</h2>
-            <p v-if="entry && brick.kind === 'collection'" class="mt-0.5 text-sm text-muted-foreground">{{ titleOf(brick, entry.data, main) }}</p>
+          <div class="grid min-w-0 gap-2">
+            <div>
+              <h2 id="sheet-title" class="text-lg font-semibold">{{ shown(task.label) }}</h2>
+              <p v-if="entry && brick.kind === 'collection'" class="mt-0.5 text-sm text-muted-foreground">{{ titleOf(brick, entry.data, main) }}</p>
+            </div>
+            <LanguageSwitch v-if="ready && multilingual" class="justify-self-start" :locales="locales" :model-value="lang" :gap="gapIn" @update:model-value="switchLanguage" />
           </div>
           <Button type="button" variant="ghost" size="icon" class="flex-none rounded-full" :aria-label="t('entry.close')" @click="requestClose">
             <XIcon aria-hidden="true" />
@@ -222,16 +268,17 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             />
             <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
             <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
+            <p v-if="foreign" class="text-sm text-muted-foreground">{{ t('entry.foreignHint') }}</p>
             <GinkoField
-              v-for="(field, key) in fields"
+              v-for="(field, key) in shownFields"
               v-show="isShown(field, draft)"
-              :key="key"
+              :key="`${lang}:${key}`"
               :field="field"
               :model-value="draft[key]"
               :baseline="baseline[key]"
               :weeks="weekFields.has(String(key))"
               :path="String(key)"
-              :locale="main"
+              :locale="lang"
               :locales="locales"
               :issues="issues"
               @update:model-value="form.setField(String(key), $event)"

@@ -1,11 +1,11 @@
 <!-- Alles bearbeiten (UI.md 4): every field of one entry, the language switch with translation
      status, a sticky save bar, and the preview beside it on wide screens. Same engine as the tasks. -->
 <script setup lang="ts">
-import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, urlsFor, type Schema } from '@lupinum/ginko/internal'
+import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { hidesUntranslated, languageName, leafTranslation, previewFileIds, publishQuestion, titleOf } from '../utils/content'
+import { hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, previewFileIds, publishQuestion, titleOf } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -18,6 +18,7 @@ import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
 import ConflictPanel from './ConflictPanel.vue'
 import EntryRemoveDialog from './EntryRemoveDialog.vue'
+import LanguageSwitch from './LanguageSwitch.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
 import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
@@ -27,7 +28,6 @@ import { provideSiteRefs } from '../composables/useSiteRefs'
 import { Button } from '@studio/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
 import { Badge } from '@studio/components/ui/badge'
-import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
 import { Label } from '@studio/components/ui/label'
 import { Separator } from '@studio/components/ui/separator'
@@ -73,12 +73,6 @@ const fields = computed<Fields>(() => Object.fromEntries(ordered(props.brick.fie
   return true
 })))
 
-/** A field with text to translate: translatable itself, an image (alt text), or a list with such columns (Astra phase 8). */
-function hasTranslation(f: Field): boolean {
-  if (f.type === 'list') return Object.values(f.of).some(hasTranslation)
-  return (isTranslatable(f) && f.type !== 'slug') || f.type === 'image'
-}
-
 const form = useEntryForm({
   site: computed(() => props.site.slug),
   brickKey: () => props.brickKey,
@@ -120,25 +114,8 @@ function switchLanguage(next: Locale) {
   locale.value = next
 }
 
-/**
- * The value at a leaf path: `name`, `image.alt`, or inside a list `days.<rowId>.dish` and
- * `images.<rowId>.image.alt` (the paths of the server's leavesOf and of the prints).
- */
-function valueAt(data: Record<string, unknown> | undefined, path: string): unknown {
-  const [root, ...rest] = path.split('.')
-  let value: unknown = data?.[root!]
-  if (rest.length && rest[0] !== 'alt') {
-    const [rowId, column, ...tail] = rest
-    const row = Array.isArray(value) ? value.find((r) => (r as { _id?: string })._id === rowId) : undefined
-    value = (row as Record<string, unknown> | undefined)?.[column!]
-    if (tail[0] === 'alt') value = (value as { alt?: unknown } | undefined)?.alt
-  } else if (rest[0] === 'alt') {
-    value = (value as { alt?: unknown } | undefined)?.alt
-  }
-  return value
-}
-const storedAt = (path: string) => valueAt(props.entry?.data, path)
-const draftAt = (path: string) => valueAt(draft.value, path)
+const storedAt = (path: string) => leafValue(props.entry?.data, path)
+const draftAt = (path: string) => leafValue(draft.value, path)
 
 /** Translation state of one translatable leaf in the foreign language (top level or inside a list row). */
 function translation(path: string): 'missing' | 'stale' | 'fine' | undefined {
@@ -449,18 +426,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
             </PopoverContent>
           </Popover>
         </div>
-        <ToggleGroup
-          v-if="schema.locales.length > 1" type="single" variant="segmented" :model-value="locale" :aria-label="t('entry.language')"
-          @update:model-value="(next) => typeof next === 'string' && next && switchLanguage(next)"
-        >
-          <ToggleGroupItem v-for="l in schema.locales" :key="l" :value="l" :aria-disabled="dirty && l !== locale ? 'true' : undefined" class="px-4">
-            {{ languageName(l, uiLocale) }}
-            <template v-if="gapIn(l)">
-              <span class="size-1.5 rounded-full bg-warning" aria-hidden="true" />
-              <span class="sr-only">({{ t('basics.translation.incomplete') }})</span>
-            </template>
-          </ToggleGroupItem>
-        </ToggleGroup>
+        <LanguageSwitch v-if="schema.locales.length > 1" :locales="schema.locales" :model-value="locale" :gap="gapIn" :blocked="dirty" @update:model-value="switchLanguage" />
         <p v-if="foreign" class="text-sm text-muted-foreground">{{ t('entry.foreignHint') }}</p>
       </header>
 
