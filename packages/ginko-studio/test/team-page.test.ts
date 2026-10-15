@@ -124,7 +124,11 @@ test('a manager makes a backup-only key and sees it once', async () => {
   await flushPromises()
   expect(sent.get('release.createPushKey')).toEqual({ site: 'restaurant', label: 'GitHub Actions', scopes: ['export'] })
   expect(keys().get('pre').text()).toBe('ginko_restaurant_abcdefghijkmnpqrstuvwxyz23456789ab')
+  // The form went away with its focused button: the focus moves on to copying the key, then back to "Neuer Schlüssel".
+  expect(document.activeElement?.textContent?.trim()).toBe('Schlüssel kopieren')
   await keys().findAll('button').find((b) => b.text() === 'Fertig')!.trigger('click')
+  await flushPromises()
   expect(keys().find('pre').exists()).toBe(false)
+  expect(document.activeElement?.textContent?.trim()).toBe('Neuer Schlüssel')
   wrapper.unmount()
 })

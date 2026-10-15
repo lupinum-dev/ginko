@@ -55,6 +55,8 @@ async function saveName() {
   try {
     await setName({ name: name.value })
     show(t('sites.nameSaved'))
+    // Saved, "Speichern" goes away with the focus on it: the focus stays in the name field.
+    document.getElementById('own-name')?.focus()
   } catch (e) {
     problem.value = opErrorOf(e).message
   }

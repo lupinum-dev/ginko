@@ -182,6 +182,9 @@ function purposeOf(scopes: string[]): string | null {
 const keyForm = reactive<{ open: boolean; label: string; purpose: Purpose }>({ open: false, label: 'CI', purpose: 'release' })
 const keyFormError = ref<string | null>(null)
 const freshKey = ref<{ key: string; label: string } | null>(null)
+// The form and the new key's panel each replace the button that opened them: the focus follows to what comes next.
+const newKeyButton = ref<{ $el: HTMLElement } | null>(null)
+const copyKeyButton = ref<{ $el: HTMLElement } | null>(null)
 
 function openKeyForm() {
   keyForm.label = 'CI'
@@ -197,9 +200,19 @@ async function createKey() {
     const made = await createPushKey.mutate({ site: s.slug.value, label, scopes: [...SCOPES[keyForm.purpose]] })
     freshKey.value = { key: made.key, label }
     keyForm.open = false
+    await nextTick()
+    copyKeyButton.value?.$el.focus()
   } catch (error) {
     keyFormError.value = opErrorOf(error).message
   }
+}
+
+/** "Fertig" on the new key, or "Abbrechen" on the form: back to "Neuer Schlüssel". */
+async function closeKey() {
+  freshKey.value = null
+  keyForm.open = false
+  await nextTick()
+  newKeyButton.value?.$el.focus()
 }
 
 async function copyKey(key: string) {
@@ -345,8 +358,8 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
           <p class="rounded-md bg-warning/12 px-3 py-2.5 font-medium">{{ t('site.keys.once') }}</p>
           <pre class="m-0 select-all whitespace-pre-wrap rounded-md border bg-muted px-3 py-2.5 text-sm [overflow-wrap:anywhere]">{{ freshKey.key }}</pre>
           <div class="flex flex-wrap gap-2">
-            <Button type="button" size="sm" @click="copyKey(freshKey.key)">{{ t('site.keys.copy') }}</Button>
-            <Button type="button" variant="secondary" size="sm" @click="freshKey = null">{{ t('site.common.done') }}</Button>
+            <Button ref="copyKeyButton" type="button" size="sm" @click="copyKey(freshKey.key)">{{ t('site.keys.copy') }}</Button>
+            <Button type="button" variant="secondary" size="sm" @click="closeKey">{{ t('site.common.done') }}</Button>
           </div>
         </div>
 
@@ -371,7 +384,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
           </li>
         </ul>
 
-        <Button v-if="!keyForm.open && !freshKey" type="button" variant="secondary" class="justify-self-start" @click="openKeyForm">{{ t('site.keys.new') }}</Button>
+        <Button v-if="!keyForm.open && !freshKey" ref="newKeyButton" type="button" variant="secondary" class="justify-self-start" @click="openKeyForm">{{ t('site.keys.new') }}</Button>
         <form v-else-if="keyForm.open" class="grid gap-4 rounded-xl border bg-card p-4" @submit.prevent="createKey">
           <div class="grid gap-1.5">
             <div :class="CONTAINED_FIELD">
@@ -391,7 +404,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
           <p v-if="keyFormError" class="font-semibold text-destructive" role="alert">{{ keyFormError }}</p>
           <div class="flex flex-wrap gap-2">
             <Button type="submit" :disabled="createPushKey.pending.value">{{ t('site.keys.create') }}</Button>
-            <Button type="button" variant="ghost" :disabled="createPushKey.pending.value" @click="keyForm.open = false">{{ t('site.common.cancel') }}</Button>
+            <Button type="button" variant="ghost" :disabled="createPushKey.pending.value" @click="closeKey">{{ t('site.common.cancel') }}</Button>
           </div>
         </form>
       </section>
