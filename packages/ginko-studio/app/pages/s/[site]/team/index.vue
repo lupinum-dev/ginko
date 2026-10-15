@@ -37,6 +37,8 @@ const createPushKey = useConvexMutation(api.release.createPushKey)
 
 const roleLabel = (role: 'owner' | 'staff') => (role === 'owner' ? t('site.role.owner') : t('site.role.staff'))
 const noEmail = computed(() => t('site.team.noEmail'))
+/** A member in a sentence ("… hat keinen Zugang mehr."): the name the row shows, else the address, else "Ein Mitglied". */
+const personOf = (m: { name: string | null; email: string | null }) => m.name ?? m.email ?? t('who.member')
 
 /**
  * Staff rights as "Speisekarte: Preis ändern, Gericht hinzufügen", read as the invite mail and the invite page read
@@ -80,11 +82,11 @@ async function saveEditing() {
 const membersTitle = ref<HTMLElement | null>(null)
 const inviteButton = ref<{ $el: HTMLElement } | null>(null)
 
-async function confirmRemove(id: string, email: string) {
+async function confirmRemove(id: string, person: string) {
   try {
     await removeMember.mutate({ site: s.slug.value, member: id })
     confirming.value = null
-    show(t('site.team.memberRemoved', { email }))
+    show(t('site.team.memberRemoved', { email: person }))
     await nextTick()
     membersTitle.value?.focus()
   } catch (error) {
@@ -264,9 +266,9 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
             </template>
 
             <div v-else-if="confirming === m.id" class="grid gap-2 rounded-md bg-warning/12 px-3 py-2.5">
-              <p><I18nT k="site.team.losesAccess" :params="{ email: m.email ?? noEmail, site: s.site.value?.name ?? t('site.fallback.site') }"><template #email="{ text }"><strong>{{ text }}</strong></template></I18nT></p>
+              <p><I18nT k="site.team.losesAccess" :params="{ email: personOf(m), site: s.site.value?.name ?? t('site.fallback.site') }"><template #email="{ text }"><strong>{{ text }}</strong></template></I18nT></p>
               <template v-if="keysOf(m.id).length">
-                <p class="font-medium">{{ t('site.team.keysOfMember', { email: m.email ?? noEmail, count: keysOf(m.id).length }) }}</p>
+                <p class="font-medium">{{ t('site.team.keysOfMember', { email: personOf(m), count: keysOf(m.id).length }) }}</p>
                 <ul class="m-0 grid list-none gap-2 p-0">
                   <li v-for="k in keysOf(m.id)" :key="k.id" class="grid gap-1">
                     <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
@@ -282,7 +284,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
                 <p class="text-[13px] text-muted-foreground">{{ t('site.team.keysStay') }}</p>
               </template>
               <div class="flex flex-wrap gap-2">
-                <Button type="button" variant="destructive" size="sm" :disabled="memberBusy" @click="confirmRemove(m.id, m.email ?? noEmail)">{{ t('site.common.remove') }}</Button>
+                <Button type="button" variant="destructive" size="sm" :disabled="memberBusy" @click="confirmRemove(m.id, personOf(m))">{{ t('site.common.remove') }}</Button>
                 <Button type="button" variant="ghost" size="sm" :disabled="memberBusy" @click="confirming = null">{{ t('site.common.cancel') }}</Button>
               </div>
             </div>

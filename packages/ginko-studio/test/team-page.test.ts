@@ -19,7 +19,7 @@ vi.stubGlobal('useSiteData', async () => ({
   slug: ref('restaurant'), schema: ref({ timeZone: 'Europe/Vienna', bricks: { faq } }), site: ref({ name: 'Restaurant' }), main: ref('de'), bricks: ref([['faq', faq]]), isManager: ref(true), role: ref('owner'),
 }))
 const team = {
-  members: [] as { id: string; email: string; role: 'owner' | 'staff'; grants: string[]; you: boolean }[],
+  members: [] as { id: string; email: string | null; name?: string | null; role: 'owner' | 'staff'; grants: string[]; you: boolean }[],
   keys: [] as { id: string; label: string; scopes: string[]; by: { email: string }; member: null; createdAt: number; lastUsedAt: null }[],
   invites: [{ id: 'i1', email: 'anna@example.test', role: 'staff', grants: [] as string[], expiresAt: Date.UTC(2026, 9, 22) }],
 }
@@ -96,6 +96,27 @@ test('the own row is marked "Du" and offers no removal', async () => {
   expect(own!.text()).toContain('Du')
   expect(own!.findAll('button').map((b) => b.text())).not.toContain('Entfernen')
   expect(other!.findAll('button').map((b) => b.text())).toContain('Entfernen')
+  wrapper.unmount()
+})
+
+// Wrong behaviour caught: the row shows the name a person set, but the removal said "maria@example.test hat keinen
+// Zugang mehr.", and for a member without an address "Ohne E-Mail-Adresse hat keinen Zugang mehr."
+test.each([
+  { email: 'maria@example.test', name: 'Maria Huber', toast: 'Maria Huber hat keinen Zugang mehr.' },
+  { email: null, name: null, toast: 'Ein Mitglied hat keinen Zugang mehr.' },
+])('a removed member is named as their row names them ($toast)', async ({ email, name, toast }) => {
+  settles = true
+  team.members = [
+    { id: 'm1', email: 'wirtin@example.test', role: 'owner', grants: [], you: true },
+    { id: 'm2', email, name, role: 'staff', grants: [], you: false },
+  ]
+  const wrapper = mountPage()
+  await flushPromises()
+  const row = () => wrapper.findAll('section[aria-labelledby="members-title"] > ul > li')[1]!
+  await row().findAll('button').find((b) => b.text() === 'Entfernen')!.trigger('click')
+  await row().findAll('button').find((b) => b.text() === 'Entfernen')!.trigger('click')
+  await flushPromises()
+  expect(toasts).toEqual([toast])
   wrapper.unmount()
 })
 
