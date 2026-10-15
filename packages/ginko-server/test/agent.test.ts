@@ -171,17 +171,19 @@ describe('agent door: tool catalog', () => {
     expect(await names(s, await keyOf(s, 'owner'))).toContain('ginko_draft')
   })
 
-  // Wrong behaviour caught: the host cannot tell a read from a write, or a remove from an undoable change, so it asks for every
-  // call or for none; or a write offers no retry key.
-  it('marks reads read-only and only remove tasks destructive, and offers request_id on every write', async () => {
+  // Wrong behaviour caught: the host cannot tell a read from a write, or takes an overwrite or undo for an additive change
+  // and skips asking (MCP: destructiveHint false means only additive updates); or a write offers no retry key.
+  it('marks reads read-only, only create tasks and drafts additive, every other write destructive, and offers request_id on every write', async () => {
     const s = await setup()
+    await patchSchema(s, (schema) => { (schema.bricks.menu as { drafts?: boolean }).drafts = true })
     const tools = (await rpc(s, await keyOf(s, 'owner'), 'tools/list')).body.result.tools as { name: string; inputSchema: { properties: Record<string, unknown> }; annotations: Record<string, boolean> }[]
     const hints = Object.fromEntries(tools.map((t) => [t.name, t.annotations]))
     const read = { readOnlyHint: true, openWorldHint: false }
-    const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false }
+    const add = { readOnlyHint: false, destructiveHint: false, openWorldHint: false }
+    const write = { readOnlyHint: false, destructiveHint: true, openWorldHint: false }
     expect([hints.ginko_overview, hints.ginko_read, hints.ginko_search, hints.ginko_history, hints.ginko_version_at, hints.ginko_proposals]).toEqual(Array(6).fill(read))
-    expect([hints.ginko_undo, hints.ginko_revert, hints.ginko_translate, hints.task_menu_price, hints.task_notices_soldOut]).toEqual(Array(5).fill(write))
-    expect(hints.task_menu_remove).toEqual({ readOnlyHint: false, destructiveHint: true, openWorldHint: false })
+    expect([hints.task_notices_soldOut, hints.ginko_draft]).toEqual(Array(2).fill(add))
+    expect([hints.ginko_undo, hints.ginko_revert, hints.ginko_translate, hints.task_menu_price, hints.task_menu_remove]).toEqual(Array(5).fill(write))
     const retryKey = tools.filter((t) => 'request_id' in t.inputSchema.properties).map((t) => t.name)
     expect(retryKey.sort()).toEqual(tools.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name).sort())
   })

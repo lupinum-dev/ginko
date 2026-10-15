@@ -61,15 +61,16 @@ export const REQUEST_ID = {
 } as const
 
 /**
- * MCP tool hints (annotations) for the host, which may ask the person before a destructive call. Ginko's writes keep the
- * earlier state in the history, so ginko_undo takes them back; a remove takes content off the website.
+ * MCP tool hints (annotations) for the host, which may ask the person before a destructive call. In MCP,
+ * destructiveHint false means "only additive updates": that holds for a new entry or draft only. Any other write may
+ * overwrite a value or, as an undo of a create, remove an entry, as in the library's own door.
  */
 export interface ToolHints { readOnlyHint: boolean; destructiveHint?: boolean; openWorldHint: false }
 const READS: ToolHints = { readOnlyHint: true, openWorldHint: false }
-const WRITES: ToolHints = { readOnlyHint: false, destructiveHint: false, openWorldHint: false }
-const REMOVES: ToolHints = { readOnlyHint: false, destructiveHint: true, openWorldHint: false }
-/** The hints of a task tool: only a remove task is destructive. */
-export const taskHints = (task: Task): ToolHints => (task.kind === 'remove' ? REMOVES : WRITES)
+const ADDS: ToolHints = { readOnlyHint: false, destructiveHint: false, openWorldHint: false }
+const WRITES: ToolHints = { readOnlyHint: false, destructiveHint: true, openWorldHint: false }
+/** The hints of a task tool: only a create task is additive. */
+export const taskHints = (task: Task): ToolHints => (task.kind === 'create' ? ADDS : WRITES)
 
 export interface ToolDef { name: string; description: string; inputSchema: Json; annotations: ToolHints }
 
@@ -162,7 +163,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
       description: 'Creates a new entry as a draft. A draft is not on the website; the person publishes it in the platform. '
         + `Values as in the tasks: texts in ${main} as plain text, money in whole currency units (19.90), lists as a list of objects. Fields per brick: ${lines.join('; ')}.`,
       inputSchema: object({ brick: { type: 'string', enum: drafts }, fields: { type: 'object', description: 'Field name → value' }, request_id: REQUEST_ID }, ['brick', 'fields']),
-      annotations: WRITES,
+      annotations: ADDS,
     })
   }
   tools.push(
