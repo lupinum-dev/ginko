@@ -6,7 +6,7 @@ import type { FunctionReference } from 'convex/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, publicFunctions, setup } from './setup'
+import { errorOf, firstPage, opId, publicFunctions, setup } from './setup'
 
 type S = Awaited<ReturnType<typeof setup>>
 
@@ -57,7 +57,7 @@ const publicCalls: Call[] = [
   { fn: 'agent.keys', kind: 'query', args: () => SITE },
   { fn: 'agent.revokeKey', kind: 'mutation', args: () => ({ ...SITE, key: 'x' }) },
   { fn: 'agent.setKeyReview', kind: 'mutation', args: () => ({ ...SITE, key: 'x', review: false }) },
-  { fn: 'changes.list', kind: 'query', args: () => SITE },
+  { fn: 'changes.list', kind: 'query', args: () => ({ ...SITE, paginationOpts: firstPage }) },
   { fn: 'changes.get', kind: 'query', args: () => ({ ...SITE, change: 'x' }) },
   { fn: 'entries.save', kind: 'mutation', args: (s) => ({ ...SITE, opId: opId(), entry: s.entries['menu-saibling'], baseRev: 1, fields: { price: { amount: 1 } } }) },
   { fn: 'entries.undo', kind: 'mutation', args: () => ({ ...SITE, opId: opId(), change: 'x' }) },
@@ -452,8 +452,8 @@ const cross: CrossCall[] = [
   { fn: 'entries.titles', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
   { fn: 'entries.ofBricks', kind: 'query', args: (site) => ({ site, bricks: ['menu', 'hours'] }) },
   { fn: 'search.studio', kind: 'query', args: (site) => ({ site, query: 'Saibling' }) },
-  { fn: 'changes.list', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
-  { fn: 'changes.list', kind: 'query', args: (site) => ({ site, by: 'me' }) },
+  { fn: 'changes.list', kind: 'query', args: (site, f) => ({ site, paginationOpts: firstPage, entry: f.entry }) },
+  { fn: 'changes.list', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage, by: 'me' }) },
   { fn: 'changes.get', kind: 'query', args: (site, f) => ({ site, change: f.change }) },
   { fn: 'entries.versionAt', kind: 'query', args: (site, f) => ({ site, entry: f.entry, change: f.change }) },
   { fn: 'entries.revert', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, change: f.change }) },

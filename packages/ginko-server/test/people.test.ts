@@ -3,7 +3,7 @@ import { sha256 } from '@lupinum/ginko/internal'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import betterAuthSchema from '../convex/betterAuth/schema'
 import { api, components, internal } from '../convex/_generated/api'
-import { cookGrants, errorOf, opId, people, setup } from './setup'
+import { cookGrants, errorOf, firstPage, opId, people, setup } from './setup'
 
 beforeEach(() => {
   vi.stubEnv('GINKO_MAIL', 'outbox')
@@ -218,7 +218,7 @@ describe('sites and changes reads', () => {
 
   it('changes.list of another site is FORBIDDEN', async () => {
     const { as } = await setup()
-    expect((await errorOf(as.stranger.query(api.changes.list, { site: 'restaurant' }))).code).toBe('FORBIDDEN')
+    expect((await errorOf(as.stranger.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage }))).code).toBe('FORBIDDEN')
   })
 })
 
@@ -251,7 +251,7 @@ describe('changes.list names who changed', () => {
     const entry = entries['menu-saibling']!
     await as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1450 } }, sentence: 'Preis' })
     await as.admin.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 2, fields: { price: { amount: 1500 } }, sentence: 'Preis' })
-    const { page } = await as.owner.query(api.changes.list, { site: 'restaurant' })
+    const { page } = await as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })
     expect(page.slice(0, 2).map((c) => c.who)).toEqual([{ kind: 'platform' }, { email: 'koch@example.com' }])
   })
 })
@@ -270,7 +270,7 @@ describe('changes.list who and paging (Phase 9: F08, F09, F16, F17)', () => {
       const cook = (await ctx.db.query('memberships').collect()).find((m) => m.user === people.cook)!
       await ctx.db.delete(cook._id)
     })
-    const { page } = await s.as.owner.query(api.changes.list, { site: 'restaurant' })
+    const { page } = await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })
     expect(page.map((c) => c.who)).toEqual([{ kind: 'platform' }, { kind: 'former' }])
   })
 
@@ -278,7 +278,7 @@ describe('changes.list who and paging (Phase 9: F08, F09, F16, F17)', () => {
     const s = await setup()
     await save(s, 'owner', 1)
     await save(s, 'cook', 2)
-    const whoFor = async (person: 'owner' | 'cook' | 'admin') => (await s.as[person].query(api.changes.list, { site: 'restaurant' })).page.map((c) => c.who)
+    const whoFor = async (person: 'owner' | 'cook' | 'admin') => (await s.as[person].query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })).page.map((c) => c.who)
     expect(await whoFor('cook')).toEqual([{ email: 'koch@example.com' }, { kind: 'member' }])
     expect(await whoFor('owner')).toEqual([{ email: 'koch@example.com' }, { email: 'wirtin@example.com' }])
     expect(await whoFor('admin')).toEqual([{ email: 'koch@example.com' }, { email: 'wirtin@example.com' }])
@@ -286,7 +286,7 @@ describe('changes.list who and paging (Phase 9: F08, F09, F16, F17)', () => {
 
   it('an invalid cursor is INVALID, not a raw error', async () => {
     const { as } = await setup()
-    expect((await errorOf(as.owner.query(api.changes.list, { site: 'restaurant', cursor: 'garbage' }))).code).toBe('INVALID')
+    expect((await errorOf(as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: { numItems: 50, cursor: 'garbage' } }))).code).toBe('INVALID')
   })
 
   it('a page ends after about 2 MiB, hands out the cursor for the rest, and carries no before/after blobs', async () => {
@@ -299,14 +299,14 @@ describe('changes.list who and paging (Phase 9: F08, F09, F16, F17)', () => {
       rev = saved.rev
     }
     const seen: string[] = []
-    let cursor: string | undefined
+    let cursor: string | null = null
     let first: Awaited<ReturnType<typeof listPage>> | undefined
-    const listPage = (c?: string) => s.as.owner.query(api.changes.list, { site: 'restaurant', cursor: c })
+    const listPage = (c: string | null) => s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: { numItems: 50, cursor: c } })
     do {
       const page = await listPage(cursor)
       first ??= page
       seen.push(...page.page.map((c) => c._id))
-      cursor = page.isDone ? undefined : page.continueCursor
+      cursor = page.isDone ? null : page.continueCursor
     } while (cursor)
     expect(first.page.length).toBeLessThan(15)
     expect(first.isDone).toBe(false)

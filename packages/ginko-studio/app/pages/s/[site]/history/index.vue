@@ -1,7 +1,6 @@
 <!-- Verlauf (UI.md 7): every change of the site, newest first, each with Rückgängig where it still works.
-     Older pages load on demand; each loaded page stays live (see ChangeRows). -->
+     Older pages load on demand; every loaded page stays live (see ChangeRows). -->
 <script setup lang="ts">
-import { Button } from '@studio/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
 definePageMeta({ layout: 'site' })
 
@@ -20,23 +19,6 @@ const filters = computed<{ id: Filter; label: string }[]>(() => [
   { id: 'ai', label: t('history.filter.ai') },
   ...(entry.value ? [{ id: 'entry' as const, label: t('history.filter.entry') }] : []),
 ])
-function pick(next: Filter) {
-  filter.value = next
-  cursors.value = [undefined]
-  ends.value = {}
-}
-
-// One cursor per loaded page; the first page has none. ends[i] is the cursor of the page after page i, null at the end.
-const cursors = ref<(string | undefined)[]>([undefined])
-const ends = ref<Record<number, string | null>>({})
-const olderCursor = computed(() => ends.value[cursors.value.length - 1] ?? null)
-
-function setNext(index: number, cursor: string | null) {
-  ends.value[index] = cursor
-}
-function loadOlder() {
-  if (olderCursor.value) cursors.value.push(olderCursor.value)
-}
 </script>
 
 <template>
@@ -47,26 +29,19 @@ function loadOlder() {
     <template v-if="s.schema.value">
       <ToggleGroup
         type="single" variant="segmented" class="mb-4 max-w-full flex-wrap" :aria-label="t('history.filter.label')"
-        :model-value="filter" @update:model-value="(next) => next && pick(next as Filter)"
+        :model-value="filter" @update:model-value="(next) => { if (next) filter = next as Filter }"
       >
         <ToggleGroupItem v-for="f in filters" :key="f.id" :value="f.id" class="px-3">{{ f.label }}</ToggleGroupItem>
       </ToggleGroup>
       <OwnProposals :site="s.slug.value" :schema="s.schema.value" :filter="filter" :entry="entry" />
       <ChangeRows
-        v-for="(cursor, index) in cursors"
-        :key="`${filter}-${index}`"
         :site="s.slug.value"
-        :cursor="cursor"
         :schema="s.schema.value"
         :manager="s.isManager.value"
         :grants="s.grants.value"
         :filter="filter"
         :entry="entry"
-        @next="(next) => setNext(index, next)"
       />
-      <div v-if="olderCursor" class="pt-4">
-        <Button type="button" variant="outline" @click="loadOlder">{{ t('site.history.loadOlder') }}</Button>
-      </div>
     </template>
   </div>
 </template>

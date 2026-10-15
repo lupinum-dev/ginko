@@ -1,6 +1,7 @@
 // The change log of a site, newest first (SPEC 3). Any admin or member of the site may read it (SPEC 2.7).
 import type { Json } from '@lupinum/ginko'
 import type { Schema } from '@lupinum/ginko/internal'
+import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { query, type QueryCtx } from './_generated/server'
@@ -56,13 +57,14 @@ async function undoBlocks(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]): 
 }
 
 /**
- * `entry`, `brick` and `by` narrow the list on the server, so a page is 50 rows of the filter and the cursor
- * walks on in it; without them it is the whole site. `by: 'me'` is what the signed-in person did (also
+ * A paginated query (`useConvexPaginatedQuery` in the Studio): a page holds at most 50 rows. `entry`, `brick` and
+ * `by` narrow the list on the server, so a page is rows of the filter and the cursor walks on in it; without them
+ * it is the whole site. `by: 'me'` is what the signed-in person did (also
  * through their own agent key), `by: 'ai'` everything done through the agent door.
  */
 export const list = query({
   args: {
-    site: v.string(), cursor: v.optional(v.string()), entry: v.optional(v.string()), brick: v.optional(v.string()),
+    site: v.string(), paginationOpts: paginationOptsValidator, entry: v.optional(v.string()), brick: v.optional(v.string()),
     by: v.optional(v.union(v.literal('me'), v.literal('ai'))),
   },
   handler: async (ctx, args) => {
@@ -89,12 +91,13 @@ export const list = query({
         : brick !== undefined
           ? ctx.db.query('changes').withIndex('by_site_brick_at', (q) => q.eq('site', siteId).eq('brick', brick)).order('desc')
           : ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', siteId)).order('desc')
+    const opts = args.paginationOpts
     let result
     try {
-      result = await rows.paginate({ cursor: args.cursor ?? null, numItems: PAGE_SIZE, maximumBytesRead: PAGE_BYTES })
+      result = await rows.paginate({ ...opts, numItems: Math.min(opts.numItems, PAGE_SIZE), maximumBytesRead: PAGE_BYTES })
     } catch (error) {
       // The cursor comes from the client; the database refuses one it did not hand out.
-      if (args.cursor === undefined) throw error
+      if (opts.cursor === null) throw error
       fail('INVALID', 'errors.pageMarkerInvalid')
     }
     return { ...result, page: await summaries(ctx, actor, result.page) }

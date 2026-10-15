@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Schema } from '@lupinum/ginko/internal'
 import type { Id } from '../convex/_generated/dataModel'
-import { opId, setup, upload } from './setup'
+import { firstPage, opId, setup, upload } from './setup'
 
 type Setup = Awaited<ReturnType<typeof setup>>
 type ToolAnswer = { content: { type: 'text'; text: string }[]; isError: boolean }
@@ -89,7 +89,7 @@ describe('agent door', () => {
     ])
     expect(entry!.data.price).toEqual({ amount: 1990 })
     expect(change).toMatchObject({ via: 'agent', actor: 'u-wirtin' })
-    const listed = await s.as.owner.query(api.changes.list, { site: 'restaurant' })
+    const listed = await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })
     expect(listed.page[0]).toMatchObject({ who: { email: 'wirtin@example.com' }, agent: 'Claude Code' })
   })
 

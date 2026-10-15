@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import { historyText, type HistoryMsg } from '../convex/lib/history'
-import { errorOf, opId, setup } from './setup'
+import { errorOf, firstPage, opId, setup } from './setup'
 
 type Backend = Awaited<ReturnType<typeof setup>>
 type Diff = { field: string; label: string; kind: string; before: Json; after: Json; locales?: { locale: string; before: Json; after: Json }[]; rows?: { id: string; change: string; fields?: string[] }[] }
@@ -68,7 +68,7 @@ describe('changes.list filters', () => {
     const frittaten = await save(s, s.entries['menu-frittaten']!, { price: { amount: 900 } })
     await save(s, s.entries.lunch!, { note: { de: 'Heute Suppe' } })
     const ids = async (extra: { entry?: string; brick?: string }) =>
-      ((await s.as.owner.query(api.changes.list, { site: 'restaurant', ...extra })).page as { _id: string }[]).map((c) => c._id)
+      ((await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage, ...extra })).page as { _id: string }[]).map((c) => c._id)
     expect(await ids({})).toHaveLength(3)
     expect(await ids({ entry: s.entries['menu-saibling']! })).toEqual([saibling])
     expect((await ids({ brick: 'menu' })).sort()).toEqual([saibling, frittaten].sort())
@@ -93,7 +93,7 @@ describe('changes.list filters', () => {
     expect(((await draft.json()) as { result: { isError: boolean } }).result.isError).toBe(false)
     /** `actor:brick:via` of each change of the page, sorted. */
     const rows = async (person: 'owner' | 'cook', extra: { by?: 'me' | 'ai'; brick?: string }) =>
-      ((await s.as[person].query(api.changes.list, { site: 'restaurant', ...extra })).page as { actor: string; brick: string; via: string }[])
+      ((await s.as[person].query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage, ...extra })).page as { actor: string; brick: string; via: string }[])
         .map((c) => `${c.actor}:${c.brick}:${c.via ?? 'ui'}`).sort()
     expect(await rows('owner', { by: 'me' })).toEqual(['u-wirtin:events:agent', 'u-wirtin:menu:ui'])
     expect(await rows('owner', { by: 'ai' })).toEqual(['u-wirtin:events:agent'])
@@ -106,7 +106,7 @@ describe('changes.list filters', () => {
     const s = await setup()
     const c1 = await save(s, s.entries['menu-saibling']!, { price: { amount: 1450 } })
     const c2 = await save(s, s.entries['menu-saibling']!, { price: { amount: 1500 } })
-    const page = (await s.as.owner.query(api.changes.list, { site: 'restaurant', entry: s.entries['menu-saibling']! })).page
+    const page = (await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage, entry: s.entries['menu-saibling']! })).page
     expect(page.map((r) => [r._id, r.undoBlocked])).toEqual([[c2, null], [c1, 'changed']])
   })
 })

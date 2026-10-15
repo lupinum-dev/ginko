@@ -5,7 +5,7 @@ import type { Schema } from '@lupinum/ginko/internal'
 import type { FunctionReference } from 'convex/server'
 import { describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
-import { opId, publicFunctions, setup, upload } from './setup'
+import { firstPage, opId, publicFunctions, setup, upload } from './setup'
 
 type S = Awaited<ReturnType<typeof setup>>
 
@@ -50,8 +50,8 @@ type Fx = Awaited<ReturnType<typeof fixtures>>
 type Call = { fn: string; kind: 'query' | 'mutation' | 'action'; args: (site: string, f: Fx) => Record<string, unknown> }
 const o = () => opId()
 const calls: Call[] = [
-  { fn: 'changes.list', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
-  { fn: 'changes.list#nofilter', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'changes.list', kind: 'query', args: (site, f) => ({ site, paginationOpts: firstPage, entry: f.entry }) },
+  { fn: 'changes.list#nofilter', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage }) },
   { fn: 'changes.get', kind: 'query', args: (site, f) => ({ site, change: f.change }) },
   { fn: 'agent.createKey', kind: 'mutation', args: (site) => ({ site, label: 'x' }) },
   { fn: 'agent.keys', kind: 'query', args: (site) => ({ site }) },

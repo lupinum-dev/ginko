@@ -1,5 +1,5 @@
-<!-- One page of the change log (UI.md 7). Each page is its own live query, so an undo on an older
-     page updates its row at once. Rückgängig shows only on saves that are not undone yet, and for
+<!-- The change log (UI.md 7), one paginated query: older pages load on demand and every loaded page
+     stays live, so an undo on an older page updates its row at once. Rückgängig shows only on saves that are not undone yet, and for
      staff only when one of their granted edit tasks covers every field of the change. A save the
      server would refuse to undo (`undoBlocked`: saved again, removed, fields restructured) says why
      instead. -->
@@ -14,7 +14,6 @@ import { Button } from '@studio/components/ui/button'
 
 const props = defineProps<{
   site: string
-  cursor: string | undefined
   schema: Schema
   manager: boolean
   grants: ReadonlySet<string>
@@ -22,21 +21,17 @@ const props = defineProps<{
   filter?: 'all' | 'mine' | 'ai' | 'entry'
   entry?: string
 }>()
-const emit = defineEmits<{ next: [cursor: string | null] }>()
 const { t, format } = useI18n()
 
+const PAGE = 50
 const by = (): 'me' | 'ai' | undefined => (props.filter === 'mine' ? 'me' : props.filter === 'ai' ? 'ai' : undefined)
-const page = useConvexQuery(api.changes.list, () => ({ site: props.site, cursor: props.cursor, entry: props.filter === 'entry' ? props.entry : undefined, by: by() }))
+// A new filter starts the list again by itself.
+const list = useConvexPaginatedQuery(api.changes.list, () => ({ site: props.site, entry: props.filter === 'entry' ? props.entry : undefined, by: by() }), { initialNumItems: PAGE })
 const ops = useOps(computed(() => props.site))
 
-type Change = NonNullable<typeof page.data.value>['page'][number]
+type Change = NonNullable<typeof list.data.value>[number]
 
-const rows = computed<Change[]>(() => page.data.value?.page ?? [])
-
-// The cursor of the next older page; null once this page is the end of the list.
-watchEffect(() => {
-  if (page.data.value) emit('next', page.data.value.isDone ? null : page.data.value.continueCursor)
-})
+const rows = computed<readonly Change[]>(() => list.data.value ?? [])
 
 const now = ref(Date.now())
 let timer: ReturnType<typeof setInterval> | undefined
@@ -115,8 +110,8 @@ async function undo(change: Change) {
 </script>
 
 <template>
-  <div class="mb-3 last:mb-0">
-    <p v-if="page.error.value && !rows.length" class="font-semibold text-destructive" role="alert">{{ t('history.loadFailed') }}</p>
+  <div>
+    <p v-if="list.error.value" class="mb-3 font-semibold text-destructive" role="alert">{{ t('history.loadFailed') }}</p>
     <ol v-if="rows.length" class="m-0 list-none overflow-hidden rounded-xl border p-0">
       <li v-for="change in rows" :key="change._id" class="grid gap-2 border-b px-4 py-3 last:border-b-0">
         <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -162,6 +157,9 @@ async function undo(change: Change) {
         <ChangeDetail v-if="showing.has(change._id)" :site="site" :change="change._id" :brick="change.brick" :schema="schema" />
       </li>
     </ol>
-    <p v-else-if="!cursor && page.status.value === 'success'" class="py-6 text-muted-foreground">{{ filter && filter !== 'all' ? t('history.noMatches') : t('entry.changes.empty') }}</p>
+    <p v-else-if="list.status.value === 'success'" class="py-6 text-muted-foreground">{{ filter && filter !== 'all' ? t('history.noMatches') : t('entry.changes.empty') }}</p>
+    <div v-if="list.canLoadMore.value || list.isLoadingMore.value" class="pt-4">
+      <Button type="button" variant="outline" :disabled="!list.canLoadMore.value" @click="list.loadMore(PAGE)">{{ t('site.history.loadOlder') }}</Button>
+    </div>
   </div>
 </template>

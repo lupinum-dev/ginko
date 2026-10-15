@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, components, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import schema from '../convex/schema'
-import { errorOf, opId, setup, upload } from './setup'
+import { errorOf, firstPage, opId, setup, upload } from './setup'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -40,7 +40,7 @@ describe('delete account', () => {
     await s.as.cook.mutation(api.account.setLocale, { locale: 'en' })
     await s.as.cook.mutation(api.views.save, { site: 'restaurant', brick: 'menu', name: 'Meine Ansicht', query: {} })
     await s.t.run((ctx) => ctx.db.insert('invites', { site: s.other, email: 'koch@example.com', role: 'staff', grants: [], tokenHash: 'x', invitedBy: 'u-fremd', expiresAt: Date.now() + DAY }))
-    const whoBefore = async () => ((await s.as.owner.query(api.changes.list, { site: 'restaurant', by: undefined })).page.find((c) => c.actor === 'u-koch'))!.who
+    const whoBefore = async () => ((await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage, by: undefined })).page.find((c) => c.actor === 'u-koch'))!.who
     expect(await whoBefore()).toEqual({ email: 'koch@example.com' })
 
     await s.as.cook.mutation(api.account.deleteAccount, {})

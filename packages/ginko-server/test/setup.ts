@@ -136,6 +136,9 @@ export async function revokeSession(t: Backend, person: Person) {
   await t.mutation(components.betterAuth.adapter.deleteOne, { model: 'session', where: [{ field: 'id', value: sessionIdOf(people[person]) }] })
 }
 
+/** `paginationOpts` of a paginated query's first page, as `useConvexPaginatedQuery` asks for it. */
+export const firstPage = { numItems: 50, cursor: null }
+
 /** A fresh op id per user action. */
 export const opId = () => crypto.randomUUID()
 
