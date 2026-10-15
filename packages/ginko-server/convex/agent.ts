@@ -12,7 +12,7 @@ import { usageAs } from './files'
 import { ownAs } from './proposals'
 import { actorFor, entryOf, fail, idempotent, memberOf, type Actor } from './lib/access'
 import { searchEntries as searchAll, searchTexts } from './lib/search'
-import { fixedTools, HISTORY_MAX, PROPOSE, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskTools, describeTask, draftBricks, type TaskTool } from './lib/agentTools'
+import { fixedTools, HISTORY_MAX, PROPOSE, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, taskTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
 import type { Data } from './lib/content'
 import { splitFallback } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
@@ -127,16 +127,19 @@ async function inputSchemaOf(ctx: QueryCtx, actor: Actor, tool: TaskTool): Promi
   return taskInputSchema(schema.bricks[tool.brick]!, tool.task, { mainLocale: schema.locales[0]!, currency: schema.currency, prefill })
 }
 
-/** tools/list: the fixed tools and one tool per task the person may run; every task tool may carry `propose`. */
+/** tools/list: the fixed tools and one tool per task the person may run; every task tool may carry `propose` and `request_id`. */
 export const tools = internalQuery({
   args: { key: v.id('agentKeys') },
   handler: async (ctx, { key }) => {
     const actor = await actorOrFail(ctx, key)
     const schema = actor.site.schema as Schema
-    const out: { name: string; description: string; inputSchema: Json }[] = fixedTools(actor)
+    const out: ToolDef[] = fixedTools(actor)
     for (const tool of taskTools(actor)) {
       const input = await inputSchemaOf(ctx, actor, tool)
-      out.push({ name: tool.name, description: describeTask(schema.bricks[tool.brick]!, tool.task, schema.locales[0]!), inputSchema: { ...input, properties: { ...input.properties, propose: PROPOSE, request_id: REQUEST_ID } } as unknown as Json })
+      out.push({
+        name: tool.name, description: describeTask(schema.bricks[tool.brick]!, tool.task, schema.locales[0]!),
+        inputSchema: { ...input, properties: { ...input.properties, propose: PROPOSE, request_id: REQUEST_ID } } as unknown as Json, annotations: taskHints(tool.task),
+      })
     }
     return out
   },

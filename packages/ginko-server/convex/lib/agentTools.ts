@@ -60,7 +60,18 @@ export const REQUEST_ID = {
   description: 'Optional. Send the same value when you retry this call, so it runs only once. Letters, digits, _ and -, at most 60.',
 } as const
 
-export interface ToolDef { name: string; description: string; inputSchema: Json }
+/**
+ * MCP tool hints (annotations) for the host, which may ask the person before a destructive call. Ginko's writes keep the
+ * earlier state in the history, so ginko_undo takes them back; a remove takes content off the website.
+ */
+export interface ToolHints { readOnlyHint: boolean; destructiveHint?: boolean; openWorldHint: false }
+const READS: ToolHints = { readOnlyHint: true, openWorldHint: false }
+const WRITES: ToolHints = { readOnlyHint: false, destructiveHint: false, openWorldHint: false }
+const REMOVES: ToolHints = { readOnlyHint: false, destructiveHint: true, openWorldHint: false }
+/** The hints of a task tool: only a remove task is destructive. */
+export const taskHints = (task: Task): ToolHints => (task.kind === 'remove' ? REMOVES : WRITES)
+
+export interface ToolDef { name: string; description: string; inputSchema: Json; annotations: ToolHints }
 
 const object = (properties: Record<string, Json>, required: string[] = []): Json => ({ type: 'object', properties, required, additionalProperties: false })
 
@@ -76,6 +87,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
       name: 'ginko_overview',
       description: 'Overview: the website, its languages, its bricks (content areas) and the tasks you may run. Also says whether your changes wait for approval before they go live.',
       inputSchema: object({}),
+      annotations: READS,
     },
     {
       name: 'ginko_read',
@@ -83,6 +95,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
         + 'For another language, "fallback" lists the texts that are missing or outdated, and "stale" the outdated translations among them. '
         + 'By default, an entry with its own page is left out of a language until its required texts are translated there; read the main language to find it.',
       inputSchema: object({ brick: { type: 'string', description: 'Key of the brick (from ginko_overview)' }, locale: { type: 'string', description: `Language; default is the main language (${main})` } }, ['brick']),
+      annotations: READS,
     },
     {
       name: 'ginko_search',
@@ -92,21 +105,25 @@ export function fixedTools(actor: Actor): ToolDef[] {
         brick: { type: 'string', description: 'Search only in this brick' },
         limit: { type: 'integer', minimum: 1, maximum: SEARCH_MAX, description: `At most this many hits, default 10` },
       }, ['query']),
+      annotations: READS,
     },
     {
       name: 'ginko_history',
       description: 'The latest changes to the website, newest first, with the ID that ginko_undo, ginko_version_at and ginko_revert take.',
       inputSchema: object({ limit: { type: 'integer', minimum: 1, maximum: HISTORY_MAX } }),
+      annotations: READS,
     },
     {
       name: 'ginko_undo',
       description: 'Takes back one change, like the undo button in the platform. The ID comes from the answer of a task or from ginko_history.',
       inputSchema: object({ change, request_id: REQUEST_ID }, ['change']),
+      annotations: WRITES,
     },
     {
       name: 'ginko_version_at',
       description: 'Shows how an entry looked right after an earlier change (fields in storage format). Changes nothing. "fields" names the fields that changed since.',
       inputSchema: object({ entry, change }, ['entry', 'change']),
+      annotations: READS,
     },
   ]
   if (mayEdit(actor)) {
@@ -114,6 +131,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
       name: 'ginko_revert',
       description: 'Sets an entry back to its state after an earlier change (only the fields that changed since). This is a new change and ginko_undo can take it back. Look at ginko_version_at first.',
       inputSchema: object({ entry, change, propose: PROPOSE, request_id: REQUEST_ID }, ['entry', 'change']),
+      annotations: WRITES,
     })
     if (foreign.length) {
       tools.push({
@@ -128,6 +146,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
           propose: PROPOSE,
           request_id: REQUEST_ID,
         }, ['entry', 'locale']),
+        annotations: WRITES,
       })
     }
   }
@@ -143,6 +162,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
       description: 'Creates a new entry as a draft. A draft is not on the website; the person publishes it in the platform. '
         + `Values as in the tasks: texts in ${main} as plain text, money in whole currency units (19.90), lists as a list of objects. Fields per brick: ${lines.join('; ')}.`,
       inputSchema: object({ brick: { type: 'string', enum: drafts }, fields: { type: 'object', description: 'Field name → value' }, request_id: REQUEST_ID }, ['brick', 'fields']),
+      annotations: WRITES,
     })
   }
   tools.push(
@@ -151,16 +171,19 @@ export function fixedTools(actor: Actor): ToolDef[] {
       description: 'Shows where a file (image or PDF) is used: entry, brick, label, paths, and whether an image lacks its description. '
         + 'A Markdown text names a file by its ID as $file.<ID>, e.g. ![Short description]($file.<ID>) for an image; never write a storage address.',
       inputSchema: object({ file: { type: 'string', description: 'ID of the file' } }, ['file']),
+      annotations: READS,
     },
     {
       name: 'ginko_check_links',
       description: "Checks the links in the texts of the website: broken internal links and unsafe links. Returns entry, field, link and reason. Ginko does not know the files in the website's public folder; links to them are reported as unknown.",
       inputSchema: object({ brick: { type: 'string', description: 'Report only this brick' } }),
+      annotations: READS,
     },
     {
       name: 'ginko_proposals',
       description: 'Your own proposals with their state and reason (open, scheduled, applied, rejected, stale, withdrawn). Use it to tell the person what still waits for approval.',
       inputSchema: object({ status: { type: 'string', enum: ['open', 'scheduled', 'applied', 'rejected', 'stale', 'withdrawn'] } }),
+      annotations: READS,
     },
   )
   return tools
