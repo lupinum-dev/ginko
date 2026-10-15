@@ -104,7 +104,7 @@
     "proposalTooLarge": "This proposal is too large.",
     "tooManyOpenProposals": "{openMax} proposals are already waiting for approval. Please wait until some are reviewed.",
     "tooManyInvites": "Too many invitations in a short time: at most {max} per hour. Please send again later.",
-    "tooManyUploads": "You have uploaded a lot of files in the last hour. Please try again later.",
+    "tooManyUploads": "You have uploaded a lot of files in a short time. Please try again later.",
     "fileNoLongerAvailable": "A file is not available (anymore). Please upload it again.",
     "fileNotImage": "This file is not an image.",
     "grantNotFound": "The task “{grant}” does not exist.",

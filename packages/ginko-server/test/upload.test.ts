@@ -54,7 +54,7 @@ describe('uploads.prepare and POST /upload', () => {
     await s.t.run((ctx) => ctx.db.insert('memberships', { site: s.other, user: people.owner, role: 'owner', grants: [] }))
     const prepare = (who: 'owner' | 'cook', site = 'restaurant') => s.as[who].mutation(api.uploads.prepare, { site })
     for (let i = 0; i < 200; i++) await prepare('owner')
-    expect(await errorOf(prepare('owner'))).toMatchObject({ code: 'RATE_LIMITED', message: 'Du hast in der letzten Stunde sehr viele Dateien hochgeladen. Versuche es später noch einmal.' })
+    expect(await errorOf(prepare('owner'))).toMatchObject({ code: 'RATE_LIMITED', message: 'Du hast in kurzer Zeit sehr viele Dateien hochgeladen. Versuche es später noch einmal.' })
     expect(await prepare('owner', 'andere')).toMatchObject({ ticket: expect.any(String) })
     expect(await prepare('cook')).toMatchObject({ ticket: expect.any(String) })
   })
