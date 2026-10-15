@@ -65,7 +65,8 @@ test('a row\'s "Entfernen" stays disabled while its removal runs, also when anot
 
 const DAY = 86_400_000
 // Wrong behaviour caught: a timed collection of 450 events listed every one, expired ones too: a page of 32,000 px; or
-// past 50 expired entries the oldest showed and the rest could not be reached (volume-11).
+// past 50 expired entries the oldest showed and the rest could not be reached (volume-11); or focus fell to <body>
+// when the button went away.
 test.each([
   // current, expired, rows before / after "Abgelaufene anzeigen", area link before / after, first expired row shown
   [52, 2, 50, 52, true, true, 'Alt 0'],
@@ -75,6 +76,7 @@ test.each([
   const ended = (i: number) => new Date(Date.UTC(2026, 5, 1) + i * DAY).toISOString().slice(0, 10)
   listed = [...Array.from({ length: current }, (_, i) => notice(`n${i}`, `Hinweis ${i}`)), ...Array.from({ length: expiredCount }, (_, i) => notice(`x${i}`, `Alt ${i}`, ended(i)))]
   const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
+    attachTo: document.body,
     global: { stubs: { TaskSheet: true, PickSheet: true, I18nT: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
   })
   await flushPromises()
@@ -84,4 +86,8 @@ test.each([
   await wrapper.findAll('button').find((b) => b.text() === `Abgelaufene anzeigen (${expiredCount})`)!.trigger('click')
   expect([titles().length, allIn().exists() && allIn().text(), titles()[Math.min(current, 50)]]).toEqual([after, linkAfter && 'Alle in „Hinweise“ ansehen', firstExpired])
   expect(wrapper.findAll('button').some((b) => b.text().startsWith('Abgelaufene anzeigen'))).toBe(false)
+  // These rows open nothing (no edit task, not a manager), so the list takes the focus.
+  await nextTick()
+  expect(document.activeElement).toBe(wrapper.get('ul').element)
+  wrapper.unmount()
 })

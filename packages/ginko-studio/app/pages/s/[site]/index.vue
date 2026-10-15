@@ -102,6 +102,20 @@ const listings = computed(() => Object.fromEntries(sections.value.map((sec) => {
   }]
 })))
 
+/**
+ * Shows a section's expired entries. The button goes away, so focus moves to where they start: the first expired
+ * row when it opens something, else the list.
+ */
+function showExpired(key: string) {
+  expiredShown.add(key)
+  nextTick(() => {
+    const list = document.getElementById(`b-${key}`)?.closest('section')?.querySelector('ul')
+    const row = list?.querySelector('li[data-dim] > :first-child')
+    if (row instanceof HTMLButtonElement || row instanceof HTMLAnchorElement) row.focus()
+    else list?.focus()
+  })
+}
+
 /** "until 8.10." / the date range / "expired" for a timed entry. */
 function timing(brick: CollectionBrick, entry: Entry): { text: string; dim: boolean } {
   const vis = brick.visible
@@ -293,7 +307,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
         </p>
       </template>
 
-      <ul v-if="listings[sec.key]?.rows.length" class="m-0 list-none overflow-hidden rounded-xl border p-0">
+      <ul v-if="listings[sec.key]?.rows.length" tabindex="-1" class="m-0 list-none overflow-hidden rounded-xl border p-0">
         <li v-for="{ e, target } in listings[sec.key]!.rows" :key="e._id" class="group/row flex items-center gap-2 border-b px-4 py-3 last:border-b-0" :data-dim="timing(sec.brick as CollectionBrick, e).dim || undefined">
           <button v-if="target && 'task' in target" type="button" :class="rowClass(true)" @click="open = { key: sec.key, task: target.task, entryId: e._id }">
             <span class="font-medium group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground">{{ titleOf(sec.brick, e.data, s.main.value) }}</span>
@@ -313,7 +327,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       <p v-else-if="shownRead.data.value && isTimed(sec.brick)" class="text-muted-foreground">{{ t('site.quick.nothingNow') }}</p>
       <div v-if="listings[sec.key]?.more || listings[sec.key]?.hiddenExpired" class="flex flex-wrap items-center gap-3">
         <Button v-if="listings[sec.key]!.more" as-child variant="outline"><NuxtLink :to="`/s/${s.slug.value}/all/${sec.key}`">{{ t('site.quick.allIn', { brick: shownLabel(sec.brick.label, s.main.value) }) }}</NuxtLink></Button>
-        <Button v-if="listings[sec.key]!.hiddenExpired" type="button" variant="outline" @click="expiredShown.add(sec.key)">{{ t('site.quick.showExpired', { count: listings[sec.key]!.hiddenExpired }) }}</Button>
+        <Button v-if="listings[sec.key]!.hiddenExpired" type="button" variant="outline" @click="showExpired(sec.key)">{{ t('site.quick.showExpired', { count: listings[sec.key]!.hiddenExpired }) }}</Button>
       </div>
 
       <!-- Phone: the main task full width, the others in two columns; from sm they wrap in one row. Quick tasks are
