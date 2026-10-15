@@ -36,7 +36,7 @@ export const purge = internalMutation({
     await sweep(HEAVY_BATCH, (n) => ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', id)).take(n))
     await sweep(HEAVY_BATCH, (n) => ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', id)).take(n))
     await sweep(HEAVY_BATCH, (n) => ctx.db.query('proposals').withIndex('by_site', (q) => q.eq('site', id)).take(n))
-    await sweep(BATCH, (n) => ctx.db.query('releases').withIndex('by_site', (q) => q.eq('site', id)).take(n))
+    await sweep(BATCH, (n) => ctx.db.query('releases').withIndex('by_site_status', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('ops').withIndex('by_site_actor_op', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('migrationsApplied').withIndex('by_site_id', (q) => q.eq('site', id)).take(n))
     await sweep(BATCH, (n) => ctx.db.query('views').withIndex('by_site_user_brick', (q) => q.eq('site', id)).take(n))

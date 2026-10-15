@@ -337,8 +337,11 @@ describe('releases', () => {
     await s.as.owner.mutation(api.proposals.addToRelease, { release, proposal: b.proposal })
     // A member is decided with its release, not alone.
     expect((await errorOf(s.as.owner.mutation(api.proposals.approve, { proposal: a.proposal }))).code).toBe('INVALID')
+    expect((await s.as.owner.query(api.proposals.releases, { site: 'restaurant' })).map((r) => r.proposals.length)).toEqual([2])
 
     expect(await s.as.owner.mutation(api.proposals.approveRelease, { release })).toMatchObject({ status: 'applied', applied: 2 })
+    // The inbox lists only releases still to decide.
+    expect(await s.as.owner.query(api.proposals.releases, { site: 'restaurant' })).toEqual([])
     expect((await s.row(s.saibling))!.data.price).toEqual({ amount: 1450 })
     expect((await s.row(s.frittaten))!.data.price).toEqual({ amount: 1100 })
     expect((await s.rows('changes')).map((c) => c.approvedBy)).toEqual(['u-wirtin', 'u-wirtin'])

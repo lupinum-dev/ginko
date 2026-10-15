@@ -407,13 +407,18 @@ const releaseSummary = async (ctx: QueryCtx, r: Doc<'releases'>, actor: Actor, n
   }
 }
 
-/** The site's releases, newest first (50 at most), each with its proposals. Approvers only: staff sees proposals, not their grouping. */
+/**
+ * The site's releases still to decide (open or stale), newest first (50 at most), each with its proposals.
+ * Decided ones are left out: each member costs reads of its entry. Approvers only: staff sees proposals, not their grouping.
+ */
 export const releases = query({
   args: { site: v.string() },
   handler: async (ctx, args) => {
     const actor = await siteActor(ctx, args.site)
     if (!isApprover(actor)) fail('FORBIDDEN', 'errors.ownersOnly')
-    const rows = await ctx.db.query('releases').withIndex('by_site', (q) => q.eq('site', actor.site._id)).order('desc').take(50)
+    const of = (status: 'open' | 'stale') =>
+      ctx.db.query('releases').withIndex('by_site_status', (q) => q.eq('site', actor.site._id).eq('status', status)).order('desc').take(50)
+    const rows = [...(await of('open')), ...(await of('stale'))].sort((a, b) => b._creationTime - a._creationTime).slice(0, 50)
     const names = await labeler(ctx, actor)
     return Promise.all(rows.map((r) => releaseSummary(ctx, r, actor, names)))
   },

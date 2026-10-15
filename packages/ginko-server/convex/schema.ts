@@ -241,7 +241,7 @@ export default defineSchema({
     createdAt: v.number(),
     decidedBy: v.optional(v.string()),
     decidedAt: v.optional(v.number()),
-  }).index('by_site', ['site']).index('by_decided', ['decidedAt']),
+  }).index('by_site_status', ['site', 'status']).index('by_decided', ['decidedAt']),
 
   migrationsApplied: defineTable({
     site: v.id('sites'),

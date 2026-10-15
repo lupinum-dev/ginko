@@ -26,7 +26,8 @@ const removeFromRelease = useConvexMutation(api.proposals.removeFromRelease)
 
 // The server lists the oldest first (`order: 'oldest'`). Members of a release come with the release, whichever pages are loaded.
 const loose = computed(() => (list.data.value ?? []).filter((p) => !p.release))
-const releases = computed(() => (releaseList.data.value ?? []).filter((r) => r.status === 'open' || r.status === 'stale'))
+// The server sends only releases still to decide (open or stale).
+const releases = computed(() => releaseList.data.value ?? [])
 const shownIds = computed(() => new Set([...loose.value, ...releases.value.flatMap((r) => r.proposals)].map((p) => p.proposal as string)))
 
 const openIds = ref(new Set<string>())
