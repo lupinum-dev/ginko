@@ -28,7 +28,7 @@ describe('basics factories', () => {
     ['changelog', ['version: text', 'date: date', 'body: markdown']],
     ['jobs', ['title: text', 'description: longtext', 'slug: slug', 'location: text', 'employmentType: choice', 'remote: choice', 'applyUrl?: text', 'applyEmail?: text', 'validUntil: date', 'body: markdown']],
     ['faq', ['question: text', 'answer: longtext']],
-    ['downloads', ['title: text', 'summary?: longtext', 'date: date', 'file: file']],
+    ['downloads', ['title: text', 'summary?: longtext', 'date: date', 'file: file', 'language?: text']],
   ])('%s keeps its stored field names and types', (name, expected) => {
     expect(shape(factories[name]!({}))).toEqual(expected)
   })
