@@ -192,7 +192,7 @@ const created: Record<string, Check[]> = {
   docs: [['/docs/getting-started', /class="docs-sidebar/]],
   'docs-de': [['/docs/einstieg', /lang="de"[\s\S]*class="docs-sidebar[\s\S]*Seiten schreiben/]],
   // The templates (templates/<name>, bundled by create-ginko's prepack), all languages.
-  'template-starter': [['/', /<h1>Greenfield Community Garden<\/h1>/], ['/events', /New year tidy-up/], ['/sitemap.xml', /<urlset/]],
+  'template-starter': [['/', /<h1[^>]*>My site<\/h1>/], ['/about', /<h1[^>]*>About<\/h1>/], ['/sitemap.xml', /<urlset/]],
 }
 for (const name of ['starter', ...readdirSync(join(root, 'packages/create-ginko/presets'))]) {
   if (!created[name]) failures.push(`check:pack has no URL check for the create-ginko preset folder ${name}`)
