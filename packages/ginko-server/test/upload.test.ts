@@ -48,6 +48,17 @@ describe('uploads.prepare and POST /upload', () => {
     vi.unstubAllEnvs()
   })
 
+  // Wrong behaviour caught: a script or a stolen session fills the site's storage through unlimited tickets.
+  it('refuses the 201st ticket of a person in an hour; another site or person still gets one', async () => {
+    const s = await setup()
+    await s.t.run((ctx) => ctx.db.insert('memberships', { site: s.other, user: people.owner, role: 'owner', grants: [] }))
+    const prepare = (who: 'owner' | 'cook', site = 'restaurant') => s.as[who].mutation(api.uploads.prepare, { site })
+    for (let i = 0; i < 200; i++) await prepare('owner')
+    expect(await errorOf(prepare('owner'))).toMatchObject({ code: 'RATE_LIMITED', message: 'Du hast in der letzten Stunde sehr viele Dateien hochgeladen. Versuche es später noch einmal.' })
+    expect(await prepare('owner', 'andere')).toMatchObject({ ticket: expect.any(String) })
+    expect(await prepare('cook')).toMatchObject({ ticket: expect.any(String) })
+  })
+
   it('uses a ticket once', async () => {
     const s = await setup()
     const { ticket } = await s.as.owner.mutation(api.uploads.prepare, { site: 'restaurant' })

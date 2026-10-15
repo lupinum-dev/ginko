@@ -107,6 +107,7 @@
     "proposalTooLarge": "Dieser Vorschlag ist zu groß.",
     "tooManyOpenProposals": "Es warten schon {openMax} Vorschläge auf Freigabe. Bitte warte, bis einige geprüft sind.",
     "tooManyInvites": "Zu viele Einladungen in kurzer Zeit: höchstens {max} pro Stunde. Bitte später noch einmal senden.",
+    "tooManyUploads": "Du hast in der letzten Stunde sehr viele Dateien hochgeladen. Versuche es später noch einmal.",
     "fileNoLongerAvailable": "Eine Datei ist nicht (mehr) verfügbar. Bitte neu hochladen.",
     "fileNotImage": "Diese Datei ist kein Bild.",
     "grantNotFound": "Die Aufgabe „{grant}“ gibt es nicht.",

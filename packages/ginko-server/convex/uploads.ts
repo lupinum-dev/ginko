@@ -7,7 +7,8 @@ import { internal } from './_generated/api'
 import { sha256 } from '@lupinum/ginko/internal'
 import type { Doc } from './_generated/dataModel'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx } from './_generated/server'
-import { actorFor, fail } from './lib/access'
+import { windowOf } from './bundle'
+import { actorFor, fail, type Actor } from './lib/access'
 import { cleanName } from './lib/files'
 import { t, type MessageKey } from './lib/i18n'
 import { deleteStorage, isKeptUpload, purgeUpload } from './lib/library'
@@ -17,6 +18,20 @@ export const MAX_ATTEMPTS = 3
 const RETRY_MS = 30_000
 
 const TICKET_MS = 10 * 60 * 1000
+/** Upload tickets per person, site and hour. A busy editor uploads a few dozen files; this bounds what a script or a stolen session stores. */
+export const UPLOAD_LIMIT = 200
+
+/** Counts one ticket in the person's current hour on this site, or refuses the one over the limit. Platform admins are not counted, as for invites. */
+async function countUpload(ctx: MutationCtx, actor: Actor) {
+  if (actor.role === 'admin') return
+  const site = actor.site._id
+  const user = actor.user.id
+  const hour = Math.floor(windowOf(Date.now()) / 60) * 60
+  const row = await ctx.db.query('rateWindows').withIndex('by_site_kind_window', (q) => q.eq('site', site).eq('kind', 'upload').eq('window', hour).eq('user', user)).unique()
+  if (row && row.count >= UPLOAD_LIMIT) fail('RATE_LIMITED', 'errors.tooManyUploads')
+  if (row) await ctx.db.patch(row._id, { count: row.count + 1 })
+  else await ctx.db.insert('rateWindows', { site, kind: 'upload', user, window: hour, count: 1 })
+}
 
 /** 32 random bytes, base64url without padding. */
 function newToken(): string {
@@ -37,6 +52,7 @@ export const prepare = mutation({
     const folderId = folder === undefined ? null : ctx.db.normalizeId('folders', folder)
     const row = folderId ? await ctx.db.get(folderId) : null
     if (folder !== undefined && (!row || row.site !== actor.site._id)) fail('NOT_FOUND', 'errors.folderNotFound')
+    await countUpload(ctx, actor)
     const ticket = newToken()
     await ctx.db.insert('uploadTickets', {
       tokenHash: sha256(ticket), site: actor.site._id, user: actor.user.id, expiresAt: Date.now() + TICKET_MS,
