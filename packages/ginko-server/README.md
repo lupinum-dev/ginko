@@ -79,6 +79,10 @@ Later releases need no manual step, except the one-time runs listed in
 up production; after it, run the step in the production checkout (order in `internals/migrations.md`). Keep each
 Convex change compatible with the previous Studio: open tabs call the new functions until they reload.
 
+`pnpm ops:import <folder> --site <slug> --prod` (repository root) is the one operator command that does not use the
+wrapper: it calls `npx convex run --prod` in this folder, and the Convex CLI takes the credentials from the shell or
+from this folder's `.env.local`. Run it only in the production checkout.
+
 ## Image variants (srcset)
 
 New image uploads get WebP copies at 480, 960 and 1600 px wide (only those narrower than the image). Images
