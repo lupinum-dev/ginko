@@ -20,6 +20,14 @@ export const allergensEU: readonly ChoiceOption[] = ['A', 'B', 'C', 'D', 'E', 'F
   label: both(`${code} ${allergenNames.de[code]}`, `${code} ${allergenNames.en[code]}`),
 }))
 
+/** The categories of `menu()`, in the order of a menu. A site groups its dishes by these values. */
+export const menuCategories = ['starters', 'soups', 'mains', 'desserts', 'drinks'] as const
+export type MenuCategory = (typeof menuCategories)[number]
+const categoryLabels: Record<MenuCategory, { de: string, en: string }> = {
+  starters: both('Vorspeisen', 'Starters'), soups: both('Suppen', 'Soups'), mains: both('Hauptspeisen', 'Mains'),
+  desserts: both('Nachspeisen', 'Desserts'), drinks: both('Getränke', 'Drinks'),
+}
+
 /** The `allergens` field type: present unless the set is `'none'`. */
 type AllergenFields<A extends AllergenSet> = A extends 'none' ? {} : { allergens: ChoicesField<string> }
 
@@ -167,11 +175,7 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
   const choices = allergenChoices(opts.allergens)
   const fields = {
     category: f.choice(both('Kategorie', 'Category'), {
-      options: [
-        { value: 'starters', label: both('Vorspeisen', 'Starters') }, { value: 'soups', label: both('Suppen', 'Soups') },
-        { value: 'mains', label: both('Hauptspeisen', 'Mains') }, { value: 'desserts', label: both('Nachspeisen', 'Desserts') },
-        { value: 'drinks', label: both('Getränke', 'Drinks') },
-      ],
+      options: menuCategories.map((value) => ({ value, label: categoryLabels[value] })),
     }),
     name: f.text(both('Name', 'Name'), { max: 120 }),
     description: f.longtext(both('Beschreibung', 'Description'), { max: 500, optional: true }),
