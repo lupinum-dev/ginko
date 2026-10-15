@@ -54,7 +54,7 @@ const dish = computed(() => {
     </div>
 
     <p v-for="c in closures" :key="c._id" class="closure">
-      {{ t('upcomingClosure') }}: {{ format.range(c.when.from, c.when.to, { day: 'numeric', month: 'long' }) }} {{ t('closedFromTo') }}<template v-if="'holiday' in c"> ({{ c.holiday[lang] }})</template><template v-else-if="c.reason"> (<span :lang="langOf(hours, `exceptions.${c._id}.reason`)">{{ c.reason }}</span>)</template>
+      {{ t('upcomingClosure') }}: {{ format.range(c.when.from, c.when.to, { day: 'numeric', month: 'long' }) }} {{ t('closedFromTo') }}<template v-if="'holiday' in c"> ({{ c.holiday[lang] }})</template><template v-else-if="c.reason"> (<span :lang="langOf(hours, c.field)">{{ c.reason }}</span>)</template>
     </p>
   </section>
 </template>

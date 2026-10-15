@@ -43,6 +43,19 @@ describe('upcomingClosures', () => {
     expect(upcomingClosures(ctx([holiday]), '2026-10-26', 14)).toEqual([])
     expect(upcomingClosures(ctx([holiday]), '2026-10-01', 14)).toEqual([])
   })
+
+  // Wrong behaviour caught: a closure set for tomorrow ("Geschlossen am") was not announced until it was today.
+  it.each([
+    ['tomorrow is announced, with the note and its field', '2026-10-09', [{ _id: 'closedOn', when: { from: '2026-10-09', to: '2026-10-09' }, reason: 'Hochzeit', closed: true, field: 'closedNote' }]],
+    ['today is not listed: today’s state shows it', '2026-10-08', []],
+    ['beyond the notice days it is not listed yet', '2026-10-30', []],
+  ] as const)('closedOn: %s', (_name, closedOn, expected) => {
+    expect(upcomingClosures({ hours: { week, exceptions: [], closedOn, closedNote: 'Hochzeit' }, calendar: 'none' }, '2026-10-08', 14)).toEqual(expected)
+  })
+
+  it('names the field of an exception’s reason, for its language', () => {
+    expect(upcomingClosures({ hours: { week, exceptions: [holiday] }, calendar: 'none' }, '2026-10-20', 14)).toEqual([{ ...holiday, field: 'exceptions.x1.reason' }])
+  })
 })
 
 const full = (day: string, t: object = {}): DayHours => ({ day, closed: false, from1: '11:30', to1: '14:00', from2: '17:30', to2: '22:00', ...t })

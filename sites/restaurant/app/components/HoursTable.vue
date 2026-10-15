@@ -13,12 +13,19 @@ const shown = (e: Exception) => spansOf(e).length > 0 && hoursOn(ctx.value, e.wh
 // The week that applies today (a running season replaces the standard week), then the plans that start soon.
 const week = computed(() => weekFor(ctx.value, today.value).week)
 const coming = computed(() => upcomingPlans(plans.value, today.value, 120))
-const ahead = computed(() => [
+// A day set in "Geschlossen am" (closedOn) after today is listed like a closure; today's row shows today's.
+const closedOn = computed<Array<Exception & { field: string }>>(() => {
+  const { closedOn: day, closedNote } = data.value
+  return day && day > today.value ? [{ _id: 'closedOn', when: { from: day, to: day }, reason: closedNote ?? '', closed: true, field: 'closedNote' }] : []
+})
+const ahead = computed<Array<(Exception & { field?: string }) | HolidayClosure>>(() => [
   ...data.value.exceptions.filter((e) => e.when.to >= today.value && (e.closed || shown(e))),
+  ...closedOn.value,
   ...upcomingHolidayClosures(ctx.value, today.value, 90),
 ].sort((a, b) => a.when.from.localeCompare(b.when.from)))
 const todayKey = computed(() => weekdayOf(today.value))
 const reasonOf = (e: Exception | HolidayClosure) => ('holiday' in e ? e.holiday[lang.value] : e.reason)
+const reasonLang = (e: (Exception & { field?: string }) | HolidayClosure) => ('holiday' in e ? lang.value : langOf(hours.value, e.field ?? `exceptions.${e._id}.reason`))
 const special = (e: Exception) => spansText(spansOf(e), t('and'))
 const itemOf = (id?: string) => hourPlans.value.items.find((p) => p.id === id)!
 const cell = (d: DayHours) => (d.closed ? t('closedDay') : timesOf(d, t('and')))
@@ -58,7 +65,7 @@ const todayCell = computed(() => {
         <li v-for="e in ahead" :key="e._id">
           <span class="when">{{ format.range(e.when.from, e.when.to) }}</span>
           <span>
-            <span :lang="'holiday' in e ? lang : langOf(hours, `exceptions.${e._id}.reason`)">{{ reasonOf(e) }}</span><template v-if="e.closed">, {{ t('closedFromTo') }}</template><template v-else>, {{ special(e) }}</template>
+            <template v-if="reasonOf(e)"><span :lang="reasonLang(e)">{{ reasonOf(e) }}</span>, </template><template v-if="e.closed">{{ t('closedFromTo') }}</template><template v-else>{{ special(e) }}</template>
           </span>
         </li>
       </ul>

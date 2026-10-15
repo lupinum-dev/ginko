@@ -347,20 +347,28 @@
         "closedOn": {
           "type": "date",
           "label": {
-            "de": "Heute geschlossen am",
+            "de": "Geschlossen am",
             "en": "Closed on"
           },
           "optional": true,
+          "hint": {
+            "de": "Ein einzelner Tag. Für mehrere Tage nimm „Betriebsurlaub und Ausnahmen“.",
+            "en": "A single day. For several days, use “Holiday closure and exceptions”."
+          },
           "pos": 2
         },
         "closedNote": {
           "type": "text",
           "label": {
-            "de": "Hinweis zur Schließung",
-            "en": "Note about the closure"
+            "de": "Grund für die Gäste",
+            "en": "Reason for guests"
           },
           "max": 140,
           "optional": true,
+          "hint": {
+            "de": "Steht auf der Website, z. B. „Wegen eines Wasserrohrbruchs“.",
+            "en": "Shown on the website, e.g. “Because of a burst water pipe”."
+          },
           "pos": 3
         },
         "holidayNoticeDays": {

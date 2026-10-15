@@ -97,8 +97,15 @@ export function hours(opts: GastroOptions = {}) {
         },
         max: 20, default: [],
       }),
-      closedOn: f.date(both('Heute geschlossen am', 'Closed on'), { optional: true }),
-      closedNote: f.text(both('Hinweis zur Schließung', 'Note about the closure'), { max: 140, optional: true }),
+      // Optional: "Aufheben" in the Studio clears it, and saving it empty lifts the closure.
+      closedOn: f.date(both('Geschlossen am', 'Closed on'), {
+        optional: true,
+        hint: both('Ein einzelner Tag. Für mehrere Tage nimm „Betriebsurlaub und Ausnahmen“.', 'A single day. For several days, use “Holiday closure and exceptions”.'),
+      }),
+      closedNote: f.text(both('Grund für die Gäste', 'Reason for guests'), {
+        max: 140, optional: true,
+        hint: both('Steht auf der Website, z. B. „Wegen eines Wasserrohrbruchs“.', 'Shown on the website, e.g. “Because of a burst water pipe”.'),
+      }),
       holidayNoticeDays: f.number(both('Hinweis vor Ausnahmen (Tage)', 'Show notice before closures (days)'), { min: 0, max: 60, step: 1, default: 14 }),
       holidays: f.choice(both('An Feiertagen', 'On public holidays'), {
         options: [
