@@ -113,7 +113,7 @@ Defaults are Austrian (German and English labels, Austrian holidays, the 14 EU a
 - Singapore's lunar, Islamic and Hindu holidays are a table for 2026 and 2027 (source: [MOM](https://www.mom.gov.sg/employment-practices/public-holidays)). Add a row each year; other years only know the fixed dates.
 - `allergens` on `menu()`, `lunch()` and `lunchPlans()`: `'EU'` (default), `'none'` (no field), or your own `[{ value, label }]`.
 - `restaurantJsonLd` has no default currency or country: pass `currency` and `address.country`.
-- `eventJsonLd` writes an Event per event: dates from `when`, plus the optional `start` time (`HH:MM`, local, no offset) in `startDate`, and `offers` only with a price. It needs `currency` for prices that carry none.
+- `eventJsonLd` writes an Event per event: dates from `when`, plus the optional `start` time (`HH:MM`, site time zone) in `startDate` with that day's offset from `timeZone` (required: the site's IANA time zone, e.g. `2026-12-03T19:00:00+01:00`), and `offers` only with a price. It needs `currency` for prices that carry none.
 
 ```ts
 import type { HolidaysOption } from '@lupinum/ginko-preset-gastro'

@@ -86,7 +86,8 @@ function sessionsBrick<S extends Field>(opts: BasicsOptions & { events?: string 
       }),
     },
     max: 300,
-    // Sessions of one day share a date; sort with `sessionsInOrder` for the start time.
+    // Core orders by one field: sessions of one day share a date and come in no fixed order here (also in the Studio
+    // list). Pages sort with `sessionsInOrder` (date, then start time).
     order: { field: 'date', dir: 'asc' },
     visible: { mode: 'until', field: 'date' },
     tasks: [
@@ -101,6 +102,8 @@ function sessionsBrick<S extends Field>(opts: BasicsOptions & { events?: string 
  * The programme of events: one entry per session, with its event (`events`: the key of the events brick, default
  * `events`), date, start and end time (site time zone; the end after the start), room, speakers and status. Speakers
  * are entries of the people collection named by `people`, or a text without it. A session leaves the site after its day.
+ * The bundle orders sessions by date only: a page that lists them (a programme, "now" and "next") sorts them with
+ * `sessionsInOrder`.
  */
 export function sessions(opts: BasicsOptions & { events?: string; people: string }): ReturnType<typeof sessionsBrick<ReturnType<typeof speakerRefs>>>
 export function sessions(opts?: BasicsOptions & { events?: string; people?: undefined }): ReturnType<typeof sessionsBrick<ReturnType<typeof speakerText>>>
