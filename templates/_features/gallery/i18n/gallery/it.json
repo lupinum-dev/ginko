@@ -1,0 +1,8 @@
+{
+  "title": "Visualizzatore di foto",
+  "open": "Foto {n} di {count}: {alt}",
+  "previous": "Foto precedente",
+  "next": "Foto successiva",
+  "counter": "{n} / {count}",
+  "close": "Chiudi"
+}

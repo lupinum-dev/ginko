@@ -2,9 +2,9 @@
   "skip": "Zum Inhalt springen",
   "home": "Startseite",
   "nav": {
-    "label": "Hauptmenü",
-    "open": "Menü öffnen",
-    "title": "Menü"
+    "label": "Hauptnavigation",
+    "open": "Navigation öffnen",
+    "title": "Navigation"
   },
   "close": "Schließen",
   "theme": "Dunkles Design",

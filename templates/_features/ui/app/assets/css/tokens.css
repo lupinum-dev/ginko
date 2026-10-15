@@ -94,6 +94,25 @@
   --scrim: rgb(0 0 0 / 0.72);
 }
 
+/* Paper is white and browsers leave out backgrounds when printing: a page printed in dark mode uses the light
+   neutrals, so its text stays dark. */
+@media print {
+  .dark {
+    color-scheme: light;
+    --background: #ffffff;
+    --foreground: #18181b;
+    --secondary: #f4f4f5;
+    --muted: #f4f4f5;
+    --muted-foreground: #52525b;
+    --accent: #f4f4f5;
+    --border: #e4e4e7;
+    --input: #8a8a93;
+    --success: #15803d;
+    --warning: #a16207;
+    --destructive: #b42318;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

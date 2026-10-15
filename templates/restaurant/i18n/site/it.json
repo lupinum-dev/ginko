@@ -1,0 +1,32 @@
+{
+  "skip": "Vai al contenuto",
+  "home": "Pagina iniziale",
+  "nav": {
+    "label": "Navigazione principale",
+    "open": "Apri la navigazione",
+    "title": "Navigazione"
+  },
+  "close": "Chiudi",
+  "theme": "Tema scuro",
+  "language": {
+    "label": "Lingua",
+    "untranslated": "{language}: questa pagina non è tradotta, vai alla pagina iniziale"
+  },
+  "footer": {
+    "pages": "Pagine",
+    "contact": "Contatti",
+    "legal": "Informazioni legali",
+    "links": "Altrove"
+  },
+  "notice": "Avviso",
+  "updated": "Aggiornato il {date}",
+  "empty": "Aggiungete un file in <code>{path}</code>.",
+  "error": {
+    "code": "Errore {code}",
+    "notFound": "Pagina non trovata",
+    "notFoundText": "Forse l’indirizzo è scritto male, oppure la pagina è stata spostata.",
+    "failed": "Qualcosa è andato storto",
+    "failedText": "Ricaricate la pagina. Se l’errore resta, riprovate più tardi.",
+    "home": "Vai alla pagina iniziale"
+  }
+}

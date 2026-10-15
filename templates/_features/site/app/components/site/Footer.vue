@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import type { Component } from 'vue'
 import { safeHref } from '@lupinum/ginko'
 
 // Identity and contact from content/site.md, the tagline, navigation, more links and profiles from app.config.ts,
-// and the legal texts from content/legal/. One muted background, no border: the bottom bar's line divides inside it.
+// the language switch, and the legal texts from content/legal/. One muted background, no border: the bottom bar's
+// line divides inside it. A feature may bring `app/components/site/FooterStatus.vue` (the hours feature: open now);
+// the contact column then shows it first, on every page, without a copy of this footer per template.
+const status = Object.values(import.meta.glob<Component>('./FooterStatus.vue', { eager: true, import: 'default' }))[0]
 const config = useSiteAppConfig()
 const { name } = useGinkoSite()
 const site = useGinko('site')
@@ -17,7 +21,7 @@ const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
 </script>
 
 <template>
-  <footer class="mt-section bg-muted">
+  <footer class="mt-section bg-muted print:hidden">
     <div class="mx-auto grid max-w-page gap-10 px-gutter py-14 md:grid-cols-3">
       <div class="flex flex-col gap-3">
         <p class="font-display text-body font-semibold">{{ name }}</p>
@@ -40,6 +44,9 @@ const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
 
       <div v-if="contact.email || contact.phone || contact.city" class="flex flex-col gap-2">
         <h2 class="text-small font-semibold">{{ t('footer.contact') }}</h2>
+        <div v-if="status" class="py-2">
+          <component :is="status" />
+        </div>
         <address class="flex flex-col text-small text-muted-foreground not-italic">
           <span v-if="contact.city" class="py-2">
             <template v-if="contact.legalName">{{ contact.legalName }}<br></template>
@@ -55,13 +62,16 @@ const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
     <div class="border-t">
       <div class="mx-auto flex max-w-page flex-col gap-2 px-gutter py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <p>© {{ year }} {{ contact.legalName || name }}</p>
-        <nav v-if="legal.items.length" :aria-label="t('footer.legal')">
-          <ul class="flex flex-wrap gap-x-5">
-            <li v-for="item in legal.items" :key="item.id">
-              <SiteNavLink :to="item.urls?.[locale] ?? ''" class="inline-flex min-h-11 items-center underline-offset-4 hover:text-foreground hover:underline aria-[current=page]:text-foreground aria-[current=page]:underline">{{ item.data.title }}</SiteNavLink>
-            </li>
-          </ul>
-        </nav>
+        <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-8">
+          <SiteLanguageSwitch names />
+          <nav v-if="legal.items.length" :aria-label="t('footer.legal')">
+            <ul class="flex flex-wrap gap-x-5">
+              <li v-for="item in legal.items" :key="item.id">
+                <SiteNavLink :to="item.urls?.[locale] ?? ''" class="inline-flex min-h-11 items-center underline-offset-4 hover:text-foreground hover:underline aria-[current=page]:text-foreground aria-[current=page]:underline">{{ item.data.title }}</SiteNavLink>
+              </li>
+            </ul>
+          </nav>
+        </div>
       </div>
     </div>
   </footer>

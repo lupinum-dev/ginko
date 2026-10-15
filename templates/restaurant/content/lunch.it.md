@@ -5,5 +5,5 @@ days:
   - dish: "Kaiserschmarrn con composta di prugne"
   - dish: "Salmerino impanato con patate al prezzemolo"
   - dish: "Strudel di verdure con salsa alle erbe"
-note: Ogni piatto del pranzo è servito con un'insalata di contorno.
+note: Ogni piatto del pranzo è servito con un’insalata di contorno.
 ---

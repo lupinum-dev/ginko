@@ -182,7 +182,9 @@ if (site !== basename(dir)) console.log(`The site id is "${site}": the folder na
 if (moved) console.log(`The sample dates in ${moved} content file${moved === 1 ? '' : 's'} moved to this week.`)
 if (preset) console.log(presets[preset].note)
 // npm keeps options for itself unless they come after --; pnpm, yarn and bun pass them on.
-const example = pm === 'npm' ? `${command} my-site -- --template ${templates[0] ?? 'starter'}` : `${pm} create ginko my-site --template ${templates[0] ?? 'starter'}`
+// The example names the starter, the neutral start, also when other templates sort before it.
+const sample = templates.includes('starter') ? 'starter' : templates[0] ?? 'starter'
+const example = pm === 'npm' ? `${command} my-site -- --template ${sample}` : `${pm} create ginko my-site --template ${sample}`
 console.log(`Templates (languages for --locales): ${templates.map((name) => `${name} (${templateLocales[name].join(', ')})`).join(', ')}.${pm === 'npm' ? ' With npm, put -- before the options:' : ''}
   ${example}
 

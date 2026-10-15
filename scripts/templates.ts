@@ -1,8 +1,8 @@
 // The templates in templates/<name> (spec ginko-internal specs/TEMPLATES.md, §2 and §9). Run: pnpm templates <command>
 //
-//   sync                     copies the shared sources of templates/_features/<feature> (the files its files.json lists)
-//                            into every template whose package.json names the feature in "ginko": { "features" }, and
-//                            sets the @lupinum/* ranges (T3)
+//   sync                     copies the shared sources of templates/_features/<feature> (the files its files.json lists;
+//                            content and texts only in the template's locales) into every template whose package.json names the
+//                            feature in "ginko": { "features" }, and sets the @lupinum/* ranges (T3)
 //                            and deletes synced copies whose source left its files.json
 //   sync --check             fails on drift from the shared sources, a synced copy no feature brings any more, a stale
 //                            range, a lockfile inside a template, fewer than 90 days of future sample dates (T10), or
@@ -114,13 +114,35 @@ function staleSyncs(dir: string, wanted: Map<string, string>): string[] {
   return stale
 }
 
-/** Every file the features of each template bring: template → (path in the template → expected content). */
-function expectedSyncs(root: string, names: string[]): { files: Map<string, Map<string, string>>; problems: string[] } {
+/**
+ * The language of a feature file: a content file by its suffix (`content/legal/1.privacy.de.md` → `de`), a
+ * translation of the feature's texts by its name (`i18n/site/de.json` → `de`). Undefined for a main-language content
+ * file (`1.privacy.md`) and for every other file. A suffix is a language when it is a two-letter code, optionally with
+ * a region (`pt-BR`), so feature content keeps its other dotted names free of such parts.
+ */
+export function contentLocale(file: string): string | undefined {
+  const code = /^[a-z]{2}(?:-[A-Za-z]{2,4})?$/
+  if (file.startsWith('i18n/')) {
+    const name = /^i18n\/[^/]+\/([^/]+)\.json$/.exec(file)?.[1]
+    return name && code.test(name) ? name : undefined
+  }
+  if (!file.startsWith('content/')) return undefined
+  const parts = file.split('/').at(-1)!.split('.')
+  const suffix = parts.length > 2 ? parts.at(-2)! : ''
+  return code.test(suffix) ? suffix : undefined
+}
+
+/**
+ * Every file the features of each template bring: template → (path in the template → expected content). Content and
+ * texts in a language the template does not have stay out (a template without `fr` gets no `.fr.md`, no `fr.json`).
+ */
+async function expectedSyncs(root: string, names: string[]): Promise<{ files: Map<string, Map<string, string>>; problems: string[] }> {
   const files = new Map<string, Map<string, string>>()
   const problems: string[] = []
   for (const name of names) {
     const wanted = new Map<string, string>()
     const owner = new Map<string, string>()
+    const { locales } = manifestOf(await configOf(root, name))
     for (const feature of readJson<Pkg>(join(root, 'templates', name, 'package.json')).ginko?.features ?? []) {
       const dir = join(root, 'templates/_features', feature)
       const manifest = join(dir, 'files.json')
@@ -129,6 +151,8 @@ function expectedSyncs(root: string, names: string[]): { files: Map<string, Map<
         continue
       }
       for (const file of readJson<string[]>(manifest)) {
+        const locale = contentLocale(file)
+        if (locale && !locales.includes(locale)) continue
         const source = join(dir, file)
         if (!existsSync(source)) problems.push(`templates/_features/${feature}/files.json lists ${file}, which does not exist`)
         else if (owner.has(file)) problems.push(`${name}: ${file} comes from both ${owner.get(file)} and ${feature}`)
@@ -150,9 +174,9 @@ function lupinumDeps(pkg: Pkg, group: string[]): [field: 'dependencies' | 'devDe
 }
 
 /** `sync`: writes the shared sources and the ranges into the templates. Returns what it changed. `next`: see nextVersion. */
-export function sync(root = repoRoot, next: string | null = nextVersion(root)): string[] {
+export async function sync(root = repoRoot, next: string | null = nextVersion(root)): Promise<string[]> {
   const names = templateNames(root)
-  const { files, problems } = expectedSyncs(root, names)
+  const { files, problems } = await expectedSyncs(root, names)
   if (problems.length) throw new Error(problems.join('\n'))
   const group = fixedGroup(root)
   const current = readJson<Pkg>(join(packageDirs(root)[group[0]!]!, 'package.json')).version!
@@ -188,7 +212,7 @@ export function sync(root = repoRoot, next: string | null = nextVersion(root)): 
 }
 
 /** A template's ginko.config.ts. */
-async function configOf(root: string, name: string): Promise<Parameters<typeof manifestOf>[0] & { seo?: { color?: string } }> {
+async function configOf(root: string, name: string): Promise<Parameters<typeof manifestOf>[0] & { seo?: { color?: string }; timeZone?: string; currency?: string; languages?: Record<string, string> }> {
   return (await import(pathToFileURL(join(root, 'templates', name, 'ginko.config.ts')).href)).default
 }
 
@@ -202,7 +226,7 @@ function cardColourProblem(name: string, dir: string, color: string | undefined)
 /** `sync --check`: the problems, empty when the templates match their sources and rules. `today` is `YYYY-MM-DD`. */
 export async function syncCheck(root = repoRoot, { next = nextVersion(root), today = new Date().toISOString().slice(0, 10), only }: { next?: string | null; today?: string; only?: string } = {}): Promise<string[]> {
   const names = templateNames(root).filter((name) => !only || name === only)
-  const { files, problems } = expectedSyncs(root, names)
+  const { files, problems } = await expectedSyncs(root, names)
   const group = fixedGroup(root)
   const current = readJson<Pkg>(join(packageDirs(root)[group[0]!]!, 'package.json')).version!
   const { accepted } = ranges(current, next)
@@ -287,7 +311,8 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
   const now = process.env.GINKO_TEST_NOW ?? `${anchor}T10:00:00Z`
   const clockEnv = { NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${join(root, 'scripts/templates/clock.mjs')}`.trim(), GINKO_TEST_NOW: now }
   const secret = randomBytes(32).toString('hex')
-  const { locales } = manifestOf(await configOf(root, name))
+  const config = await configOf(root, name)
+  const { locales } = manifestOf(config)
   const results: Result[] = []
   /** A result of a requested gate; a failed setup step (`blocks`) is recorded whatever the gate, since later gates need it. */
   const record = (gate: number, mode: Result['mode'], check: string, ok: boolean, detail?: string, blocks = false) => {
@@ -420,6 +445,8 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
           const env = {
             TEMPLATE_URL: `http://localhost:${port}`, TEMPLATE_NAME: name, TEMPLATE_MODE: mode, TEMPLATE_LOCALES: (mode === 'single' ? [locales[0]!] : locales).join(','),
             TEMPLATE_SHOTS: shots, TEMPLATE_FEATURES: (pkg.ginko?.features ?? []).join(','), GINKO_TEST_NOW: now,
+            // What the feature specs compare against: the site's zone ("today"), currency and main language.
+            TEMPLATE_TIME_ZONE: config.timeZone ?? 'UTC', TEMPLATE_CURRENCY: config.currency ?? '', TEMPLATE_LANGUAGE: config.languages?.[locales[0]!] ?? locales[0]!,
           }
           // Gate 3 also runs the e2e specs of the template's features (templates/_features/<feature>/e2e/).
           const specs = [`scripts/templates/e2e/gate${gate}.spec.ts`, ...(gate === 3 ? (pkg.ginko?.features ?? []).map((f) => `templates/_features/${f}/e2e/`).filter((dir) => existsSync(join(root, dir))) : [])]
@@ -486,7 +513,7 @@ async function main(argv: string[]) {
     process.exit(problems.length ? 1 : 0)
   }
   if (command === 'sync') {
-    const changed = sync()
+    const changed = await sync()
     console.log(changed.length ? `templates sync changed:\n${changed.join('\n')}` : 'templates sync: nothing to change')
     return
   }

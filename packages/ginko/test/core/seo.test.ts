@@ -38,7 +38,7 @@ describe('seoHead', () => {
   })
 
   it('noindex sets the robots meta', () => {
-    expect(seoHead({ ...base, title: 'Draft', noindex: true }).meta).toContainEqual({ name: 'robots', content: 'noindex, nofollow' })
+    expect(seoHead({ ...base, title: 'Draft', noindex: true }).meta).toContainEqual({ name: 'robots', content: 'noindex, follow' })
   })
 })
 

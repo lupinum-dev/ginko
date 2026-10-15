@@ -25,6 +25,3 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
-        env:
-          # The site's address (repository variable SITE_URL); the build stops while it is still example.com.
-          NUXT_PUBLIC_SITE_URL: ${{ vars.SITE_URL }}

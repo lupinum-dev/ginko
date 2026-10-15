@@ -1,0 +1,32 @@
+{
+  "skip": "Zum Inhalt springen",
+  "home": "Startseite",
+  "nav": {
+    "label": "Hauptnavigation",
+    "open": "Navigation öffnen",
+    "title": "Navigation"
+  },
+  "close": "Schließen",
+  "theme": "Dunkles Design",
+  "language": {
+    "label": "Sprache",
+    "untranslated": "{language}: Diese Seite ist nicht übersetzt, zur Startseite"
+  },
+  "footer": {
+    "pages": "Seiten",
+    "contact": "Kontakt",
+    "legal": "Rechtliches",
+    "links": "Anderswo"
+  },
+  "notice": "Hinweis",
+  "updated": "Stand: {date}",
+  "empty": "Legen Sie eine Datei in <code>{path}</code> an.",
+  "error": {
+    "code": "Fehler {code}",
+    "notFound": "Seite nicht gefunden",
+    "notFoundText": "Vielleicht ist die Adresse falsch geschrieben, oder die Seite wurde verschoben.",
+    "failed": "Etwas ist schiefgelaufen",
+    "failedText": "Bitte laden Sie die Seite neu. Wenn der Fehler bleibt, versuchen Sie es später noch einmal.",
+    "home": "Zur Startseite"
+  }
+}

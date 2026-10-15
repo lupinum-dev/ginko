@@ -1,8 +1,10 @@
-// The site feature on the built template (gate 3): notices, footer legal links, legal pages and the error page.
+// The site feature on the built template (gate 3): notices, footer legal links, legal pages, the error page, where the
+// language switch sits, and the theme toggle's state.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, open, site, test } from '../../../../scripts/templates/e2e/helpers.ts'
+import type { Locator } from '@playwright/test'
+import { expect, navToggle, open, site, test, themeToggle } from '../../../../scripts/templates/e2e/helpers.ts'
 
 /** The template's notices shown at the test instant: main-language files whose `until` has not passed. */
 function activeNotices(): number {
@@ -53,4 +55,61 @@ test('the error page leads back home', async ({ page }) => {
   await page.locator('main').getByRole('link').first().click()
   await expect(page).toHaveURL(/\/$|\/[a-z]{2}$/)
   await expect(page.locator('h1')).toBeVisible()
+})
+
+/** Each link of a language switch: one per locale, the current one marked, and a spoken name that starts with the
+ *  visible text (WCAG 2.5.3), so a voice control user can say "click Deutsch" or "click DE". */
+async function expectSwitch(list: Locator, where: string) {
+  const links = list.getByRole('link')
+  await expect(links, `${where}: one link per language`).toHaveCount(site.locales.length)
+  await expect(list.locator('a[aria-current="true"]'), `${where}: the current language is marked`).toHaveCount(1)
+  for (const link of await links.all()) {
+    const visible = await link.evaluate((a) => {
+      const walk = document.createTreeWalker(a, NodeFilter.SHOW_TEXT)
+      let text = ''
+      while (walk.nextNode()) if (!walk.currentNode.parentElement!.closest('.sr-only')) text += walk.currentNode.textContent
+      return text.trim()
+    })
+    expect(visible, `${where}: a visible text`).not.toBe('')
+    const escaped = visible.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')
+    await expect(link, `${where}: the name starts with "${visible}"`).toHaveAccessibleName(new RegExp(`^${escaped}`, 'i'))
+  }
+}
+
+test('on a phone the language switch is in the nav sheet and the footer, with full names', async ({ page }) => {
+  test.skip(site.locales.length < 2, 'one language: no switch')
+  await open(page, '/')
+  // Wrong behaviour caught: the codes squeezed into the phone header next to the menu button.
+  await expect(page.locator('header a[hreflang]:visible'), 'no language links in the phone header').toHaveCount(0)
+  await expectSwitch(page.locator('footer ul:has(a[hreflang])'), 'footer')
+  await navToggle(page).click()
+  const sheet = page.getByRole('dialog')
+  await expectSwitch(sheet.locator('ul:has(a[hreflang])'), 'nav sheet')
+  // Full names, not codes: longer than a two-letter code.
+  for (const text of await sheet.locator('a[hreflang]').allInnerTexts()) expect(text.trim().length, `"${text}" is a name`).toBeGreaterThan(3)
+})
+
+test('from md up the language switch shows codes in the header', async ({ page }) => {
+  test.skip(site.locales.length < 2, 'one language: no switch')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await open(page, '/')
+  await expectSwitch(page.locator('header ul:has(a[hreflang])'), 'header')
+})
+
+test('the theme toggle keeps one name and tells the current theme by its pressed state', async ({ page }) => {
+  const dark = () => page.evaluate(() => document.documentElement.classList.contains('dark'))
+  for (const system of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: system })
+    await page.evaluate(() => { try { localStorage.clear() } catch {} }).catch(() => {})
+    await open(page, '/')
+    const toggle = themeToggle(page)
+    const name = await toggle.evaluate((button) => button.textContent!.trim())
+    // Wrong behaviour caught: a system dark theme announced as "not pressed", or a name that changes with the state.
+    for (const pressed of system === 'dark' ? [true, false, true] : [false, true, false]) {
+      await expect(toggle, `system ${system}: pressed is ${pressed}`).toHaveAttribute('aria-pressed', String(pressed))
+      expect(await dark(), `system ${system}: the page is ${pressed ? 'dark' : 'light'}`).toBe(pressed)
+      await expect(toggle).toHaveAccessibleName(name)
+      await toggle.click()
+    }
+  }
 })

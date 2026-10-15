@@ -3,8 +3,8 @@
   "home": "Home",
   "nav": {
     "label": "Main",
-    "open": "Open menu",
-    "title": "Menu"
+    "open": "Open navigation",
+    "title": "Navigation"
   },
   "close": "Close",
   "theme": "Dark mode",

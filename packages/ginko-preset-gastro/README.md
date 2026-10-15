@@ -81,6 +81,7 @@ the stored data, the same in the week, in hour plans and in exceptions.
 |---|---|
 | `allergensEU` | The 14 EU allergens as `{ value, label }` options (letter codes). |
 | `allergenNames` | `{ de, en }`: the allergen name per code, for visitors. |
+| `menuCategories` | The categories of `menu()` in menu order: `starters`, `soups`, `mains`, `desserts`, `drinks`. Group the dishes by these, so a site and the brick never disagree. |
 | `weekdayNames` | `{ de, en }`: the weekday name per `mo`, `tu`, `we`, `th`, `fr`, `sa`, `su`. |
 | `hoursOn({ hours, plans?, calendar? }, date)` | What applies on a date (`YYYY-MM-DD`): `{ closed, times, reason?, source, field?, holiday? }`. The one rule every display builds on. |
 | `todayState(ctx, today)` | `{ kind: 'open', times }`, `{ kind: 'closed', reason }`, `{ kind: 'holiday', holiday }` or `{ kind: 'restDay' }`. |

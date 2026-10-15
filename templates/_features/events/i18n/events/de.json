@@ -1,0 +1,18 @@
+{
+  "title": "Veranstaltungen",
+  "lead": "Was demnächst stattfindet, mit Datum, Uhrzeit und Preis.",
+  "upcoming": "Demnächst",
+  "all": "Alle Veranstaltungen",
+  "none": "Derzeit sind keine Veranstaltungen geplant. Schauen Sie bald wieder vorbei.",
+  "soldOut": "Ausgebucht",
+  "date": "Datum",
+  "time": "Uhrzeit",
+  "place": "Ort",
+  "price": "Preis",
+  "perPerson": "{price} pro Person",
+  "online": "Online",
+  "book": "Platz buchen",
+  "reserve": "Reservieren Sie Ihren Platz telefonisch oder per E-Mail.",
+  "call": "{phone} anrufen",
+  "email": "E-Mail schreiben"
+}

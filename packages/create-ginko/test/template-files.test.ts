@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
+import { lunch } from '../../ginko-preset-gastro/src/index.ts'
 import { manifestOf, pruneLocales, sampleDates, shiftDates } from '../template-files.mjs'
 
 const work = mkdtempSync(join(tmpdir(), 'create-ginko-files-'))
@@ -86,6 +87,30 @@ describe('pruneLocales', () => {
     expect(read(only, 'content/notices/1.a.md')).toBe('---\ntext: Hallo\nuntil: 2027-01-29\n---\n')
   })
 
+  // Wrong behaviour caught: a nested field (a photo with its alt text, a list of days) swapped as a whole, so the new
+  // main file loses the photo's `src` or the days' prices ("set in the main-language file only", "Tag is missing").
+  it('merges a nested field both files have: the whole value in the new main file, only the texts in the translation', () => {
+    const dir = folder({
+      'app/routes.ts': "export const locales = ['en', 'de'] as const\n",
+      'content/lunch.md': '---\nweekOf: 2026-10-12\ndays:\n  - day: mo\n    dish: "Pasta: with cabbage"\n    price: 11.5\n    allergens: [A, C]\n  - day: tu\n    dish: Beef\nimage:\n  src: /media/a.jpg\n  alt: A table\nnote: |\n  Salad\n  included\n---\n',
+      'content/lunch.de.md': '---\ndays:\n  - dish: Fleckerl\n  - dish: Rind\nimage:\n  alt: Ein Tisch\nnote: |\n  Salat\n  dabei\n---\n',
+    })
+    pruneLocales(dir, ['en', 'de'], ['de', 'en'])
+    expect(read(dir, 'content/lunch.md')).toBe('---\ndays:\n  - day: mo\n    dish: Fleckerl\n    price: 11.5\n    allergens: [A, C]\n  - day: tu\n    dish: Rind\nimage:\n  src: /media/a.jpg\n  alt: Ein Tisch\nnote: |\n  Salat\n  dabei\nweekOf: 2026-10-12\n---\n')
+    expect(read(dir, 'content/lunch.en.md')).toBe('---\ndays:\n  - dish: "Pasta: with cabbage"\n  - dish: Beef\nimage:\n  alt: A table\nnote: |\n  Salad\n  included\n---\n')
+  })
+
+  // Wrong behaviour caught: a nested field the reader cannot read swapped as a whole without a word, so the build of
+  // the new site fails later on "set in the main-language file only" with no hint at the cause.
+  it('names the file and field when it cannot read a nested field', () => {
+    const dir = folder({
+      'app/routes.ts': "export const locales = ['en', 'de'] as const\n",
+      'content/gallery.md': '---\nimages:\n  - image:\n      src: /media/a.jpg\n      ? alt\n---\n',
+      'content/gallery.de.md': '---\nimages:\n  - image:\n      alt: Ein Tisch\n---\n',
+    })
+    expect(() => pruneLocales(dir, ['en', 'de'], ['de', 'en'])).toThrow('content/gallery.md: cannot swap the field "images"')
+  })
+
   it('without app/routes.ts, rewrites the locales list in ginko.config.ts', () => {
     const dir = folder({ 'ginko.config.ts': "export default defineSite({\n  locales: ['en', 'de'],\n  languages: { de: 'de-AT', en: 'en-GB' },\n})\n" })
     pruneLocales(dir, ['en', 'de'], ['en'])
@@ -116,12 +141,20 @@ describe('shiftDates', () => {
       notices: { visible: { mode: 'always' }, fields: { until: { type: 'date' } } },
       lunch: { status: { next: 'week' }, fields: { week: { type: 'date' } } },
       sessions: { fields: { date: { type: 'date' }, from: { type: 'time' } } },
+      // The gastro lunch brick: no status or expiry, but a weekly task, so a new site opens with a current week.
+      lunchWeek: { fields: { weekOf: { type: 'date' } }, tasks: [{ id: 'lunchWeek', kind: 'edit', prefill: { weekOf: '@workWeek' } }] },
+      menu: { fields: { since: { type: 'date' } }, tasks: [{ id: 'dish', kind: 'create', prefill: { since: '@today' } }] },
     },
   }
 
-  it('manifestOf picks the date fields of bricks that expire, show a next date, and sessions', () => {
-    // Wrong behaviour caught: posts (a publication date) or a brick shown always would move too.
-    expect(manifestOf(site)).toEqual({ locales: ['en'], shift: { events: ['when', 'day'], lunch: ['week'], sessions: ['date'] } })
+  it('manifestOf picks the date fields of bricks that expire, show a next date, have a weekly task, and sessions', () => {
+    // Wrong behaviour caught: posts (a publication date) or a brick shown always would move too; the lunch week
+    // would stay in the template's past week.
+    expect(manifestOf(site)).toEqual({ locales: ['en'], shift: { events: ['when', 'day'], lunch: ['week'], sessions: ['date'], lunchWeek: ['weekOf'] } })
+  })
+
+  it('manifestOf moves the lunch week of the gastro preset', () => {
+    expect(manifestOf({ locales: ['en'], bricks: { lunch: lunch({ source: 'files' }) } }).shift).toEqual({ lunch: ['weekOf'] })
   })
 
   it('moves the frontmatter dates of those fields, in every language, and leaves body text and other keys alone', () => {

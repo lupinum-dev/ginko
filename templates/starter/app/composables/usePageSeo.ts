@@ -7,6 +7,11 @@ export interface PageSeoInput {
   image?: GinkoSeoInput['image']
   /** The home page: the organisation from the `site` brick instead of WebPage and BreadcrumbList. */
   home?: boolean
+  /** Home page: more properties of the organisation, which win over those from content/site.md (a subtype such as
+   *  `Restaurant`, opening hours, a menu). */
+  organization?: Record<string, unknown>
+  /** Keeps the page out of search engines (a print version). */
+  noindex?: boolean
   /** More JSON-LD for this page, for example a FAQPage. */
   jsonLd?: Record<string, unknown>[]
 }
@@ -35,7 +40,7 @@ export function usePageSeo(input: () => PageSeoInput) {
         logo: config.logo ? absolute(config.logo.src) : undefined,
         sameAs: config.socials.map((social) => social.url),
       })
-      return { title: page.title, description: page.description, image: page.image, jsonLd: [organization, ...own] }
+      return { title: page.title, description: page.description, image: page.image, noindex: page.noindex, jsonLd: [{ ...organization, ...page.organization }, ...own] }
     }
     // WebPage and a two-step BreadcrumbList are written here: no documented export of @lupinum/ginko builds them
     // (core's breadcrumbLd takes navigation nodes and is internal). Move them to /basics when a second feature needs them.
@@ -49,6 +54,6 @@ export function usePageSeo(input: () => PageSeoInput) {
         { '@type': 'ListItem', position: 2, name: page.title, item: here },
       ],
     }
-    return { title: page.title, description: page.description, image: page.image, jsonLd: [webPage, breadcrumbs, ...own] }
+    return { title: page.title, description: page.description, image: page.image, noindex: page.noindex, jsonLd: [webPage, breadcrumbs, ...own] }
   })
 }
