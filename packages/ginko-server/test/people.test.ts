@@ -292,13 +292,21 @@ describe('changes.list who and paging (Phase 9: F08, F09, F16, F17)', () => {
     expect(page.map((c) => c.who)).toEqual([{ kind: 'platform' }, { kind: 'former' }])
   })
 
-  it('staff see colleagues as kind member and their own changes by email; owners and admins see emails', async () => {
+  // Wrong behaviour caught (R10, romi-16): the reader's own change came back as their email ("anna@… hat inzwischen
+  // Beschreibung geändert" for her own other window), and people had no names, so the history read as a list of addresses.
+  it('the reader is self, a colleague has the name they set; staff never get a colleague\'s email, managers do', async () => {
     const s = await setup()
+    await s.as.owner.mutation(api.account.setName, { name: '  Maria   Huber ' })
     await save(s, 'owner', 1)
     await save(s, 'cook', 2)
     const whoFor = async (person: 'owner' | 'cook' | 'admin') => (await s.as[person].query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })).page.map((c) => c.who)
-    expect(await whoFor('cook')).toEqual([{ email: 'koch@example.com' }, { kind: 'member' }])
-    expect(await whoFor('owner')).toEqual([{ email: 'koch@example.com' }, { email: 'wirtin@example.com' }])
+    expect(await whoFor('cook')).toEqual([{ self: true }, { kind: 'member', name: 'Maria Huber' }])
+    expect(await whoFor('owner')).toEqual([{ email: 'koch@example.com' }, { self: true }])
+    expect(await whoFor('admin')).toEqual([{ email: 'koch@example.com' }, { email: 'wirtin@example.com', name: 'Maria Huber' }])
+    expect((await s.as.owner.query(api.members.list, { site: 'restaurant' })).members.map((m) => m.name)).toEqual(['Maria Huber', null])
+
+    // An empty name removes it: the team sees the email again.
+    await s.as.owner.mutation(api.account.setName, { name: ' ' })
     expect(await whoFor('admin')).toEqual([{ email: 'koch@example.com' }, { email: 'wirtin@example.com' }])
   })
 

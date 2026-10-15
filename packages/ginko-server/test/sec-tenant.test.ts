@@ -189,6 +189,7 @@ const NO_SITE: Record<string, string> = {
   'account.setRemindByMail': "the caller's own settings",
   'account.sawLocale': "the caller's own settings",
   'account.setLocale': "the caller's own settings",
+  'account.setName': "the caller's own settings",
   'account.deleteAccount': "the caller's own account",
   'invites.peek': 'the token is the permission (breakit-access: invitation tokens)',
   'invites.accept': 'the token and the invited address are the permission (breakit-access: invitation tokens)',

@@ -4,6 +4,7 @@
 // invited email.
 import { api } from '#convex/api'
 import { Button } from '@studio/components/ui/button'
+import { Input } from '@studio/components/ui/input'
 
 definePageMeta({ convexAuth: false })
 const { t, locale } = useI18n()
@@ -18,9 +19,16 @@ const { data: offer, pending: loading } = await useConvexQuery(api.invites.peek,
 // step shows: sign in, or accept. Also when this browser still holds a session the server has ended.
 const error = ref('')
 
+// Signed in and invited: the page asks once for the name the team will see (optional; "Meine Seiten" changes it later).
+const { data: settings } = useConvexQuery(api.account.settings, () => (offer.value?.forYou ? {} : 'skip'))
+const { mutate: setName } = useConvexMutation(api.account.setName)
+const askName = computed(() => !!settings.value && !settings.value.name)
+const name = ref('')
+
 async function run() {
   error.value = ''
   try {
+    if (askName.value && name.value.trim()) await setName({ name: name.value })
     const result = await accept({ token })
     await navigateTo(`/s/${result.site}`, { replace: true })
   } catch (e) {
@@ -59,6 +67,11 @@ async function signIn() {
       </template>
       <template v-else>
         <p v-if="!offer.forYou" class="text-destructive" role="alert">{{ t('invite.otherEmail') }}</p>
+        <div v-if="offer.forYou && askName" class="grid gap-1.5">
+          <label for="invite-name" class="font-medium">{{ t('sites.name') }}</label>
+          <Input id="invite-name" v-model="name" maxlength="60" autocomplete="name" aria-describedby="invite-name-hint" />
+          <p id="invite-name-hint" class="text-[13px] text-muted-foreground">{{ t('invite.nameHint') }}</p>
+        </div>
         <p v-if="error" class="text-destructive" role="alert">{{ error }}</p>
         <Button v-if="offer.forYou" class="h-10 w-full" type="button" :disabled="pending" @click="run">{{ pending ? t('invite.accepting') : t('invite.title') }}</Button>
       </template>

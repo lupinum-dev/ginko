@@ -60,9 +60,9 @@ describe('reminders.sweep', () => {
   // Wrong behaviour caught: the person switches the mail off and still gets it, or the switch hides the mail for everyone.
   it('skips a person who switched reminders off', async () => {
     const s = await setupUnplanned()
-    expect(await s.as.cook.query(api.account.settings, {})).toEqual({ remindByMail: true, locale: null })
+    expect(await s.as.cook.query(api.account.settings, {})).toEqual({ remindByMail: true, locale: null, name: null })
     await s.as.cook.mutation(api.account.setRemindByMail, { on: false })
-    expect(await s.as.cook.query(api.account.settings, {})).toEqual({ remindByMail: false, locale: null })
+    expect(await s.as.cook.query(api.account.settings, {})).toEqual({ remindByMail: false, locale: null, name: null })
     await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })
     expect((await mails(s.t)).map((m) => m.to)).toEqual(['wirtin@example.com'])
   })

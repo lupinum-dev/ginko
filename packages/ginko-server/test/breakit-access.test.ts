@@ -52,6 +52,7 @@ const publicCalls: Call[] = [
   { fn: 'account.setRemindByMail', kind: 'mutation', args: () => ({ on: false }) },
   { fn: 'account.sawLocale', kind: 'mutation', args: () => ({ locale: 'de' }) },
   { fn: 'account.setLocale', kind: 'mutation', args: () => ({ locale: 'de' }) },
+  { fn: 'account.setName', kind: 'mutation', args: () => ({ name: 'Anna' }) },
   { fn: 'account.deleteAccount', kind: 'mutation', args: () => ({}) },
   { fn: 'agent.createKey', kind: 'mutation', args: () => ({ ...SITE, label: 'x' }) },
   { fn: 'agent.keys', kind: 'query', args: () => SITE },

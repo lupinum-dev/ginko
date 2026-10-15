@@ -34,9 +34,9 @@ describe('catalogs', () => {
 describe('account.setLocale', () => {
   it('stores a supported language, shows it in settings, and refuses an unknown one', async () => {
     const { as } = await setup()
-    expect(await as.cook.query(api.account.settings, {})).toEqual({ remindByMail: true, locale: null })
+    expect(await as.cook.query(api.account.settings, {})).toEqual({ remindByMail: true, locale: null, name: null })
     await as.cook.mutation(api.account.setLocale, { locale: 'en' })
-    expect(await as.cook.query(api.account.settings, {})).toEqual({ remindByMail: true, locale: 'en' })
+    expect(await as.cook.query(api.account.settings, {})).toEqual({ remindByMail: true, locale: 'en', name: null })
     const refused = await errorOf(as.cook.mutation(api.account.setLocale, { locale: 'xx' }))
     expect(refused).toMatchObject({ code: 'INVALID', key: 'errors.languageUnsupported', params: { locale: 'xx' } })
     expect((await as.cook.query(api.account.settings, {})).locale).toBe('en')

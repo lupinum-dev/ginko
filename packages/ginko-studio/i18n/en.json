@@ -34,6 +34,9 @@
     "title": "My sites",
     "invitedTo": "<site>{site}</site> invites you as {role}.",
     "accept": "Accept invitation",
+    "name": "Your name",
+    "nameHint": "This is how your team sees who changed something.",
+    "nameSaved": "Name saved.",
     "empty": "You currently have no access to a website. If you need it, ask the person who invited you.",
     "role": {
       "admin": "Admin",
@@ -90,7 +93,8 @@
     "signInHint": "Sign in with <email>{email}</email>. We send you a code; you do not need a password.",
     "otherEmail": "This invitation is for another email address. Sign in with that address.",
     "expired": "This invitation has expired or was already used. Please ask for a new one.",
-    "accepting": "Accepting …"
+    "accepting": "Accepting …",
+    "nameHint": "Optional. This is how your team sees who changed something."
   },
   "entry": {
     "newEntry": "New entry",
@@ -125,6 +129,7 @@
     "conflict": {
       "changed": "Someone has changed {fields} in the meantime.",
       "changedBy": "{who} has changed {fields} in the meantime.",
+      "changedByYou": "You changed {fields} in another window in the meantime.",
       "thisEntry": "this entry",
       "item": "{field}: saved now as “{stored}”, your input “{mine}”",
       "keepMine": "Save my changes",
@@ -138,7 +143,11 @@
         "theyAdded": "{who} added “{row}”",
         "theyRemoved": "{who} removed “{row}”",
         "theyChanged": "{who} changed “{row}”",
+        "otherWindowAdded": "In another window, you added “{row}”",
+        "otherWindowRemoved": "In another window, you removed “{row}”",
+        "otherWindowChanged": "In another window, you changed “{row}”",
         "clash": "You both changed “{row}”; please choose one version.",
+        "clashYou": "You changed “{row}” in both windows; please choose one version.",
         "untitled": "Row {n}"
       }
     },
@@ -702,6 +711,7 @@
     "withdrawn": "Withdrawn.",
     "notApproved": "Not approved",
     "rejectedBy": "{who} rejected it: “{reason}”",
+    "rejectedByYou": "You rejected it: “{reason}”",
     "notLive": "Did not go live",
     "notLiveBecause": "Planned for {when}. {reason}",
     "undoBlocked": {
@@ -885,6 +895,7 @@
   },
   "who": {
     "member": "A team member",
+    "you": "You",
     "platform": "Site support",
     "former": "Former member",
     "system": "System",

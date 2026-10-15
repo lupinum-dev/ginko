@@ -34,6 +34,9 @@
     "title": "Meine Seiten",
     "invitedTo": "Einladung zu <site>{site}</site> als {role}",
     "accept": "Einladung annehmen",
+    "name": "Dein Name",
+    "nameHint": "So sieht dein Team, wer etwas geändert hat.",
+    "nameSaved": "Name gespeichert.",
     "empty": "Du hast zurzeit keinen Zugang zu einer Website. Brauchst du einen, frag die Person, die dich eingeladen hat.",
     "role": {
       "admin": "Admin",
@@ -90,7 +93,8 @@
     "signInHint": "Melde dich mit <email>{email}</email> an. Wir schicken dir einen Code, ein Passwort brauchst du nicht.",
     "otherEmail": "Diese Einladung gilt für eine andere E-Mail-Adresse. Melde dich mit dieser an.",
     "expired": "Diese Einladung ist abgelaufen oder schon benutzt. Bitte frag nach einer neuen.",
-    "accepting": "Nimmt an …"
+    "accepting": "Nimmt an …",
+    "nameHint": "Freiwillig. So sieht dein Team, wer etwas geändert hat."
   },
   "entry": {
     "newEntry": "Neuer Eintrag",
@@ -125,6 +129,7 @@
     "conflict": {
       "changed": "Inzwischen hat jemand {fields} geändert.",
       "changedBy": "{who} hat inzwischen {fields} geändert.",
+      "changedByYou": "Du hast {fields} inzwischen in einem anderen Fenster geändert.",
       "thisEntry": "diesen Eintrag",
       "item": "{field}: jetzt gespeichert „{stored}“, deine Eingabe „{mine}“",
       "keepMine": "Meine Eingaben speichern",
@@ -138,7 +143,11 @@
         "theyAdded": "{who} hat „{row}“ hinzugefügt",
         "theyRemoved": "{who} hat „{row}“ entfernt",
         "theyChanged": "{who} hat „{row}“ geändert",
+        "otherWindowAdded": "In einem anderen Fenster hast du „{row}“ hinzugefügt",
+        "otherWindowRemoved": "In einem anderen Fenster hast du „{row}“ entfernt",
+        "otherWindowChanged": "In einem anderen Fenster hast du „{row}“ geändert",
         "clash": "„{row}“ habt ihr beide geändert, bitte eine Version wählen.",
+        "clashYou": "„{row}“ hast du in beiden Fenstern geändert, bitte eine Version wählen.",
         "untitled": "Zeile {n}"
       }
     },
@@ -702,6 +711,7 @@
     "withdrawn": "Zurückgezogen.",
     "notApproved": "Nicht freigegeben",
     "rejectedBy": "{who} hat abgelehnt: „{reason}“",
+    "rejectedByYou": "Du hast abgelehnt: „{reason}“",
     "notLive": "Nicht live gegangen",
     "notLiveBecause": "Geplant für {when}. {reason}",
     "undoBlocked": {
@@ -885,6 +895,7 @@
   },
   "who": {
     "member": "Ein Mitglied",
+    "you": "Du",
     "platform": "Website-Betreuung",
     "former": "Ehemaliges Mitglied",
     "system": "System",

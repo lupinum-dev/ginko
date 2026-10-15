@@ -90,7 +90,7 @@ describe('agent door', () => {
     expect(entry!.data.price).toEqual({ amount: 1990 })
     expect(change).toMatchObject({ via: 'agent', actor: 'u-wirtin' })
     const listed = await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })
-    expect(listed.page[0]).toMatchObject({ who: { email: 'wirtin@example.com' }, agent: 'Claude Code' })
+    expect(listed.page[0]).toMatchObject({ who: { self: true }, agent: 'Claude Code' })
   })
 
   it('the cook\'s key sees only the menu and lunch tasks and cannot run another task', async () => {

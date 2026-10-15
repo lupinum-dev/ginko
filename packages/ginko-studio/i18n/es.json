@@ -34,6 +34,9 @@
     "title": "Mis sitios",
     "invitedTo": "<site>{site}</site> te invita como {role}.",
     "accept": "Aceptar invitación",
+    "name": "Tu nombre",
+    "nameHint": "Así ve tu equipo quién cambió algo.",
+    "nameSaved": "Nombre guardado.",
     "empty": "Ahora mismo no tienes acceso a ningún sitio. Si lo necesitas, pregunta a la persona que te invitó.",
     "role": {
       "admin": "Administrador",
@@ -90,7 +93,8 @@
     "signInHint": "Inicia sesión con <email>{email}</email>. Te enviamos un código; no necesitas contraseña.",
     "otherEmail": "Esta invitación es para otro correo electrónico. Inicia sesión con ese correo.",
     "expired": "Esta invitación ha caducado o ya se usó. Pide una nueva.",
-    "accepting": "Aceptando …"
+    "accepting": "Aceptando …",
+    "nameHint": "Opcional. Así ve tu equipo quién cambió algo."
   },
   "entry": {
     "newEntry": "Entrada nueva",
@@ -125,6 +129,7 @@
     "conflict": {
       "changed": "Alguien ha cambiado {fields} mientras tanto.",
       "changedBy": "{who} ha cambiado {fields} mientras tanto.",
+      "changedByYou": "Mientras tanto cambiaste {fields} en otra ventana.",
       "thisEntry": "esta entrada",
       "item": "{field}: guardado ahora como “{stored}”, tu texto “{mine}”",
       "keepMine": "Guardar mis cambios",
@@ -138,7 +143,11 @@
         "theyAdded": "{who} añadió «{row}»",
         "theyRemoved": "{who} eliminó «{row}»",
         "theyChanged": "{who} cambió «{row}»",
+        "otherWindowAdded": "En otra ventana añadiste «{row}»",
+        "otherWindowRemoved": "En otra ventana quitaste «{row}»",
+        "otherWindowChanged": "En otra ventana cambiaste «{row}»",
         "clash": "Ambos cambiasteis «{row}»; elige una versión.",
+        "clashYou": "Cambiaste «{row}» en las dos ventanas; elige una versión.",
         "untitled": "Fila {n}"
       }
     },
@@ -702,6 +711,7 @@
     "withdrawn": "Retirado.",
     "notApproved": "No aprobado",
     "rejectedBy": "{who} lo rechazó: «{reason}»",
+    "rejectedByYou": "Lo rechazaste: «{reason}»",
     "notLive": "No se publicó",
     "notLiveBecause": "Planificado para {when}. {reason}",
     "undoBlocked": {
@@ -885,6 +895,7 @@
   },
   "who": {
     "member": "Un miembro del equipo",
+    "you": "Tú",
     "platform": "Soporte del sitio",
     "former": "Antiguo miembro",
     "system": "Sistema",

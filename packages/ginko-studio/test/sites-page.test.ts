@@ -7,8 +7,9 @@ import { expect, test, vi } from 'vitest'
 import { useI18n } from '#imports'
 import SitesPage from '../app/pages/index.vue'
 
-const { computed, defineComponent, h, reactive, ref, Suspense, watchEffect } = vue
-Object.entries({ computed, reactive, ref, watchEffect, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
+const { computed, defineComponent, h, reactive, ref, Suspense, watch, watchEffect } = vue
+Object.entries({ computed, reactive, ref, watch, watchEffect, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
+vi.stubGlobal('useToast', () => ({ show: () => {} }))
 
 vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})

@@ -4,7 +4,7 @@ import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, fail, type Actor } from './lib/access'
-import { labeler, type Who } from './lib/names'
+import { labeler, namer, type Who } from './lib/names'
 
 /** Emails are compared lowercased and trimmed everywhere (invites, admins, sign-up). */
 export function normalizeEmail(email: string): string {
@@ -63,13 +63,15 @@ export const list = query({
     const pushKeys = await ctx.db.query('pushKeys').withIndex('by_site', (q) => q.eq('site', actor.site._id)).collect()
     const memberOfUser = new Map(members.map((m) => [m.user as string, m._id]))
     const names = await labeler(ctx, actor)
+    const nameOf = namer(ctx)
     // Platform admins (the agency's support) pass every check on every site but have no membership: the page says so.
     const support = (await ctx.db.query('admins').first()) !== null
     // Keys made with `release:bootstrapKey` come from the platform's operators.
     const by = async (createdBy: string): Promise<Who> => (createdBy === 'bootstrap' ? { kind: 'platform' } : names.who(createdBy))
     return {
       // `you`: the caller's own row, by user id (an email can differ from the account's), so the page offers no self-removal.
-      members: members.map((m) => ({ id: m._id, email: m.email ?? null, role: m.role, grants: m.grants, you: m.user === actor.user.id })),
+      // `name`: the name the person gave themselves (account.setName), null until then.
+      members: await Promise.all(members.map(async (m) => ({ id: m._id, email: m.email ?? null, name: (await nameOf(m.user)) ?? null, role: m.role, grants: m.grants, you: m.user === actor.user.id }))),
       invites: invites
         .filter((i) => i.acceptedAt === undefined)
         .map((i) => ({ id: i._id, email: i.email, role: i.role, grants: i.grants, expiresAt: i.expiresAt })),

@@ -179,7 +179,9 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
           <li v-for="m in members" :key="m.id" class="grid gap-2 border-b px-4 py-3 last:border-b-0">
             <div class="grid gap-x-4 gap-y-2 sm:grid-cols-[1fr_auto] sm:items-center">
               <div class="grid min-w-0 gap-0.5">
-                <p class="flex flex-wrap items-center gap-2 font-medium"><span class="[overflow-wrap:anywhere]">{{ m.email ?? noEmail }}</span><Badge as="span" variant="soft">{{ roleLabel(m.role) }}</Badge><Badge v-if="m.you" as="span" variant="outline">{{ t('site.team.you') }}</Badge></p>
+                <p class="flex flex-wrap items-center gap-2 font-medium"><span class="[overflow-wrap:anywhere]">{{ m.name ?? m.email ?? noEmail }}</span><Badge as="span" variant="soft">{{ roleLabel(m.role) }}</Badge><Badge v-if="m.you" as="span" variant="outline">{{ t('site.team.you') }}</Badge></p>
+                <!-- The name the person set (Meine Seiten), with the address below it: owners and admins see both. -->
+                <p v-if="m.name && m.email" class="text-[13px] text-muted-foreground [overflow-wrap:anywhere]">{{ m.email }}</p>
                 <ul v-if="m.role === 'staff'" class="m-0 grid list-none gap-0.5 p-0 text-[13px] text-muted-foreground">
                   <li v-for="line in grantLines(m.grants)" :key="line">{{ line }}</li>
                   <li v-if="!grantLines(m.grants).length">{{ t('site.team.noRights') }}</li>
