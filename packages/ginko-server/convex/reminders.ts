@@ -1,7 +1,7 @@
 // The weekly reminder (SPEC 10): content that is out of date for the coming week (`staleOf`, the rule
 // the Studio shows too) is mailed once per person and week, on the day before the site's week starts (Sunday for Monday-first weeks), between 17:00 and 18:00 in the site's time zone.
 import { startOfWeek, type Json } from '@lupinum/ginko'
-import { addDays, labelOf, plannedWeeks, staleOf, todayIn, workWeekOf, type Schema } from '@lupinum/ginko/internal'
+import { addDays, labelOf, plannedWeeks, staleOf, todayIn, weeklyTask, workWeekOf, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { components } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
@@ -16,6 +16,15 @@ function hourIn(timeZone: string, now: Date): number {
   const hour = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', hourCycle: 'h23' }).formatToParts(now).find((p) => p.type === 'hour')?.value
   return Number(hour)
 }
+
+/** Who the reminder mails about a weekly task: owners, and staff who hold that task (SPEC 2.7). */
+export const isReminded = (member: Pick<Doc<'memberships'>, 'role' | 'grants'>, taskRef: string) => member.role === 'owner' || member.grants.includes(taskRef)
+
+/** The weekly tasks ("brick.task") of the site's live singles: what the reminder can mail about (see `weeklyTask`). */
+export const weeklyRefs = (schema: Schema): string[] => Object.entries(schema.bricks).flatMap(([key, brick]) => {
+  const task = brick.kind === 'single' && !brick.retired ? weeklyTask(brick)?.task : undefined
+  return task ? [`${key}.${task.id}`] : []
+})
 
 /** Whether tomorrow is the first day of the site's week. */
 const isDayBeforeWeekStart = (date: string, schema: Schema) => startOfWeek(addDays(date, 1), schema.week) === addDays(date, 1)
@@ -64,7 +73,7 @@ async function remindSite(ctx: MutationCtx, site: Doc<'sites'>, schema: Schema, 
     if (!state || state.current) continue
     // Owners may fix everything; staff only with the task that edits the field (SPEC 2.7).
     const task = `${key}.${state.task.id}`
-    for (const member of members.filter((m) => m.role === 'owner' || m.grants.includes(task))) {
+    for (const member of members.filter((m) => isReminded(m, task))) {
       const done = await ctx.db.query('reminders').withIndex('by_site_brick_week_user', (q) => q.eq('site', site._id).eq('brick', key).eq('week', week).eq('user', member.user)).first()
       if (done) continue
       const to = await addressOf(ctx, member.user)

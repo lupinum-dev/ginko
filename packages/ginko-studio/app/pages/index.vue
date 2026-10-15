@@ -52,8 +52,10 @@ const groups = computed(() => [
   ...(recent.value.length ? [{ id: 'recent', heading: t('sites.recent'), rows: recent.value }] : []),
   { id: 'all', heading: recent.value.length ? t('sites.all') : '', rows: matching.value },
 ])
-// Reminder mail (the mail before the week starts for content that is out of date) is on by default.
+// Reminder mail (the mail before the week starts for content that is out of date) is on by default. The switch shows
+// only where a site can send it to this person (a weekly task, `weekly`), so nobody switches a mail that never comes.
 const { data: settings } = useConvexQuery(api.account.settings, {})
+const reminders = computed(() => (sites.value ?? []).some((s) => s.weekly))
 const { mutate: setRemind } = useConvexMutation(api.account.setRemindByMail)
 async function toggleRemind(on: boolean) {
   problem.value = ''
@@ -106,7 +108,7 @@ async function pickLocale(code: string) {
         <p v-else class="text-muted-foreground" role="status">{{ t('sites.noMatch', { query: search.trim() }) }}</p>
       </section>
     </template>
-    <div v-if="settings" class="flex items-start gap-3.5">
+    <div v-if="settings && reminders" class="flex items-start gap-3.5">
       <Switch id="remind" class="mt-0.5" :model-value="settings.remindByMail" @update:model-value="toggleRemind" />
       <label for="remind" class="grid cursor-pointer gap-0.5">
         <strong class="font-medium">{{ t('sites.remindTitle') }}</strong>

@@ -72,3 +72,22 @@ test('many sites: by name with their address, the last opened first, and a searc
     localStorage.clear()
   }
 })
+
+// Wrong behaviour caught: every account was offered a reminder mail "zum Beispiel das Mittagsmenü", also where no site
+// can ever send one (an agency site has no weekly task).
+test.each([
+  { weekly: false, text: undefined },
+  { weekly: true, text: 'Erinnerungen per E-MailAm Abend vor Wochenbeginn eine kurze Mail, wenn für die nächste Woche noch etwas fehlt.' },
+])('the reminder switch shows only where a site can send the mail (weekly: $weekly)', async ({ weekly, text }) => {
+  answers['sites.mine'] = [{ slug: 'lupinum', name: 'Lupinum', url: 'https://lupinum.at', role: 'owner', deleting: false, weekly }]
+  answers['account.settings'] = { remindByMail: true }
+  try {
+    const wrapper = mountPage()
+    await flushPromises()
+    const label = wrapper.find('label[for="remind"]')
+    expect(label.exists() ? label.text() : undefined).toBe(text)
+  } finally {
+    answers['sites.mine'] = []
+    delete answers['account.settings']
+  }
+})

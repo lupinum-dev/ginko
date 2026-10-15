@@ -41,7 +41,7 @@
       "staff": "Staff"
     },
     "remindTitle": "Reminders by email",
-    "remindText": "A short email the evening before the week starts if something for next week is still missing, for example the lunch menu.",
+    "remindText": "A short email the evening before the week starts if something for next week is still missing.",
     "language": "Language",
     "deleteAccount": {
       "title": "Delete account",
@@ -329,8 +329,8 @@
     "ai": {
       "heading": "Connect AI",
       "lead": "Your AI assistant can then do tasks for you, for example “{first}” or “{second}”. It may do exactly what you may do here. Every change appears in the history as “via AI” and can be undone.",
-      "exampleOne": "Set today to fully booked",
-      "exampleTwo": "Add the lunch menu from the photo",
+      "exampleOne": "Fix a typo",
+      "exampleTwo": "Shorten the first paragraph",
       "keyFor": "Key for “{label}”",
       "keyOnce": "The key is shown only now. Anyone who has it can make changes in your name, so give it only to your assistant.",
       "terminal": "For Claude Code: run in the terminal",
@@ -351,7 +351,10 @@
       "yourKeys": "Your keys",
       "noneYet": "None yet.",
       "revokedAt": ", revoked {when}",
-      "revokeConfirm": "“{label}” cannot make any changes after that."
+      "revokeConfirm": "“{label}” cannot make any changes after that.",
+      "reviewOn": "Changes wait for approval.",
+      "reviewOff": "Changes go online right away.",
+      "reviewLikeYou": "What waits for approval when you do it waits here too. Everything else goes online right away."
     },
     "keys": {
       "heading": "Publishing keys",

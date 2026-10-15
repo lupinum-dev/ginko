@@ -41,7 +41,7 @@
       "staff": "Personal"
     },
     "remindTitle": "Recordatorios por correo",
-    "remindText": "Un correo breve la tarde antes de que empiece la semana si aún falta algo de la próxima semana, por ejemplo el menú del almuerzo.",
+    "remindText": "Un correo breve la tarde antes de que empiece la semana si aún falta algo de la próxima semana.",
     "language": "Idioma",
     "deleteAccount": {
       "title": "Eliminar cuenta",
@@ -329,8 +329,8 @@
     "ai": {
       "heading": "Conectar IA",
       "lead": "Tu asistente de IA podrá entonces hacer tareas por ti, por ejemplo “{first}” o “{second}”. Puede hacer exactamente lo que tú puedes hacer aquí. Cada cambio aparece en el historial como “vía IA” y se puede deshacer.",
-      "exampleOne": "Marcar hoy como completo",
-      "exampleTwo": "Añadir el menú del almuerzo desde la foto",
+      "exampleOne": "Corrige una errata",
+      "exampleTwo": "Acorta el primer párrafo",
       "keyFor": "Clave para “{label}”",
       "keyOnce": "La clave se muestra solo ahora. Quien la tenga puede hacer cambios en tu nombre, así que dásela solo a tu asistente.",
       "terminal": "Para Claude Code: ejecuta en la terminal",
@@ -351,7 +351,10 @@
       "yourKeys": "Tus claves",
       "noneYet": "Ninguna todavía.",
       "revokedAt": ", revocada {when}",
-      "revokeConfirm": "Después, “{label}” ya no podrá hacer cambios."
+      "revokeConfirm": "Después, “{label}” ya no podrá hacer cambios.",
+      "reviewOn": "Los cambios esperan aprobación.",
+      "reviewOff": "Los cambios se publican al momento.",
+      "reviewLikeYou": "Lo que espera aprobación cuando lo haces tú también espera aquí. Lo demás se publica al momento."
     },
     "keys": {
       "heading": "Claves de publicación",

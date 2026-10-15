@@ -41,7 +41,7 @@
       "staff": "Mitarbeiter"
     },
     "remindTitle": "Erinnerungen per E-Mail",
-    "remindText": "Am Abend vor Wochenbeginn eine kurze Mail, wenn für nächste Woche noch etwas fehlt, zum Beispiel das Mittagsmenü.",
+    "remindText": "Am Abend vor Wochenbeginn eine kurze Mail, wenn für die nächste Woche noch etwas fehlt.",
     "language": "Sprache",
     "deleteAccount": {
       "title": "Konto löschen",
@@ -329,8 +329,8 @@
     "ai": {
       "heading": "Mit KI verbinden",
       "lead": "Dein KI-Assistent kann dann für dich Aufgaben erledigen, zum Beispiel „{first}“ oder „{second}“. Er darf genau das, was du hier darfst. Jede Änderung steht im Verlauf als „über KI“ und lässt sich rückgängig machen.",
-      "exampleOne": "Setz Heute ausgebucht",
-      "exampleTwo": "Trag das Mittagsmenü vom Foto ein",
+      "exampleOne": "Korrigier einen Tippfehler",
+      "exampleTwo": "Kürz den ersten Absatz",
       "keyFor": "Schlüssel für „{label}“",
       "keyOnce": "Der Schlüssel wird nur jetzt angezeigt. Wer ihn hat, kann in deinem Namen ändern: gib ihn nur deinem Assistenten.",
       "terminal": "Für Claude Code: im Terminal ausführen",
@@ -351,7 +351,10 @@
       "yourKeys": "Deine Schlüssel",
       "noneYet": "Noch keiner.",
       "revokedAt": ", widerrufen {when}",
-      "revokeConfirm": "„{label}“ kann danach nichts mehr ändern."
+      "revokeConfirm": "„{label}“ kann danach nichts mehr ändern.",
+      "reviewOn": "Änderungen warten auf Freigabe.",
+      "reviewOff": "Änderungen gehen sofort online.",
+      "reviewLikeYou": "Was bei dir auf Freigabe wartet, wartet auch hier. Alles andere geht sofort online."
     },
     "keys": {
       "heading": "Schlüssel für Veröffentlichungen",
