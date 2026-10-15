@@ -63,7 +63,8 @@
     "unsafeLink": "Link ist nicht erlaubt (nur http, https, mailto, tel oder /pfad).",
     "oneParagraph": "Hier ist nur ein Absatz erlaubt.",
     "tooComplex": "Text ist zu komplex (höchstens {max} Elemente).",
-    "componentNotClosed": "Die Komponente „{tag}“ ist nicht geschlossen: Nach ihrem Inhalt fehlt eine Zeile mit „{close}“."
+    "componentNotClosed": "Die Komponente „{tag}“ ist nicht geschlossen: Nach ihrem Inhalt fehlt eine Zeile mit „{close}“.",
+    "bracketText": "„[{text}“ ist weder Link noch Bild: Es fehlt „]“ oder die Adresse in runden Klammern. Eckige Klammern als Text: \\[ und \\]."
   },
   "component": {
     "or": "{first} oder {second}",

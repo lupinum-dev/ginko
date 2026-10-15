@@ -122,6 +122,16 @@ describe('parseMarkdown profiles', () => {
     expect(value.nodes).toEqual([['p', {}, '<script>alert(1)</script>']])
   })
 
+  // Wrong behaviour caught: a picture line without its "]" (or "[sic]" as text) was reported as the unknown
+  // component "span", which does not point at the typo.
+  test.each<[string, MarkdownProfile, string[]]>([
+    ['![Drohne auf Moos($file.x)', 'page', ['„[Drohne auf Moos($file.x)“ ist weder Link noch Bild: Es fehlt „]“ oder die Adresse in runden Klammern. Eckige Klammern als Text: \\[ und \\].']],
+    ['Er sagte [sic] dazu.', 'basic', ['„[sic“ ist weder Link noch Bild: Es fehlt „]“ oder die Adresse in runden Klammern. Eckige Klammern als Text: \\[ und \\].']],
+    ['Er sagte \\[sic\\] dazu.', 'basic', []],
+  ])('%j as %s: text in square brackets names the brackets', async (text, profile, problems) => {
+    expect((await parseMarkdown(text, { profile, components: {} })).problems).toEqual(problems)
+  })
+
   test('a field value has no frontmatter: --- is a divider, not metadata', async () => {
     const field = await parseMarkdown('---\ntitle: x\n---\nText')
     expect(field.frontmatter).toEqual({})

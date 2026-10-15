@@ -478,6 +478,14 @@ export const compiled: Record<string, MessageTree> = {
      "close"
     ],
     "“."
+   ],
+   "bracketText": [
+    "„[",
+    [
+     "a",
+     "text"
+    ],
+    "“ ist weder Link noch Bild: Es fehlt „]“ oder die Adresse in runden Klammern. Eckige Klammern als Text: \\[ und \\]."
    ]
   },
   "component": {
@@ -1719,6 +1727,14 @@ export const compiled: Record<string, MessageTree> = {
      "close"
     ],
     "” is missing after its content."
+   ],
+   "bracketText": [
+    "“[",
+    [
+     "a",
+     "text"
+    ],
+    "” is neither a link nor an image: a “]” or the address in round brackets is missing. Square brackets as text: \\[ and \\]."
    ]
   },
   "component": {
@@ -2960,6 +2976,14 @@ export const compiled: Record<string, MessageTree> = {
      "close"
     ],
     "” después de su contenido."
+   ],
+   "bracketText": [
+    "“[",
+    [
+     "a",
+     "text"
+    ],
+    "” no es ni un enlace ni una imagen: falta “]” o la dirección entre paréntesis. Corchetes como texto: \\[ y \\]."
    ]
   },
   "component": {

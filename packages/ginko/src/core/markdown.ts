@@ -363,6 +363,9 @@ function closedComponents(text: string, problems: MarkdownProblem[]) {
   }))()
 }
 
+/** The text of a bracket problem is cut to this length. */
+const BRACKET_TEXT_MAX = 40
+
 function profileCheck(profile: MarkdownProfile, problems: Described[], registry?: ComponentRegistry) {
   return defineComarkPlugin(() => ({
     name: 'ginko-profile',
@@ -377,6 +380,14 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
         if (typeof node === 'string' || node[0] === null) return
         const [tag, props, ...children] = node
         const component = registry && Object.hasOwn(registry, tag) ? registry[tag]! : undefined
+        // comark makes a `span` of `[text]` that is no link: a typo in a link or picture (`![Bild(datei)`) or brackets
+        // meant as text. Say that instead of "unknown component span" (checkComponentTree leaves it to this check).
+        if (tag === 'span' && !component) {
+          const text = textOf(node)
+          fail(msg('markdown.bracketText', { text: text.length > BRACKET_TEXT_MAX ? `${text.slice(0, BRACKET_TEXT_MAX - 1)}…` : text }))
+          children.forEach(visit)
+          return
+        }
         // A refused tag goes with its attributes: one problem is enough.
         if (isBlockedTag(tag, profile === 'page' ? registry : undefined) && !slots.has(node)) fail(msg('markdown.tagBlocked', { tag }))
         else if (allowed && !allowed.has(tag)) fail(msg('markdown.tagNotInProfile', { tag, allowed: { key: `markdown.profile.${profile}` } }))

@@ -63,7 +63,8 @@
     "unsafeLink": "Enlace no permitido (solo http, https, mailto, tel o /ruta).",
     "oneParagraph": "Aquí solo se permite un párrafo.",
     "tooComplex": "El texto es demasiado complejo (máximo {max} elementos).",
-    "componentNotClosed": "El componente “{tag}” no está cerrado: falta una línea con “{close}” después de su contenido."
+    "componentNotClosed": "El componente “{tag}” no está cerrado: falta una línea con “{close}” después de su contenido.",
+    "bracketText": "“[{text}” no es ni un enlace ni una imagen: falta “]” o la dirección entre paréntesis. Corchetes como texto: \\[ y \\]."
   },
   "component": {
     "or": "{first} o {second}",

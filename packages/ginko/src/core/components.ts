@@ -144,7 +144,8 @@ export function checkComponentTree(nodes: readonly Node[], registry: ComponentRe
       for (const child of children) visit(child, tag)
       return
     }
-    if (!PLAIN_TAGS.has(tag) && !isBlockedTag(tag, registry)) {
+    // An unregistered `span` is text in square brackets, which `profileCheck` reports as such.
+    if (!PLAIN_TAGS.has(tag) && !isBlockedTag(tag, registry) && !(tag === 'span' && !Object.hasOwn(registry, tag))) {
       if (!Object.hasOwn(registry, tag)) fail(msg('component.unknown', { tag }))
       else checkComponent(tag, registry[tag]!, props as Record<string, unknown>, children as Node[], parent, fail)
     }
