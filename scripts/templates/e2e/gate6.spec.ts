@@ -33,7 +33,7 @@ test('budgets on every page at 390', async ({ browser }) => {
       const w = window as unknown as { __cls: number; __lcp?: { url: string } }
       const url = w.__lcp?.url
       const resource = url ? (performance.getEntriesByName(url)[0] as PerformanceResourceTiming | undefined) : undefined
-      return { cls: w.__cls, lcp: { url: url ?? '(text)', bytes: resource ? resource.encodedBodySize || resource.transferSize : 0 } }
+      return { cls: w.__cls, lcp: { url: url || '(text)', bytes: resource ? resource.encodedBodySize || resource.transferSize : 0 } }
     })
     const scriptBytes = (await Promise.all(scripts)).reduce((a, b) => a + b, 0)
     expect.soft(scriptBytes, `${path}: gzip(script bodies) in bytes (budget ${BUDGET.scripts})`).toBeLessThanOrEqual(BUDGET.scripts)
