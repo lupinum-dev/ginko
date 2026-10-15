@@ -1,0 +1,8 @@
+[
+  "app/components/hours/Table.vue",
+  "app/components/hours/Today.vue",
+  "app/composables/useHours.ts",
+  "i18n/hours/de.json",
+  "i18n/hours/en.json",
+  "i18n/hours/it.json"
+]
