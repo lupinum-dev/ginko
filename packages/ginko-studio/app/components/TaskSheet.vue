@@ -16,6 +16,8 @@ import type { Entry } from '../composables/useSiteData'
 import { taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { isModKey } from '../utils/keys'
+import { shrunkHint, shrunkTexts } from '../utils/shrunk'
+import { refDebounced } from '@vueuse/core'
 
 const props = defineProps<{
   site: string
@@ -38,7 +40,7 @@ const props = defineProps<{
   schema: Schema
 }>()
 const emit = defineEmits<{ close: [] }>()
-const { t } = useI18n()
+const { t, format } = useI18n()
 const shown = (label: LabelText) => shownLabel(label, props.main)
 
 provideSiteRefs(() => props.site, () => props.schema, () => props.main)
@@ -74,6 +76,10 @@ watch(prefill, (p) => {
   const start: Data = isCreate.value ? { ...defaultsFor(fields.value) } : {}
   form.load({ ...start, ...(p as Data) })
 }, { immediate: true })
+
+/** Long texts that lost most of their length (a slip, or a rewrite): a hint, never a block. After the typing pause, as in Alles bearbeiten. */
+const typed = refDebounced(draft, 300)
+const shrunk = computed(() => (dirty.value ? shrunkTexts(fields.value, baseline.value, typed.value, props.main).map((s) => shrunkHint(s, shown(fields.value[s.key]!.label), { t, format })) : []))
 
 /** A new entry with the same name as one that is already there (e.g. a second "Heute ausgebucht"). */
 const twin = computed(() => {
@@ -208,8 +214,9 @@ function onCancel(event: Event) {
           <Button type="button" variant="outline" @click="confirmClose = false">{{ t('entry.discard.keepEditing') }}</Button>
         </template>
         <template v-else>
+          <p v-if="shrunk.length" id="sheet-shrunk" class="basis-full text-sm text-muted-foreground">{{ shrunk.join(' ') }}</p>
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-          <Button type="submit" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
+          <Button type="submit" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
           <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>
         </template>
       </footer>

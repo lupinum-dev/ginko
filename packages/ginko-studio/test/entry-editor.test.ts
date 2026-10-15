@@ -28,7 +28,7 @@ vi.stubGlobal('useOps', () => ({}))
 const schema = serializeSchema(defineSite({
   site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
   pages: { home: { de: '/' } },
-  bricks: { blog: collection({ label: 'Blog', drafts: true, max: 50, order: 'manual', fields: { title: f.text('Titel'), body: f.longtext('Text', { optional: true }) } }) },
+  bricks: { blog: collection({ label: 'Blog', drafts: true, max: 50, order: 'manual', fields: { title: f.text('Titel'), body: f.longtext('Text', { optional: true }), story: f.markdown('Geschichte', { optional: true }) } }) },
 }))
 
 // Wrong behaviour caught: a new draft is asked about as "Neuer Eintrag" (the page heading), or by its brick label "Blog" while empty.
@@ -124,5 +124,32 @@ test('Ctrl+S in the form saves a change once, and an unchanged form not at all',
     expect(saveEntry.mock.calls[0]![0]).toMatchObject({ entry: 'e1', fields: { title: { de: 'Neu' } } })
   } finally {
     vi.stubGlobal('useOps', () => ({}))
+  }
+})
+
+// Wrong behaviour caught: a slip in Markdown mode replaced a long text with one line, and the save bar said nothing
+// until the site had lost two paragraphs and four photos.
+const PICTURES = ['k1', 'k2', 'k3', 'k4'].map((id) => `![Bild]($file.${id})`).join('\n\n')
+const long = (pictures: boolean, length: number) => { const start = pictures ? `${PICTURES}\n\n` : ''; return start + 'x'.repeat(length - start.length) }
+test.each([
+  { before: long(true, 2400), after: 'y'.repeat(80), hint: /„Geschichte“ ist viel kürzer als vorher: 80 statt 2\D?400 Zeichen\. 4 Bilder weniger\./ },
+  { before: long(true, 2400), after: long(true, 1500), hint: undefined },
+  { before: 'x'.repeat(200), after: 'y'.repeat(10), hint: undefined },
+])('the save bar points out a text that lost most of its length ($before.length → $after.length characters)', async ({ before, after, hint }) => {
+  vi.useFakeTimers()
+  try {
+    const entry = { _id: 'e1', brick: 'blog', kind: 'item', order: 0, data: { title: { de: 'Alt' }, story: { de: before } }, rev: 1, fieldRevs: {}, lifeRev: 1, prints: {}, state: 'live' } as const
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, entry, canRemove: false },
+      global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } },
+    })
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'story', { de: after })
+    await vi.advanceTimersByTimeAsync(300)
+    const bar = wrapper.get('.bar').text()
+    // The thousands separator is the Studio language's own (a narrow space in de-AT).
+    if (hint) expect(bar).toMatch(hint)
+    else expect(bar).not.toContain('kürzer als vorher')
+  } finally {
+    vi.useRealTimers()
   }
 })

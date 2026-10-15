@@ -213,6 +213,10 @@
     "size": {
       "near": "This entry uses {used} of {limit}.",
       "over": "This entry is too large: {used} of {limit}. Shorten it by about {over} to save it."
+    },
+    "shrunk": {
+      "text": "“{field}” is much shorter than before: {after} instead of {before} characters.",
+      "images": "{count, plural, one {# image} other {# images}} fewer."
     }
   },
   "site": {

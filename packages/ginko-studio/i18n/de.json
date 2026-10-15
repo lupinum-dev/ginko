@@ -213,6 +213,10 @@
     "size": {
       "near": "Dieser Eintrag belegt {used} von {limit}.",
       "over": "Dieser Eintrag ist zu groß: {used} von {limit}. Kürze ihn um etwa {over}, dann lässt er sich speichern."
+    },
+    "shrunk": {
+      "text": "„{field}“ ist viel kürzer als vorher: {after} statt {before} Zeichen.",
+      "images": "{count, plural, one {# Bild} other {# Bilder}} weniger."
     }
   },
   "site": {
