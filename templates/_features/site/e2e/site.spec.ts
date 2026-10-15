@@ -1,10 +1,10 @@
-// The site feature on the built template (gate 3): notices, footer legal links, legal pages, the error page, and where the
-// language switch sits.
+// The site feature on the built template (gate 3): notices, footer legal links, legal pages, the error page, where the
+// language switch sits, and the theme toggle's state.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Locator } from '@playwright/test'
-import { expect, navToggle, open, site, test } from '../../../../scripts/templates/e2e/helpers.ts'
+import { expect, navToggle, open, site, test, themeToggle } from '../../../../scripts/templates/e2e/helpers.ts'
 
 /** The template's notices shown at the test instant: main-language files whose `until` has not passed. */
 function activeNotices(): number {
@@ -94,4 +94,22 @@ test('from md up the language switch shows codes in the header', async ({ page }
   await page.setViewportSize({ width: 1440, height: 900 })
   await open(page, '/')
   await expectSwitch(page.locator('header ul:has(a[hreflang])'), 'header')
+})
+
+test('the theme toggle keeps one name and tells the current theme by its pressed state', async ({ page }) => {
+  const dark = () => page.evaluate(() => document.documentElement.classList.contains('dark'))
+  for (const system of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: system })
+    await page.evaluate(() => { try { localStorage.clear() } catch {} }).catch(() => {})
+    await open(page, '/')
+    const toggle = themeToggle(page)
+    const name = await toggle.evaluate((button) => button.textContent!.trim())
+    // Wrong behaviour caught: a system dark theme announced as "not pressed", or a name that changes with the state.
+    for (const pressed of system === 'dark' ? [true, false, true] : [false, true, false]) {
+      await expect(toggle, `system ${system}: pressed is ${pressed}`).toHaveAttribute('aria-pressed', String(pressed))
+      expect(await dark(), `system ${system}: the page is ${pressed ? 'dark' : 'light'}`).toBe(pressed)
+      await expect(toggle).toHaveAccessibleName(name)
+      await toggle.click()
+    }
+  }
 })
