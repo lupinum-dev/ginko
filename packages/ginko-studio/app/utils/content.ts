@@ -315,9 +315,12 @@ export interface LanguageNames { lang: string; main: string }
 /**
  * The note under a field whose translation is missing, from the stored state (what the website shows now). Without
  * one (a draft) it only says so; on a page that is not online in the language, it names the texts the page waits for.
+ * `hiddenTitle` is the entry's title when the website leaves the entry out of the language while this text is missing
+ * (hidesUntranslated): an entry online in the language then disappears there, so the note says so instead of "shows main".
  */
-export function missingNote(stored: StoredTranslation | undefined, leaf: string, t: Words['t'], names: LanguageNames): string {
+export function missingNote(stored: StoredTranslation | undefined, leaf: string, t: Words['t'], names: LanguageNames, hiddenTitle?: string): string {
   if (!stored) return t('fields.translation.notTranslated')
+  if (stored.page === 'shown' && hiddenTitle !== undefined) return t('fields.translation.notTranslatedHidden', { title: hiddenTitle, lang: names.lang })
   if (stored.page === 'shown') return t('fields.translation.notTranslatedShowsMain', { name: names.main })
   return stored.blocking.includes(leaf) ? t('fields.translation.notTranslatedBlocks', { lang: names.lang }) : t('fields.translation.notTranslated')
 }
