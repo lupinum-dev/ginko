@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
-  applyDefaults, bundleFits, f, isBundle, knownBricks, markdownTrees, parseMarkdown, platformMarkdownRef, withMarkdownRefs, type Bundle, type MarkdownTree,
+  applyDefaults, bundleFits, f, isBundle, knownBricks, markdownTrees, parseMarkdown, platformMarkdownRef, withMarkdownRefs, wordsOf, type Bundle, type MarkdownTree,
   buildBundle, servedBundle, type FileInfo, isVisible, printOf, resolveEntry, serializeSchema, sortEntries, todayIn,
   type Brick, type BundleBrick, type BundleItem, type CollectionBrick, type Locale, type Schema, type StoredEntry,
 } from '../../src/core/index.ts'
@@ -326,13 +326,19 @@ it('knownBricks keeps only the bricks of the site schema', () => {
 })
 
 // Page weight P1/P1b: every page's payload carried every text with its heading list, ~85% of the payload on v7.
-it('withMarkdownRefs: a platform text becomes only its ref in page state, and the tree is kept for the route', () => {
+// Reading time (romi-13): the ref keeps the tree's word count, else a list page that only has refs shows "1 Min." for
+// every post, and the Studio preview (full trees) disagrees with the site.
+it('withMarkdownRefs: a platform text becomes only its ref and word count in page state, and the tree is kept for the route', async () => {
   const bundle = JSON.parse(readFileSync(new URL('../../../../contracts/restaurant/bundle.format3.de.json', import.meta.url), 'utf8')) as Bundle
   const trees = new Map<string, MarkdownTree>()
   const out = withMarkdownRefs(bundle, serializeSchema(restaurant), trees, (brick, id, field) => platformMarkdownRef('de', '1.1', brick, id, field))
   const legal = out.bricks.legal
-  expect(legal?.kind === 'single' && legal.data.imprint).toEqual({ ref: '/__ginko/platform/de/1.1/md/legal/legal/imprint.json' })
-  expect(trees.get('/__ginko/platform/de/1.1/md/legal/legal/imprint.json')?.nodes[0]).toEqual(['p', {}, 'Gasthaus zur Linde, Inhaberin Maria Ebner', ['br', {}], 'Dorfstraße 12, 5020 Salzburg'])
+  const tree = trees.get('/__ginko/platform/de/1.1/md/legal/legal/imprint.json')!
+  expect(legal?.kind === 'single' && legal.data.imprint).toEqual({ ref: '/__ginko/platform/de/1.1/md/legal/legal/imprint.json', words: wordsOf(tree) })
+  expect(tree.nodes[0]).toEqual(['p', {}, 'Gasthaus zur Linde, Inhaberin Maria Ebner', ['br', {}], 'Dorfstraße 12, 5020 Salzburg'])
+  expect(wordsOf(tree)).toBeGreaterThan(8)
+  expect(wordsOf((await parseMarkdown('Ein **kurzer** Text.\n\n## Mit Titel')).value)).toBe(5)
+  expect(wordsOf({ ref: '/x', words: 7 })).toBe(7)
 })
 
 // Wrong behaviour caught: a picture of the Files library inside a text (`$file.<id>`) reaches the site as that literal
