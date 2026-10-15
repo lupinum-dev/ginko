@@ -22,6 +22,12 @@ bundles `sharp`, and the deploy fails on Convex's Linux runtime.
 and the previous release stays live. Preview builds and local builds deploy nothing. The Vercel project's root
 directory is `apps/platform`.
 
+**Preview builds** still run the Nuxt build, and it stops without `SITE_URL` and the Convex URLs. So choose one:
+add **Preview** variables in Vercel that point at a separate staging Convex project (see
+[Preview deployments](https://github.com/lupinum-dev/better-convex/blob/main/docs/content/docs/6.operations/3.deploy-to-vercel.md#preview-deployments)
+in the better-convex docs), or turn off preview builds for this Vercel project. Never point a preview at the
+production deployment or reuse production secrets.
+
 **Operator commands** use `pnpm exec better-convex convex env|run …`. The wrapper reads the target deployment only
 from `.env.local` in the current folder; it ignores `CONVEX_*` variables in the shell and refuses `--prod`. For
 production, keep a separate checkout of this repository with the dependencies installed, and put only a key for

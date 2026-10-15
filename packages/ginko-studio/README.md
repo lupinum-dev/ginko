@@ -27,7 +27,8 @@ whole app: do not extend a website with this layer. For the Convex side and the 
 Read at build and start time by the host. In development, `pnpm dev` reads `packages/ginko-server/.env.local`
 (the file that `convex dev` writes). A production build stops when `SITE_URL`, the Convex URL or the Convex site URL
 is missing; development uses the local defaults. On Vercel, set them in the **Production** environment (the build
-reads them too); the production build also needs `CONVEX_DEPLOY_KEY`, see the
+reads them too); the production build also needs `CONVEX_DEPLOY_KEY`. Preview builds need their own values for a
+staging deployment, or preview builds turned off. See the
 [`ginko-server` README](../ginko-server/README.md#deploy-the-platform-lupinum-operators).
 
 | Name | Purpose |
