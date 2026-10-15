@@ -28,6 +28,10 @@ export interface OpError {
 export const isProposal = (result: unknown): result is { proposal: string; status: 'open' } =>
   !!result && typeof result === 'object' && typeof (result as { proposal?: unknown }).proposal === 'string'
 
+/** The names of the files an undo or revert took out of the Files trash (the server lists them in `restoredFiles`). */
+const restoredFilesOf = (result: unknown): unknown[] =>
+  typeof result === 'object' && result !== null && 'restoredFiles' in result && Array.isArray(result.restoredFiles) ? result.restoredFiles : []
+
 /**
  * What a failed call means for the person. A server error (`fail()` in ginko-server) keeps its code and details,
  * and its text in the Studio's language (messageOf). A call that a cancel or a closed sheet stopped has an empty
@@ -87,11 +91,15 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
 
   const opId = () => crypto.randomUUID()
 
+  /** `text` and a sentence per picture that came back from the Files trash with the old version. */
+  const withRestored = (text: string, result: unknown) =>
+    [text, ...restoredFilesOf(result).map((name) => t('ops.pictureBackFromTrash', { name: String(name) }))].join(' ')
+
   async function undoChange(change: string, task?: string) {
     try {
       const result = await undo.mutate({ site: site.value, opId: opId(), task, change })
       if (isProposal(result)) return sentForApproval()
-      show(t('ops.undone'))
+      show(withRestored(t('ops.undone'), result))
     } catch (error) {
       // One message, the server's: it says why (saved again since, removed, fields restructured).
       show(opErrorOf(error).message, { tone: 'err' })
@@ -171,7 +179,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
       else if (!('change' in result)) show(t('history.alreadyThere'))
       else {
         const made = result.change
-        show(`${t('history.reverted')} ${t('ops.liveHint')}`, { action: { label: t('ops.undo'), run: () => undoChange(made, task) } })
+        show(withRestored(`${t('history.reverted')} ${t('ops.liveHint')}`, result), { action: { label: t('ops.undo'), run: () => undoChange(made, task) } })
       }
     } catch (error) {
       show(opErrorOf(error).message, { tone: 'err' })

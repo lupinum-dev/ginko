@@ -16,7 +16,7 @@ import { countersOf, DELETED_KEPT, overflowingTrash, purgeEntry, softRemove, sto
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
 import { taskFor } from './lib/agentTools'
-import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, uploadIdsOf } from './lib/write'
+import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
 import { editorEntry, editorEntryWithTranslation, listRow, slimEntry, titleOf } from './lib/list'
 
@@ -216,6 +216,7 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
     const prints: Prints = Object.fromEntries(Object.entries(entry.prints).filter(([leaf]) => !roots.some((r) => underRoot(leaf, r))))
     Object.assign(prints, (change.printsBefore ?? {}) as Prints)
 
+    const restoredFiles = await untrashFilesOf(ctx, actor.site._id, brick.fields, entry.data as Data, data)
     const { errors } = await validate(schema, entry.brick, data, { mode: 'patch', changed: new Set(roots), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('NOT_UNDOABLE', 'errors.oldVersionNoLongerFitsSchema', undefined, { errors: errors as unknown as Json })
     await checkNewFiles(ctx, actor.site._id, brick.fields, entry.data as Data, data)
@@ -225,7 +226,7 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
       actor, entry, fields: brick.fields, roots, data, prints, kind: 'undo', history: recorded(msg('history.undo', { what: change.msg ? (change.msg as HistoryMsg) : change.sentence }), schema), opId: args.opId,
     })
     await ctx.db.patch(change._id, { undoneBy: written.change })
-    const result: Json = { entry: entry._id, rev: written.rev, contentRev: written.contentRev, warnings: [] }
+    const result: Json = { entry: entry._id, rev: written.rev, contentRev: written.contentRev, warnings: [], ...(restoredFiles.length ? { restoredFiles } : {}) }
     return result
   })
 }
@@ -298,10 +299,12 @@ export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
       const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
       return unchanged
     }
-    return saveNow(ctx, actor, {
+    const restoredFiles = await untrashFilesOf(ctx, actor.site._id, brick.fields, now, { ...now, ...fields })
+    const saved = await saveNow(ctx, actor, {
       site: args.site, opId: args.opId, ...(args.task === undefined ? {} : { task: args.task }),
       entry: entry._id, baseRev: entry.rev, fields,
     }, msg('history.revert', { when: change.at }))
+    return restoredFiles.length ? { ...saved, restoredFiles } : saved
   })
 }
 

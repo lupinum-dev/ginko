@@ -609,6 +609,7 @@
     "liveHint": "Auf der Website in etwa einer Minute.",
     "undo": "Rückgängig",
     "undone": "Rückgängig gemacht.",
+    "pictureBackFromTrash": "Das Bild „{name}“ war im Papierkorb der Dateibibliothek und ist wieder da.",
     "published": "Veröffentlicht.",
     "scheduled": "Geplant: online ab {time}.",
     "unpublished": "Zurückgezogen. In etwa einer Minute nicht mehr auf der Website.",

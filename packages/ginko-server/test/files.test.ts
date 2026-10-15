@@ -514,6 +514,36 @@ describe('image variants', () => {
   })
 })
 
+describe('history and the Files trash', () => {
+  // Wrong behaviour caught: after its picture went to the Files trash, an older version of a text could not be restored
+  // (undo even said the schema had changed); and a picture deleted for good gave that same wrong reason.
+  it.each([
+    ['undo', 'trash', { restoredFiles: ['hund.jpg'] }],
+    ['revert', 'trash', { restoredFiles: ['hund.jpg'] }],
+    ['undo', 'delete', 'Diese Fassung zeigt ein Bild, das endgültig gelöscht ist. Sie lässt sich deshalb nicht wiederherstellen.'],
+  ] as const)('%s to a version whose picture is gone (%s)', async (op, gone, expected) => {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.legal!.fields.imprint as { profile: string }).profile = 'rich'
+      await ctx.db.patch(s.site, { schema })
+    })
+    const id = await readyImage(s, 'hund.jpg')
+    const entry = s.entries.legal!
+    const save = (rev: number, text: string) => s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev: rev, fields: { imprint: { de: text } }, sentence: 'x' }) as Promise<{ change: string }>
+    const withPicture = await save(1, `![Hund]($file.${id})`)
+    const without = await save(2, 'Ohne Bild')
+    await s.as.owner.mutation(api.files.trash, { site, files: [id] })
+    if (gone === 'delete') await s.t.run((ctx) => ctx.db.delete(id))
+    const run = op === 'undo'
+      ? s.as.owner.mutation(api.entries.undo, { site, opId: opId(), change: without.change })
+      : s.as.owner.mutation(api.entries.revert, { site, opId: opId(), entry, change: withPicture.change })
+    if (typeof expected === 'string') return expect((await errorOf(run)).message).toBe(expected)
+    expect(await run).toMatchObject(expected)
+    expect((await s.t.run((ctx) => ctx.db.get(id)))!.trashedAt).toBeUndefined()
+  })
+})
+
 describe('retention of trash and replaced files', () => {
   it('purges the trash after 30 days only when no reference remains', async () => {
     const s = await setup()

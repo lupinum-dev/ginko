@@ -609,6 +609,7 @@
     "liveHint": "On the website in about a minute.",
     "undo": "Undo",
     "undone": "Undone.",
+    "pictureBackFromTrash": "The picture “{name}” was in the Files trash and is back.",
     "published": "Published.",
     "scheduled": "Scheduled: online from {time}.",
     "unpublished": "Unpublished. Not on the website in about a minute.",

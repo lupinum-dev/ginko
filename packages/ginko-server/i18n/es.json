@@ -46,6 +46,7 @@
     "someoneChangedMeanwhileNoUndo": "Alguien ha cambiado esto mientras tanto. Ya no se puede deshacer.",
     "schemaChangedSinceChange": "El esquema se ha reestructurado desde este cambio.",
     "oldVersionNoLongerFitsSchema": "La versión anterior ya no encaja en el esquema.",
+    "versionFileDeleted": "Esta versión muestra una imagen que se eliminó definitivamente, por eso no se puede restaurar.",
     "versionNotFound": "Esta versión no existe (ya).",
     "entryDeletedRestoreFirst": "Esta entrada está eliminada. Restáurala primero.",
     "brickNotCollection": "Este bloque no es una colección.",

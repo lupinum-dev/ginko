@@ -609,6 +609,7 @@
     "liveHint": "En el sitio web en aproximadamente un minuto.",
     "undo": "Deshacer",
     "undone": "Deshecho.",
+    "pictureBackFromTrash": "La imagen «{name}» estaba en la papelera de archivos y ha vuelto.",
     "published": "Publicado.",
     "scheduled": "Programado: en línea desde {time}.",
     "unpublished": "Quitado de la web. Dejará de estar en el sitio web en aproximadamente un minuto.",

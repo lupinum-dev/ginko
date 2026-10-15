@@ -46,6 +46,7 @@
     "someoneChangedMeanwhileNoUndo": "Inzwischen hat jemand das geändert. Rückgängig geht nicht mehr.",
     "schemaChangedSinceChange": "Seit dieser Änderung wurde das Schema umgestellt.",
     "oldVersionNoLongerFitsSchema": "Der alte Stand passt nicht mehr zum Schema.",
+    "versionFileDeleted": "Diese Fassung zeigt ein Bild, das endgültig gelöscht ist. Sie lässt sich deshalb nicht wiederherstellen.",
     "versionNotFound": "Diese Version gibt es nicht (mehr).",
     "entryDeletedRestoreFirst": "Dieser Eintrag ist gelöscht. Stelle ihn zuerst wieder her.",
     "brickNotCollection": "Dieser Baustein ist keine Sammlung.",

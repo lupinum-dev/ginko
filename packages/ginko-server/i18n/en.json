@@ -46,6 +46,7 @@
     "someoneChangedMeanwhileNoUndo": "Someone has changed this in the meantime. Undo is no longer possible.",
     "schemaChangedSinceChange": "The schema has been restructured since this change.",
     "oldVersionNoLongerFitsSchema": "The old version no longer fits the schema.",
+    "versionFileDeleted": "This version shows a picture that was deleted for good, so it cannot be restored.",
     "versionNotFound": "This version does not exist (anymore).",
     "entryDeletedRestoreFirst": "This entry is deleted. Restore it first.",
     "brickNotCollection": "This brick is not a collection.",
