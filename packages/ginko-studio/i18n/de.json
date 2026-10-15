@@ -101,6 +101,7 @@
     "groupHasIssues": "Fehler in diesem Bereich",
     "foreignHint": "Hier stehen nur Texte, die übersetzt werden. Alle anderen Felder gelten für jede Sprache.",
     "twin": "Diesen Eintrag gibt es schon: „{title}“. Speichern legt einen zweiten an.",
+    "weekFixed": "Diese Aufgabe gilt immer für die laufende Woche.",
     "saveContinues": "Speichern läuft weiter. Ohne Verbindung wird es übernommen, sobald sie wieder da ist.",
     "notSaved": "Nicht gespeichert: {reason}",
     "notSavedReopen": "Nicht gespeichert. Bitte die Aufgabe noch einmal öffnen.",
@@ -545,8 +546,9 @@
       "notTranslated": "Noch nicht übersetzt. Die Website zeigt hier den Text auf {name}."
     },
     "date": {
-      "workWeek": "Aktuelle Arbeitswoche",
-      "nextWorkWeek": "Folgende Arbeitswoche",
+      "thisWeek": "Diese Woche",
+      "nextWeek": "Nächste Woche",
+      "weekAfterNext": "Übernächste Woche",
       "today": "Heute",
       "tomorrow": "Morgen"
     },

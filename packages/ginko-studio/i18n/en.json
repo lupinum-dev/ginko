@@ -101,6 +101,7 @@
     "groupHasIssues": "Errors in this section",
     "foreignHint": "Only texts that need a translation are shown here. All other fields apply to every language.",
     "twin": "This entry already exists: “{title}”. Saving creates a second one.",
+    "weekFixed": "This task always covers the current week.",
     "saveContinues": "Still saving. If you are offline, it is saved as soon as the connection is back.",
     "notSaved": "Not saved: {reason}",
     "notSavedReopen": "Not saved. Please open the task again.",
@@ -545,8 +546,9 @@
       "notTranslated": "Not translated yet. The website shows the text from {name} here."
     },
     "date": {
-      "workWeek": "Current work week",
-      "nextWorkWeek": "Following work week",
+      "thisWeek": "This week",
+      "nextWeek": "Next week",
+      "weekAfterNext": "Week after next",
       "today": "Today",
       "tomorrow": "Tomorrow"
     },

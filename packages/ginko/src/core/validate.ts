@@ -5,6 +5,8 @@ import { labelOf } from './labels.ts'
 import { bare, DEFAULT_LOCALE, msg, type CoreKey, type Described, type Msg } from './messages.ts'
 import { roundedMb, type UploadType } from './uploads.ts'
 import { SLUG_PATTERN } from './slug.ts'
+import { weekStartField } from './stale.ts'
+import { DEFAULT_WEEK, startOfWeek } from './time.ts'
 import type { Brick, Field, FileField, Fields, Issue, Json, Locale, MarkdownField, Schema } from './types.ts'
 
 /**
@@ -17,8 +19,9 @@ export interface ValidateOptions {
   /**
    * create/release: everything strict. patch: only paths under `changed` are errors, the rest are warnings.
    * restore (backup import, never a Studio path): only SHAPE_CODES are errors, the rest are warnings.
-   * The rules across fields (`ruleIssues`: a plan set by halves) bind what is written now: errors in create, and in
-   * patch when the save touches one of their fields. Stored data that breaks one (release, restore) only warns.
+   * The rules across fields (`ruleIssues`: a plan set by halves, a week that does not start on its first day) bind
+   * what is written now: errors in create, and in patch when the save touches one of their fields. Stored data that
+   * breaks one (release, restore) only warns.
    */
   mode: 'create' | 'patch' | 'release' | 'restore'
   /** Leaf paths changed by a patch, e.g. `closedNote` or `days.k3Fd9aZ0qx.dish`. */
@@ -90,7 +93,8 @@ interface RuleIssue { issue: Issue; touches: string[] }
 
 /**
  * The rules that span fields of a brick: a planned change (`planned`) has both its value and its date, or neither (a
- * value without a date never applies, a date without a value changes nothing).
+ * value without a date never applies, a date without a value changes nothing); the field that holds a week start
+ * (`weekStartField`) holds the first day of a week of the site (a week stored as a Thursday never shows).
  */
 function ruleIssues(schema: Schema, brick: Brick, data: unknown): RuleIssue[] {
   if (!isRecord(data)) return []
@@ -102,6 +106,11 @@ function ruleIssues(schema: Schema, brick: Brick, data: unknown): RuleIssue[] {
     const missing = set(plan.next) && !set(plan.from) ? plan.from : set(plan.from) && !set(plan.next) ? plan.next : undefined
     const field = missing && Object.hasOwn(brick.fields, missing) ? brick.fields[missing] : undefined
     if (missing && field) out.push({ issue: issue(missing, 'REQUIRED', 'fieldMissing', { label: shown(field, main) }), touches: [plan.next, plan.from] })
+  }
+  const week = weekStartField(brick)
+  const start = week ? data[week] : undefined
+  if (week && isDate(start) && startOfWeek(start, schema.week ?? DEFAULT_WEEK) !== start) {
+    out.push({ issue: issue(week, 'NOT_WEEK_START', 'notWeekStart', { label: shown(brick.fields[week]!, main) }), touches: [week] })
   }
   return out
 }

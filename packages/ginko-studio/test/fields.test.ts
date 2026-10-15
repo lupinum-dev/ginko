@@ -6,6 +6,7 @@ import { TRANSLATION, type TranslationState } from '@lupinum/ginko-editor'
 import type { Field, Json } from '@lupinum/ginko'
 import FieldFrame from '../app/components/fields/FieldFrame.vue'
 import GinkoField from '../app/components/fields/GinkoField.vue'
+import GinkoFieldDate from '../app/components/fields/GinkoFieldDate.vue'
 import GinkoFieldList from '../app/components/fields/GinkoFieldList.vue'
 import GinkoFieldRef from '../app/components/fields/GinkoFieldRef.vue'
 import { REFS, type RefOptions } from '../app/components/fields/refs'
@@ -133,6 +134,30 @@ describe('list rows', () => {
     const [closed, open] = wrapper.findAll('li')
     expect(closed!.find('input[type="time"]').exists()).toBe(false)
     expect(open!.find('input[type="time"]').exists()).toBe(true)
+  })
+})
+
+describe('week fields', () => {
+  // Wrong behaviour caught: "Nächste Woche planen" offered this week (which hides the main menu), and a week picked as
+  // a Thursday was stored as one, so it never showed.
+  test('a planned week offers next week and the week after, and a picked Thursday becomes its Monday', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-14T10:00:00Z'))
+    try {
+      const value = shallowRef<Json | undefined>(undefined)
+      const wrapper = mount(defineComponent({
+        setup: () => () => h(GinkoFieldDate, { id: 'f-week', modelValue: value.value, invalid: false, weeks: [1, 2], 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
+      }))
+      expect(wrapper.findAll('button').map((b) => b.text())).toEqual(['Nächste Woche', 'Übernächste Woche'])
+      await wrapper.findAll('button')[1]!.trigger('click')
+      expect(value.value).toBe('2026-10-26')
+      await wrapper.get('input').setValue('2026-10-22')
+      await wrapper.get('input').trigger('blur')
+      expect(value.value).toBe('2026-10-19')
+      expect((wrapper.get('input').element as HTMLInputElement).value).toBe('2026-10-19')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

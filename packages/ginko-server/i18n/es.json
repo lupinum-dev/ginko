@@ -175,6 +175,7 @@
     "onlyAdminsCreateSites": "Solo los administradores crean sitios.",
     "tokenTooShort": "El token necesita al menos 32 caracteres.",
     "taskNotFound": "Esta tarea no existe.",
+    "weeklyTaskThisWeek": "Esta tarea solo cubre la semana en curso. Vuelve a abrirla si la semana ha cambiado desde entonces.",
     "folderNotFound": "Esta carpeta no existe.",
     "fileNotFound": "Este archivo no existe.",
     "brickNotFoundAnymore": "Este bloque no existe (ya).",

@@ -2,8 +2,8 @@
      opId per attempt. Conflicts keep the person's input and show the new state next to it. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
-import type { Brick, Label as LabelText, Locale } from '@lupinum/ginko'
-import { defaultsFor, isShown, type Schema } from '@lupinum/ginko/internal'
+import type { Brick, Json, Label as LabelText, Locale } from '@lupinum/ginko'
+import { defaultsFor, isShown, weeklyTask, type Schema } from '@lupinum/ginko/internal'
 import GinkoField from './fields/GinkoField.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
@@ -13,7 +13,7 @@ import { Button } from '@studio/components/ui/button'
 import { XIcon } from '@lucide/vue'
 import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
-import { taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
+import { formatDay, taskFields, taskRef, titleOf, weekShortcuts, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 
 const props = defineProps<{
@@ -37,15 +37,19 @@ const props = defineProps<{
   schema: Schema
 }>()
 const emit = defineEmits<{ close: [] }>()
-const { t } = useI18n()
+const { t, format } = useI18n()
 const shown = (label: LabelText) => shownLabel(label, props.main)
 
 provideSiteRefs(() => props.site, () => props.schema, () => props.main)
 const fields = computed(() => taskFields(props.brick, props.task))
 const isCreate = computed(() => props.task.kind === 'create')
 const ref_ = computed(() => taskRef(props.brickKey, props.task))
-/** Date fields the task presets to a week start get week shortcuts. */
-const weekFields = computed(() => new Set(Object.entries(('prefill' in props.task ? props.task.prefill : undefined) ?? {}).filter(([, v]) => v === '@workWeek' || v === '@nextWorkWeek').map(([k]) => k)))
+/** The weekly task ("Mittagsmenü dieser Woche") always covers this week: its week is shown, not asked (the server holds it to that). */
+const fixedWeek = computed(() => {
+  const weekly = weeklyTask(props.brick)
+  return weekly?.task.id === props.task.id ? weekly.field : undefined
+})
+const dayText = (value: Json | undefined) => (typeof value === 'string' ? formatDay(value, format) : '–')
 
 const form = useEntryForm({
   site: computed(() => props.site),
@@ -174,20 +178,26 @@ function onCancel(event: Event) {
           />
           <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
           <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
-          <GinkoField
-            v-for="(field, key) in fields"
-            v-show="isShown(field, draft)"
-            :key="key"
-            :field="field"
-            :model-value="draft[key]"
-            :baseline="baseline[key]"
-            :weeks="weekFields.has(String(key))"
-            :path="String(key)"
-            :locale="main"
-            :locales="locales"
-            :issues="issues"
-            @update:model-value="form.setField(String(key), $event)"
-          />
+          <template v-for="(field, key) in fields" :key="key">
+            <div v-if="key === fixedWeek" class="grid gap-1" data-slot="field" data-test="fixed-week">
+              <p class="text-sm font-medium">{{ shown(field.label) }}</p>
+              <p class="font-semibold">{{ dayText(draft[key]) }}</p>
+              <p class="text-sm text-muted-foreground">{{ t('entry.weekFixed') }}</p>
+            </div>
+            <GinkoField
+              v-else
+              v-show="isShown(field, draft)"
+              :field="field"
+              :model-value="draft[key]"
+              :baseline="baseline[key]"
+              :weeks="weekShortcuts(brick, String(key))"
+              :path="String(key)"
+              :locale="main"
+              :locales="locales"
+              :issues="issues"
+              @update:model-value="form.setField(String(key), $event)"
+            />
+          </template>
         </template>
       </div>
 

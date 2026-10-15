@@ -177,6 +177,7 @@
     "onlyAdminsCreateSites": "Nur Admins legen Seiten an.",
     "tokenTooShort": "Der Token braucht mindestens 32 Zeichen.",
     "taskNotFound": "Diese Aufgabe gibt es nicht.",
+    "weeklyTaskThisWeek": "Diese Aufgabe gilt nur für die laufende Woche. Öffne sie neu, falls die Woche inzwischen gewechselt hat.",
     "brickNotFoundAnymore": "Diesen Baustein gibt es nicht (mehr).",
     "viewOnlyForCollections": "Eine Ansicht gibt es nur für Sammlungen.",
     "viewInvalid": "Die Ansicht ist ungültig.",

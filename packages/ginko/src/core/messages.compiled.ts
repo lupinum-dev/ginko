@@ -215,6 +215,14 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“: „von“ liegt nach „bis“."
    ],
+   "notWeekStart": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“ muss der erste Tag einer Woche sein."
+   ],
    "badChoice": [
     "„",
     [
@@ -1456,6 +1464,14 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: “from” is after “to”."
    ],
+   "notWeekStart": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” must be the first day of a week."
+   ],
    "badChoice": [
     "“",
     [
@@ -2696,6 +2712,14 @@ export const compiled: Record<string, MessageTree> = {
      "label"
     ],
     "”: “desde” es posterior a “hasta”."
+   ],
+   "notWeekStart": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” debe ser el primer día de una semana."
    ],
    "badChoice": [
     "“",

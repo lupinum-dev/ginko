@@ -214,3 +214,28 @@ describe('ConflictPanel', () => {
     expect(panel.find('strong').text()).toBe('koch@example.com hat inzwischen Name geändert.')
   })
 })
+
+describe('TaskSheet', () => {
+  // Wrong behaviour caught: "Mittagsmenü dieser Woche" offered "Folgende Arbeitswoche" and a free date, so saving
+  // before Monday moved the website's lunch menu to next week and the rest of this week was gone.
+  test('the weekly task shows its week as text, with no date to change', async () => {
+    const { serializeSchema } = await import('@lupinum/ginko/internal')
+    const { default: restaurant } = await import('../../../sites/restaurant/ginko.config.ts')
+    const { useI18n } = await import('#imports')
+    const { useEntryForm } = await import('../app/composables/useEntryForm')
+    const { default: TaskSheet } = await import('../app/components/TaskSheet.vue')
+    vi.stubGlobal('useI18n', useI18n)
+    vi.stubGlobal('useEntryForm', useEntryForm)
+    const lunchData = { weekOf: '2026-10-05', days: [], note: { de: 'Suppe inklusive' } }
+    vi.stubGlobal('useConvexQuery', () => ({ data: vue.ref({ ...lunchData, weekOf: '2026-10-12' }), error: vue.ref(undefined) }))
+    HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) { this.open = true }
+    const schema = serializeSchema(restaurant)
+    const lunch = schema.bricks.lunch!
+    const entry = { ...stored, _id: 'l1', brick: 'lunch', kind: 'single', data: lunchData } as Entry
+    const sheet = mount(TaskSheet, { props: { site: 'restaurant', brickKey: 'lunch', brick: lunch, task: lunch.tasks![0]!, entry, main: 'de', locales: ['de', 'en'], schema } })
+    await vue.nextTick()
+    expect(sheet.find('input[type="date"]').exists()).toBe(false)
+    expect(sheet.get('[data-test="fixed-week"]').text()).toBe('Woche ab12.10.2026Diese Aufgabe gilt immer für die laufende Woche.')
+    sheet.unmount()
+  })
+})

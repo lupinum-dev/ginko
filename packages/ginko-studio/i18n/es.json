@@ -101,6 +101,7 @@
     "groupHasIssues": "Errores en esta sección",
     "foreignHint": "Aquí solo se muestran los textos que necesitan traducción. Los demás campos valen para todos los idiomas.",
     "twin": "Esta entrada ya existe: “{title}”. Al guardar se crea una segunda.",
+    "weekFixed": "Esta tarea siempre cubre la semana en curso.",
     "saveContinues": "Todavía guardando. Si no tienes conexión, se guardará en cuanto vuelva.",
     "notSaved": "Sin guardar: {reason}",
     "notSavedReopen": "Sin guardar. Abre la tarea de nuevo.",
@@ -545,8 +546,9 @@
       "notTranslated": "Aún sin traducir. El sitio web muestra aquí el texto de {name}."
     },
     "date": {
-      "workWeek": "Semana laboral actual",
-      "nextWorkWeek": "Semana laboral siguiente",
+      "thisWeek": "Esta semana",
+      "nextWeek": "La semana que viene",
+      "weekAfterNext": "Dentro de dos semanas",
       "today": "Hoy",
       "tomorrow": "Mañana"
     },

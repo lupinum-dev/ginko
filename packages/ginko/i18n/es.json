@@ -24,6 +24,7 @@
     "badTime": "“{label}” no es una hora válida.",
     "badDateRange": "“{label}” no es un período válido.",
     "dateRangeOrder": "“{label}”: “desde” es posterior a “hasta”.",
+    "notWeekStart": "“{label}” debe ser el primer día de una semana.",
     "badChoice": "“{label}” tiene un valor no válido.",
     "badChoices": "“{label}” tiene valores no válidos.",
     "duplicateValues": "“{label}” contiene valores repetidos.",

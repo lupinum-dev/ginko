@@ -293,6 +293,25 @@ describe('tasks.prefill', () => {
   })
 })
 
+describe('the weekly task covers this week only', () => {
+  // Wrong behaviour caught: the cook saved "this week's lunch" for next Monday (or the owner approved it), so the
+  // website's lunch page lost the rest of this week; or a proposal made last week moved the week back when approved.
+  it('lunch.lunchWeek refuses next Monday, proposes this Monday, and goes stale when approved in another week', async () => {
+    // Friday: this week is the one of Monday 12 October.
+    vi.setSystemTime(new Date('2026-10-16T08:00:00Z'))
+    const { t, as, entries } = await setup()
+    const save = (weekOf: string) => as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: entries.lunch!, baseRev: 1, fields: { weekOf } })
+    expect(await errorOf(save('2026-10-19'))).toMatchObject({ code: 'INVALID', key: 'errors.weeklyTaskThisWeek' })
+    const proposed = await save('2026-10-12') as { proposal: Id<'proposals'>; status: string }
+    expect(proposed.status).toBe('open')
+
+    // Saturday 01:30 in Vienna: the work week is the coming one (`workWeekOf`), so the proposal no longer fits.
+    vi.setSystemTime(new Date('2026-10-16T23:30:00Z'))
+    expect(await as.owner.mutation(api.proposals.approve, { proposal: proposed.proposal })).toMatchObject({ status: 'stale' })
+    expect((await t.run((ctx) => ctx.db.get(entries.lunch!)))!.data.weekOf).toBe('2026-10-05')
+  })
+})
+
 // Astra phase 5 review, findings in entries.ts.
 describe('entries.create and lifecycle after the phase 5 review', () => {
   const pumpkin = { title: { de: 'Kürbisabend', en: 'Pumpkin night' }, when: { from: '2026-11-05', to: '2026-11-05' }, description: { de: 'Suppe und Musik.' } }

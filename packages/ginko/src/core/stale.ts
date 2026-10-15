@@ -43,6 +43,25 @@ export function weeklyTask(brick: { fields: Record<string, { type: string }>; ta
 }
 
 /**
+ * The date field of a brick that holds the first day of a week: `plans.field` of a collection that plans weeks, else
+ * the field of the weekly task (`weeklyTask`), else the first date field a task presets to `@workWeek` or
+ * `@nextWorkWeek`. Validation wants a week start there (a week stored as a Thursday never shows), and the Studio offers
+ * week shortcuts for it.
+ */
+export function weekStartField(brick: { fields: Record<string, { type: string }>; tasks?: readonly Task[]; plans?: { field: string } }): string | undefined {
+  if (brick.plans) return brick.plans.field
+  const weekly = weeklyTask(brick)
+  if (weekly) return weekly.field
+  for (const task of brick.tasks ?? []) {
+    if (task.kind === 'remove') continue
+    for (const [field, token] of Object.entries(task.prefill ?? {})) {
+      if ((token === '@workWeek' || token === '@nextWorkWeek') && brick.fields[field]?.type === 'date') return field
+    }
+  }
+  return undefined
+}
+
+/**
  * The week starts planned ahead for the single brick `singleKey`: the `plans.field` of every entry of the
  * collections that plan it. The caller passes only live entries (no drafts, nothing deleted).
  */

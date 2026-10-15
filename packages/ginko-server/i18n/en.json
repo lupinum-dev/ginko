@@ -175,6 +175,7 @@
     "onlyAdminsCreateSites": "Only admins create sites.",
     "tokenTooShort": "The token needs at least 32 characters.",
     "taskNotFound": "This task does not exist.",
+    "weeklyTaskThisWeek": "This task only covers the current week. Open it again if the week has changed since.",
     "folderNotFound": "This folder does not exist.",
     "fileNotFound": "This file does not exist.",
     "brickNotFoundAnymore": "This brick does not exist (anymore).",

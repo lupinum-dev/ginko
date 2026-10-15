@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, ordered, searchable, sha256, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, validate, visibleUntil, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, ordered, resolveToken, searchable, sha256, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, validate, visibleUntil, weeklyTask, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -95,6 +95,18 @@ function saveMsg(schema: Schema, brick: Schema['bricks'][string], entry: Doc<'en
 }
 
 /**
+ * The weekly task (`weeklyTask`, "this week's lunch") always covers the current week: a week start it writes must be
+ * today's work week in the site's time zone. Checked on every save, so a proposal made last week and approved after
+ * the week changed goes stale instead of moving the website's week.
+ */
+function refuseOtherWeek(schema: Schema, task: string | undefined, taskBrick: string, fields: Record<string, unknown>) {
+  const brick = Object.hasOwn(schema.bricks, taskBrick) ? schema.bricks[taskBrick] : undefined
+  const weekly = brick ? weeklyTask(brick) : undefined
+  if (!weekly || task !== `${taskBrick}.${weekly.task.id}` || !Object.hasOwn(fields, weekly.field)) return
+  if (fields[weekly.field] !== resolveToken('@workWeek', schema.timeZone, schema.week)) fail('INVALID', 'errors.weeklyTaskThisWeek', undefined, { field: weekly.field })
+}
+
+/**
  * The answer of a save or revert that had nothing to write: the entry as it is, and no history row. A named type, so
  * the answers that wrote one keep `change` as a required field instead of an optional one (which JSON cannot hold).
  */
@@ -120,6 +132,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
   // A planned week is edited with the weekly task of the single it stands in for (`taskBrickOf`).
   const taskBrick = taskBrickOf(schema, args.task, entry)
   authorize(actor, schema, { task: args.task, brick: taskBrick, kind: 'edit', fields: roots })
+  refuseOtherWeek(schema, args.task, taskBrick, args.fields)
 
   if (entry.deletedAt) fail('CHANGED_SINCE', 'errors.thisEntryDeletedSince', undefined, current(entry))
   // A base above the entry's revision was never read, so it cannot vouch for anything.

@@ -1,7 +1,7 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { entryTitle, fileRefsIn, ordered, printOf, stableJson, type Schema } from '@lupinum/ginko/internal'
+import { entryTitle, fileRefsIn, ordered, printOf, stableJson, weeklyTask, weekStartField, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { shownLabel } from './labels'
 import type { Words } from './when'
@@ -65,6 +65,21 @@ export function taskFields(brick: Brick, task: Task): Fields {
     out[key] = field
   }
   return out
+}
+
+/** A week shortcut of a date field, as weeks after this work week: 0 this week, 1 next week, 2 the week after. */
+export type WeekOffset = 0 | 1 | 2
+
+/**
+ * The week shortcuts of the date field `key`, when it holds a week start (core `weekStartField`); undefined for any
+ * other date (it gets Heute/Morgen). A planned week is ahead (next week, the week after), the weekly single's week is
+ * this one, any other week start this week or next.
+ */
+export function weekShortcuts(brick: Brick, key: string): readonly WeekOffset[] | undefined {
+  if (weekStartField(brick) !== key) return undefined
+  if (brick.kind === 'collection' && brick.plans) return [1, 2]
+  if (brick.kind === 'single' && weeklyTask(brick)?.field === key) return [0]
+  return [0, 1]
 }
 
 /** "brick.task" (SPEC 2.7 TaskRef). */
