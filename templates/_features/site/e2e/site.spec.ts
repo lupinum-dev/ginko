@@ -1,5 +1,19 @@
 // The site feature on the built template (gate 3): notices, footer legal links, legal pages and the error page.
-import { expect, open, test } from '../../../../scripts/templates/e2e/helpers.ts'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { expect, open, site, test } from '../../../../scripts/templates/e2e/helpers.ts'
+
+/** The template's notices shown at the test instant: main-language files whose `until` has not passed. */
+function activeNotices(): number {
+  const dir = fileURLToPath(new URL(`../../../${site.name}/content/notices/`, import.meta.url))
+  if (!existsSync(dir)) return 0
+  const today = site.now.slice(0, 10)
+  return readdirSync(dir).filter((file) => /^\d+\.[^.]+\.md$/.test(file)).filter((file) => {
+    const until = /^until:\s*(\S+)/m.exec(readFileSync(join(dir, file), 'utf8'))?.[1]
+    return !until || until >= today
+  }).length
+}
 
 test('the footer links every legal text, and each opens with its title and date', async ({ page }) => {
   await open(page, '/')
@@ -17,20 +31,14 @@ test('the footer links every legal text, and each opens with its title and date'
   }
 })
 
-test('active notices show above the header on every page, at most two', async ({ page }) => {
+test('active notices show above the header, at most two', async ({ page }) => {
   await open(page, '/')
-  const notices = page.locator('body section').filter({ has: page.locator('li') }).first()
-  const items = notices.locator('li')
-  const count = await items.count()
-  expect(count, 'notices shown').toBeLessThanOrEqual(2)
-  if (count) {
-    // The notice bar comes before the header in the page, so screen readers meet it first.
-    const before = await page.evaluate(() => {
-      const bar = document.querySelector('header')!.previousElementSibling
-      return bar?.tagName === 'SECTION'
-    })
-    expect(before, 'notice bar right before the header').toBe(true)
-  }
+  // The section right before the header, so screen readers meet the notices first.
+  const bar = page.locator('body section:has(+ header)')
+  const expected = Math.min(2, activeNotices())
+  // Wrong behaviour caught: a broken notice bar that shows nothing while the template has an active sample notice.
+  await expect(bar.locator('li'), 'notices shown').toHaveCount(expected)
+  if (expected) await expect(bar, 'the notice bar is a named region').toHaveAttribute('aria-label', /\S/)
 })
 
 test('the skip link moves to the main content', async ({ page }) => {
