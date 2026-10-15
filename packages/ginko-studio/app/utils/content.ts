@@ -135,6 +135,24 @@ export function ownChangesOver(field: Field, base: Json | undefined, mine: Json 
   return mine
 }
 
+/**
+ * The languages of the texts that `after` sets differently from `before` (root fields of `fields`, a text in a list row,
+ * a photo description). A text of a removed row does not count: it goes in every language with its row.
+ */
+export function changedTextLanguages(fields: Fields, before: Data, after: Data): Set<string> {
+  const out = new Set<string>()
+  for (const [key, value] of Object.entries(after)) {
+    const field = fields[key]
+    if (!field) continue
+    const was = leavesOf(field, before[key], key)
+    for (const [leaf, now] of leavesOf(field, value, key)) {
+      const old = was.get(leaf) ?? {}
+      for (const l of new Set([...Object.keys(old), ...Object.keys(now)])) if (!same(old[l], now[l])) out.add(l)
+    }
+  }
+  return out
+}
+
 /** "brick.task" (SPEC 2.7 TaskRef). */
 export const taskRef = (brick: string, task: Task) => `${brick}.${task.id}`
 

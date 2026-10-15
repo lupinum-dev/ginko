@@ -5,7 +5,7 @@ import type { Brick, Fields, Json, Locale } from '@lupinum/ginko'
 import { useI18n } from '#imports'
 import type { Entry } from './useSiteData'
 import type { OpError } from './useOps'
-import { changedRoots, ownChangesOver, type Data } from '../utils/content'
+import { changedRoots, changedTextLanguages, ownChangesOver, type Data } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { clearLocalDraft, localDraftKey, readLocalDraft, useLocalDraftWriter, writeLocalDraft, type LocalDraft } from './useLocalDraft'
 import { BLOCKERS, FLUSHERS, type Issue } from '@lupinum/ginko-editor'
@@ -354,6 +354,9 @@ export function useEntryForm(o: EntryFormOptions) {
   function offerOf(key: string | undefined): LocalDraft | null {
     const record = key ? readLocalDraft(key) : undefined
     if (!key || !record || (record.locale !== o.locale() && !o.otherLocale)) return null
+    // Texts typed in another language than the copy's own (a quick-task sheet holds every language): a form that saves
+    // one language would drop them, so only a form that saves every language offers the copy.
+    if (!o.allLanguages && record.base && [...changedTextLanguages(o.brick().fields, record.base, record.fields)].some((l) => l !== record.locale)) return null
     const own = keys().filter((k) => Object.hasOwn(record.fields, k))
     if (own.some((k) => !same(draft.value[k], record.fields[k]))) return record
     // Nothing new in it (saved meanwhile): drop it, unless it holds fields this form does not show.

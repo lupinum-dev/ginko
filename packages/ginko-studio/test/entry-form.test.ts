@@ -186,6 +186,19 @@ describe('a form that saves every language', () => {
     expect(await form.keepMine()).toBe(true)
     expect(calls).toEqual([['save', { entry: 'e1', baseRev: 6, fields: { name: { de: 'Wiener Schnitzel', en: 'Viennese veal schnitzel' } } }]])
   })
+
+  // Wrong behaviour caught: a copy from the sheet holds English typed there; Alles bearbeiten in German offered it and
+  // saved only its German, and the English went for good with the copy.
+  test.each([
+    { typed: 'German only', name: { de: 'Wiener Schnitzel', en: 'Veal schnitzel' }, offered: true },
+    { typed: 'English too', name: { de: 'Kalbsschnitzel', en: 'Viennese veal schnitzel' }, offered: false },
+  ])('a copy from the sheet with $typed is offered in a German-only form: $offered', async ({ name, offered }) => {
+    live.value = before
+    mountForm({ allLanguages: true }).setField('name', name)
+    await vue.nextTick()
+    window.dispatchEvent(new Event('pagehide'))
+    expect([!!mountForm().localOffer.value, !!mountForm({ allLanguages: true }).localOffer.value]).toEqual([offered, true])
+  })
 })
 
 describe('the opId of a save', () => {
