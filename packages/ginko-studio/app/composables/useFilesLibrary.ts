@@ -85,7 +85,9 @@ export function useFilesLibrary(): FilesLibrary {
     // Later pages are read once: the first page is the live one (uploads turning ready, files moved).
     const extra = ref<LibFile[]>([])
     const next = ref<{ done: boolean; cursor: string | null } | null>(null)
-    watch(() => key(query()), () => { extra.value = []; next.value = null })
+    // Counts the views shown: a page asked for an earlier view is dropped when it arrives.
+    let shown = 0
+    watch(() => key(query()), () => { shown++; extra.value = []; next.value = null })
     const files = computed(() => {
       const seen = new Set((first.data.value?.files ?? []).map((f) => f.id))
       return [...(first.data.value?.files ?? []), ...extra.value.filter((f) => !seen.has(f.id))]
@@ -94,7 +96,9 @@ export function useFilesLibrary(): FilesLibrary {
     async function more() {
       const cursor = next.value ? next.value.cursor : first.data.value?.cursor
       if (!hasMore.value || cursor === undefined || cursor === null) return
+      const view = shown
       const page = await convex.query(api.files.list, { ...args(), cursor })
+      if (view !== shown) return
       extra.value = [...extra.value, ...page.files]
       next.value = { done: page.isDone, cursor: page.cursor }
     }
