@@ -11,7 +11,7 @@ import { Badge } from '@studio/components/ui/badge'
 import { Input } from '@studio/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
 
-definePageMeta({ layout: 'site', convexAuth: true })
+definePageMeta({ layout: 'site' })
 
 const { t, format } = useI18n()
 const s = await useSiteData()

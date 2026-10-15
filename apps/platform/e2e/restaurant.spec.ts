@@ -381,6 +381,14 @@ test.describe('Anmelden und Einladung', () => {
   // Better Auth limits code mails per minute; sign-in looks the same at both widths, so it runs once.
   test.skip(({ viewport }) => (viewport?.width ?? 0) > 500, 'sign-in runs at phone width only')
 
+  // Every Studio page is protected by default (convex.auth.routes 'protected'); only /login opts out.
+  test('an anonymous visitor of a Studio page is sent to the sign-in, with the way back', async ({ page }) => {
+    for (const path of ['/', '/s/restaurant/team', '/invite/any-token']) {
+      await page.goto(path, { waitUntil: 'networkidle' })
+      await expect(page).toHaveURL(`/login?redirect=${encodeURIComponent(path)}`)
+    }
+  })
+
   test('8. a wrong code is refused with a clear message', async ({ page }) => {
     await page.goto('/login', { waitUntil: 'networkidle' })
     await page.getByLabel('E-Mail-Adresse').fill('wirtin@example.test')

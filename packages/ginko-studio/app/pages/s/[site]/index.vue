@@ -11,7 +11,7 @@ import { Button } from '@studio/components/ui/button'
 import { api } from '#convex/api'
 import EntryRemoveDialog, { type EntryUses } from '../../../components/EntryRemoveDialog.vue'
 
-definePageMeta({ layout: 'site', convexAuth: true })
+definePageMeta({ layout: 'site' })
 
 const { t, format, locale } = useI18n()
 const s = await useSiteData()

@@ -4,7 +4,6 @@ import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
 
-definePageMeta({ convexAuth: true })
 const { t } = useI18n()
 const { locale, locales, pick } = useLocalePicker()
 useHead(() => ({ title: `${t('sites.title')} · Ginko` }))

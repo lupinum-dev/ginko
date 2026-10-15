@@ -8,7 +8,7 @@ import { whenText } from '../../../../utils/when'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
 
-definePageMeta({ layout: 'site', convexAuth: true })
+definePageMeta({ layout: 'site' })
 
 const { t, format } = useI18n()
 const s = await useSiteData()

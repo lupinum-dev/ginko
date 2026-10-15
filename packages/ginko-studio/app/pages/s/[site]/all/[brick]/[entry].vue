@@ -3,7 +3,7 @@
 import { api } from '#convex/api'
 import { Skeleton } from '@studio/components/ui/skeleton'
 
-definePageMeta({ layout: 'site', convexAuth: true })
+definePageMeta({ layout: 'site' })
 const route = useRoute()
 const { t } = useI18n()
 const s = await useSiteData()

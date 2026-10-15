@@ -3,7 +3,6 @@
 import { api } from '#convex/api'
 import { Button } from '@studio/components/ui/button'
 
-definePageMeta({ convexAuth: true })
 const { t } = useI18n()
 useHead(() => ({ title: `${t('invite.titleShort')} · Ginko` }))
 

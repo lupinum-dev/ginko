@@ -9,7 +9,7 @@ import { Button } from '@studio/components/ui/button'
 
 type HistoryMsg = { key: string; params?: Record<string, unknown> }
 
-definePageMeta({ layout: 'site', convexAuth: true })
+definePageMeta({ layout: 'site' })
 
 const { t, format } = useI18n()
 const s = await useSiteData()

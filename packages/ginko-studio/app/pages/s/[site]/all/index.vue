@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'site', convexAuth: true })
+definePageMeta({ layout: 'site' })
 const { t } = useI18n()
 const s = await useSiteData()
 const { editable } = allAccess(s)

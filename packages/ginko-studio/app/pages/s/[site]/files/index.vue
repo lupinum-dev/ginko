@@ -4,7 +4,7 @@
 import { useFilesLibrary } from '../../../../composables/useFilesLibrary'
 import FilesBrowser from '../../../../components/files/FilesBrowser.vue'
 
-definePageMeta({ layout: 'site', convexAuth: true })
+definePageMeta({ layout: 'site' })
 
 const { t } = useI18n()
 const s = await useSiteData()

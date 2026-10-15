@@ -3,7 +3,7 @@
 <script setup lang="ts">
 import { Button } from '@studio/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
-definePageMeta({ layout: 'site', convexAuth: true })
+definePageMeta({ layout: 'site' })
 
 const { t } = useI18n()
 const s = await useSiteData()

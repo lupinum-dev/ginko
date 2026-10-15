@@ -9,7 +9,7 @@ import { whenText } from '../../../../../utils/when'
 import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
 
-definePageMeta({ layout: 'site', convexAuth: true })
+definePageMeta({ layout: 'site' })
 const route = useRoute()
 const s = await useSiteData()
 const { editable, tasksFor } = allAccess(s)
