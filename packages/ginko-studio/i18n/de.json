@@ -1,7 +1,8 @@
 {
   "nav": {
-    "quick": "Schnell ändern",
-    "all": "Alles bearbeiten",
+    "quick": "Heute",
+    "all": "Inhalte",
+    "review": "Prüfen",
     "files": "Dateien",
     "history": "Verlauf",
     "team": "Team",
@@ -12,20 +13,15 @@
     "skip": "Zum Inhalt springen",
     "views": "Ansichten",
     "areas": "Bereiche",
-    "list": "Liste",
     "signOut": "Abmelden",
+    "signOutDrafts": "In diesem Browser sind noch ungespeicherte Änderungen. Beim Abmelden werden sie gelöscht. Trotzdem abmelden?",
+    "signOutFailed": "Abmelden hat nicht geklappt. Bitte versuche es noch einmal.",
+    "signOutOthers": "Auf anderen Geräten abmelden",
+    "signedOutOthers": "Auf allen anderen Geräten abgemeldet. Hier bleibst du angemeldet.",
+    "signOutOthersFailed": "Die anderen Geräte konnten nicht abgemeldet werden. Bitte versuche es noch einmal.",
     "signIn": "Anmelden",
-    "noAccessHelp": "Wenn du hier etwas ändern sollst, frag die Inhaberin, ob sie dich (wieder) einlädt.",
-    "toReview": "Zu prüfen ({count})",
-    "short": {
-      "quick": "Heute",
-      "all": "Inhalte",
-      "review": "Prüfen",
-      "files": "Dateien",
-      "history": "Verlauf",
-      "team": "Team",
-      "ai": "KI"
-    },
+    "noAccessHelp": "Brauchst du hier Zugang, frag die Person, die dich eingeladen hat.",
+    "noAccessUnsaved": "Was du hier noch nicht gespeichert hattest, ist nicht auf der Website. Wirst du wieder eingeladen, bekommst du es in diesem Browser zurück.",
     "more": "Mehr",
     "account": "Konto",
     "toReviewCount": "{count} zu prüfen",
@@ -37,13 +33,18 @@
     "invitedTo": "Einladung zu <site>{site}</site> als {role}",
     "accept": "Einladung annehmen",
     "empty": "Du hast noch keinen Zugang zu einer Seite. Bitte frag nach einer Einladung.",
+    "search": "Seite suchen",
+    "recent": "Zuletzt geöffnet",
+    "all": "Alle Seiten",
+    "noMatch": "Keine Seite passt zu „{query}“.",
+    "deleting": "Wird gelöscht",
     "role": {
       "admin": "Admin",
       "owner": "Inhaber",
       "staff": "Mitarbeiter"
     },
     "remindTitle": "Erinnerungen per E-Mail",
-    "remindText": "Am Abend vor Wochenbeginn eine kurze Mail, wenn für nächste Woche noch etwas fehlt, zum Beispiel das Mittagsmenü.",
+    "remindText": "Am Abend vor Wochenbeginn eine kurze Mail, wenn für die nächste Woche noch etwas fehlt.",
     "language": "Sprache",
     "deleteAccount": {
       "title": "Konto löschen",
@@ -74,7 +75,16 @@
     "generic": "Das hat nicht geklappt. Deine Eingaben sind noch da. Bitte noch einmal versuchen."
   },
   "errors": {
-    "signedOut": "Du wurdest abgemeldet. Melde dich wieder an und versuche es noch einmal."
+    "signedOut": "Du wurdest abgemeldet. Melde dich wieder an und versuche es noch einmal.",
+    "notFound": {
+      "title": "Diese Adresse gibt es im Studio nicht.",
+      "text": "Vielleicht ist der Link alt oder hat einen Tippfehler."
+    },
+    "other": {
+      "title": "Hier ist etwas schiefgelaufen.",
+      "text": "Lade die Seite neu. Was du gespeichert hast, ist nicht verloren."
+    },
+    "reload": "Neu laden"
   },
   "invite": {
     "titleShort": "Einladung",
@@ -119,6 +129,7 @@
     },
     "save": {
       "waiting": "Wartet auf Verbindung …",
+      "offlineKept": "Keine Verbindung. Deine Eingaben sind in diesem Browser gesichert. Lass diese Seite offen, dann wird gespeichert, sobald du wieder online bist.",
       "saving": "Speichert …",
       "draft": "Entwurf speichern",
       "save": "Speichern"
@@ -227,12 +238,12 @@
   "site": {
     "zoneNote": "Alle Zeiten in der Zeitzone der Website ({zone}).",
     "title": {
-      "quick": "{site} · Schnell ändern",
-      "all": "{site} · Alles bearbeiten",
+      "quick": "{site} · Heute",
+      "all": "{site} · Inhalte",
       "team": "{site} · Team",
       "ai": "{site} · Mit KI verbinden",
       "history": "{site} · Verlauf",
-      "area": "{area} · Alles bearbeiten"
+      "area": "{area} · Inhalte"
     },
     "fallback": {
       "site": "Seite",
@@ -276,7 +287,7 @@
       "showExpired": "Abgelaufene anzeigen ({count})"
     },
     "all": {
-      "heading": "Alles bearbeiten",
+      "heading": "Inhalte",
       "lede": "Alle Bereiche der Website mit allen Feldern. Wähle einen Bereich.",
       "allAreas": "Alle Bereiche",
       "new": "Neu",
@@ -328,8 +339,8 @@
     "ai": {
       "heading": "Mit KI verbinden",
       "lead": "Dein KI-Assistent kann dann für dich Aufgaben erledigen, zum Beispiel „{first}“ oder „{second}“. Er darf genau das, was du hier darfst. Jede Änderung steht im Verlauf als „über KI“ und lässt sich rückgängig machen.",
-      "exampleOne": "Setz Heute ausgebucht",
-      "exampleTwo": "Trag das Mittagsmenü vom Foto ein",
+      "exampleOne": "Korrigier einen Tippfehler",
+      "exampleTwo": "Kürz den ersten Absatz",
       "keyFor": "Schlüssel für „{label}“",
       "keyOnce": "Der Schlüssel wird nur jetzt angezeigt. Wer ihn hat, kann in deinem Namen ändern: gib ihn nur deinem Assistenten.",
       "terminal": "Für Claude Code: im Terminal ausführen",
@@ -350,7 +361,10 @@
       "yourKeys": "Deine Schlüssel",
       "noneYet": "Noch keiner.",
       "revokedAt": ", widerrufen {when}",
-      "revokeConfirm": "„{label}“ kann danach nichts mehr ändern."
+      "revokeConfirm": "„{label}“ kann danach nichts mehr ändern.",
+      "reviewOn": "Änderungen warten auf Freigabe.",
+      "reviewOff": "Änderungen gehen ohne Freigabe online.",
+      "reviewLikeYou": "Was bei dir auf Freigabe wartet, wartet auch hier. Alles andere geht ohne Freigabe online."
     },
     "keys": {
       "heading": "Schlüssel für Veröffentlichungen",
@@ -368,13 +382,14 @@
       "loadOlder": "Ältere laden"
     },
     "storage": {
-      "near": "Speicher fast voll: {used} von {limit} belegt.",
-      "full": "Speicher voll: {used} von {limit} belegt. Du kannst Einträge weiter bearbeiten, solange sie nicht länger werden, aber keine neuen anlegen.",
+      "near": "Textspeicher fast voll: {used} von {limit} belegt.",
+      "full": "Textspeicher voll: {used} von {limit} belegt. Du kannst Einträge weiter bearbeiten, solange sie nicht länger werden, aber keine neuen anlegen.",
       "entries": "{count} von {limit} Einträgen angelegt.",
       "entriesFull": "{count} von {limit} Einträgen angelegt. Neue Einträge kannst du nicht mehr anlegen.",
-      "hint": "Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.",
+      "hint": "Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge, Bilder und PDFs zählen nicht mit.",
       "entriesHint": "Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.",
-      "dismiss": "Hinweis ausblenden"
+      "dismiss": "Hinweis ausblenden",
+      "usage": "Textspeicher: {used} von {limit} belegt, {count} von {max} Einträgen. Bilder und PDFs zählen nicht mit."
     },
     "translations": {
       "heading": "Übersetzungen",
@@ -674,8 +689,8 @@
     "purged": "„{title}“ endgültig gelöscht."
   },
   "review": {
-    "title": "{site} · Zu prüfen",
-    "heading": "Zu prüfen",
+    "title": "{site} · Prüfen",
+    "heading": "Prüfen",
     "empty": "Nichts wartet auf deine Entscheidung.",
     "releases": "Releases",
     "plannedAt": "geplant für {time}",
@@ -743,9 +758,11 @@
       "actions": "Aktionen",
       "entries": "Einträge",
       "areas": "Bereiche",
+      "sites": "Seiten",
       "newIn": "Neu: {area}",
       "review": "Prüfen",
-      "empty": "Nichts gefunden für „{query}“."
+      "empty": "Nichts gefunden für „{query}“.",
+      "failed": "Die Suche hat gerade nicht geklappt."
     },
     "update": {
       "menu": "Website jetzt aktualisieren",

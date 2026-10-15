@@ -1,7 +1,8 @@
 {
   "nav": {
-    "quick": "Edición rápida",
-    "all": "Editar todo",
+    "quick": "Hoy",
+    "all": "Contenido",
+    "review": "Revisar",
     "files": "Archivos",
     "history": "Historial",
     "team": "Equipo",
@@ -12,20 +13,15 @@
     "skip": "Saltar al contenido",
     "views": "Vistas",
     "areas": "Áreas",
-    "list": "Lista",
     "signOut": "Cerrar sesión",
+    "signOutDrafts": "En este navegador hay cambios sin guardar. Al cerrar sesión se eliminarán. ¿Cerrar sesión de todos modos?",
+    "signOutFailed": "No se pudo cerrar la sesión. Inténtalo de nuevo.",
+    "signOutOthers": "Cerrar sesión en otros dispositivos",
+    "signedOutOthers": "Sesión cerrada en todos los demás dispositivos. Aquí sigues con la sesión iniciada.",
+    "signOutOthersFailed": "No se pudo cerrar la sesión en los otros dispositivos. Inténtalo de nuevo.",
     "signIn": "Iniciar sesión",
-    "noAccessHelp": "Si necesitas cambiar algo aquí, pide al propietario que te invite (de nuevo).",
-    "toReview": "Por revisar ({count})",
-    "short": {
-      "quick": "Hoy",
-      "all": "Contenido",
-      "review": "Revisar",
-      "files": "Archivos",
-      "history": "Historial",
-      "team": "Equipo",
-      "ai": "IA"
-    },
+    "noAccessHelp": "Si necesitas acceso aquí, pregunta a la persona que te invitó.",
+    "noAccessUnsaved": "Lo que aún no habías guardado aquí no está en el sitio web. Si te vuelven a invitar, lo recuperas en este navegador.",
     "more": "Más",
     "account": "Cuenta",
     "toReviewCount": "{count} por revisar",
@@ -37,13 +33,18 @@
     "invitedTo": "<site>{site}</site> te invita como {role}.",
     "accept": "Aceptar invitación",
     "empty": "Todavía no tienes acceso a ningún sitio. Pide una invitación.",
+    "search": "Buscar un sitio",
+    "recent": "Abiertos recientemente",
+    "all": "Todos los sitios",
+    "noMatch": "Ningún sitio coincide con “{query}”.",
+    "deleting": "Se está eliminando",
     "role": {
       "admin": "Administrador",
       "owner": "Propietario",
       "staff": "Personal"
     },
     "remindTitle": "Recordatorios por correo",
-    "remindText": "Un correo breve la tarde antes de que empiece la semana si aún falta algo de la próxima semana, por ejemplo el menú del almuerzo.",
+    "remindText": "Un correo breve la tarde antes de que empiece la semana si aún falta algo de la próxima semana.",
     "language": "Idioma",
     "deleteAccount": {
       "title": "Eliminar cuenta",
@@ -74,7 +75,16 @@
     "generic": "No ha funcionado. Lo que escribiste sigue aquí. Inténtalo de nuevo."
   },
   "errors": {
-    "signedOut": "Se cerró tu sesión. Vuelve a iniciar sesión e inténtalo de nuevo."
+    "signedOut": "Se cerró tu sesión. Vuelve a iniciar sesión e inténtalo de nuevo.",
+    "notFound": {
+      "title": "Esta dirección no existe en el Studio.",
+      "text": "Puede que el enlace sea antiguo o tenga una errata."
+    },
+    "other": {
+      "title": "Algo ha salido mal aquí.",
+      "text": "Vuelve a cargar la página. Lo que guardaste no se ha perdido."
+    },
+    "reload": "Volver a cargar"
   },
   "invite": {
     "titleShort": "Invitación",
@@ -119,6 +129,7 @@
     },
     "save": {
       "waiting": "Esperando conexión …",
+      "offlineKept": "Sin conexión. Lo que has escrito está a salvo en este navegador. Deja esta página abierta y se guardará en cuanto vuelvas a estar en línea.",
       "saving": "Guardando …",
       "draft": "Guardar borrador",
       "save": "Guardar"
@@ -227,12 +238,12 @@
   "site": {
     "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",
     "title": {
-      "quick": "{site} · Edición rápida",
-      "all": "{site} · Editar todo",
+      "quick": "{site} · Hoy",
+      "all": "{site} · Contenido",
       "team": "{site} · Equipo",
       "ai": "{site} · Conectar IA",
       "history": "{site} · Historial",
-      "area": "{area} · Editar todo"
+      "area": "{area} · Contenido"
     },
     "fallback": {
       "site": "Sitio",
@@ -276,7 +287,7 @@
       "showExpired": "Mostrar caducadas ({count})"
     },
     "all": {
-      "heading": "Editar todo",
+      "heading": "Contenido",
       "lede": "Todas las áreas del sitio con todos sus campos. Elige un área.",
       "allAreas": "Todas las áreas",
       "new": "Nuevo",
@@ -328,8 +339,8 @@
     "ai": {
       "heading": "Conectar IA",
       "lead": "Tu asistente de IA podrá entonces hacer tareas por ti, por ejemplo “{first}” o “{second}”. Puede hacer exactamente lo que tú puedes hacer aquí. Cada cambio aparece en el historial como “vía IA” y se puede deshacer.",
-      "exampleOne": "Marcar hoy como completo",
-      "exampleTwo": "Añadir el menú del almuerzo desde la foto",
+      "exampleOne": "Corrige una errata",
+      "exampleTwo": "Acorta el primer párrafo",
       "keyFor": "Clave para “{label}”",
       "keyOnce": "La clave se muestra solo ahora. Quien la tenga puede hacer cambios en tu nombre, así que dásela solo a tu asistente.",
       "terminal": "Para Claude Code: ejecuta en la terminal",
@@ -350,7 +361,10 @@
       "yourKeys": "Tus claves",
       "noneYet": "Ninguna todavía.",
       "revokedAt": ", revocada {when}",
-      "revokeConfirm": "Después, “{label}” ya no podrá hacer cambios."
+      "revokeConfirm": "Después, “{label}” ya no podrá hacer cambios.",
+      "reviewOn": "Los cambios esperan aprobación.",
+      "reviewOff": "Los cambios se publican sin aprobación.",
+      "reviewLikeYou": "Lo que espera aprobación cuando lo haces tú también espera aquí. Lo demás se publica sin aprobación."
     },
     "keys": {
       "heading": "Claves de publicación",
@@ -368,13 +382,14 @@
       "loadOlder": "Cargar anteriores"
     },
     "storage": {
-      "near": "Almacenamiento casi lleno: {used} de {limit} ocupados.",
-      "full": "Almacenamiento lleno: {used} de {limit} ocupados. Puedes seguir editando entradas mientras no crezcan, pero no añadir nuevas.",
+      "near": "Espacio para textos casi lleno: {used} de {limit} ocupados.",
+      "full": "Espacio para textos lleno: {used} de {limit} ocupados. Puedes seguir editando entradas mientras no crezcan, pero no añadir nuevas.",
       "entries": "{count} de {limit} entradas creadas.",
       "entriesFull": "{count} de {limit} entradas creadas. No puedes añadir entradas nuevas.",
-      "hint": "Para hacer espacio, elimina entradas o acorta textos largos. Las entradas eliminadas no cuentan.",
+      "hint": "Para hacer espacio, elimina entradas o acorta textos largos. Las entradas eliminadas, las imágenes y los PDF no cuentan.",
       "entriesHint": "Para hacer espacio, elimina entradas. Las entradas eliminadas no cuentan.",
-      "dismiss": "Ocultar aviso"
+      "dismiss": "Ocultar aviso",
+      "usage": "Espacio para textos: {used} de {limit} ocupados, {count} de {max} entradas. Las imágenes y los PDF no cuentan."
     },
     "translations": {
       "heading": "Traducciones",
@@ -674,8 +689,8 @@
     "purged": "“{title}” eliminada definitivamente."
   },
   "review": {
-    "title": "{site} · Por revisar",
-    "heading": "Por revisar",
+    "title": "{site} · Revisar",
+    "heading": "Revisar",
     "empty": "Nada espera tu decisión.",
     "releases": "Versiones",
     "plannedAt": "previsto para {time}",
@@ -743,9 +758,11 @@
       "actions": "Acciones",
       "entries": "Entradas",
       "areas": "Áreas",
+      "sites": "Sitios",
       "newIn": "Nuevo en {area}",
       "review": "Revisar",
-      "empty": "No se encontró nada para “{query}”."
+      "empty": "No se encontró nada para “{query}”.",
+      "failed": "La búsqueda no ha funcionado ahora mismo."
     },
     "update": {
       "menu": "Actualizar el sitio web ahora",

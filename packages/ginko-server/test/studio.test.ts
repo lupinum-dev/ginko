@@ -232,7 +232,7 @@ describe('entries.duplicate', () => {
     expect(result).toMatchObject({ status: 'open' })
     expect(await count()).toBe(before)
     const proposals = await s.t.run((ctx) => ctx.db.query('proposals').collect())
-    expect(proposals).toEqual([expect.objectContaining({ op: 'create', brick: 'menu', author: people.cook, sentence: 'Eintrag „Gebeizter Saibling (Kopie)“ anlegen' })])
+    expect(proposals).toEqual([expect.objectContaining({ op: 'create', brick: 'menu', author: people.cook, sentence: '„Gebeizter Saibling (Kopie)“ anlegen' })])
 
     expect((await errorOf(s.as.cook.mutation(api.entries.duplicate, { site, opId: opId(), task: 'menu.remove', entry: s.entries['menu-saibling']! }))).code).toBe('FORBIDDEN')
     expect((await errorOf(s.as.cook.mutation(api.entries.duplicate, { site, opId: opId(), entry: s.entries['menu-saibling']! }))).code).toBe('FORBIDDEN')

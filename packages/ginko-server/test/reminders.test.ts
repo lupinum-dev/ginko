@@ -50,6 +50,23 @@ describe('reminders.sweep', () => {
     expect(sent[0]!.text).toContain('Erinnerungen per E-Mail')
   })
 
+  // Wrong behaviour caught: "Meine Seiten" offered the reminder mail to everyone, also where it can never mail them.
+  it('sites.mine says to whom a site can send the reminder', async () => {
+    const s = await setup()
+    await addStaffWithoutTask(s)
+    const weekly = async (as: { query: typeof s.as.owner.query }) => (await as.query(api.sites.mine, {})).map((x) => [x.slug, x.weekly])
+    expect(await weekly(s.as.owner)).toEqual([['restaurant', true]])
+    expect(await weekly(s.as.cook)).toEqual([['restaurant', true]])
+    expect(await weekly(s.t.withIdentity({ subject: 'u-neu', email: 'neu@example.com' }))).toEqual([['restaurant', false]])
+    // A site without a weekly task mails nobody.
+    await s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      const { lunch: _lunch, ...bricks } = (site.schema as { bricks: Record<string, unknown> }).bricks
+      await ctx.db.patch(s.site, { schema: { ...(site.schema as object), bricks } })
+    })
+    expect(await weekly(s.as.owner)).toEqual([['restaurant', false]])
+  })
+
   // Wrong behaviour caught: a created but unreleased site had no `week` in its schema, so the hourly sweep threw for all sites.
   it('still mails when another site is created but not released yet', async () => {
     const s = await setupUnplanned()

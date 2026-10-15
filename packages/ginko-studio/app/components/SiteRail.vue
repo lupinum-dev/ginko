@@ -25,7 +25,7 @@ const { t } = useI18n()
             v-if="l.count" aria-hidden="true" class="absolute -top-[5px] -right-[3px] grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-[5px] text-[11px] font-semibold text-primary-foreground ring-2 ring-sidebar"
           >{{ l.count }}</span>
         </span>
-        {{ l.short }}
+        {{ l.label }}
         <span v-if="l.count" class="sr-only">({{ t('nav.toReviewCount', { count: l.count }) }})</span>
       </NuxtLink>
     </nav>

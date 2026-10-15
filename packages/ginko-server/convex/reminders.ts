@@ -7,6 +7,7 @@ import { components } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
 import { internalMutation, type MutationCtx } from './_generated/server'
 import { localeOfUser, t } from './lib/i18n'
+import { isReminded, weeklyBricks } from './lib/reminders'
 import { mailAvailable, queueMail, siteOrigin } from './mail'
 
 const REMIND_HOUR = 17
@@ -56,15 +57,13 @@ async function remindSite(ctx: MutationCtx, site: Doc<'sites'>, schema: Schema, 
     live.set(key, rows.filter((r) => !r.deletedAt && r.state !== 'draft').map((r) => ({ data: r.data as Record<string, Json> })))
   }
   let sent = 0
-  for (const [key, brick] of Object.entries(schema.bricks)) {
-    if (brick.kind !== 'single' || brick.retired) continue
+  for (const { key, brick, ref } of weeklyBricks(schema)) {
     const entry = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).first()
     if (!entry || entry.deletedAt) continue
     const state = staleOf(brick, entry.data, coming, info, plannedWeeks(schema, key, (k) => live.get(k) ?? []))
     if (!state || state.current) continue
     // Owners may fix everything; staff only with the task that edits the field (SPEC 2.7).
-    const task = `${key}.${state.task.id}`
-    for (const member of members.filter((m) => m.role === 'owner' || m.grants.includes(task))) {
+    for (const member of members.filter((m) => isReminded(m, ref))) {
       const done = await ctx.db.query('reminders').withIndex('by_site_brick_week_user', (q) => q.eq('site', site._id).eq('brick', key).eq('week', week).eq('user', member.user)).first()
       if (done) continue
       const to = await addressOf(ctx, member.user)

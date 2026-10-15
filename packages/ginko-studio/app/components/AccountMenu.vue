@@ -1,27 +1,15 @@
 <!-- The person's menu at the foot of the rail (and top right on phones): who is signed in, "Update website now"
-     for owner and admin, My sites, sign out. -->
+     for owner and admin, My sites, sign out on other devices, sign out. -->
 <script setup lang="ts">
-import { LayoutGridIcon, LogOutIcon, RefreshCwIcon } from '@lucide/vue'
-import { forgetLocalDrafts } from '../composables/useLocalDraft'
+import { LayoutGridIcon, LogOutIcon, MonitorSmartphoneIcon, RefreshCwIcon } from '@lucide/vue'
+import { useSignOut } from '../composables/useSignOut'
 
 const props = defineProps<{ manager: boolean, lastRefresh?: number | null, updating: boolean, side?: 'top' | 'right' | 'bottom' }>()
 const emit = defineEmits<{ update: [] }>()
-const { client, user } = useConvexAuth()
+const { user } = useConvexAuth()
 const { t, format } = useI18n()
 const initial = computed(() => (user.value?.email ?? '?').charAt(0).toUpperCase())
-const busy = ref(false)
-async function signOut() {
-  busy.value = true
-  const id = user.value?.id
-  try {
-    await client.signOut()
-    // Unsaved input kept in this browser must not stay behind on a shared computer.
-    if (id) forgetLocalDrafts(id)
-    await navigateTo('/login')
-  } finally {
-    busy.value = false
-  }
-}
+const { busy, signOut, signOutOthers } = useSignOut()
 </script>
 
 <template>
@@ -44,6 +32,9 @@ async function signOut() {
       </template>
       <DropdownMenuItem as-child class="min-h-10 gap-2">
         <NuxtLink to="/?all"><LayoutGridIcon aria-hidden="true" />{{ t('nav.mySites') }}</NuxtLink>
+      </DropdownMenuItem>
+      <DropdownMenuItem class="min-h-10 gap-2" :disabled="busy" @select="signOutOthers">
+        <MonitorSmartphoneIcon aria-hidden="true" />{{ t('nav.signOutOthers') }}
       </DropdownMenuItem>
       <DropdownMenuItem class="min-h-10 gap-2" :disabled="busy" @select="signOut">
         <LogOutIcon aria-hidden="true" />{{ t('nav.signOut') }}

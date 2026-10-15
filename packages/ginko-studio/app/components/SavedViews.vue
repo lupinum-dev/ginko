@@ -73,7 +73,8 @@ async function remove(view: View) {
           <NativeSelectOption :value="`${key}|desc`">{{ t('basics.views.sortDesc', { field: shown(field.label) }) }}</NativeSelectOption>
         </template>
       </NativeSelect>
-      <Button type="button" variant="outline" :disabled="!canSave" @click="asking = true">{{ t('basics.views.save') }}</Button>
+      <!-- Only with a search or sort to save: a disabled button took a whole row on phones and said nothing. -->
+      <Button v-if="canSave" type="button" variant="outline" @click="asking = true">{{ t('basics.views.save') }}</Button>
     </div>
     <ul v-if="views?.length" class="m-0 flex list-none flex-wrap gap-1.5 p-0" :aria-label="t('basics.views.listLabel')">
       <li v-for="view in views" :key="view.id" class="inline-flex items-center rounded-full border">

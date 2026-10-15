@@ -355,7 +355,7 @@ describe('budget (SPEC 3)', () => {
     await t.run((ctx) => ctx.db.patch(site, { bytes: 4 * 1024 * 1024 + 1 - longer + shorter }))
     expect(await errorOf(save(3, 'Impressum lang'))).toMatchObject({
       code: 'TOO_LARGE',
-      message: 'Der Speicher der Seite ist voll (4.1 MB von 4 MB). Kürze oder entferne Einträge. Änderungen, die nichts vergrößern, lassen sich immer speichern.',
+      message: 'Der Textspeicher der Seite ist voll (4.1 MB von 4 MB). Kürze oder entferne Einträge. Änderungen, die nichts vergrößern, lassen sich immer speichern.',
     })
   })
 })

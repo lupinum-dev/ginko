@@ -1,21 +1,9 @@
 <script setup lang="ts">
-import { forgetLocalDrafts } from '../composables/useLocalDraft'
+import { useSignOut } from '../composables/useSignOut'
 
-const { client, user } = useConvexAuth()
+const { user } = useConvexAuth()
 const { t } = useI18n()
-const busy = ref(false)
-async function signOut() {
-  busy.value = true
-  const id = user.value?.id
-  try {
-    await client.signOut()
-    // Unsaved input kept in this browser must not stay behind on a shared computer.
-    if (id) forgetLocalDrafts(id)
-    await navigateTo('/login')
-  } finally {
-    busy.value = false
-  }
-}
+const { busy, signOut } = useSignOut()
 </script>
 
 <template>

@@ -4,9 +4,12 @@ import { api } from '#convex/api'
 import { DEFAULT_WEEK, type ComponentRegistry, type Schema } from '@lupinum/ginko/internal'
 import { provideGinkoAssets } from '@lupinum/ginko-editor'
 import { CircleCheckIcon, FileTextIcon, HistoryIcon, ImageIcon, SearchIcon, SparklesIcon, SquareArrowOutUpRightIcon, SunIcon, UsersIcon } from '@lucide/vue'
-import { OWN_BOTTOM_BAR, type SiteLink } from '../utils/siteLinks'
+import type { SiteLink } from '../utils/siteLinks'
+import { useBottomBar } from '../composables/useBottomBar'
 import { EDITOR_COMPONENTS } from '@studio/components/editor/context'
 import { provideStudioSite } from '../utils/labels'
+import { localDraftKeys } from '../composables/useLocalDraft'
+import { rememberSite } from '../composables/useRecentEntries'
 
 const route = useRoute()
 const { t, format } = useI18n()
@@ -14,6 +17,9 @@ const slug = computed(() => String(route.params.site))
 // Every form under this layout (Schnell ändern, Alles bearbeiten) uploads to this site.
 provideGinkoAssets(useConvexGinkoAssets(slug))
 const { data, error } = useConvexQuery(api.sites.meta, () => ({ site: slug.value }))
+// "Meine Seiten" lists the sites opened last in this browser first. Only a site that answered counts, so a mistyped
+// address or a site the person was removed from does not push real ones out (storage exists in the browser only).
+watch(() => data.value?.site.slug, (opened) => { if (opened) rememberSite(opened) }, { immediate: true })
 // A site whose deletion has started opens for nothing but cancelling it (`sites.meta` is refused for everyone then).
 const { data: deletion } = useConvexQuery(api.sites.deletion, () => ({ site: slug.value }))
 // The slash menu of Markdown fields offers the components of this site's schema.
@@ -24,12 +30,30 @@ provideStudioSite({ main: () => data.value?.site.schema.locales[0] ?? '', curren
 provide('ginko:timeZone', computed(() => data.value?.site.schema.timeZone ?? 'Europe/Vienna'))
 // While the site loads there is no schema yet.
 provide('ginko:week', computed(() => data.value?.site.schema.week ?? DEFAULT_WEEK))
-// Signed out in another tab, or removed from the team while working here: no page, sheet or button
-// stays usable (break-it 9). The page says what happened and what to do. A session ended on the server (signed out
-// everywhere, revoked) leaves the token here, so only the server's answer tells (auth-1). The unsaved input of an
-// open form stays in this browser and is offered back after signing in.
-const { status } = useConvexAuth()
+// Only a refusal replaces the page: signed out (in another tab, or the session ended on the server, which leaves the
+// token here, so only the server's answer tells, auth-1), no access (removed from the team, an unknown site), or the
+// site being deleted. Then no page, sheet or button stays usable (break-it 9); the page says what happened and what to
+// do, and the unsaved input of an open form stays in this browser. A failure (a timeout, a reconnect burst, a deploy)
+// keeps the last answer and the open form: better-convex keeps the last data on an error, the server checks every
+// write, and the next write anywhere on the site runs this query again, which clears the error.
+const { status, user } = useConvexAuth()
 const signedOut = computed(() => status.value === 'anonymous' || isSignInRequired(error.value))
+const noAccess = computed(() => !signedOut.value && isNoAccess(error.value))
+// A member removed while typing learns that her unsaved input is not online and comes back in this browser if she is
+// invited again. The open form writes its copy while it unmounts, in the render that shows the access page, so the
+// check waits a tick; storage exists only in the browser, so a page that opens without access checks once mounted,
+// and again when the person is known (she may still be loading then).
+const unsavedHere = ref(false)
+const checkUnsaved = () => {
+  const id = user.value?.id
+  unsavedHere.value = noAccess.value && !!id && localDraftKeys(id, slug.value).length > 0
+}
+watch([noAccess, () => user.value?.id], () => nextTick(checkUnsaved))
+onMounted(checkUnsaved)
+/** A failure with no last answer: nothing is open yet, so a reload loses nothing. */
+const notLoaded = computed(() => !!error.value && !data.value && !signedOut.value && !noAccess.value)
+// `force`: a second try within Nuxt's 10 s guard must reload too.
+const reload = () => reloadNuxtApp({ force: true })
 // "Seite ansehen" opens the local site on a local platform; the browser decides, so after mount (no hydration mismatch).
 const mounted = ref(false)
 onMounted(() => { mounted.value = true })
@@ -57,22 +81,21 @@ const siteUpdate = useUpdateSite(() => slug.value)
 const lastRefresh = computed(() => data.value?.site.lastRefreshAt)
 const base = computed(() => `/s/${slug.value}`)
 const links = computed<SiteLink[]>(() => [
-  { to: base.value, label: t('nav.quick'), short: t('nav.short.quick'), icon: SunIcon, exact: true },
-  { to: `${base.value}/all`, label: t('nav.all'), short: t('nav.short.all'), icon: FileTextIcon },
-  ...(manager.value ? [{ to: `${base.value}/review`, label: t('nav.toReview', { count: toReview.value ?? 0 }), short: t('nav.short.review'), icon: CircleCheckIcon, count: toReview.value || undefined }] : []),
-  { to: `${base.value}/files`, label: t('nav.files'), short: t('nav.short.files'), icon: ImageIcon },
-  { to: `${base.value}/history`, label: t('nav.history'), short: t('nav.short.history'), icon: HistoryIcon },
-  ...(manager.value ? [{ to: `${base.value}/team`, label: t('nav.team'), short: t('nav.short.team'), icon: UsersIcon }] : []),
-  { to: `${base.value}/ai`, label: t('nav.ai'), short: t('nav.short.ai'), icon: SparklesIcon },
+  { to: base.value, label: t('nav.quick'), icon: SunIcon, exact: true },
+  { to: `${base.value}/all`, label: t('nav.all'), icon: FileTextIcon },
+  ...(manager.value ? [{ to: `${base.value}/review`, label: t('nav.review'), icon: CircleCheckIcon, count: toReview.value || undefined }] : []),
+  { to: `${base.value}/files`, label: t('nav.files'), icon: ImageIcon },
+  { to: `${base.value}/history`, label: t('nav.history'), icon: HistoryIcon },
+  ...(manager.value ? [{ to: `${base.value}/team`, label: t('nav.team'), icon: UsersIcon }] : []),
+  { to: `${base.value}/ai`, label: t('nav.ai'), icon: SparklesIcon },
 ])
 const siteName = computed(() => data.value?.site.name ?? '…')
 const initial = computed(() => (data.value?.site.name ?? '').trim().charAt(0).toUpperCase() || '·')
 // The entry editor has its own bar at the bottom (save), so phones show no tab bar while one is open.
-const ownBottomBar = ref(0)
-provide(OWN_BOTTOM_BAR, ownBottomBar)
-const showTabs = computed(() => ownBottomBar.value === 0)
-// Signed out or no access: no site to navigate, so no rail, bars or site name (the message offers the way out).
-const blocked = computed(() => signedOut.value || !!error.value || !!deletion.value)
+const bottomBar = useBottomBar()
+const showTabs = computed(() => bottomBar.value === 0)
+// Signed out, no access or not loaded: no site to navigate, so no rail, bars or site name (the message offers the way out).
+const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.value || !!deletion.value)
 </script>
 
 <template>
@@ -118,10 +141,18 @@ const blocked = computed(() => signedOut.value || !!error.value || !!deletion.va
         <Button as-child><NuxtLink :to="`/login?redirect=${encodeURIComponent(route.fullPath)}`" external>{{ t('nav.signIn') }}</NuxtLink></Button>
       </div>
       <SiteDeleting v-else-if="deletion" :slug="slug" :name="deletion.name" :at="deletion.at" />
-      <div v-else-if="error" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
+      <div v-else-if="noAccess" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
         <p class="text-xl font-bold">{{ opErrorOf(error).message }}</p>
+        <p v-if="unsavedHere">{{ t('nav.noAccessUnsaved') }}</p>
         <p>{{ t('nav.noAccessHelp') }}</p>
         <Button as-child variant="outline"><NuxtLink to="/?all">{{ t('nav.mySites') }}</NuxtLink></Button>
+      </div>
+      <div v-else-if="notLoaded" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
+        <p class="text-xl font-bold">{{ t('basics.notLoaded') }}</p>
+        <div class="flex flex-wrap gap-2">
+          <Button type="button" @click="reload">{{ t('basics.retry') }}</Button>
+          <Button as-child variant="outline"><NuxtLink to="/?all">{{ t('nav.mySites') }}</NuxtLink></Button>
+        </div>
       </div>
       <template v-else>
         <!-- Above every page, so every role sees it (a manager without tasks never sees Schnell ändern). -->

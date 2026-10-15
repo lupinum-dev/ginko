@@ -37,15 +37,15 @@ describe('whenText', () => {
     const messages = compileCatalogs({ de: { server } }).de
     const t = createTranslator({ messages, language: 'de', timeZone: 'UTC' }).t
     expect(whenText(at, 'Europe/Vienna', createFormatters('de'))).toBe('24. Okt., 02:30')
-    expect(textOf({ key: 'history.scheduled', params: { title: 'X', at } }, '', { t, locale: 'de', timeZone: 'Europe/Vienna' })).toBe('Eintrag „X“: online ab 24. Okt., 02:30')
+    expect(textOf({ key: 'history.scheduled', params: { title: 'X', at } }, '', { t, locale: 'de', timeZone: 'Europe/Vienna' })).toBe('„X“: online ab 24. Okt., 02:30')
   })
 
   // Wrong behaviour caught: the second 02:30 of the night the clocks go back read "25. Okt., 02:30", like the first,
   // in toasts and lists or in History and approval lines, rendered in the Studio or by the server (regress-9).
   it.each([
-    [Date.UTC(2026, 9, 25, 0, 30), '25. Okt., 02:30 MESZ', '25.10.2026, 02:30 MESZ', 'Eintrag „X“: online ab 25. Okt., 02:30 MESZ'],
-    [Date.UTC(2026, 9, 25, 1, 30), '25. Okt., 02:30 MEZ', '25.10.2026, 02:30 MEZ', 'Eintrag „X“: online ab 25. Okt., 02:30 MEZ'],
-    [Date.UTC(2026, 9, 25, 8, 0), '25. Okt., 09:00', '25.10.2026, 09:00', 'Eintrag „X“: online ab 25. Okt., 09:00'],
+    [Date.UTC(2026, 9, 25, 0, 30), '25. Okt., 02:30 MESZ', '25.10.2026, 02:30 MESZ', '„X“: online ab 25. Okt., 02:30 MESZ'],
+    [Date.UTC(2026, 9, 25, 1, 30), '25. Okt., 02:30 MEZ', '25.10.2026, 02:30 MEZ', '„X“: online ab 25. Okt., 02:30 MEZ'],
+    [Date.UTC(2026, 9, 25, 8, 0), '25. Okt., 09:00', '25.10.2026, 09:00', '„X“: online ab 25. Okt., 09:00'],
   ])('%i reads %s', (at, short, full, history) => {
     const format = createFormatters('de')
     const t = createTranslator({ messages: compileCatalogs({ de: { server } }).de, language: 'de', timeZone: 'UTC' }).t

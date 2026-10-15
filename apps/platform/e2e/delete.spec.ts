@@ -53,7 +53,7 @@ test('an owner starts the deletion of the site, everyone is shut out, and cancel
     await page.getByLabel('Zur Bestätigung restaurant eingeben').fill('restaurant')
     await start.click()
     await expect(page.getByText(/wird am .* gelöscht\./)).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole('link', { name: 'Schnell ändern' })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Heute' })).toHaveCount(0)
 
     const cookPage = await cook.newPage()
     await cookPage.goto('/s/restaurant', { waitUntil: 'networkidle' })

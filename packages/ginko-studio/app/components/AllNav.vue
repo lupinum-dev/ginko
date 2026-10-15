@@ -26,12 +26,11 @@ const hasTrash = computed(() => meta.value?.site.hasTrash ?? false)
   <nav class="grid gap-0.5" :aria-label="t('nav.areas')">
     <Button
       v-for="[key, brick] in bricks" :key="key" as-child variant="ghost"
-      :class="['h-auto min-h-11 justify-between gap-3 rounded-md whitespace-normal px-3 py-2 text-left font-medium hover:bg-muted', key === current && 'bg-accent text-accent-foreground hover:bg-accent']"
+      :class="['h-auto min-h-11 justify-start gap-3 rounded-md whitespace-normal px-3 py-2 text-left font-medium hover:bg-muted', key === current && 'bg-accent text-accent-foreground hover:bg-accent']"
     >
       <NuxtLink :to="`/s/${slug}/all/${key}`" :aria-current="key === current ? 'page' : undefined">
         <!-- Long labels wrap inside the side list instead of running into the form. -->
         <span class="min-w-0">{{ shown(brick.label) }}</span>
-        <span class="shrink-0 text-[13px] font-normal text-muted-foreground">{{ brick.kind === 'collection' ? t('nav.list') : '' }}</span>
       </NuxtLink>
     </Button>
     <Button

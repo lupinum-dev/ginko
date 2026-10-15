@@ -349,7 +349,8 @@ for (const lang of ['de', 'en'] as const) {
       await row.getByRole('button', { name: w.approve, exact: true }).click()
       await expect(toast(ownerPage)).toContainText(w.approved)
       await expect(ownerPage.getByText(w.nothingWaits)).toBeVisible()
-      await expect(ownerPage.getByRole('link', { name: /^(Zu prüfen|To review)/ })).toHaveCount(0)
+      // The review link no longer counts anything waiting (its name is "Prüfen (1 zu prüfen)" while one waits).
+      await expect(ownerPage.getByRole('link', { name: /(zu prüfen|to review)\)$/ })).toHaveCount(0)
 
       // Live: the lunch entry holds the dish now.
       await open(ownerPage, '/s/restaurant/all/lunch')

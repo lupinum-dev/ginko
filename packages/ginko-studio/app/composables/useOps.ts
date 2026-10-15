@@ -65,6 +65,14 @@ export function isSignInRequired(error: unknown): boolean {
   return e.kind === 'server' && typeof e.data === 'object' && e.data !== null && 'key' in e.data && e.data.key === 'errors.signInRequired'
 }
 
+/** The server refused the site to this person: removed from the team, an unknown site, or a site being deleted.
+ *  Decided by the code, not the text; a refusal for a missing sign-in is isSignInRequired. */
+export function isNoAccess(error: unknown): boolean {
+  if (error === undefined || error === null) return false
+  const e = normalizeConvexError(error)
+  return e.kind === 'server' && e.code === 'FORBIDDEN' && !isSignInRequired(error)
+}
+
 /**
  * Undo, remove and restore run from the message at the bottom, after the sheet that saved is gone.
  * A mutation belongs to the component that created it and is cancelled with it, so these three are

@@ -1,7 +1,8 @@
 {
   "nav": {
-    "quick": "Quick edit",
-    "all": "Edit everything",
+    "quick": "Today",
+    "all": "Content",
+    "review": "Review",
     "files": "Files",
     "history": "History",
     "team": "Team",
@@ -12,20 +13,15 @@
     "skip": "Skip to content",
     "views": "Views",
     "areas": "Areas",
-    "list": "List",
     "signOut": "Sign out",
+    "signOutDrafts": "This browser still holds unsaved changes. Signing out deletes them. Sign out anyway?",
+    "signOutFailed": "Signing out did not work. Please try again.",
+    "signOutOthers": "Sign out on other devices",
+    "signedOutOthers": "Signed out on all other devices. You stay signed in here.",
+    "signOutOthersFailed": "The other devices could not be signed out. Please try again.",
     "signIn": "Sign in",
-    "noAccessHelp": "If you need to change something here, ask the owner to invite you (again).",
-    "toReview": "To review ({count})",
-    "short": {
-      "quick": "Today",
-      "all": "Content",
-      "review": "Review",
-      "files": "Files",
-      "history": "History",
-      "team": "Team",
-      "ai": "AI"
-    },
+    "noAccessHelp": "If you need access here, ask the person who invited you.",
+    "noAccessUnsaved": "Anything you had not saved here is not on the website. If you are invited again, you get it back in this browser.",
     "more": "More",
     "account": "Account",
     "toReviewCount": "{count} to review",
@@ -37,13 +33,18 @@
     "invitedTo": "<site>{site}</site> invites you as {role}.",
     "accept": "Accept invitation",
     "empty": "You do not have access to a site yet. Please ask for an invitation.",
+    "search": "Find a site",
+    "recent": "Recently opened",
+    "all": "All sites",
+    "noMatch": "No site matches “{query}”.",
+    "deleting": "Being deleted",
     "role": {
       "admin": "Admin",
       "owner": "Owner",
       "staff": "Staff"
     },
     "remindTitle": "Reminders by email",
-    "remindText": "A short email the evening before the week starts if something for next week is still missing, for example the lunch menu.",
+    "remindText": "A short email the evening before the week starts if something for next week is still missing.",
     "language": "Language",
     "deleteAccount": {
       "title": "Delete account",
@@ -74,7 +75,16 @@
     "generic": "That did not work. Your input is still here. Please try again."
   },
   "errors": {
-    "signedOut": "You were signed out. Sign in and try again."
+    "signedOut": "You were signed out. Sign in and try again.",
+    "notFound": {
+      "title": "This address does not exist in the Studio.",
+      "text": "The link may be old or have a typo."
+    },
+    "other": {
+      "title": "Something went wrong here.",
+      "text": "Reload the page. What you saved is not lost."
+    },
+    "reload": "Reload"
   },
   "invite": {
     "titleShort": "Invitation",
@@ -119,6 +129,7 @@
     },
     "save": {
       "waiting": "Waiting for connection …",
+      "offlineKept": "No connection. Your input is kept in this browser. Keep this page open and it is saved as soon as you are back online.",
       "saving": "Saving …",
       "draft": "Save draft",
       "save": "Save"
@@ -227,12 +238,12 @@
   "site": {
     "zoneNote": "All times are in the website's time zone ({zone}).",
     "title": {
-      "quick": "{site} · Quick edit",
-      "all": "{site} · Edit everything",
+      "quick": "{site} · Today",
+      "all": "{site} · Content",
       "team": "{site} · Team",
       "ai": "{site} · Connect AI",
       "history": "{site} · History",
-      "area": "{area} · Edit everything"
+      "area": "{area} · Content"
     },
     "fallback": {
       "site": "Site",
@@ -276,7 +287,7 @@
       "showExpired": "Show expired ({count})"
     },
     "all": {
-      "heading": "Edit everything",
+      "heading": "Content",
       "lede": "All areas of the site with all fields. Choose an area.",
       "allAreas": "All areas",
       "new": "New",
@@ -328,8 +339,8 @@
     "ai": {
       "heading": "Connect AI",
       "lead": "Your AI assistant can then do tasks for you, for example “{first}” or “{second}”. It may do exactly what you may do here. Every change appears in the history as “via AI” and can be undone.",
-      "exampleOne": "Set today to fully booked",
-      "exampleTwo": "Add the lunch menu from the photo",
+      "exampleOne": "Fix a typo",
+      "exampleTwo": "Shorten the first paragraph",
       "keyFor": "Key for “{label}”",
       "keyOnce": "The key is shown only now. Anyone who has it can make changes in your name, so give it only to your assistant.",
       "terminal": "For Claude Code: run in the terminal",
@@ -350,7 +361,10 @@
       "yourKeys": "Your keys",
       "noneYet": "None yet.",
       "revokedAt": ", revoked {when}",
-      "revokeConfirm": "“{label}” cannot make any changes after that."
+      "revokeConfirm": "“{label}” cannot make any changes after that.",
+      "reviewOn": "Changes wait for approval.",
+      "reviewOff": "Changes go online without approval.",
+      "reviewLikeYou": "What waits for approval when you do it waits here too. Everything else goes online without approval."
     },
     "keys": {
       "heading": "Publishing keys",
@@ -368,13 +382,14 @@
       "loadOlder": "Load older"
     },
     "storage": {
-      "near": "Storage almost full: {used} of {limit} used.",
-      "full": "Storage full: {used} of {limit} used. You can keep editing entries as long as they do not get longer, but you cannot add new ones.",
+      "near": "Text storage almost full: {used} of {limit} used.",
+      "full": "Text storage full: {used} of {limit} used. You can keep editing entries as long as they do not get longer, but you cannot add new ones.",
       "entries": "{count} of {limit} entries used.",
       "entriesFull": "{count} of {limit} entries used. You cannot add new entries.",
-      "hint": "To make room, remove entries or shorten long texts. Removed entries do not count.",
+      "hint": "To make room, remove entries or shorten long texts. Removed entries, pictures and PDFs do not count.",
       "entriesHint": "To make room, remove entries. Removed entries do not count.",
-      "dismiss": "Hide notice"
+      "dismiss": "Hide notice",
+      "usage": "Text storage: {used} of {limit} used, {count} of {max} entries. Pictures and PDFs do not count."
     },
     "translations": {
       "heading": "Translations",
@@ -674,8 +689,8 @@
     "purged": "“{title}” deleted for good."
   },
   "review": {
-    "title": "{site} · To review",
-    "heading": "To review",
+    "title": "{site} · Review",
+    "heading": "Review",
     "empty": "Nothing waits for your decision.",
     "releases": "Releases",
     "plannedAt": "planned for {time}",
@@ -743,9 +758,11 @@
       "actions": "Actions",
       "entries": "Entries",
       "areas": "Areas",
+      "sites": "Sites",
       "newIn": "New {area}",
       "review": "Review",
-      "empty": "Nothing found for “{query}”."
+      "empty": "Nothing found for “{query}”.",
+      "failed": "Search did not work just now."
     },
     "update": {
       "menu": "Update website now",

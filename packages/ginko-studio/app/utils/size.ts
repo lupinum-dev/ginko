@@ -14,3 +14,6 @@ export function sizeText(bytes: number, number: NumberFormat, rounding: 'up' | '
   if (bytes < 1024 * 1024) return `${number(Math.max(1, round(bytes / 1024)))} KB`
   return `${number(round(bytes / (1024 * 1024) * 10) / 10, { maximumFractionDigits: 1 })} MB`
 }
+
+/** "3,9 MB" of a budget: never rounded across the limit ("4 MB" only when it is reached). */
+export const budgetSizeText = (bytes: number, limit: number, number: NumberFormat) => sizeText(bytes, number, bytes >= limit ? 'up' : 'down')

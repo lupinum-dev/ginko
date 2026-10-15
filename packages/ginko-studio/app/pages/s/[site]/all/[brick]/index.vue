@@ -77,7 +77,10 @@ async function move(row: Row, by: -1 | 1) {
   }
 }
 
-const { data: removed } = useConvexQuery(api.entries.removed, () => (brick.value?.kind === 'collection' && access.value && (access.value.all || access.value.remove) ? { site: s.slug.value, brick: key.value } : 'skip'))
+const { data: removed, error: removedError } = useConvexQuery(api.entries.removed, () => (brick.value?.kind === 'collection' && access.value && (access.value.all || access.value.remove) ? { site: s.slug.value, brick: key.value } : 'skip'))
+// One alert above both lists: a failed "Entfernt" keeps its last answer (an entry restored meanwhile still shows), so
+// the page says it is out of date. The next write in this area runs both queries again.
+const loadError = computed(() => list.error.value ?? removedError.value)
 const ops = useOps(s.slug)
 </script>
 
@@ -101,7 +104,7 @@ const ops = useOps(s.slug)
            empty search: the box stays (it may hold the focus) and no empty state shows. -->
       <SavedViews v-if="total || asked || search || (page && list.isStale.value)" v-model:search="search" v-model:sort="sort" :slug="s.slug.value" :brick-key="key" :brick="brick" />
       <p class="sr-only" aria-live="polite">{{ loading && asked ? t('site.all.searching') : '' }}</p>
-      <p v-if="list.error.value" class="font-semibold text-destructive" role="alert">{{ opErrorOf(list.error.value, t('basics.loadFailed')).message }}</p>
+      <p v-if="loadError" class="font-semibold text-destructive" role="alert">{{ opErrorOf(loadError, t('basics.loadFailed')).message }}</p>
       <p v-if="!page || (!total && list.isStale.value)" v-show="!list.error.value" class="text-muted-foreground" role="status">{{ t('entry.loading') }}</p>
       <p v-else-if="!total && !asked" class="text-muted-foreground">{{ t('site.all.noEntries') }}</p>
       <p v-else-if="!total" class="text-muted-foreground">{{ t('basics.views.noMatch') }}</p>
