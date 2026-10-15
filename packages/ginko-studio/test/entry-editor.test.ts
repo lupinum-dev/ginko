@@ -97,3 +97,41 @@ test('the preview sends the site only once its entries have loaded', async () =>
     vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
   }
 })
+
+// Wrong behaviour caught: "Vorschau" on a new, unsaved post showed the site's first page (/ueber-uns), not the post,
+// so the person thought the post was lost; on a collection without drafts saving publishes at once (romi-10, J7).
+test('the preview of a new entry shows its own page once the title is typed, and says what it waits for until then', async () => {
+  vi.useFakeTimers()
+  try {
+    const routed = serializeSchema(defineSite({
+      site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+      pages: { about: { de: '/ueber-uns' } },
+      bricks: { blog: collection({ label: 'Blog', max: 50, order: 'manual', route: { de: '/blog/[slug]' }, fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }) } }) },
+    }))
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref([]), error: ref(undefined) }))
+    const wrapper = mount(EntryEditor, {
+      props: { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema: routed, brickKey: 'blog', brick: routed.bricks.blog!, canRemove: false },
+      global: { stubs: { EntryFields: true, NuxtLink: true }, components: { PreviewPane } },
+    })
+    await wrapper.findAll('button').find((b) => b.text() === 'Vorschau')!.trigger('click')
+    expect(wrapper.find('iframe').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Die Vorschau zeigt die Seite, sobald „Titel“ ausgefüllt ist.')
+
+    wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Neuer Beitrag' })
+    await vi.advanceTimersByTimeAsync(300)
+    const frame = wrapper.get('iframe').element
+    expect(new URL(frame.getAttribute('src')!).searchParams.get('path')).toBe('/blog/neuer-beitrag')
+    // The site gets the new entry at that address: it finds the post there.
+    const source = new MessageChannel().port1
+    const post = vi.spyOn(source, 'postMessage').mockImplementation(() => {})
+    Object.defineProperty(frame, 'contentWindow', { value: source })
+    const session = new URL(frame.getAttribute('src')!).searchParams.get('session')
+    window.dispatchEvent(new MessageEvent('message', { source, origin: 'https://restaurant.test', data: { type: 'ginko:ready', session } }))
+    await vi.advanceTimersByTimeAsync(300)
+    const sent = post.mock.calls.at(-1)![0] as { bundle: { bricks: { blog: { items: { id: string; urls?: Record<string, string> }[] } } } }
+    expect(sent.bundle.bricks.blog.items.find((item) => item.id === 'new')?.urls).toEqual({ de: '/blog/neuer-beitrag' })
+  } finally {
+    vi.useRealTimers()
+    vi.stubGlobal('useConvexQuery', () => ({ data: ref(undefined), error: ref(undefined) }))
+  }
+})

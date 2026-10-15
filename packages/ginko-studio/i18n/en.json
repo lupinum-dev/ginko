@@ -163,6 +163,7 @@
       "close": "Close preview",
       "frameTitle": "Preview of the website",
       "stuck": "The preview does not load. Saving still works as usual.",
+      "needsTitle": "The preview shows the page once “{field}” is filled in.",
       "openSite": "Open website"
     },
     "remove": {

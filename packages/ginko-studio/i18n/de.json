@@ -163,6 +163,7 @@
       "close": "Vorschau schließen",
       "frameTitle": "Vorschau der Website",
       "stuck": "Die Vorschau lädt nicht. Speichern funktioniert trotzdem wie gewohnt.",
+      "needsTitle": "Die Vorschau zeigt die Seite, sobald „{field}“ ausgefüllt ist.",
       "openSite": "Website öffnen"
     },
     "remove": {

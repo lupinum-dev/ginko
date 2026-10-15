@@ -1,13 +1,33 @@
 // Helpers for showing and editing stored values in the UI. The storage format is the server's
 // (SPEC 2.2); these only translate it for people and back.
 import { formatMoney, type Brick, type Field, type Fields, type Json, type Locale, type Task } from '@lupinum/ginko'
-import { entryTitle, fileRefsIn, ordered, printOf, stableJson, type Schema } from '@lupinum/ginko/internal'
+import { entryTitle, fileRefsIn, ordered, printOf, slugBases, stableJson, type Schema } from '@lupinum/ginko/internal'
 import { textIn } from '@lupinum/ginko-editor'
 import { shownLabel } from './labels'
 import type { Words } from './when'
 
 export type Data = Record<string, Json>
 export type { Task }
+
+/**
+ * The addresses a new entry will get, per slug field and language, read from the text each is made of as the server
+ * reads it (entries.ts `slugsFor`, core `slugBases`): a language without its own text takes the main language's. The
+ * server adds "-2" when an address is taken; the preview of an entry not saved yet does without.
+ */
+export function draftSlugs(brick: Brick, locales: readonly Locale[], data: Data): Data {
+  const out: Data = {}
+  for (const [name, field] of Object.entries(brick.fields)) {
+    if (field.type !== 'slug' || field.retired) continue
+    const from = data[field.from]
+    const texts = Object.fromEntries(locales.map((locale) => {
+      const text = from && typeof from === 'object' && !Array.isArray(from) ? from[locale] : undefined
+      return [locale, typeof text === 'string' ? text : '']
+    }))
+    const bases = slugBases(locales, texts)
+    out[name] = Object.fromEntries(locales.map((locale) => [locale, bases[locale] ?? bases[locales[0]!] ?? '']))
+  }
+  return out
+}
 
 /** A short name for an entry: its first text field in the main language, else the brick's label. */
 export function titleOf(brick: Brick, data: Data, locale: Locale): string {

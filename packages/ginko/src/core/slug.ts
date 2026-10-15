@@ -16,6 +16,20 @@ export function slugify(input: string): string {
 
 export const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
+/**
+ * The slug of a new entry per locale before it is made unique (SPEC 2.2), from the text of its `from` field in that
+ * locale: the main locale (the first) always gets one; another locale gets one from its own text, or `undefined`
+ * when it has none and takes the main locale's slug. The platform makes these unique; the Studio's preview of a new
+ * entry uses them as they are.
+ */
+export function slugBases(locales: readonly string[], texts: Readonly<Record<string, string | undefined>>): Record<string, string | undefined> {
+  const main = locales[0]
+  return Object.fromEntries(locales.map((locale) => {
+    const own = texts[locale] ?? ''
+    return [locale, locale === main ? slugify(own) : own ? slugify(own) : undefined]
+  }))
+}
+
 /** First free slug: base, base-2, base-3, … */
 export function uniqueSlug(base: string, taken: (slug: string) => boolean): string {
   if (!taken(base)) return base

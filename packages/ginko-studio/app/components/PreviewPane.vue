@@ -19,8 +19,10 @@ const props = defineProps<{
   /** The form being edited: its brick, its entry (none = new), and the unsaved values. */
   editing?: { brick: string; entry?: string; data: Data }
   locale: Locale
-  /** The page to show first. */
-  path: string
+  /** The page to show first; undefined while a new entry has no address yet (see `waitsFor`). */
+  path?: string
+  /** The label of the field a new entry's address is made from, while it is empty: no page is shown until it is filled. */
+  waitsFor?: string
   files?: (id: string) => FileInfo | undefined
   /** Changes when the files behind `files` change (an upload became ready), so the bundle is sent again. */
   revision?: string
@@ -33,7 +35,7 @@ const origin = computed(() => siteOrigin(props.site))
 const session = ref(crypto.randomUUID())
 const path = ref(props.path)
 watch(() => props.path, (p) => { path.value = p; session.value = crypto.randomUUID() })
-const src = computed(() => `${origin.value}/__ginko/preview?path=${encodeURIComponent(path.value)}&locale=${props.locale}&session=${session.value}`)
+const src = computed(() => `${origin.value}/__ginko/preview?path=${encodeURIComponent(path.value ?? '')}&locale=${props.locale}&session=${session.value}`)
 const frame = ref<HTMLIFrameElement | null>(null)
 const ready = ref(false)
 /** No `ginko:ready` in time: the site is down, refuses framing, or has no preview route. The owner gets a way out. */
@@ -81,7 +83,7 @@ function sendSoon() {
 watch(() => props.editing, sendSoon, { deep: true })
 watch(() => [props.entries, props.locale, props.revision], sendSoon)
 watch(() => props.locale, () => { session.value = crypto.randomUUID() })
-watch(src, () => { ready.value = false; waitForReady() })
+watch(src, () => { ready.value = false; if (path.value) waitForReady(); else clearTimeout(readyTimer) })
 
 function onMessage(event: MessageEvent) {
   if (event.source !== frame.value?.contentWindow || event.origin !== origin.value) return
@@ -97,7 +99,7 @@ function onMessage(event: MessageEvent) {
     session.value = crypto.randomUUID()
   }
 }
-onMounted(() => { window.addEventListener('message', onMessage); waitForReady() })
+onMounted(() => { window.addEventListener('message', onMessage); if (path.value) waitForReady() })
 onBeforeUnmount(() => { window.removeEventListener('message', onMessage); clearTimeout(timer); clearTimeout(readyTimer) })
 </script>
 
@@ -107,7 +109,10 @@ onBeforeUnmount(() => { window.removeEventListener('message', onMessage); clearT
       <span class="font-semibold">{{ t('entry.preview.label') }}</span>
       <span class="truncate text-muted-foreground">{{ path }}</span>
     </header>
-    <div class="relative min-h-0">
+    <div v-if="!path" class="grid place-content-center p-6 text-center" role="status">
+      <p class="max-w-[36ch] text-sm text-muted-foreground">{{ t('entry.preview.needsTitle', { field: waitsFor ?? '' }) }}</p>
+    </div>
+    <div v-else class="relative min-h-0">
       <iframe ref="frame" :key="session" :src="src" :title="t('entry.preview.frameTitle')" />
       <div v-if="stuck" class="absolute inset-0 grid place-content-center justify-items-center gap-3 bg-card p-6 text-center" role="status">
         <p class="max-w-[36ch] text-sm text-muted-foreground">{{ t('entry.preview.stuck') }}</p>

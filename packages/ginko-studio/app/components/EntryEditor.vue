@@ -2,10 +2,10 @@
      status, a sticky save bar, and the preview beside it on wide screens. Same engine as the tasks. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, urlsFor, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, textIn, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { languageName, leafTranslation, previewFileIds, publishQuestion, titleOf } from '../utils/content'
+import { draftSlugs, languageName, leafTranslation, previewFileIds, publishQuestion, titleOf } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -380,10 +380,23 @@ async function doUnpublish() {
   }
 }
 
+// A new entry has no address yet: the preview gives it the one the server will make from its title (draftSlugs), so
+// the site finds it on its own page. Read after the typing pause, so the page does not reload on every key.
+const newSlugs = computed(() => (props.entry ? undefined : draftSlugs(props.brick, props.schema.locales, typed.value)))
+const previewData = computed(() => (newSlugs.value ? { ...draft.value, ...newSlugs.value } : draft.value))
+/** The label of the field a new entry's address is made from, while it is empty: there is no page to show yet. */
+const previewWaitsFor = computed(() => {
+  if (props.entry || props.brick.kind !== 'collection' || !props.brick.route) return undefined
+  const slug = Object.values(props.brick.fields).find((field) => field.type === 'slug' && !field.retired)
+  if (slug?.type !== 'slug' || textIn(typed.value[slug.from], main.value).trim()) return undefined
+  return shown(props.brick.fields[slug.from]!.label)
+})
 // Preview: the entry's own page when it has a route, else the site's first page in this language.
 const previewPath = computed(() => {
-  if (props.brick.kind === 'collection' && props.brick.route && props.entry) {
-    const url = urlsFor(props.schema, props.brickKey, props.brick as CollectionBrick, { id: props.entry._id, data: props.entry.data as never })[locale.value]
+  if (props.brick.kind === 'collection' && props.brick.route) {
+    if (previewWaitsFor.value) return undefined
+    const data = props.entry ? props.entry.data : previewData.value
+    const url = urlsFor(props.schema, props.brickKey, props.brick as CollectionBrick, { id: props.entry?._id ?? 'new', data: data as never })[locale.value]
     if (url) return url
   }
   return Object.values(props.schema.pages)[0]?.[locale.value] ?? '/'
@@ -545,9 +558,10 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
       :site="site"
       :schema="schema"
       :entries="previewEntries"
-      :editing="{ brick: brickKey, entry: entry?._id, data: draft }"
+      :editing="{ brick: brickKey, entry: entry?._id, data: previewData }"
       :locale="locale"
       :path="previewPath"
+      :waits-for="previewWaitsFor"
       :files="files"
       :revision="fileIds.join(',') + ':' + (fileInfo ? Object.values(fileInfo).filter(Boolean).length : 0)"
     />

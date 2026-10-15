@@ -1,7 +1,7 @@
 // Entry operations (SPEC 4.2). `save` is the reference for the shared flow of SPEC 4.1:
 // actor → repeated op → load → may they → precondition → check → write → record op.
 import type { Brick, CollectionBrick, Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, ordered, searchable, sha256, slugify, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, validate, visibleUntil, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import { blockedSlugs, effectiveMax, entryBytes, isTranslatable, labelOf as labelIn, leavesOf, listHaystack, listSort, deletesExpired, isVisible, ordered, searchable, sha256, slugBases, sortEntries, SITE_BUDGET, todayIn, uniqueSlug, validate, visibleUntil, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
 import { paginationOptsValidator } from 'convex/server'
 import { v, type ObjectType } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
@@ -408,6 +408,7 @@ async function slugsFor(ctx: MutationCtx, actor: Actor, brick: string, fields: F
   for (const [name, field] of Object.entries(fields)) {
     if (field.type !== 'slug') continue
     const from = plainObject(data[field.from])
+    const bases = slugBases(schema.locales, Object.fromEntries(schema.locales.map((locale) => [locale, textOf(from[locale])])))
     const made: Record<string, string> = {}
     for (const locale of schema.locales) {
       const slugsOf = async (key: string) => (await ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', actor.site._id).eq('brick', key).eq('locale', locale)).collect()).map((r) => r.slug)
@@ -416,9 +417,7 @@ async function slugsFor(ctx: MutationCtx, actor: Actor, brick: string, fields: F
       const others: Record<string, string[]> = {}
       for (const [key, other] of Object.entries(schema.bricks)) if (key !== brick && other.kind === 'collection' && other.route) others[key] = await slugsOf(key)
       for (const slug of blockedSlugs(schema, brick, locale, others)) taken.add(slug)
-      const own = textOf(from[locale])
-      const base = locale === main ? slugify(textOf(from[main])) : own ? slugify(own) : made[main]!
-      made[locale] = uniqueSlug(base, (s) => taken.has(s))
+      made[locale] = uniqueSlug(bases[locale] ?? made[main]!, (s) => taken.has(s))
     }
     out[name] = made
     for (const [locale, slug] of Object.entries(made)) rows.push({ locale, slug })

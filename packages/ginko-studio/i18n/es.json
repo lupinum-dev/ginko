@@ -163,6 +163,7 @@
       "close": "Cerrar vista previa",
       "frameTitle": "Vista previa del sitio web",
       "stuck": "La vista previa no carga. Guardar sigue funcionando como siempre.",
+      "needsTitle": "La vista previa muestra la página en cuanto rellenes “{field}”.",
       "openSite": "Abrir sitio web"
     },
     "remove": {
