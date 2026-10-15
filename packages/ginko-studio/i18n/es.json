@@ -403,6 +403,16 @@
       "hint": "Para hacer espacio, elimina entradas o acorta textos largos. Las entradas eliminadas no cuentan.",
       "entriesHint": "Para hacer espacio, elimina entradas. Las entradas eliminadas no cuentan.",
       "dismiss": "Ocultar aviso"
+    },
+    "backup": {
+      "heading": "Copia de seguridad",
+      "lead": "Descarga todo el contenido (también borradores y papelera) y todas las imágenes y PDF como archivo ZIP. El equipo, el historial y las claves no se incluyen.",
+      "button": "Descargar copia de seguridad",
+      "size": "{count, plural, one {# archivo} other {# archivos}}, {size} en total.",
+      "progress": "Cargando {done} de {total} archivos …",
+      "done": "Copia de seguridad descargada.",
+      "tooBig": "Con {size}, la copia de seguridad es demasiado grande para este navegador. En Chrome o Edge funciona.",
+      "failed": "La copia de seguridad está incompleta: no se pudo cargar «{name}». Inténtalo de nuevo."
     }
   },
   "editor": {

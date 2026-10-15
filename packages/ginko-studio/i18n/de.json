@@ -403,6 +403,16 @@
       "hint": "Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.",
       "entriesHint": "Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.",
       "dismiss": "Hinweis ausblenden"
+    },
+    "backup": {
+      "heading": "Sicherung",
+      "lead": "Lädt alle Inhalte (auch Entwürfe und den Papierkorb) und alle Bilder und PDFs als ZIP-Datei. Team, Verlauf und Schlüssel sind nicht dabei.",
+      "button": "Sicherung herunterladen",
+      "size": "{count, plural, one {# Datei} other {# Dateien}}, zusammen {size}.",
+      "progress": "Lädt {done} von {total} Dateien …",
+      "done": "Sicherung heruntergeladen.",
+      "tooBig": "Mit {size} ist die Sicherung zu groß für diesen Browser. In Chrome oder Edge geht es.",
+      "failed": "Die Sicherung ist nicht vollständig: „{name}“ ließ sich nicht laden. Versuch es noch einmal."
     }
   },
   "editor": {

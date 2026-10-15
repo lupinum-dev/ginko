@@ -54,7 +54,7 @@ beforeEach(() => {
 })
 
 const mountPage = () => mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(TeamPage) }) }), {
-  global: { stubs: { I18nT: true, GrantsChecklist: true, DeleteSite: true } },
+  global: { stubs: { I18nT: true, GrantsChecklist: true, SiteBackup: true, DeleteSite: true } },
   attachTo: document.body,
 })
 

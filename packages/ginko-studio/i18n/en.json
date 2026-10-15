@@ -403,6 +403,16 @@
       "hint": "To make room, remove entries or shorten long texts. Removed entries do not count.",
       "entriesHint": "To make room, remove entries. Removed entries do not count.",
       "dismiss": "Hide notice"
+    },
+    "backup": {
+      "heading": "Backup",
+      "lead": "Downloads all content (drafts and trash included) and all pictures and PDFs as a ZIP file. Team, history and keys are not included.",
+      "button": "Download backup",
+      "size": "{count, plural, one {# file} other {# files}}, {size} in total.",
+      "progress": "Loading {done} of {total} files …",
+      "done": "Backup downloaded.",
+      "tooBig": "At {size}, the backup is too large for this browser. It works in Chrome or Edge.",
+      "failed": "The backup is incomplete: “{name}” could not be loaded. Please try again."
     }
   },
   "editor": {

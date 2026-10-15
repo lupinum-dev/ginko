@@ -1,5 +1,6 @@
-<!-- Team (UI.md 7): members with their rights, open invitations, the invite form, and the site's publishing keys (made here,
-     shown once). Owners and admins only; the members query is skipped for everyone else, so the server never answers them. -->
+<!-- Team (UI.md 7): members with their rights, open invitations, the invite form, the site's publishing keys (made here,
+     shown once), the backup download and the site's deletion. Owners and admins only; the members query is skipped for
+     everyone else, so the server never answers them. -->
 <script setup lang="ts">
 import type { Label } from '@lupinum/ginko'
 import { grantGroups } from '@lupinum/ginko/internal'
@@ -395,6 +396,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
         </form>
       </section>
 
+      <SiteBackup :slug="s.slug.value" />
       <DeleteSite v-if="s.site.value" :slug="s.slug.value" :name="s.site.value.name" />
     </template>
   </div>
