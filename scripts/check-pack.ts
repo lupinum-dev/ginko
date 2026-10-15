@@ -164,10 +164,15 @@ async function serve(siteDir: string, port: number, checks: Check[]) {
 
 // 1. New sites from create-ginko (files only, no platform): the plain starter and every preset it offers.
 // Every preset folder (`<preset>` or `<preset>-<lang>`) becomes a site, so a new preset cannot skip the gate.
+// The gastro starters get one more dish, turned off with `onMenu: false`: their menu page must leave it out (dishOn).
+// The page payload still carries every dish, so the check reads the rendered names (`<strong>`).
+const OFF_MENU = '---\ncategory: soups\nname: Off-season soup\nprice: 7\nveg: vegan\nonMenu: false\n---\n'
+const offMenuLeftOut: Check = ['/', (body) => (!body.includes('</strong>') ? 'renders no dish'
+  : body.includes('<strong>Off-season soup</strong>') ? 'shows a dish turned off with onMenu: false' : undefined)]
 const created: Record<string, Check[]> = {
   starter: [['/', /<h1>Hello Ginko<\/h1>/], ['/sitemap.xml', /<urlset/]],
-  gastro: [['/', /<h1>Opening hours<\/h1>[\s\S]*Tomato soup/]],
-  'gastro-de': [['/', /<h1>Öffnungszeiten<\/h1>[\s\S]*Tomatensuppe/]],
+  gastro: [['/', /<h1>Opening hours<\/h1>[\s\S]*Tomato soup/], offMenuLeftOut],
+  'gastro-de': [['/', /<h1>Öffnungszeiten<\/h1>[\s\S]*Tomatensuppe/], offMenuLeftOut],
   docs: [['/docs/getting-started', /class="docs-sidebar/]],
   'docs-de': [['/docs/einstieg', /lang="de"[\s\S]*class="docs-sidebar[\s\S]*Seiten schreiben/]],
 }
@@ -176,6 +181,7 @@ for (const name of ['starter', ...readdirSync(join(root, 'packages/create-ginko/
   const [preset, lang] = name.split('-')
   const args = name === 'starter' ? '' : `--preset ${preset}${lang ? ` --locale ${lang}` : ''}`
   run(`node ${join(root, 'packages/create-ginko/index.mjs')} ${name} ${args}`, work)
+  if (preset === 'gastro') writeFileSync(join(work, name, 'content/menu/5.off-season.md'), OFF_MENU)
   useTarballs(join(work, name))
 }
 // 2. The docs site on the docs layer.
