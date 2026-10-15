@@ -57,7 +57,7 @@ describe('the files list', () => {
 
 describe('upload into the library', () => {
   // Wrong behaviour caught: in a batch, each failure overwrote the one before and named no file, so the person did not
-  // learn which files were missing.
+  // learn which files were missing. The alert wraps a real list, so a screen reader announces its items.
   test('names every file of a batch that failed, also when a later one succeeds', async () => {
     const reasons: Record<string, string> = { 'IMG_0001.HEIC': 'HEIC geht nicht.', 'riesig.png': 'Zu viele Pixel.' }
     const lib = {
@@ -71,7 +71,7 @@ describe('upload into the library', () => {
     Object.defineProperty(input, 'files', { value: ['IMG_0001.HEIC', 'riesig.png', 'ok.jpg'].map((name) => new File(['x'], name)) })
     input.dispatchEvent(new Event('change'))
     await flushPromises()
-    expect([...document.body.querySelectorAll('[role="alert"] li')].map((li) => li.textContent)).toEqual(['„IMG_0001.HEIC“: HEIC geht nicht.', '„riesig.png“: Zu viele Pixel.'])
+    expect([...document.body.querySelectorAll('[role="alert"] ul li')].map((li) => li.textContent)).toEqual(['„IMG_0001.HEIC“: HEIC geht nicht.', '„riesig.png“: Zu viele Pixel.'])
   })
 })
 

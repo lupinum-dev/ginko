@@ -314,9 +314,12 @@ const emptyText = computed(() => {
 
       <p v-if="uploading" class="text-sm font-medium text-muted-foreground" role="status">{{ t('files.uploading') }}</p>
       <p v-if="error" class="text-sm font-medium text-destructive" role="alert">{{ error }}</p>
-      <ul v-if="failedUploads.length" class="grid gap-1 text-sm font-medium text-destructive" role="alert">
-        <li v-for="(failed, i) in failedUploads" :key="i">{{ t('files.uploadFailedFile', { name: failed.name, message: failed.message }) }}</li>
-      </ul>
+      <!-- The alert wraps the list: on the <ul> itself the role would replace its list role. -->
+      <div v-if="failedUploads.length" role="alert">
+        <ul class="grid gap-1 text-sm font-medium text-destructive">
+          <li v-for="(failed, i) in failedUploads" :key="i">{{ t('files.uploadFailedFile', { name: failed.name, message: failed.message }) }}</li>
+        </ul>
+      </div>
 
       <p v-if="list.error.value" class="text-sm font-medium text-destructive" role="alert">{{ list.error.value }}</p>
       <p v-else-if="list.pending.value" class="text-sm text-muted-foreground" role="status">{{ t('files.loading') }}</p>
