@@ -3,6 +3,8 @@ title: "Wassermessungen mit der Schule nebenan"
 slug: wassermessungen-mit-schulen
 description: "Schülerinnen und Schüler messen jetzt einmal im Monat mit uns das Flusswasser."
 tags: ["Wasser", "Schulen"]
+image:
+  alt: "Klares Wasser eines Bachs zwischen bemoosten umgestürzten Bäumen in einem grünen Wald"
 ---
 
 Schülerinnen und Schüler einer weiterführenden Schule am Fluss messen jetzt einmal im Monat mit uns das Wasser. Mit einfachen Testsets bestimmen sie Temperatur, pH-Wert und Nitrat und tragen die Ergebnisse in eine gemeinsame Tabelle ein.

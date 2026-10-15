@@ -3,6 +3,8 @@ title: "Analyser l’eau avec l’école d’à côté"
 slug: analyses-eau-ecoles
 description: "Des élèves analysent désormais l’eau de la rivière avec nous une fois par mois."
 tags: ["eau", "écoles"]
+image:
+  alt: "L’eau claire d’un ruisseau entre des arbres tombés couverts de mousse, dans une forêt verte"
 ---
 
 Des élèves d’un collège proche de la rivière analysent désormais l’eau avec nous une fois par mois. Avec des kits simples, ils mesurent la température, le pH et les nitrates, puis reportent les résultats dans un tableau commun.

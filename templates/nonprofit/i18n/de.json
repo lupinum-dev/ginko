@@ -1,0 +1,26 @@
+{
+  "home": {
+    "projects": "Aktuelle Projekte",
+    "news": "Neuigkeiten",
+    "voices": "Stimmen",
+    "partners": "Mit wem wir arbeiten",
+    "cta": {
+      "title": "Machen Sie beim nächsten Aufräumen mit.",
+      "text": "Ohne Anmeldung. Bringen Sie feste Schuhe mit; Handschuhe, Greifzangen und Säcke haben wir.",
+      "action": "Mitmachen"
+    }
+  },
+  "blog": {
+    "lead": "Was wir am Fluss getan haben und was als Nächstes kommt."
+  },
+  "projects": {
+    "lead": "Woran wir das ganze Jahr arbeiten, und Aktionen, die bis zu einem festen Tag laufen."
+  },
+  "people": {
+    "lead": "Der Vorstand, von der Mitgliederversammlung gewählt, und unser Koordinator."
+  },
+  "downloads": {
+    "title": "Berichte",
+    "lead": "Unsere Jahresberichte und andere Dokumente zum Lesen und Speichern."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "home": {
+    "projects": "Projets en cours",
+    "news": "Dernières actualités",
+    "voices": "Ils en parlent",
+    "partners": "Nos partenaires",
+    "cta": {
+      "title": "Venez au prochain nettoyage.",
+      "text": "Sans inscription. Apportez de bonnes chaussures ; nous apportons les gants, les pinces et les sacs.",
+      "action": "Participer"
+    }
+  },
+  "blog": {
+    "lead": "Ce que nous avons fait sur la rivière, et ce qui vient ensuite."
+  },
+  "projects": {
+    "lead": "Ce sur quoi nous travaillons toute l’année, et les campagnes qui durent jusqu’à une date fixe."
+  },
+  "people": {
+    "lead": "Le bureau, élu par l’assemblée générale, et notre coordinateur."
+  },
+  "downloads": {
+    "title": "Rapports",
+    "lead": "Nos rapports annuels et d’autres documents, à lire et à garder."
+  }
+}

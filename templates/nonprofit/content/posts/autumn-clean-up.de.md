@@ -3,6 +3,8 @@ title: "Herbstputz: Was wir am Ufer gefunden haben"
 slug: herbstputz
 description: "Freiwillige haben das Ufer zwischen den beiden Brücken aufgeräumt. Das meiste, was sie fanden, war klein."
 tags: ["Aufräumaktion"]
+image:
+  alt: "Eine Helferin mit Handschuhen holt eine Plastikflasche aus dem Fluss und steckt sie in einen Sack"
 ---
 
 An einem Samstagvormittag im September haben Freiwillige jeden Alters das Flussufer zwischen den beiden Brücken aufgeräumt.
