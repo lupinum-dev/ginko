@@ -36,7 +36,10 @@ vi.stubGlobal('allAccess', () => ({ editable: computed(() => [['dishes', brick]]
 // With keepPreviousData the last answer stays, marked stale, until then.
 const answers: { search?: string }[] = []
 const list = { data: ref<unknown>(), pending: ref(true), isStale: ref(false), error: ref<unknown>() }
+/** entries.removed (the "Entfernt" section): the test sets its answer. */
+const removed = { data: ref<unknown>(), pending: ref(false), isStale: ref(false), error: ref<unknown>() }
 vi.stubGlobal('useConvexQuery', (fn: string, args: () => unknown, options?: { keepPreviousData?: boolean }) => {
+  if (String(fn) === 'entries.removed') return removed
   if (String(fn) !== 'entries.list') return { data: ref(undefined), pending: ref(false), isStale: ref(false), error: ref() }
   watch(() => JSON.stringify(toValue(args)), (now) => {
     answers.push(JSON.parse(now) as { search?: string })
@@ -122,4 +125,22 @@ test('a list that fails without a server message says it could not load', async 
   fail(normalizeConvexError(new Error('Connection lost while action was in flight'), { functionName: 'entries:list' }))
   await flushPromises()
   expect(wrapper.find('[role="alert"]').text()).toBe('Das ließ sich nicht laden. Bitte lade die Seite neu.')
+})
+
+// Wrong behaviour caught: when the removed entries failed to load (or stuck after a restore), "Entfernt" kept showing an
+// entry that was back, with an active Wiederherstellen, and nothing said the page was out of date.
+test('a failed answer for the removed entries shows the alert while the list is fine', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), { global: { mocks: { shownLabel }, stubs } })
+  await flushPromises()
+  answer({ rows: [{ _id: 'e1', title: 'Saibling', state: 'published', dates: {}, gaps: [] }], total: 1 })
+  try {
+    removed.data.value = [{ _id: 'e2', title: 'Forelle', lifeRev: 2 }]
+    vi.spyOn(console, 'error').mockImplementationOnce(() => undefined)
+    removed.error.value = normalizeConvexError(new Error('Function execution timed out'), { functionName: 'entries:removed' })
+    await flushPromises()
+    expect(wrapper.find('[role="alert"]').text()).toBe('Das ließ sich nicht laden. Bitte lade die Seite neu.')
+  } finally {
+    removed.data.value = undefined
+    removed.error.value = undefined
+  }
 })
