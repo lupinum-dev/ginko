@@ -1,5 +1,5 @@
 // One form engine for Schnell ändern and Alles bearbeiten (UI.md 3.2, 4): a draft of root fields,
-// the stored baseline, save or create with one opId per attempt, field errors, conflicts that keep
+// the stored baseline, save or create with one opId per input, field errors, conflicts that keep
 // the person's input, "Noch richtig?" blockers from list rows, and a copy of unsaved input in this browser.
 import type { Brick, Fields, Json, Locale } from '@lupinum/ginko'
 import { useI18n } from '#imports'
@@ -147,6 +147,18 @@ export function useEntryForm(o: EntryFormOptions) {
     return write(baseRev.value, undefined, { task })
   }
 
+  /**
+   * The opId of the last write that did not succeed, and what it sent. Sending the same input again reuses it, so a
+   * write that reached the server although its answer was lost (a sign-out meanwhile) is answered, not done twice.
+   * Other input gets a new one: the server refuses an opId with other arguments (OP_REUSED).
+   */
+  let unconfirmed: { op: string; sent: string } | undefined
+  function opFor(sent: Record<string, unknown>) {
+    const key = stableJson({ site: o.site.value, ...sent })
+    if (unconfirmed?.sent !== key) unconfirmed = { op: ops.opId(), sent: key }
+    return unconfirmed.op
+  }
+
   async function write(rev: number, publish?: { at?: number }, asNew?: { task?: string }): Promise<boolean> {
     if (busy.value) return false
     // Typing from the last moments may still wait in an editor's pause: take it before reading the draft.
@@ -156,7 +168,6 @@ export function useEntryForm(o: EntryFormOptions) {
       return false
     }
     busy.value = true
-    const op = ops.opId()
     // Read now: a sheet closed while the save waits for the connection is gone when it lands.
     const key = localKey.value
     try {
@@ -166,7 +177,9 @@ export function useEntryForm(o: EntryFormOptions) {
         const fields = o.brick().fields
         // A copy keeps only live fields and no address: the removed entry still holds its addresses.
         const data = asNew ? Object.fromEntries(Object.entries(submitted).filter(([k]) => fields[k] && !fields[k].retired && fields[k].type !== 'slug')) : submitted
-        const result = await ops.createEntry({ brick: o.brickKey(), data: data as Record<string, Json>, task: asNew ? asNew.task : o.task?.(), removeTask: o.removeTask?.(), op, label: t('ops.saved'), publish, timeZone: o.timeZone?.() })
+        const task = asNew ? asNew.task : o.task?.()
+        const op = opFor({ brick: o.brickKey(), data, task, publish })
+        const result = await ops.createEntry({ brick: o.brickKey(), data: data as Record<string, Json>, task, removeTask: o.removeTask?.(), op, label: t('ops.saved'), publish, timeZone: o.timeZone?.() })
         if (result.entry === undefined) waiting.value = true
         else created.value = result.entry
         // Saved: what was sent no longer counts as open input (a second Speichern would create another).
@@ -175,10 +188,8 @@ export function useEntryForm(o: EntryFormOptions) {
         const roots = changedRoots(baseline.value, submitted).filter((k) => keys().includes(k))
         if (!roots.length && !confirm.value.length) return true
         const values = Object.fromEntries(roots.map((k) => [k, submitted[k] ?? null]))
-        const result = await ops.saveEntry({
-          entry: o.entry()!._id, baseRev: rev, fields: values, task: o.task?.(), locale: o.locale(),
-          ...(confirm.value.length ? { confirm: confirm.value } : {}), op, draft: o.draft?.() ?? false,
-        })
+        const sent = { entry: o.entry()!._id, baseRev: rev, fields: values, task: o.task?.(), locale: o.locale(), ...(confirm.value.length ? { confirm: confirm.value } : {}) }
+        const result = await ops.saveEntry({ ...sent, op: opFor(sent), draft: o.draft?.() ?? false })
         if (result.rev === undefined) {
           // Nothing was written: the stored state, base and rev stay; only the input counts as handed in.
           waiting.value = true
@@ -189,6 +200,7 @@ export function useEntryForm(o: EntryFormOptions) {
         initial.value = submitted
         confirm.value = []
       }
+      unconfirmed = undefined
       // Handed in, and nothing typed since: the local copy has done its job.
       if (key && !changedRoots(submitted, draft.value).length) clearLocalDraft(key)
       issues.value = []

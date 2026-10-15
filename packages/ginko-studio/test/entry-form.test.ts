@@ -28,9 +28,13 @@ let refuseNext: unknown
 let landing: Promise<void> | undefined
 /** The live list's view of the entry: undefined once someone removed it. */
 const live = vue.shallowRef<Entry | undefined>(stored)
+/** The opId of every save sent, also of refused ones; opIds are made in order: op1, op2, … */
+const sentOps: string[] = []
+let made = 0
 vi.stubGlobal('useOps', () => ({
-  opId: () => 'op',
-  saveEntry: async (args: { entry: string; baseRev: number; fields: unknown }) => {
+  opId: () => `op${++made}`,
+  saveEntry: async (args: { entry: string; baseRev: number; fields: unknown; op: string }) => {
+    sentOps.push(args.op)
     await landing
     const refused = refuseNext
     refuseNext = undefined
@@ -81,6 +85,8 @@ function mountForm() {
 
 beforeEach(() => {
   calls.length = 0
+  sentOps.length = 0
+  made = 0
   toasts.length = 0
   live.value = stored
   refuseNext = undefined
@@ -147,6 +153,25 @@ describe('useEntryForm', () => {
     expect(calls).toEqual([
       ['save', { entry: 'e1', baseRev: 6, fields: { sides: [salad, { _id: 'r2', name: 'Frittatensuppe' }, { _id: 'r3', name: 'Kaspressknödel' }] } }],
     ])
+  })
+})
+
+describe('the opId of a save', () => {
+  // Wrong behaviour caught: "Speichern" again after a save whose answer was lost (a sign-out meanwhile) writes a
+  // second time; or a changed input reuses the old opId, which the server refuses as OP_REUSED.
+  test('a retried save with the same input reuses its opId; a changed input gets a new one', async () => {
+    const signedOut = { code: 'IDENTITY_CHANGED', message: 'Du wurdest abgemeldet. Melde dich wieder an und versuche es noch einmal.' }
+    const form = mountForm()
+    form.setField('name', 'Kalbsschnitzel')
+    refuseNext = signedOut
+    expect(await form.save()).toBe(false)
+    refuseNext = signedOut
+    expect(await form.save()).toBe(false)
+    form.setField('name', 'Schweinsschnitzel')
+    expect(await form.save()).toBe(true)
+    form.setField('description', 'Mit Reis')
+    expect(await form.save()).toBe(true)
+    expect(sentOps).toEqual(['op1', 'op1', 'op2', 'op3'])
   })
 })
 
