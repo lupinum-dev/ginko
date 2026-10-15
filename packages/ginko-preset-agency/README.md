@@ -67,7 +67,7 @@ Relations use the `ref` field type. A reference to a file entry is written as `<
 
 - `blog({ authorsBrick })`: key of the authors brick (default `authors`); `false` removes the `author` field. A post
   has no reading time field: compute it from the text, e.g. `Math.max(1, Math.round((wordsOf(post.data.body) ?? 0) / 200))`
-  with `wordsOf` from `@lupinum/ginko`.
+  with `wordsOf` from `@lupinum/ginko`. The `write` task starts a new post with today's date.
 - `caseStudies({ categories })`: `categories` replaces the work areas (`serviceCategories`), the one field that says
   which of your services a case study belongs to. `services` are free tags for the overview.
 - `legal({ types })`: replaces the kinds of legal page.

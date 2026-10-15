@@ -32,6 +32,9 @@ const bodyOf = (label: Label, o: BrickOptions<any>, preset: MarkdownOptions = {}
 /** A schema label in both languages. The editor sees the one for their language, and a site in another language falls back to English. */
 const both = (de: string, en: string) => ({ de, en })
 
+/** The hint of every `description`: where the text shows, so people know how much to write. */
+const descriptionHint = both('Ein bis zwei Sätze. Erscheint bei Google und wenn jemand den Link teilt.', 'One or two sentences. Shown on Google and when someone shares the link.')
+
 /** Brick settings that every factory shares. */
 function common(o: BrickOptions<any>, label: Label, max: number) {
   return { label: o.label ?? label, max: o.max ?? max, ...((o.source ?? 'files') === 'files' ? { source: 'files' as const } : {}) }
@@ -58,7 +61,7 @@ export function services<const E extends Fields = {}>(o: RoutedOptions<E> = {}) 
     route: routeOf({ de: '/leistungen/[slug]', en: '/en/services/[slug]' }, o),
     fields: {
       title: f.text(both('Titel', 'Title')),
-      description: f.longtext(both('Beschreibung', 'Description')),
+      description: f.longtext(both('Beschreibung', 'Description'), { hint: descriptionHint }),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
       icon: f.text(both('Icon', 'Icon'), { optional: true }),
       outcome: f.longtext(both('Ergebnis', 'Outcome'), { optional: true }),
@@ -86,18 +89,33 @@ export function caseStudies<const E extends Fields = {}>(o: CaseStudyOptions<E> 
     route: routeOf({ de: '/referenzen/[slug]', en: '/en/case-studies/[slug]' }, o),
     fields: {
       title: f.text(both('Titel', 'Title')),
-      description: f.longtext(both('Beschreibung', 'Description')),
+      description: f.longtext(both('Beschreibung', 'Description'), { hint: descriptionHint }),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
       client: f.text(both('Kunde', 'Client'), { group: project }),
       industry: f.text(both('Branche', 'Industry'), { group: project }),
-      outcome: f.longtext(both('Ergebnis', 'Outcome'), { group: result }),
+      outcome: f.longtext(both('Ergebnis', 'Outcome'), {
+        group: result,
+        hint: both('Das Ergebnis in einem Satz. Steht groß auf der Seite und in der Übersicht.', 'The result in one sentence. Shown large on the page and in the overview.'),
+      }),
       // Completion date, or the latest milestone for ongoing work.
-      date: f.date(both('Datum', 'Date'), { group: project }),
-      summary: f.longtext(both('Zusammenfassung', 'Summary')),
-      services: f.list(both('Leistungen', 'Work done'), { itemLabel: both('Leistung', 'Item'), fields: { name: f.text(both('Leistung', 'Item')) }, max: 20, group: work }),
+      date: f.date(both('Datum', 'Date'), {
+        group: project,
+        hint: both('Wann das Projekt fertig war. Bestimmt die Reihenfolge und das Jahr in der Übersicht.', 'When the project was finished. Sets the order and the year in the overview.'),
+      }),
+      summary: f.longtext(both('Zusammenfassung', 'Summary'), { hint: both('Einleitung unter dem Titel der Referenz.', 'Intro below the case study title.') }),
+      services: f.list(both('Leistungen', 'Work done'), {
+        itemLabel: both('Leistung', 'Item'), fields: { name: f.text(both('Leistung', 'Item')) }, max: 20, group: work,
+        hint: both('Kurze Schlagworte, z. B. Website, Video. Stehen in der Übersicht unter dem Titel.', 'Short tags, e.g. website, video. Shown below the title in the overview.'),
+      }),
       // The site's one source for "which of our services was this project". `services` are free tags.
-      serviceCategories: f.choices(both('Bereiche', 'Areas'), { options: categories, group: work }),
-      period: f.text(both('Zeitraum', 'Period'), { optional: true, group: project }),
+      serviceCategories: f.choices(both('Bereiche', 'Areas'), {
+        options: categories, group: work,
+        hint: both('Bestimmt, unter welchem Filter und bei welcher Leistung die Referenz erscheint.', 'Decides under which filter and with which service the case study appears.'),
+      }),
+      period: f.text(both('Zeitraum', 'Period'), {
+        optional: true, group: project,
+        hint: both('Wenn ein Jahr nicht reicht, z. B. „2023–2024“ oder „laufend“.', 'If one year is not enough, e.g. “2023–2024” or “ongoing”.'),
+      }),
       measurable: f.text(both('Messbares Ergebnis', 'Measurable result'), { optional: true, group: result }),
       body: bodyOf(both('Text', 'Text'), o),
     },
@@ -115,12 +133,13 @@ export function blog<const E extends Fields = {}>(o: BlogOptions<E> = {}) {
     ...common(o, both('Blog', 'Blog'), 500),
     order: { field: 'date', dir: 'desc' },
     route: routeOf({ de: '/blog/[slug]', en: '/en/blog/[slug]' }, o),
-    tasks: [{ id: 'write', label: both('Beitrag schreiben', 'Write a post'), kind: 'create' }],
+    tasks: [{ id: 'write', label: both('Beitrag schreiben', 'Write a post'), kind: 'create', prefill: { date: '@today' } }],
     fields: {
       title: f.text(both('Titel', 'Title')),
-      description: f.longtext(both('Beschreibung', 'Description')),
+      description: f.longtext(both('Beschreibung', 'Description'), { hint: descriptionHint }),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
-      badge: f.text(both('Kennzeichen', 'Badge'), { optional: true }),
+      // Stored as `badge`; sites show it as the post's topic.
+      badge: f.text(both('Thema', 'Topic'), { optional: true, hint: both('Ein Wort, steht über dem Beitrag, z. B. Release.', 'One word shown above the post, e.g. Release.') }),
       date: f.date(both('Datum', 'Date')),
       // No reading time field: a site computes it from the text with `wordsOf(body)` from @lupinum/ginko.
       ...author,
@@ -172,7 +191,7 @@ export function legal<const E extends Fields = {}>(o: LegalOptions<E> = {}) {
     tasks: [{ id: 'update', label: both('Rechtstext aktualisieren', 'Update a legal text'), kind: 'edit', pick: true, fields: ['body', 'updatedAt'], prefill: { updatedAt: '@today' } }],
     fields: {
       title: f.text(both('Titel', 'Title')),
-      description: f.longtext(both('Beschreibung', 'Description')),
+      description: f.longtext(both('Beschreibung', 'Description'), { hint: descriptionHint }),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
       legalType: f.choice(both('Art', 'Kind'), { options: types }),
       updatedAt: f.date(both('Stand', 'Last updated')),
