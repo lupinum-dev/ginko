@@ -124,11 +124,49 @@ describe('import keeps references between entries', () => {
     const s = await setup()
     await withRefBricks(s, s.site)
     const call = (fn: string, args: Record<string, unknown>) => s.t.mutation(makeFunctionReference<'mutation'>(fn), args)
-    const { ids } = (await call('seed:importExport', { site: 'restaurant', files: [], entries: manyRefs })) as { ids: Record<string, string> }
-    expect(await errorOf(call('seed:importRefs', { site: 'restaurant', ids }))).toMatchObject({ code: 'TOO_LARGE', message: 'Eintrag „posts/many“ ist zu groß (684 KB, höchstens 480 KB).' })
+    const { ids } = (await call('seed:importExport', { site: 'restaurant', files: [], entries: manyRefs })) as { ids: [string, string][] }
+    expect(await errorOf(call('seed:importRefs', { site: 'restaurant', ids: Object.fromEntries(ids) }))).toMatchObject({ code: 'TOO_LARGE', message: 'Eintrag „posts/many“ ist zu groß (684 KB, höchstens 480 KB).' })
     const post = (await entriesOf(s, s.site)).find((e) => e.brick === 'posts')!
     expect(post.data).toEqual({ more: Array<string>(20000).fill('authors/a') })
   })
+})
+
+/** Whether a value holds an object with more than 1024 fields: Convex refuses such an argument or answer, convex-test does not. */
+const tooManyFields = (value: unknown): boolean => Array.isArray(value)
+  ? value.some(tooManyFields)
+  : typeof value === 'object' && value !== null && (Object.keys(value).length > 1024 || Object.values(value).some(tooManyFields))
+
+describe('import of a big site', () => {
+  // Wrong behaviour caught: one batch of many small entries answers with one object field per entry, which Convex
+  // refuses past 1024, so the import stops at the same point on every run.
+  it('imports an export with 1,990 small entries', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    // A collection holds at most 500 entries: four of them.
+    const bricks = Object.fromEntries([0, 1, 2, 3].map((n) => [`faq${n}`, { kind: 'collection', label, max: 500, fields: { question: { type: 'text', label } } }]))
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as { bricks: Record<string, unknown> }
+      Object.assign(schema.bricks, bricks)
+      await ctx.db.patch(s.site, { schema })
+    })
+    const dir = await mkdtemp(join(tmpdir(), 'ginko-big-test-'))
+    dirs.push(dir)
+    const entries = Array.from({ length: 1990 }, (_, i) => ({
+      id: `faq${i % 4}/q${i}`, brick: `faq${i % 4}`, kind: 'item', order: i, data: { question: { de: `Frage ${i}: ${'x'.repeat(300)}` } }, prints: {}, rev: 1,
+    }))
+    await writeFile(join(dir, 'export.json'), JSON.stringify({
+      format: 1, site: 'restaurant', name: 'R', schema: { locales: ['de', 'en'], bricks, migrations: [], retired: {} }, schemaRev: 1, contentRev: 1,
+      exportedAt: '2026-10-11T00:00:00.000Z', files: [], entries,
+    }))
+    const { run, upload } = runnerOf(s)
+    const limited: Runner = async (fn, args) => {
+      const result = await run(fn, args)
+      if (tooManyFields(args) || tooManyFields(result)) throw new Error(`${fn}: Object has too many fields`)
+      return result
+    }
+    await importSite({ dir, run: limited, upload, log: () => undefined })
+    expect((await entriesOf(s, s.site)).length).toBe(1990)
+  }, 60_000)
 })
 
 describe('entries.usedBy', () => {

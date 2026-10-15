@@ -175,8 +175,8 @@ export type ImportWarning = { id: string; brick: string; path: string } & Msg
  * - The site's counters grow by the batch (entryCount for live entries only).
  * - `warnings` counts the entries that hold values the Studio would refuse today (they are stored as they are);
  *   `firstWarning` names the first one.
- * - The answer's `ids` map each exported entry ID to the new one; entry references in `data` still hold the exported
- *   IDs until `importRefs` rewrites them.
+ * - The answer's `ids` pair each exported entry ID with the new one, as a list: Convex refuses an object with more than
+ *   1024 fields. Entry references in `data` still hold the exported IDs until `importRefs` rewrites them.
  */
 export const importExport = internalMutation({
   args: {
@@ -342,7 +342,7 @@ export const importExport = internalMutation({
     if (first) fail(first.code, first.key, first.params, { problems: problems.map((p) => ({ ...p, message: t(DEFAULT_LOCALE, p.key, p.params) })) })
 
     // 2. Store.
-    const ids: Record<string, Id<'entries'>> = {}
+    const ids: [string, Id<'entries'>][] = []
     const known = new Set<string>(uploads.values())
     for (const { row, fields, data, prints, size, trees } of rows) {
       const id = await ctx.db.insert('entries', {
@@ -357,7 +357,7 @@ export const importExport = internalMutation({
       if (row.state === 'draft' && row.publishAt !== undefined && row.deletedAt === undefined) {
         await ctx.db.patch(id, { publishAt: row.publishAt, publishJob: await ctx.scheduler.runAt(row.publishAt, internal.entries.publishDue, { entry: id, at: row.publishAt }) })
       }
-      ids[row.id] = id
+      ids.push([row.id, id])
       for (const [name, field] of Object.entries(fields)) {
         if (field.type !== 'slug') continue
         for (const [locale, slug] of Object.entries((data[name] ?? {}) as Record<string, string>)) {
@@ -397,7 +397,7 @@ export const importBatch = internalAction({
 })
 
 /** What one import batch answers (importExport, importBatch). */
-type ImportAnswer = { entries: number; files: number; ids: Record<string, string>; warnings: number; firstWarning?: ImportWarning }
+type ImportAnswer = { entries: number; files: number; ids: [string, string][]; warnings: number; firstWarning?: ImportWarning }
 
 /** For `importBatch`, an action without database access. */
 export const isImportAllowed = internalQuery({

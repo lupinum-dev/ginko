@@ -13,8 +13,12 @@ import type { Runner } from './local.ts'
 import { CliError, isObject, parseExport, type ExportEntry, type SiteExport } from './model.ts'
 import { english, explainRejected, kib } from './report.ts'
 
-/** Largest JSON size of one batch: one mutation writes it, and entries may have up to 480 KiB each. */
-export const BATCH_BYTES = 2_000_000
+/**
+ * Largest JSON size and entry count of one batch. One mutation writes it, within Convex's 1 s, also on a busy machine:
+ * a batch holds two big entries (up to 480 KiB each) or 400 small ones, and answers with one ID pair per entry.
+ */
+export const BATCH_BYTES = 1_000_000
+export const BATCH_ENTRIES = 400
 
 export interface ImportInput {
   dir: string
@@ -208,7 +212,7 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
   let current: ExportEntry[] = []
   const flush = () => { if (current.length > 0) batches.push({ args: toArgs(current), count: current.length }); current = [] }
   for (const entry of data.entries) {
-    if (current.length > 0 && size([...current, entry]) > limit) flush()
+    if (current.length >= BATCH_ENTRIES || (current.length > 0 && size([...current, entry]) > limit)) flush()
     current.push(entry)
   }
   flush()
@@ -223,15 +227,23 @@ async function importInto(input: ImportInput, data: SiteExport, site: string): P
   }
 
   if (input.prod) return fill(input, data, site, storedBatches)
-  // From the clear on, a failure leaves the local site partly imported. Running the same command again finishes it: it
-  // stores the batches again, clears what is left and imports everything.
+  // From the clear on, a failure leaves the local site partly imported. After a passing problem, running the same
+  // command again finishes it: it stores the batches again, clears what is left and imports everything.
   try {
     return await fill(input, data, site, storedBatches)
   } catch (error) {
-    const again = input.again ? `: ${input.again}` : '.'
     const reason = error instanceof Error ? error.message : String(error)
-    throw new CliError(`${reason}\nThe local site is only partly imported. Run the same command again to finish${again}`, error instanceof CliError ? error.code : undefined)
+    const again = passing(reason) ? `\nRun the same command again to finish${input.again ? `: ${input.again}` : '.'}` : ''
+    throw new CliError(`${reason}\nThe local site is only partly imported.${again}`, error instanceof CliError ? error.code : undefined)
   }
+}
+
+/**
+ * Whether a failed step may pass when it runs again: a time limit under load or a lost connection. A refusal of the
+ * platform (a ConvexError) or of this command comes back on every run, so a second run cannot finish then.
+ */
+function passing(reason: string): boolean {
+  return /timed out|transient|ECONNREFUSED|ECONNRESET|fetch failed|socket hang up/i.test(reason)
 }
 
 /** Steps 4 to 6: clear the local site, import the stored batches, rewrite the references between entries. */
@@ -246,14 +258,16 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
     }
   }
 
-  // 5. Import the stored batches; each answers with the new ID of every entry.
+  // 5. Import the stored batches; each answers with the new ID of every entry, as [exported ID, new ID] pairs.
   let done = 0
   const ids: Record<string, string> = {}
   let warnings = 0
   let firstWarning: string | undefined
   for (const batch of storedBatches) {
     const result = await run('seed:importBatch', { site, batch: batch.id })
-    if (isObject(result) && isObject(result.ids)) for (const [exported, id] of Object.entries(result.ids)) if (typeof id === 'string') ids[exported] = id
+    if (isObject(result) && Array.isArray(result.ids)) {
+      for (const pair of result.ids as unknown[]) if (Array.isArray(pair) && typeof pair[0] === 'string' && typeof pair[1] === 'string') ids[pair[0]] = pair[1]
+    }
     if (isObject(result) && typeof result.warnings === 'number') warnings += result.warnings
     if (isObject(result) && isObject(result.firstWarning)) firstWarning ??= warningText(result.firstWarning)
     done += batch.count
