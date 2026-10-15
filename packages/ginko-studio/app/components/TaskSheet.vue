@@ -159,14 +159,34 @@ function discardAndClose() {
   form.discard()
   emit('close')
 }
+/** A close request that is not the Escape key (Android's back gesture): the same guard. */
 function onCancel(event: Event) {
   event.preventDefault()
   requestClose()
 }
+// Escape is the sheet's own key and never becomes the browser's close request: that request asked about discarding
+// while only a list was being closed, and Chrome lets a page refuse it just once per user activation, after which the
+// <dialog> closed under a sheet the app still held open. On the document, so a key pressed with focus on <body> counts.
+function onKeydown(event: KeyboardEvent) {
+  // Taken already: the component-block keymap, the find bar, the slash menu.
+  if (event.key !== 'Escape' || event.isComposing || event.defaultPrevented) return
+  // A list, popover or picker in the sheet closes first (Escape closes the innermost layer). reka closes it in a window
+  // listener that runs after this one and skips a cancelled key, so the key is cancelled after reka's turn; cancelled
+  // it must be, or the browser also asks the dialog to close.
+  if (dialog.value?.querySelector('[data-dismissable-layer]:not([data-state="closed"])')) {
+    window.addEventListener('keydown', (later) => { if (later === event) later.preventDefault() }, { once: true })
+    return
+  }
+  event.preventDefault()
+  requestClose()
+}
+onMounted(() => document.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
-  <dialog ref="dialog" :class="SHEET_DIALOG" aria-labelledby="sheet-title" @cancel="onCancel">
+  <!-- @close: the browser closed the dialog itself (a second back gesture it no longer lets the page refuse). -->
+  <dialog ref="dialog" :class="SHEET_DIALOG" aria-labelledby="sheet-title" @cancel="onCancel" @close="emit('close')">
     <ConfigProvider :teleport-to="dialog ?? undefined" :use-id="reka.useId">
       <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()">
         <header class="flex items-start justify-between gap-3 border-b bg-card pt-4 pb-3 pr-3 pl-5">

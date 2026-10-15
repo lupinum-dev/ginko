@@ -59,23 +59,30 @@ const schema = serializeSchema(defineSite({
 }))
 const brick = schema.bricks.notices!
 
+const fieldProps = { path: { type: String, required: true }, modelValue: { type: null, default: undefined } } as const
+const input = (props: { path: string; modelValue: unknown }, emit: (event: 'update:modelValue', value: string) => void) =>
+  h('input', { name: props.path, value: props.modelValue ?? '', onInput: (e: Event) => emit('update:modelValue', (e.target as HTMLInputElement).value) })
 /** A field as a plain input named by its key. */
-const FieldStub = defineComponent({
-  name: 'GinkoField',
-  props: { path: { type: String, required: true }, modelValue: { type: null, default: undefined } },
-  emits: ['update:modelValue'],
-  setup: (props, { emit }) => () => h('input', { name: props.path, value: props.modelValue ?? '', onInput: (e: Event) => emit('update:modelValue', (e.target as HTMLInputElement).value) }),
-})
+const FieldStub = defineComponent({ name: 'GinkoField', props: fieldProps, emits: ['update:modelValue'], setup: (props, { emit }) => () => input(props, emit) })
 
-/** A field that opens things over the form: a popover (as the Studio's lists, menus and pickers do) and the slash menu. */
+/** A field that also opens things over the form: a popover (as the Studio's lists, menus and pickers do) and the slash menu. */
 const OverlayField = defineComponent({
   name: 'GinkoField',
-  props: { path: { type: String, required: true } },
-  setup: (props) => () => props.path !== 'text' ? null : h('div', [
+  props: fieldProps,
+  emits: ['update:modelValue'],
+  setup: (props, { emit }) => () => props.path !== 'text' ? null : h('div', [
+    input(props, emit),
     h(Popover, null, { default: () => [h(PopoverTrigger, null, { default: () => 'Liste öffnen' }), h(PopoverContent, { 'data-test': 'popover' }, { default: () => 'Liste' })] }),
     h(SlashMenu, { state: { open: true, items: [], selected: 0, choose: () => {} } as never }),
   ]),
 })
+const popover = () => document.querySelector<HTMLElement>('[data-test="popover"]')
+/** Escape as the browser sends it; the returned event tells whether the page kept it from becoming a close request. */
+function escape(on: Element) {
+  const key = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+  on.dispatchEvent(key)
+  return key
+}
 
 function mountSheet(field = FieldStub) {
   return mount(TaskSheet, {
@@ -84,6 +91,9 @@ function mountSheet(field = FieldStub) {
     attachTo: document.body,
   })
 }
+
+// reka-ui positions popups with it; happy-dom has none.
+globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as never
 
 afterEach(() => {
   document.body.innerHTML = ''
@@ -127,15 +137,38 @@ test('a prefill that fails to load says so and asks for it again with "Erneut ve
 // Wrong behaviour caught (romi-1, J1, P4): the sheet is a modal <dialog> in the browser's top layer, and lists, menus,
 // popovers and the slash menu opened from it rendered into <body> beneath it, unseen and not clickable.
 test('what opens inside the sheet renders inside its <dialog>, above the page', async () => {
-  globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as never
   const wrapper = mountSheet(OverlayField)
   answer({ data: {} })
   await flushPromises()
   await wrapper.findAll('button').find((b) => b.text() === 'Liste öffnen')!.trigger('click')
   await flushPromises()
   const dialog = wrapper.get('dialog').element
-  const popover = document.querySelector('[data-test="popover"]')
   const slash = [...document.querySelectorAll('[role="status"]')].find((p) => p.textContent === 'Nichts gefunden.')
-  expect([popover && dialog.contains(popover), slash && dialog.contains(slash)]).toEqual([true, true])
+  expect([popover() && dialog.contains(popover()), slash && dialog.contains(slash)]).toEqual([true, true])
+  wrapper.unmount()
+})
+
+// Wrong behaviour caught (romi-2, J5): Escape that closed a popover in the sheet also reached the <dialog> as a close
+// request and asked "Änderungen verwerfen?", one click from losing the input. After a few Escapes the browser closed the
+// <dialog> on its own while the app still held the sheet open, and the task button did nothing until a reload.
+test('Escape closes an open popover first, then asks before the typed input goes; a dialog the browser closes closes the sheet', async () => {
+  const wrapper = mountSheet(OverlayField)
+  answer({ data: {} })
+  await flushPromises()
+  await wrapper.get('input[name="text"]').setValue('Küche ab 18 Uhr')
+  await wrapper.findAll('button').find((b) => b.text() === 'Liste öffnen')!.trigger('click')
+  await flushPromises()
+
+  const first = escape(popover()!)
+  await flushPromises()
+  expect([popover(), first.defaultPrevented, wrapper.text().includes('Änderungen verwerfen?')]).toEqual([null, true, false])
+
+  const second = escape(wrapper.get('input[name="text"]').element)
+  await flushPromises()
+  expect([second.defaultPrevented, wrapper.text().includes('Änderungen verwerfen?')]).toEqual([true, true])
+  expect(wrapper.emitted('close')).toBeUndefined()
+
+  wrapper.get('dialog').element.dispatchEvent(new Event('close'))
+  expect(wrapper.emitted('close')).toHaveLength(1)
   wrapper.unmount()
 })

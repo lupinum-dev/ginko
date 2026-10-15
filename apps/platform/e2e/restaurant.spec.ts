@@ -114,8 +114,8 @@ test.describe('Wirtin', () => {
 
   // Wrong behaviour caught (romi-1, J1, P4): a quick-task sheet is a modal <dialog> in the browser's top layer, and the
   // text style list and the link box opened in <body> beneath it, unseen and not clickable; on a phone the typed web
-  // address replaced the selected words.
-  test('26. "Veranstaltung hinzufügen": the text style list and the link box open inside the sheet', async ({ page }) => {
+  // address replaced the selected words. And (romi-2, J5): Escape that closed a list also asked "Änderungen verwerfen?".
+  test('26. "Veranstaltung hinzufügen": the text style list and the link box open inside the sheet, and Escape closes them first', async ({ page }) => {
     await openQuick(page)
     await page.getByRole('button', { name: 'Veranstaltung hinzufügen' }).click()
     const sheet = page.locator('dialog[open]')
@@ -136,6 +136,23 @@ test.describe('Wirtin', () => {
     await address.fill('example.org')
     await sheet.getByRole('button', { name: 'Übernehmen' }).click()
     await expect(text.getByRole('link', { name: 'Gemütlicher Abend' })).toBeVisible()
+
+    // The title is typed, so closing the sheet would ask; closing a list or the link box must not.
+    await sheet.getByRole('combobox', { name: 'Blocktyp' }).click()
+    await expect(sheet.getByRole('listbox')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('listbox')).toHaveCount(0)
+    await sheet.getByRole('toolbar', { name: 'Formatierung' }).getByRole('button', { name: 'Link', exact: true }).click()
+    await expect(address).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(address).toHaveCount(0)
+    await expect(page.getByText('Änderungen verwerfen?')).toHaveCount(0)
+
+    await page.keyboard.press('Escape')
+    await expect(sheet.getByText('Änderungen verwerfen?')).toBeVisible()
+    await sheet.getByRole('button', { name: 'Weiter bearbeiten' }).click()
+    await expect(sheet.getByText('Änderungen verwerfen?')).toHaveCount(0)
+    await expect(sheet.getByLabel('Titel')).toHaveValue('Kürbisabend')
   })
 })
 
