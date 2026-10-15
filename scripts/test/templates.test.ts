@@ -61,17 +61,20 @@ describe('templates sync', () => {
     expect(existsSync(join(root, 'templates/demo/app/components/Own.vue'))).toBe(true)
   })
 
-  it('copies feature content only in the template\'s languages, and the check agrees', async () => {
-    // Wrong behaviour caught: a template without French gets content/legal/1.privacy.fr.md, a page in a language
-    // the site does not have, or the check asks for it.
+  it('copies feature content and texts only in the template\'s languages, and the check agrees', async () => {
+    // Wrong behaviour caught: a template without French gets content/legal/1.privacy.fr.md or i18n/site/fr.json,
+    // files in a language the site does not have, or the check asks for them.
     const root = repo((files) => {
-      files['templates/_features/site/files.json'] = JSON.stringify(['content/legal/1.privacy.md', 'content/legal/1.privacy.de.md', 'content/legal/1.privacy.fr.md'])
+      files['templates/_features/site/files.json'] = JSON.stringify(['content/legal/1.privacy.md', 'content/legal/1.privacy.de.md', 'content/legal/1.privacy.fr.md', 'i18n/site/de.json', 'i18n/site/fr.json'])
       files['templates/_features/site/content/legal/1.privacy.de.md'] = '---\ntitle: Datenschutz\n---\n'
       files['templates/_features/site/content/legal/1.privacy.fr.md'] = '---\ntitle: Confidentialité\n---\n'
+      files['templates/_features/site/i18n/site/de.json'] = '{}\n'
+      files['templates/_features/site/i18n/site/fr.json'] = '{}\n'
       files['templates/demo/ginko.config.ts'] = files['templates/demo/ginko.config.ts']!.replace("locales: ['en']", "locales: ['en', 'de']")
     })
-    expect((await sync(root, null)).sort()).toEqual(['templates/demo/content/legal/1.privacy.de.md', 'templates/demo/content/legal/1.privacy.md'])
+    expect((await sync(root, null)).sort()).toEqual(['templates/demo/content/legal/1.privacy.de.md', 'templates/demo/content/legal/1.privacy.md', 'templates/demo/i18n/site/de.json'])
     expect(existsSync(join(root, 'templates/demo/content/legal/1.privacy.fr.md'))).toBe(false)
+    expect(existsSync(join(root, 'templates/demo/i18n/site/fr.json'))).toBe(false)
     expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([])
   })
 })

@@ -1,7 +1,7 @@
 // The templates in templates/<name> (spec ginko-internal specs/TEMPLATES.md, §2 and §9). Run: pnpm templates <command>
 //
 //   sync                     copies the shared sources of templates/_features/<feature> (the files its files.json lists;
-//                            content only in the template's locales) into every template whose package.json names the
+//                            content and texts (i18n/<feature>/<code>.json) only in the template's locales) into every template whose package.json names the
 //                            feature in "ginko": { "features" }, and sets the @lupinum/* ranges (T3)
 //                            and deletes synced copies whose source left its files.json
 //   sync --check             fails on drift from the shared sources, a synced copy no feature brings any more, a stale
@@ -31,7 +31,7 @@ export const repoRoot = join(import.meta.dirname, '..')
 const T1 = ['starter', 'blog', 'portfolio', 'company', 'saas', 'docs', 'restaurant', 'local-business', 'nonprofit', 'events']
 const MIN_FUTURE_DAYS = 90
 
-type Pkg = { name: string; version?: string; dependencies?: Record<string, string>; devDependencies?: Record<string, string>; ginko?: { sampleAnchor?: string; features?: string[] }; overrides?: Record<string, string> }
+type Pkg = { name: string; version?: string; dependencies?: Record<string, string>; devDependencies?: Record<string, string>; ginko?: { sampleAnchor?: string; features?: string[]; scriptBudget?: number }; overrides?: Record<string, string> }
 const readJson = <T>(path: string): T => JSON.parse(readFileSync(path, 'utf8')) as T
 const writeJson = (path: string, value: unknown) => writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`)
 
@@ -112,11 +112,14 @@ function staleSyncs(dir: string, wanted: Map<string, string>): string[] {
 }
 
 /**
- * The language of a feature content file, from its suffix (`content/legal/1.privacy.de.md` → `de`); undefined for a
- * main-language file (`1.privacy.md`) and for files outside content/. A suffix is a language when it is a two-letter
- * code, optionally with a region (`pt-BR`), so feature content keeps its other dotted names free of such parts.
+ * The language of a feature file: of a content file from its suffix (`content/legal/1.privacy.de.md` → `de`), of a
+ * feature's texts from the file name (`i18n/blog/fr.json` → `fr`); undefined for a main-language content file
+ * (`1.privacy.md`) and for every other file. A suffix is a language when it is a two-letter code, optionally with a
+ * region (`pt-BR`), so feature content keeps its other dotted names free of such parts.
  */
 export function contentLocale(file: string): string | undefined {
+  const texts = /^i18n\/[^/]+\/([a-z]{2}(?:-[A-Za-z]{2,4})?)\.json$/.exec(file)
+  if (texts) return texts[1]
   if (!file.startsWith('content/')) return undefined
   const parts = file.split('/').at(-1)!.split('.')
   const suffix = parts.length > 2 ? parts.at(-2)! : ''
@@ -435,6 +438,8 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
           const env = {
             TEMPLATE_URL: `http://localhost:${port}`, TEMPLATE_NAME: name, TEMPLATE_MODE: mode, TEMPLATE_LOCALES: (mode === 'single' ? [locales[0]!] : locales).join(','),
             TEMPLATE_SHOTS: shots, TEMPLATE_FEATURES: (pkg.ginko?.features ?? []).join(','), GINKO_TEST_NOW: now,
+            // Gate 6: kB of gzip script per page; 150 for the starter, a feature template sets its own (at most 170).
+            TEMPLATE_SCRIPT_BUDGET: String(Math.min(pkg.ginko?.scriptBudget ?? 150, 170)),
           }
           // Gate 3 also runs the e2e specs of the template's features (templates/_features/<feature>/e2e/).
           const specs = [`scripts/templates/e2e/gate${gate}.spec.ts`, ...(gate === 3 ? (pkg.ginko?.features ?? []).map((f) => `templates/_features/${f}/e2e/`).filter((dir) => existsSync(join(root, dir))) : [])]
