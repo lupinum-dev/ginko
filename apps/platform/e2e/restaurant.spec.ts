@@ -385,7 +385,7 @@ test.describe('Anmelden und Einladung', () => {
   test('an anonymous visitor of a Studio page is sent to the sign-in, with the way back', async ({ page }) => {
     for (const path of ['/', '/s/restaurant/team', '/invite/any-token']) {
       await page.goto(path, { waitUntil: 'networkidle' })
-      await expect(page).toHaveURL(`/login?redirect=${encodeURIComponent(path)}`)
+      await expect(page).toHaveURL((url) => url.pathname === '/login' && url.searchParams.get('redirect') === path)
     }
   })
 
