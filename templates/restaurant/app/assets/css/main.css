@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./tokens.css";
+
+/* This template's accent and fonts (DESIGN.md "Your accent"). Everything else comes from tokens.css.
+   restaurant: orange-700 / orange-300. Text on the accent 5.2:1 light, 9.6:1 dark; the accent on the page 5.2:1 light,
+   11.6:1 dark. The focus ring and links in text use the accent. */
+:root {
+  --brand: #c2410c;
+  --brand-foreground: #ffffff;
+  /* @nuxt/fonts serves Inter and Fraunces from the site and adds size-matched fallbacks. */
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Headings: a soft serif with a warm, old-fashioned voice. */
+  --font-heading: "Fraunces", ui-serif, Georgia, serif;
+}
+
+.dark {
+  --brand: #fdba74;
+  --brand-foreground: #431407;
+}

@@ -1,0 +1,27 @@
+{
+  "title": "Orari di apertura",
+  "today": "Oggi",
+  "todayTimes": "Oggi {times}",
+  "closed": "Chiuso",
+  "and": "e",
+  "now": {
+    "open": "Aperto ora",
+    "until": "fino alle {time}",
+    "later": "Oggi apre alle {time}",
+    "again": "Oggi riapre alle {time}",
+    "over": "Chiuso per il resto della giornata",
+    "closed": "Oggi chiuso",
+    "unknown": "Per oggi non sono indicati orari di apertura.",
+    "next": "Riapre {day} alle {time}"
+  },
+  "holiday": "giorno festivo",
+  "holidays": {
+    "sunday": "Nei giorni festivi siamo aperti come la domenica.",
+    "closed": "Nei giorni festivi siamo chiusi."
+  },
+  "season": "{name}, fino al {date}",
+  "seasonUnnamed": "Fino al {date}",
+  "from": "Dal {date}",
+  "closures": "Chiusure",
+  "closedDays": "chiuso"
+}

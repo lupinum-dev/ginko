@@ -1,0 +1,23 @@
+{
+  "home": {
+    "call": "Reserve: {phone}",
+    "orEmail": "Or write to us:",
+    "menu": "See the menu",
+    "lunch": "Today’s lunch",
+    "lunchWeek": "This week’s lunch",
+    "dishes": "From the menu",
+    "dishesLead": "Viennese classics, cooked the way we like to eat them ourselves.",
+    "fullMenu": "The whole menu",
+    "gallery": "Gallery",
+    "galleryLead": "The dining room, the garden, the kitchen and a few of our dishes.",
+    "galleryEmpty": "No photos yet",
+    "allPhotos": "All photos",
+    "visit": "Visit us",
+    "hours": "Opening hours",
+    "address": "Address",
+    "maps": "Open in maps"
+  },
+  "events": {
+    "lead": "Wine evenings, cooking classes and more at our house."
+  }
+}
