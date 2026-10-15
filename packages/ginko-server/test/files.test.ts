@@ -193,7 +193,7 @@ describe('views', () => {
     expect((await s.as.owner.query(api.files.info, { site, file })).alt).toEqual({})
   })
 
-  it('setAlt: staff may not, a PDF has no alt text, the language must exist, the text has a limit', async () => {
+  it('setAlt: staff may not, a PDF has no alt text, the language must exist, the text has a limit and no invisible characters', async () => {
     const s = await setup()
     const file = await readyImage(s)
     const args = { site, file, locale: 'de', text: 'Foto' }
@@ -201,6 +201,7 @@ describe('views', () => {
     expect((await errorOf(s.as.owner.mutation(api.files.setAlt, { ...args, file: await pdf(s) }))).code).toBe('INVALID')
     expect((await errorOf(s.as.owner.mutation(api.files.setAlt, { ...args, locale: 'fr' }))).code).toBe('INVALID')
     expect((await errorOf(s.as.owner.mutation(api.files.setAlt, { ...args, text: 'x'.repeat(301) }))).code).toBe('INVALID')
+    expect((await errorOf(s.as.owner.mutation(api.files.setAlt, { ...args, text: 'Hund \u202eesiw' }))).message).toBe('„Bildbeschreibung“ enthält unsichtbare Steuerzeichen.')
     expect((await s.as.owner.query(api.files.info, { site, file })).alt).toEqual({})
   })
 

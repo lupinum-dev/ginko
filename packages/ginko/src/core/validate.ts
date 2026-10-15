@@ -1,4 +1,4 @@
-import { ALT_MAX, effectiveAlt, effectiveMax, effectiveProfile, isTranslatable, MAX_CENTS } from './fields.ts'
+import { ALT_INVISIBLE, ALT_MAX, effectiveAlt, effectiveMax, effectiveProfile, isTranslatable, MAX_CENTS } from './fields.ts'
 import { fileRefUses } from './file-refs.ts'
 import { parseMarkdown } from './markdown.ts'
 import { labelOf } from './labels.ts'
@@ -235,7 +235,8 @@ function checkScalar(field: Field, value: unknown, path: string, locale: Locale 
       if (!isRecord(value) || typeof value.file !== 'string' || !isRecord(value.alt) || Object.keys(value).some((k) => k !== 'file' && k !== 'alt')) return fail('TYPE', 'notImage')
       for (const l of Object.keys(value.alt)) if (!ctx!.locales.includes(l as Locale)) return [issue(join(path, `alt.${l}`), 'UNKNOWN_LOCALE', 'unknownLocale', { locale: l })]
       if (effectiveAlt(value.alt, ctx!.fileAlt?.(value.file), ctx!.main) === '') return [issue(join(path, 'alt'), 'ALT_REQUIRED', 'altMissing', { label })]
-      return Object.entries(value.alt).filter(([, a]) => typeof a !== 'string' || a.length > ALT_MAX).map(([l]) => issue(join(path, `alt.${l}`), 'TOO_LONG', 'altTooLong', { label }))
+      return Object.entries(value.alt).flatMap(([l, a]) => typeof a !== 'string' || a.length > ALT_MAX ? [issue(join(path, `alt.${l}`), 'TOO_LONG', 'altTooLong', { label })]
+        : ALT_INVISIBLE.test(a) ? [issue(join(path, `alt.${l}`), 'FORMAT', 'controlChars', { label })] : [])
     case 'file':
       return isRecord(value) && typeof value.file === 'string' && Object.keys(value).length === 1 ? [] : fail('TYPE', 'notFile')
   }

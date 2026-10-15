@@ -1,5 +1,5 @@
 export * from './types.ts'
-export { f, isTranslatable, effectiveMax, isShown, effectiveProfile, effectiveAlt, ALT_MAX } from './fields.ts'
+export { f, isTranslatable, effectiveMax, isShown, effectiveProfile, effectiveAlt, ALT_MAX, ALT_INVISIBLE } from './fields.ts'
 export { defineSite, single, collection, type SiteInput, type Migration, type MigrationContext, type RouteTemplate } from './site.ts'
 export { serializeSchema, platformSchema, migrationFingerprint, checkSchema, checkSite, isTimeZone, mainLocale, ordered, SCHEMA_LIMITS } from './schema.ts'
 export { SITE_BUDGET, byteSize, entryBytes, fitsBudget, largestEntryBytes, largestFieldBytes } from './budget.ts'

@@ -266,6 +266,9 @@ describe('image (SPEC 2.2)', () => {
     [{ de: 'Gastraum mit Kachelofen' }, []],
     [{ en: 'Dining room' }, [['images.img0000001.image.alt', 'ALT_REQUIRED']]],
     [{ de: '   ' }, [['images.img0000001.image.alt', 'ALT_REQUIRED']]],
+    // Wrong behaviour caught: a NUL or a bidi override (which turns the read-out words around) reached the site.
+    [{ de: 'Bild\u0000' }, [['images.img0000001.image.alt.de', 'FORMAT']]],
+    [{ de: 'Bild \u202eesiw' }, [['images.img0000001.image.alt.de', 'FORMAT']]],
   ] as const)('alt %j', async (alt, expected) => {
     expect(pairs((await validate(schema, 'gallery', gallery(alt), check('create'))).errors)).toEqual(expected)
   })

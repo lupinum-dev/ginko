@@ -4,7 +4,7 @@
 // Rights: all members read and upload; everything that changes the library is for owner and admin.
 // Library actions write no `changes` rows (those are the content history, SPEC 3).
 import type { Json, Label } from '@lupinum/ginko'
-import { ALT_MAX, effectiveAlt, type Schema } from '@lupinum/ginko/internal'
+import { ALT_INVISIBLE, ALT_MAX, effectiveAlt, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, mutation, query, type QueryCtx } from './_generated/server'
@@ -431,6 +431,7 @@ export const setAlt = mutation({
     if (!schema.locales.includes(args.locale)) fail('INVALID', 'errors.languageNotOnSite', { locale: args.locale })
     const text = args.text.trim()
     if (text.length > ALT_MAX) fail('INVALID', 'errors.altTooLong')
+    if (ALT_INVISIBLE.test(text)) fail('INVALID', 'errors.altControlChars')
     const alt = { ...(row.alt ?? {}) }
     if (text) alt[args.locale] = text
     else delete alt[args.locale]

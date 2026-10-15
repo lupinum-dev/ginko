@@ -80,6 +80,7 @@
     "onlyImageHasFocus": "Solo una imagen tiene punto de enfoque.",
     "onlyImageHasAlt": "Solo las fotos tienen texto alternativo.",
     "altTooLong": "El texto alternativo es demasiado largo (300 caracteres como máximo).",
+    "altControlChars": "“Descripción de la imagen” contiene caracteres de control invisibles.",
     "focusPointOutsideImage": "El punto de enfoque debe estar dentro de la imagen.",
     "replacementMustDiffer": "Elige otro archivo como reemplazo.",
     "fileInTrash": "Este archivo está en la papelera. Restáuralo primero.",

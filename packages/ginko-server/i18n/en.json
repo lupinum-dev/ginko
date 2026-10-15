@@ -80,6 +80,7 @@
     "onlyImageHasFocus": "Only an image has a focus point.",
     "onlyImageHasAlt": "Only photos have alt text.",
     "altTooLong": "The alt text is too long (300 characters at most).",
+    "altControlChars": "“Image description” contains invisible control characters.",
     "focusPointOutsideImage": "The focus point must be inside the image.",
     "replacementMustDiffer": "Pick a different file as the replacement.",
     "fileInTrash": "This file is in the trash. Restore it first.",

@@ -82,6 +82,7 @@
     "onlyImageHasFocus": "Nur ein Bild hat einen Fokuspunkt.",
     "onlyImageHasAlt": "Nur Fotos haben einen Alt-Text.",
     "altTooLong": "Der Alt-Text ist zu lang (höchstens 300 Zeichen).",
+    "altControlChars": "„Bildbeschreibung“ enthält unsichtbare Steuerzeichen.",
     "focusPointOutsideImage": "Der Fokuspunkt muss im Bild liegen.",
     "replacementMustDiffer": "Wähle eine andere Datei als Ersatz.",
     "fileInTrash": "Diese Datei liegt im Papierkorb. Hole sie zuerst zurück.",
