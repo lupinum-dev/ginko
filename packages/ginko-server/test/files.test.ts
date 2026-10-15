@@ -254,6 +254,22 @@ describe('views', () => {
     expect((await s.as.owner.query(api.files.list, { site, view: 'trash' })).files.map((f) => f.id)).toEqual([karte])
     expect((await s.as.owner.query(api.files.list, { site, view: 'all' })).files.map((f) => f.name)).toEqual(['preise.pdf'])
   })
+
+  // Wrong behaviour caught: photos were findable only by their camera names (IMG_4032.JPG), never by what they show.
+  it.each([
+    ['a word of the German description', 'wald'],
+    ['a word of the English description', 'FOREST'],
+    ['the description without its umlaut', 'Morgenrot uber'],
+    ['the name, in a folder the search does not name', 'img_4032'],
+  ])('search finds a photo by %s, in every folder', async (_, term) => {
+    const s = await setup()
+    const folder = await s.as.owner.mutation(api.files.createFolder, { site, name: 'Ausflüge' })
+    const photo = await readyImage(s, 'IMG_4032.JPG')
+    await s.t.run(async (ctx) => ctx.db.patch(photo, { alt: { de: 'Wald und Morgenrot über dem Gesäuse', en: 'Forest at dawn' } }))
+    await s.as.owner.mutation(api.files.move, { site, files: [photo], folder })
+    await pdf(s, 'preise.pdf', '%PDF-1.4 p')
+    expect((await s.as.owner.query(api.files.list, { site, view: 'all', search: term })).files.map((f) => f.id)).toEqual([photo])
+  })
 })
 
 describe('trash and restore', () => {

@@ -143,10 +143,13 @@ async function walk<T>(start: string | null, read: Read<T>, cursorOf: (row: T) =
   return { rows: out, cursor: after, isDone: false }
 }
 
+/** Search text as compared: any case, and letters without their accents (`über` finds `uber` and back). */
+const fold = (text: string) => text.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+
 /**
  * The files of a site in one view, newest first, 50 per call. `folder`: an id for one folder, null
- * for the top level, absent for every folder. `search`: part of the file name, any case.
- * Pass the returned `cursor` for the next call; `isDone` says nothing is left.
+ * for the top level, absent for every folder. `search`: part of the file name or of its description in any
+ * language, any case. Pass the returned `cursor` for the next call; `isDone` says nothing is left.
  */
 export const list = query({
   args: {
@@ -160,9 +163,10 @@ export const list = query({
     const actor = await actorFor(ctx, args.site)
     const site = actor.site._id
     const folder = args.folder === undefined ? undefined : args.folder === null ? null : (await folderOf(ctx, actor, args.folder))._id
-    const needle = args.search?.trim().toLowerCase()
+    const needle = args.search?.trim() ? fold(args.search.trim()) : undefined
     const start = args.cursor ?? null
-    const named = (row: Doc<'uploads'>) => !needle || row.name.toLowerCase().includes(needle)
+    // People search what a photo shows ("Wald"), not its camera name (IMG_4032.JPG): the descriptions count too.
+    const named = (row: Doc<'uploads'>) => !needle || [row.name, ...Object.values(row.alt ?? {})].some((text) => fold(text).includes(needle))
     const live = (row: Doc<'uploads'>) => row.status === 'ready' && !row.trashedAt
     const inFolder = (row: Doc<'uploads'>) => folder === undefined || (row.folder ?? null) === folder
     const byTime = (row: Doc<'uploads'> | Doc<'fileRefs'>) => String(row._creationTime)
