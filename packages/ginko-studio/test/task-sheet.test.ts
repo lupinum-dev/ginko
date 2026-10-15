@@ -7,6 +7,8 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { collection, defineSite, f } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
+import { Popover, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
+import SlashMenu from '../app/components/editor/SlashMenu.vue'
 
 const { computed, defineComponent, h, inject, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, toValue, watch } = vue
 Object.entries({ computed, inject, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, shallowRef, watch, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
@@ -65,10 +67,20 @@ const FieldStub = defineComponent({
   setup: (props, { emit }) => () => h('input', { name: props.path, value: props.modelValue ?? '', onInput: (e: Event) => emit('update:modelValue', (e.target as HTMLInputElement).value) }),
 })
 
-function mountSheet() {
+/** A field that opens things over the form: a popover (as the Studio's lists, menus and pickers do) and the slash menu. */
+const OverlayField = defineComponent({
+  name: 'GinkoField',
+  props: { path: { type: String, required: true } },
+  setup: (props) => () => props.path !== 'text' ? null : h('div', [
+    h(Popover, null, { default: () => [h(PopoverTrigger, null, { default: () => 'Liste öffnen' }), h(PopoverContent, { 'data-test': 'popover' }, { default: () => 'Liste' })] }),
+    h(SlashMenu, { state: { open: true, items: [], selected: 0, choose: () => {} } as never }),
+  ]),
+})
+
+function mountSheet(field = FieldStub) {
   return mount(TaskSheet, {
     props: { site: 'restaurant', brickKey: 'notices', brick, task: brick.tasks![0]!, main: 'de', locales: ['de'], schema },
-    global: { stubs: { GinkoField: FieldStub } },
+    global: { stubs: { GinkoField: field } },
     attachTo: document.body,
   })
 }
@@ -109,5 +121,21 @@ test('a prefill that fails to load says so and asks for it again with "Erneut ve
   answer({ data: { text: 'Heute Ruhetag' } })
   await flushPromises()
   expect((wrapper.get('input[name="text"]').element as HTMLInputElement).value).toBe('Heute Ruhetag')
+  wrapper.unmount()
+})
+
+// Wrong behaviour caught (romi-1, J1, P4): the sheet is a modal <dialog> in the browser's top layer, and lists, menus,
+// popovers and the slash menu opened from it rendered into <body> beneath it, unseen and not clickable.
+test('what opens inside the sheet renders inside its <dialog>, above the page', async () => {
+  globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as never
+  const wrapper = mountSheet(OverlayField)
+  answer({ data: {} })
+  await flushPromises()
+  await wrapper.findAll('button').find((b) => b.text() === 'Liste öffnen')!.trigger('click')
+  await flushPromises()
+  const dialog = wrapper.get('dialog').element
+  const popover = document.querySelector('[data-test="popover"]')
+  const slash = [...document.querySelectorAll('[role="status"]')].find((p) => p.textContent === 'Nichts gefunden.')
+  expect([popover && dialog.contains(popover), slash && dialog.contains(slash)]).toEqual([true, true])
   wrapper.unmount()
 })

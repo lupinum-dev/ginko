@@ -11,6 +11,7 @@ import ConflictPanel from './ConflictPanel.vue'
 import { provideSiteRefs } from '../composables/useSiteRefs'
 import { Button } from '@studio/components/ui/button'
 import { XIcon } from '@lucide/vue'
+import { ConfigProvider, injectConfigProviderContext } from 'reka-ui'
 import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
 import { taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
@@ -99,6 +100,11 @@ const twin = computed(() => {
 
 const confirmClose = ref(false)
 const dialog = ref<HTMLDialogElement | null>(null)
+// The sheet is a modal <dialog> in the browser's top layer: anything rendered into <body> lies beneath it, unseen and
+// out of reach. So every reka portal in the sheet (lists, menus, popovers, tooltips, the library picker; node views
+// too, through EditorContent) and the slash menu render into the <dialog> instead, next to the <form>, never inside it.
+// A nested ConfigProvider replaces the whole context: pass on what app.vue sets (today only useId).
+const reka = injectConfigProviderContext({})
 onMounted(() => dialog.value?.showModal())
 watch(issues, (list) => { if (list.length) nextTick(() => dialog.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()) })
 
@@ -161,70 +167,72 @@ function onCancel(event: Event) {
 
 <template>
   <dialog ref="dialog" :class="SHEET_DIALOG" aria-labelledby="sheet-title" @cancel="onCancel">
-    <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()">
-      <header class="flex items-start justify-between gap-3 border-b bg-card pt-4 pb-3 pr-3 pl-5">
-        <div>
-          <h2 id="sheet-title" class="text-lg font-semibold">{{ shown(task.label) }}</h2>
-          <p v-if="entry && brick.kind === 'collection'" class="mt-0.5 text-sm text-muted-foreground">{{ titleOf(brick, entry.data, main) }}</p>
-        </div>
-        <Button type="button" variant="ghost" size="icon" class="flex-none rounded-full" :aria-label="t('entry.close')" @click="requestClose">
-          <XIcon aria-hidden="true" />
-        </Button>
-      </header>
+    <ConfigProvider :teleport-to="dialog ?? undefined" :use-id="reka.useId">
+      <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()">
+        <header class="flex items-start justify-between gap-3 border-b bg-card pt-4 pb-3 pr-3 pl-5">
+          <div>
+            <h2 id="sheet-title" class="text-lg font-semibold">{{ shown(task.label) }}</h2>
+            <p v-if="entry && brick.kind === 'collection'" class="mt-0.5 text-sm text-muted-foreground">{{ titleOf(brick, entry.data, main) }}</p>
+          </div>
+          <Button type="button" variant="ghost" size="icon" class="flex-none rounded-full" :aria-label="t('entry.close')" @click="requestClose">
+            <XIcon aria-hidden="true" />
+          </Button>
+        </header>
 
-      <div class="grid content-start gap-5 overflow-auto px-5 pt-[18px] pb-6">
-        <template v-if="!ready">
-          <template v-if="prefillError">
-            <p :class="PROBLEM" role="alert">{{ prefillProblem }}</p>
-            <Button type="button" variant="outline" class="justify-self-start" @click="retry">{{ t('basics.retry') }}</Button>
+        <div class="grid content-start gap-5 overflow-auto px-5 pt-[18px] pb-6">
+          <template v-if="!ready">
+            <template v-if="prefillError">
+              <p :class="PROBLEM" role="alert">{{ prefillProblem }}</p>
+              <Button type="button" variant="outline" class="justify-self-start" @click="retry">{{ t('basics.retry') }}</Button>
+            </template>
+            <p v-else class="text-muted-foreground">{{ t('entry.loading') }}</p>
           </template>
-          <p v-else class="text-muted-foreground">{{ t('entry.loading') }}</p>
-        </template>
-        <template v-else>
-          <EntryGoneBanner
-            v-if="removedHere && entry"
-            :site="site" :brick-key="brickKey" :entry="entry" :dirty="dirty" :busy="busy" :may-restore="!!mayRestore"
-            @restore="restoreRemoved" @discard="discardAndClose"
-          />
-          <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
-          <ConflictPanel
-            v-if="conflict"
-            :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="main" :main="main"
-            :can-keep-both="!!form.listMerge.value"
-            @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
-          />
-          <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
-          <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
-          <GinkoField
-            v-for="(field, key) in fields"
-            v-show="isShown(field, draft)"
-            :key="key"
-            :field="field"
-            :model-value="draft[key]"
-            :baseline="baseline[key]"
-            :weeks="weekFields.has(String(key))"
-            :path="String(key)"
-            :locale="main"
-            :locales="locales"
-            :issues="issues"
-            @update:model-value="form.setField(String(key), $event)"
-          />
-        </template>
-      </div>
+          <template v-else>
+            <EntryGoneBanner
+              v-if="removedHere && entry"
+              :site="site" :brick-key="brickKey" :entry="entry" :dirty="dirty" :busy="busy" :may-restore="!!mayRestore"
+              @restore="restoreRemoved" @discard="discardAndClose"
+            />
+            <LocalDraftOffer v-if="localOffer" :saved-at="localOffer.savedAt" :busy="busy" @restore="form.restoreLocal()" @discard="form.dropLocal()" />
+            <ConflictPanel
+              v-if="conflict"
+              :conflict="conflict" :draft="draft" :baseline="baseline" :fields="brick.fields" :locale="main" :main="main"
+              :can-keep-both="!!form.listMerge.value"
+              @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
+            />
+            <p v-if="problem" :class="PROBLEM" role="alert">{{ problem }}</p>
+            <p v-if="twin" class="rounded-md bg-warning/10 px-3 py-2.5 font-semibold text-warning">{{ t('entry.twin', { title: twin }) }}</p>
+            <GinkoField
+              v-for="(field, key) in fields"
+              v-show="isShown(field, draft)"
+              :key="key"
+              :field="field"
+              :model-value="draft[key]"
+              :baseline="baseline[key]"
+              :weeks="weekFields.has(String(key))"
+              :path="String(key)"
+              :locale="main"
+              :locales="locales"
+              :issues="issues"
+              @update:model-value="form.setField(String(key), $event)"
+            />
+          </template>
+        </div>
 
-      <footer class="flex flex-wrap items-center gap-2 border-t bg-card px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <p v-if="waiting && !dirty && !confirmClose" class="basis-full font-medium text-warning" role="status">{{ t('history.waiting') }}</p>
-        <template v-if="confirmClose">
-          <p class="basis-full font-semibold" role="alert">{{ t('entry.discard.question') }}</p>
-          <Button type="button" variant="destructive" @click="discardAndClose">{{ t('entry.discard.confirm') }}</Button>
-          <Button type="button" variant="outline" @click="confirmClose = false">{{ t('entry.discard.keepEditing') }}</Button>
-        </template>
-        <template v-else>
-          <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-          <Button type="submit" class="flex-1" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
-          <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>
-        </template>
-      </footer>
-    </form>
+        <footer class="flex flex-wrap items-center gap-2 border-t bg-card px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <p v-if="waiting && !dirty && !confirmClose" class="basis-full font-medium text-warning" role="status">{{ t('history.waiting') }}</p>
+          <template v-if="confirmClose">
+            <p class="basis-full font-semibold" role="alert">{{ t('entry.discard.question') }}</p>
+            <Button type="button" variant="destructive" @click="discardAndClose">{{ t('entry.discard.confirm') }}</Button>
+            <Button type="button" variant="outline" @click="confirmClose = false">{{ t('entry.discard.keepEditing') }}</Button>
+          </template>
+          <template v-else>
+            <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
+            <Button type="submit" class="flex-1" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
+            <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>
+          </template>
+        </footer>
+      </form>
+    </ConfigProvider>
   </dialog>
 </template>

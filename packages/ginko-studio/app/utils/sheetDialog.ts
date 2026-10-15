@@ -1,5 +1,6 @@
 /** The native <dialog> the task and pick sheets open with showModal(): a sheet from below on phones, a panel on the
- * right from 900px. Native, so Escape and the close guard in TaskSheet stay the browser's own cancel event. */
+ * right from 900px. Native for the browser's top layer, the inert page behind it and Android's back gesture as a close
+ * request. Lists, menus and pickers opened inside a task sheet render into its <dialog> (TaskSheet's ConfigProvider). */
 export const SHEET_DIALOG = [
   'm-[auto_auto_0] max-h-[92dvh] w-full max-w-[560px] rounded-t-2xl border-0 bg-background p-0 text-foreground shadow-lg',
   'backdrop:bg-black/45 dark:backdrop:bg-black/70 open:animate-in open:fade-in-0 open:slide-in-from-bottom-8 open:duration-300',

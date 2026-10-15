@@ -111,6 +111,32 @@ test.describe('Wirtin', () => {
     await page.getByRole('button', { name: 'Speichern', exact: true }).click()
     await expect(toast(page)).toContainText('Gespeichert')
   })
+
+  // Wrong behaviour caught (romi-1, J1, P4): a quick-task sheet is a modal <dialog> in the browser's top layer, and the
+  // text style list and the link box opened in <body> beneath it, unseen and not clickable; on a phone the typed web
+  // address replaced the selected words.
+  test('26. "Veranstaltung hinzufügen": the text style list and the link box open inside the sheet', async ({ page }) => {
+    await openQuick(page)
+    await page.getByRole('button', { name: 'Veranstaltung hinzufügen' }).click()
+    const sheet = page.locator('dialog[open]')
+    await sheet.getByLabel('Titel').fill('Kürbisabend')
+    const text = sheet.getByRole('textbox', { name: 'Beschreibung', exact: true })
+    await text.click()
+    await page.keyboard.type('Gemütlicher Abend')
+    await page.keyboard.press('Enter')
+
+    await sheet.getByRole('combobox', { name: 'Blocktyp' }).click()
+    await sheet.getByRole('option', { name: 'Zwischenüberschrift', exact: true }).click()
+    await expect(text.locator('h3')).toHaveCount(1)
+
+    await text.getByText('Gemütlicher Abend').selectText()
+    await sheet.getByRole('toolbar', { name: 'Formatierung' }).getByRole('button', { name: 'Link', exact: true }).click()
+    const address = sheet.getByLabel('Link (Webadresse)')
+    await expect(address).toBeFocused()
+    await address.fill('example.org')
+    await sheet.getByRole('button', { name: 'Übernehmen' }).click()
+    await expect(text.getByRole('link', { name: 'Gemütlicher Abend' })).toBeVisible()
+  })
 })
 
 test.describe('Unterwegs (break-it 9)', () => {
