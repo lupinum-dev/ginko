@@ -320,6 +320,7 @@
       "waiting": "Waiting for approval, sent {when}.",
       "rejected": "Not approved: “{reason}”",
       "fix": "Fix it",
+      "toReview": "{count, plural, one {# change} other {# changes}} to review",
       "drafts": {
         "heading": "Not saved yet",
         "titled": "“{title}” · {time}",

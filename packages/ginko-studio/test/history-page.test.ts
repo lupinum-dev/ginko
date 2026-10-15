@@ -87,7 +87,7 @@ describe('going back to a version', () => {
 
   test.each([
     ['is the current one', { change: 'c2', diff: [] }, undefined, 'Das ist schon der aktuelle Stand.'],
-    ['cannot be read', undefined, normalizeConvexError(new ConvexError({ code: 'NOT_FOUND', key: 'errors.versionNotFound', message: 'Diese Version gibt es nicht mehr.' }), { functionName: 'entries:versionAt' }), 'Diese Version gibt es nicht mehr.'],
+    ['cannot be read', undefined, normalizeConvexError(new ConvexError({ code: 'NOT_FOUND', key: 'errors.versionNotFound', message: 'Diese Version gibt es nicht mehr.' }), { functionName: 'entries:versionAt' }), 'Diese Version gibt es nicht (mehr).'],
   ])('that %s offers no button to go back', async (_name, answer, failure, text) => {
     changes.value = [row('save', ['title'])]
     answers['entries.versionAt'] = answer

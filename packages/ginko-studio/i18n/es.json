@@ -320,6 +320,7 @@
       "waiting": "Esperando aprobación, enviado el {when}.",
       "rejected": "No aprobado: «{reason}»",
       "fix": "Corregir",
+      "toReview": "{count, plural, one {# cambio espera} other {# cambios esperan}} tu revisión",
       "drafts": {
         "heading": "Aún sin guardar",
         "titled": "“{title}” · {time}",

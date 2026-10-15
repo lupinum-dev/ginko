@@ -320,6 +320,7 @@
       "waiting": "Wartet auf Freigabe, eingereicht {when}.",
       "rejected": "Nicht freigegeben: „{reason}“",
       "fix": "Korrigieren",
+      "toReview": "{count, plural, one {# Änderung wartet} other {# Änderungen warten}} auf Freigabe",
       "drafts": {
         "heading": "Noch nicht gespeichert",
         "titled": "„{title}“ · {time}",
