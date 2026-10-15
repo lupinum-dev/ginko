@@ -2,7 +2,7 @@
      one-line state from the data and the task buttons. Generic: nothing here knows the restaurant. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Json } from '@lupinum/ginko'
-import { visibleUntil, plannedWeeks, plansThisWeek, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
+import { visibleUntil, plannedWeeks, plansThisWeek, resolveToken, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../composables/useSiteData'
 import { textIn } from '@lupinum/ginko-editor'
 import { displayValue, formatDay, taskRef, titleOf, type Task } from '../../../utils/content'
@@ -206,9 +206,29 @@ watch([open, picking], ([sheet, pick]) => {
   nextTick(() => { if (button.isConnected) button.focus() })
 })
 
+/**
+ * "Nächste Woche planen" when that week is planned already: the person's edit task on that plan. A second plan for
+ * the same week would never show (the server refuses it).
+ */
+function planOfWeek(key: string, task: Task): { task: Task; entry: Entry } | undefined {
+  const schema = s.schema.value!
+  const brick = schema.bricks[key]!
+  if (task.kind !== 'create' || brick.kind !== 'collection' || !brick.plans) return undefined
+  const token = task.prefill?.[brick.plans.field]
+  const week = typeof token === 'string' ? resolveToken(token, schema.timeZone, schema.week) : undefined
+  const edit = sections.value.find((x) => x.key === key)?.tasks.find((t) => t.kind === 'edit')
+  const entry = week && entriesOf(key).find((e) => e.state !== 'draft' && e.data[brick.plans!.field] === week)
+  return edit && entry ? { task: edit, entry } : undefined
+}
+
 function start(key: string, task: Task) {
   if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) launcher = document.activeElement
   const brick = s.schema.value!.bricks[key]!
+  const planned = planOfWeek(key, task)
+  if (planned) {
+    open.value = { key, task: planned.task, entryId: planned.entry._id }
+    return
+  }
   // "This week" while a planned week covers it: the same task edits that planned week (the one the website shows),
   // not the single's own fields, which would save without showing anywhere. The server allows it with this task.
   const plan = task.kind === 'edit' && brick.kind === 'single' ? plannedNow(key, task) : undefined

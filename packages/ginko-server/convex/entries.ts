@@ -11,7 +11,7 @@ import { actorFor, authorize, authorizeWriter, byOf, checkRev, entryOf, fail, id
 import { fieldLabelAt, fileIdsOf, mergeField, nextPrints, refIdsIn, rootOf, treesOf, withoutLocale, type Data, type Prints } from './lib/content'
 import { labeler, type Who } from './lib/names'
 import { msg, recorded, undoBlockOf, type HistoryMsg, type Recorded } from './lib/history'
-import { isLocale, t } from './lib/i18n'
+import { DEFAULT_LOCALE, isLocale, t } from './lib/i18n'
 import { countersOf, DELETED_KEPT, overflowingTrash, purgeEntry, softRemove, storageSums, writeCounters, type Counters } from './lib/lifecycle'
 import { directWriteRefused, needsProposal, propose, refuseAgentUndo, refuseDirectWrite } from './lib/policy'
 import { publicness } from './lib/publicness'
@@ -107,6 +107,20 @@ function refuseOtherWeek(schema: Schema, task: string | undefined, taskBrick: st
 }
 
 /**
+ * A collection that plans a single ahead (`plans`) holds one entry per week: a second plan for the same week would
+ * never show (the site takes the first). Refused at the week field, so the Studio shows it there. `self` is the entry
+ * being saved, `changed` its changed fields (a save that keeps the week is not checked); the trash does not count.
+ */
+async function refuseSecondPlan(ctx: QueryCtx, actor: Actor, brickKey: string, brick: Brick, data: Data, saved?: { self: Id<'entries'>; changed: readonly string[] }) {
+  const field = brick.kind === 'collection' ? brick.plans?.field : undefined
+  if (!field || data[field] === undefined || (saved && !saved.changed.includes(field))) return
+  const rows = await rowsOf(ctx, actor.site._id, brickKey)
+  if (!rows.some((r) => r._id !== saved?.self && !r.deletedAt && same((r.data as Data)[field], data[field]))) return
+  const issue = { path: field, code: 'weekAlreadyPlanned', key: 'errors.weekAlreadyPlanned', message: t(DEFAULT_LOCALE, 'errors.weekAlreadyPlanned') }
+  fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: [issue] })
+}
+
+/**
  * The answer of a save or revert that had nothing to write: the entry as it is, and no history row. A named type, so
  * the answers that wrote one keep `change` as a required field instead of an optional one (which JSON cannot hold).
  */
@@ -166,6 +180,7 @@ async function saveNow(ctx: MutationCtx, actor: Actor, args: ObjectType<typeof s
 
   const { errors, warnings } = await validate(schema, entry.brick, data, { mode: 'patch', changed: new Set(Object.keys(args.fields)), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
   if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
+  await refuseSecondPlan(ctx, actor, entry.brick, brick, data, { self: entry._id, changed })
   await checkNewFiles(ctx, actor.site._id, brick.fields, before, data)
   // A draft is not online yet: its links are checked when it goes live.
   if (stateOf(entry) === 'live') await checkNewLinks(ctx, actor.site, [{ entry, fields: brick.fields, before, after: data }])
@@ -448,6 +463,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const prints = nextPrints({ fields: brick.fields, roots: Object.keys(brick.fields), before: {}, after: data, prints: {}, main: schema.locales[0]!, confirm: undefined })
     const { errors } = await validate(schema, args.brick, data, { mode: 'create', ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
     if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })
+    await refuseSecondPlan(ctx, actor, args.brick, brick, data)
 
     const rows = await rowsOf(ctx, actor.site._id, args.brick)
     const removing = roomPlan(actor, brick, rows)

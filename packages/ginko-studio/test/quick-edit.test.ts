@@ -15,7 +15,7 @@ import { taskFields } from '../app/utils/content'
 const { computed, defineComponent, h, nextTick, onMounted, reactive, ref, Suspense, watch, watchEffect } = vue
 Object.entries({ computed, nextTick, onMounted, reactive, ref, watch, watchEffect, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
-const schema = serializeSchema(defineSite({
+const notices = serializeSchema(defineSite({
   site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
   pages: { home: { de: '/' } },
   bricks: {
@@ -28,7 +28,9 @@ const schema = serializeSchema(defineSite({
   },
 }))
 const notice = (id: string, text: string, until = '2026-10-20') => ({ _id: id, brick: 'notices', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { text, until } })
-let listed = [notice('e1', 'Heute geschlossen'), notice('e2', 'Neue Karte')]
+let listed: unknown[] = [notice('e1', 'Heute geschlossen'), notice('e2', 'Neue Karte')]
+/** The site the page shows: the notices above, or the restaurant. */
+let schema = notices
 
 vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})
@@ -38,9 +40,13 @@ vi.stubGlobal('useSiteData', async () => ({
   slug: ref('restaurant'), schema: ref(schema), site: ref({ name: 'Restaurant' }), main: ref('de'), today: ref('2026-10-15'),
   isManager: ref(false), may: () => true, bricks: computed(() => Object.entries(schema.bricks)),
 }))
-vi.stubGlobal('useKeptEntry', () => ({ entry: ref(undefined), removed: ref(false) }))
-vi.stubGlobal('useConvexQuery', (fn: unknown) => ({
-  data: ref(String(fn) === 'entries.ofBricks' ? listed : undefined),
+vi.stubGlobal('useKeptEntry', (_id: unknown, live: () => unknown) => ({ entry: computed(live), removed: ref(false) }))
+// The page's live reads: the listed entries, and the one entry a sheet opens on.
+vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => ({
+  data: String(fn) === 'entries.ofBricks' ? ref(listed) : computed(() => {
+    const a = typeof args === 'function' ? args() : args
+    return String(fn) === 'entries.get' && a !== 'skip' ? listed.find((e) => (e as { _id: string })._id === (a as { entry: string }).entry) : undefined
+  }),
 }))
 // No entry points at these: "Entfernen" removes at once.
 vi.stubGlobal('useConvex', () => ({ query: async () => [] }))
@@ -117,5 +123,28 @@ describe('a planned price (menu, `planned`)', () => {
     const wrapper = mount(PickSheet, { props: { brick: dishes, task: task('price'), entries: [schnitzel] as never, main: 'de', today } })
     expect(wrapper.get('li').text()).toContain(price)
     wrapper.unmount()
+  })
+})
+
+describe('planning a week ahead (lunchPlans)', () => {
+  // Wrong behaviour caught: with next week already planned, "Nächste Woche planen" opened an empty new week, which saved
+  // a second plan for the same week that the website never showed, and gave no way to the plan that was there.
+  test('"Nächste Woche planen" with next week planned opens "Geplante Woche bearbeiten" on that plan', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-15T10:00:00Z'))
+    schema = serializeSchema(restaurant)
+    listed = [{ _id: 'p19', brick: 'lunchPlans', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { weekOf: '2026-10-19' } }]
+    try {
+      const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
+        global: { stubs: { TaskSheet: { props: ['brickKey', 'task', 'entry'], template: '<p data-test="sheet">{{ brickKey }}.{{ task.id }} on {{ entry?._id }}</p>' }, PickSheet: true, I18nT: true, NuxtLink: true } },
+      })
+      await flushPromises()
+      await wrapper.findAll('button').find((b) => b.text() === 'Nächste Woche planen')!.trigger('click')
+      expect(wrapper.get('[data-test="sheet"]').text()).toBe('lunchPlans.edit on p19')
+      wrapper.unmount()
+    } finally {
+      schema = notices
+      vi.useRealTimers()
+    }
   })
 })

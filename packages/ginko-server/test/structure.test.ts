@@ -326,6 +326,23 @@ describe('the weekly task covers this week only', () => {
   })
 })
 
+describe('one planned week per week', () => {
+  // Wrong behaviour caught: "Nächste Woche planen" saved a second plan for a week that was already planned, and the
+  // website silently showed only one of the two; moving another plan onto that week did the same.
+  it('a second plan for a planned week, made or moved there, is refused at the week field', async () => {
+    const { t, as, entries } = await setup()
+    const kw42 = (await t.run((ctx) => ctx.db.get(entries['plan-kw42']!)))!.data
+    const create = (weekOf: string) => as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'lunchPlans.planNext', brick: 'lunchPlans', data: { ...kw42, weekOf } })
+    const taken = { code: 'INVALID', details: { errors: [expect.objectContaining({ path: 'weekOf', key: 'errors.weekAlreadyPlanned' })] } }
+    expect(await errorOf(create('2026-10-12'))).toMatchObject(taken)
+    const next = await create('2026-10-19') as { entry: Id<'entries'> }
+    const move = as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunchPlans.edit', entry: next.entry, baseRev: 1, fields: { weekOf: '2026-10-12' } })
+    expect(await errorOf(move)).toMatchObject(taken)
+    // The plan itself keeps its week when other fields change.
+    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunchPlans.edit', entry: next.entry, baseRev: 1, fields: { weekOf: '2026-10-19', note: { de: 'Mit Suppe' } } })
+  })
+})
+
 // Astra phase 5 review, findings in entries.ts.
 describe('entries.create and lifecycle after the phase 5 review', () => {
   const pumpkin = { title: { de: 'Kürbisabend', en: 'Pumpkin night' }, when: { from: '2026-11-05', to: '2026-11-05' }, description: { de: 'Suppe und Musik.' } }
