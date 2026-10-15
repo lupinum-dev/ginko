@@ -226,7 +226,7 @@ export async function undoAs(ctx: MutationCtx, actor: Actor, args: ObjectType<ty
       actor, entry, fields: brick.fields, roots, data, prints, kind: 'undo', history: recorded(msg('history.undo', { what: change.msg ? (change.msg as HistoryMsg) : change.sentence }), schema), opId: args.opId,
     })
     await ctx.db.patch(change._id, { undoneBy: written.change })
-    const result: Json = { entry: entry._id, rev: written.rev, contentRev: written.contentRev, warnings: [], ...(restoredFiles.length ? { restoredFiles } : {}) }
+    const result: Json = { entry: entry._id, rev: written.rev, contentRev: written.contentRev, warnings: [], ...(restoredFiles.length ? { restoredFiles: restoredFiles.map((f) => f.name) } : {}) }
     return result
   })
 }
@@ -299,12 +299,19 @@ export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
       const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
       return unchanged
     }
+    // Out of the trash before the save, so its file checks pass.
     const restoredFiles = await untrashFilesOf(ctx, actor.site._id, brick.fields, now, { ...now, ...fields })
     const saved = await saveNow(ctx, actor, {
       site: args.site, opId: args.opId, ...(args.task === undefined ? {} : { task: args.task }),
       entry: entry._id, baseRev: entry.rev, fields,
     }, msg('history.revert', { when: change.at }))
-    return restoredFiles.length ? { ...saved, restoredFiles } : saved
+    // A revert that needs a yes writes nothing, so the files go back to the trash: taking a file out of it is the
+    // owner's step (files.restore). The approval then refuses until someone restored the file.
+    if ('proposal' in saved) {
+      for (const file of restoredFiles) await ctx.db.patch(file.id, { trashedAt: file.trashedAt })
+      return saved
+    }
+    return restoredFiles.length ? { ...saved, restoredFiles: restoredFiles.map((f) => f.name) } : saved
   })
 }
 

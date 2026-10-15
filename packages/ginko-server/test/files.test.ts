@@ -5,7 +5,7 @@ import { api, internal } from '../convex/_generated/api'
 import { printOf, remapFileIds, type Schema } from '@lupinum/ginko/internal'
 import type { Id } from '../convex/_generated/dataModel'
 import { CORPUS_NOW } from './clock'
-import { errorOf, opId, postUpload, setup, upload } from './setup'
+import { errorOf, opId, people, postUpload, setup, upload } from './setup'
 
 type Setup = Awaited<ReturnType<typeof setup>>
 
@@ -542,6 +542,32 @@ describe('history and the Files trash', () => {
     if (typeof expected === 'string') return expect((await errorOf(run)).message).toBe(expected)
     expect(await run).toMatchObject(expected)
     expect((await s.t.run((ctx) => ctx.db.get(id)))!.trashedAt).toBeUndefined()
+  })
+
+  // Wrong behaviour caught: a revert by staff whose task needs approval took the picture out of the Files trash
+  // although the revert only became a proposal and wrote nothing; restoring from the trash is the owner's step.
+  it('a revert that becomes a proposal leaves the picture in the trash', async () => {
+    vi.stubEnv('GINKO_MAIL', 'outbox')
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      const legal = schema.bricks.legal!
+      ;(legal.fields.imprint as { profile: string }).profile = 'rich'
+      legal.tasks = [{ id: 'imprint', label: 'Impressum', kind: 'edit', fields: ['imprint'], needsApproval: true }]
+      await ctx.db.patch(s.site, { schema })
+      const cook = (await ctx.db.query('memberships').collect()).find((m) => m.user === people.cook && m.site === s.site)!
+      await ctx.db.patch(cook._id, { grants: [...cook.grants, 'legal.imprint'] })
+    })
+    const id = await readyImage(s, 'hund.jpg')
+    const entry = s.entries.legal!
+    const save = (rev: number, text: string) => s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev: rev, fields: { imprint: { de: text } }, sentence: 'x' }) as Promise<{ change: string }>
+    const withPicture = await save(1, `![Hund]($file.${id})`)
+    await save(2, 'Ohne Bild')
+    await s.as.owner.mutation(api.files.trash, { site, files: [id] })
+    const result = await s.as.cook.mutation(api.entries.revert, { site, opId: opId(), task: 'legal.imprint', entry, change: withPicture.change })
+    expect(result).toEqual({ proposal: expect.any(String), status: 'open' })
+    expect((await s.t.run((ctx) => ctx.db.get(id)))!.trashedAt).toEqual(expect.any(Number))
+    vi.unstubAllEnvs()
   })
 })
 

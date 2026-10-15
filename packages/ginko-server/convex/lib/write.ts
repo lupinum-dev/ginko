@@ -44,12 +44,12 @@ export async function checkFiles(ctx: QueryCtx, site: Id<'sites'>, ids: Iterable
 /**
  * Going back to an older version (undo, revert) brings back the pictures and files it shows: those of `after` that
  * `before` lacks and that lie in the Files trash come out of it, in the same mutation, so the save's file checks pass.
- * A file deleted for good refuses the step. Returns the names of the files taken out of the trash.
+ * A file deleted for good refuses the step. Returns the files taken out of the trash, with the time they went in.
  */
-export async function untrashFilesOf(ctx: MutationCtx, site: Id<'sites'>, fields: Fields, before: Data, after: Data): Promise<string[]> {
+export async function untrashFilesOf(ctx: MutationCtx, site: Id<'sites'>, fields: Fields, before: Data, after: Data): Promise<UntrashedFile[]> {
   const isUploadId = uploadIdsOf(ctx)
   const known = fileIdsOf(fields, before, { isUploadId })
-  const names: string[] = []
+  const untrashed: UntrashedFile[] = []
   for (const id of fileIdsOf(fields, after, { isUploadId })) {
     const key = ctx.db.normalizeId('uploads', id)
     if (!key || known.has(id)) continue
@@ -57,10 +57,12 @@ export async function untrashFilesOf(ctx: MutationCtx, site: Id<'sites'>, fields
     if (!row) fail('NOT_UNDOABLE', 'errors.versionFileDeleted', undefined, { file: id })
     if (row.site !== site || !row.trashedAt) continue
     await ctx.db.patch(key, { trashedAt: undefined })
-    names.push(row.name)
+    untrashed.push({ id: key, name: row.name, trashedAt: row.trashedAt })
   }
-  return names
+  return untrashed
 }
+
+export interface UntrashedFile { id: Id<'uploads'>; name: string; trashedAt: number }
 
 /** Checks the files an edit adds: those new to the entry, those new to an image field (a PDF may already sit in a file field), and every file newly placed in a file field. */
 export async function checkNewFiles(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, before: Data, after: Data) {
