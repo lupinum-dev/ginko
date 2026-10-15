@@ -52,8 +52,7 @@ export const reset = internalMutation({
     if (!site) fail('SITE_NOT_FOUND', 'errors.siteNotStartedDev')
     const schema = site.schema as Schema
 
-    // Proposals point at the entries deleted here, so they go too.
-    const tables = args.people ? (['entries', 'entryTrees', 'slugs', 'fileRefs', 'changes', 'ops', 'proposals', 'memberships', 'invites'] as const) : (['entries', 'entryTrees', 'slugs', 'fileRefs', 'changes', 'ops', 'proposals'] as const)
+    // Proposals point at the entries deleted here, so they go too; members and invites only when fresh people come.
     // Fresh people also get fresh settings: a language stored by an earlier run would change every text they see.
     if (args.people) {
       for (const person of args.people) {
@@ -63,10 +62,21 @@ export const reset = internalMutation({
         if (settings) await ctx.db.delete(settings._id)
       }
     }
-    for (const table of tables) {
-      const rows = await ctx.db.query(table).collect()
-      for (const row of rows) if ((row as { site?: unknown }).site === site._id) await ctx.db.delete(row._id)
-    }
+    // Each table through an index that starts with the site, so the reset reads only this site's rows: a full scan
+    // would also read other sites and conflict with any write to them (an import running at the same time).
+    const id = site._id
+    const rows = [
+      ...(await ctx.db.query('entries').withIndex('by_site_deleted', (q) => q.eq('site', id)).collect()),
+      ...(await ctx.db.query('entryTrees').withIndex('by_site', (q) => q.eq('site', id)).collect()),
+      ...(await ctx.db.query('slugs').withIndex('by_key', (q) => q.eq('site', id)).collect()),
+      ...(await ctx.db.query('fileRefs').withIndex('by_site_holder', (q) => q.eq('site', id)).collect()),
+      ...(await ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', id)).collect()),
+      ...(await ctx.db.query('ops').withIndex('by_site_actor_op', (q) => q.eq('site', id)).collect()),
+      ...(await ctx.db.query('proposals').withIndex('by_site', (q) => q.eq('site', id)).collect()),
+      ...(args.people ? await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', id)).collect() : []),
+      ...(args.people ? await ctx.db.query('invites').withIndex('by_site', (q) => q.eq('site', id)).collect() : []),
+    ]
+    for (const row of rows) await ctx.db.delete(row._id)
 
     const { count } = await insertCorpus(ctx, site, args.corpus as Corpus)
     const links = await invitePeople(ctx, site, args.people ?? [], 'seed')
