@@ -114,7 +114,8 @@ test('a closure set for tomorrow is announced on the board and in the hours tabl
 })
 
 // Wrong behaviour caught: a dish taken off the menu after its season was still listed (with its allergen letters), a
-// dish sold out today was not marked, and a fully booked event still offered "Platz reservieren".
+// dish sold out today was not marked or its mark ran into the name for screen readers ("Kalbheute aus"), and a fully
+// booked event still offered "Platz reservieren".
 test('the menu leaves out a dish off the menu and marks one sold out today; a fully booked event cannot be booked', async ({ page, request }) => {
   await request.get(`${platform}/__control?mode=availability`)
   await page.goto('/speisekarte')
@@ -122,6 +123,7 @@ test('the menu leaves out a dish off the menu and marks one sold out today; a fu
   // L is Frittatensuppe's letter only.
   await expect(page.locator('.legend dt').filter({ hasText: /^L$/ })).toHaveCount(0)
   await expect(page.locator('.dish').filter({ hasText: 'Wiener Schnitzel vom Kalb' }).locator('[data-test=sold-out]')).toHaveText('heute aus')
+  await expect(page.getByRole('heading', { name: 'Wiener Schnitzel vom Kalb heute aus', exact: true })).toBeVisible()
   await page.goto('/veranstaltungen/martini-gansl')
   await expect(page.locator('[data-test=fully-booked]')).toHaveText('Ausgebucht')
   await expect(page.getByRole('link', { name: 'Platz reservieren' })).toHaveCount(0)

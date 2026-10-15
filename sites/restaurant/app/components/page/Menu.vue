@@ -31,7 +31,8 @@ useSeoMeta({ title: () => `${t('menu')} | Gasthaus zur Linde` })
       <ul class="dishes">
         <li v-for="item in g.items" :key="item.id" class="dish" :class="{ 'sold-out': item.soldOut }">
           <div class="line">
-            <h3><span :lang="langOf(item, 'name')">{{ item.data.name }}</span><span v-if="item.soldOut" class="out" data-test="sold-out">{{ t('soldOutToday') }}</span></h3>
+            <!-- The space keeps "heute aus" a word of its own for screen readers ("…vom Kalb heute aus"). -->
+            <h3><span :lang="langOf(item, 'name')">{{ item.data.name }}</span><template v-if="item.soldOut">{{ ' ' }}<span class="out" data-test="sold-out">{{ t('soldOutToday') }}</span></template></h3>
             <span class="price">{{ formatMoney(priceOn(item.data, today), language) }}</span>
           </div>
           <p v-if="nextPriceLine(item.data)" class="next-price" data-test="next-price">{{ nextPriceLine(item.data) }}</p>
@@ -55,7 +56,7 @@ useSeoMeta({ title: () => `${t('menu')} | Gasthaus zur Linde` })
 .dish { padding: 16px 0; border-bottom: 1px solid var(--rule); display: grid; gap: 4px; }
 .line { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; }
 h3 { font-size: 1.3rem; font-weight: 500; }
-.out { margin-left: 10px; padding: 1px 8px; border-radius: 999px; background: var(--bluete); color: var(--ink); font-family: var(--sans); font-size: 0.85rem; font-weight: 700; vertical-align: 0.15em; white-space: nowrap; }
+.out { margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: var(--bluete); color: var(--ink); font-family: var(--sans); font-size: 0.85rem; font-weight: 700; vertical-align: 0.15em; white-space: nowrap; }
 .sold-out h3 > span:first-child, .sold-out .price { color: var(--ink-2); }
 .line .price { font-size: 1.15rem; }
 .next-price { font-size: 0.95rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
