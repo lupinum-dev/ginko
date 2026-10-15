@@ -120,6 +120,26 @@ watch([prefill, own, ownError], ([p]) => {
   else form.load({ ...start, ...(p as Data) })
 }, { immediate: true })
 
+// "Zurückziehen" (here or in Verlauf), a decision, or a change that makes it no longer fit ends the open proposal the
+// untouched form shows: the form goes back to the stored values, so nothing suggests the old ones are on their way and
+// Speichern does not send them again. Typed input stays.
+const startable = (o: typeof mine.value) => o?.status === 'open' && o.fits
+watch(mine, (now, before) => {
+  if (!fromProposal.value || !startable(before) || startable(now) || dirty.value || !prefill.value) return
+  form.load(prefill.value as Data)
+  fromProposal.value = false
+})
+/**
+ * The line of an open own proposal: it waits and Speichern replaces it; it no longer fits; or the input is back at the
+ * stored values, so Speichern has nothing to send and only Zurückziehen drops it.
+ */
+const pendingText = computed(() => {
+  const o = mine.value
+  if (o?.status !== 'open') return ''
+  const key = !o.fits ? 'entry.pendingStale' : form.changed.value.length ? 'entry.pending' : 'entry.pendingSame'
+  return t(key, { when: whenFull(o.createdAt, props.schema.timeZone, format) })
+})
+
 /** "Deinen Vorschlag wieder öffnen": the rejected values, to fix what the approver asked for. */
 function reopenOwn() {
   if (!mine.value || !prefill.value) return
@@ -251,7 +271,7 @@ function onCancel(event: Event) {
             @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
           />
           <div v-if="mine?.status === 'open'" class="flex flex-wrap items-center justify-between gap-x-3 rounded-md bg-warning/10 py-1 pr-1 pl-3" role="status" data-test="own-proposal">
-            <p class="py-1.5 font-semibold text-warning">{{ t(mine.fits ? 'entry.pending' : 'entry.pendingStale', { when: whenFull(mine.createdAt, schema.timeZone, format) }) }}</p>
+            <p class="py-1.5 font-semibold text-warning">{{ pendingText }}</p>
             <ProposalWithdraw :proposal="mine.proposal" />
           </div>
           <div v-else-if="mine?.status === 'rejected'" class="grid gap-2 rounded-md bg-warning/10 px-3 py-2.5" data-test="own-proposal">

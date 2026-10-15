@@ -219,6 +219,7 @@
     "copyThisWeek": "Von dieser Woche übernehmen",
     "pending": "Wartet auf Freigabe, eingereicht {when}. Wenn du speicherst, ersetzt das deinen Vorschlag.",
     "pendingStale": "Dein Vorschlag (eingereicht {when}) passt nicht mehr: Inzwischen hat jemand das geändert. Hier siehst du den aktuellen Stand.",
+    "pendingSame": "Wartet auf Freigabe, eingereicht {when}. Deine Eingaben sind wieder wie auf der Website: Um den Vorschlag zu verwerfen, zieh ihn zurück.",
     "reopenProposal": "Deinen Vorschlag wieder öffnen"
   },
   "site": {

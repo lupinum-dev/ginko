@@ -219,6 +219,7 @@
     "copyThisWeek": "Copy from this week",
     "pending": "Waiting for approval, sent {when}. Saving replaces your proposal.",
     "pendingStale": "Your proposal (sent {when}) no longer fits: someone has changed this since. This shows the current state.",
+    "pendingSame": "Waiting for approval, sent {when}. Your input matches the website again: to drop the proposal, withdraw it.",
     "reopenProposal": "Reopen your proposal"
   },
   "site": {

@@ -216,6 +216,8 @@ describe('ConflictPanel', () => {
 })
 
 describe('TaskSheet', () => {
+  /** The sheet's live reads by function name: a test changes one to play the server's next answer. */
+  const answered = new Map<string, vue.Ref<unknown>>()
   /** This week's lunch as stored: Montag with its dish and allergens. */
   const thisWeek = {
     weekOf: '2026-10-12', note: { de: 'Suppe inklusive' },
@@ -237,7 +239,12 @@ describe('TaskSheet', () => {
     vi.stubGlobal('useEntryForm', useEntryForm)
     // No own proposal unless the test gives one.
     const answers: Record<string, unknown> = { 'proposals.ownFor': null, ...o.answers }
-    vi.stubGlobal('useConvexQuery', (fn: unknown) => ({ data: vue.ref(String(fn) === 'tasks.prefill' ? o.prefill : answers[String(fn)]), error: vue.ref(undefined) }))
+    answered.clear()
+    vi.stubGlobal('useConvexQuery', (fn: unknown) => {
+      const data = vue.ref(String(fn) === 'tasks.prefill' ? o.prefill : answers[String(fn)])
+      answered.set(String(fn), data)
+      return { data, error: vue.ref(undefined) }
+    })
     vi.stubGlobal('useConvexMutation', () => ({ pending: vue.ref(false), mutate: async () => ({}) }))
     vi.stubGlobal('useConvex', () => ({ query: async (fn: unknown) => (String(fn) === 'entries.get' ? { ...stored, _id: 'l1', brick: 'lunch', kind: 'single', data: thisWeek } : undefined) }))
     HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) { this.open = true }
@@ -270,6 +277,27 @@ describe('TaskSheet', () => {
     expect(sheet.get('[data-test="own-proposal"]').text()).toBe('Wartet auf Freigabe, eingereicht 12.10.2026, 10:00. Wenn du speicherst, ersetzt das deinen Vorschlag.Zurückziehen')
     // The days are the proposal's, not last week's.
     expect(sheet.text()).not.toContain('Das ist noch die Woche ab')
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: after "Zurückziehen" the sheet kept the withdrawn values with nothing saying they were not on
+  // their way, closing did not ask, and Speichern sent the withdrawn proposal again.
+  test('once the own proposal is withdrawn, the untouched sheet shows the stored values again', async () => {
+    const sheet = await lunchSheet('2026-10-12', { 'proposals.ownFor': ownProposal() })
+    expect(noteOf(sheet)).toBe('Suppe und Salat inklusive')
+    answered.get('proposals.ownFor')!.value = null
+    await flushPromises()
+    expect(noteOf(sheet)).toBe('Suppe inklusive')
+    expect(sheet.find('[data-test="own-proposal"]').exists()).toBe(false)
+    sheet.unmount()
+  })
+
+  // Wrong behaviour caught: with the input set back to the website's values, the banner still promised that Speichern
+  // replaces the proposal, but Speichern had nothing to send and the proposal stayed.
+  test('input set back to the stored values points to Zurückziehen', async () => {
+    const sheet = await lunchSheet('2026-10-12', { 'proposals.ownFor': ownProposal() })
+    await sheet.get('#f-note').setValue('Suppe inklusive')
+    expect(sheet.get('[data-test="own-proposal"]').text()).toBe('Wartet auf Freigabe, eingereicht 12.10.2026, 10:00. Deine Eingaben sind wieder wie auf der Website: Um den Vorschlag zu verwerfen, zieh ihn zurück.Zurückziehen')
     sheet.unmount()
   })
 
