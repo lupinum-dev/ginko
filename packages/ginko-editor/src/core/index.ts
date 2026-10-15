@@ -2,7 +2,7 @@ export { ginkoExtensions, isTaskItem, leaveComponent, toggleTaskList, type Ginko
 export { toEditorDoc, fromEditorDoc, type GinkoDoc, type GinkoDocNode, type ToDocOptions } from './convert.ts'
 export { createGinkoEditor, type GinkoEditorHandle, type GinkoEditorOptions, type GinkoRichEditor, type GinkoSourceEditor } from './editor.ts'
 export { useGinkoEditor } from './use-editor.ts'
-export { slashItems, filterSlashItems, SLASH_TEXT_GROUP, HEADING_LABELS, SLASH_COMPONENT_GROUP, type SlashItem, type SlashItemsOptions, type InsertedComponent } from './slash.ts'
+export { slashItems, filterSlashItems, insertComponent, SLASH_TEXT_GROUP, HEADING_LABELS, SLASH_COMPONENT_GROUP, type SlashItem, type SlashItemsOptions, type InsertedComponent, type InsertComponentOptions } from './slash.ts'
 export { LINK_REFUSED, normalizeHref } from './link.ts'
 export * from './component-props.ts'
 export { cleanPastedHtml, type CleanOptions } from './paste-html.ts'

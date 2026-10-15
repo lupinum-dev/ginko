@@ -513,7 +513,8 @@
       "noSettings": "Este bloque no tiene ajustes.",
       "required": "Campos obligatorios",
       "more": "Más ajustes",
-      "remove": "Eliminar"
+      "remove": "Eliminar",
+      "addChild": "Añadir {label}"
     },
     "prop": {
       "optional": "(opcional)",

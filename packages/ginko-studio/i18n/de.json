@@ -513,7 +513,8 @@
       "noSettings": "Dieser Block hat keine Einstellungen.",
       "required": "Pflichtangaben",
       "more": "Weitere Einstellungen",
-      "remove": "Entfernen"
+      "remove": "Entfernen",
+      "addChild": "{label} hinzufügen"
     },
     "prop": {
       "optional": "(optional)",

@@ -217,3 +217,36 @@ describe('required props after an insert', () => {
     expect(propsOf(editorOf(wrapper))).toMatchObject({ href: '/' })
   })
 })
+
+describe('containers', () => {
+  // A site's own container without editor examples: a gallery takes photos only.
+  const withGallery: ComponentRegistry = {
+    ...components,
+    ...defineComponents({
+      gallery: { kind: 'block', label: 'Galerie', describe: 'Bilder nebeneinander.', props: {}, children: ['photo'] },
+      photo: { kind: 'block', label: 'Abbildung', describe: 'Ein Bild.', props: { src: f.image('Bild'), caption: f.text('Bildunterschrift', { optional: true, max: 200 }) } },
+    }),
+  }
+  const childrenOf = (editor: Editor, tag: string) => {
+    let found: Array<{ tag: string; props: unknown; content: unknown }> = []
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === 'component' && node.attrs.tag === tag) found = (node.toJSON().content ?? []).map((c: { attrs: { tag: string; props: unknown }; content?: unknown }) => ({ tag: c.attrs.tag, props: c.attrs.props, content: c.content }))
+    })
+    return found
+  }
+
+  // Wrong behaviour caught: a gallery could not grow in the editor; its content has no empty line to type "/" in.
+  test.each([
+    ['gallery', ':::gallery\n::photo{src="/a.png"}\n::\n:::\n', 'Abbildung hinzufügen', 'photo', 'src', undefined],
+    ['tabs', ':::tabs\n::tab{title="npm"}\nInhalt\n::\n:::\n', 'Reiter hinzufügen', 'tab', 'title', [{ type: 'paragraph', attrs: { props: {}, bare: true, placeholder: 'Inhalt des ersten Reiters.' } }]],
+  ])('%s: the add button appends one child at the end and asks for its required props', async (tag, source, button, child, prop, content) => {
+    const wrapper = await mounted(source, withGallery)
+    const add = wrapper.get(`[data-component="${tag}"]`).findAll('button').find((b) => b.text() === button)!
+    await add.trigger('click')
+    await until(() => childrenOf(editorOf(wrapper), tag).length === 2)
+    const added = childrenOf(editorOf(wrapper), tag)[1]!
+    expect(added).toEqual({ tag: child, props: {}, content })
+    await until(() => dialog() !== null)
+    expect(dialog()!.querySelector(`section [data-prop="${prop}"]`)).not.toBeNull()
+  })
+})

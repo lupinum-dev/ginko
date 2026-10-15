@@ -5,9 +5,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUpdated, ref, toRaw, useId, watch } from 'vue'
 import { useI18n } from '#imports'
-import { Settings2 } from '@lucide/vue'
+import { Plus, Settings2 } from '@lucide/vue'
 import { fileRefOf, type ComponentRegistry } from '@lupinum/ginko/internal'
-import { componentMode, GINKO_ASSETS, propsSummary, type ComponentProps } from '@lupinum/ginko-editor'
+import { componentMode, GINKO_ASSETS, insertComponent, propsSummary, type ComponentProps } from '@lupinum/ginko-editor'
 import { inject } from 'vue'
 import { NodeViewContent, NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { Button } from '@studio/components/ui/button'
@@ -82,6 +82,23 @@ async function remove() {
   editor().commands.focus()
 }
 
+// A container (a gallery, tabs) gets one button per kind of child its registry entry names (not plain tags like `pre`):
+// the only way to add one, since its content holds no empty line for "/".
+const childTags = computed(() => (def.value?.children ?? []).filter((child) => options.components && Object.hasOwn(options.components, child) && options.components[child]!.kind === 'block'))
+const childLabel = (child: string) => shown(options.components![child]!.label)
+
+/** Adds a `child` at the end of the content (before the named slots, which come last) and opens its settings. */
+async function addChild(child: string) {
+  const pos = props.getPos()
+  if (pos === undefined || !options.components) return
+  let at = pos + props.node.nodeSize - 1
+  props.node.forEach((node, offset) => { if (node.type.name === 'slot') at = Math.min(at, pos + 1 + offset) })
+  const inserted = await insertComponent(editor(), { tag: child, profile: 'page', components: options.components, at, child: true })
+  if (!inserted) return
+  editor().commands.setNodeSelection(inserted.pos)
+  if (options.bus) options.bus.request = { pos: inserted.pos, missing: inserted.missing }
+}
+
 /**
  * A click on the frame (not on the text) selects the block. A click on the head of a card, or on the drawn
  * part of a live component (its title and symbol), also opens the settings: that is where people look for them.
@@ -153,6 +170,14 @@ function noFollow(event: MouseEvent) {
               <span v-if="summary" class="truncate">{{ summary }}</span>
             </div>
             <NodeViewContent class="ginko-block-content p-3" />
+            <div v-if="childTags.length" class="flex flex-wrap gap-2 border-t px-3 py-2" contenteditable="false">
+              <Button
+                v-for="child in childTags" :key="child" type="button" variant="outline" size="sm" class="[@media(pointer:coarse)]:h-11"
+                @click.stop="addChild(child)"
+              >
+                <Plus aria-hidden="true" />{{ t('editor.block.addChild', { label: childLabel(child) }) }}
+              </Button>
+            </div>
           </div>
         </div>
       </PopoverAnchor>

@@ -32,7 +32,11 @@ export interface ComponentDef<P extends Fields = Fields> {
   children?: readonly string[]
   /** This component may only appear directly inside one of these. */
   parents?: readonly string[]
-  /** Slash menu: `group` is the heading the entry is listed under, per language like `label`. */
+  /**
+   * Slash menu: `group` is the heading the entry is listed under, per language like `label`. `example` is the Markdown
+   * the menu inserts; its sample text shows as a placeholder. Without one the menu inserts the bare tag with no text
+   * line, so a component that takes text should have an example with one.
+   */
   editor?: { icon?: string; group?: Label; example?: string }
 }
 
