@@ -59,3 +59,29 @@ in `ginko.config.ts` (`pages.news: localized('/news')`, words per language in `a
 (`pages.menu`) plus the words of its own file-path parts from `segments`, so it needs no `pages` key (a key would also put
 the page into the sitemap and the prerender list). This is the only mechanism: a template has no table of its own.
 A feature page lists its page key in the table above.
+
+## Contact details: one source
+
+Email, phone and address are written once, in `content/site.md` (the `site` brick). The footer, the imprint rows of
+`/legal/<slug>`, the reservations and event buttons and `SiteContact` (`app/components/site/Contact.vue`: email, phone
+and address as links) read them from there; opening hours come from the hours bricks. A text never repeats a value:
+it says "write to us" and the page that shows the details (the pages feature's `components/pages/Top.vue` hook puts
+`<SiteContact />` under the title of one page, as the starter does for `pages/contact` and the nonprofit for
+`pages/get-involved`). Two checks keep it so: `sync --check` fails when the email or phone of `content/site.md` appears
+in another file of `content/`, `app/` or `i18n/`, and gate 3 looks for both in every page's footer and in the imprint.
+A person's own address (the `people` brick) is that person's data and may be linked in a text.
+
+## Script budget (gate 6)
+
+Gate 6 limits the gzip size of all script bodies a page loads (Chromium, 390 px wide, no cache) to 150 kB, counted as
+1024 bytes. A template that needs more sets `"ginko": { "scriptBudget": <kB> }` in its `package.json`: the measured
+maximum over its pages, rounded up to the next 5 kB, at most 170. Measured with the merging `cn` (tailwind-merge adds
+about 8 kB), 15 Oct 2026, largest page of each template:
+
+| Template | Largest page | Budget |
+|---|---|---|
+| starter | 138.6 kB (`/`, `/about`, `/contact`) | 150 (default) |
+| nonprofit | 146.1 kB (the news list) | 150 (default) |
+| restaurant | 156.3 kB (the events list and pages) | 160 (`scriptBudget`) |
+
+A template over 170 kB does not get a larger budget: find the biggest chunks and cut.
