@@ -37,7 +37,7 @@ export default defineNuxtConfig({
   ],
   // The whole Studio is one user-locale zone: no URL prefix; the person's language comes from the `ginko_locale`
   // cookie, then Accept-Language, then English. The account setting overrides it (useAccountLocale).
-  i18n: { locales: ['en', 'de', 'es'], defaultLocale: 'en', userLocale: ['/**'], baseUrl: siteUrl },
+  i18n: { locales: ['en', 'de', 'es', 'fr'], defaultLocale: 'en', userLocale: ['/**'], baseUrl: siteUrl },
   // `~` and `@` point at the host app, not at this layer, so the layer has its own alias for imports of its files.
   alias: { '@studio': here('./app') },
   // Absolute paths: the same reason. Tokens and Tailwind first, then the old CSS (it sits in a lower-priority layer).

@@ -25,7 +25,7 @@ export default defineNuxtModule<ModuleOptions>({
       const css = resolve(`./runtime/${file}`)
       if (!nuxt.options.css.includes(css)) nuxt.options.css.push(css)
     }
-    // Default UI texts (de, en); the host app overrides single keys under `components.*` in its own i18n folder.
+    // Default UI texts (de, en, fr, it, ar); the host app overrides single keys under `components.*` in its own i18n folder.
     nuxt.hook('ginko-i18n:sources', (sources) => { sources.push({ namespace: 'components', dir: resolve('../i18n') }) })
     // The UI texts come from ginko-i18n's `useI18n`; without the module the build fails on an unclear import error.
     nuxt.hook('modules:done', async () => {
