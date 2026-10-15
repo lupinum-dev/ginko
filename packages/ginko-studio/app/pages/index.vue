@@ -12,10 +12,11 @@ const { data: sites, error } = await useConvexQuery(api.sites.mine)
 // Open invitations for the signed-in address: signing in proves it, so no link is needed.
 const { data: invites } = useConvexQuery(api.invites.mine, {})
 const { mutate: acceptMine } = useConvexMutation(api.invites.acceptMine)
-const accepting = ref<string | null>(null)
+/** Invitations being accepted, one per row: a second row's answer does not unlock the first. */
+const accepting = reactive(new Set<string>())
 const problem = ref('')
 async function accept(invite: string) {
-  accepting.value = invite
+  accepting.add(invite)
   problem.value = ''
   try {
     const { site } = await acceptMine({ invite })
@@ -23,7 +24,7 @@ async function accept(invite: string) {
   } catch (e) {
     problem.value = opErrorOf(e).message
   } finally {
-    accepting.value = null
+    accepting.delete(invite)
   }
 }
 // One site and nothing waiting: no list to choose from, unless the person came here on purpose ("Meine Seiten" link, `?all`).
@@ -59,7 +60,7 @@ async function pickLocale(code: string) {
     <ul v-if="invites?.length" class="m-0 list-none overflow-hidden rounded-xl border border-primary p-0">
       <li v-for="i in invites" :key="i.invite" class="grid gap-2.5 border-b px-4 py-3 last:border-b-0">
         <p><I18nT k="sites.invitedTo" :params="{ site: i.site, role: t(`invite.role.${i.role}`) }"><template #site="{ text }"><strong class="font-medium">{{ text }}</strong></template></I18nT></p>
-        <Button type="button" size="sm" class="justify-self-start" :disabled="accepting === i.invite" @click="accept(i.invite)">{{ t('sites.accept') }}</Button>
+        <Button type="button" size="sm" class="justify-self-start" :disabled="accepting.has(i.invite)" @click="accept(i.invite)">{{ t('sites.accept') }}</Button>
       </li>
     </ul>
     <p v-if="error" class="text-destructive">{{ opErrorOf(error).message }}</p>
