@@ -15,7 +15,7 @@
     "list": "Liste",
     "signOut": "Abmelden",
     "signIn": "Anmelden",
-    "noAccessHelp": "Wenn du hier etwas ändern sollst, frag die Inhaberin, ob sie dich (wieder) einlädt.",
+    "noAccessHelp": "Brauchst du hier Zugang, frag die Person, die dich eingeladen hat.",
     "toReview": "Zu prüfen ({count})",
     "short": {
       "quick": "Heute",
@@ -34,14 +34,14 @@
     "title": "Meine Seiten",
     "invitedTo": "Einladung zu <site>{site}</site> als {role}",
     "accept": "Einladung annehmen",
-    "empty": "Du hast noch keinen Zugang zu einer Seite. Bitte frag nach einer Einladung.",
+    "empty": "Du hast zurzeit keinen Zugang zu einer Website. Brauchst du einen, frag die Person, die dich eingeladen hat.",
     "role": {
       "admin": "Admin",
       "owner": "Inhaber",
       "staff": "Mitarbeiter"
     },
     "remindTitle": "Erinnerungen per E-Mail",
-    "remindText": "Am Abend vor Wochenbeginn eine kurze Mail, wenn für nächste Woche noch etwas fehlt, zum Beispiel das Mittagsmenü.",
+    "remindText": "Am Abend vor Wochenbeginn eine kurze Mail, wenn für die nächste Woche noch etwas fehlt.",
     "language": "Sprache",
     "deleteAccount": {
       "title": "Konto löschen",
@@ -256,7 +256,7 @@
       "noEnd": "ohne Ablauf"
     },
     "quick": {
-      "nothingForYou": "Für dich gibt es hier keine Aufgaben. Frag die Inhaberin nach den passenden Rechten.",
+      "nothingForYou": "Für dich gibt es hier noch keine Aufgaben. Frag die Person, die dich eingeladen hat, nach den passenden Rechten.",
       "todayDone": "<task>{task}</task> ist für heute eingetragen.",
       "flagText": "„{text}“",
       "clearToday": "Aufheben",
@@ -270,7 +270,9 @@
     },
     "all": {
       "heading": "Alles bearbeiten",
+      "headingStaff": "Deine Bereiche",
       "lede": "Alle Bereiche der Website mit allen Feldern. Wähle einen Bereich.",
+      "ledeStaff": "Die Bereiche der Website, in denen du etwas ändern darfst.",
       "allAreas": "Alle Bereiche",
       "new": "Neu",
       "noEntries": "Noch keine Einträge.",
@@ -284,7 +286,7 @@
     },
     "area": {
       "missing": "Diesen Bereich gibt es nicht.",
-      "noAccess": "Diesen Bereich darfst du nicht bearbeiten. Frag die Inhaberin, wenn du hier etwas ändern musst."
+      "noAccess": "Diesen Bereich kannst du nicht bearbeiten. Musst du hier etwas ändern, frag die Person, die dich eingeladen hat."
     },
     "entry": {
       "missing": "Diesen Eintrag gibt es nicht (mehr)."

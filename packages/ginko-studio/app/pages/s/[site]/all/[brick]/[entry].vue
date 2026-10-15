@@ -48,7 +48,7 @@ function toList() { navigateTo(back.value.to) }
 <template>
   <AllShell :slug="s.slug.value" :bricks="editable" :current="key" :back="back">
     <p v-if="!brick || brick.kind !== 'collection'" class="text-destructive">{{ t('site.area.missing') }}</p>
-    <p v-else-if="!editable.some(([k]) => k === key)" class="text-destructive">{{ t('site.area.noAccess') }}</p>
+    <p v-else-if="!editable.some(([k]) => k === key)" class="text-muted-foreground">{{ t('site.area.noAccess') }}</p>
     <div v-else-if="loading" class="grid max-w-180 gap-4" role="status" :aria-label="t('entry.loading')">
       <Skeleton class="h-7 w-2/3" />
       <Skeleton class="h-10" />

@@ -13,8 +13,9 @@ useHead(() => ({ title: t('site.title.all', { site: s.site.value?.name ?? t('sit
   <AllShell :slug="s.slug.value" :bricks="editable" :removed-active="removedView" :back="removedView ? { to: `/s/${s.slug.value}/all`, label: t('site.all.allAreas') } : undefined">
     <RemovedList v-if="removedView" :slug="s.slug.value" :schema="s.schema.value" />
     <template v-else>
-      <h1 class="text-xl font-semibold tracking-tight">{{ t('site.all.heading') }}</h1>
-      <p class="mt-1 mb-4 text-muted-foreground">{{ t('site.all.lede') }}</p>
+      <!-- Staff see only the areas they hold a task in, so the page does not promise "everything". -->
+      <h1 class="text-xl font-semibold tracking-tight">{{ s.isManager.value ? t('site.all.heading') : t('site.all.headingStaff') }}</h1>
+      <p class="mt-1 mb-4 text-muted-foreground">{{ s.isManager.value ? t('site.all.lede') : t('site.all.ledeStaff') }}</p>
       <AllNav class="list min-[900px]:hidden" :slug="s.slug.value" :bricks="editable" />
     </template>
   </AllShell>

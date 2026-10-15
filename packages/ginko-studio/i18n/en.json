@@ -15,7 +15,7 @@
     "list": "List",
     "signOut": "Sign out",
     "signIn": "Sign in",
-    "noAccessHelp": "If you need to change something here, ask the owner to invite you (again).",
+    "noAccessHelp": "If you need access here, ask the person who invited you.",
     "toReview": "To review ({count})",
     "short": {
       "quick": "Today",
@@ -34,14 +34,14 @@
     "title": "My sites",
     "invitedTo": "<site>{site}</site> invites you as {role}.",
     "accept": "Accept invitation",
-    "empty": "You do not have access to a site yet. Please ask for an invitation.",
+    "empty": "You currently have no access to a website. If you need it, ask the person who invited you.",
     "role": {
       "admin": "Admin",
       "owner": "Owner",
       "staff": "Staff"
     },
     "remindTitle": "Reminders by email",
-    "remindText": "A short email the evening before the week starts if something for next week is still missing, for example the lunch menu.",
+    "remindText": "A short email the evening before the week starts if something for next week is still missing.",
     "language": "Language",
     "deleteAccount": {
       "title": "Delete account",
@@ -256,7 +256,7 @@
       "noEnd": "no end date"
     },
     "quick": {
-      "nothingForYou": "You have no tasks here. Ask the owner for the rights you need.",
+      "nothingForYou": "There are no tasks for you here yet. Ask the person who invited you for the rights you need.",
       "todayDone": "<task>{task}</task> is filled in for today.",
       "flagText": "“{text}”",
       "clearToday": "Clear",
@@ -270,7 +270,9 @@
     },
     "all": {
       "heading": "Edit everything",
+      "headingStaff": "Your areas",
       "lede": "All areas of the site with all fields. Choose an area.",
+      "ledeStaff": "The areas of the website where you may change something.",
       "allAreas": "All areas",
       "new": "New",
       "noEntries": "No entries yet.",
@@ -284,7 +286,7 @@
     },
     "area": {
       "missing": "This area does not exist.",
-      "noAccess": "You may not edit this area. Ask the owner if you need to change something here."
+      "noAccess": "You cannot edit this area. If you need to change something here, ask the person who invited you."
     },
     "entry": {
       "missing": "This entry does not exist (anymore)."

@@ -15,7 +15,7 @@
     "list": "Lista",
     "signOut": "Cerrar sesión",
     "signIn": "Iniciar sesión",
-    "noAccessHelp": "Si necesitas cambiar algo aquí, pide al propietario que te invite (de nuevo).",
+    "noAccessHelp": "Si necesitas acceso aquí, pregunta a la persona que te invitó.",
     "toReview": "Por revisar ({count})",
     "short": {
       "quick": "Hoy",
@@ -34,14 +34,14 @@
     "title": "Mis sitios",
     "invitedTo": "<site>{site}</site> te invita como {role}.",
     "accept": "Aceptar invitación",
-    "empty": "Todavía no tienes acceso a ningún sitio. Pide una invitación.",
+    "empty": "Ahora mismo no tienes acceso a ningún sitio. Si lo necesitas, pregunta a la persona que te invitó.",
     "role": {
       "admin": "Administrador",
       "owner": "Propietario",
       "staff": "Personal"
     },
     "remindTitle": "Recordatorios por correo",
-    "remindText": "Un correo breve la tarde antes de que empiece la semana si aún falta algo de la próxima semana, por ejemplo el menú del almuerzo.",
+    "remindText": "Un correo breve la tarde antes de que empiece la semana si aún falta algo de la próxima semana.",
     "language": "Idioma",
     "deleteAccount": {
       "title": "Eliminar cuenta",
@@ -256,7 +256,7 @@
       "noEnd": "sin fecha de fin"
     },
     "quick": {
-      "nothingForYou": "No tienes tareas aquí. Pide al propietario los permisos que necesitas.",
+      "nothingForYou": "Todavía no tienes tareas aquí. Pide los permisos que necesitas a la persona que te invitó.",
       "todayDone": "<task>{task}</task> está completado para hoy.",
       "flagText": "“{text}”",
       "clearToday": "Quitar",
@@ -270,7 +270,9 @@
     },
     "all": {
       "heading": "Editar todo",
+      "headingStaff": "Tus áreas",
       "lede": "Todas las áreas del sitio con todos sus campos. Elige un área.",
+      "ledeStaff": "Las áreas del sitio en las que puedes cambiar algo.",
       "allAreas": "Todas las áreas",
       "new": "Nuevo",
       "noEntries": "Aún no hay entradas.",
@@ -284,7 +286,7 @@
     },
     "area": {
       "missing": "Esta área no existe.",
-      "noAccess": "No puedes editar esta área. Pregunta al propietario si necesitas cambiar algo aquí."
+      "noAccess": "No puedes editar esta área. Si necesitas cambiar algo aquí, pregunta a la persona que te invitó."
     },
     "entry": {
       "missing": "Esta entrada ya no existe."
