@@ -188,7 +188,11 @@
       "timeTwiceFirst": "La primera vez ({time})",
       "timeTwiceSecond": "La segunda vez ({time})",
       "timePickOne": "Elige cuál de las dos horas quieres decir.",
-      "timeMissing": "Esta hora no existe ese día porque se adelanta el reloj. Elige otra hora."
+      "timeMissing": "Esta hora no existe ese día porque se adelanta el reloj. Elige otra hora.",
+      "go": "Publicar",
+      "review": "Enviar a revisión",
+      "asDraft": "Guardar como borrador",
+      "laterOpen": "Publicar más tarde"
     },
     "unpublish": {
       "button": "Quitar de la web",
@@ -470,6 +474,11 @@
       "notOnline": "Aún no está en línea",
       "none": "Todo está traducido.",
       "truncated": "Se muestran los primeros {count}."
+    },
+    "drafts": {
+      "since": "Borrador desde el {date}",
+      "goesLive": "Se publica el {date}",
+      "all": "Todos los borradores en Contenido"
     }
   },
   "editor": {
@@ -734,8 +743,6 @@
   "ops": {
     "saved": "Guardado.",
     "draftSaved": "Borrador guardado.",
-    "draftNotOnSite": "Borrador guardado. Aún no está en el sitio web.",
-    "draftScheduled": "Borrador guardado, en línea desde {time}.",
     "liveHint": "En el sitio web en aproximadamente un minuto.",
     "liveFrom": "En el sitio web a partir del {date}.",
     "translation": {
@@ -775,7 +782,9 @@
       "offline": "Sin conexión. Inténtalo de nuevo.",
       "aborted": "Cancelado."
     },
-    "purged": "“{title}” eliminada definitivamente."
+    "purged": "“{title}” eliminada definitivamente.",
+    "draftCreated": "Guardado como borrador.",
+    "scheduledGoesLive": "Programado. Se publica el {date}."
   },
   "review": {
     "title": "{site} · Revisar",

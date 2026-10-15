@@ -578,7 +578,8 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const files = fileIdsOf(brick.fields, data, { isUploadId: uploadIdsOf(ctx) })
     await checkFiles(ctx, actor.site._id, files, fileIdsOf(brick.fields, data, { only: 'image' }))
     // Without `drafts` an entry is always live. With it, only `publish: {}` goes live at once.
-    const draft = brick.drafts === true && (args.publish === undefined || args.publish.at !== undefined)
+    const lateAt = lapsed(actor, args.publish?.at)
+    const draft = brick.drafts === true && (args.publish === undefined || (args.publish.at !== undefined && !lateAt))
     const at = draft ? args.publish?.at : undefined
     // Checked before anything is written, so a late failure (apply of a proposal) leaves no half-done removal behind.
     if (at !== undefined) checkFuture(at)
@@ -621,7 +622,7 @@ export async function createAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const label = labelOf(schema, args.brick, data)
     const change = await ctx.db.insert('changes', {
       site: actor.site._id, entry, brick: args.brick, ...byOf(actor), opId: args.opId, kind: 'create',
-      ...recorded(!draft ? msg('history.created', { title: label }) : at === undefined ? msg('history.draftCreated', { title: label }) : msg('history.draftCreatedScheduled', { title: label, at }), schema),
+      ...recorded(!draft ? (lateAt ? msg('history.publishedLate', { title: label }) : msg('history.created', { title: label })) : at === undefined ? msg('history.draftCreated', { title: label }) : msg('history.draftCreatedScheduled', { title: label, at }), schema),
       after: data, entryRev: 1, contentRev: c.contentRev, at: Date.now(),
     })
     await syncEntryRefs(ctx, actor.site._id, entry, await entryUses(ctx, brick.fields, data, schema.locales))
@@ -820,6 +821,15 @@ export function checkFuture(at: number) {
   if (at > now + YEAR) fail('INVALID', 'errors.timeTooFarAhead')
 }
 
+/**
+ * A proposal that asked for a publish time is approved after that time: the approval publishes at once, it does not
+ * refuse (the author cannot send it again, and the approver did not choose the time). Only an approved proposal being
+ * applied (`approvedBy`) gets this; a person's own call with a past time is still refused by `checkFuture`.
+ */
+function lapsed(actor: Actor, at: number | undefined): boolean {
+  return actor.approvedBy !== undefined && at !== undefined && at <= Date.now()
+}
+
 async function cancelJob(ctx: MutationCtx, entry: Doc<'entries'>) {
   if (entry.publishJob) await ctx.scheduler.cancel(entry.publishJob)
 }
@@ -856,7 +866,9 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
     authorizeWriter(actor, schema, { task: args.task, brick: entry.brick })
     if (entry.deletedAt || entry.lifeRev !== args.lifeRev) fail('CHANGED_SINCE', 'errors.entryChangedMeanwhile', undefined, lifeStateOf(entry))
     if (stateOf(entry) !== 'draft') fail('INVALID', 'errors.entryAlreadyOnline', undefined, lifeStateOf(entry))
-    if (args.at !== undefined) checkFuture(args.at)
+    const late = lapsed(actor, args.at)
+    const at = late ? undefined : args.at
+    if (at !== undefined) checkFuture(at)
     // Everything the draft holds goes live, so every link in it counts as new (also when it is only scheduled: the job does not check again).
     await checkNewLinks(ctx, actor.site, [{ entry, fields: structuralBrick(schema, entry.brick).fields, before: {}, after: entry.data as Data }])
 
@@ -864,30 +876,30 @@ export async function publishAs(ctx: MutationCtx, actor: Actor, args: ObjectType
     if (await needsProposal(ctx, actor, 'publish', args.task, entry.brick, entry)) {
       return await propose(ctx, actor, {
         op: 'publish', brick: entry.brick, entry: entry._id, args: args as unknown as Json, base: { lifeRev: entry.lifeRev },
-        before: { state: 'draft' }, after: args.at === undefined ? { state: 'live' } : { state: 'draft', publishAt: args.at },
-        ...recorded(args.at === undefined ? msg('history.publishProposal', { title: label }) : msg('history.publishProposalScheduled', { title: label, at: args.at }), schema),
+        before: { state: 'draft' }, after: at === undefined ? { state: 'live' } : { state: 'draft', publishAt: at },
+        ...recorded(at === undefined ? msg('history.publishProposal', { title: label }) : msg('history.publishProposalScheduled', { title: label, at }), schema),
       })
     }
     const c = countersOf(actor.site)
     let change: Id<'changes'>
-    if (args.at === undefined) {
-      change = await goLive(ctx, c, entry, byOf(actor), args.opId, recorded(msg('history.published', { title: label }), schema))
+    if (at === undefined) {
+      change = await goLive(ctx, c, entry, byOf(actor), args.opId, recorded(msg(late ? 'history.publishedLate' : 'history.published', { title: label }), schema))
     } else {
       // A new time replaces the old job, so the entry never goes online at the old time.
       await cancelJob(ctx, entry)
-      const publishJob = await ctx.scheduler.runAt(args.at, internal.entries.publishDue, { entry: entry._id, at: args.at })
-      await ctx.db.patch(entry._id, { publishAt: args.at, publishJob, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1 })
+      const publishJob = await ctx.scheduler.runAt(at, internal.entries.publishDue, { entry: entry._id, at })
+      await ctx.db.patch(entry._id, { publishAt: at, publishJob, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1 })
       change = await ctx.db.insert('changes', {
         site: actor.site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: args.opId, kind: 'schedule',
-        ...recorded(msg('history.scheduled', { title: label, at: args.at }), schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: Date.now(),
+        ...recorded(msg('history.scheduled', { title: label, at }), schema), entryRev: entry.rev + 1, contentRev: c.contentRev, at: Date.now(),
       })
     }
     await writeCounters(ctx, actor.site._id, c)
     // What the other languages show of the entry that went online now (the Studio's message after publishing, as after a create).
-    const translation = args.at === undefined ? translationNotes(schema, entry.brick, entry, {}, Object.keys(structuralBrick(schema, entry.brick).fields)) : []
+    const translation = at === undefined ? translationNotes(schema, entry.brick, entry, {}, Object.keys(structuralBrick(schema, entry.brick).fields)) : []
     return {
       entry: entry._id, lifeRev: entry.lifeRev + 1, rev: entry.rev + 1, contentRev: c.contentRev, change,
-      state: args.at === undefined ? 'live' : 'draft', ...(args.at === undefined ? {} : { publishAt: args.at }), translation,
+      state: at === undefined ? 'live' : 'draft', ...(at === undefined ? {} : { publishAt: at }), translation,
     }
   })
 }
@@ -1230,7 +1242,11 @@ export const ofBricks = query({
     for (const key of new Set(args.bricks)) {
       const brick = Object.hasOwn(schema.bricks, key) ? schema.bricks[key]! : undefined
       if (!brick) continue
-      for (const row of await liveRowsOf(ctx, actor.site._id, key, brick)) out.push(args.slim && brick.kind === 'collection' ? slimEntry(brick, row) : editorEntry(row))
+      for (const row of await liveRowsOf(ctx, actor.site._id, key, brick)) {
+        const entry = args.slim && brick.kind === 'collection' ? slimEntry(brick, row) : editorEntry(row)
+        // A draft says since when it exists and whether the person made it: Heute lists a person's own drafts (staff see no others).
+        out.push(row.state === 'draft' ? { ...entry, since: row._creationTime, ...(createdBy(actor, row) ? { own: true } : {}) } : entry)
+      }
     }
     return out
   },

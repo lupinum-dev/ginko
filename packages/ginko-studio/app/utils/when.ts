@@ -55,6 +55,11 @@ export function whenText(ms: number, timeZone: string, format: Words['format']):
   return format.date(ms, { timeZone, day: 'numeric', month: 'short', ...CLOCK, ...zoneIfTwice(ms, timeZone) })
 }
 
+/** "Mi., 14. Okt., 09:00" in the site's time zone and the Studio's language: the weekday too, for a draft's age or the day it goes live. */
+export function whenWeekday(ms: number, timeZone: string, format: Words['format']): string {
+  return format.date(ms, { timeZone, weekday: 'short', day: 'numeric', month: 'short', ...CLOCK, ...zoneIfTwice(ms, timeZone) })
+}
+
 /** "02:30 MESZ": a clock with its zone's short name, to tell the two 02:30 of the night the clocks go back apart. */
 export function clockWithZone(ms: number, timeZone: string, format: Words['format']): string {
   return format.date(ms, { timeZone, ...CLOCK, timeZoneName: 'short' })

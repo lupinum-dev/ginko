@@ -188,7 +188,11 @@
       "timeTwiceFirst": "Das erste Mal ({time})",
       "timeTwiceSecond": "Das zweite Mal ({time})",
       "timePickOne": "Bitte wählen, welche der beiden Uhrzeiten gemeint ist.",
-      "timeMissing": "Diese Uhrzeit gibt es an diesem Tag nicht, weil die Uhr vorgestellt wird. Bitte eine andere Uhrzeit wählen."
+      "timeMissing": "Diese Uhrzeit gibt es an diesem Tag nicht, weil die Uhr vorgestellt wird. Bitte eine andere Uhrzeit wählen.",
+      "go": "Veröffentlichen",
+      "review": "Zur Prüfung senden",
+      "asDraft": "Als Entwurf speichern",
+      "laterOpen": "Später veröffentlichen"
     },
     "unpublish": {
       "button": "Zurückziehen",
@@ -470,6 +474,11 @@
       "notOnline": "Noch nicht online",
       "none": "Alles übersetzt.",
       "truncated": "Hier stehen die ersten {count}."
+    },
+    "drafts": {
+      "since": "Entwurf seit {date}",
+      "goesLive": "Geht online {date}",
+      "all": "Alle Entwürfe in Inhalte"
     }
   },
   "editor": {
@@ -734,8 +743,6 @@
   "ops": {
     "saved": "Gespeichert.",
     "draftSaved": "Entwurf gespeichert.",
-    "draftNotOnSite": "Entwurf gespeichert. Noch nicht auf der Website.",
-    "draftScheduled": "Entwurf gespeichert, online ab {time}.",
     "liveHint": "Auf der Website in etwa einer Minute.",
     "liveFrom": "Auf der Website ab {date}.",
     "translation": {
@@ -775,7 +782,9 @@
       "offline": "Keine Verbindung. Bitte versuche es noch einmal.",
       "aborted": "Abgebrochen."
     },
-    "purged": "„{title}“ endgültig gelöscht."
+    "purged": "„{title}“ endgültig gelöscht.",
+    "draftCreated": "Als Entwurf gespeichert.",
+    "scheduledGoesLive": "Geplant. Geht online {date}."
   },
   "review": {
     "title": "{site} · Prüfen",

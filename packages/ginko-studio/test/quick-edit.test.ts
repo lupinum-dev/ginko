@@ -286,3 +286,45 @@ test.each([
   expect(flag.exists() ? [flag.attributes('data-k'), flag.text() || undefined] : [undefined, undefined]).toEqual([key, date])
   wrapper.unmount()
 })
+
+// Wrong behaviour caught: on a drafts collection that also expires its entries, a draft sat in the list of what is
+// on the website, and nothing on Heute offered to publish it (or, for staff, showed someone else's draft).
+test('a drafts collection lists its drafts apart from what is on the website, staff only their own', async () => {
+  const withDrafts = serializeSchema(defineSite({
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    pages: { home: { de: '/' } },
+    bricks: {
+      notices: collection({
+        label: 'Hinweise', max: 20, order: 'manual', drafts: true,
+        fields: { text: f.text('Text'), until: f.date('Gilt bis', { optional: true }) },
+        visible: { mode: 'until', field: 'until' },
+        tasks: [{ id: 'add', label: 'Hinweis hinzufügen', kind: 'create' }],
+      }),
+    },
+  }))
+  schema = withDrafts
+  const since = Date.parse('2026-10-14T07:00:00Z')
+  listed = [
+    notice('e1', 'Online'),
+    { ...notice('d1', 'Mein Entwurf'), state: 'draft', own: true, since },
+    { ...notice('d2', 'Fremder Entwurf'), state: 'draft', since },
+  ]
+  try {
+    const page = () => mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
+      global: { stubs: { TaskSheet: true, PickSheet: true, I18nT: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    })
+    const staff = page()
+    await flushPromises()
+    expect(staff.findAll('li').map((li) => li.text())).toEqual(['Onlinebis 20.10.2026', 'Mein EntwurfEntwurf seit Mi., 14. Okt., 09:00Veröffentlichen'])
+    staff.unmount()
+
+    manager = true
+    const owner = page()
+    await flushPromises()
+    expect(owner.findAll('[data-test="today-drafts"] li span.font-medium').map((el) => el.text())).toEqual(['Mein Entwurf', 'Fremder Entwurf'])
+    owner.unmount()
+  } finally {
+    manager = false
+    schema = notices
+  }
+})

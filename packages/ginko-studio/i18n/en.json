@@ -188,7 +188,11 @@
       "timeTwiceFirst": "The first time ({time})",
       "timeTwiceSecond": "The second time ({time})",
       "timePickOne": "Please choose which of the two times you mean.",
-      "timeMissing": "This time does not exist on that day because the clocks go forward. Please choose another time."
+      "timeMissing": "This time does not exist on that day because the clocks go forward. Please choose another time.",
+      "go": "Publish",
+      "review": "Send for review",
+      "asDraft": "Save as draft",
+      "laterOpen": "Publish later"
     },
     "unpublish": {
       "button": "Take offline",
@@ -470,6 +474,11 @@
       "notOnline": "Not online yet",
       "none": "Everything is translated.",
       "truncated": "Showing the first {count}."
+    },
+    "drafts": {
+      "since": "Draft since {date}",
+      "goesLive": "Goes live {date}",
+      "all": "All drafts in Content"
     }
   },
   "editor": {
@@ -734,8 +743,6 @@
   "ops": {
     "saved": "Saved.",
     "draftSaved": "Draft saved.",
-    "draftNotOnSite": "Draft saved. Not on the website yet.",
-    "draftScheduled": "Draft saved, online from {time}.",
     "liveHint": "On the website in about a minute.",
     "liveFrom": "On the website from {date}.",
     "translation": {
@@ -775,7 +782,9 @@
       "offline": "No connection. Please try again.",
       "aborted": "Cancelled."
     },
-    "purged": "“{title}” deleted for good."
+    "purged": "“{title}” deleted for good.",
+    "draftCreated": "Saved as a draft.",
+    "scheduledGoesLive": "Scheduled. Goes live {date}."
   },
   "review": {
     "title": "{site} · Review",

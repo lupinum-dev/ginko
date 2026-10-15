@@ -1,7 +1,8 @@
 <!-- The task form (UI.md 3.1, 3.2): only the task's fields, prefilled by the server, saved with one
      opId per attempt. Conflicts keep the person's input and show the new state next to it. On a site
      with more languages, a switch shows the texts to translate; one Speichern stores every language. The person's own
-     proposal on the entry (SPEC 17) is where an edit starts while it waits; a rejected one can be reopened. -->
+     proposal on the entry (SPEC 17) is where an edit starts while it waits; a rejected one can be reopened. A create task
+     on a collection with drafts ends in a publish step (TEMPLATES 7.3): Veröffentlichen, Als Entwurf speichern, Später veröffentlichen. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Brick, Json, Label as LabelText, Locale } from '@lupinum/ginko'
@@ -12,6 +13,7 @@ import LanguageSwitch from './LanguageSwitch.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
 import ConflictPanel from './ConflictPanel.vue'
+import ScheduleField from './ScheduleField.vue'
 import ProposalWithdraw from './ProposalWithdraw.vue'
 import { provideSiteRefs } from '../composables/useSiteRefs'
 import { Button } from '@studio/components/ui/button'
@@ -25,7 +27,7 @@ import { opErrorOf } from '../composables/useOps'
 import { isModKey } from '../utils/keys'
 import { shrunkHint, shrunkTexts } from '../utils/shrunk'
 import { refDebounced } from '@vueuse/core'
-import { whenFull } from '../utils/when'
+import { msToZoned, scheduleProblem, whenFull } from '../utils/when'
 import { whoText } from '../utils/who'
 
 const props = defineProps<{
@@ -51,6 +53,8 @@ const props = defineProps<{
   copyFrom?: string
   /** Opened to fix this rejected own proposal ("Korrigieren"): the form starts from its values. */
   reopen?: string
+  /** The person is staff and the task needs approval (SPEC 17): what goes live waits for a yes, so the primary button sends it for review. */
+  approval?: boolean
 }>()
 const emit = defineEmits<{ close: [] }>()
 const { t, format, locale: uiLocale } = useI18n()
@@ -75,6 +79,7 @@ const form = useEntryForm({
   // A create task makes a new entry even when one is passed.
   entry: () => (isCreate.value ? undefined : props.entry),
   main: () => props.main,
+  timeZone: () => props.schema.timeZone,
   // Every language in one save (the switch below); local copies stay with the main language and hold whole values.
   locale: () => props.main,
   allLanguages: true,
@@ -307,15 +312,44 @@ async function finish(ok: boolean) {
   // A proposal keeps the sheet open with the person's input and the waiting line; the toast already said where it went.
   if (ok && !dirty.value && !waiting.value) emit('close')
 }
-async function save() {
+// The publish step (TEMPLATES 7.3): a create task on a collection with drafts asks what happens to the new entry.
+const publishStep = computed(() => isCreate.value && props.brick.kind === 'collection' && props.brick.drafts === true)
+const later = ref(false)
+const at = ref('')
+/** The instant `at` names (ScheduleField); undefined while it names none or two. */
+const picked = ref<number>()
+const laterProblem = ref('')
+const HOUR = 60 * 60 * 1000
+/** "Später veröffentlichen" opens the date and time, suggested as tomorrow 9:00 at the site, like the publish panel of Alles bearbeiten. */
+function toggleLater() {
+  later.value = !later.value
+  laterProblem.value = ''
+  if (later.value && !at.value) at.value = `${msToZoned(Date.now() + 24 * HOUR, props.schema.timeZone).slice(0, 10)}T09:00`
+  if (later.value) nextTick(() => document.getElementById('sheet-publish-at')?.focus())
+}
+/** What a save does with the new entry: `publish` goes online now (or waits for a yes), `draft` stays off the website, `later` is planned. */
+type Step = 'publish' | 'draft' | 'later'
+async function save(step: Step = 'publish') {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
   if (busy.value || !ready.value || removedHere.value) return
+  laterProblem.value = ''
+  let publish: { at?: number } | undefined
+  if (publishStep.value && step !== 'draft') {
+    if (step === 'later') {
+      const problem = scheduleProblem(at.value, props.schema.timeZone, picked.value, Date.now())
+      if (problem) {
+        if (problem !== 'entry.publish.timeMissing') laterProblem.value = t(problem)
+        return
+      }
+      publish = { at: picked.value }
+    } else publish = {}
+  }
   if (form.blockers.size) {
     // "Noch richtig?" asks about the choices next to a changed German text, which only the main language shows.
     await switchLanguage(props.main)
     nextTick(() => dialog.value?.querySelector<HTMLElement>('.check button')?.focus())
   }
-  await finish(await form.save())
+  await finish(await form.save(undefined, publish))
 }
 /** Cmd/Ctrl+S anywhere in the sheet's form saves like the button, never the browser's "Save page as". */
 function onFormKey(event: KeyboardEvent) {
@@ -323,7 +357,8 @@ function onFormKey(event: KeyboardEvent) {
   event.preventDefault()
   // Asked "Änderungen verwerfen?": saving is the clear answer, so the question goes and the save runs.
   confirmClose.value = false
-  save()
+  // On the publish step the key keeps the entry off the website: nobody publishes by pressing Ctrl+S.
+  save(publishStep.value ? 'draft' : 'publish')
 }
 async function keepMine() {
   await finish(await form.keepMine())
@@ -393,7 +428,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 <template>
   <dialog ref="dialog" :class="SHEET_DIALOG" aria-labelledby="sheet-title" @cancel="onCancel" @close="onBrowserClose">
     <ConfigProvider :teleport-to="dialog ?? undefined" :use-id="reka.useId">
-      <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()" @keydown="onFormKey">
+      <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save(publishStep ? 'draft' : 'publish')" @keydown="onFormKey">
         <header class="flex items-start justify-between gap-3 border-b bg-card pt-4 pb-3 pr-3 pl-5">
           <div class="grid min-w-0 gap-2">
             <div>
@@ -475,8 +510,18 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
           </template>
           <template v-else>
             <p v-if="shrunk.length" id="sheet-shrunk" class="basis-full text-sm text-muted-foreground">{{ shrunk.join(' ') }}</p>
+            <div v-if="publishStep && later" class="grid basis-full gap-2" data-test="publish-later" @keydown.enter.prevent="save('later')">
+              <label for="sheet-publish-at" class="text-sm font-medium">{{ t('entry.publish.dateTime') }}</label>
+              <ScheduleField v-model:local="at" v-model:picked="picked" :zone="schema.timeZone" input-id="sheet-publish-at" />
+              <p v-if="laterProblem" class="text-sm font-medium text-destructive" role="alert">{{ laterProblem }}</p>
+            </div>
             <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-            <Button type="submit" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : t('entry.save.save') }}</Button>
+            <!-- On the publish step only a press on this button publishes (Enter in a field saves a draft, like Ctrl+S); with the time open it plans instead, so there is one primary per state. -->
+            <Button :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : publishStep ? (approval ? t('entry.publish.review') : later ? t('entry.publish.schedule') : t('entry.publish.go')) : t('entry.save.save') }}</Button>
+            <template v-if="publishStep">
+              <Button type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ t('entry.publish.asDraft') }}</Button>
+              <Button type="button" variant="outline" :aria-expanded="later" @click="toggleLater">{{ t('entry.publish.laterOpen') }}</Button>
+            </template>
             <Button type="button" variant="ghost" @click="requestClose">{{ t('entry.cancel') }}</Button>
           </template>
         </footer>

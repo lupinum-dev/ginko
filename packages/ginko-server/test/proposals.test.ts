@@ -125,6 +125,71 @@ describe('when a write needs a yes', () => {
   })
 })
 
+describe('approving after the planned publish time', () => {
+  const dish = { category: 'starters', name: { de: 'Neu' }, price: { amount: 900 }, allergens: ['A'], veg: 'none' }
+  /** The menu keeps drafts; the cook's tasks need approval. */
+  async function draftsSetup() {
+    const s = await approvalSetup()
+    await s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      const schema = site.schema as Schema
+      ;(schema.bricks.menu as { drafts?: boolean }).drafts = true
+      await ctx.db.patch(s.site, { schema })
+    })
+    return s
+  }
+
+  // Wrong behaviour caught: the approval was refused ("time must be in the future") and the cook's dish stayed unpublished,
+  // with the proposal marked stale, because the owner took longer to decide than the cook's planned time.
+  it('a scheduled publish of an existing draft goes live at once, clamped to now, and the history says why', async () => {
+    const s = await draftsSetup()
+    const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish })
+    const sent = await s.as.cook.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), task: 'menu.add', entry: draft.entry as Id<'entries'>, lifeRev: 1, at: NOW + HOUR })
+    expect(sent).toMatchObject({ status: 'open' })
+
+    await s.advanceTo(NOW + 3 * HOUR)
+    const done = await s.as.owner.mutation(api.proposals.approve, { proposal: (sent as Proposed).proposal })
+    expect(done).toMatchObject({ status: 'applied' })
+    const published = (await s.row(draft.entry as Id<'entries'>))!
+    expect(published).toMatchObject({ state: 'live', contentAt: NOW + 3 * HOUR })
+    expect(published.publishAt).toBeUndefined()
+    const changes = await s.rows('changes')
+    expect(changes.filter((c) => c.kind === 'publish')).toEqual([expect.objectContaining({ at: NOW + 3 * HOUR, msg: { key: 'history.publishedLate', params: { title: 'Neu' } } })])
+    // Nothing is left to publish later.
+    expect(await s.t.run((ctx) => ctx.db.system.query('_scheduled_functions').collect())).not.toContainEqual(expect.objectContaining({ name: 'entries:publishDue', state: { kind: 'pending' } }))
+  })
+
+  it('a scheduled create goes live at once when approved after its time', async () => {
+    const s = await draftsSetup()
+    const sent = await s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish, publish: { at: NOW + HOUR } })
+    expect(sent).toMatchObject({ status: 'open' })
+    expect(await s.t.run((ctx) => ctx.db.query('entries').collect()).then((rows) => rows.filter((r) => r.brick === 'menu' && r.data.name?.de === 'Neu'))).toHaveLength(0)
+
+    await s.advanceTo(NOW + 2 * HOUR)
+    expect(await s.as.owner.mutation(api.proposals.approve, { proposal: (sent as Proposed).proposal })).toMatchObject({ status: 'applied' })
+    const rows = (await s.t.run((ctx) => ctx.db.query('entries').collect())).filter((r) => r.brick === 'menu' && (r.data.name as { de?: string })?.de === 'Neu')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.state ?? 'live').toBe('live')
+    expect(rows[0]!.publishAt).toBeUndefined()
+  })
+
+  it('approved before its time the entry stays a scheduled draft', async () => {
+    const s = await draftsSetup()
+    const sent = await s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish, publish: { at: NOW + 3 * HOUR } })
+    await s.advanceTo(NOW + HOUR)
+    expect(await s.as.owner.mutation(api.proposals.approve, { proposal: (sent as Proposed).proposal })).toMatchObject({ status: 'applied' })
+    const rows = (await s.t.run((ctx) => ctx.db.query('entries').collect())).filter((r) => r.brick === 'menu' && (r.data.name as { de?: string })?.de === 'Neu')
+    expect(rows).toEqual([expect.objectContaining({ state: 'draft', publishAt: NOW + 3 * HOUR })])
+  })
+
+  it('a person calling publish with a time in the past is still refused', async () => {
+    const s = await draftsSetup()
+    const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish })
+    const error = await errorOf(s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: draft.entry as Id<'entries'>, lifeRev: 1, at: NOW - HOUR }))
+    expect(error.code).toBe('INVALID')
+  })
+})
+
 describe('approving', () => {
   // Wrong behaviour caught: the proposal of a copy forgets it is a copy, so on approval the create task's fields check
   // refuses the carried-over soldOutOn and the approved copy goes stale.

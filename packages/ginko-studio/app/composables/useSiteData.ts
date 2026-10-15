@@ -25,8 +25,10 @@ export interface Entry {
   deleted?: boolean
   /** Per foreign language, its translation state as the website shows it (entries.get and entries.single only; none for drafts). */
   translation?: Record<string, StoredTranslation>
-  /** The person created it through a create task, so staff may change it with that task (entries.get only). */
+  /** The person created it through a create task, so staff may change it with that task (entries.get, and the drafts entries.ofBricks lists). */
   own?: boolean
+  /** When a draft was made (entries.ofBricks lists it for drafts only). */
+  since?: number
 }
 
 export async function useSiteData() {

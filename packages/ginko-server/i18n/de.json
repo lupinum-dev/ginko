@@ -240,6 +240,7 @@
     "publishStoppedBrokenLink": "„{title}“ ging nicht online: Der Link „{link}“ führt ins Leere.",
     "published": "„{title}“ veröffentlicht",
     "publishedDue": "„{title}“ veröffentlicht (geplant)",
+    "publishedLate": "„{title}“ sofort veröffentlicht (die geplante Zeit war bei der Freigabe schon vorbei)",
     "scheduled": "„{title}“: online ab {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "unpublishProposal": "„{title}“ zurückziehen",
     "unscheduleProposal": "„{title}“: Zeitplan aufheben",

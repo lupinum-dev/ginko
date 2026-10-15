@@ -14,6 +14,7 @@ import { Button } from '@studio/components/ui/button'
 import { api } from '#convex/api'
 import EntryRemoveDialog, { type EntryUses, type TrashOverflow } from '../../../components/EntryRemoveDialog.vue'
 import LocalDraftList from '../../../components/LocalDraftList.vue'
+import TodayDrafts from '../../../components/TodayDrafts.vue'
 import { allAccess } from '../../../composables/useAll'
 
 definePageMeta({ layout: 'site' })
@@ -48,7 +49,7 @@ const shownBricks = computed(() => {
     if (brick.kind === 'single') {
       keys.add(key)
       for (const [k, b] of s.bricks.value) if (b.kind === 'collection' && b.plans?.brick === key) keys.add(k)
-    } else if (isTimed(brick)) {
+    } else if (isTimed(brick) || (brick.kind === 'collection' && brick.drafts === true)) {
       keys.add(key)
       // A week planned ahead can start from the one the single shows this week ("Von dieser Woche übernehmen").
       if (brick.plans) keys.add(brick.plans.brick)
@@ -68,7 +69,8 @@ const sections = computed<Section[]>(() => withTasks.value.map(([key, brick]) =>
   const tasks = (brick.tasks ?? []).filter((t) => s.may(key, t))
   const remove = tasks.find((t) => t.kind === 'remove')
   const timed = isTimed(brick)
-  const listed = timed ? entriesOf(key) : []
+  // Drafts are not on the website: they have their own list below (TodayDrafts).
+  const listed = timed ? entriesOf(key).filter((e) => e.state !== 'draft') : []
   const buttons = tasks.filter((t) => t.kind !== 'remove' || !(timed && listed.length <= 10))
   return { key, brick, tasks, buttons, remove, listed }
 }))
@@ -462,6 +464,8 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
         <Button v-if="listings[sec.key]!.hiddenExpired" type="button" variant="outline" @click="showExpired(sec.key)">{{ t('site.quick.showExpired', { count: listings[sec.key]!.hiddenExpired }) }}</Button>
       </div>
 
+      <TodayDrafts v-if="sec.brick.kind === 'collection' && sec.brick.drafts" :slug="s.slug.value" :brick-key="sec.key" :brick="sec.brick" :entries="entriesOf(sec.key)" :tasks="sec.tasks" :is-manager="s.isManager.value" :main="s.main.value" :time-zone="s.schema.value!.timeZone" />
+
       <!-- Phone: the main task full width, the others in two columns; from sm they wrap in one row. Quick tasks are
            secondary (row D); only the first task of a due section (a status that is due, or the week is not entered)
            is filled. -->
@@ -491,6 +495,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       :existing="existing"
       :copy-from="copyFrom"
       :reopen="open.reopen"
+      :approval="!s.isManager.value && open.task.needsApproval === true"
       @close="open = null"
     />
     <EntryRemoveDialog

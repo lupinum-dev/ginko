@@ -240,6 +240,7 @@
     "publishStoppedBrokenLink": "“{title}” did not go live: the link “{link}” leads nowhere.",
     "published": "“{title}” published",
     "publishedDue": "“{title}” published (as scheduled)",
+    "publishedLate": "“{title}” published at once (the planned time had already passed at approval)",
     "scheduled": "“{title}”: online from {at, date, ::MMMd}, {twice, select, yes {{at, time, ::HHmmz}} other {{at, time, ::HHmm}}}",
     "unpublishProposal": "Take “{title}” offline",
     "unscheduleProposal": "“{title}”: cancel the schedule",
