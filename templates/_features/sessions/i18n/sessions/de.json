@@ -1,0 +1,29 @@
+{
+  "programme": {
+    "title": "Programm",
+    "lead": "Alle Programmpunkte nach Tagen, mit Uhrzeit, Raum und Vortragenden.",
+    "days": "Tage",
+    "all": "Ganzes Programm",
+    "empty": "Noch keine Programmpunkte"
+  },
+  "status": {
+    "soldOut": "Ausgebucht",
+    "cancelled": "Abgesagt"
+  },
+  "nowNext": {
+    "title": "Jetzt und gleich",
+    "at": "Stand {time} Uhr",
+    "now": "Jetzt",
+    "next": "Als Nächstes, ab {time} Uhr",
+    "nothing": "Gerade läuft nichts.",
+    "over": "Das Programm für heute ist zu Ende."
+  },
+  "speakers": {
+    "title": "Vortragende",
+    "lead": "Wer spricht, und wann.",
+    "all": "Alle Vortragenden",
+    "sessions": "Programmpunkte",
+    "none": "Derzeit sind keine Programmpunkte geplant.",
+    "empty": "Noch keine Vortragenden"
+  }
+}

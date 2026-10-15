@@ -1,0 +1,14 @@
+[
+  "app/components/event/Programme.vue",
+  "app/components/session/NowNext.vue",
+  "app/components/session/Programme.vue",
+  "app/components/session/Row.vue",
+  "app/components/session/Speakers.vue",
+  "app/composables/useSessions.ts",
+  "app/pages/programme.vue",
+  "app/pages/speakers/[slug].vue",
+  "app/pages/speakers/index.vue",
+  "app/utils/sessions.ts",
+  "i18n/sessions/de.json",
+  "i18n/sessions/en.json"
+]
