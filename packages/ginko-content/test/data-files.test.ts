@@ -27,6 +27,7 @@ const schema = serializeSchema(defineSite({
       route: { de: '/doku/[slug]', en: '/en/docs/[slug]' },
       fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text') },
     }),
+    termine: collection({ label: 'Termine', source: 'files', max: 50, order: 'manual', fields: { angebot: f.ref('Angebot', { to: 'angebote' }), title: f.text('Titel') } }),
   },
 }))
 
@@ -123,6 +124,17 @@ describe('drafts', () => {
     expect(r.errors).toEqual([])
     expect(r.entries.angebote!.map((e) => e.id)).toEqual(offers)
     expect(r.entries.docs!.map((e) => e.id)).toEqual(docs)
+  })
+
+  // Wrong behaviour caught: the sessions of a draft event on the site (and in its data), although the event is not.
+  it.each([[{ drafts: false }, ['termine/fertig']], [undefined, ['termine/entwurf', 'termine/fertig']]])('an entry of a draft goes with it, with %j', async (options, dates) => {
+    const r = await read({
+      ...files,
+      'content/termine/1.entwurf.md': '---\nangebot: angebote/yaml-entwurf\ntitle: Zum Entwurf\n---\n',
+      'content/termine/2.fertig.md': '---\nangebot: angebote/fertig\ntitle: Zum fertigen Angebot\n---\n',
+    }, options)
+    expect(r.errors).toEqual([])
+    expect(r.entries.termine!.map((e) => e.id)).toEqual(dates)
   })
 
   // Wrong behaviour caught: a shown draft loses its flag, so the site cannot mark it, or a finished entry gets one.

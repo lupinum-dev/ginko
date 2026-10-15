@@ -323,6 +323,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     known.set(key, new Set((await entryNames(join(contentDir, key))).map((name) => `${key}/${name}`)))
   }
   const refs = (brick: string, id: string) => known.get(brick)?.has(id) ?? true
+  // Entries left out as drafts: an entry that belongs to one goes with it (below).
+  const leftOut = new Set<string>()
 
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (brick.source !== 'files') continue
@@ -408,6 +410,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const mainRel = group.main.rel
 
       const mainView = await readDoc(group.main, true)
+      if (mainView === 'draft') leftOut.add(id)
       if (mainView === undefined || mainView === 'draft') continue
       const views: Partial<Record<Locale, View>> = { [main]: mainView.view }
       // The parsed body per locale; it replaces the body text once validate() has checked the text.
@@ -558,6 +561,21 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
       errors.push(...fileErrors)
       return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, draft: draft === true ? true : undefined }
+    }
+  }
+
+  // An entry whose required single ref names a draft that was left out (a session of a draft event) is left out too:
+  // it belongs to something that is not public yet. Repeated while that removes more (a chain of such refs).
+  for (let size = -1; size !== leftOut.size;) {
+    size = leftOut.size
+    for (const [key, list] of Object.entries(entries)) {
+      const owners = Object.entries(schema.bricks[key]?.fields ?? {}).filter(([, field]) => field.type === 'ref' && !field.multiple && !field.optional).map(([name]) => name)
+      if (owners.length === 0) continue
+      entries[key] = list.filter((entry) => {
+        const draft = owners.some((name) => leftOut.has(entry.data[name] as string))
+        if (draft) leftOut.add(entry.id)
+        return !draft
+      })
     }
   }
 
