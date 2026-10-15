@@ -9,6 +9,7 @@
   "time": "Time",
   "place": "Place",
   "price": "Price",
+  "perPerson": "{price} per person",
   "online": "Online",
   "book": "Book a place",
   "reserve": "Reserve your place by phone or email.",

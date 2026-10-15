@@ -3,7 +3,7 @@ import { safeHref } from '@lupinum/ginko'
 import { ArrowLeft, Mail, Phone } from '@lucide/vue'
 
 // One event: date with weekday and time (site time zone), place, price, the description, and how to take part: the
-// booking link, else phone and email of the house (content/site.md); "fully booked" replaces both. Event JSON-LD
+// booking link, else phone and email of the business (content/site.md); "fully booked" replaces both. Event JSON-LD
 // with the time zone offset. An unknown or past event is a 404.
 const route = useRoute()
 const event = useGinkoEntry('events', () => route.params.slug)

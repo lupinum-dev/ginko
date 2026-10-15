@@ -16,6 +16,14 @@ export interface EventFacts {
   image?: ImageValue | null
 }
 
+/** A price in the page's language, without minor units when the amount is whole ("€38", "€12.50"). */
+export function wholeMoney(money: Money, language: string): string {
+  const digits = new Intl.NumberFormat('en', { style: 'currency', currency: money.currency }).resolvedOptions().maximumFractionDigits ?? 2
+  const value = money.amount / 10 ** digits
+  if (!Number.isInteger(value)) return formatMoney(money, language)
+  return new Intl.NumberFormat(language, { style: 'currency', currency: money.currency, maximumFractionDigits: 0 }).format(value).replace(/\s/g, ' ')
+}
+
 /**
  * Texts of an event in the page's language: the date with its weekday (a range for several days) and the clock times
  * as the owner entered them, in the site's time zone; the price; "fully booked".
@@ -34,7 +42,8 @@ export function useEventText() {
   }
   /** "Fri, 29 Jan 2027 · 19:00" */
   const when = (event: EventFacts, style: 'long' | 'short' = 'long') => [dates(event, style), times(event)].filter(Boolean).join(' · ')
-  const price = (event: EventFacts) => (event.price ? formatMoney(event.price, language.value) : undefined)
+  /** "€38 per person": a whole amount without minor units, which read like a till receipt ("€38.00"). */
+  const price = (event: EventFacts) => (event.price ? t('perPerson', { price: wholeMoney(event.price, language.value) }) : undefined)
   /** Price and "fully booked", for a list. */
   const status = (event: EventFacts) => [price(event), event.soldOut ? t('soldOut') : undefined].filter(Boolean).join(' · ') || undefined
   return { dates, times, when, price, status }
@@ -48,15 +57,15 @@ export function useUpcomingEvents(limit?: () => number | undefined) {
     key: item.id,
     title: item.data.title,
     to: item.url ?? '',
-    meta: when(item.data, 'short'),
-    text: status(item.data),
+    // Date, time, price and "fully booked" in one line of tabular numbers above the title.
+    meta: [when(item.data, 'short'), status(item.data)].filter(Boolean).join(' · '),
     image: item.data.image ?? undefined,
   })))
 }
 
 /**
  * schema.org Event for an event page: dates with the site's time zone offset, the place (the event's own, else the
- * house from content/site.md), price, booking link or "sold out". `description` is the page's Markdown tree.
+ * business from content/site.md), price, booking link or "sold out". `description` is the page's Markdown tree.
  */
 export function useEventJsonLd(event: () => EventFacts & { url: string }, description: () => MarkdownTree | null | undefined) {
   const site = useGinko('site')
@@ -65,10 +74,10 @@ export function useEventJsonLd(event: () => EventFacts & { url: string }, descri
   const absolute = (path: string) => new URL(path, url).href
   return computed(() => {
     const e = event()
-    const house = site.value.data
+    const own = site.value.data
     const location = e.location
       ? { name: e.location }
-      : e.online ? undefined : { name, address: { street: house.street ?? '', postalCode: house.postalCode, city: house.city ?? '' } }
+      : e.online ? undefined : { name, address: { street: own.street ?? '', postalCode: own.postalCode, city: own.city ?? '' } }
     return eventJsonLd({
       title: e.title,
       url: absolute(e.url),

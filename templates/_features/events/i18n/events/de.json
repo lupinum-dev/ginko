@@ -9,6 +9,7 @@
   "time": "Uhrzeit",
   "place": "Ort",
   "price": "Preis",
+  "perPerson": "{price} pro Person",
   "online": "Online",
   "book": "Platz buchen",
   "reserve": "Reservieren Sie Ihren Platz telefonisch oder per E-Mail.",
