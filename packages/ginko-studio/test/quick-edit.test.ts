@@ -7,6 +7,7 @@ import { expect, test, vi } from 'vitest'
 import { collection, defineSite, f } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
+import AllPage from '../app/pages/s/[site]/all/index.vue'
 import QuickPage from '../app/pages/s/[site]/index.vue'
 import { localDraftKey, writeLocalDraft } from '../app/composables/useLocalDraft'
 
@@ -32,10 +33,12 @@ vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})
 vi.stubGlobal('navigateTo', () => {})
 vi.stubGlobal('useToast', () => ({ show: () => {} }))
+let manager = false
 vi.stubGlobal('useSiteData', async () => ({
   slug: ref('restaurant'), schema: ref(schema), site: ref({ name: 'Restaurant' }), main: ref('de'), today: ref('2026-10-15'),
-  isManager: ref(false), may: () => true, bricks: computed(() => Object.entries(schema.bricks)),
+  isManager: ref(manager), may: () => true, bricks: computed(() => Object.entries(schema.bricks)),
 }))
+vi.stubGlobal('useRoute', () => ({ query: {} }))
 vi.stubGlobal('useConvexAuth', () => ({ user: ref({ id: 'u1' }) }))
 vi.stubGlobal('useKeptEntry', () => ({ entry: ref(undefined), removed: ref(false) }))
 vi.stubGlobal('useConvexQuery', (fn: unknown) => ({
@@ -120,5 +123,26 @@ test('Heute lists this person\'s unsaved input on this site, newest first, and e
     expect(wrapper.findComponent({ name: 'TaskSheet' }).props()).toMatchObject({ brickKey: 'notices', task: { id: 'add' } })
   } finally {
     localStorage.clear()
+  }
+})
+
+// Wrong behaviour caught: an owner or admin of a site without quick tasks is sent from Heute to Alles bearbeiten, so they
+// never saw the unsaved input of the entries they edit there.
+test('Alles bearbeiten lists the unsaved input too; input typed in a quick task\'s sheet stays on Heute', async () => {
+  manager = true
+  const draft = (target: string, extra: { brick?: string; title?: string }) =>
+    writeLocalDraft(localDraftKey('restaurant', 'u1', target), { v: 1, savedAt: Date.now(), baseRev: 1, locale: 'de', fields: { text: { de: 'x' } }, ...extra })
+  draft('e7', { brick: 'notices', title: 'Betriebsurlaub' })
+  draft('task:notices.add', { brick: 'notices' })
+  try {
+    const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(AllPage) }) }), {
+      global: { stubs: { AllShell: { template: '<div><slot /></div>' }, AllNav: true, RemovedList: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    })
+    await flushPromises()
+    const rows = wrapper.get('section[aria-labelledby="local-drafts"]').findAll('li')
+    expect(rows.map((li) => [li.find('span').text().replace(/ · .*/, ''), li.get('a').attributes('href')])).toEqual([['„Betriebsurlaub“', '/s/restaurant/all/notices/e7']])
+  } finally {
+    localStorage.clear()
+    manager = false
   }
 })

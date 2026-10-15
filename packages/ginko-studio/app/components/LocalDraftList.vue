@@ -1,5 +1,6 @@
-<!-- Heute: the person's unsaved input that this browser kept (N2) after a crash, a reload or a closed tab, with a way
-     back to each form. Restoring stays the form's own offer (LocalDraftOffer); this list never applies anything. -->
+<!-- Heute and Alles bearbeiten: the person's unsaved input that this browser kept (N2) after a crash, a reload or a
+     closed tab, with a way back to each form. Restoring stays the form's own offer (LocalDraftOffer); this list never
+     applies anything. -->
 <script setup lang="ts">
 import type { Locale, Task } from '@lupinum/ginko'
 import type { Schema } from '@lupinum/ginko/internal'
