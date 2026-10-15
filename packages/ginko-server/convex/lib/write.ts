@@ -151,15 +151,15 @@ export async function entryUses(ctx: QueryCtx, fields: Fields, data: Data, local
   return usesOf(fields, data, locales, uploadIdsOf(ctx), await altsFor(ctx, fields, data))
 }
 
-/** The files of `data` that are ready uploads of this site outside the trash: what a `$file.<id>` in a text may name. */
-async function liveUploadsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, data: Data): Promise<(file: string) => boolean> {
-  const live = new Set<string>()
+/** The files of `data` that are ready uploads of this site outside the trash, with their kind: what a `$file.<id>` in a text may name. */
+async function liveUploadsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, data: Data): Promise<NonNullable<ValidateOptions['uploads']>> {
+  const live = new Map<string, 'image' | 'file'>()
   for (const id of fileIdsOf(fields, data, { isUploadId: uploadIdsOf(ctx) })) {
     const key = ctx.db.normalizeId('uploads', id)
     const upload = key ? await ctx.db.get(key) : null
-    if (upload && upload.site === site && upload.status === 'ready' && !upload.trashedAt) live.add(id)
+    if (upload && upload.site === site && upload.status === 'ready' && !upload.trashedAt) live.set(id, upload.mime.startsWith('image/') ? 'image' : 'file')
   }
-  return (file) => live.has(file)
+  return (file) => live.get(file)
 }
 
 /**

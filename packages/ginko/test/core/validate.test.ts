@@ -326,13 +326,16 @@ describe('markdown field (profile check)', () => {
     ['a picture described only in the library', { de: '![]($file.up1)', en: '![]($file.up1)' }, [['body.en', 'ALT_REQUIRED']]],
     ['a picture that is gone, inside a component', { de: '::figure{src="$file.gone"}\n::' }, [['body.de', 'FILE_REF_MISSING']]],
     ['a web picture without description', { de: '![](https://bilder.example/a.jpg)' }, [['body.de', 'ALT_REQUIRED']]],
+    // Wrong behaviour caught: a hand-typed picture of a PDF saved and showed as a broken image on the site.
+    ['a PDF as a picture', { de: '![Karte]($file.pdf1)' }, [['body.de', 'FILE_REF_NOT_IMAGE']]],
+    ['a link to a PDF', { de: '[Karte]($file.pdf1)' }, []],
   ] as const)('platform texts: %s', async (_name, body, expected) => {
     const withArticle = serializeSchema({
       ...site,
       components: { figure: { kind: 'block', label: 'Abbildung', describe: 'Ein Bild.', props: { src: f.image('Bild') } } },
       bricks: { ...site.bricks, article: single({ label: 'Artikel', fields: { body: f.markdown('Text', { profile: 'page' }) } }) },
     })
-    const { errors } = await validate(withArticle, 'article', { body }, { ...check('create'), uploads: (id) => id === 'up1', fileAlt: (id) => (id === 'up1' ? { de: 'Ein Hund' } : undefined) })
+    const { errors } = await validate(withArticle, 'article', { body }, { ...check('create'), uploads: (id) => (id === 'up1' ? 'image' : id === 'pdf1' ? 'file' : undefined), fileAlt: (id) => (id === 'up1' ? { de: 'Ein Hund' } : undefined) })
     expect(pairs(errors)).toEqual(expected)
   })
 })

@@ -26,11 +26,12 @@ export interface ValidateOptions {
   /** The description text a file has in the Files library, per language. Without it an image field must carry its own main-language alt. */
   fileAlt?: (file: string) => Record<string, string> | undefined
   /**
-   * Platform texts: whether a `$file.<id>` in a Markdown text names a ready upload of the site that is not in the trash.
-   * With it, every such reference must, and every Markdown image needs a description (its own, else the library's in
-   * `fileAlt`), the rule of image fields. Without it (file content) neither is checked.
+   * Platform texts: the kind of the ready upload of the site, not in the trash, that a `$file.<id>` in a Markdown text
+   * names (`image`, or `file` for a PDF); undefined when there is none. With it, every such reference must name one, a
+   * picture must name an image, and every Markdown image needs a description (its own, else the library's in
+   * `fileAlt`), the rule of image fields. Without it (file content) none of this is checked.
    */
-  uploads?: (file: string) => boolean
+  uploads?: (file: string) => 'image' | 'file' | undefined
 }
 
 export interface ValidationResult {
@@ -76,11 +77,12 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
   return { errors, warnings }
 }
 
-/** One issue per kind and text: a `$file` reference to no live upload, and a Markdown image without any description. */
-function fileRefIssues(nodes: Json[], path: string, label: string, locale: Locale, schema: Schema, uploads: (file: string) => boolean, fileAlt: ValidateOptions['fileAlt']): Issue[] {
+/** One issue per kind and text: a `$file` reference to no live upload, a picture that is a PDF, and a Markdown image without any description. */
+function fileRefIssues(nodes: Json[], path: string, label: string, locale: Locale, schema: Schema, uploads: NonNullable<ValidateOptions['uploads']>, fileAlt: ValidateOptions['fileAlt']): Issue[] {
   const out: Issue[] = []
   const refs = fileRefUses(nodes, schema.components)
   if (refs.some((ref) => !uploads(ref.id))) out.push(issue(path, 'FILE_REF_MISSING', 'fileRefMissing', { label }))
+  if (refs.some((ref) => ref.kind !== 'link' && uploads(ref.id) === 'file')) out.push(issue(path, 'FILE_REF_NOT_IMAGE', 'fileRefPdf', { label }))
   const library = new Map(refs.filter((ref) => ref.kind === 'img').map((ref) => [ref.node, fileAlt?.(ref.id)]))
   let described = true
   eachNode(nodes, (node) => { if (node[0] === 'img' && !effectiveAlt({ [locale]: node[1].alt }, library.get(node), locale)) described = false })

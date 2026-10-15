@@ -41,6 +41,7 @@
     "notImage": "„{label}“ ist kein gültiges Bild.",
     "altMissing": "„{label}“: Beschreibung des Bildes (Alt-Text) fehlt.",
     "fileRefMissing": "„{label}“: Ein Bild im Text ist nicht mehr in der Dateibibliothek. Wähle es neu aus.",
+    "fileRefPdf": "Eine PDF-Datei lässt sich nicht als Bild zeigen. Verlinke sie stattdessen: [Text]($file.…).",
     "markdownImageAltMissing": "„{label}“: Ein Bild im Text hat keine Beschreibung. Beschreibe es kurz für Menschen, die es nicht sehen.",
     "altTooLong": "„{label}“: Alt-Text zu lang.",
     "notFile": "„{label}“ ist keine gültige Datei."

@@ -376,6 +376,7 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“: Ein Bild im Text ist nicht mehr in der Dateibibliothek. Wähle es neu aus."
    ],
+   "fileRefPdf": "Eine PDF-Datei lässt sich nicht als Bild zeigen. Verlinke sie stattdessen: [Text]($file.…).",
    "markdownImageAltMissing": [
     "„",
     [
@@ -1616,6 +1617,7 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: An image in the text is no longer in the Files library. Choose it again."
    ],
+   "fileRefPdf": "A PDF cannot be shown as a picture. Link it instead: [text]($file.…).",
    "markdownImageAltMissing": [
     "“",
     [
@@ -2856,6 +2858,7 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: una imagen del texto ya no está en la biblioteca de archivos. Vuelve a elegirla."
    ],
+   "fileRefPdf": "Un PDF no se puede mostrar como imagen. Enlázalo en su lugar: [texto]($file.…).",
    "markdownImageAltMissing": [
     "“",
     [
