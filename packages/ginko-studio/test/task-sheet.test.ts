@@ -31,7 +31,7 @@ vi.stubGlobal('useOps', () => ops)
 const prefill = { live: false, asked: 0, data: shallowRef<unknown>(), error: shallowRef<unknown>() }
 vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => {
   // No own proposal on the entry (proposals.ownFor answers null): the form starts from the prefill.
-  if (String(fn) !== 'tasks.prefill') return { data: ref(String(fn) === 'proposals.ownFor' ? null : undefined), error: ref(undefined) }
+  if (String(fn) !== 'tasks.prefill') return { data: String(fn) === 'proposals.ownFor' ? ownProposal : ref(undefined), error: ref(undefined) }
   watch(() => toValue(args), (now) => {
     prefill.live = now !== 'skip'
     prefill.data.value = undefined
@@ -40,6 +40,8 @@ vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => {
   }, { immediate: true, flush: 'sync' })
   return { data: prefill.data, error: prefill.error }
 })
+/** The person's own proposal on the entry (proposals.ownFor); null while there is none. */
+const ownProposal = shallowRef<unknown>(null)
 /** The server's answer to the live query; a skipped one never hears it. */
 function answer(result: { data: unknown } | { error: unknown }) {
   if (!prefill.live) return
@@ -103,6 +105,7 @@ globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {
 afterEach(() => {
   document.body.innerHTML = ''
   prefill.asked = 0
+  ownProposal.value = null
   toasts.length = 0
   ops.createEntry.mockClear()
   ops.saveEntry.mockClear()
@@ -199,6 +202,53 @@ test('a save on its way when the browser closes the sheet still reports its fail
   expect(wrapper.emitted('close')).toHaveLength(1)
   expect(toasts).toEqual(['Speichern läuft weiter. Ohne Verbindung wird es übernommen, sobald sie wieder da ist.', 'Nicht gespeichert: Das darfst du nicht.'])
   wrapper.unmount()
+})
+
+describe('own proposal', () => {
+  const site = serializeSchema(defineSite({
+    site: 'restaurant', name: 'Restaurant', url: 'https://restaurant.test', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR',
+    pages: { home: { de: '/' } },
+    bricks: { banner: single({ label: 'Banner', fields: { text: f.text('Text', { translate: false }) }, tasks: [{ id: 'say', label: 'Banner ändern', kind: 'edit', fields: ['text'] }] }) },
+  }))
+  const proposal = (status: 'open' | 'rejected', fits = true) =>
+    ({ task: 'banner.say', status, fits, proposal: 'p1', fields: { text: 'Vorschlag' }, createdAt: 1_700_000_000_000, reason: 'Zu lang' })
+  const mountEdit = () => {
+    const brick = site.bricks.banner!
+    const data = { text: 'Gespeichert' }
+    const entry = { _id: 'b1', brick: 'banner', kind: 'single', order: 0, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data }
+    return mount(TaskSheet, {
+      props: { site: 'restaurant', brickKey: 'banner', brick, task: brick.tasks![0]!, entry: entry as never, main: 'de', locales: ['de'], schema: site },
+      global: { stubs: { GinkoField: FieldStub, ProposalWithdraw: true } },
+      attachTo: document.body,
+    })
+  }
+  const text = (wrapper: ReturnType<typeof mountEdit>) => (wrapper.get('input[name="text"]').element as HTMLInputElement).value
+
+  // Wrong behaviour caught: after the prefill query stopped, "Deinen Vorschlag wieder öffnen" did nothing.
+  test('"Deinen Vorschlag wieder öffnen" puts the rejected values back in the form', async () => {
+    ownProposal.value = proposal('rejected')
+    const wrapper = mountEdit()
+    answer({ data: { text: 'Gespeichert' } })
+    await flushPromises()
+    expect(text(wrapper)).toBe('Gespeichert')
+    const reopen = wrapper.findAll('button').find((b) => b.text() === 'Deinen Vorschlag wieder öffnen')!
+    await reopen.trigger('click')
+    expect(text(wrapper)).toBe('Vorschlag')
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: after Zurückziehen the untouched form kept the withdrawn values, so Speichern sent them again.
+  test('an untouched sheet goes back to the stored values when its open proposal goes away', async () => {
+    ownProposal.value = proposal('open')
+    const wrapper = mountEdit()
+    answer({ data: { text: 'Gespeichert' } })
+    await flushPromises()
+    expect(text(wrapper)).toBe('Vorschlag')
+    ownProposal.value = null
+    await flushPromises()
+    expect(text(wrapper)).toBe('Gespeichert')
+    wrapper.unmount()
+  })
 })
 
 describe('languages', () => {

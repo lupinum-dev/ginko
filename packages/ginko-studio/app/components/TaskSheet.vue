@@ -121,15 +121,19 @@ function loadProposal(start: Data, o: NonNullable<typeof mine.value>) {
   proposalWeek.value = fixedWeek.value ? (o.fields as Data)[fixedWeek.value] : undefined
 }
 
+// The stored values the form started from (the prefill, plus the schema defaults of a new entry). The prefill query
+// is skipped once the form has loaded, so reopenOwn and the `mine` watch below read this copy, not `prefill`.
+const seed = shallowRef<Data>()
 watch([prefill, own, ownError], ([p]) => {
   // Both answers first, so the form does not start on the stored values and jump; a failed proposal read does not hold it up.
   if (!p || ready.value || (ownArgs() !== 'skip' && own.value === undefined && !ownError.value)) return
   // A new entry starts from the schema defaults; choices without a default stay unset on purpose (UI.md 5).
   const start: Data = isCreate.value ? { ...defaultsFor(fields.value) } : {}
   const o = mine.value
+  seed.value = { ...start, ...(p as Data) }
   // An open proposal that no longer fits (someone changed its fields since) is not where the form starts: its banner says so.
-  if (o && ((o.status === 'open' && o.fits) || o.proposal === props.reopen)) loadProposal({ ...start, ...(p as Data) }, o)
-  else form.load({ ...start, ...(p as Data) })
+  if (o && ((o.status === 'open' && o.fits) || o.proposal === props.reopen)) loadProposal(seed.value, o)
+  else form.load(seed.value)
 }, { immediate: true })
 /** A refusal the server names keeps its own text; anything else (the connection) says it did not load. */
 const prefillProblem = computed(() => (prefillError.value ? opErrorOf(prefillError.value, t('basics.notLoaded')).message : ''))
@@ -195,8 +199,8 @@ const shrunk = computed(() => (dirty.value ? shrunkTexts(fields.value, baseline.
 // suggests the old ones are on their way and Speichern does not send them again. Typed input stays.
 const startable = (o: typeof mine.value) => o?.status === 'open' && o.fits
 watch(mine, (now, before) => {
-  if (!(fromProposal.value || waiting.value) || !startable(before) || startable(now) || dirty.value || !prefill.value) return
-  form.load(prefill.value as Data)
+  if (!(fromProposal.value || waiting.value) || !startable(before) || startable(now) || dirty.value || !seed.value) return
+  form.load(seed.value)
   fromProposal.value = false
 })
 /**
@@ -212,8 +216,8 @@ const pendingText = computed(() => {
 
 /** "Deinen Vorschlag wieder öffnen": the rejected values, to fix what the approver asked for. */
 function reopenOwn() {
-  if (!mine.value || !prefill.value) return
-  loadProposal(prefill.value as Data, mine.value)
+  if (!mine.value || !seed.value) return
+  loadProposal(seed.value, mine.value)
 }
 
 // "Von dieser Woche übernehmen": a new planned week starts from this week's days and note, its own week stays. The
