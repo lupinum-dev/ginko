@@ -392,7 +392,7 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
           // The whole report next to the screenshots; the console shows its start.
           mkdirSync(shots, { recursive: true })
           writeFileSync(join(shots, `gate${gate}.log`), text)
-          record(gate, mode, ['', '', '', 'e2e', 'axe light + dark, keyboard path', `layout at 390 and 1440, screenshots in ${relative(root, shots)}`, 'budgets (scripts gzip, LCP resource, CLS)'][gate]!, out.status === 0, `${text}\n(full report: ${relative(root, join(shots, `gate${gate}.log`))})`)
+          record(gate, mode, ['', '', '', 'e2e', 'axe light + dark, keyboard path', `layout at 320, 390 and 1440, screenshots in ${relative(root, shots)}`, 'budgets (scripts gzip, LCP resource, CLS)'][gate]!, out.status === 0, `${text}\n(full report: ${relative(root, join(shots, `gate${gate}.log`))})`)
         }
       } finally {
         server.kill()

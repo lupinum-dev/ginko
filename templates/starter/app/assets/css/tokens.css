@@ -119,7 +119,7 @@
   --color-scrim: var(--scrim);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: var(--radius);
-  /* main.css sets --font-body and, optionally, --font-display. */
+  /* main.css sets --font-body and, optionally, --font-heading (headings; utility font-display). */
   --font-sans: var(--font-body);
   --font-display: var(--font-heading, var(--font-body));
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -219,6 +219,20 @@
      their own look. */
   .prose {
     max-width: var(--container-prose);
+    overflow-wrap: break-word;
+  }
+
+  /* Paths, addresses and links have no spaces to break at; at 320 px they would push the page sideways. */
+  .prose :not(pre) > code,
+  .prose a {
+    overflow-wrap: anywhere;
+  }
+
+  .prose :not(pre) > code {
+    border-radius: calc(var(--radius) - 4px);
+    background-color: var(--muted);
+    padding: 0.1em 0.3em;
+    font-size: 0.9em;
   }
 
   .prose > * + * {
