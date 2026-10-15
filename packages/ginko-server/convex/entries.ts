@@ -329,6 +329,10 @@ export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
       if (!field || field.retired || field.type === 'slug') continue
       if (!same(data[root], now[root])) fields[root] = data[root] ?? null
     }
+    // Through the weekly task the version's values come back for this week: the task always covers it (`refuseOtherWeek`).
+    const taskBrick = taskBrickOf(schema, args.task, entry)
+    const weekly = Object.hasOwn(schema.bricks, taskBrick) ? weeklyTask(schema.bricks[taskBrick]!) : undefined
+    if (weekly && args.task === `${taskBrick}.${weekly.task.id}`) delete fields[weekly.field]
     if (!Object.keys(fields).length) {
       const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
       return unchanged

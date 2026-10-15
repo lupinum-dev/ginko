@@ -324,6 +324,20 @@ describe('the weekly task covers this week only', () => {
     expect(await as.owner.mutation(api.proposals.approve, { proposal: proposed.proposal })).toMatchObject({ status: 'stale' })
     expect((await t.run((ctx) => ctx.db.get(entries.lunch!)))!.data.weekOf).toBe('2026-10-05')
   })
+  // Wrong behaviour caught: "Zurück zu dieser Version" through the weekly task to a version of another week was refused
+  // with "Diese Aufgabe gilt nur für die laufende Woche …", which does not fit Verlauf.
+  it('going back to a version of another week through the weekly task brings back its values and keeps this week', async () => {
+    // Friday: this week is the one of Monday 12 October; on Saturday the work week is the coming one.
+    vi.setSystemTime(new Date('2026-10-16T08:00:00Z'))
+    const { t, as, entries } = await setup()
+    const lunch = entries.lunch!
+    const first = await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: lunch, baseRev: 1, fields: { note: { de: 'Alt' } } }) as { change: Id<'changes'>; rev: number }
+    vi.setSystemTime(new Date('2026-10-17T06:00:00Z'))
+    await as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, baseRev: first.rev, fields: { weekOf: '2026-10-19', note: { de: 'Neu' } } })
+    await as.owner.mutation(api.entries.revert, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, change: first.change })
+    const data = (await t.run((ctx) => ctx.db.get(lunch)))!.data
+    expect([data.weekOf, data.note]).toEqual(['2026-10-19', { de: 'Alt' }])
+  })
 })
 
 describe('one planned week per week', () => {
