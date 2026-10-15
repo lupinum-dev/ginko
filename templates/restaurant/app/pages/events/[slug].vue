@@ -64,7 +64,7 @@ const place = computed(() => event.value.data.location || (event.value.data.onli
             <Button v-if="contact.phone" as-child size="lg" class="max-sm:w-full">
               <a :href="tel(contact.phone)"><Phone aria-hidden="true" />{{ t('call', { phone: contact.phone }) }}</a>
             </Button>
-            <Button v-if="contact.email" as-child size="lg" :variant="contact.phone ? 'secondary' : 'primary'" class="max-sm:w-full">
+            <Button v-if="contact.email" as-child size="lg" :variant="contact.phone ? 'outline' : 'default'" class="max-sm:w-full">
               <a :href="`mailto:${contact.email}`"><Mail aria-hidden="true" />{{ t('email') }}</a>
             </Button>
           </div>

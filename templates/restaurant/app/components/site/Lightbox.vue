@@ -52,7 +52,7 @@ function returnFocus(event: Event) {
             <span class="sr-only">{{ t('next') }}</span>
           </Button>
           <DialogClose as-child>
-            <Button variant="secondary">{{ t('close') }}</Button>
+            <Button variant="outline">{{ t('close') }}</Button>
           </DialogClose>
         </div>
       </DialogContent>
