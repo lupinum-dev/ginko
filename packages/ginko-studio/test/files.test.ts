@@ -7,7 +7,7 @@ import { computed, markRaw, ref } from 'vue'
 import { components } from '@lupinum/ginko-components/registry'
 import { createGinkoEditor, GINKO_ASSETS, useFileImages, type GinkoAssets } from '@lupinum/ginko-editor'
 import ComponentSettings from '../app/components/editor/ComponentSettings.vue'
-import { EDITOR_FILES } from '../app/components/editor/context.ts'
+import { EDITOR_COMPONENTS, EDITOR_FILES } from '../app/components/editor/context.ts'
 import ImageDialog from '../app/components/editor/ImageDialog.vue'
 import MarkdownEditor from '../app/components/editor/MarkdownEditor.vue'
 import GinkoFieldImage from '../app/components/fields/GinkoFieldImage.vue'
@@ -321,6 +321,32 @@ describe('library pictures in a Markdown text', () => {
     button('Dieses Foto verwenden')!.click()
     await vi.waitFor(() => expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual(['Eins ![]($file.f1) zwei\n']))
     expect(steps).toBe(1)
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: "Bildunterschrift" showed in a rich text, which cannot hold the site's figure block, and did
+  // nothing there; in a page text it turns the picture into the figure, with its description, and opens its settings.
+  test.each([
+    ['rich', false],
+    ['page', true],
+  ])('a selected picture in a %s text offers "Bildunterschrift": %s', async (profile, offered) => {
+    const wrapper = mount(MarkdownEditor, {
+      props: { id: 't', field: { type: 'markdown', label: 'Text', profile } as never, modelValue: 'Eins\n\n![Hof]($file.f0)\n', invalid: false, contentLocale: 'de' },
+      global: { provide: { [GINKO_ASSETS as symbol]: assets, [EDITOR_COMPONENTS as symbol]: () => components } }, attachTo: document.body,
+    })
+    await vi.waitFor(() => expect(document.body.querySelector('.ginko-editor [role="textbox"]')).not.toBeNull())
+    const editor = wrapper.findComponent(EditorContent).props('editor') as Editor
+    let pos = -1
+    editor.state.doc.descendants((node, at) => { if (node.type.name === 'image') pos = at })
+    editor.commands.setNodeSelection(pos)
+    editor.commands.focus()
+    await vi.waitFor(() => expect(document.body.querySelector('[role="toolbar"][aria-label="Bild"]')?.textContent).toContain('Beschreibung: Hof'))
+    expect(button('Bildunterschrift') !== undefined).toBe(offered)
+    if (offered) {
+      button('Bildunterschrift')!.click()
+      await vi.waitFor(() => expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('Bildunterschrift'))
+      await vi.waitFor(() => expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual(['Eins\n\n::figure{src="$file.f0" alt="Hof"}\n::\n']))
+    }
     wrapper.unmount()
   })
 

@@ -266,7 +266,8 @@ function fix(problem: DocProblem) {
 }
 
 // --- a picture with a caption: the site's figure block ------------------------------------------------------------
-const captionTag = computed(() => figureTag(registry?.()))
+// Only a text that takes blocks (the page profile) can hold the figure: elsewhere the editor has no component node.
+const captionTag = computed(() => (editor.value && 'component' in editor.value.schema.nodes ? figureTag(registry?.()) : undefined))
 /** "Bildunterschrift" at a picture: it becomes the site's figure block, whose settings open for the caption. */
 function toFigure(pos: number) {
   const current = editor.value
