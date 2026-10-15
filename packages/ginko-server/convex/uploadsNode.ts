@@ -39,7 +39,7 @@ export const run = internalAction({
       result = await processImage(bytes)
     } catch (error) {
       const permanent = error instanceof UnreadableImageError
-      const key = !permanent ? 'errors.uploadRetrying' : 'errors.uploadNotAnImage'
+      const key = permanent ? error.key : 'errors.uploadRetrying'
       await ctx.runMutation(internal.uploads.markFailed, { upload, key, permanent })
       return null
     }

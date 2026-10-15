@@ -209,6 +209,7 @@
     "uploadRetrying": "The photo could not be processed. We are trying again.",
     "uploadHeicUnreadable": "The Files library cannot read HEIC photos. Save the photo as JPEG (on an iPhone: Settings › Camera › Formats › “Most Compatible”) and upload it again.",
     "uploadNotAnImage": "This file is not a readable image.",
+    "uploadTooManyPixels": "This image has too many pixels. Make it smaller (for example 8,000 pixels wide) and upload it again.",
     "siteUrlNotAllowed": "This site address cannot be used. It must be a public https:// address."
   },
   "history": {
