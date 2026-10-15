@@ -304,9 +304,24 @@
     "rejected": {
       "subject": "No aprobado: tu cambio para {site}",
       "text": "Hola:\n\ntu cambio para «{site}» no se aprobó:\n\n{what}\n\nMotivo: «{reason}»\n\nCorregir: {path}\n"
+    },
+    "statusReminder": {
+      "subject": "{brick}: {line}",
+      "text": "Hola:\n\nen “{site}”, “{brick}” necesita tu atención: {line}\n\nÁbrelo ahora: {link}\n\nEste recordatorio llega cada semana la tarde antes de que empiece, mientras haya algo pendiente. Para desactivarlo, usa “Recordatorios por correo” en {settings}\n"
     }
   },
   "content": {
     "copyOf": "{text} (copia)"
+  },
+  "status": {
+    "next": "Próximo: {title} · {date}",
+    "ending": "{count, plural, one {# termina} other {# terminan}} en los próximos 7 días",
+    "online": "{count} en línea",
+    "missing": "{count, plural, one {# entrada} other {# entradas}} sin {field}",
+    "age": "Lo más reciente: {title} · hace {weeks, plural, one {# semana} other {# semanas}}",
+    "ageThisWeek": "Lo más reciente: {title} · esta semana",
+    "open": "Abierto hoy {ranges}",
+    "closed": "Cerrado hoy",
+    "drafts": "{drafts, plural, one {# borrador} other {# borradores}} · {scheduled} programados"
   }
 }

@@ -132,6 +132,7 @@ const calls: Call[] = [
   { fn: 'sites.startDeletion', kind: 'mutation', args: (site) => ({ site, confirm: 'nope' }) },
   { fn: 'sites.cancelDeletion', kind: 'mutation', args: (site) => ({ site }) },
   { fn: 'sites.translationStatus', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'sites.today', kind: 'query', args: (site) => ({ site }) },
   { fn: 'views.save', kind: 'mutation', args: (site, f) => ({ site, id: f.view, brick: 'menu', name: 'pwned', query: {} }) },
   { fn: 'views.remove', kind: 'mutation', args: (site, f) => ({ site, id: f.view }) },
   { fn: 'views.list', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },

@@ -304,9 +304,24 @@
     "rejected": {
       "subject": "Not approved: your change for {site}",
       "text": "Hello,\n\nyour change for “{site}” was not approved:\n\n{what}\n\nReason: “{reason}”\n\nFix it: {path}\n"
+    },
+    "statusReminder": {
+      "subject": "{brick}: {line}",
+      "text": "Hello,\n\nfor “{site}”, “{brick}” needs a look: {line}\n\nOpen it now: {link}\n\nThis reminder comes every week on the evening before it starts, as long as something is due. To switch it off, use “Email reminders” at {settings}\n"
     }
   },
   "content": {
     "copyOf": "{text} (copy)"
+  },
+  "status": {
+    "next": "Next: {title} · {date}",
+    "ending": "{count, plural, one {# ends} other {# end}} within 7 days",
+    "online": "{count} online",
+    "missing": "{count, plural, one {# entry} other {# entries}} without {field}",
+    "age": "Newest: {title} · {weeks, plural, one {# week} other {# weeks}} ago",
+    "ageThisWeek": "Newest: {title} · this week",
+    "open": "Open today {ranges}",
+    "closed": "Closed today",
+    "drafts": "{drafts, plural, one {# draft} other {# drafts}} · {scheduled} scheduled"
   }
 }
