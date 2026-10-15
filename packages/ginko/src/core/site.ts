@@ -84,6 +84,16 @@ export function defineSite<const S extends SiteInput>(site: S & { retired?: Reti
   return site
 }
 
+/**
+ * `site` as it runs on the platform: every brick without `source`, so the owner edits it in the Studio. A template
+ * that reads its content from files and this twin must both pass `checkSite`; tools and tests use it to prove that a
+ * files site can move to the platform without changing its bricks.
+ */
+export function withoutFiles<const S extends SiteInput>(site: S): S {
+  const bricks = Object.fromEntries(Object.entries(site.bricks).map(([key, { source: _, ...brick }]) => [key, brick]))
+  return { ...site, bricks }
+}
+
 /** The names of the fields in `F` whose type is one of `T`. */
 type FieldsOfType<F, T extends string> = { [K in keyof F]: F[K] extends { type: T } ? K : never }[keyof F] & string
 
