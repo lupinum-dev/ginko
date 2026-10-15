@@ -131,6 +131,42 @@ describe('import keeps references between entries', () => {
   })
 })
 
+describe('import keeps what the Studio keeps', () => {
+  const services = { kind: 'collection', label, max: 2, route: { de: '/leistungen/[slug]' }, fields: { title: { type: 'text', label }, slug: { type: 'slug', from: 'title', label } } }
+  const service = (id: string, slug: string) => ({ id, brick: 'services', kind: 'item' as const, order: 1, data: { title: { de: id }, slug: { de: slug } }, prints: {}, rev: 1 })
+
+  // Wrong behaviour caught: an import stores a collection over its max (its removed entries can then never come back),
+  // an entry twice, or two entries at one URL, and the operator learns it only from the broken site.
+  it.each([
+    {
+      case: 'a collection over its max', entries: [service('services/a', 'a'), service('services/b', 'b'), service('services/c', 'c')],
+      cli: 'The collection “services” has 3 entries; it takes at most 2.', server: 'Die Sammlung „services“ hat 3 Einträge, höchstens 2 gehen.',
+    },
+    {
+      case: 'an entry ID twice', entries: [service('services/a', 'a'), service('services/a', 'b')],
+      cli: 'The entry “services/a” appears twice.', server: 'Der Eintrag „services/a“ kommt zweimal vor.',
+    },
+    {
+      case: 'two entries with one URL', entries: [service('services/a', 'webseiten'), service('services/b', 'webseiten')],
+      cli: '“services/a” and “services/b” have the same address /leistungen/webseiten.', server: '„services/a“ und „services/b“ haben dieselbe Adresse /leistungen/webseiten.',
+    },
+  ])('refuses $case, in the CLI before anything is cleared and on the platform', async ({ entries, cli, server }) => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    const schema = await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(s.site))!
+      const stored = row.schema as { bricks: Record<string, unknown> }
+      stored.bricks.services = services
+      await ctx.db.patch(s.site, { schema: stored })
+      return stored as unknown as Schema
+    })
+    expect(await checkImport(schema, entries)).toEqual([cli])
+    const before = (await entriesOf(s, s.site)).length
+    expect(await errorOf(s.t.mutation(makeFunctionReference<'mutation'>('seed:importExport'), { site: 'restaurant', files: [], entries }))).toMatchObject({ code: 'INVALID', message: server })
+    expect((await entriesOf(s, s.site)).length).toBe(before)
+  })
+})
+
 /** Whether a value holds an object with more than 1024 fields: Convex refuses such an argument or answer, convex-test does not. */
 const tooManyFields = (value: unknown): boolean => Array.isArray(value)
   ? value.some(tooManyFields)

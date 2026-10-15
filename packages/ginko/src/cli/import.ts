@@ -8,7 +8,7 @@
 // storage; a batch stays under a mutation's limits.
 import { readFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
-import { byteSize, entryBytes, markdownTrees, SITE_BUDGET, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
+import { byteSize, entryBytes, markdownTrees, routeUrls, SITE_BUDGET, urlClashes, validate, type Msg, type Schema, type SchemaChange } from '../core/index.ts'
 import type { Runner } from './local.ts'
 import { CliError, isObject, parseExport, type ExportEntry, type SiteExport } from './model.ts'
 import { english, explainRejected, kib } from './report.ts'
@@ -102,7 +102,8 @@ const NEW_ID = 'x'.repeat(32)
 /**
  * What the platform's import (seed.ts importExport, importRefs) would refuse in an export, as English lines: values the
  * Studio cannot open at all, entries over the entry limit (removed ones too: a restore must be able to save them), and
- * live or removed entries over a site's budget, live Markdown trees over the guard the bundle needs. Values that a save refuses only today are no problem: the platform stores
+ * live or removed entries over a site's budget, live Markdown trees over the guard the bundle needs; an entry ID twice,
+ * a collection over its max, two entries with one address. Values that a save refuses only today are no problem: the platform stores
  * them and warns. The target site counts as empty: a local import clears it first, and the hosted import takes only an
  * empty site. Sizes count references to other entries with their new IDs: an ID from `ginko files-export` is a path like
  * `authors/anna`, shorter than the Convex ID that replaces it, so an entry with many references grows in step 6.
@@ -116,7 +117,11 @@ export async function checkImport(schema: Schema, entries: ExportEntry[]): Promi
   let trash = 0
   let trees = 0
   let live = 0
+  const seen = new Set<string>()
+  const liveIn = new Map<string, number>()
   for (const entry of entries) {
+    if (seen.has(entry.id)) problems.push(`The entry “${entry.id}” appears twice.`)
+    seen.add(entry.id)
     for (const issue of (await validate(schema, entry.brick, entry.data, { mode: 'restore' })).errors) {
       problems.push(`Entry ${entry.id} (${entry.brick}), ${issue.path || 'entry'}: ${english(issue)}`)
     }
@@ -124,6 +129,7 @@ export async function checkImport(schema: Schema, entries: ExportEntry[]): Promi
     if (size > SITE_BUDGET.entryBytes) problems.push(`Entry ${entry.id} (${entry.brick}) is ${kib(size)}; the limit is ${kib(SITE_BUDGET.entryBytes)}.`)
     if (entry.deletedAt === undefined) {
       live++
+      liveIn.set(entry.brick, (liveIn.get(entry.brick) ?? 0) + 1)
       bytes += size
       const fields = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick]!.fields : {}
       const tree = await markdownTrees(fields, entry.data)
@@ -131,6 +137,15 @@ export async function checkImport(schema: Schema, entries: ExportEntry[]): Promi
       if (Object.keys(tree).length > 0) trees += byteSize(tree)
     } else trash += size
   }
+  for (const [brick, count] of liveIn) {
+    const def = Object.hasOwn(schema.bricks, brick) ? schema.bricks[brick]! : undefined
+    if (def?.kind === 'collection' && count > def.max) problems.push(`The collection “${brick}” has ${count} entries; it takes at most ${def.max}.`)
+  }
+  const addresses = entries.flatMap((entry) => {
+    const def = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick]! : undefined
+    return def?.kind === 'collection' ? [{ id: entry.id, urls: routeUrls(schema, def, { id: entry.id, order: entry.order, data: entry.data }) }] : []
+  })
+  for (const clash of urlClashes(addresses)) problems.push(`“${clash.first}” and “${clash.second}” have the same address ${clash.url}.`)
   if (live > SITE_BUDGET.entries) problems.push(`The export has ${live} entries; a site holds at most ${SITE_BUDGET.entries}.`)
   if (bytes > SITE_BUDGET.siteBytes) problems.push(`The export's entries take ${kib(bytes)}; a site holds at most ${kib(SITE_BUDGET.siteBytes)}.`)
   if (trash > SITE_BUDGET.trashBytes) problems.push(`The export's removed entries take ${kib(trash)}; the trash holds at most ${kib(SITE_BUDGET.trashBytes)}.`)

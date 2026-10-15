@@ -4,7 +4,7 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Fields } from '@lupinum/ginko'
-import { byteSize, carryPrints, entryBytes, fitsBudget, remapFileIds, stableJson, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, carryPrints, entryBytes, fitsBudget, remapFileIds, routeUrls, stableJson, urlClashes, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
@@ -332,6 +332,28 @@ export const importExport = internalMutation({
       } else trashBytes += size
       rows.push({ row, fields: def.fields, data, prints, size, trees })
     }
+    // What the Studio keeps true: every entry once, a collection within its max, one entry per address. An export that
+    // breaks it gives two pages one URL, or a collection whose removed entries cannot come back. The CLI checks the
+    // whole export before it clears anything (checkImport); here a batch is checked in itself, and the max with the
+    // entries stored before it.
+    const seen = new Set<string>()
+    for (const { row } of rows) {
+      if (seen.has(row.id)) problems.push({ code: 'INVALID', key: 'errors.importDuplicateId', params: { id: row.id } })
+      seen.add(row.id)
+    }
+    const added = new Map<string, number>()
+    for (const { row } of rows) if (row.deletedAt === undefined) added.set(row.brick, (added.get(row.brick) ?? 0) + 1)
+    for (const [brick, count] of added) {
+      const def = schema.bricks[brick]!
+      if (def.kind !== 'collection') continue
+      const stored = await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', site._id).eq('brick', brick).eq('deletedAt', undefined)).collect()
+      if (stored.length + count > def.max) problems.push({ code: 'INVALID', key: 'errors.importCollectionTooFull', params: { brick, count: stored.length + count, max: def.max } })
+    }
+    const addresses = rows.flatMap(({ row, data }) => {
+      const def = schema.bricks[row.brick]!
+      return def.kind === 'collection' ? [{ id: row.id, urls: routeUrls(schema, def, { id: row.id, order: row.order, data }) }] : []
+    })
+    for (const clash of urlClashes(addresses)) problems.push({ code: 'INVALID', key: 'errors.importSameUrl', params: { a: clash.first, b: clash.second, url: clash.url } })
     if (site.entryCount + live > BUDGET.entries) problems.push({ code: 'TOO_LARGE', key: 'errors.siteEntryLimitReached', params: {} })
     if (site.bytes + bytes > BUDGET.siteBytes) problems.push({ code: 'TOO_LARGE', key: 'errors.importSiteTooLarge', params: { used: sizeText(site.bytes + bytes), limit: sizeText(BUDGET.siteBytes) } })
     const trashAfter = (site.trashBytes ?? 0) + trashBytes
