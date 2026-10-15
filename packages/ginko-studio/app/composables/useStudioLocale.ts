@@ -21,7 +21,7 @@ export function useAccountLocale() {
 }
 
 /** Languages offered as beta: a native speaker has not checked the translation yet. */
-export const BETA_LOCALES = new Set(['es'])
+export const BETA_LOCALES = new Set(['es', 'fr'])
 
 /** The name in the language picker; a beta language says so. */
 export const localeLabel = (locale: { code: string; name?: string }) =>
