@@ -3,12 +3,11 @@
      card = a frame with the label and a one-line summary of the props, the editable content below.
      Both get the settings button and popover (ComponentSettings), and can be selected as a block. -->
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUpdated, ref, toRaw, useId, watch } from 'vue'
+import { computed, inject, nextTick, onMounted, onUpdated, ref, toRaw, useId, watch, watchEffect } from 'vue'
 import { useI18n } from '#imports'
 import { Plus, Settings2 } from '@lucide/vue'
 import { fileRefOf, type ComponentRegistry } from '@lupinum/ginko/internal'
 import { componentMode, GINKO_ASSETS, insertComponent, propsSummary, shownSrc, type ComponentProps } from '@lupinum/ginko-editor'
-import { inject, watchEffect } from 'vue'
 import { NodeViewContent, NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { Button } from '@studio/components/ui/button'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
@@ -28,29 +27,26 @@ const label = computed(() => (def.value ? shown(def.value.label) : tag.value))
 const values = computed(() => (props.node.attrs.props ?? {}) as ComponentProps)
 const mode = computed(() => componentMode(tag.value, options.components, LIVE_TAGS))
 const live = computed(() => (mode.value === 'live' ? LIVE_COMPONENTS[tag.value] : undefined))
-// Pictures from the Files library show their file names in the summary (where the editor has a file source).
-const assets = inject(GINKO_ASSETS, undefined)
-const fileIds = computed(() => Object.entries(values.value).flatMap(([name, raw]) => {
+// Pictures from the Files library in image props: the summary names them, a card shows them (where the editor has a file
+// source). Other addresses are not loaded in the editor.
+const libraryImages = computed(() => Object.entries(values.value).flatMap(([name, raw]) => {
   const field = def.value?.props[name.replace(/^:/, '')]
   const id = field?.type === 'image' && typeof raw === 'string' ? fileRefOf(raw) : undefined
-  return id ? [id] : []
+  return id ? [{ name, src: String(raw), id }] : []
 }))
-const files = assets ? assets.details(fileIds) : ref(undefined)
+const assets = inject(GINKO_ASSETS, undefined)
+const files = assets ? assets.details(computed(() => libraryImages.value.map((image) => image.id))) : ref(undefined)
 const summary = computed(() => propsSummary(values.value, def.value, (id) => files.value?.[id]?.name))
 // A card without text (a data block, a figure) has no box to type in: it says what the block shows instead.
 const empty = computed(() => props.node.childCount === 0)
 const describe = computed(() => (def.value ? shown(def.value.describe) : ''))
-// Library pictures of the image props, as in the settings; the summary keeps their names. Other addresses are not loaded.
 const editorFiles = inject(EDITOR_FILES, undefined)
-const imageValues = computed(() => Object.entries(values.value).flatMap(([name, raw]) => {
-  const field = def.value?.props[name.replace(/^:/, '')]
-  return field?.type === 'image' && typeof raw === 'string' && fileRefOf(raw) !== undefined ? [{ name, raw }] : []
-}))
-watchEffect(() => { for (const { raw } of imageValues.value) editorFiles?.images.want(raw) })
+watchEffect(() => { for (const { src } of libraryImages.value) editorFiles?.images.want(src) })
+/** Shown addresses that did not load: the summary keeps the file's name. */
 const broken = ref(new Set<string>())
-const pictures = computed(() => imageValues.value.flatMap(({ name, raw }) => {
-  const src = editorFiles ? shownSrc(editorFiles.images, raw) : undefined
-  return src && !broken.value.has(src) ? [{ name, src }] : []
+const pictures = computed(() => libraryImages.value.flatMap(({ name, src }) => {
+  const shownAt = editorFiles ? shownSrc(editorFiles.images, src) : undefined
+  return shownAt && !broken.value.has(shownAt) ? [{ name, src: shownAt }] : []
 }))
 function hidePicture(src: string) { broken.value = new Set([...broken.value, src]) }
 // The component gets the props as the page gives them: `:open` (a bare attribute) arrives as `open`.
