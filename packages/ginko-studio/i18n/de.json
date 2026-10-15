@@ -749,7 +749,7 @@
     "removed": {
       "link": "Papierkorb",
       "title": "Papierkorb",
-      "empty": "Der Papierkorb ist leer.",
+      "empty": "Keine entfernten Einträge. Entfernte Dateien liegen im Papierkorb unter Dateien.",
       "until": "Wird am {date} endgültig gelöscht",
       "deleteNow": "Jetzt löschen",
       "deleteNowNamed": "Jetzt löschen: „{title}“",

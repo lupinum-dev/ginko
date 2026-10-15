@@ -749,7 +749,7 @@
     "removed": {
       "link": "Papelera",
       "title": "Papelera",
-      "empty": "La papelera está vacía.",
+      "empty": "No hay entradas eliminadas. Los archivos eliminados están en la papelera de Archivos.",
       "until": "Se borrará definitivamente el {date}",
       "deleteNow": "Eliminar ahora",
       "deleteNowNamed": "Eliminar ahora: “{title}”",

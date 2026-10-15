@@ -749,7 +749,7 @@
     "removed": {
       "link": "Trash",
       "title": "Trash",
-      "empty": "The trash is empty.",
+      "empty": "No removed entries. Removed files are in the trash under Files.",
       "until": "Deleted for good on {date}",
       "deleteNow": "Delete now",
       "deleteNowNamed": "Delete now: “{title}”",
