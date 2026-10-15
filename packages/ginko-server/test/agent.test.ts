@@ -322,6 +322,21 @@ describe('agent door: tool catalog', () => {
     expect((await entryRow(s, entry))!.data.price).toEqual({ amount: 2500 })
   })
 
+  // Wrong behaviour caught: the second call withdrew the first proposal, because both went through "Gericht
+  // bearbeiten"; the price proposal was gone and nobody was told. A later call on the same field still replaces it.
+  it('with review on, two edits of one dish with different fields both wait; the same field again replaces its proposal', async () => {
+    const s = await setup()
+    await s.t.run((ctx) => ctx.db.patch(s.site, { agentReview: true }))
+    const key = await keyOf(s, 'owner')
+    const entry = s.entries['menu-saibling']!
+    const statuses = async () => (await s.t.run((ctx) => ctx.db.query('proposals').collect())).map((p) => p.status)
+    await call(s, key, 'task_menu_edit', { entry, price: 25 })
+    await call(s, key, 'task_menu_edit', { entry, description: 'Mit Erdäpfeln' })
+    expect(await statuses()).toEqual(['open', 'open'])
+    await call(s, key, 'task_menu_edit', { entry, description: 'Mit Petersilerdäpfeln' })
+    expect(await statuses()).toEqual(['open', 'withdrawn', 'open'])
+  })
+
   it('ginko_proposals lists only the caller\'s own proposals, even for an owner who could see all', async () => {
     const s = await setup()
     const [owner, cook] = [await keyOf(s, 'owner'), await keyOf(s, 'cook')]
