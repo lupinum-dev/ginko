@@ -165,7 +165,7 @@ async function undo(change: Change) {
         <ChangeDetail v-if="showing.has(change._id)" :site="site" :change="change._id" :brick="change.brick" :schema="schema" />
       </li>
     </ol>
-    <p v-else-if="list.status.value === 'success'" class="py-6 text-muted-foreground">{{ filter && filter !== 'all' ? t('history.noMatches') : t('entry.changes.empty') }}</p>
+    <p v-else-if="list.status.value === 'success'" class="py-6 text-muted-foreground">{{ filter === 'entry' ? t('history.entryEmpty') : filter && filter !== 'all' ? t('history.noMatches') : t('entry.changes.empty') }}</p>
     <div v-if="list.canLoadMore.value || list.isLoadingMore.value" class="pt-4">
       <Button type="button" variant="outline" :disabled="!list.canLoadMore.value" @click="list.loadMore(PAGE)">{{ t('site.history.loadOlder') }}</Button>
     </div>

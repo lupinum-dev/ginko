@@ -673,7 +673,10 @@
       "ai": "Via AI",
       "entry": "This entry"
     },
+    "entryHeading": "History: {title}",
+    "backToEntry": "Back to “{title}”",
     "noMatches": "No changes match this filter.",
+    "entryEmpty": "No changes yet. What is saved from now on shows up here.",
     "showChanges": "Show changes",
     "hideChanges": "Hide changes",
     "openTrash": "Open trash",

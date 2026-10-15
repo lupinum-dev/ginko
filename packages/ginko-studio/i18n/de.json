@@ -673,7 +673,10 @@
       "ai": "Über KI",
       "entry": "Dieser Eintrag"
     },
+    "entryHeading": "Verlauf: {title}",
+    "backToEntry": "Zurück zu „{title}“",
     "noMatches": "Keine Änderungen für diesen Filter.",
+    "entryEmpty": "Noch keine Änderungen. Was ab jetzt gespeichert wird, steht hier.",
     "showChanges": "Änderungen anzeigen",
     "hideChanges": "Änderungen ausblenden",
     "openTrash": "Papierkorb öffnen",

@@ -673,7 +673,10 @@
       "ai": "Vía IA",
       "entry": "Esta entrada"
     },
+    "entryHeading": "Historial: {title}",
+    "backToEntry": "Volver a “{title}”",
     "noMatches": "Ningún cambio coincide con este filtro.",
+    "entryEmpty": "Todavía no hay cambios. Lo que se guarde a partir de ahora aparece aquí.",
     "showChanges": "Mostrar cambios",
     "hideChanges": "Ocultar cambios",
     "openTrash": "Abrir papelera",
