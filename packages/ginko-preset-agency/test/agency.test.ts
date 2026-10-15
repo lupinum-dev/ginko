@@ -25,11 +25,12 @@ describe('openJobs', () => {
   })
 })
 
-// A dial link that loses the leading + calls a local number instead of the company abroad.
+// A dial link that loses the leading + calls a local number instead of the company abroad; one that keeps the
+// written trunk "(0)" after the country code does not connect.
 describe('telHref', () => {
   it.each([
     ['+43 681 20303240', '+4368120303240'],
-    [' +43 (0)1 234-56 78 ', '+43012345678'],
+    [' +43 (0)1 234-56 78 ', '+4312345678'],
     ['0681 / 20303240', '068120303240'],
     ['', ''],
     [undefined, ''],
