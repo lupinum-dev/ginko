@@ -3,12 +3,17 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const cli = fileURLToPath(new URL('../index.mjs', import.meta.url))
 const version = JSON.parse(readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')).version
 const work = mkdtempSync(join(tmpdir(), 'create-ginko-test-'))
 afterAll(() => rmSync(work, { recursive: true, force: true }))
+// The bundled copies of the repository's templates (build.mjs), as `pnpm pack` makes them.
+beforeAll(() => {
+  const build = spawnSync('node', [fileURLToPath(new URL('../build.mjs', import.meta.url))], { encoding: 'utf8' })
+  if (build.status !== 0) throw new Error(build.stderr)
+})
 
 const run = (...args: string[]) => spawnSync('node', [cli, ...args], { cwd: work, encoding: 'utf8', env: { ...process.env, npm_config_user_agent: '' } })
 const read = (dir: string, file: string) => readFileSync(join(work, dir, file), 'utf8')
@@ -33,13 +38,13 @@ describe('create-ginko', () => {
     // pnpm 11 exits 1 on `pnpm install` unless the starter allows esbuild's install script.
     expect(read('plain', 'pnpm-workspace.yaml')).toMatch(/^allowBuilds:\n  esbuild: true$/m)
     expect(result.stdout).toContain('Created plain from the plain starter in English.')
-    expect(result.stdout).toContain('npm create ginko@latest my-site -- --preset gastro')
+    expect(result.stdout).toContain('npm create ginko@latest my-site -- --template starter')
   })
 
   it('shows pnpm users the starter options without the npm-only --', () => {
     const result = spawnSync('node', [cli, 'via-pnpm'], { cwd: work, encoding: 'utf8', env: { ...process.env, npm_config_user_agent: 'pnpm/11.28.5 npm/? node/v24.18.0' } })
     expect(result.status).toBe(0)
-    expect(result.stdout).toContain('pnpm create ginko my-site --preset gastro')
+    expect(result.stdout).toContain('pnpm create ginko my-site --template starter')
     expect(result.stdout).not.toContain(' -- ')
   })
 
@@ -51,10 +56,24 @@ describe('create-ginko', () => {
     expect(run('plain-id').stdout).not.toContain('The site id is')
   })
 
-  it('--locale de creates the German plain starter', () => {
-    expect(run('plain-de', '--locale', 'de').status).toBe(0)
-    expect(read('plain-de', 'ginko.config.ts')).toContain("locales: ['de']")
-    expect(read('plain-de', 'content/start.md')).toContain('title: Hallo Ginko')
+  // --locale and --preset stay for one minor release; wrong behaviour caught: they stop working, or say nothing about it.
+  it.each([
+    ['--locale de', ['plain-de', '--locale', 'de'], '--locale is deprecated'],
+    ['--locales de', ['plain-de2', '--locales', 'de'], undefined],
+  ])('%s creates the German plain starter', (_name, args, note) => {
+    const result = run(...args)
+    expect(result.status).toBe(0)
+    expect(read(args[0]!, 'ginko.config.ts')).toContain("locales: ['de']")
+    expect(read(args[0]!, 'content/start.md')).toContain('title: Hallo Ginko')
+    if (note) expect(result.stderr).toContain(note)
+    else expect(result.stderr).not.toContain('deprecated')
+  })
+
+  it('--preset still works and says that --template replaces it', () => {
+    const result = run('preset-note', '--preset', 'gastro')
+    expect(result.status).toBe(0)
+    expect(result.stderr).toContain('--preset is deprecated')
+    expect(result.stderr).toContain('use --template')
   })
 
   // Each preset: its config imports the package, package.json lists it at the Ginko version, the base sample page is gone.
@@ -115,6 +134,11 @@ describe('create-ginko', () => {
     ['an unknown preset', ['bad-preset', '--preset', 'shop'], 'Choose one of: gastro, docs.'],
     ['a preset name that is an object key', ['bad-proto', '--preset', 'toString'], 'Unknown preset "toString"'],
     ['an unknown language', ['bad-lang', '--locale', 'fr'], 'Choose one of: en, de.'],
+    ['two languages for the plain starter', ['bad-two-langs', '--locales', 'en,de'], 'The plain starter has one language.'],
+    ['an unknown template', ['bad-template', '--template', 'shop'], 'Unknown template "shop". Choose one of: starter.'],
+    ['a locale the template does not have', ['bad-locale', '--template', 'starter', '--locales', 'en,fr'], 'Unknown locale "fr". The starter template has: en.'],
+    ['--template with --preset', ['bad-both', '--template', 'starter', '--preset', 'gastro'], 'Use --template or --preset, not both.'],
+    ['--template dropped by npm (only its value arrives)', ['bad-npm-template', 'starter'], 'npm create ginko@latest bad-npm-template -- --template starter'],
     ['--preset dropped by npm (only its value arrives)', ['bad-npm', 'gastro'], 'npm create ginko@latest bad-npm -- --preset gastro'],
     ['a second folder name', ['bad-two', 'other'], 'Unexpected argument "other".'],
   ])('%s exits 2 and creates nothing', (_name, args, message) => {
@@ -127,6 +151,47 @@ describe('create-ginko', () => {
 
   it('quotes a folder with spaces in the next steps', () => {
     expect(run('My Site').stdout).toContain("cd 'My Site'")
+  })
+})
+
+describe('create-ginko --template', () => {
+  const starter = JSON.parse(readFileSync(fileURLToPath(new URL('../../../templates/starter/package.json', import.meta.url)), 'utf8'))
+  const clock = fileURLToPath(new URL('../../../scripts/templates/clock.mjs', import.meta.url))
+  /** Runs create-ginko with its clock at `now` (the template test clock, scripts/templates/clock.mjs). */
+  const runAt = (now: string, ...args: string[]) => spawnSync('node', ['--import', clock, cli, ...args], { cwd: work, encoding: 'utf8', env: { ...process.env, npm_config_user_agent: '', GINKO_TEST_NOW: now } })
+
+  it('creates a site from the template with its own site id, this release\'s ranges and a secret', () => {
+    const result = run('tpl-site', '--template', 'starter')
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('Created tpl-site from the starter template in English.')
+    // Wrong behaviour caught: two sites created from one template share the template's site id.
+    expect(read('tpl-site', 'ginko.config.ts')).toMatch(/\bsite: 'tpl-site'/)
+    const pkg = JSON.parse(read('tpl-site', 'package.json'))
+    expect(pkg.name).toBe('tpl-site')
+    // Wrong behaviour caught: the committed range of the next release, which npm does not have yet.
+    expect(pkg.dependencies['@lupinum/ginko']).toBe(`^${version}`)
+    expect(pkg.dependencies['@lupinum/ginko-content']).toBe(`^${version}`)
+    expect(pkg.ginko).toEqual({ sampleAnchor: starter.ginko.sampleAnchor })
+    expect(read('tpl-site', '.env')).toMatch(/^NUXT_APP_SECRET=[\da-f]{64}$/m)
+    expect(existsSync(join(work, 'tpl-site/.gitignore'))).toBe(true)
+    expect(existsSync(join(work, 'tpl-site/gitignore'))).toBe(false)
+  })
+
+  it('moves only the dates of entries that expire by whole weeks, and nothing else', () => {
+    // 10 weeks and 3 days after the anchor: dates move 10 weeks, so each keeps its weekday.
+    const anchor = Date.parse(`${starter.ginko.sampleAnchor}T00:00:00Z`)
+    const now = new Date(anchor + (10 * 7 + 3) * 864e5 + 10 * 3600e3).toISOString()
+    const result = runAt(now, 'tpl-dates', '--template', 'starter')
+    expect(result.status).toBe(0)
+    const source = (file: string) => readFileSync(fileURLToPath(new URL(`../../../templates/starter/${file}`, import.meta.url)), 'utf8')
+    const moved = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) + 70 * 864e5).toISOString().slice(0, 10)
+    const event = source('content/events/1.new-year-tidy-up.md')
+    const [from, to] = [...event.matchAll(/(?:from|to): (\d{4}-\d{2}-\d{2})/g)].map((m) => m[1]!)
+    expect(read('tpl-dates', 'content/events/1.new-year-tidy-up.md')).toBe(event.replace(from!, moved(from!)).replace(to!, moved(to!)))
+    // Wrong behaviour caught: a post's publication date or the notice's end date moves with the samples.
+    for (const file of ['content/posts/1.spring-planting-day.md', 'content/notice.md']) expect(read('tpl-dates', file)).toBe(source(file))
+    expect(JSON.parse(read('tpl-dates', 'package.json')).ginko.sampleAnchor).toBe(moved(starter.ginko.sampleAnchor))
+    expect(result.stdout).toContain('The sample dates in 3 content files moved')
   })
 })
 

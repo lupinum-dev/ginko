@@ -9,11 +9,17 @@
   "files": [
     "index.mjs",
     "node-version.mjs",
+    "template-files.mjs",
     "template",
     "template-de",
     "presets",
+    "templates",
     "CHANGELOG.md"
   ],
+  "scripts": {
+    "build": "node build.mjs",
+    "prepack": "node build.mjs"
+  },
   "license": "MIT",
   "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",
   "repository": {

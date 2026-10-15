@@ -11,6 +11,9 @@ workspace. Seven packages in `packages/` are published to npm and always release
   Lupinum hosts: `ginko-server`, `ginko-studio`, `ginko-editor`, `ginko-preset-agency`. No published
   package may depend on a private one.
 - `sites/` demo and docs sites, `apps/platform` the hosted platform, `contracts/` the schemas the demo sites publish, `e2e/` Playwright tests.
+- `templates/<name>` complete starter sites that keep real `@lupinum/*` ranges (root overrides link them to the local
+  packages; run their scripts from the root: `pnpm --filter <name> run …`), `templates/_features` their shared
+  sources. `pnpm templates sync | sync --check | test <name> | dev <name>` (scripts/templates.ts).
 
 ## Commands
 

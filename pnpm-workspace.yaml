@@ -2,11 +2,28 @@ packages:
   - packages/*
   - apps/*
   - sites/*
+  # The templates are complete Nuxt projects that keep real @lupinum/* ranges for users who copy them; the
+  # overrides below link them to the local packages here. _features holds shared sources, not a package.
+  - templates/*
+  - '!templates/_features'
   - packages/ginko-i18n/browser/apps/*
   - packages/ginko-i18n/browser/fixtures/*
 
 allowBuilds:
   esbuild: true
+  # @nuxt/eslint's import resolver (templates): its install script only checks for a prebuilt binary.
+  unrs-resolver: false
+
+# Inside this repository every importer (the templates too, whose package.json keeps a real range such as ^0.5.0)
+# uses the local code of the released packages (spec TEMPLATES.md T3).
+overrides:
+  '@lupinum/ginko': 'workspace:*'
+  '@lupinum/ginko-i18n': 'workspace:*'
+  '@lupinum/ginko-content': 'workspace:*'
+  '@lupinum/ginko-components': 'workspace:*'
+  '@lupinum/ginko-docs': 'workspace:*'
+  '@lupinum/ginko-preset-gastro': 'workspace:*'
+  create-ginko: 'workspace:*'
 
 # Dependency quarantine: never install versions younger than 24 hours. Our own scope skips it,
 # because only our protected release workflows publish it.

@@ -1,8 +1,8 @@
 // Release gate: the packages work outside this monorepo. Packs every released package and checks its
-// manifest, license and publint; creates a site with create-ginko for the plain starter and every preset, and a
-// copy of sites/docs, installs them from the tarballs with npm, builds them, checks a few URLs, type-checks
-// them and runs the packaged `ginko check`. A second docs site adds the Nuxt SEO modules (@nuxtjs/seo). Every site's
-// share card must render. Takes 2–4 minutes (npm install). Run: pnpm check:pack
+// manifest, license and publint; creates a site with create-ginko for the plain starter, every preset and every
+// template, and a copy of sites/docs, installs them from the tarballs with npm, builds them, checks a few URLs, type-checks
+// them and runs the packaged `ginko check`. A second docs site adds the Nuxt SEO modules (@nuxtjs/seo). Every site
+// with nuxt-og-image must render its share card. Takes 2–4 minutes (npm install). Run: pnpm check:pack
 // `pnpm check:pack --nuxt5` does the same on the Nuxt 5 nightly that the ginko-i18n browser suite pins.
 import { exec as execCallback, execSync, spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
@@ -151,7 +151,9 @@ async function serve(siteDir: string, port: number, checks: Check[]) {
       if (problem) failures.push(`${siteDir} ${path}: ${problem}`)
     }
     // The share card of the first page, rendered by nuxt-og-image with Ginko's template. Its URL starts with the site's
-    // own address, so only the path is asked for here.
+    // own address, so only the path is asked for here. A site without nuxt-og-image (a template that has none yet) has no card.
+    const pkg = JSON.parse(readFileSync(join(siteDir, 'package.json'), 'utf8'))
+    if (!pkg.dependencies?.['nuxt-og-image'] && !pkg.devDependencies?.['nuxt-og-image'] && !pkg.dependencies?.['@nuxtjs/seo']) return failures
     const first = await (await fetch(`http://localhost:${port}${checks[0]![0]}`)).text()
     const card = metaContent(first, 'og:image')
     const res = card === undefined ? undefined : await fetch(`http://localhost:${port}${new URL(card).pathname}`)
@@ -175,14 +177,22 @@ const created: Record<string, Check[]> = {
   'gastro-de': [['/', /<h1>Öffnungszeiten<\/h1>[\s\S]*Tomatensuppe/], offMenuLeftOut],
   docs: [['/docs/getting-started', /class="docs-sidebar/]],
   'docs-de': [['/docs/einstieg', /lang="de"[\s\S]*class="docs-sidebar[\s\S]*Seiten schreiben/]],
+  // The templates (templates/<name>, bundled by create-ginko's prepack), all languages.
+  'template-starter': [['/', /<h1>Greenfield Community Garden<\/h1>/], ['/events', /New year tidy-up/], ['/sitemap.xml', /<urlset/]],
 }
 for (const name of ['starter', ...readdirSync(join(root, 'packages/create-ginko/presets'))]) {
   if (!created[name]) failures.push(`check:pack has no URL check for the create-ginko preset folder ${name}`)
   const [preset, lang] = name.split('-')
-  const args = name === 'starter' ? '' : `--preset ${preset}${lang ? ` --locale ${lang}` : ''}`
+  const args = name === 'starter' ? '' : `--preset ${preset}${lang ? ` --locales ${lang}` : ''}`
   run(`node ${join(root, 'packages/create-ginko/index.mjs')} ${name} ${args}`, work)
   if (preset === 'gastro') writeFileSync(join(work, name, 'content/menu/5.off-season.md'), OFF_MENU)
   useTarballs(join(work, name))
+}
+// Every bundled template (pnpm pack ran create-ginko's build above) becomes a site, so a new template cannot skip the gate.
+for (const name of readdirSync(join(root, 'packages/create-ginko/templates')).filter((entry) => !entry.endsWith('.json'))) {
+  if (!created[`template-${name}`]) failures.push(`check:pack has no URL check for the create-ginko template ${name}`)
+  run(`node ${join(root, 'packages/create-ginko/index.mjs')} template-${name} --template ${name}`, work)
+  useTarballs(join(work, `template-${name}`))
 }
 // 2. The docs site on the docs layer.
 const docs = join(work, 'docs-site')
@@ -228,7 +238,7 @@ const results = await Promise.all([
   ], { ginkoCheck: false }),
 ])
 failures.push(...results.flat())
-console.log(failures.length ? `FAIL check:pack${nuxt5 ? ` (${nuxt5})` : ''}\n${failures.join('\n')}` : `OK check:pack${nuxt5 ? ` (${nuxt5})` : ''}: the create-ginko starters (plain, gastro, gastro --locale de, docs, docs --locale de) and sites/docs (also with @nuxtjs/seo) build, serve, render share cards and type-check from the tarballs`)
+console.log(failures.length ? `FAIL check:pack${nuxt5 ? ` (${nuxt5})` : ''}\n${failures.join('\n')}` : `OK check:pack${nuxt5 ? ` (${nuxt5})` : ''}: the create-ginko starters (plain, gastro, gastro --locales de, docs, docs --locales de), its templates (${Object.keys(created).filter((n) => n.startsWith('template-')).join(', ')}) and sites/docs (also with @nuxtjs/seo) build, serve, render share cards and type-check from the tarballs`)
 // A failed run keeps its folder for a look at the sites; a passed one cleans up.
 if (!failures.length) rmSync(work, { recursive: true, force: true })
 process.exit(failures.length ? 1 : 0)
