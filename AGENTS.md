@@ -25,7 +25,13 @@ pnpm build           # builds the seven published packages
 pnpm lint            # changeset style
 pnpm verify          # what CI runs: lint, typecheck, test, contracts, pack, dependency audit
 pnpm changeset       # describe a user-facing change for the next release
+pnpm e2e:platform    # platform e2e on a fresh local backend: sets the local Convex state aside, starts and stops
+                     # everything, exit code = Playwright's; extra args go to Playwright (e.g. e2e/f6.spec.ts)
 ```
+
+Heavy runs (`pnpm templates test`, `pnpm e2e:platform`) take a machine-wide lock (one at a time; a waiting run names
+the holder) and wait up to 15 minutes for the 1-minute load average to drop below the CPU count. `GINKO_NO_LOAD_WAIT=1`
+skips that wait (CI). A setup error (install, build, server start, global setup) is a failed gate, never a skipped one.
 
 ## Rules
 

@@ -16,6 +16,7 @@
     "check:contracts": "node --experimental-strip-types scripts/contracts.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter @lupinum/ginko-i18n typecheck && pnpm --filter @lupinum/ginko-components typecheck && pnpm --filter @ginko-demo/restaurant typecheck && pnpm --filter starter typecheck && pnpm --filter @ginko-demo/industrie typecheck && pnpm --filter @ginko-demo/saas typecheck && pnpm --filter @ginko-demo/docs typecheck && pnpm --filter @ginko/platform typecheck",
     "e2e": "playwright test",
+    "e2e:platform": "node --experimental-strip-types scripts/e2e-platform.ts",
     "outbox": "node --experimental-strip-types scripts/outbox.ts",
     "local:dev": "node --experimental-strip-types packages/ginko/src/cli/monorepo.ts dev",
     "local:import": "node --experimental-strip-types packages/ginko/src/cli/monorepo.ts import",
