@@ -2,6 +2,7 @@
 // lose it. The form offers it back ("Restore your unsaved changes?") and never applies it silently.
 // Storage can be blocked or full (private window), so every access is guarded: then there is simply
 // no local copy. Two tabs on the same entry write the same key; the last write wins.
+import { onBeforeUnmount, onMounted, watch } from 'vue'
 import type { Data } from '../utils/content'
 
 export interface LocalDraft {
