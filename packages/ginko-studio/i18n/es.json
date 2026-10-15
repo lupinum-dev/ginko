@@ -681,9 +681,10 @@
     "hideChanges": "Ocultar cambios",
     "openTrash": "Abrir papelera",
     "revert": "Volver a esta versión",
-    "revertConfirm": "¿Volver a la versión del {date}? Se guarda como un cambio nuevo, así que puedes deshacerlo.",
+    "revertConfirm": "¿Volver al estado justo después de este cambio ({date})? Se guarda como un cambio nuevo, así que puedes deshacerlo.",
+    "revertChanges": "Esto cambia:",
     "reverted": "Se volvió a la versión anterior.",
-    "alreadyThere": "La entrada ya tiene esta versión.",
+    "alreadyThere": "Esta ya es la versión actual.",
     "waiting": "Esperando aprobación",
     "withdraw": "Retirar",
     "withdrawn": "Retirado.",
@@ -692,7 +693,7 @@
     "notLive": "No se publicó",
     "notLiveBecause": "Planificado para {when}. {reason}",
     "undoBlocked": {
-      "changed": "Cambiado de nuevo después, ya no se puede deshacer",
+      "changed": "Cambiado de nuevo después. Vuelve mejor a una versión anterior.",
       "removed": "Entrada eliminada, restáurala primero",
       "schema": "Los campos se reestructuraron desde entonces"
     },

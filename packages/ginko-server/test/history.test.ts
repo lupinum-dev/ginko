@@ -109,6 +109,20 @@ describe('changes.list filters', () => {
     const page = (await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage, entry: s.entries['menu-saibling']! })).page
     expect(page.map((r) => [r._id, r.undoBlocked])).toEqual([[c2, null], [c1, 'changed']])
   })
+
+  // Wrong behaviour caught: after two bad saves, undoing the newer one left the older one "changed since", although its
+  // field held exactly what it wrote, so the person could not step back further (R6).
+  it('once the newer save is undone, the older one can be undone again, step by step', async () => {
+    const s = await setup()
+    const entry = s.entries['menu-saibling']!
+    const a = await save(s, entry, { price: { amount: 1450 } })
+    const b = await save(s, entry, { price: { amount: 1500 } })
+    await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: b })
+    const page = (await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage, entry })).page
+    expect(page.find((r) => r._id === a)!.undoBlocked).toBeNull()
+    await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: a })
+    expect((await s.t.run((ctx) => ctx.db.get(entry)))!.data.price).toEqual({ amount: 1350 })
+  })
 })
 
 /** Three saves touching different fields of one dish, an hour apart. Returns the entry, its first data and the three changes. */
@@ -134,6 +148,17 @@ describe('entries.versionAt', () => {
     expect((await versionAt(s, entry, c1)).data).toEqual({ ...start, name: { ...(start.name as object), de: 'Saibling gebeizt' } })
     expect((await versionAt(s, entry, c2)).data).toEqual({ ...start, name: now.name, price: { amount: 1450 } })
     expect((await versionAt(s, entry, c3)).data).toEqual(now)
+  })
+
+  // Wrong behaviour caught: "Zurück zu dieser Version" asked only about a date; the person could not see what it changes.
+  it('says what going back changes: now before, the version after, only the fields that differ', async () => {
+    const s = await setup()
+    const { entry, start, c1 } = await threeSaves(s)
+    const { diff } = (await versionAt(s, entry, c1)) as unknown as { diff: Diff[] }
+    expect(diff).toEqual([
+      { field: 'price', label: 'Preis', kind: 'money', before: { amount: 1450 }, after: start.price },
+      { field: 'veg', label: expect.any(String), kind: 'choice', before: 'vegan', after: start.veg ?? null },
+    ])
   })
 
   it('a change that is gone, or belongs to another entry, is NOT_FOUND', async () => {

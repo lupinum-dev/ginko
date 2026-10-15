@@ -2,10 +2,11 @@
      stays live, so an undo on an older page updates its row at once. Rückgängig shows only on saves that are not undone yet, and for
      staff only when one of their granted edit tasks covers every field of the change. A save the
      server would refuse to undo (`undoBlocked`: saved again, removed, fields restructured) says why
-     instead. -->
+     instead. "Zurück zu dieser Version" shows what it changes before it saves. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import type { Schema } from '@lupinum/ginko/internal'
+import { opErrorOf } from '../composables/useOps'
 import { useTextOf } from '../composables/useTextOf'
 import { byText } from '../utils/who'
 import { whenFull } from '../utils/when'
@@ -89,7 +90,16 @@ function toggleShow(id: string) {
   showing.value = next
 }
 const confirming = ref<string | null>(null)
-const canRevert = (change: Change) => change.kind === 'save' && !!change.entry && (props.manager || taskFor(change) !== undefined)
+/** Every row that wrote values can be gone back to, an undo too: it holds the state before a bad save. */
+const canRevert = (change: Change) => (change.kind === 'save' || change.kind === 'undo') && !!change.entry && !!change.fields?.length && (props.manager || taskFor(change) !== undefined)
+// What going back changes, read while the question is open (one row at a time).
+const version = useConvexQuery(api.entries.versionAt, () => {
+  const change = rows.value.find((c) => c._id === confirming.value)
+  return change?.entry ? { site: props.site, entry: change.entry, change: change._id } : 'skip'
+})
+/** The answer for the open question; the one of the row asked before does not count. */
+const versionShown = computed(() => (version.data.value?.change === confirming.value ? version.data.value : undefined))
+const fieldsOf = (brick: string) => (Object.hasOwn(props.schema.bricks, brick) ? props.schema.bricks[brick]!.fields : undefined)
 async function revert(change: Change) {
   await whileBusy(change._id, async () => {
     await ops.revertEntry(change.entry!, change._id, taskFor(change))
@@ -156,9 +166,17 @@ async function undo(change: Change) {
           </div>
         </div>
         <div v-if="confirming === change._id" class="grid gap-2" role="group" :aria-label="t('history.revert')">
-          <p>{{ t('history.revertConfirm', { date: fullDate(change.at) }) }}</p>
+          <p v-if="versionShown && !versionShown.diff.length">{{ t('history.alreadyThere') }}</p>
+          <template v-else>
+            <p>{{ t('history.revertConfirm', { date: fullDate(change.at) }) }}</p>
+            <p v-if="version.error.value" class="font-medium text-destructive" role="alert">{{ opErrorOf(version.error.value).message }}</p>
+            <template v-else-if="versionShown">
+              <p class="font-medium">{{ t('history.revertChanges') }}</p>
+              <ChangeDiff :diff="versionShown.diff" :fields="fieldsOf(change.brick)" :locale="schema.locales[0]!" />
+            </template>
+          </template>
           <div class="flex flex-wrap gap-2">
-            <Button type="button" size="sm" :disabled="busy.has(change._id)" @click="revert(change)">{{ t('history.revert') }}</Button>
+            <Button v-if="versionShown?.diff.length" type="button" size="sm" :disabled="busy.has(change._id)" @click="revert(change)">{{ t('history.revert') }}</Button>
             <Button type="button" variant="ghost" size="sm" @click="confirming = null">{{ t('entry.cancel') }}</Button>
           </div>
         </div>

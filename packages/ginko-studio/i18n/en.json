@@ -681,9 +681,10 @@
     "hideChanges": "Hide changes",
     "openTrash": "Open trash",
     "revert": "Back to this version",
-    "revertConfirm": "Go back to the version of {date}? This is saved as a new change, so you can undo it.",
+    "revertConfirm": "Go back to how it was right after this change ({date})? This is saved as a new change, so you can undo it.",
+    "revertChanges": "This changes:",
     "reverted": "Went back to the earlier version.",
-    "alreadyThere": "The entry already has this version.",
+    "alreadyThere": "This is already the current version.",
     "waiting": "Waiting for approval",
     "withdraw": "Withdraw",
     "withdrawn": "Withdrawn.",
@@ -692,7 +693,7 @@
     "notLive": "Did not go live",
     "notLiveBecause": "Planned for {when}. {reason}",
     "undoBlocked": {
-      "changed": "Changed again since, can no longer be undone",
+      "changed": "Changed again since. Go back to an earlier version instead.",
       "removed": "Entry removed, restore it first",
       "schema": "The fields were restructured since"
     },

@@ -19,6 +19,7 @@ import { taskFor } from './lib/agentTools'
 import { BUDGET, checkFiles, checkNewFiles, brokenNewLinks, checkNewLinks, commitEntry, entryUses, lookupsFor, overBudget, same, sizeText, syncEntryRefs, syncFileRefs, untrashFilesOf, uploadIdsOf } from './lib/write'
 import { putTrees, readTreesJson } from './lib/trees'
 import { editorEntry, editorEntryWithTranslation, listRow, slimEntry, titleOf } from './lib/list'
+import { diffFields } from './lib/diff'
 
 const underRoot = (leaf: string, root: string) => leaf === root || leaf.startsWith(`${root}.`)
 
@@ -261,6 +262,20 @@ async function versionOf(ctx: QueryCtx, actor: Actor, entryId: string, changeId:
   return { entry, change, data, touched: [...touched] }
 }
 
+/**
+ * What going back to `data` writes: the touched fields whose value differs from now (`null` removes one), without
+ * the address (it is fixed) and fields the schema no longer has. `revert` saves exactly these; `versionAt` shows them.
+ */
+function revertFields(brick: Brick | undefined, touched: string[], data: Data, now: Data): Record<string, Json> {
+  const fields: Record<string, Json> = {}
+  for (const root of touched) {
+    const field = brick && Object.hasOwn(brick.fields, root) ? brick.fields[root] : undefined
+    if (!field || field.retired || field.type === 'slug') continue
+    if (!same(data[root], now[root])) fields[root] = data[root] ?? null
+  }
+  return fields
+}
+
 /** `versionAt` for an actor already known: the platform's signed-in person, or the agent door's key (SPEC 16). */
 export async function versionAtAs(ctx: QueryCtx, actor: Actor, args: { entry: string; change: string }): Promise<Json> {
   const { entry, change, data, touched } = await versionOf(ctx, actor, args.entry, args.change)
@@ -268,9 +283,22 @@ export async function versionAtAs(ctx: QueryCtx, actor: Actor, args: { entry: st
   return result
 }
 
+/**
+ * The entry right after a change, plus `diff`: what going back to it changes, field by field, with now as `before`
+ * and that version as `after` (the Studio shows it before the person confirms). Empty: it is the current version.
+ */
 export const versionAt = query({
   args: { site: v.string(), entry: v.string(), change: v.string() },
-  handler: async (ctx, args) => versionAtAs(ctx, await actorFor(ctx, args.site), args),
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    const { entry, change, data, touched } = await versionOf(ctx, actor, args.entry, args.change)
+    const schema = actor.site.schema as Schema
+    const brick = Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
+    const now = entry.data as Data
+    const fields = revertFields(brick, touched, data, now)
+    const pick = (from: Data) => Object.fromEntries(Object.keys(fields).filter((root) => from[root] !== undefined).map((root) => [root, from[root]!]))
+    return { entry: entry._id, change: change._id, at: change.at, data, fields: touched, diff: diffFields(brick?.fields, pick(now), pick(data), schema.locales[0]!) }
+  },
 })
 
 const revertArgs = { site: v.string(), opId: v.string(), task: v.optional(v.string()), entry: v.string(), change: v.string() }
@@ -288,13 +316,7 @@ export async function revertAs(ctx: MutationCtx, actor: Actor, args: ObjectType<
     const schema = actor.site.schema as Schema
     const brick = brickOf(schema, entry)
     const now = entry.data as Data
-    const fields: Record<string, Json> = {}
-    for (const root of touched) {
-      // A field the schema no longer has cannot be written; the address is fixed.
-      const field = Object.hasOwn(brick.fields, root) ? brick.fields[root] : undefined
-      if (!field || field.retired || field.type === 'slug') continue
-      if (!same(data[root], now[root])) fields[root] = data[root] ?? null
-    }
+    const fields = revertFields(brick, touched, data, now)
     if (!Object.keys(fields).length) {
       const unchanged: Unchanged = { entry: entry._id, rev: entry.rev, contentRev: actor.site.contentRev, warnings: [] }
       return unchanged

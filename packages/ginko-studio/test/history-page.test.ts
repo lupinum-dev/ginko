@@ -8,6 +8,7 @@ import { collection, defineSite, f } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import HistoryPage from '../app/pages/s/[site]/history/index.vue'
+import ChangeDiff from '../app/components/ChangeDiff.vue'
 import ChangeRows from '../app/components/ChangeRows.vue'
 
 const { computed, defineComponent, h, onMounted, onUnmounted, ref, Suspense } = vue
@@ -24,8 +25,12 @@ vi.stubGlobal('useHead', () => {})
 vi.stubGlobal('useRoute', () => ({ params: { site: 'restaurant' }, query: { entry: 'e1' } }))
 vi.stubGlobal('useStudioSite', () => ({ shown: (label: Record<string, string>) => label.de }))
 vi.stubGlobal('useSiteData', async () => ({ slug: ref('restaurant'), schema: ref(schema), site: ref({ name: 'Restaurant' }), main: ref('de'), isManager: ref(true), grants: ref(new Set()) }))
-vi.stubGlobal('useConvexQuery', () => ({ data: ref({ _id: 'e1', brick: 'legal', data: { title: { de: 'Datenschutzerklärung' } } }), error: ref() }))
-vi.stubGlobal('useConvexPaginatedQuery', () => ({ data: ref([]), status: ref('success'), error: ref(), canLoadMore: ref(false), isLoadingMore: ref(false), loadMore: () => {} }))
+/** What each Convex query answers, by name (the test API shim names them, e.g. "entries.get"). */
+const answers: Record<string, unknown> = { 'entries.get': { _id: 'e1', brick: 'legal', data: { title: { de: 'Datenschutzerklärung' } } } }
+vi.stubGlobal('useConvexQuery', (query: unknown, args: () => unknown) => ({ data: computed(() => (args() === 'skip' ? undefined : answers[String(query)])), error: ref() }))
+/** The rows of the history list. */
+const changes = ref<unknown[]>([])
+vi.stubGlobal('useConvexPaginatedQuery', () => ({ data: changes, status: ref('success'), error: ref(), canLoadMore: ref(false), isLoadingMore: ref(false), loadMore: () => {} }))
 vi.stubGlobal('useOps', () => ({}))
 
 // Wrong behaviour caught: "Verlauf dieses Eintrags" opened a page titled only "Verlauf", with no way back, and an
@@ -42,4 +47,16 @@ test('the history of one entry names it, links back to it and says plainly that 
   expect(wrapper.get('a[href="/s/restaurant/all/legal/e1"]').text()).toBe('← Zurück zu „Datenschutzerklärung“')
   expect(wrapper.text()).toContain('Noch keine Änderungen. Was ab jetzt gespeichert wird, steht hier.')
   expect(wrapper.text()).not.toContain('für diesen Filter')
+})
+
+// Wrong behaviour caught: the "Rückgängig" rows, which hold the good state after a bad save, offered no way back, and
+// the question named only a date: before or after this change? (R6)
+test('a Rückgängig row can be gone back to, and the question shows what that changes', async () => {
+  changes.value = [{ _id: 'c2', kind: 'undo', entry: 'e1', brick: 'legal', fields: ['title'], at: Date.UTC(2026, 9, 8, 10), msg: null, sentence: 'Rückgängig: Titel von „Impressum“ geändert', who: { email: 'anna@example.test' }, agent: null, undoBlocked: null }]
+  answers['entries.versionAt'] = { change: 'c2', diff: [{ field: 'title', label: 'Titel', kind: 'text', before: { de: 'Impressum neu' }, after: { de: 'Impressum' }, locales: [{ locale: 'de', before: 'Impressum neu', after: 'Impressum' }] }] }
+  const wrapper = mount(ChangeRows, { props: { site: 'restaurant', schema, manager: true, grants: new Set<string>(), filter: 'entry', entry: 'e1' }, global: { components: { ChangeDiff }, stubs: { ChangeDetail: true, NuxtLink: true } } })
+  await wrapper.findAll('button').find((b) => b.text() === 'Zurück zu dieser Version')!.trigger('click')
+  const question = wrapper.get('[role="group"]')
+  expect(question.text()).toContain('Zum Stand direkt nach dieser Änderung (')
+  expect(question.text()).toMatch(/Das ändert sich:\s*Titel\s*Vorher\s*Impressum neu\s*Nachher\s*Impressum/)
 })

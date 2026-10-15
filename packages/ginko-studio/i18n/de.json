@@ -681,9 +681,10 @@
     "hideChanges": "Änderungen ausblenden",
     "openTrash": "Papierkorb öffnen",
     "revert": "Zurück zu dieser Version",
-    "revertConfirm": "Zurück zur Version vom {date}? Das wird als neue Änderung gespeichert, du kannst es rückgängig machen.",
+    "revertConfirm": "Zum Stand direkt nach dieser Änderung ({date}) zurück? Das wird als neue Änderung gespeichert, du kannst es rückgängig machen.",
+    "revertChanges": "Das ändert sich:",
     "reverted": "Zur früheren Version zurückgegangen.",
-    "alreadyThere": "Der Eintrag hat diese Version schon.",
+    "alreadyThere": "Das ist schon der aktuelle Stand.",
     "waiting": "Wartet auf Freigabe",
     "withdraw": "Zurückziehen",
     "withdrawn": "Zurückgezogen.",
@@ -692,7 +693,7 @@
     "notLive": "Nicht live gegangen",
     "notLiveBecause": "Geplant für {when}. {reason}",
     "undoBlocked": {
-      "changed": "Danach erneut geändert, Rückgängig geht nicht mehr",
+      "changed": "Danach noch einmal geändert. Geh stattdessen zu einer früheren Version zurück.",
       "removed": "Eintrag entfernt, erst wiederherstellen",
       "schema": "Die Felder wurden seither umgebaut"
     },
