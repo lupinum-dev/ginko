@@ -651,3 +651,27 @@ describe('grants by area (SPEC 2.7)', () => {
     ])
   })
 })
+
+describe('create task fields', () => {
+  const dish = (fields: unknown, prefill?: unknown) => site({}, {
+    bricks: {
+      menu: collection({
+        label: 'Karte', max: 20, order: 'manual',
+        fields: { name: f.text('Name', { max: 120 }), price: f.money('Preis'), slug: f.slug('Adresse', { from: 'name' }), onMenu: f.boolean('Auf der Karte', { optional: true, default: true }), note: f.text('Hinweis', { max: 20, optional: true }) },
+        tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create', fields: fields as never, ...(prefill ? { prefill: prefill as never } : {}) }],
+      }),
+    },
+  })
+
+  // Wrong behaviour caught: a create task that names a field the brick lacks, or skips a required field that has no
+  // default, ships and every new entry then fails to save.
+  it.each([
+    ['a valid list', ['name', 'price'], undefined, []],
+    ['an optional field left out', ['name', 'price', 'note'], undefined, []],
+    ['an unknown field', ['name', 'price', 'nope'], undefined, ['menu.add.fields: “nope” is not a field of this brick.']],
+    ['a required field left out', ['name'], undefined, ['menu.add.fields: “price” is required and has no default, so the task must ask for it.']],
+    ['a required field that the prefill sets', ['name'], { price: { amount: 500 } }, []],
+  ])('%s', (_name, fields, prefill, expected) => {
+    expect(problemsOf(dish(fields, prefill))).toEqual(expected)
+  })
+})

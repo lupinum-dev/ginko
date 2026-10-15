@@ -58,7 +58,13 @@ describe('taskInputSchema', () => {
   // not ask for before the dish has a price to change.
   it('a create task leaves out the plan of a planned change', () => {
     const schema = taskInputSchema(bricks.menu!, task('menu', 'add'), ctx)
-    expect(Object.keys(schema.properties)).toEqual(['category', 'name', 'description', 'price', 'allergens', 'veg', 'onMenu', 'soldOutOn'])
+    expect(Object.keys(schema.properties)).toEqual(['category', 'name', 'description', 'price', 'allergens', 'veg'])
+  })
+
+  // Wrong behaviour caught: a new dish could be marked sold out or off the menu in the same call that creates it.
+  it('a create task with fields offers only those: a new dish has no sold-out day', () => {
+    const schema = taskInputSchema(bricks.menu!, { id: 'add', label: 'Neu', kind: 'create', fields: ['name', 'price', 'soldOutOn'] }, ctx)
+    expect(Object.keys(schema.properties)).toEqual(['name', 'price', 'soldOutOn'])
   })
 })
 

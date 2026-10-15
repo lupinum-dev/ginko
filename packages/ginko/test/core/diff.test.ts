@@ -362,6 +362,8 @@ describe('checkSchema: retired fields (SPEC 2.5)', () => {
       mutate: (s: Schema) => {
         fieldsOf(s, 'menu').vegSource = { type: 'choice', label: 'Vegetarisch Quelle', options: [{ value: 'none', label: 'keins' }, { value: 'vegetarian', label: 'vegetarisch' }, { value: 'vegan', label: 'vegan' }, { value: 'raw', label: 'roh' }] }
         retire(s, 'menu.veg', { from: 'vegSource' })
+        // A new required field must be asked by the dish-adding task (create task `fields`).
+        for (const task of s.bricks.menu!.tasks ?? []) if (task.kind === 'create' && task.fields) task.fields = [...task.fields, 'vegSource']
       },
       problems: ['retired: “menu.veg” cannot mirror “vegSource”: the source has options the old field does not know.'],
     },

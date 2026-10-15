@@ -45,7 +45,7 @@ const TIME = '^\\d{2}:\\d{2}$'
 export function taskInputSchema(brick: Brick, task: Task, ctx: ToolSchemaContext): JsonSchemaObject {
   const fields: Fields = {}
   if (task.kind === 'edit') for (const key of task.fields) { const field = brick.fields[key]; if (field) fields[key] = field }
-  if (task.kind === 'create') for (const [key, field] of Object.entries(brick.fields)) if (createAsks(brick, key)) fields[key] = field
+  if (task.kind === 'create') for (const [key, field] of Object.entries(brick.fields)) if (createAsks(brick, key, task)) fields[key] = field
   const schema = objectOf(fields, ctx, ctx.prefill)
   const pick = task.kind === 'remove' || (task.kind === 'edit' && task.pick === true)
   if (pick) {

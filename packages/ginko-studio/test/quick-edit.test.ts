@@ -176,7 +176,7 @@ describe('a planned price (menu, `planned`)', () => {
   // Wrong behaviour caught: "Gericht hinzufügen" asks for a planned price before the dish exists, and "Preis ändern"
   // changes the price without showing the plan that replaces it on its date.
   test('"Gericht hinzufügen" shows no plan; "Preis ändern" shows the price with its plan', () => {
-    expect(Object.keys(taskFields(dishes, task('add')))).toEqual(['category', 'name', 'description', 'price', 'allergens', 'veg', 'onMenu', 'soldOutOn'])
+    expect(Object.keys(taskFields(dishes, task('add')))).toEqual(['category', 'name', 'description', 'price', 'allergens', 'veg'])
     expect(Object.keys(taskFields(dishes, task('price')))).toEqual(['price', 'nextPrice', 'priceFrom'])
   })
 

@@ -1776,7 +1776,15 @@
             "de": "Gericht hinzufügen",
             "en": "Add a dish"
           },
-          "kind": "create"
+          "kind": "create",
+          "fields": [
+            "category",
+            "name",
+            "description",
+            "price",
+            "allergens",
+            "veg"
+          ]
         },
         {
           "id": "remove",
