@@ -738,7 +738,7 @@
       "translate": "Editar traducción"
     },
     "removed": {
-      "link": "Eliminadas ({count})",
+      "link": "Eliminadas",
       "title": "Entradas eliminadas",
       "empty": "No se eliminó nada.",
       "until": "Se borrará definitivamente el {date}",

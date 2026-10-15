@@ -738,7 +738,7 @@
       "translate": "Übersetzung bearbeiten"
     },
     "removed": {
-      "link": "Entfernt ({count})",
+      "link": "Entfernt",
       "title": "Entfernte Einträge",
       "empty": "Nichts wurde entfernt.",
       "until": "Wird am {date} endgültig gelöscht",

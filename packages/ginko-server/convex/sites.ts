@@ -103,6 +103,8 @@ export const meta = query({
         contentRev: site.contentRev,
         entryCount: site.entryCount,
         bytes: site.bytes,
+        /** Whether the trash holds removed entries (Alles bearbeiten links to it). From the trash's byte counter, so no read of the trash; removed entries of retired bricks count too. */
+        hasTrash: (site.trashBytes ?? 0) > 0,
         release: site.release,
         /** The site setting for agent review (SPEC 17); null: the config's `agents.review` decides. */
         agentReview: site.agentReview ?? null,

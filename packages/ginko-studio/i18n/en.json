@@ -738,7 +738,7 @@
       "translate": "Edit translation"
     },
     "removed": {
-      "link": "Removed ({count})",
+      "link": "Removed",
       "title": "Removed entries",
       "empty": "Nothing was removed.",
       "until": "Deleted for good on {date}",

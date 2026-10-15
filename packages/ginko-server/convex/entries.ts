@@ -1131,22 +1131,6 @@ export const trash = query({
   },
 })
 
-/**
- * The badge "Removed (n)": every removed entry the trash shows, whatever area is open. It reads the whole trash.
- * SITE_BUDGET.trashBytes bounds the trash's data bytes, not its number of entries: many small removed entries
- * within the 30 days can still pass Convex's read limits. A site counter cannot replace this read as it is, since
- * the trash hides the removed entries of retired bricks.
- */
-export const trashCount = query({
-  args: { site: v.string() },
-  handler: async (ctx, args): Promise<number> => {
-    const actor = await actorFor(ctx, args.site)
-    const keys = new Set(trashBricks(actor.site.schema as Schema))
-    const removed = await ctx.db.query('entries').withIndex('by_site_deleted', (q) => q.eq('site', actor.site._id).gt('deletedAt', 0)).collect()
-    return removed.filter((row) => keys.has(row.brick)).length
-  },
-})
-
 /** Why an entry is not on the website in a language (default: the main language), in plain German. Any member may ask. */
 export const whyNotPublic = query({
   args: { site: v.string(), entry: v.string(), locale: v.optional(v.string()) },

@@ -250,13 +250,15 @@ describe('entries.trash', () => {
     expect((await errorOf(s.as.stranger.query(api.entries.trash, { site, paginationOpts: firstPage }))).code).toBe('FORBIDDEN')
   })
 
-  it('brick narrows the list; trashCount counts the removed entries of every collection', async () => {
+  it('brick narrows the list; the site says it has a trash while something is removed', async () => {
     const s = await studioSetup()
+    const hasTrash = async () => (await s.as.owner.query(api.sites.meta, { site })).site.hasTrash
+    expect(await hasTrash()).toBe(false)
     await s.remove(s.entries['menu-frittaten']!)
     await s.remove((await s.createEvent('Wildwoche')).entry)
     const narrowed = await s.as.owner.query(api.entries.trash, { site, brick: 'menu', paginationOpts: firstPage })
     expect(narrowed.page.map((item) => item.label)).toEqual(['Frittatensuppe'])
-    expect(await s.as.owner.query(api.entries.trashCount, { site })).toBe(2)
+    expect(await hasTrash()).toBe(true)
   })
 
   it('pages newest first', async () => {
