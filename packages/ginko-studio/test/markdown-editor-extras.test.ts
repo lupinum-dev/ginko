@@ -11,7 +11,6 @@ import { toast } from 'vue-sonner'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { computed, reactive } from 'vue'
 import { EDITOR_COMPONENTS, EDITOR_LINK_TARGETS } from '../app/components/editor/context.ts'
-import ImageDialog from '../app/components/editor/ImageDialog.vue'
 import MarkdownEditor from '../app/components/editor/MarkdownEditor.vue'
 import { REFS } from '../app/components/fields/refs.ts'
 
@@ -125,7 +124,7 @@ describe('pictures by paste', () => {
     const editor = editorOf(wrapper)
     let pos = -1
     editor.state.doc.descendants((node, at) => { if (node.type.name === 'image') pos = at })
-    const upload = wrapper.findComponent(ImageDialog).props('upload') as (file: File, replace?: number) => void
+    const upload = wrapper.findComponent({ name: 'ImageDialog' }).props('upload') as (file: File, replace?: number) => void
     upload(png(), pos)
     await until(() => sent.length === 1)
     expect(editor.view.dom.textContent).toContain('wird hochgeladen')
