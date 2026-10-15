@@ -3,7 +3,8 @@
 // country is part of the site's config.
 import { f } from '../core/fields.ts'
 import { single } from '../core/site.ts'
-import { compact, postalAddress, sourceOf, t, type BasicsOptions } from './shared.ts'
+import { organizationLd, type OrganizationLdInput } from '../core/seo.ts'
+import { sourceOf, t, type BasicsOptions } from './shared.ts'
 
 export function site(o: BasicsOptions = {}) {
   const plain = { optional: true, translate: false } as const
@@ -53,34 +54,23 @@ export interface SiteData {
   vatId?: string
 }
 
-export interface SiteJsonLdOptions {
-  /** The site's name (`name` in the config). */
-  name: string
-  /** The site's address (`url` in the config). */
-  url: string
-  /** `Organization` (default), `LocalBusiness` for a shop or practice, `NGO` for a nonprofit. */
-  type?: 'Organization' | 'LocalBusiness' | 'NGO'
+export interface SiteJsonLdOptions extends Pick<OrganizationLdInput, 'name' | 'url' | 'type' | 'logo' | 'sameAs'> {
   /** The site's country (ISO 3166 code such as `DE`), written as `addressCountry`. Left out when not given. */
   country?: string
-  /** Absolute URL of the logo. */
-  logo?: string
-  /** Absolute URLs of the organisation's profiles elsewhere. */
-  sameAs?: string[]
 }
 
-/** schema.org Organization, LocalBusiness or NGO with the address and contact of the `site()` brick. */
+/**
+ * schema.org Organization, LocalBusiness or NGO with the address and contact of the `site()` brick. On a page whose
+ * JSON-LD has this node, the Nuxt module does not add its own Organization from `seo.organization`: pass that
+ * config's `logo` and `sameAs` here.
+ */
 export function siteJsonLd(data: SiteData, o: SiteJsonLdOptions): Record<string, unknown> {
-  return compact({
-    '@context': 'https://schema.org',
-    '@type': o.type ?? 'Organization',
-    name: o.name,
+  return organizationLd({
+    ...o,
     legalName: data.legalName,
-    url: o.url,
-    logo: o.logo,
     email: data.email,
     telephone: data.phone,
-    address: postalAddress({ street: data.street, postalCode: data.postalCode, city: data.city, country: o.country }),
+    address: { street: data.street, postalCode: data.postalCode, city: data.city, country: o.country },
     vatID: data.vatId,
-    sameAs: o.sameAs,
   })
 }

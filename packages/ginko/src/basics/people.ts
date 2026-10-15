@@ -1,7 +1,8 @@
 // People: a team, a board, speakers. A person without a photo is the site's concern (for example an initials avatar).
 import { f } from '../core/fields.ts'
 import { collection } from '../core/site.ts'
-import { compact, sourceOf, t, type BasicsOptions } from './shared.ts'
+import { compact } from '../core/seo.ts'
+import { sourceOf, t, type BasicsOptions } from './shared.ts'
 
 export function people(o: BasicsOptions = {}) {
   return collection({

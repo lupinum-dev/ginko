@@ -55,16 +55,53 @@ export function robotsTxt(options: { sitemap?: string; noindex?: boolean; disall
   return `${lines.join('\n')}\n`
 }
 
-/** Drops keys whose value is undefined so optional fields do not appear in the JSON-LD. */
-const compact = (o: Record<string, unknown>): Record<string, unknown> =>
-  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined))
+/** Drops keys whose value is undefined, an empty text or an empty list, so optional data does not appear in the JSON-LD. */
+export const compact = (o: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0)))
+
+/** A schema.org PostalAddress, or undefined when no part of it is known. `country` is an ISO 3166 code such as `DE`. */
+export function postalAddressLd(a: { street?: string; postalCode?: string; city?: string; country?: string }): Record<string, unknown> | undefined {
+  if (!a.street && !a.postalCode && !a.city) return undefined
+  return compact({ '@type': 'PostalAddress', streetAddress: a.street, postalCode: a.postalCode, addressLocality: a.city, addressCountry: a.country })
+}
 
 export function websiteLd(o: { name: string; url: string; lang: string }): Record<string, unknown> {
   return { '@context': 'https://schema.org', '@type': 'WebSite', name: o.name, url: o.url, inLanguage: o.lang }
 }
 
-export function organizationLd(o: { name: string; url: string; logo?: string; sameAs?: string[] }): Record<string, unknown> {
-  return compact({ '@context': 'https://schema.org', '@type': 'Organization', name: o.name, url: o.url, logo: o.logo, sameAs: o.sameAs })
+/** The schema.org types `organizationLd` writes. A page whose JSON-LD has a node of one of them is the site's organisation node. */
+export const ORGANIZATION_TYPES = ['Organization', 'LocalBusiness', 'NGO'] as const
+
+export interface OrganizationLdInput {
+  name: string
+  url: string
+  /** `Organization` (default), `LocalBusiness` for a shop or practice, `NGO` for a nonprofit. */
+  type?: (typeof ORGANIZATION_TYPES)[number]
+  legalName?: string
+  /** Absolute URL of the logo. */
+  logo?: string
+  email?: string
+  telephone?: string
+  address?: { street?: string; postalCode?: string; city?: string; country?: string }
+  vatID?: string
+  /** Absolute URLs of the organisation's profiles elsewhere. */
+  sameAs?: string[]
+}
+
+export function organizationLd(o: OrganizationLdInput): Record<string, unknown> {
+  return compact({
+    '@context': 'https://schema.org',
+    '@type': o.type ?? 'Organization',
+    name: o.name,
+    legalName: o.legalName,
+    url: o.url,
+    logo: o.logo,
+    email: o.email,
+    telephone: o.telephone,
+    address: o.address && postalAddressLd(o.address),
+    vatID: o.vatID,
+    sameAs: o.sameAs,
+  })
 }
 
 export function breadcrumbLd(nodes: NavNode[], origin: string): Record<string, unknown> {
@@ -75,17 +112,34 @@ export function breadcrumbLd(nodes: NavNode[], origin: string): Record<string, u
   }
 }
 
-export function articleLd(o: { title: string; url: string; description?: string; image?: string; published?: string; modified?: string; author?: string; lang: string }): Record<string, unknown> {
+export interface ArticleLdInput {
+  /** `Article` (default) or `BlogPosting` for a post of a blog. */
+  type?: 'Article' | 'BlogPosting'
+  title: string
+  url: string
+  description?: string
+  image?: string
+  published?: string
+  modified?: string
+  /** One author by name, or a list of authors with an optional website each. */
+  author?: string | readonly { name: string; url?: string }[]
+  keywords?: readonly string[]
+  lang: string
+}
+
+export function articleLd(o: ArticleLdInput): Record<string, unknown> {
+  const person = (a: { name: string; url?: string }) => compact({ '@type': 'Person', name: a.name, url: a.url })
   return compact({
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    '@type': o.type ?? 'Article',
     headline: o.title,
     url: o.url,
     description: o.description,
     image: o.image,
     datePublished: o.published,
     dateModified: o.modified,
-    author: o.author === undefined ? undefined : { '@type': 'Person', name: o.author },
+    author: typeof o.author === 'string' ? person({ name: o.author }) : o.author?.map(person),
+    keywords: o.keywords?.join(', '),
     inLanguage: o.lang,
   })
 }

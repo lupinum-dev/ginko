@@ -3,7 +3,8 @@
 import { f } from '../core/fields.ts'
 import { collection, type RouteTemplate } from '../core/site.ts'
 import type { Locale } from '../core/types.ts'
-import { compact, postalAddress, sourceOf, t, type BasicsOptions } from './shared.ts'
+import { compact, postalAddressLd } from '../core/seo.ts'
+import { sourceOf, t, type BasicsOptions } from './shared.ts'
 
 const employmentTypes = [
   { value: 'fullTime', label: t('Vollzeit', 'Full time', 'Jornada completa', 'Temps plein') },
@@ -92,7 +93,7 @@ export function jobJsonLd(j: JobJsonLdInput): Record<string, unknown> {
     validThrough: j.validUntil,
     employmentType: j.employmentType && Object.hasOwn(SCHEMA_EMPLOYMENT, j.employmentType) ? SCHEMA_EMPLOYMENT[j.employmentType as keyof typeof SCHEMA_EMPLOYMENT] : undefined,
     hiringOrganization: compact({ '@type': 'Organization', name: j.organization.name, sameAs: j.organization.url, logo: j.organization.logo }),
-    jobLocation: j.location ? { '@type': 'Place', address: postalAddress({ city: j.location, country: j.country }) } : undefined,
+    jobLocation: j.location ? { '@type': 'Place', address: postalAddressLd({ city: j.location, country: j.country }) } : undefined,
     jobLocationType: remote ? 'TELECOMMUTE' : undefined,
     applicantLocationRequirements: remote && j.country ? { '@type': 'Country', name: j.country } : undefined,
   })

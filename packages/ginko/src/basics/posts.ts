@@ -3,7 +3,8 @@
 import { f } from '../core/fields.ts'
 import { collection, type RouteTemplate } from '../core/site.ts'
 import type { Locale } from '../core/types.ts'
-import { compact, sourceOf, t, type BasicsOptions } from './shared.ts'
+import { articleLd } from '../core/seo.ts'
+import { sourceOf, t, type BasicsOptions } from './shared.ts'
 
 export interface PostsOptions<R extends Record<Locale, RouteTemplate> | undefined> extends BasicsOptions {
   /** A page per post, e.g. `{ en: '/blog/[slug]', de: '/de/blog/[slug]' }`. */
@@ -97,18 +98,8 @@ export interface PostJsonLdInput {
 
 /** schema.org BlogPosting for one post. */
 export function postJsonLd(p: PostJsonLdInput): Record<string, unknown> {
-  return compact({
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: p.title,
-    url: p.url,
-    mainEntityOfPage: p.url,
-    description: p.description,
-    image: p.image,
-    datePublished: p.date,
-    dateModified: p.modified,
-    author: p.authors?.map((a) => compact({ '@type': 'Person', name: a.name, url: a.url })),
-    keywords: p.tags?.join(', '),
-    inLanguage: p.lang,
+  return articleLd({
+    type: 'BlogPosting', title: p.title, url: p.url, description: p.description, image: p.image,
+    published: p.date, modified: p.modified, author: p.authors, keywords: p.tags, lang: p.lang,
   })
 }

@@ -129,7 +129,6 @@ describe('basics JSON-LD', () => {
       '@type': 'BlogPosting',
       headline: 'River clean-up',
       url: 'https://river.example/news/clean-up',
-      mainEntityOfPage: 'https://river.example/news/clean-up',
       description: 'Forty people, one afternoon.',
       datePublished: '2026-09-01',
       dateModified: '2026-09-03T10:00:00.000Z',
@@ -237,9 +236,9 @@ describe('a files site with every basic', () => {
     const twin = withoutFiles(config)
     expect(checkSite(config)).toEqual([])
     expect(checkSite(twin)).toEqual([])
+    expect(Object.values(twin.bricks).filter((b) => Object.hasOwn(b, 'source'))).toEqual([])
     // @ts-expect-error The twin's type has no `source` either: a tool that reads it must not see 'files'.
     expect(twin.bricks.site.source).toBeUndefined()
-    expect(Object.values(twin.bricks).filter((b) => Object.hasOwn(b, 'source'))).toEqual([])
     expect(Object.values(config.bricks).every((b) => b.source === 'files')).toBe(true)
   })
 })
