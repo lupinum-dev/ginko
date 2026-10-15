@@ -43,7 +43,7 @@ useGinkoSeo(() => ({ title: event.value.data.title, image: event.value.data.imag
       <span v-if="event.data.price" class="price">{{ t('price') }}: {{ formatMoney(event.data.price, language) }}</span>
       <span v-if="event.data.soldOut" class="booked" data-test="fully-booked">{{ t('fullyBooked') }}</span>
     </p>
-    <img v-if="safeHref(event.data.image?.url)" class="image" :src="safeHref(event.data.image?.url)" :alt="event.data.image!.alt" :lang="langOf(event, 'image.alt')" :width="event.data.image!.width" :height="event.data.image!.height">
+    <GinkoImage v-if="safeHref(event.data.image?.url)" class="image" :image="event.data.image" eager sizes="(min-width: 76rem) 72rem, 100vw" :lang="langOf(event, 'image.alt')" />
     <GinkoMarkdown :value="event.data.description" class="prose" :lang="langOf(event, 'description')" />
     <a v-if="!event.data.soldOut && safeHref(event.data.booking)" class="button book" :href="safeHref(event.data.booking)" rel="noopener">{{ t('book') }}</a>
   </article>
