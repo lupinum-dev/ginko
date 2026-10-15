@@ -65,7 +65,7 @@ async function remove(view: View) {
 <template>
   <div class="mb-3 grid gap-2.5">
     <div class="flex flex-wrap items-center gap-2">
-      <Input v-model="search" type="search" class="max-w-72 flex-1" :aria-label="t('basics.views.searchLabel')" :placeholder="t('basics.views.searchPlaceholder')" />
+      <Input v-model="search" type="search" class="min-w-48 flex-1 sm:max-w-72" :aria-label="t('basics.views.searchLabel')" :placeholder="t('basics.views.searchPlaceholder')" />
       <NativeSelect v-model="choice" class="h-10 pointer-coarse:h-11" :aria-label="t('basics.views.sortLabel')">
         <NativeSelectOption value="">{{ t('basics.views.sortDefault') }}</NativeSelectOption>
         <template v-for="[key, field] in fields" :key="key">
