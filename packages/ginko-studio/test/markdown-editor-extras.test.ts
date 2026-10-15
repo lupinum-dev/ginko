@@ -332,4 +332,34 @@ describe('the toolbar', () => {
       vi.unstubAllGlobals()
     }
   })
+
+  // Wrong behaviour caught: closing "Weitere Werkzeuge" without a choice (Escape) put the focus into the text, so a
+  // keyboard user lost their place in the toolbar.
+  test('"Weitere Werkzeuge" closed without a choice gives the focus back to its button; a chosen tool to the text', async () => {
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(private report: (entries: { contentRect: { width: number } }[]) => void) {}
+      observe() { this.report([{ contentRect: { width: 330 } }]) }
+      unobserve() {}
+      disconnect() {}
+    })
+    try {
+      const wrapper = await mounted({ text: 'Eins\n', assets: fakeAssets().assets })
+      await flushPromises()
+      const more = wrapper.get('button[aria-label="Weitere Werkzeuge"]')
+      const openMenu = async () => {
+        await more.trigger('click')
+        await until(() => document.querySelectorAll('[role="menu"] [role^="menuitem"]').length > 0)
+      }
+      await openMenu()
+      document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      await until(() => !document.querySelector('[role="menu"]'))
+      await until(() => document.activeElement === more.element)
+      await openMenu()
+      ;[...document.querySelectorAll<HTMLElement>('[role="menu"] [role^="menuitem"]')].find((i) => i.textContent?.trim() === 'Durchgestrichen')!.click()
+      await until(() => !document.querySelector('[role="menu"]'))
+      await until(() => document.activeElement === editorOf(wrapper).view.dom)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 })

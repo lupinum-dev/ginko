@@ -92,17 +92,24 @@ function choose(value: unknown) {
   all.value.find((b) => b.value === value)?.run()
 }
 
-// After a block type or a tool from "Weitere Werkzeuge", typing goes on in the text; the list would put the focus back
-// on its own button once it has closed. A tool that opens something of its own (the picture dialog, the search) keeps it.
-let ownFocus = false
+// After a block type, typing goes on in the text; the list would put the focus back on its own button once it has closed.
 function backToText(event: Event) {
   event.preventDefault()
-  if (ownFocus) { ownFocus = false; return }
   if (!props.editor.isDestroyed) props.editor.commands.focus()
 }
+// "Weitere Werkzeuge" does the same after a tool, unless the tool opens something that takes the focus (the picture
+// dialog, the search). Closed without a choice (Escape, a click outside), it gives the focus back to its own button.
+let chosen: Tool | undefined
 function fromMenu(x: Tool) {
-  ownFocus = !!x.opens
+  chosen = x
   x.run()
+}
+function menuClosed(event: Event) {
+  const tool = chosen
+  chosen = undefined
+  if (!tool) return
+  if (tool.opens) event.preventDefault()
+  else backToText(event)
 }
 
 // What fits: the width of the row (a ResizeObserver; without one, as in tests, everything is shown) against the sizes of
@@ -215,7 +222,7 @@ const style = computed(() => (place.value ? { transform: `translate(${place.valu
           </TooltipTrigger>
           <TooltipContent>{{ t('editor.toolbar.more') }}</TooltipContent>
         </Tooltip>
-        <DropdownMenuContent align="end" @close-auto-focus="backToText">
+        <DropdownMenuContent align="end" @close-auto-focus="menuClosed">
           <template v-for="m in fit.menu" :key="m.name">
             <DropdownMenuItem v-if="m.opens && m.name !== 'find'" class="min-h-9 pointer-coarse:min-h-11" @select="fromMenu(m)">
               <component :is="m.icon" aria-hidden="true" />{{ m.label }}
