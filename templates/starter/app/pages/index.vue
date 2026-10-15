@@ -1,26 +1,23 @@
 <script setup lang="ts">
-const settings = useGinko('settings')
-const notice = useGinko('notice')
-const today = useGinkoToday()
-const path = useGinkoPath()
-const showNotice = computed(() => !!notice.value.data.text && (!notice.value.data.until || notice.value.data.until >= today.value))
-useGinkoSeo({ title: 'Home', description: settings.value.data.tagline })
+// The home page: the hero from content/home.md, its text, and the pages of content/pages/ as cards.
+const home = useGinko('home')
+const pages = useGinko('pages')
+const locale = useGinkoLocale()
+const { t } = useI18n()
+const [contact, about] = [useSiteLinks(() => [{ entry: 'pages/contact' }]), useSiteLinks(() => [{ entry: 'pages/about' }])]
+const cards = computed(() => pages.value.items.map((page) => ({ key: page.id, title: page.data.title, text: page.data.summary, to: page.urls?.[locale.value] ?? '' })))
+usePageSeo(() => ({ home: true, description: home.value.data.lead }))
 </script>
 
 <template>
-  <div class="column">
-    <p v-if="showNotice" class="notice" role="status">{{ notice.data.text }}</p>
-    <h1>{{ settings.data.siteName }}</h1>
-    <p class="lede">{{ settings.data.tagline }}</p>
-    <section aria-labelledby="latest-posts">
-      <h2 id="latest-posts">Latest posts</h2>
-      <PostList :limit="3" />
-      <p><NuxtLink :to="path('posts')">All posts</NuxtLink></p>
-    </section>
-    <section aria-labelledby="next-events">
-      <h2 id="next-events">Next events</h2>
-      <EventList :limit="3" />
-      <p><NuxtLink :to="path('events')">All events</NuxtLink></p>
-    </section>
+  <div>
+    <BlockHero :title="home.data.title" :lead="home.data.lead" :primary="contact[0]" :secondary="about[0]" />
+    <div v-if="home.data.body" class="pt-section">
+      <ProseBody :value="home.data.body" />
+    </div>
+    <BlockSection :title="t('home.pages')">
+      <BlockCards v-if="cards.length" :items="cards" :columns="2" />
+      <BlockEmpty v-else :title="t('home.empty')" path="content/pages/" />
+    </BlockSection>
   </div>
 </template>

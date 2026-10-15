@@ -1,31 +1,23 @@
+<!-- Synced from templates/_features/site/app/layouts/default.vue by `pnpm templates sync`. Edit the source, not this copy. -->
 <script setup lang="ts">
-import { safeHref } from '@lupinum/ginko'
+import { ConfigProvider } from 'reka-ui'
 
-const settings = useGinko('settings')
-const pages = useGinko('pages')
-const path = useGinkoPath()
+// Every page: skip link, notices, header, content, footer. Reka's ConfigProvider gives its parts (sheet, menus,
+// accordion) the text direction of the language, so arrows and the sheet's side follow right-to-left languages.
+const { locale, locales } = useI18n()
+const dir = computed(() => locales.find((l) => l.code === locale.value)?.dir ?? 'ltr')
 </script>
 
 <template>
-  <div class="site">
-    <a class="skip" href="#main">Skip to content</a>
-    <header class="header">
-      <NuxtLink :to="path('home')" class="brand">{{ settings.data.siteName }}</NuxtLink>
-      <nav aria-label="Main">
-        <ul>
-          <li v-for="page in pages.items" :key="page.id"><NuxtLink :to="page.url">{{ page.data.title }}</NuxtLink></li>
-          <li><NuxtLink :to="path('posts')">Posts</NuxtLink></li>
-          <li><NuxtLink :to="path('events')">Events</NuxtLink></li>
-        </ul>
-      </nav>
-    </header>
-    <main id="main"><slot /></main>
-    <footer class="footer">
-      <p v-if="settings.data.email"><a :href="`mailto:${settings.data.email}`">{{ settings.data.email }}</a></p>
-      <address v-if="settings.data.address">{{ settings.data.address }}</address>
-      <ul v-if="settings.data.social?.length" aria-label="Links">
-        <li v-for="link in settings.data.social" :key="link._id"><a :href="safeHref(link.url)" rel="noopener">{{ link.label }}</a></li>
-      </ul>
-    </footer>
-  </div>
+  <ConfigProvider :dir="dir">
+    <div class="flex min-h-dvh flex-col">
+      <SiteSkipLink />
+      <SiteNotice />
+      <SiteHeader />
+      <main id="main" tabindex="-1" class="flex-1 focus-visible:outline-none">
+        <slot />
+      </main>
+      <SiteFooter />
+    </div>
+  </ConfigProvider>
 </template>

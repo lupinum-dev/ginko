@@ -136,7 +136,7 @@ describe('create-ginko', () => {
     ['an unknown language', ['bad-lang', '--locale', 'fr'], 'Choose one of: en, de.'],
     ['two languages for the plain starter', ['bad-two-langs', '--locales', 'en,de'], 'The plain starter has one language.'],
     ['an unknown template', ['bad-template', '--template', 'shop'], 'Unknown template "shop". Choose one of: starter.'],
-    ['a locale the template does not have', ['bad-locale', '--template', 'starter', '--locales', 'en,fr'], 'Unknown locale "fr". The starter template has: en.'],
+    ['a locale the template does not have', ['bad-locale', '--template', 'starter', '--locales', 'en,fr'], 'Unknown locale "fr". The starter template has: en, de.'],
     ['--template with --preset', ['bad-both', '--template', 'starter', '--preset', 'gastro'], 'Use --template or --preset, not both.'],
     ['--template dropped by npm (only its value arrives)', ['bad-npm-template', 'starter'], 'npm create ginko@latest bad-npm-template -- --template starter'],
     ['--preset dropped by npm (only its value arrives)', ['bad-npm', 'gastro'], 'npm create ginko@latest bad-npm -- --preset gastro'],
@@ -163,7 +163,7 @@ describe('create-ginko --template', () => {
   it('creates a site from the template with its own site id, this release\'s ranges and a secret', () => {
     const result = run('tpl-site', '--template', 'starter')
     expect(result.status).toBe(0)
-    expect(result.stdout).toContain('Created tpl-site from the starter template in English.')
+    expect(result.stdout).toContain('Created tpl-site from the starter template in English and German.')
     // Wrong behaviour caught: two sites created from one template share the template's site id.
     expect(read('tpl-site', 'ginko.config.ts')).toMatch(/\bsite: 'tpl-site'/)
     const pkg = JSON.parse(read('tpl-site', 'package.json'))
@@ -185,13 +185,13 @@ describe('create-ginko --template', () => {
     expect(result.status).toBe(0)
     const source = (file: string) => readFileSync(fileURLToPath(new URL(`../../../templates/starter/${file}`, import.meta.url)), 'utf8')
     const moved = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) + 70 * 864e5).toISOString().slice(0, 10)
-    const event = source('content/events/1.new-year-tidy-up.md')
-    const [from, to] = [...event.matchAll(/(?:from|to): (\d{4}-\d{2}-\d{2})/g)].map((m) => m[1]!)
-    expect(read('tpl-dates', 'content/events/1.new-year-tidy-up.md')).toBe(event.replace(from!, moved(from!)).replace(to!, moved(to!)))
-    // Wrong behaviour caught: a post's publication date or the notice's end date moves with the samples.
-    for (const file of ['content/posts/1.spring-planting-day.md', 'content/notice.md']) expect(read('tpl-dates', file)).toBe(source(file))
+    const notice = source('content/notices/1.welcome.md')
+    const until = /until: (\d{4}-\d{2}-\d{2})/.exec(notice)![1]!
+    expect(read('tpl-dates', 'content/notices/1.welcome.md')).toBe(notice.replace(until, moved(until)))
+    // Wrong behaviour caught: a legal text's "last updated" date or the home text moves with the samples.
+    for (const file of ['content/legal/1.privacy.md', 'content/home.md']) expect(read('tpl-dates', file)).toBe(source(file))
     expect(JSON.parse(read('tpl-dates', 'package.json')).ginko.sampleAnchor).toBe(moved(starter.ginko.sampleAnchor))
-    expect(result.stdout).toContain('The sample dates in 3 content files moved')
+    expect(result.stdout).toContain('The sample dates in 1 content file moved')
   })
 })
 
