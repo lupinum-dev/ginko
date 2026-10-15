@@ -384,7 +384,7 @@ async function doPublish() {
     }
     // Unsaved input goes into the draft first; saving does not change lifeRev.
     if (dirty.value && !(await form.save())) return
-    await ops.publishEntry(props.entry._id, props.entry.lifeRev, { at: ms, task: publishTask.value, timeZone: timeZone.value })
+    await ops.publishEntry(props.entry._id, props.entry.lifeRev, { at: ms, task: publishTask.value, timeZone: timeZone.value, main: main.value })
     publishing.value = false
   } catch (error) {
     publishError.value = opErrorOf(error).message
@@ -399,7 +399,7 @@ async function doUnpublish() {
   publishBusy.value = true
   publishError.value = ''
   try {
-    await ops.unpublishEntry(props.entry._id, props.entry.lifeRev, { task: publishTask.value, timeZone: timeZone.value, wasLive: state.value === 'live', at: props.entry.publishAt })
+    await ops.unpublishEntry(props.entry._id, props.entry.lifeRev, { task: publishTask.value, timeZone: timeZone.value, wasLive: state.value === 'live', at: props.entry.publishAt, main: main.value })
     askUnpublish.value = false
     publishing.value = false
   } catch (error) {

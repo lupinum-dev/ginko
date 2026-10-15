@@ -273,7 +273,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
   try {
     const brick = s.schema.value!.bricks[key]!
     const fields = Object.fromEntries(flag.task.fields.filter((f) => brick.fields[f]?.optional).map((f) => [f, null]))
-    await ops.saveEntry({ entry: flag.entry._id, baseRev: flag.entry.rev, fields, task: taskRef(key, flag.task), locale: s.main.value, op: ops.opId() })
+    await ops.saveEntry({ entry: flag.entry._id, baseRev: flag.entry.rev, fields, task: taskRef(key, flag.task), locale: s.main.value, op: ops.opId(), main: s.main.value })
   } catch (e) {
     useToast().show((e as { message: string }).message, { tone: 'err' })
   } finally {

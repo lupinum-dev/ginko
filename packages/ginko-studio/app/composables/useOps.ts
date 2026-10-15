@@ -101,8 +101,8 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
 
   const opId = () => crypto.randomUUID()
 
-  /** What the other languages show after a save or create (the server's `translation`); nothing without the site's main locale. */
-  const noteOf = (notes: Parameters<typeof translationNote>[0], main: string | undefined) => (main ? translationNote(notes, t, language.value, main) : '')
+  /** What the other languages show after a save, create or publish (the server's `translation`); `main` is the site's main locale. */
+  const noteOf = (notes: Parameters<typeof translationNote>[0], main: string) => translationNote(notes, t, language.value, main)
 
   /** `text` and a sentence per picture that came back from the Files trash with the old version. */
   const withRestored = (text: string, result: unknown) =>
@@ -140,24 +140,29 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     }
   }
 
-  /** `at` absent: online now. Undo takes it back to a draft (SPEC 15). `timeZone` words the scheduled time. */
-  async function publishEntry(entry: string, lifeRev: number, opts: { at?: number; task?: string; timeZone: string }) {
+  /**
+   * `at` absent: online now, and the message says what the other languages show (`main`: the site's main locale).
+   * Undo takes it back to a draft (SPEC 15). `timeZone` words the scheduled time.
+   */
+  async function publishEntry(entry: string, lifeRev: number, opts: { at?: number; task?: string; timeZone: string; main: string }) {
     const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, at: opts.at })
     if (isProposal(result)) { sentForApproval(); return result }
-    const text = opts.at === undefined ? `${t('ops.published')} ${t('ops.liveHint')}` : t('ops.scheduled', { time: whenText(opts.at, opts.timeZone, format) })
-    const back = { task: opts.task, timeZone: opts.timeZone, wasLive: opts.at === undefined, at: opts.at }
+    const text = opts.at === undefined
+      ? [t('ops.published'), t('ops.liveHint'), noteOf(result.translation, opts.main)].filter(Boolean).join(' ')
+      : t('ops.scheduled', { time: whenText(opts.at, opts.timeZone, format) })
+    const back = { task: opts.task, timeZone: opts.timeZone, wasLive: opts.at === undefined, at: opts.at, main: opts.main }
     show(text, { action: { label: t('ops.undo'), run: async () => { await unpublishEntry(entry, result.lifeRev, back).catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
     return result
   }
 
-  /** A live entry goes back to being a draft; a scheduled draft (`wasLive: false`, its time in `at`) loses its time. */
-  async function unpublishEntry(entry: string, lifeRev: number, opts: { task?: string; timeZone: string; wasLive: boolean; at?: number }) {
+  /** A live entry goes back to being a draft; a scheduled draft (`wasLive: false`, its time in `at`) loses its time. `main` as for publishEntry (its undo). */
+  async function unpublishEntry(entry: string, lifeRev: number, opts: { task?: string; timeZone: string; wasLive: boolean; at?: number; main: string }) {
     const result = await unpublish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev })
     if (isProposal(result)) { sentForApproval(); return result }
     const text = opts.wasLive ? t('ops.unpublished') : t('ops.scheduleCleared')
     // Undo restores what was: live again, or the old time while it is still ahead.
     const at = !opts.wasLive && opts.at !== undefined && opts.at > Date.now() ? opts.at : undefined
-    show(text, { action: { label: t('ops.undo'), run: async () => { await publishEntry(entry, result.lifeRev, { task: opts.task, timeZone: opts.timeZone, at }).catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
+    show(text, { action: { label: t('ops.undo'), run: async () => { await publishEntry(entry, result.lifeRev, { task: opts.task, timeZone: opts.timeZone, at, main: opts.main }).catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } } })
     return result
   }
 
@@ -204,10 +209,10 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     revertEntry,
     moveEntry,
     /**
-     * Saves changed root fields. Throws OpError; on success shows the message with Rückgängig. With the site's `main`
-     * locale, the message also says what the other languages show now (the server's `translation`).
+     * Saves changed root fields. Throws OpError; on success shows the message with Rückgängig. The message also says
+     * what the other languages show now (the server's `translation`), named from the site's `main` locale.
      */
-    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main?: string }) {
+    async saveEntry(args: { entry: string; baseRev: number; fields: Record<string, Json | null>; task?: string; locale?: string; confirm?: string[]; op: string; draft?: boolean; main: string }) {
       try {
         const result = await save.mutate({ site: site.value, opId: args.op, task: args.task, entry: args.entry, baseRev: args.baseRev, fields: args.fields, locale: args.locale, confirm: args.confirm })
         // A change that needs a yes writes nothing yet (SPEC 17): say so instead of "Saved".
@@ -225,7 +230,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
       }
     },
     /** `removeTask` is the brick's remove task (staff need it to undo the creation). `main` as for saveEntry. */
-    async createEntry(args: { brick: string; data: Record<string, Json>; task?: string; removeTask?: string; op: string; label?: string; publish?: { at?: number }; timeZone?: string; main?: string }) {
+    async createEntry(args: { brick: string; data: Record<string, Json>; task?: string; removeTask?: string; op: string; label?: string; publish?: { at?: number }; timeZone?: string; main: string }) {
       try {
         const result = await create.mutate({ site: site.value, opId: args.op, task: args.task, brick: args.brick, data: args.data, publish: args.publish })
         if (isProposal(result)) {

@@ -38,12 +38,12 @@ const sent = 'Sent for approval. The owner decides.'
 
 // [path, mutation it calls, a normal result, the call, toasts of a normal result]
 const paths: [string, string, unknown, () => Promise<unknown>, number][] = [
-  ['saveEntry', 'entries.save', { entry: 'e', rev: 2, change: 'c1' }, () => ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o' }), 1],
-  ['createEntry', 'entries.create', { entry: 'e', state: 'live' }, () => ops.createEntry({ brick: 'b', data: {}, op: 'o' }), 1],
+  ['saveEntry', 'entries.save', { entry: 'e', rev: 2, change: 'c1' }, () => ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o', main: 'de' }), 1],
+  ['createEntry', 'entries.create', { entry: 'e', state: 'live' }, () => ops.createEntry({ brick: 'b', data: {}, op: 'o', main: 'de' }), 1],
   ['removeEntry', 'entries.remove', { entry: 'e', lifeRev: 2 }, () => ops.removeEntry('e', 1), 1],
   ['restoreEntry', 'entries.restore', { entry: 'e', lifeRev: 3 }, () => ops.restoreEntry('e', 2), 1],
-  ['publishEntry', 'entries.publish', { entry: 'e', lifeRev: 2 }, () => ops.publishEntry('e', 1, { timeZone: 'Europe/Vienna' }), 1],
-  ['unpublishEntry', 'entries.unpublish', { entry: 'e', lifeRev: 2, contentRev: 4 }, () => ops.unpublishEntry('e', 1, { timeZone: 'Europe/Vienna', wasLive: true }), 1],
+  ['publishEntry', 'entries.publish', { entry: 'e', lifeRev: 2 }, () => ops.publishEntry('e', 1, { timeZone: 'Europe/Vienna', main: 'de' }), 1],
+  ['unpublishEntry', 'entries.unpublish', { entry: 'e', lifeRev: 2, contentRev: 4 }, () => ops.unpublishEntry('e', 1, { timeZone: 'Europe/Vienna', wasLive: true, main: 'de' }), 1],
   ['undoChange', 'entries.undo', { change: 'c2' }, () => ops.undoChange('c1'), 1],
   ['revertEntry', 'entries.revert', { entry: 'e', change: 'c3' }, () => ops.revertEntry('e', 'c1'), 1],
 ]
@@ -112,15 +112,21 @@ test('a cancelled website update stays silent', async () => {
 })
 
 // Wrong behaviour caught: the message after saving ignores what the server says about the other languages, so a
-// German edit that leaves German texts on the English site reads as fully done (onboard-3, P5).
-test('a save and a create add what the other languages show; a draft save does not', async () => {
+// German edit that leaves German texts on the English site reads as fully done (onboard-3, P5); or a German-only
+// draft goes online through "Veröffentlichen" without saying that its page is missing in English (romi-4).
+test('a save, a create and a publish add what the other languages show; a draft save does not', async () => {
   const translation = [{ locale: 'en', page: 'shown', missing: 1, outdated: 0 }]
   mocks.toasts.length = 0
   mocks.results.set('entries.save', { entry: 'e', rev: 2, change: 'c1', translation })
   mocks.results.set('entries.create', { entry: 'e', state: 'live', translation })
+  mocks.results.set('entries.publish', { entry: 'e', lifeRev: 2, translation: [{ locale: 'en', page: 'hidden', missing: 2, outdated: 0 }] })
   await ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o', main: 'de' })
   await ops.createEntry({ brick: 'b', data: {}, op: 'o', main: 'de' })
   await ops.saveEntry({ entry: 'e', baseRev: 1, fields: {}, op: 'o', main: 'de', draft: true })
+  await ops.publishEntry('e', 1, { timeZone: 'Europe/Vienna', main: 'de' })
   const note = 'The English website shows the new texts in German until they are translated.'
-  expect(mocks.toasts.map((t) => t.text)).toEqual([`Saved. On the website in about a minute. ${note}`, `Created. On the website in about a minute. ${note}`, 'Draft saved.'])
+  expect(mocks.toasts.map((t) => t.text)).toEqual([
+    `Saved. On the website in about a minute. ${note}`, `Created. On the website in about a minute. ${note}`, 'Draft saved.',
+    'Published. On the website in about a minute. In English, the page appears only once all needed texts are translated.',
+  ])
 })
