@@ -778,7 +778,8 @@
     },
     "loadMore": "Mostrar más",
     "retry": "Reintentar",
-    "loadFailed": "No se pudo cargar. Vuelve a cargar la página."
+    "loadFailed": "No se pudo cargar. Vuelve a cargar la página.",
+    "notLoaded": "No se pudo cargar."
   },
   "files": {
     "title": "Archivos",

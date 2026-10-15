@@ -778,7 +778,8 @@
     },
     "loadMore": "Show more",
     "retry": "Try again",
-    "loadFailed": "This could not be loaded. Please reload the page."
+    "loadFailed": "This could not be loaded. Please reload the page.",
+    "notLoaded": "This could not be loaded."
   },
   "files": {
     "title": "Files",

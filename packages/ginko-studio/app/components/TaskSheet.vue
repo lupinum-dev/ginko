@@ -15,6 +15,7 @@ import { PROBLEM, SHEET_DIALOG } from '../utils/sheetDialog'
 import type { Entry } from '../composables/useSiteData'
 import { taskFields, taskRef, titleOf, type Data, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
+import { opErrorOf } from '../composables/useOps'
 
 const props = defineProps<{
   site: string
@@ -64,8 +65,11 @@ const form = useEntryForm({
 })
 const { draft, baseline, ready, issues, problem, conflict, busy, offline, waiting, dirty, localOffer } = form
 
-// Prefill (SPEC 2.7): stored values of the task's fields, then the task's preset, resolved on the server.
-const prefillArgs = computed(() => ({ site: props.site, task: ref_.value, ...(props.entry && !isCreate.value ? { entry: props.entry._id } : {}) }))
+// Prefill (SPEC 2.7): stored values of the task's fields, then the task's preset, resolved on the server. It seeds
+// the form once, so it is asked for only until the form has loaded: a later run (every save on the site starts one)
+// can no longer fail into the open form. Later server changes reach the form through `entry` (useEntryForm).
+const retrying = ref(false)
+const prefillArgs = computed(() => (ready.value || retrying.value ? 'skip' : { site: props.site, task: ref_.value, ...(props.entry && !isCreate.value ? { entry: props.entry._id } : {}) }))
 const { data: prefill, error: prefillError } = useConvexQuery(api.tasks.prefill, prefillArgs, { server: false })
 watch(prefill, (p) => {
   if (!p || ready.value) return
@@ -73,6 +77,18 @@ watch(prefill, (p) => {
   const start: Data = isCreate.value ? { ...defaultsFor(fields.value) } : {}
   form.load({ ...start, ...(p as Data) })
 }, { immediate: true })
+/** A refusal the server names keeps its own text; anything else (the connection) says it did not load. */
+const prefillProblem = computed(() => (prefillError.value ? opErrorOf(prefillError.value, t('basics.notLoaded')).message : ''))
+/**
+ * "Erneut versuchen": Convex keeps one subscription per query and arguments, and only this sheet asks for this
+ * prefill, so dropping it for a tick and asking again makes the server run it again (better-convex has no retry on
+ * purpose). Not a reload: the page behind the sheet may hold input of its own.
+ */
+async function retry() {
+  retrying.value = true
+  await nextTick()
+  retrying.value = false
+}
 
 /** A new entry with the same name as one that is already there (e.g. a second "Heute ausgebucht"). */
 const twin = computed(() => {
@@ -157,8 +173,13 @@ function onCancel(event: Event) {
       </header>
 
       <div class="grid content-start gap-5 overflow-auto px-5 pt-[18px] pb-6">
-        <p v-if="prefillError" :class="PROBLEM" role="alert">{{ opErrorOf(prefillError).message }}</p>
-        <p v-else-if="!ready" class="text-muted-foreground">{{ t('entry.loading') }}</p>
+        <template v-if="!ready">
+          <template v-if="prefillError">
+            <p :class="PROBLEM" role="alert">{{ prefillProblem }}</p>
+            <Button type="button" variant="outline" class="justify-self-start" @click="retry">{{ t('basics.retry') }}</Button>
+          </template>
+          <p v-else class="text-muted-foreground">{{ t('entry.loading') }}</p>
+        </template>
         <template v-else>
           <EntryGoneBanner
             v-if="removedHere && entry"

@@ -778,7 +778,8 @@
     },
     "loadMore": "Mehr anzeigen",
     "retry": "Erneut versuchen",
-    "loadFailed": "Das ließ sich nicht laden. Bitte lade die Seite neu."
+    "loadFailed": "Das ließ sich nicht laden. Bitte lade die Seite neu.",
+    "notLoaded": "Das ließ sich nicht laden."
   },
   "files": {
     "title": "Dateien",
