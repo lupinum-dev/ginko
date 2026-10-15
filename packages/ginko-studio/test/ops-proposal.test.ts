@@ -1,20 +1,23 @@
 // Approval is on (SPEC 17): the server answers a write with a proposal and writes nothing. Every Studio
 // write path must then say "Sent for approval", offer no Undo, and not read fields a proposal does not have.
 // Only the Convex mutations and the toast are replaced; messages come from the real catalogs.
+import { ConvexError } from 'convex/values'
+import { ConvexCallError, normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import { describe, expect, test, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({ results: new Map<string, unknown>(), toasts: [] as { text: string; action?: unknown }[] }))
 vi.mock('#imports', async () => {
   const { createTranslator } = await import('@lupinum/ginko-i18n/core')
   const { compileCatalogs } = await import('@lupinum/ginko-i18n/compile')
+  // The server's error texts join under `server`, as modules/server-messages.ts does.
   const catalogs = compileCatalogs({
-    de: { ...(await import('../i18n/de.json')).default },
-    en: { ...(await import('../i18n/en.json')).default },
+    de: { ...(await import('../i18n/de.json')).default, server: (await import('../../ginko-server/i18n/de.json')).default },
+    en: { ...(await import('../i18n/en.json')).default, server: (await import('../../ginko-server/i18n/en.json')).default },
   })
-  return { useI18n: () => ({ t: createTranslator({ messages: catalogs.en, fallback: catalogs.de, language: 'en', timeZone: 'Europe/Vienna' }).t, format: {} }) }
+  return { useI18n: () => ({ t: createTranslator({ messages: catalogs.en, fallback: catalogs.de, language: 'en', timeZone: 'Europe/Vienna' }).t, format: {}, locale: { value: 'en' } }) }
 })
 
-import { provideLastingOps, useOps } from '../app/composables/useOps'
+import { opErrorOf, provideLastingOps, useOps } from '../app/composables/useOps'
 
 const holder: { lasting?: unknown } = {}
 vi.stubGlobal('useToast', () => ({ show: (text: string, opts?: { action?: unknown }) => mocks.toasts.push({ text, action: opts?.action }) }))
@@ -53,5 +56,27 @@ describe('writes that become proposals', () => {
     await run()
     expect(mocks.toasts).toHaveLength(count)
     expect(mocks.toasts.map((t) => t.text)).not.toContain(sent)
+  })
+})
+
+describe('failed calls', () => {
+  const errors = [{ path: 'name', message: 'Bitte ausfüllen.', code: 'required' }]
+  // Wrong behaviour caught: a call that a closed sheet cancelled, or a sign-out in another tab, shows "That did not
+  // work" and logs an error; or a server refusal loses its code, text or field errors on the way to the form.
+  test.each([
+    ['server INVALID', normalizeConvexError(new ConvexError({ code: 'INVALID', key: 'errors.pleaseCheckMarkedFields', message: 'Bitte prüfe die markierten Felder.', details: { errors } }), { functionName: 'entries:save' }),
+      { code: 'INVALID', message: 'Please check the marked fields.', details: { errors } }],
+    ['CANCELLED', new ConvexCallError({ kind: 'unknown', code: 'CANCELLED', message: 'Convex mutation cancelled: its owning scope was disposed.', functionName: 'entries:save', outcome: 'not-sent' }),
+      { code: 'CANCELLED', message: '' }],
+    ['IDENTITY_CHANGED', new ConvexCallError({ kind: 'authentication', code: 'IDENTITY_CHANGED', message: 'The signed-in user changed.', functionName: 'entries:save', outcome: 'unknown' }),
+      { code: 'IDENTITY_CHANGED', message: 'You were signed out. Sign in and try again.' }],
+  ])('%s', (_name, error, expected) => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      expect(opErrorOf(error)).toEqual(expected)
+      expect(logged).not.toHaveBeenCalled()
+    } finally {
+      logged.mockRestore()
+    }
   })
 })

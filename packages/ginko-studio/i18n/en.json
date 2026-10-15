@@ -71,8 +71,10 @@
     "otherEmail": "Other email"
   },
   "problem": {
-    "offline": "No connection. Your input is still here.",
     "generic": "That did not work. Your input is still here. Please try again."
+  },
+  "errors": {
+    "signedOut": "You were signed out. Sign in and try again."
   },
   "invite": {
     "titleShort": "Invitation",

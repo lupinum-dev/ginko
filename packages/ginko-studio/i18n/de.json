@@ -71,8 +71,10 @@
     "otherEmail": "Andere E-Mail"
   },
   "problem": {
-    "offline": "Keine Verbindung. Deine Eingaben sind noch da.",
     "generic": "Das hat nicht geklappt. Deine Eingaben sind noch da. Bitte noch einmal versuchen."
+  },
+  "errors": {
+    "signedOut": "Du wurdest abgemeldet. Melde dich wieder an und versuche es noch einmal."
   },
   "invite": {
     "titleShort": "Einladung",

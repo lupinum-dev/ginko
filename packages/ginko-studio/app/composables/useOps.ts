@@ -3,14 +3,17 @@
 // shows one honest message with Rückgängig; failures come back as OpError for the form to show.
 import { api } from '#convex/api'
 import { useI18n } from '#imports'
+import { isConvexCallError, normalizeConvexError } from '@lupinum/better-convex-nuxt/errors'
 import type { InjectionKey } from 'vue'
 import type { Json } from '@lupinum/ginko'
 import { whenText } from '../utils/when'
+import { UploadError } from './useUpload'
 import { messageOf, type Described } from '../utils/messageOf'
 import type { Who } from '../utils/who'
 
 export interface OpError {
   code: string
+  /** Empty for CANCELLED: nothing to show. */
   message: string
   details?: {
     errors?: { path: string; message: string; code: string; key?: string; params?: Described['params'] }[]
@@ -25,17 +28,26 @@ export interface OpError {
 export const isProposal = (result: unknown): result is { proposal: string; status: 'open' } =>
   !!result && typeof result === 'object' && typeof (result as { proposal?: unknown }).proposal === 'string'
 
-/** The server's `{ code, key, params, message, details }` with `message` in the Studio's language (messageOf), or a generic connection/unknown failure. */
+/**
+ * What a failed call means for the person. A server error (`fail()` in ginko-server) keeps its code and details,
+ * and its text in the Studio's language (messageOf). A call that a cancel or a closed sheet stopped has an empty
+ * message: the person's own action stopped it, so nothing is shown. A sign-out meanwhile says so, and an
+ * UploadError keeps its text. Anything else (a timeout, "Unknown Convex error") gets a generic text; the
+ * technical one goes to the console for us.
+ */
 export function opErrorOf(error: unknown): OpError {
   const { t } = useI18n()
-  const e = error as { code?: string; message?: string; data?: unknown; kind?: string }
-  const data = e?.data && typeof e.data === 'object' ? (e.data as Described & { code?: string; details?: OpError['details'] }) : undefined
-  if (data?.code) return { code: data.code, message: messageOf({ ...data, message: data.message ?? e.message }), details: data.details }
-  if (e?.kind === 'transport') return { code: 'NETWORK', message: t('problem.offline') }
-  // Anything without the server's message (a timeout, "Unknown Convex error") gets a generic one;
-  // the technical text goes to the console for us, not to the person.
+  if (error instanceof UploadError) return { code: 'UPLOAD', message: error.message }
+  const e = normalizeConvexError(error)
+  if (e.kind === 'server' && e.code) {
+    // The server's error object is Ginko's own contract; Convex hands it over as it was thrown.
+    const data: Described & Pick<OpError, 'details'> = e.data && typeof e.data === 'object' ? e.data : {}
+    return { code: e.code, message: messageOf({ ...data, message: e.message }), details: data.details }
+  }
+  if (isConvexCallError(error, 'CANCELLED')) return { code: 'CANCELLED', message: '' }
+  if (isConvexCallError(error, 'IDENTITY_CHANGED')) return { code: 'IDENTITY_CHANGED', message: t('errors.signedOut') }
   console.error(error)
-  return { code: e?.code ?? 'UNKNOWN', message: t('problem.generic') }
+  return { code: e.code ?? 'UNKNOWN', message: t('problem.generic') }
 }
 
 /**

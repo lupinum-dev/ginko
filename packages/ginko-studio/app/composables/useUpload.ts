@@ -9,6 +9,11 @@ import { useTextOf } from './useTextOf'
 const MB = 1024 * 1024
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic']
 
+/** A refused or failed upload; its message is already the text to show, in the Studio's language. */
+export class UploadError extends Error {
+  override name = 'UploadError'
+}
+
 /** Library uploads are kept (no 7-day sweep) and may go straight into a folder. */
 export interface UploadTarget { folder?: string; library?: boolean }
 
@@ -18,15 +23,15 @@ export function useUpload(kind: 'image' | 'file' = 'image') {
   const { t } = useI18n()
   const textOf = useTextOf()
 
-  /** Throws an Error whose message is the text to show in the Studio's language; after `signal` aborts, an AbortError. */
+  /** Throws an UploadError whose message is the text to show in the Studio's language; after `signal` aborts, an AbortError. */
   return async function send(site: string, file: File, signal?: AbortSignal, target: UploadTarget = {}): Promise<string> {
     if (kind === 'image' ? !IMAGE_TYPES.includes(file.type) : file.type !== 'application/pdf') {
-      throw new Error(kind === 'image' ? t('ops.upload.notImage') : t('ops.upload.notPdf'))
+      throw new UploadError(kind === 'image' ? t('ops.upload.notImage') : t('ops.upload.notPdf'))
     }
     if (file.size > (kind === 'image' ? 20 : 10) * MB) {
-      throw new Error(kind === 'image' ? t('ops.upload.photoTooLarge') : t('ops.upload.fileTooLarge'))
+      throw new UploadError(kind === 'image' ? t('ops.upload.photoTooLarge') : t('ops.upload.fileTooLarge'))
     }
-    if (!siteUrl) throw new Error(t('ops.upload.failed'))
+    if (!siteUrl) throw new UploadError(t('ops.upload.failed'))
     // Cancelling must also work while the ticket is on its way (offline): a late ticket is ignored (Astra 9).
     const aborted = new Promise<never>((_, reject) => {
       if (signal?.aborted) reject(new DOMException(t('ops.upload.aborted'), 'AbortError'))
@@ -39,10 +44,10 @@ export function useUpload(kind: 'image' | 'file' = 'image') {
       if (signal?.aborted) throw error
       return null
     })
-    if (!response) throw new Error(t('ops.upload.offline'))
+    if (!response) throw new UploadError(t('ops.upload.offline'))
     const body = (await response.json().catch(() => null)) as { upload?: unknown; key?: unknown; params?: Record<string, unknown> } | null
     // The route names its reason as a catalog key; anything else gets the generic sentence.
-    if (!response.ok || typeof body?.upload !== 'string') throw new Error(textOf(typeof body?.key === 'string' ? { key: body.key, params: body.params } : null, t('ops.upload.failed')))
+    if (!response.ok || typeof body?.upload !== 'string') throw new UploadError(textOf(typeof body?.key === 'string' ? { key: body.key, params: body.params } : null, t('ops.upload.failed')))
     return body.upload
   }
 }

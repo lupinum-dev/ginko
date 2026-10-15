@@ -162,6 +162,6 @@ export function useFilesLibrary(): FilesLibrary {
       const upload = await sendAndWait(source)
       await mutations.replace.mutate({ ...base(), file, upload })
     },
-    errorText: (error) => (error instanceof Error && !('data' in error) && !('kind' in error) ? error.message : opErrorOf(error).message),
+    errorText: (error) => opErrorOf(error).message,
   }
 }

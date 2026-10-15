@@ -71,8 +71,10 @@
     "otherEmail": "Otro correo"
   },
   "problem": {
-    "offline": "Sin conexión. Lo que escribiste sigue aquí.",
     "generic": "No ha funcionado. Lo que escribiste sigue aquí. Inténtalo de nuevo."
+  },
+  "errors": {
+    "signedOut": "Se cerró tu sesión. Vuelve a iniciar sesión e inténtalo de nuevo."
   },
   "invite": {
     "titleShort": "Invitación",

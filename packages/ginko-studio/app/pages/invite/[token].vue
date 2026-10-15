@@ -18,12 +18,12 @@ async function run() {
     const result = await accept({ token })
     await navigateTo(`/s/${result.site}`, { replace: true })
   } catch (e) {
-    const code = (e as { code?: string }).code
-    error.value = code === 'NOT_FOUND'
+    const failure = opErrorOf(e)
+    error.value = failure.code === 'NOT_FOUND'
       ? t('invite.expired')
-      : code === 'FORBIDDEN'
+      : failure.code === 'FORBIDDEN'
         ? t('invite.otherEmail')
-        : opErrorOf(e).message
+        : failure.message
   }
 }
 </script>

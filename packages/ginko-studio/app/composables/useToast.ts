@@ -11,6 +11,8 @@ const DURATION = 8000
 
 export function useToast() {
   const show = (text: string, options: { tone?: Toast['tone']; action?: ToastAction } = {}) => {
+    // No text, no message: a call the person's own action stopped (OpError CANCELLED) has nothing to say.
+    if (!text) return
     const { action } = options
     let running = false
     const send = options.tone === 'err' ? toast.error : toast.success
