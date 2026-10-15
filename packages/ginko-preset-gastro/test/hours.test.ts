@@ -153,4 +153,15 @@ describe('upcomingPlans', () => {
   it('finds the next start of a yearly plan and ignores plans already running', () => {
     expect(upcomingPlans([winterPlan, summer], '2026-10-08', 60).map((p) => [p.plan._id, p.starts])).toEqual([['p1', '2026-11-01']])
   })
+  // Wrong behaviour caught: the site heads a coming season with its start only, or ends a yearly season in the wrong year.
+  it.each([
+    ['yearly winter wraps into the next year', winterPlan, '2026-10-15', { starts: '2026-11-01', ends: '2027-03-31' }],
+    ['yearly winter, a later year', winterPlan, '2027-10-15', { starts: '2027-11-01', ends: '2028-03-31' }],
+    ['yearly summer ends in the same year', summer, '2027-05-01', { starts: '2027-06-01', ends: '2027-08-31' }],
+    ['one-off plan ends on its last day', { ...summer, yearly: false, from: '2026-11-01', to: '2026-12-15' }, '2026-10-15', { starts: '2026-11-01', ends: '2026-12-15' }],
+    ['new hours from a date have no end', { ...summer, yearly: false, from: '2026-11-01', to: undefined }, '2026-10-15', { starts: '2026-11-01', ends: undefined }],
+  ])('%s', (_, plan, today, expected) => {
+    const [found] = upcomingPlans([plan], today, 120)
+    expect({ starts: found?.starts, ends: found?.ends }).toEqual(expected)
+  })
 })

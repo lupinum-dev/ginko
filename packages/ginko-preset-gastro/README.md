@@ -36,7 +36,7 @@ These bricks read from the Ginko platform. Without a running platform the dev se
 ```ts
 // ginko.config.ts
 import { defineSite } from '@lupinum/ginko'
-import { events, gallery, hours, lunch, menu, notices } from '@lupinum/ginko-preset-gastro'
+import { events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '@lupinum/ginko-preset-gastro'
 
 export default defineSite({
   site: 'gasthaus',
@@ -48,14 +48,18 @@ export default defineSite({
   pages: { home: { de: '/', en: '/en' } },
   bricks: {
     hours: hours(),
+    hourPlans: hourPlans(),
     notices: notices(),
     lunch: lunch({ weekOf: '2026-10-05' }),
+    lunchPlans: lunchPlans(),
     menu: menu(),
     events: events({ route: { de: '/veranstaltungen/[slug]', en: '/en/events/[slug]' } }),
     gallery: gallery(),
   },
 })
 ```
+
+Schnell ändern lists bricks in config order: put `hourPlans` right after `hours` and `lunchPlans` right after `lunch`.
 
 ## Exports
 
@@ -83,7 +87,7 @@ the stored data, the same in the week, in hour plans and in exceptions.
 | `noticesOn(notices, ctx, today)` | The notices to show today: on a day the owner closed, a notice that ends today ("Fully booked today") is left out, because the closure wins. |
 | `upcomingClosures(ctx, today, days)` | The owner's closing exceptions, a day set in `closedOn` after today (`_id` `'closedOn'`), and the public holidays that close the house, in the next `days` days. An owner's closure has `field`, the bundle path of its reason, for its language. |
 | `upcomingHolidayClosures(ctx, today, days)` | Only the closing public holidays. |
-| `upcomingPlans(plans, today, days)` | Hour plans that start in the next `days` days, with their start date. |
+| `upcomingPlans(plans, today, days)` | Hour plans that start in the next `days` days, with their start date `starts` and, when the plan has an end, its last day `ends` (a yearly season: the end of that season, in the next year when it runs over New Year). |
 | `weekFor(ctx, date)` | The 7-day week that applies on a date: `{ week, plan? }`. |
 | `weekdayOf(date)` | The weekday key (`'mo'` to `'su'`) of a date. |
 | `timesOf(day, and)` | One day's opening times as text: `11:30–14:00 and 17:30–22:00` (empty when closed). |

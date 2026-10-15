@@ -196,10 +196,22 @@ export function upcomingClosures(ctx: HoursContext, today: string, days: number)
   return closures.sort((a, b) => a.when.from.localeCompare(b.when.from))
 }
 
-/** Plans that start after `today` and within `days` days, with their start date (yearly: next occurrence). */
-export function upcomingPlans(plans: HourPlan[], today: string, days: number): Array<{ plan: HourPlan; starts: string }> {
+/** The last day of a plan that starts on `starts`: its `to`, or for a yearly plan the next `to` month-day from there. */
+function endOf(plan: HourPlan, starts: string): string | undefined {
+  if (!plan.to || !plan.yearly) return plan.to
+  const year = Number(starts.slice(0, 4))
+  const md = plan.to.slice(5)
+  // A season that wraps New Year (November to March) ends in the year after its start.
+  return `${md < plan.from.slice(5) ? year + 1 : year}-${md}`
+}
+
+/**
+ * Plans that start after `today` and within `days` days, with their start date (yearly: next occurrence) and, when the
+ * plan has an end, its last day `ends` (yearly: the end of that occurrence).
+ */
+export function upcomingPlans(plans: HourPlan[], today: string, days: number): Array<{ plan: HourPlan; starts: string; ends?: string }> {
   const until = addDays(today, days)
-  const out: Array<{ plan: HourPlan; starts: string }> = []
+  const out: Array<{ plan: HourPlan; starts: string; ends?: string }> = []
   for (const plan of plans) {
     let starts = plan.from
     if (plan.yearly) {
@@ -208,7 +220,8 @@ export function upcomingPlans(plans: HourPlan[], today: string, days: number): A
       starts = `${year}-${md}` > today ? `${year}-${md}` : `${year + 1}-${md}`
       if (plan.from > starts) starts = plan.from
     }
-    if (starts > today && starts <= until) out.push({ plan, starts })
+    const ends = endOf(plan, starts)
+    if (starts > today && starts <= until) out.push({ plan, starts, ...(ends ? { ends } : {}) })
   }
   return out.sort((a, b) => a.starts.localeCompare(b.starts))
 }
