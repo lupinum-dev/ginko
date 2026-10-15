@@ -43,6 +43,8 @@ const list = useConvexQuery(api.entries.list, () => (brick.value?.kind === 'coll
 // While a new answer loads (another search, more rows), the last one stays on screen, dimmed. Nuxt keys the page
 // by its path, so each area has its own list and never shows another area's last answer. When the new answer
 // fails, the last one also stays (better-convex marks it stale): the page says why and does not dim it as loading.
+// `list.isStale` (the shown page is not the answer to the current arguments) guards the search box and the empty
+// state; `loading` (an answer is on its way) only drives the dimming and aria-busy.
 const page = computed(() => list.data.value)
 const rows = computed(() => page.value?.rows ?? [])
 const total = computed(() => page.value?.total ?? 0)
@@ -95,11 +97,12 @@ const ops = useOps(s.slug)
         <h1 class="text-xl font-semibold tracking-tight">{{ shownLabel(brick.label, s.main.value) }}</h1>
         <Button v-if="canCreate" as-child><NuxtLink :to="`/s/${s.slug.value}/all/${key}/new`"><PlusIcon aria-hidden="true" />{{ t('site.all.new') }}</NuxtLink></Button>
       </header>
-      <!-- While an answer loads, the last page can be an empty search: the box stays (it may hold the focus) and no empty state shows. -->
-      <SavedViews v-if="total || asked || search || (page && loading)" v-model:search="search" v-model:sort="sort" :slug="s.slug.value" :brick-key="key" :brick="brick" />
+      <!-- While the shown page is not the answer to the current arguments (loading, or that answer failed), it can be an
+           empty search: the box stays (it may hold the focus) and no empty state shows. -->
+      <SavedViews v-if="total || asked || search || (page && list.isStale.value)" v-model:search="search" v-model:sort="sort" :slug="s.slug.value" :brick-key="key" :brick="brick" />
       <p class="sr-only" aria-live="polite">{{ loading && asked ? t('site.all.searching') : '' }}</p>
       <p v-if="list.error.value" class="font-semibold text-destructive" role="alert">{{ opErrorOf(list.error.value).message }}</p>
-      <p v-if="!page || (!total && loading)" v-show="!list.error.value" class="text-muted-foreground" role="status">{{ t('entry.loading') }}</p>
+      <p v-if="!page || (!total && list.isStale.value)" v-show="!list.error.value" class="text-muted-foreground" role="status">{{ t('entry.loading') }}</p>
       <p v-else-if="!total && !asked" class="text-muted-foreground">{{ t('site.all.noEntries') }}</p>
       <p v-else-if="!total" class="text-muted-foreground">{{ t('basics.views.noMatch') }}</p>
       <template v-else>

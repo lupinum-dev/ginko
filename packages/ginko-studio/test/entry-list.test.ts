@@ -60,8 +60,8 @@ const fail = (error: unknown) => {
 }
 const stubs = { AllShell: { template: '<div><slot /></div>' }, SavedViews: { name: 'SavedViews', props: ['search'], emits: ['update:search'], template: '<input class="views" />' }, TranslationBadges: true, EntryEditor: true, NuxtLink: true }
 
-// Wrong behaviour caught: while a cleared search loads, the last (empty) answer hid the search box under the
-// person's cursor and said "Noch keine Einträge." for a collection that has entries.
+// Wrong behaviour caught: while a cleared search loads, or when its answer fails, the last (empty) answer hid the
+// search box under the person's cursor and said "Noch keine Einträge." for a collection that has entries.
 test('clearing a search with no match keeps the search box and shows no empty state while the list loads', async () => {
   vi.useFakeTimers()
   try {
@@ -81,6 +81,12 @@ test('clearing a search with no match keeps the search box and shows no empty st
     wrapper.findComponent({ name: 'SavedViews' }).vm.$emit('update:search', '')
     await vi.advanceTimersByTimeAsync(300)
     expect(answers.at(-1)?.search).toBe(undefined)
+    expect(wrapper.find('.views').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Noch keine Einträge.')
+
+    // The answer to the cleared search fails: the empty search page is still not the current answer.
+    fail(normalizeConvexError(new ConvexError({ code: 'FORBIDDEN', message: 'Du hast keinen Zugriff auf diesen Bereich.' }), { functionName: 'entries:list' }))
+    await flushPromises()
     expect(wrapper.find('.views').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Noch keine Einträge.')
   } finally {
