@@ -144,8 +144,23 @@ describe('templates sync --check', () => {
     })
     await sync(root, null)
     expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([expect.stringContaining('demo: eslint.config.mjs must pass tailwindClassesConfig')])
-    writeFileSync(join(root, 'templates/demo/eslint.config.mjs'), 'export default [tailwindClassesConfig]\n')
+    // The name only in a comment, or imported but never passed on, does not load the rule.
+    for (const config of ["// tailwindClassesConfig\nexport default []\n", "import { tailwindClassesConfig } from './eslint.tailwind.mjs'\nexport default []\n", 'export default [tailwindClassesConfig]\n']) {
+      writeFileSync(join(root, 'templates/demo/eslint.config.mjs'), config)
+      expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([expect.stringContaining('demo: eslint.config.mjs must pass tailwindClassesConfig')])
+    }
+    writeFileSync(join(root, 'templates/demo/eslint.config.mjs'), "import { tailwindClassesConfig } from './eslint.tailwind.mjs'\nexport default [tailwindClassesConfig]\n")
     expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([])
+  })
+
+  // Wrong behaviour caught: a bare ignore entry such as 'dark' is an unanchored regex and silently allows `dark:bg-red-500`.
+  it('keeps every ignore entry of the unknown-class lint anchored', async () => {
+    // Read as text: the file imports the lint plugin, which only the templates install.
+    const source = readFileSync(join(process.cwd(), 'templates/_features/ui/eslint.tailwind.mjs'), 'utf8')
+    const list = /const allowedClasses = \[([\s\S]*?)\n\]/.exec(source)?.[1] ?? ''
+    const ignore = [...list.replace(/\/\/.*$/gm, '').matchAll(/'([^']*)'/g)].map((m) => m[1]!)
+    expect(ignore.length).toBeGreaterThan(0)
+    for (const entry of ignore) expect(entry).toMatch(/^\^[a-z-]+\$$/)
   })
 
   it('accepts the next minor range while the release is pending', async () => {
