@@ -136,4 +136,13 @@ describe('MarkdownEditor', () => {
     await wrapper.get('input[aria-label="Suchen"]').trigger('keydown', { key: 'Escape' })
     expect(wrapper.find('[role="search"]').exists()).toBe(false)
   })
+
+  // Wrong behaviour caught: with the find bar open, closing the field (a save that closes the sheet, a language switch)
+  // threw in the bar's teardown, and Vue left the sheet half closed with an empty text.
+  test('the field closes cleanly while find and replace is open', async () => {
+    const wrapper = await mounted('Apfel und Birne\n')
+    await wrapper.get('[role="textbox"]').trigger('keydown', { key: 'f', ctrlKey: true })
+    await wrapper.get('input[aria-label="Suchen"]').setValue('apfel')
+    expect(() => wrapper.unmount()).not.toThrow()
+  })
 })

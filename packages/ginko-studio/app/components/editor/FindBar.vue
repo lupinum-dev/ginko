@@ -1,7 +1,7 @@
 <!-- Find and replace inside the field: a small bar above the text. The search itself lives in the editor core (search.ts);
      this bar sets the term, steps through the matches and replaces. Esc closes it and clears the highlights. -->
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from '#imports'
 import { searchInfo } from '@lupinum/ginko-editor'
 import type { Editor } from '@tiptap/core'
@@ -41,7 +41,9 @@ function close() {
   props.editor.commands.setSearch('')
   props.editor.commands.focus()
 }
-onBeforeUnmount(() => { if (open.value) props.editor.commands.setSearch('') })
+// No cleanup on unmount: the bar unmounts only with its editor, which is destroyed by then and takes its highlights with it.
+// A text reopened from outside (a value from the server, a restored draft) is a new editor: the open bar's term carries over.
+watch(() => props.editor, (next) => { if (open.value && term.value) next.commands.setSearch(term.value) })
 
 function onSearchEnter(event: KeyboardEvent) {
   if (event.shiftKey) props.editor.commands.findPrev(); else props.editor.commands.findNext()
