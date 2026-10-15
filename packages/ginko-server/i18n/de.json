@@ -304,9 +304,24 @@
     "rejected": {
       "subject": "Nicht freigegeben: deine Änderung für {site}",
       "text": "Hallo,\n\ndeine Änderung für „{site}“ wurde nicht freigegeben:\n\n{what}\n\nGrund: „{reason}“\n\nKorrigieren: {path}\n"
+    },
+    "statusReminder": {
+      "subject": "{brick}: {line}",
+      "text": "Hallo,\n\nfür „{site}“ ist bei „{brick}“ etwas zu tun: {line}\n\nJetzt ansehen: {link}\n\nDiese Erinnerung kommt jede Woche am Abend vor Wochenbeginn, solange etwas zu tun ist. Ausschalten: „Erinnerungen per E-Mail“ unter {settings}\n"
     }
   },
   "content": {
     "copyOf": "{text} (Kopie)"
+  },
+  "status": {
+    "next": "Als Nächstes: {title} · {date}",
+    "ending": "{count, plural, one {# endet} other {# enden}} in den nächsten 7 Tagen",
+    "online": "{count} online",
+    "missing": "{count, plural, one {# Eintrag} other {# Einträge}} ohne {field}",
+    "age": "Neuester Eintrag: {title} · vor {weeks, plural, one {# Woche} other {# Wochen}}",
+    "ageThisWeek": "Neuester Eintrag: {title} · diese Woche",
+    "open": "Heute geöffnet {ranges}",
+    "closed": "Heute geschlossen",
+    "drafts": "{drafts, plural, one {# Entwurf} other {# Entwürfe}} · {scheduled} geplant"
   }
 }

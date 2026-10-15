@@ -6,7 +6,8 @@ import type { Doc } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, currentUser, fail, memberOf, type Actor } from './lib/access'
 import { NAME_MAX, SLUG } from './lib/input'
-import { isReminded, weeklyBricks } from './lib/reminders'
+import { isReminded, reminderBricks } from './lib/reminders'
+import { statesOf } from './lib/status'
 import { isFetchableSiteUrl } from './lib/siteUrl'
 import { leafStatus } from './lib/translation'
 import { titleOf } from './lib/list'
@@ -15,7 +16,7 @@ import type { Data } from './lib/content'
 /**
  * The sites the signed-in user may open, with their role. Admins see every site. A site being deleted is listed for
  * owners and admins only (they can cancel), marked `deleting`. `weekly`: the weekly reminder can mail this person about
- * the site (reminders.ts; it mails members only). The order is the database's; the Studio sorts by name.
+ * the site, for a weekly task or a status line (reminders.ts; it mails members only). The order is the database's; the Studio sorts by name.
  */
 export const mine = query({
   args: {},
@@ -24,7 +25,7 @@ export const mine = query({
     const memberships = await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', user.id)).collect()
     const row = (site: Doc<'sites'>, role: 'admin' | Doc<'memberships'>['role']) => {
       const member = memberships.find((m) => m.site === site._id)
-      const weekly = !!member && weeklyBricks(site.schema as Schema).some(({ ref }) => isReminded(member, ref))
+      const weekly = !!member && reminderBricks(site.schema as Schema).some(({ refs }) => isReminded(member, refs))
       return { slug: site.slug, name: site.name, url: site.url, role, deleting: !!site.deleting, weekly }
     }
     const admin = await ctx.db.query('admins').withIndex('by_user', (q) => q.eq('user', user.id)).unique()
@@ -34,6 +35,23 @@ export const mine = query({
       const site = sites[index]
       return site && (!site.deleting || member.role === 'owner') ? [row(site, member.role)] : []
     })
+  },
+})
+
+/**
+ * The status lines of Today (UI.md 3) for the bricks this person has a task on, in schema order: each brick's line
+ * (`status` on the brick, or the drafts of a drafts collection) and whether its section is due. Bricks with neither are
+ * left out. Staff count only their own drafts.
+ */
+export const today = query({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    const schema = actor.site.schema as Schema
+    const staff = actor.role === 'staff'
+    const keys = ordered(schema.bricks).filter(([key, brick]) => (brick.tasks ?? []).some((task) => !staff || actor.grants.includes(`${key}.${task.id}`))).map(([key]) => key)
+    const states = await statesOf(ctx, actor.site, keys, todayIn(schema.timeZone), staff ? actor.user.id : undefined)
+    return states.filter((state) => state.line || state.due)
   },
 })
 

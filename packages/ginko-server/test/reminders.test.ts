@@ -30,6 +30,16 @@ async function setupUnplanned() {
   return s
 }
 
+/** Sets `status` on a brick of the stored schema. */
+async function setStatus({ t, site }: Backend, brick: string, status: unknown) {
+  await t.run(async (ctx) => {
+    const row = (await ctx.db.get(site))!
+    const schema = structuredClone(row.schema) as { bricks: Record<string, Record<string, unknown>> }
+    schema.bricks[brick]!.status = status
+    await ctx.db.patch(site, { schema })
+  })
+}
+
 /** A staff member without the lunch task: signed in, member, but cannot fix it. */
 async function addStaffWithoutTask({ t, site }: Backend) {
   await t.run((ctx) => ctx.db.insert('memberships', { site, user: 'u-neu', email: 'neu@example.com', role: 'staff', grants: ['menu.price'] }))
@@ -65,6 +75,24 @@ describe('reminders.sweep', () => {
       await ctx.db.patch(s.site, { schema: { ...(site.schema as object), bricks } })
     })
     expect(await weekly(s.as.owner)).toEqual([['restaurant', false]])
+    // A status line can be mailed too: to the owner, not to the cook without a notices task.
+    await setStatus(s, 'notices', { count: true })
+    expect(await weekly(s.as.owner)).toEqual([['restaurant', true]])
+    expect(await weekly(s.as.cook)).toEqual([['restaurant', false]])
+  })
+
+  // Wrong behaviour caught: a due status line (a notice ends in the coming week) stays on the Today page only, or the
+  // mail words it differently, or it reaches staff without a task on that area.
+  it('mails a due status line in the words of the Today page, to those who can fix it', async () => {
+    const s = await setup()
+    await setStatus(s, 'notices', { count: true })
+    // The corpus notice "Weinabend" shows until 2026-10-16, inside the week from Monday 2026-10-12.
+    expect(await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })).toEqual({ sent: 1 })
+    const sent = await s.t.run((ctx) => ctx.db.query('outbox').collect())
+    expect(sent.map((m) => [m.to, m.subject])).toEqual([['wirtin@example.com', 'Hinweise: 1 endet in den nächsten 7 Tagen']])
+    expect(sent[0]!.text).toContain('1 endet in den nächsten 7 Tagen')
+    expect(sent[0]!.text).toContain('https://ginko.test/s/restaurant')
+    expect(await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA + 20 * 60 * 1000 })).toEqual({ sent: 0 })
   })
 
   // Wrong behaviour caught: a created but unreleased site had no `week` in its schema, so the hourly sweep threw for all sites.

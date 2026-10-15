@@ -1,8 +1,9 @@
-<!-- Schnell ändern (UI.md 3): every brick with tasks the person may do, in schema order, with a
-     one-line state from the data and the task buttons. Generic: nothing here knows the restaurant. -->
+<!-- Schnell ändern (UI.md 3): every brick with tasks the person may do, in schema order, with its `describe` as a
+     lede, its status line (`status` on the brick, computed by the server: sites.today), a one-line state from the data
+     and the task buttons. Generic: nothing here knows the restaurant. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Json } from '@lupinum/ginko'
-import { visibleUntil, plannedWeeks, plansThisWeek, resolveToken, staleOf, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
+import { visibleUntil, plannedWeeks, plansThisWeek, resolveToken, staleOf, weeklyTask, workWeekOf, type StatusLine } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../composables/useSiteData'
 import { textIn } from '@lupinum/ginko-editor'
 import { displayValue, formatDay, taskRef, titleOf, type Task } from '../../../utils/content'
@@ -194,6 +195,36 @@ function weekState(key: string, brick: Brick) {
   return { current: state.current, text: state.stored ? `${shownLabel(brick.fields[state.field]!.label, s.main.value)} ${formatDay(state.stored, format)}` : t('site.quick.notFilled') }
 }
 
+// Each section's status line and whether it is due (sites.today), and for managers the proposals waiting for them.
+const statusRead = useConvexQuery(api.sites.today, () => ({ site: s.slug.value }), { server: false })
+const stateOf = (key: string) => statusRead.data.value?.find((x) => x.brick === key)
+const reviewRead = useConvexQuery(api.proposals.count, () => (s.isManager.value ? { site: s.slug.value } : 'skip'), { server: false })
+/** A section needs doing: its status is due, or its week is not entered (filled first button, UI.md 3). */
+const isDue = (key: string, brick: Brick) => !!stateOf(key)?.due || weekState(key, brick)?.current === false
+
+/** The words of a status line; "<n> online" only when the list is cut (`folded`). Null for hours that are unknown today. */
+function statusText(brick: Brick, line: StatusLine, folded: boolean): string | null {
+  const title = (value: string | null) => value ?? shownLabel(brick.label, s.main.value)
+  switch (line.kind) {
+    case 'next': return t('server.status.next', { title: title(line.title), date: formatDay(line.date, format) })
+    case 'count': return line.ending > 0 ? t('server.status.ending', { count: line.ending }) : folded ? t('server.status.online', { count: line.online }) : null
+    case 'missing': return t('server.status.missing', { count: line.count, field: shownLabel(brick.fields[line.field]?.label ?? line.field, s.main.value) })
+    case 'age': return line.weeks > 0 ? t('server.status.age', { title: title(line.title), weeks: line.weeks }) : t('server.status.ageThisWeek', { title: title(line.title) })
+    case 'drafts': return t('server.status.drafts', { drafts: line.drafts, scheduled: line.scheduled })
+    case 'hours': {
+      const today = line.today
+      if ('ranges' in today) return t('server.status.open', { ranges: new Intl.ListFormat(locale.value, { style: 'short', type: 'unit' }).format(today.ranges.map(([from, to]) => `${from}–${to}`)) })
+      return 'closed' in today ? t('server.status.closed') : null
+    }
+  }
+}
+/** A section's status line: words, and whether it is due. An hours line stands in the today flag instead when the flag is for today. */
+function statusOf(sec: Section): { text: string; due: boolean; hours: boolean } | undefined {
+  const state = stateOf(sec.key)
+  const text = state?.line ? statusText(sec.brick, state.line, !!listings.value[sec.key]?.more) : null
+  return text ? { text, due: state!.due, hours: state!.line!.kind === 'hours' } : undefined
+}
+
 // The person's own proposals (proposals.mine): each section says what of theirs waits for approval, and what was not
 // approved, with "Korrigieren" to fix it in its task. The server keeps a rejection only while it is the thing to fix.
 const ownRead = useConvexQuery(api.proposals.mine, () => ({ site: s.slug.value }), { server: false })
@@ -376,14 +407,23 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
     <LocalDraftList v-if="s.schema.value" :slug="s.slug.value" :schema="s.schema.value" :main="s.main.value" :bricks="openable" :task-of="createTaskOf" @task="(key, task) => start(key, task)" />
     <p v-if="!sections.length && s.schema.value" class="py-6 text-muted-foreground">{{ t('site.quick.nothingForYou') }}</p>
 
+    <p v-if="s.isManager.value && sections.length && reviewRead.data.value" class="mb-5 text-sm" data-test="to-review">
+      {{ t('site.quick.toReview', { count: reviewRead.data.value }) }} · <NuxtLink :to="`/s/${s.slug.value}/review`">{{ t('nav.review') }}</NuxtLink>
+    </p>
+
     <div class="grid gap-7">
     <section v-for="sec in sections" :key="sec.key" class="grid gap-3" :aria-labelledby="`b-${sec.key}`">
-      <h2 :id="`b-${sec.key}`" class="text-[17px] font-semibold">{{ shownLabel(sec.brick.label, s.main.value) }}</h2>
+      <div>
+        <h2 :id="`b-${sec.key}`" class="text-[17px] font-semibold">{{ shownLabel(sec.brick.label, s.main.value) }}</h2>
+        <p v-if="sec.brick.describe" class="mt-0.5 truncate text-sm text-muted-foreground" data-test="lede">{{ shownLabel(sec.brick.describe, s.main.value) }}</p>
+      </div>
+      <p v-if="statusOf(sec) && !(statusOf(sec)!.hours && todayFlag(sec.key, sec.brick, sec.tasks)?.date === s.today.value)" :class="statusOf(sec)!.due ? 'rounded-md px-3 py-2.5 bg-warning/10 font-semibold text-warning' : 'text-sm text-muted-foreground'" data-test="status">{{ statusOf(sec)!.text }}</p>
 
       <template v-if="sec.brick.kind === 'single'">
         <div v-if="todayFlag(sec.key, sec.brick, sec.tasks)" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md px-3 py-2.5 bg-warning/10">
           <p>
-            <I18nT v-if="todayFlag(sec.key, sec.brick, sec.tasks)!.date === s.today.value" k="site.quick.todayDone" :params="{ task: shownLabel(todayFlag(sec.key, sec.brick, sec.tasks)!.task.label, s.main.value) }"><template #task="{ text }"><strong>{{ text }}</strong></template></I18nT>
+            <span v-if="todayFlag(sec.key, sec.brick, sec.tasks)!.date === s.today.value && statusOf(sec)?.hours" data-test="status">{{ statusOf(sec)!.text }}</span>
+            <I18nT v-else-if="todayFlag(sec.key, sec.brick, sec.tasks)!.date === s.today.value" k="site.quick.todayDone" :params="{ task: shownLabel(todayFlag(sec.key, sec.brick, sec.tasks)!.task.label, s.main.value) }"><template #task="{ text }"><strong>{{ text }}</strong></template></I18nT>
             <I18nT v-else k="site.quick.dayDone" :params="{ field: shownLabel(todayFlag(sec.key, sec.brick, sec.tasks)!.field.label, s.main.value), date: format.date(todayFlag(sec.key, sec.brick, sec.tasks)!.date, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }"><template #task="{ text }"><strong>{{ text }}</strong></template></I18nT>
             <span v-for="text in flagTexts(sec.brick, todayFlag(sec.key, sec.brick, sec.tasks)!)" :key="text" class="mt-0.5 block">{{ t('site.quick.flagText', { text }) }}</span>
           </p>
@@ -423,9 +463,10 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
       </div>
 
       <!-- Phone: the main task full width, the others in two columns; from sm they wrap in one row. Quick tasks are
-           secondary (row D); only a task the week still needs (the menu is not set for this week) is filled. -->
+           secondary (row D); only the first task of a due section (a status that is due, or the week is not entered)
+           is filled. -->
       <div class="grid gap-2 sm:flex sm:flex-wrap">
-        <Button v-if="sec.buttons[0]" type="button" :variant="weekState(sec.key, sec.brick)?.current === false ? 'default' : 'secondary'" class="w-full sm:w-auto" @click="start(sec.key, sec.buttons[0])">{{ shownLabel(sec.buttons[0].label, s.main.value) }}</Button>
+        <Button v-if="sec.buttons[0]" type="button" :variant="isDue(sec.key, sec.brick) ? 'default' : 'secondary'" class="w-full sm:w-auto" @click="start(sec.key, sec.buttons[0])">{{ shownLabel(sec.buttons[0].label, s.main.value) }}</Button>
         <div v-if="sec.buttons.length > 1" class="grid grid-cols-2 gap-2 sm:contents">
           <Button v-for="t in sec.buttons.slice(1)" :key="t.id" type="button" variant="secondary" class="max-sm:h-auto max-sm:min-h-10 max-sm:w-full max-sm:whitespace-normal max-sm:py-2" @click="start(sec.key, t)">{{ shownLabel(t.label, s.main.value) }}</Button>
         </div>
