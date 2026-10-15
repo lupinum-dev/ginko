@@ -13,6 +13,8 @@ export interface LocalDraft {
   locale: string
   /** An edit: only the changed root fields. A new entry: the whole form. */
   fields: Data
+  /** An edit: the stored values of those fields the input started from, so a restore brings back only the person's changes. */
+  base?: Data
 }
 
 const PREFIX = 'ginko:draft:v1:'

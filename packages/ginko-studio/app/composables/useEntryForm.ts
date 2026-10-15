@@ -5,7 +5,7 @@ import type { Brick, Fields, Json, Locale } from '@lupinum/ginko'
 import { useI18n } from '#imports'
 import type { Entry } from './useSiteData'
 import type { OpError } from './useOps'
-import { changedRoots, type Data } from '../utils/content'
+import { changedRoots, ownChangesOver, type Data } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { clearLocalDraft, localDraftKey, readLocalDraft, useLocalDraftWriter, writeLocalDraft, type LocalDraft } from './useLocalDraft'
 import { BLOCKERS, FLUSHERS, type Issue } from '@lupinum/ginko-editor'
@@ -28,7 +28,8 @@ export interface EntryFormOptions {
   locale: () => Locale
   /**
    * The form edits every language of its texts (the quick-task sheet's language switch): a save sends whole values
-   * without `locale`, so one Speichern stores all languages, and a translation nobody touched keeps its print.
+   * without `locale`, so one Speichern stores all languages, and a translation nobody touched keeps its print. The
+   * per-root conflict check guards those whole values; "Meine behalten" sends only the person's own languages.
    */
   allLanguages?: boolean
   task?: () => string | undefined
@@ -252,12 +253,15 @@ export function useEntryForm(o: EntryFormOptions) {
   watch(() => o.entry()?.rev, reconcile)
   watch(busy, (now) => { if (!now) reconcile() })
 
-  /** The person's own changes over the current server state; untouched fields take the server's values. */
+  /**
+   * The person's own changes over the current server state; untouched fields take the server's values. A changed text
+   * keeps the languages someone else changed meanwhile (a whole-value save would send the old ones back).
+   */
   async function keepMine() {
     const c = conflict.value
     if (!c) return false
-    const mine = Object.fromEntries(changed.value.map((k) => [k, draft.value[k]]))
     const theirs = storedOf(c.data)
+    const mine = Object.fromEntries(changed.value.map((k) => [k, ownChangesOver(o.fields()[k]!, baseline.value[k], draft.value[k], theirs[k])]))
     baseline.value = copy(theirs)
     draft.value = copy({ ...theirs, ...mine } as Data)
     baseRev.value = c.rev
@@ -363,7 +367,8 @@ export function useEntryForm(o: EntryFormOptions) {
     if (!key || localOffer.value) return
     const fields: Data = isCreate.value ? copy(draft.value) : Object.fromEntries(changed.value.map((k) => [k, copy(draft.value[k] ?? null)]))
     if (!dirty.value || !Object.keys(fields).length) return clearLocalDraft(key)
-    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields })
+    const base = isCreate.value ? undefined : Object.fromEntries(Object.keys(fields).map((k) => [k, copy(baseline.value[k] ?? null)]))
+    writeLocalDraft(key, { v: 1, savedAt: Date.now(), baseRev: baseRev.value, locale: o.locale(), fields, ...(base ? { base } : {}) })
   }
   // Typed back to what was there: the next write removes the copy (a save removes it at once, in write()).
   const localWriter = useLocalDraftWriter(() => draft.value, keepLocal)
@@ -387,17 +392,18 @@ export function useEntryForm(o: EntryFormOptions) {
     }
     if (!record) return
     localOffer.value = null
-    const { fields, baseRev: copyBase } = record
+    const { fields, base, baseRev: copyBase } = record
     const own = keys().filter((k) => Object.hasOwn(fields, k))
+    const entry = o.entry()
     const next = { ...draft.value }
     for (const k of own) {
-      const value = fields[k]
+      // Only the person's changes over what is stored now: a text keeps the languages someone else saved meanwhile.
+      const value = entry && base && Object.hasOwn(base, k) ? ownChangesOver(o.fields()[k]!, base[k] ?? undefined, fields[k] ?? undefined, entry.data[k]) : fields[k]
       if (value === null || value === undefined) delete next[k]
       else next[k] = copy(value)
     }
     draft.value = next
     waiting.value = false
-    const entry = o.entry()
     if (!entry) return
     const clash = own.filter((k) => (entry.fieldRevs[k] ?? 0) > copyBase && !same(entry.data[k], next[k]))
     // The copy's base: a save of a root changed after it is refused as a conflict, never overwrites it.

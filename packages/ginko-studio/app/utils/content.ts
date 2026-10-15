@@ -87,6 +87,54 @@ export function leafValue(data: Record<string, unknown> | undefined, path: strin
   return value
 }
 
+const isRecord = (value: unknown): value is Record<string, Json> => typeof value === 'object' && value !== null && !Array.isArray(value)
+const same = (a: unknown, b: unknown) => stableJson(a ?? null) === stableJson(b ?? null)
+
+/** `theirs` with the languages that differ between `base` and `mine` taken from `mine` (absent there: removed). */
+function textsOver(base: Record<string, Json>, mine: Record<string, Json>, theirs: Json | undefined): Record<string, Json> {
+  const out = { ...(isRecord(theirs) ? theirs : {}) }
+  for (const l of new Set([...Object.keys(base), ...Object.keys(mine)])) {
+    if (same(base[l], mine[l])) continue
+    if (mine[l] === undefined) delete out[l]
+    else out[l] = mine[l]
+  }
+  return out
+}
+
+/**
+ * The person's own changes to one root field (`base` → `mine`) over someone else's newer value (`theirs`), for "Meine
+ * behalten" and for a restored local copy. A form that saves every language sends whole texts, so a text keeps the
+ * languages the person did not change, also in a list row both still have and in a photo description. Everything else
+ * (a number, the photo itself, which rows a list has and their order) comes from `mine`, as it always did.
+ */
+export function ownChangesOver(field: Field, base: Json | undefined, mine: Json | undefined, theirs: Json | undefined): Json | undefined {
+  if (isTranslatable(field)) {
+    if (!isRecord(base) || !isRecord(mine)) return mine
+    const texts = textsOver(base, mine, theirs)
+    return Object.keys(texts).length ? texts : undefined
+  }
+  if (field.type === 'image' && isRecord(mine) && isRecord(base) && isRecord(mine.alt) && isRecord(base.alt)) {
+    return { ...mine, alt: textsOver(base.alt, mine.alt, isRecord(theirs) ? theirs.alt : undefined) }
+  }
+  if (field.type === 'list' && Array.isArray(mine) && Array.isArray(base) && Array.isArray(theirs)) {
+    const byId = (rows: Json[]) => new Map(rows.filter(isRecord).map((row) => [row._id, row]))
+    const [was, now] = [byId(base), byId(theirs)]
+    return mine.map((row) => {
+      const b = isRecord(row) ? was.get(row._id) : undefined
+      const t = isRecord(row) ? now.get(row._id) : undefined
+      if (!isRecord(row) || !b || !t) return row
+      const out: Record<string, Json> = { ...row }
+      for (const [key, inner] of Object.entries(field.of)) {
+        const value = ownChangesOver(inner, b[key], row[key], t[key])
+        if (value === undefined) delete out[key]
+        else out[key] = value
+      }
+      return out
+    })
+  }
+  return mine
+}
+
 /** "brick.task" (SPEC 2.7 TaskRef). */
 export const taskRef = (brick: string, task: Task) => `${brick}.${task.id}`
 
