@@ -256,7 +256,7 @@
     "quick": {
       "nothingForYou": "No tienes tareas aquí. Pide al propietario los permisos que necesitas.",
       "todayDone": "<task>{task}</task> está completado para hoy.",
-      "dayDone": "<task>{task}</task> está completado para el {date}.",
+      "dayDone": "<task>{field} {date}</task> está completado.",
       "flagText": "“{text}”",
       "clearToday": "Quitar",
       "notFilled": "Aún sin completar",

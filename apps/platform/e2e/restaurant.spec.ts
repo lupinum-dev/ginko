@@ -42,12 +42,12 @@ test.describe('Wirtin', () => {
     await page.getByRole('button', { name: 'Heute geschlossen' }).click()
     await page.getByRole('button', { name: 'Morgen' }).click()
     await page.getByRole('button', { name: 'Speichern' }).click()
-    await expect(page.getByText(/ist für .+ eingetragen\./)).toBeVisible()
+    await expect(page.getByText(/Geschlossen am .+ ist eingetragen\./)).toBeVisible()
     await page.getByRole('button', { name: 'Heute geschlossen' }).click()
     await expect(page.getByLabel('Geschlossen am')).toHaveValue(addDays(today(), 1))
     await page.getByRole('button', { name: 'Schließen' }).click()
     await page.getByRole('button', { name: 'Aufheben' }).click()
-    await expect(page.getByText(/ist für .+ eingetragen\./)).toHaveCount(0)
+    await expect(page.getByText(/Geschlossen am .+ ist eingetragen\./)).toHaveCount(0)
   })
 
   test('3. the weekly lunch starts this Monday from last week, and a new dish asks for its allergens', async ({ page }) => {

@@ -256,7 +256,7 @@
     "quick": {
       "nothingForYou": "Für dich gibt es hier keine Aufgaben. Frag die Inhaberin nach den passenden Rechten.",
       "todayDone": "<task>{task}</task> ist für heute eingetragen.",
-      "dayDone": "<task>{task}</task> ist für {date} eingetragen.",
+      "dayDone": "<task>{field} {date}</task> ist eingetragen.",
       "flagText": "„{text}“",
       "clearToday": "Aufheben",
       "notFilled": "Noch nicht ausgefüllt",

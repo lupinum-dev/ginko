@@ -129,8 +129,8 @@ function timing(brick: CollectionBrick, entry: Entry): { text: string; dim: bool
 }
 
 /**
- * A single's date field preset to @today, set to today or a later day, shows "<task> ist für heute eingetragen" (or for
- * that day) with Aufheben (UI.md 3). A past day no longer counts.
+ * A single's date field preset to @today, set to today or a later day, shows "<task> ist für heute eingetragen" (or
+ * "<field> <day> ist eingetragen") with Aufheben (UI.md 3). A past day no longer counts.
  */
 function todayFlag(key: string, brick: Brick, tasks: Task[]) {
   const entry = singleOf(key)
@@ -139,7 +139,7 @@ function todayFlag(key: string, brick: Brick, tasks: Task[]) {
     if (t.kind !== 'edit' || !t.prefill) continue
     for (const [field, token] of Object.entries(t.prefill)) {
       const date = entry.data[field]
-      if (token === '@today' && brick.fields[field]?.type === 'date' && typeof date === 'string' && date >= s.today.value) return { task: t, entry, date }
+      if (token === '@today' && brick.fields[field]?.type === 'date' && typeof date === 'string' && date >= s.today.value) return { task: t, entry, date, field: brick.fields[field]! }
     }
   }
   return undefined
@@ -302,7 +302,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
         <div v-if="todayFlag(sec.key, sec.brick, sec.tasks)" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md px-3 py-2.5 bg-warning/10">
           <p>
             <I18nT v-if="todayFlag(sec.key, sec.brick, sec.tasks)!.date === s.today.value" k="site.quick.todayDone" :params="{ task: shownLabel(todayFlag(sec.key, sec.brick, sec.tasks)!.task.label, s.main.value) }"><template #task="{ text }"><strong>{{ text }}</strong></template></I18nT>
-            <I18nT v-else k="site.quick.dayDone" :params="{ task: shownLabel(todayFlag(sec.key, sec.brick, sec.tasks)!.task.label, s.main.value), date: format.date(todayFlag(sec.key, sec.brick, sec.tasks)!.date, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }"><template #task="{ text }"><strong>{{ text }}</strong></template></I18nT>
+            <I18nT v-else k="site.quick.dayDone" :params="{ field: shownLabel(todayFlag(sec.key, sec.brick, sec.tasks)!.field.label, s.main.value), date: format.date(todayFlag(sec.key, sec.brick, sec.tasks)!.date, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }"><template #task="{ text }"><strong>{{ text }}</strong></template></I18nT>
             <span v-for="text in flagTexts(sec.brick, todayFlag(sec.key, sec.brick, sec.tasks)!)" :key="text" class="mt-0.5 block">{{ t('site.quick.flagText', { text }) }}</span>
           </p>
           <Button type="button" variant="outline" size="sm" :disabled="lifting" @click="lift(todayFlag(sec.key, sec.brick, sec.tasks)!, sec.key)">{{ t('site.quick.clearToday') }}</Button>

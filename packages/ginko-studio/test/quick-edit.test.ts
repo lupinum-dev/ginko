@@ -98,15 +98,16 @@ test.each([
 })
 
 // Wrong behaviour caught: "Heute geschlossen" saved for tomorrow showed no state at all, so the owner could not tell it
-// was saved (and reopened it, which closed today instead).
+// was saved (and reopened it, which closed today instead); then the state of a later day named the task "Heute
+// geschlossen" next to Friday's date, not the day's own field.
 test.each([
-  ['tomorrow', '2026-10-16', 'site.quick.dayDone', 'Freitag, 16. Oktober'],
+  ['tomorrow', '2026-10-16', 'site.quick.dayDone', 'Geschlossen am Freitag, 16. Oktober'],
   ['today', '2026-10-15', 'site.quick.todayDone', undefined],
   ['yesterday', '2026-10-14', undefined, undefined],
 ])('a closure set for %s: the flag says so', async (_when, closedOn, key, date) => {
   listed = [{ _id: 'h1', brick: 'hours', kind: 'single', order: 0, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { closedOn } } as never]
   const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
-    global: { stubs: { TaskSheet: true, PickSheet: true, NuxtLink: true, I18nT: { props: ['k', 'params'], template: '<span class="flag" :data-k="k">{{ params.date }}</span>' } } },
+    global: { stubs: { TaskSheet: true, PickSheet: true, NuxtLink: true, I18nT: { props: ['k', 'params'], template: '<span class="flag" :data-k="k">{{ params.field }} {{ params.date }}</span>' } } },
   })
   await flushPromises()
   const flag = wrapper.find('.flag')
