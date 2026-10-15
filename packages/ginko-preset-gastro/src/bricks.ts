@@ -59,6 +59,22 @@ const lunchDefault = weekdays.slice(0, 5).map((d) => ({ _id: `ld${d.value}000000
 /** Times only on a day that is not closed (a closed day keeps its stored times). */
 const open = { field: 'closed', not: true } as const
 
+/**
+ * The two opening periods of a day (the stored limit). Neutral words, not "lunch" and "evening": a winter plan keeps
+ * 17:00–21:30 in the first period, and the owner must not read that as lunch.
+ */
+function timeFields() {
+  return {
+    from1: f.time(both('Öffnet um', 'Opens at'), { optional: true, showWhen: open }),
+    to1: f.time(both('Schließt um', 'Closes at'), { optional: true, showWhen: open }),
+    from2: f.time(both('Öffnet wieder um', 'Opens again at'), {
+      optional: true, showWhen: open,
+      hint: both('Nur wenn du untertags eine Pause machst.', 'Only if you close for a break during the day.'),
+    }),
+    to2: f.time(both('Schließt wieder um', 'Closes again at'), { optional: true, showWhen: open }),
+  }
+}
+
 /** One 7-row week, shared by the standard hours and the hour plans. */
 function weekField() {
   return f.list(both('Wochenplan', 'Weekly hours'), {
@@ -66,10 +82,7 @@ function weekField() {
     fields: {
       day: f.choice(both('Tag', 'Day'), { options: weekdays }),
       closed: f.boolean(both('Ruhetag', 'Closed all day')),
-      from1: f.time(both('Mittag von', 'Lunch from'), { optional: true, showWhen: open }),
-      to1: f.time(both('Mittag bis', 'Lunch until'), { optional: true, showWhen: open }),
-      from2: f.time(both('Abend von', 'Evening from'), { optional: true, showWhen: open }),
-      to2: f.time(both('Abend bis', 'Evening until'), { optional: true, showWhen: open }),
+      ...timeFields(),
     },
     min: 7, max: 7, unique: 'day', default: weekDefault,
   })
@@ -90,10 +103,7 @@ export function hours(opts: GastroOptions = {}) {
           // A new exception is a closure unless the owner says otherwise.
           closed: f.boolean(both('Geschlossen', 'Closed'), { default: true }),
           // Special hours: "Geschlossen" off and times set, e.g. 24.12. from 11:00 to 14:00.
-          from1: f.time(both('Mittag von', 'Lunch from'), { optional: true, showWhen: open }),
-          to1: f.time(both('Mittag bis', 'Lunch until'), { optional: true, showWhen: open }),
-          from2: f.time(both('Abend von', 'Evening from'), { optional: true, showWhen: open }),
-          to2: f.time(both('Abend bis', 'Evening until'), { optional: true, showWhen: open }),
+          ...timeFields(),
         },
         max: 20, default: [],
       }),

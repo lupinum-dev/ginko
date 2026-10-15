@@ -134,8 +134,8 @@
             "from1": {
               "type": "time",
               "label": {
-                "de": "Mittag von",
-                "en": "Lunch from"
+                "de": "Öffnet um",
+                "en": "Opens at"
               },
               "optional": true,
               "showWhen": {
@@ -147,8 +147,8 @@
             "to1": {
               "type": "time",
               "label": {
-                "de": "Mittag bis",
-                "en": "Lunch until"
+                "de": "Schließt um",
+                "en": "Closes at"
               },
               "optional": true,
               "showWhen": {
@@ -160,21 +160,25 @@
             "from2": {
               "type": "time",
               "label": {
-                "de": "Abend von",
-                "en": "Evening from"
+                "de": "Öffnet wieder um",
+                "en": "Opens again at"
               },
               "optional": true,
               "showWhen": {
                 "field": "closed",
                 "not": true
               },
+              "hint": {
+                "de": "Nur wenn du untertags eine Pause machst.",
+                "en": "Only if you close for a break during the day."
+              },
               "pos": 4
             },
             "to2": {
               "type": "time",
               "label": {
-                "de": "Abend bis",
-                "en": "Evening until"
+                "de": "Schließt wieder um",
+                "en": "Closes again at"
               },
               "optional": true,
               "showWhen": {
@@ -290,8 +294,8 @@
             "from1": {
               "type": "time",
               "label": {
-                "de": "Mittag von",
-                "en": "Lunch from"
+                "de": "Öffnet um",
+                "en": "Opens at"
               },
               "optional": true,
               "showWhen": {
@@ -303,8 +307,8 @@
             "to1": {
               "type": "time",
               "label": {
-                "de": "Mittag bis",
-                "en": "Lunch until"
+                "de": "Schließt um",
+                "en": "Closes at"
               },
               "optional": true,
               "showWhen": {
@@ -316,21 +320,25 @@
             "from2": {
               "type": "time",
               "label": {
-                "de": "Abend von",
-                "en": "Evening from"
+                "de": "Öffnet wieder um",
+                "en": "Opens again at"
               },
               "optional": true,
               "showWhen": {
                 "field": "closed",
                 "not": true
               },
+              "hint": {
+                "de": "Nur wenn du untertags eine Pause machst.",
+                "en": "Only if you close for a break during the day."
+              },
               "pos": 5
             },
             "to2": {
               "type": "time",
               "label": {
-                "de": "Abend bis",
-                "en": "Evening until"
+                "de": "Schließt wieder um",
+                "en": "Closes again at"
               },
               "optional": true,
               "showWhen": {
@@ -1603,8 +1611,8 @@
             "from1": {
               "type": "time",
               "label": {
-                "de": "Mittag von",
-                "en": "Lunch from"
+                "de": "Öffnet um",
+                "en": "Opens at"
               },
               "optional": true,
               "showWhen": {
@@ -1616,8 +1624,8 @@
             "to1": {
               "type": "time",
               "label": {
-                "de": "Mittag bis",
-                "en": "Lunch until"
+                "de": "Schließt um",
+                "en": "Closes at"
               },
               "optional": true,
               "showWhen": {
@@ -1629,21 +1637,25 @@
             "from2": {
               "type": "time",
               "label": {
-                "de": "Abend von",
-                "en": "Evening from"
+                "de": "Öffnet wieder um",
+                "en": "Opens again at"
               },
               "optional": true,
               "showWhen": {
                 "field": "closed",
                 "not": true
               },
+              "hint": {
+                "de": "Nur wenn du untertags eine Pause machst.",
+                "en": "Only if you close for a break during the day."
+              },
               "pos": 4
             },
             "to2": {
               "type": "time",
               "label": {
-                "de": "Abend bis",
-                "en": "Evening until"
+                "de": "Schließt wieder um",
+                "en": "Closes again at"
               },
               "optional": true,
               "showWhen": {

@@ -70,7 +70,7 @@ sold out on that day only, quick task "Dish sold out today"). An event has `sold
 fully booked"): show it instead of the booking link. All three are optional, so older entries and Markdown files stay
 valid: a missing field means on the menu, not sold out, and bookable.
 
-A day has at most two opening periods (`from1`–`to1` and `from2`–`to2`, labelled lunch and evening). This is a limit of
+A day has at most two opening periods (`from1`–`to1` and `from2`–`to2`, the first and second opening time of a day). This is a limit of
 the stored data, the same in the week, in hour plans and in exceptions.
 
 | Name | What it is |
