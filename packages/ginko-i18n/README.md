@@ -294,6 +294,10 @@ hydration mismatch. Set the cookie from the user's account setting when they sig
 (`ginko_locale=en; Path=/; Max-Age=31536000; SameSite=Lax`), so the first render already has the
 right language.
 
+Dates and numbers in a zone follow the region of the browser's first language when it is the same
+language and the locale names no region: `en` reads 25/10/2026 in an `en-GB` browser and 10/25/2026 in
+an `en-US` one. A locale with a region (`de-AT`) keeps it.
+
 `switchLocale(code)` changes the language:
 
 ```vue
@@ -478,6 +482,7 @@ Framework-free and parser-free. See [Outside Nuxt](#outside-nuxt).
 | `stripLocale(path, config)` | Removes it: `/en/about` → `/about`. |
 | `localeFromPath(path, config)` | The code a path belongs to, or `undefined` (`/de/x` under `prefix_except_default`). |
 | `negotiateLocale(header, config)` | The best code for an `Accept-Language` header, or `undefined`. |
+| `regionalLanguage(language, browser)` | The tag that formats dates and numbers in a user-locale zone: the browser's regional variant of `language` (`en` + `en-GB` → `en-GB`), else `language`. |
 | `isExcluded(path, config)` | Whether the path never gets a prefix (`exclude`, `/api/**`, Nuxt internals). |
 | `inUserZone(path, config)` | Whether the path is in a user-locale zone (`userLocale`). |
 | `canonicalCase(path, config)` | The path with its prefix in the code's own case (`/EN/about` → `/en/about`), or `undefined` when it is already right. |

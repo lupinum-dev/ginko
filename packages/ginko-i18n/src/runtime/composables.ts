@@ -2,7 +2,7 @@ import { computed, onMounted, ref } from 'vue'
 import type { RouteLocationRaw, RouteParamsGeneric, Router } from 'vue-router'
 import { navigateTo, useNuxtApp, useRoute, useRouter } from '#imports'
 import { config } from '#ginko-i18n/config.mjs'
-import { createFormatters, createTranslator, inUserZone, localeFromPath, localizePath, negotiateLocale, stripLocale, type Formatters, type LocaleConfig } from '@lupinum/ginko-i18n/core'
+import { createFormatters, createTranslator, inUserZone, localeFromPath, localizePath, negotiateLocale, regionalLanguage, stripLocale, type Formatters, type LocaleConfig } from '@lupinum/ginko-i18n/core'
 import { typedTranslator, type Alternate, type AlternatesResolver, type I18n, type I18nState, type RuntimeConfig } from './types'
 
 const c: RuntimeConfig = config
@@ -56,9 +56,12 @@ export function useI18n<NS extends string = ''>(namespace?: NS): I18n<NS> {
   const zone = computed(() => inUserZone(route.path, c))
   const locale = computed(() => state.fixedLocale ?? currentLocale(route.path, c, state.userLocale.value))
   const current = computed(() => c.locales.find(l => l.code === locale.value)!)
+  // A user-locale zone (an app) formats dates and numbers in the region of the person's browser when it reads the same
+  // language (`en` in an en-GB browser: 25/10/2026). URL-localized pages keep the tag the site chose.
+  const formatLanguage = computed(() => zone.value ? regionalLanguage(current.value.language, state.browserLanguage.value) : current.value.language)
   const translator = computed(() => createTranslator({
     messages: state.messages[locale.value],
-    language: current.value.language,
+    language: formatLanguage.value,
     params: c.params,
     timeZone: c.timeZone,
     onMissing: import.meta.dev ? key => console.warn(`[ginko-i18n] Missing message "${key}" (${locale.value})`) : undefined,
@@ -98,7 +101,7 @@ export function useI18n<NS extends string = ''>(namespace?: NS): I18n<NS> {
   }
 
   // A plain object, not a computed: `format.date(…)` reads the current language like `t` does, in script and template.
-  const formatters = () => createFormatters(current.value.language, { timeZone: c.timeZone })
+  const formatters = () => createFormatters(formatLanguage.value, { timeZone: c.timeZone })
   const format: Formatters = {
     date: (...args) => formatters().date(...args),
     range: (...args) => formatters().range(...args),

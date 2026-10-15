@@ -57,6 +57,24 @@ function nativeName(language: string): string {
   }
 }
 
+/**
+ * The tag that formats dates and numbers for `language` in a user-locale zone, where `browser` is the person's first
+ * browser language (Accept-Language, `navigator.language`): its regional variant when it is the same language and
+ * `language` names no region itself (`en` read in an `en-GB` browser formats as `en-GB`: 25/10/2026), else `language`.
+ */
+export function regionalLanguage(language: string, browser: string | undefined): string {
+  if (!browser) return language
+  try {
+    const own = new Intl.Locale(language)
+    const theirs = new Intl.Locale(browser)
+    const same = theirs.language === own.language && (!own.script || own.script === theirs.script)
+    return !own.region && theirs.region && same ? theirs.baseName : language
+  }
+  catch {
+    return language
+  }
+}
+
 /** `og:locale` wants `language_TERRITORY`: `de-AT` → `de_AT`, `zh-Hant-TW` → `zh_TW`, `zh-Hant` → `zh`. */
 export function ogLocale(language: string): string {
   const tag = new Intl.Locale(language)

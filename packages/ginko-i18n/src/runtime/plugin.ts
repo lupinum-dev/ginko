@@ -1,5 +1,5 @@
 import { shallowReactive } from 'vue'
-import { addRouteMiddleware, defineNuxtPlugin, isPrerendered, loadPayload, navigateTo, useError, useHead, useRequestEvent, useRoute, useRouter, useState } from '#imports'
+import { addRouteMiddleware, defineNuxtPlugin, isPrerendered, loadPayload, navigateTo, useError, useHead, useRequestEvent, useRequestHeader, useRoute, useRouter, useState } from '#imports'
 import { config } from '#ginko-i18n/config.mjs'
 import { loaders } from '#ginko-i18n/loaders.mjs'
 import type { RouteLocationNormalizedGeneric } from 'vue-router'
@@ -30,6 +30,12 @@ export default defineNuxtPlugin({
     const userLocale = useState<string>('ginko-i18n:user-locale', () => {
       const fromEvent = import.meta.server ? useRequestEvent()?.context.locale : undefined
       return typeof fromEvent === 'string' && c.locales.some(l => l.code === fromEvent) ? fromEvent : c.defaultLocale
+    })
+    // The browser's first language, for the region of dates and numbers in user-locale zones. One source like the
+    // locale: the request header on the server, the payload on the client (`navigator` only without server rendering).
+    const browserLanguage = useState<string | undefined>('ginko-i18n:browser-language', () => {
+      if (import.meta.client) return navigator.language
+      return useRequestHeader('accept-language')?.split(',')[0]?.split(';')[0]?.trim() || undefined
     })
     let inlined = false
     const resolvers: AlternatesResolver[] = []
@@ -124,7 +130,7 @@ export default defineNuxtPlugin({
     }
     if (fixedLocale) await load(fixedLocale)
 
-    nuxtApp.provide('ginkoI18n', { messages, load, fixedLocale, resolvers, userLocale } satisfies I18nState)
+    nuxtApp.provide('ginkoI18n', { messages, load, fixedLocale, resolvers, userLocale, browserLanguage } satisfies I18nState)
 
     if (c.seo) {
       nuxtApp.hook('app:created', () => {
