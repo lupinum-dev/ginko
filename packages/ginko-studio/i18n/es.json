@@ -1,7 +1,8 @@
 {
   "nav": {
-    "quick": "Edición rápida",
-    "all": "Editar todo",
+    "quick": "Hoy",
+    "all": "Contenido",
+    "review": "Revisar",
     "files": "Archivos",
     "history": "Historial",
     "team": "Equipo",
@@ -12,7 +13,6 @@
     "skip": "Saltar al contenido",
     "views": "Vistas",
     "areas": "Áreas",
-    "list": "Lista",
     "signOut": "Cerrar sesión",
     "signOutDrafts": "En este navegador hay cambios sin guardar. Al cerrar sesión se eliminarán. ¿Cerrar sesión de todos modos?",
     "signOutOthers": "Cerrar sesión en otros dispositivos",
@@ -21,16 +21,6 @@
     "signIn": "Iniciar sesión",
     "noAccessHelp": "Si necesitas cambiar algo aquí, pide al propietario que te invite (de nuevo).",
     "noAccessUnsaved": "Lo que aún no habías guardado aquí no está en el sitio web. Si te vuelven a invitar, lo recuperas en este navegador.",
-    "toReview": "Por revisar ({count})",
-    "short": {
-      "quick": "Hoy",
-      "all": "Contenido",
-      "review": "Revisar",
-      "files": "Archivos",
-      "history": "Historial",
-      "team": "Equipo",
-      "ai": "IA"
-    },
     "more": "Más",
     "account": "Cuenta",
     "toReviewCount": "{count} por revisar"
@@ -224,12 +214,12 @@
   "site": {
     "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",
     "title": {
-      "quick": "{site} · Edición rápida",
-      "all": "{site} · Editar todo",
+      "quick": "{site} · Hoy",
+      "all": "{site} · Contenido",
       "team": "{site} · Equipo",
       "ai": "{site} · Conectar IA",
       "history": "{site} · Historial",
-      "area": "{area} · Editar todo"
+      "area": "{area} · Contenido"
     },
     "fallback": {
       "site": "Sitio",
@@ -273,7 +263,7 @@
       "showExpired": "Mostrar caducadas ({count})"
     },
     "all": {
-      "heading": "Editar todo",
+      "heading": "Contenido",
       "lede": "Todas las áreas del sitio con todos sus campos. Elige un área.",
       "allAreas": "Todas las áreas",
       "new": "Nuevo",
@@ -646,8 +636,8 @@
     "purged": "“{title}” eliminada definitivamente."
   },
   "review": {
-    "title": "{site} · Por revisar",
-    "heading": "Por revisar",
+    "title": "{site} · Revisar",
+    "heading": "Revisar",
     "empty": "Nada espera tu decisión.",
     "releases": "Versiones",
     "plannedAt": "previsto para {time}",

@@ -1,7 +1,8 @@
 {
   "nav": {
-    "quick": "Quick edit",
-    "all": "Edit everything",
+    "quick": "Today",
+    "all": "Content",
+    "review": "Review",
     "files": "Files",
     "history": "History",
     "team": "Team",
@@ -12,7 +13,6 @@
     "skip": "Skip to content",
     "views": "Views",
     "areas": "Areas",
-    "list": "List",
     "signOut": "Sign out",
     "signOutDrafts": "This browser still holds unsaved changes. Signing out deletes them. Sign out anyway?",
     "signOutOthers": "Sign out on other devices",
@@ -21,16 +21,6 @@
     "signIn": "Sign in",
     "noAccessHelp": "If you need to change something here, ask the owner to invite you (again).",
     "noAccessUnsaved": "Anything you had not saved here is not on the website. If you are invited again, you get it back in this browser.",
-    "toReview": "To review ({count})",
-    "short": {
-      "quick": "Today",
-      "all": "Content",
-      "review": "Review",
-      "files": "Files",
-      "history": "History",
-      "team": "Team",
-      "ai": "AI"
-    },
     "more": "More",
     "account": "Account",
     "toReviewCount": "{count} to review"
@@ -224,12 +214,12 @@
   "site": {
     "zoneNote": "All times are in the website's time zone ({zone}).",
     "title": {
-      "quick": "{site} · Quick edit",
-      "all": "{site} · Edit everything",
+      "quick": "{site} · Today",
+      "all": "{site} · Content",
       "team": "{site} · Team",
       "ai": "{site} · Connect AI",
       "history": "{site} · History",
-      "area": "{area} · Edit everything"
+      "area": "{area} · Content"
     },
     "fallback": {
       "site": "Site",
@@ -273,7 +263,7 @@
       "showExpired": "Show expired ({count})"
     },
     "all": {
-      "heading": "Edit everything",
+      "heading": "Content",
       "lede": "All areas of the site with all fields. Choose an area.",
       "allAreas": "All areas",
       "new": "New",
@@ -646,8 +636,8 @@
     "purged": "“{title}” deleted for good."
   },
   "review": {
-    "title": "{site} · To review",
-    "heading": "To review",
+    "title": "{site} · Review",
+    "heading": "Review",
     "empty": "Nothing waits for your decision.",
     "releases": "Releases",
     "plannedAt": "planned for {time}",

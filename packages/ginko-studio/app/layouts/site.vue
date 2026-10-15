@@ -76,13 +76,13 @@ const siteUpdate = useUpdateSite(() => slug.value)
 const lastRefresh = computed(() => data.value?.site.lastRefreshAt)
 const base = computed(() => `/s/${slug.value}`)
 const links = computed<SiteLink[]>(() => [
-  { to: base.value, label: t('nav.quick'), short: t('nav.short.quick'), icon: SunIcon, exact: true },
-  { to: `${base.value}/all`, label: t('nav.all'), short: t('nav.short.all'), icon: FileTextIcon },
-  ...(manager.value ? [{ to: `${base.value}/review`, label: t('nav.toReview', { count: toReview.value ?? 0 }), short: t('nav.short.review'), icon: CircleCheckIcon, count: toReview.value || undefined }] : []),
-  { to: `${base.value}/files`, label: t('nav.files'), short: t('nav.short.files'), icon: ImageIcon },
-  { to: `${base.value}/history`, label: t('nav.history'), short: t('nav.short.history'), icon: HistoryIcon },
-  ...(manager.value ? [{ to: `${base.value}/team`, label: t('nav.team'), short: t('nav.short.team'), icon: UsersIcon }] : []),
-  { to: `${base.value}/ai`, label: t('nav.ai'), short: t('nav.short.ai'), icon: SparklesIcon },
+  { to: base.value, label: t('nav.quick'), icon: SunIcon, exact: true },
+  { to: `${base.value}/all`, label: t('nav.all'), icon: FileTextIcon },
+  ...(manager.value ? [{ to: `${base.value}/review`, label: t('nav.review'), icon: CircleCheckIcon, count: toReview.value || undefined }] : []),
+  { to: `${base.value}/files`, label: t('nav.files'), icon: ImageIcon },
+  { to: `${base.value}/history`, label: t('nav.history'), icon: HistoryIcon },
+  ...(manager.value ? [{ to: `${base.value}/team`, label: t('nav.team'), icon: UsersIcon }] : []),
+  { to: `${base.value}/ai`, label: t('nav.ai'), icon: SparklesIcon },
 ])
 const siteName = computed(() => data.value?.site.name ?? '…')
 const initial = computed(() => (data.value?.site.name ?? '').trim().charAt(0).toUpperCase() || '·')
