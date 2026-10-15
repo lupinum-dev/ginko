@@ -198,6 +198,15 @@ describe('invites.create', () => {
 })
 
 describe('members.remove and setGrants', () => {
+  // Wrong behaviour caught (A17): the Team page cannot tell the caller's own row, so it offers an owner to remove themselves.
+  it("members.list marks only the caller's own membership as you", async () => {
+    const { as } = await setup()
+    const rows = async (who: typeof as.owner) => (await who.query(api.members.list, { site: 'restaurant' })).members.map((m) => [m.email, m.you])
+    expect(await rows(as.owner)).toEqual([['wirtin@example.com', true], ['koch@example.com', false]])
+    // A platform admin has no membership row.
+    expect(await rows(as.admin)).toEqual([['wirtin@example.com', false], ['koch@example.com', false]])
+  })
+
   it('the last owner cannot be removed', async () => {
     const { t, as } = await setup()
     const owner = await t.run((ctx) => ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', people.owner)).unique())

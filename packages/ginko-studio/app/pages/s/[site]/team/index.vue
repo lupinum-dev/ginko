@@ -72,10 +72,17 @@ async function saveEditing() {
   }
 }
 
-async function confirmRemove(id: string) {
+// The row with the focused button goes away on success: the focus moves to a stable place, and a message says what happened.
+const membersTitle = ref<HTMLElement | null>(null)
+const inviteButton = ref<{ $el: HTMLElement } | null>(null)
+
+async function confirmRemove(id: string, email: string) {
   try {
     await removeMember.mutate({ site: s.slug.value, member: id })
     confirming.value = null
+    show(t('site.team.memberRemoved', { email }))
+    await nextTick()
+    membersTitle.value?.focus()
   } catch (error) {
     rowError.value = { id, message: opErrorOf(error).message }
   }
@@ -83,10 +90,15 @@ async function confirmRemove(id: string) {
 
 /** Invitations: revoking shows the server's message at the list (an owner may not revoke an admin's owner invite). */
 const inviteError = ref<string | null>(null)
-async function revoke(id: string) {
+async function revoke(id: string, email: string) {
   inviteError.value = null
   try {
     await revokeInvite.mutate({ site: s.slug.value, invite: id })
+    show(t('site.team.inviteRevoked', { email }))
+    await nextTick()
+    // "Einladen", or the address field when the invite form is open in its place.
+    if (inviting.value) document.getElementById('invite-email')?.focus()
+    else inviteButton.value?.$el.focus()
   } catch (error) {
     inviteError.value = opErrorOf(error).message
   }
@@ -162,12 +174,12 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
 
     <template v-else-if="s.schema.value && s.isManager.value">
       <section class="grid gap-3 pb-6" aria-labelledby="members-title">
-        <h2 id="members-title" class="text-base font-semibold tracking-tight">{{ t('site.team.members') }}</h2>
+        <h2 id="members-title" ref="membersTitle" tabindex="-1" class="text-base font-semibold tracking-tight outline-none">{{ t('site.team.members') }}</h2>
         <ul class="m-0 list-none overflow-hidden rounded-xl border p-0">
           <li v-for="m in members" :key="m.id" class="grid gap-2 border-b px-4 py-3 last:border-b-0">
             <div class="grid gap-x-4 gap-y-2 sm:grid-cols-[1fr_auto] sm:items-center">
               <div class="grid min-w-0 gap-0.5">
-                <p class="flex flex-wrap items-center gap-2 font-medium"><span class="[overflow-wrap:anywhere]">{{ m.email ?? noEmail }}</span><Badge as="span" variant="soft">{{ roleLabel(m.role) }}</Badge></p>
+                <p class="flex flex-wrap items-center gap-2 font-medium"><span class="[overflow-wrap:anywhere]">{{ m.email ?? noEmail }}</span><Badge as="span" variant="soft">{{ roleLabel(m.role) }}</Badge><Badge v-if="m.you" as="span" variant="outline">{{ t('site.team.you') }}</Badge></p>
                 <ul v-if="m.role === 'staff'" class="m-0 grid list-none gap-0.5 p-0 text-[13px] text-muted-foreground">
                   <li v-for="line in grantLines(m.grants)" :key="line">{{ line }}</li>
                   <li v-if="!grantLines(m.grants).length">{{ t('site.team.noRights') }}</li>
@@ -175,7 +187,8 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
               </div>
               <div v-if="editing?.id !== m.id && confirming !== m.id" class="flex flex-wrap items-center gap-2">
                 <Button v-if="m.role === 'staff'" type="button" variant="secondary" size="sm" @click="startEdit(m.id, m.grants)">{{ t('site.team.changeRights') }}</Button>
-                <Button v-if="m.role !== 'owner' || ownerCount > 1" type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="startRemove(m.id)">{{ t('site.common.remove') }}</Button>
+                <!-- Not on the own row: removing yourself by mistake locks you out; another owner or the support can do it. -->
+                <Button v-if="!m.you && (m.role !== 'owner' || ownerCount > 1)" type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="startRemove(m.id)">{{ t('site.common.remove') }}</Button>
               </div>
             </div>
 
@@ -206,7 +219,7 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
                 <p class="text-[13px] text-muted-foreground">{{ t('site.team.keysStay') }}</p>
               </template>
               <div class="flex flex-wrap gap-2">
-                <Button type="button" variant="destructive" size="sm" :disabled="memberBusy" @click="confirmRemove(m.id)">{{ t('site.common.remove') }}</Button>
+                <Button type="button" variant="destructive" size="sm" :disabled="memberBusy" @click="confirmRemove(m.id, m.email ?? noEmail)">{{ t('site.common.remove') }}</Button>
                 <Button type="button" variant="ghost" size="sm" :disabled="memberBusy" @click="confirming = null">{{ t('site.common.cancel') }}</Button>
               </div>
             </div>
@@ -225,13 +238,13 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
               <p class="font-medium [overflow-wrap:anywhere]">{{ i.email }}</p>
               <p class="text-[13px] text-muted-foreground">{{ roleLabel(i.role) }}, {{ validUntil(i.expiresAt) }}</p>
             </div>
-            <Button type="button" variant="secondary" size="sm" :disabled="revokeInvite.pending.value" @click="revoke(i.id)">{{ t('site.team.revokeInvite') }}</Button>
+            <Button type="button" variant="secondary" size="sm" :disabled="revokeInvite.pending.value" @click="revoke(i.id, i.email)">{{ t('site.team.revokeInvite') }}</Button>
           </li>
         </ul>
       </section>
 
       <section class="grid gap-3">
-        <Button v-if="!inviting" type="button" class="justify-self-start" @click="openForm">{{ t('site.team.invite') }}</Button>
+        <Button v-if="!inviting" ref="inviteButton" type="button" class="justify-self-start" @click="openForm">{{ t('site.team.invite') }}</Button>
         <form v-else class="grid gap-4 rounded-xl border bg-card p-4" @submit.prevent="sendInvite">
           <div :class="CONTAINED_FIELD">
             <label for="invite-email" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('site.form.email') }}</label>

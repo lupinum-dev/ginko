@@ -65,7 +65,8 @@ export const list = query({
     // Keys made with `release:bootstrapKey` come from the platform's operators.
     const by = async (createdBy: string): Promise<Who> => (createdBy === 'bootstrap' ? { kind: 'platform' } : names.who(createdBy))
     return {
-      members: members.map((m) => ({ id: m._id, email: m.email ?? null, role: m.role, grants: m.grants })),
+      // `you`: the caller's own row, by user id (an email can differ from the account's), so the page offers no self-removal.
+      members: members.map((m) => ({ id: m._id, email: m.email ?? null, role: m.role, grants: m.grants, you: m.user === actor.user.id })),
       invites: invites
         .filter((i) => i.acceptedAt === undefined)
         .map((i) => ({ id: i._id, email: i.email, role: i.role, grants: i.grants, expiresAt: i.expiresAt })),
