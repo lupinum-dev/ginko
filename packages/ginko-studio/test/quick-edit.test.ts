@@ -24,7 +24,8 @@ const schema = serializeSchema(defineSite({
     }),
   },
 }))
-const notice = (id: string, text: string) => ({ _id: id, brick: 'notices', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { text, until: '2026-10-20' } })
+const notice = (id: string, text: string, until = '2026-10-20') => ({ _id: id, brick: 'notices', kind: 'item', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { text, until } })
+let listed = [notice('e1', 'Heute geschlossen'), notice('e2', 'Neue Karte')]
 
 vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})
@@ -36,7 +37,7 @@ vi.stubGlobal('useSiteData', async () => ({
 }))
 vi.stubGlobal('useKeptEntry', () => ({ entry: ref(undefined), removed: ref(false) }))
 vi.stubGlobal('useConvexQuery', (fn: unknown) => ({
-  data: ref(String(fn) === 'entries.ofBricks' ? [notice('e1', 'Heute geschlossen'), notice('e2', 'Neue Karte')] : undefined),
+  data: ref(String(fn) === 'entries.ofBricks' ? listed : undefined),
 }))
 // No entry points at these: "Entfernen" removes at once.
 vi.stubGlobal('useConvex', () => ({ query: async () => [] }))
@@ -60,4 +61,19 @@ test('a row\'s "Entfernen" stays disabled while its removal runs, also when anot
   await flushPromises()
   expect(removeButton('Heute geschlossen').attributes('disabled')).toBeUndefined()
   expect(removeButton('Neue Karte').attributes('disabled')).toBeDefined()
+})
+
+// Wrong behaviour caught: a timed collection of 450 events listed every one, expired ones too: a page of 32,000 px (volume-11).
+test('a long timed collection lists 50 current entries and the expired ones only on request', async () => {
+  listed = [...Array.from({ length: 52 }, (_, i) => notice(`n${i}`, `Hinweis ${i}`)), notice('x1', 'Alt 1', '2026-10-01'), notice('x2', 'Alt 2', '2026-10-02')]
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
+    global: { stubs: { TaskSheet: true, PickSheet: true, I18nT: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+  })
+  await flushPromises()
+  expect(wrapper.findAll('li')).toHaveLength(50)
+  expect(wrapper.get('a[href="/s/restaurant/all/notices"]').text()).toBe('Alle in „Hinweise“ ansehen')
+  const expired = wrapper.findAll('button').find((b) => b.text() === 'Abgelaufene anzeigen (2)')!
+  await expired.trigger('click')
+  expect(wrapper.findAll('li').map((li) => li.find('.font-medium').text()).slice(-2)).toEqual(['Alt 1', 'Alt 2'])
+  expect(wrapper.findAll('button').some((b) => b.text().startsWith('Abgelaufene anzeigen'))).toBe(false)
 })

@@ -445,9 +445,11 @@ describe('Studio reads at volume', () => {
   // collection near the site budget resends megabytes on every change.
   it('slim rows carry only the titles and dates of collection entries; singles stay whole', async () => {
     const s = await studioSetup()
-    const rows = await s.as.owner.query(api.entries.ofBricks, { site, bricks: ['events', 'contact'], slim: true })
+    const rows = await s.as.owner.query(api.entries.ofBricks, { site, bricks: ['events', 'contact', 'menu'], slim: true })
     const weinabend = rows.find((row) => row._id === s.entries.weinabend)!
-    expect(Object.keys(weinabend.data).sort()).toEqual(['booking', 'title', 'when'])
+    expect(Object.keys(weinabend.data).sort()).toEqual(['booking', 'price', 'title', 'when'])
+    // The pick list of "Preis ändern" reads slim rows too (volume-11): it groups by the choice and shows the price.
+    expect(Object.keys(rows.find((row) => row._id === s.entries['menu-schnitzel'])!.data).sort()).toEqual(['category', 'description', 'name', 'nextPrice', 'price', 'veg'])
     expect(weinabend.prints).toEqual({})
     expect(Object.keys(rows.find((row) => row.brick === 'contact')!.data).sort()).toEqual(['city', 'email', 'phone', 'postalCode', 'street'])
   })

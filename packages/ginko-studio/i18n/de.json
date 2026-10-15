@@ -262,7 +262,9 @@
       "notThisWeek": ", noch nicht für diese Woche",
       "plannedWeek": "{label} {date}, im Voraus geplant",
       "nothingNow": "Gerade nichts eingetragen.",
-      "removeNamed": "{title} entfernen"
+      "removeNamed": "{title} entfernen",
+      "allIn": "Alle in „{brick}“ ansehen",
+      "showExpired": "Abgelaufene anzeigen ({count})"
     },
     "all": {
       "heading": "Alles bearbeiten",

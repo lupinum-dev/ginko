@@ -81,10 +81,24 @@ function rowTarget(sec: Section, entry: Entry): { task: Task } | { to: string } 
 }
 /** The title and timing of a listed entry; a chevron marks the rows that open something. */
 const rowClass = (opens: boolean) => ['grid min-w-0 flex-1 gap-0.5 bg-transparent p-0 text-left text-foreground no-underline', opens && 'cursor-pointer grid-cols-[1fr_auto] after:col-start-2 after:row-span-2 after:row-start-1 after:self-center after:px-1 after:text-xl after:text-muted-foreground after:content-["›"] [&>span]:col-start-1']
-// What is on the website now comes first; expired entries follow (stable order within each group).
-const rowsOf = (sec: Section) => [...sec.listed]
-  .sort((a, b) => Number(timing(sec.brick as CollectionBrick, a).dim) - Number(timing(sec.brick as CollectionBrick, b).dim))
-  .map((e) => ({ e, target: rowTarget(sec, e) }))
+/** Rows a timed collection lists: those on the website now or later, and the expired ones behind a button. */
+const LISTED = 50
+/** Sections whose expired entries the person asked to see. */
+const expiredShown = reactive(new Set<string>())
+// What is on the website now or later comes first, at most LISTED (the area list has the rest); the expired entries
+// follow only on request, at most LISTED too (stable order within each group). A collection of 450 events stays a
+// short page.
+const listings = computed(() => Object.fromEntries(sections.value.map((sec) => {
+  const rows = sec.listed.map((e) => ({ e, target: rowTarget(sec, e), dim: timing(sec.brick as CollectionBrick, e).dim }))
+  const current = rows.filter((r) => !r.dim)
+  const expired = rows.filter((r) => r.dim)
+  const showExpired = expiredShown.has(sec.key)
+  return [sec.key, {
+    rows: [...current.slice(0, LISTED), ...(showExpired ? expired.slice(0, LISTED) : [])],
+    more: current.length > LISTED,
+    hiddenExpired: showExpired ? 0 : expired.length,
+  }]
+})))
 
 /** "until 8.10." / the date range / "expired" for a timed entry. */
 function timing(brick: CollectionBrick, entry: Entry): { text: string; dim: boolean } {
@@ -163,8 +177,9 @@ const existing = computed(() => {
   return twinRead.data.value.filter((e) => e.until === undefined || e.until >= s.today.value).map((e) => e.title ?? shownLabel(brick.label, s.main.value))
 })
 const picking = ref<{ key: string; task: Task } | null>(null)
-// The pick list groups by a choice field and shows prices, so it reads the entries of its one brick while open.
-const pickRead = useConvexQuery(api.entries.ofBricks, () => (picking.value ? { site: s.slug.value, bricks: [picking.value.key] } : 'skip'))
+// The pick list groups by a choice field and shows prices, so it reads the entries of its one brick while open: slim
+// rows (titles, choices, prices), not whole entries; the sheet that edits the pick reads it whole.
+const pickRead = useConvexQuery(api.entries.ofBricks, () => (picking.value ? { site: s.slug.value, bricks: [picking.value.key], slim: true } : 'skip'))
 
 // Closing the sheets returns the focus to the button that started the task; the sheets are removed, so the browser has nowhere to put it back.
 let launcher: HTMLElement | null = null
@@ -276,8 +291,8 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
         </p>
       </template>
 
-      <ul v-if="sec.listed.length" class="m-0 list-none overflow-hidden rounded-xl border p-0">
-        <li v-for="{ e, target } in rowsOf(sec)" :key="e._id" class="group/row flex items-center gap-2 border-b px-4 py-3 last:border-b-0" :data-dim="timing(sec.brick as CollectionBrick, e).dim || undefined">
+      <ul v-if="listings[sec.key]?.rows.length" class="m-0 list-none overflow-hidden rounded-xl border p-0">
+        <li v-for="{ e, target } in listings[sec.key]!.rows" :key="e._id" class="group/row flex items-center gap-2 border-b px-4 py-3 last:border-b-0" :data-dim="timing(sec.brick as CollectionBrick, e).dim || undefined">
           <button v-if="target && 'task' in target" type="button" :class="rowClass(true)" @click="open = { key: sec.key, task: target.task, entryId: e._id }">
             <span class="font-medium group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground">{{ titleOf(sec.brick, e.data, s.main.value) }}</span>
             <span class="text-[13px] text-muted-foreground">{{ timing(sec.brick as CollectionBrick, e).text }}</span>
@@ -294,6 +309,10 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
         </li>
       </ul>
       <p v-else-if="shownRead.data.value && isTimed(sec.brick)" class="text-muted-foreground">{{ t('site.quick.nothingNow') }}</p>
+      <div v-if="listings[sec.key]?.more || listings[sec.key]?.hiddenExpired" class="flex flex-wrap items-center gap-3">
+        <Button v-if="listings[sec.key]!.more" as-child variant="outline"><NuxtLink :to="`/s/${s.slug.value}/all/${sec.key}`">{{ t('site.quick.allIn', { brick: shownLabel(sec.brick.label, s.main.value) }) }}</NuxtLink></Button>
+        <Button v-if="listings[sec.key]!.hiddenExpired" type="button" variant="outline" @click="expiredShown.add(sec.key)">{{ t('site.quick.showExpired', { count: listings[sec.key]!.hiddenExpired }) }}</Button>
+      </div>
 
       <!-- Phone: the main task full width, the others in two columns; from sm they wrap in one row. Quick tasks are
            secondary (row D); only a task the week still needs (the menu is not set for this week) is filled. -->

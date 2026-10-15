@@ -262,7 +262,9 @@
       "notThisWeek": ", not yet for this week",
       "plannedWeek": "{label} {date}, planned ahead",
       "nothingNow": "Nothing entered right now.",
-      "removeNamed": "Remove {title}"
+      "removeNamed": "Remove {title}",
+      "allIn": "See all in “{brick}”",
+      "showExpired": "Show expired ({count})"
     },
     "all": {
       "heading": "Edit everything",
