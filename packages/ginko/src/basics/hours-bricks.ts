@@ -102,6 +102,8 @@ export function hoursBrick(t: HoursTexts, week: readonly WeekRow[], opts: Basics
   return single({
     label: opts.label ?? t.hours,
     ...sourceOf(opts),
+    // Today's hours on the Studio's Today page (closed, open from … to …, or due when nothing is entered for today).
+    status: { hours: true },
     fields: {
       week: weekField(t, week),
       exceptions: f.list(t.exceptions, {

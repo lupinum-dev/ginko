@@ -1,17 +1,32 @@
 // The status lines of the Today page (UI.md 3, `status` on a brick): computed here with core `brickStatus` and the
 // weekly upkeep rule `staleOf`, shown by the Studio (sites.today) and mailed when due (reminders.ts) in the same words.
 import type { Brick, Json } from '@lupinum/ginko'
-import { brickStatus, labelOf, plannedWeeks, staleOf, type HoursToday, type Schema, type StatusLine } from '@lupinum/ginko/internal'
+import { brickStatus, hoursLine, labelOf, plannedWeeks, staleOf, type HourPlan, type HoursToday, type Schema, type StatusLine } from '@lupinum/ginko/internal'
 import type { Doc } from '../_generated/dataModel'
 import type { QueryCtx } from '../_generated/server'
 import { t } from './i18n'
 
 /**
- * Today's opening hours of a single with `status: { hours: true }`. Core has no hours rules yet (they live in the gastro
- * preset); until core exports `hoursLine`, no hours line shows and the section is never due for it.
+ * The opening hours of a single with `status: { hours: true }` (basics `hours()`) on `today` (`YYYY-MM-DD`, the site's
+ * day), by the basics rules with the site's stored `holidays` and its hour plans. A public holiday's name stands where
+ * an owner's reason would.
  */
-export function hoursToday(_brick: Brick, _data: Record<string, Json>, _today: string, _schema: Schema): HoursToday | null {
-  return null
+export function hoursToday(data: Record<string, Json>, today: string, schema: Schema, plans: readonly HourPlan[]): HoursToday {
+  // hoursLine reads "today" from a clock in a zone; noon UTC of the given day is that day in UTC.
+  const line = hoursLine(data, { timeZone: 'UTC', now: new Date(`${today}T12:00:00Z`), plans: [...plans], ...(schema.holidays !== undefined ? { holidays: schema.holidays } : {}) })
+  if (line.state === 'open') return { ranges: line.ranges }
+  if (line.state === 'unknown') return { unknown: true }
+  const reason = line.reason ?? (line.holiday && { de: line.holiday.de, en: line.holiday.en })
+  return reason ? { closed: true, reason } : { closed: true }
+}
+
+/**
+ * The hour plans of `hourPlans()` ("other hours from a date"): live entries of the collections shaped like it (a `week`
+ * list, a `from` date and a `yearly` switch). The schema has no link from hours to its plans, so the shape decides.
+ */
+function isHourPlans(brick: Brick): boolean {
+  const f = brick.fields
+  return brick.kind === 'collection' && !brick.retired && f.week?.type === 'list' && f.from?.type === 'date' && f.yearly?.type === 'boolean'
 }
 
 export interface BrickState {
@@ -42,7 +57,14 @@ export async function statesOf(ctx: Pick<QueryCtx, 'db'>, site: Doc<'sites'>, ke
     if (!brick || brick.retired) continue
     const rows = (await rowsOf(key)).filter((row) => own === undefined || row.state !== 'draft' || row.createdBy === own)
     const single = brick.kind === 'single' ? rows[0] : undefined
-    const hours = brick.status && 'hours' in brick.status && single ? hoursToday(brick, single.data as Record<string, Json>, today, schema) : null
+    let hours: HoursToday | null = null
+    if (brick.status && 'hours' in brick.status && single) {
+      const plans: HourPlan[] = []
+      for (const [k, b] of Object.entries(schema.bricks)) {
+        if (isHourPlans(b)) for (const row of await rowsOf(k)) if (row.state !== 'draft') plans.push({ _id: row._id, ...(row.data as unknown as Omit<HourPlan, '_id'>) })
+      }
+      hours = hoursToday(single.data as Record<string, Json>, today, schema, plans)
+    }
     const status = brickStatus(brick, rows.map((row) => ({ data: row.data as Record<string, Json>, ...(row.state ? { state: row.state } : {}), ...(row.publishAt !== undefined ? { publishAt: row.publishAt } : {}) })), { today, locales: schema.locales, hours })
     let stale = false
     if (single) {
@@ -61,11 +83,8 @@ export async function statesOf(ctx: Pick<QueryCtx, 'db'>, site: Doc<'sites'>, ke
 /** A `YYYY-MM-DD` day as the Studio shows it (`formatDay`): day, month and year in the reader's language. */
 const dayIn = (date: string, locale: string) => new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`))
 
-/**
- * The words of a status line in `locale`, as the Studio's Today page writes them (for the reminder mail). Null for hours
- * that are unknown today: the section is due, but there is no line to show.
- */
-export function statusText(locale: string, schema: Schema, brick: Brick, line: StatusLine): string | null {
+/** The words of a status line in `locale`, as the Studio's Today page writes them (for the reminder mail). */
+export function statusText(locale: string, schema: Schema, brick: Brick, line: StatusLine): string {
   const main = schema.locales[0]!
   const title = (value: string | null) => value ?? labelOf(brick.label, locale, main)
   switch (line.kind) {
@@ -77,7 +96,8 @@ export function statusText(locale: string, schema: Schema, brick: Brick, line: S
     case 'hours': {
       const today = line.today
       if ('ranges' in today) return t(locale, 'status.open', { ranges: new Intl.ListFormat(locale, { style: 'short', type: 'unit' }).format(today.ranges.map(([from, to]) => `${from}–${to}`)) })
-      return 'closed' in today ? t(locale, 'status.closed') : null
+      if ('unknown' in today) return t(locale, 'status.hoursUnknown')
+      return today.reason ? t(locale, 'status.closedBecause', { reason: labelOf(today.reason, locale, main) }) : t(locale, 'status.closed')
     }
   }
 }

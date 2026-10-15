@@ -68,11 +68,12 @@ describe('reminders.sweep', () => {
     expect(await weekly(s.as.owner)).toEqual([['restaurant', true]])
     expect(await weekly(s.as.cook)).toEqual([['restaurant', true]])
     expect(await weekly(s.t.withIdentity({ subject: 'u-neu', email: 'neu@example.com' }))).toEqual([['restaurant', false]])
-    // A site without a weekly task mails nobody.
+    // A site without a weekly task or a status line mails nobody.
     await s.t.run(async (ctx) => {
       const site = (await ctx.db.get(s.site))!
-      const { lunch: _lunch, ...bricks } = (site.schema as { bricks: Record<string, unknown> }).bricks
-      await ctx.db.patch(s.site, { schema: { ...(site.schema as object), bricks } })
+      const { lunch: _lunch, ...bricks } = (site.schema as { bricks: Record<string, Record<string, unknown>> }).bricks
+      const { status: _status, ...hours } = bricks.hours!
+      await ctx.db.patch(s.site, { schema: { ...(site.schema as object), bricks: { ...bricks, hours } } })
     })
     expect(await weekly(s.as.owner)).toEqual([['restaurant', false]])
     // A status line can be mailed too: to the owner, not to the cook without a notices task.

@@ -204,7 +204,7 @@ const reviewRead = useConvexQuery(api.proposals.count, () => (s.isManager.value 
 /** A section needs doing: its status is due, or its week is not entered (filled first button, UI.md 3). */
 const isDue = (key: string, brick: Brick) => !!stateOf(key)?.due || weekState(key, brick)?.current === false
 
-/** The words of a status line; "<n> online" only when the list is cut (`folded`). Null for hours that are unknown today. */
+/** The words of a status line; "<n> online" only when the list is cut (`folded`), else null for a count. */
 function statusText(brick: Brick, line: StatusLine, folded: boolean): string | null {
   const title = (value: string | null) => value ?? shownLabel(brick.label, s.main.value)
   switch (line.kind) {
@@ -216,7 +216,8 @@ function statusText(brick: Brick, line: StatusLine, folded: boolean): string | n
     case 'hours': {
       const today = line.today
       if ('ranges' in today) return t('server.status.open', { ranges: new Intl.ListFormat(locale.value, { style: 'short', type: 'unit' }).format(today.ranges.map(([from, to]) => `${from}–${to}`)) })
-      return 'closed' in today ? t('server.status.closed') : null
+      if ('unknown' in today) return t('server.status.hoursUnknown')
+      return today.reason ? t('server.status.closedBecause', { reason: shownLabel(today.reason, s.main.value) }) : t('server.status.closed')
     }
   }
 }
@@ -427,7 +428,7 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
             <span v-if="todayFlag(sec.key, sec.brick, sec.tasks)!.date === s.today.value && statusOf(sec)?.hours" data-test="status">{{ statusOf(sec)!.text }}</span>
             <I18nT v-else-if="todayFlag(sec.key, sec.brick, sec.tasks)!.date === s.today.value" k="site.quick.todayDone" :params="{ task: shownLabel(todayFlag(sec.key, sec.brick, sec.tasks)!.task.label, s.main.value) }"><template #task="{ text }"><strong>{{ text }}</strong></template></I18nT>
             <I18nT v-else k="site.quick.dayDone" :params="{ field: shownLabel(todayFlag(sec.key, sec.brick, sec.tasks)!.field.label, s.main.value), date: format.date(todayFlag(sec.key, sec.brick, sec.tasks)!.date, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }"><template #task="{ text }"><strong>{{ text }}</strong></template></I18nT>
-            <span v-for="text in flagTexts(sec.brick, todayFlag(sec.key, sec.brick, sec.tasks)!)" :key="text" class="mt-0.5 block">{{ t('site.quick.flagText', { text }) }}</span>
+            <span v-for="text in (todayFlag(sec.key, sec.brick, sec.tasks)!.date === s.today.value && statusOf(sec)?.hours ? [] : flagTexts(sec.brick, todayFlag(sec.key, sec.brick, sec.tasks)!))" :key="text" class="mt-0.5 block">{{ t('site.quick.flagText', { text }) }}</span>
           </p>
           <Button type="button" variant="outline" size="sm" :disabled="lifting" @click="lift(todayFlag(sec.key, sec.brick, sec.tasks)!, sec.key)">{{ t('site.quick.clearToday') }}</Button>
         </div>

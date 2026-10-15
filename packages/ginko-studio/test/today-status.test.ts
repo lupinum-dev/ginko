@@ -6,7 +6,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { expect, test, vi } from 'vitest'
 import { collection, defineSite, f, single } from '@lupinum/ginko'
-import { serializeSchema, type StatusLine } from '@lupinum/ginko/internal'
+import { serializeSchema, type HoursToday, type StatusLine } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import QuickPage from '../app/pages/s/[site]/index.vue'
 
@@ -128,16 +128,16 @@ test.each<[boolean, number | undefined, string | null]>([
   toReview = 0
 })
 
-// Wrong behaviour caught: with "Heute geschlossen" set for today the page says it twice (flag sentence and hours line),
-// or the hours line takes "Aufheben" with it.
+// Wrong behaviour caught: with "Heute geschlossen" set for today the page says it twice (flag sentence and hours line,
+// or the reason in the line and again under it), or the hours line takes "Aufheben" with it.
 test('the hours line replaces the today flag sentence and keeps Aufheben', async () => {
-  states = [{ brick: 'hours', line: { kind: 'hours', today: { closed: true } }, due: false }]
+  states = [{ brick: 'hours', line: { kind: 'hours', today: { closed: true, reason: 'Wasserrohrbruch' } }, due: false }]
   hoursEntry = { closedOn: TODAY, closedNote: 'Wasserrohrbruch' }
   const wrapper = await page()
   const hours = section(wrapper, 'hours')
-  expect(hours.findAll('[data-test="status"]').map((x) => x.text())).toEqual(['Heute geschlossen'])
+  expect(hours.findAll('[data-test="status"]').map((x) => x.text())).toEqual(['Heute geschlossen · Wasserrohrbruch'])
   expect(hours.find('[data-k="site.quick.todayDone"]').exists()).toBe(false)
-  expect(hours.text()).toContain('„Wasserrohrbruch“')
+  expect(hours.text()).not.toContain('„Wasserrohrbruch“')
   expect(hours.findAll('button').map((b) => b.text())).toContain('Aufheben')
   wrapper.unmount()
   // Without the flag the hours line stands under the heading.
@@ -146,4 +146,19 @@ test('the hours line replaces the today flag sentence and keeps Aufheben', async
   const open = await page()
   expect(section(open, 'hours').get('[data-test="status"]').text()).toBe('Heute geöffnet 11:30–14:30, 17:30–22:00')
   open.unmount()
+})
+
+// Wrong behaviour caught: a public holiday shows a bare "closed" without its name, or a day with no hours entered
+// shows nothing although the section is due.
+test.each<[string, HoursToday, boolean, string]>([
+  ['a public holiday names it', { closed: true, reason: { de: 'Nationalfeiertag', en: 'Austrian National Day' } }, false, 'Heute geschlossen · Nationalfeiertag'],
+  ['no hours for today is due', { unknown: true }, true, 'Für heute sind keine Öffnungszeiten eingetragen.'],
+])('hours line: %s', async (_name, today, due, text) => {
+  states = [{ brick: 'hours', line: { kind: 'hours', today }, due }]
+  hoursEntry = {}
+  const wrapper = await page()
+  const line = section(wrapper, 'hours').get('[data-test="status"]')
+  expect(line.text()).toBe(text)
+  expect(line.classes().includes('text-warning')).toBe(due)
+  wrapper.unmount()
 })

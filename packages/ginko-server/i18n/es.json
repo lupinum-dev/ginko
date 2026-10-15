@@ -323,6 +323,8 @@
     "ageThisWeek": "Lo más reciente: {title} · esta semana",
     "open": "Abierto hoy {ranges}",
     "closed": "Cerrado hoy",
+    "closedBecause": "Cerrado hoy · {reason}",
+    "hoursUnknown": "No hay horario de apertura para hoy.",
     "drafts": "{drafts, plural, one {# borrador} other {# borradores}} · {scheduled} programados"
   }
 }

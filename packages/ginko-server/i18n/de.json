@@ -323,6 +323,8 @@
     "ageThisWeek": "Neuester Eintrag: {title} · diese Woche",
     "open": "Heute geöffnet {ranges}",
     "closed": "Heute geschlossen",
+    "closedBecause": "Heute geschlossen · {reason}",
+    "hoursUnknown": "Für heute sind keine Öffnungszeiten eingetragen.",
     "drafts": "{drafts, plural, one {# Entwurf} other {# Entwürfe}} · {scheduled} geplant"
   }
 }

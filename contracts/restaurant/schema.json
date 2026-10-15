@@ -53,6 +53,9 @@
         "de": "Öffnungszeiten",
         "en": "Opening hours"
       },
+      "status": {
+        "hours": true
+      },
       "fields": {
         "week": {
           "type": "list",

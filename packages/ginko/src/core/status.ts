@@ -4,13 +4,14 @@ import { isTranslatable } from './fields.ts'
 import { entryTitle, textIn } from './list.ts'
 import { isVisible, visibleUntil } from './resolve.ts'
 import { addDays } from './time.ts'
-import type { Brick, Field, Json, Locale } from './types.ts'
+import type { Brick, Field, Json, Label, Locale } from './types.ts'
 
 /**
- * Today's opening hours of a single with `status: { hours: true }`: closed, open in `ranges` (`['11:30', '14:30']`), or
- * unknown (the rules give no answer for today, which makes the section due).
+ * Today's opening hours of a single with `status: { hours: true }`: closed (with the owner's reason or the public
+ * holiday's name, when there is one), open in `ranges` (`['11:30', '14:30']`), or unknown (the rules give no answer for
+ * today, which makes the section due).
  */
-export type HoursToday = { closed: true } | { ranges: readonly (readonly [string, string])[] } | { unknown: true }
+export type HoursToday = { closed: true; reason?: Label } | { ranges: readonly (readonly [string, string])[] } | { unknown: true }
 
 /**
  * What the status line says. Titles are in the site's main language (null while an entry has none: the Studio shows the
