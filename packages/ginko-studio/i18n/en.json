@@ -28,7 +28,9 @@
     },
     "more": "More",
     "account": "Account",
-    "toReviewCount": "{count} to review"
+    "toReviewCount": "{count} to review",
+    "translations": "Translations",
+    "translationsOpen": "{count} open"
   },
   "sites": {
     "title": "My sites",
@@ -219,7 +221,8 @@
     "size": {
       "near": "This entry uses {used} of {limit}.",
       "over": "This entry is too large: {used} of {limit}. Shorten it by about {over} to save it."
-    }
+    },
+    "groupHasGaps": "Translation missing or outdated"
   },
   "site": {
     "zoneNote": "All times are in the website's time zone ({zone}).",
@@ -372,6 +375,13 @@
       "hint": "To make room, remove entries or shorten long texts. Removed entries do not count.",
       "entriesHint": "To make room, remove entries. Removed entries do not count.",
       "dismiss": "Hide notice"
+    },
+    "translations": {
+      "heading": "Translations",
+      "lede": "What is missing in another language or no longer matches after a change.",
+      "notOnline": "Not online yet",
+      "none": "Everything is translated.",
+      "truncated": "Showing the first {count}."
     }
   },
   "editor": {

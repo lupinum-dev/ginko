@@ -28,7 +28,9 @@
     },
     "more": "Mehr",
     "account": "Konto",
-    "toReviewCount": "{count} zu prüfen"
+    "toReviewCount": "{count} zu prüfen",
+    "translations": "Übersetzungen",
+    "translationsOpen": "{count} offen"
   },
   "sites": {
     "title": "Meine Seiten",
@@ -219,7 +221,8 @@
     "size": {
       "near": "Dieser Eintrag belegt {used} von {limit}.",
       "over": "Dieser Eintrag ist zu groß: {used} von {limit}. Kürze ihn um etwa {over}, dann lässt er sich speichern."
-    }
+    },
+    "groupHasGaps": "Übersetzung fehlt oder ist veraltet"
   },
   "site": {
     "zoneNote": "Alle Zeiten in der Zeitzone der Website ({zone}).",
@@ -372,6 +375,13 @@
       "hint": "Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge zählen nicht mit.",
       "entriesHint": "Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.",
       "dismiss": "Hinweis ausblenden"
+    },
+    "translations": {
+      "heading": "Übersetzungen",
+      "lede": "Was in einer anderen Sprache fehlt oder seit einer Änderung nicht mehr stimmt.",
+      "notOnline": "Noch nicht online",
+      "none": "Alles übersetzt.",
+      "truncated": "Hier stehen die ersten {count}."
     }
   },
   "editor": {

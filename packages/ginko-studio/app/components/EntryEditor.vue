@@ -219,6 +219,9 @@ const tabbed = computed(() => props.brick.layout === 'tabs' && wide.value)
 const activeTab = ref('')
 watch(visibleGroups, (list) => { if (!list.some((g) => g.id === activeTab.value)) activeTab.value = list[0]?.id ?? '' }, { immediate: true })
 const groupHasIssue = (g: FieldGroup) => g.fields.some(([key]) => issues.value.some((i) => i.path === key || i.path.startsWith(`${key}.`)))
+// In another language, a tab whose fields miss a translation or hold an outdated one says so, like the language switch.
+const gapRoots = computed(() => new Set([...(storedTranslation.value?.missing ?? []), ...(storedTranslation.value?.outdated ?? [])].map((leaf) => leaf.split('.')[0]!)))
+const groupHasGap = (g: FieldGroup) => g.fields.some(([key]) => gapRoots.value.has(key))
 // A refused save shows the first tab that holds an error.
 watch(issues, () => { const first = visibleGroups.value.find(groupHasIssue); if (tabbed.value && first) activeTab.value = first.id })
 const setField = (key: string, value: Json | undefined) => form.setField(key, value)
@@ -506,6 +509,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
               <TabsTrigger v-for="g in visibleGroups" :key="g.id" :value="g.id" class="-mb-px flex-none rounded-none border-0 border-b-2 border-transparent px-0 pt-1 pb-2 text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:border-primary dark:data-[state=active]:bg-transparent">
                 {{ shown(g.label) }}
                 <span v-if="groupHasIssue(g)" class="size-2 rounded-full bg-destructive" role="img" :aria-label="t('entry.groupHasIssues')" />
+                <span v-if="groupHasGap(g)" class="size-2 rounded-full bg-warning" role="img" :aria-label="t('entry.groupHasGaps')" />
               </TabsTrigger>
             </TabsList>
             <TabsContent v-for="g in visibleGroups" :key="g.id" :value="g.id" force-mount class="grid gap-4 pt-4 data-[state=inactive]:hidden">
