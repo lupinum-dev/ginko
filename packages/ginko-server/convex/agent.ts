@@ -16,6 +16,7 @@ import { fixedTools, HISTORY_MAX, PROPOSE, REQUEST_ID, SEARCH_MAX, linksIn, task
 import type { Data } from './lib/content'
 import { splitFallback } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
+import { same } from './lib/write'
 import { effectiveReview } from './lib/policy'
 import { secret } from './release'
 import { prefillAs } from './tasks'
@@ -430,8 +431,11 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
 
   const taskFields = tool.task.fields
   const stored = entry.data as Record<string, Json>
+  // The task opens on the entry as the Studio's sheet does: besides the presets, a planned change whose day has come
+  // is the value in effect and its spent plan is cleared (`prefillAs`), so a new value does not hide behind it.
+  const opened = await prefillAs(ctx, actor, { site, task: tool.ref, entry: entry._id }) as Record<string, Json>
   const fields = {
-    ...Object.fromEntries(Object.entries(prefill).filter(([k]) => taskFields.includes(k))),
+    ...Object.fromEntries(Object.entries(opened).filter(([k, value]) => taskFields.includes(k) && (Object.hasOwn(prefill, k) || !same(value, stored[k])))),
     ...fromToolInput(Object.fromEntries(taskFields.map((f) => [f, brick.fields[f]!])), values, { mainLocale: main, currency: schema.currency, stored, newRowId }),
   }
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')

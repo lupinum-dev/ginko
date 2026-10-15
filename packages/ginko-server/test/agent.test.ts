@@ -93,6 +93,17 @@ describe('agent door', () => {
     expect(listed.page[0]).toMatchObject({ who: { email: 'wirtin@example.com' }, agent: 'Claude Code' })
   })
 
+  // Wrong behaviour caught: from the day of a planned price on, the assistant's new price was stored next to the spent
+  // plan, so the website kept showing the planned price while the answer said the new one was live.
+  it('a price set on or after the day of a planned price replaces the spent plan', async () => {
+    vi.setSystemTime(new Date('2026-10-18T10:00:00Z'))
+    const s = await setup()
+    const done = await call(s, await keyOf(s, 'owner'), 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 23.5 })
+    expect(done.text).toContain('Live on the website in about a minute.')
+    const data = (await entryRow(s, s.entries['menu-schnitzel']!))!.data
+    expect([data.price, data.nextPrice, data.priceFrom]).toEqual([{ amount: 2350 }, undefined, undefined])
+  })
+
   it('the cook\'s key sees only the menu and lunch tasks and cannot run another task', async () => {
     const s = await setup()
     const key = await keyOf(s, 'cook')
