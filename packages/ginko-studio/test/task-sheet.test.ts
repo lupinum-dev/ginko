@@ -517,7 +517,7 @@ describe('publish step', () => {
       expect(wrapper.find('input[type="datetime-local"]').exists()).toBe(false)
       await press(wrapper, 'Später veröffentlichen')
       await wrapper.get('input[type="datetime-local"]').setValue('2026-10-16T09:00')
-      await wrapper.get('[data-test="publish-later"]').findAll('button').find((b) => b.text() === confirm)!.trigger('click')
+      await press(wrapper, confirm)
       await flushPromises()
       expect(sentPublish()).toEqual({ at: Date.parse('2026-10-16T07:00:00Z') }) // 09:00 in Vienna, summer time
       wrapper.unmount()
@@ -535,7 +535,7 @@ describe('publish step', () => {
       await open(wrapper)
       await press(wrapper, 'Später veröffentlichen')
       await wrapper.get('input[type="datetime-local"]').setValue('2026-10-14T09:00')
-      await wrapper.get('[data-test="publish-later"]').findAll('button').find((b) => b.text() === 'Planen')!.trigger('click')
+      await press(wrapper, 'Planen')
       await flushPromises()
       expect(wrapper.get('[data-test="publish-later"] [role="alert"]').text()).toBe('Bitte einen Zeitpunkt in der Zukunft wählen.')
       expect(ops.createEntry).not.toHaveBeenCalled()
@@ -543,6 +543,27 @@ describe('publish step', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  // Wrong behaviour caught: Enter in the title field published the entry (implicit form submit hit the primary button).
+  test('Enter in a field keeps the entry a draft', async () => {
+    const wrapper = mountStep('posts')
+    await open(wrapper)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(ops.createEntry).toHaveBeenCalledTimes(1)
+    expect(sentPublish()).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: with the time open, the big button still published at once next to a second, look-alike confirm.
+  test('with the time open the footer has one primary, which plans', async () => {
+    const wrapper = mountStep('posts')
+    await open(wrapper)
+    await press(wrapper, 'Später veröffentlichen')
+    expect(footer(wrapper)).toEqual(['Planen', 'Als Entwurf speichern', 'Später veröffentlichen', 'Abbrechen'])
+    expect(wrapper.get('[data-test="publish-later"]').findAll('button')).toHaveLength(0)
+    wrapper.unmount()
   })
 
   // Wrong behaviour caught: Ctrl+S on the publish step put the entry on the website.

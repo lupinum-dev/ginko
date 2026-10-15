@@ -428,7 +428,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
 <template>
   <dialog ref="dialog" :class="SHEET_DIALOG" aria-labelledby="sheet-title" @cancel="onCancel" @close="onBrowserClose">
     <ConfigProvider :teleport-to="dialog ?? undefined" :use-id="reka.useId">
-      <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save()" @keydown="onFormKey">
+      <form class="grid h-[inherit] max-h-[inherit] grid-rows-[auto_1fr_auto]" novalidate @submit.prevent="save(publishStep ? 'draft' : 'publish')" @keydown="onFormKey">
         <header class="flex items-start justify-between gap-3 border-b bg-card pt-4 pb-3 pr-3 pl-5">
           <div class="grid min-w-0 gap-2">
             <div>
@@ -514,10 +514,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
               <label for="sheet-publish-at" class="text-sm font-medium">{{ t('entry.publish.dateTime') }}</label>
               <ScheduleField v-model:local="at" v-model:picked="picked" :zone="schema.timeZone" input-id="sheet-publish-at" />
               <p v-if="laterProblem" class="text-sm font-medium text-destructive" role="alert">{{ laterProblem }}</p>
-              <Button type="button" variant="secondary" class="justify-self-start" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('later')">{{ approval ? t('entry.publish.review') : t('entry.publish.schedule') }}</Button>
             </div>
             <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-            <Button type="submit" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : publishStep ? (approval ? t('entry.publish.review') : t('entry.publish.go')) : t('entry.save.save') }}</Button>
+            <!-- On the publish step only a press on this button publishes (Enter in a field saves a draft, like Ctrl+S); with the time open it plans instead, so there is one primary per state. -->
+            <Button :type="publishStep ? 'button' : 'submit'" class="flex-1" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'sheet-shrunk' : undefined" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="publishStep && save(later ? 'later' : 'publish')">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : publishStep ? (approval ? t('entry.publish.review') : later ? t('entry.publish.schedule') : t('entry.publish.go')) : t('entry.save.save') }}</Button>
             <template v-if="publishStep">
               <Button type="button" variant="outline" :aria-disabled="busy || !ready || removedHere ? 'true' : undefined" @click="save('draft')">{{ t('entry.publish.asDraft') }}</Button>
               <Button type="button" variant="outline" :aria-expanded="later" @click="toggleLater">{{ t('entry.publish.laterOpen') }}</Button>
