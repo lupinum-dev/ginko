@@ -277,6 +277,10 @@ export async function syncCheck(root = repoRoot, { next = nextVersion(root), tod
     const anchor = pkg.ginko?.sampleAnchor
     if (!anchor || !/^\d{4}-\d{2}-\d{2}$/.test(anchor)) problems.push(`${name}: package.json needs "ginko": { "sampleAnchor": "YYYY-MM-DD" }`)
     for (const problem of bidiProblems(dir)) problems.push(`${name}: ${problem}`)
+    // The unknown-class lint (ui feature, eslint.tailwind.mjs) only works when the template's own eslint config loads it.
+    if (pkg.ginko?.features?.includes('ui') && !(existsSync(join(dir, 'eslint.config.mjs')) && readFileSync(join(dir, 'eslint.config.mjs'), 'utf8').includes('tailwindClassesConfig'))) {
+      problems.push(`${name}: eslint.config.mjs must pass tailwindClassesConfig (from ./eslint.tailwind.mjs) to withNuxt, so lint fails on a Tailwind class the theme does not have`)
+    }
     const config = await configOf(root, name)
     const colour = cardColourProblem(name, dir, config.seo?.color)
     if (colour) problems.push(colour)

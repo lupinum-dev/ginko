@@ -122,10 +122,11 @@ dialog, `ease-out`. With `prefers-reduced-motion`, transitions and animations ar
 Nothing else until a feature needs it. To add one: `npx shadcn-vue@latest add <name>`, then:
 
 1. Change `import { cn } from 'cn'` to `import { cn } from '@/lib/utils'` and remove the `cn` package the CLI adds.
-2. Replace Tailwind default classes (`text-sm`, `shadow-lg`, `rounded-lg`, `bg-black/80`) with the tokens above. They
-   give no error, they just do nothing.
-3. Run `npm run lint` (it fails on a class the theme does not have) and `npm run typecheck`, and look at the
-   component in light and dark.
+2. Replace Tailwind default classes (`text-sm`, `shadow-lg`, `rounded-lg`, `bg-black/80`) with the tokens above. In
+   the browser they give no error, they just do nothing.
+3. Run `npm run lint` and `npm run typecheck`, and look at the component in light and dark. Lint fails on every class
+   the theme does not have (`eslint.tailwind.mjs`, which reads `main.css`). A class that is on purpose not Tailwind
+   (a hook for plain CSS) goes into the explicit list at the top of that file, with a comment saying why.
 
 Icons come from `@lucide/vue` (what the CLI installs; `lucide-vue-next` is deprecated).
 

@@ -129,6 +129,20 @@ describe('templates sync --check', () => {
     expect(problems[0]).toContain(problem)
   })
 
+  // Wrong behaviour caught: a new template gets the ui feature but never loads its lint rule, so unknown classes stay silent.
+  it('fails when a ui template does not load the unknown-class lint', async () => {
+    const root = repo((files) => {
+      files['templates/_features/ui/files.json'] = JSON.stringify(['eslint.tailwind.mjs'])
+      files['templates/_features/ui/eslint.tailwind.mjs'] = 'export const tailwindClassesConfig = {}\n'
+      files['templates/demo/package.json'] = JSON.stringify({ name: 'demo', dependencies: { '@lupinum/ginko': '^0.4.0' }, ginko: { sampleAnchor: TODAY, features: ['site', 'ui'] } })
+      files['templates/demo/eslint.config.mjs'] = 'export default []\n'
+    })
+    await sync(root, null)
+    expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([expect.stringContaining('demo: eslint.config.mjs must pass tailwindClassesConfig')])
+    writeFileSync(join(root, 'templates/demo/eslint.config.mjs'), 'export default [tailwindClassesConfig]\n')
+    expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([])
+  })
+
   it('accepts the next minor range while the release is pending', async () => {
     const root = repo()
     await sync(root, '0.5.0')

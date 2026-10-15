@@ -1,6 +1,7 @@
 [
   "DESIGN.md",
   "app/assets/css/tokens.css",
+  "eslint.tailwind.mjs",
   "app/components/ui/button/Button.vue",
   "app/components/ui/button/index.ts",
   "app/components/ui/sheet/Sheet.vue",
