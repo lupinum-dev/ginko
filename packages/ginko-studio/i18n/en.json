@@ -256,6 +256,7 @@
     "quick": {
       "nothingForYou": "You have no tasks here. Ask the owner for the rights you need.",
       "todayDone": "<task>{task}</task> is filled in for today.",
+      "dayDone": "<task>{task}</task> is filled in for {date}.",
       "flagText": "“{text}”",
       "clearToday": "Clear",
       "notFilled": "Not filled in yet",

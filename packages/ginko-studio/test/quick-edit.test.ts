@@ -4,7 +4,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import * as vue from 'vue'
 import { expect, test, vi } from 'vitest'
-import { collection, defineSite, f } from '@lupinum/ginko'
+import { collection, defineSite, f, single } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { useI18n } from '#imports'
 import QuickPage from '../app/pages/s/[site]/index.vue'
@@ -21,6 +21,11 @@ const schema = serializeSchema(defineSite({
       fields: { text: f.text('Text'), until: f.date('Gilt bis', { optional: true }) },
       visible: { mode: 'until', field: 'until' },
       tasks: [{ id: 'remove', label: 'Hinweis entfernen', kind: 'remove' }],
+    }),
+    hours: single({
+      label: 'Öffnungszeiten',
+      fields: { closedOn: f.date('Geschlossen am', { optional: true }), closedNote: f.text('Grund für die Gäste', { optional: true }) },
+      tasks: [{ id: 'closedToday', label: 'Heute geschlossen', kind: 'edit', fields: ['closedOn', 'closedNote'], prefill: { closedOn: '@today' } }],
     }),
   },
 }))
@@ -89,5 +94,22 @@ test.each([
   // These rows open nothing (no edit task, not a manager), so the list takes the focus.
   await nextTick()
   expect(document.activeElement).toBe(wrapper.get('ul').element)
+  wrapper.unmount()
+})
+
+// Wrong behaviour caught: "Heute geschlossen" saved for tomorrow showed no state at all, so the owner could not tell it
+// was saved (and reopened it, which closed today instead).
+test.each([
+  ['tomorrow', '2026-10-16', 'site.quick.dayDone', 'Freitag, 16. Oktober'],
+  ['today', '2026-10-15', 'site.quick.todayDone', undefined],
+  ['yesterday', '2026-10-14', undefined, undefined],
+])('a closure set for %s: the flag says so', async (_when, closedOn, key, date) => {
+  listed = [{ _id: 'h1', brick: 'hours', kind: 'single', order: 0, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { closedOn } } as never]
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
+    global: { stubs: { TaskSheet: true, PickSheet: true, NuxtLink: true, I18nT: { props: ['k', 'params'], template: '<span class="flag" :data-k="k">{{ params.date }}</span>' } } },
+  })
+  await flushPromises()
+  const flag = wrapper.find('.flag')
+  expect(flag.exists() ? [flag.attributes('data-k'), flag.text() || undefined] : [undefined, undefined]).toEqual([key, date])
   wrapper.unmount()
 })
