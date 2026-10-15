@@ -63,4 +63,16 @@ describe('"Mehr anzeigen"', () => {
     expect(list.files.value.map((f) => f.id)).toEqual(['trash-1'])
     expect(list.hasMore.value).toBe(true)
   })
+
+  // Wrong behaviour caught: a failed page is an unhandled rejection, and the person sees nothing.
+  test('a failed page keeps the files and says so', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const list = library().list(() => ({ view: 'all' }))
+    const asked = list.more()
+    pages[0]!.reject(new Error('[CONVEX Q(files:list)] Server Error'))
+    await asked
+    expect(list.moreError.value).toBe('Weitere Dateien ließen sich nicht laden.')
+    expect(list.files.value.map((f) => f.id)).toEqual(['all-1'])
+    logged.mockRestore()
+  })
 })

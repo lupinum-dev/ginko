@@ -846,6 +846,7 @@
       "none": "No se encontraron archivos."
     },
     "loadMore": "Mostrar más",
+    "loadMoreFailed": "No se pudieron cargar más archivos.",
     "loading": "Cargando …",
     "gone": "Este archivo ya no existe.",
     "previous": "Archivo anterior",

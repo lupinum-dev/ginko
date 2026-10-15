@@ -21,7 +21,7 @@ vi.mock('../app/composables/useFilesLibrary', async () => {
   return {
     useFilesLibrary: () => ({
       slug: ref('restaurant'), canManage: ref(true), folders: ref([]), missingAlt: ref(null),
-      list: () => ({ files: ref([file]), pending: ref(false), error: ref(null), hasMore: ref(false), more: async () => {} }),
+      list: () => ({ files: ref([file]), pending: ref(false), error: ref(null), hasMore: ref(false), moreError: ref(null), more: async () => {} }),
       info: (id: () => string | null) => computed(() => (id() === 'f1' ? { ...file, uploader: 'u', uploadedBy: { email: 'u@example.test' }, previous: [], altSuggestion: library.altSuggestion, alt: library.alt, usedIn: [] } : undefined)),
       errorText: (error: unknown) => String(error),
     }),
@@ -46,7 +46,7 @@ describe('the files list', () => {
   test('a list that could not be read says why instead of loading forever', async () => {
     const failed = {
       slug: ref('restaurant'), canManage: ref(true), folders: ref([]), missingAlt: ref(null), errorText: String,
-      list: () => ({ files: ref([]), pending: ref(false), error: ref('Du hast keinen Zugriff auf diese Seite.'), hasMore: ref(false), more: async () => {} }),
+      list: () => ({ files: ref([]), pending: ref(false), error: ref('Du hast keinen Zugriff auf diese Seite.'), hasMore: ref(false), moreError: ref(null), more: async () => {} }),
     }
     mount(FilesBrowser, { props: { lib: failed as never, mode: 'page', locales: ['de'] }, attachTo: document.body })
     await flushPromises()

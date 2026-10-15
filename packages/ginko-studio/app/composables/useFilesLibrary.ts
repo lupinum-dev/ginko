@@ -23,6 +23,9 @@ export interface FileListState {
   /** Why the first page could not be read, in the Studio's language; null while it loads or after it arrived. */
   error: Ref<string | null>
   hasMore: Ref<boolean>
+  /** Why the last "Mehr anzeigen" failed, in the Studio's language; the files loaded so far stay. */
+  moreError: Ref<string | null>
+  /** Reads the next page; never throws (a failure sets `moreError`). */
   more: () => Promise<void>
 }
 
@@ -85,9 +88,10 @@ export function useFilesLibrary(): FilesLibrary {
     // Later pages are read once: the first page is the live one (uploads turning ready, files moved).
     const extra = ref<LibFile[]>([])
     const next = ref<{ done: boolean; cursor: string | null } | null>(null)
+    const moreError = ref<string | null>(null)
     // Counts the views shown: a page asked for an earlier view is dropped when it arrives.
     let shown = 0
-    watch(() => key(query()), () => { shown++; extra.value = []; next.value = null })
+    watch(() => key(query()), () => { shown++; extra.value = []; next.value = null; moreError.value = null })
     const files = computed(() => {
       const seen = new Set((first.data.value?.files ?? []).map((f) => f.id))
       return [...(first.data.value?.files ?? []), ...extra.value.filter((f) => !seen.has(f.id))]
@@ -97,13 +101,20 @@ export function useFilesLibrary(): FilesLibrary {
       const cursor = next.value ? next.value.cursor : first.data.value?.cursor
       if (!hasMore.value || cursor === undefined || cursor === null) return
       const view = shown
-      const page = await convex.query(api.files.list, { ...args(), cursor })
-      if (view !== shown) return
-      extra.value = [...extra.value, ...page.files]
-      next.value = { done: page.isDone, cursor: page.cursor }
+      moreError.value = null
+      try {
+        const page = await convex.query(api.files.list, { ...args(), cursor })
+        if (view !== shown) return
+        extra.value = [...extra.value, ...page.files]
+        next.value = { done: page.isDone, cursor: page.cursor }
+      } catch (error) {
+        if (view !== shown) return
+        console.error(error)
+        moreError.value = t('files.loadMoreFailed')
+      }
     }
     const error = computed(() => (first.error.value ? opErrorOf(first.error.value).message : null))
-    return { files, pending: computed(() => first.data.value === undefined && !first.error.value), error, hasMore, more }
+    return { files, pending: computed(() => first.data.value === undefined && !first.error.value), error, hasMore, moreError, more }
   }
 
   function info(file: () => string | null) {
