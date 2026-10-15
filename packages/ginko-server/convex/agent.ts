@@ -10,9 +10,9 @@ import { internalMutation, internalQuery, mutation, query, type MutationCtx, typ
 import { createAs, labelOf, removeAs, revertAs, saveAs, undoAs, usesOfEntry, versionAtAs } from './entries'
 import { usageAs } from './files'
 import { ownAs } from './proposals'
-import { actorFor, entryOf, fail, memberOf, type Actor } from './lib/access'
+import { actorFor, entryOf, fail, idempotent, memberOf, type Actor } from './lib/access'
 import { searchEntries as searchAll, searchTexts } from './lib/search'
-import { fixedTools, HISTORY_MAX, PROPOSE, SEARCH_MAX, linksIn, taskFor, taskTools, describeTask, draftBricks, type TaskTool } from './lib/agentTools'
+import { fixedTools, HISTORY_MAX, PROPOSE, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskTools, describeTask, draftBricks, type TaskTool } from './lib/agentTools'
 import type { Data } from './lib/content'
 import { splitFallback } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
@@ -136,7 +136,7 @@ export const tools = internalQuery({
     const out: { name: string; description: string; inputSchema: Json }[] = fixedTools(actor)
     for (const tool of taskTools(actor)) {
       const input = await inputSchemaOf(ctx, actor, tool)
-      out.push({ name: tool.name, description: describeTask(schema.bricks[tool.brick]!, tool.task, schema.locales[0]!), inputSchema: { ...input, properties: { ...input.properties, propose: PROPOSE } } as unknown as Json })
+      out.push({ name: tool.name, description: describeTask(schema.bricks[tool.brick]!, tool.task, schema.locales[0]!), inputSchema: { ...input, properties: { ...input.properties, propose: PROPOSE, request_id: REQUEST_ID } } as unknown as Json })
     }
     return out
   },
@@ -353,27 +353,38 @@ function objectArg(value: Json | undefined, what: string): Record<string, Json> 
 
 /**
  * tools/call for every tool that writes. Returns the operation's result and a sentence for the person.
- * Each call is a new op: JSON-RPC ids restart with every client session, so they cannot identify a retry.
- * `propose: true` makes the call a proposal through the policy (`forceProposal`), never a second write path.
+ * JSON-RPC ids restart with every client session, so they cannot identify a retry; the assistant's own `request_id`
+ * can. With one, the whole call is an op `mcp-<request_id>`: the same call again returns the first answer and writes
+ * nothing, other arguments are OP_REUSED. The operation inside always gets a new op id, as without one.
  */
 export const call = internalMutation({
   args: { key: v.id('agentKeys'), name: v.string(), args: v.record(v.string(), v.any()) },
   handler: async (ctx, { key, name, args }): Promise<{ text: string; result: Json }> => {
     const person = await actorOrFail(ctx, key)
-    const { propose: ask, ...input } = args as Record<string, Json>
-    if (ask !== undefined && typeof ask !== 'boolean') fail('INVALID', 'errors.proposeTrueFalse')
-    const actor: Actor = ask === true ? { ...person, forceProposal: true } : person
-    const opId = crypto.randomUUID()
-
-    if (name === 'ginko_undo') return undoThroughDoor(ctx, person, input.change, opId)
-    if (name === 'ginko_revert' || name === 'ginko_translate' || name === 'ginko_draft') {
-      if (!fixedTools(person).some((t) => t.name === name)) fail('FORBIDDEN', 'errors.toolNotFoundOrNotYours', { name })
-      if (name === 'ginko_revert') return revertThroughDoor(ctx, actor, input, opId)
-      return name === 'ginko_translate' ? translateThroughDoor(ctx, actor, input, opId) : draftThroughDoor(ctx, actor, input, opId)
-    }
-    return taskThroughDoor(ctx, actor, name, input, opId)
+    const { request_id: requestId, ...rest } = args as Record<string, Json>
+    if (requestId === undefined) return callOnce(ctx, person, name, rest)
+    if (typeof requestId !== 'string') fail('INVALID', 'errors.actionIdInvalid')
+    // The op hash covers the tool and its arguments, so a retry with other input is OP_REUSED.
+    const op = { opId: `mcp-${requestId}`, name, args: rest }
+    return idempotent(ctx, person, op, () => callOnce(ctx, person, name, rest))
   },
 })
+
+/** One tools/call that writes. `propose: true` makes it a proposal through the policy (`forceProposal`), never a second write path. */
+async function callOnce(ctx: MutationCtx, person: Actor, name: string, args: Record<string, Json>): Promise<{ text: string; result: Json }> {
+  const { propose: ask, ...input } = args
+  if (ask !== undefined && typeof ask !== 'boolean') fail('INVALID', 'errors.proposeTrueFalse')
+  const actor: Actor = ask === true ? { ...person, forceProposal: true } : person
+  const opId = crypto.randomUUID()
+
+  if (name === 'ginko_undo') return undoThroughDoor(ctx, person, input.change, opId)
+  if (name === 'ginko_revert' || name === 'ginko_translate' || name === 'ginko_draft') {
+    if (!fixedTools(person).some((t) => t.name === name)) fail('FORBIDDEN', 'errors.toolNotFoundOrNotYours', { name })
+    if (name === 'ginko_revert') return revertThroughDoor(ctx, actor, input, opId)
+    return name === 'ginko_translate' ? translateThroughDoor(ctx, actor, input, opId) : draftThroughDoor(ctx, actor, input, opId)
+  }
+  return taskThroughDoor(ctx, actor, name, input, opId)
+}
 
 async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
   const schema = actor.site.schema as Schema

@@ -54,6 +54,12 @@ export function draftBricks(actor: Actor): string[] {
 /** `propose` on every write tool: "show me first". */
 export const PROPOSE = { type: 'boolean', description: 'true: do not change anything now; show the change to the person as a proposal they approve.' } as const
 
+/** `request_id` on every write tool: a retry key of the assistant's choice (agent.call). With `mcp-` in front it is an op id, so at most 60 characters. */
+export const REQUEST_ID = {
+  type: 'string', pattern: '^[A-Za-z0-9_-]{1,60}$',
+  description: 'Optional. Send the same value when you retry this call, so it runs only once. Letters, digits, _ and -, at most 60.',
+} as const
+
 export interface ToolDef { name: string; description: string; inputSchema: Json }
 
 const object = (properties: Record<string, Json>, required: string[] = []): Json => ({ type: 'object', properties, required, additionalProperties: false })
@@ -95,7 +101,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
     {
       name: 'ginko_undo',
       description: 'Takes back one change, like the undo button in the platform. The ID comes from the answer of a task or from ginko_history.',
-      inputSchema: object({ change }, ['change']),
+      inputSchema: object({ change, request_id: REQUEST_ID }, ['change']),
     },
     {
       name: 'ginko_version_at',
@@ -107,7 +113,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
     tools.push({
       name: 'ginko_revert',
       description: 'Sets an entry back to its state after an earlier change (only the fields that changed since). This is a new change and ginko_undo can take it back. Look at ginko_version_at first.',
-      inputSchema: object({ entry, change, propose: PROPOSE }, ['entry', 'change']),
+      inputSchema: object({ entry, change, propose: PROPOSE, request_id: REQUEST_ID }, ['entry', 'change']),
     })
     if (foreign.length) {
       tools.push({
@@ -120,6 +126,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
           fields: { type: 'object', description: 'Field name → translated text, e.g. { "name": "Pumpkin soup" }' },
           confirm: { type: 'array', items: { type: 'string' }, description: 'Field names whose translation stays valid as it is' },
           propose: PROPOSE,
+          request_id: REQUEST_ID,
         }, ['entry', 'locale']),
       })
     }
@@ -135,7 +142,7 @@ export function fixedTools(actor: Actor): ToolDef[] {
       name: 'ginko_draft',
       description: 'Creates a new entry as a draft. A draft is not on the website; the person publishes it in the platform. '
         + `Values as in the tasks: texts in ${main} as plain text, money in whole currency units (19.90), lists as a list of objects. Fields per brick: ${lines.join('; ')}.`,
-      inputSchema: object({ brick: { type: 'string', enum: drafts }, fields: { type: 'object', description: 'Field name → value' } }, ['brick', 'fields']),
+      inputSchema: object({ brick: { type: 'string', enum: drafts }, fields: { type: 'object', description: 'Field name → value' }, request_id: REQUEST_ID }, ['brick', 'fields']),
     })
   }
   tools.push(

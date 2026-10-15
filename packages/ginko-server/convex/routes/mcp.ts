@@ -20,6 +20,7 @@ const KEY = /^ginko_agent_[a-z0-9]{32}$/
 // Written for the model, in English whatever the language of the site: the model answers the person in theirs.
 const INSTRUCTIONS = 'Ginko maintains the content of one website for one person. Call ginko_overview first. Every task is a tool. '
   + 'Changes are live in about a minute and can be taken back with ginko_undo. Ask the person before removing anything. '
+  + 'When you retry a change, send the same request_id, so it runs only once. '
   + 'Texts that belong to the website stay in the language of the website; answer the person in their own language.'
 
 type Rpc = { jsonrpc: '2.0'; id?: string | number | null; method: string; params?: Record<string, Json> }

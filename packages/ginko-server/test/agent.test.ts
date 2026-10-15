@@ -54,6 +54,18 @@ describe('agent door', () => {
     expect((await call(s, key, 'ginko_history', { limit: 2 })).data[1]).toMatchObject({ kind: 'create', undoable: false })
   })
 
+  // Wrong behaviour caught: a host that retries a write after a lost answer makes a second entry.
+  it('the same request_id sent twice creates one entry and answers the same', async () => {
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    const before = await notices(s)
+    const first = await call(s, key, 'task_notices_soldOut', { request_id: 'retry-1' })
+    const again = await call(s, key, 'task_notices_soldOut', { request_id: 'retry-1' })
+    expect(first.isError).toBe(false)
+    expect(again).toEqual(first)
+    expect(await notices(s)).toHaveLength(before.length + 1)
+  })
+
   // Wrong behaviour caught: a German field name (a key Convex refuses) failed inside runMutation, and the assistant
   // was told "Try again later", so it retried the same call forever.
   it('a name Convex refuses is named in the answer', async () => {
