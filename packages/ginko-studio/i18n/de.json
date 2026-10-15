@@ -104,6 +104,8 @@
     "saveContinues": "Speichern läuft weiter. Ohne Verbindung wird es übernommen, sobald sie wieder da ist.",
     "notSaved": "Nicht gespeichert: {reason}",
     "notSavedReopen": "Nicht gespeichert. Bitte die Aufgabe noch einmal öffnen.",
+    "readOnly": "Diesen Eintrag kannst du nicht ändern. Deine Rechte in „{area}“: {tasks}. Muss hier etwas geändert werden, frag die Person, die dich eingeladen hat.",
+    "readOnlyOthers": "Diesen Eintrag kannst du nicht ändern: Hier änderst du nur Einträge, die du selbst angelegt hast. Muss hier etwas geändert werden, frag die Person, die dich eingeladen hat.",
     "status": {
       "online": "Online",
       "onlineFrom": "Online ab {when}",

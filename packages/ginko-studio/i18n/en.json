@@ -104,6 +104,8 @@
     "saveContinues": "Still saving. If you are offline, it is saved as soon as the connection is back.",
     "notSaved": "Not saved: {reason}",
     "notSavedReopen": "Not saved. Please open the task again.",
+    "readOnly": "You cannot change this entry. Your rights in “{area}”: {tasks}. If something here needs changing, ask the person who invited you.",
+    "readOnlyOthers": "You cannot change this entry: here you only change entries you added yourself. If something here needs changing, ask the person who invited you.",
     "status": {
       "online": "Online",
       "onlineFrom": "Online from {when}",

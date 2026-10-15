@@ -12,7 +12,6 @@ const { editable, tasksFor } = allAccess(s)
 const key = computed(() => String(route.params.brick))
 const id = computed(() => String(route.params.entry))
 const brick = computed(() => s.schema.value?.bricks[key.value])
-const access = computed(() => (brick.value ? tasksFor(key.value, brick.value) : undefined))
 // Only this entry is read: a save of another entry sends this page nothing.
 const read = useConvexQuery(api.entries.get, () => (id.value === 'new' ? 'skip' : { site: s.slug.value, entry: id.value }))
 // Kept after someone else removes it, so the editor and the person's input stay (N1).
@@ -32,6 +31,8 @@ const removedWithDraft = computed(() => {
   return mounted.value && e?.deleted && e._id === id.value && user && readLocalDraft(localDraftKey(s.slug.value, user, e._id)) ? e : undefined
 })
 const entry = computed(() => kept.value ?? removedWithDraft.value)
+// Staff change an entry they created with their create task (SPEC 2.7), so the rights depend on the entry.
+const access = computed(() => (brick.value ? tasksFor(key.value, brick.value, entry.value) : undefined))
 const entryRemoved = computed(() => keptRemoved.value || !!removedWithDraft.value)
 /** The entry is still on its way (the answer may still be the one for the entry opened before): placeholders, not "this entry does not exist". */
 const answered = computed(() => read.data.value === null || read.data.value?._id === id.value || !!read.error.value)

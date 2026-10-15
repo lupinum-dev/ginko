@@ -25,6 +25,8 @@ export interface Entry {
   deleted?: boolean
   /** Per foreign language, the texts that are missing or outdated (entries.get and entries.single only). */
   translation?: Record<string, { missing: string[]; outdated: string[] }>
+  /** The person created it through a create task, so staff may change it with that task (entries.get only). */
+  own?: boolean
 }
 
 export async function useSiteData() {

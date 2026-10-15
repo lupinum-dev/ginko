@@ -1,7 +1,7 @@
 <!-- Alles bearbeiten (UI.md 4): every field of one entry, the language switch with translation
      status, a sticky save bar, and the preview beside it on wide screens. Same engine as the tasks. -->
 <script setup lang="ts">
-import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
+import type { Brick, CollectionBrick, Field, Fields, Json, Label as LabelText, Locale, Task } from '@lupinum/ginko'
 import { SITE_BUDGET, defaultsFor, entryBytes, isShown, isTranslatable, ordered, urlsFor, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
@@ -41,8 +41,11 @@ const props = defineProps<{
   brick: Brick
   /** None = a new entry of a collection. */
   entry?: Entry
-  /** Staff work through tasks (SPEC 2.7): the task refs that allow saving, creating and removing here, and the fields the save task covers. Owners pass none. */
-  tasks?: { save?: string; fields?: readonly string[]; create?: string; remove?: string }
+  /**
+   * Staff work through tasks (SPEC 2.7): the task refs that allow saving, creating and removing here, the fields the
+   * save task covers (none: every field), and the tasks of this brick they hold. Owners pass none.
+   */
+  tasks?: { save?: string; fields?: readonly string[]; create?: string; remove?: string; held?: readonly Task[] }
   canRemove: boolean
   /** Someone removed `entry` while it was open (useKeptEntry): the form keeps the input and offers a way out. */
   removed?: boolean
@@ -179,6 +182,14 @@ watch(draft, () => {
 provide(TRANSLATION, { state: translation, source: sourceText, confirm: confirmTranslation, mainName: () => languageName(main.value, uiLocale.value) })
 
 const shown = (label: LabelText) => shownLabel(label, main.value)
+/**
+ * Staff without a right to change this entry (no edit task, and not one they created with their create task): the
+ * form shows no fields and no Speichern, but a note that says why and whom to ask. Vorschau, Mehr and publishing stay.
+ */
+const readOnly = computed(() => !!props.entry && !!props.tasks && !props.tasks.save)
+const readOnlyNote = computed(() => props.tasks?.create
+  ? t('entry.readOnlyOthers')
+  : t('entry.readOnly', { area: shown(props.brick.label), tasks: (props.tasks?.held ?? []).map((task) => shown(task.label)).join(', ') }))
 const title = computed(() => props.brick.kind === 'single' ? shown(props.brick.label) : props.entry ? titleOf(props.brick, props.entry.data, main.value) : t('entry.newEntry'))
 const savedOnce = ref(false)
 const formEl = ref<HTMLFormElement | null>(null)
@@ -470,6 +481,7 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           @keep-mine="keepMine" @take-theirs="form.takeTheirs()" @keep-both="keepBoth"
         />
         <p v-if="problem" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ problem }}</p>
+        <p v-if="readOnly" class="rounded-md bg-muted px-3 py-2.5 text-muted-foreground" role="status">{{ readOnlyNote }}</p>
 
         <EntryFields v-bind="fieldProps" :entries="grouped.ungrouped" @update="setField" />
         <template v-if="tabbed">
@@ -500,11 +512,13 @@ onBeforeUnmount(() => { if (ownBottomBar) ownBottomBar.value-- })
           <!-- The live region must be in the accessibility tree before its text appears, so empty means sr-only (no space), not hidden. -->
           <p :class="['basis-full text-sm empty:sr-only', size?.over ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ size?.text }}</p>
           <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
-          <Button type="submit" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
+          <Button v-if="!readOnly" type="submit" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
           <Button v-if="isDraft && !publishing && !removed" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
-          <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
-          <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>
-          <span v-else-if="dirty" class="font-medium text-warning">{{ t('entry.unsaved') }}</span>
+          <template v-if="!readOnly">
+            <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
+            <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>
+            <span v-else-if="dirty" class="font-medium text-warning">{{ t('entry.unsaved') }}</span>
+          </template>
           <Button type="button" variant="ghost" class="ml-auto" :aria-pressed="showPreview" @click="showPreview = !showPreview">{{ showPreview ? t('entry.preview.close') : t('entry.preview.label') }}</Button>
           <template v-if="drafts && entry && state === 'live' && !removed">
             <Button v-if="!askUnpublish" type="button" variant="ghost" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>

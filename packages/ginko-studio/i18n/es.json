@@ -104,6 +104,8 @@
     "saveContinues": "Todavía guardando. Si no tienes conexión, se guardará en cuanto vuelva.",
     "notSaved": "Sin guardar: {reason}",
     "notSavedReopen": "Sin guardar. Abre la tarea de nuevo.",
+    "readOnly": "No puedes cambiar esta entrada. Tus permisos en «{area}»: {tasks}. Si hay que cambiar algo aquí, pregunta a la persona que te invitó.",
+    "readOnlyOthers": "No puedes cambiar esta entrada: aquí solo cambias las entradas que añadiste tú. Si hay que cambiar algo aquí, pregunta a la persona que te invitó.",
     "status": {
       "online": "En línea",
       "onlineFrom": "En línea desde {when}",
