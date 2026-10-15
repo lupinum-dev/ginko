@@ -1,20 +1,21 @@
+<!-- Synced from templates/_features/pages/app/pages/[...slug].vue by `pnpm templates sync`. Edit the source, not this copy. -->
 <script setup lang="ts">
-import { safeHref } from '@lupinum/ginko'
-
+// A page of content/pages/ at /<slug> (in other languages /<code>/<slug>). An unknown address is a real 404.
 const route = useRoute()
 const page = useGinkoEntry('pages', () => route.params.slug)
-useGinkoSeo(() => ({
+usePageSeo(() => ({
   title: page.value.data.title,
-  description: page.value.data.intro,
-  image: page.value.data.image ? { url: page.value.data.image.url, width: page.value.data.image.width, height: page.value.data.image.height } : undefined,
+  description: page.value.data.summary,
+  image: page.value.data.image,
 }))
 </script>
 
 <template>
-  <article class="column">
-    <h1>{{ page.data.title }}</h1>
-    <p v-if="page.data.intro" class="lede">{{ page.data.intro }}</p>
-    <img v-if="page.data.image && safeHref(page.data.image.url)" :src="safeHref(page.data.image.url)" :alt="page.data.image.alt" :width="page.data.image.width" :height="page.data.image.height">
-    <GinkoMarkdown :value="page.data.body" class="prose" />
+  <article>
+    <BlockPageHeader :title="page.data.title" :lead="page.data.summary" />
+    <div v-if="page.data.image" class="mx-auto max-w-page px-gutter pb-10">
+      <GinkoImage :image="page.data.image" eager sizes="(min-width: 1216px) 1152px, 100vw" class="aspect-video w-full rounded-block bg-muted object-cover" />
+    </div>
+    <ProseBody :value="page.data.body" />
   </article>
 </template>

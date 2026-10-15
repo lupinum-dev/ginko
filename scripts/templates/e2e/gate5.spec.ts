@@ -1,12 +1,13 @@
-// Gate 5 (TEMPLATES.md §9): no horizontal overflow at 390, header and navigation visible at 390 and 1440, and
+// Gate 5 (TEMPLATES.md §9): no horizontal overflow at 320 and 390, header and navigation visible at every width, and
 // screenshots (viewport, fonts ready, animations off, test clock) as review material. No pixel baselines yet.
 import { join } from 'node:path'
 import { expect, navToggle, open, site, sitePages, slugOf, test } from './helpers.ts'
 
-for (const width of [390, 1440]) {
+// 320: the narrowest phone of the design rules (TEMPLATES-DESIGN §1); long words and paths overflow there first.
+for (const [width, height] of [[320, 568], [390, 844], [1440, 900]] as const) {
   test(`layout at ${width}: no horizontal overflow, header and navigation visible; screenshots`, async ({ page }) => {
     test.setTimeout(600_000)
-    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 })
+    await page.setViewportSize({ width, height })
     for (const path of await sitePages()) {
       for (const scheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' })

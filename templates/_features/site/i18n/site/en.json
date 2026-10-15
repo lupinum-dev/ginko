@@ -1,0 +1,32 @@
+{
+  "skip": "Skip to content",
+  "home": "Home",
+  "nav": {
+    "label": "Main",
+    "open": "Open menu",
+    "title": "Menu"
+  },
+  "close": "Close",
+  "theme": "Dark mode",
+  "language": {
+    "label": "Language",
+    "untranslated": "{language}: this page is not translated, go to the home page"
+  },
+  "footer": {
+    "pages": "Pages",
+    "contact": "Contact",
+    "legal": "Legal",
+    "links": "Elsewhere"
+  },
+  "notice": "Notice",
+  "updated": "Last updated {date}",
+  "empty": "Add a file to <code>{path}</code>.",
+  "error": {
+    "code": "Error {code}",
+    "notFound": "Page not found",
+    "notFoundText": "The address may be mistyped, or the page has moved.",
+    "failed": "Something went wrong",
+    "failedText": "Please reload the page. If the error stays, try again later.",
+    "home": "Go to the home page"
+  }
+}

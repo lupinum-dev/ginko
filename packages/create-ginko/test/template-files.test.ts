@@ -67,6 +67,25 @@ describe('pruneLocales', () => {
     expect(read(dir, 'ginko.config.ts')).toContain(languages)
   })
 
+  // Wrong behaviour caught: after a main-language swap the new main file lacks the language-independent fields
+  // (the build fails: "Kind is missing", "set in the main-language file only"), or the old main page moves to the
+  // translation's address.
+  it('moves the fields only the main file has to the new main file, and keeps the old address', () => {
+    const dir = folder({
+      'app/routes.ts': "export const locales = ['en', 'de'] as const\n",
+      'content/legal/1.privacy.md': '---\ntitle: Privacy\nlegalType: privacy\nupdatedAt: 2026-10-15\n---\n\nText\n',
+      'content/legal/1.privacy.de.md': '---\ntitle: Datenschutz\nslug: datenschutz\n---\n\nText\n',
+    })
+    pruneLocales(dir, ['en', 'de'], ['de', 'en'])
+    expect(read(dir, 'content/legal/1.privacy.md')).toBe('---\ntitle: Datenschutz\nslug: datenschutz\nlegalType: privacy\nupdatedAt: 2026-10-15\n---\n\nText\n')
+    expect(read(dir, 'content/legal/1.privacy.en.md')).toBe('---\ntitle: Privacy\nslug: privacy\n---\n\nText\n')
+    // German only: the English file goes, its date stays with the German text.
+    const only = folder({ 'app/routes.ts': "export const locales = ['en', 'de'] as const\n", 'content/notices/1.a.md': '---\ntext: Hi\nuntil: 2027-01-29\n---\n', 'content/notices/1.a.de.md': '---\ntext: Hallo\n---\n' })
+    pruneLocales(only, ['en', 'de'], ['de'])
+    expect(tree(join(only, 'content'))).toEqual(['notices/1.a.md'])
+    expect(read(only, 'content/notices/1.a.md')).toBe('---\ntext: Hallo\nuntil: 2027-01-29\n---\n')
+  })
+
   it('without app/routes.ts, rewrites the locales list in ginko.config.ts', () => {
     const dir = folder({ 'ginko.config.ts': "export default defineSite({\n  locales: ['en', 'de'],\n  languages: { de: 'de-AT', en: 'en-GB' },\n})\n" })
     pruneLocales(dir, ['en', 'de'], ['en'])

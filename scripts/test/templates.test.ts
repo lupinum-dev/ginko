@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
@@ -50,6 +50,16 @@ describe('templates sync', () => {
     expect(JSON.parse(read('package.json')).dependencies).toEqual({ '@lupinum/ginko': '^0.5.0', nuxt: '^4.6.1' })
     expect(sync(root, '0.5.0')).toEqual([])
   })
+
+  it('deletes a synced copy whose source left files.json, and keeps the template\'s own files', () => {
+    const root = repo()
+    sync(root, null)
+    writeFileSync(join(root, 'templates/demo/app/components/Own.vue'), '<template><p /></template>\n')
+    writeFileSync(join(root, 'templates/_features/site/files.json'), JSON.stringify(['app/lib/utils.ts', 'app/assets/css/base.css', 'content/legal/1.privacy.md']))
+    expect(sync(root, null)).toEqual(['templates/demo/app/components/SiteHeader.vue (deleted)'])
+    expect(existsSync(join(root, 'templates/demo/app/components/SiteHeader.vue'))).toBe(false)
+    expect(existsSync(join(root, 'templates/demo/app/components/Own.vue'))).toBe(true)
+  })
 })
 
 describe('templates sync --check', () => {
@@ -71,6 +81,13 @@ describe('templates sync --check', () => {
       const path = join(root, 'templates/demo/package.json')
       writeFileSync(path, readFileSync(path, 'utf8').replace('^0.4.0', '^0.3.0'))
     }, 'demo: @lupinum/ginko is "^0.3.0"; expected ^0.4.0 or ^0.5.0'],
+    ['a synced copy whose source left files.json', (root: string) => {
+      writeFileSync(join(root, 'templates/_features/site/files.json'), JSON.stringify(['app/lib/utils.ts', 'app/assets/css/base.css', 'content/legal/1.privacy.md']))
+    }, 'demo: app/components/SiteHeader.vue is a synced copy, but no feature\'s files.json lists it any more'],
+    ['a share card colour that is not the accent', (root: string) => {
+      mkdirSync(join(root, 'templates/demo/app/assets/css'), { recursive: true })
+      writeFileSync(join(root, 'templates/demo/app/assets/css/main.css'), ':root {\n  --brand: #c2410c;\n}\n.dark {\n  --brand: #fdba74;\n}\n')
+    }, 'demo: seo.color in ginko.config.ts is not set; set it to #c2410c'],
     ['a lockfile in the template', (root: string) => writeFileSync(join(root, 'templates/demo/package-lock.json'), '{}'), 'demo: package-lock.json must not be committed'],
     ['sample dates less than 90 days ahead', (root: string) => {
       const path = join(root, 'templates/demo/content/events/1.fair.md')
