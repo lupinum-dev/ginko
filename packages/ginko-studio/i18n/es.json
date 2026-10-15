@@ -100,7 +100,7 @@
     "saveBeforeLanguage": "Guarda primero y luego cambia el idioma.",
     "groupHasIssues": "Errores en esta sección",
     "foreignHint": "Aquí solo se muestran los textos que necesitan traducción. Los demás campos valen para todos los idiomas.",
-    "twin": "Esta entrada ya existe: “{title}”. Al guardar se crea una segunda.",
+    "twin": "“{title}” ya existe. Al guardar se crea una segunda entrada.",
     "saveContinues": "Todavía guardando. Si no tienes conexión, se guardará en cuanto vuelva.",
     "notSaved": "Sin guardar: {reason}",
     "notSavedReopen": "Sin guardar. Abre la tarea de nuevo.",
@@ -247,7 +247,7 @@
     "status": {
       "draft": "Borrador",
       "onlineFrom": "En línea desde {when}",
-      "expired": "caducado",
+      "expired": "caducado el {date}",
       "ended": "terminado",
       "until": "hasta {date}",
       "untilToday": "hasta hoy",

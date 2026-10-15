@@ -116,7 +116,7 @@ function showExpired(key: string) {
   })
 }
 
-/** "until 8.10." / the date range / "expired" for a timed entry. */
+/** "until 8.10." / the date range / "expired on 7.10." for a timed entry. */
 function timing(brick: CollectionBrick, entry: Entry): { text: string; dim: boolean } {
   const vis = brick.visible
   if (!vis || vis.mode === 'always') return { text: '', dim: false }
@@ -125,7 +125,7 @@ function timing(brick: CollectionBrick, entry: Entry): { text: string; dim: bool
   if (!until) return { text: t('site.status.noEnd'), dim: false }
   const visible = until >= today
   if (brick.fields[vis.field]?.type === 'daterange') return { text: displayValue({ type: 'daterange', label: '' }, entry.data[vis.field], s.main.value, { t, format }), dim: !visible }
-  return visible ? { text: until === today ? t('site.status.untilToday') : t('site.status.until', { date: formatDay(until, format) }), dim: false } : { text: t('site.status.expired'), dim: true }
+  return visible ? { text: until === today ? t('site.status.untilToday') : t('site.status.until', { date: formatDay(until, format) }), dim: false } : { text: t('site.status.expired', { date: formatDay(until, format) }), dim: true }
 }
 
 /**

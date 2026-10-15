@@ -100,7 +100,7 @@
     "saveBeforeLanguage": "Save first, then switch the language.",
     "groupHasIssues": "Errors in this section",
     "foreignHint": "Only texts that need a translation are shown here. All other fields apply to every language.",
-    "twin": "This entry already exists: “{title}”. Saving creates a second one.",
+    "twin": "“{title}” already exists. Saving creates a second one.",
     "saveContinues": "Still saving. If you are offline, it is saved as soon as the connection is back.",
     "notSaved": "Not saved: {reason}",
     "notSavedReopen": "Not saved. Please open the task again.",
@@ -247,7 +247,7 @@
     "status": {
       "draft": "Draft",
       "onlineFrom": "Online from {when}",
-      "expired": "expired",
+      "expired": "expired on {date}",
       "ended": "ended",
       "until": "until {date}",
       "untilToday": "until today",

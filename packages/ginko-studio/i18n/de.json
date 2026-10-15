@@ -100,7 +100,7 @@
     "saveBeforeLanguage": "Erst speichern, dann die Sprache wechseln.",
     "groupHasIssues": "Fehler in diesem Bereich",
     "foreignHint": "Hier stehen nur Texte, die übersetzt werden. Alle anderen Felder gelten für jede Sprache.",
-    "twin": "Diesen Eintrag gibt es schon: „{title}“. Speichern legt einen zweiten an.",
+    "twin": "„{title}“ gibt es schon. Speichern legt einen zweiten Eintrag an.",
     "saveContinues": "Speichern läuft weiter. Ohne Verbindung wird es übernommen, sobald sie wieder da ist.",
     "notSaved": "Nicht gespeichert: {reason}",
     "notSavedReopen": "Nicht gespeichert. Bitte die Aufgabe noch einmal öffnen.",
@@ -247,7 +247,7 @@
     "status": {
       "draft": "Entwurf",
       "onlineFrom": "Online ab {when}",
-      "expired": "abgelaufen",
+      "expired": "abgelaufen am {date}",
       "ended": "vorbei",
       "until": "bis {date}",
       "untilToday": "bis heute",
