@@ -59,7 +59,9 @@ export function searchSections(bundle: Bundle, options: SearchSectionsOptions): 
         const text = collapse(section.parts.join('\n'))
         if (i === 0 && !text && sections.length > 1) continue
         const record: SearchRecord = {
-          id: section.id ? `${item.id}#${section.id}` : item.id,
+          // A heading without an anchor (one in Arabic script: its slug keeps no letter) still needs its own id, so
+          // the engine never sees one twice; its hit opens the page at the top.
+          id: section.id ? `${item.id}#${section.id}` : i === 0 ? item.id : `${item.id}#${i}`,
           url: section.id ? `${url}#${section.id}` : url,
           title,
           text,
