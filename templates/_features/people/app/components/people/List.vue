@@ -3,7 +3,6 @@
  *  person: without a photo the initials stand in. */
 defineProps<{ items: GinkoItem<'people'>[] }>()
 const { t } = useI18n('people')
-const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
 </script>
 
 <template>
@@ -26,7 +25,7 @@ const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
           <a :href="`mailto:${person.data.email}`" dir="ltr" class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 wrap-anywhere">{{ person.data.email }}</a>
         </li>
         <li v-if="person.data.phone">
-          <a :href="tel(person.data.phone)" dir="ltr" class="inline-flex min-h-11 items-center tabular-nums text-primary underline underline-offset-4">{{ person.data.phone }}</a>
+          <a :href="telHref(person.data.phone)" dir="ltr" class="inline-flex min-h-11 items-center tabular-nums text-primary underline underline-offset-4">{{ person.data.phone }}</a>
         </li>
       </ul>
     </li>

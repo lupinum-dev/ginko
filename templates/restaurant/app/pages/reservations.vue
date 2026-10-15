@@ -10,7 +10,6 @@ const { t } = useI18n('reservations')
 const { t: th } = useI18n('hours')
 const langOf = useGinkoLang()
 const contact = computed(() => site.value.data)
-const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
 usePageSeo(() => ({ title: page.value.data.title, description: page.value.data.lead ?? undefined }))
 </script>
 
@@ -20,7 +19,7 @@ usePageSeo(() => ({ title: page.value.data.title, description: page.value.data.l
     <div class="mx-auto flex max-w-page flex-col gap-4 px-gutter pb-10">
       <div v-if="contact.phone || contact.email" class="flex flex-wrap gap-3">
         <Button v-if="contact.phone" as-child size="lg" class="max-sm:w-full">
-          <a :href="tel(contact.phone)"><Phone aria-hidden="true" />{{ t('call', { phone: contact.phone }) }}</a>
+          <a :href="telHref(contact.phone)"><Phone aria-hidden="true" />{{ t('call', { phone: contact.phone }) }}</a>
         </Button>
         <Button v-if="contact.email" as-child size="lg" :variant="contact.phone ? 'outline' : 'default'" class="max-sm:w-full">
           <a :href="`mailto:${contact.email}`"><Mail aria-hidden="true" />{{ t('email') }}</a>

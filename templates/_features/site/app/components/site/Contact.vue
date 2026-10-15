@@ -6,7 +6,6 @@ import { Mail, MapPin, Phone } from '@lucide/vue'
 // them once, in site.md, and the footer, the imprint and this block follow.
 const site = useGinko('site')
 const contact = computed(() => site.value.data)
-const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
 </script>
 
 <template>
@@ -15,7 +14,7 @@ const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
     <a v-if="contact.email" :href="`mailto:${contact.email}`" dir="ltr" class="inline-flex min-h-11 items-center gap-2 self-start text-primary underline underline-offset-4">
       <Mail class="size-4 shrink-0" aria-hidden="true" />{{ contact.email }}
     </a>
-    <a v-if="contact.phone" :href="tel(contact.phone)" dir="ltr" class="inline-flex min-h-11 items-center gap-2 self-start tabular-nums text-primary underline underline-offset-4">
+    <a v-if="contact.phone" :href="telHref(contact.phone)" dir="ltr" class="inline-flex min-h-11 items-center gap-2 self-start tabular-nums text-primary underline underline-offset-4">
       <Phone class="size-4 shrink-0" aria-hidden="true" />{{ contact.phone }}
     </a>
     <span v-if="contact.city" class="flex items-start gap-2 py-2">
