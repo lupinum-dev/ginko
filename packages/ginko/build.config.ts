@@ -43,6 +43,7 @@ export default defineBuildConfig({
     { input: 'src/internal', name: 'internal' },
     { input: 'src/vue', name: 'vue' },
     { input: 'src/search', name: 'search' },
+    { input: 'src/basics/index', name: 'basics' },
     { input: 'src/internal-search', name: 'internal/search' },
     { input: 'src/cli/index', name: 'cli/index' },
     { input: 'src/nuxt/module', name: 'nuxt/module' },
