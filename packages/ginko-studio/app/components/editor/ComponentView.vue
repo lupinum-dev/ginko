@@ -7,12 +7,12 @@ import { computed, nextTick, onMounted, onUpdated, ref, toRaw, useId, watch } fr
 import { useI18n } from '#imports'
 import { Plus, Settings2 } from '@lucide/vue'
 import { fileRefOf, type ComponentRegistry } from '@lupinum/ginko/internal'
-import { componentMode, GINKO_ASSETS, insertComponent, propsSummary, type ComponentProps } from '@lupinum/ginko-editor'
-import { inject } from 'vue'
+import { componentMode, GINKO_ASSETS, insertComponent, propsSummary, shownSrc, type ComponentProps } from '@lupinum/ginko-editor'
+import { inject, watchEffect } from 'vue'
 import { NodeViewContent, NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { Button } from '@studio/components/ui/button'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
-import type { SettingsBus } from './context.ts'
+import { EDITOR_FILES, type SettingsBus } from './context.ts'
 import ComponentSettings from './ComponentSettings.vue'
 import { useStudioSite } from '../../utils/labels'
 import { EDITOR_PROPS, LIVE_COMPONENTS, LIVE_TAGS } from './liveComponents.ts'
@@ -37,6 +37,22 @@ const fileIds = computed(() => Object.entries(values.value).flatMap(([name, raw]
 }))
 const files = assets ? assets.details(fileIds) : ref(undefined)
 const summary = computed(() => propsSummary(values.value, def.value, (id) => files.value?.[id]?.name))
+// A card without text (a data block, a figure) has no box to type in: it says what the block shows instead.
+const empty = computed(() => props.node.childCount === 0)
+const describe = computed(() => (def.value ? shown(def.value.describe) : ''))
+// Library pictures of the image props, as in the settings; the summary keeps their names. Other addresses are not loaded.
+const editorFiles = inject(EDITOR_FILES, undefined)
+const imageValues = computed(() => Object.entries(values.value).flatMap(([name, raw]) => {
+  const field = def.value?.props[name.replace(/^:/, '')]
+  return field?.type === 'image' && typeof raw === 'string' && fileRefOf(raw) !== undefined ? [{ name, raw }] : []
+}))
+watchEffect(() => { for (const { raw } of imageValues.value) editorFiles?.images.want(raw) })
+const broken = ref(new Set<string>())
+const pictures = computed(() => imageValues.value.flatMap(({ name, raw }) => {
+  const src = editorFiles ? shownSrc(editorFiles.images, raw) : undefined
+  return src && !broken.value.has(src) ? [{ name, src }] : []
+}))
+function hidePicture(src: string) { broken.value = new Set([...broken.value, src]) }
 // The component gets the props as the page gives them: `:open` (a bare attribute) arrives as `open`.
 const liveProps = computed(() => ({
   ...Object.fromEntries(Object.entries(values.value).map(([name, raw]) => [name.replace(/^:/, ''), raw])),
@@ -166,10 +182,15 @@ function noFollow(event: MouseEvent) {
 
           <div v-else class="ginko-block-card rounded-md border bg-card text-card-foreground">
             <div class="ginko-block-head flex cursor-pointer items-baseline gap-2 border-b py-1.5 pl-3 text-xs text-muted-foreground select-none" :class="selected ? 'pr-36' : 'pr-14'" contenteditable="false">
-              <span class="font-medium">{{ label }}</span>
-              <span v-if="summary" class="truncate">{{ summary }}</span>
+              <span class="shrink-0 font-medium whitespace-nowrap">{{ label }}</span>
+              <span v-if="summary" class="min-w-0 truncate" :title="summary">{{ summary }}</span>
             </div>
-            <NodeViewContent class="ginko-block-content p-3" />
+            <div v-if="pictures.length" class="flex flex-wrap gap-2 px-3 pt-3" contenteditable="false">
+              <img v-for="p in pictures" :key="p.name" :src="p.src" alt="" class="max-h-24 rounded-sm object-contain" @error="hidePicture(p.src)">
+            </div>
+            <p v-if="empty && describe" class="px-3 py-2 text-sm text-muted-foreground" contenteditable="false">{{ describe }}</p>
+            <!-- It stays the editor's place for the content even when hidden. -->
+            <NodeViewContent class="ginko-block-content p-3" :class="empty && 'hidden'" />
             <div v-if="childTags.length" class="flex flex-wrap gap-2 border-t px-3 py-2" contenteditable="false">
               <Button
                 v-for="child in childTags" :key="child" type="button" variant="outline" size="sm" class="[@media(pointer:coarse)]:h-11"
