@@ -1,0 +1,62 @@
+// @vitest-environment happy-dom
+// The account menu: signing out here, and signing out the person's other devices. The German catalog and the browser
+// storage (happy-dom's localStorage) are real; the auth client, the toast, navigation and the dropdown are replaced.
+import { mount } from '@vue/test-utils'
+import * as vue from 'vue'
+import { beforeEach, expect, test, vi } from 'vitest'
+import { useI18n } from '#imports'
+import { localDraftKey, writeLocalDraft } from '../app/composables/useLocalDraft'
+import AccountMenu from '../app/components/AccountMenu.vue'
+
+const { computed, ref } = vue
+Object.entries({ computed, ref, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
+const client = { signOut: vi.fn(), revokeOtherSessions: vi.fn(), revokeSessions: vi.fn() }
+vi.stubGlobal('useConvexAuth', () => ({ client, user: ref({ id: 'u1', email: 'koch@example.com' }) }))
+const toasts: [string, unknown][] = []
+vi.stubGlobal('useToast', () => ({ show: (text: string, opts?: unknown) => toasts.push([text, opts]) }))
+const navigateTo = vi.fn()
+vi.stubGlobal('navigateTo', navigateTo)
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  client.signOut.mockResolvedValue({ data: { success: true }, error: null })
+  client.revokeOtherSessions.mockResolvedValue({ data: { status: true }, error: null })
+  toasts.length = 0
+  localStorage.clear()
+})
+
+const item = { props: ['disabled'], emits: ['select'], template: '<button type="button" :disabled="disabled" @click="$emit(\'select\')"><slot /></button>' }
+const slot = { template: '<div><slot /></div>' }
+const mountMenu = () => mount(AccountMenu, {
+  props: { manager: false, updating: false },
+  global: { stubs: { DropdownMenu: slot, DropdownMenuTrigger: slot, DropdownMenuContent: slot, DropdownMenuLabel: slot, DropdownMenuSeparator: true, DropdownMenuItem: item, NuxtLink: true } },
+})
+const click = async (wrapper: ReturnType<typeof mountMenu>, text: string) => {
+  await wrapper.findAll('button').find((b) => b.text() === text)!.trigger('click')
+  await vue.nextTick()
+  await new Promise((resolve) => setTimeout(resolve))
+}
+const copy = { v: 1 as const, savedAt: Date.now(), baseRev: 3, locale: 'de', fields: { name: 'Kalbsschnitzel' } }
+
+// Wrong behaviour caught: Abmelden silently deleted the unsaved input of a form open in another tab; or it asked every
+// time, also with nothing unsaved, which teaches people to click OK.
+test.each([
+  { name: 'nothing unsaved: no question, signed out', mine: false, answer: true, asked: false, signedOut: true },
+  { name: 'unsaved input and Abbrechen: still signed in, all input kept', mine: true, answer: false, asked: true, signedOut: false },
+  { name: 'unsaved input and OK: signed out, only this person\'s input deleted', mine: true, answer: true, asked: true, signedOut: true },
+])('Abmelden, $name', async ({ mine, answer, asked, signedOut }) => {
+  const own = localDraftKey('restaurant', 'u1', 'e1')
+  const other = localDraftKey('restaurant', 'u2', 'e1')
+  if (mine) writeLocalDraft(own, copy)
+  writeLocalDraft(other, copy)
+  const confirm = vi.fn(() => answer)
+  window.confirm = confirm
+  const wrapper = mountMenu()
+  await click(wrapper, 'Abmelden')
+
+  expect(confirm.mock.calls).toEqual(asked ? [['In diesem Browser sind noch ungespeicherte Änderungen. Beim Abmelden werden sie gelöscht. Trotzdem abmelden?']] : [])
+  expect(client.signOut).toHaveBeenCalledTimes(signedOut ? 1 : 0)
+  expect(navigateTo.mock.calls).toEqual(signedOut ? [['/login']] : [])
+  expect(localStorage.getItem(own) !== null).toBe(mine && !signedOut)
+  expect(localStorage.getItem(other)).not.toBe(null)
+})

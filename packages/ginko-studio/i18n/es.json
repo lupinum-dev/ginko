@@ -14,6 +14,7 @@
     "areas": "Áreas",
     "list": "Lista",
     "signOut": "Cerrar sesión",
+    "signOutDrafts": "En este navegador hay cambios sin guardar. Al cerrar sesión se eliminarán. ¿Cerrar sesión de todos modos?",
     "signIn": "Iniciar sesión",
     "noAccessHelp": "Si necesitas cambiar algo aquí, pide al propietario que te invite (de nuevo).",
     "toReview": "Por revisar ({count})",

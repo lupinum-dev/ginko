@@ -14,6 +14,7 @@
     "areas": "Bereiche",
     "list": "Liste",
     "signOut": "Abmelden",
+    "signOutDrafts": "In diesem Browser sind noch ungespeicherte Änderungen. Beim Abmelden werden sie gelöscht. Trotzdem abmelden?",
     "signIn": "Anmelden",
     "noAccessHelp": "Wenn du hier etwas ändern sollst, frag die Inhaberin, ob sie dich (wieder) einlädt.",
     "toReview": "Zu prüfen ({count})",

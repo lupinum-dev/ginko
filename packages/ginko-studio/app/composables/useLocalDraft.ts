@@ -97,18 +97,28 @@ export function clearLocalDraft(key: string) {
   }
 }
 
-/** On sign-out: the person's drafts must not stay on a shared computer. */
-export function forgetLocalDrafts(user: string) {
+/**
+ * The keys of this person's copies in this browser, of all sites or of `site`: the ones a form would still offer back.
+ * Reading drops broken and expired copies on the way (readLocalDraft), so they are neither counted nor left behind.
+ */
+export function localDraftKeys(user: string, site?: string, now = Date.now()): string[] {
+  const mine: string[] = []
   try {
-    const mine = []
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
-      if (key?.startsWith(PREFIX) && key.slice(PREFIX.length).split(':')[1] === user) mine.push(key)
+      if (!key?.startsWith(PREFIX)) continue
+      const [keySite, keyUser] = key.slice(PREFIX.length).split(':')
+      if (keyUser === user && (site === undefined || keySite === site)) mine.push(key)
     }
-    for (const key of mine) localStorage.removeItem(key)
   } catch {
-    // Nothing to clear.
+    // No storage, no copies.
   }
+  return mine.filter((key) => readLocalDraft(key, now))
+}
+
+/** On sign-out: the person's drafts must not stay on a shared computer. */
+export function forgetLocalDrafts(user: string) {
+  for (const key of localDraftKeys(user)) clearLocalDraft(key)
 }
 
 /**
