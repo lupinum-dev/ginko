@@ -131,7 +131,7 @@ const missingText = computed(() => {
         <MarkdownEditor :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" :content-locale="locale" @update:model-value="set" />
         <template #fallback><div class="min-h-[11.5rem] rounded-md border border-input bg-background" aria-hidden="true" /></template>
       </ClientOnly>
-      <GinkoFieldImage v-else-if="field.type === 'image'" :id="id" :field="field" :model-value="value" :locale="locale" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
+      <GinkoFieldImage v-else-if="field.type === 'image'" :id="id" :field="field" :model-value="value" :locale="locale" :foreign="locale !== locales[0]" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldFile v-else-if="field.type === 'file'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldRef v-else-if="field.type === 'ref'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <p v-else-if="field.type === 'slug'" :id="id" class="rounded-md bg-muted px-3 py-2.5 font-mono text-sm text-muted-foreground">{{ text || t('fields.slug.generated') }}</p>

@@ -573,7 +573,8 @@
       "other": "Other photo",
       "alt": "Image description",
       "altHint": "What can be seen in the photo? For people who cannot see the image.",
-      "altFromLibrary": "Leave empty to use the description from Files."
+      "altFromLibrary": "Leave empty to use the description from Files.",
+      "noneToTranslate": "No photo yet, so nothing to translate."
     },
     "money": {
       "negative": "A price cannot be negative.",

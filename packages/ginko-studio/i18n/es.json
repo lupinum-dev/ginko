@@ -573,7 +573,8 @@
       "other": "Otra foto",
       "alt": "Descripción de la imagen",
       "altHint": "¿Qué se ve en la foto? Para las personas que no pueden ver la imagen.",
-      "altFromLibrary": "Déjalo vacío para usar la descripción de Archivos."
+      "altFromLibrary": "Déjalo vacío para usar la descripción de Archivos.",
+      "noneToTranslate": "Aún no hay foto, así que no hay nada que traducir."
     },
     "money": {
       "negative": "Un precio no puede ser negativo.",

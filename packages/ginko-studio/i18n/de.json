@@ -573,7 +573,8 @@
       "other": "Anderes Foto",
       "alt": "Bildbeschreibung",
       "altHint": "Was ist auf dem Foto zu sehen? Für Menschen, die das Bild nicht sehen.",
-      "altFromLibrary": "Leer lassen, dann gilt die Beschreibung aus den Dateien."
+      "altFromLibrary": "Leer lassen, dann gilt die Beschreibung aus den Dateien.",
+      "noneToTranslate": "Noch kein Foto, also nichts zu übersetzen."
     },
     "money": {
       "negative": "Ein Preis kann nicht negativ sein.",
