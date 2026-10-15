@@ -46,8 +46,8 @@ Any host that runs Node works: `npm run build` writes a server to `.output/`, st
 | `NUXT_APP_SECRET` | Signs the URLs of the share cards. 32 or more random characters (`openssl rand -hex 32`). |
 | `NUXT_PUBLIC_SITE_URL` | The address of the live site, for example `https://www.my-site.com`. On Vercel the production address is used when this is not set. |
 
-A build on Vercel or in CI stops with a message while the address is still `example.com`, so search engines never
-see wrong links.
+A build on Vercel stops with a message while the address is still `example.com`, so search engines never see wrong
+links. Other builds (CI, your computer) only print a warning.
 
 This site can also be built as static files (`npm run generate`, output in `.output/public/`). Then a notice leaves
 the site only with the next build after its end date: add a daily rebuild (for example a Vercel cron job or a
@@ -64,8 +64,7 @@ scheduled GitHub Action).
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript and Vue types |
 
-`.github/workflows/ci.yml` runs lint, typecheck and build on every push. Set the repository variable `SITE_URL`
-(Settings → Secrets and variables → Actions → Variables) to your site's address, or the build stops (see above).
+`.github/workflows/ci.yml` runs lint, typecheck and build on every push. It needs no settings.
 
 ## Edit content
 

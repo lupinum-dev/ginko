@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
+import { lunch } from '../../ginko-preset-gastro/src/index.ts'
 import { manifestOf, pruneLocales, sampleDates, shiftDates } from '../template-files.mjs'
 
 const work = mkdtempSync(join(tmpdir(), 'create-ginko-files-'))
@@ -116,12 +117,20 @@ describe('shiftDates', () => {
       notices: { visible: { mode: 'always' }, fields: { until: { type: 'date' } } },
       lunch: { status: { next: 'week' }, fields: { week: { type: 'date' } } },
       sessions: { fields: { date: { type: 'date' }, from: { type: 'time' } } },
+      // The gastro lunch brick: no status or expiry, but a weekly task, so a new site opens with a current week.
+      lunchWeek: { fields: { weekOf: { type: 'date' } }, tasks: [{ id: 'lunchWeek', kind: 'edit', prefill: { weekOf: '@workWeek' } }] },
+      menu: { fields: { since: { type: 'date' } }, tasks: [{ id: 'dish', kind: 'create', prefill: { since: '@today' } }] },
     },
   }
 
-  it('manifestOf picks the date fields of bricks that expire, show a next date, and sessions', () => {
-    // Wrong behaviour caught: posts (a publication date) or a brick shown always would move too.
-    expect(manifestOf(site)).toEqual({ locales: ['en'], shift: { events: ['when', 'day'], lunch: ['week'], sessions: ['date'] } })
+  it('manifestOf picks the date fields of bricks that expire, show a next date, have a weekly task, and sessions', () => {
+    // Wrong behaviour caught: posts (a publication date) or a brick shown always would move too; the lunch week
+    // would stay in the template's past week.
+    expect(manifestOf(site)).toEqual({ locales: ['en'], shift: { events: ['when', 'day'], lunch: ['week'], sessions: ['date'], lunchWeek: ['weekOf'] } })
+  })
+
+  it('manifestOf moves the lunch week of the gastro preset', () => {
+    expect(manifestOf({ locales: ['en'], bricks: { lunch: lunch({ source: 'files' }) } }).shift).toEqual({ lunch: ['weekOf'] })
   })
 
   it('moves the frontmatter dates of those fields, in every language, and leaves body text and other keys alone', () => {
