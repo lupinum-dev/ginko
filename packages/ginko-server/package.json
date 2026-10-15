@@ -30,13 +30,13 @@
     "convex": "CONVEX_AGENT_MODE=anonymous convex dev"
   },
   "dependencies": {
-    "@better-auth/core": "1.7.6",
-    "@better-auth/oauth-provider": "1.7.6",
-    "@lupinum/better-convex-nuxt": "file:../../vendor/lupinum-better-convex-nuxt-1.0.0-rc.1.tgz",
+    "@better-auth/core": "catalog:",
+    "@better-auth/oauth-provider": "catalog:",
+    "@lupinum/better-convex-nuxt": "catalog:",
     "@lupinum/ginko": "workspace:^",
     "@lupinum/ginko-i18n": "workspace:^",
-    "better-auth": "1.7.6",
-    "convex": "1.46.0",
+    "better-auth": "catalog:",
+    "convex": "catalog:",
     "sharp": "0.35.5"
   },
   "devDependencies": {

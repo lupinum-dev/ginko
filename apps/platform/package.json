@@ -10,10 +10,10 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@lupinum/better-convex-nuxt": "file:../../vendor/lupinum-better-convex-nuxt-1.0.0-rc.1.tgz",
+    "@lupinum/better-convex-nuxt": "catalog:",
     "@lupinum/ginko-server": "workspace:*",
     "@lupinum/ginko-studio": "workspace:*",
-    "convex": "1.46.0",
+    "convex": "catalog:",
     "nuxt": "4.6.0",
     "vue": "3.5.43"
   },

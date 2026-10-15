@@ -15,9 +15,14 @@ minimumReleaseAgeStrict: true
 minimumReleaseAgeExclude:
   - '@lupinum/*'
 
-# Pre-release better-convex from feat/functions-and-agents (158427e1). Remove when published.
-overrides:
-  '@lupinum/better-convex-vue': 'file:./vendor/lupinum-better-convex-vue-1.0.0-rc.1.tgz'
+# One version for the platform packages (apps/platform, ginko-server, ginko-studio). The Better Auth
+# packages must match the exact peer version that @lupinum/better-convex-nuxt names.
+catalog:
+  '@better-auth/core': 1.7.7
+  '@better-auth/oauth-provider': 1.7.7
+  '@lupinum/better-convex-nuxt': 1.0.0-rc.3
+  better-auth: 1.7.7
+  convex: 1.46.0
 
 auditConfig:
   ignoreGhsas:
