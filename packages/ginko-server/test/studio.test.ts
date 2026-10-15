@@ -40,7 +40,8 @@ async function studioSetup(opts: { drafts?: boolean; release?: boolean } = {}) {
 
 describe('search.studio', () => {
   // Wrong behaviour caught: the palette misses a dish by a word of its name, or lists a task the person may not run.
-  it('finds an entry and a task; staff only gets the tasks they hold', async () => {
+  // Wrong behaviour caught (onboard-6): search sent staff to entries and areas they cannot open ("Diesen Bereich kannst du nicht bearbeiten").
+  it('finds an entry and a task; staff only gets the tasks they hold and the areas they can open', async () => {
     const s = await studioSetup()
     const found = await s.as.owner.query(api.search.studio, { site, query: 'schnitzel' })
     // The gallery finds it too (an image description mentions the dish); the dish itself comes first.
@@ -48,12 +49,16 @@ describe('search.studio', () => {
       entry: s.entries['menu-schnitzel'], brick: 'menu', brickLabel: 'Speisekarte', label: 'Wiener Schnitzel vom Kalb', state: 'live',
     })
     expect(found.entries[0]!.snippet).toContain('Schnitzel')
+    expect(found.entries.map((e) => e.brick)).toContain('gallery')
+    // The cook holds menu and lunch tasks only: the gallery hit is not for him.
+    expect((await s.as.cook.query(api.search.studio, { site, query: 'schnitzel' })).entries.map((e) => e.brick)).toEqual(['menu'])
 
     const owner = await s.as.owner.query(api.search.studio, { site, query: 'veranstaltung' })
     expect(owner.tasks).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'events.add', label: 'Veranstaltung hinzufügen' })]))
     expect(owner.bricks).toEqual([expect.objectContaining({ brick: 'events', label: 'Veranstaltungen' })])
     const cook = await s.as.cook.query(api.search.studio, { site, query: 'veranstaltung' })
     expect(cook.tasks).toEqual([])
+    expect(cook.bricks).toEqual([])
     const dish = await s.as.cook.query(api.search.studio, { site, query: 'gericht hinzufügen' })
     expect(dish.tasks.map((t) => t.id)).toEqual(['menu.add'])
     // An area is found by its label in any language, not only the site's main one.
