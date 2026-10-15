@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ImageValue } from '@lupinum/ginko'
+import { ArrowRight } from '@lucide/vue'
 
 export interface Card {
   key: string
@@ -11,7 +12,8 @@ export interface Card {
   image?: ImageValue
 }
 
-/** Two to four cards per row; the whole card is one link (the title's link stretches over it). Photos are 3:2. */
+/** Two to four cards per row; the whole card is one link (the title's link stretches over it), marked by an arrow.
+ *  Photos are 3:2. */
 withDefaults(defineProps<{ items: Card[], columns?: 2 | 3 | 4 }>(), { columns: 3 })
 </script>
 
@@ -23,7 +25,7 @@ withDefaults(defineProps<{ items: Card[], columns?: 2 | 3 | 4 }>(), { columns: 3
     <li
       v-for="item in items"
       :key="item.key"
-      class="group relative flex flex-col overflow-hidden rounded-block border bg-card transition-colors duration-150 focus-within:outline-2 focus-within:outline-offset-3 focus-within:outline-ring hover:bg-muted"
+      class="group relative flex flex-col overflow-hidden rounded-block border bg-card transition-colors duration-150 hover:bg-muted has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-3 has-[a:focus-visible]:outline-ring"
     >
       <GinkoImage
         v-if="item.image"
@@ -37,6 +39,7 @@ withDefaults(defineProps<{ items: Card[], columns?: 2 | 3 | 4 }>(), { columns: 3
           <NuxtLink :to="item.to" class="outline-none after:absolute after:inset-0">{{ item.title }}</NuxtLink>
         </h3>
         <p v-if="item.text" class="text-muted-foreground">{{ item.text }}</p>
+        <ArrowRight class="mt-auto size-5 text-muted-foreground rtl:-scale-x-100" aria-hidden="true" />
       </div>
     </li>
   </ul>
