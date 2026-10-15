@@ -251,7 +251,8 @@ describe('saving while the connection is down', () => {
     const form = mountForm()
     form.setField('name', 'Kalbsschnitzel')
     const saving = form.save()
-    await vue.nextTick()
+    // The save first hands over held input (flush), so it is on its way a few microtasks later.
+    await vi.waitUntil(() => form.busy.value)
     window.dispatchEvent(new Event('offline'))
     expect([connected.value, form.busy.value, form.offline.value]).toEqual([true, true, true])
     window.dispatchEvent(new Event('online'))
