@@ -6,8 +6,9 @@ export function english(m: Msg): string {
   return coreMessage('en', m.key, m.params)
 }
 
-/** One block per rejected change: what is wrong, then the way to do it right. */
+/** One block per rejected change: what is wrong, then the way to do it right. Nothing when no change is rejected. */
 export function explainRejected(rejected: SchemaChange[]): string[] {
+  if (rejected.length === 0) return []
   const lines = ['The schema changes in a way that is not allowed:']
   for (const r of rejected) {
     lines.push(`  ✗ ${r.path}: ${english(r)}`)

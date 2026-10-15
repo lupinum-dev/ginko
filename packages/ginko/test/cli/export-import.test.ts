@@ -42,8 +42,9 @@ async function roundTrip(data: ExportAnswer) {
     if (fn === 'seed:importBatch') imported.push(args.batch as string)
     return {}
   }
-  await importSite({ dir, run, upload, log: () => {} })
-  return { dir, batches: imported.map((id) => stored.get(id)!) }
+  const logs: string[] = []
+  await importSite({ dir, run, upload, log: (line) => logs.push(line) })
+  return { dir, batches: imported.map((id) => stored.get(id)!), logs }
 }
 
 describe('export and import keep the asset library', () => {
@@ -73,6 +74,14 @@ describe('export and import keep the asset library', () => {
     await writeFile(join(dir, 'export.json'), JSON.stringify(old))
     const run = async (fn: string) => (fn === 'seed:uploadUrl' ? 'http://local/upload' : { done: true })
     await expect(importSite({ dir, run, upload: async () => 's', log: () => {} })).resolves.toMatchObject({ files: 1 })
+  })
+})
+
+describe('local:import', () => {
+  // Wrong behaviour caught: every import prints a schema warning header with nothing under it, which reads like an error.
+  it('prints no schema warning when the schema push has none', async () => {
+    const { logs } = await roundTrip(answer([file('up1')]))
+    expect(logs).toEqual(['Schema “linde” pushed to the local platform.', '1 files in local storage.', 'Entries: 1/1'])
   })
 })
 

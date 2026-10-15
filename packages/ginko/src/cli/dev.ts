@@ -172,6 +172,6 @@ async function push(schema: Schema, backendDir: string, site: string, log: (line
     return
   }
   const warnings = Array.isArray(result.warnings) ? (result.warnings as SchemaChange[]) : []
-  if (warnings.length) for (const line of explainRejected(warnings)) log(`Warning: ${line}`)
+  for (const line of explainRejected(warnings)) log(`Warning: ${line}`)
   log(`Schema pushed to the local platform (version ${String(result.schemaRev)}).`)
 }
