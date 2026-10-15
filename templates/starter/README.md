@@ -14,6 +14,8 @@ npm create ginko@latest my-site -- --template starter
 npm create nuxt@latest my-site -- -t github:lupinum-dev/ginko/templates/starter#release
 ```
 
+TODO: the `#release` branch does not exist yet; keep this line until templates-release.yml publishes it.
+
 TODO: what each command does (create-ginko also picks languages, shifts the sample dates, sets the site id and writes `.env`).
 
 ## Deploy
