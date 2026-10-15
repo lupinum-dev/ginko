@@ -273,6 +273,18 @@ describe('TaskSheet', () => {
     sheet.unmount()
   })
 
+  // Wrong behaviour caught: a proposal of last week's lunch, still undecided on Monday, filled this week's sheet with
+  // last week's dishes and allergens, and nothing said they were old.
+  test.each([
+    ['for the week stored then', '2026-10-05', { note: { de: 'Suppe und Salat inklusive' } }],
+    ['with its own week', '2026-09-28', { weekOf: '2026-10-05', note: { de: 'Suppe und Salat inklusive' } }],
+  ])('an own proposal sent last week %s: the sheet says its days are that week\'s', async (_name, storedWeek, fields) => {
+    const sheet = await lunchSheet(storedWeek, { 'proposals.ownFor': ownProposal({ fields, createdAt: Date.UTC(2026, 9, 8, 8) }) })
+    expect(noteOf(sheet)).toBe('Suppe und Salat inklusive')
+    expect(sheet.text()).toContain('Das ist noch die Woche ab 5.10.2026. Prüfe jeden Tag, bevor du speicherst.')
+    sheet.unmount()
+  })
+
   // Wrong behaviour caught: a rejection was a dead end: the cook had to type the whole week again to fix one dish.
   test('a rejected own proposal shows the reason and reopens with its values, at once when the sheet is opened for it', async () => {
     const rejected = ownProposal({ status: 'rejected', decidedAt: Date.UTC(2026, 9, 12, 9), decidedBy: { kind: 'member' }, reason: 'Bitte mit Preis.' })

@@ -77,11 +77,17 @@ const form = useEntryForm({
 const { draft, baseline, initial, ready, issues, problem, conflict, busy, offline, waiting, dirty, localOffer } = form
 /** The form holds the values of an own proposal, not the stored ones. */
 const fromProposal = ref(false)
-/** The weekly task opened on an entry of an older week: its days are still that week's, so a rushed save would publish them as this week's. */
+/** The week an own proposal the form started from was made for, when it sent one (the weekly task keeps this week). */
+const proposalWeek = ref<Json>()
+/**
+ * The weekly task opened on days of an older week: the stored ones, or those of an own proposal made in an older week
+ * and still waiting. A rushed save would publish them as this week's.
+ */
 const oldWeek = computed(() => {
   const key = fixedWeek.value
-  const stored = key ? props.entry?.data[key] : undefined
-  return ready.value && !fromProposal.value && typeof stored === 'string' && stored !== draft.value[key!] ? stored : undefined
+  if (!key || !ready.value) return undefined
+  const source = (fromProposal.value ? proposalWeek.value : undefined) ?? props.entry?.data[key]
+  return typeof source === 'string' && source !== draft.value[key] ? source : undefined
 })
 
 // Prefill (SPEC 2.7): stored values of the task's fields, then the task's preset, resolved on the server.
@@ -96,6 +102,12 @@ const mine = computed(() => (own.value && own.value.task === ref_.value ? own.va
 /** The proposal's values of this task's fields; the weekly task keeps this week. */
 const proposedValues = (o: NonNullable<typeof mine.value>): Data =>
   Object.fromEntries(Object.entries(o.fields as Data).filter(([k]) => Object.hasOwn(fields.value, k) && k !== fixedWeek.value))
+/** Starts the form from an own proposal's values over `start`. */
+function loadProposal(start: Data, o: NonNullable<typeof mine.value>) {
+  form.load({ ...start, ...proposedValues(o) })
+  fromProposal.value = true
+  proposalWeek.value = fixedWeek.value ? (o.fields as Data)[fixedWeek.value] : undefined
+}
 
 watch([prefill, own, ownError], ([p]) => {
   // Both answers first, so the form does not start on the stored values and jump; a failed proposal read does not hold it up.
@@ -103,16 +115,14 @@ watch([prefill, own, ownError], ([p]) => {
   // A new entry starts from the schema defaults; choices without a default stay unset on purpose (UI.md 5).
   const start: Data = isCreate.value ? { ...defaultsFor(fields.value) } : {}
   const o = mine.value
-  const proposed = o && (o.status === 'open' || o.proposal === props.reopen) ? proposedValues(o) : undefined
-  form.load({ ...start, ...(p as Data), ...proposed })
-  fromProposal.value = !!proposed
+  if (o && (o.status === 'open' || o.proposal === props.reopen)) loadProposal({ ...start, ...(p as Data) }, o)
+  else form.load({ ...start, ...(p as Data) })
 }, { immediate: true })
 
 /** "Deinen Vorschlag wieder öffnen": the rejected values, to fix what the approver asked for. */
 function reopenOwn() {
   if (!mine.value || !prefill.value) return
-  form.load({ ...(prefill.value as Data), ...proposedValues(mine.value) })
-  fromProposal.value = true
+  loadProposal(prefill.value as Data, mine.value)
 }
 
 // "Von dieser Woche übernehmen": a new planned week starts from this week's days and note, its own week stays. The
