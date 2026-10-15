@@ -1,8 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
-
-// The module file imports the Nuxt kit only to register itself; the address logic is a pure function.
-vi.mock('nuxt/kit', () => ({ defineNuxtModule: (module: unknown) => module, tryImportModule: () => undefined }))
-const { pagePaths } = await import('../../templates/_features/site/modules/page-paths.ts')
+import { describe, expect, it } from 'vitest'
+import { pagePaths } from '../../templates/_features/site/modules/page-paths/paths.ts'
 
 const site = {
   locales: ['en', 'de', 'it'],

@@ -141,7 +141,7 @@ frontmatter. It appears at `/groups` (`/de/<slug>` for the German file). Add `{ 
 `/wine`, `/de/wine` and `/it/wine`. Start it with `<BlockPageHeader>` and call `usePageSeo()`, like
 `app/pages/gallery.vue`, and register it in `ginko.config.ts` under `pages` (`wine: localized('/wine')`), so
 `useGinkoPath()('wine')` links to it. For a word of its own per language, add it to `segments` in `app/routes.ts`:
-`wine: { en: 'wine', de: 'weine', it: 'vini' }`. `localized()` in `ginko.config.ts` and `modules/page-paths.ts`
+`wine: { en: 'wine', de: 'weine', it: 'vini' }`. `localized()` in `ginko.config.ts` and `modules/page-paths/`
 (which gives the page file its addresses) both read that table, so each word is written once.
 
 ## Add or remove a language

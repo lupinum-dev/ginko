@@ -1,6 +1,4 @@
-// Synced from templates/_features/site/modules/page-paths.ts by `pnpm templates sync`. Edit the source, not this copy.
-import { defineNuxtModule, tryImportModule } from 'nuxt/kit'
-
+// Synced from templates/_features/site/modules/page-paths/paths.ts by `pnpm templates sync`. Edit the source, not this copy.
 // The address of each Vue page in every language, from ginko.config.ts, so a page and its links never disagree.
 // A page in app/pages/ answers at its file path in the main language (`news/index.vue` at /news) and with the language
 // prefix in the others (/de/news). When ginko.config.ts gives that page other words per language (`pages.news` is
@@ -12,15 +10,16 @@ import { defineNuxtModule, tryImportModule } from 'nuxt/kit'
 //      so a nested page can have its own word without a `pages` key (a key puts the page into the sitemap).
 // So a feature page keeps its file name in every template, and a template renames it in ginko.config.ts alone
 // (app/routes.ts). A page whose definePageMeta sets `i18n` keeps its own paths.
+// This file is the pure part (unit tested); index.ts is the Nuxt module.
 
 type PathMap = Record<string, string | undefined>
 /** `segments` of app/routes.ts: the word of a path part per language. */
 export type Segments = Record<string, Record<string, string | undefined> | undefined>
-interface SiteConfig { locales: readonly string[], pages?: Record<string, PathMap>, bricks?: Record<string, { route?: PathMap }> }
+export interface SiteConfig { locales: readonly string[], pages?: Record<string, PathMap>, bricks?: Record<string, { route?: PathMap }> }
 
 /** `/news/:slug()` (Nuxt) ↔ `/news/[slug]` (ginko.config.ts). */
-const toConfig = (path: string) => path.replace(/:(\w+)\(\)/g, '[$1]')
-const toNuxt = (path: string) => path.replace(/\[(\w+)\]/g, ':$1()')
+export const toConfig = (path: string) => path.replace(/:(\w+)\(\)/g, '[$1]')
+export const toNuxt = (path: string) => path.replace(/\[(\w+)\]/g, ':$1()')
 
 /**
  * The path of a page file (`/menu/print`, `/news/[slug]`) per language without the language prefix, or undefined when
@@ -47,24 +46,3 @@ export function pagePaths(site: SiteConfig, segments: Segments, file: string): R
     return [[locale, `${base === '/' ? '' : base}${tail}` || '/']]
   }))
 }
-
-export default defineNuxtModule({
-  meta: { name: 'page-paths' },
-  async setup(_options, nuxt) {
-    const site = (nuxt.options as { ginko?: SiteConfig }).ginko
-    if (!site?.locales.length) return
-    // The words of app/routes.ts (a template without `segments` has none).
-    const routes = await tryImportModule<{ segments?: Segments }>(`${nuxt.options.srcDir}/routes.ts`)
-    const segments = routes?.segments ?? {}
-
-    nuxt.hook('pages:extend', (pages) => {
-      for (const page of pages) {
-        if (page.meta?.i18n !== undefined) continue
-        const file = toConfig(page.path)
-        const paths = pagePaths(site, segments, file)
-        if (!paths || Object.values(paths).every((path) => path === file)) continue
-        page.meta = { ...page.meta, i18n: { paths: Object.fromEntries(Object.entries(paths).map(([locale, path]) => [locale, toNuxt(path)])) } }
-      }
-    })
-  },
-})

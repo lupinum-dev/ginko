@@ -30,6 +30,7 @@
   "i18n/site/fr.json",
   "i18n/site/it.json",
   "modules/feature-messages.ts",
-  "modules/page-paths.ts",
+  "modules/page-paths/index.ts",
+  "modules/page-paths/paths.ts",
   "site-url.ts"
 ]
