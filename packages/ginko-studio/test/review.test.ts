@@ -137,6 +137,20 @@ describe('OwnProposals', () => {
     expect(wrapper.findAll('button').map((button) => button.attributes('disabled') !== undefined)).toEqual([false, true])
     vi.unstubAllGlobals()
   })
+
+  // Wrong behaviour caught: an owner's rejected assistant proposal offered "Korrigieren", which opened the task on the
+  // stored values: the Studio reopens only its own proposals.
+  test('"Korrigieren" is offered for a rejected proposal made in the Studio, not for an assistant\'s', () => {
+    const rejected = (proposal: string, via: 'ui' | 'agent') => row({ proposal: proposal as Id<'proposals'>, status: 'rejected', mine: true, via, entry: 'm1' as Id<'entries'>, task: 'menu.price', reason: 'Nein.', decidedAt: Date.UTC(2026, 9, 8, 11) })
+    for (const [name, fn] of Object.entries({ computed, ref, useI18n })) vi.stubGlobal(name, fn)
+    vi.stubGlobal('useConvexQuery', () => ({ data: computed(() => ({ open: [], rejected: [rejected('ui1', 'ui'), rejected('ai1', 'agent')], notLive: [] })) }))
+    const wrapper = mount(OwnProposals, {
+      props: { site: 's', schema: { timeZone: 'Europe/Vienna', locales: ['de'], bricks: {} } as never, filter: 'all', manager: true, grants: new Set<string>() },
+      global: { stubs: { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+    })
+    expect(wrapper.findAll('a').map((a) => a.attributes('href'))).toEqual(['/s/s?task=menu.price&reopen=ui1'])
+    vi.unstubAllGlobals()
+  })
 })
 
 describe('ChangeRows', () => {

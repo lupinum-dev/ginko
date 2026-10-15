@@ -1,7 +1,7 @@
 <!-- "Waiting for approval" at the top of History (UI.md 10.4): the person's own open proposals, each
      with Withdraw; below, their proposals rejected in the last two weeks with the approver's sentence
-     (UI.md 10.7 item 6: a rejection writes no change row) and "Korrigieren", which reopens it in its task while it is
-     still the thing to fix (the server drops it after a newer proposal or a later change), and planned changes that did not go live
+     (UI.md 10.7 item 6: a rejection writes no change row) and, for one made in the Studio, "Korrigieren", which reopens it
+     in its task while it is still the thing to fix (the server drops it after a newer proposal or a later change), and planned changes that did not go live
      because they no longer fitted at their time (for approvers all of the site). Nothing shows when
      there is none of them. -->
 <script setup lang="ts">
@@ -37,8 +37,8 @@ const line = (p: Row) => textOf(p.msg, p.sentence)
 const rejectedText = (p: Row) => t('history.rejectedBy', { who: p.decidedBy ? whoText(p.decidedBy, t) : t('who.member'), reason: textOf(p.reasonMsg, p.reason ?? '') })
 const notLiveText = (p: Row) => t('history.notLiveBecause', { when: when(p.at!), reason: textOf(p.reasonMsg, p.reason ?? '') })
 const when = (at: number) => whenFull(at, props.schema.timeZone, format)
-/** Schnell ändern opens the proposal's task on its entry with the proposal's values. */
-const fixLink = (p: Row) => (p.task && p.entry && (props.manager || props.grants.has(p.task)) ? `/s/${props.site}?task=${encodeURIComponent(p.task)}&reopen=${p.proposal}` : undefined)
+/** Schnell ändern opens the proposal's task on its entry with the proposal's values; it follows up only on proposals made in the Studio. */
+const fixLink = (p: Row) => (p.via === 'ui' && p.task && p.entry && (props.manager || props.grants.has(p.task)) ? `/s/${props.site}?task=${encodeURIComponent(p.task)}&reopen=${p.proposal}` : undefined)
 </script>
 
 <template>

@@ -672,7 +672,8 @@ async function mailNotLive(ctx: MutationCtx, siteId: Id<'sites'>, approver: stri
 
 /**
  * Tells the author at once that their proposal was not approved, with the approver's reason and a link that reopens
- * it in its task (Schnell ändern), else Schnell ändern itself. In the author's language.
+ * it in its task (Schnell ändern), else Schnell ändern itself. An assistant's proposal is not reopened in the Studio
+ * (`followUp`): its link is Verlauf, which lists it with the reason. In the author's language.
  */
 async function mailRejected(ctx: MutationCtx, p: Doc<'proposals'>, reason: string) {
   const site = await ctx.db.get(p.site)
@@ -681,7 +682,7 @@ async function mailRejected(ctx: MutationCtx, p: Doc<'proposals'>, reason: strin
   if (!member?.email) return
   const locale = await localeOfUser(ctx, member.user)
   const task = taskOf(p.args)
-  const fix = p.op === 'save' && p.entry && task ? `?task=${encodeURIComponent(task)}&reopen=${p._id}` : ''
+  const fix = p.via === 'agent' ? '/history' : p.op === 'save' && p.entry && task ? `?task=${encodeURIComponent(task)}&reopen=${p._id}` : ''
   await queueMail(ctx, {
     to: member.email,
     subject: t(locale, 'mail.rejected.subject', { site: site.name }),

@@ -291,7 +291,7 @@ watch([() => route.query.reopen, () => ownRead.data.value, () => s.schema.value]
   if (typeof reopen !== 'string') linked = undefined
   if (typeof task !== 'string' || typeof reopen !== 'string' || reopen === linked || !ownRead.data.value || !s.schema.value) return
   linked = reopen
-  const p = ownRead.data.value.rejected.find((r) => r.proposal === reopen && r.task === task)
+  const p = ownRead.data.value.rejected.find((r) => r.proposal === reopen && r.task === task && r.via === 'ui')
   if (p) fix(task.split('.')[0]!, p)
   navigateTo({ path: route.path, query: {} }, { replace: true })
 }, { immediate: true })

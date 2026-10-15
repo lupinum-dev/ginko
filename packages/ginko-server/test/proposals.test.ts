@@ -314,6 +314,17 @@ describe('the author follows up on their own proposal', () => {
     expect(mails[0]!.text).toContain('„Bitte mit Preis.“')
     expect(mails[0]!.text).toContain(`https://ginko.test/s/restaurant?task=lunch.lunchWeek&reopen=${proposal}`)
   })
+
+  // Wrong behaviour caught: the mail about an assistant's rejected proposal linked to a sheet that cannot reopen it
+  // (the Studio follows up only on its own proposals), so "Korrigieren" opened the stored values.
+  it('the mail about an assistant\'s rejected proposal links to Verlauf', async () => {
+    const s = await approvalSetup()
+    const { proposal } = await cookNote(s, 'Suppe inklusive')
+    await s.t.run((ctx) => ctx.db.patch(proposal, { via: 'agent' }))
+    await s.as.owner.mutation(api.proposals.reject, { proposal, reason: 'Bitte mit Preis.' })
+    const [mail] = (await s.rows('outbox')).filter((m) => m.to === 'koch@example.com')
+    expect(mail!.text).toContain('Korrigieren: https://ginko.test/s/restaurant/history\n')
+  })
 })
 
 describe('reading', () => {
