@@ -172,11 +172,129 @@ function fieldBlocks(text, isMarkdown) {
   return { blocks, join }
 }
 
+// A small reader and writer for the nested values of a frontmatter field: maps (`key: value`, `key:` with indented
+// lines), lists (`- ` items, a map item starts on the dash line) and scalars kept as written (quotes, `[A, C]`, block
+// text with `|` or `>`). Enough for content files, which tools and people write in this plain form.
+const indentOf = (line) => line.length - line.trimStart().length
+const isList = (line) => /^\s*-(\s|$)/.test(line)
+const isBlank = (line) => line.trim() === '' || line.trim().startsWith('#')
+
+function readNested(lines) {
+  const rows = [...lines]
+  let i = 0
+  const skip = () => { while (i < rows.length && isBlank(rows[i])) i++ }
+  const value = () => {
+    skip()
+    if (i >= rows.length) return { raw: '' }
+    return isList(rows[i]) ? list(indentOf(rows[i])) : map(indentOf(rows[i]))
+  }
+  const map = (indent) => {
+    const out = new Map()
+    for (skip(); i < rows.length && indentOf(rows[i]) === indent && !isList(rows[i]); skip()) {
+      const match = /^\s*([^:#\s][^:]*):(?:\s(.*))?$/.exec(rows[i])
+      if (!match) throw new Error(`Cannot read the line "${rows[i].trim()}"`)
+      i++
+      const raw = (match[2] ?? '').trim()
+      if (/^[|>]/.test(raw)) {
+        const text = []
+        while (i < rows.length && (rows[i].trim() === '' || indentOf(rows[i]) > indent)) text.push(rows[i++])
+        out.set(match[1], { raw, text })
+      }
+      else if (raw) out.set(match[1], { raw })
+      else {
+        skip()
+        const nested = i < rows.length && (indentOf(rows[i]) > indent || (indentOf(rows[i]) === indent && isList(rows[i])))
+        out.set(match[1], nested ? value() : { raw: '' })
+      }
+    }
+    return out
+  }
+  const list = (indent) => {
+    const out = []
+    for (skip(); i < rows.length && indentOf(rows[i]) === indent && isList(rows[i]); skip()) {
+      const rest = rows[i].slice(indent + 1).trimStart()
+      if (/^[^:#\s'"[{][^:]*:(\s|$)/.test(rest)) {
+        // A map item: read its first key as if it stood on its own line, aligned with the keys below it.
+        rows[i] = `${' '.repeat(indent + 2)}${rest}`
+        out.push(map(indent + 2))
+      }
+      else {
+        i++
+        out.push({ raw: rest })
+      }
+    }
+    return out
+  }
+  return value()
+}
+
+function writeNested(value, indent) {
+  const pad = ' '.repeat(indent)
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => {
+      if (!(item instanceof Map) && !Array.isArray(item)) return [`${pad}- ${item.raw}`]
+      const lines = writeNested(item, indent + 2)
+      return [`${pad}- ${lines[0].slice(indent + 2)}`, ...lines.slice(1)]
+    })
+  }
+  return [...value].flatMap(([key, v]) => {
+    if (v instanceof Map || Array.isArray(v)) return [`${pad}${key}:`, ...writeNested(v, indent + 2)]
+    return [`${pad}${key}:${v.raw ? ` ${v.raw}` : ''}`, ...(v.text ?? [])]
+  })
+}
+
+const nested = (v) => v instanceof Map || Array.isArray(v)
+
+/** The main value with the translation's texts in it: maps by key, lists by position. */
+function overlay(main, translated) {
+  if (Array.isArray(main) && Array.isArray(translated)) return main.map((item, i) => (i < translated.length ? overlay(item, translated[i]) : item))
+  if (main instanceof Map && translated instanceof Map) {
+    const out = new Map([...main].map(([key, v]) => [key, translated.has(key) ? overlay(v, translated.get(key)) : v]))
+    for (const [key, v] of translated) if (!out.has(key)) out.set(key, v)
+    return out
+  }
+  return translated
+}
+
+/** The main value cut to the shape of the translation: the main language's texts for the new translation file. */
+function project(main, translated) {
+  if (Array.isArray(translated)) return translated.map((item, i) => project(Array.isArray(main) ? main[i] : undefined, item))
+  if (translated instanceof Map) {
+    const out = new Map()
+    for (const [key, v] of translated) {
+      const own = main instanceof Map ? project(main.get(key), v) : undefined
+      if (own !== undefined) out.set(key, own)
+    }
+    return out
+  }
+  return main === undefined || nested(main) ? undefined : main
+}
+
+/** A field that both files have and whose value is nested: the two blocks after the swap, or undefined. */
+function swapNested(mainBlock, translatedBlock) {
+  if (mainBlock.lines.length < 2 && translatedBlock.lines.length < 2) return undefined
+  try {
+    const [main, translated] = [mainBlock, translatedBlock].map((block) => readNested(block.lines))
+    const [m, t] = [main.get(mainBlock.key), translated.get(translatedBlock.key)]
+    if (!nested(m) || !nested(t)) return undefined
+    const key = mainBlock.key
+    return {
+      main: { key, lines: writeNested(new Map([[key, project(m, t)]]), 0) },
+      translated: { key, lines: writeNested(new Map([[key, overlay(m, t)]]), 0) },
+    }
+  }
+  catch {
+    return undefined
+  }
+}
+
 /**
  * The texts of a main file and its translation after they swap roles (a new main language). Fields only the main file
  * has (the language-independent ones, such as a date or a choice, which a translation must not repeat, and any field
- * the translation left to the main text) move to the new main file, so both pages show what they showed before. When
- * the translation sets its own `slug`, the old main file keeps its address from the file name as `slug`.
+ * the translation left to the main text) move to the new main file, so both pages show what they showed before. A
+ * nested field both have (a photo with its alt text, a list of days with their dishes) is merged inside: the new main
+ * file gets the whole value with the translated texts, the new translation only the texts. When the translation sets
+ * its own `slug`, the old main file keeps its address from the file name as `slug`.
  */
 function swapFields(mainText, translatedText, name) {
   const isMarkdown = name.endsWith('.md')
@@ -185,11 +303,19 @@ function swapFields(mainText, translatedText, name) {
   if (!textTypes.includes(name.split('.').at(-1)) || !main || !translated) return [mainText, translatedText]
   const own = new Set(translated.blocks.map((b) => b.key))
   const moved = main.blocks.filter((b) => b.key !== undefined && !own.has(b.key))
-  const kept = main.blocks.filter((b) => !moved.includes(b))
+  let kept = main.blocks.filter((b) => !moved.includes(b))
+  let theirs = translated.blocks
+  for (const block of theirs) {
+    const mine = block.key === undefined ? undefined : kept.find((b) => b.key === block.key)
+    const swapped = mine && swapNested(mine, block)
+    if (!swapped) continue
+    kept = kept.map((b) => (b === mine ? swapped.main : b))
+    theirs = theirs.map((b) => (b === block ? swapped.translated : b))
+  }
   if (own.has('slug') && !main.blocks.some((b) => b.key === 'slug')) {
     kept.push({ key: 'slug', lines: [`slug: ${name.split('/').at(-1).split('.').at(-2)}`] })
   }
-  return [main.join(kept), translated.join([...translated.blocks, ...moved])]
+  return [main.join(kept), translated.join([...theirs, ...moved])]
 }
 
 /** The locale suffix of a content path (`1.about.de.md` → `de`), if it is one of `locales`. */

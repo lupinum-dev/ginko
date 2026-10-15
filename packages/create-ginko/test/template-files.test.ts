@@ -87,6 +87,19 @@ describe('pruneLocales', () => {
     expect(read(only, 'content/notices/1.a.md')).toBe('---\ntext: Hallo\nuntil: 2027-01-29\n---\n')
   })
 
+  // Wrong behaviour caught: a nested field (a photo with its alt text, a list of days) swapped as a whole, so the new
+  // main file loses the photo's `src` or the days' prices ("set in the main-language file only", "Tag is missing").
+  it('merges a nested field both files have: the whole value in the new main file, only the texts in the translation', () => {
+    const dir = folder({
+      'app/routes.ts': "export const locales = ['en', 'de'] as const\n",
+      'content/lunch.md': '---\nweekOf: 2026-10-12\ndays:\n  - day: mo\n    dish: "Pasta: with cabbage"\n    price: 11.5\n    allergens: [A, C]\n  - day: tu\n    dish: Beef\nimage:\n  src: /media/a.jpg\n  alt: A table\nnote: |\n  Salad\n  included\n---\n',
+      'content/lunch.de.md': '---\ndays:\n  - dish: Fleckerl\n  - dish: Rind\nimage:\n  alt: Ein Tisch\nnote: |\n  Salat\n  dabei\n---\n',
+    })
+    pruneLocales(dir, ['en', 'de'], ['de', 'en'])
+    expect(read(dir, 'content/lunch.md')).toBe('---\ndays:\n  - day: mo\n    dish: Fleckerl\n    price: 11.5\n    allergens: [A, C]\n  - day: tu\n    dish: Rind\nimage:\n  src: /media/a.jpg\n  alt: Ein Tisch\nnote: |\n  Salat\n  dabei\nweekOf: 2026-10-12\n---\n')
+    expect(read(dir, 'content/lunch.en.md')).toBe('---\ndays:\n  - dish: "Pasta: with cabbage"\n  - dish: Beef\nimage:\n  alt: A table\nnote: |\n  Salad\n  included\n---\n')
+  })
+
   it('without app/routes.ts, rewrites the locales list in ginko.config.ts', () => {
     const dir = folder({ 'ginko.config.ts': "export default defineSite({\n  locales: ['en', 'de'],\n  languages: { de: 'de-AT', en: 'en-GB' },\n})\n" })
     pruneLocales(dir, ['en', 'de'], ['en'])
