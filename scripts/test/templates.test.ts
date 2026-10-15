@@ -105,6 +105,11 @@ describe('templates sync --check', () => {
       mkdirSync(join(root, 'templates/demo/app/assets/css'), { recursive: true })
       writeFileSync(join(root, 'templates/demo/app/assets/css/main.css'), ':root {\n  --brand: #c2410c;\n}\n.dark {\n  --brand: #fdba74;\n}\n')
     }, 'demo: seo.color in ginko.config.ts is not set; set it to #c2410c'],
+    ['a Latin line that ends in punctuation in an Arabic text', (root: string) => {
+      mkdirSync(join(root, 'templates/demo/content/pages'), { recursive: true })
+      // The second line is isolated (U+2068 … U+2069) and passes; the first would show as ".River Commons e.V".
+      writeFileSync(join(root, 'templates/demo/content/pages/1.donate.ar.md'), '---\ntitle: "تبرّعوا"\n---\n\nRiver Commons e.V.\\\n\u2068River Commons e.V.\u2069\\\nIBAN: DE00 0000\n')
+    }, 'demo: content/pages/1.donate.ar.md:5: "River Commons e.V." ends in punctuation'],
     ['a lockfile in the template', (root: string) => writeFileSync(join(root, 'templates/demo/package-lock.json'), '{}'), 'demo: package-lock.json must not be committed'],
     ['sample dates less than 90 days ahead', (root: string) => {
       const path = join(root, 'templates/demo/content/events/1.fair.md')

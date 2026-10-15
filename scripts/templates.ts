@@ -217,6 +217,33 @@ function cardColourProblem(name: string, dir: string, color: string | undefined)
   if (brand && color?.toLowerCase() !== brand.toLowerCase()) return `${name}: seo.color in ginko.config.ts is ${color ?? 'not set'}; set it to ${brand}, the light --brand of app/assets/css/main.css, so the share cards carry the accent`
 }
 
+/** Languages written right to left: their content files get the line check of `bidiProblems`. */
+const RTL = new Set(['ar', 'fa', 'he', 'ur'])
+
+/**
+ * Lines of right-to-left Markdown bodies that a browser shows in the wrong order: a line with Latin letters and no
+ * right-to-left letter that ends in punctuation ("River Commons e.V." turns into ".River Commons e.V" on its own line
+ * in an Arabic paragraph). Wrapping the line in U+2068 … U+2069 (first strong isolate) keeps it as written.
+ */
+export function bidiProblems(dir: string): string[] {
+  const content = join(dir, 'content')
+  if (!existsSync(content)) return []
+  const files = (readdirSync(content, { recursive: true }) as string[]).filter((file) => file.endsWith('.md') && RTL.has((contentLocale(`content/${file}`) ?? '').split('-')[0]!))
+  return files.flatMap((file) => {
+    const lines = readFileSync(join(content, file), 'utf8').split('\n')
+    // The body starts after the front matter; code blocks keep their text as it is.
+    let start = 0
+    if (lines[0] === '---') start = lines.indexOf('---', 1) + 1
+    let code = false
+    return lines.slice(start).flatMap((line, i) => {
+      if (line.trimStart().startsWith('```')) code = !code
+      const text = line.replace(/\\$/, '').replace(/^(>\s*)+/, '').trim()
+      const bad = !code && /[A-Za-z]/.test(text) && !/[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/.test(text) && /[.,:;!?)]$/.test(text) && !text.startsWith('\u2068')
+      return bad ? [`content/${file}:${start + i + 1}: "${text}" ends in punctuation on a right-to-left page; wrap the line in U+2068 … U+2069 so it keeps its order`] : []
+    })
+  })
+}
+
 /** `sync --check`: the problems, empty when the templates match their sources and rules. `today` is `YYYY-MM-DD`. */
 export async function syncCheck(root = repoRoot, { next = nextVersion(root), today = new Date().toISOString().slice(0, 10), only }: { next?: string | null; today?: string; only?: string } = {}): Promise<string[]> {
   const names = templateNames(root).filter((name) => !only || name === only)
@@ -239,6 +266,7 @@ export async function syncCheck(root = repoRoot, { next = nextVersion(root), tod
     for (const lock of lockfiles) if (existsSync(join(dir, lock))) problems.push(`${name}: ${lock} must not be committed in a template (install from the repository root)`)
     const anchor = pkg.ginko?.sampleAnchor
     if (!anchor || !/^\d{4}-\d{2}-\d{2}$/.test(anchor)) problems.push(`${name}: package.json needs "ginko": { "sampleAnchor": "YYYY-MM-DD" }`)
+    for (const problem of bidiProblems(dir)) problems.push(`${name}: ${problem}`)
     const config = await configOf(root, name)
     const colour = cardColourProblem(name, dir, config.seo?.color)
     if (colour) problems.push(colour)
