@@ -98,14 +98,14 @@ test.describe('Wirtin', () => {
   })
 
   // Wrong behaviour caught: after a text style the focus went back to the style button, and the next typed words were lost.
-  test('26. after "Zwischenüberschrift" typing goes on in the text', async ({ page }) => {
+  test('26. after "Unterüberschrift" typing goes on in the text', async ({ page }) => {
     await page.goto('/s/restaurant/all/events/new', { waitUntil: 'networkidle' })
     const text = page.getByRole('textbox', { name: 'Beschreibung' })
     await text.click()
     await page.keyboard.type('Gemütlicher Abend')
     await page.keyboard.press('Enter')
     await page.getByRole('combobox', { name: 'Blocktyp' }).click()
-    await page.getByRole('option', { name: 'Zwischenüberschrift' }).click()
+    await page.getByRole('option', { name: 'Unterüberschrift' }).click()
     await page.keyboard.type('Programm')
     await expect(text.getByRole('heading', { name: 'Programm' })).toBeVisible()
   })
@@ -139,7 +139,7 @@ test.describe('Wirtin', () => {
     await page.keyboard.press('Enter')
 
     await sheet.getByRole('combobox', { name: 'Blocktyp' }).click()
-    await sheet.getByRole('option', { name: 'Zwischenüberschrift', exact: true }).click()
+    await sheet.getByRole('option', { name: 'Unterüberschrift', exact: true }).click()
     await expect(text.locator('h3')).toHaveCount(1)
 
     await text.getByText('Gemütlicher Abend').selectText()

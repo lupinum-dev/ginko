@@ -148,7 +148,7 @@ describe('MarkdownEditor', () => {
     const trigger = wrapper.get('[role="combobox"][aria-label="Blocktyp"]').element
     trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' }))
     for (let i = 0; i < 50 && !document.querySelector('[role="option"]'); i++) { await wait(20); await flushPromises() }
-    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((o) => o.textContent?.trim() === 'Zwischenüberschrift')!
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((o) => o.textContent?.trim() === 'Unterüberschrift')!
     const frame = window.requestAnimationFrame
     window.requestAnimationFrame = (callback) => { callback(performance.now()); return 0 }
     try {
