@@ -385,6 +385,36 @@ describe('the answer of a save says what the other languages show', () => {
   })
 })
 
+describe('the address of a page in another language', () => {
+  // Wrong behaviour caught: an entry made in German keeps its German address in English for good, or a later English
+  // title edit moves an English page that is already online and breaks its links (romi-12, media-14).
+  it('comes from the translated title until the page is online there, then stays', async () => {
+    const s = await studioSetup()
+    const saveEnglish = (entry: Id<'entries'>, baseRev: number, fields: Record<string, unknown>) =>
+      s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev, locale: 'en', fields })
+    const slugRows = (entry: Id<'entries'>) => s.t.run(async (ctx) =>
+      (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry)).collect()).map((r) => `${r.locale}:${r.slug}`).sort())
+    const slugOf = async (entry: Id<'entries'>) => (await s.row(entry))!.data.slug
+
+    const wild = await s.createEvent('Wildwoche')
+    expect(await slugOf(wild.entry)).toEqual({ de: 'wildwoche', en: 'wildwoche' })
+    await saveEnglish(wild.entry, 1, { title: { en: 'Game week' } })
+    expect(await slugOf(wild.entry)).toEqual({ de: 'wildwoche', en: 'game-week' })
+    expect(await slugRows(wild.entry)).toEqual(['de:wildwoche', 'en:game-week'])
+
+    // The same English title on another entry takes the next free address.
+    const deer = await s.createEvent('Rehwoche')
+    await saveEnglish(deer.entry, 1, { title: { en: 'Game week' } })
+    expect(await slugOf(deer.entry)).toEqual({ de: 'rehwoche', en: 'game-week-2' })
+
+    // With its description the page is online in English: a new English title keeps the address.
+    await saveEnglish(wild.entry, 2, { description: { en: 'Venison all week' } })
+    await saveEnglish(wild.entry, 3, { title: { en: 'Game weeks' } })
+    expect(await slugOf(wild.entry)).toEqual({ de: 'wildwoche', en: 'game-week' })
+    expect(await slugRows(wild.entry)).toEqual(['de:wildwoche', 'en:game-week'])
+  })
+})
+
 describe('entries.whyNotPublic', () => {
   const codes = (result: { reasons: { code: string }[] }) => result.reasons.map((r) => r.code)
   const why = (s: Awaited<ReturnType<typeof studioSetup>>, entry: string, locale?: string) =>
