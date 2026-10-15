@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Name or logo, the navigation (at most 6 links; in a sheet below `md`, below `lg` when there are more than 4, so
+// Name or logo, the navigation (at most 6 links; in a sheet below `md`, below `xl` when there are more than 4, so
 // long labels never squeeze the header), the language switch and the theme toggle. Below `md` the language switch
 // moves into the sheet, so the sheet opens for a site with languages but no links too.
 const config = useSiteAppConfig()
@@ -16,12 +16,12 @@ const path = useGinkoPath()
         <SiteLogo />
         <span class="sr-only">, {{ t('home') }}</span>
       </NuxtLink>
-      <nav v-if="links.length" :aria-label="t('nav.label')" :class="wide ? 'max-lg:hidden' : 'max-md:hidden'">
+      <nav v-if="links.length" :aria-label="t('nav.label')" :class="wide ? 'max-xl:hidden' : 'max-md:hidden'">
         <ul class="flex items-center gap-1">
           <li v-for="link in links" :key="link.key">
             <SiteNavLink
               :to="link.to"
-              class="inline-flex min-h-11 items-center rounded-md px-3 text-small font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground aria-[current=page]:text-foreground underline-offset-4 aria-[current=page]:underline"
+              class="inline-flex min-h-11 items-center rounded-md px-3 text-small font-medium whitespace-nowrap text-muted-foreground transition-colors duration-150 hover:text-foreground aria-[current=page]:text-foreground underline-offset-4 aria-[current=page]:underline"
             >
               {{ link.label }}
             </SiteNavLink>

@@ -6,7 +6,7 @@ const { name } = useGinkoSite()
 
 <template>
   <img v-if="config.logo" :src="config.logo.src" :width="config.logo.width" :height="config.logo.height" :alt="name" class="h-8 w-auto">
-  <span v-else class="font-display text-body font-semibold">
+  <span v-else class="font-display text-body font-semibold whitespace-nowrap">
     <template v-if="config.shortName">
       <span class="sm:hidden">{{ config.shortName }}</span>
       <span class="max-sm:hidden">{{ name }}</span>

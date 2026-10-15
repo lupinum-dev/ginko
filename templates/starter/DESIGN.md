@@ -134,8 +134,9 @@ the 150 kB budget leaves) and, for this type scale, its configuration, because i
 a component's `class` prop only adds classes: to change one the component sets, change the component.
 
 `app/components/site/`: `SiteHeader` (name or logo, up to 6 links, language switch, theme toggle; the links move into
-`SiteNavSheet` below `md`, or below `lg` when there are more than 4), `SiteFooter`, `SiteSkipLink`, `SiteLogo`, `SiteNavLink`, `SiteThemeToggle`,
-`SiteLanguageSwitch` (the same page in each language), `SiteNotice` (up to two notices above the header).
+`SiteNavSheet` below `md`, or below `xl` when there are more than 4), `SiteFooter`, `SiteSkipLink`, `SiteLogo`,
+`SiteNavLink`, `SiteThemeToggle`, `SiteLanguageSwitch` (the same page in each language), `SiteNotice` (up to two
+notices above the header).
 
 `app/components/block/` and two more:
 
