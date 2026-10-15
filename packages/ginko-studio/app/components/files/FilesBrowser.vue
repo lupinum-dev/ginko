@@ -341,7 +341,9 @@ const emptyText = computed(() => {
     <aside v-if="singleId && desktop" class="min-w-0 overflow-y-auto" :aria-label="t('files.info.title')">
       <FileInfoPanel v-if="singleId" :id="singleId" :key="singleId" :lib="lib" :locales="locales" :in-trash="inTrash" :show-alt="mode !== 'picker'" @remove="askRemove" @move-to="openMove" @restore="restoreSelected" />
     </aside>
-    <Sheet v-if="!desktop && !picker" :open="singleId !== null" @update:open="(open) => { if (!open) clear() }">
+    <!-- Rendered on every width (closed when wide): the server cannot know the width, so a v-if on it would differ
+         between the server HTML and a wide browser. Its place before the remove dialog keeps that dialog on top. -->
+    <Sheet v-if="!picker" :open="singleId !== null && !desktop" @update:open="(open) => { if (!open) clear() }">
       <SheetContent side="bottom" class="max-h-[85vh] overflow-y-auto p-4" aria-describedby="undefined">
         <SheetHeader class="p-0"><SheetTitle>{{ t('files.info.title') }}</SheetTitle></SheetHeader>
         <FileInfoPanel v-if="singleId" :id="singleId" :key="singleId" :lib="lib" :locales="locales" :in-trash="inTrash" :show-alt="mode !== 'picker'" @remove="askRemove" @move-to="openMove" @restore="restoreSelected" />

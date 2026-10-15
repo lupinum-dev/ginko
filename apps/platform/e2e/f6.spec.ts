@@ -192,7 +192,12 @@ test.describe('Dateien', () => {
 
   test('4. fixing a missing alt text lowers the count at once, without a reload', async ({ page, context }) => {
     const photo = `f6-ohne-alt-${stamp()}.png`
+    // Wrong behaviour caught: the server rendered the phone layout of the library and a wide browser did not, so Vue
+    // threw the server HTML of that part away on every load (a hydration mismatch).
+    const mismatches: string[] = []
+    page.on('console', (message) => { if (message.text().includes('Hydration')) mismatches.push(message.text()) })
     await open(page, '/s/restaurant/files')
+    expect(mismatches).toEqual([])
     await uploadPhoto(page, photo)
     await usePhotoInSeo(page, photo, 'Gaststube')
 
