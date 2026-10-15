@@ -38,10 +38,8 @@ test('every page shows the email and phone of content/site.md in its footer', as
 test('the imprint shows the email and phone of content/site.md', async ({ page }) => {
   const { email, phone } = site.contact
   test.skip(!email && !phone, 'content/site.md has neither email nor phone')
-  await open(page, '/')
-  const imprint = page.locator('footer nav[aria-label] a').filter({ hasText: /imprint|impressum|note legali|mentions légales|بيانات/i }).first()
-  test.skip(await imprint.count() === 0, 'the template has no imprint')
-  await imprint.click()
+  test.skip(!site.imprint, 'the template has no content/legal file with legalType: imprint')
+  await open(page, site.imprint)
   const main = page.locator('main')
   if (email) await expect(main, 'imprint email').toContainText(email)
   if (phone) await expect(main, 'imprint phone').toContainText(phone)

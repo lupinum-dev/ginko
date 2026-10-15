@@ -7,7 +7,7 @@ export type SiteLocale = (typeof locales)[number]
 /**
  * The words of the addresses, per language: `localized('/menu/print')` gives `/de/speisekarte/drucken` in German. A
  * part of a path that is not listed here stays as it is. Slugs allow only a–z, 0–9 and `-`. To rename a section,
- * change its word here; the pages and links follow (`modules/page-paths.ts` reads this table for the page files).
+ * change its word here; the pages and links follow (`modules/page-paths/` reads this table for the page files).
  */
 export const segments: Record<string, Partial<Record<SiteLocale, string>>> = {
   menu: { en: 'menu', de: 'speisekarte', it: 'menu' },

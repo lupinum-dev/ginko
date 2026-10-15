@@ -9,7 +9,7 @@ fails on drift. Edit the files here, never the copies. Files not in `files.json`
 | Feature | Brings | Needs in the template |
 |---|---|---|
 | `ui` | `DESIGN.md`, `components.json`, `app/assets/css/tokens.css`, `app/lib/utils.ts`, `app/components/ui/` (shadcn-vue: button, sheet) | packages `tailwindcss`, `@tailwindcss/vite`, `tw-animate-css`, `shadcn-nuxt`, `reka-ui`, `@vueuse/core`, `class-variance-authority`, `clsx`, `@lucide/vue`; `app/assets/css/main.css` that imports tailwindcss, tw-animate-css and `./tokens.css` and sets `--brand`, `--brand-foreground` (light and `.dark`) and `--font-body`; `seo.color` in `ginko.config.ts` equal to the light `--brand` (`sync --check` compares them); `shadcn: { prefix: '', componentDir: './app/components/ui' }` and the Tailwind Vite plugin in `nuxt.config.ts` |
-| `site` | layout, header, phone nav sheet, footer, skip link, logo, theme toggle, language switch, notice bar, `/legal/<slug>` page, `error.vue`, `usePageSeo` (title, share card, JSON-LD), the blocks (Hero, PageHeader, Section, Cards, Features, Cta, Empty), `ProseBody`, `InitialsAvatar`, its texts in `i18n/site/`, `modules/feature-messages.ts`, `modules/page-paths/` (each Vue page's address per language from `ginko.config.ts`), `site-url.ts` | `ui`; bricks `site`, `legal` (route `localized('/legal/[slug]')`), `notices` from `@lupinum/ginko/basics` and a `home` page; `app/app.config.ts` with `site` (`SiteAppConfig`); `app/routes.ts` (`locales`, `localized`); modules `@lupinum/ginko/nuxt`, `@nuxt/fonts`, `@nuxtjs/color-mode` (`classSuffix: ''`), `nuxt-og-image` + `@takumi-rs/core`; `checkSiteUrl` in a `build:before` hook |
+| `site` | layout, header, phone nav sheet, footer, `SiteContact` (email, phone and address as links), skip link, logo, theme toggle, language switch, notice bar, `/legal/<slug>` page, `error.vue`, `usePageSeo` (title, share card, JSON-LD), the blocks (Hero, PageHeader, Section, Cards, Features, Cta, Empty), `ProseBody`, `InitialsAvatar`, its texts in `i18n/site/`, `app/utils/telHref.ts` (the one `tel:` link helper), `modules/feature-messages.ts`, `modules/page-paths/` (each Vue page's address per language from `ginko.config.ts`), `site-url.ts` | `ui`; bricks `site`, `legal` (route `localized('/legal/[slug]')`), `notices` from `@lupinum/ginko/basics` and a `home` page; `app/app.config.ts` with `site` (`SiteAppConfig`); `app/routes.ts` (`locales`, `localized`); modules `@lupinum/ginko/nuxt`, `@nuxt/fonts`, `@nuxtjs/color-mode` (`classSuffix: ''`), `nuxt-og-image` + `@takumi-rs/core`; `checkSiteUrl` in a `build:before` hook |
 | `pages` | the `pages` brick (`app/bricks/pages.ts`) and the catch-all page `app/pages/[...slug].vue` | `site`; `pages: pages({ route: localized('/[slug]'), source: 'files' })`; content in `content/pages/` |
 | `gallery` | `BlockGallery` (justified rows) and `SiteLightbox`, texts in `i18n/gallery/` | `ui`, `site`; the `gallery` brick from basics |
 | `faq` | `BlockFaq` and the shadcn-vue accordion it is built on (`app/components/ui/accordion/`) | `ui`, `site`; the `faq` brick from basics; `faqJsonLd(items)` in the page's `usePageSeo({ jsonLd })` |
@@ -62,14 +62,16 @@ A feature page lists its page key in the table above.
 
 ## Contact details: one source
 
-Email, phone and address are written once, in `content/site.md` (the `site` brick). The footer, the imprint rows of
+Email, phone and address are written once, in `content/site.md` (the `site` brick). The checks below cover email and
+phone; the street and city are not checked, because an event's `location` is its own data and may name the same place. The footer, the imprint rows of
 `/legal/<slug>`, the reservations and event buttons and `SiteContact` (`app/components/site/Contact.vue`: email, phone
 and address as links) read them from there; opening hours come from the hours bricks. A text never repeats a value:
 it says "write to us" and the page that shows the details (the pages feature's `components/pages/Top.vue` hook puts
 `<SiteContact />` under the title of one page, as the starter does for `pages/contact` and the nonprofit for
 `pages/get-involved`). Two checks keep it so: `sync --check` fails when the email or phone of `content/site.md` appears
-in another file of `content/`, `app/` or `i18n/`, and gate 3 looks for both in every page's footer and in the imprint.
-A person's own address (the `people` brick) is that person's data and may be linked in a text.
+in another file of `content/`, `app/` or `i18n/`, and gate 3 looks for both in every page's footer and in the imprint (opened from its `legalType: imprint` file).
+`SiteContact` is a shared file of the site feature: a template that shows its details its own way (the restaurant) carries
+it unused; it is lazy, so it costs no script. A person's own address (the `people` brick) is that person's data and may be linked in a text.
 
 ## Script budget (gate 6)
 
