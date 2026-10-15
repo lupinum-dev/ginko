@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
-import { sync, syncCheck } from '../templates.ts'
+import { type Result, sync, syncCheck, withUnrun } from '../templates.ts'
 
 const work = mkdtempSync(join(tmpdir(), 'templates-script-'))
 afterAll(() => rmSync(work, { recursive: true, force: true }))
@@ -89,5 +89,19 @@ describe('templates sync --check', () => {
     sync(root, '0.5.0')
     expect(await syncCheck(root, { next: '0.5.0', today: TODAY })).toEqual([])
     expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([])
+  })
+})
+
+describe('test --only', () => {
+  // Wrong behaviour caught: `--only 4 --mode single` or `--only 3` after a failed setup prints "0 passed, 0 failed"
+  // and exits 0, though the requested gate never ran.
+  const setupFailed: Result = { gate: 1, mode: 'both', check: 'create-ginko build + pack', ok: false }
+  const gate3: Result = { gate: 3, mode: 'multi', check: 'e2e', ok: true }
+  it.each([
+    { gates: [4], modes: ['single'] as const, results: [], failed: ['gate 4 did not run: needs multi mode'] },
+    { gates: [3], modes: ['single', 'multi'] as const, results: [setupFailed], failed: [undefined, 'gate 3 did not run: a setup step it needs failed'] },
+    { gates: [3], modes: ['multi'] as const, results: [gate3], failed: [] },
+  ])('gates $gates in $modes', ({ gates, modes, results, failed }) => {
+    expect(withUnrun(results, gates, [...modes]).filter((r) => !r.ok).map((r) => r.detail)).toEqual(failed)
   })
 })

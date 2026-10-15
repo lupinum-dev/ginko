@@ -20,16 +20,13 @@ import { basename, dirname, extname, join, relative } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
-import { manifestOf, sampleDates } from '../packages/create-ginko/template-files.mjs'
+import { lockfiles, manifestOf, notCopied, sampleDates } from '../packages/create-ginko/template-files.mjs'
 
 const execFile = promisify(execFileCallback)
 export const repoRoot = join(import.meta.dirname, '..')
 
 /** The templates in their T1 order; `dev` ports follow it, so a port never moves when a template is added. */
 const T1 = ['starter', 'blog', 'portfolio', 'company', 'saas', 'docs', 'restaurant', 'local-business', 'nonprofit', 'events']
-const LOCKFILES = ['pnpm-lock.yaml', 'package-lock.json', 'yarn.lock', 'bun.lock', 'bun.lockb', 'npm-shrinkwrap.json']
-/** Build output and installs: never copied out of a template. */
-const NOT_COPIED = new Set(['node_modules', '.nuxt', '.output', '.data', '.env', 'test-results', ...LOCKFILES])
 const MIN_FUTURE_DAYS = 90
 
 type Pkg = { name: string; version?: string; dependencies?: Record<string, string>; devDependencies?: Record<string, string>; ginko?: { sampleAnchor?: string; features?: string[] }; overrides?: Record<string, string> }
@@ -187,7 +184,7 @@ export async function syncCheck(root = repoRoot, { next = nextVersion(root), tod
     for (const [, dep, range] of lupinumDeps(pkg, group)) {
       if (!accepted.includes(range)) problems.push(`${name}: ${dep} is "${range}"; expected ${accepted.join(' or ')} (run pnpm templates sync)`)
     }
-    for (const lock of LOCKFILES) if (existsSync(join(dir, lock))) problems.push(`${name}: ${lock} must not be committed in a template (install from the repository root)`)
+    for (const lock of lockfiles) if (existsSync(join(dir, lock))) problems.push(`${name}: ${lock} must not be committed in a template (install from the repository root)`)
     const anchor = pkg.ginko?.sampleAnchor
     if (!anchor || !/^\d{4}-\d{2}-\d{2}$/.test(anchor)) problems.push(`${name}: package.json needs "ginko": { "sampleAnchor": "YYYY-MM-DD" }`)
     const { shift } = await shiftOf(root, name)
@@ -203,9 +200,21 @@ export async function syncCheck(root = repoRoot, { next = nextVersion(root), tod
 // ---------------------------------------------------------------------------------------------------------------
 // test <name>: gates 1–6
 
-type Mode = 'single' | 'multi'
-type Result = { gate: number; mode: Mode | 'both'; check: string; ok: boolean; detail?: string }
+export type Mode = 'single' | 'multi'
+export type Result = { gate: number; mode: Mode | 'both'; check: string; ok: boolean; detail?: string }
 const GATES = [1, 2, 3, 4, 5, 6]
+
+/**
+ * The results plus one failure for each requested gate that recorded nothing, so `--only` never reports green for a
+ * gate that did not run: gates 4–6 run on the multi site only, and any gate stops when a setup step it needs failed.
+ */
+export function withUnrun(results: Result[], gates: number[], modes: Mode[]): Result[] {
+  const unrun = gates.filter((gate) => !results.some((r) => r.gate === gate)).map((gate): Result => ({
+    gate, mode: 'both', check: 'did not run', ok: false,
+    detail: gate >= 4 && !modes.includes('multi') ? `gate ${gate} did not run: needs multi mode` : `gate ${gate} did not run: a setup step it needs failed`,
+  }))
+  return [...results, ...unrun]
+}
 const outputOf = (error: unknown) => {
   const e = error as { stdout?: unknown; stderr?: unknown; message?: string }
   return `${String(e.stdout ?? '')}${String(e.stderr ?? '')}`.trim() || String(e.message ?? error)
@@ -221,7 +230,7 @@ async function freePort(): Promise<number> {
 
 /** Copies a folder without build output, installs and lockfiles; node_modules by APFS clone when asked (macOS `cp -c`). */
 function copyTemplate(from: string, to: string) {
-  cpSync(from, to, { recursive: true, filter: (path) => !NOT_COPIED.has(basename(path)) })
+  cpSync(from, to, { recursive: true, filter: (path) => !notCopied.has(basename(path)) })
 }
 function cloneDir(from: string, to: string) {
   const clone = spawnSync('cp', ['-cR', from, to])
@@ -243,19 +252,20 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
   const secret = randomBytes(32).toString('hex')
   const { locales } = await shiftOf(root, name)
   const results: Result[] = []
-  const record = (gate: number, mode: Result['mode'], check: string, ok: boolean, detail?: string) => {
-    if (!gates.includes(gate)) return
+  /** A result of a requested gate; a failed setup step (`blocks`) is recorded whatever the gate, since later gates need it. */
+  const record = (gate: number, mode: Result['mode'], check: string, ok: boolean, detail?: string, blocks = false) => {
+    if (!gates.includes(gate) && (ok || !blocks)) return
     results.push({ gate, mode, check, ok, detail })
     console.log(`${ok ? 'PASS' : 'FAIL'} gate ${gate} ${mode} ${check}${detail && !ok ? `\n${detail.split('\n').slice(0, 40).map((l) => `     ${l}`).join('\n')}` : ''}`)
   }
   /** Runs one step; a failure becomes a result, never a crash. */
-  const step = async (gate: number, mode: Result['mode'], check: string, fn: () => Promise<unknown>) => {
+  const step = async (gate: number, mode: Result['mode'], check: string, fn: () => Promise<unknown>, blocks = false) => {
     try {
       await fn()
       record(gate, mode, check, true)
       return true
     } catch (error) {
-      record(gate, mode, check, false, outputOf(error).slice(0, 6000))
+      record(gate, mode, check, false, outputOf(error).slice(0, 6000), blocks)
       return false
     }
   }
@@ -277,7 +287,7 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
         const out = (await run('pnpm', ['pack', '--pack-destination', tgz], dirs[dep]!)).trim().split('\n').findLast((line) => line.trim().endsWith('.tgz'))!.trim()
         tarball[dep] = out.startsWith('/') ? out : join(tgz, out)
       }
-    })
+    }, true)
     if (!packed) return results
     /** Points the site's Ginko packages (also nested ones, via npm overrides) at the tarballs. */
     const useTarballs = (siteDir: string) => {
@@ -297,7 +307,7 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
       copyTemplate(templateDir, multi)
       useTarballs(multi)
       await npmInstall(multi)
-    })
+    }, modes.includes('multi'))
     if (multiOk && modes.includes('multi')) dirs.multi = multi
     if (modes.includes('single')) {
       // single: the packed create-ginko with the main locale only; node_modules cloned from multi, then npm settles them.
@@ -311,12 +321,12 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
           cpSync(join(multi, 'package-lock.json'), join(single, 'package-lock.json'))
         }
         await npmInstall(single)
-      })
+      }, true)
       if (ok) dirs.single = single
     }
     // pnpm once (allowBuilds, gate 2): pnpm 11 stops on any install script the template's pnpm-workspace.yaml leaves out.
     const pnpmDir = join(work, 'pnpm')
-    await step(2, 'both', 'allowBuilds (pnpm install)', async () => {
+    if (gates.includes(2)) await step(2, 'both', 'allowBuilds (pnpm install)', async () => {
       copyTemplate(templateDir, pnpmDir)
       useTarballs(pnpmDir)
       const site = readJson<Pkg>(join(pnpmDir, 'package.json'))
@@ -341,21 +351,20 @@ async function test(name: string, gates: number[], modes: Mode[]): Promise<Resul
     for (const mode of modes) {
       const dir = dirs[mode]
       if (!dir) continue
-      // Gate 2: types, lint, build, ginko check, platform-ready, sync --check.
-      await step(2, mode, 'vue-tsc (nuxt typecheck)', () => run('npx', ['nuxt', 'typecheck'], dir))
-      await step(2, mode, 'eslint', () => run('npx', ['eslint', '.'], dir))
-      const built = await step(2, mode, 'nuxt build', () => run('npx', ['nuxt', 'build'], dir, clockEnv))
-      await step(2, mode, 'ginko check', () => run('npx', ['ginko', 'check'], dir))
-      await step(2, mode, 'platform-ready (checkSite with source removed from every brick)', () => platformReady(dir))
-      if (mode === 'multi') {
+      const browserGates = gates.filter((gate) => gate >= 3 && (gate === 3 || mode === 'multi'))
+      // Gate 2: types, lint, build, ginko check, platform-ready, sync --check. The build also serves gates 3–6.
+      if (gates.includes(2)) await step(2, mode, 'vue-tsc (nuxt typecheck)', () => run('npx', ['nuxt', 'typecheck'], dir))
+      if (gates.includes(2)) await step(2, mode, 'eslint', () => run('npx', ['eslint', '.'], dir))
+      const built = (gates.includes(2) || browserGates.length > 0) && await step(2, mode, 'nuxt build', () => run('npx', ['nuxt', 'build'], dir, clockEnv), browserGates.length > 0)
+      if (gates.includes(2)) await step(2, mode, 'ginko check', () => run('npx', ['ginko', 'check'], dir))
+      if (gates.includes(2)) await step(2, mode, 'platform-ready (checkSite with source removed from every brick)', () => platformReady(dir))
+      if (mode === 'multi' && gates.includes(2)) {
         await step(2, 'both', 'sync --check', async () => {
           const problems = await syncCheck(root, { only: name })
           if (problems.length) throw new Error(problems.join('\n'))
         })
       }
-      if (!built) continue
-      const browserGates = gates.filter((gate) => gate >= 3 && (gate === 3 || mode === 'multi'))
-      if (!browserGates.length) continue
+      if (!built || !browserGates.length) continue
       // Gates 3–6 against the built server, with the test clock on the server and in the browser.
       const port = await freePort()
       const server = spawn('node', ['.output/server/index.mjs'], { cwd: dir, env: { ...process.env, ...clockEnv, PORT: String(port), NUXT_APP_SECRET: secret }, stdio: 'ignore' })
@@ -454,12 +463,14 @@ async function main(argv: string[]) {
     const mode = option('--mode')
     if (only !== undefined && !GATES.includes(Number(only))) { console.error(`--only takes a gate: ${GATES.join(', ')}\n${usage}`); process.exit(2) }
     if (mode !== undefined && mode !== 'single' && mode !== 'multi') { console.error(`--mode takes single or multi\n${usage}`); process.exit(2) }
-    const results = await test(name, only ? [Number(only)] : GATES, mode ? [mode] : ['single', 'multi'])
+    const gates = only ? [Number(only)] : GATES
+    const modes: Mode[] = mode ? [mode] : ['single', 'multi']
+    const results = withUnrun(await test(name, gates, modes), gates, modes)
     const failed = results.filter((r) => !r.ok)
     console.log(`\ntemplates test ${name}: ${results.length - failed.length} passed, ${failed.length} failed`)
     for (const gate of GATES) {
       const own = results.filter((r) => r.gate === gate)
-      if (own.length) console.log(`  gate ${gate}: ${own.every((r) => r.ok) ? 'PASS' : `FAIL (${own.filter((r) => !r.ok).map((r) => `${r.mode} ${r.check.split(',')[0]}`).join('; ')})`}`)
+      if (own.length) console.log(`  gate ${gate}: ${own.every((r) => r.ok) ? 'PASS' : `FAIL (${own.filter((r) => !r.ok).map((r) => r.check === 'did not run' ? r.detail : `${r.mode} ${r.check.split(',')[0]}`).join('; ')})`}`)
     }
     process.exit(failed.length ? 1 : 0)
   }
