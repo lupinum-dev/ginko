@@ -61,7 +61,6 @@ export function services<const E extends Fields = {}>(o: RoutedOptions<E> = {}) 
       description: f.longtext(both('Beschreibung', 'Description')),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
       icon: f.text(both('Icon', 'Icon'), { optional: true }),
-      featured: f.boolean(both('Hervorgehoben', 'Featured'), { optional: true }),
       outcome: f.longtext(both('Ergebnis', 'Outcome'), { optional: true }),
       body: bodyOf(both('Text', 'Text'), o),
     },
@@ -69,8 +68,6 @@ export function services<const E extends Fields = {}>(o: RoutedOptions<E> = {}) 
 }
 
 export interface CaseStudyOptions<E extends Fields = {}> extends RoutedOptions<E> {
-  /** Key of the services brick that "related services" points to. `false`: no such field. Default `services`. */
-  servicesBrick?: string | false
   /** Work areas to tick on a case study. */
   categories?: readonly { value: string; label: Label }[]
 }
@@ -80,11 +77,8 @@ export function caseStudies<const E extends Fields = {}>(o: CaseStudyOptions<E> 
     { value: 'websites', label: both('Websites', 'Websites') }, { value: 'video', label: both('Video', 'Video') },
     { value: 'branding', label: both('Branding', 'Branding') }, { value: 'tools', label: both('Tools', 'Tools') },
   ]
-  // Display only: the Studio shows these fields under four headings, as tabs on wide screens.
-  const [project, result, work, home] = [both('Projekt', 'Project'), both('Ergebnis', 'Result'), both('Leistungen', 'Work'), both('Startseite', 'Homepage')]
-  const related: Fields = o.servicesBrick === false ? {} : {
-    relatedServices: f.refs(both('Passende Leistungen', 'Related services'), { to: o.servicesBrick ?? 'services', max: 6, optional: true, group: work }),
-  }
+  // Display only: the Studio shows these fields under three headings, as tabs on wide screens.
+  const [project, result, work] = [both('Projekt', 'Project'), both('Ergebnis', 'Result'), both('Leistungen', 'Work')]
   return withExtras(collection({
     ...common(o, both('Referenzen', 'Case studies'), 200),
     layout: 'tabs',
@@ -101,11 +95,8 @@ export function caseStudies<const E extends Fields = {}>(o: CaseStudyOptions<E> 
       date: f.date(both('Datum', 'Date'), { group: project }),
       summary: f.longtext(both('Zusammenfassung', 'Summary')),
       services: f.list(both('Leistungen', 'Work done'), { itemLabel: both('Leistung', 'Item'), fields: { name: f.text(both('Leistung', 'Item')) }, max: 20, group: work }),
+      // The site's one source for "which of our services was this project". `services` are free tags.
       serviceCategories: f.choices(both('Bereiche', 'Areas'), { options: categories, group: work }),
-      ...related,
-      // Position on the homepage (1 = first). Unset = not on the homepage.
-      homeOrder: f.number(both('Position auf der Startseite', 'Position on the homepage'), { min: 1, max: 99, step: 1, optional: true, group: home }),
-      featured: f.boolean(both('Hervorgehoben', 'Featured'), { optional: true, group: home }),
       period: f.text(both('Zeitraum', 'Period'), { optional: true, group: project }),
       measurable: f.text(both('Messbares Ergebnis', 'Measurable result'), { optional: true, group: result }),
       body: bodyOf(both('Text', 'Text'), o),
@@ -131,7 +122,7 @@ export function blog<const E extends Fields = {}>(o: BlogOptions<E> = {}) {
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
       badge: f.text(both('Kennzeichen', 'Badge'), { optional: true }),
       date: f.date(both('Datum', 'Date')),
-      readingTime: f.text(both('Lesezeit', 'Reading time'), { optional: true }),
+      // No reading time field: a site computes it from the text with `wordsOf(body)` from @lupinum/ginko.
       ...author,
       body: bodyOf(both('Text', 'Text'), o),
     },
@@ -196,13 +187,13 @@ export function faq<const E extends Fields = {}>(o: BrickOptions<E> = {}) {
     order: 'manual',
     tasks: [
       { id: 'add', label: both('Frage hinzufügen', 'Add a question'), kind: 'create' },
-      { id: 'edit', label: both('Frage bearbeiten', 'Edit a question'), kind: 'edit', pick: true, fields: ['question', 'answer', 'category'] },
+      { id: 'edit', label: both('Frage bearbeiten', 'Edit a question'), kind: 'edit', pick: true, fields: ['question', 'answer'] },
       { id: 'remove', label: both('Frage entfernen', 'Remove a question'), kind: 'remove' },
     ],
     fields: {
       question: f.text(both('Frage', 'Question')),
       answer: f.longtext(both('Antwort', 'Answer')),
-      category: f.text(both('Kategorie', 'Category'), { optional: true }),
+      // No category: a site that groups its questions adds a `choice` field through `extra`.
     },
   }), o)
 }

@@ -59,15 +59,17 @@ Bricks with a detail page also take `route`, one path per language with `[slug]`
 
 ```ts
 leistungen: services({ route: { de: '/angebot/[slug]' }, extra: { color: f.text('Farbe', { optional: true }) } }),
-referenzen: caseStudies({ servicesBrick: 'leistungen' }),
+faq: faq({ extra: { topic: f.choice('Thema', { options: ['Kosten', 'Ablauf'], optional: true }) } }),
 ```
 
 Relations use the `ref` field type. A reference to a file entry is written as `<brick>/<file name>`, for example
 `author: authors/jane`.
 
-- `blog({ authorsBrick })`: key of the authors brick (default `authors`); `false` removes the `author` field.
-- `caseStudies({ servicesBrick, categories })`: key of the services brick for `relatedServices` (default `services`;
-  `false` removes it); `categories` replaces the work areas.
+- `blog({ authorsBrick })`: key of the authors brick (default `authors`); `false` removes the `author` field. A post
+  has no reading time field: compute it from the text, e.g. `Math.max(1, Math.round((wordsOf(post.data.body) ?? 0) / 200))`
+  with `wordsOf` from `@lupinum/ginko`.
+- `caseStudies({ categories })`: `categories` replaces the work areas (`serviceCategories`), the one field that says
+  which of your services a case study belongs to. `services` are free tags for the overview.
 - `legal({ types })`: replaces the kinds of legal page.
 - `authors()` and `team()` have a detail page only when you pass `route` (`team` then needs a `slug` field in `extra`).
 

@@ -30,7 +30,7 @@ describe('every factory passes the core schema check', () => {
     default: () => ({ services: services(), caseStudies: caseStudies(), blog: blog(), authors: authors(), legal: legal(), faq: faq(), team: team(), jobs: jobs() }),
     'custom routes, keys and extra fields': () => ({
       leistungen: services({ route: { de: '/angebot/[slug]', en: '/en/offer/[slug]' }, extra: { color: f.text('Farbe', { optional: true }) } }),
-      referenzen: caseStudies({ servicesBrick: 'leistungen', route: { de: '/projekte/[slug]', en: '/en/work/[slug]' } }),
+      referenzen: caseStudies({ route: { de: '/projekte/[slug]', en: '/en/work/[slug]' } }),
       artikel: blog({ authorsBrick: 'autoren', route: { de: '/journal/[slug]', en: '/en/journal/[slug]' } }),
       autoren: authors({ route: { de: '/autoren/[slug]', en: '/en/authors/[slug]' } }),
       rechtliches: legal({ types: [{ value: 'imprint', label: 'Impressum' }], route: { de: '/recht/[slug]', en: '/en/legal/[slug]' } }),
@@ -38,7 +38,7 @@ describe('every factory passes the core schema check', () => {
       team: team({ extra: { slug: f.slug('Adresse', { from: 'name' }) }, route: { de: '/team/[slug]', en: '/en/team/[slug]' } }),
       stellen: jobs({ route: { de: '/jobs/[slug]', en: '/en/jobs/[slug]' }, label: 'Offene Stellen' }),
     }),
-    'without relations': () => ({ blog: blog({ authorsBrick: false }), caseStudies: caseStudies({ servicesBrick: false }) }),
+    'without relations': () => ({ blog: blog({ authorsBrick: false }) }),
   }
   it.each(Object.entries(all))('%s', (_name, bricks) => {
     expect(problems(bricks())).toEqual([])
@@ -59,7 +59,7 @@ describe('every factory passes the core schema check', () => {
 
   it('extra fields join the preset fields, and field labels are replaced', () => {
     const brick = services({ extra: { color: f.text('Farbe') }, fieldLabels: { outcome: 'Wirkung' } })
-    expect(Object.keys(brick.fields)).toEqual(['title', 'description', 'slug', 'icon', 'featured', 'outcome', 'body', 'color'])
+    expect(Object.keys(brick.fields)).toEqual(['title', 'description', 'slug', 'icon', 'outcome', 'body', 'color'])
     expect(brick.fields.outcome.label).toBe('Wirkung')
   })
 })
@@ -80,7 +80,7 @@ describe('labels', () => {
 describe('a config like lupinum-v7 can be expressed', () => {
   const v7 = siteWith({
     leistungen: services({ route: { de: '/leistungen/[slug]' } }),
-    referenzen: caseStudies({ servicesBrick: 'leistungen', route: { de: '/referenzen/[slug]' } }),
+    referenzen: caseStudies({ route: { de: '/referenzen/[slug]' } }),
     blog: blog({ route: { de: '/blog/[slug]' } }),
     rechtliches: legal({ route: { de: '/[slug]' } }),
     authors: authors(),
@@ -101,18 +101,17 @@ describe('a config like lupinum-v7 can be expressed', () => {
 
   // Field names from v7's ginko.config.ts. `updated` is `updatedAt` in the preset.
   it.each([
-    ['leistungen', ['title', 'description', 'slug', 'icon', 'featured', 'outcome', 'body']],
-    ['referenzen', ['title', 'description', 'slug', 'client', 'industry', 'outcome', 'date', 'summary', 'services', 'serviceCategories', 'homeOrder', 'featured', 'period', 'measurable', 'body']],
-    ['blog', ['title', 'description', 'slug', 'badge', 'date', 'readingTime', 'author', 'body']],
+    ['leistungen', ['title', 'description', 'slug', 'icon', 'outcome', 'body']],
+    ['referenzen', ['title', 'description', 'slug', 'client', 'industry', 'outcome', 'date', 'summary', 'services', 'serviceCategories', 'period', 'measurable', 'body']],
+    ['blog', ['title', 'description', 'slug', 'badge', 'date', 'author', 'body']],
     ['rechtliches', ['title', 'description', 'slug', 'legalType', 'updatedAt', 'body']],
     ['authors', ['name', 'slug', 'role', 'bio', 'avatar', 'links']],
-    ['faq', ['question', 'answer', 'category']],
+    ['faq', ['question', 'answer']],
   ])('%s has the fields v7 uses', (key, names) => {
     expect(names.filter((name) => !(name in schema.bricks[key]!.fields))).toEqual([])
   })
 
-  it('points blog.author at authors and referenzen at leistungen', () => {
+  it('points blog.author at authors', () => {
     expect(schema.bricks.blog!.fields.author).toMatchObject({ type: 'ref', to: 'authors' })
-    expect(schema.bricks.referenzen!.fields.relatedServices).toMatchObject({ type: 'ref', to: 'leistungen', multiple: true })
   })
 })
