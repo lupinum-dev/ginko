@@ -332,7 +332,7 @@ it('withMarkdownRefs: a platform text becomes only its ref in page state, and th
   const out = withMarkdownRefs(bundle, serializeSchema(restaurant), trees, (brick, id, field) => platformMarkdownRef('de', '1.1', brick, id, field))
   const legal = out.bricks.legal
   expect(legal?.kind === 'single' && legal.data.imprint).toEqual({ ref: '/__ginko/platform/de/1.1/md/legal/legal/imprint.json' })
-  expect(trees.get('/__ginko/platform/de/1.1/md/legal/legal/imprint.json')?.nodes[0]).toEqual(['p', {}, 'Gasthaus zur Linde, Inhaberin Maria Ebner', ['br', {}], 'Dorfstraße 12, 5020 Salzburg'])
+  expect(trees.get('/__ginko/platform/de/1.1/md/legal/legal/imprint.json')?.nodes[0]).toEqual(['p', {}, 'Inhaberin: Maria Ebner (Einzelunternehmen)'])
 })
 
 // Wrong behaviour caught: a picture of the Files library inside a text (`$file.<id>`) reaches the site as that literal

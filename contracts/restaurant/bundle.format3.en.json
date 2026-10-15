@@ -200,7 +200,7 @@
         {
           "id": "notice-urlaub",
           "data": {
-            "text": "Betriebsurlaub vom 22. Dezember bis 6. Jänner.",
+            "text": "Betriebsurlaub vom 27. Dezember bis 6. Jänner.",
             "until": "2026-09-30"
           },
           "fallback": [
@@ -672,24 +672,44 @@
             [
               "p",
               {},
-              "Gasthaus zur Linde, Inhaberin Maria Ebner",
-              [
-                "br",
-                {}
-              ],
-              "Dorfstraße 12, 5020 Salzburg"
+              "Inhaberin: Maria Ebner (Einzelunternehmen)"
             ],
             [
               "p",
               {},
-              "Kontakt: ",
+              "Unternehmensgegenstand: Gastgewerbe (Gasthaus)",
+              [
+                "br",
+                {}
+              ],
+              "UID-Nummer: ATU00000000",
+              [
+                "br",
+                {}
+              ],
+              "Gewerbebehörde: Magistrat der Stadt Salzburg",
+              [
+                "br",
+                {}
+              ],
+              "Mitglied der Wirtschaftskammer Salzburg, Fachgruppe Gastronomie",
+              [
+                "br",
+                {}
+              ],
+              "Berufsrecht: Gewerbeordnung, abrufbar unter ",
               [
                 "a",
                 {
-                  "href": "mailto:office@gasthaus-linde.example"
+                  "href": "https://www.ris.bka.gv.at"
                 },
-                "office@gasthaus-linde.example"
+                "ris.bka.gv.at"
               ]
+            ],
+            [
+              "p",
+              {},
+              "Offenlegung nach § 25 Mediengesetz: Medieninhaberin ist Maria Ebner. Die Website informiert über das Gasthaus zur Linde, seine Speisen und Veranstaltungen."
             ]
           ],
           "toc": {

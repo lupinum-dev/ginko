@@ -13,13 +13,13 @@ test('renders the bundle and proves its revision', async ({ page }) => {
 })
 
 // Wrong behaviour caught: a Markdown field arrives as a string or a tree the site cannot render, so the text,
-// its line break or its link is missing.
-test('a Markdown text renders with its link and line break', async ({ page }) => {
+// its line breaks or its link is missing.
+test('a Markdown text renders with its link and line breaks', async ({ page }) => {
   await page.goto('/impressum')
   const text = page.locator('.prose').first()
-  await expect(text).toContainText('Inhaberin Maria Ebner')
-  await expect(text.locator('br')).toHaveCount(1)
-  await expect(text.locator('a[href="mailto:office@gasthaus-linde.example"]')).toBeVisible()
+  await expect(text).toContainText('Inhaberin: Maria Ebner')
+  await expect(text.locator('br')).toHaveCount(4)
+  await expect(text.locator('a[href="https://www.ris.bka.gv.at"]')).toBeVisible()
 })
 
 test('a platform failure is a 503, never a 404', async ({ page, request }) => {
