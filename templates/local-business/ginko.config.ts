@@ -34,16 +34,19 @@ export default defineSite({
     contact: localized('/contact'),
   },
   bricks: {
-    // The first screen of the home page: the practice's name, one line about it and an optional photo (content/home.md).
-    home: single({
-      label: { de: 'Startseite', en: 'Home page' },
-      source: 'files',
-      fields: {
-        title: f.text({ de: 'Titel', en: 'Title' }, { max: 80 }),
-        lead: f.longtext({ de: 'Einleitung', en: 'Lead' }, { max: 200 }),
-        image: f.image({ de: 'Foto', en: 'Photo' }, { optional: true }),
-      },
-    }),
+    // In the order of the Studio's Today page: the hours, the notices, the treatments and the team first.
+    // The usual week, closures such as the Christmas break, and closed on public holidays (content/hours.md). In the
+    // Studio, Today shows today's hours, and "Closed today" is one task.
+    hours: hours({ source: 'files', plans: 'hourPlans' }),
+    // Short lines at the top of every page ("The courtyard is closed for building work"), each until a date
+    // (content/notices/).
+    notices: notices({ source: 'files' }),
+    // Treatments with their price (or "on request", as an explicit choice) and duration (content/services/).
+    services: services({ source: 'files', route: localized('/services/[slug]') }),
+    // The therapists and the front desk, with their qualifications (content/people/). No photos: the site shows initials.
+    people: people({ source: 'files' }),
+    // Other weekly hours for a date range, such as shorter summer hours that repeat every year (content/hourPlans/).
+    hourPlans: hourPlans({ source: 'files' }),
     // How to book and how to get here (content/visit.md): when the phone is answered, an online booking page if the
     // practice uses one, and access, parking and public transport. The contact page and the home page show it; the
     // address, phone and email come from content/site.md.
@@ -69,28 +72,26 @@ export default defineSite({
         { id: 'directions', kind: 'edit', fields: ['access', 'parking', 'transit'], label: { de: 'Anfahrt ändern', en: 'Change the directions' } },
       ],
     }),
+    // Questions and answers: prescription and insurance, what to bring, cancelling (content/faq/).
+    faq: faq({ source: 'files' }),
+    // Photos of the practice on the contact page (content/gallery.md).
+    gallery: gallery({ source: 'files' }),
+    // The first screen of the home page: the practice's name, one line about it and an optional photo (content/home.md).
+    home: single({
+      label: { de: 'Startseite', en: 'Home page' },
+      source: 'files',
+      fields: {
+        title: f.text({ de: 'Titel', en: 'Title' }, { max: 80 }),
+        lead: f.longtext({ de: 'Einleitung', en: 'Lead' }, { max: 200 }),
+        image: f.image({ de: 'Foto', en: 'Photo' }, { optional: true }),
+      },
+    }),
+    // About the practice and any other page (content/pages/).
+    pages: pages({ route: localized('/[slug]'), source: 'files' }),
     // Legal name, address, phone and email for the footer, the imprint, the call and email buttons and the
     // Physiotherapy JSON-LD (content/site.md). The country comes from `country` above.
     site: site({ source: 'files' }),
     // Privacy policy, payment and cancellation terms, imprint: one file per text in content/legal/.
     legal: legal({ source: 'files', route: localized('/legal/[slug]') }),
-    // Short lines at the top of every page ("The courtyard is closed for building work"), each until a date
-    // (content/notices/).
-    notices: notices({ source: 'files' }),
-    // The usual week, closures such as the Christmas break, and closed on public holidays (content/hours.md). In the
-    // Studio, Today shows today's hours, and "Closed today" is one task.
-    hours: hours({ source: 'files', plans: 'hourPlans' }),
-    // Other weekly hours for a date range, such as shorter summer hours that repeat every year (content/hourPlans/).
-    hourPlans: hourPlans({ source: 'files' }),
-    // Treatments with their price (or "on request", as an explicit choice) and duration (content/services/).
-    services: services({ source: 'files', route: localized('/services/[slug]') }),
-    // The therapists and the front desk, with their qualifications (content/people/). No photos: the site shows initials.
-    people: people({ source: 'files' }),
-    // Questions and answers: prescription and insurance, what to bring, cancelling (content/faq/).
-    faq: faq({ source: 'files' }),
-    // Photos of the practice on the contact page (content/gallery.md).
-    gallery: gallery({ source: 'files' }),
-    // About the practice and any other page (content/pages/).
-    pages: pages({ route: localized('/[slug]'), source: 'files' }),
   },
 })
