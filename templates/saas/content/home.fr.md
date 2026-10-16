@@ -2,7 +2,7 @@
 title: "Le planning des équipes pour les EHPAD et les petites cliniques."
 lead: "Planwerk est une application web pour le planning du mois. Elle vérifie les temps de repos et les qualifications pendant que vous planifiez, montre à chacun ses horaires sur son téléphone et transmet les heures à la paie."
 image:
-  alt: "Illustration d’un planning de la semaine : une ligne par personne, les postes du matin, de l’après-midi et de nuit en blocs, et un poste à pourvoir"
+  alt: "Illustration d’un planning de la semaine : une ligne par personne, les postes du matin, de l’après-midi et de nuit en blocs, et un poste à pourvoir"
 features:
   - title: "Planifier le mois"
     text: "Construisez le planning à partir des contrats, des qualifications et des souhaits saisis par votre personnel. Partez du planning du mois précédent si vous le souhaitez."

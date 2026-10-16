@@ -9,7 +9,7 @@ Dans la plupart des établissements, un échange commence par un appel au cadre 
 
 ## Comment ça marche
 
-Une personne qui ne peut pas assurer un poste l’ouvre dans l’application et choisit « Demander un échange ». Planwerk ne sollicite que les collègues qui ont la qualification requise et qui respectent leurs temps de repos avec ce nouveau poste. Le premier qui accepte est proposé au cadre de santé, qui voit les deux plannings côte à côte et valide ou refuse.
+Une personne qui ne peut pas assurer un poste l’ouvre dans l’application et choisit « Demander un échange ». Planwerk ne sollicite que les collègues qui ont la qualification requise et qui respectent leurs temps de repos avec ce nouveau poste. Le premier qui accepte est proposé au cadre de santé, qui voit les deux plannings côte à côte et valide ou refuse.
 
 ## Ce qui ne change pas
 
