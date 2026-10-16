@@ -75,9 +75,9 @@ rebuild (for example a Vercel cron job or a scheduled GitHub Action).
 
 Every text is a Markdown file. The main language has no suffix (`about.md`); a translation adds the language code
 (`about.de.md`, `about.fr.md`) and repeats only what it translates: prices, dates, versions, links and images come
-from the main file. A page or entry shows in a language only when its translation has every required text (for a
-plan: `name`, `summary`, every row of `included` and `actionLabel`). The number at the start of a file name sets the
-order.
+from the main file. A page (a post, a free page or a legal text) shows in a language only when its translation has
+every required text. Plans, releases and questions without a translation show in the main language. The number at the
+start of a file name sets the order.
 
 | On the site | File |
 |---|---|
@@ -168,7 +168,8 @@ prefix.
   `i18n/<feature>/en.json` translated as `i18n/<feature>/it.json`.
 - **Translate the content** as `content/**/*.it.md`. A page shows in the new language only once it has its
   translation file: without one it is not on the Italian site, the menu leaves it out, and links to it lead to its page
-  in the main language. Translate at least the legal texts (`content/legal/`) before the language goes live.
+  in the main language. Plans, releases and questions show in the main language until they are translated. Translate
+  at least the legal texts (`content/legal/`) before the language goes live.
 
 ## Add a sign-up or contact form
 
