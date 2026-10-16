@@ -78,18 +78,18 @@ number at the start of a file name sets the order.
 
 | On the site | File |
 |---|---|
-| Home page: name, one line about you, photo (optional; without one the text takes the full width) | `content/home.md` (and `home.de.md`) |
-| Opening hours: the week, closures, public holidays | `content/hours.md`: `week` (each day `closed: true`, or `from1` and `to1`, and `from2` and `to2` for a break), `exceptions` (`when` with `from` and `to`, `reason`, `closed: true`; or `closed: false` with other times for those days), `holidays` (`closed`, `sunday` or `normal`), `holidayNoticeDays` (how many days ahead a closure shows); `hours.de.md` translates the reasons, in the same order |
+| Home page: name, one line about you, photo (optional, 16:9; without one the text takes the full width) | `content/home.md` (and `home.de.md`, which translates the alt text) |
+| Opening hours: the week, closures, public holidays | `content/hours.md`: `week` (each day `closed: true`, or `from1` and `to1`, and `from2` and `to2` for a break), `exceptions` (`when` with `from` and `to`, `reason`, `closed: true`; or `closed: false` with other times for those days), `holidays` (`closed`, `sunday` or `normal`); `hours.de.md` translates the reasons, in the same order |
 | Other hours for a time of year or from a date | `content/hourPlans/<n>.<name>.md`: `label`, `from`, `to` (optional), `yearly` (repeat every year), `week` |
-| Phone hours, online booking, access, parking, public transport | `content/visit.md`: `phoneHours` (short, as people read it), `bookingUrl` (optional: your booking page elsewhere), `access`, `parking`, `transit` |
-| Treatments or services | `content/services/<n>.<name>.md`: `title`, `summary`, `pricing` (`price` or `onRequest`, always one of the two), `price` (in euros, `65` or `12.50`, required with `pricing: price`), `duration` (minutes), `specs` (rows of `label` and `value`), `image` (3:2; give every entry one, or none), the text |
+| Phone hours, online booking, access, parking, public transport | `content/visit.md`: `phoneHours` (short, as people read it; parts separated by commas, `Mon–Fri 08:00–12:00, Mon–Thu also 14:00–17:00`), `bookingUrl` (optional: your booking page elsewhere), `access`, `parking`, `transit` |
+| Treatments or services | `content/services/<n>.<name>.md`: `title`, `summary`, `pricing` (`price` or `onRequest`, always one of the two), `price` (in euros, `65` or `12.50`, required with `pricing: price`), `duration` (minutes), `specs` (rows of `label` and `value`), `contact` (optional: the person of `content/people/` who gives the treatment, `people/anna-hofer`; the page says "Treated by Anna Hofer"), `image` (3:2; give every entry one, or none), the text |
 | The team | `content/people/<n>.<name>.md`: `name`, `role` (with the qualification), `bio`, `photo` (optional, 4:5; without one the site shows initials), `email` and `phone` (optional, only a person's own) |
 | Questions and answers | `content/faq/<n>.<name>.md`: `question`, `answer`; the home page shows the first three |
 | Photos of the practice (contact page) | `content/gallery.md`: `images`, each with `src` and `alt`; `gallery.de.md` translates the alt texts, in the same order |
 | About us and other pages | `content/pages/<n>.<name>.md`; each translation sets its own address with `slug:` |
 | Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters), `until` (the last day it shows) |
-| Name, address, register entry, email, phone | `content/site.md` (header buttons, footer, imprint, search engines) |
-| Privacy policy, payment and cancellation, imprint | `content/legal/` (placeholders for Austria: replace them before you go live) |
+| Name, address, register entry, email, phone | `content/site.md` (the call and email buttons on the home, contact and treatment pages, footer, imprint, search engines) |
+| Privacy policy, payment and cancellation, imprint | `content/legal/` (privacy policy and imprint are placeholders for Austria; the payment and cancellation terms are a sample that matches the FAQ: replace all three before you go live) |
 | Site name, description for search engines, currency, country | `ginko.config.ts` (`name`, `seo.description`, `currency`, `country`) |
 | Menu, footer links, the line under the name in the footer | `app/app.config.ts` |
 | The home page's title in search results and tabs, section titles, the texts of the pages | `i18n/<language>.json` (`home.title` is "Physiotherapy in Graz"); the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins (this template renames "Services" to "Treatments" that way) |
@@ -97,8 +97,9 @@ number at the start of a file name sets the order.
 **Opening hours.** One rule shows everywhere: the line at the top of the home page ("Open now until 19:00", "Opens
 today at 07:30", "Closed today" with the reason), the week with today marked, the footer of every page and the
 opening hours search engines read. Public holidays come from `country` in `ginko.config.ts` (`AT`: the Austrian
-holidays); with `holidays: closed` they show as closures, like your own, from `holidayNoticeDays` days ahead. To close
-on a single day, add it to `exceptions` with the same `from` and `to`. Times use 24 hours (`'07:30'`).
+holidays); with `holidays: closed` they show as closures, like your own. The list of closures shows the next 90 days,
+and leaves out a public holiday on a day you are closed anyway. To close on a single day, add it to `exceptions` with
+the same `from` and `to`. Times use 24 hours (`'07:30'`).
 
 **Prices.** Every treatment says how it is priced: `pricing: price` with a `price`, or `pricing: onRequest` (the home
 visits). The page shows the price in the visitor's language ("€65", "€ 65"), and search engines get the same price; an
@@ -107,13 +108,19 @@ the build stops on it and names the entry, and the Studio does not save it. Phys
 Austria, so the labels say "Price" with no VAT note. If your prices include VAT, set `vat: 'included'` in
 `app/app.config.ts`: the labels then say "incl. VAT", and so does the data for search engines.
 
-**Booking.** The home page's main button calls you, with the number on it; under it are your phone hours and email.
-Each treatment page offers "Ask for an appointment", an email with the treatment in the subject, and your number. The
-contact page has the call and email buttons, and "Book online" when `content/visit.md` has a `bookingUrl`. The site
-has no booking form (see "Add a booking or contact form").
+**Booking.** The home page, the contact page and every treatment page show the same buttons
+(`app/components/visit/Book.vue`): "Call" with your number, your phone hours right under it, "Send an email" (on a
+treatment page with the treatment in the subject) and "Book online" when `content/visit.md` has a `bookingUrl`.
+Calling is the main button while you are open today or open later today; once today is over, or you are closed today,
+nobody answers the phone, so "Send an email" becomes the main button. A treatment page shows these buttons through
+`app/components/services/Actions.vue`, which the services feature shows in place of its own. The site has no booking
+form (see "Add a booking or contact form").
 
-**Notices** show newest first: put the newest one at the top (the smallest number). At most two show at once. The
-sample has one about a job and one about the parking; delete both for your site.
+**Notices** show newest first: put the newest one at the top (the smallest number). At most two show at once, at the
+top of every page, so keep them for news a visitor needs before they come (a closure, building work), not for news
+about you (a job opening belongs on the About page). When a notice changes access or parking, check
+`content/visit.md` too, so the directions say the same. The sample has one about the courtyard parking; delete it for
+your site.
 
 ## Make it yours
 
@@ -168,8 +175,8 @@ prefix.
 
 ## Add a booking or contact form
 
-The site sends no data to other companies, so it has no forms: "Call", "Send an email" and "Ask for an appointment"
-use the visitor's phone and email program, and "Open in maps" opens OpenStreetMap only when they choose it. To take
+The site sends no data to other companies, so it has no forms: "Call" and "Send an email" use the visitor's phone and
+email program, and "Open in maps" opens OpenStreetMap only when they choose it. To take
 bookings online, set `bookingUrl` in `content/visit.md` to the page of your booking service: the home and contact pages
 then link to it. Name the service in your privacy policy.
 
@@ -180,11 +187,11 @@ Links in the content name pages by their key (`[how to find us]($page.contact)`)
 
 | Feature | Delete |
 |---|---|
-| Treatments | `content/services/`, the `services` brick and `pages.services` in `ginko.config.ts`, its `nav` item, the "Treatments and prices" section and the hero's second button in `app/pages/index.vue`, `app/pages/services/`, `app/bricks/services.ts`, `app/composables/useServices.ts`, `i18n/services/`, the `services` keys in `i18n/<language>.json`, and `"services"` in `package.json` → `ginko.features` |
-| Team page | `pages.team`, its `nav` item, the "Your therapists" section in `app/pages/index.vue`, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, `"people"` in `ginko.features`, the link to `$page.team` in `content/pages/1.about*.md`; keep the `people` brick in `ginko.config.ts` (a treatment's optional `contact` names a person); `content/people/` may be empty |
-| Questions and answers | `content/faq/`, the `faq` brick and `pages.faq`, its `nav` item, the "Questions" section in `app/pages/index.vue`, `app/pages/faq.vue`, `app/components/block/Faq.vue`, `app/components/ui/accordion/`, the `faq` keys in `i18n/<language>.json`, `"faq"` in `ginko.features` |
+| Treatments | `content/services/`, the `services` brick and `pages.services` in `ginko.config.ts`, `services` in `segments` of `app/routes.ts`, its `nav` item, in `app/pages/index.vue` the "Treatments and prices" section and its script lines (`useGinko('services')` and `useServiceCards`), `app/pages/services/`, `app/components/services/`, `app/bricks/services.ts`, `app/composables/useServices.ts`, `i18n/services/`, the `services` keys in `i18n/<language>.json`, the link to `$page.services` in `content/legal/2.terms*.md`, and `"services"` in `package.json` → `ginko.features` |
+| Team page | `pages.team`, `team` in `segments` of `app/routes.ts`, its `nav` item, in `app/pages/index.vue` the "Our team" section and its `useGinko('people')` line, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, `"people"` in `ginko.features`, the link to `$page.team` in `content/pages/1.about*.md`, the "Treated by" link in `app/components/services/Actions.vue` (keep the name without the link); keep the `people` brick in `ginko.config.ts` (a treatment's optional `contact` names a person); `content/people/` may be empty |
+| Questions and answers | `content/faq/`, the `faq` brick and `pages.faq`, `faq` in `segments` of `app/routes.ts`, its `nav` item, in `app/pages/index.vue` the "Questions" section and its script lines (`useGinko('faq')` and `faqItems`), `app/pages/faq.vue`, `app/components/block/Faq.vue`, `app/components/ui/accordion/`, the `faq` keys in `i18n/<language>.json`, `"faq"` in `ginko.features` |
 | Photos | `content/gallery.md`, the `gallery` brick, "The practice" section in `app/pages/contact.vue`, `app/components/block/Gallery.vue`, `app/components/site/Lightbox.vue`, `i18n/gallery/`, `"gallery"` in `ginko.features` |
-| Opening hours | not on its own: the home page, the contact page and the footer are built around them. Without fixed hours ("by appointment only"), keep the feature and mark every day `closed: true`, then remove `<HoursToday />` and the hours sections from `app/pages/index.vue` and `app/pages/contact.vue` and the `openingHoursJsonLd` part of the home page's `usePageSeo` |
+| Opening hours | not on its own: the home page, the contact page and the footer are built around them. Without fixed hours ("by appointment only"), keep the feature and mark every day `closed: true`, then remove `<HoursToday />` and the hours sections from `app/pages/index.vue` and `app/pages/contact.vue`, the `openingHoursJsonLd` part of the home page's `usePageSeo`, and `app/components/site/FooterStatus.vue` (else every footer says "Closed today"); in `app/components/visit/Book.vue`, make `callFirst` always true |
 | Hours from a date | `content/hourPlans/`, the `hourPlans` brick and `plans: 'hourPlans'` of the `hours` brick in `ginko.config.ts` |
 | Notices | `content/notices/`, the `notices` brick, `<SiteNotice />` in `app/layouts/default.vue`, `app/components/site/Notice.vue` |
 | A language | see "Add or remove a language" |
