@@ -1,0 +1,8 @@
+{
+  "title": "Fotoansicht",
+  "open": "Foto {n} von {count}: {alt}",
+  "previous": "Voriges Foto",
+  "next": "Nächstes Foto",
+  "counter": "{n} / {count}",
+  "close": "Schließen"
+}
