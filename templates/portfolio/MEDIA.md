@@ -10,7 +10,7 @@ before you go live: clients choose a studio by its work.
 
 | File | Size | Used in | Photo | By | License |
 |---|---|---|---|---|---|
-| `public/media/attic-light.jpg` | 1600 × 1067 (3:2), re-encoded to 160 kB | project "Attic flat in Ottensen" (main photo), journal entry "Lime plaster under the roof" | [sunlight streams through a window onto a wall](https://unsplash.com/photos/sunlight-streams-through-a-window-onto-a-wall-IiyAiqcw2VQ) | [lugoviews](https://unsplash.com/@lugoviews) | Unsplash License |
+| `public/media/attic-light.jpg` | 1600 × 1067 (3:2), re-encoded to 160 kB | project "Attic flat in Ottensen" (main photo) | [sunlight streams through a window onto a wall](https://unsplash.com/photos/sunlight-streams-through-a-window-onto-a-wall-IiyAiqcw2VQ) | [lugoviews](https://unsplash.com/@lugoviews) | Unsplash License |
 | `public/media/ceramic-vases.jpg` | 1600 × 1067 (3:2) | project "Elbsand vases" (main photo) | [ceramic vases on wooden surface](https://unsplash.com/photos/ceramic-vases-on-wooden-surface-R0qthXq3jec) | [crystalmind_design](https://unsplash.com/@crystalmind_design) | Unsplash License |
 | `public/media/concrete-stair.jpg` | 1600 × 1050 | project "Entrance hall for Musterbau" (main photo) | [white concrete wall during daytime](https://unsplash.com/photos/white-concrete-wall-during-daytime-NRLnzGXtoE4) | [dorsamasghati](https://unsplash.com/@dorsamasghati) | Unsplash License |
 | `public/media/oak-chair.jpg` | 1600 × 900 (16:9) | project "Holm chair" (main photo) | [a wooden chair on a white background](https://unsplash.com/photos/a-wooden-chair-on-a-white-background-iBxQvOLuKb4) | [hongly_9](https://unsplash.com/@hongly_9) | Unsplash License |

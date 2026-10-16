@@ -2,8 +2,6 @@
 title: "Kalkputz unter dem Dach"
 slug: kalkputz
 description: "Warum wir für die Dachwohnung in Ottensen Kalkputz gewählt haben und was er von den Menschen verlangt, die mit ihm leben."
-image:
-  alt: "Sonnenlicht fällt durch ein Band hoher Fenster auf eine warm verputzte Wand"
 ---
 
 Unter einem Dach ändert sich die Luft schnell: warm und trocken am Nachmittag, kühl und feucht in der Nacht. Kalkputz nimmt Feuchtigkeit auf und gibt sie langsam wieder ab, so wirken die Räume ruhiger, und Schimmel hat es schwer.

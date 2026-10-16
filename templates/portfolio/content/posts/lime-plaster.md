@@ -4,9 +4,6 @@ slug: lime-plaster
 description: "Why we chose lime plaster for the attic flat in Ottensen, and what it asks of the people who live with it."
 date: 2026-04-22
 authors: [people/ole-petersen]
-image:
-  src: /media/attic-light.jpg
-  alt: "Sunlight falls through a band of high windows onto a warm plastered wall"
 ---
 
 Under a roof, the air changes quickly: warm and dry in the afternoon, cool and damp at night. Lime plaster takes up moisture and gives it back slowly, so the rooms feel calmer, and it does not grow mould easily.

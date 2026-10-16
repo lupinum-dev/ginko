@@ -5,7 +5,7 @@
   "Musterbau GmbH" (fictional), the projects, the journal entries, the notice about the Holm chair, the photos (stock
   photos of other rooms and objects, see `MEDIA.md`) and the legal texts (marked placeholders).
 - The photos are stock photos that match the sample projects only loosely (the "oak" chair is a light wood chair from
-  a stock series). Matthias replaces the photos later.
+  a stock series).
 - Two photos are each used in two projects (`MEDIA.md`), because six photos had to serve four projects with a second
   photo each.
 - Nobody has filled the "Responsible for the journal" part of the imprint; it is a marked placeholder like the
