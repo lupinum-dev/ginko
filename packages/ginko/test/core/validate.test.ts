@@ -205,6 +205,29 @@ describe('numbers and money (SPEC 2.2, 2.3)', () => {
   ] as const)('menu price %j', async (price, expected) => {
     expect(pairs((await validate(schema, 'menu', menuEntry({ price }), check('create'))).errors)).toEqual(expected)
   })
+
+  // Wrong behaviour caught: a fixed price saved without its amount (the site then shows "on request"), or an amount
+  // demanded for an entry priced on request.
+  it.each([
+    [{ pricing: 'price', price: { amount: 39000 } }, []],
+    [{ pricing: 'price' }, [['price', 'REQUIRED']]],
+    [{ pricing: 'onRequest' }, []],
+  ] as const)('a required field with showWhen is required only while shown: %j', async (data, expected) => {
+    const priced = serializeSchema({
+      ...site,
+      bricks: {
+        ...site.bricks,
+        offer: single({
+          label: 'Angebot',
+          fields: {
+            pricing: f.choice('Preis', { options: [{ value: 'price', label: 'Fest' }, { value: 'onRequest', label: 'Auf Anfrage' }] }),
+            price: f.money('Betrag', { showWhen: { field: 'pricing', is: 'price' } }),
+          },
+        }),
+      },
+    })
+    expect(pairs((await validate(priced, 'offer', data, check('create'))).errors)).toEqual(expected)
+  })
 })
 
 describe('text formats (SPEC 2.2, 2.3)', () => {

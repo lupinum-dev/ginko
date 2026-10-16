@@ -7,12 +7,12 @@ export { default as Button } from './Button.vue'
 // (tokens.css). Focus is the global :focus-visible ring. Sizes are at least 44px high on touch screens, the touch
 // target of the design rules; `sm` and `icon-sm` are smaller only with a mouse (`pointer-coarse`).
 export const buttonVariants = cva(
-  'inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-colors duration-150 ease-out select-none disabled:pointer-events-none disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=size-])]:size-5',
+  'inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-[color,background-color,border-color] duration-150 ease-out select-none disabled:pointer-events-none disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=size-])]:size-5',
   {
     variants: {
       variant: {
-        /** The main action. One per view. */
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        /** The main action. One per view. On paper an outline, as printers leave out backgrounds. */
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90 print:border print:bg-transparent print:text-foreground',
         /** A second action next to the main one. */
         outline: 'border border-input text-foreground hover:bg-accent',
         /** A quiet filled action, for example in a toolbar. */

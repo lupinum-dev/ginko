@@ -4,7 +4,8 @@ import type { Component } from 'vue'
 import { safeHref } from '@lupinum/ginko'
 
 // Identity and contact from content/site.md, the tagline, navigation, more links and profiles from app.config.ts,
-// the language switch, and the legal texts from content/legal/. One muted background, no border: the bottom bar's
+// the language switch, and the legal texts from content/legal/. On paper only the name, address, email and phone stay,
+// so a printed page says whose it is and how to reach them. One muted background, no border: the bottom bar's
 // line divides inside it. A feature may bring `app/components/site/FooterStatus.vue` (the hours feature: open now);
 // the contact column then shows it first, on every page, without a copy of this footer per template.
 const status = Object.values(import.meta.glob<Component>('./FooterStatus.vue', { eager: true, import: 'default' }))[0]
@@ -21,12 +22,12 @@ const year = useGinkoToday().value.slice(0, 4)
 </script>
 
 <template>
-  <footer class="mt-section bg-muted print:hidden">
-    <div class="mx-auto grid max-w-page gap-10 px-gutter py-14 md:grid-cols-3">
+  <footer class="mt-section bg-muted print:mt-10 print:border-t print:bg-transparent">
+    <div class="mx-auto grid max-w-page gap-10 px-gutter py-14 md:grid-cols-3 print:gap-2 print:py-4">
       <div class="flex flex-col gap-3">
         <p class="font-display text-body font-semibold"><bdi>{{ name }}</bdi></p>
-        <p v-if="tagline" class="max-w-xs text-small text-muted-foreground">{{ tagline }}</p>
-        <ul v-if="config.socials.length" class="flex flex-wrap gap-x-5 gap-y-1 text-small" :aria-label="t('footer.links')">
+        <p v-if="tagline" class="max-w-xs text-small text-muted-foreground print:hidden">{{ tagline }}</p>
+        <ul v-if="config.socials.length" class="flex flex-wrap gap-x-5 gap-y-1 text-small print:hidden" :aria-label="t('footer.links')">
           <li v-for="social in config.socials" :key="social.url">
             <a :href="safeHref(social.url)" rel="me noopener" class="inline-flex min-h-11 min-w-11 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{{ social.label }}</a>
           </li>
@@ -43,8 +44,8 @@ const year = useGinkoToday().value.slice(0, 4)
       </nav>
 
       <div v-if="contact.email || contact.phone || contact.city" class="flex flex-col gap-2">
-        <h2 class="text-small font-semibold">{{ t('footer.contact') }}</h2>
-        <div v-if="status" class="py-2">
+        <h2 class="text-small font-semibold print:hidden">{{ t('footer.contact') }}</h2>
+        <div v-if="status" class="py-2 print:hidden">
           <component :is="status" />
         </div>
         <address class="flex flex-col text-small text-muted-foreground not-italic">
@@ -61,7 +62,7 @@ const year = useGinkoToday().value.slice(0, 4)
       </div>
     </div>
 
-    <div class="border-t">
+    <div class="border-t print:hidden">
       <div class="mx-auto flex max-w-page flex-col gap-2 px-gutter py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <p>© {{ year }} <bdi>{{ contact.legalName || name }}</bdi></p>
         <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-8 print:hidden">

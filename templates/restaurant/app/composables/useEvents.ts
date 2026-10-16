@@ -87,6 +87,8 @@ export function useUpcomingEvents(limit?: () => number | undefined) {
     to: item.url ?? '',
     // Date, time, price and "fully booked" in one line of tabular numbers above the title.
     meta: [when(item.data, 'short'), status(item.data)].filter(Boolean).join(' · '),
+    // Where it takes place, so the list says as much as the home page's card.
+    text: item.data.location ?? undefined,
     image: item.data.image ?? undefined,
   })))
 }

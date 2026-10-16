@@ -97,6 +97,16 @@ describe('formatMoney (SPEC 8)', () => {
   ] as const)('%j in %s is %j, with no-break spaces only', (money, locale, expected) => {
     expect(formatMoney(money, locale)).toBe(expected)
   })
+
+  // Wrong behaviour caught: "€390.00" on a price card, or a fractional price cut to whole units.
+  it.each([
+    [{ amount: 39000, currency: 'EUR' }, 'en', '€390'],
+    [{ amount: 39000, currency: 'EUR' }, 'de', '390\u00a0€'],
+    [{ amount: 1250, currency: 'EUR' }, 'en', '€12.50'],
+    [{ amount: 1250, currency: 'JPY' }, 'en', '¥1,250'],
+  ] as const)('%j in %s without minor units when whole: %j', (money, locale, expected) => {
+    expect(formatMoney(money, locale, { wholeWithoutMinor: true })).toBe(expected)
+  })
 })
 
 describe('currencies (SPEC 2.1)', () => {

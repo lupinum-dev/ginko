@@ -31,6 +31,11 @@ const MAX_PAGES = 40
 
 /** The site's pages: the paths of its sitemap (also of a sitemap index), home first. */
 export async function sitePages(): Promise<string[]> {
+  return (await allPages()).slice(0, MAX_PAGES)
+}
+
+/** Every path of the sitemap (no limit), home first. */
+export async function allPages(): Promise<string[]> {
   const paths = new Set<string>(['/'])
   const read = async (url: string): Promise<void> => {
     const xml = await (await fetch(url)).text()
@@ -41,7 +46,7 @@ export async function sitePages(): Promise<string[]> {
     else for (const loc of locs) paths.add(new URL(loc).pathname)
   }
   await read(`${site.url}/sitemap.xml`)
-  return [...paths].slice(0, MAX_PAGES)
+  return [...paths]
 }
 
 /** A path as a file name: `/` → `home`, `/posts/a` → `posts-a`. */

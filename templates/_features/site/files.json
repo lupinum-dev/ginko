@@ -33,5 +33,6 @@
   "modules/feature-messages.ts",
   "modules/page-paths/index.ts",
   "modules/page-paths/paths.ts",
+  "server/plugins/font-preload.ts",
   "site-url.ts"
 ]

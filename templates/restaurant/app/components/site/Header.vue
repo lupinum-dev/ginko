@@ -33,7 +33,7 @@ const navHidden = { md: 'max-md:hidden', lg: 'max-lg:hidden', xl: 'max-xl:hidden
           <li v-for="link in links" :key="link.key">
             <SiteNavLink
               :to="link.to"
-              class="inline-flex min-h-11 items-center rounded-md px-3 text-small font-medium whitespace-nowrap text-muted-foreground transition-colors duration-150 hover:text-foreground aria-[current=page]:text-foreground underline-offset-4 aria-[current=page]:underline"
+              class="inline-flex min-h-11 items-center rounded-md px-3 text-small font-medium whitespace-nowrap text-muted-foreground transition-[color,background-color,border-color] duration-150 hover:text-foreground aria-[current=page]:text-foreground underline-offset-4 aria-[current=page]:underline"
             >
               {{ link.label }}
             </SiteNavLink>

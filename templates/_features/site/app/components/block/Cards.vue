@@ -28,7 +28,7 @@ const sizes = computed(() => `(min-width: 1024px) 384px, (min-width: 640px) 50vw
     <li
       v-for="item in items"
       :key="item.key"
-      class="group relative flex overflow-hidden rounded-block border bg-card transition-colors duration-150 hover:bg-muted has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-3 has-[a:focus-visible]:outline-ring"
+      class="group relative flex overflow-hidden rounded-block border bg-card transition-[color,background-color,border-color] duration-150 hover:bg-muted has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-3 has-[a:focus-visible]:outline-ring"
       :class="compact ? 'max-sm:items-center sm:flex-col' : 'flex-col'"
     >
       <GinkoImage

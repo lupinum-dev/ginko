@@ -19,6 +19,9 @@ export interface SiteAppConfig {
   footer: SiteNavItem[]
   /** Profiles elsewhere, as text links in the footer (no third-party icons or scripts). */
   socials: { label: string, url: string }[]
+  /** Whether the site's prices include VAT: `excluded` for net prices to businesses ("Price (plus VAT)"), `included`
+   *  for prices to consumers. Price labels and the price's JSON-LD say so. Default: no VAT note. */
+  vat?: 'included' | 'excluded'
 }
 
 /** The collection keys useGinkoNav takes. */

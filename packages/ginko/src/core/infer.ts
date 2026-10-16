@@ -42,7 +42,8 @@ export type ValueOf<F extends Field> =
   : F extends TextField | LongTextField | SlugField | DateField | TimeField ? string
   : unknown
 
-type OptionalKeys<F extends Fields> = { [K in keyof F]: F[K]['optional'] extends true ? K : never }[keyof F]
+/** Optional fields, and fields with `showWhen`: those are required only while shown, so a value can be absent. */
+type OptionalKeys<F extends Fields> = { [K in keyof F]: F[K]['optional'] extends true ? K : F[K] extends { showWhen: object } ? K : never }[keyof F]
 type RetiredKeys<F extends Fields> = { [K in keyof F]: F[K]['retired'] extends true ? K : never }[keyof F]
 
 export type DataOf<F extends Fields> = {

@@ -51,7 +51,7 @@ usePageSeo(() => ({
       <h2 class="sr-only">{{ t('tags') }}</h2>
       <ul class="flex flex-wrap gap-2">
         <li v-for="tag in post.tags" :key="tag">
-          <NuxtLink :to="tagPath(tag)" class="inline-flex min-h-11 items-center rounded-md border px-4 text-small transition-colors duration-150 hover:bg-accent">{{ tag }}</NuxtLink>
+          <NuxtLink :to="tagPath(tag)" class="inline-flex min-h-11 items-center rounded-md border px-4 text-small transition-[color,background-color,border-color] duration-150 hover:bg-accent">{{ tag }}</NuxtLink>
         </li>
       </ul>
     </div>

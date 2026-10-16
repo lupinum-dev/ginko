@@ -8,7 +8,7 @@ const { t } = useI18n('people')
 
 <template>
   <ul class="grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-    <li v-for="person in items" :key="person.id" class="flex flex-col gap-4">
+    <li v-for="person in items" :key="person.id" class="flex flex-col gap-4 break-inside-avoid">
       <GinkoImage
         v-if="person.data.photo"
         :image="person.data.photo"

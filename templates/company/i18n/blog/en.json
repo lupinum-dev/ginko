@@ -1,0 +1,13 @@
+{
+  "title": "News",
+  "lead": "What happened, and what comes next.",
+  "by": "by {names}",
+  "authors": "Written by",
+  "tags": "Tags",
+  "tagged": "Posts tagged “{tag}”",
+  "all": "Show all posts",
+  "noTag": "No posts tagged “{tag}”",
+  "empty": "No posts yet",
+  "feed": "RSS feed",
+  "latest": "All news"
+}

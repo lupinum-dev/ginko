@@ -1,0 +1,22 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./tokens.css";
+
+/* This template's accent and fonts (DESIGN.md "Your accent"). Everything else comes from tokens.css.
+   company: sky. White on the accent 5.9:1 light; the accent on the page 5.9:1 light; #082f49 on the dark accent
+   8.3:1; the dark accent on the page 11.8:1. The focus ring and links in text use the accent. */
+:root {
+  --brand: #0369a1;
+  --brand-foreground: #ffffff;
+  /* @nuxt/fonts serves Inter from the site and adds size-matched fallbacks. */
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+.dark {
+  --brand: #7dd3fc;
+  --brand-foreground: #082f49;
+  /* The closing band in dark mode: a deep blue instead of the light accent, so it does not outshine the page.
+     #f0f9ff on #0c4a6e 8.9:1. */
+  --brand-surface: #0c4a6e;
+  --brand-surface-foreground: #f0f9ff;
+}

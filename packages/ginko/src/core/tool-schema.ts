@@ -71,7 +71,8 @@ function objectOf(fields: Fields, ctx: ToolSchemaContext, prefill?: Record<strin
       if (value !== undefined) prop.default = value
     }
     properties[key] = prop
-    if (!field.optional && field.default === undefined && preset === undefined) required.push(key)
+    // A field with `showWhen` is required only next to some sibling values, which JSON Schema `required` cannot say.
+    if (!field.optional && !field.showWhen && field.default === undefined && preset === undefined) required.push(key)
   }
   return { type: 'object', properties, required, additionalProperties: false }
 }

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
   applyDefaults, bundleFits, f, isBundle, knownBricks, markdownTrees, parseMarkdown, platformMarkdownRef, withMarkdownRefs, wordsOf, type Bundle, type MarkdownTree,
-  buildBundle, servedBundle, type FileInfo, isVisible, printOf, resolveEntry, serializeSchema, sortEntries, todayIn,
+  buildBundle, servedBundle, type FileInfo, isTranslatable, isVisible, printOf, resolveEntry, serializeSchema, sortEntries, todayIn,
   type Brick, type BundleBrick, type BundleItem, type CollectionBrick, type Locale, type Schema, type StoredEntry,
 } from '../../src/core/index.ts'
 
@@ -219,6 +219,24 @@ describe('sortEntries: when asc (SPEC 2.1)', () => {
     const events = { ...collectionOf(base(), 'events'), order: { field: 'when' } }
     const entry = (id: string, from: string): StoredEntry => ({ id, data: { when: { from, to: from } } })
     expect(sortEntries(events, [entry('late', '2026-10-20'), entry('early', '2026-10-01')]).map((e) => e.id)).toEqual(['early', 'late'])
+  })
+
+  // Wrong behaviour caught: every language's list sorted by one language's titles (the English jobs list in the
+  // order of the German titles), or an untranslated entry sorted by nothing.
+  it.each([
+    ['en', ['apprentice', 'sales', 'service']],
+    ['de', ['apprentice', 'service', 'sales']],
+  ] as const)('sorts a translatable field by its text in %s', (locale, expected) => {
+    const events = collectionOf(base(), 'events')
+    const titled = { ...events, order: { field: 'title', dir: 'asc' as const } }
+    const entry = (id: string, title: Record<string, string>): StoredEntry => ({ id, data: { title } })
+    const entries = [
+      entry('sales', { en: 'Sales engineer', de: 'Vertriebsingenieur' }),
+      entry('service', { en: 'Service technician', de: 'Servicetechniker' }),
+      entry('apprentice', { de: 'Ausbildung' }),
+    ]
+    expect(isTranslatable(titled.fields.title!)).toBe(true)
+    expect(sortEntries(titled, entries, { locale, main: 'de' }).map((e) => e.id)).toEqual(expected)
   })
 })
 
