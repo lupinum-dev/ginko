@@ -2,7 +2,8 @@
 <script setup lang="ts">
 import type { BlogPost } from '~/composables/useBlog'
 
-/** The authors of a post with their initials and role, under the post's header. */
+/** The authors of a post with their initials and role, under the post's header; the name links to the author's page
+ *  when people have pages. */
 defineProps<{ authors: BlogPost['authors'] }>()
 const { t } = useI18n('blog')
 </script>
@@ -12,7 +13,8 @@ const { t } = useI18n('blog')
     <li v-for="author in authors" :key="author.id" class="flex items-center gap-3">
       <InitialsAvatar :name="author.name" />
       <span class="flex flex-col">
-        <span class="font-medium">{{ author.name }}</span>
+        <NuxtLink v-if="author.to" :to="author.to" class="font-medium underline-offset-4 hover:underline">{{ author.name }}</NuxtLink>
+        <span v-else class="font-medium">{{ author.name }}</span>
         <span v-if="author.role" class="text-small text-muted-foreground">{{ author.role }}</span>
       </span>
     </li>

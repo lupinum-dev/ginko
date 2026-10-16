@@ -4,10 +4,13 @@
   "by": "par {names}",
   "authors": "Écrit par",
   "tags": "Mots-clés",
-  "tagged": "Articles avec le mot-clé « {tag} »",
   "all": "Voir tous les articles",
-  "noTag": "Aucun article avec le mot-clé « {tag} »",
   "empty": "Pas encore d’articles",
   "feed": "Flux RSS",
-  "latest": "Toutes les actualités"
+  "latest": "Toutes les actualités",
+  "count": "{count, plural, one {# article} other {# articles}}",
+  "minutes": "{count} min de lecture",
+  "older": "Article plus ancien",
+  "newer": "Article plus récent",
+  "pager": "Articles plus anciens et plus récents"
 }
