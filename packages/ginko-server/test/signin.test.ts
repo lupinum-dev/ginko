@@ -135,6 +135,23 @@ it('a sign-in code is stored only as a hash', async () => {
   expect(values[0]).toMatch(/^[\w-]{43}:0$/)
 })
 
+// better-convex rc.5: codes expire through a job the auth component schedules as `adapter:expireVerification`.
+// Without that export in convex/betterAuth/adapter.ts the job fails and expired codes pile up unnoticed.
+it('a sign-in code is deleted by its own job when it expires', async () => {
+  vi.useFakeTimers()
+  try {
+    const s = await setup()
+    expect((await authPost(s, 'email-otp/send-verification-otp', { email: 'wirtin@example.com', type: 'sign-in' })).ok).toBe(true)
+    const codes = () => s.t.query(components.betterAuth.adapter.count, { model: 'verification', where: [] })
+    expect(await codes()).toBe(1)
+    vi.advanceTimersByTime(6 * 60 * 1000)
+    await s.t.finishAllScheduledFunctions(vi.runAllTimers)
+    expect(await codes()).toBe(0)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 // better-convex audit 15 Oct: a user row whose address was never proven (a password sign-up from before codes were
 // the only way in) must not take the invitation that follows that address.
 it('an unproven address gets no invitation', async () => {
