@@ -354,11 +354,13 @@
     color: var(--muted-foreground);
   }
 
-  /* Code blocks: a line around them, and they scroll sideways instead of widening the page. A highlighted block
-     (Shiki, in files) colours its words for light and dark (github-light, catppuccin-mocha: 4.5:1 or more on the
-     page); its own background is left out, so the block sits on the page like the text around it. */
+  /* Code blocks: a line around them, and long lines wrap instead of widening the page (a block that scrolled sideways
+     would need to take keyboard focus, which Markdown cannot give it). A highlighted block (Shiki, in files) colours
+     its words for light and dark (github-light, catppuccin-mocha: 4.5:1 or more on the page); its own background is
+     left out, so the block sits on the page like the text around it. */
   .prose > pre {
-    overflow-x: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 1rem 1.25rem;
