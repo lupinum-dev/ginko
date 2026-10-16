@@ -75,6 +75,10 @@ for (const [width, where] of [[390, 'the nav sheet'], [1440, 'the header']] as c
         await navToggle(page).click()
         scope = page.getByRole('dialog')
       }
+      // A header that keeps its languages in a menu (the docs layer: a button named "Language" with the links in a
+      // popover) opens it first. The site feature's header shows the links themselves and has no such button.
+      const menu = scope.getByRole('button', { name: /^(language|sprache)\b/i })
+      if (await menu.isVisible() && await menu.getAttribute('aria-expanded') === 'false') await menu.click()
       const language = locale.split('-')[0]
       const link = scope.locator(`a[hreflang|="${language}"], a[lang|="${language}"]`).first()
       await expect(link, `switch to ${locale} in ${where}`).toBeVisible()
