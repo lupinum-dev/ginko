@@ -5,9 +5,55 @@ import { collection, f, type BrickSource, type RouteTemplate } from '@lupinum/gi
 // translations `1.my-project.de.md`). The number sets the order. A campaign has an end date (`ends`): it leaves the
 // site after that day by itself, and the Studio's Today page lists campaigns that end within 7 days. A project may
 // have one button below its title (`actionLabel` and `actionUrl`, both needed), for example "Donate now".
-// `gallery` (optional) names the site's gallery brick: a project can then point to photos of it.
-export function projects<const R extends Record<string, RouteTemplate>>(o: { route: R, source?: BrickSource, gallery?: string }) {
-  const fields = {
+// `details: true` (a portfolio) adds the facts of a commission (client, year, place, scope) and the project's photos,
+// each with its description: the build and the Studio refuse a photo without one. Without it the stored shape stays
+// as it is.
+type Options<R> = { route: R, source?: BrickSource }
+export function projects<const R extends Record<string, RouteTemplate>>(o: Options<R> & { details?: false }): ReturnType<typeof plain<R>>
+export function projects<const R extends Record<string, RouteTemplate>>(o: Options<R> & { details: true }): ReturnType<typeof detailed<R>>
+export function projects<const R extends Record<string, RouteTemplate>>(o: Options<R> & { details?: boolean }) {
+  return o.details ? detailed(o) : plain(o)
+}
+
+/** What both kinds share; `visible` and `status` are checked against the fields at each `collection` call. */
+const common = <R>(o: Options<R>) => ({
+  label: { de: 'Projekte', en: 'Projects', fr: 'Projets' },
+  ...(o.source ? { source: o.source } : {}),
+  max: 50,
+  order: 'manual',
+  route: o.route,
+  visible: { mode: 'until', field: 'ends' },
+  status: { count: true },
+} as const)
+
+const editLabel = { de: 'Projekt bearbeiten', en: 'Edit a project', fr: 'Modifier un projet' }
+const add = { id: 'add', kind: 'create', label: { de: 'Projekt hinzufügen', en: 'Add a project', fr: 'Ajouter un projet' } } as const
+
+function plain<const R extends Record<string, RouteTemplate>>(o: Options<R>) {
+  return collection({
+    ...common(o),
+    fields: { ...fields(), body: body() },
+    tasks: [
+      { id: 'edit', kind: 'edit', pick: true, fields: ['title', 'summary', 'image', 'ends', 'actionLabel', 'actionUrl', 'body'], label: editLabel },
+      add,
+    ],
+  })
+}
+
+function detailed<const R extends Record<string, RouteTemplate>>(o: Options<R>) {
+  return collection({
+    ...common(o),
+    fields: { ...fields(), ...details(), body: body() },
+    tasks: [
+      { id: 'edit', kind: 'edit', pick: true, fields: ['title', 'summary', 'client', 'year', 'place', 'scope', 'image', 'photos', 'body'], label: editLabel },
+      { id: 'photos', kind: 'edit', pick: true, fields: ['image', 'photos'], label: { de: 'Fotos hinzufügen', en: 'Add photos', fr: 'Ajouter des photos' } },
+      add,
+    ],
+  })
+}
+
+function fields() {
+  return {
     title: f.text({ de: 'Titel', en: 'Title', fr: 'Titre' }, { max: 80 }),
     slug: f.slug({ de: 'Adresse', en: 'Address', fr: 'Adresse' }, { from: 'title' }),
     summary: f.longtext({ de: 'Kurzbeschreibung', en: 'Summary', fr: 'Résumé' }, {
@@ -25,21 +71,36 @@ export function projects<const R extends Record<string, RouteTemplate>>(o: { rou
       hint: { de: 'Ein Button unter dem Titel, zum Beispiel „Jetzt spenden“. Braucht auch die Adresse.', en: 'One button below the title, for example “Donate now”. Needs the address too.', fr: 'Un bouton sous le titre, par exemple « Faire un don ». Il faut aussi l’adresse.' },
     }),
     actionUrl: f.text({ de: 'Button-Adresse', en: 'Button address', fr: 'Adresse du bouton' }, { format: 'url', optional: true, translate: false }),
-    ...(o.gallery ? { gallery: f.ref({ de: 'Galerie', en: 'Gallery', fr: 'Galerie' }, { to: o.gallery, optional: true }) } : {}),
-    body: f.markdown({ de: 'Text', en: 'Text', fr: 'Texte' }, { profile: 'page' }),
   }
-  return collection({
-    label: { de: 'Projekte', en: 'Projects', fr: 'Projets' },
-    ...(o.source ? { source: o.source } : {}),
-    max: 50,
-    order: 'manual',
-    route: o.route,
-    visible: { mode: 'until', field: 'ends' },
-    status: { count: true },
-    fields,
-    tasks: [
-      { id: 'edit', kind: 'edit', pick: true, fields: ['title', 'summary', 'image', 'ends', 'actionLabel', 'actionUrl', 'body'], label: { de: 'Projekt bearbeiten', en: 'Edit a project', fr: 'Modifier un projet' } },
-      { id: 'add', kind: 'create', label: { de: 'Projekt hinzufügen', en: 'Add a project', fr: 'Ajouter un projet' } },
-    ],
-  })
+}
+
+const photo = { de: 'Foto', en: 'Photo', fr: 'Photo' }
+
+/** The facts of a commission and its photos (`details: true`). Every one is optional. */
+function details() {
+  return {
+    client: f.text({ de: 'Auftraggeber', en: 'Client', fr: 'Client' }, {
+      max: 80,
+      optional: true,
+      hint: { de: 'Name des Kunden oder zum Beispiel „Privatkundin“.', en: 'The client’s name, or for example “Private client”.', fr: 'Le nom du client, ou par exemple « Client privé ».' },
+    }),
+    year: f.number({ de: 'Jahr', en: 'Year', fr: 'Année' }, { min: 1900, max: 2199, step: 1, optional: true }),
+    place: f.text({ de: 'Ort', en: 'Place', fr: 'Lieu' }, { max: 80, optional: true }),
+    scope: f.text({ de: 'Leistungen', en: 'Scope', fr: 'Prestations' }, {
+      max: 160,
+      optional: true,
+      hint: { de: 'Kurz, zum Beispiel „Planung, Möbel, Licht“.', en: 'Briefly, for example “Planning, furniture, lighting”.', fr: 'En bref, par exemple « Plans, mobilier, éclairage ».' },
+    }),
+    // More photos after `image`, each with its description (required, so no photo goes online without one).
+    photos: f.list({ de: 'Fotos', en: 'Photos', fr: 'Photos' }, {
+      itemLabel: photo,
+      fields: { image: f.image(photo, { hint: { de: 'Beschreibe, was das Foto zeigt: Der Text steht darunter und wird vorgelesen.', en: 'Describe what the photo shows: the text is shown below it and read out.', fr: 'Décrivez ce que montre la photo : le texte s’affiche dessous et est lu à voix haute.' } }) },
+      max: 24,
+      optional: true,
+    }),
+  }
+}
+
+function body() {
+  return f.markdown({ de: 'Text', en: 'Text', fr: 'Texte' }, { profile: 'page' })
 }
