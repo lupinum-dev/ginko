@@ -4,7 +4,7 @@ import type { Component } from 'vue'
 
 // The projects and campaigns in their order (content/projects/). The address per language comes from
 // `pages.projects` in ginko.config.ts. A template may bring `app/components/projects/List.vue` (prop `items`: the
-// visible projects); the page then shows it instead of the cards (the portfolio: large photos).
+// visible projects); the page then shows it instead of the cards (for example the work as large photos).
 const List = Object.values(import.meta.glob<Component>('~/components/projects/List.vue', { eager: true, import: 'default' }))[0]
 const projects = useGinko('projects')
 const cards = useProjectCards()

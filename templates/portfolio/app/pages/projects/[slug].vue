@@ -4,20 +4,26 @@ import type { Component } from 'vue'
 import { safeHref } from '@lupinum/ginko'
 
 // One project: title, summary, for a campaign its last day, an optional button (`actionLabel`, `actionUrl`), photo
-// (3:2) and text. A template may bring `app/components/projects/Body.vue` (prop `project`); the page then shows it
-// below the title instead of the photo and the text (the portfolio: facts, photos with the lightbox, the next project).
+// (3:2) and text. Two hooks of the template: `app/components/projects/Body.vue` (prop `project`) is shown below the
+// title instead of the photo and the text (for example the facts and every photo of a project); the composable
+// `app/composables/useProjectJsonLd.ts` (`useProjectJsonLd()` returns a function of the project) adds the project's
+// own JSON-LD, such as a CreativeWork, to the page's one `usePageSeo` call.
 const Body = Object.values(import.meta.glob<Component>('~/components/projects/Body.vue', { eager: true, import: 'default' }))[0]
+type ProjectJsonLd = () => (project: GinkoItem<'projects'>) => Record<string, unknown>
+const projectJsonLd = Object.values(import.meta.glob<ProjectJsonLd>('~/composables/useProjectJsonLd.ts', { eager: true, import: 'useProjectJsonLd' }))[0]?.()
 const route = useRoute()
 const project = useGinkoEntry('projects', () => route.params.slug)
 const { t, format } = useI18n('projects')
+const campaign = computed(() => projectCampaign(project.value.data))
 const action = computed(() => {
-  const href = safeHref(project.value.data.actionUrl)
-  return href && project.value.data.actionLabel ? { label: project.value.data.actionLabel, href } : undefined
+  const href = safeHref(campaign.value.actionUrl)
+  return href && campaign.value.actionLabel ? { label: campaign.value.actionLabel, href } : undefined
 })
 usePageSeo(() => ({
   title: project.value.data.title,
   description: project.value.data.summary,
   image: project.value.data.image,
+  jsonLd: projectJsonLd ? [projectJsonLd(project.value)] : undefined,
 }))
 </script>
 
@@ -26,7 +32,7 @@ usePageSeo(() => ({
     <BlockPageHeader
       :title="project.data.title"
       :lead="project.data.summary"
-      :meta="project.data.ends ? t('until', { date: format.date(project.data.ends) }) : undefined"
+      :meta="campaign.ends ? t('until', { date: format.date(campaign.ends) }) : undefined"
     >
       <Button v-if="action" as-child size="lg" class="self-start max-sm:self-stretch">
         <a :href="action.href">{{ action.label }}</a>

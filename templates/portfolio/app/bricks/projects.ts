@@ -5,9 +5,10 @@ import { collection, f, type BrickSource, type RouteTemplate } from '@lupinum/gi
 // translations `1.my-project.de.md`). The number sets the order. A campaign has an end date (`ends`): it leaves the
 // site after that day by itself, and the Studio's Today page lists campaigns that end within 7 days. A project may
 // have one button below its title (`actionLabel` and `actionUrl`, both needed), for example "Donate now".
-// `details: true` (a portfolio) adds the facts of a commission (client, year, place, scope) and the project's photos,
-// each with its description: the build and the Studio refuse a photo without one. Without it the stored shape stays
-// as it is.
+// `details: true` is for work that stays online: no end date and no button, but the facts of a commission (client,
+// year, place, scope) and the project's photos, each with its description (the build and the Studio refuse a photo
+// without one). A new project can wait as a draft (`draft: true` in its file), and Today lists the drafts. Without
+// `details` the stored shape stays as it is.
 type Options<R> = { route: R, source?: BrickSource }
 export function projects<const R extends Record<string, RouteTemplate>>(o: Options<R> & { details?: false }): ReturnType<typeof plain<R>>
 export function projects<const R extends Record<string, RouteTemplate>>(o: Options<R> & { details: true }): ReturnType<typeof detailed<R>>
@@ -15,15 +16,13 @@ export function projects<const R extends Record<string, RouteTemplate>>(o: Optio
   return o.details ? detailed(o) : plain(o)
 }
 
-/** What both kinds share; `visible` and `status` are checked against the fields at each `collection` call. */
+/** What both kinds share. */
 const common = <R>(o: Options<R>) => ({
   label: { de: 'Projekte', en: 'Projects', fr: 'Projets' },
   ...(o.source ? { source: o.source } : {}),
   max: 50,
   order: 'manual',
   route: o.route,
-  visible: { mode: 'until', field: 'ends' },
-  status: { count: true },
 } as const)
 
 const editLabel = { de: 'Projekt bearbeiten', en: 'Edit a project', fr: 'Modifier un projet' }
@@ -32,7 +31,9 @@ const add = { id: 'add', kind: 'create', label: { de: 'Projekt hinzufügen', en:
 function plain<const R extends Record<string, RouteTemplate>>(o: Options<R>) {
   return collection({
     ...common(o),
-    fields: { ...fields(), body: body() },
+    fields: { ...fields(), ...campaign(), body: body() },
+    visible: { mode: 'until', field: 'ends' },
+    status: { count: true },
     tasks: [
       { id: 'edit', kind: 'edit', pick: true, fields: ['title', 'summary', 'image', 'ends', 'actionLabel', 'actionUrl', 'body'], label: editLabel },
       add,
@@ -44,6 +45,7 @@ function detailed<const R extends Record<string, RouteTemplate>>(o: Options<R>) 
   return collection({
     ...common(o),
     fields: { ...fields(), ...details(), body: body() },
+    drafts: true,
     tasks: [
       { id: 'edit', kind: 'edit', pick: true, fields: ['title', 'summary', 'client', 'year', 'place', 'scope', 'image', 'photos', 'body'], label: editLabel },
       { id: 'photos', kind: 'edit', pick: true, fields: ['image', 'photos'], label: { de: 'Fotos hinzufügen', en: 'Add photos', fr: 'Ajouter des photos' } },
@@ -61,6 +63,12 @@ function fields() {
       hint: { de: 'Steht auf der Karte, unter dem Titel und in Suchergebnissen.', en: 'Shown on the card, below the title and in search results.', fr: 'Affiché sur la carte, sous le titre et dans les résultats de recherche.' },
     }),
     image: f.image({ de: 'Bild', en: 'Image', fr: 'Image' }, { optional: true }),
+  }
+}
+
+/** A campaign's last day and its button (without `details`). */
+function campaign() {
+  return {
     ends: f.date({ de: 'Endet am', en: 'Ends on', fr: 'Se termine le' }, {
       optional: true,
       hint: { de: 'Nur für Aktionen: Danach verschwindet das Projekt von der Website.', en: 'Campaigns only: the project leaves the site after this day.', fr: 'Pour les campagnes : le projet quitte le site après ce jour.' },
