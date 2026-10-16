@@ -1,4 +1,4 @@
-import { ALT_INVISIBLE, ALT_MAX, effectiveAlt, effectiveMax, effectiveProfile, isTranslatable, MAX_CENTS } from './fields.ts'
+import { ALT_INVISIBLE, ALT_MAX, effectiveAlt, effectiveMax, effectiveProfile, isShown, isTranslatable, MAX_CENTS } from './fields.ts'
 import { fileRefUses } from './file-refs.ts'
 import { parseMarkdown } from './markdown.ts'
 import { labelOf } from './labels.ts'
@@ -160,7 +160,8 @@ function checkFields(fields: Fields, data: unknown, path: string, ctx: Ctx): Iss
     const at = join(path, key)
     const value = data[key]
     if (value === undefined || value === null) {
-      if (!field.optional) issues.push(issue(at, 'REQUIRED', 'fieldMissing', { label: shown(field, ctx.main) }))
+      // A required field with `showWhen` is required while the Studio shows it (a fixed price needs its amount).
+      if (!field.optional && isShown(field, data as Record<string, Json | undefined>)) issues.push(issue(at, 'REQUIRED', 'fieldMissing', { label: shown(field, ctx.main) }))
       continue
     }
     issues.push(...checkField(field, value, at, ctx))

@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildFileBundles, publicBundle } from '@lupinum/ginko-content'
-import { defineSite, type Brick, type Field, type Label } from '@lupinum/ginko'
-import { authors, changelog, downloads, faq, faqJsonLd, jobJsonLd, jobs, legal, people, personJsonLd, postJsonLd, posts, site, siteJsonLd, withoutFiles } from '@lupinum/ginko/basics'
+import { collection, defineSite, f, type Brick, type Field, type Label } from '@lupinum/ginko'
+import { authors, changelog, downloads, faq, faqJsonLd, jobJsonLd, jobs, legal, offerJsonLd, people, personJsonLd, postJsonLd, posts, site, siteJsonLd, withoutFiles } from '@lupinum/ginko/basics'
 import { checkSite, serializeSchema } from '@lupinum/ginko/internal'
 
 const route = (path: string) => ({ en: `/${path}/[slug]`, de: `/de/${path}/[slug]` }) as const
@@ -242,6 +242,35 @@ describe('a files site with every basic', () => {
       legal: ['legal/imprint'], people: ['people/mara'], posts: ['posts/hello'], authors: ['authors/mara'], changelog: ['changelog/v1-0-0'],
       jobs: ['jobs/technician'], faq: ['faq/referral'], downloads: ['downloads/report'],
     })
+  })
+
+  // Wrong behaviour caught: a build that accepts a fixed price without its amount (the site then says "on request").
+  it('refuses a required field with showWhen that is shown and empty', async () => {
+    const priced = defineSite({
+      ...config,
+      bricks: {
+        offers: collection({
+          label: 'Offers',
+          source: 'files',
+          order: 'manual',
+          max: 10,
+          fields: {
+            title: f.text('Title'),
+            pricing: f.choice('Pricing', { options: [{ value: 'price', label: 'Fixed' }, { value: 'onRequest', label: 'On request' }] }),
+            price: f.money('Amount', { showWhen: { field: 'pricing', is: 'price' } }),
+          },
+        }),
+      },
+    })
+    const { errors } = await buildFileBundles({
+      ...folder({
+        'content/offers/check.yml': 'title: Check\npricing: price\n',
+        'content/offers/repair.yml': 'title: Repair\npricing: onRequest\n',
+      }),
+      schema: serializeSchema(priced),
+      now: new Date('2026-10-15T10:00:00Z'),
+    })
+    expect(errors.map((e) => `${e.file}: ${e.path}`)).toEqual(['offers/check.yml: price'])
   })
 
   it('passes checkSite, and so does its platform twin without any `source`', () => {
