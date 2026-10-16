@@ -1,0 +1,6 @@
+# pnpm only: packages whose install scripts may run. pnpm 11 stops `pnpm install` on any other install script.
+# npm ignores this file.
+allowBuilds:
+  esbuild: true
+  # @nuxt/eslint's import resolver: its install script only checks for a prebuilt binary.
+  unrs-resolver: false

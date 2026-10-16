@@ -1,0 +1,36 @@
+{
+  "home": {
+    "title": "Dienstplanung für Pflegeheime und kleine Kliniken",
+    "trial": "Kostenlos testen",
+    "pricing": "Preise ansehen",
+    "trialNote": "30 Tage kostenlos, ohne Zahlungsdaten. Der Test endet von selbst.",
+    "features": "Was Planwerk kann",
+    "featuresLead": "Vom Monatsdienstplan bis zu den Stunden für die Lohnabrechnung, an einem Ort.",
+    "customers": "Kunden",
+    "customersLead": "Pflegeheime und Kliniken, die mit Planwerk planen.",
+    "security": "Sicherheit und Daten",
+    "securityMore": "Wie wir Ihre Daten schützen",
+    "cta": {
+      "title": "Planen Sie die Dienste des nächsten Monats mit Planwerk.",
+      "text": "Testen Sie Planwerk 30 Tage mit Ihrem eigenen Team, ohne Zahlungsdaten."
+    }
+  },
+  "faq": {
+    "title": "Fragen und Antworten",
+    "lead": "Zu Abrechnung, Vertrag, Ihren Daten und dem Test.",
+    "empty": "Noch keine Fragen"
+  },
+  "pricing": {
+    "lead": "Ein Preis pro Pflegeheim oder Klinik, für alle Beschäftigten. Sie wechseln den Tarif oder kündigen zum Ende jedes Abrechnungszeitraums.",
+    "questions": "Fragen zur Abrechnung",
+    "allQuestions": "Alle Fragen und Antworten"
+  },
+  "blog": {
+    "title": "Blog",
+    "lead": "Neues aus dem Produkt, und wie Pflegeheime ihre Dienste planen.",
+    "latest": "Alle Beiträge"
+  },
+  "changelog": {
+    "lead": "Was sich an Planwerk geändert hat, das Neueste zuerst: neue Funktionen, Verbesserungen und behobene Fehler."
+  }
+}

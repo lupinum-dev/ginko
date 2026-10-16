@@ -1,0 +1,36 @@
+{
+  "home": {
+    "title": "Shift planning for care homes and small clinics",
+    "trial": "Start free trial",
+    "pricing": "See pricing",
+    "trialNote": "Free for 30 days, with no payment details. The trial ends by itself.",
+    "features": "What Planwerk does",
+    "featuresLead": "From the monthly rota to the hours for payroll, in one place.",
+    "customers": "Customers",
+    "customersLead": "Care homes and clinics that plan with Planwerk.",
+    "security": "Security and data",
+    "securityMore": "How we protect your data",
+    "cta": {
+      "title": "Plan next month’s shifts with Planwerk.",
+      "text": "Try it for 30 days with your own team, without payment details."
+    }
+  },
+  "faq": {
+    "title": "Questions and answers",
+    "lead": "About billing, contracts, your data and the trial.",
+    "empty": "No questions yet"
+  },
+  "pricing": {
+    "lead": "One price per care home or clinic, for all its staff. Change your plan or cancel at the end of any billing period.",
+    "questions": "Questions about billing",
+    "allQuestions": "All questions and answers"
+  },
+  "blog": {
+    "title": "Blog",
+    "lead": "Product news, and how care homes plan their shifts.",
+    "latest": "All posts"
+  },
+  "changelog": {
+    "lead": "What changed in Planwerk, newest first: new features, improvements and fixes."
+  }
+}
