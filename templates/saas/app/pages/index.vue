@@ -4,7 +4,8 @@ import { ArrowRight } from '@lucide/vue'
 // The home page answers "what does it do, for whom, and what does it cost?" in the first screen: one sentence and a
 // lead (content/home.md), the free trial in the app as the main action, the prices as the second, and a picture of
 // the product. Then the main features, the latest changes, the customers (logos and one quote) with the facts about
-// security and data, and a closing band with the free trial. A section whose list is empty is left out.
+// security and data, and the closing band with the free trial (app/components/site/PageCta.vue). A section whose
+// list is empty is left out.
 const home = useGinko('home')
 const logos = useGinko('logos')
 const quotes = useGinko('quotes')
@@ -56,6 +57,6 @@ usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.
       </div>
     </BlockSection>
 
-    <BlockCta :title="t('home.cta.title')" :text="t('home.cta.text')" :action="trial" />
+    <SitePageCta />
   </div>
 </template>
