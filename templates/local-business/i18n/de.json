@@ -1,15 +1,10 @@
 {
   "home": {
     "title": "Physiotherapie in Graz",
-    "call": "{phone} anrufen",
-    "treatments": "Behandlungen",
-    "phoneHours": "Telefonisch erreichbar: {hours}",
-    "orEmail": "Oder schreiben Sie uns:",
-    "bookOnline": "Online buchen",
     "prices": "Behandlungen und Preise",
     "pricesLead": "Preise pro Einheit. Mit ärztlicher Verordnung erstattet Ihre Krankenkasse einen Teil davon.",
     "allTreatments": "Alle Behandlungen",
-    "team": "Ihre Therapeutinnen und Therapeuten",
+    "team": "Unser Team",
     "allTeam": "Das ganze Team",
     "visit": "Öffnungszeiten und Adresse",
     "hours": "Öffnungszeiten",
@@ -19,12 +14,15 @@
     "allQuestions": "Alle Fragen"
   },
   "visit": {
+    "call": "{phone} anrufen",
+    "phoneHours": "Telefonisch erreichbar:",
     "maps": "In Karten öffnen",
     "email": "E-Mail schreiben",
     "bookOnline": "Online buchen",
     "access": "Barrierefreiheit",
     "parking": "Parken",
-    "transit": "Öffentliche Verkehrsmittel"
+    "transit": "Öffentliche Verkehrsmittel",
+    "treatedBy": "Es behandelt Sie"
   },
   "contact": {
     "title": "Kontakt",
@@ -43,7 +41,6 @@
     "lead": "Preise pro Einheit. Wir sind eine Wahlpraxis: Mit ärztlicher Verordnung erstattet Ihre Krankenkasse einen Teil des Preises.",
     "all": "Alle Behandlungen",
     "empty": "Noch keine Behandlungen",
-    "book": "Termin anfragen",
     "bookSubject": "Terminanfrage: {title}"
   },
   "people": {

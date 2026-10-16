@@ -13,7 +13,7 @@ export function useVisit() {
   const contact = computed(() => site.value.data)
   const address = computed(() => [contact.value.street, [contact.value.postalCode, contact.value.city].filter(Boolean).join(' ')].filter(Boolean))
   const maps = computed(() => (address.value.length ? `https://www.openstreetmap.org/search?query=${encodeURIComponent([...address.value, country].filter(Boolean).join(', '))}` : undefined))
-  // An address the owner typed: only http(s) links reach the page.
+  // An address the owner typed: safeHref drops unsafe schemes (javascript: …); the field itself accepts only URLs.
   const booking = computed(() => (visit.value.data.bookingUrl ? safeHref(visit.value.data.bookingUrl) : undefined))
   return { contact, visit, address, maps, booking }
 }

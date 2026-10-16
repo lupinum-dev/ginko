@@ -1,15 +1,10 @@
 {
   "home": {
     "title": "Physiotherapy in Graz",
-    "call": "Call {phone}",
-    "treatments": "Treatments",
-    "phoneHours": "Phone hours: {hours}",
-    "orEmail": "Or write to us:",
-    "bookOnline": "Book online",
     "prices": "Treatments and prices",
     "pricesLead": "Prices per session. With a doctor’s prescription, your health insurance refunds part of them.",
     "allTreatments": "All treatments",
-    "team": "Your therapists",
+    "team": "Our team",
     "allTeam": "The whole team",
     "visit": "Opening hours and address",
     "hours": "Opening hours",
@@ -19,12 +14,15 @@
     "allQuestions": "All questions"
   },
   "visit": {
+    "call": "Call {phone}",
+    "phoneHours": "Phone hours:",
     "maps": "Open in maps",
     "email": "Send an email",
     "bookOnline": "Book online",
     "access": "Access",
     "parking": "Parking",
-    "transit": "Public transport"
+    "transit": "Public transport",
+    "treatedBy": "Treated by"
   },
   "contact": {
     "title": "Contact",
@@ -43,7 +41,6 @@
     "lead": "Prices per session. We are a private practice: with a doctor’s prescription, your health insurance refunds part of the price.",
     "all": "All treatments",
     "empty": "No treatments yet",
-    "book": "Ask for an appointment",
     "bookSubject": "Appointment request: {title}"
   },
   "people": {

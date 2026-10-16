@@ -1,24 +1,23 @@
 <script setup lang="ts">
 import { openingHoursJsonLd } from '@lupinum/ginko/basics'
-import { Accessibility, ArrowRight, ExternalLink, MapPin } from '@lucide/vue'
+import { Accessibility, ArrowRight, MapPin } from '@lucide/vue'
 
-// The home page answers the first questions on the first screen: open today and until when, how to book (call during
-// the phone hours, email, or the booking page when there is one; no form) and what the treatments are. Below: the
-// treatments with price and duration, the therapists, the opening hours with the address and access, and three
-// questions. A section whose list is empty is left out.
+// The home page answers the first questions on the first screen: open today and until when, how to book (call, with
+// the phone hours right under the button, or email; no form), where the practice is, and a photo of it. Below: the
+// treatments with price and duration, the team, the address and access with the opening hours, and three questions.
+// A section whose list is empty is left out.
 const home = useGinko('home')
 const people = useGinko('people')
 const services = useGinko('services')
 const questions = useGinko('faq')
 const treatments = useServiceCards(() => 6)
-const { contact, visit, address, maps, booking } = useVisit()
+const { visit, address, maps } = useVisit()
 const { ctx, today } = useHours()
 const { name } = useGinkoSite()
 const { t } = useI18n()
 const path = useGinkoPath()
 const langOf = useGinkoLang()
 
-const call = computed(() => (contact.value.phone ? { label: t('home.call', { phone: contact.value.phone }), to: telHref(contact.value.phone) } : undefined))
 const faqItems = computed(() => questions.value.items.slice(0, 3).map((item) => ({ id: item.id, question: item.data.question, answer: item.data.answer })))
 const link = 'inline-flex min-h-11 items-center gap-2 self-start font-medium text-primary underline-offset-4 hover:underline'
 
@@ -36,26 +35,16 @@ usePageSeo(() => ({
 
 <template>
   <div>
-    <BlockHero
-      :title="home.data.title"
-      :lead="home.data.lead"
-      :primary="call"
-      :secondary="{ label: t('home.treatments'), to: path('services') }"
-      :image="home.data.image ?? undefined"
-    >
+    <BlockHero :title="home.data.title" :lead="home.data.lead" :image="home.data.image ?? undefined">
       <template #status>
         <HoursToday />
       </template>
-      <div class="flex flex-col text-small text-muted-foreground">
-        <p v-if="visit.data.phoneHours" class="py-2 tabular-nums" :lang="langOf(visit, 'phoneHours')">{{ t('home.phoneHours', { hours: visit.data.phoneHours }) }}</p>
-        <p v-if="contact.email">
-          {{ t('home.orEmail') }}
-          <a :href="`mailto:${contact.email}`" dir="ltr" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ contact.email }}</a>
-        </p>
-        <p v-if="booking">
-          <a :href="booking" rel="noopener" class="inline-flex min-h-11 items-center gap-2 font-medium text-foreground underline underline-offset-4 hover:text-primary">
-            {{ t('home.bookOnline') }}<ExternalLink class="size-4" aria-hidden="true" />
-          </a>
+      <div class="mt-2 flex flex-col gap-4">
+        <VisitBook />
+        <p v-if="address.length" class="flex flex-wrap items-center gap-x-2 text-small text-muted-foreground">
+          <MapPin class="size-4 shrink-0" aria-hidden="true" />
+          <span><bdi>{{ address.join(', ') }}</bdi></span>
+          <a v-if="maps" :href="maps" rel="noopener" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ t('visit.maps') }}</a>
         </p>
       </div>
     </BlockHero>
@@ -93,7 +82,7 @@ usePageSeo(() => ({
           <h3 class="text-body font-semibold">{{ t('home.hours') }}</h3>
           <HoursTable :level="4" />
         </div>
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 max-md:order-first">
           <h3 class="text-body font-semibold">{{ t('home.address') }}</h3>
           <address v-if="address.length" class="flex flex-col not-italic">
             <span><bdi>{{ name }}</bdi></span>
