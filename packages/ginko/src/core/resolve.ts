@@ -244,15 +244,25 @@ export function visibleUntil(brick: Brick, data: Record<string, unknown>): strin
 /** Whether the platform deletes the entries of this brick that no longer show (`visible.deleteExpired`). */
 export const deletesExpired = (brick: Brick): boolean => brick.kind === 'collection' && brick.visible?.mode === 'until' && brick.visible.deleteExpired === true
 
-export function sortEntries(brick: CollectionBrick, entries: StoredEntry[]): StoredEntry[] {
+/**
+ * The entries in the brick's order. With `languages`, a translatable field (a title) sorts by its text in `locale`,
+ * else in the main language, so every language's list is in its own alphabetical order.
+ */
+export function sortEntries(brick: CollectionBrick, entries: StoredEntry[], languages?: { locale: Locale; main: Locale }): StoredEntry[] {
   const copy = [...entries]
   if (brick.order === 'manual') return copy.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id))
   const { field, dir } = brick.order
   const sign = dir === 'desc' ? -1 : 1
+  const def = brick.fields[field]
+  const translated = def !== undefined && isTranslatable(def)
   // Numbers and money compare numerically; daterange by from, then to; strings (dates, times) by code unit.
   // Empty values sort first in ascending order.
   const key = (e: StoredEntry): (number | string)[] => {
-    const v = e.data[field] as unknown
+    let v = e.data[field] as unknown
+    if (translated && languages && typeof v === 'object' && v !== null && !Array.isArray(v)) {
+      const map = v as Partial<Record<Locale, Json>>
+      v = isEmpty(map[languages.locale]) ? map[languages.main] : map[languages.locale]
+    }
     if (v === undefined || v === null) return []
     if (typeof v === 'number') return [v]
     if (typeof v === 'object' && !Array.isArray(v) && 'amount' in v) return [Number((v as { amount: unknown }).amount)]
@@ -313,7 +323,7 @@ export function buildBundle(input: BuildBundleInput): Bundle {
       continue
     }
     const items: BundleItem[] = []
-    for (const entry of sortEntries(brick, stored)) {
+    for (const entry of sortEntries(brick, stored, { locale, main })) {
       const r = resolveEntry(schema, key, entry, ctx)
       if (r.hidden) continue
       const item: BundleItem = { id: entry.id, data: r.data, fallback: r.fallback }
