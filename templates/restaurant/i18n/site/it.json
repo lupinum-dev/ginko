@@ -28,5 +28,12 @@
     "failed": "Qualcosa è andato storto",
     "failedText": "Ricaricate la pagina. Se l’errore resta, riprovate più tardi.",
     "home": "Vai alla pagina iniziale"
+  },
+  "imprint": {
+    "address": "Indirizzo",
+    "registry": "Registro",
+    "vat": "Partita IVA",
+    "email": "E-mail",
+    "phone": "Telefono"
   }
 }

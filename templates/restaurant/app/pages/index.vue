@@ -21,8 +21,7 @@ const { t: tm } = useI18n('menu')
 const allergenName = useAllergenName()
 
 const contact = computed(() => site.value.data)
-const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
-const reserve = computed(() => (contact.value.phone ? { label: t('call', { phone: contact.value.phone }), to: tel(contact.value.phone) } : undefined))
+const reserve = computed(() => (contact.value.phone ? { label: t('call', { phone: contact.value.phone }), to: telHref(contact.value.phone) } : undefined))
 // A few dishes from the menu: the first mains, in the owner's order (the order of content/menu/).
 const dishes = computed(() => (groups.value.find((group) => group.category === 'mains') ?? groups.value[0])?.dishes.slice(0, 4) ?? [])
 const address = computed(() => [contact.value.street, [contact.value.postalCode, contact.value.city].filter(Boolean).join(' ')].filter(Boolean))
@@ -145,7 +144,7 @@ usePageSeo(() => ({ home: true, description: home.value.data.lead, image: home.v
               </a>
             </li>
             <li v-if="contact.phone">
-              <a :href="tel(contact.phone)" class="inline-flex min-h-11 items-center gap-3 tabular-nums underline-offset-4 hover:underline">
+              <a :href="telHref(contact.phone)" class="inline-flex min-h-11 items-center gap-3 tabular-nums underline-offset-4 hover:underline">
                 <Phone class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />{{ contact.phone }}
               </a>
             </li>

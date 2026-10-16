@@ -28,7 +28,7 @@ const titleId = useId()
           <Button v-if="primary" as-child size="lg" class="max-sm:w-full">
             <NuxtLink :to="primary.to">{{ primary.label }}</NuxtLink>
           </Button>
-          <Button v-if="secondary" as-child variant="secondary" size="lg" class="max-sm:w-full">
+          <Button v-if="secondary" as-child variant="outline" size="lg" class="max-sm:w-full">
             <NuxtLink :to="secondary.to">{{ secondary.label }}</NuxtLink>
           </Button>
         </div>

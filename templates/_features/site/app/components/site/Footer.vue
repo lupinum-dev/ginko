@@ -17,7 +17,6 @@ const { t } = useI18n('site')
 const contact = computed(() => site.value.data)
 const tagline = computed(() => config.tagline?.[locale.value])
 const year = useGinkoToday().value.slice(0, 4)
-const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
 </script>
 
 <template>
@@ -56,7 +55,7 @@ const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
             <span><bdi>{{ contact.postalCode }} {{ contact.city }}</bdi></span>
           </span>
           <a v-if="contact.email" :href="`mailto:${contact.email}`" dir="ltr" class="inline-flex min-h-11 items-center self-start underline-offset-4 hover:text-foreground hover:underline">{{ contact.email }}</a>
-          <a v-if="contact.phone" :href="tel(contact.phone)" dir="ltr" class="inline-flex min-h-11 items-center self-start tabular-nums underline-offset-4 hover:text-foreground hover:underline">{{ contact.phone }}</a>
+          <a v-if="contact.phone" :href="telHref(contact.phone)" dir="ltr" class="inline-flex min-h-11 items-center self-start tabular-nums underline-offset-4 hover:text-foreground hover:underline">{{ contact.phone }}</a>
         </address>
       </div>
     </div>

@@ -116,6 +116,11 @@ describe('templates sync --check', () => {
       // The second line is isolated (U+2068 … U+2069) and passes; the first would show as ".River Commons e.V".
       writeFileSync(join(root, 'templates/demo/content/pages/1.donate.ar.md'), '---\ntitle: "تبرّعوا"\n---\n\nRiver Commons e.V.\\\n\u2068River Commons e.V.\u2069\\\nIBAN: DE00 0000\n')
     }, 'demo: content/pages/1.donate.ar.md:5: "River Commons e.V." ends in punctuation'],
+    ['the email of content/site.md written out in a page text', (root: string) => {
+      mkdirSync(join(root, 'templates/demo/content/pages'), { recursive: true })
+      writeFileSync(join(root, 'templates/demo/content/site.md'), '---\nemail: hello@example.com\nphone: \'+43 1 000 00 00\'\n---\n')
+      writeFileSync(join(root, 'templates/demo/content/pages/1.contact.md'), '---\ntitle: Contact\n---\n\nWrite to [us](mailto:hello@example.com).\n')
+    }, 'demo: content/pages/1.contact.md: "hello@example.com" is the value of content/site.md'],
     ['a lockfile in the template', (root: string) => writeFileSync(join(root, 'templates/demo/package-lock.json'), '{}'), 'demo: package-lock.json must not be committed'],
     ['sample dates less than 90 days ahead', (root: string) => {
       const path = join(root, 'templates/demo/content/events/1.fair.md')
@@ -127,6 +132,35 @@ describe('templates sync --check', () => {
     const problems = await syncCheck(root, { next: null, today: TODAY })
     expect(problems).toHaveLength(1)
     expect(problems[0]).toContain(problem)
+  })
+
+  // Wrong behaviour caught: a new template gets the ui feature but never loads its lint rule, so unknown classes stay silent.
+  it('fails when a ui template does not load the unknown-class lint', async () => {
+    const root = repo((files) => {
+      files['templates/_features/ui/files.json'] = JSON.stringify(['eslint.tailwind.mjs'])
+      files['templates/_features/ui/eslint.tailwind.mjs'] = 'export const tailwindClassesConfig = {}\n'
+      files['templates/demo/package.json'] = JSON.stringify({ name: 'demo', dependencies: { '@lupinum/ginko': '^0.4.0' }, ginko: { sampleAnchor: TODAY, features: ['site', 'ui'] } })
+      files['templates/demo/eslint.config.mjs'] = 'export default []\n'
+    })
+    await sync(root, null)
+    expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([expect.stringContaining('demo: eslint.config.mjs must pass tailwindClassesConfig')])
+    // The name only in a comment, or imported but never passed on, does not load the rule.
+    for (const config of ["// tailwindClassesConfig\nexport default []\n", "import { tailwindClassesConfig } from './eslint.tailwind.mjs'\nexport default []\n", 'export default [tailwindClassesConfig]\n']) {
+      writeFileSync(join(root, 'templates/demo/eslint.config.mjs'), config)
+      expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([expect.stringContaining('demo: eslint.config.mjs must pass tailwindClassesConfig')])
+    }
+    writeFileSync(join(root, 'templates/demo/eslint.config.mjs'), "import { tailwindClassesConfig } from './eslint.tailwind.mjs'\nexport default [tailwindClassesConfig]\n")
+    expect(await syncCheck(root, { next: null, today: TODAY })).toEqual([])
+  })
+
+  // Wrong behaviour caught: a bare ignore entry such as 'dark' is an unanchored regex and silently allows `dark:bg-red-500`.
+  it('keeps every ignore entry of the unknown-class lint anchored', async () => {
+    // Read as text: the file imports the lint plugin, which only the templates install.
+    const source = readFileSync(join(process.cwd(), 'templates/_features/ui/eslint.tailwind.mjs'), 'utf8')
+    const list = /const allowedClasses = \[([\s\S]*?)\n\]/.exec(source)?.[1] ?? ''
+    const ignore = [...list.replace(/\/\/.*$/gm, '').matchAll(/'([^']*)'/g)].map((m) => m[1]!)
+    expect(ignore.length).toBeGreaterThan(0)
+    for (const entry of ignore) expect(entry).toMatch(/^\^[a-z-]+\$$/)
   })
 
   it('accepts the next minor range while the release is pending', async () => {

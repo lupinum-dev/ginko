@@ -9,13 +9,13 @@ fails on drift. Edit the files here, never the copies. Files not in `files.json`
 | Feature | Brings | Needs in the template |
 |---|---|---|
 | `ui` | `DESIGN.md`, `components.json`, `app/assets/css/tokens.css`, `app/lib/utils.ts`, `app/components/ui/` (shadcn-vue: button, sheet) | packages `tailwindcss`, `@tailwindcss/vite`, `tw-animate-css`, `shadcn-nuxt`, `reka-ui`, `@vueuse/core`, `class-variance-authority`, `clsx`, `@lucide/vue`; `app/assets/css/main.css` that imports tailwindcss, tw-animate-css and `./tokens.css` and sets `--brand`, `--brand-foreground` (light and `.dark`) and `--font-body`; `seo.color` in `ginko.config.ts` equal to the light `--brand` (`sync --check` compares them); `shadcn: { prefix: '', componentDir: './app/components/ui' }` and the Tailwind Vite plugin in `nuxt.config.ts` |
-| `site` | layout, header, phone nav sheet, footer, skip link, logo, theme toggle, language switch, notice bar, `/legal/<slug>` page, `error.vue`, `usePageSeo` (title, share card, JSON-LD), the blocks (Hero, PageHeader, Section, Cards, Features, Cta, Empty), `ProseBody`, `InitialsAvatar`, its texts in `i18n/site/`, `modules/feature-messages.ts`, `modules/page-paths.ts` (each Vue page's address per language from `ginko.config.ts`), `site-url.ts` | `ui`; bricks `site`, `legal` (route `localized('/legal/[slug]')`), `notices` from `@lupinum/ginko/basics` and a `home` page; `app/app.config.ts` with `site` (`SiteAppConfig`); `app/routes.ts` (`locales`, `localized`); modules `@lupinum/ginko/nuxt`, `@nuxt/fonts`, `@nuxtjs/color-mode` (`classSuffix: ''`), `nuxt-og-image` + `@takumi-rs/core`; `checkSiteUrl` in a `build:before` hook |
+| `site` | layout, header, phone nav sheet, footer, `SiteContact` (email, phone and address as links), skip link, logo, theme toggle, language switch, notice bar, `/legal/<slug>` page, `error.vue`, `usePageSeo` (title, share card, JSON-LD), the blocks (Hero, PageHeader, Section, Cards, Features, Cta, Empty), `ProseBody`, `InitialsAvatar`, its texts in `i18n/site/`, `app/utils/telHref.ts` (the one `tel:` link helper), `modules/feature-messages.ts`, `modules/page-paths/` (each Vue page's address per language from `ginko.config.ts`), `site-url.ts` | `ui`; bricks `site`, `legal` (route `localized('/legal/[slug]')`), `notices` from `@lupinum/ginko/basics` and a `home` page; `app/app.config.ts` with `site` (`SiteAppConfig`); `app/routes.ts` (`locales`, `localized`); modules `@lupinum/ginko/nuxt`, `@nuxt/fonts`, `@nuxtjs/color-mode` (`classSuffix: ''`), `nuxt-og-image` + `@takumi-rs/core`; `checkSiteUrl` in a `build:before` hook |
 | `pages` | the `pages` brick (`app/bricks/pages.ts`) and the catch-all page `app/pages/[...slug].vue` | `site`; `pages: pages({ route: localized('/[slug]'), source: 'files' })`; content in `content/pages/` |
 | `gallery` | `BlockGallery` (justified rows) and `SiteLightbox`, texts in `i18n/gallery/` | `ui`, `site`; the `gallery` brick from basics |
 | `faq` | `BlockFaq` and the shadcn-vue accordion it is built on (`app/components/ui/accordion/`) | `ui`, `site`; the `faq` brick from basics; `faqJsonLd(items)` in the page's `usePageSeo({ jsonLd })` |
 | `hours` | `HoursToday` (open now, today's times or the next opening), `HoursTable` (the week, coming hour plans, the public holiday rule, closures; prop `level` for its inner heading), `useHours`, `app/utils/hours.ts` (`spansLine`, `hoursNow` with spans past midnight, `plusDays`, `clockIn`), `site/FooterStatus.vue` (open now in the footer of every page), texts in `i18n/hours/` | `ui`, `site`; bricks `hours` and `hourPlans` (the gastro preset's `hours()` and `hourPlans()`, or basics'); `country` and `timeZone` in `ginko.config.ts` (public holidays, "today") |
-| `menu` | the menu page (`/menu`, with category links, allergen key and VAT line), its print page (`/menu/print`, layout `print`), the lunch page (`/lunch`), `MenuDish`, `MenuDiet`, `MenuAllergens`, `MenuAllergenKey`, `MenuLunchDays`, `useMenu`, `useLunch`, texts in `i18n/menu/` | `ui`, `site`, **`hours`** (`useLunch` reads the opening hours, so a closed day shows no dish); bricks `menu` and `lunch` from `@lupinum/ginko-preset-gastro` (dishes are grouped by its `menuCategories`; allergens other than the EU letters show as written); pages `menu: translated('/menu')` and `lunch: translated('/lunch')`, so `path('menu')` and `path('lunch')` resolve; `currency` in `ginko.config.ts`; a translated page address needs its line in `slugs` of `app/routes.ts` (`/menu/print` too) |
-| `events` | the events list (`/events`) and the event page (`/events/<slug>`) with Event JSON-LD in the site's time zone, `EventUpcoming` (the next events as a section of another page), `useEvents`, texts in `i18n/events/` | `ui`, `site`; the `events` brick (basics `events()` or the gastro preset's) with `route: translated('/events/[slug]')`; the page `events: translated('/events')`, so `path('events')` resolves; `currency` and `timeZone` in `ginko.config.ts` |
+| `menu` | the menu page (`/menu`, with category links, allergen key and VAT line), its print page (`/menu/print`, layout `print`), the lunch page (`/lunch`), `MenuDish`, `MenuDiet`, `MenuAllergens`, `MenuAllergenKey`, `MenuLunchDays`, `useMenu`, `useLunch`, texts in `i18n/menu/` | `ui`, `site`, **`hours`** (`useLunch` reads the opening hours, so a closed day shows no dish); bricks `menu` and `lunch` from `@lupinum/ginko-preset-gastro` (dishes are grouped by its `menuCategories`; allergens other than the EU letters show as written); pages `menu: localized('/menu')` and `lunch: localized('/lunch')`, so `path('menu')` and `path('lunch')` resolve; `currency` in `ginko.config.ts`; a translated page address needs its word in `segments` of `app/routes.ts` (`print` too: `/menu/print` is `/de/speisekarte/drucken`) |
+| `events` | the events list (`/events`) and the event page (`/events/<slug>`) with Event JSON-LD in the site's time zone, `EventUpcoming` (the next events as a section of another page), `useEvents`, texts in `i18n/events/` | `ui`, `site`; the `events` brick (basics `events()` or the gastro preset's) with `route: localized('/events/[slug]')`; the page `events: localized('/events')`, so `path('events')` resolves; `currency` and `timeZone` in `ginko.config.ts` |
 | `blog` | news list (`news/index.vue`, page key `news`; `?tag=` filters), post page (`news/[slug].vue`: date, authors with initials, cover 3:2, tags, BlogPosting JSON-LD), `BlogPostList`, `BlogByline`, `useBlogPosts`, the RSS feed per language at `<news page>/rss.xml` (`server/middleware/news-feed.ts`), texts in `i18n/blog/` | `site`; `posts({ authors: 'people', route })` from basics and a `people` brick; `pages.news`; drafts are `draft: true` in a file (never built) |
 | `people` | team page (`team.vue`, page key `team`) with `PeopleList` (photo 4:5 or `InitialsAvatar`, role, bio, contact) and Person JSON-LD, texts in `i18n/people/` | `site`; `people()` from basics; `pages.team` |
 | `downloads` | documents page (`downloads.vue`, page key `downloads`) with `DownloadsList` (direct links, date, type and size, the document's language when it differs from the page's), texts in `i18n/downloads/` | `site`; `downloads()` from basics; `pages.downloads`; the files in `public/` |
@@ -55,4 +55,35 @@ templates that have that locale; main-language content (no suffix) always is. Co
 
 Feature pages keep their file name in every template (`news/index.vue`); the template gives the address per language
 in `ginko.config.ts` (`pages.news: localized('/news')`, words per language in `app/routes.ts`), and
-`modules/page-paths.ts` (site) applies it to the page. A feature page lists its page key in the table above.
+`modules/page-paths/` (site) applies it to the page. A nested page (`menu/print.vue`) takes its parent's address
+(`pages.menu`) plus the words of its own file-path parts from `segments`, so it needs no `pages` key (a key would also put
+the page into the sitemap and the prerender list). This is the only mechanism: a template has no table of its own.
+A feature page lists its page key in the table above.
+
+## Contact details: one source
+
+Email, phone and address are written once, in `content/site.md` (the `site` brick). The checks below cover email and
+phone; the street and city are not checked, because an event's `location` is its own data and may name the same place. The footer, the imprint rows of
+`/legal/<slug>`, the reservations and event buttons and `SiteContact` (`app/components/site/Contact.vue`: email, phone
+and address as links) read them from there; opening hours come from the hours bricks. A text never repeats a value:
+it says "write to us" and the page that shows the details (the pages feature's `components/pages/Top.vue` hook puts
+`<SiteContact />` under the title of one page, as the starter does for `pages/contact` and the nonprofit for
+`pages/get-involved`). Two checks keep it so: `sync --check` fails when the email or phone of `content/site.md` appears
+in another file of `content/`, `app/` or `i18n/`, and gate 3 looks for both in every page's footer and in the imprint (opened from its `legalType: imprint` file).
+`SiteContact` is a shared file of the site feature: a template that shows its details its own way (the restaurant) carries
+it unused; it is lazy, so it costs no script. A person's own address (the `people` brick) is that person's data and may be linked in a text.
+
+## Script budget (gate 6)
+
+Gate 6 limits the gzip size of all script bodies a page loads (Chromium, 390 px wide, no cache) to 150 kB, counted as
+1024 bytes. A template that needs more sets `"ginko": { "scriptBudget": <kB> }` in its `package.json`: the measured
+maximum over its pages, rounded up to the next 5 kB, at most 170. Measured with the merging `cn` (tailwind-merge adds
+about 8 kB), 15 Oct 2026, largest page of each template:
+
+| Template | Largest page | Budget |
+|---|---|---|
+| starter | 138.6 kB (`/`, `/about`, `/contact`) | 150 (default) |
+| nonprofit | 146.1 kB (the news list) | 150 (default) |
+| restaurant | 156.3 kB (the events list and pages) | 160 (`scriptBudget`) |
+
+A template over 170 kB does not get a larger budget: find the biggest chunks and cut.

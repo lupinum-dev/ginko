@@ -254,6 +254,52 @@ export function bidiProblems(dir: string): string[] {
   })
 }
 
+/** The email and phone of a template's content/site.md (its main-language file), for the checks that look for them on a page. */
+export function siteContact(dir: string): { email?: string; phone?: string } {
+  const file = join(dir, 'content/site.md')
+  const text = existsSync(file) ? readFileSync(file, 'utf8') : ''
+  const value = (key: string) => new RegExp(`^${key}:[ \\t]*(.+?)[ \\t]*$`, 'm').exec(text)?.[1]?.replace(/^(['"])(.*)\1$/, '$2')
+  return { email: value('email'), phone: value('phone') }
+}
+
+/** The path of the imprint (the main-language `content/legal/` file with `legalType: imprint`), or undefined when the template has none. */
+export function imprintPath(dir: string): string | undefined {
+  const base = join(dir, 'content/legal')
+  if (!existsSync(base)) return undefined
+  const file = readdirSync(base).sort().find((f) => /^(\d+\.)?[a-z0-9-]+\.md$/.test(f) && /^legalType:[ \t]*imprint[ \t]*$/m.test(readFileSync(join(base, f), 'utf8')))
+  return file && `/legal/${file.replace(/^\d+\./, '').replace(/\.md$/, '')}`
+}
+
+/**
+ * The email and phone of content/site.md written out by hand in another content file, a page or a text of the template
+ * (T-contact): the footer, the imprint and the contact blocks read them from the site brick, so a copy goes stale when
+ * the owner changes the brick.
+ */
+export function copiedContactProblems(dir: string): string[] {
+  const values = Object.values(siteContact(dir)).filter((value): value is string => !!value)
+  if (!values.length) return []
+  const found: string[] = []
+  for (const folder of ['content', 'app', 'i18n']) {
+    const base = join(dir, folder)
+    if (!existsSync(base)) continue
+    for (const file of readdirSync(base, { recursive: true }).map(String)) {
+      const path = `${folder}/${file}`
+      if (!/\.(md|vue|ts|json)$/.test(file) || /^content\/site(\.[a-z-]+)?\.md$/.test(path) || !statSync(join(base, file)).isFile()) continue
+      const text = readFileSync(join(base, file), 'utf8')
+      for (const value of values) if (text.includes(value)) found.push(`${path}: "${value}" is the value of content/site.md; read it from the site brick (useGinko('site')) instead of writing it out`)
+    }
+  }
+  return found
+}
+
+/** True when the eslint config imports `tailwindClassesConfig` and uses it outside the import and outside comments. */
+function loadsTailwindLint(file: string): boolean {
+  if (!existsSync(file)) return false
+  const code = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+  const importRule = /import\s*\{[^}]*\btailwindClassesConfig\b[^}]*\}\s*from\s*['"]\.\/eslint\.tailwind\.mjs['"]/
+  return importRule.test(code) && /\btailwindClassesConfig\b/.test(code.replace(importRule, ''))
+}
+
 /** `sync --check`: the problems, empty when the templates match their sources and rules. `today` is `YYYY-MM-DD`. */
 export async function syncCheck(root = repoRoot, { next = nextVersion(root), today = new Date().toISOString().slice(0, 10), only }: { next?: string | null; today?: string; only?: string } = {}): Promise<string[]> {
   const names = templateNames(root).filter((name) => !only || name === only)
@@ -277,6 +323,12 @@ export async function syncCheck(root = repoRoot, { next = nextVersion(root), tod
     const anchor = pkg.ginko?.sampleAnchor
     if (!anchor || !/^\d{4}-\d{2}-\d{2}$/.test(anchor)) problems.push(`${name}: package.json needs "ginko": { "sampleAnchor": "YYYY-MM-DD" }`)
     for (const problem of bidiProblems(dir)) problems.push(`${name}: ${problem}`)
+    for (const problem of copiedContactProblems(dir)) problems.push(`${name}: ${problem}`)
+    // The unknown-class lint (ui feature, eslint.tailwind.mjs) only works when the template's own eslint config loads it.
+    // Gate 2 then lints a probe file, which proves the rule runs; this check names the cause without a build.
+    if (pkg.ginko?.features?.includes('ui') && !loadsTailwindLint(join(dir, 'eslint.config.mjs'))) {
+      problems.push(`${name}: eslint.config.mjs must pass tailwindClassesConfig (from ./eslint.tailwind.mjs) to withNuxt, so lint fails on a Tailwind class the theme does not have`)
+    }
     const config = await configOf(root, name)
     const colour = cardColourProblem(name, dir, config.seo?.color)
     if (colour) problems.push(colour)
@@ -333,6 +385,20 @@ function cloneDir(from: string, to: string) {
 async function run(cmd: string, args: string[], cwd: string, env: Record<string, string> = {}): Promise<string> {
   const { stdout, stderr } = await execFile(cmd, args, { cwd, env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024, encoding: 'utf8' })
   return `${stdout}${stderr}`
+}
+
+/**
+ * Proves the unknown-class lint is live in a template, not only imported: one probe file has a class the theme does not
+ * have (`dark:bg-red-500`, which an unanchored `dark` ignore entry would let through) next to the classes that are
+ * allowed on purpose. The lint must report the first and none of the others.
+ */
+export async function unknownClassProbe(dir: string): Promise<void> {
+  const probe = '<template>\n  <div class="dark:bg-red-500 dark prose surface-primary" />\n</template>\n'
+  const child = execFile('npx', ['eslint', '--stdin', '--stdin-filename', 'app/components/ProbeUnknownClass.vue'], { cwd: dir, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+  child.child.stdin?.end(probe)
+  const out = await child.then(({ stdout, stderr }) => `${stdout}${stderr}`, (error: { stdout?: string; stderr?: string }) => `${error.stdout ?? ''}${error.stderr ?? ''}`)
+  const reported = [...out.matchAll(/Unknown class detected: (\S+)/g)].map((m) => m[1])
+  if (reported.join() !== 'dark:bg-red-500') throw new Error(`the unknown-class lint must report exactly dark:bg-red-500 for the probe file, but reported [${reported.join(', ')}]:\n${out}`)
 }
 
 /**
@@ -469,6 +535,7 @@ async function runGates(name: string, gates: number[], modes: Mode[], results: R
       // Gate 2: types, lint, build, ginko check, platform-ready, sync --check. The build also serves gates 3–6.
       if (gates.includes(2)) await step(2, mode, 'vue-tsc (nuxt typecheck)', () => run('npx', ['nuxt', 'typecheck'], dir))
       if (gates.includes(2)) await step(2, mode, 'eslint', () => run('npx', ['eslint', '.'], dir))
+      if (gates.includes(2) && pkg.ginko?.features?.includes('ui')) await step(2, mode, 'unknown-class lint catches a probe class', () => unknownClassProbe(dir))
       const built = (gates.includes(2) || browserGates.length > 0) && await step(2, mode, 'nuxt build', () => run('npx', ['nuxt', 'build'], dir, clockEnv), browserGates.length > 0)
       if (gates.includes(2)) await step(2, mode, 'ginko check', () => run('npx', ['ginko', 'check'], dir))
       if (gates.includes(2)) await step(2, mode, 'platform-ready (checkSite with source removed from every brick)', () => platformReady(dir))
@@ -504,6 +571,9 @@ async function runGates(name: string, gates: number[], modes: Mode[], results: R
             // What the feature specs compare against: the site's zone ("today"), currency and main language.
             TEMPLATE_TIME_ZONE: config.timeZone ?? 'UTC', TEMPLATE_CURRENCY: config.currency ?? '', TEMPLATE_LANGUAGE: config.languages?.[locales[0]!] ?? locales[0]!,
             // Gate 6: kB of gzip script per page; 150 for the starter, a feature template sets its own (at most 170).
+            // The sample email and phone of content/site.md: gate 3 looks for them on the page that shows contact details.
+            TEMPLATE_CONTACT: JSON.stringify(siteContact(templateDir)),
+            TEMPLATE_IMPRINT: imprintPath(templateDir) ?? '',
             TEMPLATE_SCRIPT_BUDGET: String(Math.min(pkg.ginko?.scriptBudget ?? 150, 170)),
           }
           // Gate 3 also runs the e2e specs of the template's features (templates/_features/<feature>/e2e/).

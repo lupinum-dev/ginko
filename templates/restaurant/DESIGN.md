@@ -115,26 +115,24 @@ dialog, `ease-out`. With `prefers-reduced-motion`, transitions and animations ar
 
 | Component | Variants |
 |---|---|
-| `Button` | `primary` (default), `secondary`, `ghost`, `link`; sizes `md` (default, 44 px), `lg` (48 px), `icon` (44 px) |
+| `Button` | shadcn-vue's names: `default` (the main action), `outline`, `secondary`, `destructive`, `ghost`, `link`; sizes `default` (44 px), `sm` (36 px with a mouse, 44 px on touch), `lg` (48 px), `icon` (44 px), `icon-sm`, `icon-lg` |
 | `Sheet` | `side="start"` (default) or `end`: logical sides, so it opens from the right in right-to-left languages |
 | `Accordion` | as in shadcn-vue, on these tokens; only in templates with questions and answers (`BlockFaq`) |
 
 Nothing else until a feature needs it. To add one: `npx shadcn-vue@latest add <name>`, then:
 
 1. Change `import { cn } from 'cn'` to `import { cn } from '@/lib/utils'` and remove the `cn` package the CLI adds.
-2. Replace Tailwind default classes (`text-sm`, `shadow-lg`, `rounded-lg`, `bg-black/80`) with the tokens above. They
-   give no error, they just do nothing.
-3. The `Button` here has other variant names than shadcn-vue's: where the new component uses `buttonVariants`, change
-   `variant: 'default'` to `'primary'` and `'outline'` to `'secondary'`, and `size: 'default'` or `'sm'` to `'md'`.
-   For anything else, add a variant to `app/components/ui/button/index.ts` and to the table above.
-4. Run `npm run typecheck` and look at the component in light and dark.
+2. Replace Tailwind default classes (`text-sm`, `shadow-lg`, `rounded-lg`, `bg-black/80`) with the tokens above. In
+   the browser they give no error, they just do nothing.
+3. Run `npm run lint` and `npm run typecheck`, and look at the component in light and dark. Lint fails on every class
+   the theme does not have (`eslint.tailwind.mjs`, which reads `main.css`). A class that is on purpose not Tailwind
+   (a hook for plain CSS) goes into the explicit list at the top of that file, with a comment saying why.
 
 Icons come from `@lucide/vue` (what the CLI installs; `lucide-vue-next` is deprecated).
 
-`cn` (`app/lib/utils.ts`) only joins classes. shadcn's usual `cn` also resolves conflicts (a `class="text-small"` on
-a component that sets `text-h3` wins); that needs tailwind-merge (about 8 kB of JavaScript on every page, more than
-the 150 kB budget leaves) and, for this type scale, its configuration, because it reads `text-small` as a colour. So
-a component's `class` prop only adds classes: to change one the component sets, change the component.
+`cn` (`app/lib/utils.ts`) joins classes and resolves conflicts with tailwind-merge, as in shadcn: a
+`class="text-small"` on a component that sets `text-h3` wins. tailwind-merge is configured for the theme of
+tokens.css (`text-small`, `p-gutter`, `max-w-page`, `rounded-block`…); a new token in `@theme` gets its line there too.
 
 `app/components/site/`: `SiteHeader` (name or logo, up to 6 links, language switch, theme toggle; the links move into
 `SiteNavSheet` below `md`, or below `xl` when there are more than 4), `SiteFooter`, `SiteSkipLink`, `SiteLogo`,

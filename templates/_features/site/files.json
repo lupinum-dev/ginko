@@ -9,6 +9,7 @@
   "app/components/block/Hero.vue",
   "app/components/block/PageHeader.vue",
   "app/components/block/Section.vue",
+  "app/components/site/Contact.vue",
   "app/components/site/Footer.vue",
   "app/components/site/Header.vue",
   "app/components/site/LanguageSwitch.vue",
@@ -23,12 +24,14 @@
   "app/error.vue",
   "app/layouts/default.vue",
   "app/pages/legal/[slug].vue",
+  "app/utils/telHref.ts",
   "i18n/site/ar.json",
   "i18n/site/de.json",
   "i18n/site/en.json",
   "i18n/site/fr.json",
   "i18n/site/it.json",
   "modules/feature-messages.ts",
-  "modules/page-paths.ts",
+  "modules/page-paths/index.ts",
+  "modules/page-paths/paths.ts",
   "site-url.ts"
 ]
