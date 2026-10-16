@@ -1,0 +1,9 @@
+{
+  "title": "Änderungen",
+  "lead": "Was sich am Produkt geändert hat, das Neueste zuerst.",
+  "version": "Version {version}",
+  "latest": "Neueste Änderungen",
+  "all": "Alle Änderungen",
+  "empty": "Noch keine Änderungen",
+  "feed": "Änderungen als RSS-Feed"
+}
