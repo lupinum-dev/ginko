@@ -31,5 +31,8 @@
   },
   "changelog": {
     "lead": "What changed in Planwerk, newest first: new features, improvements and fixes."
+  },
+  "about": {
+    "team": "The team"
   }
 }

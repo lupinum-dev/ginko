@@ -31,5 +31,8 @@
   },
   "changelog": {
     "lead": "Was sich an Planwerk geändert hat, das Neueste zuerst: neue Funktionen, Verbesserungen und behobene Fehler."
+  },
+  "about": {
+    "team": "Das Team"
   }
 }
