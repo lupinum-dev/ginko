@@ -49,7 +49,9 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
     if ((error as { code?: string }).code !== 'ERR_MODULE_NOT_FOUND') throw error
     throw new CliError('Install @lupinum/ginko-content to read file content.', 'USAGE')
   }
-  const result = await content.readContent(join(root, 'content'), publicDir, filesSchema, { markdown: 'text' })
+  // A file marked `draft: true` stays out, as in the site's build: an export entry has no draft state, and the
+  // platform refuses `draft` as a field.
+  const result = await content.readContent(join(root, 'content'), publicDir, filesSchema, { markdown: 'text', drafts: false })
   if (result.errors.length > 0) throw new CliError(`The content has errors:\n${result.errors.map(content.errorLine).join('\n')}`)
 
   const entries: ExportEntry[] = []
