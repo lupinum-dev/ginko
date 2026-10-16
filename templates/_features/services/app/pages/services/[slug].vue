@@ -6,8 +6,11 @@ import { ArrowLeft, Mail, Phone } from '@lucide/vue'
 // title in the subject and a phone number: the entry's contact person's, else the business's from content/site.md),
 // the product sheet when it has one, photo (3:2), key facts and text. Service JSON-LD with the
 // price when it has one. An unknown entry is a 404. The sheet button comes from the downloads feature
-// (`DownloadsFileButton`), found by its file, so a site without downloads builds without it.
+// (`DownloadsFileButton`), found by its file, so a site without downloads builds without it. A template whose
+// customers book another way brings `app/components/services/Actions.vue` (the local business: call first, with the
+// phone hours); the page then shows it in place of its row of actions, with the same facts as props.
 const SheetButton = Object.values(import.meta.glob<Component>('../../components/downloads/FileButton.vue', { eager: true, import: 'default' }))[0]
+const Actions = Object.values(import.meta.glob<Component>('../../components/services/Actions.vue', { eager: true, import: 'default' }))[0]
 const route = useRoute()
 const service = useGinkoEntry('services', () => route.params.slug)
 const site = useGinko('site')
@@ -38,7 +41,7 @@ const enquiry = computed(() => email.value && `mailto:${email.value}?subject=${e
       <div class="flex max-w-3xl flex-col gap-5">
         <h1 class="text-h1">{{ service.data.title }}</h1>
         <p class="text-lead text-muted-foreground">{{ service.data.summary }}</p>
-        <dl class="grid gap-x-8 gap-y-3 sm:grid-cols-[auto_1fr]">
+        <dl class="grid grid-cols-[auto_1fr] gap-x-8 gap-y-3">
           <dt class="text-small text-muted-foreground">{{ priceLabel }}</dt>
           <dd class="font-medium tabular-nums">{{ price(service.data) }}</dd>
           <template v-if="duration(service.data)">
@@ -46,7 +49,8 @@ const enquiry = computed(() => email.value && `mailto:${email.value}?subject=${e
             <dd class="font-medium tabular-nums">{{ duration(service.data) }}</dd>
           </template>
         </dl>
-        <div v-if="enquiry || phone || (SheetButton && sheet)" class="flex flex-col gap-2">
+        <component :is="Actions" v-if="Actions" :subject="main.subject" :email="email" :phone="phone" :contact="contact?.name" />
+        <div v-else-if="enquiry || phone || (SheetButton && sheet)" class="flex flex-col gap-2">
           <div class="flex flex-wrap gap-3">
             <Button v-if="enquiry" as-child size="lg" class="max-sm:w-full">
               <a :href="enquiry"><Mail aria-hidden="true" />{{ main.label }}</a>
