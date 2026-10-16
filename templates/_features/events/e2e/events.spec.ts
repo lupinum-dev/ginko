@@ -3,9 +3,20 @@
 import { expect, open, site, test } from '../../../../scripts/templates/e2e/helpers.ts'
 
 test('every listed event is still to come and its page has Event JSON-LD with a zone offset', async ({ page }) => {
-  await open(page, '/events')
-  const links = await page.locator('main li h3 a').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))
-  expect(links.length, 'events listed').toBeGreaterThan(0)
+  // The events page: the header link whose page lists cards that link below its own address. A template names the
+  // page in its own words (`/trade-fairs`), so the address is never assumed.
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await open(page, '/')
+  let links: string[] = []
+  for (const href of await page.locator('header nav a').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))) {
+    await open(page, href)
+    const cards = await page.locator('main li h3 a').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))
+    if (cards.length && cards.every((card) => card.startsWith(`${href}/`))) {
+      links = cards
+      break
+    }
+  }
+  expect(links.length, 'events listed on a page of the header').toBeGreaterThan(0)
   const today = site.now.slice(0, 10)
   for (const href of links) {
     const response = await open(page, href)
