@@ -34,8 +34,8 @@ export function useJobText() {
     const value = job.remote ?? 'onsite'
     return labels[value] ?? value
   }
-  /** "31 January 2027" */
-  const deadline = (job: JobFacts) => format.date(job.validUntil, { day: 'numeric', month: 'long', year: 'numeric' })
+  /** "31 January 2027", with no-break spaces: the date never breaks across two lines. */
+  const deadline = (job: JobFacts) => format.date(job.validUntil, { day: 'numeric', month: 'long', year: 'numeric' }).replace(/\s/g, '\u00a0')
   /** Place, employment and, when not on site, the work place: "Musterstadt · Full time · Hybrid". */
   const facts = (job: JobFacts) => [job.location, employment(job), job.remote && job.remote !== 'onsite' ? workplace(job) : undefined].filter(Boolean).join(' · ')
   return { employment, workplace, deadline, facts }
@@ -77,13 +77,16 @@ export function useApplyLink(job: () => JobFacts | undefined) {
 
 /**
  * schema.org JobPosting for a job page: title, the text as plain text, `validThrough` from `validUntil`, employment,
- * place, remote work and the business as employer. `datePosted` is the day the entry last changed (Ginko keeps no
- * separate posting date), else today. A job after its `validUntil` has no page, so it has no JSON-LD either.
+ * place, remote work and the business as employer. `datePosted` is the day the entry last changed in the site's time
+ * zone (Ginko keeps no separate posting date, so an edit moves it), else today. A job after its `validUntil` has no
+ * page, so it has no JSON-LD either.
  */
 export function useJobJsonLd(job: () => JobFacts & { url: string, updatedAt?: string, description: string }, body: () => MarkdownTree | null | undefined) {
-  const { name, url } = useGinkoSite()
+  const { name, url, timeZone } = useGinkoSite()
   const config = useSiteAppConfig()
   const today = useGinkoToday()
+  // en-CA writes dates as YYYY-MM-DD. `updatedAt` is in UTC, which near midnight is another day in the site's zone.
+  const dayInSite = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
   const country: string = useRuntimeConfig().public.ginko.country
   const absolute = (path: string) => new URL(path, url).href
   return computed(() => {
@@ -93,7 +96,7 @@ export function useJobJsonLd(job: () => JobFacts & { url: string, updatedAt?: st
       title: j.title,
       url: absolute(j.url),
       description: [j.description, tree ? plainText(tree) : ''].filter(Boolean).join('\n\n'),
-      datePosted: j.updatedAt?.slice(0, 10) ?? today.value,
+      datePosted: j.updatedAt ? dayInSite(j.updatedAt) : today.value,
       validUntil: j.validUntil,
       employmentType: j.employmentType,
       remote: j.remote ?? undefined,
