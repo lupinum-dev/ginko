@@ -5,9 +5,10 @@ import { ArrowLeft, ArrowRight } from '@lucide/vue'
 import { DialogClose, DialogContent, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from 'reka-ui'
 
 /**
- * The one lightbox of a gallery: the photo as large as fits, its alt text as caption, previous and next (buttons and
- * arrow keys), and Escape to close. reka-ui keeps the focus inside and the page still; on close the focus returns
- * to the photo that is shown last (`focusPhoto`, from the gallery that opened it).
+ * The one lightbox of a gallery: the photo as large as fits on an opaque dark background (no page text shows behind
+ * it), its alt text as caption, previous and next (buttons and arrow keys), and Escape to close. reka-ui keeps the
+ * focus inside and the page still; on close the focus returns to the photo that is shown last (`focusPhoto`, from the
+ * gallery that opened it).
  */
 const props = defineProps<{ images: ImageValue[], focusPhoto: (index: number) => void }>()
 const open = defineModel<boolean>('open', { required: true })
@@ -32,7 +33,7 @@ function returnFocus(event: Event) {
       <DialogOverlay class="fixed inset-0 z-50 bg-scrim data-[state=open]:animate-in data-[state=open]:fade-in-0" />
       <DialogContent
         :aria-describedby="undefined"
-        class="dark fixed inset-0 z-50 flex bg-background/95 flex-col items-center justify-center gap-4 p-4 text-foreground focus-visible:outline-none md:p-10"
+        class="dark fixed inset-0 z-50 flex bg-background flex-col items-center justify-center gap-4 p-4 text-foreground focus-visible:outline-none md:p-10"
         @keydown="onKey"
         @close-auto-focus="returnFocus"
       >

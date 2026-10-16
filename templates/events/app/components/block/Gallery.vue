@@ -9,7 +9,7 @@ import type { ImageValue } from '@lupinum/ginko'
  * takes the rest of a short last row, so its photos keep about the row height instead of growing past the rows above.
  * Each photo is a button that opens the lightbox at that photo.
  * `stack`: one photo below the other at full width, each in its own ratio, the first loaded at once (the main photos of
- * a page, such as a portfolio's project). `captions`: each photo's description below it; screen readers hear it once,
+ * a page, such as the photos of one project). `captions`: each photo's description below it; screen readers hear it once,
  * as the name of the photo's button.
  */
 const props = defineProps<{ images: ImageValue[], stack?: boolean, captions?: boolean }>()
