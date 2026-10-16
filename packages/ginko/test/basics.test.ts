@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildFileBundles, publicBundle } from '@lupinum/ginko-content'
 import { collection, defineSite, f, type Brick, type Field, type Label } from '@lupinum/ginko'
-import { authors, changelog, downloads, faq, faqJsonLd, jobJsonLd, jobs, legal, offerJsonLd, people, personJsonLd, postJsonLd, posts, site, siteJsonLd, withoutFiles } from '@lupinum/ginko/basics'
+import { authors, changelog, downloads, faq, faqJsonLd, jobJsonLd, jobs, legal, offerJsonLd, people, personJsonLd, postJsonLd, posts, releaseAnchor, site, siteJsonLd, withoutFiles } from '@lupinum/ginko/basics'
 import { checkSite, serializeSchema } from '@lupinum/ginko/internal'
 
 const route = (path: string) => ({ en: `/${path}/[slug]`, de: `/de/${path}/[slug]` }) as const
@@ -104,11 +104,23 @@ describe('basics factories', () => {
   })
 })
 
+describe('releaseAnchor', () => {
+  // Wrong behaviour caught: a changed anchor breaks every public link to a release (`/changelog#v4-6-0`).
+  it.each([
+    ['4.6.0', 'v4-6-0'],
+    ['2.0.0-Beta.1', 'v2-0-0-beta-1'],
+  ])('%s → %s', (version, anchor) => {
+    expect(releaseAnchor(version)).toBe(anchor)
+  })
+})
+
 describe('basics JSON-LD', () => {
-  // Wrong behaviour caught: a net price that search engines read as the full price, or cents as the price.
+  // Wrong behaviour caught: a net price that search engines read as the full price, cents as the price, or a price
+  // per month read as a one-off price.
   it.each([
     [{}, { '@type': 'Offer', price: '390.00', priceCurrency: 'EUR' }],
     [{ valueAddedTaxIncluded: false }, { '@type': 'Offer', price: '390.00', priceCurrency: 'EUR', priceSpecification: { '@type': 'PriceSpecification', price: '390.00', priceCurrency: 'EUR', valueAddedTaxIncluded: false } }],
+    [{ valueAddedTaxIncluded: false, unitCode: 'MON' }, { '@type': 'Offer', price: '390.00', priceCurrency: 'EUR', priceSpecification: { '@type': 'UnitPriceSpecification', price: '390.00', priceCurrency: 'EUR', valueAddedTaxIncluded: false, referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MON' } } }],
   ] as const)('offer with %j', (options, expected) => {
     expect(offerJsonLd({ amount: 39000 }, 'EUR', options)).toEqual(expected)
   })

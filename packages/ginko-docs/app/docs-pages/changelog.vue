@@ -1,12 +1,11 @@
 <script setup lang="ts">
+import { releaseAnchor as anchor } from '@lupinum/ginko/basics'
 import { markdownComponents } from '../lib/markdownComponents'
 // The changelog: one page, one section per release, newest first (the collection's order). Each version has an anchor.
 const { t } = useI18n()
 const blog = useDocsBlog()
 const entries = blog.changelog()
 useGinkoSeo(() => ({ title: t('docs.changelog') }))
-// `1.2.0` -> `v1-2-0`, a valid id and a stable address for the release.
-const anchor = (version: string) => `v${version.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
 </script>
 
 <template>

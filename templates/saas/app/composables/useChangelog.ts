@@ -1,5 +1,6 @@
 // Synced from templates/_features/changelog/app/composables/useChangelog.ts by `pnpm templates sync`. Edit the source, not this copy.
 import type { MarkdownValue } from '@lupinum/ginko'
+import { releaseAnchor } from '@lupinum/ginko/basics'
 
 /** A release as the changelog shows it. */
 export interface Release {

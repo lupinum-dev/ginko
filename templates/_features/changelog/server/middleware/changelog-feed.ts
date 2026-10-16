@@ -1,10 +1,10 @@
 import type { MarkdownTree, MarkdownValue } from '@lupinum/ginko'
-import { rssXml } from '@lupinum/ginko/basics'
+import { releaseAnchor, rssXml } from '@lupinum/ginko/basics'
 import { defineEventHandler, getRequestURL, useRuntimeConfig } from 'nuxt/server'
 import site from '~~/ginko.config'
-import { releaseAnchor, releaseSummary } from '~~/app/utils/changelog'
+import { releaseSummary } from '~~/app/utils/changelog'
 
-// The changelog feed of each language (RSS 2.0) at <changelog page>/rss.xml: /changelog/rss.xml, /de/aenderungen/rss.xml.
+// The changelog feed of each language (RSS 2.0) at <changelog page>/rss.xml, for example /changelog/rss.xml.
 // One item per release, newest first: the version as the title, the summary (the text before `<!-- more -->`) as the
 // description, the release's date, and a link to its section of the changelog page.
 export default defineEventHandler(async (event) => {

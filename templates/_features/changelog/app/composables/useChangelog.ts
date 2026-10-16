@@ -1,4 +1,5 @@
 import type { MarkdownValue } from '@lupinum/ginko'
+import { releaseAnchor } from '@lupinum/ginko/basics'
 
 /** A release as the changelog shows it. */
 export interface Release {
