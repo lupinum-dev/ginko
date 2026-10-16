@@ -4,8 +4,8 @@ import { expect, open, site, test } from '../../../../scripts/templates/e2e/help
 
 test('every listed event is still to come and its page has Event JSON-LD with a zone offset', async ({ page }) => {
   // The events page: the header or footer link whose page lists cards that link below its own address. A template
-  // names the page in its own words (`/trade-fairs`) and puts it where it fits (the events template has its dates in
-  // the footer), so neither the address nor the place is assumed.
+  // names the page in its own words (`/trade-fairs`) and puts it where it fits (the events template and the nonprofit
+  // link it from the footer), so neither the address nor the place is assumed.
   await page.setViewportSize({ width: 1440, height: 900 })
   await open(page, '/')
   let links: string[] = []

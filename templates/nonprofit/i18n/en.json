@@ -28,6 +28,11 @@
   "event": {
     "next": "Next date",
     "time": "{start}–{end}",
-    "separator": ", "
+    "separator": ", ",
+    "later": "Later dates"
+  },
+  "events": {
+    "lead": "Clean-ups, meetings and other dates, with time and place.",
+    "reserve": "Questions about this date? Call or write to us."
   }
 }

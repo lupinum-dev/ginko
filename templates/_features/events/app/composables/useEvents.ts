@@ -52,7 +52,12 @@ export function useBookingClosed() {
  * as the owner entered them, in the site's time zone; the price; "fully booked".
  */
 export function useEventText() {
-  const { t, format, language } = useI18n('events')
+  const { t, format, language, locale, locales } = useI18n('events')
+  // On a right-to-left page a clock range and a phone number keep their left-to-right order ("10:00–13:00", as the
+  // next date of the nonprofit shows it): an isolate, since the text also goes into cards, titles and buttons where
+  // no <bdi> fits.
+  const rtl = computed(() => locales.find((l) => l.code === locale.value)?.dir === 'rtl')
+  const ltr = (text: string) => (rtl.value ? `\u2066${text}\u2069` : text)
   const weekday = (date: string) => format.date(date, { weekday: 'short' })
   const long = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' } as const
   const short = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' } as const
@@ -64,7 +69,7 @@ export function useEventText() {
   // the range never reads as the hours of each day.
   const times = (event: EventFacts) => {
     if (!event.start || !event.end) return event.start ?? undefined
-    if (event.when.from === event.when.to) return `${event.start}–${event.end}`
+    if (event.when.from === event.when.to) return ltr(`${event.start}–${event.end}`)
     return `${weekday(event.when.from)} ${event.start} – ${weekday(event.when.to)} ${event.end}`
   }
   /** "Fri, 29 Jan 2027 · 19:00" */
@@ -73,7 +78,7 @@ export function useEventText() {
   const price = (event: EventFacts) => (event.price ? t('perPerson', { price: wholeMoney(event.price, language.value) }) : undefined)
   /** Price and "fully booked", for a list. */
   const status = (event: EventFacts) => [price(event), event.soldOut ? t('soldOut') : undefined].filter(Boolean).join(' · ') || undefined
-  return { dates, times, when, price, status }
+  return { dates, times, when, price, status, ltr }
 }
 
 /** The events still to come (the brick hides an event after its last day), the next first. */
