@@ -3,12 +3,14 @@
 import { expect, open, site, test } from '../../../../scripts/templates/e2e/helpers.ts'
 
 test('every listed event is still to come and its page has Event JSON-LD with a zone offset', async ({ page }) => {
-  // The events page: the header link whose page lists cards that link below its own address. A template names the
-  // page in its own words (`/trade-fairs`), so the address is never assumed.
+  // The events page: the header or footer link whose page lists cards that link below its own address. A template
+  // names the page in its own words (`/trade-fairs`) and puts it where it fits (the events template has its dates in
+  // the footer), so neither the address nor the place is assumed.
   await page.setViewportSize({ width: 1440, height: 900 })
   await open(page, '/')
   let links: string[] = []
-  for (const href of await page.locator('header nav a').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))) {
+  const pages = await page.locator('header nav a, footer nav a').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))
+  for (const href of new Set(pages)) {
     await open(page, href)
     const cards = await page.locator('main li h3 a').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))
     if (cards.length && cards.every((card) => card.startsWith(`${href}/`))) {
@@ -16,7 +18,7 @@ test('every listed event is still to come and its page has Event JSON-LD with a 
       break
     }
   }
-  expect(links.length, 'events listed on a page of the header').toBeGreaterThan(0)
+  expect(links.length, 'events listed on a page of the header or footer').toBeGreaterThan(0)
   const today = site.now.slice(0, 10)
   for (const href of links) {
     const response = await open(page, href)
