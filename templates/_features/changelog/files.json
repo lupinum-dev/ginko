@@ -6,6 +6,5 @@
   "i18n/changelog/de.json",
   "i18n/changelog/en.json",
   "i18n/changelog/fr.json",
-  "modules/changelog-feed.ts",
   "server/middleware/changelog-feed.ts"
 ]
