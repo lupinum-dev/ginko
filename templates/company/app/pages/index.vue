@@ -3,9 +3,10 @@ import { ArrowRight } from '@lucide/vue'
 import type { Card } from '~/components/block/Cards.vue'
 
 // The home page answers "what do you make, and can it solve my problem?" in the first screen: what the company makes
-// in one sentence (content/home.md) with the photo, and one main action, contact sales. Then the products and
-// services, the references (customer logos and one quote), the latest news, the open jobs and the next trade fair,
-// and a closing band with the way to sales and the company's phone. A section whose list is empty is left out.
+// in one sentence (content/home.md), one main action, contact sales, and the service line for a pump that has
+// stopped. Then the products and services, the references (customer logos and one quote), the latest news, the open
+// jobs and the next trade fair, and a closing band with the way to sales and the office's phone. A section whose list
+// is empty is left out.
 const home = useGinko('home')
 const site = useGinko('site')
 const quotes = useGinko('quotes')
@@ -20,7 +21,6 @@ const { t } = useI18n()
 const latest = computed(() => posts.value.slice(0, 3))
 const quote = computed(() => quotes.value.items[0])
 const contact = computed(() => site.value.data)
-const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
 
 // Open jobs and the next trade fair, as two cards: the jobs card always shows (with no open job it invites an open
 // application), the fair card only while a fair is coming up.
@@ -44,7 +44,9 @@ usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.
       :image="home.data.image"
       :primary="{ label: t('home.sales'), to: path('team') }"
       :secondary="{ label: t('home.catalogue'), to: path('services') }"
-    />
+    >
+      <ServiceLine />
+    </BlockHero>
 
     <BlockSection v-if="services.length" :title="t('home.products')" :side="false">
       <BlockCards :items="services" compact />
@@ -67,13 +69,13 @@ usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.
       </NuxtLink>
     </BlockSection>
 
-    <BlockSection :title="t('home.next')" :side="false">
+    <BlockSection v-if="next.length" :title="t('home.next')" :side="false">
       <BlockCards :items="next" :columns="2" />
     </BlockSection>
 
     <BlockCta :title="t('home.cta.title')" :text="t('home.cta.text')" :action="{ label: t('home.sales'), to: path('team') }">
       <p v-if="contact.phone || contact.email" class="flex flex-wrap gap-x-6 text-body">
-        <a v-if="contact.phone" :href="tel(contact.phone)" dir="ltr" class="inline-flex min-h-11 items-center font-medium tabular-nums underline underline-offset-4">{{ contact.phone }}</a>
+        <a v-if="contact.phone" :href="telHref(contact.phone)" dir="ltr" class="inline-flex min-h-11 items-center font-medium tabular-nums underline underline-offset-4">{{ contact.phone }}</a>
         <a v-if="contact.email" :href="`mailto:${contact.email}`" dir="ltr" class="inline-flex min-h-11 items-center font-medium underline underline-offset-4">{{ contact.email }}</a>
       </p>
     </BlockCta>

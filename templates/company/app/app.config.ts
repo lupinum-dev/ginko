@@ -27,5 +27,7 @@ export default defineAppConfig({
     ],
     // For example { label: 'LinkedIn', url: 'https://www.linkedin.com/company/halden-pumps' }.
     socials: [],
+    // Prices to businesses, plus VAT: the price label says so, and so does the price's JSON-LD.
+    vat: 'excluded',
   } satisfies SiteAppConfig,
 })

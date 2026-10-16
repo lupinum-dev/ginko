@@ -17,16 +17,21 @@
     },
     "cta": {
       "title": "Tell us what you need to pump.",
-      "text": "Our sales engineers suggest a pump or a complete station and send you a quote. Or call us directly:"
+      "text": "Our sales engineers suggest a pump or a complete station and send you a quote. Or call our office directly:"
     }
+  },
+  "serviceLine": {
+    "stopped": "Pump stopped? Service line",
+    "title": "Service line",
+    "text": "For a pump that has stopped, and for spare parts.",
+    "office": "Office"
   },
   "services": {
     "title": "Products and services",
     "lead": "Pumps and pumping stations, and the service that keeps them running. Most products are built to order: ask us for a quote. Prices plus VAT.",
     "all": "All products and services",
     "enquire": "Request a quote",
-    "subject": "Quote request: {title}",
-    "price": "Price (plus VAT)"
+    "subject": "Quote request: {title}"
   },
   "jobs": {
     "lead": "Open positions at our works in Musterstadt and in field service, with the last day to apply."
@@ -36,7 +41,7 @@
   },
   "people": {
     "title": "Contact",
-    "lead": "Call or write to the right person directly. For anything else, our office answers the main number and email at the foot of every page."
+    "lead": "Write to or call the right person directly."
   },
   "downloads": {
     "lead": "Product sheets and other documents to read and keep."

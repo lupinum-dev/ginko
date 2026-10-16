@@ -47,6 +47,19 @@ export default defineSite({
         image: f.image({ de: 'Bild', en: 'Image' }, { optional: true }),
       },
     }),
+    // The service line for a pump that stops: the person who answers it (phone and email from content/people/) and
+    // when (content/serviceLine.md). The home page shows it in the first screen, the contact page above the people.
+    serviceLine: single({
+      label: { de: 'Service-Nummer', en: 'Service line' },
+      source: 'files',
+      fields: {
+        contact: f.ref({ de: 'Wer antwortet', en: 'Who answers' }, { to: 'people' }),
+        hours: f.text({ de: 'Erreichbar', en: 'Hours' }, {
+          max: 80,
+          hint: { de: 'Kurz, zum Beispiel „Mo–Fr 7–17 Uhr, Sa 8–12 Uhr“.', en: 'Short, for example “Mon–Fri 7:00–17:00, Sat 8:00–12:00”.' },
+        }),
+      },
+    }),
     // Legal name, address, register entry, VAT number, phone and email for the footer, the imprint, the enquiry and
     // application emails and the Organization JSON-LD (content/site.md).
     site: site({ source: 'files' }),

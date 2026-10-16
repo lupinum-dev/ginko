@@ -79,8 +79,9 @@ name sets the order.
 
 | On the site | File |
 |---|---|
-| Home page: what you make, lead, photo | `content/home.md` (and `home.de.md`) |
-| Products and services | `content/services/<n>.<name>.md`: `title`, `summary`, `pricing` (`price` or `onRequest`, always one of the two), `price` (in euros, `390` or `12.50`, required with `pricing: price`), `duration` (minutes), `specs` (rows of `label` and `value`), `image` (3:2), `sheet` (the product sheet, an entry of `content/downloads/`: `downloads/<file name>`), the text |
+| Home page: what you make, lead, photo (optional) | `content/home.md` (and `home.de.md`) |
+| Service line: who answers it (an entry of `content/people/`, with phone and email) and when | `content/serviceLine.md` (`contact`, `hours`; `serviceLine.de.md` translates `hours`) |
+| Products and services | `content/services/<n>.<name>.md`: `title`, `summary`, `pricing` (`price` or `onRequest`, always one of the two), `price` (in euros, `390` or `12.50`, required with `pricing: price`), `duration` (minutes), `specs` (rows of `label` and `value`), `image` (3:2; give every entry one, or none), `contact` (who gets the enquiries, an entry of `content/people/`: `people/<file name>`; else the email and phone of `content/site.md`), `sheet` (the product sheet, an entry of `content/downloads/`: `downloads/<file name>`), the text |
 | Jobs | `content/jobs/<name>.md`: `title`, `description` (the short text in the list), `location`, `employmentType` (`fullTime`, `partTime`, `freelance`, `internship`, `apprenticeship`), `remote` (`onsite`, `hybrid`, `remote`), `applyEmail` (else the email of `content/site.md`) or `applyUrl` (an application page elsewhere), `validUntil` (required: the last day to apply), the text |
 | News | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/katrin-albers]`), `tags`, `image` (the cover, 3:2); `draft: true` keeps a post off the site |
 | Contacts (sales, service, human resources) | `content/people/<n>.<name>.md`: `name`, `role`, `bio`, `email`, `phone`; no photo needed, the site shows initials |
@@ -99,8 +100,10 @@ name sets the order.
 **Prices.** Every product or service says how it is priced: `pricing: price` with a `price`, or `pricing: onRequest`.
 The page shows the price in the visitor's language with tabular numbers ("€390", "390 €"), and search engines get the
 same price; an entry on request shows "On request" and gives search engines no price. A fixed price without an amount
-is a mistake: `npm run dev` stops on it and names the entry. The labels say "plus VAT"; change them in
-`i18n/<language>.json` (`services.price`, `services.lead`) if your prices include it.
+is a mistake: the build stops on it and names the entry, and the Studio does not save it. An entry with a fixed price
+offers "Ask for a date"; one on request "Request a quote". The labels say "plus VAT" (`vat: 'excluded'` in
+`app/app.config.ts`, which also tells search engines); set `vat: 'included'` if your prices include it, and change
+`services.lead` in `i18n/<language>.json`.
 
 **Jobs.** Each job needs `validUntil`. The day after it, the job leaves the list, its page answers "not found", and it
 is gone from the sitemap and the JobPosting data for search engines. `content/jobs/summer-internship-assembly.md`
@@ -108,8 +111,10 @@ shows this: its last day has passed, so it is nowhere on the site. Delete it for
 page invites an open application by email. Applications are emails with the job title in the subject; the site has no
 form.
 
-**Contacts.** The contact page lists `content/people/` in their order: put sales first. The office's main number and
-email (`content/site.md`) are in the footer of every page and in the home page's closing band.
+**Contacts.** The contact page shows the service line (`content/serviceLine.md`) and the office (address, main number
+and email from `content/site.md`) first, then `content/people/` in their order. The home page shows the service line
+under its actions, for a visitor whose pump has stopped; the office's number is in the footer of every page and in
+the home page's closing band.
 
 Each language has a news feed at `<news page>/rss.xml` (`/news/rss.xml`, `/de/aktuelles/rss.xml`).
 
@@ -180,9 +185,9 @@ Links in the content name pages by their key (`[contact]($page.team)`). After yo
 | Feature | Delete |
 |---|---|
 | Products and services | `content/services/`, the `services` brick and `pages.services` in `ginko.config.ts`, its `nav` item, the "Products and services" section and the hero's second button in `app/pages/index.vue`, `app/pages/services/`, `app/bricks/services.ts`, `app/composables/useServices.ts`, `i18n/services/`, the `services` keys in `i18n/<language>.json`, and `"services"` in `package.json` → `ginko.features` |
-| Jobs | `content/jobs/`, the `jobs` brick and `pages.jobs`, its `nav` item, the jobs card in `app/pages/index.vue` (`next`), `app/pages/jobs/`, `app/components/jobs/`, `app/composables/useJobs.ts`, `i18n/jobs/`, `"jobs"` in `ginko.features`; the links to `$page.jobs` in `content/posts/apprentices-start*.md` and `content/pages/1.about*.md` |
+| Jobs | `content/jobs/`, the `jobs` brick and `pages.jobs`, its `nav` item, the jobs card in `app/pages/index.vue` (`next`), `app/pages/jobs/`, `app/components/jobs/`, `app/composables/useJobs.ts`, `i18n/jobs/`, `"jobs"` in `ginko.features`, the `jobs` and `home.jobs` keys in `i18n/<language>.json`, and rename `home.next` ("Jobs and trade fairs") to "Trade fairs" (the section leaves the home page by itself when no fair is coming up); the links to `$page.jobs` in `content/posts/apprentices-start*.md` and `content/pages/1.about*.md` |
 | News | `content/posts/`, the `posts` brick and `pages.news`, its `nav` item, the "News" section on the home page, `app/pages/news/`, `app/components/blog/`, `app/composables/useBlog.ts`, `server/middleware/news-feed.ts`, `i18n/blog/`, `"blog"` in `ginko.features` |
-| Contact page | `pages.team`, its `nav` item and the two "Contact sales" buttons of the home page, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, `"people"` in `ginko.features`; the links to `$page.team`; keep the `people` brick while posts name authors |
+| Contact page | `pages.team`, its `nav` item and the two "Contact sales" buttons of the home page, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, `"people"` in `ginko.features`; the links to `$page.team`; keep the `people` brick while posts, products or the service line name people |
 | Trade fairs | `content/events/`, the `events` brick and `pages.events`, its `nav` item, the fair card in `app/pages/index.vue` (`next`, `useEventText`), `app/pages/events/`, `app/components/event/`, `app/composables/useEvents.ts`, `i18n/events/`, `"events"` in `ginko.features`, the notice about the fair in `content/notices/` |
 | Downloads | `content/downloads/`, `public/sheets/`, the `downloads` brick and `pages.downloads`, its `footer` item, `downloads: 'downloads'` of the `services` brick and the `sheet` lines in `content/services/`, `app/pages/downloads.vue`, `app/components/downloads/`, `i18n/downloads/`, `"downloads"` in `ginko.features`; the links to `$page.downloads` in `content/posts/ts-pumps-atex*.md` |
 | Logos and quotes | `content/logos/`, `content/quotes/`, `public/logos/`, the `logos` and `quotes` bricks, the "References" section on the home page, `app/bricks/logos-quotes.ts`, `app/components/block/Logos.vue`, `Quote.vue`, `"logos-quotes"` in `ginko.features` |

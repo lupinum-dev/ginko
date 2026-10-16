@@ -13,7 +13,7 @@ export const segments: Record<string, Partial<Record<SiteLocale, string>>> = {
   services: { en: 'products', de: 'produkte' },
   jobs: { en: 'jobs', de: 'karriere' },
   news: { en: 'news', de: 'aktuelles' },
-  events: { en: 'events', de: 'messen' },
+  events: { en: 'trade-fairs', de: 'messen' },
   contact: { en: 'contact', de: 'kontakt' },
   downloads: { en: 'downloads', de: 'downloads' },
   legal: { en: 'legal', de: 'rechtliches' },

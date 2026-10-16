@@ -17,16 +17,21 @@
     },
     "cta": {
       "title": "Sagen Sie uns, was Sie fördern müssen.",
-      "text": "Unsere Vertriebsingenieure schlagen Ihnen eine Pumpe oder eine komplette Station vor und senden Ihnen ein Angebot. Oder rufen Sie uns direkt an:"
+      "text": "Unsere Vertriebsingenieure schlagen Ihnen eine Pumpe oder eine komplette Station vor und senden Ihnen ein Angebot. Oder rufen Sie direkt in unserer Zentrale an:"
     }
+  },
+  "serviceLine": {
+    "stopped": "Pumpe ausgefallen? Service-Nummer",
+    "title": "Service-Nummer",
+    "text": "Für eine ausgefallene Pumpe und für Ersatzteile.",
+    "office": "Zentrale"
   },
   "services": {
     "title": "Produkte und Leistungen",
     "lead": "Pumpen und Pumpstationen und der Service, der sie am Laufen hält. Die meisten Produkte fertigen wir auf Bestellung: Fragen Sie uns nach einem Angebot. Preise zzgl. MwSt.",
     "all": "Alle Produkte und Leistungen",
     "enquire": "Angebot anfragen",
-    "subject": "Angebotsanfrage: {title}",
-    "price": "Preis (zzgl. MwSt.)"
+    "subject": "Angebotsanfrage: {title}"
   },
   "jobs": {
     "title": "Karriere",
@@ -38,7 +43,7 @@
   },
   "people": {
     "title": "Kontakt",
-    "lead": "Rufen Sie direkt die richtige Person an oder schreiben Sie ihr. Für alles andere erreichen Sie unser Büro über die Telefonnummer und E-Mail-Adresse am Fuß jeder Seite."
+    "lead": "Schreiben Sie der richtigen Person oder rufen Sie sie direkt an."
   },
   "downloads": {
     "lead": "Produktblätter und andere Dokumente zum Lesen und Speichern."
