@@ -28,10 +28,9 @@ const { t, format } = useI18n()
 
 const PAGE = 50
 const by = (): 'me' | 'ai' | undefined => (props.filter === 'mine' ? 'me' : props.filter === 'ai' ? 'ai' : undefined)
-// A new filter starts the list again by itself.
-// Loaded in the browser only, like the trash: changes of large entries make Convex split a page, which only the live
-// client can do.
-const list = useConvexPaginatedQuery(api.changes.list, () => ({ site: props.site, entry: props.filter === 'entry' ? props.entry : undefined, by: by() }), { initialNumItems: PAGE, server: false })
+// A new filter starts the list again by itself. Server rendering may start with a split first page; the list is then
+// idle until the browser takes over, so the empty text waits for status 'success'.
+const list = useConvexPaginatedQuery(api.changes.list, () => ({ site: props.site, entry: props.filter === 'entry' ? props.entry : undefined, by: by() }), { initialNumItems: PAGE })
 const ops = useOps(computed(() => props.site))
 
 type Change = NonNullable<typeof list.data.value>[number]

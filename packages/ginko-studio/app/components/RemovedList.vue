@@ -18,9 +18,9 @@ const { t, format } = useI18n()
 const { shown } = useStudioSite()
 const timeZone = computed(() => props.schema?.timeZone ?? 'Europe/Vienna')
 const PAGE = 50
-// Loaded in the browser only: a page of large removed entries hits the read limit and Convex asks to split it. The
-// live client splits it; server rendering cannot and would show "could not be loaded" until the browser took over.
-const list = useConvexPaginatedQuery(api.entries.trash, () => ({ site: props.slug }), { initialNumItems: PAGE, server: false })
+// A page of large removed entries can hit the read limit; the server renders a split first page and the browser then
+// takes over. Until then the status is not 'success', so the empty text below does not show.
+const list = useConvexPaginatedQuery(api.entries.trash, () => ({ site: props.slug }), { initialNumItems: PAGE })
 const ops = useOps(computed(() => props.slug))
 
 type Item = NonNullable<typeof list.data.value>[number]
