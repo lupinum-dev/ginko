@@ -28,8 +28,8 @@ export default defineSite({
   pages: {
     home: localized('/'),
     projects: localized('/projects'),
-    team: localized('/studio'),
-    news: localized('/journal'),
+    team: localized('/team'),
+    news: localized('/news'),
   },
   bricks: {
     // The first screen of the home page: what the studio does in one sentence and a lead (content/home.md).
@@ -50,14 +50,9 @@ export default defineSite({
     // (content/notices/).
     notices: notices({ source: 'files' }),
     // The work, in the studio's order (content/projects/): client, year, place, scope, the text and the photos, each
-    // with its description. The home page shows the first three. A project stays online until it is deleted (no
-    // `ends`: that field is for a nonprofit's campaigns); a new one can wait as a draft (`draft: true` in its file), so
-    // Today lists drafts instead of campaigns that end soon.
-    projects: {
-      ...projects({ source: 'files', route: localized('/projects/[slug]'), details: true }),
-      drafts: true,
-      status: undefined,
-    },
+    // with its description. The home page shows the first three. A project stays online until it is deleted; a new
+    // one can wait as a draft (`draft: true` in its file), and Today lists the drafts.
+    projects: projects({ source: 'files', route: localized('/projects/[slug]'), details: true }),
     // The journal, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never
     // goes online; in the Studio, Today shows how old the newest entry is.
     posts: {
