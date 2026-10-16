@@ -25,5 +25,7 @@
 - A treatment's `contact` names the therapist who gives it ("Treated by"); the services feature's own wording for it
   ("Contact person", "Or call …") is replaced by `app/components/services/Actions.vue`.
 - German says "Sie" on every page and uses Austrian words where they differ ("Wahlpraxis", "Verordnung", "verrechnen").
-- Script weight (gate 6, gzip, 16 Oct 2026): home 153.8 kB, team 154.6, FAQ 153.9, contact 156.3, About and legal
-  pages 156.5, the treatments list and pages 159.1. `scriptBudget` is 160 kB (the cap for feature templates is 170).
+- Script weight (gate 6, gzip, 16 Oct 2026, after the booking buttons became one component used by the home, contact
+  and treatment pages; every page prefetches the home page's chunks through the logo link): home 153.5 kB, FAQ 155.2,
+  team 156.0, contact 157.1, About and legal pages 157.8, the treatments list 160.4, the treatment pages 161.7.
+  `scriptBudget` is 165 kB (the cap for feature templates is 170).

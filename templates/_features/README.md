@@ -92,6 +92,6 @@ about 8 kB), 15 Oct 2026, largest page of each template:
 | starter | 138.6 kB (`/`, `/about`, `/contact`) | 150 (default) |
 | nonprofit | 146.1 kB (the news list) | 150 (default) |
 | restaurant | 156.3 kB (the events list and pages) | 160 (`scriptBudget`) |
-| local-business | 159.1 kB (the treatments list and pages), 16 Oct 2026 | 160 (`scriptBudget`) |
+| local-business | 161.7 kB (the treatment pages), 16 Oct 2026, after the shared booking buttons | 165 (`scriptBudget`) |
 
 A template over 170 kB does not get a larger budget: find the biggest chunks and cut.
