@@ -1,26 +1,29 @@
 <script setup lang="ts">
-import { ArrowLeft, Download, Mail, Phone } from '@lucide/vue'
+import type { Component } from 'vue'
+import { ArrowLeft, Mail, Phone } from '@lucide/vue'
 
 // One service or product: title, summary, price or "On request", duration, how to ask about it (an email with the
-// title in the subject, else a call; the business's contact from content/site.md), the product sheet when it has
-// one, photo (3:2), key facts and text. Service JSON-LD with the price when it has one. An unknown entry is a 404.
+// title in the subject and a phone number: the entry's contact person's, else the business's from content/site.md),
+// the product sheet when it has one, photo (3:2), key facts and text. Service JSON-LD with the
+// price when it has one. An unknown entry is a 404. The sheet button comes from the downloads feature
+// (`DownloadsFileButton`), found by its file, so a site without downloads builds without it.
+const SheetButton = Object.values(import.meta.glob<Component>('../../components/downloads/FileButton.vue', { eager: true, import: 'default' }))[0]
 const route = useRoute()
 const service = useGinkoEntry('services', () => route.params.slug)
 const site = useGinko('site')
+const people = useGinko('people')
 const path = useGinkoPath()
-const { t, format } = useI18n('services')
-const { price, duration } = useServiceText()
-const sheet = useServiceSheet(() => ('sheet' in service.value.data ? service.value.data.sheet : undefined))
+const { t } = useI18n('services')
+const { price, priceLabel, duration, action } = useServiceText()
+const sheet = computed(() => ('sheet' in service.value.data ? service.value.data.sheet : undefined))
 const jsonLd = useServiceJsonLd(() => ({ ...service.value.data, url: service.value.url }))
 usePageSeo(() => ({ title: service.value.data.title, description: service.value.data.summary, image: service.value.data.image, jsonLd: [jsonLd.value] }))
 
-const contact = computed(() => site.value.data)
-const enquiry = computed(() => contact.value.email && `mailto:${contact.value.email}?subject=${encodeURIComponent(t('subject', { title: service.value.data.title }))}`)
-const tel = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`
-const typeOf = (name: string) => name.split('.').at(-1)?.toUpperCase() ?? ''
-const sizeOf = (bytes: number) => (bytes >= 1024 * 1024
-  ? format.number(bytes / 1024 / 1024, { style: 'unit', unit: 'megabyte', maximumFractionDigits: 1 })
-  : format.number(Math.max(1, Math.round(bytes / 1024)), { style: 'unit', unit: 'kilobyte' }))
+const contact = computed(() => people.value.items.find((person) => person.id === service.value.data.contact)?.data)
+const email = computed(() => contact.value?.email || site.value.data.email)
+const phone = computed(() => contact.value?.phone || site.value.data.phone)
+const main = computed(() => action(service.value.data))
+const enquiry = computed(() => email.value && `mailto:${email.value}?subject=${encodeURIComponent(main.value.subject)}`)
 </script>
 
 <template>
@@ -36,26 +39,27 @@ const sizeOf = (bytes: number) => (bytes >= 1024 * 1024
         <h1 class="text-h1">{{ service.data.title }}</h1>
         <p class="text-lead text-muted-foreground">{{ service.data.summary }}</p>
         <dl class="grid gap-x-8 gap-y-3 sm:grid-cols-[auto_1fr]">
-          <dt class="text-small text-muted-foreground">{{ t('price') }}</dt>
+          <dt class="text-small text-muted-foreground">{{ priceLabel }}</dt>
           <dd class="font-medium tabular-nums">{{ price(service.data) }}</dd>
           <template v-if="duration(service.data)">
             <dt class="text-small text-muted-foreground">{{ t('duration') }}</dt>
             <dd class="font-medium tabular-nums">{{ duration(service.data) }}</dd>
           </template>
         </dl>
-        <div v-if="enquiry || contact.phone || sheet" class="flex flex-wrap gap-3">
-          <Button v-if="enquiry" as-child size="lg" class="max-sm:w-full">
-            <a :href="enquiry"><Mail aria-hidden="true" />{{ t('enquire') }}</a>
-          </Button>
-          <Button v-else-if="contact.phone" as-child size="lg" class="max-sm:w-full">
-            <a :href="tel(contact.phone)"><Phone aria-hidden="true" />{{ t('call', { phone: contact.phone }) }}</a>
-          </Button>
-          <Button v-if="sheet" as-child size="lg" variant="outline" class="max-sm:w-full">
-            <a :href="sheet.url" type="application/pdf">
-              <Download aria-hidden="true" />{{ t('sheet') }}
-              <span class="font-normal text-muted-foreground tabular-nums">{{ [typeOf(sheet.name), sheet.size ? sizeOf(sheet.size) : ''].filter(Boolean).join(', ') }}</span>
-            </a>
-          </Button>
+        <div v-if="enquiry || phone || (SheetButton && sheet)" class="flex flex-col gap-2">
+          <div class="flex flex-wrap gap-3">
+            <Button v-if="enquiry" as-child size="lg" class="max-sm:w-full">
+              <a :href="enquiry"><Mail aria-hidden="true" />{{ main.label }}</a>
+            </Button>
+            <Button v-else-if="phone" as-child size="lg" class="max-sm:w-full">
+              <a :href="telHref(phone)"><Phone aria-hidden="true" />{{ t('call', { phone }) }}</a>
+            </Button>
+            <component :is="SheetButton" v-if="SheetButton && sheet" :id="sheet" :label="t('sheet')" />
+          </div>
+          <p v-if="enquiry && phone" class="text-muted-foreground">
+            {{ contact ? t('orCallName', { name: contact.name }) : t('orCall') }}
+            <a :href="telHref(phone)" dir="ltr" class="inline-flex min-h-11 items-center font-medium text-foreground tabular-nums underline underline-offset-4">{{ phone }}</a>
+          </p>
         </div>
       </div>
     </header>
