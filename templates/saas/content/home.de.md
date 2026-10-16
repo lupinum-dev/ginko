@@ -11,7 +11,7 @@ features:
   - title: "Dienste auf jedem Handy"
     text: "Beschäftigte sehen ihre Dienste im Browser oder in der App, tragen Wünsche ein und bekommen eine Nachricht, wenn sich ihr Plan ändert."
   - title: "Tauschen ohne Telefonkette"
-    text: "Eine Tauschanfrage geht an Kolleginnen und Kollegen mit der passenden Qualifikation, und die Wohnbereichsleitung gibt sie mit einem Tipp frei."
+    text: "Eine Tauschanfrage geht an Kolleginnen und Kollegen mit der passenden Qualifikation, und die Wohnbereichsleitung gibt sie mit einem Fingertipp frei."
 facts:
   - title: "In Deutschland gehostet"
     text: "Planwerk läuft auf Servern in Rechenzentren in Deutschland. Ihre Daten bleiben in der EU."

@@ -11,7 +11,7 @@ export type SiteLocale = (typeof locales)[number]
  */
 export const segments: Record<string, Partial<Record<SiteLocale, string>>> = {
   pricing: { en: 'pricing', de: 'preise', fr: 'tarifs' },
-  changelog: { en: 'changelog', de: 'aenderungen', fr: 'nouveautes' },
+  changelog: { en: 'changelog', de: 'neuerungen', fr: 'nouveautes' },
   news: { en: 'blog', de: 'blog', fr: 'blog' },
   faq: { en: 'faq', de: 'faq', fr: 'faq' },
   legal: { en: 'legal', de: 'rechtliches', fr: 'informations-legales' },

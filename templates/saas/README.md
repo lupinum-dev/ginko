@@ -107,7 +107,7 @@ of its amounts is a mistake: the build stops on it and names the file, and the S
 
 **Changelog.** The newest release comes first, by `date`. Each release has its own address on the changelog page
 (`/changelog#v4-6-0`), so a notice or a post can link to it. Each language has a feed at `<changelog page>/rss.xml`
-(`/changelog/rss.xml`, `/de/aenderungen/rss.xml`, `/fr/nouveautes/rss.xml`) with the version, the summary and the
+(`/changelog/rss.xml`, `/de/neuerungen/rss.xml`, `/fr/nouveautes/rss.xml`) with the version, the summary and the
 date of each release; the blog has its own at `<blog page>/rss.xml`.
 
 **Free trial.** "Start free trial" is a link to your app (`trialUrl` in `content/home.md`, and `actionUrl` of each
@@ -136,7 +136,7 @@ Notices show newest first: put the newest one at the top (the smallest number). 
 - **Organisation type.** `organization: 'Organization'` in `app/app.config.ts` tells search engines what you are;
   address and contact come from `content/site.md`, the country from `country` in `ginko.config.ts`.
 - **Addresses.** The words of the addresses per language (`pricing` → `preise`, `tarifs`; `changelog` →
-  `aenderungen`, `nouveautes`) are in `app/routes.ts`. Change a word there; the pages, the menu and the links follow.
+  `neuerungen`, `nouveautes`) are in `app/routes.ts`. Change a word there; the pages, the menu and the links follow.
 
 `DESIGN.md` explains the tokens and components. The parts in `app/components/ui/` are
 [shadcn-vue](https://www.shadcn-vue.com) components.

@@ -198,7 +198,7 @@ const created: Record<string, Check[]> = {
   'template-company': [['/', /<h1[^>]*>\s*Pumps and pumping stations/], ['/products', /HK centrifugal pumps/], ['/de/karriere', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
   'template-nonprofit': [['/', /<h1[^>]*>\s*We look after the river/], ['/news', /A new home for our tools/], ['/ar', /<html[^>]*dir="rtl"/], ['/news/rss.xml', /<rss[\s\S]*<item>/], ['/sitemap.xml', /<urlset/]],
   'template-events': [['/', /<h1[^>]*>\s*Open Data Days/], ['/programme', /Finding stories in public budgets/], ['/de/vortragende', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
-  'template-saas': [['/', /<h1[^>]*>\s*Shift planning for care homes/], ['/pricing', /Standard[\s\S]*€219/], ['/de/aenderungen', /<html[^>]*lang="de/], ['/fr/tarifs', /<html[^>]*lang="fr/], ['/changelog/rss.xml', /<rss/], ['/sitemap.xml', /<urlset/]],
+  'template-saas': [['/', /<h1[^>]*>\s*Shift planning for care homes/], ['/pricing', /Standard[\s\S]*€219/], ['/de/neuerungen', /<html[^>]*lang="de/], ['/fr/tarifs', /<html[^>]*lang="fr/], ['/changelog/rss.xml', /<rss/], ['/sitemap.xml', /<urlset/]],
 }
 for (const name of ['starter', ...readdirSync(join(root, 'packages/create-ginko/presets'))]) {
   if (!created[name]) failures.push(`check:pack has no URL check for the create-ginko preset folder ${name}`)

@@ -1,7 +1,7 @@
 ---
 title: "Diensttausch in der App"
 slug: diensttausch
-description: "Ab Version 4.6 bitten Beschäftigte in der App um einen Tausch, und die Wohnbereichsleitung gibt ihn mit einem Tipp frei."
+description: "Ab Version 4.6 bitten Beschäftigte in der App um einen Tausch, und die Wohnbereichsleitung gibt ihn mit einem Fingertipp frei."
 tags: ["Produkt"]
 ---
 
@@ -15,4 +15,4 @@ Wer einen Dienst nicht übernehmen kann, öffnet ihn in der App und wählt „Ta
 
 Die Wohnbereichsleitung entscheidet weiterhin. Ein Tausch, der eine Regel verletzt, wird nie angeboten, und jeder Tausch steht in der Planhistorie: wer gefragt und wer freigegeben hat.
 
-Der Diensttausch gehört zu den Tarifen Standard und Verbund. Alles andere, was sich in 4.6 geändert hat, steht unter [Änderungen]($page.changelog).
+Der Diensttausch gehört zu den Tarifen Standard und Verbund. Alles andere, was sich in 4.6 geändert hat, steht unter [Neuerungen]($page.changelog).

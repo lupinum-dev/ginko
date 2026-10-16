@@ -10,7 +10,7 @@ export default defineAppConfig({
     tagline: {
       en: 'Shift planning for care homes and small clinics.',
       de: 'Dienstplanung für Pflegeheime und kleine Kliniken.',
-      fr: 'La planification des équipes pour les maisons de retraite et les petites cliniques.',
+      fr: 'La planification des équipes pour les EHPAD et les petites cliniques.',
     },
     organization: 'Organization',
     // At most 6. A page of ginko.config.ts (`page`, with its label per language; keep it the same as the page's
@@ -18,7 +18,7 @@ export default defineAppConfig({
     nav: [
       { page: 'pricing', label: { en: 'Pricing', de: 'Preise', fr: 'Tarifs' } },
       { page: 'news', label: { en: 'Blog', de: 'Blog', fr: 'Blog' } },
-      { page: 'changelog', label: { en: 'Changelog', de: 'Änderungen', fr: 'Nouveautés' } },
+      { page: 'changelog', label: { en: 'Changelog', de: 'Neuerungen', fr: 'Nouveautés' } },
       { page: 'faq', label: { en: 'FAQ', de: 'Häufige Fragen', fr: 'Questions fréquentes' } },
     ],
     footer: [
