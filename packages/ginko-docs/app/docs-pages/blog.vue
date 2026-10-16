@@ -1,9 +1,16 @@
 <script setup lang="ts">
 // The blog: all posts, newest first (the collection's order).
-const { t } = useI18n()
+const { t, language } = useI18n()
 const blog = useDocsBlog()
 const posts = blog.posts()
-useGinkoSeo(() => ({ title: t('docs.blog'), description: t('docs.blogLead') }))
+// A list page: CollectionPage JSON-LD, so search engines read it as the index of its entries.
+const site = useGinkoSite()
+const route = useRoute()
+useGinkoSeo(() => ({
+  title: t('docs.blog'),
+  description: t('docs.blogLead'),
+  jsonLd: [{ '@context': 'https://schema.org', '@type': 'CollectionPage', name: t('docs.blog'), url: new URL(route.path, site.url).href, inLanguage: language.value }],
+}))
 useHead(() => ({ link: [{ rel: 'alternate', type: 'application/rss+xml', title: t('docs.blog'), href: blog.feedPath.value }] }))
 // Nitro's crawler only follows links to pages (no `.xml`), but it also reads this header, so `nuxt generate` writes the feed.
 if (import.meta.server) useResponseHeader('x-nitro-prerender').value = blog.feedPath.value
