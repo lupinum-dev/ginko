@@ -1,0 +1,6 @@
+{
+  "notice": { "createTask": "Hinweis hinzufügen", "textField": "^Text" },
+  "page": { "brick": "pages", "title": "Venue", "path": "/venue", "bodyField": "Text" },
+  "event": { "task": "Veranstaltung hinzufügen", "path": "/events" },
+  "session": { "task": "Programmpunkt ändern", "title": "Finding stories in public budgets", "path": "/programme" }
+}
