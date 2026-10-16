@@ -1,6 +1,7 @@
-/** A navigation item: a collection entry by id (`pages/about`, title and address from the content), or a page of
- *  `pages` in ginko.config.ts with its label per language. */
-export type SiteNavItem = { entry: string } | { page: string, label: Record<string, string> }
+/** A navigation item: a collection entry by id (`pages/about`, title and address from the content), a page of
+ *  `pages` in ginko.config.ts with its label per language, or an address on another site (`url`, for example the
+ *  sign-in of an app) with its label per language. */
+export type SiteNavItem = { entry: string } | { page: string, label: Record<string, string> } | { url: string, label: Record<string, string> }
 
 /** `site` in app/app.config.ts: the brand and navigation of the template. Name, address and contact come from
  *  ginko.config.ts (`name`) and the `site` brick (content/site.md). */
@@ -54,7 +55,8 @@ export function useSiteLinks(items: () => SiteNavItem[]) {
         return node ? [{ key: item.entry, label: node.title, to: node.path }] : []
       }
       const label = item.label[locale.value] ?? item.label[mainLocale]
-      return label ? [{ key: item.page, label, to: path(item.page as GinkoPageKey) }] : []
+      if (!label) return []
+      return 'url' in item ? [{ key: item.url, label, to: item.url }] : [{ key: item.page, label, to: path(item.page as GinkoPageKey) }]
     })
   })
 }

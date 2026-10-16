@@ -119,7 +119,9 @@ Notices show newest first: put the newest one at the top (the smallest number). 
 
 - **Name and menu.** `name` in `ginko.config.ts`; `nav` in `app/app.config.ts` holds at most six items: a page of
   `ginko.config.ts` (`{ page: 'pricing', label: { … } }`, label per language, the same words as the page's title) or
-  a page of `content/pages/` by id (`{ entry: 'pages/security' }` is `content/pages/1.security.md`).
+  a page of `content/pages/` by id (`{ entry: 'pages/security' }` is `content/pages/1.security.md`). `footer` takes the
+  same items and an address on another site: `{ url: 'https://app.example.com/login', label: { … } }` is the
+  "Sign in" link to your app, in the footer and in the phone menu.
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 140, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name.
 - **Picture of the product.** `content/home.md` shows `public/media/rota.svg`, a neutral drawing of a shift plan.
@@ -198,7 +200,8 @@ Links in the content name pages by their key (`[changelog]($page.changelog)`). A
 - [ ] `content/site.md` shows your real legal name, address, register entry, VAT number and contact details.
 - [ ] Every plan has your prices or `pricing: onRequest`, the "plus VAT" note fits your prices, and the answers in
       `content/faq/` say the same as your terms.
-- [ ] `trialUrl` in `content/home.md` and each plan's `actionUrl` lead to your app, not to `app.example.com`.
+- [ ] `trialUrl` in `content/home.md`, each plan's `actionUrl`, the sign-in link (`footer` in `app/app.config.ts`) and the
+      link on the contact page lead to your app, not to `app.example.com`.
 - [ ] The facts about security and data (`facts` in `content/home.md`, `content/pages/1.security.md`) describe your
       real hosting, backups and contracts.
 - [ ] The placeholders in `content/legal/` are replaced by your own texts, and the ones you do not need are deleted.

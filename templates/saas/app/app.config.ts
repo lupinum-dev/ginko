@@ -25,6 +25,8 @@ export default defineAppConfig({
       { entry: 'pages/security' },
       { entry: 'pages/about' },
       { entry: 'pages/contact' },
+      // The sign-in of the app, for customers: a quiet link here and in the phone menu, no second button in the header.
+      { url: 'https://app.example.com/login', label: { en: 'Sign in', de: 'Anmelden', fr: 'Se connecter' } },
     ],
     // For example { label: 'LinkedIn', url: 'https://www.linkedin.com/company/planwerk' }.
     socials: [],
