@@ -19,7 +19,7 @@ const titleId = useId()
   <section :id="id" :aria-labelledby="titleId" class="mx-auto max-w-page px-gutter pt-section">
     <div :class="side ? 'grid gap-8 lg:grid-cols-12 lg:gap-16' : 'flex flex-col gap-10'">
       <div class="flex max-w-2xl flex-col gap-4" :class="side && 'lg:col-span-4'">
-        <h2 :id="titleId" class="text-h3">{{ title }}</h2>
+        <h2 :id="titleId" class="text-h3 break-after-avoid">{{ title }}</h2>
         <p v-if="lead" class="text-muted-foreground">{{ lead }}</p>
       </div>
       <div class="min-w-0" :class="side && 'lg:col-span-8'">
