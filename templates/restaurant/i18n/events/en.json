@@ -13,7 +13,7 @@
   "perPerson": "{price} per person",
   "online": "Online",
   "book": "Book a place",
-  "reserve": "Reserve your place by phone or email.",
+  "reserve": "To reserve or ask a question, call or write to us.",
   "call": "Call {phone}",
   "email": "Send an email"
 }
