@@ -19,7 +19,7 @@ export default defineAppConfig({
       { page: 'pricing', label: { en: 'Pricing', de: 'Preise', fr: 'Tarifs' } },
       { page: 'news', label: { en: 'Blog', de: 'Blog', fr: 'Blog' } },
       { page: 'changelog', label: { en: 'Changelog', de: 'Änderungen', fr: 'Nouveautés' } },
-      { page: 'faq', label: { en: 'FAQ', de: 'FAQ', fr: 'FAQ' } },
+      { page: 'faq', label: { en: 'FAQ', de: 'Häufige Fragen', fr: 'Questions fréquentes' } },
     ],
     footer: [
       { entry: 'pages/security' },

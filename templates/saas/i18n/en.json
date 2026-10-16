@@ -16,8 +16,8 @@
     }
   },
   "faq": {
-    "title": "Questions and answers",
-    "lead": "About billing, contracts, your data and the trial.",
+    "title": "FAQ",
+    "lead": "Questions and answers about billing, contracts, your data and the trial.",
     "empty": "No questions yet"
   },
   "pricing": {
