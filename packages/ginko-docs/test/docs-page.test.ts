@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildIndex } from '@lupinum/ginko/internal/search'
 import { loadIndex, search } from '@lupinum/ginko/search'
 import { handleMcp, type DocsMcpDeps } from '../server/mcp/handler'
-import { docsAskLinks, docsEditUrl, docsMarkdownPath, docsStudioUrl } from '../app/lib/docsPage'
+import { docsAskLinks, docsEditUrl, docsMarkdownPath, docsRouteLink, docsStudioUrl } from '../app/lib/docsPage'
 
 describe('page helpers', () => {
   it.each([
@@ -19,6 +19,19 @@ describe('page helpers', () => {
   })
 
   it.each([['/en/docs/languages', '/en/docs/languages.md'], ['/docs/x/', '/docs/x.md'], ['/', '/index.md']])('markdown twin of %s', (path, md) => expect(docsMarkdownPath(path)).toBe(md))
+
+  // Wrong behaviour caught: a start-page link that loses its anchor, or points at a page that does not exist.
+  it.each([
+    ['$docs.webhooks', '/de/docs/webhooks'],
+    ['$docs.webhooks#signatur', '/de/docs/webhooks#signatur'],
+    ['$page.changelog', '/de/changelog'],
+    ['$docs.missing', undefined],
+    ['$blog.x', undefined],
+    ['/docs/webhooks', undefined],
+  ])('route link %s', (raw, path) => {
+    const find = { doc: (ref: string) => (ref === 'webhooks' ? '/de/docs/webhooks' : undefined), page: (key: string) => (key === 'changelog' ? '/de/changelog' : undefined) }
+    expect(docsRouteLink(raw, find)).toBe(path)
+  })
 
   it('ask links carry the encoded prompt', () => {
     const { chatgpt, claude } = docsAskLinks('Lies https://x.dev/a.md & fertig')

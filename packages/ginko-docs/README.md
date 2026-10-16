@@ -56,7 +56,10 @@ export default defineNuxtConfig({ extends: ['@lupinum/ginko-docs'], modules: ['@
 ## Configure
 
 Options go in the site's `app.config.ts`. All are optional. Internal paths in `nav`, `footer.links` and `banner.href`
-follow the reader's language (`/guide` becomes `/de/guide`); absolute URLs stay as written.
+follow the reader's language (`/guide` becomes `/de/guide`); absolute URLs stay as written. A route link names the page
+instead of its address, as in Markdown: `$docs.<page>` (a docs page by its file name, such as `$docs.webhooks`, or its
+slug) and `$page.<key>` (a page of `pages` in `ginko.config.ts`, such as `$page.changelog`), with an optional `#anchor`.
+It leads to the page in the reader's language, also when a translation has another slug.
 
 ```ts
 export default defineAppConfig({
@@ -129,6 +132,9 @@ features:
 ---
 ```
 
+`href` takes a path as written, an absolute URL, or a route link (`$docs.introduction`, `$page.changelog`) that follows
+the reader's language, so the translations (`home.<locale>.md`) can use the same links.
+
 Add `home: docsHome()` to `bricks`. Without it, `/` leads to the first docs page. A site's own `pages/index.vue` wins.
 
 ### Look and colours
@@ -180,7 +186,9 @@ components: { ...components, /* the site's own components; same name wins */ },
   by the layer's own frame. The search, the language menu and the light/dark switch are components
   (`<DocsSearch />`, `<DocsLanguage />`, `<DocsThemeToggle />`) the site can put into its own header; the switch sets
   `data-theme` on `<html>`, so it fits a site that themes with that attribute. `<DocsThemeToggle segmented />` is the
-  three-way Auto/Light/Dark switch (the phone menu uses it). These three are the public components. The other `Docs*`
+  three-way Auto/Light/Dark switch and `<DocsLanguage list />` the languages as a row of links (the phone menu uses
+  both). A language without a version of the page says so ("Not translated: opens the start page"). These three are
+  the public components. The other `Docs*`
   components, the `useDocs*` composables and the files in `app/lib` are internal and can change in any release.
 - **Error page:** the layer's `error.vue` shows a not-found page inside the site's layout, with links home and to
   the docs. A site with its own `error.vue` keeps it.
