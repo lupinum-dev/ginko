@@ -8,5 +8,6 @@
   "i18n/blog/de.json",
   "i18n/blog/en.json",
   "i18n/blog/fr.json",
+  "modules/news-feeds.ts",
   "server/middleware/news-feed.ts"
 ]
