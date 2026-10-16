@@ -94,8 +94,8 @@ number at the start of a file name sets the order.
 | Menu, footer links, the line under the name in the footer | `app/app.config.ts` |
 | The home page's title in search results and tabs, section titles, the texts of the pages | `i18n/<language>.json` (`home.title` is "Physiotherapy in Graz"); the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins (this template renames "Services" to "Treatments" that way) |
 
-**Opening hours.** One rule shows everywhere: the line at the top of the home page ("Open now, until 19:00", "Opens
-today at 07:30", "Closed today · Team training"), the week with today marked, the footer of every page and the
+**Opening hours.** One rule shows everywhere: the line at the top of the home page ("Open now until 19:00", "Opens
+today at 07:30", "Closed today" with the reason), the week with today marked, the footer of every page and the
 opening hours search engines read. Public holidays come from `country` in `ginko.config.ts` (`AT`: the Austrian
 holidays); with `holidays: closed` they show as closures, like your own, from `holidayNoticeDays` days ahead. To close
 on a single day, add it to `exceptions` with the same `from` and `to`. Times use 24 hours (`'07:30'`).
