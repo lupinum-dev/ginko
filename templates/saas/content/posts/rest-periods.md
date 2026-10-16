@@ -15,7 +15,7 @@ A rota that breaks a rest period is easy to write and hard to fix a week later. 
 - the most hours a person may work in a day and in a week, from their contract
 - how many qualified staff each shift needs, as set for each ward
 
-A shift that breaks a rule gets a warning with the rule and the person's name. You can still save the plan: sometimes a ward lead must decide against a rule in an emergency, and the warning stays in the plan's history.
+A shift that breaks a rule gets a warning with the rule and the person’s name. You can still save the plan: sometimes a ward lead must decide against a rule in an emergency, and the warning stays in the plan’s history.
 
 ## What it leaves to you
 

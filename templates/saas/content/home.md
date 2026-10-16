@@ -4,10 +4,10 @@ lead: "Planwerk is a web app for the monthly rota. It checks rest periods and qu
 trialUrl: https://app.example.com/signup
 image:
   src: /media/rota.svg
-  alt: "Illustration of a week's shift plan: one row per person, early, late and night shifts as blocks, and one open shift"
+  alt: "Illustration of a week’s shift plan: one row per person, early, late and night shifts as blocks, and one open shift"
 features:
   - title: "Plan the month"
-    text: "Build the rota from contracts, qualifications and the wishes your staff enter. Start from last month's plan if you like."
+    text: "Build the rota from contracts, qualifications and the wishes your staff enter. Start from last month’s plan if you like."
   - title: "Rules checked while you plan"
     text: "Rest periods, maximum hours and the number of qualified staff on each shift are checked as you plan, not afterwards."
   - title: "Shifts on every phone"
