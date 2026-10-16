@@ -38,7 +38,7 @@ const OPTIONS = ['auto', 'light', 'dark'] as const
   <div v-if="props.segmented" class="docs-segmented" role="group" :aria-label="t('docs.theme.label')">
     <button v-for="o in OPTIONS" :key="o" type="button" :aria-pressed="choice === o" @click="choose(o)">{{ t(`docs.theme.${o}`) }}</button>
   </div>
-  <button v-else type="button" class="docs-icon-button" :aria-label="t('docs.theme.toggle')" :title="t('docs.theme.toggle')" @click="toggle">
+  <button v-else type="button" class="docs-icon-button docs-theme-toggle" :aria-label="t('docs.theme.toggle')" :title="t('docs.theme.toggle')" @click="toggle">
     <Icon name="lucide:moon" class="docs-icon docs-when-light" />
     <Icon name="lucide:sun" class="docs-icon docs-when-dark" />
   </button>
