@@ -56,7 +56,7 @@ export default defineSite({
       fields: {
         phoneHours: f.text({ de: 'Telefonisch erreichbar', en: 'Phone hours' }, {
           max: 80,
-          hint: { de: 'Kurz, zum Beispiel „Mo–Fr 8–12 Uhr“.', en: 'Short, for example “Mon–Fri 08:00–12:00”.' },
+          hint: { de: 'Kurz, zum Beispiel „Mo–Fr 08:00–12:00“.', en: 'Short, for example “Mon–Fri 08:00–12:00”.' },
         }),
         bookingUrl: f.text({ de: 'Online-Terminbuchung', en: 'Online booking' }, {
           format: 'url',
