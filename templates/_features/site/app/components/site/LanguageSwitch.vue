@@ -17,7 +17,7 @@ const { t, alternates, language } = useI18n('site')
         :aria-current="alt.current ? 'true' : undefined"
         :class="names
           ? 'inline-flex min-h-11 min-w-11 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline aria-[current]:text-foreground aria-[current]:underline'
-          : 'inline-flex size-11 items-center justify-center rounded-md text-small font-medium text-muted-foreground uppercase transition-colors duration-150 hover:bg-accent hover:text-foreground aria-[current]:text-foreground aria-[current]:underline aria-[current]:underline-offset-4'"
+          : 'inline-flex size-11 items-center justify-center rounded-md text-small font-medium text-muted-foreground uppercase transition-[color,background-color,border-color] duration-150 hover:bg-accent hover:text-foreground aria-[current]:text-foreground aria-[current]:underline aria-[current]:underline-offset-4'"
       >
         <template v-if="names">
           <template v-if="alt.translated">{{ alt.name }}</template>

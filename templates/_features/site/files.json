@@ -23,6 +23,7 @@
   "app/error.vue",
   "app/layouts/default.vue",
   "app/pages/legal/[slug].vue",
+  "app/utils/telHref.ts",
   "i18n/site/ar.json",
   "i18n/site/de.json",
   "i18n/site/en.json",

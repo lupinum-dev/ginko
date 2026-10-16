@@ -68,8 +68,9 @@ tint: a full-width band of it is the loudest surface on a near-black page. nonpr
 (8.7:1) in dark mode; buttons and links keep `#86efac`.
 
 Dark mode: `@nuxtjs/color-mode` puts `.dark` on `<html>` (first visit: the system setting); `dark:` utilities and
-`color-scheme` follow it. Printing always uses the light neutrals (paper is white), and the header, notices and
-footer are left out (`print:hidden`), so any page prints as its content.
+`color-scheme` follow it. Printing always uses the light neutrals (paper is white). The navigation, notices, controls and closing band are left
+out (`print:hidden`); the footer prints only the name, address, email and phone, so any page prints as its content
+with whose it is.
 
 ## Type
 
@@ -87,7 +88,8 @@ is optional (`--font-heading`). Right-to-left languages add their own face on `:
 | `text-xs` | `0.8125rem` | 1.4; the smallest size |
 
 Headings balance their lines and hyphenate (the page sets `lang`). Prices, times and dates use `tabular-nums`
-(`<time>` gets it by default). Text runs at most `max-w-prose` (65ch).
+(`<time>` gets it by default). Text runs at most `max-w-prose` (43.5rem, about 65 characters of body text; in rem so the line width does not
+change when the web font replaces its fallback).
 
 ## Space, size, radius, shadow
 
@@ -96,7 +98,7 @@ Headings balance their lines and hyphenate (the page sets `lang`). Prices, times
 | `pt-section` (`--spacing-section`) | `clamp(3.5rem, 2.25rem + 5.5vw, 7rem)` | space above each section |
 | `px-gutter` (`--spacing-gutter`) | `clamp(1rem, 0.5rem + 2.4vw, 2rem)` | page edges (16 px on phones) |
 | `max-w-page` | `76rem` | page width |
-| `max-w-prose` | `65ch` | text width |
+| `max-w-prose` | `43.5rem` | text width (about 65 characters) |
 | `rounded-md` (`--radius`) | `0.625rem` | buttons, controls |
 | `rounded-block` | `1rem` | images, cards, the CTA band |
 | `shadow-overlay` | one soft shadow | nav sheet, dialog, menus; nothing else |

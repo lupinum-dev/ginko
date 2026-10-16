@@ -21,7 +21,7 @@ const delegatedProps = reactiveOmit(props, 'class', 'headingLevel')
       data-slot="accordion-trigger"
       v-bind="delegatedProps"
       :class="cn(
-        'group flex min-h-11 flex-1 items-start justify-between gap-6 py-5 text-start text-body font-medium transition-colors duration-150 hover:text-muted-foreground disabled:pointer-events-none disabled:opacity-60',
+        'group flex min-h-11 flex-1 items-start justify-between gap-6 py-5 text-start text-body font-medium transition-[color,background-color,border-color] duration-150 hover:text-muted-foreground disabled:pointer-events-none disabled:opacity-60',
         props.class)"
     >
       <slot />
