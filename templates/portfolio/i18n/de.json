@@ -10,11 +10,12 @@
   },
   "start": {
     "action": "Projekt anfragen",
-    "subject": "Projektanfrage"
+    "subject": "Projektanfrage",
+    "or": "Oder schreiben Sie an"
   },
   "project": {
     "facts": "Zum Projekt",
-    "client": "Auftrag",
+    "client": "Auftraggeber",
     "year": "Jahr",
     "place": "Ort",
     "scope": "Leistungen",

@@ -10,7 +10,8 @@
   },
   "start": {
     "action": "Start a project",
-    "subject": "Project enquiry"
+    "subject": "Project enquiry",
+    "or": "Or write to"
   },
   "project": {
     "facts": "About the project",

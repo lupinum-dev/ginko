@@ -102,7 +102,7 @@ the text). The number at the start of a file name sets the order.
 | On the site | File |
 |---|---|
 | Home page: what the studio does in one sentence, and a lead | `content/home.md` (and `home.de.md`) |
-| Projects | `content/projects/<n>.<name>.md`: `title`, `summary` (below the title and in search results), `client` (a name, or "Private client"), `year`, `place`, `scope` (what you did, in a few words), `image` (the main photo, 3:2 on the cards), `photos` (more photos, each `image` with `src` and `alt`), the text; `draft: true` keeps a project off the site while you work on it |
+| Projects | `content/projects/<n>.<name>.md`: `title`, `summary` (below the title and in search results), `client` (a name, or "Private client"; leave it out for your own pieces), `year`, `place`, `scope` (what you did, in a few words), `image` (the main photo, 3:2 on the cards), `photos` (more photos, each `image` with `src` and `alt`), the text; `draft: true` keeps a project off the site while you work on it |
 | Journal | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/maren-holt]`), `image` (optional, 3:2), the text; `draft: true` keeps an entry off the site |
 | People of the studio | `content/people/<n>.<name>.md`: `name`, `role`, `bio`, `email`, `phone`; no photo needed, the site shows initials |
 | How we work, and other pages | `content/pages/<n>.<name>.md`; each translation sets its own address with `slug:` |
@@ -199,7 +199,7 @@ Links in the content name pages by their key (`[projects]($page.projects)`). Aft
 
 | Feature | Delete |
 |---|---|
-| Journal | `content/posts/`, the `posts` brick and `pages.news` in `ginko.config.ts`, its `nav` item, the "From the journal" section of `app/pages/index.vue`, `app/pages/news/`, `app/components/blog/`, `app/composables/useBlog.ts`, `server/middleware/news-feed.ts`, `i18n/blog/`, the `blog` keys in `i18n/<language>.json`, `"blog"` in `package.json` → `ginko.features` |
+| Journal | `content/posts/`, the `posts` brick and `pages.news` in `ginko.config.ts`, its `nav` item, the "From the journal" section of `app/pages/index.vue`, `app/pages/news/`, `app/components/blog/`, `app/composables/useBlog.ts`, `server/middleware/news-feed.ts`, `modules/news-feeds/`, `i18n/blog/`, the `blog` keys in `i18n/<language>.json`, `"blog"` in `package.json` → `ginko.features` |
 | Studio page (people) | `content/people/`, `pages.team` and its `nav` item, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, the `people` keys in `i18n/<language>.json`, `"people"` in `ginko.features`; the `people` brick only after the journal, whose `authors` name people |
 | Free pages ("How we work") | `content/pages/`, the `pages` brick, its `nav` item, `app/pages/[...slug].vue`, `app/bricks/pages.ts`, `app/components/pages/Top.vue`, `"pages"` in `ginko.features`; the "Start a project" button stays on the home and project pages |
 | Notices | `content/notices/`, the `notices` brick, `<SiteNotice />` in `app/layouts/default.vue`, `app/components/site/Notice.vue` |

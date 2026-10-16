@@ -2,9 +2,10 @@
 import { ArrowRight } from '@lucide/vue'
 
 // The home page answers "what do you make, and is it good?" with the work itself: one sentence and a lead
-// (content/home.md) with the one main action, "Start a project" (an email with its subject), then the first three
-// projects of content/projects/ as large photos, the latest journal entries, and a closing band with the same email,
-// the phone and the address of content/site.md. A section whose list is empty is left out.
+// (content/home.md) with the one main action, "Start a project" (an email with its subject) and the address written
+// out below it, for a visitor whose browser opens no mail app; then the first three projects of content/projects/ as
+// large photos, the latest journal entries, and a closing band with the same action and the email, phone and address
+// of content/site.md (SiteContact). A section whose list is empty is left out.
 const home = useGinko('home')
 const projects = useGinko('projects')
 const site = useGinko('site')
@@ -14,7 +15,7 @@ const path = useGinkoPath()
 const { t } = useI18n()
 const selected = computed(() => projects.value.items.slice(0, 3))
 const latest = computed(() => posts.value.slice(0, 2))
-const contact = computed(() => site.value.data)
+const email = computed(() => site.value.data.email)
 // The tab and search result say what the studio does and where; the share card keeps the sentence of the first screen
 // and the photo of the first project. Search engines learn that the studio is a ProfessionalService.
 usePageSeo(() => ({
@@ -32,7 +33,11 @@ usePageSeo(() => ({
       :title="home.data.title"
       :lead="home.data.lead"
       :primary="start ? { label: t('start.action'), to: start } : undefined"
-    />
+    >
+      <p v-if="email" class="text-small text-muted-foreground">
+        {{ t('start.or') }} <a :href="`mailto:${email}`" dir="ltr" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 wrap-anywhere">{{ email }}</a>
+      </p>
+    </BlockHero>
 
     <BlockSection v-if="selected.length" :title="t('home.work')" :side="false">
       <ProjectsList :items="selected" feature heading-level="h3" />
@@ -49,10 +54,7 @@ usePageSeo(() => ({
     </BlockSection>
 
     <BlockCta v-if="start" :title="t('home.cta.title')" :text="t('home.cta.text')" :action="{ label: t('start.action'), to: start }">
-      <p v-if="contact.phone || contact.city" class="flex flex-wrap items-center gap-x-6 text-body">
-        <a v-if="contact.phone" :href="telHref(contact.phone)" dir="ltr" class="inline-flex min-h-11 items-center font-medium tabular-nums underline underline-offset-4">{{ contact.phone }}</a>
-        <span v-if="contact.city"><bdi>{{ contact.street }}</bdi><template v-if="contact.street">, </template><bdi>{{ contact.postalCode }} {{ contact.city }}</bdi></span>
-      </p>
+      <SiteContact />
     </BlockCta>
   </div>
 </template>
