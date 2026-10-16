@@ -11,8 +11,9 @@
 - JobPosting `datePosted` is the day the job's file last changed (`updatedAt`, in the site's time zone), else today:
   basics `jobs()` has no posting date, so fixing a typo moves it. If Ginko adds one, use it in `useJobJsonLd`
   (`_features/jobs`).
-- `/products` carries about 4 kB more script than the home page (150.4 against 146.3 kB gzip in the first build),
-  mostly the cards and the services texts; `scriptBudget` is 155 kB (the cap for feature templates is 170).
+- Script weight (gate 6, gzip): home 147.7 kB, contact 147.3, product list and pages 152.1, jobs and trade fairs
+  150.3, news 151.2. `scriptBudget` is 155 kB (the cap for feature templates is 170); the product pages are the
+  heaviest because they load the services and downloads code on top of the shared shell.
 - German says "Sie" on every page. Job titles carry "(m/f/d)" / "(m/w/d)", as German job ads do.
 - The trade fair pages reuse the events feature; this template renames "Events" to "Trade fairs", its address
   (`/trade-fairs`, `/de/messen` in `app/routes.ts`) and its texts (stand meeting instead of booking a place) in
