@@ -1,9 +1,10 @@
 <!-- Synced from templates/_features/people/app/components/people/List.vue by `pnpm templates sync`. Edit the source, not this copy. -->
 <script setup lang="ts">
-/** People as a grid: photo (4:5) or initials, name, role, short bio and contact. Never a stock face for a named
- *  person: without a photo the initials stand in. */
+/** People as a grid: photo (4:5) or initials, name (a link to the person's page when people have pages), role, short
+ *  bio and contact. Never a stock face for a named person: without a photo the initials stand in. */
 defineProps<{ items: GinkoItem<'people'>[] }>()
 const { t } = useI18n('people')
+const locale = useGinkoLocale()
 </script>
 
 <template>
@@ -17,7 +18,10 @@ const { t } = useI18n('people')
       />
       <InitialsAvatar v-else :name="person.data.name" size="lg" />
       <div class="flex flex-col gap-1">
-        <h2 class="text-h3">{{ person.data.name }}</h2>
+        <h2 class="text-h3">
+          <NuxtLink v-if="person.urls?.[locale]" :to="person.urls[locale]" class="underline-offset-4 hover:underline">{{ person.data.name }}</NuxtLink>
+          <template v-else>{{ person.data.name }}</template>
+        </h2>
         <p v-if="person.data.role" class="text-muted-foreground">{{ person.data.role }}</p>
       </div>
       <p v-if="person.data.bio">{{ person.data.bio }}</p>
