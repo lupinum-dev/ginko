@@ -17,8 +17,6 @@
 - The pricing page shows both prices of each plan (per month, and per year below it) instead of a monthly/yearly
   switch: it needs no script, and no number on the page is derived (no "save x %"), so a price on the page is always a
   price in the files.
-- The FAQ page (`app/pages/faq.vue`) is this template's own file, a copy of the events template's. It belongs in the
-  faq feature once the events template can take it from there.
 - German says "Sie" on every page, French "vous". The French content is sample text, written for this template
   (EHPAD for care homes); a native check is due before public launch, like the other translations.
 - The Studio jobs of this template (gate 7: add a changelog entry, post a notice, change a price) come later in

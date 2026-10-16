@@ -17,8 +17,7 @@
   },
   "faq": {
     "title": "Questions fréquentes",
-    "lead": "Les réponses sur la facturation, le contrat, vos données et l’essai.",
-    "empty": "Aucune question pour l’instant"
+    "lead": "Les réponses sur la facturation, le contrat, vos données et l’essai."
   },
   "pricing": {
     "lead": "Un prix par établissement, pour tout son personnel. Vous changez d’offre ou résiliez à la fin de chaque période de facturation.",
