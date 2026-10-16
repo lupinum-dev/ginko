@@ -3,11 +3,11 @@ import { Check } from '@lucide/vue'
 import type { Plan } from '~/composables/usePricing'
 
 /**
- * The plans side by side from `md` (two to three per row, four from `lg`), stacked on phones. Each plan: name, with the
- * word "Recommended" next to it on the recommended one (its border takes the accent too, never the colour alone), for whom,
- * the price per month and, below it, the price per year (or "On request"), the action, and what is included. Side by
- * side, these four parts share rows (CSS subgrid), so prices and buttons line up across the plans. The
- * recommended plan's button is the page's main action; the others are outlined. Prices in tabular numbers; both
+ * The plans side by side from `md` (two to three per row, four from `lg`), stacked on phones. Each plan: its name,
+ * with the word "Recommended" next to it on the recommended one (its border takes the accent too, never the colour
+ * alone), for whom, the price per month and, below it, the price per year (or "On request"), the action, and what is
+ * included. Side by side, these four parts share rows (CSS subgrid), so prices and buttons line up across the plans.
+ * The recommended plan's button is the page's main action; the others are outlined. Prices in tabular numbers; both
  * intervals are written out, so the table needs no switch and no script.
  */
 const props = withDefaults(defineProps<{ plans: Plan[], headingLevel?: 'h2' | 'h3' }>(), { headingLevel: 'h2' })
@@ -21,7 +21,7 @@ const columns = computed(() => (props.plans.length >= 4 ? 'md:grid-cols-2 lg:gri
       v-for="plan in plans"
       :key="plan.id"
       :data-plan="plan.id"
-      class="flex flex-col gap-6 rounded-block border p-6 sm:p-8 md:row-span-4 md:grid md:grid-rows-subgrid"
+      class="flex flex-col gap-6 rounded-block border p-6 md:row-span-4 md:grid md:grid-rows-subgrid lg:p-8"
       :class="plan.recommended && 'border-primary'"
     >
       <div class="flex flex-col gap-2">
@@ -39,7 +39,7 @@ const columns = computed(() => (props.plans.length >= 4 ? 'md:grid-cols-2 lg:gri
         <p class="text-small text-muted-foreground tabular-nums" data-yearly>{{ t('orYearly', { price: plan.prices.yearly }) }}</p>
       </div>
       <p v-else class="text-h3 font-semibold" data-on-request>{{ t('onRequest') }}</p>
-      <Button v-if="plan.action.href" as-child size="lg" :variant="plan.recommended ? 'default' : 'outline'" class="w-full">
+      <Button v-if="plan.action.href" as-child size="lg" :variant="plan.recommended ? 'default' : 'outline'" class="h-auto min-h-12 w-full py-3 text-center whitespace-normal">
         <a :href="plan.action.href">{{ plan.action.label }}</a>
       </Button>
       <div v-if="plan.included.length" class="flex flex-col gap-3 border-t pt-6">
