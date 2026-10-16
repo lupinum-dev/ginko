@@ -1,0 +1,52 @@
+{
+  "home": {
+    "title": "Physiotherapy in Graz",
+    "call": "Call {phone}",
+    "treatments": "Treatments",
+    "phoneHours": "Phone hours: {hours}",
+    "orEmail": "Or write to us:",
+    "bookOnline": "Book online",
+    "prices": "Treatments and prices",
+    "pricesLead": "Prices per session. With a doctor’s prescription, your health insurance refunds part of them.",
+    "allTreatments": "All treatments",
+    "team": "Your therapists",
+    "allTeam": "The whole team",
+    "visit": "Opening hours and address",
+    "hours": "Opening hours",
+    "address": "Address",
+    "directions": "Parking and public transport",
+    "questions": "Questions",
+    "allQuestions": "All questions"
+  },
+  "visit": {
+    "maps": "Open in maps",
+    "email": "Send an email",
+    "bookOnline": "Book online",
+    "access": "Access",
+    "parking": "Parking",
+    "transit": "Public transport"
+  },
+  "contact": {
+    "title": "Contact",
+    "lead": "How to book an appointment, when we are open and how to find the practice.",
+    "hours": "Opening hours",
+    "directions": "Address and directions",
+    "practice": "The practice"
+  },
+  "faq": {
+    "title": "FAQ",
+    "lead": "About prescriptions and health insurance, your first appointment, and what happens if you cannot come.",
+    "empty": "No questions yet"
+  },
+  "services": {
+    "title": "Treatments",
+    "lead": "Prices per session. We are a private practice: with a doctor’s prescription, your health insurance refunds part of the price.",
+    "all": "All treatments",
+    "empty": "No treatments yet",
+    "book": "Ask for an appointment",
+    "bookSubject": "Appointment request: {title}"
+  },
+  "people": {
+    "lead": "The physiotherapists who treat you, and who answers the phone."
+  }
+}

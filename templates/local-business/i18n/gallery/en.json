@@ -1,0 +1,8 @@
+{
+  "title": "Photo viewer",
+  "open": "Photo {n} of {count}: {alt}",
+  "previous": "Previous photo",
+  "next": "Next photo",
+  "counter": "{n} / {count}",
+  "close": "Close"
+}

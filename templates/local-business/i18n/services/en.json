@@ -1,0 +1,20 @@
+{
+  "title": "Services",
+  "lead": "What we offer, with prices.",
+  "all": "All services",
+  "empty": "No services yet",
+  "price": "Price",
+  "priceNet": "Price (plus VAT)",
+  "priceGross": "Price (incl. VAT)",
+  "onRequest": "On request",
+  "duration": "Duration",
+  "specs": "Key facts",
+  "enquire": "Send an enquiry",
+  "subject": "Enquiry: {title}",
+  "book": "Ask for a date",
+  "bookSubject": "Date request: {title}",
+  "call": "Call {phone}",
+  "orCall": "Or call:",
+  "orCallName": "Or call {name}:",
+  "sheet": "Product sheet"
+}

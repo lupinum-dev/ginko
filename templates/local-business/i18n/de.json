@@ -1,0 +1,52 @@
+{
+  "home": {
+    "title": "Physiotherapie in Graz",
+    "call": "{phone} anrufen",
+    "treatments": "Behandlungen",
+    "phoneHours": "Telefonisch erreichbar: {hours}",
+    "orEmail": "Oder schreiben Sie uns:",
+    "bookOnline": "Online buchen",
+    "prices": "Behandlungen und Preise",
+    "pricesLead": "Preise pro Einheit. Mit ärztlicher Verordnung erstattet Ihre Krankenkasse einen Teil davon.",
+    "allTreatments": "Alle Behandlungen",
+    "team": "Ihre Therapeutinnen und Therapeuten",
+    "allTeam": "Das ganze Team",
+    "visit": "Öffnungszeiten und Adresse",
+    "hours": "Öffnungszeiten",
+    "address": "Adresse",
+    "directions": "Parken und öffentliche Anreise",
+    "questions": "Fragen",
+    "allQuestions": "Alle Fragen"
+  },
+  "visit": {
+    "maps": "In Karten öffnen",
+    "email": "E-Mail schreiben",
+    "bookOnline": "Online buchen",
+    "access": "Barrierefreiheit",
+    "parking": "Parken",
+    "transit": "Öffentliche Verkehrsmittel"
+  },
+  "contact": {
+    "title": "Kontakt",
+    "lead": "Wie Sie einen Termin vereinbaren, wann wir geöffnet haben und wie Sie zur Praxis finden.",
+    "hours": "Öffnungszeiten",
+    "directions": "Adresse und Anfahrt",
+    "practice": "Die Praxis"
+  },
+  "faq": {
+    "title": "Häufige Fragen",
+    "lead": "Zu Verordnung und Krankenkasse, zum ersten Termin und was passiert, wenn Sie nicht kommen können.",
+    "empty": "Noch keine Fragen"
+  },
+  "services": {
+    "title": "Behandlungen",
+    "lead": "Preise pro Einheit. Wir sind eine Wahlpraxis: Mit ärztlicher Verordnung erstattet Ihre Krankenkasse einen Teil des Preises.",
+    "all": "Alle Behandlungen",
+    "empty": "Noch keine Behandlungen",
+    "book": "Termin anfragen",
+    "bookSubject": "Terminanfrage: {title}"
+  },
+  "people": {
+    "lead": "Die Physiotherapeutinnen und Physiotherapeuten, die Sie behandeln, und wer Ihren Anruf entgegennimmt."
+  }
+}
