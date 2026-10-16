@@ -15,6 +15,7 @@ const schema = {
     },
     pages: { kind: 'collection', label: 'Seiten', fields: { title: { type: 'text', label: 'Titel' } } },
     settings: { kind: 'single', label: 'Einstellungen', fields: { title: { type: 'text', label: 'Titel' } } },
+    people: { kind: 'collection', label: 'Vortragende', fields: { name: { type: 'text', label: 'Name' }, slug: { type: 'slug', label: 'Adresse', from: 'name' } } },
   },
 } as unknown as Pick<Schema, 'bricks'>
 
@@ -63,6 +64,20 @@ describe('llmsTxt', () => {
     expect(llmsTxt(bundle, { schema, siteName: 'Lupinum', description: 'Agentur für Webprojekte.', origin: 'https://lupinum.com/' })).toBe(
       '# Lupinum\n\n> Agentur für Webprojekte.\n\n## Blog\n\n- [Erster Beitrag](https://lupinum.com/blog/erster.md)\n\n## Seiten\n\n- [Start](https://lupinum.com/index.md)\n',
     )
+  })
+})
+
+describe('entries without a title', () => {
+  // Wrong behaviour caught: people with pages (speakers) have a name but no title, so llms.txt and the Markdown twin
+  // named each one by its entry id ("people/lena-hofer").
+  test('are named by the field their slug is made from', async () => {
+    const lena = item('people/lena-hofer', { name: 'Lena Hofer', slug: 'lena-hofer' }, { de: '/vortragende/lena-hofer' })
+    const bundle = {
+      format: 3, site: 'lupi', locale: 'de', locales: ['de'], mainLocale: 'de', currency: 'EUR', schemaRev: 1, contentRev: 1,
+      generatedAt: '2026-10-11T00:00:00.000Z', bricks: { people: { kind: 'collection', items: [lena] } },
+    } as unknown as Bundle
+    expect(llmsTxt(bundle, { schema, siteName: 'Lupinum', origin: 'https://lupinum.com' })).toContain('- [Lena Hofer](https://lupinum.com/vortragende/lena-hofer.md)')
+    expect(await entryMarkdown(lena, 'people', options)).toBe('# Lena Hofer\n')
   })
 })
 

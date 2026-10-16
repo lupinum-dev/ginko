@@ -5,6 +5,7 @@
   "all": "All events",
   "none": "No events are planned right now. Please look again soon.",
   "soldOut": "Fully booked",
+  "bookingClosed": "Booking has closed.",
   "date": "Date",
   "time": "Time",
   "place": "Place",

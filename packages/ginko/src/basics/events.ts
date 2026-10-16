@@ -16,7 +16,7 @@ export interface EventsOptions extends BasicsOptions { route?: Record<Locale, Ro
  * @internal The events collection with a preset's booking label and the fields it adds after `start`; sites use
  * `events()`. The gastro preset adds none, so its stored schema stays as it was.
  */
-export function eventsBrick<const E extends Fields>(opts: EventsOptions, booking: Label, extra: E) {
+export function eventsBrick<const E extends Fields, const B extends Fields = Record<never, never>>(opts: EventsOptions, booking: Label, extra: E, afterBooking?: B) {
   const fields = {
     title: f.text(both('Titel', 'Title'), { max: 120 }),
     slug: f.slug(both('Adresse', 'Web address'), { from: 'title' }),
@@ -27,6 +27,7 @@ export function eventsBrick<const E extends Fields>(opts: EventsOptions, booking
     description: f.markdown(both('Beschreibung', 'Description'), { profile: 'basic', max: 5000 }),
     price: f.money(both('Preis', 'Price'), { optional: true }),
     booking: f.text(booking, { format: 'url', optional: true }),
+    ...(afterBooking ?? ({} as B)),
     image: f.image(both('Bild', 'Image'), { optional: true }),
     // The site shows "fully booked" instead of the booking link. Optional: a missing value means bookable.
     soldOut: f.boolean(both('Ausgebucht', 'Fully booked'), { optional: true }),
@@ -60,6 +61,12 @@ export function events(opts: EventsOptions) {
     end: f.time(both('Ende', 'Ends at'), { optional: true }),
     location: f.text(both('Ort', 'Location'), { max: 200, optional: true }),
     online: f.text(both('Online-Link', 'Online link'), { format: 'url', optional: true }),
+  }, {
+    // Ticket sales or bookings that close before the event: the site hides the booking link after this day.
+    bookingUntil: f.date(both('Buchbar bis', 'Bookable until'), {
+      optional: true,
+      hint: both('Letzter Tag, an dem der Buchungs-Link erscheint. Leer: bis zur Veranstaltung.', 'Last day the booking link shows. Empty: until the event.'),
+    }),
   })
 }
 
@@ -76,6 +83,8 @@ function sessionsBrick<S extends Field>(opts: BasicsOptions & { events?: string 
       from: f.time(both('Beginn', 'Starts at')),
       to: f.time(both('Ende', 'Ends at'), { after: 'from' }),
       title: f.text(both('Titel', 'Title'), { max: 120 }),
+      // One or two sentences: what the session is about and who it is for.
+      summary: f.text(both('Kurzbeschreibung', 'Summary'), { max: 200, optional: true }),
       room: f.text(both('Raum', 'Room'), { max: 80, optional: true }),
       speakers,
       status: f.choice(both('Status', 'Status'), {

@@ -17,6 +17,17 @@ export interface BundleItem {
   source?: string
 }
 
+/**
+ * The name of an entry in a list or a heading (llms.txt, its Markdown twin, the search): its `title`, else the text
+ * field its slug is made from (a person's `name`), else its id.
+ */
+export function entryTitle(item: BundleItem, fields: Fields | undefined): string {
+  if (typeof item.data.title === 'string') return item.data.title
+  const slug = Object.values(fields ?? {}).find((field) => field.type === 'slug')
+  const named = slug?.type === 'slug' ? item.data[slug.from] : undefined
+  return typeof named === 'string' && named.trim() ? named : item.id
+}
+
 export type BundleBrick =
   | { kind: 'single'; data: Record<string, unknown>; fallback: string[] }
   | { kind: 'collection'; items: BundleItem[] }

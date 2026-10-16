@@ -1,11 +1,19 @@
 <!-- Synced from templates/_features/events/app/pages/events/[slug].vue by `pnpm templates sync`. Edit the source, not this copy. -->
 <script setup lang="ts">
+import type { Component, ComputedRef } from 'vue'
 import { safeHref } from '@lupinum/ginko'
+import type { SessionJsonLdInput } from '@lupinum/ginko/basics'
 import { ArrowLeft, Mail, Phone } from '@lucide/vue'
 
 // One event: date with weekday and time (site time zone), place, price, the description, and how to take part: the
-// booking link, else phone and email of the business (content/site.md); "fully booked" replaces both. Event JSON-LD
-// with the time zone offset. An unknown or past event is a 404.
+// booking link until `bookingUntil`, else phone and email of the business (content/site.md); "fully booked" or
+// "booking has closed" replaces both. Event JSON-LD with the time zone offset. An unknown or past event is a 404.
+// A feature may show more after the description with app/components/event/Programme.vue (prop `id`: the event's
+// entry id), and give the event's sessions to its JSON-LD with `useSessionsLd` in app/composables/useSessions.ts;
+// the sessions feature brings both: the event's programme. Without those files, nothing is added.
+const EventProgramme = Object.values(import.meta.glob<Component>('~/components/event/Programme.vue', { eager: true, import: 'default' }))[0]
+type SessionsLd = (event: () => string) => ComputedRef<SessionJsonLdInput[]>
+const useSessionsLd = Object.values(import.meta.glob<SessionsLd>('~/composables/useSessions.ts', { eager: true, import: 'useSessionsLd' }))[0]
 const route = useRoute()
 const event = useGinkoEntry('events', () => route.params.slug)
 const site = useGinko('site')
@@ -15,11 +23,15 @@ const { dates, times, price } = useEventText()
 const path = useGinkoPath()
 const langOf = useGinkoLang()
 const description = await useGinkoMarkdown(() => event.value.data.description)
-const jsonLd = useEventJsonLd(() => ({ ...event.value.data, url: event.value.url ?? route.path }), () => description.value)
+const sessions = useSessionsLd?.(() => event.value.id)
+const jsonLd = useEventJsonLd(() => ({ ...event.value.data, url: event.value.url ?? route.path }), () => description.value, () => sessions?.value)
 usePageSeo(() => ({ title: event.value.data.title, description: `${dates(event.value.data)}${times(event.value.data) ? `, ${times(event.value.data)}` : ''}`, image: event.value.data.image ?? undefined, jsonLd: [jsonLd.value] }))
 
 const contact = computed(() => site.value.data)
-const booking = computed(() => safeHref(event.value.data.booking ?? undefined))
+const bookingOf = useEventBooking()
+const closedOf = useBookingClosed()
+const booking = computed(() => bookingOf(event.value.data))
+const closed = computed(() => closedOf(event.value.data))
 const place = computed(() => event.value.data.location || (event.value.data.online ? t('online') : name))
 </script>
 
@@ -52,6 +64,7 @@ const place = computed(() => event.value.data.location || (event.value.data.onli
           </template>
         </dl>
         <p v-if="event.data.soldOut" class="text-lead font-semibold">{{ t('soldOut') }}</p>
+        <p v-else-if="closed" class="text-lead font-semibold">{{ t('bookingClosed') }}</p>
         <div v-else-if="booking" class="flex flex-wrap gap-3">
           <Button as-child size="lg" class="max-sm:w-full">
             <a :href="booking" rel="noopener">{{ t('book') }}</a>
@@ -76,7 +89,6 @@ const place = computed(() => event.value.data.location || (event.value.data.onli
     <div :lang="langOf(event, 'description')">
       <ProseBody :value="event.data.description" />
     </div>
-    <!-- A programme (the sessions brick of @lupinum/ginko/basics, one row per talk or slot) goes here, after the
-         description: the events template adds it. -->
+    <component :is="EventProgramme" v-if="EventProgramme" :id="event.id" />
   </article>
 </template>

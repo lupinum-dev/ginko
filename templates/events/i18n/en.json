@@ -1,0 +1,37 @@
+{
+  "home": {
+    "title": "Open data conference in Vienna",
+    "tickets": "Get tickets",
+    "programme": "Programme",
+    "maps": "Open in maps",
+    "highlights": "From the programme",
+    "speakers": "Speakers",
+    "sponsors": "Sponsors and partners",
+    "sponsoring": "Become a sponsor",
+    "questions": "Questions",
+    "allQuestions": "All questions",
+    "lastYear": "Last year",
+    "ctaTitle": "One ticket for the whole conference",
+    "ctaText": "{price}. Reduced prices in the ticket shop."
+  },
+  "faq": {
+    "title": "FAQ",
+    "lead": "Getting there, access, tickets, food and the code of conduct.",
+    "empty": "No questions yet"
+  },
+  "events": {
+    "title": "Dates",
+    "lead": "The conference and our other dates, with time and place.",
+    "all": "All dates",
+    "book": "Get tickets",
+    "bookingClosed": "Ticket sales have ended."
+  },
+  "sessions": {
+    "programme": {
+      "lead": "Talks, workshops and breaks by day, with time, room and speakers. All times are Vienna time."
+    },
+    "speakers": {
+      "lead": "The people who give the talks, run the workshops and sit on the panel."
+    }
+  }
+}

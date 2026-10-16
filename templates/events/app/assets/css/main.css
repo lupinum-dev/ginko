@@ -1,0 +1,22 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./tokens.css";
+
+/* This template's accent and fonts (DESIGN.md "Your accent"). Everything else comes from tokens.css.
+   events: rose. White on the accent 6.3:1 light; the accent on the page 6.3:1 light; #4c0519 on the dark accent
+   8.3:1; the dark accent on the page 10.4:1. The focus ring and links in text use the accent. */
+:root {
+  --brand: #be123c;
+  --brand-foreground: #ffffff;
+  /* @nuxt/fonts serves Inter from the site and adds size-matched fallbacks. */
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+.dark {
+  --brand: #fda4af;
+  --brand-foreground: #4c0519;
+  /* The closing band in dark mode: a deep rose instead of the light accent, so it does not outshine the page.
+     #fff1f2 on #881337 8.7:1. */
+  --brand-surface: #881337;
+  --brand-surface-foreground: #fff1f2;
+}

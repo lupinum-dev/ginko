@@ -54,6 +54,18 @@ describe('basics factories', () => {
     expect(jobs().visible).toEqual({ mode: 'until', field: 'validUntil' })
   })
 
+  // Wrong behaviour caught: speaker pages need a slug, but adding one to every people() brick would change the stored
+  // shape of each team page; or a route without the slug, which checkSite refuses.
+  it('gives people a slug from the name only with a route', () => {
+    expect(shape(people({ route: route('speakers') }))).toEqual([...shape(people()), 'slug: slug'])
+    expect(people({ route: route('speakers') }).fields.slug).toMatchObject({ from: 'name' })
+    const site = defineSite({
+      site: 'conf', name: 'Conf', url: 'https://conf.example', timeZone: 'Europe/Vienna', locales: ['en', 'de'], currency: 'EUR', pages: { home: { en: '/', de: '/de' } },
+      bricks: { people: people({ route: route('speakers') }) },
+    })
+    expect(checkSite(site)).toEqual([])
+  })
+
   // Wrong behaviour caught: a template with a people() brick cannot name its writers there, so it needs a second,
   // differently shaped authors brick; or the docs default moves away from `authors`.
   it('points post authors at the authors brick, or at the brick the option names', () => {
