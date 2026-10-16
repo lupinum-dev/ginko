@@ -7,7 +7,7 @@ tags: ["Küste"]
 
 Die Küste ist eine Stunde Zugfahrt von der Stadt entfernt, und am besten kommst du zwei Stunden nach Hochwasser an. Dann hat sich das Meer von den flachen Felsen unter dem alten Aussichtspunkt zurückgezogen und eine Reihe von Tümpeln zurückgelassen.
 
-![Gezeitentümpel zwischen flachen, mit Tang bewachsenen Felsen, dahinter ein bewaldetes Ufer](/media/rock-pools.jpg)
+![Gezeitentümpel zwischen flachen, mit Tang bewachsenen Felsen, dahinter ein bewaldetes Ufer](./rock-pools.jpg)
 *Die Tümpel unter dem alten Aussichtspunkt, zwei Stunden nach Hochwasser.*
 
 ## Was wir gefunden haben

@@ -8,7 +8,7 @@ tags: ["Coast"]
 
 The coast is an hour from the city by train, and the best time to arrive is two hours after high water. By then the sea has pulled back from the flat rocks below the old lookout and left a row of pools behind.
 
-![Rock pools between flat rocks covered in seaweed, with a forested shore behind them](/media/rock-pools.jpg)
+![Rock pools between flat rocks covered in seaweed, with a forested shore behind them](./rock-pools.jpg)
 *The pools below the old lookout, two hours after high water.*
 
 ## What we found

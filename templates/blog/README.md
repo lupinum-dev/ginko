@@ -124,10 +124,11 @@ The text, in Markdown. Headings start at `##`.
   translation is not shown in that language.
 - **Cover photo:** optional. Without one, lists and the post show text only. Put the file in `public/media/`; cover
   photos are shown at 3:2.
-- **Photo with a caption in the text:** the image, and on the next line an emphasised caption:
+- **Photo with a caption in the text:** put the photo next to the post (`content/posts/rock-pools.jpg`); the build
+  makes smaller copies of it for phones. Then the image, and on the next line an emphasised caption:
 
   ```markdown
-  ![Rock pools between flat rocks covered in seaweed](/media/rock-pools.jpg)
+  ![Rock pools between flat rocks covered in seaweed](./rock-pools.jpg)
   *The pools below the old lookout, two hours after high water.*
   ```
 
