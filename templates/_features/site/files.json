@@ -31,5 +31,6 @@
   "i18n/site/it.json",
   "modules/feature-messages.ts",
   "modules/page-paths.ts",
+  "server/plugins/font-preload.ts",
   "site-url.ts"
 ]
