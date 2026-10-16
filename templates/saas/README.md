@@ -82,7 +82,7 @@ order.
 | On the site | File |
 |---|---|
 | Home page: what the product does and for whom, lead, picture of the product, the link to the free trial, the features, the security and data facts | `content/home.md` (`title`, `lead`, `image`, `trialUrl`, `features` and `facts` as rows of `title` and `text`; and `home.de.md`, `home.fr.md`) |
-| Plans and prices | `content/pricing/<n>.<name>.md`: `name`, `summary` (for whom), `pricing` (`price` or `onRequest`, always one of the two), `monthly` and `yearly` (in euros, `89` or `89.50`; both required with `pricing: price`), `included` (rows of `item`), `recommended: true` on one plan, `actionLabel`, `actionUrl` (the sign-up page of your app; empty: an email to the address of `content/site.md` with the plan's name in the subject) |
+| Plans and prices | `content/pricing/<n>.<name>.md`: `name`, `summary` (for whom), `pricing` (`price` or `onRequest`, always one of the two), `monthly` and `yearly` (in euros, `89` or `89.50`; both required with `pricing: price`), `included` (rows of `item`), `recommended: true` on one plan, `actionLabel`, `actionUrl` (the sign-up page of your app; empty: the contact page, or without one an email to the address of `content/site.md` with the plan's name in the subject) |
 | Changelog | `content/changelog/v<version>.md` (`v4-6-0.md`: a dot in a file name reads as a language): `version`, `date`, then the text: one sentence (the summary on the home page and in the feed), a line `<!-- more -->`, and the changes under `### New`, `### Improved` and `### Fixed` |
 | FAQ | `content/faq/<n>.<name>.md`: `question`, `answer`; the pricing page shows the first three, so keep billing, cancellation and data export at the top |
 | Blog | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/lena-hartmann]`), `tags`, `image` (the cover, 3:2); `draft: true` keeps a post off the site |
@@ -91,7 +91,7 @@ order.
 | Quote on the home page | `content/quotes/<n>.<name>.md`: `text`, `name`, `role`; the home page shows the first |
 | Security, about us, contact and other pages | `content/pages/<n>.<name>.md`; each translation sets its own address with `slug:`. The contact page shows the address, email and phone of `content/site.md` under its title (`app/components/pages/Top.vue`) |
 | Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters), `until` (the last day it shows) |
-| Name, address, register entry, VAT number, email, phone | `content/site.md` (footer, imprint, the email of a plan on request, search engines) |
+| Name, address, register entry, VAT number, email, phone | `content/site.md` (footer, imprint, the contact page, search engines) |
 | Privacy policy, terms of service, imprint | `content/legal/` (placeholders for Germany: replace them before you go live) |
 | Site name, description for search engines, currency | `ginko.config.ts` (`name`, `seo.description`, `currency`) |
 | Menu, footer links, the line under the name in the footer, VAT | `app/app.config.ts` |
@@ -173,8 +173,8 @@ prefix.
 ## Add a sign-up or contact form
 
 The site sends no data to other companies, so it has no forms: "Start free trial" opens your app, and "Ask for a quote"
-opens an email with the plan in the subject. For a contact form, link to a form service of your choice and name it in
-your privacy policy.
+leads to the contact page, which says what to send. For a contact form, link to a form service of your choice and name
+it in your privacy policy.
 
 ## Remove a feature
 

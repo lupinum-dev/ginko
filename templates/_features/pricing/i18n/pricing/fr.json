@@ -4,7 +4,7 @@
   "empty": "Aucune offre pour l’instant",
   "recommended": "Recommandé",
   "perMonth": "par mois",
-  "orYearly": "ou {price} par an, en paiement annuel",
+  "orYearly": "ou {price} par an",
   "onRequest": "Sur demande",
   "included": "Inclus",
   "net": "Tous les prix s’entendent hors TVA.",

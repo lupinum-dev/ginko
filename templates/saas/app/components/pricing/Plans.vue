@@ -8,8 +8,9 @@ import type { Plan } from '~/composables/usePricing'
  * with the word "Recommended" next to it on the recommended one (its border takes the accent too, never the colour
  * alone), for whom, the price per month and, below it, the price per year (or "On request"), the action, and what is
  * included. Side by side, these four parts share rows (CSS subgrid), so prices and buttons line up across the plans.
- * The recommended plan's button is the page's main action; the others are outlined. Prices in tabular numbers; both
- * intervals are written out, so the table needs no switch and no script.
+ * The recommended plan's button is the page's main action; the others are outlined. A plan without an action keeps
+ * its empty row, so the rows still line up. Prices in tabular numbers; both intervals are written out, so the table
+ * needs no switch and no script.
  */
 const props = withDefaults(defineProps<{ plans: Plan[], headingLevel?: 'h2' | 'h3' }>(), { headingLevel: 'h2' })
 const { t } = useI18n('pricing')
@@ -41,8 +42,9 @@ const columns = computed(() => (props.plans.length >= 4 ? 'md:grid-cols-2 lg:gri
       </div>
       <p v-else class="text-h3 font-semibold" data-on-request>{{ t('onRequest') }}</p>
       <Button v-if="plan.action.href" as-child size="lg" :variant="plan.recommended ? 'default' : 'outline'" class="h-auto min-h-12 w-full py-3 text-center whitespace-normal">
-        <a :href="plan.action.href">{{ plan.action.label }}</a>
+        <NuxtLink :to="plan.action.href" no-rel>{{ plan.action.label }}</NuxtLink>
       </Button>
+      <div v-else class="hidden md:block" />
       <div v-if="plan.included.length" class="flex flex-col gap-3 border-t pt-6">
         <p class="text-small font-medium">{{ t('included') }}</p>
         <ul class="flex flex-col gap-3">

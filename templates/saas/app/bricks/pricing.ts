@@ -7,13 +7,14 @@ import { collection, f, type BrickSource } from '@lupinum/ginko'
 // on request (`pricing: onRequest`, no price shown); the build and the Studio refuse a priced plan without both
 // amounts. `included` is the short list of what the plan contains. `recommended` marks one plan with the word
 // "Recommended" (the first plan that has it). The action is a link (the sign-up page of the app, with the plan) or,
-// without `actionUrl`, an email to the address of content/site.md with the plan's name in the subject.
+// without `actionUrl`, the site's contact page (`pages/contact`) or, without one, an email to the address of
+// content/site.md with the plan's name in the subject.
 export function pricing(o: { source?: BrickSource } = {}) {
   const fields = {
     name: f.text({ de: 'Name', en: 'Name', fr: 'Nom' }, { max: 40 }),
     summary: f.text({ de: 'Für wen', en: 'For whom', fr: 'Pour qui' }, {
       max: 160,
-      hint: { de: 'Ein Satz unter dem Namen, zum Beispiel „Für ein Haus mit bis zu 30 Beschäftigten.“', en: 'One sentence below the name, for example “For one home with up to 30 staff.”', fr: 'Une phrase sous le nom, par exemple « Pour un établissement de 30 salariés au plus. »' },
+      hint: { de: 'Ein Satz unter dem Namen, zum Beispiel „Für Teams mit bis zu 10 Personen.“', en: 'One sentence below the name, for example “For teams of up to 10 people.”', fr: 'Une phrase sous le nom, par exemple « Pour les équipes de 10 personnes au plus. »' },
     }),
     // An explicit choice, no default: a price is never left out by accident.
     pricing: f.choice({ de: 'Preis', en: 'Pricing', fr: 'Prix' }, {
@@ -41,7 +42,7 @@ export function pricing(o: { source?: BrickSource } = {}) {
       format: 'url',
       optional: true,
       translate: false,
-      hint: { de: 'Leer: eine E-Mail an die Adresse der Website mit dem Namen des Tarifs im Betreff.', en: 'Empty: an email to the website’s address with the plan’s name in the subject.', fr: 'Vide : un e-mail à l’adresse du site, avec le nom de l’offre en objet.' },
+      hint: { de: 'Leer: die Kontaktseite der Website, ohne sie eine E-Mail an die Adresse der Website.', en: 'Empty: the website’s contact page, or without one an email to the website’s address.', fr: 'Vide : la page de contact du site ou, sans elle, un e-mail à l’adresse du site.' },
     }),
   }
   return collection({
