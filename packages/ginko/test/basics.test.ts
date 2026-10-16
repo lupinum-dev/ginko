@@ -93,6 +93,14 @@ describe('basics factories', () => {
 })
 
 describe('basics JSON-LD', () => {
+  // Wrong behaviour caught: a net price that search engines read as the full price, or cents as the price.
+  it.each([
+    [{}, { '@type': 'Offer', price: '390.00', priceCurrency: 'EUR' }],
+    [{ valueAddedTaxIncluded: false }, { '@type': 'Offer', price: '390.00', priceCurrency: 'EUR', priceSpecification: { '@type': 'PriceSpecification', price: '390.00', priceCurrency: 'EUR', valueAddedTaxIncluded: false } }],
+  ] as const)('offer with %j', (options, expected) => {
+    expect(offerJsonLd({ amount: 39000 }, 'EUR', options)).toEqual(expected)
+  })
+
   it.each([
     ['Organization', undefined],
     ['NGO', 'NGO'],

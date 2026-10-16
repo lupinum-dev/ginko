@@ -25,3 +25,17 @@ export function offerPrice(m: Money, siteCurrency: string | undefined) {
   const digits = minorDigits(currency)
   return { price: (m.amount / 10 ** digits).toFixed(digits), priceCurrency: currency }
 }
+
+/**
+ * schema.org Offer for a price of the site's own JSON-LD (a service, a product): `price` and `priceCurrency` as
+ * `offerPrice`. `valueAddedTaxIncluded` (false for net prices) adds a PriceSpecification that says so, so search
+ * engines do not read a net price as the full one; left out, the Offer says nothing about VAT.
+ */
+export function offerJsonLd(m: Money, siteCurrency: string | undefined, o: { valueAddedTaxIncluded?: boolean } = {}) {
+  const price = offerPrice(m, siteCurrency)
+  return {
+    '@type': 'Offer',
+    ...price,
+    ...(o.valueAddedTaxIncluded === undefined ? {} : { priceSpecification: { '@type': 'PriceSpecification', ...price, valueAddedTaxIncluded: o.valueAddedTaxIncluded } }),
+  }
+}
