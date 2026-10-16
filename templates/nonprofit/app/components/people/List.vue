@@ -1,7 +1,7 @@
 <!-- Synced from templates/_features/people/app/components/people/List.vue by `pnpm templates sync`. Edit the source, not this copy. -->
 <script setup lang="ts">
 /** People as a grid: photo (4:5) or initials, name, role, short bio and contact. Never a stock face for a named
- *  person: without a photo the initials stand in. */
+ *  person: without a photo the initials stand in, on phones small and beside the name, so the bios stay close. */
 defineProps<{ items: GinkoItem<'people'>[] }>()
 const { t } = useI18n('people')
 </script>
@@ -15,10 +15,12 @@ const { t } = useI18n('people')
         sizes="(min-width: 1024px) 384px, (min-width: 640px) 50vw, 100vw"
         class="aspect-4/5 w-full rounded-block bg-muted object-cover"
       />
-      <InitialsAvatar v-else :name="person.data.name" size="lg" />
-      <div class="flex flex-col gap-1">
-        <h2 class="text-h3">{{ person.data.name }}</h2>
-        <p v-if="person.data.role" class="text-muted-foreground">{{ person.data.role }}</p>
+      <div class="flex flex-col gap-4" :class="!person.data.photo && 'max-sm:flex-row max-sm:items-center'">
+        <InitialsAvatar v-if="!person.data.photo" :name="person.data.name" size="lg" class="max-sm:size-12 max-sm:text-body" />
+        <div class="flex min-w-0 flex-col gap-1">
+          <h2 class="text-h3">{{ person.data.name }}</h2>
+          <p v-if="person.data.role" class="text-muted-foreground">{{ person.data.role }}</p>
+        </div>
       </div>
       <p v-if="person.data.bio">{{ person.data.bio }}</p>
       <ul v-if="person.data.email || person.data.phone" class="flex flex-col text-small" :aria-label="t('contact', { name: person.data.name })">
