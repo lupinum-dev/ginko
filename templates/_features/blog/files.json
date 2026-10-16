@@ -8,6 +8,7 @@
   "i18n/blog/de.json",
   "i18n/blog/en.json",
   "i18n/blog/fr.json",
-  "modules/news-feeds.ts",
+  "modules/news-feeds/index.ts",
+  "modules/news-feeds/routes.ts",
   "server/middleware/news-feed.ts"
 ]
