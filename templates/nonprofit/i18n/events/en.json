@@ -1,0 +1,19 @@
+{
+  "title": "Events",
+  "lead": "What is coming up, with date, time and price.",
+  "upcoming": "Coming up",
+  "all": "All events",
+  "none": "No events are planned right now. Please look again soon.",
+  "soldOut": "Fully booked",
+  "bookingClosed": "Booking has closed.",
+  "date": "Date",
+  "time": "Time",
+  "place": "Place",
+  "price": "Price",
+  "perPerson": "{price} per person",
+  "online": "Online",
+  "book": "Book a place",
+  "reserve": "To reserve or ask a question, call or write to us.",
+  "call": "Call {phone}",
+  "email": "Send an email"
+}

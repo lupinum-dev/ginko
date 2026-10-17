@@ -18,7 +18,7 @@ const event = useGinkoEntry('events', () => route.params.slug)
 const site = useGinko('site')
 const { name } = useGinkoSite()
 const { t } = useI18n('events')
-const { dates, times, price } = useEventText()
+const { dates, times, price, ltr } = useEventText()
 const path = useGinkoPath()
 const langOf = useGinkoLang()
 const description = await useGinkoMarkdown(() => event.value.data.description)
@@ -73,7 +73,7 @@ const place = computed(() => event.value.data.location || (event.value.data.onli
           <p class="text-muted-foreground">{{ t('reserve') }}</p>
           <div class="flex flex-wrap gap-3">
             <Button v-if="contact.phone" as-child size="lg" class="max-sm:w-full">
-              <a :href="telHref(contact.phone)"><Phone aria-hidden="true" />{{ t('call', { phone: contact.phone }) }}</a>
+              <a :href="telHref(contact.phone)"><Phone aria-hidden="true" />{{ t('call', { phone: ltr(contact.phone) }) }}</a>
             </Button>
             <Button v-if="contact.email" as-child size="lg" :variant="contact.phone ? 'outline' : 'default'" class="max-sm:w-full">
               <a :href="`mailto:${contact.email}`"><Mail aria-hidden="true" />{{ t('email') }}</a>

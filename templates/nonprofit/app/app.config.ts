@@ -24,6 +24,7 @@ export default defineAppConfig({
       { entry: 'pages/donate' },
     ],
     footer: [
+      { page: 'events', label: { en: 'Events', de: 'Veranstaltungen', fr: 'Événements', ar: 'الفعاليات' } },
       { page: 'team', label: { en: 'Team', de: 'Team', fr: 'Équipe', ar: 'الفريق' } },
       { page: 'downloads', label: { en: 'Reports', de: 'Berichte', fr: 'Rapports', ar: 'التقارير' } },
     ],

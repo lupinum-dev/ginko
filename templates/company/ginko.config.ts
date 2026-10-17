@@ -73,11 +73,12 @@ export default defineSite({
     // sitemap and search engines by itself. In the Studio, Today lists jobs that end within 7 days.
     jobs: { ...jobs({ source: 'files', route: localized('/jobs/[slug]') }), status: { count: true } },
     // News, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never goes
-    // online; in the Studio, Today shows how old the newest post is.
+    // online; in the Studio, Today shows how old the newest post is and has a button to write one.
     posts: {
       ...posts({ source: 'files', authors: 'people', route: localized('/news/[slug]') }),
       drafts: true,
       status: { age: 'date' },
+      tasks: [{ id: 'write', kind: 'create', label: { en: 'Write a news post', de: 'Neuigkeit schreiben' } }],
     },
     // Sales, service and the other contacts, with phone and email (content/people/). No photos: the site shows initials.
     people: people({ source: 'files' }),

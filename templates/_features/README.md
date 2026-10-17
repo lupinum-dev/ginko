@@ -4,7 +4,10 @@ Shared sources of the templates in `templates/<name>/` (spec: ginko-internal `sp
 lists its features in `package.json` → `"ginko": { "features": [...] }`; `pnpm templates sync` copies the files each
 feature's `files.json` lists into it (code files get a first line naming the source) and `pnpm templates sync --check`
 fails on drift. Edit the files here, never the copies. Files not in `files.json` (this README, `e2e/`) stay here;
-`e2e/*.spec.ts` run in gate 3 of every template that uses the feature.
+`e2e/*.spec.ts` run in gate 3 of every template that uses the feature, and `e2e/studio/*.spec.ts` are its owner jobs
+in the Studio (gate 7, `pnpm templates test <name> --platform`: site notice, pages edit, hours closed today, menu
+lunch week and price, events add, blog news post, sessions change, jobs post); each template names its content for
+them in `templates/_studio/<template>/jobs.json`.
 
 | Feature | Brings | Needs in the template |
 |---|---|---|

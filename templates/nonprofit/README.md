@@ -83,7 +83,7 @@ the start of a file name sets the order.
 | Quotes on the home page | `content/quotes/<n>.<name>.md`: `text`, `name`, `role`; the home page shows the first |
 | About, Get involved, Donate and other pages | `content/pages/<n>.<name>.md`; each translation sets its own address with `slug:`. `actionLabel` and `actionUrl` add one button below the title (the Donate page's "Donate online") |
 | Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters), `until` (the last day it shows) |
-| Events | `content/events/<n>.<name>.md`: `title`, `when`, `start`, `end`, `location`; the next one shows on the home page and on Get involved (no events pages yet: see "Events" below) |
+| Events | `content/events/<n>.<name>.md`: `title`, `slug`, `when`, `start`, `end`, `location`, `online`, `booking`; the list at `/events`, one page per event (see "Events" below) |
 | Name, address, register entry, email, phone | `content/site.md` (footer, imprint, search engines) |
 | Privacy policy, terms, imprint | `content/legal/` (placeholders for Germany: replace them before you go live) |
 | Site name, description for search engines | `ginko.config.ts` (`name`, `seo.description`) |
@@ -95,10 +95,11 @@ summary, date and authors of every post that is online.
 
 Notices show newest first: put the newest one at the top (the smallest number). At most two show at once.
 
-**Events.** The next event in `content/events/` shows in the closing band of the home page and at the top of the
-Get involved page, with its weekday, date, time and place; with no coming event both hide it. Past events leave the
-site by themselves. This version of the template has no events pages yet; a later version adds the list and a page
-per event.
+**Events.** Every coming event of `content/events/` is on the events page (`/events`, linked in the footer) and has
+its own page with date, time, place and the text. The next one also shows in the closing band of the home page and at
+the top of the Get involved page, with the dates after it below; with no coming event these parts hide. Past events
+leave the site by themselves. Without a `booking` link, an event page offers your phone and email from
+`content/site.md` for questions.
 
 ## Make it yours
 
