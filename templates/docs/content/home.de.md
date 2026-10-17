@@ -1,5 +1,5 @@
 ---
-title: Orbit SDK, der TypeScript-Client für die Orbit API.
+title: Orbit SDK, der TypeScript-Client für die Orbit API
 description: Lege Monitore an, lies Vorfälle und prüfe Webhooks aus Node.js, mit Typen für jede Anfrage und jede Antwort. Orbit SDK wiederholt fehlgeschlagene Anfragen für dich und blättert durch lange Listen.
 links:
   - label: Schnellstart
@@ -21,7 +21,7 @@ features:
     href: $docs.webhooks
   - title: API-Referenz
     description: Jede Methode mit Parametern und Rückgabetyp, und die Fehlercodes.
-    href: $docs.monitors
+    href: $docs.client
   - title: Änderungen
     description: Was sich in jeder Version geändert hat, die neueste zuerst.
     href: $page.changelog

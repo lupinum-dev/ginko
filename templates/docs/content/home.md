@@ -1,5 +1,5 @@
 ---
-title: Orbit SDK, the TypeScript client for the Orbit API.
+title: Orbit SDK, the TypeScript client for the Orbit API
 description: Create monitors, read incidents and verify webhooks from Node.js, with types for every request and answer. Orbit SDK retries failed requests for you and pages through long lists.
 install: npm install @orbit-example/sdk
 links:
@@ -27,7 +27,7 @@ features:
   - icon: lucide:book-open
     title: API reference
     description: Every method with its parameters and return type, and the error codes.
-    href: $docs.monitors
+    href: $docs.client
   - icon: lucide:history
     title: Changelog
     description: What changed in each version, newest first.
