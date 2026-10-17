@@ -4,15 +4,15 @@
     "trial": "Commencer l’essai gratuit",
     "pricing": "Voir les tarifs",
     "trialNote": "Gratuit pendant 30 jours, sans moyen de paiement. L’essai s’arrête de lui-même.",
-    "features": "Ce que fait Planwerk",
+    "features": "Ce que fait {name}",
     "featuresLead": "Du planning du mois aux heures pour la paie, au même endroit.",
     "customers": "Clients",
-    "customersLead": "Des EHPAD et des cliniques qui planifient avec Planwerk.",
+    "customersLead": "Des EHPAD et des cliniques qui planifient avec {name}.",
     "security": "Sécurité et données",
     "securityMore": "Comment nous protégeons vos données",
     "cta": {
-      "title": "Planifiez les équipes du mois prochain avec Planwerk.",
-      "text": "Essayez Planwerk pendant 30 jours avec votre propre équipe, sans moyen de paiement."
+      "title": "Planifiez les équipes du mois prochain avec {name}.",
+      "text": "Essayez {name} pendant 30 jours avec votre propre équipe, sans moyen de paiement."
     }
   },
   "faq": {

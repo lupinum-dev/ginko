@@ -4,14 +4,14 @@
     "trial": "Start free trial",
     "pricing": "See pricing",
     "trialNote": "Free for 30 days, with no payment details. The trial ends by itself.",
-    "features": "What Planwerk does",
+    "features": "What {name} does",
     "featuresLead": "From the monthly rota to the hours for payroll, in one place.",
     "customers": "Customers",
-    "customersLead": "Care homes and clinics that plan with Planwerk.",
+    "customersLead": "Care homes and clinics that plan with {name}.",
     "security": "Security and data",
     "securityMore": "How we protect your data",
     "cta": {
-      "title": "Plan next month’s shifts with Planwerk.",
+      "title": "Plan next month’s shifts with {name}.",
       "text": "Try it for 30 days with your own team, without payment details."
     }
   },

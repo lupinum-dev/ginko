@@ -4,15 +4,15 @@
     "trial": "Kostenlos testen",
     "pricing": "Preise ansehen",
     "trialNote": "30 Tage kostenlos, ohne Zahlungsdaten. Der Test endet von selbst.",
-    "features": "Was Planwerk kann",
+    "features": "Was {name} kann",
     "featuresLead": "Vom Monatsdienstplan bis zu den Stunden für die Lohnabrechnung, an einem Ort.",
     "customers": "Kunden",
-    "customersLead": "Pflegeheime und Kliniken, die mit Planwerk planen.",
+    "customersLead": "Pflegeheime und Kliniken, die mit {name} planen.",
     "security": "Sicherheit und Daten",
     "securityMore": "Wie wir Ihre Daten schützen",
     "cta": {
-      "title": "Planen Sie die Dienste des nächsten Monats mit Planwerk.",
-      "text": "Testen Sie Planwerk 30 Tage mit Ihrem eigenen Team, ohne Zahlungsdaten."
+      "title": "Planen Sie die Dienste des nächsten Monats mit {name}.",
+      "text": "Testen Sie {name} 30 Tage mit Ihrem eigenen Team, ohne Zahlungsdaten."
     }
   },
   "faq": {
