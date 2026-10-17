@@ -58,6 +58,12 @@ describe('allergens', () => {
     expect(json).toContain('"Nuts"')
     expect(json).not.toContain('Gluten')
   })
+  // Wrong behaviour caught: an edited dish keeps its old allergens without anyone being asked.
+  it('lunch and menu allergens are asked again when the dish changes', () => {
+    const schema = serializeSchema(siteWith({ menu: menu(), lunch: lunch(), lunchPlans: lunchPlans(), notices: notices() }))
+    expect((schema.bricks.lunch!.fields.days as any).of.allergens.askAgainWhen).toBe('dish')
+    expect((schema.bricks.menu!.fields.allergens as any).askAgainWhen).toBe('name')
+  })
   it('the default keeps the 14 EU codes', () => {
     expect(fieldsOf({ menu: menu() })).toContain('{"de":"B Krebstiere","en":"B Crustaceans"}')
     expect(fieldsOf({ menu: menu() })).toContain('A Gluten')
