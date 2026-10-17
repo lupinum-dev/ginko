@@ -36,11 +36,13 @@ export function useSiteAppConfig(): SiteAppConfig {
 
 /** Entries already reported as missing, so the log names each one once. */
 const reported = new Set<string>()
+const overLimit = '\0over-limit'
 
 /** The items of a navigation list with their label and path in the current language. An entry that does not exist
  *  in this language (untranslated or removed) is left out; one missing in the main language is also reported in the
- *  dev server and build log, because it is a typo or a deleted file. */
-export function useSiteLinks(items: () => SiteNavItem[]) {
+ *  dev server and build log, because it is a typo or a deleted file. With `limit`, a longer list is reported once
+ *  too (the header holds 6 links; the rest stay in the menu). */
+export function useSiteLinks(items: () => SiteNavItem[], limit?: number) {
   const path = useGinkoPath()
   const locale = useGinkoLocale()
   const { mainLocale } = useGinkoSite()
@@ -48,6 +50,10 @@ export function useSiteLinks(items: () => SiteNavItem[]) {
   // key that is no collection of this site is skipped by it.
   const tree = useGinkoNav(() => [...new Set(items().flatMap((item) => ('entry' in item ? [item.entry.split('/')[0]!] : [])))] as NavBricks)
   return computed(() => {
+    if (import.meta.server && limit && !reported.has(overLimit) && items().length > limit) {
+      reported.add(overLimit)
+      console.warn(`[site] app/app.config.ts has ${items().length} navigation entries; the header holds ${limit}, so the menu stays in the sheet.`)
+    }
     const byId = new Map<string, { title: string, path: string }>()
     const walk = (nodes: typeof tree.value) => nodes.forEach((node) => {
       if (node.id) byId.set(node.id, node)
