@@ -726,6 +726,7 @@
       "search": "Rechercher {target}…",
       "nothing": "Aucun résultat."
     },
+    "confirmBlocker": "Confirmez : les informations « {label} » sont-elles toujours correctes ?",
     "list": {
       "up": "Monter {title}",
       "down": "Descendre {title}",
@@ -736,8 +737,7 @@
       "confirmBlocker": "Confirmez pour « {title} » : les informations « {label} » sont-elles toujours correctes ?",
       "changed": "Modification : {changed}. Les informations « {label} » sont-elles toujours correctes ?",
       "add": "Ajouter {item}",
-      "addInMain": "Pour ajouter, supprimer ou réorganiser des lignes, passez en {name}.",
-      "text": "Texte"
+      "addInMain": "Pour ajouter, supprimer ou réorganiser des lignes, passez en {name}."
     }
   },
   "ops": {

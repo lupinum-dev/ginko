@@ -246,7 +246,7 @@ const groupHasGap = (g: FieldGroup) => g.fields.some(([key]) => gapRoots.value.h
 // A refused save shows the first tab that holds an error.
 watch(issues, () => { const first = visibleGroups.value.find(groupHasIssue); if (tabbed.value && first) activeTab.value = first.id })
 const setField = (key: string, value: Json | undefined) => form.setField(key, value)
-const fieldProps = computed(() => ({ draft: draft.value, baseline: baseline.value, locale: locale.value, locales: props.schema.locales, issues: issues.value, route: props.brick.kind === 'collection' ? props.brick.route : undefined, weeks: (key: string) => weekShortcuts(props.brick, key) }))
+const fieldProps = computed(() => ({ all: props.brick.fields, draft: draft.value, baseline: baseline.value, locale: locale.value, locales: props.schema.locales, issues: issues.value, route: props.brick.kind === 'collection' ? props.brick.route : undefined, weeks: (key: string) => weekShortcuts(props.brick, key) }))
 
 // The entry limit spans all fields and languages, so no field counter shows it (SPEC 3). Counted as the server does
 // (core entryBytes: the stored text, the draft over the stored data; the prints may lag by a few bytes), after the
