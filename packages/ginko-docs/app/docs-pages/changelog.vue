@@ -4,6 +4,7 @@ import { markdownComponents } from '../lib/markdownComponents'
 // The changelog: one page, one section per release, newest first (the collection's order). Each version has an anchor.
 const { t, language } = useI18n()
 const blog = useDocsBlog()
+const langOf = useGinkoLang()
 const entries = blog.changelog()
 // A list page: CollectionPage JSON-LD, so search engines read it as the index of its entries.
 const site = useGinkoSite()
@@ -27,7 +28,7 @@ useGinkoSeo(() => ({
           <h2><a :href="`#${anchor(entry.data.version)}`">{{ entry.data.version }}</a></h2>
           <p class="docs-meta"><time :datetime="entry.data.date">{{ blog.formatDate(entry.data.date) }}</time></p>
         </div>
-        <GinkoMarkdown :value="entry.data.body" :components="markdownComponents" class="docs-prose" />
+        <GinkoMarkdown :value="entry.data.body" :components="markdownComponents" class="docs-prose" :lang="langOf(entry, 'body')" />
       </section>
     </div>
   </div>

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildIndex } from '@lupinum/ginko/internal/search'
 import { loadIndex, search } from '@lupinum/ginko/search'
 import { handleMcp, type DocsMcpDeps } from '../server/mcp/handler'
-import { docsAskLinks, docsEditUrl, docsMainPath, docsMarkdownPath, docsRouteLink, docsStudioUrl } from '../app/lib/docsPage'
+import { docsAskLinks, docsEditUrl, docsMainLanguagePath, docsMainPath, docsMarkdownPath, docsRouteLink, docsStudioUrl } from '../app/lib/docsPage'
 
 describe('page helpers', () => {
   it.each([
@@ -12,6 +12,15 @@ describe('page helpers', () => {
     [{ url: 'https://github.com/a/b' }, undefined, undefined],
     [undefined, 'x.md', undefined],
   ])('edit url %#', (repo, source, expected) => expect(docsEditUrl(repo, source)).toBe(expected))
+
+  it.each([
+    ['/de/docs/upgrading-to-v2', '/docs/upgrading-to-v2'],
+    ['/de/docs/a/b', '/docs/a/b'],
+    ['/docs/x', undefined],
+    ['/de/blog/x', undefined],
+    ['/de/docsx/y', undefined],
+    ['/en/docs/x', undefined],
+  ])('main-language guess for a 404 at %s', (path, expected) => expect(docsMainLanguagePath(path, ['en', 'de'], 'en', '/docs')).toBe(expected))
 
   it('a platform page links to its Studio form; without a platform address there is no link', () => {
     expect(docsStudioUrl('https://studio.example/', 'lupinum', 'docs', 'k17 x')).toBe('https://studio.example/s/lupinum/all/docs/k17%20x')

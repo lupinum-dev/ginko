@@ -2,6 +2,7 @@
 // The blog: all posts, newest first (the collection's order).
 const { t, language } = useI18n()
 const blog = useDocsBlog()
+const langOf = useGinkoLang()
 const posts = blog.posts()
 // A list page: CollectionPage JSON-LD, so search engines read it as the index of its entries.
 const site = useGinkoSite()
@@ -42,7 +43,7 @@ if (import.meta.server) useResponseHeader('x-nitro-prerender').value = blog.feed
               <NuxtLink :to="post.url">{{ post.data.title }}</NuxtLink>
               <span v-if="blog.isDraft(post)" class="docs-tag docs-tag-draft">{{ t('docs.draft') }}</span>
             </h2>
-            <p v-if="post.data.description" class="docs-post-teaser">{{ post.data.description }}</p>
+            <p v-if="post.data.description" class="docs-post-teaser" :lang="langOf(post, 'description')">{{ post.data.description }}</p>
             <p v-if="post.data.tags?.length" class="docs-tags">
               <span v-for="tag in post.data.tags" :key="tag.tag" class="docs-tag">{{ tag.tag }}</span>
             </p>
