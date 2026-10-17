@@ -45,7 +45,7 @@ function focusPhoto(i: number) {
     >
       <li
         v-for="(image, i) in props.images"
-        :key="image.url"
+        :key="`${i}-${image.url}`"
         class="break-inside-avoid"
         :class="rows && 'sm:max-w-(--max) sm:grow-(--grow) sm:basis-(--basis) md:max-w-(--max-md) md:basis-(--basis-md)'"
         :style="rows ? {
