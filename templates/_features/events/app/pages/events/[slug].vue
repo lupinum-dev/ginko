@@ -4,7 +4,8 @@ import { safeHref } from '@lupinum/ginko'
 import type { SessionJsonLdInput } from '@lupinum/ginko/basics'
 import { ArrowLeft, Mail, Phone } from '@lucide/vue'
 
-// One event: date with weekday and time (site time zone), place, price, the description, and how to take part: the
+// One event: date with weekday and time (site time zone), place (its location, else the online link; no row when it has
+// neither: content/site.md is the organiser, not the venue), price, the description, and how to take part: the
 // booking link until `bookingUntil`, else phone and email of the business (content/site.md); "fully booked" or
 // "booking has closed" replaces both. Event JSON-LD with the time zone offset. An unknown or past event is a 404.
 // A feature may show more after the description with app/components/event/Programme.vue (prop `id`: the event's
@@ -16,7 +17,6 @@ const useSessionsLd = Object.values(import.meta.glob<SessionsLd>('~/composables/
 const route = useRoute()
 const event = useGinkoEntry('events', () => route.params.slug)
 const site = useGinko('site')
-const { name } = useGinkoSite()
 const { t } = useI18n('events')
 const { dates, times, price, ltr } = useEventText()
 const path = useGinkoPath()
@@ -33,7 +33,7 @@ const bookingOf = useEventBooking()
 const closedOf = useBookingClosed()
 const booking = computed(() => bookingOf(event.value.data))
 const closed = computed(() => closedOf(event.value.data))
-const place = computed(() => event.value.data.location || (event.value.data.online ? t('online') : name))
+const place = computed(() => event.value.data.location || (safeHref(event.value.data.online ?? undefined) ? t('online') : undefined))
 </script>
 
 <template>
@@ -54,11 +54,13 @@ const place = computed(() => event.value.data.location || (event.value.data.onli
             <dt class="text-small text-muted-foreground">{{ t('time') }}</dt>
             <dd class="font-medium tabular-nums">{{ times(event.data) }}</dd>
           </template>
-          <dt class="text-small text-muted-foreground">{{ t('place') }}</dt>
-          <dd class="font-medium">
-            <a v-if="!event.data.location && safeHref(event.data.online ?? undefined)" :href="safeHref(event.data.online ?? undefined)" rel="noopener" class="text-primary underline">{{ place }}</a>
-            <span v-else>{{ place }}</span>
-          </dd>
+          <template v-if="place">
+            <dt class="text-small text-muted-foreground">{{ t('place') }}</dt>
+            <dd class="font-medium">
+              <a v-if="!event.data.location" :href="safeHref(event.data.online ?? undefined)" rel="noopener" class="text-primary underline">{{ place }}</a>
+              <span v-else>{{ place }}</span>
+            </dd>
+          </template>
           <template v-if="price(event.data)">
             <dt class="text-small text-muted-foreground">{{ t('price') }}</dt>
             <dd class="font-medium tabular-nums">{{ price(event.data) }}</dd>
