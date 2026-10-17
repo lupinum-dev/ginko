@@ -90,6 +90,15 @@ describe('pruneLocales', () => {
     pruneLocales(image, ['en', 'de'], ['de', 'en'])
     expect(read(image, 'content/home.md')).toBe('---\ntitle: Start\nimage:\n  src: /media/a.jpg\n  alt: Ein Fluss\n---\n')
     expect(read(image, 'content/home.en.md')).toBe('---\ntitle: Home\nimage:\n  alt: A river\n---\n')
+    // A translation without frontmatter (only its text): the main file's fields still move to the new main file.
+    const bare = folder({
+      'app/routes.ts': "export const locales = ['en', 'de'] as const\n",
+      'content/changelog/v1-6-0.md': '---\nversion: 1.6.0\ndate: 2026-06-16\n---\n\nThe last minor.\n',
+      'content/changelog/v1-6-0.de.md': 'Die letzte Nebenversion.\n',
+    })
+    pruneLocales(bare, ['en', 'de'], ['de', 'en'])
+    expect(read(bare, 'content/changelog/v1-6-0.md')).toBe('---\nversion: 1.6.0\ndate: 2026-06-16\n---\n\nDie letzte Nebenversion.\n')
+    expect(read(bare, 'content/changelog/v1-6-0.en.md')).toBe('---\n---\n\nThe last minor.\n')
     // German only: the English file goes, its date stays with the German text.
     const only = folder({ 'app/routes.ts': "export const locales = ['en', 'de'] as const\n", 'content/notices/1.a.md': '---\ntext: Hi\nuntil: 2027-01-29\n---\n', 'content/notices/1.a.de.md': '---\ntext: Hallo\n---\n' })
     pruneLocales(only, ['en', 'de'], ['de'])
