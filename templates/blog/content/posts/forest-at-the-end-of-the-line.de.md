@@ -17,7 +17,7 @@ Die ganze Runde verläuft auf festen Wegen. Gute Schuhe reichen, und in weniger 
 
 ## Worauf du achten kannst
 
-Buchen behalten ihr trockenes Laub an den unteren Ästen bis weit in den Winter, deshalb leuchten die unteren Äste kupferfarben, während die Kronen schon kahl sind. Schau dir auch die Stämme an: In der glatten grauen Rinde stehen alte eingeritzte Initialen, breit gezogen, weil der Baum um sie herumgewachsen ist.
+Buchen behalten ihr trockenes Laub an den unteren Ästen bis weit in den Winter, deshalb leuchten die Bäume unten kupferfarben, während die Kronen schon kahl sind. Schau dir auch die Stämme an: In der glatten grauen Rinde stehen alte eingeritzte Initialen, breit gezogen, weil der Baum um sie herumgewachsen ist.
 
 Im Nebel wird der Wald so still, wie es die Stadt nie ist. Du hörst das Tropfen von den Blättern, irgendwo oben einen Kleiber und ganz weit weg die Klingel der Straßenbahn.
 
