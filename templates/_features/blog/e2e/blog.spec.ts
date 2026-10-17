@@ -66,7 +66,9 @@ test('a tag on a post leads to its own page with the posts that carry it', async
   const post = page.locator('main li :is(h2, h3) a').first()
   await open(page, (await post.getAttribute('href'))!)
   // Wrong behaviour caught: a post header without its reading time.
-  expect(await page.locator('article header p').first().innerText(), 'reading time next to the date').toMatch(/\d/)
+  const meta = page.locator('article header p:has(> time)')
+  const date = await meta.locator('time').innerText()
+  expect((await meta.innerText()).replace(date, ''), 'reading time next to the date').toMatch(/\d/)
   const tag = page.locator('main a[rel="tag"]').first()
   test.skip(!(await tag.count()), 'the newest post has no tag')
   const name = (await tag.textContent())!.trim()

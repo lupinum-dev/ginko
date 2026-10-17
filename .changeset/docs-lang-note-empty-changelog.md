@@ -2,4 +2,4 @@
 "@lupinum/ginko-docs": patch
 ---
 
-The "not translated" note in the language menu is read in the page's language, and an empty changelog says where to add releases.
+Fix the "not translated" note in the language menu: screen readers read it in the page's language. An empty changelog now says where to add releases.

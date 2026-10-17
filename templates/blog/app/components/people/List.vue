@@ -10,7 +10,7 @@ const locale = useGinkoLocale()
 
 <template>
   <ul class="grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-    <li v-for="person in items" :id="person.id.split('/').pop()" :key="person.id" class="flex scroll-mt-24 flex-col gap-4 break-inside-avoid">
+    <li v-for="person in items" :id="person.id.split('/').pop()" :key="person.id" class="flex flex-col gap-4 break-inside-avoid">
       <GinkoImage
         v-if="person.data.photo"
         :image="person.data.photo"

@@ -4,7 +4,8 @@ import { ArrowRight } from '@lucide/vue'
 
 // One tag: the posts that carry it, newest first. Tags are free text in each language's files, so a tag has no
 // translation: the page names only its own language as alternate (a link to another language's news page would be a
-// false hreflang), so the switch shows it as not translated. A tag no visible post carries is a 404. The address is the news page's, then the word for `tags` in app/routes.ts (`segments`), then the tag.
+// false hreflang), so the switch shows it as not translated. A tag no visible post carries is a 404. The address is
+// the news page's, then the word for `tags` in app/routes.ts (`segments`), then the tag.
 definePageMeta({
   i18nAlternates: (to, { locale }) => ({ [locale]: to.path }),
 })

@@ -122,7 +122,7 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
   if (problems.length) throw new CliError(problems.join('\n'))
   await mkdir(join(dir, 'files'), { recursive: true })
   for (const [path, bytes] of bytesOf) await writeFile(join(dir, path), bytes)
-  if (drafts.length) input.log(`Warning: ${drafts.length} draft file(s) stay out of the export (${drafts.slice(0, 3).join(', ')}); add them in the Studio as drafts.`)
+  if (drafts.length) input.log(`Warning: ${drafts.length} entr${drafts.length === 1 ? 'y stays' : 'ies stay'} out of the export as drafts, scheduled for later or part of a draft (${drafts.slice(0, 3).join(', ')}); add them in the Studio.`)
   if (missing.length) input.log(`Warning: ${missing.length} image path(s) in Markdown texts point to no file under public/ (${missing.slice(0, 3).join(', ')}). They stay as they are.`)
 
   // Entries name the files by ID: frontmatter values through the shared walk, Markdown sources as `$file.<id>`.

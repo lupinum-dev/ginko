@@ -19,9 +19,9 @@
   ("The practice").
 - The home hero shows the treatment room (16:9; beside the text from lg, below the buttons on phones), so the first
   screen shows the place. At 390 px the status, the call button and the phone hours stay above the photo.
-- The booking buttons follow the hours: call first while the practice is open today or opens later today, email first
-  once today is over or on a closed day. The phone hours are free text (`visit.phoneHours`), so the site does not know
-  whether the phone is answered right now; they stand directly under the call button instead.
+- The booking buttons keep one order: call, email, book online (17 Oct 2026). They used to put the email first once
+  today was over, but the phone hours are shorter than the opening hours and are free text (`visit.phoneHours`), so
+  the site cannot know whether the phone is answered right now. The phone hours stand directly under the call button.
 - A treatment's `contact` names the therapist who gives it ("Treated by"); the services feature's own wording for it
   ("Contact person", "Or call …") is replaced by `app/components/services/Actions.vue`.
 - German says "Sie" on every page and uses Austrian words where they differ ("Wahlpraxis", "Verordnung", "verrechnen").
