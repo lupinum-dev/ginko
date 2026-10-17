@@ -938,6 +938,7 @@
                 "de": "Allergene",
                 "en": "Allergens"
               },
+              "askAgainWhen": "dish",
               "options": [
                 {
                   "value": "A",
@@ -1233,6 +1234,7 @@
                 "de": "Allergene",
                 "en": "Allergens"
               },
+              "askAgainWhen": "dish",
               "options": [
                 {
                   "value": "A",
@@ -1536,6 +1538,7 @@
             "de": "Allergene",
             "en": "Allergens"
           },
+          "askAgainWhen": "name",
           "options": [
             {
               "value": "A",
