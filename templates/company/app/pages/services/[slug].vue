@@ -8,7 +8,7 @@ import { ArrowLeft, Mail, Phone } from '@lucide/vue'
 // the product sheet when it has one, photo (3:2), key facts and text. Service JSON-LD with the
 // price when it has one. An unknown entry is a 404. The sheet button comes from the downloads feature
 // (`DownloadsFileButton`), found by its file, so a site without downloads builds without it. A template whose
-// customers book another way brings `app/components/services/Actions.vue` (the local business: call first, with the
+// customers book another way brings `app/components/services/Actions.vue` (the local business: call, then email, with the
 // phone hours); the page then shows it in place of its row of actions, with the same facts as props.
 const SheetButton = Object.values(import.meta.glob<Component>('../../components/downloads/FileButton.vue', { eager: true, import: 'default' }))[0]
 const Actions = Object.values(import.meta.glob<Component>('../../components/services/Actions.vue', { eager: true, import: 'default' }))[0]
@@ -50,7 +50,7 @@ const enquiry = computed(() => email.value && `mailto:${email.value}?subject=${e
             <dd class="font-medium tabular-nums">{{ duration(service.data) }}</dd>
           </template>
         </dl>
-        <component :is="Actions" v-if="Actions" :subject="main.subject" :email="email" :phone="phone" :contact="contact?.name" />
+        <component :is="Actions" v-if="Actions" :subject="main.subject" :email="email" :phone="phone" :contact="contact?.name" :contact-id="service.data.contact" />
         <div v-else-if="enquiry || phone || (SheetButton && sheet)" class="flex flex-col gap-2">
           <div class="flex flex-wrap gap-3">
             <Button v-if="enquiry" as-child size="lg" class="max-sm:w-full">

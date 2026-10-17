@@ -111,8 +111,8 @@ Austria, so the labels say "Price" with no VAT note. If your prices include VAT,
 **Booking.** The home page, the contact page and every treatment page show the same buttons
 (`app/components/visit/Book.vue`): "Call" with your number, your phone hours right under it, "Send an email" (on a
 treatment page with the treatment in the subject) and "Book online" when `content/visit.md` has a `bookingUrl`.
-Calling is the main button while you are open today or open later today; once today is over, or you are closed today,
-nobody answers the phone, so "Send an email" becomes the main button. A treatment page shows these buttons through
+The order is fixed: call, then email, then online booking (each only when it exists), and the first one is the main
+button. A treatment page shows these buttons through
 `app/components/services/Actions.vue`, which the services feature shows in place of its own. The site has no booking
 form (see "Add a booking or contact form").
 
@@ -191,7 +191,7 @@ Links in the content name pages by their key (`[how to find us]($page.contact)`)
 | Team page | `pages.team`, `team` in `segments` of `app/routes.ts`, its `nav` item, in `app/pages/index.vue` the "Our team" section and its `useGinko('people')` line, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, `"people"` in `ginko.features`, the link to `$page.team` in `content/pages/1.about*.md`, the "Treated by" link in `app/components/services/Actions.vue` (keep the name without the link); keep the `people` brick in `ginko.config.ts` (a treatment's optional `contact` names a person); `content/people/` may be empty |
 | Questions and answers | `content/faq/`, the `faq` brick and `pages.faq`, `faq` in `segments` of `app/routes.ts`, its `nav` item, in `app/pages/index.vue` the "Questions" section and its script lines (`useGinko('faq')` and `faqItems`), `app/pages/faq.vue`, `app/components/block/Faq.vue`, `app/components/ui/accordion/`, the `faq` keys in `i18n/<language>.json`, `"faq"` in `ginko.features` |
 | Photos | `content/gallery.md`, the `gallery` brick, "The practice" section in `app/pages/contact.vue`, `app/components/block/Gallery.vue`, `app/components/site/Lightbox.vue`, `i18n/gallery/`, `"gallery"` in `ginko.features` |
-| Opening hours | not on its own: the home page, the contact page and the footer are built around them. Without fixed hours ("by appointment only"), keep the feature and mark every day `closed: true`, then remove `<HoursToday />` and the hours sections from `app/pages/index.vue` and `app/pages/contact.vue`, the `openingHoursJsonLd` part of the home page's `usePageSeo`, and `app/components/site/FooterStatus.vue` (else every footer says "Closed today"); in `app/components/visit/Book.vue`, make `callFirst` always true |
+| Opening hours | not on its own: the home page, the contact page and the footer are built around them. Without fixed hours ("by appointment only"), keep the feature and mark every day `closed: true`, then remove `<HoursToday />` and the hours sections from `app/pages/index.vue` and `app/pages/contact.vue`, the `openingHoursJsonLd` part of the home page's `usePageSeo`, and `app/components/site/FooterStatus.vue` (else every footer says "Closed today") |
 | Hours from a date | `content/hourPlans/`, the `hourPlans` brick and `plans: 'hourPlans'` of the `hours` brick in `ginko.config.ts` |
 | Notices | `content/notices/`, the `notices` brick, `<SiteNotice />` in `app/layouts/default.vue`, `app/components/site/Notice.vue` |
 | A language | see "Add or remove a language" |
