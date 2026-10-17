@@ -57,6 +57,12 @@ const weekDefault: WeekRow[] = weekdays.map((d) => ({
 
 const lunchPlaceholder = { de: 'Wird noch bekannt gegeben', en: 'To be announced' } as const
 
+/** True for the dish text a fresh site's lunch week starts with, in any language: such a day has no real dish, so no allergens to show. */
+export function isLunchPlaceholder(dish: unknown): boolean {
+  const placeholders: string[] = Object.values(lunchPlaceholder)
+  return typeof dish === 'string' && placeholders.includes(dish)
+}
+
 const soldOutText = { de: 'Heute sind wir ausgebucht.', en: 'We are fully booked today.' }
 
 const lunchDefault = weekdays.slice(0, 5).map((d) => ({ _id: `ld${d.value}000000`, day: d.value, dish: lunchPlaceholder }))

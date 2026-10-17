@@ -2,12 +2,13 @@
 <script setup lang="ts">
 // The lunch menu of the week (content/lunch.md): shown for this work week only (at the weekend the coming one), so an
 // old week never stays online. When lunch is served (the day's first opening span); today is marked; a closed day says
-// so instead of a dish.
+// so instead of a dish. A placeholder day (a fresh site) adds nothing to the allergen key.
+import { isLunchPlaceholder } from '@lupinum/ginko-preset-gastro'
 const { lunch, week, days, served } = useLunch()
 const { t, format } = useI18n('menu')
 const langOf = useGinkoLang()
 const range = computed(() => (days.value.length ? format.range(days.value[0]!.date, days.value.at(-1)!.date, { day: 'numeric', month: 'long' }) : undefined))
-const used = computed(() => days.value.filter((day) => !day.closed).flatMap((day) => day.allergens.map(String)))
+const used = computed(() => days.value.filter((day) => !day.closed && !isLunchPlaceholder(day.dish)).flatMap((day) => day.allergens.map(String)))
 usePageSeo(() => ({ title: t('lunch.title'), description: week.value ? `${t('lunch.title')}: ${range.value}` : t('lunch.pending') }))
 </script>
 

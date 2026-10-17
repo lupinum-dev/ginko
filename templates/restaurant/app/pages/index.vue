@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { formatMoney } from '@lupinum/ginko'
-import { restaurantJsonLd } from '@lupinum/ginko-preset-gastro'
+import { isLunchPlaceholder, restaurantJsonLd } from '@lupinum/ginko-preset-gastro'
 import { ArrowRight, Mail, MapPin, Phone } from '@lucide/vue'
 
 // The home page answers the first questions on the first screen: open now, the menu, how to reserve (phone and email,
@@ -37,7 +37,8 @@ const lunchCard = computed(() => {
   const tomorrow = days.value.find((d) => d.date === plusDays(today.value, 1) && !d.closed)
   return tomorrow ? { day: tomorrow, title: t('lunchTomorrow') } : undefined
 })
-const lunchAllergens = computed(() => allergenList(lunchCard.value?.day.allergens.map(String)).map((code) => `${code} ${allergenName(code)}`).join(', '))
+const lunchShowsAllergens = computed(() => lunchCard.value !== undefined && !isLunchPlaceholder(lunchCard.value.day.dish))
+const lunchAllergens = computed(() => allergenList(lunchShowsAllergens.value ? lunchCard.value?.day.allergens.map(String) : []).map((code) => `${code} ${allergenName(code)}`).join(', '))
 
 // The house for search engines: a Restaurant with address, phone, opening hours (the same rule as the page) and the
 // menu with today's prices.
@@ -92,7 +93,7 @@ usePageSeo(() => ({ home: true, description: home.value.data.lead, image: home.v
           <p class="text-lead font-medium" :lang="langOf(lunch, `days.${lunchCard.day._id}.dish`)">{{ lunchCard.day.dish }}</p>
           <p v-if="lunchCard.day.price" class="shrink-0 text-lead tabular-nums">{{ formatMoney(lunchCard.day.price, language) }}</p>
         </div>
-        <MenuAllergens :codes="lunchCard.day.allergens.map(String)" />
+        <MenuAllergens v-if="lunchShowsAllergens" :codes="lunchCard.day.allergens.map(String)" />
         <p v-if="lunchAllergens" class="text-xs text-muted-foreground" aria-hidden="true">{{ tm('allergens.label', { names: lunchAllergens }) }}</p>
         <NuxtLink :to="path('lunch')" class="inline-flex min-h-11 items-center gap-2 self-start font-medium text-primary underline-offset-4 hover:underline">
           {{ t('lunchWeek') }}

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { formatMoney } from '@lupinum/ginko'
+import { isLunchPlaceholder } from '@lupinum/ginko-preset-gastro'
 
 /** The lunch days of the week shown: weekday and date, the dish, its price and allergen letters. Today is marked in
- *  words; a day the place is closed says "Closed" instead of a dish. */
+ *  words; a day the place is closed says "Closed" instead of a dish. A day still holding the placeholder dish of a
+ *  fresh site has no allergen line: there is no dish to name allergens for. */
 const { lunch, days } = useLunch()
 const { t, format, language } = useI18n('menu')
 const langOf = useGinkoLang()
@@ -26,7 +28,7 @@ const langOf = useGinkoLang()
       <template v-else>
         <div class="flex flex-col gap-1.5">
           <p class="font-medium" :lang="langOf(lunch, `days.${day._id}.dish`)">{{ day.dish }}</p>
-          <MenuAllergens :codes="day.allergens.map(String)" />
+          <MenuAllergens v-if="!isLunchPlaceholder(day.dish)" :codes="day.allergens.map(String)" />
         </div>
         <p v-if="day.price" class="tabular-nums sm:text-end">{{ formatMoney(day.price, language) }}</p>
       </template>
