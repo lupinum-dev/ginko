@@ -224,6 +224,8 @@ Links in the content name pages by their key (`[contact]($page.team)`). After yo
 - [ ] Every product and service has your price or `pricing: onRequest`, and the "plus VAT" labels fit your prices.
 - [ ] Every job has the right `validUntil` and application address; the sample jobs and the ended sample
       (`content/jobs/summer-internship-assembly.md`) are deleted or replaced.
+- [ ] The sample phone numbers and emails are replaced: they reach nobody (the numbers start their local part
+      with 0, the emails end in .example), so a forgotten one fails quietly.
 - [ ] The placeholders in `content/legal/` are replaced by your own texts, and the ones you do not need are deleted.
 - [ ] The sample quotes, customer logos, product sheets (`public/sheets/`) and photos are replaced or deleted; quotes
       and logos only with the customer's permission.

@@ -1,5 +1,5 @@
 ---
-title: "Sechs neue Pumpen für das Klärwerk Musterstadt"
+title: "Sechs neue Pumpen für das Klärwerk Rodenau"
 slug: klaerwerk-pumpen
 description: "Das Zulaufpumpwerk des städtischen Klärwerks läuft jetzt mit sechs TS-Pumpen. Das Klärwerk blieb während des Umbaus in Betrieb."
 tags: ["Projekte"]
