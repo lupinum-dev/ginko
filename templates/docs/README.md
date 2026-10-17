@@ -74,6 +74,7 @@ cards are written to `.output/public/`; upload that folder. A static site needs 
 | Command | What |
 |---|---|
 | `npm run dev` | the site with live reload on http://localhost:3000 |
+| `npm run check` | Checks the content files in a few seconds: missing or wrong fields, dates, links between pages and files in `public/`. Each problem names the file and the field. |
 | `npm run build` | the production build in `.output/` |
 | `npm run preview` | runs that build locally |
 | `npm run generate` | static files instead of a server (see above) |
@@ -85,8 +86,9 @@ every link inside the pages: a link to a page or a heading that does not exist s
 
 ## Edit content
 
-Every text is a Markdown file. The main language has no suffix (`webhooks.md`); a translation adds the language code
-(`webhooks.de.md`). The number at the start of a file name sets the order in the navigation.
+Every text is a Markdown file. After each change, run `npm run check`. The main language has no suffix
+(`webhooks.md`); a translation adds the language code (`webhooks.de.md`). The number at the start of a file name sets
+the order in the navigation. Write dates as `2026-11-20`.
 
 | On the site | File |
 |---|---|
@@ -105,7 +107,8 @@ frontmatter. `section: Guides` starts a group in the navigation; the pages after
 **Links between pages** are written as `[Webhooks]($docs.webhooks)`: the name of the file, not its address. The link
 then goes to the page in the reader's language and keeps working when a translation has another address. Add
 `#heading` for a section. `[Changelog]($page.changelog)` links to the changelog. The start page's buttons and cards
-take the same form (`href: $docs.getting-started`).
+take the same form (`href: $docs.getting-started`). Renaming a file breaks the links to it (`npm run check` names each
+one); changing the `slug` does not.
 
 **A new release** is one new file in `content/changelog/`, for example `v2-2-0.md`:
 
@@ -125,7 +128,9 @@ first. Use dashes in the file name: a dot would read as a language code.
 
 **An outdated translation.** When you change an English page, change its `.de.md` file in the same commit, or note
 it in the pull request. In the files there is no marker for "outdated"; in Ginko Studio (below), an English change
-marks the German page as outdated under **Inhalte > Übersetzungen**.
+marks the German page as outdated under **Inhalte > Übersetzungen**. To find German pages that may be behind,
+compare the last change of both files: `git log -1 --format=%cs -- content/docs/6.webhooks.md content/docs/6.webhooks.de.md`
+(a newer date on the English file means the German page may be outdated).
 
 **A page without a translation** stays out of the German navigation and search. Links to it from German pages go to
 the English page, and on that page the language menu says "Not translated: opens the start page" next to Deutsch, so
@@ -133,17 +138,24 @@ no reader lands on a missing page. `content/docs/7.upgrading-to-v2.md` is such a
 
 ## Make it yours
 
-- **Name and logo.** `name` in `ginko.config.ts` is the name in the header and in page titles. The logo is
+- **Name and logo.** `name` in `ginko.config.ts` is the name in the header and in page titles. The sample name
+  "Orbit SDK" also appears as text in `seo.description` (same file), in the start page (`content/home.md`,
+  `content/home.de.md`), in the descriptions and text of the docs pages, and in `docs.footer.api` in `i18n/en.json` and
+  `i18n/de.json`. Search `content/` and `i18n/` for "Orbit" and replace what is left. The logo is
   `public/logo.svg` (and `public/logo-dark.svg` for dark mode), set in `app/app.config.ts` (`docs.logo`); remove
   `logo` to show only the name. Replace `public/favicon.svg` too.
-- **Colour.** The five tokens in `app/assets/css/main.css`, and the light `--primary` as `seo.color` in
-  `ginko.config.ts` (the background of the share cards). `DESIGN.md` has the rules and the contrast of each pair.
+- **Colour.** The five tokens in `app/assets/css/main.css` (`--primary`, `--primary-foreground`, `--ring`,
+  `--accent`, `--accent-foreground`, each with a light and a dark value), and the light `--primary` as `seo.color` in
+  `ginko.config.ts` (the background of the share cards). Text on the colour needs a contrast of at least 4.5:1 in both
+  modes; check each pair with a contrast checker (for example webaim.org/resources/contrastchecker). `DESIGN.md` has
+  the rules and the contrast of each pair.
 - **Fonts.** `--font-sans` and `--font-mono` in `main.css`. The layer serves Inter and JetBrains Mono itself; another
   face needs its files and an `@font-face` rule. The layer always preloads Inter, so a site with another face still
   loads it.
-- **Repository.** `docs.repository` in `app/app.config.ts` adds "Edit this page" and "Report an issue" under every
-  page. Set your own Git host; for GitHub, `{ url: 'https://github.com/<you>/<repo>' }` is enough. If your docs live in
-  a subfolder of a larger repository, set `editUrl: '{url}/edit/{branch}/docs/{source}'`.
+- **Repository.** Set the `repository` constant at the top of `app/app.config.ts` to your own Git host (for GitHub,
+  `'https://github.com/<you>/<repo>'`). `docs.repository` uses it for "Edit this page" and "Report an issue" under
+  every page, and the footer `source` link uses it too. If your docs live in a subfolder of a larger repository, set
+  `editUrl: '{url}/edit/{branch}/docs/{source}'`.
 - **Header and footer links.** `docs.nav` (after Docs and Changelog) and `docs.footer.links` in `app/app.config.ts`;
   the text of each is `docs.nav.<id>` or `docs.footer.<id>` in `i18n/<language>.json`. `docs.social` adds icon links
   such as GitHub. `docs.banner` shows a notice above the header that readers can close.
@@ -167,6 +179,10 @@ description: Run your tests against a mock of the Orbit API.
 It answers at `/docs/testing`, comes last in the navigation (the number sets the place) and is in the search. Add
 `content/docs/12.testing.de.md` with a German `title`, `description`, `slug` and text for `/de/docs/<slug>`.
 
+Pages sort by number, then by file name; numbers need not be consecutive. To put a page into Guides, give it the
+number of a neighbour (`7.testing.md` sorts before `7.upgrading-to-v2.md`) and it joins that section. Do not use
+decimals: `7.5.testing.md` reads "testing" as a language code.
+
 The Markdown components work in every page: `::callout`, `::steps`, `::code-group`, `::tabs`, `::card` and more
 (see the [components](https://github.com/lupinum-dev/ginko/tree/main/packages/ginko-components)). The build checks
 every component and its props.
@@ -181,6 +197,12 @@ prefix.
 
 - **Remove one:** delete it from `locales`, then delete its files (`*.de.md`, `i18n/de.json`).
   Or start fresh with `npm create ginko@latest my-docs -- --template docs --locales en`.
+- **Change the main language** (for example to German): put `'de'` first in `locales`, then rename every pair:
+  `x.de.md` becomes `x.md` (it keeps its German `slug`) and the old `x.md` becomes `x.en.md` with
+  `slug: <its old name>` (for example `slug: introduction`). A page with only an English file, such as
+  `7.upgrading-to-v2.md`, needs a German `x.md` first; then rename the English one to `x.en.md`. Each page now has new
+  addresses, so list the old ones under `redirectFrom` in the German file. A new site: `npm create ginko@latest
+  my-docs -- --template docs --locales de,en`.
 - **Add one** (for example French): add `'fr'` to `locales` (`pages.home` follows the list), add
   `content/**/*.fr.md` translations (pages without one stay in English, see "A page without a translation") and
   `i18n/fr.json` with the texts of `i18n/en.json` translated. The layer's own texts (search, navigation, "On this
@@ -194,7 +216,7 @@ prefix.
 | Start page | `content/home*.md` and `home: docsHome()` in `ginko.config.ts`; `/` then opens the first docs page |
 | Changelog | `content/changelog/`, `changelog: changelogCollection()` and `changelog: changelogPages(…)` in `ginko.config.ts` |
 | German | see "Add or remove a language" |
-| "Edit this page" | `repository` in `app/app.config.ts` |
+| "Edit this page" | `docs.repository` in `app/app.config.ts` (keep the `repository` constant: the footer `source` link uses it) |
 | "Copy page" and its menu | set `markdownActions: { copy: false, openIn: [] }` in `app/app.config.ts` |
 | Share cards | `nuxt-og-image` and `@takumi-rs/core` in `nuxt.config.ts` and `package.json`; then `NUXT_APP_SECRET` is not needed |
 

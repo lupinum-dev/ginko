@@ -16,6 +16,8 @@ export default defineSite({
   url: siteUrl('https://example.com'),
   timeZone: 'Europe/Berlin',
   locales,
+  // A link to a missing heading fails `ginko check` and the build (the default is a warning).
+  linkCheck: { anchors: 'error' },
   currency: 'EUR',
   pages: {
     home: homePages({ locales }),
