@@ -12,9 +12,11 @@ const LUNCH = job('lunch', ['task', 'path'])
 // today (which hides today's dish on the site) cannot hide it.
 const DAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag']
 
-test('the lunch week gets a new dish, and the lunch page shows it', async ({ page, request }) => {
+test('the lunch week gets a new dish, and the lunch page shows it', async ({ page }) => {
   const dish = `Gate seven goulash ${Date.now()}`
-  const day = DAYS[new Date().getDay() === 2 ? 2 : 1]!
+  // Today's weekday in the site's time zone, not the runner's: near midnight they differ.
+  const today = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'Europe/Vienna' }).format(new Date())
+  const day = DAYS[today === 'Tuesday' ? 2 : 1]!
   await page.goto(`/s/${studio.site}`, { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: LUNCH.task, exact: true }).click()
   const sheet = page.getByRole('dialog')
@@ -25,5 +27,8 @@ test('the lunch week gets a new dish, and the lunch page shows it', async ({ pag
   await sheet.getByRole('button', { name: 'Speichern' }).click()
   await expect(sheet).toHaveCount(0)
 
-  await expect.poll(async () => (await request.get(`${studio.siteUrl}${LUNCH.path}`)).text(), { timeout: 60_000 }).toContain(dish)
+  await expect(async () => {
+    await page.goto(`${studio.siteUrl}${LUNCH.path}`)
+    await expect(page.getByRole('listitem').filter({ hasText: dish })).toBeVisible({ timeout: 2_000 })
+  }).toPass({ timeout: 60_000 })
 })

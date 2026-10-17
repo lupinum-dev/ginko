@@ -7,7 +7,7 @@ import { job, studio } from '../../../../../scripts/templates/e2e/studio.ts'
 // label of the events brick's create task and the events page's address.
 const EVENT = job('event', ['task', 'path'])
 
-test('the owner adds an event, and the events page lists it', async ({ page, request }) => {
+test('the owner adds an event, and the events page lists it', async ({ page }) => {
   const title = `Gate seven meet-up ${Date.now()}`
   const day = new Date(Date.now() + 20 * 86_400_000).toISOString().slice(0, 10)
   await page.goto(`/s/${studio.site}`, { waitUntil: 'networkidle' })
@@ -23,5 +23,9 @@ test('the owner adds an event, and the events page lists it', async ({ page, req
   await expect(sheet).toHaveCount(0)
 
   // Wrong behaviour caught: an event saved in the Studio that the site does not list (or lists without its page).
-  await expect.poll(async () => (await request.get(`${studio.siteUrl}${EVENT.path}`)).text(), { timeout: 60_000 }).toContain(title)
+  await expect(async () => {
+    await page.goto(`${studio.siteUrl}${EVENT.path}`)
+    await page.getByRole('link', { name: title, exact: true }).click({ timeout: 2_000 })
+    await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible({ timeout: 2_000 })
+  }).toPass({ timeout: 60_000 })
 })
