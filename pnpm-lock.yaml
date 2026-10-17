@@ -13,8 +13,8 @@ catalogs:
       specifier: 1.7.7
       version: 1.7.7
     '@lupinum/better-convex-nuxt':
-      specifier: 1.0.0-rc.5
-      version: 1.0.0-rc.5
+      specifier: 1.0.0-rc.6
+      version: 1.0.0-rc.6
     better-auth:
       specifier: 1.7.7
       version: 1.7.7
@@ -82,7 +82,7 @@ importers:
     dependencies:
       '@lupinum/better-convex-nuxt':
         specifier: 'catalog:'
-        version: 1.0.0-rc.5(cec73ef07ef476b8c6b570da985bf3ed)
+        version: 1.0.0-rc.6(cec73ef07ef476b8c6b570da985bf3ed)
       '@lupinum/ginko-server':
         specifier: workspace:*
         version: link:../../packages/ginko-server
@@ -426,7 +426,7 @@ importers:
         version: 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-auth@1.7.7(vitest@5.0.3(@edge-runtime/vm@5.0.0)(@types/node@24.19.1)(happy-dom@20.14.5)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vue@3.5.43(typescript@6.0.3)))(better-call@1.4.0(zod@4.6.5))
       '@lupinum/better-convex-nuxt':
         specifier: 'catalog:'
-        version: 1.0.0-rc.5(fe4097e319bf42c76d0dfefd7e141834)
+        version: 1.0.0-rc.6(fe4097e319bf42c76d0dfefd7e141834)
       '@lupinum/ginko':
         specifier: workspace:*
         version: link:../ginko
@@ -478,7 +478,7 @@ importers:
         version: 1.55.0(vue@3.5.43(typescript@6.0.3))
       '@lupinum/better-convex-nuxt':
         specifier: 'catalog:'
-        version: 1.0.0-rc.5(f131013784f56c12f6ba9039dc4a82d3)
+        version: 1.0.0-rc.6(f131013784f56c12f6ba9039dc4a82d3)
       '@lupinum/ginko':
         specifier: workspace:*
         version: link:../ginko
@@ -2362,8 +2362,8 @@ packages:
     peerDependencies:
       vue: '>=3.0.1'
 
-  '@lupinum/better-convex-nuxt@1.0.0-rc.5':
-    resolution: {integrity: sha512-vB0M5ed5ncvCpkPRq7a67MI+1FS1ULQ198taGzFuud9U1YV5Z+o0eYVzFb0WkUDIdvz7BLs8fi63X7k9LkIhrw==}
+  '@lupinum/better-convex-nuxt@1.0.0-rc.6':
+    resolution: {integrity: sha512-KFuzkhu3kQSsEdb+NfpxmOLDCLO5WRbzbx1JBmYpiVNA24TOuFWZ+t//KVGQu8xOm/Sh2RJ/wgJK1wBJsIo1SQ==}
     engines: {node: ^22.22.3 || ^24.15.0 || >=26.0.0}
     hasBin: true
     peerDependencies:
@@ -2380,8 +2380,8 @@ packages:
       better-auth:
         optional: true
 
-  '@lupinum/better-convex-vue@1.0.0-rc.5':
-    resolution: {integrity: sha512-/zgxx/GswuZFjqTY3yOpdf5goWy+d3e9TIIj4zK+fmrZl0hANkRI7I45+q8YVn0MEU2Sk3uGyo7bqMlnIJiLzA==}
+  '@lupinum/better-convex-vue@1.0.0-rc.6':
+    resolution: {integrity: sha512-j4l7A/J29Yjpd4M2k+NQriaSWD4F+gPbOgRN87gi7yrB6qndRHEeG/YlhCe0KMM3iFUjSLh313O1iPLTHswDOQ==}
     engines: {node: ^22.19.0 || ^24.11.0 || >=26.0.0}
     peerDependencies:
       convex: '>=1.42.2 <2'
@@ -9976,9 +9976,9 @@ snapshots:
     dependencies:
       vue: 3.5.43(typescript@6.0.3)
 
-  '@lupinum/better-convex-nuxt@1.0.0-rc.5(cec73ef07ef476b8c6b570da985bf3ed)':
+  '@lupinum/better-convex-nuxt@1.0.0-rc.6(cec73ef07ef476b8c6b570da985bf3ed)':
     dependencies:
-      '@lupinum/better-convex-vue': 1.0.0-rc.5(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))
+      '@lupinum/better-convex-vue': 1.0.0-rc.6(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))
       '@nuxt/kit': 4.6.1(@nuxt/schema@4.6.0)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(oxc-parser@0.153.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))
       convex: 1.46.0
       convex-helpers: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.46.0)(typescript@6.0.3)(zod@4.6.5)
@@ -10007,9 +10007,9 @@ snapshots:
       - vue
       - zod
 
-  '@lupinum/better-convex-nuxt@1.0.0-rc.5(f131013784f56c12f6ba9039dc4a82d3)':
+  '@lupinum/better-convex-nuxt@1.0.0-rc.6(f131013784f56c12f6ba9039dc4a82d3)':
     dependencies:
-      '@lupinum/better-convex-vue': 1.0.0-rc.5(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))
+      '@lupinum/better-convex-vue': 1.0.0-rc.6(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))
       '@nuxt/kit': 4.6.1(@nuxt/schema@4.6.1)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(oxc-parser@0.153.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))
       convex: 1.46.0
       convex-helpers: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.46.0)(typescript@6.0.3)(zod@4.6.5)
@@ -10038,9 +10038,9 @@ snapshots:
       - vue
       - zod
 
-  '@lupinum/better-convex-nuxt@1.0.0-rc.5(fe4097e319bf42c76d0dfefd7e141834)':
+  '@lupinum/better-convex-nuxt@1.0.0-rc.6(fe4097e319bf42c76d0dfefd7e141834)':
     dependencies:
-      '@lupinum/better-convex-vue': 1.0.0-rc.5(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))
+      '@lupinum/better-convex-vue': 1.0.0-rc.6(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))
       '@nuxt/kit': 4.6.1(@nuxt/schema@4.6.1)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(oxc-parser@0.153.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))
       convex: 1.46.0
       convex-helpers: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.46.0)(typescript@6.0.3)(zod@4.6.5)
@@ -10069,7 +10069,7 @@ snapshots:
       - vue
       - zod
 
-  '@lupinum/better-convex-vue@1.0.0-rc.5(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))':
+  '@lupinum/better-convex-vue@1.0.0-rc.6(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))':
     dependencies:
       '@standard-schema/spec': 1.1.0
       convex: 1.46.0
