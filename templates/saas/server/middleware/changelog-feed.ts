@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
     title: `${ginko.name}: ${t('title')}`,
     link: `${origin}${page}`,
     self: `${origin}${path}`,
-    description: t('lead'),
+    description: t('lead', { name: ginko.name }),
     language,
     items,
   })
