@@ -89,7 +89,7 @@ Notices show newest first: give a new notice a smaller number than the others (`
 
 ## Make it yours
 
-- **Name and menu.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name appears nowhere else as text, so one change is enough; if you give the site a short form for phones, set `shortName` in `app/app.config.ts`. `nav` in `app/app.config.ts` lists pages by id
+- **Name and menu.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name appears nowhere else as text, so one change is enough. `nav` in `app/app.config.ts` lists pages by id
   (`pages/about` is `content/pages/1.about.md`), at most six.
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 120, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name. `shortName` replaces a long name on phones.
