@@ -16,7 +16,7 @@ const langOf = useGinkoLang()
 const contact = computed(() => site.value.data)
 usePageSeo(() => ({ title: t('title'), noindex: true }))
 const print = () => window.print()
-// The letters, or on paper too: "no allergens" only when the dish says so, else "please ask us" (nothing entered).
+// The letters; "no allergens" only when the dish says `none`; "please ask us" when nothing is entered.
 const allergenText = (codes: string[]) => {
   const state = allergenState(codes)
   return state === 'letters' ? allergenList(codes).join(' ') : t(state === 'none' ? 'allergens.none' : 'allergens.unknown')

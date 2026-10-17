@@ -77,7 +77,8 @@ the day and the hour, so every request shows the current state.
 | `npm run typecheck` | TypeScript and Vue types |
 
 `npm run dev` shows the site as of today: a notice, a closure for today or this week's lunch show at once. Next week's
-lunch appears on its Monday, and a closure appears `holidayNoticeDays` (14) days before it starts.
+lunch appears on its Monday, and a closure appears `holidayNoticeDays` days (in `content/hours.md`, 14 in the
+sample) before it starts.
 
 `.github/workflows/ci.yml` runs lint, typecheck and build on every push. It needs no settings.
 
@@ -103,7 +104,7 @@ too. `npm run check` reports a translation with a different number of rows.
 | A dish sold out today | `soldOutOn: 2026-10-15` in its file (only that day) |
 | A dish off the menu for now | `onMenu: false` in its file |
 | A price change from a date | `nextPrice` and `priceFrom` in its file; the menu announces it two weeks ahead |
-| Lunch of the week: five rows, `mo` to `fr`, each with one `dish`, an optional `price` and `allergens`; `weekOf` = its Monday. For two dishes a day, write both in `dish` | `content/lunch.md` |
+| Lunch of the week: five rows, `day: mo` to `day: fr`, each with one `dish`, an optional `price` and `allergens`; `weekOf` = its Monday. For two dishes a day, write both in `dish` | `content/lunch.md` |
 | Events (date, start time, price, photo, text) | `content/events/<n>.<name>.md`; it leaves the site after its last day |
 | Notices above the header ("Fully booked tonight") | `content/notices/<n>.<name>.md`: `text` (at most 140 characters; in quotes when it contains a colon) and `until` (the last day it shows, like `2026-12-31`; leave it out to keep the notice until you delete the file). A notice shows from the day you add the file; there is no start date. Something that is always true (groups book by phone) belongs on a page, not in a notice |
 | Photos of the gallery | `content/gallery.md` (and the alt texts in each translation) |
@@ -123,7 +124,8 @@ Allergens use the EU letters as Austrian menus write them: A gluten, B crustacea
 G milk, H tree nuts, L celery, M mustard, N sesame, O sulphites, P lupin, R molluscs. Check each dish with your
 kitchen: a wrong allergen is the one mistake this site must never make.
 
-Notices show newest first (the smallest number first), and at most two show at once. Give a new notice a smaller number than the others: `0.` works and numbers may have gaps, so older notices keep theirs.
+Notices show newest first (the smallest number first), and at most two show at once. Give a new notice a smaller
+number than the others: `0.` works and numbers may have gaps, so older notices keep theirs.
 
 ## Make it yours
 

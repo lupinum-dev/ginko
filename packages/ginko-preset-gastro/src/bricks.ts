@@ -37,7 +37,8 @@ const noAllergens: ChoiceOption = { value: 'none', label: both('keine Allergene'
 /** The allergen choices for a set (with `none` first), or `undefined` when the field is left out. */
 function allergenChoices(set: AllergenSet | undefined): readonly ChoiceOption[] | undefined {
   if (set === 'none') return undefined
-  return [noAllergens, ...(set === undefined || set === 'EU' ? allergensEU : set)]
+  const own = set === undefined || set === 'EU' ? allergensEU : set
+  return own.some((o) => o.value === 'none') ? own : [noAllergens, ...own]
 }
 
 /** Options every factory takes. */

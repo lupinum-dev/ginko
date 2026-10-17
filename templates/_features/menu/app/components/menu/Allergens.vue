@@ -2,7 +2,7 @@
 /**
  * The allergen codes of a dish as the menu stores them. Each code is shown, its name is read out and shown on hover;
  * the page also shows the key (MenuAllergenKey). A code the menu texts do not name shows as it is written. "No
- * allergens" only when the stored list is empty.
+ * allergens" only for the code `none`; an empty list shows "Allergens: please ask us" (`allergens.unknown`).
  */
 const props = defineProps<{ codes: readonly string[] }>()
 const { t } = useI18n('menu')
