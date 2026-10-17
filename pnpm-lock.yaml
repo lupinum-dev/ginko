@@ -13,8 +13,8 @@ catalogs:
       specifier: 1.7.7
       version: 1.7.7
     '@lupinum/better-convex-nuxt':
-      specifier: 1.0.0-rc.3
-      version: 1.0.0-rc.3
+      specifier: 1.0.0-rc.5
+      version: 1.0.0-rc.5
     better-auth:
       specifier: 1.7.7
       version: 1.7.7
@@ -82,7 +82,7 @@ importers:
     dependencies:
       '@lupinum/better-convex-nuxt':
         specifier: 'catalog:'
-        version: 1.0.0-rc.3(60f014d4f29ca01de45be7117b257b95)
+        version: 1.0.0-rc.5(cec73ef07ef476b8c6b570da985bf3ed)
       '@lupinum/ginko-server':
         specifier: workspace:*
         version: link:../../packages/ginko-server
@@ -426,7 +426,7 @@ importers:
         version: 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-auth@1.7.7(vitest@5.0.3(@edge-runtime/vm@5.0.0)(@types/node@24.19.1)(happy-dom@20.14.5)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vue@3.5.43(typescript@6.0.3)))(better-call@1.4.0(zod@4.6.5))
       '@lupinum/better-convex-nuxt':
         specifier: 'catalog:'
-        version: 1.0.0-rc.3(018106638a2a7b43d391b8be67c06022)
+        version: 1.0.0-rc.5(fe4097e319bf42c76d0dfefd7e141834)
       '@lupinum/ginko':
         specifier: workspace:*
         version: link:../ginko
@@ -478,7 +478,7 @@ importers:
         version: 1.55.0(vue@3.5.43(typescript@6.0.3))
       '@lupinum/better-convex-nuxt':
         specifier: 'catalog:'
-        version: 1.0.0-rc.3(ac500371f4e0cea2f599b7aeaf454014)
+        version: 1.0.0-rc.5(f131013784f56c12f6ba9039dc4a82d3)
       '@lupinum/ginko':
         specifier: workspace:*
         version: link:../ginko
@@ -2362,16 +2362,16 @@ packages:
     peerDependencies:
       vue: '>=3.0.1'
 
-  '@lupinum/better-convex-nuxt@1.0.0-rc.3':
-    resolution: {integrity: sha512-TwzUvPFtoYiHkdWTyf3nEGw6X9w06U6byWFCmpRk9UNlo/PmZMYQ7q4dMvmlHTV4FHc0N5kKhG0jkeNoatRTKw==}
-    engines: {node: ^22.19.0 || ^24.11.0}
+  '@lupinum/better-convex-nuxt@1.0.0-rc.5':
+    resolution: {integrity: sha512-vB0M5ed5ncvCpkPRq7a67MI+1FS1ULQ198taGzFuud9U1YV5Z+o0eYVzFb0WkUDIdvz7BLs8fi63X7k9LkIhrw==}
+    engines: {node: ^22.22.3 || ^24.15.0 || >=26.0.0}
     hasBin: true
     peerDependencies:
       '@better-auth/core': 1.7.7
       '@better-auth/oauth-provider': 1.7.7
       better-auth: 1.7.7
       convex: '>=1.42.2 <2'
-      nuxt: '>=4.5.2 <5'
+      nuxt: ^4.6.0 || ^5.0.0-0
     peerDependenciesMeta:
       '@better-auth/core':
         optional: true
@@ -2380,9 +2380,9 @@ packages:
       better-auth:
         optional: true
 
-  '@lupinum/better-convex-vue@1.0.0-rc.3':
-    resolution: {integrity: sha512-gt9AKfUkvtGNZ0195q6tPNS7cnqt8L2yD3fq8Ipz3E30hmI1q5hL8imnFJYn0scMWV1C8uEiD9Fuc8n2726zxA==}
-    engines: {node: ^22.19.0 || ^24.11.0}
+  '@lupinum/better-convex-vue@1.0.0-rc.5':
+    resolution: {integrity: sha512-/zgxx/GswuZFjqTY3yOpdf5goWy+d3e9TIIj4zK+fmrZl0hANkRI7I45+q8YVn0MEU2Sk3uGyo7bqMlnIJiLzA==}
+    engines: {node: ^22.19.0 || ^24.11.0 || >=26.0.0}
     peerDependencies:
       convex: '>=1.42.2 <2'
       vue: '>=3.5.0 <4'
@@ -2453,8 +2453,8 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@nuxt/cli-nightly@4.0.1-2610141407-a2add05':
-    resolution: {integrity: sha512-AfJr+1UCQZdgOQ4QIeNacJPuThlQBAiU2sMd9jQtTU501RlUcJau4GCVZs1kOz+QbMquZLb8xpbSxNBslE47eQ==}
+  '@nuxt/cli-nightly@4.0.1-2610152140-ad8153a':
+    resolution: {integrity: sha512-D3hB3Qd9dDRySDxmHnAnwvxXxLCl6jy67wHVHntnm1d1blMJoklTyUfoZDcvhFDDXKlGvpyCyQZI7l9zaBswhQ==}
     engines: {node: ^22.21.0 || ^24.11.0 || >=26.0.0}
     hasBin: true
     peerDependencies:
@@ -2646,10 +2646,6 @@ packages:
 
   '@nuxt/kit@3.21.11':
     resolution: {integrity: sha512-0Xi3tgwN77w43Q8GCPIrvWmF1J7Peehkts44E0uKNIml9lB8WoUn8YxyUjxBv47XtVR86NWoWALAT+/IEMHJEA==}
-    engines: {node: '>=18.12.0'}
-
-  '@nuxt/kit@4.5.2':
-    resolution: {integrity: sha512-l66LU9DcJYjmNwqwAj2I5UGRrUbnG2DOKGChnN70zIGtn0eq/z87gi/FRgha6eMb9/FmB1PFHgtx6PWVml1C2Q==}
     engines: {node: '>=18.12.0'}
 
   '@nuxt/kit@4.6.0':
@@ -8395,10 +8391,6 @@ packages:
       typescript:
         optional: true
 
-  verkit@0.3.2:
-    resolution: {integrity: sha512-zj/ob3UsvJGN0whEAKFp53REA5X66hvffVqoCtVQAakJKnKlH+/PcOfMoFwIG/o4rElqLv/ycAFlx8ZlXUorCg==}
-    engines: {node: '>=18.12.0'}
-
   verkit@0.5.0:
     resolution: {integrity: sha512-u4J1hr6Y+C/hit34GwL3eIcUf3wngT8TlYUjK7tk0jxydKLAq3sYvifjdTDA6U3KCKRcQCQDGf/srjxfZF3l7g==}
     engines: {node: '>=18.12.0'}
@@ -9984,42 +9976,13 @@ snapshots:
     dependencies:
       vue: 3.5.43(typescript@6.0.3)
 
-  '@lupinum/better-convex-nuxt@1.0.0-rc.3(018106638a2a7b43d391b8be67c06022)':
+  '@lupinum/better-convex-nuxt@1.0.0-rc.5(cec73ef07ef476b8c6b570da985bf3ed)':
     dependencies:
-      '@lupinum/better-convex-vue': 1.0.0-rc.3(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))
-      '@nuxt/kit': 4.5.2(magic-string@1.4.3)(magicast@0.5.5)(oxc-parser@0.153.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))
+      '@lupinum/better-convex-vue': 1.0.0-rc.5(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))
+      '@nuxt/kit': 4.6.1(@nuxt/schema@4.6.0)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(oxc-parser@0.153.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))
       convex: 1.46.0
       convex-helpers: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.46.0)(typescript@6.0.3)(zod@4.6.5)
       defu: 6.1.7
-      h3: 1.15.11
-      jiti: 2.7.0
-      nuxt: 4.6.1(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@oxc-project/types@0.153.0)(@types/node@24.19.1)(@vue/compiler-sfc@3.5.43)(acorn@8.19.0)(confbox@0.3.1)(db0@0.4.1)(dotenv@17.4.2)(esbuild@0.28.2)(eslint@10.12.0(jiti@2.7.0)(supports-color@10.2.2))(giget@3.3.1)(ioredis@5.11.1(supports-color@10.2.2))(mlly@1.8.2)(optionator@0.9.4)(oxc-parser@0.153.0)(rolldown@1.2.13)(rollup-plugin-visualizer@7.1.1(rolldown@1.2.13)(rollup@4.64.1))(rollup@4.64.1)(srvx@1.0.5)(supports-color@10.2.2)(terser@5.51.2)(typescript@6.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1)
-      ohash: 2.0.12
-    optionalDependencies:
-      '@better-auth/core': 1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5)
-      '@better-auth/oauth-provider': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-auth@1.7.7(vitest@5.0.3(@edge-runtime/vm@5.0.0)(@types/node@24.19.1)(happy-dom@20.14.5)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vue@3.5.43(typescript@6.0.3)))(better-call@1.4.0(zod@4.6.5))
-      better-auth: 1.7.7(vitest@5.0.3(@edge-runtime/vm@5.0.0)(@types/node@24.19.1)(happy-dom@20.14.5)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vue@3.5.43(typescript@6.0.3))
-    transitivePeerDependencies:
-      - '@standard-schema/spec'
-      - hono
-      - magic-string
-      - magicast
-      - oxc-parser
-      - react
-      - rolldown
-      - typescript
-      - unplugin
-      - vue
-      - zod
-
-  '@lupinum/better-convex-nuxt@1.0.0-rc.3(60f014d4f29ca01de45be7117b257b95)':
-    dependencies:
-      '@lupinum/better-convex-vue': 1.0.0-rc.3(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))
-      '@nuxt/kit': 4.5.2(magic-string@1.4.3)(magicast@0.5.5)(oxc-parser@0.153.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))
-      convex: 1.46.0
-      convex-helpers: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.46.0)(typescript@6.0.3)(zod@4.6.5)
-      defu: 6.1.7
-      h3: 1.15.11
       jiti: 2.7.0
       nuxt: 4.6.0(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@oxc-project/types@0.153.0)(@types/node@24.19.1)(@vue/compiler-sfc@3.5.43)(acorn@8.19.0)(confbox@0.3.1)(db0@0.3.4)(dotenv@17.4.2)(esbuild@0.28.2)(eslint@10.12.0(jiti@2.7.0)(supports-color@10.2.2))(giget@3.3.1)(ioredis@5.11.1(supports-color@10.2.2))(lightningcss@1.33.0)(mlly@1.8.2)(optionator@0.9.4)(oxc-parser@0.153.0)(rolldown@1.2.13)(rollup-plugin-visualizer@7.1.1(rolldown@1.2.13)(rollup@4.64.1))(rollup@4.64.1)(srvx@1.0.5)(supports-color@10.2.2)(terser@5.51.2)(typescript@6.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))(vue-tsc@3.1.5(typescript@6.0.3))(yaml@2.9.1)
       ohash: 2.0.12
@@ -10028,10 +9991,14 @@ snapshots:
       '@better-auth/oauth-provider': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-auth@1.7.7(vitest@5.0.3(@edge-runtime/vm@5.0.0)(@types/node@24.19.1)(happy-dom@20.14.5)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vue@3.5.43(typescript@6.0.3)))(better-call@1.4.0(zod@4.6.5))
       better-auth: 1.7.7(vitest@5.0.3(@edge-runtime/vm@5.0.0)(@types/node@24.19.1)(happy-dom@20.14.5)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vue@3.5.43(typescript@6.0.3))
     transitivePeerDependencies:
+      - '@nuxt/schema'
       - '@standard-schema/spec'
+      - confbox
+      - dotenv
+      - giget
       - hono
       - magic-string
-      - magicast
+      - mlly
       - oxc-parser
       - react
       - rolldown
@@ -10040,14 +10007,13 @@ snapshots:
       - vue
       - zod
 
-  '@lupinum/better-convex-nuxt@1.0.0-rc.3(ac500371f4e0cea2f599b7aeaf454014)':
+  '@lupinum/better-convex-nuxt@1.0.0-rc.5(f131013784f56c12f6ba9039dc4a82d3)':
     dependencies:
-      '@lupinum/better-convex-vue': 1.0.0-rc.3(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))
-      '@nuxt/kit': 4.5.2(magic-string@1.4.3)(magicast@0.5.5)(oxc-parser@0.153.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))
+      '@lupinum/better-convex-vue': 1.0.0-rc.5(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))
+      '@nuxt/kit': 4.6.1(@nuxt/schema@4.6.1)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(oxc-parser@0.153.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))
       convex: 1.46.0
       convex-helpers: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.46.0)(typescript@6.0.3)(zod@4.6.5)
       defu: 6.1.7
-      h3: 1.15.11
       jiti: 2.7.0
       nuxt: 4.6.0(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@oxc-project/types@0.153.0)(@types/node@24.19.1)(@vue/compiler-sfc@3.5.43)(acorn@8.19.0)(confbox@0.3.1)(db0@0.4.1)(dotenv@17.4.2)(esbuild@0.28.2)(eslint@10.12.0(jiti@2.7.0)(supports-color@10.2.2))(giget@3.3.1)(ioredis@5.11.1(supports-color@10.2.2))(lightningcss@1.33.0)(mlly@1.8.2)(optionator@0.9.4)(oxc-parser@0.153.0)(rolldown@1.2.13)(rollup-plugin-visualizer@7.1.1(rolldown@1.2.13)(rollup@4.64.1))(rollup@4.64.1)(srvx@1.0.5)(supports-color@10.2.2)(terser@5.51.2)(typescript@6.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1)
       ohash: 2.0.12
@@ -10056,10 +10022,14 @@ snapshots:
       '@better-auth/oauth-provider': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-auth@1.7.7(vitest@5.0.3(@edge-runtime/vm@5.0.0)(@types/node@24.19.1)(happy-dom@20.14.5)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vue@3.5.43(typescript@6.0.3)))(better-call@1.4.0(zod@4.6.5))
       better-auth: 1.7.7(vitest@5.0.3(@edge-runtime/vm@5.0.0)(@types/node@24.19.1)(happy-dom@20.14.5)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vue@3.5.43(typescript@6.0.3))
     transitivePeerDependencies:
+      - '@nuxt/schema'
       - '@standard-schema/spec'
+      - confbox
+      - dotenv
+      - giget
       - hono
       - magic-string
-      - magicast
+      - mlly
       - oxc-parser
       - react
       - rolldown
@@ -10068,7 +10038,38 @@ snapshots:
       - vue
       - zod
 
-  '@lupinum/better-convex-vue@1.0.0-rc.3(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))':
+  '@lupinum/better-convex-nuxt@1.0.0-rc.5(fe4097e319bf42c76d0dfefd7e141834)':
+    dependencies:
+      '@lupinum/better-convex-vue': 1.0.0-rc.5(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))
+      '@nuxt/kit': 4.6.1(@nuxt/schema@4.6.1)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(oxc-parser@0.153.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))
+      convex: 1.46.0
+      convex-helpers: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.46.0)(typescript@6.0.3)(zod@4.6.5)
+      defu: 6.1.7
+      jiti: 2.7.0
+      nuxt: 4.6.1(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@oxc-project/types@0.153.0)(@types/node@24.19.1)(@vue/compiler-sfc@3.5.43)(acorn@8.19.0)(confbox@0.3.1)(db0@0.4.1)(dotenv@17.4.2)(esbuild@0.28.2)(eslint@10.12.0(jiti@2.7.0)(supports-color@10.2.2))(giget@3.3.1)(ioredis@5.11.1(supports-color@10.2.2))(mlly@1.8.2)(optionator@0.9.4)(oxc-parser@0.153.0)(rolldown@1.2.13)(rollup-plugin-visualizer@7.1.1(rolldown@1.2.13)(rollup@4.64.1))(rollup@4.64.1)(srvx@1.0.5)(supports-color@10.2.2)(terser@5.51.2)(typescript@6.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1)
+      ohash: 2.0.12
+    optionalDependencies:
+      '@better-auth/core': 1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5)
+      '@better-auth/oauth-provider': 1.7.7(@better-auth/core@1.7.7(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-call@1.4.0(zod@4.6.5))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(better-auth@1.7.7(vitest@5.0.3(@edge-runtime/vm@5.0.0)(@types/node@24.19.1)(happy-dom@20.14.5)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vue@3.5.43(typescript@6.0.3)))(better-call@1.4.0(zod@4.6.5))
+      better-auth: 1.7.7(vitest@5.0.3(@edge-runtime/vm@5.0.0)(@types/node@24.19.1)(happy-dom@20.14.5)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))(vue@3.5.43(typescript@6.0.3))
+    transitivePeerDependencies:
+      - '@nuxt/schema'
+      - '@standard-schema/spec'
+      - confbox
+      - dotenv
+      - giget
+      - hono
+      - magic-string
+      - mlly
+      - oxc-parser
+      - react
+      - rolldown
+      - typescript
+      - unplugin
+      - vue
+      - zod
+
+  '@lupinum/better-convex-vue@1.0.0-rc.5(convex@1.46.0)(vue@3.5.43(typescript@6.0.3))':
     dependencies:
       '@standard-schema/spec': 1.1.0
       convex: 1.46.0
@@ -10164,7 +10165,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.3
 
-  '@nuxt/cli-nightly@4.0.1-2610141407-a2add05(@nuxt/schema-nightly@5.0.0-2610102328-1438bbb)(jiti@2.7.0)(oxc-parser@0.153.0)(rolldown@1.2.13)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))':
+  '@nuxt/cli-nightly@4.0.1-2610152140-ad8153a(@nuxt/schema-nightly@5.0.0-2610102328-1438bbb)(jiti@2.7.0)(oxc-parser@0.153.0)(rolldown@1.2.13)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))':
     dependencies:
       '@clack/prompts': 1.8.1
       args-tokenizer: 0.3.0
@@ -10942,36 +10943,6 @@ snapshots:
       untyped: 2.0.0
     transitivePeerDependencies:
       - magicast
-
-  '@nuxt/kit@4.5.2(magic-string@1.4.3)(magicast@0.5.5)(oxc-parser@0.153.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))':
-    dependencies:
-      c12: 3.3.4(magicast@0.5.5)
-      consola: 3.4.2
-      defu: 6.1.7
-      destr: 2.0.5
-      errx: 0.1.2
-      exsolve: 1.1.3
-      ignore: 7.0.12
-      jiti: 2.7.0
-      klona: 2.0.6
-      mlly: 1.8.2
-      nostics: 1.3.0
-      ohash: 2.0.12
-      pathe: 2.0.3
-      pkg-types: 2.3.3
-      rc9: 3.1.0
-      scule: 1.3.0
-      tinyglobby: 0.2.17
-      ufo: 1.6.4
-      unctx: 3.0.1(magic-string@1.4.3)(oxc-parser@0.153.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))
-      untyped: 2.0.0
-      verkit: 0.3.2
-    transitivePeerDependencies:
-      - magic-string
-      - magicast
-      - oxc-parser
-      - rolldown
-      - unplugin
 
   '@nuxt/kit@4.6.0(@nuxt/schema-nightly@5.0.0-2610102328-1438bbb)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(oxc-parser@0.153.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))':
     dependencies:
@@ -16657,7 +16628,7 @@ snapshots:
     dependencies:
       '@dxup/nuxt': 0.5.10(@nuxt/schema-nightly@5.0.0-2610102328-1438bbb)(confbox@0.3.1)(dotenv@17.4.2)(esbuild@0.28.2)(giget@3.3.1)(jiti@2.7.0)(mlly@1.8.2)(oxc-parser@0.153.0)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
       '@jridgewell/trace-mapping': 0.3.31
-      '@nuxt/cli': '@nuxt/cli-nightly@4.0.1-2610141407-a2add05(@nuxt/schema-nightly@5.0.0-2610102328-1438bbb)(jiti@2.7.0)(oxc-parser@0.153.0)(rolldown@1.2.13)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))'
+      '@nuxt/cli': '@nuxt/cli-nightly@4.0.1-2610152140-ad8153a(@nuxt/schema-nightly@5.0.0-2610102328-1438bbb)(jiti@2.7.0)(oxc-parser@0.153.0)(rolldown@1.2.13)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))'
       '@nuxt/devtools-onboard': 4.0.0-beta.4(@nuxt/kit-nightly@5.0.0-2610102328-1438bbb(@nuxt/schema-nightly@5.0.0-2610102328-1438bbb)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(oxc-parser@0.141.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))))
       '@nuxt/kit': '@nuxt/kit-nightly@5.0.0-2610102328-1438bbb(@nuxt/schema-nightly@5.0.0-2610102328-1438bbb)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(oxc-parser@0.141.0)(rolldown@1.2.13)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.13)(rollup@4.64.1)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)))'
       '@nuxt/nitro-server': '@nuxt/nitro-server-nightly@5.0.0-2610102328-1438bbb(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7(supports-color@10.2.2)))(@nuxt/schema-nightly@5.0.0-2610102328-1438bbb)(@oxc-project/types@0.153.0)(acorn@8.19.0)(confbox@0.3.1)(dotenv@17.4.2)(esbuild@0.28.2)(giget@3.3.1)(jiti@2.7.0)(lightningcss@1.33.0)(mlly@1.8.2)(nuxt-nightly@5.0.0-2610102328-1438bbb)(oxc-parser@0.141.0)(rollup@4.64.1)(typescript@6.0.3)(vite@8.3.3(@types/node@24.19.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))'
@@ -20169,8 +20140,6 @@ snapshots:
   valibot@1.5.0(typescript@6.0.3):
     optionalDependencies:
       typescript: 6.0.3
-
-  verkit@0.3.2: {}
 
   verkit@0.5.0: {}
 
