@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { collection, defineSite, f, single } from '@lupinum/ginko'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { buildFileBundles, publicBundle } from '../src/index.ts'
-import { readContent } from '../src/read.ts'
+import { errorLine, readContent } from '../src/read.ts'
 
 const schema = serializeSchema(defineSite({
   site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
@@ -99,7 +99,7 @@ describe('readContent', () => {
     ['a URL clash from the slug fallback (A has no English slug, B has "intro")', { 'content/docs/1.a.md': md('title: A\nslug: intro'), 'content/docs/2.b.md': md('title: B\nslug: other'), 'content/docs/2.b.en.md': md('title: B\nslug: intro') }, 'docs/2.b.en.md', /intro/],
     ['a missing image', { 'content/docs/1.a.md': md('title: A\nhero:\n  src: /img/none.png\n  alt: Weg') }, 'docs/1.a.md', /none\.png/],
     ['a body the field profile does not allow (h1 in a rich field)', { 'content/docs/1.a.md': md('title: A', '# Zu gross') }, 'docs/1.a.md', /“h1” is not allowed here/],
-    ['a validation error (empty title)', { 'content/docs/1.a.md': md("title: ''") }, 'docs/1.a.md', /“Titel” is missing/],
+    ['a validation error (empty title)', { 'content/docs/1.a.md': md("title: ''") }, 'docs/1.a.md', /“title” is missing/],
   ])('reports %s with the file, and still reads the rest', async (_, files, file, message) => {
     const r = await read({ ...files, 'content/docs/9.ok.md': md('title: Gut') })
     expect(r.errors.filter((e) => e.file === file).map((e) => e.message + (e.path ?? ''))).toContainEqual(expect.stringMatching(message))
@@ -368,5 +368,49 @@ describe('checks that never hide a broken entry', () => {
     expect(empty.errors.map((e) => e.file)).toEqual(['hours.en.yml'])
     const none = await readBlog({ 'content/hours.yml': rows(3), 'content/hours.en.yml': '{}' })
     expect(none.errors).toEqual([])
+  })
+})
+
+// What an owner who edits the files reads in `ginko check`: the key they typed, the row by place, the format to write.
+describe('check messages for file owners', () => {
+  const both = (de: string, en: string) => ({ de, en })
+  const owners = serializeSchema(defineSite({
+    site: 'studio', name: 'Studio', url: 'https://studio.example', timeZone: 'Europe/Vienna',
+    locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+    bricks: {
+      people: collection({ label: 'Personen', source: 'files', max: 20, order: 'manual', fields: { name: f.text('Name') } }),
+      events: collection({
+        label: 'Termine', source: 'files', max: 20, order: 'manual',
+        fields: {
+          title: f.text('Titel'),
+          price: f.money('Betrag', { optional: true }),
+          date: f.date('Datum', { optional: true }),
+          start: f.time('Beginn', { optional: true }),
+          when: f.daterange('Wann', { optional: true }),
+          until: f.date(both('Bis', 'Until'), { optional: true }),
+          host: f.ref('Gastgeber', { to: 'people', optional: true }),
+          hours: f.list('Zeiten', { itemLabel: 'Zeit', fields: { day: f.text('Tag'), closed: f.boolean('Geschlossen', { optional: true }) }, max: 10, optional: true }),
+          photos: f.list('Fotos', { itemLabel: 'Foto', fields: { image: f.image('Bild', { optional: true }) }, max: 10, optional: true }),
+        },
+      }),
+    },
+  }))
+  const fm = (front: string) => md(front, '')
+  const people = { 'content/people/1.katrin-albers.md': fm('name: Katrin Albers') }
+
+  it.each([
+    ['money as a string', { 'content/events/1.a.md': fm('title: A\nprice: 65 EUR') }, ['content/events/1.a.md (price): “price” must be a number in EUR, like 65 or 12.50 (no currency sign, no thousands separator).']],
+    ['a bad date', { 'content/events/1.a.md': fm('title: A\ndate: tomorrow') }, ['content/events/1.a.md (date): “date” is not a valid date: write it as YYYY-MM-DD, like 2026-10-24.']],
+    ['a bad time', { 'content/events/1.a.md': fm('title: A\nstart: 9h') }, ['content/events/1.a.md (start): “start” is not a valid time: write it as HH:MM, like 09:30.']],
+    ['a bad period', { 'content/events/1.a.md': fm('title: A\nwhen: 2026-11-14') }, ['content/events/1.a.md (when): “when” needs from and to: when: { from: 2026-11-14, to: 2026-11-14 } (the same date twice for one day).']],
+    ['an unknown ref', { ...people, 'content/events/1.a.md': fm('title: A\nhost: people/2.tobias-brandt') }, ['content/events/1.a.md (host): There is no entry “people/2.tobias-brandt”. An id is the folder and the file name without number and language: content/people/1.katrin-albers.md is people/katrin-albers.']],
+    ['a field error in row 3', { 'content/events/1.a.md': fm('title: A\nhours:\n  - day: Mo\n  - day: Tu\n  - day: We\n    closed: maybe') }, ['content/events/1.a.md (hours, row 3, closed): “closed” must be yes or no.']],
+    ['a row converted before validation', { 'content/events/1.a.md': fm('title: A\nphotos:\n  - {}\n  - image: 5') }, ['content/events/1.a.md (photos, row 2, image): “image” needs src and alt.']],
+    ['a main-language key in a translation', { 'content/events/1.a.md': fm('title: A'), 'content/events/1.a.en.md': fm('title: A\nuntil: 2026-12-01') }, ['content/events/1.a.en.md (until): “until” is set in the main-language file only.']],
+    ['a colon in frontmatter', { 'content/events/1.a.md': fm('text: We are moving: from 1 December') }, ['content/events/1.a.md:2: Invalid YAML: bad indentation of a mapping entry. Put text with a colon in quotes: text: "We are moving: …"']],
+  ])('%s', async (_, files, lines) => {
+    const s = site(files)
+    const r = await readContent(s.content, s.public, owners)
+    expect(r.errors.map(errorLine)).toEqual(lines)
   })
 })

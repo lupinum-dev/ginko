@@ -82,7 +82,7 @@ export function cellValue(fields: Fields, column: string, cell: string): { value
     case 'image':
     case 'choices':
     case 'daterange':
-      return { error: `Column “${column}”: “${field.label}” cannot be written in CSV. Use a YAML or Markdown file for it.` }
+      return { error: `Column “${column}” cannot be written in CSV. Use a YAML or Markdown file for it.` }
     default:
       return { value: text }
   }
