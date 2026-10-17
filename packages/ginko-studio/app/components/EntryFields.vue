@@ -44,6 +44,11 @@ const asking = computed(() => new Set(props.entries.filter(([key, field]) => {
 }).map(([key]) => key)))
 const showAsk = (key: string) => asking.value.has(key) && props.locale === main.value
 const askedLabel = (field: Field) => labelText(props.all[askedKey(field)!]!.label)
+// One prop list for both branches: a field that asks gets a wrapper for the question, every other field keeps its DOM.
+const fieldProps = (key: string, field: Field) => ({
+  field, modelValue: props.draft[key], baseline: props.baseline[key], path: key,
+  locale: props.locale, locales: props.locales, issues: props.issues, route: props.route, weeks: props.weeks?.(key),
+})
 const confirm = (key: string, field: Field) => stillRight.confirm(blockerKey(key), textIn(props.draft[askedKey(field)!], main.value))
 
 watchEffect(() => {
@@ -59,18 +64,12 @@ onBeforeUnmount(() => { if (blockers) for (const [key] of props.entries) blocker
 <template>
   <template v-for="[key, field] in entries" :key="key">
     <div v-if="askedKey(field) !== undefined" v-show="isShown(field, draft)" :class="{ 'rounded-md bg-warning/10 p-3': showAsk(key) }">
-      <GinkoField
-        :field="field" :model-value="draft[key]" :baseline="baseline[key]" :path="key"
-        :locale="locale" :locales="locales" :issues="issues" :route="route" :weeks="weeks?.(key)" @update:model-value="emit('update', key, $event)"
-      />
+      <GinkoField v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
       <div v-if="showAsk(key)" class="check mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-warning">
         <p>{{ t('fields.list.changed', { changed: askedLabel(field), label: labelText(field.label) }) }}</p>
         <Button type="button" variant="outline" size="sm" @click="confirm(key, field)">{{ t('fields.list.confirm') }}</Button>
       </div>
     </div>
-    <GinkoField
-      v-else v-show="isShown(field, draft)" :field="field" :model-value="draft[key]" :baseline="baseline[key]" :path="key"
-      :locale="locale" :locales="locales" :issues="issues" :route="route" :weeks="weeks?.(key)" @update:model-value="emit('update', key, $event)"
-    />
+    <GinkoField v-else v-show="isShown(field, draft)" v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
   </template>
 </template>

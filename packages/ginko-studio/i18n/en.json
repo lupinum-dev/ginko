@@ -726,7 +726,7 @@
       "search": "Search {target} …",
       "nothing": "Nothing found."
     },
-    "confirmBlocker": "Please confirm: are the {label} still right?",
+    "confirmBlocker": "Please confirm: are the {label} still correct?",
     "list": {
       "up": "Move {title} up",
       "down": "Move {title} down",
