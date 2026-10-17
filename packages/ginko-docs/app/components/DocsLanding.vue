@@ -13,6 +13,9 @@ const { t } = useI18n()
 useGinkoSeo(() => ({ title: data.value.title, description: data.value.description }))
 
 const { state, copy } = useDocsCopy()
+// A route link (`$docs.<page>`, `$page.<key>`) follows the reader's language; a path or URL stays as written.
+const { href } = useDocsSite()
+const to = (raw: string) => (raw.startsWith('$') ? href(raw) : raw)
 const external = (href: string) => /^https?:\/\//.test(href)
 </script>
 
@@ -24,7 +27,7 @@ const external = (href: string) => /^https?:\/\//.test(href)
         <p v-if="data.description">{{ data.description }}</p>
         <div v-if="data.links.length" class="docs-hero-links">
           <NuxtLink
-            v-for="(l, i) in data.links" :key="l.href" :to="l.href" :target="external(l.href) ? '_blank' : undefined"
+            v-for="(l, i) in data.links" :key="l.href" :to="to(l.href)" :target="external(l.href) ? '_blank' : undefined"
             class="docs-button is-large" :class="i === 0 ? 'is-primary' : 'is-soft'"
           >
             {{ l.label }}<Icon v-if="i === 0" name="lucide:arrow-right" class="docs-icon" />
@@ -43,7 +46,7 @@ const external = (href: string) => /^https?:\/\//.test(href)
             <Icon :name="f.icon" class="docs-icon" />
           </div>
           <h2>
-            <NuxtLink v-if="f.href" :to="f.href">{{ f.title }}</NuxtLink>
+            <NuxtLink v-if="f.href" :to="to(f.href)">{{ f.title }}</NuxtLink>
             <template v-else>{{ f.title }}</template>
           </h2>
           <p>{{ f.description }}</p>

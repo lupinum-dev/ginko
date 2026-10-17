@@ -200,6 +200,7 @@ const created: Record<string, Check[]> = {
   'template-local-business': [['/', /<h1[^>]*>\s*Hofer Physio/], ['/treatments', /Manual lymphatic drainage/], ['/de/kontakt', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
   'template-nonprofit': [['/', /<h1[^>]*>\s*We look after the river/], ['/news', /A new home for our tools/], ['/ar', /<html[^>]*dir="rtl"/], ['/news/rss.xml', /<rss[\s\S]*<item>/], ['/sitemap.xml', /<urlset/]],
   'template-blog': [['/', /<h1[^>]*>\s*Notes on the nature in and around the city/], ['/posts', /Swifts over the car park/], ['/de/beitraege/themen/voegel', /<html[^>]*lang="de/], ['/posts/rss.xml', /<rss/], ['/sitemap.xml', /<urlset/]],
+  'template-docs': [['/', /<h1[^>]*>\s*Orbit SDK, the TypeScript client/], ['/docs/monitors', /monitors\.pause\(\)/], ['/de/docs/monitore', /<html[^>]*lang="de/], ['/changelog', /2\.1\.0/], ['/sitemap.xml', /<urlset/]],
   'template-events': [['/', /<h1[^>]*>\s*Open Data Days/], ['/programme', /Finding stories in public budgets/], ['/de/vortragende', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
   'template-saas': [['/', /<h1[^>]*>\s*Shift planning for care homes/], ['/pricing', /Standard[\s\S]*€219/], ['/de/neuerungen', /<html[^>]*lang="de/], ['/fr/tarifs', /<html[^>]*lang="fr/], ['/changelog/rss.xml', /<rss/], ['/sitemap.xml', /<urlset/]],
 }

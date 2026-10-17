@@ -61,7 +61,11 @@ export async function open(page: Page, path: string) {
 
 /** The theme toggle, if the header has one: a button named for the theme, dark or light mode. */
 export const themeToggle = (page: Page) => page.locator('header').getByRole('button', { name: /theme|dark|light|mode|farb|dunk|hell/i }).first()
-/** The phone navigation's open button, if any: a header button that controls or expands something. */
-export const navToggle = (page: Page) => page.locator('header button[aria-expanded], header button[aria-controls], header [aria-haspopup="dialog"]').first()
+/**
+ * The phone navigation's open button, if any: the visible header button that controls or expands something. Visible,
+ * because a header may hold other disclosure buttons that are hidden at this width (the docs layer's language menu
+ * comes before its menu button and is hidden on phones); a site header has only the nav button.
+ */
+export const navToggle = (page: Page) => page.locator('header button[aria-expanded], header button[aria-controls], header [aria-haspopup="dialog"]').filter({ visible: true }).first()
 
 export { expect } from '@playwright/test'

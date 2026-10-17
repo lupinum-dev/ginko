@@ -42,3 +42,16 @@ export function docsAskLinks(prompt: string): Record<DocsAssistant, string> {
   const q = encodeURIComponent(prompt)
   return { chatgpt: `https://chatgpt.com/?q=${q}`, claude: `https://claude.ai/new?q=${q}` }
 }
+
+/**
+ * A route link outside Markdown (the start page's links and cards, `nav`, `footer.links`, `banner.href`):
+ * `$docs.<page>` names a docs page by its file name or slug, `$page.<key>` a page of `pages` in ginko.config.ts; an
+ * `#anchor` is kept. The same notation as in Markdown, so the link follows the reader's language and survives a
+ * changed slug. Undefined when `raw` is no route link or names nothing.
+ */
+export function docsRouteLink(raw: string, find: { doc: (ref: string) => string | undefined, page: (key: string) => string | undefined }): string | undefined {
+  const match = /^\$(docs|page)\.([^#]+)(#.*)?$/.exec(raw)
+  if (!match) return undefined
+  const path = match[1] === 'docs' ? find.doc(match[2]!) : find.page(match[2]!)
+  return path === undefined ? undefined : path + (match[3] ?? '')
+}

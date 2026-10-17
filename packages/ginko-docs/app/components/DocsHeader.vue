@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The standalone header: brand, the site's sections (Docs, Blog, Changelog and the site's own links), search,
-// language, light/dark and social links. On phones the menu button opens one full-screen menu: the docs
-// navigation (on docs pages), the site links and social link, the language and the light/dark switch.
+// language, light/dark and social links. On phones the menu button opens one full-screen menu: the
+// languages as links at its top, the docs navigation (on docs pages), the site links and social links, and the
+// Auto/Light/Dark switch. The light/dark button stays in the header on phones too.
 const { t, localePath } = useI18n()
 const cfg = useAppConfig().docs ?? {}
 const title = cfg.title ?? useGinkoSite().name
@@ -93,6 +94,7 @@ onBeforeUnmount(() => {
     <!-- Teleported: the header's backdrop blur would otherwise make it the containing block of the fixed menu. -->
     <Teleport to="body">
       <div v-if="menu" id="docs-menu" ref="panel" class="docs-menu" role="dialog" tabindex="-1" :aria-label="t('docs.siteMenu')">
+        <DocsLanguage list />
         <div v-if="inDocs" class="docs-menu-scroll">
           <DocsSidebar />
         </div>
@@ -103,7 +105,6 @@ onBeforeUnmount(() => {
           </nav>
         </div>
         <div class="docs-menu-foot">
-          <DocsLanguage />
           <DocsThemeToggle segmented />
         </div>
       </div>

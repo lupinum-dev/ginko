@@ -6,6 +6,9 @@ const { theme, banner } = useAppConfig().docs ?? {}
 useHead({
   // `docs-standalone` turns on the page background, font and color-scheme (docs.css); embedded, the site owns those.
   htmlAttrs: { class: 'docs-standalone', 'data-docs-theme': theme && theme !== 'default' ? theme : undefined },
+  // Inter comes with the page instead of after the stylesheet: text set in the fallback re-wraps when the font
+  // arrives late and pushes the page down (layout shift).
+  link: [{ rel: 'preload', as: 'font', type: 'font/woff2', href: '/_docs/fonts/inter-latin-wght-normal.woff2', crossorigin: '' }],
 })
 // "Skip to content" goes past the docs navigation to the page itself when the page has one (DocsShell), else to main.
 function skip(event: MouseEvent) {

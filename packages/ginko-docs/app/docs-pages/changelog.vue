@@ -2,10 +2,17 @@
 import { releaseAnchor as anchor } from '@lupinum/ginko/basics'
 import { markdownComponents } from '../lib/markdownComponents'
 // The changelog: one page, one section per release, newest first (the collection's order). Each version has an anchor.
-const { t } = useI18n()
+const { t, language } = useI18n()
 const blog = useDocsBlog()
 const entries = blog.changelog()
-useGinkoSeo(() => ({ title: t('docs.changelog') }))
+// A list page: CollectionPage JSON-LD, so search engines read it as the index of its entries.
+const site = useGinkoSite()
+const route = useRoute()
+useGinkoSeo(() => ({
+  title: t('docs.changelog'),
+  description: t('docs.changelogLead'),
+  jsonLd: [{ '@context': 'https://schema.org', '@type': 'CollectionPage', name: t('docs.changelog'), url: new URL(route.path, site.url).href, inLanguage: language.value }],
+}))
 </script>
 
 <template>
