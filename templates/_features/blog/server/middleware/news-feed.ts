@@ -1,6 +1,6 @@
 import { rssXml } from '@lupinum/ginko/basics'
 import { defineEventHandler, getRequestURL, useRuntimeConfig } from 'nuxt/server'
-import site from '~~/ginko.config'
+import site from '../../ginko.config'
 
 // The news feed of each language (RSS 2.0) at <news page>/rss.xml: /news/rss.xml, /de/aktuelles/rss.xml. Title,
 // summary, date and authors of the visible posts; the feed links to the page for the full text. Drafts are never in it.
