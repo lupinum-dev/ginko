@@ -27,10 +27,12 @@ async function changelogPage(page: import('@playwright/test').Page) {
 
 test('the changelog lists every release, newest first, and each language has a feed with the same releases', async ({ page, request }) => {
   test.skip(!releases.length, 'no releases in the samples')
-  await changelogPage(page)
+  const href = await changelogPage(page)
   // Wrong behaviour caught: a release missing, or the list in file order instead of newest first.
   expect(await page.locator('main [data-release]').evaluateAll((items) => items.map((item) => item.id)), 'releases on the page').toEqual(releases.map((r) => anchor(r.version)))
-  for (const alt of await page.locator('header a[hreflang]').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))) {
+  // A one-language site has no language links: it checks its own feed.
+  const alts = await page.locator('header a[hreflang]').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))
+  for (const alt of alts.length ? alts : [href]) {
     await open(page, alt)
     const ids = await page.locator('main [data-release]').evaluateAll((items) => items.map((item) => item.id))
     const feedPath = await page.locator('link[type="application/rss+xml"]').getAttribute('href')
