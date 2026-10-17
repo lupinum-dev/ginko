@@ -5,7 +5,7 @@ import type {
   Brick, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, routeUrls, todayIn, urlClashes, validate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, routeUrls, todayIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -258,8 +258,10 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
     } else if (field.type === 'list') {
       const mainRows = rowsOf(mainView[key])
       for (const locale of cx.locales) {
-        if (rowsOf(views[locale]?.[key]).length > mainRows.length) {
-          cx.errors.push({ file: cx.rels[locale] ?? '', path, message: `“${field.label}” has more rows than in the main language.` })
+        // Rows are matched by position: a different count shifts every translated row after the difference.
+        const count = views[locale]?.[key] === undefined ? mainRows.length : rowsOf(views[locale]?.[key]).length
+        if (locale !== cx.main && count !== mainRows.length) {
+          cx.errors.push({ file: cx.rels[locale] ?? '', path, message: `“${key}” has ${count} rows here and ${mainRows.length} in content/${cx.rels[cx.main] ?? ''}. Each row translates the row at the same place in the main file; write - {} for a row with nothing to translate.` })
         }
       }
       out[key] = mainRows.map((_, i) => {
@@ -501,6 +503,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       }
       urlOwners.push({ id, urls })
       for (const t of taken) slugOwner.set(t.key, id)
+      // Checked above like a published entry; a scheduled one stays out until its date.
+      if (mainView.scheduled) { leftOut.add(id); continue }
       if (order !== undefined) entry.order = order
       entry.updatedAt = times.updatedAt(Object.values(rels))
       entry.sources = Object.fromEntries(Object.entries(rels).map(([locale, rel]) => [locale, times.source(rel!)]))
@@ -513,7 +517,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
      * the parsed body; YAML, JSON and CSV: the whole file or row is data and there is no body).
      * `'draft'` when the entry is marked `draft: true` and drafts are off.
      */
-    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; draft?: true } | 'draft' | undefined> {
+    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; draft?: true; scheduled?: true } | 'draft' | undefined> {
       const { rel } = src
       const ext = extOf(rel)
       const markdownKey = markdownKeyOf(brick)
@@ -559,7 +563,10 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       if (draft === true && !drafts && fileErrors.length === 0) return 'draft'
       // A scheduled entry (dated after the build day) is left out like a draft; the first build on or after its date
       // publishes it. Only the main file holds the date.
-      if (isMain && dateKey !== undefined && !drafts && fileErrors.length === 0 && typeof fields[dateKey] === 'string' && fields[dateKey] > today) return 'draft'
+      // Only a real ISO date schedules: any other text is left to validate(), which reports it. The entry is checked
+      // like a published one (it goes live at a later build nobody watches) and left out of the bundle afterwards.
+      const dateValue = dateKey === undefined ? undefined : fields[dateKey]
+      const scheduled = isMain && !drafts && isDate(dateValue) && dateValue > today
       const view = convertFields(brick.fields, fields, cx)
       const hasBody = parsed !== undefined && parsed.value.nodes.length > 0
       if (parsed === undefined && markdownKey !== undefined) {
@@ -571,7 +578,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       // The slug defaults to the file name without its number (CONTENT.md "Slug"), for CSV to the `slug` cell.
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
       errors.push(...fileErrors)
-      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, draft: draft === true ? true : undefined }
+      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, draft: draft === true ? true : undefined, scheduled: scheduled ? true : undefined }
     }
   }
 

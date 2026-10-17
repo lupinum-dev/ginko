@@ -327,3 +327,46 @@ describe('image variants', () => {
     expect(JSON.stringify(bundles.de)).not.toContain('variants')
   })
 })
+
+describe('checks that never hide a broken entry', () => {
+  const blog = serializeSchema(defineSite({
+    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+    bricks: {
+      authors: collection({ label: 'Authors', source: 'files', max: 5, order: 'manual', fields: { name: f.text('Name') } }),
+      posts: collection({ label: 'Posts', source: 'files', max: 50, drafts: true, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date'), author: f.ref('Author', { to: 'authors' }) } }),
+      hours: single({
+        label: 'Hours', source: 'files',
+        fields: { exceptions: f.list('Exceptions', { itemLabel: 'Day', fields: { reason: f.text('Reason') }, max: 10, optional: true }) },
+      }),
+    },
+  }))
+  const readBlog = (files: Record<string, string>) => { const s = site(files); return readContent(s.content, s.public, blog, { drafts: false, today: '2026-10-17' }) }
+  const author = { 'content/authors/ann.yml': 'name: Ann' }
+
+  // Wrong behaviour caught: a date in another format counts as "after today" and the post vanishes without an error.
+  it('reports a scheduling date that is not an ISO date instead of leaving the entry out', async () => {
+    const r = await readBlog({ ...author, 'content/posts/a.yml': 'title: A\ndate: 24.10.2026\nauthor: authors/ann' })
+    expect(r.errors.map((e) => [e.file, e.path])).toEqual([['posts/a.yml', 'date']])
+  })
+
+  // Wrong behaviour caught: a scheduled post with a broken reference passes every check and fails at the later build that publishes it.
+  it('checks a scheduled entry like a published one and leaves it out of the bundle', async () => {
+    const r = await readBlog({ ...author, 'content/posts/a.yml': 'title: A\ndate: 2026-10-24\nauthor: authors/nobody', 'content/posts/b.yml': 'title: B\ndate: 2026-10-24\nauthor: authors/ann' })
+    expect(r.errors.map((e) => [e.file, e.path])).toEqual([['posts/a.yml', 'author']])
+    expect(r.entries.posts ?? []).toEqual([])
+  })
+
+  // Wrong behaviour caught: rows are matched by position, so an extra main row shifts every translated reason by one.
+  it('needs the same number of list rows in a translation, and lets it leave the list out', async () => {
+    const rows = (n: number) => `exceptions:\n${Array.from({ length: n }, (_, i) => `  - reason: R${i}`).join('\n')}`
+    const bad = await readBlog({ 'content/hours.yml': rows(3), 'content/hours.en.yml': rows(2) })
+    expect(bad.errors.map((e) => [e.file, e.message])).toEqual([[
+      'hours.en.yml',
+      '“exceptions” has 2 rows here and 3 in content/hours.yml. Each row translates the row at the same place in the main file; write - {} for a row with nothing to translate.',
+    ]])
+    const empty = await readBlog({ 'content/hours.yml': rows(3), 'content/hours.en.yml': 'exceptions: []' })
+    expect(empty.errors.map((e) => e.file)).toEqual(['hours.en.yml'])
+    const none = await readBlog({ 'content/hours.yml': rows(3), 'content/hours.en.yml': '{}' })
+    expect(none.errors).toEqual([])
+  })
+})
