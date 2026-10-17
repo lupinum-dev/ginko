@@ -123,8 +123,9 @@ test('the blog template names the authors of the newest post in view on a phone,
   await page.setViewportSize({ width: 390, height: 844 })
   await open(page, '/')
   const lead = page.locator('main article').first()
-  const byline = lead.getByText(/^(by|von) /)
+  const byline = lead.locator('[data-byline]')
   await expect(byline).toHaveCount(1)
+  await expect(byline).toHaveText(/^(by|von) /)
   expect((await byline.boundingBox())!.y + (await byline.boundingBox())!.height).toBeLessThan(844)
 })
 

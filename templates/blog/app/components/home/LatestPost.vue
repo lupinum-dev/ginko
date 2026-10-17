@@ -20,7 +20,7 @@ const { format, t } = useI18n('blog')
       <p class="text-small text-muted-foreground">
         <time :datetime="post.date">{{ format.date(post.date) }}</time>
         <template v-if="post.minutes"><span aria-hidden="true"> · </span><span class="sr-only">, </span>{{ t('minutes', { count: post.minutes }) }}</template>
-        <template v-if="post.authors.length"><span aria-hidden="true"> · </span><span class="sr-only">, </span>{{ t('by', { names: format.list(post.authors.map((a) => a.name)) }) }}</template>
+        <template v-if="post.authors.length"><span aria-hidden="true"> · </span><span class="sr-only">, </span><span data-byline>{{ t('by', { names: format.list(post.authors.map((a) => a.name)) }) }}</span></template>
       </p>
       <h2 class="text-h2">
         <NuxtLink :to="post.to" class="underline-offset-4 after:absolute after:inset-0 group-hover:underline">{{ post.title }}</NuxtLink>
