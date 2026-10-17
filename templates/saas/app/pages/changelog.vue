@@ -5,7 +5,7 @@ import { Rss } from '@lucide/vue'
 
 // The changelog: one section per release, newest first (content/changelog/), with its version, date and text. The
 // text names the kind of each change under a heading of its own (New, Improved, Fixed). Each release has an anchor
-// (`#v4-6-0`), so a notice, a post or the home page can link to it. The feed of this language is linked in the head and
+// (`#v4-6-0`), so a post, the home page or the feed can link to it. The feed of this language is linked in the head and
 // below the list. The address per language comes from `pages.changelog` in ginko.config.ts. The columns match
 // BlockSection's (4 and 8), so version and text sit where they do in the home page's section. A template may bring
 // `app/components/site/PageCta.vue`, its closing band: it shows at the end of the page.
