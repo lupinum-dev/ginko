@@ -72,7 +72,9 @@ scheduled GitHub Action).
 Every text is a Markdown file. The main language has no suffix (`about.md`); a translation adds the language code
 (`about.de.md`). The number at the start of a file name sets the order. After each change, run `npm run check`.
 
-Files point to other entries by id: the folder and the file name without number and language, so `content/pages/1.about.md` is `pages/about`. The `slug` is only the address on the site: renaming a file breaks the references to it (the menu in `app/app.config.ts`), changing the `slug` does not. Write dates as `2026-10-24`.
+Files point to other entries by id: the folder and the file name without number and language, so
+`content/pages/1.about.md` is `pages/about`. The `slug` is only the address on the site: renaming a file breaks the
+references to it (`nav` and `footer` in `app/app.config.ts`), changing the `slug` does not. Write dates as `2026-10-24`.
 
 | On the site | File |
 |---|---|
@@ -85,11 +87,13 @@ Files point to other entries by id: the folder and the file name without number 
 | Menu, the line under the name in the footer, footer links, profiles elsewhere | `app/app.config.ts` |
 | Texts of buttons and labels | `i18n/site/<language>.json`; to change one, set it under `"site"` in `i18n/<language>.json` |
 
-Notices show newest first: give a new notice a smaller number than the others (`0.` works, and numbers may have gaps), so older notices keep theirs. At most two show at once.
+Notices show newest first: give a new notice a smaller number than the others (`0.` works, and numbers may have
+gaps), so older notices keep theirs. At most two show at once.
 
 ## Make it yours
 
-- **Name and menu.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name appears nowhere else as text, so one change is enough. `nav` in `app/app.config.ts` lists pages by id
+- **Name and menu.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name
+  appears nowhere else as text, so one change is enough. `nav` in `app/app.config.ts` lists pages by id
   (`pages/about` is `content/pages/1.about.md`), at most six.
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 120, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name. `shortName` replaces a long name on phones.
