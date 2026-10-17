@@ -144,6 +144,39 @@ describe('drafts', () => {
   })
 })
 
+describe('scheduled entries', () => {
+  const site = serializeSchema(defineSite({
+    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['en'], currency: 'EUR', pages: { home: { en: '/' } },
+    bricks: {
+      posts: collection({ label: 'Posts', source: 'files', max: 50, drafts: true, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
+      events: collection({ label: 'Events', source: 'files', max: 50, drafts: true, order: { field: 'date', dir: 'asc' }, fields: { title: f.text('Title'), date: f.date('Date') } }),
+    },
+  }))
+  const files = {
+    'content/posts/past.yml': 'title: Past\ndate: 2026-10-15',
+    'content/posts/today.yml': 'title: Today\ndate: 2026-10-16',
+    'content/posts/tomorrow.yml': 'title: Tomorrow\ndate: 2026-10-17',
+    'content/events/tomorrow.yml': 'title: Tomorrow\ndate: 2026-10-17',
+  }
+
+  // Wrong behaviour caught: a post dated in the future is online (pages, feed, sitemap) before its day, or a coming
+  // event is hidden because its collection also has drafts.
+  it.each([
+    [{ drafts: false }, ['posts/today', 'posts/past']],
+    [{ drafts: true }, ['posts/tomorrow', 'posts/today', 'posts/past']],
+  ])('a post dated after the build day is left out with %j; a coming event stays', async (options, posts) => {
+    const root = mkdtempSync(join(tmpdir(), 'ginko-scheduled-'))
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(root, path)), { recursive: true })
+      writeFileSync(join(root, path), text)
+    }
+    const r = await readContent(join(root, 'content'), join(root, 'public'), site, { ...options, today: '2026-10-16' })
+    expect(r.errors).toEqual([])
+    expect(r.entries.posts!.map((e) => e.id).sort()).toEqual([...posts].sort())
+    expect(r.entries.events!.map((e) => e.id)).toEqual(['events/tomorrow'])
+  })
+})
+
 describe('redirectFrom', () => {
   // Wrong behaviour caught: the reserved key is read as a field (error), lost on the way to the entry, or a bad value passes.
   it('is read from the main file (string or list) and kept on the entry', async () => {

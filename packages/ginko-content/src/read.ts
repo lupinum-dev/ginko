@@ -5,7 +5,7 @@ import type {
   Brick, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, routeUrls, urlClashes, validate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, routeUrls, todayIn, urlClashes, validate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -32,8 +32,14 @@ export function errorLine(e: ContentError): string {
 }
 
 export interface ReadOptions {
-  /** `false` leaves out entries marked `draft: true`. Default `true` (dev shows drafts). */
+  /**
+   * `false` leaves out entries marked `draft: true`, and scheduled entries: in a collection with drafts that lists its
+   * entries newest first by a date (`drafts: true`, `order: { field, dir: 'desc' }`), an entry dated after `today`.
+   * Default `true` (dev shows both).
+   */
   drafts?: boolean
+  /** The build day (`YYYY-MM-DD`) for scheduled entries. Default: today in the schema's time zone. */
+  today?: string
   /** `text` keeps each Markdown field as its source text, the form the platform stores and the Studio edits
    * (`pnpm local:files-export`). Default `tree`: the parsed tree the site's bundle carries. */
   markdown?: 'tree' | 'text'
@@ -302,6 +308,7 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
  */
 export async function readContent(contentDir: string, publicDir: string, schema: Schema, options: ReadOptions = {}): Promise<ReadResult> {
   const drafts = options.drafts ?? true
+  const today = options.today ?? todayIn(schema.timeZone)
   const errors: ContentError[] = []
   const entries: Record<string, StoredEntry[]> = {}
   const files: Record<string, FileInfo> = {}
@@ -399,6 +406,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     let next = Math.max(0, ...sorted.map(([, g]) => g.number ?? 0))
 
     const slugKey = slugKeyOf(brick)
+    const dateKey = scheduleKeyOf(brick)
     const slugOwner = new Map<string, string>()
     for (const [name, group] of sorted) {
       if (group.main === undefined) {
@@ -549,6 +557,9 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const redirects = redirectFrom === undefined ? undefined : redirectPaths(cx, redirectFrom)
       if (draft !== undefined && typeof draft !== 'boolean') fail(cx, 'draft', '“draft” must be true or false.')
       if (draft === true && !drafts && fileErrors.length === 0) return 'draft'
+      // A scheduled entry (dated after the build day) is left out like a draft; the first build on or after its date
+      // publishes it. Only the main file holds the date.
+      if (isMain && dateKey !== undefined && !drafts && fileErrors.length === 0 && typeof fields[dateKey] === 'string' && fields[dateKey] > today) return 'draft'
       const view = convertFields(brick.fields, fields, cx)
       const hasBody = parsed !== undefined && parsed.value.nodes.length > 0
       if (parsed === undefined && markdownKey !== undefined) {
@@ -618,6 +629,16 @@ async function dataNames(dir: string): Promise<string[]> {
 /** The brick's slug field, if it has one: the URL of each entry (CONTENT.md "Slug"). */
 function slugKeyOf(brick: Brick): string | undefined {
   return brick.fields.slug?.type === 'slug' ? 'slug' : undefined
+}
+
+/**
+ * The date field that schedules an entry: in a collection with drafts that lists its entries newest first by a date
+ * (posts, a changelog), an entry dated after the build day is not published yet. A list in date order from the
+ * oldest (events) shows coming dates on purpose, so it has none.
+ */
+function scheduleKeyOf(brick: Brick): string | undefined {
+  if (brick.kind !== 'collection' || brick.drafts !== true || brick.order === 'manual' || brick.order.dir !== 'desc') return undefined
+  return brick.fields[brick.order.field]?.type === 'date' ? brick.order.field : undefined
 }
 
 /** Problems that make every file of a brick unreadable: more than one markdown field. */

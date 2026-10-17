@@ -1,15 +1,20 @@
-// The blog feature on the built template (gate 3): drafts never go online, the feed of each language lists the posts
-// of its news page, and a tag shows only its posts.
+// The blog feature on the built template (gate 3): drafts and scheduled posts never go online, the feed of each
+// language lists the posts of its news page, a tag has a page with its posts, and a post links the older one.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, open, site, test } from '../../../../scripts/templates/e2e/helpers.ts'
 
 const dir = fileURLToPath(new URL(`../../../${site.name}/content/posts/`, import.meta.url))
-/** Slugs of the main-language posts marked `draft: true`. */
-const drafts = existsSync(dir)
-  ? readdirSync(dir).filter((file) => /^[^.]+\.md$/.test(file)).map((file) => readFileSync(`${dir}${file}`, 'utf8'))
-    .filter((text) => /^draft:\s*true\s*$/m.test(text)).map((text) => /^slug:\s*(\S+)/m.exec(text)?.[1]).filter(Boolean)
+/** The main-language post files (no language suffix): their text and slug (the `slug` line, else the file name). */
+const files = existsSync(dir)
+  ? readdirSync(dir).filter((file) => /^[^.]+(\.[^.]+)?\.md$/.test(file) && !/\.[a-z]{2}(-[A-Z]{2})?\.md$/.test(file)).map((file) => {
+      const text = readFileSync(`${dir}${file}`, 'utf8')
+      return { text, slug: /^slug:\s*(\S+)/m.exec(text)?.[1] ?? file.replace(/\.md$/, '').replace(/^\d+\./, '') }
+    })
   : []
+const today = site.now.slice(0, 10)
+/** Drafts (`draft: true`) and scheduled posts (dated after the test day): neither may be online. */
+const hidden = files.filter(({ text }) => /^draft:\s*true\s*$/m.test(text) || (/^date:\s*(\S+)/m.exec(text)?.[1] ?? '') > today)
 
 /** The news page of the main language: the first link of the header that leads to a page with a feed. */
 async function newsPage(page: import('@playwright/test').Page) {
@@ -22,14 +27,18 @@ async function newsPage(page: import('@playwright/test').Page) {
   throw new Error('no page in the header links a news feed')
 }
 
-test('a draft post has no page and is in no list or feed', async ({ page, request }) => {
-  // Wrong behaviour caught: a volunteer's unchecked text online because the build kept files marked as drafts.
-  test.skip(drafts.length === 0, 'the template has no draft sample')
+test('a draft or scheduled post has no page and is in no list, feed, sitemap or llms.txt', async ({ page, request }) => {
+  // Wrong behaviour caught: an unchecked text, or a post before its day, online because the build kept it.
+  test.skip(hidden.length === 0, 'the template has no draft or scheduled sample')
   const news = await newsPage(page)
   const feed = await (await request.get(`${news}/rss.xml`)).text()
-  for (const slug of drafts) {
-    expect((await request.get(`${news}/${slug}`)).status(), `draft ${slug}`).toBe(404)
+  const sitemap = await (await request.get('/sitemap.xml')).text()
+  const llms = await (await request.get('/llms.txt')).text()
+  for (const { slug } of hidden) {
+    expect((await request.get(`${news}/${slug}`)).status(), `post ${slug}`).toBe(404)
     expect(feed, `feed without ${slug}`).not.toContain(`/${slug}<`)
+    expect(sitemap, `sitemap without ${slug}`).not.toContain(`/${slug}<`)
+    expect(llms, `llms.txt without ${slug}`).not.toMatch(new RegExp(`/${slug}(\\.md)?\\)`))
     await expect(page.locator(`main a[href$="/${slug}"]`), `news list without ${slug}`).toHaveCount(0)
   }
 })
@@ -50,14 +59,32 @@ test('each language has a feed with the posts of its news page', async ({ page, 
   expect(news).toBeTruthy()
 })
 
-test('a tag on a post leads to the list of its posts', async ({ page }) => {
+test('a tag on a post leads to its own page with the posts that carry it', async ({ page }) => {
   await newsPage(page)
-  const post = page.locator('main li h2 a').first()
+  const post = page.locator('main li :is(h2, h3) a').first()
   await open(page, (await post.getAttribute('href'))!)
-  const tag = page.locator('main a[href*="tag="]').first()
+  const tag = page.locator('main a[rel="tag"]').first()
   test.skip(!(await tag.count()), 'the newest post has no tag')
   const name = (await tag.textContent())!.trim()
-  await Promise.all([page.waitForURL(/[?&]tag=/), tag.click()])
-  await expect(page.locator('main p').filter({ hasText: name }).first()).toBeVisible()
-  expect(await page.locator('main li h2 a').count(), 'posts with the tag').toBeGreaterThan(0)
+  const href = (await tag.getAttribute('href'))!
+  // Wrong behaviour caught: a tag link to a filter of the list or a missing page, or a tag page with other posts.
+  expect(href, 'a tag has its own address').not.toContain('?')
+  expect((await open(page, href))?.status(), href).toBe(200)
+  await expect(page.locator('h1')).toHaveText(name)
+  const listed = page.locator('main li :is(h2, h3) a')
+  expect(await listed.count(), 'posts with the tag').toBeGreaterThan(0)
+  for (const link of await listed.evaluateAll((as) => as.map((a) => a.getAttribute('href')!))) {
+    await open(page, link)
+    await expect(page.locator('main a[rel="tag"]').filter({ hasText: name }), `${link} carries ${name}`).not.toHaveCount(0)
+  }
+})
+
+test('a post links the next older post of the list', async ({ page }) => {
+  await newsPage(page)
+  const posts = await page.locator('main li :is(h2, h3) a').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))
+  test.skip(posts.length < 2, 'fewer than two posts')
+  // Wrong behaviour caught: older and newer swapped, or a link to a post the list does not show.
+  await open(page, posts[0]!)
+  await expect(page.locator('main a[rel="prev"]')).toHaveAttribute('href', posts[1]!)
+  await expect(page.locator('main a[rel="next"]')).toHaveCount(0)
 })

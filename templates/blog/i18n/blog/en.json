@@ -1,0 +1,16 @@
+{
+  "title": "News",
+  "lead": "What happened, and what comes next.",
+  "by": "by {names}",
+  "authors": "Written by",
+  "tags": "Tags",
+  "all": "Show all posts",
+  "empty": "No posts yet",
+  "feed": "RSS feed",
+  "latest": "All news",
+  "count": "{count, plural, one {# post} other {# posts}}",
+  "minutes": "{count} min read",
+  "older": "Older post",
+  "newer": "Newer post",
+  "pager": "Older and newer posts"
+}

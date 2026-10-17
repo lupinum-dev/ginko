@@ -336,6 +336,47 @@
   .prose img {
     border-radius: var(--radius-block);
   }
+
+  /* A photo in a text with its caption: the image, and on the next line of the same paragraph `*The caption*`. The
+     photo takes the text's width (its width and height attributes keep the space while it loads); the caption sits
+     small and muted under it. */
+  .prose > p:has(> img) > img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .prose > p:has(> img) > em:last-child {
+    display: block;
+    margin-top: 0.75em;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    font-style: normal;
+    color: var(--muted-foreground);
+  }
+
+  /* Code blocks: a line around them, and long lines wrap instead of widening the page (a block that scrolled sideways
+     would need to take keyboard focus, which Markdown cannot give it). A highlighted block (Shiki, in files) colours
+     its words for light and dark (github-light, catppuccin-mocha: 4.5:1 or more on the page); its own background is
+     left out, so the block sits on the page like the text around it. */
+  .prose > pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+  }
+
+  .prose > pre.shiki {
+    background-color: transparent !important;
+  }
+
+  .dark .prose .shiki,
+  .dark .prose .shiki span {
+    color: var(--shiki-dark, var(--foreground)) !important;
+  }
 }
 
 /* Print: the page's content with its address. Navigation, language and theme controls, the notices, the skip link and

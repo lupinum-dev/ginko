@@ -8,6 +8,7 @@ import { personJsonLd } from '@lupinum/ginko/basics'
 // of this page per template.
 const contact = Object.values(import.meta.glob<Component>('../components/people/TeamContact.vue', { eager: true, import: 'default' }))[0]
 const people = useGinko('people')
+const locale = useGinkoLocale()
 const { name, url } = useGinkoSite()
 const { t } = useI18n('people')
 usePageSeo(() => ({
@@ -20,6 +21,7 @@ usePageSeo(() => ({
     email: person.data.email,
     phone: person.data.phone,
     image: person.data.photo ? new URL(person.data.photo.url, url).href : undefined,
+    url: person.urls?.[locale.value] ? new URL(person.urls[locale.value]!, url).href : undefined,
     worksFor: { name, url },
   })),
 }))

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-/** People as a grid: photo (4:5) or initials, name, role, short bio and contact. Never a stock face for a named
- *  person: without a photo the initials stand in, on phones small and beside the name, so the bios stay close. */
+/** People as a grid: photo (4:5) or initials, name (a link to the person's page when people have pages), role, short
+ *  bio and contact. Never a stock face for a named person: without a photo the initials stand in, on phones small and
+ *  beside the name, so the bios stay close. */
 defineProps<{ items: GinkoItem<'people'>[] }>()
 const { t } = useI18n('people')
+const locale = useGinkoLocale()
 </script>
 
 <template>
@@ -17,7 +19,10 @@ const { t } = useI18n('people')
       <div class="flex flex-col gap-4" :class="!person.data.photo && 'max-sm:flex-row max-sm:items-center'">
         <InitialsAvatar v-if="!person.data.photo" :name="person.data.name" size="lg" class="max-sm:size-12 max-sm:text-body" />
         <div class="flex min-w-0 flex-col gap-1">
-          <h2 class="text-h3">{{ person.data.name }}</h2>
+          <h2 class="text-h3">
+            <NuxtLink v-if="person.urls?.[locale]" :to="person.urls[locale]" class="underline-offset-4 hover:underline">{{ person.data.name }}</NuxtLink>
+            <template v-else>{{ person.data.name }}</template>
+          </h2>
           <p v-if="person.data.role" class="text-muted-foreground">{{ person.data.role }}</p>
         </div>
       </div>

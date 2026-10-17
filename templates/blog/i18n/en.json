@@ -1,0 +1,27 @@
+{
+  "home": {
+    "more": "More posts",
+    "authors": "Who writes here"
+  },
+  "author": {
+    "posts": "Posts by {name}",
+    "none": "No posts yet."
+  },
+  "follow": "Follow Field Notes",
+  "newsletter": "Newsletter",
+  "blog": {
+    "title": "Posts",
+    "lead": "Everything we have written, newest first.",
+    "tags": "Topics",
+    "latest": "All posts"
+  },
+  "people": {
+    "title": "About",
+    "lead": "Field Notes is the notebook of two friends who look for nature where they live: in parks and back yards, along the river and on the coast an hour away."
+  },
+  "site": {
+    "footer": {
+      "contact": "Follow and write"
+    }
+  }
+}

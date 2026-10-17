@@ -4,9 +4,11 @@
   "app/composables/useBlog.ts",
   "app/pages/news/[slug].vue",
   "app/pages/news/index.vue",
+  "app/pages/news/tags/[tag].vue",
   "i18n/blog/ar.json",
   "i18n/blog/de.json",
   "i18n/blog/en.json",
   "i18n/blog/fr.json",
+  "modules/blog-feed.ts",
   "server/middleware/news-feed.ts"
 ]
