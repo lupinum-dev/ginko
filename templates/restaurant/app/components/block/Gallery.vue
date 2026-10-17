@@ -33,10 +33,11 @@ function focusPhoto(i: number) {
 
 <template>
   <div>
-    <ul ref="list" :class="few ? ['grid gap-2 md:gap-3', columns[props.images.length]] : 'flex flex-col gap-2 sm:flex-row sm:flex-wrap md:gap-3'">
+    <ul ref="list" :class="few ? ['grid gap-2 break-inside-avoid md:gap-3', columns[props.images.length]] : 'flex flex-col gap-2 sm:flex-row sm:flex-wrap md:gap-3'">
       <li
         v-for="(image, i) in props.images"
         :key="image.url"
+        class="break-inside-avoid"
         :class="!few && 'sm:max-w-(--max) sm:grow-(--grow) sm:basis-(--basis) md:max-w-(--max-md) md:basis-(--basis-md)'"
         :style="few ? undefined : {
           '--grow': ratio(image),

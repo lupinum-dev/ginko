@@ -140,9 +140,11 @@ describe('todayState with special hours, plans and holidays', () => {
 })
 
 describe('upcomingClosures with holidays', () => {
-  it('adds holidays on which the house is closed', () => {
+  // Wrong behaviour caught: the list of closures names a holiday on the weekly rest day (26 October 2026, a Monday),
+  // which closes nothing a guest could have come on.
+  it('adds holidays on which the house is closed, except on its rest day', () => {
     const ctx = { hours: { ...baseHours, holidays: 'closed' as const } }
-    expect(upcomingClosures({ ...ctx, hours: { ...ctx.hours, exceptions: [winter] } }, '2026-10-12', 20).map((e) => e._id)).toEqual(['holiday-2026-10-26', 'holiday-2026-11-01'])
+    expect(upcomingClosures({ ...ctx, hours: { ...ctx.hours, exceptions: [winter] } }, '2026-10-12', 20).map((e) => e._id)).toEqual(['holiday-2026-11-01'])
   })
   it('does not list holidays on which the house opens like on Sunday', () => {
     expect(upcomingClosures({ hours: baseHours }, '2026-10-12', 20)).toEqual([])

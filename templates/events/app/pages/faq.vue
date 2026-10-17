@@ -14,7 +14,7 @@ usePageSeo(() => ({ title: t('faq.title'), description: t('faq.lead'), jsonLd: i
     <BlockPageHeader :title="t('faq.title')" :lead="t('faq.lead')" />
     <div class="mx-auto max-w-page px-gutter">
       <div class="max-w-3xl">
-        <BlockFaq v-if="items.length" :items="items" />
+        <BlockFaq v-if="items.length" :items="items" :level="2" />
         <BlockEmpty v-else :title="t('faq.empty')" path="content/faq/" />
       </div>
     </div>

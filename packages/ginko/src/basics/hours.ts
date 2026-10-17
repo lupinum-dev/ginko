@@ -176,13 +176,16 @@ export function noticesOn<N extends { data: { until?: string | null } }>(notices
   return notices.filter((n) => n.data.until !== today)
 }
 
-/** Public holidays on which the house is closed, starting after `today` and within `days` days. */
+/**
+ * Public holidays on which the house is closed, starting after `today` and within `days` days. A holiday on a day the
+ * week (or the running plan) closes anyway is left out: it closes nothing the visitor could have come on.
+ */
 export function upcomingHolidayClosures(ctx: HoursContext, today: string, days: number): HolidayClosure[] {
   const out: HolidayClosure[] = []
   for (let i = 1; i <= days; i++) {
     const date = addDays(today, i)
     const rule = hoursOn(ctx, date)
-    if (rule.source === 'holiday' && rule.closed && rule.holiday) {
+    if (rule.source === 'holiday' && rule.closed && rule.holiday && !ruleOfDay(weekFor(ctx, date).week.find((d) => d.day === weekdayOf(date)), 'week').closed) {
       out.push({ _id: `holiday-${date}`, when: { from: date, to: date }, closed: true, holiday: rule.holiday })
     }
   }

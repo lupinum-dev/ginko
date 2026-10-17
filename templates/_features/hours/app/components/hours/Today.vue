@@ -2,7 +2,8 @@
 /**
  * The answer to "are you open?": open now and until when, opening later today, or closed today with the owner's
  * reason or the public holiday, then today's times or the next opening. The state is a word, the dot only repeats it.
- * The clock moves on every minute, so a page left open stays true. `small`: in small text, for the footer.
+ * The clock moves on every minute, so a page left open stays true; on paper it would go stale, so it does not print.
+ * `small`: in small text, for the footer.
  */
 defineProps<{ small?: boolean }>()
 const { state, todayRule, nextOpen, now } = useHours()
@@ -40,7 +41,7 @@ const next = computed(() => (state.value.kind === 'over' || state.value.kind ===
 </script>
 
 <template>
-  <div class="flex flex-col gap-1" data-hours-now>
+  <div class="flex flex-col gap-1 print:hidden" data-hours-now>
     <p class="flex flex-wrap items-center gap-x-2 tabular-nums" :class="small ? 'text-small' : 'text-body'">
       <span class="inline-flex items-center gap-2 font-semibold">
         <span class="size-2.5 shrink-0 rounded-full" :class="open ? 'bg-success' : 'bg-muted-foreground'" aria-hidden="true" />

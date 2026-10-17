@@ -3,9 +3,10 @@ import { spansOf, weekdayOf, type DayHours, type HourPlan } from '@lupinum/ginko
 import { ChevronDown } from '@lucide/vue'
 
 /**
- * The week's opening hours with today marked (today's row says what applies today: a closure or other hours win),
- * the hours that start soon (winter hours, new hours from a date; folded, one line each), the rule for public holidays
- * and the closures ahead. Times in tabular numbers; a span never breaks across lines. Place it in a section that gives
+ * The week's opening hours with today in bold and the word "Today" (no background: the rows already have lines; today's
+ * row says what applies today, a closure or other hours win), the hours that start soon (winter hours, new hours from a
+ * date; folded, one line each), the rule for public holidays and the closures ahead (a single day with its weekday,
+ * flush with the rows of the week). Times in tabular numbers; a span never breaks across lines. Place it in a section that gives
  * the heading ("Opening hours"); `level` is the heading level of "Closures" inside it (default 3, under an h2).
  */
 const props = withDefaults(defineProps<{ level?: 3 | 4 }>(), { level: 3 })
@@ -27,6 +28,8 @@ const dateRange = (from: string, to: string) => {
   const full = { ...dayMonth, year: 'numeric' } as const
   return `${format.date(from, full)} – ${format.date(to, full)}`
 }
+/** A closure's dates; a single day with its weekday ("Fri 27 November"), so the visitor sees which day is lost. */
+const closureDates = (from: string, to: string) => (from === to ? format.date(from, { weekday: 'short', ...dayMonth }) : dateRange(from, to))
 const holidayRule = computed(() => {
   const rule = ctx.value.hours.holidays ?? 'sunday'
   return rule === 'normal' ? undefined : t(rule === 'closed' ? 'holidays.closed' : 'holidays.sunday')
@@ -70,13 +73,13 @@ const reasonLang = (closure: (typeof closures.value)[number]) => ('holiday' in c
             v-for="day in week.days"
             :key="day.day"
             :aria-current="day.day === todayKey ? 'date' : undefined"
-            class="border-b first:border-t aria-[current=date]:bg-muted"
+            class="border-b first:border-t"
           >
-            <th scope="row" class="py-3 ps-3 pe-6 text-start align-baseline font-normal">
+            <th scope="row" class="py-3 pe-6 text-start align-baseline font-normal">
               <span :class="day.day === todayKey && 'font-semibold'">{{ weekday(day.day) }}</span>
               <span v-if="day.day === todayKey" class="ms-2 text-small text-muted-foreground">{{ t('today') }}</span>
             </th>
-            <td class="py-3 pe-3 text-end align-baseline" :class="day.day === todayKey && 'font-semibold'">
+            <td class="py-3 text-end align-baseline" :class="day.day === todayKey && 'font-semibold'">
               {{ day.day === todayKey ? todayTimes : timesOf(day) }}
             </td>
           </tr>
@@ -94,8 +97,8 @@ const reasonLang = (closure: (typeof closures.value)[number]) => ('holiday' in c
         <caption class="sr-only">{{ planTitle(coming.plan, coming.starts, coming.ends) }}</caption>
         <tbody>
           <tr v-for="day in coming.plan.week" :key="day.day" class="border-b first:border-t">
-            <th scope="row" class="py-2 ps-3 pe-6 text-start font-normal">{{ weekday(day.day) }}</th>
-            <td class="py-2 pe-3 text-end">{{ timesOf(day) }}</td>
+            <th scope="row" class="py-2 pe-6 text-start font-normal">{{ weekday(day.day) }}</th>
+            <td class="py-2 text-end">{{ timesOf(day) }}</td>
           </tr>
         </tbody>
       </table>
@@ -105,7 +108,7 @@ const reasonLang = (closure: (typeof closures.value)[number]) => ('holiday' in c
       <component :is="`h${props.level}`" class="text-body font-semibold">{{ t('closures') }}</component>
       <ul class="flex flex-col">
         <li v-for="closure in closures" :key="closure._id" class="flex flex-wrap justify-between gap-x-6 border-b py-2 first:border-t">
-          <span class="tabular-nums">{{ dateRange(closure.when.from, closure.when.to) }}</span>
+          <span class="tabular-nums">{{ closureDates(closure.when.from, closure.when.to) }}</span>
           <span class="text-muted-foreground"><span :lang="reasonLang(closure)">{{ reasonOf(closure) || t('closedDays') }}</span></span>
         </li>
       </ul>
