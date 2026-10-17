@@ -1,3 +1,3 @@
 ---
-registryCourt: Amtsgericht de Musterstadt (tribunal d’instance)
+# registryCourt: Amtsgericht Leipzig (tribunal d’instance)
 ---

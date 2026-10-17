@@ -1,7 +1,7 @@
 ---
 title: "Shift planning for care homes and small clinics."
 lead: "Planwerk is a web app for the monthly rota. It checks rest periods and qualifications while you plan, shows each person their shifts on their phone, and hands the hours to payroll."
-trialUrl: https://app.example.com/signup
+trialUrl: https://app.planwerk.example/signup
 image:
   src: /media/rota.svg
   alt: "Illustration of a week’s shift plan: one row per person, early, late and night shifts as blocks, and one open shift"
