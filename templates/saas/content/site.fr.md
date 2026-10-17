@@ -1,3 +1,3 @@
 ---
-registryCourt: Tribunal local (Amtsgericht) de Musterstadt
+registryCourt: Amtsgericht de Musterstadt (tribunal d’instance)
 ---
