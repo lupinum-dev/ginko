@@ -86,6 +86,7 @@ Other hosts have the same kind of build hook. GitHub pauses scheduled workflows 
 | Command | What |
 |---|---|
 | `npm run dev` | the site with live reload on http://localhost:3000; it also shows drafts and scheduled posts |
+| `npm run check` | Checks the content files in a few seconds: missing or wrong fields, dates, links between pages and files in `public/`. Each problem names the file and the field. |
 | `npm run build` | the production build in `.output/` |
 | `npm run preview` | runs that build locally |
 | `npm run generate` | static files instead of a server |
@@ -118,10 +119,13 @@ The text, in Markdown. Headings start at `##`.
   line. `npm run dev` shows it, so you can read it first.
 - **Schedule:** give it a `date` in the future. It stays off the site like a draft until the first build on or after
   that day (see "A daily rebuild"). `npm run dev` shows it.
-- **Publish:** a `date` of today or earlier and no `draft` line. Commit and push; the next build puts it online.
+- **Publish:** remove the `draft` line and set `date` to the day it goes online (the post shows this date, and lists
+  sort by it). Commit and push; the next build puts it online.
 - **Translation:** `swifts-over-the-car-park.de.md` with `title`, `slug` (its German address), `description`, `tags`
   and `image.alt` in German, and the text. Date, authors and the photo come from the main file. A post without a
-  translation is not shown in that language.
+  translation is not shown in that language. The translation lists the `tags` in the same order as the main file: when
+  you add, remove or move a tag in the main file, do the same at the same place in the translation. `npm run check`
+  reports a translation with more tags than the main file.
 - **Cover photo:** optional. Without one, lists and the post show text only. Put the file in `public/media/`; cover
   photos are shown at 3:2.
 - **Photo with a caption in the text:** put the photo next to the post (`content/posts/rock-pools.jpg`); the build
@@ -144,21 +148,26 @@ post.
 ## Edit content
 
 Every text is a Markdown file. The main language has no suffix (`home.md`); a translation adds the language code
-(`home.de.md`) and repeats only what it translates.
+(`home.de.md`) and repeats only what it translates. After each change, run `npm run check`.
+
+Files point to other entries by id: the folder and the file name without number and language, so
+`content/people/1.ida-wren.md` is `people/ida-wren`. The `slug` is only the address on the site: renaming a file
+breaks the references to it, changing the `slug` does not. Write dates as `2026-10-24`.
 
 | On the site | File |
 |---|---|
 | Home page: title and lead | `content/home.md`, `content/home.de.md` |
 | Posts | `content/posts/<name>.md` (see "Write a post") |
 | Authors (the About page and one page each) | `content/people/<n>.<name>.md`: `name`, `role`, `bio`; no photo needed, the site shows initials. A post names them in `authors` (`people/ida-wren`) |
-| Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters), `until` (the last day it shows) |
+| Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters; in quotes when it contains a colon) and `until` (the last day it shows, like `2026-12-31`; without it the notice stays until you delete the file); a translation has only `text` |
 | Email (footer, imprint) | `content/site.md`; add `legalName`, `street`, `postalCode` and `city` if your imprint needs them |
 | Privacy policy, terms of use, imprint | `content/legal/` (placeholders: replace them before you go live) |
 | Site name, description for search engines | `ginko.config.ts` (`name`, `seo.description`) |
 | Menu, the line under the name in the footer, profiles elsewhere, newsletter | `app/app.config.ts` |
 | Section titles, the About page's title and lead, the posts page's title and lead | `i18n/<language>.json`; the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins |
 
-Notices show newest first: put the newest one at the top (the smallest number). At most two show at once.
+Notices show in file-number order, smallest first: give a new notice a smaller number than the others (`0.` works,
+and numbers may have gaps, so older notices keep theirs). At most two show at once.
 
 ## Follow: feed and newsletter
 
@@ -172,12 +181,16 @@ policy.
 
 ## Make it yours
 
-- **Name and menu.** `name` in `ginko.config.ts`; `nav` in `app/app.config.ts`, at most six links.
+- **Name and menu.** `name` in `ginko.config.ts` (header, footer, share cards, search engines, and the label screen
+  readers announce for the feed links). The sample name also appears as text in the About page's lead (`people.lead`
+  in `i18n/<language>.json`), so rewrite it; search `content/` and `i18n/` for it and replace what is left. `nav` in
+  `app/app.config.ts`, at most six links.
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 120, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name.
 - **Colour.** `--brand` and `--brand-foreground` in `app/assets/css/main.css`, once for light and once for dark
-  (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). Keep text
-  on the colour at 4.5:1 or more; `DESIGN.md` has the rules and the colours of the other templates.
+  (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). Text on the
+  colour needs a contrast of at least 4.5:1 in both modes; check each pair with a contrast checker (for example
+  webaim.org/resources/contrastchecker). `DESIGN.md` has the rules and the colours of the other templates.
 - **Fonts.** `--font-body` (and optionally `--font-heading`) in `main.css`. `@nuxt/fonts` downloads the font at build
   time and serves it from your site.
 - **Addresses.** The words of the addresses per language are `segments` in `app/routes.ts`: `posts` (`/posts`,
@@ -217,6 +230,7 @@ prefix.
 | Feature | Delete |
 |---|---|
 | Topic pages | `app/pages/news/tags/`, and the tag links in `app/pages/news/[slug].vue`, `app/pages/news/index.vue` and `app/pages/index.vue` (the "Topics" section); keep `tags` in the posts as keywords for search engines |
+| Authors (a blog without names) | the `authors` line in every post and the files in `content/people/`; posts, lists, the feed and the home page then show no names. To remove the pages too, also follow the Author pages and About page rows |
 | Author pages | `route` of the `people` brick in `ginko.config.ts` and `app/pages/about/[slug].vue`; names are then plain text |
 | The About page | `pages.team`, its `nav` item, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, `"people"` in `package.json` → `ginko.features`; keep the `people` brick while posts name authors |
 | Feed | `server/middleware/news-feed.ts`, the feed link in `app/pages/news/index.vue` and `app/components/site/FooterStatus.vue` |

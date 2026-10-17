@@ -7,7 +7,7 @@
     "posts": "Beiträge von {name}",
     "none": "Noch keine Beiträge."
   },
-  "follow": "Field Notes folgen",
+  "follow": "{name} folgen",
   "newsletter": "Newsletter",
   "blog": {
     "title": "Beiträge",

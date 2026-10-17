@@ -16,7 +16,7 @@ export default defineSite({
     color: '#4f46e5',
   },
   url: siteUrl('https://example.com'),
-  // "Today" for the build: a post dated after it is not published yet (content/posts/, README "Schedule a post").
+  // "Today" for the build: a post dated after it is not published yet (content/posts/, README "Write a post").
   timeZone: 'Europe/Berlin',
   locales,
   languages: { en: 'en-GB', de: 'de-DE' },
