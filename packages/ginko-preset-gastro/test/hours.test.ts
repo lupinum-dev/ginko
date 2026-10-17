@@ -149,6 +149,16 @@ describe('upcomingClosures with holidays', () => {
   it('does not list holidays on which the house opens like on Sunday', () => {
     expect(upcomingClosures({ hours: baseHours }, '2026-10-12', 20)).toEqual([])
   })
+  // Wrong behaviour caught: the rest-day check reads the standard week instead of the plan running on that date
+  // (Immaculate Conception, Tuesday 8 December 2026).
+  it.each([
+    ['the running plan closes that weekday: the holiday adds nothing', weekWith({ tu: { day: 'tu', closed: true } }), standard, []],
+    ['the running plan opens that weekday although the standard week closes it: the holiday is listed', standard, weekWith({ tu: { day: 'tu', closed: true } }), ['holiday-2026-12-08']],
+  ])('%s', (_name, planWeek, standardWeek, expected) => {
+    const plan: HourPlan = { _id: 'p4', from: '2026-11-01', to: '2027-03-31', yearly: true, week: planWeek }
+    const hours = { week: standardWeek, exceptions: [] as Exception[], holidays: 'closed' as const }
+    expect(upcomingClosures({ hours, plans: [plan] }, '2026-12-01', 10).map((e) => e._id)).toEqual(expected)
+  })
 })
 
 describe('upcomingPlans', () => {
