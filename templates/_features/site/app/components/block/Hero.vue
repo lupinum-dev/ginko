@@ -25,10 +25,10 @@ const titleId = useId()
         <h1 :id="titleId" class="text-h1">{{ title }}</h1>
         <p v-if="lead" class="max-w-3xl text-lead text-muted-foreground">{{ lead }}</p>
         <div v-if="primary || secondary" class="mt-2 flex flex-wrap gap-3">
-          <Button v-if="primary" as-child size="lg" class="max-sm:w-full">
+          <Button v-if="primary" as-child size="lg" class="h-auto min-h-12 max-w-full py-3 text-center whitespace-normal max-sm:w-full">
             <NuxtLink :to="primary.to">{{ primary.label }}</NuxtLink>
           </Button>
-          <Button v-if="secondary" as-child variant="outline" size="lg" class="max-sm:w-full">
+          <Button v-if="secondary" as-child variant="outline" size="lg" class="h-auto min-h-12 max-w-full py-3 text-center whitespace-normal max-sm:w-full">
             <NuxtLink :to="secondary.to">{{ secondary.label }}</NuxtLink>
           </Button>
         </div>
