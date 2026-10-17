@@ -63,6 +63,7 @@ rebuild (for example a Vercel cron job or a scheduled GitHub Action).
 | Command | What |
 |---|---|
 | `npm run dev` | the site with live reload on http://localhost:3000; drafts show here |
+| `npm run check` | Checks the content files in a few seconds: missing or wrong fields, dates, prices, links between pages and files in `public/`. Each problem names the file and the field. |
 | `npm run build` | the production build in `.output/`; drafts are left out |
 | `npm run generate` | static files instead of a server |
 | `npm run preview` | runs the build locally |
@@ -77,12 +78,22 @@ Every text is a Markdown file. The main language has no suffix (`about.md`); a t
 (`about.de.md`, `about.fr.md`) and repeats only what it translates: prices, dates, versions, links and images come
 from the main file. A page (a post, a free page or a legal text) shows in a language only when its translation has
 every required text. Plans, releases and questions without a translation show in the main language. The number at the
-start of a file name sets the order.
+start of a file name sets the order. After each change, run `npm run check`.
+
+Files point to other entries by id: the folder and the file name without number and language, so
+`content/people/1.lena-hartmann.md` is `people/lena-hartmann`. The `slug` is only the address on the site: renaming a
+file breaks the references to it, changing the `slug` does not. Write dates as `2026-10-24` and prices as a plain
+number in euros (`95` or `12.50`).
+
+The rows of `features` and `facts` in `content/home.md` and of `included` in a plan are translated row by row: a
+translation lists them in the same order as the main file. When you add, remove or move a row in the main file, do the
+same at the same place in each translation (write `- {}` for a row with nothing to translate). `npm run check` reports
+a translation with more rows than the main file.
 
 | On the site | File |
 |---|---|
 | Home page: what the product does and for whom, lead, picture of the product, the link to the free trial, the features, the security and data facts | `content/home.md` (`title`, `lead`, `image`, `trialUrl`, `features` and `facts` as rows of `title` and `text`; and `home.de.md`, `home.fr.md`) |
-| Plans and prices | `content/pricing/<n>.<name>.md`: `name`, `summary` (for whom), `pricing` (`price` or `onRequest`, always one of the two), `monthly` and `yearly` (in euros, `89` or `89.50`; both required with `pricing: price`), `included` (rows of `item`), `recommended: true` on one plan, `actionLabel`, `actionUrl` (the sign-up page of your app; empty: the contact page, or without one an email to the address of `content/site.md` with the plan's name in the subject) |
+| Plans and prices | `content/pricing/<n>.<name>.md`: `name`, `summary` (for whom), `pricing` (`price` or `onRequest`, always one of the two), `monthly` and `yearly` (in euros, `89` or `89.50`; both required with `pricing: price`; write the number without quotes or a thousands separator: `2290`, not `2.290`, which reads as 2.29), `included` (rows of `item`), `recommended: true` on one plan, `actionLabel`, `actionUrl` (the sign-up page of your app; empty: the contact page, or without one an email to the address of `content/site.md` with the plan's name in the subject) |
 | Changelog | `content/changelog/v<version>.md` (`v4-6-0.md`: a dot in a file name reads as a language): `version`, `date`, then the text: one sentence (the summary on the home page and in the feed), a line `<!-- more -->`, and the changes under `### New`, `### Improved` and `### Fixed` |
 | FAQ | `content/faq/<n>.<name>.md`: `question`, `answer`; the pricing page shows the first three, so keep billing, cancellation and data export at the top |
 | Blog | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/lena-hartmann]`), `tags`, `image` (the cover, 3:2); `draft: true` keeps a post off the site |
@@ -90,7 +101,7 @@ start of a file name sets the order.
 | Customer logos | `content/logos/<n>.<name>.md`: `name`, `image` (an SVG or PNG in `public/logos/`), `url` |
 | Quote on the home page | `content/quotes/<n>.<name>.md`: `text`, `name`, `role`; the home page shows the first |
 | Security, about us, contact and other pages | `content/pages/<n>.<name>.md`; each translation sets its own address with `slug:`. The contact page shows the address, email and phone of `content/site.md` under its title (`app/components/pages/Top.vue`) |
-| Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters), `until` (the last day it shows) |
+| Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters; in quotes when it contains a colon), `until` (the last day it shows, like `2026-12-31`, in the `timeZone` of `ginko.config.ts`; without it the notice stays until you delete the file). A translation has only `text`. |
 | Name, address, register entry, VAT number, email, phone | `content/site.md` (footer, imprint, the contact page, search engines) |
 | Privacy policy, terms of service, imprint | `content/legal/` (placeholders for Germany: replace them before you go live) |
 | Site name, description for search engines, currency | `ginko.config.ts` (`name`, `seo.description`, `currency`) |
@@ -113,11 +124,16 @@ date of each release; the blog has its own at `<blog page>/rss.xml`.
 **Free trial.** "Start free trial" is a link to your app (`trialUrl` in `content/home.md`, and `actionUrl` of each
 plan). The site itself has no sign-up form and sends no data anywhere.
 
-Notices show newest first: put the newest one at the top (the smallest number). At most two show at once.
+Notices show in file-number order, smallest first: give the newest a smaller number than the others (the sample is
+`5.`; `0.` works, and numbers may have gaps). At most two show at once.
 
 ## Make it yours
 
-- **Name and menu.** `name` in `ginko.config.ts`; `nav` in `app/app.config.ts` holds at most six items: a page of
+- **Name.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name also appears as
+  text in `seo.description` in `ginko.config.ts`, `legalName` in `content/site.md` and the sample texts in
+  `content/` (home, pages, FAQ, people, posts, changelog, notices); `grep -rl Planwerk content` lists them. Replace what
+  is left. On phones the header can show a shorter name: set `shortName` in `app/app.config.ts` (the commented line).
+- **Menu.** `nav` in `app/app.config.ts` holds at most six items: a page of
   `ginko.config.ts` (`{ page: 'pricing', label: { … } }`, label per language, the same words as the page's title) or
   a page of `content/pages/` by id (`{ entry: 'pages/security' }` is `content/pages/1.security.md`). `footer` takes the
   same items and an address on another site: `{ url: 'https://app.example.com/login', label: { … } }` is the
@@ -126,11 +142,14 @@ Notices show newest first: put the newest one at the top (the smallest number). 
   `app/app.config.ts`. Without it, the header shows the name.
 - **Picture of the product.** `content/home.md` shows `public/media/rota.svg`, a neutral drawing of a shift plan.
   Replace it with a screenshot of your product (16:9, PNG or WebP, about 1600 × 900 pixels) and describe it in `alt`
-  in each language file.
+  in each language file. If you keep the drawing, change its violets (`#7c3aed`, `#5b21b6`, `#a78bfa`) in
+  `public/media/rota.svg` to your colour.
 - **Colour.** `--brand` and `--brand-foreground` in `app/assets/css/main.css`, once for light and once for dark
   (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). This
-  template uses violet (`#6d28d9`, dark `#c4b5fd`, and a deep violet `#4c1d95` for the closing band in dark mode).
-  Keep text on the colour at 4.5:1 or more; `DESIGN.md` has the rules.
+  template uses violet (`--brand` `#6d28d9`, dark `#c4b5fd`). In dark mode the closing band uses
+  `--brand-surface: #4c1d95` with `--brand-surface-foreground: #f5f3ff` (in `.dark`); set `--brand-surface` to a deep
+  shade of your colour and `--brand-surface-foreground` to the text colour on it, or delete both to use `--brand`. Text on the colour needs a contrast of at least 4.5:1 in both modes; check each pair
+  with a contrast checker (for example webaim.org/resources/contrastchecker). `DESIGN.md` has the rules.
 - **Fonts.** `--font-body` in `main.css`. `@nuxt/fonts` downloads the fonts at build time and serves them from your
   site.
 - **Organisation type.** `organization: 'Organization'` in `app/app.config.ts` tells search engines what you are;
@@ -187,7 +206,7 @@ Links in the content name pages by their key (`[changelog]($page.changelog)`). A
 | Pricing | `content/pricing/`, the `pricing` brick and `pages.pricing` in `ginko.config.ts`, its `nav` item, the hero's second button in `app/pages/index.vue`, `app/pages/pricing.vue`, `app/components/pricing/`, `app/bricks/pricing.ts`, `app/composables/usePricing.ts`, `i18n/pricing/`, the `pricing` keys in `i18n/<language>.json`, and `"pricing"` in `package.json` → `ginko.features` |
 | Changelog | `content/changelog/`, the `changelog` brick and `pages.changelog`, its `nav` item, the "Latest changes" section and `useLatestReleases` in `app/pages/index.vue`, `app/pages/changelog.vue`, `app/components/changelog/`, `app/composables/useChangelog.ts`, `app/utils/changelog.ts`, `server/middleware/changelog-feed.ts`, `i18n/changelog/`, the `changelog` keys in `i18n/<language>.json`, `"changelog"` in `ginko.features`; the links to `$page.changelog` in `content/posts/swap-requests*.md` and `content/pages/2.about*.md` |
 | FAQ | `content/faq/`, the `faq` brick and `pages.faq`, its `nav` item, `app/pages/faq.vue`, `app/components/pricing/More.vue` (the questions below the plans), `app/components/block/Faq.vue`, `app/components/ui/accordion/`, `i18n/faq/`, the `faq` and `pricing.questions` keys in `i18n/<language>.json`, `"faq"` in `ginko.features`; the links to `$page.faq` in `content/pages/3.contact*.md` |
-| Blog | `content/posts/`, `content/people/`, the `posts` and `people` bricks and `pages.news`, its `nav` item, `app/pages/news/`, `app/components/blog/`, `app/composables/useBlog.ts`, `server/middleware/news-feed.ts`, the team on the About page in `app/components/pages/Top.vue` (and its `about` keys in `i18n/<language>.json`), `i18n/blog/`, the `blog` keys in `i18n/<language>.json`, `"blog"` in `ginko.features` |
+| Blog | `content/posts/`, `content/people/`, the `posts` and `people` bricks and `pages.news`, `news` in `segments` of `app/routes.ts`, its `nav` item, `app/pages/news/`, `app/components/InitialsAvatar.vue`, `people` and `posts` in the import of `ginko.config.ts`, `app/components/blog/`, `app/composables/useBlog.ts`, `server/middleware/news-feed.ts`, the team on the About page in `app/components/pages/Top.vue` (and its `about` keys in `i18n/<language>.json`), `i18n/blog/`, the `blog` keys in `i18n/<language>.json`, `"blog"` in `ginko.features` |
 | Logos and quotes | `content/logos/`, `content/quotes/`, `public/logos/`, the `logos` and `quotes` bricks, the "Customers" section on the home page, `app/bricks/logos-quotes.ts`, `app/components/block/Logos.vue`, `Quote.vue`, `"logos-quotes"` in `ginko.features` |
 | Notices | `content/notices/`, the `notices` brick, `<SiteNotice />` in `app/layouts/default.vue`, `app/components/site/Notice.vue` |
 | A language | see "Add or remove a language" |

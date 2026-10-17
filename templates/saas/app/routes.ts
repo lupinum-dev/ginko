@@ -23,7 +23,7 @@ export const prefix = (locale: SiteLocale) => (locale === locales[0] ? '' : `/${
 /** A path of `localized`: a route keeps its `[slug]`, so the result still fits a collection's `route`. */
 type Localized<P extends string> = P extends `${string}[slug]${string}` ? `/${string}[slug]${string}` : `/${string}`
 
-/** One address per language from a path in its English form, with the words of `segments`: `localized('/news')`. */
+/** One address per language from a path in its English form, with the words of `segments`: `localized('/pricing')`. */
 export function localized<const P extends `/${string}`>(path: P): Record<SiteLocale, Localized<P>> {
   const words = (locale: SiteLocale) => path.split('/').map((part) => segments[part]?.[locale] ?? part).join('/')
   // Object.fromEntries loses the key and value types; the keys are exactly `locales`, and the words never touch `[slug]`.

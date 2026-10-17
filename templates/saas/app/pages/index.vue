@@ -13,6 +13,7 @@ const releases = await useLatestReleases(3)
 const security = useSiteLinks(() => [{ entry: 'pages/security' }])
 const path = useGinkoPath()
 const { t } = useI18n()
+const { name } = useGinkoSite()
 const trial = computed(() => ({ label: t('home.trial'), to: home.value.data.trialUrl }))
 const quote = computed(() => quotes.value.items[0])
 const features = computed(() => home.value.data.features.map((item) => ({ title: item.title, text: item.text })))
@@ -33,7 +34,7 @@ usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.
       <p class="text-small text-muted-foreground">{{ t('home.trialNote') }}</p>
     </BlockHero>
 
-    <BlockSection v-if="features.length" :title="t('home.features')" :lead="t('home.featuresLead')">
+    <BlockSection v-if="features.length" :title="t('home.features', { name })" :lead="t('home.featuresLead')">
       <BlockFeatures :items="features" />
     </BlockSection>
 
@@ -41,7 +42,7 @@ usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.
       <ChangelogLatest :items="releases" />
     </BlockSection>
 
-    <BlockSection v-if="logos.items.length || quote" :title="t('home.customers')" :lead="t('home.customersLead')">
+    <BlockSection v-if="logos.items.length || quote" :title="t('home.customers')" :lead="t('home.customersLead', { name })">
       <div class="flex flex-col gap-12">
         <BlockLogos v-if="logos.items.length" :items="logos.items" />
         <BlockQuote v-if="quote" :text="quote.data.text" :name="quote.data.name" :role="quote.data.role" />
