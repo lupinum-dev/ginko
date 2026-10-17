@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Info } from '@lucide/vue'
 
-// The owner's notices (content/notices/): every active one (the notices brick allows 5), in the owner's order, so the newest goes first. A notice
-// with "Shown until" leaves the site after that day by itself. There is no dismiss button: owners end notices by date.
+// The owner's notices (content/notices/): every active one (the notices brick allows 5), in the owner's order, so
+// the newest goes first. A notice with "Shown until" leaves the site after that day by itself. There is no dismiss
+// button: owners end notices by date.
 const notices = useGinko('notices')
 const { t } = useI18n('site')
 </script>
