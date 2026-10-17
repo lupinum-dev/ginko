@@ -1,5 +1,21 @@
 # @lupinum/ginko-i18n
 
+## 0.5.0
+
+### Patch Changes
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add the `dateLanguage` option to `createFormatters` and `createTranslator`: dates in another tag (`en-GB`) while numbers and words stay in `language`.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `//blog` on Nuxt 4: a doubled leading slash now answers with a 301 to `/blog` there too, instead of showing the home page.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix error pages: they get no canonical or hreflang and are noindex.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix page addresses in another case: `/Blog` now answers with a 301 to `/blog`, and the canonical link uses that spelling.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix doubled and trailing slashes: `//blog` and `/blog/` now answer with a 301 to `/blog`, so every page has one URL.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change dates in user-locale zones to follow the region of the browser's first language when it is the same language and the locale names no region (`en` reads 25/10/2026 in an en-GB browser); numbers and words stay in the locale's language.
+
 ## 0.4.0
 
 ### Minor Changes
