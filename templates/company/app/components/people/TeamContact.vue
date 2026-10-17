@@ -18,7 +18,7 @@ const link = 'inline-flex min-h-11 items-center text-primary underline underline
       <p class="font-medium tabular-nums">{{ line.hours }}</p>
       <ul class="flex flex-col text-small">
         <li><a :href="telHref(line.phone)" dir="ltr" :class="[link, 'tabular-nums']">{{ line.phone }}</a></li>
-        <li v-if="line.email"><a :href="`mailto:${line.email}`" dir="ltr" :class="[link, 'wrap-anywhere']">{{ line.email }}</a></li>
+        <li v-if="line.email"><a :href="`mailto:${line.email}`" dir="ltr" :class="link">{{ line.email }}</a></li>
       </ul>
     </section>
     <section aria-labelledby="contact-office" class="flex flex-col gap-2">
@@ -30,7 +30,7 @@ const link = 'inline-flex min-h-11 items-center text-primary underline underline
       </address>
       <ul v-if="office.phone || office.email" class="flex flex-col text-small">
         <li v-if="office.phone"><a :href="telHref(office.phone)" dir="ltr" :class="[link, 'tabular-nums']">{{ office.phone }}</a></li>
-        <li v-if="office.email"><a :href="`mailto:${office.email}`" dir="ltr" :class="[link, 'wrap-anywhere']">{{ office.email }}</a></li>
+        <li v-if="office.email"><a :href="`mailto:${office.email}`" dir="ltr" :class="link">{{ office.email }}</a></li>
       </ul>
     </section>
   </div>

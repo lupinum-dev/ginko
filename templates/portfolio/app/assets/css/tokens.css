@@ -188,7 +188,9 @@
     font-size: var(--text-body);
     line-height: var(--text-body--line-height);
     /* "anywhere", not "break-word": only "anywhere" lowers min-content width. Flex and grid items have
-       min-width: auto, so with break-word one long word still widens the item and then the page. */
+       min-width: auto, so with break-word one long word still widens the item and then the page. The cost:
+       a short label next to long text in a flex row that does not wrap needs shrink-0 (or whitespace-nowrap),
+       or it breaks mid-word. */
     overflow-wrap: anywhere;
   }
 

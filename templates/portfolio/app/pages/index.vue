@@ -35,7 +35,7 @@ usePageSeo(() => ({
       :primary="start ? { label: t('start.action'), to: start } : undefined"
     >
       <p v-if="email" class="text-small text-muted-foreground">
-        {{ t('start.or') }} <a :href="`mailto:${email}`" dir="ltr" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 wrap-anywhere">{{ email }}</a>
+        {{ t('start.or') }} <a :href="`mailto:${email}`" dir="ltr" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4">{{ email }}</a>
       </p>
     </BlockHero>
 
