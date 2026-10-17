@@ -15,7 +15,7 @@ npm install @lupinum/ginko @lupinum/ginko-content @lupinum/ginko-i18n @lupinum/g
 ```ts
 // ginko.config.ts
 import { defineSite } from '@lupinum/ginko'
-import { components, docsCollection } from '@lupinum/ginko-docs/config'
+import { components, docsCollection, homePages } from '@lupinum/ginko-docs/config'
 
 const locales = ['en', 'de'] as const
 
@@ -26,13 +26,13 @@ export default defineSite({
   timeZone: 'Europe/Vienna',
   locales,
   currency: 'EUR',
-  pages: { home: { en: '/', de: '/de' } }, // the start page is the page `home`
+  pages: { home: homePages({ locales }) }, // the start page is the page `home`
   components, // the Markdown components: ::callout, ::tabs, ::steps …
   bricks: { docs: docsCollection({ locales }) },
 })
 ```
 
-`docsCollection`, `blogCollections`, `blogPages` and `changelogPages` take one options object. `locales` is the same list as
+`docsCollection`, `blogCollections`, `homePages`, `blogPages` and `changelogPages` take one options object. `locales` is the same list as
 in `defineSite` (the layer accepts any `readonly string[]`; `defineSite` itself needs the tuple, hence `as const`).
 
 `components` is the registry of `@lupinum/ginko-components` (a dependency of the layer, re-exported here). With it, Ginko checks every component tag and prop in the

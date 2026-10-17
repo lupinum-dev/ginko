@@ -1,8 +1,8 @@
 // Docs template: the documentation of "Orbit SDK", a fictional TypeScript client for the fictional Orbit API, in
-// English and German. Every brick reads Markdown from content/ (source: 'files'), so the site runs without an account.
-// To let editors change a brick in Ginko Studio later, remove `source: 'files'` from it (README, "Move to the Studio").
+// English and German. The bricks of the docs layer read Markdown from content/, so the site runs without an account.
+// Moving to Ginko Studio later is done together with Lupinum (README, "Move to the Studio").
 import { defineSite } from '@lupinum/ginko'
-import { changelogCollection, changelogPages, components, docsCollection, docsHome } from '@lupinum/ginko-docs/config'
+import { changelogCollection, changelogPages, components, docsCollection, docsHome, homePages } from '@lupinum/ginko-docs/config'
 import { siteUrl } from './site-url.ts'
 
 // The first language is the main one: its pages have no prefix (/docs/…), the others do (/de/docs/…).
@@ -18,7 +18,7 @@ export default defineSite({
   locales,
   currency: 'EUR',
   pages: {
-    home: { en: '/', de: '/de' },
+    home: homePages({ locales }),
     changelog: changelogPages({ locales }),
   },
   // The Markdown components of the pages (::callout, ::tabs, ::steps …); Ginko checks every tag and prop against them.
