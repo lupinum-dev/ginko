@@ -26,14 +26,14 @@ week:
     closed: true
 exceptions:
   - when:
-      from: 2026-11-27
-      to: 2026-11-27
+      from: 2027-01-22
+      to: 2027-01-22
     reason: Team training
     closed: true
   - when:
-      from: 2026-12-24
-      to: 2027-01-06
-    reason: Christmas break
+      from: 2027-07-12
+      to: 2027-07-25
+    reason: Practice holiday
     closed: true
 holidayNoticeDays: 14
 holidays: closed

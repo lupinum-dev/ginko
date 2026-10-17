@@ -1,5 +1,5 @@
 ---
 exceptions:
-  - reason: Fortbildung des Teams
-  - reason: Weihnachtspause
+  - reason: Teamfortbildung
+  - reason: Praxisurlaub
 ---
