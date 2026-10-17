@@ -26,12 +26,29 @@ export const test = base.extend<{ clocked: void }>({
   }, { auto: true }],
 })
 
-/** At most this many pages per check: home, then the sitemap in its order. */
-const MAX_PAGES = 40
+/** At most this many detail pages (children of a list page) per list, so every route pattern is seen without a page per entry. */
+const DETAILS_PER_LIST = 3
 
-/** The site's pages: the paths of its sitemap (also of a sitemap index), home first. */
+/**
+ * A sample of the paths that shows every route pattern: a path is a detail when its parent path is itself a page that is
+ * neither `/` nor a locale root; the first DETAILS_PER_LIST details per parent are kept, and every other path. Order is kept.
+ */
+export function samplePages(paths: string[], locales: string[] = site.locales): string[] {
+  const all = new Set(paths)
+  const roots = new Set(['/', ...locales.map((l) => `/${l}`)])
+  const seen = new Map<string, number>()
+  return paths.filter((path) => {
+    const parent = path.replace(/\/$/, '').replace(/\/[^/]*$/, '') || '/'
+    if (parent === path || roots.has(parent) || !all.has(parent)) return true
+    const count = (seen.get(parent) ?? 0) + 1
+    seen.set(parent, count)
+    return count <= DETAILS_PER_LIST
+  })
+}
+
+/** The site's pages for screenshots and the heavier gates: the sitemap (also an index), home first, one sample per route pattern. */
 export async function sitePages(): Promise<string[]> {
-  return (await allPages()).slice(0, MAX_PAGES)
+  return samplePages(await allPages())
 }
 
 /** Every path of the sitemap (no limit), home first. */

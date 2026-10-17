@@ -585,7 +585,7 @@ async function runGates(name: string, gates: number[], modes: Mode[], results: R
           // The whole report next to the screenshots; the console shows its start.
           mkdirSync(shots, { recursive: true })
           writeFileSync(join(shots, `gate${gate}.log`), text)
-          record(gate, mode, ['', '', '', 'e2e', 'axe light + dark, keyboard path', `layout at 320, 390 and 1440, screenshots in ${relative(root, shots)}`, 'budgets (scripts gzip, LCP resource, CLS)'][gate]!, out.status === 0, `${text}\n(full report: ${relative(root, join(shots, `gate${gate}.log`))})`)
+          record(gate, mode, ['', '', '', 'e2e', 'axe light + dark, keyboard path', `layout at 320, 390 and 1440, screenshots in ${relative(root, shots)}`, 'budgets (scripts gzip, LCP resource, CLS)'][gate]!, out.status === 0, `${gateSummary(text)}\n(full report: ${relative(root, join(shots, `gate${gate}.log`))})`)
         }
       } finally {
         server.kill()
@@ -594,6 +594,12 @@ async function runGates(name: string, gates: number[], modes: Mode[], results: R
   } finally {
     cleanup()
   }
+}
+
+/** The unique `Error:` lines of a Playwright report (one per failed check); the raw text when there are none (a crash). */
+export function gateSummary(text: string): string {
+  const errors = [...new Set(text.split('\n').filter((l) => /^\s+Error: /.test(l)).map((l) => l.trim()))]
+  return errors.length ? errors.join('\n') : text
 }
 
 /** T4: the platform variant of the config (core `withoutFiles`: no `source` on any brick) passes checkSite. */
