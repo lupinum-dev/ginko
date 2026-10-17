@@ -1,9 +1,9 @@
 # Notes before release
 
-- Sample data that must change before going live: `content/site.md` (address "Beispielgasse 12" in Graz, register
-  number and phone number with zeros), the email address (`example.com`), the people in `content/people/` (fictional
+- Sample data that must change before going live: `content/site.md` (address "Ahornhofgasse 12" in Graz, the
+  commented register lines, the sample phone number), the email address (`.example` domain), the people in `content/people/` (fictional
   names and qualifications), the prices in `content/services/`, the phone hours and directions in `content/visit.md`
-  (tram stop "Beispielplatz"), the notice, the job opening on the About page and the legal texts (privacy policy and
+  (tram stop "Ahornhofplatz"), the notice, the job opening on the About page and the legal texts (privacy policy and
   imprint are marked placeholders for Austria; the payment and cancellation terms are a sample that matches the FAQ).
 - `bookingUrl` in `content/visit.md` is left out (a commented line shows its form): the sample books by phone and
   email. With it set, the booking buttons (home, contact, treatment pages) get a third one, "Book online".
