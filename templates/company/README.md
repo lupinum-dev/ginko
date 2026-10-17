@@ -72,11 +72,11 @@ build. Static files (`npm run generate`) would keep them until the next build, s
 
 ## Edit content
 
-Every text is a Markdown file. After each change, run `npm run check`. The main language has no suffix (`about.md`); a translation adds the language code
-(`about.de.md`) and repeats only what it translates: dates, prices, files and images come from the main file. A page
-(a product, job, post, trade fair, legal text or free page) shows in a language only when its translation has every
-required text (for a job: `title`, `slug`, `description`, `location` and the text). The number at the start of a file
-name sets the order.
+Every text is a Markdown file. After each change, run `npm run check`. The main language has no suffix (`about.md`); a
+translation adds the language code (`about.de.md`) and repeats only what it translates: dates, prices, files and images
+come from the main file. A page (a product, job, post, trade fair, legal text or free page) shows in a language only
+when its translation has every required text (for a job: `title`, `slug`, `description`, `location` and the text). The
+number at the start of a file name sets the order.
 
 Files point to other entries by id: the folder and the file name without number and language, so
 `content/people/1.katrin-albers.md` is `people/katrin-albers`. The `slug` is only the address on the site: renaming a
@@ -127,7 +127,8 @@ the home page's closing band.
 
 Each language has a news feed at `<news page>/rss.xml` (`/news/rss.xml`, `/de/aktuelles/rss.xml`).
 
-Notices show newest first: give a new notice a smaller number than the others (`0.` works and numbers may have gaps, so older notices keep theirs). At most two show at once.
+Notices show newest first: give a new notice a smaller number than the others (`0.` works and numbers may have gaps, so
+older notices keep theirs). At most two show at once.
 
 ## Make it yours
 
@@ -135,17 +136,22 @@ Notices show newest first: give a new notice a smaller number than the others (`
   engines). The sample name also appears as text in `seo.description` there, `legalName` in `content/site.md`, the
   `lead` in `content/home*.md` and the `summary` in `content/pages/1.about*.md`. Search `content/` and `i18n/` for it
   and replace what is left. On phones the header shows `shortName` in `app/app.config.ts` instead, when you set one.
-- **Menu.** `nav` in `app/app.config.ts` holds at most six items: a page of
-  `ginko.config.ts` (`{ page: 'news', label: { … } }`, label per language, the same words as the page's title) or a
-  page of `content/pages/` by id (`{ entry: 'pages/about' }` is `content/pages/1.about.md`).
+- **Menu.** `nav` in `app/app.config.ts` holds at most six items: a page of `ginko.config.ts` (`{ page: 'news', label: {
+  … } }`, label per language, the same words as the page's title) or a page of `content/pages/` by id (`{ entry:
+  'pages/about' }` is `content/pages/1.about.md`).
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 140, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name. Search engines get it as the employer's logo of your
   jobs too.
-- **Country, time zone and languages.** `country` (ISO code: public holidays and the country search engines get for your address and jobs), `timeZone` and `languages` (`de: 'de-AT'`) in `ginko.config.ts`; `currency` for prices. In `content/site.md`, write your own register entry and VAT number in the form of your country, or leave them out. Every job gets this one country as its address country.
-- **Colour.** `--brand`, `--brand-foreground`, `--brand-surface` and `--brand-surface-foreground` (the closing band, dark mode only here) in `app/assets/css/main.css`, once for light and once for dark
-  (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). This
-  template uses sky blue (`#0369a1`, dark `#7dd3fc`, and a deep blue `#0c4a6e` for the closing band in dark mode).
-  Text on the colour needs a contrast of at least 4.5:1 in both modes; check each pair with a contrast checker (for example webaim.org/resources/contrastchecker). `DESIGN.md` has the rules.
+- **Country, time zone and languages.** `country` in `ginko.config.ts` (ISO code: the public holidays, and the
+  country search engines get for your address and every job), `timeZone` (dates and times of fairs and posts) and
+  `languages` (the language and region of each locale, for example `de: 'de-AT'` for Austria); `currency` for prices.
+  In `content/site.md`, write your own register entry and VAT number in the form of your country, or leave them out.
+- **Colour.** `--brand` and `--brand-foreground` in `app/assets/css/main.css`, once for light and once for dark
+  (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). In dark mode,
+  `--brand-surface` and `--brand-surface-foreground` colour the home page's closing band. This template uses sky blue
+  (`#0369a1`, dark `#7dd3fc`, and a deep blue `#0c4a6e` for the closing band in dark mode). Text on the colour needs a
+  contrast of at least 4.5:1 in both modes; check each pair with a contrast checker (for example
+  webaim.org/resources/contrastchecker). `DESIGN.md` has the rules.
 - **Fonts.** `--font-body` in `main.css`. `@nuxt/fonts` downloads the fonts at build time and serves them from your
   site.
 - **Organisation type.** `organization: 'Organization'` in `app/app.config.ts` tells search engines what you are;
