@@ -1,10 +1,10 @@
 import type { SiteAppConfig } from './composables/useSiteAppConfig'
 
-// The brand and navigation of the site. The name is `name` in ginko.config.ts; colours and fonts are in
+// The brand and navigation of the site. The name (header, footer, page titles) is `name` in ginko.config.ts; colours and fonts are in
 // app/assets/css/main.css; address and contact are in content/site.md.
 export default defineAppConfig({
   site: {
-    shortName: 'Halden Pumps',
+    // shortName: 'Halden', // the name on phones, when the full name is long
     // logo: { src: '/logo.svg', width: 140, height: 32 },
     // One line under the name in the footer, per language.
     tagline: {
