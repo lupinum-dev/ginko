@@ -124,8 +124,8 @@ Notices show in file-number order, smallest first: give the newest a smaller num
 ## Make it yours
 
 - **Name.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name also appears as
-  text in `seo.description` in `ginko.config.ts`, `legalName` in `content/site.md`, the `changelog.lead` text in
-  `i18n/<language>.json` and the sample texts in `content/` (home, pages, FAQ, people, posts, changelog, notices);
+  text in `seo.description` in `ginko.config.ts`, `legalName` in `content/site.md` and the sample texts in
+  `content/` (home, pages, FAQ, people, posts, changelog, notices);
   `grep -rl Planwerk content` lists them. Replace what is left. On phones the header can show a shorter name: set
   `shortName` in `app/app.config.ts` (the commented line).
 - **Menu.** `nav` in `app/app.config.ts` holds at most six items: a page of

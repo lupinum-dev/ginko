@@ -30,7 +30,7 @@
     "latest": "Tous les articles"
   },
   "changelog": {
-    "lead": "Ce qui a changé dans Planwerk, du plus récent au plus ancien : nouvelles fonctions, améliorations et corrections."
+    "lead": "Ce qui a changé dans {name}, du plus récent au plus ancien : nouvelles fonctions, améliorations et corrections."
   },
   "about": {
     "team": "L’équipe"

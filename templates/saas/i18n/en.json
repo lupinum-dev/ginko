@@ -30,7 +30,7 @@
     "latest": "All posts"
   },
   "changelog": {
-    "lead": "What changed in Planwerk, newest first: new features, improvements and fixes."
+    "lead": "What changed in {name}, newest first: new features, improvements and fixes."
   },
   "about": {
     "team": "The team"
