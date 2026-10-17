@@ -222,6 +222,8 @@ Links in the content name pages by their key (`[how to find us]($page.contact)`)
 - [ ] `NUXT_PUBLIC_SITE_URL` (or `url` in `ginko.config.ts`) is your real address.
 - [ ] `NUXT_APP_SECRET` is set where the site runs.
 - [ ] `content/site.md` shows your real legal name, address, register entry and contact details.
+- [ ] The sample phone numbers and emails are replaced: they reach nobody (the numbers start their local part
+      with 0, the emails end in .example), so a forgotten one fails quietly.
 - [ ] `content/hours.md` has your week, your closures for the coming months and your rule for public holidays;
       `content/hourPlans/` only holds hours you really use.
 - [ ] Every treatment has your price or `pricing: onRequest`, and the price labels fit your VAT (`vat` in

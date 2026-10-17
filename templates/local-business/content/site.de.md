@@ -1,3 +1,3 @@
 ---
-registryCourt: Landesgericht für Zivilrechtssachen Graz
+# registryCourt: Landesgericht für Zivilrechtssachen Graz
 ---
