@@ -27,7 +27,6 @@
   },
   "event": {
     "next": "Prochain rendez-vous",
-    "time": "{start}–{end}",
     "separator": ", ",
     "later": "Dates suivantes"
   },

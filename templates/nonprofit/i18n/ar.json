@@ -27,7 +27,6 @@
   },
   "event": {
     "next": "الموعد القادم",
-    "time": "{start}–{end}",
     "separator": "، ",
     "later": "مواعيد لاحقة"
   },

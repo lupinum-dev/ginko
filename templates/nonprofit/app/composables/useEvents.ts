@@ -71,7 +71,7 @@ export function useEventText() {
   const times = (event: EventFacts) => {
     if (!event.start || !event.end) return event.start ?? undefined
     if (event.when.from === event.when.to) return ltr(`${event.start}–${event.end}`)
-    return `${weekday(event.when.from)} ${event.start} – ${weekday(event.when.to)} ${event.end}`
+    return `${weekday(event.when.from)} ${ltr(event.start)} – ${weekday(event.when.to)} ${ltr(event.end)}`
   }
   /** "Fri, 29 Jan 2027 · 19:00" */
   const when = (event: EventFacts, style: 'long' | 'short' = 'long') => [dates(event, style), times(event)].filter(Boolean).join(' · ')

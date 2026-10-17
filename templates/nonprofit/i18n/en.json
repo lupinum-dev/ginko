@@ -27,7 +27,6 @@
   },
   "event": {
     "next": "Next date",
-    "time": "{start}–{end}",
     "separator": ", ",
     "later": "Later dates"
   },

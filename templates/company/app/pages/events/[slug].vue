@@ -25,7 +25,9 @@ const langOf = useGinkoLang()
 const description = await useGinkoMarkdown(() => event.value.data.description)
 const sessions = useSessionsLd?.(() => event.value.id)
 const jsonLd = useEventJsonLd(() => ({ ...event.value.data, url: event.value.url ?? route.path }), () => description.value, () => sessions?.value)
-usePageSeo(() => ({ title: event.value.data.title, description: `${dates(event.value.data)}${times(event.value.data) ? `, ${times(event.value.data)}` : ''}`, image: event.value.data.image ?? undefined, jsonLd: [jsonLd.value] }))
+// The meta description is plain text: the isolate marks of a right-to-left page stay out of it.
+const metaDescription = () => `${dates(event.value.data)}${times(event.value.data) ? `, ${times(event.value.data)}` : ''}`.replace(/[\u2066\u2069]/g, '')
+usePageSeo(() => ({ title: event.value.data.title, description: metaDescription(), image: event.value.data.image ?? undefined, jsonLd: [jsonLd.value] }))
 
 const contact = computed(() => site.value.data)
 const bookingOf = useEventBooking()
