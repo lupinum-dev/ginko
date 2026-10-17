@@ -21,5 +21,10 @@ test('the owner changes the price of a dish, and the menu shows it', async ({ pa
   await sheet.getByRole('button', { name: 'Speichern' }).click()
   await expect(sheet).toHaveCount(0)
 
-  await expect.poll(async () => (await request.get(`${studio.siteUrl}${PRICE.path}`)).text(), { timeout: 60_000 }).toContain(PRICE.shown)
+  // The dish's own line (name and price) shows the new price, not just any "27.40" elsewhere on the page.
+  await expect(async () => {
+    await page.goto(`${studio.siteUrl}${PRICE.path}`)
+    const line = page.getByRole('heading', { name: PRICE.dish }).locator('xpath=..')
+    await expect(line).toContainText(PRICE.shown, { timeout: 2_000 })
+  }).toPass({ timeout: 60_000 })
 })

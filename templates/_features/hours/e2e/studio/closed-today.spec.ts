@@ -10,7 +10,7 @@ import { job, studio } from '../../../../../scripts/templates/e2e/studio.ts'
 // field, the site's words for "closed today" (i18n/hours, now.closed) and a page that shows the today line.
 const CLOSED = job('closedToday', ['task', 'reasonField', 'todayLine', 'path'])
 
-test('the owner closes today with a reason, and the site says so', async ({ page, request }) => {
+test('the owner closes today with a reason, and the site says so', async ({ page }) => {
   const reason = `Gate seven private party ${Date.now()}`
   await page.goto(`/s/${studio.site}`, { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: CLOSED.task, exact: true }).click()
@@ -24,10 +24,12 @@ test('the owner closes today with a reason, and the site says so', async ({ page
   await expect(page.getByRole('main').getByText(reason)).toBeVisible()
 
   // Wrong behaviour caught: the site still says "open" (the today line reads the closure from the Studio's data).
-  await expect.poll(async () => {
-    const html = await (await request.get(`${studio.siteUrl}${CLOSED.path}`)).text()
-    return html.includes(CLOSED.todayLine) && html.includes(reason)
-  }, { timeout: 60_000 }).toBe(true)
+  // The i18n messages of the first page are inline in every page's HTML, so the words are read from the rendered line.
+  await expect(async () => {
+    await page.goto(`${studio.siteUrl}${CLOSED.path}`)
+    const line = page.locator('[data-hours-now]').filter({ hasText: reason }).first()
+    await expect(line).toContainText(CLOSED.todayLine, { timeout: 2_000 })
+  }).toPass({ timeout: 60_000 })
 
   await page.getByRole('button', { name: 'Aufheben' }).click()
   await expect(page.getByRole('main').getByText(reason)).toHaveCount(0)

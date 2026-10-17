@@ -9,7 +9,7 @@ import { job, studio } from '../../../../../scripts/templates/e2e/studio.ts'
 // label of the posts brick's create task and the news list's address.
 const NEWS = job('news', ['task', 'path'])
 
-test('the owner writes a news post and publishes it, and the news list shows it', async ({ page, request }) => {
+test('the owner writes a news post and publishes it, and the news list shows it', async ({ page }) => {
   const title = `Gate seven news ${Date.now()}`
   await page.goto(`/s/${studio.site}`, { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: NEWS.task, exact: true }).click()
@@ -24,5 +24,9 @@ test('the owner writes a news post and publishes it, and the news list shows it'
   await expect(sheet).toHaveCount(0)
 
   // Wrong behaviour caught: a post that stays a draft (never on the site) after "Publish".
-  await expect.poll(async () => (await request.get(`${studio.siteUrl}${NEWS.path}`)).text(), { timeout: 60_000 }).toContain(title)
+  await expect(async () => {
+    await page.goto(`${studio.siteUrl}${NEWS.path}`)
+    const row = page.getByRole('listitem').filter({ hasText: title })
+    await expect(row.getByRole('link', { name: title, exact: true })).toBeVisible({ timeout: 2_000 })
+  }).toPass({ timeout: 60_000 })
 })
