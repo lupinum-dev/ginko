@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { BlogPost } from '~/composables/useBlog'
 
-/** The newest post, large, at the top of the home page: photo (3:2), date and reading time, title (the link: the
- *  whole block opens the post), summary and authors. Without a photo the text takes the full width. */
+/** The newest post, large, at the top of the home page: photo (3:2), date, reading time and authors on one line, title (the
+ *  link: the whole block opens the post) and summary. Without a photo the text takes the full width. */
 defineProps<{ post: BlogPost }>()
 const { format, t } = useI18n('blog')
 </script>
@@ -20,15 +20,12 @@ const { format, t } = useI18n('blog')
       <p class="text-small text-muted-foreground">
         <time :datetime="post.date">{{ format.date(post.date) }}</time>
         <template v-if="post.minutes"><span aria-hidden="true"> · </span><span class="sr-only">, </span>{{ t('minutes', { count: post.minutes }) }}</template>
+        <template v-if="post.authors.length"><span aria-hidden="true"> · </span><span class="sr-only">, </span>{{ t('by', { names: format.list(post.authors.map((a) => a.name)) }) }}</template>
       </p>
       <h2 class="text-h2">
         <NuxtLink :to="post.to" class="underline-offset-4 after:absolute after:inset-0 group-hover:underline">{{ post.title }}</NuxtLink>
       </h2>
       <p v-if="post.description" class="text-lead text-muted-foreground">{{ post.description }}</p>
-      <p v-if="post.authors.length" class="flex items-center gap-3 pt-1">
-        <InitialsAvatar v-for="author in post.authors" :key="author.id" :name="author.name" />
-        <span class="font-medium">{{ format.list(post.authors.map((author) => author.name)) }}</span>
-      </p>
     </div>
   </article>
 </template>
