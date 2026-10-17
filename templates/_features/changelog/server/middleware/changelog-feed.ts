@@ -1,7 +1,7 @@
 import type { MarkdownTree, MarkdownValue } from '@lupinum/ginko'
 import { releaseAnchor, rssXml } from '@lupinum/ginko/basics'
 import { defineEventHandler, getRequestURL, useRuntimeConfig } from 'nuxt/server'
-import site from '~~/ginko.config'
+import site from '../../ginko.config'
 import { releaseSummary } from '~~/app/utils/changelog'
 
 // The changelog feed of each language (RSS 2.0) at <changelog page>/rss.xml, for example /changelog/rss.xml.
