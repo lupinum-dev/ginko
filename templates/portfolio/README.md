@@ -235,6 +235,8 @@ viewer (`"gallery"` in `ginko.features`) is what the project pages show their ph
 - [ ] `NUXT_PUBLIC_SITE_URL` (or `url` in `ginko.config.ts`) is your real address.
 - [ ] `NUXT_APP_SECRET` is set where the site runs.
 - [ ] `content/site.md` shows your real name, address, VAT number and contact details.
+- [ ] The sample phone numbers and emails are replaced: they reach nobody (the numbers start their local part
+      with 0, the emails end in .example), so a forgotten one fails quietly.
 - [ ] The sample projects, people and journal entries are replaced by your own, and the sample photos
       (`public/media/`, see `MEDIA.md`) by photos of your work.
 - [ ] Every photo has a description (`alt`) in each language file that shows it, and a source in `MEDIA.md`.
