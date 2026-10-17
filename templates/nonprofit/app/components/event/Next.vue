@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The next date of content/events/: its title, the day with the weekday, the time and the place. Events leave the
 // site after their last day, so the first one is the next. Renders nothing when no date is planned. Shown in the
-// closing band of the home page and at the top of the Get involved page; the title links to the event's page.
+// home hero and at the top of the Get involved page; the title links to the event's page.
 const events = useGinko('events')
 const { t } = useI18n()
 const { dates, times } = useEventText()
