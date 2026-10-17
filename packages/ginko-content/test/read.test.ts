@@ -356,6 +356,13 @@ describe('checks that never hide a broken entry', () => {
     expect(r.entries.posts ?? []).toEqual([])
   })
 
+  // Wrong behaviour caught: the duplicate was reported on one file only, often the old one, so the owner did not see the
+  // file they had just added.
+  it('names both files of an entry that exists twice', async () => {
+    const r = await readBlog({ 'content/authors/1.ann.yml': 'name: Ann', 'content/authors/10.ann.yml': 'name: Ann' })
+    expect(r.errors.map((e) => e.message)).toEqual(['Entry “authors/ann” is in two files: content/authors/1.ann.yml and content/authors/10.ann.yml. Keep one and delete or rename the other.'])
+  })
+
   // Wrong behaviour caught: rows are matched by position, so an extra main row shifts every translated reason by one.
   it('needs the same number of list rows in a translation, and lets it leave the list out', async () => {
     const rows = (n: number) => `exceptions:\n${Array.from({ length: n }, (_, i) => `  - reason: R${i}`).join('\n')}`

@@ -396,12 +396,12 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const group = groups.get(parsed.name) ?? { rank, translations: {} }
       groups.set(parsed.name, group)
       if (locale === main) {
-        if (group.main !== undefined) return report(`Entry “${relOf(parsed.name)}” exists twice.`)
+        if (group.main !== undefined) return report(`Entry “${relOf(parsed.name)}” is in two files: content/${group.main.rel} and content/${rel}. Keep one and delete or rename the other.`)
         group.main = src
         group.number = parsed.number
         group.rank = rank
       } else {
-        if (group.translations[locale] !== undefined) return report(`Language “${locale}” exists twice for this entry.`)
+        if (group.translations[locale] !== undefined) return report(`Language “${locale}” of “${relOf(parsed.name)}” is in two files: content/${group.translations[locale]!.rel} and content/${rel}. Keep one and delete or rename the other.`)
         group.translations[locale] = src
       }
     }
