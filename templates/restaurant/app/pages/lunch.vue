@@ -7,7 +7,7 @@ const { lunch, week, days, served } = useLunch()
 const { t, format } = useI18n('menu')
 const langOf = useGinkoLang()
 const range = computed(() => (days.value.length ? format.range(days.value[0]!.date, days.value.at(-1)!.date, { day: 'numeric', month: 'long' }) : undefined))
-const used = computed(() => days.value.filter((day) => !day.closed).flatMap((day) => day.allergens.map(String)))
+const used = computed(() => allergenList(days.value.filter((day) => !day.closed).flatMap((day) => day.allergens.map(String))))
 usePageSeo(() => ({ title: t('lunch.title'), description: week.value ? `${t('lunch.title')}: ${range.value}` : t('lunch.pending') }))
 </script>
 
