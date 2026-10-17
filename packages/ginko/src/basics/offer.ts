@@ -33,7 +33,7 @@ export function offerPrice(m: Money, siteCurrency: string | undefined) {
  * `MON` per month, `ANN` per year) makes it a recurring price: a UnitPriceSpecification for one such unit, so a
  * subscription's price per month is not read as a one-off price.
  */
-export function offerJsonLd(m: Money, siteCurrency: string | undefined, o: { valueAddedTaxIncluded?: boolean, unitCode?: string } = {}) {
+export function offerJsonLd(m: Money, siteCurrency: string | undefined, o: { valueAddedTaxIncluded?: boolean, unitCode?: 'MON' | 'ANN' | (string & {}) } = {}) {
   const price = offerPrice(m, siteCurrency)
   const vat = o.valueAddedTaxIncluded === undefined ? {} : { valueAddedTaxIncluded: o.valueAddedTaxIncluded }
   const specification = o.unitCode

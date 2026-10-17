@@ -47,7 +47,7 @@ const columns = computed(() => (props.plans.length >= 4 ? 'md:grid-cols-2 lg:gri
       <div v-if="plan.included.length" class="flex flex-col gap-3 border-t pt-6">
         <p class="text-small font-medium">{{ t('included') }}</p>
         <ul class="flex flex-col gap-3">
-          <li v-for="item in plan.included" :key="item" class="flex gap-3">
+          <li v-for="(item, i) in plan.included" :key="i" class="flex gap-3">
             <Check class="mt-1 size-4 shrink-0 text-primary" aria-hidden="true" />
             <span>{{ item }}</span>
           </li>
