@@ -88,7 +88,7 @@ number in euros (`95` or `12.50`).
 The rows of `features` and `facts` in `content/home.md` and of `included` in a plan are translated row by row: a
 translation lists them in the same order as the main file. When you add, remove or move a row in the main file, do the
 same at the same place in each translation (write `- {}` for a row with nothing to translate). `npm run check` reports
-a translation with more rows than the main file.
+a translation with a different number of rows.
 
 | On the site | File |
 |---|---|

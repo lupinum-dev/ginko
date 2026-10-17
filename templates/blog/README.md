@@ -125,7 +125,7 @@ The text, in Markdown. Headings start at `##`.
   and `image.alt` in German, and the text. Date, authors and the photo come from the main file. A post without a
   translation is not shown in that language. The translation lists the `tags` in the same order as the main file: when
   you add, remove or move a tag in the main file, do the same at the same place in the translation. `npm run check`
-  reports a translation with more tags than the main file.
+  reports a translation with a different number of tags.
 - **Cover photo:** optional. Without one, lists and the post show text only. Put the file in `public/media/`; cover
   photos are shown at 3:2.
 - **Photo with a caption in the text:** put the photo next to the post (`content/posts/rock-pools.jpg`); the build
