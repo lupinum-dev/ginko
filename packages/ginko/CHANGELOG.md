@@ -1,5 +1,133 @@
 # @lupinum/ginko
 
+## 0.5.0
+
+### Minor Changes
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add @lupinum/ginko/basics: site, legal, people, posts, authors, changelog, jobs, faq and downloads bricks.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add country and sessions to @lupinum/ginko/basics; move hours, notices, events and gallery into basics (preset-gastro re-exports them unchanged).
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `breadcrumbJsonLd(steps, siteUrl)` to `@lupinum/ginko`: a JSON-LD BreadcrumbList from steps with `title` and `path`, such as the nodes of `useGinkoBreadcrumbs` (templates/_features/site/app/composables/usePageSeo.ts uses it).
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `status` to bricks: a declared status line for the Studio's Today page.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `fields` to create tasks: the task asks and writes only those fields.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add an optional `language` field to the `downloads` brick of `@lupinum/ginko/basics`, so a list can say that a document is in another language (template files: `templates/_features/downloads/app/components/downloads/List.vue`).
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `bookingUntil` (the last day the booking link shows) to `events()` and an optional `summary` to `sessions()` from `@lupinum/ginko/basics` (template files: `templates/_features/events/app/composables/useEvents.ts`, `templates/_features/events/app/pages/events/[slug].vue`, `templates/_features/sessions/app/composables/useSessions.ts`, `templates/_features/sessions/app/components/session/Row.vue`, `templates/_features/sessions/app/pages/programme.vue`).
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `hours({ plans: 'hourPlans' })`: the hours name their hour plans in the stored schema (`status: { hours: { plans } }`), the release check refuses a key that is not a collection of hour plans, and the Studio's line for today reads only those plans.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add today's opening hours to the Studio's Today page: `hours()` declares `status: { hours: true }`.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add the site's `country` to page JSON-LD: `useGinkoSeo` fills `addressCountry` (and remote job applicants) where `siteJsonLd` or `jobJsonLd` got none.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change Markdown refs in page state to carry no table of contents: read `toc` from the loaded text, `(await useGinkoMarkdown(() => entry.value.data.body)).value?.toc`.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `formatMoney(money, language, { wholeWithoutMinor: true })` for "€390" instead of "€390.00", and `offerJsonLd` in `@lupinum/ginko/basics` for a schema.org Offer with an optional VAT note (templates/_features/services/app/composables/useServices.ts).
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change an outdated translation to stay on the site until someone updates or confirms it, instead of being replaced by the main-language text; `fallback` now lists only missing translations.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `planned` to `single()` and `collection()`: a field whose value changes on a date (`{ field: 'price', next: 'nextPrice', from: 'priceFrom' }`). The platform stores the planned value only with its date, opens a task on the new value from that date on, leaves the plan out of create tasks (Studio and agent tools), and `ginko check` reports a task that changes the field without showing its plan.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change platform Markdown fields to `{ ref }` in page state, as file bricks already are, so a page's payload carries only the texts it shows.
+  
+  Site code that reads a text's tree from an entry (`entry.data.body.nodes`) gets nothing now: load it with `useGinkoMarkdown(() => entry.value.data.body)` or, for several texts in one `useAsyncData`, `fetchGinkoMarkdown(value)`. `<GinkoMarkdown>` needs no change. A client navigation loads a text it has not shown yet from `/__ginko/platform/<locale>/<rev>/md/…`.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add the `authors` option to `posts()`: name the brick the post's authors come from, for example `people`.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `getGinkoItems(event, brick, locale)` for a site's own server routes (a feed, a calendar): the visible entries of a collection with their address, for file and platform bricks; `rssXml` in `@lupinum/ginko/basics` writes an RSS 2.0 feed (template files: `templates/_features/blog/server/middleware/news-feed.ts`).
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change a required field with `showWhen` to be required only while it shows: `price: f.money('Amount', { showWhen: { field: 'pricing', is: 'price' } })` now refuses a fixed price without an amount in the build, the Studio and agent tools, and accepts an entry on request without one (templates/_features/services/app/bricks/services.ts).
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `after` to time fields (an end time must be later than its start) and `timeZone` to the gastro `eventJsonLd`, which then writes the start with the site's offset.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change the default of `untranslated` for collections with a `route`: an entry is left out of a language until its required fields are translated there (no page, a 404 under its address, not in lists, the sitemap, hreflang or llms.txt); set `untranslated: 'fallback'` to list it there with a link to its main-language page.
+  
+  An outdated translation no longer hides anything, also with `'hide'`; only a missing one does. Collections without a `route` (authors, FAQ, dishes) keep `'fallback'` as their default. A missing slug or image description never counts as a missing translation. A link to an entry (`$blog.<name>`) in a translated text goes to its main-language page while the entry has no page in that language.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `wordsOf(value)`: the number of words of a Markdown value, also in lists where page state holds only `{ ref }`, for example for a reading time.
+
+### Patch Changes
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the Markdown twin and llms.txt slowing down on a title with a long run of spaces
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the message for text in square brackets that is no link or image (`![Bild(datei)` or `[sic]`): it now names the missing "]" or address and how to write brackets as text, instead of reporting an unknown component "span".
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix a site refusing its own content as "bundle too large" when its texts are heavily formatted: the size limit now covers everything the platform allows (4 MiB of text plus 8 MiB of Markdown trees).
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `nuxt dev` ignoring changes to `ginko.config.ts`: a saved change now restarts the dev server, and a save with an error is reported in the terminal while the site keeps running with the last good version.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix a missing entry from useGinkoEntry showing the last entry instead of the 404 when other code, such as useGinkoMarkdown, read it first; it now throws on every read and is a `Readonly<Ref>`.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add a `ginko check` warning when a brick's field maxima can add up past the entry limit, so a schema does not allow entries the platform refuses at Save.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix llms.txt, the Markdown twin of a page, its 404 suggestions and the site search naming an entry without a `title` field by its id (`people/lena-hofer`): they now use the field its slug is made from, such as a person's `name` with `people({ route })`.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change `events()` from `@lupinum/ginko/basics` so `route` is optional: without it the events have no pages, and a site can still list them.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `pathOf` and `defaultDir` to `@lupinum/ginko/internal`: the file layout of `ginko export`, which the Studio's backup download uses too.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `$file.<id>` references inside fenced or inline code counting as picture uses: they are text now, for the file checks and for the `local:files-export` rewrite. An escaped backtick (`` \` ``) opens no code.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add French, Italian and Arabic messages.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix llms.txt, link checks and Markdown block splitting slowing down on a long run of slashes, spaces or tabs, or on many unclosed `::snippet{`
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `grantGroups` to `@lupinum/ginko/internal`: a person's rights grouped by area, in the order of the site's schema.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix image descriptions accepting invisible control characters and bidi overrides: an image field's description now refuses them with the same message as a text field.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `local:import` for big and inconsistent exports: it refuses a collection over its maximum, an entry ID twice or two entries at one address before it clears anything, imports thousands of entries and references in smaller calls, prints no schema warning when there is none, and suggests running it again only when that can finish.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix links to entries in Markdown texts (`[Anna]($authors.<id>)`) after an import: they now point at the entry's new ID instead of showing as broken on the site.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix local imports on a busy machine: Convex's "Function execution timed out" is now read from `convex run` and the import tries again (up to three times, with growing waits).
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the reason of a failed local command: it now shows the end of its error output, where the error is, instead of the first line.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `$file.<id>` references in platform Markdown texts: a picture, component image or link from the Files library is served with its current address, pixel size, smaller copies and library description, and a file that is gone is marked broken instead of loading nothing.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix HTML comments in Markdown (`<!-- TODO -->`) showing on the site as text: the parsed tree now leaves them out, also a comment around formatting or around whole paragraphs, and the stored text keeps them.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix Markdown reference links and images (`[Text][g]` with `[g]: https://…`): they now become normal links and images instead of an error about a component named "component".
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change the robots tag of `useGinkoSeo({ noindex: true })` to `noindex, follow`, so a page kept out of search results (the menu's print page in templates/_features/menu/app/pages/menu/print.vue, a draft) no longer tells search engines to ignore its links.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the home page getting a second Organization JSON-LD node from `seo.organization` when the page writes its own (`siteJsonLd`).
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix a PDF of the Files library used as a picture (`![x]($file.<pdf id>)`): the text is now refused with a hint to link the PDF instead.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add a `route` option to `people()` from `@lupinum/ginko/basics`: with it, each person gets a web address (a slug made from the name) and a page, for example speakers. Without it the stored fields stay as they are. Template files that read a person's `url` and need the route: `templates/_features/sessions/app/pages/speakers/[slug].vue`, `templates/_features/sessions/app/pages/speakers/index.vue`, `templates/_features/sessions/app/components/session/Speakers.vue` and `templates/_features/sessions/app/composables/useSessions.ts`.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the Spanish label of `posts()`: "Artículos" instead of "Entradas", which the Studio uses for entries.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `ginko check` and `ginko release` refusing a release because of an entry the release does not change or one in the trash: only live entries the release writes, and only when they grow, must fit the entry limit (480 KiB, counted without Markdown trees), and the message names the entry.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change the schema check to refuse a brick named `page` or `file`: `$page.…` and `$file.…` in Markdown texts always mean a page and a library file.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the build of a site with two headings in Arabic script on one page: the search index no longer stops with "duplicate ID".
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the types of server auto-imports in a site that installs `@lupinum/ginko` from npm: `getGinkoItems` was `any` there.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `slugBases` to `@lupinum/ginko/internal`: the slug of a new entry per language before it is made unique, one rule for the platform and the Studio's preview of an entry not saved yet.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change the script every page loads to about 20 kB (gzip) less: the core's message catalogs, the editors' texts of the schema and the preview's listener no longer reach the browser.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the order of a collection sorted by a translatable field (`jobs()` by title): each language's list now follows its own titles, not the German ones (templates/_features/jobs).
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix French, Italian, Spanish and Arabic message texts: Arabic counts use all plural forms and Arabic punctuation, French uses narrow no-break spaces and the typographic apostrophe, and a few wordings read more naturally.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the silent loss of text after a block component without its closing `::` line: it is now refused with the line it starts on (Studio, agent tools, releases, `ginko check` and the build). Close every block component with a `::` line, also one at the very end of a text; for content files, `ginko check` and the build now fail and name the file and line.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Remove HEIC from the accepted upload types (`UPLOAD_TYPES`): the Files library cannot read HEIC photos. `local:files-export` now names a HEIC photo and says how to save it as JPEG.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix a week saved as a mid-week day (a lunch week from Thursday) being accepted although the site never shows it: the field that holds a week start (`plans.field`, or the date a task presets to `@workWeek` or `@nextWorkWeek`) now needs the first day of a week, also in content files.
+- Updated dependencies [[`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991), [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991), [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991), [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991), [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991), [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991)]:
+  - @lupinum/ginko-i18n@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes
