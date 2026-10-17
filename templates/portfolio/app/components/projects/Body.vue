@@ -38,9 +38,9 @@ const next = computed(() => {
       </section>
       <section v-if="facts.length" :aria-label="t('project.facts')">
         <dl class="grid grid-cols-2 gap-x-6 gap-y-5 border-y py-6 md:grid-cols-4">
-          <div v-for="fact in facts" :key="fact.key" class="flex flex-col gap-1" :class="!half(fact.key) && 'max-md:col-span-2'">
+          <div v-for="fact in facts" :key="fact.key" class="flex min-w-0 flex-col gap-1" :class="!half(fact.key) && 'max-md:col-span-2'">
             <dt class="text-small text-muted-foreground">{{ fact.label }}</dt>
-            <dd :class="fact.key === 'year' && 'tabular-nums'">{{ fact.value }}</dd>
+            <dd class="wrap-break-word hyphens-auto" :class="fact.key === 'year' && 'tabular-nums'">{{ fact.value }}</dd>
           </div>
         </dl>
       </section>
@@ -48,9 +48,9 @@ const next = computed(() => {
     <ProseBody :value="data.body" class="pt-10 md:pt-12" />
     <nav v-if="next" :aria-label="t('project.next')" class="mx-auto max-w-page px-gutter pt-section print:hidden">
       <NuxtLink :to="next.url" class="group flex items-center justify-between gap-6 border-t pt-8">
-        <span class="flex flex-col gap-2">
+        <span class="flex min-w-0 flex-col gap-2">
           <span class="text-small text-muted-foreground">{{ t('project.next') }}</span>
-          <span class="font-display text-h2 underline-offset-4 group-hover:underline">{{ next.data.title }}</span>
+          <span class="font-display text-h2 wrap-break-word hyphens-auto underline-offset-4 group-hover:underline">{{ next.data.title }}</span>
         </span>
         <ArrowRight class="size-6 shrink-0 text-muted-foreground rtl:-scale-x-100" aria-hidden="true" />
       </NuxtLink>
