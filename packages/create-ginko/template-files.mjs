@@ -157,7 +157,8 @@ function fieldBlocks(text, isMarkdown) {
   let start = 0
   let end = lines.length
   if (isMarkdown) {
-    if (lines[0]?.trim() !== '---') return undefined
+    // No frontmatter: no fields yet. Fields it gets (the main-only ones of a main-language swap) open a frontmatter.
+    if (lines[0]?.trim() !== '---') return { blocks: [], join: (list) => (list.length ? ['---', ...list.flatMap((b) => b.lines), '---', '', ...lines] : lines).join('\n') }
     start = 1
     end = lines.findIndex((line, i) => i > 0 && line.trim() === '---')
     if (end < 0) return undefined

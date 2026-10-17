@@ -13,13 +13,16 @@ const cta = Object.values(import.meta.glob<Component>('../components/site/PageCt
 const releases = useReleases()
 const feed = useChangelogFeedPath()
 const { t, format } = useI18n('changelog')
+// The lead may name the product: `{name}` is the site name from ginko.config.ts.
+const { name } = useGinkoSite()
+const lead = computed(() => t('lead', { name }))
 useHead(() => ({ link: [{ rel: 'alternate', type: 'application/rss+xml', title: t('feed'), href: feed.value }] }))
-usePageSeo(() => ({ title: t('title'), description: t('lead') }))
+usePageSeo(() => ({ title: t('title'), description: lead.value }))
 </script>
 
 <template>
   <div>
-    <BlockPageHeader :title="t('title')" :lead="t('lead')" />
+    <BlockPageHeader :title="t('title')" :lead="lead" />
     <div class="mx-auto max-w-page px-gutter">
       <ul v-if="releases.length" class="flex flex-col border-b">
         <li v-for="release in releases" :id="release.anchor" :key="release.id" class="grid scroll-mt-6 gap-4 border-t py-10 lg:grid-cols-12 lg:gap-16" data-release>

@@ -34,8 +34,12 @@ export function useSiteAppConfig(): SiteAppConfig {
   return useAppConfig().site
 }
 
+/** Entries already reported as missing, so the log names each one once. */
+const reported = new Set<string>()
+
 /** The items of a navigation list with their label and path in the current language. An entry that does not exist
- *  in this language (untranslated or removed) is left out. */
+ *  in this language (untranslated or removed) is left out; one missing in the main language is also reported in the
+ *  dev server and build log, because it is a typo or a deleted file. */
 export function useSiteLinks(items: () => SiteNavItem[]) {
   const path = useGinkoPath()
   const locale = useGinkoLocale()
@@ -53,7 +57,13 @@ export function useSiteLinks(items: () => SiteNavItem[]) {
     return items().flatMap((item) => {
       if ('entry' in item) {
         const node = byId.get(item.entry)
-        return node ? [{ key: item.entry, label: node.title, to: node.path }] : []
+        if (node) return [{ key: item.entry, label: node.title, to: node.path }]
+        // An empty tree is content not loaded yet, not a missing entry.
+        if (import.meta.server && locale.value === mainLocale && tree.value.length > 0 && !reported.has(item.entry)) {
+          reported.add(item.entry)
+          console.warn(`[site] The navigation entry “${item.entry}” in app/app.config.ts matches no file in content/, so it is left out. An id is the folder and the file name without number: content/pages/1.about.md is pages/about.`)
+        }
+        return []
       }
       const label = item.label[locale.value] ?? item.label[mainLocale]
       if (!label) return []
