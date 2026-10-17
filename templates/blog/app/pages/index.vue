@@ -49,7 +49,8 @@ usePageSeo(() => ({ home: true, description: home.value.data.lead }))
           <InitialsAvatar :name="person.data.name" />
           <div class="flex flex-col gap-1">
             <h3 class="font-medium">
-              <NuxtLink :to="person.urls?.[locale] ?? path('team')" class="underline-offset-4 hover:underline">{{ person.data.name }}</NuxtLink>
+              <NuxtLink v-if="person.urls?.[locale]" :to="person.urls[locale]" class="underline-offset-4 hover:underline">{{ person.data.name }}</NuxtLink>
+              <template v-else>{{ person.data.name }}</template>
             </h3>
             <p v-if="person.data.role" class="text-small text-muted-foreground">{{ person.data.role }}</p>
           </div>

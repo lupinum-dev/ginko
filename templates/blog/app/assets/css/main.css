@@ -15,8 +15,4 @@
 .dark {
   --brand: #a5b4fc;
   --brand-foreground: #1e1b4b;
-  /* The closing band in dark mode: a deep indigo instead of the light accent, so it does not outshine the page.
-     #eef2ff on #312e81 10.2:1. */
-  --brand-surface: #312e81;
-  --brand-surface-foreground: #eef2ff;
 }
