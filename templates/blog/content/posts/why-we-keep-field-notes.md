@@ -10,7 +10,7 @@ We have walked together for years: Ida with binoculars, Tom with a tree guide th
 
 ## What you will find here
 
-Short posts, about once a week, on the nature that is close to home: the birds in a back yard, the trees on a street, a walk from a tram stop, a day at the coast. Nothing here needs a car or special gear. Most of it you can see on your way to work.
+Short posts, a new one when we have seen something worth telling, on the nature that is close to home: the birds in a back yard, the trees on a street, a walk from a tram stop, a day at the coast. Nothing here needs a car or special gear. Most of it you can see on your way to work.
 
 We write what we saw and how we found it. When we are not sure what something was, we say so.
 
