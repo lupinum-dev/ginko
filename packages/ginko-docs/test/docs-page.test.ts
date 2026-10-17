@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildIndex } from '@lupinum/ginko/internal/search'
 import { loadIndex, search } from '@lupinum/ginko/search'
 import { handleMcp, type DocsMcpDeps } from '../server/mcp/handler'
-import { docsAskLinks, docsEditUrl, docsMarkdownPath, docsRouteLink, docsStudioUrl } from '../app/lib/docsPage'
+import { docsAskLinks, docsEditUrl, docsMainPath, docsMarkdownPath, docsRouteLink, docsStudioUrl } from '../app/lib/docsPage'
 
 describe('page helpers', () => {
   it.each([
@@ -31,6 +31,14 @@ describe('page helpers', () => {
   ])('route link %s', (raw, path) => {
     const find = { doc: (ref: string) => (ref === 'webhooks' ? '/de/docs/webhooks' : undefined), page: (key: string) => (key === 'changelog' ? '/de/changelog' : undefined) }
     expect(docsRouteLink(raw, find)).toBe(path)
+  })
+
+  // Wrong behaviour caught: a German link to a page that only exists in English renders as the raw `$docs…` string.
+  it('a route link to a page the language lacks leads to its main-language page', () => {
+    const route = { en: '/docs/[slug]', de: '/de/docs/[slug]' }
+    const find = { doc: (ref: string) => (ref === 'webhooks' ? '/de/docs/webhooks' : undefined) ?? docsMainPath(route, 'en', ref), page: () => undefined }
+    expect(docsRouteLink('$docs.upgrading-to-v2#steps', find)).toBe('/docs/upgrading-to-v2#steps')
+    expect(docsRouteLink('$docs.webhooks', find)).toBe('/de/docs/webhooks')
   })
 
   it('ask links carry the encoded prompt', () => {
