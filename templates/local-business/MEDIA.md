@@ -10,7 +10,7 @@ allow selling the photos as they are or building a similar photo service.
 
 | File | Used in | What | Source | License |
 |---|---|---|---|---|
-| `public/media/treatment-room.jpg` | page "About us", contact page ("The practice") | a treatment room with a padded bench, a trolley and a large window | [nightingaledxb on Unsplash](https://unsplash.com/photos/black-and-white-massage-bed-4e017fuMeXE) | Unsplash License |
+| `public/media/treatment-room.jpg` | home page (hero), page "About us", contact page ("The practice") | a treatment room with a padded bench, a trolley and a large window | [nightingaledxb on Unsplash](https://unsplash.com/photos/black-and-white-massage-bed-4e017fuMeXE) | Unsplash License |
 | `public/media/massage.jpg` | contact page ("The practice") | a therapist's hands massage a patient's upper back | [heftiba on Unsplash](https://unsplash.com/photos/person-massaging-the-back-of-a-woman-hBLf2nvp-Yc) | Unsplash License |
 
 ## Made for this template
