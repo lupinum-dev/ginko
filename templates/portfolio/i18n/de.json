@@ -42,7 +42,6 @@
     "latest": "Alle Einträge im Journal",
     "empty": "Noch keine Einträge im Journal",
     "tagged": "Einträge mit dem Schlagwort „{tag}“",
-    "all": "Alle Einträge zeigen",
-    "noTag": "Keine Einträge mit dem Schlagwort „{tag}“"
+    "all": "Alle Einträge zeigen"
   }
 }

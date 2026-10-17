@@ -42,7 +42,6 @@
     "latest": "All journal entries",
     "empty": "No journal entries yet",
     "tagged": "Journal entries tagged “{tag}”",
-    "all": "Show all journal entries",
-    "noTag": "No journal entries tagged “{tag}”"
+    "all": "Show all journal entries"
   }
 }
