@@ -117,8 +117,8 @@ too. `npm run check` reports a translation with a different number of rows.
 | Texts of the home page sections and the reservation buttons | `i18n/<language>.json` |
 | Texts of buttons, labels, allergen names | `i18n/<feature>/<language>.json`; to change one, set it under the feature's key in `i18n/<language>.json` (as `events.lead` there does) |
 
-`allergens`: the letters of the 14 EU allergens (`[A, G]`), or `[none]` for a dish without any; a dish with an empty list
-shows "Allergens: please ask us".
+`allergens`: the letters of the 14 EU allergens (`[A, G]`), or `none` for a dish without any. Leaving the line out or
+writing `[]` is an error, so a dish never says "no allergens" by mistake.
 
 Allergens use the EU letters as Austrian menus write them: A gluten, B crustaceans, C egg, D fish, E peanuts, F soy,
 G milk, H tree nuts, L celery, M mustard, N sesame, O sulphites, P lupin, R molluscs. Check each dish with your

@@ -224,6 +224,19 @@ function convertFields(fields: Fields, data: Record<string, unknown>, cx: FileCx
       case 'file':
         if (typeof value === 'string') { checkPublicFile(cx, path, value); out[key] = { file: value } } else out[key] = value
         break
+      case 'choices': {
+        // "None" must be said on purpose, as the Studio's "Keine" tap does: deleting the values leaves `[]`, which on a
+        // required field is an error instead of a published "none". An option named `none` wins over the word.
+        if (value === 'none') { out[key] = field.options.some((o) => o.value === 'none') ? ['none'] : []; break }
+        if (Array.isArray(value) && value.length === 0 && !field.optional) {
+          const [first, second] = field.options.map((o) => o.value)
+          const example = second === undefined ? `[${first}]` : `[${first}, ${second}]`
+          fail(cx, path, `“${key}” is empty: write the values, like ${example}, or none when there are none.`)
+          break
+        }
+        out[key] = value
+        break
+      }
       case 'image': {
         if (!isRecord(value)) { fail(cx, path, `“${key}” needs src and alt.`); break }
         if (!cx.isMain && value.src !== undefined) { fail(cx, path, `“${key}”: src is set in the main-language file only.`); break }
@@ -329,7 +342,8 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
  * - Frontmatter keys are field names in simple form; the body fills the brick's markdown field.
  *   Translatable fields collect one locale per file into `{ de, en }`. Simple forms: money `12.5` →
  *   `{ amount: 1250 }`; image `{ src: '/img/a.jpg', alt: '…' }` → `{ file: '/img/a.jpg', alt: { de: '…' } }`
- *   (alt per locale file); file `'/docs/a.pdf'` → `{ file: '/docs/a.pdf' }`; list rows get `_id`
+ *   (alt per locale file); file `'/docs/a.pdf'` → `{ file: '/docs/a.pdf' }`; choices `none` → `[]` (an empty list on a
+ *   required field is an error, so "none" is never left behind by deleting values); list rows get `_id`
  *   `r` + 9 chars of sha256(`<entry id>:<row index>`) and translations merge by row index.
  * - `prints` mark every translation as fresh (printOf of the main value), so a present translation
  *   is never a fallback.

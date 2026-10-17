@@ -421,3 +421,31 @@ describe('check messages for file owners', () => {
     expect(r.errors.map(errorLine)).toEqual(lines)
   })
 })
+
+// Wrong behaviour caught: deleting the allergen letters leaves `allergens: []`, which would publish "no allergens"
+// for a dish nobody has checked. "None" has to be written as `none`.
+describe('multi-choice values in files', () => {
+  const dish = (options: string[], optional = false) => serializeSchema(defineSite({
+    site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Vienna',
+    locales: ['de'], currency: 'EUR', pages: { home: '/' },
+    bricks: {
+      menu: collection({
+        label: 'Karte', source: 'files', max: 20, order: 'manual',
+        fields: { name: f.text('Name'), allergens: f.choices('Allergene', { options: options.map((value) => ({ value, label: value })), optional }) },
+      }),
+    },
+  }))
+  it.each([
+    ['none stores an empty list', ['A', 'G'], false, 'allergens: none', [], []],
+    ['a list stays as written', ['A', 'G'], false, 'allergens: [A, G]', [], ['A', 'G']],
+    ['an empty list on a required field is an error', ['A', 'G'], false, 'allergens: []', ['content/menu/1.a.md (allergens): “allergens” is empty: write the values, like [A, G], or none when there are none.'], undefined],
+    ['an optional field keeps an empty list', ['A', 'G'], true, 'allergens: []', [], []],
+    ['an option named none is that option', ['none', 'A'], false, 'allergens: [none]', [], ['none']],
+    ['the word none is that option too', ['none', 'A'], false, 'allergens: none', [], ['none']],
+  ])('%s', async (_, options, optional, line, lines, stored) => {
+    const s = site({ 'content/menu/1.a.md': md(`name: A\n${line}`, '') })
+    const r = await readContent(s.content, s.public, dish(options, optional))
+    expect(r.errors.map(errorLine)).toEqual(lines)
+    if (stored) expect(r.entries.menu![0]!.data.allergens).toEqual(stored)
+  })
+})
