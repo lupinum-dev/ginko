@@ -43,12 +43,12 @@ const year = useGinkoToday().value.slice(0, 4)
         </ul>
       </nav>
 
-      <div v-if="contact.email || contact.phone || contact.city" class="flex flex-col gap-2">
+      <div v-if="status || contact.email || contact.phone || contact.city" class="flex flex-col gap-2">
         <h2 class="text-small font-semibold print:hidden">{{ t('footer.contact') }}</h2>
         <div v-if="status" class="py-2 print:hidden">
           <component :is="status" />
         </div>
-        <address class="flex flex-col text-small text-muted-foreground not-italic">
+        <address v-if="contact.email || contact.phone || contact.city" class="flex flex-col text-small text-muted-foreground not-italic">
           <!-- Each line keeps the direction of its own text (bdi), so a Latin address keeps its order and its full
                stops on a right-to-left page; email and phone are always left to right. -->
           <span v-if="contact.city" class="flex flex-col py-2">
