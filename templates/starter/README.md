@@ -92,8 +92,19 @@ gaps), so older notices keep theirs. At most two show at once.
 
 ## Make it yours
 
+The sample is a fictional translator, Klara Brenner in Freiburg: a home page, an About and a Contact page, a notice and
+legal texts, in English and German. Make it yours in three steps:
+
+1. Write your own texts. They are Markdown files in `content/`; the home page is `content/home.md`. The contact
+   details on the Contact page come from `content/site.md`, which also fills the footer and the imprint: change them
+   there, once. The site has no contact form (see "Add a contact form").
+2. Set the name in `ginko.config.ts` and the menu in `app/app.config.ts`.
+3. Pick your colour and fonts in `app/assets/css/main.css`.
+
+Details for each step:
+
 - **Name and menu.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name
-  appears nowhere else as text, so one change is enough. `nav` in `app/app.config.ts` lists pages by id
+  (Klara Brenner) also appears in the About summaries and `content/site.md`; change those too. `nav` in `app/app.config.ts` lists pages by id
   (`pages/about` is `content/pages/1.about.md`), at most six.
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 120, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name. `shortName` replaces a long name on phones.
@@ -162,6 +173,8 @@ from the contact page (Markdown link), or embed its form in a Vue page. Name the
 - [ ] `NUXT_APP_SECRET` is set where the site runs.
 - [ ] The placeholders in `content/legal/` are replaced by your own texts, and the ones you do not need are deleted.
 - [ ] `content/site.md` and the contact page show your real contact details.
+- [ ] The sample phone numbers and emails are replaced: they reach nobody (the numbers start their local part
+  with 0, the emails end in .example), so a forgotten one fails quietly.
 - [ ] Every photo you added has alt text and a source in `MEDIA.md`.
 
 ## Move to the Studio
