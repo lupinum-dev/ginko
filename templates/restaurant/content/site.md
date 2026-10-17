@@ -4,9 +4,9 @@ legalName: Gasthaus zur Linde GmbH
 street: Lindenplatz 3
 postalCode: '1160'
 city: Wien
-email: tisch@example.com
-phone: '+43 1 000 00 00'
-registryNumber: FN 000000x
-registryCourt: Commercial Court Vienna
-vatId: ATU00000000
+email: tisch@zur-linde.example
+phone: '+43 1 012 34 56'
+# registryNumber: FN 123456 a
+# registryCourt: Commercial Court Vienna
+vatId: ATU64813727
 ---

@@ -1,3 +1,3 @@
 ---
-registryCourt: Handelsgericht Wien
+# registryCourt: Handelsgericht Wien
 ---

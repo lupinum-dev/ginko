@@ -215,6 +215,8 @@ The menu and the opening hours are the core of this template; the home page and 
 - [ ] `content/hours.md` has your real week, closures and the public holiday rule; `country` and `timeZone` are yours.
 - [ ] Every dish has its real price and allergens, checked with the kitchen.
 - [ ] `content/site.md` has your real name, address, phone and email: the reservation buttons use them.
+- [ ] The sample phone numbers and emails are replaced: they reach nobody (the numbers start their local part
+      with 0, the emails end in .example), so a forgotten one fails quietly.
 - [ ] The placeholders in `content/legal/` are replaced by your own texts (in Austria and Germany an imprint is
       required), and the ones you do not need are deleted.
 - [ ] The sample photos are replaced by your own, each with alt text in every language and a source in `MEDIA.md`.
