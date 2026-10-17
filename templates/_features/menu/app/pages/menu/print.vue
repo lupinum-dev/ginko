@@ -16,6 +16,11 @@ const langOf = useGinkoLang()
 const contact = computed(() => site.value.data)
 usePageSeo(() => ({ title: t('title'), noindex: true }))
 const print = () => window.print()
+// The letters; "no allergens" only when the dish says `none`; "please ask us" when nothing is entered.
+const allergenText = (codes: string[]) => {
+  const state = allergenState(codes)
+  return state === 'letters' ? allergenList(codes).join(' ') : t(state === 'none' ? 'allergens.none' : 'allergens.unknown')
+}
 const diet = (veg: unknown) => (veg === 'vegan' ? t('diet.vegan') : veg === 'vegetarian' ? t('diet.vegetarian') : undefined)
 </script>
 
@@ -45,7 +50,7 @@ const diet = (veg: unknown) => (veg === 'vegan' ? t('diet.vegan') : veg === 'veg
             <p class="font-medium">
               <span :lang="langOf(dish.item, 'name')">{{ dish.item.data.name }}</span>
               <span v-if="diet(dish.item.data.veg)" class="ms-2 text-small font-normal text-muted-foreground">{{ diet(dish.item.data.veg) }}</span>
-              <span v-if="dish.item.data.allergens.length" class="ms-2 text-small font-normal tracking-wide text-muted-foreground">{{ allergenList(dish.item.data.allergens.map(String)).join(' ') }}</span>
+              <span class="ms-2 text-small font-normal tracking-wide text-muted-foreground">{{ allergenText(dish.item.data.allergens.map(String)) }}</span>
             </p>
             <p v-if="dish.item.data.description" class="text-small text-muted-foreground" :lang="langOf(dish.item, 'description')">{{ dish.item.data.description }}</p>
           </div>

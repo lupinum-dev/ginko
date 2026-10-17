@@ -31,11 +31,14 @@ const categoryLabels: Record<MenuCategory, { de: string, en: string }> = {
 /** The `allergens` field type: present unless the set is `'none'`. */
 type AllergenFields<A extends AllergenSet> = A extends 'none' ? {} : { allergens: ChoicesField<string> }
 
-/** The allergen choices for a set, or `undefined` when the field is left out. */
+/** The option for a dish without any allergen. An empty list means "not filled in", so a site shows "please ask" for it; only this option says "none". */
+const noAllergens: ChoiceOption = { value: 'none', label: both('keine Allergene', 'no allergens') }
+
+/** The allergen choices for a set (with `none` first), or `undefined` when the field is left out. */
 function allergenChoices(set: AllergenSet | undefined): readonly ChoiceOption[] | undefined {
   if (set === 'none') return undefined
-  if (set === undefined || set === 'EU') return allergensEU
-  return set
+  const own = set === undefined || set === 'EU' ? allergensEU : set
+  return own.some((o) => o.value === 'none') ? own : [noAllergens, ...own]
 }
 
 /** Options every factory takes. */

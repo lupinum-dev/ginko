@@ -3,7 +3,7 @@
 /**
  * The allergen codes of a dish as the menu stores them. Each code is shown, its name is read out and shown on hover;
  * the page also shows the key (MenuAllergenKey). A code the menu texts do not name shows as it is written. "No
- * allergens" only when the stored list is empty.
+ * allergens" only for the code `none`; an empty list shows "Allergens: please ask us" (`allergens.unknown`).
  */
 const props = defineProps<{ codes: readonly string[] }>()
 const { t } = useI18n('menu')
@@ -20,5 +20,5 @@ const codes = computed(() => allergenList(props.codes))
       class="inline-grid h-6 min-w-6 place-items-center rounded-sm border px-1 text-xs font-medium text-muted-foreground no-underline"
     ><span aria-hidden="true">{{ code }}</span><span class="sr-only">{{ nameOf(code) }}</span></abbr>
   </span>
-  <span v-else class="text-small text-muted-foreground">{{ t('allergens.none') }}</span>
+  <span v-else class="text-small text-muted-foreground">{{ t(allergenState(props.codes) === 'none' ? 'allergens.none' : 'allergens.unknown') }}</span>
 </template>

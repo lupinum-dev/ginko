@@ -26,6 +26,7 @@
     "lead": "Die Buchstaben bei jedem Gericht nennen seine Allergene.",
     "label": "Allergene: {names}",
     "none": "keine Allergene",
+    "unknown": "Allergene: bitte fragen Sie uns",
     "ask": "Wenn Sie eine Allergie oder Unverträglichkeit haben, sagen Sie es uns bitte bei der Bestellung.",
     "A": "Gluten",
     "B": "Krebstiere",
