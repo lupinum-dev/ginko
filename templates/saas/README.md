@@ -85,6 +85,11 @@ Files point to other entries by id: the folder and the file name without number 
 file breaks the references to it, changing the `slug` does not. Write dates as `2026-10-24` and prices as a plain
 number in euros (`95` or `12.50`).
 
+The rows of `features` and `facts` in `content/home.md` and of `included` in a plan are translated row by row: a
+translation lists them in the same order as the main file. When you add, remove or move a row in the main file, do the
+same at the same place in each translation (write `- {}` for a row with nothing to translate). `npm run check` reports
+a translation with more rows than the main file.
+
 | On the site | File |
 |---|---|
 | Home page: what the product does and for whom, lead, picture of the product, the link to the free trial, the features, the security and data facts | `content/home.md` (`title`, `lead`, `image`, `trialUrl`, `features` and `facts` as rows of `title` and `text`; and `home.de.md`, `home.fr.md`) |
@@ -96,7 +101,7 @@ number in euros (`95` or `12.50`).
 | Customer logos | `content/logos/<n>.<name>.md`: `name`, `image` (an SVG or PNG in `public/logos/`), `url` |
 | Quote on the home page | `content/quotes/<n>.<name>.md`: `text`, `name`, `role`; the home page shows the first |
 | Security, about us, contact and other pages | `content/pages/<n>.<name>.md`; each translation sets its own address with `slug:`. The contact page shows the address, email and phone of `content/site.md` under its title (`app/components/pages/Top.vue`) |
-| Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters; in quotes when it contains a colon), `until` (the last day it shows, as a date in the `timeZone` of `ginko.config.ts`; only in the main file, translations repeat only `text`) |
+| Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters; in quotes when it contains a colon), `until` (the last day it shows, like `2026-12-31`, in the `timeZone` of `ginko.config.ts`; without it the notice stays until you delete the file). A translation has only `text`. |
 | Name, address, register entry, VAT number, email, phone | `content/site.md` (footer, imprint, the contact page, search engines) |
 | Privacy policy, terms of service, imprint | `content/legal/` (placeholders for Germany: replace them before you go live) |
 | Site name, description for search engines, currency | `ginko.config.ts` (`name`, `seo.description`, `currency`) |
@@ -119,15 +124,15 @@ date of each release; the blog has its own at `<blog page>/rss.xml`.
 **Free trial.** "Start free trial" is a link to your app (`trialUrl` in `content/home.md`, and `actionUrl` of each
 plan). The site itself has no sign-up form and sends no data anywhere.
 
-Notices show in file-number order, smallest first: give the newest a smaller number than the others (the sample is `5.`; `0.` works, and numbers may have gaps). At most two show at once.
+Notices show in file-number order, smallest first: give the newest a smaller number than the others (the sample is
+`5.`; `0.` works, and numbers may have gaps). At most two show at once.
 
 ## Make it yours
 
 - **Name.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name also appears as
   text in `seo.description` in `ginko.config.ts`, `legalName` in `content/site.md` and the sample texts in
-  `content/` (home, pages, FAQ, people, posts, changelog, notices);
-  `grep -rl Planwerk content` lists them. Replace what is left. On phones the header can show a shorter name: set
-  `shortName` in `app/app.config.ts` (the commented line).
+  `content/` (home, pages, FAQ, people, posts, changelog, notices); `grep -rl Planwerk content` lists them. Replace what
+  is left. On phones the header can show a shorter name: set `shortName` in `app/app.config.ts` (the commented line).
 - **Menu.** `nav` in `app/app.config.ts` holds at most six items: a page of
   `ginko.config.ts` (`{ page: 'pricing', label: { … } }`, label per language, the same words as the page's title) or
   a page of `content/pages/` by id (`{ entry: 'pages/security' }` is `content/pages/1.security.md`). `footer` takes the
@@ -142,8 +147,8 @@ Notices show in file-number order, smallest first: give the newest a smaller num
 - **Colour.** `--brand` and `--brand-foreground` in `app/assets/css/main.css`, once for light and once for dark
   (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). This
   template uses violet (`--brand` `#6d28d9`, dark `#c4b5fd`). In dark mode the closing band uses
-  `--brand-surface: #4c1d95` with `--brand-surface-foreground: #f5f3ff` (in `.dark`); change both with your colour, or
-  delete them to use `--brand`. Text on the colour needs a contrast of at least 4.5:1 in both modes; check each pair
+  `--brand-surface: #4c1d95` with `--brand-surface-foreground: #f5f3ff` (in `.dark`); set `--brand-surface` to a deep
+  shade of your colour and `--brand-surface-foreground` to the text colour on it, or delete both to use `--brand`. Text on the colour needs a contrast of at least 4.5:1 in both modes; check each pair
   with a contrast checker (for example webaim.org/resources/contrastchecker). `DESIGN.md` has the rules.
 - **Fonts.** `--font-body` in `main.css`. `@nuxt/fonts` downloads the fonts at build time and serves them from your
   site.
