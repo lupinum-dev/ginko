@@ -1,10 +1,13 @@
 ---
 # Sample values: replace them with your own before you go live.
+# Add your register entry if you have one, for example:
+# registryNumber: FN 123456 a
+# registryCourt: Amtsgericht Hamburg
 legalName: Maren Holt
-street: Musterweg 7
+street: Lotsenhof 7
 postalCode: '22765'
 city: Hamburg
-email: studio@example.com
-phone: '+49 40 000000'
-vatId: DE000000000
+email: studio@marenholt.example
+phone: '+49 40 0123 4567'
+vatId: DE293847153
 ---

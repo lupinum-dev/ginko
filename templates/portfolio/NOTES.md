@@ -1,8 +1,8 @@
 # Notes before release
 
-- Sample data that must change before going live: `content/site.md` (a street called "Musterweg", a phone and VAT
-  number with zeros), the email addresses (`example.com`), the people in `content/people/` (fictional), the client
-  "Musterbau GmbH" (fictional), the projects, the journal entries, the notice about the Holm chair, the photos (stock
+- Sample data that must change before going live: `content/site.md` (a made-up street, a phone number that reaches nobody and
+  a VAT number that fails its check), the email addresses (they end in `.example`), the people in `content/people/` (fictional), the client
+  "Werftblick Wohnbau eG" (fictional), the projects, the journal entries, the notice about the Holm chair, the photos (stock
   photos of other rooms and objects, see `MEDIA.md`) and the legal texts (marked placeholders).
 - The photos are stock photos that match the sample projects only loosely (the "oak" chair is a light wood chair from
   a stock series).
