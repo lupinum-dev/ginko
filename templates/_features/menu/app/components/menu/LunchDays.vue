@@ -3,8 +3,9 @@ import { formatMoney } from '@lupinum/ginko'
 import { isLunchPlaceholder } from '@lupinum/ginko-preset-gastro'
 
 /** The lunch days of the week shown: weekday and date, the dish, its price and allergen letters. Days before today
- *  are left out on screen (a guest cannot order them) and stay on paper. Today is marked in words;
- *  a day the place is closed says "Closed" instead of a dish. A day still holding the placeholder dish of a fresh site has no allergen line: there is no dish to name allergens for. */
+ *  are left out on screen (a guest cannot order them) and stay on paper. Today is marked in words; a day the place
+ *  is closed says "Closed" instead of a dish. A day still holding the placeholder dish of a fresh site has no
+ *  allergen line: there is no dish to name allergens for. */
 const { lunch, days } = useLunch()
 const { t, format, language } = useI18n('menu')
 const langOf = useGinkoLang()
