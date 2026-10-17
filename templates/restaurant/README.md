@@ -124,6 +124,9 @@ Allergens use the EU letters as Austrian menus write them: A gluten, B crustacea
 G milk, H tree nuts, L celery, M mustard, N sesame, O sulphites, P lupin, R molluscs. Check each dish with your
 kitchen: a wrong allergen is the one mistake this site must never make.
 
+The Studio asks whether the allergens are still right when a dish changes; in the files nothing asks, so check the
+allergens whenever you change a dish.
+
 Notices show newest first (the smallest number first), and at most two show at once. Give a new notice a smaller
 number than the others: `0.` works and numbers may have gaps, so older notices keep theirs.
 
