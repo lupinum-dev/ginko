@@ -40,6 +40,9 @@
     "title": "Journal",
     "lead": "Notes from the studio and the workshops, now and then.",
     "latest": "All journal entries",
-    "empty": "No journal entries yet"
+    "empty": "No journal entries yet",
+    "tagged": "Journal entries tagged “{tag}”",
+    "all": "Show all journal entries",
+    "noTag": "No journal entries tagged “{tag}”"
   }
 }
