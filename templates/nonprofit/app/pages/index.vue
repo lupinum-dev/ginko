@@ -12,13 +12,12 @@ const posts = useBlogPosts()
 const projects = useProjectCards()
 const path = useGinkoPath()
 const { t } = useI18n()
-const site = useGinko('site')
 const links = useSiteLinks(() => [{ entry: 'pages/get-involved' }, { entry: 'pages/donate' }])
 const link = (key: string) => links.value.find((l) => l.key === key)
 const latest = computed(() => posts.value.slice(0, 3))
 const quote = computed(() => quotes.value.items[0])
 // The tab and search result say what the group does and where; the share card keeps the mission as its title.
-usePageSeo(() => ({ home: true, title: t('home.title', { city: site.value.data.city ?? '' }), description: home.value.data.lead, image: home.value.data.image }))
+usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.data.lead, image: home.value.data.image }))
 </script>
 
 <template>

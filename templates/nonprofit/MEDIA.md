@@ -21,7 +21,7 @@ allow selling the photos as they are or building a similar photo service. CC0 is
 
 | File | What | License |
 |---|---|---|
-| `public/logos/partner-one.svg`, `partner-two.svg`, `partner-three.svg` | wordmarks of invented local partners in Kassel (a school, a bakery, a canoe club), no real organisations | MIT, like the code |
+| `public/logos/partner-one.svg`, `partner-two.svg`, `partner-three.svg` | wordmarks of invented local partners in Kassel (a school, an angling club, a canoe club), no real organisations | MIT, like the code |
 | `public/reports/annual-report-2025.pdf` | a two-page fictional annual report with invented figures, marked as a fictional sample | MIT, like the code |
 | `.github/screenshots/home-light.png`, `home-dark.png` | screenshots of this template | MIT, like the code |
 
