@@ -136,7 +136,7 @@ Notices show in file-number order, smallest first: give the newest a smaller num
 - **Menu.** `nav` in `app/app.config.ts` holds at most six items: a page of
   `ginko.config.ts` (`{ page: 'pricing', label: { … } }`, label per language, the same words as the page's title) or
   a page of `content/pages/` by id (`{ entry: 'pages/security' }` is `content/pages/1.security.md`). `footer` takes the
-  same items and an address on another site: `{ url: 'https://app.example.com/login', label: { … } }` is the
+  same items and an address on another site: `{ url: 'https://app.planwerk.example/login', label: { … } }` is the
   "Sign in" link to your app, in the footer and in the phone menu.
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 140, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name.
@@ -221,7 +221,9 @@ Links in the content name pages by their key (`[changelog]($page.changelog)`). A
 - [ ] Every plan has your prices or `pricing: onRequest`, the "plus VAT" note fits your prices, and the answers in
       `content/faq/` say the same as your terms.
 - [ ] `trialUrl` in `content/home.md`, each plan's `actionUrl`, the sign-in link (`footer` in `app/app.config.ts`) and the
-      link on the contact page lead to your app, not to `app.example.com`.
+      link on the contact page lead to your app, not to `app.planwerk.example`.
+- [ ] The sample phone numbers and emails are replaced: they reach nobody (the numbers start their local part
+      with 0, the emails end in .example), so a forgotten one fails quietly.
 - [ ] The facts about security and data (`facts` in `content/home.md`, `content/pages/1.security.md`) describe your
       real hosting, backups and contracts.
 - [ ] The placeholders in `content/legal/` are replaced by your own texts, and the ones you do not need are deleted.

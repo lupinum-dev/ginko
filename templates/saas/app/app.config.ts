@@ -17,16 +17,16 @@ export default defineAppConfig({
     // title) or an entry of content/pages/ by id (`pages/<file name without number>`).
     nav: [
       { page: 'pricing', label: { en: 'Pricing', de: 'Preise', fr: 'Tarifs' } },
-      { page: 'news', label: { en: 'Blog', de: 'Blog', fr: 'Blog' } },
       { page: 'changelog', label: { en: 'Changelog', de: 'Neuerungen', fr: 'Nouveautés' } },
       { page: 'faq', label: { en: 'FAQ', de: 'Häufige Fragen', fr: 'Questions fréquentes' } },
+      { entry: 'pages/contact' },
     ],
     footer: [
       { entry: 'pages/security' },
       { entry: 'pages/about' },
-      { entry: 'pages/contact' },
+      { page: 'news', label: { en: 'Blog', de: 'Blog', fr: 'Blog' } },
       // The sign-in of the app, for customers: a quiet link here and in the phone menu, no second button in the header.
-      { url: 'https://app.example.com/login', label: { en: 'Sign in', de: 'Anmelden', fr: 'Se connecter' } },
+      { url: 'https://app.planwerk.example/login', label: { en: 'Sign in', de: 'Anmelden', fr: 'Se connecter' } },
     ],
     // For example { label: 'LinkedIn', url: 'https://www.linkedin.com/company/planwerk' }.
     socials: [],

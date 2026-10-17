@@ -1,9 +1,9 @@
 # Notes before release
 
-- Sample data that must change before going live: `content/site.md` (Planwerk GmbH at Musterstraße 8 in "Musterstadt",
-  register, VAT and phone numbers with zeros), the email address and the app addresses (`example.com`,
-  `app.example.com`), the plans and prices (`€89` / `€890`, `€219` / `€2,190`, Group on request), the changelog
-  (versions 4.3.0 to 4.6.0), the blog posts and their authors (fictional people), the quote (marked "sample quote"),
+- Sample data that must change before going live: `content/site.md` (Planwerk GmbH at Kranichhof 8 in Leipzig,
+  register entry (commented out), VAT and phone numbers that belong to nobody), the email address and the app addresses (`planwerk.example`,
+  `app.planwerk.example`), the plans and prices (`€89` / `€890`, `€219` / `€2,190`, Group on request), the changelog
+  (versions 4.3.0 to 4.6.0), the blog posts and their authors (fictional people), the quote (invented person),
   the customer logos (fictional homes and a clinic) and the legal texts (marked placeholders for Germany).
 - The security and data facts are sample claims about a fictional product, not facts about any real service: "hosted
   in Germany", "data stays in the EU", the data processing agreement under Art. 28 GDPR, encrypted connections and
