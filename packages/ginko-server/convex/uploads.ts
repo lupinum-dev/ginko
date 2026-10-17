@@ -5,8 +5,10 @@
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { sha256 } from '@lupinum/ginko/internal'
-import { internalMutation, internalQuery, mutation, query } from './_generated/server'
-import { actorFor, fail } from './lib/access'
+import type { Doc } from './_generated/dataModel'
+import { internalMutation, internalQuery, mutation, query, type MutationCtx } from './_generated/server'
+import { windowOf } from './bundle'
+import { actorFor, fail, type Actor } from './lib/access'
 import { cleanName } from './lib/files'
 import { t, type MessageKey } from './lib/i18n'
 import { deleteStorage, isKeptUpload, purgeUpload } from './lib/library'
@@ -16,6 +18,20 @@ export const MAX_ATTEMPTS = 3
 const RETRY_MS = 30_000
 
 const TICKET_MS = 10 * 60 * 1000
+/** Upload tickets per person, site and hour. A busy editor uploads a few dozen files; this bounds what a script or a stolen session stores. */
+export const UPLOAD_LIMIT = 200
+
+/** Counts one ticket in the person's current hour on this site, or refuses the one over the limit. Platform admins are not counted, as for invites. */
+async function countUpload(ctx: MutationCtx, actor: Actor) {
+  if (actor.role === 'admin') return
+  const site = actor.site._id
+  const user = actor.user.id
+  const hour = Math.floor(windowOf(Date.now()) / 60) * 60
+  const row = await ctx.db.query('rateWindows').withIndex('by_site_kind_window', (q) => q.eq('site', site).eq('kind', 'upload').eq('window', hour).eq('user', user)).unique()
+  if (row && row.count >= UPLOAD_LIMIT) fail('RATE_LIMITED', 'errors.tooManyUploads')
+  if (row) await ctx.db.patch(row._id, { count: row.count + 1 })
+  else await ctx.db.insert('rateWindows', { site, kind: 'upload', user, window: hour, count: 1 })
+}
 
 /** 32 random bytes, base64url without padding. */
 function newToken(): string {
@@ -36,6 +52,7 @@ export const prepare = mutation({
     const folderId = folder === undefined ? null : ctx.db.normalizeId('folders', folder)
     const row = folderId ? await ctx.db.get(folderId) : null
     if (folder !== undefined && (!row || row.site !== actor.site._id)) fail('NOT_FOUND', 'errors.folderNotFound')
+    await countUpload(ctx, actor)
     const ticket = newToken()
     await ctx.db.insert('uploadTickets', {
       tokenHash: sha256(ticket), site: actor.site._id, user: actor.user.id, expiresAt: Date.now() + TICKET_MS,
@@ -71,14 +88,25 @@ export const register = internalMutation({
     folder: v.optional(v.id('folders')), library: v.optional(v.boolean()),
   },
   handler: async (ctx, { library, ...args }) => {
+    // A long name is shortened by cleanName (extension kept); only a missing one is refused.
     const given = args.name.trim()
-    if (!given || given.length > 200) fail('INVALID', 'errors.fileNameInvalid')
+    if (!given) fail('INVALID', 'errors.fileNameInvalid')
     // A library upload, or one put straight into a folder, is kept: the 7-day sweep leaves it alone.
     const id = await ctx.db.insert('uploads', { ...args, name: cleanName(given), attempts: 0, status: 'processing', kept: !!(library || args.folder) })
     await ctx.scheduler.runAfter(0, internal.uploadsNode.run, { upload: id })
     return id
   },
 })
+
+/**
+ * A file that entries already name (an import writes the entries before their files are processed) reaches the site
+ * only now: contentRev rises like after a save, so a site's cache fetches the content again.
+ */
+async function showWhereUsed(ctx: MutationCtx, row: Doc<'uploads'>) {
+  const used = await ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', row._id)).filter((q) => q.eq(q.field('holder'), 'entry')).first()
+  const site = used ? await ctx.db.get(row.site) : null
+  if (site) await ctx.db.patch(site._id, { contentRev: site.contentRev + 1 })
+}
 
 /** A PDF whose content checked out is ready as stored; nothing is processed or removed. Repeats are no-ops. */
 export const markFileReady = internalMutation({
@@ -87,6 +115,7 @@ export const markFileReady = internalMutation({
     const row = await ctx.db.get(upload)
     if (!row || row.status !== 'processing') return false
     await ctx.db.patch(upload, { status: 'ready', processedId: row.storageId, ...(sha256 ? { sha256 } : {}) })
+    await showWhereUsed(ctx, row)
     return true
   },
 })
@@ -134,6 +163,7 @@ export const markReady = internalMutation({
     if (!row || row.status !== 'processing') return false
     await ctx.db.patch(row._id, { processedId: args.processedId, size: args.size, width: args.width, height: args.height, status: 'ready', ...(args.variants ? { variants: args.variants } : {}), ...(args.sha256 ? { sha256: args.sha256 } : {}) })
     await ctx.scheduler.runAfter(0, internal.uploads.dropFile, { storageId: row.storageId })
+    await showWhereUsed(ctx, row)
     return true
   },
 })
@@ -177,7 +207,8 @@ export const get = query({
 /**
  * Read path for fields that show a stored file (a saved image or PDF): the URL of each READY upload
  * of this site. Unknown ids, uploads of another site and uploads that are not ready give null, so
- * a reply never shows whether an id exists elsewhere.
+ * a reply never shows whether an id exists elsewhere. A file in the trash says so (`trashed`): a field
+ * keeps showing it, but a text may not name it.
  */
 export const urls = query({
   args: { site: v.string(), ids: v.array(v.string()) },
@@ -185,12 +216,12 @@ export const urls = query({
     const actor = await actorFor(ctx, site)
     // A page shows at most a few dozen files (gallery max 24); a bound keeps one query small.
     if (ids.length > 200) fail('INVALID', 'errors.tooManyFiles')
-    const found: Record<string, { url: string; name: string; size: number; width: number | null; height: number | null; alt: Record<string, string> } | null> = {}
+    const found: Record<string, { url: string; name: string; size: number; width: number | null; height: number | null; alt: Record<string, string>; trashed?: true } | null> = {}
     for (const id of ids) {
       const uploadId = ctx.db.normalizeId('uploads', id)
       const row = uploadId ? await ctx.db.get(uploadId) : null
       const url = row && row.site === actor.site._id && row.status === 'ready' && row.processedId ? await ctx.storage.getUrl(row.processedId) : null
-      found[id] = row && url ? { url, name: row.name, size: row.size, width: row.width ?? null, height: row.height ?? null, alt: row.alt ?? {} } : null
+      found[id] = row && url ? { url, name: row.name, size: row.size, width: row.width ?? null, height: row.height ?? null, alt: row.alt ?? {}, ...(row.trashedAt ? { trashed: true as const } : {}) } : null
     }
     return found
   },

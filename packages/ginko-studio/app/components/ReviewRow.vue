@@ -6,15 +6,15 @@ import { useI18n } from '#imports'
 import type { Fields, Locale } from '@lupinum/ginko'
 import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
-import { Input } from '@studio/components/ui/input'
 import { Label } from '@studio/components/ui/label'
 import { Textarea } from '@studio/components/ui/textarea'
 import { computed, nextTick, ref } from 'vue'
 import { useTextOf } from '../composables/useTextOf'
 import { byText } from '../utils/who'
-import { msToZoned, zonedToMs } from '../utils/when'
+import { msToZoned, scheduleProblem, whenFull } from '../utils/when'
 import type { DiffField, ProposalRow } from '../utils/review'
 import ChangeDiff from './ChangeDiff.vue'
+import ScheduleField from './ScheduleField.vue'
 
 const props = defineProps<{
   proposal: ProposalRow
@@ -27,6 +27,8 @@ const props = defineProps<{
   locale: Locale
   timeZone: string
   inRelease?: boolean
+  /** The site, for the thumbnails of pictures in a rich text. */
+  site?: string
 }>()
 const emit = defineEmits<{ toggle: []; approve: [at?: number]; reject: [reason: string] }>()
 const { t, format } = useI18n()
@@ -41,10 +43,12 @@ const staleReason = computed(() => {
   return text ? textOf(msg, text) : ''
 })
 const who = computed(() => byText(props.proposal.author, props.proposal.via, props.proposal.agent, t))
-const when = computed(() => format.date(props.proposal.createdAt, { timeZone: props.timeZone, day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }))
+const when = computed(() => whenFull(props.proposal.createdAt, props.timeZone, format))
 
 const mode = ref<'later' | 'reject' | null>(null)
 const at = ref('')
+/** The instant `at` names (ScheduleField); undefined while it names none or two. */
+const picked = ref<number>()
 const reason = ref('')
 const timeError = ref('')
 
@@ -63,14 +67,17 @@ function cancel() {
 function openLater() {
   const day = 24 * 60 * 60 * 1000
   at.value = `${msToZoned(Date.now() + day, props.timeZone).slice(0, 10)}T09:00`
+  picked.value = undefined
   timeError.value = ''
   mode.value = 'later'
   focusId(`at-${props.proposal.proposal}`)
 }
 function schedule() {
-  const ms = zonedToMs(at.value, props.timeZone)
-  if (ms === undefined || ms <= Date.now()) { timeError.value = t('entry.publish.futureTime'); return }
-  emit('approve', ms)
+  const problem = scheduleProblem(at.value, props.timeZone, picked.value, Date.now())
+  timeError.value = problem && problem !== 'entry.publish.timeMissing' ? t(problem) : ''
+  if (problem === 'entry.publish.timeMissing') focusId(`at-${props.proposal.proposal}`)
+  if (problem || picked.value === undefined) return
+  emit('approve', picked.value)
 }
 function sendReject() {
   if (reason.value.trim()) emit('reject', reason.value.trim())
@@ -90,7 +97,7 @@ function sendReject() {
     <div v-if="proposal.mine && !proposal.canDecide"><Badge variant="soft">{{ t('review.mine') }}</Badge></div>
 
     <div v-if="open" class="grid gap-3">
-      <ChangeDiff v-if="detail" :diff="detail.diff" :fields="fields" :locale="props.locale" />
+      <ChangeDiff v-if="detail" :diff="detail.diff" :fields="fields" :locale="props.locale" :site="props.site" />
       <template v-if="proposal.canDecide">
         <div v-if="!mode" class="flex flex-wrap gap-2">
           <Button v-if="!stale && !inRelease" type="button" size="sm" :disabled="busy" @click="emit('approve')">{{ t('review.approve') }}</Button>
@@ -99,7 +106,7 @@ function sendReject() {
         </div>
         <div v-else-if="mode === 'later'" class="grid gap-2">
           <Label :for="`at-${proposal.proposal}`" class="font-medium">{{ t('entry.publish.dateTime') }}</Label>
-          <Input :id="`at-${proposal.proposal}`" v-model="at" type="datetime-local" required />
+          <ScheduleField v-model:local="at" v-model:picked="picked" :zone="timeZone" :input-id="`at-${proposal.proposal}`" />
           <p v-if="timeError" class="font-medium text-destructive" role="alert">{{ timeError }}</p>
           <div class="flex flex-wrap gap-2">
             <Button type="button" size="sm" :disabled="busy" @click="schedule">{{ t('entry.publish.schedule') }}</Button>

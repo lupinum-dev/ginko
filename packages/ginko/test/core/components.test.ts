@@ -64,7 +64,11 @@ describe('parseMarkdown with a component registry', () => {
     ['slot on a component without slots', '::callout{type="info"}\n#footer\nx\n::', 'hat keine Bereiche'],
     ['template outside a registered component', '::nope\n#footer\nx\n::', '„template“ ist nicht erlaubt.'],
     ['blocked tag stays blocked', '::script\nx\n::', '„script“ ist nicht erlaubt.'],
-    ['plain Markdown is not a component', '# Titel\n\n| a |\n|---|\n| b |\n\n- x', null],
+    // An unclosed block swallows the rest of its parent; inside a list item comark re-reads the indented lines.
+    ['unclosed component in a list item', '- Punkt\n\n  ::callout{type="info"}\n  x\n- Zwei\n\nDanach', 'Die Komponente „callout“ ist nicht geschlossen'],
+    ['closed component in a list item', '- Punkt\n\n  ::callout{type="info"}\n  x\n  ::\n- Zwei', null],
+    ['closed component in a quote', '> ::callout{type="info"}\n> x\n> ::\n\nDanach', null],
+    ['plain Markdown is not a component','# Titel\n\n| a |\n|---|\n| b |\n\n- x', null],
   ]
   test.each(cases)('%s', async (_name, text, problem) => {
     const { problems } = await parseMarkdown(text, { profile: 'page', components: registry })
@@ -97,22 +101,22 @@ describe('component registry in the schema', () => {
   const site = {
     site: 'demo', name: 'Demo', url: 'https://demo.test', timeZone: 'Europe/Vienna', locales: ['de'] as const, currency: 'EUR' as const,
     pages: { home: '/' },
-    bricks: { page: single({ label: 'Seite', fields: { body: f.markdown('Text', { profile: 'page' }) } }) },
+    bricks: { article: single({ label: 'Seite', fields: { body: f.markdown('Text', { profile: 'page' }) } }) },
   }
 
   test('validate rejects an unknown component in a markdown field', async () => {
     const schema = serializeSchema({ ...site, components: registry })
     expect(checkSchema(schema)).toEqual([])
-    const ok = await validate(schema, 'page', { body: { de: '::callout{type="info"}\nHi\n::' } }, { mode: 'release' })
+    const ok = await validate(schema, 'article', { body: { de: '::callout{type="info"}\nHi\n::' } }, { mode: 'release' })
     expect(ok.errors).toEqual([])
-    const bad = await validate(schema, 'page', { body: { de: '::nope\nHi\n::' } }, { mode: 'release' })
+    const bad = await validate(schema, 'article', { body: { de: '::nope\nHi\n::' } }, { mode: 'release' })
     expect(bad.errors.map((e) => e.message)).toEqual(['„Text“: Komponente „nope“ gibt es nicht.'])
   })
 
   test('a schema without components is unchanged and keeps accepting any tag', async () => {
     const schema = serializeSchema(site)
     expect('components' in schema).toBe(false)
-    const result = await validate(schema, 'page', { body: { de: '::nope\nHi\n::' } }, { mode: 'release' })
+    const result = await validate(schema, 'article', { body: { de: '::nope\nHi\n::' } }, { mode: 'release' })
     expect(result.errors).toEqual([])
   })
 

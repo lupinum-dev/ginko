@@ -46,6 +46,8 @@ const SUBTITLE_MIGRATION = { id: '2026-11-menu-subtitle', brick: 'menu', fills: 
 function withSubtitle(schema: Schema): Schema {
   const next = copy(schema)
   next.bricks.menu!.fields.subtitle = { type: 'text', label: 'Untertitel', max: 200, translate: false }
+  // A required field with no default must be asked by the create task, which lists its fields.
+  for (const task of next.bricks.menu!.tasks ?? []) if (task.kind === 'create' && task.fields) task.fields = [...task.fields, 'subtitle']
   next.migrations.push(SUBTITLE_MIGRATION)
   return next
 }
@@ -377,6 +379,21 @@ describe('release regressions (Phase 5 review)', () => {
     expect((await storedSite(s)).entryCount).toBe(Object.keys(s.entries).length)
   })
 
+  // Wrong behaviour caught: a release that makes an entry too large says only "this entry is too large", and a removed
+  // entry (which counts apart, in the trash) blocks it the same way.
+  it('a release that makes a live entry too large names it; a removed entry does not block it', async () => {
+    const s = await setup()
+    const schema = withSubtitle(await storedSchema(s))
+    schema.bricks.menu!.fields.subtitle = { type: 'markdown', label: 'Untertitel', max: 500_000, translate: false }
+    const writes = (await subtitleWrites(s)).map((w) => (w.entry === s.entries['menu-schnitzel'] ? { ...w, fields: { subtitle: 'x'.repeat(495_000) } } : w))
+
+    const refused = await errorOf(release(s, { schema, writes }))
+    expect(refused).toMatchObject({ code: 'TOO_LARGE', message: 'Nach dem Release wäre „Wiener Schnitzel vom Kalb“ zu groß (484 KB von höchstens 480 KB).', details: { entry: s.entries['menu-schnitzel'] } })
+
+    await s.t.run((ctx) => ctx.db.patch(s.entries['menu-schnitzel']!, { deletedAt: Date.now() }))
+    await expect(release(s, { schema, writes })).resolves.toMatchObject({ schemaRev: 2 })
+  })
+
   it('a migration dropped from the config keeps its identity: same descriptor is skipped, changed one is MIGRATION_CHANGED', async () => {
     const s = await setup()
     const dropped = async () => {
@@ -394,6 +411,7 @@ describe('release regressions (Phase 5 review)', () => {
     // The same ID with another target and fingerprint is a changed migration.
     const changed = copy(await storedSchema(s))
     changed.bricks.menu!.fields.tagline = { type: 'text', label: 'Slogan', max: 200, translate: false }
+    for (const task of changed.bricks.menu!.tasks ?? []) if (task.kind === 'create' && task.fields) task.fields = [...task.fields, 'tagline']
     changed.migrations.push({ id: SUBTITLE_MIGRATION.id, brick: 'menu', fills: 'tagline', fingerprint: sha256('other source') })
     const error = await errorOf(release(s, { schema: changed, writes: await menuWrites(s, { tagline: 'Slogan' }) }))
     expect(error).toMatchObject({ code: 'MIGRATION_CHANGED' })
@@ -423,7 +441,6 @@ describe('devPush on a fresh local backend', () => {
     const singles = (await s.t.run((ctx) => ctx.db.query('entries').collect())).filter((e) => e.site === site._id)
     expect(singles.map((e) => e.brick).sort()).toEqual(['contact', 'gallery', 'hours', 'legal', 'lunch', 'seo'])
     expect(site.entryCount).toBe(6)
-    expect(site.orderRevs.hours).toBe(1)
     const hours = singles.find((e) => e.brick === 'hours')!
     expect(await s.as.owner.mutation(api.entries.save, { site: 'neu', opId: opId(), entry: hours._id, baseRev: 1, fields: { closedNote: { de: 'Betriebsurlaub' } }, sentence: 'Hinweis gesetzt' }))
       .toMatchObject({ rev: 2 })

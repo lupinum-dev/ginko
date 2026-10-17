@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
-  applyDefaults, bundleFits, isBundle, knownBricks, markdownTrees, parseMarkdown, type Bundle,
-  buildBundle, isVisible, printOf, resolveEntry, serializeSchema, sortEntries, todayIn,
+  applyDefaults, bundleFits, f, isBundle, knownBricks, markdownTrees, parseMarkdown, platformMarkdownRef, withMarkdownRefs, wordsOf, type Bundle, type MarkdownTree,
+  buildBundle, servedBundle, type FileInfo, isTranslatable, isVisible, printOf, resolveEntry, serializeSchema, sortEntries, todayIn,
   type Brick, type BundleBrick, type BundleItem, type CollectionBrick, type Locale, type Schema, type StoredEntry,
 } from '../../src/core/index.ts'
 
@@ -86,13 +86,16 @@ describe('resolveEntry: translations and fallback (SPEC 6)', () => {
       locale: 'en' as const,
       data: 'Tafelspitz',
       fallback: ['name'],
+      outdated: [],
     },
+    // Wrong behaviour caught: a typo fix in German turns the English text German (P5).
     {
-      name: 'a stale translation (print of an older main value) falls back',
+      name: 'an outdated translation (print of an older main value) is delivered as it is and listed as outdated, not as fallback',
       entry: dish('k1', { de: 'Tafelspitz', en: 'Boiled beef' }, { name: { en: printOf('Tafelspitz alt') } }),
       locale: 'en' as const,
-      data: 'Tafelspitz',
-      fallback: ['name'],
+      data: 'Boiled beef',
+      fallback: [],
+      outdated: ['name'],
     },
     {
       name: 'a fresh translation (print matches the main value) is used',
@@ -100,6 +103,7 @@ describe('resolveEntry: translations and fallback (SPEC 6)', () => {
       locale: 'en' as const,
       data: 'Boiled beef',
       fallback: [],
+      outdated: [],
     },
     {
       name: 'the main language never falls back',
@@ -107,11 +111,23 @@ describe('resolveEntry: translations and fallback (SPEC 6)', () => {
       locale: 'de' as const,
       data: 'Tafelspitz',
       fallback: [],
+      outdated: [],
     },
-  ])('$name', ({ entry, locale, data, fallback }) => {
+  ])('$name', ({ entry, locale, data, fallback, outdated }) => {
     const r = resolve(base(), 'menu', entry, locale)
     expect(r.data.name).toBe(data)
     expect(r.fallback).toEqual(fallback)
+    expect(r.outdated).toEqual(outdated)
+  })
+
+  // Wrong behaviour caught: the Studio cannot tell which texts keep a page off the English site, or marks an optional one as needed.
+  it('lists the missing required texts as blocking, but not a missing optional text', () => {
+    const event: StoredEntry = { id: 'e1', data: { title: { de: 'Fest' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'x', en: 'x' } }, prints: { description: { en: printOf('x') } } }
+    const r = resolve(base(), 'events', event, 'en')
+    expect([r.blocking, r.fallback, r.hidden]).toEqual([['title'], ['title'], true])
+    const withNote = dish('k1', { de: 'Tafelspitz', en: 'Boiled beef' }, { name: { en: printOf('Tafelspitz') } })
+    const d = resolve(base(), 'menu', { ...withNote, data: { ...withNote.data, description: { de: 'Mit Kren' } } }, 'en')
+    expect([d.blocking, d.fallback]).toEqual([[], ['description']])
   })
 
   // Wrong behaviour caught: a list row's missing translation is reported without its row id, so the editor cannot find it.
@@ -125,14 +141,17 @@ describe('resolveEntry: translations and fallback (SPEC 6)', () => {
     expect(r.fallback).toEqual(['days.k3Fd9aZ0qx.dish'])
   })
 
-  // Wrong behaviour caught: the stored tree of an outdated translation goes online while its leaf is listed as fallback.
-  it('serves the stored tree of the text it picks: the main language tree for an outdated translation', async () => {
+  // Wrong behaviour caught: the English imprint text is served with the German tree (or the reverse).
+  it('serves the stored tree of the text it picks: the translation tree for a fresh or outdated translation, the main one for a missing one', async () => {
     const s = base()
     const data = { imprint: { de: 'Wirtin **Maria**', en: 'Landlady **Maria**' } }
     const trees = await markdownTrees(brickOf(s, 'legal').fields, data)
     const legal = (print: string): StoredEntry => ({ id: 'legal', data, prints: { imprint: { en: printOf(print) } }, trees })
     expect(resolve(s, 'legal', legal('Wirtin **Maria**'), 'en').data.imprint).toEqual((await parseMarkdown('Landlady **Maria**')).value)
-    expect(resolve(s, 'legal', legal('Wirtin'), 'en').data.imprint).toEqual((await parseMarkdown('Wirtin **Maria**')).value)
+    expect(resolve(s, 'legal', legal('Wirtin'), 'en').data.imprint).toEqual((await parseMarkdown('Landlady **Maria**')).value)
+    const german = { de: data.imprint.de }
+    const untranslated: StoredEntry = { id: 'legal', data: { imprint: german }, trees: await markdownTrees(brickOf(s, 'legal').fields, { imprint: german }) }
+    expect(resolve(s, 'legal', untranslated, 'en').data.imprint).toEqual((await parseMarkdown('Wirtin **Maria**')).value)
   })
 })
 
@@ -201,6 +220,24 @@ describe('sortEntries: when asc (SPEC 2.1)', () => {
     const entry = (id: string, from: string): StoredEntry => ({ id, data: { when: { from, to: from } } })
     expect(sortEntries(events, [entry('late', '2026-10-20'), entry('early', '2026-10-01')]).map((e) => e.id)).toEqual(['early', 'late'])
   })
+
+  // Wrong behaviour caught: every language's list sorted by one language's titles (the English jobs list in the
+  // order of the German titles), or an untranslated entry sorted by nothing.
+  it.each([
+    ['en', ['apprentice', 'sales', 'service']],
+    ['de', ['apprentice', 'service', 'sales']],
+  ] as const)('sorts a translatable field by its text in %s', (locale, expected) => {
+    const events = collectionOf(base(), 'events')
+    const titled = { ...events, order: { field: 'title', dir: 'asc' as const } }
+    const entry = (id: string, title: Record<string, string>): StoredEntry => ({ id, data: { title } })
+    const entries = [
+      entry('sales', { en: 'Sales engineer', de: 'Vertriebsingenieur' }),
+      entry('service', { en: 'Service technician', de: 'Servicetechniker' }),
+      entry('apprentice', { de: 'Ausbildung' }),
+    ]
+    expect(isTranslatable(titled.fields.title!)).toBe(true)
+    expect(sortEntries(titled, entries, { locale, main: 'de' }).map((e) => e.id)).toEqual(expected)
+  })
 })
 
 describe('retired fields are projected into the bundle (SPEC 2.5)', () => {
@@ -240,6 +277,16 @@ describe('retired fields are projected into the bundle (SPEC 2.5)', () => {
     const s = base()
     retire(s, 'seo.description', { value: { de: 'Alt' } })
     expect(resolve(s, 'seo', { id: 'seo', data }, locale).data.description).toBe(description)
+  })
+
+  // Wrong behaviour caught: every entry lists a retired text as an outdated translation, which nobody can edit in the Studio.
+  it('never lists a retired value as outdated: a translated constant, or a stored text with an old print', () => {
+    const s = base()
+    retire(s, 'seo.description', { value: { de: 'Alt', en: 'Old' } })
+    const constant = resolve(s, 'seo', { id: 'seo', data: { title: { de: 'T', en: 'T' } }, prints: { title: { en: printOf('T') } } }, 'en')
+    expect([constant.data.description, constant.outdated]).toEqual(['Old', []])
+    const stored = resolve(s, 'seo', { id: 'seo', data: { title: { de: 'T', en: 'T' }, description: { de: 'Neu', en: 'New' } }, prints: { title: { en: printOf('T') }, description: { en: printOf('Alt') } } }, 'en')
+    expect([stored.data.description, stored.outdated]).toEqual(['New', []])
   })
 })
 
@@ -323,4 +370,45 @@ describe('isBundle and bundleFits: a malformed bundle is a platform failure, not
 it('knownBricks keeps only the bricks of the site schema', () => {
   const bundle = JSON.parse('{"format":1,"site":"s","locale":"de","schemaRev":1,"contentRev":1,"bricks":{"__proto__":{"kind":"single","data":{},"fallback":[]},"later":{"kind":"single","data":{},"fallback":[]},"seo":{"kind":"single","data":{},"fallback":[]}}}')
   expect(Object.keys(knownBricks(bundle, { bricks: { seo: { kind: 'single', label: 'SEO', fields: {} } } } as never).bricks)).toEqual(['seo'])
+})
+
+// Page weight P1/P1b: every page's payload carried every text with its heading list, ~85% of the payload on v7.
+// Reading time (romi-13): the ref keeps the tree's word count, else a list page that only has refs shows "1 Min." for
+// every post, and the Studio preview (full trees) disagrees with the site.
+it('withMarkdownRefs: a platform text becomes only its ref and word count in page state, and the tree is kept for the route', async () => {
+  const bundle = JSON.parse(readFileSync(new URL('../../../../contracts/restaurant/bundle.format3.de.json', import.meta.url), 'utf8')) as Bundle
+  const trees = new Map<string, MarkdownTree>()
+  const out = withMarkdownRefs(bundle, serializeSchema(restaurant), trees, (brick, id, field) => platformMarkdownRef('de', '1.1', brick, id, field))
+  const legal = out.bricks.legal
+  const tree = trees.get('/__ginko/platform/de/1.1/md/legal/legal/imprint.json')!
+  expect(legal?.kind === 'single' && legal.data.imprint).toEqual({ ref: '/__ginko/platform/de/1.1/md/legal/legal/imprint.json', words: wordsOf(tree) })
+  expect(tree.nodes[0]).toEqual(['p', {}, 'Inhaberin: Maria Ebner (Einzelunternehmen)'])
+  expect(wordsOf(tree)).toBeGreaterThan(8)
+  expect(wordsOf((await parseMarkdown('Ein **kurzer** Text.\n\n## Mit Titel')).value)).toBe(5)
+  expect(wordsOf({ ref: '/x', words: 7 })).toBe(7)
+})
+
+// Wrong behaviour caught: a picture of the Files library inside a text (`$file.<id>`) reaches the site as that literal
+// reference, so the browser shows a broken image; a file that is gone keeps an address that cannot load.
+it('servedBundle resolves $file references in texts to the file, its size, variants and library description', async () => {
+  const s = base()
+  const legal = s.bricks.legal!
+  ;(legal.fields.imprint as { profile: string }).profile = 'page'
+  s.components = { figure: { kind: 'block', label: 'Bild', describe: 'Ein Bild', props: { src: f.image('Bild'), alt: f.text('Beschreibung', { optional: true }), width: f.text('Breite', { optional: true }), height: f.text('Höhe', { optional: true }) } } }
+  const files = new Map<string, FileInfo>([
+    ['f1', { url: 'https://cdn.example/f1.webp', name: 'hund.jpg', size: 9, width: 2400, height: 1600, variants: [{ width: 480, url: 'https://cdn.example/f1-480.webp' }], alt: { de: 'Ein Hund' } }],
+    ['f2', { url: 'https://cdn.example/karte.pdf', name: 'karte.pdf', size: 3 }],
+  ])
+  const text = '![]($file.f1)\n\n![Eigenes]($file.gone)\n\n[Karte]($file.f2)\n\n::figure{src="$file.f1"}\n::\n'
+  const bundle = await servedBundle({
+    schema: s, requestedLocale: 'de', entries: { legal: [{ id: 'legal', data: { imprint: { de: text } } }] }, files: (id) => files.get(id),
+    schemaRev: 1, contentRev: 1, generatedAt: '2026-10-08T00:00:00.000Z', today: TODAY,
+  })
+  const brick = bundle.bricks.legal
+  expect(brick?.kind === 'single' && (brick.data.imprint as MarkdownTree).nodes).toEqual([
+    ['p', {}, ['img', { src: 'https://cdn.example/f1.webp', alt: 'Ein Hund', width: 2400, height: 1600, srcset: 'https://cdn.example/f1-480.webp 480w, https://cdn.example/f1.webp 2400w', sizes: '100vw' }]],
+    ['p', {}, ['img', { alt: 'Eigenes', 'data-broken': true }]],
+    ['p', {}, ['a', { href: 'https://cdn.example/karte.pdf' }, 'Karte']],
+    ['figure', { src: 'https://cdn.example/f1.webp', alt: 'Ein Hund', width: 2400, height: 1600 }],
+  ])
 })

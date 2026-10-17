@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { main } from '../../src/cli/index.ts'
 import type { CliDeps } from '../../src/cli/run.ts'
-import { collection, defineSite, f } from '../../src/core/index.ts'
+import { collection, defineSite, f, single } from '../../src/core/index.ts'
 
 // One file brick (docs/<name>.md) with a route, and a home page that a link can point to.
 const config = defineSite({
@@ -74,6 +74,17 @@ describe('ginko check and links in content files', () => {
     expect((await runCheck(siteWith('Siehe [Start]($page.home).', { ...config, seo: { image: 'https://cdn.example/og.png' } }))).code).toBe(0)
   })
 
+  // Wrong behaviour caught: a French site silently gets no public holidays in its opening hours.
+  it.each([
+    [{ country: 'FR' }, true],
+    [{ country: 'FR', calendar: 'none' }, false],
+    [{ country: 'AT' }, false],
+  ])('warns about a country without a holiday calendar: %o', async (over, warns) => {
+    const { code, lines } = await runCheck(siteWith('Siehe [Start]($page.home).', { ...config, ...over }))
+    expect(code).toBe(0)
+    expect(lines.some((l) => l.startsWith('Warning: Ginko has no public-holiday calendar for country “FR”'))).toBe(warns)
+  })
+
   it('prints only the OK line for a clean site and exits 0', async () => {
     const { code, lines, result } = await runCheck(siteWith('Siehe [Start]($page.home).'))
     expect(lines).toEqual(['OK: schema and links are fine.'])
@@ -126,6 +137,20 @@ describe('ginko check and links in content files', () => {
     const { code } = await runCheck(path, [], async (url) => { urls.push(url); return new Response(null, { status: 200 }) })
     expect(urls).toEqual(['https://linde.example/about'])
     expect(code).toBe(0)
+  })
+
+  // Wrong behaviour caught: a schema allows entries larger than the platform accepts, and nobody hears of it until a Save fails.
+  // A file brick never reaches the platform, so the same maxima there get no warning.
+  it('warns when a platform brick\'s maxima can pass the entry limit', async () => {
+    const legal = single({ label: 'Rechtliches', fields: { body: f.markdown('Text', { max: 300_000 }) } })
+    const docs = collection({
+      label: 'Doku', source: 'files', max: 50, order: 'manual', route: { de: '/doku/[slug]', en: '/docs/[slug]' },
+      fields: { title: f.text('Titel'), slug: f.slug('Adresse', { from: 'title' }), body: f.markdown('Text', { max: 300_000 }) },
+    })
+    const site = { ...config, locales: ['de', 'en'], bricks: { docs, legal } }
+    const { lines, result } = await runCheck(siteWith('Text.', site), ['--offline'])
+    expect(lines.filter((line) => line.startsWith('Warning:'))).toEqual(['Warning: brick “legal” can hold about 586 KiB per entry (largest: body 300,000 × 2 languages); the entry limit is 480 KiB. Lower a max so a full entry fits.'])
+    expect(result.ok).toBe(true)
   })
 
   // Bug caught: the content package knows the line of a CSV row, but `ginko check` printed only the file and field.

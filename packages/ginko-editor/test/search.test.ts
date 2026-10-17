@@ -42,12 +42,14 @@ describe('find and replace', () => {
     expect(dom.querySelectorAll('.ginko-match-current')).toHaveLength(1)
   })
 
-  test('replaceAll changes only matching blocks, keeps marks, and is one undo step', async () => {
+  test('replaceAll changes only matching blocks, keeps marks, selects the first change, and is one undo step', async () => {
     const handle = await open(TEXT)
     handle.editor.commands.setSearch('apfel')
     handle.editor.commands.replaceAll('Kiwi')
     expect(await handle.markdown()).toBe('Kiwi und Kiwi\n\n- **Kiwi** pur\n- Birne\n\nKiwiMUS\n')
     expect(searchInfo(handle.editor).total).toBe(0)
+    // The first changed place is selected (and scrolled to), so the person sees what happened.
+    expect(handle.editor.state.selection).toMatchObject({ from: 1, to: 5 })
     handle.editor.commands.undo()
     expect(await handle.markdown()).toBe(TEXT)
     expect(handle.dirty).toBe(false)

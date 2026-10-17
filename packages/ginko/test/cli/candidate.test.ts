@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildCandidate } from '../../src/cli/candidate.ts'
 import type { ReleaseState } from '../../src/cli/model.ts'
-import { collection, defineSite, f, migrationFingerprint, platformSchema, serializeSchema, single, type SiteInput } from '../../src/core/index.ts'
+import { collection, defineSite, f, migrationFingerprint, platformSchema, serializeSchema, single, type Fields, type SiteInput } from '../../src/core/index.ts'
 
 /** The candidate as `plan()` builds it: with the platform schema of `site`. */
 const candidateOf = (release: ReleaseState, site: SiteInput) => buildCandidate(release, site, platformSchema(serializeSchema(site)))
@@ -73,10 +73,24 @@ describe('buildCandidate: migrations over live and deleted entries (SPEC 5.1 ste
     expect(candidate.writes).toEqual([{ entry: 'live-soup', fields: { code: 'K500' } }, { entry: 'old-cake', fields: { code: 'K300' } }])
   })
 
-  it('an entry above 256 KiB is reported', async () => {
-    const big = { id: 'big', brick: 'menu', data: { headline: { de: 'Groß' }, price: { amount: 1 }, padding: 'x'.repeat(300_000) }, deletedAt: null }
-    const candidate = await candidateOf(state([big]), after)
-    expect(candidate.problems).toContainEqual(expect.stringContaining('is too large'))
+})
+
+describe('buildCandidate: the entry budget (SPEC 3)', () => {
+  // Wrong behaviour caught: one large entry blocks every release, also one that does not touch it or that only touches
+  // it in the trash, which counts apart.
+  it('counts only the live entries the release writes, and only when they grow', async () => {
+    const notes = (fields: Fields) => defineSite({ ...before, bricks: { notes: collection({ label: 'Notizen', fields, max: 20, order: 'manual' }) } })
+    const text = f.markdown('Text', { max: 500_000, translate: false })
+    const stored = notes({ text })
+    const big = (id: string, deletedAt: number | null) => ({ id, brick: 'notes', data: { text: 'x'.repeat(495_000) }, deletedAt })
+    const entries = [big('big-live', null), big('big-removed', 1_700_000_000_000)]
+    const of = (site: SiteInput) => buildCandidate({ ...state(entries), schema: serializeSchema(stored) }, site, platformSchema(serializeSchema(site)))
+
+    // A new single brick leaves the notes untouched.
+    expect((await of(defineSite({ ...stored, bricks: { ...stored.bricks, hours: single({ label: 'Zeiten', fields: { text: f.text('Text', { max: 120, optional: true }) } }) } }))).problems).toEqual([])
+    // A new field with a default writes into both; only the live one must fit.
+    expect((await of(notes({ text, tag: f.text('Tag', { max: 40, translate: false, default: 'neu' }) }))).problems)
+      .toEqual(['Entry big-live (notes) would be 484 KiB after the release; the limit is 480 KiB.'])
   })
 })
 

@@ -36,6 +36,15 @@ describe('fetchBundle site token', () => {
   })
 })
 
+describe('fetchBundle size', () => {
+  // Wrong behaviour caught: a bundle the platform's budget allows (4 MiB of text plus up to 8 MiB of Markdown trees) is
+  // refused as too large, so every page of the site answers 503. Spaces stand in for a large valid bundle.
+  test('takes a 12 MiB bundle', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(bundle + ' '.repeat(12 * 1024 * 1024), { status: 200 })))
+    await expect(fetchBundle(config, 'de', undefined)).resolves.toMatchObject({ site: 'restaurant' })
+  })
+})
+
 describe('token stays private', () => {
   const src = (path: string) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8')
 

@@ -61,7 +61,7 @@ describe('drafts in the public bundle', () => {
     const published = await s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 1 })
     expect(published).toMatchObject({ state: 'live', lifeRev: 2, contentRev: before!.contentRev + 1 })
     const shown = await s.bundle()
-    expect(shown.bricks.events!.items!.find((i) => i.id === draft.entry)!.urls).toEqual({ de: '/veranstaltungen/wildwoche', en: '/en/events/wildwoche' })
+    expect(shown.bricks.events!.items!.find((i) => i.id === draft.entry)!.urls).toEqual({ de: '/veranstaltungen/wildwoche' })
 
     const withdrawn = await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry: draft.entry, lifeRev: 2 })
     expect(withdrawn).toMatchObject({ state: 'draft', lifeRev: 3, contentRev: before!.contentRev + 2 })
@@ -281,6 +281,24 @@ describe('preconditions', () => {
   })
 })
 
+describe('drafts for Heute', () => {
+  // Wrong behaviour caught: staff see "Meine Entwürfe" that someone else made, or the owner's drafts lose their date.
+  it('the read of a brick marks a draft the caller made as own and dates every draft; live entries carry neither', async () => {
+    const s = await draftSetup()
+    const mine = await s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish('Vom Koch') })
+    vi.setSystemTime(NOW + HOUR)
+    const theirs = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish('Von der Chefin') })
+    const read = async (as: typeof s.as.cook) => (await as.query(api.entries.ofBricks, { site: 'restaurant', bricks: ['menu'], slim: true })).filter((e) => e.state === 'draft')
+    const asCook = await read(s.as.cook)
+    expect(asCook.map((e) => [e._id, 'own' in e, typeof e.since])).toEqual(expect.arrayContaining([[mine.entry, true, 'number'], [theirs.entry, false, 'number']]))
+    const asOwner = await read(s.as.owner)
+    expect(asOwner.find((e) => e._id === mine.entry)).not.toHaveProperty('own')
+    const live = (await s.as.cook.query(api.entries.ofBricks, { site: 'restaurant', bricks: ['menu'], slim: true })).find((e) => e.state !== 'draft')!
+    expect(live).not.toHaveProperty('since')
+    expect(live).not.toHaveProperty('own')
+  })
+})
+
 describe('readers that treat a draft apart', () => {
   it('retention leaves an expired draft alone, but removes an expired live notice', async () => {
     const s = await draftSetup()
@@ -302,7 +320,6 @@ describe('readers that treat a draft apart', () => {
     expect(snapshot.entries.find((e) => e.id === draft.entry)).toMatchObject({ state: 'draft', publishAt: at })
     expect(snapshot.entries.find((e) => e.id === s.entries.weinabend)).not.toHaveProperty('state')
 
-    const read = await s.as.cook.query(api.sites.get, { site: 'restaurant' })
-    expect(read.entries.find((e) => e._id === draft.entry)).toMatchObject({ state: 'draft', publishAt: at })
+    expect(await s.as.cook.query(api.entries.get, { site: 'restaurant', entry: draft.entry })).toMatchObject({ state: 'draft', publishAt: at })
   })
 })

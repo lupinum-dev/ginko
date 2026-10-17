@@ -1,0 +1,4 @@
+[
+  "app/bricks/pages.ts",
+  "app/pages/[...slug].vue"
+]

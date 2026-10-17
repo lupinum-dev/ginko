@@ -32,7 +32,11 @@ export interface ComponentDef<P extends Fields = Fields> {
   children?: readonly string[]
   /** This component may only appear directly inside one of these. */
   parents?: readonly string[]
-  /** Slash menu: `group` is the heading the entry is listed under, per language like `label`. */
+  /**
+   * Slash menu: `group` is the heading the entry is listed under, per language like `label`. `example` is the Markdown
+   * the menu inserts; its sample text shows as a placeholder. Without one the menu inserts the bare tag with no text
+   * line, so a component that takes text should have an example with one.
+   */
   editor?: { icon?: string; group?: Label; example?: string }
 }
 
@@ -144,7 +148,8 @@ export function checkComponentTree(nodes: readonly Node[], registry: ComponentRe
       for (const child of children) visit(child, tag)
       return
     }
-    if (!PLAIN_TAGS.has(tag) && !isBlockedTag(tag, registry)) {
+    // An unregistered `span` is text in square brackets, which `profileCheck` reports as such.
+    if (!PLAIN_TAGS.has(tag) && !isBlockedTag(tag, registry) && !(tag === 'span' && !Object.hasOwn(registry, tag))) {
       if (!Object.hasOwn(registry, tag)) fail(msg('component.unknown', { tag }))
       else checkComponent(tag, registry[tag]!, props as Record<string, unknown>, children as Node[], parent, fail)
     }

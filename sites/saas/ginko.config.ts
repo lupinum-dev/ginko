@@ -164,12 +164,13 @@ export default defineSite({
     }),
     legal: single({
       label: 'Rechtliches',
+      // 30,000 characters each: four texts in three languages at the default max (50,000) would not fit the entry limit.
       fields: {
-        terms: f.markdown('AGB', { profile: 'basic', translate: 'manual', optional: true }),
-        avv: f.markdown('AVV', { profile: 'basic', translate: 'manual', optional: true }),
-        privacy: f.markdown('Datenschutz', { profile: 'basic', translate: 'manual', optional: true }),
+        terms: f.markdown('AGB', { profile: 'basic', translate: 'manual', optional: true, max: 30_000 }),
+        avv: f.markdown('AVV', { profile: 'basic', translate: 'manual', optional: true, max: 30_000 }),
+        privacy: f.markdown('Datenschutz', { profile: 'basic', translate: 'manual', optional: true, max: 30_000 }),
         // Required on a German site (DDG §5); like the other legal texts never machine-translated.
-        imprint: f.markdown('Impressum', { profile: 'basic', translate: 'manual', optional: true }),
+        imprint: f.markdown('Impressum', { profile: 'basic', translate: 'manual', optional: true, max: 30_000 }),
       },
       tasks: [{ id: 'terms', label: 'AGB ändern', kind: 'edit', fields: ['terms'] }],
     }),

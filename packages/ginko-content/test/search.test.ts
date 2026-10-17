@@ -4,10 +4,10 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { collection, defineSite, f, single, type MarkdownTree } from '@lupinum/ginko'
-import { serializeSchema } from '@lupinum/ginko/internal'
+import { fileMarkdownRef, serializeSchema, withMarkdownRefs } from '@lupinum/ginko/internal'
 import { buildIndex, searchSections, type SearchRecord } from '@lupinum/ginko/internal/search'
 import { loadIndex, search } from '@lupinum/ginko/search'
-import { buildFileBundles, searchIndex, withMarkdownRefs } from '../src/index.ts'
+import { buildFileBundles, searchIndex } from '../src/index.ts'
 
 const schema = serializeSchema(defineSite({
   site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
@@ -39,7 +39,7 @@ async function build(files: Record<string, string>, locale: 'de' | 'en' = 'de') 
   const s = site(files)
   const { bundles } = await buildFileBundles({ contentDir: s.content, publicDir: s.public, schema })
   const trees = new Map<string, MarkdownTree>()
-  const bundle = withMarkdownRefs(bundles[locale]!, schema, trees)
+  const bundle = withMarkdownRefs(bundles[locale]!, schema, trees, (brick, id, field) => fileMarkdownRef(locale, brick, id, field))
   const records = searchSections(bundle, { schema, trees })
   const index = await loadIndex(await searchIndex(bundle, trees, schema))
   return { records, find: (query: string) => search(index, query).map((hit) => hit.id) }
@@ -55,6 +55,16 @@ describe('search sections', () => {
       { id: 'docs/einstieg#erste-schritte', url: '/doku/einstieg#erste-schritte', title: 'Einstieg', heading: 'Erste Schritte', text: 'Hallo Welt.', excerpt: 'Hallo Welt.', brick: 'docs', locale: 'de' },
       { id: 'docs/einstieg#erste-schritte-details', url: '/doku/einstieg#erste-schritte-details', title: 'Einstieg', heading: 'Details', text: 'Punkt eins\nPunkt zwei', excerpt: 'Punkt eins Punkt zwei', brick: 'docs', locale: 'de' },
     ])
+  })
+
+  it('gives each section its own id when its heading has no anchor (Arabic script)', async () => {
+    // Wrong behaviour caught: the build stops with "duplicate ID" for a page with two Arabic headings.
+    const { records } = await build({
+      'content/docs/1.einstieg.md': md('title: Einstieg', 'Vorspann.\n\n## ما وجدناه\n\nنص.\n\n## ما التالي\n\nنص آخر.'),
+    })
+    expect(records.map((r) => r.heading)).toEqual([undefined, 'ما وجدناه', 'ما التالي'])
+    expect(new Set(records.map((r) => r.id)).size).toBe(3)
+    expect(records[1]).toMatchObject({ id: 'docs/einstieg#1', url: '/doku/einstieg' })
   })
 
   it('indexes longtext fields such as the description but not short text fields such as a badge or an icon name', async () => {

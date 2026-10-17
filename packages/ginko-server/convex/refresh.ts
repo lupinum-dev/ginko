@@ -1,8 +1,7 @@
 // "Sofort von der Seite nehmen" (SPEC 4.4): asks the site to re-render every page that a
 // change may have made stale, and checks each answer against the revision it must show.
-import type { Json } from '@lupinum/ginko'
-import { urlsFor, type Schema } from '@lupinum/ginko/internal'
-import { v } from 'convex/values'
+import { routeUrls, type Schema } from '@lupinum/ginko/internal'
+import { v, type Infer } from 'convex/values'
 import { internal } from './_generated/api'
 import { action, internalMutation, internalQuery } from './_generated/server'
 import { actorFor, fail, recordOp, replayed } from './lib/access'
@@ -25,7 +24,11 @@ interface Plan {
   limited: boolean
 }
 
-type Row = { path: string; status: number; rev: string | null; ok: boolean }
+const rowValidator = v.object({ path: v.string(), status: v.number(), rev: v.union(v.string(), v.null()), ok: v.boolean() })
+type Row = Infer<typeof rowValidator>
+/** What a refresh answers: one row per path, and whether only the pages and the sitemap were sent. */
+const refreshResult = v.object({ results: v.array(rowValidator), limited: v.boolean() })
+type RefreshResult = Infer<typeof refreshResult>
 
 /** Relative, plain paths without duplicates; anything else is dropped. */
 function clean(paths: Iterable<string>): string[] {
@@ -42,11 +45,12 @@ function normalize(path: string): string | null {
 /** Who may refresh, which paths, and the proof each answer must carry (SPEC 4.4 steps 1–2). */
 export const plan = internalQuery({
   args: { site: v.string(), opId: v.string() },
-  handler: async (ctx, args): Promise<{ replay: Json } | ({ replay?: undefined } & Plan)> => {
+  handler: async (ctx, args): Promise<{ replay: RefreshResult } | ({ replay?: undefined } & Plan)> => {
     const actor = await actorFor(ctx, args.site)
     if (actor.role === 'staff') fail('FORBIDDEN', 'errors.ownersAndAdminsOnly')
     const { hash, result } = await replayed(ctx, actor, args.opId, args)
-    if (result !== undefined) return { replay: result }
+    // The stored result of this op is the one `record` stored.
+    if (result !== undefined) return { replay: result as RefreshResult }
 
     const token = actor.site.refreshToken
     if (!token) fail('INVALID', 'errors.reloadKeyMissing')
@@ -62,10 +66,9 @@ export const plan = internalQuery({
     for (const [key, brick] of Object.entries(schema.bricks)) {
       if (brick.kind !== 'collection' || !brick.route) continue
       const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', key)).collect()
-      // `untranslated: 'fallback'` keeps every locale in the URL map, including locales that are hidden today.
-      const everywhere = { ...brick, untranslated: 'fallback' as const }
+      // Every locale's address, also where the entry is untranslated today: a removed translation must purge its page.
       for (const row of rows) {
-        const urls = urlsFor(schema, key, everywhere, { id: row._id, order: row.order, data: row.data, prints: row.prints }, () => undefined)
+        const urls = routeUrls(schema, brick, { id: row._id, order: row.order, data: row.data, prints: row.prints })
         for (const url of Object.values(urls)) if (url) routed.add(url)
       }
     }
@@ -88,19 +91,19 @@ export const plan = internalQuery({
  * concurrent refreshes can both pass `plan`; the first recording wins and both get its result.
  */
 export const record = internalMutation({
-  args: { site: v.string(), opId: v.string(), hash: v.string(), result: v.any() },
-  handler: async (ctx, args): Promise<Json> => {
+  args: { site: v.string(), opId: v.string(), hash: v.string(), result: refreshResult },
+  handler: async (ctx, args): Promise<RefreshResult> => {
     const actor = await actorFor(ctx, args.site)
     const row = await ctx.db.query('ops').withIndex('by_site_actor_op', (q) => q.eq('site', actor.site._id).eq('actor', actor.user.id).eq('opId', args.opId)).unique()
     if (row) {
       if (row.hash !== args.hash) fail('OP_REUSED', 'errors.actionReusedWithOtherContent')
-      return row.result as Json
+      return row.result
     }
-    await recordOp(ctx, actor, args.opId, args.hash, args.result as Json)
+    await recordOp(ctx, actor, args.opId, args.hash, args.result)
     // Only a refresh that every page confirmed counts as "last update"; a partly failed one leaves the time as it was.
-    const rows = (args.result as { results?: { ok?: boolean }[] }).results
-    if (Array.isArray(rows) && rows.length > 0 && rows.every((r) => r.ok === true)) await ctx.db.patch(actor.site._id, { lastRefreshAt: Date.now() })
-    return args.result as Json
+    const rows = args.result.results
+    if (rows.length > 0 && rows.every((r) => r.ok)) await ctx.db.patch(actor.site._id, { lastRefreshAt: Date.now() })
+    return args.result
   },
 })
 
@@ -145,7 +148,8 @@ async function refreshPath(p: Plan, path: string): Promise<Row> {
 /** Sends the paths in batches of 20. Results keep the order of the paths. */
 export const urgentRefresh = action({
   args: { site: v.string(), opId: v.string() },
-  handler: async (ctx, args): Promise<Json> => {
+  // Typed by hand: the action calls this module's own functions, so TypeScript cannot infer its result.
+  handler: async (ctx, args): Promise<RefreshResult> => {
     const p = await ctx.runQuery(internal.refresh.plan, args)
     if (p.replay !== undefined) return p.replay
     const plan: Plan = p
@@ -153,7 +157,7 @@ export const urgentRefresh = action({
     for (let i = 0; i < plan.paths.length; i += BATCH) {
       results.push(...(await Promise.all(plan.paths.slice(i, i + BATCH).map((path) => refreshPath(plan, path)))))
     }
-    const result: Json = { results, limited: plan.limited }
+    const result = { results, limited: plan.limited }
     return ctx.runMutation(internal.refresh.record, { site: args.site, opId: args.opId, hash: plan.hash, result })
   },
 })

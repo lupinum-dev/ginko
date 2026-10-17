@@ -14,12 +14,15 @@ import { Button } from '@studio/components/ui/button'
 const props = defineProps<{
   site: { slug: string; url: string; previewOrigins: string[]; schemaRev: number; contentRev: number }
   schema: Schema
-  entries: Entry[]
+  /** Undefined while they load: nothing is sent before, or the site would show without its entries. */
+  entries: Entry[] | undefined
   /** The form being edited: its brick, its entry (none = new), and the unsaved values. */
   editing?: { brick: string; entry?: string; data: Data }
   locale: Locale
-  /** The page to show first. */
-  path: string
+  /** The page to show first; undefined while the entry has no page to show (see `notice`). */
+  path?: string
+  /** Shown in place of the page while `path` is undefined: why there is none (no address yet, not translated). */
+  notice?: string
   files?: (id: string) => FileInfo | undefined
   /** Changes when the files behind `files` change (an upload became ready), so the bundle is sent again. */
   revision?: string
@@ -32,7 +35,7 @@ const origin = computed(() => siteOrigin(props.site))
 const session = ref(crypto.randomUUID())
 const path = ref(props.path)
 watch(() => props.path, (p) => { path.value = p; session.value = crypto.randomUUID() })
-const src = computed(() => `${origin.value}/__ginko/preview?path=${encodeURIComponent(path.value)}&locale=${props.locale}&session=${session.value}`)
+const src = computed(() => `${origin.value}/__ginko/preview?path=${encodeURIComponent(path.value ?? '')}&locale=${props.locale}&session=${session.value}`)
 const frame = ref<HTMLIFrameElement | null>(null)
 const ready = ref(false)
 /** No `ginko:ready` in time: the site is down, refuses framing, or has no preview route. The owner gets a way out. */
@@ -48,7 +51,7 @@ const siteHref = computed(() => `${origin.value}${path.value}`)
 
 function bundle() {
   const entries: Record<string, StoredEntry[]> = {}
-  for (const e of props.entries) {
+  for (const e of props.entries ?? []) {
     const data = props.editing && props.editing.brick === e.brick && props.editing.entry === e._id ? { ...e.data, ...props.editing.data } : e.data
     ;(entries[e.brick] ??= []).push({ id: e._id, order: e.order, data: data as Record<string, Json>, prints: e.prints })
   }
@@ -64,7 +67,7 @@ function bundle() {
 
 let sends = 0
 async function send() {
-  if (!ready.value || !frame.value?.contentWindow) return
+  if (!ready.value || !props.entries || !frame.value?.contentWindow) return
   const run = ++sends
   const message = { type: 'ginko:preview', session: session.value, site: props.site.slug, locale: props.locale, bundle: JSON.parse(JSON.stringify(await bundle())) }
   // A newer edit was sent while this one was parsed.
@@ -72,12 +75,15 @@ async function send() {
 }
 
 let timer: ReturnType<typeof setTimeout> | undefined
-watch(() => [props.editing, props.entries, props.locale, props.revision], () => {
+function sendSoon() {
   clearTimeout(timer)
   timer = setTimeout(send, 250)
-}, { deep: true })
+}
+// The form's values change inside one object; the entries come as a new list with every update, so they need no deep watch.
+watch(() => props.editing, sendSoon, { deep: true })
+watch(() => [props.entries, props.locale, props.revision], sendSoon)
 watch(() => props.locale, () => { session.value = crypto.randomUUID() })
-watch(src, () => { ready.value = false; waitForReady() })
+watch(src, () => { ready.value = false; if (path.value) waitForReady(); else clearTimeout(readyTimer) })
 
 function onMessage(event: MessageEvent) {
   if (event.source !== frame.value?.contentWindow || event.origin !== origin.value) return
@@ -93,7 +99,7 @@ function onMessage(event: MessageEvent) {
     session.value = crypto.randomUUID()
   }
 }
-onMounted(() => { window.addEventListener('message', onMessage); waitForReady() })
+onMounted(() => { window.addEventListener('message', onMessage); if (path.value) waitForReady() })
 onBeforeUnmount(() => { window.removeEventListener('message', onMessage); clearTimeout(timer); clearTimeout(readyTimer) })
 </script>
 
@@ -103,7 +109,10 @@ onBeforeUnmount(() => { window.removeEventListener('message', onMessage); clearT
       <span class="font-semibold">{{ t('entry.preview.label') }}</span>
       <span class="truncate text-muted-foreground">{{ path }}</span>
     </header>
-    <div class="relative min-h-0">
+    <div v-if="!path" class="grid place-content-center p-6 text-center" role="status">
+      <p class="max-w-[36ch] text-sm text-muted-foreground">{{ notice }}</p>
+    </div>
+    <div v-else class="relative min-h-0">
       <iframe ref="frame" :key="session" :src="src" :title="t('entry.preview.frameTitle')" />
       <div v-if="stuck" class="absolute inset-0 grid place-content-center justify-items-center gap-3 bg-card p-6 text-center" role="status">
         <p class="max-w-[36ch] text-sm text-muted-foreground">{{ t('entry.preview.stuck') }}</p>

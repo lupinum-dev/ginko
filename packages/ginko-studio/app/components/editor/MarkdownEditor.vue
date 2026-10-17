@@ -1,14 +1,15 @@
 <!-- A Markdown field as a rich-text editor (TipTap, headless core in @lupinum/ginko-editor). What it saves is
      always `handle.markdown()`: untouched blocks stay byte for byte. A text the editor cannot show without
      changing it opens as Markdown source instead; "Markdown" in the toolbar switches by hand, both ways.
-     Pasted and dropped content is cleaned or uploaded by the core's paste hooks; problems show at their block. -->
+     Pasted and dropped content is cleaned or uploaded by the core's paste hooks; problems show at their block.
+     `readonly` shows a text for reading only (the main-language text beside a translation): no tools, no output. -->
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, reactive, ref, watch, watchEffect } from 'vue'
+import { computed, inject, onBeforeUnmount, provide, reactive, ref, watch, watchEffect } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
-import { coreMessage, effectiveMax, effectiveProfile, type Msg } from '@lupinum/ginko/internal'
+import { coreMessage, effectiveAlt, effectiveMax, effectiveProfile, type Msg } from '@lupinum/ginko/internal'
 import {
-  BLOCKERS, docProblems, FLUSHERS, linkCardTag, makeLinkCard, missingRequired, slashItems, SLASH_COMPONENT_GROUP, sourceProblems, useGinkoEditor,
+  BLOCKERS, docProblems, figureTag, FLUSHERS, GINKO_ASSETS, linkCardTag, makeFigure, makeLinkCard, missingRequired, slashItems, SLASH_COMPONENT_GROUP, sourceProblems, useFileImages, useGinkoEditor,
   type DocProblem, type SlashItem, type SourceProblem,
 } from '@lupinum/ginko-editor'
 import { GripVertical } from '@lucide/vue'
@@ -19,18 +20,26 @@ import { Alert } from '@studio/components/ui/alert'
 import { Button } from '@studio/components/ui/button'
 import { Textarea } from '@studio/components/ui/textarea'
 import { TooltipProvider } from '@studio/components/ui/tooltip'
-import { canHover, createSettingsBus, EDITOR_COMPONENTS, isCoarsePointer, useEditorTick } from './context.ts'
+import { canHover, createSettingsBus, EDITOR_COMPONENTS, EDITOR_FILES, isCoarsePointer, useEditorTick } from './context.ts'
 import EditorBubble from './EditorBubble.vue'
 import EditorToolbar from './EditorToolbar.vue'
 import FindBar from './FindBar.vue'
 import { createSlashState, studioExtensions } from './extensions.ts'
+import ImageBubble from './ImageBubble.vue'
 import ImageDialog from './ImageDialog.vue'
 import SlashMenu from './SlashMenu.vue'
 import SourceToggle from './SourceToggle.vue'
 import { useImageUploads } from './useImageUploads.ts'
 import { useStudioSite } from '../../utils/labels'
+import { isModKey } from '../../utils/keys'
 
-const props = defineProps<{ id: string; field: Extract<Field, { type: 'markdown' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string }>()
+const props = defineProps<{
+  id: string; field: Extract<Field, { type: 'markdown' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string
+  /** The language of the text (the Studio's own language is `locale`): pictures from the library take their description in it. */
+  contentLocale?: string
+  /** Shown, not edited: no toolbar, menus, counter or source switch, and nothing goes to the form. */
+  readonly?: boolean
+}>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 
 const DEBOUNCE_MS = 300
@@ -64,7 +73,14 @@ const findOpen = ref(false)
 const dragHandle = canHover()
 /** Position of an image that waits for its description (the dialog then asks for the description only). */
 const describePos = ref<number | null>(null)
-watch(imageOpen, (isOpen) => { if (!isOpen) describePos.value = null })
+/** Position of an image that a new picture replaces ("Bild ersetzen"). */
+const replacePos = ref<number | null>(null)
+watch(imageOpen, (isOpen) => { if (!isOpen) { describePos.value = null; replacePos.value = null } })
+function openImage(mode: { describe?: number; replace?: number }) {
+  describePos.value = mode.describe ?? null
+  replacePos.value = mode.replace ?? null
+  imageOpen.value = true
+}
 const slash = reactive(createSlashState())
 const bus = createSettingsBus()
 // The core names the entries of the built-in blocks in German; the Studio shows them in the person's language, so the
@@ -79,7 +95,7 @@ const items = () => slashItems({
   profile: profile.value,
   components: registry?.(),
   locale: locale.value,
-  pickImage: () => { describePos.value = null; imageOpen.value = true },
+  pickImage: () => { openImage({}) },
   // A component whose example leaves a required prop empty: select it and ask for those props at once.
   onNeedsProps: ({ editor: target, pos, missing }) => { target.commands.setNodeSelection(pos); bus.request = { pos, missing } },
 }).map(localized)
@@ -87,12 +103,30 @@ const items = () => slashItems({
 /** True while the person looks at the Markdown source by choice ("Markdown" in the toolbar). */
 const wantSource = ref(false)
 
+// Pictures from the Files library: the text keeps `$file.<id>`, the editor and the component settings show the file.
+const assets = inject(GINKO_ASSETS, undefined)
+const fileImages = assets ? useFileImages(assets, () => t('editor.image.missing')) : undefined
+if (fileImages) provide(EDITOR_FILES, { images: fileImages, locale: () => props.contentLocale ?? '' })
+/** A picture without its own text is described when its library file has a text in this text's language (the save's rule). */
+const described = (src: string) => Boolean(props.contentLocale && effectiveAlt(undefined, fileImages?.file(src)?.alt, props.contentLocale))
+
 const uploads = useImageUploads({
   id: () => props.id,
   editor: () => editor.value,
-  describe: (pos) => { describePos.value = pos; imageOpen.value = true },
+  describe: (pos) => { openImage({ describe: pos }) },
   fail: (message) => toast.show(message, { tone: 'err' }),
 })
+/**
+ * "Bild hochladen" in the image dialog: the picture goes in at the cursor, like a dropped one, and asks for its
+ * description when it is ready. With `replace` it takes that picture's place once it is ready; until then, and when the
+ * upload fails, the old picture stays.
+ */
+const uploadAt = assets
+  ? (file: File, replace?: number) => {
+      const current = editor.value
+      if (current) uploads.handle([file], replace ?? current.state.selection.from, replace !== undefined)
+    }
+  : undefined
 
 /** A bare address pasted on an empty line: the chip near the caret offers a link card (when the site has one). */
 const cardTag = computed(() => linkCardTag(registry?.()))
@@ -103,11 +137,15 @@ const { handle, mode, editor, problemMessages, open, markdown } = useGinkoEditor
   profile: profile.value,
   components: registry?.(),
   forceSource: wantSource.value,
+  editable: !props.readonly,
   // TipTap mounts into this element; EditorContent moves it into the page.
   element: document.createElement('div'),
   onImageFiles: (files, pos) => uploads.handle(files, pos),
+  fileImages,
   onUrlPasted: ({ url, pos }) => showChip(url, pos),
-  extend: studioExtensions({ slashItems: items, slash, bus, openLink: () => { linkOpen.value = true }, problems: { registry: () => registry?.(), fix, t, text: coreText } }),
+  extend: props.readonly
+    ? studioExtensions({ slashItems: () => [], slash, bus, openLink: () => {} })
+    : studioExtensions({ slashItems: items, slash, bus, openLink: () => { linkOpen.value = true }, problems: { registry: () => registry?.(), fix, t, text: coreText, described } }),
 }))
 
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -132,7 +170,7 @@ async function flush() {
 /** Hands the current Markdown to the parent when it differs from what the parent has. */
 async function emitMarkdown() {
   const current = handle.value
-  if (!current) return
+  if (!current || props.readonly) return
   // Nothing was changed since the text was opened, and nothing was handed out: leave the stored text alone.
   if (!current.dirty && lastEmitted === opened) return
   const next = await markdown()
@@ -187,7 +225,7 @@ watch(() => props.modelValue, (value) => {
 watchEffect(() => {
   editor.value?.setOptions({
     editorProps: {
-      attributes: {
+      attributes: props.readonly ? { id: props.id, class: 'ginko-prose' } : {
         id: props.id,
         role: 'textbox',
         ...(multiline.value ? { 'aria-multiline': 'true' } : {}),
@@ -204,14 +242,14 @@ watchEffect(() => {
 })
 
 // The form awaits this before it saves, so nothing typed in the pause is lost.
-const flushers = inject(FLUSHERS, undefined)
+const flushers = props.readonly ? undefined : inject(FLUSHERS, undefined)
 flushers?.add(flush)
 onBeforeUnmount(() => { flushers?.delete(flush); void flush() })
 
 // Things that stop a save: a text over the limit, a picture without description. (The upload itself blocks in useImageUploads.)
-const blockers = inject(BLOCKERS, undefined)
+const blockers = props.readonly ? undefined : inject(BLOCKERS, undefined)
 const tick = useEditorTick(() => editor.value)
-const undescribed = computed(() => { void tick.value; return editor.value ? docProblems(editor.value.state.doc, undefined).some((p) => p.kind === 'image') : false })
+const undescribed = computed(() => { void tick.value; return editor.value ? docProblems(editor.value.state.doc, undefined, described).some((p) => p.kind === 'image') : false })
 watchEffect(() => {
   if (!blockers) return
   const set = (key: string, message: string | false) => { if (message) blockers.set(key, message); else blockers.delete(key) }
@@ -224,12 +262,32 @@ onBeforeUnmount(() => { blockers?.delete(`${props.id}-max`); blockers?.delete(`$
 function fix(problem: DocProblem) {
   const current = editor.value
   if (!current) return
-  if (problem.kind === 'image') { describePos.value = problem.pos; imageOpen.value = true; return }
+  if (problem.kind === 'image') { openImage({ describe: problem.pos }); return }
   const node = current.state.doc.nodeAt(problem.pos)
   if (!node) return
   current.commands.setNodeSelection(problem.pos)
   const registered = registry?.()
   bus.request = { pos: problem.pos, missing: registered ? missingRequired(registered, String(node.attrs.tag), node.attrs.props) : [] }
+}
+
+// --- a picture with a caption: the site's figure block ------------------------------------------------------------
+// Only a text that takes blocks (the page profile) can hold the figure: elsewhere the editor has no component node.
+const captionTag = computed(() => (editor.value && 'component' in editor.value.schema.nodes ? figureTag(registry?.()) : undefined))
+/** "Bildunterschrift" at a picture: it becomes the site's figure block, whose settings open for the caption. */
+function toFigure(pos: number) {
+  const current = editor.value
+  const registered = registry?.()
+  const tag = captionTag.value
+  const image = current?.state.doc.nodeAt(pos)
+  if (!current || !registered || !tag || image?.type.name !== 'image') return
+  // The block's description is its own text (it has no library fallback): the picture's own, else the library's.
+  const own = String(image.attrs.alt ?? '').trim()
+  const alt = own || (props.contentLocale ? effectiveAlt(undefined, fileImages?.file(String(image.attrs.src ?? ''))?.alt, props.contentLocale) : '')
+  const at = makeFigure(current, pos, tag, registered, alt)
+  const figure = at === undefined ? undefined : current.state.doc.nodeAt(at)
+  if (at === undefined || !figure) return
+  current.commands.setNodeSelection(at)
+  bus.request = { pos: at, missing: missingRequired(registered, tag, figure.attrs.props) }
 }
 
 // --- the chip for a pasted address ---------------------------------------------------------------------------------
@@ -261,7 +319,7 @@ const cardLabel = computed(() => { const label = cardTag.value ? registry?.()?.[
 
 // Ctrl/Cmd+F inside the field opens find and replace instead of the browser's page search.
 function onFrameKey(event: KeyboardEvent) {
-  if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'f') { event.preventDefault(); findOpen.value = true }
+  if (isModKey(event, 'f')) { event.preventDefault(); findOpen.value = true }
 }
 
 // --- phone: the toolbar above the keyboard -------------------------------------------------------------------------
@@ -305,10 +363,15 @@ const frame = 'relative rounded-md border border-input bg-background transition-
 </script>
 
 <template>
-  <!-- minmax(0, 1fr): the toolbar scrolls inside the frame instead of making the frame (and the page) wider than the screen. -->
+  <!-- minmax(0, 1fr): the frame (and the page) never gets wider than its column; the toolbar fits its own width. -->
   <div class="grid grid-cols-[minmax(0,1fr)] gap-1.5">
+    <!-- For reading only: the text as the editor shows it, or as written when it cannot show it. -->
+    <p v-if="readonly && mode === 'source'" :id="id" class="font-mono text-sm whitespace-pre-wrap [overflow-wrap:anywhere]">{{ sourceText }}</p>
+    <EditorContent v-else-if="readonly && mode === 'rich' && editor" :editor="editor as VueEditor" :class="['ginko-editor is-readonly', multiline ? 'is-multiline' : 'is-inline']" />
+    <div v-else-if="readonly" class="min-h-6" aria-hidden="true" />
+
     <!-- Markdown source -->
-    <div v-if="mode === 'source'" class="grid gap-3">
+    <div v-else-if="mode === 'source'" class="grid gap-3">
       <div class="flex items-start gap-2">
         <Alert v-if="!wantSource" role="note" class="flex-1">
           <div class="col-start-2 grid gap-0.5">
@@ -341,7 +404,15 @@ const frame = 'relative rounded-md border border-input bg-background transition-
         <GripVertical class="size-4 text-muted-foreground" aria-hidden="true" />
       </DragHandle>
       <EditorBubble :editor="editor" :profile="profile" @link="linkOpen = true" />
-      <ImageDialog v-if="'image' in editor.schema.nodes" v-model:open="imageOpen" :editor="editor" :describe="describePos" />
+      <template v-if="'image' in editor.schema.nodes">
+        <ImageBubble
+          :editor="editor" :images="fileImages" :locale="contentLocale ?? ''" :caption="captionTag !== undefined"
+          @describe="openImage({ describe: $event })" @replace="openImage({ replace: $event })" @caption="toFigure"
+        />
+        <ImageDialog
+          v-model:open="imageOpen" :editor="editor" :describe="describePos" :replace="replacePos" :images="fileImages" :locale="contentLocale ?? ''" :upload="uploadAt"
+        />
+      </template>
       <SlashMenu :state="slash" />
       <Button
         v-if="chip && cardTag" type="button" variant="secondary" size="sm" class="absolute z-10 shadow-md [@media(pointer:coarse)]:h-11"
@@ -352,12 +423,13 @@ const frame = 'relative rounded-md border border-input bg-background transition-
     <!-- Until the editor is open: a box of the same size, so the page does not jump. -->
     <div v-else :class="[frame, multiline ? 'min-h-[11.5rem]' : 'min-h-10']" aria-hidden="true" />
 
-    <p v-if="showCount" :class="['justify-self-end text-xs', reached ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ t('editor.text.counter', { count, limit }) }}</p>
+    <p v-if="showCount && !readonly" :class="['justify-self-end text-xs', reached ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ t('editor.text.counter', { count, limit }) }}</p>
   </div>
 </template>
 
 <style scoped>
 /* Content styles, from the Studio tokens. Scoped to this editor. */
+.ginko-editor.is-readonly :deep(.ginko-prose) { min-height: 0; padding: 0; }
 .ginko-editor :deep(.ginko-prose) { padding: 0.5rem 0.75rem; outline: none; overflow-wrap: anywhere; font-size: 1rem; line-height: 1.6; }
 @media (min-width: 768px) { .ginko-editor :deep(.ginko-prose) { font-size: 0.875rem; } }
 .is-multiline :deep(.ginko-prose) { min-height: 8rem; }
@@ -381,6 +453,8 @@ const frame = 'relative rounded-md border border-input bg-background transition-
 .ginko-editor :deep(hr) { margin: 1em 0; border: 0; border-top: 1px solid var(--border); }
 .ginko-editor :deep(hr.ProseMirror-selectednode) { border-top-color: var(--ring); }
 .ginko-editor :deep(img) { max-width: 100%; height: auto; }
+/* A selected picture (with a library file the node view's span is selected, else the img itself). */
+.ginko-editor :deep(:is(.ginko-image.ProseMirror-selectednode img, img.ProseMirror-selectednode)) { outline: 2px solid var(--ring); outline-offset: 2px; }
 .ginko-editor :deep(table) { margin: 0.75em 0; border-collapse: collapse; table-layout: fixed; width: 100%; }
 .ginko-editor :deep(th), .ginko-editor :deep(td) { border: 1px solid var(--border); padding: 0.25rem 0.5rem; text-align: left; vertical-align: top; }
 .ginko-editor :deep(th) { background: var(--muted); font-weight: 600; }
@@ -421,6 +495,6 @@ const frame = 'relative rounded-md border border-input bg-background transition-
 .ginko-editor :deep(.ginko-problem-note) { display: flex; align-items: center; gap: 0.75rem; margin: 0.25rem 0 0.75rem; border-left: 2px solid var(--destructive); padding-left: 0.75rem; font-size: 0.875rem; color: var(--destructive); }
 .ginko-editor :deep(.ginko-problem-note button) { flex-shrink: 0; min-height: 2rem; border: 1px solid var(--border); border-radius: 0.375rem; background: var(--background); padding: 0 0.75rem; color: var(--foreground); font-size: 0.875rem; cursor: pointer; }
 @media (pointer: coarse) { .ginko-editor :deep(.ginko-problem-note button) { min-height: 2.75rem; min-width: 2.75rem; } }
-/* A picture on its way into the library (uploads.ts). */
-.ginko-editor :deep(.ginko-uploading) { display: inline-block; border-radius: 0.25rem; background: var(--muted); padding: 0 0.5rem; color: var(--muted-foreground); font-size: 0.875em; }
+/* A picture on its way into the library (uploads.ts), and one whose library file is gone (file-images.ts). */
+.ginko-editor :deep(:is(.ginko-uploading, .ginko-image-missing)) { display: inline-block; border-radius: 0.25rem; background: var(--muted); padding: 0 0.5rem; color: var(--muted-foreground); font-size: 0.875em; }
 </style>

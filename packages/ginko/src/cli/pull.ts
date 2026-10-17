@@ -10,7 +10,8 @@ export async function pull(input: Omit<ExportInput, 'dir'> & Omit<ImportInput, '
   const dir = await mkdtemp(join(tmpdir(), 'ginko-pull-'))
   try {
     await exportSite({ ...input, dir })
-    return await importSite({ ...input, dir })
+    // A rerun exports again: the temporary folder is gone by then.
+    return await importSite({ ...input, dir, again: 'pnpm local:pull' })
   } finally {
     await rm(dir, { recursive: true, force: true })
   }

@@ -1,7 +1,8 @@
 // Content types an agency or studio website needs. Labels come in German and English.
 // Every factory returns a brick for `bricks: { <key>: services() }`. For file content the brick key is the folder name,
 // so a site that keeps `content/leistungen/` writes `leistungen: services()`.
-import { collection, f, type CollectionBrick, type Field, type Fields, type Label, type Locale, type RouteTemplate } from '@lupinum/ginko'
+import { collection, f, single, type CollectionBrick, type Field, type Fields, type Label, type Locale, type RouteTemplate, type SingleBrick } from '@lupinum/ginko'
+import type { MarkdownField } from '@lupinum/ginko/internal'
 
 export type Routes = Record<Locale, RouteTemplate>
 
@@ -26,14 +27,19 @@ export interface RoutedOptions<E extends Fields = {}> extends BrickOptions<E> {
 
 type MarkdownOptions = NonNullable<Parameters<typeof f.markdown>[1]>
 /** The main Markdown text of an entry, with the site's body options. */
-const bodyOf = (label: Label, o: BrickOptions<any>, preset: MarkdownOptions = {}) => f.markdown(label, { ...preset, ...o.body })
+const bodyOf = (label: Label, o: BrickOptions<any>, preset: MarkdownOptions = {}): MarkdownField => f.markdown(label, { ...preset, ...o.body })
 
 /** A schema label in both languages. The editor sees the one for their language, and a site in another language falls back to English. */
 const both = (de: string, en: string) => ({ de, en })
 
+/** The hint of every `description`: where the text shows, so people know how much to write. */
+const descriptionHint = both('Ein bis zwei Sätze. Erscheint bei Google und wenn jemand den Link teilt.', 'One or two sentences. Shown on Google and when someone shares the link.')
+
+const sourceOf = (o: { source?: 'files' | 'platform' }) => ((o.source ?? 'files') === 'files' ? { source: 'files' as const } : {})
+
 /** Brick settings that every factory shares. */
 function common(o: BrickOptions<any>, label: Label, max: number) {
-  return { label: o.label ?? label, max: o.max ?? max, ...((o.source ?? 'files') === 'files' ? { source: 'files' as const } : {}) }
+  return { label: o.label ?? label, max: o.max ?? max, ...sourceOf(o) }
 }
 
 /**
@@ -42,10 +48,12 @@ function common(o: BrickOptions<any>, label: Label, max: number) {
  * TypeScript would otherwise infer `E` from the expected brick type (loose `Fields`), and `Omit` would then drop every
  * preset field from the site's types.
  */
-function withExtras<B extends Fields, R extends Routes | undefined, E extends Fields>(brick: CollectionBrick<B, R>, o: BrickOptions<E>): CollectionBrick<Omit<B, keyof NoInfer<E>> & NoInfer<E>, R> {
+function withExtras<B extends Fields, R extends Routes | undefined, E extends Fields>(brick: CollectionBrick<B, R>, o: Pick<BrickOptions<E>, 'extra' | 'fieldLabels'>): CollectionBrick<Omit<B, keyof NoInfer<E>> & NoInfer<E>, R>
+function withExtras<B extends Fields, E extends Fields>(brick: SingleBrick<B>, o: Pick<BrickOptions<E>, 'extra' | 'fieldLabels'>): SingleBrick<Omit<B, keyof NoInfer<E>> & NoInfer<E>>
+function withExtras(brick: CollectionBrick | SingleBrick, o: Pick<BrickOptions<Fields>, 'extra' | 'fieldLabels'>): CollectionBrick | SingleBrick {
   const merged: Record<string, Field> = { ...brick.fields, ...o.extra }
   for (const [name, label] of Object.entries(o.fieldLabels ?? {})) if (merged[name]) merged[name] = { ...merged[name], label }
-  return { ...brick, fields: merged as Omit<B, keyof NoInfer<E>> & NoInfer<E> }
+  return { ...brick, fields: merged }
 }
 
 const routeOf = (defaults: Routes, o: RoutedOptions<any>): Routes => ({ ...defaults, ...o.route })
@@ -57,10 +65,9 @@ export function services<const E extends Fields = {}>(o: RoutedOptions<E> = {}) 
     route: routeOf({ de: '/leistungen/[slug]', en: '/en/services/[slug]' }, o),
     fields: {
       title: f.text(both('Titel', 'Title')),
-      description: f.longtext(both('Beschreibung', 'Description')),
+      description: f.longtext(both('Beschreibung', 'Description'), { hint: descriptionHint }),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
       icon: f.text(both('Icon', 'Icon'), { optional: true }),
-      featured: f.boolean(both('Hervorgehoben', 'Featured'), { optional: true }),
       outcome: f.longtext(both('Ergebnis', 'Outcome'), { optional: true }),
       body: bodyOf(both('Text', 'Text'), o),
     },
@@ -68,8 +75,6 @@ export function services<const E extends Fields = {}>(o: RoutedOptions<E> = {}) 
 }
 
 export interface CaseStudyOptions<E extends Fields = {}> extends RoutedOptions<E> {
-  /** Key of the services brick that "related services" points to. `false`: no such field. Default `services`. */
-  servicesBrick?: string | false
   /** Work areas to tick on a case study. */
   categories?: readonly { value: string; label: Label }[]
 }
@@ -79,11 +84,8 @@ export function caseStudies<const E extends Fields = {}>(o: CaseStudyOptions<E> 
     { value: 'websites', label: both('Websites', 'Websites') }, { value: 'video', label: both('Video', 'Video') },
     { value: 'branding', label: both('Branding', 'Branding') }, { value: 'tools', label: both('Tools', 'Tools') },
   ]
-  // Display only: the Studio shows these fields under four headings, as tabs on wide screens.
-  const [project, result, work, home] = [both('Projekt', 'Project'), both('Ergebnis', 'Result'), both('Leistungen', 'Work'), both('Startseite', 'Homepage')]
-  const related: Fields = o.servicesBrick === false ? {} : {
-    relatedServices: f.refs(both('Passende Leistungen', 'Related services'), { to: o.servicesBrick ?? 'services', max: 6, optional: true, group: work }),
-  }
+  // Display only: the Studio shows these fields under three headings, as tabs on wide screens.
+  const [project, result, work] = [both('Projekt', 'Project'), both('Ergebnis', 'Result'), both('Leistungen', 'Work')]
   return withExtras(collection({
     ...common(o, both('Referenzen', 'Case studies'), 200),
     layout: 'tabs',
@@ -91,21 +93,33 @@ export function caseStudies<const E extends Fields = {}>(o: CaseStudyOptions<E> 
     route: routeOf({ de: '/referenzen/[slug]', en: '/en/case-studies/[slug]' }, o),
     fields: {
       title: f.text(both('Titel', 'Title')),
-      description: f.longtext(both('Beschreibung', 'Description')),
+      description: f.longtext(both('Beschreibung', 'Description'), { hint: descriptionHint }),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
       client: f.text(both('Kunde', 'Client'), { group: project }),
       industry: f.text(both('Branche', 'Industry'), { group: project }),
-      outcome: f.longtext(both('Ergebnis', 'Outcome'), { group: result }),
+      outcome: f.longtext(both('Ergebnis', 'Outcome'), {
+        group: result,
+        hint: both('Das Ergebnis in einem Satz. Steht groß auf der Seite und in der Übersicht.', 'The result in one sentence. Shown large on the page and in the overview.'),
+      }),
       // Completion date, or the latest milestone for ongoing work.
-      date: f.date(both('Datum', 'Date'), { group: project }),
-      summary: f.longtext(both('Zusammenfassung', 'Summary')),
-      services: f.list(both('Leistungen', 'Work done'), { itemLabel: both('Leistung', 'Item'), fields: { name: f.text(both('Leistung', 'Item')) }, max: 20, group: work }),
-      serviceCategories: f.choices(both('Bereiche', 'Areas'), { options: categories, group: work }),
-      ...related,
-      // Position on the homepage (1 = first). Unset = not on the homepage.
-      homeOrder: f.number(both('Position auf der Startseite', 'Position on the homepage'), { min: 1, max: 99, step: 1, optional: true, group: home }),
-      featured: f.boolean(both('Hervorgehoben', 'Featured'), { optional: true, group: home }),
-      period: f.text(both('Zeitraum', 'Period'), { optional: true, group: project }),
+      date: f.date(both('Datum', 'Date'), {
+        group: project,
+        hint: both('Wann das Projekt fertig war. Bestimmt die Reihenfolge und das Jahr in der Übersicht.', 'When the project was finished. Sets the order and the year in the overview.'),
+      }),
+      summary: f.longtext(both('Zusammenfassung', 'Summary'), { hint: both('Einleitung unter dem Titel der Referenz.', 'Intro below the case study title.') }),
+      services: f.list(both('Leistungen', 'Work done'), {
+        itemLabel: both('Leistung', 'Item'), fields: { name: f.text(both('Leistung', 'Item')) }, max: 20, group: work,
+        hint: both('Kurze Schlagworte, z. B. Website, Video. Stehen in der Übersicht unter dem Titel.', 'Short tags, e.g. website, video. Shown below the title in the overview.'),
+      }),
+      // The site's one source for "which of our services was this project". `services` are free tags.
+      serviceCategories: f.choices(both('Bereiche', 'Areas'), {
+        options: categories, group: work,
+        hint: both('Bestimmt, unter welchem Filter und bei welcher Leistung die Referenz erscheint.', 'Decides under which filter and with which service the case study appears.'),
+      }),
+      period: f.text(both('Zeitraum', 'Period'), {
+        optional: true, group: project,
+        hint: both('Wenn ein Jahr nicht reicht, z. B. „2023–2024“ oder „laufend“.', 'If one year is not enough, e.g. “2023–2024” or “ongoing”.'),
+      }),
       measurable: f.text(both('Messbares Ergebnis', 'Measurable result'), { optional: true, group: result }),
       body: bodyOf(both('Text', 'Text'), o),
     },
@@ -123,14 +137,15 @@ export function blog<const E extends Fields = {}>(o: BlogOptions<E> = {}) {
     ...common(o, both('Blog', 'Blog'), 500),
     order: { field: 'date', dir: 'desc' },
     route: routeOf({ de: '/blog/[slug]', en: '/en/blog/[slug]' }, o),
-    tasks: [{ id: 'write', label: both('Beitrag schreiben', 'Write a post'), kind: 'create' }],
+    tasks: [{ id: 'write', label: both('Beitrag schreiben', 'Write a post'), kind: 'create', prefill: { date: '@today' } }],
     fields: {
       title: f.text(both('Titel', 'Title')),
-      description: f.longtext(both('Beschreibung', 'Description')),
+      description: f.longtext(both('Beschreibung', 'Description'), { hint: descriptionHint }),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
-      badge: f.text(both('Kennzeichen', 'Badge'), { optional: true }),
+      // Stored as `badge`; sites show it as the post's topic.
+      badge: f.text(both('Thema', 'Topic'), { optional: true, hint: both('Ein Wort, steht über dem Beitrag, z. B. Release.', 'One word shown above the post, e.g. Release.') }),
       date: f.date(both('Datum', 'Date')),
-      readingTime: f.text(both('Lesezeit', 'Reading time'), { optional: true }),
+      // No reading time field: a site computes it from the text with `wordsOf(body)` from @lupinum/ginko.
       ...author,
       body: bodyOf(both('Text', 'Text'), o),
     },
@@ -180,7 +195,7 @@ export function legal<const E extends Fields = {}>(o: LegalOptions<E> = {}) {
     tasks: [{ id: 'update', label: both('Rechtstext aktualisieren', 'Update a legal text'), kind: 'edit', pick: true, fields: ['body', 'updatedAt'], prefill: { updatedAt: '@today' } }],
     fields: {
       title: f.text(both('Titel', 'Title')),
-      description: f.longtext(both('Beschreibung', 'Description')),
+      description: f.longtext(both('Beschreibung', 'Description'), { hint: descriptionHint }),
       slug: f.slug(both('Adresse', 'Address'), { from: 'title' }),
       legalType: f.choice(both('Art', 'Kind'), { options: types }),
       updatedAt: f.date(both('Stand', 'Last updated')),
@@ -195,13 +210,13 @@ export function faq<const E extends Fields = {}>(o: BrickOptions<E> = {}) {
     order: 'manual',
     tasks: [
       { id: 'add', label: both('Frage hinzufügen', 'Add a question'), kind: 'create' },
-      { id: 'edit', label: both('Frage bearbeiten', 'Edit a question'), kind: 'edit', pick: true, fields: ['question', 'answer', 'category'] },
+      { id: 'edit', label: both('Frage bearbeiten', 'Edit a question'), kind: 'edit', pick: true, fields: ['question', 'answer'] },
       { id: 'remove', label: both('Frage entfernen', 'Remove a question'), kind: 'remove' },
     ],
     fields: {
       question: f.text(both('Frage', 'Question')),
       answer: f.longtext(both('Antwort', 'Answer')),
-      category: f.text(both('Kategorie', 'Category'), { optional: true }),
+      // No category: a site that groups its questions adds a `choice` field through `extra`.
     },
   }), o)
 }
@@ -264,4 +279,36 @@ export function jobs<const E extends Fields = {}>(o: RoutedOptions<E> = {}) {
       body: bodyOf(both('Beschreibung', 'Description'), o),
     },
   }), o)
+}
+
+export type CompanyOptions<E extends Fields = {}> = Pick<BrickOptions<E>, 'label' | 'source' | 'fieldLabels' | 'extra'>
+
+/**
+ * The company's legal name, address, contact and register data: one place the owner keeps current, read by the
+ * site's imprint, contact boxes and footer. Every field is optional, so the brick can join a live site (a new single
+ * needs no value). One edit task covers every field, `extra` ones included. `telHref` turns `phone` into a dial link.
+ */
+export function company<const E extends Fields = {}>(o: CompanyOptions<E> = {}) {
+  const plain = { optional: true, translate: false } as const
+  const brick = withExtras(single({
+    label: o.label ?? both('Firmendaten', 'Company details'),
+    describe: both(
+      'Name, Anschrift und Kontakt deiner Firma, zum Beispiel für das Impressum. Steht eine Angabe auch im Text einer Seite, änderst du sie dort.',
+      'Your company’s name, address and contact details, for example for the imprint. Where a detail also appears in a page’s text, change it there.',
+    ),
+    ...sourceOf(o),
+    fields: {
+      legalName: f.text(both('Firmenname', 'Company name'), { ...plain, hint: both('Wie im Firmenbuch, z. B. Muster GmbH.', 'As registered, e.g. Example Ltd.') }),
+      street: f.text(both('Straße und Hausnummer', 'Street and number'), plain),
+      postalCode: f.text(both('Postleitzahl', 'Postcode'), { ...plain, max: 10 }),
+      city: f.text(both('Ort', 'Town or city'), plain),
+      country: f.text(both('Land', 'Country'), { optional: true }),
+      email: f.text(both('E-Mail', 'Email'), { optional: true, format: 'email' }),
+      phone: f.text(both('Telefon', 'Phone'), { optional: true, format: 'tel', hint: both('Mit Ländervorwahl, z. B. +43 1 234 56 78.', 'With country code, e.g. +43 1 234 56 78.') }),
+      registryNumber: f.text(both('Firmenbuchnummer', 'Company register number'), { ...plain, hint: both('z. B. FN 123456 a', 'e.g. FN 123456 a') }),
+      registryCourt: f.text(both('Firmenbuchgericht', 'Commercial court'), { optional: true }),
+      vatId: f.text(both('UID-Nummer', 'VAT ID'), plain),
+    },
+  }), o)
+  return { ...brick, tasks: [{ id: 'edit', label: both('Firmendaten ändern', 'Change company details'), kind: 'edit' as const, fields: Object.keys(brick.fields) }] }
 }

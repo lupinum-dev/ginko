@@ -8,8 +8,15 @@ export const MAX_EDGE = 2400
 /** Widths (px) of the smaller copies for a srcset; only those narrower than the image are made. */
 export const VARIANT_WIDTHS = [480, 960, 1600] as const
 
-/** The input is not an image that sharp can read. Retrying the same bytes cannot help. */
-export class UnreadableImageError extends Error {}
+/** The input is not an image that sharp can read; `key` is the message for the person. Retrying the same bytes cannot help. */
+export class UnreadableImageError extends Error {
+  key: 'errors.uploadNotAnImage' | 'errors.uploadTooManyPixels'
+  constructor(message: string) {
+    super(message)
+    // sharp refuses an image over its pixel limit (about 268 megapixels) before it decodes it: a readable but too large picture.
+    this.key = /pixel limit/i.test(message) ? 'errors.uploadTooManyPixels' : 'errors.uploadNotAnImage'
+  }
+}
 
 export type ImageVariant = { width: number; bytes: Uint8Array<ArrayBuffer> }
 

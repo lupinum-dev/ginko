@@ -112,6 +112,70 @@
         "exceptions.exHeilAb01.reason"
       ]
     },
+    "hourPlans": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "plan-winter",
+          "data": {
+            "label": "Winterzeiten",
+            "from": "2026-11-01",
+            "to": "2027-03-31",
+            "yearly": true,
+            "week": [
+              {
+                "_id": "wpmo000000",
+                "day": "mo",
+                "closed": true
+              },
+              {
+                "_id": "wptu000000",
+                "day": "tu",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpwe000000",
+                "day": "we",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpth000000",
+                "day": "th",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpfr000000",
+                "day": "fr",
+                "closed": false,
+                "from1": "17:00",
+                "to1": "21:30"
+              },
+              {
+                "_id": "wpsa000000",
+                "day": "sa",
+                "closed": false,
+                "from1": "11:30",
+                "to1": "22:00"
+              },
+              {
+                "_id": "wpsu000000",
+                "day": "su",
+                "closed": true
+              }
+            ]
+          },
+          "fallback": [
+            "label"
+          ]
+        }
+      ]
+    },
     "notices": {
       "kind": "collection",
       "items": [
@@ -136,7 +200,7 @@
         {
           "id": "notice-urlaub",
           "data": {
-            "text": "Betriebsurlaub vom 22. Dezember bis 6. Jänner.",
+            "text": "Betriebsurlaub vom 27. Dezember bis 6. Jänner.",
             "until": "2026-09-30"
           },
           "fallback": [
@@ -192,7 +256,7 @@
           {
             "_id": "ldth000000",
             "day": "th",
-            "dish": "Gebackener Saibling mit Petersilienerdäpfeln",
+            "dish": "Baked char with parsley potatoes",
             "price": {
               "amount": 1490,
               "currency": "EUR"
@@ -223,9 +287,99 @@
       "fallback": [
         "days.ldtu000000.dish",
         "days.ldwe000000.dish",
-        "days.ldth000000.dish",
         "days.ldfr000000.dish",
         "note"
+      ]
+    },
+    "lunchPlans": {
+      "kind": "collection",
+      "items": [
+        {
+          "id": "plan-kw42",
+          "data": {
+            "weekOf": "2026-10-12",
+            "days": [
+              {
+                "_id": "ldmo000000",
+                "day": "mo",
+                "dish": "Gulaschsuppe mit Gebäck",
+                "price": {
+                  "amount": 1090,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "L"
+                ]
+              },
+              {
+                "_id": "ldtu000000",
+                "day": "tu",
+                "dish": "Krautfleckerl mit Speck",
+                "price": {
+                  "amount": 1590,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "L",
+                  "M"
+                ]
+              },
+              {
+                "_id": "ldwe000000",
+                "day": "we",
+                "dish": "Topfenknödel mit Zwetschkenröster",
+                "price": {
+                  "amount": 1150,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "C",
+                  "G"
+                ]
+              },
+              {
+                "_id": "ldth000000",
+                "day": "th",
+                "dish": "Gebratene Forelle mit Mandelbutter",
+                "price": {
+                  "amount": 1490,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "D",
+                  "G",
+                  "H"
+                ]
+              },
+              {
+                "_id": "ldfr000000",
+                "day": "fr",
+                "dish": "Spinatknödel mit brauner Butter",
+                "price": {
+                  "amount": 1250,
+                  "currency": "EUR"
+                },
+                "allergens": [
+                  "A",
+                  "C",
+                  "G"
+                ]
+              }
+            ],
+            "note": "Alle Gerichte inklusive Beilagensalat."
+          },
+          "fallback": [
+            "days.ldmo000000.dish",
+            "days.ldtu000000.dish",
+            "days.ldwe000000.dish",
+            "days.ldth000000.dish",
+            "days.ldfr000000.dish",
+            "note"
+          ]
+        }
       ]
     },
     "menu": {
@@ -278,7 +432,7 @@
           "id": "menu-schnitzel",
           "data": {
             "category": "mains",
-            "name": "Wiener Schnitzel vom Kalb",
+            "name": "Viennese schnitzel of veal",
             "description": "With potato and cucumber salad",
             "price": {
               "amount": 2190,
@@ -296,9 +450,7 @@
             },
             "priceFrom": "2026-10-18"
           },
-          "fallback": [
-            "name"
-          ]
+          "fallback": []
         },
         {
           "id": "menu-risotto",
@@ -398,38 +550,6 @@
       "kind": "collection",
       "items": [
         {
-          "id": "sommerfest",
-          "data": {
-            "title": "Sommerfest im Gastgarten",
-            "slug": "sommerfest-gastgarten",
-            "when": {
-              "from": "2026-06-20",
-              "to": "2026-06-21"
-            },
-            "description": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Musik, Grillstation und Kinderprogramm."
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            }
-          },
-          "fallback": [
-            "title",
-            "slug",
-            "description"
-          ],
-          "updatedAt": "2026-10-05T09:00:00.000Z"
-        },
-        {
           "id": "weinabend",
           "data": {
             "title": "Wine evening with winemaker Lena Ebner",
@@ -444,13 +564,13 @@
                 [
                   "p",
                   {},
-                  "Sechs Weine aus dem Kamptal, dazu eine Brettljause. Plätze gibt es über ",
+                  "Six wines from the Kamptal with a cold platter. Book your seat on ",
                   [
                     "a",
                     {
                       "href": "https://reservierung.gasthaus-linde.example/weinabend"
                     },
-                    "die Reservierungsseite"
+                    "the reservation page"
                   ],
                   "."
                 ]
@@ -474,54 +594,11 @@
               "height": 1067
             }
           },
-          "fallback": [
-            "description"
-          ],
+          "fallback": [],
           "updatedAt": "2026-09-20T08:15:00.000Z",
           "urls": {
             "de": "/veranstaltungen/weinabend-ebner",
             "en": "/en/events/wine-evening-ebner"
-          }
-        },
-        {
-          "id": "martinigans",
-          "data": {
-            "title": "Martini-Gansl",
-            "slug": "martini-gansl",
-            "when": {
-              "from": "2026-11-11",
-              "to": "2026-11-11"
-            },
-            "description": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Gansl mit Blaukraut und Semmelknödel. Nur mit Reservierung."
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            },
-            "price": {
-              "amount": 5490,
-              "currency": "EUR"
-            },
-            "booking": "https://reservierung.gasthaus-linde.example/martini"
-          },
-          "fallback": [
-            "title",
-            "slug",
-            "description"
-          ],
-          "updatedAt": "2026-10-01T14:30:00.000Z",
-          "urls": {
-            "de": "/veranstaltungen/martini-gansl",
-            "en": "/en/events/martini-gansl"
           }
         }
       ]
@@ -592,24 +669,44 @@
             [
               "p",
               {},
-              "Gasthaus zur Linde, Inhaberin Maria Ebner",
-              [
-                "br",
-                {}
-              ],
-              "Dorfstraße 12, 5020 Salzburg"
+              "Inhaberin: Maria Ebner (Einzelunternehmen)"
             ],
             [
               "p",
               {},
-              "Kontakt: ",
+              "Unternehmensgegenstand: Gastgewerbe (Gasthaus)",
+              [
+                "br",
+                {}
+              ],
+              "UID-Nummer: ATU00000000",
+              [
+                "br",
+                {}
+              ],
+              "Gewerbebehörde: Magistrat der Stadt Salzburg",
+              [
+                "br",
+                {}
+              ],
+              "Mitglied der Wirtschaftskammer Salzburg, Fachgruppe Gastronomie",
+              [
+                "br",
+                {}
+              ],
+              "Berufsrecht: Gewerbeordnung, abrufbar unter ",
               [
                 "a",
                 {
-                  "href": "mailto:office@gasthaus-linde.example"
+                  "href": "https://www.ris.bka.gv.at"
                 },
-                "office@gasthaus-linde.example"
+                "ris.bka.gv.at"
               ]
+            ],
+            [
+              "p",
+              {},
+              "Offenlegung nach § 25 Mediengesetz: Medieninhaberin ist Maria Ebner. Die Website informiert über das Gasthaus zur Linde, seine Speisen und Veranstaltungen."
             ]
           ],
           "toc": {
@@ -647,161 +744,6 @@
         "description": "Austrian inn cooking in Salzburg: lunch menu, menu and events."
       },
       "fallback": []
-    },
-    "hourPlans": {
-      "kind": "collection",
-      "items": [
-        {
-          "id": "plan-winter",
-          "data": {
-            "label": "Winterzeiten",
-            "from": "2026-11-01",
-            "to": "2027-03-31",
-            "yearly": true,
-            "week": [
-              {
-                "_id": "wpmo000000",
-                "day": "mo",
-                "closed": true
-              },
-              {
-                "_id": "wptu000000",
-                "day": "tu",
-                "closed": false,
-                "from1": "17:00",
-                "to1": "21:30"
-              },
-              {
-                "_id": "wpwe000000",
-                "day": "we",
-                "closed": false,
-                "from1": "17:00",
-                "to1": "21:30"
-              },
-              {
-                "_id": "wpth000000",
-                "day": "th",
-                "closed": false,
-                "from1": "17:00",
-                "to1": "21:30"
-              },
-              {
-                "_id": "wpfr000000",
-                "day": "fr",
-                "closed": false,
-                "from1": "17:00",
-                "to1": "21:30"
-              },
-              {
-                "_id": "wpsa000000",
-                "day": "sa",
-                "closed": false,
-                "from1": "11:30",
-                "to1": "22:00"
-              },
-              {
-                "_id": "wpsu000000",
-                "day": "su",
-                "closed": true
-              }
-            ]
-          },
-          "fallback": [
-            "label"
-          ]
-        }
-      ]
-    },
-    "lunchPlans": {
-      "kind": "collection",
-      "items": [
-        {
-          "id": "plan-kw42",
-          "data": {
-            "weekOf": "2026-10-12",
-            "days": [
-              {
-                "_id": "ldmo000000",
-                "day": "mo",
-                "dish": "Gulaschsuppe mit Gebäck",
-                "price": {
-                  "amount": 1090,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "A",
-                  "L"
-                ]
-              },
-              {
-                "_id": "ldtu000000",
-                "day": "tu",
-                "dish": "Krautfleckerl mit Speck",
-                "price": {
-                  "amount": 1590,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "A",
-                  "L",
-                  "M"
-                ]
-              },
-              {
-                "_id": "ldwe000000",
-                "day": "we",
-                "dish": "Topfenknödel mit Zwetschkenröster",
-                "price": {
-                  "amount": 1150,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "A",
-                  "C",
-                  "G"
-                ]
-              },
-              {
-                "_id": "ldth000000",
-                "day": "th",
-                "dish": "Gebratene Forelle mit Mandelbutter",
-                "price": {
-                  "amount": 1490,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "D",
-                  "G",
-                  "H"
-                ]
-              },
-              {
-                "_id": "ldfr000000",
-                "day": "fr",
-                "dish": "Spinatknödel mit brauner Butter",
-                "price": {
-                  "amount": 1250,
-                  "currency": "EUR"
-                },
-                "allergens": [
-                  "A",
-                  "C",
-                  "G"
-                ]
-              }
-            ],
-            "note": "Alle Gerichte inklusive Beilagensalat."
-          },
-          "fallback": [
-            "days.ldmo000000.dish",
-            "days.ldtu000000.dish",
-            "days.ldwe000000.dish",
-            "days.ldth000000.dish",
-            "days.ldfr000000.dish",
-            "note"
-          ]
-        }
-      ]
     }
   }
 }

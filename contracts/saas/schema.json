@@ -600,6 +600,7 @@
           "profile": "basic",
           "translate": "manual",
           "optional": true,
+          "max": 30000,
           "pos": 0
         },
         "avv": {
@@ -608,6 +609,7 @@
           "profile": "basic",
           "translate": "manual",
           "optional": true,
+          "max": 30000,
           "pos": 1
         },
         "privacy": {
@@ -616,6 +618,7 @@
           "profile": "basic",
           "translate": "manual",
           "optional": true,
+          "max": 30000,
           "pos": 2
         },
         "imprint": {
@@ -624,6 +627,7 @@
           "profile": "basic",
           "translate": "manual",
           "optional": true,
+          "max": 30000,
           "pos": 3
         }
       },

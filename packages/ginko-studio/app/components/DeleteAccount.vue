@@ -5,9 +5,10 @@ import { api } from '#convex/api'
 import { Button } from '@studio/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@studio/components/ui/dialog'
 import { opErrorOf } from '../composables/useOps'
+import { forgetLocalDrafts } from '../composables/useLocalDraft'
 
 const { t } = useI18n()
-const { client } = useConvexAuth()
+const { client, user } = useConvexAuth()
 const { mutate: deleteAccount } = useConvexMutation(api.account.deleteAccount)
 const open = ref(false)
 const busy = ref(false)
@@ -25,6 +26,8 @@ async function confirm() {
     return
   }
   // The session is gone on the server already; signing out only clears this browser.
+  const id = user.value?.id
+  if (id) forgetLocalDrafts(id)
   try {
     await client.signOut()
   } catch {

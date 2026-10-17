@@ -1,11 +1,11 @@
-// Tenant isolation: the owner of site "andere" calls every public query and mutation with the restaurant's ids,
+// Tenant isolation: the owner of site "andere" calls every public query, mutation and action with the restaurant's ids,
 // once naming the restaurant and once naming "andere". Wrong behaviour caught: any answer that carries the
 // restaurant's content, or any change to the restaurant's rows. Add a call here when a public function is added.
 import type { Schema } from '@lupinum/ginko/internal'
 import type { FunctionReference } from 'convex/server'
 import { describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
-import { opId, setup, upload } from './setup'
+import { firstPage, opId, publicFunctions, setup, upload } from './setup'
 
 type S = Awaited<ReturnType<typeof setup>>
 
@@ -30,15 +30,29 @@ async function fixtures(s: S) {
   const pushKey = await s.as.owner.mutation(api.release.createPushKey, { site: 'restaurant', label: 'ci', scopes: ['release'] })
   const agentKey = await s.as.owner.mutation(api.agent.createKey, { site: 'restaurant', label: 'ownerkey' })
   const view = (await s.as.owner.mutation(api.views.save, { site: 'restaurant', brick: 'menu', name: 'GEHEIM-VIEW', query: {} }) as { id: string }).id
-  return { entry, file: file as string, folder: folder as string, change: save.change, proposal: proposal.proposal, release, member: member as string, invite, pushKey, agentKey, view }
+  // A removed entry for entries.purge, and a notice that points at the Saibling, so entries.usedBy has a use to leak.
+  const removed = s.entries['menu-schnitzel']!
+  await s.as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: removed, lifeRev: 1 })
+  const user = s.entries['notice-ausgebucht']!
+  await s.t.run(async (ctx) => {
+    const site = (await ctx.db.get(s.site))!
+    const schema = site.schema as Schema
+    schema.bricks.notices!.fields.dish = { type: 'ref', to: 'menu', label: { de: 'Gericht' } }
+    await ctx.db.patch(s.site, { schema })
+    const row = (await ctx.db.get(user))!
+    await ctx.db.patch(user, { data: { ...row.data, dish: entry } })
+  })
+  expect(await s.as.owner.query(api.entries.usedBy, { site: 'restaurant', entry })).toMatchObject([{ entry: user }])
+  return { entry, file: file as string, folder: folder as string, change: save.change, proposal: proposal.proposal, release, member: member as string, invite, pushKey, agentKey, view, removed, user }
 }
 
 type Fx = Awaited<ReturnType<typeof fixtures>>
-type Call = { fn: string; kind: 'query' | 'mutation'; args: (site: string, f: Fx) => Record<string, unknown> }
+type Call = { fn: string; kind: 'query' | 'mutation' | 'action'; args: (site: string, f: Fx) => Record<string, unknown> }
 const o = () => opId()
 const calls: Call[] = [
-  { fn: 'changes.list', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
-  { fn: 'changes.list#nofilter', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'backup.download', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'changes.list', kind: 'query', args: (site, f) => ({ site, paginationOpts: firstPage, entry: f.entry }) },
+  { fn: 'changes.list#nofilter', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage }) },
   { fn: 'changes.get', kind: 'query', args: (site, f) => ({ site, change: f.change }) },
   { fn: 'agent.createKey', kind: 'mutation', args: (site) => ({ site, label: 'x' }) },
   { fn: 'agent.keys', kind: 'query', args: (site) => ({ site }) },
@@ -72,13 +86,22 @@ const calls: Call[] = [
   { fn: 'entries.create', kind: 'mutation', args: (site) => ({ site, opId: o(), brick: 'menu', data: {} }) },
   { fn: 'entries.duplicate', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry }) },
   { fn: 'entries.remove', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
+  { fn: 'entries.purge', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.removed, lifeRev: 2 }) },
+  { fn: 'entries.usedBy', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
+  { fn: 'entries.trashOverflow', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
   { fn: 'entries.restore', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
   { fn: 'entries.publish', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
   { fn: 'entries.unpublish', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, lifeRev: 1 }) },
-  { fn: 'entries.reorder', kind: 'mutation', args: (site, f) => ({ site, opId: o(), brick: 'menu', order: [f.entry], orderRev: 0 }) },
+  { fn: 'entries.move', kind: 'mutation', args: (site, f) => ({ site, opId: o(), entry: f.entry, direction: 'down' }) },
   { fn: 'entries.removed', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
-  { fn: 'entries.trash', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'entries.trash', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage }) },
   { fn: 'entries.whyNotPublic', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
+  { fn: 'entries.list', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
+  { fn: 'entries.list#search', kind: 'query', args: (site) => ({ site, brick: 'menu', search: 'Saibling' }) },
+  { fn: 'entries.get', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
+  { fn: 'entries.single', kind: 'query', args: (site) => ({ site, brick: 'hours' }) },
+  { fn: 'entries.titles', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
+  { fn: 'entries.ofBricks', kind: 'query', args: (site) => ({ site, bricks: ['menu', 'hours', 'notices'] }) },
   { fn: 'release.createPushKey', kind: 'mutation', args: (site) => ({ site, label: 'x', scopes: ['release', 'export'] }) },
   { fn: 'release.revokePushKey', kind: 'mutation', args: (site, f) => ({ site, key: f.pushKey.id }) },
   { fn: 'members.list', kind: 'query', args: (site) => ({ site }) },
@@ -88,7 +111,9 @@ const calls: Call[] = [
   { fn: 'proposals.approve', kind: 'mutation', args: (_s, f) => ({ proposal: f.proposal }) },
   { fn: 'proposals.reject', kind: 'mutation', args: (_s, f) => ({ proposal: f.proposal, reason: 'nope' }) },
   { fn: 'proposals.withdraw', kind: 'mutation', args: (_s, f) => ({ proposal: f.proposal }) },
-  { fn: 'proposals.list', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'proposals.list', kind: 'query', args: (site) => ({ site, paginationOpts: firstPage }) },
+  { fn: 'proposals.mine', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'proposals.ownFor', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
   { fn: 'proposals.count', kind: 'query', args: (site) => ({ site }) },
   { fn: 'proposals.get', kind: 'query', args: (site, f) => ({ site, proposal: f.proposal }) },
   { fn: 'proposals.releases', kind: 'query', args: (site) => ({ site }) },
@@ -100,16 +125,19 @@ const calls: Call[] = [
   { fn: 'uploads.get', kind: 'query', args: (site, f) => ({ site, upload: f.file }) },
   { fn: 'uploads.urls', kind: 'query', args: (site, f) => ({ site, ids: [f.file] }) },
   { fn: 'tasks.prefill', kind: 'query', args: (site, f) => ({ site, task: 'menu.edit', entry: f.entry }) },
-  { fn: 'sites.get', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'sites.meta', kind: 'query', args: (site) => ({ site }) },
   { fn: 'sites.setAgentReview', kind: 'mutation', args: (site) => ({ site, review: false }) },
   { fn: 'sites.deletion', kind: 'query', args: (site) => ({ site }) },
   // A wrong confirmation: against "andere" the call stops there instead of really starting the deletion of the attacker's own site.
   { fn: 'sites.startDeletion', kind: 'mutation', args: (site) => ({ site, confirm: 'nope' }) },
   { fn: 'sites.cancelDeletion', kind: 'mutation', args: (site) => ({ site }) },
   { fn: 'sites.translationStatus', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'sites.today', kind: 'query', args: (site) => ({ site }) },
   { fn: 'views.save', kind: 'mutation', args: (site, f) => ({ site, id: f.view, brick: 'menu', name: 'pwned', query: {} }) },
   { fn: 'views.remove', kind: 'mutation', args: (site, f) => ({ site, id: f.view }) },
   { fn: 'views.list', kind: 'query', args: (site) => ({ site, brick: 'menu' }) },
+  // Against "andere" it stops at the missing refresh key, before anything is fetched.
+  { fn: 'refresh.urgentRefresh', kind: 'action', args: (site) => ({ site, opId: o() }) },
 ]
 
 const SECRETS = ['GEHEIM', 'Saibling', 'Frittaten', 'Gasthaus', 'koch@example.com', 'wirtin@example.com', 'geheim@example.com']
@@ -128,7 +156,7 @@ async function snapshot(s: S) {
 
 describe('tenant isolation: owner of "andere" against "restaurant"', () => {
   for (const target of ['restaurant', 'andere'] as const) {
-    it(`every public query/mutation, site="${target}" with restaurant ids`, async () => {
+    it(`every public query/mutation/action, site="${target}" with restaurant ids`, async () => {
       const s = await setup()
       const f = await fixtures(s)
       const before = await snapshot(s)
@@ -136,13 +164,15 @@ describe('tenant isolation: owner of "andere" against "restaurant"', () => {
       for (const c of calls) {
         const name = c.fn.split('#')[0]!
         const [mod, fnName] = name.split('.') as [keyof typeof api, string]
-        const ref = (api[mod] as unknown as Record<string, FunctionReference<'query' | 'mutation'>>)[fnName]!
+        const ref = (api[mod] as unknown as Record<string, FunctionReference<'query' | 'mutation' | 'action'>>)[fnName]!
         const args = c.args(target, f)
         try {
-          const result = c.kind === 'query' ? await s.as.stranger.query(ref, args) : await s.as.stranger.mutation(ref, args)
-          const text = JSON.stringify(result)
-          const hit = SECRETS.filter((x) => text.includes(x)).concat([f.entry, f.file, f.folder, f.change, f.proposal, f.member].filter((x) => text.includes(x)))
-          if (hit.length && !['uploads.urls', 'sites.get', 'sites.translationStatus'].includes(name)) leaks.push(`${c.fn}: ${hit.join(',')}`)
+          const result = c.kind === 'query' ? await s.as.stranger.query(ref, args) : c.kind === 'mutation' ? await s.as.stranger.mutation(ref, args) : await s.as.stranger.action(ref, args)
+          // A backup carries the caller's own schema, which "andere" shares with the restaurant (a default names the
+          // Gasthaus); the rest of it must hold nothing of the restaurant.
+          const text = JSON.stringify(name === 'backup.download' ? { ...(result as object), schema: null } : result)
+          const hit = SECRETS.filter((x) => text.includes(x)).concat([f.entry, f.file, f.folder, f.change, f.proposal, f.member, f.removed, f.user].filter((x) => text.includes(x)))
+          if (hit.length && !['uploads.urls', 'sites.meta'].includes(name)) leaks.push(`${c.fn}: ${hit.join(',')}`)
         } catch {
           // Refused: the expected answer for a stranger.
         }
@@ -153,4 +183,29 @@ describe('tenant isolation: owner of "andere" against "restaurant"', () => {
       expect(after).toEqual(before)
     })
   }
+})
+
+/**
+ * Public functions that take no site, so no other site's owner can name one: each acts only on the caller's own
+ * account, or on an invite whose secret token (or invited address) is the permission.
+ */
+const NO_SITE: Record<string, string> = {
+  'account.settings': "the caller's own settings",
+  'account.setRemindByMail': "the caller's own settings",
+  'account.sawLocale': "the caller's own settings",
+  'account.setLocale': "the caller's own settings",
+  'account.setName': "the caller's own settings",
+  'account.deleteAccount': "the caller's own account",
+  'invites.peek': 'the token is the permission (breakit-access: invitation tokens)',
+  'invites.accept': 'the token and the invited address are the permission (breakit-access: invitation tokens)',
+  'invites.mine': "invites to the caller's own address",
+  'sites.mine': "the caller's own memberships",
+  'sites.create': 'makes a new site for the caller',
+  'mail.signInAvailable': 'answers only whether mail is set up',
+}
+
+// Wrong behaviour caught: a new public function ships without a tenant probe, because nobody added it to `calls`.
+it('the call list names every public query, mutation and action, or says why it takes no site', async () => {
+  const probed = new Set([...calls.map((c) => c.fn.split('#')[0]!), ...Object.keys(NO_SITE)])
+  expect([...probed].sort()).toEqual(await publicFunctions())
 })

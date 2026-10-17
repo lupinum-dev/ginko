@@ -1,12 +1,12 @@
 /// <reference path="./schema.d.ts" />
 // What a site page uses (SPEC 8 "Composables"). Everything reads one state, `ginko:bundle`,
 // which the plugin fills per locale (or the preview fills by message), so nothing here fetches.
-import { computed, createError, toValue, useI18n, useHead, useRoute, useRuntimeConfig, useState, type ComputedRef, type MaybeRefOrGetter, type Ref } from '#imports'
+import { computed, createError, toRef, toValue, useI18n, useHead, useRoute, useRuntimeConfig, useState, type ComputedRef, type MaybeRefOrGetter, type Ref } from '#imports'
 import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
 import { useSchemaOrg } from '#ginko/schema-org'
 import {
-  applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, query, seoHead, todayIn, websiteLd,
+  applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, websiteLd, withCountry,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
 } from '../../internal.ts'
 import { withUrl, type GinkoPublicConfig } from './shared.ts'
@@ -107,12 +107,11 @@ export function useGinkoWeek(): WeekInfo {
  */
 export function useGinko<K extends BrickKey>(brick: K): ComputedRef<BrickValue<Bricks[K]>> {
   const bundle = useVisibleBundle([brick])
-  const locale = useGinkoLocale()
   return computed(() => {
     const value = bundle.value.bricks[brick]
     const def = schema.bricks[brick] as Brick | undefined
     if (value?.kind === 'collection' && def) {
-      return { items: def.kind === 'collection' && def.route ? withUrl(value.items, locale.value) : value.items } as BrickValue<Bricks[K]>
+      return { items: def.kind === 'collection' && def.route ? withUrl(value.items, bundle.value.locale, bundle.value.mainLocale) : value.items } as BrickValue<Bricks[K]>
     }
     // The bundle is checked against this schema on load (bundleFits), so its brick has this shape.
     return value as unknown as BrickValue<Bricks[K]>
@@ -135,10 +134,10 @@ function useVisibleBundle(bricks: MaybeRefOrGetter<readonly BrickKey[]>): Comput
   })
 }
 
-/** Items of a core result get the `url` of the current locale when the brick has a route. */
-function withRouteUrl(brick: string, items: BundleItem[], locale: Locale): BundleItem[] {
+/** Items of a core result get the `url` of the bundle's locale when the brick has a route (`withUrl`). */
+function withRouteUrl(brick: string, items: BundleItem[], bundle: Bundle): BundleItem[] {
   const def = schema.bricks[brick] as Brick | undefined
-  return def?.kind === 'collection' && def.route ? withUrl(items, locale) : items
+  return def?.kind === 'collection' && def.route ? withUrl(items, bundle.locale, bundle.mainLocale) : items
 }
 
 /**
@@ -148,21 +147,19 @@ function withRouteUrl(brick: string, items: BundleItem[], locale: Locale): Bundl
  */
 export function useGinkoQuery<K extends CollectionKey>(brick: K, q: MaybeRefOrGetter<Query<GinkoData<K>>> = {}): ComputedRef<Omit<QueryResult, 'items'> & { items: GinkoItem<K>[] }> {
   const bundle = useVisibleBundle([brick])
-  const locale = useGinkoLocale()
   return computed(() => {
     const result = query(bundle.value, brick, toValue(q) as Query, schema)
     // The core returns bundle items; their typed shape is the brick's GinkoItem (same cast as useGinko).
-    return { ...result, items: withRouteUrl(brick, result.items, locale.value) } as never
+    return { ...result, items: withRouteUrl(brick, result.items, bundle.value) } as never
   })
 }
 
 /** The entries before and after `id` among the visible ones, in `options.order` (the `Query` order) or bundle order. */
 export function useGinkoNeighbors<K extends CollectionKey>(brick: K, id: MaybeRefOrGetter<string>, options: Pick<Query<GinkoData<K>>, 'order'> = {}): ComputedRef<{ prev?: GinkoItem<K>; next?: GinkoItem<K> }> {
   const bundle = useVisibleBundle([brick])
-  const locale = useGinkoLocale()
   return computed(() => {
     const { prev, next } = neighbors(bundle.value, brick, toValue(id), options.order as Query['order'])
-    const one = (item?: BundleItem) => item && withRouteUrl(brick, [item], locale.value)[0]
+    const one = (item?: BundleItem) => item && withRouteUrl(brick, [item], bundle.value)[0]
     return { prev: one(prev), next: one(next) } as never
   })
 }
@@ -194,19 +191,26 @@ export function useGinkoLang(): (item: { fallback?: readonly string[] }, path: s
 }
 
 /**
- * The visible entry whose slug in the current locale is `slug`; otherwise a real 404 (SPEC 8). `slug` may be a
+ * The visible entry whose slug in the current locale is `slug`; otherwise a real 404 (SPEC 8). An entry without a
+ * page in this locale (untranslated) is a 404 too, also when a list links it to its main-language page. `slug` may be a
  * getter such as `() => route.params.slug`, so a reused page follows client navigation; an array (catch-all
- * route) is joined with `/`. The 404 is thrown when the value is read, not at the call.
+ * route) is joined with `/`. The 404 is thrown on every read of the value while no entry matches, not at the call.
  */
-export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: MaybeRefOrGetter<string | string[] | undefined>): ComputedRef<GinkoItem<K>> {
+export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: MaybeRefOrGetter<string | string[] | undefined>): Readonly<Ref<GinkoItem<K>>> {
   const items = useGinko(brick)
   const locale = useGinkoLocale()
-  return computed(() => {
+  const entry = computed(() => {
     const def = schema.bricks[brick]!
     const route = def.kind === 'collection' ? def.route?.[locale.value] : undefined
     const value = toValue(slug)
     const path = value === undefined ? undefined : route?.replace('[slug]', Array.isArray(value) ? value.join('/') : value)
-    const item = (items.value as { items: (BundleItem & { url?: string })[] }).items.find((i) => path && i.url === path)
+    return (items.value as { items: BundleItem[] }).items.find((i) => path && i.urls?.[locale.value] === path)
+  })
+  // A getter ref, not a computed that throws: such a computed throws only on the first read after a change and then
+  // returns its last value. When other code reads the entry before the template (such as the useAsyncData key of
+  // useGinkoMarkdown, a sync watcher), the template would get the old entry instead of the 404.
+  return toRef(() => {
+    const item = entry.value
     // Fatal: on the client, Nuxt opens the error page only for a fatal error, so a navigation to a missing slug shows the 404.
     if (!item) throw createError({ statusCode: 404, statusMessage: 'Not found', fatal: true })
     return item as never
@@ -264,7 +268,9 @@ export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
     })
   }
   // With nuxt-schema-org the page's JSON-LD joins that module's graph; `@context` belongs to the graph, not to a node.
-  if (useSchemaOrg) useSchemaOrg(computed(() => (toValue(input).jsonLd ?? []).map(({ '@context': _context, ...node }) => node)))
+  // The page's JSON-LD with the site's `country` where a builder left it out (siteJsonLd, jobJsonLd).
+  const pageLd = () => (toValue(input).jsonLd ?? []).map((node) => withCountry(node, config.country))
+  if (useSchemaOrg) useSchemaOrg(computed(() => pageLd().map(({ '@context': _context, ...node }) => node)))
   const trim = (p: string) => (p.length > 1 ? p.replace(/\/$/, '') : p)
   useHead(() => {
     const page = toValue(input)
@@ -272,13 +278,16 @@ export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
     const raw = generated ? undefined : (page.image ?? seo.image)
     const image = raw === undefined ? undefined : typeof raw === 'string' ? { url: absolute(raw) } : { ...raw, url: absolute(raw.url) }
     const head = seoHead({ siteName: config.name, titleTemplate: seo.titleTemplate, title: page.title, description: page.description ?? seo.description, image, type: page.type, noindex: page.noindex })
-    const ld = useSchemaOrg ? [] : [...(page.jsonLd ?? [])]
+    const ld = useSchemaOrg ? [] : pageLd()
     // The home page is the page whose main-language path is `/`.
     const home = Object.keys(schema.pages).find((key) => schema.pages[key]?.[config.mainLocale] === '/')
     if (!useSchemaOrg && home !== undefined && trim(route.path) === trim(path(home as GinkoPageKey, locale.value))) {
       const lang = i18n.locales.find((l) => l.code === locale.value)?.language ?? locale.value
       ld.unshift(websiteLd({ name: config.name, url: config.url, lang }))
-      if (seo.organization) ld.splice(1, 0, organizationLd({ name: config.name, url: config.url, ...seo.organization, logo: seo.organization.logo && absolute(seo.organization.logo) }))
+      // A page that writes its own organisation node (`siteJsonLd` of the `site()` brick) has the one with the address
+      // and contact: a second node from `seo.organization` would describe the same organisation twice.
+      const own = ld.some((node) => (ORGANIZATION_TYPES as readonly unknown[]).includes(node['@type']))
+      if (seo.organization && !own) ld.splice(1, 0, organizationLd({ name: config.name, url: config.url, ...seo.organization, logo: seo.organization.logo && absolute(seo.organization.logo) }))
     }
     return {
       title: head.title,

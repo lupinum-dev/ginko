@@ -1,7 +1,7 @@
 // The site's own routes and lookup tables. Fixed texts are ginko-i18n messages in i18n/<code>.json.
 // Content comes from the bundle. Option labels in ginko.config.ts are editor text (SPEC 2), so job kinds
 // and weekday names for visitors live in `labels`, in both languages.
-import { formatMoney, plainText, type MarkdownValue, type Money } from '@lupinum/ginko'
+import { formatMoney, plainText, type MarkdownTree, type Money } from '@lupinum/ginko'
 
 export const companyName = 'Brunner Präzisionstechnik GmbH'
 
@@ -86,10 +86,9 @@ export function salaryText(job: { salary: Money; salaryPeriod: string }, lang: G
   return nbsp(`${text.from} ${shown} ${text.gross} / ${labels[lang].periods[job.salaryPeriod] ?? job.salaryPeriod}`)
 }
 
-/** The first `max` characters of a Markdown field as plain text, cut at a word and closed with an ellipsis. */
-export function excerpt(value: MarkdownValue | undefined, max = 160): string {
-  // In page state the field can be `{ ref }`; only a loaded tree has text to cut.
-  const text = (value && 'nodes' in value ? plainText(value) : '').replace(/\s+/g, ' ').trim()
+/** The first `max` characters of a Markdown text as plain text, cut at a word and closed with an ellipsis. */
+export function excerpt(tree: MarkdownTree | null, max = 160): string {
+  const text = (tree ? plainText(tree) : '').replace(/\s+/g, ' ').trim()
   if (text.length <= max) return text
   const cut = text.slice(0, max)
   return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), max / 2)).replace(/[\s.,;:–-]+$/, '')}…`
@@ -141,10 +140,17 @@ export function todayState(hours: { week: DayHours[]; exceptions: Exception[]; c
   return { kind: 'open', times: timesOf(day, and) }
 }
 
-/** Exceptions that are still running or start within `days` days from today, soonest first. */
-export function exceptionsAhead(exceptions: Exception[], today: string, days: number): Exception[] {
+/**
+ * Exceptions that are still running or start within `days` days from today, and the day set in "Geschlossen am"
+ * (`closedOn`) when it is after today (today's is the board's state), soonest first. `field` is the bundle path of
+ * each reason, for its language.
+ */
+export function exceptionsAhead(hours: { exceptions: Exception[]; closedOn?: string; closedNote?: string }, today: string, days: number): Array<Exception & { field: string }> {
   const limit = new Date(`${today}T12:00:00Z`)
   limit.setUTCDate(limit.getUTCDate() + days)
   const until = limit.toISOString().slice(0, 10)
-  return exceptions.filter((e) => e.when.to >= today && e.when.from <= until).sort((a, b) => a.when.from.localeCompare(b.when.from))
+  const ahead = hours.exceptions.filter((e) => e.when.to >= today && e.when.from <= until).map((e) => ({ ...e, field: `exceptions.${e._id}.reason` }))
+  const day = hours.closedOn
+  if (day && day > today && day <= until) ahead.push({ _id: 'closedOn', when: { from: day, to: day }, reason: hours.closedNote ?? '', closed: true, field: 'closedNote' })
+  return ahead.sort((a, b) => a.when.from.localeCompare(b.when.from))
 }

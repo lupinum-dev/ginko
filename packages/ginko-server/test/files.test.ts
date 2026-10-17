@@ -2,9 +2,10 @@
 // retention of trash and replaced files. One test per realistic failure.
 import { describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
+import { printOf, remapFileIds, type Schema } from '@lupinum/ginko/internal'
 import type { Id } from '../convex/_generated/dataModel'
 import { CORPUS_NOW } from './clock'
-import { errorOf, opId, postUpload, setup, upload } from './setup'
+import { errorOf, opId, people, postUpload, setup, upload } from './setup'
 
 type Setup = Awaited<ReturnType<typeof setup>>
 
@@ -25,7 +26,8 @@ const pdf = (s: Setup, name = 'karte.pdf', content = '%PDF-1.4 karte') => upload
 async function useImage(s: Setup, file: Id<'uploads'>, alt: Record<string, string>) {
   const created = await s.as.owner.mutation(api.entries.create, {
     site, opId: opId(), brick: 'events',
-    data: { title: { de: 'Weinabend' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'hi' }, image: { file, alt } },
+    // Translated, so the English bundle has the entry (an untranslated event has no English page).
+    data: { title: { de: 'Weinabend', en: 'Wine evening' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'hi', en: 'hi' }, image: { file, alt } },
   }) as { entry: Id<'entries'> }
   return created.entry
 }
@@ -191,7 +193,7 @@ describe('views', () => {
     expect((await s.as.owner.query(api.files.info, { site, file })).alt).toEqual({})
   })
 
-  it('setAlt: staff may not, a PDF has no alt text, the language must exist, the text has a limit', async () => {
+  it('setAlt: staff may not, a PDF has no alt text, the language must exist, the text has a limit and no invisible characters', async () => {
     const s = await setup()
     const file = await readyImage(s)
     const args = { site, file, locale: 'de', text: 'Foto' }
@@ -199,6 +201,7 @@ describe('views', () => {
     expect((await errorOf(s.as.owner.mutation(api.files.setAlt, { ...args, file: await pdf(s) }))).code).toBe('INVALID')
     expect((await errorOf(s.as.owner.mutation(api.files.setAlt, { ...args, locale: 'fr' }))).code).toBe('INVALID')
     expect((await errorOf(s.as.owner.mutation(api.files.setAlt, { ...args, text: 'x'.repeat(301) }))).code).toBe('INVALID')
+    expect((await errorOf(s.as.owner.mutation(api.files.setAlt, { ...args, text: 'Hund \u202eesiw' }))).message).toBe('„Bildbeschreibung“ enthält unsichtbare Steuerzeichen.')
     expect((await s.as.owner.query(api.files.info, { site, file })).alt).toEqual({})
   })
 
@@ -250,6 +253,22 @@ describe('views', () => {
     await s.as.owner.mutation(api.files.trash, { site, files: [karte] })
     expect((await s.as.owner.query(api.files.list, { site, view: 'trash' })).files.map((f) => f.id)).toEqual([karte])
     expect((await s.as.owner.query(api.files.list, { site, view: 'all' })).files.map((f) => f.name)).toEqual(['preise.pdf'])
+  })
+
+  // Wrong behaviour caught: photos were findable only by their camera names (IMG_4032.JPG), never by what they show.
+  it.each([
+    ['a word of the German description', 'wald'],
+    ['a word of the English description', 'FOREST'],
+    ['the description without its umlaut', 'Morgenrot uber'],
+    ['the name, in a folder the search does not name', 'img_4032'],
+  ])('search finds a photo by %s, in every folder', async (_, term) => {
+    const s = await setup()
+    const folder = await s.as.owner.mutation(api.files.createFolder, { site, name: 'Ausflüge' })
+    const photo = await readyImage(s, 'IMG_4032.JPG')
+    await s.t.run(async (ctx) => ctx.db.patch(photo, { alt: { de: 'Wald und Morgenrot über dem Gesäuse', en: 'Forest at dawn' } }))
+    await s.as.owner.mutation(api.files.move, { site, files: [photo], folder })
+    await pdf(s, 'preise.pdf', '%PDF-1.4 p')
+    expect((await s.as.owner.query(api.files.list, { site, view: 'all', search: term })).files.map((f) => f.id)).toEqual([photo])
   })
 })
 
@@ -356,6 +375,59 @@ describe('uploads.sweep with the library', () => {
     expect(left.map((r) => r._id).sort()).toEqual([kept, foldered, trashed].sort())
   })
 
+  // Wrong behaviour caught: a picture placed in a Markdown text had no file reference, so the sweep purged it after
+  // 7 days and the published text showed a hole.
+  it('keeps an image that a Markdown text uses', async () => {
+    vi.setSystemTime(new Date('2026-10-01T00:00:00Z'))
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.legal!.fields.imprint as { profile: string }).profile = 'rich'
+      await ctx.db.patch(s.site, { schema })
+    })
+    const id = await readyImage(s)
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `![Hund]($file.${id})` } }, sentence: 'x' })
+    vi.setSystemTime(new Date('2026-10-09T00:00:00Z'))
+    for (const phase of ['storage', 'processing', 'failed', 'ready'] as const) await s.t.mutation(internal.uploads.sweep, { phase })
+    expect(await s.t.run((ctx) => ctx.db.get(id))).not.toBeNull()
+    expect(await fileRefsOf(s, id)).toHaveLength(1)
+  })
+
+  // Wrong behaviour caught: a picture in the YAML props of a component (what the editor writes for more than three
+  // props) was no reference to the server: the save was refused as a missing file, and a restored backup kept the old IDs.
+  it('counts a picture in the YAML props of a component: the text saves, the file is used, a backup remaps it', async () => {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.legal!.fields.imprint as { profile: string }).profile = 'page'
+      const text = { type: 'text', label: { de: 'Text' }, optional: true }
+      schema.components = { figure: { kind: 'block', label: { de: 'Bild' }, describe: { de: 'Ein Bild' }, props: { src: { type: 'image', label: { de: 'Bild' } }, alt: text, caption: text, credit: text } } } as Schema['components']
+      await ctx.db.patch(s.site, { schema })
+    })
+    const id = await readyImage(s)
+    const figure = (file: string) => `::figure\n\`\`\`yaml [props]\nsrc: $file.${file}\nalt: Hund\ncaption: Ein Hund\ncredit: Romi\n\`\`\`\n::\n`
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: figure(id) } }, sentence: 'x' })
+    expect(await fileRefsOf(s, id)).toHaveLength(1)
+    const fields = (await s.t.run(async (ctx) => (await ctx.db.get(s.site))!.schema as Schema)).bricks.legal!.fields
+    expect(remapFileIds(fields, { imprint: { de: figure(id) } }, new Map([[id, 'neu']]))).toEqual({ imprint: { de: figure('neu') } })
+  })
+
+  // Wrong behaviour caught: `$file.<word>` in a shell example counted as a library file, so the text was refused as a
+  // missing file, and an entry that already held it could not be saved at all (a fileRefs row for the ID `bak`).
+  it('reads $file words in code as text: such a text saves, and an entry holding one stays editable', async () => {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.legal!.fields.imprint as { profile: string }).profile = 'rich'
+      await ctx.db.patch(s.site, { schema })
+    })
+    const snippet = '```sh\nmv "$file" "$file.bak"\nbackup="$file.bak"\n```\n'
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: snippet } }, sentence: 'x' })
+    await s.t.run(async (ctx) => ctx.db.patch(s.entries.legal!, { data: { ...(await ctx.db.get(s.entries.legal!))!.data, privacy: { de: snippet } } }))
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 2, fields: { imprint: { de: 'Neu' } }, sentence: 'x' })
+    expect(await s.t.run((ctx) => ctx.db.query('fileRefs').collect())).toEqual([])
+  })
+
   it('does not delete the storage of a replaced file as an orphan', async () => {
     vi.setSystemTime(new Date('2026-10-01T00:00:00Z'))
     const s = await setup()
@@ -366,6 +438,48 @@ describe('uploads.sweep with the library', () => {
     vi.setSystemTime(new Date('2026-10-03T00:00:00Z'))
     await s.t.mutation(internal.uploads.sweep, { phase: 'storage' })
     expect(await s.t.run((ctx) => ctx.db.system.get(old))).not.toBeNull()
+  })
+})
+
+describe('migrations.markdownStorageUrls', () => {
+  // Wrong behaviour caught: the one-time rewrite misses an address written on another host (local vs. production),
+  // replaces an address it cannot match with a broken reference, leaves the file without its reference, or marks the
+  // English text as outdated although only the picture's address changed.
+  it('turns a storage address in a text into the file reference, on any host, and leaves unknown addresses alone', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout'] })
+    const s = await setup()
+    const id = await readyImage(s)
+    const token = await s.t.run(async (ctx) => (await ctx.storage.getUrl((await ctx.db.get(id))!.processedId!))!.split('/api/storage/')[1])
+    const text = `![Hund](http://127.0.0.1:3210/api/storage/${token})\n\n![Weg](https://alt.example/api/storage/unbekannt)`
+    await s.t.run((ctx) => ctx.db.patch(s.entries.legal!, { data: { imprint: { de: text, en: 'Imprint' } }, prints: { imprint: { en: printOf(text) } } }))
+    await s.t.mutation(internal.migrations.markdownStorageUrls, {})
+    await s.t.finishAllScheduledFunctions(vi.runAllTimers)
+    const row = await s.t.run((ctx) => ctx.db.get(s.entries.legal!))
+    const migrated = `![Hund]($file.${id})\n\n![Weg](https://alt.example/api/storage/unbekannt)`
+    expect(row!.data).toEqual({ imprint: { de: migrated, en: 'Imprint' } })
+    expect(row!.prints).toEqual({ imprint: { en: printOf(migrated) } })
+    expect(await fileRefsOf(s, id)).toHaveLength(1)
+  })
+
+  // Wrong behaviour caught: the migration changed the text without raising the entry's revision, so a Studio draft
+  // opened before it saved the old storage address over the migrated text.
+  it('raises the revision of a changed text, so an older draft gets a conflict', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.legal!.fields.imprint as { profile: string }).profile = 'rich'
+      await ctx.db.patch(s.site, { schema })
+    })
+    const id = await readyImage(s)
+    const token = await s.t.run(async (ctx) => (await ctx.storage.getUrl((await ctx.db.get(id))!.processedId!))!.split('/api/storage/')[1])
+    await s.t.run(async (ctx) => ctx.db.patch(s.entries.legal!, { data: { ...(await ctx.db.get(s.entries.legal!))!.data, imprint: { de: `![Hund](/api/storage/${token})` } } }))
+    await s.t.mutation(internal.migrations.markdownStorageUrls, {})
+    // Only the migration's own pages, which follow at once; the timers stay before anything later (sign-in expiry).
+    for (let i = 0; i < 10; i++) { vi.advanceTimersByTime(1); await s.t.finishInProgressScheduledFunctions() }
+    expect(await s.t.run(async (ctx) => (await ctx.db.get(s.entries.legal!))!.data.imprint)).toEqual({ de: `![Hund]($file.${id})` })
+    const stale = s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `![Hund](/api/storage/${token}) Neu` } }, sentence: 'x' })
+    expect((await errorOf(stale)).code).toBe('CHANGED_SINCE')
   })
 })
 
@@ -414,6 +528,62 @@ describe('image variants', () => {
     vi.setSystemTime(CORPUS_NOW + 31 * DAY)
     await s.t.mutation(internal.retention.daily, {})
     expect(await s.t.run((ctx) => Promise.all(stored.map((id) => ctx.db.system.get(id))))).toEqual([null, null])
+  })
+})
+
+describe('history and the Files trash', () => {
+  // Wrong behaviour caught: after its picture went to the Files trash, an older version of a text could not be restored
+  // (undo even said the schema had changed); and a picture deleted for good gave that same wrong reason.
+  it.each([
+    ['undo', 'trash', { restoredFiles: ['hund.jpg'] }],
+    ['revert', 'trash', { restoredFiles: ['hund.jpg'] }],
+    ['undo', 'delete', 'Diese Fassung zeigt ein Bild, das endgültig gelöscht ist. Sie lässt sich deshalb nicht wiederherstellen.'],
+  ] as const)('%s to a version whose picture is gone (%s)', async (op, gone, expected) => {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      ;(schema.bricks.legal!.fields.imprint as { profile: string }).profile = 'rich'
+      await ctx.db.patch(s.site, { schema })
+    })
+    const id = await readyImage(s, 'hund.jpg')
+    const entry = s.entries.legal!
+    const save = (rev: number, text: string) => s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev: rev, fields: { imprint: { de: text } }, sentence: 'x' }) as Promise<{ change: string }>
+    const withPicture = await save(1, `![Hund]($file.${id})`)
+    const without = await save(2, 'Ohne Bild')
+    await s.as.owner.mutation(api.files.trash, { site, files: [id] })
+    if (gone === 'delete') await s.t.run((ctx) => ctx.db.delete(id))
+    const run = op === 'undo'
+      ? s.as.owner.mutation(api.entries.undo, { site, opId: opId(), change: without.change })
+      : s.as.owner.mutation(api.entries.revert, { site, opId: opId(), entry, change: withPicture.change })
+    if (typeof expected === 'string') return expect((await errorOf(run)).message).toBe(expected)
+    expect(await run).toMatchObject(expected)
+    expect((await s.t.run((ctx) => ctx.db.get(id)))!.trashedAt).toBeUndefined()
+  })
+
+  // Wrong behaviour caught: a revert by staff whose task needs approval took the picture out of the Files trash
+  // although the revert only became a proposal and wrote nothing; restoring from the trash is the owner's step.
+  it('a revert that becomes a proposal leaves the picture in the trash', async () => {
+    vi.stubEnv('GINKO_MAIL', 'outbox')
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const schema = (await ctx.db.get(s.site))!.schema as Schema
+      const legal = schema.bricks.legal!
+      ;(legal.fields.imprint as { profile: string }).profile = 'rich'
+      legal.tasks = [{ id: 'imprint', label: 'Impressum', kind: 'edit', fields: ['imprint'], needsApproval: true }]
+      await ctx.db.patch(s.site, { schema })
+      const cook = (await ctx.db.query('memberships').collect()).find((m) => m.user === people.cook && m.site === s.site)!
+      await ctx.db.patch(cook._id, { grants: [...cook.grants, 'legal.imprint'] })
+    })
+    const id = await readyImage(s, 'hund.jpg')
+    const entry = s.entries.legal!
+    const save = (rev: number, text: string) => s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry, baseRev: rev, fields: { imprint: { de: text } }, sentence: 'x' }) as Promise<{ change: string }>
+    const withPicture = await save(1, `![Hund]($file.${id})`)
+    await save(2, 'Ohne Bild')
+    await s.as.owner.mutation(api.files.trash, { site, files: [id] })
+    const result = await s.as.cook.mutation(api.entries.revert, { site, opId: opId(), task: 'legal.imprint', entry, change: withPicture.change })
+    expect(result).toEqual({ proposal: expect.any(String), status: 'open' })
+    expect((await s.t.run((ctx) => ctx.db.get(id)))!.trashedAt).toEqual(expect.any(Number))
+    vi.unstubAllEnvs()
   })
 })
 

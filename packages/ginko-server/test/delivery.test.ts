@@ -1,15 +1,37 @@
 // Delivery and upkeep: the bundle endpoint (SPEC 6), "Sofort von der Seite nehmen" (SPEC 4.4)
 // and the daily retention job (SPEC 12). One test per realistic failure.
-import { parseMarkdown, serializeSchema, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, entryBytes, parseMarkdown, serializeSchema, type Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import corpus from '../../../contracts/restaurant/data.json' with { type: 'json' }
 import saas from '../../../sites/saas/ginko.config.ts'
 import { api, internal } from '../convex/_generated/api'
+import type { Id } from '../convex/_generated/dataModel'
 import { bundleOf } from '../convex/bundle'
+import { splitParts } from '../convex/lib/trees'
 import { errorOf, opId, people, setup } from './setup'
+
+type Setup = Awaited<ReturnType<typeof setup>>
 
 const DAY = 24 * 60 * 60 * 1000
 const NOW = Date.parse('2026-10-08T10:00:00Z')
+
+/** Adds the saas blog (Markdown bodies, at most `bodyMax` characters) to the restaurant site, with an add task for the cook; returns a post maker. */
+async function withBlog(s: Setup, bodyMax?: number) {
+  const blog = serializeSchema(saas).bricks.blog!
+  blog.route = { de: (blog.route as Record<string, string>).de! } as never
+  if (bodyMax !== undefined) (blog.fields.body as { max?: number }).max = bodyMax
+  await s.t.run(async (ctx) => {
+    const site = (await ctx.db.get(s.site))!
+    const schema = site.schema as Schema
+    await ctx.db.patch(s.site, { schema: { ...schema, bricks: { ...schema.bricks, blog } } })
+    const cook = (await ctx.db.query('memberships').collect()).find((m) => m.user === people.cook && m.site === s.site)!
+    await ctx.db.patch(cook._id, { grants: [...cook.grants, 'blog.add'] })
+  })
+  return (i: number, body: string) => s.as.cook.mutation(api.entries.create, {
+    site: 'restaurant', opId: opId(), task: 'blog.add', brick: 'blog',
+    data: { title: { de: `Beitrag ${i}` }, date: '2026-10-01', author: 'Koch', description: { de: 'Kurz' }, body: { de: body } },
+  }) as Promise<{ entry: string }>
+}
 
 type Bundle = {
   locale: string
@@ -23,16 +45,17 @@ afterEach(() => {
 })
 
 describe('GET /bundle/<site>', () => {
-  it('a stale English translation is delivered in German and its leaf is listed as fallback', async () => {
+  // Wrong behaviour caught: a German typo fix turns the English text German (P5, D6).
+  it('an outdated English translation is delivered in English and its leaf is not listed as fallback', async () => {
     const { t, entries } = await setup()
     const response = await t.fetch('/bundle/restaurant?format=3&locale=en')
     expect(response.status).toBe(200)
     const bundle = (await response.json()) as Bundle
     expect(bundle.locale).toBe('en')
     const item = bundle.bricks.menu!.items!.find((i) => i.id === entries['menu-schnitzel'])!
-    const germanName = (corpus.menu as { id: string; data: { name: { de: string } } }[]).find((r) => r.id === 'menu-schnitzel')!.data.name.de
-    expect(item.data.name).toBe(germanName)
-    expect(item.fallback).toContain('name')
+    const name = (corpus.menu as { id: string; data: { name: { en: string } } }[]).find((r) => r.id === 'menu-schnitzel')!.data.name
+    expect(item.data.name).toBe(name.en)
+    expect(item.fallback).not.toContain('name')
   })
 
   it('a markdown field stored as a string is delivered as a parsed tree', async () => {
@@ -45,22 +68,10 @@ describe('GET /bundle/<site>', () => {
 
   // The bundle is a query with a 1 s limit. Parsing every stored text per request let staff with an add task
   // fill a collection with valid texts that are slow to parse until the bundle failed for every visitor.
-  it('is built from the trees stored at each save, and those trees count toward the budget', async () => {
+  it('is built from the trees stored at each save', async () => {
     const s = await setup()
     // The saas blog (Markdown bodies up to 20000 characters), added by the cook.
-    const blog = serializeSchema(saas).bricks.blog!
-    blog.route = { de: (blog.route as Record<string, string>).de! } as never
-    await s.t.run(async (ctx) => {
-      const site = (await ctx.db.get(s.site))!
-      const schema = site.schema as Schema
-      await ctx.db.patch(s.site, { schema: { ...schema, bricks: { ...schema.bricks, blog } }, orderRevs: { ...site.orderRevs, blog: 0 } })
-      const cook = (await ctx.db.query('memberships').collect()).find((m) => m.user === people.cook && m.site === s.site)!
-      await ctx.db.patch(cook._id, { grants: [...cook.grants, 'blog.add'] })
-    })
-    const post = (i: number, body: string) => s.as.cook.mutation(api.entries.create, {
-      site: 'restaurant', opId: opId(), task: 'blog.add', brick: 'blog',
-      data: { title: { de: `Beitrag ${i}` }, date: '2026-10-01', author: 'Koch', description: { de: 'Kurz' }, body: { de: body } },
-    })
+    const post = await withBlog(s)
     // The fastest of three runs after a warm-up: timings in a busy test run only ever get slower.
     const fastest = async (work: () => Promise<unknown>) => {
       await work()
@@ -82,33 +93,92 @@ describe('GET /bundle/<site>', () => {
     const parse = await fastest(async () => { for (let i = 0; i < 20; i++) await parseMarkdown(slow) })
     // The posts add the reading of their stored trees to the build, a small part of parsing their texts.
     expect(after - before).toBeLessThan(parse / 3)
-
-    // `## a` lines make a tree more than ten times their text: 20000 characters are too large to store.
-    expect(await errorOf(post(20, '## a\n'.repeat(4000)))).toMatchObject({ code: 'TOO_LARGE', message: 'Dieser Eintrag ist zu groß (höchstens 256 KiB).' })
   }, 60_000)
 
-  // Wrong behaviour caught: after a parser change the rebuild leaves stale trees, stops after its first batch, or
-  // forgets the site's byte total.
-  it('rebuildTrees writes every entry\'s trees and bytes again from its data', async () => {
+  // Trees no longer count toward the budget, so they need their own bound: the bundle reads every live entry's trees,
+  // and `## a` lines make trees ten times their text. Staff with an add task must not fill a site until the bundle fails.
+  it('the site\'s trees are capped: heavily formatted posts end in errors.entryTooComplex', async () => {
+    const s = await setup()
+    const post = await withBlog(s)
+    let made = 0
+    let refused: Awaited<ReturnType<typeof errorOf>> | undefined
+    for (; made < 40 && !refused; made++) refused = await post(made, '## a\n'.repeat(4000)).then(() => undefined, (error) => errorOf(Promise.reject(error)))
+    expect(refused).toMatchObject({ code: 'TOO_LARGE', message: 'Die Texte dieser Seite sind zu stark formatiert, um sie auszuliefern (z. B. sehr viele Überschriften oder Listenpunkte). Vereinfache diesen Text.' })
+    expect(made).toBe(34)
+    expect((await s.t.run((ctx) => ctx.db.get(s.site)))!.treeBytes).toBeLessThanOrEqual(8 * 1024 * 1024)
+  }, 60_000)
+
+  // Wrong behaviour caught: trees stored on the entry row push a large text over Convex's 1 MiB document limit (convex-test does not enforce it).
+  it('a 470 KiB entry of formatted paragraphs stores no document over 1 MiB and the bundle serves its last line', async () => {
+    const s = await setup()
+    const post = await withBlog(s, 500_000)
+    // 3800 paragraphs with bold text: almost as many elements as a text may have (20000), and trees larger than the text.
+    const { entry } = await post(1, `Absatz mit **fett** und ${'x'.repeat(95)}.\n\n`.repeat(3799) + 'Schluss')
+    const docs = await s.t.run(async (ctx) => [
+      (await ctx.db.get(entry as Id<'entries'>))!,
+      ...(await ctx.db.query('entryTrees').withIndex('by_entry', (q) => q.eq('entry', entry as Id<'entries'>)).collect()),
+      ...(await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry as Id<'entries'>)).collect()),
+    ])
+    expect(docs.length).toBeGreaterThan(3)
+    expect(Math.max(...docs.map((doc) => byteSize(doc)))).toBeLessThan(1_048_576)
+    const bundle = await s.t.run(async (ctx) => bundleOf(ctx, (await ctx.db.get(s.site))!, 'de'))
+    expect(JSON.stringify(bundle.bricks.blog!.items!.find((item) => item.id === entry)!.data.body)).toContain('Schluss')
+  }, 60_000)
+
+  // Wrong behaviour caught: a part boundary splits an emoji, and Convex refuses the lone surrogate.
+  it('splits trees into parts without cutting a surrogate pair', () => {
+    expect(splitParts('a😀b', 2)).toEqual(['a', '😀', 'b'])
+  })
+
+  // Wrong behaviour caught: the migration leaves legacy or stale trees, stops after its first batch, or leaves the counters off the sums.
+  it('migrateStorage moves every entry\'s trees to entryTrees and sets the site\'s counters to the sums', async () => {
     const s = await setup()
     const entry = s.entries.legal!
     await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { imprint: { de: '**Hallo**' } }, sentence: 'Impressum' })
-    const saved = (await s.t.run((ctx) => ctx.db.get(entry)))!
-    // What a row looks like after a parser change: its trees are not what the parser makes now.
+    const trees = () => s.t.run(async (ctx) => (await ctx.db.query('entryTrees').withIndex('by_entry', (q) => q.eq('entry', entry)).collect()).map((part) => part.json).join(''))
+    const saved = await trees()
+    const savedAt = (await s.t.run((ctx) => ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry)).first()))!.at
+    // A row from before: stale trees on the row itself (as after a parser change), bytes with trees, no newer fields or counters.
     await s.t.run(async (ctx) => {
-      await ctx.db.patch(entry, { trees: '{}', bytes: saved.bytes - 10 })
-      await ctx.db.patch(s.site, { bytes: (await ctx.db.get(s.site))!.bytes - 10 })
+      for (const part of await ctx.db.query('entryTrees').collect()) await ctx.db.delete(part._id)
+      await ctx.db.patch(entry, { trees: '{}', bytes: 99_999, treeBytes: undefined, contentAt: undefined })
+      await ctx.db.patch(s.site, { bytes: 1, trashBytes: undefined, treeBytes: undefined })
     })
-    // The site total is the entries' bytes plus what else the site stores; the rebuild keeps that sum true.
-    const rest = () => s.t.run(async (ctx) => (await ctx.db.get(s.site))!.bytes - (await ctx.db.query('entries').collect()).reduce((sum, row) => sum + row.bytes, 0))
-    const before = await rest()
     vi.useFakeTimers()
-    await s.t.mutation(internal.entries.rebuildTrees, {})
+    await s.t.mutation(internal.entries.migrateStorage, {})
     await s.t.finishAllScheduledFunctions(vi.runAllTimers)
-    expect(await s.t.run((ctx) => ctx.db.get(entry))).toMatchObject({ trees: saved.trees, bytes: saved.bytes })
-    expect(await rest()).toBe(before)
-    // The fixture's rows (more than one batch) had no trees; all have them now.
-    expect((await s.t.run((ctx) => ctx.db.query('entries').collect())).filter((row) => row.trees === undefined)).toEqual([])
+    const row = (await s.t.run((ctx) => ctx.db.get(entry)))!
+    expect(row.trees).toBeUndefined()
+    expect(row).toMatchObject({ bytes: entryBytes(row.data, row.prints), treeBytes: new TextEncoder().encode(saved).byteLength, contentAt: savedAt })
+    expect(await trees()).toBe(saved)
+    // Every site is checked; the fixture's rows (more than one batch) are all migrated.
+    const status = []
+    let cursor: string | null = null
+    for (let done = false; !done;) {
+      const page: { sites: unknown[]; cursor: string; isDone: boolean } = await s.t.query(internal.entries.storageStatus, { cursor })
+      status.push(...page.sites)
+      cursor = page.cursor
+      done = page.isDone
+    }
+    expect(status).toMatchObject([
+      { site: 'restaurant', legacyRows: 0, countersMatch: true, overLimit: [] },
+      { site: 'andere', legacyRows: 0, countersMatch: true, overLimit: [] },
+    ])
+  })
+
+  // Wrong behaviour caught: updatedAt comes from change rows, so it falls back to the creation time once retention deleted them.
+  it('updatedAt survives the change retention', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(NOW)
+    const s = await setup()
+    const entry = s.entries['menu-saibling']!
+    // Saved an hour after it was created; a year later retention deleted the change rows.
+    vi.setSystemTime(NOW + 60 * 60 * 1000)
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 1, fields: { price: { amount: 1500 } } })
+    vi.setSystemTime(NOW + 366 * DAY)
+    await s.t.run(async (ctx) => { for (const change of await ctx.db.query('changes').collect()) await ctx.db.delete(change._id) })
+    const bundle = await s.t.run(async (ctx) => bundleOf(ctx, (await ctx.db.get(s.site))!, 'de'))
+    expect(bundle.bricks.menu!.items!.find((item) => item.id === entry)!.updatedAt).toBe('2026-10-08T11:00:00.000Z')
   })
 
   it('an unknown locale delivers the main language and names the requested one', async () => {
@@ -265,7 +335,7 @@ describe('refresh.record (Phase 5 review)', () => {
     const { as } = await setup()
     const ok = { path: '/', status: 200, rev: '1.1', ok: true }
     const failed = { path: '/menu', status: 500, rev: '1.0', ok: false }
-    const lastRefreshAt = async () => (await as.owner.query(api.sites.get, { site: 'restaurant' })).site.lastRefreshAt
+    const lastRefreshAt = async () => (await as.owner.query(api.sites.meta, { site: 'restaurant' })).site.lastRefreshAt
     vi.setSystemTime(NOW)
     await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly', result: { results: [ok, failed], limited: false } })
     expect(await lastRefreshAt()).toBeNull()
@@ -336,7 +406,7 @@ describe('retention (daily)', () => {
     expect(change).toMatchObject({ kind: 'remove', actor: 'system' })
   })
 
-  it('keeps entryCount = live entries and bytes = stored rows through soft and hard delete', async () => {
+  it('keeps entryCount and bytes = live entries and trashBytes = removed ones through soft and hard delete', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(NOW)
     const { t, entries, site } = await setup()
@@ -351,6 +421,7 @@ describe('retention (daily)', () => {
     expect(rows.filter((r) => !r.deletedAt).length).toBeGreaterThan(10)
     expect(rows.some((r) => r._id === entries['notice-urlaub'])).toBe(false)
     expect(counters!.entryCount).toBe(rows.filter((r) => !r.deletedAt).length)
-    expect(counters!.bytes).toBe(rows.reduce((n, r) => n + r.bytes, 0))
+    expect(counters!.bytes).toBe(rows.filter((r) => !r.deletedAt).reduce((n, r) => n + r.bytes, 0))
+    expect(counters!.trashBytes).toBe(rows.filter((r) => r.deletedAt).reduce((n, r) => n + r.bytes, 0))
   })
 })

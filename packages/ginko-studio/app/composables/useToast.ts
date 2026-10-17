@@ -1,5 +1,6 @@
 // One message at a time at the bottom of the screen, optionally with one action (Rückgängig).
-// A new message replaces the old one. It stays 8 s, and while it has focus or the pointer (sonner pauses on both).
+// A new message replaces the old one. It stays 8 s, one with an action 20 s (time to read the text again and notice a
+// mistake), and while it has focus or the pointer (sonner pauses on both).
 // <AppToast /> (in app.vue) renders it; this composable is the only call site API for the rest of the app.
 import { toast } from 'vue-sonner'
 
@@ -8,15 +9,18 @@ export interface Toast { text: string; tone: 'ok' | 'err'; action?: ToastAction 
 
 const TOAST_ID = 'ginko-toast'
 const DURATION = 8000
+const DURATION_WITH_ACTION = 20_000
 
 export function useToast() {
   const show = (text: string, options: { tone?: Toast['tone']; action?: ToastAction } = {}) => {
+    // No text, no message: a call the person's own action stopped (OpError CANCELLED) has nothing to say.
+    if (!text) return
     const { action } = options
     let running = false
     const send = options.tone === 'err' ? toast.error : toast.success
     send(text, {
       id: TOAST_ID,
-      duration: DURATION,
+      duration: action ? DURATION_WITH_ACTION : DURATION,
       action: action && {
         label: action.label,
         onClick: async (event: MouseEvent) => {

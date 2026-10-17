@@ -2,11 +2,28 @@ packages:
   - packages/*
   - apps/*
   - sites/*
+  # The templates are complete Nuxt projects that keep real @lupinum/* ranges for users who copy them; the
+  # overrides below link them to the local packages here. _features holds shared sources, not a package.
+  - templates/*
+  - '!templates/_features'
   - packages/ginko-i18n/browser/apps/*
   - packages/ginko-i18n/browser/fixtures/*
 
 allowBuilds:
   esbuild: true
+  # @nuxt/eslint's import resolver (templates): its install script only checks for a prebuilt binary.
+  unrs-resolver: false
+
+# Inside this repository every importer (the templates too, whose package.json keeps a real range such as ^0.5.0)
+# uses the local code of the released packages (spec TEMPLATES.md T3).
+overrides:
+  '@lupinum/ginko': 'workspace:*'
+  '@lupinum/ginko-i18n': 'workspace:*'
+  '@lupinum/ginko-content': 'workspace:*'
+  '@lupinum/ginko-components': 'workspace:*'
+  '@lupinum/ginko-docs': 'workspace:*'
+  '@lupinum/ginko-preset-gastro': 'workspace:*'
+  create-ginko: 'workspace:*'
 
 # Dependency quarantine: never install versions younger than 24 hours. Our own scope skips it,
 # because only our protected release workflows publish it.
@@ -15,18 +32,17 @@ minimumReleaseAgeStrict: true
 minimumReleaseAgeExclude:
   - '@lupinum/*'
 
-# Pre-release better-convex from feat/functions-and-agents (158427e1). Remove when published.
-overrides:
-  '@lupinum/better-convex-vue': 'file:./vendor/lupinum-better-convex-vue-1.0.0-rc.1.tgz'
+# One version for the platform packages (apps/platform, ginko-server, ginko-studio). The Better Auth
+# packages must match the exact peer version that @lupinum/better-convex-nuxt names.
+catalog:
+  '@better-auth/core': 1.7.7
+  '@better-auth/oauth-provider': 1.7.7
+  '@lupinum/better-convex-nuxt': 1.0.0-rc.6
+  better-auth: 1.7.7
+  convex: 1.46.0
 
 auditConfig:
   ignoreGhsas:
-    # No fixed simple-git 3.x, and Nuxt DevTools fails to load 4.x. DevTools runs only in `nuxt dev`
-    # on a developer machine with the repository's own arguments. Recheck 2026-11-06.
-    - GHSA-v5rq-49vh-5v5c
-    - GHSA-x6jw-m9v5-85vh
-    - GHSA-g4wm-2vf7-vfgr
-    - GHSA-858h-whjf-mvg5
     # No published fix; braces processes build-time glob patterns, not published site input. Recheck 2026-11-01.
     - GHSA-vfj7-8cjw-p6xm
     # No published fix; node-forge is used only for listhen dev-server self-signed certificates. Recheck 2026-11-01.

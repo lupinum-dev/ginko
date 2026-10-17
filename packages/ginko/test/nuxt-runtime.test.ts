@@ -7,9 +7,10 @@ import { ref } from 'vue'
 import type { Locale } from '../src/index.ts'
 import type { Bundle, Schema } from '../src/internal.ts'
 import { agentRequest, withUrl } from '../src/nuxt/runtime/shared.ts'
+import { jobJsonLd, siteJsonLd } from '../src/basics/index.ts'
 import { BUNDLE_STATE, TODAY_STATE, useGinkoLang, useGinkoBreadcrumbs, useGinkoEntry, useGinkoNeighbors, useGinkoQuery, useGinkoSeo, useGinkoPath } from '../src/nuxt/runtime/composables.ts'
 import * as shim from './shims/imports.ts'
-import { i18nLocale, routePath, seoConfig, useState } from './shims/imports.ts'
+import { i18nLocale, routePath, seoConfig, siteCountry, useState } from './shims/imports.ts'
 import { installOgImage } from './shims/og.ts'
 import { installSchemaOrg } from './shims/schema-org.ts'
 import siteSchema from './shims/schema.ts'
@@ -62,7 +63,7 @@ describe('useGinkoSeo', () => {
     ['site image becomes absolute', { title: 'Menü' }, 'Menü | Restaurant', 'og:image', 'https://restaurant.test/og.png'],
     ['page image path becomes absolute', { title: 'Menü', image: '/a.png' }, 'Menü | Restaurant', 'og:image', 'https://restaurant.test/a.png'],
     ['absolute page image stays', { title: 'Menü', image: 'https://cdn.test/a.png' }, 'Menü | Restaurant', 'og:image', 'https://cdn.test/a.png'],
-    ['noindex sets robots', { title: 'Menü', noindex: true }, 'Menü | Restaurant', 'robots', 'noindex, nofollow'],
+    ['noindex sets robots', { title: 'Menü', noindex: true }, 'Menü | Restaurant', 'robots', 'noindex, follow'],
   ])('%s', (_label, input, title, key, value) => {
     const head = run('/speisekarte', input)
     expect(head.title).toBe(title)
@@ -109,6 +110,28 @@ describe('useGinkoSeo', () => {
     expect(run('/speisekarte', { jsonLd: [own] }).script).toHaveLength(1)
   })
 
+  test('a home page with its own organisation node (siteJsonLd) gets no second one from seo.organization', () => {
+    const own = siteJsonLd({ city: 'Linz' }, { name: 'Restaurant', url: 'https://restaurant.test', type: 'LocalBusiness' })
+    const types = run('/', { title: 'Home', jsonLd: [own] }).script.map((s) => JSON.parse(s.innerHTML)['@type'])
+    expect(types).toStrictEqual(['WebSite', 'LocalBusiness'])
+  })
+
+  // Wrong behaviour caught: the site's `country` (ginko.config.ts) never reaches the JSON-LD, so every page that uses
+  // siteJsonLd or jobJsonLd has to repeat it; or the default overrides a country the page passed.
+  test('the site country fills addressCountry and remote applicants where the page left them out', () => {
+    siteCountry.value = 'DE'
+    try {
+      const job = jobJsonLd({ title: 'Koch', url: 'https://restaurant.test/jobs/koch', description: 'Kochen', datePosted: '2026-10-01', validUntil: '2026-11-01', remote: 'remote', location: 'Linz', organization: { name: 'Restaurant', url: 'https://restaurant.test' } })
+      const nodes = run('/', { title: 'Home', jsonLd: [siteJsonLd({ city: 'Linz' }, { name: 'Restaurant', url: 'https://restaurant.test', type: 'LocalBusiness' }), job, siteJsonLd({ city: 'Wien' }, { name: 'B', url: 'https://b.test', country: 'AT' })] }).script.map((s) => JSON.parse(s.innerHTML))
+      expect(nodes[1].address.addressCountry).toBe('DE')
+      expect(nodes[2].jobLocation.address.addressCountry).toBe('DE')
+      expect(nodes[2].applicantLocationRequirements).toStrictEqual({ '@type': 'Country', name: 'DE' })
+      expect(nodes[3].address.addressCountry).toBe('AT')
+    } finally {
+      siteCountry.value = ''
+    }
+  })
+
   test('a "<" in JSON-LD cannot close the script element', () => {
     const { script } = run('/speisekarte', { jsonLd: [{ name: '</script><b>' }] })
     expect(script[0]!.innerHTML).not.toContain('<')
@@ -117,9 +140,13 @@ describe('useGinkoSeo', () => {
 })
 
 describe('entry helpers', () => {
-  test('a routed item gets the url of the current locale', () => {
-    const [item] = withUrl([{ id: 'x', fallback: ['title'], urls: { de: '/veranstaltungen/a', en: '/en/events/a' } }], 'en')
-    expect(item!.url).toBe('/en/events/a')
+  // Wrong behaviour caught: an entry listed in English under `untranslated: 'fallback'` has no English page, and its link goes nowhere.
+  test.each([
+    ['its own page in the current locale', { de: '/veranstaltungen/a', en: '/en/events/a' }, '/en/events/a'],
+    ['the main-language page when it has none there', { de: '/veranstaltungen/a' }, '/veranstaltungen/a'],
+  ])('a routed item links to %s', (_name, urls, url) => {
+    const [item] = withUrl([{ id: 'x', fallback: ['title'], urls }], 'en', 'de')
+    expect(item!.url).toBe(url)
   })
 
   test('useGinkoLang gives the language tag of the main locale (de-AT) only for a fallen-back field', () => {
@@ -187,6 +214,19 @@ describe('collection composables', () => {
     expect(() => entry.value).toThrow(expect.objectContaining({ statusCode: 404 }))
   })
 
+  // Wrong behaviour caught: a Vue computed throws only on the first read after a change, then returns its last value.
+  // When other code read the missing entry first (the useAsyncData key of useGinkoMarkdown), the template got the
+  // old entry and the page kept showing it instead of the 404.
+  test('useGinkoEntry answers 404 on every read of a missing slug', () => {
+    today('2026-10-08')
+    const slug = ref('weinabend-ebner')
+    const entry = useGinkoEntry('events' as never, () => slug.value)
+    expect((entry.value as { id: string }).id).toBe('weinabend')
+    slug.value = 'gibt-es-nicht'
+    expect(() => entry.value).toThrow(expect.objectContaining({ statusCode: 404 }))
+    expect(() => entry.value).toThrow(expect.objectContaining({ statusCode: 404 }))
+  })
+
   test('useGinkoBreadcrumbs gives the trail for the route path', () => {
     today('2026-10-08')
     routePath.value = '/veranstaltungen/martini-gansl'
@@ -213,9 +253,11 @@ describe('agentRequest', () => {
 })
 
 describe('sitemapXml', () => {
-  test('lists 7 static pages per locale and the visible routed entries, 18 URLs in total', () => {
+  test('lists 7 static pages per locale and the visible routed entries where they are translated, 17 URLs in total', () => {
     const xml = sitemapXml(schema, bundles, '2026-10-08')
-    expect(xml.match(/<url>/g)).toHaveLength(18)
+    expect(xml.match(/<url>/g)).toHaveLength(17)
+    // martinigans is German only: no English page.
+    expect(xml).not.toContain('/en/events/martini-gansl')
     expect(xml).toContain('<loc>https://ginko-demo-restaurant.vercel.app/en/events/wine-evening-ebner</loc>')
   })
 
@@ -226,7 +268,7 @@ describe('sitemapXml', () => {
   test('drops an entry after its last day (weinabend 2026-10-16)', () => {
     const xml = sitemapXml(schema, bundles, '2026-10-17')
     expect(xml).not.toContain('weinabend')
-    expect(xml.match(/<url>/g)).toHaveLength(16)
+    expect(xml.match(/<url>/g)).toHaveLength(15)
   })
 
   test('links an entry to its URL in every locale it has', () => {
@@ -247,9 +289,9 @@ describe('sitemapXml', () => {
   test('gives an entry URL its updatedAt as lastmod in every locale; static pages have none', () => {
     const xml = sitemapXml(schema, bundles, '2026-10-08')
     const base = 'https://ginko-demo-restaurant.vercel.app'
-    expect(xml).toContain(`<loc>${base}/veranstaltungen/martini-gansl</loc><lastmod>2026-10-01T14:30:00.000Z</lastmod>`)
-    expect(xml).toContain(`<loc>${base}/en/events/martini-gansl</loc><lastmod>2026-10-01T14:30:00.000Z</lastmod>`)
-    expect(xml.match(/<lastmod>/g)).toHaveLength(4)
+    expect(xml).toContain(`<loc>${base}/veranstaltungen/weinabend-ebner</loc><lastmod>2026-09-20T08:15:00.000Z</lastmod>`)
+    expect(xml).toContain(`<loc>${base}/en/events/wine-evening-ebner</loc><lastmod>2026-09-20T08:15:00.000Z</lastmod>`)
+    expect(xml.match(/<lastmod>/g)).toHaveLength(3)
     expect(xml).toContain(`<url><loc>${base}/en</loc><xhtml:link`)
   })
 

@@ -6,7 +6,7 @@ on the direction before you write code.
 
 ## Set up
 
-You need Node.js `^22.19 || ^24.11` (see `engines` in `package.json`) and pnpm (the version in
+You need Node.js `^22.22.3 || ^24.15.0 || >=26` (see `engines` in `package.json`) and pnpm (the version in
 `packageManager`; `corepack enable` installs it).
 
 ```bash

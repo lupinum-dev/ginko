@@ -16,11 +16,17 @@ type UserCreateDecision = { readonly allowed: false } | { readonly allowed: true
 // Return types are annotated: `internal` includes this module, so inference through it would be circular.
 export const auth: BetterConvexAuth<DataModel> = createBetterConvexAuth<DataModel>(components.betterAuth, {
   authFunctions,
-  // The session token carries the email, so `ctx.auth` identity has `email` (lib/access.ts currentUser).
+  // The session token carries the email for Convex identity; access checks read the live user row instead
+  // (lib/access.ts currentUser), so a changed or unproven address never grants anything.
   defineSessionClaims: ({ user }) => ({ email: user.email }),
   emailOTP: { otpLength: 6, expiresIn: 5 * 60, allowedAttempts: 3 },
+  // Codes are the only way in: a code proves the mailbox, which the sign-up gate below relies on. The library turns
+  // email and password on unless it is switched off, and a password sign-up proves nothing about the address.
+  emailAndPassword: false,
   // Sign-up is limited to admin addresses and pending invitations; anyone else gets no account (and no code, see mail.queueCode).
   beforeUserCreate: async ({ ctx, user }): Promise<UserCreateDecision> => {
+    // Never decide access from an address the person has not proven. A code sign-in creates a verified user.
+    if (!user.emailVerified) return { allowed: false }
     const email = normalizeEmail(user.email)
     const allowed: boolean = await ctx.runQuery(internal.invites.mayJoin, { email })
     return allowed ? { allowed: true, user: { email } } : { allowed: false }
@@ -33,8 +39,9 @@ export const auth: BetterConvexAuth<DataModel> = createBetterConvexAuth<DataMode
   triggers: {
     user: {
       onCreate: async (ctx, doc) => {
-        // The trigger document is the Better Auth user row; `id` and `email` are its fields.
-        const user = doc as unknown as { id: string; email: string }
+        // The trigger document is the Better Auth user row; `id`, `email` and `emailVerified` are its fields.
+        const user = doc as unknown as { id: string; email: string; emailVerified: boolean }
+        if (!user.emailVerified) return
         await ctx.runMutation(internal.members.bootstrapAdmin, { user: user.id, email: normalizeEmail(user.email) })
       },
     },
@@ -44,7 +51,7 @@ export const auth: BetterConvexAuth<DataModel> = createBetterConvexAuth<DataMode
       onCreate: async (ctx, doc) => {
         const session = doc as unknown as { userId: string }
         const user = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: 'user', where: [{ field: 'id', value: session.userId }] })
-        if (!user) return
+        if (!user?.emailVerified) return
         await ctx.runMutation(internal.members.bootstrapAdmin, { user: session.userId, email: normalizeEmail(String(user.email)) })
       },
     },

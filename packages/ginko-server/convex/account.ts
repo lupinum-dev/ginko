@@ -6,13 +6,32 @@ import { currentUser, fail } from './lib/access'
 import { isLocale } from './lib/i18n'
 import { normalizeEmail } from './members'
 
-/** Reminder mail is on unless the person switched it off. `locale` is null until they chose a language. */
+/** Reminder mail is on unless the person switched it off. `locale` and `name` are null until they chose one. */
 export const settings = query({
   args: {},
   handler: async (ctx) => {
     const user = await currentUser(ctx)
     const row = await ctx.db.query('userSettings').withIndex('by_user', (q) => q.eq('user', user.id)).unique()
-    return { remindByMail: row?.remindByMail ?? true, locale: row?.locale ?? null }
+    return { remindByMail: row?.remindByMail ?? true, locale: row?.locale ?? null, name: row?.name ?? null }
+  },
+})
+
+export const PERSON_NAME_MAX = 60
+
+/**
+ * The name every team of this person sees instead of their email (`lib/names.ts`), staff included. One per person,
+ * set by the person. An empty name removes it, and the teams see the email again.
+ */
+export const setName = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args): Promise<null> => {
+    const user = await currentUser(ctx)
+    const name = args.name.trim().replace(/\s+/g, ' ')
+    if (name.length > PERSON_NAME_MAX) fail('INVALID', 'errors.nameTooLong', { nameMax: PERSON_NAME_MAX })
+    const row = await ctx.db.query('userSettings').withIndex('by_user', (q) => q.eq('user', user.id)).unique()
+    if (row) await ctx.db.patch(row._id, { name: name || undefined })
+    else if (name) await ctx.db.insert('userSettings', { user: user.id, remindByMail: true, name })
+    return null
   },
 })
 

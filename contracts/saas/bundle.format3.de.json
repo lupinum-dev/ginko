@@ -326,9 +326,7 @@
           },
           "fallback": [],
           "urls": {
-            "de": "/blog/stundenzettel-ohne-papier",
-            "en": "/en/blog/stundenzettel-ohne-papier",
-            "fr": "/fr/blog/stundenzettel-ohne-papier"
+            "de": "/blog/stundenzettel-ohne-papier"
           }
         },
         {
@@ -357,9 +355,7 @@
           },
           "fallback": [],
           "urls": {
-            "de": "/blog/mindestlohn-doku",
-            "en": "/en/blog/mindestlohn-doku",
-            "fr": "/fr/blog/mindestlohn-doku"
+            "de": "/blog/mindestlohn-doku"
           }
         }
       ]

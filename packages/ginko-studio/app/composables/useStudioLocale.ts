@@ -7,9 +7,9 @@ import { api } from '#convex/api'
 /** Call once (app.vue): when the signed-in person's setting is known and differs from the shown language, switch to it. */
 export function useAccountLocale() {
   const { locale, locales, switchLocale } = useI18n()
-  const { status } = useConvexAuth()
   const { mutate: noteSeen } = useConvexMutation(api.account.sawLocale)
-  const { data: settings } = useConvexQuery(api.account.settings, () => (status.value === 'authenticated' ? {} : 'skip'))
+  // Queries default to `auth: 'required'` (nuxt.config), so this one stays idle until someone is signed in.
+  const { data: settings } = useConvexQuery(api.account.settings, {})
   // Watching the setting (not the shown language) means a person who just picked another language is not switched back.
   // Only after mount: switching while the page hydrates makes server and client text differ. The switch
   // writes the cookie, so the next server render already uses the account's language.
@@ -21,7 +21,7 @@ export function useAccountLocale() {
 }
 
 /** Languages offered as beta: a native speaker has not checked the translation yet. */
-export const BETA_LOCALES = new Set(['es'])
+export const BETA_LOCALES = new Set(['es', 'fr'])
 
 /** The name in the language picker; a beta language says so. */
 export const localeLabel = (locale: { code: string; name?: string }) =>

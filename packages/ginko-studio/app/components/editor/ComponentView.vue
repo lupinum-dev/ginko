@@ -3,15 +3,15 @@
      card = a frame with the label and a one-line summary of the props, the editable content below.
      Both get the settings button and popover (ComponentSettings), and can be selected as a block. -->
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUpdated, ref, toRaw, useId, watch } from 'vue'
+import { computed, inject, nextTick, onMounted, onUpdated, ref, toRaw, useId, watch, watchEffect } from 'vue'
 import { useI18n } from '#imports'
-import { Settings2 } from '@lucide/vue'
-import type { ComponentRegistry } from '@lupinum/ginko/internal'
-import { componentMode, propsSummary, type ComponentProps } from '@lupinum/ginko-editor'
+import { Plus, Settings2 } from '@lucide/vue'
+import { fileRefOf, type ComponentRegistry } from '@lupinum/ginko/internal'
+import { componentMode, GINKO_ASSETS, insertComponent, propsSummary, shownSrc, type ComponentProps } from '@lupinum/ginko-editor'
 import { NodeViewContent, NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { Button } from '@studio/components/ui/button'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
-import type { SettingsBus } from './context.ts'
+import { EDITOR_FILES, type SettingsBus } from './context.ts'
 import ComponentSettings from './ComponentSettings.vue'
 import { useStudioSite } from '../../utils/labels'
 import { EDITOR_PROPS, LIVE_COMPONENTS, LIVE_TAGS } from './liveComponents.ts'
@@ -27,13 +27,36 @@ const label = computed(() => (def.value ? shown(def.value.label) : tag.value))
 const values = computed(() => (props.node.attrs.props ?? {}) as ComponentProps)
 const mode = computed(() => componentMode(tag.value, options.components, LIVE_TAGS))
 const live = computed(() => (mode.value === 'live' ? LIVE_COMPONENTS[tag.value] : undefined))
-const summary = computed(() => propsSummary(values.value, def.value))
+// Pictures from the Files library in image props: the summary names them, a card shows them (where the editor has a file
+// source). Other addresses are not loaded in the editor.
+const libraryImages = computed(() => Object.entries(values.value).flatMap(([name, raw]) => {
+  const field = def.value?.props[name.replace(/^:/, '')]
+  const id = field?.type === 'image' && typeof raw === 'string' ? fileRefOf(raw) : undefined
+  return id ? [{ name, src: String(raw), id }] : []
+}))
+const assets = inject(GINKO_ASSETS, undefined)
+const files = assets ? assets.details(computed(() => libraryImages.value.map((image) => image.id))) : ref(undefined)
+const summary = computed(() => propsSummary(values.value, def.value, (id) => files.value?.[id]?.name))
+// A card without text (a data block, a figure) has no box to type in: it says what the block shows instead.
+const empty = computed(() => props.node.childCount === 0)
+const describe = computed(() => (def.value ? shown(def.value.describe) : ''))
+const editorFiles = inject(EDITOR_FILES, undefined)
+watchEffect(() => { for (const { src } of libraryImages.value) editorFiles?.images.want(src) })
+/** Shown addresses that did not load: the summary keeps the file's name. */
+const broken = ref(new Set<string>())
+const pictures = computed(() => libraryImages.value.flatMap(({ name, src }) => {
+  const shownAt = editorFiles ? shownSrc(editorFiles.images, src) : undefined
+  return shownAt && !broken.value.has(shownAt) ? [{ name, src: shownAt }] : []
+}))
+function hidePicture(src: string) { broken.value = new Set([...broken.value, src]) }
 // The component gets the props as the page gives them: `:open` (a bare attribute) arrives as `open`.
 const liveProps = computed(() => ({
   ...Object.fromEntries(Object.entries(values.value).map(([name, raw]) => [name.replace(/^:/, ''), raw])),
   ...EDITOR_PROPS[tag.value],
 }))
 
+// A text shown for reading only (the main-language text beside a translation): no settings, no selecting.
+const editable = props.editor.isEditable
 const open = ref(false)
 const requiredFirst = ref(false)
 const titleId = useId()
@@ -73,13 +96,30 @@ async function remove() {
   editor().commands.focus()
 }
 
+// A container (a gallery, tabs) gets one button per kind of child its registry entry names (not plain tags like `pre`):
+// the only way to add one, since its content holds no empty line for "/".
+const childTags = computed(() => (def.value?.children ?? []).filter((child) => options.components && Object.hasOwn(options.components, child) && options.components[child]!.kind === 'block'))
+const childLabel = (child: string) => shown(options.components![child]!.label)
+
+/** Adds a `child` at the end of the content (before the named slots, which come last) and opens its settings. */
+async function addChild(child: string) {
+  const pos = props.getPos()
+  if (pos === undefined || !options.components) return
+  let at = pos + props.node.nodeSize - 1
+  props.node.forEach((node, offset) => { if (node.type.name === 'slot') at = Math.min(at, pos + 1 + offset) })
+  const inserted = await insertComponent(editor(), { tag: child, profile: 'page', components: options.components, at, child: true })
+  if (!inserted) return
+  editor().commands.setNodeSelection(inserted.pos)
+  if (options.bus) options.bus.request = { pos: inserted.pos, missing: inserted.missing }
+}
+
 /**
  * A click on the frame (not on the text) selects the block. A click on the head of a card, or on the drawn
  * part of a live component (its title and symbol), also opens the settings: that is where people look for them.
  */
 function select(event: MouseEvent) {
   const target = event.target as HTMLElement
-  if (target.closest('[data-node-view-content], .ginko-settings')) return
+  if (!editable || target.closest('[data-node-view-content], .ginko-settings')) return
   const pos = props.getPos()
   if (pos === undefined) return
   editor().commands.setNodeSelection(pos)
@@ -122,7 +162,7 @@ function noFollow(event: MouseEvent) {
       <PopoverAnchor as-child>
         <div ref="frame" class="ginko-block-frame relative">
           <!-- contenteditable=false: the button is not part of the text. Visible on hover, on focus, while selected or open, and on touch. -->
-          <div class="ginko-settings absolute top-1.5 right-1.5 z-10" contenteditable="false">
+          <div v-if="editable" class="ginko-settings absolute top-1.5 right-1.5 z-10" contenteditable="false">
             <PopoverTrigger as-child>
               <Button
                 type="button" variant="ghost" size="sm" :aria-label="t('editor.block.settingsFor', { label })"
@@ -140,10 +180,23 @@ function noFollow(event: MouseEvent) {
 
           <div v-else class="ginko-block-card rounded-md border bg-card text-card-foreground">
             <div class="ginko-block-head flex cursor-pointer items-baseline gap-2 border-b py-1.5 pl-3 text-xs text-muted-foreground select-none" :class="selected ? 'pr-36' : 'pr-14'" contenteditable="false">
-              <span class="font-medium">{{ label }}</span>
-              <span v-if="summary" class="truncate">{{ summary }}</span>
+              <span class="shrink-0 font-medium whitespace-nowrap">{{ label }}</span>
+              <span v-if="summary" class="min-w-0 truncate" :title="summary">{{ summary }}</span>
             </div>
-            <NodeViewContent class="ginko-block-content p-3" />
+            <div v-if="pictures.length" class="flex flex-wrap gap-2 px-3 pt-3" contenteditable="false">
+              <img v-for="p in pictures" :key="p.name" :src="p.src" alt="" class="max-h-24 rounded-sm object-contain" @error="hidePicture(p.src)">
+            </div>
+            <p v-if="empty && describe" class="px-3 py-2 text-sm text-muted-foreground" contenteditable="false">{{ describe }}</p>
+            <!-- It stays the editor's place for the content even when hidden. -->
+            <NodeViewContent class="ginko-block-content p-3" :class="empty && 'hidden'" />
+            <div v-if="childTags.length" class="flex flex-wrap gap-2 border-t px-3 py-2" contenteditable="false">
+              <Button
+                v-for="child in childTags" :key="child" type="button" variant="outline" size="sm" class="[@media(pointer:coarse)]:h-11"
+                @click.stop="addChild(child)"
+              >
+                <Plus aria-hidden="true" />{{ t('editor.block.addChild', { label: childLabel(child) }) }}
+              </Button>
+            </div>
           </div>
         </div>
       </PopoverAnchor>

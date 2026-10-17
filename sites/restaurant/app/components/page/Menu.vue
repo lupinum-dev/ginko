@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { formatMoney, type Money } from '@lupinum/ginko'
-import { priceOn, upcomingPrice } from '@lupinum/ginko-preset-gastro'
+import { dishOn, priceOn, upcomingPrice } from '@lupinum/ginko-preset-gastro'
 
 const langOf = useGinkoLang()
 
@@ -13,10 +13,12 @@ function nextPriceLine(data: { price: Money; nextPrice?: Money; priceFrom?: stri
   return next && t('priceFrom', { date: format.date(next.from, { day: 'numeric', month: 'long' }), price: formatMoney(next.price, language.value) })
 }
 const order = ['starters', 'soups', 'mains', 'desserts', 'drinks']
+// Dishes taken off the menu (after their season) are left out; a dish sold out today stays, marked "heute aus".
+const onMenu = computed(() => menu.value.items.map((i) => ({ ...i, ...dishOn(i.data, today.value) })).filter((i) => i.shown))
 const groups = computed(() => order
-  .map((key) => ({ key, title: labels.value.categories[key]!, items: menu.value.items.filter((i) => i.data.category === key) }))
+  .map((key) => ({ key, title: labels.value.categories[key]!, items: onMenu.value.filter((i) => i.data.category === key) }))
   .filter((g) => g.items.length))
-const used = computed(() => [...new Set(menu.value.items.flatMap((i) => i.data.allergens))].sort())
+const used = computed(() => [...new Set(onMenu.value.flatMap((i) => i.data.allergens))].sort())
 useSeoMeta({ title: () => `${t('menu')} | Gasthaus zur Linde` })
 </script>
 
@@ -27,9 +29,10 @@ useSeoMeta({ title: () => `${t('menu')} | Gasthaus zur Linde` })
     <section v-for="g in groups" :key="g.key" class="group" :aria-labelledby="`cat-${g.key}`">
       <h2 :id="`cat-${g.key}`">{{ g.title }}</h2>
       <ul class="dishes">
-        <li v-for="item in g.items" :key="item.id" class="dish">
+        <li v-for="item in g.items" :key="item.id" class="dish" :class="{ 'sold-out': item.soldOut }">
           <div class="line">
-            <h3 :lang="langOf(item, 'name')">{{ item.data.name }}</h3>
+            <!-- The space keeps "heute aus" a word of its own for screen readers ("…vom Kalb heute aus"). -->
+            <h3><span :lang="langOf(item, 'name')">{{ item.data.name }}</span><template v-if="item.soldOut">{{ ' ' }}<span class="out" data-test="sold-out">{{ t('soldOutToday') }}</span></template></h3>
             <span class="price">{{ formatMoney(priceOn(item.data, today), language) }}</span>
           </div>
           <p v-if="nextPriceLine(item.data)" class="next-price" data-test="next-price">{{ nextPriceLine(item.data) }}</p>
@@ -53,6 +56,8 @@ useSeoMeta({ title: () => `${t('menu')} | Gasthaus zur Linde` })
 .dish { padding: 16px 0; border-bottom: 1px solid var(--rule); display: grid; gap: 4px; }
 .line { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; }
 h3 { font-size: 1.3rem; font-weight: 500; }
+.out { margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: var(--bluete); color: var(--ink); font-family: var(--sans); font-size: 0.85rem; font-weight: 700; vertical-align: 0.15em; white-space: nowrap; }
+.sold-out h3 > span:first-child, .sold-out .price { color: var(--ink-2); }
 .line .price { font-size: 1.15rem; }
 .next-price { font-size: 0.95rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .desc { color: var(--ink-2); max-width: 60ch; }

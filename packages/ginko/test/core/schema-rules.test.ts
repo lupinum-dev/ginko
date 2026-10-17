@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import { plan } from '../../src/cli/plan.ts'
 import {
-  buildBundle, checkSchema, checkSite, isShown, collection, defineComponents, defineSite, diffSchema, f, isCurrency, isLocale, labelOf, platformSchema, serializeSchema, single, validate,
+  buildBundle, checkSchema, checkSite, isShown, collection, defineComponents, defineSite, diffSchema, f, grantGroups, isCurrency, isLocale, labelOf, platformSchema, serializeSchema, single, validate,
   type Fields, type RouteTemplate, type Schema, type SiteInput,
 } from '../../src/core/index.ts'
 
@@ -82,6 +82,13 @@ describe('2. values lost in serializeSchema', () => {
       const problems = checkSchema(serializeSchema(input))
       expect(problems.join('\n'), `${what} ${key}`).toContain(`${word} “${key}”`)
     }
+  })
+
+  // Wrong behaviour caught: a brick named `page` or `file` would make `$page.menu` or `$file.<id>` in a text mean two things.
+  it.each(['page', 'file'])('a brick named %s is refused: the name belongs to Markdown references', (key) => {
+    const brick = single({ label: 'X', fields: { t: f.text('T', optional) } })
+    const problems = checkSchema(serializeSchema(site({}, { bricks: { ...site().bricks, ...Object.fromEntries([[key, brick]]) } as Bricks })))
+    expect(problems.join('\n')).toContain(`The brick name “${key}” is reserved`)
   })
 })
 
@@ -509,6 +516,34 @@ describe('plans (weeks planned ahead)', () => {
   })
 })
 
+describe('planned (a change from a date on)', () => {
+  const dish = (planned: unknown, priceTask: readonly string[] = ['price', 'nextPrice', 'priceFrom']) => site({}, {
+    bricks: {
+      menu: collection({
+        label: 'Karte', max: 20, order: 'manual',
+        fields: { name: f.text('Name', { max: 120 }), price: f.money('Preis'), nextPrice: f.money('Geplanter Preis', optional), priceFrom: f.date('Gilt ab', optional), note: f.text('Hinweis', { max: 20, optional: true }), old: f.text('Alt', { max: 20, optional: true }) },
+        planned: planned as never,
+        tasks: [{ id: 'price', label: 'Preis ändern', kind: 'edit', pick: true, fields: priceTask as never }],
+      }),
+    },
+  })
+  const rule = { field: 'price', next: 'nextPrice', from: 'priceFrom' }
+
+  // Wrong behaviour caught: a task changes the price without seeing the planned one, so the new price is replaced on
+  // the plan's date and nobody saw it coming; or a rule naming fields that cannot hold a plan ships and never applies.
+  it.each([
+    ['a valid rule', rule, undefined, []],
+    ['a price task blind to its plan', rule, ['price'], ['menu.price: the task changes “price”, so it must also show its plan “nextPrice” and “priceFrom”.']],
+    ['a missing field', { ...rule, next: 'nope' }, undefined, ['menu: planned.next names “nope”, which is not a field of the brick.']],
+    ['a next of another type', { ...rule, next: 'note' }, ['price', 'note', 'priceFrom'], ['menu: planned.next “note” needs the type of “price” (money).']],
+    ['a from that is not a date', { ...rule, from: 'note' }, ['price', 'nextPrice', 'note'], ['menu: planned.from “note” must be a date field.']],
+    ['a required next', { ...rule, next: 'price', field: 'nextPrice' }, undefined, ['menu: planned.next “price” and planned.from “priceFrom” must be optional.']],
+    ['one field twice', { ...rule, next: 'price' }, undefined, ['menu: planned needs three different fields.', 'menu: planned.next “price” and planned.from “priceFrom” must be optional.']],
+  ])('%s', (_name, planned, priceTask, expected) => {
+    expect(problemsOf(dish(planned, priceTask))).toEqual(expected)
+  })
+})
+
 describe('approvals (SPEC 17)', () => {
   const withTasks = (needsApproval: unknown, over: Partial<SiteInput> = {}) => site({}, {
     bricks: { menu: collection({ label: 'Karte', fields: { name: f.text('Name', { max: 120 }) }, max: 20, order: 'manual', tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create', needsApproval } as never] }) },
@@ -600,5 +635,99 @@ describe('group and layout (display only)', () => {
   it('rejects an unknown layout', () => {
     const input = site({}, { bricks: { menu: collection({ label: 'Karte', layout: 'columns' as never, fields: { name: f.text('Name') }, max: 20, order: 'manual' }) } })
     expect(problemsOf(input)).toContain('menu: layout must be “sections” or “tabs”.')
+  })
+})
+
+describe('grants by area (SPEC 2.7)', () => {
+  // Wrong behaviour caught: the Team page or the invite mail lists a right of a removed area or task as granted,
+  // or lists areas in the order the owner ticked them instead of the site's.
+  it('lists live bricks in schema order with their granted tasks, and drops grants of a retired brick or a removed task', () => {
+    const schema = base()
+    schema.bricks.events!.retired = true
+    const groups = grantGroups(schema, ['menu.add', 'events.add', 'notices.add', 'menu.price', 'menu.gone', 'nobrick.add'])
+    expect(groups.map((g) => [g.brick, labelOf(g.label, 'de', 'de'), g.tasks.map((t) => labelOf(t, 'de', 'de'))])).toEqual([
+      ['notices', 'Hinweise', ['Hinweis hinzufügen']],
+      ['menu', 'Speisekarte', ['Preis ändern', 'Gericht hinzufügen']],
+    ])
+  })
+})
+
+describe('create task fields', () => {
+  const dish = (fields: unknown, prefill?: unknown) => site({}, {
+    retired: { 'menu.old': { drop: true } },
+    bricks: {
+      menu: collection({
+        label: 'Karte', max: 20, order: 'manual',
+        fields: { name: f.text('Name', { max: 120 }), price: f.money('Preis'), nextPrice: f.money('Neuer Preis', { optional: true }), priceFrom: f.date('Preis ab', { optional: true }), slug: f.slug('Adresse', { from: 'name' }), onMenu: f.boolean('Auf der Karte', { optional: true, default: true }), note: f.text('Hinweis', { max: 20, optional: true }), old: f.text('Alt', { max: 20, optional: true }) },
+        planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' },
+        tasks: [{ id: 'add', label: 'Gericht hinzufügen', kind: 'create', fields: fields as never, ...(prefill ? { prefill: prefill as never } : {}) }],
+      }),
+    },
+  })
+
+  // Wrong behaviour caught: a create task that names a field the brick lacks, or skips a required field that has no
+  // default, ships and every new entry then fails to save.
+  it.each([
+    ['a valid list', ['name', 'price'], undefined, []],
+    ['an optional field left out', ['name', 'price', 'note'], undefined, []],
+    ['an unknown field', ['name', 'price', 'nope'], undefined, ['menu.add.fields: “nope” is not a field of this brick.']],
+    ['a required field left out', ['name'], undefined, ['menu.add.fields: “price” is required and has no default, so the task must ask for it.']],
+    ['the slug', ['name', 'price', 'slug'], undefined, ['menu.add.fields: “slug” is the address and is made from “name”, so the task cannot ask for it.']],
+    ['the planned next value', ['name', 'price', 'nextPrice'], undefined, ['menu.add.fields: “nextPrice” is the plan of a planned change, so the task cannot ask for it.']],
+    ['the planned from date', ['name', 'price', 'priceFrom'], undefined, ['menu.add.fields: “priceFrom” is the plan of a planned change, so the task cannot ask for it.']],
+    ['a retired field', ['name', 'price', 'old'], undefined, ['menu.add.fields: “old” is retired, so the task cannot ask for it.']],
+    ['a required field that the prefill sets', ['name'], { price: { amount: 500 } }, []],
+  ])('%s', (_name, fields, prefill, expected) => {
+    expect(problemsOf(dish(fields, prefill))).toEqual(expected)
+  })
+})
+
+describe('status (Today page status line)', () => {
+  const set = (brick: string, status: unknown) => (s: Schema) => { node(s, `bricks.${brick}`).status = status }
+  // Wrong behaviour caught: a status naming a missing, retired or wrongly typed field passes the release check and the
+  // Today page computes nothing (or throws) for it; or a valid status is refused.
+  it.each<[string, (s: Schema) => void, string[]]>([
+    ['next on a daterange', set('events', { next: 'when' }), []],
+    ['age on a daterange', set('events', { age: 'when' }), []],
+    ['missing on an optional field without a default', set('events', { missing: 'image' }), []],
+    ['count on a collection with visible until', set('notices', { count: true }), []],
+    ['hours on the hours single', set('hours', { hours: true }), []],
+    ['hours linked to the hour plans', set('hours', { hours: { plans: 'hourPlans' } }), []],
+    ['hours linked to a missing brick', set('hours', { hours: { plans: 'seasons' } }), ['hours: status.hours.plans names “seasons”, which is not a live brick of the site.']],
+    ['hours linked to a collection that is not hour plans', set('hours', { hours: { plans: 'events' } }), ['hours: status.hours.plans names “events”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).']],
+    ['hours linked to hour plans without yearly', (s) => { node(s, 'bricks.hourPlans.fields.yearly').type = 'text'; set('hours', { hours: { plans: 'hourPlans' } })(s) }, ['hours: status.hours.plans names “hourPlans”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).']],
+    ['hours with a link of another form', set('hours', { hours: 'hourPlans' }), ['hours: status.hours must be true or { plans: \'<key of the hour plans>\' }.']],
+    ['next on a missing field', set('events', { next: 'date' }), ['events: status.next names “date”, which is not a field of the brick.']],
+    ['age on a text field', set('events', { age: 'title' }), ['events: status.age needs a date or daterange field, “title” is a text field.']],
+    ['missing on a required field', set('events', { missing: 'title' }), ['events: status.missing needs an optional field without a default, “title” is not.']],
+    ['missing on an optional field with a default', (s) => { node(s, 'bricks.events.fields.soldOut').default = false; set('events', { missing: 'soldOut' })(s) }, ['events: status.missing needs an optional field without a default, “soldOut” is not.']],
+    ['count without visible until', set('menu', { count: true }), ['menu: status { count: true } needs visible: { mode: \'until\' }.']],
+    ['count that is not true', set('notices', { count: 1 }), ['notices: status.count must be true.']],
+    ['two kinds at once', set('events', { next: 'when', age: 'when' }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
+    ['hours on a collection', set('events', { hours: true }), ['events: status must be { next }, { count: true }, { missing } or { age }.']],
+    ['next on a single', set('hours', { next: 'closedOn' }), ['hours: status must be { hours: true } or { hours: { plans } }.']],
+    ['hours on a single without the hours fields', set('contact', { hours: true }), ['week', 'exceptions', 'closedOn', 'holidays'].map((name) => `contact: status { hours } needs the live field “${name}”.`)],
+    ['hours with closedOn of another type', (s) => { node(s, 'bricks.hours.fields.closedOn').type = 'text'; set('hours', { hours: true })(s) }, ['hours: status { hours } needs “closedOn” to be a date field.']],
+    ['a field retired while the status still names it', (s) => {
+      set('events', { missing: 'image' })(s)
+      node(s, 'bricks.events.fields.image').retired = true
+      s.retired['events.image'] = { drop: true }
+    }, ['events: status.missing names the retired field “image”; remove the status or name another field.']],
+  ])('%s', (_name, mutate, expected) => {
+    const s = base()
+    mutate(s)
+    const problems = checkSchema(s).filter((p) => p.includes('status'))
+    expect(problems).toEqual(expected)
+  })
+
+  // Wrong behaviour caught: the site config refuses a status the stored schema accepts, or loses it in serializeSchema.
+  it('collection() and single() carry the status into the stored schema', () => {
+    const input = site({ until: f.date('Bis', optional) }, {
+      bricks: {
+        menu: collection({ label: 'Karte', fields: { name: f.text('Name'), until: f.date('Bis', optional) }, max: 20, order: 'manual', visible: { mode: 'until', field: 'until' }, status: { count: true } }),
+      },
+    })
+    expect(serializeSchema(input).bricks.menu!.status).toEqual({ count: true })
+    expect(problemsOf(input)).toEqual([])
   })
 })

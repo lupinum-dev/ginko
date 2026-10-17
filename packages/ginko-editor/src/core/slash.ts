@@ -3,7 +3,7 @@
 import type { Label } from '@lupinum/ginko'
 import type { ComponentRegistry, MarkdownProfile } from '@lupinum/ginko/internal'
 import { labelOf, parseMarkdown, profileCovers, URL_PROPS } from '@lupinum/ginko/internal'
-import type { Editor } from '@tiptap/core'
+import type { Editor, Range } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { editorMeta, missingRequired, type ComponentProps, type PropField } from './component-props.ts'
 import { toEditorDoc, type GinkoDocNode } from './convert.ts'
@@ -50,14 +50,15 @@ export const SLASH_TEXT_GROUP = 'Text'
 export const SLASH_COMPONENT_GROUP = 'Komponenten'
 
 /** The words for the three heading levels, here and in the toolbar of the Studio. */
-export const HEADING_LABELS = { 2: 'Überschrift', 3: 'Zwischenüberschrift', 4: 'Kleine Überschrift' } as const
+export const HEADING_LABELS = { 2: 'Überschrift', 3: 'Unterüberschrift', 4: 'Kleine Überschrift' } as const
 
 const heading = (level: 2 | 3 | 4): SlashItem => ({
   id: `heading${level}`,
   label: HEADING_LABELS[level],
-  describe: level === 2 ? 'Große Überschrift für einen neuen Abschnitt' : level === 3 ? 'Kleinere Überschrift im Abschnitt' : 'Kleinste Überschrift',
+  describe: level === 2 ? 'Große Überschrift für einen neuen Abschnitt' : level === 3 ? 'Kleinere Überschrift innerhalb eines Abschnitts' : 'Kleinste Überschrift',
   group: SLASH_TEXT_GROUP,
-  keywords: ['titel', 'heading', `h${level}`],
+  // "Zwischenüberschrift" is the usual word for a section heading, so search finds level 2 with it.
+  keywords: ['titel', 'heading', `h${level}`, ...(level === 2 ? ['zwischenüberschrift'] : [])],
   run: (editor) => { editor.chain().focus().setHeading({ level }).run() },
 })
 
@@ -86,28 +87,18 @@ export function slashItems(options: SlashItemsOptions): SlashItem[] {
   }
   if (covers('page') && components) {
     for (const [tag, def] of Object.entries(components)) {
-      // A component that lives inside another one (a tab) cannot be inserted on its own; one without an example has
-      // nothing to insert; a short form (`hidden`) is reached through its long form.
-      if (def.kind !== 'block' || def.parents?.length || !def.editor?.example || editorMeta(def).hidden) continue
-      const example = def.editor.example
+      // A component that lives inside another one (a tab) is added through its container; a short form (`hidden`) is
+      // reached through its long form. One without an example inserts its bare tag.
+      if (def.kind !== 'block' || def.parents?.length || editorMeta(def).hidden) continue
       items.push({
         id: `component:${tag}`,
         label: text(def.label),
         describe: text(def.describe),
-        group: def.editor.group === undefined ? SLASH_COMPONENT_GROUP : text(def.editor.group),
+        group: def.editor?.group === undefined ? SLASH_COMPONENT_GROUP : text(def.editor.group),
         keywords: [tag, ...(editorMeta(def).keywords ?? [])],
         async run(editor) {
-          const parsed = await parseMarkdown(example, { profile, components })
-          // The structure and the settings of the example, without its sample text: that shows as a placeholder.
-          const doc = toEditorDoc(parsed.value.nodes, { components })
-          const content = (doc.content ?? []).map((node) => blankSample(node, components, false)).filter((node): node is GinkoDocNode => node !== undefined)
-          const from = editor.state.selection.from
-          editor.chain().focus().insertContent(content).run()
-          const inserted = firstComponentFrom(editor, from - 1)
-          const missing = inserted ? missingRequired(components, inserted.tag, inserted.props) : []
-          if (!inserted) return
-          if (missing.length) onNeedsProps?.({ editor, tag: inserted.tag, pos: inserted.pos, missing })
-          else focusFirstBlank(editor, inserted.pos)
+          const { from, to } = editor.state.selection
+          await insertComponent(editor, { tag, profile, components, at: { from, to }, onNeedsProps })
         },
       })
     }
@@ -120,6 +111,60 @@ export function slashItems(options: SlashItemsOptions): SlashItem[] {
     keys.forEach((key) => seen.add(key))
     return true
   })
+}
+
+export interface InsertComponentOptions {
+  tag: string
+  profile: MarkdownProfile
+  components: ComponentRegistry
+  /** Where it goes: a position between blocks, or the range of the empty paragraph the menu was opened in (replaced). */
+  at: number | Range
+  /**
+   * A child added inside its container (a tab in tabs): taken from the child's example, which may wrap it in its
+   * container. Its sample texts go like those of any insert (no second tab named "Erster"): the settings ask for them.
+   */
+  child?: boolean
+  /** Called when the inserted component has required props without a valid value (see `SlashItemsOptions`). */
+  onNeedsProps?: (insert: InsertedComponent) => void
+}
+
+/**
+ * Inserts the component `tag` as its registry example shows it, without the sample text (that shows as a placeholder).
+ * Without an example, the bare `::tag` (no text line). Then asks for missing required props, or puts the cursor in the
+ * first empty text block. Resolves to the inserted component.
+ */
+export async function insertComponent(editor: Editor, options: InsertComponentOptions): Promise<InsertedComponent | undefined> {
+  const { tag, profile, components, at, child = false, onNeedsProps } = options
+  const content = await componentSkeleton(tag, components, profile, child)
+  if (!content.length) return undefined
+  editor.chain().focus().insertContentAt(at, content).run()
+  // In an empty paragraph the component replaces it, so it starts one position before the cursor.
+  const inserted = firstComponentFrom(editor, typeof at === 'number' ? at : at.from - 1)
+  if (!inserted) return undefined
+  const missing = missingRequired(components, inserted.tag, inserted.props)
+  if (missing.length) onNeedsProps?.({ editor, tag: inserted.tag, pos: inserted.pos, missing })
+  else focusFirstBlank(editor, inserted.pos)
+  return { editor, tag: inserted.tag, pos: inserted.pos, missing }
+}
+
+/** The editor nodes for a new `tag`: its example (or the bare tag) without sample text. A child is found inside its example. */
+async function componentSkeleton(tag: string, components: ComponentRegistry, profile: MarkdownProfile, child: boolean): Promise<GinkoDocNode[]> {
+  const def = Object.hasOwn(components, tag) ? components[tag] : undefined
+  const example = def?.editor?.example ?? `::${tag}\n::`
+  const parsed = await parseMarkdown(example, { profile, components })
+  const nodes = toEditorDoc(parsed.value.nodes, { components }).content ?? []
+  const own = child ? [findComponent(nodes, tag) ?? { type: 'component', attrs: { tag, props: {} }, content: [] }] : nodes
+  return own.map((node) => blankSample(node, components, false)).filter((node): node is GinkoDocNode => node !== undefined)
+}
+
+/** The first `component` node of `tag` in `nodes`, depth first. */
+function findComponent(nodes: readonly GinkoDocNode[], tag: string): GinkoDocNode | undefined {
+  for (const node of nodes) {
+    if (node.type === 'component' && node.attrs?.tag === tag) return node
+    const inner = findComponent(node.content ?? [], tag)
+    if (inner) return inner
+  }
+  return undefined
 }
 
 /** Props that hold an address: they stay as in the example (a value that is valid), unlike a title or a caption. */

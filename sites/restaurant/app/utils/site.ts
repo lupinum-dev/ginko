@@ -6,7 +6,7 @@
 import { allergenNames, weekdayNames } from '@lupinum/ginko-preset-gastro'
 
 // Re-exported for the components (Nuxt auto-imports what app/utils exports).
-export { hoursOn, spansOf, spansText, timesOf, todayState, upcomingClosures, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type HourPlan, type HoursData, type TodayState, type Weekday } from '@lupinum/ginko-preset-gastro'
+export { closedOnClosure, hoursOn, noticesOn, spansOf, spansText, timesOf, todayState, upcomingClosures, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor, type DayHours, type Exception, type HolidayClosure, type HourPlan, type HoursData, type TodayState, type Weekday } from '@lupinum/ginko-preset-gastro'
 
 /** The house name. Address, phone and e-mail are content (brick `contact`), maintained by the owner. */
 export const siteName = 'Gasthaus zur Linde'

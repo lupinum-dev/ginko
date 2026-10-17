@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import restaurant from '../../../../sites/restaurant/ginko.config.ts'
 import {
   buildBundle, checkSchema, diffSchema, isSafeHref, migrationFingerprint, printOf, resolveEntry,
-  serializeSchema, sortEntries, validate, type BundleBrick, type BundleItem, type CollectionBrick,
-  type Field, type Fields, type Issue, type Locale, type Schema, type StoredEntry,
+  serializeSchema, servedBundle, sortEntries, validate, type BundleBrick, type BundleItem, type CollectionBrick,
+  type Field, type Fields, type Issue, type Json, type Locale, type Schema, type StoredEntry,
 } from '../../src/core/index.ts'
 
 // One regression test per core finding of the Astra review of SPEC v4.
@@ -135,6 +135,46 @@ describe('resolve.ts:43 hiding is decided per leaf, not by the container', () =>
   })
 })
 
+describe('resolve.ts urlsFor: an untranslated page has no URL in that language', () => {
+  const martinigans = (en: Record<string, Json> = {}): StoredEntry => ({
+    id: 'martinigans',
+    data: { title: { de: 'Martini-Gansl', ...en }, slug: { de: 'martini-gansl' }, when: { from: '2026-11-11', to: '2026-11-11' }, description: { de: 'Gansl mit Rotkraut', ...en } },
+  })
+  const rows: [string, CollectionBrick['untranslated'], StoredEntry, { id: string; urls?: Partial<Record<Locale, string>> }[]][] = [
+    ['a routed collection leaves it out by default', undefined, martinigans(), []],
+    ['opt-in fallback lists it with its main-language URL only', 'fallback', martinigans(), [{ id: 'martinigans', urls: { de: '/veranstaltungen/martini-gansl' } }]],
+    ['an outdated translation keeps its page, also under hide', 'hide', martinigans({ en: 'Martinmas goose' }), [{ id: 'martinigans', urls: { de: '/veranstaltungen/martini-gansl', en: '/en/events/martini-gansl' } }]],
+  ]
+  it.each(rows)('%s', (_name, mode, event, expected) => {
+    const s = base()
+    if (mode) collectionOf(s, 'events').untranslated = mode
+    const items = itemsOf(build(s, { events: [event] }, 'en').bricks.events)
+    expect(items.map((i) => ({ id: i.id, urls: i.urls }))).toEqual(expected)
+  })
+
+  // Wrong behaviour caught: an English text that links to a German-only event gets a dead `$events.…` link.
+  it('a link in another language to an entry left out of it goes to the main-language page', async () => {
+    const de = '[Gansl]($events.martini-gansl)'
+    const legal: StoredEntry = { id: 'legal', data: { imprint: { de, en: '[Goose]($events.martini-gansl)' } }, prints: { imprint: { en: printOf(de) } } }
+    const bundle = await servedBundle({
+      schema: base(), requestedLocale: 'en', entries: { events: [martinigans()], legal: [legal] }, files: noFiles,
+      schemaRev: 1, contentRev: 1, generatedAt: '2026-10-08T00:00:00.000Z', today: TODAY,
+    })
+    const imprint = bundle.bricks.legal?.kind === 'single' ? bundle.bricks.legal.data.imprint : undefined
+    expect(imprint).toMatchObject({ nodes: [['p', {}, ['a', { href: '/veranstaltungen/martini-gansl' }, 'Goose']]] })
+  })
+
+  it('an image description missing in English does not make the entry untranslated', () => {
+    const s = base()
+    delete collectionOf(s, 'events').fields.image!.optional
+    const event = martinigans({ en: 'Martinmas goose' })
+    event.data.image = { file: 'f1', alt: { de: 'Gans' } }
+    event.prints = { title: { en: printOf('Martini-Gansl') }, description: { en: printOf('Gansl mit Rotkraut') } }
+    const r = resolveEntry(s, 'events', event, { locale: 'en', files: () => ({ url: '/gans.jpg', name: 'gans.jpg', size: 1, width: 4, height: 3 }) })
+    expect([r.blocking, r.fallback]).toEqual([[], ['slug', 'image.alt']])
+  })
+})
+
 describe('resolve.ts:43 an unknown locale does not hide a valid entry', () => {
   it('keeps an entry of a hide collection when the requested locale is unknown', () => {
     const s = base()
@@ -149,7 +189,7 @@ describe('resolve.ts:224 the stored slug and the URL use the same slug', () => {
     const s = base()
     const event: StoredEntry = {
       id: 'e1',
-      data: { title: { de: 'Weinabend' }, slug: { de: 'weinabend', en: 'wine-evening' }, when: { from: '2026-10-10', to: '2026-10-10' }, description: { de: 'Wein' } },
+      data: { title: { de: 'Weinabend', en: 'Wine evening' }, slug: { de: 'weinabend', en: 'wine-evening' }, when: { from: '2026-10-10', to: '2026-10-10' }, description: { de: 'Wein', en: 'Wine' } },
       prints: { slug: { en: printOf('weinabend-alt') } },
     }
     const item = itemsOf(build(s, { events: [event] }, 'en').bricks.events)[0]

@@ -4,26 +4,26 @@ import { sha256 } from './sha256.ts'
 import { formatMb, limitOf } from './uploads.ts'
 import { weeklyTask } from './stale.ts'
 import { weekInfoOf } from './time.ts'
+import { CALENDAR_NAMES, holidaysOf, STORED_HOLIDAYS } from './holidays.ts'
 import { componentProblems, type ComponentRegistry } from './components.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
-import { isPrefillToken, PREFILL_TOKENS, type Brick, type Currency, type Field, type Fields, type Json, type Locale, type Schema } from './types.ts'
+import { isPrefillToken, PREFILL_TOKENS, type Brick, type CollectionBrick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema, type Task } from './types.ts'
 import { coreMessage } from './messages.ts'
 import { checkValue } from './validate.ts'
 
 // Keys that would resolve to Object.prototype members in plain-object lookups, plus `prototype`.
 const RESERVED_KEYS = new Set([...Object.getOwnPropertyNames(Object.prototype), 'prototype'])
+/** `$page.<key>` and `$file.<id>` in Markdown texts (links.ts, file-refs.ts): no brick may take these names. */
+const LINK_HEADS = new Set(['page', 'file'])
 // A path that could leave the site or name a query or fragment instead of a page.
 const UNSAFE_PATH = /\.\.|\/\/|[?#]/
 
 // The serialized schema grammar. Unknown properties are rejected here and in diffSchema (deny by default).
-export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timeZone', 'locales', 'currency', 'week', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
+export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timeZone', 'locales', 'currency', 'week', 'holidays', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor'])
-export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'drafts', 'retired'])
-export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'group'])
-
-/** Content budget per site (SPEC 3), shared by the platform's writes and the CLI's release check. */
-export const SITE_BUDGET = { siteBytes: 4 * 1024 * 1024, entries: 2000, entryBytes: 256 * 1024 } as const
+export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
+export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'group', 'after'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
 
@@ -56,6 +56,8 @@ export function serializeSchema(site: SiteInput): Schema {
     currency: site.currency,
     // Computed once here; the server, the Studio and the site all read `schema.week`.
     week: weekInfoOf(site.languages?.[site.locales[0]] ?? site.locales[0], site.firstDayOfWeek),
+    // Like `week`: resolved once, so the server and the Studio never run the site's code to know its holidays.
+    ...withHolidays(site),
     pages: Object.fromEntries(Object.entries(site.pages).map(([key, page]) => [key, typeof page === 'string' ? { [site.locales[0]]: page } : page])),
     bricks,
     migrations,
@@ -63,6 +65,12 @@ export function serializeSchema(site: SiteInput): Schema {
     ...(site.components ? { components: storedComponents(site.components, site.locales) } : {}),
     ...(site.agents?.review !== undefined ? { agents: { review: site.agents.review } } : {}),
   }, [], []) as Schema
+}
+
+/** `{ holidays }` when the config sets `calendar` or `country`; nothing otherwise, so a 0.4 schema stays as it was. */
+function withHolidays(site: SiteInput): { holidays?: NonNullable<Schema['holidays']> } {
+  const holidays = holidaysOf(site)
+  return holidays === undefined ? {} : { holidays }
 }
 
 // Defaults and prefills are written in the input form (`f.text('Name', { default: 'Linde' })`) and stored in the
@@ -186,6 +194,19 @@ export function ordered<T extends { pos?: number }>(record: Record<string, T>): 
   return Object.entries(record).sort(([a, x], [b, y]) => (x.pos ?? Number.MAX_SAFE_INTEGER) - (y.pos ?? Number.MAX_SAFE_INTEGER) || a.localeCompare(b))
 }
 
+/**
+ * A staff member's rights (`brick.task` grants, SPEC 2.7) by area: the live bricks in schema order, each with the
+ * labels of its granted tasks in task order. A grant whose brick or task is gone or retired grants nothing and is
+ * left out. The one reading of grants for the Team page, the invite mail and the invite page.
+ */
+export function grantGroups(schema: Pick<Schema, 'bricks'>, grants: readonly string[]): { brick: string; label: Label; tasks: Label[] }[] {
+  const held = new Set(grants)
+  return ordered(schema.bricks)
+    .filter(([, brick]) => !brick.retired)
+    .map(([key, brick]) => ({ brick: key, label: brick.label, tasks: (brick.tasks ?? []).filter((task) => held.has(`${key}.${task.id}`)).map((task) => task.label) }))
+    .filter((group) => group.tasks.length > 0)
+}
+
 /** Exact source text: a changed literal inside the function must change the fingerprint. */
 export function migrationFingerprint(brick: string, fills: string, compute: (...args: never[]) => unknown): string {
   return sha256(`${brick}\n${fills}\n${compute.toString()}`)
@@ -199,7 +220,7 @@ export function mainLocale(schema: Pick<Schema, 'locales'>): Locale {
 const SITE_KEYS = {
   site: true, name: true, url: true, timeZone: true, locales: true, languages: true, firstDayOfWeek: true, currency: true,
   pages: true, bricks: true, linkCheck: true, redirects: true, seo: true, agents: true, components: true, migrations: true,
-  retired: true,
+  retired: true, country: true, calendar: true,
 } satisfies Record<keyof SiteInput, true>
 
 /**
@@ -213,6 +234,10 @@ export function checkSite(site: SiteInput, schema: Schema = serializeSchema(site
   for (const [locale, language] of Object.entries(site.languages ?? {})) {
     if (!site.locales.includes(locale)) problems.push(`languages: locale “${locale}” is not in locales.`)
     if (!isLocale(language)) problems.push(`languages.${locale}: invalid language “${String(language)}” (expected a canonical language tag such as “de-AT” or “en-US”).`)
+  }
+  if (site.country !== undefined && !/^[A-Z]{2}$/.test(String(site.country))) problems.push(`country: invalid country “${String(site.country)}” (expected an ISO 3166-1 code such as “AT” or “DE”).`)
+  if (site.calendar !== undefined && typeof site.calendar !== 'function' && !CALENDAR_NAMES.includes(site.calendar)) {
+    problems.push(`calendar: unknown calendar “${String(site.calendar)}” (expected AT, DE, SG, none or a function (year) => holidays).`)
   }
   // The share cards' brand colour; any other format would draw them grey without a word.
   const color = site.seo?.color
@@ -253,6 +278,7 @@ function schemaProblems(schema: Schema): string[] {
   if (!isSiteUrl(schema.url)) problems.push(`Invalid site url “${String(schema.url)}” (expected an absolute http(s) address such as “https://linde.example”).`)
   if (!isTimeZone(schema.timeZone)) problems.push(`Invalid time zone “${String(schema.timeZone)}” (expected for example “Europe/Vienna”).`)
   if (!isWeek(schema.week)) problems.push('week must be { firstDay: 1 to 7, weekend: [days 1 to 7] } (1 = Monday, 7 = Sunday).')
+  if (schema.holidays !== undefined && !STORED_HOLIDAYS.includes(schema.holidays)) problems.push(`holidays must be one of ${STORED_HOLIDAYS.join(', ')}.`)
   if (!isCurrency(schema.currency)) problems.push(`Invalid currency “${String(schema.currency)}” (expected an ISO 4217 code such as “EUR” or “JPY”).`)
   const pageOwner = new Map<string, string>()
   for (const [key, paths] of Object.entries(schema.pages)) {
@@ -272,6 +298,7 @@ function schemaProblems(schema: Schema): string[] {
   const routes = new Map<string, string>()
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (!/^[a-z][a-zA-Z0-9]{0,40}$/.test(key) || RESERVED_KEYS.has(key)) problems.push(`Invalid brick name “${key}”.`)
+    else if (LINK_HEADS.has(key)) problems.push(`The brick name “${key}” is reserved: \`$${key}.…\` in a Markdown text means ${key === 'page' ? 'a page' : 'a file of the Files library'}.`)
     unknown(key, brick, BRICK_KEYS)
     pushLabel(`${key}.label`, brick.label)
     if (brick.describe !== undefined) pushLabel(`${key}.describe`, brick.describe)
@@ -298,8 +325,11 @@ function schemaProblems(schema: Schema): string[] {
         else if (!token) for (const p of checkValue(schema, field, value, path)) problems.push(`${p.path}: ${coreMessage('en', p.key, p.params)}`)
         else if (field.type !== 'date') problems.push(`${path}: “${value}” needs a date field.`)
       }
+      if (task.kind === 'create' && task.fields !== undefined) problems.push(...createFieldsProblems(`${key}.${task.id}.fields`, task, brick))
       if (task.needsApproval !== undefined && typeof task.needsApproval !== 'boolean') problems.push(`${key}.${task.id}: needsApproval must be true or false.`)
     }
+    if (brick.planned !== undefined) problems.push(...plannedProblems(key, brick))
+    if (brick.status !== undefined) problems.push(...statusProblems(key, brick, schema))
     // Drafts need entries that can wait for publishing; a single brick has one entry that is always live (SPEC 15).
     if (brick.kind === 'single' && 'drafts' in brick) problems.push(`${key}: drafts are only allowed for collections.`)
     if (brick.kind === 'single' && 'plans' in brick) problems.push(`${key}: plans are only allowed for collections.`)
@@ -411,6 +441,31 @@ function isWeek(week: unknown): boolean {
   return isIsoDay(firstDay) && Array.isArray(weekend) && weekend.length <= 6 && weekend.every(isIsoDay)
 }
 
+/**
+ * A create task that lists `fields` names fields the brick has and can ask for, and leaves no required field without a
+ * value: the slug is made from the title, the plan of a planned change belongs to a dish that already has a price, a
+ * retired field is gone, and a field with a default or a prefill has a value.
+ */
+function createFieldsProblems(path: string, task: Extract<Task, { kind: 'create' }>, brick: Brick): string[] {
+  if (!Array.isArray(task.fields)) return [`${path}: must be a list of field names.`]
+  const fields = brick.fields
+  const listed: readonly string[] = task.fields
+  const problems: string[] = []
+  for (const name of listed) {
+    const field = Object.hasOwn(fields, name) ? fields[name] : undefined
+    if (!field) problems.push(`${path}: “${name}” is not a field of this brick.`)
+    else if (field.type === 'slug') problems.push(`${path}: “${name}” is the address and is made from “${field.from}”, so the task cannot ask for it.`)
+    else if (brick.planned && (name === brick.planned.next || name === brick.planned.from)) problems.push(`${path}: “${name}” is the plan of a planned change, so the task cannot ask for it.`)
+    else if (field.retired) problems.push(`${path}: “${name}” is retired, so the task cannot ask for it.`)
+  }
+  const prefilled = Object.keys(task.prefill ?? {})
+  for (const [name, field] of Object.entries(fields)) {
+    if (field.optional || field.default !== undefined || field.type === 'slug' || field.retired) continue
+    if (!listed.includes(name) && !prefilled.includes(name)) problems.push(`${path}: “${name}” is required and has no default, so the task must ask for it.`)
+  }
+  return problems
+}
+
 /** A collection that plans weeks of a single brick: the target must have a weekly task, the field must be a date here. */
 function plansProblems(key: string, plans: unknown, fields: Fields, schema: Schema): string[] {
   if (typeof plans !== 'object' || plans === null || Array.isArray(plans)) return [`${key}: plans must be an object with brick and field.`]
@@ -426,6 +481,92 @@ function plansProblems(key: string, plans: unknown, fields: Fields, schema: Sche
   const task = weekly?.task.kind === 'edit' ? weekly.task : undefined
   for (const f of task?.fields ?? []) {
     if (!Object.hasOwn(fields, f) || fields[f]!.type !== target!.fields[f]?.type) problems.push(`${key}: plans: the weekly task of “${String(brick)}” edits “${f}”, so this collection needs “${f}” of the same type.`)
+  }
+  return problems
+}
+
+/** The fields `{ hours: true }` reads, with their types: the stored names of the hours brick. */
+const HOURS_FIELDS = { week: 'list', exceptions: 'list', closedOn: 'date', holidays: 'choice' } as const
+/** The fields of an hour plan (`hourPlans()`), with their types: what `{ hours: { plans } }` reads of each entry. */
+const HOUR_PLAN_FIELDS = { week: 'list', from: 'date', yearly: 'boolean' } as const
+
+/** True when `brick` is a live collection with the live fields of `hourPlans()`. */
+export function isHourPlans(brick: Brick): boolean {
+  return brick.kind === 'collection' && !brick.retired
+    && Object.entries(HOUR_PLAN_FIELDS).every(([name, type]) => Object.hasOwn(brick.fields, name) && !brick.fields[name]!.retired && brick.fields[name]!.type === type)
+}
+
+/**
+ * A status line (`status`): exactly one kind; a collection takes next, count, missing or age, a single takes hours. The
+ * field it names must be live (a retired field needs the status removed first) and of the right type. `hours` may
+ * name the hour plans: a live collection of the site with the fields of `hourPlans()`.
+ */
+function statusProblems(key: string, brick: Brick, schema: Schema): string[] {
+  const status: unknown = brick.status
+  const kinds = brick.kind === 'collection' ? ['next', 'count', 'missing', 'age'] : ['hours']
+  const shape = brick.kind === 'collection' ? '{ next }, { count: true }, { missing } or { age }' : '{ hours: true } or { hours: { plans } }'
+  if (typeof status !== 'object' || status === null || Array.isArray(status)) return [`${key}: status must be ${shape}.`]
+  const entries = Object.entries(status)
+  if (entries.length !== 1 || !kinds.includes(entries[0]![0])) return [`${key}: status must be ${shape}.`]
+  const [kind, value] = entries[0]!
+  if (kind === 'count') {
+    if (value !== true) return [`${key}: status.count must be true.`]
+    const vis = (brick as CollectionBrick).visible
+    return vis?.mode === 'until' ? [] : [`${key}: status { count: true } needs visible: { mode: 'until' }.`]
+  }
+  if (kind === 'hours') {
+    const problems: string[] = []
+    if (value !== true) {
+      const plans = typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 1 ? (value as { plans?: unknown }).plans : undefined
+      if (typeof plans !== 'string') return [`${key}: status.hours must be true or { plans: '<key of the hour plans>' }.`]
+      const target = Object.hasOwn(schema.bricks, plans) ? schema.bricks[plans]! : undefined
+      if (!target || target.retired) problems.push(`${key}: status.hours.plans names “${plans}”, which is not a live brick of the site.`)
+      else if (!isHourPlans(target)) problems.push(`${key}: status.hours.plans names “${plans}”, which is not a collection of hour plans (hourPlans(): a list “week”, a date “from” and a switch “yearly”).`)
+    }
+    for (const [name, type] of Object.entries(HOURS_FIELDS)) {
+      const field = Object.hasOwn(brick.fields, name) ? brick.fields[name] : undefined
+      if (!field || field.retired) problems.push(`${key}: status { hours } needs the live field “${name}”.`)
+      else if (field.type !== type) problems.push(`${key}: status { hours } needs “${name}” to be a ${type} field.`)
+    }
+    return problems
+  }
+  const field = typeof value === 'string' && Object.hasOwn(brick.fields, value) ? brick.fields[value] : undefined
+  if (!field) return [`${key}: status.${kind} names “${String(value)}”, which is not a field of the brick.`]
+  if (field.retired) return [`${key}: status.${kind} names the retired field “${value}”; remove the status or name another field.`]
+  if (kind === 'missing') return field.optional && field.default === undefined ? [] : [`${key}: status.missing needs an optional field without a default, “${value}” is not.`]
+  return field.type === 'date' || field.type === 'daterange' ? [] : [`${key}: status.${kind} needs a date or daterange field, “${value}” is a ${field.type} field.`]
+}
+
+/**
+ * A planned change (`planned`): three different fields of the brick, `next` of the type of `field`, `from` a date, both
+ * optional (no plan is the normal state). An edit task that changes `field` must show the plan too, so nobody changes a
+ * price without seeing that another one is planned.
+ */
+function plannedProblems(key: string, brick: Brick): string[] {
+  const planned: unknown = brick.planned
+  if (typeof planned !== 'object' || planned === null || Array.isArray(planned)) return [`${key}: planned must be an object with field, next and from.`]
+  const p = planned as Record<string, unknown>
+  const problems: string[] = []
+  for (const k of Object.keys(p)) if (!['field', 'next', 'from'].includes(k)) problems.push(`${key}.planned: unknown property “${k}”.`)
+  const named = (role: 'field' | 'next' | 'from') => {
+    const name = p[role]
+    const field = typeof name === 'string' && Object.hasOwn(brick.fields, name) ? brick.fields[name] : undefined
+    if (!field || field.retired) problems.push(`${key}: planned.${role} names “${String(name)}”, which is not a field of the brick.`)
+    return field
+  }
+  const field = named('field')
+  const next = named('next')
+  const from = named('from')
+  if (!field || !next || !from) return problems
+  const [f, n, d] = [p.field as string, p.next as string, p.from as string]
+  if (new Set([f, n, d]).size < 3) problems.push(`${key}: planned needs three different fields.`)
+  if (next.type !== field.type) problems.push(`${key}: planned.next “${n}” needs the type of “${f}” (${field.type}).`)
+  if (from.type !== 'date') problems.push(`${key}: planned.from “${d}” must be a date field.`)
+  if (!next.optional || !from.optional) problems.push(`${key}: planned.next “${n}” and planned.from “${d}” must be optional.`)
+  for (const task of brick.tasks ?? []) {
+    if (task.kind === 'edit' && task.fields.includes(f) && !(task.fields.includes(n) && task.fields.includes(d))) {
+      problems.push(`${key}.${task.id}: the task changes “${f}”, so it must also show its plan “${n}” and “${d}”.`)
+    }
   }
   return problems
 }
@@ -592,6 +733,11 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
       break
     }
     case 'file': if (!(field.maxBytes > 0 && field.maxBytes <= limitOf('file'))) problems.push(`${path}: maxBytes at most ${formatMb(limitOf('file'))} MB.`); break
+    case 'time':
+      if (field.after !== undefined && (!topLevel || siblings[field.after]?.type !== 'time' || field.after === path.split('.').pop())) {
+        problems.push(`${path}.after: “${String(field.after)}” is not another time field of the brick.`)
+      }
+      break
     case 'slug': {
       const source = siblings[field.from]
       if (!source || !['text', 'longtext'].includes(source.type)) problems.push(`${path}: from must be a text field.`)

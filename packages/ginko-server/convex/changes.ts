@@ -1,43 +1,84 @@
 // The change log of a site, newest first (SPEC 3). Any admin or member of the site may read it (SPEC 2.7).
 import type { Json } from '@lupinum/ginko'
 import type { Schema } from '@lupinum/ginko/internal'
+import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
-import type { Doc } from './_generated/dataModel'
+import type { Doc, Id } from './_generated/dataModel'
 import { query, type QueryCtx } from './_generated/server'
 import { labeler } from './lib/names'
-import { actorFor, fail, type Actor } from './lib/access'
+import { actorFor, createdBy, fail, type Actor } from './lib/access'
 import { diffFields } from './lib/diff'
+import { undoBlockOf, type UndoBlock } from './lib/history'
 
 const PAGE_SIZE = 50
 /**
- * A change row stores the `before` and `after` of its fields and the prints, up to 2 x 256 KiB. A page
- * of 50 such rows would pass Convex's 8 MiB read limit, so a page also ends once it has read this much
+ * A change row stores the `before` and `after` of its fields and the prints, up to 2 x 480 KiB (SITE_BUDGET.entryBytes).
+ * A page of 50 such rows would pass Convex's 16 MiB read limit, so a page also ends once it has read this much
  * and hands out the cursor for the rest.
  */
 const PAGE_BYTES = 2 * 1024 * 1024
 
+type ReadEntry = (id: Id<'entries'>) => Promise<Doc<'entries'> | null>
+
 /**
  * The rows without before/after/prints (those are for undo and the release, not for the list: the
- * history page shows the message), with who did it as data (`Who`, lib/names.ts) and, for a change
- * through the agent door, the label of that person's key (SPEC 16).
+ * history page shows the message), with who did it and who approved it as data (`Who`, lib/names.ts) and,
+ * for a change through the agent door, the label of that person's key (SPEC 16). `inTrash`: a removal whose entry is
+ * still in the trash (not restored, not deleted for good), so the Studio links there only while it is. `own` marks a
+ * save of an entry the reader created: staff undo and revert it with their create task (lib/access.ts `authorize`),
+ * as entries.get says.
  */
 async function summaries(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[]) {
   const names = await labeler(ctx, actor)
+  // Each entry is read once; the entries of a site fit in its storage budget, so this stays well under the read
+  // limit, and the list follows later saves, restores and removals live.
+  const read = new Map<Id<'entries'>, Promise<Doc<'entries'> | null>>()
+  const readEntry: ReadEntry = (id) => {
+    if (!read.has(id)) read.set(id, ctx.db.get(id))
+    return read.get(id)!
+  }
+  const { blocks, own } = await saveFacts(ctx, actor, rows, readEntry)
   const out = []
   for (const { before: _before, after: _after, printsBefore: _printsBefore, printsAfter: _printsAfter, ...change } of rows) {
-    out.push({ ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey) })
+    const inTrash = change.kind === 'remove' && !!change.entry && !!(await readEntry(change.entry))?.deletedAt
+    out.push({
+      ...change, who: await names.who(change.actor), agent: await names.key(change.agentKey), undoBlocked: blocks.get(change._id) ?? null, inTrash,
+      // An applied proposal: the owner or admin who approved it ("Freigabe: …").
+      approver: change.approvedBy ? await names.who(change.approvedBy) : null,
+      ...(own.has(change._id) ? { own: true as const } : {}),
+    })
   }
   return out
 }
 
 /**
- * `entry`, `brick` and `by` narrow the list on the server, so a page is 50 rows of the filter and the cursor
- * walks on in it; without them it is the whole site. `by: 'me'` is what the signed-in person did (also
+ * For each save on the page: why it can no longer be undone (undoBlockOf, the rule the undo mutation uses), and
+ * whether the reader created its entry (`createdBy`).
+ */
+async function saveFacts(ctx: QueryCtx, actor: Actor, rows: Doc<'changes'>[], readEntry: ReadEntry): Promise<{ blocks: Map<Id<'changes'>, UndoBlock>; own: Set<Id<'changes'>> }> {
+  const blocks = new Map<Id<'changes'>, UndoBlock>()
+  const own = new Set<Id<'changes'>>()
+  if (!rows.some((row) => row.kind === 'save' && row.entry)) return { blocks, own }
+  const migrated = await ctx.db.query('migrationsApplied').withIndex('by_site_id', (q) => q.eq('site', actor.site._id)).collect()
+  for (const change of rows) {
+    if (change.kind !== 'save' || !change.entry) continue
+    const entry = await readEntry(change.entry)
+    const block = undoBlockOf(change, entry, migrated)
+    if (block) blocks.set(change._id, block)
+    if (createdBy(actor, entry)) own.add(change._id)
+  }
+  return { blocks, own }
+}
+
+/**
+ * A paginated query (`useConvexPaginatedQuery` in the Studio): a page holds at most 50 rows. `entry`, `brick` and
+ * `by` narrow the list on the server, so a page is rows of the filter and the cursor walks on in it; without them
+ * it is the whole site. `by: 'me'` is what the signed-in person did (also
  * through their own agent key), `by: 'ai'` everything done through the agent door.
  */
 export const list = query({
   args: {
-    site: v.string(), cursor: v.optional(v.string()), entry: v.optional(v.string()), brick: v.optional(v.string()),
+    site: v.string(), paginationOpts: paginationOptsValidator, entry: v.optional(v.string()), brick: v.optional(v.string()),
     by: v.optional(v.union(v.literal('me'), v.literal('ai'))),
   },
   handler: async (ctx, args) => {
@@ -64,12 +105,13 @@ export const list = query({
         : brick !== undefined
           ? ctx.db.query('changes').withIndex('by_site_brick_at', (q) => q.eq('site', siteId).eq('brick', brick)).order('desc')
           : ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', siteId)).order('desc')
+    const opts = args.paginationOpts
     let result
     try {
-      result = await rows.paginate({ cursor: args.cursor ?? null, numItems: PAGE_SIZE, maximumBytesRead: PAGE_BYTES })
+      result = await rows.paginate({ ...opts, numItems: Math.min(opts.numItems, PAGE_SIZE), maximumBytesRead: PAGE_BYTES })
     } catch (error) {
       // The cursor comes from the client; the database refuses one it did not hand out.
-      if (args.cursor === undefined) throw error
+      if (opts.cursor === null) throw error
       fail('INVALID', 'errors.pageMarkerInvalid')
     }
     return { ...result, page: await summaries(ctx, actor, result.page) }

@@ -140,4 +140,8 @@ test('propsSummary shows set props in one line', () => {
   expect(propsSummary({ title: 'x'.repeat(60) })).toBe(`title: ${'x'.repeat(39)}…`)
   const def = { props: { type: f.choice('Art', { options: [{ value: 'warning', label: 'Warnung' }, { value: 'info', label: 'Info' }] }), title: f.text('Titel') } }
   expect(propsSummary({ type: 'warning', title: 'Achtung' }, def)).toBe('Art: Warnung · Titel: Achtung')
+  // Wrong behaviour caught: a figure from the Files library showed its ID ("Bild: $file.k57x…") instead of its name.
+  const figure = { props: { src: f.image('Bild'), alt: f.text('Bildbeschreibung') } }
+  expect(propsSummary({ src: '$file.k57x', alt: 'Ein Hund' }, figure, (id) => (id === 'k57x' ? 'hund.webp' : undefined))).toBe('Bild: hund.webp · Bildbeschreibung: Ein Hund')
+  expect(propsSummary({ src: '$file.k57x' }, figure)).toBe('Bild: …')
 })

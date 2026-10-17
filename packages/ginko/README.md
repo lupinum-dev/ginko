@@ -80,8 +80,8 @@ const events = useGinko('events') // typed from ginko.config.ts
 
 ## Stability
 
-`@lupinum/ginko`, `@lupinum/ginko/nuxt`, `@lupinum/ginko/vue` and `@lupinum/ginko/search` are the public
-API. Every name they export is documented on the docs site. `pos` and `retired` on fields and bricks are set by
+`@lupinum/ginko`, `@lupinum/ginko/nuxt`, `@lupinum/ginko/vue`, `@lupinum/ginko/search` and `@lupinum/ginko/basics` are
+the public API. Every name they export is documented on the docs site. `pos` and `retired` on fields and bricks are set by
 the platform; do not set them. Until 1.0, a minor release may still break it, and the changelog names the break.
 `@lupinum/ginko/internal` and `@lupinum/ginko/internal/search` are for Ginko's own packages. They can change in
 any release, so do not import them in a site.

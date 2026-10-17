@@ -1,0 +1,54 @@
+{
+  "title": "Speisekarte",
+  "lead": "Unsere Speisen und Getränke, mit den Preisen von heute.",
+  "print": "Speisekarte drucken",
+  "printNow": "Drucken",
+  "back": "Zurück zur Speisekarte",
+  "jump": "Kategorien",
+  "categories": {
+    "starters": "Vorspeisen",
+    "soups": "Suppen",
+    "mains": "Hauptspeisen",
+    "desserts": "Nachspeisen",
+    "drinks": "Getränke"
+  },
+  "diet": {
+    "vegetarian": "vegetarisch",
+    "vegan": "vegan"
+  },
+  "soldOut": "heute aus",
+  "priceFrom": "ab {date}: {price}",
+  "empty": "Noch keine Gerichte auf der Karte",
+  "prices": "Alle Preise inklusive Mehrwertsteuer.",
+  "asOf": "Stand: {date}",
+  "allergens": {
+    "title": "Allergene",
+    "lead": "Die Buchstaben bei jedem Gericht nennen seine Allergene.",
+    "label": "Allergene: {names}",
+    "none": "keine Allergene",
+    "ask": "Wenn Sie eine Allergie oder Unverträglichkeit haben, sagen Sie es uns bitte bei der Bestellung.",
+    "A": "Gluten",
+    "B": "Krebstiere",
+    "C": "Ei",
+    "D": "Fisch",
+    "E": "Erdnuss",
+    "F": "Soja",
+    "G": "Milch",
+    "H": "Schalenfrüchte",
+    "L": "Sellerie",
+    "M": "Senf",
+    "N": "Sesam",
+    "O": "Sulfite",
+    "P": "Lupinen",
+    "R": "Weichtiere"
+  },
+  "lunch": {
+    "title": "Mittagsmenü",
+    "today": "Heute",
+    "closed": "Geschlossen",
+    "pending": "Das Mittagsmenü dieser Woche folgt in Kürze.",
+    "served": "Das Mittagsmenü gibt es von {from} bis {to} Uhr.",
+    "todayTitle": "Heute zu Mittag",
+    "week": "Mittagsmenü der Woche"
+  }
+}

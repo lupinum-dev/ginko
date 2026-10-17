@@ -141,7 +141,8 @@
           }
         },
         "body": {
-          "de": "Die Brunner Präzisionstechnik GmbH erweitert ihre Fertigung in Steyr um fünf CNC-Fräsen. Die Investition sichert zwölf Arbeitsplätze in der Zerspanung.\n\nRückfragen an [die Marketing-Abteilung](mailto:marketing@brunner-praezision.example)."
+          "de": "Die Brunner Präzisionstechnik GmbH erweitert ihre Fertigung in Steyr um fünf CNC-Fräsen. Die Investition sichert zwölf Arbeitsplätze in der Zerspanung.\n\nRückfragen an [die Marketing-Abteilung](mailto:marketing@brunner-praezision.example).",
+          "en": "Brunner Präzisionstechnik GmbH is adding five CNC mills to its production in Steyr. The investment secures twelve jobs in machining.\n\nQuestions go to [the marketing department](mailto:marketing@brunner-praezision.example)."
         },
         "pressPdf": {
           "file": "fl-pressemitteilung-cnc"
@@ -156,6 +157,9 @@
         },
         "image.alt": {
           "en": "cd598ffccec49930403098fddb1c75c06eac35d0238f497a6cd5ef0a970947e4"
+        },
+        "body": {
+          "en": "7e6a62bae766f3cbe4f046c7ad34883b558424a2f193a7acce55e1a980fbe521"
         }
       }
     },
@@ -356,7 +360,8 @@
               "en": "Max. length"
             },
             "value": {
-              "de": "600"
+              "de": "600",
+              "en": "600"
             },
             "unit": {
               "de": "mm"
@@ -369,7 +374,8 @@
               "en": "Materials"
             },
             "value": {
-              "de": "Stahl, Edelstahl 1.4301"
+              "de": "Stahl, Edelstahl 1.4301",
+              "en": "Steel, stainless steel 1.4301"
             }
           }
         ],
@@ -395,6 +401,12 @@
         },
         "specs.pspSerie02.name": {
           "en": "889a6e57a993d2e8fe3f7861a919315db39e947acbf1c250dadea8e6f05a1f13"
+        },
+        "specs.pspSerie01.value": {
+          "en": "b08eab77f8e1fded9209737f000550f19ae422a6b83a26fdfcc517d57e4ba117"
+        },
+        "specs.pspSerie02.value": {
+          "en": "ea0af53abc3853a6d514eccaa73716b6b67d8018230d02d714c3ab7647d3a7f1"
         }
       }
     },
@@ -438,17 +450,20 @@
           "en": "clamping-systems"
         },
         "summary": {
-          "de": "Spannvorrichtungen für Fräs- und Drehmaschinen."
+          "de": "Spannvorrichtungen für Fräs- und Drehmaschinen.",
+          "en": "Clamping fixtures for milling machines and lathes."
         },
         "images": [],
         "specs": [
           {
             "_id": "pspSpann01",
             "name": {
-              "de": "Wiederholgenauigkeit"
+              "de": "Wiederholgenauigkeit",
+              "en": "Repeatability"
             },
             "value": {
-              "de": "0,005"
+              "de": "0,005",
+              "en": "0.005"
             },
             "unit": {
               "de": "mm"
@@ -462,6 +477,15 @@
         },
         "slug": {
           "en": "29b50134eb2c39e0d3056da1bcd4118ef25f72d6f0ba61323b3cd2744da11e47"
+        },
+        "summary": {
+          "en": "09db0f9fb1d6055ffc6254a77c1d48d6a641d43b6244a4dd2e4ed5bf1f2df15f"
+        },
+        "specs.pspSpann01.name": {
+          "en": "7d8d00179872d86981ad706e63bda9de209b4ec9deb827f7af2434df68160459"
+        },
+        "specs.pspSpann01.value": {
+          "en": "8d4e381850251e7f2c195b84ccc2ef2d730c41782919b7e3f09073fd5118dee0"
         }
       }
     }

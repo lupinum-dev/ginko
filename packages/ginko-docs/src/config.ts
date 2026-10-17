@@ -1,6 +1,8 @@
 // The bricks for ginko.config.ts. Docs pages live at <base>/<slug> in every locale (main locale
 // unprefixed); the layer serves its page at that address. The start page, the blog and the changelog are optional.
 import { collection, f, single, type Locale } from '@lupinum/ginko'
+import { authors, changelog, posts } from '@lupinum/ginko/basics'
+import { labelsIn } from '@lupinum/ginko/internal'
 import { BLOG_PATH, CHANGELOG_PATH } from '../shared/paths.ts'
 
 /** The registry of the Markdown components the layer renders, for `components` in `defineSite`. */
@@ -85,40 +87,13 @@ export function docsHome() {
  * /blog/<slug> (main locale unprefixed, `/<l>/blog/<slug>` otherwise) and come out newest first.
  * Authors have no page; a post names them in `authors`. Files: `content/posts/<n>.<name>[.<locale>].md`
  * and `content/authors/<name>[.<locale>].yml`. Add `blog: blogPages({ locales })` to `pages` as well.
+ * The bricks are `posts()` and `authors()` of `@lupinum/ginko/basics` with the English labels docs sites store.
  */
 export function blogCollections(opts: { locales: Locales; max?: number }) {
   const { locales } = opts
   return {
-    posts: collection({
-      label: 'Posts',
-      source: 'files',
-      max: opts.max ?? 500,
-      order: { field: 'date', dir: 'desc' },
-      route: localized(locales, `${BLOG_PATH}/[slug]`),
-      fields: {
-        title: f.text('Title'),
-        description: f.longtext('Description', { optional: true }),
-        date: f.date('Date'),
-        authors: f.refs('Authors', { to: 'authors', optional: true }),
-        image: f.image('Image', { optional: true }),
-        tags: f.list('Tags', { itemLabel: 'Tag', fields: { tag: f.text('Tag', { max: 40 }) }, max: 10, optional: true }),
-        slug: f.slug('Address', { from: 'title' }),
-        body: f.markdown('Text', { profile: 'page' }),
-      },
-    }),
-    authors: collection({
-      label: 'Authors',
-      source: 'files',
-      max: 100,
-      order: 'manual',
-      fields: {
-        name: f.text('Name'),
-        role: f.text('Role', { optional: true }),
-        avatar: f.image('Image', { optional: true }),
-        /** Shown as a link on the author's name. */
-        url: f.text('Website', { format: 'url', optional: true }),
-      },
-    }),
+    posts: labelsIn(posts({ source: 'files', max: opts.max, route: localized(locales, `${BLOG_PATH}/[slug]`) }), 'en'),
+    authors: labelsIn(authors({ source: 'files' }), 'en'),
   }
 }
 
@@ -126,19 +101,10 @@ export function blogCollections(opts: { locales: Locales; max?: number }) {
  * The optional changelog: one page at /changelog with one entry per release, newest first. Entries have no
  * page of their own, the page links to each by anchor. Files: `content/changelog/<name>[.<locale>].md`
  * with `version` and `date` in the frontmatter (a dot in the name would read as a language: use `v1-2-0.md`). Add `changelog: changelogPages({ locales })` to `pages` as well.
+ * The brick is `changelog()` of `@lupinum/ginko/basics` with the English labels docs sites store.
  */
 export function changelogCollection(opts: { max?: number } = {}) {
-  return collection({
-    label: 'Changelog',
-    source: 'files',
-    max: opts.max ?? 500,
-    order: { field: 'date', dir: 'desc' },
-    fields: {
-      version: f.text('Version', { max: 40, translate: false }),
-      date: f.date('Date'),
-      body: f.markdown('Text', { profile: 'page' }),
-    },
-  })
+  return labelsIn(changelog({ source: 'files', max: opts.max }), 'en')
 }
 
 /** The list pages by locale, for `pages` in ginko.config.ts: the sitemap and the static build know them from there. */

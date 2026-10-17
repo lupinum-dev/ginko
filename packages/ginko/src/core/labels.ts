@@ -1,5 +1,5 @@
 // Translatable labels and the open lists of languages and currencies (SPEC 2.1).
-import type { Currency, Label, Locale } from './types.ts'
+import type { Brick, Currency, Field, Label, Locale } from './types.ts'
 
 /** Most content languages one site can have. */
 export const MAX_LOCALES = 20
@@ -61,4 +61,37 @@ export function labelProblem(path: string, label: unknown, main: string): string
   if (!Object.hasOwn(record, main) && !Object.hasOwn(record, 'en')) return `${path}: label needs a text in the main language “${main}” or in English.`
   if (Object.values(record).some((v) => typeof v !== 'string' || v.trim() === '')) return `${path}: label needs a text for each language.`
   return null
+}
+
+/**
+ * A schema label in the Studio's languages (German, English, Spanish, French), for factories that ship ready-made
+ * bricks. The stored schema keeps the record; `labelOf` picks the editor's language and falls back to English.
+ */
+export const studioLabel = (de: string, en: string, es: string, fr: string): Record<Locale, string> => ({ de, en, es, fr })
+
+/**
+ * `brick` with every label, hint, group, item label, option label and task label written as its plain text in
+ * `locale`. For a package that shares a factory but keeps the one-language labels its sites already store
+ * (ginko-docs): a changed label is a schema change on every such site.
+ */
+export function labelsIn<B extends Brick>(brick: B, locale: Locale): B {
+  const text = (label: Label) => labelOf(label, locale, locale)
+  const field = (input: Field): Field => {
+    const out: Record<string, unknown> = { ...input, label: text(input.label) }
+    if (input.hint !== undefined) out.hint = text(input.hint)
+    if (input.group !== undefined) out.group = text(input.group)
+    if (input.type === 'choice' || input.type === 'choices') out.options = input.options.map((o) => ({ ...o, label: text(o.label) }))
+    if (input.type === 'list') {
+      out.itemLabel = text(input.itemLabel)
+      out.of = Object.fromEntries(Object.entries(input.of).map(([name, column]) => [name, field(column)]))
+    }
+    return out as unknown as Field
+  }
+  return {
+    ...brick,
+    label: text(brick.label),
+    ...(brick.describe !== undefined ? { describe: text(brick.describe) } : {}),
+    fields: Object.fromEntries(Object.entries(brick.fields).map(([name, f]) => [name, field(f)])),
+    ...(brick.tasks ? { tasks: brick.tasks.map((task) => ({ ...task, label: text(task.label) })) } : {}),
+  }
 }

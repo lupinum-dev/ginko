@@ -284,7 +284,7 @@
             "slug": "pauses-decompte-correct",
             "date": "2026-09-30",
             "author": "Lena Ruhland",
-            "description": "Wie Pausen im Stundenzettel stehen, damit die Abrechnung stimmt.",
+            "description": "Comment noter les pauses sur la feuille d’heures pour que la paie soit juste.",
             "image": {
               "url": "/media/pausen-dach.jpg",
               "alt": "Handwerker mit Tablet auf dem Dach",
@@ -296,18 +296,18 @@
                 [
                   "p",
                   {},
-                  "Pausen gehören in den Stundenzettel, sonst fehlen Minuten in der Abrechnung."
+                  "Les pauses ont leur place sur la feuille d’heures, sinon des minutes manquent à la paie."
                 ],
                 [
                   "p",
                   {},
-                  "Welcher Tarif passt, sehen Sie unter ",
+                  "Le tarif qui vous convient se trouve sous ",
                   [
                     "a",
                     {
-                      "href": "/preise"
+                      "href": "/fr/tarifs"
                     },
-                    "Preise"
+                    "Tarifs"
                   ],
                   "."
                 ]
@@ -321,86 +321,12 @@
             }
           },
           "fallback": [
-            "description",
-            "image.alt",
-            "body"
+            "image.alt"
           ],
           "urls": {
             "de": "/blog/pausen-richtig-abrechnen",
             "en": "/en/blog/billing-breaks-correctly",
             "fr": "/fr/blog/pauses-decompte-correct"
-          }
-        },
-        {
-          "id": "bl-papier",
-          "data": {
-            "title": "Stundenzettel ohne Papier",
-            "slug": "stundenzettel-ohne-papier",
-            "date": "2026-08-12",
-            "author": "Jonas Keller",
-            "description": "Warum digitale Stundenzettel schneller abgerechnet werden.",
-            "body": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Papier geht verloren. Digitale Zettel kommen direkt in die Abrechnung."
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            }
-          },
-          "fallback": [
-            "title",
-            "slug",
-            "description",
-            "body"
-          ],
-          "urls": {
-            "de": "/blog/stundenzettel-ohne-papier",
-            "en": "/en/blog/stundenzettel-ohne-papier",
-            "fr": "/fr/blog/stundenzettel-ohne-papier"
-          }
-        },
-        {
-          "id": "bl-mindestlohn",
-          "data": {
-            "title": "Die Mindestlohn-Doku in Taktwerk",
-            "slug": "mindestlohn-doku",
-            "date": "2026-07-01",
-            "author": "Lena Ruhland",
-            "description": "Wie Taktwerk Arbeitszeiten für die Dokumentation festhält.",
-            "body": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Jede Stempelung ist mit Datum und Uhrzeit festgehalten."
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            }
-          },
-          "fallback": [
-            "title",
-            "slug",
-            "description",
-            "body"
-          ],
-          "urls": {
-            "de": "/blog/mindestlohn-doku",
-            "en": "/en/blog/mindestlohn-doku",
-            "fr": "/fr/blog/mindestlohn-doku"
           }
         }
       ]

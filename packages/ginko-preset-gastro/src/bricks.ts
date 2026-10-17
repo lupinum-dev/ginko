@@ -1,8 +1,9 @@
 // Restaurant bricks with the owner's quick tasks. Labels and prefilled texts come in German and English. The site keeps
 // the texts of its own locales when its main locale is `de` or `en` (exactly: `de-CH` does not count); otherwise it
 // starts without the prefilled texts (`serializeSchema`).
-import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate } from '@lupinum/ginko'
-import type { ChoicesField, ListField } from '@lupinum/ginko/internal'
+import { collection, f, single, type BrickSource, type ChoiceOption, type Locale, type RouteTemplate, type Task } from '@lupinum/ginko'
+import { gallery, type HoursOptions } from '@lupinum/ginko/basics'
+import { eventsBrick, hourPlansBrick, hoursBrick, noticesBrick, weekdays, type ChoicesField, type DateField, type HoursTexts, type ListField, type WeekRow } from '@lupinum/ginko/internal'
 import { allergenNames } from './names.ts'
 
 /** Allergen codes on dishes: the EU list of 14, none at all (the field is left out), or your own list. */
@@ -11,17 +12,21 @@ export type AllergenSet = 'EU' | 'none' | readonly ChoiceOption[]
 /** A schema label in both languages. The editor sees the one for their language, and a site in another language falls back to English. */
 const both = (de: string, en: string) => ({ de, en })
 
-export const weekdays = [
-  { value: 'mo', label: both('Montag', 'Monday') }, { value: 'tu', label: both('Dienstag', 'Tuesday') }, { value: 'we', label: both('Mittwoch', 'Wednesday') },
-  { value: 'th', label: both('Donnerstag', 'Thursday') }, { value: 'fr', label: both('Freitag', 'Friday') }, { value: 'sa', label: both('Samstag', 'Saturday') },
-  { value: 'su', label: both('Sonntag', 'Sunday') },
-] as const
+export { weekdays }
 
 // The 14 EU allergens (LMIV) with the letter codes used in Austria.
 export const allergensEU: readonly ChoiceOption[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'L', 'M', 'N', 'O', 'P', 'R'].map((code) => ({
   value: code,
   label: both(`${code} ${allergenNames.de[code]}`, `${code} ${allergenNames.en[code]}`),
 }))
+
+/** The categories of `menu()`, in the order of a menu. A site groups its dishes by these values. */
+export const menuCategories = ['starters', 'soups', 'mains', 'desserts', 'drinks'] as const
+export type MenuCategory = (typeof menuCategories)[number]
+const categoryLabels: Record<MenuCategory, { de: string, en: string }> = {
+  starters: both('Vorspeisen', 'Starters'), soups: both('Suppen', 'Soups'), mains: both('Hauptspeisen', 'Mains'),
+  desserts: both('Nachspeisen', 'Desserts'), drinks: both('Getränke', 'Drinks'),
+}
 
 /** The `allergens` field type: present unless the set is `'none'`. */
 type AllergenFields<A extends AllergenSet> = A extends 'none' ? {} : { allergens: ChoicesField<string> }
@@ -43,7 +48,7 @@ export interface GastroOptions {
 const sourceOf = (opts: GastroOptions) => (opts.source ? { source: opts.source } : {})
 
 // Row IDs in defaults are fixed so every fresh site starts with the same, stable rows.
-const weekDefault = weekdays.map((d) => ({
+const weekDefault: WeekRow[] = weekdays.map((d) => ({
   _id: `wk${d.value}000000`,
   day: d.value,
   closed: d.value === 'mo',
@@ -56,105 +61,57 @@ const soldOutText = { de: 'Heute sind wir ausgebucht.', en: 'We are fully booked
 
 const lunchDefault = weekdays.slice(0, 5).map((d) => ({ _id: `ld${d.value}000000`, day: d.value, dish: lunchPlaceholder }))
 
-/** Times only on a day that is not closed (a closed day keeps its stored times). */
-const open = { field: 'closed', not: true } as const
-
-/** One 7-row week, shared by the standard hours and the hour plans. */
-function weekField() {
-  return f.list(both('Wochenplan', 'Weekly hours'), {
-    itemLabel: both('Tag', 'Day'),
-    fields: {
-      day: f.choice(both('Tag', 'Day'), { options: weekdays }),
-      closed: f.boolean(both('Ruhetag', 'Closed all day')),
-      from1: f.time(both('Mittag von', 'Lunch from'), { optional: true, showWhen: open }),
-      to1: f.time(both('Mittag bis', 'Lunch until'), { optional: true, showWhen: open }),
-      from2: f.time(both('Abend von', 'Evening from'), { optional: true, showWhen: open }),
-      to2: f.time(both('Abend bis', 'Evening until'), { optional: true, showWhen: open }),
-    },
-    min: 7, max: 7, unique: 'day', default: weekDefault,
-  })
+// The restaurant wording of the hours bricks (the basics are neutral): pinned here, because labels and hints are part
+// of every gastro site's stored schema.
+const hoursTexts: HoursTexts = {
+  hours: both('Öffnungszeiten', 'Opening hours'),
+  week: both('Wochenplan', 'Weekly hours'), day: both('Tag', 'Day'), closed: both('Ruhetag', 'Closed all day'),
+  opens: both('Öffnet um', 'Opens at'), closes: both('Schließt um', 'Closes at'), opensAgain: both('Öffnet wieder um', 'Opens again at'),
+  opensAgainHint: both('Nur wenn du untertags eine Pause machst.', 'Only if you close for a break during the day.'),
+  closesAgain: both('Schließt wieder um', 'Closes again at'),
+  exceptions: both('Betriebsurlaub und Ausnahmen', 'Holiday closures and exceptions'), exception: both('Ausnahme', 'Exception'), dates: both('Zeitraum', 'Dates'),
+  reason: both('Grund', 'Reason'),
+  reasonHint: both('Kurz, z. B. „Betriebsurlaub“ oder „Hochzeit“. Steht so auf der Website.', 'Keep it short, e.g. “Annual holiday” or “Wedding party”. Shown like this on the website.'),
+  exceptionClosed: both('Geschlossen', 'Closed'),
+  closedOn: both('Geschlossen am', 'Closed on'),
+  closedOnHint: both('Ein einzelner Tag. Für mehrere Tage nimm „Betriebsurlaub und Ausnahmen“.', 'A single day. For several days, use “Holiday closure and exceptions”.'),
+  closedNote: both('Grund für die Gäste', 'Reason for guests'),
+  closedNoteHint: both('Steht auf der Website, z. B. „Wegen eines Wasserrohrbruchs“.', 'Shown on the website, e.g. “Because of a burst water pipe”.'),
+  noticeDays: both('Schließungen ankündigen (Tage vorher)', 'Announce closures (days ahead)'),
+  noticeDaysHint: both('So viele Tage vorher kündigt die Website eine Schließung oder einen geschlossenen Feiertag an.', 'How many days ahead the website announces a closure or a public holiday when you are closed.'),
+  holidays: both('An Feiertagen', 'On public holidays'),
+  holidaySunday: both('wie am Sonntag', 'same as Sunday'), holidayClosed: both('geschlossen', 'closed'), holidayNormal: both('normale Zeiten des Wochentags', 'the weekday’s usual hours'),
+  holidaysHint: both(
+    'Gilt für alle gesetzlichen Feiertage. „Wie am Sonntag“ nimmt die Sonntagszeiten, die an dem Tag gelten. Für andere Zeiten an einem einzelnen Feiertag, z. B. am 26.12., trag unter „Betriebsurlaub und Ausnahmen“ eine Ausnahme ein.',
+    'Applies to every public holiday. “Same as Sunday” uses the Sunday hours that apply on that day. For other hours on a single holiday, such as 26 December, add an exception under “Holiday closure and exceptions”.',
+  ),
+  closedToday: both('Heute geschlossen', 'Closed today'), holidaySetting: both('Öffnungszeiten an Feiertagen', 'Opening hours on public holidays'),
+  plans: both('Öffnungszeiten ab Datum', 'Opening hours from a date'), planName: both('Name', 'Name'), planFrom: both('Gilt ab', 'Applies from'),
+  planTo: both('Gilt bis', 'Applies until'), yearly: both('Jedes Jahr wiederholen', 'Repeat every year'),
+  planAdd: both('Neue Öffnungszeiten ab …', 'New opening hours from …'), planEdit: both('Öffnungszeiten ab Datum bearbeiten', 'Edit hours from a date'),
+  planRemove: both('Öffnungszeiten ab Datum entfernen', 'Remove hours from a date'),
 }
 
-/** Weekly hours, closures and the owner's choice for public holidays. Which holidays count is `calendar` in the context of the hours rules (`hoursOn`, `todayState`). */
-export function hours(opts: GastroOptions = {}) {
-  return single({
-    label: both('Öffnungszeiten', 'Opening hours'),
-    ...sourceOf(opts),
-    fields: {
-      week: weekField(),
-      exceptions: f.list(both('Betriebsurlaub und Ausnahmen', 'Holiday closures and exceptions'), {
-        itemLabel: both('Ausnahme', 'Exception'),
-        fields: {
-          when: f.daterange(both('Zeitraum', 'Dates')),
-          reason: f.text(both('Grund', 'Reason'), { max: 140 }),
-          // A new exception is a closure unless the owner says otherwise.
-          closed: f.boolean(both('Geschlossen', 'Closed'), { default: true }),
-          // Special hours: "Geschlossen" off and times set, e.g. 24.12. from 11:00 to 14:00.
-          from1: f.time(both('Mittag von', 'Lunch from'), { optional: true, showWhen: open }),
-          to1: f.time(both('Mittag bis', 'Lunch until'), { optional: true, showWhen: open }),
-          from2: f.time(both('Abend von', 'Evening from'), { optional: true, showWhen: open }),
-          to2: f.time(both('Abend bis', 'Evening until'), { optional: true, showWhen: open }),
-        },
-        max: 20, default: [],
-      }),
-      closedOn: f.date(both('Heute geschlossen am', 'Closed on'), { optional: true }),
-      closedNote: f.text(both('Hinweis zur Schließung', 'Note about the closure'), { max: 140, optional: true }),
-      holidayNoticeDays: f.number(both('Hinweis vor Ausnahmen (Tage)', 'Show notice before closures (days)'), { min: 0, max: 60, step: 1, default: 14 }),
-      holidays: f.choice(both('An Feiertagen', 'On public holidays'), {
-        options: [
-          { value: 'sunday', label: both('wie Sonntag', 'same as Sunday') }, { value: 'closed', label: both('geschlossen', 'closed') }, { value: 'normal', label: both('normal', 'normal hours') },
-        ],
-        optional: true, default: 'sunday',
-      }),
-    },
-    tasks: [
-      { id: 'closedToday', label: both('Heute geschlossen', 'Closed today'), kind: 'edit', fields: ['closedOn', 'closedNote'], prefill: { closedOn: '@today' } },
-      { id: 'holiday', label: both('Betriebsurlaub und Ausnahmen', 'Holiday closure and exceptions'), kind: 'edit', fields: ['exceptions'] },
-      { id: 'holidaySetting', label: both('Öffnungszeiten an Feiertagen', 'Opening hours on public holidays'), kind: 'edit', fields: ['holidays'] },
-    ],
-  })
+/**
+ * Weekly hours, closures and the owner's choice for public holidays (the basics `hours` with restaurant wording and
+ * times). Which holidays count is `calendar` or `country` in the context of the hours rules (`hoursOn`, `todayState`);
+ * neither means Austria. `plans`: the key of the site's `hourPlans()`, so the Studio's line for today follows them.
+ */
+export function hours(opts: GastroOptions & Pick<HoursOptions, 'plans'> = {}) {
+  return hoursBrick(hoursTexts, weekDefault, opts)
 }
 
 /** Own weekly hours for a date range: a season (yearly) or "new hours from a date" (open end). */
 export function hourPlans(opts: GastroOptions = {}) {
-  return collection({
-    label: both('Öffnungszeiten ab Datum und Saisonen', 'Hours from a date and seasons'),
-    ...sourceOf(opts),
-    fields: {
-      label: f.text(both('Name', 'Name'), { max: 80 }),
-      from: f.date(both('Gilt ab', 'Applies from')),
-      to: f.date(both('Gilt bis', 'Applies until'), { optional: true }),
-      yearly: f.boolean(both('Jedes Jahr wiederholen', 'Repeat every year'), { default: false }),
-      week: weekField(),
-    },
-    max: 12,
-    order: { field: 'from', dir: 'asc' },
-    tasks: [
-      { id: 'add', label: both('Neue Öffnungszeiten ab …', 'New opening hours from …'), kind: 'create' },
-      { id: 'edit', label: both('Öffnungszeiten ab Datum bearbeiten', 'Edit hours from a date'), kind: 'edit', pick: true, fields: ['label', 'from', 'to', 'yearly', 'week'] },
-      { id: 'remove', label: both('Öffnungszeiten ab Datum entfernen', 'Remove hours from a date'), kind: 'remove' },
-    ],
-  })
+  return hourPlansBrick(hoursTexts, weekDefault, opts)
 }
 
+/** The basics notices with "Fully booked today" as the first quick task. */
 export function notices(opts: GastroOptions = {}) {
-  return collection({
-    label: both('Hinweise', 'Notices'),
-    ...sourceOf(opts),
-    fields: {
-      text: f.text(both('Text', 'Text'), { max: 140 }),
-      until: f.date(both('Gilt bis', 'Shown until'), { optional: true }),
-    },
-    max: 5,
-    order: 'manual',
-    visible: { mode: 'until', field: 'until', deleteExpired: true },
-    tasks: [
-      // The weekly job first: it becomes the main quick task.
-      { id: 'soldOut', label: both('Heute ausgebucht', 'Fully booked today'), kind: 'create', prefill: { text: soldOutText, until: '@today' } },
-      { id: 'add', label: both('Hinweis hinzufügen', 'Add a notice'), kind: 'create' },
-      { id: 'remove', label: both('Hinweis entfernen', 'Remove a notice'), kind: 'remove' },
-    ],
-  })
+  return noticesBrick(opts, [
+    // The weekly job first: it becomes the main quick task.
+    { id: 'soldOut', label: both('Heute ausgebucht', 'Fully booked today'), kind: 'create', prefill: { text: soldOutText, until: '@today' } },
+  ])
 }
 
 /** The list of lunch days; `allergens` left out when the set is `'none'`. */
@@ -218,11 +175,7 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
   const choices = allergenChoices(opts.allergens)
   const fields = {
     category: f.choice(both('Kategorie', 'Category'), {
-      options: [
-        { value: 'starters', label: both('Vorspeisen', 'Starters') }, { value: 'soups', label: both('Suppen', 'Soups') },
-        { value: 'mains', label: both('Hauptspeisen', 'Mains') }, { value: 'desserts', label: both('Desserts', 'Desserts') },
-        { value: 'drinks', label: both('Getränke', 'Drinks') },
-      ],
+      options: menuCategories.map((value) => ({ value, label: categoryLabels[value] })),
     }),
     name: f.text(both('Name', 'Name'), { max: 120 }),
     description: f.longtext(both('Beschreibung', 'Description'), { max: 500, optional: true }),
@@ -233,61 +186,63 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
         { value: 'none', label: both('nicht vegetarisch', 'not vegetarian') }, { value: 'vegetarian', label: both('vegetarisch', 'vegetarian') }, { value: 'vegan', label: both('vegan', 'vegan') },
       ],
     }),
-    // A planned price change: the site shows `nextPrice` from `priceFrom` on (see `priceOn`).
-    nextPrice: f.money(both('Neuer Preis', 'New price'), { optional: true }),
-    priceFrom: f.date(both('Neuer Preis gilt ab', 'New price applies from'), { optional: true }),
+    // Availability (see `dishOn`) is optional, so dishes stored before it and Markdown files stay valid: a missing
+    // `onMenu` means on the menu, a missing `soldOutOn` (below) means not sold out.
+    onMenu: f.boolean(both('Auf der Karte', 'On the menu'), {
+      optional: true, default: true,
+      hint: both('Ausschalten, wenn es das Gericht eine Zeit lang nicht gibt, z. B. nach der Saison. Es bleibt gespeichert, und du kannst es wieder einschalten.', 'Turn this off when the dish is not offered for a while, e.g. after its season. It stays saved, and you can turn it back on.'),
+    }),
+    // A planned price change: the site shows `nextPrice` from `priceFrom` on (`planned` below, `priceOn`).
+    nextPrice: f.money(both('Geplanter Preis', 'Planned price'), {
+      optional: true,
+      hint: both('Gilt ab dem Datum darunter. Bis dahin bleibt der Preis oben.', 'Applies from the date below. Until then the price above stays.'),
+    }),
+    priceFrom: f.date(both('Geplanter Preis gilt ab', 'Planned price applies from'), { optional: true }),
+    // Sold out on one day only: the next day the dish is back by itself.
+    soldOutOn: f.date(both('Aus am', 'Sold out on'), {
+      optional: true,
+      hint: both('An diesem Tag steht das Gericht auf der Website als „heute aus“. Am nächsten Tag ist es wieder normal da.', 'On that day the website shows the dish as “sold out today”. The next day it is back as usual.'),
+    }),
   }
-  // `allergens` exists only when the set is not 'none', which the type cannot see here.
-  const dishFields = (choices ? ['category', 'name', 'description', 'price', 'allergens', 'veg'] : ['category', 'name', 'description', 'price', 'veg']) as readonly (keyof typeof fields & string)[]
+  // The plan sits right under the price in every task that shows the price. `allergens` exists only when the set is
+  // not 'none', which the type cannot see here.
+  const dishFields = (choices
+    ? ['category', 'name', 'description', 'price', 'nextPrice', 'priceFrom', 'allergens', 'veg', 'onMenu']
+    : ['category', 'name', 'description', 'price', 'nextPrice', 'priceFrom', 'veg', 'onMenu']) as readonly (keyof typeof fields & string)[]
+  // A new dish is on the menu and cannot be sold out yet, so "add" does not ask for `onMenu` and `soldOutOn`; the plan
+  // fields wait for "Preis ändern". Same cast as `dishFields`.
+  const addFields = (choices
+    ? ['category', 'name', 'description', 'price', 'allergens', 'veg']
+    : ['category', 'name', 'description', 'price', 'veg']) as readonly (keyof typeof fields & string)[]
+  // The allergen set keeps `fields` generic, so the type cannot check a prefill against it (as with `dishFields`).
+  // `satisfies` checks the task against its one date field first; the cast only widens it to the generic fields.
+  const soldOut = ({
+    id: 'soldOut', label: both('Gericht heute aus', 'Dish sold out today'), kind: 'edit', pick: true, fields: ['soldOutOn'], prefill: { soldOutOn: '@today' },
+  } satisfies Task<{ soldOutOn: DateField }>) as unknown as Task<typeof fields>
   return collection({
     label: both('Speisekarte', 'Menu'),
     ...sourceOf(opts),
     fields,
+    // The platform checks that a plan has both its price and its date, and opens "Preis ändern" on the price in effect.
+    planned: { field: 'price', next: 'nextPrice', from: 'priceFrom' },
     max: 150,
     order: 'manual',
     tasks: [
+      // The daily job first: it becomes the main quick task.
+      soldOut,
       { id: 'edit', label: both('Gericht bearbeiten', 'Edit a dish'), kind: 'edit', pick: true, fields: dishFields },
-      { id: 'price', label: both('Preis ändern', 'Change a price'), kind: 'edit', pick: true, fields: ['price'] },
-      { id: 'priceFrom', label: both('Preis ab …', 'Price from …'), kind: 'edit', pick: true, fields: ['nextPrice', 'priceFrom'] },
-      { id: 'add', label: both('Gericht hinzufügen', 'Add a dish'), kind: 'create' },
+      // One sheet for the price and its plan, so a new price never hides behind a planned one.
+      { id: 'price', label: both('Preis ändern', 'Change a price'), kind: 'edit', pick: true, fields: ['price', 'nextPrice', 'priceFrom'] },
+      { id: 'add', label: both('Gericht hinzufügen', 'Add a dish'), kind: 'create', fields: addFields },
       { id: 'remove', label: both('Gericht entfernen', 'Remove a dish'), kind: 'remove' },
     ],
   })
 }
 
+/** The basics events as in 0.4: no end time, place or online address, and a reservation link. */
 export function events(opts: GastroOptions & { route: Record<Locale, RouteTemplate> }) {
-  return collection({
-    label: both('Veranstaltungen', 'Events'),
-    ...sourceOf(opts),
-    fields: {
-      title: f.text(both('Titel', 'Title'), { max: 120 }),
-      slug: f.slug(both('Adresse', 'Web address'), { from: 'title' }),
-      when: f.daterange(both('Wann', 'When')),
-      // The clock time of the first day. `when` stays the order and visibility field.
-      start: f.time(both('Beginn', 'Starts at'), { optional: true }),
-      description: f.markdown(both('Beschreibung', 'Description'), { profile: 'basic', max: 5000 }),
-      price: f.money(both('Preis', 'Price'), { optional: true }),
-      booking: f.text(both('Reservierungs-Link', 'Booking link'), { format: 'url', optional: true }),
-      image: f.image(both('Bild', 'Image'), { optional: true }),
-    },
-    max: 30,
-    order: { field: 'when', dir: 'asc' },
-    visible: { mode: 'until', field: 'when' },
-    route: opts.route,
-    tasks: [
-      { id: 'add', label: both('Veranstaltung hinzufügen', 'Add an event'), kind: 'create' },
-      { id: 'remove', label: both('Veranstaltung entfernen', 'Remove an event'), kind: 'remove' },
-    ],
-  })
+  return eventsBrick(opts, both('Reservierungs-Link', 'Booking link'), {})
 }
 
-export function gallery(opts: GastroOptions = {}) {
-  return single({
-    label: both('Galerie', 'Gallery'),
-    ...sourceOf(opts),
-    fields: {
-      images: f.list(both('Bilder', 'Images'), { itemLabel: both('Bild', 'Image'), fields: { image: f.image(both('Bild', 'Image')) }, max: 24, default: [] }),
-    },
-    tasks: [{ id: 'edit', label: both('Fotos bearbeiten', 'Edit photos'), kind: 'edit', fields: ['images'] }],
-  })
-}
+/** The basics gallery. */
+export { gallery }

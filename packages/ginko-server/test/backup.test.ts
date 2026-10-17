@@ -1,9 +1,13 @@
+// @vitest-environment node
+// (Node, not edge-runtime: sharp in the upload pipeline of imported originals reads only Node's own byte arrays.)
 // Export, import and pull (SPEC 9, 12): GET /export, `ginko export` against it, and the import into a
 // second backend. Two convex-test backends stand for production and the local platform.
+import { createHash } from 'node:crypto'
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { makeFunctionReference } from 'convex/server'
+import sharp from 'sharp'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { importSite } from '../../../packages/ginko/src/cli/import.ts'
 import { main } from '../../../packages/ginko/src/cli/index.ts'
@@ -14,6 +18,7 @@ import { createPlatform } from '../../../packages/ginko/src/cli/platform.ts'
 import type { SiteExport } from '../../../packages/ginko/src/cli/model.ts'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
+import { printOf } from '@lupinum/ginko/internal'
 import { errorOf, setup } from './setup'
 
 type Setup = Awaited<ReturnType<typeof setup>>
@@ -160,6 +165,22 @@ describe('GET /export', () => {
   })
 })
 
+describe('backup.download (Studio, Team > Sicherung)', () => {
+  // Wrong behaviour caught (admin-3): an owner without the CLI had no way to get a copy; a staff member must not get
+  // every entry (also of areas they cannot open); and the Studio's ZIP must hold what `ginko export` and the import read.
+  it('refuses staff and gives owners and admins the snapshot GET /export gives', async () => {
+    const { s } = await production()
+    expect(await errorOf(s.as.cook.query(api.backup.download, { site: 'restaurant' }))).toMatchObject({ code: 'FORBIDDEN', key: 'errors.backupOwnersOnly' })
+    const { exportedAt: _, ...fromCli } = await s.t.query(internal.backup.snapshot, { site: s.site })
+    for (const who of ['owner', 'admin'] as const) {
+      const { exportedAt, ...answer } = await s.as[who].query(api.backup.download, { site: 'restaurant' })
+      expect(answer).toEqual(fromCli)
+      expect(typeof exportedAt).toBe('string')
+    }
+    expect(fromCli.files).toHaveLength(2)
+  })
+})
+
 describe('ginko export', () => {
   it('writes export.json and every file, prints one JSON line and never the key', async () => {
     const { s, kitchen, dining } = await production()
@@ -227,10 +248,14 @@ async function bundleOf(s: Setup, locale: string) {
 describe('export → import round trip (SPEC 12)', () => {
   it('gives the imported site the same bundle, new ready uploads, deleted entries and exact counters', async () => {
     vi.stubEnv('GINKO_LOCAL', '1')
-    const { s: prod } = await production()
+    const { s: prod, kitchen } = await production()
+    // The Files library description must survive the backup (it is the default text of every use).
+    await prod.as.owner.mutation(api.files.setAlt, { site: 'restaurant', file: kitchen, locale: 'de', text: 'Ein Hund' })
     const local = await setup() // the plain corpus, without the gallery images and the deletion: import must replace it
     const dir = await tempDir()
     await exportOf(prod, dir)
+    // An hour later: an imported entry keeps when it last changed, not the import time (the bundle's updatedAt).
+    vi.setSystemTime(Date.now() + 3_600_000)
 
     const { run, upload, calls } = localOf(local)
     // A small batch size forces several importExport calls; the files and counters must survive that.
@@ -262,6 +287,7 @@ describe('export → import round trip (SPEC 12)', () => {
     // The bytes moved with them: the first image's upload serves the exported WebP copy from the local storage.
     const first = imported.find((u) => u._id === fileIds[0])!
     expect(await local.t.run(async (ctx) => (await ctx.storage.get(first.storageId))?.text())).toBe('webp-bytes-kitchen')
+    expect(first.alt).toEqual({ de: 'Ein Hund' })
     expect(rows.refs.filter((r) => r.holder === 'entry').map((r) => r.file).sort()).toEqual([...fileIds, fileIds[0]].sort())
 
     // Deleted entries come back deleted; the addresses are rebuilt; counters count live entries only.
@@ -273,17 +299,20 @@ describe('export → import round trip (SPEC 12)', () => {
     const prodRows = await prod.t.run((ctx) => ctx.db.query('entries').collect())
     expect(rows.entries).toHaveLength(prodRows.length)
     expect(rows.site.entryCount).toBe(rows.entries.filter((e) => !e.deletedAt).length)
-    expect(rows.site.bytes).toBe(rows.entries.reduce((sum, e) => sum + e.bytes, 0))
-    expect(rows.site.orderRevs.menu).toBe(1)
+    expect(rows.site.bytes).toBe(rows.entries.filter((e) => !e.deletedAt).reduce((sum, e) => sum + e.bytes, 0))
+    expect(rows.site.trashBytes).toBe(rows.entries.filter((e) => e.deletedAt).reduce((sum, e) => sum + e.bytes, 0))
   })
 
-  it('clears a site that is bigger than one call, and refuses everything outside GINKO_LOCAL=1', async () => {
+  // Wrong behaviour caught: one clear call sizes its work by document count, so on a site with large entries it passes a
+  // mutation's read limit, fails, and leaves the local site partly emptied.
+  it('clears a site that is bigger than one call by bytes, and refuses everything outside GINKO_LOCAL=1', async () => {
     vi.stubEnv('GINKO_LOCAL', '1')
     const s = await setup()
     await s.t.run(async (ctx) => {
       const template = (await ctx.db.get(s.entries['menu-dal']!))!
       const { _id: _i, _creationTime: _t, ...row } = template
-      for (let i = 0; i < 350; i++) await ctx.db.insert('entries', { ...row, order: 100 + i })
+      // 24 entries of 200,000 characters: about 4.8 MB, far fewer documents than one call took before.
+      for (let i = 0; i < 24; i++) await ctx.db.insert('entries', { ...row, order: 100 + i, data: { ...(row.data as object), description: { de: 'x'.repeat(200_000) } } })
     })
     const clear = makeFunctionReference<'mutation'>('seed:importClear')
     const answers = []
@@ -295,10 +324,114 @@ describe('export → import round trip (SPEC 12)', () => {
 
     vi.stubEnv('GINKO_LOCAL', '')
     const keep = await setup()
-    for (const [fn, args] of [['seed:importClear', { site: 'restaurant' }], ['seed:uploadUrl', {}], ['seed:importExport', { site: 'restaurant', files: [], entries: [] }]] as const) {
+    for (const [fn, args] of [['seed:importClear', { site: 'restaurant' }], ['seed:uploadUrl', { site: 'restaurant' }], ['seed:importExport', { site: 'restaurant', files: [], entries: [] }]] as const) {
       expect([fn, (await errorOf(keep.t.mutation(makeFunctionReference<'mutation'>(fn), args))).code]).toEqual([fn, 'FORBIDDEN'])
     }
     expect(await keep.t.run((ctx) => ctx.db.query('entries').collect())).not.toHaveLength(0)
+  })
+})
+
+describe('import of local:files-export originals', () => {
+  // Wrong behaviour caught: an original was stored as if processed (no content check, metadata kept, a 3000 px image
+  // served as it is, no smaller copies), and every repeated import added the same pictures again.
+  it('an original image from files-export goes through the upload pipeline', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    vi.useFakeTimers()
+    const s = await setup()
+    const jpeg = new Uint8Array(await sharp({ create: { width: 3000, height: 2000, channels: 3, background: '#2f7d4a' } }).jpeg().toBuffer())
+    // files-export names an original by the SHA-256 of its bytes, the hash the upload pipeline records.
+    const hash = createHash('sha256').update(jpeg).digest('hex')
+    const store = () => s.t.run((ctx) => ctx.storage.store(new Blob([jpeg], { type: 'image/jpeg' })))
+    const event = { id: 'e1', brick: 'events', kind: 'item' as const, order: 1, prints: {}, rev: 1, data: { title: { de: 'Weinabend' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de: 'hi' }, image: { file: hash, alt: { de: 'Ein Hund' } } } }
+    const importOnce = async () => s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', files: [{ id: hash, storageId: await store(), name: 'a.jpg', mime: 'image/jpeg', size: jpeg.byteLength, sha256: hash, original: true }], entries: [event],
+    })
+    await importOnce()
+    await s.t.finishAllScheduledFunctions(vi.runAllTimers)
+    await importOnce()
+    const uploads = await s.t.run((ctx) => ctx.db.query('uploads').collect())
+    expect(uploads.map((u) => ({ status: u.status, width: u.width, height: u.height, processed: u.processedId !== u.storageId, variants: u.variants?.map((x) => x.width) })))
+      .toEqual([{ status: 'ready', width: 2400, height: 1600, processed: true, variants: [480, 960, 1600] }])
+  })
+})
+
+describe('import of a text with a library picture', () => {
+  // Wrong behaviour caught: the import gives the picture a new file ID inside the German text, so every English text
+  // with a picture showed "German changed since the translation" right after the import (v7 case studies).
+  it('keeps a current translation current when the picture gets its new file ID', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2])
+    const hash = createHash('sha256').update(bytes).digest('hex')
+    const de = `Wein und Jause.\n\n![Ein Hund]($file.${hash})`
+    const event = {
+      id: 'e1', brick: 'events', kind: 'item' as const, order: 1, rev: 1,
+      data: { title: { de: 'Weinabend', en: 'Wine evening' }, when: { from: '2026-11-01', to: '2026-11-02' }, description: { de, en: `Wine and a cold platter.\n\n![A dog]($file.${hash})` } },
+      prints: { title: { en: printOf('Weinabend') }, description: { en: printOf(de) } },
+    }
+    await s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', entries: [event],
+      files: [{ id: hash, storageId: await s.t.run((ctx) => ctx.storage.store(new Blob([bytes], { type: 'image/webp' }))), name: 'hund.webp', mime: 'image/webp', size: bytes.byteLength, sha256: hash }],
+    })
+    const events = await s.t.run((ctx) => ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'events')).collect())
+    const row = events.find((e) => (e.data as { description: { de: string } }).description.de.startsWith('Wein und Jause'))
+    const description = (row!.data as { description: { de: string } }).description.de
+    expect(description).not.toContain(hash)
+    expect(row!.prints).toEqual({ title: { en: printOf('Weinabend') }, description: { en: printOf(description) } })
+  })
+})
+
+describe('import of a backup with the same picture twice', () => {
+  // Wrong behaviour caught: two library files of one backup with the same bytes became one on restore, and the second
+  // lost its description and kept flag (the entries using it showed the first file's description).
+  it('restores two files with the same bytes as two library files, also when imported again', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2])
+    const hash = createHash('sha256').update(bytes).digest('hex')
+    const file = async (id: string, extra: object) => ({ id, storageId: await s.t.run((ctx) => ctx.storage.store(new Blob([bytes], { type: 'image/webp' }))), name: `${id}.webp`, mime: 'image/webp', size: bytes.byteLength, sha256: hash, ...extra })
+    const importOnce = async () => s.t.mutation(internal.seed.importExport, {
+      site: 'restaurant', files: [await file('a', { alt: { de: 'Hund' }, kept: true }), await file('b', { alt: { de: 'Katze' }, kept: true })], entries: [],
+    })
+    await importOnce()
+    await importOnce()
+    const uploads = await s.t.run((ctx) => ctx.db.query('uploads').withIndex('by_site_sha256', (q) => q.eq('site', s.site).eq('sha256', hash)).collect())
+    expect(uploads.map((u) => [u.alt, u.kept])).toEqual([[{ de: 'Hund' }, true], [{ de: 'Katze' }, true]])
+  })
+})
+
+describe('import budget (SPEC 3)', () => {
+  // Wrong behaviour caught: an import stores entries over the entry limit (the Studio then cannot save them), and the
+  // CLI clears the local site before the platform refuses anything, so a refused import leaves it half-imported.
+  it('an export entry over the entry limit is refused with every problem, and nothing is stored or cleared', async () => {
+    vi.stubEnv('GINKO_LOCAL', '1')
+    const s = await setup()
+    const notice = (id: string, text: string) => ({ id, brick: 'notices', kind: 'item' as const, order: 1, data: { text: { de: text } }, prints: {}, rev: 1 })
+    const entries = [notice('e1', 'x'.repeat(500 * 1024)), notice('e2', 'kurz'), notice('e3', 'y'.repeat(600 * 1024))]
+    const before = await s.t.run((ctx) => ctx.db.query('entries').collect())
+
+    const refused = await errorOf(s.t.mutation(internal.seed.importExport, { site: 'restaurant', files: [], entries }))
+    expect(refused).toMatchObject({ code: 'TOO_LARGE', message: 'Eintrag „e1“ ist zu groß (500 KB, höchstens 480 KB).' })
+    // This call clears nothing, so the site's own three notices count toward the collection's max too.
+    expect(refused.details).toMatchObject({ problems: [
+      { message: 'Eintrag „e1“ ist zu groß (500 KB, höchstens 480 KB).' }, { message: 'Eintrag „e3“ ist zu groß (600 KB, höchstens 480 KB).' },
+      { message: 'Die Sammlung „notices“ hat 6 Einträge, höchstens 5 gehen.' },
+    ] })
+
+    const dir = await tempDir()
+    const schema = (await s.t.run((ctx) => ctx.db.get(s.site)))!.schema
+    await writeFile(join(dir, 'export.json'), JSON.stringify({
+      format: 1, site: 'restaurant', name: 'Linde', schema, schemaRev: 1, contentRev: 1, exportedAt: '2026-10-14T00:00:00.000Z', entries, files: [],
+    }))
+    const { run, upload, calls } = localOf(s)
+    await expect(importSite({ dir, run, upload, log: () => undefined })).rejects.toThrow([
+      'The platform would refuse this export:',
+      '  ✗ Entry e1 (notices) is 501 KiB; the limit is 480 KiB.',
+      '  ✗ Entry e3 (notices) is 601 KiB; the limit is 480 KiB.',
+      'Nothing was imported. Fix these entries in export.json, then run the command again.',
+    ].join('\n'))
+    expect(calls).toEqual([])
+    expect(await s.t.run((ctx) => ctx.db.query('entries').collect())).toEqual(before)
   })
 })
 

@@ -5,7 +5,7 @@ import type { Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, people, setup } from './setup'
+import { errorOf, firstPage, opId, people, setup } from './setup'
 
 const NOW = Date.parse('2026-10-08T10:00:00Z')
 const MINUTE = 60 * 1000
@@ -125,7 +125,90 @@ describe('when a write needs a yes', () => {
   })
 })
 
+describe('approving after the planned publish time', () => {
+  const dish = { category: 'starters', name: { de: 'Neu' }, price: { amount: 900 }, allergens: ['A'], veg: 'none' }
+  /** The menu keeps drafts; the cook's tasks need approval. */
+  async function draftsSetup() {
+    const s = await approvalSetup()
+    await s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      const schema = site.schema as Schema
+      ;(schema.bricks.menu as { drafts?: boolean }).drafts = true
+      await ctx.db.patch(s.site, { schema })
+    })
+    return s
+  }
+
+  // Wrong behaviour caught: the approval was refused ("time must be in the future") and the cook's dish stayed unpublished,
+  // with the proposal marked stale, because the owner took longer to decide than the cook's planned time.
+  it('a scheduled publish of an existing draft goes live at once, clamped to now, and the history says why', async () => {
+    const s = await draftsSetup()
+    const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish })
+    const sent = await s.as.cook.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), task: 'menu.add', entry: draft.entry as Id<'entries'>, lifeRev: 1, at: NOW + HOUR })
+    expect(sent).toMatchObject({ status: 'open' })
+
+    await s.advanceTo(NOW + 3 * HOUR)
+    const done = await s.as.owner.mutation(api.proposals.approve, { proposal: (sent as Proposed).proposal })
+    expect(done).toMatchObject({ status: 'applied' })
+    const published = (await s.row(draft.entry as Id<'entries'>))!
+    expect(published).toMatchObject({ state: 'live', contentAt: NOW + 3 * HOUR })
+    expect(published.publishAt).toBeUndefined()
+    const changes = await s.rows('changes')
+    expect(changes.filter((c) => c.kind === 'publish')).toEqual([expect.objectContaining({ at: NOW + 3 * HOUR, msg: { key: 'history.publishedLate', params: { title: 'Neu' } } })])
+    // Nothing is left to publish later.
+    expect(await s.t.run((ctx) => ctx.db.system.query('_scheduled_functions').collect())).not.toContainEqual(expect.objectContaining({ name: 'entries:publishDue', state: { kind: 'pending' } }))
+  })
+
+  it('a scheduled create goes live at once when approved after its time', async () => {
+    const s = await draftsSetup()
+    const sent = await s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish, publish: { at: NOW + HOUR } })
+    expect(sent).toMatchObject({ status: 'open' })
+    expect(await s.t.run((ctx) => ctx.db.query('entries').collect()).then((rows) => rows.filter((r) => r.brick === 'menu' && r.data.name?.de === 'Neu'))).toHaveLength(0)
+
+    await s.advanceTo(NOW + 2 * HOUR)
+    expect(await s.as.owner.mutation(api.proposals.approve, { proposal: (sent as Proposed).proposal })).toMatchObject({ status: 'applied' })
+    const rows = (await s.t.run((ctx) => ctx.db.query('entries').collect())).filter((r) => r.brick === 'menu' && (r.data.name as { de?: string })?.de === 'Neu')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.state ?? 'live').toBe('live')
+    expect(rows[0]!.publishAt).toBeUndefined()
+  })
+
+  it('approved before its time the entry stays a scheduled draft', async () => {
+    const s = await draftsSetup()
+    const sent = await s.as.cook.mutation(api.entries.create, { site: 'restaurant', opId: opId(), task: 'menu.add', brick: 'menu', data: dish, publish: { at: NOW + 3 * HOUR } })
+    await s.advanceTo(NOW + HOUR)
+    expect(await s.as.owner.mutation(api.proposals.approve, { proposal: (sent as Proposed).proposal })).toMatchObject({ status: 'applied' })
+    const rows = (await s.t.run((ctx) => ctx.db.query('entries').collect())).filter((r) => r.brick === 'menu' && (r.data.name as { de?: string })?.de === 'Neu')
+    expect(rows).toEqual([expect.objectContaining({ state: 'draft', publishAt: NOW + 3 * HOUR })])
+  })
+
+  it('a person calling publish with a time in the past is still refused', async () => {
+    const s = await draftsSetup()
+    const draft = await s.as.owner.mutation(api.entries.create, { site: 'restaurant', opId: opId(), brick: 'menu', data: dish })
+    const error = await errorOf(s.as.owner.mutation(api.entries.publish, { site: 'restaurant', opId: opId(), entry: draft.entry as Id<'entries'>, lifeRev: 1, at: NOW - HOUR }))
+    expect(error.code).toBe('INVALID')
+  })
+})
+
 describe('approving', () => {
+  // Wrong behaviour caught: the proposal of a copy forgets it is a copy, so on approval the create task's fields check
+  // refuses the carried-over soldOutOn and the approved copy goes stale.
+  it('an approved copy made through a create task with fields is created with what the original holds', async () => {
+    const s = await approvalSetup()
+    await s.t.run(async (ctx) => {
+      const entry = (await ctx.db.get(s.saibling))!
+      await ctx.db.patch(s.saibling, { data: { ...entry.data, soldOutOn: '2026-10-20' } })
+    })
+    const before = (await s.rows('proposals')).length
+    const { proposal } = await s.as.cook.mutation(api.entries.duplicate, { site: 'restaurant', opId: opId(), task: 'menu.add', entry: s.saibling }) as Proposed
+    expect((await s.rows('proposals')).length).toBe(before + 1)
+    const done = await s.as.owner.mutation(api.proposals.approve, { proposal })
+    expect(done).not.toMatchObject({ status: 'stale' })
+    expect(await s.proposalRow(proposal)).toMatchObject({ status: 'applied' })
+    const copy = (await s.t.run((ctx) => ctx.db.query('entries').collect())).find((e) => e.brick === 'menu' && e._id !== s.saibling && e.data.soldOutOn === '2026-10-20')
+    expect(copy).toBeDefined()
+  })
+
   it('applies through the normal path: the change names the author and the approver, and it can be undone', async () => {
     const s = await approvalSetup()
     const { proposal } = (await s.cookPrice(s.saibling, 1450)) as Proposed
@@ -136,6 +219,8 @@ describe('approving', () => {
     const [change] = await s.rows('changes')
     expect(change).toMatchObject({ kind: 'save', actor: 'u-koch', approvedBy: 'u-wirtin', fields: ['price'], entryRev: 2 })
     expect(await s.proposalRow(proposal)).toMatchObject({ status: 'applied', decidedBy: 'u-wirtin', change: change!._id })
+    // Verlauf names both: who made it, who approved it (the reading owner herself: `self`, lib/names.ts).
+    expect((await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })).page[0]).toMatchObject({ who: { email: 'koch@example.com' }, approver: { self: true } })
 
     await s.as.owner.mutation(api.entries.undo, { site: 'restaurant', opId: opId(), change: change!._id })
     expect((await s.row(s.saibling))!.data.price).toEqual({ amount: 1350 })
@@ -262,6 +347,80 @@ describe('rejecting and withdrawing', () => {
   })
 })
 
+describe('the author follows up on their own proposal', () => {
+  /** The cook's note on this week's lunch, through the weekly task (it needs approval in the restaurant). */
+  const cookNote = (s: Setup, de: string) =>
+    s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: s.entries.lunch!, baseRev: 1, fields: { note: { de } } }) as Promise<Proposed>
+
+  // Wrong behaviour caught: sending the week again left two open proposals of the cook for the same week, and approving
+  // one made the other stale.
+  it('a second save through the same task replaces the author\'s open proposal on that entry, and only that one', async () => {
+    const s = await approvalSetup()
+    const first = await cookNote(s, 'Suppe inklusive')
+    const other = (await s.cookPrice(s.saibling, 1450)) as Proposed
+    const second = await cookNote(s, 'Suppe und Salat inklusive')
+    expect(await s.proposalRow(first.proposal)).toMatchObject({ status: 'withdrawn', decidedBy: people.cook })
+    expect([(await s.proposalRow(second.proposal))!.status, (await s.proposalRow(other.proposal))!.status]).toEqual(['open', 'open'])
+  })
+
+  // Wrong behaviour caught: after sending, the cook's sheet showed the old week, so he thought nothing was saved; a
+  // rejection was a dead end; an old rejection stayed on top of Verlauf after he sent the fix or the owner changed it.
+  it('ownFor gives the open proposal, then the rejection with its reason, until a newer proposal or a change of those fields', async () => {
+    const s = await approvalSetup()
+    const own = () => s.as.cook.query(api.proposals.ownFor, { site: 'restaurant', entry: s.entries.lunch! })
+    const rejected = async () => (await s.as.cook.query(api.proposals.mine, { site: 'restaurant' })).rejected.map((p) => p.proposal)
+    const first = await cookNote(s, 'Suppe inklusive')
+    expect(await own()).toMatchObject({ proposal: first.proposal, status: 'open', task: 'lunch.lunchWeek', fields: { note: { de: 'Suppe inklusive' } } })
+    await s.as.owner.mutation(api.proposals.reject, { proposal: first.proposal, reason: 'Bitte mit Preis.' })
+    expect(await own()).toMatchObject({ proposal: first.proposal, status: 'rejected', reason: 'Bitte mit Preis.', decidedBy: { kind: 'member' } })
+    expect(await rejected()).toEqual([first.proposal])
+
+    const second = await cookNote(s, 'Suppe inklusive, 12 Euro')
+    expect(await own()).toMatchObject({ proposal: second.proposal, status: 'open' })
+    expect(await rejected()).toEqual([])
+
+    await s.as.owner.mutation(api.proposals.reject, { proposal: second.proposal, reason: 'Zu teuer.' })
+    expect(await rejected()).toEqual([second.proposal])
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.lunch!, baseRev: 1, fields: { note: { de: 'Suppe inklusive, 11 Euro' } } })
+    expect(await own()).toBeNull()
+    expect(await rejected()).toEqual([])
+  })
+
+  // Wrong behaviour caught: the sheet started from a waiting proposal whose field the owner had changed since, so
+  // sending it again proposed the old value over the newer one with a fresh base, which no longer goes stale.
+  it('ownFor says when an open proposal no longer fits', async () => {
+    const s = await approvalSetup()
+    const own = () => s.as.cook.query(api.proposals.ownFor, { site: 'restaurant', entry: s.entries.lunch! })
+    await cookNote(s, 'Suppe inklusive')
+    expect(await own()).toMatchObject({ status: 'open', fits: true })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.lunch!, baseRev: 1, fields: { note: { de: 'Suppe und Salat inklusive' } } })
+    expect(await own()).toMatchObject({ status: 'open', fits: false })
+  })
+
+  // Wrong behaviour caught: the cook was never told that his week was not approved, and found out from the website.
+  it('a rejection mails the author at once with the reason and a link that reopens the proposal', async () => {
+    const s = await approvalSetup()
+    const { proposal } = await cookNote(s, 'Suppe inklusive')
+    await s.as.owner.mutation(api.proposals.reject, { proposal, reason: 'Bitte mit Preis.' })
+    const mails = (await s.rows('outbox')).filter((m) => m.to === 'koch@example.com')
+    expect(mails).toHaveLength(1)
+    expect(mails[0]!.subject).toContain('Nicht freigegeben')
+    expect(mails[0]!.text).toContain('„Bitte mit Preis.“')
+    expect(mails[0]!.text).toContain(`https://ginko.test/s/restaurant?task=lunch.lunchWeek&reopen=${proposal}`)
+  })
+
+  // Wrong behaviour caught: the mail about an assistant's rejected proposal linked to a sheet that cannot reopen it
+  // (the Studio follows up only on its own proposals), so "Korrigieren" opened the stored values.
+  it('the mail about an assistant\'s rejected proposal links to Verlauf', async () => {
+    const s = await approvalSetup()
+    const { proposal } = await cookNote(s, 'Suppe inklusive')
+    await s.t.run((ctx) => ctx.db.patch(proposal, { via: 'agent' }))
+    await s.as.owner.mutation(api.proposals.reject, { proposal, reason: 'Bitte mit Preis.' })
+    const [mail] = (await s.rows('outbox')).filter((m) => m.to === 'koch@example.com')
+    expect(mail!.text).toContain('Korrigieren: https://ginko.test/s/restaurant/history\n')
+  })
+})
+
 describe('reading', () => {
   it('approvers see every proposal, authors only their own; get returns before and after per field; count is "Zu prüfen"', async () => {
     const s = await approvalSetup()
@@ -269,10 +428,10 @@ describe('reading', () => {
     await s.t.run((ctx) => ctx.db.insert('proposals', {
       site: s.site, op: 'save', brick: 'menu', args: {}, base: {}, sentence: 'Fremd', author: 'u-anderer', via: 'ui', status: 'open', createdAt: NOW,
     }))
-    const all = await s.as.owner.query(api.proposals.list, { site: 'restaurant' })
+    const all = await s.as.owner.query(api.proposals.list, { site: 'restaurant', paginationOpts: firstPage })
     expect(all.page.map((p) => p.sentence).sort()).toEqual(['Fremd', 'Preis von „Gebeizter Saibling“ geändert'])
-    expect((await s.as.cook.query(api.proposals.list, { site: 'restaurant' })).page.map((p) => p.sentence)).toEqual(['Preis von „Gebeizter Saibling“ geändert'])
-    expect((await s.as.owner.query(api.proposals.list, { site: 'restaurant', status: 'applied' })).page).toEqual([])
+    expect((await s.as.cook.query(api.proposals.list, { site: 'restaurant', paginationOpts: firstPage })).page.map((p) => p.sentence)).toEqual(['Preis von „Gebeizter Saibling“ geändert'])
+    expect((await s.as.owner.query(api.proposals.list, { site: 'restaurant', status: 'applied', paginationOpts: firstPage })).page).toEqual([])
     expect(await s.as.owner.query(api.proposals.count, { site: 'restaurant' })).toBe(2)
     expect(await s.as.cook.query(api.proposals.count, { site: 'restaurant' })).toBe(1)
 
@@ -280,21 +439,50 @@ describe('reading', () => {
     expect(detail).toMatchObject({ diff: [{ field: 'price', before: { amount: 1350 }, after: { amount: 1450 } }], conflict: null, canDecide: true })
     await s.ownerPrice(s.saibling, 1500)
     expect((await s.as.owner.query(api.proposals.get, { site: 'restaurant', proposal })).conflict).toEqual(expect.stringContaining('Inzwischen'))
-    expect((await errorOf(s.as.stranger.query(api.proposals.list, { site: 'restaurant' }))).code).toBe('FORBIDDEN')
+    expect((await errorOf(s.as.stranger.query(api.proposals.list, { site: 'restaurant', paginationOpts: firstPage }))).code).toBe('FORBIDDEN')
   })
 
-  it('a row whose entry changed after the proposal conflicts; newest first, order oldest reverses, total counts the open ones', async () => {
+  it('a row whose entry changed after the proposal conflicts; newest first, order oldest reverses', async () => {
     const s = await approvalSetup()
     const first = (await s.cookPrice(s.saibling, 1450)) as Proposed
     const second = (await s.cookPrice(s.frittaten, 950)) as Proposed
     await s.ownerPrice(s.saibling, 1500)
-    const newest = await s.as.owner.query(api.proposals.list, { site: 'restaurant' })
+    const newest = await s.as.owner.query(api.proposals.list, { site: 'restaurant', paginationOpts: firstPage })
     expect(newest.page.map((p) => [p.proposal, p.conflict, p.conflictMsg?.key ?? null])).toEqual([
       [second.proposal, null, null],
       [first.proposal, 'Inzwischen hat jemand das geändert. Bitte schlage die Änderung neu vor.', 'history.staleChanged'],
     ])
-    expect(newest.total).toBe(2)
-    expect((await s.as.owner.query(api.proposals.list, { site: 'restaurant', order: 'oldest' })).page.map((p) => p.proposal)).toEqual([first.proposal, second.proposal])
+    expect((await s.as.owner.query(api.proposals.list, { site: 'restaurant', order: 'oldest', paginationOpts: firstPage })).page.map((p) => p.proposal)).toEqual([first.proposal, second.proposal])
+  })
+
+  // Wrong behaviour caught: History hides the approver's own waiting proposal once 50 newer ones of others exist.
+  it('mine shows an approver their own older open proposal behind more than 50 newer ones', async () => {
+    const s = await approvalSetup()
+    const base = { site: s.site, op: 'save' as const, brick: 'menu', args: {}, base: {}, via: 'agent' as const, status: 'open' as const, createdAt: NOW }
+    await s.t.run(async (ctx) => {
+      // The owner's own agent proposed first ("show me first"); then the cook sent 51 more.
+      await ctx.db.insert('proposals', { ...base, sentence: 'Meins', author: people.owner })
+      for (let i = 0; i < 51; i++) await ctx.db.insert('proposals', { ...base, sentence: `P${i}`, author: people.cook })
+    })
+    const mine = await s.as.owner.query(api.proposals.mine, { site: 'restaurant' })
+    expect(mine.open.map((p) => p.sentence)).toEqual(['Meins'])
+  })
+
+  // Wrong behaviour caught: a plan made weeks ago that failed today, or an old proposal rejected today, is hidden behind 50 newer-created ones decided long ago.
+  it('mine finds what was decided in the last two weeks, however long ago it was created', async () => {
+    const s = await approvalSetup()
+    const base = { site: s.site, op: 'save' as const, brick: 'menu', args: {}, base: {}, via: 'ui' as const, author: people.owner, createdAt: NOW }
+    const longAgo = NOW - 20 * 24 * HOUR
+    await s.t.run(async (ctx) => {
+      await ctx.db.insert('proposals', { ...base, sentence: 'Geplant', status: 'stale', at: NOW - HOUR, decidedAt: NOW - HOUR })
+      await ctx.db.insert('proposals', { ...base, sentence: 'Abgelehnt', status: 'rejected', decidedAt: NOW - HOUR })
+      for (let i = 0; i < 50; i++) {
+        await ctx.db.insert('proposals', { ...base, sentence: `S${i}`, status: 'stale', at: longAgo, decidedAt: longAgo })
+        await ctx.db.insert('proposals', { ...base, sentence: `R${i}`, status: 'rejected', decidedAt: longAgo })
+      }
+    })
+    const mine = await s.as.owner.query(api.proposals.mine, { site: 'restaurant' })
+    expect([mine.notLive.map((p) => p.sentence), mine.rejected.map((p) => p.sentence)]).toEqual([['Geplant'], ['Abgelehnt']])
   })
 })
 
@@ -308,8 +496,11 @@ describe('releases', () => {
     await s.as.owner.mutation(api.proposals.addToRelease, { release, proposal: b.proposal })
     // A member is decided with its release, not alone.
     expect((await errorOf(s.as.owner.mutation(api.proposals.approve, { proposal: a.proposal }))).code).toBe('INVALID')
+    expect((await s.as.owner.query(api.proposals.releases, { site: 'restaurant' })).map((r) => r.proposals.length)).toEqual([2])
 
     expect(await s.as.owner.mutation(api.proposals.approveRelease, { release })).toMatchObject({ status: 'applied', applied: 2 })
+    // The inbox lists only releases still to decide.
+    expect(await s.as.owner.query(api.proposals.releases, { site: 'restaurant' })).toEqual([])
     expect((await s.row(s.saibling))!.data.price).toEqual({ amount: 1450 })
     expect((await s.row(s.frittaten))!.data.price).toEqual({ amount: 1100 })
     expect((await s.rows('changes')).map((c) => c.approvedBy)).toEqual(['u-wirtin', 'u-wirtin'])
@@ -341,7 +532,8 @@ describe('releases', () => {
   it('two proposals for the same field in one release block it: the second would not fit after the first', async () => {
     const s = await approvalSetup()
     const a = (await s.cookPrice(s.saibling, 1450)) as Proposed
-    const b = (await s.cookPrice(s.saibling, 1600)) as Proposed
+    // Through another task: a second save through the same task would replace the first proposal.
+    const b = (await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.edit', entry: s.saibling, baseRev: 1, fields: { price: { amount: 1600 } } })) as Proposed
     const { release } = await s.as.owner.mutation(api.proposals.createRelease, { site: 'restaurant', name: 'Doppelt' }) as { release: Id<'releases'> }
     for (const p of [a, b]) await s.as.owner.mutation(api.proposals.addToRelease, { release, proposal: p.proposal })
     expect(await s.as.owner.mutation(api.proposals.approveRelease, { release })).toMatchObject({ status: 'stale', stale: [{ proposal: b.proposal }] })
@@ -482,12 +674,14 @@ describe('digest mail', () => {
     expect(mails[0]!.text).toContain('koch@example.com: Preis von „Frittatensuppe“ geändert')
     expect(mails[0]!.text).toContain('https://ginko.test/s/restaurant/review')
 
-    // The next proposal starts the next digest; the two already mailed are not listed again.
+    // The next proposal starts the next digest; the two already mailed are not listed again. The cook has set a name
+    // meanwhile: the mail names them as the Studio does, with the address they verified.
+    await s.as.cook.mutation(api.account.setName, { name: 'Franz Koch' })
     await s.cookPrice(s.saibling, 1500)
     await s.advanceTo(NOW + 25 * MINUTE)
     const later = await s.rows('outbox')
     expect(later).toHaveLength(2)
-    expect(later[1]!.text).toContain('Preis von „Gebeizter Saibling“ geändert')
+    expect(later[1]!.text).toContain('Franz Koch (koch@example.com): Preis von „Gebeizter Saibling“ geändert')
     expect(later[1]!.text).not.toContain('Frittaten')
   })
 
@@ -496,7 +690,8 @@ describe('digest mail', () => {
     const { proposal } = (await s.cookPrice(s.saibling, 1450)) as Proposed
     await s.as.owner.mutation(api.proposals.reject, { proposal, reason: 'Nein.' })
     await s.advanceTo(NOW + 11 * MINUTE)
-    expect(await s.rows('outbox')).toHaveLength(0)
+    // Only the cook's rejection mail: no digest to the owner.
+    expect((await s.rows('outbox')).map((m) => m.to)).toEqual(['koch@example.com'])
   })
 })
 

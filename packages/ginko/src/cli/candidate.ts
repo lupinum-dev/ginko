@@ -2,16 +2,11 @@
 // a release before it is sent. The platform repeats the same work in sites.release (SPEC 5.2),
 // so both must stay in step: same migration rules, same defaults, same validation.
 import {
-  checkSite, defaultsFor, fieldsChanged, isTranslatable, markdownTrees, releaseData, SITE_BUDGET, validate,
+  checkSite, defaultsFor, entryBytes, fieldsChanged, fitsBudget, isTranslatable, releaseData, SITE_BUDGET, validate,
   type Field, type Fields, type Json, type Locale, type Migration, type MigrationDescriptor, type Schema, type SiteInput,
 } from '../core/index.ts'
 import { type Candidate, isObject, type ReleaseState, type Write } from './model.ts'
-import { english } from './report.ts'
-
-// The platform also counts translation prints, so it stays the authority on the exact size.
-const BUDGET = SITE_BUDGET
-
-const byteSize = (value: unknown): number => new TextEncoder().encode(JSON.stringify(value ?? null)).byteLength
+import { english, kib } from './report.ts'
 
 /**
  * Builds the release candidate from the stored state and the local config. Runs every migration
@@ -86,25 +81,34 @@ export async function buildCandidate(state: ReleaseState, site: SiteInput, schem
     }
   }
 
+  // Budget, as sites.release counts it (core SITE_BUDGET, entryBytes, fitsBudget): only the live entries this release
+  // writes and the singles it creates must fit the entry limit, and only if they grow; removed entries count apart, in the
+  // trash. The state carries no translation prints, so sizes here are of the data alone; the platform has the exact ones.
   const changedData = new Map(changed.map((c) => [c.id, c.data]))
   const bytes = { site: 0, largest: 0 }
-  const count = (size: number, label: string) => {
+  let siteBefore = 0
+  const limit = `the limit is ${kib(SITE_BUDGET.entryBytes)}`
+  for (const entry of state.entries) {
+    if (entry.deletedAt !== null) continue
+    const before = entryBytes(entry.data)
+    const next = changedData.get(entry.id)
+    const after = next ? entryBytes(next) : before
+    siteBefore += before
+    bytes.site += after
+    bytes.largest = Math.max(bytes.largest, after)
+    if (!fitsBudget(after, before, SITE_BUDGET.entryBytes)) problems.push(`Entry ${entry.id} (${entry.brick}) would be ${kib(after)} after the release; ${limit}.`)
+  }
+  for (const single of created) {
+    const size = entryBytes(single.data)
     bytes.site += size
     bytes.largest = Math.max(bytes.largest, size)
-    if (size > BUDGET.entryBytes) problems.push(`${label} is too large (at most 256 KiB).`)
+    if (size > SITE_BUDGET.entryBytes) problems.push(`The new single brick “${single.brick}” would be ${kib(size)}; ${limit}.`)
   }
-  // Like the platform, an entry's size includes the trees of its Markdown texts.
-  const sizeOf = async (brick: string, data: Record<string, Json>) => {
-    const fields = (schema.bricks[brick] ?? state.schema.bricks[brick])?.fields ?? {}
-    return byteSize(data) + byteSize(await markdownTrees(fields, data))
-  }
-  for (const entry of state.entries) count(await sizeOf(entry.brick, changedData.get(entry.id) ?? entry.data), `Entry ${entry.id} (${entry.brick})`)
-  for (const single of created) count(await sizeOf(single.brick, single.data), `The new single brick “${single.brick}”`)
-  if (bytes.site > BUDGET.siteBytes) problems.push('The site has reached its storage budget (4 MiB).')
+  if (!fitsBudget(bytes.site, siteBefore, SITE_BUDGET.siteBytes)) problems.push(`The site would use ${kib(bytes.site)} of its ${kib(SITE_BUDGET.siteBytes)} of storage.`)
 
   // The limit counts live entries only, plus the singles this release creates (the platform checks the same in sites.release).
   const liveEntries = state.entries.filter((entry) => entry.deletedAt === null).length
-  if (liveEntries + created.length > BUDGET.entries) problems.push(`The site has reached its limit of ${BUDGET.entries} entries.`)
+  if (liveEntries + created.length > SITE_BUDGET.entries) problems.push(`The site has reached its limit of ${SITE_BUDGET.entries} entries.`)
 
   return {
     schema,

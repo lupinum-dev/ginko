@@ -1,0 +1,54 @@
+{
+  "title": "Menu",
+  "lead": "Our dishes and drinks, with today’s prices.",
+  "print": "Print the menu",
+  "printNow": "Print",
+  "back": "Back to the menu",
+  "jump": "Categories",
+  "categories": {
+    "starters": "Starters",
+    "soups": "Soups",
+    "mains": "Mains",
+    "desserts": "Desserts",
+    "drinks": "Drinks"
+  },
+  "diet": {
+    "vegetarian": "vegetarian",
+    "vegan": "vegan"
+  },
+  "soldOut": "sold out today",
+  "priceFrom": "from {date}: {price}",
+  "empty": "No dishes on the menu yet",
+  "prices": "All prices include VAT.",
+  "asOf": "As of {date}",
+  "allergens": {
+    "title": "Allergens",
+    "lead": "The letters next to each dish name its allergens.",
+    "label": "Allergens: {names}",
+    "none": "no allergens",
+    "ask": "If you have an allergy or an intolerance, please tell us when you order.",
+    "A": "Gluten",
+    "B": "Crustaceans",
+    "C": "Egg",
+    "D": "Fish",
+    "E": "Peanuts",
+    "F": "Soy",
+    "G": "Milk",
+    "H": "Tree nuts",
+    "L": "Celery",
+    "M": "Mustard",
+    "N": "Sesame",
+    "O": "Sulphites",
+    "P": "Lupin",
+    "R": "Molluscs"
+  },
+  "lunch": {
+    "title": "Lunch",
+    "today": "Today",
+    "closed": "Closed",
+    "pending": "This week’s lunch menu will follow soon.",
+    "served": "Lunch is served from {from} to {to}.",
+    "todayTitle": "Today’s lunch",
+    "week": "This week’s lunch"
+  }
+}

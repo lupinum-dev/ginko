@@ -2,6 +2,7 @@
   "issues": {
     "unknownBrick": "There is no brick “{brick}”.",
     "markdown": "“{label}”: {problem}",
+    "markdownAt": "“{label}”, line {line}: {problem}",
     "notObject": "An object is expected.",
     "unknownField": "Unknown field.",
     "fieldMissing": "“{label}” is missing.",
@@ -23,6 +24,8 @@
     "badTime": "“{label}” is not a valid time.",
     "badDateRange": "“{label}” is not a valid period.",
     "dateRangeOrder": "“{label}”: “from” is after “to”.",
+    "timeOrder": "“{end}” must be later than “{start}”.",
+    "notWeekStart": "“{label}” must be the first day of a week.",
     "badChoice": "“{label}” has an invalid value.",
     "badChoices": "“{label}” has invalid values.",
     "duplicateValues": "“{label}” contains values twice.",
@@ -39,6 +42,9 @@
     "duplicateRowId": "“{label}”: Row ID appears twice.",
     "notImage": "“{label}” is not a valid image.",
     "altMissing": "“{label}”: The image description (alt text) is missing.",
+    "fileRefMissing": "“{label}”: An image in the text is no longer in the Files library. Choose it again.",
+    "fileRefPdf": "A PDF cannot be shown as a picture. Link it instead: [text]($file.…).",
+    "markdownImageAltMissing": "“{label}”: An image in the text has no description. Describe it briefly for people who cannot see it.",
     "altTooLong": "“{label}”: Alt text is too long.",
     "notFile": "“{label}” is not a valid file."
   },
@@ -58,7 +64,9 @@
     "propBlocked": "The property “{prop}” is not allowed.",
     "unsafeLink": "Link is not allowed (only http, https, mailto, tel or /path).",
     "oneParagraph": "Only one paragraph is allowed here.",
-    "tooComplex": "Text is too complex (at most {max} elements)."
+    "tooComplex": "Text is too complex (at most {max} elements).",
+    "componentNotClosed": "The component “{tag}” is not closed: a line with “{close}” is missing after its content.",
+    "bracketText": "“[{text}” is neither a link nor an image: a “]” or the address in round brackets is missing. Square brackets as text: \\[ and \\]."
   },
   "component": {
     "or": "{first} or {second}",

@@ -1,31 +1,57 @@
 // Site queries for the UI and the admin-only creation of a site (SPEC 4.2, 10).
-import { isCurrency, isLocale, isTimeZone, labelOf as labelIn, MAX_LOCALES, weekInfoOf, type Schema } from '@lupinum/ginko/internal'
+import { isCurrency, isLocale, isTimeZone, isVisible, labelOf as labelIn, MAX_LOCALES, ordered, todayIn, weekInfoOf, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
+import type { Doc } from './_generated/dataModel'
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { actorFor, currentUser, fail, memberOf, type Actor } from './lib/access'
 import { NAME_MAX, SLUG } from './lib/input'
+import { isReminded, reminderBricks } from './lib/reminders'
+import { statesOf } from './lib/status'
 import { isFetchableSiteUrl } from './lib/siteUrl'
 import { leafStatus } from './lib/translation'
-import { labelOf } from './entries'
+import { titleOf } from './lib/list'
 import type { Data } from './lib/content'
 
-/** The sites the signed-in user may open, with their role. Admins see every site. A site being deleted is listed for owners and admins only (they can cancel). */
+/**
+ * The sites the signed-in user may open, with their role. Admins see every site. A site being deleted is listed for
+ * owners and admins only (they can cancel), marked `deleting`. `weekly`: the weekly reminder can mail this person about
+ * the site, for a weekly task or a status line (reminders.ts; it mails members only). The order is the database's; the Studio sorts by name.
+ */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
     const user = await currentUser(ctx)
-    const admin = await ctx.db.query('admins').withIndex('by_user', (q) => q.eq('user', user.id)).unique()
-    if (admin) {
-      const sites = await ctx.db.query('sites').collect()
-      return sites.map((site) => ({ slug: site.slug, name: site.name, url: site.url, role: 'admin' as const }))
-    }
     const memberships = await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', user.id)).collect()
+    const row = (site: Doc<'sites'>, role: 'admin' | Doc<'memberships'>['role']) => {
+      const member = memberships.find((m) => m.site === site._id)
+      const weekly = !!member && reminderBricks(site.schema as Schema).some(({ refs }) => isReminded(member, refs))
+      return { slug: site.slug, name: site.name, url: site.url, role, deleting: !!site.deleting, weekly }
+    }
+    const admin = await ctx.db.query('admins').withIndex('by_user', (q) => q.eq('user', user.id)).unique()
+    if (admin) return (await ctx.db.query('sites').collect()).map((site) => row(site, 'admin'))
     const sites = await Promise.all(memberships.map((member) => ctx.db.get(member.site)))
     return memberships.flatMap((member, index) => {
       const site = sites[index]
-      return site && (!site.deleting || member.role === 'owner') ? [{ slug: site.slug, name: site.name, url: site.url, role: member.role }] : []
+      return site && (!site.deleting || member.role === 'owner') ? [row(site, member.role)] : []
     })
+  },
+})
+
+/**
+ * The status lines of Today (UI.md 3) for the bricks this person has a task on, in schema order: each brick's line
+ * (`status` on the brick, or the drafts of a drafts collection) and whether its section is due. Bricks with neither are
+ * left out. Staff count only their own drafts.
+ */
+export const today = query({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    const schema = actor.site.schema as Schema
+    const staff = actor.role === 'staff'
+    const keys = ordered(schema.bricks).filter(([key, brick]) => (brick.tasks ?? []).some((task) => !staff || actor.grants.includes(`${key}.${task.id}`))).map(([key]) => key)
+    const states = await statesOf(ctx, actor.site, keys, todayIn(schema.timeZone), staff ? actor.user.id : undefined)
+    return states.filter((state) => state.line || state.due)
   },
 })
 
@@ -84,13 +110,16 @@ export const cancelDeletion = mutation({
   },
 })
 
-/** One site with its schema, its live entries, and the caller's own role and grants. `refreshToken` is never returned. */
-export const get = query({
+/**
+ * One site's settings and counters with its schema, and the caller's own role and grants: what every Studio page
+ * reads. No entries: each page reads the ones it shows (entries.list, get, single, titles, ofBricks), so a save
+ * does not send the whole site to every open tab. `refreshToken` is never returned.
+ */
+export const meta = query({
   args: { site: v.string() },
   handler: async (ctx, args) => {
     const actor = await actorFor(ctx, args.site)
     const site = actor.site
-    const entries = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).collect()
     return {
       site: {
         slug: site.slug,
@@ -100,9 +129,10 @@ export const get = query({
         schema: site.schema,
         schemaRev: site.schemaRev,
         contentRev: site.contentRev,
-        orderRevs: site.orderRevs,
         entryCount: site.entryCount,
         bytes: site.bytes,
+        /** Whether the trash holds removed entries (Alles bearbeiten links to it). From the trash's byte counter, so no read of the trash; removed entries of retired bricks count too. */
+        hasTrash: (site.trashBytes ?? 0) > 0,
         release: site.release,
         /** The site setting for agent review (SPEC 17); null: the config's `agents.review` decides. */
         agentReview: site.agentReview ?? null,
@@ -111,8 +141,6 @@ export const get = query({
       },
       role: actor.role,
       grants: actor.grants,
-      // The stored Markdown trees are for the bundle; the Studio edits the texts.
-      entries: entries.filter((entry) => entry.deletedAt === undefined).map(({ trees: _trees, ...entry }) => entry),
     }
   },
 })
@@ -174,9 +202,10 @@ async function insertSite(ctx: MutationCtx, args: { slug: string; name: string; 
     schema,
     schemaRev: 1,
     contentRev: 1,
-    orderRevs: {},
     entryCount: 0,
     bytes: 0,
+    trashBytes: 0,
+    treeBytes: 0,
     release: null,
   })
 }
@@ -221,42 +250,73 @@ export const setRefreshToken = internalMutation({
   },
 })
 
-/** Entries named per brick and language in the translation status; the totals always count all. */
-export const TRANSLATION_LIST_MAX = 200
+/** The most entries the translation overview lists; the counts stay complete beyond it. */
+const TRANSLATION_ROWS = 200
 
 /**
  * Translation status (SPEC 4.2): per brick and per language other than the main one, how many entries
- * have every text (`ok`), at least one missing text (`missing`), or only outdated ones (`outdated`),
- * and which texts. It uses the rule of the bundle (`resolveEntry`), so it matches what ginko_read
- * reports; like the bundle it counts live entries and singles, not drafts. Any member may read.
+ * have every text (`ok`), at least one missing text (`missing`), or only outdated ones (`outdated`).
+ * It uses the rule of the bundle (`resolveEntry`), so it matches what ginko_read reports. It counts what the
+ * website shows: live entries and singles, not drafts, and no entry whose date has passed (`isVisible`, as the
+ * site's listings). `entries` lists the entries with a gap for the Studio's overview ("Übersetzungen"), by
+ * brick in config order and then the site's order, at most TRANSLATION_ROWS (`truncated`): the title (null for
+ * a single and an untitled entry: the Studio shows the area), how many texts are missing or outdated, and
+ * whether the gap keeps the page off the website in that language (`hidden`). Titles of planned weeks are in
+ * `language`. Any member may read; staff get the areas of their tasks (as in Alles bearbeiten), so the list
+ * and the count cover the same entries.
  */
 export const translationStatus = query({
-  args: { site: v.string() },
+  args: { site: v.string(), language: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const actor = await actorFor(ctx, args.site)
     const schema = actor.site.schema as Schema
     const foreign = schema.locales.slice(1)
     const bricks = []
-    for (const [key, def] of Object.entries(schema.bricks)) {
-      if (def.retired) continue
+    const entries: { brick: string; entry: string; title: string | null; locale: string; missing: number; outdated: number; hidden: boolean }[] = []
+    let truncated = false
+    const today = todayIn(schema.timeZone)
+    const opens = (key: string, tasks: readonly { id: string }[] = []) => actor.role !== 'staff' || tasks.some((t) => actor.grants.includes(`${key}.${t.id}`))
+    for (const [key, def] of ordered(schema.bricks)) {
+      if (def.retired || !opens(key, def.tasks)) continue
       const rows = (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', key)).collect())
-        .filter((row) => !row.deletedAt && row.state !== 'draft')
-      const locales: Record<string, { missing: number; outdated: number; ok: number; entries: { entry: string; label: string; missing: string[]; outdated: string[] }[]; truncated: boolean }> = {}
-      for (const locale of foreign) {
-        const out = { missing: 0, outdated: 0, ok: 0, entries: [] as { entry: string; label: string; missing: string[]; outdated: string[] }[], truncated: false }
-        for (const row of rows) {
+        .filter((row) => !row.deletedAt && row.state !== 'draft' && isVisible(def, row.data as Data, today))
+      const locales: Record<string, { missing: number; outdated: number; ok: number }> = {}
+      for (const locale of foreign) locales[locale] = { missing: 0, outdated: 0, ok: 0 }
+      for (const row of rows) {
+        for (const locale of foreign) {
           const status = leafStatus(schema, key, row, locale)
-          if (!status.missing.length && !status.outdated.length) { out.ok += 1; continue }
+          const out = locales[locale]!
           // One count per entry: a missing text outweighs an outdated one.
           if (status.missing.length) out.missing += 1
-          else out.outdated += 1
-          if (out.entries.length >= TRANSLATION_LIST_MAX) { out.truncated = true; continue }
-          out.entries.push({ entry: row._id, label: labelOf(schema, key, row.data as Data), missing: status.missing, outdated: status.outdated })
+          else if (status.outdated.length) out.outdated += 1
+          else out.ok += 1
+          if (!status.missing.length && !status.outdated.length) continue
+          if (entries.length >= TRANSLATION_ROWS) { truncated = true; continue }
+          entries.push({
+            brick: key, entry: row._id, title: def.kind === 'single' ? null : titleOf(schema, def, row.data as Data, args.language),
+            locale, missing: status.missing.length, outdated: status.outdated.length, hidden: status.page === 'hidden',
+          })
         }
-        locales[locale] = out
       }
       bricks.push({ brick: key, label: labelIn(def.label, schema.locales[0]!, schema.locales[0]!), kind: def.kind, locales })
     }
-    return { main: schema.locales[0]!, locales: foreign, bricks }
+    return { main: schema.locales[0]!, locales: foreign, bricks, entries, truncated }
+  },
+})
+
+/**
+ * One-time cleanup (internals/migrations.md): removes the unused `orderRevs` from every site. Running it again is safe.
+ * Internal: `npx convex run sites:dropOrderRevs`.
+ */
+export const dropOrderRevs = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    let cleared = 0
+    for (const site of await ctx.db.query('sites').collect()) {
+      if (site.orderRevs === undefined) continue
+      await ctx.db.patch(site._id, { orderRevs: undefined })
+      cleared++
+    }
+    return { cleared }
   },
 })

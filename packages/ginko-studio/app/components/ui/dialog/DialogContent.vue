@@ -17,19 +17,19 @@ defineOptions({
   inheritAttrs: false,
 })
 
-const props = withDefaults(defineProps<DialogContentProps & { class?: HTMLAttributes["class"], showCloseButton?: boolean, portalTo?: HTMLElement }>(), {
+const props = withDefaults(defineProps<DialogContentProps & { class?: HTMLAttributes["class"], showCloseButton?: boolean }>(), {
   showCloseButton: true,
 })
 const emits = defineEmits<DialogContentEmits>()
 const { t } = useI18n()
 
-const delegatedProps = reactiveOmit(props, "class", "portalTo")
+const delegatedProps = reactiveOmit(props, "class")
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
 </script>
 
 <template>
-  <DialogPortal :to="portalTo">
+  <DialogPortal>
     <DialogOverlay />
     <DialogContent
       data-slot="dialog-content"

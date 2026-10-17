@@ -2,23 +2,25 @@
 // JSON answer out, no SSE, no session. Order: key and rate limit, then the method. Tool failures are
 // tool results with `isError` and the English message, so the assistant can tell the person.
 import type { Json } from '@lupinum/ginko'
-import { coreMessage, sha256 } from '@lupinum/ginko/internal'
+import { coreMessage, sha256, SITE_BUDGET } from '@lupinum/ginko/internal'
 import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'
 import type { Id } from '../_generated/dataModel'
 import { httpAction, type ActionCtx } from '../_generated/server'
 import { READ_TOOLS } from '../lib/agentTools'
+import { badKey } from '../lib/input'
 import { t, type MessageKey } from '../lib/i18n'
 
 const PROTOCOL = '2025-06-18'
-/** SPEC 16: answers stay under 256 KiB. */
-const ANSWER_MAX = 256 * 1024
+/** An answer holds at least one whole entry the Studio can save (SITE_BUDGET.entryBytes) plus room for its wrapping. */
+const ANSWER_MAX = SITE_BUDGET.entryBytes + 64 * 1024
 const BODY_MAX = 512 * 1024
 const KEY = /^ginko_agent_[a-z0-9]{32}$/
 
 // Written for the model, in English whatever the language of the site: the model answers the person in theirs.
 const INSTRUCTIONS = 'Ginko maintains the content of one website for one person. Call ginko_overview first. Every task is a tool. '
   + 'Changes are live in about a minute and can be taken back with ginko_undo. Ask the person before removing anything. '
+  + 'When you retry a change, send the same request_id, so it runs only once. '
   + 'Texts that belong to the website stay in the language of the website; answer the person in their own language.'
 
 type Rpc = { jsonrpc: '2.0'; id?: string | number | null; method: string; params?: Record<string, Json> }
@@ -59,6 +61,9 @@ function messageOf(error: unknown): string {
 }
 
 async function callTool(ctx: ActionCtx, key: Id<'agentKeys'>, name: string, args: Record<string, Json>) {
+  // Convex refuses such a key with an uncoded error before agent.call runs; the assistant needs the name to fix the call.
+  const bad = badKey(args)
+  if (bad) return toolText(t('en', 'errors.nameNotAllowed', { name: bad }), undefined, true)
   try {
     if (name === 'ginko_overview') return toolText('Overview of the website.', await ctx.runQuery(internal.agent.overview, { key }))
     if (name === 'ginko_history') {
@@ -72,10 +77,9 @@ async function callTool(ctx: ActionCtx, key: Id<'agentKeys'>, name: string, args
       if (typeof bundle === 'string') return toolText('The website cannot be read right now.', undefined, true)
       const brick = typeof args.brick === 'string' && Object.hasOwn(bundle.bricks, args.brick) ? bundle.bricks[args.brick] : undefined
       if (!brick) return toolText(`There is no brick “${String(args.brick)}”. The brick keys are in ginko_overview.`, undefined, true)
-      // In another language, `stale` names the texts whose translation exists but is outdated (the rest of `fallback` is missing).
+      // In another language, `fallback` names the missing translations and `stale` the outdated ones, which the website still shows.
       if (bundle.locale !== bundle.mainLocale) {
-        const fallback = Object.fromEntries(brick.kind === 'collection' ? brick.items.map((i) => [i.id, i.fallback]) : [['single', brick.fallback]])
-        const stale = await ctx.runQuery(internal.agent.stale, { key, brick: String(args.brick), locale: bundle.locale, fallback })
+        const stale = await ctx.runQuery(internal.agent.stale, { key, brick: String(args.brick), locale: bundle.locale })
         if (Object.keys(stale).length) return toolText(`Content of “${String(args.brick)}” (${bundle.locale}).`, { ...brick, stale })
       }
       return toolText(`Content of “${String(args.brick)}” (${bundle.locale}).`, brick)

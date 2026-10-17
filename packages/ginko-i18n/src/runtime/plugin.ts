@@ -1,8 +1,9 @@
 import { shallowReactive } from 'vue'
-import { defineNuxtPlugin, isPrerendered, loadPayload, useHead, useRequestEvent, useRoute, useRouter, useState } from '#imports'
+import { addRouteMiddleware, defineNuxtPlugin, isPrerendered, loadPayload, navigateTo, useError, useHead, useRequestEvent, useRequestHeader, useRoute, useRouter, useState } from '#imports'
 import { config } from '#ginko-i18n/config.mjs'
 import { loaders } from '#ginko-i18n/loaders.mjs'
-import { alternatesOf, inUserZone, localeFromPath, ogLocale, type MessageTree } from '@lupinum/ginko-i18n/core'
+import type { RouteLocationNormalizedGeneric } from 'vue-router'
+import { alternatesOf, cleanPath, inUserZone, localeFromPath, ogLocale, type MessageTree } from '@lupinum/ginko-i18n/core'
 import { alternatesKey, createLocalePath, currentLocale, useI18n, writeLocaleCookie } from './composables'
 import type { AlternatesResolver, I18nState, RuntimeConfig } from './types'
 
@@ -30,6 +31,12 @@ export default defineNuxtPlugin({
       const fromEvent = import.meta.server ? useRequestEvent()?.context.locale : undefined
       return typeof fromEvent === 'string' && c.locales.some(l => l.code === fromEvent) ? fromEvent : c.defaultLocale
     })
+    // The browser's first language, for the region of dates in user-locale zones. One source like the
+    // locale: the request header on the server, the payload on the client (`navigator` only without server rendering).
+    const browserLanguage = useState<string | undefined>('ginko-i18n:browser-language', () => {
+      if (import.meta.client) return navigator.language
+      return useRequestHeader('accept-language')?.split(',')[0]?.split(';')[0]?.trim() || undefined
+    })
     let inlined = false
     const resolvers: AlternatesResolver[] = []
 
@@ -37,6 +44,28 @@ export default defineNuxtPlugin({
     // messages. Nuxt runs the initial navigation in `app:created`, before the app mounts, so the
     // client never hydrates with a different set of messages than the server rendered with.
     const router = useRouter()
+
+    // vue-router matches any case and ignores a trailing slash, so `/Blog/` renders the page of `/blog`.
+    // The site's own spelling is the matched record's path with the params as given (a slug keeps the
+    // visitor's case, so content lookup still decides). One source for the redirect and the canonical tag.
+    const decoded = (path: string) => {
+      try { return decodeURI(path) }
+      catch { return path }
+    }
+    const canonicalPath = (to: RouteLocationNormalizedGeneric) => {
+      const own = to.name && to.matched.length ? router.resolve({ name: to.name, params: to.params }).path : to.path
+      // The record keeps `ü` as written while the request has `%C3%BC`: the same path, in the request's form.
+      const path = decoded(own) === decoded(to.path) ? to.path : own
+      return cleanPath(path, c) ?? path
+    }
+    const same = (path: string) => decoded(path).replace(/(.)\/$/, '$1').toLowerCase()
+    addRouteMiddleware('ginko-i18n:canonical', (to) => {
+      const canonical = canonicalPath(to)
+      // Only a case or trailing-slash difference redirects; anything else could loop.
+      if (canonical !== to.path && same(canonical) === same(to.path))
+        return navigateTo({ path: canonical, query: to.query, hash: to.hash }, { redirectCode: 301, replace: true })
+    }, { global: true })
+
     router.beforeResolve(async (to) => {
       const zone = inUserZone(to.path, c)
       const code = zone ? userLocale.value : localeFromPath(to.path, c) ?? c.defaultLocale
@@ -101,15 +130,18 @@ export default defineNuxtPlugin({
     }
     if (fixedLocale) await load(fixedLocale)
 
-    nuxtApp.provide('ginkoI18n', { messages, load, fixedLocale, resolvers, userLocale } satisfies I18nState)
+    nuxtApp.provide('ginkoI18n', { messages, load, fixedLocale, resolvers, userLocale, browserLanguage } satisfies I18nState)
 
     if (c.seo) {
       nuxtApp.hook('app:created', () => {
         const route = useRoute()
         const i18n = useI18n()
+        const error = useError()
         useHead(() => {
           const code = currentLocale(route.path, c, userLocale.value)
           const locale = c.locales.find(l => l.code === code)!
+          // An error page is not a page of the site: no address to prefer, no translations, not indexed.
+          if (error.value) return { htmlAttrs: { lang: locale.language, dir: locale.dir }, meta: [{ name: 'robots', content: 'noindex' }] }
           // User-locale zone: one URL for every locale, so only `lang` and `dir`; no canonical or hreflang.
           if (inUserZone(route.path, c)) return { htmlAttrs: { lang: locale.language, dir: locale.dir } }
           const translated = i18n.alternates.value.filter(a => a.translated)
@@ -117,12 +149,12 @@ export default defineNuxtPlugin({
           return {
             htmlAttrs: { lang: locale.language, dir: locale.dir },
             link: [
-              { rel: 'canonical', href: url(route.path) },
+              { rel: 'canonical', href: url(canonicalPath(route)) },
               ...alternatesOf(Object.fromEntries(translated.map(a => [a.code, a.path])), c).map(a => ({ rel: 'alternate' as const, hreflang: a.hreflang, href: url(a.path) })),
             ],
             meta: [
               // Share links point at the canonical address, like search engines.
-              { property: 'og:url', content: url(route.path) },
+              { property: 'og:url', content: url(canonicalPath(route)) },
               { property: 'og:locale', content: ogLocale(locale.language) },
               ...translated.filter(a => !a.current).map(a => ({ property: 'og:locale:alternate', content: ogLocale(a.language) })),
             ],

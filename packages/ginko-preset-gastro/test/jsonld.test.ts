@@ -121,6 +121,37 @@ describe('eventJsonLd', () => {
       url: 'https://linde.example/veranstaltungen/sake',
       offers: { '@type': 'Offer', price: '3500', priceCurrency: 'JPY' },
     }],
+    // Wrong behaviour caught: a fully booked event still offered its booking link to search engines.
+    ['fully booked: the offer says SoldOut and drops the booking link', {
+      title: 'Weinabend', url: 'https://linde.example/veranstaltungen/weinabend', when: { from: '2026-11-06', to: '2026-11-06' },
+      location: { name: 'Gasthaus zur Linde' }, price: { amount: 2500 }, currency: 'EUR', booking: 'https://linde.example/reservierung', soldOut: true,
+    }, {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Weinabend',
+      startDate: '2026-11-06',
+      endDate: '2026-11-06',
+      eventStatus: 'https://schema.org/EventScheduled',
+      eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+      location: { '@type': 'Place', name: 'Gasthaus zur Linde' },
+      url: 'https://linde.example/veranstaltungen/weinabend',
+      offers: { '@type': 'Offer', price: '25.00', priceCurrency: 'EUR', availability: 'https://schema.org/SoldOut' },
+    }],
+    ['fully booked without a price: an offer with only the availability', {
+      title: 'Frühschoppen', url: 'https://linde.example/veranstaltungen/fruehschoppen', when: { from: '2026-11-08', to: '2026-11-08' },
+      location: { name: 'Gasthaus zur Linde' }, soldOut: true,
+    }, {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Frühschoppen',
+      startDate: '2026-11-08',
+      endDate: '2026-11-08',
+      eventStatus: 'https://schema.org/EventScheduled',
+      eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+      location: { '@type': 'Place', name: 'Gasthaus zur Linde' },
+      url: 'https://linde.example/veranstaltungen/fruehschoppen',
+      offers: { '@type': 'Offer', availability: 'https://schema.org/SoldOut' },
+    }],
     ['a start time: added to startDate without an offset', {
       title: 'Weinabend', url: 'https://linde.example/veranstaltungen/weinabend', when: { from: '2026-11-06', to: '2026-11-06' }, start: '19:00',
       location: { name: 'Gasthaus zur Linde' },

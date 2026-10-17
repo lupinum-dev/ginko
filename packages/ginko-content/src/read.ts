@@ -5,7 +5,7 @@ import type {
   Brick, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, urlClashes, urlsFor, validate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, routeUrls, urlClashes, validate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -34,6 +34,9 @@ export function errorLine(e: ContentError): string {
 export interface ReadOptions {
   /** `false` leaves out entries marked `draft: true`. Default `true` (dev shows drafts). */
   drafts?: boolean
+  /** `text` keeps each Markdown field as its source text, the form the platform stores and the Studio edits
+   * (`pnpm local:files-export`). Default `tree`: the parsed tree the site's bundle carries. */
+  markdown?: 'tree' | 'text'
 }
 
 export interface ReadResult {
@@ -320,6 +323,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     known.set(key, new Set((await entryNames(join(contentDir, key))).map((name) => `${key}/${name}`)))
   }
   const refs = (brick: string, id: string) => known.get(brick)?.has(id) ?? true
+  // Entries left out as drafts: an entry that belongs to one goes with it (below).
+  const leftOut = new Set<string>()
 
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (brick.source !== 'files') continue
@@ -405,12 +410,15 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const mainRel = group.main.rel
 
       const mainView = await readDoc(group.main, true)
+      if (mainView === 'draft') leftOut.add(id)
       if (mainView === undefined || mainView === 'draft') continue
       const views: Partial<Record<Locale, View>> = { [main]: mainView.view }
       // The parsed body per locale; it replaces the body text once validate() has checked the text.
       const trees: Partial<Record<Locale, MarkdownTree>> = { [main]: mainView.tree }
       const rels: Record<Locale, string> = { [main]: mainRel }
       const lines: Partial<Record<Locale, number>> = { [main]: group.main.csv?.row.line }
+      // The file line where each locale's body text starts, so a problem at a line of the text points into the file.
+      const bodyLines: Partial<Record<Locale, number>> = { [main]: mainView.bodyLine }
       for (const locale of schema.locales) {
         const src = group.translations[locale]
         if (src === undefined) continue
@@ -420,6 +428,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         if (doc.tree) trees[locale] = doc.tree
         rels[locale] = src.rel
         lines[locale] = src.csv?.row.line
+        bodyLines[locale] = doc.bodyLine
       }
 
       const prints: Prints = {}
@@ -433,15 +442,20 @@ export async function readContent(contentDir: string, publicDir: string, schema:
           const last = issue.path.split('.').pop()
           const locale = schema.locales.find((l) => l === last)
           const at = locale && rels[locale] ? locale : main
-          errors.push({ file: rels[at] ?? mainRel, path: issue.path, message: coreMessage('en', issue.key, issue.params), ...(lines[at] !== undefined ? { line: lines[at] } : {}) })
+          const bodyLine = bodyLines[at]
+          const textLine = issue.key === 'issues.markdownAt' && issue.path.split('.')[0] === markdownKeyOf(brick) ? issue.params?.line : undefined
+          const line = typeof textLine === 'number' && bodyLine !== undefined ? bodyLine + textLine - 1 : lines[at]
+          const params = line !== undefined && textLine !== undefined ? { ...issue.params, line } : issue.params
+          errors.push({ file: rels[at] ?? mainRel, path: issue.path, message: coreMessage('en', issue.key, params), ...(line !== undefined ? { line } : {}) })
         }
         continue
       }
 
-      // The text is valid: the tree takes its place (the bundle carries trees, CONTENT.md Phase 14).
+      // The text is valid: the tree takes its place (the bundle carries trees, CONTENT.md Phase 14), unless the caller
+      // wants the text the platform stores.
       const markdownKey = markdownKeyOf(brick)
       const texts = markdownKey === undefined ? undefined : data[markdownKey]
-      if (markdownKey !== undefined && isRecord(texts)) {
+      if (options.markdown !== 'text' && markdownKey !== undefined && isRecord(texts)) {
         data[markdownKey] = Object.fromEntries(Object.entries(texts).map(([locale, text]) => [locale, trees[locale as Locale] ?? text]))
         // Prints are of the stored main value, which is now the tree; a print of the text would mark every translation stale.
         for (const locale of Object.keys(prints[markdownKey] ?? {})) prints[markdownKey]![locale as Locale] = printOf((data[markdownKey] as Record<string, unknown>)[main])
@@ -469,8 +483,9 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       // Only reachable when drafts are on (dev): the site can mark the entry as a draft.
       if (mainView.draft) entry.data.draft = true
 
-      // A locale without its own slug takes the main one (`urlsFor`), so the URL can clash although the written slugs differ.
-      const urls = brick.kind === 'collection' ? urlsFor(schema, key, brick, entry, (fileId) => files[fileId]) : {}
+      // A locale without its own slug takes the main one (`routeUrls`), so the URL can clash although the written slugs differ.
+      // Every locale counts, translated or not: the entry gets that page as soon as it is translated.
+      const urls = brick.kind === 'collection' ? routeUrls(schema, brick, entry) : {}
       const urlClash = urlClashes([...urlOwners, { id, urls }]).find((c) => c.second === id)
       if (urlClash) {
         errors.push({ file: rels[urlClash.locale] ?? mainRel, path: slugKey, message: `URL “${urlClash.url}” is already taken by “${urlClash.first}”.` })
@@ -490,7 +505,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
      * the parsed body; YAML, JSON and CSV: the whole file or row is data and there is no body).
      * `'draft'` when the entry is marked `draft: true` and drafts are off.
      */
-    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; redirectFrom?: string[]; draft?: true } | 'draft' | undefined> {
+    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; draft?: true } | 'draft' | undefined> {
       const { rel } = src
       const ext = extOf(rel)
       const markdownKey = markdownKeyOf(brick)
@@ -498,6 +513,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const cx: FileCx = { file: rel, isMain, prefix: '', publicDir, files, errors: fileErrors, line: src.csv?.row.line }
       let data: Record<string, unknown>
       let parsed: Awaited<ReturnType<typeof parseFile>> | undefined
+      let bodyLine: number | undefined
       if (src.csv) {
         data = {}
         const { columns, row } = src.csv
@@ -520,6 +536,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
           rewriteImages(parsed.value.nodes, imageCx)
           rewriteImages(parsed.value.summary, imageCx)
           parsed.body = renameInText(parsed.body, imageCx.renames)
+          // The body is the end of the file (after the frontmatter); renames keep its lines.
+          bodyLine = text.split('\n').length - parsed.body.split('\n').length + 1
         } else {
           const raw = parseDataFile(text, ext, rel, errors)
           if (raw === undefined) return undefined
@@ -542,7 +560,22 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       // The slug defaults to the file name without its number (CONTENT.md "Slug"), for CSV to the `slug` cell.
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
       errors.push(...fileErrors)
-      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, redirectFrom: redirects, draft: draft === true ? true : undefined }
+      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, draft: draft === true ? true : undefined }
+    }
+  }
+
+  // An entry whose required single ref names a draft that was left out (a session of a draft event) is left out too:
+  // it belongs to something that is not public yet. Repeated while that removes more (a chain of such refs).
+  for (let size = -1; size !== leftOut.size;) {
+    size = leftOut.size
+    for (const [key, list] of Object.entries(entries)) {
+      const owners = Object.entries(schema.bricks[key]?.fields ?? {}).filter(([, field]) => field.type === 'ref' && !field.multiple && !field.optional).map(([name]) => name)
+      if (owners.length === 0) continue
+      entries[key] = list.filter((entry) => {
+        const draft = owners.some((name) => leftOut.has(entry.data[name] as string))
+        if (draft) leftOut.add(entry.id)
+        return !draft
+      })
     }
   }
 

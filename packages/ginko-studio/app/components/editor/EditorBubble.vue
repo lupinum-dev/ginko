@@ -33,9 +33,10 @@ watch(() => props.editor, (editor, _before, onCleanup) => {
   onCleanup(() => { editor.off('focus', on); editor.off('blur', off) })
 }, { immediate: true })
 
-// Not for a selected block (a component, a rule) and not in code blocks (no marks there).
+// Not for a selected block (a component, a rule) and not in code blocks (no marks there). The menu checks again a moment
+// after each change, when the editor may be gone already (the form closed); it then has no view to ask.
 const shouldShow = ({ editor, state }: { editor: Editor; state: Editor['state'] }) =>
-  !touch && !(state.selection instanceof NodeSelection) && !state.selection.empty && editor.isEditable && editor.view.hasFocus() && !editor.isActive('codeBlock') && !editor.isActive('mathBlock') && !editor.isActive('mermaid')
+  !editor.isDestroyed && !touch && !(state.selection instanceof NodeSelection) && !state.selection.empty && editor.isEditable && editor.view.hasFocus() && !editor.isActive('codeBlock') && !editor.isActive('mathBlock') && !editor.isActive('mermaid')
 </script>
 
 <template>

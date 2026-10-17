@@ -1,21 +1,24 @@
-<!-- The lunch menu of the week: 5 days from the week start. Today's row is marked. Shown only for the current work week (on the weekend: the coming one). -->
+<!-- The lunch menu of the week: 5 days from the week start. Today's row is marked, as closed when the house is closed today. Shown only for the current work week (on the weekend: the coming one). -->
 <script setup lang="ts">
 import { formatMoney } from '@lupinum/ginko'
-import { lunchPrintPath, type Weekday } from '../utils/site'
+import { lunchPrintPath, todayState, type Weekday } from '../utils/site'
 
 const langOf = useGinkoLang()
 
-const { lang, labels } = useSite()
+const { lang, labels, today } = useSite()
 const { t, format, language } = useI18n()
 const { lunch, current, todayKey } = useLunchWeek()
+const { ctx } = useHours()
+// Closed today (the owner's closure, a holiday, the rest day): today's dish is not served, the same rule as the Heute board.
+const closed = computed(() => todayState(ctx.value, today.value).kind !== 'open')
 </script>
 
 <template>
   <div v-if="current">
     <p class="week">{{ t('weekOf', { date: format.date(lunch.data.weekOf, { day: 'numeric', month: 'long' }) }) }}. {{ t('lunchHint') }}.</p>
     <ol class="days">
-      <li v-for="d in lunch.data.days" :key="d._id" :class="{ today: d.day === todayKey }" data-test="lunch" :aria-current="d.day === todayKey ? 'date' : undefined">
-        <span class="day">{{ labels.weekdays[d.day as Weekday] }}<span v-if="d.day === todayKey" class="tag">{{ t('today') }}</span></span>
+      <li v-for="d in lunch.data.days" :key="d._id" :class="{ today: d.day === todayKey, closed: d.day === todayKey && closed }" data-test="lunch" :aria-current="d.day === todayKey ? 'date' : undefined">
+        <span class="day">{{ labels.weekdays[d.day as Weekday] }}<span v-if="d.day === todayKey" class="tag">{{ closed ? t('closedToday') : t('today') }}</span></span>
         <span class="dish" :lang="langOf(lunch, `days.${d._id}.dish`)">{{ d.dish }}</span>
         <span class="meta">
           <Allergens :codes="d.allergens" />
@@ -44,6 +47,8 @@ const { lunch, current, todayKey } = useLunchWeek()
 .today .day { color: var(--linde-ink); }
 .tag { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--linde); color: var(--on-linde); font-size: 0.8rem; }
 .dish { font-family: var(--serif); font-size: 1.25rem; font-weight: 500; line-height: 1.3; }
+.closed .dish { color: var(--ink-2); }
+.closed .tag { background: var(--ink-2); color: var(--paper); }
 .meta { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .note { margin-top: 14px; color: var(--ink-2); }
 .print-link { margin-top: 14px; font-size: 1rem; }

@@ -1,8 +1,12 @@
 // Runtime config and helpers without Nuxt imports, so the module's unit tests can load them.
-import { markdownRequestPath, type Locale, type SiteInput } from '../../internal.ts'
+import { markdownRequestPath, type Locale, type SiteInput, type StoredHolidays } from '../../internal.ts'
 
 export interface GinkoPublicConfig {
   site: string; name: string; url: string; platform: string; locales: Locale[]; mainLocale: Locale; timeZone: string
+  /** `country` of the site config (ISO 3166-1), or '' when unset. */
+  country: string
+  /** The stored holiday calendar (`AT`, `DE`, `SG`, `none`, `custom`), or '' when the config sets neither `calendar` nor `country`. */
+  holidays: StoredHolidays | ''
   /** `seo` of the site config (`useGinkoSeo` defaults). */
   seo: NonNullable<SiteInput['seo']>
   /** `agents` of the site config (llms.txt, Markdown routes). */
@@ -23,7 +27,10 @@ export function agentRequest(path: string): { page: string; asMarkdown: boolean 
   return page === undefined ? { page: path, asMarkdown: false } : { page, asMarkdown: true }
 }
 
-/** The items of a routed brick, each with `url`: its address in `locale`. */
-export function withUrl<T extends { urls?: Partial<Record<string, string>> }>(items: T[], locale: Locale): (T & { url?: string })[] {
-  return items.map((item) => ({ ...item, url: item.urls?.[locale] }))
+/**
+ * The items of a routed brick, each with `url`: its address in `locale`. An entry without a page there (listed under
+ * `untranslated: 'fallback'`) links to its page in the main language `main`.
+ */
+export function withUrl<T extends { urls?: Partial<Record<string, string>> }>(items: T[], locale: Locale, main: Locale): (T & { url?: string })[] {
+  return items.map((item) => ({ ...item, url: item.urls?.[locale] ?? item.urls?.[main] }))
 }

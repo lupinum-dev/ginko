@@ -1,0 +1,13 @@
+{
+  "title": "Actualités",
+  "lead": "Ce qui s’est passé, et ce qui vient ensuite.",
+  "by": "par {names}",
+  "authors": "Écrit par",
+  "tags": "Mots-clés",
+  "tagged": "Articles avec le mot-clé « {tag} »",
+  "all": "Voir tous les articles",
+  "noTag": "Aucun article avec le mot-clé « {tag} »",
+  "empty": "Pas encore d’articles",
+  "feed": "Flux RSS",
+  "latest": "Toutes les actualités"
+}

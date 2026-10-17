@@ -2,7 +2,7 @@
      A combobox with search lists the target's entries by title. Several: chips plus the combobox, `max`
      respected. An ID whose entry is gone shows "Eintrag gibt es nicht mehr" with a remove button. -->
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { useI18n } from '#imports'
 import { CheckIcon, ChevronsUpDownIcon, PlusIcon, XIcon } from '@lucide/vue'
 import type { Field, Json } from '@lupinum/ginko'
@@ -19,7 +19,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 const { shown } = useStudioSite()
 const { t } = useI18n()
 const refs = useRefs()
-const options = computed(() => refs.options(props.field.to))
+const options = refs.options(() => props.field.to)
 const titleById = computed(() => new Map(options.value.map((o) => [o.id, o.title])))
 const ids = computed<string[]>(() => (props.field.multiple ? (Array.isArray(props.modelValue) ? (props.modelValue as string[]) : []) : typeof props.modelValue === 'string' && props.modelValue ? [props.modelValue] : []))
 const full = computed(() => props.field.multiple && props.field.max !== undefined && ids.value.length >= props.field.max)
@@ -39,6 +39,8 @@ function remove(id: string) {
     const next = ids.value.filter((x) => x !== id)
     emit('update:modelValue', props.field.optional || next.length ? next : [])
   } else emit('update:modelValue', undefined)
+  // The pressed button went with what it removed; the combobox is there afterwards (no longer full, no longer gone).
+  nextTick(() => document.getElementById(props.id)?.focus())
 }
 const single = computed(() => ids.value[0])
 const singleMissing = computed(() => single.value !== undefined && !titleById.value.has(single.value))

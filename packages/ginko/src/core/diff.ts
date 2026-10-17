@@ -20,7 +20,8 @@ export interface SchemaDiff {
 }
 
 const fx = (key: Extract<CoreKey, `diff.fix.${string}`> extends `diff.fix.${infer K}` ? K : never) => msg(`diff.fix.${key}`)
-const NEW_FIELD_FIX = fx('newField')
+// Pure: a bundle that never diffs schemas (the browser) leaves the message catalogs out.
+const NEW_FIELD_FIX = /* @__PURE__ */ fx('newField')
 
 /**
  * Production schemas only grow (SPEC 2.4). Everything not explicitly allowed is rejected.
@@ -54,6 +55,7 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
   }
   for (const k of ['name', 'url'] as const) if (prod[k] !== next[k]) ok(k, k, msg('diff.valueChanged', { name: k }))
   if (stableJson(prod.week) !== stableJson(next.week)) ok('week', 'week', msg('diff.valueChanged', { name: 'week' }))
+  if ((prod.holidays ?? null) !== (next.holidays ?? null)) ok('holidays', 'holidays', msg('diff.valueChanged', { name: 'holidays' }))
   if (stableJson(prod.pages) !== stableJson(next.pages)) ok('pages', 'pages', msg('diff.pagesChanged'))
   // A policy, not a data contract: switching agent review on or off changes no stored shape (SPEC 17).
   if (stableJson((prod.agents ?? null) as Json) !== stableJson((next.agents ?? null) as Json)) ok('agents', 'agents', msg('diff.agentsChanged'))
@@ -130,6 +132,10 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
   if (!sameLabel(before.describe ?? '', after.describe ?? '')) ok(`${key}.describe`, 'text', msg('diff.textChanged'))
   if ((before.layout ?? 'sections') !== (after.layout ?? 'sections')) ok(`${key}.layout`, 'text', msg('diff.textChanged'))
   if (stableJson(before.tasks ?? []) !== stableJson(after.tasks ?? [])) ok(`${key}.tasks`, 'tasks', msg('diff.tasksChanged'))
+  // A rule on stored values, not a stored shape: no value changes when it comes, goes or names other fields.
+  if (stableJson(before.planned ?? null) !== stableJson(after.planned ?? null)) ok(`${key}.planned`, 'planned', msg('diff.valueChanged', { name: 'planned' }))
+  // Presentation only, like a label: the Today page's status line reads the data, it stores nothing.
+  if (stableJson(before.status ?? null) !== stableJson(after.status ?? null)) ok(`${key}.status`, 'text', msg('diff.textChanged'))
   if (before.kind === 'collection' && after.kind === 'collection') {
     if (after.max < before.max) no(`${key}.max`, 'maxLowered', msg('diff.maxLowered', { at: key }), fx('keepMax'))
     else if (after.max > before.max) ok(`${key}.max`, 'maxRaised', msg('diff.maxRaised'))
@@ -201,7 +207,7 @@ function diffField(at: string, old: Field, next: Field, newFills: Set<string>, o
     if (onGrid) ok(at, 'minLowered', msg('diff.minLowered'))
     else no(at, 'minOffGrid', msg('diff.minOffGrid', { at, step }), fx('minOnGrid'))
   }
-  for (const k of ['step', 'format', 'currency', 'from', 'accept', 'to', 'multiple'] as const) {
+  for (const k of ['step', 'format', 'currency', 'from', 'accept', 'to', 'multiple', 'after'] as const) {
     if (stableJson(o[k] ?? null) !== stableJson(n[k] ?? null)) no(at, `${k}Changed`, msg('diff.propChanged', { at, prop: k }))
   }
   if ((old.type === 'choice' || old.type === 'choices') && (next.type === 'choice' || next.type === 'choices')) {

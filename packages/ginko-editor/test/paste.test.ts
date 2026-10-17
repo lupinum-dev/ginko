@@ -166,6 +166,13 @@ describe('paste from Word, Google Docs and the web', () => {
   })
 })
 
+describe('paste within the editor', () => {
+  test('a picture of the Files library keeps its reference', async () => {
+    const html = '<p>Erster Absatz</p><p><img src="$file.k57abc_9-x" alt="Ein Hund"></p><p>Dritter Absatz</p>'
+    expect(await pasted(html, 'page')).toBe('Erster Absatz\n\n![Ein Hund]($file.k57abc_9-x)\n\nDritter Absatz')
+  })
+})
+
 describe('looksLikeMarkdown', () => {
   test.each([
     ['## Titel\n\nText', true],

@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
   if (!match) {
     // A missing `.md` page answers with suggestions in Markdown.
     setResponseStatus(event, 404)
-    return markdownNotFound(bundle, path, { origin: config.url })
+    return markdownNotFound(bundle, path, { origin: config.url, schema })
   }
   event.res.headers.set('x-ginko-rev', `${bundle.schemaRev}.${bundle.contentRev}`)
   return entryMarkdown(match.item, match.brick, { schema, trees: markdownTrees })

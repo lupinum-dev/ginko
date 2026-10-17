@@ -2,7 +2,7 @@
 // It reads the state and never writes.
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { checkSite, type SiteInput } from '../core/index.ts'
+import { calendarOfCountry, checkSite, effectiveMax, isTranslatable, largestEntryBytes, largestFieldBytes, platformSchema, serializeSchema, SITE_BUDGET, type SiteInput } from '../core/index.ts'
 import type { Fetch } from '../nuxt/external-links.ts'
 import { checkFileLinks } from './content-links.ts'
 import { CliError } from './model.ts'
@@ -31,6 +31,8 @@ export async function check(input: {
     for (const problem of problems) input.log(`  ✗ ${problem}`)
     return false
   }
+  warnEntrySize(input.config, input.log)
+  warnNoCalendar(input.config, input.log)
   const image = checkSeoImage(input.config, input.root, input.log)
   const links = await checkFileLinks({ config: input.config, root: input.root, log: input.log, fetch: input.fetch }) && image
   if (!input.connect) {
@@ -46,6 +48,34 @@ export async function check(input: {
     input.log(`Skipped the comparison with production: ${error instanceof Error ? error.message : String(error)}`)
     return false
   }
+}
+
+/**
+ * A brick whose maxima add up past the entry limit allows values the platform refuses at Save. Only a warning: it is an
+ * estimate (largestEntryBytes), and existing configs must not fail CI for it. File bricks are skipped: they never reach the
+ * platform.
+ */
+function warnEntrySize(config: SiteInput, log: (line: string) => void) {
+  const { bricks, locales } = platformSchema(serializeSchema(config))
+  for (const [key, brick] of Object.entries(bricks)) {
+    const max = largestEntryBytes(brick.fields, locales)
+    if (max <= SITE_BUDGET.entryBytes) continue
+    const fields = Object.entries(brick.fields).map(([name, field]) => ({ name, field, bytes: largestFieldBytes(field, locales) }))
+    const largest = fields.filter((f) => f.bytes > 0).sort((a, b) => b.bytes - a.bytes).slice(0, 3).map(({ name, field, bytes }) => {
+      if (field.type === 'list') return `${name} ${field.max} rows`
+      if (field.type !== 'text' && field.type !== 'longtext' && field.type !== 'markdown') return `${name} ${kib(bytes)}`
+      const languages = isTranslatable(field) && locales.length > 1 ? ` × ${locales.length} languages` : ''
+      return `${name} ${effectiveMax(field).toLocaleString('en-US')}${languages}`
+    })
+    const uncounted = fields.filter(({ field }) => field.type === 'ref' && field.multiple && field.max === undefined).map((f) => f.name)
+    log(`Warning: brick “${key}” can hold about ${kib(max)} per entry (largest: ${largest.join(', ')}); the entry limit is ${kib(SITE_BUDGET.entryBytes)}. Lower a max so a full entry fits.${uncounted.length ? ` Not counted: ${uncounted.join(', ')} (entries without a max).` : ''}`)
+  }
+}
+
+/** A country without a built-in calendar keeps no public holidays (`holidays: 'none'`): a warning, so the owner is not surprised. */
+function warnNoCalendar(config: SiteInput, log: (line: string) => void) {
+  if (config.country === undefined || config.calendar !== undefined || calendarOfCountry(config.country)) return
+  log(`Warning: Ginko has no public-holiday calendar for country “${config.country}”, so opening hours count no public holidays (stored as holidays: 'none'). Set \`calendar\` in ginko.config.ts to your own function (year) => holidays, or to 'none' to keep it so.`)
 }
 
 /** `seo.image` as a path (`/og.png`) must exist in public/: otherwise every page points its share image at a 404. Absolute URLs are not fetched. */
@@ -77,7 +107,7 @@ async function checkRelease(input: { config: SiteInput; platform: Platform; log:
   const migrations = result.schema.migrations.filter((m) => !state.migrations.some((s) => s.id === m.id)
     && !state.schema.migrations.some((s) => s.id === m.id))
   if (migrations.length > 0) input.log(`New migrations: ${migrations.map((m) => m.id).join(', ')}. Writes: ${candidate.writes.length} entries.`)
-  input.log(`Size: site ${kib(candidate.bytes.site)} of 4 MiB, largest entry ${kib(candidate.bytes.largest)} (limit 256 KiB).`)
+  input.log(`Size: site ${kib(candidate.bytes.site)} of ${kib(SITE_BUDGET.siteBytes)}, largest entry ${kib(candidate.bytes.largest)} (limit ${kib(SITE_BUDGET.entryBytes)}).`)
   if (candidate.problems.length > 0) {
     for (const line of explainProblems(candidate.problems)) input.log(line)
     return false

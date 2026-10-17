@@ -7,6 +7,7 @@ import { v } from 'convex/values'
 import { internalMutation } from './_generated/server'
 import { fail } from './lib/access'
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
+import { dropTrees } from './lib/trees'
 
 export const fill = internalMutation({
   args: {
@@ -25,7 +26,10 @@ export const fill = internalMutation({
       fail('FORBIDDEN', 'errors.siteAlreadyHasContent')
     }
     // The first release made the singles from their defaults; untouched, the corpus takes their place.
-    for (const entry of entries) await ctx.db.delete(entry._id)
+    for (const entry of entries) {
+      await dropTrees(ctx, entry._id)
+      await ctx.db.delete(entry._id)
+    }
     const { count } = await insertCorpus(ctx, site, args.corpus as Corpus)
     const links = await invitePeople(ctx, site, args.people, 'demo')
     return { entries: count, links }

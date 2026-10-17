@@ -1,0 +1,8 @@
+[
+  "app/components/jobs/List.vue",
+  "app/composables/useJobs.ts",
+  "app/pages/jobs/[slug].vue",
+  "app/pages/jobs/index.vue",
+  "i18n/jobs/de.json",
+  "i18n/jobs/en.json"
+]

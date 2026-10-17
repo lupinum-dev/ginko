@@ -2,6 +2,7 @@
   "issues": {
     "unknownBrick": "Baustein „{brick}“ gibt es nicht.",
     "markdown": "„{label}“: {problem}",
+    "markdownAt": "„{label}“, Zeile {line}: {problem}",
     "notObject": "Erwartet ein Objekt.",
     "unknownField": "Unbekanntes Feld.",
     "fieldMissing": "„{label}“ fehlt.",
@@ -23,6 +24,8 @@
     "badTime": "„{label}“ ist keine gültige Uhrzeit.",
     "badDateRange": "„{label}“ ist kein gültiger Zeitraum.",
     "dateRangeOrder": "„{label}“: „von“ liegt nach „bis“.",
+    "timeOrder": "„{end}“ muss nach „{start}“ liegen.",
+    "notWeekStart": "„{label}“ muss der erste Tag einer Woche sein.",
     "badChoice": "„{label}“ hat einen ungültigen Wert.",
     "badChoices": "„{label}“ hat ungültige Werte.",
     "duplicateValues": "„{label}“ enthält Werte doppelt.",
@@ -39,6 +42,9 @@
     "duplicateRowId": "„{label}“: Zeilen-ID doppelt.",
     "notImage": "„{label}“ ist kein gültiges Bild.",
     "altMissing": "„{label}“: Beschreibung des Bildes (Alt-Text) fehlt.",
+    "fileRefMissing": "„{label}“: Ein Bild im Text ist nicht mehr in der Dateibibliothek. Wähle es neu aus.",
+    "fileRefPdf": "Eine PDF-Datei lässt sich nicht als Bild zeigen. Verlinke sie stattdessen: [Text]($file.…).",
+    "markdownImageAltMissing": "„{label}“: Ein Bild im Text hat keine Beschreibung. Beschreibe es kurz für Menschen, die es nicht sehen.",
     "altTooLong": "„{label}“: Alt-Text zu lang.",
     "notFile": "„{label}“ ist keine gültige Datei."
   },
@@ -58,7 +64,9 @@
     "propBlocked": "Die Eigenschaft „{prop}“ ist nicht erlaubt.",
     "unsafeLink": "Link ist nicht erlaubt (nur http, https, mailto, tel oder /pfad).",
     "oneParagraph": "Hier ist nur ein Absatz erlaubt.",
-    "tooComplex": "Text ist zu komplex (höchstens {max} Elemente)."
+    "tooComplex": "Text ist zu komplex (höchstens {max} Elemente).",
+    "componentNotClosed": "Die Komponente „{tag}“ ist nicht geschlossen: Nach ihrem Inhalt fehlt eine Zeile mit „{close}“.",
+    "bracketText": "„[{text}“ ist weder Link noch Bild: Es fehlt „]“ oder die Adresse in runden Klammern. Eckige Klammern als Text: \\[ und \\]."
   },
   "component": {
     "or": "{first} oder {second}",

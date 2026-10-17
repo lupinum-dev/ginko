@@ -11,7 +11,7 @@ const asCook = { storageState: STATE.cook }
 test.beforeEach(() => resetContent())
 
 const notice = (page: Page, text: string) => page.locator('section', { has: page.getByRole('heading', { name: 'Hinweise' }) }).getByText(text, { exact: true })
-const toast = (page: Page) => page.locator('[data-sonner-toast]').filter({ hasText: /Gespeichert|Entfernt|Rückgängig/ })
+const toast = (page: Page) => page.locator('[data-sonner-toast]').filter({ hasText: /Gespeichert|Papierkorb|Rückgängig/ })
 
 test.describe('Wirtin', () => {
   test.use(asOwner)
@@ -27,23 +27,40 @@ test.describe('Wirtin', () => {
     await expect(notice(page, 'Heute sind wir ausgebucht.')).toHaveCount(before)
   })
 
-  test('2. "Heute geschlossen" with a reason shows the state, and Aufheben ends it', async ({ page }) => {
+  test('2. "Heute geschlossen" with a reason shows the state, and Aufheben ends it; a closure for tomorrow stays when reopened', async ({ page }) => {
     await openQuick(page)
     await page.getByRole('button', { name: 'Heute geschlossen' }).click()
-    await expect(page.getByLabel('Heute geschlossen am')).toHaveValue(today())
-    await page.getByLabel('Hinweis zur Schließung').fill('Geschlossene Gesellschaft')
+    await expect(page.getByLabel('Geschlossen am')).toHaveValue(today())
+    await page.getByLabel('Grund für die Gäste').fill('Geschlossene Gesellschaft')
     await page.getByRole('button', { name: 'Speichern' }).click()
-    await expect(page.getByText('ist für heute eingetragen.')).toBeVisible()
-    await expect(page.getByText('„Geschlossene Gesellschaft“')).toBeVisible()
+    // Today's hours line stands in for the flag sentence and names the reason once (TEMPLATES.md §7.1, D46).
+    const closedToday = page.getByText('Heute geschlossen · Geschlossene Gesellschaft', { exact: true })
+    await expect(closedToday).toBeVisible()
+    await expect(page.getByText('Geschlossene Gesellschaft')).toHaveCount(1)
     await page.getByRole('button', { name: 'Aufheben' }).click()
-    await expect(page.getByText('ist für heute eingetragen.')).toHaveCount(0)
+    await expect(closedToday).toHaveCount(0)
+
+    // Tomorrow: the state names the day, and reopening the task keeps tomorrow instead of closing today.
+    await page.getByRole('button', { name: 'Heute geschlossen' }).click()
+    await page.getByRole('button', { name: 'Morgen' }).click()
+    await page.getByRole('button', { name: 'Speichern' }).click()
+    await expect(page.getByText(/Geschlossen am .+ ist eingetragen\./)).toBeVisible()
+    await page.getByRole('button', { name: 'Heute geschlossen' }).click()
+    await expect(page.getByLabel('Geschlossen am')).toHaveValue(addDays(today(), 1))
+    // The sheet's own X: the save toast's "Meldung schließen" is still on screen.
+    await page.getByRole('dialog').getByRole('button', { name: 'Schließen', exact: true }).click()
+    await page.getByRole('button', { name: 'Aufheben' }).click()
+    await expect(page.getByText(/Geschlossen am .+ ist eingetragen\./)).toHaveCount(0)
   })
 
   test('3. the weekly lunch starts this Monday from last week, and a new dish asks for its allergens', async ({ page }) => {
     await openQuick(page)
     await page.getByRole('button', { name: 'Mittagsmenü dieser Woche' }).click()
     const sheet = page.getByRole('dialog')
-    await expect(sheet.getByLabel('Woche ab')).toHaveValue(workWeekOf(today(), DEFAULT_WEEK))
+    // The weekly task always covers this week: the week is shown, not asked.
+    const monday = new Date(`${workWeekOf(today(), DEFAULT_WEEK)}T12:00:00Z`).toLocaleDateString('de', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    await expect(sheet.locator('[data-test="fixed-week"]')).toContainText(monday)
+    await expect(sheet.locator('input[type="date"]')).toHaveCount(0)
     const tuesday = sheet.locator('li', { has: page.getByRole('heading', { name: 'Dienstag' }) })
     await tuesday.getByLabel('Gericht').fill('Rindsgulasch mit Semmelknödel')
     await expect(tuesday.getByText('Sind die Allergene noch richtig?')).toBeVisible()
@@ -89,6 +106,27 @@ test.describe('Wirtin', () => {
     await expect(preview.getByText('Kürbisabend für Freunde').first()).toBeVisible({ timeout: 20_000 })
   })
 
+  test('25. the size line of the save bar is a live region before it says anything', async ({ page }) => {
+    await page.goto('/s/restaurant/all/events/new', { waitUntil: 'networkidle' })
+    // Screen readers announce only changes inside a live region that is already in the accessibility tree.
+    const sizeLine = page.locator('.bar [aria-live="polite"]')
+    await expect(sizeLine).toHaveText('')
+    await expect(sizeLine).not.toHaveCSS('display', 'none')
+  })
+
+  // Wrong behaviour caught: after a text style the focus went back to the style button, and the next typed words were lost.
+  test('26. after "Unterüberschrift" typing goes on in the text', async ({ page }) => {
+    await page.goto('/s/restaurant/all/events/new', { waitUntil: 'networkidle' })
+    const text = page.getByRole('textbox', { name: 'Beschreibung' })
+    await text.click()
+    await page.keyboard.type('Gemütlicher Abend')
+    await page.keyboard.press('Enter')
+    await page.getByRole('combobox', { name: 'Blocktyp' }).click()
+    await page.getByRole('option', { name: 'Unterüberschrift' }).click()
+    await page.keyboard.type('Programm')
+    await expect(text.getByRole('heading', { name: 'Programm' })).toBeVisible()
+  })
+
   test('13. she changes the phone number herself; a number with letters is refused', async ({ page }) => {
     await page.goto('/s/restaurant/all', { waitUntil: 'networkidle' })
     await page.getByRole('link', { name: 'Adresse und Kontakt' }).first().click()
@@ -102,6 +140,65 @@ test.describe('Wirtin', () => {
     await expect(preview.locator('footer a[href="tel:+43662123456"]')).toBeVisible({ timeout: 20_000 })
     await page.getByRole('button', { name: 'Speichern', exact: true }).click()
     await expect(toast(page)).toContainText('Gespeichert')
+  })
+
+  // Wrong behaviour caught (romi-1, J1, P4): a quick-task sheet is a modal <dialog> in the browser's top layer, and the
+  // text style list and the link box opened in <body> beneath it, unseen and not clickable; on a phone the typed web
+  // address replaced the selected words. And (romi-2, J5): Escape that closed a list also asked "Änderungen verwerfen?".
+  test('26. "Veranstaltung hinzufügen": the text style list and the link box open inside the sheet, and Escape closes them first', async ({ page }) => {
+    await openQuick(page)
+    await page.getByRole('button', { name: 'Veranstaltung hinzufügen' }).click()
+    const sheet = page.locator('dialog[open]')
+    await sheet.getByLabel('Titel').fill('Kürbisabend')
+    const text = sheet.getByRole('textbox', { name: 'Beschreibung', exact: true })
+    await text.click()
+    await page.keyboard.type('Gemütlicher Abend')
+    await page.keyboard.press('Enter')
+
+    await sheet.getByRole('combobox', { name: 'Blocktyp' }).click()
+    await sheet.getByRole('option', { name: 'Unterüberschrift', exact: true }).click()
+    await expect(text.locator('h3')).toHaveCount(1)
+
+    await text.getByText('Gemütlicher Abend').selectText()
+    await sheet.getByRole('toolbar', { name: 'Formatierung' }).getByRole('button', { name: 'Link', exact: true }).click()
+    const address = sheet.getByLabel('Seite oder Webadresse')
+    await expect(address).toBeFocused()
+    await address.fill('example.org')
+    await sheet.getByRole('button', { name: 'Übernehmen' }).click()
+    await expect(text.getByRole('link', { name: 'Gemütlicher Abend' })).toBeVisible()
+
+    // The title is typed, so closing the sheet would ask; closing a list or the link box must not.
+    await sheet.getByRole('combobox', { name: 'Blocktyp' }).click()
+    await expect(sheet.getByRole('listbox')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('listbox')).toHaveCount(0)
+    await sheet.getByRole('toolbar', { name: 'Formatierung' }).getByRole('button', { name: 'Link', exact: true }).click()
+    await expect(address).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(address).toHaveCount(0)
+    await expect(page.getByText('Änderungen verwerfen?')).toHaveCount(0)
+
+    await page.keyboard.press('Escape')
+    await expect(sheet.getByText('Änderungen verwerfen?')).toBeVisible()
+    await sheet.getByRole('button', { name: 'Weiter bearbeiten' }).click()
+    await expect(sheet.getByText('Änderungen verwerfen?')).toHaveCount(0)
+    await expect(sheet.getByLabel('Titel')).toHaveValue('Kürbisabend')
+  })
+
+  // Wrong behaviour caught (WS-6): a long reason widened its card past the sheet, which then scrolled sideways and cut
+  // off the arrows, the remove button and the edge of "Grund".
+  test('27. a long reason in "Betriebsurlaub und Ausnahmen" keeps the row inside the sheet', async ({ page }) => {
+    await openQuick(page)
+    await page.getByRole('button', { name: 'Betriebsurlaub und Ausnahmen', exact: true }).click()
+    const sheet = page.locator('dialog[open]')
+    await sheet.getByRole('button', { name: 'Ausnahme hinzufügen' }).click()
+    const row = sheet.locator('[data-row]').last()
+    await row.getByLabel('Grund').fill('Betriebsurlaub – ab 18. November sind wir wieder für euch da.')
+    const remove = row.getByRole('button', { name: /entfernen$/ })
+    await expect(remove).toBeVisible()
+    const [sheetBox, removeBox] = await Promise.all([sheet.boundingBox(), remove.boundingBox()])
+    expect(removeBox!.x + removeBox!.width).toBeLessThanOrEqual(sheetBox!.x + sheetBox!.width)
+    expect(await row.locator('h3').evaluate((title) => title.scrollWidth > title.clientWidth)).toBe(true)
   })
 })
 
@@ -122,13 +219,18 @@ test.describe('Unterwegs (break-it 9)', () => {
     await expect(page.getByRole('dialog').getByLabel('Text')).toHaveValue('Küche ab 18 Uhr')
   })
 
-  test('15. closing a sheet while the save waits for the connection says the save goes on', async ({ page, context }) => {
+  // Wrong behaviour caught: a lost network left "Speichert …" for up to a minute (Convex notices only when its socket
+  // closes, and setOffline keeps it open) with no word that the input is kept.
+  test('15. without network the sheet says the save waits and the input is kept; closing it says the save goes on', async ({ page, context }) => {
     await openQuick(page)
     await page.getByRole('button', { name: 'Hinweis hinzufügen' }).click()
-    await page.getByRole('dialog').getByLabel('Text').fill('Offline gespeichert')
+    const sheet = page.getByRole('dialog')
+    await sheet.getByLabel('Text').fill('Offline gespeichert')
     await context.setOffline(true)
-    await page.getByRole('dialog').getByRole('button', { name: 'Speichern' }).click()
-    await page.getByRole('dialog').getByRole('button', { name: 'Abbrechen' }).click()
+    await sheet.getByRole('button', { name: 'Speichern' }).click()
+    await expect(sheet.getByRole('button', { name: 'Wartet auf Verbindung …' })).toBeVisible()
+    await expect(sheet.getByRole('status').filter({ hasText: 'Lass diese Seite offen' })).toBeVisible()
+    await sheet.getByRole('button', { name: 'Abbrechen' }).click()
     await expect(page.getByText('Speichern läuft weiter.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Verwerfen' })).toHaveCount(0)
     await context.setOffline(false)
@@ -143,12 +245,49 @@ test.describe('Unterwegs (break-it 9)', () => {
     await page.getByRole('button', { name: 'Speichern', exact: true }).click()
     await expect(page.getByText('„Preis“ fehlt.')).toHaveCount(0)
   })
+
+  // Wrong behaviour caught: on a phone the buttons squeeze a removed entry's title to a few letters, so nobody can tell
+  // which entry "Jetzt löschen" deletes for good.
+  test('25. on a phone a removed entry keeps its title on the full width, with the buttons below', async ({ page }) => {
+    test.skip(page.viewportSize()!.width >= 640, 'The row stays on one line from 640 px.')
+    await page.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
+    await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
+    // The entry's own "Mehr", not the tab bar's "Mehr" at the bottom of a phone.
+    await page.getByRole('main').getByRole('button', { name: 'Mehr', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Eintrag entfernen' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click()
+    await expect(page.locator('[data-sonner-toast]')).toContainText('„Wiener Schnitzel vom Kalb“ liegt jetzt im Papierkorb. In etwa einer Minute nicht mehr auf der Website.')
+
+    await page.goto('/s/restaurant/all?removed', { waitUntil: 'networkidle' })
+    const row = page.getByRole('listitem').filter({ hasText: 'Wiener Schnitzel vom Kalb' })
+    const title = row.getByText('Wiener Schnitzel vom Kalb', { exact: true })
+    await expect(title).toBeVisible()
+    const [rowBox, titleBox, buttonBox] = await Promise.all([row.boundingBox(), title.boundingBox(), row.getByRole('button', { name: 'Wiederherstellen' }).boundingBox()])
+    // The title gets the row's width (less its padding), and the buttons start below the title and the date line.
+    expect(titleBox!.width).toBeGreaterThan(rowBox!.width - 40)
+    expect(buttonBox!.y).toBeGreaterThan(titleBox!.y + titleBox!.height)
+    expect(await title.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+  })
+
+  test('23. after a reload the typed name comes back with "Wiederherstellen"', async ({ page }) => {
+    await page.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
+    await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
+    await page.getByRole('textbox', { name: 'Name' }).fill('Schnitzel mit Preiselbeeren')
+    // The local copy is written after a short pause in typing.
+    await page.waitForTimeout(1000)
+    // The browser's own leave question: leaving there keeps the local copy.
+    page.once('dialog', (d) => d.accept())
+    await page.reload({ waitUntil: 'networkidle' })
+    await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('Wiener Schnitzel vom Kalb')
+    await page.getByRole('button', { name: 'Wiederherstellen', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('Schnitzel mit Preiselbeeren')
+  })
 })
 
 test.describe('Übersetzen (Phase 11)', () => {
   test.use(asOwner)
 
-  test('17. a changed German dish asks to check its English translation, and "Passt so" confirms it', async ({ page }) => {
+  test('17. a changed German dish asks to check its English translation, and "Englisch stimmt noch" confirms it', async ({ page }) => {
     await page.goto('/s/restaurant/all/lunch', { waitUntil: 'networkidle' })
     const monday = page.locator('li', { has: page.getByRole('heading', { name: 'Montag' }) })
     await monday.getByLabel('Gericht').fill('Kürbiscremesuppe mit Kernöl und Croutons')
@@ -158,7 +297,7 @@ test.describe('Übersetzen (Phase 11)', () => {
     await page.getByRole('button', { name: 'Englisch' }).click()
     await expect(monday.getByText('Deutsch geändert seit Übersetzung')).toBeVisible()
     await expect(monday.getByText('Kürbiscremesuppe mit Kernöl und Croutons')).toBeVisible()
-    await monday.getByRole('button', { name: 'Passt so' }).click()
+    await monday.getByRole('button', { name: 'Englisch stimmt noch' }).click()
     await page.getByRole('button', { name: 'Speichern', exact: true }).click()
     await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
     await expect(monday.getByText('Deutsch geändert seit Übersetzung')).toHaveCount(0)
@@ -168,24 +307,25 @@ test.describe('Übersetzen (Phase 11)', () => {
 test.describe('Übersetzen in Listen (Astra 11)', () => {
   test.use(asOwner)
 
-  test('18. a confirmed translation in a removed list row does not block saving the rest', async ({ page }) => {
-    await page.goto('/s/restaurant/all/hours', { waitUntil: 'networkidle' })
-    const first = page.getByRole('group', { name: 'Betriebsurlaub und Ausnahmen' }).locator('[data-row]').first()
-    const save = async () => {
-      await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-      await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
-    }
-    // An English reason, then a German change: the English one is outdated.
-    await page.getByRole('button', { name: 'Englisch' }).click()
+  // Wrong behaviour caught (WD-4, F6): a quick task stored German only, so the English site showed the German reason;
+  // the English view could also remove or add rows, which belong to the main language.
+  test('18. an English reason typed in the "Betriebsurlaub und Ausnahmen" sheet is saved next to the German one', async ({ page }) => {
+    await openQuick(page)
+    await page.getByRole('button', { name: 'Betriebsurlaub und Ausnahmen', exact: true }).click()
+    const sheet = page.locator('dialog[open]')
+    const first = sheet.locator('[data-row]').first()
+    const german = await first.getByLabel('Grund').inputValue()
+    await sheet.getByRole('button', { name: 'Englisch' }).click()
+    await expect(first.getByRole('button', { name: /entfernen$/ })).toHaveCount(0)
     await first.getByLabel('Grund').fill('Winter holidays')
-    await save()
-    await page.getByRole('button', { name: 'Deutsch' }).click()
-    await first.getByLabel('Grund').fill('Betriebsurlaub im Winter')
-    await save()
+    await sheet.getByRole('button', { name: 'Speichern', exact: true }).click()
+    await expect(toast(page)).toContainText('Gespeichert')
+
+    await page.goto('/s/restaurant/all/hours', { waitUntil: 'networkidle' })
+    const row = page.getByRole('group', { name: 'Betriebsurlaub und Ausnahmen' }).locator('[data-row]').first()
+    await expect(row.getByLabel('Grund')).toHaveValue(german)
     await page.getByRole('button', { name: 'Englisch' }).click()
-    await first.getByRole('button', { name: 'Passt so' }).click()
-    await first.getByRole('button', { name: /entfernen$/ }).click()
-    await save()
+    await expect(row.getByLabel('Grund')).toHaveValue('Winter holidays')
   })
 })
 
@@ -226,7 +366,8 @@ test.describe('Koch', () => {
     await expect(price).toHaveValue('22,50')
     await page.getByRole('button', { name: 'Speichern' }).click()
     const conflict = page.getByRole('dialog').getByRole('alert')
-    await expect(conflict).toContainText('Inzwischen hat jemand Preis geändert.')
+    // The cook sees the owner as "Ein Mitglied", the way History names her for staff.
+    await expect(conflict).toContainText('Ein Mitglied hat inzwischen Preis geändert.')
     await expect(conflict).toContainText('23,00')
     await expect(conflict).toContainText('22,50')
     await conflict.getByRole('button', { name: 'Meine Eingaben speichern' }).click()
@@ -279,11 +420,96 @@ test.describe('Gleichzeitig (Astra phase 8)', () => {
     await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('Wiener Schnitzel vom Kalb, klassisch')
     await expect(page.getByRole('textbox', { name: 'Beschreibung' })).toHaveValue('Mit Petersilienerdäpfeln')
   })
+
+  test('21. "Neuen Stand übernehmen" takes the other value only for the conflicting field and keeps her other input', async ({ page, browser }) => {
+    await page.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
+    await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
+    await page.getByRole('textbox', { name: 'Name' }).fill('Schnitzel der Wirtin')
+    await page.getByRole('textbox', { name: 'Beschreibung' }).fill('Mit Erdäpfelsalat')
+
+    const cook = await browser.newPage({ storageState: STATE.cook, viewport: { width: 1440, height: 900 } })
+    await cook.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
+    await cook.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
+    await cook.getByRole('textbox', { name: 'Name' }).fill('Schnitzel des Kochs')
+    await cook.getByRole('button', { name: 'Speichern' }).click()
+    await expect(toast(cook)).toContainText('Gespeichert')
+    await cook.close()
+
+    await page.getByRole('button', { name: 'Speichern' }).click()
+    await page.getByRole('button', { name: 'Neuen Stand übernehmen' }).click()
+    await expect(page.getByRole('textbox', { name: 'Name' })).toHaveValue('Schnitzel des Kochs')
+    await expect(page.getByRole('textbox', { name: 'Beschreibung' })).toHaveValue('Mit Erdäpfelsalat')
+  })
+
+  test('22. someone removes the entry she is editing; her input stays and "Wiederherstellen und speichern" saves it', async ({ page, browser }) => {
+    await page.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
+    await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
+    const description = page.getByRole('textbox', { name: 'Beschreibung' })
+    await description.fill('Mit Erdäpfelsalat')
+
+    const other = await browser.newPage({ storageState: STATE.owner, viewport: { width: 1440, height: 900 } })
+    await other.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
+    await other.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
+    await other.getByRole('button', { name: 'Mehr' }).click()
+    await other.getByRole('menuitem', { name: 'Eintrag entfernen' }).click()
+    await other.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click()
+    await expect(other.locator('[data-sonner-toast]')).toContainText('im Papierkorb')
+    await other.close()
+
+    await expect(page.getByRole('alert').filter({ hasText: 'Jemand hat diesen Eintrag entfernt.' })).toContainText('Jemand hat diesen Eintrag entfernt. Deine Änderungen sind noch da.')
+    await expect(description).toHaveValue('Mit Erdäpfelsalat')
+    await page.getByRole('button', { name: 'Wiederherstellen und speichern' }).click()
+    await expect(toast(page)).toContainText('Gespeichert')
+    await page.reload({ waitUntil: 'networkidle' })
+    await expect(page.getByRole('textbox', { name: 'Beschreibung' })).toHaveValue('Mit Erdäpfelsalat')
+  })
+
+  test('24. both add a row to the same list; the conflict names both rows and "Beides behalten" saves both', async ({ page, browser }) => {
+    const exceptions = (p: Page) => p.getByRole('group', { name: 'Betriebsurlaub und Ausnahmen' })
+    const addException = async (p: Page, reason: string, from: string) => {
+      await exceptions(p).getByRole('button', { name: 'Ausnahme hinzufügen' }).click()
+      const row = exceptions(p).locator('[data-row]').last()
+      await row.getByLabel('von', { exact: true }).fill(from)
+      await row.getByLabel('Grund').fill(reason)
+    }
+    await page.goto('/s/restaurant/all/hours', { waitUntil: 'networkidle' })
+    await addException(page, 'Kaspressknödel-Fest', addDays(today(), 30))
+
+    const other = await browser.newPage({ storageState: STATE.owner, viewport: { width: 1440, height: 900 } })
+    await other.goto('/s/restaurant/all/hours', { waitUntil: 'networkidle' })
+    await addException(other, 'Frittatensuppen-Tag', addDays(today(), 40))
+    await other.getByRole('button', { name: 'Speichern', exact: true }).click()
+    await expect(toast(other)).toContainText('Gespeichert')
+    await other.close()
+
+    await page.getByRole('button', { name: 'Speichern', exact: true }).click()
+    const panel = page.getByRole('alert').filter({ hasText: /inzwischen/i })
+    await expect(panel).toContainText('Du hast „Kaspressknödel-Fest“ hinzugefügt')
+    await expect(panel).toContainText('„Frittatensuppen-Tag“ hinzugefügt')
+    await page.getByRole('button', { name: 'Beides behalten' }).click()
+    await expect(toast(page)).toContainText('Gespeichert')
+    await page.reload({ waitUntil: 'networkidle' })
+    const reasons = exceptions(page).getByLabel('Grund')
+    await expect(reasons.nth(-2)).toHaveValue('Frittatensuppen-Tag')
+    await expect(reasons.last()).toHaveValue('Kaspressknödel-Fest')
+  })
 })
 
 test.describe('Anmelden und Einladung', () => {
   // Better Auth limits code mails per minute; sign-in looks the same at both widths, so it runs once.
   test.skip(({ viewport }) => (viewport?.width ?? 0) > 500, 'sign-in runs at phone width only')
+
+  // Every Studio page is protected by default (convex.auth.routes 'protected'); /login and the invite page opt out.
+  // The invite page is public (3f7a05a4): it explains the invite before sign-in; an unknown one says so, signed out too.
+  test('an anonymous visitor of a Studio page is sent to the sign-in, with the way back', async ({ page }) => {
+    for (const path of ['/', '/s/restaurant/team']) {
+      await page.goto(path, { waitUntil: 'networkidle' })
+      await expect(page).toHaveURL((url) => url.pathname === '/login' && url.searchParams.get('redirect') === path)
+    }
+    await page.goto('/invite/any-token', { waitUntil: 'networkidle' })
+    await expect(page).toHaveURL((url) => url.pathname === '/invite/any-token')
+    await expect(page.getByText('Diese Einladung ist abgelaufen oder schon benutzt. Bitte frag nach einer neuen.')).toBeVisible()
+  })
 
   test('8. a wrong code is refused with a clear message', async ({ page }) => {
     await page.goto('/login', { waitUntil: 'networkidle' })
@@ -311,15 +537,18 @@ test.describe('Anmelden und Einladung', () => {
     const mails = execFileSync('npx', ['convex', 'data', 'outbox', '--limit', '30', '--order', 'desc', '--format', 'jsonLines'], { cwd: serverDir, encoding: 'utf8' })
     const link = mails.trim().split('\n').map((l) => JSON.parse(l) as { to: string; text: string }).find((m) => m.to === email)!.text.match(/(http\S+\/invite\/\S+)/)![1]!
 
-    await page.goto('/login', { waitUntil: 'networkidle' })
-    await page.getByLabel('E-Mail-Adresse').fill(email)
+    // Signed out, the link shows the invite and starts the sign-in with the invited address, then comes back (3f7a05a4).
+    await page.goto(link, { waitUntil: 'networkidle' })
+    await expect(page.getByText('Gasthaus zur Linde lädt dich als Mitarbeiter ein.')).toBeVisible()
+    const invitePath = new URL(link).pathname
+    await page.getByRole('button', { name: 'Anmelden' }).click()
+    await expect(page).toHaveURL((url) => url.pathname === '/login' && url.searchParams.get('redirect') === invitePath)
+    await expect(page.getByLabel('E-Mail-Adresse')).toHaveValue(email)
     await page.getByRole('button', { name: 'Code senden' }).click()
     await page.getByLabel('Code').waitFor()
     await page.getByLabel('Code').fill(codeFor(email))
     await page.getByRole('button', { name: 'Anmelden' }).click()
-    await page.waitForURL((url) => !url.pathname.startsWith('/login'))
-    await page.goto(link, { waitUntil: 'networkidle' })
-    await expect(page.getByText('Gasthaus zur Linde lädt dich als Mitarbeiter ein.')).toBeVisible()
+    await page.waitForURL((url) => url.pathname === invitePath)
     await page.getByRole('button', { name: 'Einladung annehmen' }).click()
     await page.waitForURL(/\/s\/restaurant$/)
     await expect(page.getByRole('button', { name: 'Mittagsmenü dieser Woche' })).toBeVisible()

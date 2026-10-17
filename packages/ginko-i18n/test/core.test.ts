@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { compileCatalogs, compileMessage, compileTree, MessageError, mergeTrees, sourceProblem } from '../src/core/compiler'
 import { defineCatalog } from '../src/core/catalog'
 import { createFormatters } from '../src/core/format'
-import { alternatesOf, canonicalCase, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, resolveConfig, stripLocale } from '../src/core/locales'
+import { alternatesOf, cleanPath, inUserZone, localeFromPath, localizePath, negotiateLocale, ogLocale, regionalLanguage, resolveConfig, stripLocale } from '../src/core/locales'
 import { createTranslator, formatParts } from '../src/core/messages'
 
 const pexd = resolveConfig({ locales: ['de-AT', 'en-GB'], defaultLocale: 'de' })
@@ -22,6 +22,22 @@ describe('negotiateLocale with hostile headers', () => {
     [`${'zz,'.repeat(5000)}en`, 'en'],
   ])('%s → %s', (header, expected) => {
     expect(negotiateLocale(header, pexd)).toBe(expected)
+  })
+})
+
+// Wrong behaviour caught: an English app read in an en-GB browser showed US dates (10/25/2026) (regress-9).
+describe('regionalLanguage', () => {
+  it.each([
+    ['en', 'en-GB', 'en-GB', '25/10/2026'],
+    ['en', 'en-US', 'en-US', '10/25/2026'],
+    ['en', 'de-AT', 'en', '10/25/2026'],
+    ['de', 'de-AT', 'de-AT', '25.10.2026'],
+    ['de-AT', 'de-DE', 'de-AT', '25.10.2026'],
+    ['en', undefined, 'en', '10/25/2026'],
+    ['en', '*', 'en', '10/25/2026'],
+  ])('%s in a %s browser formats as %s', (language, browser, expected, date) => {
+    const tag = regionalLanguage(language, browser)
+    expect([tag, createFormatters(tag).date('2026-10-25', { day: '2-digit', month: '2-digit', year: 'numeric' })]).toEqual([expected, date])
   })
 })
 
@@ -69,9 +85,10 @@ describe('paths', () => {
     expect(negotiateLocale('pt-br', config)).toBe('pt-BR')
   })
   it.each([
-    ['/EN/about', '/en/about'], ['/pt-br/x?', '/pt-BR/x?'], ['/PT-BR', '/pt-BR'], ['/en/about', undefined], ['/pt-BR/x', undefined], ['/about', undefined],
-  ])('canonicalCase(%s) → %s', (path, expected) => {
-    expect(canonicalCase(path, resolveConfig({ locales: ['de', 'en', { code: 'pt-BR', language: 'pt-BR' }] }))).toBe(expected)
+    ['//blog', '/blog'], ['/blog/', '/blog'], ['//en//blog/', '/en/blog'], ['/EN/about/', '/en/about'], ['/pt-br/x', '/pt-BR/x'], ['/PT-BR', '/pt-BR'],
+    ['//evil.com', '/evil.com'], ['/\\evil.com/', '/evil.com'], ['/', undefined], ['/en', undefined], ['/blog', undefined], ['/pt-BR/x', undefined],
+  ])('cleanPath(%s) → %s', (path, expected) => {
+    expect(cleanPath(path, resolveConfig({ locales: ['de', 'en', { code: 'pt-BR', language: 'pt-BR' }] }))).toBe(expected)
   })
   it('rejects two locales with one URL code', () => {
     expect(() => resolveConfig({ locales: ['en-GB', 'en-US'] })).toThrow(/Two locales use the URL code "en"/)

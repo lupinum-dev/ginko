@@ -1,0 +1,7 @@
+{
+  "title": "Projects",
+  "lead": "What we work on.",
+  "until": "Until {date}",
+  "empty": "No projects yet",
+  "all": "All projects"
+}

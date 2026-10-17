@@ -1,0 +1,17 @@
+[
+  "DESIGN.md",
+  "app/assets/css/tokens.css",
+  "eslint.tailwind.mjs",
+  "app/components/ui/button/Button.vue",
+  "app/components/ui/button/index.ts",
+  "app/components/ui/sheet/Sheet.vue",
+  "app/components/ui/sheet/SheetClose.vue",
+  "app/components/ui/sheet/SheetContent.vue",
+  "app/components/ui/sheet/SheetDescription.vue",
+  "app/components/ui/sheet/SheetOverlay.vue",
+  "app/components/ui/sheet/SheetTitle.vue",
+  "app/components/ui/sheet/SheetTrigger.vue",
+  "app/components/ui/sheet/index.ts",
+  "app/lib/utils.ts",
+  "components.json"
+]

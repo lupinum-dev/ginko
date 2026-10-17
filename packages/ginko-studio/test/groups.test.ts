@@ -15,10 +15,11 @@ describe('groupFields', () => {
   it('puts ungrouped fields first and orders groups by their first field', () => {
     const { ungrouped, groups } = groupFields(fields)
     expect(ungrouped.map(([k]) => k)).toEqual(['title', 'body'])
-    expect(groups.map((g) => [g.label, g.fields.map(([k]) => k)])).toEqual([
-      ['SEO', ['metaTitle', 'metaText']],
-      [{ de: 'SEO', en: 'SEO' }, ['ogImage']],
-      ['Preis', ['price']],
+    // Ids go into element ids (tab values): plain words, not the label as JSON.
+    expect(groups.map((g) => [g.id, g.label, g.fields.map(([k]) => k)])).toEqual([
+      ['group-1', 'SEO', ['metaTitle', 'metaText']],
+      ['group-2', { de: 'SEO', en: 'SEO' }, ['ogImage']],
+      ['group-3', 'Preis', ['price']],
     ])
   })
 

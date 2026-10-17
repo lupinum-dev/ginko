@@ -1,0 +1,35 @@
+{
+  "title": "Jobs",
+  "lead": "Open positions, with the last day to apply.",
+  "all": "All jobs",
+  "none": "There are no open positions at the moment.",
+  "applyBy": "Apply by {date}",
+  "location": "Place",
+  "employmentLabel": "Employment",
+  "workplaceLabel": "Work place",
+  "deadline": "Apply by",
+  "employment": {
+    "fullTime": "Full time",
+    "partTime": "Part time",
+    "freelance": "Freelance",
+    "internship": "Internship",
+    "apprenticeship": "Apprenticeship"
+  },
+  "workplace": {
+    "onsite": "On site",
+    "hybrid": "Hybrid",
+    "remote": "Remote"
+  },
+  "applyEmail": "Apply by email",
+  "applyOnline": "Apply online",
+  "subject": "Application: {title}",
+  "how": "How to apply",
+  "howEmail": "Send your application to {email} by {date}. A short letter and your CV are enough.",
+  "howOnline": "Apply on our application page by {date}.",
+  "openSubject": "Open application",
+  "open": {
+    "text": "We are still glad to hear from people who want to work with us. Send us a short letter and your CV by email.",
+    "more": "No job that fits?",
+    "action": "Send an open application"
+  }
+}

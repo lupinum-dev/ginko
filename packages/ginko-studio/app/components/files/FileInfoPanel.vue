@@ -1,6 +1,7 @@
 <!-- One file in detail (UI.md 10.3): preview with focus point, name, alt text, facts, where it is used and
      the actions. Everything that changes the library is for owner and admin (`canManage`). -->
 <script setup lang="ts">
+import { acceptOf } from '@lupinum/ginko/internal'
 import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from '#imports'
@@ -11,8 +12,10 @@ import { Label } from '@studio/components/ui/label'
 import { languageName } from '../../utils/content'
 import { useStudioSite } from '../../utils/labels'
 import type { FilesLibrary, UsedIn } from '../../composables/useFilesLibrary'
-import { fieldsText, sizeText } from './util'
+import { fieldsText } from './util'
+import { sizeText } from '../../utils/size'
 import { whoText } from '../../utils/who'
+import { whenFull } from '../../utils/when'
 
 /** `showAlt: false` in the picker: it asks for the description itself, one field instead of two. */
 const props = withDefaults(defineProps<{ id: string; lib: FilesLibrary; locales: string[]; inTrash: boolean; showAlt?: boolean }>(), { showAlt: true })
@@ -26,6 +29,11 @@ const canManage = props.lib.canManage
 const error = ref<string | null>(null)
 const name = ref('')
 watch(() => info.value?.name, (value) => { name.value = value ?? '' }, { immediate: true })
+/**
+ * "Gespeichert" under the name after a rename, like the alt text; the next keystroke clears it. Another file gets a
+ * panel of its own (FilesBrowser keys it by id), so a rename that answers late never marks the next file.
+ */
+const savedName = ref(false)
 
 async function run(action: () => Promise<unknown>) {
   error.value = null
@@ -42,7 +50,7 @@ function saveName() {
     name.value = info.value?.name ?? ''
     return
   }
-  void run(() => props.lib.rename(props.id, given))
+  void run(() => props.lib.rename(props.id, given).then(() => { savedName.value = true }))
 }
 
 function focusAt(event: MouseEvent) {
@@ -87,7 +95,7 @@ const whereOf = (use: UsedIn) => [
 ].join(' · ')
 const typeText = computed(() => (info.value ? (info.value.kind === 'image' ? info.value.mime.replace('image/', '').toUpperCase() : 'PDF') : ''))
 const dimensions = computed(() => (info.value?.width && info.value.height ? `${info.value.width} × ${info.value.height}` : null))
-const uploaded = computed(() => (info.value ? format.date(info.value.createdAt, { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''))
+const uploaded = computed(() => (info.value ? whenFull(info.value.createdAt, site.timeZone(), format) : ''))
 </script>
 
 <template>
@@ -109,9 +117,12 @@ const uploaded = computed(() => (info.value ? format.date(info.value.createdAt, 
     <div v-else class="grid h-32 place-items-center rounded-md bg-muted"><FileTextIcon class="size-12 text-muted-foreground" aria-hidden="true" /></div>
     <p v-if="canManage && info.kind === 'image' && !inTrash" class="text-xs text-muted-foreground">{{ t('files.focusHint') }}</p>
 
-    <div :class="CONTAINED_FIELD">
-      <Label for="file-name" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('files.info.name') }}</Label>
-      <Input id="file-name" v-model="name" :disabled="!canManage || inTrash" @blur="saveName" @keydown.enter.prevent="($event.target as HTMLInputElement).blur()" />
+    <div class="grid gap-1">
+      <div :class="CONTAINED_FIELD">
+        <Label for="file-name" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('files.info.name') }}</Label>
+        <Input id="file-name" v-model="name" :disabled="!canManage || inTrash" @input="savedName = false" @blur="saveName" @keydown.enter.prevent="($event.target as HTMLInputElement).blur()" />
+      </div>
+      <p v-if="savedName" class="text-xs text-muted-foreground" role="status">{{ t('files.info.saved') }}</p>
     </div>
 
     <div v-if="info.kind === 'image' && showAlt" class="grid gap-2">
@@ -126,7 +137,7 @@ const uploaded = computed(() => (info.value ? format.date(info.value.createdAt, 
 
     <dl class="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
       <dt class="text-muted-foreground">{{ t('files.info.type') }}</dt><dd class="m-0">{{ typeText }}</dd>
-      <dt class="text-muted-foreground">{{ t('files.info.size') }}</dt><dd class="m-0">{{ sizeText(info.size) }}</dd>
+      <dt class="text-muted-foreground">{{ t('files.info.size') }}</dt><dd class="m-0">{{ sizeText(info.size, format.number) }}</dd>
       <template v-if="dimensions"><dt class="text-muted-foreground">{{ t('files.info.dimensions') }}</dt><dd class="m-0">{{ dimensions }}</dd></template>
       <dt class="text-muted-foreground">{{ t('files.info.uploaded') }}</dt><dd class="m-0">{{ uploaded }}</dd>
       <dt class="text-muted-foreground">{{ t('files.info.uploadedBy') }}</dt><dd class="m-0 [overflow-wrap:anywhere]">{{ whoText(info.uploadedBy, t) }}</dd>
@@ -155,7 +166,7 @@ const uploaded = computed(() => (info.value ? format.date(info.value.createdAt, 
             <Button type="button" variant="outline" :disabled="replacing" @click="picker?.click()">{{ replacing ? t('files.uploading') : t('files.replace') }}</Button>
             <p class="text-xs text-muted-foreground">{{ t('files.replaceNote') }}</p>
           </div>
-          <input ref="picker" class="sr-only" type="file" tabindex="-1" aria-hidden="true" :accept="info.kind === 'image' ? 'image/jpeg,image/png,image/webp,image/heic' : 'application/pdf'" @change="replaceWith">
+          <input ref="picker" class="sr-only" type="file" tabindex="-1" aria-hidden="true" :accept="acceptOf(info.kind === 'image' ? 'image' : 'file')" @change="replaceWith">
         </template>
         <Button v-if="info.url" as-child variant="outline"><a :href="info.url" :download="info.name">{{ t('files.download') }}</a></Button>
         <template v-if="canManage">

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, components, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import schema from '../convex/schema'
-import { errorOf, opId, setup, upload } from './setup'
+import { errorOf, firstPage, opId, setup, upload } from './setup'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -40,7 +40,7 @@ describe('delete account', () => {
     await s.as.cook.mutation(api.account.setLocale, { locale: 'en' })
     await s.as.cook.mutation(api.views.save, { site: 'restaurant', brick: 'menu', name: 'Meine Ansicht', query: {} })
     await s.t.run((ctx) => ctx.db.insert('invites', { site: s.other, email: 'koch@example.com', role: 'staff', grants: [], tokenHash: 'x', invitedBy: 'u-fremd', expiresAt: Date.now() + DAY }))
-    const whoBefore = async () => ((await s.as.owner.query(api.changes.list, { site: 'restaurant', by: undefined })).page.find((c) => c.actor === 'u-koch'))!.who
+    const whoBefore = async () => ((await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage, by: undefined })).page.find((c) => c.actor === 'u-koch'))!.who
     expect(await whoBefore()).toEqual({ email: 'koch@example.com' })
 
     await s.as.cook.mutation(api.account.deleteAccount, {})
@@ -83,8 +83,8 @@ describe('delete site', () => {
     const pushKey = (await s.as.owner.mutation(api.release.createPushKey, { site: 'restaurant', label: 'ci', scopes: ['release'] })).key
     const agentKey = await s.as.owner.mutation(api.agent.createKey, { site: 'restaurant', label: 'ai' })
     const open = async () => ({
-      studio: await s.as.owner.query(api.sites.get, { site: 'restaurant' }).then(() => 'open', () => 'closed'),
-      cook: await s.as.cook.query(api.entries.trash, { site: 'restaurant' }).then(() => 'open', () => 'closed'),
+      studio: await s.as.owner.query(api.sites.meta, { site: 'restaurant' }).then(() => 'open', () => 'closed'),
+      cook: await s.as.cook.query(api.entries.trash, { site: 'restaurant', paginationOpts: firstPage }).then(() => 'open', () => 'closed'),
       bundle: (await s.t.fetch('/bundle/restaurant?format=3&locale=de')).status,
       push: !!(await s.t.query(internal.release.pushKey, { hash: sha256(pushKey) })),
       agent: (await s.t.mutation(internal.agent.admit, { hash: sha256(agentKey.key) })).ok,
@@ -102,12 +102,14 @@ describe('delete site', () => {
     // Only the owner can see the deletion and cancel it.
     expect(await s.as.owner.query(api.sites.deletion, { site: 'restaurant' })).toEqual({ name: 'Gasthaus zur Linde', at })
     expect(await s.as.cook.query(api.sites.deletion, { site: 'restaurant' })).toBeNull()
-    expect((await s.as.owner.query(api.sites.mine, {})).map((x) => x.slug)).toEqual(['restaurant'])
+    // "Meine Seiten" marks it (it listed the site like any other).
+    expect((await s.as.owner.query(api.sites.mine, {})).map((x) => [x.slug, x.deleting])).toEqual([['restaurant', true]])
     expect(await s.as.cook.query(api.sites.mine, {})).toEqual([])
 
     await s.as.owner.mutation(api.sites.cancelDeletion, { site: 'restaurant' })
     expect(await open()).toEqual({ studio: 'open', cook: 'open', bundle: 200, push: true, agent: true })
     expect(await s.as.owner.query(api.sites.deletion, { site: 'restaurant' })).toBeNull()
+    expect((await s.as.owner.query(api.sites.mine, {})).map((x) => [x.slug, x.deleting])).toEqual([['restaurant', false]])
   })
 
   // Wrong behaviour caught: staff or a stranger deletes a customer's site; an admin cannot rescue one.
@@ -145,6 +147,8 @@ describe('delete site', () => {
     await s.as.owner.mutation(api.files.createFolder, { site: 'restaurant', name: 'Ordner' })
     await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries['menu-saibling']!, baseRev: 1, fields: { price: { amount: 1500 } } })
     await s.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry: s.entries['menu-frittaten']!, baseRev: 1, fields: { price: { amount: 999 } } })
+    // A Markdown text stores its trees (entryTrees).
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: '**Hallo**' } } })
     await s.t.run(async (ctx) => {
       const site = (await ctx.db.get(s.site))!
       const menu = (site.schema as { bricks: Record<string, { tasks?: { needsApproval?: boolean }[] }> }).bricks.menu!

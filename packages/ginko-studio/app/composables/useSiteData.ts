@@ -1,11 +1,13 @@
-// The open site: schema, live entries, the caller's role and grants (sites.get), plus what the
-// caller may do. Every page under /s/[site] reads this one query.
+// The open site: schema, settings, the caller's role and grants (sites.meta), plus what the caller may do. Every page
+// under /s/[site] reads this one query. It carries no entries: each page reads the ones it shows (entries.list, get,
+// single, titles, ofBricks), so a save elsewhere does not send the whole site again.
 import { api } from '#convex/api'
-import type { Brick, CollectionBrick, Json } from '@lupinum/ginko'
-import { ordered, sortEntries, type Schema, type StoredEntry } from '@lupinum/ginko/internal'
+import type { Brick } from '@lupinum/ginko'
+import { ordered, type Schema } from '@lupinum/ginko/internal'
 import { useToday } from '@lupinum/ginko-editor'
-import { taskRef, type Data, type Task } from '../utils/content'
+import { taskRef, type Data, type StoredTranslation, type Task } from '../utils/content'
 
+/** An entry as an editor reads it (server lib/list.ts editorEntry). */
 export interface Entry {
   _id: string
   brick: string
@@ -19,18 +21,25 @@ export interface Entry {
   /** Drafts (SPEC 15): absent means live; `publishAt` is set on a scheduled draft. */
   state?: 'draft' | 'live'
   publishAt?: number
+  /** Someone removed it (it is in the trash); a form open on it keeps the input (N1). */
+  deleted?: boolean
+  /** Per foreign language, its translation state as the website shows it (entries.get and entries.single only; none for drafts). */
+  translation?: Record<string, StoredTranslation>
+  /** The person created it through a create task, so staff may change it with that task (entries.get, and the drafts entries.ofBricks lists). */
+  own?: boolean
+  /** When a draft was made (entries.ofBricks lists it for drafts only). */
+  since?: number
 }
 
 export async function useSiteData() {
   const route = useRoute()
   const slug = computed(() => String(route.params.site))
-  const query = useConvexQuery(api.sites.get, () => ({ site: slug.value }))
+  const query = useConvexQuery(api.sites.meta, () => ({ site: slug.value }))
   await query
 
   const schema = computed(() => query.data.value?.site.schema as Schema | undefined)
   const role = computed(() => query.data.value?.role)
   const grants = computed(() => new Set(query.data.value?.grants ?? []))
-  const entries = computed(() => (query.data.value?.entries ?? []) as unknown as Entry[])
   const main = computed(() => schema.value?.locales[0] ?? 'de')
   const today = useToday(() => schema.value?.timeZone ?? 'Europe/Vienna')
 
@@ -41,16 +50,5 @@ export async function useSiteData() {
   /** Live bricks in schema order. */
   const bricks = computed(() => ordered(schema.value?.bricks ?? {}).filter(([, b]) => !b.retired) as [string, Brick][])
 
-  /** A collection's live entries in the site's order; a single's one entry. */
-  function entriesOf(key: string): Entry[] {
-    const brick = schema.value?.bricks[key]
-    const own = entries.value.filter((e) => e.brick === key)
-    if (!brick || brick.kind !== 'collection') return own
-    const byId = new Map(own.map((e) => [e._id, e]))
-    const stored: StoredEntry[] = own.map((e) => ({ id: e._id, order: e.order, data: e.data as Record<string, Json> }) as StoredEntry)
-    return sortEntries(brick as CollectionBrick, stored).map((s) => byId.get(s.id)!)
-  }
-  const single = (key: string) => entries.value.find((e) => e.brick === key)
-
-  return { slug, query, site: computed(() => query.data.value?.site), schema, role, grants, entries, main, today, may, isManager, bricks, entriesOf, single }
+  return { slug, query, site: computed(() => query.data.value?.site), schema, role, grants, main, today, may, isManager, bricks }
 }

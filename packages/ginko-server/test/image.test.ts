@@ -39,6 +39,13 @@ describe('processImage', () => {
     for (const variant of out.variants) expect(await sharp(variant.bytes).metadata()).toMatchObject({ format: 'webp', width: variant.width })
   })
 
+  // Wrong behaviour caught: a valid 20000 × 20000 px PNG was called "not a readable image"; the cause is sharp's pixel limit.
+  it('names too many pixels as the reason when an image is over the pixel limit', async () => {
+    // A PNG header of 20000 × 20000 px with a tiny image data block; sharp refuses it before decoding.
+    const huge = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAATiAAAE4gCAAAAADGGxnlAAAAKklEQVR4nO3BMQEAAADCoPVPbQ0PoAAAAAAAAAAAAAAAAAAAAAAAAAC4ME4hAAE+tdW1AAAAAElFTkSuQmCC', 'base64'))
+    await expect(processImage(huge)).rejects.toMatchObject({ key: 'errors.uploadTooManyPixels' })
+  })
+
   it('reports bytes it cannot decode as unreadable', async () => {
     await expect(processImage(new TextEncoder().encode('kein Bild'))).rejects.toBeInstanceOf(UnreadableImageError)
   })

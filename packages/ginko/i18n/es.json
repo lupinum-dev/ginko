@@ -2,6 +2,7 @@
   "issues": {
     "unknownBrick": "No existe el bloque “{brick}”.",
     "markdown": "“{label}”: {problem}",
+    "markdownAt": "“{label}”, línea {line}: {problem}",
     "notObject": "Se espera un objeto.",
     "unknownField": "Campo desconocido.",
     "fieldMissing": "Falta “{label}”.",
@@ -23,6 +24,8 @@
     "badTime": "“{label}” no es una hora válida.",
     "badDateRange": "“{label}” no es un período válido.",
     "dateRangeOrder": "“{label}”: “desde” es posterior a “hasta”.",
+    "timeOrder": "“{end}” debe ser posterior a “{start}”.",
+    "notWeekStart": "“{label}” debe ser el primer día de una semana.",
     "badChoice": "“{label}” tiene un valor no válido.",
     "badChoices": "“{label}” tiene valores no válidos.",
     "duplicateValues": "“{label}” contiene valores repetidos.",
@@ -39,6 +42,9 @@
     "duplicateRowId": "“{label}”: el ID de fila aparece dos veces.",
     "notImage": "“{label}” no es una imagen válida.",
     "altMissing": "“{label}”: falta la descripción de la imagen (texto alternativo).",
+    "fileRefMissing": "“{label}”: una imagen del texto ya no está en la biblioteca de archivos. Vuelve a elegirla.",
+    "fileRefPdf": "Un PDF no se puede mostrar como imagen. Enlázalo en su lugar: [texto]($file.…).",
+    "markdownImageAltMissing": "“{label}”: una imagen del texto no tiene descripción. Descríbela brevemente para quien no puede verla.",
     "altTooLong": "“{label}”: el texto alternativo es demasiado largo.",
     "notFile": "“{label}” no es un archivo válido."
   },
@@ -58,7 +64,9 @@
     "propBlocked": "La propiedad “{prop}” no está permitida.",
     "unsafeLink": "Enlace no permitido (solo http, https, mailto, tel o /ruta).",
     "oneParagraph": "Aquí solo se permite un párrafo.",
-    "tooComplex": "El texto es demasiado complejo (máximo {max} elementos)."
+    "tooComplex": "El texto es demasiado complejo (máximo {max} elementos).",
+    "componentNotClosed": "El componente “{tag}” no está cerrado: falta una línea con “{close}” después de su contenido.",
+    "bracketText": "“[{text}” no es ni un enlace ni una imagen: falta “]” o la dirección entre paréntesis. Corchetes como texto: \\[ y \\]."
   },
   "component": {
     "or": "{first} o {second}",
@@ -175,7 +183,7 @@
       "newFieldOnly": "Añade un campo nuevo.",
       "newSite": "Crea un sitio nuevo.",
       "moneyFields": "Añade campos de dinero nuevos con una `currency` fija.",
-      "planMigration": "Planifica una migración con tu desarrollador.",
+      "planMigration": "Planifica una migración con tu equipo de desarrollo.",
       "keepLocale": "Conserva el idioma; las páginas en ese idioma se pueden ocultar.",
       "keepLocaleOrder": "Conserva el orden de los idiomas existentes.",
       "keepTimezone": "Conserva la zona horaria.",
@@ -186,7 +194,7 @@
       "defaultOrOptional": "Define un valor `default` o haz el campo opcional.",
       "keepProperty": "Conserva la propiedad.",
       "keepMax": "Conserva max.",
-      "keepRoute": "Conserva la route.",
+      "keepRoute": "Conserva la dirección (route).",
       "defaultMigrationOrOptional": "Define un valor `default`, escribe una migración o haz el campo opcional.",
       "keepDefinition": "Deja la definición como está; solo pueden cambiar los textos.",
       "keepDefault": "Conserva el valor predeterminado.",
@@ -199,6 +207,6 @@
   "preview": {
     "notFound": "Esta página no existe.",
     "failed": "La vista previa no se carga.",
-    "loading": "Cargando la vista previa …"
+    "loading": "Cargando la vista previa…"
   }
 }

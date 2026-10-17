@@ -7,15 +7,16 @@ import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { bundleOf } from './bundle'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
-import { createAs, labelOf, removeAs, revertAs, saveAs, undoAs, versionAtAs } from './entries'
+import { createAs, labelOf, removeAs, revertAs, saveAs, undoAs, usesOfEntry, versionAtAs } from './entries'
 import { usageAs } from './files'
 import { ownAs } from './proposals'
-import { actorFor, entryOf, fail, memberOf, type Actor } from './lib/access'
+import { actorFor, entryOf, fail, idempotent, memberOf, type Actor } from './lib/access'
 import { searchEntries as searchAll, searchTexts } from './lib/search'
-import { fixedTools, HISTORY_MAX, PROPOSE, SEARCH_MAX, linksIn, taskFor, taskTools, describeTask, draftBricks, type TaskTool } from './lib/agentTools'
+import { fixedTools, HISTORY_MAX, PROPOSE, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, taskTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
 import type { Data } from './lib/content'
-import { splitFallback } from './lib/translation'
+import { leafStatus } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
+import { same } from './lib/write'
 import { effectiveReview } from './lib/policy'
 import { secret } from './release'
 import { prefillAs } from './tasks'
@@ -121,22 +122,37 @@ export const admit = internalMutation({
   },
 })
 
+/**
+ * The prefilled values of a task, resolved against the entry an edit changes, so a day already set stays (`prefillAs`).
+ * Only the prefilled fields: the stored values of the task's other fields are not written again.
+ */
+async function prefillOf(ctx: QueryCtx, actor: Actor, tool: TaskTool, entry?: Id<'entries'>): Promise<Record<string, Json>> {
+  const values = await prefillAs(ctx, actor, { site: actor.site.slug, task: tool.ref, ...(entry ? { entry } : {}) }) as Record<string, Json>
+  const keys = Object.keys(('prefill' in tool.task && tool.task.prefill) || {})
+  return Object.fromEntries(Object.entries(values).filter(([key]) => keys.includes(key)))
+}
+
 async function inputSchemaOf(ctx: QueryCtx, actor: Actor, tool: TaskTool): Promise<JsonSchemaObject> {
   const schema = actor.site.schema as Schema
-  const prefill = await prefillAs(ctx, actor, { site: actor.site.slug, task: tool.ref }) as Record<string, Json>
+  // An edit of a single offers what it would write there now; a picked entry is known only at the call.
+  const single = tool.task.kind === 'edit' ? await singleOf(ctx, actor, tool.brick) : undefined
+  const prefill = await prefillOf(ctx, actor, tool, single?._id)
   return taskInputSchema(schema.bricks[tool.brick]!, tool.task, { mainLocale: schema.locales[0]!, currency: schema.currency, prefill })
 }
 
-/** tools/list: the fixed tools and one tool per task the person may run; every task tool may carry `propose`. */
+/** tools/list: the fixed tools and one tool per task the person may run; every task tool may carry `propose` and `request_id`. */
 export const tools = internalQuery({
   args: { key: v.id('agentKeys') },
   handler: async (ctx, { key }) => {
     const actor = await actorOrFail(ctx, key)
     const schema = actor.site.schema as Schema
-    const out: { name: string; description: string; inputSchema: Json }[] = fixedTools(actor)
+    const out: ToolDef[] = fixedTools(actor)
     for (const tool of taskTools(actor)) {
       const input = await inputSchemaOf(ctx, actor, tool)
-      out.push({ name: tool.name, description: describeTask(schema.bricks[tool.brick]!, tool.task, schema.locales[0]!), inputSchema: { ...input, properties: { ...input.properties, propose: PROPOSE } } as unknown as Json })
+      out.push({
+        name: tool.name, description: describeTask(schema.bricks[tool.brick]!, tool.task, schema.locales[0]!),
+        inputSchema: { ...input, properties: { ...input.properties, propose: PROPOSE, request_id: REQUEST_ID } } as unknown as Json, annotations: taskHints(tool.task),
+      })
     }
     return out
   },
@@ -204,9 +220,15 @@ async function targetOf(ctx: MutationCtx, actor: Actor, brick: string, picked: J
     if (entry.brick !== brick) fail('NOT_FOUND', 'errors.entryNotFound')
     return entry
   }
-  const entry = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', brick)).first()
-  if (!entry || entry.kind !== 'single') fail('INVALID', 'errors.entryIdMissing')
+  const entry = await singleOf(ctx, actor, brick)
+  if (!entry) fail('INVALID', 'errors.entryIdMissing')
   return entry
+}
+
+/** The entry of a single brick; undefined for a collection. */
+async function singleOf(ctx: QueryCtx, actor: Actor, brick: string): Promise<Doc<'entries'> | undefined> {
+  const entry = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', brick)).first()
+  return entry?.kind === 'single' ? entry : undefined
 }
 
 /** The newest change row of an entry: the one the operation just wrote. */
@@ -290,8 +312,9 @@ export const lookup = internalQuery({
         return { text: hits.length ? `${hits.length} hits.` : 'Nothing found.', result: hits }
       }
       case 'ginko_version_at': {
-        const version = await versionAtAs(ctx, actor, { entry: text(input.entry, 'entry'), change: text(input.change, 'change') })
-        return { text: 'This is how the entry looked after that change.', result: version }
+        const { task } = await revertTaskFor(ctx, actor, text(input.entry, 'entry'), text(input.change, 'change'))
+        const version = await versionAtAs(ctx, actor, { entry: text(input.entry, 'entry'), change: text(input.change, 'change'), task })
+        return { text: 'This is how the entry looked after that change.', result: { ...version, diff: version.diff as unknown as Json } }
       }
       case 'ginko_file_usage': {
         const usage = await usageAs(ctx, actor, text(input.file, 'file'))
@@ -319,28 +342,36 @@ export const lookup = internalQuery({
   },
 })
 
-/** ginko_read in another language: which of the leaves delivered in the main language have a translation that is only outdated. */
+/**
+ * ginko_read in another language: the outdated translations per entry, which the bundle delivers as they are (D6).
+ * Only the entries the bundle holds: not removed, not drafts, not left out of this language.
+ */
 export const stale = internalQuery({
-  args: { key: v.id('agentKeys'), brick: v.string(), locale: v.string(), fallback: v.record(v.string(), v.array(v.string())) },
-  handler: async (ctx, { key, brick, locale, fallback }): Promise<Record<string, string[]>> => {
+  args: { key: v.id('agentKeys'), brick: v.string(), locale: v.string() },
+  handler: async (ctx, { key, brick, locale }): Promise<Record<string, string[]>> => {
     const actor = await actorOrFail(ctx, key)
+    const schema = actor.site.schema as Schema
     const out: Record<string, string[]> = {}
-    const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', brick)).collect()
+    if (!Object.hasOwn(schema.bricks, brick)) return out
+    const rows = await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', actor.site._id).eq('brick', brick).eq('deletedAt', undefined)).collect()
     for (const row of rows) {
-      // `fallback` holds the bundle's list: missing and outdated leaves. A leaf that has a value in this language is outdated.
-      const leaves = splitFallback(row.data as Data, fallback[row._id] ?? (row.kind === 'single' ? fallback.single : undefined) ?? [], locale).outdated
-      if (leaves.length) out[row._id] = leaves
+      if (row.state === 'draft') continue
+      const status = leafStatus(schema, brick, row, locale)
+      if (status.page !== 'hidden' && status.outdated.length) out[row._id] = status.outdated
     }
     return out
   },
 })
 
+/** When a write shows on the website: in about a minute, or from the day of a week planned ahead or a planned price (`liveFrom`). */
+const liveText = (liveFrom: string | undefined) => (liveFrom ? `On the website from ${liveFrom}.` : 'Live on the website in about a minute.')
+
 /** The sentence for the person after a save-like write: proposed, unchanged, or done with the change to undo. */
 function savedAs(result: Json, label: string): { text: string; result: Json } {
   if (proposed(result)) return { text: PROPOSED, result }
-  const change = (result as { change?: string }).change
+  const { change, liveFrom } = result as { change?: string; liveFrom?: string }
   return {
-    text: change ? `Done: ${label}. Live on the website in about a minute. To undo: ginko_undo with change ${change}.` : 'Nothing changed: the values were already like this.',
+    text: change ? `Done: ${label}. ${liveText(liveFrom)} To undo: ginko_undo with change ${change}.` : 'Nothing changed: the values were already like this.',
     result,
   }
 }
@@ -353,27 +384,38 @@ function objectArg(value: Json | undefined, what: string): Record<string, Json> 
 
 /**
  * tools/call for every tool that writes. Returns the operation's result and a sentence for the person.
- * Each call is a new op: JSON-RPC ids restart with every client session, so they cannot identify a retry.
- * `propose: true` makes the call a proposal through the policy (`forceProposal`), never a second write path.
+ * JSON-RPC ids restart with every client session, so they cannot identify a retry; the assistant's own `request_id`
+ * can. With one, the whole call is an op `mcp-<request_id>`: the same call again returns the first answer and writes
+ * nothing, other arguments are OP_REUSED. The operation inside always gets a new op id, as without one.
  */
 export const call = internalMutation({
   args: { key: v.id('agentKeys'), name: v.string(), args: v.record(v.string(), v.any()) },
   handler: async (ctx, { key, name, args }): Promise<{ text: string; result: Json }> => {
     const person = await actorOrFail(ctx, key)
-    const { propose: ask, ...input } = args as Record<string, Json>
-    if (ask !== undefined && typeof ask !== 'boolean') fail('INVALID', 'errors.proposeTrueFalse')
-    const actor: Actor = ask === true ? { ...person, forceProposal: true } : person
-    const opId = crypto.randomUUID()
-
-    if (name === 'ginko_undo') return undoThroughDoor(ctx, person, input.change, opId)
-    if (name === 'ginko_revert' || name === 'ginko_translate' || name === 'ginko_draft') {
-      if (!fixedTools(person).some((t) => t.name === name)) fail('FORBIDDEN', 'errors.toolNotFoundOrNotYours', { name })
-      if (name === 'ginko_revert') return revertThroughDoor(ctx, actor, input, opId)
-      return name === 'ginko_translate' ? translateThroughDoor(ctx, actor, input, opId) : draftThroughDoor(ctx, actor, input, opId)
-    }
-    return taskThroughDoor(ctx, actor, name, input, opId)
+    const { request_id: requestId, ...rest } = args as Record<string, Json>
+    if (requestId === undefined) return callOnce(ctx, person, name, rest)
+    if (typeof requestId !== 'string') fail('INVALID', 'errors.actionIdInvalid')
+    // The op hash covers the tool and its arguments, so a retry with other input is OP_REUSED.
+    const op = { opId: `mcp-${requestId}`, name, args: rest }
+    return idempotent(ctx, person, op, () => callOnce(ctx, person, name, rest))
   },
 })
+
+/** One tools/call that writes. `propose: true` makes it a proposal through the policy (`forceProposal`), never a second write path. */
+async function callOnce(ctx: MutationCtx, person: Actor, name: string, args: Record<string, Json>): Promise<{ text: string; result: Json }> {
+  const { propose: ask, ...input } = args
+  if (ask !== undefined && typeof ask !== 'boolean') fail('INVALID', 'errors.proposeTrueFalse')
+  const actor: Actor = ask === true ? { ...person, forceProposal: true } : person
+  const opId = crypto.randomUUID()
+
+  if (name === 'ginko_undo') return undoThroughDoor(ctx, person, input.change, opId)
+  if (name === 'ginko_revert' || name === 'ginko_translate' || name === 'ginko_draft') {
+    if (!fixedTools(person).some((t) => t.name === name)) fail('FORBIDDEN', 'errors.toolNotFoundOrNotYours', { name })
+    if (name === 'ginko_revert') return revertThroughDoor(ctx, actor, input, opId)
+    return name === 'ginko_translate' ? translateThroughDoor(ctx, actor, input, opId) : draftThroughDoor(ctx, actor, input, opId)
+  }
+  return taskThroughDoor(ctx, actor, name, input, opId)
+}
 
 async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
   const schema = actor.site.schema as Schema
@@ -387,15 +429,13 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
   const { entry: picked, confirm, ...values } = input
   const main = schema.locales[0]!
   // Prefilled values count when the assistant leaves a field out: the tool offers them as defaults.
-  const prefill = await prefillAs(ctx, actor, { site, task: tool.ref }) as Record<string, Json>
-
   if (tool.task.kind === 'create') {
-    const data = { ...prefill, ...fromToolInput(brick.fields, values, { mainLocale: main, currency: schema.currency, newRowId }) }
+    const data = { ...await prefillOf(ctx, actor, tool), ...fromToolInput(brick.fields, values, { mainLocale: main, currency: schema.currency, newRowId }) }
     const result = await createAs(ctx, actor, { site, opId, task: tool.ref, brick: tool.brick, data })
     if (proposed(result)) return { text: PROPOSED, result }
-    const { entry: id, state } = result as { entry: Id<'entries'>; state: 'draft' | 'live' }
+    const { entry: id, state, liveFrom } = result as { entry: Id<'entries'>; state: 'draft' | 'live'; liveFrom?: string }
     // A collection with drafts makes a draft (SPEC 15); publishing stays with the person in the platform.
-    const where = state === 'draft' ? 'Saved as a draft, not on the website yet. The person publishes it in the platform.' : 'Live on the website in about a minute.'
+    const where = state === 'draft' ? 'Saved as a draft, not on the website yet. The person publishes it in the platform.' : liveText(liveFrom)
     const change = await lastChangeOf(ctx, id)
     return { text: `Done: ${labelIn(tool.task.label, main, main)}. New entry ${id}. ${where} To undo: ginko_undo with change ${change?._id}.`, result: { ...(result as object), change: change?._id ?? null } }
   }
@@ -405,13 +445,21 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
     if (confirm !== true) fail('INVALID', 'errors.removeNeedsConfirm')
     const result = await removeAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, lifeRev: entry.lifeRev })
     if (proposed(result)) return { text: PROPOSED, result }
-    return { text: 'Removed. The person can restore it in the platform for 30 days.', result }
+    // The same warning as the platform's remove dialog: entries that point at it show without it now.
+    const uses = await usesOfEntry(ctx, actor, entry)
+    const note = uses.length ? ` Note: ${uses.length} ${uses.length === 1 ? 'entry pointed' : 'entries pointed'} at it (${uses.map((u) => `“${u.title}”`).join(', ')}); they now show without it until it is restored.` : ''
+    return { text: `Removed. The person can restore it in the platform for 30 days.${note}`, result }
   }
 
   const taskFields = tool.task.fields
   const stored = entry.data as Record<string, Json>
+  // The task opens on the entry as the Studio's sheet does: its presets resolved on the entry (`prefill`, so a closure
+  // day already set stays), and a planned change whose day has come is the value in effect with its spent plan cleared
+  // (`opened`, from `prefillAs`), so a new value does not hide behind it.
+  const prefill = await prefillOf(ctx, actor, tool, entry._id)
+  const opened = await prefillAs(ctx, actor, { site, task: tool.ref, entry: entry._id }) as Record<string, Json>
   const fields = {
-    ...Object.fromEntries(Object.entries(prefill).filter(([k]) => taskFields.includes(k))),
+    ...Object.fromEntries(Object.entries(opened).filter(([k, value]) => taskFields.includes(k) && (Object.hasOwn(prefill, k) || !same(value, stored[k])))),
     ...fromToolInput(Object.fromEntries(taskFields.map((f) => [f, brick.fields[f]!])), values, { mainLocale: main, currency: schema.currency, stored, newRowId }),
   }
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')
@@ -447,7 +495,7 @@ async function translateThroughDoor(ctx: MutationCtx, actor: Actor, input: Recor
   const roots = [...new Set([...Object.keys(fields), ...confirm as string[]])]
   const label = `Translation (${locale}): ${roots.map((k) => labelIn(brick.fields[k]!.label, main, main)).join(', ')}`
   const result = await saveAs(ctx, actor, {
-    site: actor.site.slug, opId, task: taskFor(actor, entry.brick, 'edit', roots), entry: entry._id, baseRev: entry.rev, fields, locale,
+    site: actor.site.slug, opId, task: taskFor(actor, entry.brick, 'edit', roots, entry), entry: entry._id, baseRev: entry.rev, fields, locale,
     ...(confirm.length ? { confirm: confirm as string[] } : {}), sentence: label,
   })
   return savedAs(result, label)
@@ -472,13 +520,23 @@ async function draftThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<st
   }
 }
 
+/**
+ * The task a revert of this change goes through: none for owners and admins (a full revert), else the staff task. The fields a later change touched are the ones a revert can write: a
+ * staff task must cover them. `ginko_version_at` and `ginko_revert` both ask here, so the preview shows what the save writes.
+ */
+async function revertTaskFor(ctx: QueryCtx, actor: Actor, entryId: string, changeId: string) {
+  const entry = await entryOf(ctx, actor, entryId)
+  // Owners and admins revert in full, with no task, as the Studio does for managers (ChangeRows.vue).
+  if (actor.role !== 'staff') return { entry, task: undefined }
+  const { fields } = await versionAtAs(ctx, actor, { entry: entryId, change: changeId })
+  return { entry, task: taskFor(actor, entry.brick, 'edit', fields, entry) }
+}
+
 /** ginko_revert: `entries.revert` (a normal save, so rights, review and undo apply). */
 async function revertThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
   if (typeof input.entry !== 'string' || typeof input.change !== 'string') fail('INVALID', 'errors.entryAndChangeIdRequired')
-  // The fields a later change touched are the ones a revert can write: a staff task must cover them.
-  const { fields } = await versionAtAs(ctx, actor, { entry: input.entry, change: input.change }) as { fields: string[] }
-  const entry = await entryOf(ctx, actor, input.entry)
-  const result = await revertAs(ctx, actor, { site: actor.site.slug, opId, task: taskFor(actor, entry.brick, 'edit', fields), entry: entry._id, change: input.change })
+  const { entry, task } = await revertTaskFor(ctx, actor, input.entry, input.change)
+  const result = await revertAs(ctx, actor, { site: actor.site.slug, opId, task, entry: entry._id, change: input.change })
   return savedAs(result, 'Back to the earlier state')
 }
 
@@ -498,6 +556,7 @@ async function undoThroughDoor(ctx: MutationCtx, actor: Actor, raw: Json | undef
     if (removal) await ctx.db.patch(change._id, { undoneBy: removal._id })
     return { text: 'Undone: the entry is removed.', result }
   }
-  const result = await undoAs(ctx, actor, { site, opId, task: taskFor(actor, change.brick, 'edit', change.fields ?? []), change: change._id })
+  const entry = change.entry ? await ctx.db.get(change.entry) : null
+  const result = await undoAs(ctx, actor, { site, opId, task: taskFor(actor, change.brick, 'edit', change.fields ?? [], entry), change: change._id })
   return { text: `Undone: ${lineFor(change, actor.site.schema as Schema)}.`, result }
 }

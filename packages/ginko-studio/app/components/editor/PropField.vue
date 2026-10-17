@@ -1,10 +1,13 @@
 <!-- One prop of a component in the settings popover: label, hint, the control for its type, the message.
      It keeps what is typed (`draft`) apart from the applied value, so a refused value stays visible next to
-     its message while the block keeps the last valid one. The parent checks the value (propProblem). -->
+     its message while the block keeps the last valid one. The parent checks the value (propProblem).
+     An image prop: a picture from the Files library (stored as `$file.<id>`, shown as a thumbnail), or a web address. -->
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { computed, defineAsyncComponent, inject, onBeforeUnmount, ref, useId, watch } from 'vue'
 import { useI18n } from '#imports'
-import { BLOCKERS, propMax, type PropField, type PropValue } from '@lupinum/ginko-editor'
+import { fileRefOf } from '@lupinum/ginko/internal'
+import { BLOCKERS, propMax, shownSrc, type PropField, type PropValue } from '@lupinum/ginko-editor'
+import { Button } from '@studio/components/ui/button'
 import { Checkbox } from '@studio/components/ui/checkbox'
 import { Input } from '@studio/components/ui/input'
 import { Label } from '@studio/components/ui/label'
@@ -14,9 +17,13 @@ import { Switch } from '@studio/components/ui/switch'
 import { TagsInput, TagsInputInput, TagsInputItem, TagsInputItemDelete, TagsInputItemText } from '@studio/components/ui/tags-input'
 import { Textarea } from '@studio/components/ui/textarea'
 import { useStudioSite } from '../../utils/labels'
+import type { Chosen } from '../files/LibraryPickerBody.vue'
+import { textAltOf } from '../files/util'
+import { EDITOR_FILES } from './context.ts'
 
 const props = defineProps<{ name: string; field: PropField; modelValue: PropValue; error?: string }>()
-const emit = defineEmits<{ change: [value: PropValue] }>()
+/** `pick`: a picture from the library, with the description it brings in the text's language (may be empty). */
+const emit = defineEmits<{ change: [value: PropValue]; pick: [picked: { src: string; alt: string }] }>()
 
 const { shown } = useStudioSite()
 const { t } = useI18n()
@@ -63,6 +70,24 @@ const defaultLabel = computed(() => {
   return t('editor.prop.default', { value: label === undefined ? String(field.default) : shown(label) })
 })
 
+// --- image: the library picker and the thumbnail ------------------------------------------------------------------
+const files = inject(EDITOR_FILES, undefined)
+// The library loads when it is opened for the first time.
+const LibraryPicker = defineAsyncComponent(() => import('../files/LibraryPicker.vue'))
+const libraryOpen = ref(false)
+/** True while the value is a library file: the address input then stays empty (it would show the bare ID). */
+const isFile = computed(() => fileRefOf(text.value) !== undefined)
+watch(text, (value) => files?.images.want(value), { immediate: true })
+const thumbnail = computed(() => (isFile.value ? shownSrc(files?.images, text.value) : undefined))
+
+function fromLibrary(chosen: Chosen) {
+  libraryOpen.value = false
+  const src = `$file.${chosen.id}`
+  text.value = src
+  handedOut = src
+  emit('pick', { src, alt: textAltOf(chosen, files?.locale() ?? '') })
+}
+
 function toggle(value: string, on: boolean) {
   const next = on ? [...chosen.value, value] : chosen.value.filter((v) => v !== value)
   const order = options.value.map((o) => o.value)
@@ -81,10 +106,26 @@ function toggle(value: string, on: boolean) {
         {{ shown(field.label) }}<span v-if="field.optional" class="font-normal text-muted-foreground">{{ t('editor.prop.optional') }}</span>
       </Label>
 
+      <div v-if="field.type === 'image'" class="grid gap-2">
+        <img v-if="thumbnail" :src="thumbnail" alt="" class="max-h-32 w-fit max-w-full rounded-md border object-contain">
+        <p v-else-if="thumbnail === null" class="text-sm text-muted-foreground">{{ t('editor.image.missing') }}</p>
+        <div class="flex flex-wrap gap-2">
+          <Button v-if="files" type="button" variant="secondary" size="sm" @click="libraryOpen = true">
+            {{ isFile ? t('editor.prop.changeImage') : t('editor.prop.chooseImage') }}
+          </Button>
+          <Button v-if="isFile && field.optional" type="button" variant="ghost" size="sm" @click="text = ''; send(undefined)">{{ t('fields.remove') }}</Button>
+        </div>
+        <Input
+          :id="id" :model-value="isFile ? '' : text" type="url" inputmode="url" autocomplete="off" :spellcheck="false" class="h-8 text-sm"
+          :aria-invalid="error !== undefined" :aria-describedby="describedBy" :placeholder="t('editor.prop.imagePlaceholder')"
+          @update:model-value="text = String($event); send(text)"
+        />
+        <LibraryPicker v-if="libraryOpen" v-model:open="libraryOpen" kind="image" :locale="files?.locale() ?? ''" @choose="fromLibrary" />
+      </div>
       <Input
-        v-if="field.type === 'text' || field.type === 'image' || field.type === 'ref'"
+        v-else-if="field.type === 'text' || field.type === 'ref'"
         :id="id" v-model="text" :type="inputType" :inputmode="inputType === 'url' ? 'url' : undefined" :maxlength="undefined" autocomplete="off" :spellcheck="inputType !== 'url'"
-        :aria-invalid="error !== undefined" :aria-describedby="describedBy" :placeholder="field.type === 'image' ? t('editor.prop.imagePlaceholder') : undefined"
+        :aria-invalid="error !== undefined" :aria-describedby="describedBy"
         @update:model-value="send(String($event))"
       />
       <Textarea

@@ -18,7 +18,7 @@ afterEach(() => {
 type Backend = Awaited<ReturnType<typeof setup>>
 
 async function mails(t: Backend['t']) {
-  return (await t.run((ctx) => ctx.db.query('outbox').collect())).filter((m) => m.subject.startsWith('Mittagsmenü'))
+  return t.run((ctx) => ctx.db.query('outbox').collect())
 }
 
 /** The restaurant corpus without its planned lunch week, so the lunch brick alone decides. */
@@ -28,6 +28,16 @@ async function setupUnplanned() {
     for (const e of await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'lunchPlans')).collect()) await ctx.db.delete(e._id)
   })
   return s
+}
+
+/** Sets `status` on a brick of the stored schema. */
+async function setStatus({ t, site }: Backend, brick: string, status: unknown) {
+  await t.run(async (ctx) => {
+    const row = (await ctx.db.get(site))!
+    const schema = structuredClone(row.schema) as { bricks: Record<string, Record<string, unknown>> }
+    schema.bricks[brick]!.status = status
+    await ctx.db.patch(site, { schema })
+  })
 }
 
 /** A staff member without the lunch task: signed in, member, but cannot fix it. */
@@ -44,10 +54,73 @@ describe('reminders.sweep', () => {
     const sent = await mails(s.t)
     expect(sent.map((m) => m.to).sort()).toEqual(['koch@example.com', 'wirtin@example.com'])
     expect(sent[0]).toMatchObject({
-      subject: 'Mittagsmenü für nächste Woche fehlt noch',
-      text: expect.stringContaining('https://ginko.test/s/restaurant'),
+      subject: '„Gasthaus zur Linde“: 1 Punkt für die kommende Woche',
+      text: expect.stringContaining('– Mittagsmenü: für nächste Woche noch nicht eingetragen\n'),
     })
+    expect(sent[0]!.text).toContain('https://ginko.test/s/restaurant')
     expect(sent[0]!.text).toContain('Erinnerungen per E-Mail')
+  })
+
+  // Wrong behaviour caught: a person gets one mail per due item on the same Sunday (decision C: one mail per person and
+  // site), or the combined mail lists an item they cannot fix.
+  it('puts the lunch week and every due status line into one mail per person', async () => {
+    const s = await setupUnplanned()
+    await setStatus(s, 'notices', { count: true })
+    expect(await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })).toEqual({ sent: 2 })
+    const sent = Object.fromEntries((await mails(s.t)).map((m) => [m.to, m]))
+    expect(sent['wirtin@example.com']!.subject).toBe('„Gasthaus zur Linde“: 2 Punkte für die kommende Woche')
+    expect(sent['wirtin@example.com']!.text).toContain('– Mittagsmenü: für nächste Woche noch nicht eingetragen\n– Hinweise: 1 endet in den nächsten 7 Tagen\n')
+    expect(sent['koch@example.com']!.subject).toBe('„Gasthaus zur Linde“: 1 Punkt für die kommende Woche')
+    expect(sent['koch@example.com']!.text).not.toContain('Hinweise')
+  })
+
+  // Wrong behaviour caught: "Meine Seiten" offered the reminder mail to everyone, also where it can never mail them.
+  it('sites.mine says to whom a site can send the reminder', async () => {
+    const s = await setup()
+    await addStaffWithoutTask(s)
+    const weekly = async (as: { query: typeof s.as.owner.query }) => (await as.query(api.sites.mine, {})).map((x) => [x.slug, x.weekly])
+    expect(await weekly(s.as.owner)).toEqual([['restaurant', true]])
+    expect(await weekly(s.as.cook)).toEqual([['restaurant', true]])
+    expect(await weekly(s.t.withIdentity({ subject: 'u-neu', email: 'neu@example.com' }))).toEqual([['restaurant', false]])
+    // A site without a weekly task or a status line mails nobody.
+    await s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      const { lunch: _lunch, ...bricks } = (site.schema as { bricks: Record<string, Record<string, unknown>> }).bricks
+      const { status: _status, ...hours } = bricks.hours!
+      await ctx.db.patch(s.site, { schema: { ...(site.schema as object), bricks: { ...bricks, hours } } })
+    })
+    expect(await weekly(s.as.owner)).toEqual([['restaurant', false]])
+    // A status line can be mailed too: to the owner, not to the cook without a notices task.
+    await setStatus(s, 'notices', { count: true })
+    expect(await weekly(s.as.owner)).toEqual([['restaurant', true]])
+    expect(await weekly(s.as.cook)).toEqual([['restaurant', false]])
+  })
+
+  // Wrong behaviour caught: a due status line (a notice ends in the coming week) stays on the Today page only, or the
+  // mail words it differently, or it reaches staff without a task on that area.
+  it('mails a due status line in the words of the Today page, to those who can fix it', async () => {
+    const s = await setup()
+    await setStatus(s, 'notices', { count: true })
+    // The corpus notice "Weinabend" shows until 2026-10-16, inside the week from Monday 2026-10-12.
+    expect(await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })).toEqual({ sent: 1 })
+    const sent = await s.t.run((ctx) => ctx.db.query('outbox').collect())
+    expect(sent.map((m) => [m.to, m.subject])).toEqual([['wirtin@example.com', '„Gasthaus zur Linde“: 1 Punkt für die kommende Woche']])
+    expect(sent[0]!.text).toContain('– Hinweise: 1 endet in den nächsten 7 Tagen')
+    expect(sent[0]!.text).toContain('https://ginko.test/s/restaurant')
+    expect(await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA + 20 * 60 * 1000 })).toEqual({ sent: 0 })
+  })
+
+  // Wrong behaviour caught: the Sunday mail says "today" about the coming Monday when no hours are entered for it.
+  it('names the coming day when no opening hours are entered for it', async () => {
+    const s = await setup()
+    await s.t.run(async (ctx) => {
+      const hours = (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', s.site).eq('brick', 'hours')).first())!
+      const data = hours.data as { week: { day: string }[] }
+      await ctx.db.patch(hours._id, { data: { ...data, week: data.week.filter((d) => d.day !== 'mo') } })
+    })
+    await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })
+    const sent = await mails(s.t)
+    expect(sent.find((m) => m.to === 'wirtin@example.com')!.text).toContain('– Öffnungszeiten: für morgen keine Öffnungszeiten eingetragen\n')
   })
 
   // Wrong behaviour caught: a created but unreleased site had no `week` in its schema, so the hourly sweep threw for all sites.
@@ -60,9 +133,9 @@ describe('reminders.sweep', () => {
   // Wrong behaviour caught: the person switches the mail off and still gets it, or the switch hides the mail for everyone.
   it('skips a person who switched reminders off', async () => {
     const s = await setupUnplanned()
-    expect(await s.as.cook.query(api.account.settings, {})).toEqual({ remindByMail: true, locale: null })
+    expect(await s.as.cook.query(api.account.settings, {})).toEqual({ remindByMail: true, locale: null, name: null })
     await s.as.cook.mutation(api.account.setRemindByMail, { on: false })
-    expect(await s.as.cook.query(api.account.settings, {})).toEqual({ remindByMail: false, locale: null })
+    expect(await s.as.cook.query(api.account.settings, {})).toEqual({ remindByMail: false, locale: null, name: null })
     await s.t.mutation(internal.reminders.sweep, { now: SUNDAY_17_VIENNA })
     expect((await mails(s.t)).map((m) => m.to)).toEqual(['wirtin@example.com'])
   })

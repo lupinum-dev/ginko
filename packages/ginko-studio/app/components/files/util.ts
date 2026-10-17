@@ -1,16 +1,11 @@
 // Small helpers shared by the Finder components.
 import type { Label } from '@lupinum/ginko'
 import type { LibFile } from '../../composables/useFilesLibrary'
+import type { Chosen } from './LibraryPickerBody.vue'
 
 export type PickKind = 'image' | 'pdf'
 
 export const isImage = (file: Pick<LibFile, 'kind'>) => file.kind === 'image'
-
-/** "340 KB", "2.4 MB". */
-export function sizeText(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
 
 /** Places a file is used at: every path of every entry (deleted entries still block). */
 export const placesOf = (usedIn: { paths: string[] }[]) => usedIn.reduce((sum, u) => sum + Math.max(1, u.paths.length), 0)
@@ -21,3 +16,12 @@ export const fieldsText = (use: { paths: string[]; fieldLabels: (Label | null)[]
 
 /** The drag payload that moves files into a folder. */
 export const DRAG_TYPE = 'application/x-ginko-files'
+
+/** The description a component's `alt` prop stores (it has no library fallback): the picker's own text, else the library's. */
+export const textAltOf = (chosen: Chosen, locale: string) => chosen.alt?.[locale]?.trim() || chosen.libraryAlt || ''
+
+/**
+ * The description a place keeps as its own: what was typed, or nothing when it is the library's text (that applies
+ * anyway, in every language, and a later fix in Files still reaches this place).
+ */
+export const ownAlt = (typed: string, library: string) => (typed.trim() === library.trim() ? '' : typed.trim())

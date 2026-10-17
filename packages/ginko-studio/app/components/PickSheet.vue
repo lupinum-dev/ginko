@@ -1,16 +1,16 @@
 <!-- Choose the entry for a pick task (UI.md 3): search by name, grouped by the first choice field. -->
 <script setup lang="ts">
 import type { Brick, Locale } from '@lupinum/ginko'
-import { ordered } from '@lupinum/ginko/internal'
+import { duePlan, ordered, searchable } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
-import { displayValue, groupField, searchable, titleOf, type Task } from '../utils/content'
+import { displayValue, groupField, titleOf, type Task } from '../utils/content'
 import { useStudioSite } from '../utils/labels'
 import { Input } from '@studio/components/ui/input'
 import { XIcon } from '@lucide/vue'
 import { Button } from '@studio/components/ui/button'
 import { SHEET_DIALOG } from '../utils/sheetDialog'
 
-const props = defineProps<{ brick: Brick; task: Task; entries: Entry[]; main: Locale }>()
+const props = defineProps<{ brick: Brick; task: Task; entries: Entry[]; main: Locale; /** Today in the site's time zone: a planned price from today on is the price. */ today: string }>()
 const emit = defineEmits<{ pick: [entry: Entry]; close: [] }>()
 
 const { shown } = useStudioSite()
@@ -28,9 +28,12 @@ const moneyKey = computed(() => {
   const edited = props.task.kind === 'edit' ? money.find((k) => props.task.kind === 'edit' && props.task.fields.includes(k)) : undefined
   return edited ?? money[0]
 })
+// From the day of a planned price (`planned`) on, the site shows that one, so the list does too.
 const priceOf = (e: Entry) => {
   const key = moneyKey.value
-  return key && e.data[key] != null ? displayValue(props.brick.fields[key]!, e.data[key], props.main, { t, format }) : ''
+  if (!key) return ''
+  const value = (key === props.brick.planned?.field ? duePlan(props.brick, e.data, props.today) : undefined) ?? e.data[key]
+  return value != null ? displayValue(props.brick.fields[key]!, value, props.main, { t, format }) : ''
 }
 const matches = computed(() => {
   const t = searchable(term.value.trim())

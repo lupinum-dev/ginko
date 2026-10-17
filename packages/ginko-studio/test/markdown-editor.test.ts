@@ -27,6 +27,17 @@ function type(editor: Editor, value: string) {
 }
 
 describe('MarkdownEditor', () => {
+  // Wrong behaviour caught (restaurant e2e 26): ProseMirror cancelled every Escape in the text, so a task sheet around
+  // the editor never closed or asked "Änderungen verwerfen?" while the focus was in a text.
+  test('Escape that the text does not use is not cancelled, so the sheet around it gets it', async () => {
+    const wrapper = await mounted('Eins\n')
+    editorOf(wrapper).commands.focus('end')
+    const key = new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true, cancelable: true })
+    wrapper.get('[role="textbox"]').element.dispatchEvent(key)
+    expect(key.defaultPrevented).toBe(false)
+    wrapper.unmount()
+  })
+
   test('focus and blur without an edit keep the stored text as written', async () => {
     const wrapper = await mounted('- a\n- b\n\n**fett** text\n')
     const box = wrapper.get('[role="textbox"]')
@@ -121,8 +132,9 @@ describe('MarkdownEditor', () => {
     expect(inline.get('[role="textbox"]').attributes('aria-multiline')).toBeUndefined()
   })
 
-  // Wrong behaviour caught: Ctrl+F in the field opened the browser's page search, and "Alle ersetzen" did not reach the saved text.
-  test('Ctrl+F opens find and replace; "Alle ersetzen" changes the text, Esc closes the bar', async () => {
+  // Wrong behaviour caught: Ctrl+F in the field opened the browser's page search, and "Alle ersetzen" did not reach the saved
+  // text or only said "Keine Treffer" afterwards, so nobody could tell whether it worked.
+  test('Ctrl+F opens find and replace; "Alle ersetzen" changes the text and says how often, Esc closes the bar', async () => {
     const wrapper = await mounted('Apfel und apfel\n\nBirne\n')
     await wrapper.get('[role="textbox"]').trigger('keydown', { key: 'f', ctrlKey: true })
     expect(wrapper.find('[role="search"]').exists()).toBe(true)
@@ -131,9 +143,41 @@ describe('MarkdownEditor', () => {
     await wrapper.get('input[aria-label="Ersetzen durch"]').setValue('Kiwi')
     const all = wrapper.findAll('[role="search"] button').find((b) => b.text() === 'Alle ersetzen')!
     await all.trigger('click')
+    expect(wrapper.get('[role="search"]').text()).toContain('2 Stellen ersetzt')
     await wait(350)
     expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual(['Kiwi und Kiwi\n\nBirne\n'])
     await wrapper.get('input[aria-label="Suchen"]').trigger('keydown', { key: 'Escape' })
     expect(wrapper.find('[role="search"]').exists()).toBe(false)
+  })
+
+  // Wrong behaviour caught: after a text style from the list, the list took the focus back onto its own button, so the
+  // next typed words went nowhere. In a browser TipTap's focus (one frame) lands before the list's close animation ends;
+  // a synchronous requestAnimationFrame while the list closes gives happy-dom the same order.
+  test('after a block type from the list, the focus is back in the text', async () => {
+    const wrapper = await mounted('Eins\n')
+    editorOf(wrapper).commands.focus('end')
+    const trigger = wrapper.get('[role="combobox"][aria-label="Blocktyp"]').element
+    trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' }))
+    for (let i = 0; i < 50 && !document.querySelector('[role="option"]'); i++) { await wait(20); await flushPromises() }
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((o) => o.textContent?.trim() === 'Unterüberschrift')!
+    const frame = window.requestAnimationFrame
+    window.requestAnimationFrame = (callback) => { callback(performance.now()); return 0 }
+    try {
+      option.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0, pointerType: 'mouse' }))
+      for (let i = 0; i < 50 && document.querySelector('[role="option"]'); i++) { await wait(20); await flushPromises() }
+    } finally { window.requestAnimationFrame = frame }
+    await wait(50)
+    expect(editorOf(wrapper).isActive('heading', { level: 3 })).toBe(true)
+    expect(document.activeElement).toBe(wrapper.get('[role="textbox"]').element)
+    wrapper.unmount()
+  })
+
+  // Wrong behaviour caught: with the find bar open, closing the field (a save that closes the sheet, a language switch)
+  // threw in the bar's teardown, and Vue left the sheet half closed with an empty text.
+  test('the field closes cleanly while find and replace is open', async () => {
+    const wrapper = await mounted('Apfel und Birne\n')
+    await wrapper.get('[role="textbox"]').trigger('keydown', { key: 'f', ctrlKey: true })
+    await wrapper.get('input[aria-label="Suchen"]').setValue('apfel')
+    expect(() => wrapper.unmount()).not.toThrow()
   })
 })

@@ -42,7 +42,7 @@ const isTree = (v: unknown): v is Tree => isRecord(v) && Array.isArray(v.nodes)
 const isNode = (n: unknown): n is Node => Array.isArray(n) && typeof n[0] === 'string' && isRecord(n[1])
 
 /** Calls `fn` for every Markdown tree of the bundle (also in list rows) with where it is; its result replaces the tree. */
-function mapTrees(bundle: Bundle, fn: (tree: Tree, at: { brick: string; id: string; field: string }) => Tree): Bundle {
+export function mapTrees(bundle: Bundle, fn: (tree: Tree, at: { brick: string; id: string; field: string }) => Tree): Bundle {
   const walk = (value: unknown, at: { brick: string; id: string }, field: string): unknown => {
     if (isTree(value)) return fn(value, { ...at, field })
     if (Array.isArray(value)) return value.map((v, i) => walk(v, at, `${field}.${i}`))
@@ -63,22 +63,27 @@ function find(bundle: Bundle, brick: string, ref: string): BundleItem | undefine
 }
 
 /** The path a `$…` link points to in the bundle's locale, or undefined. `ref` has no `$` and no `#anchor`. */
-function routeTarget(bundle: Bundle, schema: Pages, ref: string): string | undefined {
+function routeTarget(bundle: Bundle, schema: Pages, ref: string, main: Bundle | undefined): string | undefined {
   const dot = ref.indexOf('.')
   if (dot < 1) return undefined
   const head = ref.slice(0, dot)
   const rest = ref.slice(dot + 1)
   if (head === 'page') return Object.hasOwn(schema.pages, rest) ? schema.pages[rest]![bundle.locale] : undefined
-  return find(bundle, head, rest)?.urls?.[bundle.locale]
+  // An entry without its own page in this locale links to its main-language page: listed here under
+  // `untranslated: 'fallback'`, or left out of this locale (only in the main-language bundle).
+  const urls = (find(bundle, head, rest) ?? (main && find(main, head, rest)))?.urls
+  return urls?.[bundle.locale] ?? urls?.[bundle.mainLocale]
 }
 
 /**
  * The bundle with `$…` links turned into paths and `::snippet` components replaced by their text.
  * `$page.<key>` is a page of `schema.pages`; `$<brick>.<slug-or-id>` is an entry's URL; a `#anchor` is kept.
+ * `main` is the main-language bundle (from `buildBundle`, links unresolved): an entry left out of this locale because
+ * it is not translated (`untranslated: 'hide'`) is found there, and the link goes to its main-language page.
  * What cannot be resolved stays as it is and gets `data-broken: true`. A snippet is the `body` of the entry
  * `snippets/<name>` of the collection `snippets`; a snippet inside a snippet stays as it is. No mutation.
  */
-export function resolveRouteLinks(bundle: Bundle, schema: Pages): Bundle {
+export function resolveRouteLinks(bundle: Bundle, schema: Pages, main?: Bundle): Bundle {
   const hasSnippets = Object.hasOwn(schema.bricks, 'snippets') && schema.bricks.snippets!.kind === 'collection'
   const snippetNodes = (name: string): Json[] | undefined => {
     const body = hasSnippets ? find(bundle, 'snippets', name)?.data.body : undefined
@@ -95,7 +100,7 @@ export function resolveRouteLinks(bundle: Bundle, schema: Pages): Bundle {
     const href = props.href
     if (tag === 'a' && typeof href === 'string' && href.startsWith('$')) {
       const hash = href.indexOf('#')
-      const target = routeTarget(bundle, schema, hash === -1 ? href.slice(1) : href.slice(1, hash))
+      const target = routeTarget(bundle, schema, hash === -1 ? href.slice(1) : href.slice(1, hash), main)
       next = target === undefined ? { ...props, 'data-broken': true } : { ...props, href: target + (hash === -1 ? '' : href.slice(hash)) }
     }
     return [[tag, next, ...resolve(children, nested)] as Json]
@@ -200,8 +205,35 @@ export function externalLinks(bundles: Bundle[]): ExternalLink[] {
 }
 
 const MD_INLINE = /\]\(\s*<?([^)\s>]+)/g
-const MD_DEFINITION = /^[ \t]{0,3}\[[^\]]+\]:[ \t]*<?(\S+?)>?(?:[ \t]+.*)?$/gm
-const MD_SNIPPET = /::snippet\{[^}]*\bname="([^"]*)"/g
+const MD_DEFINITION = /^[ \t]{0,3}\[[^\]]+\]:[ \t]*<?(\S+?)>?(?:[ \t].*)?$/gm
+const SNIPPET_OPEN = '::snippet{'
+const NAME_ATTR = /\bname="/g
+
+/**
+ * The names of the `::snippet{… name="…"}` components in a Markdown text, as `/::snippet\{[^}]*\bname="([^"]*)"/g`
+ * reads them: per component the last `name="` before its first `}`, up to the next `"`. A scan with indexOf, because
+ * that regex slows down on many `::snippet{` without a `}`.
+ */
+function snippetNames(markdown: string): string[] {
+  const names: string[] = []
+  let at = markdown.indexOf(SNIPPET_OPEN)
+  while (at !== -1) {
+    const close = markdown.indexOf('}', at)
+    const head = at + SNIPPET_OPEN.length
+    const starts = [...markdown.slice(head, close === -1 ? undefined : close).matchAll(NAME_ATTR)].map((m) => head + m.index + m[0].length)
+    let next = close === -1 ? -1 : close + 1
+    for (const valueAt of starts.reverse()) {
+      const quote = markdown.indexOf('"', valueAt)
+      if (quote === -1) continue
+      names.push(markdown.slice(valueAt, quote))
+      next = quote + 1
+      break
+    }
+    // Without a `}` the rest of the text was one component: a later one has no name after the one just read.
+    at = next === -1 || close === -1 ? -1 : markdown.indexOf(SNIPPET_OPEN, next)
+  }
+  return names
+}
 
 /**
  * The link targets written in the Markdown fields of one entry's data, in all languages and list rows:
@@ -216,7 +248,7 @@ export function linkTargets(fields: Fields, data: Record<string, Json>): Set<str
       if (typeof markdown !== 'string') continue
       for (const m of markdown.matchAll(MD_INLINE)) out.add(m[1]!)
       for (const m of markdown.matchAll(MD_DEFINITION)) out.add(m[1]!)
-      for (const m of markdown.matchAll(MD_SNIPPET)) out.add(`snippet:${m[1]!}`)
+      for (const name of snippetNames(markdown)) out.add(`snippet:${name}`)
     }
   }
   const walk = (inner: Fields, row: Record<string, Json>) => {

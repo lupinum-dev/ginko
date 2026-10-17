@@ -57,6 +57,24 @@ function nativeName(language: string): string {
   }
 }
 
+/**
+ * The tag that formats dates for `language` in a user-locale zone, where `browser` is the person's first
+ * browser language (Accept-Language, `navigator.language`): its regional variant when it is the same language and
+ * `language` names no region itself (`en` read in an `en-GB` browser formats as `en-GB`: 25/10/2026), else `language`.
+ */
+export function regionalLanguage(language: string, browser: string | undefined): string {
+  if (!browser) return language
+  try {
+    const own = new Intl.Locale(language)
+    const theirs = new Intl.Locale(browser)
+    const same = theirs.language === own.language && (!own.script || own.script === theirs.script)
+    return !own.region && theirs.region && same ? theirs.baseName : language
+  }
+  catch {
+    return language
+  }
+}
+
 /** `og:locale` wants `language_TERRITORY`: `de-AT` → `de_AT`, `zh-Hant-TW` → `zh_TW`, `zh-Hant` → `zh`. */
 export function ogLocale(language: string): string {
   const tag = new Intl.Locale(language)
@@ -159,6 +177,19 @@ export function canonicalCase(path: string, config: LocaleConfig): string | unde
   const locale = config.locales.find(l => l.code.toLowerCase() === segment.toLowerCase())
   if (!locale || locale.code === segment) return undefined
   return `/${locale.code}${path.slice(segment.length + 1)}`
+}
+
+/**
+ * The one form of a path: no repeated slashes, no trailing slash (except `/`), the locale code in its
+ * own case. `undefined` when the path already has it. Browsers read `\` as `/` in http(s) URLs, so a
+ * run of mixed `/` and `\` collapses to one `/`: `//evil.com` and `/\evil.com/` become `/evil.com`,
+ * and a redirect to the result never leaves the site.
+ */
+export function cleanPath(path: string, config: LocaleConfig): string | undefined {
+  let clean = path.replace(/[\\/]{2,}/g, '/')
+  if (clean.length > 1 && clean.endsWith('/')) clean = clean.slice(0, -1)
+  clean = canonicalCase(clean, config) ?? clean
+  return clean === path ? undefined : clean
 }
 
 /** The locale a path belongs to, or `undefined` when the path has no locale (`prefix` root, excluded paths, user-locale zones). */

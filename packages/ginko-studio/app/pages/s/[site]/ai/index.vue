@@ -4,10 +4,12 @@
 import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
 import { api } from '#convex/api'
 import { opErrorOf } from '../../../../composables/useOps'
+import { shownLabel } from '../../../../utils/labels'
+import { whenText } from '../../../../utils/when'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
 
-definePageMeta({ layout: 'site', convexAuth: true })
+definePageMeta({ layout: 'site' })
 
 const { t, format } = useI18n()
 const s = await useSiteData()
@@ -21,25 +23,33 @@ const keys = computed(() => list.data.value ?? [])
 const createKey = useConvexMutation(api.agent.createKey)
 const revokeKey = useConvexMutation(api.agent.revokeKey)
 
-const when = (ms: number) => format.date(new Date(ms), { timeZone: s.schema.value?.timeZone ?? 'Europe/Vienna', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+const when = (ms: number) => whenText(ms, s.schema.value?.timeZone ?? 'Europe/Vienna', format)
+
+// The lead's two examples are tasks the person may do on this site, creating and editing first; a site with fewer than
+// two gets a generic pair. No fixed example names one kind of site's content (a lunch menu on an agency site).
+const examples = computed(() => {
+  const tasks = s.bricks.value.flatMap(([key, brick]) => (brick.tasks ?? []).filter((task) => s.may(key, task)))
+  const [first, second] = new Set(tasks.toSorted((a, b) => Number(a.kind === 'remove') - Number(b.kind === 'remove')).map((task) => shownLabel(task.label, s.main.value)))
+  return first && second ? { first, second } : { first: t('site.ai.exampleOne'), second: t('site.ai.exampleTwo') }
+})
+// Whether a key's changes wait for approval (SPEC 17). With review off it acts like the person: what waits for
+// approval when she does it (staff tasks with needsApproval) waits for the key too.
+const waitsForSome = computed(() => s.role.value === 'staff' && s.bricks.value.some(([key, brick]) => (brick.tasks ?? []).some((task) => task.needsApproval && s.may(key, task))))
+const reviewText = (review: boolean) => t(review ? 'site.ai.reviewOn' : waitsForSome.value ? 'site.ai.reviewLikeYou' : 'site.ai.reviewOff')
 
 // Creating: a name, then the key once. Leaving the page loses it; that is said next to it.
 const label = ref('Claude Code')
-const creating = ref(false)
 const formError = ref<string | null>(null)
 const fresh = ref<{ key: string; label: string } | null>(null)
 
 async function create() {
   formError.value = null
-  creating.value = true
   try {
     const name = label.value.trim()
     const made = await createKey.mutate({ site: s.slug.value, label: name })
     fresh.value = { key: made.key, label: name }
   } catch (error) {
     formError.value = opErrorOf(error).message
-  } finally {
-    creating.value = false
   }
 }
 
@@ -69,10 +79,10 @@ async function revoke(id: string) {
 </script>
 
 <template>
-  <div class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8">
+  <div class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8">
     <h1 class="text-xl font-semibold tracking-tight">{{ t('site.ai.heading') }}</h1>
     <p class="mt-1 max-w-[60ch] text-[13px] text-muted-foreground">
-      {{ t('site.ai.lead', { first: t('site.ai.exampleOne'), second: t('site.ai.exampleTwo') }) }}
+      {{ t('site.ai.lead', examples) }}
     </p>
 
     <section v-if="fresh" class="mt-6 grid gap-3 rounded-xl border border-primary bg-card p-4" aria-labelledby="fresh-title">
@@ -113,7 +123,7 @@ async function revoke(id: string) {
           <p id="key-label-hint" class="text-[13px] text-muted-foreground">{{ t('site.ai.labelHint') }}</p>
         </div>
         <p v-if="formError" class="font-semibold text-destructive" role="alert">{{ formError }}</p>
-        <div class="flex flex-wrap gap-2"><Button type="submit" :disabled="creating">{{ t('site.ai.createKey') }}</Button></div>
+        <div class="flex flex-wrap gap-2"><Button type="submit" :disabled="createKey.pending.value">{{ t('site.ai.createKey') }}</Button></div>
       </form>
     </section>
 
@@ -126,15 +136,16 @@ async function revoke(id: string) {
             <div class="grid min-w-0 gap-0.5">
               <p class="font-medium [overflow-wrap:anywhere]">{{ k.label }}</p>
               <p class="text-[13px] text-muted-foreground">
-                {{ t('site.ai.createdAt', { when: when(k.createdAt) }) }}<template v-if="k.revokedAt">{{ t('site.ai.revokedAt', { when: when(k.revokedAt) }) }}</template><template v-else>{{ k.lastUsedAt ? t('site.ai.lastUsedAt', { when: when(k.lastUsedAt) }) : t('site.ai.neverUsed') }}</template>
+                {{ t('site.keys.createdAt', { when: when(k.createdAt) }) }}<template v-if="k.revokedAt">{{ t('site.ai.revokedAt', { when: when(k.revokedAt) }) }}</template><template v-else>{{ k.lastUsedAt ? t('site.keys.lastUsedAt', { when: when(k.lastUsedAt) }) : t('site.keys.neverUsed') }}</template>
               </p>
+              <p v-if="!k.revokedAt" class="text-[13px] text-muted-foreground">{{ reviewText(k.reviewEffective) }}</p>
             </div>
-            <Button v-if="!k.revokedAt && confirming !== k.id" type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="confirming = k.id">{{ t('site.ai.revokeKey') }}</Button>
+            <Button v-if="!k.revokedAt && confirming !== k.id" type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="confirming = k.id">{{ t('site.keys.revoke') }}</Button>
           </div>
           <div v-if="!k.revokedAt && confirming === k.id" class="grid gap-2 rounded-md bg-warning/12 px-3 py-2.5">
             <p>{{ t('site.ai.revokeConfirm', { label: k.label }) }}</p>
             <div class="flex flex-wrap gap-2">
-              <Button type="button" variant="destructive" size="sm" @click="revoke(k.id)">{{ t('site.ai.revokeKey') }}</Button>
+              <Button type="button" variant="destructive" size="sm" :disabled="revokeKey.pending.value" @click="revoke(k.id)">{{ t('site.keys.revoke') }}</Button>
               <Button type="button" variant="ghost" size="sm" @click="confirming = null">{{ t('site.common.cancel') }}</Button>
             </div>
           </div>

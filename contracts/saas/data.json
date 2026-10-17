@@ -315,7 +315,9 @@
         "date": "2026-09-30",
         "author": "Lena Ruhland",
         "description": {
-          "de": "Wie Pausen im Stundenzettel stehen, damit die Abrechnung stimmt."
+          "de": "Wie Pausen im Stundenzettel stehen, damit die Abrechnung stimmt.",
+          "en": "How breaks go on the timesheet so that payroll adds up.",
+          "fr": "Comment noter les pauses sur la feuille d’heures pour que la paie soit juste."
         },
         "image": {
           "file": "fl-blog-pausen",
@@ -326,7 +328,8 @@
         },
         "body": {
           "de": "Pausen gehören in den Stundenzettel, sonst fehlen Minuten in der Abrechnung.\n\nWelcher Tarif passt, sehen Sie unter [Preise](/preise).",
-          "en": "Breaks belong on the timesheet, or minutes go missing in payroll."
+          "en": "Breaks belong on the timesheet, or minutes go missing in payroll.",
+          "fr": "Les pauses ont leur place sur la feuille d’heures, sinon des minutes manquent à la paie.\n\nLe tarif qui vous convient se trouve sous [Tarifs](/fr/tarifs)."
         }
       },
       "prints": {
@@ -342,7 +345,12 @@
           "en": "f0c2f75c8cdb21e2659c3fd769e724b8ab985cf9e0139a27d389681443f82861"
         },
         "body": {
-          "en": "c193cf80cf976b5eadb28778095671aa3ece51048d8bec8d6752c2bdb859181e"
+          "en": "c193cf80cf976b5eadb28778095671aa3ece51048d8bec8d6752c2bdb859181e",
+          "fr": "f4bcc8760942a85e6855a141b0336a0bca8379219473757b8e2bd14c086f6902"
+        },
+        "description": {
+          "en": "9405c22cf690e6a37d615ac833c50986a7bef98dbcfc48d3d8b6ada4c6fe46dd",
+          "fr": "9405c22cf690e6a37d615ac833c50986a7bef98dbcfc48d3d8b6ada4c6fe46dd"
         }
       }
     },

@@ -24,6 +24,23 @@ export const compiled: Record<string, MessageTree> = {
      "problem"
     ]
    ],
+   "markdownAt": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“, Zeile ",
+    [
+     "a",
+     "line"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
    "notObject": "Erwartet ein Objekt.",
    "unknownField": "Unbekanntes Feld.",
    "fieldMissing": [
@@ -198,6 +215,27 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“: „von“ liegt nach „bis“."
    ],
+   "timeOrder": [
+    "„",
+    [
+     "a",
+     "end"
+    ],
+    "“ muss nach „",
+    [
+     "a",
+     "start"
+    ],
+    "“ liegen."
+   ],
+   "notWeekStart": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“ muss der erste Tag einer Woche sein."
+   ],
    "badChoice": [
     "„",
     [
@@ -351,6 +389,23 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "“: Beschreibung des Bildes (Alt-Text) fehlt."
    ],
+   "fileRefMissing": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“: Ein Bild im Text ist nicht mehr in der Dateibibliothek. Wähle es neu aus."
+   ],
+   "fileRefPdf": "Eine PDF-Datei lässt sich nicht als Bild zeigen. Verlinke sie stattdessen: [Text]($file.…).",
+   "markdownImageAltMissing": [
+    "„",
+    [
+     "a",
+     "label"
+    ],
+    "“: Ein Bild im Text hat keine Beschreibung. Beschreibe es kurz für Menschen, die es nicht sehen."
+   ],
    "altTooLong": [
     "„",
     [
@@ -431,6 +486,27 @@ export const compiled: Record<string, MessageTree> = {
      "max"
     ],
     " Elemente)."
+   ],
+   "componentNotClosed": [
+    "Die Komponente „",
+    [
+     "a",
+     "tag"
+    ],
+    "“ ist nicht geschlossen: Nach ihrem Inhalt fehlt eine Zeile mit „",
+    [
+     "a",
+     "close"
+    ],
+    "“."
+   ],
+   "bracketText": [
+    "„[",
+    [
+     "a",
+     "text"
+    ],
+    "“ ist weder Link noch Bild: Es fehlt „]“ oder die Adresse in runden Klammern. Eckige Klammern als Text: \\[ und \\]."
    ]
   },
   "component": {
@@ -1218,6 +1294,23 @@ export const compiled: Record<string, MessageTree> = {
      "problem"
     ]
    ],
+   "markdownAt": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”, line ",
+    [
+     "a",
+     "line"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
    "notObject": "An object is expected.",
    "unknownField": "Unknown field.",
    "fieldMissing": [
@@ -1392,6 +1485,27 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: “from” is after “to”."
    ],
+   "timeOrder": [
+    "“",
+    [
+     "a",
+     "end"
+    ],
+    "” must be later than “",
+    [
+     "a",
+     "start"
+    ],
+    "”."
+   ],
+   "notWeekStart": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” must be the first day of a week."
+   ],
    "badChoice": [
     "“",
     [
@@ -1545,6 +1659,23 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: The image description (alt text) is missing."
    ],
+   "fileRefMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: An image in the text is no longer in the Files library. Choose it again."
+   ],
+   "fileRefPdf": "A PDF cannot be shown as a picture. Link it instead: [text]($file.…).",
+   "markdownImageAltMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: An image in the text has no description. Describe it briefly for people who cannot see it."
+   ],
    "altTooLong": [
     "“",
     [
@@ -1625,6 +1756,27 @@ export const compiled: Record<string, MessageTree> = {
      "max"
     ],
     " elements)."
+   ],
+   "componentNotClosed": [
+    "The component “",
+    [
+     "a",
+     "tag"
+    ],
+    "” is not closed: a line with “",
+    [
+     "a",
+     "close"
+    ],
+    "” is missing after its content."
+   ],
+   "bracketText": [
+    "“[",
+    [
+     "a",
+     "text"
+    ],
+    "” is neither a link nor an image: a “]” or the address in round brackets is missing. Square brackets as text: \\[ and \\]."
    ]
   },
   "component": {
@@ -2412,6 +2564,23 @@ export const compiled: Record<string, MessageTree> = {
      "problem"
     ]
    ],
+   "markdownAt": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”, línea ",
+    [
+     "a",
+     "line"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
    "notObject": "Se espera un objeto.",
    "unknownField": "Campo desconocido.",
    "fieldMissing": [
@@ -2586,6 +2755,27 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: “desde” es posterior a “hasta”."
    ],
+   "timeOrder": [
+    "“",
+    [
+     "a",
+     "end"
+    ],
+    "” debe ser posterior a “",
+    [
+     "a",
+     "start"
+    ],
+    "”."
+   ],
+   "notWeekStart": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” debe ser el primer día de una semana."
+   ],
    "badChoice": [
     "“",
     [
@@ -2739,6 +2929,23 @@ export const compiled: Record<string, MessageTree> = {
     ],
     "”: falta la descripción de la imagen (texto alternativo)."
    ],
+   "fileRefMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: una imagen del texto ya no está en la biblioteca de archivos. Vuelve a elegirla."
+   ],
+   "fileRefPdf": "Un PDF no se puede mostrar como imagen. Enlázalo en su lugar: [texto]($file.…).",
+   "markdownImageAltMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: una imagen del texto no tiene descripción. Descríbela brevemente para quien no puede verla."
+   ],
    "altTooLong": [
     "“",
     [
@@ -2819,6 +3026,27 @@ export const compiled: Record<string, MessageTree> = {
      "max"
     ],
     " elementos)."
+   ],
+   "componentNotClosed": [
+    "El componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "” no está cerrado: falta una línea con “",
+    [
+     "a",
+     "close"
+    ],
+    "” después de su contenido."
+   ],
+   "bracketText": [
+    "“[",
+    [
+     "a",
+     "text"
+    ],
+    "” no es ni un enlace ni una imagen: falta “]” o la dirección entre paréntesis. Corchetes como texto: \\[ y \\]."
    ]
   },
   "component": {
@@ -3559,7 +3787,7 @@ export const compiled: Record<string, MessageTree> = {
     "newFieldOnly": "Añade un campo nuevo.",
     "newSite": "Crea un sitio nuevo.",
     "moneyFields": "Añade campos de dinero nuevos con una `currency` fija.",
-    "planMigration": "Planifica una migración con tu desarrollador.",
+    "planMigration": "Planifica una migración con tu equipo de desarrollo.",
     "keepLocale": "Conserva el idioma; las páginas en ese idioma se pueden ocultar.",
     "keepLocaleOrder": "Conserva el orden de los idiomas existentes.",
     "keepTimezone": "Conserva la zona horaria.",
@@ -3570,7 +3798,7 @@ export const compiled: Record<string, MessageTree> = {
     "defaultOrOptional": "Define un valor `default` o haz el campo opcional.",
     "keepProperty": "Conserva la propiedad.",
     "keepMax": "Conserva max.",
-    "keepRoute": "Conserva la route.",
+    "keepRoute": "Conserva la dirección (route).",
     "defaultMigrationOrOptional": "Define un valor `default`, escribe una migración o haz el campo opcional.",
     "keepDefinition": "Deja la definición como está; solo pueden cambiar los textos.",
     "keepDefault": "Conserva el valor predeterminado.",
@@ -3583,7 +3811,4007 @@ export const compiled: Record<string, MessageTree> = {
   "preview": {
    "notFound": "Esta página no existe.",
    "failed": "La vista previa no se carga.",
-   "loading": "Cargando la vista previa …"
+   "loading": "Cargando la vista previa…"
+  }
+ },
+ "fr": {
+  "issues": {
+   "unknownBrick": [
+    "Le bloc « ",
+    [
+     "a",
+     "brick"
+    ],
+    " » n’existe pas."
+   ],
+   "markdown": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
+   "markdownAt": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " », ligne ",
+    [
+     "a",
+     "line"
+    ],
+    " : ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
+   "notObject": "Un objet est attendu.",
+   "unknownField": "Champ inconnu.",
+   "fieldMissing": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » est manquant."
+   ],
+   "notLocalized": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » doit être enregistré par langue."
+   ],
+   "unknownLocale": [
+    "La langue « ",
+    [
+     "a",
+     "locale"
+    ],
+    " » n’est pas configurée."
+   ],
+   "fieldEmpty": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » est vide."
+   ],
+   "notText": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » doit être du texte."
+   ],
+   "tooLong": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » est trop long (au maximum ",
+    [
+     "a",
+     "max"
+    ],
+    " caractères)."
+   ],
+   "controlChars": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » contient des caractères de contrôle invisibles."
+   ],
+   "badFormat": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » n’a pas un format valide."
+   ],
+   "badSlug": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » n’est pas une adresse valide."
+   ],
+   "notNumber": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » doit être un nombre."
+   ],
+   "outOfRange": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » doit être compris entre ",
+    [
+     "a",
+     "min"
+    ],
+    " et ",
+    [
+     "a",
+     "max"
+    ],
+    "."
+   ],
+   "badStep": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » ne correspond pas au pas de ",
+    [
+     "a",
+     "step"
+    ],
+    "."
+   ],
+   "notMoney": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » doit être un montant en centimes."
+   ],
+   "moneyOutOfRange": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » est hors des limites."
+   ],
+   "notBoolean": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » doit être oui ou non."
+   ],
+   "badDate": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » n’est pas une date valide."
+   ],
+   "badTime": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » n’est pas une heure valide."
+   ],
+   "badDateRange": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » n’est pas une période valide."
+   ],
+   "dateRangeOrder": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : « du » est après « au »."
+   ],
+   "timeOrder": [
+    "« ",
+    [
+     "a",
+     "end"
+    ],
+    " » doit être après « ",
+    [
+     "a",
+     "start"
+    ],
+    " »."
+   ],
+   "notWeekStart": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » doit être le premier jour d’une semaine."
+   ],
+   "badChoice": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » a une valeur non valide."
+   ],
+   "badChoices": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » a des valeurs non valides."
+   ],
+   "duplicateValues": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » contient des valeurs en double."
+   ],
+   "tooManyChosen": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : ",
+    [
+     "a",
+     "max"
+    ],
+    " au maximum."
+   ],
+   "notIdList": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » doit être une liste d’identifiants d’entrées."
+   ],
+   "notId": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » doit être un identifiant d’entrée."
+   ],
+   "duplicateEntries": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » contient des entrées en double."
+   ],
+   "refGone": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : l’entrée n’existe plus."
+   ],
+   "notList": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » doit être une liste."
+   ],
+   "tooManyRows": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » contient trop d’éléments (",
+    [
+     "a",
+     "max"
+    ],
+    " au maximum)."
+   ],
+   "tooFewRows": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » exige au moins ",
+    [
+     "a",
+     "min"
+    ],
+    " éléments."
+   ],
+   "duplicateRowValue": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : « ",
+    [
+     "a",
+     "value"
+    ],
+    " » apparaît plusieurs fois."
+   ],
+   "badRowId": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : la ligne ",
+    [
+     "a",
+     "row"
+    ],
+    " n’a pas d’identifiant valide."
+   ],
+   "duplicateRowId": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : un identifiant de ligne apparaît deux fois."
+   ],
+   "notImage": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » n’est pas une image valide."
+   ],
+   "altMissing": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : la description de l’image (texte alternatif) est manquante."
+   ],
+   "fileRefMissing": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : une image du texte n’est plus dans la bibliothèque de fichiers. Choisissez-la de nouveau."
+   ],
+   "fileRefPdf": "Un PDF ne peut pas être affiché comme image. Ajoutez plutôt un lien : [texte]($file.…).",
+   "markdownImageAltMissing": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : une image du texte n’a pas de description. Décrivez-la en quelques mots pour les personnes qui ne la voient pas."
+   ],
+   "altTooLong": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » : le texte alternatif est trop long."
+   ],
+   "notFile": [
+    "« ",
+    [
+     "a",
+     "label"
+    ],
+    " » n’est pas un fichier valide."
+   ]
+  },
+  "file": {
+   "typeNotAllowed": [
+    "Ce type de fichier n’est pas autorisé (autorisés : ",
+    [
+     "a",
+     "allowed"
+    ],
+    ")."
+   ],
+   "tooBig": [
+    "Le fichier est trop volumineux (",
+    [
+     "n",
+     "max"
+    ],
+    " Mo au maximum)."
+   ]
+  },
+  "markdown": {
+   "profile": {
+    "inline": "uniquement du texte avec gras, italique, code et liens",
+    "basic": "paragraphes, titres, listes (aussi avec cases à cocher), citations, encadrés et notes de bas de page",
+    "rich": "aussi tableaux, images, blocs de code, formules et diagrammes",
+    "page": "aussi composants"
+   },
+   "tagBlocked": [
+    "« ",
+    [
+     "a",
+     "tag"
+    ],
+    " » n’est pas autorisé."
+   ],
+   "tagNotInProfile": [
+    "« ",
+    [
+     "a",
+     "tag"
+    ],
+    " » n’est pas autorisé ici (",
+    [
+     "a",
+     "allowed"
+    ],
+    ")."
+   ],
+   "propBlocked": [
+    "La propriété « ",
+    [
+     "a",
+     "prop"
+    ],
+    " » n’est pas autorisée."
+   ],
+   "unsafeLink": "Lien non autorisé (uniquement http, https, mailto, tel ou /chemin).",
+   "oneParagraph": "Un seul paragraphe est autorisé ici.",
+   "tooComplex": [
+    "Le texte est trop complexe (",
+    [
+     "a",
+     "max"
+    ],
+    " éléments au maximum)."
+   ],
+   "componentNotClosed": [
+    "Le composant « ",
+    [
+     "a",
+     "tag"
+    ],
+    " » n’est pas refermé : il manque une ligne avec « ",
+    [
+     "a",
+     "close"
+    ],
+    " » après son contenu."
+   ],
+   "bracketText": [
+    "« [",
+    [
+     "a",
+     "text"
+    ],
+    " » n’est ni un lien ni une image : il manque un « ] » ou l’adresse entre parenthèses. Crochets en tant que texte : \\[ et \\]."
+   ]
+  },
+  "component": {
+   "or": [
+    [
+     "a",
+     "first"
+    ],
+    " ou ",
+    [
+     "a",
+     "second"
+    ]
+   ],
+   "and": [
+    [
+     "a",
+     "first"
+    ],
+    ", ",
+    [
+     "a",
+     "second"
+    ]
+   ],
+   "quoted": [
+    "« ",
+    [
+     "a",
+     "name"
+    ],
+    " »"
+   ],
+   "unknown": [
+    "Le composant « ",
+    [
+     "a",
+     "tag"
+    ],
+    " » n’existe pas."
+   ],
+   "propUnknown": [
+    "Composant « ",
+    [
+     "a",
+     "tag"
+    ],
+    " » : la propriété « ",
+    [
+     "a",
+     "prop"
+    ],
+    " » n’existe pas."
+   ],
+   "propInvalid": [
+    "Composant « ",
+    [
+     "a",
+     "tag"
+    ],
+    " » : la propriété « ",
+    [
+     "a",
+     "prop"
+    ],
+    " » ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
+   "propMissing": [
+    "Composant « ",
+    [
+     "a",
+     "tag"
+    ],
+    " » : la propriété « ",
+    [
+     "a",
+     "prop"
+    ],
+    " » est manquante."
+   ],
+   "propEmpty": [
+    "Composant « ",
+    [
+     "a",
+     "tag"
+    ],
+    " » : la propriété « ",
+    [
+     "a",
+     "prop"
+    ],
+    " » est vide."
+   ],
+   "blockInParagraph": [
+    "Le composant « ",
+    [
+     "a",
+     "tag"
+    ],
+    " » est un bloc et n’a pas sa place dans un paragraphe."
+   ],
+   "parentOnly": [
+    "Le composant « ",
+    [
+     "a",
+     "tag"
+    ],
+    " » ne peut apparaître que dans ",
+    [
+     "a",
+     "parents"
+    ],
+    "."
+   ],
+   "slotUnknown": [
+    "Composant « ",
+    [
+     "a",
+     "tag"
+    ],
+    " » : la zone « ",
+    [
+     "a",
+     "slot"
+    ],
+    " » n’existe pas (autorisées : ",
+    [
+     "a",
+     "allowed"
+    ],
+    ")."
+   ],
+   "noSlots": [
+    "Composant « ",
+    [
+     "a",
+     "tag"
+    ],
+    " » : n’a pas de zones, « ",
+    [
+     "a",
+     "slot"
+    ],
+    " » n’est pas autorisé."
+   ],
+   "childNotAllowed": [
+    "Le composant « ",
+    [
+     "a",
+     "tag"
+    ],
+    " » ne peut contenir que ",
+    [
+     "a",
+     "children"
+    ],
+    ", pas « ",
+    [
+     "a",
+     "child"
+    ],
+    " »."
+   ],
+   "prop": {
+    "notBoolean": "doit être « true » ou « false ».",
+    "notNumber": "doit être un nombre.",
+    "outOfRange": [
+     "doit être comprise entre ",
+     [
+      "a",
+      "min"
+     ],
+     " et ",
+     [
+      "a",
+      "max"
+     ],
+     "."
+    ],
+    "badStep": [
+     "ne correspond pas au pas de ",
+     [
+      "a",
+      "step"
+     ],
+     "."
+    ],
+    "notText": "doit être du texte.",
+    "tooLong": [
+     "est trop longue (",
+     [
+      "a",
+      "max"
+     ],
+     " caractères au maximum)."
+    ],
+    "badChoice": [
+     "a une valeur non valide (autorisées : ",
+     [
+      "a",
+      "allowed"
+     ],
+     ")."
+    ],
+    "badChoices": [
+     "a des valeurs non valides (autorisées : ",
+     [
+      "a",
+      "allowed"
+     ],
+     ")."
+    ],
+    "duplicateValues": "contient des valeurs en double.",
+    "tooManyChosen": [
+     "accepte ",
+     [
+      "a",
+      "max"
+     ],
+     " valeurs au maximum."
+    ],
+    "badImage": "doit être un chemin ou une adresse web.",
+    "notId": "doit être un identifiant d’entrée.",
+    "badType": "a un type qui n’est pas autorisé."
+   }
+  },
+  "links": {
+   "snippetMissing": [
+    "Extrait de texte « ",
+    [
+     "a",
+     "name"
+    ],
+    " » introuvable (entrée snippets/",
+    [
+     "a",
+     "name"
+    ],
+    " avec le champ body)."
+   ],
+   "linkBroken": [
+    "Le lien ",
+    [
+     "a",
+     "href"
+    ],
+    " ne mène à aucune entrée ni aucune page."
+   ],
+   "linkRedirected": [
+    "Le lien ",
+    [
+     "a",
+     "href"
+    ],
+    " mène à ",
+    [
+     "a",
+     "to"
+    ],
+    " par une redirection."
+   ],
+   "pathUnknown": [
+    "Le chemin ",
+    [
+     "a",
+     "path"
+    ],
+    " ne correspond à aucune entrée, aucune page ni aucun fichier de public/."
+   ],
+   "anchorMissing": [
+    "L’ancre #",
+    [
+     "a",
+     "anchor"
+    ],
+    " est manquante : aucun titre n’a cet identifiant."
+   ],
+   "externalBroken": [
+    "Le lien externe ",
+    [
+     "a",
+     "href"
+    ],
+    " est cassé (",
+    [
+     "a",
+     "reason"
+    ],
+    ")."
+   ]
+  },
+  "editor": {
+   "component": {
+    "unknown": [
+     "« ",
+     [
+      "a",
+      "tag"
+     ],
+     " » n’existe pas ici."
+    ],
+    "more": [
+     [
+      "a",
+      "first"
+     ],
+     " Vérifiez ",
+     [
+      "p",
+      "count",
+      0,
+      {
+       "one": [
+        [
+         "#"
+        ],
+        " autre réglage"
+       ],
+       "other": [
+        [
+         "#"
+        ],
+        " autres réglages"
+       ]
+      },
+      0
+     ],
+     "."
+    ]
+   },
+   "prop": {
+    "missing": [
+     [
+      "a",
+      "label"
+     ],
+     " est manquant."
+    ],
+    "empty": [
+     [
+      "a",
+      "label"
+     ],
+     " est vide."
+    ],
+    "invalid": [
+     [
+      "a",
+      "label"
+     ],
+     " ",
+     [
+      "a",
+      "problem"
+     ]
+    ]
+   },
+   "problem": {
+    "imageNoDescription": "L’image n’a pas de description."
+   },
+   "source": {
+    "unstable": "Le texte changerait à l’enregistrement ; il est donc modifié en Markdown.",
+    "lossy": "Le texte ne peut pas être affiché dans l’éditeur sans perte.",
+    "failed": [
+     "Le texte ne peut pas être affiché dans l’éditeur (",
+     [
+      "a",
+      "reason"
+     ],
+     ")."
+    ]
+   }
+  },
+  "diff": {
+   "freshSetting": [
+    [
+     "a",
+     "name"
+    ],
+    " : ",
+    [
+     "a",
+     "value"
+    ],
+    "."
+   ],
+   "freshLocales": [
+    "Langues : ",
+    [
+     "a",
+     "locales"
+    ],
+    "."
+   ],
+   "siteRenamed": "Le nom du site (`site`) ne peut pas être modifié.",
+   "currencyChanged": "La devise du site ne peut pas être modifiée.",
+   "mainLocaleChanged": "La langue principale ne peut pas être modifiée.",
+   "localeRemoved": [
+    "La langue « ",
+    [
+     "a",
+     "locale"
+    ],
+    " » ne peut pas être supprimée."
+   ],
+   "localeOrder": "Les nouvelles langues vont à la fin de la liste.",
+   "localeAdded": [
+    "Nouvelle langue « ",
+    [
+     "a",
+     "locale"
+    ],
+    " »."
+   ],
+   "timezoneChanged": "Le fuseau horaire ne peut pas être modifié.",
+   "valueChanged": [
+    [
+     "a",
+     "name"
+    ],
+    " a changé."
+   ],
+   "pagesChanged": "Les pages statiques ont changé.",
+   "agentsChanged": "La relecture des modifications par IA a changé.",
+   "tasksChanged": "Les tâches ont changé.",
+   "retiredBack": [
+    "« ",
+    [
+     "a",
+     "path"
+    ],
+    " » a été retiré et ne peut pas revenir."
+   ],
+   "unretired": [
+    "« ",
+    [
+     "a",
+     "path"
+    ],
+    " » a été retiré."
+   ],
+   "retiredRuleChanged": [
+    "La règle de « ",
+    [
+     "a",
+     "path"
+    ],
+    " » ne peut pas être modifiée."
+   ],
+   "retiredNow": [
+    "« ",
+    [
+     "a",
+     "path"
+    ],
+    " » est en cours de retrait."
+   ],
+   "migrationChanged": [
+    "La migration « ",
+    [
+     "a",
+     "id"
+    ],
+    " » a changé."
+   ],
+   "migrationFillsExisting": [
+    "La migration « ",
+    [
+     "a",
+     "id"
+    ],
+    " » remplit « ",
+    [
+     "a",
+     "target"
+    ],
+    " », qui existe déjà."
+   ],
+   "migrationAdded": [
+    "Nouvelle migration « ",
+    [
+     "a",
+     "id"
+    ],
+    " »."
+   ],
+   "migrationDropped": [
+    "La migration « ",
+    [
+     "a",
+     "id"
+    ],
+    " » n’est plus dans la configuration."
+   ],
+   "brickRemoved": [
+    "Le bloc « ",
+    [
+     "a",
+     "key"
+    ],
+    " » est manquant."
+   ],
+   "brickAdded": [
+    "Nouveau bloc « ",
+    [
+     "a",
+     "key"
+    ],
+    " »."
+   ],
+   "singleWithoutDefault": [
+    "Nouveau bloc unique : le champ obligatoire « ",
+    [
+     "a",
+     "name"
+    ],
+    " » a besoin d’une valeur par défaut."
+   ],
+   "unknownChange": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : la propriété « ",
+    [
+     "a",
+     "prop"
+    ],
+    " » a changé, ce qui n’est pas autorisé."
+   ],
+   "kindChanged": [
+    "« ",
+    [
+     "a",
+     "key"
+    ],
+    " » passe de bloc unique à collection, ou l’inverse."
+   ],
+   "textChanged": "Le texte a changé.",
+   "maxLowered": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : max ne peut pas être abaissé."
+   ],
+   "maxRaised": "max a été relevé.",
+   "routeAdded": "Nouvelles pages de détail.",
+   "routeAddedLocale": "Adresse pour la nouvelle langue.",
+   "routeChanged": [
+    "« ",
+    [
+     "a",
+     "key"
+    ],
+    " » : les adresses (route) ne peuvent pas être modifiées."
+   ],
+   "fieldRemoved": [
+    "Le champ « ",
+    [
+     "a",
+     "at"
+    ],
+    " » est manquant."
+   ],
+   "fieldAdded": [
+    "Nouveau champ « ",
+    [
+     "a",
+     "at"
+    ],
+    " »."
+   ],
+   "fieldAddedDefault": [
+    "Nouveau champ obligatoire « ",
+    [
+     "a",
+     "at"
+    ],
+    " » avec valeur par défaut."
+   ],
+   "fieldAddedMigration": [
+    "Nouveau champ obligatoire « ",
+    [
+     "a",
+     "at"
+    ],
+    " », rempli par une migration."
+   ],
+   "requiredWithoutDefault": [
+    "Nouveau champ obligatoire « ",
+    [
+     "a",
+     "at"
+    ],
+    " » sans valeur par défaut ni migration."
+   ],
+   "typeChanged": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : type ",
+    [
+     "a",
+     "from"
+    ],
+    " → ",
+    [
+     "a",
+     "to"
+    ],
+    "."
+   ],
+   "retiredFieldChanged": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : un champ retiré garde sa définition de production."
+   ],
+   "madeRequired": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : facultatif → obligatoire."
+   ],
+   "madeOptional": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » est désormais facultatif."
+   ],
+   "translationChanged": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : la traductibilité a changé."
+   ],
+   "defaultChanged": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : la valeur par défaut ne peut pas être modifiée."
+   ],
+   "minRaised": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : min ne peut pas être relevé."
+   ],
+   "minLowered": "min a été abaissé.",
+   "minOffGrid": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : min ne peut être abaissé que d’un multiple du pas de ",
+    [
+     "a",
+     "step"
+    ],
+    "."
+   ],
+   "propChanged": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : ",
+    [
+     "a",
+     "prop"
+    ],
+    " ne peut pas être modifié."
+   ],
+   "optionRemoved": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : l’option « ",
+    [
+     "a",
+     "option"
+    ],
+    " » est manquante."
+   ],
+   "optionRenamed": "Option renommée.",
+   "optionAdded": [
+    "Nouvelle option « ",
+    [
+     "a",
+     "option"
+    ],
+    " »."
+   ],
+   "uniqueChanged": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : unique ne peut être ni défini ni modifié."
+   ],
+   "uniqueDropped": [
+    "« ",
+    [
+     "a",
+     "at"
+    ],
+    " » : unique a été retiré."
+   ],
+   "fix": {
+    "newField": "Ajoutez un nouveau champ, remplissez-le avec une migration et listez l’ancien champ sous `retired`.",
+    "newFieldOnly": "Ajoutez un nouveau champ.",
+    "newSite": "Créez un nouveau site.",
+    "moneyFields": "Ajoutez de nouveaux champs monétaires avec une `currency` fixe.",
+    "planMigration": "Prévoyez une migration avec votre équipe de développement.",
+    "keepLocale": "Conservez la langue ; les pages dans cette langue peuvent être masquées.",
+    "keepLocaleOrder": "Conservez l’ordre des langues existantes.",
+    "keepTimezone": "Conservez le fuseau horaire.",
+    "keepRule": "Laissez la règle telle quelle.",
+    "newMigrationId": "Une correction reçoit un nouvel identifiant.",
+    "fillNewFieldsOnly": "Remplissez uniquement de nouveaux champs ; pour un champ existant, ajoutez un nouveau champ.",
+    "retireBrick": "Listez le bloc sous `retired` au lieu de le supprimer.",
+    "defaultOrOptional": "Définissez une valeur `default` ou rendez le champ facultatif.",
+    "keepProperty": "Conservez la propriété.",
+    "keepMax": "Conservez max.",
+    "keepRoute": "Conservez l’adresse (route).",
+    "defaultMigrationOrOptional": "Définissez une valeur `default`, écrivez une migration ou rendez le champ facultatif.",
+    "keepDefinition": "Laissez la définition telle quelle ; seuls les textes peuvent changer.",
+    "keepDefault": "Conservez la valeur par défaut.",
+    "keepMin": "Conservez min.",
+    "minOnGrid": "Abaissez min pour que la différence soit un multiple de step.",
+    "keepOption": "Conservez l’option ; elle peut être renommée (label).",
+    "newList": "Ajoutez une nouvelle liste et remplissez-la avec une migration."
+   }
+  },
+  "preview": {
+   "notFound": "Cette page n’existe pas.",
+   "failed": "L’aperçu ne se charge pas.",
+   "loading": "Chargement de l’aperçu…"
+  }
+ },
+ "it": {
+  "issues": {
+   "unknownBrick": [
+    "Il blocco “",
+    [
+     "a",
+     "brick"
+    ],
+    "” non esiste."
+   ],
+   "markdown": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
+   "markdownAt": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”, riga ",
+    [
+     "a",
+     "line"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
+   "notObject": "È previsto un oggetto.",
+   "unknownField": "Campo sconosciuto.",
+   "fieldMissing": [
+    "Manca “",
+    [
+     "a",
+     "label"
+    ],
+    "”."
+   ],
+   "notLocalized": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” deve essere salvato per lingua."
+   ],
+   "unknownLocale": [
+    "La lingua “",
+    [
+     "a",
+     "locale"
+    ],
+    "” non è configurata."
+   ],
+   "fieldEmpty": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” è vuoto."
+   ],
+   "notText": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” deve essere un testo."
+   ],
+   "tooLong": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” è troppo lungo (al massimo ",
+    [
+     "a",
+     "max"
+    ],
+    " caratteri)."
+   ],
+   "controlChars": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” contiene caratteri di controllo invisibili."
+   ],
+   "badFormat": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” non ha un formato valido."
+   ],
+   "badSlug": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” non è un indirizzo valido."
+   ],
+   "notNumber": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” deve essere un numero."
+   ],
+   "outOfRange": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” deve essere compreso tra ",
+    [
+     "a",
+     "min"
+    ],
+    " e ",
+    [
+     "a",
+     "max"
+    ],
+    "."
+   ],
+   "badStep": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” non corrisponde al passo ",
+    [
+     "a",
+     "step"
+    ],
+    "."
+   ],
+   "notMoney": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” deve essere un importo in centesimi."
+   ],
+   "moneyOutOfRange": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” è fuori dai limiti."
+   ],
+   "notBoolean": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” deve essere sì o no."
+   ],
+   "badDate": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” non è una data valida."
+   ],
+   "badTime": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” non è un orario valido."
+   ],
+   "badDateRange": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” non è un periodo valido."
+   ],
+   "dateRangeOrder": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: “dal” viene dopo “al”."
+   ],
+   "timeOrder": [
+    "“",
+    [
+     "a",
+     "end"
+    ],
+    "” deve essere dopo “",
+    [
+     "a",
+     "start"
+    ],
+    "”."
+   ],
+   "notWeekStart": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” deve essere il primo giorno di una settimana."
+   ],
+   "badChoice": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” ha un valore non valido."
+   ],
+   "badChoices": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” ha valori non validi."
+   ],
+   "duplicateValues": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” contiene valori duplicati."
+   ],
+   "tooManyChosen": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: al massimo ",
+    [
+     "a",
+     "max"
+    ],
+    "."
+   ],
+   "notIdList": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” deve essere un elenco di ID di voci."
+   ],
+   "notId": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” deve essere l’ID di una voce."
+   ],
+   "duplicateEntries": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” contiene voci duplicate."
+   ],
+   "refGone": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: la voce non esiste più."
+   ],
+   "notList": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” deve essere un elenco."
+   ],
+   "tooManyRows": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” ha troppi elementi (al massimo ",
+    [
+     "a",
+     "max"
+    ],
+    ")."
+   ],
+   "tooFewRows": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” richiede almeno ",
+    [
+     "a",
+     "min"
+    ],
+    " elementi."
+   ],
+   "duplicateRowValue": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: “",
+    [
+     "a",
+     "value"
+    ],
+    "” compare più di una volta."
+   ],
+   "badRowId": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: la riga ",
+    [
+     "a",
+     "row"
+    ],
+    " non ha un ID valido."
+   ],
+   "duplicateRowId": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: un ID di riga compare due volte."
+   ],
+   "notImage": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” non è un’immagine valida."
+   ],
+   "altMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: manca la descrizione dell’immagine (testo alternativo)."
+   ],
+   "fileRefMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: un’immagine nel testo non è più nella libreria dei file. Sceglila di nuovo."
+   ],
+   "fileRefPdf": "Un PDF non può essere mostrato come immagine. Inseriscilo come link: [testo]($file.…).",
+   "markdownImageAltMissing": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: un’immagine nel testo non ha una descrizione. Descrivila in breve per chi non può vederla."
+   ],
+   "altTooLong": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "”: il testo alternativo è troppo lungo."
+   ],
+   "notFile": [
+    "“",
+    [
+     "a",
+     "label"
+    ],
+    "” non è un file valido."
+   ]
+  },
+  "file": {
+   "typeNotAllowed": [
+    "Questo tipo di file non è consentito (consentiti: ",
+    [
+     "a",
+     "allowed"
+    ],
+    ")."
+   ],
+   "tooBig": [
+    "Il file è troppo grande (al massimo ",
+    [
+     "n",
+     "max"
+    ],
+    " MB)."
+   ]
+  },
+  "markdown": {
+   "profile": {
+    "inline": "solo testo con grassetto, corsivo, codice e link",
+    "basic": "paragrafi, titoli, elenchi (anche con caselle di controllo), citazioni, avvisi e note a piè di pagina",
+    "rich": "anche tabelle, immagini, blocchi di codice, formule e diagrammi",
+    "page": "anche componenti"
+   },
+   "tagBlocked": [
+    "“",
+    [
+     "a",
+     "tag"
+    ],
+    "” non è consentito."
+   ],
+   "tagNotInProfile": [
+    "“",
+    [
+     "a",
+     "tag"
+    ],
+    "” non è consentito qui (",
+    [
+     "a",
+     "allowed"
+    ],
+    ")."
+   ],
+   "propBlocked": [
+    "La proprietà “",
+    [
+     "a",
+     "prop"
+    ],
+    "” non è consentita."
+   ],
+   "unsafeLink": "Link non consentito (solo http, https, mailto, tel o /percorso).",
+   "oneParagraph": "Qui è consentito un solo paragrafo.",
+   "tooComplex": [
+    "Il testo è troppo complesso (al massimo ",
+    [
+     "a",
+     "max"
+    ],
+    " elementi)."
+   ],
+   "componentNotClosed": [
+    "Il componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "” non è chiuso: dopo il suo contenuto manca una riga con “",
+    [
+     "a",
+     "close"
+    ],
+    "”."
+   ],
+   "bracketText": [
+    "“[",
+    [
+     "a",
+     "text"
+    ],
+    "” non è né un link né un’immagine: manca una “]” o l’indirizzo tra parentesi tonde. Parentesi quadre come testo: \\[ e \\]."
+   ]
+  },
+  "component": {
+   "or": [
+    [
+     "a",
+     "first"
+    ],
+    " o ",
+    [
+     "a",
+     "second"
+    ]
+   ],
+   "and": [
+    [
+     "a",
+     "first"
+    ],
+    ", ",
+    [
+     "a",
+     "second"
+    ]
+   ],
+   "quoted": [
+    "“",
+    [
+     "a",
+     "name"
+    ],
+    "”"
+   ],
+   "unknown": [
+    "Il componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "” non esiste."
+   ],
+   "propUnknown": [
+    "Componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "”: la proprietà “",
+    [
+     "a",
+     "prop"
+    ],
+    "” non esiste."
+   ],
+   "propInvalid": [
+    "Componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "”: la proprietà “",
+    [
+     "a",
+     "prop"
+    ],
+    "” ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
+   "propMissing": [
+    "Componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "”: manca la proprietà “",
+    [
+     "a",
+     "prop"
+    ],
+    "”."
+   ],
+   "propEmpty": [
+    "Componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "”: la proprietà “",
+    [
+     "a",
+     "prop"
+    ],
+    "” è vuota."
+   ],
+   "blockInParagraph": [
+    "Il componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "” è un blocco e non può stare in un paragrafo."
+   ],
+   "parentOnly": [
+    "Il componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "” può comparire solo in ",
+    [
+     "a",
+     "parents"
+    ],
+    "."
+   ],
+   "slotUnknown": [
+    "Componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "”: l’area “",
+    [
+     "a",
+     "slot"
+    ],
+    "” non esiste (consentite: ",
+    [
+     "a",
+     "allowed"
+    ],
+    ")."
+   ],
+   "noSlots": [
+    "Componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "”: non ha aree, “",
+    [
+     "a",
+     "slot"
+    ],
+    "” non è consentita."
+   ],
+   "childNotAllowed": [
+    "Il componente “",
+    [
+     "a",
+     "tag"
+    ],
+    "” può contenere solo ",
+    [
+     "a",
+     "children"
+    ],
+    ", non “",
+    [
+     "a",
+     "child"
+    ],
+    "”."
+   ],
+   "prop": {
+    "notBoolean": "deve essere “true” o “false”.",
+    "notNumber": "deve essere un numero.",
+    "outOfRange": [
+     "deve essere compresa tra ",
+     [
+      "a",
+      "min"
+     ],
+     " e ",
+     [
+      "a",
+      "max"
+     ],
+     "."
+    ],
+    "badStep": [
+     "non corrisponde al passo ",
+     [
+      "a",
+      "step"
+     ],
+     "."
+    ],
+    "notText": "deve essere un testo.",
+    "tooLong": [
+     "è troppo lunga (al massimo ",
+     [
+      "a",
+      "max"
+     ],
+     " caratteri)."
+    ],
+    "badChoice": [
+     "ha un valore non valido (consentiti: ",
+     [
+      "a",
+      "allowed"
+     ],
+     ")."
+    ],
+    "badChoices": [
+     "ha valori non validi (consentiti: ",
+     [
+      "a",
+      "allowed"
+     ],
+     ")."
+    ],
+    "duplicateValues": "contiene valori duplicati.",
+    "tooManyChosen": [
+     "ammette al massimo ",
+     [
+      "a",
+      "max"
+     ],
+     " valori."
+    ],
+    "badImage": "deve essere un percorso o un indirizzo web.",
+    "notId": "deve essere l’ID di una voce.",
+    "badType": "ha un tipo non consentito."
+   }
+  },
+  "links": {
+   "snippetMissing": [
+    "Frammento di testo “",
+    [
+     "a",
+     "name"
+    ],
+    "” non trovato (voce snippets/",
+    [
+     "a",
+     "name"
+    ],
+    " con il campo body)."
+   ],
+   "linkBroken": [
+    "Il link ",
+    [
+     "a",
+     "href"
+    ],
+    " non porta a nessuna voce né a nessuna pagina."
+   ],
+   "linkRedirected": [
+    "Il link ",
+    [
+     "a",
+     "href"
+    ],
+    " porta a ",
+    [
+     "a",
+     "to"
+    ],
+    " tramite un reindirizzamento."
+   ],
+   "pathUnknown": [
+    "Il percorso ",
+    [
+     "a",
+     "path"
+    ],
+    " non corrisponde a nessuna voce, pagina o file in public/."
+   ],
+   "anchorMissing": [
+    "Manca l’ancora #",
+    [
+     "a",
+     "anchor"
+    ],
+    ": nessun titolo ha questo id."
+   ],
+   "externalBroken": [
+    "Il link esterno ",
+    [
+     "a",
+     "href"
+    ],
+    " è interrotto (",
+    [
+     "a",
+     "reason"
+    ],
+    ")."
+   ]
+  },
+  "editor": {
+   "component": {
+    "unknown": [
+     "“",
+     [
+      "a",
+      "tag"
+     ],
+     "” non esiste qui."
+    ],
+    "more": [
+     [
+      "a",
+      "first"
+     ],
+     " Controlla ",
+     [
+      "p",
+      "count",
+      0,
+      {
+       "one": [
+        [
+         "#"
+        ],
+        " altra impostazione"
+       ],
+       "other": [
+        [
+         "#"
+        ],
+        " altre impostazioni"
+       ]
+      },
+      0
+     ],
+     "."
+    ]
+   },
+   "prop": {
+    "missing": [
+     "Manca ",
+     [
+      "a",
+      "label"
+     ],
+     "."
+    ],
+    "empty": [
+     [
+      "a",
+      "label"
+     ],
+     " è vuoto."
+    ],
+    "invalid": [
+     [
+      "a",
+      "label"
+     ],
+     " ",
+     [
+      "a",
+      "problem"
+     ]
+    ]
+   },
+   "problem": {
+    "imageNoDescription": "L’immagine non ha una descrizione."
+   },
+   "source": {
+    "unstable": "Il testo cambierebbe al salvataggio, quindi si modifica come Markdown.",
+    "lossy": "Il testo non può essere mostrato nell’editor senza perdere qualcosa.",
+    "failed": [
+     "Il testo non può essere mostrato nell’editor (",
+     [
+      "a",
+      "reason"
+     ],
+     ")."
+    ]
+   }
+  },
+  "diff": {
+   "freshSetting": [
+    [
+     "a",
+     "name"
+    ],
+    ": ",
+    [
+     "a",
+     "value"
+    ],
+    "."
+   ],
+   "freshLocales": [
+    "Lingue: ",
+    [
+     "a",
+     "locales"
+    ],
+    "."
+   ],
+   "siteRenamed": "Il nome del sito (`site`) non può essere modificato.",
+   "currencyChanged": "La valuta del sito non può essere modificata.",
+   "mainLocaleChanged": "La lingua principale non può essere modificata.",
+   "localeRemoved": [
+    "La lingua “",
+    [
+     "a",
+     "locale"
+    ],
+    "” non può essere rimossa."
+   ],
+   "localeOrder": "Le nuove lingue vanno in fondo all’elenco.",
+   "localeAdded": [
+    "Nuova lingua “",
+    [
+     "a",
+     "locale"
+    ],
+    "”."
+   ],
+   "timezoneChanged": "Il fuso orario non può essere modificato.",
+   "valueChanged": [
+    [
+     "a",
+     "name"
+    ],
+    " è cambiato."
+   ],
+   "pagesChanged": "Le pagine statiche sono cambiate.",
+   "agentsChanged": "La revisione delle modifiche dell’IA è cambiata.",
+   "tasksChanged": "Le attività sono cambiate.",
+   "retiredBack": [
+    "“",
+    [
+     "a",
+     "path"
+    ],
+    "” è stato ritirato e non può tornare."
+   ],
+   "unretired": [
+    "“",
+    [
+     "a",
+     "path"
+    ],
+    "” è stato ritirato."
+   ],
+   "retiredRuleChanged": [
+    "La regola di “",
+    [
+     "a",
+     "path"
+    ],
+    "” non può essere modificata."
+   ],
+   "retiredNow": [
+    "“",
+    [
+     "a",
+     "path"
+    ],
+    "” sta per essere ritirato."
+   ],
+   "migrationChanged": [
+    "La migrazione “",
+    [
+     "a",
+     "id"
+    ],
+    "” è cambiata."
+   ],
+   "migrationFillsExisting": [
+    "La migrazione “",
+    [
+     "a",
+     "id"
+    ],
+    "” riempie “",
+    [
+     "a",
+     "target"
+    ],
+    "”, che esiste già."
+   ],
+   "migrationAdded": [
+    "Nuova migrazione “",
+    [
+     "a",
+     "id"
+    ],
+    "”."
+   ],
+   "migrationDropped": [
+    "La migrazione “",
+    [
+     "a",
+     "id"
+    ],
+    "” non è più nella configurazione."
+   ],
+   "brickRemoved": [
+    "Manca il blocco “",
+    [
+     "a",
+     "key"
+    ],
+    "”."
+   ],
+   "brickAdded": [
+    "Nuovo blocco “",
+    [
+     "a",
+     "key"
+    ],
+    "”."
+   ],
+   "singleWithoutDefault": [
+    "Nuovo blocco singolo: il campo obbligatorio “",
+    [
+     "a",
+     "name"
+    ],
+    "” ha bisogno di un valore predefinito."
+   ],
+   "unknownChange": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: la proprietà “",
+    [
+     "a",
+     "prop"
+    ],
+    "” è cambiata, ma non è consentito."
+   ],
+   "kindChanged": [
+    "“",
+    [
+     "a",
+     "key"
+    ],
+    "” passa da blocco singolo a raccolta, o viceversa."
+   ],
+   "textChanged": "Il testo è cambiato.",
+   "maxLowered": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: max non può essere abbassato."
+   ],
+   "maxRaised": "max è stato alzato.",
+   "routeAdded": "Nuove pagine di dettaglio.",
+   "routeAddedLocale": "Indirizzo per la nuova lingua.",
+   "routeChanged": [
+    "“",
+    [
+     "a",
+     "key"
+    ],
+    "”: gli indirizzi (route) non possono essere modificati."
+   ],
+   "fieldRemoved": [
+    "Manca il campo “",
+    [
+     "a",
+     "at"
+    ],
+    "”."
+   ],
+   "fieldAdded": [
+    "Nuovo campo “",
+    [
+     "a",
+     "at"
+    ],
+    "”."
+   ],
+   "fieldAddedDefault": [
+    "Nuovo campo obbligatorio “",
+    [
+     "a",
+     "at"
+    ],
+    "” con valore predefinito."
+   ],
+   "fieldAddedMigration": [
+    "Nuovo campo obbligatorio “",
+    [
+     "a",
+     "at"
+    ],
+    "”, riempito da una migrazione."
+   ],
+   "requiredWithoutDefault": [
+    "Nuovo campo obbligatorio “",
+    [
+     "a",
+     "at"
+    ],
+    "” senza valore predefinito né migrazione."
+   ],
+   "typeChanged": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: tipo ",
+    [
+     "a",
+     "from"
+    ],
+    " → ",
+    [
+     "a",
+     "to"
+    ],
+    "."
+   ],
+   "retiredFieldChanged": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: un campo ritirato mantiene la definizione di produzione."
+   ],
+   "madeRequired": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: facoltativo → obbligatorio."
+   ],
+   "madeOptional": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "” ora è facoltativo."
+   ],
+   "translationChanged": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: la traducibilità è cambiata."
+   ],
+   "defaultChanged": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: il valore predefinito non può essere modificato."
+   ],
+   "minRaised": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: min non può essere alzato."
+   ],
+   "minLowered": "min è stato abbassato.",
+   "minOffGrid": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: min può essere abbassato solo di un multiplo del passo ",
+    [
+     "a",
+     "step"
+    ],
+    "."
+   ],
+   "propChanged": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: ",
+    [
+     "a",
+     "prop"
+    ],
+    " non può essere modificato."
+   ],
+   "optionRemoved": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: manca l’opzione “",
+    [
+     "a",
+     "option"
+    ],
+    "”."
+   ],
+   "optionRenamed": "Opzione rinominata.",
+   "optionAdded": [
+    "Nuova opzione “",
+    [
+     "a",
+     "option"
+    ],
+    "”."
+   ],
+   "uniqueChanged": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: unique non può essere impostato né modificato."
+   ],
+   "uniqueDropped": [
+    "“",
+    [
+     "a",
+     "at"
+    ],
+    "”: unique è stato rimosso."
+   ],
+   "fix": {
+    "newField": "Aggiungi un nuovo campo, riempilo con una migrazione ed elenca il vecchio campo sotto `retired`.",
+    "newFieldOnly": "Aggiungi un nuovo campo.",
+    "newSite": "Crea un nuovo sito.",
+    "moneyFields": "Aggiungi nuovi campi di denaro con una `currency` fissa.",
+    "planMigration": "Pianifica una migrazione con il tuo team di sviluppo.",
+    "keepLocale": "Mantieni la lingua; le pagine in quella lingua possono essere nascoste.",
+    "keepLocaleOrder": "Mantieni l’ordine delle lingue esistenti.",
+    "keepTimezone": "Mantieni il fuso orario.",
+    "keepRule": "Lascia la regola com’è.",
+    "newMigrationId": "Una correzione riceve un nuovo ID.",
+    "fillNewFieldsOnly": "Riempi solo campi nuovi; per un campo esistente, aggiungi un nuovo campo.",
+    "retireBrick": "Elenca il blocco sotto `retired` invece di eliminarlo.",
+    "defaultOrOptional": "Imposta un valore `default` o rendi il campo facoltativo.",
+    "keepProperty": "Mantieni la proprietà.",
+    "keepMax": "Mantieni max.",
+    "keepRoute": "Mantieni l’indirizzo (route).",
+    "defaultMigrationOrOptional": "Imposta un valore `default`, scrivi una migrazione o rendi il campo facoltativo.",
+    "keepDefinition": "Lascia la definizione com’è; possono cambiare solo i testi.",
+    "keepDefault": "Mantieni il valore predefinito.",
+    "keepMin": "Mantieni min.",
+    "minOnGrid": "Abbassa min in modo che la differenza sia un multiplo di step.",
+    "keepOption": "Mantieni l’opzione; può essere rinominata (label).",
+    "newList": "Aggiungi un nuovo elenco e riempilo con una migrazione."
+   }
+  },
+  "preview": {
+   "notFound": "Questa pagina non esiste.",
+   "failed": "L’anteprima non si carica.",
+   "loading": "Caricamento dell’anteprima…"
+  }
+ },
+ "ar": {
+  "issues": {
+   "unknownBrick": [
+    "الكتلة «",
+    [
+     "a",
+     "brick"
+    ],
+    "» غير موجودة."
+   ],
+   "markdown": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
+   "markdownAt": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»، السطر ",
+    [
+     "a",
+     "line"
+    ],
+    ": ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
+   "notObject": "يُتوقَّع كائن.",
+   "unknownField": "حقل غير معروف.",
+   "fieldMissing": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» مفقود."
+   ],
+   "notLocalized": [
+    "يجب حفظ «",
+    [
+     "a",
+     "label"
+    ],
+    "» لكل لغة."
+   ],
+   "unknownLocale": [
+    "اللغة «",
+    [
+     "a",
+     "locale"
+    ],
+    "» غير مُعدّة."
+   ],
+   "fieldEmpty": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» فارغ."
+   ],
+   "notText": [
+    "يجب أن يكون «",
+    [
+     "a",
+     "label"
+    ],
+    "» نصًّا."
+   ],
+   "tooLong": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» طويل جدًّا (الحد الأقصى ",
+    [
+     "p",
+     "max",
+     0,
+     {
+      "zero": [
+       [
+        "#"
+       ],
+       " حرف"
+      ],
+      "one": [
+       "حرف واحد"
+      ],
+      "two": [
+       "حرفان"
+      ],
+      "few": [
+       [
+        "#"
+       ],
+       " أحرف"
+      ],
+      "many": [
+       [
+        "#"
+       ],
+       " حرفًا"
+      ],
+      "other": [
+       [
+        "#"
+       ],
+       " حرف"
+      ]
+     },
+     0
+    ],
+    ")."
+   ],
+   "controlChars": [
+    "يحتوي «",
+    [
+     "a",
+     "label"
+    ],
+    "» على أحرف تحكّم غير مرئية."
+   ],
+   "badFormat": [
+    "تنسيق «",
+    [
+     "a",
+     "label"
+    ],
+    "» غير صالح."
+   ],
+   "badSlug": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» ليس عنوانًا صالحًا."
+   ],
+   "notNumber": [
+    "يجب أن يكون «",
+    [
+     "a",
+     "label"
+    ],
+    "» رقمًا."
+   ],
+   "outOfRange": [
+    "يجب أن تكون قيمة «",
+    [
+     "a",
+     "label"
+    ],
+    "» بين ",
+    [
+     "a",
+     "min"
+    ],
+    " و",
+    [
+     "a",
+     "max"
+    ],
+    "."
+   ],
+   "badStep": [
+    "لا تتوافق قيمة «",
+    [
+     "a",
+     "label"
+    ],
+    "» مع حجم الخطوة ",
+    [
+     "a",
+     "step"
+    ],
+    "."
+   ],
+   "notMoney": [
+    "يجب أن يكون «",
+    [
+     "a",
+     "label"
+    ],
+    "» مبلغًا بالسنتات."
+   ],
+   "moneyOutOfRange": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» خارج الحدود المسموح بها."
+   ],
+   "notBoolean": [
+    "يجب أن تكون قيمة «",
+    [
+     "a",
+     "label"
+    ],
+    "» نعم أو لا."
+   ],
+   "badDate": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» ليس تاريخًا صالحًا."
+   ],
+   "badTime": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» ليس وقتًا صالحًا."
+   ],
+   "badDateRange": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» ليس فترة صالحة."
+   ],
+   "dateRangeOrder": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: تاريخ «من» بعد تاريخ «إلى»."
+   ],
+   "timeOrder": [
+    "يجب أن يكون «",
+    [
+     "a",
+     "end"
+    ],
+    "» بعد «",
+    [
+     "a",
+     "start"
+    ],
+    "»."
+   ],
+   "notWeekStart": [
+    "يجب أن يكون «",
+    [
+     "a",
+     "label"
+    ],
+    "» اليوم الأول من أسبوع."
+   ],
+   "badChoice": [
+    "قيمة «",
+    [
+     "a",
+     "label"
+    ],
+    "» غير صالحة."
+   ],
+   "badChoices": [
+    "قيم «",
+    [
+     "a",
+     "label"
+    ],
+    "» غير صالحة."
+   ],
+   "duplicateValues": [
+    "يحتوي «",
+    [
+     "a",
+     "label"
+    ],
+    "» على قيم مكرّرة."
+   ],
+   "tooManyChosen": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: الحد الأقصى ",
+    [
+     "a",
+     "max"
+    ],
+    "."
+   ],
+   "notIdList": [
+    "يجب أن يكون «",
+    [
+     "a",
+     "label"
+    ],
+    "» قائمة بمعرّفات الإدخالات."
+   ],
+   "notId": [
+    "يجب أن يكون «",
+    [
+     "a",
+     "label"
+    ],
+    "» معرّف إدخال."
+   ],
+   "duplicateEntries": [
+    "يحتوي «",
+    [
+     "a",
+     "label"
+    ],
+    "» على إدخالات مكرّرة."
+   ],
+   "refGone": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: الإدخال لم يعد موجودًا."
+   ],
+   "notList": [
+    "يجب أن يكون «",
+    [
+     "a",
+     "label"
+    ],
+    "» قائمة."
+   ],
+   "tooManyRows": [
+    "يحتوي «",
+    [
+     "a",
+     "label"
+    ],
+    "» على عناصر كثيرة جدًّا (الحد الأقصى ",
+    [
+     "a",
+     "max"
+    ],
+    ")."
+   ],
+   "tooFewRows": [
+    "يحتاج «",
+    [
+     "a",
+     "label"
+    ],
+    "» إلى ",
+    [
+     "p",
+     "min",
+     0,
+     {
+      "zero": [
+       [
+        "#"
+       ],
+       " عنصر"
+      ],
+      "one": [
+       "عنصر واحد"
+      ],
+      "two": [
+       "عنصرين"
+      ],
+      "few": [
+       [
+        "#"
+       ],
+       " عناصر"
+      ],
+      "many": [
+       [
+        "#"
+       ],
+       " عنصرًا"
+      ],
+      "other": [
+       [
+        "#"
+       ],
+       " عنصر"
+      ]
+     },
+     0
+    ],
+    " على الأقل."
+   ],
+   "duplicateRowValue": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: القيمة «",
+    [
+     "a",
+     "value"
+    ],
+    "» تتكرّر أكثر من مرة."
+   ],
+   "badRowId": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: معرّف الصف ",
+    [
+     "a",
+     "row"
+    ],
+    " غير صالح."
+   ],
+   "duplicateRowId": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: معرّف الصف مكرّر."
+   ],
+   "notImage": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» ليس صورة صالحة."
+   ],
+   "altMissing": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: وصف الصورة (النص البديل) مفقود."
+   ],
+   "fileRefMissing": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: صورة في النص لم تعد في مكتبة الملفات. اخترها من جديد."
+   ],
+   "fileRefPdf": "لا يمكن عرض ملف PDF كصورة. أضِف رابطًا إليه بدلًا من ذلك: [النص]($file.…).",
+   "markdownImageAltMissing": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: صورة في النص بلا وصف. صِفها بإيجاز لمن لا يستطيع رؤيتها."
+   ],
+   "altTooLong": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "»: النص البديل طويل جدًّا."
+   ],
+   "notFile": [
+    "«",
+    [
+     "a",
+     "label"
+    ],
+    "» ليس ملفًّا صالحًا."
+   ]
+  },
+  "file": {
+   "typeNotAllowed": [
+    "نوع الملف هذا غير مسموح به (المسموح: ",
+    [
+     "a",
+     "allowed"
+    ],
+    ")."
+   ],
+   "tooBig": [
+    "الملف كبير جدًّا (الحد الأقصى ",
+    [
+     "n",
+     "max"
+    ],
+    " ميغابايت)."
+   ]
+  },
+  "markdown": {
+   "profile": {
+    "inline": "نص فقط مع الخط العريض والمائل والشيفرة والروابط",
+    "basic": "فقرات وعناوين وقوائم (مع مربعات اختيار أيضًا) واقتباسات وتنبيهات وحواشٍ سفلية",
+    "rich": "وكذلك الجداول والصور وكتل الشيفرة والمعادلات والمخططات",
+    "page": "وكذلك المكوّنات"
+   },
+   "tagBlocked": [
+    "«",
+    [
+     "a",
+     "tag"
+    ],
+    "» غير مسموح به."
+   ],
+   "tagNotInProfile": [
+    "«",
+    [
+     "a",
+     "tag"
+    ],
+    "» غير مسموح به هنا (",
+    [
+     "a",
+     "allowed"
+    ],
+    ")."
+   ],
+   "propBlocked": [
+    "الخاصية «",
+    [
+     "a",
+     "prop"
+    ],
+    "» غير مسموح بها."
+   ],
+   "unsafeLink": "الرابط غير مسموح به (المسموح فقط: http أو https أو mailto أو tel أو /مسار).",
+   "oneParagraph": "يُسمح هنا بفقرة واحدة فقط.",
+   "tooComplex": [
+    "النص معقّد جدًّا (الحد الأقصى ",
+    [
+     "p",
+     "max",
+     0,
+     {
+      "zero": [
+       [
+        "#"
+       ],
+       " عنصر"
+      ],
+      "one": [
+       "عنصر واحد"
+      ],
+      "two": [
+       "عنصران"
+      ],
+      "few": [
+       [
+        "#"
+       ],
+       " عناصر"
+      ],
+      "many": [
+       [
+        "#"
+       ],
+       " عنصرًا"
+      ],
+      "other": [
+       [
+        "#"
+       ],
+       " عنصر"
+      ]
+     },
+     0
+    ],
+    ")."
+   ],
+   "componentNotClosed": [
+    "المكوّن «",
+    [
+     "a",
+     "tag"
+    ],
+    "» غير مغلق: ينقص بعد محتواه سطر يحتوي على «",
+    [
+     "a",
+     "close"
+    ],
+    "»."
+   ],
+   "bracketText": [
+    "«[",
+    [
+     "a",
+     "text"
+    ],
+    "» ليس رابطًا ولا صورة: ينقص «]» أو العنوان بين قوسين دائريين. لكتابة الأقواس المربعة كنص: \\[ و\\]."
+   ]
+  },
+  "component": {
+   "or": [
+    [
+     "a",
+     "first"
+    ],
+    " أو ",
+    [
+     "a",
+     "second"
+    ]
+   ],
+   "and": [
+    [
+     "a",
+     "first"
+    ],
+    "، ",
+    [
+     "a",
+     "second"
+    ]
+   ],
+   "quoted": [
+    "«",
+    [
+     "a",
+     "name"
+    ],
+    "»"
+   ],
+   "unknown": [
+    "المكوّن «",
+    [
+     "a",
+     "tag"
+    ],
+    "» غير موجود."
+   ],
+   "propUnknown": [
+    "المكوّن «",
+    [
+     "a",
+     "tag"
+    ],
+    "»: الخاصية «",
+    [
+     "a",
+     "prop"
+    ],
+    "» غير موجودة."
+   ],
+   "propInvalid": [
+    "المكوّن «",
+    [
+     "a",
+     "tag"
+    ],
+    "»: الخاصية «",
+    [
+     "a",
+     "prop"
+    ],
+    "» ",
+    [
+     "a",
+     "problem"
+    ]
+   ],
+   "propMissing": [
+    "المكوّن «",
+    [
+     "a",
+     "tag"
+    ],
+    "»: الخاصية «",
+    [
+     "a",
+     "prop"
+    ],
+    "» مفقودة."
+   ],
+   "propEmpty": [
+    "المكوّن «",
+    [
+     "a",
+     "tag"
+    ],
+    "»: الخاصية «",
+    [
+     "a",
+     "prop"
+    ],
+    "» فارغة."
+   ],
+   "blockInParagraph": [
+    "المكوّن «",
+    [
+     "a",
+     "tag"
+    ],
+    "» كتلة ولا يصح وضعه داخل فقرة."
+   ],
+   "parentOnly": [
+    "يمكن أن يظهر المكوّن «",
+    [
+     "a",
+     "tag"
+    ],
+    "» داخل ",
+    [
+     "a",
+     "parents"
+    ],
+    " فقط."
+   ],
+   "slotUnknown": [
+    "المكوّن «",
+    [
+     "a",
+     "tag"
+    ],
+    "»: المنطقة «",
+    [
+     "a",
+     "slot"
+    ],
+    "» غير موجودة (المسموح: ",
+    [
+     "a",
+     "allowed"
+    ],
+    ")."
+   ],
+   "noSlots": [
+    "المكوّن «",
+    [
+     "a",
+     "tag"
+    ],
+    "»: ليس له مناطق، و«",
+    [
+     "a",
+     "slot"
+    ],
+    "» غير مسموح بها."
+   ],
+   "childNotAllowed": [
+    "يمكن أن يحتوي المكوّن «",
+    [
+     "a",
+     "tag"
+    ],
+    "» على ",
+    [
+     "a",
+     "children"
+    ],
+    " فقط، وليس على «",
+    [
+     "a",
+     "child"
+    ],
+    "»."
+   ],
+   "prop": {
+    "notBoolean": "يجب أن تكون «true» أو «false».",
+    "notNumber": "يجب أن تكون رقمًا.",
+    "outOfRange": [
+     "يجب أن تكون بين ",
+     [
+      "a",
+      "min"
+     ],
+     " و",
+     [
+      "a",
+      "max"
+     ],
+     "."
+    ],
+    "badStep": [
+     "لا تتوافق مع حجم الخطوة ",
+     [
+      "a",
+      "step"
+     ],
+     "."
+    ],
+    "notText": "يجب أن تكون نصًّا.",
+    "tooLong": [
+     "طويلة جدًّا (الحد الأقصى ",
+     [
+      "p",
+      "max",
+      0,
+      {
+       "zero": [
+        [
+         "#"
+        ],
+        " حرف"
+       ],
+       "one": [
+        "حرف واحد"
+       ],
+       "two": [
+        "حرفان"
+       ],
+       "few": [
+        [
+         "#"
+        ],
+        " أحرف"
+       ],
+       "many": [
+        [
+         "#"
+        ],
+        " حرفًا"
+       ],
+       "other": [
+        [
+         "#"
+        ],
+        " حرف"
+       ]
+      },
+      0
+     ],
+     ")."
+    ],
+    "badChoice": [
+     "قيمتها غير صالحة (المسموح: ",
+     [
+      "a",
+      "allowed"
+     ],
+     ")."
+    ],
+    "badChoices": [
+     "قيمها غير صالحة (المسموح: ",
+     [
+      "a",
+      "allowed"
+     ],
+     ")."
+    ],
+    "duplicateValues": "تحتوي على قيم مكرّرة.",
+    "tooManyChosen": [
+     "تقبل ",
+     [
+      "p",
+      "max",
+      0,
+      {
+       "zero": [
+        [
+         "#"
+        ],
+        " قيمة"
+       ],
+       "one": [
+        "قيمة واحدة"
+       ],
+       "two": [
+        "قيمتين"
+       ],
+       "few": [
+        [
+         "#"
+        ],
+        " قيم"
+       ],
+       "many": [
+        [
+         "#"
+        ],
+        " قيمة"
+       ],
+       "other": [
+        [
+         "#"
+        ],
+        " قيمة"
+       ]
+      },
+      0
+     ],
+     " كحد أقصى."
+    ],
+    "badImage": "يجب أن تكون مسارًا أو عنوان ويب.",
+    "notId": "يجب أن تكون معرّف إدخال.",
+    "badType": "نوعها غير مسموح به."
+   }
+  },
+  "links": {
+   "snippetMissing": [
+    "مقتطف النص «",
+    [
+     "a",
+     "name"
+    ],
+    "» غير موجود (الإدخال snippets/",
+    [
+     "a",
+     "name"
+    ],
+    " مع الحقل body)."
+   ],
+   "linkBroken": [
+    "الرابط ",
+    [
+     "a",
+     "href"
+    ],
+    " لا يقود إلى أي إدخال أو صفحة."
+   ],
+   "linkRedirected": [
+    "الرابط ",
+    [
+     "a",
+     "href"
+    ],
+    " يقود إلى ",
+    [
+     "a",
+     "to"
+    ],
+    " عبر إعادة توجيه."
+   ],
+   "pathUnknown": [
+    "المسار ",
+    [
+     "a",
+     "path"
+    ],
+    " لا يطابق أي إدخال أو صفحة أو ملف في public/."
+   ],
+   "anchorMissing": [
+    "المرجع #",
+    [
+     "a",
+     "anchor"
+    ],
+    " مفقود: لا يوجد عنوان بهذا المعرّف."
+   ],
+   "externalBroken": [
+    "الرابط الخارجي ",
+    [
+     "a",
+     "href"
+    ],
+    " معطّل (",
+    [
+     "a",
+     "reason"
+    ],
+    ")."
+   ]
+  },
+  "editor": {
+   "component": {
+    "unknown": [
+     "«",
+     [
+      "a",
+      "tag"
+     ],
+     "» غير موجود هنا."
+    ],
+    "more": [
+     [
+      "a",
+      "first"
+     ],
+     " تحقّق من ",
+     [
+      "p",
+      "count",
+      0,
+      {
+       "zero": [
+        "أي إعداد آخر"
+       ],
+       "one": [
+        "إعداد آخر"
+       ],
+       "two": [
+        "إعدادين آخرين"
+       ],
+       "few": [
+        [
+         "#"
+        ],
+        " إعدادات أخرى"
+       ],
+       "many": [
+        [
+         "#"
+        ],
+        " إعدادًا آخر"
+       ],
+       "other": [
+        [
+         "#"
+        ],
+        " إعداد آخر"
+       ]
+      },
+      0
+     ],
+     "."
+    ]
+   },
+   "prop": {
+    "missing": [
+     [
+      "a",
+      "label"
+     ],
+     " مفقود."
+    ],
+    "empty": [
+     [
+      "a",
+      "label"
+     ],
+     " فارغ."
+    ],
+    "invalid": [
+     [
+      "a",
+      "label"
+     ],
+     " ",
+     [
+      "a",
+      "problem"
+     ]
+    ]
+   },
+   "problem": {
+    "imageNoDescription": "الصورة بلا وصف."
+   },
+   "source": {
+    "unstable": "سيتغيّر النص عند الحفظ، لذلك يُحرَّر بصيغة Markdown.",
+    "lossy": "لا يمكن عرض النص في المحرّر دون فقدان شيء منه.",
+    "failed": [
+     "لا يمكن عرض النص في المحرّر (",
+     [
+      "a",
+      "reason"
+     ],
+     ")."
+    ]
+   }
+  },
+  "diff": {
+   "freshSetting": [
+    [
+     "a",
+     "name"
+    ],
+    ": ",
+    [
+     "a",
+     "value"
+    ],
+    "."
+   ],
+   "freshLocales": [
+    "اللغات: ",
+    [
+     "a",
+     "locales"
+    ],
+    "."
+   ],
+   "siteRenamed": "لا يمكن تغيير اسم الموقع (`site`).",
+   "currencyChanged": "لا يمكن تغيير عملة الموقع.",
+   "mainLocaleChanged": "لا يمكن تغيير اللغة الرئيسية.",
+   "localeRemoved": [
+    "لا يمكن حذف اللغة «",
+    [
+     "a",
+     "locale"
+    ],
+    "»."
+   ],
+   "localeOrder": "تُضاف اللغات الجديدة في نهاية القائمة.",
+   "localeAdded": [
+    "لغة جديدة «",
+    [
+     "a",
+     "locale"
+    ],
+    "»."
+   ],
+   "timezoneChanged": "لا يمكن تغيير المنطقة الزمنية.",
+   "valueChanged": [
+    "تغيّر ",
+    [
+     "a",
+     "name"
+    ],
+    "."
+   ],
+   "pagesChanged": "تغيّرت الصفحات الثابتة.",
+   "agentsChanged": "تغيّرت مراجعة تغييرات الذكاء الاصطناعي.",
+   "tasksChanged": "تغيّرت المهام.",
+   "retiredBack": [
+    "تم إيقاف «",
+    [
+     "a",
+     "path"
+    ],
+    "» ولا يمكن إعادته."
+   ],
+   "unretired": [
+    "تم إيقاف «",
+    [
+     "a",
+     "path"
+    ],
+    "»."
+   ],
+   "retiredRuleChanged": [
+    "لا يمكن تغيير قاعدة «",
+    [
+     "a",
+     "path"
+    ],
+    "»."
+   ],
+   "retiredNow": [
+    "يجري إيقاف «",
+    [
+     "a",
+     "path"
+    ],
+    "»."
+   ],
+   "migrationChanged": [
+    "تغيّر الترحيل «",
+    [
+     "a",
+     "id"
+    ],
+    "»."
+   ],
+   "migrationFillsExisting": [
+    "الترحيل «",
+    [
+     "a",
+     "id"
+    ],
+    "» يملأ «",
+    [
+     "a",
+     "target"
+    ],
+    "» وهو موجود بالفعل."
+   ],
+   "migrationAdded": [
+    "ترحيل جديد «",
+    [
+     "a",
+     "id"
+    ],
+    "»."
+   ],
+   "migrationDropped": [
+    "الترحيل «",
+    [
+     "a",
+     "id"
+    ],
+    "» لم يعد في الإعدادات."
+   ],
+   "brickRemoved": [
+    "الكتلة «",
+    [
+     "a",
+     "key"
+    ],
+    "» مفقودة."
+   ],
+   "brickAdded": [
+    "كتلة جديدة «",
+    [
+     "a",
+     "key"
+    ],
+    "»."
+   ],
+   "singleWithoutDefault": [
+    "كتلة مفردة جديدة: الحقل المطلوب «",
+    [
+     "a",
+     "name"
+    ],
+    "» يحتاج إلى قيمة افتراضية."
+   ],
+   "unknownChange": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: تغيّرت الخاصية «",
+    [
+     "a",
+     "prop"
+    ],
+    "» وهذا غير مسموح به."
+   ],
+   "kindChanged": [
+    "«",
+    [
+     "a",
+     "key"
+    ],
+    "» ينتقل من كتلة مفردة إلى مجموعة أو العكس."
+   ],
+   "textChanged": "تغيّر النص.",
+   "maxLowered": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: لا يمكن خفض max."
+   ],
+   "maxRaised": "تم رفع max.",
+   "routeAdded": "صفحات تفاصيل جديدة.",
+   "routeAddedLocale": "عنوان للغة الجديدة.",
+   "routeChanged": [
+    "«",
+    [
+     "a",
+     "key"
+    ],
+    "»: لا يمكن تغيير العناوين (route)."
+   ],
+   "fieldRemoved": [
+    "الحقل «",
+    [
+     "a",
+     "at"
+    ],
+    "» مفقود."
+   ],
+   "fieldAdded": [
+    "حقل جديد «",
+    [
+     "a",
+     "at"
+    ],
+    "»."
+   ],
+   "fieldAddedDefault": [
+    "حقل مطلوب جديد «",
+    [
+     "a",
+     "at"
+    ],
+    "» بقيمة افتراضية."
+   ],
+   "fieldAddedMigration": [
+    "حقل مطلوب جديد «",
+    [
+     "a",
+     "at"
+    ],
+    "» يملؤه ترحيل."
+   ],
+   "requiredWithoutDefault": [
+    "حقل مطلوب جديد «",
+    [
+     "a",
+     "at"
+    ],
+    "» بلا قيمة افتراضية أو ترحيل."
+   ],
+   "typeChanged": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: النوع ",
+    [
+     "a",
+     "from"
+    ],
+    " → ",
+    [
+     "a",
+     "to"
+    ],
+    "."
+   ],
+   "retiredFieldChanged": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: الحقل الموقوف يحتفظ بتعريفه في الإنتاج."
+   ],
+   "madeRequired": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: اختياري ← مطلوب."
+   ],
+   "madeOptional": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "» أصبح اختياريًّا."
+   ],
+   "translationChanged": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: تغيّرت قابلية الترجمة."
+   ],
+   "defaultChanged": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: لا يمكن تغيير القيمة الافتراضية."
+   ],
+   "minRaised": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: لا يمكن رفع min."
+   ],
+   "minLowered": "تم خفض min.",
+   "minOffGrid": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: يمكن خفض min بمضاعف حجم الخطوة ",
+    [
+     "a",
+     "step"
+    ],
+    " فقط."
+   ],
+   "propChanged": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: لا يمكن تغيير ",
+    [
+     "a",
+     "prop"
+    ],
+    "."
+   ],
+   "optionRemoved": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: الخيار «",
+    [
+     "a",
+     "option"
+    ],
+    "» مفقود."
+   ],
+   "optionRenamed": "تمت إعادة تسمية الخيار.",
+   "optionAdded": [
+    "خيار جديد «",
+    [
+     "a",
+     "option"
+    ],
+    "»."
+   ],
+   "uniqueChanged": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: لا يمكن تعيين unique أو تغييره."
+   ],
+   "uniqueDropped": [
+    "«",
+    [
+     "a",
+     "at"
+    ],
+    "»: تمت إزالة unique."
+   ],
+   "fix": {
+    "newField": "أضِف حقلًا جديدًا، واملأه بترحيل، وأدرج الحقل القديم تحت `retired`.",
+    "newFieldOnly": "أضِف حقلًا جديدًا.",
+    "newSite": "أنشئ موقعًا جديدًا.",
+    "moneyFields": "أضِف حقول مال جديدة بعملة `currency` ثابتة.",
+    "planMigration": "خطّط لترحيل مع فريق التطوير لديك.",
+    "keepLocale": "أبقِ اللغة؛ يمكن إخفاء الصفحات بهذه اللغة.",
+    "keepLocaleOrder": "أبقِ ترتيب اللغات الحالية.",
+    "keepTimezone": "أبقِ المنطقة الزمنية.",
+    "keepRule": "اترك القاعدة كما هي.",
+    "newMigrationId": "يحصل الإصلاح على معرّف جديد.",
+    "fillNewFieldsOnly": "املأ الحقول الجديدة فقط؛ وللحقل الموجود أضِف حقلًا جديدًا.",
+    "retireBrick": "أدرج الكتلة تحت `retired` بدلًا من حذفها.",
+    "defaultOrOptional": "عيّن قيمة `default` أو اجعل الحقل اختياريًّا.",
+    "keepProperty": "أبقِ الخاصية.",
+    "keepMax": "أبقِ max.",
+    "keepRoute": "أبقِ العنوان (route).",
+    "defaultMigrationOrOptional": "عيّن قيمة `default` أو اكتب ترحيلًا أو اجعل الحقل اختياريًّا.",
+    "keepDefinition": "اترك التعريف كما هو؛ يمكن تغيير النصوص فقط.",
+    "keepDefault": "أبقِ القيمة الافتراضية.",
+    "keepMin": "أبقِ min.",
+    "minOnGrid": "اخفض min بحيث يكون الفرق مضاعفًا لـ step.",
+    "keepOption": "أبقِ الخيار؛ يمكن إعادة تسميته (label).",
+    "newList": "أضِف قائمة جديدة واملأها بترحيل."
+   }
+  },
+  "preview": {
+   "notFound": "هذه الصفحة غير موجودة.",
+   "failed": "تعذّر تحميل المعاينة.",
+   "loading": "جارٍ تحميل المعاينة…"
   }
  }
 }

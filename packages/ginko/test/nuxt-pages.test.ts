@@ -4,9 +4,10 @@ import type { Schema } from '../src/internal.ts'
 import { unservedPaths } from '../src/nuxt/pages.ts'
 
 const schema = {
+  locales: ['de', 'en'],
   pages: { home: { de: '/', en: '/en' }, menu: { de: '/speisekarte', en: '/en/menu' } },
   bricks: { events: { kind: 'collection', route: { de: '/veranstaltungen/[slug]', en: '/en/events/[slug]' } } },
-} as unknown as Pick<Schema, 'pages' | 'bricks'>
+} as unknown as Pick<Schema, 'locales' | 'pages' | 'bricks'>
 
 describe('unservedPaths', () => {
   test('nothing to warn when every page and route has a Nuxt page', () => {
@@ -24,5 +25,10 @@ describe('unservedPaths', () => {
       'pages.menu.en: no page at “/en/menu”. Fix: create the page or change the path in ginko.config.ts.',
       'events.route.en: no page at “/en/events/[slug]”. Fix: create the page (for example pages/…/[slug].vue) or change the route.',
     ])
+  })
+
+  test('a route for a language the site does not have needs no page', () => {
+    const pages = [{ path: '/' }, { path: '/speisekarte' }, { path: '/veranstaltungen/:slug()' }]
+    expect(unservedPaths({ ...schema, locales: ['de'] }, pages)).toEqual([])
   })
 })

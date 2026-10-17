@@ -1,7 +1,8 @@
 {
   "nav": {
-    "quick": "Edición rápida",
-    "all": "Editar todo",
+    "quick": "Hoy",
+    "all": "Contenido",
+    "review": "Revisar",
     "files": "Archivos",
     "history": "Historial",
     "team": "Equipo",
@@ -12,42 +13,45 @@
     "skip": "Saltar al contenido",
     "views": "Vistas",
     "areas": "Áreas",
-    "list": "Lista",
     "signOut": "Cerrar sesión",
+    "signOutDrafts": "En este navegador hay cambios sin guardar. Al cerrar sesión se eliminarán. ¿Cerrar sesión de todos modos?",
+    "signOutFailed": "No se pudo cerrar la sesión. Inténtalo de nuevo.",
+    "signOutOthers": "Cerrar sesión en otros dispositivos",
+    "signedOutOthers": "Sesión cerrada en todos los demás dispositivos. Aquí sigues con la sesión iniciada.",
+    "signOutOthersFailed": "No se pudo cerrar la sesión en los otros dispositivos. Inténtalo de nuevo.",
     "signIn": "Iniciar sesión",
-    "signedOutTitle": "Has cerrado sesión.",
-    "signedOutText": "Lo que no se haya guardado se pierde. Inicia sesión de nuevo para seguir aquí.",
-    "noAccessHelp": "Si necesitas cambiar algo aquí, pide al propietario que te invite (de nuevo).",
-    "toReview": "Por revisar ({count})",
-    "short": {
-      "quick": "Hoy",
-      "all": "Contenido",
-      "review": "Revisar",
-      "files": "Archivos",
-      "history": "Historial",
-      "team": "Equipo",
-      "ai": "IA"
-    },
+    "noAccessHelp": "Si necesitas acceso aquí, pregunta a la persona que te invitó.",
+    "noAccessUnsaved": "Lo que aún no habías guardado aquí no está en el sitio web. Si te vuelven a invitar, lo recuperas en este navegador.",
     "more": "Más",
     "account": "Cuenta",
-    "toReviewCount": "{count} por revisar"
+    "toReviewCount": "{count} por revisar",
+    "translations": "Traducciones",
+    "translationsOpen": "{count, plural, one {# pendiente} other {# pendientes}}"
   },
   "sites": {
     "title": "Mis sitios",
     "invitedTo": "<site>{site}</site> te invita como {role}.",
     "accept": "Aceptar invitación",
-    "empty": "Todavía no tienes acceso a ningún sitio. Pide una invitación.",
+    "name": "Tu nombre",
+    "nameHint": "Así ve tu equipo quién cambió algo.",
+    "nameSaved": "Nombre guardado.",
+    "empty": "Ahora mismo no tienes acceso a ningún sitio. Si lo necesitas, pregunta a la persona que te invitó.",
+    "search": "Buscar un sitio",
+    "recent": "Abiertos recientemente",
+    "all": "Todos los sitios",
+    "noMatch": "Ningún sitio coincide con “{query}”.",
+    "deleting": "Se está eliminando",
     "role": {
       "admin": "Administrador",
       "owner": "Propietario",
       "staff": "Personal"
     },
     "remindTitle": "Recordatorios por correo",
-    "remindText": "Un correo breve la tarde antes de que empiece la semana si aún falta algo de la próxima semana, por ejemplo el menú del almuerzo.",
+    "remindText": "Un correo breve la tarde antes de que empiece la semana si aún falta algo de la próxima semana.",
     "language": "Idioma",
     "deleteAccount": {
       "title": "Eliminar cuenta",
-      "text": "Se eliminan tu cuenta, tus membresías y tu inicio de sesión. Los cambios que hiciste permanecen en el historial como «Antiguo miembro».",
+      "text": "Se eliminan tu cuenta, tus membresías y tu inicio de sesión. Los cambios que hiciste permanecen en el historial como “Antiguo miembro”.",
       "button": "Eliminar mi cuenta"
     }
   },
@@ -58,11 +62,11 @@
     "invalidEmail": "Introduce un correo electrónico válido.",
     "sendFailed": "No se pudo enviar el código. Inténtalo de nuevo en un minuto.",
     "sendCode": "Enviar código",
-    "sending": "Enviando …",
+    "sending": "Enviando…",
     "sent": "Hemos enviado un código a <email>{email}</email>. Es válido durante 5 minutos.",
     "code": "Código",
     "submit": "Iniciar sesión",
-    "submitting": "Iniciando sesión …",
+    "submitting": "Iniciando sesión…",
     "sixDigits": "El código tiene 6 dígitos.",
     "tooMany": "Demasiados intentos. Espera un minuto e inténtalo de nuevo.",
     "tooManyWrong": "Demasiados intentos erróneos. Pide un código nuevo.",
@@ -71,28 +75,45 @@
     "otherEmail": "Otro correo"
   },
   "problem": {
-    "offline": "Sin conexión. Lo que escribiste sigue aquí.",
     "generic": "No ha funcionado. Lo que escribiste sigue aquí. Inténtalo de nuevo."
+  },
+  "errors": {
+    "signedOut": "Se cerró tu sesión. Vuelve a iniciar sesión e inténtalo de nuevo.",
+    "notFound": {
+      "title": "Esta dirección no existe en el Studio.",
+      "text": "Puede que el enlace sea antiguo o tenga una errata."
+    },
+    "other": {
+      "title": "Algo ha salido mal aquí.",
+      "text": "Vuelve a cargar la página. Lo que guardaste no se ha perdido."
+    },
+    "reload": "Volver a cargar"
   },
   "invite": {
     "titleShort": "Invitación",
     "title": "Aceptar invitación",
+    "heading": "Invitación a {site}",
     "lead": "<site>{site}</site> te invita como {role}.",
     "role": {
       "owner": "propietario",
       "staff": "miembro del personal",
       "admin": "administrador"
     },
+    "rightsOwner": "Como propietario puedes cambiarlo todo y gestionar el equipo.",
+    "rightsStaff": "Puedes:",
+    "rightsNone": "Las áreas que puedes cambiar se decidirán más adelante.",
+    "signInHint": "Inicia sesión con <email>{email}</email>. Te enviamos un código; no necesitas contraseña.",
     "otherEmail": "Esta invitación es para otro correo electrónico. Inicia sesión con ese correo.",
     "expired": "Esta invitación ha caducado o ya se usó. Pide una nueva.",
-    "accepting": "Aceptando …"
+    "accepting": "Aceptando…",
+    "nameHint": "Opcional. Así ve tu equipo quién cambió algo."
   },
   "entry": {
-    "newEntry": "Entrada nueva",
+    "newIn": "Nuevo en {brick}",
     "more": "Más",
-    "removeEntry": "Eliminar entrada …",
+    "removeEntry": "Eliminar entrada…",
     "language": "Idioma",
-    "loading": "Cargando …",
+    "loading": "Cargando…",
     "close": "Cerrar",
     "cancel": "Cancelar",
     "saved": "Guardado",
@@ -100,40 +121,78 @@
     "saveBeforeLanguage": "Guarda primero y luego cambia el idioma.",
     "groupHasIssues": "Errores en esta sección",
     "foreignHint": "Aquí solo se muestran los textos que necesitan traducción. Los demás campos valen para todos los idiomas.",
-    "twin": "Esta entrada ya existe: “{title}”. Al guardar se crea una segunda.",
+    "translationState": {
+      "hidden": "Esta página aún no está en línea en {lang}. Aparecerá en cuanto se traduzcan los textos marcados.",
+      "mainPage": "Esta página aún no tiene versión en {lang}. Hasta entonces, el sitio web enlaza a la página en {main}.",
+      "missing": "Donde falta una traducción, el sitio web en {lang} muestra el texto en {main}.",
+      "outdated": "Donde cambió el texto en {main}, el sitio web en {lang} todavía muestra la traducción anterior."
+    },
+    "twin": "“{title}” ya existe. Al guardar se crea una segunda entrada.",
+    "weekFixed": "Esta tarea siempre cubre la semana en curso.",
     "saveContinues": "Todavía guardando. Si no tienes conexión, se guardará en cuanto vuelva.",
     "notSaved": "Sin guardar: {reason}",
     "notSavedReopen": "Sin guardar. Abre la tarea de nuevo.",
+    "readOnly": "No puedes cambiar esta entrada. Tus permisos en “{area}”: {tasks}. Si hay que cambiar algo aquí, pregunta a la persona que te invitó.",
+    "readOnlyOthers": "No puedes cambiar esta entrada: aquí solo cambias las entradas que añadiste tú. Si hay que cambiar algo aquí, pregunta a la persona que te invitó.",
     "status": {
       "online": "En línea",
-      "onlineFrom": "En línea desde {when}",
+      "onlineFrom": "En línea a partir del {when}",
       "draft": "Borrador"
     },
     "save": {
-      "waiting": "Esperando conexión …",
-      "saving": "Guardando …",
+      "waiting": "Esperando conexión…",
+      "offlineKept": "Sin conexión. Lo que has escrito está a salvo en este navegador. Deja esta página abierta y se guardará en cuanto vuelvas a estar en línea.",
+      "saving": "Guardando…",
       "draft": "Guardar borrador",
       "save": "Guardar"
     },
     "conflict": {
       "changed": "Alguien ha cambiado {fields} mientras tanto.",
+      "changedBy": "{who} ha cambiado {fields} mientras tanto.",
+      "changedByYou": "Mientras tanto cambiaste {fields} en otra ventana.",
       "thisEntry": "esta entrada",
       "item": "{field}: guardado ahora como “{stored}”, tu texto “{mine}”",
       "keepMine": "Guardar mis cambios",
-      "takeTheirs": "Usar la versión nueva"
+      "takeTheirs": "Usar la versión nueva",
+      "keepBoth": "Conservar ambos",
+      "someone": "Alguien",
+      "row": {
+        "youAdded": "Has añadido “{row}”",
+        "youRemoved": "Has eliminado “{row}”",
+        "youChanged": "Has cambiado “{row}”",
+        "theyAdded": "{who} añadió “{row}”",
+        "theyRemoved": "{who} eliminó “{row}”",
+        "theyChanged": "{who} cambió “{row}”",
+        "otherWindowAdded": "En otra ventana añadiste “{row}”",
+        "otherWindowRemoved": "En otra ventana quitaste “{row}”",
+        "otherWindowChanged": "En otra ventana cambiaste “{row}”",
+        "clash": "Hay dos cambios distintos en “{row}”; elige una versión.",
+        "clashYou": "Cambiaste “{row}” en las dos ventanas; elige una versión.",
+        "untitled": "Fila {n}"
+      }
     },
     "publish": {
-      "open": "Publicar …",
-      "changeSchedule": "Cambiar programación …",
+      "open": "Publicar…",
+      "changeSchedule": "Cambiar programación…",
       "whenOnline": "¿Cuándo debe publicarse “{title}”?",
+      "whenOnlineUntitled": "¿Cuándo debe publicarse la entrada?",
       "now": "Ahora",
-      "later": "En línea desde …",
+      "later": "En línea a partir de…",
       "dateTime": "Fecha y hora",
       "siteZone": "Hora del sitio web ({zone}), no la hora de tu dispositivo.",
       "publishNow": "Publicar ahora",
       "schedule": "Programar",
       "clearSchedule": "Quitar programación",
-      "futureTime": "Elige una hora en el futuro."
+      "futureTime": "Elige una hora en el futuro.",
+      "timeTwice": "Esta hora existe dos veces ese día porque se atrasa el reloj. ¿Cuál quieres decir?",
+      "timeTwiceFirst": "La primera vez ({time})",
+      "timeTwiceSecond": "La segunda vez ({time})",
+      "timePickOne": "Elige cuál de las dos horas quieres decir.",
+      "timeMissing": "Esta hora no existe ese día porque se adelanta el reloj. Elige otra hora.",
+      "go": "Publicar",
+      "review": "Enviar a revisión",
+      "asDraft": "Guardar como borrador",
+      "laterOpen": "Publicar más tarde"
     },
     "unpublish": {
       "button": "Quitar de la web",
@@ -144,17 +203,40 @@
       "close": "Cerrar vista previa",
       "frameTitle": "Vista previa del sitio web",
       "stuck": "La vista previa no carga. Guardar sigue funcionando como siempre.",
+      "needsTitle": "La vista previa muestra la página en cuanto rellenes “{field}”.",
+      "untranslated": "Aún no está traducido al {language}. Hasta entonces, la entrada no aparece en el sitio web en este idioma.",
+      "untranslatedListed": "Aún no está traducido al {language}. Hasta entonces, la entrada no tiene página propia en este idioma. Las listas la muestran en {main}.",
       "openSite": "Abrir sitio web"
     },
     "remove": {
       "title": "Eliminar entrada",
-      "text": "“{title}” se elimina del sitio web. Puedes restaurarla durante 30 días.",
-      "confirm": "Eliminar"
+      "text": "“{title}” sale del sitio web. La encuentras durante 30 días en la papelera y puedes restaurarla allí.",
+      "textDraft": "“{title}” va a la papelera. Puedes restaurarla durante 30 días.",
+      "confirm": "Eliminar",
+      "usedIn": "“{title}” se usa en {count, plural, one {un lugar} other {# lugares}}. Siguen en línea, pero ya no muestran “{title}”. Puedes restaurarla desde la papelera durante 30 días.",
+      "confirmAnyway": "Eliminar de todos modos",
+      "checking": "Comprobando dónde se usa esta entrada…",
+      "trashFull": "La papelera está llena. Si la eliminas, estas entradas más antiguas se borrarán definitivamente:"
     },
     "discard": {
       "question": "¿Descartar los cambios?",
       "confirm": "Descartar",
       "keepEditing": "Seguir editando"
+    },
+    "gone": {
+      "text": "Alguien eliminó esta entrada. Tus cambios siguen aquí.",
+      "textClean": "Alguien eliminó esta entrada.",
+      "restoreAndSave": "Restaurar y guardar",
+      "restore": "Restaurar",
+      "saveAsNew": "Guardar como entrada nueva",
+      "discard": "Descartar",
+      "noRights": "Tus cambios se quedan en este dispositivo. Pide al propietario que restaure la entrada y vuelve a abrirla."
+    },
+    "localDraft": {
+      "offer": "¿Restaurar los cambios sin guardar de {time}?",
+      "restore": "Restaurar",
+      "discard": "No restaurar",
+      "restoredConflict": "Restaurado. Alguien cambió {fields} mientras tanto; decide abajo."
     },
     "pick": {
       "search": "Buscar",
@@ -171,16 +253,32 @@
     "toast": {
       "close": "Cerrar mensaje",
       "region": "Mensajes"
-    }
+    },
+    "size": {
+      "near": "Esta entrada ocupa {used} de {limit}.",
+      "over": "Esta entrada es demasiado grande: {used} de {limit}. Acórtala unos {over} para poder guardarla."
+    },
+    "oldWeek": "Esta sigue siendo la semana del {date}. Revisa cada día antes de guardar.",
+    "copyThisWeek": "Copiar de esta semana",
+    "pending": "Esperando aprobación, enviado el {when}. Si guardas, sustituyes tu propuesta.",
+    "pendingStale": "Tu propuesta (enviada el {when}) ya no encaja: alguien lo ha cambiado desde entonces. Aquí ves el estado actual.",
+    "pendingSame": "Esperando aprobación, enviado el {when}. Lo que has puesto vuelve a coincidir con la web: para descartar la propuesta, retírala.",
+    "reopenProposal": "Volver a abrir tu propuesta",
+    "shrunk": {
+      "text": "“{field}” es mucho más corto que antes: {after} en lugar de {before} caracteres.",
+      "files": "{count, plural, one {# archivo} other {# archivos}} menos."
+    },
+    "groupHasGaps": "Falta la traducción o está desactualizada"
   },
   "site": {
+    "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",
     "title": {
-      "quick": "{site} · Edición rápida",
-      "all": "{site} · Editar todo",
+      "quick": "{site} · Hoy",
+      "all": "{site} · Contenido",
       "team": "{site} · Equipo",
       "ai": "{site} · Conectar IA",
       "history": "{site} · Historial",
-      "area": "{area} · Editar todo"
+      "area": "{area} · Contenido"
     },
     "fallback": {
       "site": "Sitio",
@@ -203,38 +301,56 @@
     },
     "status": {
       "draft": "Borrador",
-      "onlineFrom": "En línea desde {when}",
-      "expired": "caducado",
+      "onlineFrom": "En línea a partir del {when}",
+      "expired": "caducado el {date}",
       "ended": "terminado",
       "until": "hasta {date}",
       "untilToday": "hasta hoy",
       "noEnd": "sin fecha de fin"
     },
     "quick": {
-      "nothingForYou": "No tienes tareas aquí. Pide al propietario los permisos que necesitas.",
+      "nothingForYou": "Todavía no tienes tareas aquí. Pide los permisos que necesitas a la persona que te invitó.",
       "todayDone": "<task>{task}</task> está completado para hoy.",
+      "dayDone": "<task>{field} {date}</task> está completado.",
       "flagText": "“{text}”",
       "clearToday": "Quitar",
       "notFilled": "Aún sin completar",
       "notThisWeek": ", aún no para esta semana",
       "plannedWeek": "{label} {date}, planificado con antelación",
       "nothingNow": "No hay nada introducido por ahora.",
-      "removeNamed": "Eliminar {title}"
+      "removeNamed": "Eliminar {title}",
+      "allIn": "Ver todo en “{brick}”",
+      "showExpired": "Mostrar entradas caducadas ({count})",
+      "waiting": "Esperando aprobación, enviado el {when}.",
+      "rejected": "No aprobado: “{reason}”",
+      "fix": "Corregir",
+      "toReview": "{count, plural, one {# cambio espera} other {# cambios esperan}} tu revisión",
+      "drafts": {
+        "heading": "Aún sin guardar",
+        "titled": "“{title}” · {time}",
+        "untitled": "{area}: entrada nueva · {time}",
+        "continue": "Seguir editando"
+      }
     },
     "all": {
-      "heading": "Editar todo",
+      "heading": "Contenido",
+      "headingStaff": "Tus áreas",
       "lede": "Todas las áreas del sitio con todos sus campos. Elige un área.",
+      "ledeStaff": "Las áreas del sitio en las que puedes cambiar algo.",
       "allAreas": "Todas las áreas",
       "new": "Nuevo",
       "noEntries": "Aún no hay entradas.",
       "moveUp": "Subir {title}",
       "moveDown": "Bajar {title}",
-      "removed": "Eliminado (se puede restaurar durante 30 días)",
+      "showMore": "Mostrar {count} más",
+      "shownOf": "{shown} de {total} entradas",
+      "searching": "Buscando…",
+      "removed": "En la papelera (se puede restaurar durante 30 días)",
       "restore": "Restaurar"
     },
     "area": {
       "missing": "Esta área no existe.",
-      "noAccess": "No puedes editar esta área. Pregunta al propietario si necesitas cambiar algo aquí."
+      "noAccess": "No puedes editar esta área. Si necesitas cambiar algo aquí, pregunta a la persona que te invitó."
     },
     "entry": {
       "missing": "Esta entrada ya no existe."
@@ -253,24 +369,34 @@
       "heading": "Equipo",
       "ownersOnly": "Solo los propietarios pueden ver el equipo.",
       "members": "Miembros",
+      "you": "Tú",
       "noEmail": "Sin correo electrónico",
       "noRights": "Sin permisos.",
+      "supportText": "Tiene acceso a todo para cuidar el sitio web y ayudarte.",
       "changeRights": "Cambiar permisos",
       "losesAccess": "<email>{email}</email> perderá el acceso a {site}.",
+      "memberRemoved": "{email} ya no tiene acceso.",
       "openInvites": "Invitaciones abiertas",
       "validUntil": "válida hasta {date}",
       "revokeInvite": "Revocar",
+      "inviteRevoked": "Invitación a {email} revocada.",
       "invite": "Invitar",
       "role": "Rol",
+      "roleHelp": {
+        "staff": "Esta persona solo cambia lo que marques abajo.",
+        "owner": "Esta persona puede cambiarlo todo, gestionar el equipo y borrar el sitio."
+      },
       "rights": "Permisos",
       "sendInvite": "Enviar invitación",
-      "inviteSent": "Invitación enviada a {email}."
+      "inviteSent": "Invitación enviada a {email}.",
+      "keysOfMember": "Claves que creó {email} ({count})",
+      "keysStay": "Estas claves pertenecen al sitio y siguen funcionando hasta que las revoques. Si una clave aún se necesita, por ejemplo para la publicación automática, consérvala."
     },
     "ai": {
       "heading": "Conectar IA",
       "lead": "Tu asistente de IA podrá entonces hacer tareas por ti, por ejemplo “{first}” o “{second}”. Puede hacer exactamente lo que tú puedes hacer aquí. Cada cambio aparece en el historial como “vía IA” y se puede deshacer.",
-      "exampleOne": "Marcar hoy como completo",
-      "exampleTwo": "Añadir el menú del almuerzo desde la foto",
+      "exampleOne": "Corrige una errata",
+      "exampleTwo": "Acorta el primer párrafo",
       "keyFor": "Clave para “{label}”",
       "keyOnce": "La clave se muestra solo ahora. Quien la tenga puede hacer cambios en tu nombre, así que dásela solo a tu asistente.",
       "terminal": "Para Claude Code: ejecuta en la terminal",
@@ -290,16 +416,69 @@
       "createKey": "Crear clave",
       "yourKeys": "Tus claves",
       "noneYet": "Ninguna todavía.",
-      "createdAt": "Creada {when}",
-      "revokedAt": ", revocada {when}",
-      "lastUsedAt": ", último uso {when}",
+      "revokedAt": ", revocada el {when}",
+      "revokeConfirm": "Después, “{label}” ya no podrá hacer cambios.",
+      "reviewOn": "Los cambios esperan aprobación.",
+      "reviewOff": "Los cambios se publican sin aprobación.",
+      "reviewLikeYou": "Lo que espera aprobación cuando lo haces tú también espera aquí. Lo demás se publica sin aprobación."
+    },
+    "keys": {
+      "heading": "Claves de publicación",
+      "lead": "Con una clave, la publicación automática (CI) publica tu sitio o hace una copia de seguridad.",
+      "none": "Aún no hay claves.",
+      "new": "Clave nueva",
+      "name": "Nombre",
+      "nameHint": "Por ejemplo “GitHub Actions”.",
+      "purpose": "¿Para qué?",
+      "purposeRelease": "Publicar y hacer copias de seguridad",
+      "purposeExport": "Solo copias de seguridad",
+      "create": "Crear clave",
+      "once": "Solo ves esta clave ahora. Guárdala como GINKO_KEY en la configuración de tu CI.",
+      "copy": "Copiar clave",
+      "copied": "Clave copiada.",
+      "createdAt": "Creada el {when}",
+      "createdBy": "{who} · creada el {when}",
+      "lastUsedAt": ", último uso el {when}",
       "neverUsed": ", nunca usada",
-      "revokeKey": "Revocar",
-      "revokeConfirm": "Después, “{label}” ya no podrá hacer cambios."
+      "revoke": "Revocar",
+      "revokeConfirm": "Después, los programas con “{label}” ya no podrán publicar ni hacer copias de seguridad.",
+      "revoked": "Clave “{label}” revocada."
     },
     "history": {
       "heading": "Historial",
       "loadOlder": "Cargar anteriores"
+    },
+    "storage": {
+      "near": "Espacio para textos casi lleno: {used} de {limit} ocupados.",
+      "full": "Espacio para textos lleno: {used} de {limit} ocupados. Puedes seguir editando entradas mientras no crezcan, pero no añadir nuevas.",
+      "entries": "{count} de {limit} entradas creadas.",
+      "entriesFull": "{count} de {limit} entradas creadas. No puedes añadir entradas nuevas.",
+      "hint": "Para hacer espacio, elimina entradas o acorta textos largos. Las entradas eliminadas, las imágenes y los PDF no cuentan.",
+      "entriesHint": "Para hacer espacio, elimina entradas. Las entradas eliminadas no cuentan.",
+      "dismiss": "Ocultar aviso",
+      "usage": "Espacio para textos: {used} de {limit} ocupados, {count} de {max} entradas. Las imágenes y los PDF no cuentan."
+    },
+    "backup": {
+      "heading": "Copia de seguridad",
+      "lead": "Descarga todo el contenido (también borradores y papelera) y todas las imágenes y PDF como archivo ZIP. El equipo, el historial y las claves no se incluyen.",
+      "button": "Descargar copia de seguridad",
+      "size": "{count, plural, one {# archivo} other {# archivos}}, {size} en total.",
+      "progress": "Cargando {done} de {total} archivos…",
+      "done": "Copia de seguridad descargada.",
+      "tooBig": "Con {size}, la copia de seguridad es demasiado grande para este navegador. En Chrome o Edge funciona.",
+      "failed": "La copia de seguridad está incompleta: no se pudo cargar “{name}”. Inténtalo de nuevo."
+    },
+    "translations": {
+      "heading": "Traducciones",
+      "lede": "Lo que falta en otro idioma o ya no coincide después de un cambio.",
+      "notOnline": "Aún no está en línea",
+      "none": "Todo está traducido.",
+      "truncated": "Se muestran los primeros {count}."
+    },
+    "drafts": {
+      "since": "Borrador desde el {date}",
+      "goesLive": "Se publica el {date}",
+      "all": "Todos los borradores en Contenido"
     }
   },
   "editor": {
@@ -314,11 +493,13 @@
       "replace": "Reemplazar",
       "replaceAll": "Reemplazar todo",
       "count": "{current} de {total}",
-      "none": "Sin coincidencias"
+      "none": "Sin coincidencias",
+      "replaced": "{count, plural, one {# coincidencia reemplazada} other {# coincidencias reemplazadas}}"
     },
     "toolbar": {
       "label": "Formato",
-      "blockType": "Tipo de bloque"
+      "blockType": "Tipo de bloque",
+      "more": "Más herramientas"
     },
     "marks": {
       "bold": "Negrita",
@@ -338,7 +519,6 @@
       "blockquote": "Cita",
       "horizontalRule": "Separador",
       "table": "Tabla",
-      "image": "Imagen",
       "codeBlock": "Bloque de código"
     },
     "source": {
@@ -402,10 +582,13 @@
       }
     },
     "link": {
-      "label": "Enlace (dirección web)",
+      "label": "Página o dirección web",
+      "placeholder": "Busca una página o https://…",
+      "ownPages": "Páginas del sitio web",
+      "noPage": "No se encontró ninguna página.",
       "apply": "Aplicar",
       "remove": "Quitar enlace",
-      "refused": "Este enlace no está permitido. Usa una dirección web (https://…), un correo electrónico (mailto:) o un teléfono (tel:)."
+      "refused": "Elige una página de la lista o escribe una dirección web (https://…), un correo electrónico (mailto:) o un teléfono (tel:)."
     },
     "image": {
       "insertTitle": "Insertar imagen",
@@ -418,7 +601,19 @@
       "insert": "Insertar",
       "descriptionRequired": "Describe brevemente la imagen para las personas que no pueden verla.",
       "addressRefused": "Esta dirección de imagen no está permitida. Usa una dirección web (https://…).",
-      "noDescription": "Una imagen del texto aún no tiene descripción."
+      "noDescription": "Una imagen del texto aún no tiene descripción.",
+      "fromLibrary": "Elegir de la biblioteca de archivos",
+      "upload": "Subir imagen",
+      "orAddress": "O introduce una dirección web",
+      "missing": "Imagen no encontrada",
+      "descriptionIs": "Descripción: {text}",
+      "descriptionFromFiles": "Descripción de Archivos: {text}",
+      "noDescriptionYet": "Aún sin descripción",
+      "editDescription": "Cambiar descripción",
+      "replace": "Reemplazar imagen",
+      "replaceSubmit": "Reemplazar",
+      "caption": "Pie de foto",
+      "actions": "Imagen"
     },
     "text": {
       "tooLong": "El texto es demasiado largo (máximo {max} caracteres).",
@@ -435,7 +630,7 @@
       "tooBig": "El archivo es demasiado grande (máximo {max} MB).",
       "notReady": "La imagen no terminó de procesarse. Inténtalo de nuevo.",
       "reopened": "La imagen se subió, pero el texto se volvió a abrir mientras tanto. Insértala de nuevo.",
-      "uploading": "subiendo …"
+      "uploading": "subiendo…"
     },
     "block": {
       "settings": "Ajustes",
@@ -443,39 +638,51 @@
       "noSettings": "Este bloque no tiene ajustes.",
       "required": "Campos obligatorios",
       "more": "Más ajustes",
-      "remove": "Eliminar"
+      "remove": "Eliminar",
+      "addChild": "Añadir {label}"
     },
     "prop": {
       "optional": "(opcional)",
-      "imagePlaceholder": "Ruta o dirección web",
+      "imagePlaceholder": "Dirección web (https://…)",
       "notSet": "Sin definir",
       "default": "Predeterminado ({value})",
-      "choose": "Elegir …"
+      "choose": "Elegir…",
+      "chooseImage": "Elegir imagen",
+      "changeImage": "Cambiar imagen"
     }
   },
   "fields": {
     "optional": "(opcional)",
-    "choose": "Elegir …",
+    "choose": "Elegir…",
     "none": "Ninguno",
     "notSet": "Aún sin definir.",
     "clear": "Quitar",
     "remove": "Eliminar",
     "cancel": "Cancelar",
-    "retry": "Reintentar",
-    "uploading": "Subiendo …",
+    "uploading": "Subiendo…",
     "slug": {
       "label": "Dirección web (URL)",
       "pageAt": "La página está en {address}",
-      "generated": "Se genera a partir del título al crear."
+      "generated": "Se genera a partir del título al crear.",
+      "fromTranslation": "Se crea a partir del título en {lang} cuando la página esté traducida.",
+      "view": "Ver página"
     },
     "translation": {
-      "changedSince": "{name} ha cambiado desde la traducción",
-      "fitsAsIs": "Dejar como está",
-      "notTranslated": "Aún sin traducir. El sitio web muestra aquí el texto de {name}."
+      "changedSince": "El texto en {name} ha cambiado desde la traducción",
+      "fitsAsIs": "El texto en {lang} sigue bien",
+      "notTranslated": "Aún sin traducir.",
+      "notTranslatedHidden": "Aún sin traducir. Sin este texto, “{title}” no aparece en el sitio web en {lang}.",
+      "notTranslatedShowsMain": "Aún sin traducir. El sitio web muestra aquí el texto en {name}.",
+      "notTranslatedBlocks": "Aún sin traducir. Sin este texto, la página no aparece en {lang}.",
+      "useSource": "Copiar el texto en {name}",
+      "showAll": "Mostrar todo el texto",
+      "showLess": "Mostrar menos",
+      "whatChanged": "¿Qué ha cambiado?"
     },
     "date": {
-      "workWeek": "Semana laboral actual",
-      "nextWorkWeek": "Semana laboral siguiente",
+      "thisWeek": "Esta semana",
+      "nextWeek": "La semana que viene",
+      "weekAfterNext": "Dentro de dos semanas",
       "today": "Hoy",
       "tomorrow": "Mañana"
     },
@@ -484,7 +691,7 @@
       "to": "hasta"
     },
     "file": {
-      "checking": "Comprobando …",
+      "checking": "Comprobando…",
       "blocked": "El archivo aún se está procesando. Espera un momento.",
       "failed": "No se pudo subir el archivo. Inténtalo de nuevo.",
       "opensInNewTab": "(se abre en una pestaña nueva)",
@@ -493,7 +700,7 @@
       "other": "Otro archivo"
     },
     "image": {
-      "processing": "Procesando …",
+      "processing": "Procesando…",
       "blocked": "La foto aún se está procesando. Espera un momento.",
       "failed": "No se pudo subir la foto. Inténtalo de nuevo.",
       "tooLarge": "El archivo es demasiado grande (máximo {max} MB).",
@@ -501,7 +708,9 @@
       "other": "Otra foto",
       "alt": "Descripción de la imagen",
       "altHint": "¿Qué se ve en la foto? Para las personas que no pueden ver la imagen.",
-      "altFromLibrary": "Déjalo vacío para usar la descripción de Archivos."
+      "altFromLibrary": "Déjalo vacío para usar la descripción de Archivos.",
+      "noneToTranslate": "Aún no hay foto, así que no hay nada que traducir.",
+      "chooseInMain": "La imagen en sí se cambia en la versión en {name}."
     },
     "money": {
       "negative": "Un precio no puede ser negativo.",
@@ -509,12 +718,12 @@
     },
     "ref": {
       "gone": "Esta entrada ya no existe.",
-      "removeChip": "Eliminar {title}",
-      "full": "Máximo {max}. Elimina una primero para cambiarla.",
+      "removeChip": "Quitar {title}",
+      "full": "Máximo {max}. Para cambiar, quita primero un elemento.",
       "upTo": "Hasta {max} posibles.",
       "add": "Añadir entrada",
       "choose": "Elegir {target}",
-      "search": "Buscar {target} …",
+      "search": "Buscar {target}…",
       "nothing": "No se encontró nada."
     },
     "list": {
@@ -527,25 +736,32 @@
       "confirmBlocker": "Confirma para “{title}”: ¿sigue todo correcto en {label}?",
       "changed": "{changed} ha cambiado. ¿Sigue todo correcto en {label}?",
       "add": "Añadir {item}",
+      "addInMain": "Las filas se añaden, quitan y mueven en la versión en {name}.",
       "text": "Texto"
     }
   },
   "ops": {
     "saved": "Guardado.",
     "draftSaved": "Borrador guardado.",
-    "draftNotOnSite": "Borrador guardado. Aún no está en el sitio web.",
-    "draftScheduled": "Borrador guardado, en línea desde {time}.",
     "liveHint": "En el sitio web en aproximadamente un minuto.",
+    "liveFrom": "En el sitio web a partir del {date}.",
+    "translation": {
+      "hidden": "En {langs}, la página solo aparece cuando todos los textos necesarios estén traducidos.",
+      "mainPage": "Hasta que se traduzca, el sitio web en {langs} enlaza a la página en {main}.",
+      "missing": "El sitio web en {langs} muestra los textos nuevos en {main} hasta que se traduzcan.",
+      "outdated": "El sitio web en {langs} todavía muestra la traducción anterior hasta que se actualice."
+    },
     "undo": "Deshacer",
     "undone": "Deshecho.",
-    "undoNotPossible": "Ya no se puede deshacer: se cambió de nuevo después.",
+    "pictureBackFromTrash": "La imagen “{name}” estaba en la papelera de archivos y ha vuelto.",
     "published": "Publicado.",
-    "scheduled": "Programado: en línea desde {time}.",
+    "scheduled": "Programado: en línea a partir del {time}.",
     "unpublished": "Quitado de la web. Dejará de estar en el sitio web en aproximadamente un minuto.",
     "scheduleCleared": "Programación quitada. La entrada sigue como borrador.",
     "created": "Creado.",
-    "removed": "Eliminado.",
-    "removedNamed": "“{title}” eliminado.",
+    "removed": "Ahora está en la papelera.",
+    "removedNamed": "“{title}” está ahora en la papelera.",
+    "removedLiveHint": "Dejará de estar en el sitio web en aproximadamente un minuto.",
     "restored": "Restaurado.",
     "entryGone": "Esta entrada se eliminó mientras tanto.",
     "leaveConfirm": "Tus cambios aún no están guardados. ¿Salir de todos modos?",
@@ -558,39 +774,43 @@
       "items": "{count, plural, one {# entrada} other {# entradas}}"
     },
     "upload": {
-      "notImage": "Elige una foto (JPEG, PNG, WebP o HEIC).",
+      "notImage": "Elige una foto (JPEG, PNG o WebP).",
       "notPdf": "Elige un archivo PDF.",
       "photoTooLarge": "La foto es demasiado grande (20 MB como máximo).",
       "fileTooLarge": "El archivo es demasiado grande (10 MB como máximo).",
       "failed": "Falló la subida. Inténtalo de nuevo.",
       "offline": "Sin conexión. Inténtalo de nuevo.",
       "aborted": "Cancelado."
-    }
+    },
+    "purged": "Se eliminó “{title}” definitivamente.",
+    "draftCreated": "Guardado como borrador.",
+    "scheduledGoesLive": "Programado. Se publica el {date}."
   },
   "review": {
-    "title": "{site} · Por revisar",
-    "heading": "Por revisar",
+    "title": "{site} · Revisar",
+    "heading": "Revisar",
     "empty": "Nada espera tu decisión.",
-    "releases": "Versiones",
-    "plannedAt": "previsto para {time}",
-    "approveRelease": "Aprobar versión",
-    "releaseBlocked": "Un cambio de esta versión ya no encaja, así que la versión no puede publicarse. Quítalo de la versión y vuelve a aprobar.",
-    "removeFromRelease": "Quitar de la versión",
-    "releaseApproved": "Versión aprobada. En el sitio web en aproximadamente un minuto.",
+    "releases": "Actualizaciones",
+    "plannedAt": "previsto para el {time}",
+    "approveRelease": "Aprobar actualización",
+    "releaseBlocked": "Un cambio de esta actualización ya no encaja, así que la actualización no puede publicarse. Quita ese cambio de la actualización y vuelve a aprobarla.",
+    "removeFromRelease": "Quitar de la actualización",
+    "releaseApproved": "Actualización aprobada. En el sitio web en aproximadamente un minuto.",
     "approve": "Aprobar",
     "approveLater": "Aprobar para más tarde…",
     "reject": "Rechazar…",
     "rejectConfirm": "Rechazar",
-    "reason": "¿Por qué? El autor lo verá.",
+    "reason": "¿Por qué? Lo verá quien propuso el cambio.",
     "mine": "Lo propusiste tú",
     "stale": "Ya no encaja",
-    "approved": "Aprobado. En el sitio web en aproximadamente un minuto.",
+    "approved": "Aprobado.",
     "rejected": "Rechazado.",
     "sent": "Enviado para aprobación. Decide el propietario.",
     "diff": {
       "before": "Antes",
       "after": "Después",
-      "reordered": "El orden cambió"
+      "reordered": "El orden cambió",
+      "picture": "Imagen"
     }
   },
   "history": {
@@ -601,20 +821,34 @@
       "ai": "Vía IA",
       "entry": "Esta entrada"
     },
+    "entryHeading": "Historial: {title}",
+    "backToEntry": "Volver a “{title}”",
     "noMatches": "Ningún cambio coincide con este filtro.",
+    "entryEmpty": "Todavía no hay cambios. Lo que se guarde a partir de ahora aparece aquí.",
     "showChanges": "Mostrar cambios",
     "hideChanges": "Ocultar cambios",
+    "openTrash": "Abrir papelera",
     "revert": "Volver a esta versión",
-    "revertConfirm": "¿Volver a la versión del {date}? Se guarda como un cambio nuevo, así que puedes deshacerlo.",
+    "revertConfirm": "¿Volver al estado justo después de este cambio ({date})? Se guarda como un cambio nuevo, así que puedes deshacerlo.",
+    "revertChanges": "Esto cambia:",
     "reverted": "Se volvió a la versión anterior.",
-    "alreadyThere": "La entrada ya tiene esta versión.",
+    "alreadyThere": "Esta ya es la versión actual.",
     "waiting": "Esperando aprobación",
     "withdraw": "Retirar",
     "withdrawn": "Retirado.",
     "notApproved": "No aprobado",
-    "rejectedBy": "{who} lo rechazó: «{reason}»",
+    "rejectedBy": "{who} lo rechazó: “{reason}”",
+    "rejectedByYou": "Lo rechazaste: “{reason}”",
     "notLive": "No se publicó",
-    "notLiveBecause": "Planificado para {when}. {reason}"
+    "notLiveBecause": "Programado para el {when}. {reason}",
+    "undoBlocked": {
+      "changed": "Cambiado de nuevo después. Vuelve mejor a una versión anterior.",
+      "removed": "Entrada eliminada, restáurala primero",
+      "schema": "Los campos se reestructuraron desde entonces"
+    },
+    "loadFailed": "No se pudo cargar el historial. Vuelve a cargar la página.",
+    "fix": "Corregir",
+    "approval": "Aprobación: {who}"
   },
   "basics": {
     "search": {
@@ -631,9 +865,11 @@
       "actions": "Acciones",
       "entries": "Entradas",
       "areas": "Áreas",
+      "sites": "Sitios",
       "newIn": "Nuevo en {area}",
       "review": "Revisar",
-      "empty": "No se encontró nada para “{query}”."
+      "empty": "No se encontró nada para “{query}”.",
+      "failed": "La búsqueda no ha funcionado ahora mismo."
     },
     "update": {
       "menu": "Actualizar el sitio web ahora",
@@ -661,14 +897,21 @@
       "translate": "Editar traducción"
     },
     "removed": {
-      "link": "Eliminadas ({count})",
-      "title": "Entradas eliminadas",
-      "empty": "No se eliminó nada.",
-      "until": "Se borrará definitivamente el {date}"
+      "link": "Papelera",
+      "title": "Papelera",
+      "empty": "No hay entradas eliminadas. Los archivos eliminados están en la papelera de Archivos.",
+      "until": "Se borrará definitivamente el {date}",
+      "deleteNow": "Eliminar ahora",
+      "deleteNowNamed": "Eliminar ahora: “{title}”",
+      "confirmTitle": "¿Eliminar “{title}” definitivamente?",
+      "confirmBody": "Después no podrás restaurarla. El historial sigue mostrando versiones anteriores hasta un año.",
+      "confirm": "Eliminar definitivamente",
+      "keeps": "Las entradas eliminadas se guardan 30 días mientras la papelera no supere los {limit}. Si se llena, las más antiguas se borran primero.",
+      "usedIn": "Estas entradas todavía la usan. Después faltará allí en el sitio web:"
     },
     "translation": {
-      "missing": "{lang}: {count, plural, one {falta # texto} other {faltan # textos}}",
-      "outdated": "{lang}: {count, plural, one {# texto por actualizar} other {# textos por actualizar}}",
+      "missing": "{count, plural, one {Falta # texto} other {Faltan # textos}} en {lang}",
+      "outdated": "{count, plural, one {# texto por actualizar} other {# textos por actualizar}} en {lang}",
       "open": "Abrir {title} en {language}",
       "incomplete": "Traducción incompleta"
     },
@@ -690,7 +933,11 @@
       "listLabel": "Vistas guardadas",
       "optionsFor": "Opciones de la vista {name}",
       "noMatch": "Ninguna entrada coincide."
-    }
+    },
+    "loadMore": "Mostrar más",
+    "retry": "Reintentar",
+    "loadFailed": "No se pudo cargar. Vuelve a cargar la página.",
+    "notLoaded": "No se pudo cargar."
   },
   "files": {
     "title": "Archivos",
@@ -708,10 +955,11 @@
     "folderName": "Nombre de la carpeta",
     "createFolder": "Crear",
     "search": "Buscar archivos",
+    "searchAll": "Buscando en todos los archivos",
     "layoutGrid": "Cuadrícula",
     "layoutList": "Lista",
     "upload": "Subir",
-    "uploading": "Subiendo …",
+    "uploading": "Subiendo…",
     "dropTo": "Suelta para subir a {folder}",
     "noAlt": "Sin descripción de imagen",
     "col": {
@@ -746,10 +994,10 @@
     "noFolder": "Sin carpeta",
     "remove": "Eliminar",
     "removeUsed": "Eliminar…",
-    "removeConfirm": "¿Eliminar {name}? Puedes restaurarlo desde la Papelera durante 30 días.",
-    "removeConfirmMany": "¿Eliminar {count} archivos? Puedes restaurarlos desde la Papelera durante 30 días.",
+    "removeConfirm": "¿Eliminar {name}? Puedes restaurar el archivo desde la papelera durante 30 días.",
+    "removeConfirmMany": "¿Eliminar {count} archivos? Puedes restaurarlos desde la papelera durante 30 días.",
     "removeUsedMsg": "{name} se usa en {count, plural, one {# lugar} other {# lugares}}. Quítalo primero de esas entradas.",
-    "removed": "{count, plural, one {# archivo movido a la Papelera.} other {# archivos movidos a la Papelera.}}",
+    "removed": "{count, plural, one {# archivo movido a la papelera.} other {# archivos movidos a la papelera.}}",
     "restore": "Restaurar",
     "deletedEntry": "(eliminada)",
     "cancel": "Cancelar",
@@ -760,11 +1008,13 @@
       "missingAlt": "Todas las fotos tienen descripción.",
       "unused": "Todos los archivos están en uso.",
       "duplicates": "No hay duplicados.",
-      "trash": "La Papelera está vacía. Los archivos eliminados se quedan aquí 30 días.",
+      "trash": "La papelera está vacía. Los archivos eliminados se quedan aquí 30 días.",
       "none": "No se encontraron archivos."
     },
-    "loadMore": "Mostrar más",
-    "loading": "Cargando …",
+    "loadMoreFailed": "No se pudieron cargar más archivos.",
+    "uploadTooSlow": "La subida está tardando demasiado. Inténtalo de nuevo.",
+    "uploadFailedFile": "“{name}”: {message}",
+    "loading": "Cargando…",
     "gone": "Este archivo ya no existe.",
     "previous": "Archivo anterior",
     "next": "Archivo siguiente",
@@ -773,11 +1023,13 @@
     "picker": {
       "choose": "Elegir de la biblioteca",
       "usePhoto": "Usar esta foto",
-      "useFile": "Usar este archivo"
+      "useFile": "Usar este archivo",
+      "altFromLibrary": "Esta descripción viene de Archivos. Si la cambias aquí, solo se aplica en este lugar."
     }
   },
   "who": {
     "member": "Un miembro del equipo",
+    "you": "Tú",
     "platform": "Soporte del sitio",
     "former": "Antiguo miembro",
     "system": "Sistema",

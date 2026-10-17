@@ -1,16 +1,23 @@
 <!-- What a change did, field by field (UI.md 10.5): "Before" and "After" in the words of the list
-     (displayValue). Long text shows only the changed paragraphs, with a visible − / + in front so the
-     change does not depend on colour. Shared by History and Review. -->
+     (displayValue). Long text shows only the changed paragraphs, a rich text its changed blocks formatted (a heading
+     as a heading, a bullet as a bullet, a picture as a thumbnail), each with a visible − / + in front so the change
+     does not depend on colour. Shared by History and Review. -->
 <script setup lang="ts">
+import { api } from '#convex/api'
 import { useI18n } from '#imports'
 import type { Fields, Json, Locale } from '@lupinum/ginko'
-import { computed } from 'vue'
+import { fileRefOf, isShown, ordered } from '@lupinum/ginko/internal'
+import { GinkoMarkdown } from '@lupinum/ginko/vue'
+import { computedAsync } from '@vueuse/core'
+import { computed, defineComponent, h } from 'vue'
 import { displayValue, rowTitle } from '../utils/content'
+import { markdownDiff, pictureIdsOf, type BlockChange } from '../utils/markdownDiff'
 import { paragraphDiff } from '../utils/paragraphDiff'
 import { useStudioSite } from '../utils/labels'
 import type { DiffField } from '../utils/review'
 
-const props = defineProps<{ diff: readonly DiffField[]; fields?: Fields; locale: Locale }>()
+/** `site`: for the thumbnails of pictures in rich texts; without it a picture shows its description only. */
+const props = defineProps<{ diff: readonly DiffField[]; fields?: Fields; locale: Locale; site?: string }>()
 const { t, format } = useI18n()
 const { shown } = useStudioSite()
 
@@ -32,12 +39,14 @@ function show(d: DiffField, value: Json | null): string {
 }
 
 type RowDiff = NonNullable<DiffField['rows']>[number]
-interface Cell { key: string; label: string; before?: string; after?: string }
+interface Cell { key: string; label: string; before?: string; after?: string; kept?: boolean }
 
 function columnsOf(d: DiffField): Fields {
   const field = props.fields && Object.hasOwn(props.fields, d.field) ? props.fields[d.field] : undefined
   return field?.type === 'list' ? field.of : {}
 }
+
+const filled = (value: Json | undefined) => value !== undefined && value !== null && value !== ''
 
 /** One cell value of a row; a column the schema no longer has shows plain text. */
 function cellText(columns: Fields, key: string, value: Json | undefined): string {
@@ -45,7 +54,8 @@ function cellText(columns: Fields, key: string, value: Json | undefined): string
   return value === undefined || value === null || value === '' ? t('ops.value.empty') : typeof value === 'string' || typeof value === 'number' ? String(value) : t('ops.value.changed')
 }
 
-/** A changed row by its name (first text column, else the item label) and its changed cells as old → new. Added and removed rows list their filled cells. */
+/** A changed row by its name (first text column, else the item label): its changed cells as old → new, then its other
+ *  shown, filled cells as they stay (the allergens next to a new dish). Added and removed rows list their filled cells. */
 function rowView(d: DiffField, row: RowDiff) {
   const columns = columnsOf(d)
   const list = props.fields && Object.hasOwn(props.fields, d.field) ? props.fields[d.field] : undefined
@@ -53,15 +63,58 @@ function rowView(d: DiffField, row: RowDiff) {
   const named = rowTitle(columns, row.before ?? row.after, props.locale, { t, format })
   const title = named?.text || (list?.type === 'list' ? shown(list.itemLabel) : '')
   const label = (key: string) => (Object.hasOwn(columns, key) ? shown(columns[key]!.label) : key)
-  const skip = (key: string) => key === '_id'
-  const cells: Cell[] = row.change === 'changed'
-    ? (row.fields ?? []).filter((k) => !skip(k)).map((key) => ({ key, label: label(key), before: cellText(columns, key, (row.before as Record<string, Json>)?.[key]), after: cellText(columns, key, (row.after as Record<string, Json>)?.[key]) }))
-    : Object.keys(columns).filter((key) => key !== named?.key && data && data[key] !== undefined && data[key] !== null && data[key] !== '').map((key) => ({ key, label: label(key), after: cellText(columns, key, data![key]) }))
+  const cells: Cell[] = row.change === 'changed' ? changedCells(columns, row, named?.key, label) : Object.keys(columns).filter((key) => key !== named?.key && data && filled(data[key])).map((key) => ({ key, label: label(key), after: cellText(columns, key, data![key]) }))
   return { id: row.id, change: row.change, title, cells }
+}
+
+function changedCells(columns: Fields, row: RowDiff, titleKey: string | undefined, label: (key: string) => string): Cell[] {
+  const before = (row.before ?? {}) as Record<string, Json>
+  const after = (row.after ?? {}) as Record<string, Json>
+  const changed = new Set((row.fields ?? []).filter((k) => k !== '_id'))
+  const keys = [...ordered(columns).map(([k]) => k), ...[...changed].filter((k) => !Object.hasOwn(columns, k))]
+  return keys.flatMap((key): Cell[] => {
+    if (changed.has(key)) return [{ key, label: label(key), before: cellText(columns, key, before[key]), after: cellText(columns, key, after[key]) }]
+    const column = columns[key]
+    if (key === '_id' || key === titleKey || !column || column.retired || !isShown(column, after) || (!filled(before[key]) && !filled(after[key]))) return []
+    return [{ key, label: label(key), after: cellText(columns, key, after[key]), kept: true }]
+  })
 }
 
 const asText = (value: Json | null): string => (typeof value === 'string' ? value : '')
 const isLong = (d: DiffField, u: Unit) => LONG.has(d.kind) && (typeof u.before === 'string' || u.before === null) && (typeof u.after === 'string' || u.after === null)
+const isRich = (d: DiffField, u: Unit) => d.kind === 'markdown' && isLong(d, u)
+
+// Rich texts: their changed blocks per field and language, parsed in the browser. Empty until parsed.
+const blocks = computedAsync(async () => {
+  const out = new Map<string, BlockChange[]>()
+  for (const { d, units } of items.value) {
+    for (const [i, u] of units.entries()) if (isRich(d, u)) out.set(`${d.field}:${i}`, await markdownDiff(asText(u.before), asText(u.after)))
+  }
+  return out
+}, new Map<string, BlockChange[]>())
+const pictureIds = computed(() => [...new Set([...blocks.value.values()].flatMap(pictureIdsOf))])
+const pictures = useConvexQuery(api.uploads.urls, () => (props.site && pictureIds.value.length ? { site: props.site, ids: pictureIds.value } : 'skip'))
+
+/** A picture in a rich text: a small thumbnail of the library file and its description, never its file id. */
+const DiffPicture = defineComponent({
+  props: { src: { type: String, default: '' }, alt: { type: String, default: '' } },
+  setup(p) {
+    return () => {
+      const id = fileRefOf(p.src)
+      const url = id ? pictures.data.value?.[id]?.url : undefined
+      return h('span', { class: 'inline-grid max-w-full gap-1 align-top' }, [
+        url ? h('img', { src: url, alt: '', class: 'h-24 w-auto max-w-full rounded-sm border object-cover' }) : null,
+        h('span', { class: 'text-xs text-muted-foreground' }, p.alt || t('review.diff.picture')),
+      ])
+    }
+  },
+})
+/** A link shows as underlined text: the history never navigates. */
+const DiffLink = defineComponent({
+  props: { href: { type: String, default: '' } },
+  setup: (_, { slots }) => () => h('span', { class: 'underline underline-offset-2' }, slots.default?.()),
+})
+const richParts = { img: DiffPicture, a: DiffLink }
 </script>
 
 <template>
@@ -71,14 +124,22 @@ const isLong = (d: DiffField, u: Unit) => LONG.has(d.kind) && (typeof u.before =
       <template v-if="!d.rows">
         <div v-for="(u, i) in units" :key="i" class="grid gap-1 rounded-md border bg-card px-3 py-2">
           <p v-if="u.tag" class="text-sm font-medium text-muted-foreground">{{ u.tag }}</p>
-          <div v-if="isLong(d, u)" class="grid gap-1">
-            <p
-              v-for="(p, n) in paragraphDiff(asText(u.before), asText(u.after))"
-              :key="n"
-              :class="p.kind === 'removed' ? 'text-muted-foreground' : 'font-medium'"
-            >
-              <del v-if="p.kind === 'removed'">− {{ p.text }}</del>
-              <ins v-else class="no-underline">+ {{ p.text }}</ins>
+          <div v-if="isRich(d, u)" class="grid gap-1">
+            <template v-for="(b, n) in blocks.get(`${d.field}:${i}`) ?? []" :key="n">
+              <del v-if="b.kind === 'removed'" class="rich flex gap-2 rounded-sm bg-destructive/8 px-2 py-1">
+                <span class="shrink-0">−</span>
+                <Suspense><GinkoMarkdown class="min-w-0" :value="b.tree" :components="richParts" /></Suspense>
+              </del>
+              <ins v-else class="rich flex gap-2 rounded-sm bg-success/10 px-2 py-1 no-underline">
+                <span class="shrink-0">+</span>
+                <Suspense><GinkoMarkdown class="min-w-0" :value="b.tree" :components="richParts" /></Suspense>
+              </ins>
+            </template>
+          </div>
+          <div v-else-if="isLong(d, u)" class="grid gap-1">
+            <p v-for="(p, n) in paragraphDiff(asText(u.before), asText(u.after))" :key="n">
+              <del v-if="p.kind === 'removed'" class="block rounded-sm bg-destructive/8 px-2 py-1">− {{ p.text }}</del>
+              <ins v-else class="block rounded-sm bg-success/10 px-2 py-1 no-underline">+ {{ p.text }}</ins>
             </p>
           </div>
           <dl v-else class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
@@ -102,7 +163,7 @@ const isLong = (d: DiffField, u: Unit) => LONG.has(d.kind) && (typeof u.before =
               <span class="shrink-0">{{ `→ ` }}</span>
               <span class="min-w-0 break-words font-medium">{{ c.after }}</span>
             </template>
-            <span v-else class="truncate">{{ c.after }}</span>
+            <span v-else :class="['truncate', c.kept && 'text-muted-foreground']">{{ c.after }}</span>
           </p>
         </li>
         <li v-if="d.reordered">{{ t('review.diff.reordered') }}</li>
@@ -110,3 +171,19 @@ const isLong = (d: DiffField, u: Unit) => LONG.has(d.kind) && (typeof u.before =
     </section>
   </div>
 </template>
+
+<style scoped>
+/* A rich text block in the diff: compact, like the list's text, with headings and lists that still read as such. */
+.rich :deep(.comark-content > *) { margin: 0; }
+.rich :deep(:is(h1, h2, h3, h4, h5, h6)) { font-weight: 600; }
+.rich :deep(h1), .rich :deep(h2) { font-size: 1.125rem; line-height: 1.4; }
+.rich :deep(h3) { font-size: 1rem; }
+.rich :deep(:is(ul, ol)) { padding-left: 1.25rem; }
+.rich :deep(ul) { list-style: disc; }
+.rich :deep(ol) { list-style: decimal; }
+.rich :deep(blockquote) { border-left: 2px solid var(--border); padding-left: 0.75rem; }
+.rich :deep(code) { border-radius: 0.25rem; background: var(--muted); padding: 0 0.25rem; font-family: ui-monospace, monospace; font-size: 0.9em; }
+.rich :deep(pre) { overflow-x: auto; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 0.875rem; }
+/* A removed block is struck through to its last line, also inside the rendered text. */
+del.rich :deep(.comark-content) { text-decoration: line-through; }
+</style>

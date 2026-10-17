@@ -3,7 +3,7 @@ import { sha256 } from '@lupinum/ginko/internal'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import betterAuthSchema from '../convex/betterAuth/schema'
 import { api, components, internal } from '../convex/_generated/api'
-import { cookGrants, errorOf, opId, people, setup } from './setup'
+import { cookGrants, errorOf, firstPage, opId, people, setup } from './setup'
 
 beforeEach(() => {
   vi.stubEnv('GINKO_MAIL', 'outbox')
@@ -78,16 +78,22 @@ describe('invites.accept', () => {
   })
 
   // Break-it 9: the page before accepting names the site and the role, and says when the link is for another address.
-  it('peek names site and role, tells whether the invite is for this address, and is null once used', async () => {
+  // Wrong behaviour caught (onboard-4): a signed-out invitee was sent to a bare sign-in page with no word about the
+  // invite, typed another address and waited for a code that never came.
+  it('peek names site, address, role and rights, also signed out, tells whether the invite is for this address, and is null once used', async () => {
     const { t, as } = await setup()
-    await as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'neu@example.com', role: 'staff', grants: [] })
+    await as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'neu@example.com', role: 'staff', grants: ['menu.add', 'menu.price'] })
     const token = await tokenMailedTo(t, 'neu@example.com')
     const invited = t.withIdentity({ subject: 'u-neu', email: 'neu@example.com' })
     const stranger = t.withIdentity({ subject: 'u-anders', email: 'anders@example.com' })
-    expect(await invited.query(api.invites.peek, { token })).toEqual({ site: 'Gasthaus zur Linde', role: 'staff', forYou: true })
-    expect(await stranger.query(api.invites.peek, { token })).toEqual({ site: 'Gasthaus zur Linde', role: 'staff', forYou: false })
+    const offer = { site: 'Gasthaus zur Linde', url: 'https://ginko-demo-restaurant.vercel.app', role: 'staff', rights: ['Speisekarte: Preis ändern, Gericht hinzufügen'] }
+    expect(await t.query(api.invites.peek, { token })).toEqual({ ...offer, email: 'neu@example.com', forYou: false })
+    expect(await t.query(api.invites.peek, { token, language: 'en' })).toMatchObject({ rights: ['Menu: Change a price, Add a dish'] })
+    expect(await invited.query(api.invites.peek, { token })).toEqual({ ...offer, forYou: true })
+    expect(await stranger.query(api.invites.peek, { token })).toEqual({ ...offer, forYou: false })
     await invited.mutation(api.invites.accept, { token })
     expect(await invited.query(api.invites.peek, { token })).toBeNull()
+    expect(await t.query(api.invites.peek, { token })).toBeNull()
   })
 
   it('a second accept of the same link is NOT_FOUND', async () => {
@@ -160,21 +166,47 @@ describe('invites.create', () => {
     expect(await t.run((ctx) => ctx.db.query('invites').collect())).toHaveLength(0)
   })
 
-  it('the invite mail carries the link, and only the token hash is stored', async () => {
+  // Wrong behaviour caught (onboard-4, admin-7): a mail that names no sender, website or rights reads like phishing.
+  it('the invite mail names the inviter, the website and the rights, carries the link, and only the token hash is stored', async () => {
     const { t, as } = await setup()
     await as.owner.mutation(api.invites.create, { site: 'restaurant', email: 'neu@example.com', role: 'staff', grants: ['menu.price'] })
     const mails = await t.run((ctx) => ctx.db.query('outbox').collect())
     expect(mails).toHaveLength(1)
-    expect(mails[0]).toMatchObject({ to: 'neu@example.com', subject: expect.stringContaining('Einladung zu') })
+    expect(mails[0]).toMatchObject({ to: 'neu@example.com', subject: 'Einladung zu Gasthaus zur Linde von wirtin@example.com' })
+    expect(mails[0]!.text).toContain('wirtin@example.com lädt dich ein, die Website Gasthaus zur Linde (https://ginko-demo-restaurant.vercel.app) zu bearbeiten.')
+    expect(mails[0]!.text).toContain('Du darfst:\n- Speisekarte: Preis ändern\n')
     const token = await tokenMailedTo(t, 'neu@example.com')
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/)
     const invite = await t.run((ctx) => ctx.db.query('invites').unique())
     expect(invite).toMatchObject({ tokenHash: sha256(token), grants: ['menu.price'], role: 'staff' })
     expect(JSON.stringify(invite)).not.toContain(token)
   })
+
+  it('an owner sends 20 invites in an hour; the 21st is refused without a mail, a platform admin is not counted', async () => {
+    const { t, as } = await setup()
+    const invite = (who: typeof as.owner, email: string) => who.mutation(api.invites.create, { site: 'restaurant', email, role: 'staff', grants: [] })
+    const mails = async () => (await t.run((ctx) => ctx.db.query('outbox').collect())).length
+    for (let i = 0; i < 20; i++) await invite(as.owner, `a${i}@example.com`)
+    expect(await errorOf(invite(as.owner, 'a20@example.com'))).toMatchObject({ code: 'RATE_LIMITED', key: 'errors.tooManyInvites', params: { max: 20 } })
+    expect(await mails()).toBe(20)
+    await invite(as.admin, 'b0@example.com')
+    expect(await mails()).toBe(21)
+    vi.setSystemTime(Date.now() + 61 * 60_000)
+    await invite(as.owner, 'a20@example.com')
+    expect(await mails()).toBe(22)
+  })
 })
 
 describe('members.remove and setGrants', () => {
+  // Wrong behaviour caught (A17): the Team page cannot tell the caller's own row, so it offers an owner to remove themselves.
+  it("members.list marks only the caller's own membership as you", async () => {
+    const { as } = await setup()
+    const rows = async (who: typeof as.owner) => (await who.query(api.members.list, { site: 'restaurant' })).members.map((m) => [m.email, m.you])
+    expect(await rows(as.owner)).toEqual([['wirtin@example.com', true], ['koch@example.com', false]])
+    // A platform admin has no membership row.
+    expect(await rows(as.admin)).toEqual([['wirtin@example.com', false], ['koch@example.com', false]])
+  })
+
   it('the last owner cannot be removed', async () => {
     const { t, as } = await setup()
     const owner = await t.run((ctx) => ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', people.owner)).unique())
@@ -189,22 +221,22 @@ describe('members.remove and setGrants', () => {
 })
 
 describe('sites and changes reads', () => {
-  it('sites.get never contains refreshToken', async () => {
+  it('sites.meta never contains refreshToken', async () => {
     const { t, as, site } = await setup()
     await t.run((ctx) => ctx.db.patch(site, { refreshToken: 'vercel-bypass-secret' }))
-    const result = await as.owner.query(api.sites.get, { site: 'restaurant' })
+    const result = await as.owner.query(api.sites.meta, { site: 'restaurant' })
     expect(result.site).not.toHaveProperty('refreshToken')
     expect(JSON.stringify(result)).not.toContain('vercel-bypass-secret')
   })
 
-  it('sites.get of another site is FORBIDDEN', async () => {
+  it('sites.meta of another site is FORBIDDEN', async () => {
     const { as } = await setup()
-    expect((await errorOf(as.stranger.query(api.sites.get, { site: 'restaurant' }))).code).toBe('FORBIDDEN')
+    expect((await errorOf(as.stranger.query(api.sites.meta, { site: 'restaurant' }))).code).toBe('FORBIDDEN')
   })
 
   it('changes.list of another site is FORBIDDEN', async () => {
     const { as } = await setup()
-    expect((await errorOf(as.stranger.query(api.changes.list, { site: 'restaurant' }))).code).toBe('FORBIDDEN')
+    expect((await errorOf(as.stranger.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage }))).code).toBe('FORBIDDEN')
   })
 })
 
@@ -237,7 +269,7 @@ describe('changes.list names who changed', () => {
     const entry = entries['menu-saibling']!
     await as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'menu.price', entry, baseRev: 1, fields: { price: { amount: 1450 } }, sentence: 'Preis' })
     await as.admin.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev: 2, fields: { price: { amount: 1500 } }, sentence: 'Preis' })
-    const { page } = await as.owner.query(api.changes.list, { site: 'restaurant' })
+    const { page } = await as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })
     expect(page.slice(0, 2).map((c) => c.who)).toEqual([{ kind: 'platform' }, { email: 'koch@example.com' }])
   })
 })
@@ -256,23 +288,31 @@ describe('changes.list who and paging (Phase 9: F08, F09, F16, F17)', () => {
       const cook = (await ctx.db.query('memberships').collect()).find((m) => m.user === people.cook)!
       await ctx.db.delete(cook._id)
     })
-    const { page } = await s.as.owner.query(api.changes.list, { site: 'restaurant' })
+    const { page } = await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })
     expect(page.map((c) => c.who)).toEqual([{ kind: 'platform' }, { kind: 'former' }])
   })
 
-  it('staff see colleagues as kind member and their own changes by email; owners and admins see emails', async () => {
+  // Wrong behaviour caught (R10, romi-16): the reader's own change came back as their email ("anna@… hat inzwischen
+  // Beschreibung geändert" for her own other window), and people had no names, so the history read as a list of addresses.
+  it('the reader is self, a colleague has the name they set; staff never get a colleague\'s email, managers do', async () => {
     const s = await setup()
+    await s.as.owner.mutation(api.account.setName, { name: '  Maria   Huber ' })
     await save(s, 'owner', 1)
     await save(s, 'cook', 2)
-    const whoFor = async (person: 'owner' | 'cook' | 'admin') => (await s.as[person].query(api.changes.list, { site: 'restaurant' })).page.map((c) => c.who)
-    expect(await whoFor('cook')).toEqual([{ email: 'koch@example.com' }, { kind: 'member' }])
-    expect(await whoFor('owner')).toEqual([{ email: 'koch@example.com' }, { email: 'wirtin@example.com' }])
+    const whoFor = async (person: 'owner' | 'cook' | 'admin') => (await s.as[person].query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })).page.map((c) => c.who)
+    expect(await whoFor('cook')).toEqual([{ self: true }, { kind: 'member', name: 'Maria Huber' }])
+    expect(await whoFor('owner')).toEqual([{ email: 'koch@example.com' }, { self: true }])
+    expect(await whoFor('admin')).toEqual([{ email: 'koch@example.com' }, { email: 'wirtin@example.com', name: 'Maria Huber' }])
+    expect((await s.as.owner.query(api.members.list, { site: 'restaurant' })).members.map((m) => m.name)).toEqual(['Maria Huber', null])
+
+    // An empty name removes it: the team sees the email again.
+    await s.as.owner.mutation(api.account.setName, { name: ' ' })
     expect(await whoFor('admin')).toEqual([{ email: 'koch@example.com' }, { email: 'wirtin@example.com' }])
   })
 
   it('an invalid cursor is INVALID, not a raw error', async () => {
     const { as } = await setup()
-    expect((await errorOf(as.owner.query(api.changes.list, { site: 'restaurant', cursor: 'garbage' }))).code).toBe('INVALID')
+    expect((await errorOf(as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: { numItems: 50, cursor: 'garbage' } }))).code).toBe('INVALID')
   })
 
   it('a page ends after about 2 MiB, hands out the cursor for the rest, and carries no before/after blobs', async () => {
@@ -285,14 +325,14 @@ describe('changes.list who and paging (Phase 9: F08, F09, F16, F17)', () => {
       rev = saved.rev
     }
     const seen: string[] = []
-    let cursor: string | undefined
+    let cursor: string | null = null
     let first: Awaited<ReturnType<typeof listPage>> | undefined
-    const listPage = (c?: string) => s.as.owner.query(api.changes.list, { site: 'restaurant', cursor: c })
+    const listPage = (c: string | null) => s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: { numItems: 50, cursor: c } })
     do {
       const page = await listPage(cursor)
       first ??= page
       seen.push(...page.page.map((c) => c._id))
-      cursor = page.isDone ? undefined : page.continueCursor
+      cursor = page.isDone ? null : page.continueCursor
     } while (cursor)
     expect(first.page.length).toBeLessThan(15)
     expect(first.isDone).toBe(false)

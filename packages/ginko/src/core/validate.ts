@@ -1,20 +1,42 @@
-import { ALT_MAX, effectiveAlt, effectiveMax, effectiveProfile, isTranslatable, MAX_CENTS } from './fields.ts'
+import { ALT_INVISIBLE, ALT_MAX, effectiveAlt, effectiveMax, effectiveProfile, isShown, isTranslatable, MAX_CENTS } from './fields.ts'
+import { fileRefUses } from './file-refs.ts'
 import { parseMarkdown } from './markdown.ts'
 import { labelOf } from './labels.ts'
 import { bare, DEFAULT_LOCALE, msg, type CoreKey, type Described, type Msg } from './messages.ts'
 import { roundedMb, type UploadType } from './uploads.ts'
 import { SLUG_PATTERN } from './slug.ts'
-import type { Field, FileField, Fields, Issue, Locale, MarkdownField, Schema } from './types.ts'
+import { weekStartField } from './stale.ts'
+import { DEFAULT_WEEK, startOfWeek } from './time.ts'
+import type { Brick, Field, FileField, Fields, Issue, Json, Locale, MarkdownField, Schema } from './types.ts'
+
+/**
+ * Codes of values the Studio and the site cannot read at all (wrong shape, unknown names). A `restore` refuses only
+ * these: a backup brings back what the platform once stored, even where a rule became stricter since.
+ */
+export const SHAPE_CODES: ReadonlySet<string> = new Set(['TYPE', 'NOT_OBJECT', 'NOT_LOCALIZED', 'UNKNOWN_FIELD', 'UNKNOWN_LOCALE', 'UNKNOWN_BRICK'])
 
 export interface ValidateOptions {
-  /** create/release: everything strict. patch: only paths under `changed` are errors, the rest are warnings. */
-  mode: 'create' | 'patch' | 'release'
+  /**
+   * create/release: everything strict. patch: only paths under `changed` are errors, the rest are warnings.
+   * restore (backup import, never a Studio path): only SHAPE_CODES are errors, the rest are warnings.
+   * The rules across fields (`ruleIssues`: a plan set by halves, a week that does not start on its first day) bind
+   * what is written now: errors in create, and in patch when the save touches one of their fields. Stored data that
+   * breaks one (release, restore) only warns.
+   */
+  mode: 'create' | 'patch' | 'release' | 'restore'
   /** Leaf paths changed by a patch, e.g. `closedNote` or `days.k3Fd9aZ0qx.dish`. */
   changed?: ReadonlySet<string>
   /** Whether entry `id` exists in collection brick `brick`. Without it, referenced IDs are not looked up. */
   refs?: (brick: string, id: string) => boolean
   /** The description text a file has in the Files library, per language. Without it an image field must carry its own main-language alt. */
   fileAlt?: (file: string) => Record<string, string> | undefined
+  /**
+   * Platform texts: the kind of the ready upload of the site, not in the trash, that a `$file.<id>` in a Markdown text
+   * names (`image`, or `file` for a PDF); undefined when there is none. With it, every such reference must name one, a
+   * picture must name an image, and every Markdown image needs a description (its own, else the library's in
+   * `fileAlt`), the rule of image fields. Without it (file content) none of this is checked.
+   */
+  uploads?: (file: string) => 'image' | 'file' | undefined
 }
 
 export interface ValidationResult {
@@ -36,11 +58,20 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
   if (!brick) return { errors: [issue('', 'UNKNOWN_BRICK', 'unknownBrick', { brick: brickKey })], warnings: [] }
   const texts: MarkdownLeaf[] = []
   const issues = checkFields(brick.fields, data, '', { locales: schema.locales, main: schema.locales[0]!, texts, refs: opts.refs, fileAlt: opts.fileAlt })
-  for (const { field, text, path } of texts) {
-    const { problemMessages: problems } = await parseMarkdown(text, { profile: effectiveProfile(field), components: schema.components })
-    for (const problem of problems) issues.push(issue(path, 'MARKDOWN', 'markdown', { label: shown(field, schema.locales[0]!), problem: bare(problem) }))
+  for (const { field, text, path, locale } of texts) {
+    const { problemMessages: problems, value } = await parseMarkdown(text, { profile: effectiveProfile(field), components: schema.components })
+    const label = shown(field, schema.locales[0]!)
+    for (const problem of problems) {
+      issues.push(problem.line === undefined
+        ? issue(path, 'MARKDOWN', 'markdown', { label, problem: bare(problem) })
+        : issue(path, 'MARKDOWN', 'markdownAt', { label, line: problem.line, problem: bare(problem) }))
+    }
+    if (opts.uploads) issues.push(...fileRefIssues(value.nodes, path, label, locale, schema, opts.uploads, opts.fileAlt))
   }
-  if (opts.mode !== 'patch') return { errors: issues, warnings: [] }
+  const rules = ruleIssues(schema, brick, data)
+  if (opts.mode === 'restore') return { errors: issues.filter((i) => SHAPE_CODES.has(i.code)), warnings: [...issues.filter((i) => !SHAPE_CODES.has(i.code)), ...rules.map((r) => r.issue)] }
+  if (opts.mode === 'release') return { errors: issues, warnings: rules.map((r) => r.issue) }
+  if (opts.mode === 'create') return { errors: [...issues, ...rules.map((r) => r.issue)], warnings: [] }
   const changed = opts.changed ?? new Set<string>()
   const errors: Issue[] = []
   const warnings: Issue[] = []
@@ -50,10 +81,70 @@ export async function validate(schema: Schema, brickKey: string, data: unknown, 
     if (related || issue.code === 'UNKNOWN_FIELD') errors.push(issue)
     else warnings.push(issue)
   }
+  for (const { issue, touches } of rules) {
+    if (touches.some((field) => [...changed].some((c) => c === field || c.startsWith(`${field}.`)))) errors.push(issue)
+    else warnings.push(issue)
+  }
   return { errors, warnings }
 }
 
-interface MarkdownLeaf { field: MarkdownField; text: string; path: string }
+/** An issue of a rule across fields, with the fields whose change makes it the saver's to fix. */
+interface RuleIssue { issue: Issue; touches: string[] }
+
+/**
+ * The rules that span fields of a brick: a planned change (`planned`) has both its value and its date, or neither (a
+ * value without a date never applies, a date without a value changes nothing); the field that holds a week start
+ * (`weekStartField`) holds the first day of a week of the site (a week stored as a Thursday never shows).
+ */
+function ruleIssues(schema: Schema, brick: Brick, data: unknown): RuleIssue[] {
+  if (!isRecord(data)) return []
+  const out: RuleIssue[] = []
+  const main = schema.locales[0]!
+  const plan = brick.planned
+  if (plan) {
+    const set = (key: string) => data[key] !== undefined && data[key] !== null
+    const missing = set(plan.next) && !set(plan.from) ? plan.from : set(plan.from) && !set(plan.next) ? plan.next : undefined
+    const field = missing && Object.hasOwn(brick.fields, missing) ? brick.fields[missing] : undefined
+    if (missing && field) out.push({ issue: issue(missing, 'REQUIRED', 'fieldMissing', { label: shown(field, main) }), touches: [plan.next, plan.from] })
+  }
+  // An end time after its start (`after`), e.g. a session from 10:00 to 11:30. Equal times are an empty slot.
+  for (const [name, field] of Object.entries(brick.fields)) {
+    if (field.type !== 'time' || !field.after) continue
+    const [start, end] = [data[field.after], data[name]]
+    if (typeof start === 'string' && typeof end === 'string' && timePattern.test(start) && timePattern.test(end) && end <= start) {
+      out.push({ issue: issue(name, 'TIME_ORDER', 'timeOrder', { start: shown(brick.fields[field.after]!, main), end: shown(field, main) }), touches: [field.after, name] })
+    }
+  }
+  const week = weekStartField(brick)
+  const start = week ? data[week] : undefined
+  if (week && isDate(start) && startOfWeek(start, schema.week ?? DEFAULT_WEEK) !== start) {
+    out.push({ issue: issue(week, 'NOT_WEEK_START', 'notWeekStart', { label: shown(brick.fields[week]!, main) }), touches: [week] })
+  }
+  return out
+}
+
+/** One issue per kind and text: a `$file` reference to no live upload, a picture that is a PDF, and a Markdown image without any description. */
+function fileRefIssues(nodes: Json[], path: string, label: string, locale: Locale, schema: Schema, uploads: NonNullable<ValidateOptions['uploads']>, fileAlt: ValidateOptions['fileAlt']): Issue[] {
+  const out: Issue[] = []
+  const refs = fileRefUses(nodes, schema.components)
+  if (refs.some((ref) => !uploads(ref.id))) out.push(issue(path, 'FILE_REF_MISSING', 'fileRefMissing', { label }))
+  if (refs.some((ref) => ref.kind !== 'link' && uploads(ref.id) === 'file')) out.push(issue(path, 'FILE_REF_NOT_IMAGE', 'fileRefPdf', { label }))
+  const library = new Map(refs.filter((ref) => ref.kind === 'img').map((ref) => [ref.node, fileAlt?.(ref.id)]))
+  let described = true
+  eachNode(nodes, (node) => { if (node[0] === 'img' && !effectiveAlt({ [locale]: node[1].alt }, library.get(node), locale)) described = false })
+  if (!described) out.push(issue(path, 'ALT_REQUIRED', 'markdownImageAltMissing', { label }))
+  return out
+}
+
+function eachNode(nodes: readonly Json[], fn: (node: [string, Record<string, Json>, ...Json[]]) => void) {
+  for (const node of nodes) {
+    if (!Array.isArray(node) || typeof node[0] !== 'string' || !isRecord(node[1])) continue
+    fn(node as [string, Record<string, Json>, ...Json[]])
+    eachNode(node.slice(2), fn)
+  }
+}
+
+interface MarkdownLeaf { field: MarkdownField; text: string; path: string; locale: Locale }
 /** `texts` collects Markdown values for the profile check, which needs the async parser. */
 interface Ctx { locales: Locale[]; main: Locale; texts?: MarkdownLeaf[]; refs?: ValidateOptions['refs']; fileAlt?: ValidateOptions['fileAlt'] }
 
@@ -69,7 +160,8 @@ function checkFields(fields: Fields, data: unknown, path: string, ctx: Ctx): Iss
     const at = join(path, key)
     const value = data[key]
     if (value === undefined || value === null) {
-      if (!field.optional) issues.push(issue(at, 'REQUIRED', 'fieldMissing', { label: shown(field, ctx.main) }))
+      // A required field with `showWhen` is required while the Studio shows it (a fixed price needs its amount).
+      if (!field.optional && isShown(field, data as Record<string, Json | undefined>)) issues.push(issue(at, 'REQUIRED', 'fieldMissing', { label: shown(field, ctx.main) }))
       continue
     }
     issues.push(...checkField(field, value, at, ctx))
@@ -91,17 +183,19 @@ function checkField(field: Field, value: unknown, path: string, ctx: Ctx): Issue
     for (const locale of ctx.locales) {
       const v = value[locale]
       if (v === undefined || v === null || v === '') continue
-      out.push(...checkScalar(field, v, join(path, locale), locale === ctx.main, ctx))
+      out.push(...checkScalar(field, v, join(path, locale), locale as Locale, ctx))
     }
     return out
   }
-  return checkScalar(field, value, path, true, ctx)
+  return checkScalar(field, value, path, undefined, ctx)
 }
 
 /** Control characters other than tab and line breaks: pasted junk that breaks XML, mail and search. */
 const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/
 
-function checkScalar(field: Field, value: unknown, path: string, isMain: boolean, ctx?: Ctx): Issue[] {
+/** `locale` is the language of a translatable value; undefined for a value that serves every language. */
+function checkScalar(field: Field, value: unknown, path: string, locale: Locale | undefined, ctx?: Ctx): Issue[] {
+  const isMain = locale === undefined || locale === ctx?.main
   const label = shown(field, ctx?.main)
   const fail = (code: string, key: IssueKey, params?: Msg['params']) => [issue(path, code, key, { label, ...params })]
   switch (field.type) {
@@ -113,7 +207,7 @@ function checkScalar(field: Field, value: unknown, path: string, isMain: boolean
       if (!field.optional && isMain && value.trim() === '') return fail('REQUIRED', 'fieldEmpty')
       if (value.length > max) return fail('TOO_LONG', 'tooLong', { max })
       if (CONTROL.test(value)) return fail('FORMAT', 'controlChars')
-      if (field.type === 'markdown') ctx?.texts?.push({ field, text: value, path })
+      if (field.type === 'markdown') ctx?.texts?.push({ field, text: value, path, locale: locale ?? ctx!.main })
       if (field.type === 'text' && field.format && value !== '') {
         const ok = field.format === 'url' ? /^https?:\/\/[^\s]+$/i.test(value)
           : field.format === 'email' ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
@@ -190,7 +284,8 @@ function checkScalar(field: Field, value: unknown, path: string, isMain: boolean
       if (!isRecord(value) || typeof value.file !== 'string' || !isRecord(value.alt) || Object.keys(value).some((k) => k !== 'file' && k !== 'alt')) return fail('TYPE', 'notImage')
       for (const l of Object.keys(value.alt)) if (!ctx!.locales.includes(l as Locale)) return [issue(join(path, `alt.${l}`), 'UNKNOWN_LOCALE', 'unknownLocale', { locale: l })]
       if (effectiveAlt(value.alt, ctx!.fileAlt?.(value.file), ctx!.main) === '') return [issue(join(path, 'alt'), 'ALT_REQUIRED', 'altMissing', { label })]
-      return Object.entries(value.alt).filter(([, a]) => typeof a !== 'string' || a.length > ALT_MAX).map(([l]) => issue(join(path, `alt.${l}`), 'TOO_LONG', 'altTooLong', { label }))
+      return Object.entries(value.alt).flatMap(([l, a]) => typeof a !== 'string' || a.length > ALT_MAX ? [issue(join(path, `alt.${l}`), 'TOO_LONG', 'altTooLong', { label })]
+        : ALT_INVISIBLE.test(a) ? [issue(join(path, `alt.${l}`), 'FORMAT', 'controlChars', { label })] : [])
     case 'file':
       return isRecord(value) && typeof value.file === 'string' && Object.keys(value).length === 1 ? [] : fail('TYPE', 'notFile')
   }

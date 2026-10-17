@@ -87,15 +87,18 @@ export const entryState = (row: { state?: 'draft' | 'live'; publishAt?: number }
 
 export interface EntryHit { entry: string; brick: string; label: string; snippet: string; state: EntryState }
 
-/** The best entries for the words in `query` (deleted ones never), optionally in one brick. */
-export async function searchEntries(ctx: QueryCtx, actor: Actor, input: { query: string; brick?: string; limit: number }): Promise<EntryHit[]> {
+/**
+ * The best entries for the words in `query` (deleted ones never), optionally in one brick, or only in the bricks
+ * `within` names (the Studio's search for staff: the areas they can open).
+ */
+export async function searchEntries(ctx: QueryCtx, actor: Actor, input: { query: string; brick?: string; within?: ReadonlySet<string>; limit: number }): Promise<EntryHit[]> {
   const schema = actor.site.schema as Schema
-  const { query, brick: only } = input
+  const { query, brick: only, within } = input
   if (only !== undefined && !Object.hasOwn(schema.bricks, only)) fail('INVALID', 'errors.brickNotFoundSeeOverview', { only })
   const found = new Map<string, { brick: string; label: string; text: string; state: EntryState }>()
   const records: SearchRecord[] = []
   for (const [key, def] of Object.entries(schema.bricks)) {
-    if (def.retired || (only && key !== only)) continue
+    if (def.retired || (only && key !== only) || (within && !within.has(key))) continue
     const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', key)).collect()
     for (const row of rows) {
       if (row.deletedAt) continue

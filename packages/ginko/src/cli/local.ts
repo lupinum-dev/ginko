@@ -2,23 +2,29 @@
 // `local:pull`): finding packages/ginko-server (the Convex project), confirming that the Convex CLI points at the
 // LOCAL backend before any write, and running `npx convex run` against exactly that deployment.
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { randomBytes } from 'node:crypto'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { CliError, isObject } from './model.ts'
 
 /**
- * Walks up from the site folder to the monorepo and returns its Convex project, packages/ginko-server:
+ * Walks up from the site folder (then from the working directory) to the monorepo and returns its Convex project, packages/ginko-server:
  * the folder with convex.json, where `convex dev` runs and writes .env.local.
  */
 export function findBackend(from: string, command = 'local:dev'): string {
-  let dir = from
-  for (;;) {
-    const candidate = join(dir, 'packages', 'ginko-server')
-    if (existsSync(join(candidate, 'package.json'))) return candidate
-    const parent = dirname(dir)
-    if (parent === dir) throw new CliError(`packages/ginko-server was not found. \`${command}\` must run in the Ginko monorepo.`, 'USAGE')
-    dir = parent
+  // Above the site first (sites/<name> in the monorepo), then above the working directory, so a site in its own
+  // repository runs with `pnpm local:dev --config <path>` from the monorepo root.
+  for (const start of [from, process.cwd()]) {
+    let dir = start
+    for (;;) {
+      const candidate = join(dir, 'packages', 'ginko-server')
+      if (existsSync(join(candidate, 'package.json'))) return candidate
+      const parent = dirname(dir)
+      if (parent === dir) break
+      dir = parent
+    }
   }
+  throw new CliError(`packages/ginko-server was not found. Run \`${command}\` from the Ginko monorepo.`, 'USAGE')
 }
 
 /** The Convex deployment that a command writes to. Empty values are missing, not guessed. */
@@ -83,9 +89,13 @@ export function readDeploymentTarget(backendDir: string): DeploymentTarget {
 }
 
 function parseEnvFile(path: string): Record<string, string> {
-  if (!existsSync(path)) return {}
+  return existsSync(path) ? parseEnvText(readFileSync(path, 'utf8')) : {}
+}
+
+/** NAME=value lines, as in an env file and in `convex env list`. */
+function parseEnvText(text: string): Record<string, string> {
   const values: Record<string, string> = {}
-  for (const line of readFileSync(path, 'utf8').split('\n')) {
+  for (const line of text.split('\n')) {
     const match = /^([A-Z_]+)=(.*)$/.exec(line.trim())
     if (match) values[match[1]!] = match[2]!.replace(/^["']|["']$/g, '')
   }
@@ -103,6 +113,63 @@ export function targetEnv(target: DeploymentTarget): NodeJS.ProcessEnv {
   }
 }
 
+/** The deployment the Convex CLI selects in backendDir. Throws before anything is written when it is not the local backend. */
+export function confirmLocal(backendDir: string, command = 'local:dev'): DeploymentTarget {
+  const target = readDeploymentTarget(backendDir)
+  const problem = localDeploymentError(target, command)
+  if (problem) throw new CliError(problem, 'USAGE')
+  return target
+}
+
+/** The address the local Studio runs on (apps/platform `pnpm dev`, the e2e tests). */
+export const LOCAL_STUDIO = 'http://localhost:3100'
+
+/**
+ * Prepares the LOCAL backend for sign-in: the environment variables the platform needs (only those still missing;
+ * GINKO_LOCAL must be 1), the same proxy secret and site URL in backendDir/.env.local for the Nuxt side, and the auth
+ * signing key. Run it before the platform starts: the platform reads .env.local once. Returns the admin address to sign
+ * in with (the first of GINKO_ADMIN_EMAILS; an operator's own value is kept). `run` is runOnce outside tests.
+ */
+export async function prepareLocalBackend(backendDir: string, command: string, log: (line: string) => void, run: typeof runOnce): Promise<string> {
+  const env = targetEnv(confirmLocal(backendDir, command))
+  const convex = (...args: string[]) => run('npx', ['convex', ...args], backendDir, env)
+  const envFile = join(backendDir, '.env.local')
+  const before = existsSync(envFile) ? readFileSync(envFile, 'utf8') : ''
+  const local = parseEnvText(before)
+  const secret = () => randomBytes(32).toString('hex')
+  const wanted: Record<string, () => string> = {
+    GINKO_LOCAL: () => '1',
+    GINKO_MAIL: () => 'outbox',
+    SITE_URL: () => LOCAL_STUDIO,
+    GINKO_ADMIN_EMAILS: () => 'admin@example.test',
+    BETTER_AUTH_SECRETS: () => `0:${secret()}`,
+    BCN_AUTH_PROXY_IP_SECRET: () => local.BCN_AUTH_PROXY_IP_SECRET || secret(),
+  }
+  // The backend's values after this function: what `env list` showed plus what is set below. No `env get` per name:
+  // every Convex CLI call costs a second or two on each start.
+  const values = parseEnvText(await convex('env', 'list'))
+  for (const [name, value] of Object.entries(wanted)) {
+    // The platform reads GINKO_LOCAL inside Convex (SPEC 5.3): a backend with another value must not keep it.
+    if (name === 'GINKO_LOCAL' ? values[name] === '1' : values[name] !== undefined) continue
+    values[name] = value()
+    await convex('env', 'set', name, values[name])
+    log(`set ${name}`)
+  }
+  // The Nuxt side must send the same proxy secret and know the same site URL, or sign-in returns 403.
+  let file = before
+  for (const name of ['BCN_AUTH_PROXY_IP_SECRET', 'SITE_URL']) {
+    const value = values[name]
+    if (local[name] === value) continue
+    const line = `${name}=${value}`
+    const pattern = new RegExp(`^${name}=.*$`, 'm')
+    file = pattern.test(file) ? file.replace(pattern, line) : `${file.replace(/\n?$/, '\n')}${line}\n`
+    log(`wrote ${name} to packages/ginko-server/.env.local`)
+  }
+  if (file !== before) writeFileSync(envFile, file)
+  await convex('run', 'auth:ensureSigningKey')
+  return values.GINKO_ADMIN_EMAILS!.split(',')[0]!.trim()
+}
+
 /** Runs one function of the local platform with JSON arguments and returns its JSON result. */
 export type Runner = (fn: string, args: Record<string, unknown>) => Promise<unknown>
 
@@ -112,10 +179,7 @@ export type Runner = (fn: string, args: Record<string, unknown>) => Promise<unkn
  */
 export function connectLocal(from: string, command: string): Runner {
   const backendDir = findBackend(from, command)
-  const target = readDeploymentTarget(backendDir)
-  const problem = localDeploymentError(target, command)
-  if (problem) throw new CliError(problem, 'USAGE')
-  const env = targetEnv(target)
+  const env = targetEnv(confirmLocal(backendDir, command))
   return async (fn, args) => parseOutput(await runOnce('npx', ['convex', 'run', fn, JSON.stringify(args)], backendDir, env))
 }
 
@@ -145,7 +209,23 @@ export function parseResult(output: string): Record<string, unknown> | undefined
   return isObject(value) ? value : undefined
 }
 
-/** Runs a command to its end and returns its stdout. A failing command throws with the end of its stderr. */
+/**
+ * The reason in the stderr of a failed `convex run`. A function error is one line, "Uncaught ConvexError: …", above a
+ * stack trace that is not useful here. A system error spans lines: "✖ Failed to run function …:", then
+ * "Error: [Request ID: …] Server Error", then the cause ("Function execution timed out (maximum duration: 1s)"), all in
+ * colour codes; its first line alone hides the cause. Anything else (the monorepo CLI logs its progress to stderr and its
+ * error last) gives its last three lines.
+ */
+export function failureOf(stderr: string): string {
+  const lines = stderr.replace(/\u001b\[[0-9;]*m/g, '').split('\n').map((line) => line.trim()).filter(Boolean)
+  const uncaught = lines.find((line) => line.startsWith('Uncaught'))
+  if (uncaught) return uncaught
+  const failed = lines.findIndex((line) => line.includes('Failed to run function'))
+  if (failed >= 0) return lines.slice(failed).filter((line) => !line.startsWith('at ')).join(' ')
+  return lines.slice(-3).join(' | ')
+}
+
+/** Runs a command to its end and returns its stdout. A failing command throws with the reason in its stderr. */
 export function runOnce(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {
   return new Promise((done, fail) => {
     const child = spawn(command, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] })
@@ -156,10 +236,16 @@ export function runOnce(command: string, args: string[], cwd: string, env: NodeJ
     child.on('error', fail)
     child.on('close', (code) => {
       if (code === 0) return done(out)
-      // convex run prints its error as "Uncaught ConvexError: …" above a stack trace; the stack is not useful here.
-      const lines = err.split('\n').map((line) => line.trim()).filter(Boolean)
-      const reason = lines.find((line) => line.startsWith('Uncaught')) ?? lines[0] ?? ''
-      fail(new CliError(`${command} ${args.slice(0, 2).join(' ')} exited with code ${code}: ${reason.trim()}`))
+      fail(new CliError(`${command} ${args.slice(0, 2).join(' ')} exited with code ${code}: ${failureOf(err)}`))
     })
   })
+}
+
+/**
+ * The runner for the HOSTED platform (`pnpm ops:import`): every call is `npx convex run --prod`, in packages/ginko-server,
+ * with the credentials the Convex CLI finds (login or CONVEX_DEPLOY_KEY). The caller has made the operator say `--prod`.
+ */
+export function connectProd(from: string, command: string): Runner {
+  const backendDir = findBackend(from, command)
+  return async (fn, args) => parseOutput(await runOnce('npx', ['convex', 'run', '--prod', fn, JSON.stringify(args)], backendDir))
 }

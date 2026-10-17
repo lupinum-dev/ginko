@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { markdownComponents } from '../lib/markdownComponents'
-// One blog post: title, date, authors, text. Article JSON-LD names the authors and carries both dates.
-import { articleLd } from '@lupinum/ginko/internal'
+// One blog post: title, date, authors, text. BlogPosting JSON-LD names the authors and carries both dates.
+import { postJsonLd } from '@lupinum/ginko/basics'
 import type { Post } from '../lib/blogTypes'
 
 const props = defineProps<{ post: Post }>()
@@ -13,15 +13,14 @@ const authors = computed(() => blog.authorsOf(props.post))
 const absolute = (path: string) => new URL(path, site.url).href
 
 useGinkoSeo(() => {
-  const { title, description, date, image } = props.post.data
-  const ld = articleLd({
-    title, description, lang: language.value, url: absolute(route.path), image: image ? absolute(image.url) : undefined,
-    published: date, modified: (props.post.updatedAt ?? date).slice(0, 10),
-  })
+  const { title, description, date, image, tags } = props.post.data
   return {
     title, description, type: 'article', image: image?.url,
-    // articleLd takes one author; a post may have several (and a link), so the list replaces it.
-    jsonLd: [authors.value.length ? { ...ld, author: authors.value.map((a) => ({ '@type': 'Person', name: a.data.name, ...(a.data.url ? { url: a.data.url } : {}) })) } : ld],
+    jsonLd: [postJsonLd({
+      title, description, lang: language.value, url: absolute(route.path), image: image ? absolute(image.url) : undefined,
+      date, modified: (props.post.updatedAt ?? date).slice(0, 10),
+      authors: authors.value.map((a) => a.data), tags: tags?.map((item) => item.tag),
+    })],
   }
 })
 useHead(() => ({ link: [{ rel: 'alternate', type: 'application/rss+xml', title: t('docs.blog'), href: blog.feedPath.value }] }))

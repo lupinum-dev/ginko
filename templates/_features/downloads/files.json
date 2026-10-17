@@ -1,0 +1,10 @@
+[
+  "app/components/downloads/FileButton.vue",
+  "app/components/downloads/List.vue",
+  "app/composables/useDownloads.ts",
+  "app/pages/downloads.vue",
+  "i18n/downloads/ar.json",
+  "i18n/downloads/de.json",
+  "i18n/downloads/en.json",
+  "i18n/downloads/fr.json"
+]

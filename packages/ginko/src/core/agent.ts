@@ -1,7 +1,7 @@
 // Text for AI agents: one entry as Markdown, and the llms.txt index of a site's bundle. Pure: no Node APIs, no network.
 import type { Node } from 'comark'
 import { renderMarkdown } from 'comark/render'
-import type { Bundle, BundleItem } from './bundle.ts'
+import { entryTitle, type Bundle, type BundleItem } from './bundle.ts'
 import type { MarkdownTree } from './markdown.ts'
 import { labelOf } from './labels.ts'
 import type { Label, Schema } from './types.ts'
@@ -20,14 +20,23 @@ const treeOf = (value: unknown, trees?: ReadonlyMap<string, MarkdownTree>): Mark
   return typeof ref === 'string' ? trees?.get(ref) : undefined
 }
 
+/**
+ * A plain text field as Markdown text: characters that Markdown or HTML would read as syntax are escaped, so a title
+ * like `<img onerror=…>` or `a](b` stays text in the `.md` twin and llms.txt. `inline` (titles, link texts) also
+ * turns each run of white space that holds a line break into one space, in one pass (a long run of spaces stays fast).
+ */
+export const markdownText = (text: string, inline = false) =>
+  (inline ? text.replace(/\s+/g, (space) => (space.includes('\n') ? ' ' : space)) : text).replace(/[\\`*_[\]<>#|!~]/g, '\\$&')
+
 /** One entry as Markdown: its title as `#`, then each text field as a paragraph and each markdown field as its Markdown. */
 export async function entryMarkdown(item: BundleItem, brick: string, options: AgentOptions): Promise<string> {
-  const title = typeof item.data.title === 'string' ? item.data.title : item.id
-  const parts = [`# ${title}`]
+  const title = entryTitle(item, options.schema.bricks[brick]?.fields)
+  const parts = [`# ${markdownText(title, true)}`]
   for (const [name, field] of Object.entries(options.schema.bricks[brick]?.fields ?? {})) {
-    if (name === 'title') continue
     const value = item.data[name]
-    if ((field.type === 'text' || field.type === 'longtext') && typeof value === 'string' && value.trim()) parts.push(value.trim())
+    // The title is the heading already (for a person, the name its slug is made from).
+    if (name === 'title' || value === title) continue
+    if ((field.type === 'text' || field.type === 'longtext') && typeof value === 'string' && value.trim()) parts.push(markdownText(value.trim()))
     if (field.type !== 'markdown') continue
     const tree = treeOf(value, options.trees)
     if (tree) {
@@ -38,9 +47,16 @@ export async function entryMarkdown(item: BundleItem, brick: string, options: Ag
   return `${parts.join('\n\n')}\n`
 }
 
+/** The text without its trailing slashes; a loop, because `/\/+$/` slows down on a long run of slashes. */
+const withoutTrailingSlashes = (text: string) => {
+  let end = text.length
+  while (end > 0 && text[end - 1] === '/') end--
+  return text.slice(0, end)
+}
+
 /** The Markdown twin of a page URL: `/` is `/index.md`, `/blog/a` is `/blog/a.md`. */
 const markdownPath = (url: string) => {
-  const path = url.replace(/\/+$/, '')
+  const path = withoutTrailingSlashes(url)
   return path === '' ? '/index.md' : `${path}.md`
 }
 
@@ -53,7 +69,7 @@ function brickLabel(label: Label | undefined, brick: string, bundle: Bundle): st
 }
 
 export function llmsTxt(bundle: Bundle, options: AgentOptions & { siteName: string; description?: string; origin: string }): string {
-  const origin = options.origin.replace(/\/+$/, '')
+  const origin = withoutTrailingSlashes(options.origin)
   const lines = [`# ${options.siteName}`]
   if (options.description) lines.push('', `> ${options.description}`)
   for (const [brick, entry] of Object.entries(bundle.bricks)) {
@@ -62,8 +78,8 @@ export function llmsTxt(bundle: Bundle, options: AgentOptions & { siteName: stri
     for (const item of entry.items) {
       const url = item.urls?.[bundle.locale]
       if (!url) continue
-      const title = typeof item.data.title === 'string' ? item.data.title : item.id
-      links.push(`- [${title}](${origin}${markdownPath(url)})`)
+      const title = entryTitle(item, options.schema.bricks[brick]?.fields)
+      links.push(`- [${markdownText(title, true)}](${origin}${markdownPath(url)})`)
     }
     if (links.length === 0) continue
     lines.push('', `## ${brickLabel(options.schema.bricks[brick]?.label, brick, bundle)}`, '', ...links)
@@ -76,7 +92,7 @@ export function llmsTxt(bundle: Bundle, options: AgentOptions & { siteName: stri
  * URL in the bundle's locale, in llmsTxt's order: `---`, its absolute URL as `Source:`, and its Markdown (entryMarkdown).
  */
 export async function llmsFullTxt(bundle: Bundle, options: AgentOptions & { siteName: string; description?: string; origin: string }): Promise<string> {
-  const origin = options.origin.replace(/\/+$/, '')
+  const origin = withoutTrailingSlashes(options.origin)
   const parts = [`# ${options.siteName}`]
   if (options.description) parts.push(`> ${options.description}`)
   for (const [brick, entry] of Object.entries(bundle.bricks)) {
@@ -98,16 +114,16 @@ const searchTokens = (path: string) => [...new Set(path.toLowerCase().replace(/\
  * The Markdown 404 for a `.md` request without an entry: the requested path, up to `limit` collection entries (URL in the
  * bundle's locale) whose URL or title contains the most words of the path, and the llms.txt index. Nothing matches: no list.
  */
-export function markdownNotFound(bundle: Bundle, path: string, options: { origin: string; limit?: number }): string {
-  const origin = options.origin.replace(/\/+$/, '')
+export function markdownNotFound(bundle: Bundle, path: string, options: { origin: string; limit?: number; schema?: AgentOptions['schema'] }): string {
+  const origin = withoutTrailingSlashes(options.origin)
   const tokens = searchTokens(path)
   const matches: { url: string; title: string; score: number }[] = []
-  for (const entry of Object.values(bundle.bricks)) {
+  for (const [brick, entry] of Object.entries(bundle.bricks)) {
     if (entry.kind !== 'collection') continue
     for (const item of entry.items) {
       const url = item.urls?.[bundle.locale]
       if (!url) continue
-      const title = typeof item.data.title === 'string' ? item.data.title : item.id
+      const title = entryTitle(item, options.schema?.bricks[brick]?.fields)
       const haystack = `${url} ${title}`.toLowerCase()
       const score = tokens.filter((token) => haystack.includes(token)).length
       if (score > 0) matches.push({ url, title, score })
@@ -117,7 +133,7 @@ export function markdownNotFound(bundle: Bundle, path: string, options: { origin
   const suggestions = matches.sort((a, b) => b.score - a.score).slice(0, options.limit ?? 5)
   const lines = ['# Not found', '', `There is no page at \`${path}\`.`]
   if (suggestions.length > 0) {
-    lines.push('', '## Maybe you meant', '', ...suggestions.map((match) => `- [${match.title}](${origin}${markdownPath(match.url)})`))
+    lines.push('', '## Maybe you meant', '', ...suggestions.map((match) => `- [${markdownText(match.title, true)}](${origin}${markdownPath(match.url)})`))
   }
   lines.push('', `All pages: ${origin}/llms.txt`)
   return `${lines.join('\n')}\n`

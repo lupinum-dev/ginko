@@ -16,6 +16,8 @@ const schema = serializeSchema(defineSite({
     docs: collection({
       label: 'Doku', source: 'files', max: 50, order: 'manual',
       route: { de: '/doku/[slug]', en: '/en/docs/[slug]' },
+      // Listed in English also without a translation (the main-language page), so the fallback of file entries shows.
+      untranslated: 'fallback',
       fields: {
         title: f.text('Titel'),
         slug: f.slug('Adresse', { from: 'title' }),
@@ -127,7 +129,7 @@ describe('```md preview fences', () => {
 })
 
 describe('buildFileBundles', () => {
-  it('builds one bundle per locale with URLs, and falls back to the main language', async () => {
+  it('builds one bundle per locale with URLs, and falls back to the main language without a page there', async () => {
     const s = site({ 'content/docs/1.einstieg.md': md('title: Einstieg'), 'content/docs/2.nur-de.md': md('title: Nur Deutsch'), 'content/docs/1.einstieg.en.md': md('title: Getting started\nslug: getting-started', 'English text.') })
     const { bundles, errors } = await buildFileBundles({ contentDir: s.content, publicDir: s.public, schema })
     expect(errors).toEqual([])
@@ -135,7 +137,7 @@ describe('buildFileBundles', () => {
     expect(en.kind === 'collection' && en.items.map((i) => [i.data.title, i.urls, i.fallback.includes('title'), i.fallback.includes('body')])).toEqual([
       // A translated Markdown body is the translation, not a stale fallback (its print is of the main tree).
       ['Getting started', { de: '/doku/einstieg', en: '/en/docs/getting-started' }, false, false],
-      ['Nur Deutsch', { de: '/doku/nur-de', en: '/en/docs/nur-de' }, true, true],
+      ['Nur Deutsch', { de: '/doku/nur-de' }, true, true],
     ])
     expect(Object.keys(bundles.de!.bricks)).toEqual(['docs', 'pages', 'legal'])
   })
@@ -240,7 +242,7 @@ describe('images in Markdown', () => {
   // Bug caught: a relative image prop of a component reached validate() unchanged, so it failed as an unsafe URL.
   it('moves an image prop of a component to a content-addressed URL with its size', async () => {
     const r = await read({
-      'content/pages/1.a.md': md('title: A', '::figure{src="./cover.svg"}'),
+      'content/pages/1.a.md': md('title: A', '::figure{src="./cover.svg"}\n::'),
       'content/pages/cover.svg': svg,
     })
     expect(r.errors).toEqual([])

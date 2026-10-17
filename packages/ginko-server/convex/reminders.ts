@@ -1,5 +1,7 @@
 // The weekly reminder (SPEC 10): content that is out of date for the coming week (`staleOf`, the rule
-// the Studio shows too) is mailed once per person and week, on the day before the site's week starts (Sunday for Monday-first weeks), between 17:00 and 18:00 in the site's time zone.
+// the Studio shows too), and the due status lines of the Today page (lib/status.ts) in the Studio's words, go out in
+// one mail per person and site, each brick once per person and week, on the day before the site's week starts (Sunday
+// for Monday-first weeks), between 17:00 and 18:00 in the site's time zone.
 import { startOfWeek, type Json } from '@lupinum/ginko'
 import { addDays, labelOf, plannedWeeks, staleOf, todayIn, workWeekOf, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
@@ -7,6 +9,8 @@ import { components } from './_generated/api'
 import type { Doc } from './_generated/dataModel'
 import { internalMutation, type MutationCtx } from './_generated/server'
 import { localeOfUser, t } from './lib/i18n'
+import { isReminded, reminderBricks } from './lib/reminders'
+import { statesOf, statusText } from './lib/status'
 import { mailAvailable, queueMail, siteOrigin } from './mail'
 
 const REMIND_HOUR = 17
@@ -22,8 +26,8 @@ const isDayBeforeWeekStart = (date: string, schema: Schema) => startOfWeek(addDa
 
 /**
  * Hourly. Sends the reminders of every site whose 17:00 hour on the day before the week starts it is. `now` is for tests and the
- * live check; the cron passes nothing. Sending twice is harmless: a `reminders` row per site, brick,
- * week and person stops it.
+ * live check; the cron passes nothing. `sent` counts mails. Sending twice is harmless: a `reminders` row per site,
+ * brick, week and person stops it.
  */
 export const sweep = internalMutation({
   args: { now: v.optional(v.number()) },
@@ -55,29 +59,50 @@ async function remindSite(ctx: MutationCtx, site: Doc<'sites'>, schema: Schema, 
     const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).collect()
     live.set(key, rows.filter((r) => !r.deletedAt && r.state !== 'draft').map((r) => ({ data: r.data as Record<string, Json> })))
   }
-  let sent = 0
-  for (const [key, brick] of Object.entries(schema.bricks)) {
-    if (brick.kind !== 'single' || brick.retired) continue
-    const entry = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).first()
-    if (!entry || entry.deletedAt) continue
-    const state = staleOf(brick, entry.data, coming, info, plannedWeeks(schema, key, (k) => live.get(k) ?? []))
-    if (!state || state.current) continue
-    // Owners may fix everything; staff only with the task that edits the field (SPEC 2.7).
-    const task = `${key}.${state.task.id}`
-    for (const member of members.filter((m) => m.role === 'owner' || m.grants.includes(task))) {
-      const done = await ctx.db.query('reminders').withIndex('by_site_brick_week_user', (q) => q.eq('site', site._id).eq('brick', key).eq('week', week).eq('user', member.user)).first()
-      if (done) continue
-      const to = await addressOf(ctx, member.user)
-      if (!to) continue
-      const locale = await localeOfUser(ctx, member.user)
-      await ctx.db.insert('reminders', { site: site._id, brick: key, week, user: member.user, at })
-      await queueMail(ctx, {
-        to,
-        subject: t(locale, 'mail.reminder.subject', { brick: labelOf(brick.label, locale, schema.locales[0]!) }),
-        text: t(locale, 'mail.reminder.text', { site: site.name, brick: labelOf(brick.label, locale, schema.locales[0]!), link: `${siteOrigin()}/s/${site.slug}`, settings: `${siteOrigin()}/?all` }),
-      })
-      sent++
+  const bricks = reminderBricks(schema)
+  // Status lines are asked for the coming week's first day, like the weekly rule.
+  const states = new Map((await statesOf(ctx, site, bricks.filter((b) => !b.weekly).map((b) => b.key), coming)).map((s) => [s.brick, s]))
+  // What is due this Sunday, per brick: the words of its mail line in a reader's language.
+  const due: { key: string; refs: string[]; line: (locale: string) => string }[] = []
+  for (const { key, brick, weekly, refs } of bricks) {
+    const label = (locale: string) => labelOf(brick.label, locale, schema.locales[0]!)
+    if (weekly) {
+      const entry = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).first()
+      if (!entry || entry.deletedAt) continue
+      const state = staleOf(brick, entry.data, coming, info, plannedWeeks(schema, key, (k) => live.get(k) ?? []))
+      if (!state || state.current) continue
+      due.push({ key, refs, line: (locale) => t(locale, 'mail.weekly.item', { brick: label(locale), line: t(locale, 'mail.weekly.week') }) })
+    } else {
+      const state = states.get(key)
+      const line = state?.due && state.line ? state.line : undefined
+      if (!line) continue
+      // The line is about the coming day, which the Today page's words call "today"; the mail names it tomorrow.
+      const words = (locale: string) => line.kind === 'hours' && 'unknown' in line.today ? t(locale, 'mail.weekly.hoursUnknown') : statusText(locale, schema, brick, line)
+      due.push({ key, refs, line: (locale) => t(locale, 'mail.weekly.item', { brick: label(locale), line: words(locale) }) })
     }
+  }
+  if (!due.length) return 0
+  let sent = 0
+  // One mail per person and site (decision C): every due item they may fix (owners all, staff with a task that fixes
+  // it, SPEC 2.7) that this week's mail has not named yet. A `reminders` row per brick keeps a rerun from repeating it.
+  for (const member of members) {
+    const items: typeof due = []
+    for (const item of due) {
+      if (!isReminded(member, item.refs)) continue
+      const done = await ctx.db.query('reminders').withIndex('by_site_brick_week_user', (q) => q.eq('site', site._id).eq('brick', item.key).eq('week', week).eq('user', member.user)).first()
+      if (!done) items.push(item)
+    }
+    if (!items.length) continue
+    const to = await addressOf(ctx, member.user)
+    if (!to) continue
+    const locale = await localeOfUser(ctx, member.user)
+    for (const item of items) await ctx.db.insert('reminders', { site: site._id, brick: item.key, week, user: member.user, at })
+    await queueMail(ctx, {
+      to,
+      subject: t(locale, 'mail.weekly.subject', { site: site.name, count: items.length }),
+      text: t(locale, 'mail.weekly.text', { site: site.name, items: items.map((item) => item.line(locale)).join('\n'), link: `${siteOrigin()}/s/${site.slug}`, settings: `${siteOrigin()}/?all` }),
+    })
+    sent++
   }
   return sent
 }

@@ -39,16 +39,16 @@ export const run = internalAction({
       result = await processImage(bytes)
     } catch (error) {
       const permanent = error instanceof UnreadableImageError
-      const key = !permanent ? 'errors.uploadRetrying' : row.mime === 'image/heic' ? 'errors.uploadHeicUnreadable' : 'errors.uploadNotAnImage'
+      const key = permanent ? error.key : 'errors.uploadRetrying'
       await ctx.runMutation(internal.uploads.markFailed, { upload, key, permanent })
       return null
     }
 
     const processedId = await ctx.storage.store(new Blob([result.bytes], { type: 'image/webp' }))
-    const variants = await Promise.all(result.variants.map(async (variant) => ({
-      width: variant.width,
-      storageId: await ctx.storage.store(new Blob([variant.bytes], { type: 'image/webp' })),
-    })))
+    // One after the other: convex-test loses a store that overlaps another one ("Write outside of transaction"), and
+    // three small files gain little from running in parallel.
+    const variants: { width: number; storageId: typeof processedId }[] = []
+    for (const variant of result.variants) variants.push({ width: variant.width, storageId: await ctx.storage.store(new Blob([variant.bytes], { type: 'image/webp' })) })
     const applied = await ctx.runMutation(internal.uploads.markReady, {
       upload,
       processedId,

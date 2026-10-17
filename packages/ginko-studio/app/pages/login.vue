@@ -15,7 +15,8 @@ const { client } = useConvexAuth()
 const { data: available } = await useConvexQuery(api.mail.signInAvailable, {}, { auth: 'none' })
 const returnTo = useConvexAuthReturnTo()
 
-const email = ref('')
+// The invite page hands over the invited address, so a typo cannot end in a code that never comes (UI.md 6).
+const email = ref(useState<string>('ginko:loginEmail', () => '').value)
 const code = ref('')
 const step = ref<'email' | 'code'>('email')
 const busy = ref(false)

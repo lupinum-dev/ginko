@@ -167,6 +167,11 @@ export function isTranslatable(field: { type: string; translate?: false | 'manua
 
 /** The longest alt text, own or library. */
 export const ALT_MAX = 300
+/**
+ * What an image description must not hold: control characters (as text fields, `controlChars`) and bidi overrides,
+ * which turn the words around when a screen reader reads them out.
+ */
+export const ALT_INVISIBLE = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069]/
 
 /**
  * The description an image use shows in one language: the field's own trimmed text when it has

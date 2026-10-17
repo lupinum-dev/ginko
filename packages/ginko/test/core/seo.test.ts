@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { articleLd, breadcrumbLd, faqLd, isPreviewHost, organizationLd, robotsTxt, seoHead, siteHeaders, websiteLd, type SeoInput } from '../../src/core/index.ts'
+import { articleLd, breadcrumbJsonLd, faqLd, isPreviewHost, organizationLd, robotsTxt, seoHead, siteHeaders, websiteLd, type SeoInput } from '../../src/core/index.ts'
 
 const base: SeoInput = { siteName: 'Site' }
 
@@ -38,7 +38,7 @@ describe('seoHead', () => {
   })
 
   it('noindex sets the robots meta', () => {
-    expect(seoHead({ ...base, title: 'Draft', noindex: true }).meta).toContainEqual({ name: 'robots', content: 'noindex, nofollow' })
+    expect(seoHead({ ...base, title: 'Draft', noindex: true }).meta).toContainEqual({ name: 'robots', content: 'noindex, follow' })
   })
 })
 
@@ -79,11 +79,11 @@ describe('JSON-LD helpers', () => {
       { '@context': 'https://schema.org', '@type': 'Organization', name: 'Lupinum', url: 'https://lupinum.com' },
     ],
     [
-      'breadcrumbLd',
-      breadcrumbLd(
+      'breadcrumbJsonLd',
+      breadcrumbJsonLd(
         [
-          { title: 'Docs', path: '/docs', children: [] },
-          { title: 'Setup', path: '/docs/setup', children: [] },
+          { title: 'Docs', path: '/docs' },
+          { title: 'Setup', path: '/docs/setup' },
         ],
         'https://ex.com',
       ),

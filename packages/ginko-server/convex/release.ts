@@ -2,16 +2,19 @@
 // the HTTP routes in routes/release.ts, which resolve the push key to its site first; the
 // internal functions here trust that site id. Owners and admins use the public mutations.
 import type { Fields, Json, Locale } from '@lupinum/ginko'
-import { checkSchema, defaultsFor, diffSchema, fieldsChanged, releaseData, sha256, stableJson, validate, type MigrationDescriptor, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, checkSchema, defaultsFor, entryBytes, fitsBudget, diffSchema, fieldsChanged, releaseData, sha256, stableJson, validate, type MigrationDescriptor, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 import { internalMutation, internalQuery, mutation } from './_generated/server'
 import { actorFor, checkRev, fail } from './lib/access'
-import { byteSize, nextPrints, storageOf, type Data, type Prints } from './lib/content'
+import { nextPrints, treesOf, type Data, type Prints } from './lib/content'
 import { msg, recorded } from './lib/history'
 import { isFetchableSiteUrl } from './lib/siteUrl'
-import { BUDGET, checkNewFiles, checkNewLinks, entryUses, same, syncEntryRefs } from './lib/write'
+import { storageSums } from './lib/lifecycle'
+import { putTrees } from './lib/trees'
+import { BUDGET, checkNewFiles, checkNewLinks, entryUses, overBudget, same, sizeText, syncEntryRefs } from './lib/write'
+import { labelOf } from './entries'
 
 const scope = v.union(v.literal('release'), v.literal('pull'), v.literal('check'), v.literal('export'))
 
@@ -40,20 +43,20 @@ async function allEntries(ctx: QueryCtx, site: Id<'sites'>): Promise<Entry[]> {
   return ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site)).collect()
 }
 
-/** The entry a single brick starts with: its defaults, prints, stored trees and one revision per field (SPEC 5.2 step 7). */
+/** The entry a single brick starts with: its defaults, prints, trees, budget bytes and one revision per field (SPEC 5.2 step 7). */
 interface NewSingle {
   brick: string
   data: Record<string, Json>
   prints: Prints
   fields: Fields
-  trees: string
+  trees: { json: string; bytes: number }
   bytes: number
 }
 
 async function newSingle(brick: string, fields: Fields, main: Locale): Promise<NewSingle> {
   const data = defaultsFor(fields)
   const prints = nextPrints({ fields, roots: Object.keys(data), before: {}, after: data, prints: {}, main, confirm: undefined })
-  return { brick, data, prints, fields, ...(await storageOf(fields, data, prints)) }
+  return { brick, data, prints, fields, trees: await treesOf(fields, data), bytes: entryBytes(data, prints) }
 }
 
 /** Stores a new single. The release and devPush share this write. */
@@ -61,8 +64,9 @@ async function insertSingle(ctx: MutationCtx, site: Id<'sites'>, single: NewSing
   const fieldRevs = Object.fromEntries(Object.keys(single.fields).map((name) => [name, 1]))
   const id = await ctx.db.insert('entries', {
     site, brick: single.brick, kind: 'single', order: 0, data: single.data, rev: 1, fieldRevs, lifeRev: 1,
-    prints: single.prints, trees: single.trees, bytes: single.bytes,
+    prints: single.prints, bytes: single.bytes, treeBytes: single.trees.bytes, contentAt: Date.now(),
   })
+  await putTrees(ctx, site, id, single.trees.json)
   await syncEntryRefs(ctx, site, id, await entryUses(ctx, single.fields, single.data, locales))
 }
 
@@ -105,7 +109,7 @@ export const pushKeys = internalQuery({
     const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.site)).unique()
     if (!site) fail('SITE_NOT_FOUND', 'errors.siteMissing')
     const rows = await ctx.db.query('pushKeys').withIndex('by_site', (q) => q.eq('site', site._id)).collect()
-    return rows.map((r) => ({ id: r._id, label: r.label, scopes: r.scopes, createdBy: r.createdBy, createdAt: r._creationTime, revokedAt: r.revokedAt ?? null }))
+    return rows.map((r) => ({ id: r._id, label: r.label, scopes: r.scopes, createdBy: r.createdBy, createdAt: r._creationTime, lastUsedAt: r.lastUsedAt ?? null, revokedAt: r.revokedAt ?? null }))
   },
 })
 
@@ -141,7 +145,15 @@ export const pushKey = internalQuery({
     if (!key) return null
     const site = await ctx.db.get(key.site)
     if (!site || site.deleting) return null
-    return { keyId: key._id, site: key.site, siteSlug: site.slug, scopes: key.scopes, revokedAt: key.revokedAt ?? null }
+    return { keyId: key._id, site: key.site, siteSlug: site.slug, scopes: key.scopes, revokedAt: key.revokedAt ?? null, lastUsedAt: key.lastUsedAt ?? null }
+  },
+})
+
+/** Stamps when a push key was last used. Called at most once an hour per key, so CI runs add almost no writes. */
+export const touchPushKey = internalMutation({
+  args: { key: v.id('pushKeys') },
+  handler: async (ctx, { key }) => {
+    await ctx.db.patch(key, { lastUsedAt: Date.now() })
   },
 })
 
@@ -256,7 +268,7 @@ export const release = internalMutation({
 
     // 7. Candidate on the server: new required defaults (also new list columns) and writes into every
     // entry, new singles from defaults. Same rules as the CLI's candidate (core releaseData).
-    const updates: { entry: Entry; data: Record<string, Json>; prints: Prints; roots: string[]; trees: string; bytes: number }[] = []
+    const updates: { entry: Entry; data: Record<string, Json>; prints: Prints; roots: string[]; trees: { json: string; bytes: number }; bytes: number }[] = []
     const checked: { entry: Entry; data: Record<string, Json> }[] = []
     for (const [key, brick] of Object.entries(next.bricks)) {
       if (!Object.hasOwn(stored.bricks, key)) continue
@@ -266,7 +278,9 @@ export const release = internalMutation({
         const { data, roots } = releaseData(stored.bricks[key]!.fields, brick.fields, before, writesOf.get(entry._id) ?? {})
         const prints = nextPrints({ fields: brick.fields, roots, before, after: data, prints: entry.prints, main, confirm: undefined })
         const changed = roots.filter((r) => !same(data[r], before[r]) || !same(printsOf(prints, r), printsOf(entry.prints, r)))
-        if (changed.length) updates.push({ entry, data, prints, roots: changed, ...(await storageOf(brick.fields, data, prints)) })
+        // The trash keeps no trees.
+        const trees = entry.deletedAt === undefined ? await treesOf(brick.fields, data) : { json: '', bytes: 0 }
+        if (changed.length) updates.push({ entry, data, prints, roots: changed, trees, bytes: entryBytes(data, prints) })
         if (changed.length || all) checked.push({ entry, data })
       }
     }
@@ -301,18 +315,26 @@ export const release = internalMutation({
     // Budget (SPEC 3, 5.2 step 9). Documents are the entries written plus the singles created.
     if (updates.length + created.length > RELEASE_LIMITS.documents) fail('RELEASE_TOO_LARGE', 'errors.releaseTooLarge')
     const updated = new Map(updates.map((u) => [u.entry._id, u]))
-    const entryBytes = (e: Entry) => updated.get(e._id)?.bytes ?? e.bytes
-    const createdBytes = created.map((c) => c.bytes)
-    if (createdBytes.some((b) => b > BUDGET.entryBytes) || entries.some((e) => entryBytes(e) > BUDGET.entryBytes)) {
-      fail('TOO_LARGE', 'errors.entryTooLarge')
+    // A written live entry and a created single must fit the entry limit unless they do not grow. An entry the release
+    // does not touch is not checked, nor a removed one (the trash counts apart); the error names the entry.
+    const tooLarge = [
+      ...created.map((c) => ({ after: c.bytes, before: 0, title: labelOf(next, c.brick, c.data), entry: undefined })),
+      ...updates.filter((u) => !u.entry.deletedAt).map((u) => ({ after: u.bytes, before: u.entry.bytes, title: labelOf(next, u.entry.brick, u.data), entry: u.entry._id })),
+    ].find((e) => !fitsBudget(e.after, e.before, BUDGET.entryBytes))
+    if (tooLarge) {
+      fail('TOO_LARGE', 'errors.releaseEntryTooLarge', { title: tooLarge.title, used: sizeText(tooLarge.after), limit: sizeText(BUDGET.entryBytes) }, tooLarge.entry ? { entry: tooLarge.entry } : undefined)
     }
-    // entryCount counts live entries only (SPEC 4.2 remove); deleted rows stay in `bytes` until hard deletion.
+    // entryCount and bytes count live entries only (SPEC 4.2 remove); removed ones are in trashBytes.
     const entryCount = entries.filter((e) => !e.deletedAt).length + created.length
-    const siteBytes = entries.reduce((sum, e) => sum + entryBytes(e), 0) + createdBytes.reduce((a, b) => a + b, 0)
+    const after = storageSums([
+      ...entries.map((e) => { const u = updated.get(e._id); return u ? { deletedAt: e.deletedAt, bytes: u.bytes, treeBytes: u.trees.bytes } : e }),
+      ...created.map((c) => ({ bytes: c.bytes, treeBytes: c.trees.bytes })),
+    ])
     if (entryCount > BUDGET.entries) fail('TOO_LARGE', 'errors.siteEntryCapReached')
-    if (siteBytes > BUDGET.siteBytes) fail('TOO_LARGE', 'errors.siteStorageLimitReached')
+    if (!fitsBudget(after.bytes, site.bytes, BUDGET.siteBytes)) fail('TOO_LARGE', 'errors.siteStorageLimitReached', overBudget(after.bytes, BUDGET.siteBytes))
+    if (!fitsBudget(after.treeBytes, site.treeBytes ?? 0, BUDGET.treeBytes)) fail('TOO_LARGE', 'errors.entryTooComplex')
 
-    // 8. Write: schema, entries, orderRevs, migrations, contentRev only when an entry changed, release record, change row.
+    // 8. Write: schema, entries, migrations, contentRev only when an entry changed, release record, change row.
     const changedContent = updates.length > 0 || created.length > 0
     const schemaRev = site.schemaRev + 1
     const contentRev = changedContent ? site.contentRev + 1 : site.contentRev
@@ -320,16 +342,12 @@ export const release = internalMutation({
       const rev = u.entry.rev + 1
       const fieldRevs = { ...u.entry.fieldRevs }
       for (const root of u.roots) fieldRevs[root] = rev
-      await ctx.db.patch(u.entry._id, { data: u.data, prints: u.prints, trees: u.trees, rev, fieldRevs, bytes: u.bytes })
+      await ctx.db.patch(u.entry._id, { data: u.data, prints: u.prints, trees: undefined, rev, fieldRevs, bytes: u.bytes, treeBytes: u.trees.bytes })
+      await putTrees(ctx, args.site, u.entry._id, u.trees.json)
       await syncEntryRefs(ctx, args.site, u.entry._id, await entryUses(ctx, next.bricks[u.entry.brick]!.fields, u.data, next.locales))
     }
 
-    const orderRevs: Record<string, number> = { ...site.orderRevs }
-    for (const key of Object.keys(next.bricks)) orderRevs[key] ??= 0
-    for (const c of created) {
-      await insertSingle(ctx, args.site, c, next.locales)
-      orderRevs[c.brick] = (orderRevs[c.brick] ?? 0) + 1
-    }
+    for (const c of created) await insertSingle(ctx, args.site, c, next.locales)
 
     for (const m of fresh) {
       await ctx.db.insert('migrationsApplied', { site: args.site, id: m.id, brick: m.brick, fills: m.fills, fingerprint: m.fingerprint, schemaRev })
@@ -342,9 +360,8 @@ export const release = internalMutation({
       url: next.url,
       schemaRev,
       contentRev,
-      orderRevs,
       entryCount,
-      bytes: siteBytes,
+      ...after,
       release: { commit: args.commit, schemaRev, contentRev, at },
     })
     await ctx.db.insert('changes', {
@@ -374,7 +391,7 @@ export const devPush = internalMutation({
     if (!site) {
       const id = await ctx.db.insert('sites', {
         slug: args.site, name: next.name, url: next.url, previewOrigins: ['http://localhost:3000'], schema: next as unknown as Json,
-        schemaRev: 1, contentRev: 1, orderRevs: {}, entryCount: 0, bytes: 0, release: null,
+        schemaRev: 1, contentRev: 1, entryCount: 0, bytes: 0, trashBytes: 0, treeBytes: 0, release: null,
       })
       await createMissingSingles(ctx, (await ctx.db.get(id))!, next)
       return { schemaRev: 1, changes: [], warnings: [] }
@@ -389,7 +406,7 @@ export const devPush = internalMutation({
   },
 })
 
-/** devPush: the missing single entries, with the site's counters kept exact (entryCount, bytes, orderRevs). */
+/** devPush: the missing single entries, with the site's counters kept exact (entryCount, the byte sums). */
 async function createMissingSingles(ctx: MutationCtx, site: Doc<'sites'>, schema: Schema) {
   const entries = await allEntries(ctx, site._id)
   const filled = new Set(entries.map((e) => e.brick))
@@ -399,18 +416,10 @@ async function createMissingSingles(ctx: MutationCtx, site: Doc<'sites'>, schema
     if (brick.kind === 'single' && !brick.retired && !filled.has(key)) created.push(await newSingle(key, brick.fields, main))
   }
 
-  const orderRevs: Record<string, number> = { ...site.orderRevs }
-  for (const key of Object.keys(schema.bricks)) orderRevs[key] ??= 0
-  let createdBytes = 0
-  for (const single of created) {
-    await insertSingle(ctx, site._id, single, schema.locales)
-    createdBytes += single.bytes
-    orderRevs[single.brick] = (orderRevs[single.brick] ?? 0) + 1
-  }
+  for (const single of created) await insertSingle(ctx, site._id, single, schema.locales)
   await ctx.db.patch(site._id, {
-    orderRevs,
     entryCount: entries.filter((e) => !e.deletedAt).length + created.length,
-    bytes: entries.reduce((sum, e) => sum + e.bytes, 0) + createdBytes,
+    ...storageSums([...entries, ...created.map((c) => ({ bytes: c.bytes, treeBytes: c.trees.bytes }))]),
   })
 }
 

@@ -1,0 +1,5 @@
+[
+  "app/bricks/logos-quotes.ts",
+  "app/components/block/Logos.vue",
+  "app/components/block/Quote.vue"
+]

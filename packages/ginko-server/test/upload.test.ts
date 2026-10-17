@@ -48,6 +48,17 @@ describe('uploads.prepare and POST /upload', () => {
     vi.unstubAllEnvs()
   })
 
+  // Wrong behaviour caught: a script or a stolen session fills the site's storage through unlimited tickets.
+  it('refuses the 201st ticket of a person in an hour; another site or person still gets one', async () => {
+    const s = await setup()
+    await s.t.run((ctx) => ctx.db.insert('memberships', { site: s.other, user: people.owner, role: 'owner', grants: [] }))
+    const prepare = (who: 'owner' | 'cook', site = 'restaurant') => s.as[who].mutation(api.uploads.prepare, { site })
+    for (let i = 0; i < 200; i++) await prepare('owner')
+    expect(await errorOf(prepare('owner'))).toMatchObject({ code: 'RATE_LIMITED', message: 'Du hast in kurzer Zeit sehr viele Dateien hochgeladen. Versuche es später noch einmal.' })
+    expect(await prepare('owner', 'andere')).toMatchObject({ ticket: expect.any(String) })
+    expect(await prepare('cook')).toMatchObject({ ticket: expect.any(String) })
+  })
+
   it('uses a ticket once', async () => {
     const s = await setup()
     const { ticket } = await s.as.owner.mutation(api.uploads.prepare, { site: 'restaurant' })
@@ -76,12 +87,21 @@ describe('uploads.prepare and POST /upload', () => {
   it.each([
     ['an unsupported type', 'application/zip', 'PK\u0003\u0004 kein Bild', 415, 'errors.uploadWrongType'],
     ['text sent as PNG', 'image/png', 'Dies ist Text, kein PNG.', 415, 'errors.uploadWrongContent'],
+    ['an empty file', 'image/jpeg', '', 415, 'errors.uploadEmpty'],
+    ['an iPhone photo in HEIC (sharp here cannot read it)', 'image/heic', '\u0000\u0000\u0000\u0018ftypheic', 415, 'errors.uploadHeicUnreadable'],
     ['an image over 20 MB', 'image/jpeg', jpeg(20 * MB + 1), 413, 'errors.uploadTooLarge'],
   ])('refuses %s and stores nothing; the reason is a catalog key the Studio translates', async (_name, type, content, status, key) => {
     const s = await setup()
     const response = await postUpload(s, { type, content })
     expect([response.status, ((await response.json()) as { key: string }).key]).toEqual([status, key])
     expect(await storedFiles(s.t)).toHaveLength(0)
+  })
+
+  // Wrong behaviour caught: a JPEG saved as .png (downloaded or forwarded photos) was refused as "wrong content".
+  it('stores a photo as the type its bytes prove, whatever its name or declared type says', async () => {
+    const s = await setup()
+    const id = await upload(s, { type: 'image/png', content: jpeg(16), name: 'foto.png', ready: false })
+    expect((await s.t.run((ctx) => ctx.db.get(id)))!.mime).toBe('image/jpeg')
   })
 
   it('deletes the stored file when register refuses it (blank file name)', async () => {
@@ -101,6 +121,7 @@ describe('uploads.prepare and POST /upload', () => {
     ['only a separator', 'ordner/', 'datei'],
     ['only a control character', '\u0000', 'datei'],
     ['150 characters', `${'x'.repeat(146)}.pdf`, `${'x'.repeat(116)}.pdf`],
+    ['250 characters', `${'x'.repeat(246)}.pdf`, `${'x'.repeat(116)}.pdf`],
   ])('stores the name of %s cleaned (F15)', async (_case, given, stored) => {
     const s = await setup()
     const id = await upload(s, { name: given })
@@ -138,6 +159,16 @@ describe('uploads.markReady and markFailed', () => {
     expect(await s.t.mutation(internal.uploads.markReady, { ...args, processedId: first })).toBe(true)
     expect(await s.t.mutation(internal.uploads.markReady, { ...args, processedId: second })).toBe(false)
     expect(await s.t.run((ctx) => ctx.db.get(id))).toMatchObject({ status: 'ready', processedId: first, width: 2400, height: 1800 })
+  })
+
+  // Wrong behaviour caught: an imported picture that an entry already names became ready without a new contentRev, so a
+  // site's cache kept serving the entry with the picture broken until some unrelated save.
+  it('markReady of a file an entry uses raises contentRev, so the site fetches it', async () => {
+    const s = await setup()
+    const id = await registerImage(s)
+    await s.t.run((ctx) => ctx.db.insert('fileRefs', { site: s.site, file: id, holder: 'entry', holderId: Object.values(s.entries)[0]!, uses: [{ path: 'photo', missingAlt: false }], missingAlt: false }))
+    await s.t.mutation(internal.uploads.markReady, { upload: id, processedId: await storeFile(s.t, 'webp'), size: 8, width: 2, height: 1 })
+    expect((await s.t.run((ctx) => ctx.db.get(s.site)))!.contentRev).toBe(2)
   })
 
   it('marks an upload failed after the third failed attempt, not before', async () => {

@@ -25,7 +25,7 @@ export function seoHead(input: SeoInput): SeoHead {
 
   const meta: SeoHead['meta'] = [
     { name: 'description', content: description ?? '' },
-    { name: 'robots', content: noindex ? 'noindex, nofollow' : '' },
+    { name: 'robots', content: noindex ? 'noindex, follow' : '' },
     { property: 'og:title', content: title ?? siteName },
     { property: 'og:description', content: description ?? '' },
     { property: 'og:type', content: input.type ?? 'website' },
@@ -55,37 +55,112 @@ export function robotsTxt(options: { sitemap?: string; noindex?: boolean; disall
   return `${lines.join('\n')}\n`
 }
 
-/** Drops keys whose value is undefined so optional fields do not appear in the JSON-LD. */
-const compact = (o: Record<string, unknown>): Record<string, unknown> =>
-  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined))
+/** Drops keys whose value is undefined, an empty text or an empty list, so optional data does not appear in the JSON-LD. */
+export const compact = (o: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0)))
+
+/** A schema.org PostalAddress, or undefined when no part of it is known. `country` is an ISO 3166 code such as `DE`. */
+export function postalAddressLd(a: { street?: string; postalCode?: string; city?: string; country?: string }): Record<string, unknown> | undefined {
+  if (!a.street && !a.postalCode && !a.city) return undefined
+  return compact({ '@type': 'PostalAddress', streetAddress: a.street, postalCode: a.postalCode, addressLocality: a.city, addressCountry: a.country })
+}
 
 export function websiteLd(o: { name: string; url: string; lang: string }): Record<string, unknown> {
   return { '@context': 'https://schema.org', '@type': 'WebSite', name: o.name, url: o.url, inLanguage: o.lang }
 }
 
-export function organizationLd(o: { name: string; url: string; logo?: string; sameAs?: string[] }): Record<string, unknown> {
-  return compact({ '@context': 'https://schema.org', '@type': 'Organization', name: o.name, url: o.url, logo: o.logo, sameAs: o.sameAs })
+/**
+ * `node` with the site's `country` (ISO 3166 code) where a builder left it out: `addressCountry` of every PostalAddress,
+ * and where remote applicants of a remote JobPosting must live. The Nuxt module applies it to a page's JSON-LD, so
+ * `siteJsonLd` and `jobJsonLd` need no `country` (an explicit one wins). An empty `country` changes nothing.
+ */
+export function withCountry<T>(node: T, country: string): T {
+  if (!country || node === null || typeof node !== 'object') return node
+  if (Array.isArray(node)) return node.map((item) => withCountry(item, country)) as T
+  const out: Record<string, unknown> = Object.fromEntries(Object.entries(node).map(([key, value]) => [key, withCountry(value, country)]))
+  if (out['@type'] === 'PostalAddress' && out.addressCountry === undefined) out.addressCountry = country
+  if (out['@type'] === 'JobPosting' && out.jobLocationType === 'TELECOMMUTE' && out.applicantLocationRequirements === undefined) {
+    out.applicantLocationRequirements = { '@type': 'Country', name: country }
+  }
+  return out as T
 }
 
-export function breadcrumbLd(nodes: NavNode[], origin: string): Record<string, unknown> {
+/** The schema.org types `organizationLd` writes. A page whose JSON-LD has a node of one of them is the site's organisation node. */
+export const ORGANIZATION_TYPES = ['Organization', 'LocalBusiness', 'NGO'] as const
+
+export interface OrganizationLdInput {
+  name: string
+  url: string
+  /** `Organization` (default), `LocalBusiness` for a shop or practice, `NGO` for a nonprofit. */
+  type?: (typeof ORGANIZATION_TYPES)[number]
+  legalName?: string
+  /** Absolute URL of the logo. */
+  logo?: string
+  email?: string
+  telephone?: string
+  address?: { street?: string; postalCode?: string; city?: string; country?: string }
+  vatID?: string
+  /** Absolute URLs of the organisation's profiles elsewhere. */
+  sameAs?: string[]
+}
+
+export function organizationLd(o: OrganizationLdInput): Record<string, unknown> {
+  return compact({
+    '@context': 'https://schema.org',
+    '@type': o.type ?? 'Organization',
+    name: o.name,
+    legalName: o.legalName,
+    url: o.url,
+    logo: o.logo,
+    email: o.email,
+    telephone: o.telephone,
+    address: o.address && postalAddressLd(o.address),
+    vatID: o.vatID,
+    sameAs: o.sameAs,
+  })
+}
+
+/**
+ * A schema.org BreadcrumbList from the first step (usually the home page) to the page itself. Each step has a `title`
+ * and a `path` of the site, as the nodes of `useGinkoBreadcrumbs` do; `siteUrl` (`useGinkoSite().url`) makes the
+ * paths absolute.
+ */
+export function breadcrumbJsonLd(steps: readonly Pick<NavNode, 'title' | 'path'>[], siteUrl: string): Record<string, unknown> {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: nodes.map((node, i) => ({ '@type': 'ListItem', position: i + 1, name: node.title, item: origin + node.path })),
+    itemListElement: steps.map((step, i) => ({ '@type': 'ListItem', position: i + 1, name: step.title, item: new URL(step.path, siteUrl).href })),
   }
 }
 
-export function articleLd(o: { title: string; url: string; description?: string; image?: string; published?: string; modified?: string; author?: string; lang: string }): Record<string, unknown> {
+export interface ArticleLdInput {
+  /** `Article` (default) or `BlogPosting` for a post of a blog. */
+  type?: 'Article' | 'BlogPosting'
+  title: string
+  url: string
+  description?: string
+  image?: string
+  published?: string
+  modified?: string
+  /** One author by name, or a list of authors with an optional website each. */
+  author?: string | readonly { name: string; url?: string }[]
+  keywords?: readonly string[]
+  lang: string
+}
+
+export function articleLd(o: ArticleLdInput): Record<string, unknown> {
+  const person = (a: { name: string; url?: string }) => compact({ '@type': 'Person', name: a.name, url: a.url })
   return compact({
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    '@type': o.type ?? 'Article',
     headline: o.title,
     url: o.url,
     description: o.description,
     image: o.image,
     datePublished: o.published,
     dateModified: o.modified,
-    author: o.author === undefined ? undefined : { '@type': 'Person', name: o.author },
+    author: typeof o.author === 'string' ? person({ name: o.author }) : o.author?.map(person),
+    keywords: o.keywords?.join(', '),
     inLanguage: o.lang,
   })
 }

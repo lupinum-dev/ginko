@@ -1,0 +1,8 @@
+[
+  "app/components/people/List.vue",
+  "app/pages/team.vue",
+  "i18n/people/ar.json",
+  "i18n/people/de.json",
+  "i18n/people/en.json",
+  "i18n/people/fr.json"
+]

@@ -22,9 +22,18 @@ export default defineSchema({
     schema: v.any(),
     schemaRev: v.number(),
     contentRev: v.number(),
-    orderRevs: v.record(v.string(), v.number()),
+    /** Unused since entries.move (one order value per move); `sites:dropOrderRevs` unsets it (internals/migrations.md). */
+    orderRevs: v.optional(v.record(v.string(), v.number())),
     entryCount: v.number(),
+    /** Budget bytes (core `entryBytes`) of the live entries, drafts included (SPEC 3). */
     bytes: v.number(),
+    /**
+     * Budget bytes of the removed entries in the trash; capped (SITE_BUDGET.trashBytes). Optional and
+     * `treeBytes` too until `entries:migrateStorage` ran everywhere (internals/migrations.md).
+     */
+    trashBytes: v.optional(v.number()),
+    /** Bytes of the live entries' Markdown trees (`entryTrees`); bounded by SITE_BUDGET.treeBytes so the bundle read stays in Convex's limits. */
+    treeBytes: v.optional(v.number()),
     release: v.union(v.null(), v.object({ commit: v.string(), schemaRev: v.number(), contentRev: v.number(), at: v.number() })),
     /** Vercel bypass token of the site; never returned by a query. */
     refreshToken: v.optional(v.string()),
@@ -39,6 +48,8 @@ export default defineSchema({
      * unknown site and keys stop working. `at` is when `siteDeletion.purge` (the scheduled `job`) removes everything.
      */
     deleting: v.optional(v.object({ at: v.number(), job: v.id('_scheduled_functions') })),
+    /** Set by `seed:importOpen` on an empty site while an operator loads an export folder into the hosted platform; `seed:importDone` clears it. */
+    importOpen: v.optional(v.boolean()),
   }).index('by_slug', ['slug']),
 
   memberships: defineTable({
@@ -77,13 +88,19 @@ export default defineSchema({
     /** Leaf path → locale → print of the main-language value at translation time. */
     prints: v.record(v.string(), v.record(v.string(), v.string())),
     /**
-     * The trees of the Markdown texts in `data` (core `markdownTrees`) as JSON text; written with every
-     * write of `data` (lib/content `storageOf`). The bundle serves them, so a request parses nothing.
-     * JSON text, because a tree may hold keys that a Convex value does not allow. A row without it
-     * (the test fixtures) is parsed per request. After a parser change: `entries.rebuildTrees`.
+     * Legacy: the Markdown trees on the row itself. They live in `entryTrees` now; `entries:migrateStorage` moves
+     * them, and the bundle still reads this until then (internals/migrations.md).
      */
     trees: v.optional(v.string()),
+    /** Budget bytes: core `entryBytes(data, prints)`, the text without its trees. */
     bytes: v.number(),
+    /** UTF-8 bytes of this entry's rows in `entryTrees`; 0 in the trash, which keeps no trees. */
+    treeBytes: v.optional(v.number()),
+    /**
+     * When the entry last changed for the public (ms): a save of a live entry, its creation, going live, a restore.
+     * The bundle's `updatedAt`. A draft's saves leave it alone; release migrations do too.
+     */
+    contentAt: v.optional(v.number()),
     deletedAt: v.optional(v.number()),
     /** Drafts (SPEC 15): absent means live. A draft is stored and counted but never in the public bundle. */
     state: v.optional(v.union(v.literal('draft'), v.literal('live'))),
@@ -91,9 +108,25 @@ export default defineSchema({
     publishAt: v.optional(v.number()),
     /** The scheduled `entries.publishDue` run that belongs to `publishAt`. */
     publishJob: v.optional(v.id('_scheduled_functions')),
+    /**
+     * The staff member (user id) who created the entry through a create task: they may change it later with that
+     * task (lib/access.ts `authorize`). Absent for entries of owners and admins, and for entries made before it existed.
+     */
+    createdBy: v.optional(v.string()),
   })
     .index('by_site_brick_order', ['site', 'brick', 'order'])
-    .index('by_site_brick_deleted', ['site', 'brick', 'deletedAt']),
+    .index('by_site_brick_deleted', ['site', 'brick', 'deletedAt'])
+    .index('by_site_deleted', ['site', 'deletedAt']),
+
+  /**
+   * The trees of an entry's Markdown texts (core `markdownTrees`) as JSON text, split into parts below Convex's 1 MiB
+   * document limit. Derived from `entries.data` and written with it (lib/trees.ts, the only code that touches this table),
+   * so the bundle parses nothing. JSON text, because a tree may hold keys that a Convex value does not allow. An entry
+   * without rows is parsed per request. After a parser change: `entries:migrateStorage`.
+   */
+  entryTrees: defineTable({ site: v.id('sites'), entry: v.id('entries'), part: v.number(), json: v.string() })
+    .index('by_entry', ['entry', 'part'])
+    .index('by_site', ['site']),
 
   slugs: defineTable({
     site: v.id('sites'),
@@ -197,6 +230,8 @@ export default defineSchema({
     mailedAt: v.optional(v.number()),
   })
     .index('by_site', ['site']).index('by_site_status', ['site', 'status']).index('by_site_author', ['site', 'author'])
+    // decidedAt last, so History reads "decided in the last two weeks" as a range; open rows have none and keep creation order.
+    .index('by_site_status_decided', ['site', 'status', 'decidedAt']).index('by_site_author_status_decided', ['site', 'author', 'status', 'decidedAt'])
     .index('by_release', ['release']).index('by_decided', ['decidedAt']),
 
   /** A group of proposals approved together, all or none (SPEC 17). */
@@ -211,7 +246,7 @@ export default defineSchema({
     createdAt: v.number(),
     decidedBy: v.optional(v.string()),
     decidedAt: v.optional(v.number()),
-  }).index('by_site', ['site']).index('by_decided', ['decidedAt']),
+  }).index('by_site_status', ['site', 'status']).index('by_decided', ['decidedAt']),
 
   migrationsApplied: defineTable({
     site: v.id('sites'),
@@ -295,6 +330,8 @@ export default defineSchema({
     scopes: v.array(scope),
     createdBy: v.string(),
     revokedAt: v.optional(v.number()),
+    /** When a CLI route last accepted the key, stamped at most once an hour (routes/key.ts). */
+    lastUsedAt: v.optional(v.number()),
   }).index('by_hash', ['hash']).index('by_site', ['site']),
 
   /** A saved list view of one person (SPEC 4.2 views): a filter and sort of a brick's entry list. Never shared. */
@@ -307,16 +344,21 @@ export default defineSchema({
     query: v.any(),
   }).index('by_site_user_brick', ['site', 'user', 'brick']).index('by_user', ['user']),
 
-  /** Fixed-window request counter per site (bundle endpoint, 600 per minute); `window` = minute since epoch. */
-  rateWindows: defineTable({ site: v.id('sites'), window: v.number(), count: v.number() })
-    .index('by_site_window', ['site', 'window']).index('by_window', ['window']),
+  /**
+   * Fixed-window counters per site; `window` = minute since epoch. No `kind`: bundle requests (600 per minute).
+   * `invite`: invite mails (invites.create), one row per hour, its window the hour's first minute.
+   * `upload`: upload tickets (uploads.prepare), one row per person (`user`) and hour.
+   */
+  rateWindows: defineTable({ site: v.id('sites'), kind: v.optional(v.union(v.literal('invite'), v.literal('upload'))), user: v.optional(v.string()), window: v.number(), count: v.number() })
+    .index('by_site_kind_window', ['site', 'kind', 'window', 'user']).index('by_window', ['window']),
 
   /** A person's own settings, one row each. No row means the defaults: reminders on, German (SPEC 10). `locale` is the language of messages and mail to this person. */
   /**
    * `locale`: the Studio language the person chose; it wins over the browser. `seenLocale`: the browser's language at the
    * last visit without a choice, only for mails (sign-in code, reminders), so they come in a language the person reads.
+   * `name`: how the person's teams see them in history, conflicts, files and keys (`lib/names.ts`); without it, their email.
    */
-  userSettings: defineTable({ user: v.string(), remindByMail: v.boolean(), locale: v.optional(v.string()), seenLocale: v.optional(v.string()) }).index('by_user', ['user']),
+  userSettings: defineTable({ user: v.string(), remindByMail: v.boolean(), locale: v.optional(v.string()), seenLocale: v.optional(v.string()), name: v.optional(v.string()) }).index('by_user', ['user']),
 
   /** One sent reminder mail (SPEC 10): the work week it was for, so a sweep that runs again sends nothing twice. */
   reminders: defineTable({ site: v.id('sites'), brick: v.string(), week: v.string(), user: v.string(), at: v.number() })

@@ -16,6 +16,8 @@ import { ListItem } from '@tiptap/extension-list'
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
 import { NodeSelection, Plugin, PluginKey, Selection, TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state'
 import StarterKit from '@tiptap/starter-kit'
+import type { FileImages } from '../assets.ts'
+import { fileImageView } from './file-images.ts'
 import { MoveExtension } from './move.ts'
 import { pasteExtension, type PasteOptions } from './paste.ts'
 import { SearchExtension } from './search.ts'
@@ -28,6 +30,8 @@ export interface GinkoExtensionsOptions {
   /** What the UI does with pasted or dropped pictures and a pasted bare address (see ./paste.ts). */
   onImageFiles?: PasteOptions['onImageFiles']
   onUrlPasted?: PasteOptions['onUrlPasted']
+  /** The library files of `$file.<id>` pictures: with it, a picture shows its file (the text keeps the reference). */
+  fileImages?: FileImages
 }
 
 export interface ComponentNodeOptions { components?: ComponentRegistry }
@@ -366,7 +370,7 @@ function componentKeys(): AnyExtension {
 
 /** The extensions for exactly what `profile` allows (see `describeProfile` in @lupinum/ginko). */
 export function ginkoExtensions(options: GinkoExtensionsOptions): AnyExtension[] {
-  const { profile, components, onImageFiles, onUrlPasted } = options
+  const { profile, components, onImageFiles, onUrlPasted, fileImages } = options
   const covers = (narrow: MarkdownProfile) => profileCovers(profile, narrow)
   const basic = covers('basic')
   const rich = covers('rich')
@@ -401,7 +405,7 @@ export function ginkoExtensions(options: GinkoExtensionsOptions): AnyExtension[]
   if (rich) {
     extensions.push(
       Table.configure({ resizable: false }), TableRow, TableHeader.extend({ content: 'block*' }), TableCell.extend({ content: 'block*' }),
-      Image.configure({ inline: true, allowBase64: false }),
+      (fileImages ? Image.extend({ addNodeView: () => fileImageView(fileImages) }) : Image).configure({ inline: true, allowBase64: false }),
       MathInline, codeLike('mathBlock'), codeLike('mermaid'), uploadPlaceholders(),
     )
   }

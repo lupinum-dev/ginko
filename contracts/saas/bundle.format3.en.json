@@ -221,7 +221,7 @@
                 [
                   "p",
                   {},
-                  "Verbessert: Ladezeit der Wochenübersicht."
+                  "Improved: loading time of the weekly overview."
                 ]
               ],
               "toc": {
@@ -232,9 +232,7 @@
               }
             }
           },
-          "fallback": [
-            "body"
-          ]
+          "fallback": []
         },
         {
           "id": "cl-2130",
@@ -274,7 +272,7 @@
             "slug": "billing-breaks-correctly",
             "date": "2026-09-30",
             "author": "Lena Ruhland",
-            "description": "Wie Pausen im Stundenzettel stehen, damit die Abrechnung stimmt.",
+            "description": "How breaks go on the timesheet so that payroll adds up.",
             "image": {
               "url": "/media/pausen-dach.jpg",
               "alt": "Tradesman with a tablet on a roof",
@@ -286,20 +284,7 @@
                 [
                   "p",
                   {},
-                  "Pausen gehören in den Stundenzettel, sonst fehlen Minuten in der Abrechnung."
-                ],
-                [
-                  "p",
-                  {},
-                  "Welcher Tarif passt, sehen Sie unter ",
-                  [
-                    "a",
-                    {
-                      "href": "/preise"
-                    },
-                    "Preise"
-                  ],
-                  "."
+                  "Breaks belong on the timesheet, or minutes go missing in payroll."
                 ]
               ],
               "toc": {
@@ -310,85 +295,11 @@
               }
             }
           },
-          "fallback": [
-            "description",
-            "body"
-          ],
+          "fallback": [],
           "urls": {
             "de": "/blog/pausen-richtig-abrechnen",
             "en": "/en/blog/billing-breaks-correctly",
             "fr": "/fr/blog/pauses-decompte-correct"
-          }
-        },
-        {
-          "id": "bl-papier",
-          "data": {
-            "title": "Stundenzettel ohne Papier",
-            "slug": "stundenzettel-ohne-papier",
-            "date": "2026-08-12",
-            "author": "Jonas Keller",
-            "description": "Warum digitale Stundenzettel schneller abgerechnet werden.",
-            "body": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Papier geht verloren. Digitale Zettel kommen direkt in die Abrechnung."
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            }
-          },
-          "fallback": [
-            "title",
-            "slug",
-            "description",
-            "body"
-          ],
-          "urls": {
-            "de": "/blog/stundenzettel-ohne-papier",
-            "en": "/en/blog/stundenzettel-ohne-papier",
-            "fr": "/fr/blog/stundenzettel-ohne-papier"
-          }
-        },
-        {
-          "id": "bl-mindestlohn",
-          "data": {
-            "title": "Minimum wage records in Taktwerk",
-            "slug": "mindestlohn-doku",
-            "date": "2026-07-01",
-            "author": "Lena Ruhland",
-            "description": "Wie Taktwerk Arbeitszeiten für die Dokumentation festhält.",
-            "body": {
-              "nodes": [
-                [
-                  "p",
-                  {},
-                  "Jede Stempelung ist mit Datum und Uhrzeit festgehalten."
-                ]
-              ],
-              "toc": {
-                "title": "",
-                "searchDepth": 3,
-                "depth": 2,
-                "links": []
-              }
-            }
-          },
-          "fallback": [
-            "slug",
-            "description",
-            "body"
-          ],
-          "urls": {
-            "de": "/blog/mindestlohn-doku",
-            "en": "/en/blog/mindestlohn-doku",
-            "fr": "/fr/blog/mindestlohn-doku"
           }
         }
       ]
@@ -448,7 +359,7 @@
                 [
                   "p",
                   {},
-                  "Ja. Stempelungen werden auf dem Handy gespeichert und später übertragen."
+                  "Yes. Clock-ins are saved on the phone and sent later."
                 ]
               ],
               "toc": {
@@ -459,9 +370,7 @@
               }
             }
           },
-          "fallback": [
-            "answer"
-          ]
+          "fallback": []
         },
         {
           "id": "faq-test",

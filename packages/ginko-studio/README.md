@@ -25,13 +25,18 @@ whole app: do not extend a website with this layer. For the Convex side and the 
 ## Environment variables
 
 Read at build and start time by the host. In development, `pnpm dev` reads `packages/ginko-server/.env.local`
-(the file that `convex dev` writes). A production build stops when `SITE_URL` or `CONVEX_SITE_URL` is missing;
-development uses the local defaults.
+(the file that `convex dev` writes). A production build stops when `SITE_URL`, the Convex URL or the Convex site URL
+is missing; development uses the local defaults. On Vercel, set them in the **Production** environment (the build
+reads them too); the production build also needs `CONVEX_DEPLOY_KEY`. Preview builds need their own values for a
+staging deployment, or preview builds turned off. See the
+[`ginko-server` README](../ginko-server/README.md#deploy-the-platform-lupinum-operators).
 
 | Name | Purpose |
 | --- | --- |
-| `CONVEX_URL` (or `NUXT_PUBLIC_CONVEX_URL`) | Convex deployment URL. |
-| `CONVEX_SITE_URL` | Convex HTTP actions URL. Sign-in goes there; `/bundle/**` is proxied to it. Development default `http://127.0.0.1:3211` (the local backend). |
+| `NUXT_PUBLIC_CONVEX_URL` (or `CONVEX_URL`) | Convex deployment URL (`https://<deployment>.convex.cloud`). Development default `http://127.0.0.1:3210` (the local backend). |
+| `NUXT_PUBLIC_CONVEX_SITE_URL` (or `CONVEX_SITE_URL`) | Convex HTTP actions URL (`https://<deployment>.convex.site`). Sign-in goes there; `/bundle/**` is proxied to it. Development default `http://127.0.0.1:3211`. |
 | `SITE_URL` | Public origin of this UI. It must equal `SITE_URL` on the Convex deployment. Development default `http://localhost:3100`. |
 | `BCN_AUTH_TRUSTED_CLIENT_IP_HEADER` | Required outside local development. Header that your host sets to the client IP (`x-real-ip` on Vercel). |
 | `BCN_AUTH_PROXY_IP_SECRET` | Required outside local development. The same secret as on the Convex deployment. |
+
+Prefer the `NUXT_PUBLIC_*` names on a host; when both names are set, they win.

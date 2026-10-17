@@ -1,0 +1,8 @@
+[
+  "app/bricks/services.ts",
+  "app/composables/useServices.ts",
+  "app/pages/services/[slug].vue",
+  "app/pages/services/index.vue",
+  "i18n/services/de.json",
+  "i18n/services/en.json"
+]

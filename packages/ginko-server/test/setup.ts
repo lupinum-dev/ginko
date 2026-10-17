@@ -81,7 +81,7 @@ export async function setup() {
     })
   }
   const seeded = await t.run(async (ctx) => {
-    const blank = { url: siteSchema.url, previewOrigins: ['http://localhost:3100'], schema: siteSchema, schemaRev: 1, contentRev: 1, orderRevs: {}, entryCount: 0, bytes: 0, release: null }
+    const blank = { url: siteSchema.url, previewOrigins: ['http://localhost:3100'], schema: siteSchema, schemaRev: 1, contentRev: 1, entryCount: 0, bytes: 0, release: null }
     const site = await ctx.db.insert('sites', { ...blank, slug: 'restaurant', name: siteSchema.name })
     const other = await ctx.db.insert('sites', { ...blank, slug: 'andere', name: 'Andere Seite' })
     await ctx.db.insert('admins', { user: people.admin })
@@ -92,10 +92,8 @@ export async function setup() {
     const entries: Record<string, Id<'entries'>> = {}
     let bytes = 0
     let count = 0
-    const orderRevs: Record<string, number> = {}
     for (const [brick, rows] of Object.entries(corpus as Record<string, CorpusEntry[]>)) {
       const def = siteSchema.bricks[brick]!
-      orderRevs[brick] = 0
       for (const [index, row] of rows.entries()) {
         const size = new TextEncoder().encode(JSON.stringify(row.data)).byteLength
         const fieldRevs = Object.fromEntries(Object.keys(def.fields).map((f) => [f, 1]))
@@ -115,7 +113,7 @@ export async function setup() {
         }
       }
     }
-    await ctx.db.patch(site, { bytes, entryCount: count, orderRevs })
+    await ctx.db.patch(site, { bytes, entryCount: count })
     return { site, other, entries }
   })
   return {
@@ -138,8 +136,28 @@ export async function revokeSession(t: Backend, person: Person) {
   await t.mutation(components.betterAuth.adapter.deleteOne, { model: 'session', where: [{ field: 'id', value: sessionIdOf(people[person]) }] })
 }
 
+/** `paginationOpts` of a paginated query's first page, as `useConvexPaginatedQuery` asks for it. */
+export const firstPage = { numItems: 50, cursor: null }
+
 /** A fresh op id per user action. */
 export const opId = () => crypto.randomUUID()
+
+/**
+ * Every exported public query, mutation and action of convex/, as `module.name`, sorted. The access tests compare their
+ * call lists with it, so a new public function cannot ship without a probe. `*.config.ts` registers no function.
+ */
+export async function publicFunctions(): Promise<string[]> {
+  const out: string[] = []
+  for (const [path, load] of Object.entries(modules)) {
+    if (path.endsWith('.config.ts')) continue
+    const module = path.slice('../convex/'.length).replace(/\.[jt]s$/, '')
+    for (const [name, value] of Object.entries(await load() as Record<string, unknown>)) {
+      const fn = value as { isPublic?: boolean; isQuery?: boolean; isMutation?: boolean; isAction?: boolean }
+      if (typeof value === 'function' && fn.isPublic && (fn.isQuery || fn.isMutation || fn.isAction)) out.push(`${module}.${name}`)
+    }
+  }
+  return out.sort()
+}
 
 /** Reads the ConvexError data of a rejected call: `{ code, message, details? }`. */
 export async function errorOf(call: Promise<unknown>): Promise<{ code: string; message: string; details?: unknown }> {

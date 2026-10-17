@@ -1,0 +1,31 @@
+{
+  "home": {
+    "call": "Prenotazioni: {phone}",
+    "orEmail": "Oppure scriveteci:",
+    "menu": "Vedi il menù",
+    "lunch": "Il pranzo di oggi",
+    "lunchTomorrow": "Il pranzo di domani",
+    "lunchWeek": "Il pranzo della settimana",
+    "dishes": "Dal menù",
+    "dishesLead": "Classici viennesi, cucinati come piace mangiarli a noi.",
+    "fullMenu": "Tutto il menù",
+    "gallery": "Galleria",
+    "galleryLead": "La sala, il giardino, la cucina e alcuni dei nostri piatti.",
+    "galleryEmpty": "Ancora nessuna foto",
+    "allPhotos": "Tutte le foto",
+    "visit": "Venite a trovarci",
+    "hours": "Orari di apertura",
+    "address": "Indirizzo",
+    "maps": "Apri nella mappa"
+  },
+  "events": {
+    "lead": "Serate del vino, corsi di cucina e altro nel nostro locale."
+  },
+  "reservations": {
+    "call": "Chiamateci al {phone}",
+    "email": "Scriveteci un’e-mail"
+  },
+  "menu": {
+    "lead": "Classici viennesi dalla nostra cucina. Chiedeteci i piatti del giorno."
+  }
+}

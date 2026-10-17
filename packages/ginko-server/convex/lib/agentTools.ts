@@ -3,7 +3,8 @@
 // A tool is listed only when the person may use it; agent.ts checks the same list again at call time.
 import type { Brick, CollectionBrick, Json, Task } from '@lupinum/ginko'
 import { labelOf, type Schema } from '@lupinum/ginko/internal'
-import type { Actor } from './access'
+import type { Doc } from '../_generated/dataModel'
+import { createdBy, type Actor } from './access'
 
 export const HISTORY_MAX = 50
 export const SEARCH_MAX = 20
@@ -34,14 +35,21 @@ export function describeTask(brick: Brick, task: Task, main: string): string {
   return `${labelOf(task.label, main, main)} (${labelOf(brick.label, main, main)}). ${what}`
 }
 
-/** A granted task of the brick and kind for staff (admins and owners need none), e.g. to undo through the door. */
-export function taskFor(actor: Actor, brick: string, kind: Task['kind'], fields: readonly string[] = []): string | undefined {
+/**
+ * A granted task of the brick and kind for staff (admins and owners need none), e.g. to undo through the door. For a
+ * change of an entry the person created (`entry`), their create task of the brick serves when no edit task covers it
+ * (lib/access.ts `authorize`).
+ */
+export function taskFor(actor: Actor, brick: string, kind: Task['kind'], fields: readonly string[] = [], entry?: Pick<Doc<'entries'>, 'createdBy'> | null): string | undefined {
   const covers = (task: Task) => task.kind === kind && (task.kind !== 'edit' || fields.every((f) => task.fields.includes(f)))
-  return taskTools(actor).find((t) => t.brick === brick && covers(t.task))?.ref
+  const tools = taskTools(actor).filter((t) => t.brick === brick)
+  const found = tools.find((t) => covers(t.task))?.ref
+  if (found || kind !== 'edit' || !createdBy(actor, entry)) return found
+  return tools.find((t) => t.task.kind === 'create')?.ref
 }
 
-/** Whether the person changes existing entries at all: owners and admins always, staff with an `edit` task. */
-export const mayEdit = (actor: Actor): boolean => actor.role !== 'staff' || taskTools(actor).some((t) => t.task.kind === 'edit')
+/** Whether the person changes existing entries at all: owners and admins always, staff with an `edit` task, or a `create` task for the entries they made. */
+export const mayEdit = (actor: Actor): boolean => actor.role !== 'staff' || taskTools(actor).some((t) => t.task.kind === 'edit' || t.task.kind === 'create')
 
 /** The collections whose entries start as drafts and where this person may create entries. */
 export function draftBricks(actor: Actor): string[] {
@@ -54,7 +62,25 @@ export function draftBricks(actor: Actor): string[] {
 /** `propose` on every write tool: "show me first". */
 export const PROPOSE = { type: 'boolean', description: 'true: do not change anything now; show the change to the person as a proposal they approve.' } as const
 
-export interface ToolDef { name: string; description: string; inputSchema: Json }
+/** `request_id` on every write tool: a retry key of the assistant's choice (agent.call). With `mcp-` in front it is an op id, so at most 60 characters. */
+export const REQUEST_ID = {
+  type: 'string', pattern: '^[A-Za-z0-9_-]{1,60}$',
+  description: 'Optional. Send the same value when you retry this call, so it runs only once. Letters, digits, _ and -, at most 60.',
+} as const
+
+/**
+ * MCP tool hints (annotations) for the host, which may ask the person before a destructive call. In MCP,
+ * destructiveHint false means "only additive updates": that holds for a new entry or draft only. Any other write may
+ * overwrite a value or, as an undo of a create, remove an entry, as in the library's own door.
+ */
+export interface ToolHints { readOnlyHint: boolean; destructiveHint?: boolean; openWorldHint: false }
+const READS: ToolHints = { readOnlyHint: true, openWorldHint: false }
+const ADDS: ToolHints = { readOnlyHint: false, destructiveHint: false, openWorldHint: false }
+const WRITES: ToolHints = { readOnlyHint: false, destructiveHint: true, openWorldHint: false }
+/** The hints of a task tool: only a create task is additive. */
+export const taskHints = (task: Task): ToolHints => (task.kind === 'create' ? ADDS : WRITES)
+
+export interface ToolDef { name: string; description: string; inputSchema: Json; annotations: ToolHints }
 
 const object = (properties: Record<string, Json>, required: string[] = []): Json => ({ type: 'object', properties, required, additionalProperties: false })
 
@@ -70,12 +96,15 @@ export function fixedTools(actor: Actor): ToolDef[] {
       name: 'ginko_overview',
       description: 'Overview: the website, its languages, its bricks (content areas) and the tasks you may run. Also says whether your changes wait for approval before they go live.',
       inputSchema: object({}),
+      annotations: READS,
     },
     {
       name: 'ginko_read',
       description: 'Reads the published content of a brick as the website shows it. Collections include the entry IDs. Drafts are not in it. '
-        + 'For another language, "fallback" lists the texts that are missing or outdated, and "stale" the outdated translations among them.',
+        + 'For another language, "fallback" lists the texts shown in the main language because their translation is missing; "stale" lists outdated translations, which the website still shows until they are translated again or confirmed. '
+        + 'By default, an entry with its own page is left out of a language until its required texts are translated there; read the main language to find it.',
       inputSchema: object({ brick: { type: 'string', description: 'Key of the brick (from ginko_overview)' }, locale: { type: 'string', description: `Language; default is the main language (${main})` } }, ['brick']),
+      annotations: READS,
     },
     {
       name: 'ginko_search',
@@ -85,33 +114,40 @@ export function fixedTools(actor: Actor): ToolDef[] {
         brick: { type: 'string', description: 'Search only in this brick' },
         limit: { type: 'integer', minimum: 1, maximum: SEARCH_MAX, description: `At most this many hits, default 10` },
       }, ['query']),
+      annotations: READS,
     },
     {
       name: 'ginko_history',
       description: 'The latest changes to the website, newest first, with the ID that ginko_undo, ginko_version_at and ginko_revert take.',
       inputSchema: object({ limit: { type: 'integer', minimum: 1, maximum: HISTORY_MAX } }),
+      annotations: READS,
     },
     {
       name: 'ginko_undo',
       description: 'Takes back one change, like the undo button in the platform. The ID comes from the answer of a task or from ginko_history.',
-      inputSchema: object({ change }, ['change']),
+      inputSchema: object({ change, request_id: REQUEST_ID }, ['change']),
+      annotations: WRITES,
     },
     {
       name: 'ginko_version_at',
-      description: 'Shows how an entry looked right after an earlier change (fields in storage format). Changes nothing. "fields" names the fields that changed since.',
+      description: 'Shows how an entry looked right after an earlier change (fields in storage format). Changes nothing. "fields" names the fields that changed since; "diff" lists what ginko_revert would change, with now as "before" and that version as "after" (empty: it is the current state).',
       inputSchema: object({ entry, change }, ['entry', 'change']),
+      annotations: READS,
     },
   ]
   if (mayEdit(actor)) {
     tools.push({
       name: 'ginko_revert',
       description: 'Sets an entry back to its state after an earlier change (only the fields that changed since). This is a new change and ginko_undo can take it back. Look at ginko_version_at first.',
-      inputSchema: object({ entry, change, propose: PROPOSE }, ['entry', 'change']),
+      inputSchema: object({ entry, change, propose: PROPOSE, request_id: REQUEST_ID }, ['entry', 'change']),
+      annotations: WRITES,
     })
     if (foreign.length) {
       tools.push({
         name: 'ginko_translate',
-        description: `Writes translations of an entry into a foreign language (${foreign.join(', ')}); you change the main language ${main} with the tasks. `
+        // Not every entry has a task that changes its main language (events have add and remove only; the creator rule
+        // reaches only translate, revert and undo here), so the text promises no such path.
+        description: `Writes translations of an entry into a foreign language (${foreign.join(', ')}). The main language ${main} changes only through a task that changes entries; where there is none, the person changes it in the platform. `
           + 'Only translatable text fields, each with the text in the target language. "confirm" names fields whose existing translation may stay although the main text changed.',
         inputSchema: object({
           entry,
@@ -119,7 +155,9 @@ export function fixedTools(actor: Actor): ToolDef[] {
           fields: { type: 'object', description: 'Field name → translated text, e.g. { "name": "Pumpkin soup" }' },
           confirm: { type: 'array', items: { type: 'string' }, description: 'Field names whose translation stays valid as it is' },
           propose: PROPOSE,
+          request_id: REQUEST_ID,
         }, ['entry', 'locale']),
+        annotations: WRITES,
       })
     }
   }
@@ -134,24 +172,29 @@ export function fixedTools(actor: Actor): ToolDef[] {
       name: 'ginko_draft',
       description: 'Creates a new entry as a draft. A draft is not on the website; the person publishes it in the platform. '
         + `Values as in the tasks: texts in ${main} as plain text, money in whole currency units (19.90), lists as a list of objects. Fields per brick: ${lines.join('; ')}.`,
-      inputSchema: object({ brick: { type: 'string', enum: drafts }, fields: { type: 'object', description: 'Field name → value' } }, ['brick', 'fields']),
+      inputSchema: object({ brick: { type: 'string', enum: drafts }, fields: { type: 'object', description: 'Field name → value' }, request_id: REQUEST_ID }, ['brick', 'fields']),
+      annotations: ADDS,
     })
   }
   tools.push(
     {
       name: 'ginko_file_usage',
-      description: 'Shows where a file (image or PDF) is used: entry, brick, label, paths, and whether an image lacks its description.',
+      description: 'Shows where a file (image or PDF) is used: entry, brick, label, paths, and whether an image lacks its description. '
+        + 'A Markdown text names a file by its ID as $file.<ID>, e.g. ![Short description]($file.<ID>) for an image; never write a storage address.',
       inputSchema: object({ file: { type: 'string', description: 'ID of the file' } }, ['file']),
+      annotations: READS,
     },
     {
       name: 'ginko_check_links',
       description: "Checks the links in the texts of the website: broken internal links and unsafe links. Returns entry, field, link and reason. Ginko does not know the files in the website's public folder; links to them are reported as unknown.",
       inputSchema: object({ brick: { type: 'string', description: 'Report only this brick' } }),
+      annotations: READS,
     },
     {
       name: 'ginko_proposals',
       description: 'Your own proposals with their state and reason (open, scheduled, applied, rejected, stale, withdrawn). Use it to tell the person what still waits for approval.',
       inputSchema: object({ status: { type: 'string', enum: ['open', 'scheduled', 'applied', 'rejected', 'stale', 'withdrawn'] } }),
+      annotations: READS,
     },
   )
   return tools

@@ -39,8 +39,17 @@ describe('todayState', () => {
 describe('exceptionsAhead', () => {
   it('keeps running and near exceptions, drops far and past ones', () => {
     const past: Exception = { _id: 'x0', when: { from: '2026-09-01', to: '2026-09-02' }, reason: 'vorbei', closed: true }
-    expect(exceptionsAhead([winter, holiday, past], '2026-10-09', 60).map((e) => e._id)).toEqual(['x1'])
-    expect(exceptionsAhead([winter, holiday], '2026-12-26', 60).map((e) => e._id)).toEqual(['x2'])
+    expect(exceptionsAhead({ exceptions: [winter, holiday, past] }, '2026-10-09', 60).map((e) => e._id)).toEqual(['x1'])
+    expect(exceptionsAhead({ exceptions: [winter, holiday] }, '2026-12-26', 60).map((e) => e._id)).toEqual(['x2'])
+  })
+
+  // Wrong behaviour caught: a day set in "Geschlossen am" for tomorrow was on the website only once it was today.
+  it.each([
+    ['tomorrow is listed, with its note and the note\'s field', '2026-10-10', [{ _id: 'closedOn', when: { from: '2026-10-10', to: '2026-10-10' }, reason: 'Betriebsversammlung', closed: true, field: 'closedNote' }, { ...holiday, field: 'exceptions.x1.reason' }]],
+    ['today is the board\'s state, not listed', '2026-10-09', [{ ...holiday, field: 'exceptions.x1.reason' }]],
+    ['beyond the 60 days it waits', '2026-12-20', [{ ...holiday, field: 'exceptions.x1.reason' }]],
+  ])('closedOn: %s', (_name, closedOn, expected) => {
+    expect(exceptionsAhead({ exceptions: [holiday], closedOn, closedNote: 'Betriebsversammlung' }, '2026-10-09', 60)).toEqual(expected)
   })
 })
 

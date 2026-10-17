@@ -1,7 +1,8 @@
 {
   "nav": {
-    "quick": "Schnell ändern",
-    "all": "Alles bearbeiten",
+    "quick": "Heute",
+    "all": "Inhalte",
+    "review": "Prüfen",
     "files": "Dateien",
     "history": "Verlauf",
     "team": "Team",
@@ -12,38 +13,41 @@
     "skip": "Zum Inhalt springen",
     "views": "Ansichten",
     "areas": "Bereiche",
-    "list": "Liste",
     "signOut": "Abmelden",
+    "signOutDrafts": "In diesem Browser sind noch ungespeicherte Änderungen. Beim Abmelden werden sie gelöscht. Trotzdem abmelden?",
+    "signOutFailed": "Abmelden hat nicht geklappt. Bitte versuche es noch einmal.",
+    "signOutOthers": "Auf anderen Geräten abmelden",
+    "signedOutOthers": "Auf allen anderen Geräten abgemeldet. Hier bleibst du angemeldet.",
+    "signOutOthersFailed": "Die anderen Geräte konnten nicht abgemeldet werden. Bitte versuche es noch einmal.",
     "signIn": "Anmelden",
-    "signedOutTitle": "Du bist abgemeldet.",
-    "signedOutText": "Was hier noch nicht gespeichert war, ist nicht mehr da. Melde dich wieder an, dann geht es hier weiter.",
-    "noAccessHelp": "Wenn du hier etwas ändern sollst, frag die Inhaberin, ob sie dich (wieder) einlädt.",
-    "toReview": "Zu prüfen ({count})",
-    "short": {
-      "quick": "Heute",
-      "all": "Inhalte",
-      "review": "Prüfen",
-      "files": "Dateien",
-      "history": "Verlauf",
-      "team": "Team",
-      "ai": "KI"
-    },
+    "noAccessHelp": "Brauchst du hier Zugang, frag die Person, die dich eingeladen hat.",
+    "noAccessUnsaved": "Was du hier noch nicht gespeichert hattest, ist nicht auf der Website. Wirst du wieder eingeladen, bekommst du es in diesem Browser zurück.",
     "more": "Mehr",
     "account": "Konto",
-    "toReviewCount": "{count} zu prüfen"
+    "toReviewCount": "{count} zu prüfen",
+    "translations": "Übersetzungen",
+    "translationsOpen": "{count} offen"
   },
   "sites": {
     "title": "Meine Seiten",
     "invitedTo": "Einladung zu <site>{site}</site> als {role}",
     "accept": "Einladung annehmen",
-    "empty": "Du hast noch keinen Zugang zu einer Seite. Bitte frag nach einer Einladung.",
+    "name": "Dein Name",
+    "nameHint": "So sieht dein Team, wer etwas geändert hat.",
+    "nameSaved": "Name gespeichert.",
+    "empty": "Du hast zurzeit keinen Zugang zu einer Website. Brauchst du einen, frag die Person, die dich eingeladen hat.",
+    "search": "Seite suchen",
+    "recent": "Zuletzt geöffnet",
+    "all": "Alle Seiten",
+    "noMatch": "Keine Seite passt zu „{query}“.",
+    "deleting": "Wird gelöscht",
     "role": {
       "admin": "Admin",
       "owner": "Inhaber",
       "staff": "Mitarbeiter"
     },
     "remindTitle": "Erinnerungen per E-Mail",
-    "remindText": "Am Abend vor Wochenbeginn eine kurze Mail, wenn für nächste Woche noch etwas fehlt, zum Beispiel das Mittagsmenü.",
+    "remindText": "Am Abend vor Wochenbeginn eine kurze Mail, wenn für die nächste Woche noch etwas fehlt.",
     "language": "Sprache",
     "deleteAccount": {
       "title": "Konto löschen",
@@ -71,24 +75,41 @@
     "otherEmail": "Andere E-Mail"
   },
   "problem": {
-    "offline": "Keine Verbindung. Deine Eingaben sind noch da.",
     "generic": "Das hat nicht geklappt. Deine Eingaben sind noch da. Bitte noch einmal versuchen."
+  },
+  "errors": {
+    "signedOut": "Du wurdest abgemeldet. Melde dich wieder an und versuche es noch einmal.",
+    "notFound": {
+      "title": "Diese Adresse gibt es im Studio nicht.",
+      "text": "Vielleicht ist der Link alt oder hat einen Tippfehler."
+    },
+    "other": {
+      "title": "Hier ist etwas schiefgelaufen.",
+      "text": "Lade die Seite neu. Was du gespeichert hast, ist nicht verloren."
+    },
+    "reload": "Neu laden"
   },
   "invite": {
     "titleShort": "Einladung",
     "title": "Einladung annehmen",
+    "heading": "Einladung zu {site}",
     "lead": "<site>{site}</site> lädt dich als {role} ein.",
     "role": {
       "owner": "Inhaber",
       "staff": "Mitarbeiter",
       "admin": "Admin"
     },
+    "rightsOwner": "Als Inhaber kannst du alles ändern und das Team verwalten.",
+    "rightsStaff": "Du darfst:",
+    "rightsNone": "Welche Bereiche du ändern darfst, wird noch festgelegt.",
+    "signInHint": "Melde dich mit <email>{email}</email> an. Wir schicken dir einen Code, ein Passwort brauchst du nicht.",
     "otherEmail": "Diese Einladung gilt für eine andere E-Mail-Adresse. Melde dich mit dieser an.",
     "expired": "Diese Einladung ist abgelaufen oder schon benutzt. Bitte frag nach einer neuen.",
-    "accepting": "Nimmt an …"
+    "accepting": "Nimmt an …",
+    "nameHint": "Freiwillig. So sieht dein Team, wer etwas geändert hat."
   },
   "entry": {
-    "newEntry": "Neuer Eintrag",
+    "newIn": "Neu in {brick}",
     "more": "Mehr",
     "removeEntry": "Eintrag entfernen …",
     "language": "Sprache",
@@ -100,10 +121,19 @@
     "saveBeforeLanguage": "Erst speichern, dann die Sprache wechseln.",
     "groupHasIssues": "Fehler in diesem Bereich",
     "foreignHint": "Hier stehen nur Texte, die übersetzt werden. Alle anderen Felder gelten für jede Sprache.",
-    "twin": "Diesen Eintrag gibt es schon: „{title}“. Speichern legt einen zweiten an.",
+    "translationState": {
+      "hidden": "Auf {lang} ist diese Seite noch nicht online. Sie erscheint, sobald die markierten Texte übersetzt sind.",
+      "mainPage": "Auf {lang} hat diese Seite noch keine eigene Fassung. Bis dahin verlinkt die Website auf die Seite auf {main}.",
+      "missing": "Wo eine Übersetzung fehlt, zeigt die Website auf {lang} den Text auf {main}.",
+      "outdated": "Wo der Text auf {main} geändert wurde, zeigt die Website auf {lang} noch die alte Übersetzung."
+    },
+    "twin": "„{title}“ gibt es schon. Speichern legt einen zweiten Eintrag an.",
+    "weekFixed": "Diese Aufgabe gilt immer für die laufende Woche.",
     "saveContinues": "Speichern läuft weiter. Ohne Verbindung wird es übernommen, sobald sie wieder da ist.",
     "notSaved": "Nicht gespeichert: {reason}",
     "notSavedReopen": "Nicht gespeichert. Bitte die Aufgabe noch einmal öffnen.",
+    "readOnly": "Diesen Eintrag kannst du nicht ändern. Deine Rechte in „{area}“: {tasks}. Muss hier etwas geändert werden, frag die Person, die dich eingeladen hat.",
+    "readOnlyOthers": "Diesen Eintrag kannst du nicht ändern: Hier änderst du nur Einträge, die du selbst angelegt hast. Muss hier etwas geändert werden, frag die Person, die dich eingeladen hat.",
     "status": {
       "online": "Online",
       "onlineFrom": "Online ab {when}",
@@ -111,21 +141,41 @@
     },
     "save": {
       "waiting": "Wartet auf Verbindung …",
+      "offlineKept": "Keine Verbindung. Deine Eingaben sind in diesem Browser gesichert. Lass diese Seite offen, dann wird gespeichert, sobald du wieder online bist.",
       "saving": "Speichert …",
       "draft": "Entwurf speichern",
       "save": "Speichern"
     },
     "conflict": {
       "changed": "Inzwischen hat jemand {fields} geändert.",
+      "changedBy": "{who} hat inzwischen {fields} geändert.",
+      "changedByYou": "Du hast {fields} inzwischen in einem anderen Fenster geändert.",
       "thisEntry": "diesen Eintrag",
       "item": "{field}: jetzt gespeichert „{stored}“, deine Eingabe „{mine}“",
       "keepMine": "Meine Eingaben speichern",
-      "takeTheirs": "Neuen Stand übernehmen"
+      "takeTheirs": "Neuen Stand übernehmen",
+      "keepBoth": "Beides behalten",
+      "someone": "Jemand",
+      "row": {
+        "youAdded": "Du hast „{row}“ hinzugefügt",
+        "youRemoved": "Du hast „{row}“ entfernt",
+        "youChanged": "Du hast „{row}“ geändert",
+        "theyAdded": "{who} hat „{row}“ hinzugefügt",
+        "theyRemoved": "{who} hat „{row}“ entfernt",
+        "theyChanged": "{who} hat „{row}“ geändert",
+        "otherWindowAdded": "In einem anderen Fenster hast du „{row}“ hinzugefügt",
+        "otherWindowRemoved": "In einem anderen Fenster hast du „{row}“ entfernt",
+        "otherWindowChanged": "In einem anderen Fenster hast du „{row}“ geändert",
+        "clash": "„{row}“ habt ihr beide geändert, bitte eine Version wählen.",
+        "clashYou": "„{row}“ hast du in beiden Fenstern geändert, bitte eine Version wählen.",
+        "untitled": "Zeile {n}"
+      }
     },
     "publish": {
       "open": "Veröffentlichen …",
       "changeSchedule": "Zeitplan ändern …",
       "whenOnline": "Wann soll „{title}“ online gehen?",
+      "whenOnlineUntitled": "Wann soll der Eintrag online gehen?",
       "now": "Jetzt",
       "later": "Online ab …",
       "dateTime": "Datum und Uhrzeit",
@@ -133,7 +183,16 @@
       "publishNow": "Jetzt veröffentlichen",
       "schedule": "Planen",
       "clearSchedule": "Zeitplan aufheben",
-      "futureTime": "Bitte einen Zeitpunkt in der Zukunft wählen."
+      "futureTime": "Bitte einen Zeitpunkt in der Zukunft wählen.",
+      "timeTwice": "Diese Uhrzeit gibt es an diesem Tag zweimal, weil die Uhr zurückgestellt wird. Welche ist gemeint?",
+      "timeTwiceFirst": "Das erste Mal ({time})",
+      "timeTwiceSecond": "Das zweite Mal ({time})",
+      "timePickOne": "Bitte wählen, welche der beiden Uhrzeiten gemeint ist.",
+      "timeMissing": "Diese Uhrzeit gibt es an diesem Tag nicht, weil die Uhr vorgestellt wird. Bitte eine andere Uhrzeit wählen.",
+      "go": "Veröffentlichen",
+      "review": "Zur Prüfung senden",
+      "asDraft": "Als Entwurf speichern",
+      "laterOpen": "Später veröffentlichen"
     },
     "unpublish": {
       "button": "Zurückziehen",
@@ -144,17 +203,40 @@
       "close": "Vorschau schließen",
       "frameTitle": "Vorschau der Website",
       "stuck": "Die Vorschau lädt nicht. Speichern funktioniert trotzdem wie gewohnt.",
+      "needsTitle": "Die Vorschau zeigt die Seite, sobald „{field}“ ausgefüllt ist.",
+      "untranslated": "Noch nicht auf {language} übersetzt. Bis dahin ist der Eintrag auf der Website in dieser Sprache nicht zu sehen.",
+      "untranslatedListed": "Noch nicht auf {language} übersetzt. Bis dahin hat der Eintrag in dieser Sprache keine eigene Seite. Listen zeigen ihn auf {main}.",
       "openSite": "Website öffnen"
     },
     "remove": {
       "title": "Eintrag entfernen",
-      "text": "„{title}“ wird von der Website entfernt. Wiederherstellen geht 30 Tage lang.",
-      "confirm": "Entfernen"
+      "text": "„{title}“ geht von der Website. Du findest es 30 Tage lang im Papierkorb und kannst es dort wiederherstellen.",
+      "textDraft": "„{title}“ kommt in den Papierkorb. Du kannst es 30 Tage lang wiederherstellen.",
+      "confirm": "Entfernen",
+      "usedIn": "„{title}“ wird an {count, plural, one {einer Stelle} other {# Stellen}} verwendet. Diese bleiben online, zeigen „{title}“ aber nicht mehr. Du kannst es 30 Tage lang aus dem Papierkorb wiederherstellen.",
+      "confirmAnyway": "Trotzdem entfernen",
+      "checking": "Prüft, wo der Eintrag verwendet wird …",
+      "trashFull": "Der Papierkorb ist voll. Wenn du entfernst, werden diese älteren Einträge endgültig gelöscht:"
     },
     "discard": {
       "question": "Änderungen verwerfen?",
       "confirm": "Verwerfen",
       "keepEditing": "Weiter bearbeiten"
+    },
+    "gone": {
+      "text": "Jemand hat diesen Eintrag entfernt. Deine Änderungen sind noch da.",
+      "textClean": "Jemand hat diesen Eintrag entfernt.",
+      "restoreAndSave": "Wiederherstellen und speichern",
+      "restore": "Wiederherstellen",
+      "saveAsNew": "Als neuen Eintrag speichern",
+      "discard": "Verwerfen",
+      "noRights": "Deine Änderungen bleiben auf diesem Gerät. Bitte die Inhaber der Website, den Eintrag wiederherzustellen, und öffne ihn dann wieder."
+    },
+    "localDraft": {
+      "offer": "Ungespeicherte Änderungen vom {time} wiederherstellen?",
+      "restore": "Wiederherstellen",
+      "discard": "Nicht wiederherstellen",
+      "restoredConflict": "Wiederhergestellt. Inzwischen hat jemand {fields} geändert, bitte unten entscheiden."
     },
     "pick": {
       "search": "Suchen",
@@ -171,16 +253,32 @@
     "toast": {
       "close": "Meldung schließen",
       "region": "Meldungen"
-    }
+    },
+    "size": {
+      "near": "Dieser Eintrag belegt {used} von {limit}.",
+      "over": "Dieser Eintrag ist zu groß: {used} von {limit}. Kürze ihn um etwa {over}, dann lässt er sich speichern."
+    },
+    "oldWeek": "Das ist noch die Woche ab {date}. Prüfe jeden Tag, bevor du speicherst.",
+    "copyThisWeek": "Von dieser Woche übernehmen",
+    "pending": "Wartet auf Freigabe, eingereicht {when}. Wenn du speicherst, ersetzt das deinen Vorschlag.",
+    "pendingStale": "Dein Vorschlag (eingereicht {when}) passt nicht mehr: Inzwischen hat jemand das geändert. Hier siehst du den aktuellen Stand.",
+    "pendingSame": "Wartet auf Freigabe, eingereicht {when}. Deine Eingaben sind wieder wie auf der Website: Um den Vorschlag zu verwerfen, zieh ihn zurück.",
+    "reopenProposal": "Deinen Vorschlag wieder öffnen",
+    "shrunk": {
+      "text": "„{field}“ ist viel kürzer als vorher: {after} statt {before} Zeichen.",
+      "files": "{count, plural, one {# Datei} other {# Dateien}} weniger."
+    },
+    "groupHasGaps": "Übersetzung fehlt oder ist veraltet"
   },
   "site": {
+    "zoneNote": "Alle Zeiten in der Zeitzone der Website ({zone}).",
     "title": {
-      "quick": "{site} · Schnell ändern",
-      "all": "{site} · Alles bearbeiten",
+      "quick": "{site} · Heute",
+      "all": "{site} · Inhalte",
       "team": "{site} · Team",
       "ai": "{site} · Mit KI verbinden",
       "history": "{site} · Verlauf",
-      "area": "{area} · Alles bearbeiten"
+      "area": "{area} · Inhalte"
     },
     "fallback": {
       "site": "Seite",
@@ -204,37 +302,55 @@
     "status": {
       "draft": "Entwurf",
       "onlineFrom": "Online ab {when}",
-      "expired": "abgelaufen",
+      "expired": "abgelaufen am {date}",
       "ended": "vorbei",
       "until": "bis {date}",
       "untilToday": "bis heute",
       "noEnd": "ohne Ablauf"
     },
     "quick": {
-      "nothingForYou": "Für dich gibt es hier keine Aufgaben. Frag die Inhaberin nach den passenden Rechten.",
+      "nothingForYou": "Für dich gibt es hier noch keine Aufgaben. Frag die Person, die dich eingeladen hat, nach den passenden Rechten.",
       "todayDone": "<task>{task}</task> ist für heute eingetragen.",
+      "dayDone": "<task>{field} {date}</task> ist eingetragen.",
       "flagText": "„{text}“",
       "clearToday": "Aufheben",
       "notFilled": "Noch nicht ausgefüllt",
       "notThisWeek": ", noch nicht für diese Woche",
       "plannedWeek": "{label} {date}, im Voraus geplant",
       "nothingNow": "Gerade nichts eingetragen.",
-      "removeNamed": "{title} entfernen"
+      "removeNamed": "{title} entfernen",
+      "allIn": "Alle in „{brick}“ ansehen",
+      "showExpired": "Abgelaufene anzeigen ({count})",
+      "waiting": "Wartet auf Freigabe, eingereicht {when}.",
+      "rejected": "Nicht freigegeben: „{reason}“",
+      "fix": "Korrigieren",
+      "toReview": "{count, plural, one {# Änderung wartet} other {# Änderungen warten}} auf Freigabe",
+      "drafts": {
+        "heading": "Noch nicht gespeichert",
+        "titled": "„{title}“ · {time}",
+        "untitled": "{area}: Neuer Eintrag · {time}",
+        "continue": "Weiter bearbeiten"
+      }
     },
     "all": {
-      "heading": "Alles bearbeiten",
+      "heading": "Inhalte",
+      "headingStaff": "Deine Bereiche",
       "lede": "Alle Bereiche der Website mit allen Feldern. Wähle einen Bereich.",
+      "ledeStaff": "Die Bereiche der Website, in denen du etwas ändern darfst.",
       "allAreas": "Alle Bereiche",
       "new": "Neu",
       "noEntries": "Noch keine Einträge.",
       "moveUp": "{title} nach oben",
       "moveDown": "{title} nach unten",
-      "removed": "Entfernt (30 Tage wiederherstellbar)",
+      "showMore": "{count} weitere anzeigen",
+      "shownOf": "{shown} von {total} Einträgen",
+      "searching": "Suche …",
+      "removed": "Im Papierkorb (30 Tage wiederherstellbar)",
       "restore": "Wiederherstellen"
     },
     "area": {
       "missing": "Diesen Bereich gibt es nicht.",
-      "noAccess": "Diesen Bereich darfst du nicht bearbeiten. Frag die Inhaberin, wenn du hier etwas ändern musst."
+      "noAccess": "Diesen Bereich kannst du nicht bearbeiten. Musst du hier etwas ändern, frag die Person, die dich eingeladen hat."
     },
     "entry": {
       "missing": "Diesen Eintrag gibt es nicht (mehr)."
@@ -253,24 +369,34 @@
       "heading": "Team",
       "ownersOnly": "Nur Inhaber sehen das Team.",
       "members": "Mitglieder",
+      "you": "Du",
       "noEmail": "Ohne E-Mail-Adresse",
       "noRights": "Keine Rechte.",
+      "supportText": "Hat Zugang zu allem, um die Website zu pflegen und dir zu helfen.",
       "changeRights": "Rechte ändern",
       "losesAccess": "<email>{email}</email> verliert den Zugang zu {site}.",
+      "memberRemoved": "{email} hat keinen Zugang mehr.",
       "openInvites": "Offene Einladungen",
       "validUntil": "gültig bis {date}",
       "revokeInvite": "Zurückziehen",
+      "inviteRevoked": "Einladung an {email} zurückgezogen.",
       "invite": "Einladen",
       "role": "Rolle",
+      "roleHelp": {
+        "staff": "Die Person ändert nur, was du unten anhakst.",
+        "owner": "Die Person kann alles ändern, das Team verwalten und die Seite löschen."
+      },
       "rights": "Rechte",
       "sendInvite": "Einladung senden",
-      "inviteSent": "Einladung an {email} gesendet."
+      "inviteSent": "Einladung an {email} gesendet.",
+      "keysOfMember": "Schlüssel, die {email} erstellt hat ({count})",
+      "keysStay": "Diese Schlüssel gehören zur Seite und funktionieren weiter, bis du sie widerrufst. Wird ein Schlüssel noch gebraucht, zum Beispiel für die automatische Veröffentlichung, lass ihn bestehen."
     },
     "ai": {
       "heading": "Mit KI verbinden",
       "lead": "Dein KI-Assistent kann dann für dich Aufgaben erledigen, zum Beispiel „{first}“ oder „{second}“. Er darf genau das, was du hier darfst. Jede Änderung steht im Verlauf als „über KI“ und lässt sich rückgängig machen.",
-      "exampleOne": "Setz Heute ausgebucht",
-      "exampleTwo": "Trag das Mittagsmenü vom Foto ein",
+      "exampleOne": "Korrigier einen Tippfehler",
+      "exampleTwo": "Kürz den ersten Absatz",
       "keyFor": "Schlüssel für „{label}“",
       "keyOnce": "Der Schlüssel wird nur jetzt angezeigt. Wer ihn hat, kann in deinem Namen ändern: gib ihn nur deinem Assistenten.",
       "terminal": "Für Claude Code: im Terminal ausführen",
@@ -290,16 +416,69 @@
       "createKey": "Schlüssel erstellen",
       "yourKeys": "Deine Schlüssel",
       "noneYet": "Noch keiner.",
-      "createdAt": "Erstellt {when}",
       "revokedAt": ", widerrufen {when}",
+      "revokeConfirm": "„{label}“ kann danach nichts mehr ändern.",
+      "reviewOn": "Änderungen warten auf Freigabe.",
+      "reviewOff": "Änderungen gehen ohne Freigabe online.",
+      "reviewLikeYou": "Was bei dir auf Freigabe wartet, wartet auch hier. Alles andere geht ohne Freigabe online."
+    },
+    "keys": {
+      "heading": "Schlüssel für Veröffentlichungen",
+      "lead": "Mit einem Schlüssel veröffentlicht die automatische Veröffentlichung (CI) deine Seite oder macht eine Sicherung.",
+      "none": "Noch keine Schlüssel.",
+      "new": "Neuer Schlüssel",
+      "name": "Name",
+      "nameHint": "Zum Beispiel „GitHub Actions“.",
+      "purpose": "Wofür?",
+      "purposeRelease": "Veröffentlichen und sichern",
+      "purposeExport": "Nur sichern",
+      "create": "Schlüssel erstellen",
+      "once": "Du siehst diesen Schlüssel nur jetzt. Speichere ihn als GINKO_KEY in den Einstellungen deiner CI.",
+      "copy": "Schlüssel kopieren",
+      "copied": "Schlüssel kopiert.",
+      "createdAt": "Erstellt {when}",
+      "createdBy": "{who} · erstellt {when}",
       "lastUsedAt": ", zuletzt benutzt {when}",
       "neverUsed": ", noch nie benutzt",
-      "revokeKey": "Widerrufen",
-      "revokeConfirm": "„{label}“ kann danach nichts mehr ändern."
+      "revoke": "Widerrufen",
+      "revokeConfirm": "Programme mit „{label}“ können danach weder veröffentlichen noch sichern.",
+      "revoked": "Schlüssel „{label}“ widerrufen."
     },
     "history": {
       "heading": "Verlauf",
       "loadOlder": "Ältere laden"
+    },
+    "storage": {
+      "near": "Textspeicher fast voll: {used} von {limit} belegt.",
+      "full": "Textspeicher voll: {used} von {limit} belegt. Du kannst Einträge weiter bearbeiten, solange sie nicht länger werden, aber keine neuen anlegen.",
+      "entries": "{count} von {limit} Einträgen angelegt.",
+      "entriesFull": "{count} von {limit} Einträgen angelegt. Neue Einträge kannst du nicht mehr anlegen.",
+      "hint": "Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge, Bilder und PDFs zählen nicht mit.",
+      "entriesHint": "Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.",
+      "dismiss": "Hinweis ausblenden",
+      "usage": "Textspeicher: {used} von {limit} belegt, {count} von {max} Einträgen. Bilder und PDFs zählen nicht mit."
+    },
+    "backup": {
+      "heading": "Sicherung",
+      "lead": "Lädt alle Inhalte (auch Entwürfe und den Papierkorb) und alle Bilder und PDFs als ZIP-Datei. Team, Verlauf und Schlüssel sind nicht dabei.",
+      "button": "Sicherung herunterladen",
+      "size": "{count, plural, one {# Datei} other {# Dateien}}, zusammen {size}.",
+      "progress": "Lädt {done} von {total} Dateien …",
+      "done": "Sicherung heruntergeladen.",
+      "tooBig": "Mit {size} ist die Sicherung zu groß für diesen Browser. In Chrome oder Edge geht es.",
+      "failed": "Die Sicherung ist nicht vollständig: „{name}“ ließ sich nicht laden. Versuch es noch einmal."
+    },
+    "translations": {
+      "heading": "Übersetzungen",
+      "lede": "Was in einer anderen Sprache fehlt oder seit einer Änderung nicht mehr stimmt.",
+      "notOnline": "Noch nicht online",
+      "none": "Alles übersetzt.",
+      "truncated": "Hier stehen die ersten {count}."
+    },
+    "drafts": {
+      "since": "Entwurf seit {date}",
+      "goesLive": "Geht online {date}",
+      "all": "Alle Entwürfe in Inhalte"
     }
   },
   "editor": {
@@ -314,11 +493,13 @@
       "replace": "Ersetzen",
       "replaceAll": "Alle ersetzen",
       "count": "{current} von {total}",
-      "none": "Keine Treffer"
+      "none": "Keine Treffer",
+      "replaced": "{count, plural, one {# Stelle ersetzt} other {# Stellen ersetzt}}"
     },
     "toolbar": {
       "label": "Formatierung",
-      "blockType": "Blocktyp"
+      "blockType": "Blocktyp",
+      "more": "Weitere Werkzeuge"
     },
     "marks": {
       "bold": "Fett",
@@ -330,7 +511,7 @@
     "blocks": {
       "text": "Text",
       "h2": "Überschrift",
-      "h3": "Zwischenüberschrift",
+      "h3": "Unterüberschrift",
       "h4": "Kleine Überschrift",
       "bulletList": "Aufzählung",
       "orderedList": "Nummerierte Liste",
@@ -338,7 +519,6 @@
       "blockquote": "Zitat",
       "horizontalRule": "Trennlinie",
       "table": "Tabelle",
-      "image": "Bild",
       "codeBlock": "Codeblock"
     },
     "source": {
@@ -360,8 +540,8 @@
           "describe": "Große Überschrift für einen neuen Abschnitt"
         },
         "heading3": {
-          "label": "Zwischenüberschrift",
-          "describe": "Kleinere Überschrift im Abschnitt"
+          "label": "Unterüberschrift",
+          "describe": "Kleinere Überschrift innerhalb eines Abschnitts"
         },
         "heading4": {
           "label": "Kleine Überschrift",
@@ -402,10 +582,13 @@
       }
     },
     "link": {
-      "label": "Link (Webadresse)",
+      "label": "Seite oder Webadresse",
+      "placeholder": "Seite suchen oder https://…",
+      "ownPages": "Seiten der Website",
+      "noPage": "Keine Seite gefunden.",
       "apply": "Übernehmen",
       "remove": "Link entfernen",
-      "refused": "Dieser Link ist nicht erlaubt. Erlaubt sind Webadressen (https://…), E-Mail (mailto:) und Telefon (tel:)."
+      "refused": "Wähle eine Seite aus der Liste oder gib eine Webadresse (https://…), E-Mail (mailto:) oder Telefon (tel:) ein."
     },
     "image": {
       "insertTitle": "Bild einfügen",
@@ -418,7 +601,19 @@
       "insert": "Einfügen",
       "descriptionRequired": "Beschreibe das Bild kurz, für Menschen, die es nicht sehen.",
       "addressRefused": "Diese Bildadresse ist nicht erlaubt. Erlaubt sind Webadressen (https://…).",
-      "noDescription": "Ein Bild im Text hat noch keine Beschreibung."
+      "noDescription": "Ein Bild im Text hat noch keine Beschreibung.",
+      "fromLibrary": "Aus Dateibibliothek wählen",
+      "upload": "Bild hochladen",
+      "orAddress": "Oder Webadresse eingeben",
+      "missing": "Bild nicht gefunden",
+      "descriptionIs": "Beschreibung: {text}",
+      "descriptionFromFiles": "Beschreibung aus den Dateien: {text}",
+      "noDescriptionYet": "Noch keine Beschreibung",
+      "editDescription": "Beschreibung ändern",
+      "replace": "Bild ersetzen",
+      "replaceSubmit": "Ersetzen",
+      "caption": "Bildunterschrift",
+      "actions": "Bild"
     },
     "text": {
       "tooLong": "Der Text ist zu lang (höchstens {max} Zeichen).",
@@ -443,14 +638,17 @@
       "noSettings": "Dieser Block hat keine Einstellungen.",
       "required": "Pflichtangaben",
       "more": "Weitere Einstellungen",
-      "remove": "Entfernen"
+      "remove": "Entfernen",
+      "addChild": "{label} hinzufügen"
     },
     "prop": {
       "optional": "(optional)",
-      "imagePlaceholder": "Pfad oder Web-Adresse",
+      "imagePlaceholder": "Webadresse (https://…)",
       "notSet": "Keine Angabe",
       "default": "Standard ({value})",
-      "choose": "Bitte wählen"
+      "choose": "Bitte wählen",
+      "chooseImage": "Bild wählen",
+      "changeImage": "Anderes Bild"
     }
   },
   "fields": {
@@ -461,21 +659,30 @@
     "clear": "Leeren",
     "remove": "Entfernen",
     "cancel": "Abbrechen",
-    "retry": "Erneut versuchen",
     "uploading": "Wird hochgeladen …",
     "slug": {
       "label": "Webadresse (URL)",
       "pageAt": "Die Seite liegt unter {address}",
-      "generated": "Wird beim Anlegen aus dem Titel erzeugt."
+      "generated": "Wird beim Anlegen aus dem Titel erzeugt.",
+      "fromTranslation": "Entsteht aus dem Titel auf {lang}, sobald die Seite übersetzt ist.",
+      "view": "Seite ansehen"
     },
     "translation": {
       "changedSince": "{name} geändert seit Übersetzung",
-      "fitsAsIs": "Passt so",
-      "notTranslated": "Noch nicht übersetzt. Die Website zeigt hier den Text auf {name}."
+      "fitsAsIs": "{lang} stimmt noch",
+      "notTranslated": "Noch nicht übersetzt.",
+      "notTranslatedHidden": "Noch nicht übersetzt. Ohne diesen Text fehlt „{title}“ auf der Website auf {lang}.",
+      "notTranslatedShowsMain": "Noch nicht übersetzt. Die Website zeigt hier den Text auf {name}.",
+      "notTranslatedBlocks": "Noch nicht übersetzt. Ohne diesen Text erscheint die Seite nicht auf {lang}.",
+      "useSource": "Text auf {name} übernehmen",
+      "showAll": "Ganzen Text zeigen",
+      "showLess": "Weniger zeigen",
+      "whatChanged": "Was hat sich geändert?"
     },
     "date": {
-      "workWeek": "Aktuelle Arbeitswoche",
-      "nextWorkWeek": "Folgende Arbeitswoche",
+      "thisWeek": "Diese Woche",
+      "nextWeek": "Nächste Woche",
+      "weekAfterNext": "Übernächste Woche",
       "today": "Heute",
       "tomorrow": "Morgen"
     },
@@ -501,7 +708,9 @@
       "other": "Anderes Foto",
       "alt": "Bildbeschreibung",
       "altHint": "Was ist auf dem Foto zu sehen? Für Menschen, die das Bild nicht sehen.",
-      "altFromLibrary": "Leer lassen, dann gilt die Beschreibung aus den Dateien."
+      "altFromLibrary": "Leer lassen, dann gilt die Beschreibung aus den Dateien.",
+      "noneToTranslate": "Noch kein Foto, also nichts zu übersetzen.",
+      "chooseInMain": "Das Bild selbst änderst du auf {name}."
     },
     "money": {
       "negative": "Ein Preis kann nicht negativ sein.",
@@ -527,25 +736,32 @@
       "confirmBlocker": "Bitte bestätige bei „{title}“: Sind die {label} noch richtig?",
       "changed": "{changed} geändert. Sind die {label} noch richtig?",
       "add": "{item} hinzufügen",
+      "addInMain": "Zeilen hinzufügen, entfernen und verschieben kannst du auf {name}.",
       "text": "Text"
     }
   },
   "ops": {
     "saved": "Gespeichert.",
     "draftSaved": "Entwurf gespeichert.",
-    "draftNotOnSite": "Entwurf gespeichert. Noch nicht auf der Website.",
-    "draftScheduled": "Entwurf gespeichert, online ab {time}.",
     "liveHint": "Auf der Website in etwa einer Minute.",
+    "liveFrom": "Auf der Website ab {date}.",
+    "translation": {
+      "hidden": "Auf {langs} erscheint die Seite erst, wenn alle nötigen Texte übersetzt sind.",
+      "mainPage": "Auf {langs} verlinkt die Website bis zur Übersetzung auf die Seite auf {main}.",
+      "missing": "Auf {langs} zeigt die Website die neuen Texte auf {main}, bis sie übersetzt sind.",
+      "outdated": "Auf {langs} zeigt die Website noch die alte Übersetzung, bis sie angepasst ist."
+    },
     "undo": "Rückgängig",
     "undone": "Rückgängig gemacht.",
-    "undoNotPossible": "Geht nicht mehr: Das wurde danach noch einmal geändert.",
+    "pictureBackFromTrash": "Das Bild „{name}“ war im Papierkorb der Dateibibliothek und ist wieder da.",
     "published": "Veröffentlicht.",
     "scheduled": "Geplant: online ab {time}.",
     "unpublished": "Zurückgezogen. In etwa einer Minute nicht mehr auf der Website.",
     "scheduleCleared": "Zeitplan aufgehoben. Der Eintrag bleibt ein Entwurf.",
     "created": "Angelegt.",
-    "removed": "Entfernt.",
-    "removedNamed": "„{title}“ entfernt.",
+    "removed": "Liegt jetzt im Papierkorb.",
+    "removedNamed": "„{title}“ liegt jetzt im Papierkorb.",
+    "removedLiveHint": "In etwa einer Minute nicht mehr auf der Website.",
     "restored": "Wiederhergestellt.",
     "entryGone": "Dieser Eintrag wurde inzwischen entfernt.",
     "leaveConfirm": "Deine Änderungen sind noch nicht gespeichert. Trotzdem weggehen?",
@@ -558,18 +774,21 @@
       "items": "{count, plural, one {# Eintrag} other {# Einträge}}"
     },
     "upload": {
-      "notImage": "Bitte ein Foto wählen (JPEG, PNG, WebP oder HEIC).",
+      "notImage": "Bitte ein Foto wählen (JPEG, PNG oder WebP).",
       "notPdf": "Bitte eine PDF-Datei wählen.",
       "photoTooLarge": "Das Foto ist zu groß (höchstens 20 MB).",
       "fileTooLarge": "Die Datei ist zu groß (höchstens 10 MB).",
       "failed": "Der Upload ist fehlgeschlagen. Bitte versuche es noch einmal.",
       "offline": "Keine Verbindung. Bitte versuche es noch einmal.",
       "aborted": "Abgebrochen."
-    }
+    },
+    "purged": "„{title}“ endgültig gelöscht.",
+    "draftCreated": "Als Entwurf gespeichert.",
+    "scheduledGoesLive": "Geplant. Geht online {date}."
   },
   "review": {
-    "title": "{site} · Zu prüfen",
-    "heading": "Zu prüfen",
+    "title": "{site} · Prüfen",
+    "heading": "Prüfen",
     "empty": "Nichts wartet auf deine Entscheidung.",
     "releases": "Releases",
     "plannedAt": "geplant für {time}",
@@ -584,13 +803,14 @@
     "reason": "Warum? Das sieht, wer die Änderung vorgeschlagen hat.",
     "mine": "Du hast das vorgeschlagen",
     "stale": "Passt nicht mehr",
-    "approved": "Freigegeben. Auf der Website in etwa einer Minute.",
+    "approved": "Freigegeben.",
     "rejected": "Abgelehnt.",
     "sent": "Zur Freigabe gesendet. Die Inhaberin oder der Inhaber entscheidet.",
     "diff": {
       "before": "Vorher",
       "after": "Nachher",
-      "reordered": "Die Reihenfolge wurde geändert"
+      "reordered": "Die Reihenfolge wurde geändert",
+      "picture": "Bild"
     }
   },
   "history": {
@@ -601,20 +821,34 @@
       "ai": "Über KI",
       "entry": "Dieser Eintrag"
     },
+    "entryHeading": "Verlauf: {title}",
+    "backToEntry": "Zurück zu „{title}“",
     "noMatches": "Keine Änderungen für diesen Filter.",
+    "entryEmpty": "Noch keine Änderungen. Was ab jetzt gespeichert wird, steht hier.",
     "showChanges": "Änderungen anzeigen",
     "hideChanges": "Änderungen ausblenden",
+    "openTrash": "Papierkorb öffnen",
     "revert": "Zurück zu dieser Version",
-    "revertConfirm": "Zurück zur Version vom {date}? Das wird als neue Änderung gespeichert, du kannst es rückgängig machen.",
+    "revertConfirm": "Zum Stand direkt nach dieser Änderung ({date}) zurück? Das wird als neue Änderung gespeichert, du kannst es rückgängig machen.",
+    "revertChanges": "Das ändert sich:",
     "reverted": "Zur früheren Version zurückgegangen.",
-    "alreadyThere": "Der Eintrag hat diese Version schon.",
+    "alreadyThere": "Das ist schon der aktuelle Stand.",
     "waiting": "Wartet auf Freigabe",
     "withdraw": "Zurückziehen",
     "withdrawn": "Zurückgezogen.",
     "notApproved": "Nicht freigegeben",
     "rejectedBy": "{who} hat abgelehnt: „{reason}“",
+    "rejectedByYou": "Du hast abgelehnt: „{reason}“",
     "notLive": "Nicht live gegangen",
-    "notLiveBecause": "Geplant für {when}. {reason}"
+    "notLiveBecause": "Geplant für {when}. {reason}",
+    "undoBlocked": {
+      "changed": "Danach noch einmal geändert. Geh stattdessen zu einer früheren Version zurück.",
+      "removed": "Eintrag entfernt, erst wiederherstellen",
+      "schema": "Die Felder wurden seither umgebaut"
+    },
+    "loadFailed": "Der Verlauf konnte nicht geladen werden. Bitte die Seite neu laden.",
+    "fix": "Korrigieren",
+    "approval": "Freigabe: {who}"
   },
   "basics": {
     "search": {
@@ -631,9 +865,11 @@
       "actions": "Aktionen",
       "entries": "Einträge",
       "areas": "Bereiche",
+      "sites": "Seiten",
       "newIn": "Neu: {area}",
       "review": "Prüfen",
-      "empty": "Nichts gefunden für „{query}“."
+      "empty": "Nichts gefunden für „{query}“.",
+      "failed": "Die Suche hat gerade nicht geklappt."
     },
     "update": {
       "menu": "Website jetzt aktualisieren",
@@ -661,10 +897,17 @@
       "translate": "Übersetzung bearbeiten"
     },
     "removed": {
-      "link": "Entfernt ({count})",
-      "title": "Entfernte Einträge",
-      "empty": "Nichts wurde entfernt.",
-      "until": "Wird am {date} endgültig gelöscht"
+      "link": "Papierkorb",
+      "title": "Papierkorb",
+      "empty": "Keine entfernten Einträge. Entfernte Dateien liegen im Papierkorb unter Dateien.",
+      "until": "Wird am {date} endgültig gelöscht",
+      "deleteNow": "Jetzt löschen",
+      "deleteNowNamed": "Jetzt löschen: „{title}“",
+      "confirmTitle": "„{title}“ endgültig löschen?",
+      "confirmBody": "Du kannst den Eintrag danach nicht mehr wiederherstellen. Der Verlauf zeigt frühere Fassungen noch bis zu einem Jahr.",
+      "confirm": "Endgültig löschen",
+      "keeps": "Entfernte Einträge bleiben 30 Tage, solange der Papierkorb nicht mehr als {limit} fasst. Ist er voll, gehen die ältesten zuerst.",
+      "usedIn": "Diese Einträge verwenden ihn noch. Dort fehlt er danach auf der Website:"
     },
     "translation": {
       "missing": "{lang}: {count, plural, one {# Text fehlt} other {# Texte fehlen}}",
@@ -690,7 +933,11 @@
       "listLabel": "Gespeicherte Ansichten",
       "optionsFor": "Optionen für die Ansicht {name}",
       "noMatch": "Kein Eintrag passt."
-    }
+    },
+    "loadMore": "Mehr anzeigen",
+    "retry": "Erneut versuchen",
+    "loadFailed": "Das ließ sich nicht laden. Bitte lade die Seite neu.",
+    "notLoaded": "Das ließ sich nicht laden."
   },
   "files": {
     "title": "Dateien",
@@ -708,6 +955,7 @@
     "folderName": "Name des Ordners",
     "createFolder": "Anlegen",
     "search": "Dateien suchen",
+    "searchAll": "Suche in allen Dateien",
     "layoutGrid": "Raster",
     "layoutList": "Liste",
     "upload": "Hochladen",
@@ -763,7 +1011,9 @@
       "trash": "Der Papierkorb ist leer. Entfernte Dateien bleiben hier 30 Tage.",
       "none": "Keine Dateien gefunden."
     },
-    "loadMore": "Mehr anzeigen",
+    "loadMoreFailed": "Weitere Dateien ließen sich nicht laden.",
+    "uploadTooSlow": "Das Hochladen dauert zu lange. Versuche es noch einmal.",
+    "uploadFailedFile": "„{name}“: {message}",
     "loading": "Wird geladen …",
     "gone": "Diese Datei gibt es nicht mehr.",
     "previous": "Vorherige Datei",
@@ -773,11 +1023,13 @@
     "picker": {
       "choose": "Aus der Bibliothek wählen",
       "usePhoto": "Dieses Foto verwenden",
-      "useFile": "Diese Datei verwenden"
+      "useFile": "Diese Datei verwenden",
+      "altFromLibrary": "Diese Beschreibung kommt aus den Dateien. Änderst du sie hier, gilt das nur an dieser Stelle."
     }
   },
   "who": {
     "member": "Ein Mitglied",
+    "you": "Du",
     "platform": "Website-Betreuung",
     "former": "Ehemaliges Mitglied",
     "system": "System",

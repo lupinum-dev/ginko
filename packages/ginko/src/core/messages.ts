@@ -6,6 +6,9 @@ import { defineCatalog, type KeysOf } from '@lupinum/ginko-i18n/core'
 import de from '../../i18n/de.json' with { type: 'json' }
 import en from '../../i18n/en.json' with { type: 'json' }
 import es from '../../i18n/es.json' with { type: 'json' }
+import fr from '../../i18n/fr.json' with { type: 'json' }
+import it from '../../i18n/it.json' with { type: 'json' }
+import ar from '../../i18n/ar.json' with { type: 'json' }
 import { compiled } from './messages.compiled.ts'
 
 export type CoreKey = KeysOf<typeof de>
@@ -17,9 +20,10 @@ export interface Described extends Msg { message: string }
 
 export const DEFAULT_LOCALE = 'de'
 /** The raw catalogs by language, in the shape `@lupinum/ginko-i18n` reads. */
-export const coreCatalogs = { de, en, es } as const
+export const coreCatalogs = { de, en, es, fr, it, ar } as const
 
-const catalog = defineCatalog<CoreKey>(compiled, { defaultLocale: DEFAULT_LOCALE })
+// Pure: a bundle that never translates (the browser) leaves the compiled catalogs out.
+const catalog = /* @__PURE__ */ defineCatalog<CoreKey>(compiled, { defaultLocale: DEFAULT_LOCALE })
 
 const isMsg = (value: unknown): value is Msg => typeof value === 'object' && value !== null && typeof (value as Msg).key === 'string'
 

@@ -65,7 +65,7 @@ async function remove(view: View) {
 <template>
   <div class="mb-3 grid gap-2.5">
     <div class="flex flex-wrap items-center gap-2">
-      <Input v-model="search" type="search" class="max-w-72 flex-1" :aria-label="t('basics.views.searchLabel')" :placeholder="t('basics.views.searchPlaceholder')" />
+      <Input v-model="search" type="search" class="min-w-48 flex-1 sm:max-w-72" :aria-label="t('basics.views.searchLabel')" :placeholder="t('basics.views.searchPlaceholder')" />
       <NativeSelect v-model="choice" class="h-10 pointer-coarse:h-11" :aria-label="t('basics.views.sortLabel')">
         <NativeSelectOption value="">{{ t('basics.views.sortDefault') }}</NativeSelectOption>
         <template v-for="[key, field] in fields" :key="key">
@@ -73,7 +73,8 @@ async function remove(view: View) {
           <NativeSelectOption :value="`${key}|desc`">{{ t('basics.views.sortDesc', { field: shown(field.label) }) }}</NativeSelectOption>
         </template>
       </NativeSelect>
-      <Button type="button" variant="outline" :disabled="!canSave" @click="asking = true">{{ t('basics.views.save') }}</Button>
+      <!-- Only with a search or sort to save: a disabled button took a whole row on phones and said nothing. -->
+      <Button v-if="canSave" type="button" variant="outline" @click="asking = true">{{ t('basics.views.save') }}</Button>
     </div>
     <ul v-if="views?.length" class="m-0 flex list-none flex-wrap gap-1.5 p-0" :aria-label="t('basics.views.listLabel')">
       <li v-for="view in views" :key="view.id" class="inline-flex items-center rounded-full border">

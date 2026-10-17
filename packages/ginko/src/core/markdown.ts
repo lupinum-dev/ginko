@@ -16,13 +16,16 @@ import toc from 'comark/plugins/toc'
 import { bare, coreMessage, msg, type Described } from './messages.ts'
 import { checkComponentTree, componentSlotNodes, isBlockedTag, type ComponentRegistry } from './components.ts'
 import { isSafeHref } from './href.ts'
+import { withoutCode } from './file-refs.ts'
 import type { Json } from './types.ts'
 
 /**
- * In page state the tree is replaced by `ref`, the site path that serves it, so a page's payload
- * carries only the texts it shows (CONTENT.md, Phase 14). `toc` stays for lists and navigation.
+ * In page state the tree is replaced by `ref`, the site path that serves it (withMarkdownRefs), so a page's
+ * payload carries only the texts it shows (CONTENT.md, Phase 14). The toc comes with the loaded tree; page
+ * state no longer carries it, `toc` stays optional here so the type does not change. `words` is the tree's word
+ * count (`wordsOf`), so a list page can show a reading time without loading every text.
  */
-export type MarkdownValue = MarkdownTree | { ref: string; toc?: MarkdownToc }
+export type MarkdownValue = MarkdownTree | { ref: string; toc?: MarkdownToc; words?: number }
 
 /**
  * The parsed tree: comark nodes (`[tag, props, ...children]` or a string). `summary` holds the nodes
@@ -166,7 +169,11 @@ export function attributeProblem(tag: string, name: string, value: unknown, regi
   return (bound ? check === anyValue : check(value)) ? undefined : 'blocked'
 }
 
-export const UNSAFE_LINK = msg('markdown.unsafeLink').message
+// Pure: a bundle that never reads it (the browser's Markdown renderer) leaves out the message catalogs.
+export const UNSAFE_LINK = /* @__PURE__ */ unsafeLinkText()
+function unsafeLinkText(): string {
+  return msg('markdown.unsafeLink').message
+}
 const MAX_NODES = 20000
 
 /** A short description of what the profile allows, for agent tools and editor hints. */
@@ -199,21 +206,32 @@ export interface ParsedMarkdown {
   /** What the profile does not allow, as sentences. Empty when the text is fine. */
   problems: string[]
   /** The same problems with catalog key and parameters (`coreMessage(locale, key, params)`), in the same order. */
-  problemMessages: Described[]
+  problemMessages: MarkdownProblem[]
+  /**
+   * True when the text has parts the tree does not show: link reference definitions (`[g]: https://…`, resolved into
+   * their links and images) and HTML comments (`<!-- … -->`). A text written from the tree would lose them.
+   */
+  hidden?: true
 }
+
+/** A problem of a text; `line` (1-based, in the parsed text, frontmatter included) when it belongs to one line. */
+export type MarkdownProblem = Described & { line?: number }
 
 /** Parses Markdown with comark, checks it against the profile, adds heading anchors and the toc (h2, h3). */
 export async function parseMarkdown(text: string, options: ParseOptions = {}): Promise<ParsedMarkdown> {
-  const problems: Described[] = []
+  const problems: MarkdownProblem[] = []
   let body = text
   let summary: Node[] | undefined
+  let hidden = false
   const plugins = [
     ...(options.frontmatter ? [frontmatter(), defineComarkPlugin(() => ({ name: 'ginko-body', pre(state) { body = state.markdown.replace(/^\r?\n/, '') } }))()] : []),
-    alert(), taskList(), components(), attributes(),
+    alert(), taskList(), components(), attributes(), referenceDefinitions(() => { hidden = true }),
     // Every profile parses these; profileCheck refuses the tags a profile does not allow, so `$a$` in a
     // `basic` field is reported, not silently kept. Footnotes must run before the check (`[^1]` is a `span` until then).
     emoji(), footnotes(), math(), mermaid(),
+    htmlComments(() => { hidden = true }),
     moreMarker((nodes) => { summary = nodes }),
+    closedComponents(text, problems),
     profileCheck(options.profile ?? 'page', problems, options.components),
     ...(options.plugins ?? []),
     headingAnchors(),
@@ -224,7 +242,7 @@ export async function parseMarkdown(text: string, options: ParseOptions = {}): P
   const tree = await parseComark(text, { registerDefaultPlugins: false, autoClose: false, plugins })
   // JSON round-trip: the value goes into a JSON bundle, so drop anything that is not plain data.
   const value: MarkdownTree = JSON.parse(JSON.stringify({ nodes: tree.nodes, toc: (tree.meta as { toc?: MarkdownToc }).toc, summary }))
-  return { frontmatter: tree.frontmatter as Record<string, unknown>, value, body, problems: problems.map((p) => p.message), problemMessages: problems }
+  return { frontmatter: tree.frontmatter as Record<string, unknown>, value, body, problems: problems.map((p) => p.message), problemMessages: problems, ...(hidden ? { hidden: true } : {}) }
 }
 
 /** One top-level block of a text: its text, and for an h2 or h3 also its level and anchor. Code blocks (`pre`) are not blocks. */
@@ -251,6 +269,17 @@ export function plainText(tree: MarkdownTree | readonly Json[]): string {
   return textBlocks(tree).map((b) => b.text).join('\n').trim()
 }
 
+/**
+ * The number of words of a text, e.g. for a reading time: of the tree's `plainText`, or the count a `{ ref }` carries
+ * in page state. `undefined` for a ref without a count or no value.
+ */
+export function wordsOf(value: MarkdownValue | null | undefined): number | undefined {
+  if (!value) return undefined
+  if (!('nodes' in value)) return value.words
+  const text = plainText(value)
+  return text ? text.split(/\s+/u).length : 0
+}
+
 const MORE_MARKER = '<!-- more -->'
 
 /**
@@ -270,6 +299,89 @@ function moreMarker(set: (nodes: Node[]) => void) {
   }))()
 }
 
+/**
+ * A link reference definition (`[g]: https://…`) gives the address of `[Text][g]` and `![Logo][g]`; comark resolves those
+ * into the link or image itself, so the address passes the same checks as an inline one. The definition has no node of
+ * its own (comark would make it a nameless `component`), so its token is dropped; `onDrop` notes that the tree does not
+ * show the whole text.
+ */
+function referenceDefinitions(onDrop: () => void) {
+  return defineComarkPlugin(() => ({
+    name: 'ginko-references',
+    markdownItPlugins: [(md) => {
+      // comark types `md` with markdown-it's types, which are not installed here: the state is typed by what this reads.
+      md.core.ruler.push('ginko-references', (state: { tokens: Array<{ type: string }> }) => {
+        const kept = state.tokens.filter((token) => token.type !== 'reference')
+        if (kept.length === state.tokens.length) return
+        state.tokens = kept
+        onDrop()
+      })
+    }],
+  }))()
+}
+
+const HTML_COMMENT = /<!--[\s\S]*?-->/g
+
+/**
+ * Raw HTML is never parsed, so an HTML comment (`<!-- TODO -->`) would be shown as text. It is a note for the people
+ * who edit the text: the stored text keeps it, the parsed text loses it before tokenizing, so a comment around
+ * formatting or around whole paragraphs goes too. Code keeps it (the same scan as for file references). Its line
+ * breaks stay, so problem lines still count in the stored text. A `<!-- more -->` line stays for moreMarker.
+ * `onDrop` notes that the tree does not show the whole text.
+ */
+function htmlComments(onDrop: () => void) {
+  return defineComarkPlugin(() => ({
+    name: 'ginko-comments',
+    pre(state) {
+      const text = state.markdown
+      if (!text.includes('<!--')) return
+      let out = ''
+      let last = 0
+      for (const match of withoutCode(text).matchAll(HTML_COMMENT)) {
+        const lineStart = text.lastIndexOf('\n', match.index) + 1
+        const lineEnd = text.indexOf('\n', match.index)
+        if (text.slice(lineStart, lineEnd === -1 ? undefined : lineEnd).trim() === MORE_MARKER) continue
+        // Spaces before it go with it, so `a <!-- x --> b` reads `a b`.
+        let start = match.index
+        while (start > last && (text[start - 1] === ' ' || text[start - 1] === '\t')) start--
+        out += text.slice(last, start) + match[0].replace(/[^\n]/g, '')
+        last = match.index + match[0].length
+      }
+      if (last === 0) return
+      state.markdown = out + text.slice(last)
+      onDrop()
+    },
+  }))()
+}
+
+type BlockOpen = { type: 'mdc_block_open'; map: [number, number]; markup: string; info: string }
+const isBlockOpen = (token: unknown): token is BlockOpen =>
+  typeof token === 'object' && token !== null && 'type' in token && token.type === 'mdc_block_open' && 'map' in token && Array.isArray(token.map)
+
+/**
+ * comark ends an unclosed `::name` block at the end of its parent (the text, or the enclosing `:::gallery`), so the
+ * text after it becomes the component's content and the site drops it. comark keeps no flag for this, but the open
+ * token's `map[1]` is the line it stopped at: the closing marker, or the parent's end. `>` covers a block in a quote.
+ * Depends on comark 0.7's token shape (`mdc_block_open`, `map`, `markup`); validate.test.ts fails if that changes.
+ */
+function closedComponents(text: string, problems: MarkdownProblem[]) {
+  return defineComarkPlugin(() => ({
+    name: 'ginko-closed',
+    post(state) {
+      const lines = state.markdown.split('\n')
+      // Token lines count in state.markdown, which is the text after a frontmatter block.
+      const frontmatterLines = text.split('\n').length - lines.length
+      for (const token of state.tokens) {
+        if (!isBlockOpen(token) || lines[token.map[1]]?.replace(/^[\s>]*/, '').trim() === token.markup) continue
+        problems.push({ ...msg('markdown.componentNotClosed', { tag: token.info, close: token.markup }), line: frontmatterLines + token.map[0] + 1 })
+      }
+    },
+  }))()
+}
+
+/** The text of a bracket problem is cut to this length. */
+const BRACKET_TEXT_MAX = 40
+
 function profileCheck(profile: MarkdownProfile, problems: Described[], registry?: ComponentRegistry) {
   return defineComarkPlugin(() => ({
     name: 'ginko-profile',
@@ -284,6 +396,16 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
         if (typeof node === 'string' || node[0] === null) return
         const [tag, props, ...children] = node
         const component = registry && Object.hasOwn(registry, tag) ? registry[tag]! : undefined
+        // comark makes a `span` of `[text]` that is no link: a typo in a link or picture (`![Bild(datei)`) or brackets
+        // meant as text. Where the span was refused before (any profile but `page`; `page` with a registry), say that
+        // instead of "unknown component span" (checkComponentTree leaves it to this check). `page` without a registry
+        // accepts any tag that is not blocked, the span too, and keeps doing so.
+        if (tag === 'span' && !component && (profile !== 'page' || registry)) {
+          const text = textOf(node)
+          fail(msg('markdown.bracketText', { text: text.length > BRACKET_TEXT_MAX ? `${text.slice(0, BRACKET_TEXT_MAX - 1)}…` : text }))
+          children.forEach(visit)
+          return
+        }
         // A refused tag goes with its attributes: one problem is enough.
         if (isBlockedTag(tag, profile === 'page' ? registry : undefined) && !slots.has(node)) fail(msg('markdown.tagBlocked', { tag }))
         else if (allowed && !allowed.has(tag)) fail(msg('markdown.tagNotInProfile', { tag, allowed: { key: `markdown.profile.${profile}` } }))

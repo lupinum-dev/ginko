@@ -7,18 +7,33 @@ import { defineCatalog, type KeysOf, type Params, type TranslateOptions } from '
 import de from '../../i18n/de.json'
 import en from '../../i18n/en.json'
 import es from '../../i18n/es.json'
+import fr from '../../i18n/fr.json'
 import type { QueryCtx } from '../_generated/server'
 
 export type MessageKey = KeysOf<typeof de>
 
 export const DEFAULT_LOCALE = 'de'
-export const CATALOGS: Record<string, RawTree> = { de, en, es }
+export const CATALOGS: Record<string, RawTree> = { de, en, es, fr }
 export const LOCALES = Object.keys(CATALOGS)
 
 /** Compiled once when the module loads, not per call. */
 const catalog = defineCatalog<MessageKey>(compileCatalogs(CATALOGS), { defaultLocale: DEFAULT_LOCALE })
 
 export const isLocale = (value: unknown): value is string => catalog.isLocale(value)
+
+/**
+ * The name of a site language (`en`) in every language the server writes, as a label that a message renders in its
+ * reader's language ("Englisch", "English", "inglés"). The code stays where the runtime knows no name for it.
+ */
+export function languageLabel(code: string): Record<string, string> {
+  return Object.fromEntries(LOCALES.map((reader) => {
+    try {
+      return [reader, new Intl.DisplayNames(reader, { type: 'language' }).of(code) ?? code]
+    } catch {
+      return [reader, code]
+    }
+  }))
+}
 
 /**
  * The text for `key` in `locale`. An unknown locale gets German; a key missing there falls back to German.

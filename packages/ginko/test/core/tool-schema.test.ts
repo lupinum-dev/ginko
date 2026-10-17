@@ -19,7 +19,7 @@ describe('taskInputSchema', () => {
       type: 'object',
       properties: {
         text: { type: 'string', description: 'Text', maxLength: 140, default: 'Heute sind wir ausgebucht.' },
-        until: { type: 'string', description: 'Gilt bis (YYYY-MM-DD)', pattern: '^\\d{4}-\\d{2}-\\d{2}$', default: '2026-10-10' },
+        until: { type: 'string', description: 'Gilt bis — Leer lassen, wenn der Hinweis bleiben soll, bis du ihn entfernst. (YYYY-MM-DD)', pattern: '^\\d{4}-\\d{2}-\\d{2}$', default: '2026-10-10' },
       },
       required: [],
       additionalProperties: false,
@@ -52,6 +52,28 @@ describe('taskInputSchema', () => {
     const schema = taskInputSchema(bricks.events!, task('events', 'add'), ctx)
     expect(Object.keys(schema.properties)).not.toContain('slug')
     expect(schema.required).toEqual(['title', 'when', 'description'])
+  })
+
+  // Wrong behaviour caught: the assistant's "Gericht hinzufügen" offered a planned price, which the Studio's sheet does
+  // not ask for before the dish has a price to change. Without `fields` the task asks every field but that plan.
+  it('a create task without fields leaves out the plan of a planned change', () => {
+    const { fields: _fields, ...open } = task('menu', 'add') as Extract<Task, { kind: 'create' }>
+    const schema = taskInputSchema(bricks.menu!, open, ctx)
+    const keys = Object.keys(schema.properties)
+    expect(keys).toEqual(expect.arrayContaining(['name', 'price', 'onMenu', 'soldOutOn']))
+    expect(keys).not.toContain('nextPrice')
+    expect(keys).not.toContain('priceFrom')
+  })
+
+  it('the gastro add task offers the fields it lists', () => {
+    const schema = taskInputSchema(bricks.menu!, task('menu', 'add'), ctx)
+    expect(Object.keys(schema.properties)).toEqual(['category', 'name', 'description', 'price', 'allergens', 'veg'])
+  })
+
+  // Wrong behaviour caught: a new dish could be marked sold out or off the menu in the same call that creates it.
+  it('a create task with fields offers only those: a new dish has no sold-out day', () => {
+    const schema = taskInputSchema(bricks.menu!, { id: 'add', label: 'Neu', kind: 'create', fields: ['name', 'price', 'soldOutOn'] }, ctx)
+    expect(Object.keys(schema.properties)).toEqual(['name', 'price', 'soldOutOn'])
   })
 })
 

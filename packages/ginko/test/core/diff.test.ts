@@ -121,6 +121,8 @@ const allowed: Row[] = [
       node(s, 'bricks.menu').layout = 'tabs'
     },
   },
+  { name: 'a status line added', mutate: (s) => { node(s, 'bricks.events').status = { next: 'when' } } },
+  { name: 'a status line removed', prod: (s) => { node(s, 'bricks.events').status = { next: 'when' } }, mutate: (s) => { delete node(s, 'bricks.events').status } },
   { name: 'needsApproval set on a task', mutate: (s) => { (node(s, 'bricks.hours').tasks as { needsApproval?: boolean }[])[0]!.needsApproval = true } },
   { name: 'agent review switched on', mutate: (s) => { s.agents = { review: true } } },
   { name: 'tasks changed', mutate: (s) => { node(s, 'bricks.hours').tasks = [] } },
@@ -362,6 +364,8 @@ describe('checkSchema: retired fields (SPEC 2.5)', () => {
       mutate: (s: Schema) => {
         fieldsOf(s, 'menu').vegSource = { type: 'choice', label: 'Vegetarisch Quelle', options: [{ value: 'none', label: 'keins' }, { value: 'vegetarian', label: 'vegetarisch' }, { value: 'vegan', label: 'vegan' }, { value: 'raw', label: 'roh' }] }
         retire(s, 'menu.veg', { from: 'vegSource' })
+        // A new required field must be asked by the dish-adding task (create task `fields`).
+        for (const task of s.bricks.menu!.tasks ?? []) if (task.kind === 'create' && task.fields) task.fields = [...task.fields.filter(f => f !== 'veg'), 'vegSource']
       },
       problems: ['retired: “menu.veg” cannot mirror “vegSource”: the source has options the old field does not know.'],
     },
@@ -380,6 +384,8 @@ describe('checkSchema: retired fields (SPEC 2.5)', () => {
       mutate: (s: Schema) => {
         fieldsOf(s, 'hours').weekAlt = { type: 'list', label: 'Alt', itemLabel: 'Tag', max: 7, of: { day: { type: 'choice', label: 'Tag', options: [{ value: 'mo', label: 'Montag' }] } } }
         retire(s, 'hours.exceptions', { from: 'weekAlt' })
+        // The hours status line reads exceptions; without it this row is only about the mirror.
+        delete node(s, 'bricks.hours').status
       },
       problems: ['retired: “hours.exceptions” cannot mirror “weekAlt”: different columns.'],
     },

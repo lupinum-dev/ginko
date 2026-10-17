@@ -1,11 +1,10 @@
-// schema.org Restaurant for search engines. The opening hours come from the same rule as the page (`hoursOn`),
-// so Google never shows "open" on a day the site says "closed".
-import { addDays, hoursOn, spansOf, weekdayKeys, weekdayOf, weekFor, type HoursContext, type Span, type Weekday } from './hours.ts'
-import { plainText, type MarkdownTree } from '@lupinum/ginko'
-import { minorDigits } from '@lupinum/ginko/internal'
+// schema.org Restaurant and Event for search engines. The opening hours come from the same rule as the page (`hoursOn`),
+// so Google never shows "open" on a day the site says "closed". The builders live in `@lupinum/ginko/basics`.
+import { eventJsonLd as basicsEventJsonLd, openingHoursJsonLd, type EventJsonLdInput as BasicsEventInput, type HoursContext } from '@lupinum/ginko/basics'
+import { offerPrice, postalAddress } from '@lupinum/ginko/internal'
+import type { MarkdownTree } from '@lupinum/ginko'
+import { withDefault } from './hours.ts'
 import type { Money } from './prices.ts'
-
-const dayNames: Record<Weekday, string> = { mo: 'Monday', tu: 'Tuesday', we: 'Wednesday', th: 'Thursday', fr: 'Friday', sa: 'Saturday', su: 'Sunday' }
 
 export interface JsonLdMenuSection { name: string; items: Array<{ name: string; description?: string; price: Money }> }
 export interface RestaurantJsonLdInput {
@@ -26,27 +25,19 @@ export interface RestaurantJsonLdInput {
   days?: number
 }
 
-function requireCurrency(currency: string | undefined): string {
-  if (!currency) throw new Error('JSON-LD: pass `currency` (the site’s currency) for prices that carry none.')
-  return currency
-}
-
-const spanKey =(spans: Span[]) => spans.map((s) => `${s.from}-${s.to}`).join(',')
-/** schema.org `price` and `priceCurrency`: the amount in major units of its currency (2 decimals for EUR, 0 for JPY). */
-function offerPrice(m: Money, siteCurrency: string | undefined) {
-  const currency = m.currency ?? requireCurrency(siteCurrency)
-  const digits = minorDigits(currency)
-  return { price: (m.amount / 10 ** digits).toFixed(digits), priceCurrency: currency }
-}
-
 export interface EventJsonLdInput {
   title: string
   /** Absolute URL of the event page. */
   url: string
-  /** The days of the event. `f.daterange` stores dates only (YYYY-MM-DD); a `start` time is added to `startDate` without an offset (local time). */
+  /** The days of the event. `f.daterange` stores dates only (YYYY-MM-DD). */
   when: { from: string; to: string }
   /** Start time of the first day (`HH:MM`, local time). Written into `startDate` when given. */
   start?: string
+  /**
+   * The site's IANA time zone: `startDate` then carries its offset (`2026-12-03T19:00:00+01:00`). Without it the start
+   * is written without an offset (local time), as in 0.4.
+   */
+  timeZone?: string
   /** The restaurant as the place of the event; `address` is left out of the output when not given. */
   location: { name: string; address?: RestaurantJsonLdInput['address'] }
   description?: MarkdownTree
@@ -55,57 +46,15 @@ export interface EventJsonLdInput {
   price?: Money
   /** The site’s currency (ISO 4217), used for a price that carries none. There is no default. */
   currency?: string
-  /** Absolute URL where visitors book. */
+  /** Absolute URL where visitors book. Left out when the event is fully booked. */
   booking?: string
-}
-
-function addressOf(a: NonNullable<RestaurantJsonLdInput['address']>) {
-  return { '@type': 'PostalAddress', streetAddress: a.street, ...(a.postalCode ? { postalCode: a.postalCode } : {}), addressLocality: a.city, ...(a.country ? { addressCountry: a.country } : {}) }
-}
-
-/** The weekly rule: days with the same times share one entry (one entry per time window). */
-function weeklySpecs(week: ReturnType<typeof weekFor>['week']) {
-  const groups = new Map<string, { spans: Span[]; days: Weekday[] }>()
-  for (const key of weekdayKeys) {
-    const day = week.find((d) => d.day === key)
-    const spans = !day || day.closed ? [] : spansOf(day)
-    if (!spans.length) continue
-    const k = spanKey(spans)
-    const group = groups.get(k) ?? { spans, days: [] }
-    group.days.push(key)
-    groups.set(k, group)
-  }
-  return [...groups.values()].flatMap((g) => g.spans.map((s) => ({ '@type': 'OpeningHoursSpecification', dayOfWeek: g.days.map((d) => dayNames[d]), opens: s.from, closes: s.to })))
-}
-
-/**
- * Days within `days` days that differ from the weekday rule of the week that applies today: a closure
- * (opens and closes "00:00", the way Google reads "closed all day") or other times. Consecutive days
- * with the same result become one entry with `validFrom` and `validThrough`.
- */
-function specialSpecs(input: RestaurantJsonLdInput, week: ReturnType<typeof weekFor>['week']) {
-  const runs: Array<{ key: string; spans: Span[]; from: string; to: string }> = []
-  for (let i = 0; i < (input.days ?? 60); i++) {
-    const date = addDays(input.today, i)
-    const rule = hoursOn(input.hours, date)
-    const base = week.find((d) => d.day === weekdayOf(date))
-    const baseKey = !base || base.closed ? '' : spanKey(spansOf(base))
-    const key = rule.closed ? '' : spanKey(rule.times)
-    if (key === baseKey) continue
-    const last = runs[runs.length - 1]
-    if (last && last.key === key && last.to === addDays(date, -1)) last.to = date
-    else runs.push({ key, spans: rule.closed ? [] : rule.times, from: date, to: date })
-  }
-  return runs.flatMap((r) => (r.spans.length ? r.spans : [{ from: '00:00', to: '00:00' }]).map((s) => ({
-    '@type': 'OpeningHoursSpecification', validFrom: r.from, validThrough: r.to, opens: s.from, closes: s.to,
-  })))
+  /** Fully booked (the events brick's `soldOut`): the offer says `SoldOut` and has no booking link. */
+  soldOut?: boolean
 }
 
 export function restaurantJsonLd(input: RestaurantJsonLdInput): Record<string, unknown> {
-  const { week } = weekFor(input.hours, input.today)
   const currency = input.currency
   const sections = input.menu?.sections?.filter((s) => s.items.length)
-  const special = specialSpecs(input, week)
   const menu = sections?.length
     ? {
         '@type': 'Menu',
@@ -127,31 +76,19 @@ export function restaurantJsonLd(input: RestaurantJsonLdInput): Record<string, u
     '@type': 'Restaurant',
     name: input.name,
     url: input.url,
-    ...(input.address ? { address: addressOf(input.address) } : {}),
+    ...(input.address ? { address: postalAddress(input.address) } : {}),
     ...(input.telephone ? { telephone: input.telephone } : {}),
     ...(input.email ? { email: input.email } : {}),
     ...(input.servesCuisine?.length ? { servesCuisine: input.servesCuisine } : {}),
     ...(menu ? { hasMenu: menu } : {}),
-    openingHoursSpecification: weeklySpecs(week),
-    ...(special.length ? { specialOpeningHoursSpecification: special } : {}),
+    ...openingHoursJsonLd(withDefault(input.hours), input.today, input.days ?? 60),
   }
 }
 
-/** schema.org Event for one event of the events brick. Offers are given only with a price. */
+/** schema.org Event for one event of the events brick. Offers are given with a price, or to say it is fully booked. */
 export function eventJsonLd(input: EventJsonLdInput): Record<string, unknown> {
-  const description = input.description ? plainText(input.description) : ''
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Event',
-    name: input.title,
-    startDate: input.start ? `${input.when.from}T${input.start}` : input.when.from,
-    endDate: input.when.to,
-    eventStatus: 'https://schema.org/EventScheduled',
-    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-    location: { '@type': 'Place', name: input.location.name, ...(input.location.address ? { address: addressOf(input.location.address) } : {}) },
-    url: input.url,
-    ...(input.image ? { image: input.image } : {}),
-    ...(description ? { description } : {}),
-    ...(input.price ? { offers: { '@type': 'Offer', ...offerPrice(input.price, input.currency), ...(input.booking ? { url: input.booking } : {}) } } : {}),
-  }
+  const { timeZone, ...rest } = input
+  const ld = basicsEventJsonLd({ ...rest, timeZone: timeZone ?? 'UTC' } satisfies BasicsEventInput)
+  // 0.4 output without a time zone: the start as local time, the end as a date.
+  return timeZone ? ld : { ...ld, startDate: input.start ? `${input.when.from}T${input.start}` : input.when.from }
 }

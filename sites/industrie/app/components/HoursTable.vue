@@ -1,4 +1,4 @@
-<!-- The weekly reception hours, today's row marked, plus the exceptions in the next 60 days. -->
+<!-- The weekly reception hours, today's row marked, plus the exceptions and a "Geschlossen am" day in the next 60 days. -->
 <script setup lang="ts">
 import { exceptionsAhead, timesOf, weekdayOf, type DayHours, type Exception, type Weekday } from '../utils/site'
 
@@ -8,7 +8,7 @@ const { t, format } = useI18n()
 const { lang, labels, today } = useSite()
 const hours = useGinko('hours')
 const week = computed(() => hours.value.data.week as unknown as DayHours[])
-const ahead = computed(() => exceptionsAhead(hours.value.data.exceptions as unknown as Exception[], today.value, 60))
+const ahead = computed(() => exceptionsAhead(hours.value.data as unknown as { exceptions: Exception[]; closedOn?: string; closedNote?: string }, today.value, 60))
 const todayKey = computed(() => weekdayOf(today.value))
 </script>
 
@@ -28,7 +28,7 @@ const todayKey = computed(() => weekdayOf(today.value))
       <ul>
         <li v-for="e in ahead" :key="e._id">
           <span class="mono">{{ format.range(e.when.from, e.when.to) }}</span>
-          <span><span :lang="langOf(hours, `exceptions.${e._id}.reason`)">{{ e.reason }}</span><template v-if="e.closed">, {{ t('closed') }}</template></span>
+          <span><span v-if="e.reason" :lang="langOf(hours, e.field)">{{ e.reason }}</span><template v-if="e.closed">{{ e.reason ? ', ' : '' }}{{ t('closed') }}</template></span>
         </li>
       </ul>
     </div>

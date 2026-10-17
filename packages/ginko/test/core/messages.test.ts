@@ -26,6 +26,19 @@ describe('catalogs', () => {
     expect(compiledSource()).toContain(JSON.stringify(compiled, null, 1))
   })
 
+  // Wrong behaviour caught: Arabic counts use only "one" and "other", so 2 or 3 settings read with the wrong noun form.
+  it.each([
+    ['fr', 1, 'Vérifiez 1 autre réglage.'],
+    ['fr', 3, 'Vérifiez 3 autres réglages.'],
+    ['it', 2, 'Controlla 2 altre impostazioni.'],
+    ['ar', 1, 'تحقّق من إعداد آخر.'],
+    ['ar', 2, 'تحقّق من إعدادين آخرين.'],
+    ['ar', 3, 'تحقّق من 3 إعدادات أخرى.'],
+    ['ar', 11, 'تحقّق من 11 إعدادًا آخر.'],
+  ])('count the settings of a component in %s for %d', (locale, count, text) => {
+    expect(coreMessage(locale, 'editor.component.more', { first: '', count })).toBe(` ${text}`)
+  })
+
   it('give an unknown language the German text', () => {
     expect(coreMessage('xx', 'issues.unknownField')).toBe('Unbekanntes Feld.')
     expect(coreMessage('en', 'issues.unknownField')).toBe('Unknown field.')

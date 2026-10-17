@@ -4,6 +4,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from '#imports'
 import { computePosition, flip, offset, shift } from '@floating-ui/dom'
+import { injectConfigProviderContext } from 'reka-ui'
 import type { SlashItem } from '@lupinum/ginko-editor'
 import { Command, CommandGroup, CommandItem, CommandList } from '@studio/components/ui/command'
 import type { SlashState } from './extensions.ts'
@@ -12,6 +13,9 @@ const props = defineProps<{ state: SlashState }>()
 const { t } = useI18n()
 
 const panel = ref<HTMLElement>()
+// Where reka's own popups go: <body>, or the quick-task sheet's <dialog> (see TaskSheet), so the menu is not hidden beneath it.
+const config = injectConfigProviderContext({})
+const target = computed(() => config.teleportTo?.value ?? 'body')
 const groups = computed(() => {
   const out: Array<{ name: string; items: Array<{ item: SlashItem; index: number }> }> = []
   props.state.items.forEach((item, index) => {
@@ -41,7 +45,7 @@ watch(() => [props.state.open, props.state.items, props.state.selected] as const
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport :to="target">
     <!-- mousedown is prevented: a click on the list must not take the focus from the editor. -->
     <div v-if="state.open" ref="panel" class="fixed top-0 left-0 z-50 w-72 max-w-[calc(100vw-1rem)] rounded-md border bg-popover text-popover-foreground shadow-md" @mousedown.prevent>
       <p v-if="!state.items.length" class="p-3 text-center text-sm text-muted-foreground" role="status">{{ t('editor.slash.empty') }}</p>

@@ -31,6 +31,8 @@ You cannot do more than they can, and everything you change is shown in their hi
 - Removing needs `confirm: true`. Ask the person first.
 - A change is online in about a minute. The answer names a `change` ID.
   Take it back with `ginko_undo({ change })`.
+- Give each change a `request_id` of your own (letters, digits, `_` and `-`). When an answer gets lost, send the same call
+  with the same `request_id` again: the change runs only once, and you get the first answer.
 - `ginko_draft({ brick, fields })` makes a draft in bricks that have drafts. A draft is not on the website.
   The person publishes it in the platform. You cannot publish.
 
@@ -48,8 +50,9 @@ You cannot do more than they can, and everything you change is shown in their hi
 
 - `ginko_translate({ entry, locale, fields })` writes the text in a foreign language, for example `{ "name": "Veal schnitzel" }`.
   It never changes the main language and refuses it.
-- `ginko_read` in a foreign language marks texts in `fallback` (missing or outdated) and, for outdated ones, in `stale`.
-  An outdated translation was written for an older main text. Translate it again, or list it in `confirm` if it is still right.
+- `ginko_read` in a foreign language marks missing texts in `fallback` (the website shows the main language there) and
+  outdated ones in `stale`. An outdated translation was written for an older main text, and the website still shows it.
+  Translate it again, or list it in `confirm` if it is still right.
 - Translate whole texts, keep the tone and the format (Markdown stays Markdown).
 
 ## Files

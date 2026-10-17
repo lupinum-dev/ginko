@@ -95,10 +95,15 @@ test.describe('Dateien', () => {
     const picker = page.getByRole('dialog')
     await picker.getByRole('button', { name: photo }).click()
     const use = picker.getByRole('button', { name: 'Dieses Foto verwenden' })
-    await expect(picker.getByLabel('Bildbeschreibung')).toBeVisible()
-    await expect(use).toBeDisabled()
-    await picker.getByLabel('Bildbeschreibung').fill('Gedeckter Tisch im Garten')
-    await expect(use).toBeEnabled()
+    const alt = picker.getByLabel('Bildbeschreibung')
+    await expect(alt).toHaveValue('')
+    // Without a description the button says why instead of being disabled (d57b9a4f), and the picker stays open.
+    await use.click()
+    await expect(picker.getByRole('alert')).toHaveText('Beschreibe das Bild kurz, für Menschen, die es nicht sehen.')
+    await expect(alt).toBeFocused()
+    await expect(picker).toBeVisible()
+    await alt.fill('Gedeckter Tisch im Garten')
+    await expect(picker.getByRole('alert')).toHaveCount(0)
     await use.click()
     await expect(picker).toHaveCount(0)
     await expect(page.getByLabel('Bildbeschreibung')).toHaveValue('Gedeckter Tisch im Garten')
@@ -192,7 +197,12 @@ test.describe('Dateien', () => {
 
   test('4. fixing a missing alt text lowers the count at once, without a reload', async ({ page, context }) => {
     const photo = `f6-ohne-alt-${stamp()}.png`
+    // Wrong behaviour caught: the server rendered the phone layout of the library and a wide browser did not, so Vue
+    // threw the server HTML of that part away on every load (a hydration mismatch).
+    const mismatches: string[] = []
+    page.on('console', (message) => { if (message.text().includes('Hydration')) mismatches.push(message.text()) })
     await open(page, '/s/restaurant/files')
+    expect(mismatches).toEqual([])
     await uploadPhoto(page, photo)
     await usePhotoInSeo(page, photo, 'Gaststube')
 
@@ -216,6 +226,41 @@ test.describe('Dateien', () => {
     await expect(page.getByText('Jedes Foto hat eine Beschreibung.')).toBeVisible()
     if (!narrow(page)) await expect(page.getByRole('navigation', { name: 'Dateien' }).getByRole('button', { name: /Bildbeschreibung fehlt/ })).not.toContainText('1')
   })
+
+  // The text page this needs: a Markdown field with the `page` profile (the figure component). The restaurant site that
+  // this suite pushes has only `basic` texts (no pictures, no components), so the test waits for such a field there.
+  test.fixme('4b. picks a library image for a Markdown figure and the preview shows it', async ({ page }) => {
+    const photo = `f6-figur-${stamp()}.png`
+    await open(page, '/s/restaurant/files')
+    await uploadPhoto(page, photo)
+
+    await open(page, '/s/restaurant/all/pages/new')
+    await page.getByLabel('Titel').fill(`Bildseite ${stamp()}`)
+    const text = page.getByRole('textbox', { name: 'Text' })
+    await text.click()
+    await page.keyboard.type('/Abbildung')
+    await page.keyboard.press('Enter')
+    const settings = page.getByRole('dialog', { name: 'Abbildung' })
+    await settings.getByRole('button', { name: 'Bild wählen' }).click()
+    const picker = page.getByRole('dialog', { name: 'Dateien' })
+    await picker.getByRole('button', { name: photo }).click()
+    await picker.getByLabel('Bildbeschreibung').fill('Gedeckter Tisch im Garten')
+    await picker.getByRole('button', { name: 'Dieses Foto verwenden' }).click()
+    await expect(picker).toHaveCount(0)
+    await expect(settings.locator('img')).toHaveAttribute('src', /\/api\/storage\//)
+    await expect(settings.getByLabel('Bildbeschreibung')).toHaveValue('Gedeckter Tisch im Garten')
+    await page.keyboard.press('Escape')
+
+    await page.getByRole('button', { name: 'Speichern', exact: true }).click()
+    await expect(toast(page)).toContainText('Gespeichert')
+    await page.reload({ waitUntil: 'networkidle' })
+    // The text keeps the library reference; the site gets the file's address.
+    await page.getByRole('button', { name: 'Markdown-Quelltext zeigen' }).click()
+    await expect(page.getByRole('textbox', { name: 'Text' })).toHaveValue(/src="\$file\.[A-Za-z0-9_-]+"/)
+    await page.getByRole('button', { name: 'Vorschau', exact: true }).click()
+    const preview = page.frameLocator('iframe[title="Vorschau der Website"]')
+    await expect(preview.locator('figure img')).toHaveAttribute('src', /\/api\/storage\//, { timeout: 20_000 })
+  })
 })
 
 // ---- Review, History, ⌘K, "Why not on the website?" ----
@@ -226,11 +271,13 @@ const WORDS = {
     locale: 'de-DE', lunchTask: 'Mittagsmenü dieser Woche', tuesday: 'Dienstag', dish: 'Gericht', rightAgain: 'Ja, stimmt', save: 'Speichern', sent: 'Zur Freigabe gesendet.',
     reviewLink: 'Prüfen (1 zu prüfen)', approve: 'Freigeben', approved: 'Freigegeben. Auf der Website in etwa einer Minute.', nothingWaits: 'Nichts wartet auf deine Entscheidung.',
     search: 'Suche und Aktionen', rowChanged: /Kürbisgulasch/, waiting: 'Wartet auf Freigabe', palettePlaceholder: 'Einträge und Bereiche suchen …',
+    approvedByYou: 'Freigabe: Du',
   },
   en: {
     locale: 'en-US', lunchTask: 'This week’s lunch menu', tuesday: 'Tuesday', dish: 'Dish', rightAgain: 'Yes, correct', save: 'Save', sent: 'Sent for approval.',
     reviewLink: 'Review (1 to review)', approve: 'Approve', approved: 'Approved. On the website in about a minute.', nothingWaits: 'Nothing waits for your decision.',
     search: 'Search and actions', rowChanged: /Kürbisgulasch/, waiting: 'Waiting for approval', palettePlaceholder: 'Search entries and areas…',
+    approvedByYou: 'Approval: You',
   },
 }
 type Lang = keyof typeof WORDS
@@ -309,17 +356,22 @@ for (const lang of ['de', 'en'] as const) {
       await row.getByRole('button', { name: w.approve, exact: true }).click()
       await expect(toast(ownerPage)).toContainText(w.approved)
       await expect(ownerPage.getByText(w.nothingWaits)).toBeVisible()
-      await expect(ownerPage.getByRole('link', { name: /^(Zu prüfen|To review)/ })).toHaveCount(0)
+      // The review link no longer counts anything waiting (its name is "Prüfen (1 zu prüfen)" while one waits).
+      await expect(ownerPage.getByRole('link', { name: /(zu prüfen|to review)\)$/ })).toHaveCount(0)
 
       // Live: the lunch entry holds the dish now.
       await open(ownerPage, '/s/restaurant/all/lunch')
       await expect(ownerPage.locator('li', { has: ownerPage.getByRole('heading', { name: w.tuesday }) }).getByLabel(w.dish)).toHaveValue(dish)
+      // The owner's History names who made the change (an owner sees the cook's address) and the owner as the approver.
+      await open(ownerPage, '/s/restaurant/history')
+      await expect(ownerPage.locator('main ol li').first()).toContainText('koch@example.test')
+      await expect(ownerPage.locator('main ol li').first()).toContainText(w.approvedByYou)
       await owner.close()
 
-      // The cook's History: nothing waits any more, and the change is there as done.
+      // The cook's History: nothing waits any more, and the change is there as done, as their own ("Du", ce0c081d).
       await open(cookPage, '/s/restaurant/history')
       await expect(cookPage.getByRole('heading', { name: WORDS.de.waiting })).toHaveCount(0)
-      await expect(cookPage.locator('main ol li').first()).toContainText('koch@example.test')
+      await expect(cookPage.locator('main ol li').first()).toContainText('Du · Freigabe: Ein Mitglied')
       await cook.close()
     })
 
@@ -370,6 +422,14 @@ test.describe('Prüfen und Verlauf', () => {
   test.describe('7. History detail', () => {
     test.use({ storageState: STATE.owner })
 
+    test('a reader in another time zone is told that the times are the site’s', async ({ browser, baseURL, viewport }) => {
+      const away = await browser.newContext({ baseURL, viewport, storageState: STATE.owner, timezoneId: 'America/Los_Angeles' })
+      const page = await away.newPage()
+      await open(page, '/s/restaurant/history')
+      await expect(page.getByText('Alle Zeiten in der Zeitzone der Website (Europe/Vienna).')).toBeVisible()
+      await away.close()
+    })
+
     test('Show changes shows before and after; Back to this version is a new save; Undo takes it back', async ({ page }) => {
       const priceField = () => page.getByRole('textbox', { name: 'Preis', exact: true })
       const setPrice = async (value: string) => {
@@ -393,7 +453,10 @@ test.describe('Prüfen und Verlauf', () => {
 
       const before = await rows.count()
       await rows.nth(1).getByRole('button', { name: 'Zurück zu dieser Version' }).click()
-      await expect(rows.nth(1).getByText(/^Zurück zur Version vom .*\?/)).toBeVisible()
+      await expect(rows.nth(1).getByText(/^Zum Stand direkt nach dieser Änderung \(.*\) zurück\?/)).toBeVisible()
+      // The question shows what going back changes: now (25,00) before, that version (23,50) after.
+      await expect(rows.nth(1).getByRole('group')).toContainText('Das ändert sich:')
+      await expect(rows.nth(1).getByRole('group')).toContainText('25,00')
       await rows.nth(1).getByRole('group').getByRole('button', { name: 'Zurück zu dieser Version' }).click()
       await expect(rows).toHaveCount(before + 1)
 
@@ -407,6 +470,24 @@ test.describe('Prüfen und Verlauf', () => {
       // Undo is a save of its own at the top; the row it undid is marked.
       await expect(rows.first()).toContainText('Rückgängig: ')
       await expect(rows.nth(1)).toContainText('Rückgängig gemacht')
+      // The undo row holds the current state too: going back to it has nothing to change.
+      await rows.first().getByRole('button', { name: 'Zurück zu dieser Version' }).click()
+      await expect(rows.first().getByRole('group')).toContainText('Das ist schon der aktuelle Stand.')
+      await expect(rows.first().getByRole('group').getByRole('button', { name: 'Zurück zu dieser Version' })).toHaveCount(0)
+      await rows.first().getByRole('group').getByRole('button', { name: 'Abbrechen' }).click()
+
+      // After a later save the undo row is a step back (R6): going back to it shows what changes and saves it.
+      await setPrice('26,00')
+      await open(page, '/s/restaurant/history')
+      const undoRow = rows.nth(1)
+      await expect(undoRow).toContainText('Rückgängig: ')
+      await undoRow.getByRole('button', { name: 'Zurück zu dieser Version' }).click()
+      await expect(undoRow.getByRole('group')).toContainText('Das ändert sich:')
+      await expect(undoRow.getByRole('group')).toContainText('26,00')
+      await expect(undoRow.getByRole('group')).toContainText('25,00')
+      const count = await rows.count()
+      await undoRow.getByRole('group').getByRole('button', { name: 'Zurück zu dieser Version' }).click()
+      await expect(rows).toHaveCount(count + 1)
       await open(page, '/s/restaurant/all/menu')
       await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
       await expect(priceField()).toHaveValue('25,00')

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Schema } from '@lupinum/ginko/internal'
 import type { Id } from '../convex/_generated/dataModel'
-import { opId, setup, upload } from './setup'
+import { firstPage, opId, setup, upload } from './setup'
 
 type Setup = Awaited<ReturnType<typeof setup>>
 type ToolAnswer = { content: { type: 'text'; text: string }[]; isError: boolean }
@@ -54,6 +54,30 @@ describe('agent door', () => {
     expect((await call(s, key, 'ginko_history', { limit: 2 })).data[1]).toMatchObject({ kind: 'create', undoable: false })
   })
 
+  // Wrong behaviour caught: a host that retries a write after a lost answer makes a second entry.
+  it('the same request_id sent twice creates one entry and answers the same', async () => {
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    const before = await notices(s)
+    const first = await call(s, key, 'task_notices_soldOut', { request_id: 'retry-1' })
+    const again = await call(s, key, 'task_notices_soldOut', { request_id: 'retry-1' })
+    expect(first.isError).toBe(false)
+    expect(again).toEqual(first)
+    expect(await notices(s)).toHaveLength(before.length + 1)
+  })
+
+  // Wrong behaviour caught: a German field name (a key Convex refuses) failed inside runMutation, and the assistant
+  // was told "Try again later", so it retried the same call forever.
+  it('a name Convex refuses is named in the answer', async () => {
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    expect(await call(s, key, 'task_notices_soldOut', { 'Überschrift': 'x' })).toEqual({
+      text: 'The name “Überschrift” is not allowed: names use ASCII letters, digits and signs and do not start with $.',
+      data: undefined,
+      isError: true,
+    })
+  })
+
   it('a price in euros is stored in cents and the change names the key', async () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')
@@ -65,8 +89,32 @@ describe('agent door', () => {
     ])
     expect(entry!.data.price).toEqual({ amount: 1990 })
     expect(change).toMatchObject({ via: 'agent', actor: 'u-wirtin' })
-    const listed = await s.as.owner.query(api.changes.list, { site: 'restaurant' })
-    expect(listed.page[0]).toMatchObject({ who: { email: 'wirtin@example.com' }, agent: 'Claude Code' })
+    const listed = await s.as.owner.query(api.changes.list, { site: 'restaurant', paginationOpts: firstPage })
+    expect(listed.page[0]).toMatchObject({ who: { self: true }, agent: 'Claude Code' })
+  })
+
+  // Wrong behaviour caught: from the day of a planned price on, the assistant's new price was stored next to the spent
+  // plan, so the website kept showing the planned price while the answer said the new one was live.
+  it('a price set on or after the day of a planned price replaces the spent plan', async () => {
+    vi.setSystemTime(new Date('2026-10-18T10:00:00Z'))
+    const s = await setup()
+    const done = await call(s, await keyOf(s, 'owner'), 'task_menu_price', { entry: s.entries['menu-schnitzel'], price: 23.5 })
+    expect(done.text).toContain('Live on the website in about a minute.')
+    const data = (await entryRow(s, s.entries['menu-schnitzel']!))!.data
+    expect([data.price, data.nextPrice, data.priceFrom]).toEqual([{ amount: 2350 }, undefined, undefined])
+  })
+
+  // Wrong behaviour caught: the door put today over a closure set for tomorrow when the assistant changed only the
+  // reason, so the site closed today and tomorrow's closure was gone; the tool also offered today as the default.
+  it('"Heute geschlossen" with only a reason keeps a closure set for tomorrow', async () => {
+    const s = await setup()
+    const hours = (await s.t.run((ctx) => ctx.db.get(s.entries.hours!)))!
+    await s.t.run((ctx) => ctx.db.patch(s.entries.hours!, { data: { ...hours.data, closedOn: '2026-10-09' } }))
+    const key = await keyOf(s, 'owner')
+    const tools = (await rpc(s, key, 'tools/list')).body.result.tools as { name: string; inputSchema: { properties: Record<string, { default?: unknown }> } }[]
+    expect(tools.find((t) => t.name === 'task_hours_closedToday')!.inputSchema.properties.closedOn!.default).toBe('2026-10-09')
+    expect((await call(s, key, 'task_hours_closedToday', { closedNote: 'Wegen einer Hochzeit' })).isError).toBe(false)
+    expect((await s.t.run((ctx) => ctx.db.get(s.entries.hours!)))!.data).toMatchObject({ closedOn: '2026-10-09' })
   })
 
   it('the cook\'s key sees only the menu and lunch tasks and cannot run another task', async () => {
@@ -120,6 +168,10 @@ const names = async (s: Setup, key: string) => ((await rpc(s, key, 'tools/list')
 const saveOwner = (s: Setup, entry: Id<'entries'>, fields: Record<string, unknown>, baseRev: number) =>
   s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry, baseRev, fields, sentence: 'Test' }) as Promise<{ change: string; rev: number }>
 const entryRow = (s: Setup, id: Id<'entries'>) => s.t.run((ctx) => ctx.db.get(id))
+const grantCook = (s: Setup, grants: string[]) => s.t.run(async (ctx) => {
+  const member = await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', 'u-koch').eq('site', s.site)).unique()
+  await ctx.db.patch(member!._id, { grants })
+})
 const patchSchema = (s: Setup, edit: (schema: Schema) => void) => s.t.run(async (ctx) => {
   const schema = (await ctx.db.get(s.site))!.schema as Schema
   edit(schema)
@@ -127,24 +179,59 @@ const patchSchema = (s: Setup, edit: (schema: Schema) => void) => s.t.run(async 
 })
 
 describe('agent door: tool catalog', () => {
-  it('a staff key lists only the tools it may use: no draft without drafts, no revert or translate without an edit task', async () => {
+  it('a staff key lists only the tools it may use: no draft without drafts, no revert or translate without an edit or create task', async () => {
     const s = await setup()
     const cook = await keyOf(s, 'cook')
     const plain = await names(s, cook)
     expect(plain).toContain('ginko_revert')
     expect(plain).not.toContain('ginko_draft')
 
-    // Only "Gericht hinzufügen" is left, and menu has drafts now.
-    await s.t.run(async (ctx) => {
-      const member = await ctx.db.query('memberships').withIndex('by_user_site', (q) => q.eq('user', 'u-koch').eq('site', s.site)).unique()
-      await ctx.db.patch(member!._id, { grants: ['menu.add'] })
-    })
+    // Only "Gericht hinzufügen" is left, and menu has drafts now. Revert and translate stay for the dishes the cook adds.
+    await grantCook(s, ['menu.add'])
     await patchSchema(s, (schema) => { (schema.bricks.menu as { drafts?: boolean }).drafts = true })
     const narrow = await names(s, cook)
     expect(narrow).toContain('ginko_draft')
-    expect(narrow).not.toContain('ginko_revert')
-    expect(narrow).not.toContain('ginko_translate')
+    expect(narrow).toContain('ginko_revert')
+    expect(narrow).toContain('ginko_translate')
     expect(await names(s, await keyOf(s, 'owner'))).toContain('ginko_draft')
+
+    // Only "Gericht entfernen": nothing to change.
+    await grantCook(s, ['menu.remove'])
+    const removeOnly = await names(s, cook)
+    expect(removeOnly).not.toContain('ginko_revert')
+    expect(removeOnly).not.toContain('ginko_translate')
+  })
+
+  // Wrong behaviour caught: the door decides the creator rule on its own (or not at all), so an assistant translates
+  // the events of others with the cook's key, or cannot translate the event the cook just added.
+  it("a key translates the entries its person created with a create task, never other people's", async () => {
+    const s = await setup()
+    await grantCook(s, ['events.add'])
+    const key = await keyOf(s, 'cook')
+    const made = await call(s, key, 'task_events_add', { title: 'Weinabend', when: { from: '2026-10-25', to: '2026-10-25' }, description: 'Mit Musik.' })
+    expect(made.isError).toBe(false)
+    const own = await call(s, key, 'ginko_translate', { entry: made.data.entry, locale: 'en', fields: { title: 'Wine evening' } })
+    expect(own.isError).toBe(false)
+    expect((await entryRow(s, made.data.entry))!.data.title).toEqual({ de: 'Weinabend', en: 'Wine evening' })
+    const others = await call(s, key, 'ginko_translate', { entry: s.entries.weinabend, locale: 'en', fields: { title: 'Wine evening' } })
+    expect(others.isError).toBe(true)
+  })
+
+  // Wrong behaviour caught: the host cannot tell a read from a write, or takes an overwrite or undo for an additive change
+  // and skips asking (MCP: destructiveHint false means only additive updates); or a write offers no retry key.
+  it('marks reads read-only, only create tasks and drafts additive, every other write destructive, and offers request_id on every write', async () => {
+    const s = await setup()
+    await patchSchema(s, (schema) => { (schema.bricks.menu as { drafts?: boolean }).drafts = true })
+    const tools = (await rpc(s, await keyOf(s, 'owner'), 'tools/list')).body.result.tools as { name: string; inputSchema: { properties: Record<string, unknown> }; annotations: Record<string, boolean> }[]
+    const hints = Object.fromEntries(tools.map((t) => [t.name, t.annotations]))
+    const read = { readOnlyHint: true, openWorldHint: false }
+    const add = { readOnlyHint: false, destructiveHint: false, openWorldHint: false }
+    const write = { readOnlyHint: false, destructiveHint: true, openWorldHint: false }
+    expect([hints.ginko_overview, hints.ginko_read, hints.ginko_search, hints.ginko_history, hints.ginko_version_at, hints.ginko_proposals]).toEqual(Array(6).fill(read))
+    expect([hints.task_notices_soldOut, hints.ginko_draft]).toEqual(Array(2).fill(add))
+    expect([hints.ginko_undo, hints.ginko_revert, hints.ginko_translate, hints.task_menu_price, hints.task_menu_remove]).toEqual(Array(5).fill(write))
+    const retryKey = tools.filter((t) => 'request_id' in t.inputSchema.properties).map((t) => t.name)
+    expect(retryKey.sort()).toEqual(tools.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name).sort())
   })
 
   it('ginko_search finds a dish by a word spelled without its umlaut and shows a snippet', async () => {
@@ -186,7 +273,9 @@ describe('agent door: tool catalog', () => {
     expect((await s.t.run((ctx) => ctx.db.query('changes').order('desc').first()))).toMatchObject({ via: 'agent', fields: ['name'] })
   })
 
-  it('ginko_read in English marks a translation as stale once the German text changed', async () => {
+  // Wrong behaviour caught: the assistant reads the outdated English name as missing, or not at all; or it is told
+  // to fix the English text of a draft that ginko_read does not even list.
+  it('ginko_read in English marks a translation as stale once the German text changed, and still delivers it', async () => {
     const s = await setup()
     const key = await keyOf(s, 'owner')
     const entry = s.entries['menu-schnitzel']!
@@ -195,6 +284,32 @@ describe('agent door: tool catalog', () => {
     await saveOwner(s, entry, { name: { de: 'Schnitzel Wiener Art', en: 'Veal schnitzel' } }, 2)
     const read = await call(s, key, 'ginko_read', { brick: 'menu', locale: 'en' })
     expect(read.data.stale[entry]).toEqual(['name'])
+    const item = read.data.items.find((i: { id: string }) => i.id === entry)
+    expect([item.data.name, item.fallback]).toEqual(['Veal schnitzel', []])
+
+    // Taken back to a draft, it is off the website: neither its item nor its outdated text is reported.
+    await patchSchema(s, (schema) => { (schema.bricks.menu as { drafts?: boolean }).drafts = true })
+    const lifeRev = (await s.t.run((ctx) => ctx.db.get(entry)))!.lifeRev
+    await s.as.owner.mutation(api.entries.unpublish, { site: 'restaurant', opId: opId(), entry, lifeRev })
+    const drafted = await call(s, key, 'ginko_read', { brick: 'menu', locale: 'en' })
+    expect(drafted.data.items.map((i: { id: string }) => i.id)).not.toContain(entry)
+    expect(drafted.data.stale?.[entry]).toBeUndefined()
+  })
+
+  // Wrong behaviour caught: an answer limit below the entry limit, so the assistant cannot read an entry the Studio saved.
+  it('ginko_read returns a legal text of 280 KB, which the Studio can save', async () => {
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    await s.t.run(async (ctx) => {
+      const site = (await ctx.db.get(s.site))!
+      const schema = site.schema as { bricks: { legal: { fields: { imprint: { max?: number } } } } }
+      schema.bricks.legal.fields.imprint.max = 300_000
+      await ctx.db.patch(s.site, { schema })
+    })
+    await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.entries.legal!, baseRev: 1, fields: { imprint: { de: `${'Impressum '.repeat(28_000)}Ende` } } })
+    const read = await call(s, key, 'ginko_read', { brick: 'legal' })
+    expect(read.isError).toBe(false)
+    expect(JSON.stringify(read.data)).toContain('Ende')
   })
 
   it('ginko_draft creates a draft that is not on the website', async () => {
@@ -248,11 +363,47 @@ describe('agent door: tool catalog', () => {
     const key = await keyOf(s, 'owner')
     expect((await call(s, key, 'ginko_overview')).data.hint).toBe('Changes made with this key wait for approval.')
 
+    // Wrong behaviour caught: the agent saw the old values but not what ginko_revert would change, as the Studio does.
     const version = await call(s, key, 'ginko_version_at', { entry, change: first.change })
-    expect(version.data).toMatchObject({ fields: ['price'], data: { price: { amount: 2300 } } })
+    expect(version.data).toMatchObject({ fields: ['price'], data: { price: { amount: 2300 } }, diff: [{ field: 'price', before: { amount: 2500 }, after: { amount: 2300 } }] })
     const done = await call(s, key, 'ginko_revert', { entry, change: first.change })
     expect(done).toMatchObject({ isError: false, text: 'Proposed, waiting for approval.' })
     expect((await entryRow(s, entry))!.data.price).toEqual({ amount: 2500 })
+  })
+
+  // Wrong behaviour caught: a preview made for one actor and a revert made by another disagreed. A staff agent reverts
+  // through the weekly task, which keeps this week; an owner or admin reverts in full, as the Studio does, week included.
+  describe('ginko_version_at and ginko_revert agree per actor', () => {
+    const lunchChanges = async () => {
+      vi.setSystemTime(new Date('2026-10-16T08:00:00Z'))
+      const s = await setup()
+      const lunch = s.entries.lunch!
+      const first = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: lunch, baseRev: 1, fields: { note: { de: 'Alt' } } }) as { change: Id<'changes'>; rev: number }
+      vi.setSystemTime(new Date('2026-10-17T06:00:00Z'))
+      await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: lunch, baseRev: first.rev, fields: { weekOf: '2026-10-19', note: { de: 'Neu' } } })
+      return { s, lunch, first }
+    }
+
+    it('the cook\'s revert proposal writes exactly the fields of the cook\'s preview, without the week', async () => {
+      const { s, lunch, first } = await lunchChanges()
+      const cook = await keyOf(s, 'cook')
+      const diff = (await call(s, cook, 'ginko_version_at', { entry: lunch, change: first.change })).data.diff as { field: string }[]
+      expect(diff.map((d) => d.field)).toEqual(['note'])
+      const done = await call(s, cook, 'ginko_revert', { entry: lunch, change: first.change })
+      expect(done.isError).toBe(false)
+      const proposals = await s.t.run((ctx) => ctx.db.query('proposals').collect())
+      expect(proposals.map((p) => Object.keys(p.args.fields as object))).toEqual([diff.map((d) => d.field)])
+    })
+
+    it('the owner\'s preview includes the week and the owner\'s revert sets it back', async () => {
+      const { s, lunch, first } = await lunchChanges()
+      const owner = await keyOf(s, 'owner')
+      const diff = (await call(s, owner, 'ginko_version_at', { entry: lunch, change: first.change })).data.diff as { field: string }[]
+      expect(diff.map((d) => d.field).sort()).toEqual(['note', 'weekOf'])
+      expect((await call(s, owner, 'ginko_revert', { entry: lunch, change: first.change })).isError).toBe(false)
+      const data = (await entryRow(s, lunch))!.data
+      expect([data.weekOf, data.note]).toEqual(['2026-10-05', { de: 'Alt' }])
+    })
   })
 
   it('with review on, ginko_undo cannot take back a live save past the review', async () => {
@@ -263,6 +414,21 @@ describe('agent door: tool catalog', () => {
     const undone = await call(s, await keyOf(s, 'owner'), 'ginko_undo', { change: saved.change })
     expect(undone).toMatchObject({ isError: true, text: expect.stringContaining('ginko_revert') })
     expect((await entryRow(s, entry))!.data.price).toEqual({ amount: 2500 })
+  })
+
+  // Wrong behaviour caught: the second call withdrew the first proposal, because both went through "Gericht
+  // bearbeiten"; the price proposal was gone and nobody was told. A later call on the same field still replaces it.
+  it('with review on, two edits of one dish with different fields both wait; the same field again replaces its proposal', async () => {
+    const s = await setup()
+    await s.t.run((ctx) => ctx.db.patch(s.site, { agentReview: true }))
+    const key = await keyOf(s, 'owner')
+    const entry = s.entries['menu-saibling']!
+    const statuses = async () => (await s.t.run((ctx) => ctx.db.query('proposals').collect())).map((p) => p.status)
+    await call(s, key, 'task_menu_edit', { entry, price: 25 })
+    await call(s, key, 'task_menu_edit', { entry, description: 'Mit Erdäpfeln' })
+    expect(await statuses()).toEqual(['open', 'open'])
+    await call(s, key, 'task_menu_edit', { entry, description: 'Mit Petersilerdäpfeln' })
+    expect(await statuses()).toEqual(['open', 'withdrawn', 'open'])
   })
 
   it('ginko_proposals lists only the caller\'s own proposals, even for an owner who could see all', async () => {

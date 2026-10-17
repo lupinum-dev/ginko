@@ -1,0 +1,20 @@
+{
+  "title": "Leistungen",
+  "lead": "Was wir anbieten, mit Preisen.",
+  "all": "Alle Leistungen",
+  "empty": "Noch keine Leistungen",
+  "price": "Preis",
+  "priceNet": "Preis (zzgl. MwSt.)",
+  "priceGross": "Preis (inkl. MwSt.)",
+  "onRequest": "Auf Anfrage",
+  "duration": "Dauer",
+  "specs": "Eckdaten",
+  "enquire": "Anfrage senden",
+  "subject": "Anfrage: {title}",
+  "book": "Termin anfragen",
+  "bookSubject": "Terminanfrage: {title}",
+  "call": "{phone} anrufen",
+  "orCall": "Oder anrufen:",
+  "orCallName": "Oder rufen Sie {name} an:",
+  "sheet": "Produktblatt"
+}

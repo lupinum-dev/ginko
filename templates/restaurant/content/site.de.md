@@ -1,0 +1,3 @@
+---
+registryCourt: Handelsgericht Wien
+---

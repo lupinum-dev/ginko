@@ -4,6 +4,7 @@
 // write path. A change that no longer fits (revision moved on) becomes `stale` and writes nothing.
 import type { Json } from '@lupinum/ginko'
 import type { Schema } from '@lupinum/ginko/internal'
+import { paginationOptsValidator } from 'convex/server'
 import { ConvexError, v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
@@ -15,7 +16,8 @@ import { diffFields } from './lib/diff'
 import { historyText, msg, type HistoryMsg, type Param } from './lib/history'
 import { localeOfUser, t, type MessageKey } from './lib/i18n'
 import { queueMail, mailAvailable, siteOrigin } from './mail'
-import { labeler, type Labeler } from './lib/names'
+import { labeler, namer, type Labeler } from './lib/names'
+import { taskOf } from './lib/policy'
 
 const PAGE_SIZE = 50
 /** SPEC 17: a release groups at most this many proposals. */
@@ -75,7 +77,7 @@ const staleBecause = (key: MessageKey, params?: Record<string, Param>): Stale =>
   return { reason: historyText(message, 'de', undefined), msg: message }
 }
 
-type Applied = { ok: true; change?: Id<'changes'> } | ({ ok: false } & Stale)
+type Applied = { ok: true; change?: Id<'changes'>; liveFrom?: string } | ({ ok: false } & Stale)
 
 /** A refusal of the operation (`fail`: code, catalog key, params) as the reason: its own text, then the ask to propose again. */
 function reasonOf(data: { code?: string; key?: string; params?: Record<string, string | number> }): Stale {
@@ -96,21 +98,22 @@ async function applyNow(ctx: MutationCtx, p: Doc<'proposals'>, approver: string)
   if (!author) return { ok: false, ...staleBecause('history.staleAuthorLeft') }
   const actor: Actor = { ...author, approvedBy: approver, ...(p.agentKey ? { agentKey: p.agentKey } : {}) }
   // A new op ID per proposal: a retry of the same apply finds its stored result.
-  const args = { ...(p.args as object), opId: `p-${p._id}` } as never
+  const { copy, ...stored } = p.args as { copy?: boolean }
+  const args = { ...stored, opId: `p-${p._id}` } as never
   try {
     let result: Json
     switch (p.op) {
       case 'save': result = await saveAs(ctx, actor, args); break
-      case 'create': result = await createAs(ctx, actor, args); break
+      case 'create': result = await createAs(ctx, actor, args, copy ? { copy } : {}); break
       case 'remove': result = await removeAs(ctx, actor, args); break
       case 'publish': result = await publishAs(ctx, actor, args); break
       case 'unpublish': result = await unpublishAs(ctx, actor, args); break
     }
-    const data = result as { change?: Id<'changes'>; entry?: Id<'entries'> }
+    const data = result as { change?: Id<'changes'>; entry?: Id<'entries'>; liveFrom?: string }
     // Only a save can end without a change (the values were already there); every other operation writes one.
     const entry = data.entry ?? p.entry
     const change = data.change ?? (p.op !== 'save' && entry ? (await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry)).order('desc').first())?._id : undefined)
-    return { ok: true, ...(change ? { change } : {}) }
+    return { ok: true, ...(change ? { change } : {}), ...(data.liveFrom ? { liveFrom: data.liveFrom } : {}) }
   } catch (error) {
     if (error instanceof ConvexError && typeof error.data === 'object' && error.data !== null && 'code' in error.data) return { ok: false, ...reasonOf(error.data as { code?: string; key?: string; params?: Record<string, string | number> }) }
     throw error
@@ -194,7 +197,8 @@ export const approve = mutation({
       return { proposal: p._id, status: 'stale', reason: applied.reason, reasonMsg: applied.msg }
     }
     await markApplied(ctx, p, by, applied.change)
-    return { proposal: p._id, status: 'applied', change: applied.change ?? null }
+    // A week planned ahead or a planned price: the approver is told from when it shows.
+    return { proposal: p._id, status: 'applied', change: applied.change ?? null, ...(applied.liveFrom ? { liveFrom: applied.liveFrom } : {}) }
   },
 })
 
@@ -231,6 +235,8 @@ export const reject = mutation({
     if (p.status !== 'open' && !(p.status === 'scheduled' && !p.release)) fail('CHANGED_SINCE', 'errors.proposalNoLongerOpen', undefined, { status: p.status })
     if (p.job) await ctx.scheduler.cancel(p.job)
     await ctx.db.patch(p._id, { status: 'rejected', reason, decidedBy: actor.user.id, decidedAt: Date.now(), job: undefined, release: undefined })
+    // A rejection needs the author to act, often the same day; an approval needs nothing (decisions: email on rejection only).
+    if (p.author !== actor.user.id) await mailRejected(ctx, p, reason)
     return { proposal: p._id, status: 'rejected' }
   },
 })
@@ -251,7 +257,7 @@ export const withdraw = mutation({
 
 async function summary(p: Doc<'proposals'>, actor: Actor, names: Labeler) {
   return {
-    proposal: p._id, op: p.op, brick: p.brick, entry: p.entry ?? null, sentence: p.sentence, msg: p.msg ?? null, status: p.status,
+    proposal: p._id, op: p.op, brick: p.brick, entry: p.entry ?? null, task: taskOf(p.args) ?? null, sentence: p.sentence, msg: p.msg ?? null, status: p.status,
     author: await names.who(p.author), mine: p.author === actor.user.id, via: p.via, agent: await names.key(p.agentKey),
     createdAt: p.createdAt, at: p.at ?? null, release: p.release ?? null,
     decidedBy: p.decidedBy ? await names.who(p.decidedBy) : null, decidedAt: p.decidedAt ?? null, reason: p.reason ?? null, reasonMsg: p.reasonMsg ?? null,
@@ -259,6 +265,12 @@ async function summary(p: Doc<'proposals'>, actor: Actor, names: Labeler) {
     /** Whether the signed-in person may approve or reject it (not staff, not their own). */
     canDecide: isApprover(actor) && (p.author !== actor.user.id || p.via === 'agent') && (p.status === 'open' || p.status === 'scheduled'),
   }
+}
+
+/** A row of the inbox: an open or scheduled one carries `conflict` (and its message `conflictMsg`), why it would be stale if decided now. */
+async function inboxRow(ctx: QueryCtx, p: Doc<'proposals'>, actor: Actor, names: Labeler) {
+  const conflict = p.status === 'open' || p.status === 'scheduled' ? await staleReason(ctx, p) : null
+  return { ...(await summary(p, actor, names)), conflict: conflict?.reason ?? null, conflictMsg: conflict?.msg ?? null }
 }
 
 /** Open proposals this person has to look at: for an approver all of the site, for an author their own. */
@@ -269,12 +281,11 @@ async function openCount(ctx: QueryCtx, actor: Actor): Promise<number> {
 
 /**
  * Proposals of a site, newest first (`order: 'oldest'` reverses it). Approvers see all of them, authors their own.
- * `status` narrows; `cursor` pages. Every row of an open or scheduled proposal carries `conflict` (and its
- * message `conflictMsg`): why it would be stale if decided now, so the inbox needs no `get` per row.
- * `total` is the number of open proposals this person may see, whatever `status` filters.
+ * `status` narrows. A paginated query (`useConvexPaginatedQuery`), at most 50 rows a page. Every row is an
+ * `inboxRow`, so the inbox needs no `get` per row. `count` is the number of open ones.
  */
 export const list = query({
-  args: { site: v.string(), status: v.optional(status), order: v.optional(v.union(v.literal('newest'), v.literal('oldest'))), cursor: v.optional(v.string()) },
+  args: { site: v.string(), status: v.optional(status), order: v.optional(v.union(v.literal('newest'), v.literal('oldest'))), paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     const actor = await siteActor(ctx, args.site)
     const site = actor.site._id
@@ -284,30 +295,115 @@ export const list = query({
         ? ctx.db.query('proposals').withIndex('by_site_status', (q) => q.eq('site', site).eq('status', wanted))
         : ctx.db.query('proposals').withIndex('by_site', (q) => q.eq('site', site))
       : ctx.db.query('proposals').withIndex('by_site_author', (q) => q.eq('site', site).eq('author', actor.user.id)).filter((q) => (wanted ? q.eq(q.field('status'), wanted) : true))
+    const opts = args.paginationOpts
     let page
     try {
-      page = await rows.order(args.order === 'oldest' ? 'asc' : 'desc').paginate({ cursor: args.cursor ?? null, numItems: PAGE_SIZE })
+      page = await rows.order(args.order === 'oldest' ? 'asc' : 'desc').paginate({ ...opts, numItems: Math.min(opts.numItems, PAGE_SIZE) })
     } catch (error) {
       // The cursor comes from the client; the database refuses one it did not hand out.
-      if (args.cursor === undefined) throw error
+      if (opts.cursor === null) throw error
       fail('INVALID', 'errors.pageMarkerInvalid')
     }
     const names = await labeler(ctx, actor)
-    const rowsOut = await Promise.all(page.page.map(async (p) => {
-      const conflict = p.status === 'open' || p.status === 'scheduled' ? await staleReason(ctx, p) : null
-      return { ...(await summary(p, actor, names)), conflict: conflict?.reason ?? null, conflictMsg: conflict?.msg ?? null }
-    }))
-    return { ...page, page: rowsOut, total: await openCount(ctx, actor) }
+    return { ...page, page: await Promise.all(page.page.map((p) => inboxRow(ctx, p, actor, names))) }
   },
 })
 
+/**
+ * The actor's own proposals of one status (else of any), 50 at most: newest first; of one decided status the
+ * latest decided first. `since` keeps only those decided after it.
+ */
+async function ownDocs(ctx: QueryCtx, actor: Actor, wanted?: Doc<'proposals'>['status'], since?: number) {
+  const own = wanted
+    ? ctx.db.query('proposals').withIndex('by_site_author_status_decided', (q) => {
+        const status = q.eq('site', actor.site._id).eq('author', actor.user.id).eq('status', wanted)
+        return since === undefined ? status : status.gt('decidedAt', since)
+      })
+    : ctx.db.query('proposals').withIndex('by_site_author', (q) => q.eq('site', actor.site._id).eq('author', actor.user.id))
+  return own.order('desc').take(PAGE_SIZE)
+}
+
 /** The actor's own proposals, newest first (50 at most), also for an approver: the agent door tells a person what of theirs still waits (SPEC 16). */
 export async function ownAs(ctx: QueryCtx, actor: Actor, wanted?: Doc<'proposals'>['status']) {
-  const rows = await ctx.db.query('proposals').withIndex('by_site_author', (q) => q.eq('site', actor.site._id).eq('author', actor.user.id))
-    .filter((q) => (wanted ? q.eq(q.field('status'), wanted) : true)).order('desc').take(PAGE_SIZE)
+  const rows = await ownDocs(ctx, actor, wanted)
   const names = await labeler(ctx, actor)
   return Promise.all(rows.map((p) => summary(p, actor, names)))
 }
+
+/** Long enough to be read after a weekend off; older rejections and failed plans are only in the approver's history. */
+const RECENT_MS = 14 * 24 * 60 * 60 * 1000
+
+/**
+ * The top of History (UI.md 10.4), also for an approver: the person's own open proposals (`open`), their own
+ * proposals rejected in the last two weeks (`rejected`), and planned changes that did not go live in the last
+ * two weeks because they no longer fitted at their time (`notLive`): for an approver of the whole site, who
+ * planned them, else their own. Each list reads at most 50 rows through an index.
+ */
+export const mine = query({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await siteActor(ctx, args.site)
+    // The window is an index range over decidedAt, so a proposal created long ago and decided today is not
+    // crowded out by 50 newer ones. Convex does not re-run a query as time passes: a row may stay past day 14
+    // until something else changes the result.
+    const since = Date.now() - RECENT_MS
+    const stale = isApprover(actor)
+      ? await ctx.db.query('proposals').withIndex('by_site_status_decided', (q) => q.eq('site', actor.site._id).eq('status', 'stale').gt('decidedAt', since)).order('desc').take(PAGE_SIZE)
+      : await ownDocs(ctx, actor, 'stale', since)
+    const names = await labeler(ctx, actor)
+    const rows = (docs: Doc<'proposals'>[]) => Promise.all(docs.map((p) => summary(p, actor, names)))
+    // A rejected save stays only while it is still the thing to fix (`followUp`): not after a newer proposal on the
+    // entry, nor after a later change of its fields.
+    const recent = await ownDocs(ctx, actor)
+    const rejected = []
+    for (const p of await ownDocs(ctx, actor, 'rejected', since)) {
+      if (p.op !== 'save' || !p.entry || p.via !== 'ui' || (await followUp(ctx, recent, p.entry))?._id === p._id) rejected.push(p)
+    }
+    return {
+      open: await rows(await ownDocs(ctx, actor, 'open')),
+      rejected: await rows(rejected),
+      notLive: await rows(stale.filter((p) => p.at !== undefined)),
+    }
+  },
+})
+
+/**
+ * The author's proposal to follow up on for one entry in the Studio, from their newest own proposals (`ownDocs`): their
+ * newest save of the entry made in the Studio (an agent's proposals are reviewed in the inbox) when it is open, or when
+ * it was rejected in the last two weeks and still fits (`staleReason`). A newer own proposal on the entry, or a later
+ * change of those fields, makes an older rejection moot.
+ */
+async function followUp(ctx: QueryCtx, recent: Doc<'proposals'>[], entry: Id<'entries'>): Promise<Doc<'proposals'> | null> {
+  const p = recent.find((r) => r.op === 'save' && r.via === 'ui' && r.entry === entry)
+  if (!p) return null
+  if (p.status === 'open') return p
+  if (p.status !== 'rejected' || (p.decidedAt ?? 0) <= Date.now() - RECENT_MS) return null
+  return (await staleReason(ctx, p)) ? null : p
+}
+
+/**
+ * The signed-in person's own proposal for an entry that a task sheet starts from (`followUp`): the fields it sent,
+ * and for a rejection who rejected it and why. `fits` is false for an open one whose fields someone changed since
+ * (`staleReason`): the sheet then starts from the stored values, so sending again does not bring the old ones back
+ * with a fresh base. `null` when there is nothing to follow up.
+ */
+export const ownFor = query({
+  args: { site: v.string(), entry: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await siteActor(ctx, args.site)
+    const entry = ctx.db.normalizeId('entries', args.entry)
+    const p = entry ? await followUp(ctx, await ownDocs(ctx, actor), entry) : null
+    if (!p) return null
+    const names = await labeler(ctx, actor)
+    const sent = p.args as { fields?: Record<string, Json> }
+    return {
+      proposal: p._id, status: p.status, task: taskOf(p.args) ?? null, fields: sent.fields ?? {}, createdAt: p.createdAt,
+      // A rejection `followUp` returns fits already.
+      fits: p.status !== 'open' || (await staleReason(ctx, p)) === null,
+      decidedAt: p.decidedAt ?? null, decidedBy: p.decidedBy ? await names.who(p.decidedBy) : null, reason: p.reason ?? null,
+    }
+  },
+})
 
 /** "Zu prüfen (n)": open proposals a signed-in approver has to look at; for authors their own open ones. */
 export const count = query({
@@ -352,22 +448,29 @@ export const get = query({
 
 // ---- Releases: proposals approved together, all or none ----
 
-const releaseSummary = async (ctx: QueryCtx, r: Doc<'releases'>) => {
+/** A release with every member as an `inboxRow`, so the inbox shows the members whichever page of `list` is loaded. */
+const releaseSummary = async (ctx: QueryCtx, r: Doc<'releases'>, actor: Actor, names: Labeler) => {
   const members = await ctx.db.query('proposals').withIndex('by_release', (q) => q.eq('release', r._id)).collect()
   return {
     release: r._id, name: r.name, status: r.status, at: r.at ?? null, createdAt: r.createdAt, decidedAt: r.decidedAt ?? null,
-    proposals: members.map((p) => ({ proposal: p._id, sentence: p.sentence, msg: p.msg ?? null, status: p.status, reason: p.reason ?? null, reasonMsg: p.reasonMsg ?? null })),
+    proposals: await Promise.all(members.map((p) => inboxRow(ctx, p, actor, names))),
   }
 }
 
-/** The site's releases, newest first, each with its proposals. Approvers only: staff sees proposals, not their grouping. */
+/**
+ * The site's releases still to decide (open or stale), newest first (50 at most), each with its proposals.
+ * Decided ones are left out: each member costs reads of its entry. Approvers only: staff sees proposals, not their grouping.
+ */
 export const releases = query({
   args: { site: v.string() },
   handler: async (ctx, args) => {
     const actor = await siteActor(ctx, args.site)
     if (!isApprover(actor)) fail('FORBIDDEN', 'errors.ownersOnly')
-    const rows = await ctx.db.query('releases').withIndex('by_site', (q) => q.eq('site', actor.site._id)).order('desc').take(50)
-    return Promise.all(rows.map((r) => releaseSummary(ctx, r)))
+    const of = (status: 'open' | 'stale') =>
+      ctx.db.query('releases').withIndex('by_site_status', (q) => q.eq('site', actor.site._id).eq('status', status)).order('desc').take(50)
+    const rows = [...(await of('open')), ...(await of('stale'))].sort((a, b) => b._creationTime - a._creationTime).slice(0, 50)
+    const names = await labeler(ctx, actor)
+    return Promise.all(rows.map((r) => releaseSummary(ctx, r, actor, names)))
   },
 })
 
@@ -572,6 +675,26 @@ async function mailNotLive(ctx: MutationCtx, siteId: Id<'sites'>, approver: stri
   })
 }
 
+/**
+ * Tells the author at once that their proposal was not approved, with the approver's reason and a link that reopens
+ * it in its task (Schnell ändern), else Schnell ändern itself. An assistant's proposal is not reopened in the Studio
+ * (`followUp`): its link is Verlauf, which lists it with the reason. In the author's language.
+ */
+async function mailRejected(ctx: MutationCtx, p: Doc<'proposals'>, reason: string) {
+  const site = await ctx.db.get(p.site)
+  if (!site || !mailAvailable()) return
+  const member = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).filter((q) => q.eq(q.field('user'), p.author)).first()
+  if (!member?.email) return
+  const locale = await localeOfUser(ctx, member.user)
+  const task = taskOf(p.args)
+  const fix = p.via === 'agent' ? '/history' : p.op === 'save' && p.entry && task ? `?task=${encodeURIComponent(task)}&reopen=${p._id}` : ''
+  await queueMail(ctx, {
+    to: member.email,
+    subject: t(locale, 'mail.rejected.subject', { site: site.name }),
+    text: t(locale, 'mail.rejected.text', { site: site.name, what: p.msg ? historyText(p.msg as HistoryMsg, locale, site.schema as Schema) : p.sentence, reason, path: `${siteOrigin()}/s/${site.slug}${fix}` }),
+  })
+}
+
 // ---- Mail: one digest for the approvers ----
 
 /**
@@ -590,18 +713,22 @@ export const sendDigest = internalMutation({
     if (!open.length || !mailAvailable()) return null
     const members = await ctx.db.query('memberships').withIndex('by_site', (q) => q.eq('site', site._id)).collect()
     const emailOf = new Map(members.map((m) => [m.user as string, m.email]))
+    const nameOf = namer(ctx)
     const schema = site.schema as Schema
-    const who: { author: string; viaAgent: boolean; ai: string | null; sentence: string; msg?: HistoryMsg }[] = []
+    const who: { author: string; name?: string; viaAgent: boolean; ai: string | null; sentence: string; msg?: HistoryMsg }[] = []
     for (const p of open) {
       // The key's label ("Claude Code"); null when the key is gone, then the line says only "via AI".
       const ai = p.agentKey ? (await ctx.db.get(p.agentKey))?.label ?? null : null
-      who.push({ author: p.author, viaAgent: p.via === 'agent', ai, sentence: p.sentence, ...(p.msg ? { msg: p.msg as HistoryMsg } : {}) })
+      const name = await nameOf(p.author)
+      who.push({ author: p.author, ...(name ? { name } : {}), viaAgent: p.via === 'agent', ai, sentence: p.sentence, ...(p.msg ? { msg: p.msg as HistoryMsg } : {}) })
     }
     // Each owner gets the mail in their own language.
     for (const owner of members.filter((m) => m.role === 'owner' && m.email)) {
       const locale = await localeOfUser(ctx, owner.user)
       const lines = who.map((w) => {
-        const name = emailOf.get(w.author) ?? t(locale, 'mail.digest.someone')
+        // As the Studio shows people to owners: the name the person set, with the address they verified.
+        const email = emailOf.get(w.author)
+        const name = email ? (w.name ? `${w.name} (${email})` : email) : w.name ?? t(locale, 'mail.digest.someone')
         const via = !w.viaAgent ? '' : ` ${w.ai ? t(locale, 'mail.digest.viaAi', { ai: w.ai }) : t(locale, 'mail.digest.viaAiUnnamed')}`
         return `- ${name}${via}: ${w.msg ? historyText(w.msg, locale, schema) : w.sentence}`
       })

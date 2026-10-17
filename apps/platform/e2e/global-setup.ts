@@ -7,13 +7,32 @@ import { resetAll, signIn } from './local'
 
 export const STATE = { owner: 'e2e/.state/wirtin.json', cook: 'e2e/.state/koch.json' }
 
+/**
+ * The Studio preview loads every local site from http://localhost:3000 (devPush stores that origin), and Playwright
+ * reuses whatever already runs there. Another site on 3000 (say lupinum-v7) makes the preview tests time out without a
+ * hint, so stop here with the reason. The site name is in the runtime config the Ginko module puts into the page.
+ */
+async function checkPreviewSite() {
+  // The site may answer 503 until the Studio on 3100, which it reads its content from, has compiled: wait for a page.
+  let site: string | undefined
+  for (let tries = 0; tries < 60 && !site; tries++) {
+    if (tries) await new Promise((done) => setTimeout(done, 2000))
+    const html = await fetch('http://localhost:3000/').then((r) => r.text(), () => '')
+    site = /ginko"?:\{"?site"?:"([^"]+)"/.exec(html)?.[1]
+  }
+  if (site !== 'restaurant') throw new Error(`Port 3000 serves the site “${site ?? 'unknown'}”, not sites/restaurant. The Studio preview loads http://localhost:3000, so the preview tests would fail. Stop the other dev server and run the tests again.`)
+}
+
 export default async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0]!.use.baseURL!
+  // The push comes first: on a new backend the site has no content to serve before it (503).
   const links = resetAll()
+  // After Playwright's webServer started or reused port 3000, so this sees what the tests will see.
+  await checkPreviewSite()
   const browser = await chromium.launch()
   for (const [who, email] of [['owner', 'wirtin@example.test'], ['cook', 'koch@example.test']] as const) {
-    // A stored session that the backend no longer knows (reset, expired) still opens the invite page,
-    // but accepting fails. So: try the stored session once, else start clean and sign in.
+    // The invite page is public: a stored session that the backend no longer knows (reset, expired) opens it signed
+    // out, without "Einladung annehmen". So: try the stored session once, else sign in first and open it again.
     const accepted = existsSync(STATE[who]) && await accept(STATE[who])
     if (!accepted && !await accept(undefined)) throw new Error(`global setup: ${email} could not accept the invitation`)
 
@@ -22,11 +41,8 @@ export default async function globalSetup(config: FullConfig) {
       const context = await browser.newContext({ baseURL, locale: config.projects[0]!.use.locale, ...(state ? { storageState: state } : {}) })
       const page = await context.newPage()
       try {
+        if (!state) await signIn(page, email)
         await page.goto(links[email]!, { waitUntil: 'networkidle' })
-        if (new URL(page.url()).pathname.startsWith('/login')) {
-          await signIn(page, email)
-          await page.goto(links[email]!, { waitUntil: 'networkidle' })
-        }
         await page.getByRole('button', { name: 'Einladung annehmen' }).click()
         await page.waitForURL(/\/s\/restaurant/, { timeout: state ? 10_000 : 30_000 })
         await context.storageState({ path: STATE[who] })

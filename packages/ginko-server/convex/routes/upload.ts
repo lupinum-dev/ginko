@@ -1,11 +1,12 @@
 // POST /upload?ticket=<ticket>&name=<file name> (SPEC 4.3). The body is the file, its Content-Type
-// says what kind it is. Order: ticket (used up, names member and site), type, size, content
-// signature, then store and register for exactly that member and site. Every refusal happens before
-// the file is stored; a failed register deletes the stored file at once.
+// says what kind it is (image or PDF). Order: ticket (used up, names member and site), type, size,
+// content signature, then store and register for exactly that member and site. The file is stored
+// as the type its bytes prove. Every refusal happens before the file is stored; a failed register
+// deletes the stored file at once.
 import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'
 import { httpAction, type ActionCtx } from '../_generated/server'
-import { kindOf, TOO_LARGE, WRONG_CONTENT, WRONG_TYPE } from '../lib/files'
+import { EMPTY, HEIC, isHeic, kindOf, TOO_LARGE, typeOfBytes, WRONG_CONTENT, WRONG_TYPE } from '../lib/files'
 import { t, type MessageKey } from '../lib/i18n'
 
 /** Only the platform UI (`SITE_URL`, the origin sign-in uses too) may call this route from the browser (CORS). */
@@ -34,18 +35,23 @@ async function receive(ctx: ActionCtx, request: Request): Promise<Response> {
   const owner = await ctx.runMutation(internal.uploads.redeem, { ticket: url.searchParams.get('ticket') ?? '' })
   if (!owner) return reply(request, 403, { code: 'FORBIDDEN', key: 'errors.uploadExpired' })
 
-  const kind = kindOf(request.headers.get('Content-Type') ?? '')
+  const name = url.searchParams.get('name') ?? ''
+  const type = request.headers.get('Content-Type') ?? ''
+  if (isHeic({ name, mime: type })) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...HEIC })
+  const kind = kindOf(type)
   if (!kind) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...WRONG_TYPE })
   const declared = request.headers.get('Content-Length')
   if (declared !== null && Number(declared) > kind.limit) return reply(request, 413, { code: 'UPLOAD_REJECTED', ...TOO_LARGE })
   const bytes = new Uint8Array(await request.arrayBuffer())
   if (bytes.byteLength > kind.limit) return reply(request, 413, { code: 'UPLOAD_REJECTED', ...TOO_LARGE })
-  if (!kind.signature(bytes)) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...WRONG_CONTENT })
+  if (bytes.byteLength === 0) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...EMPTY })
+  const mime = typeOfBytes(kind.kind, bytes)
+  if (!mime) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...(isHeic({ bytes }) ? HEIC : WRONG_CONTENT) })
 
-  const storageId = await ctx.storage.store(new Blob([bytes], { type: kind.mime }))
+  const storageId = await ctx.storage.store(new Blob([bytes], { type: mime }))
   try {
     const upload = await ctx.runMutation(internal.uploads.register, {
-      site: owner.site, uploader: owner.user, storageId, name: url.searchParams.get('name') ?? '', size: bytes.byteLength, mime: kind.mime,
+      site: owner.site, uploader: owner.user, storageId, name, size: bytes.byteLength, mime,
       ...(owner.folder ? { folder: owner.folder } : {}), ...(owner.library ? { library: true } : {}),
     })
     return reply(request, 200, { upload })

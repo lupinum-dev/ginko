@@ -1,0 +1,10 @@
+[
+  "app/bricks/projects.ts",
+  "app/composables/useProjects.ts",
+  "app/pages/projects/[slug].vue",
+  "app/pages/projects/index.vue",
+  "i18n/projects/ar.json",
+  "i18n/projects/de.json",
+  "i18n/projects/en.json",
+  "i18n/projects/fr.json"
+]

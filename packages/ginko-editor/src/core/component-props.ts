@@ -6,7 +6,7 @@
 // untouched prop stays as written, and a changed prop keeps its place in the attribute list.
 import type { Field } from '@lupinum/ginko'
 import type { ComponentDef, ComponentRegistry, Described } from '@lupinum/ginko/internal'
-import { componentPropMessage, msg, effectiveMax, isSafeHref, labelOf, UNSAFE_LINK, URL_PROPS } from '@lupinum/ginko/internal'
+import { componentPropMessage, msg, effectiveMax, fileRefOf, isSafeHref, labelOf, UNSAFE_LINK, URL_PROPS } from '@lupinum/ginko/internal'
 
 export type ComponentProps = Record<string, unknown>
 
@@ -154,7 +154,7 @@ export function missingRequired(registry: ComponentRegistry, tag: string, props:
 }
 
 /** `type: warning · title: Achtung`: the props that are set, for the card header. Long values are cut; a bare attribute is just its name. */
-export function propsSummary(props: ComponentProps | undefined, def?: Pick<ComponentDef, 'props'>): string {
+export function propsSummary(props: ComponentProps | undefined, def?: Pick<ComponentDef, 'props'>, fileName?: (id: string) => string | undefined): string {
   return Object.entries(props ?? {})
     .filter(([name]) => name !== 'class' && name !== 'id')
     .map(([name, raw]) => {
@@ -164,7 +164,10 @@ export function propsSummary(props: ComponentProps | undefined, def?: Pick<Compo
       const field = def && Object.hasOwn(def.props, key) ? (def.props[key] as PropField) : undefined
       const label = field ? labelOf(field.label, '', '') : key
       if (name.startsWith(':') && text === 'true') return label
-      const shown = field?.type === 'choice' ? (labelOf(field.options.find((o) => o.value === text)?.label ?? text, '', '')) : text
+      // A picture from the Files library shows its file name, not its ID (`$file.k57…`); "…" while the name loads.
+      const file = field?.type === 'image' ? fileRefOf(text) : undefined
+      const shown = file !== undefined ? (fileName?.(file) ?? '…')
+        : field?.type === 'choice' ? (labelOf(field.options.find((o) => o.value === text)?.label ?? text, '', '')) : text
       return `${label}: ${shown.length > 40 ? `${shown.slice(0, 39)}…` : shown}`
     })
     .join(' · ')

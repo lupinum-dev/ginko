@@ -2,16 +2,37 @@
 // the entry with its revisions, the change row and the file references in one place.
 import type { Field, Fields, Json } from '@lupinum/ginko'
 import type { FileField } from '@lupinum/ginko/internal'
-import { checkLinks, fileProblem, linkTargets, stableJson, type LinkIssue, type Schema, type ValidateOptions } from '@lupinum/ginko/internal'
+import { checkLinks, entryBytes, fileProblem, fitsBudget, linkTargets, stableJson, type LinkIssue, type Schema, type ValidateOptions } from '@lupinum/ginko/internal'
 import type { Doc, Id } from '../_generated/dataModel'
 import type { MutationCtx, QueryCtx } from '../_generated/server'
 import { bundleOf, type NewItem } from '../bundle'
 import { byOf, fail, type Actor } from './access'
-import { fileIdsOf, storageOf, usesOf, type Data, type Prints, type Use } from './content'
+import { fileIdsOf, refIdsIn, treesOf, usesOf, type Data, type IsUploadId, type Prints, type Use } from './content'
 import type { Recorded } from './history'
+import { putTrees } from './trees'
 
 export { SITE_BUDGET as BUDGET } from '@lupinum/ginko/internal'
 import { SITE_BUDGET as BUDGET } from '@lupinum/ginko/internal'
+
+/**
+ * "340 KB", "4.2 MB": sizes in error texts, on the same 1024 base as the Studio's `sizeText` (utils/size.ts). `up` rounds
+ * up, for a size over a limit and the amount to cut.
+ */
+export function sizeText(bytes: number, up = false): string {
+  const round = up ? Math.ceil : Math.round
+  const kb = Math.max(1, round(bytes / 1024))
+  if (kb < 1024) return `${kb} KB`
+  return `${(round(bytes / (1024 * 1024) * 10) / 10).toFixed(1).replace(/\.0$/, '')} MB`
+}
+
+/**
+ * The params of a budget error: how much is used, the limit, and how much is over it. Used and over round up, so
+ * 1 byte over 480 KB reads "481 KB von höchstens 480 KB … etwa 1 KB", never "480 KB von höchstens 480 KB".
+ */
+export const overBudget = (used: number, limit: number) => ({ used: sizeText(used, true), limit: sizeText(limit), over: sizeText(used - limit, true) })
+
+/** The `$file.<id>` words of Markdown texts that can name an upload: those with the form of an uploads ID. */
+export const uploadIdsOf = (ctx: QueryCtx): IsUploadId => (id) => ctx.db.normalizeId('uploads', id) !== null
 
 /**
  * Fields may only point at ready uploads of the same site (SPEC 4.3 point 3). The ids in `images`
@@ -27,12 +48,36 @@ export async function checkFiles(ctx: QueryCtx, site: Id<'sites'>, ids: Iterable
   }
 }
 
+/**
+ * Going back to an older version (undo, revert) brings back the pictures and files it shows: those of `after` that
+ * `before` lacks and that lie in the Files trash come out of it, in the same mutation, so the save's file checks pass.
+ * A file deleted for good refuses the step. Returns the files taken out of the trash, with the time they went in.
+ */
+export async function untrashFilesOf(ctx: MutationCtx, site: Id<'sites'>, fields: Fields, before: Data, after: Data): Promise<UntrashedFile[]> {
+  const isUploadId = uploadIdsOf(ctx)
+  const known = fileIdsOf(fields, before, { isUploadId })
+  const untrashed: UntrashedFile[] = []
+  for (const id of fileIdsOf(fields, after, { isUploadId })) {
+    const key = ctx.db.normalizeId('uploads', id)
+    if (!key || known.has(id)) continue
+    const row = await ctx.db.get(key)
+    if (!row) fail('NOT_UNDOABLE', 'errors.versionFileDeleted', undefined, { file: id })
+    if (row.site !== site || !row.trashedAt) continue
+    await ctx.db.patch(key, { trashedAt: undefined })
+    untrashed.push({ id: key, name: row.name, trashedAt: row.trashedAt })
+  }
+  return untrashed
+}
+
+export interface UntrashedFile { id: Id<'uploads'>; name: string; trashedAt: number }
+
 /** Checks the files an edit adds: those new to the entry, those new to an image field (a PDF may already sit in a file field), and every file newly placed in a file field. */
 export async function checkNewFiles(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, before: Data, after: Data) {
-  const known = fileIdsOf(fields, before)
-  const knownImages = fileIdsOf(fields, before, 'image')
-  const images = new Set([...fileIdsOf(fields, after, 'image')].filter((id) => !knownImages.has(id)))
-  const added = [...fileIdsOf(fields, after)].filter((id) => !known.has(id))
+  const isUploadId = uploadIdsOf(ctx)
+  const known = fileIdsOf(fields, before, { isUploadId })
+  const knownImages = fileIdsOf(fields, before, { only: 'image' })
+  const images = new Set([...fileIdsOf(fields, after, { only: 'image' })].filter((id) => !knownImages.has(id)))
+  const added = [...fileIdsOf(fields, after, { isUploadId })].filter((id) => !known.has(id))
   await checkFiles(ctx, site, new Set([...added, ...images]), images)
   // A file's rules belong to the field it sits in. An upload already in a lenient field must still pass the stricter field it is newly placed in.
   const placed = new Set(placementsOf(fields, before).map((p) => `${p.path}\n${p.id}`))
@@ -87,14 +132,8 @@ export async function brokenNewLinks(ctx: QueryCtx, site: Doc<'sites'>, edits: L
 
 /** The `refs` callback for validate(): looks up every entry the data points to (live entries of the target brick on this site). */
 export async function refsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, data: Data): Promise<NonNullable<ValidateOptions['refs']>> {
-  const wanted: { to: string; id: string }[] = []
-  const walk = (field: Field, value: Json | undefined) => {
-    if (field.type === 'ref') for (const id of [value].flat()) if (typeof id === 'string') wanted.push({ to: field.to, id })
-    if (field.type === 'list' && Array.isArray(value)) for (const row of value) for (const [k, inner] of Object.entries(field.of)) walk(inner, (row as Data)[k])
-  }
-  for (const [name, field] of Object.entries(fields)) walk(field, data[name])
   const found = new Set<string>()
-  for (const { to, id } of wanted) {
+  for (const { to, id } of refIdsIn(fields, data)) {
     const key = ctx.db.normalizeId('entries', id)
     const row = key ? await ctx.db.get(key) : null
     if (row && row.site === site && row.brick === to && !row.deletedAt) found.add(`${to}\n${id}`)
@@ -103,12 +142,12 @@ export async function refsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, 
 }
 
 /**
- * The Files library descriptions of the images in `data`, for `usesOf` and validate(): one read per
- * image file. Ids that are no upload give no text.
+ * The Files library descriptions of the images in `data` (image fields and Markdown references), for `usesOf` and
+ * validate(): one read per file. Ids that are no upload give no text.
  */
 async function altsFor(ctx: QueryCtx, fields: Fields, data: Data): Promise<(file: string) => Record<string, string> | undefined> {
   const found = new Map<string, Record<string, string>>()
-  for (const id of fileIdsOf(fields, data, 'image')) {
+  for (const id of fileIdsOf(fields, data, { isUploadId: uploadIdsOf(ctx) })) {
     const key = ctx.db.normalizeId('uploads', id)
     const alt = key ? (await ctx.db.get(key))?.alt : undefined
     if (alt) found.set(id, alt)
@@ -118,12 +157,26 @@ async function altsFor(ctx: QueryCtx, fields: Fields, data: Data): Promise<(file
 
 /** Every use of a file in `data` with its "missing alt text" mark, library descriptions included (`usesOf`). */
 export async function entryUses(ctx: QueryCtx, fields: Fields, data: Data, locales: readonly string[]): Promise<Map<string, Use[]>> {
-  return usesOf(fields, data, locales, await altsFor(ctx, fields, data))
+  return usesOf(fields, data, locales, uploadIdsOf(ctx), await altsFor(ctx, fields, data))
 }
 
-/** The options validate() takes from the database: the entries a ref field points to and the library descriptions of the images. */
-export async function lookupsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, data: Data): Promise<Pick<ValidateOptions, 'refs' | 'fileAlt'>> {
-  return { refs: await refsFor(ctx, site, fields, data), fileAlt: await altsFor(ctx, fields, data) }
+/** The files of `data` that are ready uploads of this site outside the trash, with their kind: what a `$file.<id>` in a text may name. */
+async function liveUploadsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, data: Data): Promise<NonNullable<ValidateOptions['uploads']>> {
+  const live = new Map<string, 'image' | 'file'>()
+  for (const id of fileIdsOf(fields, data, { isUploadId: uploadIdsOf(ctx) })) {
+    const key = ctx.db.normalizeId('uploads', id)
+    const upload = key ? await ctx.db.get(key) : null
+    if (upload && upload.site === site && upload.status === 'ready' && !upload.trashedAt) live.set(id, upload.mime.startsWith('image/') ? 'image' : 'file')
+  }
+  return (file) => live.get(file)
+}
+
+/**
+ * The options validate() takes from the database: the entries a ref field points to, the library descriptions of the
+ * images, and the live uploads the Markdown texts may reference.
+ */
+export async function lookupsFor(ctx: QueryCtx, site: Id<'sites'>, fields: Fields, data: Data): Promise<Pick<ValidateOptions, 'refs' | 'fileAlt' | 'uploads'>> {
+  return { refs: await refsFor(ctx, site, fields, data), fileAlt: await altsFor(ctx, fields, data), uploads: await liveUploadsFor(ctx, site, fields, data) }
 }
 
 /** A file upload in a file field: the field's path in the entry (`doc`, `files.0.doc`), the upload ID and the field's rules. */
@@ -202,17 +255,25 @@ export interface EntryWrite {
 export async function commitEntry(ctx: MutationCtx, w: EntryWrite) {
   const { actor, entry } = w
   const site = actor.site
-  const { trees, bytes } = await storageOf(w.fields, w.data, w.prints)
-  if (bytes > BUDGET.entryBytes) fail('TOO_LARGE', 'errors.entryTooLarge')
+  // A write that does not grow the entry, the site or the trees always passes, so an entry or site over a limit can be shortened.
+  const bytes = entryBytes(w.data, w.prints)
+  if (!fitsBudget(bytes, entry.bytes, BUDGET.entryBytes)) fail('TOO_LARGE', 'errors.entryTooLarge', overBudget(bytes, BUDGET.entryBytes))
   const siteBytes = site.bytes - entry.bytes + bytes
-  if (siteBytes > BUDGET.siteBytes) fail('TOO_LARGE', 'errors.siteStorageLimitReached')
+  if (!fitsBudget(siteBytes, site.bytes, BUDGET.siteBytes)) fail('TOO_LARGE', 'errors.siteStorageLimitReached', overBudget(siteBytes, BUDGET.siteBytes))
+  const trees = await treesOf(w.fields, w.data)
+  const treeBytes = (site.treeBytes ?? 0) - (entry.treeBytes ?? 0) + trees.bytes
+  if (!fitsBudget(treeBytes, site.treeBytes ?? 0, BUDGET.treeBytes)) fail('TOO_LARGE', 'errors.entryTooComplex')
 
   const rev = entry.rev + 1
   const fieldRevs = { ...entry.fieldRevs }
   for (const root of w.roots) fieldRevs[root] = rev
-  const contentRev = entry.state === 'draft' ? site.contentRev : site.contentRev + 1
-  await ctx.db.patch(entry._id, { data: w.data, prints: w.prints, trees, rev, fieldRevs, bytes })
-  await ctx.db.patch(site._id, { contentRev, bytes: siteBytes })
+  const draft = entry.state === 'draft'
+  const contentRev = draft ? site.contentRev : site.contentRev + 1
+  const now = Date.now()
+  // A draft's edits reach the public when it goes live, so only a live entry's save is its new `contentAt`.
+  await ctx.db.patch(entry._id, { data: w.data, prints: w.prints, trees: undefined, rev, fieldRevs, bytes, treeBytes: trees.bytes, ...(draft ? {} : { contentAt: now }) })
+  await putTrees(ctx, site._id, entry._id, trees.json)
+  await ctx.db.patch(site._id, { contentRev, bytes: siteBytes, treeBytes })
 
   const pick = (data: Data) => Object.fromEntries(w.roots.filter((r) => data[r] !== undefined).map((r) => [r, data[r]!]))
   const pickPrints = (prints: Prints) => Object.fromEntries(Object.entries(prints).filter(([leaf]) => w.roots.some((r) => leaf === r || leaf.startsWith(`${r}.`))))
@@ -221,10 +282,11 @@ export async function commitEntry(ctx: MutationCtx, w: EntryWrite) {
   const change = await ctx.db.insert('changes', {
     site: site._id, entry: entry._id, brick: entry.brick, ...byOf(actor), opId: w.opId, kind: w.kind, ...w.history,
     fields: w.roots, before, after, printsBefore: pickPrints(entry.prints), printsAfter: pickPrints(w.prints),
-    entryRev: rev, contentRev, at: Date.now(),
+    entryRev: rev, contentRev, at: now,
   })
   await syncEntryRefs(ctx, site._id, entry._id, await entryUses(ctx, w.fields, w.data, (site.schema as Schema).locales))
-  const changeFiles = new Set([...fileIdsOf(w.fields, before), ...fileIdsOf(w.fields, after)])
+  const isUploadId = uploadIdsOf(ctx)
+  const changeFiles = new Set([...fileIdsOf(w.fields, before, { isUploadId }), ...fileIdsOf(w.fields, after, { isUploadId })])
   if (changeFiles.size) await syncFileRefs(ctx, site._id, 'change', change, changeFiles)
   return { change, rev, contentRev }
 }

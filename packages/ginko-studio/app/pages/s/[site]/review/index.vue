@@ -9,7 +9,7 @@ import { Button } from '@studio/components/ui/button'
 
 type HistoryMsg = { key: string; params?: Record<string, unknown> }
 
-definePageMeta({ layout: 'site', convexAuth: true })
+definePageMeta({ layout: 'site' })
 
 const { t, format } = useI18n()
 const s = await useSiteData()
@@ -18,16 +18,17 @@ const { show } = useToast()
 // Staff decide nothing: back to the quick edit.
 if (!s.isManager.value) await navigateTo(`/s/${s.slug.value}`)
 
-const list = useConvexQuery(api.proposals.list, () => (s.isManager.value ? { site: s.slug.value, status: 'open' as const, order: 'oldest' as const } : 'skip'))
+const PAGE = 50
+const list = useConvexPaginatedQuery(api.proposals.list, () => (s.isManager.value ? { site: s.slug.value, status: 'open' as const, order: 'oldest' as const } : 'skip'), { initialNumItems: PAGE })
 const releaseList = useConvexQuery(api.proposals.releases, () => (s.isManager.value ? { site: s.slug.value } : 'skip'))
 const approveRelease = useConvexMutation(api.proposals.approveRelease)
 const removeFromRelease = useConvexMutation(api.proposals.removeFromRelease)
 
-// The server lists the oldest first (`order: 'oldest'`).
-const rows = computed(() => list.data.value?.page ?? [])
-const loose = computed(() => rows.value.filter((p) => !p.release))
-const releases = computed(() => (releaseList.data.value ?? []).filter((r) => r.status === 'open' || r.status === 'stale'))
-const byId = computed(() => new Map(rows.value.map((p) => [p.proposal as string, p] as const)))
+// The server lists the oldest first (`order: 'oldest'`). Members of a release come with the release, whichever pages are loaded.
+const loose = computed(() => (list.data.value ?? []).filter((p) => !p.release))
+// The server sends only releases still to decide (open or stale).
+const releases = computed(() => releaseList.data.value ?? [])
+const shownIds = computed(() => new Set([...loose.value, ...releases.value.flatMap((r) => r.proposals)].map((p) => p.proposal as string)))
 
 const openIds = ref(new Set<string>())
 function toggle(id: string) {
@@ -39,7 +40,7 @@ onMounted(() => {
   const id = useRoute().hash.slice(1)
   if (!id) return
   openIds.value = new Set([id])
-  watch(() => byId.value.has(id), (found) => { if (found) nextTick(() => document.getElementById(id)?.scrollIntoView()) }, { immediate: true })
+  watch(() => shownIds.value.has(id), (found) => { if (found) nextTick(() => document.getElementById(id)?.scrollIntoView()) }, { immediate: true })
 })
 
 /** A release member that is no longer open, in the Studio's language. */
@@ -48,12 +49,10 @@ const lineOf = (m: { sentence: string; msg: HistoryMsg | null }) => textOf(m.msg
 /** A stale reason in the Studio's language; the German text when the server sent no message. */
 const reasonOf = (m: { reason?: string | null; reasonMsg?: HistoryMsg | null }) => textOf(m.reasonMsg, m.reason ?? '')
 
-const busy = ref<string | null>(null)
 const blocked = ref<Record<string, { proposal: string; sentence: string; reason: string; reasonMsg?: HistoryMsg | null }[]>>({})
 const problem = ref('')
 
 async function approveAll(release: string) {
-  busy.value = release
   problem.value = ''
   try {
     const result = await approveRelease.mutate({ release }) as { status: string; at?: number; stale?: { proposal: string; sentence: string; reason: string; reasonMsg?: HistoryMsg | null }[] }
@@ -65,8 +64,6 @@ async function approveAll(release: string) {
     const stale = (error.details as { stale?: { proposal: string; sentence: string; reason: string; reasonMsg?: HistoryMsg | null }[] } | undefined)?.stale
     if (stale) blocked.value = { ...blocked.value, [release]: stale }
     else problem.value = error.message
-  } finally {
-    busy.value = null
   }
 }
 
@@ -82,9 +79,10 @@ async function remove(release: string, proposal: string) {
 </script>
 
 <template>
-  <div class="w-full max-w-[760px] px-4 pt-4 pb-30 min-[720px]:px-6 min-[720px]:pt-8 grid gap-4">
+  <div class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid gap-4">
     <h1 class="text-xl font-semibold tracking-tight">{{ t('review.heading') }}</h1>
-    <p v-if="list.error.value" class="font-medium text-destructive" role="alert">{{ opErrorOf(list.error.value).message }}</p>
+    <SiteZoneNote v-if="s.schema.value" :zone="s.schema.value.timeZone" class="-mt-2" />
+    <p v-if="list.error.value" class="font-medium text-destructive" role="alert">{{ opErrorOf(list.error.value, t('basics.loadFailed')).message }}</p>
     <p v-if="problem" class="font-medium text-destructive" role="alert">{{ problem }}</p>
 
     <template v-if="s.schema.value">
@@ -95,14 +93,15 @@ async function remove(release: string, proposal: string) {
           :open="openIds.has(p.proposal)" @toggle="toggle(p.proposal)"
         />
       </ul>
-      <p v-else-if="list.status.value === 'success' && !releases.length" class="py-6 text-muted-foreground">{{ t('review.empty') }}</p>
+      <p v-else-if="list.isExhausted.value && !releases.length" class="py-6 text-muted-foreground">{{ t('review.empty') }}</p>
+      <Button v-if="list.canLoadMore.value || list.isLoadingMore.value" type="button" variant="secondary" class="justify-self-start" :disabled="!list.canLoadMore.value" @click="list.loadMore(PAGE)">{{ t('basics.loadMore') }}</Button>
 
       <section v-if="releases.length" class="grid gap-3" :aria-label="t('review.releases')">
         <h2 class="text-base font-semibold tracking-tight">{{ t('review.releases') }}</h2>
         <div v-for="r in releases" :key="r.release" class="overflow-hidden rounded-xl border">
           <div class="flex flex-wrap items-center gap-2 border-b px-4 py-3">
             <h3 class="min-w-0 flex-1 font-medium">{{ r.name }}<span v-if="r.at" class="text-[13px] font-normal text-muted-foreground"> · {{ t('review.plannedAt', { time: whenText(r.at, s.schema.value.timeZone, format) }) }}</span></h3>
-            <Button type="button" size="sm" :disabled="busy === r.release" @click="approveAll(r.release)">{{ t('review.approveRelease') }}</Button>
+            <Button type="button" size="sm" :disabled="approveRelease.pending.value" @click="approveAll(r.release)">{{ t('review.approveRelease') }}</Button>
           </div>
           <div v-if="blocked[r.release]?.length" class="grid gap-1 border-b bg-warning/12 px-4 py-3" role="alert">
             <p class="font-medium">{{ t('review.releaseBlocked') }}</p>
@@ -114,8 +113,8 @@ async function remove(release: string, proposal: string) {
           <ul class="m-0 list-none p-0">
             <template v-for="m in r.proposals" :key="m.proposal">
               <ReviewItem
-                v-if="byId.get(m.proposal)"
-                :site="s.slug.value" :schema="s.schema.value" :proposal="byId.get(m.proposal)!" in-release
+                v-if="m.status === 'open'"
+                :site="s.slug.value" :schema="s.schema.value" :proposal="m" in-release
                 :open="openIds.has(m.proposal)" @toggle="toggle(m.proposal)"
               />
               <li v-else class="flex flex-wrap items-center gap-2 border-b px-4 py-3 text-[13px] text-muted-foreground last:border-b-0">

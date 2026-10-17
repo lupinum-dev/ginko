@@ -3,7 +3,7 @@
 // empty spans, tracking images. It works on a DOM (the browser's, or happy-dom in tests) and returns a string,
 // which ProseMirror's clipboard parser then reads like any other HTML.
 import type { MarkdownProfile } from '@lupinum/ginko/internal'
-import { isSafeHref, profileCovers } from '@lupinum/ginko/internal'
+import { fileRefOf, isSafeHref, profileCovers } from '@lupinum/ginko/internal'
 
 export interface CleanOptions { profile: MarkdownProfile }
 
@@ -91,10 +91,13 @@ function hrefOf(raw: string | null): string | undefined {
 function cleanImage(el: Element, ctx: Ctx): Node | undefined {
   if (!ctx.rich) return undefined
   const src = (el.getAttribute('src') ?? '').trim()
-  if (!/^https:\/\//i.test(src)) return undefined
+  // A picture of the Files library (copied within the editor) keeps its reference; the save checks that it belongs
+  // to this site.
+  const library = fileRefOf(src) !== undefined
+  if (!library && !/^https:\/\//i.test(src)) return undefined
   const size = (name: string) => Number.parseInt(el.getAttribute(name) ?? '', 10)
   // Tracking pixels: 1x1 or hidden, or called so.
-  if (size('width') <= 2 || size('height') <= 2 || /display:none/.test(styleOf(el)) || /(pixel|beacon|track|spacer)/i.test(src)) return undefined
+  if (size('width') <= 2 || size('height') <= 2 || /display:none/.test(styleOf(el)) || (!library && /(pixel|beacon|track|spacer)/i.test(src))) return undefined
   const img = ctx.doc.createElement('img')
   img.setAttribute('src', src)
   img.setAttribute('alt', (el.getAttribute('alt') ?? '').trim())

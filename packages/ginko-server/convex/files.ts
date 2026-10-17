@@ -3,17 +3,17 @@
 // and replace. Everything is scoped to one site; an id of another site is NOT_FOUND, never a hint.
 // Rights: all members read and upload; everything that changes the library is for owner and admin.
 // Library actions write no `changes` rows (those are the content history, SPEC 3).
-import type { Field, Fields, Json, Label } from '@lupinum/ginko'
-import { ALT_MAX, effectiveAlt, type Schema } from '@lupinum/ginko/internal'
+import type { Json, Label } from '@lupinum/ginko'
+import { ALT_INVISIBLE, ALT_MAX, effectiveAlt, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { internalMutation, mutation, query, type QueryCtx } from './_generated/server'
 import { labeler } from './lib/names'
 import { labelOf } from './entries'
 import { actorFor, fail, type Actor } from './lib/access'
-import { usesOf, valueAt, type Data } from './lib/content'
+import { fieldLabelAt, usesOf, valueAt, type Data } from './lib/content'
 import { cleanName } from './lib/files'
-import { entryUses, same } from './lib/write'
+import { entryUses, same, uploadIdsOf } from './lib/write'
 
 const PAGE = 50
 /** Rows read per step and steps per call: a view that filters a lot returns early with a cursor instead of reading the whole table. */
@@ -65,23 +65,6 @@ const kindOfUpload = (row: Doc<'uploads'>) => (row.mime.startsWith('image/') ? '
 async function entryRefsOf(ctx: QueryCtx, file: Id<'uploads'>) {
   const refs = await ctx.db.query('fileRefs').withIndex('by_file', (q) => q.eq('file', file)).collect()
   return refs.filter((r) => r.holder === 'entry')
-}
-
-/** The label of the field at a content path (`hero`, `rows.<id>.image`): the leaf field's own label, so a use reads "Title image" and not a path. */
-function fieldLabelAt(schema: Schema, brick: string, path: string): Label | null {
-  let fields: Fields | undefined = Object.hasOwn(schema.bricks, brick) ? schema.bricks[brick]!.fields : undefined
-  let label: Label | null = null
-  const keys = path.split('.')
-  for (let i = 0; fields && i < keys.length; i++) {
-    const field: Field | undefined = Object.hasOwn(fields, keys[i]!) ? fields[keys[i]!] : undefined
-    if (!field) return label
-    label = field.label
-    if (field.type === 'list' && i + 2 < keys.length) {
-      fields = field.of
-      i += 1
-    } else fields = undefined
-  }
-  return label
 }
 
 async function usedInOf(ctx: QueryCtx, schema: Schema, refs: Doc<'fileRefs'>[], library?: Record<string, string>) {
@@ -160,10 +143,13 @@ async function walk<T>(start: string | null, read: Read<T>, cursorOf: (row: T) =
   return { rows: out, cursor: after, isDone: false }
 }
 
+/** Search text as compared: any case, and letters without their accents (`über` finds `uber` and back). */
+const fold = (text: string) => text.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+
 /**
  * The files of a site in one view, newest first, 50 per call. `folder`: an id for one folder, null
- * for the top level, absent for every folder. `search`: part of the file name, any case.
- * Pass the returned `cursor` for the next call; `isDone` says nothing is left.
+ * for the top level, absent for every folder. `search`: part of the file name or of its description in any
+ * language, any case. Pass the returned `cursor` for the next call; `isDone` says nothing is left.
  */
 export const list = query({
   args: {
@@ -177,9 +163,10 @@ export const list = query({
     const actor = await actorFor(ctx, args.site)
     const site = actor.site._id
     const folder = args.folder === undefined ? undefined : args.folder === null ? null : (await folderOf(ctx, actor, args.folder))._id
-    const needle = args.search?.trim().toLowerCase()
+    const needle = args.search?.trim() ? fold(args.search.trim()) : undefined
     const start = args.cursor ?? null
-    const named = (row: Doc<'uploads'>) => !needle || row.name.toLowerCase().includes(needle)
+    // People search what a photo shows ("Wald"), not its camera name (IMG_4032.JPG): the descriptions count too.
+    const named = (row: Doc<'uploads'>) => !needle || [row.name, ...Object.values(row.alt ?? {})].some((text) => fold(text).includes(needle))
     const live = (row: Doc<'uploads'>) => row.status === 'ready' && !row.trashedAt
     const inFolder = (row: Doc<'uploads'>) => folder === undefined || (row.folder ?? null) === folder
     const byTime = (row: Doc<'uploads'> | Doc<'fileRefs'>) => String(row._creationTime)
@@ -448,6 +435,7 @@ export const setAlt = mutation({
     if (!schema.locales.includes(args.locale)) fail('INVALID', 'errors.languageNotOnSite', { locale: args.locale })
     const text = args.text.trim()
     if (text.length > ALT_MAX) fail('INVALID', 'errors.altTooLong')
+    if (ALT_INVISIBLE.test(text)) fail('INVALID', 'errors.altControlChars')
     const alt = { ...(row.alt ?? {}) }
     if (text) alt[args.locale] = text
     else delete alt[args.locale]
@@ -459,7 +447,7 @@ export const setAlt = mutation({
       const entry = id ? await ctx.db.get(id) : null
       const brick = entry && Object.hasOwn(schema.bricks, entry.brick) ? schema.bricks[entry.brick] : undefined
       if (!entry || !brick) continue
-      const uses = usesOf(brick.fields, entry.data as Data, schema.locales, (file) => (file === row._id ? alt : undefined)).get(row._id)
+      const uses = usesOf(brick.fields, entry.data as Data, schema.locales, uploadIdsOf(ctx), (file) => (file === row._id ? alt : undefined)).get(row._id)
       if (!uses) continue
       const missingAlt = uses.some((u) => u.missingAlt)
       if (!same(ref.uses, uses) || ref.missingAlt !== missingAlt) await ctx.db.patch(ref._id, { uses, missingAlt })

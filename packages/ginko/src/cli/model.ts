@@ -80,6 +80,10 @@ export interface ExportFileInfo {
   kept?: boolean
   focus?: { x: number; y: number }
   sha256?: string
+  /** The bytes are the original file (`local:files-export`), not a processed copy: the import runs them through the upload pipeline. */
+  original?: true
+  /** The description written in the Files library, per language. Absent in older exports. */
+  alt?: Record<string, string>
 }
 
 /** A folder of the asset library; `parent` is another folder's `id`. */
@@ -120,6 +124,22 @@ export interface SiteExport extends Omit<ExportAnswer, 'files'> {
   files: (ExportFileInfo & { path: string })[]
 }
 
+// The layout of an export folder. `ginko export` writes it, and the Studio's backup ZIP holds the same folder
+// (through @lupinum/ginko/internal), so one import reads both.
+const EXTENSIONS: Record<string, string> = {
+  'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/avif': '.avif', 'application/pdf': '.pdf',
+}
+
+/** The folder `ginko export` writes to when no folder is given: `ginko-export-<site>-<YYYY-MM-DD>` (UTC). */
+export function defaultDir(site: string, now: Date): string {
+  return `ginko-export-${site}-${now.toISOString().slice(0, 10)}`
+}
+
+/** Where a file lies in the export folder, relative to it. */
+export function pathOf(file: { id: string; mime: string }): string {
+  return `files/${file.id}${EXTENSIONS[file.mime] ?? ''}`
+}
+
 /**
  * Checks the shape of an export. `locator` is the key that says where a file is: `url` (platform) or `path` (folder).
  * A bad platform answer is UNAVAILABLE (as in parseReleaseState); a bad local export.json is INVALID.
@@ -139,7 +159,8 @@ export function parseExport(value: unknown, locator: 'url' | 'path', problem: st
     && Array.isArray(value.files) && value.files.every((f) => isObject(f)
       && typeof f.id === 'string' && typeof f.name === 'string' && typeof f.mime === 'string' && typeof f.size === 'number'
       && typeof f[locator] === 'string' && optionalNumber(f.width) && optionalNumber(f.height)
-      && optionalString(f.folder) && optionalString(f.sha256) && (f.kept === undefined || typeof f.kept === 'boolean')
+      && optionalString(f.folder) && optionalString(f.sha256) && (f.kept === undefined || typeof f.kept === 'boolean') && (f.original === undefined || f.original === true)
+      && (f.alt === undefined || (isObject(f.alt) && Object.values(f.alt).every((text) => typeof text === 'string')))
       && (f.focus === undefined || (isObject(f.focus) && typeof f.focus.x === 'number' && typeof f.focus.y === 'number')))
     && (value.folders === undefined || (Array.isArray(value.folders) && value.folders.every((f) => isObject(f)
       && typeof f.id === 'string' && typeof f.name === 'string' && optionalString(f.parent))))

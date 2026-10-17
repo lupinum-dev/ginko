@@ -132,6 +132,54 @@ describe('calendar dates, times and ranges (SPEC 2.2, 2.3)', () => {
   })
 })
 
+describe('a week start (lunch.weekOf, lunchPlans.weekOf)', () => {
+  const sundayFirst = { ...schema, week: { firstDay: 7 as const, weekend: [6, 7] } }
+  // Wrong behaviour caught: a lunch week saved as a Thursday is stored and never shows, because the site looks for the
+  // week that starts on the week's first day.
+  it.each([
+    ['lunch', 'a Monday', schema, '2026-10-12', []],
+    ['lunch', 'a Thursday', schema, '2026-10-15', [['weekOf', 'NOT_WEEK_START']]],
+    ['lunchPlans', 'a Monday', schema, '2026-10-12', []],
+    ['lunchPlans', 'a Thursday', schema, '2026-10-15', [['weekOf', 'NOT_WEEK_START']]],
+    ['lunchPlans', 'a Sunday on a Sunday-first site', sundayFirst, '2026-10-11', []],
+    ['lunchPlans', 'a Monday on a Sunday-first site', sundayFirst, '2026-10-12', [['weekOf', 'NOT_WEEK_START']]],
+  ] as const)('%s: %s', async (brick, _name, s, weekOf, expected) => {
+    expect(pairs((await validate(s, brick, lunch({ weekOf }), check('create'))).errors)).toEqual(expected)
+  })
+
+  // Wrong behaviour caught: an old week stored mid-week blocks every later save that does not touch the week.
+  it('a save of the days only warns about a stored mid-week start', async () => {
+    const result = await validate(schema, 'lunch', lunch({ weekOf: '2026-10-15' }), check('patch', new Set(['days'])))
+    expect([pairs(result.errors), pairs(result.warnings)]).toEqual([[], [['weekOf', 'NOT_WEEK_START']]])
+  })
+})
+
+describe('a planned price (menu, `planned`)', () => {
+  const plan = { nextPrice: { amount: 1390 }, priceFrom: '2026-11-01' }
+  // Wrong behaviour caught: a planned price without its date is stored and never applies, and nobody is told; or a
+  // date without a price is kept as if a change were planned.
+  it.each([
+    ['price and date', plan, []],
+    ['no plan', {}, []],
+    ['a price without a date', { nextPrice: plan.nextPrice }, [['priceFrom', 'REQUIRED']]],
+    ['a date without a price', { priceFrom: plan.priceFrom }, [['nextPrice', 'REQUIRED']]],
+  ] as const)('%s', async (_name, over, expected) => {
+    expect(pairs((await validate(schema, 'menu', menuEntry(over), check('create'))).errors)).toEqual(expected)
+  })
+
+  // Wrong behaviour caught: a plan stored by halves before the rule blocks every later save of the dish or a release;
+  // or a save that sets half a plan gets through because only the other half is missing.
+  it.each([
+    ['patch of the plan', check('patch', new Set(['nextPrice'])), [['priceFrom', 'REQUIRED']], []],
+    ['patch of the name only', check('patch', new Set(['name'])), [], [['priceFrom', 'REQUIRED']]],
+    ['release of stored data', check('release'), [], [['priceFrom', 'REQUIRED']]],
+  ] as const)('%s', async (_name, opts, errors, warnings) => {
+    const result = await validate(schema, 'menu', menuEntry({ nextPrice: plan.nextPrice }), opts)
+    expect(pairs(result.errors)).toEqual(errors)
+    expect(pairs(result.warnings)).toEqual(warnings)
+  })
+})
+
 describe('numbers and money (SPEC 2.2, 2.3)', () => {
   // Wrong behaviour caught: a value between two steps (14.5 with step 1) or outside min/max is saved.
   it.each([
@@ -156,6 +204,29 @@ describe('numbers and money (SPEC 2.2, 2.3)', () => {
     [{ amount: 1290, currency: 'EUR' }, [['price', 'TYPE']]],
   ] as const)('menu price %j', async (price, expected) => {
     expect(pairs((await validate(schema, 'menu', menuEntry({ price }), check('create'))).errors)).toEqual(expected)
+  })
+
+  // Wrong behaviour caught: a fixed price saved without its amount (the site then shows "on request"), or an amount
+  // demanded for an entry priced on request.
+  it.each([
+    [{ pricing: 'price', price: { amount: 39000 } }, []],
+    [{ pricing: 'price' }, [['price', 'REQUIRED']]],
+    [{ pricing: 'onRequest' }, []],
+  ] as const)('a required field with showWhen is required only while shown: %j', async (data, expected) => {
+    const priced = serializeSchema({
+      ...site,
+      bricks: {
+        ...site.bricks,
+        offer: single({
+          label: 'Angebot',
+          fields: {
+            pricing: f.choice('Preis', { options: [{ value: 'price', label: 'Fest' }, { value: 'onRequest', label: 'Auf Anfrage' }] }),
+            price: f.money('Betrag', { showWhen: { field: 'pricing', is: 'price' } }),
+          },
+        }),
+      },
+    })
+    expect(pairs((await validate(priced, 'offer', data, check('create'))).errors)).toEqual(expected)
   })
 })
 
@@ -266,6 +337,9 @@ describe('image (SPEC 2.2)', () => {
     [{ de: 'Gastraum mit Kachelofen' }, []],
     [{ en: 'Dining room' }, [['images.img0000001.image.alt', 'ALT_REQUIRED']]],
     [{ de: '   ' }, [['images.img0000001.image.alt', 'ALT_REQUIRED']]],
+    // Wrong behaviour caught: a NUL or a bidi override (which turns the read-out words around) reached the site.
+    [{ de: 'Bild\u0000' }, [['images.img0000001.image.alt.de', 'FORMAT']]],
+    [{ de: 'Bild \u202eesiw' }, [['images.img0000001.image.alt.de', 'FORMAT']]],
   ] as const)('alt %j', async (alt, expected) => {
     expect(pairs((await validate(schema, 'gallery', gallery(alt), check('create'))).errors)).toEqual(expected)
   })
@@ -300,6 +374,40 @@ describe('markdown field (profile check)', () => {
     ['only the English text is bad', { de: 'Hallo', en: 'Eins\n\nZwei' }, [['text.en', 'MARKDOWN']]],
   ] as const)('%s', async (_name, text, expected) => {
     expect(pairs((await validate(withNote, 'note', { text }, check('create'))).errors)).toEqual(expected)
+  })
+
+  // Wrong behaviour caught: a `::figure` without its closing `::` swallows the rest of the text (the site drops it),
+  // and the save goes through without a message. Every write path calls validate(), so this guards all of them.
+  it('refuses an unclosed component, with its line', async () => {
+    const withArticle = serializeSchema({
+      ...site,
+      components: { figure: { kind: 'block', label: 'Abbildung', describe: 'Ein Bild.', props: { src: f.text('Bild') } } },
+      bricks: { ...site.bricks, article: single({ label: 'Artikel', fields: { body: f.markdown('Text', { profile: 'page' }) } }) },
+    })
+    const { errors } = await validate(withArticle, 'article', { body: { de: 'Intro\n\n::figure{src="/a.jpg"}\nText danach' } }, check('create'))
+    expect(errors.map((e) => [e.path, e.code, e.message])).toEqual([
+      ['body.de', 'MARKDOWN', '„Text“, Zeile 3: Die Komponente „figure“ ist nicht geschlossen: Nach ihrem Inhalt fehlt eine Zeile mit „::“.'],
+    ])
+  })
+
+  // Wrong behaviour caught: the platform stores a text whose library picture is gone (the site shows a hole) or whose
+  // picture has no description at all, which agent tools and imports could write without the editor's check.
+  it.each([
+    ['a described picture of the library', { de: '![Hund]($file.up1)' }, []],
+    ['a picture described only in the library', { de: '![]($file.up1)', en: '![]($file.up1)' }, [['body.en', 'ALT_REQUIRED']]],
+    ['a picture that is gone, inside a component', { de: '::figure{src="$file.gone"}\n::' }, [['body.de', 'FILE_REF_MISSING']]],
+    ['a web picture without description', { de: '![](https://bilder.example/a.jpg)' }, [['body.de', 'ALT_REQUIRED']]],
+    // Wrong behaviour caught: a hand-typed picture of a PDF saved and showed as a broken image on the site.
+    ['a PDF as a picture', { de: '![Karte]($file.pdf1)' }, [['body.de', 'FILE_REF_NOT_IMAGE']]],
+    ['a link to a PDF', { de: '[Karte]($file.pdf1)' }, []],
+  ] as const)('platform texts: %s', async (_name, body, expected) => {
+    const withArticle = serializeSchema({
+      ...site,
+      components: { figure: { kind: 'block', label: 'Abbildung', describe: 'Ein Bild.', props: { src: f.image('Bild') } } },
+      bricks: { ...site.bricks, article: single({ label: 'Artikel', fields: { body: f.markdown('Text', { profile: 'page' }) } }) },
+    })
+    const { errors } = await validate(withArticle, 'article', { body }, { ...check('create'), uploads: (id) => (id === 'up1' ? 'image' : id === 'pdf1' ? 'file' : undefined), fileAlt: (id) => (id === 'up1' ? { de: 'Ein Hund' } : undefined) })
+    expect(pairs(errors)).toEqual(expected)
   })
 })
 

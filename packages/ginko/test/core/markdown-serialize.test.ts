@@ -38,6 +38,13 @@ const FEATURES: Feature[] = [
     // `::section{.footnotes}` component syntax and an `:sup[...]` link, not as `[^1]`, so the second parse differs.
     unstable: 'footnote definitions are rewritten into a rendered section, which comark cannot turn back into [^1]',
   },
+  {
+    name: 'reference link',
+    profile: 'basic',
+    text: 'Siehe die [Anleitung][g].\n\n[g]: https://example.com/guide',
+    unstable: 'the definition is resolved into the link; a text written from the tree would lose it',
+  },
+  { name: 'HTML comment', profile: 'basic', text: 'Text\n\n<!-- TODO: Foto -->', unstable: 'the tree leaves the comment out; a text written from the tree would lose it' },
   // rich
   { name: 'table', profile: 'rich', text: '| a   | b   |\n| --- | --- |\n| 1   | 2   |' },
   { name: 'image', profile: 'rich', text: '![Alt](/bild.png)' },

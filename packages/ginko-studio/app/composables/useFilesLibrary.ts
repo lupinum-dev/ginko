@@ -6,7 +6,7 @@ import type { FunctionReturnType } from 'convex/server'
 import { computed, ref, watch, type Ref } from 'vue'
 import { opErrorOf } from './useOps'
 import { useTextOf } from './useTextOf'
-import { useUpload } from './useUpload'
+import { UploadError, useUpload } from './useUpload'
 
 export type LibFile = FunctionReturnType<typeof api.files.list>['files'][number]
 export type FileInfo = FunctionReturnType<typeof api.files.info>
@@ -23,6 +23,9 @@ export interface FileListState {
   /** Why the first page could not be read, in the Studio's language; null while it loads or after it arrived. */
   error: Ref<string | null>
   hasMore: Ref<boolean>
+  /** Why the last "Mehr anzeigen" failed, in the Studio's language; the files loaded so far stay. */
+  moreError: Ref<string | null>
+  /** Reads the next page; never throws (a failure sets `moreError`). */
   more: () => Promise<void>
 }
 
@@ -56,7 +59,8 @@ export interface FilesLibrary {
 }
 
 const key = (query: ListQuery) => `${query.view}|${query.folder === undefined ? '*' : query.folder ?? ''}|${query.search?.trim() ?? ''}`
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+/** How long the server may take to check an uploaded file before the Studio stops waiting. */
+const CHECK_TIMEOUT = 60_000
 
 export function useFilesLibrary(): FilesLibrary {
   const route = useRoute()
@@ -67,7 +71,7 @@ export function useFilesLibrary(): FilesLibrary {
   const { t } = useI18n()
   const textOf = useTextOf()
 
-  const site = useConvexQuery(api.sites.get, () => ({ site: slug.value }))
+  const site = useConvexQuery(api.sites.meta, () => ({ site: slug.value }))
   const canManage = computed(() => site.data.value?.role === 'owner' || site.data.value?.role === 'admin')
 
   const folderQuery = useConvexQuery(api.files.folders, () => ({ site: slug.value }))
@@ -85,7 +89,10 @@ export function useFilesLibrary(): FilesLibrary {
     // Later pages are read once: the first page is the live one (uploads turning ready, files moved).
     const extra = ref<LibFile[]>([])
     const next = ref<{ done: boolean; cursor: string | null } | null>(null)
-    watch(() => key(query()), () => { extra.value = []; next.value = null })
+    const moreError = ref<string | null>(null)
+    // Counts the views shown: a page asked for an earlier view is dropped when it arrives.
+    let shown = 0
+    watch(() => key(query()), () => { shown++; extra.value = []; next.value = null; moreError.value = null })
     const files = computed(() => {
       const seen = new Set((first.data.value?.files ?? []).map((f) => f.id))
       return [...(first.data.value?.files ?? []), ...extra.value.filter((f) => !seen.has(f.id))]
@@ -94,12 +101,21 @@ export function useFilesLibrary(): FilesLibrary {
     async function more() {
       const cursor = next.value ? next.value.cursor : first.data.value?.cursor
       if (!hasMore.value || cursor === undefined || cursor === null) return
-      const page = await convex.query(api.files.list, { ...args(), cursor })
-      extra.value = [...extra.value, ...page.files]
-      next.value = { done: page.isDone, cursor: page.cursor }
+      const view = shown
+      moreError.value = null
+      try {
+        const page = await convex.query(api.files.list, { ...args(), cursor })
+        if (view !== shown) return
+        extra.value = [...extra.value, ...page.files]
+        next.value = { done: page.isDone, cursor: page.cursor }
+      } catch (error) {
+        if (view !== shown) return
+        console.error(error)
+        moreError.value = t('files.loadMoreFailed')
+      }
     }
     const error = computed(() => (first.error.value ? opErrorOf(first.error.value).message : null))
-    return { files, pending: computed(() => first.data.value === undefined && !first.error.value), error, hasMore, more }
+    return { files, pending: computed(() => first.data.value === undefined && !first.error.value), error, hasMore, moreError, more }
   }
 
   function info(file: () => string | null) {
@@ -116,13 +132,27 @@ export function useFilesLibrary(): FilesLibrary {
     const send = file.type === 'application/pdf' ? sendFile : sendImage
     const folder = target?.folder ?? undefined
     const id = await send(slug.value, file, undefined, { library: true, ...(folder ? { folder } : {}) })
-    // A file counts when the server has checked it; a failed one reports its reason.
-    for (let i = 0; i < 120; i++) {
-      const state = await convex.query(api.uploads.get, { site: slug.value, upload: id })
-      if (state.status === 'ready') return id
-      if (state.status === 'failed') throw new Error(textOf(state.error ? { key: state.error } : null, t('ops.upload.failed')))
-      await sleep(500)
-    }
+    // A file counts when the server has checked it; a failed one reports its reason, and one that takes too long says so.
+    await new Promise<void>((resolve, reject) => {
+      let done = false
+      let timer: ReturnType<typeof setTimeout> | undefined
+      let stop: (() => void) | undefined
+      const finish = (error?: Error) => {
+        if (done) return
+        done = true
+        clearTimeout(timer)
+        stop?.()
+        if (error) reject(error)
+        else resolve()
+      }
+      stop = convex.onUpdate(api.uploads.get, { site: slug.value, upload: id }, (state) => {
+        if (state.status === 'ready') finish()
+        else if (state.status === 'failed') finish(new UploadError(textOf(state.error ? { key: state.error } : null, t('ops.upload.failed'))))
+      }, (error) => finish(error))
+      // The answer can arrive before onUpdate returns.
+      if (done) stop?.()
+      else timer = setTimeout(() => finish(new UploadError(t('files.uploadTooSlow'))), CHECK_TIMEOUT)
+    })
     return id
   }
 
@@ -162,6 +192,6 @@ export function useFilesLibrary(): FilesLibrary {
       const upload = await sendAndWait(source)
       await mutations.replace.mutate({ ...base(), file, upload })
     },
-    errorText: (error) => (error instanceof Error && !('data' in error) && !('kind' in error) ? error.message : opErrorOf(error).message),
+    errorText: (error) => opErrorOf(error).message,
   }
 }

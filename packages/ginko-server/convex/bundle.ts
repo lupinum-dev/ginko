@@ -5,6 +5,7 @@ import { servedBundle, todayIn, type Bundle, type FileInfo, type MarkdownTrees, 
 import { v } from 'convex/values'
 import type { Doc } from './_generated/dataModel'
 import { internalMutation, internalQuery, type QueryCtx } from './_generated/server'
+import { readTrees } from './lib/trees'
 
 /** SPEC 6: 600 requests per minute and site. */
 export const RATE_LIMIT = 600
@@ -30,7 +31,7 @@ export const admit = internalMutation({
     if (!site || site.deleting) return 'SITE_NOT_FOUND'
     if (token !== undefined && site.refreshToken !== undefined && sameSecret(token, site.refreshToken)) return 'OK'
     const window = windowOf(Date.now())
-    const row = await ctx.db.query('rateWindows').withIndex('by_site_window', (q) => q.eq('site', site._id).eq('window', window)).unique()
+    const row = await ctx.db.query('rateWindows').withIndex('by_site_kind_window', (q) => q.eq('site', site._id).eq('kind', undefined).eq('window', window)).unique()
     if (row && row.count >= RATE_LIMIT) return 'RATE_LIMITED'
     if (row) await ctx.db.patch(row._id, { count: row.count + 1 })
     else await ctx.db.insert('rateWindows', { site: site._id, window, count: 1 })
@@ -44,20 +45,6 @@ function sameSecret(a: string, b: string): boolean {
   let diff = 0
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
   return diff === 0
-}
-
-/** Change kinds that alter what the public bundle shows. Scheduling, unpublishing and reordering do not. */
-const CONTENT_KINDS = new Set(['create', 'save', 'confirm', 'undo', 'restore', 'publish'])
-
-/**
- * When a live entry last changed for the public: its newest content change (a draft's edits end in
- * its 'publish' change, so they count from the moment they went online). Changes are kept only for
- * a while (retention.ts); an older entry falls back to its creation time.
- */
-async function updatedAtOf(ctx: QueryCtx, entry: Doc<'entries'>): Promise<string> {
-  const recent = await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entry._id)).order('desc').take(10)
-  const at = recent.find((change) => CONTENT_KINDS.has(change.kind))?.at ?? entry._creationTime
-  return new Date(at).toISOString()
 }
 
 /**
@@ -81,6 +68,11 @@ export const build = internalQuery({
 /** An entry that is not stored yet, with a temporary id, as the link check sees it. */
 export interface NewItem { brick: string; id: string; data: Record<string, Json> }
 
+/** The stored trees of a row: its `entryTrees`, else the legacy `trees` on the row (until `entries:migrateStorage` ran). */
+async function storedTrees(ctx: QueryCtx, row: Doc<'entries'>): Promise<MarkdownTrees | undefined> {
+  return (await readTrees(ctx, row._id)) ?? (row.trees === undefined ? undefined : (JSON.parse(row.trees) as MarkdownTrees))
+}
+
 /** The bundle of a site that is known to exist; the agent door's link check builds one per language with it. */
 export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string, overrides?: ReadonlyMap<string, Record<string, Json>>, added: readonly NewItem[] = []): Promise<Bundle> {
   const schema = site.schema as Schema
@@ -88,15 +80,18 @@ export async function bundleOf(ctx: QueryCtx, site: Doc<'sites'>, locale: string
   const requestedLocale = locale === '' ? schema.locales[0]! : locale
   const entries: Record<string, StoredEntry[]> = {}
   for (const key of Object.keys(schema.bricks)) {
-    const rows = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', key)).collect()
+    // Live rows only, through the index: the trash is never read (servedBundle sorts the items itself).
+    const rows = await ctx.db.query('entries').withIndex('by_site_brick_deleted', (q) => q.eq('site', site._id).eq('brick', key).eq('deletedAt', undefined)).collect()
     // Drafts never leave the platform (SPEC 15); their slugs stay reserved in the slugs table.
     // An override (a save that is about to happen) replaces the stored data and also lets a draft through: the link check reads the state after the write.
-    const live = rows.filter((row) => !row.deletedAt && (row.state !== 'draft' || overrides?.has(row._id)))
-    // An overridden row's stored trees belong to its old data: its texts are parsed.
+    const live = rows.filter((row) => row.state !== 'draft' || overrides?.has(row._id))
+    // An overridden row's stored trees belong to its old data: its texts are parsed, as are those of a row without trees.
     const list: StoredEntry[] = await Promise.all(live.map(async (row) => {
       const override = overrides?.get(row._id)
-      const trees = override === undefined && row.trees !== undefined ? (JSON.parse(row.trees) as MarkdownTrees) : undefined
-      return { id: row._id, order: row.order, data: override ?? row.data, prints: row.prints, ...(trees ? { trees } : {}), updatedAt: await updatedAtOf(ctx, row) }
+      const trees = override === undefined ? await storedTrees(ctx, row) : undefined
+      // `contentAt` is when the entry last changed for the public; an entry from before it counts from its creation.
+      const updatedAt = new Date(row.contentAt ?? row._creationTime).toISOString()
+      return { id: row._id, order: row.order, data: override ?? row.data, prints: row.prints, ...(trees ? { trees } : {}), updatedAt }
     }))
     // An entry that does not exist yet (a create that is only proposed) joins its collection at the end.
     for (const item of added) {

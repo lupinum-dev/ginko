@@ -1,6 +1,6 @@
 // The records of the site search: one per heading section of every collection item with a URL. Build side only
 // (the bundle, Markdown trees); the browser reaches the engine in search.ts without this file.
-import type { Bundle } from './bundle.ts'
+import { entryTitle, type Bundle } from './bundle.ts'
 import { textBlocks, type MarkdownTree } from './markdown.ts'
 import type { SearchRecord } from './search.ts'
 import type { Schema } from './types.ts'
@@ -40,7 +40,7 @@ export function searchSections(bundle: Bundle, options: SearchSectionsOptions): 
     for (const item of entry.items) {
       const url = item.urls?.[bundle.locale]
       if (!url) continue
-      const title = typeof item.data.title === 'string' ? item.data.title : item.id
+      const title = entryTitle(item, options.schema.bricks[brick]?.fields)
       const intro: string[] = []
       for (const [name, field] of fields) {
         const value = item.data[name]
@@ -59,7 +59,9 @@ export function searchSections(bundle: Bundle, options: SearchSectionsOptions): 
         const text = collapse(section.parts.join('\n'))
         if (i === 0 && !text && sections.length > 1) continue
         const record: SearchRecord = {
-          id: section.id ? `${item.id}#${section.id}` : item.id,
+          // A heading without an anchor (one in Arabic script: its slug keeps no letter) still needs its own id, so
+          // the engine never sees one twice; its hit opens the page at the top.
+          id: section.id ? `${item.id}#${section.id}` : i === 0 ? item.id : `${item.id}#${i}`,
           url: section.id ? `${url}#${section.id}` : url,
           title,
           text,

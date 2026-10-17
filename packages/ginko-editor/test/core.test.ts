@@ -8,6 +8,8 @@ import { components } from '@lupinum/ginko-components/registry'
 import { markdownBlocks, parseMarkdown, type ComponentRegistry, type MarkdownProfile } from '@lupinum/ginko/internal'
 import type { Editor } from '@tiptap/core'
 import { describe, expect, test } from 'vitest'
+import { computed, nextTick, reactive } from 'vue'
+import { useFileImages, type GinkoAssets, type UploadDetails } from '../src/assets.ts'
 import { createGinkoEditor, fromEditorDoc, toEditorDoc } from '../src/core/index.ts'
 
 interface Case { name: string; profile: MarkdownProfile; text: string; registry?: ComponentRegistry; unstable?: boolean }
@@ -42,6 +44,7 @@ const FEATURES: Case[] = [
   { name: 'table with alignment and an empty cell', profile: 'rich', text: '| a   | b   |\n| :-- | --: |\n| 1   |     |' },
   { name: 'table with a header only', profile: 'rich', text: '| a   | b   |\n| --- | --- |' },
   { name: 'image', profile: 'rich', text: '![Alt](/bild.png)' },
+  { name: 'image from the Files library', profile: 'rich', text: 'Davor ![Hund]($file.k57abc) danach' },
   { name: 'code block with filename', profile: 'rich', text: '```ts [a.ts]\nconst a = 1\n\nconst b = 2\n```' },
   { name: 'task list', profile: 'basic', text: '- [x] fertig\n- [ ] offen' },
   { name: 'task list with marks', profile: 'basic', text: '- [x] **fett** und\n- [ ] a' },
@@ -60,6 +63,7 @@ const FEATURES: Case[] = [
   { name: 'component', profile: 'page', text: '::callout{type="warning"}\nHinweistext\n::', registry: components },
   { name: 'inline component', profile: 'page', text: 'Das ist :badge[neu]{color="success"} im Text', registry: components },
   { name: 'component with slot template', profile: 'page', text: '::callout\nHaupttext\n\n#footer\nFuß\n::', registry: { callout: { ...components.callout, slots: { footer: { label: 'Fuß' } } } } },
+  { name: 'figure with a library image', profile: 'page', text: '::figure{alt="Hund" src="$file.k57abc"}\n::', registry: components },
   { name: 'nested components', profile: 'page', text: ':::tabs\n::tab{title="a"}\nx\n::\n:::', registry: components },
   // Without a registry a component keeps the global attributes only (attributeProblem).
   { name: 'components without a registry', profile: 'page', text: '::foo{lang="en"}\nText :bar[x]\n::' },
@@ -182,6 +186,38 @@ describe('createGinkoEditor', () => {
     expect(handle.dirty).toBe(false)
     expect(await handle.markdown()).toBe('Eins\n\nZwei\n')
     expect(seen).toEqual([true, false])
+    handle.destroy()
+  })
+})
+
+describe('pictures from the Files library', () => {
+  // Wrong behaviour caught: the editor draws `$file.<id>` as an address (a broken picture), writes the file's URL back into the
+  // text, or draws a trashed file as intact although the save refuses it.
+  test('a picture keeps its reference in the text and shows its file; a file the library lacks or has in the trash shows a note instead', async () => {
+    const library = reactive<Record<string, UploadDetails | null>>({})
+    const assets: GinkoAssets = {
+      state: () => computed(() => undefined),
+      details: (ids) => computed(() => Object.fromEntries(ids.value.filter((id) => id in library).map((id) => [id, library[id]!]))),
+      upload: async () => 'unused',
+    }
+    const fileImages = useFileImages(assets, () => 'Bild nicht gefunden')
+    const text = '![Hund]($file.dog) und ![Katze]($file.gone) ![Maus]($file.old)\n'
+    const handle = await createGinkoEditor({ text, profile: 'rich', element: document.createElement('div'), fileImages })
+    if (handle.mode !== 'rich') throw new Error('expected rich')
+    const dom = handle.editor.view.dom
+    expect(dom.querySelector('.ginko-image img')).toBeNull()
+
+    library.dog = { url: 'https://files.test/dog.webp', name: 'dog.webp', size: 1, width: 800, height: 600 }
+    library.gone = null
+    library.old = { url: 'https://files.test/old.webp', name: 'old.webp', size: 1, width: 800, height: 600, trashed: true }
+    await nextTick()
+    await nextTick()
+    expect([...dom.querySelectorAll('.ginko-image img')].map((img) => [img.getAttribute('src'), img.getAttribute('alt')])).toEqual([['https://files.test/dog.webp', 'Hund']])
+    expect([...dom.querySelectorAll('.ginko-image-missing')].map((note) => note.textContent)).toEqual(['Bild nicht gefunden', 'Bild nicht gefunden'])
+    expect(handle.dirty).toBe(false)
+
+    appendX(handle.editor, -1)
+    expect(await handle.markdown()).toBe('![Hund]($file.dog) und ![Katze]($file.gone) ![Maus]($file.old)X\n')
     handle.destroy()
   })
 })

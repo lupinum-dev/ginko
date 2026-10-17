@@ -1,16 +1,17 @@
-import { addComponent, addComponentsDir, addImports, addNitroPlugin, addPlugin, addServerHandler, addServerTemplate, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, extendPages, installModule, tryResolveModule } from '@nuxt/kit'
+import { addComponent, addComponentsDir, addImports, addNitroPlugin, addPlugin, addServerHandler, addServerImports, addServerTemplate, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, extendPages, installModule, tryResolveModule } from '@nuxt/kit'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { basename, join, relative, resolve as resolvePath } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Nuxt } from 'nuxt/schema'
+import { appSchema } from './app-schema.ts'
 import { fileLinkIssues } from './external-links.ts'
 import { checkI18nOptions } from './i18n.ts'
 import { listsNuxtSeo, nuxtSeoDependencies, runsNuxtSeo } from './nuxt-seo.ts'
 import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules, ginkoVercelConfig } from './route-rules.ts'
-import { configFilesToWatch } from './watch.ts'
-import { checkSite, coreMessage, entryRedirects, redirectProblems, serializeSchema, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
+import { restartOnConfigChange } from './watch.ts'
+import { checkSite, coreMessage, entryRedirects, fileMarkdownRef, redirectProblems, serializeSchema, withMarkdownRefs, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
 const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
@@ -43,14 +44,15 @@ export default defineNuxtModule<SiteInput>({
     const schema = serializeSchema(site)
     const problems = checkSite(site, schema)
     if (problems.length) throw new Error(`[ginko] ginko.config.ts is invalid:\n- ${problems.join('\n- ')}`)
+    // Dev: a saved ginko.config.ts restarts the dev server when it passes the checks above, and reports its error when it
+    // does not (watch.ts). Texts in i18n/*.json reload by themselves (ginko-i18n).
+    if (nuxt.options.dev) restartOnConfigChange(nuxt, nuxt.options.rootDir)
     const sources = {
       platform: Object.values(schema.bricks).some((b) => b.source !== 'files'),
       files: Object.values(schema.bricks).some((b) => b.source === 'files'),
     }
 
     const { resolve } = createResolver(import.meta.url)
-    // Dev: a change to ginko.config.ts restarts the dev server (see watch.ts). Texts in i18n/*.json reload by themselves (ginko-i18n).
-    if (nuxt.options.dev) nuxt.options.watch.push(...configFilesToWatch(nuxt.options.rootDir))
     // Object.assign, not `public.ginko =`: Nuxt types `public` from each site's own values, so a site's
     // `seo` would narrow the type this module must write (a site with `seo.description` makes it required).
     Object.assign(nuxt.options.runtimeConfig.public, { ginko: {
@@ -62,6 +64,10 @@ export default defineNuxtModule<SiteInput>({
       locales: schema.locales,
       mainLocale: schema.locales[0]!,
       timeZone: schema.timeZone,
+      // ISO country code or ''; the hours rules of the basics take it as `country`, JSON-LD as `addressCountry`.
+      country: site.country ?? '',
+      // The resolved holiday calendar (`schema.holidays`) or '': `custom` means the site passes its own `calendar`.
+      holidays: schema.holidays ?? '',
       seo: site.seo ?? {},
       agents: site.agents ?? {},
       sources,
@@ -129,7 +135,8 @@ export default defineNuxtModule<SiteInput>({
     // the template is written after `modules:done`, when every module is known.
     addTemplate({ filename: 'ginko/schema-org.mjs', getContents: () => (runsNuxtSeo('nuxt-schema-org', nuxt) ? `export { useSchemaOrg } from '#imports'` : 'export const useSchemaOrg = undefined') })
     nuxt.options.alias['#ginko/schema-org'] = resolve(nuxt.options.buildDir, 'ginko/schema-org.mjs')
-    addTemplate({ filename: 'ginko/schema.mjs', getContents: () => `export default ${JSON.stringify(schema)}` })
+    // The app's copy leaves out the editors' texts (app-schema.ts): it is part of every page's script.
+    addTemplate({ filename: 'ginko/schema.mjs', getContents: () => `export default ${JSON.stringify(appSchema(schema))}` })
     nuxt.options.alias['#ginko/schema'] = resolve(nuxt.options.buildDir, 'ginko/schema.mjs')
     // The server build does not see the alias above: the sitemap route imports the schema as a Nitro virtual module.
     addServerTemplate({ filename: '#ginko/schema', getContents: () => `export default ${JSON.stringify(schema)}` })
@@ -176,12 +183,16 @@ export default defineNuxtModule<SiteInput>({
     // The preview shows drafts from the platform; a site whose bricks all come from files has nothing to preview.
     if (sources.platform) {
       extendPages((pages) => { pages.push({ name: 'ginko-preview', path: '/__ginko/preview', file: resolve('./runtime/preview.vue') }) })
+      // Page state holds platform texts as `{ ref }` (runtime/plugin.ts); this route serves them on client navigation.
+      addServerHandler({ route: '/__ginko/platform/:locale/:rev/md/**', handler: resolve(`./runtime/server/platform-md.${runtimeExt}`) })
     }
     for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'useGinkoPath', 'useGinkoLang', 'useGinkoSite']) addImports({ name, from: composables })
     for (const name of ['GinkoItem', 'GinkoPageKey', 'GinkoLocale', 'GinkoSeoInput']) addImports({ name, from: composables, type: true })
     addComponent({ name: 'GinkoMarkdown', export: 'GinkoMarkdown', filePath: resolve(`./runtime/GinkoMarkdown.${runtimeExt}`) })
     addComponent({ name: 'GinkoImage', export: 'GinkoImage', filePath: resolve(`./runtime/GinkoImage.${runtimeExt}`) })
     for (const name of ['useGinkoMarkdown', 'fetchGinkoMarkdown']) addImports({ name, from: resolve(`./runtime/markdown.${runtimeExt}`) })
+    // Server routes of the site (a feed, a calendar) read entries with the same visibility rule as the pages.
+    addServerImports([{ name: 'getGinkoItems', from: resolve(`./runtime/server/items.${runtimeExt}`) }, { name: 'GinkoServerItem', from: resolve(`./runtime/server/items.${runtimeExt}`), type: true }])
   },
 })
 
@@ -200,7 +211,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
   const contentDir = join(rootDir, 'content')
   const publicDir = join(rootDir, 'public')
   let bundles: Partial<Record<Locale, Bundle>> = {}
-  // Markdown trees by the path that serves them; the bundles carry only `{ ref, toc }` (CONTENT.md, Phase 14).
+  // Markdown trees by the path that serves them; the bundles carry only `{ ref }` (CONTENT.md, Phase 14).
   let trees = new Map<string, MarkdownTree>()
   // The search index per locale, from the bundles above (CONTENT.md, Phase 14).
   let searches: Partial<Record<Locale, Awaited<ReturnType<typeof content.searchIndex>>>> = {}
@@ -237,7 +248,7 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
     trees = new Map()
     // What is served to everyone: no expired entries, no repo paths (kept only for the docs layer's "Edit this page" link).
     const now = new Date()
-    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, content.withMarkdownRefs(content.publicBundle(bundle!, schema, now, fileOptions), schema, trees)]))
+    bundles = Object.fromEntries(Object.entries(result.bundles).map(([locale, bundle]) => [locale, withMarkdownRefs(content.publicBundle(bundle!, schema, now, fileOptions), schema, trees, (brick, id, field) => fileMarkdownRef(locale, brick, id, field))]))
     searches = Object.fromEntries(await Promise.all(Object.entries(bundles).map(async ([locale, bundle]) => [locale, await content.searchIndex(bundle!, trees, schema)])))
   }
   await build()

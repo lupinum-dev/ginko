@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { parseMarkdown, plainText, type MarkdownProfile } from '../../src/core/index.ts'
+import { fileRefsIn, parseMarkdown, plainText, type ComponentRegistry, type MarkdownProfile } from '../../src/core/index.ts'
 
 describe('parseMarkdown profiles', () => {
   // Each row: text, profile, does the profile refuse it.
@@ -91,10 +91,47 @@ describe('parseMarkdown profiles', () => {
     expect(plainText(value)).toBe('Vorher\nNachher')
   })
 
+  // Wrong behaviour caught: a reference definition became a nameless `component` node, so the text was refused with
+  // "Komponente „component“ gibt es nicht", also when it defined a picture of the Files library.
+  test('reference links and images resolve, and their definitions leave the tree', async () => {
+    const text = 'Siehe die [Anleitung][g].\n\n![Logo][l]\n\n[g]: https://example.com/guide\n[l]: $file.k57logo'
+    const { value, problems } = await parseMarkdown(text, { profile: 'rich' })
+    expect(problems).toEqual([])
+    expect(value.nodes).toEqual([
+      ['p', {}, 'Siehe die ', ['a', { href: 'https://example.com/guide' }, 'Anleitung'], '.'],
+      ['p', {}, ['img', { src: '$file.k57logo', alt: 'Logo' }]],
+    ])
+    expect(fileRefsIn(text)).toEqual(new Set(['k57logo']))
+  })
+
+  // Wrong behaviour caught: `<!-- TODO -->` was shown on the site as a paragraph of text, also when it held
+  // formatting or commented out whole paragraphs.
+  test.each([
+    ['a comment in a line, one alone and one in code', 'Text <!-- TODO --> mehr\n\n<!--\nnur für uns\n-->\n\n`<!-- Code -->`', [['p', {}, 'Text mehr'], ['p', {}, ['code', {}, '<!-- Code -->']]]],
+    ['formatting inside a comment', 'Text <!-- TODO: **fix** this --> weiter', [['p', {}, 'Text weiter']]],
+    ['a commented-out section of two paragraphs', 'Eins\n\n<!--\nAlt\n\nAuch alt\n-->\n\nZwei', [['p', {}, 'Eins'], ['p', {}, 'Zwei']]],
+  ])('HTML comments are notes in the stored text, the tree leaves them out: %s', async (_name, text, nodes) => {
+    const { value, body } = await parseMarkdown(text, { profile: 'rich' })
+    expect(value.nodes).toEqual(nodes)
+    expect(body).toBe(text)
+  })
+
   test('raw HTML stays text, so it never becomes an element', async () => {
     const { value, problems } = await parseMarkdown('<script>alert(1)</script>', { profile: 'page' })
     expect(problems).toEqual([])
     expect(value.nodes).toEqual([['p', {}, '<script>alert(1)</script>']])
+  })
+
+  // Wrong behaviour caught: a picture line without its "]" (or "[sic]" as text) was reported as the unknown
+  // component "span", which does not point at the typo. A page text without a component registry accepted "[sic]"
+  // before and must keep doing so: a stored text of such a site would otherwise fail its save and its build.
+  test.each<[string, MarkdownProfile, ComponentRegistry | undefined, string[]]>([
+    ['![Drohne auf Moos($file.x)', 'page', {}, ['„[Drohne auf Moos($file.x)“ ist weder Link noch Bild: Es fehlt „]“ oder die Adresse in runden Klammern. Eckige Klammern als Text: \\[ und \\].']],
+    ['Er sagte [sic] dazu.', 'basic', {}, ['„[sic“ ist weder Link noch Bild: Es fehlt „]“ oder die Adresse in runden Klammern. Eckige Klammern als Text: \\[ und \\].']],
+    ['Er sagte \\[sic\\] dazu.', 'basic', {}, []],
+    ['Er sagte [sic] dazu.', 'page', undefined, []],
+  ])('%j as %s: text in square brackets names the brackets', async (text, profile, components, problems) => {
+    expect((await parseMarkdown(text, { profile, components })).problems).toEqual(problems)
   })
 
   test('a field value has no frontmatter: --- is a divider, not metadata', async () => {
@@ -104,5 +141,21 @@ describe('parseMarkdown profiles', () => {
     expect(file.frontmatter).toEqual({ title: 'x' })
     expect(plainText(file.value)).toBe('Text')
     expect(file.body).toBe('Text')
+  })
+})
+
+describe('fileRefsIn', () => {
+  // Wrong behaviour caught: a `$file.<id>` in code counted as a picture: another site's ID in a code example blocked
+  // the save, and an own file named only in inline code could not go to the trash.
+  test.each([
+    ['fenced code', '```md\n![Doku]($file.fremd)\n```', []],
+    ['a tilde fence with a longer close', '~~~\n![Doku]($file.fremd)\n~~~~', []],
+    ['inline code', 'So geht es: `![x]($file.k57a)`', []],
+    ['a picture after inline code', '`Code` und ![Hund]($file.k57a)', ['k57a']],
+    ['an escaped backtick is no code', 'Geht\\`s gut? ![x]($file.k57a) Ja, geht\\`s.', ['k57a']],
+    ['a picture after a closed fence', '```\nx\n```\n\n![Hund]($file.k57a)', ['k57a']],
+    ['the YAML props block of a component', '::figure\n```yaml [props]\nsrc: $file.k57a\n```\n::', ['k57a']],
+  ])('%s', (_name, text, ids) => {
+    expect([...fileRefsIn(text)]).toEqual(ids)
   })
 })

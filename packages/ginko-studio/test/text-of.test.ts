@@ -50,4 +50,13 @@ describe('textOf', () => {
   ])('%s: server catalog, then core, then the German text', (_name, msg, expected) => {
     expect(textOf(msg, 'Etwas Neues.', env('en'))).toBe(expected)
   })
+
+  // Wrong behaviour caught (F12): every core issue logged '[ginko-i18n] Missing message "server.issues.fieldMissing"'
+  // in development, which looked like a missing translation although the text shown was right.
+  it('a core message is not asked for in the server catalog first', () => {
+    const missing: string[] = []
+    const translator = createTranslator({ messages: catalogs.en, language: 'en', onMissing: (key) => missing.push(key) })
+    const shown = textOf({ key: 'issues.fieldMissing', params: { label: 'Title' } }, 'Etwas Neues.', { t: translator.t, has: translator.has, locale: 'en' })
+    expect([shown, missing]).toEqual(['“Title” is missing.', []])
+  })
 })

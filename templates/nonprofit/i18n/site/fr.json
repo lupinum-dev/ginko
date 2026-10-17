@@ -1,0 +1,39 @@
+{
+  "skip": "Aller au contenu",
+  "home": "Accueil",
+  "nav": {
+    "label": "Principal",
+    "open": "Ouvrir le menu",
+    "title": "Menu"
+  },
+  "close": "Fermer",
+  "theme": "Mode sombre",
+  "language": {
+    "label": "Langue",
+    "untranslated": "{language} : cette page n’est pas traduite, aller à l’accueil"
+  },
+  "footer": {
+    "pages": "Pages",
+    "contact": "Contact",
+    "legal": "Informations légales",
+    "links": "Ailleurs"
+  },
+  "notice": "Avis",
+  "updated": "Dernière mise à jour le {date}",
+  "empty": "Ajoutez un fichier dans <code>{path}</code>.",
+  "error": {
+    "code": "Erreur {code}",
+    "notFound": "Page introuvable",
+    "notFoundText": "L’adresse contient peut-être une faute de frappe, ou la page a été déplacée.",
+    "failed": "Une erreur s’est produite",
+    "failedText": "Veuillez recharger la page. Si l’erreur persiste, réessayez plus tard.",
+    "home": "Aller à l’accueil"
+  },
+  "imprint": {
+    "address": "Adresse",
+    "registry": "Immatriculation",
+    "vat": "Numéro de TVA",
+    "email": "E-mail",
+    "phone": "Téléphone"
+  }
+}

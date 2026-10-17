@@ -1,16 +1,9 @@
 <script setup lang="ts">
-const { client, user } = useConvexAuth()
+import { useSignOut } from '../composables/useSignOut'
+
+const { user } = useConvexAuth()
 const { t } = useI18n()
-const busy = ref(false)
-async function signOut() {
-  busy.value = true
-  try {
-    await client.signOut()
-    await navigateTo('/login')
-  } finally {
-    busy.value = false
-  }
-}
+const { busy, signOut } = useSignOut()
 </script>
 
 <template>
