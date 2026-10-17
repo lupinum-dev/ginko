@@ -30,7 +30,11 @@ test('the lunch page shows the current week with weekdays, or says it follows', 
     expect(count, 'five lunch days').toBe(5)
     // Wrong behaviour caught: an old week left online; the current week marks today on a weekday.
     const day = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: site.timeZone }).format(new Date(site.now))
-    if (!['Sat', 'Sun'].includes(day)) await expect(page.locator('main ol > li[aria-current="date"]'), 'today marked').toHaveCount(1)
+    if (!['Sat', 'Sun'].includes(day)) {
+      await expect(page.locator('main ol > li[aria-current="date"]'), 'today marked').toHaveCount(1)
+      // Wrong behaviour caught: past days pushing today below the first screen.
+      await expect(page.locator('main ol > li:visible').first(), 'the list starts with today').toHaveAttribute('aria-current', 'date')
+    }
   }
 })
 

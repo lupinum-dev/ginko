@@ -4,7 +4,7 @@ import { isLunchPlaceholder, restaurantJsonLd } from '@lupinum/ginko-preset-gast
 import { ArrowRight, Mail, MapPin, Phone } from '@lucide/vue'
 
 // The home page answers the first questions on the first screen: open now, the menu, how to reserve (phone and email,
-// no form) and where (the address with a map link). Below: today's lunch, a few dishes, the next events, photos, and
+// no form), where (the address with a map link) and today's lunch as one line that links to its card. Below: the lunch card, a few dishes, the next events, photos, and
 // the hours with the address.
 const home = useGinko('home')
 const site = useGinko('site')
@@ -84,10 +84,13 @@ usePageSeo(() => ({ home: true, description: home.value.data.lead, image: home.v
           <span>{{ address.join(', ') }}</span>
           <a v-if="maps" :href="maps" rel="noopener" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ t('maps') }}</a>
         </p>
+        <p v-if="lunchCard && !isLunchPlaceholder(lunchCard.day.dish)">
+          <a href="#lunch" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ lunchCard.title }}: <span :lang="langOf(lunch, `days.${lunchCard.day._id}.dish`)" class="ms-1">{{ lunchCard.day.dish }}</span><template v-if="lunchCard.day.price"> · <span class="tabular-nums">{{ formatMoney(lunchCard.day.price, language) }}</span></template></a>
+        </p>
       </div>
     </BlockHero>
 
-    <BlockSection v-if="lunchCard" :title="lunchCard.title" :lead="lunchCard.day.served ? tm('lunch.served', { from: lunchCard.day.served.from, to: lunchCard.day.served.to }) : undefined">
+    <BlockSection v-if="lunchCard" id="lunch" :title="lunchCard.title" :lead="lunchCard.day.served ? tm('lunch.served', { from: lunchCard.day.served.from, to: lunchCard.day.served.to }) : undefined">
       <div class="flex flex-col gap-4 rounded-block border p-6">
         <div class="flex items-baseline justify-between gap-6">
           <p class="text-lead font-medium" :lang="langOf(lunch, `days.${lunchCard.day._id}.dish`)">{{ lunchCard.day.dish }}</p>
