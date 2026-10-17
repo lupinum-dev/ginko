@@ -10,7 +10,7 @@
     "news": "Aktuelles",
     "next": "Karriere und Messen",
     "jobs": {
-      "title": "Karriere bei Halden Pumps",
+      "title": "Karriere bei {name}",
       "count": "{count, plural, one {# offene Stelle} other {# offene Stellen}}",
       "none": "Keine offenen Stellen",
       "text": "Bauen, verkaufen und warten Sie Pumpen mit uns: in der Werkstatt, im Vertrieb oder im Außendienst."

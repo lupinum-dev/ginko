@@ -64,6 +64,7 @@ build. Static files (`npm run generate`) would keep them until the next build, s
 | `npm run dev` | the site with live reload on http://localhost:3000; drafts show here |
 | `npm run build` | the production build in `.output/`; drafts are left out |
 | `npm run preview` | runs that build locally |
+| `npm run check` | Checks the content files in a few seconds: missing or wrong fields, dates, prices, links between pages and files in `public/`. Each problem names the file and the field. |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript and Vue types |
 
@@ -71,26 +72,34 @@ build. Static files (`npm run generate`) would keep them until the next build, s
 
 ## Edit content
 
-Every text is a Markdown file. The main language has no suffix (`about.md`); a translation adds the language code
+Every text is a Markdown file. After each change, run `npm run check`. The main language has no suffix (`about.md`); a translation adds the language code
 (`about.de.md`) and repeats only what it translates: dates, prices, files and images come from the main file. A page
 (a product, job, post, trade fair, legal text or free page) shows in a language only when its translation has every
 required text (for a job: `title`, `slug`, `description`, `location` and the text). The number at the start of a file
 name sets the order.
 
+Files point to other entries by id: the folder and the file name without number and language, so
+`content/people/1.katrin-albers.md` is `people/katrin-albers`. The `slug` is only the address on the site: renaming a
+file breaks the references to it, changing the `slug` does not. A translation lists the `specs` rows of a product in
+the same order as the main file: when you add, remove or move a row in the main file, do the same at the same place in
+each translation (write `- {}` for a row with nothing to translate). `npm run check` reports a translation with a
+different number of rows. Write dates as `2026-10-24`, times as `'09:30'`, prices as a plain number in euros (`95` or
+`12.50`).
+
 | On the site | File |
 |---|---|
 | Home page: what you make, lead, photo (optional) | `content/home.md` (and `home.de.md`) |
 | Service line: who answers it (an entry of `content/people/`, with phone and email) and when | `content/serviceLine.md` (`contact`, `hours`; `serviceLine.de.md` translates `hours`) |
-| Products and services | `content/services/<n>.<name>.md`: `title`, `summary`, `pricing` (`price` or `onRequest`, always one of the two), `price` (in euros, `390` or `12.50`, required with `pricing: price`), `duration` (minutes), `specs` (rows of `label` and `value`), `image` (3:2; give every entry one, or none), `contact` (who gets the enquiries, an entry of `content/people/`: `people/<file name>`; else the email and phone of `content/site.md`), `sheet` (the product sheet, an entry of `content/downloads/`: `downloads/<file name>`), the text |
+| Products and services | `content/services/<n>.<name>.md`: `title`, `summary`, `pricing` (`price` or `onRequest`, always one of the two), `price` (in euros, `390` or `12.50`, required with `pricing: price`), `duration` (minutes), `specs` (rows of `label` and `value`), `image` (3:2; give every entry one, or none), `contact` (who gets the enquiries, an entry of `content/people/`: `people/<name>`; else the email and phone of `content/site.md`), `sheet` (the product sheet, an entry of `content/downloads/`: `downloads/<name>`), the text |
 | Jobs | `content/jobs/<name>.md`: `title`, `description` (the short text in the list), `location`, `employmentType` (`fullTime`, `partTime`, `freelance`, `internship`, `apprenticeship`), `remote` (`onsite`, `hybrid`, `remote`), `applyEmail` (else the email of `content/site.md`) or `applyUrl` (an application page elsewhere), `validUntil` (required: the last day to apply), the text |
 | News | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/katrin-albers]`), `tags`, `image` (the cover, 3:2); `draft: true` keeps a post off the site |
 | Contacts (sales, service, human resources) | `content/people/<n>.<name>.md`: `name`, `role`, `bio`, `email`, `phone`; no photo needed, the site shows initials |
 | Trade fairs | `content/events/<n>.<name>.md`: `title`, `when` (`from`, `to`), `start`, `end`, `location` (venue, hall and stand), `booking` (optional: a ticket link), the text |
-| Product sheets and other documents | `content/downloads/<name>.md`: `title`, `summary`, `date`, `file` (a PDF in `public/sheets/`), `language` (`en`, when the file is not in the page's language) |
+| Product sheets and other documents | `content/downloads/<name>.md`: `title`, `summary`, `date`, `file` (a PDF in `public/sheets/`; when you replace a sheet, delete the old PDF, or it stays online at its old address), `language` (`en`, when the file is not in the page's language) |
 | Customer logos | `content/logos/<n>.<name>.md`: `name`, `image` (an SVG or PNG in `public/logos/`), `url` |
 | Quotes on the home page | `content/quotes/<n>.<name>.md`: `text`, `name`, `role`; the home page shows the first |
 | About us and other pages | `content/pages/<n>.<name>.md`; each translation sets its own address with `slug:` |
-| Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters), `until` (the last day it shows) |
+| Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters; in quotes when it contains a colon), `until` (the last day it shows, like `2026-12-31`; without it the notice stays until you delete the file); a translation has only `text` |
 | Name, address, register entry, VAT number, email, phone | `content/site.md` (footer, imprint, enquiry and application emails, search engines) |
 | Privacy policy, terms of sale, imprint | `content/legal/` (placeholders for Germany: replace them before you go live) |
 | Site name, description for search engines, currency | `ginko.config.ts` (`name`, `seo.description`, `currency`) |
@@ -118,20 +127,25 @@ the home page's closing band.
 
 Each language has a news feed at `<news page>/rss.xml` (`/news/rss.xml`, `/de/aktuelles/rss.xml`).
 
-Notices show newest first: put the newest one at the top (the smallest number). At most two show at once.
+Notices show newest first: give a new notice a smaller number than the others (`0.` works and numbers may have gaps, so older notices keep theirs). At most two show at once.
 
 ## Make it yours
 
-- **Name and menu.** `name` in `ginko.config.ts`; `nav` in `app/app.config.ts` holds at most six items: a page of
+- **Name.** `name` in `ginko.config.ts` (header, footer, page titles, the jobs card of the home page, share cards, search
+  engines). The sample name also appears as text in `seo.description` there, `legalName` in `content/site.md`, the
+  `lead` in `content/home*.md` and the `summary` in `content/pages/1.about*.md`. Search `content/` and `i18n/` for it
+  and replace what is left. On phones the header shows `shortName` in `app/app.config.ts` instead, when you set one.
+- **Menu.** `nav` in `app/app.config.ts` holds at most six items: a page of
   `ginko.config.ts` (`{ page: 'news', label: { … } }`, label per language, the same words as the page's title) or a
   page of `content/pages/` by id (`{ entry: 'pages/about' }` is `content/pages/1.about.md`).
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 140, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name. Search engines get it as the employer's logo of your
   jobs too.
-- **Colour.** `--brand` and `--brand-foreground` in `app/assets/css/main.css`, once for light and once for dark
+- **Country, time zone and languages.** `country` (ISO code: public holidays and the country search engines get for your address and jobs), `timeZone` and `languages` (`de: 'de-AT'`) in `ginko.config.ts`; `currency` for prices. In `content/site.md`, write your own register entry and VAT number in the form of your country, or leave them out. Every job gets this one country as its address country.
+- **Colour.** `--brand`, `--brand-foreground`, `--brand-surface` and `--brand-surface-foreground` (the closing band, dark mode only here) in `app/assets/css/main.css`, once for light and once for dark
   (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). This
   template uses sky blue (`#0369a1`, dark `#7dd3fc`, and a deep blue `#0c4a6e` for the closing band in dark mode).
-  Keep text on the colour at 4.5:1 or more; `DESIGN.md` has the rules.
+  Text on the colour needs a contrast of at least 4.5:1 in both modes; check each pair with a contrast checker (for example webaim.org/resources/contrastchecker). `DESIGN.md` has the rules.
 - **Fonts.** `--font-body` in `main.css`. `@nuxt/fonts` downloads the fonts at build time and serves them from your
   site.
 - **Organisation type.** `organization: 'Organization'` in `app/app.config.ts` tells search engines what you are;
