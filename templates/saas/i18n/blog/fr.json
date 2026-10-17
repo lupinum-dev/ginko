@@ -8,6 +8,7 @@
   "empty": "Pas encore d’articles",
   "feed": "Flux RSS",
   "latest": "Toutes les actualités",
+  "tagged": "Articles avec le mot-clé « {tag} »",
   "count": "{count, plural, one {# article} other {# articles}}",
   "minutes": "{count} min de lecture",
   "older": "Article plus ancien",

@@ -8,6 +8,7 @@
   "empty": "No posts yet",
   "feed": "RSS feed",
   "latest": "All news",
+  "tagged": "Posts tagged {tag}",
   "count": "{count, plural, one {# post} other {# posts}}",
   "minutes": "{count} min read",
   "older": "Older post",

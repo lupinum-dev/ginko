@@ -8,6 +8,7 @@
   "empty": "Noch keine Beiträge",
   "feed": "RSS-Feed",
   "latest": "Alle Neuigkeiten",
+  "tagged": "Beiträge mit dem Schlagwort {tag}",
   "count": "{count, plural, one {# Beitrag} other {# Beiträge}}",
   "minutes": "{count} Min. Lesezeit",
   "older": "Älterer Beitrag",

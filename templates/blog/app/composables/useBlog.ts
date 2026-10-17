@@ -39,7 +39,8 @@ export function useBlogPosts() {
         date: post.data.date,
         description: post.data.description,
         image: post.data.image,
-        tags: (post.data.tags ?? []).map((row) => row.tag),
+        // A tag without letters or digits has no address (empty slug), so it is left out instead of breaking the route.
+        tags: (post.data.tags ?? []).map((row) => row.tag).filter((tag) => tagSlug(tag)),
         minutes: words ? Math.max(1, Math.round(words / WORDS_PER_MINUTE)) : 0,
         authors: (post.data.authors ?? []).flatMap((id) => {
           const person = byId.get(id)
