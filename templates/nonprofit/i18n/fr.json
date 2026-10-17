@@ -1,6 +1,6 @@
 {
   "home": {
-    "title": "Nettoyage de la rivière à Musterstadt",
+    "title": "Nettoyage de la rivière à {city}",
     "projects": "Projets en cours",
     "news": "Dernières actualités",
     "voices": "Ils en parlent",

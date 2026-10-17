@@ -1,4 +1,4 @@
 ---
-title: "Rapport annuel (exemple)"
-summary: "Ce que nous avons fait, ce que cela a coûté et la suite. Un exemple d’une page : remplacez-le par votre propre rapport."
+title: "Rapport annuel 2025"
+summary: "Ce que nous avons fait en 2025, ce que cela a coûté et ce qui vient ensuite."
 ---
