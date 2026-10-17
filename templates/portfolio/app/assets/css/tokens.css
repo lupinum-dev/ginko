@@ -1,0 +1,399 @@
+/* Synced from templates/_features/ui/app/assets/css/tokens.css by `pnpm templates sync`. Edit the source, not this copy. */
+/* The design tokens every template shares (DESIGN.md). Neutral system values only: the template's accent and fonts
+   live in its own app/assets/css/main.css, which imports this file after Tailwind.
+   Tailwind's default palette, type scale, radii and shadows are removed, so only these utilities exist. A new value
+   is a new token here (or in main.css) and a row in DESIGN.md, in the same change. */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-*: initial;
+  --font-*: initial;
+
+  /* Type scale. Headings use h1–h3; body text is 17px. */
+  --text-*: initial;
+  --text-h1: clamp(2.25rem, 1.5rem + 3.2vw, 4rem);
+  --text-h1--line-height: 1.05;
+  --text-h1--letter-spacing: -0.025em;
+  --text-h2: clamp(1.75rem, 1.35rem + 1.7vw, 2.75rem);
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h3: clamp(1.2rem, 1.1rem + 0.45vw, 1.45rem);
+  --text-h3--line-height: 1.3;
+  --text-lead: clamp(1.125rem, 1.06rem + 0.3vw, 1.3125rem);
+  --text-lead--line-height: 1.5;
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.6;
+  --text-small: 0.9375rem;
+  --text-small--line-height: 1.5;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.4;
+
+  --radius-*: initial;
+  --radius-full: 9999px;
+  /* Images, cards and the CTA band. Buttons and fields use --radius (rounded-md). */
+  --radius-block: 1rem;
+
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+  /* The one elevation: panels above the page (nav sheet, dialog, lightbox, menus). */
+  --shadow-overlay: 0 12px 32px -8px rgb(9 9 11 / 0.28);
+
+  --spacing-section: clamp(3.5rem, 2.25rem + 5.5vw, 7rem);
+  --spacing-gutter: clamp(1rem, 0.5rem + 2.4vw, 2rem);
+  --container-page: 76rem;
+  /* About 65 characters of body text in Inter. In rem, not ch: ch follows the font, so text re-wrapped (a layout
+     shift) when Inter replaced its fallback. */
+  --container-prose: 43.5rem;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Neutral colours (zinc). Contrast on --background: foreground 17.7:1 / 17.0:1, muted-foreground 7.7:1 / 7.9:1.
+   --brand and --brand-foreground (the accent and the text on it) come from main.css, light and dark. */
+:root {
+  color-scheme: light;
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --background: #ffffff;
+  --foreground: #18181b;
+  --card: var(--background);
+  --card-foreground: var(--foreground);
+  --popover: var(--background);
+  --popover-foreground: var(--foreground);
+  --secondary: #f4f4f5;
+  --secondary-foreground: var(--foreground);
+  --muted: #f4f4f5;
+  --muted-foreground: #52525b;
+  --accent: #f4f4f5;
+  --accent-foreground: var(--foreground);
+  --border: #e4e4e7;
+  /* Borders of controls: 3:1 or more on the background (WCAG non-text contrast). */
+  --input: #8a8a93;
+  --ring: var(--primary);
+  --success: #15803d;
+  --warning: #a16207;
+  --destructive: #b42318;
+  /* Behind a dialog, the nav sheet or the lightbox. */
+  --scrim: rgb(9 9 11 / 0.6);
+  --radius: 0.625rem;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0b0b0c;
+  --foreground: #f4f4f5;
+  --secondary: #18181b;
+  --muted: #18181b;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --border: #27272a;
+  --input: #71717a;
+  --success: #4ade80;
+  --warning: #facc15;
+  --destructive: #f87171;
+  --scrim: rgb(0 0 0 / 0.72);
+}
+
+/* Paper is white and browsers leave out backgrounds when printing: a page printed in dark mode uses the light
+   neutrals, so its text stays dark. */
+@media print {
+  .dark {
+    color-scheme: light;
+    --background: #ffffff;
+    --foreground: #18181b;
+    --secondary: #f4f4f5;
+    --muted: #f4f4f5;
+    --muted-foreground: #52525b;
+    --accent: #f4f4f5;
+    --border: #e4e4e7;
+    --input: #8a8a93;
+    --success: #15803d;
+    --warning: #a16207;
+    --destructive: #b42318;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-scrim: var(--scrim);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: var(--radius);
+  /* main.css sets --font-body and, optionally, --font-heading (headings; utility font-display). */
+  --font-sans: var(--font-body);
+  --font-display: var(--font-heading, var(--font-body));
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* A band on the accent colour (BlockCta). Text, secondary text, buttons and the focus ring switch, so every part
+   inside keeps its contrast. main.css may give the band its own colour with `--brand-surface` and
+   `--brand-surface-foreground` (for example a deep shade in `.dark`, where a full band of the light accent would be
+   the loudest thing on the page); without them the band is `--brand`. */
+.surface-primary {
+  --band: var(--brand-surface, var(--brand));
+  --band-foreground: var(--brand-surface-foreground, var(--brand-foreground));
+  --background: var(--band);
+  --foreground: var(--band-foreground);
+  --muted-foreground: var(--band-foreground);
+  --border: color-mix(in oklab, var(--band-foreground) 30%, transparent);
+  --input: var(--band-foreground);
+  --accent: color-mix(in oklab, var(--band-foreground) 12%, transparent);
+  --ring: var(--band-foreground);
+  --primary: var(--band-foreground);
+  --primary-foreground: var(--band);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+
+  html {
+    font-family: var(--font-body);
+    background-color: var(--background);
+    color: var(--foreground);
+    accent-color: var(--primary);
+    scroll-padding-top: 6rem;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading, var(--font-body));
+    font-weight: 600;
+    text-wrap: balance;
+    /* Long compounds ("Datenschutzerklärung") must not push the page sideways at 320 px. */
+    overflow-wrap: break-word;
+    hyphens: auto;
+    /* Only words of 10+ letters break, with at least 5 on each side: no "mu-nicipal". */
+    hyphenate-limit-chars: 10 5 5;
+  }
+
+  p,
+  li {
+    text-wrap: pretty;
+  }
+
+  time,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+  }
+
+  /* One focus style for every interactive element: 2px ring in --ring, 3px away. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+
+  a {
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Rendered Markdown (ProseBody). Bodies start at h2. Only direct children are styled, so ginko-components keep
+     their own look. */
+  .prose {
+    max-width: var(--container-prose);
+    overflow-wrap: break-word;
+  }
+
+  /* Paths, addresses and links have no spaces to break at; at 320 px they would push the page sideways. */
+  .prose :not(pre) > code,
+  .prose a {
+    overflow-wrap: anywhere;
+  }
+
+  .prose :not(pre) > code {
+    border-radius: calc(var(--radius) - 4px);
+    background-color: var(--muted);
+    padding: 0.1em 0.3em;
+    font-size: 0.9em;
+  }
+
+  .prose > * + * {
+    margin-top: 1.1em;
+  }
+
+  .prose > h2 {
+    margin-top: 2.2em;
+    font-size: var(--text-h3);
+    line-height: var(--text-h3--line-height);
+  }
+
+  .prose > h3 {
+    margin-top: 1.8em;
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+
+  .prose > :is(h2, h3) + * {
+    margin-top: 0.6em;
+  }
+
+  .prose > :first-child {
+    margin-top: 0;
+  }
+
+  .prose > :is(p, ul, ol, blockquote) a {
+    color: var(--primary);
+    text-decoration-line: underline;
+  }
+
+  .prose > :is(p, ul, ol, blockquote) a:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  .prose > :is(ul, ol) {
+    padding-inline-start: 1.25em;
+  }
+
+  .prose > ul {
+    list-style-type: disc;
+  }
+
+  .prose > ol {
+    list-style-type: decimal;
+  }
+
+  .prose > :is(ul, ol) > li + li {
+    margin-top: 0.4em;
+  }
+
+  .prose > :is(ul, ol) > li::marker {
+    color: var(--muted-foreground);
+  }
+
+  .prose strong {
+    font-weight: 600;
+  }
+
+  .prose > blockquote {
+    border-inline-start: 2px solid var(--border);
+    padding-inline-start: 1.25em;
+    color: var(--muted-foreground);
+  }
+
+  .prose > hr {
+    margin-block: 2.5em;
+  }
+
+  .prose > :is(figure, section, div) {
+    margin-block: 2.5em;
+  }
+
+  .prose img {
+    border-radius: var(--radius-block);
+  }
+
+  /* A photo in a text with its caption: the image, and on the next line of the same paragraph `*The caption*`. The
+     photo takes the text's width (its width and height attributes keep the space while it loads); the caption sits
+     small and muted under it. */
+  .prose > p:has(> img) > img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .prose > p:has(> img) > em:last-child {
+    display: block;
+    margin-top: 0.75em;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    font-style: normal;
+    color: var(--muted-foreground);
+  }
+
+  /* Code blocks: a line around them, and long lines wrap instead of widening the page (a block that scrolled sideways
+     would need to take keyboard focus, which Markdown cannot give it). A highlighted block (Shiki, in files) colours
+     its words for light and dark (github-light, catppuccin-mocha: 4.5:1 or more on the page); its own background is
+     left out, so the block sits on the page like the text around it. */
+  .prose > pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+  }
+
+  .prose > pre.shiki {
+    background-color: transparent !important;
+  }
+
+  .dark .prose .shiki,
+  .dark .prose .shiki span {
+    color: var(--shiki-dark, var(--foreground)) !important;
+  }
+}
+
+/* Print: the page's content with its address. Navigation, language and theme controls, the notices, the skip link and
+   the closing band carry `print:hidden` in their components; the header stays at the top of the first page only, and
+   the footer keeps the name and contact. A
+   link to another site prints its address after the text, and list items and figures do not break across pages. */
+@media print {
+  .prose a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    color: var(--muted-foreground);
+  }
+
+  .prose :is(li, figure, blockquote, pre) {
+    break-inside: avoid;
+  }
+
+  .prose :is(h2, h3) {
+    break-after: avoid;
+  }
+}

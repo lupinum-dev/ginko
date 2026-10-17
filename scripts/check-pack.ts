@@ -195,6 +195,7 @@ const created: Record<string, Check[]> = {
   // The site feature's server plugin preloads the Latin web font file.
   'template-starter': [['/', /<h1[^>]*>My site<\/h1>/], ['/', /<link rel="preload" as="font" type="font\/woff2"/], ['/about', /<h1[^>]*>About<\/h1>/], ['/sitemap.xml', /<urlset/]],
   'template-restaurant': [['/', /<h1[^>]*>\s*Viennese cooking in a family Gasthaus/], ['/menu', /Liptauer with dark bread/], ['/de/speisekarte', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
+  'template-portfolio': [['/', /<h1[^>]*>\s*Interiors and objects, designed in Hamburg/], ['/work/holm-chair', /A dining chair in solid oak/], ['/de/projekte', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
   'template-company': [['/', /<h1[^>]*>\s*Pumps and pumping stations/], ['/products', /HK centrifugal pumps/], ['/de/karriere', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
   'template-local-business': [['/', /<h1[^>]*>\s*Hofer Physio/], ['/treatments', /Manual lymphatic drainage/], ['/de/kontakt', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
   'template-nonprofit': [['/', /<h1[^>]*>\s*We look after the river/], ['/news', /A new home for our tools/], ['/ar', /<html[^>]*dir="rtl"/], ['/news/rss.xml', /<rss[\s\S]*<item>/], ['/sitemap.xml', /<urlset/]],

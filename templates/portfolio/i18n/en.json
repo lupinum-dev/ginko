@@ -1,0 +1,45 @@
+{
+  "home": {
+    "title": "Interior and object design in Hamburg",
+    "work": "Selected work",
+    "journal": "From the journal",
+    "cta": {
+      "title": "Tell us about your space.",
+      "text": "Write to us with a few words and photos of the rooms, or call. The first conversation costs nothing."
+    }
+  },
+  "start": {
+    "action": "Start a project",
+    "subject": "Project enquiry",
+    "or": "Or write to"
+  },
+  "project": {
+    "facts": "About the project",
+    "client": "Client",
+    "year": "Year",
+    "place": "Place",
+    "scope": "Scope",
+    "photos": "Photos",
+    "next": "Next project",
+    "cta": {
+      "title": "Planning something similar?",
+      "text": "Tell us about your rooms or your object. The first conversation costs nothing."
+    }
+  },
+  "projects": {
+    "title": "Work",
+    "lead": "Homes, workplaces and the objects in them, from the first sketch to the last fitting.",
+    "all": "All projects",
+    "empty": "No projects yet"
+  },
+  "people": {
+    "title": "Studio",
+    "lead": "Two designers and a workshop in Hamburg-Altona. We plan rooms and design the furniture and objects for them, and we know the people who make them."
+  },
+  "blog": {
+    "title": "Journal",
+    "lead": "Notes from the studio and the workshops, now and then.",
+    "latest": "All journal entries",
+    "empty": "No journal entries yet"
+  }
+}

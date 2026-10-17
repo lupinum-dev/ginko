@@ -1,0 +1,56 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./tokens.css";
+
+/* This template's accent and fonts (DESIGN.md "Your accent"). Everything else comes from tokens.css.
+   portfolio: stone. White on the accent 17.5:1 light; the accent on the page 17.5:1 light; #1c1917 on the dark accent
+   16.5:1; the dark accent on the page 17.6:1. The photos carry the colour; the accent stays almost black and white.
+   The focus ring and links in text use the accent. */
+:root {
+  --brand: #1c1917;
+  --brand-foreground: #ffffff;
+  /* @nuxt/fonts serves Inter and Instrument Serif from the site and adds size-matched fallbacks. */
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Headings: a narrow display serif with one weight (400). */
+  --font-heading: "Instrument Serif", ui-serif, Georgia, serif;
+}
+
+/* Instrument Serif is narrow and has a small x-height: at the shared `text-h3` (19–23 px) a project title or a name
+   reads smaller than the 17 px Inter text below it. This template sets the step larger: 22 px on phones, 28 px from
+   1440 px (DESIGN.md, "Your accent", Headings). */
+@theme {
+  --text-h3: clamp(1.375rem, 1.2rem + 0.75vw, 1.75rem);
+  --text-h3--line-height: 1.2;
+}
+
+.dark {
+  --brand: #f5f5f4;
+  --brand-foreground: #1c1917;
+  /* The closing band in dark mode: the zinc of the neutrals (as --accent) instead of the near-white accent, so it
+     does not outshine the photos and matches the footer below it. #fafaf9 on #27272a 14.3:1. */
+  --brand-surface: #27272a;
+  --brand-surface-foreground: #fafaf9;
+}
+
+@layer base {
+  /* Instrument Serif has one weight. Headings use it as drawn, and the browser never fakes a bold of it (a heading
+     marked semibold in a shared component stays regular). Inter keeps its real weights. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 400;
+  }
+
+  html {
+    font-synthesis-weight: none;
+  }
+
+  /* The display serif is for headings from text-h3 up. Small headings (the footer's column titles, labels, a
+     Markdown ###) stay in Inter, semibold: at body size the serif's thin strokes read as body text. */
+  :is(h1, h2, h3, h4):is(.text-xs, .text-small, .text-body),
+  .prose > h3 {
+    font-family: var(--font-body);
+    font-weight: 600;
+  }
+}
