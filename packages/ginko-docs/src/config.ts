@@ -20,7 +20,8 @@ function localized<P extends `/${string}`>(locales: Locales, path: P): Record<Lo
   if (main === undefined) throw new Error('[ginko-docs] `locales` is empty. Fix: pass the same list as `locales` in defineSite.')
   // `/<locale>` + a path still matches the path's pattern, e.g. `/${string}/[slug]`. The root of another locale is
   // `/<locale>` without a trailing slash, its canonical address (ginko-i18n redirects `/de/` to `/de`).
-  return Object.fromEntries(locales.map((l) => [l, l === main ? path : path === '/' ? `/${l}` : `/${l}${path}`])) as Record<Locale, P>
+  const address: string = path
+  return Object.fromEntries(locales.map((l) => [l, l === main ? path : address === '/' ? `/${l}` : `/${l}${path}`])) as Record<Locale, P>
 }
 
 /** `base`: where the docs live, default `/docs` (e.g. `/handbook` inside a larger site). */
