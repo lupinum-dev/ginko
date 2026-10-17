@@ -40,6 +40,8 @@
     "title": "Journal",
     "lead": "Notizen aus dem Studio und den Werkstätten, ab und zu.",
     "latest": "Alle Einträge im Journal",
-    "empty": "Noch keine Einträge im Journal"
+    "empty": "Noch keine Einträge im Journal",
+    "tagged": "Einträge mit dem Schlagwort „{tag}“",
+    "all": "Alle Einträge zeigen"
   }
 }

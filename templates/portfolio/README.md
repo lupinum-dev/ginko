@@ -114,9 +114,9 @@ the text). The number at the start of a file name sets the order.
 | The home page's title in tabs and search results, section titles, the subject of the "Start a project" email, the leads of the work, studio and journal pages | `i18n/<language>.json` (`home.title`, `start.subject`, `projects.lead`, `people.lead`, `blog.lead`); the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins (this template renames "Projects" to "Work", "Team" to "Studio" and "News" to "Journal" that way) |
 
 **Projects.** The home page shows the first three projects (the smallest numbers), the first one wide; the work page
-shows all of them. To change the selection, change the numbers. A project's page shows its facts, then the main
+shows all of them. To change the selection, change the numbers. A project's page shows the main
 photo and every photo of `photos`, large and one below the other, each with its description below it; a click opens
-the lightbox, which shows the whole photo. Then the text and the next project (after the last, the first).
+the lightbox, which shows the whole photo. Then its facts, the text and the next project (after the last, the first).
 
 **Photo descriptions.** Every photo needs `alt`: what the photo shows, in a short sentence. It is shown below the
 photo, read out by screen readers and given to search engines. The build stops on a photo without one in the main
@@ -124,8 +124,9 @@ language and names the file; a translation without its own description shows the
 language.
 
 **Start a project.** The button opens an email to the address of `content/site.md` with the subject of
-`start.subject` ("Project enquiry"). It is on the home page, on every project page and on the "How we work" page, next
-to the phone number and the address. To change where it leads, change the email in `content/site.md`.
+`start.subject` ("Project enquiry"). It is on the home page, on every project page, on the studio page and on the "How we work" page, next
+to the phone number and the address. If you rename `content/pages/1.how-we-work.md`, change the id in
+`app/components/pages/Top.vue` too; it shows the block on that page only. To change where it leads, change the email in `content/site.md`.
 
 Each language has a journal feed at `<journal page>/rss.xml` (`/journal/rss.xml`, `/de/journal/rss.xml`).
 
