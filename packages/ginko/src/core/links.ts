@@ -205,8 +205,35 @@ export function externalLinks(bundles: Bundle[]): ExternalLink[] {
 }
 
 const MD_INLINE = /\]\(\s*<?([^)\s>]+)/g
-const MD_DEFINITION = /^[ \t]{0,3}\[[^\]]+\]:[ \t]*<?(\S+?)>?(?:[ \t]+.*)?$/gm
-const MD_SNIPPET = /::snippet\{[^}]*\bname="([^"]*)"/g
+const MD_DEFINITION = /^[ \t]{0,3}\[[^\]]+\]:[ \t]*<?(\S+?)>?(?:[ \t].*)?$/gm
+const SNIPPET_OPEN = '::snippet{'
+const NAME_ATTR = /\bname="/g
+
+/**
+ * The names of the `::snippet{… name="…"}` components in a Markdown text, as `/::snippet\{[^}]*\bname="([^"]*)"/g`
+ * reads them: per component the last `name="` before its first `}`, up to the next `"`. A scan with indexOf, because
+ * that regex slows down on many `::snippet{` without a `}`.
+ */
+function snippetNames(markdown: string): string[] {
+  const names: string[] = []
+  let at = markdown.indexOf(SNIPPET_OPEN)
+  while (at !== -1) {
+    const close = markdown.indexOf('}', at)
+    const head = at + SNIPPET_OPEN.length
+    const starts = [...markdown.slice(head, close === -1 ? undefined : close).matchAll(NAME_ATTR)].map((m) => head + m.index + m[0].length)
+    let next = close === -1 ? -1 : close + 1
+    for (const valueAt of starts.reverse()) {
+      const quote = markdown.indexOf('"', valueAt)
+      if (quote === -1) continue
+      names.push(markdown.slice(valueAt, quote))
+      next = quote + 1
+      break
+    }
+    // Without a `}` the rest of the text was one component: a later one has no name after the one just read.
+    at = next === -1 || close === -1 ? -1 : markdown.indexOf(SNIPPET_OPEN, next)
+  }
+  return names
+}
 
 /**
  * The link targets written in the Markdown fields of one entry's data, in all languages and list rows:
@@ -221,7 +248,7 @@ export function linkTargets(fields: Fields, data: Record<string, Json>): Set<str
       if (typeof markdown !== 'string') continue
       for (const m of markdown.matchAll(MD_INLINE)) out.add(m[1]!)
       for (const m of markdown.matchAll(MD_DEFINITION)) out.add(m[1]!)
-      for (const m of markdown.matchAll(MD_SNIPPET)) out.add(`snippet:${m[1]!}`)
+      for (const name of snippetNames(markdown)) out.add(`snippet:${name}`)
     }
   }
   const walk = (inner: Fields, row: Record<string, Json>) => {

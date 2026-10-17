@@ -47,9 +47,16 @@ export async function entryMarkdown(item: BundleItem, brick: string, options: Ag
   return `${parts.join('\n\n')}\n`
 }
 
+/** The text without its trailing slashes; a loop, because `/\/+$/` slows down on a long run of slashes. */
+const withoutTrailingSlashes = (text: string) => {
+  let end = text.length
+  while (end > 0 && text[end - 1] === '/') end--
+  return text.slice(0, end)
+}
+
 /** The Markdown twin of a page URL: `/` is `/index.md`, `/blog/a` is `/blog/a.md`. */
 const markdownPath = (url: string) => {
-  const path = url.replace(/\/+$/, '')
+  const path = withoutTrailingSlashes(url)
   return path === '' ? '/index.md' : `${path}.md`
 }
 
@@ -62,7 +69,7 @@ function brickLabel(label: Label | undefined, brick: string, bundle: Bundle): st
 }
 
 export function llmsTxt(bundle: Bundle, options: AgentOptions & { siteName: string; description?: string; origin: string }): string {
-  const origin = options.origin.replace(/\/+$/, '')
+  const origin = withoutTrailingSlashes(options.origin)
   const lines = [`# ${options.siteName}`]
   if (options.description) lines.push('', `> ${options.description}`)
   for (const [brick, entry] of Object.entries(bundle.bricks)) {
@@ -85,7 +92,7 @@ export function llmsTxt(bundle: Bundle, options: AgentOptions & { siteName: stri
  * URL in the bundle's locale, in llmsTxt's order: `---`, its absolute URL as `Source:`, and its Markdown (entryMarkdown).
  */
 export async function llmsFullTxt(bundle: Bundle, options: AgentOptions & { siteName: string; description?: string; origin: string }): Promise<string> {
-  const origin = options.origin.replace(/\/+$/, '')
+  const origin = withoutTrailingSlashes(options.origin)
   const parts = [`# ${options.siteName}`]
   if (options.description) parts.push(`> ${options.description}`)
   for (const [brick, entry] of Object.entries(bundle.bricks)) {
@@ -108,7 +115,7 @@ const searchTokens = (path: string) => [...new Set(path.toLowerCase().replace(/\
  * bundle's locale) whose URL or title contains the most words of the path, and the llms.txt index. Nothing matches: no list.
  */
 export function markdownNotFound(bundle: Bundle, path: string, options: { origin: string; limit?: number; schema?: AgentOptions['schema'] }): string {
-  const origin = options.origin.replace(/\/+$/, '')
+  const origin = withoutTrailingSlashes(options.origin)
   const tokens = searchTokens(path)
   const matches: { url: string; title: string; score: number }[] = []
   for (const [brick, entry] of Object.entries(bundle.bricks)) {

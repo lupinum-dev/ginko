@@ -16,6 +16,13 @@ describe('linkTargets', () => {
     })
     expect([...targets].sort()).toEqual(['$blog.hallo', '$page.menu#top', '$page.nope', '/en', '/impressum', 'snippet:hours'])
   })
+
+  it('reads a text with many unclosed snippets at once', () => {
+    const start = performance.now()
+    const targets = linkTargets(fields, { body: `[Karte](/menu) ${'::snippet{{'.repeat(50_000)}` })
+    expect(performance.now() - start).toBeLessThan(1000)
+    expect([...targets]).toEqual(['/menu'])
+  })
 })
 
 const schema = {

@@ -66,8 +66,9 @@ export async function markdownBlocks(text: string, options: ParseOptions = {}): 
   const whole = (): MarkdownBlocks => ({ nodes, blocks: [{ nodes, source: body.trim() ? body.trimEnd() : '', gap: '' }], tail: body.slice(body.trimEnd().length) })
   if (!body.trim()) return { nodes, blocks: [], tail: body }
 
-  const lead = /^\s*/.exec(body)![0]
-  const tail = /\s*$/.exec(body)![0]
+  // trimStart/trimEnd drop the same white space as \s, and in linear time (/\s*$/ slows down on a long run of spaces).
+  const lead = body.slice(0, body.length - body.trimStart().length)
+  const tail = body.slice(body.trimEnd().length)
   const core = body.slice(lead.length, body.length - tail.length)
   const parts = core.split(/(\r?\n(?:[ \t]*\r?\n)+)/) // even: pieces, odd: the blank lines between them
   const pieceAt = (from: number, to: number) => parts.slice(from, to * 2 + 1).join('')

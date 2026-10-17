@@ -71,6 +71,11 @@ describe('llmsTxt', () => {
     expect(llmsTxt(bundle, { schema, siteName: 'Lupinum', description: 'Agentur für Webprojekte.', origin: 'https://lupinum.com/' })).toBe(
       '# Lupinum\n\n> Agentur für Webprojekte.\n\n## Blog\n\n- [Erster Beitrag](https://lupinum.com/blog/erster.md)\n\n## Seiten\n\n- [Start](https://lupinum.com/index.md)\n',
     )
+    // An origin with a long run of slashes is read at once.
+    const start = performance.now()
+    const slashes = llmsTxt(bundle, { schema, siteName: 'Lupinum', origin: `https://lupinum.com${'/'.repeat(100_000)}x//` })
+    expect(performance.now() - start).toBeLessThan(1000)
+    expect(slashes).toContain(`(https://lupinum.com${'/'.repeat(100_000)}x/blog/erster.md)`)
   })
 })
 
