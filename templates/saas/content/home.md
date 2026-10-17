@@ -7,11 +7,11 @@ image:
   alt: "Illustration of a week’s shift plan: one row per person, early, late and night shifts as blocks, and one open shift"
 features:
   - title: "Plan the month"
-    text: "Build the rota from contracts, qualifications and the wishes your staff enter. Start from last month’s plan if you like."
+    text: "Build the rota from contracts, qualifications and the shift requests your staff enter. Start from last month’s plan if you like."
   - title: "Rules checked while you plan"
     text: "Rest periods, maximum hours and the number of qualified staff on each shift are checked as you plan, not afterwards."
   - title: "Shifts on every phone"
-    text: "Staff see their shifts in the browser or the app, enter their wishes, and get a message when their plan changes."
+    text: "Staff see their shifts in the browser or the app, enter their shift requests, and get a message when their plan changes."
   - title: "Swaps without phone calls"
     text: "A swap request goes to colleagues with the right qualification, and the ward lead approves it with one tap."
 facts:
