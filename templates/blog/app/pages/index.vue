@@ -36,7 +36,8 @@ usePageSeo(() => ({ home: true, description: home.value.data.lead }))
       <ul class="flex flex-wrap gap-2">
         <li v-for="tag in tags" :key="tag.slug">
           <NuxtLink :to="tag.to" rel="tag" class="inline-flex min-h-11 items-center gap-2 rounded-md border px-4 text-small transition-[color,background-color,border-color] duration-150 hover:bg-accent">
-            {{ tag.name }}<span class="text-muted-foreground tabular-nums">{{ tag.count }}</span>
+            <span class="sr-only">{{ t('blog.topicCount', { name: tag.name, count: tag.count }) }}</span>
+            <span aria-hidden="true">{{ tag.name }}</span><span class="text-muted-foreground tabular-nums" aria-hidden="true">{{ tag.count }}</span>
           </NuxtLink>
         </li>
       </ul>
