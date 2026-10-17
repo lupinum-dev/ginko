@@ -2,4 +2,4 @@
 '@lupinum/ginko': patch
 ---
 
-Warn in `files-export` when draft files stay out of the export
+Add a warning to `files-export` when draft files stay out of the export
