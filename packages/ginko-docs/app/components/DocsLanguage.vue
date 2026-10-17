@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The languages of this page (ginko-i18n alternates, so a doc links to its own translation), each named in itself
 // ("Deutsch"). In the header a menu; with `list` (the phone menu) a row of links, one tap each. A language without
-// this page says so, in the page's language, because its link leads to that language's start page.
+// this page says so, in the page's language (`lang` sits on the name only), because its link leads to that language's start page.
 const props = defineProps<{ list?: boolean }>()
 const { t, alternates } = useI18n()
 const { open, toggle } = useDocsPopover()
@@ -11,8 +11,8 @@ const current = computed(() => alternates.value.find((a) => a.current))
 <template>
   <template v-if="alternates.length > 1">
     <nav v-if="props.list" class="docs-lang-list" :aria-label="t('docs.language')">
-      <NuxtLink v-for="a in alternates" :key="a.code" :to="a.path" :hreflang="a.language" :lang="a.language" :aria-current="a.current ? 'page' : undefined">
-        {{ a.name }}
+      <NuxtLink v-for="a in alternates" :key="a.code" :to="a.path" :hreflang="a.language" :aria-current="a.current ? 'page' : undefined">
+        <span :lang="a.language">{{ a.name }}</span>
         <small v-if="!a.translated">{{ t('docs.untranslated') }}</small>
       </NuxtLink>
     </nav>
@@ -26,9 +26,9 @@ const current = computed(() => alternates.value.find((a) => a.current))
       </button>
       <ul v-if="open" id="docs-lang-menu" class="docs-popover">
         <li v-for="a in alternates" :key="a.code">
-          <NuxtLink :to="a.path" :hreflang="a.language" :lang="a.language" :aria-current="a.current ? 'page' : undefined">
+          <NuxtLink :to="a.path" :hreflang="a.language" :aria-current="a.current ? 'page' : undefined">
             <span>
-              {{ a.name }}
+              <span :lang="a.language">{{ a.name }}</span>
               <small v-if="!a.translated">{{ t('docs.untranslated') }}</small>
             </span>
             <Icon v-if="a.current" name="lucide:check" class="docs-icon" />

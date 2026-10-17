@@ -21,6 +21,7 @@ useGinkoSeo(() => ({
       <header class="docs-blog-head">
         <h1>{{ t('docs.changelog') }}</h1>
       </header>
+      <p v-if="!entries.items.length" class="docs-meta">{{ t('docs.changelogEmpty') }}</p>
       <section v-for="entry in entries.items" :id="anchor(entry.data.version)" :key="entry.id" class="docs-release">
         <div class="docs-release-meta">
           <h2><a :href="`#${anchor(entry.data.version)}`">{{ entry.data.version }}</a></h2>

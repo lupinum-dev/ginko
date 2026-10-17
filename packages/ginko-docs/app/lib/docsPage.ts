@@ -44,6 +44,16 @@ export function docsAskLinks(prompt: string): Record<DocsAssistant, string> {
 }
 
 /**
+ * The main-language address of the docs page `ref`, from the brick's route (`/docs/[slug]`). For a page the current
+ * language lacks: the reader's bundle does not hold it, so this is how its link still leads to the main-language page,
+ * as in Markdown (core's `routeTarget`). Undefined when the route has no `[slug]`.
+ */
+export function docsMainPath(route: Partial<Record<string, string>> | undefined, mainLocale: string, ref: string): string | undefined {
+  const pattern = route?.[mainLocale]
+  return pattern?.includes('[slug]') ? pattern.replace('[slug]', ref) : undefined
+}
+
+/**
  * A route link outside Markdown (the start page's links and cards, `nav`, `footer.links`, `banner.href`):
  * `$docs.<page>` names a docs page by its file name or slug, `$page.<key>` a page of `pages` in ginko.config.ts; an
  * `#anchor` is kept. The same notation as in Markdown, so the link follows the reader's language and survives a

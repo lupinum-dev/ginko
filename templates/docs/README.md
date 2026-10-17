@@ -139,7 +139,8 @@ no reader lands on a missing page. `content/docs/7.upgrading-to-v2.md` is such a
 - **Colour.** The five tokens in `app/assets/css/main.css`, and the light `--primary` as `seo.color` in
   `ginko.config.ts` (the background of the share cards). `DESIGN.md` has the rules and the contrast of each pair.
 - **Fonts.** `--font-sans` and `--font-mono` in `main.css`. The layer serves Inter and JetBrains Mono itself; another
-  face needs its files and an `@font-face` rule.
+  face needs its files and an `@font-face` rule. The layer always preloads Inter, so a site with another face still
+  loads it.
 - **Repository.** `docs.repository` in `app/app.config.ts` adds "Edit this page" and "Report an issue" under every
   page. Set your own Git host; for GitHub, `{ url: 'https://github.com/<you>/<repo>' }` is enough. If your docs live in
   a subfolder of a larger repository, set `editUrl: '{url}/edit/{branch}/docs/{source}'`.
@@ -178,9 +179,9 @@ wins over the layer's page at the same address.
 The languages are the `locales` list in `ginko.config.ts`; the first is the main language, whose addresses have no
 prefix.
 
-- **Remove one:** delete it from `locales` and from `pages.home`, then delete its files (`*.de.md`, `i18n/de.json`).
+- **Remove one:** delete it from `locales`, then delete its files (`*.de.md`, `i18n/de.json`).
   Or start fresh with `npm create ginko@latest my-docs -- --template docs --locales en`.
-- **Add one** (for example French): add `'fr'` to `locales` and `fr: '/fr'` to `pages.home`, add
+- **Add one** (for example French): add `'fr'` to `locales` (`pages.home` follows the list), add
   `content/**/*.fr.md` translations (pages without one stay in English, see "A page without a translation") and
   `i18n/fr.json` with the texts of `i18n/en.json` translated. The layer's own texts (search, navigation, "On this
   page") exist in English and German; for another language, add them under `docs` in `i18n/fr.json` (the keys are in
