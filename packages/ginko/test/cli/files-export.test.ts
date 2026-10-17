@@ -36,9 +36,9 @@ const files: Record<string, string> = {
   'content/faq/1.preis.yml': 'question: Was kostet es?\nanswer: Das kommt darauf an.\n',
 }
 
-function run(argv: string[]) {
+function run(argv: string[], logs: string[] = []) {
   const out: string[] = []
-  const deps = { env: {}, git: async () => '', stdout: (t: string) => out.push(t), log: () => {}, fetch: async () => new Response() } as CliDeps
+  const deps = { env: {}, git: async () => '', stdout: (t: string) => out.push(t), log: (line: string) => void logs.push(line), fetch: async () => new Response() } as CliDeps
   return main(argv, deps).then((code) => ({ code, json: JSON.parse(out.join('')) as Record<string, unknown> }))
 }
 
@@ -77,9 +77,12 @@ describe('local:files-export', () => {
   it('leaves out a file marked draft: true, as the build does', async () => {
     // Wrong behaviour caught: the draft goes into the export with `draft` as a field, and the import refuses all of it.
     const s = site({ 'content/blog/3.entwurf.md': '---\ntitle: Entwurf\ndraft: true\n---\n\nNoch nicht fertig.\n' })
-    const { code, json } = await run(['files-export', '--config', s.config, s.out])
+    const logs: string[] = []
+    const { code, json } = await run(['files-export', '--config', s.config, s.out], logs)
     expect(code).toBe(0)
     expect(json).toMatchObject({ entries: 3, bricks: { blog: 2, faq: 1 } })
+    // Wrong behaviour caught: the draft vanishes without a word.
+    expect(logs).toContain('Warning: 1 draft file(s) stay out of the export (blog/entwurf); add them in the Studio as drafts.')
   })
 
   it('needs --config and refuses a folder that is not empty', async () => {
