@@ -96,7 +96,7 @@ Write dates as `2026-10-24`, times as `'09:30'` (two-digit hours), prices as a p
 | Privacy policy, terms, imprint | `content/legal/` (placeholders for Germany: replace them before you go live) |
 | Site name, description for search engines | `ginko.config.ts` (`name`, `seo.description`) |
 | Menu, footer links, the line under the name in the footer | `app/app.config.ts` |
-| The home page's title in search results and tabs, section titles and texts of the home page and the lists | `i18n/<language>.json` (`home.title` is "River clean-ups in Musterstadt"); the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins |
+| The home page's title in search results and tabs, section titles and texts of the home page and the lists | `i18n/<language>.json` (`home.title` is "River clean-ups in Kassel"); the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins |
 
 Each language has a news feed at `<news page>/rss.xml` (`/news/rss.xml`, `/de/aktuelles/rss.xml`, …) with the title,
 summary, date and authors of every post that is online.
@@ -196,6 +196,8 @@ Links in the content name pages by their key (`[annual report]($page.downloads)`
 - [ ] `NUXT_APP_SECRET` is set where the site runs.
 - [ ] `content/site.md` shows your real name, address, register entry and contact details.
 - [ ] The Donate page has your donation link and bank details, and the note on donation receipts fits you.
+- [ ] The sample phone numbers and emails are replaced: they reach nobody (the numbers start their local part
+      with 0, the emails end in .example), so a forgotten one fails quietly.
 - [ ] The placeholders in `content/legal/` are replaced by your own texts, and the ones you do not need are deleted.
 - [ ] The sample quotes, partner logos, report PDF and photos are replaced or deleted; quotes only with the person's
       permission.

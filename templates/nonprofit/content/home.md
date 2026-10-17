@@ -1,5 +1,5 @@
 ---
-title: "We look after the river that runs through our town."
+title: "We look after the Fulda, the river that runs through Kassel."
 lead: "River Commons is an association of neighbours. We clean the banks, test the water with schools and plant native shrubs where the bank is bare. Everyone can join in."
 image:
   src: /media/river-town.jpg

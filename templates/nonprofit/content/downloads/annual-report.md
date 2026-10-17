@@ -1,7 +1,7 @@
 ---
-title: "Annual report (sample)"
-summary: "What we did, what it cost and what comes next. A one-page sample: replace it with your own report."
+title: "Annual report 2025"
+summary: "What we did in 2025, what it cost and what comes next."
 date: 2026-09-30
-file: /reports/annual-report-sample.pdf
+file: /reports/annual-report-2025.pdf
 language: en
 ---

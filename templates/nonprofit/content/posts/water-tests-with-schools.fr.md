@@ -13,4 +13,4 @@ Une seule mesure dit peu de choses. Beaucoup de mesures sur une année montrent 
 
 ## Comment participer
 
-Les enseignants qui souhaitent le faire avec leur classe peuvent écrire à [Lukas](mailto:lukas@example.com). Nous apportons les kits et montrons comment ils fonctionnent.
+Les enseignants qui souhaitent le faire avec leur classe peuvent écrire à [Lukas](mailto:lukas@river-commons.example). Nous apportons les kits et montrons comment ils fonctionnent.
