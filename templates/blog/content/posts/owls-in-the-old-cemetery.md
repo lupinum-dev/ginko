@@ -10,7 +10,7 @@ The old cemetery closes its gates at dusk in winter, but the path along its wall
 
 ## Two voices
 
-The long, wavering "hoo-hoo-hoooo" is a male. The sharp "ke-wick" is usually a female answering. In the weeks around the turn of the year, pairs call to each other a lot as they settle their territories for spring.
+The long, wavering “hoo-hoo-hoooo” is a male. The sharp “ke-wick” is usually a female answering. In the weeks around the turn of the year, pairs call to each other a lot as they settle their territories for spring.
 
 ## How to listen
 

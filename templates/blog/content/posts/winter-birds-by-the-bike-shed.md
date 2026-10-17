@@ -2,11 +2,11 @@
 title: "Winter birds by the bike shed"
 description: "One feeder, one dish of water, and a month of mornings. Which birds came, in which order, and what they argued about."
 date: 2025-12-07
-authors: [people/tom-marsh]
+authors: [people/ida-wren]
 tags: ["Birds"]
 ---
 
-In November we hung a seed feeder on the bike shed in our back yard and put a shallow dish of water under the hedge. Then I watched for ten minutes each morning before work.
+In November we hung a seed feeder on the bike shed in the back yard of my building and put a shallow dish of water under the hedge. Then I watched for ten minutes each morning before work.
 
 ## Who came first
 

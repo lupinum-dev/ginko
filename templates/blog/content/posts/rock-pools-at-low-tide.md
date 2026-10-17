@@ -23,4 +23,4 @@ The seaweed matters as much as the animals. Bladder wrack hangs on the higher ro
 - Turn a stone only if you can put it back the same way up, and put it back gently.
 - Look first, then touch. Most of what lives here is only visible to someone who waits.
 
-We stayed until the first waves reached the outer pools. On the train home I drew the bathtub pool from memory. It was wrong in most details, which is a good reason to go back.
+We left as the water reached its lowest point, before the first waves came back over the outer pools. On the train home I drew the bathtub pool from memory. It was wrong in most details, which is a good reason to go back.

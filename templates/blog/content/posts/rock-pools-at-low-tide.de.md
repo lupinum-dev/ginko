@@ -22,4 +22,4 @@ Der Tang ist so wichtig wie die Tiere. Blasentang hängt an den höheren Felsen,
 - Dreh einen Stein nur um, wenn du ihn genauso zurücklegen kannst, und leg ihn behutsam zurück.
 - Erst schauen, dann anfassen. Das meiste, was hier lebt, sieht nur, wer wartet.
 
-Wir blieben, bis die ersten Wellen die äußeren Tümpel erreichten. Im Zug nach Hause habe ich den Badewannen-Tümpel aus dem Gedächtnis gezeichnet. In den meisten Einzelheiten lag ich falsch, und das ist ein guter Grund, wiederzukommen.
+Wir gingen, als das Wasser am tiefsten stand, noch bevor die ersten Wellen wieder über die äußeren Tümpel liefen. Im Zug nach Hause habe ich den Badewannen-Tümpel aus dem Gedächtnis gezeichnet. In den meisten Einzelheiten lag ich falsch, und das ist ein guter Grund, wiederzukommen.

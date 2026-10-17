@@ -13,11 +13,11 @@ Die meisten fahren aus Versehen bis zur Endstation. Ich fahre mit Absicht hin, a
 
 Von der Haltestelle überquerst du die Straße und nimmst den breiten Weg an den Kleingärten vorbei. Nach zehn Minuten enden die Gärten, und die Buchen beginnen. An der ersten Gabelung hältst du dich links; der Weg steigt sanft an, etwa zwei Kilometer bis zu einer Lichtung mit Bank und Tisch. Von dort sind es zurück zur Straßenbahn noch drei Kilometer, meist bergab.
 
-Alles läuft auf festen Wegen. Gute Schuhe reichen, und in weniger als zwei Stunden bist du wieder an der Haltestelle.
+Die ganze Runde verläuft auf festen Wegen. Gute Schuhe reichen, und in weniger als zwei Stunden bist du wieder an der Haltestelle.
 
 ## Worauf du achten kannst
 
-Buchen behalten ihr trockenes Laub unten lange bis in den Winter, deshalb leuchten die unteren Äste kupferfarben, während die Kronen schon kahl sind. Schau dir auch die Stämme an: In der glatten grauen Rinde stehen alte eingeritzte Initialen, breit gezogen, weil der Baum um sie herumgewachsen ist.
+Buchen behalten ihr trockenes Laub an den unteren Ästen bis weit in den Winter, deshalb leuchten die Bäume unten kupferfarben, während die Kronen schon kahl sind. Schau dir auch die Stämme an: In der glatten grauen Rinde stehen alte eingeritzte Initialen, breit gezogen, weil der Baum um sie herumgewachsen ist.
 
 Im Nebel wird der Wald so still, wie es die Stadt nie ist. Du hörst das Tropfen von den Blättern, irgendwo oben einen Kleiber und ganz weit weg die Klingel der Straßenbahn.
 

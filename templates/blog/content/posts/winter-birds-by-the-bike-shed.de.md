@@ -5,7 +5,7 @@ description: "Ein Futterhaus, eine Schale Wasser und ein Monat voller Morgen. We
 tags: ["Vögel"]
 ---
 
-Im November haben wir ein Futterhaus an den Fahrradschuppen im Hinterhof gehängt und eine flache Schale Wasser unter die Hecke gestellt. Dann habe ich jeden Morgen vor der Arbeit zehn Minuten zugeschaut.
+Im November haben wir ein Futterhaus an den Fahrradschuppen im Hinterhof meines Hauses gehängt und eine flache Schale Wasser unter die Hecke gestellt. Dann habe ich jeden Morgen vor der Arbeit zehn Minuten zugeschaut.
 
 ## Wer zuerst kam
 
