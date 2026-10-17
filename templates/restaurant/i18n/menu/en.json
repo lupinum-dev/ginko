@@ -26,6 +26,7 @@
     "lead": "The letters next to each dish name its allergens.",
     "label": "Allergens: {names}",
     "none": "no allergens",
+    "unknown": "Allergens: please ask us",
     "ask": "If you have an allergy or an intolerance, please tell us when you order.",
     "A": "Gluten",
     "B": "Crustaceans",

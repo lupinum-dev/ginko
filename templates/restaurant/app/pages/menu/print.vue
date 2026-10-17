@@ -46,7 +46,7 @@ const diet = (veg: unknown) => (veg === 'vegan' ? t('diet.vegan') : veg === 'veg
             <p class="font-medium">
               <span :lang="langOf(dish.item, 'name')">{{ dish.item.data.name }}</span>
               <span v-if="diet(dish.item.data.veg)" class="ms-2 text-small font-normal text-muted-foreground">{{ diet(dish.item.data.veg) }}</span>
-              <span v-if="dish.item.data.allergens.length" class="ms-2 text-small font-normal tracking-wide text-muted-foreground">{{ allergenList(dish.item.data.allergens.map(String)).join(' ') }}</span>
+              <span class="ms-2 text-small font-normal tracking-wide text-muted-foreground">{{ allergenState(dish.item.data.allergens.map(String)) === 'letters' ? allergenList(dish.item.data.allergens.map(String)).join(' ') : t(allergenState(dish.item.data.allergens.map(String)) === 'none' ? 'allergens.none' : 'allergens.unknown') }}</span>
             </p>
             <p v-if="dish.item.data.description" class="text-small text-muted-foreground" :lang="langOf(dish.item, 'description')">{{ dish.item.data.description }}</p>
           </div>

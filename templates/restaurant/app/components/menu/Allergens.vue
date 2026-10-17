@@ -20,5 +20,5 @@ const codes = computed(() => allergenList(props.codes))
       class="inline-grid h-6 min-w-6 place-items-center rounded-sm border px-1 text-xs font-medium text-muted-foreground no-underline"
     ><span aria-hidden="true">{{ code }}</span><span class="sr-only">{{ nameOf(code) }}</span></abbr>
   </span>
-  <span v-else class="text-small text-muted-foreground">{{ t('allergens.none') }}</span>
+  <span v-else class="text-small text-muted-foreground">{{ t(allergenState(props.codes) === 'none' ? 'allergens.none' : 'allergens.unknown') }}</span>
 </template>

@@ -58,6 +58,15 @@ describe('allergens', () => {
     expect(json).toContain('"Nuts"')
     expect(json).not.toContain('Gluten')
   })
+  // Wrong behaviour caught: without a `none` option a dish with no allergens can only be saved as an empty list, which a
+  // site cannot tell from "not filled in" and would show as "no allergens" by accident.
+  it('every allergen set offers `none` first, so "no allergens" is a choice', () => {
+    for (const allergens of [undefined, 'EU', [{ value: 'nut', label: 'Nuts' }]] as const) {
+      const json = JSON.parse(fieldsOf({ menu: menu({ allergens }), lunch: lunch({ allergens }) })) as unknown
+      const text = JSON.stringify(json)
+      expect(text).toContain('{"value":"none","label":{"de":"keine Allergene","en":"no allergens"}}')
+    }
+  })
   it('the default keeps the 14 EU codes', () => {
     expect(fieldsOf({ menu: menu() })).toContain('{"de":"B Krebstiere","en":"B Crustaceans"}')
     expect(fieldsOf({ menu: menu() })).toContain('A Gluten')
