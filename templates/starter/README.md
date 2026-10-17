@@ -58,6 +58,7 @@ scheduled GitHub Action).
 | Command | What |
 |---|---|
 | `npm run dev` | the site with live reload on http://localhost:3000 |
+| `npm run check` | Checks the content files in a few seconds: missing or wrong fields, dates, links between pages and files in `public/`. Each problem names the file and the field. |
 | `npm run build` | the production build in `.output/` |
 | `npm run preview` | runs that build locally |
 | `npm run generate` | static files instead of a server |
@@ -69,30 +70,37 @@ scheduled GitHub Action).
 ## Edit content
 
 Every text is a Markdown file. The main language has no suffix (`about.md`); a translation adds the language code
-(`about.de.md`). The number at the start of a file name sets the order.
+(`about.de.md`). The number at the start of a file name sets the order. After each change, run `npm run check`.
+
+Files point to other entries by id: the folder and the file name without number and language, so
+`content/pages/1.about.md` is `pages/about`. The `slug` is only the address on the site: renaming a file breaks the
+references to it (`nav` and `footer` in `app/app.config.ts`), changing the `slug` does not. Write dates as `2026-10-24`.
 
 | On the site | File |
 |---|---|
 | Home page: title, lead, text | `content/home.md`, `content/home.de.md` |
 | Pages (About, Contact, …) | `content/pages/<n>.<name>.md`; the German file sets its own address with `slug:` |
-| Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters), `until` (the last day it shows) |
+| Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters; in quotes when it contains a colon) and `until` (the last day it shows, like `2026-12-31`; without it the notice stays until you delete the file). A translation has only `text`. |
 | Name, address, email, phone (footer, search engines) | `content/site.md` |
 | Privacy policy, terms, imprint | `content/legal/` (placeholders: replace them before you go live) |
 | Site name, description for search engines | `ginko.config.ts` (`name`, `seo.description`) |
 | Menu, the line under the name in the footer, footer links, profiles elsewhere | `app/app.config.ts` |
 | Texts of buttons and labels | `i18n/site/<language>.json`; to change one, set it under `"site"` in `i18n/<language>.json` |
 
-Notices show newest first: put the newest one at the top (the smallest number). At most two show at once.
+Notices show newest first: give a new notice a smaller number than the others (`0.` works, and numbers may have
+gaps), so older notices keep theirs. At most two show at once.
 
 ## Make it yours
 
-- **Name and menu.** `name` in `ginko.config.ts`; `nav` in `app/app.config.ts` lists pages by id
+- **Name and menu.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name
+  appears nowhere else as text, so one change is enough. `nav` in `app/app.config.ts` lists pages by id
   (`pages/about` is `content/pages/1.about.md`), at most six.
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 120, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name. `shortName` replaces a long name on phones.
 - **Colour.** `--brand` and `--brand-foreground` in `app/assets/css/main.css`, once for light and once for dark
-  (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). Keep text
-  on the colour at 4.5:1 or more; `DESIGN.md` has the rules and the colours of the other templates.
+  (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). Text on the
+  colour needs a contrast of at least 4.5:1 in both modes; check each pair with a contrast checker (for example
+  webaim.org/resources/contrastchecker). `DESIGN.md` has the rules and the colours of the other templates.
 - **Fonts.** `--font-body` (and optionally `--font-heading`) in `main.css`. `@nuxt/fonts` downloads the font at build
   time and serves it from your site.
 - **Organisation type.** `organization` in `app/app.config.ts` (`Organization`, `LocalBusiness` or `NGO`) tells

@@ -1,5 +1,5 @@
 ---
-title: My site
+title: Welcome
 lead: One or two sentences that say who you are and what visitors find here.
 ---
 
