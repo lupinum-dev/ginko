@@ -62,6 +62,7 @@ build. Static files (`npm run generate`) would keep the old state until the next
 | Command | What |
 |---|---|
 | `npm run dev` | the site with live reload on http://localhost:3000 |
+| `npm run check` | Checks the content files in a few seconds: missing or wrong fields, dates, prices, links between pages and files in `public/`. Each problem names the file and the field. |
 | `npm run build` | the production build in `.output/` |
 | `npm run preview` | runs that build locally |
 | `npm run lint` | ESLint |
@@ -73,39 +74,49 @@ build. Static files (`npm run generate`) would keep the old state until the next
 
 Every text is a Markdown file. The main language has no suffix (`welcome.md`); a translation adds the language code
 (`welcome.de.md`) and repeats only the texts: dates, times, rooms, speakers, prices and photos come from the main
-file. The number at the start of a file name sets the order.
+file. The number at the start of a file name sets the order. Files point to other entries by id: the folder and the file
+name without number and language, so `content/people/1.lena-hofer.md` is `people/lena-hofer`. The `slug` is only the
+address on the site: renaming a file breaks the references to it, changing the `slug` does not. Write dates as
+`2026-10-24`, times as `'09:30'`, prices as a plain number in euros (`95` or `12.50`). After each change, run
+`npm run check`.
 
 | On the site | File |
 |---|---|
 | Home page: title, lead, photo | `content/home.md` (and `home.de.md`) |
-| The conference and other dates: title, days (`when`), `start` (first day), `end` (last day), `location`, `price`, `booking` (the ticket shop), `bookingUntil` (the last day of ticket sales), `soldOut`, `draft: true` (not on the site yet, with its sessions), the text | `content/events/<n>.<name>.md`; the home page shows the first coming event that has sessions, and an event leaves the site after its last day |
+| The conference and other dates: title, days (`when`), `start` (first day), `end` (last day), `location`, `price`, `booking` (the ticket shop), `bookingUntil` (the last day of ticket sales), `soldOut`, `draft: true` (not on the site yet, with its sessions), the text | `content/events/<n>.<name>.md`; the home page shows the first coming event that has sessions, and an event leaves the site after its last day. `4.next-edition.md` is a sample draft for next year: edit it for your next edition instead of adding a new file |
 | The programme: one file per session with `event` (`events/open-data-days`), `date`, `from`, `to`, `title`, `summary` (one or two sentences: what it is about, who it is for), `room`, `speakers` (`[people/lena-hofer]`), `status` (`open`, `soldOut` or `cancelled`) | `content/sessions/<name>.md`; the translation holds only the `title` and `summary`; "From the programme" on the home page shows the next sessions that have a summary |
 | Speakers: `name`, `slug` (the address), `role`, `bio`, `photo` (optional; without one the site shows initials) | `content/people/<n>.<name>.md`; the number sets the order on the speakers page and the home page (the first four) |
 | Questions and answers | `content/faq/<n>.<name>.md`: `question`, `answer`; the home page shows the first three |
 | Sponsor and partner logos | `content/logos/<n>.<name>.md`: `name`, `image` (an SVG or PNG in `public/logos/`), `url` |
-| Photos of last year | `content/gallery.md` (and the alt texts in each translation, same order) |
+| Photos of last year | `content/gallery.md` and the alt texts in each translation. A translation lists the rows in the same order as the main file: when you add, remove or move a row in the main file, do the same at the same place in each translation (write `- {}` for a row with nothing to translate). `npm run check` reports a translation with a different number of rows. |
 | Venue, code of conduct, sponsoring and other pages | `content/pages/<n>.<name>.md`; each translation sets its own address with `slug:` |
-| Notices above the header ("Ticket sales end three days before the conference") | `content/notices/<n>.<name>.md`: `text` (at most 140 characters), `until` (the last day it shows) |
+| Notices above the header ("Ticket sales end three days before the conference") | `content/notices/<n>.<name>.md`: `text` (at most 140 characters; in quotes when it contains a colon) and `until` (the last day it shows, like `2026-12-31`; without it the notice stays until you delete the file); a translation has only `text` |
 | Name, address, register number, email, phone of the organiser (footer, imprint, search engines) | `content/site.md` |
 | Privacy policy, terms, imprint | `content/legal/` (placeholders for Austria: replace them before you go live) |
 | Site name, description for search engines, time zone, country | `ginko.config.ts` (`name`, `seo.description`, `timeZone`, `country`) |
 | Menu, footer links, the line under the name in the footer | `app/app.config.ts` |
+| Rename the event or move it | the name: `name` and `seo.description` in `ginko.config.ts`, `title` in `content/home*.md`, the titles in `content/events/`, the summary of `content/pages/2.code-of-conduct*.md`; the place: `seo.description`, `lead` in `content/home*.md`, `home.title` in `i18n/<language>.json`, the tagline in `app/app.config.ts`, `location` in every file of `content/events/`, `content/pages/1.venue*.md`, `timeZone` in `ginko.config.ts`. `content/site.md` is the organiser's own address and changes only if the organiser changes. |
 | Texts of the home page sections and the FAQ page; the page titles and leads of the programme, speakers and dates | `i18n/<language>.json`; the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins (as `events.book` = "Get tickets" there does) |
 
-**A session moves or changes.** Change `from`, `to`, `room` or `status` in its main file (`content/sessions/<name>.md`),
-nothing else. The programme, the speaker pages, "now and next", the event page and the data for search engines all
-read that one file, so they cannot disagree. Write a room's name only in the main file, never in a translation: a
-room is a name on a sign (Festsaal, Studio), and a second copy in another language would stay behind when the room
-changes. `status: soldOut` shows "Sold out", `status: cancelled` shows "Cancelled"; a cancelled session stays in the
-programme, so people who planned to go see it, but never shows under "now" or "next".
+**A session moves or changes.** Change `from`, `to`, `room` or `status` in its main file
+(`content/sessions/<name>.md`). If the session is now the first or the last of the event, also change `start` or `end`
+in the event's file (`content/events/<n>.<name>.md`): the home page shows those times. A room the venue page does not
+list yet goes into `content/pages/1.venue.md` and its translation. The programme, the speaker pages, "now and next",
+the event page and the data for search engines all read that one file, so they cannot disagree. Write a room's name
+only in the main file, never in a translation: a room is a name on a sign (Festsaal, Studio), and a second copy in
+another language would stay behind when the room changes. `status: soldOut` shows "Sold out", `status: cancelled` shows
+"Cancelled"; a cancelled session stays in the programme, so people who planned to go see it, but never shows under
+"now" or "next".
 
-**Dates and times.** All times are in the site's time zone (`timeZone: 'Europe/Vienna'` in `ginko.config.ts`), as
-they are on the printed programme; search engines get them with the right offset for summer or winter time. A
-session leaves the programme the day after its `date`. On days that have sessions the home page puts "now and next"
-right below the dates and the place (without the lead and the photo): the sessions running now and the ones that
-start next, as of the minute the page was loaded, and it moves on every minute while the page is open. The programme
-page then says "Now" next to the running sessions and greys out the finished ones. `start` in the event's file is the
-time of the first day and `end` of the last one: a two-day event shows "Thu 09:00 – Fri 16:00".
+**Dates and times.** All times are in the site's time zone (`timeZone: 'Europe/Vienna'` in `ginko.config.ts`), as they
+are on the printed programme; search engines get them with the right offset for summer or winter time. A session leaves
+the programme the day after its `date`. On days that have sessions the home page puts "now and next" right below the
+dates and the place (without the lead and the photo): the sessions running now and the ones that start next, as of the
+minute the page was loaded, and it moves on every minute while the page is open. The programme page then says "Now"
+next to the running sessions and greys out the finished ones. `start` in the event's file is the time of the first day
+and `end` of the last one: a two-day event shows "Thu 09:00 – Fri 16:00". A session's `date` must lie within its
+event's `when`: when you move the event, move its sessions too. `npm run check` does not catch a session outside its
+event yet.
 
 **Tickets.** The site sells nothing: `booking` in the event's file is the address of your ticket shop, and "Get
 tickets" leads there: on the home page, in the closing band with the price, on the programme and on the event page.
@@ -113,18 +124,25 @@ tickets" leads there: on the home page, in the closing band with the price, on t
 programme becomes the main button. When the event is full, set `soldOut: true`: the button gives way to "Fully
 booked". An event without `booking` shows the organiser's phone and email instead.
 
-Notices show newest first: put the newest one at the top (the smallest number). At most two show at once.
+Notices show newest first. Give a new notice a smaller number than the others: `0.` works and numbers may have gaps, so
+older notices keep theirs. At most two show at once.
 
 ## Make it yours
 
-- **Name and menu.** `name` in `ginko.config.ts`; `nav` in `app/app.config.ts` holds at most six items: a page of
+- **Name.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name and place also
+  appear as text in other files: "Rename the event or move it" under [Edit content](#edit-content) lists them.
+  `legalName` in `content/site.md` is the organiser's legal name (sample: Verein Open Data Days). Search `content/` and
+  `i18n/` for the name and the place and replace what is left.
+- **Menu.** `nav` in `app/app.config.ts` holds at most six items: a page of
   `ginko.config.ts` (`{ page: 'programme', label: { … } }`, label per language, the same words as the page's title) or
   a page of `content/pages/` by id (`{ entry: 'pages/venue' }` is `content/pages/1.venue.md`).
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 120, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name.
 - **Colour.** `--brand` and `--brand-foreground` in `app/assets/css/main.css`, once for light and once for dark
-  (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). This
-  template uses rose (`#be123c`, dark `#fda4af`). Keep text on the colour at 4.5:1 or more; `DESIGN.md` has the rules.
+  (`.dark`); in `.dark` also `--brand-surface` and `--brand-surface-foreground` (the closing band); and the light value
+  as `seo.color` in `ginko.config.ts` (the background of the share cards). This template uses rose (`#be123c`, dark
+  `#fda4af`). Text on the colour needs a contrast of at least 4.5:1 in both modes; check each pair with a contrast
+  checker (for example webaim.org/resources/contrastchecker). `DESIGN.md` has the rules.
 - **Fonts.** `--font-body` in `main.css`. `@nuxt/fonts` downloads the fonts at build time and serves them from your
   site.
 - **Organisation type.** `organization: 'Organization'` in `app/app.config.ts` tells search engines what you are;
@@ -196,6 +214,8 @@ The dates (`content/events/`, the events list and the event pages) are the core 
 - [ ] `NUXT_APP_SECRET` is set where the site runs.
 - [ ] `content/site.md` shows the organiser's real name, address, register number and contact details.
 - [ ] The event in `content/events/` has your dates, place and the address of your ticket shop in `booking`.
+- [ ] The sample draft `4.next-edition.md` and its session `next-edition-keynote.md` are yours or deleted.
+- [ ] `npm run check` ends with OK.
 - [ ] The sample sessions, speakers, questions, sponsor logos and photos are replaced or deleted; speakers' names,
       roles and photos only with their permission.
 - [ ] The placeholders in `content/legal/` are replaced by your own texts, and the ones you do not need are deleted.
