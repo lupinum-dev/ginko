@@ -3,6 +3,7 @@
     "title": "Dienstplanung für Pflegeheime und kleine Kliniken",
     "trial": "Kostenlos testen",
     "pricing": "Preise ansehen",
+    "from": "Tarife ab {price} im Monat.",
     "trialNote": "30 Tage kostenlos, ohne Zahlungsdaten. Der Test endet von selbst.",
     "features": "Was {name} kann",
     "featuresLead": "Vom Monatsdienstplan bis zu den Stunden für die Lohnabrechnung, an einem Ort.",

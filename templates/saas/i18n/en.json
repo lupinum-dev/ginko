@@ -3,6 +3,7 @@
     "title": "Shift planning for care homes and small clinics",
     "trial": "Start free trial",
     "pricing": "See pricing",
+    "from": "Plans from {price} a month.",
     "trialNote": "Free for 30 days, with no payment details. The trial ends by itself.",
     "features": "What {name} does",
     "featuresLead": "From the monthly rota to the hours for payroll, in one place.",

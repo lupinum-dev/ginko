@@ -3,6 +3,7 @@
     "title": "Planning des équipes pour EHPAD et petites cliniques",
     "trial": "Commencer l’essai gratuit",
     "pricing": "Voir les tarifs",
+    "from": "Formules à partir de {price} par mois.",
     "trialNote": "Gratuit pendant 30 jours, sans moyen de paiement. L’essai s’arrête de lui-même.",
     "features": "Ce que fait {name}",
     "featuresLead": "Du planning du mois aux heures pour la paie, au même endroit.",

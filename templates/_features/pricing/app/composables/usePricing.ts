@@ -8,6 +8,8 @@ export interface Plan {
   summary: string
   /** Both prices, or none for a plan on request. */
   prices?: { monthly: string, yearly: string }
+  /** True when both prices are 0: the table says "Free" once instead of two zero prices. */
+  free?: true
   included: string[]
   recommended: boolean
   action: { label: string, href: string }
@@ -44,12 +46,28 @@ export function usePlans() {
         id: plan.id,
         name: plan.data.name,
         summary: plan.data.summary,
+        free: prices && prices.monthly.amount === 0 && prices.yearly.amount === 0 ? true : undefined,
         prices: prices && { monthly: formatMoney(prices.monthly, language.value, { wholeWithoutMinor: true }), yearly: formatMoney(prices.yearly, language.value, { wholeWithoutMinor: true }) },
         included: (plan.data.included ?? []).map((row) => row.item),
         recommended: plan.id === recommended,
         action: { label: plan.data.actionLabel, href },
       }
     })
+  })
+}
+
+/**
+ * The lowest monthly price of the plans with fixed prices, formatted as in the table ("€89", "89 €"); none when every
+ * plan is free or on request, so the home page never names a made-up price. Free plans are skipped: "from €0" says
+ * less than the cheapest paid plan.
+ */
+export function useLowestPrice() {
+  const plans = useGinko('pricing')
+  const { language } = useI18n('pricing')
+  return computed(() => {
+    const monthly = plans.value.items.flatMap((plan) => planPrices(plan.data)?.monthly ?? []).filter((money) => money.amount > 0)
+    const lowest = monthly.reduce<(typeof monthly)[number] | undefined>((min, money) => (!min || money.amount < min.amount ? money : min), undefined)
+    return lowest && formatMoney(lowest, language.value, { wholeWithoutMinor: true })
   })
 }
 

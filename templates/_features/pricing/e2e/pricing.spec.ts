@@ -43,7 +43,13 @@ test('each plan shows its monthly and yearly price or "on request", and the JSON
     const card = page.locator(`main [data-plan="${plan.id}"]`)
     await expect.soft(card.locator('h2, h3').first(), `${plan.id} name`).toHaveText(plan.name)
     const product = products.find((node) => String(node.name).endsWith(plan.name))
-    if (plan.pricing === 'price') {
+    const free = plan.pricing === 'price' && Number(plan.monthly) === 0 && Number(plan.yearly) === 0
+    if (free) {
+      // Wrong behaviour caught: a free plan that shows "€0 per month" and "or €0 per year" instead of one "Free" line.
+      await expect.soft(card.locator('[data-free]'), `${plan.id} free`).toBeVisible()
+      expect.soft(await card.locator('[data-monthly], [data-yearly]').count(), `${plan.id} without zero prices`).toBe(0)
+    }
+    else if (plan.pricing === 'price') {
       // Wrong behaviour caught: a price per month or per year that differs from the file, or one left out.
       expect.soft(digits(await card.locator('[data-monthly]').textContent()), `${plan.id} monthly`).toBe(digits(String(Math.trunc(Number(plan.monthly)))))
       expect.soft(digits(await card.locator('[data-yearly]').textContent()), `${plan.id} yearly`).toContain(digits(String(Math.trunc(Number(plan.yearly)))))
