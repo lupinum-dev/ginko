@@ -7,7 +7,8 @@
  */
 const props = withDefaults(defineProps<{ items: GinkoItem<'projects'>[], feature?: boolean, headingLevel?: 'h2' | 'h3' }>(), { headingLevel: 'h2' })
 const meta = (project: GinkoItem<'projects'>) => [project.data.client, project.data.year].filter(Boolean).join(' · ')
-const wide = (i: number) => props.feature && i === 0
+// With an even count the wide first project would leave the last one alone in a half row, so all stay half width.
+const wide = (i: number) => props.feature && i === 0 && props.items.length % 2 === 1
 </script>
 
 <template>
