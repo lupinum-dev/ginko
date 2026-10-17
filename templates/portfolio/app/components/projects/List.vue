@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /**
  * The work as large photos (3:2), each with its title and the client and year below; the whole item is one link. Two
- * per row from `md`. `feature`: the first project spans the row from `md` (16:9), as the home page's opening. The
- * projects feature shows this list on the projects page instead of its cards. A project without a photo keeps its
- * title and facts, without a gap.
+ * per row from `md`. `feature`: with an odd count the first project spans the row from `md` (16:9), as the home page's
+ * opening; with an even count all stay half width, so no project is left alone in a half row. The projects feature
+ * shows this list on the projects page instead of its cards. A project without a photo keeps its title and facts,
+ * without a gap.
  */
 const props = withDefaults(defineProps<{ items: GinkoItem<'projects'>[], feature?: boolean, headingLevel?: 'h2' | 'h3' }>(), { headingLevel: 'h2' })
 const meta = (project: GinkoItem<'projects'>) => [project.data.client, project.data.year].filter(Boolean).join(' · ')
-// With an even count the wide first project would leave the last one alone in a half row, so all stay half width.
 const wide = (i: number) => props.feature && i === 0 && props.items.length % 2 === 1
 </script>
 

@@ -82,7 +82,7 @@ describe('local:files-export', () => {
     expect(code).toBe(0)
     expect(json).toMatchObject({ entries: 3, bricks: { blog: 2, faq: 1 } })
     // Wrong behaviour caught: the draft vanishes without a word.
-    expect(logs).toContain('Warning: 1 draft file(s) stay out of the export (blog/entwurf); add them in the Studio as drafts.')
+    expect(logs).toContain('Warning: 1 entry stays out of the export as drafts, scheduled for later or part of a draft (blog/entwurf); add them in the Studio.')
   })
 
   it('needs --config and refuses a folder that is not empty', async () => {

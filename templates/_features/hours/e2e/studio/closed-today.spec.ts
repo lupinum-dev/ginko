@@ -25,11 +25,14 @@ test('the owner closes today with a reason, and the site says so', async ({ page
 
   // Wrong behaviour caught: the site still says "open" (the today line reads the closure from the Studio's data).
   // The i18n messages of the first page are inline in every page's HTML, so the words are read from the rendered line.
+  // The site opens in its own tab, so the Studio stays on this page for the clean-up below.
+  const site = await page.context().newPage()
   await expect(async () => {
-    await page.goto(`${studio.siteUrl}${CLOSED.path}`)
-    const line = page.locator('[data-hours-now]').filter({ hasText: reason }).first()
+    await site.goto(`${studio.siteUrl}${CLOSED.path}`)
+    const line = site.locator('[data-hours-now]').filter({ hasText: reason }).first()
     await expect(line).toContainText(CLOSED.todayLine, { timeout: 2_000 })
   }).toPass({ timeout: 60_000 })
+  await site.close()
 
   await page.getByRole('button', { name: 'Aufheben' }).click()
   await expect(page.getByRole('main').getByText(reason)).toHaveCount(0)

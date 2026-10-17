@@ -46,7 +46,9 @@ export function docsAskLinks(prompt: string): Record<DocsAssistant, string> {
 /**
  * The main-language address of the docs page `ref`, from the brick's route (`/docs/[slug]`). For a page the current
  * language lacks: the reader's bundle does not hold it, so this is how its link still leads to the main-language page,
- * as in Markdown (core's `routeTarget`). Undefined when the route has no `[slug]`.
+ * as in Markdown (core's `routeTarget`). Undefined when the route has no `[slug]`. Without the main-language entries
+ * this takes `ref` as the main-language slug: right for links by file name while the main file keeps the slug made
+ * from it; a main file with its own `slug:` or a typo gives a 404 here, where core would report the link.
  */
 export function docsMainPath(route: Partial<Record<string, string>> | undefined, mainLocale: string, ref: string): string | undefined {
   const pattern = route?.[mainLocale]

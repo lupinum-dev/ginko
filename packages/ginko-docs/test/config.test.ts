@@ -5,9 +5,17 @@ import { createHash } from 'node:crypto'
 import { expect, it } from 'vitest'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import docsSite from '../../../sites/docs/ginko.config.ts'
+import { changelogPages, homePages } from '../src/config.ts'
 
 it('keeps the stored schema of the blog and changelog bricks byte for byte', () => {
   const { bricks } = serializeSchema(docsSite)
   const json = JSON.stringify([bricks.posts, bricks.authors, bricks.changelog])
   expect(createHash('sha256').update(json).digest('hex')).toBe('39c88347dc13394a0320caf8394bd54a9b3b66e717155e3e5503ce6109443e7a')
+})
+
+// Wrong behaviour caught: the start page of another locale at `/de/`, an address ginko-i18n redirects, so `$page.home`,
+// the sitemap and hreflang pointed at a redirect.
+it('gives each locale its start page at its canonical address', () => {
+  expect(homePages({ locales: ['en', 'de'] })).toEqual({ en: '/', de: '/de' })
+  expect(changelogPages({ locales: ['de', 'en'] })).toEqual({ de: '/changelog', en: '/en/changelog' })
 })
