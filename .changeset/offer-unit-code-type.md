@@ -2,4 +2,4 @@
 "@lupinum/ginko": patch
 ---
 
-Type `unitCode` of `offerJsonLd` as `'MON' | 'ANN'` plus any other string, so editors suggest the two common codes.
+Change the type of `unitCode` in `offerJsonLd` so editors suggest `MON` and `ANN`; other codes stay valid.
