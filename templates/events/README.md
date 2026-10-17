@@ -219,6 +219,8 @@ The dates (`content/events/`, the events list and the event pages) are the core 
 - [ ] The sample sessions, speakers, questions, sponsor logos and photos are replaced or deleted; speakers' names,
       roles and photos only with their permission.
 - [ ] The placeholders in `content/legal/` are replaced by your own texts, and the ones you do not need are deleted.
+- [ ] The sample phone numbers and emails are replaced: they reach nobody (the numbers start their local part
+      with 0, the emails end in .example), so a forgotten one fails quietly.
 - [ ] Every photo you added has alt text in each language and a source in `MEDIA.md`.
 
 ## Move to the Studio
