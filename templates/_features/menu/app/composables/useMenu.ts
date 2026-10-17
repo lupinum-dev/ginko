@@ -4,21 +4,15 @@ import { hoursOn, weekdayOf } from '@lupinum/ginko/basics'
 /** The 14 EU allergen letters (`allergensEU` of the gastro preset): the menu texts name each of them. */
 export type Allergen = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'L' | 'M' | 'N' | 'O' | 'P' | 'R'
 export const isAllergen = (code: string): code is Allergen => allergensEU.some((option) => option.value === code)
-/** The stored code for "this dish has no allergens". An empty list is different: nobody said, so the page asks guests to ask. */
-export const NO_ALLERGENS = 'none'
 /**
- * The allergen codes as stored, without `none`, each once: the EU letters in alphabetical order, then any other code as it is written
+ * The allergen codes as stored, each once: the EU letters in alphabetical order, then any other code as it is written
  * (a site with its own `allergens` options on `menu()`). Nothing is dropped, so a dish with an allergen never reads as
  * one without.
  */
 export const allergenList = (codes: readonly string[] = []): string[] => {
-  const unique = [...new Set(codes)].filter((code) => code !== NO_ALLERGENS)
+  const unique = [...new Set(codes)]
   return [...unique.filter(isAllergen).sort(), ...unique.filter((code) => !isAllergen(code))]
 }
-
-/** What a stored list says: letters to show, an explicit "no allergens", or nothing known (an empty list). */
-export const allergenState = (codes: readonly string[] = []): 'letters' | 'none' | 'ask' =>
-  allergenList(codes).length ? 'letters' : codes.includes(NO_ALLERGENS) ? 'none' : 'ask'
 
 /** The visitor's name of an allergen code: the menu texts' name of an EU letter, else the code as it is written. */
 export function useAllergenName() {

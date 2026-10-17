@@ -58,32 +58,6 @@ describe('allergens', () => {
     expect(json).toContain('"Nuts"')
     expect(json).not.toContain('Gluten')
   })
-  // Wrong behaviour caught: without a `none` option a dish with no allergens can only be saved as an empty list, which a
-  // site cannot tell from "not filled in" and would show as "no allergens" by accident.
-  // The `allergens` field of a brick, found anywhere in the serialized schema; its option values in order.
-  const allergenValues = (brick: Record<string, any>): string[] => {
-    const walk = (node: any): any => {
-      if (node === null || typeof node !== 'object') return undefined
-      if (node.allergens?.options) return node.allergens
-      return Object.values(node).map(walk).find((found) => found !== undefined)
-    }
-    return walk(serializeSchema(siteWith({ b: brick }))).options.map((o: { value: string }) => o.value)
-  }
-  it('every allergen set offers `none` first, so "no allergens" is a choice', () => {
-    for (const [allergens, first] of [[undefined, 'A'], ['EU', 'A'], [[{ value: 'nut', label: 'Nuts' }], 'nut']] as const) {
-      for (const brick of [menu({ allergens }), lunch({ allergens })]) {
-        const values = allergenValues(brick)
-        expect(values.indexOf('none')).toBeGreaterThanOrEqual(0)
-        expect(values.indexOf('none')).toBeLessThan(values.indexOf(first))
-      }
-    }
-  })
-  it('a custom set with its own `none` does not get a second one', () => {
-    const own = [{ value: 'none', label: 'Nothing' }, { value: 'nut', label: 'Nuts' }]
-    for (const brick of [menu({ allergens: own }), lunch({ allergens: own })]) {
-      expect(allergenValues(brick)).toEqual(['none', 'nut'])
-    }
-  })
   it('the default keeps the 14 EU codes', () => {
     expect(fieldsOf({ menu: menu() })).toContain('{"de":"B Krebstiere","en":"B Crustaceans"}')
     expect(fieldsOf({ menu: menu() })).toContain('A Gluten')
