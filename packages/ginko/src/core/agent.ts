@@ -23,10 +23,10 @@ const treeOf = (value: unknown, trees?: ReadonlyMap<string, MarkdownTree>): Mark
 /**
  * A plain text field as Markdown text: characters that Markdown or HTML would read as syntax are escaped, so a title
  * like `<img onerror=…>` or `a](b` stays text in the `.md` twin and llms.txt. `inline` (titles, link texts) also
- * turns line breaks into spaces.
+ * turns each run of white space that holds a line break into one space, in one pass (a long run of spaces stays fast).
  */
 export const markdownText = (text: string, inline = false) =>
-  (inline ? text.replace(/\s*\n\s*/g, ' ') : text).replace(/[\\`*_[\]<>#|!~]/g, '\\$&')
+  (inline ? text.replace(/\s+/g, (space) => (space.includes('\n') ? ' ' : space)) : text).replace(/[\\`*_[\]<>#|!~]/g, '\\$&')
 
 /** One entry as Markdown: its title as `#`, then each text field as a paragraph and each markdown field as its Markdown. */
 export async function entryMarkdown(item: BundleItem, brick: string, options: AgentOptions): Promise<string> {

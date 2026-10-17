@@ -35,6 +35,13 @@ describe('entryMarkdown', () => {
     expect(markdown).toBe('# Hi \\<img src=x onerror=alert(1)\\> \\# not a heading\n\nSee \\[x\\](javascript:alert(2)) \\*now\\*\n')
   })
 
+  test('a title with a long run of spaces is turned into its heading at once', async () => {
+    const start = performance.now()
+    const markdown = await entryMarkdown(item('a', { title: `a${' '.repeat(100_000)}b \t\n\n  c` }), 'blog', options)
+    expect(performance.now() - start).toBeLessThan(1000)
+    expect(markdown).toBe(`# a${' '.repeat(100_000)}b c\n`)
+  })
+
   test('a { ref } markdown value is read from the trees map', async () => {
     const body = await parseMarkdown('Nur **fett**.')
     const trees = new Map([['blog/a/body', body.value]])
