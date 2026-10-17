@@ -247,6 +247,7 @@ prefix.
 - [ ] The sample posts and authors are replaced by your own, and the draft `lichen-on-the-old-bridge` is deleted.
 - [ ] The placeholders in `content/legal/` are replaced by your own texts, and the ones you do not need are deleted.
 - [ ] `content/site.md` has your real email (and your name and address, if your country requires an imprint).
+- [ ] The sample phone numbers and emails are replaced: they reach nobody (the numbers start their local part with 0, the emails end in .example), so a forgotten one fails quietly.
 - [ ] Every photo you added has alt text in each language and a source in `MEDIA.md`.
 - [ ] If you schedule posts: the daily rebuild runs.
 
