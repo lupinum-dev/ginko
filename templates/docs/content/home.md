@@ -26,7 +26,7 @@ features:
     href: $docs.webhooks
   - icon: lucide:book-open
     title: API reference
-    description: Every method with its parameters and return type, and the error codes.
+    description: The client, every method with its parameters and return type, and the error codes.
     href: $docs.client
   - icon: lucide:history
     title: Changelog

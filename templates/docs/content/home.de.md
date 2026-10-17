@@ -20,7 +20,7 @@ features:
     description: Bekomm eine Anfrage, wenn ein Monitor ausfällt, und prüfe, dass Orbit sie geschickt hat.
     href: $docs.webhooks
   - title: API-Referenz
-    description: Jede Methode mit Parametern und Rückgabetyp, und die Fehlercodes.
+    description: Der Client, jede Methode mit Parametern und Rückgabetyp und die Fehlercodes.
     href: $docs.client
   - title: Änderungen
     description: Was sich in jeder Version geändert hat, die neueste zuerst.
