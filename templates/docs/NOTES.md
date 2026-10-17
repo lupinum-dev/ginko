@@ -12,6 +12,7 @@
 - German uses "du", as the layer's own German texts do ("Tippe, um Seiten und Abschnitte zu finden").
 - The changelog dates (6 October, 25 August, 16 June 2026) are history and never move; `sampleAnchor` is there for
   create-ginko, but this template has no date that shifts.
-- Script weight (gate 6, gzip, 390 px): every docs page and the start page 149.8 kB, the changelog 147.2 kB, just under
-  the default budget of 150 kB. The layer loads the Markdown components of `@lupinum/ginko-components` on every page;
-  KaTeX, mermaid and the search engine load only when a page needs them.
+- Script weight (gate 6, gzip, 390 px): every docs page and the start page 149.8 kB, the changelog 147.2 kB. That is
+  too close to the default budget of 150 kB, so `ginko.scriptBudget` in `package.json` is 160. The layer loads the
+  Markdown components of `@lupinum/ginko-components` on every page; KaTeX, mermaid and the search engine load only when
+  a page needs them.
