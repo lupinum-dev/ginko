@@ -4,7 +4,6 @@ import type { SiteAppConfig } from './composables/useSiteAppConfig'
 // app/assets/css/main.css; address and contact are in content/site.md.
 export default defineAppConfig({
   site: {
-    shortName: 'Hofer Physio',
     // logo: { src: '/logo.svg', width: 140, height: 32 },
     // One line under the name in the footer, per language.
     tagline: {
