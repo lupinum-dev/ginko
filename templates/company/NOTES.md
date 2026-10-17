@@ -1,8 +1,7 @@
 # Notes before release
 
-- Sample data that must change before going live: `content/site.md` (address in "Musterstadt", register, VAT and
-  phone numbers with zeros), the email addresses (`example.com`), the people in `content/people/`, the quotes (marked
-  "sample quote"), the customer logos (fictional organisations), the product sheet PDFs (marked "Sample data"), the
+- Sample data that must change before going live: `content/site.md` (address in "Bielefeld", VAT and the
+  phone numbers, which start their local part with 0 so nobody can be reached), the email addresses (`.example`), the people in `content/people/`, the quotes (invented people), the customer logos (fictional organisations), the product sheet PDFs (sample address), the
   trade fairs (fictional fairs in fictional towns), the prices (`€390` for the pump check) and the legal texts
   (marked placeholders).
 - `content/jobs/summer-internship-assembly.md` is an ad whose last day has passed. It is never shown; it proves that

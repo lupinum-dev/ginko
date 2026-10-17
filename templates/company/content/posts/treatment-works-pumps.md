@@ -1,5 +1,5 @@
 ---
-title: "Six new pumps for the Musterstadt treatment works"
+title: "Six new pumps for the Rodenau treatment works"
 slug: treatment-works-pumps
 description: "The inlet pumping station of the town's treatment works now runs on six TS pumps. The works stayed in operation during the change."
 date: 2026-09-24

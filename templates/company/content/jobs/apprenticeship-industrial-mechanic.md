@@ -2,10 +2,10 @@
 title: "Apprenticeship as an industrial mechanic (m/f/d)"
 slug: apprenticeship-industrial-mechanic
 description: "Three and a half years in our workshop, assembly and test bench, starting on 1 August. With a school-leaving certificate, no experience needed."
-location: Musterstadt
+location: Bielefeld
 employmentType: apprenticeship
 remote: onsite
-applyEmail: jobs@example.com
+applyEmail: jobs@halden-pumpen.example
 validUntil: 2027-03-31
 ---
 

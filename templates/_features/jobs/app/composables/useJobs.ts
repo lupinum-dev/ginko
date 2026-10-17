@@ -14,7 +14,7 @@ export interface JobFacts {
 
 /**
  * Texts of a job in the page's language: the kind of employment, the work place, the last day to apply, and the
- * facts line of the list ("Musterstadt · Full time · Hybrid"). Unknown stored values show as stored.
+ * facts line of the list ("Bielefeld · Full time · Hybrid"). Unknown stored values show as stored.
  */
 export function useJobText() {
   const { t, format } = useI18n('jobs')
@@ -35,7 +35,7 @@ export function useJobText() {
   }
   /** "31 January 2027", with no-break spaces: the date never breaks across two lines. */
   const deadline = (job: JobFacts) => format.date(job.validUntil, { day: 'numeric', month: 'long', year: 'numeric' }).replace(/\s/g, '\u00a0')
-  /** Place, employment and, when not on site, the work place: "Musterstadt · Full time · Hybrid". */
+  /** Place, employment and, when not on site, the work place: "Bielefeld · Full time · Hybrid". */
   const facts = (job: JobFacts) => [job.location, employment(job), job.remote && job.remote !== 'onsite' ? workplace(job) : undefined].filter(Boolean).join(' · ')
   return { employment, workplace, deadline, facts }
 }

@@ -4,10 +4,10 @@
 title: "Summer internship in assembly (m/f/d)"
 slug: summer-internship-assembly
 description: "Six weeks in our pump assembly during the summer holidays, for students of mechanical engineering."
-location: Musterstadt
+location: Bielefeld
 employmentType: internship
 remote: onsite
-applyEmail: jobs@example.com
+applyEmail: jobs@halden-pumpen.example
 validUntil: 2026-09-30
 ---
 

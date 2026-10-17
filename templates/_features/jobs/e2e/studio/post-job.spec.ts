@@ -17,7 +17,7 @@ test('the owner posts a job with its last day, and the jobs list shows both', as
   const sheet = page.getByRole('dialog')
   await sheet.getByLabel('Titel', { exact: true }).fill(title)
   await sheet.getByLabel(/^Kurzbeschreibung/).fill('Install and service pumps on site, with a company van.')
-  await sheet.getByLabel(/^Ort/).fill('Musterstadt')
+  await sheet.getByLabel(/^Ort/).fill('Bielefeld')
   await sheet.getByRole('radio', { name: 'Vollzeit' }).check()
   await sheet.getByLabel(/^Ausgeschrieben bis/).fill(lastDay)
   await sheet.getByRole('textbox', { name: 'Beschreibung', exact: true }).click()

@@ -1,3 +1,3 @@
 ---
-registryCourt: Amtsgericht Musterstadt
+# registryCourt: Amtsgericht Bielefeld
 ---

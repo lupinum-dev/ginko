@@ -2,7 +2,7 @@
 title: "Servicetechniker im Außendienst (m/w/d)"
 slug: servicetechniker-aussendienst
 description: "Sie bauen unsere Pumpen und Stationen bei Kunden in Norddeutschland ein, nehmen sie in Betrieb und reparieren sie, mit Firmenwagen und festem Gebiet."
-location: Musterstadt
+location: Bielefeld
 ---
 
 Unsere Kunden sind Städte, Wasserverbände und Industriewerke. Wenn eine ihrer Pumpen stillsteht, sind Sie die Person, die sie wieder zum Laufen bringt.
