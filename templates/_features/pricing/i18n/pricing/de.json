@@ -1,0 +1,13 @@
+{
+  "title": "Preise",
+  "lead": "Was jeder Tarif kostet und was er enthält.",
+  "empty": "Noch keine Tarife",
+  "recommended": "Empfohlen",
+  "perMonth": "pro Monat",
+  "orYearly": "oder {price} jährlich",
+  "onRequest": "Auf Anfrage",
+  "included": "Enthalten",
+  "net": "Alle Preise zzgl. MwSt.",
+  "gross": "Alle Preise inkl. MwSt.",
+  "subject": "Anfrage: {plan}"
+}

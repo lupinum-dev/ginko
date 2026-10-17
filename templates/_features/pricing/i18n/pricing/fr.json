@@ -1,0 +1,13 @@
+{
+  "title": "Tarifs",
+  "lead": "Ce que coûte chaque offre et ce qu’elle comprend.",
+  "empty": "Aucune offre pour l’instant",
+  "recommended": "Recommandé",
+  "perMonth": "par mois",
+  "orYearly": "ou {price} par an",
+  "onRequest": "Sur demande",
+  "included": "Inclus",
+  "net": "Tous les prix s’entendent hors TVA.",
+  "gross": "Tous les prix s’entendent TVA comprise.",
+  "subject": "Demande : {plan}"
+}

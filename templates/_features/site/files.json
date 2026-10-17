@@ -31,6 +31,8 @@
   "i18n/site/fr.json",
   "i18n/site/it.json",
   "modules/feature-messages.ts",
+  "modules/feeds/index.ts",
+  "modules/feeds/routes.ts",
   "modules/page-paths/index.ts",
   "modules/page-paths/paths.ts",
   "server/plugins/font-preload.ts",

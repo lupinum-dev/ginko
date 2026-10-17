@@ -1,0 +1,38 @@
+{
+  "home": {
+    "title": "Planning des équipes pour EHPAD et petites cliniques",
+    "trial": "Commencer l’essai gratuit",
+    "pricing": "Voir les tarifs",
+    "trialNote": "Gratuit pendant 30 jours, sans moyen de paiement. L’essai s’arrête de lui-même.",
+    "features": "Ce que fait Planwerk",
+    "featuresLead": "Du planning du mois aux heures pour la paie, au même endroit.",
+    "customers": "Clients",
+    "customersLead": "Des EHPAD et des cliniques qui planifient avec Planwerk.",
+    "security": "Sécurité et données",
+    "securityMore": "Comment nous protégeons vos données",
+    "cta": {
+      "title": "Planifiez les équipes du mois prochain avec Planwerk.",
+      "text": "Essayez Planwerk pendant 30 jours avec votre propre équipe, sans moyen de paiement."
+    }
+  },
+  "faq": {
+    "title": "Questions fréquentes",
+    "lead": "Les réponses sur la facturation, le contrat, vos données et l’essai."
+  },
+  "pricing": {
+    "lead": "Un prix par établissement, pour tout son personnel. Vous changez d’offre ou résiliez à la fin de chaque période de facturation.",
+    "questions": "Questions sur la facturation",
+    "allQuestions": "Toutes les questions"
+  },
+  "blog": {
+    "title": "Blog",
+    "lead": "Les nouveautés du produit, et comment les établissements planifient leurs équipes.",
+    "latest": "Tous les articles"
+  },
+  "changelog": {
+    "lead": "Ce qui a changé dans Planwerk, du plus récent au plus ancien : nouvelles fonctions, améliorations et corrections."
+  },
+  "about": {
+    "team": "L’équipe"
+  }
+}

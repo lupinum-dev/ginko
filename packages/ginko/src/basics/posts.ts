@@ -84,6 +84,14 @@ export function changelog(o: ChangelogOptions = {}) {
   })
 }
 
+/**
+ * The anchor of a release on a changelog page, a valid id and a stable public address: `4.6.0` → `v4-6-0`
+ * (`/changelog#v4-6-0`). Every site that renders the `changelog` brick uses it, so the addresses stay the same.
+ */
+export function releaseAnchor(version: string): string {
+  return `v${version.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+}
+
 export interface PostJsonLdInput {
   title: string
   /** Absolute URL of the post. */
