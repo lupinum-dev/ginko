@@ -123,7 +123,9 @@ The text, in Markdown. Headings start at `##`.
   sort by it). Commit and push; the next build puts it online.
 - **Translation:** `swifts-over-the-car-park.de.md` with `title`, `slug` (its German address), `description`, `tags`
   and `image.alt` in German, and the text. Date, authors and the photo come from the main file. A post without a
-  translation is not shown in that language.
+  translation is not shown in that language. The translation lists the `tags` in the same order as the main file: when
+  you add, remove or move a tag in the main file, do the same at the same place in the translation. `npm run check`
+  reports a translation with more tags than the main file.
 - **Cover photo:** optional. Without one, lists and the post show text only. Put the file in `public/media/`; cover
   photos are shown at 3:2.
 - **Photo with a caption in the text:** put the photo next to the post (`content/posts/rock-pools.jpg`); the build
@@ -164,7 +166,8 @@ breaks the references to it, changing the `slug` does not. Write dates as `2026-
 | Menu, the line under the name in the footer, profiles elsewhere, newsletter | `app/app.config.ts` |
 | Section titles, the About page's title and lead, the posts page's title and lead | `i18n/<language>.json`; the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins |
 
-Notices show newest first: give a new notice a smaller number than the others (`0.` works, and numbers may have gaps, so older notices keep theirs). At most two show at once.
+Notices show in file-number order, smallest first: give a new notice a smaller number than the others (`0.` works,
+and numbers may have gaps, so older notices keep theirs). At most two show at once.
 
 ## Follow: feed and newsletter
 
@@ -178,7 +181,10 @@ policy.
 
 ## Make it yours
 
-- **Name and menu.** `name` in `ginko.config.ts` (header, footer, share cards, search engines, the footer's "Follow" label). The sample name also appears as text in the About page's lead (`people.lead` in `i18n/<language>.json`), so rewrite it; search `content/` and `i18n/` for it and replace what is left. `nav` in `app/app.config.ts`, at most six links.
+- **Name and menu.** `name` in `ginko.config.ts` (header, footer, share cards, search engines, and the label screen
+  readers announce for the feed links). The sample name also appears as text in the About page's lead (`people.lead`
+  in `i18n/<language>.json`), so rewrite it; search `content/` and `i18n/` for it and replace what is left. `nav` in
+  `app/app.config.ts`, at most six links.
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 120, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name.
 - **Colour.** `--brand` and `--brand-foreground` in `app/assets/css/main.css`, once for light and once for dark
