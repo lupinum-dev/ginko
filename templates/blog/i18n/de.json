@@ -13,6 +13,7 @@
     "title": "Beiträge",
     "lead": "Alles, was wir geschrieben haben, das Neueste zuerst.",
     "tags": "Themen",
+    "topicCount": "{name}, {count, plural, one {# Beitrag} other {# Beiträge}}",
     "latest": "Alle Beiträge"
   },
   "people": {
@@ -20,6 +21,10 @@
     "lead": "Field Notes ist das Notizbuch zweier Freunde, die die Natur dort suchen, wo sie wohnen: in Parks und Hinterhöfen, am Fluss und an der Küste, eine Stunde entfernt."
   },
   "site": {
+    "empty": "Leg eine Datei in <code>{path}</code> an.",
+    "error": {
+      "failedText": "Bitte lade die Seite neu. Wenn der Fehler bleibt, versuch es später noch einmal."
+    },
     "footer": {
       "contact": "Folgen und schreiben"
     }

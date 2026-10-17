@@ -13,6 +13,7 @@
     "title": "Posts",
     "lead": "Everything we have written, newest first.",
     "tags": "Topics",
+    "topicCount": "{name}, {count, plural, one {# post} other {# posts}}",
     "latest": "All posts"
   },
   "people": {
