@@ -70,8 +70,8 @@ after its last day, with no new build. Static files (`npm run generate`) would k
 ## Edit content
 
 Every text is a Markdown file. The main language has no suffix (`about.md`); a translation adds the language code
-(`about.de.md`) and repeats only what it translates: dates, files and image files come from the main file; a
-translation repeats only the `alt` of an image (`image: { alt: … }`), and without it the page uses the main language’s
+(`about.de.md`) and repeats only what it translates. Dates, files and image files come from the main file; for an
+image, a translation repeats only its `alt` (`image: { alt: … }`), and without it the page uses the main language’s
 alt. The number at the start of a file name sets the order. After each change, run `npm run check`.
 
 Files point to other entries by id: the folder and the file name without number and language, so
@@ -91,7 +91,7 @@ Write dates as `2026-10-24`, times as `'09:30'` (two-digit hours), prices as a p
 | Quotes on the home page | `content/quotes/<n>.<name>.md`: `text`, `name`, `role`; the home page shows the first |
 | About, Get involved, Donate and other pages | `content/pages/<n>.<name>.md`; each translation sets its own address with `slug:`. `actionLabel` and `actionUrl` add one button below the title (the Donate page's "Donate online") |
 | Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters; in quotes when it contains a colon) and `until` (the last day it shows, like `2026-12-31`; without it the notice stays until you delete the file); a translation has only `text` |
-| Events | `content/events/<n>.<name>.md`: `title`, `slug`, `when` (`from` and `to` dates, the same date twice for one day), `start` and `end` (`'10:00'`, two-digit hours), `location`, `online`, `booking`, `bookingUntil`, `soldOut: true`, `image` (`src` and `alt`), `price` (euros as a number, `12.5`; leave it out for a free event), and the text below the frontmatter (required); the list at `/events`, one page per event (see "Events" below) |
+| Events | `content/events/<n>.<name>.md`: `title`, `slug` (optional, made from the title), `when` (`from` and `to` dates, the same date twice for one day), `start` and `end` (`'10:00'`, two-digit hours), `location`, `online`, `booking`, `bookingUntil`, `soldOut: true`, `image` (`src` and `alt`), `price` (euros as a number, `12.50`; leave it out for a free event), and the text below the frontmatter (required); the list at `/events`, one page per event (see "Events" below) |
 | Name, address, register entry, email, phone | `content/site.md` (footer, imprint, search engines) |
 | Privacy policy, terms, imprint | `content/legal/` (placeholders for Germany: replace them before you go live) |
 | Site name, description for search engines | `ginko.config.ts` (`name`, `seo.description`) |
@@ -101,7 +101,8 @@ Write dates as `2026-10-24`, times as `'09:30'` (two-digit hours), prices as a p
 Each language has a news feed at `<news page>/rss.xml` (`/news/rss.xml`, `/de/aktuelles/rss.xml`, …) with the title,
 summary, date and authors of every post that is online.
 
-Notices show newest first: give a new notice a smaller number than the others (`0.` works and numbers may have gaps, so older notices keep theirs). At most two show at once.
+Notices show newest first: give a new notice a smaller number than the others (`0.` works and numbers may have gaps,
+so older notices keep theirs). At most two show at once.
 
 **Events.** Every coming event of `content/events/` is on the events page (`/events`, linked in the footer) and has
 its own page with date, time, place and the text. The next one also shows in the closing band of the home page and at
@@ -111,10 +112,14 @@ leave the site by themselves. Without a `booking` link, an event page offers you
 
 ## Make it yours
 
-- **Name.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name also appears as text in `seo.description` in `ginko.config.ts`, in `content/home*.md` (`lead`), in `content/pages/1.about*.md` and in `content/pages/3.donate*.md` (the account holder and the note on donation receipts). `legalName` in `content/site.md` is the registered name (with “e.V.”) for the footer and imprint. Search `content/` and `i18n/` for “River Commons” and replace what is left. To show a shorter name on phones, set `shortName` in `app/app.config.ts`.
-- **Menu.** `nav` in `app/app.config.ts` holds at most six items: a page of
-  `ginko.config.ts` (`{ page: 'news', label: { … } }`, label per language, the same words as the page's title) or a
-  page of `content/pages/` by id (`{ entry: 'pages/about' }` is `content/pages/1.about.md`).
+- **Name.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name also appears as
+  text in `seo.description` in `ginko.config.ts`, in `content/home*.md` (`lead`), in `content/pages/1.about*.md` and in
+  `content/pages/3.donate*.md` (the account holder and the note on donation receipts). `legalName` in `content/site.md`
+  is the registered name (with “e.V.”) for the footer and imprint. Search `content/` and `i18n/` for “River Commons”
+  and replace what is left. To show a shorter name on phones, set `shortName` in `app/app.config.ts`.
+- **Menu.** `nav` in `app/app.config.ts` holds at most six items: a page of `ginko.config.ts` (`{ page: 'news', label:
+  { … } }`, label per language, the same words as the page's title) or a page of `content/pages/` by id (`{ entry:
+  'pages/about' }` is `content/pages/1.about.md`).
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 120, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name.
 - **Colour.** `--brand` and `--brand-foreground` in `app/assets/css/main.css`, once for light and once for dark
@@ -194,7 +199,8 @@ Links in the content name pages by their key (`[annual report]($page.downloads)`
 - [ ] The placeholders in `content/legal/` are replaced by your own texts, and the ones you do not need are deleted.
 - [ ] The sample quotes, partner logos, report PDF and photos are replaced or deleted; quotes only with the person's
       permission.
-- [ ] Every photo you added has alt text in each language (`npm run check` only requires the main language) and a source in `MEDIA.md`.
+- [ ] Every photo you added has alt text in each language (`npm run check` only requires the main language) and a
+      source in `MEDIA.md`.
 
 ## Move to the Studio
 
