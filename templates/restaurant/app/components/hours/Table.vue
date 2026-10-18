@@ -19,8 +19,9 @@ const langOf = useGinkoLang()
 const REFERENCE: Record<string, string> = { mo: '2024-01-01', tu: '2024-01-02', we: '2024-01-03', th: '2024-01-04', fr: '2024-01-05', sa: '2024-01-06', su: '2024-01-07' }
 const weekday = (key: string) => format.date(REFERENCE[key] ?? REFERENCE.mo!, { weekday: 'long' })
 const todayKey = computed(() => weekdayOf(today.value))
-const timesOf = (day: DayHours) => (day.closed || !spansOf(day).length ? t('closed') : spansLine(spansOf(day), t('and')))
-const todayTimes = computed(() => (todayRule.value.closed ? t('closed') : spansLine(todayRule.value.times, t('and'))))
+// One entry per time range: the cell shows each on its own line (the "and" join stays in the one-line readers).
+const timesOf = (day: DayHours) => (day.closed || !spansOf(day).length ? [t('closed')] : spanLines(spansOf(day)))
+const todayTimes = computed(() => (todayRule.value.closed ? [t('closed')] : spanLines(todayRule.value.times)))
 const dayMonth = { day: 'numeric', month: 'long' } as const
 /** Two dates as a range: Intl's short form in one year ("1–15 November"); across a year each date in full, joined by
  *  a spaced dash ("1 November 2026 – 31 March 2027"; Intl writes "01 novembre" in Italian there). */
@@ -81,7 +82,7 @@ const reasonLang = (closure: (typeof closures.value)[number]) => ('holiday' in c
               <span v-if="day.day === todayKey" class="ms-2 text-small text-muted-foreground">{{ t('today') }}</span>
             </th>
             <td class="py-3 text-end align-baseline" :class="day.day === todayKey && 'font-semibold'">
-              {{ day.day === todayKey ? todayTimes : timesOf(day) }}
+              <span v-for="line in (day.day === todayKey ? todayTimes : timesOf(day))" :key="line" class="block whitespace-nowrap">{{ line }}</span>
             </td>
           </tr>
         </tbody>
@@ -99,7 +100,7 @@ const reasonLang = (closure: (typeof closures.value)[number]) => ('holiday' in c
         <tbody>
           <tr v-for="day in coming.plan.week" :key="day.day" class="border-b first:border-t">
             <th scope="row" class="py-2 pe-6 text-start font-normal">{{ weekday(day.day) }}</th>
-            <td class="py-2 text-end">{{ timesOf(day) }}</td>
+            <td class="py-2 text-end"><span v-for="line in timesOf(day)" :key="line" class="block whitespace-nowrap">{{ line }}</span></td>
           </tr>
         </tbody>
       </table>

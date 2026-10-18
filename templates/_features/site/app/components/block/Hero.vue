@@ -3,7 +3,7 @@ import type { ImageValue } from '@lupinum/ginko'
 
 /**
  * The first section of the home page: the page's one h1, a lead, one primary and one secondary action, and an
- * optional photo (16:9). Without a photo the text takes the full width: a complete layout, not a missing image.
+ * optional photo (16:9, 4:3 from lg). Without a photo the text takes the full width: a complete layout, not a missing image.
  * Slots: `status`, one line above the title that answers the visitor's first question (open now, the next date);
  * the default slot, a short line after the actions (another way to get in touch).
  */
@@ -20,7 +20,7 @@ const titleId = useId()
 <template>
   <section :aria-labelledby="titleId" class="mx-auto max-w-page px-gutter pt-12 md:pt-20">
     <div :class="image ? 'grid items-center gap-10 lg:grid-cols-12 lg:gap-16' : 'max-w-4xl'">
-      <div class="flex flex-col gap-6" :class="image && 'lg:col-span-7'">
+      <div class="flex flex-col gap-6" :class="image && 'lg:col-span-6'">
         <slot name="status" />
         <h1 :id="titleId" class="text-h1">{{ title }}</h1>
         <p v-if="lead" class="max-w-3xl text-lead text-muted-foreground">{{ lead }}</p>
@@ -38,8 +38,8 @@ const titleId = useId()
         v-if="image"
         :image="image"
         eager
-        sizes="(min-width: 1024px) 480px, 100vw"
-        class="aspect-video w-full rounded-block bg-muted object-cover lg:col-span-5"
+        sizes="(min-width: 1024px) 576px, 100vw"
+        class="aspect-video w-full rounded-block bg-muted object-cover lg:col-span-6 lg:aspect-4/3"
       />
     </div>
   </section>

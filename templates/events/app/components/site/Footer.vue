@@ -23,7 +23,7 @@ const year = useGinkoToday().value.slice(0, 4)
 
 <template>
   <footer class="mt-section bg-muted print:mt-10 print:border-t print:bg-transparent">
-    <div class="mx-auto grid max-w-page gap-10 px-gutter py-14 md:grid-cols-3 print:gap-2 print:py-4">
+    <div class="mx-auto grid max-w-page gap-8 px-gutter py-14 md:grid-cols-3 md:gap-10 print:gap-2 print:py-4">
       <div class="flex flex-col gap-3">
         <p class="font-display text-body font-semibold"><bdi>{{ name }}</bdi></p>
         <p v-if="tagline" class="max-w-xs text-small text-muted-foreground print:hidden">{{ tagline }}</p>

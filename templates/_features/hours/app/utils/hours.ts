@@ -14,6 +14,11 @@ export function spansLine(spans: Span[], and: string): string {
   return spansText(spans, and).replaceAll('–', '\u2060–\u2060')
 }
 
+/** The same spans as one text per span, for a table cell that shows each range on its own line. */
+export function spanLines(spans: Span[]): string[] {
+  return spans.map((span) => spansLine([span], ''))
+}
+
 /** The clock time (`HH:MM`, 24 h) of an instant in a time zone. */
 export function clockIn(timeZone: string, time: number): string {
   return new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(time)
