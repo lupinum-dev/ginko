@@ -46,7 +46,7 @@ export function samplePages(paths: string[], locales: string[] = site.locales): 
   })
 }
 
-/** The site's pages for screenshots and the heavier gates: the sitemap (also an index), home first, one sample per route pattern. */
+/** A sample of every route pattern, home first, for the heavier gates 4 and 6 and the screenshots of gate 5. Gates 3 and 5 and the CLS test of gate 6 use `allPages()`. */
 export async function sitePages(): Promise<string[]> {
   return samplePages(await allPages())
 }

@@ -1,8 +1,8 @@
 // Gate 3 (TEMPLATES.md §9): end to end on the built site, with the test instant on the server and in the browser.
-import { expect, navToggle, open, site, sitePages, test, themeToggle } from './helpers.ts'
+import { allPages, expect, navToggle, open, site, test, themeToggle } from './helpers.ts'
 
 test('home and every page of the sitemap answer 200 with one h1 and a JSON-LD type', async ({ page }) => {
-  const pages = await sitePages()
+  const pages = await allPages()
   // Wrong behaviour caught: a sitemap that lists only the home page while feature pages exist.
   expect(pages.length, 'sitemap entries besides home').toBeGreaterThan(1)
   for (const path of pages) {
@@ -26,7 +26,7 @@ test('home and every page of the sitemap answer 200 with one h1 and a JSON-LD ty
 test('every page shows the email and phone of content/site.md in its footer', async ({ page }) => {
   const { email, phone } = site.contact
   test.skip(!email && !phone, 'content/site.md has neither email nor phone')
-  for (const path of await sitePages()) {
+  for (const path of await allPages()) {
     await open(page, path)
     const footer = page.locator('footer')
     if (email) await expect.soft(footer.locator(`a[href="mailto:${email}"]`), `${path}: footer email link`).toHaveText(email)
