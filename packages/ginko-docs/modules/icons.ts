@@ -5,7 +5,7 @@
 // warning with its file, and renders nothing.
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { extname, join, relative } from 'node:path'
+import { extname, join, relative, resolve } from 'node:path'
 import { addComponent, addTemplate, addTypeTemplate, createResolver, defineNuxtModule, updateTemplates, useLogger } from '@nuxt/kit'
 import { getIconData, iconToSVG } from '@iconify/utils'
 import type { NuxtModule } from 'nuxt/schema'
@@ -27,14 +27,43 @@ const walk = (dir: string, extensions: readonly string[], out: string[] = []): s
 
 // Names the layer's own components write as string literals.
 const OWN_NAME = /['"`]((?:lucide|docs):[a-z0-9]+(?:-[a-z0-9]+)*)['"`]/g
+const NAME = '[a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?'
 // In a .ts file (app.config) the value must be quoted, so a type like `icon: string` is not a name.
-const QUOTED_NAME = /\bicon\??\s*:\s*['"]([a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?)['"]/g
-// `icon: lucide:x` (front matter, YAML, app.config) and `icon="lucide:x"` (Markdown components); a bare name is Lucide.
-const CONTENT_NAME = /\bicon["']?\s*[:=]\s*["']?([a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?)["']?(?=\s|$|,|\}|\))/gm
+const QUOTED_NAME = new RegExp(`\\bicon\\??\\s*:\\s*['"](${NAME})['"]`, 'g')
+// `icon: lucide:x` in YAML and front matter; a bare name is Lucide.
+const YAML_NAME = new RegExp(`\\bicon["']?\\s*:\\s*["']?(${NAME})["']?(?=\\s|$|,|\\}|\\))`, 'gm')
+// `icon="lucide:x"` and `:icon="'lucide:x'"` on a Markdown component or a Vue tag.
+const ATTR_NAME = new RegExp(`\\bicon=["']+(${NAME})["']`, 'g')
+// <Icon name="lucide:x"> and <Icon :name="'lucide:x'"> in a site's own components.
+const ICON_TAG = new RegExp(`<Icon\\b[^>]*?\\bname=["']+(${NAME})["']`, 'g')
 
-/** The icon names a file mentions, as `prefix:name` (a bare name is Lucide). */
-export const iconNames = (source: string, isTs: boolean): string[] =>
-  [...source.matchAll(isTs ? QUOTED_NAME : CONTENT_NAME)].map((m) => (m[1]!.includes(':') ? m[1]! : `lucide:${m[1]}`))
+const matches = (re: RegExp, source: string) => [...source.matchAll(re)].map((m) => (m[1]!.includes(':') ? m[1]! : `lucide:${m[1]}`))
+
+/** Code without its comments, so a commented-out icon is not bundled. `//` counts only at a line start or after a space (not in `https://`). */
+export const stripComments = (source: string): string =>
+  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '').replace(/(^|\s)\/\/.*$/gm, '$1')
+
+/** The icon names in app.config.ts (`icon: 'x'`) or a .vue file (`<Icon name="x">`, `icon="x"`). Comments are ignored. */
+export const codeIconNames = (source: string, file: string): string[] => {
+  const code = stripComments(source)
+  return file.endsWith('.vue') ? [...matches(ICON_TAG, code), ...matches(ATTR_NAME, code)] : matches(QUOTED_NAME, code)
+}
+
+/**
+ * The icon names a content file names. YAML, JSON and front matter are read whole. In Markdown only the front matter,
+ * the attributes of a component (`:card{icon="x"}`) and the `---` block inside a `::component` count; prose and code are skipped.
+ */
+export const contentIconNames = (source: string, file: string): string[] => {
+  if (!file.endsWith('.md')) return matches(YAML_NAME, source)
+  const front = /^---\r?\n([\s\S]*?)\r?\n---/.exec(source)
+  const body = (front ? source.slice(front[0].length) : source)
+    .replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[^\n]*$/gm, '')
+    .replace(/`[^`\n]*`/g, '')
+  const names = front ? matches(YAML_NAME, front[1]!) : []
+  for (const m of body.matchAll(/:{1,}[a-z][\w-]*(?:\[[^\]\n]*\])?\{([^}\n]*)\}/g)) names.push(...matches(ATTR_NAME, m[1]!))
+  for (const m of body.matchAll(/^:{2,}[\w-]+[^\n]*\n---\r?\n([\s\S]*?)\r?\n---/gm)) names.push(...matches(YAML_NAME, m[1]!))
+  return names
+}
 
 /** One icon as [svg body, viewBox], read from the `docs` collection folder or an installed @iconify-json set (looked up from `roots`). */
 export const readIcon = (name: string, roots: readonly string[], customDir: string, sets = new Map<string, IconSet | undefined>()): Entry | undefined => {
@@ -63,46 +92,76 @@ export const readIcon = (name: string, roots: readonly string[], customDir: stri
   return [svg.body, svg.attributes.viewBox]
 }
 
+export interface CollectOptions {
+  /** The layer's own folder (its `app/` is scanned for literal names, its `icons/` holds the `docs:` logos). */
+  layerRoot: string
+  /** Root folders of every layer, the site first. Their `content/`, `app.config.ts` and (for the site's own layers) `app/` are scanned. */
+  roots: readonly string[]
+  /** Where to resolve `@iconify-json/<set>` from. */
+  resolveFrom: readonly string[]
+  /** Paths in warnings are shown relative to this folder. */
+  relativeTo: string
+}
+
+/** Every icon the layer and the site name, read from the installed sets, plus one warning per name that is not installed. */
+export const collectIcons = (o: CollectOptions): { icons: Record<string, Entry>, warnings: string[] } => {
+  const found = new Map<string, Set<string>>() // name -> files that name it
+  const add = (name: string, file: string) => found.set(name, (found.get(name) ?? new Set()).add(file))
+  const read = (file: string) => readFileSync(file, 'utf8')
+
+  for (const file of walk(join(o.layerRoot, 'app'), ['.vue', '.ts'])) {
+    for (const m of stripComments(read(file)).matchAll(OWN_NAME)) add(m[1]!, relative(o.layerRoot, file))
+  }
+  for (const root of o.roots) {
+    const files = [
+      ...walk(join(root, 'content'), ['.md', '.yml', '.yaml', '.json']),
+      ...['app/app.config.ts', 'app.config.ts'].map((f) => join(root, f)).filter(existsSync),
+    ]
+    for (const file of files) {
+      const names = file.endsWith('.ts') ? codeIconNames(read(file), file) : contentIconNames(read(file), file)
+      for (const name of names) add(name, relative(o.relativeTo, file))
+    }
+    // A site's own components may use <Icon name="lucide:x"> directly; the layer's folder was scanned above. Only .vue
+    // files: a .ts file holds style variants like `icon: 'size-11'` that are not icon names.
+    if (resolve(root) !== resolve(o.layerRoot)) {
+      for (const file of walk(join(root, 'app'), ['.vue'])) {
+        for (const name of codeIconNames(read(file), file)) add(name, relative(o.relativeTo, file))
+      }
+    }
+  }
+
+  const sets = new Map<string, IconSet | undefined>()
+  const customDir = join(o.layerRoot, 'icons')
+  const icons: Record<string, Entry> = {}
+  const warnings: string[] = []
+  for (const name of [...found.keys()].sort()) {
+    const entry = readIcon(name, o.resolveFrom, customDir, sets)
+    if (entry) icons[name] = entry
+    else warnings.push(`Icon "${name}" (${[...found.get(name)!][0]}) is not in an installed Iconify set; it renders nothing.`)
+  }
+  return { icons, warnings }
+}
+
 const docsIcons: NuxtModule = defineNuxtModule({
   meta: { name: '@lupinum/ginko-docs/icons' },
   setup(_, nuxt) {
-    const { resolve } = createResolver(import.meta.url)
+    const { resolve: here } = createResolver(import.meta.url)
     const logger = useLogger('@lupinum/ginko-docs')
-    const layerRoot = resolve('..')
-    const customDir = join(layerRoot, 'icons')
+    const layerRoot = here('..')
 
-    // Registered as the global `Icon`, which ginko-components' SiteIcon (tab, card and callout icons) looks up. Nuxt loads a
-    // global component lazily, so it costs a page that does not draw an icon almost nothing.
-    addComponent({ name: 'Icon', filePath: resolve('../app/components/DocsIcon.vue'), global: true })
+    // Registered as the global `Icon`, which ginko-components' SiteIcon (tab, card and callout icons) looks up. The low
+    // priority lets a site's own @nuxt/icon win. Nuxt loads a global component lazily.
+    addComponent({ name: 'Icon', filePath: here('../app/components/DocsIcon.vue'), global: true, priority: -1 })
 
-    const sets = new Map<string, IconSet | undefined>()
-    const resolveIcon = (name: string) => readIcon(name, [nuxt.options.rootDir, layerRoot], customDir, sets)
-
+    const warned = new Set<string>()
     const collect = () => {
-      const found = new Map<string, Set<string>>() // name -> files that name it
-      const add = (name: string, file: string) => {
-        const full = name.includes(':') ? name : `lucide:${name}`
-        found.set(full, (found.get(full) ?? new Set()).add(file))
-      }
-      for (const file of walk(join(layerRoot, 'app'), ['.vue', '.ts'])) {
-        for (const m of readFileSync(file, 'utf8').matchAll(OWN_NAME)) add(m[1]!, relative(layerRoot, file))
-      }
-      for (const layer of nuxt.options._layers) {
-        const root = layer.config.rootDir ?? layer.cwd
-        const files = [
-          ...walk(join(root, 'content'), ['.md', '.yml', '.yaml', '.json']),
-          ...['app/app.config.ts', 'app.config.ts'].map((f) => join(root, f)).filter(existsSync),
-        ]
-        for (const file of files) {
-          for (const name of iconNames(readFileSync(file, 'utf8'), file.endsWith('.ts'))) add(name, relative(nuxt.options.rootDir, file))
-        }
-      }
-      const icons: Record<string, Entry> = {}
-      for (const name of [...found.keys()].sort()) {
-        const entry = resolveIcon(name)
-        if (entry) icons[name] = entry
-        else logger.warn(`Icon "${name}" (${[...found.get(name)!][0]}) is not in an installed Iconify set; it renders nothing.`)
-      }
+      const { icons, warnings } = collectIcons({
+        layerRoot,
+        roots: nuxt.options._layers.map((layer) => layer.config.rootDir ?? layer.cwd),
+        resolveFrom: [nuxt.options.rootDir, layerRoot],
+        relativeTo: nuxt.options.rootDir,
+      })
+      for (const warning of warnings) if (!warned.has(warning)) { warned.add(warning); logger.warn(warning) }
       return icons
     }
 
@@ -117,10 +176,17 @@ const docsIcons: NuxtModule = defineNuxtModule({
       getContents: () => `declare module '#docs-icons' {\n  const icons: Record<string, [body: string, viewBox: string]>\n  export default icons\n}\n`,
     })
 
+    // The icon map is only needed by a page that draws an icon from it; keep it out of the prefetch links every page carries.
+    nuxt.hook('build:manifest', (manifest) => {
+      for (const [key, item] of Object.entries(manifest)) {
+        if (/DocsIcon\.vue|docs-icons\.mjs/.test(key) || /DocsIcon|docs-icons/.test(item.file ?? '')) item.prefetch = false
+      }
+    })
+
     // In dev, an edited content file or app.config can name a new icon.
     if (nuxt.options.dev) {
       nuxt.hook('builder:watch', async (_event, path) => {
-        if (/\.(md|ya?ml|json)$|app\.config\.ts$/.test(path)) await updateTemplates({ filter: (t) => t.filename === 'docs-icons.mjs' })
+        if (/\.(md|ya?ml|json|vue)$|app\.config\.ts$/.test(path)) await updateTemplates({ filter: (t) => t.filename === 'docs-icons.mjs' })
       })
     }
   },

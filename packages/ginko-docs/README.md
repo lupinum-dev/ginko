@@ -111,8 +111,26 @@ Each docs page's frontmatter can set, besides `title` and `description`:
 | `icon` | An Iconify name, e.g. `lucide:rocket`, before the title in the navigation. Main locale only. |
 | `badge` | A short label after the title, e.g. "New". |
 
-Icons come from `@nuxt/icon` with the `lucide` set installed. Any other Iconify set works once the site installs it
-(`pnpm add -D @iconify-json/<set>`). Icons are bundled at build time; no icon API is called.
+### Icons
+
+The layer draws icons itself (no `@nuxt/icon`, no icon API call, no icon library in the browser). At build time it reads
+exactly the icons your site names from the installed `@iconify-json/<set>` packages (`lucide` is installed with the
+layer; add others with `pnpm add -D @iconify-json/<set>`) and bundles them in one small map that only docs pages load.
+
+The build scans, in all locales:
+
+- the front matter of your Markdown files, the attributes of Markdown components (`::card{icon="lucide:rocket"}`) and the
+  `---` block inside a component; prose and code blocks are not read;
+- YAML and JSON content files and `app.config.ts` (`icon:` values and `social`);
+- the layer's own components and your site's `app/**/*.vue` and `.ts` files (`<Icon name="lucide:x" />`, `icon="..."`).
+  Commented-out code is ignored.
+
+A name is `set:name`; a bare name such as `book-open` means Lucide. The `i-set-name` form is not supported. Names built at
+runtime (a variable, a template string) are not found; write the name once as a literal somewhere in the places above. A
+name the build cannot find logs one warning with its file and renders nothing.
+
+The layer registers a global `Icon` component that the Markdown components (card, tabs, callout) use. If your site installs
+`@nuxt/icon` itself, yours wins (the layer's has a lower priority).
 
 ### Start page (optional)
 
