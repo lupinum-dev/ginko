@@ -19,7 +19,7 @@ const toggle = (node: DocNode) => choice.set(node.path, !isOpen(node))
     <li v-for="node in props.nodes" :key="node.path">
       <div class="docs-nav-item">
         <NuxtLink :to="node.path" :aria-current="node.path === route.path ? 'page' : undefined">
-          <Icon v-if="node.icon" :name="node.icon" class="docs-icon" />
+          <DocsIcon v-if="node.icon" :name="node.icon" class="docs-icon" />
           <span class="docs-nav-title">{{ node.title }}</span>
           <span v-if="node.badge" class="docs-badge">{{ node.badge }}</span>
         </NuxtLink>
@@ -27,7 +27,7 @@ const toggle = (node: DocNode) => choice.set(node.path, !isOpen(node))
           v-if="node.children.length" type="button" class="docs-nav-toggle"
           :aria-expanded="isOpen(node)" :aria-label="t('docs.toggle', { title: node.title })" @click="toggle(node)"
         >
-          <Icon name="lucide:chevron-right" class="docs-icon" />
+          <DocsIcon name="lucide:chevron-right" class="docs-icon" />
         </button>
       </div>
       <div v-if="node.children.length" v-show="isOpen(node)" class="docs-nav-children">

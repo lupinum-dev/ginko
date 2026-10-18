@@ -34,7 +34,7 @@ useHead(() => ({ link: [{ rel: 'alternate', type: 'application/rss+xml', title: 
         <nav class="docs-crumbs" :aria-label="t('docs.breadcrumb')">
           <ol>
             <li><NuxtLink :to="blog.blogPath.value">{{ t('docs.blog') }}</NuxtLink></li>
-            <li><Icon name="lucide:chevron-right" class="docs-icon" /><span aria-current="page">{{ post.data.title }}</span></li>
+            <li><DocsIcon name="lucide:chevron-right" class="docs-icon" /><span aria-current="page">{{ post.data.title }}</span></li>
           </ol>
         </nav>
         <h1>{{ post.data.title }}</h1>

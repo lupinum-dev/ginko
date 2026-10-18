@@ -25,7 +25,7 @@ if (import.meta.server) useResponseHeader('x-nitro-prerender').value = blog.feed
           <h1>{{ t('docs.blog') }}</h1>
           <p class="docs-lead">{{ t('docs.blogLead') }}</p>
         </div>
-        <a :href="blog.feedPath.value" type="application/rss+xml"><Icon name="lucide:rss" class="docs-icon" />{{ t('docs.rss') }}</a>
+        <a :href="blog.feedPath.value" type="application/rss+xml"><DocsIcon name="lucide:rss" class="docs-icon" />{{ t('docs.rss') }}</a>
       </header>
       <ul class="docs-posts">
         <li v-for="post in posts.items" :key="post.id">

@@ -21,7 +21,7 @@ const current = computed(() => alternates.value.find((a) => a.current))
         type="button" class="docs-icon-button" :aria-expanded="open" aria-controls="docs-lang-menu"
         :aria-label="`${t('docs.language')}: ${current?.name ?? ''}`" @click="toggle"
       >
-        <Icon name="lucide:languages" class="docs-icon" />
+        <DocsIcon name="lucide:languages" class="docs-icon" />
         <span aria-hidden="true">{{ current?.code.toUpperCase() }}</span>
       </button>
       <ul v-if="open" id="docs-lang-menu" class="docs-popover">
@@ -31,7 +31,7 @@ const current = computed(() => alternates.value.find((a) => a.current))
               <span :lang="a.language">{{ a.name }}</span>
               <small v-if="!a.translated">{{ t('docs.untranslated') }}</small>
             </span>
-            <Icon v-if="a.current" name="lucide:check" class="docs-icon" />
+            <DocsIcon v-if="a.current" name="lucide:check" class="docs-icon" />
           </NuxtLink>
         </li>
       </ul>
