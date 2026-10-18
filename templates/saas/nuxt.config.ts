@@ -3,6 +3,7 @@ import ginko from './ginko.config.ts'
 import { checkSiteUrl } from './site-url.ts'
 
 export default defineNuxtConfig({
+  extends: ['@lupinum/ginko-docs'],
   compatibilityDate: '2026-10-01',
   modules: [
     '@lupinum/ginko/nuxt',

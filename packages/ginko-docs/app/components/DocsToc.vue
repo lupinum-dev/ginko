@@ -48,7 +48,7 @@ const title = computed(() => flat.value.find((l) => l.id === current.value)?.tex
 <template>
   <nav v-if="props.variant === 'aside'" ref="aside" class="docs-toc" :aria-label="t('docs.onThisPage')">
     <p class="docs-toc-title">
-      <Icon name="lucide:text-align-start" class="docs-icon" />{{ t('docs.onThisPage') }}
+      <DocsIcon name="lucide:text-align-start" class="docs-icon" />{{ t('docs.onThisPage') }}
     </p>
     <ul class="docs-toc-list">
       <li v-for="l in flat" :key="l.id">
@@ -60,7 +60,7 @@ const title = computed(() => flat.value.find((l) => l.id === current.value)?.tex
   <div v-else ref="popover" class="docs-toc-menu">
     <button type="button" :aria-expanded="open" aria-controls="docs-toc-menu" @click="toggle">
       <span>{{ title && flat.length > 1 ? title : t('docs.onThisPage') }}</span>
-      <Icon name="lucide:chevron-down" class="docs-icon" />
+      <DocsIcon name="lucide:chevron-down" class="docs-icon" />
     </button>
     <nav v-if="open" id="docs-toc-menu" class="docs-popover" :aria-label="t('docs.onThisPage')">
       <ul class="docs-toc-list">

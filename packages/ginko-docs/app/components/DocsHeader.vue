@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
           <span class="docs-header-sep" aria-hidden="true" />
           <div class="docs-social">
             <a v-for="s in cfg.social" :key="s.href" class="docs-icon-button" :href="s.href" target="_blank" rel="noopener" :aria-label="s.label" :title="s.label">
-              <Icon :name="s.icon" class="docs-icon" />
+              <DocsIcon :name="s.icon" class="docs-icon" />
             </a>
           </div>
         </template>
@@ -87,7 +87,7 @@ onBeforeUnmount(() => {
           ref="button" type="button" class="docs-icon-button docs-header-menu" :aria-expanded="menu" aria-controls="docs-menu"
           :aria-label="menu ? t('docs.close') : t('docs.siteMenu')" @click="menu = !menu"
         >
-          <Icon :name="menu ? 'lucide:x' : 'lucide:menu'" class="docs-icon" />
+          <DocsIcon :name="menu ? 'lucide:x' : 'lucide:menu'" class="docs-icon" />
         </button>
       </div>
     </div>

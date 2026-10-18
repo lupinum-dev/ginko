@@ -4,7 +4,7 @@
 import { describe, expect, test } from 'vitest'
 import { applyDefaults, collection, defineComponents, defineSite, f, query, serializeSchema, single, type Bundle } from '../src/internal.ts'
 import { attributeProblem } from '../src/core/markdown.ts'
-import { appSchema } from '../src/nuxt/app-schema.ts'
+import { appSchema, componentsForMarkdown } from '../src/nuxt/app-schema.ts'
 
 const site = defineSite({
   site: 'cafe',
@@ -58,8 +58,14 @@ describe('appSchema', () => {
     expect(applyDefaults(bundle, app)).toEqual(applyDefaults(bundle, full))
     expect(query(bundle, 'dishes', {}, app)).toEqual(query(bundle, 'dishes', {}, full))
     for (const value of ['/img/a.webp', 'javascript:alert(1)']) {
-      expect(attributeProblem('card', 'image', value, app.components)).toBe(attributeProblem('card', 'image', value, full.components))
+      expect(attributeProblem('card', 'image', value, componentsForMarkdown(full))).toBe(attributeProblem('card', 'image', value, full.components))
     }
+  })
+
+  // Wrong behaviour caught: the registry ships in every page's script again, or the slim one drops what attributeProblem reads.
+  test('the registry is not in the client schema; the Markdown module holds the declared props with their types', () => {
+    expect(app).not.toHaveProperty('components')
+    expect(componentsForMarkdown(full)).toEqual({ card: { kind: 'block', props: { image: { type: 'image' } } } })
   })
 
   test('carries no editor texts, but the choice options', () => {
