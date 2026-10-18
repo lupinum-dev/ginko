@@ -98,6 +98,7 @@ a translation with a different number of rows.
 | Plans and prices | `content/pricing/<n>.<name>.md`: `name`, `summary` (for whom), `pricing` (`price` or `onRequest`, always one of the two), `monthly` and `yearly` (in euros, `89` or `89.50`; both required with `pricing: price`; write the number without quotes or a thousands separator: `2290`, not `2.290`, which reads as 2.29), `included` (rows of `item`), `recommended: true` on one plan, `actionLabel`, `actionUrl` (the sign-up page of your app; empty: the contact page, or without one an email to the address of `content/site.md` with the plan's name in the subject) |
 | Changelog | `content/changelog/v<version>.md` (`v4-6-0.md`: a dot in a file name reads as a language): `version`, `date`, then the text: one sentence (the summary on the home page and in the feed), a line `<!-- more -->`, and the changes under `### New`, `### Improved` and `### Fixed` |
 | FAQ | `content/faq/<n>.<name>.md`: `question`, `answer`; the pricing page shows the first three, so keep billing, cancellation and data export at the top |
+| Help center (`/help`) | `content/docs/<n>.<name>.md`: `title`, `description` (the line on the start page's card), `section` (a heading in the navigation; the pages after it belong to it), then the text; each translation sets its own address with `slug:`. Steps, notes and tables are Markdown components (`::steps`, `::callout`). The box under every help page is `app/components/DocsPageEnd.vue`, the start page `app/pages/help/index.vue` |
 | Blog | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/lena-hartmann]`), `tags`, `image` (the cover, 3:2); `draft: true` keeps a post off the site |
 | Authors of the blog | `content/people/<n>.<name>.md`: `name`, `role`, `bio`; no photo needed, the site shows initials |
 | Customer logos | `content/logos/<n>.<name>.md`: `name`, `image` (an SVG or PNG in `public/logos/`), `url` |
@@ -122,6 +123,11 @@ of its amounts is a mistake: the build stops on it and names the file, and the S
 (`/changelog#v4-6-0`), so a notice or a post can link to it. Each language has a feed at `<changelog page>/rss.xml`
 (`/changelog/rss.xml`, `/de/neuerungen/rss.xml`, `/fr/nouveautes/rss.xml`) with the version, the summary and the
 date of each release; the blog has its own at `<blog page>/rss.xml`.
+
+**Help center.** The help pages come from `@lupinum/ginko-docs` and sit inside the site's header and footer, with a
+navigation beside them (on phones behind "Contents"), a search and "On this page". The layer's own texts (such as the
+search field's) are `docs.*` keys; a key set in `i18n/<language>.json` wins (`docs.searchPlaceholder` is "Search
+help…" here). Its README lists what else you can change: [Customize](https://www.npmjs.com/package/@lupinum/ginko-docs#customize).
 
 **Free trial.** "Start free trial" is a link to your app (`trialUrl` in `content/home.md`, and `actionUrl` of each
 plan). The site itself has no sign-up form and sends no data anywhere.
@@ -209,6 +215,7 @@ Links in the content name pages by their key (`[changelog]($page.changelog)`). A
 | Changelog | `content/changelog/`, the `changelog` brick and `pages.changelog`, its `nav` item, the "Latest changes" section and `useLatestReleases` in `app/pages/index.vue`, `app/pages/changelog.vue`, `app/components/changelog/`, `app/composables/useChangelog.ts`, `app/utils/changelog.ts`, `server/middleware/changelog-feed.ts`, `i18n/changelog/`, the `changelog` keys in `i18n/<language>.json`, `"changelog"` in `ginko.features`; the links to `$page.changelog` in `content/posts/swap-requests*.md` and `content/pages/2.about*.md` |
 | FAQ | `content/faq/`, the `faq` brick and `pages.faq`, its `nav` item, `app/pages/faq.vue`, `app/components/pricing/More.vue` (the questions below the plans), `app/components/block/Faq.vue`, `app/components/ui/accordion/`, `i18n/faq/`, the `faq` and `pricing.questions` keys in `i18n/<language>.json`, `"faq"` in `ginko.features`; the links to `$page.faq` in `content/pages/3.contact*.md` |
 | Blog | `content/posts/`, `content/people/`, the `posts` and `people` bricks and `pages.news`, `news` in `segments` of `app/routes.ts`, its `nav` item, `app/pages/news/`, `app/components/InitialsAvatar.vue`, `people` and `posts` in the import of `ginko.config.ts`, `app/components/blog/`, `app/composables/useBlog.ts`, `server/middleware/news-feed.ts`, the team on the About page in `app/components/pages/Top.vue` (and its `about` keys in `i18n/<language>.json`), `i18n/blog/`, the `blog` keys in `i18n/<language>.json`, `"blog"` in `ginko.features` |
+| Help center | `content/docs/`, the `docs` brick and `pages.help`, its `nav` and `footer` items, `@lupinum/ginko-docs` in `extends` of `nuxt.config.ts` and in `package.json`, `components` in `ginko.config.ts`, `app/pages/help/`, `app/components/help/`, `app/components/DocsPageEnd.vue`, the `--docs-*` lines in `app/assets/css/main.css`, the `help` and `docs` keys in `i18n/<language>.json`; the links to `$page.help` in `content/pages/3.contact*.md` |
 | Logos and quotes | `content/logos/`, `content/quotes/`, `public/logos/`, the `logos` and `quotes` bricks, the "Customers" section on the home page, `app/bricks/logos-quotes.ts`, `app/components/block/Logos.vue`, `Quote.vue`, `"logos-quotes"` in `ginko.features` |
 | Notices | `content/notices/`, the `notices` brick, `<SiteNotice />` in `app/layouts/default.vue`, `app/components/site/Notice.vue` |
 | A language | see "Add or remove a language" |

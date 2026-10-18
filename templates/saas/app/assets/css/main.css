@@ -10,6 +10,14 @@
   --brand-foreground: #ffffff;
   /* @nuxt/fonts serves Inter from the site and adds size-matched fallbacks. */
   --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* The help center (@lupinum/ginko-docs) lines up with the header and sticks below it (h-16, md:h-18, border). */
+  --docs-max: var(--container-page);
+  --docs-gutter: var(--spacing-gutter);
+  --docs-top: calc(4rem + 1px);
+}
+
+@media (min-width: 48rem) {
+  :root { --docs-top: calc(4.5rem + 1px); }
 }
 
 .dark {

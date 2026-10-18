@@ -35,5 +35,14 @@
   },
   "about": {
     "team": "Das Team"
+  },
+  "help": {
+    "title": "Wie können wir helfen?",
+    "lead": "Anleitungen für die Dienstplanung, vom ersten Plan bis zum Export für die Lohnabrechnung. Durchsuchen Sie sie oder beginnen Sie mit einem Thema.",
+    "stuck": "Keine Antwort gefunden?",
+    "stuckText": "Schreiben Sie uns oder rufen Sie an, mit dem Namen Ihres Hauses; wir antworten an Werktagen, meist am selben Tag."
+  },
+  "docs": {
+    "searchPlaceholder": "Hilfe durchsuchen…"
   }
 }
