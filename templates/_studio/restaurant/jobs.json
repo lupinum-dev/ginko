@@ -4,5 +4,6 @@
   "closedToday": { "task": "Heute geschlossen", "reasonField": "Grund für die Gäste", "todayLine": "Closed today", "path": "/" },
   "lunch": { "task": "Mittagsmenü dieser Woche", "path": "/lunch" },
   "price": { "task": "Preis ändern", "dish": "Tafelspitz", "price": "27,40", "shown": "27.40", "path": "/menu" },
-  "event": { "task": "Veranstaltung hinzufügen", "path": "/events" }
+  "event": { "task": "Veranstaltung hinzufügen", "path": "/events" },
+  "fullyBooked": { "task": "Heute ausgebucht", "textField": "^Text", "shown": "bis heute", "path": "/reservations" }
 }
