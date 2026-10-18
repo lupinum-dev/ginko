@@ -42,7 +42,7 @@ const enquiry = computed(() => email.value && `mailto:${email.value}?subject=${e
       <div class="flex max-w-3xl flex-col gap-5">
         <h1 class="text-h1">{{ service.data.title }}</h1>
         <p class="text-lead text-muted-foreground">{{ service.data.summary }}</p>
-        <dl class="grid grid-cols-[auto_1fr] gap-x-8 gap-y-3">
+        <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-8 gap-y-3">
           <dt class="text-small text-muted-foreground">{{ priceLabel(service.data) }}</dt>
           <dd class="font-medium tabular-nums">{{ price(service.data) }}</dd>
           <template v-if="duration(service.data)">
@@ -83,5 +83,8 @@ const enquiry = computed(() => email.value && `mailto:${email.value}?subject=${e
       </div>
     </section>
     <ProseBody :value="service.data.body" />
+    <BlockCta v-if="!Actions && enquiry" :title="service.data.title" :action="{ label: main.label, to: enquiry }">
+      <a v-if="contact?.phone" :href="telHref(contact.phone)" dir="ltr" class="inline-flex min-h-11 items-center font-medium tabular-nums underline underline-offset-4">{{ contact.phone }}</a>
+    </BlockCta>
   </article>
 </template>
