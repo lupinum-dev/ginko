@@ -6,7 +6,7 @@
 const rows = useSessions()
 const events = useGinko('events')
 const { t } = useI18n('sessions')
-const { day } = useSessionText()
+const { shortDay } = useSessionText()
 const { at } = useSessionClock()
 const booking = useEventBooking()
 const days = computed(() => byDay(rows.value).map((group) => group.date))
@@ -27,9 +27,9 @@ usePageSeo(() => ({ title: t('programme.title'), description: t('programme.lead'
         <Button v-if="tickets" as-child size="lg" class="self-start max-sm:w-full">
           <a :href="tickets" rel="noopener">{{ t('programme.tickets') }}</a>
         </Button>
-        <nav v-if="days.length > 1 || current" :aria-label="t('programme.days')" class="flex flex-wrap gap-x-6">
-          <a v-if="current" :href="`#session-${current.id.replace('/', '-')}`" class="inline-flex min-h-11 items-center font-medium text-primary underline underline-offset-4" data-jump-now>{{ t('programme.now') }}</a>
-          <a v-for="date in days" :key="date" :href="`#day-${date}`" class="inline-flex min-h-11 items-center font-medium text-primary underline underline-offset-4 tabular-nums">{{ day(date) }}</a>
+        <nav v-if="days.length > 1 || current" :aria-label="t('programme.days')" class="flex flex-wrap gap-2">
+          <a v-if="current" :href="`#session-${current.id.replace('/', '-')}`" class="inline-flex min-h-11 items-center rounded-full border border-primary bg-primary px-4 font-medium text-primary-foreground" data-jump-now>{{ t('programme.now') }}</a>
+          <a v-for="date in days" :key="date" :href="`#day-${date}`" class="inline-flex min-h-11 items-center rounded-full border px-4 font-medium tabular-nums hover:bg-accent">{{ shortDay(date) }}</a>
         </nav>
       </div>
     </BlockPageHeader>

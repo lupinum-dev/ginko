@@ -7,7 +7,7 @@
  * the first starts a new page.
  */
 const props = withDefaults(defineProps<{ rows: SessionEntry[], level?: 2 | 3 }>(), { level: 2 })
-const { day } = useSessionText()
+const { shortDay } = useSessionText()
 const { at, tick } = useSessionClock()
 onMounted(tick)
 const days = computed(() => byDay(props.rows))
@@ -28,7 +28,7 @@ const clockOf = (session: SessionEntry) => {
       class="scroll-mt-6"
       :class="i > 0 && 'print:break-before-page'"
     >
-      <component :is="`h${level}`" :id="`day-${group.date}-title`" class="text-h3 tabular-nums">{{ day(group.date) }}</component>
+      <component :is="`h${level}`" :id="`day-${group.date}-title`" class="text-h3 tabular-nums">{{ shortDay(group.date) }}</component>
       <ul class="mt-4 flex flex-col divide-y border-y">
         <li v-for="session in group.sessions" :id="`session-${session.id.replace('/', '-')}`" :key="session.id" class="scroll-mt-6">
           <SessionRow :session="session" :heading="level === 2 ? 'h3' : 'h4'" :clock="clockOf(session)" />

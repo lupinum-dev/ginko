@@ -97,7 +97,8 @@ export function useEventText() {
   const price = (event: EventFacts) => {
     if (!event.price) return undefined
     if (event.price.amount === 0) return t('free')
-    return t('perPerson', { price: wholeMoney(event.price, language.value) })
+    // Non-breaking spaces: the price never wraps inside ("€40 per / person").
+    return t('perPerson', { price: wholeMoney(event.price, language.value) }).replace(/\s/g, '\u00a0')
   }
   /** Price and "fully booked", for a list. */
   const status = (event: EventFacts) => [price(event), event.soldOut ? t('soldOut') : undefined].filter(Boolean).join(' · ') || undefined
