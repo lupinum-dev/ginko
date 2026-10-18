@@ -87,7 +87,7 @@ export function useBlogTags() {
         else tags.set(slug, { name, slug, to: tagPath(name), count: 1 })
       }
     }
-    return [...tags.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    return [...tags.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, undefined, { numeric: true }))
   })
 }
 

@@ -2,7 +2,7 @@
 import { ArrowRight } from '@lucide/vue'
 
 // The home page answers "what is new?" in the first screen: one line on what the blog is (content/home.md), then the
-// newest post with its photo, date, reading time and author. Below: the next posts, the topics and the two writers.
+// newest post with its photo, date, reading time and authors. Below: the next posts, the topics and the two writers.
 // The feed is in the footer of every page. A section whose list is empty is left out.
 const home = useGinko('home')
 const posts = useBlogPosts()

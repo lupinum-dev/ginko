@@ -116,3 +116,27 @@ test('the author of a post has a page that lists that author\'s posts', async ({
     await expect(page.locator('main ul[aria-label] li a').filter({ hasText: name }), `${link} is by ${name}`).not.toHaveCount(0)
   }
 })
+
+test('the blog template names the authors of the newest post in view on a phone, once', async ({ page }) => {
+  test.skip(site.name !== 'blog', 'only the blog template has a lead post on its home page')
+  // Wrong behaviour caught: the byline below the fold (or twice), so a phone reader cannot see who writes.
+  await page.setViewportSize({ width: 390, height: 844 })
+  await open(page, '/')
+  const lead = page.locator('main article').first()
+  const byline = lead.locator('[data-byline]')
+  await expect(byline).toHaveCount(1)
+  await expect(byline).toHaveText(/^(by|von) /)
+  expect((await byline.boundingBox())!.y + (await byline.boundingBox())!.height).toBeLessThan(844)
+})
+
+test('the blog template ends a post with a follow section that links the feed', async ({ page, request }) => {
+  test.skip(site.name !== 'blog', 'only the blog template has a follow section at the end of a post')
+  // Wrong behaviour caught: no follow at the moment a reader wants more, or a feed link that is not the feed.
+  await newsPage(page)
+  await open(page, (await page.locator('main li :is(h2, h3) a').first().getAttribute('href'))!)
+  const follow = page.locator('main section').filter({ has: page.getByRole('heading', { name: /^(Follow|.* folgen)/ }) })
+  const feed = (await follow.locator('a[href$=".xml"]').getAttribute('href'))!
+  const response = await request.get(feed)
+  expect(response.status(), feed).toBe(200)
+  expect(response.headers()['content-type']).toContain('application/rss+xml')
+})
