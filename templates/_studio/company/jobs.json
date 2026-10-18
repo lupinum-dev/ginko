@@ -3,5 +3,6 @@
   "page": { "brick": "pages", "title": "About us", "path": "/about", "bodyField": "Text" },
   "event": { "task": "Veranstaltung hinzufügen", "path": "/trade-fairs" },
   "news": { "task": "Neuigkeit schreiben", "path": "/news" },
-  "job": { "task": "Stelle ausschreiben", "path": "/jobs", "language": "en-GB" }
+  "job": { "task": "Stelle ausschreiben", "path": "/jobs", "language": "en-GB", "remove": "Stelle entfernen" },
+  "product": { "task": "Leistung bearbeiten", "name": "HK centrifugal pumps", "oldSheet": "HK centrifugal pumps: product sheet", "field": "Produktblatt", "path": "/products/hk-centrifugal-pumps", "link": "Product sheet", "addFile": "Datei hinzufügen", "removeFile": "Datei entfernen" }
 }
