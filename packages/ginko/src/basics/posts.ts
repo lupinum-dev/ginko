@@ -76,6 +76,8 @@ export function changelog(o: ChangelogOptions = {}) {
     ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
+    // A release written ahead is the normal case: an entry dated after the build day is scheduled, `draft: true` holds it back.
+    drafts: true,
     fields: {
       version: f.text(t('Version', 'Version', 'Versión', 'Version'), { max: 40, translate: false }),
       date: f.date(t('Datum', 'Date', 'Fecha', 'Date')),

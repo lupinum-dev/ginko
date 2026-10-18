@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path'
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 import { collection, defineSite, f, single } from '@lupinum/ginko'
+import { changelog } from '@lupinum/ginko/basics'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { buildFileBundles, publicBundle } from '../src/index.ts'
 import { errorLine, readContent } from '../src/read.ts'
@@ -354,6 +355,18 @@ describe('checks that never hide a broken entry', () => {
     const r = await readBlog({ ...author, 'content/posts/a.yml': 'title: A\ndate: 2026-10-24\nauthor: authors/nobody', 'content/posts/b.yml': 'title: B\ndate: 2026-10-24\nauthor: authors/ann' })
     expect(r.errors.map((e) => [e.file, e.path])).toEqual([['posts/a.yml', 'author']])
     expect(r.entries.posts ?? []).toEqual([])
+  })
+
+  // Wrong behaviour caught: the changelog basic has no drafts line, so a release dated in the future is published at once.
+  it('leaves out a changelog entry dated after the build day', async () => {
+    const log = serializeSchema(defineSite({
+      site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
+      bricks: { changelog: changelog({ source: 'files' }) },
+    }))
+    const s = site({ 'content/changelog/v1.md': '---\nversion: 1.0.0\ndate: 2026-10-01\n---\nOut.', 'content/changelog/v9.md': '---\nversion: 9.0.0\ndate: 2031-01-01\n---\nLater.' })
+    const r = await readContent(s.content, s.public, log, { drafts: false, today: '2026-10-17' })
+    expect(r.errors).toEqual([])
+    expect((r.entries.changelog ?? []).map((e) => e.id)).toEqual(['changelog/v1'])
   })
 
   // Wrong behaviour caught: the duplicate was reported on one file only, often the old one, so the owner did not see the

@@ -64,8 +64,10 @@ cards are written to `.output/public/`; upload that folder. A static site needs 
 
 - Every change goes live with the next build, so let your host build on every push (Vercel, Netlify and Cloudflare
   Pages do this by default).
-- This template has no scheduled posts and no notices with an end date, so nothing goes stale between builds. If you
-  add a banner (`docs.banner` in `app/app.config.ts`), it changes with the next build as well.
+- A release dated after the build day appears with the first build on or after that date, so a site with scheduled
+  releases needs a daily rebuild (for example a Vercel cron job or a scheduled GitHub Action that triggers the build).
+  `draft: true` in a release file holds that release back until you remove it. Nothing else goes stale between
+  builds. If you add a banner (`docs.banner` in `app/app.config.ts`), it changes with the next build as well.
 - The MCP endpoint for AI agents (`POST /__ginko/docs-mcp`) needs the server; a static site has none. Agents can
   still read `llms.txt` and the `.md` version of every page.
 
