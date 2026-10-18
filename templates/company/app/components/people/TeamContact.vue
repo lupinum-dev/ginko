@@ -15,7 +15,7 @@ const link = 'inline-flex min-h-11 items-center text-primary underline underline
     <section v-if="line" aria-labelledby="contact-service" class="flex flex-col gap-2">
       <h2 id="contact-service" class="text-h3">{{ t('serviceLine.title') }}</h2>
       <p class="text-muted-foreground">{{ t('serviceLine.text') }}</p>
-      <p class="font-medium tabular-nums">{{ line.hours }}</p>
+      <p class="font-medium tabular-nums"><template v-for="(group, index) in line.hourGroups" :key="group"><span class="whitespace-nowrap">{{ group }}{{ index < line.hourGroups.length - 1 ? ',' : '' }}</span>{{ ' ' }}</template></p>
       <ul class="flex flex-col text-small">
         <li><a :href="telHref(line.phone)" dir="ltr" :class="[link, 'tabular-nums']">{{ line.phone }}</a></li>
         <li v-if="line.email"><a :href="`mailto:${line.email}`" dir="ltr" :class="link">{{ line.email }}</a></li>
