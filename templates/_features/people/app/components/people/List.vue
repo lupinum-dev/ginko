@@ -29,7 +29,7 @@ const locale = useGinkoLocale()
       <p v-if="person.data.bio">{{ person.data.bio }}</p>
       <ul v-if="person.data.email || person.data.phone" class="flex flex-col text-small" :aria-label="t('contact', { name: person.data.name })">
         <li v-if="person.data.email">
-          <a :href="`mailto:${person.data.email}`" dir="ltr" class="inline-flex min-h-11 items-center text-primary underline underline-offset-4 wrap-anywhere">{{ person.data.email }}</a>
+          <a :href="`mailto:${person.data.email}`" dir="ltr" class="inline-flex min-h-11 items-center text-primary underline underline-offset-4">{{ person.data.email }}</a>
         </li>
         <li v-if="person.data.phone">
           <a :href="telHref(person.data.phone)" dir="ltr" class="inline-flex min-h-11 items-center tabular-nums text-primary underline underline-offset-4">{{ person.data.phone }}</a>

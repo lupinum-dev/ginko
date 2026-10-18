@@ -186,6 +186,17 @@
   body {
     font-size: var(--text-body);
     line-height: var(--text-body--line-height);
+    /* "anywhere", not "break-word": only "anywhere" lowers min-content width. Flex and grid items have
+       min-width: auto, so with break-word one long word still widens the item and then the page. The cost:
+       a short label next to long text in a flex row that does not wrap needs shrink-0 (or whitespace-nowrap),
+       or it breaks mid-word. */
+    overflow-wrap: anywhere;
+  }
+
+  /* Dates and row labels stay whole words. */
+  time,
+  th {
+    overflow-wrap: normal;
   }
 
   h1,
@@ -195,8 +206,6 @@
     font-family: var(--font-heading, var(--font-body));
     font-weight: 600;
     text-wrap: balance;
-    /* Long compounds ("Datenschutzerklärung") must not push the page sideways at 320 px. */
-    overflow-wrap: break-word;
     hyphens: auto;
     /* Only words of 10+ letters break, with at least 5 on each side: no "mu-nicipal". */
     hyphenate-limit-chars: 10 5 5;
@@ -245,13 +254,6 @@
      their own look. */
   .prose {
     max-width: var(--container-prose);
-    overflow-wrap: break-word;
-  }
-
-  /* Paths, addresses and links have no spaces to break at; at 320 px they would push the page sideways. */
-  .prose :not(pre) > code,
-  .prose a {
-    overflow-wrap: anywhere;
   }
 
   .prose :not(pre) > code {
@@ -360,7 +362,6 @@
      left out, so the block sits on the page like the text around it. */
   .prose > pre {
     white-space: pre-wrap;
-    overflow-wrap: anywhere;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 1rem 1.25rem;

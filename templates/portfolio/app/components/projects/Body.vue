@@ -40,7 +40,7 @@ const next = computed(() => {
         <dl class="grid grid-cols-2 gap-x-6 gap-y-5 border-y py-6 md:grid-cols-4">
           <div v-for="fact in facts" :key="fact.key" class="flex min-w-0 flex-col gap-1" :class="!half(fact.key) && 'max-md:col-span-2'">
             <dt class="text-small text-muted-foreground">{{ fact.label }}</dt>
-            <dd class="wrap-break-word hyphens-auto" :class="fact.key === 'year' && 'tabular-nums'">{{ fact.value }}</dd>
+            <dd class="hyphens-auto" :class="fact.key === 'year' && 'tabular-nums'">{{ fact.value }}</dd>
           </div>
         </dl>
       </section>
@@ -50,7 +50,7 @@ const next = computed(() => {
       <NuxtLink :to="next.url" class="group flex items-center justify-between gap-6 border-t pt-8">
         <span class="flex min-w-0 flex-col gap-2">
           <span class="text-small text-muted-foreground">{{ t('project.next') }}</span>
-          <span class="font-display text-h2 wrap-break-word hyphens-auto underline-offset-4 group-hover:underline">{{ next.data.title }}</span>
+          <span class="font-display text-h2 hyphens-auto underline-offset-4 group-hover:underline">{{ next.data.title }}</span>
         </span>
         <ArrowRight class="size-6 shrink-0 text-muted-foreground rtl:-scale-x-100" aria-hidden="true" />
       </NuxtLink>

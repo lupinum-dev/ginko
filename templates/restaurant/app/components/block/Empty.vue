@@ -19,7 +19,7 @@ const dev = import.meta.dev
     <p v-if="text" class="text-muted-foreground">{{ text }}</p>
     <p v-if="path && dev" class="text-small text-muted-foreground">
       <I18nT k="site.empty" :params="{ path }">
-        <template #code="{ text: file }"><code class="wrap-anywhere">{{ file }}</code></template>
+        <template #code="{ text: file }"><code>{{ file }}</code></template>
       </I18nT>
     </p>
   </div>
