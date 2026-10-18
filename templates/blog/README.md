@@ -229,12 +229,12 @@ prefix.
 
 | Feature | Delete |
 |---|---|
-| Topic pages | `app/pages/news/tags/`, and the tag links in `app/pages/news/[slug].vue`, `app/pages/news/index.vue` and `app/pages/index.vue` (the "Topics" section); keep `tags` in the posts as keywords for search engines |
+| Topic pages | `app/pages/news/tags/`, and the tag links in `app/pages/news/[slug].vue` (the tag chips and `useTagPath()`), `app/pages/news/index.vue` (the tag nav and `useBlogTags()`) and `app/pages/index.vue` (the "Topics" section and `useBlogTags()`); keep `tags` in the posts as keywords for search engines |
 | Authors (a blog without names) | the `authors` line in every post and the files in `content/people/`; posts, lists, the feed and the home page then show no names. To remove the pages too, also follow the Author pages and About page rows |
 | Author pages | `route` of the `people` brick in `ginko.config.ts` and `app/pages/about/[slug].vue`; names are then plain text |
 | The About page | `pages.team`, its `nav` item, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, `"people"` in `package.json` → `ginko.features`; keep the `people` brick while posts name authors |
-| Feed | `server/middleware/news-feed.ts`, the feed link in `app/pages/news/index.vue` and `app/components/site/FooterStatus.vue` |
-| Notices | `content/notices/`, the `notices` brick, `<SiteNotice />` in `app/layouts/default.vue`, `app/components/site/Notice.vue` |
+| Feed | `server/middleware/news-feed.ts`, the feed link in `app/pages/news/index.vue` (the visible link, the `rel="alternate"` link in `useHead()`, `useFeedPath()` and the `Rss` import) and in `app/components/site/FooterStatus.vue` (the feed item, `useFeedPath()` and `Rss` in its import), the sentence about the feed in `content/posts/why-we-keep-field-notes*.md` ("Follow along") and the feed bullet in `content/legal/1.privacy*.md` |
+| Notices | `content/notices/`, the `notices` brick (with its comment) and its import in `ginko.config.ts`, `<SiteNotice />` in `app/layouts/default.vue`, `app/components/site/Notice.vue` |
 | A legal text | its files in `content/legal/` |
 | German | see "Add or remove a language" |
 | Dark mode | `<SiteThemeToggle />` in `app/components/site/Header.vue`, `app/components/site/ThemeToggle.vue`, and `@nuxtjs/color-mode` with its `colorMode` options in `nuxt.config.ts` and `package.json` |
