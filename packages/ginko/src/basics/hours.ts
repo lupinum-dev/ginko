@@ -228,13 +228,6 @@ function endOf(plan: HourPlan, starts: string): string | undefined {
   return `${md < plan.from.slice(5) ? year + 1 : year}-${md}`
 }
 
-/** The start dates of `plan` around `near` (yearly: the previous, same and next year; else its `from`). */
-function occurrences(plan: HourPlan, near: string): string[] {
-  if (!plan.yearly) return [plan.from]
-  const year = Number(near.slice(0, 4))
-  return [year - 1, year, year + 1].map((y) => `${y}-${plan.from.slice(5)}`).filter((d) => d >= plan.from)
-}
-
 /**
  * Plans that start after `today` and within `days` days, with their start date (yearly: next occurrence) and, when the
  * plan has an end, its last day `ends` (yearly: the end of that occurrence).
@@ -251,14 +244,15 @@ export function upcomingPlans(plans: HourPlan[], today: string, days: number): A
       if (plan.from > starts) starts = plan.from
     }
     let ends = endOf(plan, starts)
-    // planOn gives the tail of this range to a plan that starts inside it and runs on to or past its end (latest `from`
-    // wins), so the range shown ends the day before. A plan nested inside the range leaves the outer plan to resume.
-    for (const other of plans) {
-      if (other === plan || !ends) continue
-      for (const at of occurrences(other, starts)) {
-        if (at <= starts || at > ends) continue
-        const otherEnds = endOf(other, at)
-        if ((!otherEnds || otherEnds >= ends) && addDays(at, -1) < ends) ends = addDays(at, -1)
+    // The range shown ends on the last day `planOn` still gives to this plan, so the table cannot disagree with the
+    // hours: a later plan that takes over the tail cuts it, a nested plan does not, an older yearly plan recurring
+    // inside a newer one does not cut the newer one. A plan without an end is left as it is.
+    if (ends) {
+      for (let day = ends, i = 0; day >= starts && i < 366; day = addDays(day, -1), i++) {
+        if (planOn(plans, day) === plan) {
+          ends = day
+          break
+        }
       }
     }
     if (starts > today && starts <= until) out.push({ plan, starts, ...(ends ? { ends } : {}) })

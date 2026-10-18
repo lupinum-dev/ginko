@@ -176,4 +176,15 @@ describe('upcomingPlans', () => {
     const [found] = upcomingPlans([plan], today, 120)
     expect({ starts: found?.starts, ends: found?.ends }).toEqual(expected)
   })
+  // Wrong behaviour caught: the table shows a season to its nominal end although planOn gives the tail to a later plan
+  // (or cuts a newer plan because an older yearly one recurs inside it), so the table and the hours disagree.
+  const late = (_id: string, from: string, to: string): HourPlan => ({ ...summer, _id, from, to, yearly: false })
+  it.each([
+    ['no overlap', [summer], [['2027-06-01', '2027-08-31']]],
+    ['a later plan takes the tail', [summer, late('a', '2027-08-15', '2027-09-15')], [['2027-06-01', '2027-08-14'], ['2027-08-15', '2027-09-15']]],
+    ['a plan nested inside leaves the end alone', [summer, late('a', '2027-08-10', '2027-08-12')], [['2027-06-01', '2027-08-31'], ['2027-08-10', '2027-08-12']]],
+    ['the newer plan keeps its end though an older yearly plan recurs inside it', [summer, late('a', '2027-06-15', '2027-07-31')], [['2027-06-01', '2027-08-31'], ['2027-06-15', '2027-07-31']]],
+  ])('range: %s', (_, plans, expected) => {
+    expect(upcomingPlans(plans, '2027-05-01', 120).map((p) => [p.starts, p.ends])).toEqual(expected)
+  })
 })
