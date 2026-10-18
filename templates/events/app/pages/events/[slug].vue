@@ -54,7 +54,7 @@ const businessAddress = computed(() => {
     </div>
     <header class="mx-auto max-w-page px-gutter pt-4 pb-8 md:pb-12">
       <div class="flex max-w-3xl flex-col gap-5">
-        <h1 class="text-h1" :lang="langOf(event, 'title')">{{ event.data.title }}</h1>
+        <h1 class="text-h1 text-pretty" :lang="langOf(event, 'title')">{{ event.data.title }}</h1>
         <dl class="grid gap-x-8 gap-y-3 sm:grid-cols-[auto_1fr]">
           <dt class="text-small text-muted-foreground">{{ t('date') }}</dt>
           <dd class="font-medium tabular-nums">{{ dates(event.data) }}</dd>
