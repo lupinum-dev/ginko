@@ -215,8 +215,8 @@ prefix.
 
 | Feature | Delete |
 |---|---|
-| Start page | `content/home*.md` and `home: docsHome()` in `ginko.config.ts`; `/` then opens the first docs page |
-| Changelog | `content/changelog/`, `changelog: changelogCollection()` and `changelog: changelogPages(…)` in `ginko.config.ts` |
+| Start page | `content/home*.md`, `home: homePages(…)` and `home: docsHome()` in `ginko.config.ts` with their imports; `/` then opens the first docs page |
+| Changelog | `content/changelog/`, `changelog: changelogCollection()` and `changelog: changelogPages(…)` in `ginko.config.ts` with their imports, the `$page.changelog` links in `content/docs/1.introduction*.md` and the changelog card in `content/home*.md` |
 | German | see "Add or remove a language" |
 | "Edit this page" | `docs.repository` in `app/app.config.ts` (keep the `repository` constant: the footer `source` link uses it) |
 | "Copy page" and its menu | set `markdownActions: { copy: false, openIn: [] }` in `app/app.config.ts` |
