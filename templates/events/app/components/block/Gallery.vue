@@ -9,10 +9,10 @@ import type { ImageValue } from '@lupinum/ginko'
  * takes the rest of a short last row, so its photos keep about the row height instead of growing past the rows above.
  * Each photo is a button that opens the lightbox at that photo.
  * `stack`: one photo below the other at full width, each in its own ratio, the first loaded at once (the main photos of
- * a page, such as the photos of one project). `captions`: each photo's description below it; screen readers hear it once,
- * as the name of the photo's button.
+ * a page, such as the photos of one project). A photo's description (`alt`) is not shown below it; it stays on the
+ * image and in the name of the photo's button.
  */
-const props = defineProps<{ images: ImageValue[], stack?: boolean, captions?: boolean }>()
+const props = defineProps<{ images: ImageValue[], stack?: boolean }>()
 const { t } = useI18n('gallery')
 const list = useTemplateRef<HTMLUListElement>('list')
 const open = ref(false)
@@ -73,7 +73,6 @@ function focusPhoto(i: number) {
             :class="!stack && ['aspect-3/2 object-cover', rows && 'sm:aspect-(--ratio)']"
           />
         </button>
-        <p v-if="captions && image.alt" class="pt-3 text-small text-muted-foreground" aria-hidden="true">{{ image.alt }}</p>
       </li>
       <li v-if="rows" class="max-sm:hidden sm:grow-[100]" aria-hidden="true" />
     </ul>

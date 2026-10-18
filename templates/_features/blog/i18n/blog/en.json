@@ -10,6 +10,7 @@
   "latest": "All news",
   "tagged": "Posts tagged {tag}",
   "count": "{count, plural, one {# post} other {# posts}}",
+  "topicCount": "{name}, {count, plural, one {# post} other {# posts}}",
   "minutes": "{count} min read",
   "older": "Older post",
   "newer": "Newer post",

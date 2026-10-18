@@ -13,16 +13,16 @@ const { format, t } = useI18n('blog')
       v-if="post.image"
       :image="post.image"
       eager
-      sizes="(min-width: 1216px) 680px, (min-width: 1024px) 56vw, 100vw"
-      class="aspect-3/2 w-full rounded-block bg-muted object-cover lg:col-span-7"
+      sizes="(min-width: 1216px) 596px, (min-width: 1024px) 50vw, 100vw"
+      class="aspect-3/2 w-full rounded-block bg-muted object-cover lg:col-span-6"
     />
-    <div class="flex flex-col gap-3" :class="post.image ? 'lg:col-span-5' : 'max-w-3xl lg:col-span-12'">
+    <div class="flex flex-col gap-3" :class="post.image ? 'lg:col-span-6' : 'max-w-3xl lg:col-span-12'">
       <p class="text-small text-muted-foreground">
         <time :datetime="post.date">{{ format.date(post.date) }}</time>
         <template v-if="post.minutes"><span aria-hidden="true"> · </span><span class="sr-only">, </span>{{ t('minutes', { count: post.minutes }) }}</template>
         <template v-if="post.authors.length"><span aria-hidden="true"> · </span><span class="sr-only">, </span><span data-byline>{{ t('by', { names: format.list(post.authors.map((a) => a.name)) }) }}</span></template>
       </p>
-      <h2 class="text-h2">
+      <h2 class="text-h3">
         <NuxtLink :to="post.to" class="underline-offset-4 after:absolute after:inset-0 group-hover:underline">{{ post.title }}</NuxtLink>
       </h2>
       <p v-if="post.description" class="text-lead text-muted-foreground">{{ post.description }}</p>

@@ -13,7 +13,6 @@
     "title": "Beiträge",
     "lead": "Alles, was wir geschrieben haben, das Neueste zuerst.",
     "tags": "Themen",
-    "topicCount": "{name}, {count, plural, one {# Beitrag} other {# Beiträge}}",
     "latest": "Alle Beiträge"
   },
   "people": {

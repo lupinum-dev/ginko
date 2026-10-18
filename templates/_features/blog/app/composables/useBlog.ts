@@ -61,6 +61,11 @@ export function tagSlug(tag: string) {
     .replace(/^-+|-+$/g, '')
 }
 
+/** A tag as a visitor reads it: tags are free text and often lowercase in the files ("tips"), so the first letter is upper-cased. */
+export function tagLabel(tag: string) {
+  return tag.charAt(0).toLocaleUpperCase() + tag.slice(1)
+}
+
 /**
  * The address of a tag's page (news/tags/[tag].vue) in the current language: `/news/tags/water`, or with the words
  * of `segments` in app/routes.ts `/de/aktuelles/themen/wasser`. The page has no `pages` key, so the address comes from
@@ -83,7 +88,7 @@ export function useBlogTags() {
         const slug = tagSlug(name)
         const tag = tags.get(slug)
         if (tag) tag.count++
-        else tags.set(slug, { name, slug, to: tagPath(name), count: 1 })
+        else tags.set(slug, { name: tagLabel(name), slug, to: tagPath(name), count: 1 })
       }
     }
     return [...tags.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, undefined, { numeric: true }))

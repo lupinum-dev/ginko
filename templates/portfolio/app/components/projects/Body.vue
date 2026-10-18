@@ -34,7 +34,7 @@ const next = computed(() => {
   <div>
     <div class="mx-auto flex max-w-page flex-col gap-10 px-gutter md:gap-12">
       <section v-if="photos.length" :aria-label="t('project.photos')">
-        <BlockGallery :images="photos" stack captions />
+        <BlockGallery :images="photos" stack />
       </section>
       <section v-if="facts.length" :aria-label="t('project.facts')">
         <dl class="grid grid-cols-2 gap-x-6 gap-y-5 border-y py-6 md:grid-cols-4">
@@ -56,7 +56,7 @@ const next = computed(() => {
       </NuxtLink>
     </nav>
     <BlockCta v-if="start" :title="t('project.cta.title')" :text="t('project.cta.text')" :action="{ label: t('start.action'), to: start }">
-      <SiteContact />
+      <SiteContact :address="false" />
     </BlockCta>
   </div>
 </template>

@@ -10,6 +10,7 @@
   "latest": "Toutes les actualités",
   "tagged": "Articles avec le mot-clé « {tag} »",
   "count": "{count, plural, one {# article} other {# articles}}",
+  "topicCount": "{name}, {count, plural, one {# article} other {# articles}}",
   "minutes": "{count} min de lecture",
   "older": "Article plus ancien",
   "newer": "Article plus récent",
