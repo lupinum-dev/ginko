@@ -12,7 +12,8 @@
     "allQuestions": "All questions",
     "lastYear": "Last year",
     "ctaTitle": "One ticket for the whole conference",
-    "ctaText": "{price}. Reduced prices in the ticket shop."
+    "ctaText": "{price}. Reduced prices in the ticket shop.",
+    "ctaTextFree": "Free entry. Get your ticket in the ticket shop."
   },
   "faq": {
     "title": "FAQ",

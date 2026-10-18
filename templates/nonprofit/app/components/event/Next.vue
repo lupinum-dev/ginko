@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// The next date of content/events/: its title, the day with the weekday, the time and the place. Events leave the
+// The next date of content/events/: its title, the day with the weekday and, for one day, the time (several days: the range of dates) and the place. Events leave the
 // site after their last day, so the first one is the next. Renders nothing when no date is planned. Shown in the
 // closing band of the home page and at the top of the Get involved page; the title links to the event's page.
 const events = useGinko('events')
 const { t } = useI18n()
-const { dates, times } = useEventText()
+const { when } = useEventText()
 const next = computed(() => events.value.items[0])
 </script>
 
@@ -16,7 +16,7 @@ const next = computed(() => events.value.items[0])
       <template v-else>{{ next.data.title }}</template>
     </p>
     <p class="tabular-nums">
-      <time :datetime="next.data.when.from">{{ dates(next.data) }}</time><template v-if="times(next.data)">{{ t('event.separator') }}<bdi>{{ times(next.data) }}</bdi></template>
+      <time :datetime="next.data.when.from">{{ when(next.data) }}</time>
     </p>
     <p v-if="next.data.location"><bdi>{{ next.data.location }}</bdi></p>
   </div>
