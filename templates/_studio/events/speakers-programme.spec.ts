@@ -6,7 +6,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { job, studio } from '../../../scripts/templates/e2e/studio.ts'
 
 // The template's names come from templates/_studio/events/jobs.json: "speaker": { brick, section, field, path } (the
-// people brick key, its heading and the label of its optional field on Today, the speakers page) and "programme":
+// people brick key, its heading and the label of its optional field on Today, both as the German Studio shows them, the speakers page) and "programme":
 // { brick, event, path } (the sessions brick key, the title of the event the session belongs to, the programme page).
 const SPEAKER = job('speaker', ['brick', 'section', 'field', 'path'])
 const PROGRAMME = job('programme', ['brick', 'event', 'path'])
@@ -19,7 +19,8 @@ async function create(page: Page, brick: string, fill: () => Promise<void>) {
   await page.getByRole('link', { name: 'Neu', exact: true }).click()
   await fill()
   await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-  await expect(page.getByText(/^Gespeichert/)).toBeVisible()
+  // Two texts start with "Gespeichert" (the status span and the toast); the span alone is the saved status.
+  await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`${area(brick)}/[^/]+$`))
   return new URL(page.url()).pathname
 }
