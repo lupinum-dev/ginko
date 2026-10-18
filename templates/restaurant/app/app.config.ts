@@ -28,4 +28,6 @@ export default defineAppConfig({
     // For example { label: 'Instagram', url: 'https://www.instagram.com/…' }.
     socials: [],
   } satisfies SiteAppConfig,
+  // The events happen at the restaurant: an event without a location shows its name and address as the place.
+  events: { atTheBusiness: true },
 })

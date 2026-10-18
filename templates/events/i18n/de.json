@@ -12,7 +12,8 @@
     "allQuestions": "Alle Fragen",
     "lastYear": "Im Vorjahr",
     "ctaTitle": "Ein Ticket für die ganze Konferenz",
-    "ctaText": "{price}. Ermäßigte Preise im Ticketshop."
+    "ctaText": "{price}. Ermäßigte Preise im Ticketshop.",
+    "ctaTextFree": "Eintritt frei. Ihr Ticket gibt es im Ticketshop."
   },
   "faq": {
     "title": "Fragen",

@@ -17,6 +17,20 @@ export interface EventFacts {
   image?: ImageValue | null
 }
 
+/** `events` in app/app.config.ts. */
+export interface EventsAppConfig {
+  /** True when the events happen at the business itself (a restaurant's evenings): an event without a location and
+   *  without an online link then takes place at the site's name and address (content/site.md). Default false: such
+   *  an event shows no place, since content/site.md is the organiser's address, not necessarily the venue. */
+  atTheBusiness?: boolean
+}
+
+declare module 'nuxt/schema' {
+  interface CustomAppConfig {
+    events?: EventsAppConfig
+  }
+}
+
 /** A price in the page's language, without minor units when the amount is whole ("€38", "€12.50"). */
 export function wholeMoney(money: Money, language: string): string {
   const digits = new Intl.NumberFormat('en', { style: 'currency', currency: money.currency }).resolvedOptions().maximumFractionDigits ?? 2
@@ -106,17 +120,36 @@ export function useUpcomingEvents(limit?: () => number | undefined) {
 }
 
 /**
- * A builder of schema.org Event: dates with the site's time zone offset, the place (the event's own; none when the
- * event has no location, since content/site.md is the organiser's address, not the venue), price, booking link or
+ * The business as the venue of an event without a location and without an online link, only when `events.atTheBusiness`
+ * is true in app/app.config.ts; otherwise (the default) such an event has no place, since content/site.md is the
+ * organiser's address, not necessarily the venue.
+ */
+export function useEventVenue() {
+  const site = useGinko('site')
+  const { name } = useGinkoSite()
+  // Only the sites that set `events` in app.config.ts have the key, so its type differs per template: narrow at run time.
+  const config: unknown = useAppConfig().events
+  const atTheBusiness = typeof config === 'object' && config !== null && 'atTheBusiness' in config && config.atTheBusiness === true
+  return (e: EventFacts) => {
+    if (!atTheBusiness || e.location || safeHref(e.online ?? undefined)) return undefined
+    const own = site.value.data
+    return { name, address: { street: own.street ?? '', postalCode: own.postalCode, city: own.city ?? '' } }
+  }
+}
+
+/**
+ * A builder of schema.org Event: dates with the site's time zone offset, the place (the event's own; else the business
+ * when `events.atTheBusiness` is true and there is no online link; else none), price, booking link or
  * "sold out"; `description` is the page's Markdown tree, `sessions` the programme (each a `subEvent`). For pages that describe several events; one event page uses useEventJsonLd.
  */
 export function useEventLd() {
   const { url, timeZone } = useGinkoSite()
   const country: string = useRuntimeConfig().public.ginko.country
   const booking = useEventBooking()
+  const venue = useEventVenue()
   const absolute = (path: string) => new URL(path, url).href
   return (e: EventFacts & { url: string }, extra: { description?: MarkdownTree | null, sessions?: SessionJsonLdInput[] } = {}) => {
-    const location = e.location ? { name: e.location } : undefined
+    const location = e.location ? { name: e.location } : venue(e)
     return eventJsonLd({
       title: e.title,
       url: absolute(e.url),
