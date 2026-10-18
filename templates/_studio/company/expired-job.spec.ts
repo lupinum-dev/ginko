@@ -32,14 +32,15 @@ async function postJob(page: Page, title: string, lastDay: string) {
 
 /**
  * Removes a job with the "{title} entfernen" button on its row in the jobs area of "Heute" (it goes to the trash for
- * 30 days). A job past its last day is not in the list until "Abgelaufene anzeigen" is pressed.
+ * 30 days, without a question). A job past its last day is not in the list until "Abgelaufene anzeigen" is pressed.
  */
 async function removeJob(page: Page, title: string) {
   await page.goto(`/s/${studio.site}`, { waitUntil: 'networkidle' })
   const row = page.getByRole('button', { name: `${title} entfernen`, exact: true })
   if (!(await row.isVisible())) await page.getByRole('button', { name: /^Abgelaufene anzeigen/ }).click()
+  // The row button removes at once (Studio: pages/s/[site]/index.vue removeEntry; it asks first only when other entries use
+  // the job or the trash is full) and shows the toast "{title} entfernt" with "Rückgängig".
   await row.click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Entfernen', exact: true }).click()
   await expect(page.locator('[data-sonner-toast]').filter({ hasText: title })).toBeVisible()
 }
 

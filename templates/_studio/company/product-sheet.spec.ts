@@ -32,6 +32,14 @@ test('the owner attaches a PDF to a product, and the product page links it', asy
   const fileTitle = `Gate seven sheet ${stamp}`
   const fileName = `gate-seven-sheet-${stamp}.pdf`
 
+  // The product page links the old sheet now. The Studio serves files from its storage under an id, not under the file
+  // name, so the new sheet is told apart by its address and its content.
+  const sheetHref = async () => {
+    await page.goto(`${studio.siteUrl}${PRODUCT.path}`)
+    return (await page.getByRole('link', { name: new RegExp(PRODUCT.link) }).getAttribute('href', { timeout: 2_000 }))!
+  }
+  const oldHref = await sheetHref()
+
   // 1. The file: the downloads brick's add task, with a PDF chosen from the desk.
   await page.goto(`/s/${studio.site}`, { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: PRODUCT.addFile, exact: true }).click()
@@ -52,15 +60,15 @@ test('the owner attaches a PDF to a product, and the product page links it', asy
     // that does not open (404) or is not served as a PDF.
     let href = ''
     await expect(async () => {
-      await page.goto(`${studio.siteUrl}${PRODUCT.path}`)
-      const link = page.getByRole('link', { name: new RegExp(PRODUCT.link) })
-      href = (await link.getAttribute('href', { timeout: 2_000 }))!
-      expect(href).toContain(fileName.replace(/\.pdf$/, ''))
+      href = await sheetHref()
+      expect(href).not.toBe(oldHref)
     }).toPass({ timeout: 60_000 })
     const file = await request.get(new URL(href, studio.siteUrl).href)
     expect(file.status()).toBe(200)
     expect(file.headers()['content-type']).toContain('application/pdf')
-    expect((await file.body()).subarray(0, 5).toString()).toBe('%PDF-')
+    const body = (await file.body()).toString('latin1')
+    expect(body.slice(0, 5)).toBe('%PDF-')
+    expect(body).toContain(`Gate seven ${stamp}`)
   } finally {
     // 3. Undo: the product has its old sheet again, then the new file is removed (while a product uses it, the Studio would ask first).
     await attachSheet(page, PRODUCT.oldSheet)
