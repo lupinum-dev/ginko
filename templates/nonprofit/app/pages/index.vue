@@ -2,8 +2,8 @@
 import { ArrowRight } from '@lucide/vue'
 
 // The home page answers "what do you do, and how can I help?" in the first screen: the mission (content/home.md) with
-// the river photo, "Get involved" and "Donate". Then the current projects, the latest news, a quote, the partners and
-// one closing band that invites to a clean-up with the next date (content/events/). Donations go through the Donate
+// the river photo, "Get involved" and "Donate", and the next date (content/events/) under them. Then the current
+// projects, the latest news, a quote, the partners and one closing band that invites to a clean-up. Donations go through the Donate
 // page (a link to a donation service, no payment form on this site). A section whose list is empty is left out.
 const home = useGinko('home')
 const quotes = useGinko('quotes')
@@ -28,7 +28,9 @@ usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.
       :image="home.data.image"
       :primary="link('pages/get-involved')"
       :secondary="link('pages/donate')"
-    />
+    >
+      <EventNext class="rounded-block border p-4" />
+    </BlockHero>
 
     <BlockSection v-if="projects.length" :title="t('home.projects')" :side="false">
       <BlockCards :items="projects" compact />
@@ -57,8 +59,6 @@ usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.
       :title="t('home.cta.title')"
       :text="t('home.cta.text')"
       :action="{ label: t('home.cta.action'), to: link('pages/get-involved')!.to }"
-    >
-      <EventNext class="mt-2" />
-    </BlockCta>
+    />
   </div>
 </template>

@@ -27,8 +27,12 @@ test('the lunch week gets a new dish, and the lunch page shows it', async ({ pag
   await sheet.getByRole('button', { name: 'Speichern' }).click()
   await expect(sheet).toHaveCount(0)
 
+  // Days before today are hidden on screen (not in print), and the new dish may sit on one of them: print media shows
+  // the whole week.
+  await page.emulateMedia({ media: 'print' })
   await expect(async () => {
     await page.goto(`${studio.siteUrl}${LUNCH.path}`)
     await expect(page.getByRole('listitem').filter({ hasText: dish })).toBeVisible({ timeout: 2_000 })
   }).toPass({ timeout: 60_000 })
+  await page.emulateMedia({ media: null })
 })

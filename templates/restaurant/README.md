@@ -16,7 +16,7 @@ What guests get:
   restaurant's time zone and Austrian public holidays, and moving on by itself while the page is open.
 - **Menu** by category with today's prices, vegetarian and vegan dishes, the 14 EU allergen letters with their key,
   "sold out today", a planned price change, and a print version for the door.
-- **Lunch of the week**, only while it is current, with days you are closed marked as closed.
+- **Lunch of the week**, only while it is current, with days you are closed marked as closed. On screen it starts with today (earlier days stay on paper).
 - **Events** with weekday, date, time, price and "fully booked"; past events leave the site by themselves.
 - **Reserving** by phone or email, no form and nothing sent to other companies. "Open in maps" is a link, not an
   embedded map.
