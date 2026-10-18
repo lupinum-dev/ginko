@@ -6,6 +6,7 @@
 // the Studio").
 import { defineSite, f, single } from '@lupinum/ginko'
 import { changelog, faq, legal, notices, people, posts, site } from '@lupinum/ginko/basics'
+import { components, docsCollection } from '@lupinum/ginko-docs/config'
 import { logos, quotes } from './app/bricks/logos-quotes.ts'
 import { pages } from './app/bricks/pages.ts'
 import { pricing } from './app/bricks/pricing.ts'
@@ -43,7 +44,9 @@ export default defineSite({
   },
   // The order of the bricks is the order of the Studio's Today page: the weekly changelog entry first, then the
   // notice, the prices and the questions.
+  components,
   bricks: {
+    docs: docsCollection({ locales, base: '/docs' }),
     // One file per release (content/changelog/), newest first: version, date and the text, which starts with one
     // sentence (the summary on the home page and in the feed), then `<!-- more -->`, then the changes under the
     // headings New, Improved and Fixed. In the Studio, Today shows how old the newest entry is.

@@ -18,6 +18,7 @@ export default defineAppConfig({
     nav: [
       { page: 'pricing', label: { en: 'Pricing', de: 'Preise', fr: 'Tarifs' } },
       { page: 'changelog', label: { en: 'Changelog', de: 'Neuerungen', fr: 'Nouveautés' } },
+      { url: '/docs', label: { en: 'Docs', de: 'Doku', fr: 'Docs' } },
       { page: 'faq', label: { en: 'FAQ', de: 'Häufige Fragen', fr: 'Questions fréquentes' } },
       { entry: 'pages/contact' },
     ],

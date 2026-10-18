@@ -1317,6 +1317,9 @@ importers:
       '@lupinum/ginko-content':
         specifier: workspace:*
         version: link:../../packages/ginko-content
+      '@lupinum/ginko-docs':
+        specifier: workspace:*
+        version: link:../../packages/ginko-docs
       '@lupinum/ginko-i18n':
         specifier: workspace:*
         version: link:../../packages/ginko-i18n
