@@ -351,7 +351,7 @@
 .docs-prose td code { white-space: normal; overflow-wrap: normal; }
 .docs-prose td:first-child code { white-space: nowrap; }
 /* Only the last column of a table with 4+ columns needs room; in narrower tables it would force a scroll on phones. */
-.docs-prose td:last-child:nth-child(n+4) { min-width: 12rem; }
+.docs-prose table:has(th:nth-child(4)) td:last-child { min-width: 14rem; }
 
 /* Code blocks: one bordered panel with the file name or tabs on a lighter head (ginko-components draws an inset). */
 :where(.docs-prose, .docs-landing) :is(.ginko-code, .ginko-code-group, .ginko-code-tree):not([data-bare]) { padding: 0; overflow: hidden; border: 1px solid var(--docs-code-line); border-radius: var(--docs-r-box); }
@@ -421,7 +421,7 @@
 .docs-hero p { max-width: 40rem; margin: 1.5rem auto 0; color: var(--muted-foreground); font-size: 1.1875rem; line-height: 1.6; text-wrap: pretty; }
 .docs-hero-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.625rem; margin-top: 2.25rem; }
 .docs-install { display: inline-flex; align-items: center; gap: 0.625rem; max-width: 100%; height: 2.625rem; margin-top: 1rem; padding: 0 0.3125rem 0 0.875rem; border: 1px solid var(--border); border-radius: var(--docs-r-control); background: var(--card); font: 500 0.84375rem/1 var(--font-mono); }
-.docs-install code { font: inherit; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+.docs-install code { min-width: 0; font: inherit; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
 .docs-install code::before { content: '$ '; color: var(--muted-foreground); }
 .docs-features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.75rem 3rem; margin: 6.5rem 0 0; padding: 0; list-style: none; }
 .docs-feature { position: relative; display: grid; align-content: start; gap: 0.5rem; padding-top: 1.375rem; border-top: 1px solid var(--border); }
@@ -549,6 +549,10 @@ html[data-docs-banner-off] .docs-banner { display: none; }
   .docs-pager .is-next { grid-column: 1; }
   .docs-landing-inner { padding: 3rem 1rem 4rem; }
   .docs-features { margin-top: 3.5rem; }
+  .docs-landing-body { margin-top: 3.5rem; }
+  .docs-feature:has(.docs-feature-icon) { grid-template-columns: auto minmax(0, 1fr); column-gap: 0.75rem; align-items: center; }
+  .docs-feature-icon { margin-bottom: 0; }
+  .docs-feature > p { grid-column: 1 / -1; }
   .docs-blog-panel { padding: 1.5rem 1rem 3rem; border: 0; background: none; }
   .docs-posts { margin-inline: 0; }
   .docs-posts li { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; padding-inline: 0; }
@@ -569,5 +573,10 @@ html[data-docs-banner-off] .docs-banner { display: none; }
 @media (max-width: 40rem) {
   .docs-blog { padding-inline: 0; }
   .docs-hero p { font-size: 1.0625rem; }
+}
+/* 320px: both hero buttons fill the row. */
+@media (max-width: 23.99rem) {
+  .docs-hero-links { flex-direction: column; }
+  .docs-hero-links > .docs-button { width: 100%; justify-content: center; }
 }
 .ginko-excerpt-source { font-family: var(--font-sans); }

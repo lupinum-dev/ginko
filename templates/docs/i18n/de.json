@@ -1,5 +1,5 @@
 {
   "docs": {
-    "footer": { "source": "Quellcode", "api": "Orbit API" }
+    "footer": { "source": "Quellcode", "api": "Orbit API", "imprint": "Impressum", "privacy": "Datenschutz" }
   }
 }
