@@ -27,7 +27,6 @@ export default defineAppConfig({
       { entry: 'pages/about' },
       { page: 'news', label: { en: 'Blog', de: 'Blog', fr: 'Blog' } },
       // The sign-in of the app, for customers: a quiet link here and in the phone menu, no second button in the header.
-      { page: 'help', label: { en: 'Help', de: 'Hilfe', fr: 'Aide' } },
       { url: 'https://app.planwerk.example/login', label: { en: 'Sign in', de: 'Anmelden', fr: 'Se connecter' } },
     ],
     // For example { label: 'LinkedIn', url: 'https://www.linkedin.com/company/planwerk' }.
