@@ -112,3 +112,22 @@ test('on a phone the navigation is reachable and its links are visible', async (
     await expect(nav.getByRole('link').first(), 'nav links without a toggle').toBeVisible()
   }
 })
+
+// saas embeds @lupinum/ginko-docs as its help center, inside the site's own layout. Wrong behaviour caught: on a phone
+// the other help pages and the search cannot be reached, because the docs' own header (with its menu) is not there.
+test('on a phone the embedded help pages open their navigation and search from the bar', async ({ page }) => {
+  test.skip(site.name !== 'saas', 'only saas embeds the docs')
+  await page.setViewportSize({ width: 390, height: 844 })
+  await open(page, '/help/getting-started')
+  await page.locator('.docs-bar-nav').click()
+  const sheet = page.locator('dialog.docs-nav-sheet')
+  await sheet.getByRole('link', { name: 'Export for payroll' }).click()
+  await expect(page).toHaveURL(/\/help\/export$/)
+  await expect(sheet).toBeHidden()
+  await page.locator('.docs-bar-start .docs-search-trigger').click()
+  const search = page.locator('dialog.docs-search-dialog[open]')
+  await search.getByRole('combobox').fill('swap')
+  await expect(search.getByRole('option').first()).toBeVisible()
+  await search.getByRole('combobox').press('Enter')
+  await expect(search).toBeHidden()
+})
