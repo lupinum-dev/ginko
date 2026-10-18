@@ -40,7 +40,7 @@ const ICON_TAG = new RegExp(`<Icon\\b[^>]*?\\s(?::name=["']['"]|name=["'])(${NAM
 
 const matches = (re: RegExp, source: string) => [...source.matchAll(re)].map((m) => (m[1]!.includes(':') ? m[1]! : `lucide:${m[1]}`))
 
-// The spans below are found with indexOf, not a lazy regex: a regex is quadratic on an unclosed `/*` or `<!--`.
+// Comments are found with indexOf, not regexes: the regexes were quadratic on unclosed `/*`, `<!--` or many ` //`.
 
 /** `source` without every `open … close` span; an unclosed `open` stays. */
 const without = (source: string, open: string, close: string): string => {
@@ -69,7 +69,13 @@ const mapScripts = (source: string, fn: (code: string) => string): string => {
   }
 }
 
-const stripCode = (code: string) => without(code, '/*', '*/').replace(/(^|\s)\/\/.*$/gm, '$1')
+/** A line without its `//` comment. */
+const cutLine = (line: string): string => {
+  for (let i = line.indexOf('//'); i !== -1; i = line.indexOf('//', i + 2)) if (i === 0 || /\s/.test(line[i - 1]!)) return line.slice(0, i)
+  return line
+}
+
+const stripCode = (code: string) => without(code, '/*', '*/').split('\n').map(cutLine).join('\n')
 
 /**
  * Code without its comments, so a commented-out icon is not bundled. `//` counts only at a line start or after a space
