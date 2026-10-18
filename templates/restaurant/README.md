@@ -90,10 +90,14 @@ the order. After each change, run `npm run check`.
 
 Write dates as `2026-10-24`, times as `'09:30'`, prices as a plain number in euros (`95` or `12.50`).
 
-A translation lists the rows of a list (closures, lunch days, gallery photos) in the same order as the main file: when
-you add, remove or move a row in the main file, do the same at the same place in each translation (write `- {}` for a
-row with nothing to translate). When you change the lunch week, change the dishes in `lunch.de.md` and `lunch.it.md`
-too. `npm run check` reports a translation with a different number of rows.
+A translation lists the rows of a list (closures, gallery photos) in the same order as the main file: when you add,
+remove or move a row in the main file, do the same at the same place in each translation (write `- {}` for a row with
+nothing to translate). `npm run check` reports a translation with a different number of rows.
+
+The lunch dishes are not translated: every language shows them in the main language, next to their allergens. A
+translated dish name goes stale when the week changes, and nothing reports it, so `lunch.de.md` and `lunch.it.md`
+translate only the note. To translate the dishes anyway, add `days:` with one `- dish:` per day to these files and
+change them every week together with `lunch.md`.
 
 | On the site | File |
 |---|---|
