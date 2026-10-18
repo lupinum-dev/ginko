@@ -42,7 +42,7 @@ const enquiry = computed(() => email.value && `mailto:${email.value}?subject=${e
         <h1 class="text-h1">{{ service.data.title }}</h1>
         <p class="text-lead text-muted-foreground">{{ service.data.summary }}</p>
         <dl class="grid grid-cols-[auto_1fr] gap-x-8 gap-y-3">
-          <dt class="text-small text-muted-foreground">{{ priceLabel }}</dt>
+          <dt class="text-small text-muted-foreground">{{ priceLabel(service.data) }}</dt>
           <dd class="font-medium tabular-nums">{{ price(service.data) }}</dd>
           <template v-if="duration(service.data)">
             <dt class="text-small text-muted-foreground">{{ t('duration') }}</dt>
