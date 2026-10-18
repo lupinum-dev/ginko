@@ -38,23 +38,25 @@ export function studioSpecDirs(root: string, name: string, features: string[]): 
 }
 
 /**
- * The Files library takes JPEG, PNG, WebP and PDF only, and `local:files-export` stops at an SVG with "Convert them"
- * (the sample partner logos of nonprofit, events and company are SVG). In the work copy only, each SVG of `public/` (any letter case)
- * becomes a PNG at twice its size, and the content's references follow, as an owner would do before moving in.
+ * The Files library takes JPEG, PNG, WebP and PDF only, and `local:files-export` stops at an SVG the content names with
+ * "Convert them" (the sample partner logos of nonprofit, events and company are SVG). In the work copy only, each SVG of
+ * `public/` (any letter case) that the content names becomes a PNG at twice its size, and the content's references
+ * follow, as an owner would do before moving in. An SVG no content names (a logo or favicon of the layout) stays.
  * sharp comes from the template's own dependencies.
  */
 async function rasterizeSvgImages(site: string, templateDir: string) {
   const files = (dir: string): string[] => existsSync(dir) ? readdirSync(dir, { recursive: true, encoding: 'utf8' }).map((file) => join(dir, file)) : []
-  const svgs = files(join(site, 'public')).filter((file) => /\.svg$/i.test(file))
+  const content = files(join(site, 'content')).filter((file) => /\.(md|ya?ml|json|csv)$/i.test(file)).map((file) => ({ file, text: readFileSync(file, 'utf8') }))
+  const pathOf = (svg: string) => `/${relative(join(site, 'public'), svg)}`
+  const svgs = files(join(site, 'public')).filter((file) => /\.svg$/i.test(file) && content.some(({ text }) => text.includes(pathOf(file))))
   if (!svgs.length) return
   const sharp = createRequire(join(templateDir, 'package.json'))('sharp') as (input: string, options: { density: number }) => { png(): { toFile(path: string): Promise<unknown> } }
   for (const svg of svgs) {
     await sharp(svg, { density: 144 }).png().toFile(svg.replace(/\.svg$/i, '.png'))
     rmSync(svg)
   }
-  const paths = svgs.map((svg) => `/${relative(join(site, 'public'), svg)}`)
-  for (const file of files(join(site, 'content')).filter((file) => /\.(md|ya?ml|json|csv)$/i.test(file))) {
-    const text = readFileSync(file, 'utf8')
+  const paths = svgs.map(pathOf)
+  for (const { file, text } of content) {
     const next = paths.reduce((out, path) => out.replaceAll(path, path.replace(/\.svg$/i, '.png')), text)
     if (next !== text) writeFileSync(file, next)
   }

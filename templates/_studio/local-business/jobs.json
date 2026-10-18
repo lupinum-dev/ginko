@@ -1,0 +1,7 @@
+{
+  "notice": { "createTask": "Hinweis hinzufügen", "textField": "^Text" },
+  "page": { "brick": "pages", "title": "About us", "path": "/about", "bodyField": "Text" },
+  "closedToday": { "task": "Heute geschlossen", "reasonField": "Grund für Besucher", "todayLine": "Closed today", "path": "/" },
+  "servicePrice": { "task": "Preis ändern", "service": "Physiotherapy", "price": "68", "shown": "€68", "old": "€65", "path": "/treatments/physiotherapy" },
+  "closure": { "task": "Schließtage und Ausnahmen", "add": "Ausnahme hinzufügen", "path": "/contact" }
+}
