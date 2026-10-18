@@ -564,6 +564,8 @@ async function runGates(name: string, gates: number[], modes: Mode[], results: R
           continue
         }
         const shots = join(root, 'test-results/templates', name, mode)
+        // Gate 5 takes this run's screenshots; a page that is gone would otherwise leave an old one that reads as current.
+        if (browserGates.includes(5) && existsSync(shots)) for (const file of readdirSync(shots)) if (file.endsWith('.png')) rmSync(join(shots, file))
         for (const gate of browserGates) {
           const env = {
             TEMPLATE_URL: `http://localhost:${port}`, TEMPLATE_NAME: name, TEMPLATE_MODE: mode, TEMPLATE_LOCALES: (mode === 'single' ? [locales[0]!] : locales).join(','),
