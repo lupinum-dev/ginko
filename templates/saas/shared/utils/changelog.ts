@@ -1,4 +1,4 @@
-// Synced from templates/_features/changelog/app/utils/changelog.ts by `pnpm templates sync`. Edit the source, not this copy.
+// Synced from templates/_features/changelog/shared/utils/changelog.ts by `pnpm templates sync`. Edit the source, not this copy.
 import { plainText, type MarkdownTree } from '@lupinum/ginko'
 
 // Pure helpers of the changelog feature, shared by the pages and the feed (server/middleware/changelog-feed.ts). The

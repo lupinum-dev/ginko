@@ -2,9 +2,9 @@
   "app/components/changelog/Latest.vue",
   "app/composables/useChangelog.ts",
   "app/pages/changelog.vue",
-  "app/utils/changelog.ts",
   "i18n/changelog/de.json",
   "i18n/changelog/en.json",
   "i18n/changelog/fr.json",
-  "server/middleware/changelog-feed.ts"
+  "server/middleware/changelog-feed.ts",
+  "shared/utils/changelog.ts"
 ]

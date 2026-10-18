@@ -1,8 +1,8 @@
 import type { MarkdownTree, MarkdownValue } from '@lupinum/ginko'
 import { releaseAnchor, rssXml } from '@lupinum/ginko/basics'
-import { defineEventHandler, getRequestURL, useRuntimeConfig } from 'nuxt/server'
+import { defineEventHandler, getRequestURL, serverFetch, useRuntimeConfig } from 'nuxt/server'
 import site from '../../ginko.config'
-import { releaseSummary } from '~~/app/utils/changelog'
+import { releaseSummary } from '#shared/utils/changelog'
 
 // The changelog feed of each language (RSS 2.0) at <changelog page>/rss.xml, for example /changelog/rss.xml.
 // One item per release, newest first: the version as the title, the summary (the text before `<!-- more -->`) as the
@@ -20,10 +20,10 @@ export default defineEventHandler(async (event) => {
   const releases = await getGinkoItems(event, 'changelog', locale)
   const origin = ginko.url.replace(/\/$/, '')
   const { t, language } = getI18n({ context: { locale } }, 'changelog')
-  // A text is its tree on the server; a reference (a long text of the platform) is loaded from the site.
+  // A text is its tree on the server; a reference (a long text of the platform) is loaded from the site, in-process.
   const summaryOf = async (body: MarkdownValue | undefined) => {
     if (!body) return ''
-    const tree = 'nodes' in body ? body : await $fetch<MarkdownTree>(body.ref)
+    const tree = 'nodes' in body ? body : (await (await serverFetch(event, body.ref)).json()) as MarkdownTree
     return releaseSummary(tree)
   }
   const items = await Promise.all(releases.map(async (release) => {
