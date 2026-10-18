@@ -48,7 +48,7 @@
   },
   "ginko": {
     "sampleAnchor": "2026-10-16",
-    "scriptBudget": 160,
+    "scriptBudget": 170,
     "features": [
       "ui",
       "site",
