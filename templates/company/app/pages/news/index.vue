@@ -35,11 +35,7 @@ usePageSeo(() => ({
     <div class="mx-auto max-w-page px-gutter">
       <div class="max-w-4xl">
         <nav v-if="tags.length" :aria-label="t('tags')" class="pb-8">
-          <ul class="flex flex-wrap gap-2">
-            <li v-for="tag in tags" :key="tag.slug">
-              <NuxtLink :to="tag.to" rel="tag" class="inline-flex min-h-11 items-center rounded-md border px-4 text-small transition-[color,background-color,border-color] duration-150 hover:bg-accent">{{ tag.name }}</NuxtLink>
-            </li>
-          </ul>
+          <BlogTagList :tags="tags" />
         </nav>
         <template v-if="years.length > 1">
           <section v-for="group in years" :key="group.year" :aria-labelledby="`year-${group.year}`" class="pt-6 first:pt-0">

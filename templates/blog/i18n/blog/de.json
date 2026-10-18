@@ -10,6 +10,7 @@
   "latest": "Alle Neuigkeiten",
   "tagged": "Beiträge mit dem Schlagwort {tag}",
   "count": "{count, plural, one {# Beitrag} other {# Beiträge}}",
+  "topicCount": "{name}, {count, plural, one {# Beitrag} other {# Beiträge}}",
   "minutes": "{count} Min. Lesezeit",
   "older": "Älterer Beitrag",
   "newer": "Neuerer Beitrag",

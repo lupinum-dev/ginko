@@ -54,7 +54,7 @@ usePageSeo(() => ({
     </BlockSection>
 
     <BlockCta v-if="start" :title="t('home.cta.title')" :text="t('home.cta.text')" :action="{ label: t('start.action'), to: start }">
-      <SiteContact />
+      <SiteContact :address="false" />
     </BlockCta>
   </div>
 </template>

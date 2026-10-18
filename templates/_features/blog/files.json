@@ -1,6 +1,7 @@
 [
   "app/components/blog/Byline.vue",
   "app/components/blog/PostList.vue",
+  "app/components/blog/TagList.vue",
   "app/composables/useBlog.ts",
   "app/pages/news/[slug].vue",
   "app/pages/news/index.vue",
