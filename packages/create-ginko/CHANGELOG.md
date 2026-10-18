@@ -1,5 +1,33 @@
 # create-ginko
 
+## 0.5.0
+
+### Minor Changes
+
+- [#23](https://github.com/lupinum-dev/ginko/pull/23) [`7b165c2`](https://github.com/lupinum-dev/ginko/commit/7b165c25e17ed2f4fb50e8054febf618a6af10d7) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add the blog template (`--template blog`): posts with tags, authors, reading time, older and newer links, and an RSS feed per language. The company and nonprofit news pages gain the same tag pages, reading time and older/newer links.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `--template <name>` and `--locales <codes>`: a complete starter site from Ginko's templates, with the languages you pick (the first is the main one) and its sample dates moved to the current week; `--preset` and `--locale` still work and print that they are deprecated.
+
+### Patch Changes
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the example command after the list of templates: it names the starter, the template to begin with.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `--template`: a restaurant site now opens with the current lunch week, since the lunch `weekOf` date moves with the other sample dates.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `--template` sites on Nuxt 5: the font preload plugin and the news feed now type-check, because they use `useServerHooks()` and a relative import of `ginko.config.ts`.
+
+- [#23](https://github.com/lupinum-dev/ginko/pull/23) [`7b165c2`](https://github.com/lupinum-dev/ginko/commit/7b165c25e17ed2f4fb50e8054febf618a6af10d7) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `--locales` with a new main language for content whose translation has no frontmatter (only text): the main file's fields, such as a changelog's version and date, now move to the new main file instead of failing the build.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `--locales` with another main language: an image keeps its file when only its alt text is translated.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `--locales` with another main language: a nested content field it cannot read now stops the copy with the file and field named, instead of being swapped whole and failing the site's build later.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `--locales` with another main language: a translated photo text or list (gallery, lunch days, closures) now keeps its photo, prices and dates in the new main file instead of failing the build.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the gastro starter's menu page: it leaves out a dish turned off with "onMenu" and marks a dish sold out today, by the preset's `dishOn` rule.
+
+- [#21](https://github.com/lupinum-dev/ginko/pull/21) [`80f93a4`](https://github.com/lupinum-dev/ginko/commit/80f93a4f6bd171e1146b929913254039becdd991) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix --locales with a new main language: fields only the main file has move to the new main file, and the old main page keeps its address.
+
 ## 0.4.0
 
 ### Minor Changes
