@@ -65,7 +65,7 @@ export default defineSite({
     // Clean-ups, meetings and other dates (content/events/), each on its own page. An event leaves the site after its
     // last day; the home page and Get involved show the next one, and so does Today.
     events: { ...events({ source: 'files', route: localized('/events/[slug]') }), status: { next: 'when' } },
-    // Reports and other PDFs, newest first (content/downloads/, the files in public/reports/).
+    // Reports and other PDFs, newest first (content/downloads/, the files in public/files/).
     downloads: downloads({ source: 'files' }),
     // Partner logos on the home page (content/logos/, the files in public/logos/).
     logos: logos({ source: 'files' }),

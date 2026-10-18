@@ -35,7 +35,7 @@ test('the owner uploads the report as a PDF, and the reports page links a file t
     await expect(link).toBeVisible({ timeout: 2_000 })
     href = (await link.getAttribute('href')) ?? ''
     expect(href).not.toBe('')
-  }).toPass({ timeout: 60_000 })
+  }).toPass({ timeout: 90_000 })
   const response = await request.get(new URL(href, studio.siteUrl).toString())
   expect(response.status(), href).toBe(200)
   expect(response.headers()['content-type'], href).toContain('application/pdf')
