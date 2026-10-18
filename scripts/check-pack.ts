@@ -246,14 +246,29 @@ writeFileSync(join(docsSeo, 'package.json'), JSON.stringify(seoPkg, null, 2))
 const seoConfig = join(docsSeo, 'nuxt.config.ts')
 writeFileSync(seoConfig, readFileSync(seoConfig, 'utf8').replace(/modules: \[[^\]]*\]/, `modules: ['@nuxtjs/seo', '@lupinum/ginko/nuxt']`))
 
-const results = await Promise.all([
-  ...Object.entries(created).map(([name, checks]) => checkSite(join(work, name), checks)),
-  checkSite(docs, [
+/** Runs the tasks with at most `size` at a time, results in task order. */
+async function pool<T>(size: number, tasks: (() => Promise<T>)[]): Promise<T[]> {
+  const results: T[] = []
+  let next = 0
+  await Promise.all(Array.from({ length: size }, async () => {
+    while (next < tasks.length) {
+      const i = next++
+      results[i] = await tasks[i]!()
+    }
+  }))
+  return results
+}
+
+// At most 4 sites install, build and serve at once: all 17 together ran the 16 GB CI runner out of memory (the runner
+// shut down in the middle of check:pack).
+const results = await pool(4, [
+  ...Object.entries(created).map(([name, checks]) => () => checkSite(join(work, name), checks)),
+  () => checkSite(docs, [
     ['/docs/einstieg', /class="docs-sidebar/], ['/en/docs/getting-started', /lang="en"/], ['/__ginko/search/de.json', /"url":"\/docs\//],
     // The layer's two feed handlers: the main language and a prefixed one.
     ['/blog/rss.xml', /<rss[\s\S]*<item>/], ['/en/blog/rss.xml', /<rss[\s\S]*<item>/],
   ], { ginkoCheck: false }),
-  checkSite(docsSeo, [
+  () => checkSite(docsSeo, [
     ['/docs/einstieg', seoHead('de')], ['/en/docs/getting-started', seoHead('en')], ['/', seoHead('de')],
     // Ginko's entries with hreflang, on the site's address (not the request host).
     ['/sitemap.xml', /<loc>https:\/\/ginko-docs\.vercel\.app\/en\/docs\/getting-started<\/loc>[\s\S]*hreflang="de"/],
