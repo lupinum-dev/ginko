@@ -8,6 +8,7 @@ import de from '../i18n/de.json'
 import en from '../i18n/en.json'
 import { components } from '../src/registry.ts'
 import { componentMap } from '../src/runtime/components/index.ts'
+import { lazyComponentMap } from '../src/runtime/components/lazy.ts'
 
 /** Plain Markdown tags the map overrides (they have no registry entry). */
 const PLAIN_TAG_OVERRIDES = ['pre', 'img']
@@ -41,7 +42,7 @@ describe('registry and components', () => {
     const text = tag === 'inline-toc' ? `## Überblick\n\n${def.editor!.example!}` : def.editor!.example!
     const parsed = await parseMarkdown(text, { profile: 'page', components })
     expect(parsed.problems).toEqual([])
-    const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) })
+    const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: lazyComponentMap, registry: components }) })
     app.provide(GINKO_TOC_KEY, parsed.value.toc)
     const html = await renderToString(app)
     expect(html).toContain(ROOT[tag]!)
@@ -58,7 +59,7 @@ describe('registry and components', () => {
     const text = example.replace(new RegExp(`(:+${tag})(\\{[^}]*)?\\}?`), (_, open: string, attrs?: string) => `${open}${attrs ? `${attrs} ` : '{'}appearance="tint"}`)
     const parsed = await parseMarkdown(text, { profile: 'page', components })
     expect(parsed.problems).toEqual([])
-    const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) })
+    const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: lazyComponentMap, registry: components }) })
     app.provide(GINKO_TOC_KEY, parsed.value.toc)
     expect(await renderToString(app)).toMatch(new RegExp(`class="${ROOT[tag]}[^"]*"[^>]*data-appearance="tint"`))
   })
@@ -75,7 +76,7 @@ describe('registry and components', () => {
   ])('%j renders %j', async (text, attributes) => {
     const parsed = await parseMarkdown(text, { profile: 'page', components })
     expect(parsed.problems).toEqual([])
-    const html = await renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) }))
+    const html = await renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: lazyComponentMap, registry: components }) }))
     for (const attribute of attributes) expect(html).toContain(attribute)
   })
 
@@ -113,7 +114,7 @@ describe('registry and components', () => {
 
   test('a bare `active` marks the timeline item', async () => {
     const parsed = await parseMarkdown(components.timeline.editor.example, { profile: 'page', components })
-    const html = await renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) }))
+    const html = await renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: lazyComponentMap, registry: components }) }))
     expect(html.match(/data-active/g)).toHaveLength(1)
     expect(html).toContain('class="ginko-timeline" role="list"')
     expect(html.match(/role="listitem"/g)?.length).toBe(html.match(/class="ginko-timeline-item"/g)?.length)
@@ -122,7 +123,7 @@ describe('registry and components', () => {
   const render = async (markdown: string) => {
     const parsed = await parseMarkdown(markdown, { profile: 'page', components })
     expect(parsed.problems).toEqual([])
-    return renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) }))
+    return renderToString(createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: lazyComponentMap, registry: components }) }))
   }
 
   // Labels without their icons, for readable assertions.
@@ -183,7 +184,7 @@ describe('registry and components', () => {
 
   test('an image is lazy and keeps the size from the tree', async () => {
     expect(await render('![Küche](/kueche.jpg)')).toMatch(/<img class="ginko-img" src="\/kueche.jpg" alt="Küche" loading="lazy" decoding="async">/)
-    const sized = await renderToString(createSSRApp({ render: () => h(componentMap.img!, { src: '/a.jpg', alt: 'A', width: 800, height: 600 }) }))
+    const sized = await renderToString(createSSRApp({ render: () => h(lazyComponentMap.img!, { src: '/a.jpg', alt: 'A', width: 800, height: 600 }) }))
     expect(sized).toContain('width="800" height="600" loading="lazy"')
   })
 

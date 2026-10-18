@@ -21,7 +21,7 @@ export default defineSite({ /* … */ components })
 
 The module needs `@lupinum/ginko/nuxt` (it installs ginko-i18n, which provides the UI texts); without it the build
 stops with a message that says so. The module gives `<GinkoMarkdown>` the tag → component map (through an internal
-inject key); `<GinkoMarkdown>` merges it under its own `components` prop, so a site overrides one tag by passing it there.
+inject key); `<GinkoMarkdown>` merges it under its own `components` prop, so a site overrides one tag by passing it there. The plugin gives `<GinkoMarkdown>` a lazy map: a page loads only the components its Markdown uses. Import single components for an override; never spread `componentMap` into `components`, because that loads every component on every page.
 
 ## Exports
 

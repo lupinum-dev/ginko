@@ -1,5 +1,5 @@
 // Tag → component for <GinkoMarkdown>, each one loaded on first use. A page ships only the components its Markdown uses.
-// `index.ts` keeps the eager exports a site imports to wrap a component. Keep both lists in step (components.test.ts checks the keys).
+// `index.ts` keeps the eager exports a site imports to wrap a component. Keep both lists in step (lazy.test.ts checks that both have the same keys and that every entry is async).
 import { defineAsyncComponent, type Component } from 'vue'
 
 const load = (loader: () => Promise<Component>): Component => defineAsyncComponent(loader)
