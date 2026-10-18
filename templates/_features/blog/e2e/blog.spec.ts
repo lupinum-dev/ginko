@@ -18,15 +18,19 @@ const today = site.now.slice(0, 10)
 /** Drafts (`draft: true`) and scheduled posts (dated after the test day): neither may be online. */
 const hidden = files.filter(({ text }) => /^draft:\s*true\s*$/m.test(text) || (/^date:\s*(\S+)/m.exec(text)?.[1] ?? '') > today)
 
-/** The news page of the main language: the first link of the header that leads to a page with a feed. */
+/** The news page of the main language: the first link of the header or footer that leads to a page with a feed and
+ *  posts on their own pages. A changelog has a feed too, but its entries are anchors on its own page. */
 async function newsPage(page: import('@playwright/test').Page) {
   await page.setViewportSize({ width: 1440, height: 900 })
   await open(page, '/')
-  for (const href of await page.locator('header nav a').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))) {
+  const hrefs = await page.locator('header nav a, footer nav a').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))
+  for (const href of [...new Set(hrefs)]) {
     await open(page, href)
-    if (await page.locator('link[type="application/rss+xml"]').count()) return href
+    if (!(await page.locator('link[type="application/rss+xml"]').count())) continue
+    const posts = await page.locator('main li :is(h2, h3) a').evaluateAll((as) => as.map((a) => a.getAttribute('href') ?? ''))
+    if (posts.some((post) => post && !post.startsWith('#'))) return href
   }
-  throw new Error('no page in the header links a news feed')
+  throw new Error('no page in the header or footer has a news feed and posts')
 }
 
 test('a draft or scheduled post has no page and is in no list, feed, sitemap or llms.txt', async ({ page, request }) => {
