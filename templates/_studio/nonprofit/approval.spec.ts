@@ -61,8 +61,10 @@ test('a volunteer sends a news post for review, and it is online only after a ma
   } finally {
     // Leave the site as found: remove the post (it sits in the trash for 30 days).
     await admin.goto(`/s/${studio.site}/all/posts`, { waitUntil: 'networkidle' })
-    await admin.getByText(title, { exact: true }).first().click()
-    await admin.getByRole('button', { name: 'Entfernen', exact: true }).click()
+    await admin.getByRole('link', { name: title, exact: true }).first().click()
+    // The editor offers removal in "Mehr" › "Eintrag entfernen …"; "Entfernen" is the dialog's confirm button.
+    await admin.getByRole('main').getByRole('button', { name: 'Mehr', exact: true }).click()
+    await admin.getByRole('menuitem', { name: /^Eintrag entfernen/ }).click()
     await admin.getByRole('dialog').getByRole('button', { name: /^(Trotzdem )?[Ee]ntfernen$/ }).click()
     await expect(async () => {
       await expect(await onSite()).toHaveCount(0, { timeout: 2_000 })
