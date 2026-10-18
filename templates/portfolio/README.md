@@ -219,8 +219,8 @@ Links in the content name pages by their key (`[projects]($page.projects)`). Aft
 
 | Feature | Delete |
 |---|---|
-| Journal | `content/posts/`, the `posts` brick and `pages.news` in `ginko.config.ts`, its `nav` item, the "From the journal" section of `app/pages/index.vue`, `app/pages/news/`, `app/components/blog/`, `app/composables/useBlog.ts`, `server/middleware/news-feed.ts`, `i18n/blog/`, the `blog` keys in `i18n/<language>.json`, `"blog"` in `package.json` → `ginko.features` |
-| Studio page (people) | `content/people/`, `pages.team` and its `nav` item, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, the `people` keys in `i18n/<language>.json`, `"people"` in `ginko.features`; the `people` brick only after the journal, whose `authors` name people |
+| Journal | `content/posts/`, the `posts` brick, `pages.news` and `posts` in the import of `ginko.config.ts`, its `nav` item, the "From the journal" section of `app/pages/index.vue` (`useBlogPosts()`, `latest`, the section), the "Responsible for the journal" section of `content/legal/2.imprint*.md`, `app/pages/news/`, `app/components/blog/`, `app/composables/useBlog.ts`, `server/middleware/news-feed.ts`, `i18n/blog/`, the `blog` keys in `i18n/<language>.json`, `"blog"` in `package.json` → `ginko.features` |
+| Studio page (people) | `content/people/`, `pages.team` and its `nav` item, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, the `people` keys in `i18n/<language>.json`, `"people"` in `ginko.features`, `authors` in `content/posts/*.md` (they name the deleted people); the `people` brick and `people` in the import of `ginko.config.ts` only after the journal, whose `posts` brick uses it |
 | Free pages ("How we work") | `content/pages/`, the `pages` brick, its `nav` item, `app/pages/[...slug].vue`, `app/bricks/pages.ts`, `app/components/pages/Top.vue`, `"pages"` in `ginko.features`; the "Start a project" button stays on the home and project pages |
 | Notices | `content/notices/`, the `notices` brick, `<SiteNotice />` in `app/layouts/default.vue`, `app/components/site/Notice.vue` |
 | A language | see "Add or remove a language" |
