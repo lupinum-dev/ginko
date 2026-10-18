@@ -19,8 +19,8 @@ async function create(page: Page, brick: string, fill: () => Promise<void>) {
   await page.getByRole('link', { name: 'Neu', exact: true }).click()
   await fill()
   await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-  // Two texts start with "Gespeichert" (the status span and the toast); the span alone is the saved status.
-  await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
+  // The saved message (ops.saved + ops.liveHint); the short status word next to Speichern shows only for a moment.
+  await expect(page.getByText('Gespeichert. Auf der Website in etwa einer Minute.')).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`${area(brick)}/[^/]+$`))
   return new URL(page.url()).pathname
 }
