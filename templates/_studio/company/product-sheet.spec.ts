@@ -18,7 +18,7 @@ async function attachSheet(page: Page, fileTitle: string) {
   await page.getByRole('button', { name: PRODUCT.task, exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: new RegExp(`^${PRODUCT.name}`) }).click()
   const sheet = page.getByRole('dialog')
-  await sheet.getByRole('group', { name: PRODUCT.field, exact: true }).getByRole('combobox').click()
+  await sheet.getByRole('combobox', { name: new RegExp(`^${PRODUCT.field}`) }).click()
   await page.getByRole('option', { name: fileTitle, exact: true }).click()
   await sheet.getByRole('button', { name: 'Speichern' }).click()
   await expect(sheet).toHaveCount(0)

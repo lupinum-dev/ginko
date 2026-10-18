@@ -6,9 +6,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import { job, studio } from '../../../scripts/templates/e2e/studio.ts'
 
-// The template's names for this job come from "job": { task, path, remove } in templates/_studio/<template>/jobs.json:
-// the label of the jobs brick's create task, the jobs list's address and the label of its remove task.
-const JOB = job('job', ['task', 'path', 'remove'])
+// The template's names for this job come from "job": { task, path } in templates/_studio/<template>/jobs.json:
+// the label of the jobs brick's create task and the jobs list's address.
+const JOB = job('job', ['task', 'path'])
 const DAY = 86_400_000
 
 /** Posts a job in the Studio and returns the text of the confirmation the Studio shows after the save. */
@@ -30,11 +30,16 @@ async function postJob(page: Page, title: string, lastDay: string) {
   return (await toast.innerText()).replace(/\s+/g, ' ').trim()
 }
 
-/** Removes a job with the remove task (it goes to the trash for 30 days). */
+/**
+ * Removes a job with the "{title} entfernen" button on its row in the jobs area of "Heute" (it goes to the trash for
+ * 30 days). A job past its last day is not in the list until "Abgelaufene anzeigen" is pressed.
+ */
 async function removeJob(page: Page, title: string) {
   await page.goto(`/s/${studio.site}`, { waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: JOB.remove, exact: true }).click()
-  await page.getByRole('dialog').getByRole('button', { name: new RegExp(title) }).click()
+  const row = page.getByRole('button', { name: `${title} entfernen`, exact: true })
+  if (!(await row.isVisible())) await page.getByRole('button', { name: /^Abgelaufene anzeigen/ }).click()
+  await row.click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Entfernen', exact: true }).click()
   await expect(page.locator('[data-sonner-toast]').filter({ hasText: title })).toBeVisible()
 }
 
