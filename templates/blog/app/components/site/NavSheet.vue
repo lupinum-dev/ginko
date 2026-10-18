@@ -8,11 +8,12 @@ import { ArrowRight, Menu } from '@lucide/vue'
 // The language switch sits at the top, with full names, since the header has no room for it on phones; from `md` the
 // header has the language codes, so the sheet leaves them out. The footer links (`more`: team, reports) follow the
 // menu as a second, quieter list, so they are one tap away on a phone too. `until`: the header shows its own links
-// from this breakpoint up, so the menu button hides there.
+// from this breakpoint up, so the menu button hides there; `always`: the links never fit inline, so the button shows
+// at every width.
 type Link = { key: string, label: string, to: string }
-withDefaults(defineProps<{ links: Link[], more?: Link[], until?: 'md' | 'lg' | 'xl' }>(), { more: () => [], until: 'md' })
+withDefaults(defineProps<{ links: Link[], more?: Link[], until?: 'md' | 'lg' | 'xl' | 'always' }>(), { more: () => [], until: 'md' })
 // Whole class names, so Tailwind finds them in the source.
-const buttonHidden = { md: 'md:hidden', lg: 'lg:hidden', xl: 'xl:hidden' } as const
+const buttonHidden = { md: 'md:hidden', lg: 'lg:hidden', xl: 'xl:hidden', always: '' } as const
 const { t } = useI18n('site')
 const open = ref(false)
 const route = useRoute()

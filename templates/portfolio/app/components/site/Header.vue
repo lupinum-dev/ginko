@@ -6,19 +6,21 @@
 // header: more than 4 links until `xl` (five German labels and the name did not fit at 1024 px); until `lg` when more
 // than 6 links and codes come together (5 links and 4 codes do not fit at 768 px in German or French) or when the
 // name, the labels and the codes are longer than 768 px holds: 70 characters of the page's language (about 7 px each
-// at the size of the links; the German events header with 78 did not fit, the English one with 61 does).
+// at the size of the links; the German events header with 78 did not fit, the English one with 61 does). More than
+// 6 links, or 150 characters, never fit inline, not even at `xl` (the 1280 px header holds about 150 characters at
+// that size; kept from the 7 px estimate, not measured in a build), so the sheet stays the only menu.
 const config = useSiteAppConfig()
 const { name } = useGinkoSite()
-const links = useSiteLinks(() => config.nav)
+const links = useSiteLinks(() => config.nav, 6)
 const more = useSiteLinks(() => config.footer)
 const { t, alternates } = useI18n('site')
 const path = useGinkoPath()
 const codes = computed(() => (alternates.value.length > 1 ? alternates.value.length : 0))
 /** The header's length in characters: the name (or the logo's width), each label with its padding, each code. */
 const length = computed(() => links.value.reduce((sum, link) => sum + link.label.length + 3, config.logo ? config.logo.width / 7 : name.length) + codes.value * 5)
-const until = computed(() => (links.value.length > 4 ? 'xl' : links.value.length + codes.value > 6 || length.value > 70 ? 'lg' : 'md'))
+const until = computed(() => (links.value.length > 6 || length.value > 150 ? 'always' : links.value.length > 4 ? 'xl' : links.value.length + codes.value > 6 || length.value > 70 ? 'lg' : 'md'))
 // Whole class names, so Tailwind finds them in the source.
-const navHidden = { md: 'max-md:hidden', lg: 'max-lg:hidden', xl: 'max-xl:hidden' } as const
+const navHidden = { md: 'max-md:hidden', lg: 'max-lg:hidden', xl: 'max-xl:hidden', always: 'hidden' } as const
 </script>
 
 <template>
