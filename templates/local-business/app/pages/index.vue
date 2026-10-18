@@ -41,11 +41,12 @@ usePageSeo(() => ({
       </template>
       <div class="mt-2 flex flex-col gap-4">
         <VisitBook />
-        <p v-if="address.length" class="flex flex-wrap items-center gap-x-2 text-small text-muted-foreground">
-          <MapPin class="size-4 shrink-0" aria-hidden="true" />
+        <div v-if="address.length" class="flex flex-wrap items-center gap-x-4 text-small text-muted-foreground">
           <span><bdi>{{ address.join(', ') }}</bdi></span>
-          <a v-if="maps" :href="maps" rel="noopener" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ t('visit.maps') }}</a>
-        </p>
+          <a v-if="maps" :href="maps" rel="noopener" :class="link">
+            <MapPin class="size-4 shrink-0" aria-hidden="true" />{{ t('visit.maps') }}
+          </a>
+        </div>
       </div>
     </BlockHero>
 
