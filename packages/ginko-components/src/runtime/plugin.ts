@@ -1,6 +1,6 @@
 import { defineNuxtPlugin, useI18n, useRuntimeConfig } from '#imports'
 import { GINKO_COMPONENTS_KEY } from '@lupinum/ginko/internal'
-import { componentMap } from './components/index'
+import { lazyComponentMap } from './components/lazy'
 import { EMBED_PROVIDERS_KEY, type EmbedProviderEntry } from './components/embed-utils'
 import { TEXT_KEY, type Translate } from './components/text'
 
@@ -8,7 +8,7 @@ import { TEXT_KEY, type Translate } from './components/text'
 export default defineNuxtPlugin({
   name: 'ginko-components',
   setup(nuxtApp) {
-    nuxtApp.vueApp.provide(GINKO_COMPONENTS_KEY, componentMap)
+    nuxtApp.vueApp.provide(GINKO_COMPONENTS_KEY, lazyComponentMap)
     // The merged embed providers (built-ins plus the site's config) are plain data from the module.
     const providers = useRuntimeConfig().public.ginkoEmbeds as EmbedProviderEntry[] | undefined
     if (providers) nuxtApp.vueApp.provide(EMBED_PROVIDERS_KEY, providers)
