@@ -14,6 +14,8 @@ const security = useSiteLinks(() => [{ entry: 'pages/security' }])
 const path = useGinkoPath()
 const { t } = useI18n()
 const { name } = useGinkoSite()
+const from = useLowestPrice()
+const vat = usePricingVat()
 const trial = computed(() => ({ label: t('home.trial'), to: home.value.data.trialUrl }))
 const quote = computed(() => quotes.value.items[0])
 const features = computed(() => home.value.data.features.map((item) => ({ title: item.title, text: item.text })))
@@ -31,7 +33,9 @@ usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.
       :primary="trial"
       :secondary="{ label: t('home.pricing'), to: path('pricing') }"
     >
-      <p class="text-small text-muted-foreground">{{ t('home.trialNote') }}</p>
+      <p class="text-small text-muted-foreground">
+        <template v-if="from">{{ t('home.from', { price: from }) }} {{ vat }} </template>{{ t('home.trialNote') }}
+      </p>
     </BlockHero>
 
     <BlockSection v-if="features.length" :title="t('home.features', { name })" :lead="t('home.featuresLead')">

@@ -5,7 +5,7 @@ import type { Plan } from '~/composables/usePricing'
 /**
  * The plans side by side from `md` (two to three per row, four from `lg`), stacked on phones. Each plan: its name,
  * with the word "Recommended" next to it on the recommended one (its border takes the accent too, never the colour
- * alone), for whom, the price per month and, below it, the price per year (or "On request"), the action, and what is
+ * alone), for whom, the price per month and, below it, the price per year (or "Free" for a plan at 0, or "On request"), the action, and what is
  * included. Side by side, these four parts share rows (CSS subgrid), so prices and buttons line up across the plans.
  * The recommended plan's button is the page's main action; the others are outlined. A plan without an action keeps
  * its empty row, so the rows still line up. Prices in tabular numbers; both intervals are written out, so the table
@@ -32,7 +32,8 @@ const columns = computed(() => (props.plans.length >= 4 ? 'md:grid-cols-2 lg:gri
         </div>
         <p class="text-muted-foreground">{{ plan.summary }}</p>
       </div>
-      <div v-if="plan.prices" class="flex flex-col gap-1" data-prices>
+      <p v-if="plan.free" class="text-h2 font-semibold" data-free>{{ t('free') }}</p>
+      <div v-else-if="plan.prices" class="flex flex-col gap-1" data-prices>
         <p class="flex flex-wrap items-baseline gap-x-2">
           <span class="text-h2 font-semibold tabular-nums" data-monthly>{{ plan.prices.monthly }}</span>
           <span class="text-muted-foreground">{{ t('perMonth') }}</span>
