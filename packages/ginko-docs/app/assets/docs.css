@@ -282,7 +282,7 @@
 .docs-pager .is-next { grid-column: 2; align-items: flex-end; text-align: right; }
 
 /* Headings outside .docs-prose have no wrap rule of their own. `anywhere` (not break-word) because the blog head is a flex container and needs the smaller min-content. */
-:where(.docs-page-head, .docs-hero, .docs-blog, .docs-error) h1, .docs-prose :is(h1, h2, h3, h4) { hyphens: auto; overflow-wrap: anywhere; }
+:where(.docs-page-head, .docs-hero, .docs-blog, .docs-error) h1, .docs-posts h2, .docs-prose :is(h1, h2, h3, h4) { hyphens: auto; overflow-wrap: anywhere; }
 
 /* Table of contents: a rail on wide screens, a menu in the phone bar */
 .docs-toc { position: sticky; top: calc(var(--docs-top) + 2rem); align-self: start; max-height: calc(100dvh - var(--docs-top) - 4rem); overflow-y: auto; scrollbar-width: none; font-size: 0.8125rem; }
@@ -338,8 +338,8 @@
 .docs-prose .docs-table {
   width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--docs-r-box);
   background:
-    linear-gradient(to right, var(--background), var(--background)) left center / 1.5rem 100% no-repeat local,
-    linear-gradient(to left, var(--background), var(--background)) right center / 1.5rem 100% no-repeat local,
+    linear-gradient(to right, var(--card), var(--card)) left center / 1.5rem 100% no-repeat local,
+    linear-gradient(to left, var(--card), var(--card)) right center / 1.5rem 100% no-repeat local,
     linear-gradient(to right, color-mix(in oklab, var(--foreground) 14%, transparent), transparent) left center / 0.75rem 100% no-repeat scroll,
     linear-gradient(to left, color-mix(in oklab, var(--foreground) 14%, transparent), transparent) right center / 0.75rem 100% no-repeat scroll;
 }
@@ -349,7 +349,8 @@
 .docs-prose th { background: var(--sidebar); color: var(--muted-foreground); font-size: 0.78125rem; font-weight: 600; white-space: nowrap; }
 .docs-prose td code { white-space: normal; overflow-wrap: normal; }
 .docs-prose td:first-child code { white-space: nowrap; }
-.docs-prose td:last-child { min-width: 12rem; }
+/* Only the last column of a table with 4+ columns needs room; in narrower tables it would force a scroll on phones. */
+.docs-prose td:last-child:nth-child(n+4) { min-width: 12rem; }
 
 /* Code blocks: one bordered panel with the file name or tabs on a lighter head (ginko-components draws an inset). */
 :where(.docs-prose, .docs-landing) :is(.ginko-code, .ginko-code-group, .ginko-code-tree):not([data-bare]) { padding: 0; overflow: hidden; border: 1px solid var(--docs-code-line); border-radius: var(--docs-r-box); }

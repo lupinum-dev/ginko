@@ -22,6 +22,13 @@ describe('page helpers', () => {
     ['/en/docs/x', undefined],
   ])('main-language guess for a 404 at %s', (path, expected) => expect(docsMainLanguagePath(path, ['en', 'de'], 'en', '/docs')).toBe(expected))
 
+  // Wrong behaviour caught: with `strategy: 'prefix'` the main language lives at /en/docs/x, so the stripped path 404s again.
+  it('the main-language guess follows the i18n strategy', () => {
+    const prefixed = (p: string) => `/en${p}`
+    expect(docsMainLanguagePath('/de/docs/x', ['en', 'de'], 'en', '/docs', prefixed)).toBe('/en/docs/x')
+    expect(docsMainLanguagePath('/docs/x', ['en', 'de'], 'en', '/docs', prefixed)).toBeUndefined()
+  })
+
   it('a platform page links to its Studio form; without a platform address there is no link', () => {
     expect(docsStudioUrl('https://studio.example/', 'lupinum', 'docs', 'k17 x')).toBe('https://studio.example/s/lupinum/all/docs/k17%20x')
     expect(docsStudioUrl('', 'lupinum', 'docs', 'k17')).toBeUndefined()
