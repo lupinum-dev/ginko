@@ -355,6 +355,8 @@
 .docs-prose td:first-child code { white-space: nowrap; }
 /* Only the last column of a table with 4+ columns needs room; in narrower tables it would force a scroll on phones. */
 .docs-prose table:has(th:nth-child(4)) td:last-child { min-width: 14rem; }
+/* Below 360 px a 3-column table squeezes its last column to a few letters; there it scrolls too. */
+@media (max-width: 22.5rem) { .docs-prose table:has(th:nth-child(3)) td:last-child { min-width: 10rem; } }
 
 /* Code blocks: one bordered panel with the file name or tabs on a lighter head (ginko-components draws an inset). */
 :where(.docs-prose, .docs-landing) :is(.ginko-code, .ginko-code-group, .ginko-code-tree):not([data-bare]) { padding: 0; overflow: hidden; border: 1px solid var(--docs-code-line); border-radius: var(--docs-r-box); }

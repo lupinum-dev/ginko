@@ -23,8 +23,8 @@ const first = computed(() => Math.max(0, days.value.findIndex((day) => day.today
       class="grid gap-x-6 gap-y-1 border-b px-3 py-4 break-inside-avoid aria-[current=date]:bg-muted sm:grid-cols-[11rem_1fr_auto] sm:items-baseline print:aria-[current=date]:bg-transparent"
     >
       <p class="text-small text-muted-foreground tabular-nums">
-        <span :class="day.today && 'font-semibold text-foreground'">{{ format.date(day.date, { weekday: 'long', day: 'numeric', month: 'long' }) }}</span>
-        <span v-if="day.today" class="ms-2 print:hidden">{{ t('lunch.today') }}</span>
+        <span class="whitespace-nowrap" :class="day.today && 'font-semibold text-foreground'">{{ format.date(day.date, { weekday: 'long', day: 'numeric', month: 'long' }) }}</span>
+        <span v-if="day.today" class="ms-2 whitespace-nowrap print:hidden">{{ t('lunch.today') }}</span>
       </p>
       <template v-if="day.closed">
         <p class="text-muted-foreground">{{ t('lunch.closed') }}<template v-if="day.reason"> · {{ day.reason }}</template></p>

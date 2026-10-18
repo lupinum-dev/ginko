@@ -30,12 +30,13 @@ usePageSeo(() => ({ title: entry.value.data.title, description: entry.value.data
       :lead="entry.data.description"
       :meta="t('updated', { date: format.date(entry.data.updatedAt) })"
     />
-    <!-- Each value keeps the direction of its own text (bdi), as in the footer. -->
+    <!-- Each value keeps the direction of its own text (bdi), as in the footer. A link gets its 44 px tap height from
+         padding with a negative margin, so it stays on its label's line. -->
     <dl v-if="details.length" class="mx-auto grid max-w-page gap-x-8 gap-y-1 px-gutter pb-10 sm:grid-cols-[auto_1fr] sm:gap-y-3">
       <template v-for="row in details" :key="row.label">
         <dt class="text-small text-muted-foreground max-sm:not-first:mt-3">{{ row.label }}</dt>
         <dd class="whitespace-pre-line">
-          <a v-if="row.href" :href="row.href" dir="ltr" class="inline-flex min-h-11 items-center underline underline-offset-4">{{ row.value }}</a>
+          <a v-if="row.href" :href="row.href" dir="ltr" class="-my-2.5 inline-block py-2.5 underline underline-offset-4">{{ row.value }}</a>
           <bdi v-else>{{ row.value }}</bdi>
         </dd>
       </template>
