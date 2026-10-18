@@ -19,7 +19,7 @@ async function create(page: Page, brick: string, fill: () => Promise<void>) {
   await page.getByRole('link', { name: 'Neu', exact: true }).click()
   await fill()
   await page.getByRole('button', { name: 'Speichern', exact: true }).click()
-  await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
+  await expect(page.getByText(/^Gespeichert/)).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`${area(brick)}/[^/]+$`))
   return new URL(page.url()).pathname
 }
@@ -42,17 +42,17 @@ test('the organiser adds a speaker and a session with that speaker, and the site
   try {
     added.push(await create(page, SPEAKER.brick, async () => {
       await page.getByLabel('Name', { exact: true }).fill(name)
-      await page.getByLabel('Rolle', { exact: true }).fill('Data editor')
-      await page.getByLabel('Kurzbiografie', { exact: true }).fill(bio)
+      await page.getByLabel(/^Rolle/).fill('Data editor')
+      await page.getByLabel(/^Kurzbiografie/).fill(bio)
     }))
     added.push(await create(page, PROGRAMME.brick, async () => {
-      await page.getByRole('group', { name: 'Veranstaltung', exact: true }).getByRole('combobox').click()
+      await page.getByRole('group', { name: /^Veranstaltung/ }).getByRole('combobox').click()
       await page.getByRole('option', { name: PROGRAMME.event, exact: true }).click()
       await page.getByLabel('Datum', { exact: true }).fill(day)
       await page.getByLabel(/^Beginn/).fill('10:15')
       await page.getByLabel(/^Ende/).fill('11:00')
       await page.getByLabel('Titel', { exact: true }).fill(title)
-      await page.getByRole('group', { name: 'Vortragende', exact: true }).getByRole('combobox').click()
+      await page.getByRole('group', { name: /^Vortragende/ }).getByRole('combobox').click()
       await page.getByRole('option', { name, exact: true }).click()
     }))
 
