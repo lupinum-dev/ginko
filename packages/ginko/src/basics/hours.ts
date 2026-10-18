@@ -243,7 +243,18 @@ export function upcomingPlans(plans: HourPlan[], today: string, days: number): A
       starts = `${year}-${md}` > today ? `${year}-${md}` : `${year + 1}-${md}`
       if (plan.from > starts) starts = plan.from
     }
-    const ends = endOf(plan, starts)
+    let ends = endOf(plan, starts)
+    // The range shown ends on the last day `planOn` still gives to this plan, so the table cannot disagree with the
+    // hours: a later plan that takes over the tail cuts it, a nested plan does not, an older yearly plan recurring
+    // inside a newer one does not cut the newer one. A plan without an end is left as it is.
+    if (ends) {
+      for (let day = ends, i = 0; day >= starts && i < 366; day = addDays(day, -1), i++) {
+        if (planOn(plans, day) === plan) {
+          ends = day
+          break
+        }
+      }
+    }
     if (starts > today && starts <= until) out.push({ plan, starts, ...(ends ? { ends } : {}) })
   }
   return out.sort((a, b) => a.starts.localeCompare(b.starts))
