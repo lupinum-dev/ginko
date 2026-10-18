@@ -6,7 +6,7 @@ import docsSite from '../../../sites/docs/ginko.config.ts'
 // addresses), next to its own pages or posts elsewhere.
 describe('layerRoutes', () => {
   it('standalone docs site: blog and changelog at the addresses its bricks and pages name', () => {
-    expect(layerRoutes(docsSite as never, [])).toEqual({ docs: { base: '/docs' }, blog: '/blog', changelog: '/changelog', skipped: [] })
+    expect(layerRoutes(docsSite as never, [])).toEqual({ docs: { base: '/docs' }, addresses: { blog: '/blog', changelog: '/changelog' }, blog: '/blog', changelog: '/changelog', noAddress: [] })
   })
 
   it('saas-like site: its own pages at the brick routes get no layer page and no feed', () => {
@@ -15,14 +15,22 @@ describe('layerRoutes', () => {
       pages: { news: { en: '/blog', de: '/de/blog' }, changelog: { en: '/changelog', de: '/de/neuerungen' } },
       bricks: { docs: { route: { en: '/help/[slug]' } }, posts: { route: { en: '/blog/[slug]' } }, changelog: {} },
     }
-    expect(layerRoutes(site, ['/news', '/news/:slug()', '/changelog'])).toEqual({
+    // `/news` is `/blog` through the page-paths module's meta, as it is on the final page list.
+    const pages = [{ path: '/news', meta: { i18n: { paths: { en: '/blog', de: '/de/blog' } } } }, { path: '/news/:slug()' }, { path: '/changelog' }]
+    expect(layerRoutes(site, pages)).toEqual({
       docs: { base: '/help' },
-      skipped: ['posts: the site has a page at /blog', 'changelog: the site has a page at /changelog'],
+      addresses: { blog: '/blog', changelog: '/changelog' },
+      noAddress: [],
     })
   })
 
   it('posts at another route get the layer blog there, not at /blog', () => {
     const site = { locales: ['en'], bricks: { posts: { route: { en: '/news/[slug]' } } } }
     expect(layerRoutes(site, []).blog).toBe('/news')
+  })
+
+  it('a changelog brick without a route or pages.changelog gets no page and is reported', () => {
+    const site = { locales: ['en'], bricks: { changelog: {} } }
+    expect(layerRoutes(site, [])).toMatchObject({ addresses: {}, noAddress: ['changelog'] })
   })
 })

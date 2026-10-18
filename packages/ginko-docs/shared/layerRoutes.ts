@@ -4,11 +4,13 @@ export interface SiteOptions { locales?: readonly string[], pages?: Record<strin
 
 export interface LayerRoutes {
   docs: { base: string }
-  /** The blog list path (its feeds are `<list>/rss.xml` and `/:locale<list>/rss.xml`), when the layer adds the blog. */
+  /** Where the bricks put the blog list and the changelog (main language), whoever serves them. The app links here. */
+  addresses: { blog?: string, changelog?: string }
+  /** What the layer adds itself: the address, only when the site has no page there. Feeds are `<blog>/rss.xml` and `/:locale<blog>/rss.xml`. */
   blog?: string
   changelog?: string
-  /** A brick's list is the site's own page, or the brick has no address to put one at. */
-  skipped: string[]
+  /** A brick is configured but has no address to put a page at (the changelog brick without a route or `pages.changelog`). */
+  noAddress: string[]
 }
 
 /** The brick's address in the main language, with `[slug]` as `:slug()`; the list page is the parent path. */
@@ -18,35 +20,35 @@ function listPath(route: string | undefined): string | undefined {
   return list.includes('[') ? undefined : list || '/'
 }
 
-/**
- * `pagePaths`: the paths of the site's own pages as Nuxt scans them (`/news`). The address a page answers at can differ
- * (`pages.news` is `/blog` in English: the page-paths module of the templates, which runs after this layer), so a page
- * also counts at the main-language path that `pages.<first folder>` gives it.
- */
-export function layerRoutes(site: SiteOptions | undefined, pagePaths: Iterable<string>): LayerRoutes {
-  const main = site?.locales?.[0] ?? ''
-  const taken = new Set<string>()
-  for (const path of pagePaths) {
-    taken.add(path)
-    const mapped = site?.pages?.[path.split('/')[1] ?? '']?.[main]
-    if (mapped && !path.includes(':')) taken.add(mapped)
-  }
-  return decide(site, taken)
+/** A page as Nuxt has it once every `pages:extend` ran: its scanned path and, from the templates' page-paths module, its addresses per language. */
+export interface PageLike { path: string, meta?: { i18n?: unknown } | undefined }
+
+/** The main-language address of a page: `meta.i18n.paths[main]` when set (`/news` answers at `/blog`), else its path. */
+function addressOf(page: PageLike, main: string): string[] {
+  const paths = (page.meta?.i18n as { paths?: Record<string, string> } | false | undefined)
+  const mapped = paths && paths.paths?.[main]
+  return mapped && !page.path.includes(':') ? [page.path, mapped] : [page.path]
 }
 
-function decide(site: SiteOptions | undefined, taken: ReadonlySet<string>): LayerRoutes {
+export function layerRoutes(site: SiteOptions | undefined, pages: Iterable<PageLike>): LayerRoutes {
   const bricks = site?.bricks ?? {}
   const main = site?.locales?.[0] ?? ''
-  const skipped: string[] = []
+  const taken = new Set<string>()
+  for (const page of pages) for (const path of addressOf(page, main)) taken.add(path)
   // docsCollection writes `<base>/[slug]` for the main language; other languages get a prefix from ginko-i18n.
   const docsBase = bricks.docs?.route?.[main]?.replace(/\/\[slug\]$/, '') ?? '/docs'
-  const own = (brick: string, path: string | undefined) => {
-    if (!path) return skipped.push(`${brick}: no address`), undefined
-    if (taken.has(path)) return skipped.push(`${brick}: the site has a page at ${path}`), undefined
-    return path
-  }
-  const blog = bricks.posts ? own('posts', listPath(bricks.posts.route?.[main])) : undefined
+  const blog = bricks.posts ? listPath(bricks.posts.route?.[main]) : undefined
   // The changelog has no page of its own per entry: its list lives at the route the brick has, else at `pages.changelog`.
-  const changelog = bricks.changelog ? own('changelog', listPath(bricks.changelog.route?.[main]) ?? site?.pages?.changelog?.[main]) : undefined
-  return { docs: { base: docsBase }, ...(blog && { blog }), ...(changelog && { changelog }), skipped }
+  const changelog = bricks.changelog ? listPath(bricks.changelog.route?.[main]) ?? site?.pages?.changelog?.[main] : undefined
+  const free = (path: string | undefined) => (path && !taken.has(path) ? path : undefined)
+  const noAddress = [...(bricks.posts && !blog ? ['posts'] : []), ...(bricks.changelog && !changelog ? ['changelog'] : [])]
+  const addedBlog = free(blog)
+  const addedChangelog = free(changelog)
+  return {
+    docs: { base: docsBase },
+    addresses: { ...(blog && { blog }), ...(changelog && { changelog }) },
+    ...(addedBlog && { blog: addedBlog }),
+    ...(addedChangelog && { changelog: addedChangelog }),
+    noAddress,
+  }
 }

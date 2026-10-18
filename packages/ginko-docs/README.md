@@ -194,9 +194,12 @@ bricks: { docs: docsCollection({ locales, base: '/handbook' }), /* … */ },
 components: { ...components, /* the site's own components; same name wins */ },
 ```
 
-- **Only the docs pages are added.** The layer registers its pages from the bricks: the docs at the `base` of
-  `docsCollection` (default `/docs`), `/blog` (with its RSS feed) and `/changelog` only when those bricks exist, `/` only when the site
-  has no start page of its own. A page the site defines itself always wins.
+- **Only the docs pages are added.** The layer registers its pages from the bricks, after all pages of the site are
+  known: the docs at the `base` of `docsCollection` (default `/docs`), the blog (with its RSS feed) at the route of
+  the `posts` brick and the changelog at the route of the `changelog` brick (or `pages.changelog`), and `/` only when
+  the site has no start page of its own. A page the site defines itself at one of these addresses always wins, also
+  when the page-paths module gives it that address (a page file `news.vue` that answers at `/blog`). Then the layer
+  adds no page and no feed there, and its header and post links point to the site's page.
 - **The site's frame stays.** The header, footer and page background are the layer's `layouts/default.vue`. When
   the site has its own `layouts/default.vue`, that one is used and the docs (navigation, page, table of contents)
   sit inside it. On phones the navigation opens from a bar above the page, so the docs need no header of their own.
@@ -255,6 +258,7 @@ export default defineSite({
 - **Authors** (`content/authors/<name>[.<locale>].yml`) have `name`, `role`, `avatar` and `url`. A post names them by id: `authors: [authors/jane]`. Authors have no page.
 - A post page writes Article JSON-LD with the author names, `datePublished` from `date` and `dateModified` from the entry's `updatedAt`.
 - **RSS:** `/blog/rss.xml` and `/<l>/blog/rss.xml`, RSS 2.0 with title and description (not the full text) and absolute links. It reads the build-time file bundle, so it works for file blogs only. `nuxt generate` writes it: the blog page sends the feed path in the `x-nitro-prerender` header, because Nitro's crawler does not follow `.xml` links.
+- **Addresses:** the blog list is the parent of the `posts` route (`/blog/[slug]` gives `/blog`; `blogCollections` uses `/blog`). The changelog page is at the route of the `changelog` brick, else at `pages.changelog` (`changelogPages({ locales })`, `/changelog`). A changelog brick with neither gets no page, and the build warns once. A site that has its own page at an address keeps it; the layer then adds nothing there.
 - **Changelog:** `changelogCollection()` (options: `max`) is one collection with `version`, `date` and Markdown text per release (`content/changelog/v1-2-0.md`; no dots in the file name, a dot reads as a language). The page `/changelog` shows all releases newest first, each with an anchor (`#v1-2-0`). It is a collection, not a docs page, so the date orders it and it has its own link in the header.
 
 The Ginko docs themselves are built this way: [sites/docs](https://github.com/lupinum-dev/ginko/tree/main/sites/docs).
