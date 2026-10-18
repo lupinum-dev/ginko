@@ -1,0 +1,8 @@
+{
+  "notice": { "createTask": "Hinweis hinzufügen", "textField": "^Text" },
+  "page": { "brick": "pages", "title": "About us", "path": "/about", "bodyField": "Text" },
+  "news": { "task": "Beitrag schreiben", "path": "/blog" },
+  "release": { "task": "Änderung eintragen", "path": "/changelog", "home": "/" },
+  "planPrice": { "task": "Preis ändern", "plan": "Small", "monthly": "94", "yearly": "940", "shownMonthly": "€94", "shownYearly": "€940", "path": "/pricing" },
+  "help": { "brick": "docs", "title": "Getting started", "path": "/help/getting-started", "bodyField": "Text" }
+}

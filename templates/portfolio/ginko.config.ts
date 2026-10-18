@@ -54,11 +54,13 @@ export default defineSite({
     // one can wait as a draft (`draft: true` in its file), and Today lists the drafts.
     projects: projects({ source: 'files', route: localized('/projects/[slug]'), details: true }),
     // The journal, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never
-    // goes online; in the Studio, Today shows how old the newest entry is.
+    // goes online; in the Studio, Today shows how old the newest entry is, next to its write task (Today shows only
+    // bricks with a task).
     posts: {
       ...posts({ source: 'files', authors: 'people', route: localized('/news/[slug]'), label: { de: 'Journal', en: 'Journal' } }),
       drafts: true,
       status: { age: 'date' },
+      tasks: [{ id: 'write', kind: 'create', label: { de: 'Journalbeitrag schreiben', en: 'Write a journal entry' } }],
     },
     // The people of the studio (content/people/). No photos: the site shows initials.
     people: people({ source: 'files' }),

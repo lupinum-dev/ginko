@@ -1,0 +1,4 @@
+{
+  "notice": { "createTask": "Hinweis hinzufügen", "textField": "^Text" },
+  "news": { "task": "Beitrag schreiben", "path": "/posts" }
+}

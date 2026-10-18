@@ -174,10 +174,12 @@ export default defineNuxtModule<SiteInput>({
       addServerHandler({ middleware: true, handler: resolve(`./runtime/server/markdown.${runtimeExt}`) })
     }
     if (sources.files) await useFiles(schema, site, nuxt)
-    // The sitemap route imports the file bundles; a site without file bricks has none.
+    // The sitemap route imports the file bundles and the docs layer's MCP route the search index; a site without file
+    // bricks has neither.
     else {
       addServerTemplate({ filename: '#ginko/files', getContents: () => 'export default {}' })
       addServerTemplate({ filename: '#ginko/files-md', getContents: () => 'export default {}' })
+      addServerTemplate({ filename: '#ginko/search', getContents: () => 'export default {}' })
     }
     // ginko-i18n (installed above) localizes the pages first, so every locale's path is in the list here.
     nuxt.hook('pages:resolved', (pages) => { for (const warning of unservedPaths(schema, pages)) console.warn(`[ginko] ${warning}`) })

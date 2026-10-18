@@ -1,0 +1,4 @@
+{
+  "docPage": { "brick": "docs", "title": "Webhooks", "path": "/docs/webhooks", "translatedPath": "/de/docs/webhooks", "language": "Deutsch", "bodyField": "Text" },
+  "release": { "brick": "changelog", "path": "/changelog" }
+}

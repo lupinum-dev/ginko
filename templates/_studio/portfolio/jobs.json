@@ -1,0 +1,6 @@
+{
+  "notice": { "createTask": "Hinweis hinzufügen", "textField": "^Text" },
+  "page": { "brick": "pages", "title": "How we work", "path": "/how-we-work", "bodyField": "Text" },
+  "news": { "task": "Journalbeitrag schreiben", "path": "/journal" },
+  "project": { "task": "Projekt hinzufügen", "path": "/work" }
+}

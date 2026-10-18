@@ -90,8 +90,12 @@ export default defineSite({
     // Privacy policy, terms of service and imprint: one file per text in content/legal/.
     legal: legal({ source: 'files', route: localized('/legal/[slug]') }),
     // Product news, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never
-    // goes online.
-    posts: { ...posts({ source: 'files', authors: 'people', route: localized('/news/[slug]') }), drafts: true },
+    // goes online. In the Studio, "Write a post" on Today.
+    posts: {
+      ...posts({ source: 'files', authors: 'people', route: localized('/news/[slug]') }),
+      drafts: true,
+      tasks: [{ id: 'write', kind: 'create', label: { de: 'Beitrag schreiben', en: 'Write a post', fr: 'Écrire un article' } }],
+    },
     // The people who write the posts (content/people/). No photos: the site shows initials.
     people: people({ source: 'files' }),
     // Customer logos on the home page (content/logos/, the files in public/logos/).
