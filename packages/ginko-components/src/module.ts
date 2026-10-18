@@ -5,6 +5,9 @@ import { addPlugin, createResolver, defineNuxtModule, hasNuxtModule } from '@nux
 import { STYLES } from './styles'
 import { mergeProviders, type EmbedProviderConfig } from './runtime/components/embed-utils'
 
+// This package's components, in the workspace (src/) and when installed (dist/); other modules' runtime/components stay as Nuxt decided.
+const OWN_CHUNK = /ginko-components\/(src|dist)\/runtime\/components\//
+
 export type { EmbedProvider, EmbedProviderConfig } from './runtime/components/embed-utils'
 
 export interface ModuleOptions {
@@ -29,20 +32,16 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.hook('ginko-i18n:sources', (sources) => { sources.push({ namespace: 'components', dir: resolve('../i18n') }) })
     // Nuxt prefetches every dynamic chunk, which would make each page download all Markdown components while idle.
     // The chunks a page renders on the server stay modulepreloaded; the rest load when a page uses them.
-    // Chunks that only the components share (helpers, icon sets) get the same treatment.
+    // Chunks the components import (helpers, icon sets) get the same treatment; a chunk that the entry or a page also
+    // loads is preloaded there, so the flag does not change it.
     nuxt.hook('build:manifest', (manifest) => {
-      const own = new Set(Object.keys(manifest).filter((key) => decodeURIComponent(key).includes('/runtime/components/')))
-      const shared = new Set<string>()
+      const own = new Set(Object.keys(manifest).filter((key) => OWN_CHUNK.test(decodeURIComponent(key))))
+      const below = new Set<string>()
       const collect = (key: string) => {
-        for (const dep of [...manifest[key]?.imports ?? [], ...manifest[key]?.dynamicImports ?? []]) if (!own.has(dep) && !shared.has(dep)) { shared.add(dep); collect(dep) }
+        for (const dep of [...manifest[key]?.imports ?? [], ...manifest[key]?.dynamicImports ?? []]) if (!own.has(dep) && !below.has(dep)) { below.add(dep); collect(dep) }
       }
       for (const key of own) collect(key)
-      // Shared chunks that hold a component (a component two components load) are only named by the lazy map's imports.
-      // A shared chunk that something else (a page, the entry) imports stays as Nuxt decided.
-      for (const [key, chunk] of Object.entries(manifest))
-        if (!own.has(key) && !shared.has(key) && !chunk.isEntry)
-          for (const dep of chunk.imports ?? []) shared.delete(dep)
-      for (const key of [...own, ...shared]) if (manifest[key] && !manifest[key].isEntry) manifest[key].prefetch = false
+      for (const key of [...own, ...below]) if (manifest[key] && !manifest[key].isEntry) manifest[key].prefetch = false
     })
     // The UI texts come from ginko-i18n's `useI18n`; without the module the build fails on an unclear import error.
     nuxt.hook('modules:done', async () => {
