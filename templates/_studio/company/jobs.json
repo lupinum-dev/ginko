@@ -1,7 +1,7 @@
 {
   "notice": { "createTask": "Hinweis hinzufügen", "textField": "^Text" },
   "page": { "brick": "pages", "title": "About us", "path": "/about", "bodyField": "Text" },
-  "event": { "task": "Veranstaltung hinzufügen", "path": "/events" },
+  "event": { "task": "Veranstaltung hinzufügen", "path": "/trade-fairs" },
   "news": { "task": "Neuigkeit schreiben", "path": "/news" },
   "job": { "task": "Stelle ausschreiben", "path": "/jobs", "language": "en-GB" }
 }
