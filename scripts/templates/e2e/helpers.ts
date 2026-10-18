@@ -69,9 +69,18 @@ export async function allPages(): Promise<string[]> {
 /** A path as a file name: `/` → `home`, `/posts/a` → `posts-a`. */
 export const slugOf = (path: string) => path.replace(/^\/|\/$/g, '').replaceAll('/', '-') || 'home'
 
-/** Loads a page and waits for fonts, so measurements and screenshots see the final text. */
+type Root = { __vue_app__?: { config: { globalProperties: { $nuxt?: { isHydrating?: boolean } } } } }
+
+/** Loads a page, waits until Nuxt has hydrated it (before that, a click or key press can land on a button without its
+ *  handler) and for fonts, so interactions, measurements and screenshots see the final page. */
 export async function open(page: Page, path: string) {
   const response = await page.goto(path, { waitUntil: 'load' })
+  await page.waitForFunction(() => {
+    const root = document.querySelector('#__nuxt') as Root | null
+    // No app root: not a page of the site (a feed, a file), nothing to hydrate.
+    if (!root) return true
+    return root.__vue_app__ !== undefined && root.__vue_app__.config.globalProperties.$nuxt?.isHydrating !== true
+  })
   await page.evaluate(() => document.fonts.ready)
   return response
 }
