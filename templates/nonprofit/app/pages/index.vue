@@ -40,7 +40,7 @@ usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.
     </BlockSection>
 
     <BlockSection v-if="latest.length" :title="t('home.news')">
-      <BlogPostList :items="latest" heading-level="h3" />
+      <BlogPostList :items="latest" heading-level="h3" :images="false" />
       <NuxtLink :to="path('news')" class="mt-6 inline-flex min-h-11 items-center gap-2 font-medium text-primary underline-offset-4 hover:underline">
         {{ t('blog.latest') }}<ArrowRight class="size-4 rtl:-scale-x-100" aria-hidden="true" />
       </NuxtLink>

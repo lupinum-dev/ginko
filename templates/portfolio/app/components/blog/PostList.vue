@@ -3,8 +3,9 @@
 import type { BlogPost } from '~/composables/useBlog'
 
 /** Posts as rows divided by lines: date and authors, title (the link), summary, and the cover (3:2) at the end of the
- *  row from `sm` up, above the text on phones. A post without a cover is a row without an image, not a gap. */
-withDefaults(defineProps<{ items: BlogPost[], headingLevel?: 'h2' | 'h3' }>(), { headingLevel: 'h2' })
+ *  row from `sm` up, above the text on phones. A post without a cover is a row without an image, not a gap. `images` false
+ *  leaves the covers out (a teaser on a home page). */
+withDefaults(defineProps<{ items: BlogPost[], headingLevel?: 'h2' | 'h3', images?: boolean }>(), { headingLevel: 'h2', images: true })
 const { format, t } = useI18n('blog')
 </script>
 
@@ -12,7 +13,7 @@ const { format, t } = useI18n('blog')
   <ul class="flex flex-col border-b">
     <li v-for="post in items" :key="post.id" class="group relative flex flex-col gap-5 border-t py-8 sm:flex-row-reverse sm:items-start sm:gap-8">
       <GinkoImage
-        v-if="post.image"
+        v-if="images && post.image"
         :image="post.image"
         sizes="(min-width: 640px) 224px, 100vw"
         class="aspect-3/2 w-full shrink-0 rounded-block bg-muted object-cover sm:w-56"
