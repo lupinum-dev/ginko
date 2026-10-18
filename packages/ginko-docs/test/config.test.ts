@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto'
 import { expect, it } from 'vitest'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import docsSite from '../../../sites/docs/ginko.config.ts'
-import { changelogPages, homePages } from '../src/config.ts'
+import { blogCollections, changelogCollection, changelogPages, docsCollection, docsHome, homePages, type DocsSource } from '../src/config.ts'
 
 it('keeps the stored schema of the blog and changelog bricks byte for byte', () => {
   const { bricks } = serializeSchema(docsSite)
@@ -19,4 +19,16 @@ it('keeps the stored schema of the blog and changelog bricks byte for byte', () 
 it('gives each locale its start page at its canonical address', () => {
   expect(homePages({ locales: ['en', 'de'] })).toEqual({ en: '/', de: '/de' })
   expect(changelogPages({ locales: ['de', 'en'] })).toEqual({ de: '/changelog', en: '/en/changelog' })
+})
+
+// Wrong behaviour caught: a factory that ignores `source: 'platform'`, so a docs site moved to Ginko Studio still reads
+// its pages from files and the Studio has nothing to edit; or a default that no longer reads files.
+it.each([
+  ['docsCollection', (source?: DocsSource) => [docsCollection({ locales: ['en'], source })]],
+  ['docsHome', (source?: DocsSource) => [docsHome({ source })]],
+  ['blogCollections', (source?: DocsSource) => Object.values(blogCollections({ locales: ['en'], source }))],
+  ['changelogCollection', (source?: DocsSource) => [changelogCollection({ source })]],
+] as const)('%s reads files by default and the platform with source: platform', (_, bricks) => {
+  expect(bricks().map((brick) => brick.source)).toEqual(bricks().map(() => 'files'))
+  expect(bricks('platform').map((brick) => 'source' in brick)).toEqual(bricks().map(() => false))
 })
