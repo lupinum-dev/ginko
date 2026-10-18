@@ -304,7 +304,7 @@ describe('languages', () => {
       }),
       lunch: single({
         label: 'Mittagsmenü',
-        fields: { days: f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { dish: f.text('Gericht'), allergens: f.choices('Allergene', { options: [{ value: 'a', label: 'Gluten' }, { value: 'g', label: 'Milch' }] }) } }) },
+        fields: { days: f.list('Tage', { itemLabel: 'Tag', max: 5, fields: { dish: f.text('Gericht'), allergens: f.choices('Allergene', { options: [{ value: 'a', label: 'Gluten' }, { value: 'g', label: 'Milch' }], askAgainWhen: 'dish' }) } }) },
         tasks: [{ id: 'week', label: 'Mittagsmenü dieser Woche', kind: 'edit', fields: ['days'] }],
       }),
     },

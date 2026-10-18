@@ -1,3 +1,3 @@
 ---
-registryCourt: "المحكمة المحلية (Amtsgericht) في Musterstadt"
+# registryCourt: "المحكمة المحلية (Amtsgericht) في كاسل"
 ---

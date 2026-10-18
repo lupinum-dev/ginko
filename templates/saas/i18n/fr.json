@@ -1,0 +1,48 @@
+{
+  "home": {
+    "title": "Planning des équipes pour EHPAD et petites cliniques",
+    "trial": "Commencer l’essai gratuit",
+    "pricing": "Voir les tarifs",
+    "from": "Formules à partir de {price} par mois.",
+    "trialNote": "Gratuit pendant 30 jours, sans moyen de paiement. L’essai s’arrête de lui-même.",
+    "features": "Ce que fait {name}",
+    "featuresLead": "Du planning du mois aux heures pour la paie, au même endroit.",
+    "customers": "Clients",
+    "customersLead": "Des EHPAD et des cliniques qui planifient avec {name}.",
+    "security": "Sécurité et données",
+    "securityMore": "Comment nous protégeons vos données",
+    "cta": {
+      "title": "Planifiez les équipes du mois prochain avec {name}.",
+      "text": "Essayez {name} pendant 30 jours avec votre propre équipe, sans moyen de paiement."
+    }
+  },
+  "faq": {
+    "title": "Questions fréquentes",
+    "lead": "Les réponses sur la facturation, le contrat, vos données et l’essai."
+  },
+  "pricing": {
+    "lead": "Un prix par établissement, pour tout son personnel. Passez à une offre plus grande à tout moment ; passez à une offre plus petite ou résiliez à la fin de la période de facturation.",
+    "questions": "Questions sur la facturation",
+    "allQuestions": "Toutes les questions"
+  },
+  "blog": {
+    "title": "Blog",
+    "lead": "Les nouveautés du produit, et comment les établissements planifient leurs équipes.",
+    "latest": "Tous les articles"
+  },
+  "changelog": {
+    "lead": "Ce qui a changé dans {name}, du plus récent au plus ancien : nouvelles fonctions, améliorations et corrections."
+  },
+  "about": {
+    "team": "L’équipe"
+  },
+  "help": {
+    "title": "Aide",
+    "lead": "Des guides pour la planification, du premier planning à l’export pour la paie. Lancez une recherche ou commencez par un sujet.",
+    "stuck": "Pas de réponse ?",
+    "stuckText": "Écrivez-nous ou appelez-nous en indiquant le nom de votre établissement ; nous répondons les jours ouvrés, en général le jour même."
+  },
+  "docs": {
+    "searchPlaceholder": "Rechercher dans l’aide…"
+  }
+}

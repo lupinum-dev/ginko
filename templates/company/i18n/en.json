@@ -10,7 +10,7 @@
     "news": "News",
     "next": "Jobs and trade fairs",
     "jobs": {
-      "title": "Jobs at Halden Pumps",
+      "title": "Jobs at {name}",
       "count": "{count, plural, one {# open position} other {# open positions}}",
       "none": "No open positions",
       "text": "Build, sell and service pumps with us: in the workshop, in sales or on the road."
@@ -34,7 +34,7 @@
     "subject": "Quote request: {title}"
   },
   "jobs": {
-    "lead": "Open positions at our works in Musterstadt and in field service, with the last day to apply."
+    "lead": "Open positions at our works in Bielefeld and in field service, with the last day to apply."
   },
   "blog": {
     "lead": "Projects, new products and what happens at our works."

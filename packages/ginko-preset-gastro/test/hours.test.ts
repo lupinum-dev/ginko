@@ -140,12 +140,24 @@ describe('todayState with special hours, plans and holidays', () => {
 })
 
 describe('upcomingClosures with holidays', () => {
-  it('adds holidays on which the house is closed', () => {
+  // Wrong behaviour caught: the list of closures names a holiday on the weekly rest day (26 October 2026, a Monday),
+  // which closes nothing a guest could have come on.
+  it('adds holidays on which the house is closed, except on its rest day', () => {
     const ctx = { hours: { ...baseHours, holidays: 'closed' as const } }
-    expect(upcomingClosures({ ...ctx, hours: { ...ctx.hours, exceptions: [winter] } }, '2026-10-12', 20).map((e) => e._id)).toEqual(['holiday-2026-10-26', 'holiday-2026-11-01'])
+    expect(upcomingClosures({ ...ctx, hours: { ...ctx.hours, exceptions: [winter] } }, '2026-10-12', 20).map((e) => e._id)).toEqual(['holiday-2026-11-01'])
   })
   it('does not list holidays on which the house opens like on Sunday', () => {
     expect(upcomingClosures({ hours: baseHours }, '2026-10-12', 20)).toEqual([])
+  })
+  // Wrong behaviour caught: the rest-day check reads the standard week instead of the plan running on that date
+  // (Immaculate Conception, Tuesday 8 December 2026).
+  it.each([
+    ['the running plan closes that weekday: the holiday adds nothing', weekWith({ tu: { day: 'tu', closed: true } }), standard, []],
+    ['the running plan opens that weekday although the standard week closes it: the holiday is listed', standard, weekWith({ tu: { day: 'tu', closed: true } }), ['holiday-2026-12-08']],
+  ])('%s', (_name, planWeek, standardWeek, expected) => {
+    const plan: HourPlan = { _id: 'p4', from: '2026-11-01', to: '2027-03-31', yearly: true, week: planWeek }
+    const hours = { week: standardWeek, exceptions: [] as Exception[], holidays: 'closed' as const }
+    expect(upcomingClosures({ hours, plans: [plan] }, '2026-12-01', 10).map((e) => e._id)).toEqual(expected)
   })
 })
 
@@ -163,5 +175,16 @@ describe('upcomingPlans', () => {
   ])('%s', (_, plan, today, expected) => {
     const [found] = upcomingPlans([plan], today, 120)
     expect({ starts: found?.starts, ends: found?.ends }).toEqual(expected)
+  })
+  // Wrong behaviour caught: the table shows a season to its nominal end although planOn gives the tail to a later plan
+  // (or cuts a newer plan because an older yearly one recurs inside it), so the table and the hours disagree.
+  const late = (_id: string, from: string, to: string): HourPlan => ({ ...summer, _id, from, to, yearly: false })
+  it.each([
+    ['no overlap', [summer], [['2027-06-01', '2027-08-31']]],
+    ['a later plan takes the tail', [summer, late('a', '2027-08-15', '2027-09-15')], [['2027-06-01', '2027-08-14'], ['2027-08-15', '2027-09-15']]],
+    ['a plan nested inside leaves the end alone', [summer, late('a', '2027-08-10', '2027-08-12')], [['2027-06-01', '2027-08-31'], ['2027-08-10', '2027-08-12']]],
+    ['the newer plan keeps its end though an older yearly plan recurs inside it', [summer, late('a', '2027-06-15', '2027-07-31')], [['2027-06-01', '2027-08-31'], ['2027-06-15', '2027-07-31']]],
+  ])('range: %s', (_, plans, expected) => {
+    expect(upcomingPlans(plans, '2027-05-01', 120).map((p) => [p.starts, p.ends])).toEqual(expected)
   })
 })

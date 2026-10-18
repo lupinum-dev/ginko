@@ -5,7 +5,7 @@ feed, projects and campaigns that end on a date, the team, reports to download, 
 page that links to your donation service, and legal texts. In English, German, French and Arabic (right to left), with
 light and dark mode. Built with [Nuxt](https://nuxt.com) and [Ginko](https://github.com/lupinum-dev/ginko). All
 content is Markdown in `content/`; the site needs no account and no database. The sample is "River Commons", a river
-clean-up association in a German town.
+cleanup association in a German town.
 
 | Light | Dark |
 |---|---|
@@ -59,6 +59,7 @@ after its last day, with no new build. Static files (`npm run generate`) would k
 | Command | What |
 |---|---|
 | `npm run dev` | the site with live reload on http://localhost:3000; drafts show here |
+| `npm run check` | Checks the content files in a few seconds: missing or wrong fields, dates, prices, links between pages and files in `public/`. Each problem names the file and the field. |
 | `npm run build` | the production build in `.output/`; drafts are left out |
 | `npm run preview` | runs that build locally |
 | `npm run lint` | ESLint |
@@ -69,47 +70,63 @@ after its last day, with no new build. Static files (`npm run generate`) would k
 ## Edit content
 
 Every text is a Markdown file. The main language has no suffix (`about.md`); a translation adds the language code
-(`about.de.md`) and repeats only what it translates: dates, files and images come from the main file. The number at
-the start of a file name sets the order.
+(`about.de.md`) and repeats only what it translates. Dates, files and image files come from the main file; for an
+image, a translation repeats only its `alt` (`image: { alt: … }`), and without it the page uses the main language’s
+alt. The number at the start of a file name sets the order. After each change, run `npm run check`.
+
+Files point to other entries by id: the folder and the file name without number and language, so
+`content/people/1.jana-becker.md` is `people/jana-becker`. The `slug` is only the address on the site: renaming a file
+breaks the references to it, changing the `slug` does not.
+
+Write dates as `2026-10-24`, times as `'09:30'` (two-digit hours), prices as a plain number in euros (`95` or `12.50`).
 
 | On the site | File |
 |---|---|
 | Home page: mission, lead, photo | `content/home.md` (and `home.de.md`, `home.fr.md`, `home.ar.md`) |
-| News | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/jana-becker]`), `tags`, `image` (the cover, 3:2); `draft: true` keeps a post off the site |
-| Projects and campaigns | `content/projects/<n>.<name>.md`: `title`, `summary`, `image`, the text; `ends` for a campaign (the last day it shows); `actionLabel` and `actionUrl` for a button below the title ("Donate now") |
+| News | `content/posts/<name>.md`: `title`, `description` (the summary), `date`, `authors` (people by id, `[people/jana-becker]`), `tags`, `image` (the cover, 3:2: `src` and `alt`), `slug` (optional, made from the title); `draft: true` keeps a post off the site |
+| Projects and campaigns | `content/projects/<n>.<name>.md`: `title`, `summary`, `image` (`src` and `alt`), the text; `ends` for a campaign (the last day it shows); `actionLabel` and `actionUrl` for a button below the title ("Donate now") |
 | Team and board | `content/people/<n>.<name>.md`: `name`, `role`, `bio`, `email`, `phone`; no photo needed, the site shows initials |
-| Reports to download | `content/downloads/<name>.md`: `title`, `summary`, `date`, `file` (a PDF in `public/reports/`), `language` (`en`, when the file is not in your main language) |
+| Reports to download | `content/downloads/<name>.md`: `title`, `summary`, `date`, `file` (a PDF in `public/files/`; not `public/reports/`, which would take the address of the reports page), `language` (the language of the file, for example `en`; leave it out when the file is in your main language; the sample sets `en` because the sample PDF is English) |
 | Partner logos | `content/logos/<n>.<name>.md`: `name`, `image` (an SVG or PNG in `public/logos/`), `url` |
 | Quotes on the home page | `content/quotes/<n>.<name>.md`: `text`, `name`, `role`; the home page shows the first |
 | About, Get involved, Donate and other pages | `content/pages/<n>.<name>.md`; each translation sets its own address with `slug:`. `actionLabel` and `actionUrl` add one button below the title (the Donate page's "Donate online") |
-| Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters), `until` (the last day it shows) |
-| Events | `content/events/<n>.<name>.md`: `title`, `when`, `start`, `end`, `location`; the next one shows on the home page and on Get involved (no events pages yet: see "Events" below) |
+| Notices above the header | `content/notices/<n>.<name>.md`: `text` (at most 140 characters; in quotes when it contains a colon) and `until` (the last day it shows, like `2026-12-31`; without it the notice stays until you delete the file); a translation has only `text` |
+| Events | `content/events/<n>.<name>.md`: `title`, `slug` (optional, made from the title), `when` (`from` and `to` dates, the same date twice for one day), `start` and `end` (`'10:00'`, two-digit hours), `location`, `online`, `booking`, `bookingUntil`, `soldOut: true`, `image` (`src` and `alt`), `price` (euros as a number, `12.50`; leave it out for a free event), and the text below the frontmatter (required); the list at `/events`, one page per event (see "Events" below) |
 | Name, address, register entry, email, phone | `content/site.md` (footer, imprint, search engines) |
 | Privacy policy, terms, imprint | `content/legal/` (placeholders for Germany: replace them before you go live) |
 | Site name, description for search engines | `ginko.config.ts` (`name`, `seo.description`) |
 | Menu, footer links, the line under the name in the footer | `app/app.config.ts` |
-| The home page's title in search results and tabs, section titles and texts of the home page and the lists | `i18n/<language>.json` (`home.title` is "River clean-ups in Musterstadt"); the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins |
+| The home page's title in search results and tabs, section titles and texts of the home page and the lists | `i18n/<language>.json` (`home.title` is "River cleanups in Kassel"); the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins |
 
 Each language has a news feed at `<news page>/rss.xml` (`/news/rss.xml`, `/de/aktuelles/rss.xml`, …) with the title,
 summary, date and authors of every post that is online.
 
-Notices show newest first: put the newest one at the top (the smallest number). At most two show at once.
+Notices show newest first: give a new notice a smaller number than the others (`0.` works and numbers may have gaps,
+so older notices keep theirs). At most two show at once.
 
-**Events.** The next event in `content/events/` shows in the closing band of the home page and at the top of the
-Get involved page, with its weekday, date, time and place; with no coming event both hide it. Past events leave the
-site by themselves. This version of the template has no events pages yet; a later version adds the list and a page
-per event.
+**Events.** Every coming event of `content/events/` is on the events page (`/events`, linked in the footer) and has
+its own page with date, time, place and the text. The next one also shows in the closing band of the home page and at
+the top of the Get involved page, with the dates after it below; with no coming event these parts hide. Past events
+leave the site by themselves. Without a `booking` link, an event page offers your phone and email from
+`content/site.md` for questions.
 
 ## Make it yours
 
-- **Name and menu.** `name` in `ginko.config.ts`; `nav` in `app/app.config.ts` holds at most six items: a page of
-  `ginko.config.ts` (`{ page: 'news', label: { … } }`, label per language, the same words as the page's title) or a
-  page of `content/pages/` by id (`{ entry: 'pages/about' }` is `content/pages/1.about.md`).
+- **Name.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name also appears as
+  text in `seo.description` in `ginko.config.ts`, in `content/home*.md` (`lead`), in `content/pages/1.about*.md` and in
+  `content/pages/3.donate*.md` (the account holder and the note on donation receipts). `legalName` in `content/site.md`
+  is the registered name (with “e.V.”) for the footer and imprint. Search `content/` and `i18n/` for “River Commons”
+  and replace what is left. To show a shorter name on phones, set `shortName` in `app/app.config.ts`.
+- **Menu.** `nav` in `app/app.config.ts` holds at most six items: a page of `ginko.config.ts` (`{ page: 'news', label:
+  { … } }`, label per language, the same words as the page's title) or a page of `content/pages/` by id (`{ entry:
+  'pages/about' }` is `content/pages/1.about.md`).
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 120, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name.
 - **Colour.** `--brand` and `--brand-foreground` in `app/assets/css/main.css`, once for light and once for dark
-  (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). This
-  template uses green (`#15803d`, dark `#86efac`). Keep text on the colour at 4.5:1 or more; `DESIGN.md` has the rules.
+  (`.dark`); in `.dark` also `--brand-surface` and `--brand-surface-foreground` (the closing band). The light `--brand`
+  is also `seo.color` in `ginko.config.ts` (the background of the share cards). This template uses green (`#15803d`,
+  dark `#86efac`). Text on the colour needs a contrast of at least 4.5:1 in both modes; check each pair with a
+  contrast checker (for example webaim.org/resources/contrastchecker). `DESIGN.md` has the rules.
 - **Fonts.** `--font-body` in `main.css`; Arabic pages use Noto Sans Arabic (`:lang(ar)` in `main.css`, the family in
   `nuxt.config.ts`). `@nuxt/fonts` downloads the fonts at build time and serves them from your site.
 - **Organisation type.** `organization: 'NGO'` in `app/app.config.ts` tells search engines what you are; address and
@@ -163,11 +180,11 @@ Links in the content name pages by their key (`[annual report]($page.downloads)`
 
 | Feature | Delete |
 |---|---|
-| Projects | `content/projects/`, the `projects` brick and `pages.projects` in `ginko.config.ts`, its `nav` item, the "Current projects" section in `app/pages/index.vue`, `app/pages/projects/`, `app/bricks/projects.ts`, `app/composables/useProjects.ts`, `i18n/projects/`, and `"projects"` in `package.json` → `ginko.features` |
-| News | `content/posts/`, the `posts` brick and `pages.news`, its `nav` item, the "Latest news" section on the home page, `app/pages/news/`, `app/components/blog/`, `app/composables/useBlog.ts`, `server/middleware/news-feed.ts`, `i18n/blog/`, `"blog"` in `ginko.features`; the links to `$page.news` in `content/pages/2.get-involved*.md` |
-| Team | `content/people/`, `pages.team`, its `footer` item, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, `"people"` in `ginko.features`; the links to `$page.team` in `content/pages/1.about*.md`; keep the `people` brick while posts name authors |
-| Reports | `content/downloads/`, `public/reports/`, the `downloads` brick and `pages.downloads`, its `footer` item, `app/pages/downloads.vue`, `app/components/downloads/`, `i18n/downloads/`, `"downloads"` in `ginko.features`; the links to `$page.downloads` in `content/pages/1.about*.md` and `3.donate*.md`, and the notice about the annual report in `content/notices/` |
-| Logos and quotes | `content/logos/`, `content/quotes/`, `public/logos/`, the `logos` and `quotes` bricks, their sections on the home page, `app/bricks/logos-quotes.ts`, `app/components/block/Logos.vue`, `Quote.vue`, `"logos-quotes"` in `ginko.features` |
+| Projects | `content/projects/`, the `projects` brick, its import and `pages.projects` in `ginko.config.ts`, its `nav` item in `app/app.config.ts`, the projects section of `app/pages/index.vue` (`useProjectCards()` and the "Current projects" block), `app/pages/projects/`, `app/bricks/projects.ts`, `app/composables/useProjects.ts`, `i18n/projects/`, and `"projects"` in `package.json` → `ginko.features` |
+| News | `content/posts/`, the `posts` brick, its import and `pages.news` in `ginko.config.ts`, its `nav` item in `app/app.config.ts`, the news section of `app/pages/index.vue` (`useBlogPosts()`, `latest` and the "Latest news" block), the "Responsible for the news" section in `content/legal/3.imprint*.md`, `app/pages/news/`, `app/components/blog/`, `app/composables/useBlog.ts`, `server/middleware/news-feed.ts`, `i18n/blog/`, `"blog"` in `ginko.features` |
+| Team | `content/people/`, `pages.team` in `ginko.config.ts`, its `footer` item in `app/app.config.ts`, `app/pages/team.vue`, `app/components/people/`, `i18n/people/`, `"people"` in `ginko.features`; `authors` in `content/posts/*.md`; the links to `$page.team` in `content/pages/1.about*.md`; keep the `people` brick: the `posts` brick needs it for `authors` |
+| Reports | `content/downloads/`, `public/files/`, the `downloads` brick and `pages.downloads`, its `footer` item, `app/pages/downloads.vue`, `app/components/downloads/`, `i18n/downloads/`, `"downloads"` in `ginko.features`; the links to `$page.downloads` in `content/pages/1.about*.md` and `3.donate*.md`, and the notice about the annual report in `content/notices/` |
+| Logos and quotes | `content/logos/`, `content/quotes/`, `public/logos/`, the `logos` and `quotes` bricks and their import in `ginko.config.ts`, their parts of `app/pages/index.vue` (`useGinko('quotes')`, `useGinko('logos')`, `quote` and the two home sections), `app/bricks/logos-quotes.ts`, `app/components/block/Logos.vue`, `Quote.vue`, `"logos-quotes"` in `ginko.features` |
 | Notices | `content/notices/`, the `notices` brick, `<SiteNotice />` in `app/layouts/default.vue`, `app/components/site/Notice.vue` |
 | A language | see "Add or remove a language" |
 | Dark mode | `<SiteThemeToggle />` in `app/components/site/Header.vue`, `app/components/site/ThemeToggle.vue`, and `@nuxtjs/color-mode` with its `colorMode` options in `nuxt.config.ts` and `package.json` |
@@ -179,10 +196,13 @@ Links in the content name pages by their key (`[annual report]($page.downloads)`
 - [ ] `NUXT_APP_SECRET` is set where the site runs.
 - [ ] `content/site.md` shows your real name, address, register entry and contact details.
 - [ ] The Donate page has your donation link and bank details, and the note on donation receipts fits you.
+- [ ] The sample phone numbers and emails are replaced: they reach nobody (the numbers start their local part
+      with 0, the emails end in .example), so a forgotten one fails quietly.
 - [ ] The placeholders in `content/legal/` are replaced by your own texts, and the ones you do not need are deleted.
 - [ ] The sample quotes, partner logos, report PDF and photos are replaced or deleted; quotes only with the person's
       permission.
-- [ ] Every photo you added has alt text in each language and a source in `MEDIA.md`.
+- [ ] Every photo you added has alt text in each language (`npm run check` only requires the main language) and a
+      source in `MEDIA.md`.
 
 ## Move to the Studio
 

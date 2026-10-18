@@ -82,6 +82,9 @@ const allowed: Row[] = [
     name: 'a choice option label renamed',
     mutate: (s) => { (field(s, 'menu.category').options as ChoiceOption[]).find((o) => o.value === 'starters')!.label = 'Vorspeise' },
   },
+  // The option stores no data, so adding it to a choices field that production already has is free.
+  { name: 'askAgainWhen added to a choices field', prod: (s) => { delete field(s, 'menu.allergens').askAgainWhen }, mutate: (s) => { field(s, 'menu.allergens').askAgainWhen = 'name' } },
+  { name: 'askAgainWhen removed from a choices field', mutate: (s) => { delete field(s, 'menu.allergens').askAgainWhen } },
   { name: 'a list min lowered', mutate: (s) => { field(s, 'lunch.days').min = 4 } },
   { name: 'a number min lowered', mutate: (s) => { field(s, 'hours.holidayNoticeDays').min = -5 } },
   { name: 'a field max raised', mutate: (s) => { field(s, 'seo.title').max = 90 } },

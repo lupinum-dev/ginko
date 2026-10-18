@@ -12,12 +12,12 @@
     "allQuestions": "Alle Fragen",
     "lastYear": "Im Vorjahr",
     "ctaTitle": "Ein Ticket für die ganze Konferenz",
-    "ctaText": "{price}. Ermäßigte Preise im Ticketshop."
+    "ctaText": "{price}. Ermäßigte Preise im Ticketshop.",
+    "ctaTextFree": "Eintritt frei. Ihr Ticket gibt es im Ticketshop."
   },
   "faq": {
     "title": "Fragen",
-    "lead": "Anreise, Barrierefreiheit, Tickets, Essen und der Verhaltenskodex.",
-    "empty": "Noch keine Fragen"
+    "lead": "Anreise, Barrierefreiheit, Tickets, Essen und der Verhaltenskodex."
   },
   "events": {
     "title": "Termine",
@@ -28,7 +28,7 @@
   },
   "sessions": {
     "programme": {
-      "lead": "Vorträge, Workshops und Pausen nach Tagen, mit Uhrzeit, Raum und Vortragenden. Alle Zeiten in Wiener Zeit."
+      "lead": "Vorträge, Workshops und Pausen nach Tagen, mit Uhrzeit, Raum und Vortragenden. Alle Zeiten in Ortszeit."
     },
     "speakers": {
       "lead": "Die Menschen, die Vorträge halten, Workshops leiten und auf dem Podium sitzen."

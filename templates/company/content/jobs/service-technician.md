@@ -2,10 +2,10 @@
 title: "Service technician, field service (m/f/d)"
 slug: service-technician
 description: "You install, start up and repair our pumps and stations at customers in northern Germany, with a company van and a fixed area."
-location: Musterstadt
+location: Bielefeld
 employmentType: fullTime
 remote: onsite
-applyEmail: jobs@example.com
+applyEmail: jobs@halden-pumpen.example
 validUntil: 2027-01-31
 ---
 

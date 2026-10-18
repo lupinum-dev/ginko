@@ -36,7 +36,7 @@ onBeforeUnmount(() => clearTimeout(timer))
       </Tab>
     </Tabs>
     <button type="button" class="ginko-code-copy docs-example-copy" :aria-label="tc('code.copy')" @click="copy">
-      <Icon :name="copied ? 'lucide:check' : 'lucide:copy'" class="docs-icon" />
+      <DocsIcon :name="copied ? 'lucide:check' : 'lucide:copy'" class="docs-icon" />
       <span class="ginko-code-status" aria-live="polite">{{ copied ? tc('code.copied') : '' }}</span>
     </button>
   </div>

@@ -4,7 +4,6 @@ import type { SiteAppConfig } from './composables/useSiteAppConfig'
 // app/assets/css/main.css; address and contact are in content/site.md.
 export default defineAppConfig({
   site: {
-    shortName: 'Open Data Days',
     // logo: { src: '/logo.svg', width: 120, height: 32 },
     // One line under the name in the footer, per language.
     tagline: {

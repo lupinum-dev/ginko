@@ -1,0 +1,31 @@
+<script setup lang="ts">
+import type { BlogPost } from '~/composables/useBlog'
+
+/** The newest post, large, at the top of the home page: photo (3:2), date, reading time and authors on one line, title (the
+ *  link: the whole block opens the post) and summary. Without a photo the text takes the full width. */
+defineProps<{ post: BlogPost }>()
+const { format, t } = useI18n('blog')
+</script>
+
+<template>
+  <article class="group relative grid gap-6 lg:grid-cols-12 lg:items-center lg:gap-12">
+    <GinkoImage
+      v-if="post.image"
+      :image="post.image"
+      eager
+      sizes="(min-width: 1216px) 596px, (min-width: 1024px) 50vw, 100vw"
+      class="aspect-3/2 w-full rounded-block bg-muted object-cover lg:col-span-6"
+    />
+    <div class="flex flex-col gap-3" :class="post.image ? 'lg:col-span-6' : 'max-w-3xl lg:col-span-12'">
+      <p class="text-small text-muted-foreground">
+        <time :datetime="post.date">{{ format.date(post.date) }}</time>
+        <template v-if="post.minutes"><span aria-hidden="true"> · </span><span class="sr-only">, </span>{{ t('minutes', { count: post.minutes }) }}</template>
+        <template v-if="post.authors.length"><span aria-hidden="true"> · </span><span class="sr-only">, </span><span data-byline>{{ t('by', { names: format.list(post.authors.map((a) => a.name)) }) }}</span></template>
+      </p>
+      <h2 class="text-h3">
+        <NuxtLink :to="post.to" class="underline-offset-4 after:absolute after:inset-0 group-hover:underline">{{ post.title }}</NuxtLink>
+      </h2>
+      <p v-if="post.description" class="text-lead text-muted-foreground">{{ post.description }}</p>
+    </div>
+  </article>
+</template>

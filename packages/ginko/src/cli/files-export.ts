@@ -49,8 +49,14 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
     if ((error as { code?: string }).code !== 'ERR_MODULE_NOT_FOUND') throw error
     throw new CliError('Install @lupinum/ginko-content to read file content.', 'USAGE')
   }
-  const result = await content.readContent(join(root, 'content'), publicDir, filesSchema, { markdown: 'text' })
+  // A file marked `draft: true` stays out, as in the site's build: an export entry has no draft state, and the
+  // platform refuses `draft` as a field.
+  const result = await content.readContent(join(root, 'content'), publicDir, filesSchema, { markdown: 'text', drafts: false })
   if (result.errors.length > 0) throw new CliError(`The content has errors:\n${result.errors.map(content.errorLine).join('\n')}`)
+  // The same read with drafts on tells which entries stayed out, so the owner is not left wondering.
+  const kept_ = new Set(Object.values(result.entries).flat().map((entry) => entry.id))
+  const withDrafts = await content.readContent(join(root, 'content'), publicDir, filesSchema, { markdown: 'text', drafts: true })
+  const drafts = Object.values(withDrafts.entries).flat().filter((entry) => !kept_.has(entry.id)).map((entry) => entry.id)
 
   const entries: ExportEntry[] = []
   const bricks: Record<string, number> = {}
@@ -116,6 +122,7 @@ export async function filesExport(input: FilesExportInput): Promise<{ dir: strin
   if (problems.length) throw new CliError(problems.join('\n'))
   await mkdir(join(dir, 'files'), { recursive: true })
   for (const [path, bytes] of bytesOf) await writeFile(join(dir, path), bytes)
+  if (drafts.length) input.log(`Warning: ${drafts.length} entr${drafts.length === 1 ? 'y stays' : 'ies stay'} out of the export as drafts, scheduled for later or part of a draft (${drafts.slice(0, 3).join(', ')}); add them in the Studio.`)
   if (missing.length) input.log(`Warning: ${missing.length} image path(s) in Markdown texts point to no file under public/ (${missing.slice(0, 3).join(', ')}). They stay as they are.`)
 
   // Entries name the files by ID: frontmatter values through the shared walk, Markdown sources as `$file.<id>`.

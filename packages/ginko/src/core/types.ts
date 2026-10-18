@@ -66,7 +66,16 @@ export interface TimeField extends FieldBase {
 }
 export interface DateRangeField extends FieldBase { type: 'daterange' }
 export interface ChoiceField<V extends string = string> extends FieldBase { type: 'choice'; options: readonly { value: V; label: Label }[] }
-export interface ChoicesField<V extends string = string> extends FieldBase { type: 'choices'; options: readonly { value: V; label: Label }[]; max?: number }
+export interface ChoicesField<V extends string = string> extends FieldBase { type: 'choices'
+  options: readonly { value: V; label: Label }[]
+  max?: number
+  /**
+   * A text field next to this one (a field of the same brick, or a column of the same list row) that this choice answers
+   * for, such as the dish of its allergens. When that text changes in the main language and this choice does not, the
+   * Studio asks whether it is still right and Save waits for the answer.
+   */
+  askAgainWhen?: string
+}
 export interface ListField<F extends Fields = Fields> extends FieldBase {
   type: 'list'; of: F; itemLabel: Label; max: number
   /** Fewest rows. With `max` equal and a unique required choice this expresses "every option exactly once". */

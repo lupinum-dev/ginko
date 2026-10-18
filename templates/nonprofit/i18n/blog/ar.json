@@ -4,10 +4,15 @@
   "by": "بقلم {names}",
   "authors": "كتبه",
   "tags": "الوسوم",
-  "tagged": "المقالات بالوسم «{tag}»",
   "all": "عرض كل المقالات",
-  "noTag": "لا توجد مقالات بالوسم «{tag}»",
   "empty": "لا توجد مقالات بعد",
   "feed": "خلاصة RSS",
-  "latest": "كل الأخبار"
+  "latest": "كل الأخبار",
+  "tagged": "مقالات بوسم {tag}",
+  "count": "{count, plural, zero {لا مقالات} one {مقال واحد} two {مقالان} few {# مقالات} many {# مقالًا} other {# مقال}}",
+  "topicCount": "{name}، {count, plural, zero {لا مقالات} one {مقال واحد} two {مقالان} few {# مقالات} many {# مقالًا} other {# مقال}}",
+  "minutes": "{count, plural, zero {أقل من دقيقة قراءة} one {دقيقة قراءة} two {دقيقتا قراءة} few {# دقائق قراءة} many {# دقيقة قراءة} other {# دقيقة قراءة}}",
+  "older": "مقال أقدم",
+  "newer": "مقال أحدث",
+  "pager": "مقالات أقدم وأحدث"
 }

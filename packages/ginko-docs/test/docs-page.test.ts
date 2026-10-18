@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildIndex } from '@lupinum/ginko/internal/search'
 import { loadIndex, search } from '@lupinum/ginko/search'
 import { handleMcp, type DocsMcpDeps } from '../server/mcp/handler'
-import { docsAskLinks, docsEditUrl, docsMarkdownPath, docsStudioUrl } from '../app/lib/docsPage'
+import { docsAskLinks, docsEditUrl, docsMainLanguagePath, docsMainPath, docsMarkdownPath, docsRouteLink, docsStudioUrl } from '../app/lib/docsPage'
 
 describe('page helpers', () => {
   it.each([
@@ -13,12 +13,49 @@ describe('page helpers', () => {
     [undefined, 'x.md', undefined],
   ])('edit url %#', (repo, source, expected) => expect(docsEditUrl(repo, source)).toBe(expected))
 
+  it.each([
+    ['/de/docs/upgrading-to-v2', '/docs/upgrading-to-v2'],
+    ['/de/docs/a/b', '/docs/a/b'],
+    ['/docs/x', undefined],
+    ['/de/blog/x', undefined],
+    ['/de/docsx/y', undefined],
+    ['/en/docs/x', undefined],
+  ])('main-language guess for a 404 at %s', (path, expected) => expect(docsMainLanguagePath(path, ['en', 'de'], 'en', '/docs')).toBe(expected))
+
+  // Wrong behaviour caught: with `strategy: 'prefix'` the main language lives at /en/docs/x, so the stripped path 404s again.
+  it('the main-language guess follows the i18n strategy', () => {
+    const prefixed = (p: string) => `/en${p}`
+    expect(docsMainLanguagePath('/de/docs/x', ['en', 'de'], 'en', '/docs', prefixed)).toBe('/en/docs/x')
+    expect(docsMainLanguagePath('/docs/x', ['en', 'de'], 'en', '/docs', prefixed)).toBeUndefined()
+  })
+
   it('a platform page links to its Studio form; without a platform address there is no link', () => {
     expect(docsStudioUrl('https://studio.example/', 'lupinum', 'docs', 'k17 x')).toBe('https://studio.example/s/lupinum/all/docs/k17%20x')
     expect(docsStudioUrl('', 'lupinum', 'docs', 'k17')).toBeUndefined()
   })
 
   it.each([['/en/docs/languages', '/en/docs/languages.md'], ['/docs/x/', '/docs/x.md'], ['/', '/index.md']])('markdown twin of %s', (path, md) => expect(docsMarkdownPath(path)).toBe(md))
+
+  // Wrong behaviour caught: a start-page link that loses its anchor, or points at a page that does not exist.
+  it.each([
+    ['$docs.webhooks', '/de/docs/webhooks'],
+    ['$docs.webhooks#signatur', '/de/docs/webhooks#signatur'],
+    ['$page.changelog', '/de/changelog'],
+    ['$docs.missing', undefined],
+    ['$blog.x', undefined],
+    ['/docs/webhooks', undefined],
+  ])('route link %s', (raw, path) => {
+    const find = { doc: (ref: string) => (ref === 'webhooks' ? '/de/docs/webhooks' : undefined), page: (key: string) => (key === 'changelog' ? '/de/changelog' : undefined) }
+    expect(docsRouteLink(raw, find)).toBe(path)
+  })
+
+  // Wrong behaviour caught: a German link to a page that only exists in English renders as the raw `$docs…` string.
+  it('a route link to a page the language lacks leads to its main-language page', () => {
+    const route = { en: '/docs/[slug]', de: '/de/docs/[slug]' }
+    const find = { doc: (ref: string) => (ref === 'webhooks' ? '/de/docs/webhooks' : undefined) ?? docsMainPath(route, 'en', ref), page: () => undefined }
+    expect(docsRouteLink('$docs.upgrading-to-v2#steps', find)).toBe('/docs/upgrading-to-v2#steps')
+    expect(docsRouteLink('$docs.webhooks', find)).toBe('/de/docs/webhooks')
+  })
 
   it('ask links carry the encoded prompt', () => {
     const { chatgpt, claude } = docsAskLinks('Lies https://x.dev/a.md & fertig')

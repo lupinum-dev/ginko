@@ -16,7 +16,7 @@ What guests get:
   restaurant's time zone and Austrian public holidays, and moving on by itself while the page is open.
 - **Menu** by category with today's prices, vegetarian and vegan dishes, the 14 EU allergen letters with their key,
   "sold out today", a planned price change, and a print version for the door.
-- **Lunch of the week**, only while it is current, with days you are closed marked as closed.
+- **Lunch of the week**, only while it is current, with days you are closed marked as closed. On screen it starts with today (earlier days stay on paper).
 - **Events** with weekday, date, time, price and "fully booked"; past events leave the site by themselves.
 - **Reserving** by phone or email, no form and nothing sent to other companies. "Open in maps" is a link, not an
   embedded map.
@@ -70,10 +70,15 @@ the day and the hour, so every request shows the current state.
 | Command | What |
 |---|---|
 | `npm run dev` | the site with live reload on http://localhost:3000 |
+| `npm run check` | Checks the content files in a few seconds: missing or wrong fields, dates, prices, links between pages and files in `public/`. Each problem names the file and the field. |
 | `npm run build` | the production build in `.output/` |
 | `npm run preview` | runs that build locally |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript and Vue types |
+
+`npm run dev` shows the site as of today: a notice, a closure for today or this week's lunch show at once. Next week's
+lunch appears on its Monday, and a closure appears `holidayNoticeDays` days (in `content/hours.md`, 14 in the
+sample) before it starts.
 
 `.github/workflows/ci.yml` runs lint, typecheck and build on every push. It needs no settings.
 
@@ -81,46 +86,68 @@ the day and the hour, so every request shows the current state.
 
 Every text is a Markdown file. The main language has no suffix (`about.md`); a translation adds the language code
 (`about.de.md`) and repeats only the texts, not dates, prices or photos. The number at the start of a file name sets
-the order.
+the order. After each change, run `npm run check`.
+
+Write dates as `2026-10-24`, times as `'09:30'`, prices as a plain number in euros (`95` or `12.50`).
+
+A translation lists the rows of a list (closures, gallery photos) in the same order as the main file: when you add,
+remove or move a row in the main file, do the same at the same place in each translation (write `- {}` for a row with
+nothing to translate). `npm run check` reports a translation with a different number of rows.
+
+The lunch dishes are not translated: every language shows them in the main language, next to their allergens. A
+translated dish name goes stale when the week changes, and nothing reports it, so `lunch.de.md` and `lunch.it.md`
+translate only the note. To translate the dishes anyway, add `days:` with one `- dish:` per day to these files and
+change them every week together with `lunch.md`.
 
 | On the site | File |
 |---|---|
 | Home page: title, lead, photo | `content/home.md` (+ `.de.md`, `.it.md`) |
-| Opening hours: the week (two periods a day), closures such as the summer holiday, public holidays | `content/hours.md` |
+| Opening hours: the week (two periods a day), public holidays (`holidays`), closures: one day with `closedOn: 2026-10-20` and `closedNote`, several days as an `exceptions` row with `when: { from, to }` (from = to for one day), `reason`, `closed: true` (or `closed: false` with times for special hours) | `content/hours.md` |
 | Other hours for a season or from a date (winter hours) | `content/hourPlans/<n>.<name>.md` |
 | Menu: one file per dish (category, name, description, price, allergens, vegetarian or vegan) | `content/menu/<n>.<name>.md` |
 | A dish sold out today | `soldOutOn: 2026-10-15` in its file (only that day) |
 | A dish off the menu for now | `onMenu: false` in its file |
 | A price change from a date | `nextPrice` and `priceFrom` in its file; the menu announces it two weeks ahead |
-| Lunch of the week (Monday to Friday, `weekOf` = its Monday) | `content/lunch.md` |
+| Lunch of the week: five rows, `day: mo` to `day: fr`, each with one `dish`, an optional `price` and `allergens`; `weekOf` = its Monday. For two dishes a day, write both in `dish` | `content/lunch.md` |
 | Events (date, start time, price, photo, text) | `content/events/<n>.<name>.md`; it leaves the site after its last day |
-| Notices above the header ("Fully booked tonight") | `content/notices/<n>.<name>.md`: `text`, `until` (the last day it shows). Something that is always true (groups book by phone) belongs on a page, not in a notice |
-| Photos of the gallery | `content/gallery.md` (and the alt texts in each translation, same order) |
+| Notices above the header ("Fully booked tonight") | `content/notices/<n>.<name>.md`: `text` (at most 140 characters; in quotes when it contains a colon) and `until` (the last day it shows, like `2026-12-31`; leave it out to keep the notice until you delete the file). A notice shows from the day you add the file; there is no start date. Something that is always true (groups book by phone) belongs on a page, not in a notice |
+| Photos of the gallery | `content/gallery.md` (and the alt texts in each translation) |
 | Reservations page: title, lead and text (the call and email buttons and the opening hours come from `content/site.md` and `content/hours.md`) | `content/reservations.md` |
 | Pages (About, …) | `content/pages/<n>.<name>.md`; a translation sets its own address with `slug:` |
-| Name, address, email, phone (footer, reservation buttons, search engines) | `content/site.md` |
+| Legal name of the company (imprint, footer; for example "Gasthaus zur Linde GmbH"), address, email, phone (footer, reservation buttons, search engines) | `content/site.md` |
 | Privacy policy, terms, imprint | `content/legal/` (placeholders: replace them before you go live) |
 | Site name, description for search engines, country | `ginko.config.ts` (`name`, `seo.description`, `country`) |
 | Navigation, the line under the name in the footer, footer links, profiles elsewhere | `app/app.config.ts` |
 | Texts of the home page sections and the reservation buttons | `i18n/<language>.json` |
 | Texts of buttons, labels, allergen names | `i18n/<feature>/<language>.json`; to change one, set it under the feature's key in `i18n/<language>.json` (as `events.lead` there does) |
 
+`allergens`: the letters of the 14 EU allergens (`[A, G]`), or `none` for a dish without any. Leaving the line out or
+writing `[]` is an error, so a dish never says "no allergens" by mistake.
+
 Allergens use the EU letters as Austrian menus write them: A gluten, B crustaceans, C egg, D fish, E peanuts, F soy,
 G milk, H tree nuts, L celery, M mustard, N sesame, O sulphites, P lupin, R molluscs. Check each dish with your
 kitchen: a wrong allergen is the one mistake this site must never make.
 
-Notices show newest first: put the newest one at the top (the smallest number). At most two show at once.
+The Studio asks whether the allergens are still right when a dish changes; in the files nothing asks, so check the
+allergens whenever you change a dish.
+
+Notices show newest first (the smallest number first), and at most two show at once. Give a new notice a smaller
+number than the others: `0.` works and numbers may have gaps, so older notices keep theirs.
 
 ## Make it yours
 
-- **Name and navigation.** `name` in `ginko.config.ts`; `nav` in `app/app.config.ts` (at most six: a page of
-  `ginko.config.ts` with its label per language, or a page of `content/pages/` by id, such as `pages/about`).
-  `shortName` replaces the name in the header on phones.
+- **Name.** `name` in `ginko.config.ts` (header, footer, share cards, search engines). The sample name also appears as
+  text in `shortName` (`Zur Linde`) in `app/app.config.ts`, which replaces the name in the header on phones (delete it
+  to use `name` there), and in `legalName` (`Gasthaus zur Linde GmbH`) in `content/site.md`, the company name for the
+  imprint and footer. Search `content/` and `app/app.config.ts` for it and replace what is left.
+- **Navigation.** `nav` in `app/app.config.ts` (at most six: a page of `ginko.config.ts` with its label per language,
+  or a page of `content/pages/` by id, such as `pages/about`).
 - **Logo.** Put the file in `public/` and set `logo: { src: '/logo.svg', width: 120, height: 32 }` in
   `app/app.config.ts`. Without it, the header shows the name.
 - **Colour.** `--brand` and `--brand-foreground` in `app/assets/css/main.css`, once for light and once for dark
-  (`.dark`), and the light value as `seo.color` in `ginko.config.ts` (the background of the share cards). Keep text
-  on the colour at 4.5:1 or more; `DESIGN.md` has the rules.
+  (`.dark`), and the light value of `--brand` as `seo.color` in `ginko.config.ts` (the background of the share
+  cards). Text on the colour needs a contrast of at least 4.5:1 in both modes; check each pair with a contrast checker
+  (for example webaim.org/resources/contrastchecker). `DESIGN.md` has the rules.
 - **Fonts.** `--font-body` (Inter) and `--font-heading` (Fraunces) in `main.css`. `@nuxt/fonts` downloads the fonts at
   build time and serves them from your site.
 - **Country and time zone.** `country` (public holidays, the address for search engines) and `timeZone` in
@@ -172,9 +199,9 @@ event (its page then shows "Book a place" instead of phone and email). Name the 
 
 | Feature | Delete |
 |---|---|
-| Lunch of the week | `content/lunch*.md`, the `lunch` brick and the `lunch` page in `ginko.config.ts`, `app/pages/lunch.vue`, `app/components/menu/LunchDays.vue`, `useLunch` in `app/composables/useMenu.ts`, the "Today's lunch" section in `app/pages/index.vue`, the `lunch` entry of `nav` and `segments` |
+| Lunch of the week | `content/lunch*.md`, the `lunch` brick and the `lunch` page in `ginko.config.ts` (with the `lunchBrick` const and the `lunch` import), `app/pages/lunch.vue`, `app/components/menu/LunchDays.vue`, `useLunch` in `app/composables/useMenu.ts` (and its imports `lunchWeekOn`, `hoursOn`, `weekdayOf`), the lunch section of `app/pages/index.vue` (`useLunch()`, the `lunchCard` code, the "Today's lunch" card and the hero link to `#lunch`; then the unused `formatMoney`, `isLunchPlaceholder`, `now`, `timeZone`, `language`, `langOf`, `allergenName`), the `$page.lunch` links and the lunch words in `content/pages/1.about*.md`, the lunch words in the `lead` of `content/home*.md` and in `seo.description` of `ginko.config.ts`, the `lunch` entry of `nav` and `segments` |
 | Events | `content/events/`, the `events` brick and page in `ginko.config.ts`, `app/pages/events/`, `app/components/event/`, `app/composables/useEvents.ts`, `i18n/events/`, the `events` key in each `i18n/<language>.json`, `<EventUpcoming />` in `app/pages/index.vue`, the `events` entry of `nav` and `segments` |
-| Gallery | `content/gallery*.md`, the `gallery` brick and page in `ginko.config.ts`, `app/pages/gallery.vue`, `app/components/block/Gallery.vue`, `app/components/site/Lightbox.vue`, `i18n/gallery/`, the gallery section in `app/pages/index.vue`, the `gallery` entry of `footer` and `segments` |
+| Gallery | `content/gallery*.md`, the `gallery` brick and page in `ginko.config.ts`, `app/pages/gallery.vue`, `app/components/block/Gallery.vue`, `app/components/site/Lightbox.vue`, `i18n/gallery/`, the gallery section of `app/pages/index.vue` (`useGinko('gallery')` and the photos card), the `gallery` entry of `footer` (leave `footer: []`) and `segments`, the `gallery` import in `ginko.config.ts` |
 | Winter hours | `content/hourPlans/` (keep the `hourPlans` brick: without entries it shows nothing) |
 | Notices | `content/notices/` (keep the brick: without entries nothing shows) |
 | Print version of the menu | `app/pages/menu/print.vue`, `app/layouts/print.vue`, the print link in `app/pages/menu/index.vue`, the word `print` in `segments` |
@@ -192,6 +219,8 @@ The menu and the opening hours are the core of this template; the home page and 
 - [ ] `content/hours.md` has your real week, closures and the public holiday rule; `country` and `timeZone` are yours.
 - [ ] Every dish has its real price and allergens, checked with the kitchen.
 - [ ] `content/site.md` has your real name, address, phone and email: the reservation buttons use them.
+- [ ] The sample phone numbers and emails are replaced: they reach nobody (the numbers start their local part
+      with 0, the emails end in .example), so a forgotten one fails quietly.
 - [ ] The placeholders in `content/legal/` are replaced by your own texts (in Austria and Germany an imprint is
       required), and the ones you do not need are deleted.
 - [ ] The sample photos are replaced by your own, each with alt text in every language and a source in `MEDIA.md`.

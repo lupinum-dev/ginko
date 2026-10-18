@@ -17,13 +17,15 @@ export interface Card {
  *  `compact`: on phones (below `sm`) each card is one row, a square photo of 96 px at the start next to the meta line
  *  and the title, without the text and the arrow, so a list of three fits in less than a screen. */
 const props = withDefaults(defineProps<{ items: Card[], columns?: 2 | 3 | 4, headingLevel?: 'h2' | 'h3', compact?: boolean }>(), { columns: 3, headingLevel: 'h3' })
+// Never an empty column at lg: fewer items than `columns` take that many columns (two at least; one item stays as is).
+const lgColumns = computed(() => (props.items.length > 1 ? Math.min(props.columns, Math.max(2, props.items.length)) : props.columns))
 const sizes = computed(() => `(min-width: 1024px) 384px, (min-width: 640px) 50vw, ${props.compact ? '96px' : '100vw'}`)
 </script>
 
 <template>
   <ul
     class="grid gap-6 sm:grid-cols-2"
-    :class="{ 'lg:grid-cols-3': columns === 3, 'lg:grid-cols-4': columns === 4, 'max-sm:gap-3': compact }"
+    :class="{ 'lg:grid-cols-3': lgColumns === 3, 'lg:grid-cols-4': lgColumns === 4, 'max-sm:gap-3': compact }"
   >
     <li
       v-for="item in items"

@@ -1,16 +1,18 @@
-import type { Brick, ComponentDef, Field, Fields, Schema } from '../core/index.ts'
+import type { Brick, Field, Fields, Schema } from '../core/index.ts'
+import type { AttributeRegistry } from '../core/markdown.ts'
 
 /**
  * The schema the site's app imports (`#ginko/schema`, rendered on the server and shipped to the browser): the
  * serialized schema without the texts only editors and agents read: labels, descriptions, hints, groups, tasks and
  * slash-menu entries. No page code reads them, and they were most of the schema's weight in every page's script.
- * Required labels stay, as ''. Server routes (sitemap, llms.txt, Markdown) import the full schema.
+ * Required labels stay, as ''. The Markdown `components` registry is left out too: the one client reader, `GinkoMarkdown`,
+ * imports the slim `#ginko/components` (componentsForMarkdown). Server routes (sitemap, llms.txt, Markdown) import the full schema.
  */
 export function appSchema(schema: Schema): Schema {
+  const { components: _components, ...schemaRest } = schema
   return {
-    ...schema,
+    ...schemaRest,
     bricks: Object.fromEntries(Object.entries(schema.bricks).map(([key, brick]) => [key, appBrick(brick)])),
-    ...(schema.components && { components: Object.fromEntries(Object.entries(schema.components).map(([tag, def]) => [tag, appComponent(def)])) }),
   }
 }
 
@@ -19,15 +21,15 @@ function appBrick(brick: Brick): Brick {
   return { ...rest, label: '', fields: appFields(brick.fields) }
 }
 
-function appComponent(def: ComponentDef): ComponentDef {
-  const { editor: _editor, ...rest } = def
-  return {
-    ...rest,
-    label: '',
-    describe: '',
-    props: appFields(def.props),
-    ...(def.slots && { slots: Object.fromEntries(Object.entries(def.slots).map(([name, slot]) => [name, { ...slot, label: '' }])) }),
-  }
+/**
+ * The Markdown registry for the browser (`#ginko/components`): per tag the kind and each declared prop's type, which is
+ * all `attributeProblem` reads. Labels, slots and editor settings stay on the server.
+ */
+export function componentsForMarkdown(schema: Schema): AttributeRegistry {
+  return Object.fromEntries(Object.entries(schema.components ?? {}).map(([tag, def]) => [
+    tag,
+    { kind: def.kind, props: Object.fromEntries(Object.entries(def.props).map(([name, field]) => [name, { type: field.type }])) },
+  ]))
 }
 
 function appFields(fields: Fields): Fields {

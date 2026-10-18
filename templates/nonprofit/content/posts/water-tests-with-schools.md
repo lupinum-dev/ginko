@@ -15,4 +15,4 @@ One measurement says little. Many measurements over a year show how the river ch
 
 ## How to join
 
-Teachers who would like to do this with their class can write to [Lukas](mailto:lukas@example.com). We bring the test kits and show how they work.
+Teachers who would like to do this with their class can write to [Lukas](mailto:lukas@river-commons.example). We bring the test kits and show how they work.

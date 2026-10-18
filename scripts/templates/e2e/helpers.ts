@@ -26,12 +26,29 @@ export const test = base.extend<{ clocked: void }>({
   }, { auto: true }],
 })
 
-/** At most this many pages per check: home, then the sitemap in its order. */
-const MAX_PAGES = 40
+/** At most this many detail pages (children of a list page) per list, so every route pattern is seen without a page per entry. */
+const DETAILS_PER_LIST = 3
 
-/** The site's pages: the paths of its sitemap (also of a sitemap index), home first. */
+/**
+ * A sample of the paths that shows every route pattern: a path is a detail when its parent path is itself a page that is
+ * neither `/` nor a locale root; the first DETAILS_PER_LIST details per parent are kept, and every other path. Order is kept.
+ */
+export function samplePages(paths: string[], locales: string[] = site.locales): string[] {
+  const all = new Set(paths)
+  const roots = new Set(['/', ...locales.map((l) => `/${l}`)])
+  const seen = new Map<string, number>()
+  return paths.filter((path) => {
+    const parent = path.replace(/\/$/, '').replace(/\/[^/]*$/, '') || '/'
+    if (parent === path || roots.has(parent) || !all.has(parent)) return true
+    const count = (seen.get(parent) ?? 0) + 1
+    seen.set(parent, count)
+    return count <= DETAILS_PER_LIST
+  })
+}
+
+/** A sample of every route pattern, home first, for the heavier gates 4 and 6 and the screenshots of gate 5. Gates 3 and 5 and the CLS test of gate 6 use `allPages()`. */
 export async function sitePages(): Promise<string[]> {
-  return (await allPages()).slice(0, MAX_PAGES)
+  return samplePages(await allPages())
 }
 
 /** Every path of the sitemap (no limit), home first. */
@@ -52,16 +69,29 @@ export async function allPages(): Promise<string[]> {
 /** A path as a file name: `/` → `home`, `/posts/a` → `posts-a`. */
 export const slugOf = (path: string) => path.replace(/^\/|\/$/g, '').replaceAll('/', '-') || 'home'
 
-/** Loads a page and waits for fonts, so measurements and screenshots see the final text. */
+type Root = { __vue_app__?: { config: { globalProperties: { $nuxt?: { isHydrating?: boolean } } } } }
+
+/** Loads a page, waits until Nuxt has hydrated it (before that, a click or key press can land on a button without its
+ *  handler) and for fonts, so interactions, measurements and screenshots see the final page. */
 export async function open(page: Page, path: string) {
   const response = await page.goto(path, { waitUntil: 'load' })
+  await page.waitForFunction(() => {
+    const root = document.querySelector('#__nuxt') as Root | null
+    // No app root: not a page of the site (a feed, a file), nothing to hydrate.
+    if (!root) return true
+    return root.__vue_app__ !== undefined && root.__vue_app__.config.globalProperties.$nuxt?.isHydrating !== true
+  })
   await page.evaluate(() => document.fonts.ready)
   return response
 }
 
 /** The theme toggle, if the header has one: a button named for the theme, dark or light mode. */
 export const themeToggle = (page: Page) => page.locator('header').getByRole('button', { name: /theme|dark|light|mode|farb|dunk|hell/i }).first()
-/** The phone navigation's open button, if any: a header button that controls or expands something. */
-export const navToggle = (page: Page) => page.locator('header button[aria-expanded], header button[aria-controls], header [aria-haspopup="dialog"]').first()
+/**
+ * The phone navigation's open button, if any: the visible header button that controls or expands something. Visible,
+ * because a header may hold other disclosure buttons that are hidden at this width (the docs layer's language menu
+ * comes before its menu button and is hidden on phones); a site header has only the nav button.
+ */
+export const navToggle = (page: Page) => page.locator('header button[aria-expanded], header button[aria-controls], header [aria-haspopup="dialog"]').filter({ visible: true }).first()
 
 export { expect } from '@playwright/test'

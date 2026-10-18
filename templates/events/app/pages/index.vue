@@ -127,7 +127,7 @@ usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.
     <BlockCta
       v-if="tickets && event"
       :title="t('home.ctaTitle')"
-      :text="price(event.data) ? t('home.ctaText', { price: price(event.data)! }) : undefined"
+      :text="event.data.price?.amount === 0 ? t('home.ctaTextFree') : price(event.data) ? t('home.ctaText', { price: price(event.data)! }) : undefined"
       :action="tickets"
     />
   </div>

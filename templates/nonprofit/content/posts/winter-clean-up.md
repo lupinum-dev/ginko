@@ -1,13 +1,13 @@
 ---
-title: "Join our winter clean-up"
+title: "Join our winter cleanup"
 slug: winter-clean-up
 description: "Three hours on the bank in winter, when the plants are low and the rubbish is easy to see."
 date: 2026-10-13
 authors: [people/lukas-hoffmann]
-tags: ["clean-up"]
+tags: ["cleanup"]
 ---
 
-Our winter clean-up is the next date on the river: three hours on the bank, when the plants are low and the rubbish is easy to see. The date, the time and the meeting point are at the top of the [Get involved]($pages.get-involved) page.
+Our winter cleanup is the next date on the river: three hours on the bank, when the plants are low and the rubbish is easy to see. The date, the time and the meeting point are at the top of the [Get involved]($pages.get-involved) page.
 
 ## What to bring
 

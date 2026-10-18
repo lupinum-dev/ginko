@@ -143,6 +143,9 @@ function isJson(value: string): boolean {
   }
 }
 
+/** What `attributeProblem` reads of the component registry: the declared props and their types. A full `ComponentRegistry` fits. */
+export type AttributeRegistry = Record<string, { props: Record<string, { type: string }> }>
+
 /**
  * Whether a text may give `tag` the attribute `name` (`:name` is comark's bound form) with `value`: the one allowlist
  * of the parser (profileCheck) and the renderer (`GinkoMarkdown`). `blocked` for an attribute that is not allowed,
@@ -155,7 +158,7 @@ function isJson(value: string): boolean {
  * never allowed, and a bound value never passes a value rule (only `:checked="true"` and declared props take one).
  * A declared prop of type `image` is an address like `src`.
  */
-export function attributeProblem(tag: string, name: string, value: unknown, registry?: ComponentRegistry): 'blocked' | 'unsafe' | undefined {
+export function attributeProblem(tag: string, name: string, value: unknown, registry?: AttributeRegistry): 'blocked' | 'unsafe' | undefined {
   const bound = name.startsWith(':')
   const key = bound ? name.slice(1) : name
   const declared = registry !== undefined && Object.hasOwn(registry, tag) ? registry[tag]!.props : undefined

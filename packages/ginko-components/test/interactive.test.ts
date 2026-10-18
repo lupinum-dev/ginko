@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { GINKO_TOC_KEY, parseMarkdown } from '@lupinum/ginko/internal'
 import { GinkoMarkdown } from '@lupinum/ginko/vue'
 import { components } from '../src/registry.ts'
-import { componentMap } from '../src/runtime/components/index.ts'
+import { lazyComponentMap } from '../src/runtime/components/lazy.ts'
 
 let warn: ReturnType<typeof vi.spyOn>
 beforeEach(() => { warn = vi.spyOn(console, 'warn') })
@@ -13,7 +13,7 @@ afterEach(() => { warn.mockRestore() })
 async function render(text: string, provideToc = false): Promise<string> {
   const parsed = await parseMarkdown(text, { profile: 'page', components })
   expect(parsed.problems).toEqual([])
-  const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: componentMap, registry: components }) })
+  const app = createSSRApp({ render: () => h(GinkoMarkdown, { value: parsed.value, components: lazyComponentMap, registry: components }) })
   if (provideToc) app.provide(GINKO_TOC_KEY, parsed.value.toc)
   const html = await renderToString(app)
   expect(warn).not.toHaveBeenCalled()

@@ -1,6 +1,6 @@
 // The public surface, listed on purpose: everything not named here is internal and may change in any release.
 // Every name below is described in the README.
-export { allergensEU, events, gallery, hourPlans, hours, lunch, lunchPlans, menu, menuCategories, notices, type MenuCategory } from './bricks.ts'
+export { allergensEU, events, isLunchPlaceholder, gallery, hourPlans, hours, lunch, lunchPlans, menu, menuCategories, notices, type MenuCategory } from './bricks.ts'
 export { allergenNames, weekdayNames } from './names.ts'
 export {
   closedOnClosure, hoursOn, noticesOn, spansOf, spansText, timesOf, todayState, upcomingClosures, upcomingHolidayClosures, upcomingPlans, weekdayOf, weekFor,

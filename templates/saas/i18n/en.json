@@ -1,0 +1,48 @@
+{
+  "home": {
+    "title": "Shift planning for care homes and small clinics",
+    "trial": "Start free trial",
+    "pricing": "See pricing",
+    "from": "Plans from {price} a month.",
+    "trialNote": "Free for 30 days, with no payment details. The trial ends by itself.",
+    "features": "What {name} does",
+    "featuresLead": "From the monthly rota to the hours for payroll, in one place.",
+    "customers": "Customers",
+    "customersLead": "Care homes and clinics that plan with {name}.",
+    "security": "Security and data",
+    "securityMore": "How we protect your data",
+    "cta": {
+      "title": "Plan next month’s shifts with {name}.",
+      "text": "Try it for 30 days with your own team, without payment details."
+    }
+  },
+  "faq": {
+    "title": "FAQ",
+    "lead": "Questions and answers about billing, contracts, your data and the trial."
+  },
+  "pricing": {
+    "lead": "One price per care home or clinic, for all its staff. Upgrade at any time; downgrade or cancel at the end of a billing period.",
+    "questions": "Questions about billing",
+    "allQuestions": "All questions and answers"
+  },
+  "blog": {
+    "title": "Blog",
+    "lead": "Product news, and how care homes plan their shifts.",
+    "latest": "All posts"
+  },
+  "changelog": {
+    "lead": "What changed in {name}, newest first: new features, improvements and fixes."
+  },
+  "about": {
+    "team": "The team"
+  },
+  "help": {
+    "title": "Help",
+    "lead": "Guides for planners, from the first rota to the payroll export. Search them, or start with a topic.",
+    "stuck": "Still stuck?",
+    "stuckText": "Write to us or call us with the name of your home; we answer on working days, usually the same day."
+  },
+  "docs": {
+    "searchPlaceholder": "Search help…"
+  }
+}

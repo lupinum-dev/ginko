@@ -1,5 +1,5 @@
 // The projects feature on the built template (gate 3): a campaign shows its last day on its card and its page, and
-// leaves the site after that day.
+// leaves the site after that day; a project with photos (`details: true`) shows each with its description.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect, open, site, sitePages, test } from '../../../../scripts/templates/e2e/helpers.ts'
@@ -8,7 +8,16 @@ const dir = fileURLToPath(new URL(`../../../${site.name}/content/projects/`, imp
 /** Main-language projects: their slug and, for a campaign, its last day. */
 const projects = existsSync(dir)
   ? readdirSync(dir).filter((file) => /^\d+\.[^.]+\.md$/.test(file)).map((file) => readFileSync(`${dir}${file}`, 'utf8'))
-    .map((text) => ({ slug: /^slug:\s*(\S+)/m.exec(text)![1]!, ends: /^ends:\s*(\S+)/m.exec(text)?.[1] }))
+    .map((text) => {
+      const front = text.split(/^---$/m)[1] ?? ''
+      return {
+        slug: /^slug:\s*(\S+)/m.exec(front)![1]!,
+        title: /^title:\s*"?(.*?)"?\s*$/m.exec(front)?.[1],
+        ends: /^ends:\s*(\S+)/m.exec(front)?.[1],
+        /** The description of every photo in its order: the main photo (`image`), then `photos`. */
+        alts: /^photos:/m.test(front) ? [...front.matchAll(/^\s+alt:\s*"?(.*?)"?\s*$/gm)].map((m) => m[1]!) : [],
+      }
+    })
   : []
 const today = site.now.slice(0, 10)
 /** Campaigns still running at the test instant, and campaigns whose last day is before it. */
@@ -56,4 +65,36 @@ test('a running campaign shows when it ends, on its card and on its page', async
     await expect(page.locator('main header p').last(), `${slug} page`).toContainText(/\d/)
     await page.goBack()
   }
+})
+
+test('a project with photos shows each with its description, opens them large and is a CreativeWork', async ({ page }) => {
+  const project = projects.find((p) => p.alts.length)
+  test.skip(!project, 'no project with photos in the samples')
+  // The project's page: the header link whose page links to it.
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await open(page, '/')
+  for (const href of await page.locator('header nav a').evaluateAll((as) => as.map((a) => a.getAttribute('href')!))) {
+    await open(page, href)
+    if (await page.locator(`main a[href$="/${project!.slug}"]`).count()) break
+  }
+  await open(page, (await page.locator(`main a[href$="/${project!.slug}"]`).first().getAttribute('href'))!)
+  // Wrong behaviour caught: photos of a project missing from its page, or without the description the Studio made the
+  // owner write. The description is the photo's alt text (no visible caption, D23) and the caption in the large view.
+  const photos = page.locator('main button[aria-haspopup="dialog"]')
+  await expect(photos).toHaveCount(project!.alts.length)
+  for (const alt of project!.alts) await expect(page.locator('main').getByAltText(alt, { exact: true }), alt).toBeVisible()
+  await photos.first().click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.locator('img')).toBeVisible()
+  await expect(dialog).toContainText(project!.alts[0]!)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  // The template's app/composables/useProjectJsonLd.ts: search engines learn the work, with all its photos.
+  const work = await page.locator('script[type="application/ld+json"]').evaluateAll((scripts) => scripts.flatMap((script) => {
+    const data = JSON.parse(script.textContent ?? '{}')
+    return Array.isArray(data) ? data : data['@graph'] ?? [data]
+  }).find((node) => node['@type'] === 'CreativeWork'))
+  expect(work, 'CreativeWork JSON-LD').toBeTruthy()
+  expect(work.name).toBe(project!.title)
+  expect(work.image).toHaveLength(project!.alts.length)
 })

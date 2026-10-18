@@ -1,0 +1,27 @@
+{
+  "title": "Opening hours",
+  "today": "Today",
+  "todayTimes": "Today {times}",
+  "closed": "Closed",
+  "and": "and",
+  "now": {
+    "open": "Open now",
+    "until": "until {time}",
+    "later": "Opens today at {time}",
+    "again": "Open again today at {time}",
+    "over": "Closed for the rest of today",
+    "closed": "Closed today",
+    "unknown": "No opening hours for today.",
+    "next": "Open again on {day} at {time}"
+  },
+  "holiday": "public holiday",
+  "holidays": {
+    "sunday": "On public holidays we open as on Sunday.",
+    "closed": "On public holidays we are closed."
+  },
+  "season": "{name}, until {date}",
+  "seasonUnnamed": "Until {date}",
+  "from": "From {date}",
+  "closures": "Closures",
+  "closedDays": "closed"
+}

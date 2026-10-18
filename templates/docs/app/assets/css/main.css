@@ -1,0 +1,14 @@
+/* The colours of this docs site. The layer @lupinum/ginko-docs reads shadcn-style tokens; every value set here wins
+   over its defaults. Each value is light-dark(light, dark) and follows the light/dark switch. The rules and the other
+   tokens are in DESIGN.md. Keep `seo.color` in ginko.config.ts equal to the light --primary (share cards). */
+:root {
+  /* The accent: links, the main button, the active page. #047857 on white 5.5:1; #34d399 on #09090b 10.3:1. */
+  --primary: light-dark(#047857, #34d399);
+  /* Text on the accent: white on #047857 5.5:1; #09090b on #34d399 10.3:1. */
+  --primary-foreground: light-dark(#ffffff, #09090b);
+  /* The focus ring, at least 3:1 against the page. */
+  --ring: light-dark(#047857, #34d399);
+  /* The tinted background of the active page in the navigation, and its text (7.3:1 / 9.7:1). */
+  --accent: light-dark(#ecfdf5, #052e22);
+  --accent-foreground: light-dark(#065f46, #6ee7b7);
+}

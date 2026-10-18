@@ -616,6 +616,26 @@ describe('showWhen', () => {
   })
 })
 
+describe('askAgainWhen', () => {
+  const opts = [{ value: 'a', label: 'A' }]
+  it.each([
+    ['a missing field', 'nope'],
+    ['itself', 'tags'],
+    ['a non-text field', 'count'],
+  ])('rejects %s', (_name, target) => {
+    const problems = problemsOf(site({ count: f.number('Zahl', { min: 0, max: 9, step: 1 }), tags: f.choices('Tags', { options: opts, askAgainWhen: target }) }))
+    expect(problems, JSON.stringify(problems)).toContain('menu.tags.askAgainWhen: must name a text field next to it.')
+  })
+  it('accepts a text sibling, also inside a list row', () => {
+    const row = { dish: f.text('Gericht', { max: 100 }), tags: f.choices('Tags', { options: opts, askAgainWhen: 'dish' }) }
+    expect(problemsOf(site({ note: f.longtext('Notiz'), tags: f.choices('Tags', { options: opts, askAgainWhen: 'note' }), rows: f.list('Zeilen', { itemLabel: 'Zeile', min: 0, max: 3, fields: row }) }))).toEqual([])
+  })
+  it('rejects a list-row target that is a field of the brick, not of the row', () => {
+    const row = { tags: f.choices('Tags', { options: opts, askAgainWhen: 'name' }) }
+    expect(problemsOf(site({ rows: f.list('Zeilen', { itemLabel: 'Zeile', min: 0, max: 3, fields: row }) }))).toContain('menu.rows.tags.askAgainWhen: must name a text field next to it.')
+  })
+})
+
 describe('group and layout (display only)', () => {
   it('serializeSchema keeps them and the schema stays valid', () => {
     const input = site({ note: f.longtext('Notiz', { group: { de: 'Mehr', en: 'More' } }) }, {

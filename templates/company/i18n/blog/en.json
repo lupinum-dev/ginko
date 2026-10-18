@@ -4,10 +4,15 @@
   "by": "by {names}",
   "authors": "Written by",
   "tags": "Tags",
-  "tagged": "Posts tagged “{tag}”",
   "all": "Show all posts",
-  "noTag": "No posts tagged “{tag}”",
   "empty": "No posts yet",
   "feed": "RSS feed",
-  "latest": "All news"
+  "latest": "All news",
+  "tagged": "Posts tagged {tag}",
+  "count": "{count, plural, one {# post} other {# posts}}",
+  "topicCount": "{name}, {count, plural, one {# post} other {# posts}}",
+  "minutes": "{count} min read",
+  "older": "Older post",
+  "newer": "Newer post",
+  "pager": "Older and newer posts"
 }

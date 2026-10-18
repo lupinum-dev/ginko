@@ -2,10 +2,10 @@ import { statSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { basename, join, resolve, sep } from 'node:path'
 import type {
-  Brick, Fields, Json, Locale, MarkdownTree,
+  Brick, Field, Fields, Json, Locale, MarkdownTree,
 } from '@lupinum/ginko'
 import {
-  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, routeUrls, urlClashes, validate, type FileInfo, type Schema, type StoredEntry,
+  coreMessage, effectiveProfile, imageInfo, isTranslatable, printOf, sha256, slugify, routeUrls, todayIn, urlClashes, validate, isDate, type FileInfo, type Schema, type StoredEntry,
 } from '@lupinum/ginko/internal'
 import { load as loadYaml } from 'js-yaml'
 import { cellValue, parseCsv, type CsvRow } from './csv.ts'
@@ -18,6 +18,8 @@ export interface ContentError {
   file: string
   /** Field path as in validate() issues, when the error belongs to one field. */
   path?: string
+  /** The place as the owner reads it (`exceptions, row 3, closed`), when it differs from `path` (row ids, 0-based indexes). */
+  display?: string
   message: string
   /** 1-based line in the file, when the error belongs to one (YAML, JSON and CSV parse errors, CSV rows). */
   line?: number
@@ -28,12 +30,18 @@ export interface ContentError {
  * @internal Loaded by the Ginko module and CLI; sites do not import it.
  */
 export function errorLine(e: ContentError): string {
-  return `content/${e.file}${e.line !== undefined ? `:${e.line}` : ''}${e.path ? ` (${e.path})` : ''}: ${e.message}`
+  return `content/${e.file}${e.line !== undefined ? `:${e.line}` : ''}${(e.display ?? e.path) ? ` (${e.display ?? e.path})` : ''}: ${e.message}`
 }
 
 export interface ReadOptions {
-  /** `false` leaves out entries marked `draft: true`. Default `true` (dev shows drafts). */
+  /**
+   * `false` leaves out entries marked `draft: true`, and scheduled entries: in a collection with drafts that lists its
+   * entries newest first by a date (`drafts: true`, `order: { field, dir: 'desc' }`), an entry dated after `today`.
+   * Default `true` (dev shows both).
+   */
   drafts?: boolean
+  /** The build day (`YYYY-MM-DD`) for scheduled entries. Default: today in the schema's time zone. */
+  today?: string
   /** `text` keeps each Markdown field as its source text, the form the platform stores and the Studio edits
    * (`pnpm local:files-export`). Default `tree`: the parsed tree the site's bundle carries. */
   markdown?: 'tree' | 'text'
@@ -80,10 +88,16 @@ interface FileCx {
   files: Record<string, FileInfo>
   errors: ContentError[]
   line?: number
+  /** Where a list row sits in the file, for the owner: `['steps', 'row 2']`. */
+  where: string[]
 }
 
+/** The place of `path` for the owner: the row parents from `where`, then the rest of the path. */
+const displayOf = (where: string[], prefix: string, path: string) => [...where, path.slice(prefix.length)].join(', ')
+
 function fail(cx: FileCx, path: string, message: string) {
-  cx.errors.push({ file: cx.file, path, message, ...(cx.line !== undefined ? { line: cx.line } : {}) })
+  const display = cx.where.length > 0 ? displayOf(cx.where, cx.prefix, path) : undefined
+  cx.errors.push({ file: cx.file, path, ...(display !== undefined && display !== path ? { display } : {}), message, ...(cx.line !== undefined ? { line: cx.line } : {}) })
 }
 
 /** The reserved key `redirectFrom`: one old path or a list of them, each starting with `/`. Only the main-language file may set it. */
@@ -133,6 +147,27 @@ function jsonErrorOffset(text: string, reason: string): number {
   return low
 }
 
+/** True for the error js-yaml throws on a syntax error (`reason` and `mark` say what and where). */
+const isYamlError = (error: unknown): error is Error & { reason?: string; mark?: { line?: number } } =>
+  error instanceof Error && error.name === 'YAMLException'
+
+/**
+ * A YAML syntax error as the owner needs it: the file, the line in the file and what to do. `lineShift` is the number of
+ * file lines before the YAML (1 for the `---` line of Markdown frontmatter). An unquoted colon inside a value is the
+ * common slip, so the mapping error says to quote the text.
+ */
+function yamlError(error: unknown, text: string, file: string, lineShift: number): ContentError {
+  const { reason, mark } = error as { reason?: string; mark?: { line?: number } }
+  const why = reason ?? (error instanceof Error ? error.message : String(error)).split('\n')[0]!
+  const line = typeof mark?.line === 'number' ? mark.line + 1 + lineShift : undefined
+  let hint = ''
+  if (why.startsWith('bad indentation of a mapping entry')) {
+    const slip = line === undefined ? null : /^\s*([^:\s][^:]*):\s+([^:]*:)\s/.exec(text.split('\n')[line - 1] ?? '')
+    hint = slip ? ` Put text with a colon in quotes: ${slip[1]}: "${slip[2]} …"` : ' Put text with a colon in quotes.'
+  }
+  return { file, message: `Invalid YAML: ${why}.${hint}`, ...(line !== undefined ? { line } : {}) }
+}
+
 /** The raw key/value data of a YAML or JSON file; errors carry the line of the syntax error. */
 function parseDataFile(text: string, ext: string, rel: string, errors: ContentError[]): Record<string, unknown> | undefined {
   let data: unknown
@@ -143,9 +178,7 @@ function parseDataFile(text: string, ext: string, rel: string, errors: ContentEr
     if (ext === 'json') {
       errors.push({ file: rel, message: `Invalid JSON: ${reason}`, line: lineAt(text, jsonErrorOffset(text, reason)) })
     } else {
-      const mark = (error as { mark?: { line?: number }; reason?: string }).mark
-      const why = (error as { reason?: string }).reason ?? reason.split('\n')[0]
-      errors.push({ file: rel, message: `Invalid YAML: ${why}`, ...(typeof mark?.line === 'number' ? { line: mark.line + 1 } : {}) })
+      errors.push(yamlError(error, text, rel, 0))
     }
     return undefined
   }
@@ -178,9 +211,9 @@ function convertFields(fields: Fields, data: Record<string, unknown>, cx: FileCx
     const field = Object.hasOwn(fields, key) ? fields[key] : undefined
     const path = cx.prefix + key
     if (!field || field.retired) { fail(cx, path, `Unknown field “${key}”.`); continue }
-    if (field.type === 'markdown') { fail(cx, path, `“${field.label}” is the text of the file, not a frontmatter key.`); continue }
+    if (field.type === 'markdown') { fail(cx, path, `“${key}” is the text of the file, not a frontmatter key.`); continue }
     if (!cx.isMain && !isTranslatable(field) && field.type !== 'list' && field.type !== 'image') {
-      fail(cx, path, `“${field.label}” is set in the main-language file only.`)
+      fail(cx, path, `“${key}” is set in the main-language file only.`)
       continue
     }
     switch (field.type) {
@@ -191,9 +224,22 @@ function convertFields(fields: Fields, data: Record<string, unknown>, cx: FileCx
       case 'file':
         if (typeof value === 'string') { checkPublicFile(cx, path, value); out[key] = { file: value } } else out[key] = value
         break
+      case 'choices': {
+        // "None" must be said on purpose, as the Studio's "Keine" tap does: deleting the values leaves `[]`, which on a
+        // required field is an error instead of a published "none". An option named `none` wins over the word.
+        if (value === 'none') { out[key] = field.options.some((o) => o.value === 'none') ? ['none'] : []; break }
+        if (Array.isArray(value) && value.length === 0 && !field.optional) {
+          const [first, second] = field.options.map((o) => o.value)
+          const example = second === undefined ? `[${first}]` : `[${first}, ${second}]`
+          fail(cx, path, `“${key}” is empty: write the values, like ${example}, or none when there are none.`)
+          break
+        }
+        out[key] = value
+        break
+      }
       case 'image': {
-        if (!isRecord(value)) { fail(cx, path, `“${field.label}” needs src and alt.`); break }
-        if (!cx.isMain && value.src !== undefined) { fail(cx, path, `“${field.label}”: src is set in the main-language file only.`); break }
+        if (!isRecord(value)) { fail(cx, path, `“${key}” needs src and alt.`); break }
+        if (!cx.isMain && value.src !== undefined) { fail(cx, path, `“${key}”: src is set in the main-language file only.`); break }
         if (typeof value.src === 'string') checkPublicFile(cx, path, value.src)
         out[key] = { ...(cx.isMain ? { file: value.src } : {}), alt: value.alt }
         break
@@ -202,8 +248,8 @@ function convertFields(fields: Fields, data: Record<string, unknown>, cx: FileCx
         // A list with one subfield may be written as plain values: `tags: [a, b]` = `tags: [{ name: a }, …]`.
         const only = Object.keys(field.of).length === 1 ? Object.keys(field.of)[0] : undefined
         const rows = Array.isArray(value) && only !== undefined ? value.map((row) => (isRecord(row) ? row : { [only]: row })) : value
-        if (!Array.isArray(rows) || !rows.every(isRecord)) { fail(cx, path, `“${field.label}” must be a list of objects.`); break }
-        out[key] = rows.map((row, i) => convertFields(field.of, row, { ...cx, prefix: `${path}.${i}.` }))
+        if (!Array.isArray(rows) || !rows.every(isRecord)) { fail(cx, path, `“${key}” must be a list of objects.`); break }
+        out[key] = rows.map((row, i) => convertFields(field.of, row, { ...cx, prefix: `${path}.${i}.`, where: [...cx.where, displayOf(cx.where, cx.prefix, path), `row ${i + 1}`] }))
         break
       }
       default:
@@ -222,6 +268,8 @@ interface MergeCx {
   /** The file of each locale, for error attribution. */
   rels: Record<Locale, string>
   errors: ContentError[]
+  /** Where a list row sits in the main file, for the owner: `['steps', 'row 2']`. */
+  where: string[]
 }
 
 /** Records a translatable leaf: per-locale values, and the print of every translation (CONTENT.md). */
@@ -252,8 +300,11 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
     } else if (field.type === 'list') {
       const mainRows = rowsOf(mainView[key])
       for (const locale of cx.locales) {
-        if (rowsOf(views[locale]?.[key]).length > mainRows.length) {
-          cx.errors.push({ file: cx.rels[locale] ?? '', path, message: `“${field.label}” has more rows than in the main language.` })
+        // Rows are matched by position: a different count shifts every translated row after the difference.
+        const count = views[locale]?.[key] === undefined ? mainRows.length : rowsOf(views[locale]?.[key]).length
+        if (locale !== cx.main && count !== mainRows.length) {
+          const display = displayOf(cx.where, cx.prefix, path)
+          cx.errors.push({ file: cx.rels[locale] ?? '', path, ...(display !== path ? { display } : {}), message: `“${key}” has ${count} rows here and ${mainRows.length} in content/${cx.rels[cx.main] ?? ''}. Each row translates the row at the same place in the main file; write - {} for a row with nothing to translate.` })
         }
       }
       out[key] = mainRows.map((_, i) => {
@@ -263,7 +314,7 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
           const row = rowsOf(views[locale]?.[key])[i]
           if (row) rowViews[locale] = row
         }
-        return { _id: id, ...merge(field.of, rowViews, { ...cx, prefix: `${path}.${id}.` }) }
+        return { _id: id, ...merge(field.of, rowViews, { ...cx, prefix: `${path}.${id}.`, where: [...cx.where, displayOf(cx.where, cx.prefix, path), `row ${i + 1}`] }) }
       })
     } else if (field.type === 'image') {
       const image = mainView[key]
@@ -291,7 +342,8 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
  * - Frontmatter keys are field names in simple form; the body fills the brick's markdown field.
  *   Translatable fields collect one locale per file into `{ de, en }`. Simple forms: money `12.5` →
  *   `{ amount: 1250 }`; image `{ src: '/img/a.jpg', alt: '…' }` → `{ file: '/img/a.jpg', alt: { de: '…' } }`
- *   (alt per locale file); file `'/docs/a.pdf'` → `{ file: '/docs/a.pdf' }`; list rows get `_id`
+ *   (alt per locale file); file `'/docs/a.pdf'` → `{ file: '/docs/a.pdf' }`; choices `none` → `[]` (an empty list on a
+ *   required field is an error, so "none" is never left behind by deleting values); list rows get `_id`
  *   `r` + 9 chars of sha256(`<entry id>:<row index>`) and translations merge by row index.
  * - `prints` mark every translation as fresh (printOf of the main value), so a present translation
  *   is never a fallback.
@@ -302,6 +354,7 @@ function merge(fields: Fields, views: Partial<Record<Locale, View>>, cx: MergeCx
  */
 export async function readContent(contentDir: string, publicDir: string, schema: Schema, options: ReadOptions = {}): Promise<ReadResult> {
   const drafts = options.drafts ?? true
+  const today = options.today ?? todayIn(schema.timeZone)
   const errors: ContentError[] = []
   const entries: Record<string, StoredEntry[]> = {}
   const files: Record<string, FileInfo> = {}
@@ -318,9 +371,13 @@ export async function readContent(contentDir: string, publicDir: string, schema:
   // Entry IDs of every file collection (main-language files), so a ref may point to a brick read later.
   // A brick whose entries live on the platform is not known here: its refs are not checked.
   const known = new Map<string, Set<string>>()
+  // One real entry per collection (`content/people/1.katrin-albers.md is people/katrin-albers`), as the example in a "no such entry" message.
+  const idExamples = new Map<string, string>()
   for (const [key, brick] of Object.entries(schema.bricks)) {
     if (brick.source !== 'files' || brick.kind !== 'collection') continue
     known.set(key, new Set((await entryNames(join(contentDir, key))).map((name) => `${key}/${name}`)))
+    const first = (await dataNames(join(contentDir, key))).find((file) => extOf(file) !== 'csv' && parseFileName(file).locale === undefined)
+    if (first !== undefined) idExamples.set(key, `content/${key}/${first} is ${key}/${parseFileName(first).name}`)
   }
   const refs = (brick: string, id: string) => known.get(brick)?.has(id) ?? true
   // Entries left out as drafts: an entry that belongs to one goes with it (below).
@@ -353,12 +410,12 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const group = groups.get(parsed.name) ?? { rank, translations: {} }
       groups.set(parsed.name, group)
       if (locale === main) {
-        if (group.main !== undefined) return report(`Entry “${relOf(parsed.name)}” exists twice.`)
+        if (group.main !== undefined) return report(`Entry “${relOf(parsed.name)}” is in two files: content/${group.main.rel} and content/${rel}. Keep one and delete or rename the other.`)
         group.main = src
         group.number = parsed.number
         group.rank = rank
       } else {
-        if (group.translations[locale] !== undefined) return report(`Language “${locale}” exists twice for this entry.`)
+        if (group.translations[locale] !== undefined) return report(`Language “${locale}” of “${relOf(parsed.name)}” is in two files: content/${group.translations[locale]!.rel} and content/${rel}. Keep one and delete or rename the other.`)
         group.translations[locale] = src
       }
     }
@@ -399,6 +456,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
     let next = Math.max(0, ...sorted.map(([, g]) => g.number ?? 0))
 
     const slugKey = slugKeyOf(brick)
+    const dateKey = scheduleKeyOf(brick)
     const slugOwner = new Map<string, string>()
     for (const [name, group] of sorted) {
       if (group.main === undefined) {
@@ -433,7 +491,7 @@ export async function readContent(contentDir: string, publicDir: string, schema:
 
       const prints: Prints = {}
       const mergeErrors: ContentError[] = []
-      const data = merge(brick.fields, views, { main, locales: schema.locales, entryId: id, prefix: '', prints, rels, errors: mergeErrors })
+      const data = merge(brick.fields, views, { main, locales: schema.locales, entryId: id, prefix: '', prints, rels, errors: mergeErrors, where: [] })
       if (mergeErrors.length > 0) { errors.push(...mergeErrors); continue }
 
       const result = await validate(schema, key, data, { mode: 'create', refs })
@@ -446,7 +504,15 @@ export async function readContent(contentDir: string, publicDir: string, schema:
           const textLine = issue.key === 'issues.markdownAt' && issue.path.split('.')[0] === markdownKeyOf(brick) ? issue.params?.line : undefined
           const line = typeof textLine === 'number' && bodyLine !== undefined ? bodyLine + textLine - 1 : lines[at]
           const params = line !== undefined && textLine !== undefined ? { ...issue.params, line } : issue.params
-          errors.push({ file: rels[at] ?? mainRel, path: issue.path, message: coreMessage('en', issue.key, params), ...(line !== undefined ? { line } : {}) })
+          const where = locate(brick.fields, data, issue.path)
+          const display = where.shown.join(', ')
+          errors.push({
+            file: rels[at] ?? mainRel,
+            path: issue.path,
+            ...(display !== issue.path ? { display } : {}),
+            message: filesMessage(issue.key, params, where, { currency: schema.currency, refs, idExamples }),
+            ...(line !== undefined ? { line } : {}),
+          })
         }
         continue
       }
@@ -493,6 +559,8 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       }
       urlOwners.push({ id, urls })
       for (const t of taken) slugOwner.set(t.key, id)
+      // Checked above like a published entry; a scheduled one stays out until its date.
+      if (mainView.scheduled) { leftOut.add(id); continue }
       if (order !== undefined) entry.order = order
       entry.updatedAt = times.updatedAt(Object.values(rels))
       entry.sources = Object.fromEntries(Object.entries(rels).map(([locale, rel]) => [locale, times.source(rel!)]))
@@ -505,12 +573,12 @@ export async function readContent(contentDir: string, publicDir: string, schema:
      * the parsed body; YAML, JSON and CSV: the whole file or row is data and there is no body).
      * `'draft'` when the entry is marked `draft: true` and drafts are off.
      */
-    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; draft?: true } | 'draft' | undefined> {
+    async function readDoc(src: Src, isMain: boolean): Promise<{ view: View; tree?: MarkdownTree; bodyLine?: number; redirectFrom?: string[]; draft?: true; scheduled?: true } | 'draft' | undefined> {
       const { rel } = src
       const ext = extOf(rel)
       const markdownKey = markdownKeyOf(brick)
       const fileErrors: ContentError[] = []
-      const cx: FileCx = { file: rel, isMain, prefix: '', publicDir, files, errors: fileErrors, line: src.csv?.row.line }
+      const cx: FileCx = { file: rel, isMain, prefix: '', publicDir, files, errors: fileErrors, line: src.csv?.row.line, where: [] }
       let data: Record<string, unknown>
       let parsed: Awaited<ReturnType<typeof parseFile>> | undefined
       let bodyLine: number | undefined
@@ -529,7 +597,13 @@ export async function readContent(contentDir: string, publicDir: string, schema:
         if (ext === 'md') {
           // Parsed once, with the file's frontmatter; the profile problems are reported by validate() on the body text.
           const field = markdownKey === undefined ? undefined : brick.fields[markdownKey]
-          parsed = await parseFile(text, { profile: field?.type === 'markdown' ? effectiveProfile(field) : undefined, components: schema.components })
+          try {
+            parsed = await parseFile(text, { profile: field?.type === 'markdown' ? effectiveProfile(field) : undefined, components: schema.components })
+          } catch (error) {
+            if (!isYamlError(error)) throw error
+            errors.push(yamlError(error, text, rel, 1))
+            return undefined
+          }
           for (const problem of parsed.previewProblems) fail(cx, markdownKey ?? 'body', `In a \`\`\`md preview fence: ${coreMessage('en', problem.key, problem.params)}`)
           data = parsed.frontmatter
           const imageCx = { contentDir, publicDir, file: rel, images, renames: new Map<string, string>(), imageProps, sized, fail: (message: string) => fileErrors.push({ file: rel, message }) }
@@ -549,18 +623,23 @@ export async function readContent(contentDir: string, publicDir: string, schema:
       const redirects = redirectFrom === undefined ? undefined : redirectPaths(cx, redirectFrom)
       if (draft !== undefined && typeof draft !== 'boolean') fail(cx, 'draft', '“draft” must be true or false.')
       if (draft === true && !drafts && fileErrors.length === 0) return 'draft'
+      // A scheduled entry (dated after the build day) is left out like a draft; the first build on or after its date
+      // publishes it. Only the main file holds the date.
+      // Only a real ISO date schedules: any other text is left to validate(), which reports it. The entry is checked
+      // like a published one (it goes live at a later build nobody watches) and left out of the bundle afterwards.
+      const dateValue = dateKey === undefined ? undefined : fields[dateKey]
+      const scheduled = isMain && !drafts && isDate(dateValue) && dateValue > today
       const view = convertFields(brick.fields, fields, cx)
       const hasBody = parsed !== undefined && parsed.value.nodes.length > 0
       if (parsed === undefined && markdownKey !== undefined) {
-        const label = brick.fields[markdownKey]!.label
-        fail(cx, markdownKey, `“${label}” is a markdown field: it is the text of a .md file, and ${ext === 'csv' ? 'CSV' : ext.toUpperCase()} files have no text.`)
+        fail(cx, markdownKey, `“${markdownKey}” is a markdown field: it is the text of a .md file, and ${ext === 'csv' ? 'CSV' : ext.toUpperCase()} files have no text.`)
       }
       if (parsed !== undefined && markdownKey !== undefined && hasBody) view[markdownKey] = parsed.body
       if (markdownKey === undefined && hasBody) fail(cx, 'body', `The text fits no field of “${key}” (it has no markdown field).`)
       // The slug defaults to the file name without its number (CONTENT.md "Slug"), for CSV to the `slug` cell.
       if (slugKey !== undefined && view[slugKey] === undefined) view[slugKey] = src.csv ? src.name : slugify(src.name)
       errors.push(...fileErrors)
-      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, draft: draft === true ? true : undefined }
+      return fileErrors.length > 0 ? undefined : { view, tree: markdownKey !== undefined && hasBody ? parsed!.value : undefined, bodyLine, redirectFrom: redirects, draft: draft === true ? true : undefined, scheduled: scheduled ? true : undefined }
     }
   }
 
@@ -580,6 +659,86 @@ export async function readContent(contentDir: string, publicDir: string, schema:
   }
 
   return { entries, files, images, errors }
+}
+
+/** A field's label in every language: a plain label is its own only text. */
+const labelTexts = (field: Field): string[] => (typeof field.label === 'string' ? [field.label] : Object.values(field.label))
+
+interface Located {
+  /** The fields of the brick and of each list row on the path: where a label in the issue can come from. */
+  sets: Fields[]
+  /** The field the path ends in (not a list row or a locale). */
+  field?: Field
+  /** The stored value at the path. */
+  value: unknown
+  /** The path as the owner reads it: field keys, `row N` for a list row, a locale after its key. */
+  shown: string[]
+}
+
+/** Walks a validate() path (`exceptions.r1a2b3c4d5.closed.en`) through the brick's fields and the stored data. */
+function locate(root: Fields, data: unknown, path: string): Located {
+  const sets: Fields[] = [root]
+  const shown: string[] = []
+  let fields = root
+  let field: Field | undefined
+  let value: unknown = data
+  for (const segment of path.split('.')) {
+    if (field?.type === 'list') {
+      const rows = Array.isArray(value) ? value : []
+      const index = rows.findIndex((row) => isRecord(row) && row._id === segment)
+      shown.push(index < 0 ? segment : `row ${index + 1}`)
+      value = rows[index]
+      fields = field.of
+      sets.push(fields)
+      field = undefined
+    } else if (field) {
+      // A locale after a translatable key, or `alt` and a locale after an image key.
+      shown[shown.length - 1] += `.${segment}`
+      value = isRecord(value) ? value[segment] : undefined
+    } else {
+      field = Object.hasOwn(fields, segment) ? fields[segment] : undefined
+      shown.push(segment)
+      value = isRecord(value) ? value[segment] : undefined
+    }
+  }
+  return { sets, field, value, shown }
+}
+
+/**
+ * One validate() issue as a file owner reads it: the field is named by its key (the label is a Studio word, and may be
+ * German), and a value that has a form in a file is told with that form (euros, not cents).
+ */
+function filesMessage(
+  key: string,
+  params: Record<string, unknown> | undefined,
+  at: Located,
+  site: { currency: string; refs: (brick: string, id: string) => boolean; idExamples: Map<string, string> },
+): string {
+  const keys = new Map<unknown, string>()
+  for (const set of at.sets) for (const [name, field] of Object.entries(set)) for (const text of labelTexts(field)) keys.set(text, name)
+  const named = Object.fromEntries(Object.entries(params ?? {}).map(([name, value]) => [name, keys.get(value) ?? value]))
+  const name = at.shown[at.shown.length - 1]?.split('.')[0] ?? ''
+  switch (key) {
+    case 'issues.notMoney': {
+      const currency = at.field?.type === 'money' && at.field.currency ? at.field.currency : site.currency
+      return `“${name}” must be a number in ${currency}, like 65 or 12.50 (no currency sign, no thousands separator).`
+    }
+    case 'issues.badDate':
+      return `“${name}” is not a valid date: write it as YYYY-MM-DD, like 2026-10-24.`
+    case 'issues.badTime':
+      return `“${name}” is not a valid time: write it as HH:MM, like 09:30.`
+    case 'issues.badDateRange':
+      return `“${name}” needs from and to: ${name}: { from: 2026-11-14, to: 2026-11-14 } (the same date twice for one day).`
+    case 'issues.refGone': {
+      const to = at.field?.type === 'ref' ? at.field.to : undefined
+      const ids = Array.isArray(at.value) ? at.value : [at.value]
+      const missing = to === undefined ? undefined : ids.find((id) => typeof id === 'string' && !site.refs(to, id))
+      const example = to === undefined ? undefined : site.idExamples.get(to)
+      return `There is no entry “${String(missing ?? at.value)}”. An id is the folder and the file name without number and language${example ? `: ${example}` : ''}.`
+    }
+    default:
+      return coreMessage('en', key, named as Parameters<typeof coreMessage>[2])
+  }
 }
 
 /** The field a file's body fills: the brick's markdown field. */
@@ -618,6 +777,16 @@ async function dataNames(dir: string): Promise<string[]> {
 /** The brick's slug field, if it has one: the URL of each entry (CONTENT.md "Slug"). */
 function slugKeyOf(brick: Brick): string | undefined {
   return brick.fields.slug?.type === 'slug' ? 'slug' : undefined
+}
+
+/**
+ * The date field that schedules an entry: in a collection with drafts that lists its entries newest first by a date
+ * (posts, a changelog), an entry dated after the build day is not published yet. A list in date order from the
+ * oldest (events) shows coming dates on purpose, so it has none.
+ */
+function scheduleKeyOf(brick: Brick): string | undefined {
+  if (brick.kind !== 'collection' || brick.drafts !== true || brick.order === 'manual' || brick.order.dir !== 'desc') return undefined
+  return brick.fields[brick.order.field]?.type === 'date' ? brick.order.field : undefined
 }
 
 /** Problems that make every file of a brick unreadable: more than one markdown field. */

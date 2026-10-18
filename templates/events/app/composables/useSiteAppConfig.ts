@@ -1,7 +1,8 @@
 // Synced from templates/_features/site/app/composables/useSiteAppConfig.ts by `pnpm templates sync`. Edit the source, not this copy.
-/** A navigation item: a collection entry by id (`pages/about`, title and address from the content), or a page of
- *  `pages` in ginko.config.ts with its label per language. */
-export type SiteNavItem = { entry: string } | { page: string, label: Record<string, string> }
+/** A navigation item: a collection entry by id (`pages/about`, title and address from the content), a page of
+ *  `pages` in ginko.config.ts with its label per language, or an address on another site (`url`, for example the
+ *  sign-in of an app) with its label per language. */
+export type SiteNavItem = { entry: string } | { page: string, label: Record<string, string> } | { url: string, label: Record<string, string> }
 
 /** `site` in app/app.config.ts: the brand and navigation of the template. Name, address and contact come from
  *  ginko.config.ts (`name`) and the `site` brick (content/site.md). */
@@ -33,9 +34,15 @@ export function useSiteAppConfig(): SiteAppConfig {
   return useAppConfig().site
 }
 
+/** Entries already reported as missing, so the log names each one once. */
+const reported = new Set<string>()
+const overLimit = '\0over-limit'
+
 /** The items of a navigation list with their label and path in the current language. An entry that does not exist
- *  in this language (untranslated or removed) is left out. */
-export function useSiteLinks(items: () => SiteNavItem[]) {
+ *  in this language (untranslated or removed) is left out; one missing in the main language is also reported in the
+ *  dev server and build log, because it is a typo or a deleted file. With `limit`, a longer list is reported once
+ *  too (the header holds 6 links; the rest stay in the menu). */
+export function useSiteLinks(items: () => SiteNavItem[], limit?: number) {
   const path = useGinkoPath()
   const locale = useGinkoLocale()
   const { mainLocale } = useGinkoSite()
@@ -43,6 +50,10 @@ export function useSiteLinks(items: () => SiteNavItem[]) {
   // key that is no collection of this site is skipped by it.
   const tree = useGinkoNav(() => [...new Set(items().flatMap((item) => ('entry' in item ? [item.entry.split('/')[0]!] : [])))] as NavBricks)
   return computed(() => {
+    if (import.meta.server && limit && !reported.has(overLimit) && items().length > limit) {
+      reported.add(overLimit)
+      console.warn(`[site] app/app.config.ts has ${items().length} navigation entries; the header holds ${limit}, so the menu stays in the sheet.`)
+    }
     const byId = new Map<string, { title: string, path: string }>()
     const walk = (nodes: typeof tree.value) => nodes.forEach((node) => {
       if (node.id) byId.set(node.id, node)
@@ -52,10 +63,17 @@ export function useSiteLinks(items: () => SiteNavItem[]) {
     return items().flatMap((item) => {
       if ('entry' in item) {
         const node = byId.get(item.entry)
-        return node ? [{ key: item.entry, label: node.title, to: node.path }] : []
+        if (node) return [{ key: item.entry, label: node.title, to: node.path }]
+        // An empty tree is content not loaded yet, not a missing entry.
+        if (import.meta.server && locale.value === mainLocale && tree.value.length > 0 && !reported.has(item.entry)) {
+          reported.add(item.entry)
+          console.warn(`[site] The navigation entry “${item.entry}” in app/app.config.ts matches no file in content/, so it is left out. An id is the folder and the file name without number: content/pages/1.about.md is pages/about.`)
+        }
+        return []
       }
       const label = item.label[locale.value] ?? item.label[mainLocale]
-      return label ? [{ key: item.page, label, to: path(item.page as GinkoPageKey) }] : []
+      if (!label) return []
+      return 'url' in item ? [{ key: item.url, label, to: item.url }] : [{ key: item.page, label, to: path(item.page as GinkoPageKey) }]
     })
   })
 }

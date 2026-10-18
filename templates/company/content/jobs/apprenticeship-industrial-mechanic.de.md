@@ -2,7 +2,7 @@
 title: "Ausbildung zum Industriemechaniker (m/w/d)"
 slug: ausbildung-industriemechaniker
 description: "Dreieinhalb Jahre in Werkstatt, Montage und Prüffeld, Beginn am 1. August. Mit Schulabschluss, ohne Vorkenntnisse."
-location: Musterstadt
+location: Bielefeld
 ---
 
 Sie lernen, wie eine Pumpe entsteht, vom Rohguss bis zum Probelauf, und wie man sie repariert, wenn sie zurückkommt.

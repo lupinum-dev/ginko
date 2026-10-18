@@ -13,4 +13,4 @@ Eine einzelne Messung sagt wenig. Viele Messungen über ein Jahr zeigen, wie sic
 
 ## Wie Sie mitmachen
 
-Lehrkräfte, die das mit ihrer Klasse machen möchten, schreiben an [Lukas](mailto:lukas@example.com). Wir bringen die Testsets mit und zeigen, wie sie funktionieren.
+Lehrkräfte, die das mit ihrer Klasse machen möchten, schreiben an [Lukas](mailto:lukas@river-commons.example). Wir bringen die Testsets mit und zeigen, wie sie funktionieren.

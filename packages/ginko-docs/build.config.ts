@@ -7,6 +7,7 @@ export default defineBuildConfig({
   entries: [
     { input: 'src/config', outDir: 'dist', name: 'config' },
     { input: 'modules/pages', outDir: 'dist', name: 'pages' },
+    { input: 'modules/icons', outDir: 'dist', name: 'icons' },
   ],
   declaration: true,
 })

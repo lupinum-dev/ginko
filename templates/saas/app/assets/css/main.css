@@ -1,0 +1,30 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./tokens.css";
+
+/* This template's accent and fonts (DESIGN.md "Your accent"). Everything else comes from tokens.css.
+   saas: violet. White on the accent 7.1:1 light; the accent on the page 7.1:1 light; #2e1065 on the dark accent
+   8.3:1; the dark accent on the page 10.7:1. The focus ring and links in text use the accent. */
+:root {
+  --brand: #6d28d9;
+  --brand-foreground: #ffffff;
+  /* @nuxt/fonts serves Inter from the site and adds size-matched fallbacks. */
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* The help center (@lupinum/ginko-docs) lines up with the header and sticks below it (h-16, md:h-18, border). */
+  --docs-max: var(--container-page);
+  --docs-gutter: var(--spacing-gutter);
+  --docs-top: calc(4rem + 1px);
+}
+
+@media (min-width: 48rem) {
+  :root { --docs-top: calc(4.5rem + 1px); }
+}
+
+.dark {
+  --brand: #c4b5fd;
+  --brand-foreground: #2e1065;
+  /* The closing band in dark mode: a deep violet instead of the light accent, so it does not outshine the page.
+     #f5f3ff on #4c1d95 10.0:1. */
+  --brand-surface: #4c1d95;
+  --brand-surface-foreground: #f5f3ff;
+}

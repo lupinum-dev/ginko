@@ -26,7 +26,8 @@ export function useServiceText() {
     const money = amount(service)
     return money ? formatMoney(money, language.value, { wholeWithoutMinor: true }) : t('onRequest')
   }
-  const priceLabel = vat === 'excluded' ? t('priceNet') : vat === 'included' ? t('priceGross') : t('price')
+  /** The label of the price: with the VAT note for a real price, plain "Price" when it is on request. */
+  const priceLabel = (service: ServiceFacts) => (!amount(service) ? t('price') : vat === 'excluded' ? t('priceNet') : vat === 'included' ? t('priceGross') : t('price'))
   const duration = (service: ServiceFacts) => {
     const minutes = service.duration
     if (!minutes) return undefined

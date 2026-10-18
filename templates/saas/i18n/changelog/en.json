@@ -1,0 +1,9 @@
+{
+  "title": "Changelog",
+  "lead": "What changed in the product, newest first.",
+  "version": "Version {version}",
+  "latest": "Latest changes",
+  "all": "All changes",
+  "empty": "No changes yet",
+  "feed": "Changelog as RSS feed"
+}

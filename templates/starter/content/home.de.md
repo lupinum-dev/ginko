@@ -1,14 +1,16 @@
 ---
-title: My site
-lead: Ein oder zwei Sätze, die sagen, wer Sie sind und was man hier findet.
+# This page is content/home.de.md, the German version of content/home.md. The README explains how to change texts.
+title: Übersetzungen, die sich lesen wie das Original
+lead: Ich übersetze zwischen Deutsch und Englisch für Museen, Forschungsinstitute und Verlage.
 ---
 
-## Erste Schritte
+## Was ich übersetze
 
-Diese Website ist startklar. In drei Schritten wird sie zu Ihrer:
+- Ausstellungs- und Katalogtexte für Museen und Galerien
+- Fachartikel, Förderanträge und Projektberichte
+- Sachbücher und Essays
 
-1. Schreiben Sie Ihre eigenen Texte. Es sind Markdown-Dateien in `content/`; diese Seite ist `content/home.de.md`.
-2. Legen Sie den Namen in `ginko.config.ts` und das Menü in `app/app.config.ts` fest.
-3. Wählen Sie Farbe und Schriften in `app/assets/css/main.css`.
+## So läuft es ab
 
-Die README des Projekts erklärt jeden Schritt.
+Schicken Sie mir den Text und sagen Sie mir, wo er erscheinen wird. Innerhalb von zwei Werktagen bekommen Sie einen
+Festpreis und einen Liefertermin. Jede Übersetzung lese ich ein zweites Mal, bevor sie zu Ihnen geht.

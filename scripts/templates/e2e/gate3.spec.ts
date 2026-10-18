@@ -1,8 +1,8 @@
 // Gate 3 (TEMPLATES.md §9): end to end on the built site, with the test instant on the server and in the browser.
-import { expect, navToggle, open, site, sitePages, test, themeToggle } from './helpers.ts'
+import { allPages, expect, navToggle, open, site, test, themeToggle } from './helpers.ts'
 
 test('home and every page of the sitemap answer 200 with one h1 and a JSON-LD type', async ({ page }) => {
-  const pages = await sitePages()
+  const pages = await allPages()
   // Wrong behaviour caught: a sitemap that lists only the home page while feature pages exist.
   expect(pages.length, 'sitemap entries besides home').toBeGreaterThan(1)
   for (const path of pages) {
@@ -26,7 +26,7 @@ test('home and every page of the sitemap answer 200 with one h1 and a JSON-LD ty
 test('every page shows the email and phone of content/site.md in its footer', async ({ page }) => {
   const { email, phone } = site.contact
   test.skip(!email && !phone, 'content/site.md has neither email nor phone')
-  for (const path of await sitePages()) {
+  for (const path of await allPages()) {
     await open(page, path)
     const footer = page.locator('footer')
     if (email) await expect.soft(footer.locator(`a[href="mailto:${email}"]`), `${path}: footer email link`).toHaveText(email)
@@ -75,6 +75,10 @@ for (const [width, where] of [[390, 'the nav sheet'], [1440, 'the header']] as c
         await navToggle(page).click()
         scope = page.getByRole('dialog')
       }
+      // A header that keeps its languages in a menu (the docs layer: a button named "Language" with the links in a
+      // popover) opens it first. The site feature's header shows the links themselves and has no such button.
+      const menu = scope.getByRole('button', { name: /^(language|sprache)\b/i })
+      if (await menu.isVisible() && await menu.getAttribute('aria-expanded') === 'false') await menu.click()
       const language = locale.split('-')[0]
       const link = scope.locator(`a[hreflang|="${language}"], a[lang|="${language}"]`).first()
       await expect(link, `switch to ${locale} in ${where}`).toBeVisible()
@@ -107,4 +111,23 @@ test('on a phone the navigation is reachable and its links are visible', async (
   else {
     await expect(nav.getByRole('link').first(), 'nav links without a toggle').toBeVisible()
   }
+})
+
+// saas embeds @lupinum/ginko-docs as its help center, inside the site's own layout. Wrong behaviour caught: on a phone
+// the other help pages and the search cannot be reached, because the docs' own header (with its menu) is not there.
+test('on a phone the embedded help pages open their navigation and search from the bar', async ({ page }) => {
+  test.skip(site.name !== 'saas', 'only saas embeds the docs')
+  await page.setViewportSize({ width: 390, height: 844 })
+  await open(page, '/help/getting-started')
+  await page.locator('.docs-bar-nav').click()
+  const sheet = page.locator('dialog.docs-nav-sheet')
+  await sheet.getByRole('link', { name: 'Export for payroll' }).click()
+  await expect(page).toHaveURL(/\/help\/export$/)
+  await expect(sheet).toBeHidden()
+  await page.locator('.docs-bar-start .docs-search-trigger').click()
+  const search = page.locator('dialog.docs-search-dialog[open]')
+  await search.getByRole('combobox').fill('swap')
+  await expect(search.getByRole('option').first()).toBeVisible()
+  await search.getByRole('combobox').press('Enter')
+  await expect(search).toBeHidden()
 })

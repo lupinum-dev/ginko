@@ -1,0 +1,8 @@
+{
+  "notice": { "createTask": "Hinweis hinzufügen", "textField": "^Text" },
+  "page": { "brick": "pages", "title": "About us", "path": "/about", "bodyField": "Text" },
+  "news": { "task": "Neuigkeit schreiben", "path": "/news" },
+  "event": { "task": "Veranstaltung hinzufügen", "path": "/events" },
+  "approval": { "task": "Neuigkeit schreiben", "path": "/news" },
+  "reportPdf": { "task": "Datei hinzufügen", "removeTask": "Datei entfernen", "path": "/reports" }
+}

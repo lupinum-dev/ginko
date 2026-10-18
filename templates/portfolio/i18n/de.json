@@ -1,0 +1,47 @@
+{
+  "home": {
+    "title": "Innenarchitektur und Objektdesign in Hamburg",
+    "work": "Ausgewählte Projekte",
+    "journal": "Aus dem Journal",
+    "cta": {
+      "title": "Erzählen Sie uns von Ihrem Raum.",
+      "text": "Schreiben Sie uns ein paar Zeilen mit Fotos der Räume, oder rufen Sie an. Das erste Gespräch kostet nichts."
+    }
+  },
+  "start": {
+    "action": "Projekt anfragen",
+    "subject": "Projektanfrage",
+    "or": "Oder schreiben Sie an"
+  },
+  "project": {
+    "facts": "Zum Projekt",
+    "client": "Auftraggeber",
+    "year": "Jahr",
+    "place": "Ort",
+    "scope": "Leistungen",
+    "photos": "Fotos",
+    "next": "Nächstes Projekt",
+    "cta": {
+      "title": "Planen Sie etwas Ähnliches?",
+      "text": "Erzählen Sie uns von Ihren Räumen oder Ihrem Objekt. Das erste Gespräch kostet nichts."
+    }
+  },
+  "projects": {
+    "title": "Projekte",
+    "lead": "Wohnungen, Arbeitsräume und die Dinge darin, von der ersten Skizze bis zur letzten Montage.",
+    "all": "Alle Projekte",
+    "empty": "Noch keine Projekte"
+  },
+  "people": {
+    "title": "Studio",
+    "lead": "Eine Gestalterin, ein Gestalter und eine Werkstatt in Hamburg-Altona. Wir planen Räume, entwerfen die Möbel und Objekte dafür und kennen die Menschen, die sie fertigen."
+  },
+  "blog": {
+    "title": "Journal",
+    "lead": "Notizen aus dem Studio und den Werkstätten, ab und zu.",
+    "latest": "Alle Einträge im Journal",
+    "empty": "Noch keine Einträge im Journal",
+    "tagged": "Einträge mit dem Schlagwort „{tag}“",
+    "all": "Alle Einträge zeigen"
+  }
+}

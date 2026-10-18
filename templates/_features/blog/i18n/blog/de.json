@@ -4,10 +4,15 @@
   "by": "von {names}",
   "authors": "Geschrieben von",
   "tags": "Schlagwörter",
-  "tagged": "Beiträge mit dem Schlagwort „{tag}“",
   "all": "Alle Beiträge zeigen",
-  "noTag": "Keine Beiträge mit dem Schlagwort „{tag}“",
   "empty": "Noch keine Beiträge",
   "feed": "RSS-Feed",
-  "latest": "Alle Neuigkeiten"
+  "latest": "Alle Neuigkeiten",
+  "tagged": "Beiträge mit dem Schlagwort {tag}",
+  "count": "{count, plural, one {# Beitrag} other {# Beiträge}}",
+  "topicCount": "{name}, {count, plural, one {# Beitrag} other {# Beiträge}}",
+  "minutes": "{count} Min. Lesezeit",
+  "older": "Älterer Beitrag",
+  "newer": "Neuerer Beitrag",
+  "pager": "Ältere und neuere Beiträge"
 }

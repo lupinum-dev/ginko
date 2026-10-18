@@ -10,6 +10,6 @@ const { t } = useI18n()
     <span>{{ t('serviceLine.stopped') }}</span>
     <a :href="telHref(line.phone)" dir="ltr" class="inline-flex min-h-11 items-center font-medium text-foreground tabular-nums underline underline-offset-4">{{ line.phone }}</a>
     <span aria-hidden="true" class="max-sm:hidden">·</span>
-    <span class="tabular-nums">{{ line.hours }}</span>
+    <span class="tabular-nums"><template v-for="(group, index) in line.hourGroups" :key="group"><span class="whitespace-nowrap">{{ group }}{{ index < line.hourGroups.length - 1 ? ',' : '' }}</span>{{ ' ' }}</template></span>
   </p>
 </template>

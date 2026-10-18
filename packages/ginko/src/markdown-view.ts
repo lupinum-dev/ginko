@@ -4,8 +4,8 @@
 import { defineComponent, h, type Component, type PropType } from 'vue'
 import { MarkdownDocument } from '@comark/vue'
 import type { MarkdownTree } from './core/index.ts'
-import { attributeProblem } from './core/markdown.ts'
-import { BLOCKED_TAGS, type ComponentRegistry } from './core/components.ts'
+import { attributeProblem, type AttributeRegistry } from './core/markdown.ts'
+import { BLOCKED_TAGS } from './core/components.ts'
 
 // KaTeX and mermaid.js are not part of Ginko's bundle, so math and mermaid nodes show their source:
 // math as `<code class="math">`, mermaid as `<pre class="mermaid">` (the markup mermaid.js looks for).
@@ -67,7 +67,7 @@ function labelCheckboxes(node: Tree): Tree {
  * the allowlist refuses goes (the element stays, without the attribute). `template` stays: comark's slot nodes use it,
  * and the native element is inert.
  */
-function dropUnsafe(node: Tree, components: Record<string, unknown>, registry: ComponentRegistry | undefined): Tree[] {
+function dropUnsafe(node: Tree, components: Record<string, unknown>, registry: AttributeRegistry | undefined): Tree[] {
   if (!Array.isArray(node)) return [node]
   const [tag, props, ...children] = node as [string | null, Record<string, unknown>, ...Tree[]]
   if (tag && !Object.hasOwn(components, tag)) {
@@ -87,7 +87,7 @@ export const GinkoMarkdown = defineComponent({
     /** Tag → component (or another tag name), e.g. `{ callout: Callout }`. Other tags use a global component of that name (PascalCase), else a plain element. */
     components: { type: Object as PropType<Record<string, Component | string>>, default: () => ({}) },
     /** The site's component registry (`components` in ginko.config.ts): a component keeps the props it declares there. Without it a component gets only `title`, `lang`, `dir` and `aria-*`. */
-    registry: { type: Object as PropType<ComponentRegistry>, default: undefined },
+    registry: { type: Object as PropType<AttributeRegistry>, default: undefined },
   },
   setup(props) {
     // The tree is plain JSON; comark's renderer takes the same `{ nodes }` shape.

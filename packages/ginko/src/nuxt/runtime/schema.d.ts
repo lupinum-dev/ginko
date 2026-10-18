@@ -7,6 +7,12 @@ declare module '#ginko/schema' {
   export default schema
 }
 
+// The Markdown component registry for the renderer (module.ts, componentsForMarkdown): declared props and their types.
+declare module '#ginko/components' {
+  const components: import('@lupinum/ginko/internal').AttributeRegistry
+  export default components
+}
+
 // The site's file bricks as bundles per locale (CONTENT.md), a Nitro virtual module built from content/.
 declare module '#ginko/files' {
   const bundles: Partial<Record<import('@lupinum/ginko').Locale, import('@lupinum/ginko/internal').Bundle>>

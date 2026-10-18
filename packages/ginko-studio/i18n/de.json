@@ -726,6 +726,7 @@
       "search": "{target} suchen …",
       "nothing": "Nichts gefunden."
     },
+    "confirmBlocker": "Bitte bestätige: Sind die {label} noch richtig?",
     "list": {
       "up": "{title} nach oben",
       "down": "{title} nach unten",
@@ -736,8 +737,7 @@
       "confirmBlocker": "Bitte bestätige bei „{title}“: Sind die {label} noch richtig?",
       "changed": "{changed} geändert. Sind die {label} noch richtig?",
       "add": "{item} hinzufügen",
-      "addInMain": "Zeilen hinzufügen, entfernen und verschieben kannst du auf {name}.",
-      "text": "Text"
+      "addInMain": "Zeilen hinzufügen, entfernen und verschieben kannst du auf {name}."
     }
   },
   "ops": {

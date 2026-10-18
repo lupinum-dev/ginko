@@ -726,6 +726,7 @@
       "search": "Search {target} …",
       "nothing": "Nothing found."
     },
+    "confirmBlocker": "Please confirm: are the {label} still correct?",
     "list": {
       "up": "Move {title} up",
       "down": "Move {title} down",
@@ -736,8 +737,7 @@
       "confirmBlocker": "Please confirm for “{title}”: are the {label} still correct?",
       "changed": "{changed} changed. Are the {label} still correct?",
       "add": "Add {item}",
-      "addInMain": "You add, remove and reorder rows in {name}.",
-      "text": "Text"
+      "addInMain": "You add, remove and reorder rows in {name}."
     }
   },
   "ops": {

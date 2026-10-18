@@ -18,6 +18,7 @@ const jobs = useOpenJobs()
 const { when } = useEventText()
 const path = useGinkoPath()
 const { t } = useI18n()
+const { name } = useGinkoSite()
 const latest = computed(() => posts.value.slice(0, 3))
 const quote = computed(() => quotes.value.items[0])
 const contact = computed(() => site.value.data)
@@ -28,7 +29,7 @@ const next = computed<Card[]>(() => {
   const fair = fairs.value.items[0]
   const count = jobs.value.length
   return [
-    { key: 'jobs', title: t('home.jobs.title'), to: path('jobs'), meta: count ? t('home.jobs.count', { count }) : t('home.jobs.none'), text: t('home.jobs.text') },
+    { key: 'jobs', title: t('home.jobs.title', { name }), to: path('jobs'), meta: count ? t('home.jobs.count', { count }) : t('home.jobs.none'), text: t('home.jobs.text') },
     ...(fair ? [{ key: fair.id, title: fair.data.title, to: fair.url, meta: when(fair.data, 'short'), text: fair.data.location ?? undefined }] : []),
   ]
 })

@@ -193,11 +193,16 @@ const created: Record<string, Check[]> = {
   'docs-de': [['/docs/einstieg', /lang="de"[\s\S]*class="docs-sidebar[\s\S]*Seiten schreiben/]],
   // The templates (templates/<name>, bundled by create-ginko's prepack), all languages.
   // The site feature's server plugin preloads the Latin web font file.
-  'template-starter': [['/', /<h1[^>]*>My site<\/h1>/], ['/', /<link rel="preload" as="font" type="font\/woff2"/], ['/about', /<h1[^>]*>About<\/h1>/], ['/sitemap.xml', /<urlset/]],
+  'template-starter': [['/', /<h1[^>]*>Translations that read like the original<\/h1>/], ['/', /<link rel="preload" as="font" type="font\/woff2"/], ['/about', /<h1[^>]*>About<\/h1>/], ['/sitemap.xml', /<urlset/]],
   'template-restaurant': [['/', /<h1[^>]*>\s*Viennese cooking in a family Gasthaus/], ['/menu', /Liptauer with dark bread/], ['/de/speisekarte', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
+  'template-portfolio': [['/', /<h1[^>]*>\s*Interiors and objects, designed in Hamburg/], ['/work/holm-chair', /A dining chair in solid oak/], ['/de/projekte', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
   'template-company': [['/', /<h1[^>]*>\s*Pumps and pumping stations/], ['/products', /HK centrifugal pumps/], ['/de/karriere', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
-  'template-nonprofit': [['/', /<h1[^>]*>\s*We look after the river/], ['/news', /A new home for our tools/], ['/ar', /<html[^>]*dir="rtl"/], ['/news/rss.xml', /<rss[\s\S]*<item>/], ['/sitemap.xml', /<urlset/]],
+  'template-local-business': [['/', /<h1[^>]*>\s*Hofer Physio/], ['/treatments', /Manual lymphatic drainage/], ['/de/kontakt', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
+  'template-nonprofit': [['/', /<h1[^>]*>\s*We look after the Fulda/], ['/news', /A new home for our tools/], ['/ar', /<html[^>]*dir="rtl"/], ['/news/rss.xml', /<rss[\s\S]*<item>/], ['/sitemap.xml', /<urlset/]],
+  'template-blog': [['/', /<h1[^>]*>\s*Notes on the nature in and around the city/], ['/posts', /Swifts over the car park/], ['/de/beitraege/themen/voegel', /<html[^>]*lang="de/], ['/posts/rss.xml', /<rss/], ['/sitemap.xml', /<urlset/]],
+  'template-docs': [['/', /<h1[^>]*>\s*Orbit SDK, the TypeScript client/], ['/docs/monitors', /monitors\.pause\(\)/], ['/de/docs/monitore', /<html[^>]*lang="de/], ['/changelog', /2\.1\.0/], ['/sitemap.xml', /<urlset/]],
   'template-events': [['/', /<h1[^>]*>\s*Open Data Days/], ['/programme', /Finding stories in public budgets/], ['/de/vortragende', /<html[^>]*lang="de/], ['/sitemap.xml', /<urlset/]],
+  'template-saas': [['/', /<h1[^>]*>\s*Shift planning for care homes/], ['/pricing', /Standard[\s\S]*€219/], ['/de/neuerungen', /<html[^>]*lang="de/], ['/fr/tarifs', /<html[^>]*lang="fr/], ['/changelog/rss.xml', /<rss/], ['/sitemap.xml', /<urlset/]],
 }
 for (const name of ['starter', ...readdirSync(join(root, 'packages/create-ginko/presets'))]) {
   if (!created[name]) failures.push(`check:pack has no URL check for the create-ginko preset folder ${name}`)
@@ -241,14 +246,29 @@ writeFileSync(join(docsSeo, 'package.json'), JSON.stringify(seoPkg, null, 2))
 const seoConfig = join(docsSeo, 'nuxt.config.ts')
 writeFileSync(seoConfig, readFileSync(seoConfig, 'utf8').replace(/modules: \[[^\]]*\]/, `modules: ['@nuxtjs/seo', '@lupinum/ginko/nuxt']`))
 
-const results = await Promise.all([
-  ...Object.entries(created).map(([name, checks]) => checkSite(join(work, name), checks)),
-  checkSite(docs, [
+/** Runs the tasks with at most `size` at a time, results in task order. */
+async function pool<T>(size: number, tasks: (() => Promise<T>)[]): Promise<T[]> {
+  const results: T[] = []
+  let next = 0
+  await Promise.all(Array.from({ length: size }, async () => {
+    while (next < tasks.length) {
+      const i = next++
+      results[i] = await tasks[i]!()
+    }
+  }))
+  return results
+}
+
+// At most 4 sites install, build and serve at once: all 17 together ran the 16 GB CI runner out of memory (the runner
+// shut down in the middle of check:pack).
+const results = await pool(4, [
+  ...Object.entries(created).map(([name, checks]) => () => checkSite(join(work, name), checks)),
+  () => checkSite(docs, [
     ['/docs/einstieg', /class="docs-sidebar/], ['/en/docs/getting-started', /lang="en"/], ['/__ginko/search/de.json', /"url":"\/docs\//],
     // The layer's two feed handlers: the main language and a prefixed one.
     ['/blog/rss.xml', /<rss[\s\S]*<item>/], ['/en/blog/rss.xml', /<rss[\s\S]*<item>/],
   ], { ginkoCheck: false }),
-  checkSite(docsSeo, [
+  () => checkSite(docsSeo, [
     ['/docs/einstieg', seoHead('de')], ['/en/docs/getting-started', seoHead('en')], ['/', seoHead('de')],
     // Ginko's entries with hreflang, on the site's address (not the request host).
     ['/sitemap.xml', /<loc>https:\/\/ginko-docs\.vercel\.app\/en\/docs\/getting-started<\/loc>[\s\S]*hreflang="de"/],

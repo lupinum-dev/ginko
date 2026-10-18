@@ -1,21 +1,13 @@
 <!-- A list as row cards (UI.md 5). Fixed lists (min = max with a unique choice column, e.g. the
      weekdays) show that column as the row title and allow no add/remove/move. When a text in a row
-     changed but its required choices did not, the choices must be confirmed ("Noch richtig?").
+     changed but its choices (with `askAgainWhen`) did not, the choices must be confirmed ("Noch richtig?").
      In a foreign language the list shows only the columns to translate: rows are added, removed and
      moved in the main language, where a new row gets its required texts. -->
-<script lang="ts">
-/**
- * "Noch richtig?" confirmations per form (keyed by its blockers): the quick-task sheet shows a list again for each
- * language, and a confirmation given in one must not be asked for again after a switch.
- */
-const confirmations = new WeakMap<Map<string, string>, Map<string, string>>()
-</script>
-
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, reactive, ref, watchEffect } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json, Locale } from '@lupinum/ginko'
-import { defaultsFor, isShown, ordered, stableJson } from '@lupinum/ginko/internal'
+import { defaultsFor, isShown, ordered } from '@lupinum/ginko/internal'
 import { hasTranslation } from '../../utils/content'
 import GinkoField from './GinkoField.vue'
 import { messageOf } from '@studio/utils/messageOf'
@@ -24,6 +16,7 @@ import { ArrowDownIcon, ArrowUpIcon, PlusIcon, Trash2Icon } from '@lucide/vue'
 import { Button } from '@studio/components/ui/button'
 import { useToast } from '../../composables/useToast'
 import { useStudioSite } from '../../utils/labels'
+import { useStillRight } from '../../composables/useStillRight'
 
 type Row = Record<string, Json> & { _id: string }
 
@@ -114,30 +107,26 @@ function restoreRow(row: Row, index: number) {
 }
 function addRow() { update([...rows.value, { ...defaultsFor(props.field.of), _id: newRowId() } as Row]) }
 
-// "Noch richtig?": a required choices column next to a changed text column. Only a change in the main language asks:
-// a translation does not change the dish. In a foreign language the choices are not shown, so the question waits there
-// until the main language shows again (the sheet switches back on Speichern).
+// "Noch richtig?": a choices column with `askAgainWhen` next to its changed text column. Only a change in the main
+// language asks: a translation does not change the dish. In a foreign language the choices are not shown, so the
+// question waits there until the main language shows again (the sheet switches back on Speichern).
 const before = computed(() => new Map((Array.isArray(props.baseline) ? (props.baseline as Row[]) : []).map((r) => [r._id, r])))
-const checkKeys = computed(() => live.value.filter(([, f]) => f.type === 'choices' && !f.optional).map(([k]) => k))
+const checkKeys = computed(() => live.value.filter(([, f]) => f.type === 'choices' && f.askAgainWhen !== undefined).map(([k]) => k))
 const textKeys = computed(() => live.value.filter(([, f]) => f.type === 'text' || f.type === 'longtext').map(([k]) => k))
-/** Confirmations hold the texts that were reviewed; a later change of the text asks again (Astra phase 8). */
-const confirmed = (blockers && confirmations.get(blockers)) ?? reactive(new Map<string, string>())
-if (blockers) confirmations.set(blockers, confirmed)
+const stillRight = useStillRight()
+/** The text column a choices column asks again about. */
+const askedKey = (key: string) => { const f = props.field.of[key]; return f?.type === 'choices' ? f.askAgainWhen : undefined }
 const confirmKey = (row: Row, key: string) => `${props.path}.${row._id}.${key}`
-const textsOf = (row: Row) => textKeys.value.map((k) => textIn(row[k], main.value)).join('\u0000')
+const askedText = (row: Row, key: string) => textIn(row[askedKey(key)!], main.value)
 function needsCheck(row: Row, key: string): boolean {
   if (!checkKeys.value.includes(key)) return false
   const old = before.value.get(row._id)
-  if (!old || confirmed.get(confirmKey(row, key)) === textsOf(row)) return false
-  const textChanged = textKeys.value.some((k) => textIn(row[k], main.value) !== textIn(old[k], main.value))
-  return textChanged && stableJson(row[key] ?? null) === stableJson(old[key] ?? null)
+  return stillRight.asks(confirmKey(row, key), { text: askedText(row, key), choice: row[key] }, old && { text: askedText(old, key), choice: old[key] })
 }
-function changedLabel(row: Row): string {
-  const old = before.value.get(row._id)
-  const key = textKeys.value.find((k) => old && textIn(row[k], main.value) !== textIn(old[k], main.value))
-  return key ? labelText(props.field.of[key]!.label) : t('fields.list.text')
+function changedLabel(key: string): string {
+  return labelText(props.field.of[askedKey(key)!]!.label)
 }
-function confirm(row: Row, key: string) { confirmed.set(confirmKey(row, key), textsOf(row)) }
+function confirm(row: Row, key: string) { stillRight.confirm(confirmKey(row, key), askedText(row, key)) }
 watchEffect(() => {
   if (!blockers) return
   for (const k of [...blockers.keys()]) if (k.startsWith(`${props.path}.`)) blockers.delete(k)
@@ -194,7 +183,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
             <div v-if="shown(row, sub)" :class="{ 'rounded-md bg-warning/10 p-3': needsCheck(row, key) }" @focusin="selectPlaceholder(row, key, $event)" @mouseup="holdSelection" @focusout="keepSelection = false">
               <GinkoField :field="sub" :model-value="row[key]" :path="`${path}.${row._id}.${key}`" :locale="locale" :locales="locales" :issues="issues" @update:model-value="setCell(index, key, $event)" />
               <div v-if="needsCheck(row, key)" class="check mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-warning">
-                <p>{{ t('fields.list.changed', { changed: changedLabel(row), label: labelText(sub.label) }) }}</p>
+                <p>{{ t('fields.list.changed', { changed: changedLabel(key), label: labelText(sub.label) }) }}</p>
                 <Button type="button" variant="outline" size="sm" @click="confirm(row, key)">{{ t('fields.list.confirm') }}</Button>
               </div>
             </div>

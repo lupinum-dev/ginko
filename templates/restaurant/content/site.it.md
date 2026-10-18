@@ -1,3 +1,3 @@
 ---
-registryCourt: Tribunale commerciale di Vienna
+# registryCourt: Tribunale commerciale di Vienna
 ---

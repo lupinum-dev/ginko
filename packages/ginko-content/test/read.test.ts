@@ -5,9 +5,10 @@ import { dirname, join } from 'node:path'
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 import { collection, defineSite, f, single } from '@lupinum/ginko'
+import { changelog } from '@lupinum/ginko/basics'
 import { serializeSchema } from '@lupinum/ginko/internal'
 import { buildFileBundles, publicBundle } from '../src/index.ts'
-import { readContent } from '../src/read.ts'
+import { errorLine, readContent } from '../src/read.ts'
 
 const schema = serializeSchema(defineSite({
   site: 'doku', name: 'Doku', url: 'https://doku.example', timeZone: 'Europe/Vienna',
@@ -99,7 +100,7 @@ describe('readContent', () => {
     ['a URL clash from the slug fallback (A has no English slug, B has "intro")', { 'content/docs/1.a.md': md('title: A\nslug: intro'), 'content/docs/2.b.md': md('title: B\nslug: other'), 'content/docs/2.b.en.md': md('title: B\nslug: intro') }, 'docs/2.b.en.md', /intro/],
     ['a missing image', { 'content/docs/1.a.md': md('title: A\nhero:\n  src: /img/none.png\n  alt: Weg') }, 'docs/1.a.md', /none\.png/],
     ['a body the field profile does not allow (h1 in a rich field)', { 'content/docs/1.a.md': md('title: A', '# Zu gross') }, 'docs/1.a.md', /“h1” is not allowed here/],
-    ['a validation error (empty title)', { 'content/docs/1.a.md': md("title: ''") }, 'docs/1.a.md', /“Titel” is missing/],
+    ['a validation error (empty title)', { 'content/docs/1.a.md': md("title: ''") }, 'docs/1.a.md', /“title” is missing/],
   ])('reports %s with the file, and still reads the rest', async (_, files, file, message) => {
     const r = await read({ ...files, 'content/docs/9.ok.md': md('title: Gut') })
     expect(r.errors.filter((e) => e.file === file).map((e) => e.message + (e.path ?? ''))).toContainEqual(expect.stringMatching(message))
@@ -325,5 +326,139 @@ describe('image variants', () => {
     const { bundles, imageFiles } = await buildFileBundles({ contentDir: join(root, 'content'), publicDir: join(root, 'public'), schema: imageSchema, imageDir: join(root, 'out') })
     expect(imageFiles.size).toBe(0)
     expect(JSON.stringify(bundles.de)).not.toContain('variants')
+  })
+})
+
+describe('checks that never hide a broken entry', () => {
+  const blog = serializeSchema(defineSite({
+    site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+    bricks: {
+      authors: collection({ label: 'Authors', source: 'files', max: 5, order: 'manual', fields: { name: f.text('Name') } }),
+      posts: collection({ label: 'Posts', source: 'files', max: 50, drafts: true, order: { field: 'date', dir: 'desc' }, fields: { title: f.text('Title'), date: f.date('Date'), author: f.ref('Author', { to: 'authors' }) } }),
+      hours: single({
+        label: 'Hours', source: 'files',
+        fields: { exceptions: f.list('Exceptions', { itemLabel: 'Day', fields: { reason: f.text('Reason') }, max: 10, optional: true }) },
+      }),
+    },
+  }))
+  const readBlog = (files: Record<string, string>) => { const s = site(files); return readContent(s.content, s.public, blog, { drafts: false, today: '2026-10-17' }) }
+  const author = { 'content/authors/ann.yml': 'name: Ann' }
+
+  // Wrong behaviour caught: a date in another format counts as "after today" and the post vanishes without an error.
+  it('reports a scheduling date that is not an ISO date instead of leaving the entry out', async () => {
+    const r = await readBlog({ ...author, 'content/posts/a.yml': 'title: A\ndate: 24.10.2026\nauthor: authors/ann' })
+    expect(r.errors.map((e) => [e.file, e.path])).toEqual([['posts/a.yml', 'date']])
+  })
+
+  // Wrong behaviour caught: a scheduled post with a broken reference passes every check and fails at the later build that publishes it.
+  it('checks a scheduled entry like a published one and leaves it out of the bundle', async () => {
+    const r = await readBlog({ ...author, 'content/posts/a.yml': 'title: A\ndate: 2026-10-24\nauthor: authors/nobody', 'content/posts/b.yml': 'title: B\ndate: 2026-10-24\nauthor: authors/ann' })
+    expect(r.errors.map((e) => [e.file, e.path])).toEqual([['posts/a.yml', 'author']])
+    expect(r.entries.posts ?? []).toEqual([])
+  })
+
+  // Wrong behaviour caught: the changelog basic has no drafts line, so a release dated in the future is published at once.
+  it('leaves out a changelog entry dated after the build day', async () => {
+    const log = serializeSchema(defineSite({
+      site: 'blog', name: 'Blog', url: 'https://blog.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: { de: '/' } },
+      bricks: { changelog: changelog({ source: 'files' }) },
+    }))
+    const s = site({ 'content/changelog/v1.md': '---\nversion: 1.0.0\ndate: 2026-10-01\n---\nOut.', 'content/changelog/v9.md': '---\nversion: 9.0.0\ndate: 2031-01-01\n---\nLater.' })
+    const r = await readContent(s.content, s.public, log, { drafts: false, today: '2026-10-17' })
+    expect(r.errors).toEqual([])
+    expect((r.entries.changelog ?? []).map((e) => e.id)).toEqual(['changelog/v1'])
+  })
+
+  // Wrong behaviour caught: the duplicate was reported on one file only, often the old one, so the owner did not see the
+  // file they had just added.
+  it('names both files of an entry that exists twice', async () => {
+    const r = await readBlog({ 'content/authors/1.ann.yml': 'name: Ann', 'content/authors/10.ann.yml': 'name: Ann' })
+    expect(r.errors.map((e) => e.message)).toEqual(['Entry “authors/ann” is in two files: content/authors/1.ann.yml and content/authors/10.ann.yml. Keep one and delete or rename the other.'])
+  })
+
+  // Wrong behaviour caught: rows are matched by position, so an extra main row shifts every translated reason by one.
+  it('needs the same number of list rows in a translation, and lets it leave the list out', async () => {
+    const rows = (n: number) => `exceptions:\n${Array.from({ length: n }, (_, i) => `  - reason: R${i}`).join('\n')}`
+    const bad = await readBlog({ 'content/hours.yml': rows(3), 'content/hours.en.yml': rows(2) })
+    expect(bad.errors.map((e) => [e.file, e.message])).toEqual([[
+      'hours.en.yml',
+      '“exceptions” has 2 rows here and 3 in content/hours.yml. Each row translates the row at the same place in the main file; write - {} for a row with nothing to translate.',
+    ]])
+    const empty = await readBlog({ 'content/hours.yml': rows(3), 'content/hours.en.yml': 'exceptions: []' })
+    expect(empty.errors.map((e) => e.file)).toEqual(['hours.en.yml'])
+    const none = await readBlog({ 'content/hours.yml': rows(3), 'content/hours.en.yml': '{}' })
+    expect(none.errors).toEqual([])
+  })
+})
+
+// What an owner who edits the files reads in `ginko check`: the key they typed, the row by place, the format to write.
+describe('check messages for file owners', () => {
+  const both = (de: string, en: string) => ({ de, en })
+  const owners = serializeSchema(defineSite({
+    site: 'studio', name: 'Studio', url: 'https://studio.example', timeZone: 'Europe/Vienna',
+    locales: ['de', 'en'], currency: 'EUR', pages: { home: { de: '/', en: '/en' } },
+    bricks: {
+      people: collection({ label: 'Personen', source: 'files', max: 20, order: 'manual', fields: { name: f.text('Name') } }),
+      events: collection({
+        label: 'Termine', source: 'files', max: 20, order: 'manual',
+        fields: {
+          title: f.text('Titel'),
+          price: f.money('Betrag', { optional: true }),
+          date: f.date('Datum', { optional: true }),
+          start: f.time('Beginn', { optional: true }),
+          when: f.daterange('Wann', { optional: true }),
+          until: f.date(both('Bis', 'Until'), { optional: true }),
+          host: f.ref('Gastgeber', { to: 'people', optional: true }),
+          hours: f.list('Zeiten', { itemLabel: 'Zeit', fields: { day: f.text('Tag'), closed: f.boolean('Geschlossen', { optional: true }) }, max: 10, optional: true }),
+          photos: f.list('Fotos', { itemLabel: 'Foto', fields: { image: f.image('Bild', { optional: true }) }, max: 10, optional: true }),
+        },
+      }),
+    },
+  }))
+  const fm = (front: string) => md(front, '')
+  const people = { 'content/people/1.katrin-albers.md': fm('name: Katrin Albers') }
+
+  it.each([
+    ['money as a string', { 'content/events/1.a.md': fm('title: A\nprice: 65 EUR') }, ['content/events/1.a.md (price): “price” must be a number in EUR, like 65 or 12.50 (no currency sign, no thousands separator).']],
+    ['a bad date', { 'content/events/1.a.md': fm('title: A\ndate: tomorrow') }, ['content/events/1.a.md (date): “date” is not a valid date: write it as YYYY-MM-DD, like 2026-10-24.']],
+    ['a bad time', { 'content/events/1.a.md': fm('title: A\nstart: 9h') }, ['content/events/1.a.md (start): “start” is not a valid time: write it as HH:MM, like 09:30.']],
+    ['a bad period', { 'content/events/1.a.md': fm('title: A\nwhen: 2026-11-14') }, ['content/events/1.a.md (when): “when” needs from and to: when: { from: 2026-11-14, to: 2026-11-14 } (the same date twice for one day).']],
+    ['an unknown ref', { ...people, 'content/events/1.a.md': fm('title: A\nhost: people/2.tobias-brandt') }, ['content/events/1.a.md (host): There is no entry “people/2.tobias-brandt”. An id is the folder and the file name without number and language: content/people/1.katrin-albers.md is people/katrin-albers.']],
+    ['a field error in row 3', { 'content/events/1.a.md': fm('title: A\nhours:\n  - day: Mo\n  - day: Tu\n  - day: We\n    closed: maybe') }, ['content/events/1.a.md (hours, row 3, closed): “closed” must be yes or no.']],
+    ['a row converted before validation', { 'content/events/1.a.md': fm('title: A\nphotos:\n  - {}\n  - image: 5') }, ['content/events/1.a.md (photos, row 2, image): “image” needs src and alt.']],
+    ['a main-language key in a translation', { 'content/events/1.a.md': fm('title: A'), 'content/events/1.a.en.md': fm('title: A\nuntil: 2026-12-01') }, ['content/events/1.a.en.md (until): “until” is set in the main-language file only.']],
+    ['a colon in frontmatter', { 'content/events/1.a.md': fm('text: We are moving: from 1 December') }, ['content/events/1.a.md:2: Invalid YAML: bad indentation of a mapping entry. Put text with a colon in quotes: text: "We are moving: …"']],
+  ])('%s', async (_, files, lines) => {
+    const s = site(files)
+    const r = await readContent(s.content, s.public, owners)
+    expect(r.errors.map(errorLine)).toEqual(lines)
+  })
+})
+
+// Wrong behaviour caught: deleting the allergen letters leaves `allergens: []`, which would publish "no allergens"
+// for a dish nobody has checked. "None" has to be written as `none`.
+describe('multi-choice values in files', () => {
+  const dish = (options: string[], optional = false) => serializeSchema(defineSite({
+    site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Europe/Vienna',
+    locales: ['de'], currency: 'EUR', pages: { home: '/' },
+    bricks: {
+      menu: collection({
+        label: 'Karte', source: 'files', max: 20, order: 'manual',
+        fields: { name: f.text('Name'), allergens: f.choices('Allergene', { options: options.map((value) => ({ value, label: value })), optional }) },
+      }),
+    },
+  }))
+  it.each([
+    ['none stores an empty list', ['A', 'G'], false, 'allergens: none', [], []],
+    ['a list stays as written', ['A', 'G'], false, 'allergens: [A, G]', [], ['A', 'G']],
+    ['an empty list on a required field is an error', ['A', 'G'], false, 'allergens: []', ['content/menu/1.a.md (allergens): “allergens” is empty: write the values, like [A, G], or none when there are none.'], undefined],
+    ['an optional field keeps an empty list', ['A', 'G'], true, 'allergens: []', [], []],
+    ['an option named none is that option', ['none', 'A'], false, 'allergens: [none]', [], ['none']],
+    ['the word none is that option too', ['none', 'A'], false, 'allergens: none', [], ['none']],
+  ])('%s', async (_, options, optional, line, lines, stored) => {
+    const s = site({ 'content/menu/1.a.md': md(`name: A\n${line}`, '') })
+    const r = await readContent(s.content, s.public, dish(options, optional))
+    expect(r.errors.map(errorLine)).toEqual(lines)
+    if (stored) expect(r.entries.menu![0]!.data.allergens).toEqual(stored)
   })
 })

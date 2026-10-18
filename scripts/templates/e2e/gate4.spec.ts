@@ -1,4 +1,4 @@
-// Gate 4 (TEMPLATES.md §9): axe (WCAG 2.2 AA) in light and dark on home and every page; the keyboard path.
+// Gate 4 (TEMPLATES.md §9): axe (WCAG 2.2 AA) in light and dark on a sample of every route pattern; the keyboard path.
 import AxeBuilder from '@axe-core/playwright'
 import { expect, navToggle, open, sitePages, test, themeToggle } from './helpers.ts'
 
@@ -65,7 +65,7 @@ for (const width of [390, 1440]) {
   })
 }
 
-test('accordions and lightboxes work with the keyboard on every page that has them', async ({ page }) => {
+test('accordions and lightboxes work with the keyboard on the sampled pages that have them', async ({ page }) => {
   for (const path of await sitePages()) {
     await open(page, path)
     const accordion = page.locator('main summary, main [aria-expanded][aria-controls]').first()

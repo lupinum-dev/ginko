@@ -57,6 +57,12 @@ const weekDefault: WeekRow[] = weekdays.map((d) => ({
 
 const lunchPlaceholder = { de: 'Wird noch bekannt gegeben', en: 'To be announced' } as const
 
+/** True for the dish text a fresh site's lunch week starts with, in any language: such a day has no real dish, so no allergens to show. */
+export function isLunchPlaceholder(dish: unknown): boolean {
+  const placeholders: string[] = Object.values(lunchPlaceholder)
+  return typeof dish === 'string' && placeholders.includes(dish)
+}
+
 const soldOutText = { de: 'Heute sind wir ausgebucht.', en: 'We are fully booked today.' }
 
 const lunchDefault = weekdays.slice(0, 5).map((d) => ({ _id: `ld${d.value}000000`, day: d.value, dish: lunchPlaceholder }))
@@ -125,7 +131,7 @@ function lunchDays<A extends AllergenSet>(allergens: A | undefined) {
   const list = { itemLabel: both('Tag', 'Day'), min: 5, max: 5, unique: 'day' } as const
   // Each branch checks its own default rows; `allergens` exists only when the set is not 'none', which the type cannot see here.
   return (choices
-    ? f.list(both('Tage', 'Days'), { ...list, fields: { ...columns, allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) }, default: lunchDefault.map((row) => ({ ...row, allergens: [] })) })
+    ? f.list(both('Tage', 'Days'), { ...list, fields: { ...columns, allergens: f.choices(both('Allergene', 'Allergens'), { options: choices, askAgainWhen: 'dish' }) }, default: lunchDefault.map((row) => ({ ...row, allergens: [] })) })
     : f.list(both('Tage', 'Days'), { ...list, fields: columns, default: lunchDefault })) as ListField<typeof columns & AllergenFields<A>>
 }
 
@@ -180,7 +186,7 @@ export function menu<const A extends AllergenSet = 'EU'>(opts: GastroOptions & {
     name: f.text(both('Name', 'Name'), { max: 120 }),
     description: f.longtext(both('Beschreibung', 'Description'), { max: 500, optional: true }),
     price: f.money(both('Preis', 'Price')),
-    ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), { options: choices }) } : {}) as AllergenFields<A>,
+    ...(choices ? { allergens: f.choices(both('Allergene', 'Allergens'), { options: choices, askAgainWhen: 'name' }) } : {}) as AllergenFields<A>,
     veg: f.choice(both('Vegetarisch', 'Vegetarian'), {
       options: [
         { value: 'none', label: both('nicht vegetarisch', 'not vegetarian') }, { value: 'vegetarian', label: both('vegetarisch', 'vegetarian') }, { value: 'vegan', label: both('vegan', 'vegan') },

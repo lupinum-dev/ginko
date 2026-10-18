@@ -1,0 +1,14 @@
+{
+  "title": "Pricing",
+  "lead": "What each plan costs and what it includes.",
+  "empty": "No plans yet",
+  "recommended": "Recommended",
+  "perMonth": "per month",
+  "orYearly": "or {price} per year",
+  "onRequest": "On request",
+  "free": "Free",
+  "included": "Included",
+  "net": "All prices plus VAT.",
+  "gross": "All prices include VAT.",
+  "subject": "Enquiry: {plan}"
+}

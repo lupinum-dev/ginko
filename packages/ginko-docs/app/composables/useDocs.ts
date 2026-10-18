@@ -46,7 +46,8 @@ export function useDocs() {
   const { localePath } = useI18n()
   const { mainLocale } = useGinkoSite()
   const route = (schema.bricks.docs as { route?: Record<string, string> } | undefined)?.route?.[mainLocale]
-  const base = computed(() => localePath(route?.replace(/\/\[slug\]$/, '') ?? '/docs'))
+  const mainBase = route?.replace(/\/\[slug\]$/, '') ?? '/docs'
+  const base = computed(() => localePath(mainBase))
 
-  return { nodes, tabs, activeTab, sections, crumbs, first, base }
+  return { nodes, tabs, activeTab, sections, crumbs, first, base, mainBase }
 }

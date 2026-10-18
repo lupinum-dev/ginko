@@ -16,7 +16,7 @@ usePageSeo(() => ({ home: true, description: home.value.data.lead }))
     <div v-if="home.data.body" class="pt-section">
       <ProseBody :value="home.data.body" />
     </div>
-    <BlockSection :title="t('home.pages')">
+    <BlockSection :title="t('home.more')" :side="false">
       <BlockCards v-if="cards.length" :items="cards" :columns="2" />
       <BlockEmpty v-else :title="t('home.empty')" path="content/pages/" />
     </BlockSection>

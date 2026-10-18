@@ -18,8 +18,10 @@ type Locales = readonly Locale[]
 function localized<P extends `/${string}`>(locales: Locales, path: P): Record<Locale, P> {
   const [main] = locales
   if (main === undefined) throw new Error('[ginko-docs] `locales` is empty. Fix: pass the same list as `locales` in defineSite.')
-  // `/<locale>` + a path still matches the path's pattern, e.g. `/${string}/[slug]`.
-  return Object.fromEntries(locales.map((l) => [l, l === main ? path : `/${l}${path}`])) as Record<Locale, P>
+  // `/<locale>` + a path still matches the path's pattern, e.g. `/${string}/[slug]`. The root of another locale is
+  // `/<locale>` without a trailing slash, its canonical address (ginko-i18n redirects `/de/` to `/de`).
+  const address: string = path
+  return Object.fromEntries(locales.map((l) => [l, l === main ? path : address === '/' ? `/${l}` : `/${l}${path}`])) as Record<Locale, P>
 }
 
 /** `base`: where the docs live, default `/docs` (e.g. `/handbook` inside a larger site). */
@@ -54,7 +56,7 @@ export function docsCollection(opts: { locales: Locales; label?: string; max?: n
 /**
  * The optional start page: one Markdown file `content/home[.<locale>].md`. The frontmatter fills the hero (title,
  * description, install command, up to two links) and the feature grid; the text below the frontmatter follows them and
- * may use every component. Without it, `/` opens the first docs page. Add `home: { <main>: '/', <l>: '/<l>' }` to `pages`.
+ * may use every component. Without it, `/` opens the first docs page. Add `home: homePages({ locales })` to `pages`.
  */
 export function docsHome() {
   return single({
@@ -106,6 +108,9 @@ export function blogCollections(opts: { locales: Locales; max?: number }) {
 export function changelogCollection(opts: { max?: number } = {}) {
   return labelsIn(changelog({ source: 'files', max: opts.max }), 'en')
 }
+
+/** The start page by locale, for `pages` in ginko.config.ts: the main locale at `/`, the others at `/<locale>`. */
+export const homePages = (opts: { locales: Locales }) => localized(opts.locales, '/')
 
 /** The list pages by locale, for `pages` in ginko.config.ts: the sitemap and the static build know them from there. */
 export const blogPages = (opts: { locales: Locales }) => localized(opts.locales, BLOG_PATH)

@@ -76,12 +76,22 @@ export function changelog(o: ChangelogOptions = {}) {
     ...sourceOf(o),
     max: o.max ?? 500,
     order: { field: 'date', dir: 'desc' },
+    // A release written ahead is the normal case: an entry dated after the build day is scheduled, `draft: true` holds it back.
+    drafts: true,
     fields: {
       version: f.text(t('Version', 'Version', 'Versión', 'Version'), { max: 40, translate: false }),
       date: f.date(t('Datum', 'Date', 'Fecha', 'Date')),
       body: f.markdown(t('Text', 'Text', 'Texto', 'Texte'), { profile: 'page' }),
     },
   })
+}
+
+/**
+ * The anchor of a release on a changelog page, a valid id and a stable public address: `4.6.0` → `v4-6-0`
+ * (`/changelog#v4-6-0`). Every site that renders the `changelog` brick uses it, so the addresses stay the same.
+ */
+export function releaseAnchor(version: string): string {
+  return `v${version.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
 }
 
 export interface PostJsonLdInput {

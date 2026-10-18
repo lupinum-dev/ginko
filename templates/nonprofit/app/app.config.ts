@@ -1,10 +1,10 @@
 import type { SiteAppConfig } from './composables/useSiteAppConfig'
 
-// The brand and navigation of the site. The name is `name` in ginko.config.ts; colours and fonts are in
-// app/assets/css/main.css; address and contact are in content/site.md.
+// The brand and navigation of the site. The name is `name` in ginko.config.ts (the header shows it, or `shortName` on
+// phones when you set one); colours and fonts are in app/assets/css/main.css; address and contact are in
+// content/site.md.
 export default defineAppConfig({
   site: {
-    shortName: 'River Commons',
     // logo: { src: '/logo.svg', width: 120, height: 32 },
     // One line under the name in the footer, per language.
     tagline: {
@@ -24,6 +24,7 @@ export default defineAppConfig({
       { entry: 'pages/donate' },
     ],
     footer: [
+      { page: 'events', label: { en: 'Events', de: 'Veranstaltungen', fr: 'Événements', ar: 'الفعاليات' } },
       { page: 'team', label: { en: 'Team', de: 'Team', fr: 'Équipe', ar: 'الفريق' } },
       { page: 'downloads', label: { en: 'Reports', de: 'Berichte', fr: 'Rapports', ar: 'التقارير' } },
     ],

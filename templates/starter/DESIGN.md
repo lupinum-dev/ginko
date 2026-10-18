@@ -42,7 +42,7 @@ shadcn names, so shadcn-vue components work unchanged. Light / dark:
 | `--primary-foreground` | `--brand-foreground` | `--brand-foreground` | text on the accent |
 | `--ring` | = `--primary` | = `--primary` | focus |
 | `--success` / `--warning` / `--destructive` | `#15803d` / `#a16207` / `#b42318` | `#4ade80` / `#facc15` / `#f87171` | status text, always with an icon or a word |
-| `--scrim` | zinc-950 at 60 % | black at 72 % | behind the nav sheet, dialogs and the lightbox |
+| `--scrim` | zinc-950 at 60 % | black at 72 % | behind the nav sheet and dialogs; the lightbox is opaque dark `--background`, so no page text shows behind a photo |
 
 **Your accent.** `--brand` and `--brand-foreground` in `main.css`, once in `:root` (light) and once in `.dark`. The
 values and their contrast are written next to them. Rules: text on the accent ≥ 4.5:1; the accent on the background
@@ -53,7 +53,7 @@ as `seo.color` in `ginko.config.ts` too: it fills the share cards. The accents o
 |---|---|---|---|---|---|
 | starter | `#18181b` | `#ffffff` | `#f4f4f5` | `#18181b` | Inter |
 | blog | `#4f46e5` | `#ffffff` | `#a5b4fc` | `#1e1b4b` | Inter |
-| portfolio | `#1c1917` | `#ffffff` | `#f5f5f4` | `#1c1917` | Instrument Serif |
+| portfolio | `#1c1917` | `#ffffff` | `#f5f5f4` | `#1c1917` | Instrument Serif, `text-h3` 22–28 px |
 | company | `#0369a1` | `#ffffff` | `#7dd3fc` | `#082f49` | Inter |
 | saas | `#6d28d9` | `#ffffff` | `#c4b5fd` | `#2e1065` | Inter |
 | restaurant | `#c2410c` | `#ffffff` | `#fdba74` | `#431407` | Fraunces |
@@ -75,7 +75,8 @@ with whose it is.
 ## Type
 
 Inter (variable, latin and latin-ext) through `@nuxt/fonts`, served from the site itself. A display face for headings
-is optional (`--font-heading`). Right-to-left languages add their own face on `:lang(…)`.
+is optional (`--font-heading`); a narrow one may set `--text-h3` larger in an `@theme` block of `main.css`, so titles
+still lead the body text (the portfolio). Right-to-left languages add their own face on `:lang(…)`.
 
 | Utility | Size | Line height |
 |---|---|---|
@@ -178,6 +179,11 @@ In templates that have these features (`templates/_features/` in the Ginko repos
   below.
 - **A long list** (the menu): under the header, a row of links to its sections (`text-small`, accent, at least 44 px
   tall), so a phone reaches the desserts in one tap; each section has an `id`.
+- **Reading** (`blog`): a post's date and reading time in one muted line under the lead, the authors with their
+  initials under it; tags as quiet bordered links (at least 44 px tall) after the text; the older and the newer post
+  as two bordered links side by side (stacked on phones). In a Markdown text, a photo's caption is an emphasised line
+  right under the image (`![Alt text](./photo.jpg)`, then `*The caption*` on the next line); long lines in code
+  blocks wrap.
 - **Photos on phones** (`gallery`): one column at full width, each photo 3:2; justified rows from `sm`.
 
 ## Do and don't

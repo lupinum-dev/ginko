@@ -2,9 +2,11 @@
 import { ArrowRight } from '@lucide/vue'
 
 /** The next events as a section of another page (the home page): up to `limit` cards and a link to all. Nothing
- *  when no event is coming up, so a quiet month leaves no empty box on the home page. */
-const props = withDefaults(defineProps<{ title?: string, limit?: number }>(), { limit: 3 })
-const cards = useUpcomingEvents(() => props.limit)
+ *  when no event is coming up, so a quiet month leaves no empty box on the home page. `skip` leaves out the first
+ *  events, for a page that already shows the next one on its own (the nonprofit's Get involved). */
+const props = withDefaults(defineProps<{ title?: string, limit?: number, skip?: number }>(), { limit: 3, skip: 0 })
+const upcoming = useUpcomingEvents(() => props.skip + props.limit)
+const cards = computed(() => upcoming.value.slice(props.skip))
 const { t } = useI18n('events')
 const path = useGinkoPath()
 </script>

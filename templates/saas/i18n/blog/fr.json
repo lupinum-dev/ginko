@@ -1,0 +1,18 @@
+{
+  "title": "Actualités",
+  "lead": "Ce qui s’est passé, et ce qui vient ensuite.",
+  "by": "par {names}",
+  "authors": "Écrit par",
+  "tags": "Mots-clés",
+  "all": "Voir tous les articles",
+  "empty": "Pas encore d’articles",
+  "feed": "Flux RSS",
+  "latest": "Toutes les actualités",
+  "tagged": "Articles avec le mot-clé « {tag} »",
+  "count": "{count, plural, one {# article} other {# articles}}",
+  "topicCount": "{name}, {count, plural, one {# article} other {# articles}}",
+  "minutes": "{count} min de lecture",
+  "older": "Article plus ancien",
+  "newer": "Article plus récent",
+  "pager": "Articles plus anciens et plus récents"
+}

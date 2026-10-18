@@ -24,6 +24,6 @@ function dismiss() {
       <NuxtLink v-if="href" :to="siteHref(href)">{{ text(`docs.banner.${id}`) }}</NuxtLink>
       <template v-else>{{ text(`docs.banner.${id}`) }}</template>
     </p>
-    <button type="button" class="docs-icon-button" :aria-label="t('docs.bannerClose')" @click="dismiss"><Icon name="lucide:x" class="docs-icon" /></button>
+    <button type="button" class="docs-icon-button" :aria-label="t('docs.bannerClose')" @click="dismiss"><DocsIcon name="lucide:x" class="docs-icon" /></button>
   </div>
 </template>

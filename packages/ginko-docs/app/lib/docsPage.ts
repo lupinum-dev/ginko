@@ -42,3 +42,43 @@ export function docsAskLinks(prompt: string): Record<DocsAssistant, string> {
   const q = encodeURIComponent(prompt)
   return { chatgpt: `https://chatgpt.com/?q=${q}`, claude: `https://claude.ai/new?q=${q}` }
 }
+
+/**
+ * The main-language address of the docs page `ref`, from the brick's route (`/docs/[slug]`). For a page the current
+ * language lacks: the reader's bundle does not hold it, so this is how its link still leads to the main-language page,
+ * as in Markdown (core's `routeTarget`). Undefined when the route has no `[slug]`. Without the main-language entries
+ * this takes `ref` as the main-language slug: right for links by file name while the main file keeps the slug made
+ * from it; a main file with its own `slug:` or a typo gives a 404 here, where core would report the link.
+ */
+export function docsMainPath(route: Partial<Record<string, string>> | undefined, mainLocale: string, ref: string): string | undefined {
+  const pattern = route?.[mainLocale]
+  return pattern?.includes('[slug]') ? pattern.replace('[slug]', ref) : undefined
+}
+
+/**
+ * A route link outside Markdown (the start page's links and cards, `nav`, `footer.links`, `banner.href`):
+ * `$docs.<page>` names a docs page by its file name or slug, `$page.<key>` a page of `pages` in ginko.config.ts; an
+ * `#anchor` is kept. The same notation as in Markdown, so the link follows the reader's language and survives a
+ * changed slug. Undefined when `raw` is no route link or names nothing.
+ */
+export function docsRouteLink(raw: string, find: { doc: (ref: string) => string | undefined, page: (key: string) => string | undefined }): string | undefined {
+  const match = /^\$(docs|page)\.([^#]+)(#.*)?$/.exec(raw)
+  if (!match) return undefined
+  const path = match[1] === 'docs' ? find.doc(match[2]!) : find.page(match[2]!)
+  return path === undefined ? undefined : path + (match[3] ?? '')
+}
+
+/**
+ * The main-language address for a docs address in another language (`/de/docs/x` gives `/docs/x`), or undefined when
+ * `path` is not under a non-main locale prefix and the main docs base. `resolve` turns the stripped path into the
+ * main language's real address (the site's i18n strategy decides whether it carries a prefix). A guess: the slug may be German and then
+ * 404 again, like `docsMainPath`; the bundle holds no main-language data to check it.
+ */
+export function docsMainLanguagePath(path: string, locales: readonly string[], mainLocale: string, mainBase: string, resolve: (path: string) => string = (p) => p): string | undefined {
+  for (const code of locales) {
+    if (code === mainLocale || !path.startsWith(`/${code}/`)) continue
+    const rest = path.slice(code.length + 1)
+    return rest.startsWith(`${mainBase}/`) ? resolve(rest) : undefined
+  }
+  return undefined
+}

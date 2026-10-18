@@ -4,7 +4,8 @@ import { safeHref } from '@lupinum/ginko'
 import type { SessionJsonLdInput } from '@lupinum/ginko/basics'
 import { ArrowLeft, Mail, Phone } from '@lucide/vue'
 
-// One event: date with weekday and time (site time zone), place, price, the description, and how to take part: the
+// One event: date with weekday and time (site time zone), place (its location, else the online link, else the
+// site's name and address when app.config `events.atTheBusiness` is true; otherwise no row: content/site.md is the organiser, not the venue), price, the description, and how to take part: the
 // booking link until `bookingUntil`, else phone and email of the business (content/site.md); "fully booked" or
 // "booking has closed" replaces both. Event JSON-LD with the time zone offset. An unknown or past event is a 404.
 // A feature may show more after the description with app/components/event/Programme.vue (prop `id`: the event's
@@ -16,22 +17,30 @@ const useSessionsLd = Object.values(import.meta.glob<SessionsLd>('~/composables/
 const route = useRoute()
 const event = useGinkoEntry('events', () => route.params.slug)
 const site = useGinko('site')
-const { name } = useGinkoSite()
 const { t } = useI18n('events')
-const { dates, times, price } = useEventText()
+const { dates, times, price, ltr } = useEventText()
+const venue = useEventVenue()
 const path = useGinkoPath()
 const langOf = useGinkoLang()
 const description = await useGinkoMarkdown(() => event.value.data.description)
 const sessions = useSessionsLd?.(() => event.value.id)
 const jsonLd = useEventJsonLd(() => ({ ...event.value.data, url: event.value.url ?? route.path }), () => description.value, () => sessions?.value)
-usePageSeo(() => ({ title: event.value.data.title, description: `${dates(event.value.data)}${times(event.value.data) ? `, ${times(event.value.data)}` : ''}`, image: event.value.data.image ?? undefined, jsonLd: [jsonLd.value] }))
+// The meta description is plain text: the isolate marks of a right-to-left page stay out of it.
+const metaDescription = () => `${dates(event.value.data)}${times(event.value.data) ? `, ${times(event.value.data)}` : ''}`.replace(/[\u2066\u2069]/g, '')
+usePageSeo(() => ({ title: event.value.data.title, description: metaDescription(), image: event.value.data.image ?? undefined, jsonLd: [jsonLd.value] }))
 
 const contact = computed(() => site.value.data)
 const bookingOf = useEventBooking()
 const closedOf = useBookingClosed()
 const booking = computed(() => bookingOf(event.value.data))
 const closed = computed(() => closedOf(event.value.data))
-const place = computed(() => event.value.data.location || (event.value.data.online ? t('online') : name))
+const online = computed(() => safeHref(event.value.data.online ?? undefined))
+const atBusiness = computed(() => (event.value.data.location || online.value ? undefined : venue(event.value.data)))
+const place = computed(() => event.value.data.location || (online.value ? t('online') : atBusiness.value?.name))
+const businessAddress = computed(() => {
+  const a = atBusiness.value?.address
+  return a && [a.street, [a.postalCode, a.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+})
 </script>
 
 <template>
@@ -52,11 +61,14 @@ const place = computed(() => event.value.data.location || (event.value.data.onli
             <dt class="text-small text-muted-foreground">{{ t('time') }}</dt>
             <dd class="font-medium tabular-nums">{{ times(event.data) }}</dd>
           </template>
-          <dt class="text-small text-muted-foreground">{{ t('place') }}</dt>
-          <dd class="font-medium">
-            <a v-if="!event.data.location && safeHref(event.data.online ?? undefined)" :href="safeHref(event.data.online ?? undefined)" rel="noopener" class="text-primary underline">{{ place }}</a>
-            <span v-else>{{ place }}</span>
-          </dd>
+          <template v-if="place">
+            <dt class="text-small text-muted-foreground">{{ t('place') }}</dt>
+            <dd class="font-medium">
+              <a v-if="!event.data.location && online" :href="online" rel="noopener" class="text-primary underline">{{ place }}</a>
+              <span v-else>{{ place }}</span>
+              <span v-if="businessAddress" class="block font-normal text-muted-foreground">{{ businessAddress }}</span>
+            </dd>
+          </template>
           <template v-if="price(event.data)">
             <dt class="text-small text-muted-foreground">{{ t('price') }}</dt>
             <dd class="font-medium tabular-nums">{{ price(event.data) }}</dd>
@@ -73,7 +85,7 @@ const place = computed(() => event.value.data.location || (event.value.data.onli
           <p class="text-muted-foreground">{{ t('reserve') }}</p>
           <div class="flex flex-wrap gap-3">
             <Button v-if="contact.phone" as-child size="lg" class="max-sm:w-full">
-              <a :href="telHref(contact.phone)"><Phone aria-hidden="true" />{{ t('call', { phone: contact.phone }) }}</a>
+              <a :href="telHref(contact.phone)"><Phone aria-hidden="true" />{{ t('call', { phone: ltr(contact.phone) }) }}</a>
             </Button>
             <Button v-if="contact.email" as-child size="lg" :variant="contact.phone ? 'outline' : 'default'" class="max-sm:w-full">
               <a :href="`mailto:${contact.email}`"><Mail aria-hidden="true" />{{ t('email') }}</a>

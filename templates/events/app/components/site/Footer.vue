@@ -23,7 +23,7 @@ const year = useGinkoToday().value.slice(0, 4)
 
 <template>
   <footer class="mt-section bg-muted print:mt-10 print:border-t print:bg-transparent">
-    <div class="mx-auto grid max-w-page gap-10 px-gutter py-14 md:grid-cols-3 print:gap-2 print:py-4">
+    <div class="mx-auto grid max-w-page gap-8 px-gutter py-14 md:grid-cols-3 md:gap-10 print:gap-2 print:py-4">
       <div class="flex flex-col gap-3">
         <p class="font-display text-body font-semibold"><bdi>{{ name }}</bdi></p>
         <p v-if="tagline" class="max-w-xs text-small text-muted-foreground print:hidden">{{ tagline }}</p>
@@ -43,12 +43,12 @@ const year = useGinkoToday().value.slice(0, 4)
         </ul>
       </nav>
 
-      <div v-if="contact.email || contact.phone || contact.city" class="flex flex-col gap-2">
+      <div v-if="status || contact.email || contact.phone || contact.city" class="flex flex-col gap-2">
         <h2 class="text-small font-semibold print:hidden">{{ t('footer.contact') }}</h2>
         <div v-if="status" class="py-2 print:hidden">
           <component :is="status" />
         </div>
-        <address class="flex flex-col text-small text-muted-foreground not-italic">
+        <address v-if="contact.email || contact.phone || contact.city" class="flex flex-col text-small text-muted-foreground not-italic">
           <!-- Each line keeps the direction of its own text (bdi), so a Latin address keeps its order and its full
                stops on a right-to-left page; email and phone are always left to right. -->
           <span v-if="contact.city" class="flex flex-col py-2">

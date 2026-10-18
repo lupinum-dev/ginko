@@ -8,6 +8,7 @@ import FieldFrame from '../app/components/fields/FieldFrame.vue'
 import GinkoField from '../app/components/fields/GinkoField.vue'
 import GinkoFieldChoices from '../app/components/fields/GinkoFieldChoices.vue'
 import GinkoFieldDate from '../app/components/fields/GinkoFieldDate.vue'
+import EntryFields from '../app/components/EntryFields.vue'
 import GinkoFieldList from '../app/components/fields/GinkoFieldList.vue'
 import GinkoFieldRef from '../app/components/fields/GinkoFieldRef.vue'
 import { REFS, type RefOptions } from '../app/components/fields/refs'
@@ -153,7 +154,7 @@ describe('list rows', () => {
 describe('a list in a foreign language', () => {
   const days = {
     type: 'list', label: 'Tage', itemLabel: 'Tag', max: 5,
-    of: { dish: { type: 'text', label: 'Gericht' }, allergens: { type: 'choices', label: 'Allergene', options: [{ value: 'a', label: 'Gluten' }, { value: 'g', label: 'Milch' }] } },
+    of: { dish: { type: 'text', label: 'Gericht' }, allergens: { type: 'choices', label: 'Allergene', options: [{ value: 'a', label: 'Gluten' }, { value: 'g', label: 'Milch' }], askAgainWhen: 'dish' } },
   } as Extract<Field, { type: 'list' }>
   const stored = [{ _id: 'd1', dish: { de: 'Kürbissuppe' }, allergens: ['g'] }]
 
@@ -172,6 +173,96 @@ describe('a list in a foreign language', () => {
     expect([wrapper.text().includes('Gericht'), wrapper.text().includes('Allergene')]).toEqual([true, allergens])
     expect([wrapper.find('[data-remove]').exists(), wrapper.find('[data-add]').exists()]).toEqual([buttons, buttons])
     expect(blockers.size > 0).toBe(blocked)
+  })
+})
+
+const options = [{ value: 'a', label: 'Gluten' }, { value: 'g', label: 'Milch' }]
+const dishRow = (askAgainWhen?: string) => ({
+  type: 'list', label: 'Tage', itemLabel: 'Tag', max: 5,
+  of: {
+    dish: { type: 'text', label: 'Gericht' }, note: { type: 'text', label: 'Hinweis' },
+    allergens: { type: 'choices', label: 'Allergene', options, ...(askAgainWhen ? { askAgainWhen } : {}) },
+  },
+}) as Extract<Field, { type: 'list' }>
+
+// Wrong behaviour caught: every required choices column asked "Noch richtig?" after any text of its row changed, so a
+// column nobody marked blocked Speichern; and a change of an unrelated text ("Hinweis") asked about the allergens.
+describe('"Noch richtig?" in a list follows askAgainWhen', () => {
+  const stored = [{ _id: 'd1', dish: { de: 'Kürbissuppe' }, note: { de: 'warm' }, allergens: ['g'] }]
+  test.each<{ name: string; askAgainWhen?: string; changed: 'dish' | 'note'; asks: boolean }>([
+    { name: 'without the option nothing asks', changed: 'dish', asks: false },
+    { name: 'the named text asks', askAgainWhen: 'dish', changed: 'dish', asks: true },
+    { name: 'another text does not ask', askAgainWhen: 'dish', changed: 'note', asks: false },
+  ])('$name', async ({ askAgainWhen, changed, asks }) => {
+    const blockers = reactive(new Map<string, string>())
+    const value = shallowRef<Json | undefined>(stored)
+    const Host = defineComponent({
+      setup: () => () => h(GinkoFieldList, { id: 'f-days', field: dishRow(askAgainWhen), modelValue: value.value, baseline: stored, path: 'days', locale: 'de', locales: ['de', 'en'], issues: [], 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
+    })
+    const wrapper = mount(Host, { global: { provide: { [BLOCKERS as symbol]: blockers } } })
+    value.value = [{ ...stored[0]!, [changed]: { de: 'neu' } }]
+    await flushPromises()
+    expect([wrapper.find('.check').exists(), blockers.size]).toEqual(asks ? [true, 1] : [false, 0])
+    wrapper.unmount()
+  })
+})
+
+// Wrong behaviour caught: an entry form (a menu dish) never asked, so a renamed dish kept its old allergens unchecked.
+describe('"Noch richtig?" in an entry form', () => {
+  const entries = [
+    ['name', { type: 'text', label: 'Name' }],
+    ['allergens', { type: 'choices', label: 'Allergene', options, askAgainWhen: 'name' }],
+  ] as [string, Field][]
+  const baseline = { name: { de: 'Kürbissuppe' }, allergens: ['g'] }
+  function form(locale = 'de') {
+    const blockers = reactive(new Map<string, string>())
+    const draft = shallowRef<Record<string, Json | undefined>>(baseline)
+    const Host = defineComponent({
+      setup: () => () => h(EntryFields, { entries, all: Object.fromEntries(entries), draft: draft.value, baseline, locale, locales: ['de', 'en'], issues: [], onUpdate: (k: string, v: Json | undefined) => { draft.value = { ...draft.value, [k]: v } } }),
+    })
+    const wrapper = mount(Host, { global: { provide: { [BLOCKERS as symbol]: blockers } } })
+    const state = () => [wrapper.find('.check').exists(), [...blockers.values()]] as const
+    return { wrapper, draft, state }
+  }
+  const asked = [true, ['Bitte bestätige: Sind die Allergene noch richtig?']] as const
+  const quiet = [false, []] as const
+
+  test('a renamed dish asks and blocks until "Ja, stimmt"; a typo after that asks again', async () => {
+    const { wrapper, draft, state } = form()
+    draft.value = { ...baseline, name: { de: 'Kürbiscremesuppe' } }
+    await flushPromises()
+    expect(state()).toEqual(asked)
+    expect(wrapper.get('.check p').text()).toBe('Name geändert. Sind die Allergene noch richtig?')
+    await wrapper.get('.check button').trigger('click')
+    expect(state()).toEqual(quiet)
+    draft.value = { ...baseline, name: { de: 'Kürbiscremesupp' } }
+    await flushPromises()
+    expect(state()).toEqual(asked)
+    wrapper.unmount()
+  })
+
+  test('changing the allergens or typing the old name back removes the question', async () => {
+    const { wrapper, draft, state } = form()
+    draft.value = { ...baseline, name: { de: 'Kürbiscremesuppe' } }
+    await flushPromises()
+    draft.value = { name: { de: 'Kürbiscremesuppe' }, allergens: ['a'] }
+    await flushPromises()
+    expect(state()).toEqual(quiet)
+    draft.value = { ...baseline, name: { de: 'Kürbiscremesuppe' } }
+    await flushPromises()
+    expect(state()).toEqual(asked)
+    draft.value = baseline
+    await flushPromises()
+    expect(state()).toEqual(quiet)
+    wrapper.unmount()
+  })
+
+  test('a translation does not ask', async () => {
+    const { wrapper, draft, state } = form('en')
+    draft.value = { ...baseline, name: { de: 'Kürbissuppe', en: 'Pumpkin soup' } }
+    await flushPromises()
+    expect(state()).toEqual(quiet)
+    wrapper.unmount()
   })
 })
 

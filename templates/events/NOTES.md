@@ -1,9 +1,9 @@
 # Notes before release
 
 - Sample data that must change before going live: `content/site.md` (the association "Verein Open Data Days" at
-  Musterstraße, register and phone numbers with zeros), the venue "Kulturhaus am Kanal, Beispielgasse 12" (a made-up
-  address, so "Open in maps" finds nothing), the ticket shop address (`tickets.example.com`), the email addresses
-  (`example.com`), the speakers (fictional people), the sessions, the sponsor logos (fictional), and the legal texts
+  Seidenhofgasse, phone numbers whose local part starts with 0), the venue "Kulturhaus am Kanal, Schiffmeistergasse 12"
+  (an invented address), the ticket shop address (`tickets.opendatadays.example`), the email addresses
+  (`opendatadays.example`), the speakers (fictional people), the sessions, the sponsor logos (fictional), and the legal texts
   (marked placeholders for Austria).
 - The photos are stock placeholders (Unsplash License, `MEDIA.md`), to be replaced by better-fitting ones before release.
 - The past event `content/events/3.last-edition.md` stays in the content as a record; the site never shows it (an

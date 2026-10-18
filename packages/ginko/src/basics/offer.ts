@@ -29,13 +29,15 @@ export function offerPrice(m: Money, siteCurrency: string | undefined) {
 /**
  * schema.org Offer for a price of the site's own JSON-LD (a service, a product): `price` and `priceCurrency` as
  * `offerPrice`. `valueAddedTaxIncluded` (false for net prices) adds a PriceSpecification that says so, so search
- * engines do not read a net price as the full one; left out, the Offer says nothing about VAT.
+ * engines do not read a net price as the full one; left out, the Offer says nothing about VAT. `unitCode` (UN/CEFACT:
+ * `MON` per month, `ANN` per year) makes it a recurring price: a UnitPriceSpecification for one such unit, so a
+ * subscription's price per month is not read as a one-off price.
  */
-export function offerJsonLd(m: Money, siteCurrency: string | undefined, o: { valueAddedTaxIncluded?: boolean } = {}) {
+export function offerJsonLd(m: Money, siteCurrency: string | undefined, o: { valueAddedTaxIncluded?: boolean, unitCode?: 'MON' | 'ANN' | (string & {}) } = {}) {
   const price = offerPrice(m, siteCurrency)
-  return {
-    '@type': 'Offer',
-    ...price,
-    ...(o.valueAddedTaxIncluded === undefined ? {} : { priceSpecification: { '@type': 'PriceSpecification', ...price, valueAddedTaxIncluded: o.valueAddedTaxIncluded } }),
-  }
+  const vat = o.valueAddedTaxIncluded === undefined ? {} : { valueAddedTaxIncluded: o.valueAddedTaxIncluded }
+  const specification = o.unitCode
+    ? { '@type': 'UnitPriceSpecification', ...price, ...vat, referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: o.unitCode } }
+    : o.valueAddedTaxIncluded === undefined ? undefined : { '@type': 'PriceSpecification', ...price, ...vat }
+  return { '@type': 'Offer', ...price, ...(specification ? { priceSpecification: specification } : {}) }
 }

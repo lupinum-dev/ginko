@@ -1,6 +1,6 @@
 {
   "home": {
-    "title": "Flussputz in Musterstadt",
+    "title": "Flussputz in Kassel",
     "projects": "Aktuelle Projekte",
     "news": "Neuigkeiten",
     "voices": "Stimmen",
@@ -27,7 +27,11 @@
   },
   "event": {
     "next": "Nächster Termin",
-    "time": "{start}–{end} Uhr",
-    "separator": ", "
+    "separator": ", ",
+    "later": "Weitere Termine"
+  },
+  "events": {
+    "lead": "Aufräumaktionen, Versammlungen und weitere Termine, mit Uhrzeit und Ort.",
+    "reserve": "Fragen zu diesem Termin? Rufen Sie uns an oder schreiben Sie uns."
   }
 }

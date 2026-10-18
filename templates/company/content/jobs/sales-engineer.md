@@ -2,10 +2,10 @@
 title: "Sales engineer, municipal water (m/f/d)"
 slug: sales-engineer
 description: "You advise towns, water boards and engineering offices on pumping stations, size them and write the quotes."
-location: Musterstadt
+location: Bielefeld
 employmentType: fullTime
 remote: hybrid
-applyEmail: jobs@example.com
+applyEmail: jobs@halden-pumpen.example
 validUntil: 2027-02-28
 ---
 

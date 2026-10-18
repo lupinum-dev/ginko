@@ -12,12 +12,12 @@
     "allQuestions": "All questions",
     "lastYear": "Last year",
     "ctaTitle": "One ticket for the whole conference",
-    "ctaText": "{price}. Reduced prices in the ticket shop."
+    "ctaText": "{price}. Reduced prices in the ticket shop.",
+    "ctaTextFree": "Free entry. Get your ticket in the ticket shop."
   },
   "faq": {
     "title": "FAQ",
-    "lead": "Getting there, access, tickets, food and the code of conduct.",
-    "empty": "No questions yet"
+    "lead": "Getting there, access, tickets, food and the code of conduct."
   },
   "events": {
     "title": "Dates",
@@ -28,7 +28,7 @@
   },
   "sessions": {
     "programme": {
-      "lead": "Talks, workshops and breaks by day, with time, room and speakers. All times are Vienna time."
+      "lead": "Talks, workshops and breaks by day, with time, room and speakers. All times are local time."
     },
     "speakers": {
       "lead": "The people who give the talks, run the workshops and sit on the panel."

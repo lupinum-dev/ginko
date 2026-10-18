@@ -2,7 +2,7 @@
 import { defineSite } from '@lupinum/ginko'
 import { checkSchema, serializeSchema } from '@lupinum/ginko/internal'
 import { describe, expect, it } from 'vitest'
-import { allergensEU, events, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '../src/index.ts'
+import { allergensEU, events, isLunchPlaceholder, gallery, hourPlans, hours, lunch, lunchPlans, menu, notices } from '../src/index.ts'
 
 const siteWith = (bricks: Record<string, any>) =>
   defineSite({ site: 'cafe', name: 'Café', url: 'https://cafe.example', timeZone: 'Asia/Singapore', locales: ['en'], currency: 'EUR', pages: { home: '/' }, bricks })
@@ -58,6 +58,12 @@ describe('allergens', () => {
     expect(json).toContain('"Nuts"')
     expect(json).not.toContain('Gluten')
   })
+  // Wrong behaviour caught: an edited dish keeps its old allergens without anyone being asked.
+  it('lunch and menu allergens are asked again when the dish changes', () => {
+    const schema = serializeSchema(siteWith({ menu: menu(), lunch: lunch(), lunchPlans: lunchPlans(), notices: notices() }))
+    expect((schema.bricks.lunch!.fields.days as any).of.allergens.askAgainWhen).toBe('dish')
+    expect((schema.bricks.menu!.fields.allergens as any).askAgainWhen).toBe('name')
+  })
   it('the default keeps the 14 EU codes', () => {
     expect(fieldsOf({ menu: menu() })).toContain('{"de":"B Krebstiere","en":"B Crustaceans"}')
     expect(fieldsOf({ menu: menu() })).toContain('A Gluten')
@@ -71,5 +77,15 @@ describe('options', () => {
     const bricks = { hours: hours(files), hourPlans: hourPlans(files), notices: notices(files), lunch: lunch(files), lunchPlans: lunchPlans(files), menu: menu(files), events: events({ ...files, route: { en: '/events/[slug]' } }), gallery: gallery(files) }
     expect(Object.values(bricks).map((b) => b.source)).toEqual(Array(8).fill('files'))
     expect(hours()).not.toHaveProperty('source')
+  })
+})
+
+// Wrong behaviour caught: a fresh site's placeholder day shows an allergen line ("no allergens") for a dish nobody has named.
+describe('isLunchPlaceholder', () => {
+  it('is true for the placeholder in both languages and false for a real dish', () => {
+    expect(isLunchPlaceholder('Wird noch bekannt gegeben')).toBe(true)
+    expect(isLunchPlaceholder('To be announced')).toBe(true)
+    expect(isLunchPlaceholder('Kürbissuppe')).toBe(false)
+    expect(isLunchPlaceholder(undefined)).toBe(false)
   })
 })

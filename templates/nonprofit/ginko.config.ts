@@ -1,4 +1,4 @@
-// Nonprofit template: a river clean-up and community association in Germany with news, projects and campaigns,
+// Nonprofit template: a river cleanup and community association in Germany with news, projects and campaigns,
 // the board and team, reports to download and a few free pages, in English (main), German, French and Arabic (right to
 // left). Every brick reads Markdown from content/ (source: 'files'), so the site runs without an account.
 // To let the team change a brick in Ginko Studio later, remove `source: 'files'` from it (README, "Move to the Studio").
@@ -28,6 +28,7 @@ export default defineSite({
   pages: {
     home: localized('/'),
     news: localized('/news'),
+    events: localized('/events'),
     projects: localized('/projects'),
     team: localized('/team'),
     downloads: localized('/reports'),
@@ -61,11 +62,10 @@ export default defineSite({
     projects: projects({ source: 'files', route: localized('/projects/[slug]') }),
     // The board and the staff (content/people/). No photos: the site shows initials.
     people: people({ source: 'files' }),
-    // Clean-ups, meetings and other dates (content/events/). An event leaves the site after its last day; the home
-    // page and Get involved show the next one, and so does Today. No `route` yet: the events pages come with a later
-    // version of this template, so no link and no sitemap entry leads nowhere.
-    events: { ...events({ source: 'files' }), status: { next: 'when' } },
-    // Reports and other PDFs, newest first (content/downloads/, the files in public/reports/).
+    // Cleanups, meetings and other dates (content/events/), each on its own page. An event leaves the site after its
+    // last day; the home page and Get involved show the next one, and so does Today.
+    events: { ...events({ source: 'files', route: localized('/events/[slug]') }), status: { next: 'when' } },
+    // Reports and other PDFs, newest first (content/downloads/, the files in public/files/).
     downloads: downloads({ source: 'files' }),
     // Partner logos on the home page (content/logos/, the files in public/logos/).
     logos: logos({ source: 'files' }),

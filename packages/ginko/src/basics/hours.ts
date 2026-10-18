@@ -176,13 +176,16 @@ export function noticesOn<N extends { data: { until?: string | null } }>(notices
   return notices.filter((n) => n.data.until !== today)
 }
 
-/** Public holidays on which the house is closed, starting after `today` and within `days` days. */
+/**
+ * Public holidays on which the house is closed, starting after `today` and within `days` days. A holiday on a day the
+ * week (or the running plan) closes anyway is left out: it closes nothing the visitor could have come on.
+ */
 export function upcomingHolidayClosures(ctx: HoursContext, today: string, days: number): HolidayClosure[] {
   const out: HolidayClosure[] = []
   for (let i = 1; i <= days; i++) {
     const date = addDays(today, i)
     const rule = hoursOn(ctx, date)
-    if (rule.source === 'holiday' && rule.closed && rule.holiday) {
+    if (rule.source === 'holiday' && rule.closed && rule.holiday && !ruleOfDay(weekFor(ctx, date).week.find((d) => d.day === weekdayOf(date)), 'week').closed) {
       out.push({ _id: `holiday-${date}`, when: { from: date, to: date }, closed: true, holiday: rule.holiday })
     }
   }
@@ -240,7 +243,18 @@ export function upcomingPlans(plans: HourPlan[], today: string, days: number): A
       starts = `${year}-${md}` > today ? `${year}-${md}` : `${year + 1}-${md}`
       if (plan.from > starts) starts = plan.from
     }
-    const ends = endOf(plan, starts)
+    let ends = endOf(plan, starts)
+    // The range shown ends on the last day `planOn` still gives to this plan, so the table cannot disagree with the
+    // hours: a later plan that takes over the tail cuts it, a nested plan does not, an older yearly plan recurring
+    // inside a newer one does not cut the newer one. A plan without an end is left as it is.
+    if (ends) {
+      for (let day = ends, i = 0; day >= starts && i < 366; day = addDays(day, -1), i++) {
+        if (planOn(plans, day) === plan) {
+          ends = day
+          break
+        }
+      }
+    }
     if (starts > today && starts <= until) out.push({ plan, starts, ...(ends ? { ends } : {}) })
   }
   return out.sort((a, b) => a.starts.localeCompare(b.starts))

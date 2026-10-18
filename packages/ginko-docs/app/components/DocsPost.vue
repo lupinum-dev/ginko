@@ -7,6 +7,7 @@ import type { Post } from '../lib/blogTypes'
 const props = defineProps<{ post: Post }>()
 const { t, language } = useI18n()
 const blog = useDocsBlog()
+const langOf = useGinkoLang()
 const site = useGinkoSite()
 const route = useRoute()
 const authors = computed(() => blog.authorsOf(props.post))
@@ -33,11 +34,11 @@ useHead(() => ({ link: [{ rel: 'alternate', type: 'application/rss+xml', title: 
         <nav class="docs-crumbs" :aria-label="t('docs.breadcrumb')">
           <ol>
             <li><NuxtLink :to="blog.blogPath.value">{{ t('docs.blog') }}</NuxtLink></li>
-            <li><Icon name="lucide:chevron-right" class="docs-icon" /><span aria-current="page">{{ post.data.title }}</span></li>
+            <li><DocsIcon name="lucide:chevron-right" class="docs-icon" /><span aria-current="page">{{ post.data.title }}</span></li>
           </ol>
         </nav>
         <h1>{{ post.data.title }}</h1>
-        <p v-if="post.data.description" class="docs-lead">{{ post.data.description }}</p>
+        <p v-if="post.data.description" class="docs-lead" :lang="langOf(post, 'description')">{{ post.data.description }}</p>
         <p class="docs-meta">
           <time :datetime="post.data.date">{{ blog.formatDate(post.data.date) }}</time>
           <template v-if="authors.length">

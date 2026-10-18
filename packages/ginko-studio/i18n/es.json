@@ -726,6 +726,7 @@
       "search": "Buscar {target}…",
       "nothing": "No se encontró nada."
     },
+    "confirmBlocker": "Confirma: ¿sigue todo correcto en {label}?",
     "list": {
       "up": "Subir {title}",
       "down": "Bajar {title}",
@@ -736,8 +737,7 @@
       "confirmBlocker": "Confirma para “{title}”: ¿sigue todo correcto en {label}?",
       "changed": "{changed} ha cambiado. ¿Sigue todo correcto en {label}?",
       "add": "Añadir {item}",
-      "addInMain": "Las filas se añaden, quitan y mueven en la versión en {name}.",
-      "text": "Texto"
+      "addInMain": "Las filas se añaden, quitan y mueven en la versión en {name}."
     }
   },
   "ops": {

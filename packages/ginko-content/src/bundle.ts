@@ -39,7 +39,7 @@ export function publicBundle(bundle: Bundle, schema: Schema, now: Date, options:
 export async function buildFileBundles(options: BuildOptions): Promise<BuildResult> {
   const { contentDir, publicDir, schema, now = new Date() } = options
   const files = fileSchema(schema)
-  const { entries, files: fileInfo, images, errors } = await readContent(contentDir, publicDir, files, options)
+  const { entries, files: fileInfo, images, errors } = await readContent(contentDir, publicDir, files, { today: todayIn(schema.timeZone, now), ...options })
   const imageFiles = new Set<string>()
   if (options.imageDir) await addVariants(fileInfo, images, publicDir, options.imageDir, imageFiles)
   const build = (locale: Locale) => buildBundle({

@@ -26,7 +26,7 @@ const delegatedProps = reactiveOmit(props, 'class', 'headingLevel')
     >
       <slot />
       <ChevronDown
-        class="mt-1 size-5 shrink-0 text-muted-foreground transition-transform duration-200 ease-out group-data-[state=open]:rotate-180"
+        class="mt-1 size-5 shrink-0 text-muted-foreground transition-transform duration-200 ease-out group-data-[state=open]:rotate-180 print:hidden"
         aria-hidden="true"
       />
     </AccordionTrigger>

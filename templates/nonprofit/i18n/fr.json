@@ -1,6 +1,6 @@
 {
   "home": {
-    "title": "Nettoyage de la rivière à Musterstadt",
+    "title": "Nettoyage de la rivière à Kassel",
     "projects": "Projets en cours",
     "news": "Dernières actualités",
     "voices": "Ils en parlent",
@@ -27,7 +27,11 @@
   },
   "event": {
     "next": "Prochain rendez-vous",
-    "time": "{start}–{end}",
-    "separator": ", "
+    "separator": ", ",
+    "later": "Dates suivantes"
+  },
+  "events": {
+    "lead": "Nettoyages, réunions et autres dates, avec l’heure et le lieu.",
+    "reserve": "Une question sur cette date ? Appelez-nous ou écrivez-nous."
   }
 }

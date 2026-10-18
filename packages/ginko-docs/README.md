@@ -15,7 +15,7 @@ npm install @lupinum/ginko @lupinum/ginko-content @lupinum/ginko-i18n @lupinum/g
 ```ts
 // ginko.config.ts
 import { defineSite } from '@lupinum/ginko'
-import { components, docsCollection } from '@lupinum/ginko-docs/config'
+import { components, docsCollection, homePages } from '@lupinum/ginko-docs/config'
 
 const locales = ['en', 'de'] as const
 
@@ -26,13 +26,13 @@ export default defineSite({
   timeZone: 'Europe/Vienna',
   locales,
   currency: 'EUR',
-  pages: { home: { en: '/', de: '/de' } }, // the start page is the page `home`
+  pages: { home: homePages({ locales }) }, // the start page is the page `home`
   components, // the Markdown components: ::callout, ::tabs, ::steps …
   bricks: { docs: docsCollection({ locales }) },
 })
 ```
 
-`docsCollection`, `blogCollections`, `blogPages` and `changelogPages` take one options object. `locales` is the same list as
+`docsCollection`, `blogCollections`, `homePages`, `blogPages` and `changelogPages` take one options object. `locales` is the same list as
 in `defineSite` (the layer accepts any `readonly string[]`; `defineSite` itself needs the tuple, hence `as const`).
 
 `components` is the registry of `@lupinum/ginko-components` (a dependency of the layer, re-exported here). With it, Ginko checks every component tag and prop in the
@@ -56,7 +56,10 @@ export default defineNuxtConfig({ extends: ['@lupinum/ginko-docs'], modules: ['@
 ## Configure
 
 Options go in the site's `app.config.ts`. All are optional. Internal paths in `nav`, `footer.links` and `banner.href`
-follow the reader's language (`/guide` becomes `/de/guide`); absolute URLs stay as written.
+follow the reader's language (`/guide` becomes `/de/guide`); absolute URLs stay as written. A route link names the page
+instead of its address, as in Markdown: `$docs.<page>` (a docs page by its file name, such as `$docs.webhooks`, or its
+slug) and `$page.<key>` (a page of `pages` in `ginko.config.ts`, such as `$page.changelog`), with an optional `#anchor`.
+It leads to the page in the reader's language, also when a translation has another slug.
 
 ```ts
 export default defineAppConfig({
@@ -108,8 +111,26 @@ Each docs page's frontmatter can set, besides `title` and `description`:
 | `icon` | An Iconify name, e.g. `lucide:rocket`, before the title in the navigation. Main locale only. |
 | `badge` | A short label after the title, e.g. "New". |
 
-Icons come from `@nuxt/icon` with the `lucide` set installed. Any other Iconify set works once the site installs it
-(`pnpm add -D @iconify-json/<set>`). Icons are bundled at build time; no icon API is called.
+### Icons
+
+The layer draws icons itself (no `@nuxt/icon`, no icon API call, no icon library in the browser). At build time it reads
+exactly the icons your site names from the installed `@iconify-json/<set>` packages (`lucide` is installed with the
+layer; add others with `pnpm add -D @iconify-json/<set>`) and bundles them in one small map that only docs pages load.
+
+The build scans, in all locales:
+
+- the front matter of your Markdown files, the attributes of Markdown components (`::card{icon="lucide:rocket"}`) and the
+  `---` block inside a component; prose and code blocks are not read;
+- YAML and JSON content files and `app.config.ts` (`icon:` values and `social`);
+- the layer's own components and your site's `app/**/*.vue` files (`<Icon name="lucide:x" />`, `icon="..."`, or a bound
+  literal `:name="'lucide:x'"`). Commented-out code is ignored; other `.ts` files than `app.config.ts` are not read.
+
+A name is `set:name`; a bare name such as `book-open` means Lucide. The `i-set-name` form is not supported. Names built at
+runtime (a variable, a template string) are not found; write the name once as a literal somewhere in the places above. A
+name the build cannot find logs one warning with its file and renders nothing.
+
+The layer registers a global `Icon` component that the Markdown components (card, tabs, callout) use. If your site installs
+`@nuxt/icon` itself, yours wins (the layer's has a lower priority).
 
 ### Start page (optional)
 
@@ -128,6 +149,9 @@ features:
   - { icon: lucide:zap, title: Fast, description: Why it is fast., href: /docs/speed }
 ---
 ```
+
+`href` takes a path as written, an absolute URL, or a route link (`$docs.introduction`, `$page.changelog`) that follows
+the reader's language, so the translations (`home.<locale>.md`) can use the same links.
 
 Add `home: docsHome()` to `bricks`. Without it, `/` leads to the first docs page. A site's own `pages/index.vue` wins.
 
@@ -170,17 +194,24 @@ bricks: { docs: docsCollection({ locales, base: '/handbook' }), /* … */ },
 components: { ...components, /* the site's own components; same name wins */ },
 ```
 
-- **Only the docs pages are added.** The layer registers its pages from the bricks: the docs at the `base` of
-  `docsCollection` (default `/docs`), `/blog` (with its RSS feed) and `/changelog` only when those bricks exist, `/` only when the site
-  has no start page of its own. A page the site defines itself always wins.
+- **Only the docs pages are added.** The layer registers its pages from the bricks, after all pages of the site are
+  known: the docs at the `base` of `docsCollection` (default `/docs`), the blog (with its RSS feed) at the route of
+  the `posts` brick and the changelog at the route of the `changelog` brick (or `pages.changelog`), and `/` only when
+  the site has no start page of its own. A page the site defines itself at one of these addresses always wins, also
+  when the page-paths module gives it that address (a page file `news.vue` that answers at `/blog`). Then the layer
+  adds no page and no feed there, and its header and post links point to the site's page.
 - **The site's frame stays.** The header, footer and page background are the layer's `layouts/default.vue`. When
   the site has its own `layouts/default.vue`, that one is used and the docs (navigation, page, table of contents)
-  sit inside it. On phones the navigation opens from a bar above the page, so the docs need no header of their own.
+  sit inside it, without the layer's framed panel, on the site's background. The search sits above the navigation.
+  On phones a bar under the site's header holds a "Contents" button (the navigation as a sheet), the search and the
+  "On this page" menu, so the docs need no header of their own.
 - **Nothing leaks.** Every rule is under a `docs-` class; the page background, font and `color-scheme` are only set
   by the layer's own frame. The search, the language menu and the light/dark switch are components
   (`<DocsSearch />`, `<DocsLanguage />`, `<DocsThemeToggle />`) the site can put into its own header; the switch sets
   `data-theme` on `<html>`, so it fits a site that themes with that attribute. `<DocsThemeToggle segmented />` is the
-  three-way Auto/Light/Dark switch (the phone menu uses it). These three are the public components. The other `Docs*`
+  three-way Auto/Light/Dark switch and `<DocsLanguage list />` the languages as a row of links (the phone menu uses
+  both). A language without a version of the page says so ("Not translated: opens the start page"). These three,
+  `<DocsShell>` and the override points under [Customize](#customize) are the public components. The other `Docs*`
   components, the `useDocs*` composables and the files in `app/lib` are internal and can change in any release.
 - **Error page:** the layer's `error.vue` shows a not-found page inside the site's layout, with links home and to
   the docs. A site with its own `error.vue` keeps it.
@@ -190,10 +221,11 @@ components: { ...components, /* the site's own components; same name wins */ },
 - **Title:** pages get the title `Page · Site name` from Ginko (`seo.titleTemplate` in `defineSite`). A
   `titleTemplate` in `app.head` or from nuxt-seo-utils does not apply to them, so the name is never added twice.
 - **Styling:** map the site's design tokens to the token names above (leave out the ones the site already defines
-  under the same name, often `--font-sans` and `--font-mono`). Two layout tokens line the docs up with the site:
-  - `--docs-max`: the width of the site's content container, so the sidebar starts where the header's logo does.
-  - `--docs-top`: the space the sidebar and table of contents keep from the top of the window when they stick, and
-    the scroll offset of headings. With a sticky header, its height; with a header that scrolls away, a small gap.
+  under the same name, often `--font-sans` and `--font-mono`). Three layout tokens line the docs up with the site:
+  - `--docs-max` and `--docs-gutter`: the width and the side padding of the site's content container, so the search
+    and the navigation start where the header's logo does.
+  - `--docs-top`: the space the sidebar, the phone bar and the table of contents keep from the top of the window when
+    they stick, and the scroll offset of headings. With a sticky header, its height; with one that scrolls away, 0.
 
 ```css
 :root {
@@ -205,9 +237,64 @@ components: { ...components, /* the site's own components; same name wins */ },
   --primary: var(--color-brand);
   --radius: 0.75rem;
   --docs-max: 82.5rem;
-  --docs-top: 4.5rem; /* sticky header 4.5rem high; 1.5rem for one that scrolls away */
+  --docs-gutter: 1.5rem;
+  --docs-top: 4.5rem; /* sticky header 4.5rem high; 0 for one that scrolls away */
 }
 ```
+
+Headings use the site's own heading styles; the layer sets no font on them.
+
+## Customize
+
+Everything here is public and stays stable between releases.
+
+**Tokens.** The colour tokens are listed under [Look and colours](#look-and-colours). The layout tokens:
+
+| Token | Default | What it sets |
+| --- | --- | --- |
+| `--docs-max` | `90rem` | Width of the docs, gutters included |
+| `--docs-gutter` | `1rem` | Space between the window edge and the docs |
+| `--docs-top` | `0px` (standalone: the header) | Height of what sticks above the docs |
+| `--docs-sidebar` | `17rem` | Width of the navigation |
+| `--docs-toc` | `13.5rem` | Width of "On this page" beside the text (from 80rem window width) |
+| `--docs-measure` | `38rem` | Reading width of running text |
+| `--docs-h1` | `clamp(1.75rem, …, 2.25rem)` | Size of page titles |
+| `--docs-header` | `4rem` | Height of the standalone header |
+
+**Override points.** The layer ships empty components that a site replaces with its own file of the same name in
+`app/components/`:
+
+- `DocsPageEnd` (prop `doc`, the page's entry): after the text of every page, before "Edit this page" and the pager.
+  For a support box or a call to action.
+- `DocsSidebarEnd`: below the navigation, in the sidebar and in the phone menu. For a few links or a contact line.
+
+**Own pages in the docs frame.** `<DocsShell>` is the docs body (navigation, search, the phone bar) with a default slot
+for the page and a `bar` slot for controls in the phone bar. A help center's start page, for example:
+
+```vue
+<!-- app/pages/help/index.vue; the docs live at /help (docsCollection({ locales, base: '/help' })) -->
+<script setup lang="ts">
+const docs = useGinko('docs')
+</script>
+
+<template>
+  <DocsShell>
+    <h1>How can we help?</h1>
+    <ul>
+      <li v-for="item in docs.items" :key="item.id"><NuxtLink :to="item.url">{{ item.data.title }}</NuxtLink></li>
+    </ul>
+  </DocsShell>
+</template>
+```
+
+The layer then adds no page of its own at that address.
+
+**Search.** `docs: { search: false }` in app.config leaves out the built-in search (header, sidebar and phone bar), for
+a site that puts `<DocsSearch />` into its own header.
+
+**Texts.** Every text of the layer is a `docs.*` message, and the site's own i18n wins per key. A help center, for
+example, words the search for itself in `i18n/en.json`: `{ "docs": { "searchPlaceholder": "Search help…" } }`. The
+layer brings English, German and French.
 
 ## Blog and changelog (optional)
 
@@ -229,6 +316,7 @@ export default defineSite({
 - **Authors** (`content/authors/<name>[.<locale>].yml`) have `name`, `role`, `avatar` and `url`. A post names them by id: `authors: [authors/jane]`. Authors have no page.
 - A post page writes Article JSON-LD with the author names, `datePublished` from `date` and `dateModified` from the entry's `updatedAt`.
 - **RSS:** `/blog/rss.xml` and `/<l>/blog/rss.xml`, RSS 2.0 with title and description (not the full text) and absolute links. It reads the build-time file bundle, so it works for file blogs only. `nuxt generate` writes it: the blog page sends the feed path in the `x-nitro-prerender` header, because Nitro's crawler does not follow `.xml` links.
+- **Addresses:** the blog list is the parent of the `posts` route (`/blog/[slug]` gives `/blog`; `blogCollections` uses `/blog`). The changelog page is at the route of the `changelog` brick, else at `pages.changelog` (`changelogPages({ locales })`, `/changelog`). A changelog brick with neither gets no page, and the build warns once. A site that has its own page at an address keeps it; the layer then adds nothing there.
 - **Changelog:** `changelogCollection()` (options: `max`) is one collection with `version`, `date` and Markdown text per release (`content/changelog/v1-2-0.md`; no dots in the file name, a dot reads as a language). The page `/changelog` shows all releases newest first, each with an anchor (`#v1-2-0`). It is a collection, not a docs page, so the date orders it and it has its own link in the header.
 
 The Ginko docs themselves are built this way: [sites/docs](https://github.com/lupinum-dev/ginko/tree/main/sites/docs).

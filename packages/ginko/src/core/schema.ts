@@ -23,7 +23,7 @@ const UNSAFE_PATH = /\.\.|\/\/|[?#]/
 export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timeZone', 'locales', 'currency', 'week', 'holidays', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
 export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor'])
 export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
-export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'group', 'after'])
+export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after'])
 
 export const SCHEMA_LIMITS = { bytes: 256 * 1024, bricks: 30, fieldsPerBrick: 60 } as const
 
@@ -668,6 +668,11 @@ function checkField(path: string, field: Field, siblings: Fields, topLevel: bool
     const keys = Object.keys(when ?? {}).sort().join(',')
     if (keys !== 'field,is' && keys !== 'field,not') problems.push(`${path}.showWhen: needs \`field\` and one of \`is\` or \`not\`.`)
     else if (typeof when.field !== 'string' || !Object.hasOwn(siblings, when.field) || when.field === path.split('.').pop()) problems.push(`${path}.showWhen: “${String(when.field)}” is not another field next to this one.`)
+  }
+  if (field.type === 'choices' && field.askAgainWhen !== undefined) {
+    const target = field.askAgainWhen
+    const sibling = typeof target === 'string' && Object.hasOwn(siblings, target) ? siblings[target] : undefined
+    if (target === path.split('.').pop() || (sibling?.type !== 'text' && sibling?.type !== 'longtext')) problems.push(`${path}.askAgainWhen: must name a text field next to it.`)
   }
   // Every number option is a finite number: JSON turns NaN and Infinity into null, which then compares as "no limit".
   let numbersOk = true

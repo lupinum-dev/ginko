@@ -11,6 +11,7 @@ import type { docsCollection } from '@lupinum/ginko-docs/config'
 const props = defineProps<{ doc: ItemOf<ReturnType<typeof docsCollection>['fields']> & { source?: string } }>()
 const { t, format, language } = useI18n()
 const { crumbs } = useDocs()
+const langOf = useGinkoLang()
 const neighbors = useGinkoNeighbors('docs', () => props.doc.id)
 const site = useGinkoSite()
 // The Studio link needs the platform address and the site name: internal keys of the Ginko module, read by its own layer.
@@ -48,7 +49,7 @@ const top = () => window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduc
       <nav v-if="crumbs.length > 1" class="docs-crumbs" :aria-label="t('docs.breadcrumb')">
         <ol>
           <li v-for="(c, i) in crumbs" :key="c.path + i">
-            <Icon v-if="i" name="lucide:chevron-right" class="docs-icon" />
+            <DocsIcon v-if="i" name="lucide:chevron-right" class="docs-icon" />
             <span v-if="i === crumbs.length - 1" aria-current="page">{{ c.title }}</span>
             <NuxtLink v-else :to="c.path">{{ c.title }}</NuxtLink>
           </li>
@@ -56,30 +57,31 @@ const top = () => window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduc
       </nav>
       <header class="docs-page-head">
         <h1>{{ doc.data.title }}</h1>
-        <p v-if="doc.data.description" class="docs-lead">{{ doc.data.description }}</p>
+        <p v-if="doc.data.description" class="docs-lead" :lang="langOf(doc, 'description')">{{ doc.data.description }}</p>
         <DocsPageActions :path="route.path" :origin="site.url" />
       </header>
       <GinkoMarkdown :value="doc.data.body" :components="markdownComponents" class="docs-prose" />
+      <DocsPageEnd :doc="doc" />
       <footer>
         <div v-if="editUrl || updated" class="docs-page-foot">
-          <a v-if="editUrl" :href="editUrl" target="_blank" rel="noopener"><Icon name="lucide:pencil" class="docs-icon" />{{ t('docs.edit') }}</a>
+          <a v-if="editUrl" :href="editUrl" target="_blank" rel="noopener"><DocsIcon name="lucide:pencil" class="docs-icon" />{{ t('docs.edit') }}</a>
           <span v-if="updated">{{ t('docs.updated') }} <time :datetime="updated.iso">{{ updated.text }}</time></span>
         </div>
         <nav v-if="neighbors.prev || neighbors.next" class="docs-pager" :aria-label="t('docs.pager')">
           <NuxtLink v-if="neighbors.prev" :to="neighbors.prev.url" rel="prev">
-            <small><Icon name="lucide:arrow-left" class="docs-icon" />{{ t('docs.previous') }}</small>{{ neighbors.prev.data.title }}
+            <small><DocsIcon name="lucide:arrow-left" class="docs-icon" />{{ t('docs.previous') }}</small>{{ neighbors.prev.data.title }}
           </NuxtLink>
           <NuxtLink v-if="neighbors.next" :to="neighbors.next.url" rel="next" class="is-next">
-            <small>{{ t('docs.next') }}<Icon name="lucide:arrow-right" class="docs-icon" /></small>{{ neighbors.next.data.title }}
+            <small>{{ t('docs.next') }}<DocsIcon name="lucide:arrow-right" class="docs-icon" /></small>{{ neighbors.next.data.title }}
           </NuxtLink>
         </nav>
       </footer>
     </article>
     <DocsToc v-if="toc.length" :links="toc" variant="aside">
       <div class="docs-toc-more">
-        <a v-if="editUrl" :href="editUrl" target="_blank" rel="noopener"><Icon name="lucide:pencil" class="docs-icon" />{{ t('docs.edit') }}</a>
-        <a v-if="issueUrl" :href="issueUrl" target="_blank" rel="noopener"><Icon name="lucide:circle-alert" class="docs-icon" />{{ t('docs.issue') }}</a>
-        <button type="button" @click="top"><Icon name="lucide:arrow-up" class="docs-icon" />{{ t('docs.top') }}</button>
+        <a v-if="editUrl" :href="editUrl" target="_blank" rel="noopener"><DocsIcon name="lucide:pencil" class="docs-icon" />{{ t('docs.edit') }}</a>
+        <a v-if="issueUrl" :href="issueUrl" target="_blank" rel="noopener"><DocsIcon name="lucide:circle-alert" class="docs-icon" />{{ t('docs.issue') }}</a>
+        <button type="button" @click="top"><DocsIcon name="lucide:arrow-up" class="docs-icon" />{{ t('docs.top') }}</button>
       </div>
     </DocsToc>
   </div>

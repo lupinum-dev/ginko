@@ -2,7 +2,7 @@
 title: "Vertriebsingenieur Kommunalwasser (m/w/d)"
 slug: vertriebsingenieur-kommunalwasser
 description: "Sie beraten Städte, Wasserverbände und Ingenieurbüros zu Pumpstationen, legen sie aus und schreiben die Angebote."
-location: Musterstadt
+location: Bielefeld
 ---
 
 Sie verstärken das Team von Katrin Albers, das unsere kommunalen Kunden im Norden und Osten Deutschlands betreut.

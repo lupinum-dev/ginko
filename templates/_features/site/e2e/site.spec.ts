@@ -33,11 +33,11 @@ test('the footer links every legal text, and each opens with its title and date'
   }
 })
 
-test('active notices show above the header, at most two', async ({ page }) => {
+test('active notices show above the header, all of them', async ({ page }) => {
   await open(page, '/')
   // The section right before the header, so screen readers meet the notices first.
   const bar = page.locator('body section:has(+ header)')
-  const expected = Math.min(2, activeNotices())
+  const expected = activeNotices()
   // Wrong behaviour caught: a broken notice bar that shows nothing while the template has an active sample notice.
   await expect(bar.locator('li'), 'notices shown').toHaveCount(expected)
   if (expected) await expect(bar, 'the notice bar is a named region').toHaveAttribute('aria-label', /\S/)

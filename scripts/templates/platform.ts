@@ -8,8 +8,9 @@
 // names the child processes and the copy; the next run cleans up after a run that was killed. A signal or the time limit
 // (GATE_TIMEOUT_MS) stops everything the same way (scripts/lib/runs.ts, shared with `pnpm e2e:platform`). What the template calls the content of the shared jobs is in
 // templates/_studio/<template>/jobs.json. Logs: GINKO_PLATFORM_LOGS, else a work folder.
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { createRequire } from 'node:module'
 import { join, relative } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { serializeSchema, withoutFiles, type SiteInput } from '../../packages/ginko/src/core/index.ts'
@@ -34,6 +35,29 @@ const TOUCHED = ['.convex', '.env.local', 'convex/_generated']
 export function studioSpecDirs(root: string, name: string, features: string[]): string[] {
   return [...features.map((f) => `templates/_features/${f}/e2e/studio`), `templates/_studio/${name}`]
     .filter((dir) => existsSync(join(root, dir)) && readdirSync(join(root, dir)).some((file) => file.endsWith('.spec.ts')))
+}
+
+/**
+ * The Files library takes JPEG, PNG, WebP and PDF only, and `local:files-export` stops at an SVG with "Convert them"
+ * (the sample partner logos of nonprofit, events and company are SVG). In the work copy only, each SVG of `public/` (any letter case)
+ * becomes a PNG at twice its size, and the content's references follow, as an owner would do before moving in.
+ * sharp comes from the template's own dependencies.
+ */
+async function rasterizeSvgImages(site: string, templateDir: string) {
+  const files = (dir: string): string[] => existsSync(dir) ? readdirSync(dir, { recursive: true, encoding: 'utf8' }).map((file) => join(dir, file)) : []
+  const svgs = files(join(site, 'public')).filter((file) => /\.svg$/i.test(file))
+  if (!svgs.length) return
+  const sharp = createRequire(join(templateDir, 'package.json'))('sharp') as (input: string, options: { density: number }) => { png(): { toFile(path: string): Promise<unknown> } }
+  for (const svg of svgs) {
+    await sharp(svg, { density: 144 }).png().toFile(svg.replace(/\.svg$/i, '.png'))
+    rmSync(svg)
+  }
+  const paths = svgs.map((svg) => `/${relative(join(site, 'public'), svg)}`)
+  for (const file of files(join(site, 'content')).filter((file) => /\.(md|ya?ml|json|csv)$/i.test(file))) {
+    const text = readFileSync(file, 'utf8')
+    const next = paths.reduce((out, path) => out.replaceAll(path, path.replace(/\.svg$/i, '.png')), text)
+    if (next !== text) writeFileSync(file, next)
+  }
 }
 
 export async function platformGate(name: string, root: string): Promise<Step[]> {
@@ -107,6 +131,7 @@ export async function platformGate(name: string, root: string): Promise<Step[]> 
       mkdirSync(content)
       writeFileSync(join(content, 'ginko.config.ts'), `export { default } from ${JSON.stringify(pathToFileURL(join(templateDir, 'ginko.config.ts')).href)}\n`)
       for (const folder of ['content', 'public']) if (existsSync(join(templateDir, folder))) cpSync(join(templateDir, folder), join(content, folder), { recursive: true })
+      await rasterizeSvgImages(content, templateDir)
       const anchor = pkg.ginko?.sampleAnchor
       if (!anchor) throw new Error('package.json needs "ginko": { "sampleAnchor": "YYYY-MM-DD" }')
       const days = weeksShift(anchor, new Date().toISOString().slice(0, 10))
@@ -126,7 +151,7 @@ export async function platformGate(name: string, root: string): Promise<Step[]> 
     const jobs = join(root, 'templates/_studio', name, 'jobs.json')
     if (!specs.length) return [...steps, { check: 'Studio specs', ok: false, detail: `No Studio spec for ${name}: add templates/_features/<feature>/e2e/studio/*.spec.ts for a feature it syncs, or templates/_studio/${name}/*.spec.ts.` }]
     const playwright = start('studio-e2e', join(root, 'node_modules/.bin/playwright'), ['test', '-c', 'scripts/templates/platform.playwright.config.ts', '--output', join(logs, 'pw'), ...specs], root, {
-      ...process.env, TEMPLATE_NAME: name, TEMPLATE_SITE: site, TEMPLATE_SITE_URL: `http://localhost:${PORTS.site}`, TEMPLATE_STUDIO_URL: `http://localhost:${PORTS.studio}`, TEMPLATE_ADMIN: admin, TEMPLATE_AUTH: join(work, 'auth.json'),
+      ...process.env, TEMPLATE_NAME: name, TEMPLATE_SITE: site, TEMPLATE_SITE_URL: `http://localhost:${PORTS.site}`, TEMPLATE_STUDIO_URL: `http://localhost:${PORTS.studio}`, TEMPLATE_ADMIN: admin, TEMPLATE_AUTH: join(work, 'auth.json'), TEMPLATE_STAFF: 'volunteer@example.test', TEMPLATE_AUTH_STAFF: join(work, 'auth-staff.json'),
       TEMPLATE_STUDIO: existsSync(jobs) ? JSON.stringify(JSON.parse(readFileSync(jobs, 'utf8'))) : '{}',
     })
     const status = await new Promise<number | null>((done) => { playwright.once('close', done); playwright.once('error', () => done(null)) })

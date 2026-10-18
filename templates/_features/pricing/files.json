@@ -1,0 +1,9 @@
+[
+  "app/bricks/pricing.ts",
+  "app/components/pricing/Plans.vue",
+  "app/composables/usePricing.ts",
+  "app/pages/pricing.vue",
+  "i18n/pricing/de.json",
+  "i18n/pricing/en.json",
+  "i18n/pricing/fr.json"
+]

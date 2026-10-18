@@ -11,6 +11,7 @@ export type SiteLocale = (typeof locales)[number]
  */
 export const segments: Record<string, Partial<Record<SiteLocale, string>>> = {
   news: { en: 'news', de: 'aktuelles', fr: 'actualites', ar: 'akhbar' },
+  events: { en: 'events', de: 'veranstaltungen', fr: 'evenements', ar: 'faaliyat' },
   projects: { en: 'projects', de: 'projekte', fr: 'projets', ar: 'mashari' },
   team: { en: 'team', de: 'team', fr: 'equipe', ar: 'fariq' },
   reports: { en: 'reports', de: 'berichte', fr: 'rapports', ar: 'taqarir' },

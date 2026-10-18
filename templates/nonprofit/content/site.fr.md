@@ -1,3 +1,3 @@
 ---
-registryCourt: Tribunal local (Amtsgericht) de Musterstadt
+# registryCourt: Tribunal local (Amtsgericht) de Kassel
 ---

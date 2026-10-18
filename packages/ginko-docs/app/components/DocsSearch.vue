@@ -3,6 +3,8 @@
 // Hits are grouped by page: the page itself first, then its sections. Arrow keys move, Enter opens.
 import type { SearchHit, SearchIndex, SearchIndexJson } from '@lupinum/ginko/search'
 
+// `shortcut` (default true): `/` and Ctrl/⌘ K open this search. A second trigger on the same page sets it to false.
+const { shortcut = true } = defineProps<{ shortcut?: boolean }>()
 const { t, locale } = useI18n()
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 const input = useTemplateRef<HTMLInputElement>('input')
@@ -79,21 +81,21 @@ function onKey(e: KeyboardEvent) {
 }
 onMounted(() => {
   mac.value = /Mac|iPhone|iPad/.test(navigator.platform)
-  window.addEventListener('keydown', onKey)
+  if (shortcut) window.addEventListener('keydown', onKey)
 })
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
   <button type="button" class="docs-search-trigger" :aria-label="t('docs.search')" @click="open">
-    <Icon name="lucide:search" class="docs-icon" />
+    <DocsIcon name="lucide:search" class="docs-icon" />
     <span class="docs-search-label">{{ t('docs.searchPlaceholder') }}</span>
     <kbd class="docs-kbd">{{ mac ? '⌘' : 'Ctrl' }} K</kbd>
   </button>
   <Teleport to="body">
     <dialog ref="dialog" class="docs-search-dialog" :aria-label="t('docs.search')" @click.self="dialog?.close()">
       <div class="docs-search-field">
-        <Icon name="lucide:search" class="docs-icon" />
+        <DocsIcon name="lucide:search" class="docs-icon" />
         <input
           ref="input" v-model="query" type="search" role="combobox" aria-autocomplete="list" aria-controls="docs-search-list"
           :aria-expanded="flat.length > 0" :aria-activedescendant="flat.length ? `docs-hit-${active}` : undefined"
@@ -111,12 +113,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
                 v-for="{ hit, indent } in g.rows" :id="`docs-hit-${indexOf(hit)}`" :key="hit.id" role="option" :aria-selected="indexOf(hit) === active"
                 class="docs-search-hit" :class="{ 'is-section': indent }" @mousemove="active = indexOf(hit)" @click="active = indexOf(hit); go()"
               >
-                <span class="docs-search-tile"><Icon :name="hit.heading ? 'lucide:hash' : 'lucide:file-text'" class="docs-icon" /></span>
+                <span class="docs-search-tile"><DocsIcon :name="hit.heading ? 'lucide:hash' : 'lucide:file-text'" class="docs-icon" /></span>
                 <span class="docs-search-text">
                   <strong>{{ hit.heading ?? hit.title }}</strong>
                   <span>{{ indent ? hit.excerpt : hit.heading ? hit.title : hit.excerpt }}</span>
                 </span>
-                <Icon name="lucide:corner-down-left" class="docs-icon docs-search-enter" />
+                <DocsIcon name="lucide:corner-down-left" class="docs-icon docs-search-enter" />
               </li>
             </ul>
           </li>
