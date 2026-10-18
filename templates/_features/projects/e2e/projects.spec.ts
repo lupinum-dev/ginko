@@ -78,11 +78,11 @@ test('a project with photos shows each with its description, opens them large an
     if (await page.locator(`main a[href$="/${project!.slug}"]`).count()) break
   }
   await open(page, (await page.locator(`main a[href$="/${project!.slug}"]`).first().getAttribute('href'))!)
-  // Wrong behaviour caught: photos of a project missing from its page, or shown without the description the Studio
-  // made the owner write.
+  // Wrong behaviour caught: photos of a project missing from its page, or without the description the Studio made the
+  // owner write. The description is the photo's alt text (no visible caption, D23) and the caption in the large view.
   const photos = page.locator('main button[aria-haspopup="dialog"]')
   await expect(photos).toHaveCount(project!.alts.length)
-  for (const alt of project!.alts) await expect(page.locator('main').getByText(alt, { exact: true }), alt).toBeVisible()
+  for (const alt of project!.alts) await expect(page.locator('main').getByAltText(alt, { exact: true }), alt).toBeVisible()
   await photos.first().click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.locator('img')).toBeVisible()
