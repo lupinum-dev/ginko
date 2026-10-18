@@ -10,7 +10,7 @@ const read = <T>(brick: string) => (useGinko as unknown as (b: string) => Comput
 export function useDocsBlog() {
   const { localePath } = useI18n()
   // The addresses of the bricks' lists in the main language, written by modules/pages.ts.
-  const address = useRuntimeConfig().public.ginkoDocs as { blog: string, changelog: string }
+  const address = useRuntimeConfig().public.ginkoDocs
   const hasPosts = has('posts') && !!address.blog
   const hasChangelog = has('changelog') && !!address.changelog
 

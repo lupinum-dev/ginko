@@ -6,7 +6,8 @@ import docsSite from '../../../sites/docs/ginko.config.ts'
 // addresses), next to its own pages or posts elsewhere.
 describe('layerRoutes', () => {
   it('standalone docs site: blog and changelog at the addresses its bricks and pages name', () => {
-    expect(layerRoutes(docsSite as never, [])).toEqual({ docs: { base: '/docs' }, addresses: { blog: '/blog', changelog: '/changelog' }, blog: '/blog', changelog: '/changelog', noAddress: [] })
+    expect(layerRoutes(docsSite as never, [])).toMatchObject({ docs: { base: '/docs' }, addresses: { blog: '/blog', changelog: '/changelog' }, blog: '/blog', changelog: '/changelog', noAddress: [] })
+    expect(layerRoutes(docsSite as never, []).pages.map((p) => p.path)).toEqual(['/docs/:slug()', '/docs', '/', '/blog', '/blog/:slug()', '/changelog'])
   })
 
   it('saas-like site: its own pages at the brick routes get no layer page and no feed', () => {
@@ -16,10 +17,12 @@ describe('layerRoutes', () => {
       bricks: { docs: { route: { en: '/help/[slug]' } }, posts: { route: { en: '/blog/[slug]' } }, changelog: {} },
     }
     // `/news` is `/blog` through the page-paths module's meta, as it is on the final page list.
-    const pages = [{ path: '/news', meta: { i18n: { paths: { en: '/blog', de: '/de/blog' } } } }, { path: '/news/:slug()' }, { path: '/changelog' }]
+    // `home.vue` answers at `/` the same way, so the layer adds no start page either.
+    const pages = [{ path: '/news', meta: { i18n: { paths: { en: '/blog', de: '/de/blog' } } } }, { path: '/news/:slug()' }, { path: '/changelog' }, { path: '/home', meta: { i18n: { paths: { en: '/' } } } }]
     expect(layerRoutes(site, pages)).toEqual({
       docs: { base: '/help' },
       addresses: { blog: '/blog', changelog: '/changelog' },
+      pages: [{ name: 'docs-slug', path: '/help/:slug()', file: 'doc.vue' }, { name: 'docs', path: '/help', file: 'docs.vue' }],
       noAddress: [],
     })
   })

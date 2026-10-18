@@ -12,23 +12,17 @@ const docsPages: NuxtModule = defineNuxtModule({
     const logger = useLogger('ginko-docs')
     // The site's ginko.config.ts, passed to the Ginko module as `ginko` in nuxt.config.ts.
     const site = (nuxt.options as { ginko?: SiteOptions }).ginko
+    // The addresses follow from the site config alone, so they are set here, before Nuxt writes the runtime config.
+    // The app links to them, whoever serves the page (the layer or the site's own page).
+    const { addresses } = layerRoutes(site, [])
+    nuxt.options.runtimeConfig.public.ginkoDocs = { blog: addresses.blog ?? '', changelog: addresses.changelog ?? '' }
     let announced = false
     // `pages:resolved`, not `pages:extend`: it runs after every `pages:extend` hook (the templates' page-paths module has
     // given each page its address by then), so "the site has a page there" is decided on the final list. Dev runs it on
     // every page change; the pages are added each time, the feed handlers and warnings once.
     nuxt.hook('pages:resolved', (pages) => {
       const r = layerRoutes(site, pages)
-      const taken = new Set(pages.map((p) => p.path))
-      const add = (name: string, path: string, file: string) => pages.push({ name, path, file: resolve(`../app/docs-pages/${file}`) })
-      for (const [name, path, file] of [['docs-slug', `${r.docs.base}/:slug()`, 'doc.vue'], ['docs', r.docs.base, 'docs.vue'], ['index', '/', 'index.vue']] as const)
-        if (!taken.has(path)) add(name, path, file)
-      // The app links to these addresses, whoever serves the page (the layer or the site's own page).
-      nuxt.options.runtimeConfig.public.ginkoDocs = { blog: r.addresses.blog ?? '', changelog: r.addresses.changelog ?? '' }
-      if (r.blog) {
-        add('blog', r.blog, 'blog.vue')
-        add('blog-slug', `${r.blog}/:slug()`, 'post.vue')
-      }
-      if (r.changelog) add('changelog', r.changelog, 'changelog.vue')
+      for (const page of r.pages) pages.push({ ...page, file: resolve(`../app/docs-pages/${page.file}`) })
       if (announced) return
       announced = true
       if (r.blog) {
