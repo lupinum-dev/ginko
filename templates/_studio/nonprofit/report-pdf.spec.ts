@@ -23,8 +23,9 @@ test('the owner uploads the report as a PDF, and the reports page links a file t
   await expect(sheet.getByRole('link', { name: 'gate-seven-report.pdf' })).toBeVisible()
   await sheet.getByRole('button', { name: 'Speichern' }).click()
   await expect(sheet).toHaveCount(0)
-  // The status the Studio shows after the save (ops.saved + ops.liveHint in the Studio's German): saved, and when it is live.
-  await expect(page.getByText('Gespeichert. Auf der Website in etwa einer Minute.', { exact: true })).toBeVisible()
+  // The status the Studio shows after the save (ops.saved + ops.liveHint in the Studio's German): saved, and when it is live. The nonprofit site has several
+  // languages, so the Studio adds a note about untranslated texts to the same line: match the start, not the whole line.
+  await expect(page.getByText('Gespeichert. Auf der Website in etwa einer Minute.')).toBeVisible()
 
   // Wrong behaviour caught: the report is saved but the site links no file, or a link that is a 404 or not a PDF.
   let href = ''
@@ -45,7 +46,7 @@ test('the owner uploads the report as a PDF, and the reports page links a file t
   await page.getByRole('button', { name: REPORT.removeTask, exact: true }).click()
   const remove = page.getByRole('dialog', { name: REPORT.removeTask })
   await remove.getByRole('button', { name: title, exact: true }).click()
-  await expect(page.getByText(`„${title}“ liegt jetzt im Papierkorb. In etwa einer Minute nicht mehr auf der Website.`, { exact: true })).toBeVisible()
+  await expect(page.getByText(`„${title}“ liegt jetzt im Papierkorb. In etwa einer Minute nicht mehr auf der Website.`)).toBeVisible()
   await expect(remove).toHaveCount(0)
   await expect(async () => {
     await page.goto(`${studio.siteUrl}${REPORT.path}`)
