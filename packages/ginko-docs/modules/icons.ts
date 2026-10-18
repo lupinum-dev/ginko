@@ -40,16 +40,43 @@ const ICON_TAG = new RegExp(`<Icon\\b[^>]*?\\s(?::name=["']['"]|name=["'])(${NAM
 
 const matches = (re: RegExp, source: string) => [...source.matchAll(re)].map((m) => (m[1]!.includes(':') ? m[1]! : `lucide:${m[1]}`))
 
-const stripCode = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1')
+// The spans below are found with indexOf, not a lazy regex: a regex is quadratic on an unclosed `/*` or `<!--`.
+
+/** `source` without every `open … close` span; an unclosed `open` stays. */
+const without = (source: string, open: string, close: string): string => {
+  let out = ''
+  let at = 0
+  for (;;) {
+    const start = source.indexOf(open, at)
+    const end = start === -1 ? -1 : source.indexOf(close, start + open.length)
+    if (end === -1) return out + source.slice(at)
+    out += source.slice(at, start)
+    at = end + close.length
+  }
+}
+
+/** A .vue file with `fn` applied to the code of each `<script>` block; the rest unchanged. */
+const mapScripts = (source: string, fn: (code: string) => string): string => {
+  let out = ''
+  let at = 0
+  for (;;) {
+    const tag = source.indexOf('<script', at)
+    const open = tag === -1 ? -1 : source.indexOf('>', tag)
+    const close = open === -1 ? -1 : source.indexOf('</script>', open)
+    if (close === -1) return out + source.slice(at)
+    out += source.slice(at, open + 1) + fn(source.slice(open + 1, close))
+    at = close
+  }
+}
+
+const stripCode = (code: string) => without(code, '/*', '*/').replace(/(^|\s)\/\/.*$/gm, '$1')
 
 /**
  * Code without its comments, so a commented-out icon is not bundled. `//` counts only at a line start or after a space
  * (not in `https://`). In a .vue file the template keeps its text; only `<!-- -->` and the comments inside `<script>` go.
  */
 export const stripComments = (source: string, file = ''): string =>
-  file.endsWith('.vue')
-    ? source.replace(/<!--[\s\S]*?-->/g, '').replace(/(<script\b[^>]*>)([\s\S]*?)(<\/script>)/g, (_, open: string, code: string, close: string) => open + stripCode(code) + close)
-    : stripCode(source)
+  file.endsWith('.vue') ? mapScripts(without(source, '<!--', '-->'), stripCode) : stripCode(source)
 
 /** The icon names in app.config.ts (`icon: 'x'`) or a .vue file (`<Icon name="x">`, `icon="x"`). Comments are ignored. */
 export const codeIconNames = (source: string, file: string): string[] => {

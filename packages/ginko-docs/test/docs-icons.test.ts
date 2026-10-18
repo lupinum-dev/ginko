@@ -23,6 +23,7 @@ describe('icon names in code and content', () => {
     expect(codeIconNames('<Icon :name="icon" /><Card :icon="item" /><Card icon="lucide:star" data-icon="lucide:no" />', 'A.vue')).toEqual(['lucide:star'])
     expect(codeIconNames('<template><a>a // b</a><Icon name="lucide:y" /></template>', 'A.vue')).toEqual(['lucide:y'])
     expect(codeIconNames('<!-- <Icon name="lucide:old" /> -->\n// icon: "lucide:gone"\n/* icon: "lucide:gone2" */\nicon: "lucide:kept" // https://x', 'A.ts')).toEqual(['lucide:kept'])
+    expect(codeIconNames('<!-- <Icon name="lucide:old" /> --><template><Icon name="lucide:y" /></template>\n<script setup lang="ts">\n// <Icon name="lucide:gone" />\n</script>\n<script>/* <Icon name="lucide:gone2" /> */</script>', 'A.vue')).toEqual(['lucide:y'])
   })
 
   it('reads Markdown front matter, component attributes and component blocks, not prose or code', () => {
