@@ -3,6 +3,8 @@
 // Hits are grouped by page: the page itself first, then its sections. Arrow keys move, Enter opens.
 import type { SearchHit, SearchIndex, SearchIndexJson } from '@lupinum/ginko/search'
 
+// `shortcut` (default true): `/` and Ctrl/⌘ K open this search. A second trigger on the same page sets it to false.
+const { shortcut = true } = defineProps<{ shortcut?: boolean }>()
 const { t, locale } = useI18n()
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 const input = useTemplateRef<HTMLInputElement>('input')
@@ -79,7 +81,7 @@ function onKey(e: KeyboardEvent) {
 }
 onMounted(() => {
   mac.value = /Mac|iPhone|iPad/.test(navigator.platform)
-  window.addEventListener('keydown', onKey)
+  if (shortcut) window.addEventListener('keydown', onKey)
 })
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>

@@ -43,6 +43,8 @@
   --docs-sidebar: 17rem;
   --docs-toc: 13.5rem;
   --docs-max: 90rem;
+  /* Space between the window edge and the docs: the site's container padding when the docs sit in its layout. */
+  --docs-gutter: 1rem;
   /* One page-title size for docs, blog, changelog and 404. */
   --docs-h1: clamp(1.75rem, 1.4rem + 1vw, 2.25rem);
   /* Height of the phone bar above the page; 0 where the bar is hidden. Anchors scroll below both. */
@@ -195,7 +197,7 @@
 /* ---------- Docs shell: sidebar, phone bar, content ---------- */
 
 /* The navigation sits on the page background; the page is a framed panel. */
-.docs-shell { display: grid; grid-template-columns: var(--docs-sidebar) minmax(0, 1fr); gap: 0.75rem; max-width: var(--docs-max); margin: 0 auto; padding: 0 1rem 1rem; }
+.docs-shell { display: grid; grid-template-columns: var(--docs-sidebar) minmax(0, 1fr); gap: 0.75rem; box-sizing: border-box; max-width: var(--docs-max); margin: 0 auto; padding: 0 var(--docs-gutter) 1rem; }
 .docs-sidebar { position: sticky; top: var(--docs-top); align-self: start; max-height: calc(100dvh - var(--docs-top)); overflow-y: auto; overscroll-behavior: contain; padding: 1rem 0.5rem 3rem 0.25rem; scrollbar-width: none; }
 .docs-content { min-width: 0; padding: 2rem 2.25rem 4.5rem 3.5rem; border: 1px solid var(--border); border-radius: var(--docs-r-panel); background: var(--card); }
 .docs-bar { display: none; }
@@ -344,7 +346,8 @@
     linear-gradient(to right, color-mix(in oklab, var(--foreground) 14%, transparent), transparent) left center / 0.75rem 100% no-repeat scroll,
     linear-gradient(to left, color-mix(in oklab, var(--foreground) 14%, transparent), transparent) right center / 0.75rem 100% no-repeat scroll;
 }
-.docs-prose table { border-collapse: separate; border-spacing: 0; margin: 0; font-size: 0.875rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
+/* At least as wide as its frame, so a short table's rows and header reach the frame's edge. */
+.docs-prose table { min-width: 100%; border-collapse: separate; border-spacing: 0; margin: 0; font-size: 0.875rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .docs-prose :where(th, td) { padding: 0.6875rem 0.875rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
 .docs-prose tr:last-child > td { border-bottom: 0; }
 .docs-prose th { background: var(--sidebar); color: var(--muted-foreground); font-size: 0.78125rem; font-weight: 600; white-space: nowrap; }
@@ -563,6 +566,38 @@ html[data-docs-banner-off] .docs-banner { display: none; }
 }
 
 /* Touch screens: small controls keep their look but get a 44px hit area. */
+/* ---------- Embedded: the docs inside a site's own layout (no html.docs-standalone) ----------
+   No framed panel: the page sits on the site's background, and the shell lines up with the site's container through
+   --docs-max and --docs-gutter. The search sits above the navigation; on phones the bar always shows, with the
+   navigation button and the search on the start side and the table of contents on the end side. */
+:root:not(.docs-standalone) .docs-shell { gap: 3rem; padding-bottom: 0; }
+:root:not(.docs-standalone) .docs-sidebar { padding: 2rem 0 3rem; }
+:root:not(.docs-standalone) .docs-content { padding: 2rem 0 4.5rem; border: 0; border-radius: 0; background: none; }
+.docs-sidebar-search { margin: 0 0 1.25rem; }
+.docs-sidebar-search .docs-search-trigger { width: 100%; }
+.docs-bar-start { display: none; }
+.docs-bar-nav { display: inline-flex; align-items: center; gap: 0.5rem; height: 2.75rem; padding: 0 0.5rem; border: 0; background: none; color: var(--foreground); font: 500 0.875rem/1 var(--font-sans); cursor: pointer; }
+.docs-bar-nav .docs-icon { font-size: 1.125rem; color: var(--muted-foreground); }
+.docs-nav-sheet { inset-block: 0; inset-inline: 0 auto; width: min(20rem, calc(100vw - 3rem)); max-width: none; height: 100dvh; max-height: none; margin: 0; padding: 0; border: 0; border-inline-end: 1px solid var(--border); background: var(--background); color: var(--foreground); font-family: var(--font-sans); animation: docs-menu-in 0.15s ease-out; }
+.docs-nav-sheet[open] { display: flex; flex-direction: column; }
+.docs-nav-sheet::backdrop { background: rgb(0 0 0 / 0.4); }
+.docs-nav-sheet-head { display: flex; flex: none; align-items: center; justify-content: space-between; height: 3.5rem; padding: 0 0.5rem 0 1rem; border-bottom: 1px solid var(--border); }
+.docs-nav-sheet-head p { margin: 0; font-weight: 600; }
+.docs-nav-sheet-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0.75rem 0.5rem 2rem; }
+.docs-nav-sheet-body .docs-nav-item > a { min-height: 2.75rem; }
+@media (prefers-reduced-motion: reduce) { .docs-nav-sheet { animation: none; } }
+@media (max-width: 79.99rem) {
+  :root:not(.docs-standalone) .docs-content { padding-top: 0; }
+  :root:not(.docs-standalone) .docs-bar { margin: 0; padding: 0; border-radius: 0; background: color-mix(in oklab, var(--background) 92%, transparent); }
+}
+@media (max-width: 63.99rem) {
+  :root:not(.docs-standalone) .docs-shell { padding: 0 var(--docs-gutter); }
+  :root:not(.docs-standalone) .docs-content { padding: 0 0 4rem; }
+  /* No top border: the site's header above has one. */
+  :root:not(.docs-standalone) .docs-bar { display: flex; justify-content: space-between; margin: 0 calc(-1 * var(--docs-gutter)); padding: 0 max(0px, calc(var(--docs-gutter) - 0.5rem)); border-top: 0; }
+  .docs-bar-start { display: flex; align-items: center; gap: 0.25rem; }
+}
+
 @media (pointer: coarse) {
   :where(.docs-icon-button, .ginko-code-copy, .ginko-code-tab, .docs-toc-menu > button, .docs-example .ginko-tabs-tab) { position: relative; }
   :where(.docs-icon-button, .ginko-code-copy, .ginko-code-tab, .docs-toc-menu > button, .docs-example .ginko-tabs-tab)::after { content: ''; position: absolute; inset: -7px; }

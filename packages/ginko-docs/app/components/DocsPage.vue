@@ -61,6 +61,7 @@ const top = () => window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduc
         <DocsPageActions :path="route.path" :origin="site.url" />
       </header>
       <GinkoMarkdown :value="doc.data.body" :components="markdownComponents" class="docs-prose" />
+      <DocsPageEnd :doc="doc" />
       <footer>
         <div v-if="editUrl || updated" class="docs-page-foot">
           <a v-if="editUrl" :href="editUrl" target="_blank" rel="noopener"><DocsIcon name="lucide:pencil" class="docs-icon" />{{ t('docs.edit') }}</a>

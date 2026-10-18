@@ -3,6 +3,7 @@
 // the docs pages then sit inside the site's frame (the docs body, DocsShell, works either way).
 const { t } = useI18n()
 const { theme, banner } = useAppConfig().docs ?? {}
+provideDocsStandalone()
 useHead({
   // `docs-standalone` turns on the page background, font and color-scheme (docs.css); embedded, the site owns those.
   htmlAttrs: { class: 'docs-standalone', 'data-docs-theme': theme && theme !== 'default' ? theme : undefined },

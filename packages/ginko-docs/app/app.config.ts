@@ -32,6 +32,8 @@ export interface DocsConfig {
   }
   /** "Copy page" (default true) and the chats the page menu can open it in (default both, `[]` for none). */
   markdownActions?: { copy?: boolean, openIn?: DocsAssistant[] }
+  /** `false` leaves out the built-in search (header, sidebar, phone bar), for a site with <DocsSearch /> in its own header. */
+  search?: boolean
   /** Footer. Link texts: messages `docs.footer.<id>`. `attribution` (default true) adds "Built with Ginko". */
   footer?: { links?: { id: string, href: string }[], attribution?: boolean }
 }

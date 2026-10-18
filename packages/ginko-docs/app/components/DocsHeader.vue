@@ -72,7 +72,7 @@ onBeforeUnmount(() => {
         <NuxtLink v-for="l in links" :key="l.key" :to="l.to" :aria-current="l.active ? 'page' : undefined">{{ l.label }}</NuxtLink>
       </nav>
       <div class="docs-header-end">
-        <DocsSearch />
+        <DocsSearch v-if="cfg.search !== false" />
         <DocsLanguage />
         <DocsThemeToggle />
         <template v-if="cfg.social?.length">
