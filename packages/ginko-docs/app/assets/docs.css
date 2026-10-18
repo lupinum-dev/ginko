@@ -275,18 +275,21 @@
 .docs-page-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1.5rem; margin-top: 3.5rem; color: var(--muted-foreground); font-size: 0.8125rem; }
 .docs-page-foot a { display: inline-flex; align-items: center; gap: 0.375rem; color: var(--muted-foreground); text-decoration: none; }
 .docs-page-foot a:hover { color: var(--foreground); }
-.docs-pager { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; }
-.docs-pager a { display: flex; flex-direction: column; gap: 0.1875rem; padding: 0.875rem 1rem 0.9375rem; border: 1px solid var(--border); border-radius: var(--docs-r-box); color: var(--foreground); font-size: 0.9375rem; font-weight: 600; text-decoration: none; transition: border-color 0.15s, background-color 0.15s; }
+.docs-pager { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+.docs-pager a { display: flex; flex-direction: column; gap: 0.1875rem; padding: 0.875rem 1rem 0.9375rem; border: 1px solid var(--border); border-radius: var(--docs-r-box); color: var(--foreground); font-size: 0.9375rem; font-weight: 600; text-decoration: none; overflow-wrap: anywhere; hyphens: auto; transition: border-color 0.15s, background-color 0.15s; }
 .docs-pager a:hover { background: color-mix(in oklab, var(--muted) 60%, transparent); }
 .docs-pager small { display: inline-flex; align-items: center; gap: 0.375rem; color: var(--muted-foreground); font-size: 0.78125rem; font-weight: 500; }
 .docs-pager .is-next { grid-column: 2; align-items: flex-end; text-align: right; }
+
+/* Headings outside .docs-prose have no wrap rule of their own. `anywhere` (not break-word) because the blog head is a flex container and needs the smaller min-content. */
+:where(.docs-page-head, .docs-hero, .docs-blog, .docs-error) h1, .docs-posts h2, .docs-prose :is(h1, h2, h3, h4) { hyphens: auto; overflow-wrap: anywhere; }
 
 /* Table of contents: a rail on wide screens, a menu in the phone bar */
 .docs-toc { position: sticky; top: calc(var(--docs-top) + 2rem); align-self: start; max-height: calc(100dvh - var(--docs-top) - 4rem); overflow-y: auto; scrollbar-width: none; font-size: 0.8125rem; }
 .docs-toc-title { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.625rem; color: var(--foreground); font-size: 0.78125rem; font-weight: 600; }
 .docs-toc-title .docs-icon { color: var(--muted-foreground); font-size: 0.875rem; }
 .docs-toc-list { margin: 0; padding: 0; list-style: none; border-left: 1px solid var(--border); }
-.docs-toc-list a { display: block; margin-left: -1px; padding: 0.3125rem 0 0.3125rem 0.875rem; border-left: 2px solid transparent; color: var(--muted-foreground); line-height: 1.4; text-decoration: none; transition: color 0.15s, border-color 0.15s; }
+.docs-toc-list a { display: block; margin-left: -1px; padding: 0.3125rem 0 0.3125rem 0.875rem; border-left: 2px solid transparent; color: var(--muted-foreground); line-height: 1.4; text-decoration: none; overflow-wrap: break-word; hyphens: auto; transition: color 0.15s, border-color 0.15s; }
 .docs-toc-list a.is-sub { padding-left: 1.625rem; }
 .docs-toc-list a:hover { color: var(--foreground); }
 .docs-toc-list a[aria-current] { border-left-color: var(--primary); color: var(--foreground); font-weight: 500; }
@@ -331,12 +334,23 @@
 .docs-prose hr { margin: 2.5rem 0; border: 0; border-top: 1px solid var(--border); }
 .docs-prose blockquote { padding-left: 1rem; border-left: 2px solid var(--border); color: var(--muted-foreground); }
 .docs-prose img { max-width: 100%; height: auto; border-radius: var(--radius); }
-.docs-prose .docs-table { width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--docs-r-box); }
+/* The edge shadows are the scroll cue: the "local" covers hide them at the ends, so a shadow shows only on a side with more to scroll to. */
+.docs-prose .docs-table {
+  width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--docs-r-box);
+  background:
+    linear-gradient(to right, var(--card), var(--card)) left center / 1.5rem 100% no-repeat local,
+    linear-gradient(to left, var(--card), var(--card)) right center / 1.5rem 100% no-repeat local,
+    linear-gradient(to right, color-mix(in oklab, var(--foreground) 14%, transparent), transparent) left center / 0.75rem 100% no-repeat scroll,
+    linear-gradient(to left, color-mix(in oklab, var(--foreground) 14%, transparent), transparent) right center / 0.75rem 100% no-repeat scroll;
+}
 .docs-prose table { border-collapse: separate; border-spacing: 0; margin: 0; font-size: 0.875rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .docs-prose :where(th, td) { padding: 0.6875rem 0.875rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
 .docs-prose tr:last-child > td { border-bottom: 0; }
 .docs-prose th { background: var(--sidebar); color: var(--muted-foreground); font-size: 0.78125rem; font-weight: 600; white-space: nowrap; }
-.docs-prose td code { white-space: nowrap; }
+.docs-prose td code { white-space: normal; overflow-wrap: normal; }
+.docs-prose td:first-child code { white-space: nowrap; }
+/* Only the last column of a table with 4+ columns needs room; in narrower tables it would force a scroll on phones. */
+.docs-prose td:last-child:nth-child(n+4) { min-width: 12rem; }
 
 /* Code blocks: one bordered panel with the file name or tabs on a lighter head (ginko-components draws an inset). */
 :where(.docs-prose, .docs-landing) :is(.ginko-code, .ginko-code-group, .ginko-code-tree):not([data-bare]) { padding: 0; overflow: hidden; border: 1px solid var(--docs-code-line); border-radius: var(--docs-r-box); }
@@ -530,7 +544,7 @@ html[data-docs-banner-off] .docs-banner { display: none; }
   .docs-bar { margin: 0 -1rem; padding: 0 0.5rem; }
   .docs-page-head { grid-template-columns: minmax(0, 1fr); }
   .docs-page-head .docs-actions { grid-column: 1; grid-row: auto; margin-top: 0.75rem; }
-  .docs-pager { grid-template-columns: 1fr; }
+  .docs-pager { grid-template-columns: minmax(0, 1fr); }
   .docs-pager .is-next { grid-column: 1; }
   .docs-landing-inner { padding: 3rem 1rem 4rem; }
   .docs-features { margin-top: 3.5rem; }

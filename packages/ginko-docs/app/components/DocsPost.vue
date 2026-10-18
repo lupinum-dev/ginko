@@ -7,6 +7,7 @@ import type { Post } from '../lib/blogTypes'
 const props = defineProps<{ post: Post }>()
 const { t, language } = useI18n()
 const blog = useDocsBlog()
+const langOf = useGinkoLang()
 const site = useGinkoSite()
 const route = useRoute()
 const authors = computed(() => blog.authorsOf(props.post))
@@ -37,7 +38,7 @@ useHead(() => ({ link: [{ rel: 'alternate', type: 'application/rss+xml', title: 
           </ol>
         </nav>
         <h1>{{ post.data.title }}</h1>
-        <p v-if="post.data.description" class="docs-lead">{{ post.data.description }}</p>
+        <p v-if="post.data.description" class="docs-lead" :lang="langOf(post, 'description')">{{ post.data.description }}</p>
         <p class="docs-meta">
           <time :datetime="post.data.date">{{ blog.formatDate(post.data.date) }}</time>
           <template v-if="authors.length">

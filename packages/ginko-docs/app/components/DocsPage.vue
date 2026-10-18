@@ -11,6 +11,7 @@ import type { docsCollection } from '@lupinum/ginko-docs/config'
 const props = defineProps<{ doc: ItemOf<ReturnType<typeof docsCollection>['fields']> & { source?: string } }>()
 const { t, format, language } = useI18n()
 const { crumbs } = useDocs()
+const langOf = useGinkoLang()
 const neighbors = useGinkoNeighbors('docs', () => props.doc.id)
 const site = useGinkoSite()
 // The Studio link needs the platform address and the site name: internal keys of the Ginko module, read by its own layer.
@@ -56,7 +57,7 @@ const top = () => window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduc
       </nav>
       <header class="docs-page-head">
         <h1>{{ doc.data.title }}</h1>
-        <p v-if="doc.data.description" class="docs-lead">{{ doc.data.description }}</p>
+        <p v-if="doc.data.description" class="docs-lead" :lang="langOf(doc, 'description')">{{ doc.data.description }}</p>
         <DocsPageActions :path="route.path" :origin="site.url" />
       </header>
       <GinkoMarkdown :value="doc.data.body" :components="markdownComponents" class="docs-prose" />

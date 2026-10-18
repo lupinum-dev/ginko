@@ -67,3 +67,18 @@ export function docsRouteLink(raw: string, find: { doc: (ref: string) => string 
   const path = match[1] === 'docs' ? find.doc(match[2]!) : find.page(match[2]!)
   return path === undefined ? undefined : path + (match[3] ?? '')
 }
+
+/**
+ * The main-language address for a docs address in another language (`/de/docs/x` gives `/docs/x`), or undefined when
+ * `path` is not under a non-main locale prefix and the main docs base. `resolve` turns the stripped path into the
+ * main language's real address (the site's i18n strategy decides whether it carries a prefix). A guess: the slug may be German and then
+ * 404 again, like `docsMainPath`; the bundle holds no main-language data to check it.
+ */
+export function docsMainLanguagePath(path: string, locales: readonly string[], mainLocale: string, mainBase: string, resolve: (path: string) => string = (p) => p): string | undefined {
+  for (const code of locales) {
+    if (code === mainLocale || !path.startsWith(`/${code}/`)) continue
+    const rest = path.slice(code.length + 1)
+    return rest.startsWith(`${mainBase}/`) ? resolve(rest) : undefined
+  }
+  return undefined
+}
