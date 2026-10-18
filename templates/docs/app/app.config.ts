@@ -17,6 +17,9 @@ export default defineAppConfig({
       links: [
         { id: 'source', href: repository },
         { id: 'api', href: 'https://orbit.example.com' },
+        // Link the imprint and privacy page of your main site; most sites in the EU need both on every page.
+        { id: 'imprint', href: 'https://orbit.example.com/imprint' },
+        { id: 'privacy', href: 'https://orbit.example.com/privacy' },
       ],
     },
   },
