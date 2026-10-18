@@ -151,7 +151,7 @@ export async function platformGate(name: string, root: string): Promise<Step[]> 
     const jobs = join(root, 'templates/_studio', name, 'jobs.json')
     if (!specs.length) return [...steps, { check: 'Studio specs', ok: false, detail: `No Studio spec for ${name}: add templates/_features/<feature>/e2e/studio/*.spec.ts for a feature it syncs, or templates/_studio/${name}/*.spec.ts.` }]
     const playwright = start('studio-e2e', join(root, 'node_modules/.bin/playwright'), ['test', '-c', 'scripts/templates/platform.playwright.config.ts', '--output', join(logs, 'pw'), ...specs], root, {
-      ...process.env, TEMPLATE_NAME: name, TEMPLATE_SITE: site, TEMPLATE_SITE_URL: `http://localhost:${PORTS.site}`, TEMPLATE_STUDIO_URL: `http://localhost:${PORTS.studio}`, TEMPLATE_ADMIN: admin, TEMPLATE_AUTH: join(work, 'auth.json'),
+      ...process.env, TEMPLATE_NAME: name, TEMPLATE_SITE: site, TEMPLATE_SITE_URL: `http://localhost:${PORTS.site}`, TEMPLATE_STUDIO_URL: `http://localhost:${PORTS.studio}`, TEMPLATE_ADMIN: admin, TEMPLATE_AUTH: join(work, 'auth.json'), TEMPLATE_STAFF: 'volunteer@example.test', TEMPLATE_AUTH_STAFF: join(work, 'auth-staff.json'),
       TEMPLATE_STUDIO: existsSync(jobs) ? JSON.stringify(JSON.parse(readFileSync(jobs, 'utf8'))) : '{}',
     })
     const status = await new Promise<number | null>((done) => { playwright.once('close', done); playwright.once('error', () => done(null)) })
