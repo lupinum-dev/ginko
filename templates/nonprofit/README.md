@@ -5,7 +5,7 @@ feed, projects and campaigns that end on a date, the team, reports to download, 
 page that links to your donation service, and legal texts. In English, German, French and Arabic (right to left), with
 light and dark mode. Built with [Nuxt](https://nuxt.com) and [Ginko](https://github.com/lupinum-dev/ginko). All
 content is Markdown in `content/`; the site needs no account and no database. The sample is "River Commons", a river
-clean-up association in a German town.
+cleanup association in a German town.
 
 | Light | Dark |
 |---|---|
@@ -96,7 +96,7 @@ Write dates as `2026-10-24`, times as `'09:30'` (two-digit hours), prices as a p
 | Privacy policy, terms, imprint | `content/legal/` (placeholders for Germany: replace them before you go live) |
 | Site name, description for search engines | `ginko.config.ts` (`name`, `seo.description`) |
 | Menu, footer links, the line under the name in the footer | `app/app.config.ts` |
-| The home page's title in search results and tabs, section titles and texts of the home page and the lists | `i18n/<language>.json` (`home.title` is "River clean-ups in Kassel"); the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins |
+| The home page's title in search results and tabs, section titles and texts of the home page and the lists | `i18n/<language>.json` (`home.title` is "River cleanups in Kassel"); the features' own texts are in `i18n/<feature>/<language>.json`, and a key set in `i18n/<language>.json` wins |
 
 Each language has a news feed at `<news page>/rss.xml` (`/news/rss.xml`, `/de/aktuelles/rss.xml`, …) with the title,
 summary, date and authors of every post that is online.

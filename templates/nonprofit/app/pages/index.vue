@@ -3,7 +3,7 @@ import { ArrowRight } from '@lucide/vue'
 
 // The home page answers "what do you do, and how can I help?" in the first screen: the mission (content/home.md) with
 // the river photo, "Get involved" and "Donate", and the next date (content/events/) under them. Then the current
-// projects, the latest news, a quote, the partners and one closing band that invites to a clean-up. Donations go through the Donate
+// projects, the latest news, a quote, the partners and one closing band that invites to a cleanup. Donations go through the Donate
 // page (a link to a donation service, no payment form on this site). A section whose list is empty is left out.
 const home = useGinko('home')
 const quotes = useGinko('quotes')

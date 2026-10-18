@@ -1,12 +1,12 @@
 {
   "home": {
-    "title": "River clean-ups in Kassel",
+    "title": "River cleanups in Kassel",
     "projects": "Current projects",
     "news": "Latest news",
     "voices": "In their words",
     "partners": "Who we work with",
     "cta": {
-      "title": "Come to a clean-up.",
+      "title": "Come to a cleanup.",
       "text": "No sign-up needed. Bring sturdy shoes; we bring gloves, grabbers and bags.",
       "action": "Get involved"
     }
@@ -31,7 +31,7 @@
     "later": "Later dates"
   },
   "events": {
-    "lead": "Clean-ups, meetings and other dates, with time and place.",
+    "lead": "Cleanups, meetings and other dates, with time and place.",
     "reserve": "Questions about this date? Call or write to us."
   }
 }
