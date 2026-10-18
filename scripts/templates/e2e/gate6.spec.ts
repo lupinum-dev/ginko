@@ -17,7 +17,7 @@ function countShifts() {
   }).observe({ type: 'layout-shift', buffered: true })
 }
 
-test('budgets on every page at 390', async ({ browser }) => {
+test('budgets on a sample of every route pattern at 390', async ({ browser }) => {
   test.setTimeout(600_000)
   for (const path of await sitePages()) {
     // A fresh context per page: nothing comes from the cache.
