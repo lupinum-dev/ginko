@@ -85,7 +85,7 @@ usePageSeo(() => ({ home: true, description: home.value.data.lead, image: home.v
           <a v-if="maps" :href="maps" rel="noopener" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ t('maps') }}</a>
         </p>
         <p v-if="lunchCard && !isLunchPlaceholder(lunchCard.day.dish)">
-          <a href="#lunch" class="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ lunchCard.title }}: <span :lang="langOf(lunch, `days.${lunchCard.day._id}.dish`)" class="ms-1">{{ lunchCard.day.dish }}</span><template v-if="lunchCard.day.price"> · <span class="tabular-nums">{{ formatMoney(lunchCard.day.price, language) }}</span></template></a>
+          <a href="#lunch" class="inline-block py-2.5 font-medium text-foreground underline underline-offset-4 hover:text-primary">{{ lunchCard.title }}: <span :lang="langOf(lunch, `days.${lunchCard.day._id}.dish`)">{{ lunchCard.day.dish }}</span><template v-if="lunchCard.day.price"> · <span class="whitespace-nowrap tabular-nums">{{ formatMoney(lunchCard.day.price, language) }}</span></template></a>
         </p>
       </div>
     </BlockHero>

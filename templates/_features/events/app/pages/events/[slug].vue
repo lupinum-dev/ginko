@@ -5,7 +5,7 @@ import type { SessionJsonLdInput } from '@lupinum/ginko/basics'
 import { ArrowLeft, Mail, Phone } from '@lucide/vue'
 
 // One event: date with weekday and time (site time zone), place (its location, else the online link, else the
-// site's name when app.config `events.atTheBusiness` is true; otherwise no row: content/site.md is the organiser, not the venue), price, the description, and how to take part: the
+// site's name and address when app.config `events.atTheBusiness` is true; otherwise no row: content/site.md is the organiser, not the venue), price, the description, and how to take part: the
 // booking link until `bookingUntil`, else phone and email of the business (content/site.md); "fully booked" or
 // "booking has closed" replaces both. Event JSON-LD with the time zone offset. An unknown or past event is a 404.
 // A feature may show more after the description with app/components/event/Programme.vue (prop `id`: the event's
@@ -35,7 +35,12 @@ const closedOf = useBookingClosed()
 const booking = computed(() => bookingOf(event.value.data))
 const closed = computed(() => closedOf(event.value.data))
 const online = computed(() => safeHref(event.value.data.online ?? undefined))
-const place = computed(() => event.value.data.location || (online.value ? t('online') : venue(event.value.data)?.name))
+const atBusiness = computed(() => (event.value.data.location || online.value ? undefined : venue(event.value.data)))
+const place = computed(() => event.value.data.location || (online.value ? t('online') : atBusiness.value?.name))
+const businessAddress = computed(() => {
+  const a = atBusiness.value?.address
+  return a && [a.street, [a.postalCode, a.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+})
 </script>
 
 <template>
@@ -61,6 +66,7 @@ const place = computed(() => event.value.data.location || (online.value ? t('onl
             <dd class="font-medium">
               <a v-if="!event.data.location && online" :href="online" rel="noopener" class="text-primary underline">{{ place }}</a>
               <span v-else>{{ place }}</span>
+              <span v-if="businessAddress" class="block font-normal text-muted-foreground">{{ businessAddress }}</span>
             </dd>
           </template>
           <template v-if="price(event.data)">

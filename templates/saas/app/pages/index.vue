@@ -16,6 +16,8 @@ const { t } = useI18n()
 const { name } = useGinkoSite()
 const from = useLowestPrice()
 const vat = usePricingVat()
+// One string: the lowest price and the VAT note (when a plan has a price), then the trial note.
+const heroNote = computed(() => [from.value && t('home.from', { price: from.value }), from.value && vat.value, t('home.trialNote')].filter(Boolean).join(' '))
 const trial = computed(() => ({ label: t('home.trial'), to: home.value.data.trialUrl }))
 const quote = computed(() => quotes.value.items[0])
 const features = computed(() => home.value.data.features.map((item) => ({ title: item.title, text: item.text })))
@@ -33,9 +35,7 @@ usePageSeo(() => ({ home: true, title: t('home.title'), description: home.value.
       :primary="trial"
       :secondary="{ label: t('home.pricing'), to: path('pricing') }"
     >
-      <p class="text-small text-muted-foreground">
-        <template v-if="from">{{ t('home.from', { price: from }) }} {{ vat }} </template>{{ t('home.trialNote') }}
-      </p>
+      <p class="text-small text-muted-foreground">{{ heroNote }}</p>
     </BlockHero>
 
     <BlockSection v-if="features.length" :title="t('home.features', { name })" :lead="t('home.featuresLead')">

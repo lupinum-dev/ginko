@@ -6,10 +6,14 @@ import { fileURLToPath } from 'node:url'
 import { expect, open, site, test } from '../../../../scripts/templates/e2e/helpers.ts'
 
 const dir = fileURLToPath(new URL(`../../../${site.name}/content/changelog/`, import.meta.url))
-/** Main-language releases, newest first: version and date as written. */
+const today = site.now.slice(0, 10)
+/** Main-language releases that are online, newest first: version and date as written. A draft or a release dated
+ *  after the test day is not online (the changelog basic schedules by date). */
 const releases = existsSync(dir)
   ? readdirSync(dir).filter((file) => /^[^.]+\.md$/.test(file)).map((file) => readFileSync(`${dir}${file}`, 'utf8'))
+    .filter((text) => !/^draft:\s*true\s*$/m.test(text))
     .map((text) => ({ version: /^version:\s*['"]?([^'"\s]+)/m.exec(text)![1]!, date: /^date:\s*['"]?(\d{4}-\d{2}-\d{2})/m.exec(text)![1]! }))
+    .filter((release) => release.date <= today)
     .sort((a, b) => b.date.localeCompare(a.date))
   : []
 const anchor = (version: string) => `v${version.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`

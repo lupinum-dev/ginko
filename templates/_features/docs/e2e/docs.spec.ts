@@ -77,3 +77,14 @@ test('a page without a translation names it in the language menu and leads to th
   await expect(page).toHaveURL(new RegExp(`/${other}$`))
   await expect(page.locator('h1')).toBeVisible()
 })
+
+test('the address of a page in a language it lacks is a 404 that offers the page in the main language', async ({ page }) => {
+  const other = site.locales[1]
+  test.skip(!other, 'one language')
+  const untranslated = main.find((file) => !files.includes(file.replace(/\.md$/, `.${other}.md`)))
+  test.skip(!untranslated, `every page has a ${other} version`)
+  // Wrong behaviour caught: a shared or guessed /<language>/docs/… address ends in a 404 with no way to the page.
+  const path = pathOf(untranslated!)
+  expect((await open(page, `/${other}${path}`))?.status(), `/${other}${path}`).toBe(404)
+  await expect(page.locator(`a[href="${path}"]`).filter({ visible: true }).first(), 'a link to the main-language page').toBeVisible()
+})
