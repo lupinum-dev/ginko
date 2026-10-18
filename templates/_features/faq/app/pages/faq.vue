@@ -24,7 +24,7 @@ usePageSeo(() => ({ title: t('title'), description: t('lead'), jsonLd: items.val
         <BlockFaq :items="items" heading-level="h2" />
         <p v-if="contact[0]" data-faq-contact>
           {{ t('more') }}
-          <NuxtLink :to="contact[0].to" class="inline-flex min-h-11 items-center font-medium text-primary underline underline-offset-4">{{ contact[0].label }}</NuxtLink>
+          <NuxtLink :to="contact[0].to" class="-my-2.5 inline-block py-2.5 font-medium text-primary underline underline-offset-4">{{ contact[0].label }}</NuxtLink>
         </p>
         <div v-else class="flex flex-col gap-2" data-faq-contact>
           <p>{{ t('more') }}</p>
