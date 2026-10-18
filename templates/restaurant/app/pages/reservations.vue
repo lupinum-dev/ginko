@@ -1,15 +1,27 @@
 <script setup lang="ts">
+import { plainText, type Json } from '@lupinum/ginko'
 import { Mail, Phone } from '@lucide/vue'
 
 // How to reserve: one call button (the primary action) and an email button with the number and address of
 // content/site.md, whether anyone answers right now, the text of content/reservations.md, and the opening hours, since
-// a table is booked by phone during them. No form: nothing is sent to other companies.
+// a table is booked by phone during them. Each `##` of the text becomes a BlockSection (heading left, text right), like the hours. No form: nothing is sent to other companies.
 const page = useGinko('reservations')
 const site = useGinko('site')
 const { t } = useI18n('reservations')
 const { t: th } = useI18n('hours')
 const langOf = useGinkoLang()
 const contact = computed(() => site.value.data)
+const body = await useGinkoMarkdown(() => page.value.data.body)
+// The text split at its `##` headings: what comes before the first one, then one section per heading.
+const parts = computed(() => {
+  const intro: Json[] = []
+  const sections: { title: string; nodes: Json[] }[] = []
+  for (const node of body.value?.nodes ?? []) {
+    if (Array.isArray(node) && node[0] === 'h2') sections.push({ title: plainText({ nodes: [node] }), nodes: [] })
+    else (sections.at(-1)?.nodes ?? intro).push(node)
+  }
+  return { intro, sections }
+})
 usePageSeo(() => ({ title: page.value.data.title, description: page.value.data.lead ?? undefined }))
 </script>
 
@@ -27,9 +39,12 @@ usePageSeo(() => ({ title: page.value.data.title, description: page.value.data.l
       </div>
       <HoursToday />
     </div>
-    <div :lang="langOf(page, 'body')">
-      <ProseBody :value="page.data.body" />
+    <div v-if="parts.intro.length" :lang="langOf(page, 'body')">
+      <ProseBody :value="{ nodes: parts.intro }" />
     </div>
+    <BlockSection v-for="section in parts.sections" :key="section.title" :title="section.title" :lang="langOf(page, 'body')">
+      <GinkoMarkdown :value="{ nodes: section.nodes }" class="prose" />
+    </BlockSection>
     <BlockSection :title="th('title')">
       <HoursTable />
     </BlockSection>
