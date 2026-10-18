@@ -122,8 +122,8 @@ The build scans, in all locales:
 - the front matter of your Markdown files, the attributes of Markdown components (`::card{icon="lucide:rocket"}`) and the
   `---` block inside a component; prose and code blocks are not read;
 - YAML and JSON content files and `app.config.ts` (`icon:` values and `social`);
-- the layer's own components and your site's `app/**/*.vue` and `.ts` files (`<Icon name="lucide:x" />`, `icon="..."`).
-  Commented-out code is ignored.
+- the layer's own components and your site's `app/**/*.vue` files (`<Icon name="lucide:x" />`, `icon="..."`, or a bound
+  literal `:name="'lucide:x'"`). Commented-out code is ignored; other `.ts` files than `app.config.ts` are not read.
 
 A name is `set:name`; a bare name such as `book-open` means Lucide. The `i-set-name` form is not supported. Names built at
 runtime (a variable, a template string) are not found; write the name once as a literal somewhere in the places above. A

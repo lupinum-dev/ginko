@@ -32,20 +32,28 @@ const NAME = '[a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?'
 const QUOTED_NAME = new RegExp(`\\bicon\\??\\s*:\\s*['"](${NAME})['"]`, 'g')
 // `icon: lucide:x` in YAML and front matter; a bare name is Lucide.
 const YAML_NAME = new RegExp(`\\bicon["']?\\s*:\\s*["']?(${NAME})["']?(?=\\s|$|,|\\}|\\))`, 'gm')
-// `icon="lucide:x"` and `:icon="'lucide:x'"` on a Markdown component or a Vue tag.
-const ATTR_NAME = new RegExp(`\\bicon=["']+(${NAME})["']`, 'g')
+// `icon="lucide:x"` and `:icon="'lucide:x'"` on a Markdown component or a Vue tag. A bound value without inner quotes
+// (`:icon="item"`) is a variable, not a name.
+const ATTR_NAME = new RegExp(`(?<![\\w-])(?::icon=["']['"]|(?<!:)icon=["'])(${NAME})["']`, 'g')
 // <Icon name="lucide:x"> and <Icon :name="'lucide:x'"> in a site's own components.
-const ICON_TAG = new RegExp(`<Icon\\b[^>]*?\\bname=["']+(${NAME})["']`, 'g')
+const ICON_TAG = new RegExp(`<Icon\\b[^>]*?\\s(?::name=["']['"]|name=["'])(${NAME})["']`, 'g')
 
 const matches = (re: RegExp, source: string) => [...source.matchAll(re)].map((m) => (m[1]!.includes(':') ? m[1]! : `lucide:${m[1]}`))
 
-/** Code without its comments, so a commented-out icon is not bundled. `//` counts only at a line start or after a space (not in `https://`). */
-export const stripComments = (source: string): string =>
-  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '').replace(/(^|\s)\/\/.*$/gm, '$1')
+const stripCode = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1')
+
+/**
+ * Code without its comments, so a commented-out icon is not bundled. `//` counts only at a line start or after a space
+ * (not in `https://`). In a .vue file the template keeps its text; only `<!-- -->` and the comments inside `<script>` go.
+ */
+export const stripComments = (source: string, file = ''): string =>
+  file.endsWith('.vue')
+    ? source.replace(/<!--[\s\S]*?-->/g, '').replace(/(<script\b[^>]*>)([\s\S]*?)(<\/script>)/g, (_, open: string, code: string, close: string) => open + stripCode(code) + close)
+    : stripCode(source)
 
 /** The icon names in app.config.ts (`icon: 'x'`) or a .vue file (`<Icon name="x">`, `icon="x"`). Comments are ignored. */
 export const codeIconNames = (source: string, file: string): string[] => {
-  const code = stripComments(source)
+  const code = stripComments(source, file)
   return file.endsWith('.vue') ? [...matches(ICON_TAG, code), ...matches(ATTR_NAME, code)] : matches(QUOTED_NAME, code)
 }
 
@@ -110,7 +118,7 @@ export const collectIcons = (o: CollectOptions): { icons: Record<string, Entry>,
   const read = (file: string) => readFileSync(file, 'utf8')
 
   for (const file of walk(join(o.layerRoot, 'app'), ['.vue', '.ts'])) {
-    for (const m of stripComments(read(file)).matchAll(OWN_NAME)) add(m[1]!, relative(o.layerRoot, file))
+    for (const m of stripComments(read(file), file).matchAll(OWN_NAME)) add(m[1]!, relative(o.layerRoot, file))
   }
   for (const root of o.roots) {
     const files = [
@@ -179,7 +187,8 @@ const docsIcons: NuxtModule = defineNuxtModule({
     // The icon map is only needed by a page that draws an icon from it; keep it out of the prefetch links every page carries.
     nuxt.hook('build:manifest', (manifest) => {
       for (const [key, item] of Object.entries(manifest)) {
-        if (/DocsIcon\.vue|docs-icons\.mjs/.test(key) || /DocsIcon|docs-icons/.test(item.file ?? '')) item.prefetch = false
+        // A chunk that DocsIcon shares with the layer components has a hashed key and file, but keeps the name "DocsIcon".
+        if ([key, item.file, item.name, item.src].some((s) => s && /DocsIcon|docs-icons/.test(s))) item.prefetch = false
       }
     })
 

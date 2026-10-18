@@ -20,6 +20,8 @@ describe('icon names in code and content', () => {
   it('reads app.config and Vue files, and ignores comments and types', () => {
     expect(codeIconNames("social: [{ icon: 'docs:github', href: 'x' }]\nicon: string,\nicon?: string", 'app.config.ts')).toEqual(['docs:github'])
     expect(codeIconNames('<Icon name="lucide:x" /><Icon :name="\'tabler:home\'" />', 'A.vue')).toEqual(['lucide:x', 'tabler:home'])
+    expect(codeIconNames('<Icon :name="icon" /><Card :icon="item" /><Card icon="lucide:star" data-icon="lucide:no" />', 'A.vue')).toEqual(['lucide:star'])
+    expect(codeIconNames('<template><a>a // b</a><Icon name="lucide:y" /></template>', 'A.vue')).toEqual(['lucide:y'])
     expect(codeIconNames('<!-- <Icon name="lucide:old" /> -->\n// icon: "lucide:gone"\n/* icon: "lucide:gone2" */\nicon: "lucide:kept" // https://x', 'A.ts')).toEqual(['lucide:kept'])
   })
 
