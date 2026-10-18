@@ -74,7 +74,7 @@ export const contentIconNames = (source: string, file: string): string[] => {
 }
 
 /** One icon as [svg body, viewBox], read from the `docs` collection folder or an installed @iconify-json set (looked up from `roots`). */
-export const readIcon = (name: string, roots: readonly string[], customDir: string, sets = new Map<string, IconSet | undefined>()): Entry | undefined => {
+export const readIcon = (name: string, roots: readonly string[], customDir: string, sets: Map<string, IconSet | undefined> = new Map()): Entry | undefined => {
   const [prefix = '', icon = ''] = name.split(':')
   if (prefix === 'docs') {
     const file = join(customDir, `${icon}.svg`)

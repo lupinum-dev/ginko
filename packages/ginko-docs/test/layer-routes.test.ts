@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { layerRoutes } from '../shared/layerRoutes'
+import { layerRoutes, type PageLike } from '../shared/layerRoutes'
 import docsSite from '../../../sites/docs/ginko.config.ts'
 
 // Wrong behaviour caught: a site that embeds the docs got a second blog and changelog at /blog and /changelog (fixed
@@ -18,7 +18,7 @@ describe('layerRoutes', () => {
     }
     // `/news` is `/blog` through the page-paths module's meta, as it is on the final page list.
     // `home.vue` answers at `/` the same way, so the layer adds no start page either.
-    const pages = [{ path: '/news', meta: { i18n: { paths: { en: '/blog', de: '/de/blog' } } } }, { path: '/news/:slug()' }, { path: '/changelog' }, { path: '/home', meta: { i18n: { paths: { en: '/' } } } }]
+    const pages: PageLike[] = [{ path: '/news', meta: { i18n: { paths: { en: '/blog', de: '/de/blog' } } } }, { path: '/news/:slug()' }, { path: '/changelog' }, { path: '/home', meta: { i18n: { paths: { en: '/' } } } }]
     expect(layerRoutes(site, pages)).toEqual({
       docs: { base: '/help' },
       addresses: { blog: '/blog', changelog: '/changelog' },
