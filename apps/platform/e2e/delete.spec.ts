@@ -27,7 +27,7 @@ test('a person deletes their account and is signed out; the owner no longer sees
   await page.getByRole('button', { name: 'Einladung annehmen' }).click()
   await page.waitForURL(/\/s\/restaurant/, { timeout: 30_000 })
 
-  await page.goto('/?all', { waitUntil: 'networkidle' })
+  await page.goto('/account', { waitUntil: 'networkidle' })
   await expect(page.getByRole('heading', { name: 'Konto löschen' })).toBeVisible()
   await page.getByRole('button', { name: 'Mein Konto löschen' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Mein Konto löschen' }).click()

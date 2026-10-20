@@ -80,7 +80,7 @@ function otherEmail() {
 </script>
 
 <template>
-  <main class="mx-auto w-full max-w-sm rounded-2xl border bg-card p-6 sm:p-8">
+  <main class="w-full rounded-2xl border bg-card p-6 sm:p-8">
     <h1 class="mb-5 text-xl font-semibold tracking-tight">{{ t('login.title') }}</h1>
     <p v-if="available === false" class="text-muted-foreground">{{ t('login.unavailable') }}</p>
     <form v-else-if="step === 'email'" class="grid gap-2.5" novalidate @submit.prevent="sendCode">

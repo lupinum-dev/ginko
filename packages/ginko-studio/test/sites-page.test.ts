@@ -7,33 +7,34 @@ import { expect, test, vi } from 'vitest'
 import { useI18n } from '#imports'
 import SitesPage from '../app/pages/index.vue'
 
-const { computed, defineComponent, h, onMounted, reactive, ref, Suspense, watch, watchEffect } = vue
-Object.entries({ computed, onMounted, reactive, ref, watch, watchEffect, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
-vi.stubGlobal('useToast', () => ({ show: () => {} }))
+const { computed, defineComponent, h, onMounted, reactive, ref, Suspense, watchEffect } = vue
+Object.entries({ computed, onMounted, reactive, ref, watchEffect, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
 
 vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})
 vi.stubGlobal('navigateTo', async () => {})
 vi.stubGlobal('useRoute', () => ({ query: {} }))
-vi.stubGlobal('useLocalePicker', () => ({ locale: ref('de'), locales: [], pick: async () => {} }))
-vi.stubGlobal('localeLabel', () => '')
 const invites = [{ invite: 'i1', site: 'Gasthaus zur Linde', role: 'staff' }, { invite: 'i2', site: 'Gartenwirtschaft', role: 'staff' }]
 /** What each query answers; the tests set `sites.mine`. */
-const settings = ref<{ name?: string; remindByMail: boolean }>({ remindByMail: true })
-const answers: Record<string, unknown> = { 'invites.mine': invites, 'sites.mine': [], 'account.settings': settings }
-vi.stubGlobal('useConvexQuery', (fn: unknown) => ({ data: vue.isRef(answers[String(fn)]) ? answers[String(fn)] : ref(answers[String(fn)]), error: ref(undefined) }))
-// Each acceptance runs until the test ends it; the first one fails. A name is saved at once, and the live settings follow.
+const answers: Record<string, unknown> = { 'invites.mine': invites, 'sites.mine': [] }
+vi.stubGlobal('useConvexQuery', (fn: unknown) => ({ data: ref(answers[String(fn)]), error: ref(undefined) }))
+// Each acceptance runs until the test ends it; the first one fails.
 const finish = new Map<string, (ok: boolean) => void>()
-vi.stubGlobal('useConvexMutation', (fn: unknown) => ({
-  mutate: String(fn) === 'account.setName'
-    ? async ({ name }: { name: string }) => { settings.value = { ...settings.value, name } }
-    : (args: { invite?: string }) => new Promise((resolve, reject) => finish.set(args.invite!, (ok) => (ok ? resolve({ site: 'linde' }) : reject(new Error('lost'))))),
+vi.stubGlobal('useConvexMutation', () => ({
+  mutate: (args: { invite?: string }) => new Promise((resolve, reject) => finish.set(args.invite!, (ok) => (ok ? resolve({ site: 'linde' }) : reject(new Error('lost'))))),
   pending: ref(false),
 }))
 vi.stubGlobal('opErrorOf', () => ({ code: 'UNKNOWN', message: 'Das hat nicht geklappt.' }))
 
+/** A row's text as a screen reader reads it: without the decorative initial tile. */
+function spoken(el: Element) {
+  const copy = el.cloneNode(true) as Element
+  copy.querySelectorAll('[aria-hidden="true"]').forEach((e) => e.remove())
+  return copy.textContent ?? ''
+}
+
 const mountPage = () => mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(SitesPage) }) }), {
-  global: { stubs: { I18nT: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' }, Switch: true, DeleteAccount: true, SignOut: true } },
+  global: { stubs: { I18nT: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' }, } },
 })
 
 // Wrong behaviour caught: accepting one invitation, then another, re-enabled the second's button when the first
@@ -61,7 +62,7 @@ test('many sites: by name with their address, the last opened first, and a searc
   try {
     const wrapper = mountPage()
     await flushPromises()
-    const groups = () => wrapper.findAll('section').map((g) => [g.find('h2').exists() ? g.get('h2').text() : '', ...g.findAll('li').map((li) => li.text())])
+    const groups = () => wrapper.findAll('section').filter((g) => g.attributes('aria-labelledby') !== 'invites-title').map((g) => [g.find('h2').exists() ? g.get('h2').text() : '', ...g.findAll('li').map((li) => spoken(li.element))])
     expect(groups()).toEqual([
       ['Zuletzt geöffnet', 'Gasthaus zur Lindelinde.at'],
       ['Alle Seiten', 'Ärztezentrum Nordaerzte.at', 'Bäckerei Mayrmayr.at', 'Café Centralcentral.at', 'Gasthaus zur Lindelinde.at', 'Hotel Postpost.atWird gelöscht',
@@ -76,40 +77,4 @@ test('many sites: by name with their address, the last opened first, and a searc
     answers['sites.mine'] = []
     localStorage.clear()
   }
-})
-
-// Wrong behaviour caught: every account was offered a reminder mail "zum Beispiel das Mittagsmenü", also where no site
-// can ever send one (an agency site has no weekly task).
-test.each([
-  { weekly: false, text: undefined },
-  { weekly: true, text: 'Erinnerungen per E-MailAm Abend vor Wochenbeginn eine kurze Mail, wenn für die nächste Woche noch etwas fehlt.' },
-])('the reminder switch shows only where a site can send the mail (weekly: $weekly)', async ({ weekly, text }) => {
-  answers['sites.mine'] = [{ slug: 'lupinum', name: 'Lupinum', url: 'https://lupinum.at', role: 'owner', deleting: false, weekly }]
-  answers['account.settings'] = { remindByMail: true }
-  try {
-    const wrapper = mountPage()
-    await flushPromises()
-    const label = wrapper.find('label[for="remind"]')
-    expect(label.exists() ? label.text() : undefined).toBe(text)
-  } finally {
-    answers['sites.mine'] = []
-    answers['account.settings'] = settings
-  }
-})
-
-// Wrong behaviour caught: after "Speichern" the button goes away with the focus on it, and the focus fell to the page body.
-test('a saved name keeps the focus in the name field', async () => {
-  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(SitesPage) }) }), {
-    global: { stubs: { I18nT: true, NuxtLink: true, Switch: true, DeleteAccount: true, SignOut: true } },
-    attachTo: document.body,
-  })
-  await flushPromises()
-  await wrapper.get('#own-name').setValue('Anna Berger')
-  const save = wrapper.findAll('button').find((b) => b.text() === 'Speichern')!
-  ;(save.element as HTMLButtonElement).focus()
-  await save.trigger('click')
-  await flushPromises()
-  expect(wrapper.findAll('button').some((b) => b.text() === 'Speichern')).toBe(false)
-  expect(document.activeElement?.id).toBe('own-name')
-  wrapper.unmount()
 })

@@ -55,7 +55,9 @@
       "title": "Supprimer le compte",
       "text": "Votre compte, vos appartenances et votre connexion sont supprimés. Vos modifications restent dans l’historique sous « Ancien membre ».",
       "button": "Supprimer mon compte"
-    }
+    },
+    "lede": "Choisissez un site pour modifier son contenu.",
+    "invites": "Invitations"
   },
   "login": {
     "title": "Se connecter",
@@ -1056,5 +1058,13 @@
   },
   "ui": {
     "close": "Fermer"
+  },
+  "account": {
+    "lede": "Vos réglages personnels. Chaque site a ses propres réglages dans le site.",
+    "email": "E-mail",
+    "emailHint": "Vous vous connectez avec cette adresse.",
+    "languageHint": "La langue du Studio. Le contenu de vos sites garde ses propres langues.",
+    "signIn": "Connexion",
+    "signInHint": "Déconnectez-vous ici, ou sur tous les autres appareils où vous êtes encore connecté."
   }
 }

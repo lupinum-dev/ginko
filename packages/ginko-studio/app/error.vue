@@ -19,7 +19,7 @@ const reload = () => reloadNuxtApp({ force: true })
 
 <template>
   <NuxtLayout name="default">
-    <main class="mx-auto grid w-full max-w-sm gap-5 rounded-2xl border bg-card p-6 sm:p-8">
+    <main class="grid w-full gap-5 rounded-2xl border bg-card p-6 sm:p-8">
       <h1 class="text-xl font-semibold tracking-tight">{{ t(`${words}.title`) }}</h1>
       <p class="text-muted-foreground">{{ t(`${words}.text`) }}</p>
       <div class="flex flex-wrap gap-2">

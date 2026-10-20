@@ -55,7 +55,9 @@
       "title": "Eliminar cuenta",
       "text": "Se eliminan tu cuenta, tus membresías y tu inicio de sesión. Los cambios que hiciste permanecen en el historial como “Antiguo miembro”.",
       "button": "Eliminar mi cuenta"
-    }
+    },
+    "lede": "Elige un sitio para editar su contenido.",
+    "invites": "Invitaciones"
   },
   "login": {
     "title": "Iniciar sesión",
@@ -1056,5 +1058,13 @@
   },
   "ui": {
     "close": "Cerrar"
+  },
+  "account": {
+    "lede": "Ajustes para ti. Cada sitio tiene sus propios ajustes dentro del sitio.",
+    "email": "Correo electrónico",
+    "emailHint": "Inicias sesión con esta dirección.",
+    "languageHint": "El idioma del Studio. El contenido de tus sitios mantiene sus propios idiomas.",
+    "signIn": "Inicio de sesión",
+    "signInHint": "Cierra la sesión aquí o en todos los demás dispositivos donde sigas conectado."
   }
 }

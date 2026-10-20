@@ -55,7 +55,9 @@
       "title": "Delete account",
       "text": "Your account, your memberships and your sign-in are removed. Changes you made stay in the history as “Former member”.",
       "button": "Delete my account"
-    }
+    },
+    "lede": "Choose a site to edit its content.",
+    "invites": "Invitations"
   },
   "login": {
     "title": "Sign in",
@@ -1056,5 +1058,13 @@
   },
   "ui": {
     "close": "Close"
+  },
+  "account": {
+    "lede": "Settings for you. Each site has its own settings in the site.",
+    "email": "Email",
+    "emailHint": "You sign in with this address.",
+    "languageHint": "The language of the Studio. The content of your sites keeps its own languages.",
+    "signIn": "Sign-in",
+    "signInHint": "Sign out here, or on every other device where you are still signed in."
   }
 }

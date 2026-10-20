@@ -55,7 +55,9 @@
       "title": "Konto löschen",
       "text": "Dein Konto, deine Mitgliedschaften und deine Anmeldung werden entfernt. Änderungen von dir bleiben im Verlauf als „Ehemaliges Mitglied“ erhalten.",
       "button": "Mein Konto löschen"
-    }
+    },
+    "lede": "Wähle eine Seite, um ihre Inhalte zu bearbeiten.",
+    "invites": "Einladungen"
   },
   "login": {
     "title": "Anmelden",
@@ -1056,5 +1058,13 @@
   },
   "ui": {
     "close": "Schließen"
+  },
+  "account": {
+    "lede": "Einstellungen für dich. Jede Seite hat ihre eigenen Einstellungen in der Seite.",
+    "email": "E-Mail",
+    "emailHint": "Mit dieser Adresse meldest du dich an.",
+    "languageHint": "Die Sprache des Studios. Die Inhalte deiner Seiten behalten ihre eigenen Sprachen.",
+    "signIn": "Anmeldung",
+    "signInHint": "Hier abmelden, oder auf allen anderen Geräten, auf denen du noch angemeldet bist."
   }
 }

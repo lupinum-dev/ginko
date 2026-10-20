@@ -56,7 +56,7 @@ async function signIn() {
 </script>
 
 <template>
-  <main class="mx-auto grid w-full max-w-sm gap-4 rounded-2xl border bg-card p-6 sm:p-8">
+  <main class="grid w-full gap-4 rounded-2xl border bg-card p-6 sm:p-8">
     <template v-if="offer">
       <h1 class="text-xl font-semibold tracking-tight">{{ t('invite.heading', { site: offer.site }) }}</h1>
       <p class="text-muted-foreground"><I18nT k="invite.lead" :params="{ site: offer.site, role: t(offer.role === 'owner' ? 'invite.role.owner' : 'invite.role.staff') }"><template #site="{ text }"><strong class="font-medium text-foreground">{{ text }}</strong></template></I18nT></p>

@@ -1,4 +1,4 @@
-// Signing out (the account menu, "Meine Seiten", the invite page): one flow for every button, and signing out the
+// Signing out (the account menu, the account settings, the invite page): one flow for every button, and signing out the
 // person's other devices (the account menu).
 import { useI18n } from '#imports'
 import { forgetLocalDrafts, localDraftKeys } from './useLocalDraft'
