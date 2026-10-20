@@ -12,7 +12,7 @@ usePageSeo(() => ({ title: t('title'), description: t('lead') }))
     <BlockPageHeader :title="t('title')" :lead="t('lead')" />
     <div class="mx-auto max-w-page px-gutter">
       <h2 v-if="cards.length" class="sr-only">{{ t('upcoming') }}</h2>
-      <BlockCards v-if="cards.length" :items="cards" :columns="3" />
+      <BlockCards v-if="cards.length" :items="cards" :columns="3" eager />
       <p v-else class="max-w-prose text-lead text-muted-foreground">{{ t('none') }}</p>
     </div>
   </div>

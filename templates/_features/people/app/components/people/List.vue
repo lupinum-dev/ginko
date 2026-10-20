@@ -1,17 +1,18 @@
 <script setup lang="ts">
 /** People as a grid: photo (4:5) or initials, name (a link to the person's page when people have pages), role, short
  *  bio and contact. Never a stock face for a named person: without a photo the initials stand in, on phones small and
- *  beside the name, so the bios stay close. */
-defineProps<{ items: GinkoItem<'people'>[] }>()
+ *  beside the name, so the bios stay close. `eager`: the list opens the page, so the first photo loads at once (it is the largest thing on a phone's first screen). */
+defineProps<{ items: GinkoItem<'people'>[], eager?: boolean }>()
 const { t } = useI18n('people')
 const locale = useGinkoLocale()
 </script>
 
 <template>
   <ul class="grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-    <li v-for="person in items" :id="person.id.split('/').pop()" :key="person.id" class="flex flex-col gap-4 break-inside-avoid">
+    <li v-for="(person, i) in items" :id="person.id.split('/').pop()" :key="person.id" class="flex flex-col gap-4 break-inside-avoid">
       <GinkoImage
         v-if="person.data.photo"
+        :eager="eager && i === 0"
         :image="person.data.photo"
         sizes="(min-width: 1024px) 384px, (min-width: 640px) 50vw, 100vw"
         class="aspect-4/5 w-full rounded-block bg-muted object-cover"

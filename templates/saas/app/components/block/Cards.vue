@@ -16,8 +16,9 @@ export interface Card {
 /** Two to four cards per row; the whole card is one link (the title's link stretches over it), marked by an arrow.
  *  Photos are 3:2. `headingLevel`: h3 under a section's h2 (default), h2 when the cards follow the page's h1.
  *  `compact`: on phones (below `sm`) each card is one row, a square photo of 96 px at the start next to the meta line
- *  and the title, without the text and the arrow, so a list of three fits in less than a screen. */
-const props = withDefaults(defineProps<{ items: Card[], columns?: 2 | 3 | 4, headingLevel?: 'h2' | 'h3', compact?: boolean }>(), { columns: 3, headingLevel: 'h3' })
+ *  and the title, without the text and the arrow, so a list of three fits in less than a screen.
+ *  `eager`: the list opens the page, so the first photo loads at once (it is the largest thing on a phone's first screen). */
+const props = withDefaults(defineProps<{ items: Card[], columns?: 2 | 3 | 4, headingLevel?: 'h2' | 'h3', compact?: boolean, eager?: boolean }>(), { columns: 3, headingLevel: 'h3' })
 // Never an empty column at lg: fewer items than `columns` take that many columns (two at least; one item stays as is).
 const lgColumns = computed(() => (props.items.length > 1 ? Math.min(props.columns, Math.max(2, props.items.length)) : props.columns))
 const sizes = computed(() => `(min-width: 1024px) 384px, (min-width: 640px) 50vw, ${props.compact ? '96px' : '100vw'}`)
@@ -29,7 +30,7 @@ const sizes = computed(() => `(min-width: 1024px) 384px, (min-width: 640px) 50vw
     :class="{ 'lg:grid-cols-3': lgColumns === 3, 'lg:grid-cols-4': lgColumns === 4, 'max-sm:gap-3': compact }"
   >
     <li
-      v-for="item in items"
+      v-for="(item, i) in items"
       :key="item.key"
       class="group relative flex overflow-hidden rounded-block border bg-card transition-[color,background-color,border-color] duration-150 hover:bg-muted has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-3 has-[a:focus-visible]:outline-ring"
       :class="compact ? 'max-sm:items-center sm:flex-col' : 'flex-col'"
@@ -38,6 +39,7 @@ const sizes = computed(() => `(min-width: 1024px) 384px, (min-width: 640px) 50vw
         v-if="item.image"
         :image="item.image"
         :sizes="sizes"
+        :eager="eager && i === 0"
         class="aspect-3/2 w-full bg-muted object-cover"
         :class="{ 'max-sm:m-3 max-sm:me-0 max-sm:aspect-square max-sm:size-24 max-sm:shrink-0 max-sm:rounded-md': compact }"
       />
