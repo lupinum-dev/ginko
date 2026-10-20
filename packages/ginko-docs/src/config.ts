@@ -74,7 +74,7 @@ export function docsHome(opts: { source?: DocsSource } = {}) {
     label: 'Start page',
     ...sourceOf(opts.source),
     fields: {
-      title: f.text('Title', { max: 120 }),
+      title: f.text('Title', { max: 120, default: 'Documentation' }),
       description: f.longtext('Description', { optional: true, max: 400 }),
       /** A command shown with a copy button, e.g. `pnpm add @lupinum/ginko`. */
       install: f.text('Install command', { optional: true, max: 200, translate: false }),

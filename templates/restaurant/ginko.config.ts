@@ -9,7 +9,8 @@ import { pages } from './app/bricks/pages.ts'
 import { locales, localized } from './app/routes.ts'
 import { siteUrl } from './site-url.ts'
 
-const lunchBrick = lunch({ source: 'files' })
+// `weekOf`: the start value of the lunch week on the platform (a Monday); the weekly task sets the current week.
+const lunchBrick = lunch({ source: 'files', weekOf: '2026-10-12' })
 
 export default defineSite({
   site: 'restaurant',
@@ -37,8 +38,8 @@ export default defineSite({
       label: { en: 'Home page', de: 'Startseite' },
       source: 'files',
       fields: {
-        title: f.text({ en: 'Title', de: 'Titel' }, { max: 80 }),
-        lead: f.longtext({ en: 'Lead', de: 'Einleitung' }, { max: 300 }),
+        title: f.text({ en: 'Title', de: 'Titel' }, { max: 80, default: 'Welcome' }),
+        lead: f.longtext({ en: 'Lead', de: 'Einleitung' }, { max: 300, default: 'A short introduction: who you are and what you offer.' }),
         image: f.image({ en: 'Photo', de: 'Foto' }, { optional: true }),
       },
     }),
@@ -48,9 +49,9 @@ export default defineSite({
       label: { en: 'Reservations', de: 'Reservierung' },
       source: 'files',
       fields: {
-        title: f.text({ en: 'Title', de: 'Titel' }, { max: 80 }),
+        title: f.text({ en: 'Title', de: 'Titel' }, { max: 80, default: 'Reservations' }),
         lead: f.longtext({ en: 'Lead', de: 'Einleitung' }, { max: 300, optional: true }),
-        body: f.markdown({ en: 'Text', de: 'Text' }, { profile: 'page' }),
+        body: f.markdown({ en: 'Text', de: 'Text' }, { profile: 'page', optional: true }),
       },
     }),
     // Legal name, address, phone and email. One entry, used in the footer, the imprint, the reservation links and the

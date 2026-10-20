@@ -5,8 +5,10 @@
 # path a client site takes too); a release that needs backend code the Vercel build has not deployed yet fails, and a
 # run by hand repeats it. Every Monday night, and when started by hand, the template sites get their content back from
 # git with this week's dates (`pnpm templates demo-reset --all`).
-# Environment `demo`: secrets DEMO_CONVEX_DEPLOY_KEY (the demo deployment only, for the reset) and DEMO_GINKO_KEYS
-# ({"<site>": "<push key>"}, one per template site), variable DEMO_PLATFORM (the demo Studio's address).
+# Environment `demo`: secret DEMO_CONVEX_DEPLOY_KEY (the demo deployment only, for the reset), one push key per
+# template site, DEMO_GINKO_KEY_<TEMPLATE>, named one by one in the release step, and variable DEMO_PLATFORM (the
+# platform's address: the demo Convex deployment's .convex.site URL). One whole secret per key: GitHub masks a secret
+# only as a whole, so a key read out of a JSON secret appeared in the log.
 name: demo
 
 on:
@@ -50,7 +52,8 @@ jobs:
           # The site's address in the released schema (site-url.ts): the template's Vercel production address.
           NUXT_PUBLIC_SITE_URL: https://ginko-template-${{ matrix.template }}.vercel.app
           GINKO_PLATFORM: ${{ vars.DEMO_PLATFORM }}
-          GINKO_KEY: ${{ fromJSON(secrets.DEMO_GINKO_KEYS)[matrix.template] }}
+          # Static names only: a dynamic `secrets[…]` hands every repository and organisation secret to the runner.
+          GINKO_KEY: ${{ matrix.template == 'starter' && secrets.DEMO_GINKO_KEY_STARTER || matrix.template == 'blog' && secrets.DEMO_GINKO_KEY_BLOG || matrix.template == 'portfolio' && secrets.DEMO_GINKO_KEY_PORTFOLIO || matrix.template == 'company' && secrets.DEMO_GINKO_KEY_COMPANY || matrix.template == 'saas' && secrets.DEMO_GINKO_KEY_SAAS || matrix.template == 'docs' && secrets.DEMO_GINKO_KEY_DOCS || matrix.template == 'restaurant' && secrets.DEMO_GINKO_KEY_RESTAURANT || matrix.template == 'local-business' && secrets.DEMO_GINKO_KEY_LOCAL_BUSINESS || matrix.template == 'nonprofit' && secrets.DEMO_GINKO_KEY_NONPROFIT || matrix.template == 'events' && secrets.DEMO_GINKO_KEY_EVENTS }}
 
   # After the release when started by hand; on the Monday schedule the release is skipped and this runs alone.
   reset:

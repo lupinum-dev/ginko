@@ -1,10 +1,12 @@
 // The hard delete of a site (GDPR). `sites.startDeletion` schedules `purge` for 7 days later; it removes every row that
-// names the site, the stored files and image variants behind its uploads, and last the site row itself.
+// names the site, the stored files and image variants behind its uploads, and last the site row itself. `purgeNow`
+// starts it at once, for operators on a local backend or the demo platform only.
 // One run handles a bounded batch per table and schedules itself again until nothing is left.
 import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import type { Doc, Id, TableNames } from './_generated/dataModel'
 import { internalMutation } from './_generated/server'
+import { fail } from './lib/access'
 import { purgeUpload } from './lib/library'
 
 /** Rows per table and run. Entries, changes and proposals carry big documents, so fewer of them fit in one transaction. */
@@ -51,5 +53,23 @@ export const purge = internalMutation({
     if (more) await ctx.scheduler.runAfter(0, internal.siteDeletion.purge, { site: id })
     else await ctx.db.delete(id)
     return null
+  },
+})
+
+/**
+ * Operator: deletes a site now instead of in 7 days (`npx convex run siteDeletion:purgeNow '{"slug":"…"}'`). Only on a
+ * local backend or the demo platform (GINKO_DEMO=1), whose sites are rebuilt from git; a client's site keeps the 7 days
+ * in which its owner can still cancel.
+ */
+export const purgeNow = internalMutation({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    if (process.env.GINKO_LOCAL !== '1' && process.env.GINKO_DEMO !== '1') fail('FORBIDDEN', 'errors.localOrDemoOnly')
+    const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.slug)).unique()
+    if (!site) fail('SITE_NOT_FOUND', 'errors.siteMissing')
+    if (site.deleting) await ctx.scheduler.cancel(site.deleting.job)
+    const job = await ctx.scheduler.runAfter(0, internal.siteDeletion.purge, { site: site._id })
+    await ctx.db.patch(site._id, { deleting: { at: Date.now(), job } })
+    return { slug: args.slug }
   },
 })

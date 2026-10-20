@@ -39,8 +39,8 @@ export default defineSite({
       label: { de: 'Startseite', en: 'Home page', fr: 'Page d’accueil' },
       source: 'files',
       fields: {
-        title: f.text({ de: 'Titel', en: 'Title', fr: 'Titre' }, { max: 80 }),
-        lead: f.longtext({ de: 'Einleitung', en: 'Lead', fr: 'Introduction' }, { max: 300 }),
+        title: f.text({ de: 'Titel', en: 'Title', fr: 'Titre' }, { max: 80, default: 'Welcome' }),
+        lead: f.longtext({ de: 'Einleitung', en: 'Lead', fr: 'Introduction' }, { max: 300, default: 'A short introduction: who you are and what you offer.' }),
         image: f.image({ de: 'Bild', en: 'Image', fr: 'Image' }, { optional: true }),
       },
     }),

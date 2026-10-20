@@ -609,12 +609,19 @@ export function gateSummary(text: string, reportPath: string): string {
   return errors.length ? `${head}\n${errors.length} unique errors\n${errors.join('\n')}` : `${head}\n${text}`
 }
 
-/** T4: the platform variant of the config (core `withoutFiles`: no `source` on any brick) passes checkSite. */
+/**
+ * T4: the platform variant of the config (core `withoutFiles`: no `source` on any brick) passes checkSite, and its
+ * first release on a new site passes: `sites:bootstrap` stores an empty schema and the release diffs against it, so a
+ * single that would arrive with a required field and no default is refused there (all ten templates, October 2026).
+ */
 async function platformReady(siteDir: string) {
   const probe = join(siteDir, '.platform-ready.mjs')
-  writeFileSync(probe, `import { checkSite, withoutFiles } from '@lupinum/ginko/internal'
-const site = (await import('./ginko.config.ts')).default
-const problems = checkSite(withoutFiles(site))
+  writeFileSync(probe, `import { checkSite, coreMessage, diffSchema, serializeSchema, withoutFiles } from '@lupinum/ginko/internal'
+const site = withoutFiles((await import('./ginko.config.ts')).default)
+const problems = checkSite(site)
+const schema = serializeSchema(site)
+const empty = { site: schema.site, name: schema.name, url: schema.url, timeZone: schema.timeZone, locales: schema.locales, currency: schema.currency, week: schema.week, pages: {}, bricks: {}, migrations: [], retired: {} }
+for (const r of diffSchema(empty, schema).rejected) problems.push(\`first release: \${r.path}: \${coreMessage('en', r.key, r.params)}\`)
 if (problems.length) { console.error(problems.join('\\n')); process.exit(1) }
 `)
   try {

@@ -40,8 +40,8 @@ export default defineSite({
       label: { de: 'Startseite', en: 'Home page' },
       source: 'files',
       fields: {
-        title: f.text({ de: 'Titel', en: 'Title' }, { max: 80 }),
-        lead: f.longtext({ de: 'Einleitung', en: 'Lead' }, { max: 300 }),
+        title: f.text({ de: 'Titel', en: 'Title' }, { max: 80, default: 'Welcome' }),
+        lead: f.longtext({ de: 'Einleitung', en: 'Lead' }, { max: 300, default: 'A short introduction: who you are and what you offer.' }),
         image: f.image({ de: 'Bild', en: 'Image' }, { optional: true }),
       },
     }),
