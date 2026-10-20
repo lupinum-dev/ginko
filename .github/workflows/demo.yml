@@ -5,8 +5,10 @@
 # path a client site takes too); a release that needs backend code the Vercel build has not deployed yet fails, and a
 # run by hand repeats it. Every Monday night, and when started by hand, the template sites get their content back from
 # git with this week's dates (`pnpm templates demo-reset --all`).
-# Environment `demo`: secrets DEMO_CONVEX_DEPLOY_KEY (the demo deployment only, for the reset) and DEMO_GINKO_KEYS
-# ({"<site>": "<push key>"}, one per template site), variable DEMO_PLATFORM (the demo Studio's address).
+# Environment `demo`: secrets DEMO_CONVEX_DEPLOY_KEY (the demo deployment only, for the reset) and one push key per
+# template site, DEMO_GINKO_KEY_<TEMPLATE>; variable DEMO_PLATFORM (the platform's address: the demo Convex
+# deployment's .convex.site URL). One secret per key on purpose: GitHub masks a secret only as a whole, so a key read
+# out of a JSON secret would appear in the log.
 name: demo
 
 on:
@@ -33,7 +35,17 @@ jobs:
       fail-fast: false
       matrix:
         # The site slug is the template's name (`site` in its ginko.config.ts).
-        template: [starter, blog, portfolio, company, saas, docs, restaurant, local-business, nonprofit, events]
+        include:
+          - { template: starter, key: DEMO_GINKO_KEY_STARTER }
+          - { template: blog, key: DEMO_GINKO_KEY_BLOG }
+          - { template: portfolio, key: DEMO_GINKO_KEY_PORTFOLIO }
+          - { template: company, key: DEMO_GINKO_KEY_COMPANY }
+          - { template: saas, key: DEMO_GINKO_KEY_SAAS }
+          - { template: docs, key: DEMO_GINKO_KEY_DOCS }
+          - { template: restaurant, key: DEMO_GINKO_KEY_RESTAURANT }
+          - { template: local-business, key: DEMO_GINKO_KEY_LOCAL_BUSINESS }
+          - { template: nonprofit, key: DEMO_GINKO_KEY_NONPROFIT }
+          - { template: events, key: DEMO_GINKO_KEY_EVENTS }
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -50,7 +62,7 @@ jobs:
           # The site's address in the released schema (site-url.ts): the template's Vercel production address.
           NUXT_PUBLIC_SITE_URL: https://ginko-template-${{ matrix.template }}.vercel.app
           GINKO_PLATFORM: ${{ vars.DEMO_PLATFORM }}
-          GINKO_KEY: ${{ fromJSON(secrets.DEMO_GINKO_KEYS)[matrix.template] }}
+          GINKO_KEY: ${{ secrets[matrix.key] }}
 
   # After the release when started by hand; on the Monday schedule the release is skipped and this runs alone.
   reset:
