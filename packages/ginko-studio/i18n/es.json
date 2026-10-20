@@ -376,7 +376,7 @@
     "delete": {
       "title": "Eliminar sitio",
       "text": "Todo el contenido, los archivos, el historial y el acceso de {site} se eliminan 7 días después de que lo confirmes. Hasta entonces puedes cancelar.",
-      "confirmLabel": "Escribe {slug} para confirmar",
+      "confirmLabel": "Escribe <slug>{slug}</slug> para confirmar",
       "button": "Eliminar sitio"
     },
     "deleting": {
@@ -408,11 +408,11 @@
       "sendInvite": "Enviar invitación",
       "inviteSent": "Invitación enviada a {email}.",
       "keysOfMember": "Claves que creó {email} ({count})",
-      "keysStay": "Estas claves pertenecen al sitio y siguen funcionando hasta que las revoques. Si una clave aún se necesita, por ejemplo para la publicación automática, consérvala."
+      "keysStay": "Estas claves pertenecen al sitio y siguen funcionando hasta que las revoques. Si una clave aún se necesita, por ejemplo para la publicación automática, consérvala.",
+      "actionsFor": "Acciones para {name}"
     },
     "ai": {
-      "heading": "Conectar IA",
-      "lead": "Tu asistente de IA podrá entonces hacer tareas por ti, por ejemplo “{first}” o “{second}”. Puede hacer exactamente lo que tú puedes hacer aquí. Cada cambio aparece en el historial como “vía IA” y se puede deshacer.",
+      "lead": "Conecta tu asistente de IA con una clave. Podrá entonces hacer tareas por ti, por ejemplo “{first}” o “{second}”.",
       "exampleOne": "Corrige una errata",
       "exampleTwo": "Acorta el primer párrafo",
       "keyFor": "Clave para “{label}”",
@@ -438,7 +438,14 @@
       "revokeConfirm": "Después, “{label}” ya no podrá hacer cambios.",
       "reviewOn": "Los cambios esperan aprobación.",
       "reviewOff": "Los cambios se publican sin aprobación.",
-      "reviewLikeYou": "Lo que espera aprobación cuando lo haces tú también espera aquí. Lo demás se publica sin aprobación."
+      "reviewLikeYou": "Lo que espera aprobación cuando lo haces tú también espera aquí. Lo demás se publica sin aprobación.",
+      "how": {
+        "title": "Cómo funciona",
+        "tasks": "Tu asistente puede hacer exactamente lo que tú puedes hacer aquí, nada más.",
+        "history": "Cada cambio aparece en el historial, marcado “vía IA”, y se puede deshacer.",
+        "review": "Si un cambio necesita aprobación, espera en Revisar, igual que tus propios cambios.",
+        "assistants": "Funciona con asistentes compatibles con MCP, por ejemplo Claude, ChatGPT o Cursor."
+      }
     },
     "keys": {
       "heading": "Claves de publicación",
@@ -474,7 +481,10 @@
       "hint": "Para hacer espacio, elimina entradas o acorta textos largos. Las entradas eliminadas, las imágenes y los PDF no cuentan.",
       "entriesHint": "Para hacer espacio, elimina entradas. Las entradas eliminadas no cuentan.",
       "dismiss": "Ocultar aviso",
-      "usage": "Espacio para textos: {used} de {limit} ocupados, {count} de {max} entradas. Las imágenes y los PDF no cuentan."
+      "title": "Espacio para textos",
+      "textUsed": "{used} de {limit} ocupados",
+      "entriesUsed": "{count} de {limit} entradas",
+      "filesFree": "Las imágenes y los PDF no cuentan."
     },
     "backup": {
       "heading": "Copia de seguridad",

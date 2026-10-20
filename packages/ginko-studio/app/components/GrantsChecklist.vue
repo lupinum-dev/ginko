@@ -20,18 +20,21 @@ function toggle(grant: string, on: boolean) {
 </script>
 
 <template>
-  <div class="grid gap-3">
-    <fieldset v-for="group in groups" :key="group.key" class="m-0 grid gap-1 rounded-xl border bg-card px-4 py-2.5">
-      <legend class="px-1 text-sm font-semibold">{{ group.label }}</legend>
-      <label v-for="task in group.tasks" :key="task.id" class="flex min-h-11 cursor-pointer items-center gap-2.5">
-        <input
-          type="checkbox"
-          class="m-0 size-5 flex-none accent-primary"
-          :checked="modelValue.includes(taskRef(group.key, task))"
-          @change="toggle(taskRef(group.key, task), ($event.target as HTMLInputElement).checked)"
-        >
-        <span>{{ shown(task.label) }}</span>
-      </label>
-    </fieldset>
+  <!-- Bricks side by side where the container has room (2-3 columns on a desktop), one column on a phone. -->
+  <div class="@container">
+    <div class="grid items-start gap-3 @lg:grid-cols-2 @3xl:grid-cols-3">
+      <fieldset v-for="group in groups" :key="group.key" class="m-0 grid min-w-0 gap-0.5 rounded-lg bg-muted/50 px-3 pt-2 pb-1.5">
+        <legend class="float-left mb-1 w-full text-sm font-semibold">{{ group.label }}</legend>
+        <label v-for="task in group.tasks" :key="task.id" class="flex min-h-11 cursor-pointer items-center gap-2.5 text-base min-[900px]:min-h-9 min-[900px]:text-sm pointer-coarse:min-h-11">
+          <input
+            type="checkbox"
+            class="m-0 size-5 flex-none accent-primary min-[900px]:size-4"
+            :checked="modelValue.includes(taskRef(group.key, task))"
+            @change="toggle(taskRef(group.key, task), ($event.target as HTMLInputElement).checked)"
+          >
+          <span class="min-w-0">{{ shown(task.label) }}</span>
+        </label>
+      </fieldset>
+    </div>
   </div>
 </template>

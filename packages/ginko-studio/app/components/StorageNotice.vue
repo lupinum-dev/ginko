@@ -6,7 +6,7 @@
 import { useI18n } from '#imports'
 import { computed, onMounted, ref } from 'vue'
 import { SITE_BUDGET } from '@lupinum/ginko/internal'
-import { XIcon } from '@lucide/vue'
+import { TriangleAlertIcon, XIcon } from '@lucide/vue'
 import { Button } from '@studio/components/ui/button'
 import { budgetSizeText, sizeText } from '../utils/size'
 
@@ -46,8 +46,9 @@ const shown = computed(() => level.value === 'full' || (level.value === 'near' &
 </script>
 
 <template>
-  <div v-if="shown" :class="['flex items-start gap-2 rounded-md p-3', level === 'full' ? 'bg-destructive/10 font-medium text-destructive' : 'bg-warning/10']" role="status">
+  <div v-if="shown" :class="['flex items-start gap-2.5 rounded-xl px-4 py-3 min-[900px]:text-sm', level === 'full' ? 'bg-destructive/10 font-medium text-destructive' : 'bg-warning/10']" role="status">
+    <TriangleAlertIcon :class="['mt-0.5 size-4 flex-none', level === 'full' ? 'text-destructive' : 'text-warning']" aria-hidden="true" />
     <p class="min-w-0 flex-1">{{ text }}</p>
-    <Button v-if="level === 'near' && manager" type="button" variant="ghost" size="icon-sm" class="-my-1 -mr-1" :aria-label="t('site.storage.dismiss')" @click="dismiss"><XIcon aria-hidden="true" /></Button>
+    <Button v-if="level === 'near' && manager" type="button" variant="ghost" size="icon-sm" class="-my-1 -mr-2" :aria-label="t('site.storage.dismiss')" @click="dismiss"><XIcon aria-hidden="true" /></Button>
   </div>
 </template>

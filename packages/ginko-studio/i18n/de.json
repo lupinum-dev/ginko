@@ -376,7 +376,7 @@
     "delete": {
       "title": "Seite löschen",
       "text": "Alle Inhalte, Dateien, der Verlauf und der Zugang von {site} werden 7 Tage nach deiner Bestätigung gelöscht. Bis dahin kannst du abbrechen.",
-      "confirmLabel": "Zur Bestätigung {slug} eingeben",
+      "confirmLabel": "Zur Bestätigung <slug>{slug}</slug> eingeben",
       "button": "Seite löschen"
     },
     "deleting": {
@@ -408,11 +408,11 @@
       "sendInvite": "Einladung senden",
       "inviteSent": "Einladung an {email} gesendet.",
       "keysOfMember": "Schlüssel, die {email} erstellt hat ({count})",
-      "keysStay": "Diese Schlüssel gehören zur Seite und funktionieren weiter, bis du sie widerrufst. Wird ein Schlüssel noch gebraucht, zum Beispiel für die automatische Veröffentlichung, lass ihn bestehen."
+      "keysStay": "Diese Schlüssel gehören zur Seite und funktionieren weiter, bis du sie widerrufst. Wird ein Schlüssel noch gebraucht, zum Beispiel für die automatische Veröffentlichung, lass ihn bestehen.",
+      "actionsFor": "Aktionen für {name}"
     },
     "ai": {
-      "heading": "Mit KI verbinden",
-      "lead": "Dein KI-Assistent kann dann für dich Aufgaben erledigen, zum Beispiel „{first}“ oder „{second}“. Er darf genau das, was du hier darfst. Jede Änderung steht im Verlauf als „über KI“ und lässt sich rückgängig machen.",
+      "lead": "Verbinde deinen KI-Assistenten mit einem Schlüssel. Er kann dann für dich Aufgaben erledigen, zum Beispiel „{first}“ oder „{second}“.",
       "exampleOne": "Korrigier einen Tippfehler",
       "exampleTwo": "Kürz den ersten Absatz",
       "keyFor": "Schlüssel für „{label}“",
@@ -438,7 +438,14 @@
       "revokeConfirm": "„{label}“ kann danach nichts mehr ändern.",
       "reviewOn": "Änderungen warten auf Freigabe.",
       "reviewOff": "Änderungen gehen ohne Freigabe online.",
-      "reviewLikeYou": "Was bei dir auf Freigabe wartet, wartet auch hier. Alles andere geht ohne Freigabe online."
+      "reviewLikeYou": "Was bei dir auf Freigabe wartet, wartet auch hier. Alles andere geht ohne Freigabe online.",
+      "how": {
+        "title": "So funktioniert es",
+        "tasks": "Dein Assistent darf genau das, was du hier darfst, nicht mehr.",
+        "history": "Jede Änderung steht im Verlauf, markiert mit „über KI“, und lässt sich rückgängig machen.",
+        "review": "Braucht eine Änderung eine Freigabe, wartet sie unter Prüfen, wie deine eigenen.",
+        "assistants": "Funktioniert mit Assistenten, die MCP unterstützen, zum Beispiel Claude, ChatGPT oder Cursor."
+      }
     },
     "keys": {
       "heading": "Schlüssel für Veröffentlichungen",
@@ -474,7 +481,10 @@
       "hint": "Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge, Bilder und PDFs zählen nicht mit.",
       "entriesHint": "Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.",
       "dismiss": "Hinweis ausblenden",
-      "usage": "Textspeicher: {used} von {limit} belegt, {count} von {max} Einträgen. Bilder und PDFs zählen nicht mit."
+      "title": "Textspeicher",
+      "textUsed": "{used} von {limit} belegt",
+      "entriesUsed": "{count} von {limit} Einträgen",
+      "filesFree": "Bilder und PDFs zählen nicht mit."
     },
     "backup": {
       "heading": "Sicherung",

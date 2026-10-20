@@ -3,6 +3,7 @@
      with no size limit; other browsers hold it in memory, so above 1 GB they say so before any file loads. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
+import { DownloadIcon } from '@lucide/vue'
 import { Button } from '@studio/components/ui/button'
 import { makeZip } from 'client-zip'
 import { opErrorOf } from '../composables/useOps'
@@ -87,14 +88,19 @@ async function download() {
 </script>
 
 <template>
-  <section class="grid gap-2 border-t py-5" aria-labelledby="backup-title">
-    <h2 id="backup-title" class="text-base font-semibold tracking-tight">{{ t('site.backup.heading') }}</h2>
-    <p class="text-[13px] text-muted-foreground">{{ t('site.backup.lead') }}</p>
-    <Button type="button" variant="secondary" class="justify-self-start" :disabled="busy" @click="download">{{ t('site.backup.button') }}</Button>
-    <div class="grid gap-1 text-[13px]" aria-live="polite">
-      <p v-if="summary?.count" class="text-muted-foreground">{{ t('site.backup.size', { count: summary.count, size: sizeText(summary.bytes, format.number) }) }}</p>
-      <p v-if="done !== null && summary?.count" class="text-muted-foreground">{{ t('site.backup.progress', { done, total: summary.count }) }}</p>
-      <p v-if="message" :class="message.tone === 'err' ? 'font-semibold text-destructive' : 'text-muted-foreground'">{{ message.text }}</p>
+  <section class="rounded-xl border bg-card" aria-labelledby="backup-title">
+    <h2 id="backup-title" class="px-4 pt-3 text-[15px] font-semibold tracking-tight">{{ t('site.backup.heading') }}</h2>
+    <div class="grid gap-3 px-4 pt-1 pb-4">
+      <p class="text-[13px] text-muted-foreground">{{ t('site.backup.lead') }}</p>
+      <!-- Block layout: the empty status region takes no room, and it stays in the page so its first message is read. -->
+      <div>
+        <Button type="button" variant="outline" size="sm" :disabled="busy" @click="download"><DownloadIcon aria-hidden="true" />{{ t('site.backup.button') }}</Button>
+        <div class="text-[13px] [&>p]:mt-2" aria-live="polite">
+          <p v-if="summary?.count" class="text-muted-foreground tabular-nums">{{ t('site.backup.size', { count: summary.count, size: sizeText(summary.bytes, format.number) }) }}</p>
+          <p v-if="done !== null && summary?.count" class="text-muted-foreground tabular-nums">{{ t('site.backup.progress', { done, total: summary.count }) }}</p>
+          <p v-if="message" :class="message.tone === 'err' ? 'font-semibold text-destructive' : 'text-muted-foreground'">{{ message.text }}</p>
+        </div>
+      </div>
     </div>
   </section>
 </template>

@@ -376,7 +376,7 @@
     "delete": {
       "title": "Supprimer le site",
       "text": "Tout le contenu, les fichiers, l’historique et les accès de {site} sont supprimés 7 jours après votre confirmation. D’ici là, vous pouvez annuler.",
-      "confirmLabel": "Saisissez {slug} pour confirmer",
+      "confirmLabel": "Saisissez <slug>{slug}</slug> pour confirmer",
       "button": "Supprimer le site"
     },
     "deleting": {
@@ -408,11 +408,11 @@
       "sendInvite": "Envoyer l’invitation",
       "inviteSent": "Invitation envoyée à {email}.",
       "keysOfMember": "Clés créées par {email} ({count})",
-      "keysStay": "Ces clés appartiennent au site et continuent de fonctionner jusqu’à ce que vous les révoquiez. Si une clé est encore nécessaire, par exemple pour la publication automatique, conservez-la."
+      "keysStay": "Ces clés appartiennent au site et continuent de fonctionner jusqu’à ce que vous les révoquiez. Si une clé est encore nécessaire, par exemple pour la publication automatique, conservez-la.",
+      "actionsFor": "Actions pour {name}"
     },
     "ai": {
-      "heading": "Connecter l’IA",
-      "lead": "Votre assistant IA peut alors effectuer des tâches pour vous, par exemple « {first} » ou « {second} ». Il peut faire exactement ce que vous pouvez faire ici. Chaque modification apparaît dans l’historique avec la mention « via IA » et peut être annulée.",
+      "lead": "Connectez votre assistant IA avec une clé. Il peut alors effectuer des tâches pour vous, par exemple « {first} » ou « {second} ».",
       "exampleOne": "Corriger une faute de frappe",
       "exampleTwo": "Raccourcir le premier paragraphe",
       "keyFor": "Clé pour « {label} »",
@@ -438,7 +438,14 @@
       "revokeConfirm": "« {label} » ne pourra plus faire aucune modification ensuite.",
       "reviewOn": "Les modifications attendent une approbation.",
       "reviewOff": "Les modifications passent en ligne sans approbation.",
-      "reviewLikeYou": "Ce qui attend une approbation quand vous le faites l’attend aussi ici. Tout le reste passe en ligne sans approbation."
+      "reviewLikeYou": "Ce qui attend une approbation quand vous le faites l’attend aussi ici. Tout le reste passe en ligne sans approbation.",
+      "how": {
+        "title": "Comment ça marche",
+        "tasks": "Votre assistant peut faire exactement ce que vous pouvez faire ici, rien de plus.",
+        "history": "Chaque modification apparaît dans l’historique avec la mention « via IA » et peut être annulée.",
+        "review": "Si une modification doit être validée, elle attend dans Relecture, comme les vôtres.",
+        "assistants": "Fonctionne avec les assistants compatibles MCP, par exemple Claude, ChatGPT ou Cursor."
+      }
     },
     "keys": {
       "heading": "Clés de publication",
@@ -474,7 +481,10 @@
       "hint": "Pour faire de la place, supprimez des entrées ou raccourcissez de longs textes. Les entrées supprimées, les images et les PDF ne comptent pas.",
       "entriesHint": "Pour faire de la place, supprimez des entrées. Les entrées supprimées ne comptent pas.",
       "dismiss": "Masquer l’avis",
-      "usage": "Stockage de textes : {used} utilisés sur {limit}, {count} entrées sur {max}. Les images et les PDF ne comptent pas."
+      "title": "Stockage de textes",
+      "textUsed": "{used} utilisés sur {limit}",
+      "entriesUsed": "{count} entrées sur {limit}",
+      "filesFree": "Les images et les PDF ne comptent pas."
     },
     "backup": {
       "heading": "Sauvegarde",

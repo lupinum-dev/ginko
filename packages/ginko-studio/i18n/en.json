@@ -376,7 +376,7 @@
     "delete": {
       "title": "Delete site",
       "text": "All content, files, history and access of {site} are deleted 7 days after you confirm. Until then you can cancel.",
-      "confirmLabel": "Type {slug} to confirm",
+      "confirmLabel": "Type <slug>{slug}</slug> to confirm",
       "button": "Delete site"
     },
     "deleting": {
@@ -408,11 +408,11 @@
       "sendInvite": "Send invitation",
       "inviteSent": "Invitation sent to {email}.",
       "keysOfMember": "Keys {email} created ({count})",
-      "keysStay": "These keys belong to the site and keep working until you revoke them. If a key is still needed, for example for automatic publishing, keep it."
+      "keysStay": "These keys belong to the site and keep working until you revoke them. If a key is still needed, for example for automatic publishing, keep it.",
+      "actionsFor": "Actions for {name}"
     },
     "ai": {
-      "heading": "Connect AI",
-      "lead": "Your AI assistant can then do tasks for you, for example “{first}” or “{second}”. It may do exactly what you may do here. Every change appears in the history as “via AI” and can be undone.",
+      "lead": "Connect your AI assistant with a key. It can then do tasks for you, for example “{first}” or “{second}”.",
       "exampleOne": "Fix a typo",
       "exampleTwo": "Shorten the first paragraph",
       "keyFor": "Key for “{label}”",
@@ -438,7 +438,14 @@
       "revokeConfirm": "“{label}” cannot make any changes after that.",
       "reviewOn": "Changes wait for approval.",
       "reviewOff": "Changes go online without approval.",
-      "reviewLikeYou": "What waits for approval when you do it waits here too. Everything else goes online without approval."
+      "reviewLikeYou": "What waits for approval when you do it waits here too. Everything else goes online without approval.",
+      "how": {
+        "title": "How it works",
+        "tasks": "Your assistant may do exactly what you may do here, nothing more.",
+        "history": "Every change appears in History, marked “via AI”, and can be undone.",
+        "review": "If a change needs approval, it waits in Review, just like your own changes.",
+        "assistants": "Works with assistants that support MCP, for example Claude, ChatGPT or Cursor."
+      }
     },
     "keys": {
       "heading": "Publishing keys",
@@ -474,7 +481,10 @@
       "hint": "To make room, remove entries or shorten long texts. Removed entries, pictures and PDFs do not count.",
       "entriesHint": "To make room, remove entries. Removed entries do not count.",
       "dismiss": "Hide notice",
-      "usage": "Text storage: {used} of {limit} used, {count} of {max} entries. Pictures and PDFs do not count."
+      "title": "Text storage",
+      "textUsed": "{used} of {limit} used",
+      "entriesUsed": "{count} of {limit} entries",
+      "filesFree": "Pictures and PDFs do not count."
     },
     "backup": {
       "heading": "Backup",
