@@ -1,5 +1,13 @@
 # @lupinum/ginko
 
+## 0.6.2
+
+### Patch Changes
+
+- [#32](https://github.com/lupinum-dev/ginko/pull/32) [`d082b85`](https://github.com/lupinum-dev/ginko/commit/d082b856851dabbf1d02d06d2d5796c50a3f825d) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the first `ops:import` into a new site on the hosted platform once more: the history entry of its first release no longer counts as an edit.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.6.2
+
 ## 0.6.1
 
 ### Patch Changes
