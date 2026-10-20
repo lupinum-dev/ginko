@@ -1,9 +1,9 @@
-# The client platform lupinum-ginko-cms (internals/decisions.md D55) runs released code only. After the release
-# workflow, a commit with a v* tag deploys there: Vercel builds apps/platform, whose production build deploys the Convex
-# backend first (apps/platform/scripts/vercel-build.sh; CONVEX_DEPLOY_KEY lives in that Vercel project only). The
-# release workflow's own tag push starts no workflow (GITHUB_TOKEN), hence workflow_run. A run by hand takes a tag, for
-# a redeploy or a rollback. Environment `cms` (required reviewer: Matthias): secret VERCEL_TOKEN, variables
-# VERCEL_ORG_ID and VERCEL_PROJECT_ID of the lupinum-ginko-cms project, which has no Git link.
+# The client platform lupinum-ginko-cms (internals/decisions.md D55) runs released code only. Its Vercel project
+# deploys the branch `cms-production`, and only this workflow moves that branch: after the release workflow, to a
+# commit with a v* tag; by hand, to any tag (a redeploy or a rollback). Vercel's production build deploys the Convex
+# backend first (apps/platform/scripts/vercel-build.sh; CONVEX_DEPLOY_KEY lives in that Vercel project only), so no
+# Vercel or Convex credential is stored here. The release workflow's own tag push starts no workflow (GITHUB_TOKEN),
+# hence workflow_run. Environment `cms`: Matthias approves every deploy.
 name: cms
 
 on:
@@ -47,19 +47,16 @@ jobs:
     needs: tag
     if: needs.tag.outputs.tag != ''
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
     environment: cms
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          persist-credentials: false
+          fetch-depth: 0
           ref: ${{ needs.tag.outputs.tag }}
-      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
-        with:
-          node-version: 24
-          package-manager-cache: false
-      - run: npx --yes vercel@63.1.2 deploy --prod --yes --token "$VERCEL_TOKEN"
+      # Forced, so a run by hand with an older tag rolls back.
+      - run: git push --force origin "refs/tags/${TAG}^{commit}:refs/heads/cms-production"
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          TAG: ${{ needs.tag.outputs.tag }}
