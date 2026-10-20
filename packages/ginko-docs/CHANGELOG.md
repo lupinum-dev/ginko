@@ -1,5 +1,16 @@
 # @lupinum/ginko-docs
 
+## 0.6.0
+
+### Patch Changes
+
+- [#28](https://github.com/lupinum-dev/ginko/pull/28) [`3246028`](https://github.com/lupinum-dev/ginko/commit/3246028d0b767801950f6f54f49e7edddd204143) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the first release of a template or a docs home on the platform: every required field of a single now has a default (or is optional), so the platform can create its entry.
+- Updated dependencies [[`ee8c8a9`](https://github.com/lupinum-dev/ginko/commit/ee8c8a982a64ee15a1cab906b7a3b58fe8c686e6)]:
+  - @lupinum/ginko@0.6.0
+  - @lupinum/ginko-components@0.6.0
+  - @lupinum/ginko-content@0.6.0
+  - @lupinum/ginko-i18n@0.6.0
+
 ## 0.5.0
 
 ### Minor Changes

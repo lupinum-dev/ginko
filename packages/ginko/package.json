@@ -1,6 +1,6 @@
 {
   "name": "@lupinum/ginko",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Ginko: a typed, file-based content model for Nuxt sites (core, CLI and Nuxt module).",
   "license": "MIT",
   "author": "Lupinum OG <info@lupinum.com> (https://lupinum.com)",

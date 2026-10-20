@@ -1,5 +1,12 @@
 # @lupinum/ginko-preset-gastro
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [[`ee8c8a9`](https://github.com/lupinum-dev/ginko/commit/ee8c8a982a64ee15a1cab906b7a3b58fe8c686e6)]:
+  - @lupinum/ginko@0.6.0
+
 ## 0.5.0
 
 ### Minor Changes

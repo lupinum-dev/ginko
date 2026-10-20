@@ -1,5 +1,16 @@
 # @lupinum/ginko
 
+## 0.6.0
+
+### Minor Changes
+
+- [#26](https://github.com/lupinum-dev/ginko/pull/26) [`ee8c8a9`](https://github.com/lupinum-dev/ginko/commit/ee8c8a982a64ee15a1cab906b7a3b58fe8c686e6) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `GINKO_CONTENT=platform`: a site whose bricks read files takes its content from the platform instead, in the build and in `ginko release`, without a code change.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.6.0
+
 ## 0.5.0
 
 ### Minor Changes
