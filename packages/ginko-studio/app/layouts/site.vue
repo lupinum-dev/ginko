@@ -3,14 +3,15 @@
 import { api } from '#convex/api'
 import { DEFAULT_WEEK, type ComponentRegistry, type Schema } from '@lupinum/ginko/internal'
 import { provideGinkoAssets } from '@lupinum/ginko-editor'
-import { CircleCheckIcon, FileTextIcon, HistoryIcon, ImageIcon, SearchIcon, SparklesIcon, SquareArrowOutUpRightIcon, SunIcon, UsersIcon } from '@lucide/vue'
-import type { SiteLink } from '../utils/siteLinks'
+import { ChevronRightIcon, CircleCheckIcon, FileTextIcon, HistoryIcon, ImageIcon, SearchIcon, SparklesIcon, SquareArrowOutUpRightIcon, SunIcon, UsersIcon } from '@lucide/vue'
+import { isSiteLinkActive, type SiteLink } from '../utils/siteLinks'
 import { useBottomBar } from '../composables/useBottomBar'
 import { EDITOR_COMPONENTS, EDITOR_LINK_TARGETS } from '@studio/components/editor/context'
 import { provideStudioSite } from '../utils/labels'
 import { localDraftKeys } from '../composables/useLocalDraft'
 import { rememberSite } from '../composables/useRecentEntries'
 import { isModKey } from '../utils/keys'
+import { provideCrumbs, type Crumb } from '../composables/usePageHeader'
 
 const route = useRoute()
 const { t, format } = useI18n()
@@ -96,6 +97,16 @@ const links = computed<SiteLink[]>(() => [
   { to: `${base.value}/ai`, label: t('nav.ai'), icon: SparklesIcon },
 ])
 const siteName = computed(() => data.value?.site.name ?? '…')
+// The panel's top bar: the site name, then the crumbs of the open page, or the word of its view (D26).
+const pageCrumbs = provideCrumbs()
+const crumbs = computed<Crumb[]>(() => {
+  const own = pageCrumbs.value
+  if (own?.length) return own
+  const view = [...links.value].reverse().find((l) => isSiteLinkActive(route.path, l))
+  return view ? [{ label: view.label }] : []
+})
+// Wide screens: the canvas colour behind the rail and the panel also covers the overscroll area.
+useHead({ bodyAttrs: { class: 'studio-site' } })
 const initial = computed(() => (data.value?.site.name ?? '').trim().charAt(0).toUpperCase() || '·')
 // The entry editor has its own bar at the bottom (save), so phones show no tab bar while one is open.
 const bottomBar = useBottomBar()
@@ -105,9 +116,10 @@ const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.va
 </script>
 
 <template>
-  <!-- Wide screens: the rail on the page background, the page in a framed panel. Phones: a top bar, the page, tabs
-       at the bottom. --studio-header-height is what sticks above the page (sticky toolbars and panes sit below it). -->
-  <div class="min-h-dvh [--studio-header-height:57px] min-[900px]:flex min-[900px]:gap-4 min-[900px]:p-4 min-[900px]:[--studio-header-height:1rem]">
+  <!-- Wide screens: the rail on the canvas, the page in a framed panel whose top bar sticks (site, crumbs, page actions,
+       search, View site). Phones: a top bar, the page, tabs at the bottom. --studio-header-height is what sticks above
+       the page, so sticky toolbars and panes sit below it. -->
+  <div class="min-h-dvh [--studio-header-height:57px] min-[900px]:flex min-[900px]:gap-3 min-[900px]:bg-canvas min-[900px]:p-3 min-[900px]:[--studio-header-height:3.5rem]">
     <a href="#studio-main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:ring-3 focus:ring-ring/80 focus:outline-none">{{ t('nav.skip') }}</a>
     <SiteRail v-if="!blocked" class="max-[899px]:hidden" :links="links" :initial="initial" :site-name="siteName">
       <template #foot>
@@ -128,19 +140,34 @@ const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.va
       </Button>
       <AccountMenu side="bottom" :manager="manager" :last-refresh="lastRefresh" :updating="siteUpdate.running.value" @update="siteUpdate.run()" />
     </header>
-    <div class="min-w-0 flex-1 min-[900px]:min-h-[calc(100dvh-2rem)] min-[900px]:rounded-2xl min-[900px]:border min-[900px]:bg-card">
-      <div v-if="!blocked" class="hidden items-center gap-2.5 px-6 pt-5 min-[900px]:flex">
-        <p class="min-w-0 flex-1 truncate text-[15px] font-semibold">{{ siteName }}</p>
-        <Button type="button" variant="outline" class="w-56 justify-start gap-2 px-3 font-normal text-muted-foreground" @click="paletteOpen = true">
-          <SearchIcon aria-hidden="true" />{{ t('basics.search.button') }}<kbd class="ml-auto rounded border bg-background px-1.5 font-sans text-[11px]">{{ shortcut }}</kbd>
+    <!-- overflow-clip rounds the panel without making it a scroll container, so the top bar still sticks to the window. -->
+    <div class="min-w-0 flex-1 min-[900px]:flex min-[900px]:min-h-[calc(100dvh-1.5rem)] min-[900px]:flex-col min-[900px]:overflow-clip min-[900px]:rounded-xl min-[900px]:border min-[900px]:bg-card min-[900px]:shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
+      <header v-if="!blocked" class="sticky top-0 z-20 hidden h-14 items-center gap-2 border-b bg-card/95 pr-3 pl-5 backdrop-blur-sm min-[900px]:flex">
+        <div id="studio-lead" class="flex items-center empty:hidden" />
+        <nav :aria-label="t('nav.crumbs')" class="min-w-0 flex-1">
+          <ol class="flex min-w-0 items-center gap-1 text-sm">
+            <li class="flex min-w-0 shrink-0 items-center">
+              <NuxtLink :to="base" class="truncate rounded-md px-1 py-0.5 text-muted-foreground no-underline hover:text-foreground">{{ siteName }}</NuxtLink>
+            </li>
+            <li v-for="(c, i) in crumbs" :key="i" :class="['flex min-w-0 items-center gap-1', i < crumbs.length - 1 && 'shrink-0']">
+              <ChevronRightIcon class="size-3.5 flex-none text-muted-foreground/70" aria-hidden="true" />
+              <NuxtLink v-if="c.to && i < crumbs.length - 1" :to="c.to" class="truncate rounded-md px-1 py-0.5 text-muted-foreground no-underline hover:text-foreground">{{ c.label }}</NuxtLink>
+              <span v-else class="truncate px-1 font-medium" :aria-current="i === crumbs.length - 1 ? 'page' : undefined">{{ c.label }}</span>
+            </li>
+          </ol>
+        </nav>
+        <div id="studio-actions" class="flex flex-none items-center gap-2 empty:hidden" />
+        <Button type="button" variant="ghost" class="h-9 gap-2 px-2.5 font-normal text-muted-foreground min-[1280px]:w-52 min-[1280px]:justify-start min-[1280px]:border min-[1280px]:bg-background" :aria-label="t('basics.search.label')" @click="paletteOpen = true">
+          <SearchIcon aria-hidden="true" /><span class="hidden min-[1280px]:inline">{{ t('basics.search.button') }}</span><kbd class="ml-auto hidden rounded border bg-muted px-1.5 font-sans text-[11px] min-[1280px]:inline">{{ shortcut }}</kbd>
         </Button>
-        <Button v-if="viewUrl" as-child variant="outline">
-          <a :href="viewUrl" target="_blank" rel="noopener">{{ t('nav.viewSite') }}<SquareArrowOutUpRightIcon aria-hidden="true" /><span class="sr-only"> {{ t('nav.newTab') }}</span></a>
+        <Button v-if="viewUrl" as-child variant="ghost" class="h-9 gap-2 px-2.5">
+          <a :href="viewUrl" target="_blank" rel="noopener"><span class="hidden min-[1100px]:inline">{{ t('nav.viewSite') }}</span><SquareArrowOutUpRightIcon aria-hidden="true" /><span class="sr-only"><span class="min-[1100px]:hidden">{{ t('nav.viewSite') }}</span> {{ t('nav.newTab') }}</span></a>
         </Button>
-      </div>
+      </header>
       <!-- The phone tab bar is fixed over the end of the page: every page ends 7.5rem (pb-30) above the bottom, so its last
-           button ("weitere anzeigen") stays tappable. The entry editor brings its own sticky bar instead of the tab bar. -->
-      <main id="studio-main" tabindex="-1" :class="['outline-none', showTabs ? 'pb-30' : 'pb-6']">
+           button ("weitere anzeigen") stays tappable. The entry editor brings its own sticky bar instead of the tab bar.
+           Wide screens have no tab bar: each page ends with its own bottom padding. -->
+      <main id="studio-main" tabindex="-1" :class="['outline-none min-[900px]:flex min-[900px]:flex-1 min-[900px]:flex-col min-[900px]:pb-0', showTabs ? 'pb-30' : 'pb-6']">
       <div v-if="signedOut" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
         <p class="text-xl font-bold">{{ t('errors.signedOut') }}</p>
         <!-- A full page load: the server checks the session, where the client may still think it is signed in. -->

@@ -26,7 +26,9 @@
     "account": "Compte",
     "toReviewCount": "{count} à relire",
     "translations": "Traductions",
-    "translationsOpen": "{count} en attente"
+    "translationsOpen": "{count} en attente",
+    "crumbs": "Vous êtes ici",
+    "accountPage": "Paramètres du compte"
   },
   "sites": {
     "title": "Mes sites",
@@ -346,7 +348,10 @@
       "shownOf": "{shown} entrées sur {total}",
       "searching": "Recherche…",
       "removed": "Dans la corbeille (restaurable pendant 30 jours)",
-      "restore": "Restaurer"
+      "restore": "Restaurer",
+      "overview": "Vue d’ensemble",
+      "areas": "Rubriques",
+      "areaList": "Afficher ou masquer la liste des rubriques"
     },
     "area": {
       "missing": "Ce domaine n’existe pas.",

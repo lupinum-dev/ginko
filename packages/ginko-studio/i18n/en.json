@@ -26,7 +26,9 @@
     "account": "Account",
     "toReviewCount": "{count} to review",
     "translations": "Translations",
-    "translationsOpen": "{count} open"
+    "translationsOpen": "{count} open",
+    "crumbs": "You are here",
+    "accountPage": "Account settings"
   },
   "sites": {
     "title": "My sites",
@@ -346,7 +348,10 @@
       "shownOf": "{shown} of {total} entries",
       "searching": "Searching …",
       "removed": "In the trash (can be restored for 30 days)",
-      "restore": "Restore"
+      "restore": "Restore",
+      "overview": "Overview",
+      "areas": "Areas",
+      "areaList": "Show or hide the list of areas"
     },
     "area": {
       "missing": "This area does not exist.",

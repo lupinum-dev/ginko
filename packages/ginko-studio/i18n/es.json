@@ -26,7 +26,9 @@
     "account": "Cuenta",
     "toReviewCount": "{count} por revisar",
     "translations": "Traducciones",
-    "translationsOpen": "{count, plural, one {# pendiente} other {# pendientes}}"
+    "translationsOpen": "{count, plural, one {# pendiente} other {# pendientes}}",
+    "crumbs": "Estás aquí",
+    "accountPage": "Ajustes de la cuenta"
   },
   "sites": {
     "title": "Mis sitios",
@@ -346,7 +348,10 @@
       "shownOf": "{shown} de {total} entradas",
       "searching": "Buscando…",
       "removed": "En la papelera (se puede restaurar durante 30 días)",
-      "restore": "Restaurar"
+      "restore": "Restaurar",
+      "overview": "Resumen",
+      "areas": "Áreas",
+      "areaList": "Mostrar u ocultar la lista de áreas"
     },
     "area": {
       "missing": "Esta área no existe.",

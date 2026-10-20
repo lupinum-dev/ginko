@@ -26,7 +26,9 @@
     "account": "Konto",
     "toReviewCount": "{count} zu prüfen",
     "translations": "Übersetzungen",
-    "translationsOpen": "{count} offen"
+    "translationsOpen": "{count} offen",
+    "crumbs": "Du bist hier",
+    "accountPage": "Kontoeinstellungen"
   },
   "sites": {
     "title": "Meine Seiten",
@@ -346,7 +348,10 @@
       "shownOf": "{shown} von {total} Einträgen",
       "searching": "Suche …",
       "removed": "Im Papierkorb (30 Tage wiederherstellbar)",
-      "restore": "Wiederherstellen"
+      "restore": "Wiederherstellen",
+      "overview": "Übersicht",
+      "areas": "Bereiche",
+      "areaList": "Liste der Bereiche zeigen oder ausblenden"
     },
     "area": {
       "missing": "Diesen Bereich gibt es nicht.",
