@@ -47,6 +47,8 @@ jobs:
       - run: pnpm --filter ./templates/${{ matrix.template }} exec ginko release
         env:
           GINKO_CONTENT: platform
+          # The site's address in the released schema (site-url.ts): the template's Vercel production address.
+          NUXT_PUBLIC_SITE_URL: https://ginko-template-${{ matrix.template }}.vercel.app
           GINKO_PLATFORM: ${{ vars.DEMO_PLATFORM }}
           GINKO_KEY: ${{ fromJSON(secrets.DEMO_GINKO_KEYS)[matrix.template] }}
 
