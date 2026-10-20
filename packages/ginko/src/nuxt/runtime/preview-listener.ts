@@ -119,7 +119,8 @@ function outline(scroll: boolean) {
   const rect = target.getBoundingClientRect()
   const px = (n: number) => `${n / focus.zoom}px`
   Object.assign(box.style, { top: `${rect.top + window.scrollY}px`, left: `${rect.left + window.scrollX}px`, width: `${rect.width}px`, height: `${rect.height}px`, borderRadius: px(4), outlineWidth: px(2), outlineOffset: px(3) })
-  Object.assign((box.firstChild as HTMLSpanElement).style, { left: px(-5), marginBottom: px(5), padding: `${px(1)} ${px(6)}`, borderRadius: px(4), fontSize: px(12) })
+  // At the right end: text starts on the left, so the label covers less of what stands above it.
+  Object.assign((box.firstChild as HTMLSpanElement).style, { right: px(-5), marginBottom: px(5), padding: `${px(1)} ${px(6)}`, borderRadius: px(4), fontSize: px(12) })
   ;(box.firstChild as HTMLSpanElement).textContent = focus.label
   ;(box.firstChild as HTMLSpanElement).style.display = focus.label ? '' : 'none'
   if (scroll && target !== shownFor && (rect.top < 0 || rect.bottom > window.innerHeight)) {
