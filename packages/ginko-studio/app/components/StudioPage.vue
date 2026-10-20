@@ -9,7 +9,8 @@ defineSlots<{ default(): unknown; actions?(): unknown; lede?(): unknown; aside?(
 <template>
   <div :class="['mx-auto w-full px-4 pt-4 pb-10 min-[900px]:px-8 min-[900px]:pt-7 min-[900px]:pb-12', wide ? 'max-w-[1440px]' : 'max-w-[1200px]']">
     <header class="mb-6 flex flex-wrap items-start gap-x-4 gap-y-3">
-      <div class="min-w-0 flex-1">
+      <!-- At least 14rem (or the whole row): wide actions wrap under the title instead of squeezing it on a phone. -->
+      <div class="min-w-[min(100%,14rem)] flex-1">
         <h1 class="text-[1.375rem] font-semibold tracking-tight">{{ title }}</h1>
         <p v-if="lede || $slots.lede" class="mt-1 max-w-[65ch] text-muted-foreground min-[900px]:text-sm"><slot name="lede">{{ lede }}</slot></p>
       </div>
