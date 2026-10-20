@@ -11,7 +11,7 @@ import { provideStudioSite } from '../utils/labels'
 import { localDraftKeys } from '../composables/useLocalDraft'
 import { rememberSite } from '../composables/useRecentEntries'
 import { isModKey } from '../utils/keys'
-import { provideCrumbs, type Crumb } from '../composables/usePageHeader'
+import { provideCrumbs, providePanelBar, type Crumb } from '../composables/usePageHeader'
 
 const route = useRoute()
 const { t, format } = useI18n()
@@ -113,6 +113,8 @@ const bottomBar = useBottomBar()
 const showTabs = computed(() => bottomBar.value === 0)
 // Signed out, no access or not loaded: no site to navigate, so no rail, bars or site name (the message offers the way out).
 const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.value || !!deletion.value)
+// The wide top bar shows with the site; pages teleport their actions into it while it does.
+providePanelBar(() => !blocked.value)
 /** The frame of the signed-out, no-access and not-loaded messages: the page frame's width and padding (StudioPage). */
 const BLOCKED = 'mx-auto grid w-full max-w-[1200px] justify-items-start gap-3 px-4 pt-4 min-[900px]:px-8 min-[900px]:pt-7'
 </script>
