@@ -1,6 +1,6 @@
 export * from './types.ts'
 export { f, isTranslatable, effectiveMax, isShown, effectiveProfile, effectiveAlt, ALT_MAX, ALT_INVISIBLE } from './fields.ts'
-export { defineSite, single, collection, withoutFiles, type WithoutFiles, type SiteInput, type Migration, type MigrationContext, type RouteTemplate } from './site.ts'
+export { defineSite, single, collection, withoutFiles, siteForContent, type WithoutFiles, type SiteInput, type Migration, type MigrationContext, type RouteTemplate } from './site.ts'
 export { serializeSchema, platformSchema, migrationFingerprint, checkSchema, checkSite, isHourPlans, isTimeZone, mainLocale, ordered, grantGroups, SCHEMA_LIMITS } from './schema.ts'
 export { SITE_BUDGET, byteSize, entryBytes, fitsBudget, largestEntryBytes, largestFieldBytes } from './budget.ts'
 export { parseMarkdown, plainText, wordsOf, textBlocks, URL_PROPS, UNSAFE_LINK, type TextBlock, describeProfile, profileCovers, MARKDOWN_PROFILES, type MarkdownProfile, type AttributeRegistry, type MarkdownToc, type MarkdownTree, type MarkdownValue, type ParsedMarkdown, type ParseOptions, type TocLink } from './markdown.ts'

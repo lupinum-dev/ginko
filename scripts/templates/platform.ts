@@ -143,8 +143,9 @@ export async function platformGate(name: string, root: string): Promise<Step[]> 
       await run('node', [...monorepo, 'import', exportDir], root)
     })) return steps
 
-    // 5. The site on :3000 with the platform layer (no brick reads files). The specs prove that its content comes from the Studio.
-    const siteApp = start('site', 'pnpm', ['exec', 'nuxt', 'dev', '--port', String(PORTS.site), '--extends', join(root, 'scripts/templates/platform-layer')], templateDir, { ...process.env, GINKO_LOCAL: '1', NUXT_IGNORE_LOCK: '1' })
+    // 5. The site on :3000 with GINKO_CONTENT=platform (no brick reads files), as the hosted demos run. The specs prove
+    // that its content comes from the Studio.
+    const siteApp = start('site', 'pnpm', ['exec', 'nuxt', 'dev', '--port', String(PORTS.site)], templateDir, { ...process.env, GINKO_CONTENT: 'platform', GINKO_LOCAL: '1', NUXT_IGNORE_LOCK: '1' })
     if (!await must('site answers on :3000', () => waitFor('The site on :3000', answers(`http://localhost:${PORTS.site}/`), 240, siteApp))) return steps
 
     // 6. The Studio jobs. Playwright runs as a child (not a blocking call), so a signal or the time limit still stops it.

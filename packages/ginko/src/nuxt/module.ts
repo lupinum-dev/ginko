@@ -11,7 +11,7 @@ import { unservedPaths } from './pages.ts'
 import { prerenderRoutes } from './prerender.ts'
 import { ginkoRouteRules, ginkoVercelConfig } from './route-rules.ts'
 import { restartOnConfigChange } from './watch.ts'
-import { checkSite, coreMessage, entryRedirects, fileMarkdownRef, redirectProblems, serializeSchema, withMarkdownRefs, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
+import { checkSite, siteForContent, coreMessage, entryRedirects, fileMarkdownRef, redirectProblems, serializeSchema, withMarkdownRefs, type Bundle, type Locale, type MarkdownTree, type Schema, type SiteInput } from '../core/index.ts'
 
 // Runtime files are .ts in the workspace and .mjs in the published build (dist/nuxt/runtime), so the extension follows this file's own.
 const runtimeExt = import.meta.url.endsWith('.mjs') ? 'mjs' : 'ts'
@@ -38,8 +38,9 @@ export default defineNuxtModule<SiteInput>({
   meta: { name: '@lupinum/ginko', configKey: 'ginko', compatibility: { nuxt: '^4.6.0 || ^5.0.0-0' } },
   // The site's data for the Nuxt SEO modules it installs (nuxt-seo.ts). Read from nuxt.config, before setup runs.
   moduleDependencies: (nuxt) => nuxtSeoDependencies((nuxt.options as unknown as { ginko?: SiteInput }).ginko, nuxt),
-  async setup(site, nuxt) {
-    if (!site?.site || !site.bricks) throw new Error('[ginko] Option `ginko` is missing: the result of defineSite() from ginko.config.ts.')
+  async setup(options, nuxt) {
+    if (!options?.site || !options.bricks) throw new Error('[ginko] Option `ginko` is missing: the result of defineSite() from ginko.config.ts.')
+    const site: SiteInput = siteForContent(options, process.env.GINKO_CONTENT)
     // The serialized schema is the site's own contract: checked at build (the same check as `ginko check`), used at runtime for defaults.
     const schema = serializeSchema(site)
     const problems = checkSite(site, schema)

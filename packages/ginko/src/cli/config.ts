@@ -2,7 +2,7 @@
 // this repo), so no build step and no loader dependency. A changed file is read again with a
 // new query string, which gives Node a fresh module instance.
 import { pathToFileURL } from 'node:url'
-import type { SiteInput } from '../core/index.ts'
+import { siteForContent, type SiteInput } from '../core/index.ts'
 import { CliError, isObject } from './model.ts'
 
 export async function loadConfig(path: string, revision = 0): Promise<SiteInput> {
@@ -17,5 +17,9 @@ export async function loadConfig(path: string, revision = 0): Promise<SiteInput>
   if (!isObject(config) || typeof config.site !== 'string' || !isObject(config.bricks)) {
     throw new CliError(`${path} needs a default export with defineSite(…).`)
   }
-  return config as unknown as SiteInput
+  try {
+    return siteForContent(config as unknown as SiteInput, process.env.GINKO_CONTENT)
+  } catch (error) {
+    throw new CliError((error as Error).message)
+  }
 }
