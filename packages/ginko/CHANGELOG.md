@@ -1,5 +1,13 @@
 # @lupinum/ginko
 
+## 0.6.4
+
+### Patch Changes
+
+- [#36](https://github.com/lupinum-dev/ginko/pull/36) [`02628b2`](https://github.com/lupinum-dev/ginko/commit/02628b2b2329bc769d9dfd0c358837afdb4d2af6) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `seo.noindex` to the site config: the pages it names leave the sitemap and answer with `X-Robots-Tag: noindex`.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.6.4
+
 ## 0.6.3
 
 ### Patch Changes
