@@ -512,16 +512,18 @@ export const importRefs = internalMutation({
 
 /**
  * Opens an EMPTY site for the import steps on a hosted deployment (`npx convex run --prod seed:importOpen`). Empty means
- * the state after `sites:bootstrap` and the first release: no changes, no ops, and no entries except the singles that
- * release created from their defaults (release.ts newSingle) and nobody has touched. Those are removed here, so the
- * export's singles take their place; `importDone` creates again any single the export did not bring, and closes the site.
+ * the state after `sites:bootstrap` and the first release: no changes but the release's own, no ops, and no entries
+ * except the singles that release created from their defaults (release.ts newSingle) and nobody has touched. Those are
+ * removed here, so the export's singles take their place; `importDone` creates again any single the export did not
+ * bring, and closes the site.
  */
 export const importOpen = internalMutation({
   args: { site: v.string() },
   handler: async (ctx, args) => {
     const site = await siteBySlug(ctx, args.site)
     const schema = site.schema as Schema
-    const used = (await ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', site._id)).first())
+    // A release records itself in the history (kind 'release'); that is not content.
+    const used = (await ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', site._id)).filter((q) => q.neq(q.field('kind'), 'release')).first())
       ?? (await ctx.db.query('ops').withIndex('by_site_actor_op', (q) => q.eq('site', site._id)).first())
     const entries = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).collect()
     const untouched = (e: Doc<'entries'>) => {

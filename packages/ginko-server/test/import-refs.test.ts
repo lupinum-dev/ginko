@@ -10,9 +10,8 @@ import type { Runner } from '../../../packages/ginko/src/cli/local.ts'
 import type { Fields } from '@lupinum/ginko'
 import { printOf, type Schema } from '@lupinum/ginko/internal'
 import { remapEntryRefs } from '../convex/lib/content'
-import { insertSingle, newSingle } from '../convex/release'
 import { readTreesJson } from '../convex/lib/trees'
-import { api } from '../convex/_generated/api'
+import { api, internal } from '../convex/_generated/api'
 import { errorOf, setup } from './setup'
 
 type Setup = Awaited<ReturnType<typeof setup>>
@@ -334,29 +333,24 @@ describe('hosted import guard', () => {
   it('takes the first import after the first release: untouched default singles give way, a missing one comes back', async () => {
     const s = await setup()
     const singles = {
-      home: { kind: 'single', label, fields: { count: { type: 'number', label, default: 3 } } },
-      about: { kind: 'single', label, fields: { count: { type: 'number', label, default: 1 } } },
+      home: { kind: 'single', label, fields: { count: { type: 'number', label, min: 0, max: 99, step: 1, default: 3 } } },
+      about: { kind: 'single', label, fields: { count: { type: 'number', label, min: 0, max: 99, step: 1, default: 1 } } },
     }
-    await s.t.run(async (ctx) => {
-      const row = (await ctx.db.get(s.other))!
-      const schema = { ...(row.schema as Schema), bricks: singles } as unknown as Schema
-      // What the first release stores: each single from its defaults, counted in the site's budget.
-      let bytes = 0
-      for (const [brick, def] of Object.entries(schema.bricks)) {
-        const single = await newSingle(brick, def.fields, 'de')
-        await insertSingle(ctx, s.other, single, schema.locales)
-        bytes += single.bytes
-      }
-      await ctx.db.patch(s.other, { schema, entryCount: 2, bytes })
+    // A new site as an operator makes it, then its first release as the CLI sends it.
+    await s.t.mutation(internal.sites.bootstrap, { slug: 'neu', name: 'Neu', url: 'https://neu.example' })
+    const site = (await s.t.run((ctx) => ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', 'neu')).unique()))!
+    await s.t.mutation(internal.release.release, {
+      site: site._id, actor: 'pushkey:test', commit: 'c1', expectedSchemaRev: site.schemaRev, expectedContentRev: site.contentRev,
+      schema: { ...(site.schema as Schema), bricks: singles }, writes: [],
     })
     const dir = await exportFolder([{ id: 'home', brick: 'home', kind: 'single', order: 0, data: { count: 7 }, prints: {}, rev: 1 }], singles)
     const { run, upload } = runnerOf(s)
-    await importSite({ dir, run, upload, log: () => undefined, prod: true, site: 'andere' })
+    await importSite({ dir, run, upload, log: () => undefined, prod: true, site: 'neu' })
 
-    const rows = await entriesOf(s, s.other)
+    const rows = await entriesOf(s, site._id)
     expect(rows.map((e) => [e.brick, e.data]).sort()).toEqual([['about', { count: 1 }], ['home', { count: 7 }]])
-    const site = (await s.t.run((ctx) => ctx.db.get(s.other)))!
-    expect([site.entryCount, site.bytes]).toEqual([2, rows.reduce((sum, e) => sum + e.bytes, 0)])
+    const after = (await s.t.run((ctx) => ctx.db.get(site._id)))!
+    expect([after.entryCount, after.bytes]).toEqual([2, rows.reduce((sum, e) => sum + e.bytes, 0)])
   })
 
   it('stops before it opens the site when the released schema lacks a brick of the export', async () => {
