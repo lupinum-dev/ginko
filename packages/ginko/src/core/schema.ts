@@ -242,6 +242,8 @@ export function checkSite(site: SiteInput, schema: Schema = serializeSchema(site
   // The share cards' brand colour; any other format would draw them grey without a word.
   const color = site.seo?.color
   if (color !== undefined && !/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(color)) problems.push(`seo.color: invalid colour “${String(color)}” (expected “#rrggbb” or “#rgb”).`)
+  // A key that names no page would keep nothing out of search, silently.
+  for (const key of site.seo?.noindex ?? []) if (!Object.hasOwn(site.pages, key)) problems.push(`seo.noindex: “${key}” is not a key of pages.`)
   return [...problems, ...checkSchema(schema)]
 }
 

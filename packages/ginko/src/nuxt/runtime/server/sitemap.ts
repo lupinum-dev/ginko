@@ -16,5 +16,5 @@ export default defineEventHandler(async (event) => {
   if (!main) throw createError({ statusCode: 503, statusMessage: 'Content unavailable', fatal: true })
   event.res.headers.set('content-type', 'application/xml; charset=utf-8')
   event.res.headers.set('x-ginko-rev', `${main.schemaRev}.${main.contentRev}`)
-  return sitemapXml(schema, bundles, todayIn(config.timeZone), locales)
+  return sitemapXml(schema, bundles, todayIn(config.timeZone), locales, config.seo.noindex)
 })

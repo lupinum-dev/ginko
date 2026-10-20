@@ -146,6 +146,14 @@ describe('4. locales and currency', () => {
   ])('seo.color %s', (color, expected) => {
     expect(checkSite(site({}, { seo: { color } }))).toEqual(expected)
   })
+
+  // Wrong behaviour caught: a typo in seo.noindex keeps the page in the sitemap and in search, without a word.
+  it.each([
+    [['home'], []],
+    [['thanks'], ['seo.noindex: “thanks” is not a key of pages.']],
+  ])('seo.noindex %j', (noindex, expected) => {
+    expect(checkSite(site({}, { seo: { noindex } }))).toEqual(expected)
+  })
 })
 
 describe('4b. translatable labels', () => {
