@@ -5,9 +5,9 @@ import { isPreviewHost, robotsTxt } from '../../../internal.ts'
 import type { GinkoPublicConfig } from '../shared.ts'
 
 export default defineEventHandler((event) => {
-  const { url } = useRuntimeConfig().public.ginko as GinkoPublicConfig
+  const { url, noindex: always } = useRuntimeConfig().public.ginko as GinkoPublicConfig
   event.res.headers.set('content-type', 'text/plain; charset=utf-8')
   // A static build (nuxt generate) has no request host: its output is meant for the site's own host.
-  const noindex = !import.meta.prerender && isPreviewHost(getRequestHost(event), url)
+  const noindex = always || (!import.meta.prerender && isPreviewHost(getRequestHost(event), url))
   return robotsTxt({ noindex, sitemap: new URL('/sitemap.xml', url).href })
 })
