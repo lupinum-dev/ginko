@@ -3,7 +3,6 @@
      empty alt text; a failed photo puts back the value that was there before. The photo serves every
      language, so another language than the main one edits only its description. -->
 <script setup lang="ts">
-import { CONTAINED_FIELD } from './sizes'
 import { computed, defineAsyncComponent, ref, shallowRef, watch } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
@@ -135,8 +134,8 @@ function setAlt(text: string) {
     </template>
 
     <div v-if="fileId" class="grid gap-1.5">
-      <div :class="CONTAINED_FIELD">
-        <Label :for="altId" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('fields.image.alt') }}</Label>
+      <div class="grid gap-1.5">
+        <Label :for="altId" class="text-sm leading-snug font-medium">{{ t('fields.image.alt') }}</Label>
         <Input :id="altId" type="text" :required="!libraryAlt" :aria-required="!libraryAlt" :placeholder="libraryAlt || undefined" :model-value="altText" :aria-invalid="invalid" :aria-describedby="altDescribedBy" @update:model-value="setAlt(String($event))" />
       </div>
       <p :id="altHintId" class="text-sm text-muted-foreground">{{ libraryAlt ? t('fields.image.altFromLibrary') : t('fields.image.altHint') }}</p>

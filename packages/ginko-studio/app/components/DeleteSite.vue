@@ -4,7 +4,6 @@
 import { api } from '#convex/api'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
-import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
 import { opErrorOf } from '../composables/useOps'
 
 const props = defineProps<{ slug: string, name: string }>()
@@ -30,8 +29,8 @@ async function submit() {
     <h2 id="delete-site-title" class="text-base font-semibold tracking-tight">{{ t('site.delete.title') }}</h2>
     <p class="text-[13px] text-muted-foreground">{{ t('site.delete.text', { site: name }) }}</p>
     <form class="grid gap-3" @submit.prevent="submit">
-      <div :class="CONTAINED_FIELD">
-        <label for="delete-site-confirm" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('site.delete.confirmLabel', { slug }) }}</label>
+      <div class="grid gap-1.5">
+        <label for="delete-site-confirm" class="text-sm leading-snug font-medium">{{ t('site.delete.confirmLabel', { slug }) }}</label>
         <Input id="delete-site-confirm" v-model="typed" autocomplete="off" autocapitalize="off" spellcheck="false" />
       </div>
       <p v-if="problem" class="font-semibold text-destructive" role="alert">{{ problem }}</p>

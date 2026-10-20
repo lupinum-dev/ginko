@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
 // SPEC 10, UI 6: email, then a 6-digit code. The answer to "send code" is the same for every
 // address, so the page never tells whether someone has an account.
 import { api } from '#convex/api'
@@ -85,8 +84,8 @@ function otherEmail() {
     <h1 class="mb-5 text-xl font-semibold tracking-tight">{{ t('login.title') }}</h1>
     <p v-if="available === false" class="text-muted-foreground">{{ t('login.unavailable') }}</p>
     <form v-else-if="step === 'email'" class="grid gap-2.5" novalidate @submit.prevent="sendCode">
-      <div :class="CONTAINED_FIELD">
-        <label for="email" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('login.email') }}</label>
+      <div class="grid gap-1.5">
+        <label for="email" class="text-sm leading-snug font-medium">{{ t('login.email') }}</label>
         <Input id="email" v-model="email" type="email" autocomplete="email" inputmode="email" required :aria-invalid="!!error" :aria-describedby="error ? 'login-error' : undefined" />
       </div>
       <p v-if="error" id="login-error" class="text-sm text-destructive" role="alert">{{ error }}</p>

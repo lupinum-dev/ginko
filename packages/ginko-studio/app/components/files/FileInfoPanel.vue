@@ -2,7 +2,6 @@
      the actions. Everything that changes the library is for owner and admin (`canManage`). -->
 <script setup lang="ts">
 import { acceptOf } from '@lupinum/ginko/internal'
-import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from '#imports'
 import { FileTextIcon } from '@lucide/vue'
@@ -118,8 +117,8 @@ const uploaded = computed(() => (info.value ? whenFull(info.value.createdAt, sit
     <p v-if="canManage && info.kind === 'image' && !inTrash" class="text-xs text-muted-foreground">{{ t('files.focusHint') }}</p>
 
     <div class="grid gap-1">
-      <div :class="CONTAINED_FIELD">
-        <Label for="file-name" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('files.info.name') }}</Label>
+      <div class="grid gap-1.5">
+        <Label for="file-name" class="text-sm leading-snug font-medium">{{ t('files.info.name') }}</Label>
         <Input id="file-name" v-model="name" :disabled="!canManage || inTrash" @input="savedName = false" @blur="saveName" @keydown.enter.prevent="($event.target as HTMLInputElement).blur()" />
       </div>
       <p v-if="savedName" class="text-xs text-muted-foreground" role="status">{{ t('files.info.saved') }}</p>

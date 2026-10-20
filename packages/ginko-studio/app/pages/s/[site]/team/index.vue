@@ -4,7 +4,6 @@
 <script setup lang="ts">
 import type { Label } from '@lupinum/ginko'
 import { grantGroups } from '@lupinum/ginko/internal'
-import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
 import { api } from '#convex/api'
 import { opErrorOf } from '../../../../composables/useOps'
 import { shownLabel } from '../../../../utils/labels'
@@ -332,8 +331,8 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
       <section class="grid gap-3">
         <Button v-if="!inviting" ref="inviteButton" type="button" class="justify-self-start" @click="openForm">{{ t('site.team.invite') }}</Button>
         <form v-else class="grid gap-4 rounded-xl border bg-card p-4" @submit.prevent="sendInvite">
-          <div :class="CONTAINED_FIELD">
-            <label for="invite-email" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('site.form.email') }}</label>
+          <div class="grid gap-1.5">
+            <label for="invite-email" class="text-sm leading-snug font-medium">{{ t('site.form.email') }}</label>
             <Input id="invite-email" v-model="form.email" type="email" autocomplete="off" required :aria-invalid="!!formError" />
           </div>
 
@@ -400,8 +399,8 @@ const ownerCount = computed(() => (members.value ?? []).filter((m) => m.role ===
         <Button v-if="!keyForm.open && !freshKey" ref="newKeyButton" type="button" variant="secondary" class="justify-self-start" @click="openKeyForm">{{ t('site.keys.new') }}</Button>
         <form v-else-if="keyForm.open" class="grid gap-4 rounded-xl border bg-card p-4" @submit.prevent="createKey">
           <div class="grid gap-1.5">
-            <div :class="CONTAINED_FIELD">
-              <label for="key-label" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('site.keys.name') }}</label>
+            <div class="grid gap-1.5">
+              <label for="key-label" class="text-sm leading-snug font-medium">{{ t('site.keys.name') }}</label>
               <Input id="key-label" v-model="keyForm.label" maxlength="60" required autocomplete="off" aria-describedby="key-label-hint" :aria-invalid="!!keyFormError" />
             </div>
             <p id="key-label-hint" class="text-[13px] text-muted-foreground">{{ t('site.keys.nameHint') }}</p>

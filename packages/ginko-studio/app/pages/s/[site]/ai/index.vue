@@ -1,7 +1,6 @@
 <!-- Mit KI verbinden (SPEC 16): a person connects their own assistant (Claude, ChatGPT, Cursor) with a key.
      The key is shown once; it acts as this person with their tasks only. Rare job, laptop: clarity over speed. -->
 <script setup lang="ts">
-import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
 import { api } from '#convex/api'
 import { opErrorOf } from '../../../../composables/useOps'
 import { shownLabel } from '../../../../utils/labels'
@@ -116,8 +115,8 @@ async function revoke(id: string) {
       <h2 id="new-title" class="text-base font-semibold tracking-tight">{{ t('site.ai.newKey') }}</h2>
       <form class="grid max-w-lg gap-3" @submit.prevent="create">
         <div class="grid gap-1.5">
-          <div :class="CONTAINED_FIELD">
-            <label for="key-label" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('site.ai.forWhich') }}</label>
+          <div class="grid gap-1.5">
+            <label for="key-label" class="text-sm leading-snug font-medium">{{ t('site.ai.forWhich') }}</label>
             <Input id="key-label" v-model="label" maxlength="60" required :aria-invalid="!!formError" aria-describedby="key-label-hint" />
           </div>
           <p id="key-label-hint" class="text-[13px] text-muted-foreground">{{ t('site.ai.labelHint') }}</p>

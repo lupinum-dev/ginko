@@ -80,9 +80,6 @@ const showCount = computed(() => (props.field.type === 'text' || props.field.typ
 const inputType = computed(() => (props.field.type === 'text' && props.field.format ? ({ url: 'url', email: 'email', tel: 'tel' } as const)[props.field.format] : 'text'))
 // A choice with up to five options shows radio buttons (GinkoFieldChoice), more a select.
 const radios = computed(() => props.field.type === 'choice' && props.field.options.length <= 5)
-// Single-line controls carry their label inside the box (Prime look). Groups, Markdown, switches and dates (their
-// Today/Tomorrow buttons sit next to the box) keep it above.
-const contained = computed(() => ['text', 'longtext', 'number', 'money', 'time'].includes(props.field.type) || (props.field.type === 'choice' && !radios.value))
 const isGroup = computed(() => ['list', 'choices', 'daterange', 'image', 'file'].includes(props.field.type))
 
 // Translation view (UI.md 4): the main language's value next to the input, and whether it changed
@@ -128,7 +125,7 @@ const missingText = computed(() => {
 </script>
 
 <template>
-  <FieldFrame :id="id" :label="label" :hint="hint" :optional="!!field.optional && field.type !== 'boolean'" :errors="errors.map((e) => messageOf(e))" :group="isGroup" :inline="field.type === 'boolean'" :contained="contained" :short="['number', 'money', 'time'].includes(field.type)" :count="showCount ? `${text.length}/${max}` : undefined">
+  <FieldFrame :id="id" :label="label" :hint="hint" :optional="!!field.optional && field.type !== 'boolean'" :errors="errors.map((e) => messageOf(e))" :group="isGroup" :inline="field.type === 'boolean'" :short="['number', 'money', 'time'].includes(field.type)" :count="showCount ? `${text.length}/${max}` : undefined">
     <template v-if="trState && translation" #source>
       <div class="grid gap-2 rounded-md bg-muted p-3 text-sm" data-slot="translation-source">
         <p class="text-xs font-semibold text-muted-foreground">{{ translation.mainName() }}</p>
