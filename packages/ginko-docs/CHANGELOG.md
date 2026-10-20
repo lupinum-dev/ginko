@@ -1,5 +1,16 @@
 # @lupinum/ginko-docs
 
+## 0.6.3
+
+### Patch Changes
+
+- [#34](https://github.com/lupinum-dev/ginko/pull/34) [`d451a07`](https://github.com/lupinum-dev/ginko/commit/d451a0764427989ad4abfb346c390a28d2955dd6) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `idPrefix` to `GinkoMarkdown`: it puts a prefix before every id and `#` link of one body, so a page that shows several bodies has no duplicate ids. The docs changelog uses it with each release's anchor.
+- Updated dependencies [[`d451a07`](https://github.com/lupinum-dev/ginko/commit/d451a0764427989ad4abfb346c390a28d2955dd6), [`d451a07`](https://github.com/lupinum-dev/ginko/commit/d451a0764427989ad4abfb346c390a28d2955dd6), [`d451a07`](https://github.com/lupinum-dev/ginko/commit/d451a0764427989ad4abfb346c390a28d2955dd6)]:
+  - @lupinum/ginko@0.6.3
+  - @lupinum/ginko-components@0.6.3
+  - @lupinum/ginko-content@0.6.3
+  - @lupinum/ginko-i18n@0.6.3
+
 ## 0.6.2
 
 ### Patch Changes
