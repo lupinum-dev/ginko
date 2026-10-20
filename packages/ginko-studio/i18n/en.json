@@ -384,7 +384,6 @@
       "cancel": "Cancel deletion"
     },
     "team": {
-      "heading": "Team",
       "ownersOnly": "Only owners can see the team.",
       "members": "Members",
       "you": "You",
