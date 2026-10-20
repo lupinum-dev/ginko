@@ -208,7 +208,12 @@
       "needsTitle": "Die Vorschau zeigt die Seite, sobald „{field}“ ausgefüllt ist.",
       "untranslated": "Noch nicht auf {language} übersetzt. Bis dahin ist der Eintrag auf der Website in dieser Sprache nicht zu sehen.",
       "untranslatedListed": "Noch nicht auf {language} übersetzt. Bis dahin hat der Eintrag in dieser Sprache keine eigene Seite. Listen zeigen ihn auf {main}.",
-      "openSite": "Website öffnen"
+      "openSite": "Website öffnen",
+      "device": "Website anzeigen als",
+      "desktop": "Desktop",
+      "phone": "Handy",
+      "open": "Öffnen",
+      "ended": "Die Website zeigt das nicht mehr: Es war bis zum {date} zu sehen. Mit einem späteren Datum ist es wieder zu sehen."
     },
     "remove": {
       "title": "Eintrag entfernen",
@@ -270,7 +275,13 @@
       "text": "„{field}“ ist viel kürzer als vorher: {after} statt {before} Zeichen.",
       "files": "{count, plural, one {# Datei} other {# Dateien}} weniger."
     },
-    "groupHasGaps": "Übersetzung fehlt oder ist veraltet"
+    "groupHasGaps": "Übersetzung fehlt oder ist veraltet",
+    "side": {
+      "label": "Details",
+      "status": "Status",
+      "draftNote": "Noch nicht auf der Website. Veröffentliche es, wenn es fertig ist.",
+      "scheduledNote": "Es geht zu diesem Zeitpunkt von selbst online."
+    }
   },
   "site": {
     "zoneNote": "Alle Zeiten in der Zeitzone der Website ({zone}).",

@@ -1,11 +1,14 @@
-<!-- Alles bearbeiten (UI.md 4): every field of one entry, the language switch with translation
-     status, a sticky save bar, and the preview beside it on wide screens. Same engine as the tasks. -->
+<!-- Alles bearbeiten (UI.md 4): every field of one entry, the language switch with translation status, Save, and the
+     preview. Same engine as the tasks. Phones: a sticky save bar at the bottom, the preview under the form. Wide
+     screens (design A): Save, Preview and the save state in the panel's top bar; from 1280px a right column with the
+     status (publishing) and the entry's address, picture and search fields; with the preview open the area list folds
+     away and the form and the preview share the panel. -->
 <script setup lang="ts">
 import type { Brick, CollectionBrick, Fields, Json, Label as LabelText, Locale } from '@lupinum/ginko'
-import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, textIn, todayIn, untranslatedMode, urlsFor, type Schema } from '@lupinum/ginko/internal'
+import { SITE_BUDGET, defaultsFor, entryBytes, isShown, ordered, routeUrls, textIn, todayIn, untranslatedMode, urlsFor, visibleUntil, type Schema } from '@lupinum/ginko/internal'
 import type { Entry } from '../composables/useSiteData'
 import { api } from '#convex/api'
-import { draftSlugs, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
+import { draftSlugs, formatDay, hasTranslation, hidesUntranslated, languageName, leafTranslation, leafValue, missingNote, pageOf, previewFileIds, publishQuestion, taskRef, titleOf, translationLines, weekShortcuts, type Task } from '../utils/content'
 import { shownLabel } from '../utils/labels'
 import { msToZoned, scheduleProblem, whenText } from '../utils/when'
 import { sizeText } from '../utils/size'
@@ -13,29 +16,30 @@ import { isModKey } from '../utils/keys'
 import { shrunkHint, shrunkTexts } from '../utils/shrunk'
 import { isProposal, opErrorOf } from '../composables/useOps'
 import { TRANSLATION } from '@lupinum/ginko-editor'
-import { EllipsisIcon } from '@lucide/vue'
+import { EllipsisIcon, EyeIcon, EyeOffIcon } from '@lucide/vue'
 import WhyNotPublic from './WhyNotPublic.vue'
-import ScheduleField from './ScheduleField.vue'
 import EntryGoneBanner from './EntryGoneBanner.vue'
 import LocalDraftOffer from './LocalDraftOffer.vue'
 import ConflictPanel from './ConflictPanel.vue'
 import EntryRemoveDialog from './EntryRemoveDialog.vue'
+import EntryPublishPanel from './EntryPublishPanel.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
 import { rememberEntry } from '../composables/useRecentEntries'
 import EntryFields from './EntryFields.vue'
 import { groupFields, type FieldGroup } from '../utils/groups'
 import { refDebounced, useElementSize, useMediaQuery } from '@vueuse/core'
+import { useId } from 'vue'
 import { useBottomBar } from '../composables/useBottomBar'
 import { siteOrigin } from '../utils/origin'
 import { provideSiteRefs } from '../composables/useSiteRefs'
+import { useCrumbs, usePanelBar } from '../composables/usePageHeader'
+import { useAreaList } from '../composables/useAreaList'
+import { focusText, previewPageOf } from '../utils/previewPage'
 import { Button } from '@studio/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@studio/components/ui/dropdown-menu'
 import { Badge } from '@studio/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
-import { Label } from '@studio/components/ui/label'
-import { Separator } from '@studio/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@studio/components/ui/tabs'
-import { RadioGroup, RadioGroupItem } from '@studio/components/ui/radio-group'
 
 const props = defineProps<{
   /** `release`: the site's last release, null before the first (nothing of it is online yet). */
@@ -229,22 +233,61 @@ const title = computed(() => {
 })
 const savedOnce = ref(false)
 const formEl = ref<HTMLFormElement | null>(null)
+const formId = useId()
+
+// Wide screens remember whether the preview was open (per browser; storage can be missing or refused). Phones start
+// closed: there the preview sits under the long form.
+const PREVIEW_OPEN = 'ginko:preview-open'
+const showPreview = ref(false)
+function togglePreview() {
+  showPreview.value = !showPreview.value
+  if (bar.value) try { localStorage.setItem(PREVIEW_OPEN, showPreview.value ? '1' : '0') } catch { /* not remembered */ }
+}
+// Wide screens: the panel's top bar takes Save and Preview; the crumbs say where the entry is.
+const bar = usePanelBar()
+onMounted(() => {
+  if (!bar.value) return
+  try { if (localStorage.getItem(PREVIEW_OPEN) === '1') showPreview.value = true } catch { /* closed */ }
+})
+const areaList = useAreaList()
+watch([bar, showPreview], ([wide, open]) => areaList.foldFor(wide && open), { immediate: true })
+onBeforeUnmount(() => areaList.foldFor(false))
+const split = computed(() => bar.value && showPreview.value)
+const wideSide = useMediaQuery('(min-width: 1280px)')
+/** The right column: from 1280px while the preview is closed (the preview takes that room when open), when it has something to show. */
+const sideMode = computed(() => bar.value && wideSide.value && !showPreview.value && (statusCard.value || !!sideImage.value || sideSlug.value.length > 0 || sideGroups.value.length > 0))
+const base = computed(() => `/s/${props.site.slug}/all`)
+useCrumbs(() => [
+  { label: t('nav.all'), to: base.value },
+  ...(props.brick.kind === 'collection' ? [{ label: shown(props.brick.label), to: `${base.value}/${props.brickKey}` }, { label: title.value }] : [{ label: title.value }]),
+])
 // After a refused save, the first field with an error gets the focus (its message is read with it).
 watch(issues, (list) => { if (list.length) nextTick(() => formEl.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()) })
 
 // Field groups (display only). Phones always show headings; tabs need room.
 const grouped = computed(() => groupFields(fields.value))
 const visibleGroups = computed(() => grouped.value.groups.filter((g) => g.fields.some(([, f]) => isShown(f, draft.value))))
+/**
+ * What the right column shows besides the status: the address (slug), the first picture outside a group (the cover),
+ * and a group for search engines and sharing. Display only: in one column they stay where the config puts them.
+ */
+const SIDE_GROUP = /^(seo|search|sharing|meta)$/i
+const sideSlug = computed(() => grouped.value.ungrouped.filter(([, f]) => f.type === 'slug'))
+const sideImage = computed(() => grouped.value.ungrouped.find(([, f]) => f.type === 'image'))
+const sideGroups = computed(() => visibleGroups.value.filter((g) => SIDE_GROUP.test(g.id)))
+const sideKeys = computed(() => new Set([...sideSlug.value, ...(sideImage.value ? [sideImage.value] : [])].map(([key]) => key)))
+const mainUngrouped = computed(() => (sideMode.value ? grouped.value.ungrouped.filter(([key]) => !sideKeys.value.has(key)) : grouped.value.ungrouped))
+const mainGroups = computed(() => (sideMode.value ? visibleGroups.value.filter((g) => !SIDE_GROUP.test(g.id)) : visibleGroups.value))
 const wide = useMediaQuery('(min-width: 768px)', { ssrWidth: 1024 })
 const tabbed = computed(() => props.brick.layout === 'tabs' && wide.value)
 const activeTab = ref('')
-watch(visibleGroups, (list) => { if (!list.some((g) => g.id === activeTab.value)) activeTab.value = list[0]?.id ?? '' }, { immediate: true })
+watch(() => mainGroups.value, (list) => { if (!list.some((g) => g.id === activeTab.value)) activeTab.value = list[0]?.id ?? '' }, { immediate: true })
 const groupHasIssue = (g: FieldGroup) => g.fields.some(([key]) => issues.value.some((i) => i.path === key || i.path.startsWith(`${key}.`)))
 // In another language, a tab whose fields miss a translation or hold an outdated one says so, like the language switch.
 const gapRoots = computed(() => new Set([...(storedTranslation.value?.missing ?? []), ...(storedTranslation.value?.outdated ?? [])].map((leaf) => leaf.split('.')[0]!)))
 const groupHasGap = (g: FieldGroup) => g.fields.some(([key]) => gapRoots.value.has(key))
 // A refused save shows the first tab that holds an error.
-watch(issues, () => { const first = visibleGroups.value.find(groupHasIssue); if (tabbed.value && first) activeTab.value = first.id })
+watch(issues, () => { const first = mainGroups.value.find(groupHasIssue); if (tabbed.value && first) activeTab.value = first.id })
 const setField = (key: string, value: Json | undefined) => form.setField(key, value)
 const fieldProps = computed(() => ({ all: props.brick.fields, draft: draft.value, baseline: baseline.value, locale: locale.value, locales: props.schema.locales, issues: issues.value, route: props.brick.kind === 'collection' ? props.brick.route : undefined, weeks: (key: string) => weekShortcuts(props.brick, key) }))
 
@@ -264,6 +307,9 @@ const size = computed(() => {
 /** Long texts that lost most of their length since the last save (a slip, or a rewrite): a hint, never a block. */
 const shrunk = computed(() => (dirty.value ? shrunkTexts(fields.value, baseline.value, typed.value, locale.value).map((s) => shrunkHint(s, shown(fields.value[s.key]!.label), { t, format })) : []))
 
+/** Save is only aria-disabled (it keeps the focus): while saving, for an entry someone removed, or with nothing new. */
+const saveBlocked = computed(() => busy.value || !!props.removed || (!dirty.value && !!props.entry))
+const saveLabel = computed(() => (busy.value ? (offline.value ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft.value ? t('entry.save.draft') : t('entry.save.save')))
 async function save() {
   // The save button is only aria-disabled (below), so a keyboard press still lands here.
   if (busy.value || props.removed || (!dirty.value && props.entry)) return
@@ -374,6 +420,13 @@ const statusText = computed(() => {
     ? t('entry.status.onlineFrom', { when: whenText(props.entry.publishAt, timeZone.value, format) })
     : t('entry.status.draft')
 })
+/** The right column's status card: for entries that can be drafts, or that have a status to show. */
+const statusCard = computed(() => !!statusText.value || drafts.value)
+/** The status card's line under the badge: what a draft or a scheduled entry means for the website. */
+const statusNote = computed(() => {
+  if (!props.entry || state.value === 'live') return ''
+  return props.entry.publishAt ? t('entry.side.scheduledNote') : t('entry.side.draftNote')
+})
 /** Publishing belongs to the brick's create and edit tasks (staff need one of them). */
 const publishTask = computed(() => props.tasks?.save ?? props.tasks?.create)
 
@@ -449,6 +502,13 @@ async function doUnpublish() {
 // the site finds it on its own page. Read after the typing pause, so the page does not reload on every key.
 const newSlugs = computed(() => (props.entry ? undefined : draftSlugs(props.brick, props.schema.locales, typed.value)))
 const previewData = computed(() => (newSlugs.value ? { ...draft.value, ...newSlugs.value } : draft.value))
+/** The field with the focus (its frame carries path, type and label): the preview outlines where the page shows it. */
+const focused = ref<{ path: string; type: string; label: string }>()
+function onFocusIn(event: FocusEvent) {
+  const frame = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-path]') : null
+  if (frame?.dataset.path) focused.value = { path: frame.dataset.path, type: frame.dataset.type ?? '', label: frame.dataset.label ?? '' }
+}
+const previewFocus = computed(() => focused.value && { ...focused.value, text: focusText(focused.value.type, leafValue(previewData.value, focused.value.path), locale.value) })
 /** The label of the field a new entry's address is made from, while it is empty: there is no page to show yet. */
 const previewWaitsFor = computed(() => {
   if (props.entry || props.brick.kind !== 'collection' || !props.brick.route) return undefined
@@ -467,8 +527,13 @@ const previewUrls = computed(() => {
   const entry = { id: props.entry?._id ?? 'new', data: { ...props.entry?.data, ...typed.value, ...newSlugs.value } as never }
   return { routed: routeUrls(props.schema, brick, entry), pages: urlsFor(props.schema, props.brickKey, brick, entry) }
 })
-/** Why the preview shows no page: a new entry's address cannot be made yet, or the entry has no page in this language until it is translated. */
+/**
+ * Why the preview shows no page: the entry's time is over (the site shows it no more, its page would be "not found"),
+ * a new entry's address cannot be made yet, or the entry has no page in this language until it is translated.
+ */
 const previewNotice = computed(() => {
+  const last = visibleUntil(props.brick, { ...props.entry?.data, ...typed.value })
+  if (last && last < todayIn(timeZone.value)) return t('entry.preview.ended', { date: formatDay(last, format) })
   const urls = previewUrls.value
   if (!urls) return undefined
   if (previewWaitsFor.value) return t('entry.preview.needsTitle', { field: previewWaitsFor.value })
@@ -479,12 +544,11 @@ const previewNotice = computed(() => {
     ? t('entry.preview.untranslated', { language })
     : t('entry.preview.untranslatedListed', { language, main: languageName(main.value, uiLocale.value) })
 })
-// Preview: the entry's own page when it has one in this language, else the site's first page in this language.
+// Preview: the entry's own page when it has one in this language, else the page that shows its brick (previewPageOf).
 const previewPath = computed(() => {
   if (previewNotice.value) return undefined
-  return previewUrls.value?.pages[locale.value] ?? Object.values(props.schema.pages)[0]?.[locale.value] ?? '/'
+  return previewUrls.value?.pages[locale.value] ?? previewPageOf(props.schema, props.brickKey, locale.value)
 })
-const showPreview = ref(false)
 
 // The preview builds the site from all its entries, so it reads them only while it is open.
 const previewRead = useConvexQuery(api.entries.ofBricks, () => (showPreview.value ? { site: props.site.slug, bricks: Object.keys(props.schema.bricks) } : 'skip'))
@@ -509,44 +573,69 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
 </script>
 
 <template>
-  <div :class="['grid gap-6', { 'with-preview': showPreview }]">
-    <div class="form-col max-w-180">
-      <header class="mb-4 grid gap-2.5">
-        <div class="flex items-center justify-between gap-3">
-          <h1 class="text-xl font-semibold tracking-tight">{{ title }}</h1>
-          <DropdownMenu v-if="entry && !removed">
-            <DropdownMenuTrigger as-child>
-              <Button ref="moreButton" type="button" variant="ghost" class="-mr-2 shrink-0"><EllipsisIcon aria-hidden="true" />{{ t('entry.more') }}</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem v-if="canDuplicate" class="min-h-9 pointer-coarse:min-h-11" :disabled="duplicating" @select="duplicate">{{ t('basics.duplicate.menu') }}</DropdownMenuItem>
-              <DropdownMenuItem as-child class="min-h-9 pointer-coarse:min-h-11">
-                <NuxtLink :to="`/s/${site.slug}/history?entry=${entry._id}`">{{ t('basics.history.ofEntry') }}</NuxtLink>
-              </DropdownMenuItem>
-              <DropdownMenuItem v-if="canRemove && brick.kind === 'collection'" variant="destructive" class="min-h-9 pointer-coarse:min-h-11" @select="askRemove = true">{{ t('entry.removeEntry') }}</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <div v-if="statusText" class="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <Badge :variant="state === 'live' ? 'success' : entry?.publishAt ? 'warning' : 'soft'" class="text-sm">{{ statusText }}</Badge>
-          <Popover v-if="entry && state !== 'live'" v-model:open="whyOpen">
-            <PopoverTrigger as-child>
-              <Button type="button" variant="link" class="h-9 px-0 pointer-coarse:h-11">{{ t('basics.why.link') }}</Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" class="w-80 max-w-[calc(100vw-2rem)]">
-              <WhyNotPublic
-                :site="site.slug" :entry="entry._id" :locale="locale" :time-zone="timeZone" :main="main"
-                @publish="whyOpen = false; openPublish()" @restore="whyOpen = false; ops.restoreEntry(entry._id, entry.lifeRev, tasks?.remove)" @translate="whyOpen = false; switchLanguage($event)"
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <LanguageSwitch v-if="schema.locales.length > 1" :locales="schema.locales" :model-value="locale" :gap="gapIn" :blocked="dirty" @update:model-value="switchLanguage" />
-        <p v-if="foreign" class="text-sm text-muted-foreground">{{ t('entry.foreignHint') }}</p>
-        <p v-for="line in translationState" :key="line" class="text-sm text-muted-foreground" data-slot="translation-state">{{ line }}</p>
-      </header>
+  <div :class="['editor', split && 'is-split']" @keydown="onFormKey">
+    <form
+      :id="formId" ref="formEl" novalidate
+      :class="['entry-form grid gap-x-10 gap-y-6', sideMode && 'has-side', split && 'px-8 pt-7 pb-12']"
+      @submit.prevent="save" @focusin="onFocusIn"
+    >
+      <div class="main-col grid min-w-0 content-start gap-6">
+        <header class="grid gap-2.5">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+              <h1 class="text-xl font-semibold tracking-tight min-[900px]:text-[1.375rem]">{{ title }}</h1>
+              <Badge v-if="bar && !sideMode && statusText" :variant="state === 'live' ? 'success' : entry?.publishAt ? 'warning' : 'soft'">{{ statusText }}</Badge>
+            </div>
+            <DropdownMenu v-if="entry && !removed">
+              <DropdownMenuTrigger as-child>
+                <Button ref="moreButton" type="button" variant="ghost" :size="bar ? 'icon-sm' : 'default'" :aria-label="bar ? t('entry.more') : undefined" class="-mr-2 shrink-0 text-muted-foreground"><EllipsisIcon aria-hidden="true" /><template v-if="!bar">{{ t('entry.more') }}</template></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem v-if="canDuplicate" class="min-h-9 pointer-coarse:min-h-11" :disabled="duplicating" @select="duplicate">{{ t('basics.duplicate.menu') }}</DropdownMenuItem>
+                <DropdownMenuItem as-child class="min-h-9 pointer-coarse:min-h-11">
+                  <NuxtLink :to="`/s/${site.slug}/history?entry=${entry._id}`">{{ t('basics.history.ofEntry') }}</NuxtLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem v-if="canRemove && brick.kind === 'collection'" variant="destructive" class="min-h-9 pointer-coarse:min-h-11" @select="askRemove = true">{{ t('entry.removeEntry') }}</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <!-- Phones and the one-column desktop form: the status under the title. The right column has its own card. -->
+          <div v-if="statusText && !sideMode && !(bar && state === 'live')" class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Badge v-if="!bar" :variant="state === 'live' ? 'success' : entry?.publishAt ? 'warning' : 'soft'" class="text-sm">{{ statusText }}</Badge>
+            <Popover v-if="entry && state !== 'live'" v-model:open="whyOpen">
+              <PopoverTrigger as-child>
+                <Button type="button" variant="link" class="h-9 px-0 pointer-coarse:h-11">{{ t('basics.why.link') }}</Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" class="w-80 max-w-[calc(100vw-2rem)]">
+                <WhyNotPublic
+                  :site="site.slug" :entry="entry._id" :locale="locale" :time-zone="timeZone" :main="main"
+                  @publish="whyOpen = false; openPublish()" @restore="whyOpen = false; ops.restoreEntry(entry._id, entry.lifeRev, tasks?.remove)" @translate="whyOpen = false; switchLanguage($event)"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <LanguageSwitch v-if="schema.locales.length > 1" :locales="schema.locales" :model-value="locale" :gap="gapIn" :blocked="dirty" @update:model-value="switchLanguage" />
+          <p v-if="foreign" class="text-sm text-muted-foreground">{{ t('entry.foreignHint') }}</p>
+          <p v-for="line in translationState" :key="line" class="text-sm text-muted-foreground" data-slot="translation-state">{{ line }}</p>
+        </header>
 
-      <form ref="formEl" class="grid gap-6" novalidate @submit.prevent="save" @keydown="onFormKey">
+        <!-- Wide screens without the right column: publishing under the header (the top bar has no room for the panel). -->
+        <template v-if="bar && !sideMode">
+          <EntryPublishPanel
+            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestion(brick, draft, main, t)"
+            :time-zone="timeZone" :scheduled="!!entry?.publishAt" :busy="publishBusy || busy" :error="publishError"
+            @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
+          />
+          <div v-if="askUnpublish" class="grid gap-2.5 rounded-lg border bg-sidebar p-3.5">
+            <p>{{ t('entry.unpublish.warning', { title }) }}</p>
+            <div class="flex flex-wrap gap-2">
+              <Button type="button" variant="destructive" :disabled="publishBusy" @click="doUnpublish">{{ t('entry.unpublish.button') }}</Button>
+              <Button type="button" variant="outline" @click="askUnpublish = false">{{ t('entry.cancel') }}</Button>
+            </div>
+            <p v-if="publishError" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ publishError }}</p>
+          </div>
+        </template>
+
         <EntryGoneBanner
           v-if="removed && entry && !removingSelf"
           :site="site.slug" :brick-key="brickKey" :entry="entry" :dirty="dirty" :busy="busy"
@@ -563,80 +652,135 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <p v-if="problem" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ problem }}</p>
         <p v-if="readOnly" class="rounded-md bg-muted px-3 py-2.5 text-muted-foreground" role="status">{{ readOnlyNote }}</p>
 
-        <EntryFields v-bind="fieldProps" :entries="grouped.ungrouped" @update="setField" />
+        <EntryFields v-bind="fieldProps" :entries="mainUngrouped" @update="setField" />
         <template v-if="tabbed">
-          <Tabs v-if="visibleGroups.length" v-model="activeTab">
+          <Tabs v-if="mainGroups.length" v-model="activeTab">
             <!-- Underlined, so the tabs never look like the language switch above them. -->
             <TabsList class="h-auto w-full flex-wrap justify-start gap-5 rounded-none border-b bg-transparent p-0">
-              <TabsTrigger v-for="g in visibleGroups" :key="g.id" :value="g.id" class="-mb-px flex-none rounded-none border-0 border-b-2 border-transparent px-0 pt-1 pb-2 text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:border-primary dark:data-[state=active]:bg-transparent">
+              <TabsTrigger v-for="g in mainGroups" :key="g.id" :value="g.id" class="-mb-px flex-none rounded-none border-0 border-b-2 border-transparent px-0 pt-1 pb-2 text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:border-primary dark:data-[state=active]:bg-transparent">
                 {{ shown(g.label) }}
                 <span v-if="groupHasIssue(g)" class="size-2 rounded-full bg-destructive" role="img" :aria-label="t('entry.groupHasIssues')" />
                 <span v-if="groupHasGap(g)" class="size-2 rounded-full bg-warning" role="img" :aria-label="t('entry.groupHasGaps')" />
               </TabsTrigger>
             </TabsList>
-            <TabsContent v-for="g in visibleGroups" :key="g.id" :value="g.id" force-mount class="grid gap-4 pt-4 data-[state=inactive]:hidden">
+            <TabsContent v-for="g in mainGroups" :key="g.id" :value="g.id" force-mount class="grid gap-4 pt-4 data-[state=inactive]:hidden">
               <EntryFields v-bind="fieldProps" :entries="g.fields" @update="setField" />
             </TabsContent>
           </Tabs>
         </template>
         <template v-else>
-          <template v-for="g in visibleGroups" :key="g.id">
-            <Separator />
-            <section class="grid gap-4">
-              <h2 class="text-base font-semibold">{{ shown(g.label) }}</h2>
-              <EntryFields v-bind="fieldProps" :entries="g.fields" @update="setField" />
-            </section>
-          </template>
+          <section v-for="g in mainGroups" :key="g.id" class="grid gap-4 border-t pt-6">
+            <h2 class="text-base font-semibold">{{ shown(g.label) }}</h2>
+            <EntryFields v-bind="fieldProps" :entries="g.fields" @update="setField" />
+          </section>
         </template>
 
-        <!-- z-20: above the text toolbar (z-5) and a card's settings button (z-10) that scroll under it; below popovers and the docked phone bar. -->
-        <div ref="barEl" class="bar sticky bottom-0 z-20 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background py-3">
+        <!-- Phones: the save bar. z-20: above the text toolbar (z-5) and a card's settings button (z-10) that scroll
+             under it; below popovers and the docked phone bar. Wide screens: Save is in the top bar, so this bar only
+             holds the notes about the entry's size and shortened texts, and shows only while it has one. -->
+        <div
+          ref="barEl"
+          :class="['bar sticky bottom-0 z-20 flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-background py-3', bar && !(size || shrunk.length || offline) && 'sr-only']"
+        >
           <!-- The live region must be in the accessibility tree before its text appears, so empty means sr-only (no space), not hidden. -->
           <p :class="['basis-full text-sm empty:sr-only', size?.over ? 'font-medium text-destructive' : 'text-muted-foreground']" aria-live="polite">{{ size?.text }}</p>
-          <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
           <p v-if="shrunk.length" id="entry-shrunk" class="basis-full text-sm text-muted-foreground">{{ shrunk.join(' ') }}</p>
-          <Button v-if="!readOnly" type="submit" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'entry-shrunk' : undefined" :aria-disabled="busy || removed || (!dirty && !!entry) ? 'true' : undefined">{{ busy ? (offline ? t('entry.save.waiting') : t('entry.save.saving')) : isDraft ? t('entry.save.draft') : t('entry.save.save') }}</Button>
-          <Button v-if="isDraft && !publishing && !removed" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
-          <template v-if="!readOnly">
-            <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
-            <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>
-            <!-- While a save runs the button says what happens; text typed meanwhile is "Nicht gespeichert" once it ends. -->
-            <span v-else-if="dirty && !busy" class="font-medium text-warning">{{ t('entry.unsaved') }}</span>
-          </template>
           <p v-if="offline" class="basis-full text-sm font-medium text-warning" role="status">{{ t('entry.save.offlineKept') }}</p>
-          <Button type="button" variant="ghost" class="ml-auto" :aria-pressed="showPreview" @click="showPreview = !showPreview">{{ showPreview ? t('entry.preview.close') : t('entry.preview.label') }}</Button>
-          <template v-if="drafts && entry && state === 'live' && !removed">
-            <Button v-if="!askUnpublish" type="button" variant="ghost" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
-            <span v-else class="flex basis-full flex-wrap items-center gap-2">
-              {{ t('entry.unpublish.warning', { title }) }}
-              <Button type="button" variant="destructive" :disabled="publishBusy" @click="doUnpublish">{{ t('entry.unpublish.button') }}</Button>
-              <Button type="button" variant="outline" @click="askUnpublish = false">{{ t('entry.cancel') }}</Button>
-            </span>
-            <p v-if="publishError && askUnpublish" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ publishError }}</p>
+          <template v-if="!bar">
+            <!-- aria-disabled, not disabled: a disabled button cannot keep the focus, so a keyboard save would drop it to the page top. -->
+            <Button v-if="!readOnly" type="submit" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'entry-shrunk' : undefined" :aria-disabled="saveBlocked ? 'true' : undefined">{{ saveLabel }}</Button>
+            <Button v-if="isDraft && !publishing && !removed" type="button" variant="ghost" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
+            <template v-if="!readOnly">
+              <span v-if="!dirty && waiting" class="font-medium text-warning">{{ t('history.waiting') }}</span>
+              <span v-else-if="!dirty && savedOnce" class="font-medium text-success">{{ t('entry.saved') }}</span>
+              <!-- While a save runs the button says what happens; text typed meanwhile is "Nicht gespeichert" once it ends. -->
+              <span v-else-if="dirty && !busy" class="font-medium text-warning">{{ t('entry.unsaved') }}</span>
+            </template>
+            <Button type="button" variant="ghost" class="ml-auto" :aria-pressed="showPreview" @click="togglePreview">{{ showPreview ? t('entry.preview.close') : t('entry.preview.label') }}</Button>
+            <template v-if="drafts && entry && state === 'live' && !removed">
+              <Button v-if="!askUnpublish" type="button" variant="ghost" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
+              <span v-else class="flex basis-full flex-wrap items-center gap-2">
+                {{ t('entry.unpublish.warning', { title }) }}
+                <Button type="button" variant="destructive" :disabled="publishBusy" @click="doUnpublish">{{ t('entry.unpublish.button') }}</Button>
+                <Button type="button" variant="outline" @click="askUnpublish = false">{{ t('entry.cancel') }}</Button>
+              </span>
+              <p v-if="publishError && askUnpublish" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ publishError }}</p>
+            </template>
+            <EntryPublishPanel
+              v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestion(brick, draft, main, t)"
+              :time-zone="timeZone" :scheduled="!!entry?.publishAt" :busy="publishBusy || busy" :error="publishError"
+              @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
+            />
           </template>
-          <div v-if="publishing" class="grid basis-full gap-2.5 rounded-lg border border-primary bg-card p-3.5" role="group" aria-labelledby="publish-title">
-            <p id="publish-title" class="font-bold">{{ publishQuestion(brick, draft, main, t) }}</p>
-            <RadioGroup v-model="when" class="flex flex-wrap gap-2" aria-labelledby="publish-title">
-              <Label for="publish-now" class="min-h-10 cursor-pointer gap-2 rounded-md border border-input px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11"><RadioGroupItem id="publish-now" value="now" />{{ t('entry.publish.now') }}</Label>
-              <Label for="publish-later" class="min-h-10 cursor-pointer gap-2 rounded-md border border-input px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11"><RadioGroupItem id="publish-later" value="later" />{{ t('entry.publish.later') }}</Label>
-            </RadioGroup>
-            <div v-if="when === 'later'" class="grid max-w-80 gap-1.5">
-              <Label for="publish-at" class="font-semibold">{{ t('entry.publish.dateTime') }}</Label>
-              <ScheduleField v-model:local="at" v-model:picked="picked" :zone="timeZone" input-id="publish-at" />
-            </div>
-            <p v-if="publishError" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ publishError }}</p>
-            <div class="flex flex-wrap gap-2">
-              <Button type="button" :disabled="publishBusy || busy" @click="doPublish">{{ when === 'now' ? t('entry.publish.publishNow') : t('entry.publish.schedule') }}</Button>
-              <Button v-if="entry?.publishAt" type="button" variant="outline" :disabled="publishBusy" @click="doUnpublish">{{ t('entry.publish.clearSchedule') }}</Button>
-              <Button type="button" variant="ghost" @click="publishing = false">{{ t('entry.cancel') }}</Button>
-            </div>
-          </div>
         </div>
-      </form>
+      </div>
 
-      <!-- The destructive action sits in "Mehr", away from Speichern and Vorschau; the question stays. -->
-      <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :overflow="removeOverflow.error.value ? [] : removeOverflow.data.value" :busy="removing" :draft="entry?.state === 'draft'" @confirm="remove" @close-auto-focus="focusMore" />
-    </div>
+      <!-- The right column (from 1280px, preview closed): status and publishing, then the entry's address, picture and
+           search fields. Inside the form, so Enter and the shortcuts work there too. -->
+      <aside v-if="sideMode" class="side-col grid content-start gap-4" :aria-label="t('entry.side.label')">
+        <section v-if="statusCard" class="grid gap-3 rounded-xl border bg-card p-4">
+          <div class="flex items-center justify-between gap-2">
+            <h2 class="text-sm font-semibold">{{ t('entry.side.status') }}</h2>
+            <Badge v-if="statusText" :variant="state === 'live' ? 'success' : entry?.publishAt ? 'warning' : 'soft'">{{ statusText }}</Badge>
+          </div>
+          <p v-if="statusNote" class="text-[13px] text-muted-foreground">{{ statusNote }}</p>
+          <Popover v-if="entry && state !== 'live'" v-model:open="whyOpen">
+            <PopoverTrigger as-child>
+              <Button type="button" variant="link" class="h-auto justify-self-start px-0 text-[13px]">{{ t('basics.why.link') }}</Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" class="w-80 max-w-[calc(100vw-2rem)]">
+              <WhyNotPublic
+                :site="site.slug" :entry="entry._id" :locale="locale" :time-zone="timeZone" :main="main"
+                @publish="whyOpen = false; openPublish()" @restore="whyOpen = false; ops.restoreEntry(entry._id, entry.lifeRev, tasks?.remove)" @translate="whyOpen = false; switchLanguage($event)"
+              />
+            </PopoverContent>
+          </Popover>
+          <EntryPublishPanel
+            v-if="publishing" v-model:when="when" v-model:at="at" v-model:picked="picked" :question="publishQuestion(brick, draft, main, t)"
+            :time-zone="timeZone" :scheduled="!!entry?.publishAt" :busy="publishBusy || busy" :error="publishError"
+            @publish="doPublish" @clear-schedule="doUnpublish" @cancel="publishing = false"
+          />
+          <div v-else-if="!removed" class="flex flex-wrap gap-2">
+            <Button v-if="isDraft" type="button" variant="outline" size="sm" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
+            <Button v-if="drafts && entry && state === 'live' && !askUnpublish" type="button" variant="ghost" size="sm" class="text-muted-foreground" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
+          </div>
+          <div v-if="askUnpublish" class="grid gap-2.5 border-t pt-3">
+            <p class="text-sm">{{ t('entry.unpublish.warning', { title }) }}</p>
+            <div class="flex flex-wrap gap-2">
+              <Button type="button" variant="destructive" size="sm" :disabled="publishBusy" @click="doUnpublish">{{ t('entry.unpublish.button') }}</Button>
+              <Button type="button" variant="outline" size="sm" @click="askUnpublish = false">{{ t('entry.cancel') }}</Button>
+            </div>
+            <p v-if="publishError" class="rounded-md bg-destructive/10 px-3 py-2.5 text-sm font-medium text-destructive" role="alert">{{ publishError }}</p>
+          </div>
+        </section>
+        <section v-if="sideImage || sideSlug.length" class="grid gap-5 rounded-xl border bg-card p-4">
+          <EntryFields v-if="sideImage" v-bind="fieldProps" :entries="[sideImage]" @update="setField" />
+          <EntryFields v-if="sideSlug.length" v-bind="fieldProps" :entries="sideSlug" @update="setField" />
+        </section>
+        <section v-for="g in sideGroups" :key="g.id" class="grid gap-4 rounded-xl border bg-card p-4">
+          <h2 class="text-sm font-semibold">{{ shown(g.label) }}</h2>
+          <EntryFields v-bind="fieldProps" :entries="g.fields" @update="setField" />
+        </section>
+      </aside>
+    </form>
+
+    <!-- Wide screens: the save state, Preview and Save in the panel's top bar. Save submits the form by its id. -->
+    <Teleport v-if="bar" to="#studio-actions">
+      <span v-if="!readOnly" class="text-sm font-medium" aria-live="polite">
+        <span v-if="!dirty && waiting" class="text-warning">{{ t('history.waiting') }}</span>
+        <span v-else-if="!dirty && savedOnce" class="text-success">{{ t('entry.saved') }}</span>
+        <span v-else-if="dirty && !busy" class="inline-flex items-center gap-1.5 text-warning"><span class="size-1.5 rounded-full bg-warning" aria-hidden="true" />{{ t('entry.unsaved') }}</span>
+      </span>
+      <Button type="button" :variant="showPreview ? 'secondary' : 'ghost'" class="h-9 gap-2 px-3" :aria-pressed="showPreview" @click="togglePreview">
+        <component :is="showPreview ? EyeOffIcon : EyeIcon" aria-hidden="true" />{{ showPreview ? t('entry.preview.close') : t('entry.preview.label') }}
+      </Button>
+      <Button v-if="isDraft && !publishing && !removed && !sideMode" type="button" variant="outline" class="h-9" :disabled="busy" @click="openPublish">{{ entry?.publishAt ? t('entry.publish.changeSchedule') : t('entry.publish.open') }}</Button>
+      <Button v-if="drafts && entry && state === 'live' && !removed && !sideMode && !askUnpublish" type="button" variant="ghost" class="h-9 text-muted-foreground" @click="askUnpublish = true">{{ t('entry.unpublish.button') }}</Button>
+      <Button v-if="!readOnly" type="submit" :form="formId" class="h-9" aria-keyshortcuts="Meta+S Control+S" :aria-describedby="shrunk.length ? 'entry-shrunk' : undefined" :aria-disabled="saveBlocked ? 'true' : undefined">{{ saveLabel }}</Button>
+    </Teleport>
+
+    <!-- The destructive action sits in "Mehr", away from Speichern and Vorschau; the question stays. -->
+    <EntryRemoveDialog v-model:open="askRemove" :slug="site.slug" :title="title" :uses="removeUses.error.value ? [] : removeUses.data.value" :overflow="removeOverflow.error.value ? [] : removeOverflow.data.value" :busy="removing" :draft="entry?.state === 'draft'" @confirm="remove" @close-auto-focus="focusMore" />
 
     <PreviewPane
       v-if="showPreview"
@@ -650,17 +794,27 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
       :notice="previewNotice"
       :files="files"
       :revision="fileIds.join(',') + ':' + (fileInfo ? Object.values(fileInfo).filter(Boolean).length : 0)"
+      :docked="split"
+      :focus="previewFocus"
+      @close="togglePreview"
     />
   </div>
 </template>
 
 <style scoped>
-.with-preview { grid-template-columns: 1fr; }
-@media (min-width: 1200px) {
-  .with-preview { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); align-items: start; }
-  .preview-col { position: sticky; top: calc(var(--studio-header-height) + 1.25rem); height: calc(100dvh - var(--studio-header-height) - 2.5rem); }
+/* One column: the form keeps a readable width. With the right column: form and an 18rem column. */
+.entry-form { max-width: 45rem; }
+.entry-form.has-side { max-width: 72rem; grid-template-columns: minmax(0, 1fr) 18rem; align-items: start; }
+.editor > .preview-col { margin-top: 1.5rem; height: 80dvh; }
+/* Wide screens with the preview open: form and preview share the panel, the preview flush with its edges. */
+@media (min-width: 900px) {
+  .editor.is-split { display: grid; grid-template-columns: minmax(24rem, 40rem) minmax(0, 1fr); align-items: start; }
+  .editor.is-split .entry-form { max-width: none; }
+  .editor.is-split > .preview-col {
+    margin-top: 0; position: sticky; top: var(--studio-header-height);
+    height: calc(100dvh - var(--studio-header-height) - 0.75rem);
+  }
 }
-@media (max-width: 1199px) { .preview-col { height: 80dvh; } }
 /* The save bar keeps clear of the home indicator. */
 .bar { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
 </style>

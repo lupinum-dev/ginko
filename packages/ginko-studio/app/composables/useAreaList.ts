@@ -1,10 +1,13 @@
 // Whether the area list beside the Inhalte pages is folded away. The entry editor folds it while its preview is open
 // (design A: form and preview share the panel) and makes it foldable; the button in the top bar brings it back.
-// One state for the whole tab: a new page starts unfolded unless its editor folds it again.
+// One state per tab, set only in the browser: on the server it stays unfolded (the editor folds after mount), so a
+// module-level ref shares nothing between requests that matters.
+import { ref } from 'vue'
+
+const folded = ref(false)
+const foldable = ref(false)
 
 export function useAreaList() {
-  const folded = useState('ginko:areas-folded', () => false)
-  const foldable = useState('ginko:areas-foldable', () => false)
   return {
     folded,
     foldable,

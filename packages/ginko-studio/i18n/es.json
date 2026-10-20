@@ -208,7 +208,12 @@
       "needsTitle": "La vista previa muestra la página en cuanto rellenes “{field}”.",
       "untranslated": "Aún no está traducido al {language}. Hasta entonces, la entrada no aparece en el sitio web en este idioma.",
       "untranslatedListed": "Aún no está traducido al {language}. Hasta entonces, la entrada no tiene página propia en este idioma. Las listas la muestran en {main}.",
-      "openSite": "Abrir sitio web"
+      "openSite": "Abrir sitio web",
+      "device": "Mostrar el sitio web como",
+      "desktop": "Escritorio",
+      "phone": "Móvil",
+      "open": "Abrir",
+      "ended": "El sitio web ya no muestra esto: se mostró hasta el {date}. Con una fecha posterior vuelve a aparecer."
     },
     "remove": {
       "title": "Eliminar entrada",
@@ -270,7 +275,13 @@
       "text": "“{field}” es mucho más corto que antes: {after} en lugar de {before} caracteres.",
       "files": "{count, plural, one {# archivo} other {# archivos}} menos."
     },
-    "groupHasGaps": "Falta la traducción o está desactualizada"
+    "groupHasGaps": "Falta la traducción o está desactualizada",
+    "side": {
+      "label": "Detalles",
+      "status": "Estado",
+      "draftNote": "Todavía no está en el sitio web. Publícalo cuando esté listo.",
+      "scheduledNote": "Se publica solo a esa hora."
+    }
   },
   "site": {
     "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",

@@ -208,7 +208,12 @@
       "needsTitle": "L’aperçu affiche la page dès que « {field} » est rempli.",
       "untranslated": "Pas encore traduit en {language}. En attendant, l’entrée n’apparaît pas sur le site web dans cette langue.",
       "untranslatedListed": "Pas encore traduit en {language}. En attendant, l’entrée n’a pas de page propre dans cette langue. Les listes l’affichent en {main}.",
-      "openSite": "Ouvrir le site web"
+      "openSite": "Ouvrir le site web",
+      "device": "Afficher le site comme",
+      "desktop": "Ordinateur",
+      "phone": "Mobile",
+      "open": "Ouvrir",
+      "ended": "Le site web ne l’affiche plus : il était visible jusqu’au {date}. Avec une date plus tardive, il réapparaît."
     },
     "remove": {
       "title": "Supprimer l’entrée",
@@ -270,7 +275,13 @@
       "text": "« {field} » est beaucoup plus court qu’avant : {after} caractères au lieu de {before}.",
       "files": "{count, plural, one {# fichier} other {# fichiers}} de moins."
     },
-    "groupHasGaps": "Traduction manquante ou périmée"
+    "groupHasGaps": "Traduction manquante ou périmée",
+    "side": {
+      "label": "Détails",
+      "status": "Statut",
+      "draftNote": "Pas encore sur le site. Publiez-le quand il est prêt.",
+      "scheduledNote": "Il sera mis en ligne automatiquement à ce moment-là."
+    }
   },
   "site": {
     "zoneNote": "Toutes les heures sont dans le fuseau horaire du site web ({zone}).",

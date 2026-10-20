@@ -26,7 +26,8 @@ const bar = usePanelBar()
         <AllNav :slug="slug" :bricks="bricks" :current="current" :removed-active="removedActive" :translations-active="translationsActive" overview />
       </div>
     </aside>
-    <div class="min-w-0 px-4 pt-4 min-[900px]:px-8 min-[900px]:pt-7">
+    <!-- The editor with its preview open lays out its own padding: the preview sits flush with the panel. -->
+    <div :class="['min-w-0 px-4 pt-4', foldable ? 'min-[900px]:p-0' : 'min-[900px]:px-8 min-[900px]:pt-7']">
       <Button v-if="back" as-child variant="link" class="mb-1 h-11 gap-1.5 px-0 font-semibold min-[900px]:hidden">
         <NuxtLink :to="back.to"><span aria-hidden="true">←</span> {{ back.label }}</NuxtLink>
       </Button>
