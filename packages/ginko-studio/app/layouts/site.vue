@@ -113,6 +113,8 @@ const bottomBar = useBottomBar()
 const showTabs = computed(() => bottomBar.value === 0)
 // Signed out, no access or not loaded: no site to navigate, so no rail, bars or site name (the message offers the way out).
 const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.value || !!deletion.value)
+/** The frame of the signed-out, no-access and not-loaded messages: the page frame's width and padding (StudioPage). */
+const BLOCKED = 'mx-auto grid w-full max-w-[1200px] justify-items-start gap-3 px-4 pt-4 min-[900px]:px-8 min-[900px]:pt-7'
 </script>
 
 <template>
@@ -168,19 +170,19 @@ const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.va
            button ("weitere anzeigen") stays tappable. The entry editor brings its own sticky bar instead of the tab bar.
            Wide screens have no tab bar: each page ends with its own bottom padding. -->
       <main id="studio-main" tabindex="-1" :class="['outline-none min-[900px]:flex min-[900px]:flex-1 min-[900px]:flex-col min-[900px]:pb-0', showTabs ? 'pb-30' : 'pb-6']">
-      <div v-if="signedOut" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
+      <div v-if="signedOut" :class="BLOCKED" role="alert">
         <p class="text-xl font-bold">{{ t('errors.signedOut') }}</p>
         <!-- A full page load: the server checks the session, where the client may still think it is signed in. -->
         <Button as-child><NuxtLink :to="`/login?redirect=${encodeURIComponent(route.fullPath)}`" external>{{ t('nav.signIn') }}</NuxtLink></Button>
       </div>
       <SiteDeleting v-else-if="deletion" :slug="slug" :name="deletion.name" :at="deletion.at" />
-      <div v-else-if="noAccess" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
+      <div v-else-if="noAccess" :class="BLOCKED" role="alert">
         <p class="text-xl font-bold">{{ opErrorOf(error).message }}</p>
         <p v-if="unsavedHere">{{ t('nav.noAccessUnsaved') }}</p>
         <p>{{ t('nav.noAccessHelp') }}</p>
         <Button as-child variant="outline"><NuxtLink to="/?all">{{ t('nav.mySites') }}</NuxtLink></Button>
       </div>
-      <div v-else-if="notLoaded" class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8 grid justify-items-start gap-3" role="alert">
+      <div v-else-if="notLoaded" :class="BLOCKED" role="alert">
         <p class="text-xl font-bold">{{ t('basics.notLoaded') }}</p>
         <div class="flex flex-wrap gap-2">
           <Button type="button" @click="reload">{{ t('basics.retry') }}</Button>
@@ -189,7 +191,8 @@ const blocked = computed(() => signedOut.value || noAccess.value || notLoaded.va
       </div>
       <template v-else>
         <!-- Above every page, so every role sees it (a manager without tasks never sees Schnell ändern). -->
-        <StorageNotice v-if="data" class="mx-4 mt-4 max-w-[712px] min-[720px]:mx-6 min-[720px]:mt-6" :slug="slug" :bytes="data.site.bytes" :entry-count="data.site.entryCount" :manager="manager" />
+        <!-- Lined up with the page frame (StudioPage: 1200px with 2rem padding, centred). -->
+        <StorageNotice v-if="data" class="mx-4 mt-4 min-[900px]:mt-6 min-[900px]:mx-[max(2rem,calc((100%-1136px)/2))]" :slug="slug" :bytes="data.site.bytes" :entry-count="data.site.entryCount" :manager="manager" />
         <slot />
       </template>
       </main>
