@@ -9,7 +9,10 @@ import { errorOf, firstPage, opId, setup, upload } from './setup'
 
 const DAY = 24 * 60 * 60 * 1000
 
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllEnvs()
+})
 
 type Backend = Awaited<ReturnType<typeof setup>>
 
@@ -186,6 +189,23 @@ describe('delete site', () => {
     expect(Object.values(await rowsOfSite(s, s.site)).every((n) => n === 0)).toBe(true)
     for (const id of stored) expect(await s.t.run((ctx) => ctx.db.system.get(id))).toBeNull()
     expect(await rowsOfSite(s, s.other)).toEqual(otherBefore)
+    expect((await s.t.run((ctx) => ctx.db.get(s.other)))!.slug).toBe('andere')
+  })
+})
+
+describe('delete site now (operators)', () => {
+  // Wrong behaviour caught: an operator command deletes a client's site at once on a platform that is not the demo,
+  // skipping the 7 days in which its owner can cancel.
+  it('runs only on the demo platform (GINKO_DEMO=1) or a local backend, and then removes the site', async () => {
+    vi.useFakeTimers()
+    const s = await setup()
+    expect((await errorOf(s.t.mutation(internal.siteDeletion.purgeNow, { slug: 'restaurant' }))).code).toBe('FORBIDDEN')
+    expect((await s.t.run((ctx) => ctx.db.get(s.site)))!.deleting).toBeUndefined()
+
+    vi.stubEnv('GINKO_DEMO', '1')
+    await s.t.mutation(internal.siteDeletion.purgeNow, { slug: 'restaurant' })
+    await s.t.finishAllScheduledFunctions(vi.runAllTimers)
+    expect(await s.t.run((ctx) => ctx.db.get(s.site))).toBeNull()
     expect((await s.t.run((ctx) => ctx.db.get(s.other)))!.slug).toBe('andere')
   })
 })
