@@ -33,7 +33,7 @@ usePageSeo(() => ({ title: t('title'), description: lead.value }))
               <time :datetime="release.date">{{ format.date(release.date) }}</time>
             </p>
           </div>
-          <GinkoMarkdown :value="release.body" class="prose min-w-0 lg:col-span-8" />
+          <GinkoMarkdown :value="release.body" :id-prefix="release.anchor" class="prose min-w-0 lg:col-span-8" />
         </li>
       </ul>
       <BlockEmpty v-else :title="t('empty')" path="content/changelog/" />

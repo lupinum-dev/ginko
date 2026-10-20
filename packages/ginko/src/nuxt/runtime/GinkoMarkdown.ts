@@ -19,6 +19,8 @@ export const GinkoMarkdown = defineComponent({
      * Other tags use a global component of that name (PascalCase), else a plain element.
      */
     components: { type: Object as PropType<Record<string, Component | string>>, default: () => ({}) },
+    /** Puts `idPrefix-` before every id and `#` link of this body, for a page that shows several bodies (a changelog). */
+    idPrefix: { type: String, default: '' },
   },
   async setup(props) {
     const provided = inject<Record<string, Component | string>>(GINKO_COMPONENTS_KEY, {})
@@ -28,6 +30,6 @@ export const GinkoMarkdown = defineComponent({
     provide(GINKO_TOC_KEY, computed(() => tree?.value?.toc ?? null))
     tree = await useGinkoMarkdown(() => props.value)
     // The site's registry: a component keeps the props it declares there (attributeProblem).
-    return () => h(GinkoMarkdownTree, { value: tree!.value, components: { ...provided, ...props.components }, registry: components })
+    return () => h(GinkoMarkdownTree, { value: tree!.value, components: { ...provided, ...props.components }, registry: components, idPrefix: props.idPrefix })
   },
 })

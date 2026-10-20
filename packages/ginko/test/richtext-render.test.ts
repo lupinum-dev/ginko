@@ -22,6 +22,14 @@ describe('GinkoMarkdown (plain Vue)', () => {
     expect(html).toContain('href="https://example.com"')
   })
 
+  test('idPrefix keeps the ids of several bodies on one page apart, links included', async () => {
+    const { value } = await parseMarkdown('## Fixed\n\nSee [below](#fixed).')
+    const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(GinkoMarkdown, { value, idPrefix: 'v1-2-0' }) }) }))
+    await flushPromises()
+    expect(wrapper.html()).toContain('id="v1-2-0-fixed"')
+    expect(wrapper.html()).toContain('href="#v1-2-0-fixed"')
+  })
+
   test('math and mermaid show their source without KaTeX or mermaid.js', async () => {
     const { value } = await parseMarkdown('Formel $x^2$\n\n```mermaid\ngraph TD; A-->B\n```')
     const html = await render(value)

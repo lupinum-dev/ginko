@@ -80,6 +80,19 @@ function dropUnsafe(node: Tree, components: Record<string, unknown>, registry: A
   return [[tag, safe, ...children.flatMap((child) => dropUnsafe(child, components, registry))] as Tree]
 }
 
+/**
+ * Every `id` with `prefix-` in front, and every `#` link to one: several Markdown bodies on one page (the releases of a
+ * changelog) would otherwise repeat heading ids such as `fixed`, and a link would jump to the first one.
+ */
+function prefixIds(node: Tree, prefix: string): Tree {
+  if (!Array.isArray(node)) return node
+  const [tag, props, ...children] = node as [string | null, Record<string, unknown>, ...Tree[]]
+  const next = { ...props }
+  if (typeof next.id === 'string' && next.id) next.id = `${prefix}-${next.id}`
+  if (typeof next.href === 'string' && next.href.length > 1 && next.href.startsWith('#')) next.href = `#${prefix}-${next.href.slice(1)}`
+  return [tag, next, ...children.map((child) => prefixIds(child, prefix))] as Tree
+}
+
 export const GinkoMarkdown = defineComponent({
   name: 'GinkoMarkdown',
   props: {
@@ -88,13 +101,16 @@ export const GinkoMarkdown = defineComponent({
     components: { type: Object as PropType<Record<string, Component | string>>, default: () => ({}) },
     /** The site's component registry (`components` in ginko.config.ts): a component keeps the props it declares there. Without it a component gets only `title`, `lang`, `dir` and `aria-*`. */
     registry: { type: Object as PropType<AttributeRegistry>, default: undefined },
+    /** Puts `idPrefix-` before every id and `#` link of this body, for a page that shows several bodies. The tree's table of contents keeps the plain ids. */
+    idPrefix: { type: String, default: '' },
   },
   setup(props) {
     // The tree is plain JSON; comark's renderer takes the same `{ nodes }` shape.
     return () => {
       if (!props.value) return null
       const components = { ...sourceOnly, ...props.components }
-      const nodes = props.value.nodes.flatMap((node) => dropUnsafe(node, components, props.registry)).map(labelCheckboxes)
+      const safe = props.value.nodes.flatMap((node) => dropUnsafe(node, components, props.registry)).map(labelCheckboxes)
+      const nodes = props.idPrefix ? safe.map((node) => prefixIds(node, props.idPrefix)) : safe
       return h(MarkdownDocument, { value: { nodes: nodes as never }, components })
     }
   },
