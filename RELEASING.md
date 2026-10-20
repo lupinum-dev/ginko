@@ -36,6 +36,10 @@ Handbook: [lupinum-oss, Releasing](https://github.com/lupinum-dev/lupinum-oss). 
    ("Release files unchanged since ..."). The job publishes with npm trusted publishing and provenance, then creates the
    tag `v<version>` and the GitHub release.
 
+The client platform lupinum-ginko-cms deploys release tags only (`.github/workflows/cms.yml`, D55). A fix that touches
+only private packages (`ginko-server`, `ginko-studio`, …) reaches it only with a release: give it a `@lupinum/ginko`
+patch changeset.
+
 There is no npm token. The pack job needs `pnpm build` to work and `scripts/release.mjs` to find no dependency
 cycle between the published packages (a peer dependency counts).
 

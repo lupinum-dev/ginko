@@ -4,9 +4,9 @@
 // reaches it; every function is refused on any deployment without GINKO_LOCAL, except the import steps, which a hosted
 // deployment also allows into one empty site that an operator opened with `importOpen` (see importAllowed).
 import type { Fields } from '@lupinum/ginko'
-import { carryPrints, entryBytes, fitsBudget, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
+import { carryPrints, defaultsFor, entryBytes, fitsBudget, mapMarkdownTexts, remapFileIds, rewriteEntryLinks, routeUrls, stableJson, urlClashes, validate, type Msg, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
-import type { Id, TableNames } from './_generated/dataModel'
+import type { Doc, Id, TableNames } from './_generated/dataModel'
 import { components, internal } from './_generated/api'
 import { internalAction, internalMutation, internalQuery, type MutationCtx, type QueryCtx } from './_generated/server'
 import { fail } from './lib/access'
@@ -14,11 +14,12 @@ import type { ErrorParams } from './lib/fail'
 import { DEFAULT_LOCALE, t, type MessageKey } from './lib/i18n'
 import { badKey } from './lib/input'
 import { normalizeEmail } from './members'
+import { insertSingle, newSingle } from './release'
 import { remapEntryRefs, treesOf, usesOf, type Data, type Prints } from './lib/content'
 import { insertCorpus, invitePeople, type Corpus } from './lib/corpus'
 import { cleanName, kindOf, WRONG_TYPE } from './lib/files'
 import { deleteStorage } from './lib/library'
-import { putTrees } from './lib/trees'
+import { dropTrees, putTrees } from './lib/trees'
 import { BUDGET, same, sizeText, syncEntryRefs, uploadIdsOf } from './lib/write'
 
 function localOnly() {
@@ -511,27 +512,68 @@ export const importRefs = internalMutation({
 
 /**
  * Opens an EMPTY site for the import steps on a hosted deployment (`npx convex run --prod seed:importOpen`). Empty means
- * the state after `sites:bootstrap` and the first release: no entries (also no deleted ones), no changes, no ops.
- * `importDone` closes it again.
+ * the state after `sites:bootstrap` and the first release: no changes, no ops, and no entries except the singles that
+ * release created from their defaults (release.ts newSingle) and nobody has touched. Those are removed here, so the
+ * export's singles take their place; `importDone` creates again any single the export did not bring, and closes the site.
  */
 export const importOpen = internalMutation({
   args: { site: v.string() },
   handler: async (ctx, args) => {
     const site = await siteBySlug(ctx, args.site)
-    const used = (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).first())
-      ?? (await ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', site._id)).first())
+    const schema = site.schema as Schema
+    const used = (await ctx.db.query('changes').withIndex('by_site_at', (q) => q.eq('site', site._id)).first())
       ?? (await ctx.db.query('ops').withIndex('by_site_actor_op', (q) => q.eq('site', site._id)).first())
-    if (used || site.entryCount !== 0) fail('INVALID', 'errors.importNeedsEmptySite')
-    await ctx.db.patch(site._id, { importOpen: true })
+    const entries = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id)).collect()
+    const untouched = (e: Doc<'entries'>) => {
+      const def = Object.hasOwn(schema.bricks, e.brick) ? schema.bricks[e.brick] : undefined
+      return def?.kind === 'single' && e.kind === 'single' && e.rev === 1 && e.deletedAt === undefined && e.state === undefined
+        && stableJson(e.data) === stableJson(defaultsFor(def.fields))
+    }
+    if (used || !entries.every(untouched) || site.entryCount !== entries.length) fail('INVALID', 'errors.importNeedsEmptySite')
+    let bytes = 0
+    let treeBytes = 0
+    for (const entry of entries) {
+      await syncEntryRefs(ctx, site._id, entry._id, new Map())
+      await dropTrees(ctx, entry._id)
+      await ctx.db.delete(entry._id)
+      bytes += entry.bytes
+      treeBytes += entry.treeBytes ?? 0
+    }
+    await ctx.db.patch(site._id, {
+      importOpen: true,
+      ...(entries.length ? { entryCount: 0, bytes: site.bytes - bytes, treeBytes: (site.treeBytes ?? 0) - treeBytes } : {}),
+    })
     return { site: args.site, open: true }
   },
 })
 
-/** Closes the import of a site and raises contentRev, so bundles and caches see the new content. */
+/**
+ * Closes the import of a site and raises contentRev, so bundles and caches see the new content. A single brick without
+ * an entry gets one from its defaults, as a release makes it: the export may lack one that importOpen removed.
+ */
 export const importDone = internalMutation({
   args: { site: v.string() },
   handler: async (ctx, args) => {
     const site = await siteBySlug(ctx, args.site)
+    if (site.importOpen) {
+      const schema = site.schema as Schema
+      const created = []
+      for (const [brick, def] of Object.entries(schema.bricks)) {
+        if (def.kind !== 'single') continue
+        const have = await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', site._id).eq('brick', brick)).first()
+        if (have) continue
+        const single = await newSingle(brick, def.fields, schema.locales[0]!)
+        await insertSingle(ctx, site._id, single, schema.locales)
+        created.push(single)
+      }
+      if (created.length) {
+        await ctx.db.patch(site._id, {
+          entryCount: site.entryCount + created.length,
+          bytes: site.bytes + created.reduce((sum, c) => sum + c.bytes, 0),
+          treeBytes: (site.treeBytes ?? 0) + created.reduce((sum, c) => sum + c.trees.bytes, 0),
+        })
+      }
+    }
     await ctx.db.patch(site._id, { importOpen: undefined, ...(site.importOpen ? { contentRev: site.contentRev + 1 } : {}) })
     return { site: args.site, open: false }
   },

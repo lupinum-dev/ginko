@@ -81,8 +81,10 @@ Convex change compatible with the previous Studio: open tabs call the new functi
 
 `pnpm ops:import <folder> --site <slug> --prod` (repository root) is the one operator command that does not use the
 wrapper: it calls `npx convex run --prod` in this folder, and the Convex CLI takes the credentials from the shell or
-from this folder's `.env.local`. Run it only in the production checkout. With `--reset` it first clears the site; only a
-deployment with `GINKO_DEMO=1` allows that.
+from this folder's `.env.local`. Run it only in the production checkout. It takes a site that nobody has edited yet:
+the singles the first release created from their defaults give way to the export's, and a single the export lacks gets
+its defaults back when the import closes. With `--reset` it first clears the site; only a deployment with
+`GINKO_DEMO=1` allows that.
 
 ## Image variants (srcset)
 
