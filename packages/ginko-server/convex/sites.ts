@@ -305,6 +305,42 @@ export const translationStatus = query({
 })
 
 /**
+ * The areas of the site as the Studio lists them (Content overview, area list): per brick in config order the number
+ * of entries (drafts included, removed ones not), drafts, ended entries (not visible today), open translations (one
+ * per entry and foreign language with a missing or outdated text, counted like `translationStatus`) and when its
+ * content last changed. Staff see the bricks of their tasks only, like `translationStatus`. One read per brick.
+ */
+export const areas = query({
+  args: { site: v.string() },
+  handler: async (ctx, args) => {
+    const actor = await actorFor(ctx, args.site)
+    const schema = actor.site.schema as Schema
+    const foreign = schema.locales.slice(1)
+    const today = todayIn(schema.timeZone)
+    const opens = (key: string, tasks: readonly { id: string }[] = []) => actor.role !== 'staff' || tasks.some((t) => actor.grants.includes(`${key}.${t.id}`))
+    const out: { brick: string; kind: 'single' | 'collection'; count: number; drafts: number; ended: number; translations: number; changedAt: number | null }[] = []
+    for (const [key, def] of ordered(schema.bricks)) {
+      if (def.retired || !opens(key, def.tasks)) continue
+      const rows = (await ctx.db.query('entries').withIndex('by_site_brick_order', (q) => q.eq('site', actor.site._id).eq('brick', key)).collect())
+        .filter((row) => !row.deletedAt)
+      let drafts = 0, ended = 0, translations = 0, changedAt: number | null = null
+      for (const row of rows) {
+        const at = row.contentAt ?? row._creationTime
+        if (changedAt === null || at > changedAt) changedAt = at
+        if (row.state === 'draft') { drafts += 1; continue }
+        if (!isVisible(def, row.data as Data, today)) { ended += 1; continue }
+        for (const locale of foreign) {
+          const status = leafStatus(schema, key, row, locale)
+          if (status.missing.length || status.outdated.length) translations += 1
+        }
+      }
+      out.push({ brick: key, kind: def.kind, count: rows.length, drafts, ended, translations, changedAt })
+    }
+    return out
+  },
+})
+
+/**
  * One-time cleanup (internals/migrations.md): removes the unused `orderRevs` from every site. Running it again is safe.
  * Internal: `npx convex run sites:dropOrderRevs`.
  */
