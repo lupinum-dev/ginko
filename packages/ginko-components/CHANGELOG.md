@@ -1,5 +1,13 @@
 # @lupinum/ginko-components
 
+## 0.6.3
+
+### Patch Changes
+
+- Updated dependencies [[`d451a07`](https://github.com/lupinum-dev/ginko/commit/d451a0764427989ad4abfb346c390a28d2955dd6), [`d451a07`](https://github.com/lupinum-dev/ginko/commit/d451a0764427989ad4abfb346c390a28d2955dd6), [`d451a07`](https://github.com/lupinum-dev/ginko/commit/d451a0764427989ad4abfb346c390a28d2955dd6)]:
+  - @lupinum/ginko@0.6.3
+  - @lupinum/ginko-i18n@0.6.3
+
 ## 0.6.2
 
 ### Patch Changes

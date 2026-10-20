@@ -1,5 +1,17 @@
 # @lupinum/ginko
 
+## 0.6.3
+
+### Patch Changes
+
+- [#34](https://github.com/lupinum-dev/ginko/pull/34) [`d451a07`](https://github.com/lupinum-dev/ginko/commit/d451a0764427989ad4abfb346c390a28d2955dd6) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `idPrefix` to `GinkoMarkdown`: it puts a prefix before every id and `#` link of one body, so a page that shows several bodies has no duplicate ids. The docs changelog uses it with each release's anchor.
+
+- [#34](https://github.com/lupinum-dev/ginko/pull/34) [`d451a07`](https://github.com/lupinum-dev/ginko/commit/d451a0764427989ad4abfb346c390a28d2955dd6) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `NUXT_PUBLIC_GINKO_NOINDEX=true`, which keeps a whole deployment out of search, its own address included. Use it for demos and for a site that runs on a preview address before its domain switch: robots.txt then disallows everything and every response sends `X-Robots-Tag: noindex`. Site responses now also send `Permissions-Policy: camera=(), geolocation=(), microphone=()`.
+
+- [#34](https://github.com/lupinum-dev/ginko/pull/34) [`d451a07`](https://github.com/lupinum-dev/ginko/commit/d451a0764427989ad4abfb346c390a28d2955dd6) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change the generated share card of a page with an image to JPEG. As PNG such a card weighed 400-700 KB, and WhatsApp drops preview images over about 300 KB. Cards without an image stay PNG.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.6.3
+
 ## 0.6.2
 
 ### Patch Changes
