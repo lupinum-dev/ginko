@@ -10,6 +10,7 @@ import type { Runner } from '../../../packages/ginko/src/cli/local.ts'
 import type { Fields } from '@lupinum/ginko'
 import { printOf, type Schema } from '@lupinum/ginko/internal'
 import { remapEntryRefs } from '../convex/lib/content'
+import { insertSingle, newSingle } from '../convex/release'
 import { readTreesJson } from '../convex/lib/trees'
 import { api } from '../convex/_generated/api'
 import { errorOf, setup } from './setup'
@@ -66,15 +67,15 @@ async function withRefBricks(s: Setup, site: Setup['site']) {
 
 const exported = (id: string, brick: string, order: number, data: unknown, prints = {}) => ({ id, brick, kind: 'item', order, data, prints, rev: 1 })
 
-async function exportFolder(entries = [
+async function exportFolder(entries: unknown[] = [
   // The post comes first on purpose: its author is imported after it.
   exported('posts/hello', 'posts', 1, { author: 'authors/anna', more: ['authors/anna'], credits: [{ _id: 'r1', who: 'authors/anna', role: true }] }),
   exported('authors/anna', 'authors', 1, { name: { de: 'Anna' } }),
-]) {
+], bricks: Record<string, unknown> = refBricks) {
   const dir = await mkdtemp(join(tmpdir(), 'ginko-refs-test-'))
   dirs.push(dir)
   await writeFile(join(dir, 'export.json'), JSON.stringify({
-    format: 1, site: 'restaurant', name: 'R', schema: { locales: ['de', 'en'], bricks: refBricks, migrations: [], retired: {} }, schemaRev: 1, contentRev: 1,
+    format: 1, site: 'restaurant', name: 'R', schema: { locales: ['de', 'en'], bricks, migrations: [], retired: {} }, schemaRev: 1, contentRev: 1,
     exportedAt: '2026-10-11T00:00:00.000Z', files: [], entries,
   }))
   return dir
@@ -323,8 +324,39 @@ describe('hosted import guard', () => {
 
     vi.stubEnv('GINKO_DEMO', '1')
     await reset()
-    expect((await entriesOf(s, s.site)).map((e) => e.brick).sort()).toEqual(['authors', 'posts'])
+    // The export's entries replace the old ones; the singles it lacks come back from their defaults (importDone).
+    expect((await entriesOf(s, s.site)).filter((e) => e.kind === 'item').map((e) => e.brick).sort()).toEqual(['authors', 'posts'])
     expect((await s.t.run((ctx) => ctx.db.get(s.site)))!.importOpen).toBeUndefined()
+  })
+
+  // Wrong behaviour caught: the first release of a new client site creates its singles from their defaults, and the
+  // import then refused the site as not empty (or stored a second entry for a single).
+  it('takes the first import after the first release: untouched default singles give way, a missing one comes back', async () => {
+    const s = await setup()
+    const singles = {
+      home: { kind: 'single', label, fields: { count: { type: 'number', label, default: 3 } } },
+      about: { kind: 'single', label, fields: { count: { type: 'number', label, default: 1 } } },
+    }
+    await s.t.run(async (ctx) => {
+      const row = (await ctx.db.get(s.other))!
+      const schema = { ...(row.schema as Schema), bricks: singles } as unknown as Schema
+      // What the first release stores: each single from its defaults, counted in the site's budget.
+      let bytes = 0
+      for (const [brick, def] of Object.entries(schema.bricks)) {
+        const single = await newSingle(brick, def.fields, 'de')
+        await insertSingle(ctx, s.other, single, schema.locales)
+        bytes += single.bytes
+      }
+      await ctx.db.patch(s.other, { schema, entryCount: 2, bytes })
+    })
+    const dir = await exportFolder([{ id: 'home', brick: 'home', kind: 'single', order: 0, data: { count: 7 }, prints: {}, rev: 1 }], singles)
+    const { run, upload } = runnerOf(s)
+    await importSite({ dir, run, upload, log: () => undefined, prod: true, site: 'andere' })
+
+    const rows = await entriesOf(s, s.other)
+    expect(rows.map((e) => [e.brick, e.data]).sort()).toEqual([['about', { count: 1 }], ['home', { count: 7 }]])
+    const site = (await s.t.run((ctx) => ctx.db.get(s.other)))!
+    expect([site.entryCount, site.bytes]).toEqual([2, rows.reduce((sum, e) => sum + e.bytes, 0)])
   })
 
   it('stops before it opens the site when the released schema lacks a brick of the export', async () => {

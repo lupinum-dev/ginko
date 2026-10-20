@@ -53,14 +53,14 @@ interface NewSingle {
   bytes: number
 }
 
-async function newSingle(brick: string, fields: Fields, main: Locale): Promise<NewSingle> {
+export async function newSingle(brick: string, fields: Fields, main: Locale): Promise<NewSingle> {
   const data = defaultsFor(fields)
   const prints = nextPrints({ fields, roots: Object.keys(data), before: {}, after: data, prints: {}, main, confirm: undefined })
   return { brick, data, prints, fields, trees: await treesOf(fields, data), bytes: entryBytes(data, prints) }
 }
 
-/** Stores a new single. The release and devPush share this write. */
-async function insertSingle(ctx: MutationCtx, site: Id<'sites'>, single: NewSingle, locales: Schema['locales']) {
+/** Stores a new single. The release, devPush and the import's close (seed:importDone) share this write. */
+export async function insertSingle(ctx: MutationCtx, site: Id<'sites'>, single: NewSingle, locales: Schema['locales']) {
   const fieldRevs = Object.fromEntries(Object.keys(single.fields).map((name) => [name, 1]))
   const id = await ctx.db.insert('entries', {
     site, brick: single.brick, kind: 'single', order: 0, data: single.data, rev: 1, fieldRevs, lifeRev: 1,
