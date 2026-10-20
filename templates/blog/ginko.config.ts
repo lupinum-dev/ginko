@@ -35,8 +35,8 @@ export default defineSite({
       label: { en: 'Home page', de: 'Startseite', fr: 'Page d’accueil' },
       source: 'files',
       fields: {
-        title: f.text({ en: 'Title', de: 'Titel', fr: 'Titre' }, { max: 80 }),
-        lead: f.longtext({ en: 'Lead', de: 'Einleitung', fr: 'Introduction' }, { max: 300 }),
+        title: f.text({ en: 'Title', de: 'Titel', fr: 'Titre' }, { max: 80, default: 'Welcome' }),
+        lead: f.longtext({ en: 'Lead', de: 'Einleitung', fr: 'Introduction' }, { max: 300, default: 'A short introduction: who you are and what you offer.' }),
       },
     }),
     // The posts, newest first (content/posts/). `authors` names entries of `people`. A file with `draft: true` never

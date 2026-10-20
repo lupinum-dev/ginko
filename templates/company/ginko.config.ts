@@ -42,8 +42,8 @@ export default defineSite({
       label: { de: 'Startseite', en: 'Home page' },
       source: 'files',
       fields: {
-        title: f.text({ de: 'Titel', en: 'Title' }, { max: 100 }),
-        lead: f.longtext({ de: 'Einleitung', en: 'Lead' }, { max: 300 }),
+        title: f.text({ de: 'Titel', en: 'Title' }, { max: 100, default: 'Welcome' }),
+        lead: f.longtext({ de: 'Einleitung', en: 'Lead' }, { max: 300, default: 'A short introduction: who you are and what you offer.' }),
         image: f.image({ de: 'Bild', en: 'Image' }, { optional: true }),
       },
     }),
@@ -53,9 +53,10 @@ export default defineSite({
       label: { de: 'Service-Nummer', en: 'Service line' },
       source: 'files',
       fields: {
-        contact: f.ref({ de: 'Wer antwortet', en: 'Who answers' }, { to: 'people' }),
+        contact: f.ref({ de: 'Wer antwortet', en: 'Who answers' }, { to: 'people', optional: true }),
         hours: f.text({ de: 'Erreichbar', en: 'Hours' }, {
           max: 80,
+          default: 'Mon–Fri 8:00–17:00',
           hint: { de: 'Kurz, zum Beispiel „Mo–Fr 7–17 Uhr, Sa 8–12 Uhr“.', en: 'Short, for example “Mon–Fri 7:00–17:00, Sat 8:00–12:00”.' },
         }),
       },

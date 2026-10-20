@@ -72,16 +72,17 @@ export default defineSite({
       label: { de: 'Startseite', en: 'Home page', fr: 'Page d’accueil' },
       source: 'files',
       fields: {
-        title: f.text({ de: 'Titel', en: 'Title', fr: 'Titre' }, { max: 100 }),
-        lead: f.longtext({ de: 'Einleitung', en: 'Lead', fr: 'Introduction' }, { max: 300 }),
+        title: f.text({ de: 'Titel', en: 'Title', fr: 'Titre' }, { max: 100, default: 'Welcome' }),
+        lead: f.longtext({ de: 'Einleitung', en: 'Lead', fr: 'Introduction' }, { max: 300, default: 'A short introduction: who you are and what you offer.' }),
         image: f.image({ de: 'Bild des Produkts', en: 'Picture of the product', fr: 'Image du produit' }, { optional: true }),
         trialUrl: f.text({ de: 'Link zum kostenlosen Test', en: 'Link to the free trial', fr: 'Lien vers l’essai gratuit' }, {
           format: 'url',
           translate: false,
+          default: 'https://app.planwerk.example/signup',
           hint: { de: 'Die Anmeldeseite der App.', en: 'The sign-up page of the app.', fr: 'La page d’inscription de l’application.' },
         }),
-        features: f.list({ de: 'Funktionen', en: 'Features', fr: 'Fonctionnalités' }, { max: 6, itemLabel: { de: 'Funktion', en: 'Feature', fr: 'Fonctionnalité' }, fields: point }),
-        facts: f.list({ de: 'Sicherheit und Daten', en: 'Security and data', fr: 'Sécurité et données' }, { max: 4, itemLabel: { de: 'Punkt', en: 'Fact', fr: 'Point' }, fields: point }),
+        features: f.list({ de: 'Funktionen', en: 'Features', fr: 'Fonctionnalités' }, { max: 6, itemLabel: { de: 'Funktion', en: 'Feature', fr: 'Fonctionnalité' }, fields: point, default: [] }),
+        facts: f.list({ de: 'Sicherheit und Daten', en: 'Security and data', fr: 'Sécurité et données' }, { max: 4, itemLabel: { de: 'Punkt', en: 'Fact', fr: 'Point' }, fields: point, default: [] }),
       },
     }),
     // Legal name, address, register entry, VAT number, phone and email for the footer, the imprint, the email of the

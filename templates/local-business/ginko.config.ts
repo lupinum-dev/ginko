@@ -56,6 +56,7 @@ export default defineSite({
       fields: {
         phoneHours: f.text({ de: 'Telefonisch erreichbar', en: 'Phone hours' }, {
           max: 80,
+          default: 'Mon–Fri 8:00–12:00',
           hint: { de: 'Kurz, zum Beispiel „Mo–Fr 08:00–12:00“.', en: 'Short, for example “Mon–Fri 08:00–12:00”.' },
         }),
         bookingUrl: f.text({ de: 'Online-Terminbuchung', en: 'Online booking' }, {
@@ -81,8 +82,8 @@ export default defineSite({
       label: { de: 'Startseite', en: 'Home page' },
       source: 'files',
       fields: {
-        title: f.text({ de: 'Titel', en: 'Title' }, { max: 80 }),
-        lead: f.longtext({ de: 'Einleitung', en: 'Lead' }, { max: 200 }),
+        title: f.text({ de: 'Titel', en: 'Title' }, { max: 80, default: 'Welcome' }),
+        lead: f.longtext({ de: 'Einleitung', en: 'Lead' }, { max: 200, default: 'A short introduction: who you are and what you offer.' }),
         image: f.image({ de: 'Foto', en: 'Photo' }, { optional: true }),
       },
     }),
