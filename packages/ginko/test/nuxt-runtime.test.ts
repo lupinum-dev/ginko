@@ -288,6 +288,15 @@ describe('sitemapXml', () => {
     expect(sitemapXml(single, {}, '2026-10-08')).toContain('<url><loc>https://ginko-demo-restaurant.vercel.app/speisekarte</loc></url>')
   })
 
+  // Wrong behaviour caught: a page the site keeps out of search (seo.noindex) is still submitted in the sitemap, which
+  // Search Console reports as "Submitted URL marked noindex".
+  test('leaves the pages of seo.noindex out in every locale', () => {
+    const xml = render(schema, bundles, '2026-10-08', i18n, ['gallery'])
+    expect(xml).not.toContain('/galerie')
+    expect(xml).not.toContain('/en/gallery')
+    expect(xml.match(/<url>/g)).toHaveLength(15)
+  })
+
   // Wrong behaviour caught: lastmod missing for entries (search engines never learn what changed) or invented for static pages.
   test('gives an entry URL its updatedAt as lastmod in every locale; static pages have none', () => {
     const xml = sitemapXml(schema, bundles, '2026-10-08')

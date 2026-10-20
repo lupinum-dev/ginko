@@ -28,13 +28,14 @@ const MAX_IMAGES = 20
 /**
  * `bundles` must hold every locale of the site for routed entries; `today` is the site's date
  * (todayIn of its time zone), so the visibility rule matches the pages. `locales` is ginko-i18n's
- * config: hreflang uses its languages and `x-default`, exactly as the page head does.
+ * config: hreflang uses its languages and `x-default`, exactly as the page head does. `noindex` names
+ * the pages that stay out (`seo.noindex` of the site config).
  */
-export function sitemapUrls(site: Schema, bundles: Partial<Record<Locale, Bundle>>, today: string, locales: Pick<LocaleConfig, 'locales' | 'defaultLocale'>): SitemapUrl[] {
+export function sitemapUrls(site: Schema, bundles: Partial<Record<Locale, Bundle>>, today: string, locales: Pick<LocaleConfig, 'locales' | 'defaultLocale'>, noindex: readonly string[] = []): SitemapUrl[] {
   const base = site.url.replace(/\/$/, '')
   const seen = new Set<string>()
   const urls: SitemapUrl[] = []
-  for (const group of [...staticGroups(site, base), ...entryGroups(site, bundles, today, base)]) {
+  for (const group of [...staticGroups(site, base, noindex), ...entryGroups(site, bundles, today, base)]) {
     const alternatives = group.alternates ? alternatesOf(group.urls, locales).map((a) => ({ hreflang: a.hreflang, href: a.path })) : []
     for (const [locale, loc] of Object.entries(group.urls)) {
       if (seen.has(loc)) continue
@@ -47,8 +48,8 @@ export function sitemapUrls(site: Schema, bundles: Partial<Record<Locale, Bundle
 }
 
 /** The sitemap document of `sitemapUrls`. */
-export function sitemapXml(site: Schema, bundles: Partial<Record<Locale, Bundle>>, today: string, locales: Pick<LocaleConfig, 'locales' | 'defaultLocale'>): string {
-  const urls = sitemapUrls(site, bundles, today, locales)
+export function sitemapXml(site: Schema, bundles: Partial<Record<Locale, Bundle>>, today: string, locales: Pick<LocaleConfig, 'locales' | 'defaultLocale'>, noindex: readonly string[] = []): string {
+  const urls = sitemapUrls(site, bundles, today, locales, noindex)
   const element = (url: SitemapUrl) => [
     `  <url><loc>${escapeXml(url.loc)}</loc>`,
     url.lastmod ? `<lastmod>${escapeXml(url.lastmod)}</lastmod>` : '',
@@ -66,8 +67,8 @@ export function sitemapXml(site: Schema, bundles: Partial<Record<Locale, Bundle>
 }
 
 /** Static pages: one group per page key, with its path in every locale it has. */
-function staticGroups(site: Schema, base: string): Group[] {
-  return Object.values(site.pages).map((paths) => ({
+function staticGroups(site: Schema, base: string, noindex: readonly string[]): Group[] {
+  return Object.entries(site.pages).filter(([key]) => !noindex.includes(key)).map(([, paths]) => ({
     urls: Object.fromEntries(Object.entries(paths).map(([locale, path]) => [locale, `${base}${path}`])),
     alternates: Object.keys(paths).length > 1,
   }))

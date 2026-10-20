@@ -105,7 +105,9 @@ export default defineNuxtModule<SiteInput>({
     // already in the browser instead, so the preview never reaches production (SPEC 8).
     nuxt.options.experimental.payloadExtraction = false
     // The rule type is Nitro's in a site and a fallback without `headers` here, so the result is cast back to it.
-    nuxt.options.routeRules = ginkoRouteRules(nuxt.options.routeRules ?? {}) as typeof nuxt.options.routeRules
+    // The pages of `seo.noindex` in every locale; the sitemap leaves them out by key (sitemap-xml.ts).
+    const noindex = (site.seo?.noindex ?? []).flatMap((key) => Object.values(schema.pages[key] ?? {}).filter((path) => path !== undefined))
+    nuxt.options.routeRules = ginkoRouteRules(nuxt.options.routeRules ?? {}, noindex) as typeof nuxt.options.routeRules
 
     // Generated share cards (nuxt-og-image): only with that module installed and one renderer for it. `#ginko/og`
     // is the one place that reaches nuxt-og-image, so a site without it never imports it.

@@ -15,5 +15,5 @@ export default defineEventHandler(async (event) => {
   const main = bundles[config.mainLocale]
   if (!main) throw createError({ statusCode: 503, statusMessage: 'Content unavailable', fatal: true })
   event.res.headers.set('x-ginko-rev', `${main.schemaRev}.${main.contentRev}`)
-  return sitemapUrls(schema, bundles, todayIn(config.timeZone), locales)
+  return sitemapUrls(schema, bundles, todayIn(config.timeZone), locales, config.seo.noindex)
 })

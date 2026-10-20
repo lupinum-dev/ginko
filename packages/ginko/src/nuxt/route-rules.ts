@@ -17,9 +17,11 @@ const ISR_SECONDS = 60
  * Ginko's cache rules on top of the site's own (docs: 11.veroeffentlichen "Vercel"). Ginko only fills what the site
  * left unset, except under /__ginko/: there Ginko's `isr`, `cache-control` and `x-robots-tag` replace the site's, so
  * the preview is never cached or indexed. A more specific rule of the site wins anyway (Nitro merges by specificity).
+ * `noindex` are the paths of the pages in `seo.noindex`: they answer with `X-Robots-Tag: noindex`.
  */
-export function ginkoRouteRules(site: RouteRules): RouteRules {
+export function ginkoRouteRules(site: RouteRules, noindex: readonly string[] = []): RouteRules {
   const rules = { ...site }
+  for (const path of noindex) rules[path] = { ...rules[path], headers: { 'x-robots-tag': 'noindex', ...rules[path]?.headers } }
   // ISR for every page; queries share one cache entry so a refresh reaches them (ISR spike, question 5).
   rules['/**'] = { ...rules['/**'], isr: rules['/**']?.isr ?? { expiration: ISR_SECONDS, allowQuery: [] } }
   // A site's own server routes pick their language from a header or cookie (ginko-i18n), so they are not cached.

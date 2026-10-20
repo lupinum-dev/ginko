@@ -24,6 +24,14 @@ test('build output under /__ginko/ is cached until the next deploy; the rest is 
     .toEqual({ isr: false, headers: { 'cache-control': 'no-store', 'x-robots-tag': 'noindex', 'x-a': '1' } })
 })
 
+// Wrong behaviour caught: a page in seo.noindex answers without X-Robots-Tag and can still land in search; or Ginko's
+// header replaces one the site set for that path itself.
+test('the paths of seo.noindex answer with X-Robots-Tag: noindex; the site\'s own header wins', () => {
+  const rules = ginkoRouteRules({ '/en/thanks': { headers: { 'x-robots-tag': 'noindex, nofollow' } } }, ['/danke', '/en/thanks'])
+  expect(rules['/danke']).toEqual({ headers: { 'x-robots-tag': 'noindex' } })
+  expect(rules['/en/thanks']).toEqual({ headers: { 'x-robots-tag': 'noindex, nofollow' } })
+})
+
 // Wrong behaviour caught: NUXT_GINKO_REVALIDATE_TOKEN silently replaces the bypass token the site set itself.
 test('the site\'s own Vercel bypassToken wins; an unset one takes the env token', () => {
   expect(ginkoVercelConfig({ regions: ['fra1'], config: { bypassToken: 'site' } }, 'env')).toEqual({ regions: ['fra1'], config: { bypassToken: 'site' } })

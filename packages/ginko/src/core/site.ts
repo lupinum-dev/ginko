@@ -70,6 +70,11 @@ export interface SiteInput {
     color?: string
     /** The home page's Organization JSON-LD. A page with its own (`siteJsonLd` of `@lupinum/ginko/basics`) gets none from here. */
     organization?: { logo?: string; sameAs?: string[] }
+    /**
+     * Keys of `pages` that stay out of search, such as a thank-you page after a form: they leave the sitemap and
+     * answer with `X-Robots-Tag: noindex` in every locale.
+     */
+    noindex?: string[]
   }
   /** Text for AI agents (`/llms.txt`, `<page>.md`) and the agent door's default. Only `review` is part of the schema contract. */
   agents?: {
