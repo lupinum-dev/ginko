@@ -1,0 +1,72 @@
+# The demo platform lupinum-ginko-demo (internals/decisions.md D55): every template runs there as a site with its
+# content in the Studio. Its Vercel project is linked to main: each production build deploys the Convex backend, then
+# the Studio (apps/platform/scripts/vercel-build.sh); the template sites deploy through their own Vercel Git links.
+# Here, on each push to main, every template site gets its schema (`ginko release` with GINKO_CONTENT=platform, the
+# path a client site takes too); a release that needs backend code the Vercel build has not deployed yet fails, and a
+# run by hand repeats it. Every Monday night, and when started by hand, the template sites get their content back from
+# git with this week's dates (`pnpm templates demo-reset --all`).
+# Environment `demo`: secrets DEMO_CONVEX_DEPLOY_KEY (the demo deployment only, for the reset) and DEMO_GINKO_KEYS
+# ({"<site>": "<push key>"}, one per template site), variable DEMO_PLATFORM (the demo Studio's address).
+name: demo
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: demo
+    strategy:
+      fail-fast: false
+      matrix:
+        # The site slug is the template's name (`site` in its ginko.config.ts).
+        template: [starter, blog, portfolio, company, saas, docs, restaurant, local-business, nonprofit, events]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter ./templates/${{ matrix.template }} exec ginko release
+        env:
+          GINKO_CONTENT: platform
+          GINKO_PLATFORM: ${{ vars.DEMO_PLATFORM }}
+          GINKO_KEY: ${{ fromJSON(secrets.DEMO_GINKO_KEYS)[matrix.template] }}
+
+  # After the release when started by hand; on the Monday schedule the release is skipped and this runs alone.
+  reset:
+    needs: release
+    if: ${{ !failure() && !cancelled() && github.event_name != 'push' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: demo
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm templates demo-reset --all
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.DEMO_CONVEX_DEPLOY_KEY }}

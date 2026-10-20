@@ -307,6 +307,26 @@ describe('hosted import guard', () => {
     expect((await errorOf(call('seed:importOpen', { site: 'andere' }))).code).toBe('INVALID')
   })
 
+  // Wrong behaviour caught: a reset clears a client's site on a platform without GINKO_DEMO, or a demo reset keeps the
+  // old content next to the imported one.
+  it('replaces a site with content (--reset) only on the demo platform, GINKO_DEMO=1', async () => {
+    const s = await setup()
+    await withRefBricks(s, s.site)
+    const before = (await entriesOf(s, s.site)).length
+    const dir = await exportFolder()
+    const { run, upload, calls } = runnerOf(s)
+    const reset = () => importSite({ dir, run, upload, log: () => undefined, prod: true, reset: true, site: 'restaurant' })
+
+    expect((await errorOf(reset())).code).toBe('FORBIDDEN')
+    expect(await entriesOf(s, s.site)).toHaveLength(before)
+    expect(calls).not.toContain('seed:importOpen')
+
+    vi.stubEnv('GINKO_DEMO', '1')
+    await reset()
+    expect((await entriesOf(s, s.site)).map((e) => e.brick).sort()).toEqual(['authors', 'posts'])
+    expect((await s.t.run((ctx) => ctx.db.get(s.site)))!.importOpen).toBeUndefined()
+  })
+
   it('stops before it opens the site when the released schema lacks a brick of the export', async () => {
     const s = await setup()
     const { run, upload, calls } = runnerOf(s)

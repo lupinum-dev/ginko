@@ -16,6 +16,9 @@
 // `test` takes the machine-wide heavy-run lock and waits for a calm machine first (scripts/lib/runs.ts). An error of
 // the run itself (install, build, server start, global setup, a crash of this script) is a failed gate with its reason.
 //   dev <name>               nuxt dev on port 3600 + the template's place in T1
+//   demo-reset <name>|--all  replaces the content of the template's site on the DEMO platform with the template's own,
+//                            dates moved to this week (CONVEX_DEPLOY_KEY of the demo deployment; the weekly demo-reset
+//                            workflow). Any platform without GINKO_DEMO=1 refuses it and keeps its content.
 //
 // GINKO_KEEP_WORK=1 keeps the work folder of `test` for a look; it is deleted otherwise.
 import { execFile as execFileCallback, spawn, spawnSync } from 'node:child_process'
@@ -28,8 +31,9 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { lockfiles, manifestOf, notCopied, sampleDates } from '../packages/create-ginko/template-files.mjs'
-import { heavyLock, waitForCalm } from './lib/runs.ts'
-import { platformGate, type Step } from './templates/platform.ts'
+import { loadConfig } from '../packages/ginko/src/cli/config.ts'
+import { heavyLock, waitForCalm, type Session } from './lib/runs.ts'
+import { platformGate, templateExport, type Step } from './templates/platform.ts'
 
 const execFile = promisify(execFileCallback)
 export const repoRoot = join(import.meta.dirname, '..')
@@ -629,9 +633,39 @@ function dev(name: string) {
   child.on('exit', (code) => process.exit(code ?? 0))
 }
 
+/**
+ * `demo-reset`: each template's content (templateExport) replaces its site's content on the demo platform through
+ * `ops:import --reset`. The site must exist and have its schema released. The guard is the platform's: the clear runs
+ * only where GINKO_DEMO=1 (packages/ginko-server/convex/seed.ts), so the client platform's key changes nothing.
+ */
+async function demoReset(names: string[]) {
+  if (!process.env.CONVEX_DEPLOY_KEY?.startsWith('prod:')) {
+    console.error('demo-reset needs CONVEX_DEPLOY_KEY (prod:…) of the demo deployment.')
+    process.exit(2)
+  }
+  const run: Session['run'] = async (command, args, cwd, env = process.env) => (await execFile(command, args, { cwd, env, maxBuffer: 64 * 1024 * 1024 })).stdout
+  const failed: string[] = []
+  for (const name of names) {
+    const work = mkdtempSync(join(tmpdir(), `ginko-demo-reset-${name}-`))
+    try {
+      const exportDir = await templateExport(repoRoot, name, work, run)
+      const { site } = await loadConfig(join(repoRoot, 'templates', name, 'ginko.config.ts'))
+      await run('node', ['--experimental-strip-types', join(repoRoot, 'packages/ginko/src/cli/monorepo.ts'), 'ops:import', exportDir, '--site', site, '--prod', '--reset'], repoRoot)
+      console.log(`OK demo-reset ${name}`)
+    } catch (error) {
+      failed.push(name)
+      console.log(`FAIL demo-reset ${name}\n${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      rmSync(work, { recursive: true, force: true })
+    }
+  }
+  console.log(`\ntemplates demo-reset: ${names.length - failed.length} reset${failed.length ? `, failed: ${failed.join(', ')}` : ''}`)
+  process.exit(failed.length ? 1 : 0)
+}
+
 async function main(argv: string[]) {
   const [command, ...rest] = argv
-  const usage = 'Usage: pnpm templates sync [--check] | test <name> [--only <gate>] [--mode single|multi] | test <name> --platform | dev <name>'
+  const usage = 'Usage: pnpm templates sync [--check] | test <name> [--only <gate>] [--mode single|multi] | test <name> --platform | dev <name> | demo-reset <name>|--all'
   const option = (flag: string) => {
     const i = rest.indexOf(flag)
     return i === -1 ? undefined : rest[i + 1]
@@ -688,6 +722,7 @@ async function main(argv: string[]) {
     process.exit(failed.length ? 1 : 0)
   }
   if (command === 'dev') return dev(needName())
+  if (command === 'demo-reset') return demoReset(rest.includes('--all') ? T1 : [needName()])
   console.error(usage)
   process.exit(2)
 }

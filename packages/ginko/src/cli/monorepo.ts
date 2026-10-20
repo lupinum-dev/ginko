@@ -3,7 +3,8 @@
 //   pnpm local:import <folder>          an export folder into the local platform (import.ts)
 //   pnpm local:pull                     production content into the local platform (pull.ts)
 //   pnpm local:files-export --config <file> [folder]  the site's content files as an export folder (files-export.ts)
-//   pnpm ops:import <folder> --site <slug> --prod     an export folder into an EMPTY site of the hosted platform (operators; import.ts)
+//   pnpm ops:import <folder> --site <slug> --prod [--reset]  an export folder into an EMPTY site of the hosted platform
+//                                                     (operators; import.ts); --reset clears it first (demo platform only)
 // The root package.json runs this file; the package build leaves it out. Output and exit codes as `ginko` (run.ts).
 // pnpm runs root scripts in the repository root, also with -w from a site folder, so local:dev has no default config:
 // ./ginko.config.ts would be the root's, which does not exist.
@@ -28,14 +29,16 @@ Commands:
                          ready for local:import. Every brick counts as file content, whatever its source.
   local:pull             Copy content from production to the local platform (export, then import).
                          Needs GINKO_PLATFORM and GINKO_KEY (scope pull or export).
-  ops:import <folder> --site <slug> --prod
+  ops:import <folder> --site <slug> --prod [--reset]
                          For Lupinum operators: load an export folder into the EMPTY site <slug> of the hosted platform
                          (runs \`npx convex run --prod\`; needs Convex access to production). Run \`ginko release\` for the
                          site first: the schema is not pushed here. Refuses a site that has entries, changes or edits.
+                         With --reset it clears the site first; only the demo platform (GINKO_DEMO=1) allows that.
 
 Options:
   --site <slug>     ops:import: the site on the platform
   --prod            ops:import: required; confirms that production is meant
+  --reset           ops:import: replace the site's content (demo platform only)
   --config <file>   Path to the site's ginko.config.ts, required by local:dev; packages/ginko-server is searched from there
                     (without it: from the current folder)
   -h, --help        Show this help
@@ -68,12 +71,12 @@ export function main(argv: string[], deps: CliDeps = realDeps()): Promise<ExitCo
       'ops:import': {
         folder: 'required',
         site: true,
-        flags: ['--prod'],
+        flags: ['--prod', '--reset'],
         async run(args) {
           if (!args.flags.has('--prod')) throw new CliError('ops:import writes to the hosted platform. Add --prod to confirm.', 'USAGE')
           if (!args.site) throw new CliError('ops:import needs --site <slug>.', 'USAGE')
           const run = connectProd(process.cwd(), 'ops:import')
-          const done = await importSite({ dir: args.folder!, run, upload, log: deps.log, prod: true, site: args.site })
+          const done = await importSite({ dir: args.folder!, run, upload, log: deps.log, prod: true, reset: args.flags.has('--reset'), site: args.site })
           return { dir: args.folder, site: args.site, ...done }
         },
       },

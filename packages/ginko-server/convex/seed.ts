@@ -26,8 +26,16 @@ function localOnly() {
 }
 
 /**
+ * Clearing a site's content: a local backend, or the demo platform (GINKO_DEMO=1), whose template sites are reset from
+ * git every week. The client platform never sets GINKO_DEMO, so no key or command can clear a client's site there.
+ */
+function localOrDemoOnly() {
+  if (process.env.GINKO_LOCAL !== '1' && process.env.GINKO_DEMO !== '1') fail('FORBIDDEN', 'errors.localOrDemoOnly')
+}
+
+/**
  * The import steps run with GINKO_LOCAL=1, or on a site that is open for import (`sites.importOpen`, set by `importOpen`
- * only on an empty site). `importClear` never runs on a hosted deployment: it would delete content.
+ * only on an empty site). `importClear` runs on a hosted deployment only with GINKO_DEMO=1 (localOrDemoOnly).
  */
 async function importAllowed(ctx: QueryCtx, slug: string) {
   if (process.env.GINKO_LOCAL === '1') return true
@@ -129,7 +137,7 @@ const CLEAR_DOCS = 2000
 export const importClear = internalMutation({
   args: { site: v.string() },
   handler: async (ctx, args) => {
-    localOnly()
+    localOrDemoOnly()
     const site = await siteBySlug(ctx, args.site)
     let spent = 0
     let docs = 0
