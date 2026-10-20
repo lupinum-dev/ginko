@@ -1,5 +1,13 @@
 # @lupinum/ginko
 
+## 0.6.1
+
+### Patch Changes
+
+- [#30](https://github.com/lupinum-dev/ginko/pull/30) [`f13ccdb`](https://github.com/lupinum-dev/ginko/commit/f13ccdbeeb6bc9eb84162ba25ceeacfe0fb3267e) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the first `ops:import` into a new site on the hosted platform: the singles that its first release created from their defaults no longer block the import, and a single the export lacks keeps its defaults.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.6.1
+
 ## 0.6.0
 
 ### Minor Changes
