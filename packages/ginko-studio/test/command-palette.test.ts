@@ -66,7 +66,8 @@ const typeQuery = async (text: string) => {
   await new Promise((resolve) => setTimeout(resolve, 250))
   await nextTick()
 }
-const optionTexts = () => [...document.body.querySelectorAll('[role="option"]')].map((el) => (el.children.length ? [...el.children].map((c) => c.textContent).join(' ') : el.textContent?.trim()))
+/** Each option's text parts (label, area, state), without the kind icon, which has no text. */
+const optionTexts = () => [...document.body.querySelectorAll('[role="option"]')].map((el) => [...el.children].map((c) => c.textContent?.trim()).filter(Boolean).join(' '))
 
 beforeAll(() => {
   // reka-ui positions and scrolls with these; happy-dom has neither.
@@ -112,7 +113,7 @@ describe('CommandPalette', () => {
     await nextTick()
 
     expect(mocks.asked).toContainEqual({ site: 's', query: 'sch' })
-    expect(optionTexts()).toEqual(['Schnitzel Speisekarte Online', 'Veranstaltungen'])
+    expect(optionTexts()).toEqual(['Schnitzel Speisekarte', 'Veranstaltungen'])
 
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     await flushPromises()
@@ -166,13 +167,13 @@ describe('CommandPalette', () => {
     mocks.slow.value = true
     await typeQuery('schw')
     expect(mocks.asked).toContainEqual({ site: 's', query: 'schw' })
-    expect(optionTexts()).toEqual(['Schnitzel Speisekarte Online'])
+    expect(optionTexts()).toEqual(['Schnitzel Speisekarte'])
     expect(document.body.textContent).not.toContain('Nichts gefunden')
 
     mocks.found = { entries: [{ ...schnitzel, entry: 'e2', label: 'Schweinsbraten' }], bricks: [], tasks: [] }
     mocks.slow.value = false
     await nextTick()
-    expect(optionTexts()).toEqual(['Schweinsbraten Speisekarte Online'])
+    expect(optionTexts()).toEqual(['Schweinsbraten Speisekarte'])
   })
 
   // Wrong behaviour caught: a failed search left the result area blank, or showed the last word's results as if they
@@ -198,6 +199,6 @@ describe('CommandPalette', () => {
     ;[...document.body.querySelectorAll('button')].find((b) => b.textContent === 'Erneut versuchen')!.click()
     await flushPromises()
     expect(mocks.asked.slice(before)).toEqual([{ site: 's', query: 'schw' }])
-    expect(optionTexts()).toEqual(['Schweinsbraten Speisekarte Online', 'Schwanenwirt schwan.test'])
+    expect(optionTexts()).toEqual(['Schweinsbraten Speisekarte', 'Schwanenwirt schwan.test'])
   })
 })

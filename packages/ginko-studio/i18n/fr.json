@@ -885,7 +885,9 @@
       "newIn": "Nouveau : {area}",
       "review": "Relecture",
       "empty": "Aucun résultat pour « {query} ».",
-      "failed": "La recherche n’a pas fonctionné à l’instant."
+      "failed": "La recherche n’a pas fonctionné à l’instant.",
+      "keyOpen": "Ouvrir",
+      "keyNewTab": "Nouvel onglet"
     },
     "update": {
       "menu": "Mettre à jour le site web maintenant",

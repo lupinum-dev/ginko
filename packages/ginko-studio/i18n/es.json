@@ -885,7 +885,9 @@
       "newIn": "Nuevo en {area}",
       "review": "Revisar",
       "empty": "No se encontró nada para “{query}”.",
-      "failed": "La búsqueda no ha funcionado ahora mismo."
+      "failed": "La búsqueda no ha funcionado ahora mismo.",
+      "keyOpen": "Abrir",
+      "keyNewTab": "Pestaña nueva"
     },
     "update": {
       "menu": "Actualizar el sitio web ahora",

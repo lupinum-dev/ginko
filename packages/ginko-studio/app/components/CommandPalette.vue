@@ -1,13 +1,14 @@
 <!-- ⌘K / Ctrl+K on every site page (UI.md 10.6). Empty: the last entries opened, then actions. Typing: search.studio
      (entries by title in all languages, areas by label or by a field's label, which then shows next to the area), and the
      person's other sites by name or address. Enter opens, ⌘/Ctrl+Enter opens in a new tab. The server decides what
-     matches, so the Command's own client-side filter is not used (the filter field is a plain ListboxFilter). -->
+     matches, so the Command's own client-side filter is not used (the filter field is a plain ListboxFilter). Each result
+     carries an icon for its kind (entry, area, action, site); the footer names the keys on screens with a keyboard. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import { navigateTo, useConvexQuery, useI18n } from '#imports'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch, type Component } from 'vue'
 import { ListboxFilter } from 'reka-ui'
-import { SearchIcon } from '@lucide/vue'
+import { CircleCheckIcon, FileTextIcon, FolderIcon, GlobeIcon, HistoryIcon, ImageIcon, PlusIcon, RefreshCwIcon, SearchIcon, Trash2Icon } from '@lucide/vue'
 import type { Schema } from '@lupinum/ginko/internal'
 import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
@@ -59,29 +60,31 @@ async function retry() {
 }
 
 const site = (path: string) => `/s/${props.slug}${path}`
-interface Item { value: string; label: string; area?: string; state?: string; detail?: string; run: () => void }
+interface Item { value: string; label: string; icon: Component; area?: string; state?: string; detail?: string; run: () => void }
 
 const actions = computed<Item[]>(() => [
   ...creatableBricks(props.schema ?? ({ bricks: {} } as Schema), props.role, props.grants).map(([key, brick]) => ({
-    value: `new:${key}`, label: t('basics.palette.newIn', { area: shownLabel(brick.label, main.value) }), run: () => go(site(`/all/${key}/new`)),
+    value: `new:${key}`, icon: PlusIcon, label: t('basics.palette.newIn', { area: shownLabel(brick.label, main.value) }), run: () => go(site(`/all/${key}/new`)),
   })),
-  { value: 'files', label: t('nav.files'), run: () => go(site('/files')) },
-  { value: 'history', label: t('nav.history'), run: () => go(site('/history')) },
+  { value: 'files', icon: ImageIcon, label: t('nav.files'), run: () => go(site('/files')) },
+  { value: 'history', icon: HistoryIcon, label: t('nav.history'), run: () => go(site('/history')) },
   // Removed entries of every area; the page itself says what the person may restore.
-  { value: 'trash', label: t('basics.removed.link'), run: () => go(site('/all?removed')) },
+  { value: 'trash', icon: Trash2Icon, label: t('basics.removed.link'), run: () => go(site('/all?removed')) },
   ...(manager.value ? [
-    { value: 'review', label: t('basics.palette.review'), run: () => go(site('/review')) },
-    { value: 'update', label: t('basics.update.menu'), run: () => emit('update') },
+    { value: 'review', icon: CircleCheckIcon, label: t('basics.palette.review'), run: () => go(site('/review')) },
+    { value: 'update', icon: RefreshCwIcon, label: t('basics.update.menu'), run: () => emit('update') },
   ] : []),
 ])
-const recents = computed<Item[]>(() => recent.value.map((r) => ({ value: `recent:${r.to}`, label: r.label, area: r.area, run: () => go(r.to) })))
+const recents = computed<Item[]>(() => recent.value.map((r) => ({ value: `recent:${r.to}`, icon: FileTextIcon, label: r.label, area: r.area, run: () => go(r.to) })))
 /** An area's label in the Studio language; the server words labels in the site's main language. */
 const areaLabel = (brick: string, fallback: string) => {
   const def = props.schema?.bricks[brick]
   return def ? shownLabel(def.label, main.value) : fallback
 }
 const entries = computed<Item[]>(() => (searching.value && !failed.value ? data.value?.entries ?? [] : []).map((e) => ({
-  value: `entry:${e.entry}`, label: e.label, area: areaLabel(e.brick, e.brickLabel), state: e.state === 'draft' ? t('entry.status.draft') : t('entry.status.online'),
+  value: `entry:${e.entry}`, icon: FileTextIcon, label: e.label, area: areaLabel(e.brick, e.brickLabel),
+  // Most results are online: only a draft says what it is, so the word stands out where it matters.
+  state: e.state === 'draft' ? t('entry.status.draft') : undefined,
   run: () => go(entryPath(props.slug, props.schema, e.brick, e.entry)),
 })))
 /** The field an area was found by ("Telefon" in "Adresse und Kontakt"), in the Studio language. */
@@ -90,7 +93,7 @@ const fieldLabel = (brick: string, field: string) => {
   return def ? shownLabel(def.label, main.value) : undefined
 }
 const areas = computed<Item[]>(() => (searching.value && !failed.value ? data.value?.bricks ?? [] : []).map((b) => ({
-  value: `area:${b.brick}`, label: areaLabel(b.brick, b.label), detail: 'field' in b && b.field ? fieldLabel(b.brick, b.field) : undefined, run: () => go(site(`/all/${b.brick}`)),
+  value: `area:${b.brick}`, icon: FolderIcon, label: areaLabel(b.brick, b.label), detail: 'field' in b && b.field ? fieldLabel(b.brick, b.field) : undefined, run: () => go(site(`/all/${b.brick}`)),
 })))
 // Switching sites (an agency has dozens): the person's other sites, asked only while the palette is open, matched here.
 // A site being deleted opens on its deletion page, so it says so, as in "Meine Seiten".
@@ -99,7 +102,7 @@ const sites = computed<Item[]>(() => (searching.value ? mySites.value ?? [] : []
   .filter((s) => s.slug !== props.slug && siteMatches(s, query.value))
   .toSorted(bySiteName(locale.value))
   .map((s) => ({
-    value: `site:${s.slug}`, label: s.name, area: s.deleting ? `${siteHost(s.url)} · ${t('sites.deleting')}` : siteHost(s.url), run: () => go(`/s/${s.slug}`),
+    value: `site:${s.slug}`, icon: GlobeIcon, label: s.name, area: s.deleting ? `${siteHost(s.url)} · ${t('sites.deleting')}` : siteHost(s.url), run: () => go(`/s/${s.slug}`),
   })))
 
 /** `inNewTab`: ⌘Enter / Ctrl+Enter. */
@@ -126,58 +129,83 @@ function onEnter(event: KeyboardEvent) {
   event.preventDefault()
   pick(first, { detail: { originalEvent: event } })
 }
+
+// The footer's new-tab key, read from the device as the layout does for ⌘K (the server renders the Apple glyph).
+const apple = ref(true)
+onMounted(() => { apple.value = /Mac|iPhone|iPad/.test(navigator.platform) })
+const item = 'min-h-10 gap-3 rounded-lg px-2.5 data-[highlighted]:bg-muted data-[highlighted]:text-foreground'
+// Rows with a second part (area, host, field): side by side from 640px, on phones the second part goes under the label
+// so neither is cut to a few letters. The spans stay direct children of the option (its text is label, then the rest).
+const twoPart = `${item} max-sm:grid max-sm:grid-cols-[1rem_minmax(0,1fr)_auto] max-sm:gap-x-3 max-sm:gap-y-0 max-sm:py-2 max-sm:[&>svg]:row-span-2`
+const second = 'shrink-0 truncate text-[13px] text-muted-foreground sm:max-w-[45%] max-sm:col-start-2 max-sm:row-start-2'
+const kbd = 'inline-grid h-5 min-w-5 place-items-center rounded border bg-muted px-1 font-sans text-[11px] text-foreground'
 </script>
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="overflow-hidden rounded-2xl p-0" :show-close-button="false">
+    <DialogContent class="top-[max(1rem,12vh)] translate-y-0 gap-0 overflow-hidden rounded-xl bg-popover p-0 shadow-xl sm:max-w-[640px]" :show-close-button="false">
       <DialogHeader class="sr-only">
         <DialogTitle>{{ t('basics.palette.title') }}</DialogTitle>
         <DialogDescription>{{ t('basics.palette.description') }}</DialogDescription>
       </DialogHeader>
       <Command @highlight="highlighted = $event?.ref">
-        <div data-slot="command-input-wrapper" class="flex h-12 items-center gap-2 border-b px-4">
-          <SearchIcon class="size-4 shrink-0 opacity-50" aria-hidden="true" />
+        <!-- The field is always focused while the palette is open, so it draws no ring of its own: the caret and the row
+             are the focus. A second ring (the field's, inside the dialog's) only boxed the text in. -->
+        <div data-slot="command-input-wrapper" class="flex h-13 items-center gap-3 border-b px-4">
+          <SearchIcon class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <ListboxFilter
             v-model="query" auto-focus :placeholder="t('basics.palette.placeholder')" :aria-label="t('basics.palette.title')"
             :aria-activedescendant="highlighted?.isConnected ? highlighted.id : undefined"
-            class="flex h-11 w-full rounded-md bg-transparent text-base outline-hidden placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/80 md:text-sm" @keydown.enter="onEnter"
+            class="flex h-12 w-full bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none sm:text-[15px]" @keydown.enter="onEnter"
           />
         </div>
-        <CommandList class="max-h-[60dvh] p-1.5" :aria-label="t('basics.palette.title')">
+        <CommandList class="max-h-[min(60dvh,30rem)] p-1.5" :aria-label="t('basics.palette.title')">
           <CommandGroup v-if="!searching && recents.length" :heading="t('basics.palette.recent')">
-            <CommandItem v-for="item in recents" :key="item.value" :value="item.value" class="min-h-10 rounded-md data-[highlighted]:bg-muted data-[highlighted]:text-foreground" @select="pick(item, $event)">
-              <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
-              <span class="shrink-0 text-xs text-muted-foreground">{{ item.area }}</span>
+            <CommandItem v-for="i in recents" :key="i.value" :value="i.value" :class="twoPart" @select="pick(i, $event)">
+              <component :is="i.icon" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate">{{ i.label }}</span>
+              <span :class="second">{{ i.area }}</span>
             </CommandItem>
           </CommandGroup>
           <CommandGroup v-if="!searching" :heading="t('basics.palette.actions')">
-            <CommandItem v-for="item in actions" :key="item.value" :value="item.value" class="min-h-10 rounded-md data-[highlighted]:bg-muted data-[highlighted]:text-foreground" @select="pick(item, $event)">{{ item.label }}</CommandItem>
+            <CommandItem v-for="i in actions" :key="i.value" :value="i.value" :class="item" @select="pick(i, $event)">
+              <component :is="i.icon" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate">{{ i.label }}</span>
+            </CommandItem>
           </CommandGroup>
           <CommandGroup v-if="entries.length" :heading="t('basics.palette.entries')">
-            <CommandItem v-for="item in entries" :key="item.value" :value="item.value" class="min-h-10 rounded-md data-[highlighted]:bg-muted data-[highlighted]:text-foreground" @select="pick(item, $event)">
-              <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
-              <span class="shrink-0 text-xs text-muted-foreground">{{ item.area }}</span>
-              <Badge variant="soft">{{ item.state }}</Badge>
+            <CommandItem v-for="i in entries" :key="i.value" :value="i.value" :class="twoPart" @select="pick(i, $event)">
+              <component :is="i.icon" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate">{{ i.label }}</span>
+              <span :class="second">{{ i.area }}</span>
+              <Badge v-if="i.state" variant="soft" class="max-sm:col-start-3 max-sm:row-span-2 max-sm:row-start-1">{{ i.state }}</Badge>
             </CommandItem>
           </CommandGroup>
           <CommandGroup v-if="areas.length" :heading="t('basics.palette.areas')">
-            <CommandItem v-for="item in areas" :key="item.value" :value="item.value" class="min-h-10 rounded-md data-[highlighted]:bg-muted data-[highlighted]:text-foreground" @select="pick(item, $event)">
-              <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
-              <span v-if="item.detail" class="shrink-0 text-xs text-muted-foreground">{{ item.detail }}</span>
+            <CommandItem v-for="i in areas" :key="i.value" :value="i.value" :class="twoPart" @select="pick(i, $event)">
+              <component :is="i.icon" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate">{{ i.label }}</span>
+              <span v-if="i.detail" :class="second">{{ i.detail }}</span>
             </CommandItem>
           </CommandGroup>
           <CommandGroup v-if="sites.length" :heading="t('basics.palette.sites')">
-            <CommandItem v-for="item in sites" :key="item.value" :value="item.value" class="min-h-10 rounded-md data-[highlighted]:bg-muted data-[highlighted]:text-foreground" @select="pick(item, $event)">
-              <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
-              <span class="shrink-0 text-xs text-muted-foreground">{{ item.area }}</span>
+            <CommandItem v-for="i in sites" :key="i.value" :value="i.value" :class="twoPart" @select="pick(i, $event)">
+              <component :is="i.icon" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate">{{ i.label }}</span>
+              <span :class="second">{{ i.area }}</span>
             </CommandItem>
           </CommandGroup>
-          <p v-if="nothing" class="py-6 text-center text-sm" role="status">{{ t('basics.palette.empty', { query: asked }) }}</p>
-          <p v-if="failed" class="py-6 text-center text-sm" role="status">
+          <p v-if="nothing" class="px-4 py-8 text-center text-sm text-muted-foreground" role="status">{{ t('basics.palette.empty', { query: asked }) }}</p>
+          <p v-if="failed" class="px-4 py-8 text-center text-sm" role="status">
             {{ t('basics.palette.failed') }} <Button type="button" variant="link" class="h-9 px-1 pointer-coarse:h-11" @click="retry">{{ t('basics.retry') }}</Button>
           </p>
         </CommandList>
+        <!-- Phones have no keys to hint at. -->
+        <div class="hidden items-center gap-5 border-t bg-sidebar px-4 py-2.5 text-xs text-muted-foreground sm:flex" aria-hidden="true">
+          <span class="flex items-center gap-1.5"><kbd :class="kbd">↵</kbd>{{ t('basics.palette.keyOpen') }}</span>
+          <span class="flex items-center gap-1.5"><kbd :class="kbd">{{ apple ? '⌘' : 'Ctrl' }}</kbd><kbd :class="kbd">↵</kbd>{{ t('basics.palette.keyNewTab') }}</span>
+          <span class="ml-auto flex items-center gap-1.5"><kbd :class="kbd">Esc</kbd>{{ t('ui.close') }}</span>
+        </div>
       </Command>
     </DialogContent>
   </Dialog>

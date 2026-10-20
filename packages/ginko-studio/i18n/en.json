@@ -885,7 +885,9 @@
       "newIn": "New {area}",
       "review": "Review",
       "empty": "Nothing found for “{query}”.",
-      "failed": "Search did not work just now."
+      "failed": "Search did not work just now.",
+      "keyOpen": "Open",
+      "keyNewTab": "New tab"
     },
     "update": {
       "menu": "Update website now",

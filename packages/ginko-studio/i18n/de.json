@@ -885,7 +885,9 @@
       "newIn": "Neu: {area}",
       "review": "Prüfen",
       "empty": "Nichts gefunden für „{query}“.",
-      "failed": "Die Suche hat gerade nicht geklappt."
+      "failed": "Die Suche hat gerade nicht geklappt.",
+      "keyOpen": "Öffnen",
+      "keyNewTab": "Neuer Tab"
     },
     "update": {
       "menu": "Website jetzt aktualisieren",
