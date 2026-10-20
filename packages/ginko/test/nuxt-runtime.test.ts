@@ -84,6 +84,9 @@ describe('useGinkoSeo', () => {
       const [template, props] = calls[0] as [string, Record<string, string | (() => string)>]
       const value = (key: string) => { const v = props[key]; return typeof v === 'function' ? v() : v }
       expect([template, ...['title', 'description', 'section', 'siteName', 'image', 'logo'].map(value)]).toStrictEqual(['GinkoCard', 'Menü', 'Page', 'Karte', 'Restaurant', '/a.png', '/logo.png'])
+      // A card with a photo as PNG passed 300 KB, where WhatsApp drops the preview; a text card stays PNG.
+      run('/kontakt', { title: 'Kontakt' })
+      expect(calls.map((call) => (call[2] as { extension: string }).extension)).toStrictEqual(['jpeg', 'png'])
     } finally { installOgImage(undefined) }
   })
 

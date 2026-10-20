@@ -134,11 +134,12 @@ describe('JSON-LD helpers', () => {
 })
 
 describe('siteHeaders', () => {
-  // Wrong behaviour caught: user text served as HTML by sniffing, full URLs in the referrer, the preview framed by anyone or pages framed by the platform.
+  // Wrong behaviour caught: user text served as HTML by sniffing, full URLs in the referrer, the preview framed by anyone,
+  // pages framed by the platform, or an embedded script asking for camera, location or microphone.
   it.each([
-    [{ preview: false, platformOrigin: 'https://app.example', noindex: false }, { 'content-security-policy': "frame-ancestors 'self'", 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin' }],
-    [{ preview: true, platformOrigin: 'https://app.example', noindex: false }, { 'content-security-policy': 'frame-ancestors https://app.example', 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin' }],
-    [{ preview: true, platformOrigin: '', noindex: true }, { 'content-security-policy': "frame-ancestors 'self'", 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin', 'x-robots-tag': 'noindex' }],
+    [{ preview: false, platformOrigin: 'https://app.example', noindex: false }, { 'content-security-policy': "frame-ancestors 'self'", 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin', 'permissions-policy': 'camera=(), geolocation=(), microphone=()' }],
+    [{ preview: true, platformOrigin: 'https://app.example', noindex: false }, { 'content-security-policy': 'frame-ancestors https://app.example', 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin', 'permissions-policy': 'camera=(), geolocation=(), microphone=()' }],
+    [{ preview: true, platformOrigin: '', noindex: true }, { 'content-security-policy': "frame-ancestors 'self'", 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin', 'permissions-policy': 'camera=(), geolocation=(), microphone=()', 'x-robots-tag': 'noindex' }],
   ])('%j', (input, expected) => {
     expect(siteHeaders(input)).toEqual(expected)
   })

@@ -13,6 +13,8 @@ export default defineNuxtConfig({
     'shadcn-nuxt',
   ],
   ginko,
+  // The site's icon: the initial on the brand colour. Replace public/favicon.svg with the real mark.
+  app: { head: { link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }] } },
   css: ['~/assets/css/main.css'],
   // Light and dark follow the visitor's system until they pick one with the toggle; `.dark` on <html>.
   colorMode: { classSuffix: '', preference: 'system', fallback: 'light', storageKey: 'color-mode' },

@@ -265,6 +265,9 @@ export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
     }, {
       // The image's alt text describes the card, which shows that image.
       alt: () => { const image = toValue(input).image; return (typeof image === 'object' ? image.alt : undefined) ?? toValue(input).title ?? config.name },
+      // A card with a photo is a JPEG: as PNG it weighs 400-700 KB, and WhatsApp drops preview images over about 300 KB.
+      // A card of text and colour stays PNG, which keeps it sharp and small.
+      extension: cardImage(toValue(input).image) ? 'jpeg' : 'png',
     })
   }
   // With nuxt-schema-org the page's JSON-LD joins that module's graph; `@context` belongs to the graph, not to a node.

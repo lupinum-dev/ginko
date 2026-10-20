@@ -39,10 +39,10 @@ usePageSeo(() => ({
         <template v-if="years.length > 1">
           <section v-for="group in years" :key="group.year" :aria-labelledby="`year-${group.year}`" class="pt-6 first:pt-0">
             <h2 :id="`year-${group.year}`" class="pb-2 text-h3 tabular-nums">{{ group.year }}</h2>
-            <BlogPostList :items="group.posts" heading-level="h3" />
+            <BlogPostList :items="group.posts" heading-level="h3" :eager="group === years[0]" />
           </section>
         </template>
-        <BlogPostList v-else-if="posts.length" :items="posts" />
+        <BlogPostList v-else-if="posts.length" :items="posts" eager />
         <BlockEmpty v-else :title="t('empty')" path="content/posts/" />
         <a :href="feed" class="mt-6 inline-flex min-h-11 items-center gap-2 text-small text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
           <Rss class="size-4" aria-hidden="true" />{{ t('feed') }}

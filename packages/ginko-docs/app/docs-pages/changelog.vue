@@ -28,7 +28,7 @@ useGinkoSeo(() => ({
           <h2><a :href="`#${anchor(entry.data.version)}`">{{ entry.data.version }}</a></h2>
           <p class="docs-meta"><time :datetime="entry.data.date">{{ blog.formatDate(entry.data.date) }}</time></p>
         </div>
-        <GinkoMarkdown :value="entry.data.body" :components="markdownComponents" class="docs-prose" :lang="langOf(entry, 'body')" />
+        <GinkoMarkdown :value="entry.data.body" :components="markdownComponents" :id-prefix="anchor(entry.data.version)" class="docs-prose" :lang="langOf(entry, 'body')" />
       </section>
     </div>
   </div>

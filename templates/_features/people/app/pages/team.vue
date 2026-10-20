@@ -32,7 +32,7 @@ usePageSeo(() => ({
     <BlockPageHeader :title="t('title')" :lead="t('lead')" />
     <div class="mx-auto flex max-w-page flex-col gap-12 px-gutter md:gap-16">
       <component :is="contact" v-if="contact" />
-      <PeopleList v-if="people.items.length" :items="people.items" />
+      <PeopleList v-if="people.items.length" :items="people.items" eager />
       <BlockEmpty v-else :title="t('empty')" path="content/people/" />
     </div>
   </div>

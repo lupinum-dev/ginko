@@ -13,6 +13,9 @@ export interface GinkoPublicConfig {
   agents: NonNullable<SiteInput['agents']>
   /** Which sources the site's bricks use (CONTENT.md): a site with only file bricks never asks the platform. */
   sources: { platform: boolean; files: boolean }
+  /** True keeps every host of this deployment out of search, its own address included: a demo, or a site served on a
+   *  preview address before its domain switch. Set per deployment with NUXT_PUBLIC_GINKO_NOINDEX=true. */
+  noindex: boolean
 }
 
 /**

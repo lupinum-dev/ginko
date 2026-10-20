@@ -37,7 +37,7 @@ usePageSeo(() => ({
     <section aria-labelledby="author-posts" class="mx-auto max-w-page px-gutter">
       <div class="max-w-4xl">
         <h2 id="author-posts" class="pb-2 text-h3">{{ t('author.posts', { name: person.data.name }) }}</h2>
-        <BlogPostList v-if="written.length" :items="written" heading-level="h3" />
+        <BlogPostList v-if="written.length" :items="written" heading-level="h3" eager />
         <p v-else class="border-t py-8 text-muted-foreground">{{ t('author.none') }}</p>
         <NuxtLink :to="path('news')" class="mt-6 inline-flex min-h-11 items-center gap-2 font-medium text-primary underline-offset-4 hover:underline">
           {{ t('blog.all') }}<ArrowRight class="size-4 rtl:-scale-x-100" aria-hidden="true" />

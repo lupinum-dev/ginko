@@ -31,7 +31,7 @@ usePageSeo(() => ({ title: title.value, description: t('count', { count: tag.val
     <BlockPageHeader :title="title" :meta="t('count', { count: tag.count })" />
     <div class="mx-auto max-w-page px-gutter">
       <div class="max-w-4xl">
-        <BlogPostList :items="tagged" />
+        <BlogPostList :items="tagged" eager />
         <NuxtLink :to="path('news')" class="mt-6 inline-flex min-h-11 items-center gap-2 font-medium text-primary underline-offset-4 hover:underline">
           {{ t('all') }}<ArrowRight class="size-4 rtl:-scale-x-100" aria-hidden="true" />
         </NuxtLink>

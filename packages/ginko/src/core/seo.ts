@@ -183,6 +183,8 @@ export function siteHeaders(input: { preview: boolean; platformOrigin: string; n
     'content-security-policy': input.preview && input.platformOrigin ? `frame-ancestors ${input.platformOrigin}` : `frame-ancestors 'self'`,
     'x-content-type-options': 'nosniff',
     'referrer-policy': 'strict-origin-when-cross-origin',
+    // No site template uses camera, location or microphone; a page that needs one sets its own header.
+    'permissions-policy': 'camera=(), geolocation=(), microphone=()',
     ...(input.noindex ? { 'x-robots-tag': 'noindex' } : {}),
   }
 }
