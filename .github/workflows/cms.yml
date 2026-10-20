@@ -1,0 +1,62 @@
+# The client platform lupinum-ginko-cms (internals/decisions.md D55) runs released code only. Its Vercel project
+# deploys the branch `cms-production`, and only this workflow moves that branch: after the release workflow, to a
+# commit with a v* tag; by hand, to any tag (a redeploy or a rollback). Vercel's production build deploys the Convex
+# backend first (apps/platform/scripts/vercel-build.sh; CONVEX_DEPLOY_KEY lives in that Vercel project only), so no
+# Vercel or Convex credential is stored here. The release workflow's own tag push starts no workflow (GITHUB_TOKEN),
+# hence workflow_run. Environment `cms`: Matthias approves every deploy.
+name: cms
+
+on:
+  workflow_run:
+    workflows: [release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to deploy, for example v0.6.0
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cms
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ inputs.tag || github.event.workflow_run.head_sha }}
+      # Every push to main runs the release workflow; only one that tagged its commit is a release.
+      - id: tag
+        run: |
+          tag="$(git tag --points-at HEAD --list 'v*' | sort -V | tail -n 1)"
+          if [ -z "$tag" ]; then echo "::notice::No release tag on $(git rev-parse --short HEAD): nothing to deploy."; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: tag
+    if: needs.tag.outputs.tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: cms
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.tag.outputs.tag }}
+      # Forced, so a run by hand with an older tag rolls back.
+      - run: git push --force origin "refs/tags/${TAG}^{commit}:refs/heads/cms-production"
+        env:
+          TAG: ${{ needs.tag.outputs.tag }}

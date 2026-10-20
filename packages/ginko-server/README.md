@@ -81,7 +81,8 @@ Convex change compatible with the previous Studio: open tabs call the new functi
 
 `pnpm ops:import <folder> --site <slug> --prod` (repository root) is the one operator command that does not use the
 wrapper: it calls `npx convex run --prod` in this folder, and the Convex CLI takes the credentials from the shell or
-from this folder's `.env.local`. Run it only in the production checkout.
+from this folder's `.env.local`. Run it only in the production checkout. With `--reset` it first clears the site; only a
+deployment with `GINKO_DEMO=1` allows that.
 
 ## Image variants (srcset)
 
@@ -114,6 +115,7 @@ Set them in the Convex deployment (not in `.env.local`).
 | `GINKO_MAIL_FROM` | Sender address for mail sent through Resend. |
 | `RESEND_API_KEY` | API key for Resend when `GINKO_MAIL=resend`. |
 | `GINKO_LOCAL` | `1` only on a local deployment: enables the demo seed and `devPush`. Never set it on a hosted one. |
+| `GINKO_DEMO` | `1` only on the demo platform (lupinum-ginko-demo): lets `pnpm ops:import … --reset` and `pnpm templates demo-reset` clear a site before they load its content again. Never set it on a platform with client sites. |
 
 ## Local backend
 

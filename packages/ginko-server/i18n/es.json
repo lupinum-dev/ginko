@@ -150,6 +150,7 @@
     "devPushLocalOnly": "devPush solo existe en la plataforma local.",
     "siteNameMismatchInSchema": "El nombre del sitio en el esquema no coincide.",
     "localOnly": "Solo local.",
+    "localOrDemoOnly": "Solo en local o en la plataforma de demostración.",
     "importClosed": "La importación no está abierta para este sitio.",
     "importNeedsEmptySite": "Solo un sitio vacío puede abrirse para la importación: tiene entradas, cambios o ediciones.",
     "importEntryInvalid": "La entrada “{id}” no coincide con el esquema ({count} errores, el primero en “{path}”). No se guardó nada de este lote.",

@@ -17,7 +17,7 @@ import { serializeSchema, withoutFiles, type SiteInput } from '../../packages/gi
 import { loadConfig } from '../../packages/ginko/src/cli/config.ts'
 import { confirmLocal, findBackend, knownTargetError, prepareLocalBackend, readDeploymentTarget, targetEnv } from '../../packages/ginko/src/cli/local.ts'
 import { manifestOf, shiftDates, weeksShift } from '../../packages/create-ginko/template-files.mjs'
-import { answers, busyPorts, CONVEX_READY, PLATFORM_PORTS, recoverCrashedRun, startSession, waitFor } from '../lib/runs.ts'
+import { answers, busyPorts, CONVEX_READY, PLATFORM_PORTS, recoverCrashedRun, startSession, waitFor, type Session } from '../lib/runs.ts'
 
 export type Step = { check: string; ok: boolean; detail?: string }
 
@@ -60,6 +60,29 @@ async function rasterizeSvgImages(site: string, templateDir: string) {
     const next = paths.reduce((out, path) => out.replaceAll(path, path.replace(/\.svg$/i, '.png')), text)
     if (next !== text) writeFileSync(file, next)
   }
+}
+
+/**
+ * A template's content as an export folder in `work`, the way an owner moves in: content/ and public/ copied, the sample
+ * dates moved to this week by the rule create-ginko uses (T10), named SVGs as PNG, then `local:files-export`. The copy's
+ * config re-exports the template's. Gate 7 imports the folder into the local platform, `templates demo-reset` into the
+ * demo platform. Returns the folder.
+ */
+export async function templateExport(root: string, name: string, work: string, run: Session['run']): Promise<string> {
+  const templateDir = join(root, 'templates', name)
+  const pkg = JSON.parse(readFileSync(join(templateDir, 'package.json'), 'utf8')) as { ginko?: { sampleAnchor?: string } }
+  const config = await loadConfig(join(templateDir, 'ginko.config.ts'))
+  const content = join(work, 'site')
+  const exportDir = join(work, 'export')
+  mkdirSync(content)
+  writeFileSync(join(content, 'ginko.config.ts'), `export { default } from ${JSON.stringify(pathToFileURL(join(templateDir, 'ginko.config.ts')).href)}\n`)
+  for (const folder of ['content', 'public']) if (existsSync(join(templateDir, folder))) cpSync(join(templateDir, folder), join(content, folder), { recursive: true })
+  await rasterizeSvgImages(content, templateDir)
+  const anchor = pkg.ginko?.sampleAnchor
+  if (!anchor) throw new Error('package.json needs "ginko": { "sampleAnchor": "YYYY-MM-DD" }')
+  shiftDates(content, manifestOf(config).shift, weeksShift(anchor, new Date().toISOString().slice(0, 10)))
+  await run('node', ['--experimental-strip-types', join(root, 'packages/ginko/src/cli/monorepo.ts'), 'files-export', '--config', join(content, 'ginko.config.ts'), exportDir], root)
+  return exportDir
 }
 
 export async function platformGate(name: string, root: string): Promise<Step[]> {
@@ -125,26 +148,15 @@ export async function platformGate(name: string, root: string): Promise<Step[]> 
       await run('npx', ['convex', 'run', 'release:devPush', JSON.stringify({ site, schema })], backendDir, targetEnv(confirmLocal(backendDir)))
     })) return steps
 
-    // 4. Content: the template's files, dates moved to this week by the rule create-ginko uses (T10), exported and
-    // imported by the monorepo tools. The shifted copy lives in the work folder; its config re-exports the template's.
-    const content = join(work, 'site')
-    const exportDir = join(work, 'export')
+    // 4. Content: the template's files as an owner moves them in (templateExport), imported by the monorepo tools.
     if (!await must('files content moves in (local:files-export, local:import)', async () => {
-      mkdirSync(content)
-      writeFileSync(join(content, 'ginko.config.ts'), `export { default } from ${JSON.stringify(pathToFileURL(join(templateDir, 'ginko.config.ts')).href)}\n`)
-      for (const folder of ['content', 'public']) if (existsSync(join(templateDir, folder))) cpSync(join(templateDir, folder), join(content, folder), { recursive: true })
-      await rasterizeSvgImages(content, templateDir)
-      const anchor = pkg.ginko?.sampleAnchor
-      if (!anchor) throw new Error('package.json needs "ginko": { "sampleAnchor": "YYYY-MM-DD" }')
-      const days = weeksShift(anchor, new Date().toISOString().slice(0, 10))
-      shiftDates(content, manifestOf(config).shift, days)
-      const monorepo = ['--experimental-strip-types', join(root, 'packages/ginko/src/cli/monorepo.ts')]
-      await run('node', [...monorepo, 'files-export', '--config', join(content, 'ginko.config.ts'), exportDir], root)
-      await run('node', [...monorepo, 'import', exportDir], root)
+      const exportDir = await templateExport(root, name, work, run)
+      await run('node', ['--experimental-strip-types', join(root, 'packages/ginko/src/cli/monorepo.ts'), 'import', exportDir], root)
     })) return steps
 
-    // 5. The site on :3000 with the platform layer (no brick reads files). The specs prove that its content comes from the Studio.
-    const siteApp = start('site', 'pnpm', ['exec', 'nuxt', 'dev', '--port', String(PORTS.site), '--extends', join(root, 'scripts/templates/platform-layer')], templateDir, { ...process.env, GINKO_LOCAL: '1', NUXT_IGNORE_LOCK: '1' })
+    // 5. The site on :3000 with GINKO_CONTENT=platform (no brick reads files), as the hosted demos run. The specs prove
+    // that its content comes from the Studio.
+    const siteApp = start('site', 'pnpm', ['exec', 'nuxt', 'dev', '--port', String(PORTS.site)], templateDir, { ...process.env, GINKO_CONTENT: 'platform', GINKO_LOCAL: '1', NUXT_IGNORE_LOCK: '1' })
     if (!await must('site answers on :3000', () => waitFor('The site on :3000', answers(`http://localhost:${PORTS.site}/`), 240, siteApp))) return steps
 
     // 6. The Studio jobs. Playwright runs as a child (not a blocking call), so a signal or the time limit still stops it.

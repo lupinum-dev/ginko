@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { buildFileBundles, publicBundle } from '@lupinum/ginko-content'
 import { collection, defineSite, f, type Brick, type Field, type Label } from '@lupinum/ginko'
 import { authors, changelog, downloads, faq, faqJsonLd, jobJsonLd, jobs, legal, offerJsonLd, people, personJsonLd, postJsonLd, posts, releaseAnchor, site, siteJsonLd, withoutFiles } from '@lupinum/ginko/basics'
-import { checkSite, serializeSchema } from '@lupinum/ginko/internal'
+import { checkSite, siteForContent, serializeSchema } from '@lupinum/ginko/internal'
 
 const route = (path: string) => ({ en: `/${path}/[slug]`, de: `/de/${path}/[slug]` }) as const
 
@@ -313,5 +313,12 @@ describe('a files site with every basic', () => {
     // @ts-expect-error The twin's type has no `source` either: a tool that reads it must not see 'files'.
     expect(twin.bricks.site.source).toBeUndefined()
     expect(Object.values(config.bricks).every((b) => b.source === 'files')).toBe(true)
+  })
+
+  it('reads the platform with GINKO_CONTENT=platform, keeps its files when unset and refuses any other value', () => {
+    expect(siteForContent(config, undefined)).toBe(config)
+    expect(siteForContent(config, '')).toBe(config)
+    expect(siteForContent(config, 'platform')).toEqual(withoutFiles(config))
+    expect(() => siteForContent(config, 'files')).toThrow('GINKO_CONTENT must be "platform" or unset, not "files".')
   })
 })

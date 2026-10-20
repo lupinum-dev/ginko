@@ -106,6 +106,24 @@ export function withoutFiles<const S extends SiteInput>(site: S): WithoutFiles<S
   return { ...site, bricks } as WithoutFiles<S>
 }
 
+/**
+ * The site for the content source `GINKO_CONTENT` names: unset or empty keeps the config as it is, `platform` is
+ * `withoutFiles(site)`. A files site deployed with `GINKO_CONTENT=platform` reads the Studio without a code change
+ * (the hosted template demos); the Nuxt module and the CLI both read it, so the build and `ginko release` agree.
+ */
+export function siteForContent(site: SiteInput, content: string | undefined): SiteInput {
+  if (!content) return site
+  if (content === 'platform') {
+    const bricks = Object.fromEntries(Object.entries(site.bricks).map(([key, brick]) => {
+      const copy = { ...brick }
+      delete copy.source
+      return [key, copy]
+    }))
+    return { ...site, bricks }
+  }
+  throw new Error(`GINKO_CONTENT must be "platform" or unset, not "${content}".`)
+}
+
 /** `S` with no `source` on any brick. */
 export type WithoutFiles<S extends SiteInput> = Omit<S, 'bricks'> & { bricks: { [K in keyof S['bricks']]: Omit<S['bricks'][K], 'source'> } }
 

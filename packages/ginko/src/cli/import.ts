@@ -4,6 +4,7 @@
 // Local steps: push the schema (devPush), store the files and the entry batches in storage, clear the site's content,
 // import the stored batches, then rewrite the entry references (the entries got new IDs). Prod steps: no schema push and
 // no clear; check that the stored schema has every brick, open the empty site for import, the same steps, close it again.
+// Prod with `reset` (the demo platform only, GINKO_DEMO=1 on the deployment): the site is cleared before it is opened.
 // `convex run` takes its arguments on the command line, whose size the OS limits, so the entries travel through
 // storage; a batch stays under a mutation's limits.
 import { readFile } from 'node:fs/promises'
@@ -28,6 +29,11 @@ export interface ImportInput {
   log: (line: string) => void
   /** Hosted platform: the schema must already be released, the site must be empty, nothing is cleared. Default: local. */
   prod?: boolean
+  /**
+   * With `prod`: clear the site first, so the import replaces its content. Only the demo platform allows it (GINKO_DEMO=1);
+   * the client platform refuses the clear, and nothing is changed.
+   */
+  reset?: boolean
   /** The site's slug on the platform. Default: the site of the export. */
   site?: string
   /** The command that repeats this import (e.g. `pnpm local:import <folder>`), named when a local import fails halfway. */
@@ -198,6 +204,10 @@ export async function importSite(input: ImportInput): Promise<{ entries: number;
   if (!isObject(status) || !Array.isArray(status.bricks)) throw new CliError(`The site “${site}” does not exist on the platform. Create it (sites:bootstrap) and run \`ginko release\` first.`)
   const missing = Object.keys(data.schema.bricks).filter((brick) => !(status.bricks as unknown[]).includes(brick))
   if (missing.length > 0) throw new CliError(`The released schema of “${site}” has no ${missing.map((b) => `“${b}”`).join(', ')}. Run \`ginko release\` for the site first.`)
+  if (input.reset) {
+    await clear(run, site)
+    log(`Site “${site}” is cleared.`)
+  }
   await run('seed:importOpen', { site })
   log(`Site “${site}” is open for import.`)
   try {
@@ -295,12 +305,7 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
   const { run, log } = input
 
   // 4. Clear. Each call removes a bounded part. Never on the hosted platform: it is empty by rule.
-  if (!input.prod) {
-    for (;;) {
-      const cleared = await run('seed:importClear', { site })
-      if (isObject(cleared) && cleared.done === true) break
-    }
-  }
+  if (!input.prod) await clear(run, site)
 
   // 5. Import the stored batches; each answers with the new ID of every entry, as [exported ID, new ID] pairs.
   let done = 0
@@ -348,6 +353,14 @@ async function fill(input: ImportInput, data: SiteExport, site: string, storedBa
   }
   if (parts.length > 0) log(`References updated in ${changed.size} entries.`)
   return { entries: data.entries.length, files: data.files.length }
+}
+
+/** Removes the site's content; each call removes a bounded part. */
+async function clear(run: Runner, site: string): Promise<void> {
+  for (;;) {
+    const cleared = await run('seed:importClear', { site })
+    if (isObject(cleared) && cleared.done === true) return
+  }
 }
 
 /** Posts a file to a local Convex upload URL and returns the storage ID. */

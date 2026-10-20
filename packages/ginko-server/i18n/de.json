@@ -152,6 +152,7 @@
     "devPushLocalOnly": "devPush gibt es nur in der lokalen Plattform.",
     "siteNameMismatchInSchema": "Der Seitenname im Schema passt nicht.",
     "localOnly": "Nur lokal.",
+    "localOrDemoOnly": "Nur lokal oder auf der Demo-Plattform.",
     "importClosed": "Der Import ist für diese Seite nicht geöffnet.",
     "importNeedsEmptySite": "Nur eine leere Seite kann für den Import geöffnet werden: sie hat Einträge, Änderungen oder Bearbeitungen.",
     "importEntryInvalid": "Eintrag „{id}“ passt nicht zum Schema ({count} Fehler, zuerst bei „{path}“). Nichts aus diesem Teil wurde gespeichert.",
