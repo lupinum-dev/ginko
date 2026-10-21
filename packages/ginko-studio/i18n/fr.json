@@ -330,7 +330,6 @@
       "flagText": "« {text} »",
       "clearToday": "Effacer",
       "notFilled": "Pas encore rempli",
-      "notThisWeek": ", pas encore pour cette semaine",
       "plannedWeek": "{label} {date}, planifié à l’avance",
       "nothingNow": "Rien de saisi pour le moment.",
       "removeNamed": "Supprimer {title}",
@@ -344,7 +343,9 @@
         "heading": "Pas encore enregistré",
         "titled": "« {title} » · {time}",
         "untitled": "{area} : nouvelle entrée · {time}",
-        "continue": "Continuer à modifier"
+        "continue": "Continuer à modifier",
+        "name": "« {title} »",
+        "newIn": "{area} : nouvelle entrée"
       }
     },
     "all": {
@@ -1075,5 +1076,31 @@
     "languageHint": "La langue du Studio. Le contenu de vos sites garde ses propres langues.",
     "signIn": "Connexion",
     "signInHint": "Déconnectez-vous ici, ou sur tous les autres appareils où vous êtes encore connecté."
+  },
+  "today": {
+    "week": {
+      "stored": "{label} {date}",
+      "stale": "{week}, pas encore pour cette semaine"
+    },
+    "verdict": {
+      "none": "Rien ne vous attend aujourd’hui.",
+      "some": "{count, plural, one {Une chose vous attend aujourd’hui.} other {# choses vous attendent aujourd’hui.}}",
+      "due": "À faire :"
+    },
+    "loadFailed": "L’état des rubriques n’a pas pu être chargé. Les tâches fonctionnent quand même.",
+    "waiting": {
+      "label": "Vous attend",
+      "more": "{count} de plus",
+      "inHistory": "Voir dans l’historique"
+    },
+    "due": {
+      "badge": "À faire"
+    },
+    "moreTasks": "Autres tâches dans « {area} »",
+    "rows": {
+      "label": "Sur le site"
+    },
+    "nothingOnline": "Rien sur le site pour le moment.",
+    "rejectedNote": "{line} · Non approuvé, voir plus haut."
   }
 }

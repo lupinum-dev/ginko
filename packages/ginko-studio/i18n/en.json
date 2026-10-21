@@ -330,7 +330,6 @@
       "flagText": "“{text}”",
       "clearToday": "Clear",
       "notFilled": "Not filled in yet",
-      "notThisWeek": ", not yet for this week",
       "plannedWeek": "{label} {date}, planned ahead",
       "nothingNow": "Nothing entered right now.",
       "removeNamed": "Remove {title}",
@@ -344,7 +343,9 @@
         "heading": "Not saved yet",
         "titled": "“{title}” · {time}",
         "untitled": "{area}: New entry · {time}",
-        "continue": "Continue editing"
+        "continue": "Continue editing",
+        "name": "“{title}”",
+        "newIn": "{area}: New entry"
       }
     },
     "all": {
@@ -1075,5 +1076,31 @@
     "languageHint": "The language of the Studio. The content of your sites keeps its own languages.",
     "signIn": "Sign-in",
     "signInHint": "Sign out here, or on every other device where you are still signed in."
+  },
+  "today": {
+    "week": {
+      "stored": "{label} {date}",
+      "stale": "{week}, not yet for this week"
+    },
+    "verdict": {
+      "none": "Nothing needs you today.",
+      "some": "{count, plural, one {One thing needs you today.} other {# things need you today.}}",
+      "due": "Due:"
+    },
+    "loadFailed": "The state of the areas could not be loaded. The tasks still work.",
+    "waiting": {
+      "label": "Waiting for you",
+      "more": "{count} more",
+      "inHistory": "See in History"
+    },
+    "due": {
+      "badge": "Due"
+    },
+    "moreTasks": "More tasks in “{area}”",
+    "rows": {
+      "label": "On the website"
+    },
+    "nothingOnline": "Nothing on the website right now.",
+    "rejectedNote": "{line} · Not approved, see above."
   }
 }

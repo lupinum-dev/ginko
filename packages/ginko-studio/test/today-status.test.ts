@@ -31,7 +31,8 @@ const schema = serializeSchema(defineSite({
   },
 }))
 
-let states: { brick: string; line: StatusLine | null; due: boolean }[] = []
+/** sites.today; undefined while it loads. */
+let states: { brick: string; line: StatusLine | null; due: boolean }[] | undefined = []
 let manager = true
 let toReview: number | undefined = 0
 let hoursEntry: Record<string, unknown> = {}
@@ -104,15 +105,15 @@ test.each([[true, 'default'], [false, 'secondary']])('a section due: %s fills it
   states = [{ brick: 'events', line: { kind: 'missing', count: due ? 2 : 0, field: 'image' }, due }]
   const wrapper = await page()
   const buttons = section(wrapper, 'events').findAll('button[data-slot="button"]')
-  expect(buttons.map((b) => b.attributes('data-variant'))).toEqual([variant, 'secondary'])
+  expect(buttons.map((b) => b.attributes('data-variant'))).toEqual([variant, 'outline'])
   expect(section(wrapper, 'hours').get('button[data-slot="button"]').attributes('data-variant')).toBe('secondary')
   wrapper.unmount()
 })
 
-// Wrong behaviour caught: staff see a line about proposals they cannot approve, or managers see "0 waiting".
+// Wrong behaviour caught: staff see a tile about proposals they cannot approve, or managers see "0 waiting".
 test.each<[boolean, number | undefined, string | null]>([
-  [true, 2, '2 Änderungen warten auf Freigabe · Prüfen'],
-  [true, 1, '1 Änderung wartet auf Freigabe · Prüfen'],
+  [true, 2, '2 Änderungen warten auf Freigabe'],
+  [true, 1, '1 Änderung wartet auf Freigabe'],
   [true, 0, null],
   [false, 3, null],
 ])('manager %s with %s proposals: %s', async (isManager, count, text) => {
@@ -120,12 +121,26 @@ test.each<[boolean, number | undefined, string | null]>([
   toReview = count
   states = []
   const wrapper = await page()
-  const line = wrapper.find('[data-test="to-review"]')
-  expect(line.exists() ? line.text().replace(/\s+/g, ' ') : null).toBe(text)
-  if (text) expect(line.get('a').attributes('href')).toBe('/s/linde/review')
+  const tile = wrapper.find('li[data-test="to-review"]')
+  expect(tile.exists() ? tile.get('p').text() : null).toBe(text)
+  if (text) expect([tile.get('a').text(), tile.get('a').attributes('href')]).toEqual(['Prüfen', '/s/linde/review'])
   wrapper.unmount()
   manager = true
   toReview = 0
+})
+
+// Wrong behaviour caught: while the areas' state loads, the verdict says "nothing needs you" and then changes its mind.
+test('the verdict waits for the state of the areas before it says nothing needs you', async () => {
+  states = undefined
+  const wrapper = await page()
+  const verdict = () => wrapper.get('[data-test="verdict"]')
+  expect(verdict().find('[data-slot="skeleton"]').exists()).toBe(true)
+  expect(verdict().text()).not.toContain('Heute braucht dich nichts.')
+  wrapper.unmount()
+  states = []
+  const loaded = await page()
+  expect(loaded.get('[data-test="verdict"]').text()).toBe('Heute braucht dich nichts.')
+  loaded.unmount()
 })
 
 // Wrong behaviour caught: with "Heute geschlossen" set for today the page says it twice (flag sentence and hours line,

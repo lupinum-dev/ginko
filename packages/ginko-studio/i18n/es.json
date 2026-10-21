@@ -330,7 +330,6 @@
       "flagText": "“{text}”",
       "clearToday": "Quitar",
       "notFilled": "Aún sin completar",
-      "notThisWeek": ", aún no para esta semana",
       "plannedWeek": "{label} {date}, planificado con antelación",
       "nothingNow": "No hay nada introducido por ahora.",
       "removeNamed": "Eliminar {title}",
@@ -344,7 +343,9 @@
         "heading": "Aún sin guardar",
         "titled": "“{title}” · {time}",
         "untitled": "{area}: entrada nueva · {time}",
-        "continue": "Seguir editando"
+        "continue": "Seguir editando",
+        "name": "“{title}”",
+        "newIn": "{area}: entrada nueva"
       }
     },
     "all": {
@@ -1075,5 +1076,31 @@
     "languageHint": "El idioma del Studio. El contenido de tus sitios mantiene sus propios idiomas.",
     "signIn": "Inicio de sesión",
     "signInHint": "Cierra la sesión aquí o en todos los demás dispositivos donde sigas conectado."
+  },
+  "today": {
+    "week": {
+      "stored": "{label} {date}",
+      "stale": "{week}, aún no para esta semana"
+    },
+    "verdict": {
+      "none": "Hoy nada te necesita.",
+      "some": "{count, plural, one {Hoy te espera una cosa.} other {Hoy te esperan # cosas.}}",
+      "due": "Pendiente:"
+    },
+    "loadFailed": "No se pudo cargar el estado de las áreas. Las tareas siguen funcionando.",
+    "waiting": {
+      "label": "Te espera",
+      "more": "{count} más",
+      "inHistory": "Ver en el historial"
+    },
+    "due": {
+      "badge": "Pendiente"
+    },
+    "moreTasks": "Más tareas en «{area}»",
+    "rows": {
+      "label": "En el sitio web"
+    },
+    "nothingOnline": "Ahora no hay nada en el sitio web.",
+    "rejectedNote": "{line} · No aprobado, ver arriba."
   }
 }

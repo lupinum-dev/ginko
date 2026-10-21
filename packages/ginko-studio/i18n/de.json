@@ -330,7 +330,6 @@
       "flagText": "„{text}“",
       "clearToday": "Aufheben",
       "notFilled": "Noch nicht ausgefüllt",
-      "notThisWeek": ", noch nicht für diese Woche",
       "plannedWeek": "{label} {date}, im Voraus geplant",
       "nothingNow": "Gerade nichts eingetragen.",
       "removeNamed": "{title} entfernen",
@@ -344,7 +343,9 @@
         "heading": "Noch nicht gespeichert",
         "titled": "„{title}“ · {time}",
         "untitled": "{area}: Neuer Eintrag · {time}",
-        "continue": "Weiter bearbeiten"
+        "continue": "Weiter bearbeiten",
+        "name": "„{title}“",
+        "newIn": "{area}: Neuer Eintrag"
       }
     },
     "all": {
@@ -1075,5 +1076,31 @@
     "languageHint": "Die Sprache des Studios. Die Inhalte deiner Seiten behalten ihre eigenen Sprachen.",
     "signIn": "Anmeldung",
     "signInHint": "Hier abmelden, oder auf allen anderen Geräten, auf denen du noch angemeldet bist."
+  },
+  "today": {
+    "week": {
+      "stored": "{label} {date}",
+      "stale": "{week}, noch nicht für diese Woche"
+    },
+    "verdict": {
+      "none": "Heute braucht dich nichts.",
+      "some": "{count, plural, one {Heute wartet eine Sache auf dich.} other {Heute warten # Sachen auf dich.}}",
+      "due": "Fällig:"
+    },
+    "loadFailed": "Der Stand der Bereiche ließ sich nicht laden. Die Aufgaben funktionieren trotzdem.",
+    "waiting": {
+      "label": "Wartet auf dich",
+      "more": "{count} weitere",
+      "inHistory": "Im Verlauf ansehen"
+    },
+    "due": {
+      "badge": "Fällig"
+    },
+    "moreTasks": "Weitere Aufgaben in „{area}“",
+    "rows": {
+      "label": "Auf der Website"
+    },
+    "nothingOnline": "Gerade nichts auf der Website.",
+    "rejectedNote": "{line} · Nicht freigegeben, siehe oben."
   }
 }
