@@ -850,7 +850,14 @@
       "after": "Nachher",
       "reordered": "Die Reihenfolge wurde geändert",
       "picture": "Bild"
-    }
+    },
+    "countOne": "1 Änderung wartet auf dich.",
+    "countMany": "{count} Änderungen warten auf dich.",
+    "emptyHint": "Wenn jemand aus deinem Team oder eine KI eine Änderung vorschlägt, steht sie hier, die älteste zuerst.",
+    "queue": "Änderungen zum Prüfen",
+    "openEntry": "Eintrag öffnen",
+    "gone": "Über diese Änderung wurde schon entschieden, oder sie wurde zurückgezogen.",
+    "onlyReject": "Sie passt nicht mehr, deshalb kann sie nur abgelehnt werden."
   },
   "history": {
     "filter": {

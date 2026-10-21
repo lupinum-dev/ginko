@@ -16,8 +16,9 @@ import { paragraphDiff } from '../utils/paragraphDiff'
 import { useStudioSite } from '../utils/labels'
 import type { DiffField } from '../utils/review'
 
-/** `site`: for the thumbnails of pictures in rich texts; without it a picture shows its description only. */
-const props = defineProps<{ diff: readonly DiffField[]; fields?: Fields; locale: Locale; site?: string }>()
+/** `site`: for the thumbnails of pictures in rich texts; without it a picture shows its description only. `split`: a
+ *  plain value shows Before and After side by side once the diff is wide enough, on an inset surface (Review). */
+const props = defineProps<{ diff: readonly DiffField[]; fields?: Fields; locale: Locale; site?: string; split?: boolean }>()
 const { t, format } = useI18n()
 const { shown } = useStudioSite()
 
@@ -118,11 +119,11 @@ const richParts = { img: DiffPicture, a: DiffLink }
 </script>
 
 <template>
-  <div class="grid gap-3">
+  <div :class="['grid gap-3', split && '@container']">
     <section v-for="{ d, units } in items" :key="d.field" class="grid gap-1.5">
       <h4 class="font-semibold">{{ d.label }}</h4>
       <template v-if="!d.rows">
-        <div v-for="(u, i) in units" :key="i" class="grid gap-1 rounded-md border bg-card px-3 py-2">
+        <div v-for="(u, i) in units" :key="i" :class="['grid gap-1 rounded-md', !split ? 'border bg-card px-3 py-2' : isLong(d, u) ? '' : 'bg-muted/50 px-3 py-2']">
           <p v-if="u.tag" class="text-sm font-medium text-muted-foreground">{{ u.tag }}</p>
           <div v-if="isRich(d, u)" class="grid gap-1">
             <template v-for="(b, n) in blocks.get(`${d.field}:${i}`) ?? []" :key="n">
@@ -142,15 +143,15 @@ const richParts = { img: DiffPicture, a: DiffLink }
               <ins v-else class="block rounded-sm bg-success/10 px-2 py-1 no-underline">+ {{ p.text }}</ins>
             </p>
           </div>
-          <dl v-else class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-            <dt class="text-muted-foreground">{{ t('review.diff.before') }}</dt>
+          <dl v-else :class="['grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5', split && '@md:grid-flow-col @md:grid-cols-2 @md:grid-rows-[auto_auto] @md:max-w-md @md:gap-x-6']">
+            <dt :class="['text-muted-foreground', split && '@md:text-[13px]']">{{ t('review.diff.before') }}</dt>
             <dd>{{ show(d, u.before) }}</dd>
-            <dt class="text-muted-foreground">{{ t('review.diff.after') }}</dt>
+            <dt :class="['text-muted-foreground', split && '@md:text-[13px]']">{{ t('review.diff.after') }}</dt>
             <dd class="font-medium">{{ show(d, u.after) }}</dd>
           </dl>
         </div>
       </template>
-      <ul v-if="d.rows?.length || d.reordered" class="grid gap-1.5 rounded-md border bg-card px-3 py-2 text-sm">
+      <ul v-if="d.rows?.length || d.reordered" :class="['grid gap-1.5 rounded-md px-3 py-2 text-sm', split ? 'bg-muted/50' : 'border bg-card']">
         <li v-for="r in d.rows?.map((row) => rowView(d, row))" :key="r.id" class="grid gap-0.5">
           <p :class="r.change === 'removed' ? 'text-muted-foreground' : 'font-medium'">
             <del v-if="r.change === 'removed'">− {{ r.title }}</del>

@@ -850,7 +850,14 @@
       "after": "Después",
       "reordered": "El orden cambió",
       "picture": "Imagen"
-    }
+    },
+    "countOne": "1 cambio espera tu decisión.",
+    "countMany": "{count} cambios esperan tu decisión.",
+    "emptyHint": "Cuando alguien de tu equipo o una IA propone un cambio, aparece aquí, el más antiguo primero.",
+    "queue": "Cambios por revisar",
+    "openEntry": "Abrir entrada",
+    "gone": "Este cambio ya se decidió o se retiró.",
+    "onlyReject": "Ya no encaja, así que solo se puede rechazar."
   },
   "history": {
     "filter": {

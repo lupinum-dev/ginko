@@ -111,6 +111,13 @@ describe('ReviewRow actions', () => {
     expect(actions(mountRow(row()))).toEqual(['Freigeben', 'Für später freigeben…', 'Ablehnen…'])
   })
 
+  // Wrong behaviour caught: on a slow connection the owner approved a change before its diff had loaded, unseen.
+  test('Approve and Reject wait for the diff', () => {
+    const enabled = (wrapper: ReturnType<typeof mountRow>) => wrapper.findAll('button').slice(1).map((b) => b.attributes('disabled') === undefined)
+    expect(enabled(mountRow(row()))).toEqual([false, false, false])
+    expect(enabled(mountRow(row(), { diff }))).toEqual([true, true, true])
+  })
+
   test('a release member is decided with the release: only Reject', () => {
     expect(actions(mountRow(row({ release: 'r1' as Id<'releases'> }), undefined, true))).toEqual(['Ablehnen…'])
   })
@@ -192,10 +199,13 @@ describe('ChangeRows', () => {
       who: { email: 'koch@example.com' }, agent: null, approver: { email: 'wirtin@example.com' }, undoBlocked: null,
     }
     vi.stubGlobal('useConvexPaginatedQuery', () => ({ data: computed(() => [change]), error: ref(null), status: ref('success'), canLoadMore: ref(false), isLoadingMore: ref(false), loadMore: () => {} }))
-    const schema = { timeZone: 'Europe/Vienna', locales: ['de'], bricks: { lunch: { tasks: [{ id: 'lunchWeek', label: 'Mittagsmenü dieser Woche', kind: 'edit', fields: ['weekOf', 'days', 'note'], needsApproval: true }] } } }
-    const wrapper = mount(ChangeRows, { props: { site: 's', schema: schema as never, manager: false, grants: new Set(['lunch.lunchWeek']), filter: 'all' }, global: { stubs: { ChangeDetail: true } } })
-    expect(wrapper.get('li p.text-\\[13px\\]').text()).toBe('koch@example.com · Freigabe: wirtin@example.com · gerade eben')
-    expect(wrapper.findAll('button').map((b) => b.text())).toEqual(['Änderungen anzeigen', 'Zurück zu dieser Version'])
+    const schema = { timeZone: 'Europe/Vienna', locales: ['de'], bricks: { lunch: { label: 'Mittagsmenü', tasks: [{ id: 'lunchWeek', label: 'Mittagsmenü dieser Woche', kind: 'edit', fields: ['weekOf', 'days', 'note'], needsApproval: true }] } } }
+    // The row menu renders its items in place, as buttons.
+    const pass = { template: '<div><slot /></div>' }
+    const item = { emits: ['select'], template: '<button type="button" @click="$emit(\'select\')"><slot /></button>' }
+    const wrapper = mount(ChangeRows, { props: { site: 's', schema: schema as never, manager: false, grants: new Set(['lunch.lunchWeek']), filter: 'all' }, global: { stubs: { ChangeDetail: true, DropdownMenu: pass, DropdownMenuTrigger: pass, DropdownMenuContent: pass, DropdownMenuItem: item } } })
+    expect(wrapper.get('li p.text-\\[13px\\]').text()).toBe('koch@example.com · Freigabe: wirtin@example.com')
+    expect(wrapper.findAll('button').map((b) => b.text() || b.attributes('aria-label'))).toEqual(['Änderungen anzeigen', 'Weitere Aktionen', 'Zurück zu dieser Version'])
     vi.unstubAllGlobals()
   })
 })

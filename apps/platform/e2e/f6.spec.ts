@@ -308,7 +308,18 @@ async function openReview(page: Page, w: (typeof WORDS)[Lang]) {
   await page.waitForURL(/\/s\/restaurant\/review$/)
 }
 
-const proposalRow = (page: Page) => page.locator('main li', { has: page.locator('button[aria-expanded]') }).first()
+/** The loose open proposals of the inbox (the labelled queue list, not the release members), one `li` each, oldest first. */
+const proposalRows = (page: Page) => page.locator('main ul[aria-label] > li[data-proposal]')
+
+/**
+ * Opens the oldest proposal and returns where its diff and decisions are: on wide screens the oldest is selected by
+ * itself and shown beside the list; on the phone its row expands in place.
+ */
+async function openOldest(page: Page) {
+  const toggle = proposalRows(page).first().getByRole('button').first()
+  if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click()
+  return page.getByTestId('proposal-open').or(proposalRows(page).first().filter({ has: page.locator('button[aria-expanded="true"]') }))
+}
 
 /**
  * Rejects every open proposal. The content reset keeps proposals (the seed knows entries, changes and ops only), and the
@@ -318,11 +329,10 @@ async function emptyReview(browser: Browser, baseURL: string | undefined, viewpo
   const owner = await contextOf(browser, 'owner', 'de', viewport, baseURL)
   const page = await owner.newPage()
   await open(page, '/s/restaurant/review')
-  const rows = page.locator('main li button[aria-expanded]')
+  const rows = proposalRows(page)
   await expect(rows.or(page.getByText(WORDS.de.nothingWaits))).not.toHaveCount(0)
   for (let left = await rows.count(); left > 0; left = await rows.count()) {
-    const row = proposalRow(page)
-    await rows.first().click()
+    const row = await openOldest(page)
     await row.getByRole('button', { name: 'Ablehnen…' }).click()
     await row.getByRole('textbox').fill('Aufgeräumt vor dem Test.')
     await row.getByRole('button', { name: 'Ablehnen', exact: true }).click()
@@ -349,8 +359,7 @@ for (const lang of ['de', 'en'] as const) {
       const owner = await contextOf(browser, 'owner', lang, viewport!, baseURL)
       const ownerPage = await owner.newPage()
       await openReview(ownerPage, w)
-      const row = proposalRow(ownerPage)
-      await row.getByRole('button', { expanded: false }).click()
+      const row = await openOldest(ownerPage)
       // The diff names what changed: the lunch days (one row) and the week.
       await expect(row.getByText(w.rowChanged)).toBeVisible()
       await row.getByRole('button', { name: w.approve, exact: true }).click()
@@ -404,8 +413,7 @@ test.describe('Prüfen und Verlauf', () => {
     const owner = await contextOf(browser, 'owner', 'de', viewport!, baseURL)
     const ownerPage = await owner.newPage()
     await openReview(ownerPage, w)
-    const row = proposalRow(ownerPage)
-    await row.getByRole('button', { expanded: false }).click()
+    const row = await openOldest(ownerPage)
     await row.getByRole('button', { name: 'Ablehnen…' }).click()
     await row.getByLabel('Warum? Das sieht, wer die Änderung vorgeschlagen hat.').fill(sentence)
     await row.getByRole('button', { name: 'Ablehnen', exact: true }).click()
