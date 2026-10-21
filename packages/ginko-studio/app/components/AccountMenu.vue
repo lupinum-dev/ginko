@@ -22,7 +22,7 @@ const { busy, signOut, signOutOthers } = useSignOut()
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
       <button
-        type="button" :aria-label="t('nav.account')" :title="name ?? user?.email"
+        type="button" :aria-label="t('nav.account')" :title="name ?? user?.email ?? undefined"
         class="grid size-9 place-items-center rounded-full border border-primary/25 bg-accent text-sm font-semibold text-accent-foreground outline-none hover:ring-2 hover:ring-primary/30 focus-visible:ring-3 focus-visible:ring-ring/80 pointer-coarse:size-11"
       >{{ initial }}</button>
     </DropdownMenuTrigger>

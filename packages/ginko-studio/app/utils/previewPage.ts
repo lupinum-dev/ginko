@@ -13,7 +13,7 @@ export function previewPageOf(schema: Schema, brickKey: string, locale: Locale):
     seen.add(key)
     const own = pageIn(key)
     if (own) return own
-    const brick = schema.bricks[key]
+    const brick: Schema['bricks'][string] | undefined = schema.bricks[key]
     // A plan shows on the page of what it plans: lunch weeks on the lunch page, hour plans where the hours are.
     key = brick?.kind === 'collection' && brick.plans ? brick.plans.brick : plannedBy(schema, key)
   }
