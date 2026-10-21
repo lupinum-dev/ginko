@@ -12,7 +12,10 @@ defineSlots<{ default(): unknown; actions?(): unknown; lede?(): unknown; aside?(
       <!-- At least 14rem (or the whole row): wide actions wrap under the title instead of squeezing it on a phone. -->
       <div class="min-w-[min(100%,14rem)] flex-1">
         <h1 class="text-[1.375rem] font-semibold tracking-tight">{{ title }}</h1>
-        <p v-if="lede || $slots.lede" class="mt-1 max-w-[65ch] text-muted-foreground min-[900px]:text-sm"><slot name="lede">{{ lede }}</slot></p>
+        <!-- A slot may hold more than text (a skeleton while the words load): a <div> there, since a block inside a <p>
+             is closed early by the browser's parser and no longer matches the server render. -->
+        <div v-if="$slots.lede" class="mt-1 max-w-[65ch] text-muted-foreground min-[900px]:text-sm"><slot name="lede" /></div>
+        <p v-else-if="lede" class="mt-1 max-w-[65ch] text-muted-foreground min-[900px]:text-sm">{{ lede }}</p>
       </div>
       <div v-if="$slots.actions" class="flex flex-wrap items-center gap-2"><slot name="actions" /></div>
     </header>

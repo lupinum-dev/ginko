@@ -271,10 +271,12 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
   }
 
   // Each section's status line and whether it is due (sites.today): browser only, it reads all entries of the task
-  // bricks and should not slow the server render. The managers' review count renders on the server, as the layout's.
+  // bricks and should not slow the server render. The managers' review count too, like every reader of it: the layout's
+  // rail badge cannot read it on the server (the role is not known yet there), and a count a page read on the server
+  // reaches the rail while it hydrates, so the rail's badge would not match the server's HTML.
   const statusRead = useConvexQuery(api.sites.today, () => ({ site: s.slug.value }), { server: false })
   const stateOf = (key: string) => statusRead.data.value?.find((x) => x.brick === key)
-  const reviewRead = useConvexQuery(api.proposals.count, () => (s.isManager.value ? { site: s.slug.value } : 'skip'))
+  const reviewRead = useConvexQuery(api.proposals.count, () => (s.isManager.value ? { site: s.slug.value } : 'skip'), { server: false })
   /** A section needs doing: its status is due, or its week is not entered (filled first button, UI.md 3). */
   const isDue = (key: string, brick: Brick) => !!stateOf(key)?.due || weekState(key, brick)?.current === false
 

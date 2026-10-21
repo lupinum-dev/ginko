@@ -9,8 +9,10 @@ const props = defineProps<{ manager: boolean, lastRefresh?: number | null, updat
 const emit = defineEmits<{ update: [] }>()
 const { user } = useConvexAuth()
 const { t, format } = useI18n()
-// The avatar shows the person: the first letter of the name she gave herself (Account settings), else of the email.
-const { data: settings } = useConvexQuery(api.account.settings, {})
+// The avatar shows the person: the first letter of the name they gave themselves (Account settings), else of the email.
+// Read in the browser only: a server read defers this menu in the server render, so the reka ids of the menus after
+// it were handed out in another order than in the browser (a hydration mismatch on every site page).
+const { data: settings } = useConvexQuery(api.account.settings, {}, { server: false })
 const name = computed(() => settings.value?.name?.trim() || undefined)
 const initial = computed(() => (name.value ?? user.value?.email ?? '?').charAt(0).toUpperCase())
 const { busy, signOut, signOutOthers } = useSignOut()
