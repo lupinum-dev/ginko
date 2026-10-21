@@ -365,7 +365,18 @@
       "restore": "Restaurar",
       "overview": "Resumen",
       "areas": "Áreas",
-      "areaList": "Mostrar u ocultar la lista de áreas"
+      "areaList": "Mostrar u ocultar la lista de áreas",
+      "notSaved": "Sin guardar",
+      "colArea": "Área",
+      "colContent": "Contenido",
+      "colChanged": "Último cambio",
+      "single": "Página única",
+      "entries": "{count, plural, =0 {Sin entradas} one {# entrada} other {# entradas}}",
+      "drafts": "{count, plural, one {# borrador} other {# borradores}}",
+      "endedCount": "{count, plural, one {# terminado} other {# terminados}}",
+      "translationsOpen": "{lang}: {count} pendientes",
+      "todayAt": "Hoy, {time}",
+      "singles": "Páginas únicas"
     },
     "area": {
       "missing": "Esta área no existe.",

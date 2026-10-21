@@ -365,7 +365,18 @@
       "restore": "Wiederherstellen",
       "overview": "Übersicht",
       "areas": "Bereiche",
-      "areaList": "Liste der Bereiche zeigen oder ausblenden"
+      "areaList": "Liste der Bereiche zeigen oder ausblenden",
+      "notSaved": "Nicht gespeichert",
+      "colArea": "Bereich",
+      "colContent": "Inhalt",
+      "colChanged": "Letzte Änderung",
+      "single": "Einzelne Seite",
+      "entries": "{count, plural, =0 {Keine Einträge} one {# Eintrag} other {# Einträge}}",
+      "drafts": "{count, plural, one {# Entwurf} other {# Entwürfe}}",
+      "endedCount": "{count} vorbei",
+      "translationsOpen": "{lang}: {count} offen",
+      "todayAt": "Heute, {time}",
+      "singles": "Einzelne Seiten"
     },
     "area": {
       "missing": "Diesen Bereich gibt es nicht.",

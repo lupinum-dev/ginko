@@ -65,7 +65,22 @@ export function clockWithZone(ms: number, timeZone: string, format: Words['forma
   return format.date(ms, { timeZone, ...CLOCK, timeZoneName: 'short' })
 }
 
+/** "14:05" in the site's time zone; with the zone's short name on the night the clocks show it twice. */
+export function whenClock(ms: number, timeZone: string, format: Words['format']): string {
+  return format.date(ms, { timeZone, ...CLOCK, ...zoneIfTwice(ms, timeZone) })
+}
+
 /** "14.10.2026, 09:00" in the site's time zone: with the year, for History, reviews and files. */
 export function whenFull(ms: number, timeZone: string, format: Words['format']): string {
   return format.date(ms, { timeZone, day: 'numeric', month: 'numeric', year: 'numeric', ...CLOCK, ...zoneIfTwice(ms, timeZone) })
+}
+
+/**
+ * When an area or entry last changed, short for a list column: "Today, 14:20", "Oct 14", or "Oct 14, 2025" in an
+ * earlier year; in the site's time zone and the Studio's language.
+ */
+export function changedText(at: number, timeZone: string, { t, format }: Words, now = Date.now()): string {
+  const [day, then] = [msToZoned(at, timeZone), msToZoned(now, timeZone)]
+  if (day.slice(0, 10) === then.slice(0, 10)) return t('site.all.todayAt', { time: whenClock(at, timeZone, format) })
+  return format.date(at, { timeZone, day: 'numeric', month: 'short', ...(day.slice(0, 4) === then.slice(0, 4) ? {} : { year: 'numeric' }) })
 }

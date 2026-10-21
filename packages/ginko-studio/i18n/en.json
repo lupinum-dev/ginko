@@ -365,7 +365,18 @@
       "restore": "Restore",
       "overview": "Overview",
       "areas": "Areas",
-      "areaList": "Show or hide the list of areas"
+      "areaList": "Show or hide the list of areas",
+      "notSaved": "Not saved",
+      "colArea": "Area",
+      "colContent": "Content",
+      "colChanged": "Last change",
+      "single": "Single page",
+      "entries": "{count, plural, =0 {No entries} one {# entry} other {# entries}}",
+      "drafts": "{count, plural, one {# draft} other {# drafts}}",
+      "endedCount": "{count} ended",
+      "translationsOpen": "{lang}: {count} open",
+      "todayAt": "Today, {time}",
+      "singles": "Single pages"
     },
     "area": {
       "missing": "This area does not exist.",

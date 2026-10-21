@@ -1,5 +1,5 @@
 <!-- Search box, sort select and saved views of one area list (UI.md 10.6). A view is a name for the current search and
-     sort (views.save); it shows as a chip above the list, and its menu removes it. No filter builder in 1.0. -->
+     sort (views.save); it shows as a chip beside the search, and its menu removes it. No filter builder in 1.0. -->
 <script setup lang="ts">
 import { api } from '#convex/api'
 import { EllipsisIcon } from '@lucide/vue'
@@ -63,25 +63,22 @@ async function remove(view: View) {
 </script>
 
 <template>
-  <div class="mb-3 grid gap-2.5">
-    <div class="flex flex-wrap items-center gap-2">
-      <Input v-model="search" type="search" class="min-w-48 flex-1 sm:max-w-72" :aria-label="t('basics.views.searchLabel')" :placeholder="t('basics.views.searchPlaceholder')" />
-      <NativeSelect v-model="choice" class="h-10 pointer-coarse:h-11" :aria-label="t('basics.views.sortLabel')">
-        <NativeSelectOption value="">{{ t('basics.views.sortDefault') }}</NativeSelectOption>
-        <template v-for="[key, field] in fields" :key="key">
-          <NativeSelectOption :value="`${key}|asc`">{{ t('basics.views.sortAsc', { field: shown(field.label) }) }}</NativeSelectOption>
-          <NativeSelectOption :value="`${key}|desc`">{{ t('basics.views.sortDesc', { field: shown(field.label) }) }}</NativeSelectOption>
-        </template>
-      </NativeSelect>
-      <!-- Only with a search or sort to save: a disabled button took a whole row on phones and said nothing. -->
-      <Button v-if="canSave" type="button" variant="outline" @click="asking = true">{{ t('basics.views.save') }}</Button>
-    </div>
-    <ul v-if="views?.length" class="m-0 flex list-none flex-wrap gap-1.5 p-0" :aria-label="t('basics.views.listLabel')">
-      <li v-for="view in views" :key="view.id" class="inline-flex items-center rounded-full border">
-        <Button type="button" variant="ghost" class="h-9 rounded-full pr-1.5 pl-3 pointer-coarse:h-11" :aria-pressed="same(view)" :class="same(view) && 'bg-accent'" @click="apply(view)">{{ view.name }}</Button>
+  <!-- One row on wide screens: search, sort, the saved views, and "Save view…" at the end. -->
+  <div class="mb-4 flex flex-wrap items-center gap-2">
+    <Input v-model="search" type="search" class="min-w-48 flex-1 sm:max-w-72 min-[900px]:h-9 min-[900px]:text-sm" :aria-label="t('basics.views.searchLabel')" :placeholder="t('basics.views.searchPlaceholder')" />
+    <NativeSelect v-model="choice" class="h-10 pointer-coarse:h-11 min-[900px]:h-9 min-[900px]:text-sm" :aria-label="t('basics.views.sortLabel')">
+      <NativeSelectOption value="">{{ t('basics.views.sortDefault') }}</NativeSelectOption>
+      <template v-for="[key, field] in fields" :key="key">
+        <NativeSelectOption :value="`${key}|asc`">{{ t('basics.views.sortAsc', { field: shown(field.label) }) }}</NativeSelectOption>
+        <NativeSelectOption :value="`${key}|desc`">{{ t('basics.views.sortDesc', { field: shown(field.label) }) }}</NativeSelectOption>
+      </template>
+    </NativeSelect>
+    <ul v-if="views?.length" class="m-0 flex list-none flex-wrap items-center gap-1.5 p-0 max-sm:basis-full" :aria-label="t('basics.views.listLabel')">
+      <li v-for="view in views" :key="view.id" :class="['inline-flex items-center rounded-full border', same(view) && 'border-transparent bg-accent text-accent-foreground']">
+        <Button type="button" variant="ghost" size="sm" class="rounded-full pr-1 pl-3 hover:bg-transparent pointer-coarse:h-11" :aria-pressed="same(view)" @click="apply(view)">{{ view.name }}</Button>
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
-            <Button type="button" variant="ghost" size="icon" class="size-9 rounded-full pointer-coarse:size-11" :aria-label="t('basics.views.optionsFor', { name: view.name })"><EllipsisIcon class="size-4" aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="icon" class="size-8 rounded-full text-muted-foreground pointer-coarse:size-11" :aria-label="t('basics.views.optionsFor', { name: view.name })"><EllipsisIcon class="size-4" aria-hidden="true" /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem variant="destructive" class="min-h-9 pointer-coarse:min-h-11" @select="remove(view)">{{ t('basics.views.removeView') }}</DropdownMenuItem>
@@ -89,6 +86,8 @@ async function remove(view: View) {
         </DropdownMenu>
       </li>
     </ul>
+    <!-- Only with a search or sort to save: a disabled button took a whole row on phones and said nothing. -->
+    <Button v-if="canSave" type="button" variant="outline" class="sm:ml-auto min-[900px]:h-9" @click="asking = true">{{ t('basics.views.save') }}</Button>
 
     <Dialog v-model:open="asking">
       <DialogContent>

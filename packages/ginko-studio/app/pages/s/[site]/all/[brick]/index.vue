@@ -1,14 +1,16 @@
 <!-- One area: a single's form, or a collection's entries (with order and the removed ones). -->
 <script setup lang="ts">
-import { PlusIcon } from '@lucide/vue'
+import { ChevronDownIcon, ChevronUpIcon, PlusIcon } from '@lucide/vue'
 import { api } from '#convex/api'
 import { visibleUntil } from '@lupinum/ginko/internal'
 import { formatDay, languageName, relevantDate } from '../../../../../utils/content'
 import type { ListSort } from '../../../../../components/SavedViews.vue'
 import { whenText } from '../../../../../utils/when'
 import { opErrorOf } from '../../../../../composables/useOps'
+import { useCrumbs } from '../../../../../composables/usePageHeader'
 import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
+import { Skeleton } from '@studio/components/ui/skeleton'
 
 definePageMeta({ layout: 'site' })
 const route = useRoute()
@@ -21,6 +23,8 @@ const allowed = computed(() => editable.value.some(([k]) => k === key.value))
 const { shown } = useStudioSite()
 const { t, format, locale: uiLocale } = useI18n()
 useHead(() => ({ title: t('site.title.area', { area: brick.value ? shown(brick.value.label) : t('site.fallback.area') }) }))
+// A single's form (EntryEditor) replaces these crumbs with its own.
+useCrumbs(() => [{ label: t('nav.all'), to: `/s/${s.slug.value}/all` }, { label: brick.value ? shown(brick.value.label) : t('site.fallback.area') }])
 
 // Search and sort of the list (UI.md 10.6) run on the server (entries.list), which sends the first `limit` rows.
 // Entries match by text in every language. The search box asks once typing pauses.
@@ -96,40 +100,52 @@ const ops = useOps(s.slug)
         :tasks="access?.all ? undefined : access" :can-remove="false"
       />
     </template>
-    <template v-else>
-      <header class="mb-4 flex items-center justify-between gap-3">
-        <h1 class="text-xl font-semibold tracking-tight">{{ shownLabel(brick.label, s.main.value) }}</h1>
+    <div v-else class="max-w-[1200px] pb-10 min-[900px]:pb-12">
+      <!-- The title row of StudioPage (AllShell already pads the cell). -->
+      <header class="mb-5 flex flex-wrap items-start gap-x-4 gap-y-3">
+        <h1 class="min-w-0 flex-1 text-[1.375rem] font-semibold tracking-tight">{{ shownLabel(brick.label, s.main.value) }}</h1>
         <Button v-if="canCreate" as-child><NuxtLink :to="`/s/${s.slug.value}/all/${key}/new`"><PlusIcon aria-hidden="true" />{{ t('site.all.new') }}</NuxtLink></Button>
       </header>
       <!-- While the shown page is not the answer to the current arguments (loading, or that answer failed), it can be an
            empty search: the box stays (it may hold the focus) and no empty state shows. -->
       <SavedViews v-if="total || asked || search || (page && list.isStale.value)" v-model:search="search" v-model:sort="sort" :slug="s.slug.value" :brick-key="key" :brick="brick" />
       <p class="sr-only" aria-live="polite">{{ loading && asked ? t('site.all.searching') : '' }}</p>
-      <p v-if="loadError" class="font-semibold text-destructive" role="alert">{{ opErrorOf(loadError, t('basics.loadFailed')).message }}</p>
-      <p v-if="!page || (!total && list.isStale.value)" v-show="!list.error.value" class="text-muted-foreground" role="status">{{ t('entry.loading') }}</p>
-      <p v-else-if="!total && !asked" class="text-muted-foreground">{{ t('site.all.noEntries') }}</p>
-      <p v-else-if="!total" class="text-muted-foreground">{{ t('basics.views.noMatch') }}</p>
+      <p v-if="loadError" class="mb-3 font-semibold text-destructive" role="alert">{{ opErrorOf(loadError, t('basics.loadFailed')).message }}</p>
+      <div v-if="!page || (!total && list.isStale.value)" v-show="!list.error.value" class="divide-y overflow-hidden rounded-xl border bg-card">
+        <p class="sr-only" role="status">{{ t('entry.loading') }}</p>
+        <div v-for="n in 4" :key="n" class="flex min-h-16 items-center px-4 py-3" aria-hidden="true">
+          <div class="grid flex-1 gap-2"><Skeleton class="h-4 w-1/3" /><Skeleton class="h-3 w-24" /></div>
+        </div>
+      </div>
+      <p v-else-if="!total && !asked" class="rounded-xl border bg-card px-4 py-8 text-center text-muted-foreground min-[900px]:text-sm">{{ t('site.all.noEntries') }}</p>
+      <p v-else-if="!total" class="rounded-xl border bg-card px-4 py-8 text-center text-muted-foreground min-[900px]:text-sm">{{ t('basics.views.noMatch') }}</p>
       <template v-else>
-        <ol class="m-0 list-none overflow-hidden rounded-xl border bg-card p-0 transition-opacity aria-busy:opacity-60" :aria-busy="loading || undefined">
-          <li v-for="(e, i) in rows" :key="e._id" class="group/row flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1.5 border-b px-4 py-3 last:border-b-0 sm:flex-nowrap" :data-dim="!!status(e) || undefined">
+        <ol class="m-0 list-none divide-y overflow-hidden rounded-xl border bg-card p-0 transition-opacity aria-busy:opacity-60" :aria-busy="loading || undefined">
+          <!-- The title is the row's one link (its name is the title) and covers the row; badges and arrows sit above it. -->
+          <li v-for="(e, i) in rows" :key="e._id" class="group/row relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 min-[900px]:min-h-13 min-[900px]:py-2.5 hover:bg-foreground/[0.03] focus-within:bg-foreground/[0.03] sm:flex-nowrap" :data-dim="!!status(e) || undefined">
             <div class="min-w-0 flex-1">
-              <NuxtLink :to="`/s/${s.slug.value}/all/${key}/${e._id}`" class="line-clamp-2 font-medium text-foreground no-underline group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground hover:underline">{{ rowTitle(e) }}</NuxtLink>
+              <NuxtLink :to="`/s/${s.slug.value}/all/${key}/${e._id}`" class="line-clamp-2 font-medium text-foreground no-underline outline-none after:absolute after:inset-0 focus-visible:after:ring-3 focus-visible:after:ring-ring/80 focus-visible:after:ring-inset group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground min-[900px]:text-sm">{{ rowTitle(e) }}</NuxtLink>
               <span v-if="relevantDate(brick, e.dates, { t, format })" class="block text-[13px] text-muted-foreground tabular-nums">{{ relevantDate(brick, e.dates, { t, format }) }}</span>
             </div>
             <!-- Phones: badges move under the title so the name keeps the full width. -->
-            <div class="flex flex-wrap items-center gap-1.5 max-sm:order-last max-sm:basis-full sm:justify-end">
+            <div class="relative flex flex-wrap items-center gap-1.5 max-sm:order-last max-sm:basis-full sm:justify-end">
               <Badge v-if="status(e)" variant="soft">{{ status(e) }}</Badge>
               <TranslationBadges
                 v-for="g in e.gaps" :key="g.locale" :locale="g.locale" :missing="g.missing" :outdated="g.outdated"
                 :to="`/s/${s.slug.value}/all/${key}/${e._id}?lang=${g.locale}`" :label="t('basics.translation.open', { title: rowTitle(e), language: languageName(g.locale, uiLocale) })"
               />
             </div>
-            <span v-if="manual && s.isManager.value && !narrowed" class="-my-1 -mr-2 flex">
+            <!-- Always in the row, after the badges: quiet until the row is hovered or focused. Laid over the row, they would
+                 cover the last badge's link. -->
+            <span
+              v-if="manual && s.isManager.value && !narrowed"
+              class="relative -my-1 -mr-2 flex text-muted-foreground/60 group-hover/row:text-muted-foreground group-focus-within/row:text-muted-foreground"
+            >
               <Button type="button" variant="ghost" size="icon" :disabled="i === 0 || moving" :aria-label="t('site.all.moveUp', { title: rowTitle(e) })" @click="move(e, -1)">
-                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" /></svg>
+                <ChevronUpIcon aria-hidden="true" />
               </Button>
               <Button type="button" variant="ghost" size="icon" :disabled="i === total - 1 || moving" :aria-label="t('site.all.moveDown', { title: rowTitle(e) })" @click="move(e, 1)">
-                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" /></svg>
+                <ChevronDownIcon aria-hidden="true" />
               </Button>
             </span>
           </li>
@@ -141,14 +157,14 @@ const ops = useOps(s.slug)
         </div>
       </template>
       <section v-if="removed?.length" class="mt-8" aria-labelledby="removed-title">
-        <h2 id="removed-title" class="mb-2 text-[15px] font-semibold text-muted-foreground">{{ t('site.all.removed') }}</h2>
-        <ul class="m-0 grid list-none gap-1.5 p-0">
-          <li v-for="e in removed" :key="e._id" class="flex items-center justify-between gap-3 rounded-md border border-dashed py-1.5 pr-2 pl-3.5 text-muted-foreground">
-            <span>{{ e.title ?? shown(brick.label) }}</span>
+        <h2 id="removed-title" class="mb-3 text-base font-semibold">{{ t('site.all.removed') }}</h2>
+        <ul class="m-0 list-none divide-y overflow-hidden rounded-xl border bg-card p-0">
+          <li v-for="e in removed" :key="e._id" class="flex min-h-14 items-center justify-between gap-3 px-4 py-2.5 text-muted-foreground">
+            <span class="min-w-0 break-words min-[900px]:text-sm">{{ e.title ?? shown(brick.label) }}</span>
             <Button type="button" variant="outline" size="sm" @click="ops.restoreEntry(e._id, e.lifeRev, access?.all ? undefined : access?.remove)">{{ t('site.all.restore') }}</Button>
           </li>
         </ul>
       </section>
-    </template>
+    </div>
   </AllShell>
 </template>

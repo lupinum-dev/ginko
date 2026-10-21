@@ -365,7 +365,18 @@
       "restore": "Restaurer",
       "overview": "Vue d’ensemble",
       "areas": "Rubriques",
-      "areaList": "Afficher ou masquer la liste des rubriques"
+      "areaList": "Afficher ou masquer la liste des rubriques",
+      "notSaved": "Non enregistré",
+      "colArea": "Rubrique",
+      "colContent": "Contenu",
+      "colChanged": "Dernière modification",
+      "single": "Page unique",
+      "entries": "{count, plural, =0 {Aucune entrée} one {# entrée} other {# entrées}}",
+      "drafts": "{count, plural, one {# brouillon} other {# brouillons}}",
+      "endedCount": "{count, plural, one {# terminé} other {# terminés}}",
+      "translationsOpen": "{lang} : {count} en attente",
+      "todayAt": "Aujourd’hui, {time}",
+      "singles": "Pages uniques"
     },
     "area": {
       "missing": "Ce domaine n’existe pas.",
