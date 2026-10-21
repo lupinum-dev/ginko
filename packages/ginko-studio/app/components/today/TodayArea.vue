@@ -20,6 +20,8 @@ const props = defineProps<{
   view: View
   /** A plan section inside its owner's card: its first task is outline unless due. */
   plan: boolean
+  /** The card's main section is due: it keeps the card's one filled button. */
+  ownerDue?: boolean
   ownLine: (p: View['waiting'][number]) => string
   ownWhen: (at: number) => string
 }>()
@@ -30,7 +32,9 @@ const label = (task: Task) => shownLabel(task.label, ctx.main)
 const area = computed(() => shownLabel(props.sec.brick.label, ctx.main))
 const main = computed(() => props.view.split.buttons[0])
 const others = computed(() => props.view.split.buttons.slice(1))
-const mainVariant = computed(() => (props.view.due ? 'default' : props.plan ? 'outline' : 'secondary'))
+const mainVariant = computed(() => (props.view.due && !(props.plan && props.ownerDue) ? 'default' : props.plan ? 'outline' : 'secondary'))
+// Dark mode: the outline buttons lose their fill, so the main (secondary, filled) task stays the strongest on the card.
+const quiet = 'dark:bg-transparent'
 const day = (date: string) => format.date(date, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
 const hasState = computed(() => {
   const v = props.view
@@ -73,7 +77,8 @@ function menuClosed(event: Event) {
     </div>
 
     <template v-if="view.week">
-      <p v-if="view.week.current" class="text-sm text-muted-foreground">{{ view.week.text }}</p>
+      <!-- Not current but not due: the person's own week waits for approval (the line under it says so). -->
+      <p v-if="view.week.current || !view.due" class="text-sm text-muted-foreground">{{ view.week.text }}</p>
       <p v-else class="flex items-start gap-1.5 text-sm font-semibold text-warning">
         <CircleAlertIcon class="mt-0.5 size-4 flex-none" aria-hidden="true" /><span>{{ view.week.text }}</span>
       </p>
@@ -90,13 +95,13 @@ function menuClosed(event: Event) {
   <!-- Phone: the card's main task full width, the others in two columns; with two card columns they wrap in one row. -->
   <div v-if="main || view.split.more.length" class="grid gap-2 @[680px]:flex @[680px]:flex-wrap @[680px]:items-center">
     <Button v-if="main && !plan" type="button" :variant="mainVariant" class="w-full @[680px]:w-auto @max-[680px]:min-h-12" @click="ctx.start(sec.key, main)">{{ label(main) }}</Button>
-    <div v-if="plan || others.length || view.split.more.length" class="grid gap-2 @[680px]:contents" :class="plan ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-2 [&>:last-child:nth-child(odd)]:col-span-2'">
+    <div v-if="plan || others.length || view.split.more.length" class="grid gap-2 @[680px]:contents" :class="plan ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-2 [&>:last-child:nth-child(odd):not([aria-haspopup])]:col-span-2'">
       <!-- A plan's one task shares its phone row with a narrow "⋯": the card's own main task stays the one full-width button. -->
-      <Button v-if="main && plan" type="button" :variant="mainVariant" class="min-w-0 @max-[680px]:min-h-12 @max-[680px]:w-full" :class="!view.split.more.length && 'col-span-2'" :title="label(main)" @click="ctx.start(sec.key, main)"><span class="truncate">{{ label(main) }}</span></Button>
-      <Button v-for="task in others" :key="task.id" type="button" variant="outline" class="@max-[680px]:h-auto @max-[680px]:min-h-12 @max-[680px]:w-full @max-[680px]:whitespace-normal @max-[680px]:py-1.5 @max-[680px]:leading-[18px]" @click="ctx.start(sec.key, task)">{{ label(task) }}</Button>
+      <Button v-if="main && plan" type="button" :variant="mainVariant" class="min-w-0 @max-[680px]:min-h-12 @max-[680px]:w-full" :class="[!view.split.more.length && 'col-span-2', mainVariant === 'outline' && quiet]" :title="label(main)" @click="ctx.start(sec.key, main)"><span class="truncate">{{ label(main) }}</span></Button>
+      <Button v-for="task in others" :key="task.id" type="button" variant="outline" :class="quiet" class="@max-[680px]:h-auto @max-[680px]:min-h-12 @max-[680px]:w-full @max-[680px]:whitespace-normal @max-[680px]:py-1.5 @max-[680px]:leading-[18px]" @click="ctx.start(sec.key, task)">{{ label(task) }}</Button>
       <DropdownMenu v-if="view.split.more.length">
         <DropdownMenuTrigger as-child>
-          <Button :id="triggerId" type="button" variant="outline" size="icon" :class="plan ? '@max-[680px]:size-12' : '@max-[680px]:h-auto @max-[680px]:min-h-12 @max-[680px]:w-full'" :aria-label="t('today.moreTasks', { area })" :title="t('today.moreTasks', { area })">
+          <Button :id="triggerId" type="button" variant="outline" size="icon" :class="[quiet, plan ? '@max-[680px]:size-12' : '@max-[680px]:h-auto @max-[680px]:min-h-12 @max-[680px]:w-full']" :aria-label="t('today.moreTasks', { area })" :title="t('today.moreTasks', { area })">
             <EllipsisIcon class="size-4" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
@@ -107,7 +112,8 @@ function menuClosed(event: Event) {
     </div>
   </div>
 
-  <TodayRows v-if="ctx.isTimed(sec.brick)" :sec="sec" :listing="view.listing" :pending="view.rowsPending" :plan="plan" />
+  <!-- Rows that failed to load are unknown: no list and no "nothing listed" (the page shows the load error). -->
+  <TodayRows v-if="ctx.isTimed(sec.brick) && view.rows !== 'unknown'" :sec="sec" :listing="view.listing" :pending="view.rows === 'loading'" :plan="plan" />
 
   <TodayDrafts
     v-if="sec.brick.kind === 'collection' && sec.brick.drafts"

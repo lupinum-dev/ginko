@@ -28,6 +28,11 @@ const schema = serializeSchema(defineSite({
       fields: { closedOn: f.date('Geschlossen am', { optional: true }), closedNote: f.text('Grund für die Gäste', { optional: true }) },
       tasks: [{ id: 'closedToday', label: 'Heute geschlossen', kind: 'edit', fields: ['closedOn', 'closedNote'], prefill: { closedOn: '@today' } }],
     }),
+    lunch: single({
+      label: 'Mittagsmenü',
+      fields: { week: f.date('Woche ab'), dishes: f.text('Gerichte') },
+      tasks: [{ id: 'week', label: 'Mittagsmenü dieser Woche', kind: 'edit', fields: ['week', 'dishes'], prefill: { week: '@workWeek' } }],
+    }),
   },
 }))
 
@@ -36,6 +41,8 @@ let states: { brick: string; line: StatusLine | null; due: boolean }[] | undefin
 let manager = true
 let toReview: number | undefined = 0
 let hoursEntry: Record<string, unknown> = {}
+/** proposals.mine `open`: the person's own proposals waiting for approval. */
+let ownOpen: unknown[] = []
 
 vi.stubGlobal('definePageMeta', () => {})
 vi.stubGlobal('useHead', () => {})
@@ -55,7 +62,7 @@ vi.stubGlobal('useConvexQuery', (fn: unknown, args: unknown) => {
   const skipped = () => (typeof args === 'function' ? args() : args) === 'skip'
   if (name === 'sites.today') return { data: ref(states) }
   if (name === 'proposals.count') return { data: computed(() => (skipped() ? undefined : toReview)) }
-  if (name === 'proposals.mine') return { data: ref({ open: [], rejected: [], notLive: [] }) }
+  if (name === 'proposals.mine') return { data: ref({ open: ownOpen, rejected: [], notLive: [] }) }
   if (name === 'entries.ofBricks') return { data: ref([{ _id: 'h1', brick: 'hours', kind: 'single', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: hoursEntry }]) }
   return { data: computed(() => undefined) }
 })
@@ -108,6 +115,19 @@ test.each([[true, 'default'], [false, 'secondary']])('a section due: %s fills it
   expect(buttons.map((b) => b.attributes('data-variant'))).toEqual([variant, 'outline'])
   expect(section(wrapper, 'hours').get('button[data-slot="button"]').attributes('data-variant')).toBe('secondary')
   wrapper.unmount()
+})
+
+// Wrong behaviour caught: after the cook sent this week's lunch for approval, the area still says "Fällig" and fills its
+// button, so they do the week a second time and a competing proposal waits.
+test.each([[false, 'default'], [true, 'secondary']])('own weekly proposal waiting: %s, first button: %s', async (sent, variant) => {
+  states = [{ brick: 'lunch', line: null, due: true }]
+  ownOpen = sent ? [{ proposal: 'p1', task: 'lunch.week', via: 'ui', sentence: 'Mittagsmenü geändert', msg: null, createdAt: Date.UTC(2026, 9, 15, 9) }] : []
+  const wrapper = await page()
+  const lunch = section(wrapper, 'lunch')
+  expect(lunch.get('button[data-slot="button"]').attributes('data-variant')).toBe(variant)
+  expect(lunch.find('[data-slot="badge"]').exists()).toBe(!sent)
+  wrapper.unmount()
+  ownOpen = []
 })
 
 // Wrong behaviour caught: staff see a tile about proposals they cannot approve, or managers see "0 waiting".

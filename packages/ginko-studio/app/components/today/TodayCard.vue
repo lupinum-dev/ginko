@@ -37,7 +37,7 @@ const ctx = inject(TODAY)!
         <h3 :id="`b-${p.key}`" tabindex="-1" class="min-w-0 text-[13px] leading-5 font-medium text-muted-foreground outline-none">{{ shownLabel(p.brick.label, ctx.main) }}</h3>
         <Badge v-if="views[p.key]!.due" variant="warning"><CircleAlertIcon aria-hidden="true" />{{ t('today.due.badge') }}</Badge>
       </div>
-      <TodayArea :sec="p" :view="views[p.key]!" :plan="true" :own-line="ownLine" :own-when="ownWhen" />
+      <TodayArea :sec="p" :view="views[p.key]!" :plan="true" :owner-due="views[card.key]!.due" :own-line="ownLine" :own-when="ownWhen" />
     </section>
   </section>
 </template>

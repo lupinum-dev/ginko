@@ -71,7 +71,8 @@ export interface View {
   rejected: OwnRow[]
   listing: Listing
   /** entries.ofBricks is loading and this is a timed list: row skeletons. */
-  rowsPending: boolean
+  /** The rows of a timed list: loading (skeleton), unknown (the read failed before it had data: show nothing) or ready. */
+  rows: 'loading' | 'unknown' | 'ready'
   due: boolean
   split: Split
 }
@@ -266,7 +267,8 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
     }
     const state = staleOf(brick, entry.data, s.today.value, s.schema.value!.week, plannedWeeks(s.schema.value!, key, (k) => entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
     if (!state) return undefined
-    const text = state.stored ? t('today.week.stored', { label: shownLabel(brick.fields[state.field]!.label, s.main.value), date: formatDay(state.stored, format) }) : t('site.quick.notFilled')
+    if (!state.stored) return { current: state.current, text: t('site.quick.notFilled') }
+    const text = t('today.week.stored', { label: shownLabel(brick.fields[state.field]!.label, s.main.value), date: formatDay(state.stored, format) })
     return { current: state.current, text: state.current ? text : t('today.week.stale', { week: text }) }
   }
 
@@ -277,8 +279,15 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
   const statusRead = useConvexQuery(api.sites.today, () => ({ site: s.slug.value }), { server: false })
   const stateOf = (key: string) => statusRead.data.value?.find((x) => x.brick === key)
   const reviewRead = useConvexQuery(api.proposals.count, () => (s.isManager.value ? { site: s.slug.value } : 'skip'), { server: false })
-  /** A section needs doing: its status is due, or its week is not entered (filled first button, UI.md 3). */
-  const isDue = (key: string, brick: Brick) => !!stateOf(key)?.due || weekState(key, brick)?.current === false
+  /**
+   * A section needs doing: its status is due, or its week is not entered (filled first button, UI.md 3). Not while the
+   * person's own proposal made with the weekly task waits for approval: their part is done.
+   */
+  function isDue(key: string, brick: Brick) {
+    const weekly = brick.kind === 'single' ? weeklyTask(brick) : undefined
+    if (weekly && ownOf(key).waiting.some((p) => p.task === taskRef(key, weekly.task))) return false
+    return !!stateOf(key)?.due || weekState(key, brick)?.current === false
+  }
 
   /** The words of a status line; "<n> online" only when the list is cut (`folded`), else null for a count. */
   function statusText(brick: Brick, line: StatusLine, folded: boolean): string | null {
@@ -333,7 +342,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
     && ownRead.data.value !== undefined
     && (!s.isManager.value || reviewRead.data.value !== undefined))
   /** A read failed before it had data: the state is unknown (an error after data keeps the last state). */
-  const loadError = computed(() => [statusRead, shownRead, ownRead].some((q) => !!q.error?.value && q.data.value === undefined))
+  const loadError = computed(() => [statusRead, shownRead, ownRead, ...(s.isManager.value ? [reviewRead] : [])].some((q) => !!q.error?.value && q.data.value === undefined))
   const views = computed<Record<string, View>>(() => Object.fromEntries(sections.value.map((sec): [string, View] => {
     const status = statusOf(sec)
     const flag = sec.brick.kind === 'single' ? todayFlag(sec.key, sec.brick, sec.tasks) : undefined
@@ -349,7 +358,7 @@ export function useTodayAreas(s: Awaited<ReturnType<typeof useSiteData>>) {
       waiting: own.waiting,
       rejected: own.rejected,
       listing: listings.value[sec.key]!,
-      rowsPending: shownRead.data.value === undefined && !loadError.value && isTimed(sec.brick),
+      rows: shownRead.data.value !== undefined ? 'ready' : loadError.value ? 'unknown' : 'loading',
       due: isDue(sec.key, sec.brick),
       split: sec.split,
     }]

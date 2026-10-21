@@ -31,7 +31,8 @@ const targetClass = 'flex min-w-0 flex-1 items-center gap-2 bg-transparent p-0 t
 
 <template>
   <div class="grid gap-2">
-    <p v-if="!plan" :id="labelId()" class="text-xs text-muted-foreground">{{ t('today.rows.label') }}</p>
+    <!-- The caption names a list: none when there is no list to name. -->
+    <p v-if="!plan && (pending || listing.rows.length)" :id="labelId()" class="text-xs text-muted-foreground">{{ t('today.rows.label') }}</p>
     <div v-if="pending" class="grid gap-1.5" aria-hidden="true">
       <Skeleton class="h-11 rounded-md" />
       <Skeleton class="h-11 rounded-md" />

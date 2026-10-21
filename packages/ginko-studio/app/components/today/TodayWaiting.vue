@@ -45,7 +45,7 @@ function expand() {
         v-for="(tile, i) in tiles"
         :key="tile.id"
         :class="[hiddenClass(i), accent(tile) && 'border-l-[3px] border-l-warning dark:border-l-warning']"
-        class="min-h-12 items-center gap-3 rounded-lg border border-border/70 bg-card px-3 py-0.5 @[680px]:min-h-16 @[680px]:px-4 @[680px]:py-3 dark:border-border/50"
+        class="min-h-12 items-center gap-3 rounded-lg border border-border/70 bg-card px-3 py-1.5 @[680px]:min-h-16 @[680px]:px-4 @[680px]:py-3 dark:border-border/50"
         :data-test="hooks[tile.kind]"
       >
         <component :is="icons[tile.kind]" class="size-4 flex-none" :class="accent(tile) ? 'text-warning' : 'text-muted-foreground'" aria-hidden="true" />

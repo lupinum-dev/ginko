@@ -219,7 +219,7 @@ const labelOf = (key: string) => shownLabel(s.schema.value!.bricks[key]!.label, 
 // "Wartet auf dich" in words, one action per tile.
 const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone ?? 'UTC', main: s.main.value }))
 const history = computed(() => `/s/${s.slug.value}/history`)
-const tiles = computed<Tile[]>(() => waiting.value.map((item, i): Tile => {
+const tiles = computed<Tile[]>(() => waiting.value.map((item): Tile => {
   switch (item.kind) {
     case 'rejected': return {
       id: `r-${item.p.proposal}`, kind: 'rejected', title: ownLine(item.p), sub: t('site.quick.rejected', { reason: item.p.reason ?? '' }), subWarn: true,
@@ -236,7 +236,7 @@ const tiles = computed<Tile[]>(() => waiting.value.map((item, i): Tile => {
       }
     }
     case 'notLive': return {
-      id: `n-${item.p.proposal}-${i}`, kind: 'notLive', title: ownLine(item.p),
+      id: `n-${item.p.proposal}`, kind: 'notLive', title: ownLine(item.p),
       sub: t('history.notLiveBecause', { when: whenFull(item.p.at!, s.schema.value?.timeZone ?? 'UTC', format), reason: textOf(item.p.reasonMsg, item.p.reason ?? '') }),
       action: { label: t('today.waiting.inHistory'), to: history.value },
     }
