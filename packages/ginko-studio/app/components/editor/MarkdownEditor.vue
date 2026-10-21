@@ -43,8 +43,6 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 
 const DEBOUNCE_MS = 300
-/** Room kept around the caret when the page scrolls to it: the page header and the toolbar (top), the save bar (bottom). */
-const SCROLL_MARGIN = { top: 120, bottom: 120, left: 0, right: 0 }
 /** The counter shows from this share of the limit. */
 const COUNTER_FROM = 0.8
 
@@ -221,6 +219,22 @@ watch(() => props.modelValue, (value) => {
   void open()
 })
 
+/**
+ * Room kept around the caret when the page scrolls to it. Read each time ProseMirror scrolls, so it follows the layout:
+ * above, the Studio's sticky top bar (`--studio-header-height`) and the sticky toolbar; below, the save bar a phone keeps
+ * at the bottom (wide screens save in the top bar and show the bar only for a notice).
+ */
+const scrollMargin = {
+  get top() {
+    const el = frameEl.value
+    const raw = el ? getComputedStyle(el).getPropertyValue('--studio-header-height').trim() : ''
+    const header = (Number.parseFloat(raw) || 0) * (raw.endsWith('rem') ? 16 : 1)
+    return header + (el?.querySelector<HTMLElement>('[role="toolbar"]:not([data-docked])')?.offsetHeight ?? 0) + 16
+  },
+  get bottom() { return typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 72 : 120 },
+  left: 0,
+  right: 0,
+}
 // The ProseMirror element is the textbox: label, id (the label's `for`), validity and hints.
 watchEffect(() => {
   editor.value?.setOptions({
@@ -234,9 +248,9 @@ watchEffect(() => {
         ...(props.describedBy ? { 'aria-describedby': props.describedBy } : {}),
         class: 'ginko-prose',
       },
-      // The caret and a new block stay clear of the sticky toolbar above and the sticky save bar of the form below.
-      scrollMargin: SCROLL_MARGIN,
-      scrollThreshold: SCROLL_MARGIN,
+      // The caret and a new block stay clear of the sticky top bar and toolbar above and the sticky save bar of the form below.
+      scrollMargin,
+      scrollThreshold: scrollMargin,
     },
   })
 })
@@ -359,7 +373,7 @@ function goTo(issue: SourceProblem) {
   area.scrollTop = Math.max(0, (issue.line - 2) * lineHeight)
 }
 
-const frame = 'relative rounded-md border border-input bg-background transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/80 data-[invalid=true]:border-destructive data-[invalid=true]:ring-destructive/20 dark:data-[invalid=true]:ring-destructive/40'
+const frame = 'relative rounded-lg border border-input/80 bg-background dark:border-input/60 transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/80 data-[invalid=true]:border-destructive data-[invalid=true]:ring-destructive/20 dark:data-[invalid=true]:ring-destructive/40'
 </script>
 
 <template>
@@ -452,7 +466,8 @@ const frame = 'relative rounded-md border border-input bg-background transition-
 .ginko-editor :deep(pre code) { background: none; padding: 0; font-size: inherit; }
 .ginko-editor :deep(hr) { margin: 1em 0; border: 0; border-top: 1px solid var(--border); }
 .ginko-editor :deep(hr.ProseMirror-selectednode) { border-top-color: var(--ring); }
-.ginko-editor :deep(img) { max-width: 100%; height: auto; }
+/* Pictures in the text keep their shape; the pictures of a block card fill their frame (ComponentView). */
+.ginko-editor :deep(img:not(.ginko-card-img)) { max-width: 100%; height: auto; }
 /* A selected picture (with a library file the node view's span is selected, else the img itself). */
 .ginko-editor :deep(:is(.ginko-image.ProseMirror-selectednode img, img.ProseMirror-selectednode)) { outline: 2px solid var(--ring); outline-offset: 2px; }
 .ginko-editor :deep(table) { margin: 0.75em 0; border-collapse: collapse; table-layout: fixed; width: 100%; }

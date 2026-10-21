@@ -80,7 +80,7 @@ describe('live or card', () => {
     expect(componentMode(tag, components, LIVE_TAGS)).toBe(mode)
   })
 
-  test('a live component is the real one with the text as its content; a card shows the props in one line', async () => {
+  test('a live component is the real one with the text as its content; a card shows its label and title', async () => {
     const wrapper = await mounted('::callout{type="warning" title="Achtung"}\nText\n::\n\n:::tabs\n::tab{title="npm"}\nInhalt\n::\n:::\n')
     const live = wrapper.get('[data-component="callout"]')
     expect(live.attributes('data-mode')).toBe('live')
@@ -89,17 +89,20 @@ describe('live or card', () => {
     const card = wrapper.get('[data-component="tab"]')
     expect(card.attributes('data-mode')).toBe('card')
     expect(card.text()).toContain('Reiter')
-    expect(card.text()).toContain('Name: npm')
+    expect(card.findAll('.ginko-block-head span').map((s) => s.text())).toEqual(['Reiter', 'npm'])
     expect(wrapper.get('[data-component="callout"] button').attributes('aria-label')).toBe('Einstellungen: Hinweisbox')
   })
 
   // Wrong behaviour caught: a block without text showed its label over an empty box, which owners read as missing
-  // (legal) data, and a picture of a card showed only as a file name.
+  // (legal) data; a picture of a card showed only as a file name; a figure card printed its pixel sizes and repeated
+  // the registry's description under the photo.
+  const figureDescribe = 'Ein Bild mit Bildunterschrift. Ein Klick vergrößert das Bild.'
   test.each([
-    ['a data block without text: its description, no box', '::business-contact\n::\n', 'business-contact', 'Zeigt Firmenname und Anschrift. Die Angaben stehen fest in der Website.', true, undefined],
-    ['a picture from the library: its thumbnail', '::figure{src="$file.f1" alt="A"}\n::\n', 'figure', 'Ein Bild mit Bildunterschrift. Ein Klick vergrößert das Bild.', true, 'https://cdn.test/f1.png'],
-    ['a block with text: the box, no description', ':::tabs\n::tab{title="npm"}\nInhalt\n::\n:::\n', 'tab', 'Ein Reiter innerhalb einer Reitergruppe.', false, undefined],
-  ])('%s', async (_name, source, tag, describe, described, thumbnail) => {
+    ['a data block without text: its description, no box', '::business-contact\n::\n', 'business-contact', true, 'Zeigt Firmenname und Anschrift. Die Angaben stehen fest in der Website.', undefined, []],
+    ['a picture from the library: its preview, the description and file name, no explanation', '::figure{src="$file.f1" alt="A"}\n::\n', 'figure', true, undefined, 'https://cdn.test/f1.png', ['Abbildung', 'A', 'f1.png']],
+    ['a figure with caption and sizes: the caption and the picture, no pixel sizes', '::figure{src="$file.f1" alt="Gäste im Garten" caption="Sommerfest 2026" width="2756" height="1837" aspect="square"}\n::\n', 'figure', true, undefined, 'https://cdn.test/f1.png', ['Sommerfest 2026', 'Gäste im Garten', 'Quadrat']],
+    ['a block with text: the box, no description', ':::tabs\n::tab{title="npm"}\nInhalt\n::\n:::\n', 'tab', false, undefined, undefined, ['npm']],
+  ])('%s', async (_name, source, tag, hidden, describe, thumbnail, shows) => {
     const registry: ComponentRegistry = { ...components, ...defineComponents({ 'business-contact': { kind: 'block', label: 'Kontaktdaten', describe: 'Zeigt Firmenname und Anschrift. Die Angaben stehen fest in der Website.', props: {} } }) }
     const assets: GinkoAssets = {
       state: () => computed(() => undefined),
@@ -108,9 +111,13 @@ describe('live or card', () => {
     }
     const wrapper = await mounted(source, registry, assets)
     const card = wrapper.get(`[data-component="${tag}"]`)
-    expect(card.find('.ginko-block-content').classes('hidden')).toBe(described)
-    expect(card.get('.ginko-block-card').text().includes(describe)).toBe(described)
+    expect(card.find('.ginko-block-content').classes('hidden')).toBe(hidden)
     if (thumbnail) await until(() => card.find('img').exists())
+    const text = card.get('.ginko-block-card').text()
+    if (describe) expect(text).toContain(describe)
+    expect(text).not.toContain(figureDescribe)
+    for (const word of shows) expect(text).toContain(word)
+    expect(text).not.toMatch(/Pixel|2756/)
     expect(card.find('img').exists() ? card.get('img').attributes('src') : undefined).toBe(thumbnail)
   })
 

@@ -114,10 +114,10 @@ function menuClosed(event: Event) {
 
 // What fits: the width of the row (a ResizeObserver; without one, as in tests, everything is shown) against the sizes of
 // its parts, in px: ToolToggle and the ⋯ button are h-8/min-w-8, on touch screens h-11/min-w-11, 2px apart; the block
-// type is about 54px with its icon and arrow and w-56 with its word; "Markdown" adds about 70px and stands 8px apart.
+// type is about 54px with its icon and arrow and w-40 with its word; "Markdown" adds about 70px and stands 8px apart.
 const UNIT = isCoarsePointer() ? 46 : 34
 const SELECT = 58
-const SELECT_WORD = 224 - 54
+const SELECT_WORD = 160 - 54
 const SOURCE_GAP = 8
 const SOURCE_WORD = 72
 const SPARE = 8
@@ -182,12 +182,12 @@ const style = computed(() => (place.value ? { transform: `translate(${place.valu
     <div
       ref="bar" role="toolbar" :aria-label="t('editor.toolbar.label')" :style="style" :data-docked="place ? '' : undefined"
       class="flex items-center gap-0.5 bg-background p-1"
-      :class="place ? 'fixed top-0 left-0 z-40 border-t pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-2px_8px_rgb(0_0_0/0.08)]' : 'sticky top-[var(--studio-header-height,0px)] z-[5] rounded-t-md border-b'"
+      :class="place ? 'fixed top-0 left-0 z-40 border-t pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-2px_8px_rgb(0_0_0/0.08)]' : 'sticky top-(--studio-header-height,0px) z-[5] rounded-t-lg border-b'"
     >
       <Select v-if="all.length > 1" :model-value="current" @update:model-value="choose">
         <SelectTrigger
           size="sm" :aria-label="t('editor.toolbar.blockType')"
-          :class="['mr-1 shrink-0 [@media(pointer:coarse)]:data-[size=sm]:h-11', fit.selectWord ? 'w-56' : 'w-auto gap-1 px-2']"
+          :class="['mr-1 shrink-0 border-transparent bg-transparent shadow-none hover:bg-accent dark:bg-transparent dark:hover:bg-accent [@media(pointer:coarse)]:data-[size=sm]:h-11', fit.selectWord ? 'w-40' : 'w-auto gap-1 px-2']"
         >
           <!-- Narrow, the icon alone; the word stays for screen readers, never cut in half. -->
           <SelectValue>

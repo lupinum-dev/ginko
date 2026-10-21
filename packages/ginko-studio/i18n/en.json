@@ -739,14 +739,14 @@
       "processing": "Processing …",
       "blocked": "The photo is still being processed. Please wait a moment.",
       "failed": "The photo could not be uploaded. Please try again.",
-      "tooLarge": "The file is too large (at most {max} MB).",
       "pick": "Choose photo",
       "other": "Other photo",
       "alt": "Image description",
       "altHint": "What can be seen in the photo? For people who cannot see the image.",
       "altFromLibrary": "Leave empty to use the description from Files.",
       "noneToTranslate": "No photo yet, so nothing to translate.",
-      "chooseInMain": "You change the picture itself in {name}."
+      "chooseInMain": "You change the picture itself in {name}.",
+      "drop": "Or drop a photo here."
     },
     "money": {
       "negative": "A price cannot be negative.",
@@ -773,7 +773,13 @@
       "confirmBlocker": "Please confirm for “{title}”: are the {label} still correct?",
       "changed": "{changed} changed. Are the {label} still correct?",
       "add": "Add {item}",
-      "addInMain": "You add, remove and reorder rows in {name}."
+      "addInMain": "You add, remove and reorder rows in {name}.",
+      "photoHint": "Describe each photo in a few words: what can be seen? For people who cannot see the images.",
+      "moveEarlier": "Move {title} earlier",
+      "moveLater": "Move {title} later",
+      "photoMenu": "Actions for {title}",
+      "earlier": "Move earlier",
+      "later": "Move later"
     }
   },
   "ops": {

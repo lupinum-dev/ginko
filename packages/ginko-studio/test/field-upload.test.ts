@@ -59,7 +59,7 @@ describe('a photo field in another language', () => {
   const assets: GinkoAssets = { state: () => ref(undefined), details: () => ref(undefined), upload: async () => 'id' }
   const photo = { file: 'f1', alt: { de: 'Kürbissuppe im Teller' } }
   test.each<{ locale: string; value: Json | undefined; buttons: string[]; alt: boolean; note: boolean }>([
-    { locale: 'de', value: photo, buttons: ['Anderes Foto', 'Entfernen', 'Aus der Bibliothek wählen'], alt: true, note: false },
+    { locale: 'de', value: photo, buttons: ['Entfernen', 'Anderes Foto', 'Aus der Bibliothek wählen'], alt: true, note: false },
     { locale: 'en', value: photo, buttons: [], alt: true, note: false },
     { locale: 'en', value: undefined, buttons: [], alt: false, note: true },
   ])('$locale, photo $value.file: buttons $buttons, description $alt', ({ locale, value, buttons, alt, note }) => {

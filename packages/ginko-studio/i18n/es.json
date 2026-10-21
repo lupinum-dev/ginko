@@ -739,14 +739,14 @@
       "processing": "Procesando…",
       "blocked": "La foto aún se está procesando. Espera un momento.",
       "failed": "No se pudo subir la foto. Inténtalo de nuevo.",
-      "tooLarge": "El archivo es demasiado grande (máximo {max} MB).",
       "pick": "Elegir foto",
       "other": "Otra foto",
       "alt": "Descripción de la imagen",
       "altHint": "¿Qué se ve en la foto? Para las personas que no pueden ver la imagen.",
       "altFromLibrary": "Déjalo vacío para usar la descripción de Archivos.",
       "noneToTranslate": "Aún no hay foto, así que no hay nada que traducir.",
-      "chooseInMain": "La imagen en sí se cambia en la versión en {name}."
+      "chooseInMain": "La imagen en sí se cambia en la versión en {name}.",
+      "drop": "O arrastra una foto aquí."
     },
     "money": {
       "negative": "Un precio no puede ser negativo.",
@@ -773,7 +773,13 @@
       "confirmBlocker": "Confirma para “{title}”: ¿sigue todo correcto en {label}?",
       "changed": "{changed} ha cambiado. ¿Sigue todo correcto en {label}?",
       "add": "Añadir {item}",
-      "addInMain": "Las filas se añaden, quitan y mueven en la versión en {name}."
+      "addInMain": "Las filas se añaden, quitan y mueven en la versión en {name}.",
+      "photoHint": "Describe cada foto en pocas palabras: ¿qué se ve? Para personas que no pueden ver las imágenes.",
+      "moveEarlier": "Mover {title} antes",
+      "moveLater": "Mover {title} después",
+      "photoMenu": "Acciones para {title}",
+      "earlier": "Mover antes",
+      "later": "Mover después"
     }
   },
   "ops": {

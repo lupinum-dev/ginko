@@ -739,14 +739,14 @@
       "processing": "Traitement…",
       "blocked": "La photo est encore en cours de traitement. Patientez un instant.",
       "failed": "La photo n’a pas pu être importée. Réessayez.",
-      "tooLarge": "Le fichier est trop volumineux ({max} Mo au maximum).",
       "pick": "Choisir une photo",
       "other": "Autre photo",
       "alt": "Description de l’image",
       "altHint": "Que voit-on sur la photo ? Pour les personnes qui ne voient pas l’image.",
       "altFromLibrary": "Laissez vide pour utiliser la description des fichiers.",
       "noneToTranslate": "Pas encore de photo, donc rien à traduire.",
-      "chooseInMain": "Pour changer l’image elle-même, passez en {name}."
+      "chooseInMain": "Pour changer l’image elle-même, passez en {name}.",
+      "drop": "Ou déposez une photo ici."
     },
     "money": {
       "negative": "Un prix ne peut pas être négatif.",
@@ -773,7 +773,13 @@
       "confirmBlocker": "Confirmez pour « {title} » : les informations « {label} » sont-elles toujours correctes ?",
       "changed": "Modification : {changed}. Les informations « {label} » sont-elles toujours correctes ?",
       "add": "Ajouter {item}",
-      "addInMain": "Pour ajouter, supprimer ou réorganiser des lignes, passez en {name}."
+      "addInMain": "Pour ajouter, supprimer ou réorganiser des lignes, passez en {name}.",
+      "photoHint": "Décrivez chaque photo en quelques mots : que voit-on ? Pour les personnes qui ne voient pas les images.",
+      "moveEarlier": "Déplacer {title} avant",
+      "moveLater": "Déplacer {title} après",
+      "photoMenu": "Actions pour {title}",
+      "earlier": "Déplacer avant",
+      "later": "Déplacer après"
     }
   },
   "ops": {
