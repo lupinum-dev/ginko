@@ -253,6 +253,23 @@ const areaList = useAreaList()
 watch([bar, showPreview], ([wide, open]) => areaList.foldFor(wide && open), { immediate: true })
 onBeforeUnmount(() => areaList.foldFor(false))
 const split = computed(() => bar.value && showPreview.value)
+// Before sideMode: with the panel bar already shown (a move within the Studio), the tab watcher below reads it during setup.
+// Drafts (SPEC 15): only collections that ask for them. A draft is saved without going online;
+// "Veröffentlichen …" puts it online now or at a time; a live entry can be taken back to a draft.
+const timeZone = computed(() => props.schema.timeZone)
+const drafts = computed(() => props.brick.kind === 'collection' && props.brick.drafts === true)
+const state = computed(() => props.entry?.state ?? 'live')
+// A draft stays a draft when the collection later turns drafts off (SPEC 15), so it can still be published.
+const isDraft = computed(() => (props.entry ? state.value === 'draft' : drafts.value))
+const statusText = computed(() => {
+  if (!props.entry || (!drafts.value && state.value === 'live')) return ''
+  if (state.value === 'live') return t('entry.status.online')
+  return props.entry.publishAt
+    ? t('entry.status.onlineFrom', { when: whenText(props.entry.publishAt, timeZone.value, format) })
+    : t('entry.status.draft')
+})
+/** The right column's status card: for entries that can be drafts, or that have a status to show. */
+const statusCard = computed(() => !!statusText.value || drafts.value)
 const wideSide = useMediaQuery('(min-width: 1280px)')
 /** The right column: from 1280px while the preview is closed (the preview takes that room when open), when it has something to show. */
 const sideMode = computed(() => bar.value && wideSide.value && !showPreview.value && (statusCard.value || !!sideImage.value || sideSlug.value.length > 0 || sideGroups.value.length > 0))
@@ -406,22 +423,6 @@ watch(() => props.entry?._id, () => {
   if (props.entry) rememberEntry(props.site.slug, { to: props.brick.kind === 'single' ? `/s/${props.site.slug}/all/${props.brickKey}` : `/s/${props.site.slug}/all/${props.brickKey}/${props.entry._id}`, label: titleOf(props.brick, props.entry.data, main.value), area: shownLabel(props.brick.label, main.value) })
 }, { immediate: true })
 
-// Drafts (SPEC 15): only collections that ask for them. A draft is saved without going online;
-// "Veröffentlichen …" puts it online now or at a time; a live entry can be taken back to a draft.
-const timeZone = computed(() => props.schema.timeZone)
-const drafts = computed(() => props.brick.kind === 'collection' && props.brick.drafts === true)
-const state = computed(() => props.entry?.state ?? 'live')
-// A draft stays a draft when the collection later turns drafts off (SPEC 15), so it can still be published.
-const isDraft = computed(() => (props.entry ? state.value === 'draft' : drafts.value))
-const statusText = computed(() => {
-  if (!props.entry || (!drafts.value && state.value === 'live')) return ''
-  if (state.value === 'live') return t('entry.status.online')
-  return props.entry.publishAt
-    ? t('entry.status.onlineFrom', { when: whenText(props.entry.publishAt, timeZone.value, format) })
-    : t('entry.status.draft')
-})
-/** The right column's status card: for entries that can be drafts, or that have a status to show. */
-const statusCard = computed(() => !!statusText.value || drafts.value)
 /** The status card's line under the badge: what a draft or a scheduled entry means for the website. */
 const statusNote = computed(() => {
   if (!props.entry || state.value === 'live') return ''

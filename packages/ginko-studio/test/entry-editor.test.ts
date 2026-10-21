@@ -14,6 +14,7 @@ import { allAccess } from '../app/composables/useAll'
 import EntryEditor from '../app/components/EntryEditor.vue'
 import PreviewPane from '../app/components/PreviewPane.vue'
 import AppToast from '../app/components/AppToast.vue'
+import { providePanelBar } from '../app/composables/usePageHeader'
 
 const { computed, defineComponent, inject, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch } = vue
 Object.entries({ computed, inject, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, watch, useI18n, useEntryForm }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
@@ -46,6 +47,25 @@ test('a never saved draft is asked about by the title typed so far', async () =>
   wrapper.findComponent({ name: 'EntryFields' }).vm.$emit('update', 'title', { de: 'Herbstfest' })
   await flushPromises()
   expect(wrapper.get('#publish-title').text()).toBe('Wann soll „Herbstfest“ online gehen?')
+})
+
+// Wrong behaviour caught: opened by a move within the Studio, the panel bar is already shown when the form sets up, and
+// the form crashed reading its right column before the status card it depends on existed.
+test('a draft entry opened with the panel bar already shown gets its right column', async () => {
+  const wide = vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {} }) as unknown as MediaQueryList)
+  const Shell = defineComponent({
+    setup() {
+      providePanelBar(() => true)
+      const ready = ref(false)
+      onMounted(() => { ready.value = true })
+      return () => (ready.value ? vue.h(EntryEditor, { site: { slug: 'restaurant', url: 'https://restaurant.test', previewOrigins: [], schemaRev: 1, contentRev: 1, name: 'Restaurant' }, schema, brickKey: 'blog', brick: schema.bricks.blog!, canRemove: false }) : null)
+    },
+  })
+  const wrapper = mount(Shell, { global: { stubs: { EntryFields: true, PreviewPane: true, NuxtLink: true } } })
+  await flushPromises()
+  expect(wrapper.find('aside.side-col').exists()).toBe(true)
+  wrapper.unmount()
+  wide.mockRestore()
 })
 
 // Wrong behaviour caught: the entry limit spans all fields and languages, so no field counter shows it and the
