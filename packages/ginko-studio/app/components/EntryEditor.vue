@@ -802,8 +802,9 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
 </template>
 
 <style scoped>
-/* One column: the form keeps a readable width. With the right column: form and an 18rem column. */
-.entry-form { max-width: 45rem; }
+/* One column: the form keeps a readable width, centred like every page frame (StudioPage). With the right column:
+   form and an 18rem column. */
+.entry-form { max-width: 45rem; margin-inline: auto; }
 .entry-form.has-side { max-width: 72rem; grid-template-columns: minmax(0, 1fr) 18rem; align-items: start; }
 .editor > .preview-col { margin-top: 1.5rem; height: 80dvh; }
 /* Wide screens with the preview open: form and preview share the panel, the preview flush with its edges. */
