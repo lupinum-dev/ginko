@@ -140,7 +140,7 @@ describe('blockSummary', () => {
   const figure = {
     props: {
       src: f.image('Bild'), alt: f.text('Bildbeschreibung'), caption: f.text('Bildunterschrift', { optional: true }),
-      width: f.number('Breite in Pixeln', { optional: true }), bleed: f.boolean('Breiter als der Text', { optional: true }),
+      width: f.number('Breite in Pixeln', { min: 1, max: 10000, step: 1, optional: true }), bleed: f.boolean('Breiter als der Text', { optional: true }),
       aspect: f.choice('Seitenverhältnis', { options: [{ value: 'auto', label: 'Original' }, { value: 'square', label: { de: 'Quadrat', en: 'Square' } }], optional: true, default: 'auto' }),
     },
   }

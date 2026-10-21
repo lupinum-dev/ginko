@@ -3,8 +3,7 @@
 import { expect, test } from 'vitest'
 import { ordered, serializeSchema } from '@lupinum/ginko/internal'
 import restaurant from '../../../sites/restaurant/ginko.config.ts'
-import type { LocalDraftRow } from '../app/composables/useLocalDraftRows'
-import { cardsOf, verdictCount, waitingOf, type OwnRow } from '../app/utils/today'
+import { cardsOf, verdictCount, waitingOf, type LocalDraftRow, type OwnRow } from '../app/utils/today'
 
 const schema = serializeSchema(restaurant)
 const de = (label: unknown) => (typeof label === 'string' ? label : (label as { de: string }).de)

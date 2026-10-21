@@ -5,8 +5,24 @@ import type { CollectionBrick, Json } from '@lupinum/ginko'
 import type { Schema } from '@lupinum/ginko/internal'
 import type { FunctionReturnType } from 'convex/server'
 import type { api } from '#convex/api'
-import type { LocalDraftRow } from '../composables/useLocalDraftRows'
 import type { Task } from './content'
+
+/** One row of the person's unsaved input that this browser kept (useLocalDraftRows reads them). */
+export interface LocalDraftRow {
+  /** The draft's target: an entry id, `new:<brick>` or `task:<brick>.<task>`. */
+  key: string
+  /** "„title“ · time", or "area: new entry · time". */
+  text: string
+  /** The same without the time: "„title“", or "area: new entry". */
+  label: string
+  name: string
+  area: string
+  time: string
+  /** Where the input was typed: an entry or a new entry in Content… */
+  to?: string
+  /** …or a create task's sheet. */
+  task?: { brick: string; task: Task }
+}
 
 /** One of the person's own proposals as proposals.mine returns it. */
 export type OwnRow = FunctionReturnType<typeof api.proposals.mine>['open'][number]
