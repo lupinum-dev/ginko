@@ -41,11 +41,12 @@ function toWeekStart() {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-2">
-    <Input :id="id" type="date" class="w-full sm:w-48" :model-value="value" :aria-invalid="invalid" :aria-describedby="describedBy" @update:model-value="emit('update:modelValue', String($event) || undefined)" @blur="toWeekStart" />
-    <div class="flex gap-2">
-      <Button v-for="q in quick" :key="q.label" type="button" variant="outline" class="aria-pressed:border-primary aria-pressed:bg-accent" :aria-pressed="value === q.date" @click="emit('update:modelValue', q.date)">{{ q.label }}</Button>
-      <Button v-if="optional && value" type="button" variant="ghost" @click="clear">{{ t('fields.clear') }}</Button>
+  <!-- The shortcuts stay on the line of the date while it fits; in a narrow column they wrap under it. -->
+  <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
+    <Input :id="id" type="date" class="min-w-0 flex-1 basis-40" :model-value="value" :aria-invalid="invalid" :aria-describedby="describedBy" @update:model-value="emit('update:modelValue', String($event) || undefined)" @blur="toWeekStart" />
+    <div class="flex min-w-0 flex-wrap gap-1.5">
+      <Button v-for="q in quick" :key="q.label" type="button" variant="secondary" size="sm" class="px-2.5 aria-pressed:bg-accent aria-pressed:text-accent-foreground aria-pressed:ring-1 aria-pressed:ring-primary" :aria-pressed="value === q.date" @click="emit('update:modelValue', q.date)">{{ q.label }}</Button>
+      <Button v-if="optional && value" type="button" variant="ghost" size="sm" @click="clear">{{ t('fields.clear') }}</Button>
     </div>
   </div>
 </template>

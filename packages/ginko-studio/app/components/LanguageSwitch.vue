@@ -20,10 +20,10 @@ const { t, locale: uiLocale } = useI18n()
 
 <template>
   <ToggleGroup
-    type="single" variant="segmented" :model-value="modelValue" :aria-label="t('entry.language')"
+    type="single" variant="segmented" class="data-[variant=segmented]:p-0.5" :model-value="modelValue" :aria-label="t('entry.language')"
     @update:model-value="(next) => typeof next === 'string' && next && emit('update:modelValue', next)"
   >
-    <ToggleGroupItem v-for="l in locales" :key="l" :value="l" :aria-disabled="blocked && l !== modelValue ? 'true' : undefined" class="px-4">
+    <ToggleGroupItem v-for="l in locales" :key="l" :value="l" :aria-disabled="blocked && l !== modelValue ? 'true' : undefined" class="h-7 gap-1.5 rounded-md px-3 text-[13px] pointer-coarse:h-11 pointer-coarse:text-sm">
       {{ languageLabel(l, uiLocale) }}
       <template v-if="gap(l)">
         <span class="size-1.5 rounded-full bg-warning" aria-hidden="true" />

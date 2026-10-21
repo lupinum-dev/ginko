@@ -6,6 +6,7 @@ import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
 import { Checkbox } from '@studio/components/ui/checkbox'
 import { Label } from '@studio/components/ui/label'
+import { OPTION_CHIP as row } from './sizes'
 import { useStudioSite } from '../../utils/labels'
 
 const props = defineProps<{ id: string; field: Extract<Field, { type: 'choices' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string }>()
@@ -24,7 +25,6 @@ function toggle(value: string, on: boolean) {
   const order = props.field.options.map((o) => o.value)
   emit('update:modelValue', next.sort((a, b) => order.indexOf(a) - order.indexOf(b)))
 }
-const row = 'min-h-10 cursor-pointer gap-2 rounded-md border border-input px-3 py-2 text-sm has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/80 pointer-coarse:min-h-11'
 </script>
 
 <template>

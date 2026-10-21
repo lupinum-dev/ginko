@@ -7,6 +7,8 @@
 import { useI18n } from '#imports'
 import type { Fields, Json, Locale } from '@lupinum/ginko'
 import { mergeRows, rowDiffs } from '@lupinum/ginko/internal'
+import { GitCompareArrowsIcon } from '@lucide/vue'
+import { Alert, AlertDescription, AlertTitle } from '@studio/components/ui/alert'
 import { Button } from '@studio/components/ui/button'
 import { computed } from 'vue'
 import { displayValue, rowTitle, type Data } from '../utils/content'
@@ -92,23 +94,26 @@ const items = computed(() => props.conflict.fields.map((key) => {
 </script>
 
 <template>
-  <div class="grid gap-2 rounded-md bg-warning/10 p-3" role="alert">
-    <p><strong>{{ heading }}</strong></p>
-    <ul class="m-0 list-disc pl-[18px]">
-      <li v-for="item in items" :key="item.key">
-        <template v-if="item.lines">
-          {{ item.label }}
-          <ul class="m-0 list-disc pl-[18px]">
-            <li v-for="(line, i) in item.lines" :key="i">{{ line }}</li>
-          </ul>
-        </template>
-        <template v-else>{{ item.text }}</template>
-      </li>
-    </ul>
-    <div class="flex flex-wrap gap-2">
-      <Button v-if="canKeepBoth" type="button" @click="emit('keepBoth')">{{ t('entry.conflict.keepBoth') }}</Button>
-      <Button type="button" :variant="canKeepBoth ? 'outline' : 'default'" @click="emit('keepMine')">{{ t('entry.conflict.keepMine') }}</Button>
-      <Button type="button" variant="outline" @click="emit('takeTheirs')">{{ t('entry.conflict.takeTheirs') }}</Button>
-    </div>
-  </div>
+  <Alert class="gap-y-2 rounded-lg border-0 bg-warning/10 p-4 [&>svg]:text-warning">
+    <GitCompareArrowsIcon aria-hidden="true" />
+    <AlertTitle class="line-clamp-none"><strong class="font-semibold">{{ heading }}</strong></AlertTitle>
+    <AlertDescription class="grid gap-3 text-foreground/80">
+      <ul class="m-0 grid list-disc gap-1 pl-[18px]">
+        <li v-for="item in items" :key="item.key">
+          <template v-if="item.lines">
+            {{ item.label }}
+            <ul class="m-0 list-disc pl-[18px]">
+              <li v-for="(line, i) in item.lines" :key="i">{{ line }}</li>
+            </ul>
+          </template>
+          <template v-else>{{ item.text }}</template>
+        </li>
+      </ul>
+      <div class="flex flex-wrap gap-2">
+        <Button v-if="canKeepBoth" type="button" size="sm" @click="emit('keepBoth')">{{ t('entry.conflict.keepBoth') }}</Button>
+        <Button type="button" size="sm" :variant="canKeepBoth ? 'outline' : 'default'" @click="emit('keepMine')">{{ t('entry.conflict.keepMine') }}</Button>
+        <Button type="button" size="sm" variant="outline" @click="emit('takeTheirs')">{{ t('entry.conflict.takeTheirs') }}</Button>
+      </div>
+    </AlertDescription>
+  </Alert>
 </template>

@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import type { Field, Json } from '@lupinum/ginko'
 import { Input } from '@studio/components/ui/input'
+import { focusUnitInput, UNIT_BOX, UNIT_INPUT, UNIT_TEXT } from './sizes'
 
 const props = defineProps<{ id: string; field: Extract<Field, { type: 'number' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
@@ -18,8 +19,10 @@ function input(raw: string) {
 </script>
 
 <template>
-  <div class="flex max-w-56 items-center gap-2">
-    <Input :id="id" inputmode="decimal" :model-value="text" :aria-invalid="invalid" :aria-describedby="describedBy" @update:model-value="input(String($event))" />
-    <span v-if="field.unit" class="text-sm text-muted-foreground">{{ field.unit }}</span>
+  <!-- A click on the unit puts the cursor in the number (a mouse convenience; the keyboard reaches the input itself). -->
+  <div v-if="field.unit" :class="UNIT_BOX" @click="focusUnitInput">
+    <Input :id="id" inputmode="decimal" :class="UNIT_INPUT" :model-value="text" :aria-invalid="invalid" :aria-describedby="describedBy" @update:model-value="input(String($event))" />
+    <span :class="UNIT_TEXT">{{ field.unit }}</span>
   </div>
+  <Input v-else :id="id" inputmode="decimal" :model-value="text" :aria-invalid="invalid" :aria-describedby="describedBy" @update:model-value="input(String($event))" />
 </template>
