@@ -131,6 +131,7 @@ const publicCalls: Call[] = [
   { fn: 'sites.setAgentReview', kind: 'mutation', args: () => ({ ...SITE, review: false }) },
   { fn: 'sites.create', kind: 'mutation', args: () => ({ slug: 'neu-seite', name: 'Neu', url: 'https://example.com' }) },
   { fn: 'sites.translationStatus', kind: 'query', args: () => SITE },
+  { fn: 'sites.areas', kind: 'query', args: () => SITE },
   { fn: 'sites.today', kind: 'query', args: () => SITE },
   { fn: 'tasks.prefill', kind: 'query', args: () => ({ ...SITE, task: 'menu.edit' }) },
   { fn: 'uploads.prepare', kind: 'mutation', args: () => SITE },
@@ -537,6 +538,7 @@ const cross: CrossCall[] = [
   { fn: 'proposals.ownFor', kind: 'query', args: (site, f) => ({ site, entry: f.entry }) },
   { fn: 'proposals.releases', kind: 'query', args: (site) => ({ site }) },
   { fn: 'sites.translationStatus', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'sites.areas', kind: 'query', args: (site) => ({ site }) },
   { fn: 'sites.today', kind: 'query', args: (site) => ({ site }) },
 ]
 const SECRETS = ['GEHEIM', 'Saibling', 'Frittaten', 'koch@example.com', 'wirtin@example.com', 'geheim@example.com']
