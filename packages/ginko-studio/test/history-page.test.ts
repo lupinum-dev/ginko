@@ -12,6 +12,7 @@ import { useI18n } from '#imports'
 import HistoryPage from '../app/pages/s/[site]/history/index.vue'
 import ChangeDiff from '../app/components/ChangeDiff.vue'
 import ChangeRows from '../app/components/ChangeRows.vue'
+import StudioPage from '../app/components/StudioPage.vue'
 
 const { computed, defineComponent, h, onMounted, onUnmounted, ref, Suspense } = vue
 Object.entries({ computed, onMounted, onUnmounted, ref, useI18n }).forEach(([name, fn]) => vi.stubGlobal(name, fn))
@@ -40,13 +41,19 @@ vi.stubGlobal('useConvexQuery', (query: unknown, args: () => unknown) => ({
 const changes = ref<unknown[]>([])
 vi.stubGlobal('useConvexPaginatedQuery', () => ({ data: changes, status: ref('success'), error: ref(), canLoadMore: ref(false), isLoadingMore: ref(false), loadMore: () => {} }))
 vi.stubGlobal('useOps', () => ({}))
+/** The row menu ("Weitere Aktionen") renders its items in place, as buttons, or as their link. */
+const pass = { template: '<div><slot /></div>' }
+const menu = {
+  DropdownMenu: pass, DropdownMenuTrigger: pass, DropdownMenuContent: pass,
+  DropdownMenuItem: { props: ['asChild'], emits: ['select'], template: '<slot v-if="asChild" /><button v-else type="button" @click="$emit(\'select\')"><slot /></button>' },
+}
 
 // Wrong behaviour caught: "Verlauf dieses Eintrags" opened a page titled only "Verlauf", with no way back, and an
 // entry nobody changed since the import said "Keine Änderungen für diesen Filter.", so the owner thought it was broken.
 test('the history of one entry names it, links back to it and says plainly that nothing was changed yet', async () => {
   const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(HistoryPage) }) }), {
     global: {
-      components: { ChangeRows },
+      components: { ChangeRows, StudioPage },
       stubs: { SiteZoneNote: true, OwnProposals: true, ChangeDetail: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } },
     },
   })
@@ -62,7 +69,7 @@ test('the history of one entry names it, links back to it and says plainly that 
 test('a Rückgängig row can be gone back to, and the question shows what that changes', async () => {
   changes.value = [{ _id: 'c2', kind: 'undo', entry: 'e1', brick: 'legal', fields: ['title'], at: Date.UTC(2026, 9, 8, 10), msg: null, sentence: 'Rückgängig: Titel von „Impressum“ geändert', who: { email: 'anna@example.test' }, agent: null, undoBlocked: null }]
   answers['entries.versionAt'] = { change: 'c2', diff: [{ field: 'title', label: 'Titel', kind: 'text', before: { de: 'Impressum neu' }, after: { de: 'Impressum' }, locales: [{ locale: 'de', before: 'Impressum neu', after: 'Impressum' }] }] }
-  const wrapper = mount(ChangeRows, { props: { site: 'restaurant', schema, manager: true, grants: new Set<string>(), filter: 'entry', entry: 'e1' }, global: { components: { ChangeDiff }, stubs: { ChangeDetail: true, NuxtLink: true } } })
+  const wrapper = mount(ChangeRows, { props: { site: 'restaurant', schema, manager: true, grants: new Set<string>(), filter: 'entry', entry: 'e1' }, global: { components: { ChangeDiff }, stubs: { ...menu, ChangeDetail: true, NuxtLink: true } } })
   await wrapper.findAll('button').find((b) => b.text() === 'Zurück zu dieser Version')!.trigger('click')
   const question = wrapper.get('[role="group"]')
   expect(question.text()).toContain('Zum Stand direkt nach dieser Änderung (')
@@ -74,7 +81,7 @@ test('a Rückgängig row can be gone back to, and the question shows what that c
 test('a removal links to the trash only while its entry is still there', () => {
   const removal = (id: string, inTrash: boolean) => ({ _id: id, kind: 'remove', entry: 'e1', brick: 'legal', at: Date.UTC(2026, 9, 8, 10), msg: null, sentence: '„Impressum“ entfernt', who: { email: 'anna@example.test' }, agent: null, undoBlocked: null, inTrash })
   changes.value = [removal('c2', true), removal('c1', false)]
-  const wrapper = mount(ChangeRows, { props: { site: 'restaurant', schema, manager: true, grants: new Set<string>() }, global: { stubs: { ChangeDetail: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } })
+  const wrapper = mount(ChangeRows, { props: { site: 'restaurant', schema, manager: true, grants: new Set<string>() }, global: { stubs: { ...menu, ChangeDetail: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } })
   const rows = wrapper.findAll('li')
   expect(rows.map((row) => row.findAll('a').map((a) => [a.text(), a.attributes('href')]))).toEqual([[['Papierkorb öffnen', '/s/restaurant/all?removed']], []])
 })
@@ -84,8 +91,8 @@ test('a removal links to the trash only while its entry is still there', () => {
 // not be gone back to at all.
 describe('going back to a version', () => {
   const row = (kind: string, fields?: string[]) => ({ _id: 'c2', kind, entry: 'e1', brick: 'legal', ...(fields ? { fields } : {}), at: Date.UTC(2026, 9, 8, 10), msg: null, sentence: 'x', who: { email: 'anna@example.test' }, agent: null, undoBlocked: null, inTrash: false })
-  const open = (manager = true) => mount(ChangeRows, { props: { site: 'restaurant', schema, manager, grants: new Set<string>(), filter: 'entry', entry: 'e1' }, global: { components: { ChangeDiff }, stubs: { ChangeDetail: true, NuxtLink: true } } })
-  const buttons = (el: { findAll: (s: string) => { text: () => string }[] }) => el.findAll('button').map((b) => b.text())
+  const open = (manager = true) => mount(ChangeRows, { props: { site: 'restaurant', schema, manager, grants: new Set<string>(), filter: 'entry', entry: 'e1' }, global: { components: { ChangeDiff }, stubs: { ...menu, ChangeDetail: true, NuxtLink: true } } })
+  const buttons = (el: { findAll: (s: string) => { text: () => string; attributes: (name: string) => string | undefined }[] }) => el.findAll('button').map((b) => b.text() || b.attributes('aria-label'))
 
   test.each([
     ['is the current one', { change: 'c2', diff: [] }, undefined, 'Das ist schon der aktuelle Stand.'],
@@ -116,7 +123,7 @@ describe('going back to a version', () => {
     }))
     changes.value = [row('save', ['title'])]
     answers['entries.versionAt'] = { change: 'c2', diff: [] }
-    const taskOf = (manager: boolean) => (mount(ChangeRows, { props: { site: 'restaurant', schema: withTasks, manager, grants: new Set(['legal.fix']), filter: 'entry', entry: 'e1' }, global: { components: { ChangeDiff }, stubs: { ChangeDetail: true, NuxtLink: true } } }))
+    const taskOf = (manager: boolean) => (mount(ChangeRows, { props: { site: 'restaurant', schema: withTasks, manager, grants: new Set(['legal.fix']), filter: 'entry', entry: 'e1' }, global: { components: { ChangeDiff }, stubs: { ...menu, ChangeDetail: true, NuxtLink: true } } }))
     const staff = taskOf(false)
     await staff.findAll('button').find((b) => b.text() === 'Zurück zu dieser Version')!.trigger('click')
     expect(asked['entries.versionAt']).toEqual({ site: 'restaurant', task: 'legal.fix', entry: 'e1', change: 'c2' })
@@ -125,8 +132,18 @@ describe('going back to a version', () => {
     expect(asked['entries.versionAt']).toEqual({ site: 'restaurant', entry: 'e1', change: 'c2' })
   })
 
+  // Wrong behaviour caught: a save that cannot be undone ("Changed again since. Go back to an earlier version instead.")
+  // hid the way back in the unlabelled menu. It shows as a button in the Undo slot; other rows keep it in the menu.
   test.each([
-    [true, ['Zurück zu dieser Version']],
+    ['changed', ['Änderungen anzeigen', 'Zurück zu dieser Version']],
+    [null, ['Änderungen anzeigen', 'Rückgängig', 'Weitere Aktionen', 'Zurück zu dieser Version']],
+  ])('going back sits beside the row, not in the menu, when the undo is blocked (%s)', (undoBlocked, shown) => {
+    changes.value = [{ ...row('save', ['title']), undoBlocked }]
+    expect(buttons(open())).toEqual(shown)
+  })
+
+  test.each([
+    [true, ['Weitere Aktionen', 'Zurück zu dieser Version']],
     // Staff edit through tasks of named fields; a creation names none, so no task can be checked against it.
     [false, []],
   ])('a creation can be gone back to by owners and admins (manager: %s)', (manager, shown) => {

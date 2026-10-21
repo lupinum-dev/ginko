@@ -252,9 +252,6 @@
       "empty": "Nothing found."
     },
     "changes": {
-      "justNow": "just now",
-      "minutesAgo": "{count} min ago",
-      "hoursAgo": "{count} h ago",
       "undo": "Undo",
       "undone": "Undone",
       "empty": "No changes yet."
@@ -894,7 +891,12 @@
     },
     "loadFailed": "History could not be loaded. Please reload the page.",
     "fix": "Fix it",
-    "approval": "Approval: {who}"
+    "approval": "Approval: {who}",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "more": "More actions",
+    "detail": "Changes",
+    "detailEmpty": "Choose “Show changes” on a change to see before and after here."
   },
   "basics": {
     "search": {

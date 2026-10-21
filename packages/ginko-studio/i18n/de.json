@@ -252,9 +252,6 @@
       "empty": "Nichts gefunden."
     },
     "changes": {
-      "justNow": "gerade eben",
-      "minutesAgo": "vor {count} Min.",
-      "hoursAgo": "vor {count} Std.",
       "undo": "Rückgängig",
       "undone": "Rückgängig gemacht",
       "empty": "Noch keine Änderungen."
@@ -894,7 +891,12 @@
     },
     "loadFailed": "Der Verlauf konnte nicht geladen werden. Bitte die Seite neu laden.",
     "fix": "Korrigieren",
-    "approval": "Freigabe: {who}"
+    "approval": "Freigabe: {who}",
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "more": "Weitere Aktionen",
+    "detail": "Änderungen",
+    "detailEmpty": "Wähle bei einer Änderung „Änderungen anzeigen“, dann siehst du hier Vorher und Nachher."
   },
   "basics": {
     "search": {

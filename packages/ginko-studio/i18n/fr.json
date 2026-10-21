@@ -252,9 +252,6 @@
       "empty": "Aucun résultat."
     },
     "changes": {
-      "justNow": "à l’instant",
-      "minutesAgo": "il y a {count} min",
-      "hoursAgo": "il y a {count} h",
       "undo": "Annuler",
       "undone": "Annulé",
       "empty": "Pas encore de modifications."
@@ -894,7 +891,12 @@
     },
     "loadFailed": "L’historique n’a pas pu être chargé. Rechargez la page.",
     "fix": "Corriger",
-    "approval": "Approbation : {who}"
+    "approval": "Approbation : {who}",
+    "today": "Aujourd’hui",
+    "yesterday": "Hier",
+    "more": "Plus d’actions",
+    "detail": "Modifications",
+    "detailEmpty": "Choisis « Afficher les modifications » sur une modification pour voir ici l’avant et l’après."
   },
   "basics": {
     "search": {

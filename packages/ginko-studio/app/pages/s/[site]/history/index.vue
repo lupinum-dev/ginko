@@ -2,7 +2,6 @@
      Older pages load on demand; every loaded page stays live (see ChangeRows). -->
 <script setup lang="ts">
 import { api } from '#convex/api'
-import { Button } from '@studio/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
 import { entryPath } from '../../../../utils/basics'
 import { titleOf } from '../../../../utils/content'
@@ -42,29 +41,30 @@ const filters = computed<{ id: Filter; label: string }[]>(() => [
 </script>
 
 <template>
-  <div class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8">
-    <Button v-if="back" as-child variant="link" class="mb-1 h-11 gap-1.5 px-0 font-semibold">
-      <NuxtLink :to="back.to"><span aria-hidden="true">←</span> {{ back.label }}</NuxtLink>
-    </Button>
-    <h1 class="mb-5 text-xl font-semibold tracking-tight">{{ heading }}</h1>
-    <SiteZoneNote v-if="s.schema.value" :zone="s.schema.value.timeZone" class="-mt-3 mb-5" />
-
-    <template v-if="s.schema.value">
+  <StudioPage :title="heading">
+    <template v-if="back" #lede>
+      <NuxtLink :to="back.to" class="inline-flex min-h-11 items-center gap-1.5 font-medium text-foreground underline-offset-4 hover:underline min-[900px]:min-h-0"><span aria-hidden="true">←</span> {{ back.label }}</NuxtLink>
+    </template>
+    <!-- StudioPage keeps a minimum width for the title, so on narrow screens the filter wraps under it by itself. -->
+    <template v-if="s.schema.value" #actions>
       <ToggleGroup
-        type="single" variant="segmented" class="mb-4 max-w-full flex-wrap" :aria-label="t('history.filter.label')"
+        type="single" variant="segmented" size="sm" class="max-w-full flex-wrap max-[899px]:*:flex-auto" :aria-label="t('history.filter.label')"
         :model-value="filter" @update:model-value="(next) => { if (next) filter = next as Filter }"
       >
-        <ToggleGroupItem v-for="f in filters" :key="f.id" :value="f.id" class="px-3">{{ f.label }}</ToggleGroupItem>
+        <ToggleGroupItem v-for="f in filters" :key="f.id" :value="f.id" class="px-3 pointer-coarse:h-11">{{ f.label }}</ToggleGroupItem>
       </ToggleGroup>
-      <OwnProposals :site="s.slug.value" :schema="s.schema.value" :filter="filter" :entry="entry" :manager="s.isManager.value" :grants="s.grants.value" />
-      <ChangeRows
-        :site="s.slug.value"
-        :schema="s.schema.value"
-        :manager="s.isManager.value"
-        :grants="s.grants.value"
-        :filter="filter"
-        :entry="entry"
-      />
     </template>
-  </div>
+    <SiteZoneNote v-if="s.schema.value" :zone="s.schema.value.timeZone" class="-mt-3 mb-5 min-[900px]:text-[13px]" />
+    <ChangeRows
+      v-if="s.schema.value"
+      :site="s.slug.value"
+      :schema="s.schema.value"
+      :manager="s.isManager.value"
+      :grants="s.grants.value"
+      :filter="filter"
+      :entry="entry"
+    >
+      <OwnProposals :site="s.slug.value" :schema="s.schema.value" :filter="filter" :entry="entry" :manager="s.isManager.value" :grants="s.grants.value" />
+    </ChangeRows>
+  </StudioPage>
 </template>

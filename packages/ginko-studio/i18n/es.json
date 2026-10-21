@@ -252,9 +252,6 @@
       "empty": "No se encontró nada."
     },
     "changes": {
-      "justNow": "ahora mismo",
-      "minutesAgo": "hace {count} min",
-      "hoursAgo": "hace {count} h",
       "undo": "Deshacer",
       "undone": "Deshecho",
       "empty": "Aún no hay cambios."
@@ -894,7 +891,12 @@
     },
     "loadFailed": "No se pudo cargar el historial. Vuelve a cargar la página.",
     "fix": "Corregir",
-    "approval": "Aprobación: {who}"
+    "approval": "Aprobación: {who}",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "more": "Más acciones",
+    "detail": "Cambios",
+    "detailEmpty": "Elige «Mostrar cambios» en un cambio para ver aquí el antes y el después."
   },
   "basics": {
     "search": {

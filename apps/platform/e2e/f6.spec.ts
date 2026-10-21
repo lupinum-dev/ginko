@@ -452,15 +452,23 @@ test.describe('Prüfen und Verlauf', () => {
 
       await open(page, '/s/restaurant/history')
       const rows = page.locator('main ol > li')
-      // Newest first: the 25,00 save, then the 23,50 save.
+      // "Zurück zu dieser Version" is a button in the row when the undo is blocked, else it is in the row's menu; the question then opens in the row.
+      const askRevert = async (row: typeof rows) => {
+        const button = row.getByRole('button', { name: 'Zurück zu dieser Version' })
+        if (await button.isVisible()) return button.click()
+        await row.getByRole('button', { name: 'Weitere Aktionen' }).click()
+        await page.getByRole('menuitem', { name: 'Zurück zu dieser Version' }).click()
+      }
+      // Newest first: the 25,00 save, then the 23,50 save. The fields show in the row, or in the right column on wide screens.
       await rows.nth(1).getByRole('button', { name: 'Änderungen anzeigen' }).click()
-      await expect(rows.nth(1)).toContainText('Vorher')
-      await expect(rows.nth(1)).toContainText('21,90')
-      await expect(rows.nth(1)).toContainText('Nachher')
-      await expect(rows.nth(1)).toContainText('23,50')
+      const detail = page.getByRole('region', { name: 'Änderungen', exact: true })
+      await expect(detail).toContainText('Vorher')
+      await expect(detail).toContainText('21,90')
+      await expect(detail).toContainText('Nachher')
+      await expect(detail).toContainText('23,50')
 
       const before = await rows.count()
-      await rows.nth(1).getByRole('button', { name: 'Zurück zu dieser Version' }).click()
+      await askRevert(rows.nth(1))
       await expect(rows.nth(1).getByText(/^Zum Stand direkt nach dieser Änderung \(.*\) zurück\?/)).toBeVisible()
       // The question shows what going back changes: now (25,00) before, that version (23,50) after.
       await expect(rows.nth(1).getByRole('group')).toContainText('Das ändert sich:')
@@ -479,7 +487,7 @@ test.describe('Prüfen und Verlauf', () => {
       await expect(rows.first()).toContainText('Rückgängig: ')
       await expect(rows.nth(1)).toContainText('Rückgängig gemacht')
       // The undo row holds the current state too: going back to it has nothing to change.
-      await rows.first().getByRole('button', { name: 'Zurück zu dieser Version' }).click()
+      await askRevert(rows.first())
       await expect(rows.first().getByRole('group')).toContainText('Das ist schon der aktuelle Stand.')
       await expect(rows.first().getByRole('group').getByRole('button', { name: 'Zurück zu dieser Version' })).toHaveCount(0)
       await rows.first().getByRole('group').getByRole('button', { name: 'Abbrechen' }).click()
@@ -489,7 +497,7 @@ test.describe('Prüfen und Verlauf', () => {
       await open(page, '/s/restaurant/history')
       const undoRow = rows.nth(1)
       await expect(undoRow).toContainText('Rückgängig: ')
-      await undoRow.getByRole('button', { name: 'Zurück zu dieser Version' }).click()
+      await askRevert(undoRow)
       await expect(undoRow.getByRole('group')).toContainText('Das ändert sich:')
       await expect(undoRow.getByRole('group')).toContainText('26,00')
       await expect(undoRow.getByRole('group')).toContainText('25,00')
