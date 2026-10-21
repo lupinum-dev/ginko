@@ -1,5 +1,6 @@
 # Every pull request and push to main: types, unit tests, the demo sites' published schemas, and the
 # release gate (pack the released packages, install a new site from the tarballs, build and serve it).
+# Pull requests also run the platform e2e.
 name: ci
 
 on:
@@ -107,12 +108,43 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
 
+  # Platform e2e (apps/platform/e2e, UI.md 9): the Studio against a fresh local Convex backend, with real sign-in
+  # through the local outbox and the restaurant site for the preview. It runs on every pull request, beside the
+  # other jobs, so no machine of ours has to run it. Traces of failed tests and the backend log are kept.
+  platform-e2e:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e:platform
+        env:
+          GINKO_NO_LOAD_WAIT: '1'
+          GINKO_E2E_LOGS: ${{ runner.temp }}/e2e-logs
+      - if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: platform-e2e-evidence
+          path: |
+            apps/platform/test-results
+            ${{ runner.temp }}/e2e-logs
+          if-no-files-found: ignore
+
   # The one required status check for the main branch ruleset, and the check release.yml waits for
-  # before it publishes. i18n-browser is skipped outside pull requests, so `skipped` counts as passing.
+  # before it publishes. i18n-browser and platform-e2e are skipped outside pull requests, so `skipped` counts as passing.
   ci:
     name: ci
     if: always()
-    needs: [check, audit, nuxt5, i18n-browser]
+    needs: [check, audit, nuxt5, i18n-browser, platform-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
