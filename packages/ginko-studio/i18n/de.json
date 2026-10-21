@@ -1075,7 +1075,14 @@
       "usePhoto": "Dieses Foto verwenden",
       "useFile": "Diese Datei verwenden",
       "altFromLibrary": "Diese Beschreibung kommt aus den Dateien. Änderst du sie hier, gilt das nur an dieser Stelle."
-    }
+    },
+    "folderOptions": "Optionen für {name}",
+    "renameFolder": "Umbenennen",
+    "deleteFolder": "Ordner löschen",
+    "deleteFolderText": "Den Ordner {name} löschen? Nur ein leerer Ordner kann gelöscht werden: Verschiebe seine Dateien zuerst in einen anderen Ordner.",
+    "delete": "Löschen",
+    "dropPhotos": "Fotos: {types}, bis {size}",
+    "dropPdf": "PDF bis {size}"
   },
   "who": {
     "member": "Ein Mitglied",

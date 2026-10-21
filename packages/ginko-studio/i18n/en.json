@@ -1075,7 +1075,14 @@
       "usePhoto": "Use this photo",
       "useFile": "Use this file",
       "altFromLibrary": "This description comes from Files. A change here applies to this place only."
-    }
+    },
+    "folderOptions": "Options for {name}",
+    "renameFolder": "Rename",
+    "deleteFolder": "Delete folder",
+    "deleteFolderText": "Delete the folder {name}? Only an empty folder can be deleted: move its files to another folder first.",
+    "delete": "Delete",
+    "dropPhotos": "Photos: {types}, up to {size}",
+    "dropPdf": "PDF up to {size}"
   },
   "who": {
     "member": "A team member",

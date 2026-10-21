@@ -1075,7 +1075,14 @@
       "usePhoto": "Usar esta foto",
       "useFile": "Usar este archivo",
       "altFromLibrary": "Esta descripción viene de Archivos. Si la cambias aquí, solo se aplica en este lugar."
-    }
+    },
+    "folderOptions": "Opciones de {name}",
+    "renameFolder": "Cambiar nombre",
+    "deleteFolder": "Eliminar carpeta",
+    "deleteFolderText": "¿Eliminar la carpeta {name}? Solo se puede eliminar una carpeta vacía: mueve antes sus archivos a otra carpeta.",
+    "delete": "Eliminar",
+    "dropPhotos": "Fotos: {types}, hasta {size}",
+    "dropPdf": "PDF hasta {size}"
   },
   "who": {
     "member": "Un miembro del equipo",

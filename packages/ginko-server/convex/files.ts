@@ -372,8 +372,10 @@ export const deleteFolder = mutation({
     const actor = await manager(ctx, args.site)
     const folder = await folderOf(ctx, actor, args.folder)
     const child = await ctx.db.query('folders').withIndex('by_site_parent', (q) => q.eq('site', actor.site._id).eq('parent', folder._id)).first()
-    const file = await ctx.db.query('uploads').withIndex('by_site_folder', (q) => q.eq('site', actor.site._id).eq('folder', folder._id)).first()
-    if (child || file) fail('INVALID', 'errors.folderNotEmpty')
+    const inside = await ctx.db.query('uploads').withIndex('by_site_folder', (q) => q.eq('site', actor.site._id).eq('folder', folder._id)).collect()
+    // A file in the Trash is not content: the person cannot see it in the folder. It loses the folder, so a restore puts it in All files.
+    if (child || inside.some((row) => !row.trashedAt)) fail('INVALID', 'errors.folderNotEmpty')
+    for (const row of inside) await ctx.db.patch(row._id, { folder: undefined })
     await ctx.db.delete(folder._id)
     return null
   },

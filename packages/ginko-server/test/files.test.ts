@@ -101,6 +101,23 @@ describe('folders', () => {
     expect(await owner.query(api.files.folders, { site })).toEqual([])
   })
 
+  it('a folder with only trashed files can be deleted; the file restores without a folder, a live file still refuses', async () => {
+    const s = await setup()
+    const { owner } = s.as
+    const folder = await owner.mutation(api.files.createFolder, { site, name: 'Events' })
+    const file = await pdf(s)
+    await owner.mutation(api.files.move, { site, files: [file], folder })
+    await owner.mutation(api.files.trash, { site, files: [file] })
+    await owner.mutation(api.files.restore, { site, files: [file] })
+    expect((await errorOf(owner.mutation(api.files.deleteFolder, { site, folder }))).code).toBe('INVALID')
+    await owner.mutation(api.files.trash, { site, files: [file] })
+    await owner.mutation(api.files.deleteFolder, { site, folder })
+    await owner.mutation(api.files.restore, { site, files: [file] })
+    const row = await s.t.run((ctx) => ctx.db.get(file as Id<'uploads'>))
+    expect([row?.folder, row?.trashedAt]).toEqual([undefined, undefined])
+    expect((await owner.query(api.files.list, { site, view: 'all', folder: null })).files.map((f) => f.id)).toEqual([file])
+  })
+
   it('refuses a move into itself or into a subfolder, and a second folder with the same name', async () => {
     const s = await setup()
     const { owner } = s.as

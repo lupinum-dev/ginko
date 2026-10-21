@@ -1075,7 +1075,14 @@
       "usePhoto": "Utiliser cette photo",
       "useFile": "Utiliser ce fichier",
       "altFromLibrary": "Cette description vient des fichiers. Une modification ici ne vaut que pour cet endroit."
-    }
+    },
+    "folderOptions": "Options pour {name}",
+    "renameFolder": "Renommer",
+    "deleteFolder": "Supprimer le dossier",
+    "deleteFolderText": "Supprimer le dossier {name} ? Seul un dossier vide peut être supprimé : déplacez d’abord ses fichiers dans un autre dossier.",
+    "delete": "Supprimer",
+    "dropPhotos": "Photos : {types}, jusqu’à {size}",
+    "dropPdf": "PDF jusqu’à {size}"
   },
   "who": {
     "member": "Un membre de l’équipe",
