@@ -13,6 +13,14 @@ test.beforeEach(() => resetContent())
 const notice = (page: Page, text: string) => page.locator('section', { has: page.getByRole('heading', { name: 'Hinweise' }) }).getByText(text, { exact: true })
 const toast = (page: Page) => page.locator('[data-sonner-toast]').filter({ hasText: /Gespeichert|Papierkorb|Rückgängig/ })
 
+/** A renamed dish may need other allergens (askAgainWhen 'name'): the form asks, and "Ja, stimmt" answers it. */
+async function confirmAllergens(page: Page) {
+  const ask = page.getByText('Name geändert. Sind die Allergene noch richtig?')
+  await expect(ask).toBeVisible()
+  await page.getByRole('button', { name: 'Ja, stimmt' }).click()
+  await expect(ask).toHaveCount(0)
+}
+
 test.describe('Wirtin', () => {
   test.use(asOwner)
 
@@ -402,12 +410,14 @@ test.describe('Gleichzeitig (Astra phase 8)', () => {
     await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
     const name = page.getByRole('textbox', { name: 'Name' })
     await name.fill('Wiener Schnitzel vom Kalb, klassisch')
+    await confirmAllergens(page)
 
     // The cook changes the same name and the description at once.
     const cook = await browser.newPage({ storageState: STATE.cook, viewport: { width: 1440, height: 900 } })
     await cook.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
     await cook.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
     await cook.getByRole('textbox', { name: 'Name' }).fill('Kalbsschnitzel')
+    await confirmAllergens(cook)
     await cook.getByRole('textbox', { name: 'Beschreibung' }).fill('Mit Petersilienerdäpfeln')
     await cook.getByRole('button', { name: 'Speichern' }).click()
     await expect(toast(cook)).toContainText('Gespeichert')
@@ -425,12 +435,14 @@ test.describe('Gleichzeitig (Astra phase 8)', () => {
     await page.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
     await page.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
     await page.getByRole('textbox', { name: 'Name' }).fill('Schnitzel der Wirtin')
+    await confirmAllergens(page)
     await page.getByRole('textbox', { name: 'Beschreibung' }).fill('Mit Erdäpfelsalat')
 
     const cook = await browser.newPage({ storageState: STATE.cook, viewport: { width: 1440, height: 900 } })
     await cook.goto('/s/restaurant/all/menu', { waitUntil: 'networkidle' })
     await cook.getByRole('link', { name: 'Wiener Schnitzel vom Kalb' }).click()
     await cook.getByRole('textbox', { name: 'Name' }).fill('Schnitzel des Kochs')
+    await confirmAllergens(cook)
     await cook.getByRole('button', { name: 'Speichern' }).click()
     await expect(toast(cook)).toContainText('Gespeichert')
     await cook.close()

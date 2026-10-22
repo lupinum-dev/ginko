@@ -39,6 +39,8 @@ export default async function globalSetup(config: FullConfig) {
     async function accept(state: string | undefined): Promise<boolean> {
       // Same language as the tests (a context made by hand does not get the project's `locale`).
       const context = await browser.newContext({ baseURL, locale: config.projects[0]!.use.locale, ...(state ? { storageState: state } : {}) })
+      // A failed setup stops the whole run before any test keeps a trace, so keep one here (CI uploads test-results).
+      await context.tracing.start({ screenshots: true, snapshots: true })
       const page = await context.newPage()
       try {
         if (!state) await signIn(page, email)
@@ -48,7 +50,10 @@ export default async function globalSetup(config: FullConfig) {
         await context.storageState({ path: STATE[who] })
         return true
       } catch (error) {
-        if (!state) throw error
+        if (!state) {
+          await context.tracing.stop({ path: `test-results/global-setup-${who}.zip` })
+          throw error
+        }
         return false
       } finally {
         await context.close()
