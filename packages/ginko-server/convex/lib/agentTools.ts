@@ -73,7 +73,7 @@ export const REQUEST_ID = {
  * destructiveHint false means "only additive updates": that holds for a new entry or draft only. Any other write may
  * overwrite a value or, as an undo of a create, remove an entry, as in the library's own door.
  */
-export interface ToolHints { readOnlyHint: boolean; destructiveHint?: boolean; openWorldHint: false }
+export interface ToolHints { readOnlyHint: boolean; destructiveHint?: boolean; openWorldHint: boolean }
 const READS: ToolHints = { readOnlyHint: true, openWorldHint: false }
 const ADDS: ToolHints = { readOnlyHint: false, destructiveHint: false, openWorldHint: false }
 const WRITES: ToolHints = { readOnlyHint: false, destructiveHint: true, openWorldHint: false }
@@ -200,8 +200,116 @@ export function fixedTools(actor: Actor): ToolDef[] {
   return tools
 }
 
+// ---- Builder tools: owners and admins set up and fill a site, as they can in the Studio. ----
+
+/** Thrown at the end of an import's dry run, so Convex rolls back every write; routes/mcp.ts turns it into the answer. */
+export const DRY_RUN = 'DRY_RUN'
+
+/** Items per ginko_import: one mutation writes them all or none. */
+export const IMPORT_MAX = 50
+
+/** Owners and admins write any field of any brick in the Studio; staff only run their tasks. */
+export const isBuilder = (actor: Actor): boolean => actor.role !== 'staff'
+
+export const BUILDER_TOOLS = new Set(['ginko_schema', 'ginko_write', 'ginko_create', 'ginko_import', 'ginko_upload'])
+
+/** The tools for building and filling the site, for owners and admins only. */
+export function builderTools(actor: Actor): ToolDef[] {
+  if (!isBuilder(actor)) return []
+  const schema = actor.site.schema as Schema
+  const main = schema.locales[0]!
+  const brick = { type: 'string', description: 'Key of the brick (from ginko_overview)' }
+  const entry = { type: 'string', description: 'ID of the entry (from ginko_read or ginko_search). Leave it out for a single brick.' }
+  const fields = { type: 'object', description: 'Field name → value in the form ginko_schema describes' }
+  const values = `Values as ginko_schema describes them: texts in ${main} as plain text or Markdown, money in whole currency units (19.90), `
+    + 'dates as YYYY-MM-DD, references and files by ID, lists as a list of objects (a list replaces the whole list).'
+  return [
+    {
+      name: 'ginko_schema',
+      description: 'The fields of every brick (or one) as JSON Schema, in the form ginko_write, ginko_create and ginko_import take them, '
+        + 'with kind, label, route and whether new entries start as drafts. Read it before you write.',
+      inputSchema: object({ brick: { type: 'string', description: 'Only this brick' } }),
+      annotations: READS,
+    },
+    {
+      name: 'ginko_write',
+      description: `Changes fields of an entry, or of a single brick, in the main language (${main}). Fields you leave out stay as they are; null removes an optional value. `
+        + `${values} Foreign languages go through ginko_translate.`,
+      inputSchema: object({ brick, entry, fields, propose: PROPOSE, request_id: REQUEST_ID }, ['brick', 'fields']),
+      annotations: WRITES,
+    },
+    {
+      name: 'ginko_create',
+      description: `Creates an entry in a collection. ${values} The address (slug) comes from the title. `
+        + 'In a collection with drafts the entry is a draft unless publish is true.',
+      inputSchema: object({
+        brick, fields,
+        publish: { type: 'boolean', description: 'Only for a collection with drafts: true puts the entry on the website at once.' },
+        propose: PROPOSE, request_id: REQUEST_ID,
+      }, ['brick', 'fields']),
+      annotations: ADDS,
+    },
+    {
+      name: 'ginko_import',
+      description: `Writes up to ${IMPORT_MAX} items in one step, all or nothing: an item with entry (or for a single brick) changes it like ginko_write, `
+        + 'one without creates an entry like ginko_create. An error names the item and nothing is saved. dry_run: true checks every item with the real save and saves nothing.',
+      inputSchema: object({
+        items: {
+          type: 'array', minItems: 1, maxItems: IMPORT_MAX,
+          items: object({ brick, entry, fields, publish: { type: 'boolean' } }, ['brick', 'fields']),
+        },
+        dry_run: { type: 'boolean', description: 'true: check only, save nothing.' },
+        request_id: REQUEST_ID,
+      }, ['items']),
+      annotations: WRITES,
+    },
+    {
+      name: 'ginko_upload',
+      description: 'Adds an image (JPEG, PNG, WebP) or a PDF to the files of the website. With url, Ginko fetches a public https address. '
+        + 'Without url, the answer is a one-time upload address (10 minutes) and a curl command for a file on your computer. '
+        + 'Use the file ID in an image field ({ "file": ID, "alt": "…" }) or in Markdown as ![Description]($file.<ID>). Images are processed for a few seconds.',
+      inputSchema: object({
+        url: { type: 'string', description: 'Public https address of the file' },
+        name: { type: 'string', description: 'File name with extension, e.g. team.jpg' },
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+    },
+  ]
+}
+
+/**
+ * The keys a mistyped name probably means, best first, at most three: same letters ignoring case and separators, a key
+ * or label that contains the word (one that starts with it first), or a small edit distance. Empty when nothing is close.
+ */
+export function suggest(word: string, candidates: readonly { key: string; label: string }[]): string[] {
+  const norm = (s: string) => s.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const w = norm(word)
+  if (!w) return []
+  const exact = candidates.find((c) => norm(c.key) === w || norm(c.label) === w)
+  if (exact) return [exact.key]
+  const starts = (c: { key: string; label: string }) => norm(c.key).startsWith(w) || norm(c.label).startsWith(w)
+  const part = candidates.filter((c) => w.length >= 3 && (norm(c.key).includes(w) || w.includes(norm(c.key)) || norm(c.label).includes(w)))
+  if (part.length) return [...part.filter(starts), ...part.filter((c) => !starts(c))].slice(0, 3).map((c) => c.key)
+  let best: { key: string; d: number } | undefined
+  for (const c of candidates) {
+    const d = distance(w, norm(c.key))
+    if (d <= Math.max(1, Math.floor(w.length / 3)) && (!best || d < best.d)) best = { key: c.key, d }
+  }
+  return best ? [best.key] : []
+}
+
+function distance(a: string, b: string): number {
+  let row = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i]
+    for (let j = 1; j <= b.length; j++) next[j] = Math.min(row[j]! + 1, next[j - 1]! + 1, row[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1))
+    row = next
+  }
+  return row[b.length]!
+}
+
 /** Tools that only read: the HTTP layer sends them to a query. */
-export const READ_TOOLS = new Set(['ginko_search', 'ginko_version_at', 'ginko_file_usage', 'ginko_check_links', 'ginko_proposals'])
+export const READ_TOOLS = new Set(['ginko_search', 'ginko_version_at', 'ginko_file_usage', 'ginko_check_links', 'ginko_proposals', 'ginko_schema'])
 
 // ---- Links ----
 

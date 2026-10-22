@@ -2,8 +2,9 @@
 // A key acts as its person with their role and grants at call time. Every write runs through the
 // same operations as the platform (`saveAs`, `createAs`, ...), so rights, checks and history are one.
 import type { Json } from '@lupinum/ginko'
-import { labelOf as labelIn, checkLinks, fromToolInput, isSafeHref, isTranslatable, sha256, taskInputSchema, type JsonSchemaObject, type Schema } from '@lupinum/ginko/internal'
-import { v } from 'convex/values'
+import { labelOf as labelIn, checkLinks, fieldsInputSchema, fromToolInput, isSafeHref, isTranslatable, sha256, taskInputSchema, type JsonSchemaObject, type Schema } from '@lupinum/ginko/internal'
+import { ConvexError, v } from 'convex/values'
+import { components } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import { bundleOf } from './bundle'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
@@ -12,14 +13,16 @@ import { usageAs } from './files'
 import { ownAs } from './proposals'
 import { actorFor, entryOf, fail, idempotent, memberOf, type Actor } from './lib/access'
 import { searchEntries as searchAll, searchTexts } from './lib/search'
-import { fixedTools, HISTORY_MAX, PROPOSE, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, taskTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
+import { builderTools, BUILDER_TOOLS, DRY_RUN, IMPORT_MAX, isBuilder, suggest, fixedTools, HISTORY_MAX, PROPOSE, REQUEST_ID, SEARCH_MAX, linksIn, taskFor, taskHints, taskTools, describeTask, draftBricks, type TaskTool, type ToolDef } from './lib/agentTools'
 import type { Data } from './lib/content'
 import { leafStatus } from './lib/translation'
 import { historyText, type HistoryMsg } from './lib/history'
 import { same } from './lib/write'
 import { effectiveReview } from './lib/policy'
 import { secret } from './release'
+import { normalizeEmail } from './members'
 import { prefillAs } from './tasks'
+import { ticketFor } from './uploads'
 
 /** SPEC 16: 60 calls per minute and key. */
 export const AGENT_RATE_LIMIT = 60
@@ -146,7 +149,7 @@ export const tools = internalQuery({
   handler: async (ctx, { key }) => {
     const actor = await actorOrFail(ctx, key)
     const schema = actor.site.schema as Schema
-    const out: ToolDef[] = fixedTools(actor)
+    const out: ToolDef[] = [...fixedTools(actor), ...builderTools(actor)]
     for (const tool of taskTools(actor)) {
       const input = await inputSchemaOf(ctx, actor, tool)
       out.push({
@@ -325,6 +328,11 @@ export const lookup = internalQuery({
         const links = await checkSiteLinks(ctx, actor, input)
         return { text: links.length ? `${links.length} link problems.` : 'No broken or unsafe links found.', result: links }
       }
+      case 'ginko_schema': {
+        if (!isBuilder(actor)) break
+        const bricks = schemaOf(actor, input.brick)
+        return { text: `The fields of ${bricks.length === 1 ? `“${bricks[0]!.brick}”` : `${bricks.length} bricks`}, in the form ginko_write takes them.`, result: bricks as unknown as Json }
+      }
       case 'ginko_proposals': {
         const wanted = typeof input.status === 'string' ? input.status : undefined
         if (wanted !== undefined && !PROPOSAL_STATUS.includes(wanted)) fail('INVALID', 'errors.unknownState', { wanted })
@@ -409,6 +417,14 @@ async function callOnce(ctx: MutationCtx, person: Actor, name: string, args: Rec
   const opId = crypto.randomUUID()
 
   if (name === 'ginko_undo') return undoThroughDoor(ctx, person, input.change, opId)
+  if (BUILDER_TOOLS.has(name)) {
+    if (!isBuilder(person)) fail('FORBIDDEN', 'errors.toolNotFoundOrNotYours', { name })
+    if (name === 'ginko_write') return writeThroughDoor(ctx, actor, input, opId)
+    if (name === 'ginko_create') return createThroughDoor(ctx, actor, input, opId)
+    // A batch has no `propose`: with review on, every item becomes a proposal of its own anyway.
+    if (name === 'ginko_import' && ask === undefined) return importThroughDoor(ctx, person, input, opId)
+    fail('INVALID', 'errors.unknownOption', { unknown: name === 'ginko_import' ? 'propose' : name })
+  }
   if (name === 'ginko_revert' || name === 'ginko_translate' || name === 'ginko_draft') {
     if (!fixedTools(person).some((t) => t.name === name)) fail('FORBIDDEN', 'errors.toolNotFoundOrNotYours', { name })
     if (name === 'ginko_revert') return revertThroughDoor(ctx, actor, input, opId)
@@ -560,3 +576,160 @@ async function undoThroughDoor(ctx: MutationCtx, actor: Actor, raw: Json | undef
   const result = await undoAs(ctx, actor, { site, opId, task: taskFor(actor, change.brick, 'edit', change.fields ?? [], entry), change: change._id })
   return { text: `Undone: ${lineFor(change, actor.site.schema as Schema)}.`, result }
 }
+
+// ---- Builder tools (owners and admins): the schema, any field, new entries, batches. ----
+
+/** Where the person opens an entry (or a single brick) in the Studio; undefined when the platform address is not set. */
+function studioLink(actor: Actor, brick: string, entry?: string): string | undefined {
+  const base = process.env.SITE_URL?.replace(/\/$/, '')
+  return base ? `${base}/s/${actor.site.slug}/all/${brick}${entry ? `/${entry}` : ''}` : undefined
+}
+
+/** A live brick by key, or an error that names the closest key. */
+function brickOf(actor: Actor, raw: Json | undefined): { key: string; def: Schema['bricks'][string] } {
+  const schema = actor.site.schema as Schema
+  const main = schema.locales[0]!
+  if (typeof raw === 'string' && Object.hasOwn(schema.bricks, raw) && !schema.bricks[raw]!.retired) return { key: raw, def: schema.bricks[raw]! }
+  const live = Object.entries(schema.bricks).filter(([, b]) => !b.retired).map(([key, b]) => ({ key, label: labelIn(b.label, main, main) }))
+  const near = suggest(String(raw ?? ''), live)
+  if (near.length) fail('INVALID', 'errors.unknownBrickDidYouMean', { brick: String(raw), suggestion: near.join(', ') })
+  fail('INVALID', 'errors.brickNotFoundSeeOverview', { only: String(raw) })
+}
+
+/** Every name in `values` must be a live, writable field; else the error names the closest one. */
+function checkFields(actor: Actor, key: string, def: Schema['bricks'][string], values: Record<string, Json>) {
+  const main = (actor.site.schema as Schema).locales[0]!
+  const writable = Object.entries(def.fields).filter(([, f]) => !f.retired && f.type !== 'slug')
+  for (const name of Object.keys(values)) {
+    if (writable.some(([k]) => k === name)) continue
+    const near = suggest(name, writable.map(([k, f]) => ({ key: k, label: labelIn(f.label, main, main) })))
+    if (near.length) fail('INVALID', 'errors.unknownFieldDidYouMean', { field: name, brick: key, suggestion: near.join(', ') }, { field: name })
+    fail('INVALID', 'errors.unknownField', { field: name, brick: key }, { field: name })
+  }
+}
+
+function onlyKeys(input: Record<string, Json>, allowed: readonly string[]) {
+  const unknown = Object.keys(input).filter((k) => !allowed.includes(k))
+  if (unknown.length) fail('INVALID', 'errors.unknownOption', { unknown: unknown.join(', ') })
+}
+
+/** ginko_schema: the bricks with their fields as JSON Schema in the form the builder tools take. */
+function schemaOf(actor: Actor, only: Json | undefined) {
+  const schema = actor.site.schema as Schema
+  const main = schema.locales[0]!
+  const keys = only === undefined ? Object.keys(schema.bricks).filter((k) => !schema.bricks[k]!.retired) : [brickOf(actor, only).key]
+  return keys.map((key) => {
+    const def = schema.bricks[key]!
+    return {
+      brick: key, kind: def.kind, label: labelIn(def.label, main, main),
+      ...(def.kind === 'collection' && def.route ? { route: def.route } : {}),
+      ...(def.kind === 'collection' && def.drafts ? { drafts: true } : {}),
+      input: fieldsInputSchema(def.fields, { mainLocale: main, currency: schema.currency }),
+    }
+  })
+}
+
+/** ginko_write: any fields of an entry or single, in the main language, as the Studio saves them (no task). */
+async function writeThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
+  onlyKeys(input, ['brick', 'entry', 'fields'])
+  const schema = actor.site.schema as Schema
+  const main = schema.locales[0]!
+  const { key, def } = brickOf(actor, input.brick)
+  const values = objectArg(input.fields, 'fields')
+  checkFields(actor, key, def, values)
+  const entry = await targetOf(ctx, actor, key, input.entry)
+  const fields = fromToolInput(def.fields, values, { mainLocale: main, currency: schema.currency, stored: entry.data as Record<string, Json>, newRowId })
+  if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')
+  const result = await saveAs(ctx, actor, { site: actor.site.slug, opId, entry: entry._id, baseRev: entry.rev, fields, locale: main })
+  const studio = studioLink(actor, key, def.kind === 'single' ? undefined : entry._id)
+  const saved = savedAs(result, `${labelOf(schema, key, entry.data as Data)}: ${Object.keys(fields).join(', ')}`)
+  return { text: saved.text, result: { ...(result as object), entry: entry._id, ...(studio ? { studio } : {}) } }
+}
+
+/** ginko_create: a new entry of a collection with any fields (no task). In a collection with drafts, a draft unless `publish`. */
+async function createThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
+  onlyKeys(input, ['brick', 'fields', 'publish'])
+  const schema = actor.site.schema as Schema
+  const { key, def } = brickOf(actor, input.brick)
+  if (def.kind !== 'collection') fail('INVALID', 'errors.createNeedsCollection', { brick: key })
+  if (input.publish !== undefined && typeof input.publish !== 'boolean') fail('INVALID', 'errors.unknownOption', { unknown: 'publish' })
+  const values = objectArg(input.fields, 'fields')
+  checkFields(actor, key, def, values)
+  const data = fromToolInput(def.fields, values, { mainLocale: schema.locales[0]!, currency: schema.currency, newRowId })
+  const result = await createAs(ctx, actor, { site: actor.site.slug, opId, brick: key, data, ...(input.publish === true ? { publish: {} } : {}) })
+  if (proposed(result)) return { text: PROPOSED, result }
+  const { entry: id, state, liveFrom } = result as { entry: Id<'entries'>; state: 'draft' | 'live'; liveFrom?: string }
+  const change = await lastChangeOf(ctx, id)
+  const studio = studioLink(actor, key, id)
+  const where = state === 'draft' ? 'Saved as a draft, not on the website yet.' : liveText(liveFrom)
+  return {
+    text: `Created entry ${id} in “${key}”. ${where} To undo: ginko_undo with change ${change?._id}.`,
+    result: { ...(result as object), change: change?._id ?? null, ...(studio ? { studio } : {}) },
+  }
+}
+
+/**
+ * ginko_import: up to IMPORT_MAX writes and creates in this one mutation, so they are saved together or not at all. A
+ * failing item names itself (`at`). A dry run runs every item through the real save and then throws DRY_RUN, which
+ * rolls the transaction back: the check is exactly the save, not a copy of its rules.
+ */
+async function importThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
+  onlyKeys(input, ['items', 'dry_run'])
+  const items = input.items
+  if (!Array.isArray(items) || !items.length) fail('INVALID', 'errors.fieldMissing', { what: 'items' })
+  if (items.length > IMPORT_MAX) fail('INVALID', 'errors.importTooLarge', { max: IMPORT_MAX })
+  const schema = actor.site.schema as Schema
+  const results: Json[] = []
+  for (const [i, raw] of items.entries()) {
+    try {
+      const item = objectArg(raw, `items[${i}]`)
+      const { entry, publish, ...rest } = item
+      const writes = entry !== undefined || (typeof item.brick === 'string' && schema.bricks[item.brick]?.kind === 'single')
+      const done = writes
+        ? await writeThroughDoor(ctx, actor, { ...rest, ...(entry === undefined ? {} : { entry }) }, `${opId}-${i}`)
+        : await createThroughDoor(ctx, actor, { ...rest, ...(publish === undefined ? {} : { publish }) }, `${opId}-${i}`)
+      const r = done.result as Record<string, Json>
+      results.push({ item: i, op: writes ? 'write' : 'create', ...(r.entry ? { entry: r.entry } : {}), ...(r.proposal ? { proposal: r.proposal } : {}), ...(r.studio ? { studio: r.studio } : {}) })
+    } catch (error) {
+      // The item that failed names itself; Convex rolls back the items before it.
+      if (error instanceof ConvexError && typeof error.data === 'object' && error.data !== null) throw new ConvexError({ ...(error.data as Record<string, Json>), at: `items[${i}]` })
+      throw error
+    }
+  }
+  // The IDs of a dry run are rolled back with it, so its answer names only what each item would do.
+  if (input.dry_run === true) throw new ConvexError({ code: DRY_RUN, results: results.map((r) => ({ item: (r as { item: number }).item, op: (r as { op: string }).op })) })
+  const created = results.filter((r) => (r as { op: string }).op === 'create').length
+  return { text: `Saved ${results.length} items (${created} new, ${results.length - created} changed). Each one is in ginko_history and can be undone there.`, result: results }
+}
+
+/** ginko_upload's first step: a one-time upload ticket for the key's person, for a library file. Builders only. */
+export const uploadTicket = internalMutation({
+  args: { key: v.id('agentKeys') },
+  handler: async (ctx, { key }): Promise<{ ticket: string }> => {
+    const actor = await actorOrFail(ctx, key)
+    if (!isBuilder(actor)) fail('FORBIDDEN', 'errors.toolNotFoundOrNotYours', { name: 'ginko_upload' })
+    return { ticket: await ticketFor(ctx, actor, { library: true }) }
+  },
+})
+
+/**
+ * `pnpm local:dev` only: makes sure the local admin has a live key with this hash on the site, so the `.mcp.json` the
+ * CLI writes into the site folder works. The CLI keeps the key there and sends the same hash on every start. Not ready
+ * until the admin signed in once: the sign-in creates the user.
+ */
+export const devKey = internalMutation({
+  args: { site: v.string(), email: v.string(), hash: v.string() },
+  handler: async (ctx, args): Promise<{ ok: true } | { ok: false; reason: 'site' | 'signin' }> => {
+    if (process.env.GINKO_LOCAL !== '1') fail('FORBIDDEN', 'errors.localOnly')
+    const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.site)).unique()
+    if (!site) return { ok: false, reason: 'site' }
+    const user = await ctx.runQuery(components.betterAuth.adapter.findOne, { model: 'user', where: [{ field: 'email', value: normalizeEmail(args.email) }] })
+    const id = typeof user?.id === 'string' ? user.id : undefined
+    if (!id || !(await memberOf(ctx, site, { id }))) return { ok: false, reason: 'signin' }
+    const key = await ctx.db.query('agentKeys').withIndex('by_hash', (q) => q.eq('hash', args.hash)).unique()
+    if (key && key.site === site._id && key.user === id && !key.revokedAt) return { ok: true }
+    if (key) await ctx.db.delete(key._id)
+    await ctx.db.insert('agentKeys', { site: site._id, user: id, hash: args.hash, label: 'local:dev', createdAt: Date.now() })
+    return { ok: true }
+  },
+})

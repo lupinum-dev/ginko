@@ -59,6 +59,14 @@ export function taskInputSchema(brick: Brick, task: Task, ctx: ToolSchemaContext
   return schema
 }
 
+/**
+ * JSON Schema for every live field of a brick in the form `fromToolInput` takes (texts in the main language, money in
+ * whole units). For the agent door's builder tools, which write any field; `required` is what a new entry needs.
+ */
+export function fieldsInputSchema(fields: Fields, ctx: ToolSchemaContext): JsonSchemaObject {
+  return objectOf(Object.fromEntries(Object.entries(fields).filter(([, field]) => !field.retired)), ctx)
+}
+
 function objectOf(fields: Fields, ctx: ToolSchemaContext, prefill?: Record<string, Json>): JsonSchemaObject {
   const properties: Record<string, JsonSchema> = {}
   const required: string[] = []

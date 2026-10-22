@@ -216,7 +216,14 @@
     "uploadNotAnImage": "This file is not a readable image.",
     "uploadTooManyPixels": "This image has too many pixels. Make it smaller (for example 8,000 pixels wide) and upload it again.",
     "siteUrlNotAllowed": "This site address cannot be used. It must be a public https:// address.",
-    "weekAlreadyPlanned": "This week is already planned. Open the planned week to change it."
+    "weekAlreadyPlanned": "This week is already planned. Open the planned week to change it.",
+    "unknownBrickDidYouMean": "There is no brick “{brick}”. Did you mean “{suggestion}”?",
+    "unknownField": "“{field}” is not a field of “{brick}”. The fields are listed in ginko_schema.",
+    "unknownFieldDidYouMean": "“{field}” is not a field of “{brick}”. Did you mean “{suggestion}”?",
+    "importTooLarge": "An import takes at most {max} items. Split it into several calls.",
+    "uploadUrlNotAllowed": "Only public https addresses can be fetched.",
+    "uploadFetchFailed": "The file could not be fetched from {url} (status {status}).",
+    "createNeedsCollection": "“{brick}” is a single brick: change it with ginko_write."
   },
   "history": {
     "changedSingle": "{label}: {fields} changed",

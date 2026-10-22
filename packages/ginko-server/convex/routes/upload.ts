@@ -5,6 +5,7 @@
 // deletes the stored file at once.
 import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'
+import type { Id } from '../_generated/dataModel'
 import { httpAction, type ActionCtx } from '../_generated/server'
 import { EMPTY, HEIC, isHeic, kindOf, TOO_LARGE, typeOfBytes, WRONG_CONTENT, WRONG_TYPE } from '../lib/files'
 import { t, type MessageKey } from '../lib/i18n'
@@ -30,23 +31,22 @@ function reply(request: Request, status: number, body: { upload: string } | ({ c
   return Response.json(out, { status, headers: headersFor(request) })
 }
 
-async function receive(ctx: ActionCtx, request: Request): Promise<Response> {
-  const url = new URL(request.url)
-  const owner = await ctx.runMutation(internal.uploads.redeem, { ticket: url.searchParams.get('ticket') ?? '' })
-  if (!owner) return reply(request, 403, { code: 'FORBIDDEN', key: 'errors.uploadExpired' })
+type Owner = { site: Id<'sites'>; user: string; folder?: Id<'folders'>; library?: boolean }
+export type Stored = { ok: true; upload: string } | ({ ok: false; status: number; code: string } & Refusal)
 
-  const name = url.searchParams.get('name') ?? ''
-  const type = request.headers.get('Content-Type') ?? ''
-  if (isHeic({ name, mime: type })) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...HEIC })
+/**
+ * Checks a file's type, size and content and stores it for `owner` (a redeemed ticket). Shared by POST /upload and the
+ * agent door's ginko_upload, so a file from a URL passes exactly the checks of one from the Studio.
+ */
+export async function storeFile(ctx: ActionCtx, owner: Owner, name: string, type: string, bytes: Uint8Array<ArrayBuffer>): Promise<Stored> {
+  const refuse = (status: number, refusal: Refusal, code = 'UPLOAD_REJECTED'): Stored => ({ ok: false, status, code, ...refusal })
+  if (isHeic({ name, mime: type })) return refuse(415, HEIC)
   const kind = kindOf(type)
-  if (!kind) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...WRONG_TYPE })
-  const declared = request.headers.get('Content-Length')
-  if (declared !== null && Number(declared) > kind.limit) return reply(request, 413, { code: 'UPLOAD_REJECTED', ...TOO_LARGE })
-  const bytes = new Uint8Array(await request.arrayBuffer())
-  if (bytes.byteLength > kind.limit) return reply(request, 413, { code: 'UPLOAD_REJECTED', ...TOO_LARGE })
-  if (bytes.byteLength === 0) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...EMPTY })
+  if (!kind) return refuse(415, WRONG_TYPE)
+  if (bytes.byteLength > kind.limit) return refuse(413, TOO_LARGE)
+  if (bytes.byteLength === 0) return refuse(415, EMPTY)
   const mime = typeOfBytes(kind.kind, bytes)
-  if (!mime) return reply(request, 415, { code: 'UPLOAD_REJECTED', ...(isHeic({ bytes }) ? HEIC : WRONG_CONTENT) })
+  if (!mime) return refuse(415, isHeic({ bytes }) ? HEIC : WRONG_CONTENT)
 
   const storageId = await ctx.storage.store(new Blob([bytes], { type: mime }))
   try {
@@ -54,13 +54,28 @@ async function receive(ctx: ActionCtx, request: Request): Promise<Response> {
       site: owner.site, uploader: owner.user, storageId, name, size: bytes.byteLength, mime,
       ...(owner.folder ? { folder: owner.folder } : {}), ...(owner.library ? { library: true } : {}),
     })
-    return reply(request, 200, { upload })
+    return { ok: true, upload }
   } catch (error) {
     await ctx.storage.delete(storageId)
     const data = (error as { data?: { code?: string; key?: MessageKey; params?: Record<string, string | number> } }).data
-    if (data?.code && data.key) return reply(request, 400, { code: data.code, key: data.key, ...(data.params ? { params: data.params } : {}) })
+    if (data?.code && data.key) return refuse(400, { key: data.key, ...(data.params ? { params: data.params } : {}) }, data.code)
     throw error
   }
+}
+
+async function receive(ctx: ActionCtx, request: Request): Promise<Response> {
+  const url = new URL(request.url)
+  const owner = await ctx.runMutation(internal.uploads.redeem, { ticket: url.searchParams.get('ticket') ?? '' })
+  if (!owner) return reply(request, 403, { code: 'FORBIDDEN', key: 'errors.uploadExpired' })
+
+  // Refused before the body is read: a declared size over the limit of its type.
+  const declared = request.headers.get('Content-Length')
+  const kind = kindOf(request.headers.get('Content-Type') ?? '')
+  if (kind && declared !== null && Number(declared) > kind.limit) return reply(request, 413, { code: 'UPLOAD_REJECTED', ...TOO_LARGE })
+  const stored = await storeFile(ctx, owner, url.searchParams.get('name') ?? '', request.headers.get('Content-Type') ?? '', new Uint8Array(await request.arrayBuffer()))
+  if (stored.ok) return reply(request, 200, { upload: stored.upload })
+  const { status, code, key, params } = stored
+  return reply(request, status, { code, key, ...(params ? { params } : {}) })
 }
 
 export const upload = httpAction(async (ctx, request) => {

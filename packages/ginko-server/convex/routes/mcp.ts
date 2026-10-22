@@ -7,9 +7,12 @@ import type { HttpRouter } from 'convex/server'
 import { internal } from '../_generated/api'
 import type { Id } from '../_generated/dataModel'
 import { httpAction, type ActionCtx } from '../_generated/server'
-import { READ_TOOLS } from '../lib/agentTools'
+import { DRY_RUN, READ_TOOLS } from '../lib/agentTools'
 import { badKey } from '../lib/input'
 import { t, type MessageKey } from '../lib/i18n'
+import { isFetchableSiteUrl } from '../lib/siteUrl'
+import { kindOf, TOO_LARGE, WRONG_TYPE } from '../lib/files'
+import { storeFile } from './upload'
 
 const PROTOCOL = '2025-06-18'
 /** An answer holds at least one whole entry the Studio can save (SITE_BUDGET.entryBytes) plus room for its wrapping. */
@@ -21,7 +24,8 @@ const KEY = /^ginko_agent_[a-z0-9]{32}$/
 const INSTRUCTIONS = 'Ginko maintains the content of one website for one person. Call ginko_overview first. Every task is a tool. '
   + 'Changes are live in about a minute and can be taken back with ginko_undo. Ask the person before removing anything. '
   + 'When you retry a change, send the same request_id, so it runs only once. '
-  + 'Texts that belong to the website stay in the language of the website; answer the person in their own language.'
+  + 'Texts that belong to the website stay in the language of the website; answer the person in their own language. '
+  + 'Owners and admins also build and fill the site: ginko_schema shows every field, ginko_write, ginko_create and ginko_import write them (ginko_import with dry_run first), ginko_upload adds files.'
 
 type Rpc = { jsonrpc: '2.0'; id?: string | number | null; method: string; params?: Record<string, Json> }
 
@@ -52,10 +56,13 @@ function toolText(text: string, data?: unknown, isError = false) {
 function messageOf(error: unknown): string {
   const data = (error as { data?: unknown }).data
   if (data && typeof data === 'object' && 'message' in data) {
-    const { message, key, params, details } = data as { message: string; key?: string; params?: Record<string, string | number>; details?: { errors?: { message: string; key?: string; params?: Record<string, string | number> }[] } }
+    const { message, key, params, details, at } = data as { message: string; key?: string; params?: Record<string, string | number>; at?: string; details?: { errors?: { message: string; key?: string; params?: Record<string, string | number>; path?: string }[] } }
     const head = key ? t('en', key as MessageKey, params) : message
-    const issues = details?.errors?.map((e) => (e.key ? coreMessage('en', e.key, e.params) : e.message)) ?? []
-    return issues.length ? `${head} ${issues.join(' ')}` : head
+    // A field error names its path ("price: …"), so the assistant knows which value to fix.
+    const issues = details?.errors?.map((e) => `${e.path ? `${e.path}: ` : ''}${e.key ? coreMessage('en', e.key, e.params) : e.message}`) ?? []
+    const text = issues.length ? `${head} ${issues.join(' ')}` : head
+    // An import names the item that failed; nothing of the import is saved.
+    return at ? `${at}: ${text} Nothing of this import was saved.` : text
   }
   return 'That did not work. Try again later.'
 }
@@ -84,6 +91,7 @@ async function callTool(ctx: ActionCtx, key: Id<'agentKeys'>, name: string, args
       }
       return toolText(`Content of “${String(args.brick)}” (${bundle.locale}).`, brick)
     }
+    if (name === 'ginko_upload') return await uploadThroughDoor(ctx, key, args)
     if (READ_TOOLS.has(name)) {
       const done = await ctx.runQuery(internal.agent.lookup, { key, name, args })
       return toolText(done.text, done.result)
@@ -91,8 +99,111 @@ async function callTool(ctx: ActionCtx, key: Id<'agentKeys'>, name: string, args
     const done = await ctx.runMutation(internal.agent.call, { key, name, args })
     return toolText(done.text, done.result)
   } catch (error) {
+    // A dry run of ginko_import ends with a throw, so nothing it wrote is kept.
+    const data = (error as { data?: { code?: string; results?: unknown[] } }).data
+    if (data?.code === DRY_RUN) return toolText(`Dry run: all ${data.results?.length ?? 0} items would be saved. Nothing was saved.`, data.results)
     return toolText(messageOf(error), undefined, true)
   }
+}
+
+const TYPES: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', pdf: 'application/pdf' }
+/** The Content-Type for a file name's extension, or the list to choose from. */
+const typeOfName = (name: string) => TYPES[name.split('.').pop()?.toLowerCase() ?? ''] ?? '<image/jpeg | image/png | image/webp | application/pdf>'
+
+const REDIRECTS = 3
+
+/** The file at a public address, following at most REDIRECTS redirects, each to a public address too. */
+async function fetchPublic(address: string): Promise<{ response: Response; url: URL } | { refused: string }> {
+  const local = process.env.GINKO_LOCAL === '1'
+  let url = address
+  for (let hop = 0; hop <= REDIRECTS; hop++) {
+    if (!isFetchableSiteUrl(url, local)) return { refused: t('en', 'errors.uploadUrlNotAllowed') }
+    const response = await fetch(url, { redirect: 'manual' })
+    const next = response.status >= 300 && response.status < 400 ? response.headers.get('location') : null
+    if (!next) return { response, url: new URL(url) }
+    await response.body?.cancel()
+    url = new URL(next, url).toString()
+  }
+  return { refused: t('en', 'errors.uploadFetchFailed', { url: address, status: 'too many redirects' }) }
+}
+
+/** The body, or undefined once it passes `limit` bytes (a missing or wrong Content-Length does not get around it). */
+async function readCapped(response: Response, limit: number): Promise<Uint8Array<ArrayBuffer> | undefined> {
+  if (Number(response.headers.get('content-length') ?? 0) > limit) {
+    await response.body?.cancel()
+    return undefined
+  }
+  const reader = response.body?.getReader()
+  if (!reader) return new Uint8Array(0)
+  const chunks: Uint8Array[] = []
+  let size = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    size += value.byteLength
+    if (size > limit) {
+      await reader.cancel()
+      return undefined
+    }
+    chunks.push(value)
+  }
+  const out = new Uint8Array(size)
+  let at = 0
+  for (const chunk of chunks) { out.set(chunk, at); at += chunk.byteLength }
+  return out
+}
+
+/** The file name at the end of an address ("team.jpg"), or '' when there is none or it is not valid percent-encoding. */
+function lastSegment(url: URL): string {
+  try {
+    return decodeURIComponent(url.pathname.split('/').pop() ?? '')
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * ginko_upload: a library file for the key's person, through the same ticket and checks as the Studio's upload. With
+ * `url` the door fetches the file; without, it hands out the one-time upload address for a local file.
+ */
+async function uploadThroughDoor(ctx: ActionCtx, key: Id<'agentKeys'>, args: Record<string, Json>) {
+  const url = typeof args.url === 'string' ? args.url : undefined
+  const given = typeof args.name === 'string' ? args.name.trim() : ''
+  const { ticket } = await ctx.runMutation(internal.agent.uploadTicket, { key })
+  if (url === undefined) {
+    const name = given || 'file.jpg'
+    const address = `${process.env.CONVEX_SITE_URL}/upload?ticket=${encodeURIComponent(ticket)}&name=${encodeURIComponent(name)}`
+    return toolText('Send the file to this address within 10 minutes (once). The answer is { "upload": "<file ID>" }.', {
+      upload_url: address,
+      curl: `curl -sS -X POST -H 'Content-Type: ${typeOfName(name)}' --data-binary @'${name}' '${address}'`,
+    })
+  }
+  const fetched = await fetchPublic(url)
+  if ('refused' in fetched) return toolText(fetched.refused, undefined, true)
+  const { response } = fetched
+  if (!response.ok) {
+    await response.body?.cancel()
+    return toolText(t('en', 'errors.uploadFetchFailed', { url, status: response.status }), undefined, true)
+  }
+  const type = (response.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase()
+  const kind = kindOf(type)
+  // Refused before the body is read: a type the library does not take, or more bytes than its limit.
+  if (!kind) {
+    await response.body?.cancel()
+    return toolText(t('en', WRONG_TYPE.key, WRONG_TYPE.params), undefined, true)
+  }
+  const bytes = await readCapped(response, kind.limit)
+  if (!bytes) return toolText(t('en', TOO_LARGE.key, TOO_LARGE.params), undefined, true)
+  const owner = await ctx.runMutation(internal.uploads.redeem, { ticket })
+  if (!owner) return toolText(t('en', 'errors.uploadExpired'), undefined, true)
+  const name = given || lastSegment(fetched.url) || 'file'
+  const stored = await storeFile(ctx, owner, name, type, bytes)
+  if (!stored.ok) return toolText(t('en', stored.key, stored.params), undefined, true)
+  const image = type.startsWith('image/')
+  return toolText(`Uploaded “${name}” as file ${stored.upload}.${image ? ' The image is processed for a few seconds before the website shows it.' : ''}`, {
+    file: stored.upload, name,
+    ...(image ? { image_field: { file: stored.upload, alt: '' }, markdown: `![Description]($file.${stored.upload})` } : { file_field: { file: stored.upload }, markdown: `[${name}]($file.${stored.upload})` }),
+  })
 }
 
 const mcp = httpAction(async (ctx, request) => {

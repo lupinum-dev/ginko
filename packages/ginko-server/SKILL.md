@@ -1,6 +1,6 @@
 ---
 name: ginko
-description: Use when you maintain a website's content through a Ginko agent key (MCP tools ginko_overview, ginko_read, ginko_search, task_*). Covers reading before writing, proposals that wait for approval, translations, files, link checks and undo.
+description: Use when you maintain a website's content through a Ginko agent key (MCP tools ginko_overview, ginko_read, ginko_search, task_*, and for owners and admins ginko_schema, ginko_write, ginko_create, ginko_import, ginko_upload). Covers reading before writing, filling a site, proposals that wait for approval, translations, files, link checks and undo.
 ---
 
 # Working with a Ginko website
@@ -36,6 +36,19 @@ You cannot do more than they can, and everything you change is shown in their hi
 - `ginko_draft({ brick, fields })` makes a draft in bricks that have drafts. A draft is not on the website.
   The person publishes it in the platform. You cannot publish.
 
+## Build and fill the site (owners and admins)
+
+Owners and admins see five more tools. They write any field, as the Studio does, without a task.
+
+- `ginko_schema({ brick? })` shows every field as JSON Schema, in the form the tools below take. Read it first.
+- `ginko_write({ brick, entry?, fields })` changes fields in the main language. Leave out `entry` for a single brick.
+  A list replaces the whole list; `null` removes an optional value.
+- `ginko_create({ brick, fields, publish? })` makes an entry in a collection. The address comes from the title.
+- `ginko_import({ items, dry_run? })` writes up to 50 items in one step, all or nothing. Run it with `dry_run: true`
+  first: it checks every item with the real save and saves nothing. An error names the item (`items[3]: …`).
+- A wrong field or brick name gets a "Did you mean …?" answer. Use the suggested key.
+- Answers carry a `studio` link to the entry, so you can show the person where to look.
+
 ## Proposals ("show me first")
 
 - Add `propose: true` to any write tool, and the change is not made. It becomes a proposal the person approves.
@@ -57,7 +70,10 @@ You cannot do more than they can, and everything you change is shown in their hi
 
 ## Files
 
-- You can use files that already exist (images and PDFs have an ID). You cannot upload new ones.
+- You can use files that already exist (images and PDFs have an ID).
+- Owners and admins add files with `ginko_upload`: `{ url }` fetches a public https address; without `url` the answer
+  is a one-time upload address and a `curl` command for a file on your computer. Use the ID in an image field
+  (`{ "file": ID, "alt": "…" }`) or in Markdown as `![Description]($file.<ID>)`.
 - `ginko_file_usage({ file })` shows where a file is used and whether an image lacks its description.
 
 ## Links
@@ -74,7 +90,8 @@ You cannot do more than they can, and everything you change is shown in their hi
 
 ## What you cannot do
 
-- Publish or unpublish drafts, restore removed entries, upload files, change the structure of the site, manage people or keys.
+- Publish or unpublish drafts (except `publish` on `ginko_create`), restore removed entries, change the structure of the
+  site (bricks and fields come from the site's code), manage people or keys. Staff keys cannot upload files.
 - Use a tool you do not see: the person does not hold that right.
 - More than 60 calls a minute. Wait a minute when you hit the limit.
 
