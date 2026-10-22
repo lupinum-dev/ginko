@@ -1,5 +1,13 @@
 # @lupinum/ginko
 
+## 0.6.5
+
+### Patch Changes
+
+- [#39](https://github.com/lupinum-dev/ginko/pull/39) [`db38050`](https://github.com/lupinum-dev/ginko/commit/db380506aa6375d0408a4881fee4e382b54ee9c4) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add an outline in the Studio preview: the page marks the text of the field you are editing and scrolls to it.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.6.5
+
 ## 0.6.4
 
 ### Patch Changes

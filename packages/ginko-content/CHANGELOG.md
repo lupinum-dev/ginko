@@ -1,5 +1,12 @@
 # @lupinum/ginko-content
 
+## 0.6.5
+
+### Patch Changes
+
+- Updated dependencies [[`db38050`](https://github.com/lupinum-dev/ginko/commit/db380506aa6375d0408a4881fee4e382b54ee9c4)]:
+  - @lupinum/ginko@0.6.5
+
 ## 0.6.4
 
 ### Patch Changes
