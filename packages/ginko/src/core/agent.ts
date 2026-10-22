@@ -2,7 +2,7 @@
 import type { Node } from 'comark'
 import { renderMarkdown } from 'comark/render'
 import { entryTitle, type Bundle, type BundleItem } from './bundle.ts'
-import type { MarkdownTree } from './markdown.ts'
+import type { MarkdownTree, TextResolver } from './markdown.ts'
 import { labelOf } from './labels.ts'
 import { withoutTrailingSlashes } from './path.ts'
 import type { Label, Schema } from './types.ts'
@@ -12,6 +12,8 @@ export interface AgentOptions {
   schema: Pick<Schema, 'bricks'>
   /** The trees behind `{ ref }` markdown values (withMarkdownRefs); not needed when the bundle holds the trees. */
   trees?: ReadonlyMap<string, MarkdownTree>
+  /** Turns components without text of their own (facts) into text: `factResolver` of the bundle. Unset: they stay as written. */
+  resolve?: TextResolver
 }
 
 const treeOf = (value: unknown, trees?: ReadonlyMap<string, MarkdownTree>): MarkdownTree | undefined => {
@@ -41,11 +43,22 @@ export async function entryMarkdown(item: BundleItem, brick: string, options: Ag
     if (field.type !== 'markdown') continue
     const tree = treeOf(value, options.trees)
     if (tree) {
-      const markdown = (await renderMarkdown({ nodes: tree.nodes as Node[] })).trim()
+      const nodes = options.resolve ? withText(tree.nodes as Node[], options.resolve) : (tree.nodes as Node[])
+      const markdown = (await renderMarkdown({ nodes })).trim()
       if (markdown) parts.push(markdown)
     }
   }
   return `${parts.join('\n\n')}\n`
+}
+
+/** The nodes with every component that `resolve` knows replaced by its text (a fact by its value). */
+function withText(nodes: readonly Node[], resolve: TextResolver): Node[] {
+  return nodes.map((node) => {
+    if (typeof node === 'string' || node[0] === null) return node
+    const [tag, props, ...children] = node
+    const own = resolve(tag, props as Record<string, unknown> | undefined)
+    return own !== undefined ? own : ([tag, props, ...withText(children as Node[], resolve)] as Node)
+  })
 }
 
 /** The Markdown twin of a page URL: `/` is `/index.md`, `/blog/a` is `/blog/a.md`. */

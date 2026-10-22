@@ -1,6 +1,7 @@
 // The records of the site search: one per heading section of every collection item with a URL. Build side only
 // (the bundle, Markdown trees); the browser reaches the engine in search.ts without this file.
 import { entryTitle, type Bundle } from './bundle.ts'
+import { factResolver } from './facts.ts'
 import { textBlocks, type MarkdownTree } from './markdown.ts'
 import { isVisible } from './resolve.ts'
 import type { SearchRecord } from './search.ts'
@@ -13,6 +14,8 @@ export interface SearchSectionsOptions {
   trees?: ReadonlyMap<string, MarkdownTree>
   /** The site's day (`todayIn`): entries past their `visible` date are left out, as on the pages. Unset at build time, where the day is not known. */
   today?: string
+  /** BCP 47 tag for the text of facts (numbers, money, dates); default: the bundle's locale. */
+  language?: string
 }
 
 const treeOf = (value: unknown, trees?: ReadonlyMap<string, MarkdownTree>): MarkdownTree | undefined => {
@@ -37,6 +40,8 @@ const collapse = (text: string) => text.replace(/[ \t]*\n[ \t\n]*/g, '\n').repla
  */
 export function searchSections(bundle: Bundle, options: SearchSectionsOptions): SearchRecord[] {
   const records: SearchRecord[] = []
+  // A fact in a text is found by its value ("98 €"), as the page shows it.
+  const resolve = factResolver({ bricks: options.schema.bricks, data: bundle.bricks, locale: bundle.locale, mainLocale: bundle.mainLocale, language: options.language ?? bundle.locale, ...(options.today ? { today: options.today } : {}) })
   for (const [brick, entry] of Object.entries(bundle.bricks)) {
     if (entry.kind !== 'collection') continue
     const def = options.schema.bricks[brick]
@@ -54,7 +59,7 @@ export function searchSections(bundle: Bundle, options: SearchSectionsOptions): 
       const sections: { heading?: string; id?: string; parts: string[] }[] = [{ parts: intro }]
       for (const [name, field] of fields) {
         if (field.type !== 'markdown') continue
-        for (const block of textBlocks(treeOf(item.data[name], options.trees)?.nodes ?? [])) {
+        for (const block of textBlocks(treeOf(item.data[name], options.trees)?.nodes ?? [], resolve)) {
           if (block.heading) sections.push({ heading: collapse(block.text), ...(block.heading.id ? { id: block.heading.id } : {}), parts: [] })
           else sections[sections.length - 1]!.parts.push(block.text)
         }

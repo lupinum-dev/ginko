@@ -64,6 +64,8 @@ export default defineNuxtModule<SiteInput>({
       platform: nuxt.options.dev ? 'http://localhost:3100' : '',
       locales: schema.locales,
       mainLocale: schema.locales[0]!,
+      // The language tag per locale (`languages`, else the code): numbers, money and dates of facts.
+      languages: Object.fromEntries(schema.locales.map((code) => [code, site.languages?.[code] ?? code])),
       timeZone: schema.timeZone,
       // ISO country code or ''; the hours rules of the basics take it as `country`, JSON-LD as `addressCountry`.
       country: site.country ?? '',
@@ -197,10 +199,11 @@ export default defineNuxtModule<SiteInput>({
       // Page state holds platform texts as `{ ref }` (runtime/plugin.ts); this route serves them on client navigation.
       addServerHandler({ route: '/__ginko/platform/:locale/:rev/md/**', handler: resolve(`./runtime/server/platform-md.${runtimeExt}`) })
     }
-    for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'useGinkoPath', 'useGinkoLang', 'useGinkoSite']) addImports({ name, from: composables })
+    for (const name of ['useGinko', 'useGinkoEntry', 'useGinkoQuery', 'useGinkoNeighbors', 'useGinkoNav', 'useGinkoBreadcrumbs', 'useGinkoToday', 'useGinkoWeek', 'useGinkoLocale', 'useGinkoSeo', 'useGinkoPath', 'useGinkoLang', 'useGinkoSite', 'useGinkoFact']) addImports({ name, from: composables })
     for (const name of ['GinkoItem', 'GinkoPageKey', 'GinkoLocale', 'GinkoSeoInput']) addImports({ name, from: composables, type: true })
     addComponent({ name: 'GinkoMarkdown', export: 'GinkoMarkdown', filePath: resolve(`./runtime/GinkoMarkdown.${runtimeExt}`) })
     addComponent({ name: 'GinkoImage', export: 'GinkoImage', filePath: resolve(`./runtime/GinkoImage.${runtimeExt}`) })
+    addComponent({ name: 'GinkoFact', export: 'GinkoFact', filePath: resolve(`./runtime/GinkoFact.${runtimeExt}`) })
     for (const name of ['useGinkoMarkdown', 'fetchGinkoMarkdown']) addImports({ name, from: resolve(`./runtime/markdown.${runtimeExt}`) })
     // Server routes of the site (a feed, a calendar) read entries with the same visibility rule as the pages.
     addServerImports([{ name: 'getGinkoItems', from: resolve(`./runtime/server/items.${runtimeExt}`) }, { name: 'GinkoServerItem', from: resolve(`./runtime/server/items.${runtimeExt}`), type: true }])

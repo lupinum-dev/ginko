@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
   const key = `${rev}@${today}`
   const cached = built.get(locale)
   if (cached?.key === key) return cached.index
-  const index = await buildIndex(searchSections(bundle, { schema, trees: markdownTrees, today }), locale)
+  const index = await buildIndex(searchSections(bundle, { schema, trees: markdownTrees, today, language: config.languages[locale] ?? locale }), locale)
   built.set(locale, { key, index })
   return index
 })

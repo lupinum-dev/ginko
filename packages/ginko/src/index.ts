@@ -12,6 +12,7 @@ export { defineComponents, type ComponentDef, type ComponentRegistry } from './c
 export { breadcrumbJsonLd, type SeoImage } from './core/seo.ts'
 export { f } from './core/fields.ts'
 export { formatMoney, type FormatMoneyOptions } from './core/money.ts'
+export { factText, valueOn, type FactContext } from './core/facts.ts'
 export { safeHref } from './core/href.ts'
 export { plainText, wordsOf, type MarkdownProfile, type MarkdownValue, type MarkdownTree, type MarkdownToc, type TocLink } from './core/markdown.ts'
 export { startOfWeek, type WeekInfo } from './core/time.ts'

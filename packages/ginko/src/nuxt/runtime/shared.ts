@@ -3,6 +3,8 @@ import { markdownRequestPath, type Locale, type SiteInput, type StoredHolidays }
 
 export interface GinkoPublicConfig {
   site: string; name: string; url: string; platform: string; locales: Locale[]; mainLocale: Locale; timeZone: string
+  /** The language tag per locale (`languages` of the config, else the code), for formats such as facts. */
+  languages: Record<string, string>
   /** `country` of the site config (ISO 3166-1), or '' when unset. */
   country: string
   /** The stored holiday calendar (`AT`, `DE`, `SG`, `none`, `custom`), or '' when the config sets neither `calendar` nor `country`. */

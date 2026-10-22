@@ -87,6 +87,13 @@ export interface SiteInput {
   }
   /** Markdown components for `page` texts, defined once with `defineComponents`. Part of the schema contract. */
   components?: ComponentRegistry
+  /**
+   * Values of single bricks that texts may quote, as `brick.field`: `['practice.price', 'site.phone']`. Ginko adds the
+   * inline component `fact` (`:fact{name="practice.price"}`); pages, search and the Markdown twin show the value in
+   * effect, so a price changed in the Studio changes in every text. Text, number, money, date, time, choice(s) and
+   * lists with one column.
+   */
+  facts?: readonly string[]
   migrations?: Record<string, Migration>
   retired?: Record<string, RetiredRule>
 }
@@ -94,10 +101,16 @@ export interface SiteInput {
 /** The field keys `retired` takes: `menu.headline` for the field `headline` of the brick `menu`. */
 type RetiredFieldPath<B> = { [K in keyof B & string]: `${K}.${B[K] extends { fields: infer F } ? keyof F & string : never}` }[keyof B & string]
 
+/** The field paths of the single bricks of a config: `practice.price`. */
+type SingleFieldPath<B> = { [K in keyof B & string]: B[K] extends { kind: 'single'; fields: infer F } ? `${K}.${keyof F & string}` : never }[keyof B & string]
+
+/** `facts` names fields of single bricks; a list typed only as `string[]` (built elsewhere) is left to checkSite. */
+type FactsInput<S extends SiteInput> = NonNullable<S['facts']> extends readonly (infer P)[] ? (string extends P ? readonly string[] : readonly SingleFieldPath<S['bricks']>[]) : never
+
 /** `retired` names bricks of the config (they take `{ drop: true }`) and their fields (any rule); anything else fails. */
 type RetiredInput<S extends SiteInput> = { [P in keyof S['retired']]: P extends keyof S['bricks'] ? { drop: true } : P extends RetiredFieldPath<S['bricks']> ? RetiredRule : never }
 
-export function defineSite<const S extends SiteInput>(site: S & { retired?: RetiredInput<S> }): S {
+export function defineSite<const S extends SiteInput>(site: S & { retired?: RetiredInput<S>; facts?: FactsInput<S> }): S {
   return site
 }
 

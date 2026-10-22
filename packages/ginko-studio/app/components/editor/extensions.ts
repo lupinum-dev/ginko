@@ -11,6 +11,7 @@ import { VueNodeViewRenderer } from '@tiptap/vue-3'
 import { watch } from 'vue'
 import type { SettingsBus } from './context.ts'
 import ComponentView from './ComponentView.vue'
+import InlineComponentView from './InlineComponentView.vue'
 
 /** The state of the open slash menu; `SlashMenu.vue` draws it, the Suggestion plugin below fills it. */
 export interface SlashState {
@@ -44,7 +45,12 @@ export interface StudioExtensionsOptions {
 
 export function studioExtensions({ slashItems, slash, openLink, bus, problems }: StudioExtensionsOptions) {
   return (base: AnyExtension[]): AnyExtension[] => {
-    const extensions = base.map((ext) => ext.name === 'component' ? componentExtension(ext as AnyExtension, slash, bus) : ext)
+    const extensions = base.map((ext) => {
+      if (ext.name === 'component') return componentExtension(ext as AnyExtension, slash, bus)
+      // An inline component without text of its own (a fact) is a chip that names it, not an empty box.
+      if (ext.name === 'inlineComponent') return (ext as AnyExtension).extend({ addNodeView() { return VueNodeViewRenderer(InlineComponentView) } }).configure({ bus } as never)
+      return ext
+    })
     // Every profile has links (the link mark comes with StarterKit, so it is not an extension of its own in `base`).
     extensions.push(Extension.create({ name: 'ginkoLinkKey', addKeyboardShortcuts() { return { 'Mod-k': () => { openLink(); return true } } } }))
     if (problems) extensions.push(problemsExtension(problems))

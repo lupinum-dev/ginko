@@ -8,6 +8,7 @@ import { GINKO_COMPONENTS_KEY, GINKO_TOC_KEY } from '../../internal.ts'
 import { GinkoMarkdown as GinkoMarkdownTree } from '../../vue.ts'
 import type { MarkdownTree, MarkdownValue } from '../../internal.ts'
 import { useGinkoMarkdown } from './markdown.ts'
+import { GinkoFact } from './GinkoFact.ts'
 
 export const GinkoMarkdown = defineComponent({
   name: 'GinkoMarkdown',
@@ -16,7 +17,8 @@ export const GinkoMarkdown = defineComponent({
     /**
      * Tag → component (or another tag name), e.g. `{ callout: Callout }`. It is merged over the map the app
      * provides under `ginko:components` (e.g. by `@lupinum/ginko-components`), so a tag given here wins.
-     * Other tags use a global component of that name (PascalCase), else a plain element.
+     * Other tags use a global component of that name (PascalCase), else a plain element. `fact` (facts in
+     * ginko.config) renders with GinkoFact unless one of the maps names its own component.
      */
     components: { type: Object as PropType<Record<string, Component | string>>, default: () => ({}) },
     /** Puts `idPrefix-` before every id and `#` link of this body, for a page that shows several bodies (a changelog). */
@@ -30,6 +32,6 @@ export const GinkoMarkdown = defineComponent({
     provide(GINKO_TOC_KEY, computed(() => tree?.value?.toc ?? null))
     tree = await useGinkoMarkdown(() => props.value)
     // The site's registry: a component keeps the props it declares there (attributeProblem).
-    return () => h(GinkoMarkdownTree, { value: tree!.value, components: { ...provided, ...props.components }, registry: components, idPrefix: props.idPrefix })
+    return () => h(GinkoMarkdownTree, { value: tree!.value, components: { fact: GinkoFact, ...provided, ...props.components }, registry: components, idPrefix: props.idPrefix })
   },
 })

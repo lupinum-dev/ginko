@@ -6,7 +6,7 @@ import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 import type { GinkoPublicConfig } from '../src/nuxt/runtime/shared.ts'
 import { loadIndex, search, type SearchIndexJson } from '../src/search.ts'
 
-const config = { site: 'restaurant', locales: ['de', 'en'], mainLocale: 'de', timeZone: 'Europe/Vienna', sources: { platform: true, files: false } } as GinkoPublicConfig
+const config = { site: 'restaurant', locales: ['de', 'en'], mainLocale: 'de', languages: { de: 'de-AT', en: 'en-GB' }, timeZone: 'Europe/Vienna', sources: { platform: true, files: false } } satisfies Partial<GinkoPublicConfig>
 const bundle = JSON.parse(readFileSync(new URL('../../../contracts/restaurant/bundle.format3.de.json', import.meta.url), 'utf8'))
 const headers = new Headers()
 

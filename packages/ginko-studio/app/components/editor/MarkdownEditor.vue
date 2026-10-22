@@ -482,7 +482,6 @@ const frame = 'relative rounded-lg border border-input/80 bg-background dark:bor
 .ginko-editor :deep([data-ginko-slot]) { margin: 0.5em 0; border-left: 2px solid var(--border); padding-left: 0.75rem; }
 .ginko-editor :deep([data-ginko-slot])::before { content: attr(data-ginko-slot); display: block; font-size: 0.75rem; color: var(--muted-foreground); }
 .ginko-editor :deep([data-ginko-slot='default'])::before { content: none; }
-.ginko-editor :deep([data-ginko-inline-component]) { border-radius: 0.25rem; background: var(--muted); padding: 0 0.25rem; }
 /* Component blocks (ComponentView). The class names of the card here are not `ginko-card`: that is a component of ginko-components. */
 .ginko-editor :deep(.ginko-block[data-selected]) { outline: 2px solid var(--ring); outline-offset: 2px; }
 .ginko-editor :deep(.ginko-block-content > :first-child), .ginko-editor :deep(.ginko-live-content > :first-child) { margin-top: 0; }

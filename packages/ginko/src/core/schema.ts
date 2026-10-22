@@ -6,6 +6,7 @@ import { weeklyTask } from './stale.ts'
 import { weekInfoOf } from './time.ts'
 import { CALENDAR_NAMES, holidaysOf, STORED_HOLIDAYS } from './holidays.ts'
 import { componentProblems, type ComponentRegistry } from './components.ts'
+import { factComponent, factProblem, FACT_TAG } from './facts.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
 import { isPrefillToken, PREFILL_TOKENS, type Brick, type CollectionBrick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema, type Task } from './types.ts'
@@ -62,9 +63,20 @@ export function serializeSchema(site: SiteInput): Schema {
     bricks,
     migrations,
     retired,
-    ...(site.components ? { components: storedComponents(site.components, site.locales) } : {}),
+    ...withComponents(site),
     ...(site.agents?.review !== undefined ? { agents: { review: site.agents.review } } : {}),
   }, [], []) as Schema
+}
+
+/**
+ * `{ components }`: the site's registry plus the fact component of `facts` (facts.ts). Nothing when the site has
+ * neither, so a schema without components stays as it was. Facts with problems are left out here; checkSite names them.
+ */
+function withComponents(site: SiteInput): { components?: ComponentRegistry } {
+  const retired = site.retired ?? {}
+  const facts = (site.facts ?? []).filter((path) => factProblem(path, site.bricks) === undefined && !Object.hasOwn(retired, path) && !Object.hasOwn(retired, path.split('.')[0]!))
+  const registry = facts.length && !Object.hasOwn(site.components ?? {}, FACT_TAG) ? { ...site.components, [FACT_TAG]: factComponent(facts, site.bricks) } : site.components
+  return registry ? { components: storedComponents(registry, site.locales) } : {}
 }
 
 /** `{ holidays }` when the config sets `calendar` or `country`; nothing otherwise, so a 0.4 schema stays as it was. */
@@ -220,7 +232,7 @@ export function mainLocale(schema: Pick<Schema, 'locales'>): Locale {
 const SITE_KEYS = {
   site: true, name: true, url: true, timeZone: true, locales: true, languages: true, firstDayOfWeek: true, currency: true,
   pages: true, bricks: true, linkCheck: true, redirects: true, seo: true, agents: true, components: true, migrations: true,
-  retired: true, country: true, calendar: true,
+  retired: true, country: true, calendar: true, facts: true,
 } satisfies Record<keyof SiteInput, true>
 
 /**
@@ -244,6 +256,18 @@ export function checkSite(site: SiteInput, schema: Schema = serializeSchema(site
   if (color !== undefined && !/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(color)) problems.push(`seo.color: invalid colour “${String(color)}” (expected “#rrggbb” or “#rgb”).`)
   // A key that names no page would keep nothing out of search, silently.
   for (const key of site.seo?.noindex ?? []) if (!Object.hasOwn(site.pages, key)) problems.push(`seo.noindex: “${key}” is not a key of pages.`)
+  if (site.facts !== undefined) {
+    if (!Array.isArray(site.facts)) problems.push('facts must be a list of “brick.field” paths.')
+    else {
+      for (const path of site.facts) {
+        const problem = factProblem(String(path), site.bricks) ?? (site.retired && (Object.hasOwn(site.retired, path) || Object.hasOwn(site.retired, String(path).split('.')[0]!)) ? `facts: “${path}” is retired.` : undefined)
+        if (problem) problems.push(problem)
+      }
+      if (new Set(site.facts).size !== site.facts.length) problems.push('facts: a path is listed twice.')
+      if (site.facts.length && Object.hasOwn(site.components ?? {}, FACT_TAG)) problems.push(`components: “${FACT_TAG}” is the component of facts; rename the site's own component.`)
+      if (site.facts.length > 50) problems.push('facts: at most 50.')
+    }
+  }
   return [...problems, ...checkSchema(schema)]
 }
 

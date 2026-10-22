@@ -252,12 +252,12 @@ export async function parseMarkdown(text: string, options: ParseOptions = {}): P
 export interface TextBlock { text: string; heading?: { level: 2 | 3; id?: string } }
 
 /** The one walker over a text: top-level blocks in document order, without code blocks. Search and excerpts both read it. */
-export function textBlocks(tree: MarkdownTree | readonly Json[]): TextBlock[] {
+export function textBlocks(tree: MarkdownTree | readonly Json[], resolve?: TextResolver): TextBlock[] {
   const nodes = (Array.isArray(tree) ? tree : (tree as MarkdownTree).nodes) as Node[]
   const blocks: TextBlock[] = []
   for (const node of nodes) {
     if (typeof node !== 'string' && node[0] === 'pre') continue
-    const text = textOf(node, true)
+    const text = textOf(node, true, resolve)
     const tag = typeof node === 'string' ? undefined : node[0]
     if (tag === 'h2' || tag === 'h3') {
       const id = (node as [string, Record<string, unknown>])[1]?.id
@@ -268,8 +268,8 @@ export function textBlocks(tree: MarkdownTree | readonly Json[]): TextBlock[] {
 }
 
 /** All text of a tree (or of a node list), for excerpts and search. Blocks are separated by a line break; code blocks are left out. */
-export function plainText(tree: MarkdownTree | readonly Json[]): string {
-  return textBlocks(tree).map((b) => b.text).join('\n').trim()
+export function plainText(tree: MarkdownTree | readonly Json[], resolve?: TextResolver): string {
+  return textBlocks(tree, resolve).map((b) => b.text).join('\n').trim()
 }
 
 /**
@@ -443,11 +443,16 @@ function letterSlug(text: string): string {
 }
 
 /** Text of a node; `br` and `html_inline` do not count (comark reads heading text the same way for the slug). */
-function textOf(node: Node, blocks = false): string {
+/** The text of a component that has none of its own, such as a fact (facts.ts): a string replaces the node, undefined keeps it. */
+export type TextResolver = (tag: string, props: Readonly<Record<string, unknown>> | undefined) => string | undefined
+
+function textOf(node: Node, blocks = false, resolve?: TextResolver): string {
   if (typeof node === 'string') return node
-  const [tag, , ...children] = node
+  const [tag, props, ...children] = node
   if (tag === null || tag === 'br' || tag === 'html_inline' || tag === 'pre') return ''
-  return children.map((child) => textOf(child, blocks)).join(blocks && /^(ul|ol|table|thead|tbody|blockquote)$/.test(tag) ? '\n' : '')
+  const own = resolve?.(tag, props as Record<string, unknown> | undefined)
+  if (own !== undefined) return own
+  return children.map((child) => textOf(child, blocks, resolve)).join(blocks && /^(ul|ol|table|thead|tbody|blockquote)$/.test(tag) ? '\n' : '')
 }
 
 /**
