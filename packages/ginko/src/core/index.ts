@@ -13,6 +13,7 @@ export { resolveEntry, buildBundle, servedBundle, applyDefaults, defaultsFor, is
 export { BUNDLE_FORMAT, isBundle, bundleFits, knownBricks, withFileBricks, markdownTrees, type MarkdownTrees, type Bundle, type BundleBrick, type BundleItem } from './bundle.ts'
 export { withMarkdownRefs, fileMarkdownRef, platformMarkdownRef, type MarkdownRefOf } from './markdown-refs.ts'
 export { isSafeHref, safeHref } from './href.ts'
+export { withoutTrailingSlashes, trimPath } from './path.ts'
 export { slugify, slugBases, uniqueSlug, SLUG_PATTERN } from './slug.ts'
 export { todayIn, zonedDateTime, startOfWeek, workWeekOf, firstDayShown, weekInfoOf, DEFAULT_WEEK, addDays, resolveToken, type WeekInfo } from './time.ts'
 export { brickStatus, type HoursToday, type StatusEntry, type StatusLine } from './status.ts'

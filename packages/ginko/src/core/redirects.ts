@@ -1,11 +1,7 @@
 import type { Bundle } from './bundle.ts'
+import { trimPath } from './path.ts'
 
 export interface Redirect { from: string; to: string; status?: 301 | 302 | 307 | 308 }
-
-/** Removes trailing slashes so `/alt/` and `/alt` compare equal. The root `/` stays as it is. */
-function trimSlash(path: string): string {
-  return path.length > 1 ? path.replace(/\/+$/, '') : path
-}
 
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -20,7 +16,7 @@ interface CompiledRule {
 
 function compile(rule: Redirect): CompiledRule {
   const wildcard = rule.from.endsWith('*')
-  const base = trimSlash(wildcard ? rule.from.slice(0, -1).replace(/\/$/, '') : rule.from)
+  const base = trimPath(wildcard ? rule.from.slice(0, -1).replace(/\/$/, '') : rule.from)
   const params: string[] = []
   const source = base
     .split('/')
@@ -52,7 +48,7 @@ function compiledFor(rules: readonly Redirect[]): CompiledRule[] {
  */
 export function matchRedirect(rules: readonly Redirect[], path: string): { to: string; status: 301 | 302 | 307 | 308 } | undefined {
   const queryStart = path.indexOf('?')
-  const pathPart = trimSlash(queryStart === -1 ? path : path.slice(0, queryStart))
+  const pathPart = trimPath(queryStart === -1 ? path : path.slice(0, queryStart))
   const query = queryStart === -1 ? '' : path.slice(queryStart + 1)
 
   for (const compiled of compiledFor(rules)) {
@@ -111,7 +107,7 @@ export function redirectProblems(rules: readonly Redirect[]): string[] {
   const seen = new Set<string>()
   for (const { from, to } of rules) {
     if (!from.startsWith('/')) problems.push(`"${from}": path must start with "/".`)
-    if (trimSlash(from) === trimSlash(to)) problems.push(`"${from}": redirect points to itself.`)
+    if (trimPath(from) === trimPath(to)) problems.push(`"${from}": redirect points to itself.`)
     if (/^[/\\]?:/.test(to)) problems.push(`"${from}": "to" starts with a parameter (${to}). Start it with a fixed path such as "/new/:splat" so a visitor cannot choose the target host.`)
     if (seen.has(from)) problems.push(`"${from}": defined more than once.`)
     seen.add(from)

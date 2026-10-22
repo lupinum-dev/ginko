@@ -4,6 +4,7 @@ import { renderMarkdown } from 'comark/render'
 import { entryTitle, type Bundle, type BundleItem } from './bundle.ts'
 import type { MarkdownTree } from './markdown.ts'
 import { labelOf } from './labels.ts'
+import { withoutTrailingSlashes } from './path.ts'
 import type { Label, Schema } from './types.ts'
 
 export interface AgentOptions {
@@ -45,13 +46,6 @@ export async function entryMarkdown(item: BundleItem, brick: string, options: Ag
     }
   }
   return `${parts.join('\n\n')}\n`
-}
-
-/** The text without its trailing slashes; a loop, because `/\/+$/` slows down on a long run of slashes. */
-const withoutTrailingSlashes = (text: string) => {
-  let end = text.length
-  while (end > 0 && text[end - 1] === '/') end--
-  return text.slice(0, end)
 }
 
 /** The Markdown twin of a page URL: `/` is `/index.md`, `/blog/a` is `/blog/a.md`. */

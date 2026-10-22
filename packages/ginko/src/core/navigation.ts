@@ -1,5 +1,6 @@
 import type { Bundle } from './bundle.ts'
 import type { Locale } from './types.ts'
+import { trimPath } from './path.ts'
 
 export interface NavNode {
   title: string
@@ -9,7 +10,6 @@ export interface NavNode {
   children: NavNode[]
 }
 
-const norm = (path: string): string => (path.length > 1 ? path.replace(/\/+$/, '') || '/' : path)
 
 /** Path prefixes of `/a/b/c`, longest first, without the path itself: `/a/b`, `/a`, `/`. */
 function ancestorsOf(path: string): string[] {
@@ -32,7 +32,7 @@ export function navTree(bundle: Bundle, bricks: string[], locale: Locale): NavNo
     for (const item of b.items) {
       const url = item.urls?.[locale]
       if (url === undefined) continue
-      const path = norm(url)
+      const path = trimPath(url)
       const title = typeof item.data.title === 'string' && item.data.title ? item.data.title : (path.split('/').filter(Boolean).pop() ?? path)
       entries.push({ node: { title, path, id: item.id, brick, children: [] }, parent: typeof item.data.parent === 'string' ? item.data.parent : undefined })
     }
@@ -64,7 +64,7 @@ export function navTree(bundle: Bundle, bricks: string[], locale: Locale): NavNo
 
 /** Nodes from the root down to the node at `path`; empty when the path is not in the tree. */
 export function breadcrumbs(tree: NavNode[], path: string): NavNode[] {
-  const want = norm(path)
+  const want = trimPath(path)
   const walk = (nodes: NavNode[], trail: NavNode[]): NavNode[] | undefined => {
     for (const node of nodes) {
       const here = [...trail, node]
