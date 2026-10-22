@@ -1,5 +1,13 @@
 # @lupinum/ginko-components
 
+## 0.6.7
+
+### Patch Changes
+
+- Updated dependencies [[`ad2fb20`](https://github.com/lupinum-dev/ginko/commit/ad2fb208dd4e27c82944c60f781f3ba2f16a159d)]:
+  - @lupinum/ginko@0.6.7
+  - @lupinum/ginko-i18n@0.6.7
+
 ## 0.6.6
 
 ### Patch Changes

@@ -1,5 +1,16 @@
 # @lupinum/ginko-docs
 
+## 0.6.7
+
+### Patch Changes
+
+- [#43](https://github.com/lupinum-dev/ginko/pull/43) [`ad2fb20`](https://github.com/lupinum-dev/ginko/commit/ad2fb208dd4e27c82944c60f781f3ba2f16a159d) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add site search for platform content: on a site with platform bricks, `/__ginko/search/<locale>.json` (the docs search box and `search_docs`) is built from the published content and renewed like a page, so a page published in the Studio is found within a minute. Expired entries are left out.
+- Updated dependencies [[`ad2fb20`](https://github.com/lupinum-dev/ginko/commit/ad2fb208dd4e27c82944c60f781f3ba2f16a159d)]:
+  - @lupinum/ginko@0.6.7
+  - @lupinum/ginko-components@0.6.7
+  - @lupinum/ginko-content@0.6.7
+  - @lupinum/ginko-i18n@0.6.7
+
 ## 0.6.6
 
 ### Patch Changes
