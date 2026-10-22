@@ -126,4 +126,13 @@ describe('findRedirect', () => {
     expect(findRedirect([], entries, '/alt')).toEqual({ to: '/aktuell/a', status: 301 })
     expect(findRedirect([], undefined, '/alt')).toBeUndefined()
   })
+
+  // Wrong behaviour caught: `/\/+$/` on the request path took 0.4 s for 16,000 slashes and seconds for more, so a few
+  // such requests kept a site's server busy (every request passes the redirect middleware).
+  it('matches a request path of many slashes at once', () => {
+    const start = performance.now()
+    expect(findRedirect([{ from: '/alt', to: '/neu' }], undefined, `${'/'.repeat(100_000)}x`)).toBeUndefined()
+    expect(performance.now() - start).toBeLessThan(500)
+  })
 })
+

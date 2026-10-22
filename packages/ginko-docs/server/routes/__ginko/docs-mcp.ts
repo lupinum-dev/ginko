@@ -4,6 +4,7 @@ import { createError, defineEventHandler, serverFetch, setResponseStatus } from 
 import indexes from '#ginko/search'
 import locales from '#ginko/locales'
 import { loadIndex, search, type SearchIndex } from '@lupinum/ginko/search'
+import { withoutTrailingSlashes } from '@lupinum/ginko/internal'
 import { handleMcp, readLimitedText } from '../../mcp/handler'
 
 // The loading index per locale, kept as its promise so two first requests share one load.
@@ -26,7 +27,7 @@ export default defineEventHandler(async (event) => {
     },
     // The same Markdown the public `<page>.md` twin returns: ask the site's own middleware, in-process (Nuxt 4.6 and 5).
     async read(path) {
-      const response = await serverFetch(event, `${path === '/' ? '/index' : path.replace(/\/+$/, '')}.md`, { forwardHeaders: false }).catch(() => undefined)
+      const response = await serverFetch(event, `${path === '/' ? '/index' : withoutTrailingSlashes(path)}.md`, { forwardHeaders: false }).catch(() => undefined)
       return response?.ok ? response.text() : undefined
     },
   })
