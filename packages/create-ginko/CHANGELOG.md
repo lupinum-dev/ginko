@@ -1,5 +1,9 @@
 # create-ginko
 
+## 0.6.7
+
+No changes in this release.
+
 ## 0.6.6
 
 No changes in this release.
