@@ -11,7 +11,7 @@ import { TooltipProvider } from '@studio/components/ui/tooltip'
 import { isCoarsePointer, useEditorTick, useModKey } from './context.ts'
 import ToolToggle from './ToolToggle.vue'
 
-const props = defineProps<{ editor: Editor; profile: MarkdownProfile }>()
+const props = defineProps<{ editor: Editor; profile: MarkdownProfile; toolbar?: () => HTMLElement | undefined | null }>()
 const emit = defineEmits<{ link: [] }>()
 const { t } = useI18n()
 const mod = useModKey()
@@ -37,10 +37,21 @@ watch(() => props.editor, (editor, _before, onCleanup) => {
 // after each change, when the editor may be gone already (the form closed); it then has no view to ask.
 const shouldShow = ({ editor, state }: { editor: Editor; state: Editor['state'] }) =>
   !editor.isDestroyed && !touch && !(state.selection instanceof NodeSelection) && !state.selection.empty && editor.isEditable && editor.view.hasFocus() && !editor.isActive('codeBlock') && !editor.isActive('mathBlock') && !editor.isActive('mermaid')
+
+// Above the selection, but never over the toolbar: in the first line of a text it would cover the toolbar's buttons, so
+// the menu then goes below the selection. The room starts under the toolbar; Floating UI asks each time it places the
+// menu, so a sticky toolbar counts where it is now.
+const flip = () => {
+  const bar = props.toolbar?.()?.getBoundingClientRect()
+  if (!bar) return {}
+  const top = Math.max(0, bar.bottom)
+  const { clientWidth, clientHeight } = document.documentElement
+  return { rootBoundary: { x: 0, y: top, width: clientWidth, height: Math.max(0, clientHeight - top) } }
+}
 </script>
 
 <template>
-  <BubbleMenu class="z-50" :editor="editor" :should-show="shouldShow" :options="{ placement: 'top', offset: 8 }">
+  <BubbleMenu class="z-50" :editor="editor" :should-show="shouldShow" :options="{ placement: 'top', offset: 8, flip }">
     <TooltipProvider :delay-duration="300">
       <div v-show="focused" class="flex items-center gap-0.5 rounded-md border bg-popover p-1 shadow-md">
         <ToolToggle v-if="has('bold')" :label="t('editor.marks.bold')" :shortcut="`${mod()}B`" :pressed="active('bold')" @toggle="editor.chain().focus().toggleBold().run()"><Bold aria-hidden="true" /></ToolToggle>

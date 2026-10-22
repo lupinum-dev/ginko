@@ -39,12 +39,12 @@ const { t } = useI18n()
         <DialogDescription v-else-if="uses.length">{{ t('entry.remove.usedIn', { title, count: uses.length }) }}</DialogDescription>
         <DialogDescription v-else>{{ t(draft ? 'entry.remove.textDraft' : 'entry.remove.text', { title }) }}</DialogDescription>
       </DialogHeader>
-      <div v-if="uses?.length" class="max-h-80 overflow-y-auto">
+      <div v-if="uses?.length" class="max-h-80 overflow-y-auto rounded-lg bg-muted/50 p-3">
         <UsedInList :slug="slug" :uses="uses" />
       </div>
-      <div v-if="uses && overflow?.length" class="grid gap-1 text-sm">
-        <p>{{ t('entry.remove.trashFull') }}</p>
-        <ul class="max-h-40 overflow-y-auto">
+      <div v-if="uses && overflow?.length" class="grid gap-1.5 rounded-lg bg-muted/50 p-3 text-sm">
+        <p class="font-medium">{{ t('entry.remove.trashFull') }}</p>
+        <ul class="m-0 max-h-40 list-disc overflow-y-auto pl-5 text-muted-foreground">
           <li v-for="old in overflow" :key="old.entry">{{ old.title }}</li>
         </ul>
       </div>

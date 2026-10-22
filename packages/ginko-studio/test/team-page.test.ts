@@ -53,8 +53,14 @@ beforeEach(() => {
   team.invites[0]!.grants = []
 })
 
+// A row's menu renders its items in place: each item is a button that runs its action, as choosing it does.
+const pass = { template: '<div><slot /></div>' }
+const menu = {
+  DropdownMenu: pass, DropdownMenuTrigger: pass, DropdownMenuContent: pass,
+  DropdownMenuItem: { emits: ['select'], template: '<button type="button" @click="$emit(\'select\')"><slot /></button>' },
+}
 const mountPage = () => mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(TeamPage) }) }), {
-  global: { stubs: { I18nT: true, GrantsChecklist: true, SiteBackup: true, DeleteSite: true } },
+  global: { stubs: { I18nT: true, GrantsChecklist: true, SiteBackup: true, DeleteSite: true, ...menu } },
   attachTo: document.body,
 })
 

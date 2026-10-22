@@ -71,18 +71,22 @@ const label = computed(() => (isSlug.value ? t('fields.slug.label') : shown(prop
 const hint = computed(() => {
   // In another language the address is the page's own there, or none while the page is not translated (foreign-address).
   if (isSlug.value && foreignTab.value) return address.value ? t('fields.slug.pageAt', { address: address.value.path }) : undefined
-  const pattern = props.route?.[props.locale] ?? Object.values(props.route ?? {})[0]
-  if (isSlug.value && pattern && text.value) return t('fields.slug.pageAt', { address: pattern.replace('[slug]', text.value) })
+  // The main language shows the whole address in the box itself (slugAddress), so it needs no hint.
+  if (isSlug.value && slugAddress.value) return undefined
   return props.field.hint === undefined ? undefined : shown(props.field.hint)
+})
+/** The page address around the slug ("/veranstaltungen/" + slug), when the brick has a route and the slug is set. */
+const slugAddress = computed(() => {
+  const pattern = props.route?.[props.locale] ?? Object.values(props.route ?? {})[0]
+  if (!isSlug.value || !pattern?.includes('[slug]') || !text.value) return undefined
+  const [before = '', after = ''] = pattern.split('[slug]')
+  return { before, after }
 })
 const max = computed(() => ('max' in props.field && typeof props.field.max === 'number' ? props.field.max : undefined))
 const showCount = computed(() => (props.field.type === 'text' || props.field.type === 'longtext') && max.value !== undefined && text.value.length >= max.value * 0.8)
 const inputType = computed(() => (props.field.type === 'text' && props.field.format ? ({ url: 'url', email: 'email', tel: 'tel' } as const)[props.field.format] : 'text'))
 // A choice with up to five options shows radio buttons (GinkoFieldChoice), more a select.
 const radios = computed(() => props.field.type === 'choice' && props.field.options.length <= 5)
-// Single-line controls carry their label inside the box (Prime look). Groups, Markdown, switches and dates (their
-// Today/Tomorrow buttons sit next to the box) keep it above.
-const contained = computed(() => ['text', 'longtext', 'number', 'money', 'time'].includes(props.field.type) || (props.field.type === 'choice' && !radios.value))
 const isGroup = computed(() => ['list', 'choices', 'daterange', 'image', 'file'].includes(props.field.type))
 
 // Translation view (UI.md 4): the main language's value next to the input, and whether it changed
@@ -128,7 +132,7 @@ const missingText = computed(() => {
 </script>
 
 <template>
-  <FieldFrame :id="id" :label="label" :hint="hint" :optional="!!field.optional && field.type !== 'boolean'" :errors="errors.map((e) => messageOf(e))" :group="isGroup" :inline="field.type === 'boolean'" :contained="contained" :short="['number', 'money', 'time'].includes(field.type)" :count="showCount ? `${text.length}/${max}` : undefined">
+  <FieldFrame :id="id" :data-path="path" :data-type="field.type" :data-label="label" :label="label" :hint="hint" :optional="!!field.optional && field.type !== 'boolean'" :errors="errors.map((e) => messageOf(e))" :group="isGroup" :inline="field.type === 'boolean'" :short="['number', 'money', 'time'].includes(field.type)" :count="showCount ? `${text.length}/${max}` : undefined">
     <template v-if="trState && translation" #source>
       <div class="grid gap-2 rounded-md bg-muted p-3 text-sm" data-slot="translation-source">
         <p class="text-xs font-semibold text-muted-foreground">{{ translation.mainName() }}</p>
@@ -178,13 +182,16 @@ const missingText = computed(() => {
       <GinkoFieldFile v-else-if="field.type === 'file'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <GinkoFieldRef v-else-if="field.type === 'ref'" :id="id" :field="field" :model-value="value" :invalid="invalid" :described-by="describedBy" @update:model-value="set" />
       <template v-else-if="field.type === 'slug' && foreignTab">
-        <p v-if="address" :id="id" class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-muted px-3 py-2.5 text-sm text-muted-foreground">
-          <span class="font-mono [overflow-wrap:anywhere]">{{ foreignSlug }}</span>
+        <p v-if="address" :id="id" class="flex min-h-10 flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+          <span class="[overflow-wrap:anywhere]">{{ foreignSlug }}</span>
           <a v-if="address.href" :href="address.href" target="_blank" rel="noopener" class="font-medium text-primary underline underline-offset-2">{{ t('fields.slug.view') }}<span class="sr-only"> {{ t('nav.newTab') }}</span></a>
         </p>
         <p v-else :id="id" class="rounded-md bg-muted px-3 py-2.5 text-sm text-muted-foreground">{{ t('fields.slug.fromTranslation', { lang: foreignName }) }}</p>
       </template>
-      <p v-else-if="field.type === 'slug'" :id="id" class="rounded-md bg-muted px-3 py-2.5 font-mono text-sm text-muted-foreground">{{ text || t('fields.slug.generated') }}</p>
+      <p v-else-if="field.type === 'slug' && slugAddress" :id="id" class="flex min-h-10 items-center rounded-md bg-muted px-3 py-2 text-sm [overflow-wrap:anywhere]">
+        <span><span class="text-muted-foreground">{{ slugAddress.before }}</span>{{ text }}<span class="text-muted-foreground">{{ slugAddress.after }}</span></span>
+      </p>
+      <p v-else-if="field.type === 'slug'" :id="id" class="flex min-h-10 items-center rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground [overflow-wrap:anywhere]">{{ text || t('fields.slug.generated') }}</p>
     </template>
   </FieldFrame>
 </template>

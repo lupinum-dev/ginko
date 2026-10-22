@@ -2,7 +2,6 @@
      primary button. A selected photo shows its description in the field's language before it is used: the library's,
      else a suggestion, else empty. Without one it asks for it before the picker closes (the alt rule of the image field). -->
 <script setup lang="ts">
-import { CONTAINED_FIELD } from '@studio/components/fields/sizes'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from '#imports'
 import { Button } from '@studio/components/ui/button'
@@ -71,8 +70,8 @@ async function choose() {
     <div v-if="describing && known" class="flex items-start gap-3">
       <img v-if="known.url" :src="known.url" alt="" class="size-12 shrink-0 rounded-md border object-cover">
       <div class="grid min-w-0 flex-1 gap-1.5">
-        <div :class="CONTAINED_FIELD">
-          <Label for="picker-alt" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('files.altLabel') }}</Label>
+        <div class="grid gap-1.5">
+          <Label for="picker-alt" class="text-sm leading-snug font-medium">{{ t('files.altLabel') }}</Label>
           <Input
             id="picker-alt" ref="altInput" v-model="altText" type="text" :required="!libraryAlt" :aria-required="!libraryAlt" :aria-invalid="altMissing"
             :aria-describedby="altMissing ? 'picker-alt-error picker-alt-hint' : 'picker-alt-hint'" @update:model-value="altMissing = false"

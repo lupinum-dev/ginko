@@ -11,6 +11,7 @@ import { useTextOf } from '../composables/useTextOf'
 import { isYou, whoText } from '../utils/who'
 import { whenFull } from '../utils/when'
 import ProposalWithdraw from './ProposalWithdraw.vue'
+import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
 
 const props = defineProps<{
@@ -45,38 +46,51 @@ const fixLink = (p: Row) => (p.via === 'ui' && p.task && p.entry && (props.manag
 </script>
 
 <template>
-  <section v-if="rows.length" class="mb-4 grid gap-2" :aria-label="t('history.waiting')">
-    <h2 class="text-[17px] font-semibold">{{ t('history.waiting') }}</h2>
-    <ul class="m-0 list-none overflow-hidden rounded-xl border p-0">
-      <li v-for="p in rows" :key="p.proposal" class="flex flex-wrap items-center gap-2 border-b px-4 py-3 last:border-b-0">
-        <div class="min-w-0 flex-1">
-          <p class="font-medium">{{ line(p) }}</p>
-          <p class="text-[13px] text-muted-foreground">{{ when(p.createdAt) }}</p>
-        </div>
-        <ProposalWithdraw :proposal="p.proposal" />
-      </li>
-    </ul>
-  </section>
-  <section v-if="rejected.length" class="mb-4 grid gap-2" :aria-label="t('history.notApproved')">
-    <h2 class="text-[17px] font-semibold">{{ t('history.notApproved') }}</h2>
-    <ul class="m-0 list-none overflow-hidden rounded-xl border p-0">
-      <li v-for="p in rejected" :key="p.proposal" class="flex flex-wrap items-center gap-2 border-b px-4 py-3 last:border-b-0">
-        <div class="grid min-w-0 flex-1 gap-0.5">
-          <p class="font-medium">{{ line(p) }}</p>
-          <p class="[overflow-wrap:anywhere]">{{ rejectedText(p) }}</p>
-          <p class="text-[13px] text-muted-foreground">{{ when(p.decidedAt ?? p.createdAt) }}</p>
-        </div>
-        <Button v-if="fixLink(p)" as-child variant="outline" class="h-11"><NuxtLink :to="fixLink(p)">{{ t('history.fix') }}</NuxtLink></Button>
-      </li>
-    </ul>
-  </section>
-  <section v-if="notLive.length" class="mb-4 grid gap-2" :aria-label="t('history.notLive')">
-    <h2 class="text-[17px] font-semibold">{{ t('history.notLive') }}</h2>
-    <ul class="m-0 list-none overflow-hidden rounded-xl border p-0">
-      <li v-for="p in notLive" :key="p.proposal" class="grid gap-0.5 border-b px-4 py-3 last:border-b-0">
-        <p class="font-medium">{{ line(p) }}</p>
-        <p class="[overflow-wrap:anywhere]">{{ notLiveText(p) }}</p>
-      </li>
-    </ul>
-  </section>
+  <!-- One compact card above the log (design A); each group keeps its own heading. -->
+  <div v-if="rows.length || rejected.length || notLive.length" class="divide-y rounded-xl border bg-card">
+    <section v-if="rows.length" class="py-1.5" :aria-label="t('history.waiting')">
+      <div class="flex items-center gap-2 px-4 pt-2 pb-1">
+        <h2 class="text-sm font-semibold">{{ t('history.waiting') }}</h2>
+        <Badge variant="warning" class="tabular-nums">{{ rows.length }}</Badge>
+      </div>
+      <ul class="m-0 list-none divide-y p-0">
+        <li v-for="p in rows" :key="p.proposal" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
+          <div class="min-w-0 flex-1">
+            <p class="font-medium [overflow-wrap:anywhere] min-[900px]:text-sm">{{ line(p) }}</p>
+            <p class="text-[13px] text-muted-foreground tabular-nums">{{ when(p.createdAt) }}</p>
+          </div>
+          <!-- ProposalWithdraw has no size prop and fixes its own height (44px); it is left as it is. -->
+          <ProposalWithdraw :proposal="p.proposal" class="-mr-2" />
+        </li>
+      </ul>
+    </section>
+    <section v-if="rejected.length" class="py-1.5" :aria-label="t('history.notApproved')">
+      <div class="flex items-center gap-2 px-4 pt-2 pb-1">
+        <h2 class="text-sm font-semibold">{{ t('history.notApproved') }}</h2>
+        <Badge variant="soft" class="tabular-nums">{{ rejected.length }}</Badge>
+      </div>
+      <ul class="m-0 list-none p-0">
+        <li v-for="p in rejected" :key="p.proposal" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1.5">
+          <div class="grid min-w-0 flex-1 gap-0.5">
+            <p class="font-medium [overflow-wrap:anywhere] min-[900px]:text-sm">{{ line(p) }}</p>
+            <p class="[overflow-wrap:anywhere] min-[900px]:text-sm">{{ rejectedText(p) }}</p>
+            <p class="text-[13px] text-muted-foreground tabular-nums">{{ when(p.decidedAt ?? p.createdAt) }}</p>
+          </div>
+          <Button v-if="fixLink(p)" as-child variant="outline" size="sm"><NuxtLink :to="fixLink(p)">{{ t('history.fix') }}</NuxtLink></Button>
+        </li>
+      </ul>
+    </section>
+    <section v-if="notLive.length" class="py-1.5" :aria-label="t('history.notLive')">
+      <div class="flex items-center gap-2 px-4 pt-2 pb-1">
+        <h2 class="text-sm font-semibold">{{ t('history.notLive') }}</h2>
+        <Badge variant="soft" class="tabular-nums">{{ notLive.length }}</Badge>
+      </div>
+      <ul class="m-0 list-none p-0">
+        <li v-for="p in notLive" :key="p.proposal" class="grid gap-0.5 px-4 py-1.5">
+          <p class="font-medium [overflow-wrap:anywhere] min-[900px]:text-sm">{{ line(p) }}</p>
+          <p class="text-[13px] text-muted-foreground [overflow-wrap:anywhere]">{{ notLiveText(p) }}</p>
+        </li>
+      </ul>
+    </section>
+  </div>
 </template>

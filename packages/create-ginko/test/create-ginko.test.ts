@@ -168,7 +168,8 @@ describe('create-ginko --template', () => {
   const runAt = (now: string, ...args: string[]) => spawnSync('node', ['--import', clock, cli, ...args], { cwd: work, encoding: 'utf8', env: { ...process.env, npm_config_user_agent: '', GINKO_TEST_NOW: now } })
 
   it('creates a site from the template with its own site id, this release\'s ranges and a secret', () => {
-    const result = run('tpl-site', '--template', 'starter')
+    // On the anchor day, so the sample dates stay; a real clock would move them a week after the anchor.
+    const result = runAt(`${starter.ginko.sampleAnchor}T10:00:00Z`, 'tpl-site', '--template', 'starter')
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('Created tpl-site from the starter template in English and German.')
     // Wrong behaviour caught: two sites created from one template share the template's site id.

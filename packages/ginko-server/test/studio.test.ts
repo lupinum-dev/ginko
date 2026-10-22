@@ -578,6 +578,10 @@ describe('Studio reads at volume', () => {
     const rows = await s.as.owner.query(api.entries.ofBricks, { site, bricks: ['events', 'contact', 'menu'], slim: true })
     const weinabend = rows.find((row) => row._id === s.entries.weinabend)!
     expect(Object.keys(weinabend.data).sort()).toEqual(['booking', 'price', 'title', 'when'])
+    // A sold-out event keeps the flag: Today marks its row "Ausgebucht".
+    const { entry: soldOut } = await s.createEvent('Ausverkauft', { soldOut: true })
+    const after = await s.as.owner.query(api.entries.ofBricks, { site, bricks: ['events'], slim: true })
+    expect(after.find((row) => row._id === soldOut)!.data.soldOut).toBe(true)
     // The pick list of "Preis ändern" reads slim rows too (volume-11): it groups by the choice and shows the price,
     // the planned one from its date on.
     expect(Object.keys(rows.find((row) => row._id === s.entries['menu-schnitzel'])!.data).sort()).toEqual(['category', 'description', 'name', 'nextPrice', 'price', 'priceFrom', 'veg'])

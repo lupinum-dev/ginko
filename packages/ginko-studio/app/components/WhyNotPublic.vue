@@ -29,9 +29,9 @@ const lines = computed(() => (data.value?.reasons ?? []).map((reason) => ({
     <ul v-else class="m-0 grid list-none gap-3 p-0">
       <li v-for="line in lines" :key="line.code" class="grid justify-items-start gap-1.5">
         <p>{{ line.text }}</p>
-        <Button v-if="line.action === 'publish'" type="button" size="sm" class="h-9 pointer-coarse:h-11" @click="emit('publish')">{{ t('basics.why.publish') }}</Button>
-        <Button v-else-if="line.action === 'restore'" type="button" size="sm" class="h-9 pointer-coarse:h-11" @click="emit('restore')">{{ t('basics.why.restore') }}</Button>
-        <Button v-else-if="line.action === 'translate'" type="button" size="sm" variant="outline" class="h-9 pointer-coarse:h-11" @click="emit('translate', props.locale)">{{ t('basics.why.translate') }}</Button>
+        <Button v-if="line.action === 'publish'" type="button" size="sm" @click="emit('publish')">{{ t('basics.why.publish') }}</Button>
+        <Button v-else-if="line.action === 'restore'" type="button" size="sm" @click="emit('restore')">{{ t('basics.why.restore') }}</Button>
+        <Button v-else-if="line.action === 'translate'" type="button" size="sm" variant="outline" @click="emit('translate', props.locale)">{{ t('basics.why.translate') }}</Button>
       </li>
     </ul>
   </div>

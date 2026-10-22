@@ -16,6 +16,8 @@ const toasts: [string, unknown][] = []
 vi.stubGlobal('useToast', () => ({ show: (text: string, opts?: unknown) => toasts.push([text, opts]) }))
 const navigateTo = vi.fn()
 vi.stubGlobal('navigateTo', navigateTo)
+// The avatar letter reads the person's name from her settings; none set here.
+vi.stubGlobal('useConvexQuery', () => ({ data: ref({ name: null }) }))
 
 beforeEach(() => {
   vi.clearAllMocks()

@@ -3,12 +3,12 @@ import { api } from '#convex/api'
 import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
 import { Input } from '@studio/components/ui/input'
-import { ToggleGroup, ToggleGroupItem } from '@studio/components/ui/toggle-group'
+import { ChevronRightIcon, MailIcon, SearchIcon } from '@lucide/vue'
 import { readRecentSites } from '../composables/useRecentEntries'
 import { bySiteName, siteHost, siteMatches } from '../utils/sites'
 
-const { t } = useI18n()
-const { locale, locales, pick } = useLocalePicker()
+definePageMeta({ topBar: true })
+const { t, locale } = useI18n()
 useHead(() => ({ title: `${t('sites.title')} · Ginko` }))
 
 const { data: sites, error } = await useConvexQuery(api.sites.mine)
@@ -52,99 +52,53 @@ const groups = computed(() => [
   ...(recent.value.length ? [{ id: 'recent', heading: t('sites.recent'), rows: recent.value }] : []),
   { id: 'all', heading: recent.value.length ? t('sites.all') : '', rows: matching.value },
 ])
-// Reminder mail (the mail before the week starts for content that is out of date) is on by default. The switch shows
-// only where a site can send it to this person (a weekly task, `weekly`), so nobody switches a mail that never comes.
-const { data: settings } = useConvexQuery(api.account.settings, {})
-const reminders = computed(() => (sites.value ?? []).some((s) => s.weekly))
-const { mutate: setRemind } = useConvexMutation(api.account.setRemindByMail)
-async function toggleRemind(on: boolean) {
-  problem.value = ''
-  try {
-    await setRemind({ on })
-  } catch (e) {
-    problem.value = opErrorOf(e).message
-  }
-}
-// The name the person's teams see instead of their email (history, conflicts, files). Saved on "Speichern".
-const { mutate: setName, pending: savingName } = useConvexMutation(api.account.setName)
-const { show } = useToast()
-const name = ref('')
-watch(() => settings.value?.name, (saved) => { name.value = saved ?? '' }, { immediate: true })
-const nameChanged = computed(() => !!settings.value && name.value.trim() !== (settings.value.name ?? ''))
-async function saveName() {
-  problem.value = ''
-  try {
-    await setName({ name: name.value })
-    show(t('sites.nameSaved'))
-    // Saved, "Speichern" goes away with the focus on it: the focus stays in the name field.
-    document.getElementById('own-name')?.focus()
-  } catch (e) {
-    problem.value = opErrorOf(e).message
-  }
-}
-async function pickLocale(code: string) {
-  problem.value = ''
-  try {
-    await pick(code)
-  } catch (e) {
-    problem.value = opErrorOf(e).message
-  }
-}
 </script>
 
 <template>
-  <main class="mx-auto grid w-full max-w-sm gap-5 rounded-2xl border bg-card p-6 sm:p-8">
-    <h1 class="text-xl font-semibold tracking-tight">{{ t('sites.title') }}</h1>
+  <main class="grid grid-cols-[minmax(0,1fr)] gap-6">
+    <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+      <div class="grid gap-1">
+        <h1 class="text-[22px] font-semibold tracking-tight">{{ t('sites.title') }}</h1>
+        <p class="text-[15px] text-muted-foreground min-[900px]:text-sm">{{ t('sites.lede') }}</p>
+      </div>
+      <div v-if="many" class="relative w-full sm:w-64">
+        <SearchIcon class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <Input v-model="search" type="search" class="pl-9" :aria-label="t('sites.search')" :placeholder="t('sites.search')" />
+      </div>
+    </div>
     <p v-if="problem" class="text-destructive" role="alert">{{ problem }}</p>
-    <ul v-if="invites?.length" class="m-0 list-none overflow-hidden rounded-xl border border-primary p-0">
-      <li v-for="i in invites" :key="i.invite" class="grid gap-2.5 border-b px-4 py-3 last:border-b-0">
-        <p><I18nT k="sites.invitedTo" :params="{ site: i.site, role: t(`invite.role.${i.role}`) }"><template #site="{ text }"><strong class="font-medium">{{ text }}</strong></template></I18nT></p>
-        <Button type="button" size="sm" class="justify-self-start" :disabled="accepting.has(i.invite)" @click="accept(i.invite)">{{ t('sites.accept') }}</Button>
-      </li>
-    </ul>
+    <section v-if="invites?.length" class="grid gap-2" aria-labelledby="invites-title">
+      <h2 id="invites-title" class="text-[13px] font-medium text-muted-foreground">{{ t('sites.invites') }}</h2>
+      <ul class="m-0 grid list-none gap-2 p-0">
+        <li v-for="i in invites" :key="i.invite" class="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border border-primary/40 bg-card px-4 py-3">
+          <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground" aria-hidden="true"><MailIcon class="size-4" /></span>
+          <p class="min-w-0 flex-1 basis-48 text-[15px] min-[900px]:text-sm"><I18nT k="sites.invitedTo" :params="{ site: i.site, role: t(`invite.role.${i.role}`) }"><template #site="{ text }"><strong class="font-semibold">{{ text }}</strong></template></I18nT></p>
+          <Button type="button" size="sm" :disabled="accepting.has(i.invite)" @click="accept(i.invite)">{{ t('sites.accept') }}</Button>
+        </li>
+      </ul>
+    </section>
     <p v-if="error" class="text-destructive">{{ opErrorOf(error).message }}</p>
     <p v-else-if="sites && sites.length === 0 && invites?.length === 0" class="text-muted-foreground">{{ t('sites.empty') }}</p>
     <template v-else-if="sorted.length">
-      <Input v-if="many" v-model="search" type="search" :aria-label="t('sites.search')" :placeholder="t('sites.search')" />
       <section v-for="g in groups" :key="g.id" class="grid gap-2" :aria-labelledby="g.heading ? `sites-${g.id}` : undefined">
         <h2 v-if="g.heading" :id="`sites-${g.id}`" class="text-[13px] font-medium text-muted-foreground">{{ g.heading }}</h2>
-        <ul v-if="g.rows.length" class="m-0 list-none overflow-hidden rounded-xl border p-0">
-          <li v-for="s in g.rows" :key="s.slug" class="border-b last:border-b-0">
-            <NuxtLink :to="`/s/${s.slug}`" class="flex min-h-14 items-center text-foreground justify-between gap-3 px-4 py-3 outline-none transition-colors hover:bg-muted/55 focus-visible:bg-muted">
-              <span class="grid min-w-0 gap-0.5">
-                <span class="truncate font-medium">{{ s.name }}</span>
-                <span class="truncate text-[13px] text-muted-foreground">{{ siteHost(s.url) }}</span>
-              </span>
-              <span v-if="s.deleting || mixedRoles" class="flex shrink-0 flex-wrap justify-end gap-1.5">
-                <Badge v-if="s.deleting" variant="warning">{{ t('sites.deleting') }}</Badge>
-                <Badge v-if="mixedRoles" variant="soft">{{ t(`sites.role.${s.role}`) }}</Badge>
-              </span>
-            </NuxtLink>
+        <ul v-if="g.rows.length" class="m-0 list-none divide-y overflow-hidden rounded-xl border bg-card p-0">
+          <!-- The whole row opens the site; its one link is the name, stretched over the row. -->
+          <li v-for="s in g.rows" :key="s.slug" class="relative flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-foreground/[0.03] has-[a:focus-visible]:bg-foreground/[0.03]">
+            <span class="grid size-10 shrink-0 place-items-center rounded-lg border border-primary font-semibold text-primary" aria-hidden="true">{{ s.name.charAt(0).toUpperCase() }}</span>
+            <span class="grid min-w-0 flex-1 gap-0.5">
+              <NuxtLink :to="`/s/${s.slug}`" class="truncate font-semibold text-foreground outline-none after:absolute after:inset-0 focus-visible:after:ring-3 focus-visible:after:ring-ring/80 focus-visible:after:ring-inset min-[900px]:text-[15px]">{{ s.name }}</NuxtLink>
+              <span class="truncate text-[13px] text-muted-foreground">{{ siteHost(s.url) }}</span>
+            </span>
+            <span v-if="s.deleting || mixedRoles" class="flex shrink-0 flex-wrap justify-end gap-1.5">
+              <Badge v-if="s.deleting" variant="warning">{{ t('sites.deleting') }}</Badge>
+              <Badge v-if="mixedRoles" variant="soft">{{ t(`sites.role.${s.role}`) }}</Badge>
+            </span>
+            <ChevronRightIcon class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           </li>
         </ul>
         <p v-else class="text-muted-foreground" role="status">{{ t('sites.noMatch', { query: search.trim() }) }}</p>
       </section>
     </template>
-    <form v-if="settings" class="grid gap-2" @submit.prevent="saveName">
-      <label for="own-name" class="font-medium">{{ t('sites.name') }}</label>
-      <Input id="own-name" v-model="name" maxlength="60" autocomplete="name" aria-describedby="own-name-hint" />
-      <p id="own-name-hint" class="text-[13px] text-muted-foreground">{{ t('sites.nameHint') }}</p>
-      <Button v-if="nameChanged" type="submit" size="sm" class="justify-self-start" :disabled="savingName">{{ t('site.common.save') }}</Button>
-    </form>
-    <div v-if="settings && reminders" class="flex items-start gap-3.5">
-      <Switch id="remind" class="mt-0.5" :model-value="settings.remindByMail" @update:model-value="toggleRemind" />
-      <label for="remind" class="grid cursor-pointer gap-0.5">
-        <strong class="font-medium">{{ t('sites.remindTitle') }}</strong>
-        <span class="text-[13px] text-muted-foreground">{{ t('sites.remindText') }}</span>
-      </label>
-    </div>
-    <div class="grid gap-2" role="group" aria-labelledby="language-label">
-      <strong id="language-label" class="font-medium">{{ t('sites.language') }}</strong>
-      <ToggleGroup type="single" variant="segmented" aria-labelledby="language-label" :model-value="locale" @update:model-value="(code) => code && pickLocale(code as string)">
-        <ToggleGroupItem v-for="l in locales" :key="l.code" :value="l.code" :lang="l.language" class="px-3">{{ localeLabel(l) }}</ToggleGroupItem>
-      </ToggleGroup>
-    </div>
-    <DeleteAccount />
-    <SignOut />
   </main>
 </template>

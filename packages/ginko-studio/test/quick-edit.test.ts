@@ -94,8 +94,9 @@ const DAY = 86_400_000
 // when the button went away.
 test.each([
   // current, expired, rows before / after "Abgelaufene anzeigen", area link before / after, first expired row shown
-  [52, 2, 50, 52, true, true, 'Alt 0'],
-  [30, 120, 30, 80, false, true, 'Alt 70'],
+  // A list of more than 10 shows its first 5; "Abgelaufene anzeigen" opens the whole current list before them.
+  [52, 2, 5, 52, true, true, 'Alt 0'],
+  [30, 120, 5, 80, false, true, 'Alt 70'],
 ])('%i current and %i expired entries: %i rows, then %i', async (current, expiredCount, before, after, linkBefore, linkAfter, firstExpired) => {
   // The expired ones ended one day after another, the last on 2026-09-28 at most: "Alt 119" ended last.
   const ended = (i: number) => new Date(Date.UTC(2026, 5, 1) + i * DAY).toISOString().slice(0, 10)
@@ -106,7 +107,7 @@ test.each([
   })
   await flushPromises()
   const allIn = () => wrapper.find('a[href="/s/restaurant/all/notices"]')
-  const titles = () => wrapper.findAll('li').map((li) => li.find('.font-medium').text())
+  const titles = () => wrapper.get('section[aria-labelledby="b-notices"]').findAll('li').map((li) => li.find('.font-medium').text())
   expect([titles().length, allIn().exists()]).toEqual([before, linkBefore])
   await wrapper.findAll('button').find((b) => b.text() === `Abgelaufene anzeigen (${expiredCount})`)!.trigger('click')
   expect([titles().length, allIn().exists() && allIn().text(), titles()[Math.min(current, 50)]]).toEqual([after, linkAfter && 'Alle in „Hinweise“ ansehen', firstExpired])
@@ -134,10 +135,8 @@ test('Heute lists this person\'s unsaved input on this site, newest first, and e
       global: { stubs: { TaskSheet: { name: 'TaskSheet', props: ['task', 'brickKey'], template: '<div />' }, PickSheet: true, I18nT: true, NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
     })
     await flushPromises()
-    const section = wrapper.get('section[aria-labelledby="local-drafts"]')
-    expect(section.get('h2').text()).toBe('Noch nicht gespeichert')
-    const rows = section.findAll('li')
-    expect(rows.map((li) => li.find('span').text().replace(/ · .*/, ''))).toEqual(['Hinweise: Neuer Eintrag', '„Betriebsurlaub“'])
+    const rows = wrapper.findAll('li[data-test="unsaved"]')
+    expect(rows.map((li) => li.get('p').text().replace(/ · .*/, ''))).toEqual(['Hinweise: Neuer Eintrag', '„Betriebsurlaub“'])
     expect(rows[1]!.get('a').attributes('href')).toBe('/s/restaurant/all/notices/e7')
     await rows[0]!.get('button').trigger('click')
     expect(wrapper.findComponent({ name: 'TaskSheet' }).props()).toMatchObject({ brickKey: 'notices', task: { id: 'add' } })
@@ -224,6 +223,35 @@ describe('planning a week ahead (lunchPlans)', () => {
   })
 })
 
+// Wrong behaviour caught: a rare task started from the "⋯" menu left the focus on <body> when its sheet closed, so
+// keyboard users started over at the top of the page.
+test('a task from the "⋯" menu gives the focus back to the menu button when its sheet closes', async () => {
+  schema = serializeSchema(restaurant)
+  listed = []
+  const pick = { name: 'PickSheet', props: ['task'], emits: ['close'], template: '<button type="button" data-test="pick" @click="$emit(\'close\')">{{ task.id }}</button>' }
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(QuickPage) }) }), {
+    attachTo: document.body,
+    global: { stubs: { TaskSheet: true, PickSheet: pick, I18nT: true, NuxtLink: true } },
+  })
+  try {
+    await flushPromises()
+    const trigger = wrapper.get('button[aria-label="Weitere Aufgaben in „Speisekarte“"]')
+    ;(trigger.element as HTMLElement).focus()
+    await trigger.trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((el) => el.textContent?.trim() === 'Gericht entfernen')!
+    item.click()
+    await flushPromises()
+    expect(wrapper.get('[data-test="pick"]').text()).toBe('remove')
+    await wrapper.get('[data-test="pick"]').trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(trigger.element)
+  } finally {
+    wrapper.unmount()
+    schema = notices
+  }
+})
+
 describe('own proposals on Schnell ändern', () => {
   const lunch = { _id: 'lunch1', brick: 'lunch', kind: 'single', order: 1, rev: 1, lifeRev: 1, fieldRevs: {}, prints: {}, data: { weekOf: '2026-10-12', days: [] } }
   const proposal = (over: Record<string, unknown>) => ({
@@ -248,8 +276,10 @@ describe('own proposals on Schnell ändern', () => {
     try {
       const wrapper = await page()
       expect(wrapper.get('[data-test="own-waiting"]').text()).toBe('Preis von „Saibling“ geändert · Wartet auf Freigabe, eingereicht 15.10.2026, 10:00.')
-      const rejected = wrapper.get('[data-test="own-rejected"]')
+      const rejected = wrapper.get('li[data-test="own-rejected"]')
       expect(rejected.text()).toContain('Nicht freigegeben: „Bitte mit Preis.“')
+      // The tile has the action; the lunch card keeps a note of it.
+      expect(wrapper.get('section[aria-labelledby="b-lunch"] [data-test="own-rejected-note"]').text()).toBe('Hinweis von „Mittagsmenü“ geändert · Nicht freigegeben, siehe oben.')
       await rejected.get('button').trigger('click')
       expect(wrapper.get('[data-test="sheet"]').text()).toBe('lunch.lunchWeek on lunch1, reopen p1')
       wrapper.unmount()
@@ -315,7 +345,7 @@ test('a drafts collection lists its drafts apart from what is on the website, st
     })
     const staff = page()
     await flushPromises()
-    expect(staff.findAll('li').map((li) => li.text())).toEqual(['Onlinebis 20.10.2026', 'Mein EntwurfEntwurf seit Mi., 14. Okt., 09:00Veröffentlichen'])
+    expect(staff.get('section[aria-labelledby="b-notices"]').findAll('li').map((li) => li.text())).toEqual(['Onlinebis 20.10.2026', 'Mein EntwurfEntwurf seit Mi., 14. Okt., 09:00Veröffentlichen'])
     staff.unmount()
 
     manager = true

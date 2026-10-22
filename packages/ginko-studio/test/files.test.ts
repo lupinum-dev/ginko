@@ -203,7 +203,7 @@ describe('info panel alt text', () => {
   }
 
   // Wrong behaviour caught: the description typed in the Files library is lost (not sent, or sent for the wrong language).
-  test('the library text is saved on blur for its language and shows "Saved"; the suggestion is only a placeholder', async () => {
+  test('the library text is saved on blur for its language and shows "Saved" until the next keystroke; the suggestion is only a placeholder', async () => {
     library.altSuggestion = { de: 'Vorschlag' }
     library.alt = { de: 'Bibliothek' }
     const setAlt = vi.fn(async () => {})
@@ -220,6 +220,11 @@ describe('info panel alt text', () => {
     await flushPromises()
     expect(setAlt).toHaveBeenCalledWith('f1', 'en', 'Team at lunch')
     expect(text()).toContain('Gespeichert')
+    // Typing again means the field is not saved any more: "Gespeichert" goes.
+    en.value = 'Team at lunch, outside'
+    en.dispatchEvent(new Event('input', { bubbles: true }))
+    await flushPromises()
+    expect(text()).not.toContain('Gespeichert')
   })
 })
 

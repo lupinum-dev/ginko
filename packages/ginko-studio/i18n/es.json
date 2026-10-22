@@ -26,7 +26,9 @@
     "account": "Cuenta",
     "toReviewCount": "{count} por revisar",
     "translations": "Traducciones",
-    "translationsOpen": "{count, plural, one {# pendiente} other {# pendientes}}"
+    "translationsOpen": "{count, plural, one {# pendiente} other {# pendientes}}",
+    "crumbs": "Estás aquí",
+    "accountPage": "Ajustes de la cuenta"
   },
   "sites": {
     "title": "Mis sitios",
@@ -53,7 +55,9 @@
       "title": "Eliminar cuenta",
       "text": "Se eliminan tu cuenta, tus membresías y tu inicio de sesión. Los cambios que hiciste permanecen en el historial como “Antiguo miembro”.",
       "button": "Eliminar mi cuenta"
-    }
+    },
+    "lede": "Elige un sitio para editar su contenido.",
+    "invites": "Invitaciones"
   },
   "login": {
     "title": "Iniciar sesión",
@@ -206,7 +210,12 @@
       "needsTitle": "La vista previa muestra la página en cuanto rellenes “{field}”.",
       "untranslated": "Aún no está traducido al {language}. Hasta entonces, la entrada no aparece en el sitio web en este idioma.",
       "untranslatedListed": "Aún no está traducido al {language}. Hasta entonces, la entrada no tiene página propia en este idioma. Las listas la muestran en {main}.",
-      "openSite": "Abrir sitio web"
+      "openSite": "Abrir sitio web",
+      "device": "Mostrar el sitio web como",
+      "desktop": "Escritorio",
+      "phone": "Móvil",
+      "open": "Abrir",
+      "ended": "El sitio web ya no muestra esto: se mostró hasta el {date}. Con una fecha posterior vuelve a aparecer."
     },
     "remove": {
       "title": "Eliminar entrada",
@@ -243,9 +252,6 @@
       "empty": "No se encontró nada."
     },
     "changes": {
-      "justNow": "ahora mismo",
-      "minutesAgo": "hace {count} min",
-      "hoursAgo": "hace {count} h",
       "undo": "Deshacer",
       "undone": "Deshecho",
       "empty": "Aún no hay cambios."
@@ -268,7 +274,13 @@
       "text": "“{field}” es mucho más corto que antes: {after} en lugar de {before} caracteres.",
       "files": "{count, plural, one {# archivo} other {# archivos}} menos."
     },
-    "groupHasGaps": "Falta la traducción o está desactualizada"
+    "groupHasGaps": "Falta la traducción o está desactualizada",
+    "side": {
+      "label": "Detalles",
+      "status": "Estado",
+      "draftNote": "Todavía no está en el sitio web. Publícalo cuando esté listo.",
+      "scheduledNote": "Se publica solo a esa hora."
+    }
   },
   "site": {
     "zoneNote": "Todas las horas están en la zona horaria del sitio web ({zone}).",
@@ -315,7 +327,6 @@
       "flagText": "“{text}”",
       "clearToday": "Quitar",
       "notFilled": "Aún sin completar",
-      "notThisWeek": ", aún no para esta semana",
       "plannedWeek": "{label} {date}, planificado con antelación",
       "nothingNow": "No hay nada introducido por ahora.",
       "removeNamed": "Eliminar {title}",
@@ -329,7 +340,9 @@
         "heading": "Aún sin guardar",
         "titled": "“{title}” · {time}",
         "untitled": "{area}: entrada nueva · {time}",
-        "continue": "Seguir editando"
+        "continue": "Seguir editando",
+        "name": "“{title}”",
+        "newIn": "{area}: entrada nueva"
       }
     },
     "all": {
@@ -346,7 +359,21 @@
       "shownOf": "{shown} de {total} entradas",
       "searching": "Buscando…",
       "removed": "En la papelera (se puede restaurar durante 30 días)",
-      "restore": "Restaurar"
+      "restore": "Restaurar",
+      "overview": "Resumen",
+      "areas": "Áreas",
+      "areaList": "Mostrar u ocultar la lista de áreas",
+      "notSaved": "Sin guardar",
+      "colArea": "Área",
+      "colContent": "Contenido",
+      "colChanged": "Último cambio",
+      "single": "Página única",
+      "entries": "{count, plural, =0 {Sin entradas} one {# entrada} other {# entradas}}",
+      "drafts": "{count, plural, one {# borrador} other {# borradores}}",
+      "endedCount": "{count, plural, one {# terminado} other {# terminados}}",
+      "translationsOpen": "{lang}: {count} pendientes",
+      "todayAt": "Hoy, {time}",
+      "singles": "Páginas únicas"
     },
     "area": {
       "missing": "Esta área no existe.",
@@ -358,7 +385,7 @@
     "delete": {
       "title": "Eliminar sitio",
       "text": "Todo el contenido, los archivos, el historial y el acceso de {site} se eliminan 7 días después de que lo confirmes. Hasta entonces puedes cancelar.",
-      "confirmLabel": "Escribe {slug} para confirmar",
+      "confirmLabel": "Escribe <slug>{slug}</slug> para confirmar",
       "button": "Eliminar sitio"
     },
     "deleting": {
@@ -366,7 +393,6 @@
       "cancel": "Cancelar eliminación"
     },
     "team": {
-      "heading": "Equipo",
       "ownersOnly": "Solo los propietarios pueden ver el equipo.",
       "members": "Miembros",
       "you": "Tú",
@@ -390,11 +416,11 @@
       "sendInvite": "Enviar invitación",
       "inviteSent": "Invitación enviada a {email}.",
       "keysOfMember": "Claves que creó {email} ({count})",
-      "keysStay": "Estas claves pertenecen al sitio y siguen funcionando hasta que las revoques. Si una clave aún se necesita, por ejemplo para la publicación automática, consérvala."
+      "keysStay": "Estas claves pertenecen al sitio y siguen funcionando hasta que las revoques. Si una clave aún se necesita, por ejemplo para la publicación automática, consérvala.",
+      "actionsFor": "Acciones para {name}"
     },
     "ai": {
-      "heading": "Conectar IA",
-      "lead": "Tu asistente de IA podrá entonces hacer tareas por ti, por ejemplo “{first}” o “{second}”. Puede hacer exactamente lo que tú puedes hacer aquí. Cada cambio aparece en el historial como “vía IA” y se puede deshacer.",
+      "lead": "Conecta tu asistente de IA con una clave. Podrá entonces hacer tareas por ti, por ejemplo “{first}” o “{second}”.",
       "exampleOne": "Corrige una errata",
       "exampleTwo": "Acorta el primer párrafo",
       "keyFor": "Clave para “{label}”",
@@ -420,7 +446,14 @@
       "revokeConfirm": "Después, “{label}” ya no podrá hacer cambios.",
       "reviewOn": "Los cambios esperan aprobación.",
       "reviewOff": "Los cambios se publican sin aprobación.",
-      "reviewLikeYou": "Lo que espera aprobación cuando lo haces tú también espera aquí. Lo demás se publica sin aprobación."
+      "reviewLikeYou": "Lo que espera aprobación cuando lo haces tú también espera aquí. Lo demás se publica sin aprobación.",
+      "how": {
+        "title": "Cómo funciona",
+        "tasks": "Tu asistente puede hacer exactamente lo que tú puedes hacer aquí, nada más.",
+        "history": "Cada cambio aparece en el historial, marcado “vía IA”, y se puede deshacer.",
+        "review": "Si un cambio necesita aprobación, espera en Revisar, igual que tus propios cambios.",
+        "assistants": "Funciona con asistentes compatibles con MCP, por ejemplo Claude, ChatGPT o Cursor."
+      }
     },
     "keys": {
       "heading": "Claves de publicación",
@@ -456,7 +489,10 @@
       "hint": "Para hacer espacio, elimina entradas o acorta textos largos. Las entradas eliminadas, las imágenes y los PDF no cuentan.",
       "entriesHint": "Para hacer espacio, elimina entradas. Las entradas eliminadas no cuentan.",
       "dismiss": "Ocultar aviso",
-      "usage": "Espacio para textos: {used} de {limit} ocupados, {count} de {max} entradas. Las imágenes y los PDF no cuentan."
+      "title": "Espacio para textos",
+      "textUsed": "{used} de {limit} ocupados",
+      "entriesUsed": "{count} de {limit} entradas",
+      "filesFree": "Las imágenes y los PDF no cuentan."
     },
     "backup": {
       "heading": "Copia de seguridad",
@@ -703,14 +739,14 @@
       "processing": "Procesando…",
       "blocked": "La foto aún se está procesando. Espera un momento.",
       "failed": "No se pudo subir la foto. Inténtalo de nuevo.",
-      "tooLarge": "El archivo es demasiado grande (máximo {max} MB).",
       "pick": "Elegir foto",
       "other": "Otra foto",
       "alt": "Descripción de la imagen",
       "altHint": "¿Qué se ve en la foto? Para las personas que no pueden ver la imagen.",
       "altFromLibrary": "Déjalo vacío para usar la descripción de Archivos.",
       "noneToTranslate": "Aún no hay foto, así que no hay nada que traducir.",
-      "chooseInMain": "La imagen en sí se cambia en la versión en {name}."
+      "chooseInMain": "La imagen en sí se cambia en la versión en {name}.",
+      "drop": "O arrastra una foto aquí."
     },
     "money": {
       "negative": "Un precio no puede ser negativo.",
@@ -737,7 +773,13 @@
       "confirmBlocker": "Confirma para “{title}”: ¿sigue todo correcto en {label}?",
       "changed": "{changed} ha cambiado. ¿Sigue todo correcto en {label}?",
       "add": "Añadir {item}",
-      "addInMain": "Las filas se añaden, quitan y mueven en la versión en {name}."
+      "addInMain": "Las filas se añaden, quitan y mueven en la versión en {name}.",
+      "photoHint": "Describe cada foto en pocas palabras: ¿qué se ve? Para personas que no pueden ver las imágenes.",
+      "moveEarlier": "Mover {title} antes",
+      "moveLater": "Mover {title} después",
+      "photoMenu": "Acciones para {title}",
+      "earlier": "Mover antes",
+      "later": "Mover después"
     }
   },
   "ops": {
@@ -811,7 +853,14 @@
       "after": "Después",
       "reordered": "El orden cambió",
       "picture": "Imagen"
-    }
+    },
+    "countOne": "1 cambio espera tu decisión.",
+    "countMany": "{count} cambios esperan tu decisión.",
+    "emptyHint": "Cuando alguien de tu equipo o una IA propone un cambio, aparece aquí, el más antiguo primero.",
+    "queue": "Cambios por revisar",
+    "openEntry": "Abrir entrada",
+    "gone": "Este cambio ya se decidió o se retiró.",
+    "onlyReject": "Ya no encaja, así que solo se puede rechazar."
   },
   "history": {
     "filter": {
@@ -848,7 +897,12 @@
     },
     "loadFailed": "No se pudo cargar el historial. Vuelve a cargar la página.",
     "fix": "Corregir",
-    "approval": "Aprobación: {who}"
+    "approval": "Aprobación: {who}",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "more": "Más acciones",
+    "detail": "Cambios",
+    "detailEmpty": "Elige «Mostrar cambios» en un cambio para ver aquí el antes y el después."
   },
   "basics": {
     "search": {
@@ -869,7 +923,9 @@
       "newIn": "Nuevo en {area}",
       "review": "Revisar",
       "empty": "No se encontró nada para “{query}”.",
-      "failed": "La búsqueda no ha funcionado ahora mismo."
+      "failed": "La búsqueda no ha funcionado ahora mismo.",
+      "keyOpen": "Abrir",
+      "keyNewTab": "Pestaña nueva"
     },
     "update": {
       "menu": "Actualizar el sitio web ahora",
@@ -1025,7 +1081,14 @@
       "usePhoto": "Usar esta foto",
       "useFile": "Usar este archivo",
       "altFromLibrary": "Esta descripción viene de Archivos. Si la cambias aquí, solo se aplica en este lugar."
-    }
+    },
+    "folderOptions": "Opciones de {name}",
+    "renameFolder": "Cambiar nombre",
+    "deleteFolder": "Eliminar carpeta",
+    "deleteFolderText": "¿Eliminar la carpeta {name}? Solo se puede eliminar una carpeta vacía: mueve antes sus archivos a otra carpeta.",
+    "delete": "Eliminar",
+    "dropPhotos": "Fotos: {types}, hasta {size}",
+    "dropPdf": "PDF hasta {size}"
   },
   "who": {
     "member": "Un miembro del equipo",
@@ -1038,5 +1101,39 @@
   },
   "ui": {
     "close": "Cerrar"
+  },
+  "account": {
+    "lede": "Ajustes para ti. Cada sitio tiene sus propios ajustes dentro del sitio.",
+    "email": "Correo electrónico",
+    "emailHint": "Inicias sesión con esta dirección.",
+    "languageHint": "El idioma del Studio. El contenido de tus sitios mantiene sus propios idiomas.",
+    "signIn": "Inicio de sesión",
+    "signInHint": "Cierra la sesión aquí o en todos los demás dispositivos donde sigas conectado."
+  },
+  "today": {
+    "week": {
+      "stored": "{label} {date}",
+      "stale": "{week}, aún no para esta semana"
+    },
+    "verdict": {
+      "none": "Hoy nada te necesita.",
+      "some": "{count, plural, one {Hoy te espera una cosa.} other {Hoy te esperan # cosas.}}",
+      "due": "Pendiente:"
+    },
+    "loadFailed": "No se pudo cargar el estado de las áreas. Las tareas siguen funcionando.",
+    "waiting": {
+      "label": "Te espera",
+      "more": "{count} más",
+      "inHistory": "Ver en el historial"
+    },
+    "due": {
+      "badge": "Pendiente"
+    },
+    "moreTasks": "Más tareas en «{area}»",
+    "rows": {
+      "label": "En el sitio web"
+    },
+    "nothingOnline": "Ahora no hay nada en el sitio web.",
+    "rejectedNote": "{line} · No aprobado, ver arriba."
   }
 }

@@ -1,5 +1,8 @@
 <!-- A run of fields of one entry form. Fields whose `showWhen` does not match stay mounted and hidden (their input stays).
-     A choices field with `askAgainWhen` asks "Noch richtig?" when the text it names changed and the choice did not. -->
+     A choices field with `askAgainWhen` asks "Noch richtig?" when the text it names changed and the choice did not.
+     Where the form is wide enough, short fields sit side by side on a 6-column grid (design A): number, money, time and
+     a choice shown as a select take 2 columns, a date (with its shortcuts) 3, every other field the whole row. The
+     DOM order stays the reading and tab order; narrow forms (phones) keep one column. -->
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, watchEffect } from 'vue'
 import { useI18n } from '#imports'
@@ -49,6 +52,13 @@ const fieldProps = (key: string, field: Field) => ({
   field, modelValue: props.draft[key], baseline: props.baseline[key], path: key,
   locale: props.locale, locales: props.locales, issues: props.issues, route: props.route, weeks: props.weeks?.(key),
 })
+/** The columns a field takes on the 6-column grid. A week date has three shortcuts, so it takes the whole row. */
+function span(key: string, field: Field) {
+  if (field.type === 'number' || field.type === 'money' || field.type === 'time') return 'min-w-0 content-start col-span-6 @lg:col-span-2'
+  if (field.type === 'choice' && field.options.length > 5) return 'min-w-0 content-start col-span-6 @lg:col-span-2'
+  if (field.type === 'date' && !props.weeks?.(key)?.length) return 'min-w-0 content-start col-span-6 @lg:col-span-3'
+  return 'min-w-0 content-start col-span-6'
+}
 const confirm = (key: string, field: Field) => stillRight.confirm(blockerKey(key), textIn(props.draft[askedKey(field)!], main.value))
 
 watchEffect(() => {
@@ -62,14 +72,18 @@ onBeforeUnmount(() => { if (blockers) for (const [key] of props.entries) blocker
 </script>
 
 <template>
-  <template v-for="[key, field] in entries" :key="key">
-    <div v-if="askedKey(field) !== undefined" v-show="isShown(field, draft)" :class="{ 'rounded-md bg-warning/10 p-3': showAsk(key) }">
-      <GinkoField v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
-      <div v-if="showAsk(key)" class="check mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-warning">
-        <p>{{ t('fields.list.changed', { changed: askedLabel(field), label: labelText(field.label) }) }}</p>
-        <Button type="button" variant="outline" size="sm" @click="confirm(key, field)">{{ t('fields.list.confirm') }}</Button>
+  <!-- The grid is its own size container: the columns follow the form's width, not the window's. Every field spans
+       the whole row until the form is 32rem wide. -->
+  <div v-if="entries.length" class="@container grid grid-cols-6 gap-x-4 gap-y-5">
+    <template v-for="[key, field] in entries" :key="key">
+      <div v-if="askedKey(field) !== undefined" v-show="isShown(field, draft)" :class="[span(key, field), { 'rounded-lg bg-warning/10 p-3': showAsk(key) }]">
+        <GinkoField v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
+        <div v-if="showAsk(key)" class="check mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-warning">
+          <p>{{ t('fields.list.changed', { changed: askedLabel(field), label: labelText(field.label) }) }}</p>
+          <Button type="button" variant="outline" size="sm" @click="confirm(key, field)">{{ t('fields.list.confirm') }}</Button>
+        </div>
       </div>
-    </div>
-    <GinkoField v-else v-show="isShown(field, draft)" v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
-  </template>
+      <GinkoField v-else v-show="isShown(field, draft)" :class="span(key, field)" v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
+    </template>
+  </div>
 </template>

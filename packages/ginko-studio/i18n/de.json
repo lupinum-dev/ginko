@@ -26,7 +26,9 @@
     "account": "Konto",
     "toReviewCount": "{count} zu prüfen",
     "translations": "Übersetzungen",
-    "translationsOpen": "{count} offen"
+    "translationsOpen": "{count} offen",
+    "crumbs": "Du bist hier",
+    "accountPage": "Kontoeinstellungen"
   },
   "sites": {
     "title": "Meine Seiten",
@@ -53,7 +55,9 @@
       "title": "Konto löschen",
       "text": "Dein Konto, deine Mitgliedschaften und deine Anmeldung werden entfernt. Änderungen von dir bleiben im Verlauf als „Ehemaliges Mitglied“ erhalten.",
       "button": "Mein Konto löschen"
-    }
+    },
+    "lede": "Wähle eine Seite, um ihre Inhalte zu bearbeiten.",
+    "invites": "Einladungen"
   },
   "login": {
     "title": "Anmelden",
@@ -206,7 +210,12 @@
       "needsTitle": "Die Vorschau zeigt die Seite, sobald „{field}“ ausgefüllt ist.",
       "untranslated": "Noch nicht auf {language} übersetzt. Bis dahin ist der Eintrag auf der Website in dieser Sprache nicht zu sehen.",
       "untranslatedListed": "Noch nicht auf {language} übersetzt. Bis dahin hat der Eintrag in dieser Sprache keine eigene Seite. Listen zeigen ihn auf {main}.",
-      "openSite": "Website öffnen"
+      "openSite": "Website öffnen",
+      "device": "Website anzeigen als",
+      "desktop": "Desktop",
+      "phone": "Handy",
+      "open": "Öffnen",
+      "ended": "Die Website zeigt das nicht mehr: Es war bis zum {date} zu sehen. Mit einem späteren Datum ist es wieder zu sehen."
     },
     "remove": {
       "title": "Eintrag entfernen",
@@ -243,9 +252,6 @@
       "empty": "Nichts gefunden."
     },
     "changes": {
-      "justNow": "gerade eben",
-      "minutesAgo": "vor {count} Min.",
-      "hoursAgo": "vor {count} Std.",
       "undo": "Rückgängig",
       "undone": "Rückgängig gemacht",
       "empty": "Noch keine Änderungen."
@@ -268,7 +274,13 @@
       "text": "„{field}“ ist viel kürzer als vorher: {after} statt {before} Zeichen.",
       "files": "{count, plural, one {# Datei} other {# Dateien}} weniger."
     },
-    "groupHasGaps": "Übersetzung fehlt oder ist veraltet"
+    "groupHasGaps": "Übersetzung fehlt oder ist veraltet",
+    "side": {
+      "label": "Details",
+      "status": "Status",
+      "draftNote": "Noch nicht auf der Website. Veröffentliche es, wenn es fertig ist.",
+      "scheduledNote": "Es geht zu diesem Zeitpunkt von selbst online."
+    }
   },
   "site": {
     "zoneNote": "Alle Zeiten in der Zeitzone der Website ({zone}).",
@@ -315,7 +327,6 @@
       "flagText": "„{text}“",
       "clearToday": "Aufheben",
       "notFilled": "Noch nicht ausgefüllt",
-      "notThisWeek": ", noch nicht für diese Woche",
       "plannedWeek": "{label} {date}, im Voraus geplant",
       "nothingNow": "Gerade nichts eingetragen.",
       "removeNamed": "{title} entfernen",
@@ -329,7 +340,9 @@
         "heading": "Noch nicht gespeichert",
         "titled": "„{title}“ · {time}",
         "untitled": "{area}: Neuer Eintrag · {time}",
-        "continue": "Weiter bearbeiten"
+        "continue": "Weiter bearbeiten",
+        "name": "„{title}“",
+        "newIn": "{area}: Neuer Eintrag"
       }
     },
     "all": {
@@ -346,7 +359,21 @@
       "shownOf": "{shown} von {total} Einträgen",
       "searching": "Suche …",
       "removed": "Im Papierkorb (30 Tage wiederherstellbar)",
-      "restore": "Wiederherstellen"
+      "restore": "Wiederherstellen",
+      "overview": "Übersicht",
+      "areas": "Bereiche",
+      "areaList": "Liste der Bereiche zeigen oder ausblenden",
+      "notSaved": "Nicht gespeichert",
+      "colArea": "Bereich",
+      "colContent": "Inhalt",
+      "colChanged": "Letzte Änderung",
+      "single": "Einzelne Seite",
+      "entries": "{count, plural, =0 {Keine Einträge} one {# Eintrag} other {# Einträge}}",
+      "drafts": "{count, plural, one {# Entwurf} other {# Entwürfe}}",
+      "endedCount": "{count} vorbei",
+      "translationsOpen": "{lang}: {count} offen",
+      "todayAt": "Heute, {time}",
+      "singles": "Einzelne Seiten"
     },
     "area": {
       "missing": "Diesen Bereich gibt es nicht.",
@@ -358,7 +385,7 @@
     "delete": {
       "title": "Seite löschen",
       "text": "Alle Inhalte, Dateien, der Verlauf und der Zugang von {site} werden 7 Tage nach deiner Bestätigung gelöscht. Bis dahin kannst du abbrechen.",
-      "confirmLabel": "Zur Bestätigung {slug} eingeben",
+      "confirmLabel": "Zur Bestätigung <slug>{slug}</slug> eingeben",
       "button": "Seite löschen"
     },
     "deleting": {
@@ -366,7 +393,6 @@
       "cancel": "Löschung abbrechen"
     },
     "team": {
-      "heading": "Team",
       "ownersOnly": "Nur Inhaber sehen das Team.",
       "members": "Mitglieder",
       "you": "Du",
@@ -390,11 +416,11 @@
       "sendInvite": "Einladung senden",
       "inviteSent": "Einladung an {email} gesendet.",
       "keysOfMember": "Schlüssel, die {email} erstellt hat ({count})",
-      "keysStay": "Diese Schlüssel gehören zur Seite und funktionieren weiter, bis du sie widerrufst. Wird ein Schlüssel noch gebraucht, zum Beispiel für die automatische Veröffentlichung, lass ihn bestehen."
+      "keysStay": "Diese Schlüssel gehören zur Seite und funktionieren weiter, bis du sie widerrufst. Wird ein Schlüssel noch gebraucht, zum Beispiel für die automatische Veröffentlichung, lass ihn bestehen.",
+      "actionsFor": "Aktionen für {name}"
     },
     "ai": {
-      "heading": "Mit KI verbinden",
-      "lead": "Dein KI-Assistent kann dann für dich Aufgaben erledigen, zum Beispiel „{first}“ oder „{second}“. Er darf genau das, was du hier darfst. Jede Änderung steht im Verlauf als „über KI“ und lässt sich rückgängig machen.",
+      "lead": "Verbinde deinen KI-Assistenten mit einem Schlüssel. Er kann dann für dich Aufgaben erledigen, zum Beispiel „{first}“ oder „{second}“.",
       "exampleOne": "Korrigier einen Tippfehler",
       "exampleTwo": "Kürz den ersten Absatz",
       "keyFor": "Schlüssel für „{label}“",
@@ -420,7 +446,14 @@
       "revokeConfirm": "„{label}“ kann danach nichts mehr ändern.",
       "reviewOn": "Änderungen warten auf Freigabe.",
       "reviewOff": "Änderungen gehen ohne Freigabe online.",
-      "reviewLikeYou": "Was bei dir auf Freigabe wartet, wartet auch hier. Alles andere geht ohne Freigabe online."
+      "reviewLikeYou": "Was bei dir auf Freigabe wartet, wartet auch hier. Alles andere geht ohne Freigabe online.",
+      "how": {
+        "title": "So funktioniert es",
+        "tasks": "Dein Assistent darf genau das, was du hier darfst, nicht mehr.",
+        "history": "Jede Änderung steht im Verlauf, markiert mit „über KI“, und lässt sich rückgängig machen.",
+        "review": "Braucht eine Änderung eine Freigabe, wartet sie unter Prüfen, wie deine eigenen.",
+        "assistants": "Funktioniert mit Assistenten, die MCP unterstützen, zum Beispiel Claude, ChatGPT oder Cursor."
+      }
     },
     "keys": {
       "heading": "Schlüssel für Veröffentlichungen",
@@ -456,7 +489,10 @@
       "hint": "Platz schaffst du, indem du Einträge entfernst oder lange Texte kürzt. Entfernte Einträge, Bilder und PDFs zählen nicht mit.",
       "entriesHint": "Platz schaffst du, indem du Einträge entfernst. Entfernte Einträge zählen nicht mit.",
       "dismiss": "Hinweis ausblenden",
-      "usage": "Textspeicher: {used} von {limit} belegt, {count} von {max} Einträgen. Bilder und PDFs zählen nicht mit."
+      "title": "Textspeicher",
+      "textUsed": "{used} von {limit} belegt",
+      "entriesUsed": "{count} von {limit} Einträgen",
+      "filesFree": "Bilder und PDFs zählen nicht mit."
     },
     "backup": {
       "heading": "Sicherung",
@@ -703,14 +739,14 @@
       "processing": "Wird verarbeitet …",
       "blocked": "Das Foto wird noch verarbeitet. Bitte kurz warten.",
       "failed": "Das Bild konnte nicht hochgeladen werden. Bitte versuche es noch einmal.",
-      "tooLarge": "Die Datei ist zu groß (höchstens {max} MB).",
       "pick": "Foto wählen",
       "other": "Anderes Foto",
       "alt": "Bildbeschreibung",
       "altHint": "Was ist auf dem Foto zu sehen? Für Menschen, die das Bild nicht sehen.",
       "altFromLibrary": "Leer lassen, dann gilt die Beschreibung aus den Dateien.",
       "noneToTranslate": "Noch kein Foto, also nichts zu übersetzen.",
-      "chooseInMain": "Das Bild selbst änderst du auf {name}."
+      "chooseInMain": "Das Bild selbst änderst du auf {name}.",
+      "drop": "Oder ziehe ein Foto hierher."
     },
     "money": {
       "negative": "Ein Preis kann nicht negativ sein.",
@@ -737,7 +773,13 @@
       "confirmBlocker": "Bitte bestätige bei „{title}“: Sind die {label} noch richtig?",
       "changed": "{changed} geändert. Sind die {label} noch richtig?",
       "add": "{item} hinzufügen",
-      "addInMain": "Zeilen hinzufügen, entfernen und verschieben kannst du auf {name}."
+      "addInMain": "Zeilen hinzufügen, entfernen und verschieben kannst du auf {name}.",
+      "photoHint": "Beschreibe jedes Foto in wenigen Worten: Was ist zu sehen? Für Menschen, die die Bilder nicht sehen.",
+      "moveEarlier": "{title} nach vorne",
+      "moveLater": "{title} nach hinten",
+      "photoMenu": "Aktionen für {title}",
+      "earlier": "Nach vorne",
+      "later": "Nach hinten"
     }
   },
   "ops": {
@@ -811,7 +853,14 @@
       "after": "Nachher",
       "reordered": "Die Reihenfolge wurde geändert",
       "picture": "Bild"
-    }
+    },
+    "countOne": "1 Änderung wartet auf dich.",
+    "countMany": "{count} Änderungen warten auf dich.",
+    "emptyHint": "Wenn jemand aus deinem Team oder eine KI eine Änderung vorschlägt, steht sie hier, die älteste zuerst.",
+    "queue": "Änderungen zum Prüfen",
+    "openEntry": "Eintrag öffnen",
+    "gone": "Über diese Änderung wurde schon entschieden, oder sie wurde zurückgezogen.",
+    "onlyReject": "Sie passt nicht mehr, deshalb kann sie nur abgelehnt werden."
   },
   "history": {
     "filter": {
@@ -848,7 +897,12 @@
     },
     "loadFailed": "Der Verlauf konnte nicht geladen werden. Bitte die Seite neu laden.",
     "fix": "Korrigieren",
-    "approval": "Freigabe: {who}"
+    "approval": "Freigabe: {who}",
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "more": "Weitere Aktionen",
+    "detail": "Änderungen",
+    "detailEmpty": "Wähle bei einer Änderung „Änderungen anzeigen“, dann siehst du hier Vorher und Nachher."
   },
   "basics": {
     "search": {
@@ -869,7 +923,9 @@
       "newIn": "Neu: {area}",
       "review": "Prüfen",
       "empty": "Nichts gefunden für „{query}“.",
-      "failed": "Die Suche hat gerade nicht geklappt."
+      "failed": "Die Suche hat gerade nicht geklappt.",
+      "keyOpen": "Öffnen",
+      "keyNewTab": "Neuer Tab"
     },
     "update": {
       "menu": "Website jetzt aktualisieren",
@@ -1025,7 +1081,14 @@
       "usePhoto": "Dieses Foto verwenden",
       "useFile": "Diese Datei verwenden",
       "altFromLibrary": "Diese Beschreibung kommt aus den Dateien. Änderst du sie hier, gilt das nur an dieser Stelle."
-    }
+    },
+    "folderOptions": "Optionen für {name}",
+    "renameFolder": "Umbenennen",
+    "deleteFolder": "Ordner löschen",
+    "deleteFolderText": "Den Ordner {name} löschen? Nur ein leerer Ordner kann gelöscht werden: Verschiebe seine Dateien zuerst in einen anderen Ordner.",
+    "delete": "Löschen",
+    "dropPhotos": "Fotos: {types}, bis {size}",
+    "dropPdf": "PDF bis {size}"
   },
   "who": {
     "member": "Ein Mitglied",
@@ -1038,5 +1101,39 @@
   },
   "ui": {
     "close": "Schließen"
+  },
+  "account": {
+    "lede": "Einstellungen für dich. Jede Seite hat ihre eigenen Einstellungen in der Seite.",
+    "email": "E-Mail",
+    "emailHint": "Mit dieser Adresse meldest du dich an.",
+    "languageHint": "Die Sprache des Studios. Die Inhalte deiner Seiten behalten ihre eigenen Sprachen.",
+    "signIn": "Anmeldung",
+    "signInHint": "Hier abmelden, oder auf allen anderen Geräten, auf denen du noch angemeldet bist."
+  },
+  "today": {
+    "week": {
+      "stored": "{label} {date}",
+      "stale": "{week}, noch nicht für diese Woche"
+    },
+    "verdict": {
+      "none": "Heute braucht dich nichts.",
+      "some": "{count, plural, one {Heute wartet eine Sache auf dich.} other {Heute warten # Sachen auf dich.}}",
+      "due": "Fällig:"
+    },
+    "loadFailed": "Der Stand der Bereiche ließ sich nicht laden. Die Aufgaben funktionieren trotzdem.",
+    "waiting": {
+      "label": "Wartet auf dich",
+      "more": "{count} weitere",
+      "inHistory": "Im Verlauf ansehen"
+    },
+    "due": {
+      "badge": "Fällig"
+    },
+    "moreTasks": "Weitere Aufgaben in „{area}“",
+    "rows": {
+      "label": "Auf der Website"
+    },
+    "nothingOnline": "Gerade nichts auf der Website.",
+    "rejectedNote": "{line} · Nicht freigegeben, siehe oben."
   }
 }

@@ -3,7 +3,7 @@
 import { expect, test } from '@playwright/test'
 import { STATE } from './global-setup'
 
-test('a browser with en-US sees the English sign-in and "My sites"', async ({ browser, baseURL }) => {
+test('a browser with en-US sees the English sign-in, "My sites" and "Account settings"', async ({ browser, baseURL }) => {
   const visitor = await browser.newContext({ baseURL, locale: 'en-US' })
   const login = await visitor.newPage()
   await login.goto('/login', { waitUntil: 'networkidle' })
@@ -16,23 +16,30 @@ test('a browser with en-US sees the English sign-in and "My sites"', async ({ br
   // `?all` keeps the list open (a single site would open at once).
   await sites.goto('/?all', { waitUntil: 'networkidle' })
   await expect(sites.getByRole('heading', { name: 'My sites', level: 1 })).toBeVisible()
-  await expect(sites.getByRole('button', { name: 'Sign out' })).toBeVisible()
+  await sites.goto('/account', { waitUntil: 'networkidle' })
+  await expect(sites.getByRole('heading', { name: 'Account settings', level: 1 })).toBeVisible()
+  await expect(sites.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible()
   await owner.close()
 })
 
-test('the language picked on "My sites" is saved on the account and wins over the browser', async ({ browser, baseURL }) => {
+test('the language picked in "Account settings" is saved on the account and wins over the browser', async ({ browser, baseURL }) => {
   // The cook's account: the German setting this leaves behind matches every other test (German browser).
   const context = await browser.newContext({ baseURL, locale: 'en-US', storageState: STATE.cook })
   const page = await context.newPage()
-  await page.goto('/?all', { waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: 'English' }).click()
-  await expect(page.getByRole('heading', { name: 'My sites', level: 1 })).toBeVisible()
-  await page.getByRole('button', { name: 'Deutsch' }).click()
-  await expect(page.getByRole('heading', { name: 'Meine Seiten', level: 1 })).toBeVisible()
+  await page.goto('/account', { waitUntil: 'networkidle' })
+  // The picker is a select named "Language" (or "Sprache", when an earlier run left German on the account).
+  const choose = async (language: string) => {
+    await page.getByRole('combobox', { name: /^(Language|Sprache)$/ }).click()
+    await page.getByRole('option', { name: language, exact: true }).click()
+  }
+  await choose('English')
+  await expect(page.getByRole('heading', { name: 'Account settings', level: 1 })).toBeVisible()
+  await choose('Deutsch')
+  await expect(page.getByRole('heading', { name: 'Kontoeinstellungen', level: 1 })).toBeVisible()
   // Without the cookie the zone would fall back to the browser's English; the account setting brings German back.
   await context.clearCookies({ name: 'ginko_locale' })
   await page.reload({ waitUntil: 'networkidle' })
-  await expect(page.getByRole('heading', { name: 'Meine Seiten', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Kontoeinstellungen', level: 1 })).toBeVisible()
   await context.close()
 })
 

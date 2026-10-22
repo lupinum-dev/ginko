@@ -1,6 +1,7 @@
 // The last entries a person opened on one site, for the empty command palette (UI.md 10.6), and the last sites opened,
 // for "Meine Seiten". Kept in this browser only; storage can be blocked (private window), so every access is guarded.
-export interface RecentEntry { to: string; label: string; area: string }
+/** `at`: when it was opened (ms); entries stored before the time was kept have none. */
+export interface RecentEntry { to: string; label: string; area: string; at?: number }
 
 const MAX = 5
 const keyOf = (slug: string) => `ginko:recent:${slug}`
@@ -14,10 +15,10 @@ export function readRecent(slug: string): RecentEntry[] {
   }
 }
 
-/** Newest first, no duplicates. */
-export function rememberEntry(slug: string, entry: RecentEntry) {
+/** Newest first, no duplicates; stamped with the time it is opened. */
+export function rememberEntry(slug: string, entry: Omit<RecentEntry, 'at'>) {
   try {
-    localStorage.setItem(keyOf(slug), JSON.stringify([entry, ...readRecent(slug).filter((r) => r.to !== entry.to)].slice(0, MAX)))
+    localStorage.setItem(keyOf(slug), JSON.stringify([{ ...entry, at: Date.now() }, ...readRecent(slug).filter((r) => r.to !== entry.to)].slice(0, MAX)))
   } catch {
     // Not remembering is fine.
   }

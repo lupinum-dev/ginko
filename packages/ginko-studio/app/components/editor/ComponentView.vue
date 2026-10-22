@@ -5,9 +5,9 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onMounted, onUpdated, ref, toRaw, useId, watch, watchEffect } from 'vue'
 import { useI18n } from '#imports'
-import { Plus, Settings2 } from '@lucide/vue'
-import { fileRefOf, type ComponentRegistry } from '@lupinum/ginko/internal'
-import { componentMode, GINKO_ASSETS, insertComponent, propsSummary, shownSrc, type ComponentProps } from '@lupinum/ginko-editor'
+import { ImageOff, Plus, Settings2 } from '@lucide/vue'
+import type { ComponentRegistry } from '@lupinum/ginko/internal'
+import { blockSummary, componentMode, GINKO_ASSETS, insertComponent, shownSrc, type ComponentProps } from '@lupinum/ginko-editor'
 import { NodeViewContent, NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { Button } from '@studio/components/ui/button'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
@@ -27,27 +27,51 @@ const label = computed(() => (def.value ? shown(def.value.label) : tag.value))
 const values = computed(() => (props.node.attrs.props ?? {}) as ComponentProps)
 const mode = computed(() => componentMode(tag.value, options.components, LIVE_TAGS))
 const live = computed(() => (mode.value === 'live' ? LIVE_COMPONENTS[tag.value] : undefined))
-// Pictures from the Files library in image props: the summary names them, a card shows them (where the editor has a file
-// source). Other addresses are not loaded in the editor.
-const libraryImages = computed(() => Object.entries(values.value).flatMap(([name, raw]) => {
-  const field = def.value?.props[name.replace(/^:/, '')]
-  const id = field?.type === 'image' && typeof raw === 'string' ? fileRefOf(raw) : undefined
-  return id ? [{ name, src: String(raw), id }] : []
-}))
+const summary = computed(() => blockSummary(values.value, def.value, { label: shown, fileName: (id) => files.value?.[id]?.name }))
+// Pictures of image props: a library file loads through the editor's file source, a web address directly. A relative
+// address belongs to the site, not to the Studio, so it is not loaded here.
 const assets = inject(GINKO_ASSETS, undefined)
-const files = assets ? assets.details(computed(() => libraryImages.value.map((image) => image.id))) : ref(undefined)
-const summary = computed(() => propsSummary(values.value, def.value, (id) => files.value?.[id]?.name))
-// A card without text (a data block, a figure) has no box to type in: it says what the block shows instead.
+// The ids come from a summary without names: the names are what `files` loads.
+const libraryIds = computed(() => blockSummary(values.value, def.value, { label: shown }).pictures.flatMap((p) => (p.file ? [p.file] : [])))
+const files = assets ? assets.details(libraryIds) : ref(undefined)
+const editorFiles = inject(EDITOR_FILES, undefined)
+watchEffect(() => { for (const { src, file } of summary.value.pictures) if (file) editorFiles?.images.want(src) })
+/** Shown addresses that did not load. */
+const broken = ref(new Set<string>())
+/** `url` undefined = still loading (nothing drawn yet), null = the library file is gone or did not load. */
+const pictures = computed(() => summary.value.pictures.flatMap(({ key, src, file, note }) => {
+  const url = file ? (editorFiles ? shownSrc(editorFiles.images, src) : undefined) : /^https?:\/\//.test(src) ? src : undefined
+  if (url === undefined && !file) return []
+  return [{ key, note, url: url && broken.value.has(url) ? null : url }]
+}))
+const crop = computed(() => (values.value.fit === 'contain' ? 'object-contain' : 'object-cover'))
+// A card without text (a data block, a figure) has no box to type in. Only a card that says nothing else (no picture,
+// no title) explains what the block is, and in a container only the first child does: a gallery of four empty photos
+// must not repeat the same sentence four times.
 const empty = computed(() => props.node.childCount === 0)
 const describe = computed(() => (def.value ? shown(def.value.describe) : ''))
-const editorFiles = inject(EDITOR_FILES, undefined)
-watchEffect(() => { for (const { src } of libraryImages.value) editorFiles?.images.want(src) })
-/** Shown addresses that did not load: the summary keeps the file's name. */
-const broken = ref(new Set<string>())
-const pictures = computed(() => libraryImages.value.flatMap(({ name, src }) => {
-  const shownAt = editorFiles ? shownSrc(editorFiles.images, src) : undefined
-  return shownAt && !broken.value.has(shownAt) ? [{ name, src: shownAt }] : []
-}))
+function laterChild() {
+  const pos = props.getPos()
+  if (pos === undefined) return false
+  const at = props.editor.state.doc.resolve(pos)
+  return at.parent.type.name === 'component' && at.index() > 0
+}
+const explains = () => empty.value && !!describe.value && !pictures.value.length && !summary.value.title && !laterChild()
+/**
+ * A container whose children are all pictures without text (a gallery of figures) lays them out as a grid. A child
+ * with a picture is a photo tile and drops its own head there; a child still without a picture keeps its card, with
+ * the block label and the settings button (see the style below).
+ */
+const photoGrid = computed(() => {
+  const registry = options.components
+  if (!registry || props.node.childCount === 0) return false
+  let all = true
+  props.node.forEach((child) => {
+    const childDef = child.type.name === 'component' && Object.hasOwn(registry, String(child.attrs.tag)) ? registry[String(child.attrs.tag)] : undefined
+    if (!childDef || child.childCount > 0 || !Object.values(childDef.props).some((field) => field.type === 'image')) all = false
+  })
+  return all
+})
 function hidePicture(src: string) { broken.value = new Set([...broken.value, src]) }
 // The component gets the props as the page gives them: `:open` (a bare attribute) arrives as `open`.
 const liveProps = computed(() => ({
@@ -124,7 +148,7 @@ function select(event: MouseEvent) {
   if (pos === undefined) return
   editor().commands.setNodeSelection(pos)
   editor().commands.focus()
-  if (target.closest('.ginko-block-head, .ginko-live')) open.value = true
+  if (target.closest('.ginko-block-head, .ginko-block-media, .ginko-live')) open.value = true
 }
 
 /**
@@ -178,17 +202,35 @@ function noFollow(event: MouseEvent) {
             <NodeViewContent class="ginko-live-content" />
           </component>
 
-          <div v-else class="ginko-block-card rounded-md border bg-card text-card-foreground">
-            <div class="ginko-block-head flex cursor-pointer items-baseline gap-2 border-b py-1.5 pl-3 text-xs text-muted-foreground select-none" :class="selected ? 'pr-36' : 'pr-14'" contenteditable="false">
-              <span class="shrink-0 font-medium whitespace-nowrap">{{ label }}</span>
-              <span v-if="summary" class="min-w-0 truncate" :title="summary">{{ summary }}</span>
+          <div v-else class="ginko-block-card rounded-lg border bg-card text-card-foreground" :class="[photoGrid && 'is-photo-grid', pictures.length > 0 && 'has-picture']">
+            <div class="ginko-block-head flex min-h-10 cursor-pointer items-baseline gap-2 border-b py-2.5 pl-3 text-[13px] leading-5 select-none" :class="selected ? 'pr-36' : 'pr-12'" contenteditable="false">
+              <span class="shrink-0 whitespace-nowrap text-muted-foreground">{{ label }}</span>
+              <span v-if="summary.title" class="min-w-0 truncate font-medium text-foreground" :title="summary.title">{{ summary.title }}</span>
+              <span v-if="summary.facts.length" class="min-w-0 shrink-[2] truncate text-muted-foreground">{{ summary.facts.join(' · ') }}</span>
             </div>
-            <div v-if="pictures.length" class="flex flex-wrap gap-2 px-3 pt-3" contenteditable="false">
-              <img v-for="p in pictures" :key="p.name" :src="p.src" alt="" class="max-h-24 rounded-sm object-contain" @error="hidePicture(p.src)">
+            <!-- One picture at the card's width; several as tiles. Not part of the text, and a click on it opens the settings. -->
+            <div
+              v-if="pictures.length" class="ginko-block-media grid cursor-pointer gap-2 px-3 pt-3" :class="[pictures.length > 1 && 'grid-cols-2 sm:grid-cols-4', empty && 'pb-3']"
+              contenteditable="false"
+            >
+              <figure v-for="p in pictures" :key="p.key" class="m-0 grid min-w-0 gap-1.5">
+                <div
+                  class="ginko-picture relative w-full overflow-hidden rounded-md bg-muted"
+                  :class="p.url === null ? 'h-16' : pictures.length > 1 ? 'aspect-[4/3]' : 'aspect-video max-h-40'"
+                >
+                  <img v-if="p.url" :src="p.url" alt="" class="ginko-card-img absolute inset-0 size-full" :class="crop" @error="hidePicture(p.url)">
+                  <p v-else-if="p.url === null" class="flex size-full items-center justify-center gap-2 p-3 text-[13px] text-muted-foreground">
+                    <ImageOff class="size-4 shrink-0" aria-hidden="true" />{{ t('editor.image.missing') }}
+                  </p>
+                </div>
+                <figcaption v-if="p.note" class="ginko-picture-note truncate text-[13px] text-muted-foreground" :title="p.note">{{ p.note }}</figcaption>
+                <!-- In a gallery grid the tile has no head: its title is the line under the photo. -->
+                <figcaption v-if="summary.title" class="ginko-tile-title hidden truncate text-[13px] text-muted-foreground" :title="summary.title">{{ summary.title }}</figcaption>
+              </figure>
             </div>
-            <p v-if="empty && describe" class="px-3 py-2 text-sm text-muted-foreground" contenteditable="false">{{ describe }}</p>
+            <p v-if="explains()" class="px-3 py-2.5 text-sm text-muted-foreground" contenteditable="false">{{ describe }}</p>
             <!-- It stays the editor's place for the content even when hidden. -->
-            <NodeViewContent class="ginko-block-content p-3" :class="empty && 'hidden'" />
+            <NodeViewContent class="ginko-block-content p-3" :class="[empty && 'hidden', photoGrid && 'ginko-photo-grid']" />
             <div v-if="childTags.length" class="flex flex-wrap gap-2 border-t px-3 py-2" contenteditable="false">
               <Button
                 v-for="child in childTags" :key="child" type="button" variant="outline" size="sm" class="[@media(pointer:coarse)]:h-11"
@@ -212,3 +254,23 @@ function noFollow(event: MouseEvent) {
     </Popover>
   </NodeViewWrapper>
 </template>
+
+<style scoped>
+/* A gallery of photo cards: the photos as tiles (two per row on a phone, four on a wide card), each with its line
+   below and its settings button over the photo; the label "Abbildung" on every tile would only repeat. */
+.ginko-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (min-width: 640px) {
+  .ginko-photo-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.ginko-photo-grid .ginko-block { margin: 0; }
+.ginko-photo-grid .ginko-block-card.has-picture { border: 0; background: transparent; }
+.ginko-photo-grid .has-picture .ginko-block-head { display: none; }
+.ginko-photo-grid .ginko-block-media { padding: 0; }
+.ginko-photo-grid .ginko-picture { aspect-ratio: 4 / 3; max-height: none; }
+.ginko-photo-grid .ginko-picture-note { display: none; }
+.ginko-photo-grid .ginko-tile-title { display: block; }
+</style>

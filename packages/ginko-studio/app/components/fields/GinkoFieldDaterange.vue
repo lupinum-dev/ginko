@@ -5,7 +5,6 @@ import { useI18n } from '#imports'
 import type { Json } from '@lupinum/ginko'
 import { Input } from '@studio/components/ui/input'
 import { Label } from '@studio/components/ui/label'
-import { CONTAINED_FIELD } from './sizes'
 
 const props = defineProps<{ id: string; modelValue: Json | undefined; invalid: boolean; describedBy?: string }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
@@ -21,12 +20,12 @@ function set(part: 'from' | 'to', v: string) {
 
 <template>
   <div class="grid max-w-md grid-cols-2 gap-3" role="group" :aria-labelledby="`${id}-label`" :aria-describedby="describedBy">
-    <div :class="CONTAINED_FIELD">
-      <Label :for="`${id}-from`" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('fields.daterange.from') }}</Label>
+    <div class="grid gap-1.5">
+      <Label :for="`${id}-from`" class="text-sm leading-snug font-medium">{{ t('fields.daterange.from') }}</Label>
       <Input :id="`${id}-from`" type="date" :model-value="range.from ?? ''" :aria-invalid="invalid" @update:model-value="set('from', String($event))" />
     </div>
-    <div :class="CONTAINED_FIELD">
-      <Label :for="`${id}-to`" class="text-xs leading-snug font-medium text-muted-foreground">{{ t('fields.daterange.to') }}</Label>
+    <div class="grid gap-1.5">
+      <Label :for="`${id}-to`" class="text-sm leading-snug font-medium">{{ t('fields.daterange.to') }}</Label>
       <Input :id="`${id}-to`" type="date" :model-value="range.to ?? ''" :min="range.from" :aria-invalid="invalid" @update:model-value="set('to', String($event))" />
     </div>
   </div>

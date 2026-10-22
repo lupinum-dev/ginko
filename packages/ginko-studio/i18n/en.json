@@ -26,7 +26,9 @@
     "account": "Account",
     "toReviewCount": "{count} to review",
     "translations": "Translations",
-    "translationsOpen": "{count} open"
+    "translationsOpen": "{count} open",
+    "crumbs": "You are here",
+    "accountPage": "Account settings"
   },
   "sites": {
     "title": "My sites",
@@ -53,7 +55,9 @@
       "title": "Delete account",
       "text": "Your account, your memberships and your sign-in are removed. Changes you made stay in the history as “Former member”.",
       "button": "Delete my account"
-    }
+    },
+    "lede": "Choose a site to edit its content.",
+    "invites": "Invitations"
   },
   "login": {
     "title": "Sign in",
@@ -206,7 +210,12 @@
       "needsTitle": "The preview shows the page once “{field}” is filled in.",
       "untranslated": "Not translated into {language} yet. Until then, the entry does not show on the website in this language.",
       "untranslatedListed": "Not translated into {language} yet. Until then, the entry has no page of its own in this language. Lists show it in {main}.",
-      "openSite": "Open website"
+      "openSite": "Open website",
+      "device": "Show the website as",
+      "desktop": "Desktop",
+      "phone": "Phone",
+      "open": "Open",
+      "ended": "The website no longer shows this: it was shown until {date}. A later date shows it again."
     },
     "remove": {
       "title": "Remove entry",
@@ -243,9 +252,6 @@
       "empty": "Nothing found."
     },
     "changes": {
-      "justNow": "just now",
-      "minutesAgo": "{count} min ago",
-      "hoursAgo": "{count} h ago",
       "undo": "Undo",
       "undone": "Undone",
       "empty": "No changes yet."
@@ -268,7 +274,13 @@
       "text": "“{field}” is much shorter than before: {after} instead of {before} characters.",
       "files": "{count, plural, one {# file} other {# files}} fewer."
     },
-    "groupHasGaps": "Translation missing or outdated"
+    "groupHasGaps": "Translation missing or outdated",
+    "side": {
+      "label": "Details",
+      "status": "Status",
+      "draftNote": "Not on the website yet. Publish it when it is ready.",
+      "scheduledNote": "It goes online by itself at that time."
+    }
   },
   "site": {
     "zoneNote": "All times are in the website's time zone ({zone}).",
@@ -315,7 +327,6 @@
       "flagText": "“{text}”",
       "clearToday": "Clear",
       "notFilled": "Not filled in yet",
-      "notThisWeek": ", not yet for this week",
       "plannedWeek": "{label} {date}, planned ahead",
       "nothingNow": "Nothing entered right now.",
       "removeNamed": "Remove {title}",
@@ -329,7 +340,9 @@
         "heading": "Not saved yet",
         "titled": "“{title}” · {time}",
         "untitled": "{area}: New entry · {time}",
-        "continue": "Continue editing"
+        "continue": "Continue editing",
+        "name": "“{title}”",
+        "newIn": "{area}: New entry"
       }
     },
     "all": {
@@ -346,7 +359,21 @@
       "shownOf": "{shown} of {total} entries",
       "searching": "Searching …",
       "removed": "In the trash (can be restored for 30 days)",
-      "restore": "Restore"
+      "restore": "Restore",
+      "overview": "Overview",
+      "areas": "Areas",
+      "areaList": "Show or hide the list of areas",
+      "notSaved": "Not saved",
+      "colArea": "Area",
+      "colContent": "Content",
+      "colChanged": "Last change",
+      "single": "Single page",
+      "entries": "{count, plural, =0 {No entries} one {# entry} other {# entries}}",
+      "drafts": "{count, plural, one {# draft} other {# drafts}}",
+      "endedCount": "{count} ended",
+      "translationsOpen": "{lang}: {count} open",
+      "todayAt": "Today, {time}",
+      "singles": "Single pages"
     },
     "area": {
       "missing": "This area does not exist.",
@@ -358,7 +385,7 @@
     "delete": {
       "title": "Delete site",
       "text": "All content, files, history and access of {site} are deleted 7 days after you confirm. Until then you can cancel.",
-      "confirmLabel": "Type {slug} to confirm",
+      "confirmLabel": "Type <slug>{slug}</slug> to confirm",
       "button": "Delete site"
     },
     "deleting": {
@@ -366,7 +393,6 @@
       "cancel": "Cancel deletion"
     },
     "team": {
-      "heading": "Team",
       "ownersOnly": "Only owners can see the team.",
       "members": "Members",
       "you": "You",
@@ -390,11 +416,11 @@
       "sendInvite": "Send invitation",
       "inviteSent": "Invitation sent to {email}.",
       "keysOfMember": "Keys {email} created ({count})",
-      "keysStay": "These keys belong to the site and keep working until you revoke them. If a key is still needed, for example for automatic publishing, keep it."
+      "keysStay": "These keys belong to the site and keep working until you revoke them. If a key is still needed, for example for automatic publishing, keep it.",
+      "actionsFor": "Actions for {name}"
     },
     "ai": {
-      "heading": "Connect AI",
-      "lead": "Your AI assistant can then do tasks for you, for example “{first}” or “{second}”. It may do exactly what you may do here. Every change appears in the history as “via AI” and can be undone.",
+      "lead": "Connect your AI assistant with a key. It can then do tasks for you, for example “{first}” or “{second}”.",
       "exampleOne": "Fix a typo",
       "exampleTwo": "Shorten the first paragraph",
       "keyFor": "Key for “{label}”",
@@ -420,7 +446,14 @@
       "revokeConfirm": "“{label}” cannot make any changes after that.",
       "reviewOn": "Changes wait for approval.",
       "reviewOff": "Changes go online without approval.",
-      "reviewLikeYou": "What waits for approval when you do it waits here too. Everything else goes online without approval."
+      "reviewLikeYou": "What waits for approval when you do it waits here too. Everything else goes online without approval.",
+      "how": {
+        "title": "How it works",
+        "tasks": "Your assistant may do exactly what you may do here, nothing more.",
+        "history": "Every change appears in History, marked “via AI”, and can be undone.",
+        "review": "If a change needs approval, it waits in Review, just like your own changes.",
+        "assistants": "Works with assistants that support MCP, for example Claude, ChatGPT or Cursor."
+      }
     },
     "keys": {
       "heading": "Publishing keys",
@@ -456,7 +489,10 @@
       "hint": "To make room, remove entries or shorten long texts. Removed entries, pictures and PDFs do not count.",
       "entriesHint": "To make room, remove entries. Removed entries do not count.",
       "dismiss": "Hide notice",
-      "usage": "Text storage: {used} of {limit} used, {count} of {max} entries. Pictures and PDFs do not count."
+      "title": "Text storage",
+      "textUsed": "{used} of {limit} used",
+      "entriesUsed": "{count} of {limit} entries",
+      "filesFree": "Pictures and PDFs do not count."
     },
     "backup": {
       "heading": "Backup",
@@ -703,14 +739,14 @@
       "processing": "Processing …",
       "blocked": "The photo is still being processed. Please wait a moment.",
       "failed": "The photo could not be uploaded. Please try again.",
-      "tooLarge": "The file is too large (at most {max} MB).",
       "pick": "Choose photo",
       "other": "Other photo",
       "alt": "Image description",
       "altHint": "What can be seen in the photo? For people who cannot see the image.",
       "altFromLibrary": "Leave empty to use the description from Files.",
       "noneToTranslate": "No photo yet, so nothing to translate.",
-      "chooseInMain": "You change the picture itself in {name}."
+      "chooseInMain": "You change the picture itself in {name}.",
+      "drop": "Or drop a photo here."
     },
     "money": {
       "negative": "A price cannot be negative.",
@@ -737,7 +773,13 @@
       "confirmBlocker": "Please confirm for “{title}”: are the {label} still correct?",
       "changed": "{changed} changed. Are the {label} still correct?",
       "add": "Add {item}",
-      "addInMain": "You add, remove and reorder rows in {name}."
+      "addInMain": "You add, remove and reorder rows in {name}.",
+      "photoHint": "Describe each photo in a few words: what can be seen? For people who cannot see the images.",
+      "moveEarlier": "Move {title} earlier",
+      "moveLater": "Move {title} later",
+      "photoMenu": "Actions for {title}",
+      "earlier": "Move earlier",
+      "later": "Move later"
     }
   },
   "ops": {
@@ -811,7 +853,14 @@
       "after": "After",
       "reordered": "The order changed",
       "picture": "Picture"
-    }
+    },
+    "countOne": "1 change waits for you.",
+    "countMany": "{count} changes wait for you.",
+    "emptyHint": "When someone on your team or an AI assistant proposes a change, it shows up here, oldest first.",
+    "queue": "Changes to review",
+    "openEntry": "Open entry",
+    "gone": "This change was already decided or withdrawn.",
+    "onlyReject": "It no longer fits, so it can only be rejected."
   },
   "history": {
     "filter": {
@@ -848,7 +897,12 @@
     },
     "loadFailed": "History could not be loaded. Please reload the page.",
     "fix": "Fix it",
-    "approval": "Approval: {who}"
+    "approval": "Approval: {who}",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "more": "More actions",
+    "detail": "Changes",
+    "detailEmpty": "Choose “Show changes” on a change to see before and after here."
   },
   "basics": {
     "search": {
@@ -869,7 +923,9 @@
       "newIn": "New {area}",
       "review": "Review",
       "empty": "Nothing found for “{query}”.",
-      "failed": "Search did not work just now."
+      "failed": "Search did not work just now.",
+      "keyOpen": "Open",
+      "keyNewTab": "New tab"
     },
     "update": {
       "menu": "Update website now",
@@ -1025,7 +1081,14 @@
       "usePhoto": "Use this photo",
       "useFile": "Use this file",
       "altFromLibrary": "This description comes from Files. A change here applies to this place only."
-    }
+    },
+    "folderOptions": "Options for {name}",
+    "renameFolder": "Rename",
+    "deleteFolder": "Delete folder",
+    "deleteFolderText": "Delete the folder {name}? Only an empty folder can be deleted: move its files to another folder first.",
+    "delete": "Delete",
+    "dropPhotos": "Photos: {types}, up to {size}",
+    "dropPdf": "PDF up to {size}"
   },
   "who": {
     "member": "A team member",
@@ -1038,5 +1101,39 @@
   },
   "ui": {
     "close": "Close"
+  },
+  "account": {
+    "lede": "Settings for you. Each site has its own settings in the site.",
+    "email": "Email",
+    "emailHint": "You sign in with this address.",
+    "languageHint": "The language of the Studio. The content of your sites keeps its own languages.",
+    "signIn": "Sign-in",
+    "signInHint": "Sign out here, or on every other device where you are still signed in."
+  },
+  "today": {
+    "week": {
+      "stored": "{label} {date}",
+      "stale": "{week}, not yet for this week"
+    },
+    "verdict": {
+      "none": "Nothing needs you today.",
+      "some": "{count, plural, one {One thing needs you today.} other {# things need you today.}}",
+      "due": "Due:"
+    },
+    "loadFailed": "The state of the areas could not be loaded. The tasks still work.",
+    "waiting": {
+      "label": "Waiting for you",
+      "more": "{count} more",
+      "inHistory": "See in History"
+    },
+    "due": {
+      "badge": "Due"
+    },
+    "moreTasks": "More tasks in “{area}”",
+    "rows": {
+      "label": "On the website"
+    },
+    "nothingOnline": "Nothing on the website right now.",
+    "rejectedNote": "{line} · Not approved, see above."
   }
 }

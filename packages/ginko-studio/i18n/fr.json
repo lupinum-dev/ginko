@@ -26,7 +26,9 @@
     "account": "Compte",
     "toReviewCount": "{count} à relire",
     "translations": "Traductions",
-    "translationsOpen": "{count} en attente"
+    "translationsOpen": "{count} en attente",
+    "crumbs": "Vous êtes ici",
+    "accountPage": "Paramètres du compte"
   },
   "sites": {
     "title": "Mes sites",
@@ -53,7 +55,9 @@
       "title": "Supprimer le compte",
       "text": "Votre compte, vos appartenances et votre connexion sont supprimés. Vos modifications restent dans l’historique sous « Ancien membre ».",
       "button": "Supprimer mon compte"
-    }
+    },
+    "lede": "Choisissez un site pour modifier son contenu.",
+    "invites": "Invitations"
   },
   "login": {
     "title": "Se connecter",
@@ -206,7 +210,12 @@
       "needsTitle": "L’aperçu affiche la page dès que « {field} » est rempli.",
       "untranslated": "Pas encore traduit en {language}. En attendant, l’entrée n’apparaît pas sur le site web dans cette langue.",
       "untranslatedListed": "Pas encore traduit en {language}. En attendant, l’entrée n’a pas de page propre dans cette langue. Les listes l’affichent en {main}.",
-      "openSite": "Ouvrir le site web"
+      "openSite": "Ouvrir le site web",
+      "device": "Afficher le site comme",
+      "desktop": "Ordinateur",
+      "phone": "Mobile",
+      "open": "Ouvrir",
+      "ended": "Le site web ne l’affiche plus : il était visible jusqu’au {date}. Avec une date plus tardive, il réapparaît."
     },
     "remove": {
       "title": "Supprimer l’entrée",
@@ -243,9 +252,6 @@
       "empty": "Aucun résultat."
     },
     "changes": {
-      "justNow": "à l’instant",
-      "minutesAgo": "il y a {count} min",
-      "hoursAgo": "il y a {count} h",
       "undo": "Annuler",
       "undone": "Annulé",
       "empty": "Pas encore de modifications."
@@ -268,7 +274,13 @@
       "text": "« {field} » est beaucoup plus court qu’avant : {after} caractères au lieu de {before}.",
       "files": "{count, plural, one {# fichier} other {# fichiers}} de moins."
     },
-    "groupHasGaps": "Traduction manquante ou périmée"
+    "groupHasGaps": "Traduction manquante ou périmée",
+    "side": {
+      "label": "Détails",
+      "status": "Statut",
+      "draftNote": "Pas encore sur le site. Publiez-le quand il est prêt.",
+      "scheduledNote": "Il sera mis en ligne automatiquement à ce moment-là."
+    }
   },
   "site": {
     "zoneNote": "Toutes les heures sont dans le fuseau horaire du site web ({zone}).",
@@ -315,7 +327,6 @@
       "flagText": "« {text} »",
       "clearToday": "Effacer",
       "notFilled": "Pas encore rempli",
-      "notThisWeek": ", pas encore pour cette semaine",
       "plannedWeek": "{label} {date}, planifié à l’avance",
       "nothingNow": "Rien de saisi pour le moment.",
       "removeNamed": "Supprimer {title}",
@@ -329,7 +340,9 @@
         "heading": "Pas encore enregistré",
         "titled": "« {title} » · {time}",
         "untitled": "{area} : nouvelle entrée · {time}",
-        "continue": "Continuer à modifier"
+        "continue": "Continuer à modifier",
+        "name": "« {title} »",
+        "newIn": "{area} : nouvelle entrée"
       }
     },
     "all": {
@@ -346,7 +359,21 @@
       "shownOf": "{shown} entrées sur {total}",
       "searching": "Recherche…",
       "removed": "Dans la corbeille (restaurable pendant 30 jours)",
-      "restore": "Restaurer"
+      "restore": "Restaurer",
+      "overview": "Vue d’ensemble",
+      "areas": "Rubriques",
+      "areaList": "Afficher ou masquer la liste des rubriques",
+      "notSaved": "Non enregistré",
+      "colArea": "Rubrique",
+      "colContent": "Contenu",
+      "colChanged": "Dernière modification",
+      "single": "Page unique",
+      "entries": "{count, plural, =0 {Aucune entrée} one {# entrée} other {# entrées}}",
+      "drafts": "{count, plural, one {# brouillon} other {# brouillons}}",
+      "endedCount": "{count, plural, one {# terminé} other {# terminés}}",
+      "translationsOpen": "{lang} : {count} en attente",
+      "todayAt": "Aujourd’hui, {time}",
+      "singles": "Pages uniques"
     },
     "area": {
       "missing": "Ce domaine n’existe pas.",
@@ -358,7 +385,7 @@
     "delete": {
       "title": "Supprimer le site",
       "text": "Tout le contenu, les fichiers, l’historique et les accès de {site} sont supprimés 7 jours après votre confirmation. D’ici là, vous pouvez annuler.",
-      "confirmLabel": "Saisissez {slug} pour confirmer",
+      "confirmLabel": "Saisissez <slug>{slug}</slug> pour confirmer",
       "button": "Supprimer le site"
     },
     "deleting": {
@@ -366,7 +393,6 @@
       "cancel": "Annuler la suppression"
     },
     "team": {
-      "heading": "Équipe",
       "ownersOnly": "Seuls les propriétaires peuvent voir l’équipe.",
       "members": "Membres",
       "you": "Vous",
@@ -390,11 +416,11 @@
       "sendInvite": "Envoyer l’invitation",
       "inviteSent": "Invitation envoyée à {email}.",
       "keysOfMember": "Clés créées par {email} ({count})",
-      "keysStay": "Ces clés appartiennent au site et continuent de fonctionner jusqu’à ce que vous les révoquiez. Si une clé est encore nécessaire, par exemple pour la publication automatique, conservez-la."
+      "keysStay": "Ces clés appartiennent au site et continuent de fonctionner jusqu’à ce que vous les révoquiez. Si une clé est encore nécessaire, par exemple pour la publication automatique, conservez-la.",
+      "actionsFor": "Actions pour {name}"
     },
     "ai": {
-      "heading": "Connecter l’IA",
-      "lead": "Votre assistant IA peut alors effectuer des tâches pour vous, par exemple « {first} » ou « {second} ». Il peut faire exactement ce que vous pouvez faire ici. Chaque modification apparaît dans l’historique avec la mention « via IA » et peut être annulée.",
+      "lead": "Connectez votre assistant IA avec une clé. Il peut alors effectuer des tâches pour vous, par exemple « {first} » ou « {second} ».",
       "exampleOne": "Corriger une faute de frappe",
       "exampleTwo": "Raccourcir le premier paragraphe",
       "keyFor": "Clé pour « {label} »",
@@ -420,7 +446,14 @@
       "revokeConfirm": "« {label} » ne pourra plus faire aucune modification ensuite.",
       "reviewOn": "Les modifications attendent une approbation.",
       "reviewOff": "Les modifications passent en ligne sans approbation.",
-      "reviewLikeYou": "Ce qui attend une approbation quand vous le faites l’attend aussi ici. Tout le reste passe en ligne sans approbation."
+      "reviewLikeYou": "Ce qui attend une approbation quand vous le faites l’attend aussi ici. Tout le reste passe en ligne sans approbation.",
+      "how": {
+        "title": "Comment ça marche",
+        "tasks": "Votre assistant peut faire exactement ce que vous pouvez faire ici, rien de plus.",
+        "history": "Chaque modification apparaît dans l’historique avec la mention « via IA » et peut être annulée.",
+        "review": "Si une modification doit être validée, elle attend dans Relecture, comme les vôtres.",
+        "assistants": "Fonctionne avec les assistants compatibles MCP, par exemple Claude, ChatGPT ou Cursor."
+      }
     },
     "keys": {
       "heading": "Clés de publication",
@@ -456,7 +489,10 @@
       "hint": "Pour faire de la place, supprimez des entrées ou raccourcissez de longs textes. Les entrées supprimées, les images et les PDF ne comptent pas.",
       "entriesHint": "Pour faire de la place, supprimez des entrées. Les entrées supprimées ne comptent pas.",
       "dismiss": "Masquer l’avis",
-      "usage": "Stockage de textes : {used} utilisés sur {limit}, {count} entrées sur {max}. Les images et les PDF ne comptent pas."
+      "title": "Stockage de textes",
+      "textUsed": "{used} utilisés sur {limit}",
+      "entriesUsed": "{count} entrées sur {limit}",
+      "filesFree": "Les images et les PDF ne comptent pas."
     },
     "backup": {
       "heading": "Sauvegarde",
@@ -703,14 +739,14 @@
       "processing": "Traitement…",
       "blocked": "La photo est encore en cours de traitement. Patientez un instant.",
       "failed": "La photo n’a pas pu être importée. Réessayez.",
-      "tooLarge": "Le fichier est trop volumineux ({max} Mo au maximum).",
       "pick": "Choisir une photo",
       "other": "Autre photo",
       "alt": "Description de l’image",
       "altHint": "Que voit-on sur la photo ? Pour les personnes qui ne voient pas l’image.",
       "altFromLibrary": "Laissez vide pour utiliser la description des fichiers.",
       "noneToTranslate": "Pas encore de photo, donc rien à traduire.",
-      "chooseInMain": "Pour changer l’image elle-même, passez en {name}."
+      "chooseInMain": "Pour changer l’image elle-même, passez en {name}.",
+      "drop": "Ou déposez une photo ici."
     },
     "money": {
       "negative": "Un prix ne peut pas être négatif.",
@@ -737,7 +773,13 @@
       "confirmBlocker": "Confirmez pour « {title} » : les informations « {label} » sont-elles toujours correctes ?",
       "changed": "Modification : {changed}. Les informations « {label} » sont-elles toujours correctes ?",
       "add": "Ajouter {item}",
-      "addInMain": "Pour ajouter, supprimer ou réorganiser des lignes, passez en {name}."
+      "addInMain": "Pour ajouter, supprimer ou réorganiser des lignes, passez en {name}.",
+      "photoHint": "Décrivez chaque photo en quelques mots : que voit-on ? Pour les personnes qui ne voient pas les images.",
+      "moveEarlier": "Déplacer {title} avant",
+      "moveLater": "Déplacer {title} après",
+      "photoMenu": "Actions pour {title}",
+      "earlier": "Déplacer avant",
+      "later": "Déplacer après"
     }
   },
   "ops": {
@@ -811,7 +853,14 @@
       "after": "Après",
       "reordered": "L’ordre a changé",
       "picture": "Image"
-    }
+    },
+    "countOne": "1 modification attend votre décision.",
+    "countMany": "{count} modifications attendent votre décision.",
+    "emptyHint": "Quand un membre de votre équipe ou une IA propose une modification, elle apparaît ici, la plus ancienne en premier.",
+    "queue": "Modifications à relire",
+    "openEntry": "Ouvrir l’entrée",
+    "gone": "Cette modification a déjà été décidée ou retirée.",
+    "onlyReject": "Elle ne convient plus, donc elle ne peut qu'être refusée."
   },
   "history": {
     "filter": {
@@ -848,7 +897,12 @@
     },
     "loadFailed": "L’historique n’a pas pu être chargé. Rechargez la page.",
     "fix": "Corriger",
-    "approval": "Approbation : {who}"
+    "approval": "Approbation : {who}",
+    "today": "Aujourd’hui",
+    "yesterday": "Hier",
+    "more": "Plus d’actions",
+    "detail": "Modifications",
+    "detailEmpty": "Choisis « Afficher les modifications » sur une modification pour voir ici l’avant et l’après."
   },
   "basics": {
     "search": {
@@ -869,7 +923,9 @@
       "newIn": "Nouveau : {area}",
       "review": "Relecture",
       "empty": "Aucun résultat pour « {query} ».",
-      "failed": "La recherche n’a pas fonctionné à l’instant."
+      "failed": "La recherche n’a pas fonctionné à l’instant.",
+      "keyOpen": "Ouvrir",
+      "keyNewTab": "Nouvel onglet"
     },
     "update": {
       "menu": "Mettre à jour le site web maintenant",
@@ -1025,7 +1081,14 @@
       "usePhoto": "Utiliser cette photo",
       "useFile": "Utiliser ce fichier",
       "altFromLibrary": "Cette description vient des fichiers. Une modification ici ne vaut que pour cet endroit."
-    }
+    },
+    "folderOptions": "Options pour {name}",
+    "renameFolder": "Renommer",
+    "deleteFolder": "Supprimer le dossier",
+    "deleteFolderText": "Supprimer le dossier {name} ? Seul un dossier vide peut être supprimé : déplacez d’abord ses fichiers dans un autre dossier.",
+    "delete": "Supprimer",
+    "dropPhotos": "Photos : {types}, jusqu’à {size}",
+    "dropPdf": "PDF jusqu’à {size}"
   },
   "who": {
     "member": "Un membre de l’équipe",
@@ -1038,5 +1101,39 @@
   },
   "ui": {
     "close": "Fermer"
+  },
+  "account": {
+    "lede": "Vos réglages personnels. Chaque site a ses propres réglages dans le site.",
+    "email": "E-mail",
+    "emailHint": "Vous vous connectez avec cette adresse.",
+    "languageHint": "La langue du Studio. Le contenu de vos sites garde ses propres langues.",
+    "signIn": "Connexion",
+    "signInHint": "Déconnectez-vous ici, ou sur tous les autres appareils où vous êtes encore connecté."
+  },
+  "today": {
+    "week": {
+      "stored": "{label} {date}",
+      "stale": "{week}, pas encore pour cette semaine"
+    },
+    "verdict": {
+      "none": "Rien ne vous attend aujourd’hui.",
+      "some": "{count, plural, one {Une chose vous attend aujourd’hui.} other {# choses vous attendent aujourd’hui.}}",
+      "due": "À faire :"
+    },
+    "loadFailed": "L’état des rubriques n’a pas pu être chargé. Les tâches fonctionnent quand même.",
+    "waiting": {
+      "label": "Vous attend",
+      "more": "{count} de plus",
+      "inHistory": "Voir dans l’historique"
+    },
+    "due": {
+      "badge": "À faire"
+    },
+    "moreTasks": "Autres tâches dans « {area} »",
+    "rows": {
+      "label": "Sur le site"
+    },
+    "nothingOnline": "Rien sur le site pour le moment.",
+    "rejectedNote": "{line} · Non approuvé, voir plus haut."
   }
 }

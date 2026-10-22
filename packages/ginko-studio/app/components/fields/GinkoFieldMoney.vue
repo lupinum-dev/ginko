@@ -6,6 +6,7 @@ import type { Field, Json } from '@lupinum/ginko'
 import { minorDigits } from '@lupinum/ginko/internal'
 import { BLOCKERS, currencySign, formatAmount, parseMoney } from '@lupinum/ginko-editor'
 import { Input } from '@studio/components/ui/input'
+import { focusUnitInput, UNIT_BOX, UNIT_INPUT, UNIT_TEXT } from './sizes'
 import { useStudioSite } from '../../utils/labels'
 
 const props = defineProps<{ id: string; field: Extract<Field, { type: 'money' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string }>()
@@ -57,9 +58,10 @@ function tidy() {
 </script>
 
 <template>
-  <div class="flex items-center gap-2">
-    <Input :id="id" inputmode="decimal" autocomplete="off" class="min-w-0 flex-1" :model-value="text" :aria-invalid="invalid || bad" :aria-describedby="[describedBy, bad ? `${id}-bad` : ''].filter(Boolean).join(' ') || undefined" @update:model-value="input(String($event))" @blur="tidy" />
-    <span class="font-medium text-muted-foreground">{{ currencySign(currency, locale) }}</span>
+  <!-- The currency sits inside the box; a click on it puts the cursor in the amount. -->
+  <div :class="UNIT_BOX" @click="focusUnitInput">
+    <Input :id="id" inputmode="decimal" autocomplete="off" :class="UNIT_INPUT" :model-value="text" :aria-invalid="invalid || bad" :aria-describedby="[describedBy, bad ? `${id}-bad` : ''].filter(Boolean).join(' ') || undefined" @update:model-value="input(String($event))" @blur="tidy" />
+    <span :class="UNIT_TEXT">{{ currencySign(currency, locale) }}</span>
   </div>
   <p v-if="hint" :id="`${id}-bad`" role="alert" class="text-sm font-medium text-destructive">{{ hint }}</p>
 </template>

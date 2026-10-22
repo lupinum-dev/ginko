@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@studio/components/ui/radio-group'
 import { computed, ref, watch } from 'vue'
 import { clockWithZone, msToZoned, zonedTimes } from '../utils/when'
 import SiteZoneNote from './SiteZoneNote.vue'
+import { OPTION_CHIP } from './fields/sizes'
 
 const props = defineProps<{ zone: string; inputId: string }>()
 const local = defineModel<string>('local', { required: true })
@@ -37,7 +38,7 @@ watch([times, chosen], ([list, choice]) => {
   <div v-if="twice" class="grid gap-2">
     <p :id="`${inputId}-twice`" class="text-sm">{{ t('entry.publish.timeTwice') }}</p>
     <RadioGroup :model-value="chosen" class="grid gap-2" :aria-labelledby="`${inputId}-twice`" @update:model-value="(value) => { if (typeof value === 'number') chosen = value }">
-      <Label v-for="(ms, index) in twice" :key="ms" :for="`${inputId}-${index}`" class="min-h-10 cursor-pointer gap-2 rounded-md border border-input px-3 py-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent pointer-coarse:min-h-11">
+      <Label v-for="(ms, index) in twice" :key="ms" :for="`${inputId}-${index}`" :class="OPTION_CHIP">
         <RadioGroupItem :id="`${inputId}-${index}`" :value="ms" />{{ t(index === 0 ? 'entry.publish.timeTwiceFirst' : 'entry.publish.timeTwiceSecond', { time: clockWithZone(ms, zone, format) }) }}
       </Label>
     </RadioGroup>

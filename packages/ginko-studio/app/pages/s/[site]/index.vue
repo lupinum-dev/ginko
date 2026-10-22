@@ -1,21 +1,23 @@
-<!-- Schnell ändern (UI.md 3): every brick with tasks the person may do, in schema order, with its `describe` as a
-     lede, its status line (`status` on the brick, computed by the server: sites.today), a one-line state from the data
-     and the task buttons. Generic: nothing here knows the restaurant. -->
+<!-- Heute (UI.md 3): one grid of area cards in schema order, every brick with tasks the person may do, each task button
+     once; a plan brick sits in the card of the brick it plans. Above the grid, the verdict line and "Wartet auf dich"
+     for what is not a task button. What the cards read and show is useTodayAreas; this page owns the sheets and the
+     writes. Generic: nothing here knows the restaurant. -->
 <script setup lang="ts">
-import type { Brick, CollectionBrick, Json } from '@lupinum/ginko'
-import { visibleUntil, plannedWeeks, plansThisWeek, resolveToken, staleOf, weeklyTask, workWeekOf, type StatusLine } from '@lupinum/ginko/internal'
+import { provide } from 'vue'
+import { resolveToken, weeklyTask, workWeekOf } from '@lupinum/ginko/internal'
 import type { Entry } from '../../../composables/useSiteData'
-import { textIn } from '@lupinum/ginko-editor'
-import { displayValue, formatDay, taskRef, titleOf, type Task } from '../../../utils/content'
+import { useTodayAreas, type TodayFlag } from '../../../composables/useTodayAreas'
+import { taskRef, titleOf, type Task } from '../../../utils/content'
 import { shownLabel } from '../../../utils/labels'
+import type { OwnRow } from '../../../utils/today'
 import { whenFull } from '../../../utils/when'
 import { useTextOf } from '../../../composables/useTextOf'
-import { Button } from '@studio/components/ui/button'
 import { api } from '#convex/api'
 import EntryRemoveDialog, { type EntryUses, type TrashOverflow } from '../../../components/EntryRemoveDialog.vue'
-import LocalDraftList from '../../../components/LocalDraftList.vue'
-import TodayDrafts from '../../../components/TodayDrafts.vue'
-import { allAccess } from '../../../composables/useAll'
+import TodayCard from '../../../components/today/TodayCard.vue'
+import TodayVerdict from '../../../components/today/TodayVerdict.vue'
+import TodayWaiting, { type Tile } from '../../../components/today/TodayWaiting.vue'
+import { TODAY } from '../../../components/today/context'
 
 definePageMeta({ layout: 'site' })
 
@@ -23,223 +25,13 @@ const { t, format, locale } = useI18n()
 const s = await useSiteData()
 useHead(() => ({ title: t('site.title.quick', { site: s.site.value?.name ?? t('site.fallback.site') }) }))
 const ops = useOps(s.slug)
+const areas = useTodayAreas(s)
+const { sections, cards, views, entriesOf, singleOf, plannedNow, ownRead, ownLine, ownWhen, fixTask, waiting, verdict, loadError } = areas
 
-interface Section {
-  key: string
-  brick: Brick
-  tasks: Task[]
-  /** Tasks shown as buttons. */
-  buttons: Task[]
-  remove?: Task
-  /** Time-limited collections list their entries with "Entfernen" (UI.md 3). */
-  listed: Entry[]
-}
-
-/** A collection whose entries only show for a time: Schnell ändern lists them. */
-const isTimed = (brick: Brick) => brick.kind === 'collection' && !!brick.visible && brick.visible.mode !== 'always'
-/** The bricks with tasks this person may do, in schema order. */
-const withTasks = computed(() => s.bricks.value.filter(([key, brick]) => (brick.tasks ?? []).some((t) => s.may(key, t))))
-/**
- * The entries this page shows or reads its state from (small by design): the singles with tasks, the collections
- * that plan one of them ahead, and the timed collections with tasks. Nothing else of the site is read here.
- */
-const shownBricks = computed(() => {
-  const keys = new Set<string>()
-  for (const [key, brick] of withTasks.value) {
-    if (brick.kind === 'single') {
-      keys.add(key)
-      for (const [k, b] of s.bricks.value) if (b.kind === 'collection' && b.plans?.brick === key) keys.add(k)
-    } else if (isTimed(brick) || (brick.kind === 'collection' && brick.drafts === true)) {
-      keys.add(key)
-      // A week planned ahead can start from the one the single shows this week ("Von dieser Woche übernehmen").
-      if (brick.plans) keys.add(brick.plans.brick)
-    }
-  }
-  return [...keys]
-})
-// Slim rows: collection entries carry only their titles and dates, so a timed collection near the site budget stays a
-// small live answer; a sheet reads the entry it edits whole (openRead). Still read in the browser only: 2,000 entries
-// with long text titles can pass the 1 MiB a server-rendered query may send.
-const shownRead = useConvexQuery(api.entries.ofBricks, () => (shownBricks.value.length ? { site: s.slug.value, bricks: shownBricks.value, slim: true } : 'skip'), { server: false })
-/** A collection's live entries in the site's order; a single's one entry. */
-const entriesOf = (key: string): Entry[] => (shownRead.data.value ?? []).filter((e) => e.brick === key)
-const singleOf = (key: string): Entry | undefined => entriesOf(key)[0]
-
-const sections = computed<Section[]>(() => withTasks.value.map(([key, brick]) => {
-  const tasks = (brick.tasks ?? []).filter((t) => s.may(key, t))
-  const remove = tasks.find((t) => t.kind === 'remove')
-  const timed = isTimed(brick)
-  // Drafts are not on the website: they have their own list below (TodayDrafts).
-  const listed = timed ? entriesOf(key).filter((e) => e.state !== 'draft') : []
-  const buttons = tasks.filter((t) => t.kind !== 'remove' || !(timed && listed.length <= 10))
-  return { key, brick, tasks, buttons, remove, listed }
-}))
-
-/** Unsaved input kept in this browser opens where it was typed: Alles bearbeiten, or a create task's sheet here. */
-const { editable } = allAccess(s)
-const openable = computed(() => editable.value.map(([key]) => key))
-const createTaskOf = (key: string, id: string) => sections.value.find((sec) => sec.key === key)?.tasks.find((t) => t.id === id && t.kind === 'create')
-
-// An owner or admin without quick tasks has nothing to do here: Alles bearbeiten is the place.
+// An owner or admin without quick tasks has nothing to do here: Content is the place.
 watchEffect(() => {
   if (s.schema.value && !sections.value.length && s.isManager.value) navigateTo(`/s/${s.slug.value}/all`, { replace: true })
 })
-
-/**
- * What a tap on a listed entry opens: the edit task's sheet when the person has one, else the entry in
- * Alles bearbeiten when they may edit it there, else nothing (the row is plain text then).
- */
-function rowTarget(sec: Section, entry: Entry): { task: Task } | { to: string } | undefined {
-  const task = sec.tasks.find((t) => t.kind === 'edit')
-  if (task) return { task }
-  if (s.isManager.value) return { to: `/s/${s.slug.value}/all/${sec.key}/${entry._id}` }
-  return undefined
-}
-/** The title and timing of a listed entry; a chevron marks the rows that open something. */
-const rowClass = (opens: boolean) => ['grid min-w-0 flex-1 gap-0.5 bg-transparent p-0 text-left text-foreground no-underline', opens && 'cursor-pointer grid-cols-[1fr_auto] after:col-start-2 after:row-span-2 after:row-start-1 after:self-center after:px-1 after:text-xl after:text-muted-foreground after:content-["›"] [&>span]:col-start-1']
-/** Rows a timed collection lists: those on the website now or later, and the expired ones behind a button. */
-const LISTED = 50
-/** Sections whose expired entries the person asked to see. */
-const expiredShown = reactive(new Set<string>())
-// What is on the website now or later comes first, at most LISTED (the area list has the rest); the expired entries
-// follow only on request: the LISTED that ended last, in the list's order. A collection of 450 events stays a short
-// page, and the area list is linked whenever a group is cut.
-const listings = computed(() => Object.fromEntries(sections.value.map((sec) => {
-  const rows = sec.listed.map((e) => ({ e, target: rowTarget(sec, e), dim: timing(sec.brick as CollectionBrick, e).dim }))
-  const current = rows.filter((r) => !r.dim)
-  const expired = rows.filter((r) => r.dim)
-  const showExpired = expiredShown.has(sec.key)
-  const endOf = (r: (typeof rows)[number]) => visibleUntil(sec.brick, r.e.data) ?? ''
-  const latest = new Set(expired.toSorted((a, b) => endOf(b).localeCompare(endOf(a))).slice(0, LISTED))
-  return [sec.key, {
-    rows: [...current.slice(0, LISTED), ...(showExpired ? expired.filter((r) => latest.has(r)) : [])],
-    more: current.length > LISTED || (showExpired && expired.length > LISTED),
-    hiddenExpired: showExpired ? 0 : expired.length,
-  }]
-})))
-
-/**
- * Shows a section's expired entries. The button goes away, so focus moves to where they start: the first expired
- * row when it opens something, else the list.
- */
-function showExpired(key: string) {
-  expiredShown.add(key)
-  nextTick(() => {
-    const list = document.getElementById(`b-${key}`)?.closest('section')?.querySelector('ul')
-    const row = list?.querySelector('li[data-dim] > :first-child')
-    if (row instanceof HTMLButtonElement || row instanceof HTMLAnchorElement) row.focus()
-    else list?.focus()
-  })
-}
-
-/** "until 8.10." / the date range / "expired on 7.10." for a timed entry. */
-function timing(brick: CollectionBrick, entry: Entry): { text: string; dim: boolean } {
-  const vis = brick.visible
-  if (!vis || vis.mode === 'always') return { text: '', dim: false }
-  const today = s.today.value
-  const until = visibleUntil(brick, entry.data)
-  if (!until) return { text: t('site.status.noEnd'), dim: false }
-  const visible = until >= today
-  if (brick.fields[vis.field]?.type === 'daterange') return { text: displayValue({ type: 'daterange', label: '' }, entry.data[vis.field], s.main.value, { t, format }), dim: !visible }
-  return visible ? { text: until === today ? t('site.status.untilToday') : t('site.status.until', { date: formatDay(until, format) }), dim: false } : { text: t('site.status.expired', { date: formatDay(until, format) }), dim: true }
-}
-
-/**
- * A single's date field preset to @today, set to today or a later day, shows "<task> ist für heute eingetragen" (or
- * "<field> <day> ist eingetragen") with Aufheben (UI.md 3). A past day no longer counts.
- */
-function todayFlag(key: string, brick: Brick, tasks: Task[]) {
-  const entry = singleOf(key)
-  if (!entry) return undefined
-  for (const t of tasks) {
-    if (t.kind !== 'edit' || !t.prefill) continue
-    for (const [field, token] of Object.entries(t.prefill)) {
-      const date = entry.data[field]
-      if (token === '@today' && brick.fields[field]?.type === 'date' && typeof date === 'string' && date >= s.today.value) return { task: t, entry, date, field: brick.fields[field]! }
-    }
-  }
-  return undefined
-}
-
-/** The texts the person typed for a "today" task (e.g. the closing note), shown with its state. */
-function flagTexts(brick: Brick, flag: { task: Task; entry: Entry }): string[] {
-  if (flag.task.kind !== 'edit') return []
-  return flag.task.fields.filter((f) => brick.fields[f]?.type === 'text').map((f) => textIn(flag.entry.data[f], s.main.value)).filter(Boolean)
-}
-
-/** A single's date field preset to @workWeek shows whether it is this week's (UI.md 3, weekly upkeep). The rule is `staleOf`, the same the reminder mail uses. */
-/**
- * The entry planned ahead for this week of the single `key` (an entry of a collection that `plans` it). When there is
- * one, it is what the website shows this week, not the single's own fields (lunchWeekOn in the gastro preset).
- */
-function plannedNow(key: string, task = weeklyTask(s.schema.value!.bricks[key]!)?.task) {
-  const schema = s.schema.value!
-  const start = workWeekOf(s.today.value, schema.week)
-  if (!task) return undefined
-  for (const [k, b] of Object.entries(schema.bricks)) {
-    if (b.kind !== 'collection' || b.plans?.brick !== key) continue
-    const entry = entriesOf(k).find((e) => e.state !== 'draft' && plansThisWeek(schema, key, task, k, e.data as Record<string, Json>, start))
-    if (entry) return { key: k, entry, field: b.plans.field, start }
-  }
-  return undefined
-}
-
-function weekState(key: string, brick: Brick) {
-  const entry = singleOf(key)
-  if (!entry) return undefined
-  const plan = plannedNow(key)
-  if (plan) {
-    const field = s.schema.value!.bricks[plan.key]!.fields[plan.field]
-    return { current: true, text: t('site.quick.plannedWeek', { label: field ? shownLabel(field.label, s.main.value) : '', date: formatDay(plan.start, format) }) }
-  }
-  const state = staleOf(brick, entry.data, s.today.value, s.schema.value!.week, plannedWeeks(s.schema.value!, key, (k) => entriesOf(k).filter((e) => e.state !== 'draft').map((e) => ({ data: e.data as Record<string, Json> }))))
-  if (!state) return undefined
-  return { current: state.current, text: state.stored ? `${shownLabel(brick.fields[state.field]!.label, s.main.value)} ${formatDay(state.stored, format)}` : t('site.quick.notFilled') }
-}
-
-// Each section's status line and whether it is due (sites.today), and for managers the proposals waiting for them.
-const statusRead = useConvexQuery(api.sites.today, () => ({ site: s.slug.value }), { server: false })
-const stateOf = (key: string) => statusRead.data.value?.find((x) => x.brick === key)
-const reviewRead = useConvexQuery(api.proposals.count, () => (s.isManager.value ? { site: s.slug.value } : 'skip'), { server: false })
-/** A section needs doing: its status is due, or its week is not entered (filled first button, UI.md 3). */
-const isDue = (key: string, brick: Brick) => !!stateOf(key)?.due || weekState(key, brick)?.current === false
-
-/** The words of a status line; "<n> online" only when the list is cut (`folded`), else null for a count. */
-function statusText(brick: Brick, line: StatusLine, folded: boolean): string | null {
-  const title = (value: string | null) => value ?? shownLabel(brick.label, s.main.value)
-  switch (line.kind) {
-    case 'next': return t('server.status.next', { title: title(line.title), date: formatDay(line.date, format) })
-    case 'count': return line.ending > 0 ? t('server.status.ending', { count: line.ending }) : folded ? t('server.status.online', { count: line.online }) : null
-    case 'missing': return t('server.status.missing', { count: line.count, field: shownLabel(brick.fields[line.field]?.label ?? line.field, s.main.value) })
-    case 'age': return line.weeks > 0 ? t('server.status.age', { title: title(line.title), weeks: line.weeks }) : t('server.status.ageThisWeek', { title: title(line.title) })
-    case 'drafts': return t('server.status.drafts', { drafts: line.drafts, scheduled: line.scheduled })
-    case 'hours': {
-      const today = line.today
-      if ('ranges' in today) return t('server.status.open', { ranges: new Intl.ListFormat(locale.value, { style: 'short', type: 'unit' }).format(today.ranges.map(([from, to]) => `${from}–${to}`)) })
-      if ('unknown' in today) return t('server.status.hoursUnknown')
-      return today.reason ? t('server.status.closedBecause', { reason: shownLabel(today.reason, s.main.value) }) : t('server.status.closed')
-    }
-  }
-}
-/** A section's status line: words, and whether it is due. An hours line stands in the today flag instead when the flag is for today. */
-function statusOf(sec: Section): { text: string; due: boolean; hours: boolean } | undefined {
-  const state = stateOf(sec.key)
-  const text = state?.line ? statusText(sec.brick, state.line, !!listings.value[sec.key]?.more) : null
-  return text ? { text, due: state!.due, hours: state!.line!.kind === 'hours' } : undefined
-}
-
-// The person's own proposals (proposals.mine): each section says what of theirs waits for approval, and what was not
-// approved, with "Korrigieren" to fix it in its task. The server keeps a rejection only while it is the thing to fix.
-const ownRead = useConvexQuery(api.proposals.mine, () => ({ site: s.slug.value }), { server: false })
-type OwnRow = NonNullable<typeof ownRead.data.value>['open'][number]
-const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone ?? 'UTC', main: s.main.value }))
-const ownLine = (p: OwnRow) => textOf(p.msg, p.sentence)
-const ownWhen = (at: number) => whenFull(at, s.schema.value?.timeZone ?? 'UTC', format)
-/** Own open proposals and rejections still to fix, made in the Studio through a task of `key` (an agent's are in Verlauf). */
-function ownOf(key: string) {
-  const of = (p: OwnRow) => p.via === 'ui' && !!p.task?.startsWith(`${key}.`)
-  return { waiting: (ownRead.data.value?.open ?? []).filter(of), rejected: (ownRead.data.value?.rejected ?? []).filter(of) }
-}
 
 // The open sheet: a task, and for edit tasks the entry; `reopen` is a rejected own proposal it starts from.
 const open = ref<{ key: string; task: Task; entryId?: string; reopen?: string } | null>(null)
@@ -297,8 +89,14 @@ function planOfWeek(key: string, task: Task): { task: Task; entry: Entry } | und
   return edit && entry ? { task: edit, entry } : undefined
 }
 
-function start(key: string, task: Task) {
-  if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) launcher = document.activeElement
+/** Remembers what started a sheet: the given element (the "⋯" trigger of a menu item), else the focused one. */
+function launchedFrom(el?: HTMLElement) {
+  if (el) launcher = el
+  else if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) launcher = document.activeElement
+}
+
+function start(key: string, task: Task, from?: HTMLElement) {
+  launchedFrom(from)
   const brick = s.schema.value!.bricks[key]!
   const planned = planOfWeek(key, task)
   if (planned) {
@@ -318,13 +116,11 @@ function start(key: string, task: Task) {
   }
   open.value = { key, task, entryId: task.kind === 'edit' ? singleOf(key)?._id : undefined }
 }
-/** The task a rejected proposal was made with, when the person still holds it. */
-const fixTask = (key: string, p: OwnRow) => (p.entry ? sections.value.find((x) => x.key === key)?.tasks.find((t) => taskRef(key, t) === p.task) : undefined)
 /** "Korrigieren": the rejected proposal's task on its entry, starting from the proposal's values. */
 function fix(key: string, p: OwnRow) {
   const task = fixTask(key, p)
   if (!task || !p.entry) return
-  if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) launcher = document.activeElement
+  launchedFrom()
   open.value = { key, task, entryId: p.entry, reopen: p.proposal }
 }
 // "Korrigieren" in Verlauf and the rejection mail link here with ?task=<brick.task>&reopen=<proposal>: opened once,
@@ -332,6 +128,8 @@ function fix(key: string, p: OwnRow) {
 const route = useRoute()
 let linked: string | undefined
 watch([() => route.query.reopen, () => ownRead.data.value, () => s.schema.value], () => {
+  // proposals.mine renders on the server: opening the sheet (focus, the address) belongs to the browser.
+  if (import.meta.server) return
   const { task, reopen } = route.query
   if (typeof reopen !== 'string') linked = undefined
   if (typeof task !== 'string' || typeof reopen !== 'string' || reopen === linked || !ownRead.data.value || !s.schema.value) return
@@ -386,7 +184,7 @@ async function confirmRemove() {
 }
 
 const lifting = ref(false)
-async function lift(flag: { task: Task; entry: Entry }, key: string) {
+async function lift(flag: TodayFlag, key: string) {
   if (flag.task.kind !== 'edit') return
   lifting.value = true
   try {
@@ -399,84 +197,75 @@ async function lift(flag: { task: Task; entry: Entry }, key: string) {
     lifting.value = false
   }
 }
+
+/** A listed entry opens in its edit task's sheet; the row gets the focus back. */
+function openRow(key: string, task: Task, entryId: string) {
+  launchedFrom()
+  open.value = { key, task, entryId }
+}
+
+/** A "Fällig" link: scrolls to the area (a plan's own sub-section), focuses its heading and marks its card a moment. */
+function focusArea(key: string) {
+  const heading = document.getElementById(`b-${key}`)
+  const card = heading?.closest<HTMLElement>('[data-card]')
+  if (!heading || !card) return
+  heading.closest('section')!.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  heading.focus({ preventScroll: true })
+  card.dataset.flash = ''
+  setTimeout(() => { delete card.dataset.flash }, 1500)
+}
+const labelOf = (key: string) => shownLabel(s.schema.value!.bricks[key]!.label, s.main.value)
+
+// "Wartet auf dich" in words, one action per tile.
+const textOf = useTextOf(() => ({ timeZone: s.schema.value?.timeZone ?? 'UTC', main: s.main.value }))
+const history = computed(() => `/s/${s.slug.value}/history`)
+const tiles = computed<Tile[]>(() => waiting.value.map((item): Tile => {
+  switch (item.kind) {
+    case 'rejected': return {
+      id: `r-${item.p.proposal}`, kind: 'rejected', title: ownLine(item.p), sub: t('site.quick.rejected', { reason: item.p.reason ?? '' }), subWarn: true,
+      action: item.fix ? { label: t('site.quick.fix'), primary: true, run: () => fix(item.key, item.p) } : { label: t('today.waiting.inHistory'), to: history.value },
+    }
+    case 'review': return { id: 'review', kind: 'review', title: t('site.quick.toReview', { count: item.count }), action: { label: t('nav.review'), to: `/s/${s.slug.value}/review` } }
+    case 'unsaved': {
+      const row = item.row
+      const task = row.task
+      return {
+        // The time on its own line: in one string it broke the title in the middle of the date.
+        id: `u-${row.key}`, kind: 'unsaved', title: row.label, sub: row.name !== row.area ? `${row.area} · ${row.time}` : row.time,
+        action: { label: t('site.quick.drafts.continue'), to: row.to, run: task ? () => start(task.brick, task.task) : undefined },
+      }
+    }
+    case 'notLive': return {
+      id: `n-${item.p.proposal}`, kind: 'notLive', title: ownLine(item.p),
+      sub: t('history.notLiveBecause', { when: whenFull(item.p.at!, s.schema.value?.timeZone ?? 'UTC', format), reason: textOf(item.p.reasonMsg, item.p.reason ?? '') }),
+      action: { label: t('today.waiting.inHistory'), to: history.value },
+    }
+  }
+}))
+
+provide(TODAY, reactive({
+  slug: s.slug, main: s.main, isManager: s.isManager, today: s.today, timeZone: computed(() => s.schema.value?.timeZone ?? 'UTC'),
+  removing, lifting, entriesOf, isTimed: areas.isTimed,
+  start, openRow, remove: removeEntry, lift, showExpired: areas.showExpired, expand: areas.expand,
+}))
 </script>
 
 <template>
-  <div class="w-full max-w-[760px] px-4 pt-4 min-[720px]:px-6 min-[720px]:pt-8">
-    <header class="mb-6">
-      <h1 class="text-xl font-semibold tracking-tight">{{ t('nav.quick') }}</h1>
-      <p v-if="s.today.value" class="mt-0.5 text-[13px] text-muted-foreground">{{ format.date(s.today.value, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }}</p>
+  <div class="@container mx-auto w-full max-w-[1400px] px-4 pt-4 pb-10 min-[900px]:px-8 min-[900px]:pt-7 min-[900px]:pb-12">
+    <header class="mb-4 grid gap-1 @[680px]:mb-5">
+      <div class="flex flex-wrap items-baseline gap-x-3">
+        <h1 class="text-[1.375rem] font-semibold tracking-tight">{{ t('nav.quick') }}</h1>
+        <p v-if="s.today.value" class="text-[13px] text-muted-foreground">{{ format.date(s.today.value, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }}</p>
+      </div>
+      <TodayVerdict v-if="sections.length" :verdict="verdict" :load-error="loadError" :label-of="labelOf" @area="focusArea" />
     </header>
-    <LocalDraftList v-if="s.schema.value" :slug="s.slug.value" :schema="s.schema.value" :main="s.main.value" :bricks="openable" :task-of="createTaskOf" @task="(key, task) => start(key, task)" />
-    <p v-if="!sections.length && s.schema.value" class="py-6 text-muted-foreground">{{ t('site.quick.nothingForYou') }}</p>
 
-    <p v-if="s.isManager.value && sections.length && reviewRead.data.value" class="mb-5 text-sm" data-test="to-review">
-      {{ t('site.quick.toReview', { count: reviewRead.data.value }) }} · <NuxtLink :to="`/s/${s.slug.value}/review`">{{ t('nav.review') }}</NuxtLink>
-    </p>
+    <TodayWaiting :tiles="tiles" />
 
-    <div class="grid gap-7">
-    <section v-for="sec in sections" :key="sec.key" class="grid gap-3" :aria-labelledby="`b-${sec.key}`">
-      <div>
-        <h2 :id="`b-${sec.key}`" class="text-[17px] font-semibold">{{ shownLabel(sec.brick.label, s.main.value) }}</h2>
-        <p v-if="sec.brick.describe" class="mt-0.5 truncate text-sm text-muted-foreground" data-test="lede">{{ shownLabel(sec.brick.describe, s.main.value) }}</p>
-      </div>
-      <p v-if="statusOf(sec) && !(statusOf(sec)!.hours && todayFlag(sec.key, sec.brick, sec.tasks)?.date === s.today.value)" :class="statusOf(sec)!.due ? 'rounded-md px-3 py-2.5 bg-warning/10 font-semibold text-warning' : 'text-sm text-muted-foreground'" data-test="status">{{ statusOf(sec)!.text }}</p>
-
-      <template v-if="sec.brick.kind === 'single'">
-        <div v-if="todayFlag(sec.key, sec.brick, sec.tasks)" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md px-3 py-2.5 bg-warning/10">
-          <p>
-            <span v-if="todayFlag(sec.key, sec.brick, sec.tasks)!.date === s.today.value && statusOf(sec)?.hours" data-test="status">{{ statusOf(sec)!.text }}</span>
-            <I18nT v-else-if="todayFlag(sec.key, sec.brick, sec.tasks)!.date === s.today.value" k="site.quick.todayDone" :params="{ task: shownLabel(todayFlag(sec.key, sec.brick, sec.tasks)!.task.label, s.main.value) }"><template #task="{ text }"><strong>{{ text }}</strong></template></I18nT>
-            <I18nT v-else k="site.quick.dayDone" :params="{ field: shownLabel(todayFlag(sec.key, sec.brick, sec.tasks)!.field.label, s.main.value), date: format.date(todayFlag(sec.key, sec.brick, sec.tasks)!.date, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }) }"><template #task="{ text }"><strong>{{ text }}</strong></template></I18nT>
-            <span v-for="text in (todayFlag(sec.key, sec.brick, sec.tasks)!.date === s.today.value && statusOf(sec)?.hours ? [] : flagTexts(sec.brick, todayFlag(sec.key, sec.brick, sec.tasks)!))" :key="text" class="mt-0.5 block">{{ t('site.quick.flagText', { text }) }}</span>
-          </p>
-          <Button type="button" variant="outline" size="sm" :disabled="lifting" @click="lift(todayFlag(sec.key, sec.brick, sec.tasks)!, sec.key)">{{ t('site.quick.clearToday') }}</Button>
-        </div>
-        <p v-if="weekState(sec.key, sec.brick)" :class="weekState(sec.key, sec.brick)!.current ? 'text-sm text-muted-foreground' : 'flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md px-3 py-2.5 bg-warning/10 font-semibold text-warning'">
-          {{ weekState(sec.key, sec.brick)!.text }}<template v-if="!weekState(sec.key, sec.brick)!.current">{{ t('site.quick.notThisWeek') }}</template>
-        </p>
-      </template>
-      <p v-for="p in ownOf(sec.key).waiting" :key="p.proposal" class="text-sm text-muted-foreground" data-test="own-waiting">{{ ownLine(p) }} · {{ t('site.quick.waiting', { when: ownWhen(p.createdAt) }) }}</p>
-      <div v-for="p in ownOf(sec.key).rejected" :key="p.proposal" class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md bg-warning/10 px-3 py-2.5" data-test="own-rejected">
-        <p class="min-w-0 flex-1 [overflow-wrap:anywhere]"><span class="block">{{ ownLine(p) }}</span><span class="block font-semibold text-warning">{{ t('site.quick.rejected', { reason: p.reason ?? '' }) }}</span></p>
-        <Button v-if="fixTask(sec.key, p)" type="button" variant="outline" size="sm" @click="fix(sec.key, p)">{{ t('site.quick.fix') }}</Button>
-      </div>
-
-      <ul v-if="listings[sec.key]?.rows.length" tabindex="-1" class="m-0 list-none overflow-hidden rounded-xl border p-0">
-        <li v-for="{ e, target } in listings[sec.key]!.rows" :key="e._id" class="group/row flex items-center gap-2 border-b px-4 py-3 last:border-b-0" :data-dim="timing(sec.brick as CollectionBrick, e).dim || undefined">
-          <button v-if="target && 'task' in target" type="button" :class="rowClass(true)" @click="open = { key: sec.key, task: target.task, entryId: e._id }">
-            <span class="font-medium group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground">{{ titleOf(sec.brick, e.data, s.main.value) }}</span>
-            <span class="text-[13px] text-muted-foreground">{{ timing(sec.brick as CollectionBrick, e).text }}</span>
-          </button>
-          <NuxtLink v-else-if="target" :to="target.to" :class="rowClass(true)">
-            <span class="font-medium group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground">{{ titleOf(sec.brick, e.data, s.main.value) }}</span>
-            <span class="text-[13px] text-muted-foreground">{{ timing(sec.brick as CollectionBrick, e).text }}</span>
-          </NuxtLink>
-          <span v-else :class="rowClass(false)">
-            <span class="font-medium group-data-dim/row:font-normal group-data-dim/row:text-muted-foreground">{{ titleOf(sec.brick, e.data, s.main.value) }}</span>
-            <span class="text-[13px] text-muted-foreground">{{ timing(sec.brick as CollectionBrick, e).text }}</span>
-          </span>
-          <Button v-if="sec.remove" type="button" variant="ghost" size="sm" :disabled="removing.has(e._id)" :aria-label="t('site.quick.removeNamed', { title: titleOf(sec.brick, e.data, s.main.value) })" @click="removeEntry(sec.key, e, sec.remove)">{{ t('site.common.remove') }}</Button>
-        </li>
-      </ul>
-      <p v-else-if="shownRead.data.value && isTimed(sec.brick)" class="text-muted-foreground">{{ t('site.quick.nothingNow') }}</p>
-      <div v-if="listings[sec.key]?.more || listings[sec.key]?.hiddenExpired" class="flex flex-wrap items-center gap-3">
-        <Button v-if="listings[sec.key]!.more" as-child variant="outline"><NuxtLink :to="`/s/${s.slug.value}/all/${sec.key}`">{{ t('site.quick.allIn', { brick: shownLabel(sec.brick.label, s.main.value) }) }}</NuxtLink></Button>
-        <Button v-if="listings[sec.key]!.hiddenExpired" type="button" variant="outline" @click="showExpired(sec.key)">{{ t('site.quick.showExpired', { count: listings[sec.key]!.hiddenExpired }) }}</Button>
-      </div>
-
-      <TodayDrafts v-if="sec.brick.kind === 'collection' && sec.brick.drafts" :slug="s.slug.value" :brick-key="sec.key" :brick="sec.brick" :entries="entriesOf(sec.key)" :tasks="sec.tasks" :is-manager="s.isManager.value" :main="s.main.value" :time-zone="s.schema.value!.timeZone" />
-
-      <!-- Phone: the main task full width, the others in two columns; from sm they wrap in one row. Quick tasks are
-           secondary (row D); only the first task of a due section (a status that is due, or the week is not entered)
-           is filled. -->
-      <div class="grid gap-2 sm:flex sm:flex-wrap">
-        <Button v-if="sec.buttons[0]" type="button" :variant="isDue(sec.key, sec.brick) ? 'default' : 'secondary'" class="w-full sm:w-auto" @click="start(sec.key, sec.buttons[0])">{{ shownLabel(sec.buttons[0].label, s.main.value) }}</Button>
-        <div v-if="sec.buttons.length > 1" class="grid grid-cols-2 gap-2 sm:contents">
-          <Button v-for="t in sec.buttons.slice(1)" :key="t.id" type="button" variant="secondary" class="max-sm:h-auto max-sm:min-h-10 max-sm:w-full max-sm:whitespace-normal max-sm:py-2" @click="start(sec.key, t)">{{ shownLabel(t.label, s.main.value) }}</Button>
-        </div>
-      </div>
-    </section>
+    <p v-if="!sections.length && s.schema.value" class="rounded-xl border bg-card p-4 text-muted-foreground">{{ t('site.quick.nothingForYou') }}</p>
+    <!-- A <div>, never a <section>: each card is the section that has its heading. -->
+    <div v-else class="grid grid-cols-1 gap-3 @[680px]:grid-cols-2 @[680px]:gap-4 @[1060px]:grid-cols-3">
+      <TodayCard v-for="card in cards" :key="card.key" :card="card" :views="views" :own-line="ownLine" :own-when="ownWhen" />
     </div>
 
     <!-- An edit task opens once its entry is here, so the form starts from the stored values. -->

@@ -4,7 +4,7 @@ import { components } from '@lupinum/ginko-components/registry'
 import { f } from '@lupinum/ginko'
 import { defineComponents, labelOf, parseMarkdown, type ComponentRegistry } from '@lupinum/ginko/internal'
 import { describe, expect, test } from 'vitest'
-import { createGinkoEditor, missingRequired, propProblem, propsSummary, readProp, slashItems, writeProp, type InsertedComponent, type PropField } from '../src/index.ts'
+import { createGinkoEditor, missingRequired, propProblem, blockSummary, readProp, slashItems, writeProp, type InsertedComponent, type PropField } from '../src/index.ts'
 
 const registry: ComponentRegistry = {
   ...components,
@@ -135,13 +135,37 @@ describe('slash insert of a component', () => {
   })
 })
 
-test('propsSummary shows set props in one line', () => {
-  expect(propsSummary({ type: 'warning', title: 'Achtung', ':open': 'true' })).toBe('type: warning · title: Achtung · open')
-  expect(propsSummary({ title: 'x'.repeat(60) })).toBe(`title: ${'x'.repeat(39)}…`)
-  const def = { props: { type: f.choice('Art', { options: [{ value: 'warning', label: 'Warnung' }, { value: 'info', label: 'Info' }] }), title: f.text('Titel') } }
-  expect(propsSummary({ type: 'warning', title: 'Achtung' }, def)).toBe('Art: Warnung · Titel: Achtung')
-  // Wrong behaviour caught: a figure from the Files library showed its ID ("Bild: $file.k57x…") instead of its name.
-  const figure = { props: { src: f.image('Bild'), alt: f.text('Bildbeschreibung') } }
-  expect(propsSummary({ src: '$file.k57x', alt: 'Ein Hund' }, figure, (id) => (id === 'k57x' ? 'hund.webp' : undefined))).toBe('Bild: hund.webp · Bildbeschreibung: Ein Hund')
-  expect(propsSummary({ src: '$file.k57x' }, figure)).toBe('Bild: …')
+describe('blockSummary', () => {
+  const label = (l: string | Record<string, string>) => (typeof l === 'string' ? l : l.de!)
+  const figure = {
+    props: {
+      src: f.image('Bild'), alt: f.text('Bildbeschreibung'), caption: f.text('Bildunterschrift', { optional: true }),
+      width: f.number('Breite in Pixeln', { min: 1, max: 10000, step: 1, optional: true }), bleed: f.boolean('Breiter als der Text', { optional: true }),
+      aspect: f.choice('Seitenverhältnis', { options: [{ value: 'auto', label: 'Original' }, { value: 'square', label: { de: 'Quadrat', en: 'Square' } }], optional: true, default: 'auto' }),
+    },
+  }
+  const files = (id: string) => (id === 'k57x' ? 'hund.webp' : undefined)
+
+  // Wrong behaviour caught: the card printed every prop in storage order ("Breite in Pixeln: 2756 · …"), so the
+  // caption and the picture's name were cut off, and a library picture showed its ID.
+  test.each([
+    ['caption first, the description under the picture, choices in words, no sizes or switches',
+      { src: '$file.k57x', alt: 'Ein Hund', caption: 'Bello im Garten', width: '2756', ':bleed': 'true', aspect: 'square' },
+      { title: 'Bello im Garten', facts: ['Quadrat'], pictures: [{ key: 'src', src: '$file.k57x', file: 'k57x', note: 'Ein Hund' }] }],
+    ['only a description: it is the title, the file name goes under the picture',
+      { src: '$file.k57x', alt: 'Ein Hund', aspect: 'auto' },
+      { title: 'Ein Hund', facts: [], pictures: [{ key: 'src', src: '$file.k57x', file: 'k57x', note: 'hund.webp' }] }],
+    ['only a web address: its file name is the title',
+      { src: 'https://example.org/fotos/garten.jpg?w=800' },
+      { title: 'garten.jpg', facts: [], pictures: [{ key: 'src', src: 'https://example.org/fotos/garten.jpg?w=800' }] }],
+    ['a library picture whose name is still loading: no title yet',
+      { src: '$file.zz' },
+      { facts: [], pictures: [{ key: 'src', src: '$file.zz', file: 'zz' }] }],
+  ])('%s', (_name, props, expected) => {
+    expect(blockSummary(props, figure, { label, fileName: files })).toEqual(expected)
+  })
+
+  test('a long title is cut; a block without registry entry takes its title prop', () => {
+    expect(blockSummary({ title: 'x'.repeat(100) }, undefined, { label }).title).toBe(`${'x'.repeat(79)}…`)
+  })
 })

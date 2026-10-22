@@ -168,6 +168,9 @@ test.describe('Wirtin', () => {
     await expect(text.locator('h3')).toHaveCount(1)
 
     await text.getByText('Gemütlicher Abend').selectText()
+    // Wrong behaviour caught: the menu above a selection in the first line covered the toolbar, so its Link button took
+    // no click. Wait for that menu (its own Link button) before using the toolbar.
+    await expect(sheet.getByRole('button', { name: 'Link', exact: true })).toHaveCount(2)
     await sheet.getByRole('toolbar', { name: 'Formatierung' }).getByRole('button', { name: 'Link', exact: true }).click()
     const address = sheet.getByLabel('Seite oder Webadresse')
     await expect(address).toBeFocused()

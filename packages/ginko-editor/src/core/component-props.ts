@@ -4,7 +4,7 @@
 // The node keeps the comark props as they were parsed (`props` attribute): values are strings, and a bare
 // attribute (`open`) is the key `:open` with "true". Writing keeps the key a prop already has, so an
 // untouched prop stays as written, and a changed prop keeps its place in the attribute list.
-import type { Field } from '@lupinum/ginko'
+import type { Field, Label } from '@lupinum/ginko'
 import type { ComponentDef, ComponentRegistry, Described } from '@lupinum/ginko/internal'
 import { componentPropMessage, msg, effectiveMax, fileRefOf, isSafeHref, labelOf, UNSAFE_LINK, URL_PROPS } from '@lupinum/ginko/internal'
 
@@ -57,7 +57,7 @@ export function componentMode(tag: string, registry: ComponentRegistry | undefin
 }
 
 /** The prop fields of a component in registry order. Types a form cannot show are left out. */
-export function propFields(def: ComponentDef): Array<[key: string, field: PropField]> {
+export function propFields(def: Pick<ComponentDef, 'props'>): Array<[key: string, field: PropField]> {
   return Object.entries(def.props ?? {}).filter((entry): entry is [string, PropField] => ['text', 'longtext', 'number', 'boolean', 'choice', 'choices', 'image', 'ref'].includes(entry[1].type))
 }
 
@@ -153,24 +153,64 @@ export function missingRequired(registry: ComponentRegistry, tag: string, props:
     .map(([key]) => key)
 }
 
-/** `type: warning · title: Achtung`: the props that are set, for the card header. Long values are cut; a bare attribute is just its name. */
-export function propsSummary(props: ComponentProps | undefined, def?: Pick<ComponentDef, 'props'>, fileName?: (id: string) => string | undefined): string {
-  return Object.entries(props ?? {})
-    .filter(([name]) => name !== 'class' && name !== 'id')
-    .map(([name, raw]) => {
-      const text = typeof raw === 'string' ? raw : String(raw ?? '')
-      const key = name.replace(/^:/, '')
-      // Editors read the registry's words: the label for the key, the option label for a choice value.
-      const field = def && Object.hasOwn(def.props, key) ? (def.props[key] as PropField) : undefined
-      const label = field ? labelOf(field.label, '', '') : key
-      if (name.startsWith(':') && text === 'true') return label
-      // A picture from the Files library shows its file name, not its ID (`$file.k57…`); "…" while the name loads.
-      const file = field?.type === 'image' ? fileRefOf(text) : undefined
-      const shown = file !== undefined ? (fileName?.(file) ?? '…')
-        : field?.type === 'choice' ? (labelOf(field.options.find((o) => o.value === text)?.label ?? text, '', '')) : text
-      return `${label}: ${shown.length > 40 ? `${shown.slice(0, 39)}…` : shown}`
-    })
-    .join(' · ')
+/** What a block card shows instead of its props: what it is about, a few choices in words, and its pictures. */
+export interface BlockSummary {
+  /** The caption, title, description or name, else the first picture's file name; cut at 80 characters. */
+  title?: string
+  /** Choices set to something else than their default, as their option labels ("Quadrat"); at most three. */
+  facts: string[]
+  /** The pictures of the image props in registry order: the stored address, the library file and the line under it. */
+  pictures: Array<{ key: string; src: string; file?: string; note?: string }>
+}
+
+/** Props that say what a block is about, in the order a card prefers them as its title. */
+const TITLE_KEYS = ['caption', 'title', 'alt', 'name', 'label']
+const cut = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
+
+/**
+ * The card summary of a block (`::figure{src="$file.k57" caption="Der Gastgarten" width="2756" aspect="square"}`
+ * → title "Der Gastgarten", facts ["Quadrat"], one picture). Numbers, addresses and on/off switches are settings
+ * for the look (pixel sizes, spacing, "wider than the text"): they stay in the settings, never on the card.
+ * `label` gives a registry label in the editor's language; `fileName` the name of a library file (undefined while it loads).
+ */
+export function blockSummary(
+  props: ComponentProps | undefined,
+  def: Pick<ComponentDef, 'props'> | undefined,
+  { label, fileName }: { label: (label: Label) => string; fileName?: (id: string) => string | undefined },
+): BlockSummary {
+  const fields = def ? propFields(def) : []
+  const textOf = (key: string) => { const raw = rawProp(props, key); return typeof raw === 'string' ? raw.trim() : '' }
+  const texts = fields.filter(([, field]) => (field.type === 'text' && field.format !== 'url') || field.type === 'longtext').map(([key]) => key)
+  const titleKey = [...TITLE_KEYS.filter((key) => texts.includes(key) || (!def && textOf(key))), ...texts].find((key) => textOf(key))
+  const pictures = fields.filter(([key, field]) => field.type === 'image' && textOf(key)).map(([key]) => {
+    const src = textOf(key)
+    const file = fileRefOf(src)
+    return { key, src, ...(file ? { file } : {}) }
+  })
+  const nameOf = (picture: { src: string; file?: string }) => (picture.file ? fileName?.(picture.file) : picture.src.split(/[?#]/)[0]!.split('/').pop()) || undefined
+  const title = titleKey ? textOf(titleKey) : pictures[0] && nameOf(pictures[0])
+  // One picture: the line under it is the caption or description the title does not show yet, else its file name.
+  const one = pictures.length === 1 ? ['caption', 'alt'].map(textOf).find((text) => text && text !== title) ?? (titleKey ? nameOf(pictures[0]!) : undefined) : undefined
+  const facts = fields.flatMap(([key, field]) => {
+    if (field.type === 'choice') {
+      const value = textOf(key)
+      const option = field.options.find((o) => o.value === value)
+      return value && value !== field.default && option ? [label(option.label)] : []
+    }
+    if (field.type === 'choices') {
+      const chosen = readProp(field, props, key)
+      return Array.isArray(chosen) && chosen.length ? [chosen.map((value) => label(field.options.find((o) => o.value === value)?.label ?? value)).join(', ')] : []
+    }
+    return []
+  }).slice(0, 3)
+  return {
+    ...(title ? { title: cut(title, 80) } : {}),
+    facts,
+    pictures: pictures.map((picture) => {
+      const note = pictures.length === 1 ? one : nameOf(picture)
+      return { ...picture, ...(note && note !== title ? { note: cut(note, 120) } : {}) }
+    }),
+  }
 }
 
 /** Longest value the text input of a prop takes. */

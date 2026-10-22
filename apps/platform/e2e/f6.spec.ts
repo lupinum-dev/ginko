@@ -308,7 +308,18 @@ async function openReview(page: Page, w: (typeof WORDS)[Lang]) {
   await page.waitForURL(/\/s\/restaurant\/review$/)
 }
 
-const proposalRow = (page: Page) => page.locator('main li', { has: page.locator('button[aria-expanded]') }).first()
+/** The loose open proposals of the inbox (the labelled queue list, not the release members), one `li` each, oldest first. */
+const proposalRows = (page: Page) => page.locator('main ul[aria-label] > li[data-proposal]')
+
+/**
+ * Opens the oldest proposal and returns where its diff and decisions are: on wide screens the oldest is selected by
+ * itself and shown beside the list; on the phone its row expands in place.
+ */
+async function openOldest(page: Page) {
+  const toggle = proposalRows(page).first().getByRole('button').first()
+  if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click()
+  return page.getByTestId('proposal-open').or(proposalRows(page).first().filter({ has: page.locator('button[aria-expanded="true"]') }))
+}
 
 /**
  * Rejects every open proposal. The content reset keeps proposals (the seed knows entries, changes and ops only), and the
@@ -318,11 +329,10 @@ async function emptyReview(browser: Browser, baseURL: string | undefined, viewpo
   const owner = await contextOf(browser, 'owner', 'de', viewport, baseURL)
   const page = await owner.newPage()
   await open(page, '/s/restaurant/review')
-  const rows = page.locator('main li button[aria-expanded]')
+  const rows = proposalRows(page)
   await expect(rows.or(page.getByText(WORDS.de.nothingWaits))).not.toHaveCount(0)
   for (let left = await rows.count(); left > 0; left = await rows.count()) {
-    const row = proposalRow(page)
-    await rows.first().click()
+    const row = await openOldest(page)
     await row.getByRole('button', { name: 'Ablehnen…' }).click()
     await row.getByRole('textbox').fill('Aufgeräumt vor dem Test.')
     await row.getByRole('button', { name: 'Ablehnen', exact: true }).click()
@@ -349,8 +359,7 @@ for (const lang of ['de', 'en'] as const) {
       const owner = await contextOf(browser, 'owner', lang, viewport!, baseURL)
       const ownerPage = await owner.newPage()
       await openReview(ownerPage, w)
-      const row = proposalRow(ownerPage)
-      await row.getByRole('button', { expanded: false }).click()
+      const row = await openOldest(ownerPage)
       // The diff names what changed: the lunch days (one row) and the week.
       await expect(row.getByText(w.rowChanged)).toBeVisible()
       await row.getByRole('button', { name: w.approve, exact: true }).click()
@@ -404,8 +413,7 @@ test.describe('Prüfen und Verlauf', () => {
     const owner = await contextOf(browser, 'owner', 'de', viewport!, baseURL)
     const ownerPage = await owner.newPage()
     await openReview(ownerPage, w)
-    const row = proposalRow(ownerPage)
-    await row.getByRole('button', { expanded: false }).click()
+    const row = await openOldest(ownerPage)
     await row.getByRole('button', { name: 'Ablehnen…' }).click()
     await row.getByLabel('Warum? Das sieht, wer die Änderung vorgeschlagen hat.').fill(sentence)
     await row.getByRole('button', { name: 'Ablehnen', exact: true }).click()
@@ -444,15 +452,23 @@ test.describe('Prüfen und Verlauf', () => {
 
       await open(page, '/s/restaurant/history')
       const rows = page.locator('main ol > li')
-      // Newest first: the 25,00 save, then the 23,50 save.
+      // "Zurück zu dieser Version" is a button in the row when the undo is blocked, else it is in the row's menu; the question then opens in the row.
+      const askRevert = async (row: typeof rows) => {
+        const button = row.getByRole('button', { name: 'Zurück zu dieser Version' })
+        if (await button.isVisible()) return button.click()
+        await row.getByRole('button', { name: 'Weitere Aktionen' }).click()
+        await page.getByRole('menuitem', { name: 'Zurück zu dieser Version' }).click()
+      }
+      // Newest first: the 25,00 save, then the 23,50 save. The fields show in the row, or in the right column on wide screens.
       await rows.nth(1).getByRole('button', { name: 'Änderungen anzeigen' }).click()
-      await expect(rows.nth(1)).toContainText('Vorher')
-      await expect(rows.nth(1)).toContainText('21,90')
-      await expect(rows.nth(1)).toContainText('Nachher')
-      await expect(rows.nth(1)).toContainText('23,50')
+      const detail = page.getByRole('region', { name: 'Änderungen', exact: true })
+      await expect(detail).toContainText('Vorher')
+      await expect(detail).toContainText('21,90')
+      await expect(detail).toContainText('Nachher')
+      await expect(detail).toContainText('23,50')
 
       const before = await rows.count()
-      await rows.nth(1).getByRole('button', { name: 'Zurück zu dieser Version' }).click()
+      await askRevert(rows.nth(1))
       await expect(rows.nth(1).getByText(/^Zum Stand direkt nach dieser Änderung \(.*\) zurück\?/)).toBeVisible()
       // The question shows what going back changes: now (25,00) before, that version (23,50) after.
       await expect(rows.nth(1).getByRole('group')).toContainText('Das ändert sich:')
@@ -471,7 +487,7 @@ test.describe('Prüfen und Verlauf', () => {
       await expect(rows.first()).toContainText('Rückgängig: ')
       await expect(rows.nth(1)).toContainText('Rückgängig gemacht')
       // The undo row holds the current state too: going back to it has nothing to change.
-      await rows.first().getByRole('button', { name: 'Zurück zu dieser Version' }).click()
+      await askRevert(rows.first())
       await expect(rows.first().getByRole('group')).toContainText('Das ist schon der aktuelle Stand.')
       await expect(rows.first().getByRole('group').getByRole('button', { name: 'Zurück zu dieser Version' })).toHaveCount(0)
       await rows.first().getByRole('group').getByRole('button', { name: 'Abbrechen' }).click()
@@ -481,7 +497,7 @@ test.describe('Prüfen und Verlauf', () => {
       await open(page, '/s/restaurant/history')
       const undoRow = rows.nth(1)
       await expect(undoRow).toContainText('Rückgängig: ')
-      await undoRow.getByRole('button', { name: 'Zurück zu dieser Version' }).click()
+      await askRevert(undoRow)
       await expect(undoRow.getByRole('group')).toContainText('Das ändert sich:')
       await expect(undoRow.getByRole('group')).toContainText('26,00')
       await expect(undoRow.getByRole('group')).toContainText('25,00')

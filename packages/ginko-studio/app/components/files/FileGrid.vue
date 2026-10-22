@@ -1,4 +1,4 @@
-<!-- The files of a view as square thumbnails or as a list (UI.md 10.3). Selection logic lives in the
+<!-- The files of a view as square cards or as a list (UI.md 10.3). Selection logic lives in the
      Finder; this component reports clicks, Space (quick look) and drags. -->
 <script setup lang="ts">
 import { FileTextIcon } from '@lucide/vue'
@@ -8,7 +8,8 @@ import type { LibFile } from '../../composables/useFilesLibrary'
 import { DRAG_TYPE } from './util'
 import { sizeText } from '../../utils/size'
 
-const props = defineProps<{ files: LibFile[]; layout: 'grid' | 'list'; selected: ReadonlySet<string>; draggable: boolean }>()
+/** `dense`: the picker's dialog, where more and smaller cards help to find the one photo. */
+const props = defineProps<{ files: LibFile[]; layout: 'grid' | 'list'; selected: ReadonlySet<string>; draggable: boolean; dense?: boolean }>()
 const emit = defineEmits<{ pick: [id: string, how: { shift: boolean; toggle: boolean }]; quicklook: [id: string] }>()
 const { t, format } = useI18n()
 
@@ -33,30 +34,42 @@ function dragstart(id: string, event: DragEvent) {
 const dimensions = (f: LibFile) => (f.width && f.height ? `${f.width} × ${f.height}` : '–')
 const date = (f: LibFile) => format.date(f.createdAt, { day: 'numeric', month: 'numeric', year: 'numeric' })
 const typeText = (f: LibFile) => (f.kind === 'image' ? f.mime.replace('image/', '').toUpperCase() : 'PDF')
+/** The crop of a square thumbnail keeps the focus point in view (centred when none is set). */
+const focusStyle = (f: LibFile) => (f.focus ? { objectPosition: `${f.focus.x * 100}% ${f.focus.y * 100}%` } : undefined)
 </script>
 
 <template>
-  <ul v-if="layout === 'grid'" class="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2 p-0">
-    <li v-for="file in files" :key="file.id">
-      <button
-        type="button"
-        :aria-pressed="selected.has(file.id)"
-        :draggable="draggable"
-        class="grid w-full cursor-pointer gap-2 rounded-xl border p-2 text-left outline-none transition-colors hover:border-border hover:bg-muted/55 focus-visible:ring-3 focus-visible:ring-ring/80"
-        :class="selected.has(file.id) ? 'border-primary ring-2 ring-primary' : 'border-transparent'"
-        @click="click(file.id, $event)"
-        @keydown="key(file.id, $event)"
-        @dragstart="dragstart(file.id, $event)"
+  <!-- A card per file: the photo square, cropped around its focus point, the name, and type and size below. Only the photo
+       and the name are inside the button (its name stays the file name, the e2e tests click by it); the button stretches
+       over the whole card. Two columns in a narrow container (phone, 1024 with the details open), else 11rem cards. -->
+  <div v-if="layout === 'grid'" class="@container">
+    <ul class="m-0 grid list-none grid-cols-2 gap-3 p-0" :class="dense ? '@sm:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))]' : '@sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] @sm:gap-4'">
+      <li
+        v-for="file in files"
+        :key="file.id"
+        class="relative grid content-start gap-0.5 rounded-xl p-1.5 pb-2 transition-colors hover:bg-foreground/[0.04]"
+        :class="selected.has(file.id) ? 'bg-accent/60 ring-2 ring-primary hover:bg-accent/60' : ''"
       >
-        <span class="relative grid aspect-[16/10] place-items-center overflow-hidden rounded-md bg-muted">
-          <img v-if="file.kind === 'image' && file.url" :src="file.url" alt="" loading="lazy" class="size-full object-cover">
-          <FileTextIcon v-else class="size-10 text-muted-foreground" aria-hidden="true" />
-          <Badge v-if="file.missingAlt" variant="destructive" class="absolute bottom-1 left-1">{{ t('files.noAlt') }}</Badge>
-        </span>
-        <span class="truncate px-0.5 text-sm font-medium" :title="file.name">{{ file.name }}</span>
-      </button>
-    </li>
-  </ul>
+        <button
+          type="button"
+          :aria-pressed="selected.has(file.id)"
+          :draggable="draggable"
+          class="grid min-w-0 cursor-pointer gap-2 text-left outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-3 focus-visible:after:ring-ring/80"
+          @click="click(file.id, $event)"
+          @keydown="key(file.id, $event)"
+          @dragstart="dragstart(file.id, $event)"
+        >
+          <span class="grid aspect-square place-items-center overflow-hidden rounded-lg bg-muted">
+            <img v-if="file.kind === 'image' && file.url" :src="file.url" alt="" loading="lazy" class="size-full object-cover" :style="focusStyle(file)">
+            <FileTextIcon v-else class="size-10 text-muted-foreground" aria-hidden="true" />
+          </span>
+          <span class="truncate px-1 text-sm font-medium" :title="file.name">{{ file.name }}</span>
+        </button>
+        <p class="m-0 truncate px-1 text-[13px] text-muted-foreground tabular-nums">{{ typeText(file) }} · {{ sizeText(file.size, format.number) }}</p>
+        <Badge v-if="file.missingAlt" variant="warning" class="mx-1 mt-1 justify-self-start">{{ t('files.noAlt') }}</Badge>
+      </li>
+    </ul>
+  </div>
 
   <div v-else class="overflow-x-auto rounded-xl border">
   <table class="w-full border-collapse text-sm">
@@ -87,7 +100,7 @@ const typeText = (f: LibFile) => (f.kind === 'image' ? f.mime.replace('image/', 
               <FileTextIcon v-else class="size-5 text-muted-foreground" aria-hidden="true" />
             </span>
             <span class="truncate font-medium">{{ file.name }}</span>
-            <Badge v-if="file.missingAlt" variant="destructive">{{ t('files.noAlt') }}</Badge>
+            <Badge v-if="file.missingAlt" variant="warning">{{ t('files.noAlt') }}</Badge>
           </button>
         </td>
         <td class="hidden px-3 sm:table-cell">{{ typeText(file) }}</td>

@@ -79,14 +79,14 @@ export function editorEntry(row: Doc<'entries'>) {
 
 /**
  * `editorEntry` of a collection entry with only what a row of Schnell ändern and its pick list read: the text fields
- * its title comes from, the dates that plan or time it (also the date of a planned price), and the choices and prices
- * the pick list groups and shows.
+ * its title comes from, the dates that plan or time it (also the date of a planned price), the choices and prices
+ * the pick list groups and shows, and the yes/no fields a row marks ("Ausgebucht").
  * Long texts, lists and files stay out, so a timed collection near the site budget does not send megabytes on every
  * change; a sheet that edits the entry reads it whole (entries.get).
  */
 export function slimEntry(brick: Brick, row: Doc<'entries'>) {
   const dates = new Set([brick.kind === 'collection' ? brick.plans?.field : undefined, brick.kind === 'collection' && brick.visible?.mode === 'until' ? brick.visible.field : undefined, brick.planned?.from])
-  const small = new Set(['text', 'longtext', 'choice', 'money'])
+  const small = new Set(['text', 'longtext', 'choice', 'money', 'boolean'])
   const keep = (key: string) => dates.has(key) || small.has(brick.fields[key]?.type ?? '')
   const entry = editorEntry(row)
   return { ...entry, data: Object.fromEntries(Object.entries(entry.data).filter(([key]) => keep(key))), prints: {} }
