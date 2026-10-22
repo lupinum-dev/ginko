@@ -42,7 +42,12 @@ export default defineNuxtConfig({
   alias: { '@studio': here('./app') },
   // Absolute paths: the same reason. Tokens and Tailwind first, then the old CSS (it sits in a lower-priority layer).
   css: [here('./app/assets/css/tailwind.css'), here('./app/assets/ui.css')],
-  vite: { plugins: [tailwindcss()] },
+  vite: {
+    plugins: [tailwindcss()],
+    // Dev: scan every Studio file for dependencies at start. Without it Vite finds a dependency only when a page first
+    // loads it, optimizes again and reloads the browser, and on a cold server (CI) such a reload can swallow a click.
+    optimizeDeps: { entries: [here('./app/**/*.{vue,ts}')] },
+  },
   // The components are shipped as source (.vue, .ts) and must be compiled with the app.
   build: { transpile: ['@lupinum/ginko-components'] },
   shadcn: { prefix: '', componentDir: here('./app/components/ui') },

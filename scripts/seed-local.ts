@@ -14,16 +14,19 @@ if (!/^CONVEX_DEPLOYMENT=anonymous/m.test(env)) throw new Error('packages/ginko-
 if (process.env.CONVEX_DEPLOY_KEY) throw new Error('CONVEX_DEPLOY_KEY is set: this script is for the local backend only. Stopped.')
 
 const corpus = JSON.parse(readFileSync(new URL('../contracts/restaurant/data.json', import.meta.url), 'utf8'))
-// The corpus plans its lunch weeks ahead of a fixed date. Move them by whole weeks so the first one is always next
-// week: a planned week that has reached today changes what "this week's lunch" opens, and the demo and the e2e
-// tests would change with the calendar.
+// The corpus plans its lunch weeks and a menu price ahead of a fixed date. Move them by whole weeks so the first lunch
+// week is always next week: a planned week or price that has reached today changes what "this week's lunch" opens and
+// which price a dish has, and the demo and the e2e tests would change with the calendar. The price moves by the same
+// weeks, so it stays as far after the lunch weeks as the corpus has it.
 const DAY = 86_400_000
 const thisMonday = new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()))
 thisMonday.setUTCDate(thisMonday.getUTCDate() - ((thisMonday.getUTCDay() + 6) % 7))
 const plans: { data: { weekOf: string } }[] = corpus.lunchPlans ?? []
 const first = Math.min(...plans.map((p) => Date.parse(p.data.weekOf)))
 const shift = Math.round((thisMonday.getTime() + 7 * DAY - first) / (7 * DAY)) * 7 * DAY
-for (const p of plans) p.data.weekOf = new Date(Date.parse(p.data.weekOf) + shift).toISOString().slice(0, 10)
+const shifted = (date: string) => new Date(Date.parse(date) + shift).toISOString().slice(0, 10)
+for (const p of plans) p.data.weekOf = shifted(p.data.weekOf)
+for (const dish of corpus.menu as { data: { priceFrom?: string } }[]) if (dish.data.priceFrom) dish.data.priceFrom = shifted(dish.data.priceFrom)
 
 const many = process.argv.indexOf('--many')
 if (many !== -1) {
