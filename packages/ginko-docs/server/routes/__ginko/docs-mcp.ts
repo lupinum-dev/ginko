@@ -2,7 +2,7 @@
 // like the other generated endpoints, so it cannot collide with a page or with the platform's own `/mcp`.
 import { createError, defineEventHandler, serverFetch, setResponseStatus } from 'nuxt/server'
 import locales from '#ginko/locales'
-import { loadIndex, search, type SearchIndex, type SearchIndexJson } from '@lupinum/ginko/search'
+import { loadIndex, search, type SearchIndex } from '@lupinum/ginko/search'
 import { withoutTrailingSlashes } from '@lupinum/ginko/internal'
 import { handleMcp, readLimitedText } from '../../mcp/handler'
 
@@ -26,7 +26,8 @@ export default defineEventHandler(async (event) => {
       const rev = response.headers.get('x-ginko-rev') ?? 'build'
       let entry = loaded.get(locale)
       if (entry?.rev !== rev) {
-        const index = response.json().then((json: SearchIndexJson) => loadIndex(json))
+        // Parsed from text: Nuxt 5 types `json()` as the serialized route value, which drops the index's brand.
+        const index = response.text().then((text) => loadIndex(JSON.parse(text)))
         // A failed load is not kept: the next call tries again.
         index.catch(() => { if (loaded.get(locale)?.index === index) loaded.delete(locale) })
         loaded.set(locale, entry = { rev, index })
