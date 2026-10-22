@@ -37,9 +37,10 @@ in `defineSite` (the layer accepts any `readonly string[]`; `defineSite` itself 
 
 The bricks read Markdown files from `content/`. To edit them in Ginko Studio instead, pass `source: 'platform'` to
 `docsCollection`, `docsHome`, `blogCollections` or `changelogCollection` (each brick on its own; the default is
-`'files'`). The pages, their Markdown twins and `read_doc` work the same with either source, and a page from the
-platform links "Edit this page" to its form in the Studio. Two things are built from files only: the search index
-(the search box and `search_docs`) finds no page that lives on the platform, and an icon named only in Studio content
+`'files'`). The pages, their Markdown twins, the search (the search box and `search_docs`) and `read_doc` work the
+same with either source: with platform bricks the site's server builds the search index from the published content
+and renews it like a page, so a page published in the Studio is found within a minute. A page from the platform links
+"Edit this page" to its form in the Studio. One thing is built from files only: an icon named only in Studio content
 is not bundled (name it once in a file the icon scan reads, see "Icons").
 
 `components` is the registry of `@lupinum/ginko-components` (a dependency of the layer, re-exported here). With it, Ginko checks every component tag and prop in the

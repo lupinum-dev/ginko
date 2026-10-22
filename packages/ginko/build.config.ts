@@ -48,7 +48,7 @@ export default defineBuildConfig({
     { input: 'src/vue', name: 'vue' },
     { input: 'src/search', name: 'search' },
     { input: 'src/basics/index', name: 'basics' },
-    { input: 'src/internal-search', name: 'internal/search' },
+    { input: 'src/internal/search', name: 'internal/search' },
     { input: 'src/cli/index', name: 'cli/index' },
     { input: 'src/nuxt/module', name: 'nuxt/module' },
     // Declarations for the .ts files: a site's types for useGinko, useGinkoEntry and GinkoItem come from

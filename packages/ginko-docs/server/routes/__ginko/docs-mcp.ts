@@ -1,14 +1,13 @@
 // `POST /__ginko/docs-mcp`: read-only MCP endpoint of the docs (see ../../mcp/handler.ts). It lives under `/__ginko/`
 // like the other generated endpoints, so it cannot collide with a page or with the platform's own `/mcp`.
 import { createError, defineEventHandler, serverFetch, setResponseStatus } from 'nuxt/server'
-import indexes from '#ginko/search'
 import locales from '#ginko/locales'
-import { loadIndex, search, type SearchIndex } from '@lupinum/ginko/search'
+import { loadIndex, search, type SearchIndex, type SearchIndexJson } from '@lupinum/ginko/search'
 import { withoutTrailingSlashes } from '@lupinum/ginko/internal'
 import { handleMcp, readLimitedText } from '../../mcp/handler'
 
-// The loading index per locale, kept as its promise so two first requests share one load.
-const loaded = new Map<string, Promise<SearchIndex>>()
+// The loading index per locale and the revision it holds, kept as its promise so two first requests share one load.
+const loaded = new Map<string, { rev: string; index: Promise<SearchIndex> }>()
 
 export default defineEventHandler(async (event) => {
   if (event.req.method !== 'POST') throw createError({ statusCode: 405, statusMessage: 'POST only' })
@@ -18,12 +17,21 @@ export default defineEventHandler(async (event) => {
   let body: unknown
   try { body = raw === '' ? undefined : JSON.parse(raw) } catch { throw createError({ statusCode: 400, statusMessage: 'Body must be JSON' }) }
   const response = await handleMcp(body, {
+    // The index the site's search box loads, asked in-process: built from content/ at build time, or from the
+    // platform's content when the docs live there (`x-ginko-rev` then says which revision it holds).
     async search(query, locale = locales.defaultLocale) {
-      const json = Object.hasOwn(indexes, locale) ? indexes[locale as keyof typeof indexes] : undefined
-      if (!json) return []
-      let index = loaded.get(locale)
-      if (!index) loaded.set(locale, index = loadIndex(json))
-      return search(await index, query, { limit: 8 })
+      const response = await serverFetch(event, `/__ginko/search/${encodeURIComponent(locale)}.json`, { forwardHeaders: false })
+      if (response.status === 404) return []
+      if (!response.ok) throw createError({ statusCode: 503, statusMessage: 'Content temporarily unavailable' })
+      const rev = response.headers.get('x-ginko-rev') ?? 'build'
+      let entry = loaded.get(locale)
+      if (entry?.rev !== rev) {
+        const index = response.json().then((json: SearchIndexJson) => loadIndex(json))
+        // A failed load is not kept: the next call tries again.
+        index.catch(() => { if (loaded.get(locale)?.index === index) loaded.delete(locale) })
+        loaded.set(locale, entry = { rev, index })
+      }
+      return search(await entry.index, query, { limit: 8 })
     },
     // The same Markdown the public `<page>.md` twin returns: ask the site's own middleware, in-process (Nuxt 4.6 and 5).
     async read(path) {

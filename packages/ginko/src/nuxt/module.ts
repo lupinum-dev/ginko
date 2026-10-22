@@ -107,7 +107,7 @@ export default defineNuxtModule<SiteInput>({
     // The rule type is Nitro's in a site and a fallback without `headers` here, so the result is cast back to it.
     // The pages of `seo.noindex` in every locale; the sitemap leaves them out by key (sitemap-xml.ts).
     const noindex = (site.seo?.noindex ?? []).flatMap((key) => Object.values(schema.pages[key] ?? {}).filter((path) => path !== undefined))
-    nuxt.options.routeRules = ginkoRouteRules(nuxt.options.routeRules ?? {}, noindex) as typeof nuxt.options.routeRules
+    nuxt.options.routeRules = ginkoRouteRules(nuxt.options.routeRules ?? {}, { noindex, platform: sources.platform }) as typeof nuxt.options.routeRules
 
     // Generated share cards (nuxt-og-image): only with that module installed and one renderer for it. `#ginko/og`
     // is the one place that reaches nuxt-og-image, so a site without it never imports it.
@@ -178,13 +178,15 @@ export default defineNuxtModule<SiteInput>({
       addServerHandler({ middleware: true, handler: resolve(`./runtime/server/markdown.${runtimeExt}`) })
     }
     if (sources.files) await useFiles(schema, site, nuxt)
-    // The sitemap route imports the file bundles and the docs layer's MCP route the search index; a site without file
+    // The sitemap and search routes import the file bundles and the build-time search index; a site without file
     // bricks has neither.
     else {
       addServerTemplate({ filename: '#ginko/files', getContents: () => 'export default {}' })
       addServerTemplate({ filename: '#ginko/files-md', getContents: () => 'export default {}' })
       addServerTemplate({ filename: '#ginko/search', getContents: () => 'export default {}' })
     }
+    // The search index: the build-time one of the file bricks, or one built at runtime when the site has platform bricks.
+    addServerHandler({ route: '/__ginko/search/:file', handler: resolve(`./runtime/server/search.${runtimeExt}`) })
     // ginko-i18n (installed above) localizes the pages first, so every locale's path is in the list here.
     nuxt.hook('pages:resolved', (pages) => { for (const warning of unservedPaths(schema, pages)) console.warn(`[ginko] ${warning}`) })
     addPlugin(resolve(`./runtime/plugin.${runtimeExt}`))
@@ -290,7 +292,6 @@ async function useFiles(schema: Schema, site: SiteInput, nuxt: Nuxt) {
   addServerTemplate({ filename: '#ginko/search', getContents: () => `export default ${JSON.stringify(searches)}` })
   addServerHandler({ route: '/__ginko/files/:locale', handler: resolve(`./runtime/server/files.${runtimeExt}`) })
   addServerHandler({ route: '/__ginko/files/:locale/md/**', handler: resolve(`./runtime/server/files-md.${runtimeExt}`) })
-  addServerHandler({ route: '/__ginko/search/:file', handler: resolve(`./runtime/server/search.${runtimeExt}`) })
   if (!nuxt.options.dev) return
   let reload: (() => Promise<void>) | undefined
   nuxt.hook('nitro:init', (nitro) => { reload = () => nitro.hooks.callHook('rollup:reload') })

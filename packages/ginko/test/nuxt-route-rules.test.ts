@@ -27,7 +27,7 @@ test('build output under /__ginko/ is cached until the next deploy; the rest is 
 // Wrong behaviour caught: a page in seo.noindex answers without X-Robots-Tag and can still land in search; or Ginko's
 // header replaces one the site set for that path itself.
 test('the paths of seo.noindex answer with X-Robots-Tag: noindex; the site\'s own header wins', () => {
-  const rules = ginkoRouteRules({ '/en/thanks': { headers: { 'x-robots-tag': 'noindex, nofollow' } } }, ['/danke', '/en/thanks'])
+  const rules = ginkoRouteRules({ '/en/thanks': { headers: { 'x-robots-tag': 'noindex, nofollow' } } }, { noindex: ['/danke', '/en/thanks'] })
   expect(rules['/danke']).toEqual({ headers: { 'x-robots-tag': 'noindex' } })
   expect(rules['/en/thanks']).toEqual({ headers: { 'x-robots-tag': 'noindex, nofollow' } })
 })
@@ -36,4 +36,13 @@ test('the paths of seo.noindex answer with X-Robots-Tag: noindex; the site\'s ow
 test('the site\'s own Vercel bypassToken wins; an unset one takes the env token', () => {
   expect(ginkoVercelConfig({ regions: ['fra1'], config: { bypassToken: 'site' } }, 'env')).toEqual({ regions: ['fra1'], config: { bypassToken: 'site' } })
   expect(ginkoVercelConfig(undefined, 'env')).toEqual({ config: { bypassToken: 'env' } })
+})
+
+// Wrong behaviour caught: on a site with platform bricks the search index stays cached until the next deploy, so a
+// page published in the Studio is never found by the search box.
+test('with platform bricks the search index expires like a page; the file bundles still wait for the next deploy', () => {
+  expect(ginkoRouteRules({}, { platform: true })['/__ginko/search/**']?.isr).toEqual({ expiration: 60, allowQuery: [] })
+  const rules = ginkoRouteRules({ '/**': { isr: 300 } }, { platform: true })
+  expect(rules['/__ginko/search/**']?.isr).toBe(300)
+  expect(rules['/__ginko/files/**']?.isr).toEqual({ expiration: false, allowQuery: [] })
 })

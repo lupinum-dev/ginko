@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// Search over /__ginko/search/<locale>.json (built at build time), loaded when the dialog first opens.
+// Search over /__ginko/search/<locale>.json (built from files at build time, or from platform content by the site's
+// server), loaded when the dialog first opens.
 // Hits are grouped by page: the page itself first, then its sections. Arrow keys move, Enter opens.
 import type { SearchHit, SearchIndex, SearchIndexJson } from '@lupinum/ginko/search'
 
