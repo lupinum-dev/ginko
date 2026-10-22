@@ -224,12 +224,14 @@ watch(() => props.modelValue, (value) => {
  * above, the Studio's sticky top bar (`--studio-header-height`) and the sticky toolbar; below, the save bar a phone keeps
  * at the bottom (wide screens save in the top bar and show the bar only for a notice).
  */
+/** The toolbar above the text; not while it is docked at the bottom of a phone screen. */
+const toolbarEl = () => frameEl.value?.querySelector<HTMLElement>('[role="toolbar"]:not([data-docked])')
 const scrollMargin = {
   get top() {
     const el = frameEl.value
     const raw = el ? getComputedStyle(el).getPropertyValue('--studio-header-height').trim() : ''
     const header = (Number.parseFloat(raw) || 0) * (raw.endsWith('rem') ? 16 : 1)
-    return header + (el?.querySelector<HTMLElement>('[role="toolbar"]:not([data-docked])')?.offsetHeight ?? 0) + 16
+    return header + (toolbarEl()?.offsetHeight ?? 0) + 16
   },
   get bottom() { return typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches ? 72 : 120 },
   left: 0,
@@ -417,7 +419,7 @@ const frame = 'relative rounded-lg border border-input/80 bg-background dark:bor
       <DragHandle v-if="dragHandle && multiline" :editor="editor" class="ginko-drag-handle">
         <GripVertical class="size-4 text-muted-foreground" aria-hidden="true" />
       </DragHandle>
-      <EditorBubble :editor="editor" :profile="profile" @link="linkOpen = true" />
+      <EditorBubble :editor="editor" :profile="profile" :toolbar="toolbarEl" @link="linkOpen = true" />
       <template v-if="'image' in editor.schema.nodes">
         <ImageBubble
           :editor="editor" :images="fileImages" :locale="contentLocale ?? ''" :caption="captionTag !== undefined"
