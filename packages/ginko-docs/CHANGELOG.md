@@ -1,5 +1,16 @@
 # @lupinum/ginko-docs
 
+## 0.6.6
+
+### Patch Changes
+
+- [#41](https://github.com/lupinum-dev/ginko/pull/41) [`3b67f9f`](https://github.com/lupinum-dev/ginko/commit/3b67f9fc2477808c4fb74580b0bfd14bd77bc094) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix a slow check on request paths: a URL ending in thousands of slashes no longer keeps the site's server busy for seconds.
+- Updated dependencies [[`3b67f9f`](https://github.com/lupinum-dev/ginko/commit/3b67f9fc2477808c4fb74580b0bfd14bd77bc094)]:
+  - @lupinum/ginko@0.6.6
+  - @lupinum/ginko-components@0.6.6
+  - @lupinum/ginko-content@0.6.6
+  - @lupinum/ginko-i18n@0.6.6
+
 ## 0.6.5
 
 ### Patch Changes
