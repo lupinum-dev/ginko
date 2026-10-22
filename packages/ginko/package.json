@@ -19,7 +19,7 @@
     ".": "./src/index.ts",
     "./internal": "./src/internal.ts",
     "./vue": "./src/vue.ts",
-    "./internal/search": "./src/internal-search.ts",
+    "./internal/search": "./src/internal/search.ts",
     "./search": "./src/search.ts",
     "./basics": "./src/basics/index.ts",
     "./nuxt": "./src/nuxt/module.ts"

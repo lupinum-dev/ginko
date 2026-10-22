@@ -246,8 +246,8 @@ Ginko Studio is Lupinum's hosted editor: your team adds a changelog entry or a n
 price or answers a new question, and the Today page shows how old the newest changelog entry is. It is open by
 invitation, and Lupinum moves your content with you. The site stays the same code: each brick in `ginko.config.ts`
 loses its `source: 'files'` (the help center's `docsCollection` gets `source: 'platform'`), and its content then comes
-from the Studio. The help center's search box is built from files, so it finds no help page that lives in the Studio.
-Until then, everything here works without it. Ask at [lupinum.com](https://lupinum.com).
+from the Studio. The help center's search box finds a help page from the Studio within a minute of its publication.
+Until you move, everything here works without it. Ask at [lupinum.com](https://lupinum.com).
 
 ## Updating
 

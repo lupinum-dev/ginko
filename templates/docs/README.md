@@ -237,8 +237,8 @@ Ginko Studio is Lupinum's hosted editor: people who do not use Git change pages 
 browser, and see which translations are behind under **Inhalte > Übersetzungen**. It is open by invitation, and
 Lupinum moves your content with you and switches the bricks of `ginko.config.ts` from files to the Studio
 (`source: 'platform'` in `docsHome`, `docsCollection` and `changelogCollection`); the pages and their code stay the
-same. One thing does not move yet: the search box is built from files, so it finds no page that lives in the Studio.
-Until then, everything here works without it. Ask at [lupinum.com](https://lupinum.com).
+same, and the search box finds a page from the Studio within a minute of its publication. Until you move, everything
+here works without it. Ask at [lupinum.com](https://lupinum.com).
 
 ## Updating
 
