@@ -2,4 +2,4 @@
 '@lupinum/ginko': patch
 ---
 
-Fix the Markdown twin printing untranslated codes such as icon names as text.
+Fix the Markdown twin printing icon names (`lucide:book-open`) from untranslated text fields as text.

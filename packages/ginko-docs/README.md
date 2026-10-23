@@ -121,7 +121,8 @@ Each docs page's frontmatter can set, besides `title` and `description`:
 | `badge` | A short label after the title, e.g. "New". |
 
 `docsCollection({ locales, navExtras: false })` leaves out `tab`, `badge` and `icon` for sites that use none of them, so
-editors in the Studio see only the text and where the page sits.
+editors in the Studio see only the text and where the page sits. Set it when the site starts: on a site with released
+pages it removes fields, which the platform refuses; retire the three fields instead (`retired`).
 
 ### Icons
 
@@ -173,7 +174,8 @@ The layer is plain CSS. Colours, radius and fonts are shadcn-style tokens, the s
 `@lupinum/ginko-components` reads: `--background`, `--foreground`, `--muted`, `--muted-foreground`, `--accent`,
 `--border`, `--primary`, `--primary-foreground`, `--card`, `--popover`, `--ring`, `--radius`, `--font-sans`,
 `--font-mono`. The layer's defaults sit in `@layer theme` with zero specificity, so any value the site sets wins,
-unlayered or through Tailwind 4's `@theme`:
+unlayered or through Tailwind 4's `@theme`. Tailwind's own defaults win too: on a Tailwind 4 site that sets no
+`--font-sans` or `--font-mono`, the docs use Tailwind's system font stacks instead of Inter and JetBrains Mono.
 
 ```css
 /* assets/site.css */
