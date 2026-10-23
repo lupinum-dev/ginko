@@ -14,6 +14,7 @@ export function explainRejected(rejected: SchemaChange[]): string[] {
     lines.push(`  ✗ ${r.path}: ${english(r)}`)
     const fix = r.fixMsg ? english(r.fixMsg) : r.fix
     if (fix) lines.push(`    → ${fix}`)
+    if (r.snippet) lines.push(...r.snippet.split('\n').map((line) => `      ${line}`))
   }
   return lines
 }
