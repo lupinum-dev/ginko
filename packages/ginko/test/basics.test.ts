@@ -129,6 +129,7 @@ describe('basics JSON-LD', () => {
     ['Organization', undefined],
     ['NGO', 'NGO'],
     ['LocalBusiness', 'LocalBusiness'],
+    ['HealthAndBeautyBusiness', 'HealthAndBeautyBusiness'],
   ] as const)('site as %s, with the address and the country of the config', (type, option) => {
     expect(siteJsonLd(
       { legalName: 'River Commons e.V.', street: 'Uferweg 3', postalCode: '10115', city: 'Berlin', email: 'hello@example.org', phone: '+49 30 1234567', vatId: 'DE123456789' },

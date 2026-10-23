@@ -37,8 +37,9 @@ export function legal<const R extends Record<Locale, RouteTemplate> | undefined 
       slug: f.slug(t('Adresse', 'Address', 'Dirección', 'Adresse'), { from: 'title' }),
       legalType: f.choice(t('Art', 'Kind', 'Tipo', 'Type'), { options: legalTypes }),
       updatedAt: f.date(t('Stand', 'Last updated', 'Última actualización', 'Dernière mise à jour')),
-      // Never machine-translated: a legal text in another language is a legal text of its own.
-      body: f.markdown(t('Text', 'Text', 'Texto', 'Texte'), { translate: 'manual' }),
+      // Never machine-translated: a legal text in another language is a legal text of its own. Profile `page`, so the
+      // imprint can quote the address and contact as facts (`:fact{name="site.street"}`) instead of copying them.
+      body: f.markdown(t('Text', 'Text', 'Texto', 'Texte'), { translate: 'manual', profile: 'page' }),
     },
   })
 }

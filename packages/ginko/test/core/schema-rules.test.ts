@@ -370,6 +370,19 @@ describe('file bricks', () => {
     expect(problemsOf(input)).toEqual([])
   })
 
+  // Wrong behaviour caught: a platform brick pointing at a file brick passed the check, and the platform later said
+  // "docs does not exist" (found on rolfing).
+  it.each([
+    ['a ref field', { related: f.ref('Seite', { to: 'docs', optional: true }) }, 'notes.related'],
+    ['a ref in a list row', { links: f.list('Links', { itemLabel: 'Link', fields: { page: f.ref('Seite', { to: 'docs' }) }, max: 5 }) }, 'notes.links.page'],
+  ])('%s from a platform brick to a file brick is refused', (_, fields, path) => {
+    const input = site({}, { bricks: {
+      docs: collection({ label: 'Doku', source: 'files', fields: { title: f.text('Titel'), ...md }, max: 50, order: 'manual' }),
+      notes: collection({ label: 'Notizen', fields: { title: f.text('Titel'), ...fields }, max: 50, order: 'manual' }),
+    } })
+    expect(problemsOf(input)).toContain(`${path}: points at “docs”, which comes from files; a brick on the platform can only point at platform bricks. Keep “docs” on the platform or move “notes” to files.`)
+  })
+
   it('the platform never sees a file brick', async () => {
     const input = site({}, { bricks: { ...site().bricks, docs: collection({ label: 'Doku', source: 'files', fields: { title: f.text('Titel'), ...md }, max: 50, order: 'manual' }) } })
     expect(Object.keys(platformSchema(serializeSchema(input)).bricks)).toEqual(['menu'])
