@@ -697,9 +697,9 @@
       "other": "Andere Angabe zeigen",
       "chipName": "Angabe {label}: {value}",
       "chipEmpty": "{label}: noch leer",
-      "copy": "„{text}“ ist die Angabe {label}. Als Angabe bleibt der Text aktuell, wenn sich der Wert ändert.",
+      "copy": "„{text}“ ist derselbe Wert wie die Angabe „{label}“. Als Angabe eingefügt, bleibt der Text aktuell, wenn sich der Wert ändert.",
       "copyReplace": "Als Angabe einfügen",
-      "copyKeep": "Nicht ersetzen"
+      "copyKeep": "Diesmal nicht"
     }
   },
   "fields": {

@@ -330,17 +330,17 @@ describe('inline components', () => {
   })
 
   // Wrong behaviour caught: a copied price stayed in the text and went stale with the next price change.
-  test('a copy of a fact value gets a note; "Als Angabe einfügen" makes it the fact, "Nicht ersetzen" keeps it', async () => {
-    const wrapper = await mounted('Eine Sitzung kostet 98 € und `98 €` im Code.\n', withFact, undefined, facts())
+  test('a copy of a fact value gets a note; "Als Angabe einfügen" makes it the fact, "Diesmal nicht" keeps it', async () => {
+    const wrapper = await mounted('Eine Sitzung kostet 98 € und `98 €` im Code.\n\n```\n98 €\n```\n', withFact, undefined, facts())
     await until(() => document.querySelector('.ginko-fact-copy-note') !== null)
     expect(document.querySelectorAll('.ginko-fact-copy')).toHaveLength(1)
     const note = document.querySelector<HTMLElement>('.ginko-fact-copy-note')!
-    expect(note.textContent).toContain('„98 €“ ist die Angabe Preis pro Sitzung.')
+    expect(note.textContent).toContain('„98 €“ ist derselbe Wert wie die Angabe „Preis pro Sitzung“.')
     const [replace] = note.querySelectorAll('button')
     replace!.click()
     await until(() => document.querySelector('.ginko-fact-copy-note') === null)
     await wait(350)
-    expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual(['Eine Sitzung kostet :fact{name="practice.price"} und `98 €` im Code.\n'])
+    expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual(['Eine Sitzung kostet :fact{name="practice.price"} und `98 €` im Code.\n\n```\n98 €\n```\n'])
 
     const kept = await mounted('Früher 98 €.\n', withFact, undefined, facts())
     await until(() => kept.element.querySelector('.ginko-fact-copy-note') !== null)

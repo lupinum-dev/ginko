@@ -255,6 +255,7 @@ function factCopiesExtension(facts: () => readonly StudioFact[] | undefined, opt
     const found: (FactCopy & { blockEnd: number })[] = []
     if (!values?.length) return found
     doc.forEach((block, offset) => {
+      if (block.type.spec.code) return
       block.descendants((node, pos) => {
         if (node.type.name === 'inlineComponent' || node.type.name === 'codeBlock') return false
         if (!node.isText || node.marks.some((mark) => mark.type.name === 'code')) return true

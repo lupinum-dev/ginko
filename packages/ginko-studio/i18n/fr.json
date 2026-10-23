@@ -697,9 +697,9 @@
       "other": "Afficher une autre donnée",
       "chipName": "Donnée {label} : {value}",
       "chipEmpty": "{label} : encore vide",
-      "copy": "« {text} » est la donnée {label}. En tant que donnée, le texte reste à jour quand la valeur change.",
+      "copy": "« {text} » est la même valeur que la donnée « {label} ». Insérée comme donnée, elle reste à jour quand la valeur change.",
       "copyReplace": "Insérer comme donnée",
-      "copyKeep": "Garder le texte"
+      "copyKeep": "Pas maintenant"
     }
   },
   "fields": {

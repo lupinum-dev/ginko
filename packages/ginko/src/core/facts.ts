@@ -152,12 +152,14 @@ export function factNames(components: ComponentRegistry | undefined): string[] {
 }
 
 const FACT_IN_TEXT = /:fact\{([^}]*)\}/g
+const CODE_IN_TEXT = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$|`[^`\n]*`/gm
 const NAME_ATTRIBUTE = /(?:^|\s)name=(?:"([^"]*)"|'([^']*)'|([^\s"'}]+))/
 
 /** The facts a Markdown source quotes (`:fact{name="practice.price"}`), each once, in the order of the text. */
 export function factNamesIn(markdown: string): string[] {
   const names = new Set<string>()
-  for (const [, attributes] of markdown.matchAll(FACT_IN_TEXT)) {
+  // Code shows the syntax (documentation of facts), it does not quote a fact.
+  for (const [, attributes] of withoutCode(markdown).matchAll(FACT_IN_TEXT)) {
     const found = NAME_ATTRIBUTE.exec(attributes!)
     const name = found?.[1] ?? found?.[2] ?? found?.[3]
     if (name) names.add(name)
@@ -265,9 +267,7 @@ export interface FactCopy { name: string; text: string; from: number; to: number
  */
 export function factCopies(text: string, values: readonly Pick<FactValue, 'name' | 'copies'>[]): FactCopy[] {
   const found: FactCopy[] = []
-  const forms = values.flatMap((value) => value.copies.map((form) => ({ name: value.name, form }))).sort((a, b) => b.form.length - a.form.length)
-  for (const { name, form } of forms) {
-    const pattern = new RegExp(`(?<![\\p{L}\\p{N}])${form.trim().split(/\s+/).map(escapeRegExp).join('[\\s\\u00a0\\u202f]+')}(?![\\p{L}\\p{N}])`, 'giu')
+  for (const { name, pattern } of patternsOf(values)) {
     for (const match of text.matchAll(pattern)) {
       const from = match.index
       const to = from + match[0].length
@@ -276,6 +276,33 @@ export function factCopies(text: string, values: readonly Pick<FactValue, 'name'
     }
   }
   return found.sort((a, b) => a.from - b.from)
+}
+
+/** `markdown` with its code (fences, inline code) blanked out, so offsets stay the same. */
+const withoutCode = (markdown: string) => markdown.replace(CODE_IN_TEXT, (code) => code.replace(/[^\n]/g, ' '))
+
+/** The copies of fact values in a Markdown source (factCopies); code shows a value, it does not copy one. */
+export function factCopiesInMarkdown(markdown: string, values: readonly Pick<FactValue, 'name' | 'copies'>[]): FactCopy[] {
+  return factCopies(withoutCode(markdown), values).map((copy) => ({ ...copy, text: markdown.slice(copy.from, copy.to) }))
+}
+
+type FactPattern = { name: string; pattern: RegExp }
+const PATTERNS = new WeakMap<object, FactPattern[]>()
+
+/**
+ * One pattern per form, longest first, compiled once per list of values (the editor scans on every keystroke). A copy
+ * stands on its own: not inside a longer number ("12,98 €" is no copy of "98 €"), word or address ("praxis.at/termin").
+ */
+function patternsOf(values: readonly Pick<FactValue, 'name' | 'copies'>[]): FactPattern[] {
+  const cached = PATTERNS.get(values)
+  if (cached) return cached
+  const forms = values.flatMap((value) => value.copies.map((form) => ({ name: value.name, form }))).sort((a, b) => b.form.length - a.form.length)
+  const patterns = forms.map(({ name, form }) => ({
+    name,
+    pattern: new RegExp(`(?<![\\p{L}\\p{N}]|\\p{N}[.,'’]|[/@.])${form.trim().split(/\s+/).map(escapeRegExp).join('[\\s\\u00a0\\u202f]+')}(?![\\p{L}\\p{N}]|[.,]\\p{N}|[/@][\\w-])`, 'giu'),
+  }))
+  PATTERNS.set(values, patterns)
+  return patterns
 }
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

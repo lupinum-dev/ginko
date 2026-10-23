@@ -17,5 +17,10 @@ export interface EditorFacts { values: () => readonly StudioFact[] | undefined; 
 export const EDITOR_FACTS: InjectionKey<(locale: () => string) => EditorFacts> = Symbol('ginko:editor-facts')
 
 /** Provided by a form of one entry: the texts that quote each of its fields, by field key (none while they load), and the site. */
-export interface FactUses { slug: () => string; quotes: () => Readonly<Record<string, readonly FactQuote[]>> | undefined }
+export interface FactUses {
+  slug: () => string
+  /** The keys of the fields that are facts; known from the schema, so a field's place in the form never changes. */
+  fields: () => ReadonlySet<string>
+  quotes: () => Readonly<Record<string, readonly FactQuote[]>> | undefined
+}
 export const FACT_USES: InjectionKey<FactUses> = Symbol('ginko:fact-uses')

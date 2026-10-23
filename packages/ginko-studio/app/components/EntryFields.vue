@@ -88,9 +88,10 @@ onBeforeUnmount(() => { if (blockers) for (const [key] of props.entries) blocker
           <Button type="button" variant="outline" size="sm" @click="confirm(key, field)">{{ t('fields.list.confirm') }}</Button>
         </div>
       </div>
-      <div v-else-if="quotesOf(key)?.length" v-show="isShown(field, draft)" :class="['grid gap-1.5', span(key, field)]">
+      <!-- A fact field keeps this wrapper while its uses load or change, so the field is not mounted again (focus, input). -->
+      <div v-else-if="factUses?.fields().has(key)" v-show="isShown(field, draft)" :class="['grid gap-1.5', span(key, field)]">
         <GinkoField v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
-        <FactUses :slug="factUses!.slug()" :quotes="quotesOf(key)!" />
+        <FactUses v-if="quotesOf(key)?.length" :slug="factUses.slug()" :quotes="quotesOf(key)!" />
       </div>
       <GinkoField v-else v-show="isShown(field, draft)" :class="span(key, field)" v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
     </template>

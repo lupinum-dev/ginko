@@ -697,9 +697,9 @@
       "other": "Show another fact",
       "chipName": "Fact {label}: {value}",
       "chipEmpty": "{label}: still empty",
-      "copy": "“{text}” is the fact {label}. As a fact, the text stays current when the value changes.",
+      "copy": "“{text}” is the same value as the fact “{label}”. Inserted as a fact, the text stays current when the value changes.",
       "copyReplace": "Insert as fact",
-      "copyKeep": "Keep as text"
+      "copyKeep": "Not now"
     }
   },
   "fields": {

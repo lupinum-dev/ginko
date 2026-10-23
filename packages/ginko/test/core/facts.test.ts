@@ -2,7 +2,7 @@
 // that search and the Markdown twin show the value instead of a gap.
 import { describe, expect, it } from 'vitest'
 import {
-  bundleFactResolver, checkSchema, checkSite, collection, defineSite, entryMarkdown, f, factCopies, factNamesIn, factText, factValues, parseMarkdown, serializeSchema, single,
+  bundleFactResolver, checkSchema, checkSite, collection, defineSite, entryMarkdown, f, factCopies, factCopiesInMarkdown, factNamesIn, factText, factValues, parseMarkdown, serializeSchema, single,
   type Bundle, type FactContext, type SiteInput,
 } from '../../src/core/index.ts'
 import { searchSections } from '../../src/core/search-sections.ts'
@@ -166,6 +166,7 @@ describe('facts for editors and agents', () => {
   it.each([
     ['Preis :fact{name="practice.price"}, Dauer :fact{name=\'practice.minutes\'} und :fact{name=practice.price}', ['practice.price', 'practice.minutes']],
     ['Ein :badge[neu]{color="success"} ohne Angaben', []],
+    ['So geht es: `:fact{name="practice.price"}`\n\n```md\n:fact{name="practice.minutes"}\n```', []],
   ])('factNamesIn(%j)', (text, names) => {
     expect(factNamesIn(text)).toEqual(names)
   })
@@ -190,13 +191,15 @@ describe('facts for editors and agents', () => {
   // Wrong behaviour caught: a copied price stays in a text after the price changes, or an ordinary number is flagged.
   it('finds copies of fact values in a text, standing on their own', () => {
     const values = factValues(serializeSchema(site()), { practice: data }, 'de', '2026-12-31')
-    const text = 'Eine Sitzung kostet 98 € und dauert 60 Minuten, an Dienstag und Mittwoch. 198 € kostet das Paket. Mail: praxis@example.test'
+    const text = 'Eine Sitzung kostet 98 € und dauert 60 Minuten, an Dienstag und Mittwoch. 198 € kostet das Paket, Tee 12,98 €. Mail: praxis@example.test'
     expect(factCopies(text, values).map((c) => [c.name, c.text, text.slice(c.from, c.to)])).toEqual([
       ['practice.price', '98 €', '98 €'],
       ['practice.minutes', '60 Minuten', '60 Minuten'],
       ['practice.days', 'Dienstag und Mittwoch', 'Dienstag und Mittwoch'],
       ['practice.email', 'praxis@example.test', 'praxis@example.test'],
     ])
+    // In a Markdown source (the agent door), code shows the value and is no copy.
+    expect(factCopiesInMarkdown('Kostet `98 €`:\n\n```\n98 €\n```\n\nJetzt 98 €.', values).map((c) => [c.text, c.from])).toEqual([['98 €', 36]])
   })
 })
 

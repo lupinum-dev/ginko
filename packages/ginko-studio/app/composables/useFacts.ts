@@ -2,7 +2,7 @@
 // quote the facts of one brick.
 import { api } from '#convex/api'
 import { factNames, type ComponentRegistry, type Schema } from '@lupinum/ginko/internal'
-import { provide } from 'vue'
+import { computed, provide } from 'vue'
 import { EDITOR_FACTS, FACT_USES, type FactQuote, type FactUses } from '../utils/facts'
 
 /** For the site layout: every text editor below asks for the site's facts in its language (EDITOR_FACTS). */
@@ -15,10 +15,11 @@ export function provideEditorFacts(site: () => string, components: () => Compone
 
 /** The texts that quote the facts of `brick`, by field key, when the brick has facts (else no query runs). */
 export function useFactUses(site: () => string, schema: () => Schema, brick: () => string): FactUses {
-  const has = () => factNames(schema().components).some((name) => name.startsWith(`${brick()}.`))
-  const { data } = useConvexQuery(api.facts.uses, () => (has() ? { site: site(), brick: brick() } : 'skip'))
+  const fields = computed(() => new Set(factNames(schema().components).filter((name) => name.startsWith(`${brick()}.`)).map((name) => name.slice(brick().length + 1))))
+  const { data } = useConvexQuery(api.facts.uses, () => (fields.value.size ? { site: site(), brick: brick() } : 'skip'))
   return {
     slug: site,
+    fields: () => fields.value,
     quotes: () => {
       if (!data.value) return undefined
       const byField: Record<string, FactQuote[]> = {}

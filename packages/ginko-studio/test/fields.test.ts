@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils'
-import { computed, defineComponent, h, reactive, ref, shallowRef, type Component } from 'vue'
+import { computed, defineComponent, h, nextTick, reactive, ref, shallowRef, type Component } from 'vue'
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest'
 import { BLOCKERS, GINKO_ASSETS, TRANSLATION, type GinkoAssets, type TranslationState } from '@lupinum/ginko-editor'
 import type { Field, Json } from '@lupinum/ginko'
@@ -469,11 +469,19 @@ describe('a fact field in an entry form', () => {
   test('says how many texts quote it and lists them; other fields say nothing', async () => {
     const entries = [['price', { type: 'money', label: 'Preis pro Sitzung' }], ['minutes', { type: 'number', label: 'Dauer' }]] as [string, Field][]
     const quote = { entry: 'e1', brick: 'docs', title: 'Kosten und Termine', paths: ['body'], fieldLabels: ['Text'], deleted: false as const, state: 'live' as const }
-    const uses = { slug: () => 'praxis', quotes: () => ({ price: [quote, { ...quote, entry: 'e2', title: 'Häufige Fragen' }] }) }
+    const loaded = ref<Record<string, typeof quote[]>>()
+    const uses = { slug: () => 'praxis', fields: () => new Set(['price']), quotes: () => loaded.value }
     const Host = defineComponent({
       setup: () => () => h(EntryFields, { entries, all: Object.fromEntries(entries), draft: {}, baseline: {}, locale: 'de', locales: ['de'], issues: [] }),
     })
-    const wrapper = mount(Host, { global: { provide: { [FACT_USES as symbol]: uses }, stubs: { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } })
+    const wrapper = mount(Host, { attachTo: document.body, global: { provide: { [FACT_USES as symbol]: uses }, stubs: { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } })
+    // The link "In Praxis ändern" opens the form on this field; when the uses arrive, the field keeps its focus.
+    const input = wrapper.get('input').element as HTMLInputElement
+    input.focus()
+    loaded.value = { price: [quote, { ...quote, entry: 'e2', title: 'Häufige Fragen' }] }
+    await nextTick()
+    expect(wrapper.get('input').element).toBe(input)
+    expect(document.activeElement).toBe(input)
     const line = wrapper.findAll('[data-test="fact-uses"]')
     expect(line).toHaveLength(1)
     expect(line[0]!.get('summary').text()).toBe('Erscheint in 2 Texten')
