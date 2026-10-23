@@ -34,8 +34,16 @@ function localized<P extends `/${string}`>(locales: Locales, path: P): Record<Lo
   return Object.fromEntries(locales.map((l) => [l, l === main ? path : address === '/' ? `/${l}` : `/${l}${path}`])) as Record<Locale, P>
 }
 
-/** `base`: where the docs live, default `/docs` (e.g. `/handbook` inside a larger site). `source`: see `DocsSource`. */
-export function docsCollection(opts: { locales: Locales; label?: string; max?: number; base?: `/${string}`; source?: DocsSource }) {
+/** A label in the languages of the Studio, so editors read the fields in their language (de, en, es, fr). */
+const l = (de: string, en: string, es: string, fr: string) => ({ de, en, es, fr })
+const NAVIGATION = l('Navigation', 'Navigation', 'Navegación', 'Navigation')
+
+/**
+ * `base`: where the docs live, default `/docs` (e.g. `/handbook` inside a larger site). `source`: see `DocsSource`.
+ * `navExtras: false` leaves out Tab, Badge and Icon, which most sites do not use: editors then see only the text and
+ * where the page sits (section, parent page, short title).
+ */
+export function docsCollection(opts: { locales: Locales; label?: string; max?: number; base?: `/${string}`; source?: DocsSource; navExtras?: boolean }) {
   const { locales } = opts
   const base = opts.base ?? '/docs'
   return collection({
@@ -44,23 +52,41 @@ export function docsCollection(opts: { locales: Locales; label?: string; max?: n
     max: opts.max ?? 500,
     order: 'manual',
     route: localized(locales, `${base}/[slug]`),
-    fields: {
-      title: f.text('Title'),
-      description: f.longtext('Description', { optional: true }),
+    fields: withExtras(opts.navExtras !== false, {
+      title: f.text(l('Titel', 'Title', 'Título', 'Titre')),
+      description: f.longtext(l('Beschreibung', 'Description', 'Descripción', 'Description'), { optional: true }),
+      body: f.markdown(l('Text', 'Text', 'Texto', 'Texte'), { profile: 'page' }),
+      /** The page's name in the side navigation, the breadcrumbs and the previous/next links, when the title is too long there. */
+      navTitle: f.text(l('Kurztitel', 'Short title', 'Título corto', 'Titre court'), {
+        optional: true, max: 60, group: NAVIGATION,
+        hint: l('Statt des Titels in der Navigation', 'Shown instead of the title in the navigation', 'Se muestra en la navegación en lugar del título', 'Affiché dans la navigation à la place du titre'),
+      }),
       /** Starts a group in the side navigation under this heading; the pages after it belong to it until the next one. */
-      section: f.text('Section', { optional: true }),
+      section: f.text(l('Abschnitt', 'Section', 'Sección', 'Section'), {
+        optional: true, group: NAVIGATION,
+        hint: l('Beginnt eine Gruppe in der Navigation; die folgenden Seiten gehören dazu', 'Starts a group in the navigation; the pages after it belong to it', 'Empieza un grupo en la navegación; las páginas siguientes pertenecen a él', 'Commence un groupe dans la navigation ; les pages suivantes en font partie'),
+      }),
       /** Nests the entry under another doc in the side navigation and the breadcrumbs. */
-      parent: f.ref('Parent page', { to: 'docs', optional: true }),
+      parent: f.ref(l('Übergeordnete Seite', 'Parent page', 'Página superior', 'Page parente'), { to: 'docs', optional: true, group: NAVIGATION }),
       /** Section tab above the side navigation; a page without one follows the tab of the page before it. Children follow their parent. */
-      tab: f.text('Tab', { optional: true, max: 30 }),
+      tab: f.text(l('Reiter', 'Tab', 'Pestaña', 'Onglet'), { optional: true, max: 30, group: NAVIGATION }),
       /** A short label next to the entry in the side navigation, e.g. "New". */
-      badge: f.text('Badge', { optional: true, max: 20 }),
+      badge: f.text(l('Badge', 'Badge', 'Insignia', 'Badge'), { optional: true, max: 20, group: NAVIGATION }),
       /** An icon name such as `lucide:book-open` (any installed Iconify set), shown before the title in the side navigation. */
-      icon: f.text('Icon', { optional: true, max: 60, translate: false }),
-      slug: f.slug('Address', { from: 'title' }),
-      body: f.markdown('Text', { profile: 'page' }),
-    },
+      icon: f.text(l('Symbol', 'Icon', 'Icono', 'Icône'), { optional: true, max: 60, translate: false, group: NAVIGATION, hint: 'lucide:book-open' }),
+      slug: f.slug(l('Adresse', 'Address', 'Dirección', 'Adresse'), { from: 'title' }),
+    }),
   })
+}
+
+/**
+ * The fields, without Tab, Badge and Icon unless `extras`. The type keeps them: all three are optional, so the data type
+ * (`tab?: string`) is true whether the field exists or not, and the layer reads them the same way.
+ */
+function withExtras<F extends { tab: unknown; badge: unknown; icon: unknown }>(extras: boolean, fields: F): F {
+  if (extras) return fields
+  const { tab: _tab, badge: _badge, icon: _icon, ...rest } = fields
+  return rest as unknown as F
 }
 
 /**

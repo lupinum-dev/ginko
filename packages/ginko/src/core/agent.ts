@@ -39,7 +39,9 @@ export async function entryMarkdown(item: BundleItem, brick: string, options: Ag
     const value = item.data[name]
     // The title is the heading already (for a person, the name its slug is made from).
     if (name === 'title' || value === title) continue
-    if ((field.type === 'text' || field.type === 'longtext') && typeof value === 'string' && value.trim()) parts.push(markdownText(value.trim()))
+    // A text that is not translated is a code, not language (an icon name such as `lucide:book-open`, a command).
+    const prose = (field.type === 'text' || field.type === 'longtext') && field.translate !== false
+    if (prose && typeof value === 'string' && value.trim()) parts.push(markdownText(value.trim()))
     if (field.type !== 'markdown') continue
     const tree = treeOf(value, options.trees)
     if (tree) {

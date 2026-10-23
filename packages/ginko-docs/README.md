@@ -113,11 +113,15 @@ Each docs page's frontmatter can set, besides `title` and `description`:
 
 | Field | Effect |
 | --- | --- |
+| `navTitle` | A short title for the side navigation, the breadcrumbs and the previous/next links, when the title is too long there. |
 | `section` | Starts a group in the side navigation with this heading; the pages after it belong to it until the next `section`. |
 | `tab` | Starts a tab above the side navigation (for example "Guide" and "Reference"); pages follow the tab before them. |
 | `parent` | Nests the page under another one (`parent: docs/<name>`: the entry id, the file name without number, locale and extension). |
 | `icon` | An Iconify name, e.g. `lucide:rocket`, before the title in the navigation. Main locale only. |
 | `badge` | A short label after the title, e.g. "New". |
+
+`docsCollection({ locales, navExtras: false })` leaves out `tab`, `badge` and `icon` for sites that use none of them, so
+editors in the Studio see only the text and where the page sits.
 
 ### Icons
 
@@ -168,7 +172,8 @@ Add `home: docsHome()` to `bricks`. Without it, `/` leads to the first docs page
 The layer is plain CSS. Colours, radius and fonts are shadcn-style tokens, the same ones
 `@lupinum/ginko-components` reads: `--background`, `--foreground`, `--muted`, `--muted-foreground`, `--accent`,
 `--border`, `--primary`, `--primary-foreground`, `--card`, `--popover`, `--ring`, `--radius`, `--font-sans`,
-`--font-mono`. The layer's defaults have zero specificity, so any value the site sets wins:
+`--font-mono`. The layer's defaults sit in `@layer theme` with zero specificity, so any value the site sets wins,
+unlayered or through Tailwind 4's `@theme`:
 
 ```css
 /* assets/site.css */

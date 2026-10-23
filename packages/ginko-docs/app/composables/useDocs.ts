@@ -9,10 +9,8 @@ export function useDocs() {
   const chain = useGinkoBreadcrumbs(['docs'])
 
   // Ginko's nodes carry title and path; badge, icon, section and tab live on the entry (rules: enrichNav).
-  const nodes = computed<DocNode[]>(() => {
-    const byId = new Map(items.value.items.map((d) => [d.id, d.data]))
-    return enrichNav(tree.value, (id) => byId.get(id))
-  })
+  const byId = computed(() => new Map(items.value.items.map((d) => [d.id, d.data])))
+  const nodes = computed<DocNode[]>(() => enrichNav(tree.value, (id) => byId.value.get(id)))
 
   const tabs = computed<DocTab[]>(() => {
     const out = new Map<string, DocTab>()
@@ -36,7 +34,8 @@ export function useDocs() {
   // Tab (when tabs are shown), then the parent chain down to this page.
   const crumbs = computed<{ title: string; path: string }[]>(() => {
     const tab = tabs.value.find((t) => t.title === activeTab.value)
-    return [...(tab ? [tab] : []), ...chain.value.map(({ title, path }) => ({ title, path }))]
+    const short = (id: string | undefined) => (id ? byId.value.get(id)?.navTitle : undefined)
+    return [...(tab ? [tab] : []), ...chain.value.map(({ id, title, path }) => ({ title: short(id) || title, path }))]
   })
 
   /** The first page of the docs in this language: where `/docs` (and `/` without a start page) lead. */

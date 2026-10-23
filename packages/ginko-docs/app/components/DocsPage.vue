@@ -69,10 +69,10 @@ const top = () => window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduc
         </div>
         <nav v-if="neighbors.prev || neighbors.next" class="docs-pager" :aria-label="t('docs.pager')">
           <NuxtLink v-if="neighbors.prev" :to="neighbors.prev.url" rel="prev">
-            <small><DocsIcon name="lucide:arrow-left" class="docs-icon" />{{ t('docs.previous') }}</small>{{ neighbors.prev.data.title }}
+            <small><DocsIcon name="lucide:arrow-left" class="docs-icon" />{{ t('docs.previous') }}</small>{{ neighbors.prev.data.navTitle || neighbors.prev.data.title }}
           </NuxtLink>
           <NuxtLink v-if="neighbors.next" :to="neighbors.next.url" rel="next" class="is-next">
-            <small>{{ t('docs.next') }}<DocsIcon name="lucide:arrow-right" class="docs-icon" /></small>{{ neighbors.next.data.title }}
+            <small>{{ t('docs.next') }}<DocsIcon name="lucide:arrow-right" class="docs-icon" /></small>{{ neighbors.next.data.navTitle || neighbors.next.data.title }}
           </NuxtLink>
         </nav>
       </footer>

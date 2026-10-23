@@ -10,6 +10,7 @@ const schema = {
       fields: {
         title: { type: 'text', label: 'Titel' },
         intro: { type: 'longtext', label: 'Einleitung' },
+        icon: { type: 'text', label: 'Symbol', translate: false },
         body: { type: 'markdown', label: 'Text' },
       },
     },
@@ -24,9 +25,10 @@ const options: AgentOptions = { schema }
 const item = (id: string, data: Record<string, unknown>, urls?: BundleItem['urls']): BundleItem => ({ id, data, fallback: [], ...(urls ? { urls } : {}) })
 
 describe('entryMarkdown', () => {
-  test('title, text and longtext fields, then a markdown tree', async () => {
+  // Wrong behaviour caught: an icon code ("lucide:calendar-days") printed as a paragraph of the page (found on rolfing).
+  test('title, text and longtext fields, then a markdown tree; untranslated codes stay out', async () => {
     const body = await parseMarkdown('## Schritte\n\n- eins\n- zwei\n\nSiehe [Doku](https://example.com/doku).')
-    const markdown = await entryMarkdown(item('a', { title: 'Erster Beitrag', intro: 'Kurz vorweg.', body: body.value }), 'blog', options)
+    const markdown = await entryMarkdown(item('a', { title: 'Erster Beitrag', intro: 'Kurz vorweg.', icon: 'lucide:calendar-days', body: body.value }), 'blog', options)
     expect(markdown).toBe('# Erster Beitrag\n\nKurz vorweg.\n\n## Schritte\n\n- eins\n- zwei\n\nSiehe [Doku](https://example.com/doku).\n')
   })
 
