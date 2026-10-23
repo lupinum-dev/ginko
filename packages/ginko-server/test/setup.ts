@@ -1,7 +1,7 @@
 // Shared convex-test setup: the restaurant site from the contracts corpus, with its people.
 // Every platform test starts here, so no test writes its own seed.
 import type { Json } from '@lupinum/ginko'
-import { serializeSchema, type Schema } from '@lupinum/ginko/internal'
+import { factComponent, serializeSchema, type Schema } from '@lupinum/ginko/internal'
 import { convexTest } from 'convex-test'
 import type { UserIdentityAttributes } from 'convex/server'
 import restaurant from '../../../sites/restaurant/ginko.config.ts'
@@ -192,4 +192,19 @@ export async function upload(s: Setup, opts: { person?: Person; site?: string; c
   const id = body.upload as Id<'uploads'>
   if (ready && type === 'application/pdf') await s.t.mutation(internal.uploads.markFileReady, { upload: id })
   return id
+}
+
+/** The restaurant with the facts contact.phone and contact.email (its schema, as stored); the imprint quotes the phone. */
+export async function withFacts(s: Setup): Promise<Schema> {
+  const site = (await s.t.run((ctx) => ctx.db.get(s.site)))!
+  const schema = JSON.parse(JSON.stringify(site.schema)) as Schema
+  schema.components = { ...schema.components, fact: factComponent(['contact.phone', 'contact.email'], schema.bricks) }
+  const legal = s.entries.legal!
+  await s.t.run(async (ctx) => {
+    await ctx.db.patch(s.site, { schema })
+    const row = (await ctx.db.get(legal))!
+    const imprint = (row.data as { imprint: Record<string, string> }).imprint
+    await ctx.db.patch(legal, { data: { ...row.data, imprint: { ...imprint, de: `${imprint.de}\n\nTelefon: :fact{name="contact.phone"}` } } })
+  })
+  return schema
 }

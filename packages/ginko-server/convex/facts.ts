@@ -1,12 +1,13 @@
 // Facts (`facts` in the site config, `:fact{name="…"}` in texts) as editors and agents need them: what each one
 // shows now, which texts quote it, and a release that would leave a quote without its fact.
 import type { Label } from '@lupinum/ginko'
-import { factNames, factValues, msg, resolveEntry, todayIn, type FactValue, type Schema, type SchemaChange } from '@lupinum/ginko/internal'
+import { factCopies, factNames, factValues, msg, resolveEntry, todayIn, type FactValue, type Schema, type SchemaChange } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { query, type QueryCtx } from './_generated/server'
 import { actorFor } from './lib/access'
-import { factQuotesOf, fieldLabelAt, type Data } from './lib/content'
+import type { Fields } from '@lupinum/ginko'
+import { factQuotesOf, fieldLabelAt, markdownTextsOf, type Data } from './lib/content'
 import { labelOf } from './entries'
 
 /** One text that quotes a fact, in the form the Studio's "used in" list reads (UsedInList). */
@@ -34,6 +35,34 @@ export async function factsOf(ctx: QueryCtx, site: Doc<'sites'>, locale?: string
   const shown = locale && schema.locales.includes(locale) ? locale : schema.locales[0]!
   const { data, entries } = await singlesIn(ctx, site, schema, shown)
   return factValues(schema, data, shown, todayIn(schema.timeZone)).map((fact) => ({ ...fact, brickLabel: schema.bricks[fact.brick]!.label, entry: entries[fact.brick] ?? null }))
+}
+
+/** A fact value written as plain text in a Markdown field: where the fact should be quoted instead. */
+export interface FactCopyFound { path: string; text: string; fact: string }
+
+/**
+ * The fact values that `data` writes as plain text into the Markdown fields of `fields` (in the form a tool sends them
+ * or as stored), each fact once per field. Reads nothing when the site has no facts or `data` no Markdown text.
+ */
+export async function factCopiesIn(ctx: QueryCtx, site: Doc<'sites'>, fields: Fields, data: Data): Promise<FactCopyFound[]> {
+  const texts = markdownTextsOf(fields, data)
+  if (!texts.length || !factNames((site.schema as Schema).components).length) return []
+  const facts = await factsOf(ctx, site)
+  const found: FactCopyFound[] = []
+  for (const { path, text } of texts) {
+    for (const copy of factCopies(text, facts)) {
+      if (!found.some((f) => f.path === path && f.fact === copy.name)) found.push({ path, text: copy.text, fact: copy.name })
+    }
+  }
+  return found
+}
+
+/** For the assistant (English): which values a write copied and how to quote them instead; '' when it copied none. */
+export function factCopyNote<T extends FactCopyFound>(found: readonly T[], item?: (copy: T) => string): string {
+  if (!found.length) return ''
+  const shown = found.slice(0, 5).map((f) => `“${f.text}” in ${item ? `${item(f)} ` : ''}${f.path} → :fact{name="${f.fact}"}`)
+  const more = found.length > shown.length ? ` and ${found.length - shown.length} more` : ''
+  return `Note: these texts copy values the site keeps as facts: ${shown.join('; ')}${more}. Quote the fact instead, so the text stays right when the value changes.`
 }
 
 /**

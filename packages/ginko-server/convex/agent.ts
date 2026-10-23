@@ -1,12 +1,13 @@
 // The agent door (SPEC 16): a person's keys, and the tools behind POST /mcp (routes/mcp.ts).
 // A key acts as its person with their role and grants at call time. Every write runs through the
 // same operations as the platform (`saveAs`, `createAs`, ...), so rights, checks and history are one.
-import type { Json } from '@lupinum/ginko'
+import type { Fields, Json } from '@lupinum/ginko'
 import { labelOf as labelIn, checkLinks, fieldsInputSchema, fromToolInput, isSafeHref, isTranslatable, sha256, taskInputSchema, type JsonSchemaObject, type Schema } from '@lupinum/ginko/internal'
 import { ConvexError, v } from 'convex/values'
 import { components } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import { bundleOf } from './bundle'
+import { factCopiesIn, factCopyNote, factsOf, type FactCopyFound } from './facts'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { createAs, labelOf, removeAs, revertAs, saveAs, undoAs, usesOfEntry, versionAtAs } from './entries'
 import { usageAs } from './files'
@@ -170,6 +171,13 @@ export const overview = internalQuery({
     const allowed = taskTools(actor)
     const review = effectiveReview(await ctx.db.get(key), actor.site)
     const drafts = draftBricks(actor)
+    // Values the site keeps in one place; texts quote them (`:fact{name="…"}`) instead of copying them.
+    const facts = (await factsOf(ctx, actor.site)).map((fact) => ({
+      quote: `:fact{name="${fact.name}"}`,
+      label: labelIn(schema.bricks[fact.brick]!.fields[fact.field]!.label, schema.locales[0]!, schema.locales[0]!),
+      shows: fact.text ?? null,
+      ...(fact.next ? { next: { shows: fact.next.text, from: fact.next.from } } : {}),
+    }))
     return {
       site: actor.site.slug,
       name: actor.site.name,
@@ -183,6 +191,7 @@ export const overview = internalQuery({
         brick, label: labelIn(b.label, schema.locales[0]!, schema.locales[0]!), kind: b.kind, ...(drafts.includes(brick) ? { drafts: true } : {}),
         tasks: allowed.filter((t) => t.brick === brick).map((t) => ({ tool: t.name, label: labelIn(t.task.label, schema.locales[0]!, schema.locales[0]!) })),
       })),
+      ...(facts.length ? { facts } : {}),
     }
   },
 })
@@ -453,7 +462,7 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
     // A collection with drafts makes a draft (SPEC 15); publishing stays with the person in the platform.
     const where = state === 'draft' ? 'Saved as a draft, not on the website yet. The person publishes it in the platform.' : liveText(liveFrom)
     const change = await lastChangeOf(ctx, id)
-    return { text: `Done: ${labelIn(tool.task.label, main, main)}. New entry ${id}. ${where} To undo: ginko_undo with change ${change?._id}.`, result: { ...(result as object), change: change?._id ?? null } }
+    return notingCopies(ctx, actor, brick.fields, values, { text: `Done: ${labelIn(tool.task.label, main, main)}. New entry ${id}. ${where} To undo: ginko_undo with change ${change?._id}.`, result: { ...(result as object), change: change?._id ?? null } })
   }
 
   const entry = await targetOf(ctx, actor, tool.brick, picked)
@@ -480,7 +489,18 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
   }
   if (!Object.keys(fields).length) fail('INVALID', 'errors.nothingToChange')
   // The assistant acts on the state it just read, so the current revision is its base.
-  return savedAs(await saveAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, baseRev: entry.rev, fields, locale: main }), labelIn(tool.task.label, main, main))
+  return notingCopies(ctx, actor, brick.fields, values, savedAs(await saveAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, baseRev: entry.rev, fields, locale: main }), labelIn(tool.task.label, main, main)))
+}
+
+/**
+ * `done` with a note when the Markdown it wrote copies fact values (facts.ts), so the assistant quotes the facts instead.
+ * With `sink` (ginko_import), the copies go there and the import names them once for all items.
+ */
+async function notingCopies(ctx: MutationCtx, actor: Actor, fields: Fields, values: Record<string, Json>, done: { text: string; result: Json }, sink?: FactCopyFound[]): Promise<{ text: string; result: Json }> {
+  const found = await factCopiesIn(ctx, actor.site, fields, values)
+  if (sink) sink.push(...found)
+  const note = sink ? '' : factCopyNote(found)
+  return note ? { ...done, text: `${done.text} ${note}` } : done
 }
 
 /** ginko_translate: foreign-language texts through the normal save with `locale`; only whole texts of translatable fields. */
@@ -641,7 +661,7 @@ function schemaOf(actor: Actor, only: Json | undefined) {
 }
 
 /** ginko_write: any fields of an entry or single, in the main language, as the Studio saves them (no task). */
-async function writeThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
+async function writeThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string, copies?: FactCopyFound[]): Promise<{ text: string; result: Json }> {
   onlyKeys(input, ['brick', 'entry', 'fields'])
   const schema = actor.site.schema as Schema
   const main = schema.locales[0]!
@@ -654,11 +674,11 @@ async function writeThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<st
   const result = await saveAs(ctx, actor, { site: actor.site.slug, opId, entry: entry._id, baseRev: entry.rev, fields, locale: main })
   const studio = studioLink(actor, key, def.kind === 'single' ? undefined : entry._id)
   const saved = savedAs(result, `${labelOf(schema, key, entry.data as Data)}: ${Object.keys(fields).join(', ')}`)
-  return { text: saved.text, result: { ...(result as object), entry: entry._id, ...(studio ? { studio } : {}) } }
+  return notingCopies(ctx, actor, def.fields, values, { text: saved.text, result: { ...(result as object), entry: entry._id, ...(studio ? { studio } : {}) } }, copies)
 }
 
 /** ginko_create: a new entry of a collection with any fields (no task). In a collection with drafts, a draft unless `publish`. */
-async function createThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string): Promise<{ text: string; result: Json }> {
+async function createThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string, copies?: FactCopyFound[]): Promise<{ text: string; result: Json }> {
   onlyKeys(input, ['brick', 'fields', 'publish'])
   const schema = actor.site.schema as Schema
   const { key, def } = brickOf(actor, input.brick)
@@ -668,15 +688,15 @@ async function createThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<s
   checkFields(actor, key, def, values)
   const data = fromToolInput(def.fields, values, { mainLocale: schema.locales[0]!, currency: schema.currency, newRowId })
   const result = await createAs(ctx, actor, { site: actor.site.slug, opId, brick: key, data, ...(input.publish === true ? { publish: {} } : {}) })
-  if (proposed(result)) return { text: PROPOSED, result }
+  if (proposed(result)) return notingCopies(ctx, actor, def.fields, values, { text: PROPOSED, result }, copies)
   const { entry: id, state, liveFrom } = result as { entry: Id<'entries'>; state: 'draft' | 'live'; liveFrom?: string }
   const change = await lastChangeOf(ctx, id)
   const studio = studioLink(actor, key, id)
   const where = state === 'draft' ? 'Saved as a draft, not on the website yet.' : liveText(liveFrom)
-  return {
+  return notingCopies(ctx, actor, def.fields, values, {
     text: `Created entry ${id} in “${key}”. ${where} To undo: ginko_undo with change ${change?._id}.`,
     result: { ...(result as object), change: change?._id ?? null, ...(studio ? { studio } : {}) },
-  }
+  }, copies)
 }
 
 /**
@@ -691,14 +711,17 @@ async function importThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<s
   if (items.length > IMPORT_MAX) fail('INVALID', 'errors.importTooLarge', { max: IMPORT_MAX })
   const schema = actor.site.schema as Schema
   const results: Json[] = []
+  const copies: (FactCopyFound & { item: number })[] = []
   for (const [i, raw] of items.entries()) {
     try {
       const item = objectArg(raw, `items[${i}]`)
       const { entry, publish, ...rest } = item
       const writes = entry !== undefined || (typeof item.brick === 'string' && schema.bricks[item.brick]?.kind === 'single')
+      const found: FactCopyFound[] = []
       const done = writes
-        ? await writeThroughDoor(ctx, actor, { ...rest, ...(entry === undefined ? {} : { entry }) }, `${opId}-${i}`)
-        : await createThroughDoor(ctx, actor, { ...rest, ...(publish === undefined ? {} : { publish }) }, `${opId}-${i}`)
+        ? await writeThroughDoor(ctx, actor, { ...rest, ...(entry === undefined ? {} : { entry }) }, `${opId}-${i}`, found)
+        : await createThroughDoor(ctx, actor, { ...rest, ...(publish === undefined ? {} : { publish }) }, `${opId}-${i}`, found)
+      copies.push(...found.map((copy) => ({ ...copy, item: i })))
       const r = done.result as Record<string, Json>
       results.push({ item: i, op: writes ? 'write' : 'create', ...(r.entry ? { entry: r.entry } : {}), ...(r.proposal ? { proposal: r.proposal } : {}), ...(r.studio ? { studio: r.studio } : {}) })
     } catch (error) {
@@ -709,8 +732,9 @@ async function importThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<s
   }
   // The IDs of a dry run are rolled back with it, so its answer names only what each item would do.
   const rows = results as { item: number; op: string; proposal?: string }[]
-  if (input.dry_run === true) throw new ConvexError({ code: DRY_RUN, results: rows.map((r) => ({ item: r.item, op: r.op, ...(r.proposal ? { proposed: true } : {}) })) })
-  return { text: importText(rows), result: results }
+  const note = factCopyNote(copies, (copy) => `items[${copy.item}]`)
+  if (input.dry_run === true) throw new ConvexError({ code: DRY_RUN, results: rows.map((r) => ({ item: r.item, op: r.op, ...(r.proposal ? { proposed: true } : {}) })), ...(note ? { note } : {}) })
+  return { text: [importText(rows), note].filter(Boolean).join(' '), result: results }
 }
 
 /** What ginko_import says: what is live now and what waits for approval (review on), never "saved" for a proposal. */

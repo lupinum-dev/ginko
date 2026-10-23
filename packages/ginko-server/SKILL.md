@@ -1,6 +1,6 @@
 ---
 name: ginko
-description: Use when you maintain a website's content through a Ginko agent key (MCP tools ginko_overview, ginko_read, ginko_search, task_*, and for owners and admins ginko_schema, ginko_write, ginko_create, ginko_import, ginko_upload). Covers reading before writing, filling a site, proposals that wait for approval, translations, files, link checks and undo.
+description: Use when you maintain a website's content through a Ginko agent key (MCP tools ginko_overview, ginko_read, ginko_search, task_*, and for owners and admins ginko_schema, ginko_write, ginko_create, ginko_import, ginko_upload). Covers reading before writing, filling a site, quoting facts, proposals that wait for approval, translations, files, link checks and undo.
 ---
 
 # Working with a Ginko website
@@ -48,6 +48,16 @@ Owners and admins see five more tools. They write any field, as the Studio does,
   first: it checks every item with the real save and saves nothing. An error names the item (`items[3]: …`).
 - A wrong field or brick name gets a "Did you mean …?" answer. Use the suggested key.
 - Answers carry a `studio` link to the entry, so you can show the person where to look.
+
+## Facts (values that appear in many texts)
+
+- `ginko_overview` may list `facts`: values the site keeps in one place, such as a price, the opening days or the phone
+  number. Each has a `quote`, a `label`, what the website `shows` today and, when a change is planned, `next`.
+- In a Markdown text, write the quote where the value belongs, for example
+  `Eine Sitzung kostet :fact{name="practice.price"}.` The page shows the value in effect today, and the text stays
+  right when the value changes. Do not type the value itself.
+- To change a value, change its own field (a task or `ginko_write` on its brick), never the texts that quote it.
+- When an answer says that a text copies a fact value, write it again with the quote.
 
 ## Proposals ("show me first")
 

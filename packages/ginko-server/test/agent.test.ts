@@ -4,7 +4,7 @@ import { api, internal } from '../convex/_generated/api'
 import type { Schema } from '@lupinum/ginko/internal'
 import type { Id } from '../convex/_generated/dataModel'
 import { suggest } from '../convex/lib/agentTools'
-import { errorOf, firstPage, opId, setup, upload } from './setup'
+import { errorOf, firstPage, opId, setup, upload, withFacts } from './setup'
 
 type Setup = Awaited<ReturnType<typeof setup>>
 type ToolAnswer = { content: { type: 'text'; text: string }[]; isError: boolean }
@@ -613,6 +613,42 @@ describe('agent door: builder tools (owners and admins)', () => {
     expect(done.text).toContain('too large')
     expect(sent).toBeLessThan(100)
     expect(await s.t.run((ctx) => ctx.db.query('uploads').collect())).toHaveLength(0)
+  })
+})
+
+describe('agent door: facts', () => {
+  const PHONE = 'Telefon: +43 662 000 000'
+  const note = (where: string) => `Note: these texts copy values the site keeps as facts: “+43 662 000 000” in ${where} → :fact{name="contact.phone"}. Quote the fact instead, so the text stays right when the value changes.`
+
+  // Wrong behaviour caught: the assistant did not know which values the site keeps as facts, so it typed them into texts.
+  it('ginko_overview lists every fact with its quote and what the website shows, for any member', async () => {
+    const s = await setup()
+    await withFacts(s)
+    expect((await call(s, await keyOf(s, 'cook'), 'ginko_overview')).data.facts).toEqual([
+      { quote: ':fact{name="contact.phone"}', label: 'Telefon', shows: '+43 662 000 000' },
+      { quote: ':fact{name="contact.email"}', label: 'E-Mail', shows: 'office@gasthaus-linde.example' },
+    ])
+  })
+
+  // Wrong behaviour caught: a text written through the door kept a copy of the phone number, which went stale on the next change.
+  it('a write that copies a fact value says which fact to quote; a quote gets no note', async () => {
+    const s = await setup()
+    await withFacts(s)
+    const key = await keyOf(s, 'owner')
+    const copied = await call(s, key, 'ginko_write', { brick: 'legal', fields: { imprint: PHONE } })
+    expect(copied.isError).toBe(false)
+    expect(copied.text).toContain(note('imprint'))
+    const quoted = await call(s, key, 'ginko_write', { brick: 'legal', fields: { imprint: 'Telefon: :fact{name="contact.phone"}' } })
+    expect(quoted.text).not.toContain('Note:')
+  })
+
+  it('ginko_import names the item that copies a fact value, in the dry run too', async () => {
+    const s = await setup()
+    await withFacts(s)
+    const key = await keyOf(s, 'owner')
+    const items = [{ brick: 'notices', fields: { text: 'Ruhetag', until: '2099-01-01' } }, { brick: 'legal', fields: { imprint: PHONE } }]
+    expect((await call(s, key, 'ginko_import', { items, dry_run: true })).text).toBe(`Dry run: all 2 items would be saved. Nothing was saved. ${note('items[1] imprint')}`)
+    expect((await call(s, key, 'ginko_import', { items })).text).toContain(note('items[1] imprint'))
   })
 })
 

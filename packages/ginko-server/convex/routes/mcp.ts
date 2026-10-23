@@ -25,7 +25,8 @@ const INSTRUCTIONS = 'Ginko maintains the content of one website for one person.
   + 'Changes are live in about a minute and can be taken back with ginko_undo. Ask the person before removing anything. '
   + 'When you retry a change, send the same request_id, so it runs only once. '
   + 'Texts that belong to the website stay in the language of the website; answer the person in their own language. '
-  + 'Owners and admins also build and fill the site: ginko_schema shows every field, ginko_write, ginko_create and ginko_import write them (ginko_import with dry_run first), ginko_upload adds files.'
+  + 'Owners and admins also build and fill the site: ginko_schema shows every field, ginko_write, ginko_create and ginko_import write them (ginko_import with dry_run first), ginko_upload adds files. '
+  + 'Values the site keeps in one place (a price, opening days, the phone number) are listed as facts in ginko_overview: in a Markdown text, write the fact\'s quote (:fact{name="practice.price"}) instead of the value, so the text stays right when the value changes; change the value in its own field.'
 
 type Rpc = { jsonrpc: '2.0'; id?: string | number | null; method: string; params?: Record<string, Json> }
 
@@ -100,8 +101,8 @@ async function callTool(ctx: ActionCtx, key: Id<'agentKeys'>, name: string, args
     return toolText(done.text, done.result)
   } catch (error) {
     // A dry run of ginko_import ends with a throw, so nothing it wrote is kept.
-    const data = (error as { data?: { code?: string; results?: unknown[] } }).data
-    if (data?.code === DRY_RUN) return toolText(dryRunText((data.results ?? []) as { proposed?: boolean }[]), data.results)
+    const data = (error as { data?: { code?: string; results?: unknown[]; note?: string } }).data
+    if (data?.code === DRY_RUN) return toolText([dryRunText((data.results ?? []) as { proposed?: boolean }[]), data.note].filter(Boolean).join(' '), data.results)
     return toolText(messageOf(error), undefined, true)
   }
 }
