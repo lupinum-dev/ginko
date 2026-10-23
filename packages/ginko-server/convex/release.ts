@@ -2,7 +2,7 @@
 // the HTTP routes in routes/release.ts, which resolve the push key to its site first; the
 // internal functions here trust that site id. Owners and admins use the public mutations.
 import type { Fields, Json, Locale } from '@lupinum/ginko'
-import { byteSize, checkSchema, defaultsFor, entryBytes, fitsBudget, diffSchema, fieldsChanged, releaseData, sha256, stableJson, validate, type MigrationDescriptor, type Schema } from '@lupinum/ginko/internal'
+import { byteSize, checkSchema, defaultsFor, entryBytes, fitsBudget, diffSchema, recheckAll, releaseData, sha256, stableJson, validate, type MigrationDescriptor, type Schema } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
@@ -273,7 +273,7 @@ export const release = internalMutation({
     const checked: { entry: Entry; data: Record<string, Json> }[] = []
     for (const [key, brick] of Object.entries(next.bricks)) {
       if (!Object.hasOwn(stored.bricks, key)) continue
-      const all = fieldsChanged(stored, next, key)
+      const all = recheckAll(stored, next, key)
       for (const entry of entries.filter((e) => e.brick === key)) {
         const before = entry.data as Record<string, Json>
         const { data, roots } = releaseData(stored.bricks[key]!.fields, brick.fields, before, writesOf.get(entry._id) ?? {})

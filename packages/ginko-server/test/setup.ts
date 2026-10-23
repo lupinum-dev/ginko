@@ -199,6 +199,9 @@ export async function withFacts(s: Setup): Promise<Schema> {
   const site = (await s.t.run((ctx) => ctx.db.get(s.site)))!
   const schema = JSON.parse(JSON.stringify(site.schema)) as Schema
   schema.components = { ...schema.components, fact: factComponent(['contact.phone', 'contact.email'], schema.bricks) }
+  // Only a `page` text can hold a fact; the restaurant's imprint is `basic`.
+  const imprint = schema.bricks.legal!.fields.imprint!
+  if (imprint.type === 'markdown') imprint.profile = 'page'
   const legal = s.entries.legal!
   await s.t.run(async (ctx) => {
     await ctx.db.patch(s.site, { schema })

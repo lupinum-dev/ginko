@@ -1,5 +1,6 @@
 // The entry side of a release (SPEC 5.2 step 7), shared by the CLI's candidate (SPEC 5.1 step 4)
 // and the platform's sites.release, so both build and check exactly the same data.
+import { effectiveProfile } from './fields.ts'
 import { stableJson } from './sha256.ts'
 import type { Fields, Json, Schema } from './types.ts'
 
@@ -37,10 +38,18 @@ export function releaseData(stored: Fields, next: Fields, data: Record<string, J
 /**
  * Whether a release must validate every stored entry of `brick`, also the unchanged ones: its fields
  * changed, so an entry valid yesterday (a lowered `min` off the step grid, a migration that returned
- * nothing) may not be valid any more. New bricks have no stored entries.
+ * nothing) may not be valid any more. The same holds for a text that may hold components when the
+ * components changed: a removed prop or component would break a stored text. New bricks have no stored entries.
  */
-export function fieldsChanged(stored: Schema, next: Schema, brick: string): boolean {
+export function recheckAll(stored: Schema, next: Schema, brick: string): boolean {
   const before = Object.hasOwn(stored.bricks, brick) ? stored.bricks[brick] : undefined
   const after = Object.hasOwn(next.bricks, brick) ? next.bricks[brick] : undefined
-  return !!before && !!after && stableJson(before.fields as unknown as Json) !== stableJson(after.fields as unknown as Json)
+  if (!before || !after) return false
+  if (stableJson(before.fields as unknown as Json) !== stableJson(after.fields as unknown as Json)) return true
+  return stableJson((stored.components ?? null) as Json) !== stableJson((next.components ?? null) as Json) && holdsComponents(after.fields)
+}
+
+/** Only a `page` text can hold components (markdown.ts). */
+function holdsComponents(fields: Fields): boolean {
+  return Object.values(fields).some((field) => field.type === 'markdown' ? effectiveProfile(field) === 'page' : field.type === 'list' && holdsComponents(field.of))
 }

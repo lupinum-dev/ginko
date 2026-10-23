@@ -56,6 +56,8 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
   for (const k of ['name', 'url'] as const) if (prod[k] !== next[k]) ok(k, k, msg('diff.valueChanged', { name: k }))
   if (stableJson(prod.week) !== stableJson(next.week)) ok('week', 'week', msg('diff.valueChanged', { name: 'week' }))
   if (stableJson((prod.languages ?? null) as Json) !== stableJson((next.languages ?? null) as Json)) ok('languages', 'languages', msg('diff.valueChanged', { name: 'languages' }))
+  // Stored texts that use a changed component are checked again by the release (recheckAll), so no change is refused here.
+  if (stableJson((prod.components ?? null) as Json) !== stableJson((next.components ?? null) as Json)) ok('components', 'components', msg('diff.valueChanged', { name: 'components' }))
   if ((prod.holidays ?? null) !== (next.holidays ?? null)) ok('holidays', 'holidays', msg('diff.valueChanged', { name: 'holidays' }))
   if (stableJson(prod.pages) !== stableJson(next.pages)) ok('pages', 'pages', msg('diff.pagesChanged'))
   // A policy, not a data contract: switching agent review on or off changes no stored shape (SPEC 17).

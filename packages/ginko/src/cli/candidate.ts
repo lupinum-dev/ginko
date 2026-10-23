@@ -2,7 +2,7 @@
 // a release before it is sent. The platform repeats the same work in sites.release (SPEC 5.2),
 // so both must stay in step: same migration rules, same defaults, same validation.
 import {
-  checkSite, defaultsFor, entryBytes, fieldsChanged, fitsBudget, isTranslatable, releaseData, SITE_BUDGET, validate,
+  checkSite, defaultsFor, entryBytes, recheckAll, fitsBudget, isTranslatable, releaseData, SITE_BUDGET, validate,
   type Field, type Fields, type Json, type Locale, type Migration, type MigrationDescriptor, type Schema, type SiteInput,
 } from '../core/index.ts'
 import { type Candidate, isObject, type ReleaseState, type Write } from './model.ts'
@@ -60,7 +60,7 @@ export async function buildCandidate(state: ReleaseState, site: SiteInput, schem
       if (brick.kind === 'single') created.push({ brick: key, data: defaultsFor(brick.fields) })
       continue
     }
-    const all = fieldsChanged(state.schema, schema, key)
+    const all = recheckAll(state.schema, schema, key)
     for (const entry of state.entries) {
       if (entry.brick !== key) continue
       const next = releaseData(state.schema.bricks[key]!.fields, brick.fields, entry.data, writes.get(entry.id) ?? {})
