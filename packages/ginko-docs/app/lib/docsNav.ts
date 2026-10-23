@@ -10,11 +10,11 @@ export interface DocNode extends NavNode {
 }
 export interface DocTab { title: string; path: string }
 
-export interface DocFields { tab?: string; section?: string; badge?: string; icon?: string }
+export interface DocFields { tab?: string; section?: string; badge?: string; icon?: string; navTitle?: string }
 
 /**
  * A root without a tab follows the one before it; a new tab starts without a section; a section runs until the
- * next one. Children always follow their parent's tab and carry no section.
+ * next one. Children always follow their parent's tab and carry no section. A short title (`navTitle`) replaces the title.
  */
 export function enrichNav(tree: NavNode[], fieldsOf: (id: string) => DocFields | undefined): DocNode[] {
   let running: string | undefined
@@ -28,7 +28,7 @@ export function enrichNav(tree: NavNode[], fieldsOf: (id: string) => DocFields |
     }
     const own = root ? running : tab
     return {
-      ...node, tab: own, section: root ? section : undefined, badge: data?.badge, icon: data?.icon,
+      ...node, title: data?.navTitle || node.title, tab: own, section: root ? section : undefined, badge: data?.badge, icon: data?.icon,
       children: node.children.map((c) => enrich(c, own, false)),
     }
   }

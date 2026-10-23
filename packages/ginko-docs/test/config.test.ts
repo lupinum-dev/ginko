@@ -32,3 +32,10 @@ it.each([
   expect(bricks().map((brick) => brick.source)).toEqual(bricks().map(() => 'files'))
   expect(bricks('platform').map((brick) => 'source' in brick)).toEqual(bricks().map(() => false))
 })
+
+// Wrong behaviour caught: editors of a site without tabs see developer fields (Tab, Badge, a raw icon name).
+it('leaves out Tab, Badge and Icon with navExtras: false, and keeps them by default', () => {
+  const fields = (navExtras?: boolean) => Object.keys(docsCollection({ locales: ['de'], navExtras }).fields)
+  expect(fields()).toEqual(expect.arrayContaining(['tab', 'badge', 'icon', 'navTitle', 'section', 'parent']))
+  expect(fields(false).filter((k) => ['tab', 'badge', 'icon'].includes(k))).toEqual([])
+})

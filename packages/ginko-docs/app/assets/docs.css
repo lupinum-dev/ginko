@@ -1,13 +1,15 @@
 /* Ginko docs layer. Plain CSS, every rule under a `docs-` class, so the layer can sit inside another site.
    Colours, radius and fonts are shadcn-style tokens (--background, --foreground, --muted, --border, --primary,
-   --radius, --font-sans, ...), the same ones @lupinum/ginko-components reads. The defaults below have zero
-   specificity: a site that defines these tokens (any shadcn-vue site) themes the docs with no extra CSS.
+   --radius, --font-sans, ...), the same ones @lupinum/ginko-components reads. The defaults below sit in
+   `@layer theme` (the layer Tailwind 4 writes @theme into) with zero specificity: a site that defines these tokens,
+   unlayered or with Tailwind's @theme (`:root, :host`), themes the docs with no extra CSS.
    Each default is light-dark(light, dark); which half applies follows color-scheme. */
 
 @font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/_docs/fonts/inter-latin-wght-normal.woff2') format('woff2'); }
 @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('/_docs/fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2'); }
 @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 500; font-display: swap; src: url('/_docs/fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2'); }
 
+@layer theme {
 /* Default theme: PrimeVue Aura's pairing, emerald on zinc. Stock emerald-500 with white text is 2.5:1, so light mode
    uses emerald-700 for filled controls (5.5:1); dark mode keeps emerald-400 with dark text. */
 :where(:root) {
@@ -72,6 +74,7 @@
   --accent-foreground: light-dark(#0f172a, #f8fafc);
   --sidebar: light-dark(#f8fafc, #0f172a);
   --input: light-dark(#cbd5e1, #334155);
+}
 }
 
 /* ---------- Standalone frame (layouts/default.vue sets html.docs-standalone) ---------- */

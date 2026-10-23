@@ -31,6 +31,12 @@ const treeOf = (value: unknown, trees?: ReadonlyMap<string, MarkdownTree>): Mark
 export const markdownText = (text: string, inline = false) =>
   (inline ? text.replace(/\s+/g, (space) => (space.includes('\n') ? ' ' : space)) : text).replace(/[\\`*_[\]<>#|!~]/g, '\\$&')
 
+/**
+ * An icon name in an untranslated text field (`lucide:book-open`, `i-lucide-book-open`): a code for the layout, not
+ * content, so the Markdown twin leaves it out. Other untranslated texts (an email, a place, a version) stay.
+ */
+const ICON_NAME = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*|i-[a-z0-9]+(?:-[a-z0-9]+)+)$/
+
 /** One entry as Markdown: its title as `#`, then each text field as a paragraph and each markdown field as its Markdown. */
 export async function entryMarkdown(item: BundleItem, brick: string, options: AgentOptions): Promise<string> {
   const title = entryTitle(item, options.schema.bricks[brick]?.fields)
@@ -39,7 +45,8 @@ export async function entryMarkdown(item: BundleItem, brick: string, options: Ag
     const value = item.data[name]
     // The title is the heading already (for a person, the name its slug is made from).
     if (name === 'title' || value === title) continue
-    if ((field.type === 'text' || field.type === 'longtext') && typeof value === 'string' && value.trim()) parts.push(markdownText(value.trim()))
+    const text = (field.type === 'text' || field.type === 'longtext') && typeof value === 'string' ? value.trim() : ''
+    if (text && !(field.translate === false && ICON_NAME.test(text))) parts.push(markdownText(text))
     if (field.type !== 'markdown') continue
     const tree = treeOf(value, options.trees)
     if (tree) {

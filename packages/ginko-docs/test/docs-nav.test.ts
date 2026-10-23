@@ -21,4 +21,11 @@ describe('enrichNav', () => {
     ])
     expect(out[1]!.children[0]).toMatchObject({ id: 'child', tab: 'Guide', section: undefined })
   })
+
+  // Wrong behaviour caught: a long page title squeezed into the side navigation although the editor gave a short one.
+  it('shows the short title in the navigation, also for children, and the title where there is none', () => {
+    const fields: Record<string, DocFields> = { intro: { navTitle: 'Start' }, child: { navTitle: 'Kind' } }
+    const out = enrichNav([node('intro', [node('child')]), node('setup')], (id) => fields[id])
+    expect([out[0]!.title, out[0]!.children[0]!.title, out[1]!.title]).toEqual(['Start', 'Kind', 'setup'])
+  })
 })

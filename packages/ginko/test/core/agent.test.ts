@@ -10,6 +10,8 @@ const schema = {
       fields: {
         title: { type: 'text', label: 'Titel' },
         intro: { type: 'longtext', label: 'Einleitung' },
+        icon: { type: 'text', label: 'Symbol', translate: false },
+        email: { type: 'text', label: 'E-Mail', translate: false, format: 'email' },
         body: { type: 'markdown', label: 'Text' },
       },
     },
@@ -24,10 +26,12 @@ const options: AgentOptions = { schema }
 const item = (id: string, data: Record<string, unknown>, urls?: BundleItem['urls']): BundleItem => ({ id, data, fallback: [], ...(urls ? { urls } : {}) })
 
 describe('entryMarkdown', () => {
-  test('title, text and longtext fields, then a markdown tree', async () => {
+  // Wrong behaviour caught: an icon code ("lucide:calendar-days") printed as a paragraph of the page (found on rolfing),
+  // or, the other way, every untranslated text left out: a person's email, an event's place.
+  test('title, text and longtext fields, then a markdown tree; icon names stay out, other untranslated texts stay', async () => {
     const body = await parseMarkdown('## Schritte\n\n- eins\n- zwei\n\nSiehe [Doku](https://example.com/doku).')
-    const markdown = await entryMarkdown(item('a', { title: 'Erster Beitrag', intro: 'Kurz vorweg.', body: body.value }), 'blog', options)
-    expect(markdown).toBe('# Erster Beitrag\n\nKurz vorweg.\n\n## Schritte\n\n- eins\n- zwei\n\nSiehe [Doku](https://example.com/doku).\n')
+    const markdown = await entryMarkdown(item('a', { title: 'Erster Beitrag', intro: 'Kurz vorweg.', icon: 'lucide:calendar-days', email: 'praxis@example.test', body: body.value }), 'blog', options)
+    expect(markdown).toBe('# Erster Beitrag\n\nKurz vorweg.\n\npraxis@example.test\n\n## Schritte\n\n- eins\n- zwei\n\nSiehe [Doku](https://example.com/doku).\n')
   })
 
   test('text fields stay text: HTML and Markdown syntax in a title or intro is escaped', async () => {
