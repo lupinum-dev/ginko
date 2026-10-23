@@ -43,6 +43,8 @@ const props = defineProps<{
   route?: Partial<Record<string, string>>
   /** A cell of a compact list: its name for screen readers ("Uhrzeit 2"); the visible label is left out. */
   cellLabel?: string
+  /** A cell of a compact list: the id of the column's hint, which the list prints once under the rows. */
+  hintId?: string
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: Json | undefined] }>()
 
@@ -134,7 +136,7 @@ const missingText = computed(() => {
 </script>
 
 <template>
-  <FieldFrame :id="id" :data-path="path" :data-type="field.type" :data-label="label" :label="cellLabel ?? label" :label-hidden="cellLabel !== undefined" :hint="cellLabel === undefined ? hint : undefined" :optional="!!field.optional && field.type !== 'boolean'" :errors="errors.map((e) => messageOf(e))" :group="isGroup" :inline="field.type === 'boolean'" :short="['number', 'money', 'time'].includes(field.type)" :count="showCount ? `${text.length}/${max}` : undefined">
+  <FieldFrame :id="id" :data-path="path" :data-type="field.type" :data-label="label" :label="cellLabel ?? label" :label-hidden="cellLabel !== undefined" :hint="cellLabel === undefined ? hint : undefined" :hint-id="hintId" :optional="!!field.optional && field.type !== 'boolean'" :errors="errors.map((e) => messageOf(e))" :group="isGroup" :inline="field.type === 'boolean'" :short="['number', 'money', 'time'].includes(field.type)" :count="showCount ? `${text.length}/${max}` : undefined">
     <template v-if="trState && translation" #source>
       <div class="grid gap-2 rounded-md bg-muted p-3 text-sm" data-slot="translation-source">
         <p class="text-xs font-semibold text-muted-foreground">{{ translation.mainName() }}</p>

@@ -152,9 +152,10 @@ describe('list rows', () => {
 
 // Wrong behaviour caught: six start times showed as six cards, each titled "Uhrzeit n" with a "Beginn" label (rolfing).
 describe('a list of one simple column', () => {
-  const times = { type: 'list', label: 'Uhrzeiten', itemLabel: 'Uhrzeit', max: 12, of: { time: { type: 'time', label: 'Beginn' } } } as Extract<Field, { type: 'list' }>
+  const times = { type: 'list', label: 'Uhrzeiten', itemLabel: 'Uhrzeit', max: 12, of: { time: { type: 'time', label: 'Beginn', hint: 'Zur vollen oder halben Stunde.' } } } as Extract<Field, { type: 'list' }>
 
-  test('is one input per row, named for screen readers, with no card heading and a working cell', async () => {
+  // Wrong behaviour caught (the hint): the column's hint, printed once under the rows, was not read with any input.
+  test('is one input per row, named and described for screen readers, with no card heading and a working cell', async () => {
     const value = shallowRef<Json | undefined>([{ _id: 'a', time: '11:00' }, { _id: 'b', time: '12:15' }])
     const Host = defineComponent({
       setup: () => () => h(GinkoFieldList, { id: 'f-times', field: times, modelValue: value.value, path: 'times', locale: 'de', locales: ['de'], issues: [], 'onUpdate:modelValue': (v: Json | undefined) => { value.value = v } }),
@@ -163,6 +164,7 @@ describe('a list of one simple column', () => {
     expect(wrapper.findAll('h3')).toHaveLength(0)
     const inputs = wrapper.findAll('input[type="time"]')
     expect(inputs.map((i) => document.querySelector(`label[for="${i.attributes('id')}"]`)?.textContent)).toEqual(['Uhrzeit 1', 'Uhrzeit 2'])
+    expect(inputs.map((i) => document.getElementById(i.attributes('aria-describedby') ?? '')?.textContent)).toEqual(Array(2).fill('Zur vollen oder halben Stunde.'))
     await inputs[1]!.setValue('12:30')
     expect(value.value).toEqual([{ _id: 'a', time: '11:00' }, { _id: 'b', time: '12:30' }])
     wrapper.unmount()

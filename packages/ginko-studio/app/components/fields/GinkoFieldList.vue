@@ -70,6 +70,7 @@ const compact = computed(() => !foreign.value && !fixed.value && columns.value.l
 const shortColumn = computed(() => ['number', 'money', 'time'].includes(columns.value[0]?.[1].type ?? ''))
 /** The column's hint, printed once under a compact list (the rows leave it out). */
 const compactHint = computed(() => { const hint = compact.value ? columns.value[0]![1].hint : undefined; return hint === undefined ? undefined : labelText(hint) })
+const compactHintId = computed(() => `${props.id}-column-hint`)
 
 /** The first photo column: its alt text names a row without text, its picture shows in the row head. */
 const imageKey = computed(() => columns.value.find(([, f]) => f.type === 'image')?.[0])
@@ -285,7 +286,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
           <p v-for="e in rowIssues(row)" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
           <GinkoField
             :field="columns[0]![1]" :model-value="row[columns[0]![0]]" :path="`${path}.${row._id}.${columns[0]![0]}`" :locale="locale" :locales="locales" :issues="issues"
-            :cell-label="`${labelText(field.itemLabel)} ${index + 1}`" @update:model-value="setCell(index, columns[0]![0], $event)"
+            :cell-label="`${labelText(field.itemLabel)} ${index + 1}`" :hint-id="compactHint ? compactHintId : undefined" @update:model-value="setCell(index, columns[0]![0], $event)"
           />
         </div>
         <div class="flex shrink-0">
@@ -322,7 +323,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
         </div>
       </li>
     </ol>
-    <p v-if="compactHint && rows.length" class="text-[13px] text-muted-foreground">{{ compactHint }}</p>
+    <p v-if="compactHint && rows.length" :id="compactHintId" class="text-[13px] text-muted-foreground">{{ compactHint }}</p>
     <p v-if="imageKey && rows.length" :id="hintId" class="text-[13px] text-muted-foreground">{{ t('fields.list.photoHint') }}</p>
     <p v-if="photoGrid && columnHint && rows.length" class="text-[13px] text-muted-foreground">{{ columnHint }}</p>
     <template v-if="!fixed && rows.length < max && !photoGrid">

@@ -200,13 +200,13 @@ function positioned(fields: Fields): Fields {
   return Object.fromEntries(Object.entries(fields).map(([name, field], pos) => [name, field.type === 'list' ? { ...field, pos, of: positioned(field.of) } : { ...field, pos }]))
 }
 
-/** The schema the platform stores: without file bricks, which only the site's build reads (CONTENT.md). */
 /** The reference fields of a brick, also those in list rows, with their paths (`team.members.person`). */
 function refsOf(fields: Fields, at: string): [string, Extract<Field, { type: 'ref' }>][] {
   return Object.entries(fields).flatMap(([name, field]): [string, Extract<Field, { type: 'ref' }>][] =>
     field.type === 'ref' ? [[`${at}.${name}`, field]] : field.type === 'list' ? refsOf(field.of, `${at}.${name}`) : [])
 }
 
+/** The schema the platform stores: without file bricks, which only the site's build reads (CONTENT.md). */
 export function platformSchema(schema: Schema): Schema {
   return { ...schema, bricks: Object.fromEntries(Object.entries(schema.bricks).filter(([, brick]) => brick.source !== 'files')) }
 }

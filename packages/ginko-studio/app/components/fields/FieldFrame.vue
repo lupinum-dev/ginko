@@ -27,6 +27,8 @@ const props = defineProps<{
   count?: string
   /** The label is read by screen readers only: a row of a compact list, whose column the list names once. */
   labelHidden?: boolean
+  /** The id of a hint printed elsewhere that describes this control too (a compact list prints its column's hint once). */
+  hintId?: string
 }>()
 defineSlots<{
   default(props: { describedBy: string | undefined; invalid: boolean }): unknown
@@ -34,7 +36,7 @@ defineSlots<{
 }>()
 
 const invalid = computed(() => (props.errors?.length ?? 0) > 0)
-const describedBy = computed(() => [props.hint ? `${props.id}-hint` : '', invalid.value ? `${props.id}-err` : ''].filter(Boolean).join(' ') || undefined)
+const describedBy = computed(() => [props.hint ? `${props.id}-hint` : '', props.hintId ?? '', invalid.value ? `${props.id}-err` : ''].filter(Boolean).join(' ') || undefined)
 </script>
 
 <template>
