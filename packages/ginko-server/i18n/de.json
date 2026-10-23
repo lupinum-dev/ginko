@@ -216,7 +216,14 @@
     "uploadNotAnImage": "Diese Datei ist kein lesbares Bild.",
     "uploadTooManyPixels": "Dieses Bild hat zu viele Pixel. Verkleinere es (zum Beispiel auf 8000 Pixel Breite) und lade es noch einmal hoch.",
     "siteUrlNotAllowed": "Diese Adresse der Website ist nicht erlaubt. Sie muss eine öffentliche https://-Adresse sein.",
-    "weekAlreadyPlanned": "Für diese Woche gibt es schon einen Plan. Öffne die geplante Woche, um sie zu ändern."
+    "weekAlreadyPlanned": "Für diese Woche gibt es schon einen Plan. Öffne die geplante Woche, um sie zu ändern.",
+    "unknownBrickDidYouMean": "Den Baustein „{brick}“ gibt es nicht. Meinten Sie „{suggestion}“?",
+    "unknownField": "„{field}“ ist kein Feld von „{brick}“. Die Felder stehen in ginko_schema.",
+    "unknownFieldDidYouMean": "„{field}“ ist kein Feld von „{brick}“. Meinten Sie „{suggestion}“?",
+    "importTooLarge": "Ein Import nimmt höchstens {max} Einträge. Teilen Sie ihn auf mehrere Aufrufe auf.",
+    "uploadUrlNotAllowed": "Nur öffentliche https-Adressen können geladen werden.",
+    "uploadFetchFailed": "Die Datei konnte nicht von {url} geladen werden (Status {status}).",
+    "createNeedsCollection": "„{brick}“ ist ein einzelner Baustein: ändern Sie ihn mit ginko_write."
   },
   "history": {
     "changedSingle": "{label}: {fields} geändert",

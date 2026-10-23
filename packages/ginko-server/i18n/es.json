@@ -216,7 +216,14 @@
     "uploadNotAnImage": "Este archivo no es una imagen legible.",
     "uploadTooManyPixels": "Esta imagen tiene demasiados píxeles. Redúcela (por ejemplo, a 8000 píxeles de ancho) y súbela de nuevo.",
     "siteUrlNotAllowed": "Esta dirección del sitio no se puede usar. Debe ser una dirección pública con https://.",
-    "weekAlreadyPlanned": "Esta semana ya está planificada. Abre la semana planificada para cambiarla."
+    "weekAlreadyPlanned": "Esta semana ya está planificada. Abre la semana planificada para cambiarla.",
+    "unknownBrickDidYouMean": "El bloque “{brick}” no existe. ¿Quería decir “{suggestion}”?",
+    "unknownField": "“{field}” no es un campo de “{brick}”. Los campos están en ginko_schema.",
+    "unknownFieldDidYouMean": "“{field}” no es un campo de “{brick}”. ¿Quería decir “{suggestion}”?",
+    "importTooLarge": "Una importación admite como máximo {max} elementos. Divídala en varias llamadas.",
+    "uploadUrlNotAllowed": "Solo se pueden descargar direcciones https públicas.",
+    "uploadFetchFailed": "No se pudo descargar el archivo de {url} (estado {status}).",
+    "createNeedsCollection": "“{brick}” es un bloque único: cámbielo con ginko_write."
   },
   "history": {
     "changedSingle": "{label}: cambio en {fields}",

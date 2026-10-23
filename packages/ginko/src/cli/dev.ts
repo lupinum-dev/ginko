@@ -3,10 +3,11 @@
 // pushed to the local platform with the devPush mutation. Ctrl-C stops all of them.
 import { spawn, type ChildProcess } from 'node:child_process'
 import { watch, type FSWatcher } from 'node:fs'
-import { basename, dirname } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { platformSchema, serializeSchema, type Schema, type SchemaChange } from '../core/index.ts'
+import { connectAgents } from './agent-config.ts'
 import { loadConfig } from './config.ts'
-import { confirmLocal, findBackend, knownTargetError, LOCAL_STUDIO, parseResult, prepareLocalBackend, readDeploymentTarget, runOnce, targetEnv, type DeploymentTarget } from './local.ts'
+import { confirmLocal, findBackend, knownTargetError, LOCAL_STUDIO, parseEnvFile, parseResult, prepareLocalBackend, readDeploymentTarget, runOnce, targetEnv, type DeploymentTarget } from './local.ts'
 import { CliError } from './model.ts'
 import { explainRejected } from './report.ts'
 
@@ -106,10 +107,12 @@ export async function runDev(input: DevInput): Promise<number> {
   // 3. Push the schema now and after every change of the config. A failed push is shown, the processes keep running.
   // The watcher starts first, so a save during the first push is not lost.
   let revision = 0
+  let site: string | undefined
   const pushCurrent = async () => {
     revision++
     try {
       const config = await loadConfig(input.configPath, revision)
+      site = config.site
       await push(platformSchema(serializeSchema(config)), backendDir, config.site, log, target)
     } catch (error) {
       log(`Schema not pushed: ${error instanceof Error ? error.message : String(error)}`)
@@ -124,6 +127,14 @@ export async function runDev(input: DevInput): Promise<number> {
   log(`local:dev is running. Config: ${input.configPath}. Press Ctrl-C to stop everything.`)
   log(`Studio: ${LOCAL_STUDIO} — sign in as ${admin}, codes: pnpm outbox ${admin}`)
   log('Changes to files that the config imports take effect only after restarting `pnpm local:dev`.')
+  // 4. Agents in the site folder: .mcp.json with a local key of the admin, once the admin has signed in.
+  const siteUrl = parseEnvFile(join(backendDir, '.env.local')).CONVEX_SITE_URL
+  if (site && siteUrl) {
+    void connectAgents({
+      siteDir, siteUrl, site, admin, log, stopped: () => stopping,
+      devKey: async (args) => parseResult(await runOnce('npx', ['convex', 'run', 'agent:devKey', JSON.stringify(args)], backendDir, targetEnv(target))),
+    }).catch((error: unknown) => log(`Agents: .mcp.json not written: ${error instanceof Error ? error.message : String(error)}`))
+  }
   return exited
 }
 

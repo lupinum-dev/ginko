@@ -88,7 +88,7 @@ export function readDeploymentTarget(backendDir: string): DeploymentTarget {
   }
 }
 
-function parseEnvFile(path: string): Record<string, string> {
+export function parseEnvFile(path: string): Record<string, string> {
   return existsSync(path) ? parseEnvText(readFileSync(path, 'utf8')) : {}
 }
 

@@ -1,28 +1,12 @@
 // Facts on the platform: what the Studio shows for each fact, which texts quote it, and a release that would leave a
 // quote without its fact.
-import { factComponent, type Schema } from '@lupinum/ginko/internal'
+import type { Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
-import { errorOf, setup } from './setup'
+import { errorOf, setup, withFacts } from './setup'
 
-type Setup = Awaited<ReturnType<typeof setup>>
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 const SITE = { site: 'restaurant' }
-
-/** The restaurant with the facts contact.phone and contact.email; its imprint quotes the phone. */
-async function withFacts(s: Setup): Promise<Schema> {
-  const site = (await s.t.run((ctx) => ctx.db.get(s.site)))!
-  const schema = copy(site.schema) as Schema
-  schema.components = { ...schema.components, fact: factComponent(['contact.phone', 'contact.email'], schema.bricks) }
-  const legal = s.entries.legal!
-  await s.t.run(async (ctx) => {
-    await ctx.db.patch(s.site, { schema })
-    const row = (await ctx.db.get(legal))!
-    const imprint = (row.data as { imprint: Record<string, string> }).imprint
-    await ctx.db.patch(legal, { data: { ...row.data, imprint: { ...imprint, de: `${imprint.de}\n\nTelefon: :fact{name="contact.phone"}` } } })
-  })
-  return schema
-}
 
 const without = (schema: Schema, fact: string): Schema => {
   const next = copy(schema)

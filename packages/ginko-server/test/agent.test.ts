@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Schema } from '@lupinum/ginko/internal'
 import type { Id } from '../convex/_generated/dataModel'
-import { firstPage, opId, setup, upload } from './setup'
+import { suggest } from '../convex/lib/agentTools'
+import { errorOf, firstPage, opId, setup, upload, withFacts } from './setup'
 
 type Setup = Awaited<ReturnType<typeof setup>>
 type ToolAnswer = { content: { type: 'text'; text: string }[]; isError: boolean }
@@ -229,9 +230,12 @@ describe('agent door: tool catalog', () => {
     const write = { readOnlyHint: false, destructiveHint: true, openWorldHint: false }
     expect([hints.ginko_overview, hints.ginko_read, hints.ginko_search, hints.ginko_history, hints.ginko_version_at, hints.ginko_proposals]).toEqual(Array(6).fill(read))
     expect([hints.task_notices_soldOut, hints.ginko_draft]).toEqual(Array(2).fill(add))
-    expect([hints.ginko_undo, hints.ginko_revert, hints.ginko_translate, hints.task_menu_price, hints.task_menu_remove]).toEqual(Array(5).fill(write))
+    expect([hints.ginko_undo, hints.ginko_revert, hints.ginko_translate, hints.task_menu_price, hints.task_menu_remove, hints.ginko_write, hints.ginko_import]).toEqual(Array(7).fill(write))
+    expect([hints.ginko_schema, hints.ginko_create]).toEqual([read, add])
+    // ginko_upload fetches from outside, and only adds a library file: a retry makes a duplicate the Studio marks, so it takes no request_id.
+    expect(hints.ginko_upload).toEqual({ readOnlyHint: false, destructiveHint: false, openWorldHint: true })
     const retryKey = tools.filter((t) => 'request_id' in t.inputSchema.properties).map((t) => t.name)
-    expect(retryKey.sort()).toEqual(tools.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name).sort())
+    expect(retryKey.sort()).toEqual(tools.filter((t) => !t.annotations.readOnlyHint && t.name !== 'ginko_upload').map((t) => t.name).sort())
   })
 
   it('ginko_search finds a dish by a word spelled without its umlaut and shows a snippet', async () => {
@@ -441,6 +445,259 @@ describe('agent door: tool catalog', () => {
     expect(mine.text).toBe('1 proposals wait for approval.')
     expect((await call(s, cook, 'ginko_proposals', { status: 'open' })).data).toMatchObject([{ entry: s.entries['menu-saibling'] }])
     expect((await call(s, owner, 'ginko_proposals', { status: 'applied' })).data).toEqual([])
+  })
+})
+
+describe('agent door: builder tools (owners and admins)', () => {
+  afterEach(() => { vi.unstubAllGlobals() })
+  const schnitzel = (s: Setup) => entryRow(s, s.entries['menu-schnitzel']!)
+
+  it('lists the builder tools for an owner and none for staff, whose call is refused', async () => {
+    const s = await setup()
+    const builder = ['ginko_schema', 'ginko_write', 'ginko_create', 'ginko_import', 'ginko_upload']
+    expect(await names(s, await keyOf(s, 'owner'))).toEqual(expect.arrayContaining(builder))
+    const cook = await keyOf(s, 'cook')
+    expect((await names(s, cook)).filter((n) => builder.includes(n))).toEqual([])
+    const refused = await call(s, cook, 'ginko_write', { brick: 'menu', entry: s.entries['menu-schnitzel'], fields: { description: 'x' } })
+    expect(refused).toMatchObject({ isError: true, text: 'The tool “ginko_write” does not exist or is not one of your tasks.' })
+    expect((await call(s, cook, 'ginko_schema')).isError).toBe(true)
+  })
+
+  it('ginko_schema describes every field in the form ginko_write takes', async () => {
+    const s = await setup()
+    const [menu] = (await call(s, await keyOf(s, 'owner'), 'ginko_schema', { brick: 'menu' })).data
+    expect(menu).toMatchObject({ brick: 'menu', kind: 'collection' })
+    expect(menu.input.properties.price.type).toBe('number')
+    expect(menu.input.properties.name.type).toBe('string')
+    expect(menu.input.required).toContain('name')
+  })
+
+  // Wrong behaviour caught: an owner's assistant could only change the fields some task happens to cover.
+  it('ginko_write changes any field in euros and names the entry in the Studio', async () => {
+    const s = await setup()
+    const done = await call(s, await keyOf(s, 'owner'), 'ginko_write', { brick: 'menu', entry: s.entries['menu-schnitzel'], fields: { price: 21.5, description: 'Mit Preiselbeeren' } })
+    expect(done.isError).toBe(false)
+    expect((await schnitzel(s))!.data).toMatchObject({ price: { amount: 2150 }, description: { de: 'Mit Preiselbeeren' } })
+    expect(done.text).toContain('To undo: ginko_undo with change')
+    if (process.env.SITE_URL) expect(done.data.studio).toBe(`${process.env.SITE_URL.replace(/\/$/, '')}/s/restaurant/all/menu/${s.entries['menu-schnitzel']}`)
+  })
+
+  // Wrong behaviour caught: the assistant guesses field names ("preis") and retries the same wrong call.
+  it.each([
+    ['ginko_write', { brick: 'menu', entry: 'x', fields: { preis: 3 } }, '“preis” is not a field of “menu”. Did you mean “price”?'],
+    ['ginko_write', { brick: 'menu', entry: 'x', fields: { descripton: 'x' } }, '“descripton” is not a field of “menu”. Did you mean “description”?'],
+    ['ginko_create', { brick: 'notice', fields: { text: 'x' } }, 'There is no brick “notice”. Did you mean “notices”?'],
+    ['ginko_create', { brick: 'menu', fields: { zzz: 1 } }, '“zzz” is not a field of “menu”. The fields are listed in ginko_schema.'],
+    // Inside a list row too: the row's unknown name was dropped and the save reported success.
+    ['ginko_write', { brick: 'lunch', fields: { days: [{ day: 'mon', gericht: 'Suppe' }] } }, '“days[0].gericht” is not a field of “lunch”. Did you mean “dish”?'],
+  ])('%s %j names the closest key', async (tool, args, text) => {
+    const s = await setup()
+    expect(await call(s, await keyOf(s, 'owner'), tool, args)).toMatchObject({ isError: true, text })
+  })
+
+  it('ginko_create makes a live entry in a collection without drafts', async () => {
+    const s = await setup()
+    const before = await notices(s)
+    const done = await call(s, await keyOf(s, 'owner'), 'ginko_create', { brick: 'notices', fields: { text: 'Neue Karte ab Montag', until: '2099-01-01' } })
+    expect(done.isError).toBe(false)
+    const after = await notices(s)
+    expect(after).toHaveLength(before.length + 1)
+    expect(after).toContain('Neue Karte ab Montag')
+  })
+
+  // Wrong behaviour caught: half an import saved (item 1 fails after item 0 was written), or a dry run that writes.
+  it('ginko_import checks with dry_run, saves all or nothing, and names the failing item', async () => {
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    const before = { notices: await notices(s), schnitzel: (await schnitzel(s))!.data }
+    const items = [
+      { brick: 'menu', entry: s.entries['menu-schnitzel'], fields: { description: 'Neu' } },
+      { brick: 'notices', fields: { text: 'Ruhetag am Montag', until: '2099-01-01' } },
+    ]
+    const dry = await call(s, key, 'ginko_import', { items, dry_run: true })
+    expect(dry).toMatchObject({ isError: false, text: 'Dry run: all 2 items would be saved. Nothing was saved.' })
+    expect(dry.data.map((r: { op: string }) => r.op)).toEqual(['write', 'create'])
+    expect({ notices: await notices(s), schnitzel: (await schnitzel(s))!.data }).toEqual(before)
+
+    const broken = await call(s, key, 'ginko_import', { items: [items[0], { brick: 'notices', fields: { txt: 'x' } }] })
+    expect(broken).toMatchObject({ isError: true, text: 'items[1]: “txt” is not a field of “notices”. Did you mean “text”? Nothing of this import was saved.' })
+    expect((await schnitzel(s))!.data).toEqual(before.schnitzel)
+
+    const saved = await call(s, key, 'ginko_import', { items })
+    expect(saved).toMatchObject({ isError: false, text: 'Saved 2 items (1 new, 1 changed). Each one is in ginko_history and can be undone there.' })
+    // The main text changes; the English one stays and counts as outdated, as after a save in the Studio.
+    expect((await schnitzel(s))!.data.description).toMatchObject({ de: 'Neu' })
+    expect(await notices(s)).toContain('Ruhetag am Montag')
+  })
+
+  // Wrong behaviour caught: with review on, the import said "Saved" while nothing was on the website yet.
+  it('ginko_import with review on says the items wait for approval, in the dry run too', async () => {
+    const s = await setup()
+    await s.t.run((ctx) => ctx.db.patch(s.site, { agentReview: true }))
+    const key = await keyOf(s, 'owner')
+    const items = [{ brick: 'menu', entry: s.entries['menu-schnitzel'], fields: { description: 'Neu' } }, { brick: 'notices', fields: { text: 'Ruhetag', until: '2099-01-01' } }]
+    expect((await call(s, key, 'ginko_import', { items, dry_run: true })).text).toBe('Dry run: all 2 items would become proposals that wait for approval. Nothing was saved.')
+    const done = await call(s, key, 'ginko_import', { items })
+    expect(done.text).toBe('2 items became proposals that wait for approval; nothing of them is on the website yet (ginko_proposals lists them).')
+    expect(await notices(s)).not.toContain('Ruhetag')
+  })
+
+  it('ginko_upload without url hands out a one-time address that takes a file once', async () => {
+    const s = await setup()
+    const done = await call(s, await keyOf(s, 'owner'), 'ginko_upload', { name: 'karte.pdf' })
+    expect(done.isError).toBe(false)
+    const path = (done.data.upload_url as string).slice((done.data.upload_url as string).indexOf('/upload?'))
+    const post = () => s.t.fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/pdf' }, body: '%PDF-1.4 karte' })
+    const first = await post()
+    expect(first.status).toBe(200)
+    expect((await post()).status).toBe(403)
+  })
+
+  it('ginko_upload with url stores a public image and refuses an internal address before fetching', async () => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0])
+    const fetchMock = vi.fn(async () => new Response(png, { headers: { 'content-type': 'image/png' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    const done = await call(s, key, 'ginko_upload', { url: 'https://images.example.com/team/foto.png' })
+    expect(done).toMatchObject({ isError: false, data: { name: 'foto.png', image_field: { alt: '' } } })
+    expect(await s.t.run((ctx) => ctx.db.get(done.data.file as Id<'uploads'>))).toMatchObject({ name: 'foto.png', mime: 'image/png', uploader: 'u-wirtin' })
+
+    fetchMock.mockClear()
+    const internalAddress = await call(s, key, 'ginko_upload', { url: 'https://169.254.169.254/latest/meta-data' })
+    expect(internalAddress).toMatchObject({ isError: true, text: 'Only public https addresses can be fetched.' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  // Wrong behaviour caught: a file host that answers application/octet-stream was refused, and a failed fetch cost a
+  // ticket of the person's upload quota or ended in a generic error.
+  it('ginko_upload takes the type from the name for a generic answer and counts nothing for a failed fetch', async () => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0])
+    const fetchMock = vi.fn(async () => new Response(png, { headers: { 'content-type': 'application/octet-stream' } }))
+    vi.stubGlobal('fetch', fetchMock)
+    const s = await setup()
+    const key = await keyOf(s, 'owner')
+    const done = await call(s, key, 'ginko_upload', { url: 'https://files.example.com/download?id=7', name: 'fotos/team.png' })
+    expect(done).toMatchObject({ isError: false, data: { name: 'team.png' } })
+    expect(await s.t.run((ctx) => ctx.db.get(done.data.file as Id<'uploads'>))).toMatchObject({ mime: 'image/png' })
+
+    const counted = async () => (await s.t.run((ctx) => ctx.db.query('rateWindows').collect())).filter((r) => r.kind === 'upload').reduce((sum, r) => sum + r.count, 0)
+    const before = await counted()
+    expect(before).toBe(1)
+    fetchMock.mockRejectedValueOnce(new TypeError('fetch failed'))
+    const failed = await call(s, key, 'ginko_upload', { url: 'https://files.example.com/gone.png' })
+    expect(failed).toMatchObject({ isError: true })
+    expect(failed.text).toContain('network error')
+    expect(await counted()).toBe(before)
+  })
+
+  // Wrong behaviour caught: a file name with a quote ended the shell word of the curl line the assistant runs.
+  it('ginko_upload without url quotes the local path for the shell and stores only the file name', async () => {
+    const s = await setup()
+    const done = await call(s, await keyOf(s, 'owner'), 'ginko_upload', { name: "Bilder/Romi's Praxis.jpg" })
+    expect(done.data.curl).toContain("--data-binary @'Bilder/Romi'\\''s Praxis.jpg'")
+    expect(done.data.curl).toContain("-H 'Content-Type: image/jpeg'")
+    expect(done.data.upload_url).toContain(`name=${encodeURIComponent("Romi's Praxis.jpg")}`)
+  })
+
+  // Wrong behaviour caught: a body without Content-Length was read whole into memory, however large.
+  it('ginko_upload stops reading a streamed image at the size limit and stores nothing', async () => {
+    const chunk = new Uint8Array(1024 * 1024)
+    chunk.set([0x89, 0x50, 0x4e, 0x47])
+    let sent = 0
+    const endless = new ReadableStream<Uint8Array>({ pull(controller) { sent++; controller.enqueue(chunk) } })
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(endless, { headers: { 'content-type': 'image/png' } })))
+    const s = await setup()
+    const done = await call(s, await keyOf(s, 'owner'), 'ginko_upload', { url: 'https://images.example.com/huge.png' })
+    expect(done.isError).toBe(true)
+    expect(done.text).toContain('too large')
+    expect(sent).toBeLessThan(100)
+    expect(await s.t.run((ctx) => ctx.db.query('uploads').collect())).toHaveLength(0)
+  })
+})
+
+describe('agent door: facts', () => {
+  const PHONE = 'Telefon: +43 662 000 000'
+  /** withFacts, with the imprint a `page` text: only such a text can quote a fact. */
+  const pageImprint = async (s: Setup) => {
+    const schema = await withFacts(s)
+    const legal = schema.bricks.legal!.fields.imprint!
+    if (legal.type === 'markdown') legal.profile = 'page'
+    await s.t.run((ctx) => ctx.db.patch(s.site, { schema }))
+  }
+  const note = (where: string) => `Note: these texts copy values the site keeps as facts: “+43 662 000 000” in ${where} → :fact{name="contact.phone"}. Quote the fact instead, so the text stays right when the value changes.`
+
+  // Wrong behaviour caught: the assistant did not know which values the site keeps as facts, so it typed them into texts.
+  it('ginko_overview lists every fact with its quote and what the website shows, for any member', async () => {
+    const s = await setup()
+    await withFacts(s)
+    expect((await call(s, await keyOf(s, 'cook'), 'ginko_overview')).data.facts).toEqual([
+      { quote: ':fact{name="contact.phone"}', label: 'Telefon', shows: '+43 662 000 000' },
+      { quote: ':fact{name="contact.email"}', label: 'E-Mail', shows: 'office@gasthaus-linde.example' },
+    ])
+  })
+
+  // Wrong behaviour caught: a text written through the door kept a copy of the phone number, which went stale on the next change.
+  it('a write that copies a fact value says which fact to quote; a quote gets no note', async () => {
+    const s = await setup()
+    await withFacts(s)
+    const key = await keyOf(s, 'owner')
+    // A `basic` text cannot hold a fact, so the assistant is not told to quote one there.
+    expect((await call(s, key, 'ginko_write', { brick: 'legal', fields: { imprint: PHONE } })).text).not.toContain('Note:')
+    await pageImprint(s)
+    const copied = await call(s, key, 'ginko_write', { brick: 'legal', fields: { imprint: PHONE } })
+    expect(copied.isError).toBe(false)
+    expect(copied.text).toContain(note('imprint'))
+    // A quote, or the value shown as code, is no copy.
+    const quoted = await call(s, key, 'ginko_write', { brick: 'legal', fields: { imprint: 'Telefon: :fact{name="contact.phone"}, als Text `+43 662 000 000`' } })
+    expect(quoted.text).not.toContain('Note:')
+  })
+
+  it('ginko_import names the item that copies a fact value, in the dry run too', async () => {
+    const s = await setup()
+    await pageImprint(s)
+    const key = await keyOf(s, 'owner')
+    const items = [{ brick: 'notices', fields: { text: 'Ruhetag', until: '2099-01-01' } }, { brick: 'legal', fields: { imprint: PHONE } }]
+    expect((await call(s, key, 'ginko_import', { items, dry_run: true })).text).toBe(`Dry run: all 2 items would be saved. Nothing was saved. ${note('items[1] imprint')}`)
+    expect((await call(s, key, 'ginko_import', { items })).text).toContain(note('items[1] imprint'))
+  })
+})
+
+describe('suggest', () => {
+  const fields = [{ key: 'price', label: 'Preis pro Sitzung' }, { key: 'nextPrice', label: 'Neuer Preis' }, { key: 'validUntil', label: 'Preis gültig bis' }, { key: 'minutes', label: 'Dauer einer Sitzung' }]
+  // Wrong behaviour caught: several labels contain the word, so the assistant got no hint, or a single wrong one (found on rolfing).
+  it.each([
+    ['preis', ['price', 'validUntil', 'nextPrice']],
+    ['Minutes', ['minutes']],
+    ['dauer', ['minutes']],
+    ['nextprise', ['nextPrice']],
+    ['xyz', []],
+  ])('%s → %j', (word, keys) => {
+    expect(suggest(word, fields)).toEqual(keys)
+  })
+})
+
+describe('agent door: local:dev key', () => {
+  afterEach(() => vi.unstubAllEnvs())
+  const key = 'ginko_agent_' + 'a'.repeat(32)
+  const hash = async (text: string) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))), (b) => b.toString(16).padStart(2, '0')).join('')
+
+  // Wrong behaviour caught: the .mcp.json key that local:dev writes is refused, or a deployment that is not local hands out keys.
+  it('registers the key of .mcp.json for the local admin once, and only on a local backend', async () => {
+    const s = await setup()
+    const args = { site: 'restaurant', email: 'Admin@example.com', hash: await hash(key) }
+    expect(await errorOf(s.t.mutation(internal.agent.devKey, args))).toMatchObject({ code: 'FORBIDDEN' })
+    vi.stubEnv('GINKO_LOCAL', '1')
+    expect(await s.t.mutation(internal.agent.devKey, { ...args, email: 'nobody@example.com' })).toEqual({ ok: false, reason: 'signin' })
+    expect(await s.t.mutation(internal.agent.devKey, args)).toEqual({ ok: true })
+    expect(await s.t.mutation(internal.agent.devKey, args)).toEqual({ ok: true })
+    expect((await call(s, key, 'ginko_overview')).data).toMatchObject({ site: 'restaurant', role: 'admin' })
+    expect(await s.t.run((ctx) => ctx.db.query('agentKeys').collect())).toHaveLength(1)
+
+    // Wrong behaviour caught: local:dev brought a revoked key back to life by deleting and inserting it again.
+    await s.t.run(async (ctx) => { for (const row of await ctx.db.query('agentKeys').collect()) await ctx.db.patch(row._id, { revokedAt: 1 }) })
+    expect(await s.t.mutation(internal.agent.devKey, args)).toEqual({ ok: false, reason: 'taken' })
+    expect(await s.t.run((ctx) => ctx.db.query('agentKeys').collect())).toMatchObject([{ revokedAt: 1 }])
   })
 })
 

@@ -46,21 +46,23 @@ function newToken(): string {
  */
 export const prepare = mutation({
   args: { site: v.string(), folder: v.optional(v.string()), library: v.optional(v.boolean()) },
-  handler: async (ctx, { site, folder, library }) => {
-    const actor = await actorFor(ctx, site)
-    // A folder of another site looks like a missing one (SPEC 4.3).
-    const folderId = folder === undefined ? null : ctx.db.normalizeId('folders', folder)
-    const row = folderId ? await ctx.db.get(folderId) : null
-    if (folder !== undefined && (!row || row.site !== actor.site._id)) fail('NOT_FOUND', 'errors.folderNotFound')
-    await countUpload(ctx, actor)
-    const ticket = newToken()
-    await ctx.db.insert('uploadTickets', {
-      tokenHash: sha256(ticket), site: actor.site._id, user: actor.user.id, expiresAt: Date.now() + TICKET_MS,
-      ...(row ? { folder: row._id } : {}), ...(library ? { library: true } : {}),
-    })
-    return { ticket }
-  },
+  handler: async (ctx, { site, folder, library }) => ({ ticket: await ticketFor(ctx, await actorFor(ctx, site), { folder, library }) }),
 })
+
+/** A one-time upload ticket for this person and site (`prepare`, and the agent door's ginko_upload). Counts toward UPLOAD_LIMIT. */
+export async function ticketFor(ctx: MutationCtx, actor: Actor, { folder, library }: { folder?: string; library?: boolean }): Promise<string> {
+  // A folder of another site looks like a missing one (SPEC 4.3).
+  const folderId = folder === undefined ? null : ctx.db.normalizeId('folders', folder)
+  const row = folderId ? await ctx.db.get(folderId) : null
+  if (folder !== undefined && (!row || row.site !== actor.site._id)) fail('NOT_FOUND', 'errors.folderNotFound')
+  await countUpload(ctx, actor)
+  const ticket = newToken()
+  await ctx.db.insert('uploadTickets', {
+    tokenHash: sha256(ticket), site: actor.site._id, user: actor.user.id, expiresAt: Date.now() + TICKET_MS,
+    ...(row ? { folder: row._id } : {}), ...(library ? { library: true } : {}),
+  })
+  return ticket
+}
 
 /** The route's first step: a valid ticket is used up and names the site and member; anything else is null. */
 export const redeem = internalMutation({

@@ -175,14 +175,16 @@ export function usesOf(fields: Fields, data: Data, locales: readonly Locale[], i
   return out
 }
 
-/** The facts the Markdown texts of `data` quote (`:fact{name="…"}`), each with the paths of the texts, in any language. */
-export function factQuotesOf(fields: Fields, data: Data): Map<string, string[]> {
-  const out = new Map<string, string[]>()
+type MarkdownField = Extract<Field, { type: 'markdown' }>
+
+/** The Markdown texts of `data` with their paths (`intro`, `days.r1.note`), in any language, stored or as a tool sends them. */
+export function markdownTextsOf(fields: Fields, data: Data): { path: string; text: string; field: MarkdownField }[] {
+  const out: { path: string; text: string; field: MarkdownField }[] = []
   const walk = (path: string, field: Field, value: Json | undefined) => {
     if (value === undefined || value === null) return
     if (field.type === 'markdown') {
       const texts = typeof value === 'string' ? [value] : Object.values(asRecord(value)).filter((t): t is string => typeof t === 'string')
-      for (const name of new Set(texts.flatMap(factNamesIn))) out.set(name, [...(out.get(name) ?? []), path])
+      for (const text of texts) out.push({ path, text, field })
     }
     if (field.type === 'list' && Array.isArray(value)) {
       value.forEach((row, i) => {
@@ -192,6 +194,18 @@ export function factQuotesOf(fields: Fields, data: Data): Map<string, string[]> 
     }
   }
   for (const [name, field] of Object.entries(fields)) if (!field.retired) walk(name, field, data[name])
+  return out
+}
+
+/** The facts the Markdown texts of `data` quote (`:fact{name="…"}`), each with the paths of the texts, in any language. */
+export function factQuotesOf(fields: Fields, data: Data): Map<string, string[]> {
+  const out = new Map<string, string[]>()
+  for (const { path, text } of markdownTextsOf(fields, data)) {
+    for (const name of new Set(factNamesIn(text))) {
+      const paths = out.get(name) ?? []
+      if (!paths.includes(path)) out.set(name, [...paths, path])
+    }
+  }
   return out
 }
 
