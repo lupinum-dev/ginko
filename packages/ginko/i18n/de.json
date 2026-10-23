@@ -201,8 +201,10 @@
       "keepMin": "min beibehalten.",
       "minOnGrid": "min so senken, dass der Unterschied ein Vielfaches von step ist.",
       "keepOption": "Option behalten; sie kann umbenannt (label) werden.",
-      "newList": "Neue Liste anlegen und mit einer Migration füllen."
-    }
+      "newList": "Neue Liste anlegen und mit einer Migration füllen.",
+      "factInUse": "Nimm die Angabe zuerst aus diesen Texten oder lass sie in `facts`."
+    },
+    "factInUse": "Die Angabe „{fact}“ fehlt in `facts`, steht aber noch in {count, plural, one {einem Text} other {# Texten}}: {texts}."
   },
   "preview": {
     "notFound": "Diese Seite gibt es nicht.",

@@ -7,7 +7,7 @@
 import { computed, inject, onBeforeUnmount, provide, reactive, ref, watch, watchEffect } from 'vue'
 import { useI18n } from '#imports'
 import type { Field, Json } from '@lupinum/ginko'
-import { coreMessage, effectiveAlt, effectiveMax, effectiveProfile, type Msg } from '@lupinum/ginko/internal'
+import { coreMessage, effectiveAlt, effectiveMax, effectiveProfile, FACT_TAG, type Msg } from '@lupinum/ginko/internal'
 import {
   BLOCKERS, docProblems, figureTag, FLUSHERS, GINKO_ASSETS, linkCardTag, makeFigure, makeLinkCard, missingRequired, slashItems, SLASH_COMPONENT_GROUP, sourceProblems, useFileImages, useGinkoEditor,
   type DocProblem, type SlashItem, type SourceProblem,
@@ -32,6 +32,7 @@ import SourceToggle from './SourceToggle.vue'
 import { useImageUploads } from './useImageUploads.ts'
 import { useStudioSite } from '../../utils/labels'
 import { isModKey } from '../../utils/keys'
+import { EDITOR_FACTS } from '../../utils/facts'
 
 const props = defineProps<{
   id: string; field: Extract<Field, { type: 'markdown' }>; modelValue: Json | undefined; invalid: boolean; describedBy?: string
@@ -49,6 +50,15 @@ const COUNTER_FROM = 0.8
 const text = (v: Json | undefined) => (typeof v === 'string' ? v : '')
 const profile = computed(() => effectiveProfile(props.field))
 const registry = inject(EDITOR_COMPONENTS, undefined)
+// The site's facts in this text's language: the chips show their values, and copies of a value are pointed out.
+const facts = inject(EDITOR_FACTS, undefined)?.(() => props.contentLocale ?? '')
+const { shown: siteLabel } = useStudioSite()
+/** A fact's field label ("Preis pro Sitzung"), from the choices of the fact component. */
+const factLabel = (name: string) => {
+  const prop = registry?.()?.[FACT_TAG]?.props.name
+  const option = prop?.type === 'choice' ? prop.options.find((o) => o.value === name) : undefined
+  return option ? siteLabel(option.label) : name
+}
 const multiline = computed(() => profile.value !== 'inline')
 const toast = useToast()
 const { t, locale } = useI18n()
@@ -142,8 +152,12 @@ const { handle, mode, editor, problemMessages, open, markdown } = useGinkoEditor
   fileImages,
   onUrlPasted: ({ url, pos }) => showChip(url, pos),
   extend: props.readonly
-    ? studioExtensions({ slashItems: () => [], slash, bus, openLink: () => {} })
-    : studioExtensions({ slashItems: items, slash, bus, openLink: () => { linkOpen.value = true }, problems: { registry: () => registry?.(), fix, t, text: coreText, described } }),
+    ? studioExtensions({ slashItems: () => [], slash, bus, openLink: () => {}, facts })
+    : studioExtensions({
+      slashItems: items, slash, bus, openLink: () => { linkOpen.value = true }, problems: { registry: () => registry?.(), fix, t, text: coreText, described }, facts,
+      // Only a text that may hold the fact component (profile `page`) is offered to replace a copy with one.
+      ...(profile.value === 'page' && registry?.()?.[FACT_TAG] ? { factCopies: { note: ({ text: copy, label }) => t('editor.fact.copy', { text: copy, label }), replace: t('editor.fact.copyReplace'), keep: t('editor.fact.copyKeep'), label: factLabel } } : {}),
+    }),
 }))
 
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -511,6 +525,13 @@ const frame = 'relative rounded-lg border border-input/80 bg-background dark:bor
 .ginko-editor :deep(.ginko-problem-note) { display: flex; align-items: center; gap: 0.75rem; margin: 0.25rem 0 0.75rem; border-left: 2px solid var(--destructive); padding-left: 0.75rem; font-size: 0.875rem; color: var(--destructive); }
 .ginko-editor :deep(.ginko-problem-note button) { flex-shrink: 0; min-height: 2rem; border: 1px solid var(--border); border-radius: 0.375rem; background: var(--background); padding: 0 0.75rem; color: var(--foreground); font-size: 0.875rem; cursor: pointer; }
 @media (pointer: coarse) { .ginko-editor :deep(.ginko-problem-note button) { min-height: 2.75rem; min-width: 2.75rem; } }
+/* A copy of a fact value (extensions.ts factCopiesExtension): a suggestion in the muted colour, never an error. */
+.ginko-editor :deep(.ginko-fact-copy) { text-decoration: underline dotted var(--primary); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.ginko-editor :deep(.ginko-fact-copy-note) { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin: 0.25rem 0 0.75rem; border-left: 2px solid var(--primary); padding-left: 0.75rem; font-size: 0.875rem; color: var(--muted-foreground); }
+.ginko-editor :deep(.ginko-fact-copy-note span) { flex: 1 1 16rem; }
+.ginko-editor :deep(.ginko-fact-copy-note button) { flex-shrink: 0; min-height: 2rem; border: 1px solid var(--border); border-radius: 0.375rem; background: var(--background); padding: 0 0.75rem; color: var(--foreground); font-size: 0.875rem; cursor: pointer; }
+.ginko-editor :deep(.ginko-fact-copy-note button + button) { border-color: transparent; background: transparent; color: var(--muted-foreground); }
+@media (pointer: coarse) { .ginko-editor :deep(.ginko-fact-copy-note button) { min-height: 2.75rem; } }
 /* A picture on its way into the library (uploads.ts), and one whose library file is gone (file-images.ts). */
 .ginko-editor :deep(:is(.ginko-uploading, .ginko-image-missing)) { display: inline-block; border-radius: 0.25rem; background: var(--muted); padding: 0 0.5rem; color: var(--muted-foreground); font-size: 0.875em; }
 </style>

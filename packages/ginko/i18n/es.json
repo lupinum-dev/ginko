@@ -201,8 +201,10 @@
       "keepMin": "Conserva min.",
       "minOnGrid": "Reduce min para que la diferencia sea un múltiplo de step.",
       "keepOption": "Conserva la opción; se puede renombrar (label).",
-      "newList": "Añade una lista nueva y rellénala con una migración."
-    }
+      "newList": "Añade una lista nueva y rellénala con una migración.",
+      "factInUse": "Quita primero el dato de esos textos o déjalo en `facts`."
+    },
+    "factInUse": "El dato «{fact}» falta en `facts`, pero aún se cita en {count, plural, one {un texto} other {# textos}}: {texts}."
   },
   "preview": {
     "notFound": "Esta página no existe.",

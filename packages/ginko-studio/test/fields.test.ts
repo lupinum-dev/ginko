@@ -12,6 +12,7 @@ import EntryFields from '../app/components/EntryFields.vue'
 import GinkoFieldList from '../app/components/fields/GinkoFieldList.vue'
 import GinkoFieldRef from '../app/components/fields/GinkoFieldRef.vue'
 import { REFS, type RefOptions } from '../app/components/fields/refs'
+import { FACT_USES } from '../app/utils/facts'
 
 // Only the toast (a third-party popup) is replaced; it records what the list asks it to show.
 const shown: { text: string; action?: { label: string; run: () => void } }[] = []
@@ -462,3 +463,21 @@ describe('switch', () => {
     expect(wrapper.text()).not.toContain('(optional)')
   })
 })
+
+// Wrong behaviour caught: an editor changed the price without knowing which pages quote it.
+describe('a fact field in an entry form', () => {
+  test('says how many texts quote it and lists them; other fields say nothing', async () => {
+    const entries = [['price', { type: 'money', label: 'Preis pro Sitzung' }], ['minutes', { type: 'number', label: 'Dauer' }]] as [string, Field][]
+    const quote = { entry: 'e1', brick: 'docs', title: 'Kosten und Termine', paths: ['body'], fieldLabels: ['Text'], deleted: false as const, state: 'live' as const }
+    const uses = { slug: () => 'praxis', quotes: () => ({ price: [quote, { ...quote, entry: 'e2', title: 'Häufige Fragen' }] }) }
+    const Host = defineComponent({
+      setup: () => () => h(EntryFields, { entries, all: Object.fromEntries(entries), draft: {}, baseline: {}, locale: 'de', locales: ['de'], issues: [] }),
+    })
+    const wrapper = mount(Host, { global: { provide: { [FACT_USES as symbol]: uses }, stubs: { NuxtLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } } })
+    const line = wrapper.findAll('[data-test="fact-uses"]')
+    expect(line).toHaveLength(1)
+    expect(line[0]!.get('summary').text()).toBe('Erscheint in 2 Texten')
+    expect(line[0]!.findAll('a').map((a) => [a.text(), a.attributes('href')])).toEqual([['Kosten und Termine', '/s/praxis/all/docs/e1'], ['Häufige Fragen', '/s/praxis/all/docs/e2']])
+  })
+})
+

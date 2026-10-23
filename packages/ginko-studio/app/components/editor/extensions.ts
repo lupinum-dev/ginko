@@ -1,15 +1,16 @@
 // What the Studio adds to the headless extensions: the node view of components, Mod+K, and the slash menu.
 // Nothing here changes the schema (see `extend` in createGinkoEditor).
-import type { ComponentRegistry, Msg } from '@lupinum/ginko/internal'
+import { factCopies, type ComponentRegistry, type FactCopy, type Msg } from '@lupinum/ginko/internal'
 import { docProblems, filterSlashItems, type DocProblem, type SlashItem } from '@lupinum/ginko-editor'
 import { Extension, type AnyExtension, type Editor, type Node as TiptapNode } from '@tiptap/core'
 import { NodeSelection, Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
-import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import type { Node as PmNode } from '@tiptap/pm/model'
 import Suggestion from '@tiptap/suggestion'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
 import { watch } from 'vue'
 import { isChip, type SettingsBus } from './context.ts'
+import type { EditorFacts, StudioFact } from '../../utils/facts'
 import ComponentView from './ComponentView.vue'
 import InlineComponentView from './InlineComponentView.vue'
 
@@ -41,18 +42,23 @@ export interface StudioExtensionsOptions {
    * its own text has one from the Files library (reactive: the notes follow when the library's files arrive).
    */
   problems?: { registry: () => ComponentRegistry | undefined; fix: (problem: DocProblem) => void; t: Translate; text: (message: Msg) => string; described?: (src: string) => boolean }
+  /** The site's facts in the text's language: fact chips show their value, and copies of a value are pointed out (FactCopies). */
+  facts?: EditorFacts
+  /** Point out copies of fact values, with the texts of the note. Only where the text may hold facts (profile `page`). */
+  factCopies?: FactCopiesOptions
 }
 
-export function studioExtensions({ slashItems, slash, openLink, bus, problems }: StudioExtensionsOptions) {
+export function studioExtensions({ slashItems, slash, openLink, bus, problems, facts, factCopies: copies }: StudioExtensionsOptions) {
   return (base: AnyExtension[]): AnyExtension[] => {
     const extensions = base.map((ext) => {
       if (ext.name === 'component') return componentExtension(ext as AnyExtension, slash, bus)
-      if (ext.name === 'inlineComponent') return inlineComponentExtension(ext as AnyExtension, bus)
+      if (ext.name === 'inlineComponent') return inlineComponentExtension(ext as AnyExtension, bus, facts)
       return ext
     })
     // Every profile has links (the link mark comes with StarterKit, so it is not an extension of its own in `base`).
     extensions.push(Extension.create({ name: 'ginkoLinkKey', addKeyboardShortcuts() { return { 'Mod-k': () => { openLink(); return true } } } }))
     if (problems) extensions.push(problemsExtension(problems))
+    if (facts && copies) extensions.push(factCopiesExtension(facts.values, copies))
     extensions.push(escapeExtension())
     // A click (or tap) on a link opens its address instead of following it: the address is visible and can be changed.
     extensions.push(Extension.create({
@@ -189,10 +195,10 @@ function componentExtension(ext: AnyExtension, slash: SlashState, bus: SettingsB
  * An inline component without text of its own (a fact) is a chip that names it, not an empty box. The cursor never
  * goes inside it: arrow keys select the chip as a whole (as a picture), Enter opens its settings, Backspace removes it.
  */
-function inlineComponentExtension(ext: AnyExtension, bus: SettingsBus): AnyExtension {
+function inlineComponentExtension(ext: AnyExtension, bus: SettingsBus, facts: StudioExtensionsOptions['facts']): AnyExtension {
   const chipAt = (node: PmNode, components: ComponentRegistry | undefined) => node.type.name === 'inlineComponent' && node.childCount === 0 && isChip(components, String(node.attrs.tag))
   // The base node of @lupinum/ginko-editor, which the editor configures with the site's components.
-  return (ext as TiptapNode<{ components?: ComponentRegistry; bus?: SettingsBus }>).extend({
+  return (ext as TiptapNode<{ components?: ComponentRegistry; bus?: SettingsBus; facts?: StudioExtensionsOptions['facts'] }>).extend({
     addNodeView() { return VueNodeViewRenderer(InlineComponentView) },
     addKeyboardShortcuts() {
       return {
@@ -218,7 +224,117 @@ function inlineComponentExtension(ext: AnyExtension, bus: SettingsBus): AnyExten
         },
       })]
     },
-  }).configure({ bus } as never)
+  }).configure({ bus, facts } as never)
+}
+
+/** The texts of a fact-copy note, in the person's language (the note is plain DOM, outside Vue). */
+export interface FactCopiesOptions {
+  /** "„98 €“ is the fact Preis pro Sitzung …" */
+  note: (copy: { text: string; label: string }) => string
+  replace: string
+  keep: string
+  /** The field label of a fact ("Preis pro Sitzung"). */
+  label: (name: string) => string
+}
+
+/**
+ * Copies of fact values in the text ("kostet 98 €" while the price is a fact): the copy gets a dotted underline and
+ * its block a quiet note with "Als Angabe einfügen" (the copy becomes the fact chip, so the text follows the next
+ * change) and "Nicht ersetzen" (the note goes away for that copy while the text is open). A suggestion, never an
+ * error: nothing blocks saving. Text in code (inline or a code block) is never a copy.
+ */
+function factCopiesExtension(facts: () => readonly StudioFact[] | undefined, options: FactCopiesOptions): AnyExtension {
+  type State = { set: DecorationSet; kept: ReadonlySet<string> }
+  const key = new PluginKey<State>('ginkoFactCopies')
+  const keyOf = (copy: Pick<FactCopy, 'name' | 'text'>) => `${copy.name}\u0000${copy.text.replace(/\s+/g, ' ')}`
+  const title = (copy: FactCopy) => options.note({ text: copy.text, label: options.label(copy.name) })
+
+  /** Every copy in `doc` the person did not keep, at its document positions, with the end of its top-level block. */
+  const copiesIn = (doc: PmNode, kept: ReadonlySet<string>) => {
+    const values = facts()
+    const found: (FactCopy & { blockEnd: number })[] = []
+    if (!values?.length) return found
+    doc.forEach((block, offset) => {
+      block.descendants((node, pos) => {
+        if (node.type.name === 'inlineComponent' || node.type.name === 'codeBlock') return false
+        if (!node.isText || node.marks.some((mark) => mark.type.name === 'code')) return true
+        const at = offset + 1 + pos
+        for (const copy of factCopies(node.text!, values)) {
+          if (!kept.has(keyOf(copy))) found.push({ ...copy, from: at + copy.from, to: at + copy.to, blockEnd: offset + block.nodeSize })
+        }
+        return true
+      })
+    })
+    return found
+  }
+
+  const replace = (view: EditorView, copy: FactCopy) => {
+    const { state } = view
+    // The note was drawn for this document; the copy must still be there before it is replaced.
+    if (state.doc.textBetween(copy.from, copy.to) !== copy.text) return
+    view.dispatch(state.tr.replaceWith(copy.from, copy.to, state.schema.nodes.inlineComponent!.create({ tag: 'fact', props: { name: copy.name } })))
+    view.focus()
+  }
+  const keep = (view: EditorView, copy: FactCopy) => view.dispatch(view.state.tr.setMeta(key, { keep: keyOf(copy) }))
+
+  const note = (view: EditorView, copy: FactCopy): HTMLElement => {
+    const el = document.createElement('div')
+    el.className = 'ginko-fact-copy-note'
+    el.setAttribute('contenteditable', 'false')
+    el.setAttribute('role', 'note')
+    const text = document.createElement('span')
+    text.textContent = title(copy)
+    const button = (label: string, act: () => void) => {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.textContent = label
+      // The editor keeps its selection while a button is used.
+      b.addEventListener('mousedown', (event) => event.preventDefault())
+      b.addEventListener('click', act)
+      return b
+    }
+    el.append(text, button(options.replace, () => replace(view, copy)), button(options.keep, () => keep(view, copy)))
+    return el
+  }
+
+  const build = (doc: PmNode, kept: ReadonlySet<string>): DecorationSet => {
+    const found = copiesIn(doc, kept)
+    if (!found.length) return DecorationSet.empty
+    const noted = new Set<number>()
+    const decorations: Decoration[] = []
+    for (const copy of found) {
+      decorations.push(Decoration.inline(copy.from, copy.to, { class: 'ginko-fact-copy', title: title(copy) }))
+      // One note per block, for its first copy; the next one shows once that is replaced or kept.
+      if (noted.has(copy.blockEnd)) continue
+      noted.add(copy.blockEnd)
+      decorations.push(Decoration.widget(copy.blockEnd, (view) => note(view, copy), { side: -1, key: `fact-copy-${copy.from}-${keyOf(copy)}` }))
+    }
+    return DecorationSet.create(doc, decorations)
+  }
+
+  return Extension.create({
+    name: 'ginkoFactCopies',
+    addProseMirrorPlugins() {
+      return [new Plugin<State>({
+        key,
+        state: {
+          init: (_config, state) => ({ set: build(state.doc, new Set()), kept: new Set() }),
+          apply: (tr, old) => {
+            const meta = tr.getMeta(key) as { keep?: string; refresh?: true } | undefined
+            const kept = meta?.keep ? new Set([...old.kept, meta.keep]) : old.kept
+            return tr.docChanged || meta ? { set: build(tr.doc, kept), kept } : old
+          },
+        },
+        props: { decorations: (state) => key.getState(state)?.set },
+        // The values arrive after the text opens and may change while it is open: the notes follow.
+        view: (view) => ({
+          destroy: watch(() => facts()?.map((fact) => `${fact.name}:${fact.copies.join('|')}`).join('\n'), () => {
+            if (!view.isDestroyed) view.dispatch(view.state.tr.setMeta(key, { refresh: true }))
+          }),
+        }),
+      })]
+    },
+  })
 }
 
 /**

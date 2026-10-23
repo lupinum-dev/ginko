@@ -251,6 +251,8 @@ export interface Schema {
   url: string
   timeZone: string
   locales: Locale[]
+  /** The language tag per locale for numbers, money and dates (`SiteInput.languages`, "de-AT"); absent when the site sets none. */
+  languages?: Partial<Record<Locale, string>>
   currency: Currency
   /** First day of the week and weekend days of the site (computed once from the main language or `firstDayOfWeek`). */
   week: WeekInfo

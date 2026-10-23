@@ -685,6 +685,21 @@
       "choose": "Choose …",
       "chooseImage": "Choose image",
       "changeImage": "Change image"
+    },
+    "fact": {
+      "from": "Fact from {brick}",
+      "shows": "The website shows here",
+      "empty": "Nothing yet: enter the value in {brick}, or this spot stays empty.",
+      "next": "From {date}: {value}",
+      "follows": "When the value changes, every text shows the new one at once.",
+      "change": "Change in {brick}",
+      "newTab": "(opens in a new tab)",
+      "other": "Show another fact",
+      "chipName": "Fact {label}: {value}",
+      "chipEmpty": "{label}: still empty",
+      "copy": "“{text}” is the fact {label}. As a fact, the text stays current when the value changes.",
+      "copyReplace": "Insert as fact",
+      "copyKeep": "Keep as text"
     }
   },
   "fields": {
@@ -780,7 +795,9 @@
       "photoMenu": "Actions for {title}",
       "earlier": "Move earlier",
       "later": "Move later"
-    }
+    },
+    "factUses": "Shown in {count, plural, one {one text} other {# texts}}",
+    "factUsesHint": "When you change the value here, it changes in these texts too."
   },
   "ops": {
     "saved": "Saved.",

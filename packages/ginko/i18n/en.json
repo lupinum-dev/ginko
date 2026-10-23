@@ -201,8 +201,10 @@
       "keepMin": "Keep min.",
       "minOnGrid": "Lower min so that the difference is a multiple of step.",
       "keepOption": "Keep the option; it can be renamed (label).",
-      "newList": "Add a new list and fill it with a migration."
-    }
+      "newList": "Add a new list and fill it with a migration.",
+      "factInUse": "Take the fact out of these texts first, or keep it in `facts`."
+    },
+    "factInUse": "The fact “{fact}” is missing from `facts` but is still quoted in {count, plural, one {one text} other {# texts}}: {texts}."
   },
   "preview": {
     "notFound": "This page does not exist.",

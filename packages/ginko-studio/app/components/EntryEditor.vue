@@ -32,6 +32,7 @@ import { useId } from 'vue'
 import { useBottomBar } from '../composables/useBottomBar'
 import { siteOrigin } from '../utils/origin'
 import { provideSiteRefs } from '../composables/useSiteRefs'
+import { provideFactUses } from '../composables/useFacts'
 import { useCrumbs, usePanelBar } from '../composables/usePageHeader'
 import { useAreaList } from '../composables/useAreaList'
 import { focusText, previewPageOf } from '../utils/previewPage'
@@ -71,6 +72,8 @@ const { t, format, locale: uiLocale } = useI18n()
 const main = computed(() => props.schema.locales[0]!)
 // Ref fields list the entries of their target brick by title.
 provideSiteRefs(() => props.site.slug, () => props.schema, () => main.value)
+// Fact fields say which texts quote them (EntryFields).
+provideFactUses(() => props.site.slug, () => props.schema, () => props.brickKey)
 // A link from a translation badge opens the entry in that language (?lang=en).
 const wantedLocale = String(useRoute().query.lang ?? '')
 const locale = ref<Locale>(props.schema.locales.includes(wantedLocale) ? wantedLocale : main.value)
@@ -299,6 +302,18 @@ const wide = useMediaQuery('(min-width: 768px)', { ssrWidth: 1024 })
 const tabbed = computed(() => props.brick.layout === 'tabs' && wide.value)
 const activeTab = ref('')
 watch(() => mainGroups.value, (list) => { if (!list.some((g) => g.id === activeTab.value)) activeTab.value = list[0]?.id ?? '' }, { immediate: true })
+// A fact's panel ("In Praxis ändern") opens the entry at one field (`?field=price`): its tab shows and it gets the focus.
+const wantedField = String(useRoute().query.field ?? '')
+onMounted(() => {
+  if (!wantedField || !Object.hasOwn(props.brick.fields, wantedField)) return
+  const group = mainGroups.value.find((g) => g.fields.some(([key]) => key === wantedField))
+  if (tabbed.value && group) activeTab.value = group.id
+  nextTick(() => {
+    const control = document.getElementById(`f-${wantedField}`)
+    control?.scrollIntoView({ block: 'center' })
+    control?.focus({ preventScroll: true })
+  })
+})
 const groupHasIssue = (g: FieldGroup) => g.fields.some(([key]) => issues.value.some((i) => i.path === key || i.path.startsWith(`${key}.`)))
 // In another language, a tab whose fields miss a translation or hold an outdated one says so, like the language switch.
 const gapRoots = computed(() => new Set([...(storedTranslation.value?.missing ?? []), ...(storedTranslation.value?.outdated ?? [])].map((leaf) => leaf.split('.')[0]!)))

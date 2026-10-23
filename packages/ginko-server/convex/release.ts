@@ -15,6 +15,7 @@ import { storageSums } from './lib/lifecycle'
 import { putTrees } from './lib/trees'
 import { BUDGET, checkNewFiles, checkNewLinks, entryUses, overBudget, same, sizeText, syncEntryRefs } from './lib/write'
 import { labelOf } from './entries'
+import { droppedFactsInUse } from './facts'
 
 const scope = v.union(v.literal('release'), v.literal('pull'), v.literal('check'), v.literal('export'))
 
@@ -220,7 +221,7 @@ export const release = internalMutation({
     const ledger = await ctx.db.query('migrationsApplied').withIndex('by_site_id', (q) => q.eq('site', args.site)).collect()
     const applied = new Map<string, MigrationDescriptor>()
     for (const m of [...stored.migrations, ...ledger]) applied.set(m.id, { id: m.id, brick: m.brick, fills: m.fills, fingerprint: m.fingerprint })
-    const { rejected } = diffSchema({ ...stored, migrations: [...applied.values()] }, next)
+    const rejected = [...diffSchema({ ...stored, migrations: [...applied.values()] }, next).rejected, ...await droppedFactsInUse(ctx, site, next)]
     const changedMigrations = rejected.filter((r) => r.kind === 'migrationChanged')
     if (changedMigrations.length) fail('MIGRATION_CHANGED', 'errors.knownMigrationChanged', undefined, { rejected: changedMigrations as unknown as Json })
     if (rejected.length) fail('SCHEMA_REJECTED', 'errors.schemaBreaksChangeRules', undefined, { rejected: rejected as unknown as Json })
@@ -397,7 +398,9 @@ export const devPush = internalMutation({
       return { schemaRev: 1, changes: [], warnings: [] }
     }
     const stored = site.schema as Schema
-    const { changes, rejected } = diffSchema(stored, next)
+    const diff = diffSchema(stored, next)
+    const changes = diff.changes
+    const rejected = [...diff.rejected, ...await droppedFactsInUse(ctx, site, next)]
     const changed = stableJson(next as unknown as Json) !== stableJson(stored as unknown as Json)
     const schemaRev = changed ? site.schemaRev + 1 : site.schemaRev
     if (changed) await ctx.db.patch(site._id, { schema: next as unknown as Json, name: next.name, url: next.url, schemaRev })

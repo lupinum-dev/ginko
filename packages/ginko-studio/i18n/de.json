@@ -685,6 +685,21 @@
       "choose": "Bitte wählen",
       "chooseImage": "Bild wählen",
       "changeImage": "Anderes Bild"
+    },
+    "fact": {
+      "from": "Angabe aus {brick}",
+      "shows": "Die Website zeigt hier",
+      "empty": "Noch nichts: Trag den Wert in {brick} ein, sonst bleibt die Stelle leer.",
+      "next": "Ab {date}: {value}",
+      "follows": "Ändert sich der Wert, steht in jedem Text sofort der neue.",
+      "change": "In {brick} ändern",
+      "newTab": "(öffnet in einem neuen Tab)",
+      "other": "Andere Angabe zeigen",
+      "chipName": "Angabe {label}: {value}",
+      "chipEmpty": "{label}: noch leer",
+      "copy": "„{text}“ ist die Angabe {label}. Als Angabe bleibt der Text aktuell, wenn sich der Wert ändert.",
+      "copyReplace": "Als Angabe einfügen",
+      "copyKeep": "Nicht ersetzen"
     }
   },
   "fields": {
@@ -780,7 +795,9 @@
       "photoMenu": "Aktionen für {title}",
       "earlier": "Nach vorne",
       "later": "Nach hinten"
-    }
+    },
+    "factUses": "Erscheint in {count, plural, one {einem Text} other {# Texten}}",
+    "factUsesHint": "Änderst du den Wert hier, ändert er sich in diesen Texten mit."
   },
   "ops": {
     "saved": "Gespeichert.",

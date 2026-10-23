@@ -2,7 +2,7 @@
 // that search and the Markdown twin show the value instead of a gap.
 import { describe, expect, it } from 'vitest'
 import {
-  bundleFactResolver, checkSite, collection, defineSite, entryMarkdown, f, factText, parseMarkdown, serializeSchema, single,
+  bundleFactResolver, checkSchema, checkSite, collection, defineSite, entryMarkdown, f, factCopies, factNamesIn, factText, factValues, parseMarkdown, serializeSchema, single,
   type Bundle, type FactContext, type SiteInput,
 } from '../../src/core/index.ts'
 import { searchSections } from '../../src/core/search-sections.ts'
@@ -152,3 +152,51 @@ describe('facts in search and in the Markdown twin', () => {
     expect(markdown.replace(/ /g, ' ')).toContain('Eine Sitzung dauert 60 Minuten und kostet € 98.')
   })
 })
+
+describe('facts for editors and agents', () => {
+  // Wrong behaviour caught: the platform refused the schema of a site with facts and no components of its own
+  // (the generated component's `open` was an unknown property), and dropped the site's language tags.
+  it('stores the language tags and passes the platform check', () => {
+    const schema = serializeSchema(site({ languages: { de: 'de-AT' } }))
+    expect(schema.languages).toEqual({ de: 'de-AT' })
+    expect(checkSchema(schema)).not.toContainEqual(expect.stringMatching(/open|languages/))
+    expect(checkSchema({ ...schema, languages: { de: 'not a tag', en: 'en-US' } }).join('\n')).toMatch(/languages\.de: invalid language[\s\S]*locale “en” is not in locales/)
+  })
+
+  it.each([
+    ['Preis :fact{name="practice.price"}, Dauer :fact{name=\'practice.minutes\'} und :fact{name=practice.price}', ['practice.price', 'practice.minutes']],
+    ['Ein :badge[neu]{color="success"} ohne Angaben', []],
+  ])('factNamesIn(%j)', (text, names) => {
+    expect(factNamesIn(text)).toEqual(names)
+  })
+
+  // Wrong behaviour caught: the Studio showed "98 €" while the de-AT site shows "€ 98", or no planned change.
+  it('formats every fact as the site does, with the planned change and the forms of a copy', () => {
+    const schema = serializeSchema(site({ languages: { de: 'de-AT' } }))
+    const values = factValues(schema, { practice: data }, 'de', '2026-12-31')
+    const byName = Object.fromEntries(values.map((v) => [v.name, v]))
+    expect(values.map((v) => v.name)).toEqual(['practice.price', 'practice.minutes', 'practice.days', 'practice.times', 'practice.email', 'practice.validUntil'])
+    expect({ ...byName['practice.price'], copies: undefined }).toEqual({ name: 'practice.price', brick: 'practice', field: 'price', text: '€\u00a098', next: { text: '€\u00a0105,50', from: '2027-01-01' }, copies: undefined })
+    expect(byName['practice.price']!.copies).toEqual(expect.arrayContaining(['98 €', '€ 98', '98 Euro', '98,00 €', '98 EUR']))
+    expect(byName['practice.minutes']!.copies).toEqual(['60 Minuten'])
+    expect(byName['practice.validUntil']!.copies).toEqual(['31. Dezember 2026', '31.12.2026'])
+    expect(byName['practice.email']!.copies).toEqual(['praxis@example.test'])
+    // On the day of the change the new price is shown and nothing is planned any more.
+    expect(factValues(schema, { practice: data }, 'de', '2027-01-01')[0]).toMatchObject({ text: '€\u00a0105,50' })
+    expect(factValues(schema, { practice: data }, 'de', '2027-01-01')[0]!.next).toBeUndefined()
+    expect(factValues(schema, {}, 'de')[0]).toEqual({ name: 'practice.price', brick: 'practice', field: 'price', copies: [] })
+  })
+
+  // Wrong behaviour caught: a copied price stays in a text after the price changes, or an ordinary number is flagged.
+  it('finds copies of fact values in a text, standing on their own', () => {
+    const values = factValues(serializeSchema(site()), { practice: data }, 'de', '2026-12-31')
+    const text = 'Eine Sitzung kostet 98 € und dauert 60 Minuten, an Dienstag und Mittwoch. 198 € kostet das Paket. Mail: praxis@example.test'
+    expect(factCopies(text, values).map((c) => [c.name, c.text, text.slice(c.from, c.to)])).toEqual([
+      ['practice.price', '98 €', '98 €'],
+      ['practice.minutes', '60 Minuten', '60 Minuten'],
+      ['practice.days', 'Dienstag und Mittwoch', 'Dienstag und Mittwoch'],
+      ['practice.email', 'praxis@example.test', 'praxis@example.test'],
+    ])
+  })
+})
+

@@ -7,6 +7,10 @@
     "de",
     "en"
   ],
+  "languages": {
+    "de": "de-AT",
+    "en": "en-GB"
+  },
   "currency": "EUR",
   "week": {
     "firstDay": 1,
