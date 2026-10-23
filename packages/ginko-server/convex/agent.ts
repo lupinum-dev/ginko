@@ -7,7 +7,7 @@ import { ConvexError, v } from 'convex/values'
 import { components } from './_generated/api'
 import type { Doc, Id } from './_generated/dataModel'
 import { bundleOf } from './bundle'
-import { factCopiesIn, factCopyNote, factsOf, type FactCopyFound } from './facts'
+import { factCopiesIn, factCopyNote, factsOf, type FactCopyFound, type StudioFact } from './facts'
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
 import { createAs, labelOf, removeAs, revertAs, saveAs, undoAs, usesOfEntry, versionAtAs } from './entries'
 import { usageAs } from './files'
@@ -492,14 +492,20 @@ async function taskThroughDoor(ctx: MutationCtx, actor: Actor, name: string, inp
   return notingCopies(ctx, actor, brick.fields, values, savedAs(await saveAs(ctx, actor, { site, opId, task: tool.ref, entry: entry._id, baseRev: entry.rev, fields, locale: main }), labelIn(tool.task.label, main, main)))
 }
 
+/** ginko_import collects the copies of all its items here and reads the facts once. */
+interface CopyBatch { copies: FactCopyFound[]; facts: () => Promise<StudioFact[]> }
+
 /**
  * `done` with a note when the Markdown it wrote copies fact values (facts.ts), so the assistant quotes the facts instead.
- * With `sink` (ginko_import), the copies go there and the import names them once for all items.
+ * With `batch` (ginko_import), the copies go there and the import names them once for all items.
  */
-async function notingCopies(ctx: MutationCtx, actor: Actor, fields: Fields, values: Record<string, Json>, done: { text: string; result: Json }, sink?: FactCopyFound[]): Promise<{ text: string; result: Json }> {
-  const found = await factCopiesIn(ctx, actor.site, fields, values)
-  if (sink) sink.push(...found)
-  const note = sink ? '' : factCopyNote(found)
+async function notingCopies(ctx: MutationCtx, actor: Actor, fields: Fields, values: Record<string, Json>, done: { text: string; result: Json }, batch?: CopyBatch): Promise<{ text: string; result: Json }> {
+  const found = await factCopiesIn(ctx, actor.site, fields, values, batch?.facts)
+  if (batch) {
+    batch.copies.push(...found)
+    return done
+  }
+  const note = factCopyNote(found)
   return note ? { ...done, text: `${done.text} ${note}` } : done
 }
 
@@ -661,7 +667,7 @@ function schemaOf(actor: Actor, only: Json | undefined) {
 }
 
 /** ginko_write: any fields of an entry or single, in the main language, as the Studio saves them (no task). */
-async function writeThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string, copies?: FactCopyFound[]): Promise<{ text: string; result: Json }> {
+async function writeThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string, batch?: CopyBatch): Promise<{ text: string; result: Json }> {
   onlyKeys(input, ['brick', 'entry', 'fields'])
   const schema = actor.site.schema as Schema
   const main = schema.locales[0]!
@@ -674,11 +680,11 @@ async function writeThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<st
   const result = await saveAs(ctx, actor, { site: actor.site.slug, opId, entry: entry._id, baseRev: entry.rev, fields, locale: main })
   const studio = studioLink(actor, key, def.kind === 'single' ? undefined : entry._id)
   const saved = savedAs(result, `${labelOf(schema, key, entry.data as Data)}: ${Object.keys(fields).join(', ')}`)
-  return notingCopies(ctx, actor, def.fields, values, { text: saved.text, result: { ...(result as object), entry: entry._id, ...(studio ? { studio } : {}) } }, copies)
+  return notingCopies(ctx, actor, def.fields, values, { text: saved.text, result: { ...(result as object), entry: entry._id, ...(studio ? { studio } : {}) } }, batch)
 }
 
 /** ginko_create: a new entry of a collection with any fields (no task). In a collection with drafts, a draft unless `publish`. */
-async function createThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string, copies?: FactCopyFound[]): Promise<{ text: string; result: Json }> {
+async function createThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<string, Json>, opId: string, batch?: CopyBatch): Promise<{ text: string; result: Json }> {
   onlyKeys(input, ['brick', 'fields', 'publish'])
   const schema = actor.site.schema as Schema
   const { key, def } = brickOf(actor, input.brick)
@@ -688,7 +694,7 @@ async function createThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<s
   checkFields(actor, key, def, values)
   const data = fromToolInput(def.fields, values, { mainLocale: schema.locales[0]!, currency: schema.currency, newRowId })
   const result = await createAs(ctx, actor, { site: actor.site.slug, opId, brick: key, data, ...(input.publish === true ? { publish: {} } : {}) })
-  if (proposed(result)) return notingCopies(ctx, actor, def.fields, values, { text: PROPOSED, result }, copies)
+  if (proposed(result)) return notingCopies(ctx, actor, def.fields, values, { text: PROPOSED, result }, batch)
   const { entry: id, state, liveFrom } = result as { entry: Id<'entries'>; state: 'draft' | 'live'; liveFrom?: string }
   const change = await lastChangeOf(ctx, id)
   const studio = studioLink(actor, key, id)
@@ -696,7 +702,7 @@ async function createThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<s
   return notingCopies(ctx, actor, def.fields, values, {
     text: `Created entry ${id} in “${key}”. ${where} To undo: ginko_undo with change ${change?._id}.`,
     result: { ...(result as object), change: change?._id ?? null, ...(studio ? { studio } : {}) },
-  }, copies)
+  }, batch)
 }
 
 /**
@@ -712,16 +718,18 @@ async function importThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<s
   const schema = actor.site.schema as Schema
   const results: Json[] = []
   const copies: (FactCopyFound & { item: number })[] = []
+  let facts: Promise<StudioFact[]> | undefined
+  const batchFacts = () => (facts ??= factsOf(ctx, actor.site))
   for (const [i, raw] of items.entries()) {
     try {
       const item = objectArg(raw, `items[${i}]`)
       const { entry, publish, ...rest } = item
       const writes = entry !== undefined || (typeof item.brick === 'string' && schema.bricks[item.brick]?.kind === 'single')
-      const found: FactCopyFound[] = []
+      const batch: CopyBatch = { copies: [], facts: batchFacts }
       const done = writes
-        ? await writeThroughDoor(ctx, actor, { ...rest, ...(entry === undefined ? {} : { entry }) }, `${opId}-${i}`, found)
-        : await createThroughDoor(ctx, actor, { ...rest, ...(publish === undefined ? {} : { publish }) }, `${opId}-${i}`, found)
-      copies.push(...found.map((copy) => ({ ...copy, item: i })))
+        ? await writeThroughDoor(ctx, actor, { ...rest, ...(entry === undefined ? {} : { entry }) }, `${opId}-${i}`, batch)
+        : await createThroughDoor(ctx, actor, { ...rest, ...(publish === undefined ? {} : { publish }) }, `${opId}-${i}`, batch)
+      copies.push(...batch.copies.map((copy) => ({ ...copy, item: i })))
       const r = done.result as Record<string, Json>
       results.push({ item: i, op: writes ? 'write' : 'create', ...(r.entry ? { entry: r.entry } : {}), ...(r.proposal ? { proposal: r.proposal } : {}), ...(r.studio ? { studio: r.studio } : {}) })
     } catch (error) {

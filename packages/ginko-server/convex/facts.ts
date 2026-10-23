@@ -1,7 +1,7 @@
 // Facts (`facts` in the site config, `:fact{name="…"}` in texts) as editors and agents need them: what each one
 // shows now, which texts quote it, and a release that would leave a quote without its fact.
 import type { Label } from '@lupinum/ginko'
-import { factCopies, factNames, factValues, msg, resolveEntry, todayIn, type FactValue, type Schema, type SchemaChange } from '@lupinum/ginko/internal'
+import { effectiveProfile, factCopiesInMarkdown, factNames, factValues, msg, resolveEntry, todayIn, type FactValue, type Schema, type SchemaChange } from '@lupinum/ginko/internal'
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { query, type QueryCtx } from './_generated/server'
@@ -42,15 +42,16 @@ export interface FactCopyFound { path: string; text: string; fact: string }
 
 /**
  * The fact values that `data` writes as plain text into the Markdown fields of `fields` (in the form a tool sends them
- * or as stored), each fact once per field. Reads nothing when the site has no facts or `data` no Markdown text.
+ * or as stored), each fact once per field. Only texts with the `page` profile can quote a fact, so only those count.
+ * Reads nothing when the site has no facts or `data` no such text; `facts` lets a batch read the facts once.
  */
-export async function factCopiesIn(ctx: QueryCtx, site: Doc<'sites'>, fields: Fields, data: Data): Promise<FactCopyFound[]> {
-  const texts = markdownTextsOf(fields, data)
+export async function factCopiesIn(ctx: QueryCtx, site: Doc<'sites'>, fields: Fields, data: Data, facts?: () => Promise<StudioFact[]>): Promise<FactCopyFound[]> {
+  const texts = markdownTextsOf(fields, data).filter(({ field }) => effectiveProfile(field) === 'page')
   if (!texts.length || !factNames((site.schema as Schema).components).length) return []
-  const facts = await factsOf(ctx, site)
+  const values = await (facts ? facts() : factsOf(ctx, site))
   const found: FactCopyFound[] = []
   for (const { path, text } of texts) {
-    for (const copy of factCopies(text, facts)) {
+    for (const copy of factCopiesInMarkdown(text, values)) {
       if (!found.some((f) => f.path === path && f.fact === copy.name)) found.push({ path, text: copy.text, fact: copy.name })
     }
   }

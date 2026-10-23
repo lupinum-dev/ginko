@@ -175,14 +175,16 @@ export function usesOf(fields: Fields, data: Data, locales: readonly Locale[], i
   return out
 }
 
+type MarkdownField = Extract<Field, { type: 'markdown' }>
+
 /** The Markdown texts of `data` with their paths (`intro`, `days.r1.note`), in any language, stored or as a tool sends them. */
-export function markdownTextsOf(fields: Fields, data: Data): { path: string; text: string }[] {
-  const out: { path: string; text: string }[] = []
+export function markdownTextsOf(fields: Fields, data: Data): { path: string; text: string; field: MarkdownField }[] {
+  const out: { path: string; text: string; field: MarkdownField }[] = []
   const walk = (path: string, field: Field, value: Json | undefined) => {
     if (value === undefined || value === null) return
     if (field.type === 'markdown') {
       const texts = typeof value === 'string' ? [value] : Object.values(asRecord(value)).filter((t): t is string => typeof t === 'string')
-      for (const text of texts) out.push({ path, text })
+      for (const text of texts) out.push({ path, text, field })
     }
     if (field.type === 'list' && Array.isArray(value)) {
       value.forEach((row, i) => {

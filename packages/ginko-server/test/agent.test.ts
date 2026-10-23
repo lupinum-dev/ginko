@@ -618,6 +618,13 @@ describe('agent door: builder tools (owners and admins)', () => {
 
 describe('agent door: facts', () => {
   const PHONE = 'Telefon: +43 662 000 000'
+  /** withFacts, with the imprint a `page` text: only such a text can quote a fact. */
+  const pageImprint = async (s: Setup) => {
+    const schema = await withFacts(s)
+    const legal = schema.bricks.legal!.fields.imprint!
+    if (legal.type === 'markdown') legal.profile = 'page'
+    await s.t.run((ctx) => ctx.db.patch(s.site, { schema }))
+  }
   const note = (where: string) => `Note: these texts copy values the site keeps as facts: “+43 662 000 000” in ${where} → :fact{name="contact.phone"}. Quote the fact instead, so the text stays right when the value changes.`
 
   // Wrong behaviour caught: the assistant did not know which values the site keeps as facts, so it typed them into texts.
@@ -635,16 +642,20 @@ describe('agent door: facts', () => {
     const s = await setup()
     await withFacts(s)
     const key = await keyOf(s, 'owner')
+    // A `basic` text cannot hold a fact, so the assistant is not told to quote one there.
+    expect((await call(s, key, 'ginko_write', { brick: 'legal', fields: { imprint: PHONE } })).text).not.toContain('Note:')
+    await pageImprint(s)
     const copied = await call(s, key, 'ginko_write', { brick: 'legal', fields: { imprint: PHONE } })
     expect(copied.isError).toBe(false)
     expect(copied.text).toContain(note('imprint'))
-    const quoted = await call(s, key, 'ginko_write', { brick: 'legal', fields: { imprint: 'Telefon: :fact{name="contact.phone"}' } })
+    // A quote, or the value shown as code, is no copy.
+    const quoted = await call(s, key, 'ginko_write', { brick: 'legal', fields: { imprint: 'Telefon: :fact{name="contact.phone"}, als Text `+43 662 000 000`' } })
     expect(quoted.text).not.toContain('Note:')
   })
 
   it('ginko_import names the item that copies a fact value, in the dry run too', async () => {
     const s = await setup()
-    await withFacts(s)
+    await pageImprint(s)
     const key = await keyOf(s, 'owner')
     const items = [{ brick: 'notices', fields: { text: 'Ruhetag', until: '2099-01-01' } }, { brick: 'legal', fields: { imprint: PHONE } }]
     expect((await call(s, key, 'ginko_import', { items, dry_run: true })).text).toBe(`Dry run: all 2 items would be saved. Nothing was saved. ${note('items[1] imprint')}`)
