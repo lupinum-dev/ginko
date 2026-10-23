@@ -596,16 +596,27 @@ function brickOf(actor: Actor, raw: Json | undefined): { key: string; def: Schem
   fail('INVALID', 'errors.brickNotFoundSeeOverview', { only: String(raw) })
 }
 
-/** Every name in `values` must be a live, writable field; else the error names the closest one. */
+/**
+ * Every name in `values` must be a live, writable field, also inside the rows of a list; else the error names the
+ * closest one. Without this check `fromToolInput` drops an unknown name and the save reports success for nothing.
+ */
 function checkFields(actor: Actor, key: string, def: Schema['bricks'][string], values: Record<string, Json>) {
   const main = (actor.site.schema as Schema).locales[0]!
-  const writable = Object.entries(def.fields).filter(([, f]) => !f.retired && f.type !== 'slug')
-  for (const name of Object.keys(values)) {
-    if (writable.some(([k]) => k === name)) continue
-    const near = suggest(name, writable.map(([k, f]) => ({ key: k, label: labelIn(f.label, main, main) })))
-    if (near.length) fail('INVALID', 'errors.unknownFieldDidYouMean', { field: name, brick: key, suggestion: near.join(', ') }, { field: name })
-    fail('INVALID', 'errors.unknownField', { field: name, brick: key }, { field: name })
+  const check = (fields: Schema['bricks'][string]['fields'], given: Record<string, Json>, at: string) => {
+    const writable = Object.entries(fields).filter(([, f]) => !f.retired && f.type !== 'slug')
+    for (const [name, value] of Object.entries(given)) {
+      const field = writable.find(([k]) => k === name)?.[1]
+      const path = `${at}${name}`
+      if (field) {
+        if (field.type === 'list' && Array.isArray(value)) value.forEach((row, i) => { if (typeof row === 'object' && row !== null && !Array.isArray(row)) check(field.of, row, `${path}[${i}].`) })
+        continue
+      }
+      const near = suggest(name, writable.map(([k, f]) => ({ key: k, label: labelIn(f.label, main, main) })))
+      if (near.length) fail('INVALID', 'errors.unknownFieldDidYouMean', { field: path, brick: key, suggestion: near.join(', ') }, { field: path })
+      fail('INVALID', 'errors.unknownField', { field: path, brick: key }, { field: path })
+    }
   }
+  check(def.fields, values, '')
 }
 
 function onlyKeys(input: Record<string, Json>, allowed: readonly string[]) {
@@ -697,10 +708,29 @@ async function importThroughDoor(ctx: MutationCtx, actor: Actor, input: Record<s
     }
   }
   // The IDs of a dry run are rolled back with it, so its answer names only what each item would do.
-  if (input.dry_run === true) throw new ConvexError({ code: DRY_RUN, results: results.map((r) => ({ item: (r as { item: number }).item, op: (r as { op: string }).op })) })
-  const created = results.filter((r) => (r as { op: string }).op === 'create').length
-  return { text: `Saved ${results.length} items (${created} new, ${results.length - created} changed). Each one is in ginko_history and can be undone there.`, result: results }
+  const rows = results as { item: number; op: string; proposal?: string }[]
+  if (input.dry_run === true) throw new ConvexError({ code: DRY_RUN, results: rows.map((r) => ({ item: r.item, op: r.op, ...(r.proposal ? { proposed: true } : {}) })) })
+  return { text: importText(rows), result: results }
 }
+
+/** What ginko_import says: what is live now and what waits for approval (review on), never "saved" for a proposal. */
+export function importText(rows: readonly { op: string; proposal?: string }[]): string {
+  const live = rows.filter((r) => !r.proposal)
+  const created = live.filter((r) => r.op === 'create').length
+  const waiting = rows.length - live.length
+  const saved = live.length ? `Saved ${live.length} items (${created} new, ${live.length - created} changed). Each one is in ginko_history and can be undone there.` : ''
+  const proposals = waiting ? `${waiting} items became proposals that wait for approval; nothing of them is on the website yet (ginko_proposals lists them).` : ''
+  return [saved, proposals].filter(Boolean).join(' ')
+}
+
+/** ginko_upload with a URL: refuses anyone but a builder before the door fetches anything. */
+export const mayUpload = internalQuery({
+  args: { key: v.id('agentKeys') },
+  handler: async (ctx, { key }): Promise<null> => {
+    if (!isBuilder(await actorOrFail(ctx, key))) fail('FORBIDDEN', 'errors.toolNotFoundOrNotYours', { name: 'ginko_upload' })
+    return null
+  },
+})
 
 /** ginko_upload's first step: a one-time upload ticket for the key's person, for a library file. Builders only. */
 export const uploadTicket = internalMutation({
@@ -719,7 +749,7 @@ export const uploadTicket = internalMutation({
  */
 export const devKey = internalMutation({
   args: { site: v.string(), email: v.string(), hash: v.string() },
-  handler: async (ctx, args): Promise<{ ok: true } | { ok: false; reason: 'site' | 'signin' }> => {
+  handler: async (ctx, args): Promise<{ ok: true } | { ok: false; reason: 'site' | 'signin' | 'taken' }> => {
     if (process.env.GINKO_LOCAL !== '1') fail('FORBIDDEN', 'errors.localOnly')
     const site = await ctx.db.query('sites').withIndex('by_slug', (q) => q.eq('slug', args.site)).unique()
     if (!site) return { ok: false, reason: 'site' }
@@ -727,9 +757,11 @@ export const devKey = internalMutation({
     const id = typeof user?.id === 'string' ? user.id : undefined
     if (!id || !(await memberOf(ctx, site, { id }))) return { ok: false, reason: 'signin' }
     const key = await ctx.db.query('agentKeys').withIndex('by_hash', (q) => q.eq('hash', args.hash)).unique()
-    if (key && key.site === site._id && key.user === id && !key.revokedAt) return { ok: true }
-    if (key) await ctx.db.delete(key._id)
-    await ctx.db.insert('agentKeys', { site: site._id, user: id, hash: args.hash, label: 'local:dev', createdAt: Date.now() })
-    return { ok: true }
+    if (!key) {
+      await ctx.db.insert('agentKeys', { site: site._id, user: id, hash: args.hash, label: 'local:dev', createdAt: Date.now() })
+      return { ok: true }
+    }
+    // A revoked key stays revoked, and a key of another site or person stays theirs: the CLI makes a new one.
+    return key.site === site._id && key.user === id && !key.revokedAt ? { ok: true } : { ok: false, reason: 'taken' }
   },
 })
