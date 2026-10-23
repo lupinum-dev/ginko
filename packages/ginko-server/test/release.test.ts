@@ -5,7 +5,7 @@ import { sha256, type Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
-import { errorOf, opId, people, setup, upload } from './setup'
+import { errorOf, opId, people, setup, upload, withFacts } from './setup'
 
 type Setup = Awaited<ReturnType<typeof setup>>
 type Write = { entry: string; fields: Record<string, Json> }
@@ -465,6 +465,26 @@ describe('release candidate (break-it 9)', () => {
     const writes = (await rowsOf(s, 'menu')).map((e) => ({ entry: e._id, fields: { subtitle: null } }))
     const error = await errorOf(release(s, { schema: withSubtitle(await storedSchema(s)), writes }))
     expect(error).toMatchObject({ code: 'INVALID' })
+  })
+
+  // Wrong behaviour caught: a release removed a component option that a stored text still used, and the text broke.
+  it('a component change checks the stored texts again: a used option cannot go, an unused one can', async () => {
+    const s = await setup()
+    const schema = await withFacts(s)
+    const tones = [{ value: 'info', label: { de: 'Info', en: 'Info' } }, { value: 'warn', label: { de: 'Warnung', en: 'Warning' } }]
+    schema.components!.badge = { kind: 'inline', label: { de: 'Marke', en: 'Badge' }, describe: { de: 'Eine Marke.', en: 'A badge.' }, props: { tone: { type: 'choice', label: { de: 'Ton', en: 'Tone' }, options: tones } } }
+    await release(s, { schema })
+    const [legal] = await rowsOf(s, 'legal')
+    const imprint = (legal!.data as { imprint: Record<string, string> }).imprint
+    await s.t.run((ctx) => ctx.db.patch(legal!._id, { data: { ...legal!.data, imprint: { ...imprint, de: `${imprint.de} :badge{tone="info"}` } } }))
+    const without = (tone: string) => {
+      const next = copy(schema)
+      const prop = next.components!.badge!.props!.tone!
+      if (prop.type === 'choice') prop.options = prop.options.filter((option) => option.value !== tone)
+      return next
+    }
+    expect(await errorOf(release(s, { schema: without('info') }))).toMatchObject({ code: 'INVALID', details: { entry: legal!._id } })
+    await release(s, { schema: without('warn') })
   })
 
   it('a migration cannot put a PDF into an image field', async () => {
