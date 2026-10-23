@@ -113,10 +113,11 @@ describe('useGinkoSeo', () => {
     expect(run('/speisekarte', { jsonLd: [own] }).script).toHaveLength(1)
   })
 
-  test('a home page with its own organisation node (siteJsonLd) gets no second one from seo.organization', () => {
-    const own = siteJsonLd({ city: 'Linz' }, { name: 'Restaurant', url: 'https://restaurant.test', type: 'LocalBusiness' })
+  // Wrong behaviour caught: a practice typed as a LocalBusiness subtype got a second organisation node from seo.organization.
+  test.each(['LocalBusiness', 'HealthAndBeautyBusiness'] as const)('a home page with its own %s node (siteJsonLd) gets no second one from seo.organization', (type) => {
+    const own = siteJsonLd({ city: 'Linz' }, { name: 'Restaurant', url: 'https://restaurant.test', type })
     const types = run('/', { title: 'Home', jsonLd: [own] }).script.map((s) => JSON.parse(s.innerHTML)['@type'])
-    expect(types).toStrictEqual(['WebSite', 'LocalBusiness'])
+    expect(types).toStrictEqual(['WebSite', type])
   })
 
   // Wrong behaviour caught: the site's `country` (ginko.config.ts) never reaches the JSON-LD, so every page that uses

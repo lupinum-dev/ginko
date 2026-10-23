@@ -60,7 +60,7 @@ export interface SiteJsonLdOptions extends Pick<OrganizationLdInput, 'name' | 'u
 }
 
 /**
- * schema.org Organization, LocalBusiness or NGO with the address and contact of the `site()` brick. On a page whose
+ * schema.org Organization, LocalBusiness (or a subtype such as HealthAndBeautyBusiness) or NGO with the address and contact of the `site()` brick. On a page whose
  * JSON-LD has this node, the Nuxt module does not add its own Organization from `seo.organization`: pass that
  * config's `logo` and `sameAs` here.
  */

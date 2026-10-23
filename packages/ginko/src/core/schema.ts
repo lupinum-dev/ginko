@@ -201,6 +201,12 @@ function positioned(fields: Fields): Fields {
 }
 
 /** The schema the platform stores: without file bricks, which only the site's build reads (CONTENT.md). */
+/** The reference fields of a brick, also those in list rows, with their paths (`team.members.person`). */
+function refsOf(fields: Fields, at: string): [string, Extract<Field, { type: 'ref' }>][] {
+  return Object.entries(fields).flatMap(([name, field]): [string, Extract<Field, { type: 'ref' }>][] =>
+    field.type === 'ref' ? [[`${at}.${name}`, field]] : field.type === 'list' ? refsOf(field.of, `${at}.${name}`) : [])
+}
+
 export function platformSchema(schema: Schema): Schema {
   return { ...schema, bricks: Object.fromEntries(Object.entries(schema.bricks).filter(([, brick]) => brick.source !== 'files')) }
 }
@@ -340,6 +346,12 @@ function schemaProblems(schema: Schema): string[] {
     if (brick.source !== undefined && brick.source !== 'files') problems.push(`${key}: source must be “files” or missing.`)
     if (brick.source === 'files' && Object.values(brick.fields).some((fd) => fd.type === 'list' && Object.values(fd.of).some((c) => c.type === 'markdown'))) problems.push(`${key}: in file bricks, markdown is only allowed as the text of the file, not in a list.`)
     if (brick.source === 'files' && Object.values(brick.fields).filter((fd) => fd.type === 'markdown').length > 1) problems.push(`${key}: at most one markdown field (the text of the file).`)
+    // The platform holds only platform bricks: a reference from one to a file brick finds no entry there ever.
+    if (brick.source !== 'files') {
+      for (const [path, ref] of refsOf(brick.fields, key)) {
+        if (schema.bricks[ref.to]?.source === 'files') problems.push(`${path}: points at “${ref.to}”, which comes from files; a brick on the platform can only point at platform bricks. Keep “${ref.to}” on the platform or move “${key}” to files.`)
+      }
+    }
     if (brick.layout !== undefined && brick.layout !== 'sections' && brick.layout !== 'tabs') problems.push(`${key}: layout must be “sections” or “tabs”.`)
     const names = Object.keys(brick.fields)
     if (names.length > SCHEMA_LIMITS.fieldsPerBrick) problems.push(`${key}: too many fields.`)

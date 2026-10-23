@@ -57,6 +57,20 @@ const foreign = computed(() => props.locale !== main.value)
 /** The columns shown: in a foreign language only those with text to translate. */
 const columns = computed(() => (foreign.value ? live.value.filter(([, f]) => hasTranslation(f)) : live.value))
 
+/**
+ * Values that fit one line: a list of only one of them (start times, dates) is compact. Texts keep their cards: they
+ * have defaults to select on focus and translations to show.
+ */
+const COMPACT_TYPES: ReadonlySet<Field['type']> = new Set(['time', 'date', 'number', 'money', 'choice'])
+/**
+ * A list of one such column (Uhrzeiten): each row is the input and its buttons, without a card and without the
+ * column's label repeated per row. In another language the rows stay cards, with the translation view.
+ */
+const compact = computed(() => !foreign.value && !fixed.value && columns.value.length === 1 && COMPACT_TYPES.has(columns.value[0]![1].type))
+const shortColumn = computed(() => ['number', 'money', 'time'].includes(columns.value[0]?.[1].type ?? ''))
+/** The column's hint, printed once under a compact list (the rows leave it out). */
+const compactHint = computed(() => { const hint = compact.value ? columns.value[0]![1].hint : undefined; return hint === undefined ? undefined : labelText(hint) })
+
 /** The first photo column: its alt text names a row without text, its picture shows in the row head. */
 const imageKey = computed(() => columns.value.find(([, f]) => f.type === 'image')?.[0])
 /** Only photos (a gallery): tiles in a grid. In another language the rows stay cards, with the translation view of each description. */
@@ -264,6 +278,23 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
       </ol>
     </div>
 
+    <ol v-else-if="compact && rows.length" class="m-0 grid list-none gap-2 p-0">
+      <!-- A short value (time, number, money) keeps its buttons right beside it; a text takes the width the row has. -->
+      <li v-for="(row, index) in rows" :key="row._id" class="flex items-start gap-1" :data-row="row._id">
+        <div class="grid min-w-0 gap-1" :class="!shortColumn && 'flex-1'">
+          <p v-for="e in rowIssues(row)" :key="e.message" class="text-sm font-medium text-destructive" role="alert">{{ messageOf(e) }}</p>
+          <GinkoField
+            :field="columns[0]![1]" :model-value="row[columns[0]![0]]" :path="`${path}.${row._id}.${columns[0]![0]}`" :locale="locale" :locales="locales" :issues="issues"
+            :cell-label="`${labelText(field.itemLabel)} ${index + 1}`" @update:model-value="setCell(index, columns[0]![0], $event)"
+          />
+        </div>
+        <div class="flex shrink-0">
+          <Button type="button" variant="ghost" size="icon" :disabled="index === 0" :aria-label="t('fields.list.up', { title: rowTitle(row, index) })" @click="move(index, -1)"><ArrowUpIcon aria-hidden="true" /></Button>
+          <Button type="button" variant="ghost" size="icon" :disabled="index === rows.length - 1" :aria-label="t('fields.list.down', { title: rowTitle(row, index) })" @click="move(index, 1)"><ArrowDownIcon aria-hidden="true" /></Button>
+          <Button type="button" variant="ghost" size="icon" class="hover:text-destructive" data-remove :disabled="rows.length <= min" :aria-label="t('fields.list.remove', { title: rowTitle(row, index) })" @click="removeRow(index)"><Trash2Icon aria-hidden="true" /></Button>
+        </div>
+      </li>
+    </ol>
     <ol v-else-if="rows.length" class="m-0 grid list-none gap-3 p-0">
       <li v-for="(row, index) in rows" :key="row._id" class="grid gap-4 rounded-lg border bg-card p-3 sm:p-4" :data-row="row._id">
         <!-- A grid, not a flex row: a flex row counts the whole one-line title into its narrowest width, so a long
@@ -291,6 +322,7 @@ const listIssues = computed(() => props.issues.filter((i) => i.path === props.pa
         </div>
       </li>
     </ol>
+    <p v-if="compactHint && rows.length" class="text-[13px] text-muted-foreground">{{ compactHint }}</p>
     <p v-if="imageKey && rows.length" :id="hintId" class="text-[13px] text-muted-foreground">{{ t('fields.list.photoHint') }}</p>
     <p v-if="photoGrid && columnHint && rows.length" class="text-[13px] text-muted-foreground">{{ columnHint }}</p>
     <template v-if="!fixed && rows.length < max && !photoGrid">

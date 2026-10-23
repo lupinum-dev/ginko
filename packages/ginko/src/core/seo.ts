@@ -85,13 +85,20 @@ export function withCountry<T>(node: T, country: string): T {
   return out as T
 }
 
-/** The schema.org types `organizationLd` writes. A page whose JSON-LD has a node of one of them is the site's organisation node. */
-export const ORGANIZATION_TYPES = ['Organization', 'LocalBusiness', 'NGO'] as const
+/**
+ * The schema.org types `organizationLd` writes: Organization and its common kinds, LocalBusiness and the subtypes small
+ * businesses need. A page whose JSON-LD has a node of one of them is the site's organisation node.
+ */
+export const ORGANIZATION_TYPES = [
+  'Organization', 'NGO', 'Corporation', 'EducationalOrganization',
+  'LocalBusiness', 'ProfessionalService', 'HealthAndBeautyBusiness', 'MedicalBusiness', 'Store', 'FoodEstablishment', 'Restaurant',
+  'LodgingBusiness', 'TravelAgency', 'HomeAndConstructionBusiness', 'SportsActivityLocation', 'EntertainmentBusiness',
+] as const
 
 export interface OrganizationLdInput {
   name: string
   url: string
-  /** `Organization` (default), `LocalBusiness` for a shop or practice, `NGO` for a nonprofit. */
+  /** `Organization` (default), `LocalBusiness` or a subtype such as `HealthAndBeautyBusiness` for a shop or practice, `NGO` for a nonprofit. */
   type?: (typeof ORGANIZATION_TYPES)[number]
   legalName?: string
   /** Absolute URL of the logo. */
