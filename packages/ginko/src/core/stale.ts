@@ -106,7 +106,7 @@ export function plansThisWeek(
  * undefined. From that day the site shows it in place of `field`, so a task opens on it and the Studio lists it.
  * `today` is in the site's time zone.
  */
-export function duePlan(brick: Pick<Brick, 'planned'>, data: Record<string, Json>, today: string): Json | undefined {
+export function duePlan<V>(brick: Pick<Brick, 'planned'>, data: Readonly<Record<string, V>>, today: string): V | undefined {
   const plan = brick.planned
   if (!plan) return undefined
   const next = data[plan.next]

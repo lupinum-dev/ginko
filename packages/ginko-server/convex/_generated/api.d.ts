@@ -18,6 +18,7 @@ import type * as cleanup from "../cleanup.js";
 import type * as crons from "../crons.js";
 import type * as demo from "../demo.js";
 import type * as entries from "../entries.js";
+import type * as facts from "../facts.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as image from "../image.js";
@@ -86,6 +87,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   demo: typeof demo;
   entries: typeof entries;
+  facts: typeof facts;
   files: typeof files;
   http: typeof http;
   image: typeof image;

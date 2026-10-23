@@ -6,10 +6,12 @@ import { defineComponents, type ComponentRegistry } from '@lupinum/ginko/interna
 import { componentMode, GINKO_ASSETS, type GinkoAssets } from '@lupinum/ginko-editor'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/core'
+import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import { EditorContent } from '@tiptap/vue-3'
 import { afterEach, describe, expect, test } from 'vitest'
 import { computed } from 'vue'
 import { EDITOR_COMPONENTS } from '../app/components/editor/context.ts'
+import { EDITOR_FACTS, type EditorFacts, type StudioFact } from '../app/utils/facts.ts'
 import { LIVE_TAGS } from '../app/components/editor/liveComponents.ts'
 import MarkdownEditor from '../app/components/editor/MarkdownEditor.vue'
 import type { SlashState } from '../app/components/editor/extensions.ts'
@@ -37,10 +39,10 @@ const testRegistry: ComponentRegistry = {
 }
 
 const open: Array<{ unmount(): void }> = []
-async function mounted(modelValue: string, registry: ComponentRegistry = components, assets?: GinkoAssets) {
+async function mounted(modelValue: string, registry: ComponentRegistry = components, assets?: GinkoAssets, facts?: EditorFacts) {
   const wrapper = mount(MarkdownEditor, {
     props: { id: 't', field, modelValue, invalid: false },
-    global: { provide: { [EDITOR_COMPONENTS as symbol]: () => registry, ...(assets ? { [GINKO_ASSETS as symbol]: assets } : {}) } },
+    global: { provide: { [EDITOR_COMPONENTS as symbol]: () => registry, ...(assets ? { [GINKO_ASSETS as symbol]: assets } : {}), ...(facts ? { [EDITOR_FACTS as symbol]: () => facts } : {}) } },
     attachTo: document.body,
   })
   open.push(wrapper)
@@ -279,3 +281,92 @@ describe('containers', () => {
     expect(dialog()!.querySelector(`section [data-prop="${prop}"]`)).not.toBeNull()
   })
 })
+
+describe('inline components', () => {
+  const withFact: ComponentRegistry = {
+    ...components,
+    ...defineComponents({
+      fact: {
+        kind: 'inline', label: 'Angabe', describe: 'Ein Wert aus den Angaben.',
+        props: { name: f.choice('Angabe', { options: [{ value: 'practice.price', label: 'Preis pro Sitzung' }] }) },
+        editor: { example: ':fact{name="practice.price"}' },
+      },
+    }),
+  }
+  const posOf = (editor: Editor, tag: string) => {
+    let at = -1
+    editor.state.doc.descendants((node, pos) => { if (at < 0 && node.type.name === 'inlineComponent' && node.attrs.tag === tag) at = pos })
+    return at
+  }
+
+  const price: StudioFact = {
+    name: 'practice.price', brick: 'practice', field: 'price', brickLabel: 'Praxis', entry: 'e-practice',
+    text: '€\u00a098', next: { text: '€\u00a0105,50', from: '2027-01-01' }, copies: ['98 €', '€ 98'],
+  }
+  const facts = (values: StudioFact[] = [price]): EditorFacts => ({ values: () => values, slug: () => 'praxis' })
+
+  // Wrong behaviour caught: the chip named the field ("Preis pro Sitzung"), so the text did not read as visitors read it,
+  // and its panel said nothing about the value, where it is kept, or the planned change.
+  test('a fact chip shows its value; its panel the source, the planned value and a link to change it', async () => {
+    const wrapper = await mounted('Kostet :fact{name="practice.price"}.\n', withFact, undefined, facts())
+    const chip = wrapper.get('[data-component="fact"] .ginko-chip')
+    expect(chip.text()).toBe('€\u00a098')
+    expect(chip.attributes('aria-label')).toBe('Einstellungen: Angabe Preis pro Sitzung: €\u00a098')
+    await chip.trigger('click')
+    await until(() => dialog() !== null)
+    const text = dialog()!.textContent!
+    expect(text).toContain('Angabe aus Praxis')
+    expect(text).toContain('€\u00a098')
+    expect(text).toContain('Ab 1.1.2027: €\u00a0105,50')
+    expect(dialog()!.querySelector('a')!.getAttribute('href')).toBe('/s/praxis/all/practice?field=price')
+    expect(dialog()!.querySelector('a')!.getAttribute('target')).toBe('_blank')
+  })
+
+  test('an empty fact says so in its chip and panel', async () => {
+    const wrapper = await mounted('Kostet :fact{name="practice.price"}.\n', withFact, undefined, facts([{ ...price, text: undefined, next: undefined, copies: [] }]))
+    const chip = wrapper.get('[data-component="fact"] .ginko-chip')
+    expect(chip.attributes('data-empty')).toBeDefined()
+    expect(chip.attributes('title')).toBe('Preis pro Sitzung: noch leer')
+  })
+
+  // Wrong behaviour caught: a copied price stayed in the text and went stale with the next price change.
+  test('a copy of a fact value gets a note; "Als Angabe einfügen" makes it the fact, "Diesmal nicht" keeps it', async () => {
+    const wrapper = await mounted('Eine Sitzung kostet 98 € und `98 €` im Code.\n\n```\n98 €\n```\n', withFact, undefined, facts())
+    await until(() => document.querySelector('.ginko-fact-copy-note') !== null)
+    expect(document.querySelectorAll('.ginko-fact-copy')).toHaveLength(1)
+    const note = document.querySelector<HTMLElement>('.ginko-fact-copy-note')!
+    expect(note.textContent).toContain('„98 €“ ist derselbe Wert wie die Angabe „Preis pro Sitzung“.')
+    const [replace] = note.querySelectorAll('button')
+    replace!.click()
+    await until(() => document.querySelector('.ginko-fact-copy-note') === null)
+    await wait(350)
+    expect(wrapper.emitted('update:modelValue')!.at(-1)).toEqual(['Eine Sitzung kostet :fact{name="practice.price"} und `98 €` im Code.\n\n```\n98 €\n```\n'])
+
+    const kept = await mounted('Früher 98 €.\n', withFact, undefined, facts())
+    await until(() => kept.element.querySelector('.ginko-fact-copy-note') !== null)
+    kept.element.querySelector<HTMLElement>('.ginko-fact-copy-note button:last-child')!.click()
+    await until(() => kept.element.querySelector('.ginko-fact-copy-note') === null)
+    expect(kept.element.querySelector('.ginko-fact-copy')).toBeNull()
+  })
+
+  // Wrong behaviour caught: the chip was chosen by the node's content, so deleting a badge's last letter turned it into
+  // a chip, and the cursor could go inside a fact and type text that the chip hides.
+  test('a fact is a chip the cursor cannot enter, Enter opens its settings; a badge stays text', async () => {
+    const wrapper = await mounted('Preis :fact{name="practice.price"} und :badge[x]\n', withFact)
+    const editor = editorOf(wrapper)
+    expect(wrapper.find('[data-component="fact"] .ginko-chip').text()).toBe('Preis pro Sitzung')
+
+    const badge = posOf(editor, 'badge')
+    editor.chain().setTextSelection({ from: badge + 1, to: badge + 2 }).deleteSelection().run()
+    await flushPromises()
+    expect(wrapper.find('[data-component="badge"] .ginko-chip').exists()).toBe(false)
+
+    const fact = posOf(editor, 'fact')
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, fact + 1)))
+    expect(editor.state.selection).toBeInstanceOf(NodeSelection)
+    expect(editor.state.selection.from).toBe(fact)
+    editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await until(() => dialog() !== null)
+  })
+})
+

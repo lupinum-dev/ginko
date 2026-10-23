@@ -16,6 +16,8 @@ import ConflictPanel from './ConflictPanel.vue'
 import ScheduleField from './ScheduleField.vue'
 import ProposalWithdraw from './ProposalWithdraw.vue'
 import { provideSiteRefs } from '../composables/useSiteRefs'
+import { useFactUses } from '../composables/useFacts'
+import FactUses from './FactUses.vue'
 import { Button } from '@studio/components/ui/button'
 import { XIcon } from '@lucide/vue'
 import { ConfigProvider, injectConfigProviderContext } from 'reka-ui'
@@ -61,6 +63,9 @@ const { t, format, locale: uiLocale } = useI18n()
 const shown = (label: LabelText) => shownLabel(label, props.main)
 
 provideSiteRefs(() => props.site, () => props.schema, () => props.main)
+// A fact field ("Preis ändern") says which texts quote it, so the change is made knowing where it shows.
+const factUses = useFactUses(() => props.site, () => props.schema, () => props.brickKey)
+const factQuotes = (key: string) => factUses.quotes()?.[key]
 const fields = computed(() => taskFields(props.brick, props.task))
 const isCreate = computed(() => props.task.kind === 'create')
 const ref_ = computed(() => taskRef(props.brickKey, props.task))
@@ -496,6 +501,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
                 :issues="shownIssues"
                 @update:model-value="form.setField(String(key), $event)"
               />
+              <FactUses v-if="factQuotes(String(key))?.length" v-show="isShown(field, draft)" :slug="site" :quotes="factQuotes(String(key))!" class="-mt-2" />
             </template>
           </template>
         </div>

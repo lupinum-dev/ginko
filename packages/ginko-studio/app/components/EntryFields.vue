@@ -11,6 +11,8 @@ import { isShown } from '@lupinum/ginko/internal'
 import { BLOCKERS, textIn, type Issue } from '@lupinum/ginko-editor'
 import { Button } from '@studio/components/ui/button'
 import GinkoField from './fields/GinkoField.vue'
+import FactUses from './FactUses.vue'
+import { FACT_USES } from '../utils/facts'
 import type { WeekOffset } from '../utils/content'
 import { useStillRight } from '../composables/useStillRight'
 import { useStudioSite } from '../utils/labels'
@@ -33,6 +35,9 @@ const emit = defineEmits<{ update: [key: string, value: Json | undefined] }>()
 const { t } = useI18n()
 const { shown: labelText } = useStudioSite()
 const blockers = inject(BLOCKERS, undefined)
+const factUses = inject(FACT_USES, undefined)
+/** The texts that quote this field when it is a fact; none for every other field. */
+const quotesOf = (key: string) => factUses?.quotes()?.[key]
 const stillRight = useStillRight()
 const main = computed(() => props.locales[0] ?? props.locale)
 const blockerKey = (key: string) => `${key}.askAgain`
@@ -82,6 +87,11 @@ onBeforeUnmount(() => { if (blockers) for (const [key] of props.entries) blocker
           <p>{{ t('fields.list.changed', { changed: askedLabel(field), label: labelText(field.label) }) }}</p>
           <Button type="button" variant="outline" size="sm" @click="confirm(key, field)">{{ t('fields.list.confirm') }}</Button>
         </div>
+      </div>
+      <!-- A fact field keeps this wrapper while its uses load or change, so the field is not mounted again (focus, input). -->
+      <div v-else-if="factUses?.fields().has(key)" v-show="isShown(field, draft)" :class="['grid gap-1.5', span(key, field)]">
+        <GinkoField v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
+        <FactUses v-if="quotesOf(key)?.length" :slug="factUses.slug()" :quotes="quotesOf(key)!" />
       </div>
       <GinkoField v-else v-show="isShown(field, draft)" :class="span(key, field)" v-bind="fieldProps(key, field)" @update:model-value="emit('update', key, $event)" />
     </template>

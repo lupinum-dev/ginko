@@ -685,6 +685,21 @@
       "choose": "Choisir…",
       "chooseImage": "Choisir une image",
       "changeImage": "Changer l’image"
+    },
+    "fact": {
+      "from": "Donnée de {brick}",
+      "shows": "Le site affiche ici",
+      "empty": "Rien pour l’instant : saisissez la valeur dans {brick}, sinon cet endroit reste vide.",
+      "next": "À partir du {date} : {value}",
+      "follows": "Quand la valeur change, chaque texte affiche aussitôt la nouvelle.",
+      "change": "Modifier dans {brick}",
+      "newTab": "(s’ouvre dans un nouvel onglet)",
+      "other": "Afficher une autre donnée",
+      "chipName": "Donnée {label} : {value}",
+      "chipEmpty": "{label} : encore vide",
+      "copy": "« {text} » est la même valeur que la donnée « {label} ». Insérée comme donnée, elle reste à jour quand la valeur change.",
+      "copyReplace": "Insérer comme donnée",
+      "copyKeep": "Pas maintenant"
     }
   },
   "fields": {
@@ -780,7 +795,9 @@
       "photoMenu": "Actions pour {title}",
       "earlier": "Déplacer avant",
       "later": "Déplacer après"
-    }
+    },
+    "factUses": "Apparaît dans {count, plural, one {un texte} other {# textes}}",
+    "factUsesHint": "Si vous modifiez la valeur ici, elle change aussi dans ces textes."
   },
   "ops": {
     "saved": "Enregistré.",

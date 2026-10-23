@@ -1,7 +1,7 @@
 // Pure content rules of the write path (SPEC part 3 "Übersetzungs-Abdrücke", 4.2 save).
 // No Convex here, so every rule is testable with plain data.
 import type { Field, Fields, Json, Label, Locale } from '@lupinum/ginko'
-import { effectiveAlt, fileImagesWithoutAlt, fileRefsIn, isTranslatable, leavesOf, markdownTrees, printOf, stableJson, type Prints, type Schema } from '@lupinum/ginko/internal'
+import { effectiveAlt, factNamesIn, fileImagesWithoutAlt, fileRefsIn, isTranslatable, leavesOf, markdownTrees, printOf, stableJson, type Prints, type Schema } from '@lupinum/ginko/internal'
 
 export type { Prints }
 
@@ -172,6 +172,26 @@ export function usesOf(fields: Fields, data: Data, locales: readonly Locale[], i
     }
   }
   for (const [name, field] of Object.entries(fields)) walk(name, field, data[name])
+  return out
+}
+
+/** The facts the Markdown texts of `data` quote (`:fact{name="…"}`), each with the paths of the texts, in any language. */
+export function factQuotesOf(fields: Fields, data: Data): Map<string, string[]> {
+  const out = new Map<string, string[]>()
+  const walk = (path: string, field: Field, value: Json | undefined) => {
+    if (value === undefined || value === null) return
+    if (field.type === 'markdown') {
+      const texts = typeof value === 'string' ? [value] : Object.values(asRecord(value)).filter((t): t is string => typeof t === 'string')
+      for (const name of new Set(texts.flatMap(factNamesIn))) out.set(name, [...(out.get(name) ?? []), path])
+    }
+    if (field.type === 'list' && Array.isArray(value)) {
+      value.forEach((row, i) => {
+        const key = typeof asRecord(row)._id === 'string' ? (asRecord(row)._id as string) : String(i)
+        for (const [k, inner] of Object.entries(field.of)) walk(`${path}.${key}.${k}`, inner, asRecord(row)[k])
+      })
+    }
+  }
+  for (const [name, field] of Object.entries(fields)) if (!field.retired) walk(name, field, data[name])
   return out
 }
 

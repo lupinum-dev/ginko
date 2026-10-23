@@ -6,7 +6,7 @@ import schema from '#ginko/schema'
 import { defineOgImage, ogTemplate } from '#ginko/og'
 import { useSchemaOrg } from '#ginko/schema-org'
 import {
-  applyDefaults, breadcrumbs, isVisible as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, websiteLd, withCountry,
+  applyDefaults, breadcrumbs, factText, isVisible as visible, navTree, neighbors, organizationLd, ORGANIZATION_TYPES, query, seoHead, todayIn, websiteLd, withCountry,
   type Brick, type BrickValue, type Bundle, type BundleItem, type Locale, type NavNode, type Query, type QueryResult, type SeoImage, type SiteInput, type WeekInfo,
 } from '../../internal.ts'
 import { withUrl, type GinkoPublicConfig } from './shared.ts'
@@ -94,6 +94,21 @@ export const TODAY_STATE = 'ginko:today'
  */
 export function useGinkoToday(): Ref<string> {
   return useState<string>(TODAY_STATE, () => todayIn((useRuntimeConfig().public.ginko as GinkoPublicConfig).timeZone))
+}
+
+/**
+ * The text of a fact (`facts` in ginko.config): `useGinkoFact('practice.price')` → "98 €", the value in effect today
+ * (a planned change counts from its date), formatted for the current language. The same text `:fact{name="…"}`
+ * shows in a Markdown field, in search and in the page's Markdown twin. Undefined while the field is empty.
+ */
+export function useGinkoFact(name: MaybeRefOrGetter<string>): ComputedRef<string | undefined> {
+  const bundle = useGinkoBundle()
+  const today = useGinkoToday()
+  const { languages } = useRuntimeConfig().public.ginko as GinkoPublicConfig
+  return computed(() => {
+    const b = bundle.value
+    return factText(toValue(name), { bricks: schema.bricks, data: b.bricks, locale: b.locale, mainLocale: b.mainLocale, language: languages[b.locale] ?? b.locale, today: today.value })
+  })
 }
 
 /** First day of the week and weekend days of the site (`schema.week`, from the main language or `firstDayOfWeek`), the same the server and the Studio use. */

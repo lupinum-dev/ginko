@@ -130,7 +130,7 @@ describe('4. locales and currency', () => {
     expect(problemsOf(site({}, { url })).some((p) => p.startsWith('Invalid site url'))).toBe(!valid)
   })
 
-  // `languages` stays out of the schema, so only checkSite (Nuxt build, `ginko check`, `ginko release`) sees it.
+  // `languages` is part of the schema, so the platform checks it as well as checkSite.
   it.each([
     [{ de: 'de-AT', en: 'en-GB' }, []],
     [{ fr: 'fr-FR' }, ['languages: locale “fr” is not in locales.']],

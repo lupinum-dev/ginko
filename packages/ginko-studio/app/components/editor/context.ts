@@ -49,6 +49,16 @@ export function useModKey(): () => string {
   return () => (IS_APPLE ? '⌘' : t('editor.modCtrl'))
 }
 
+/**
+ * Whether the inline component `tag` takes no text of its own, so the editor shows it as a chip (a fact). Decided by
+ * its definition, never by the node's current content: a badge whose last letter is deleted stays a text box. A
+ * component takes text when its example has some (`:badge[neu]`, not `:fact{name="…"}`).
+ */
+export function isChip(components: ComponentRegistry | undefined, tag: string): boolean {
+  const def = components && Object.hasOwn(components, tag) ? components[tag] : undefined
+  return def !== undefined && !/\[[^\]]*\]/.test(def.editor?.example ?? '')
+}
+
 /** Asks the node view at `pos` to open its settings popover; `missing` = the required props to show first (after an insert). */
 export interface SettingsRequest { pos: number; missing: string[] }
 

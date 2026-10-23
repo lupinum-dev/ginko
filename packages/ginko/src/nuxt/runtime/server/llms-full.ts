@@ -2,7 +2,7 @@
 // `/llms-full.txt`: the Markdown of every main locale entry in one text file. A platform failure is a 503.
 import { createError, defineEventHandler, useRuntimeConfig } from 'nuxt/server'
 import schema from '#ginko/schema'
-import { llmsFullTxt } from '../../../internal.ts'
+import { bundleFactResolver, llmsFullTxt, todayIn } from '../../../internal.ts'
 import type { GinkoPublicConfig } from '../shared.ts'
 import { loadServerBundles } from './bundles.ts'
 import { markdownTrees } from './markdown-trees.ts'
@@ -13,5 +13,6 @@ export default defineEventHandler(async (event) => {
   if (!main) throw createError({ statusCode: 503, statusMessage: 'Content unavailable', fatal: true })
   event.res.headers.set('content-type', 'text/plain; charset=utf-8')
   event.res.headers.set('x-ginko-rev', `${main.schemaRev}.${main.contentRev}`)
-  return llmsFullTxt(main, { schema, trees: markdownTrees, siteName: config.name, description: config.agents.description ?? config.seo.description, origin: config.url })
+  const resolve = bundleFactResolver(main, schema.bricks, config.languages[main.locale] ?? main.locale, todayIn(config.timeZone))
+  return llmsFullTxt(main, { schema, trees: markdownTrees, resolve, siteName: config.name, description: config.agents.description ?? config.seo.description, origin: config.url })
 })

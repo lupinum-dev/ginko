@@ -8,6 +8,7 @@ import { isSiteLinkActive, type SiteLink } from '../utils/siteLinks'
 import { useBottomBar } from '../composables/useBottomBar'
 import { EDITOR_COMPONENTS, EDITOR_LINK_TARGETS } from '@studio/components/editor/context'
 import { provideStudioSite } from '../utils/labels'
+import { provideEditorFacts } from '../composables/useFacts'
 import { localDraftKeys } from '../composables/useLocalDraft'
 import { rememberSite } from '../composables/useRecentEntries'
 import { isModKey } from '../utils/keys'
@@ -26,6 +27,8 @@ watch(() => data.value?.site.slug, (opened) => { if (opened) rememberSite(opened
 const { data: deletion } = useConvexQuery(api.sites.deletion, () => ({ site: slug.value }))
 // The slash menu of Markdown fields offers the components of this site's schema.
 provide(EDITOR_COMPONENTS, () => (data.value?.site.schema as { components?: ComponentRegistry } | undefined)?.components)
+// Fact chips in those fields show what the website shows there (facts.values, per language of the text).
+provideEditorFacts(() => slug.value, () => (data.value?.site.schema as { components?: ComponentRegistry } | undefined)?.components)
 // Their link dialog offers the site's own pages: the static ones and the entries of collections with a page.
 provide(EDITOR_LINK_TARGETS, () => {
   const schema = data.value?.site.schema as Schema | undefined

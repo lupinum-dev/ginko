@@ -1263,8 +1263,40 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "min beibehalten.",
     "minOnGrid": "min so senken, dass der Unterschied ein Vielfaches von step ist.",
     "keepOption": "Option behalten; sie kann umbenannt (label) werden.",
-    "newList": "Neue Liste anlegen und mit einer Migration füllen."
-   }
+    "newList": "Neue Liste anlegen und mit einer Migration füllen.",
+    "factInUse": "Nimm die Angabe zuerst aus diesen Texten oder lass sie in `facts`."
+   },
+   "factInUse": [
+    "Die Angabe „",
+    [
+     "a",
+     "fact"
+    ],
+    "“ fehlt in `facts`, steht aber noch in ",
+    [
+     "p",
+     "count",
+     0,
+     {
+      "one": [
+       "einem Text"
+      ],
+      "other": [
+       [
+        "#"
+       ],
+       " Texten"
+      ]
+     },
+     0
+    ],
+    ": ",
+    [
+     "a",
+     "texts"
+    ],
+    "."
+   ]
   },
   "preview": {
    "notFound": "Diese Seite gibt es nicht.",
@@ -2533,8 +2565,40 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Keep min.",
     "minOnGrid": "Lower min so that the difference is a multiple of step.",
     "keepOption": "Keep the option; it can be renamed (label).",
-    "newList": "Add a new list and fill it with a migration."
-   }
+    "newList": "Add a new list and fill it with a migration.",
+    "factInUse": "Take the fact out of these texts first, or keep it in `facts`."
+   },
+   "factInUse": [
+    "The fact “",
+    [
+     "a",
+     "fact"
+    ],
+    "” is missing from `facts` but is still quoted in ",
+    [
+     "p",
+     "count",
+     0,
+     {
+      "one": [
+       "one text"
+      ],
+      "other": [
+       [
+        "#"
+       ],
+       " texts"
+      ]
+     },
+     0
+    ],
+    ": ",
+    [
+     "a",
+     "texts"
+    ],
+    "."
+   ]
   },
   "preview": {
    "notFound": "This page does not exist.",
@@ -3805,8 +3869,40 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Conserva min.",
     "minOnGrid": "Reduce min para que la diferencia sea un múltiplo de step.",
     "keepOption": "Conserva la opción; se puede renombrar (label).",
-    "newList": "Añade una lista nueva y rellénala con una migración."
-   }
+    "newList": "Añade una lista nueva y rellénala con una migración.",
+    "factInUse": "Quita primero el dato de esos textos o déjalo en `facts`."
+   },
+   "factInUse": [
+    "El dato «",
+    [
+     "a",
+     "fact"
+    ],
+    "» falta en `facts`, pero aún se cita en ",
+    [
+     "p",
+     "count",
+     0,
+     {
+      "one": [
+       "un texto"
+      ],
+      "other": [
+       [
+        "#"
+       ],
+       " textos"
+      ]
+     },
+     0
+    ],
+    ": ",
+    [
+     "a",
+     "texts"
+    ],
+    "."
+   ]
   },
   "preview": {
    "notFound": "Esta página no existe.",
@@ -5076,8 +5172,40 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Conservez min.",
     "minOnGrid": "Abaissez min pour que la différence soit un multiple de step.",
     "keepOption": "Conservez l’option ; elle peut être renommée (label).",
-    "newList": "Ajoutez une nouvelle liste et remplissez-la avec une migration."
-   }
+    "newList": "Ajoutez une nouvelle liste et remplissez-la avec une migration.",
+    "factInUse": "Retirez d’abord la donnée de ces textes ou gardez-la dans `facts`."
+   },
+   "factInUse": [
+    "La donnée « ",
+    [
+     "a",
+     "fact"
+    ],
+    " » manque dans `facts`, mais elle est encore citée dans ",
+    [
+     "p",
+     "count",
+     0,
+     {
+      "one": [
+       "un texte"
+      ],
+      "other": [
+       [
+        "#"
+       ],
+       " textes"
+      ]
+     },
+     0
+    ],
+    " : ",
+    [
+     "a",
+     "texts"
+    ],
+    "."
+   ]
   },
   "preview": {
    "notFound": "Cette page n’existe pas.",
@@ -6348,8 +6476,40 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "Mantieni min.",
     "minOnGrid": "Abbassa min in modo che la differenza sia un multiplo di step.",
     "keepOption": "Mantieni l’opzione; può essere rinominata (label).",
-    "newList": "Aggiungi un nuovo elenco e riempilo con una migrazione."
-   }
+    "newList": "Aggiungi un nuovo elenco e riempilo con una migrazione.",
+    "factInUse": "Togli prima il dato da questi testi o lascialo in `facts`."
+   },
+   "factInUse": [
+    "Il dato «",
+    [
+     "a",
+     "fact"
+    ],
+    "» manca in `facts`, ma è ancora citato in ",
+    [
+     "p",
+     "count",
+     0,
+     {
+      "one": [
+       "un testo"
+      ],
+      "other": [
+       [
+        "#"
+       ],
+       " testi"
+      ]
+     },
+     0
+    ],
+    ": ",
+    [
+     "a",
+     "texts"
+    ],
+    "."
+   ]
   },
   "preview": {
    "notFound": "Questa pagina non esiste.",
@@ -7805,8 +7965,40 @@ export const compiled: Record<string, MessageTree> = {
     "keepMin": "أبقِ min.",
     "minOnGrid": "اخفض min بحيث يكون الفرق مضاعفًا لـ step.",
     "keepOption": "أبقِ الخيار؛ يمكن إعادة تسميته (label).",
-    "newList": "أضِف قائمة جديدة واملأها بترحيل."
-   }
+    "newList": "أضِف قائمة جديدة واملأها بترحيل.",
+    "factInUse": "احذف المعلومة من هذه النصوص أولًا، أو أبقِها في `facts`."
+   },
+   "factInUse": [
+    "المعلومة «",
+    [
+     "a",
+     "fact"
+    ],
+    "» غير موجودة في `facts`، لكنها ما زالت مذكورة في ",
+    [
+     "p",
+     "count",
+     0,
+     {
+      "one": [
+       "نص واحد"
+      ],
+      "other": [
+       [
+        "#"
+       ],
+       " نصوص"
+      ]
+     },
+     0
+    ],
+    ": ",
+    [
+     "a",
+     "texts"
+    ],
+    "."
+   ]
   },
   "preview": {
    "notFound": "هذه الصفحة غير موجودة.",

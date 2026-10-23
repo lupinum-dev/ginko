@@ -5,7 +5,8 @@ import { formatMb, limitOf } from './uploads.ts'
 import { weeklyTask } from './stale.ts'
 import { weekInfoOf } from './time.ts'
 import { CALENDAR_NAMES, holidaysOf, STORED_HOLIDAYS } from './holidays.ts'
-import { componentProblems, type ComponentRegistry } from './components.ts'
+import { componentProblems, type ComponentDef, type ComponentRegistry } from './components.ts'
+import { factComponent, factProblem, FACT_TAG } from './facts.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
 import { isPrefillToken, PREFILL_TOKENS, type Brick, type CollectionBrick, type Currency, type Field, type Fields, type Json, type Label, type Locale, type Schema, type Task } from './types.ts'
@@ -20,8 +21,8 @@ const LINK_HEADS = new Set(['page', 'file'])
 const UNSAFE_PATH = /\.\.|\/\/|[?#]/
 
 // The serialized schema grammar. Unknown properties are rejected here and in diffSchema (deny by default).
-export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timeZone', 'locales', 'currency', 'week', 'holidays', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
-export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor'])
+export const SCHEMA_KEYS = new Set(['site', 'name', 'url', 'timeZone', 'locales', 'languages', 'currency', 'week', 'holidays', 'pages', 'bricks', 'migrations', 'retired', 'components', 'agents'])
+export const COMPONENT_KEYS = new Set(['kind', 'label', 'describe', 'props', 'slots', 'children', 'parents', 'editor', 'open'])
 export const BRICK_KEYS = new Set(['pos', 'kind', 'source', 'label', 'describe', 'fields', 'layout', 'tasks', 'max', 'order', 'route', 'visible', 'untranslated', 'plans', 'planned', 'drafts', 'status', 'retired'])
 export const FIELD_KEYS = new Set(['pos', 'type', 'label', 'hint', 'unit', 'optional', 'default', 'translate', 'retired', 'max', 'min', 'step', 'format', 'currency', 'from', 'accept', 'maxBytes', 'options', 'of', 'itemLabel', 'unique', 'profile', 'to', 'multiple', 'showWhen', 'askAgainWhen', 'group', 'after'])
 
@@ -53,6 +54,8 @@ export function serializeSchema(site: SiteInput): Schema {
     url: site.url,
     timeZone: site.timeZone,
     locales: [...site.locales],
+    // The language tag per locale ("de-AT"), so the platform and the Studio format values (facts) as the site does.
+    ...(site.languages && Object.keys(site.languages).length ? { languages: { ...site.languages } } : {}),
     currency: site.currency,
     // Computed once here; the server, the Studio and the site all read `schema.week`.
     week: weekInfoOf(site.languages?.[site.locales[0]] ?? site.locales[0], site.firstDayOfWeek),
@@ -62,9 +65,22 @@ export function serializeSchema(site: SiteInput): Schema {
     bricks,
     migrations,
     retired,
-    ...(site.components ? { components: storedComponents(site.components, site.locales) } : {}),
+    ...withComponents(site),
     ...(site.agents?.review !== undefined ? { agents: { review: site.agents.review } } : {}),
   }, [], []) as Schema
+}
+
+/**
+ * `{ components }`: the site's registry plus the fact component of `facts` (facts.ts). Nothing when the site has
+ * neither, so a schema without components stays as it was. Facts with problems are left out here; checkSite names them.
+ */
+function withComponents(site: SiteInput): { components?: ComponentRegistry } {
+  const retired = site.retired ?? {}
+  const facts = (site.facts ?? []).filter((path) => factProblem(path, site.bricks) === undefined && !Object.hasOwn(retired, path) && !Object.hasOwn(retired, path.split('.')[0]!))
+  // Without components of its own the site's texts stay open: the fact component alone makes none of their tags unknown.
+  const fact = (): ComponentDef => ({ ...factComponent(facts, site.bricks), ...(site.components === undefined ? { open: true as const } : {}) })
+  const registry = facts.length && !Object.hasOwn(site.components ?? {}, FACT_TAG) ? { ...site.components, [FACT_TAG]: fact() } : site.components
+  return registry ? { components: storedComponents(registry, site.locales) } : {}
 }
 
 /** `{ holidays }` when the config sets `calendar` or `country`; nothing otherwise, so a 0.4 schema stays as it was. */
@@ -220,21 +236,17 @@ export function mainLocale(schema: Pick<Schema, 'locales'>): Locale {
 const SITE_KEYS = {
   site: true, name: true, url: true, timeZone: true, locales: true, languages: true, firstDayOfWeek: true, currency: true,
   pages: true, bricks: true, linkCheck: true, redirects: true, seo: true, agents: true, components: true, migrations: true,
-  retired: true, country: true, calendar: true,
+  retired: true, country: true, calendar: true, facts: true,
 } satisfies Record<keyof SiteInput, true>
 
 /**
- * Problems of a site config: those of its schema, plus the options that stay out of the schema (`languages`).
+ * Problems of a site config: those of its schema, plus the options that stay out of the schema (`country`, `calendar`).
  * The Nuxt build, `ginko check` and `ginko release` run it; the platform checks only the schema (checkSchema).
  * `schema` is the site's serialized schema, passed by callers that already have it.
  */
 export function checkSite(site: SiteInput, schema: Schema = serializeSchema(site)): string[] {
   // A typo in a top-level key (`redirect`) would otherwise change nothing, silently.
   const problems = Object.keys(site).filter((key) => !Object.hasOwn(SITE_KEYS, key)).map((key) => `Unknown key “${key}”. Known keys: ${Object.keys(SITE_KEYS).join(', ')}.`)
-  for (const [locale, language] of Object.entries(site.languages ?? {})) {
-    if (!site.locales.includes(locale)) problems.push(`languages: locale “${locale}” is not in locales.`)
-    if (!isLocale(language)) problems.push(`languages.${locale}: invalid language “${String(language)}” (expected a canonical language tag such as “de-AT” or “en-US”).`)
-  }
   if (site.country !== undefined && !/^[A-Z]{2}$/.test(String(site.country))) problems.push(`country: invalid country “${String(site.country)}” (expected an ISO 3166-1 code such as “AT” or “DE”).`)
   if (site.calendar !== undefined && typeof site.calendar !== 'function' && !CALENDAR_NAMES.includes(site.calendar)) {
     problems.push(`calendar: unknown calendar “${String(site.calendar)}” (expected AT, DE, SG, none or a function (year) => holidays).`)
@@ -244,6 +256,18 @@ export function checkSite(site: SiteInput, schema: Schema = serializeSchema(site
   if (color !== undefined && !/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(color)) problems.push(`seo.color: invalid colour “${String(color)}” (expected “#rrggbb” or “#rgb”).`)
   // A key that names no page would keep nothing out of search, silently.
   for (const key of site.seo?.noindex ?? []) if (!Object.hasOwn(site.pages, key)) problems.push(`seo.noindex: “${key}” is not a key of pages.`)
+  if (site.facts !== undefined) {
+    if (!Array.isArray(site.facts)) problems.push('facts must be a list of “brick.field” paths.')
+    else {
+      for (const path of site.facts) {
+        const problem = factProblem(String(path), site.bricks) ?? (site.retired && (Object.hasOwn(site.retired, path) || Object.hasOwn(site.retired, String(path).split('.')[0]!)) ? `facts: “${path}” is retired.` : undefined)
+        if (problem) problems.push(problem)
+      }
+      if (new Set(site.facts).size !== site.facts.length) problems.push('facts: a path is listed twice.')
+      if (site.facts.length && Object.hasOwn(site.components ?? {}, FACT_TAG)) problems.push(`components: “${FACT_TAG}” is the component of facts; rename the site's own component.`)
+      if (site.facts.length > 50) problems.push('facts: at most 50.')
+    }
+  }
   return [...problems, ...checkSchema(schema)]
 }
 
@@ -276,6 +300,15 @@ function schemaProblems(schema: Schema): string[] {
   if (schema.locales.length > MAX_LOCALES) problems.push(`Too many locales (at most ${MAX_LOCALES}).`)
   // Locales are the keys of the stored content: any canonical language tag, e.g. `es`, `pt-BR`, `zh-Hant`.
   for (const locale of schema.locales) if (!isLocale(locale)) problems.push(`Invalid locale “${String(locale)}” (expected a canonical language code such as “es”, “pt-BR” or “zh-Hant”).`)
+  if (schema.languages !== undefined) {
+    if (typeof schema.languages !== 'object' || schema.languages === null || Array.isArray(schema.languages)) problems.push('languages must be an object.')
+    else {
+      for (const [locale, language] of Object.entries(schema.languages)) {
+        if (!schema.locales.includes(locale)) problems.push(`languages: locale “${locale}” is not in locales.`)
+        if (!isLocale(language)) problems.push(`languages.${locale}: invalid language “${String(language)}” (expected a canonical language tag such as “de-AT” or “en-US”).`)
+      }
+    }
+  }
   for (const locale of new Set(schema.locales.filter((l, i) => schema.locales.indexOf(l) !== i))) problems.push(`Locale “${locale}” is listed twice.`)
   if (!isSiteUrl(schema.url)) problems.push(`Invalid site url “${String(schema.url)}” (expected an absolute http(s) address such as “https://linde.example”).`)
   if (!isTimeZone(schema.timeZone)) problems.push(`Invalid time zone “${String(schema.timeZone)}” (expected for example “Europe/Vienna”).`)

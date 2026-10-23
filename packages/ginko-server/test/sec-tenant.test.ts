@@ -126,6 +126,8 @@ const calls: Call[] = [
   { fn: 'uploads.urls', kind: 'query', args: (site, f) => ({ site, ids: [f.file] }) },
   { fn: 'tasks.prefill', kind: 'query', args: (site, f) => ({ site, task: 'menu.edit', entry: f.entry }) },
   { fn: 'sites.meta', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'facts.values', kind: 'query', args: (site) => ({ site }) },
+  { fn: 'facts.uses', kind: 'query', args: (site) => ({ site, brick: 'contact' }) },
   { fn: 'sites.setAgentReview', kind: 'mutation', args: (site) => ({ site, review: false }) },
   { fn: 'sites.deletion', kind: 'query', args: (site) => ({ site }) },
   // A wrong confirmation: against "andere" the call stops there instead of really starting the deletion of the attacker's own site.

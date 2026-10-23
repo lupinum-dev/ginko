@@ -14,7 +14,7 @@ import mermaid from 'comark/plugins/mermaid'
 import taskList from 'comark/plugins/task-list'
 import toc from 'comark/plugins/toc'
 import { bare, coreMessage, msg, type Described } from './messages.ts'
-import { checkComponentTree, componentSlotNodes, isBlockedTag, type ComponentRegistry } from './components.ts'
+import { checkComponentTree, componentSlotNodes, isBlockedTag, isOpenRegistry, type ComponentRegistry } from './components.ts'
 import { isSafeHref } from './href.ts'
 import { withoutCode } from './file-refs.ts'
 import type { Json } from './types.ts'
@@ -59,7 +59,8 @@ const TAGS: Record<Exclude<MarkdownProfile, 'page'>, ReadonlySet<string>> = {
   rich: new Set([...BASIC_TAGS, 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'img', 'pre', 'math', 'mermaid']),
 }
 // Component syntax can name any tag (`::script`). Without a component registry `page` accepts any tag that is
-// not blocked (isBlockedTag, components.ts); with one, only the registered components (ParseOptions.components).
+// not blocked (isBlockedTag, components.ts); with one, only the registered components (ParseOptions.components), unless
+// it is open (isOpenRegistry: only the components Ginko adds itself).
 
 type ValueCheck = (value: unknown) => boolean
 const anyValue: ValueCheck = () => true
@@ -252,12 +253,12 @@ export async function parseMarkdown(text: string, options: ParseOptions = {}): P
 export interface TextBlock { text: string; heading?: { level: 2 | 3; id?: string } }
 
 /** The one walker over a text: top-level blocks in document order, without code blocks. Search and excerpts both read it. */
-export function textBlocks(tree: MarkdownTree | readonly Json[]): TextBlock[] {
+export function textBlocks(tree: MarkdownTree | readonly Json[], resolve?: TextResolver): TextBlock[] {
   const nodes = (Array.isArray(tree) ? tree : (tree as MarkdownTree).nodes) as Node[]
   const blocks: TextBlock[] = []
   for (const node of nodes) {
     if (typeof node !== 'string' && node[0] === 'pre') continue
-    const text = textOf(node, true)
+    const text = textOf(node, true, resolve)
     const tag = typeof node === 'string' ? undefined : node[0]
     if (tag === 'h2' || tag === 'h3') {
       const id = (node as [string, Record<string, unknown>])[1]?.id
@@ -268,8 +269,8 @@ export function textBlocks(tree: MarkdownTree | readonly Json[]): TextBlock[] {
 }
 
 /** All text of a tree (or of a node list), for excerpts and search. Blocks are separated by a line break; code blocks are left out. */
-export function plainText(tree: MarkdownTree | readonly Json[]): string {
-  return textBlocks(tree).map((b) => b.text).join('\n').trim()
+export function plainText(tree: MarkdownTree | readonly Json[], resolve?: TextResolver): string {
+  return textBlocks(tree, resolve).map((b) => b.text).join('\n').trim()
 }
 
 /**
@@ -402,8 +403,8 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
         // comark makes a `span` of `[text]` that is no link: a typo in a link or picture (`![Bild(datei)`) or brackets
         // meant as text. Where the span was refused before (any profile but `page`; `page` with a registry), say that
         // instead of "unknown component span" (checkComponentTree leaves it to this check). `page` without a registry
-        // accepts any tag that is not blocked, the span too, and keeps doing so.
-        if (tag === 'span' && !component && (profile !== 'page' || registry)) {
+        // (or with an open one, isOpenRegistry) accepts any tag that is not blocked, the span too, and keeps doing so.
+        if (tag === 'span' && !component && (profile !== 'page' || !isOpenRegistry(registry))) {
           const text = textOf(node)
           fail(msg('markdown.bracketText', { text: text.length > BRACKET_TEXT_MAX ? `${text.slice(0, BRACKET_TEXT_MAX - 1)}…` : text }))
           children.forEach(visit)
@@ -443,11 +444,16 @@ function letterSlug(text: string): string {
 }
 
 /** Text of a node; `br` and `html_inline` do not count (comark reads heading text the same way for the slug). */
-function textOf(node: Node, blocks = false): string {
+/** The text of a component that has none of its own, such as a fact (facts.ts): a string replaces the node, undefined keeps it. */
+export type TextResolver = (tag: string, props: Readonly<Record<string, unknown>> | undefined) => string | undefined
+
+function textOf(node: Node, blocks = false, resolve?: TextResolver): string {
   if (typeof node === 'string') return node
-  const [tag, , ...children] = node
+  const [tag, props, ...children] = node
   if (tag === null || tag === 'br' || tag === 'html_inline' || tag === 'pre') return ''
-  return children.map((child) => textOf(child, blocks)).join(blocks && /^(ul|ol|table|thead|tbody|blockquote)$/.test(tag) ? '\n' : '')
+  const own = resolve?.(tag, props as Record<string, unknown> | undefined)
+  if (own !== undefined) return own
+  return children.map((child) => textOf(child, blocks, resolve)).join(blocks && /^(ul|ol|table|thead|tbody|blockquote)$/.test(tag) ? '\n' : '')
 }
 
 /**

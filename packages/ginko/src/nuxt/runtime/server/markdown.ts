@@ -11,7 +11,7 @@ import { localeFromPath } from '@lupinum/ginko-i18n/core'
 import schema from '#ginko/schema'
 import locales from '#ginko/locales'
 import fileBundles from '#ginko/files'
-import { entryMarkdown, findEntryByPath, markdownNotFound, type Bundle, type Locale } from '../../../internal.ts'
+import { bundleFactResolver, entryMarkdown, findEntryByPath, markdownNotFound, todayIn, type Bundle, type Locale } from '../../../internal.ts'
 import { agentRequest, type GinkoPublicConfig } from '../shared.ts'
 import { loadServerBundles } from './bundles.ts'
 import { markdownTrees } from './markdown-trees.ts'
@@ -44,5 +44,5 @@ export default defineEventHandler(async (event) => {
     return markdownNotFound(bundle, path, { origin: config.url, schema })
   }
   event.res.headers.set('x-ginko-rev', `${bundle.schemaRev}.${bundle.contentRev}`)
-  return entryMarkdown(match.item, match.brick, { schema, trees: markdownTrees })
+  return entryMarkdown(match.item, match.brick, { schema, trees: markdownTrees, resolve: bundleFactResolver(bundle, schema.bricks, config.languages[bundle.locale] ?? bundle.locale, todayIn(config.timeZone)) })
 })

@@ -7,6 +7,16 @@ import { collection, defineSite, f, single, type DataOf, type Money, type Query 
 const base = { site: 'linde', name: 'Linde', url: 'https://linde.example', timeZone: 'Europe/Vienna', locales: ['de'], currency: 'EUR', pages: { home: '/' } } as const
 
 describe('authoring types', () => {
+  it('facts take only fields of single bricks', () => {
+    const bricks = { menu: collection({ label: 'Karte', fields: { name: f.text('Name') }, max: 5, order: 'manual' }), contact: single({ label: 'Kontakt', fields: { phone: f.text('Telefon') } }) }
+    defineSite({ ...base, bricks, facts: ['contact.phone'] })
+    // @ts-expect-error a field of a collection
+    defineSite({ ...base, bricks, facts: ['menu.name'] })
+    // @ts-expect-error a field that does not exist
+    defineSite({ ...base, bricks, facts: ['contact.fax'] })
+    expect(true).toBe(true)
+  })
+
   it('retired takes only bricks and fields of the config', () => {
     const bricks = { menu: collection({ label: 'Karte', fields: { name: f.text('Name'), old: f.text('Alt', { optional: true }) }, max: 5, order: 'manual' }), hours: single({ label: 'Zeiten', fields: { note: f.text('Hinweis') } }) }
     defineSite({ ...base, bricks, retired: { 'menu.old': { drop: true }, hours: { drop: true } } })

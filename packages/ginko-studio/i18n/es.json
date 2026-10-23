@@ -685,6 +685,21 @@
       "choose": "Elegir…",
       "chooseImage": "Elegir imagen",
       "changeImage": "Cambiar imagen"
+    },
+    "fact": {
+      "from": "Dato de {brick}",
+      "shows": "El sitio web muestra aquí",
+      "empty": "Aún nada: introduce el valor en {brick}; si no, este lugar queda vacío.",
+      "next": "Desde el {date}: {value}",
+      "follows": "Cuando el valor cambia, todos los textos muestran el nuevo al instante.",
+      "change": "Cambiar en {brick}",
+      "newTab": "(se abre en una pestaña nueva)",
+      "other": "Mostrar otro dato",
+      "chipName": "Dato {label}: {value}",
+      "chipEmpty": "{label}: aún vacío",
+      "copy": "«{text}» es el mismo valor que el dato «{label}». Insertado como dato, el texto se mantiene al día cuando cambia el valor.",
+      "copyReplace": "Insertar como dato",
+      "copyKeep": "Ahora no"
     }
   },
   "fields": {
@@ -780,7 +795,9 @@
       "photoMenu": "Acciones para {title}",
       "earlier": "Mover antes",
       "later": "Mover después"
-    }
+    },
+    "factUses": "Aparece en {count, plural, one {un texto} other {# textos}}",
+    "factUsesHint": "Si cambias el valor aquí, también cambia en estos textos."
   },
   "ops": {
     "saved": "Guardado.",
