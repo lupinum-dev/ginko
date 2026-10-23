@@ -2,14 +2,14 @@
 // Nothing here changes the schema (see `extend` in createGinkoEditor).
 import type { ComponentRegistry, Msg } from '@lupinum/ginko/internal'
 import { docProblems, filterSlashItems, type DocProblem, type SlashItem } from '@lupinum/ginko-editor'
-import { Extension, type AnyExtension, type Editor } from '@tiptap/core'
+import { Extension, type AnyExtension, type Editor, type Node as TiptapNode } from '@tiptap/core'
 import { NodeSelection, Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node as PmNode } from '@tiptap/pm/model'
 import Suggestion from '@tiptap/suggestion'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
 import { watch } from 'vue'
-import type { SettingsBus } from './context.ts'
+import { isChip, type SettingsBus } from './context.ts'
 import ComponentView from './ComponentView.vue'
 import InlineComponentView from './InlineComponentView.vue'
 
@@ -47,8 +47,7 @@ export function studioExtensions({ slashItems, slash, openLink, bus, problems }:
   return (base: AnyExtension[]): AnyExtension[] => {
     const extensions = base.map((ext) => {
       if (ext.name === 'component') return componentExtension(ext as AnyExtension, slash, bus)
-      // An inline component without text of its own (a fact) is a chip that names it, not an empty box.
-      if (ext.name === 'inlineComponent') return (ext as AnyExtension).extend({ addNodeView() { return VueNodeViewRenderer(InlineComponentView) } }).configure({ bus } as never)
+      if (ext.name === 'inlineComponent') return inlineComponentExtension(ext as AnyExtension, bus)
       return ext
     })
     // Every profile has links (the link mark comes with StarterKit, so it is not an extension of its own in `base`).
@@ -182,6 +181,42 @@ function componentExtension(ext: AnyExtension, slash: SlashState, bus: SettingsB
           return false
         },
       }
+    },
+  }).configure({ bus } as never)
+}
+
+/**
+ * An inline component without text of its own (a fact) is a chip that names it, not an empty box. The cursor never
+ * goes inside it: arrow keys select the chip as a whole (as a picture), Enter opens its settings, Backspace removes it.
+ */
+function inlineComponentExtension(ext: AnyExtension, bus: SettingsBus): AnyExtension {
+  const chipAt = (node: PmNode, components: ComponentRegistry | undefined) => node.type.name === 'inlineComponent' && node.childCount === 0 && isChip(components, String(node.attrs.tag))
+  // The base node of @lupinum/ginko-editor, which the editor configures with the site's components.
+  return (ext as TiptapNode<{ components?: ComponentRegistry; bus?: SettingsBus }>).extend({
+    addNodeView() { return VueNodeViewRenderer(InlineComponentView) },
+    addKeyboardShortcuts() {
+      return {
+        Enter: ({ editor }: { editor: Editor }) => {
+          const { selection } = editor.state
+          if (!(selection instanceof NodeSelection) || !chipAt(selection.node, this.options.components)) return false
+          bus.request = { pos: selection.from, missing: [] }
+          return true
+        },
+      }
+    },
+    addProseMirrorPlugins() {
+      const components = () => this.options.components
+      return [...(this.parent?.() ?? []), new Plugin({
+        key: new PluginKey('ginkoChip'),
+        appendTransaction: (_transactions, _old, state) => {
+          if (!(state.selection instanceof TextSelection)) return null
+          const { $from } = state.selection
+          for (let depth = $from.depth; depth > 0; depth--) {
+            if (chipAt($from.node(depth), components())) return state.tr.setSelection(NodeSelection.create(state.doc, $from.before(depth)))
+          }
+          return null
+        },
+      })]
     },
   }).configure({ bus } as never)
 }

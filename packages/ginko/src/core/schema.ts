@@ -5,7 +5,7 @@ import { formatMb, limitOf } from './uploads.ts'
 import { weeklyTask } from './stale.ts'
 import { weekInfoOf } from './time.ts'
 import { CALENDAR_NAMES, holidaysOf, STORED_HOLIDAYS } from './holidays.ts'
-import { componentProblems, type ComponentRegistry } from './components.ts'
+import { componentProblems, type ComponentDef, type ComponentRegistry } from './components.ts'
 import { factComponent, factProblem, FACT_TAG } from './facts.ts'
 import { MARKDOWN_PROFILES, profileCovers } from './markdown.ts'
 import type { SiteInput } from './site.ts'
@@ -75,7 +75,9 @@ export function serializeSchema(site: SiteInput): Schema {
 function withComponents(site: SiteInput): { components?: ComponentRegistry } {
   const retired = site.retired ?? {}
   const facts = (site.facts ?? []).filter((path) => factProblem(path, site.bricks) === undefined && !Object.hasOwn(retired, path) && !Object.hasOwn(retired, path.split('.')[0]!))
-  const registry = facts.length && !Object.hasOwn(site.components ?? {}, FACT_TAG) ? { ...site.components, [FACT_TAG]: factComponent(facts, site.bricks) } : site.components
+  // Without components of its own the site's texts stay open: the fact component alone makes none of their tags unknown.
+  const fact = (): ComponentDef => ({ ...factComponent(facts, site.bricks), ...(site.components === undefined ? { open: true as const } : {}) })
+  const registry = facts.length && !Object.hasOwn(site.components ?? {}, FACT_TAG) ? { ...site.components, [FACT_TAG]: fact() } : site.components
   return registry ? { components: storedComponents(registry, site.locales) } : {}
 }
 

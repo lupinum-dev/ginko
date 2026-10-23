@@ -6,6 +6,7 @@ import { defineComponents, type ComponentRegistry } from '@lupinum/ginko/interna
 import { componentMode, GINKO_ASSETS, type GinkoAssets } from '@lupinum/ginko-editor'
 import { flushPromises, mount } from '@vue/test-utils'
 import type { Editor } from '@tiptap/core'
+import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import { EditorContent } from '@tiptap/vue-3'
 import { afterEach, describe, expect, test } from 'vitest'
 import { computed } from 'vue'
@@ -279,3 +280,42 @@ describe('containers', () => {
     expect(dialog()!.querySelector(`section [data-prop="${prop}"]`)).not.toBeNull()
   })
 })
+
+describe('inline components', () => {
+  const withFact: ComponentRegistry = {
+    ...components,
+    ...defineComponents({
+      fact: {
+        kind: 'inline', label: 'Angabe', describe: 'Ein Wert aus den Angaben.',
+        props: { name: f.choice('Angabe', { options: [{ value: 'practice.price', label: 'Preis pro Sitzung' }] }) },
+        editor: { example: ':fact{name="practice.price"}' },
+      },
+    }),
+  }
+  const posOf = (editor: Editor, tag: string) => {
+    let at = -1
+    editor.state.doc.descendants((node, pos) => { if (at < 0 && node.type.name === 'inlineComponent' && node.attrs.tag === tag) at = pos })
+    return at
+  }
+
+  // Wrong behaviour caught: the chip was chosen by the node's content, so deleting a badge's last letter turned it into
+  // a chip, and the cursor could go inside a fact and type text that the chip hides.
+  test('a fact is a chip the cursor cannot enter, Enter opens its settings; a badge stays text', async () => {
+    const wrapper = await mounted('Preis :fact{name="practice.price"} und :badge[x]\n', withFact)
+    const editor = editorOf(wrapper)
+    expect(wrapper.find('[data-component="fact"] .ginko-chip').text()).toBe('Preis pro Sitzung')
+
+    const badge = posOf(editor, 'badge')
+    editor.chain().setTextSelection({ from: badge + 1, to: badge + 2 }).deleteSelection().run()
+    await flushPromises()
+    expect(wrapper.find('[data-component="badge"] .ginko-chip').exists()).toBe(false)
+
+    const fact = posOf(editor, 'fact')
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, fact + 1)))
+    expect(editor.state.selection).toBeInstanceOf(NodeSelection)
+    expect(editor.state.selection.from).toBe(fact)
+    editor.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await until(() => dialog() !== null)
+  })
+})
+

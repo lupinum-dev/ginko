@@ -1,6 +1,6 @@
 <!-- Node view of an inline Markdown component (`:badge[neu]`, `:fact{name="practice.price"}`). One with text of its own
-     keeps the text editable in place. One without text (a fact) is a chip that names it ("Angabe · Preis pro Sitzung"),
-     not an empty box; a click on the chip opens its settings (ComponentSettings), as the gear of a block does. -->
+     keeps the text editable in place. One without text (a fact, isChip) is a chip that names it ("Preis pro Sitzung"),
+     not an empty box; a click on the chip, or Enter while it is selected, opens its settings (ComponentSettings). -->
 <script setup lang="ts">
 import { computed, ref, toRaw, useId, watch } from 'vue'
 import { useI18n } from '#imports'
@@ -9,7 +9,7 @@ import { blockSummary, type ComponentProps } from '@lupinum/ginko-editor'
 import { Braces } from '@lucide/vue'
 import { NodeViewContent, NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { Popover, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
-import type { SettingsBus } from './context.ts'
+import { isChip, type SettingsBus } from './context.ts'
 import ComponentSettings from './ComponentSettings.vue'
 import { useStudioSite } from '../../utils/labels'
 
@@ -25,7 +25,8 @@ const values = computed(() => (props.node.attrs.props ?? {}) as ComponentProps)
 const summary = computed(() => blockSummary(values.value, def.value, { label: shown }))
 /** What the chip says after the label: the chosen options, else the first text prop. */
 const detail = computed(() => summary.value.facts[0] ?? summary.value.title ?? '')
-const chip = computed(() => props.node.childCount === 0)
+// Text typed into a chip by some other way (a paste of `:fact[x]`) stays visible as text rather than hidden.
+const chip = computed(() => isChip(options.components, tag.value) && props.node.childCount === 0)
 
 const editable = props.editor.isEditable
 const open = ref(false)

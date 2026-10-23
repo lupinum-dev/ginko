@@ -14,7 +14,7 @@ import mermaid from 'comark/plugins/mermaid'
 import taskList from 'comark/plugins/task-list'
 import toc from 'comark/plugins/toc'
 import { bare, coreMessage, msg, type Described } from './messages.ts'
-import { checkComponentTree, componentSlotNodes, isBlockedTag, type ComponentRegistry } from './components.ts'
+import { checkComponentTree, componentSlotNodes, isBlockedTag, isOpenRegistry, type ComponentRegistry } from './components.ts'
 import { isSafeHref } from './href.ts'
 import { withoutCode } from './file-refs.ts'
 import type { Json } from './types.ts'
@@ -59,7 +59,8 @@ const TAGS: Record<Exclude<MarkdownProfile, 'page'>, ReadonlySet<string>> = {
   rich: new Set([...BASIC_TAGS, 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'img', 'pre', 'math', 'mermaid']),
 }
 // Component syntax can name any tag (`::script`). Without a component registry `page` accepts any tag that is
-// not blocked (isBlockedTag, components.ts); with one, only the registered components (ParseOptions.components).
+// not blocked (isBlockedTag, components.ts); with one, only the registered components (ParseOptions.components), unless
+// it is open (isOpenRegistry: only the components Ginko adds itself).
 
 type ValueCheck = (value: unknown) => boolean
 const anyValue: ValueCheck = () => true
@@ -402,8 +403,8 @@ function profileCheck(profile: MarkdownProfile, problems: Described[], registry?
         // comark makes a `span` of `[text]` that is no link: a typo in a link or picture (`![Bild(datei)`) or brackets
         // meant as text. Where the span was refused before (any profile but `page`; `page` with a registry), say that
         // instead of "unknown component span" (checkComponentTree leaves it to this check). `page` without a registry
-        // accepts any tag that is not blocked, the span too, and keeps doing so.
-        if (tag === 'span' && !component && (profile !== 'page' || registry)) {
+        // (or with an open one, isOpenRegistry) accepts any tag that is not blocked, the span too, and keeps doing so.
+        if (tag === 'span' && !component && (profile !== 'page' || !isOpenRegistry(registry))) {
           const text = textOf(node)
           fail(msg('markdown.bracketText', { text: text.length > BRACKET_TEXT_MAX ? `${text.slice(0, BRACKET_TEXT_MAX - 1)}…` : text }))
           children.forEach(visit)

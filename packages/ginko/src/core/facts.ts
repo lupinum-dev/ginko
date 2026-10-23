@@ -6,6 +6,7 @@ import { labelOf } from './labels.ts'
 import { formatMoney } from './money.ts'
 import type { Money } from './infer.ts'
 import type { Brick, Field, Fields, Label } from './types.ts'
+import { duePlan } from './stale.ts'
 
 /** The tag of the fact component in Markdown: `:fact{name="practice.price"}`. */
 export const FACT_TAG = 'fact'
@@ -61,13 +62,7 @@ export function factComponent(facts: readonly string[], bricks: Readonly<Record<
  * stored one. Without `today` (a build, where the day is unknown) the stored value.
  */
 export function valueOn(brick: Pick<Brick, 'planned'>, data: Readonly<Record<string, unknown>>, field: string, today?: string): unknown {
-  const plan = brick.planned
-  if (plan && plan.field === field && today) {
-    const next = data[plan.next]
-    const from = data[plan.from]
-    if (next !== undefined && next !== null && typeof from === 'string' && from <= today) return next
-  }
-  return data[field]
+  return (brick.planned?.field === field && today ? duePlan(brick, data, today) : undefined) ?? data[field]
 }
 
 export interface FactContext {
@@ -128,7 +123,12 @@ export function factText(path: string, ctx: FactContext): string | undefined {
   const field = def && Object.hasOwn(def.fields, name) ? (def.fields as Fields)[name] : undefined
   const entry = Object.hasOwn(ctx.data, brick) ? ctx.data[brick] : undefined
   if (!def || !field || entry?.kind !== 'single' || !entry.data) return undefined
-  return formatValue(field, valueOn(def, entry.data, name, ctx.today), ctx)
+  // Intl throws on a date it cannot read or a language tag it does not know; a fact then shows nothing, not an error page.
+  try {
+    return formatValue(field, valueOn(def, entry.data, name, ctx.today), ctx)
+  } catch {
+    return undefined
+  }
 }
 
 /** A text resolver for `textBlocks` and the Markdown twin: the fact component becomes its text, other tags stay. */

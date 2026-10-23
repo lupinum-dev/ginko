@@ -63,8 +63,13 @@ describe('factText', () => {
     expect(factText(path, ctx(today))?.replace(/ /g, ' ')).toBe(expected)
   })
 
-  it('is undefined for an empty value', () => {
-    expect(factText('practice.price', { ...ctx(), data: { practice: { kind: 'single', data: { ...data, price: undefined } } } })).toBeUndefined()
+  // Wrong behaviour caught (the second and third): Intl threw, and one unreadable value broke the whole page.
+  it.each([
+    ['an empty value', 'practice.price', { price: undefined }],
+    ['a date it cannot read', 'practice.validUntil', { validUntil: '31.12.2026' }],
+    ['a language it does not know', 'practice.price', {}, 'not a language'],
+  ])('is undefined for %s', (_, path, change, language = 'de-AT') => {
+    expect(factText(path, { ...ctx(), language, data: { practice: { kind: 'single', data: { ...data, ...change } } } })).toBeUndefined()
   })
 })
 
@@ -98,6 +103,18 @@ describe('facts in the site config', () => {
 
   it('reports a retired field', () => {
     expect(checkSite(site({ retired: { 'practice.minutes': { drop: true } } })).join('\n')).toContain('“practice.minutes” is retired')
+  })
+
+  // Wrong behaviour caught: turning on facts made every text strict, so a site without components of its own could no
+  // longer save texts with `::callout` or other tags it used before.
+  it.each([
+    ['without components of its own, texts stay open', undefined, []],
+    ['with components of its own, texts stay strict', { note: { kind: 'block' as const, label: 'Hinweis', describe: 'Ein Hinweis', props: {} } }, ['Komponente „callout“ gibt es nicht.']],
+  ])('%s', async (_, components, problems) => {
+    const schema = serializeSchema(site({ components }))
+    const text = '::callout\nAchtung\n::\n\nPreis: :fact{name="practice.price"}'
+    expect((await parseMarkdown(text, { profile: 'page', components: schema.components })).problems).toEqual(problems)
+    expect((await parseMarkdown(':fact{name="practice.nope"}', { profile: 'page', components: schema.components })).problems).not.toEqual([])
   })
 
   it('reports a site component named fact next to facts', () => {

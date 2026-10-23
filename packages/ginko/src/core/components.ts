@@ -38,10 +38,25 @@ export interface ComponentDef<P extends Fields = Fields> {
    * line, so a component that takes text should have an example with one.
    */
   editor?: { icon?: string; group?: Label; example?: string }
+  /**
+   * Set by Ginko, not by sites: the `fact` component of a site without components of its own. A registry of only such
+   * components checks them and leaves every other tag open, as without a registry (isOpenRegistry).
+   */
+  open?: true
 }
 
 /** Tag → definition. The tag is kebab-case. */
 export type ComponentRegistry = Record<string, ComponentDef>
+
+/**
+ * Whether a `page` text may use tags the registry does not declare: without a registry, or when it holds only the
+ * components Ginko adds itself (`open`), so turning on facts does not make a site's existing texts strict.
+ */
+export function isOpenRegistry(registry: ComponentRegistry | undefined): boolean {
+  if (registry === undefined) return true
+  const defs = Object.values(registry)
+  return defs.length > 0 && defs.every((def) => def.open === true)
+}
 
 /**
  * Defines the Markdown components a site allows in `page` texts (`SiteInput.components`): tag (kebab-case) →
@@ -140,6 +155,7 @@ export function componentSlotNodes(nodes: readonly Node[], registry: ComponentRe
  * inside a paragraph (where it can only have been written inline); an inline one is accepted anywhere.
  */
 export function checkComponentTree(nodes: readonly Node[], registry: ComponentRegistry, fail: Fail): void {
+  const open = isOpenRegistry(registry)
   const visit = (node: Node, parent: string | undefined) => {
     if (typeof node === 'string' || node[0] === null) return
     const [tag, props, ...children] = node
@@ -150,7 +166,7 @@ export function checkComponentTree(nodes: readonly Node[], registry: ComponentRe
     }
     // An unregistered `span` is text in square brackets, which `profileCheck` reports as such.
     if (!PLAIN_TAGS.has(tag) && !isBlockedTag(tag, registry) && !(tag === 'span' && !Object.hasOwn(registry, tag))) {
-      if (!Object.hasOwn(registry, tag)) fail(msg('component.unknown', { tag }))
+      if (!Object.hasOwn(registry, tag)) { if (!open) fail(msg('component.unknown', { tag })) }
       else checkComponent(tag, registry[tag]!, props as Record<string, unknown>, children as Node[], parent, fail)
     }
     for (const child of children) visit(child, tag)
