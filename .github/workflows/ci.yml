@@ -28,6 +28,7 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
+          check-latest: true
           package-manager-cache: false
       - run: corepack enable pnpm
       - run: pnpm install --frozen-lockfile
@@ -47,6 +48,7 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
+          check-latest: true
           package-manager-cache: false
       - run: corepack enable pnpm
       - run: node scripts/audit-deps.mjs
@@ -63,6 +65,7 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
+          check-latest: true
           package-manager-cache: false
       - run: corepack enable pnpm
       - run: pnpm install --frozen-lockfile
@@ -91,6 +94,7 @@ jobs:
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
+          check-latest: true
           package-manager-cache: false
       - if: steps.changed.outputs.i18n == 'true'
         run: corepack enable pnpm
@@ -122,6 +126,7 @@ jobs:
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
+          check-latest: true
           package-manager-cache: false
       - run: corepack enable pnpm
       - run: pnpm install --frozen-lockfile
