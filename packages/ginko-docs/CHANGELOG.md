@@ -1,5 +1,16 @@
 # @lupinum/ginko-docs
 
+## 0.8.0
+
+### Patch Changes
+
+- [#57](https://github.com/lupinum-dev/ginko/pull/57) [`99aef44`](https://github.com/lupinum-dev/ginko/commit/99aef444f2788c3e9de98fce5ff4c2f2c248c96c) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix lists in docs texts losing their bullets and numbers on sites with Tailwind's reset.
+- Updated dependencies [[`5d6522a`](https://github.com/lupinum-dev/ginko/commit/5d6522ae3c6ab9059c8d0d4d8218aa60d2738fe5)]:
+  - @lupinum/ginko@0.8.0
+  - @lupinum/ginko-components@0.8.0
+  - @lupinum/ginko-content@0.8.0
+  - @lupinum/ginko-i18n@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes
