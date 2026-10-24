@@ -368,9 +368,12 @@ for (const lang of ['de', 'en'] as const) {
       // The review link no longer counts anything waiting (its name is "Prüfen (1 zu prüfen)" while one waits).
       await expect(ownerPage.getByRole('link', { name: /(zu prüfen|to review)\)$/ })).toHaveCount(0)
 
-      // Live: the lunch entry holds the dish now.
-      await open(ownerPage, '/s/restaurant/all/lunch')
-      await expect(ownerPage.locator('li', { has: ownerPage.getByRole('heading', { name: w.tuesday }) }).getByLabel(w.dish)).toHaveValue(dish)
+      // Live: the lunch task shows the dish now. From Saturday "this week" is the next work week, and the task edits the
+      // week planned ahead (lunchPlans) instead of the lunch entry, so the dish is read back through the same task.
+      await open(ownerPage, '/s/restaurant')
+      await ownerPage.getByRole('heading', { level: 2 }).first().waitFor()
+      await ownerPage.getByRole('button', { name: w.lunchTask }).click()
+      await expect(ownerPage.getByRole('dialog').locator('li', { has: ownerPage.getByRole('heading', { name: w.tuesday }) }).getByLabel(w.dish)).toHaveValue(dish)
       // The owner's History names who made the change (an owner sees the cook's address) and the owner as the approver.
       await open(ownerPage, '/s/restaurant/history')
       await expect(ownerPage.locator('main ol li').first()).toContainText('koch@example.test')
