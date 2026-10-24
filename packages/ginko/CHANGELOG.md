@@ -1,5 +1,16 @@
 # @lupinum/ginko
 
+## 0.8.0
+
+### Minor Changes
+
+- [#56](https://github.com/lupinum-dev/ginko/pull/56) [`5d6522a`](https://github.com/lupinum-dev/ginko/commit/5d6522ae3c6ab9059c8d0d4d8218aa60d2738fe5) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `titleTemplate: false` to `useGinkoSeo` for a title that already names the site, such as a home page titled "<name> in Vienna".
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes
