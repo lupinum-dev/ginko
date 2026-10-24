@@ -1,9 +1,9 @@
 import { effectiveMax, effectiveMin, isTranslatable } from './fields.ts'
-import { BRICK_KEYS, FIELD_KEYS, SCHEMA_KEYS } from './schema.ts'
+import { BRICK_KEYS, FIELD_KEYS, SCHEMA_KEYS, mirrorProblem } from './schema.ts'
 import { sameLabel } from './labels.ts'
 import { bare, msg, type CoreKey, type Described, type Msg } from './messages.ts'
 import { stableJson } from './sha256.ts'
-import type { Brick, Field, Fields, Json, Schema } from './types.ts'
+import type { Brick, Currency, Field, Fields, Json, Schema } from './types.ts'
 
 /** A change with its catalog key and parameters (`key`, `params`) next to the German `message`. */
 export interface SchemaChange extends Described {
@@ -12,6 +12,8 @@ export interface SchemaChange extends Described {
   /** For rejected changes: the allowed way to reach the goal, in German; `fixMsg` is the same as a catalog message. */
   fix?: string
   fixMsg?: Msg
+  /** For rejected changes that have one: the config lines of the allowed way, with this site's names filled in. */
+  snippet?: string
 }
 
 export interface SchemaDiff {
@@ -31,7 +33,7 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
   const changes: SchemaChange[] = []
   const rejected: SchemaChange[] = []
   const ok: Report = (path, kind, m) => changes.push({ path, kind, ...m })
-  const no: Report = (path, kind, m, fix = NEW_FIELD_FIX) => rejected.push({ path, kind, ...m, fix: fix.message, fixMsg: bare(fix) })
+  const no: Report = (path, kind, m, fix = NEW_FIELD_FIX, snippet) => rejected.push({ path, kind, ...m, fix: fix.message, fixMsg: bare(fix), ...(snippet ? { snippet } : {}) })
   unknownChanges('Schema', prod, next, SCHEMA_KEYS, no)
 
   if (prod.site !== next.site) no('site', 'site', msg('diff.siteRenamed'), fx('newSite'))
@@ -88,8 +90,8 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
   const newLocales = new Set(next.locales.filter((l) => !prod.locales.includes(l)))
   for (const [key, before] of Object.entries(prod.bricks)) {
     const after = next.bricks[key]
-    if (!after) { no(key, 'brickRemoved', msg('diff.brickRemoved', { key }), fx('retireBrick')); continue }
-    diffBrick(key, before, after, newFills, newLocales, ok, no)
+    if (!after) { no(key, 'brickRemoved', msg('diff.brickRemoved', { key }), fx('retireBrick'), retireBrickSnippet(key)); continue }
+    diffBrick(key, before, after, newFills, newLocales, next.currency, ok, no)
   }
   for (const [key, brick] of Object.entries(next.bricks)) {
     if (prod.bricks[key]) continue
@@ -103,7 +105,7 @@ export function diffSchema(prod: Schema, next: Schema): SchemaDiff {
   return { changes, rejected }
 }
 
-type Report = (path: string, kind: string, message: Described, fix?: Described) => void
+type Report = (path: string, kind: string, message: Described, fix?: Described, snippet?: string) => void
 
 // Presentation only: texts and the config position (`pos`) never change stored data.
 const TEXT_KEYS = ['label', 'hint', 'unit', 'itemLabel', 'describe', 'group', 'pos']
@@ -127,7 +129,7 @@ function contract(field: Field, top = true): string {
   return stableJson(copy as never)
 }
 
-function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<string>, newLocales: Set<string>, ok: Report, no: Report) {
+function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<string>, newLocales: Set<string>, currency: Currency, ok: Report, no: Report) {
   if (before.kind !== after.kind) return no(key, 'kindChanged', msg('diff.kindChanged', { key }))
   unknownChanges(key, before, after, BRICK_KEYS, no)
   if (before.retired && !after.retired) no(key, 'unretired', msg('diff.unretired', { path: key }))
@@ -151,7 +153,7 @@ function diffBrick(key: string, before: Brick, after: Brick, newFills: Set<strin
       if (stableJson(before[k] ?? null) !== stableJson(after[k] ?? null)) ok(`${key}.${k}`, k, msg('diff.valueChanged', { name: k }))
     }
   }
-  diffFields(key, before.fields, after.fields, newFills, ok, no, true)
+  diffFields(key, before.fields, after.fields, newFills, ok, no, currency)
 }
 
 /** The existing addresses stay as they are; the only difference is an address for a language that is new in this release. */
@@ -161,12 +163,16 @@ function onlyNewLocalesAdded(before: Record<string, string | undefined>, after: 
   return Object.keys(after).every((locale) => Object.hasOwn(before, locale) || newLocales.has(locale))
 }
 
-function diffFields(path: string, before: Fields, after: Fields, newFills: Set<string>, ok: Report, no: Report, topLevel: boolean) {
+/** `currency` is set for the top-level fields of a brick, which a rejection can replace with a new field (snippets). */
+function diffFields(path: string, before: Fields, after: Fields, newFills: Set<string>, ok: Report, no: Report, currency?: Currency) {
+  const topLevel = currency !== undefined
   for (const [name, old] of Object.entries(before)) {
     const at = `${path}.${name}`
     const next = after[name]
-    if (!next) { no(at, 'fieldRemoved', msg('diff.fieldRemoved', { at })); continue }
-    diffField(at, old, next, newFills, ok, no)
+    if (!next) { no(at, 'fieldRemoved', msg('diff.fieldRemoved', { at }), undefined, topLevel ? replaceSnippet(path, name, old) : undefined); continue }
+    // A changed data contract of a top-level field takes the way of a new field; the snippet spells it out.
+    const noField: Report = topLevel ? (p, kind, m, fix) => no(p, kind, m, fix, FIXED_DEFINITION.has(kind) ? undefined : replaceSnippet(path, name, old, next, currency)) : no
+    diffField(at, old, next, newFills, ok, noField)
   }
   for (const [name, field] of Object.entries(after)) {
     if (before[name]) continue
@@ -174,7 +180,7 @@ function diffFields(path: string, before: Fields, after: Fields, newFills: Set<s
     if (field.optional) ok(at, 'fieldAdded', msg('diff.fieldAdded', { at }))
     else if (field.default !== undefined) ok(at, 'fieldAdded', msg('diff.fieldAddedDefault', { at }))
     else if (topLevel && newFills.has(at)) ok(at, 'fieldAdded', msg('diff.fieldAddedMigration', { at }))
-    else no(at, 'requiredWithoutDefault', msg('diff.requiredWithoutDefault', { at }), fx('defaultMigrationOrOptional'))
+    else no(at, 'requiredWithoutDefault', msg('diff.requiredWithoutDefault', { at }), fx('defaultMigrationOrOptional'), topLevel ? fillSnippet(path, name) : undefined)
   }
 }
 
@@ -227,6 +233,45 @@ function diffField(at: string, old: Field, next: Field, newFills: Set<string>, o
       if (next.unique) no(at, 'uniqueChanged', msg('diff.uniqueChanged', { at }), fx('newList'))
       else ok(at, 'uniqueDropped', msg('diff.uniqueDropped', { at }))
     }
-    diffFields(at, old.of, next.of, newFills, ok, no, false)
+    diffFields(at, old.of, next.of, newFills, ok, no)
   }
+}
+
+// Rejections whose fix is to keep the definition, not to move to a new field.
+const FIXED_DEFINITION = new Set(['unknownChange', 'retiredFieldChanged', 'unretired'])
+
+// The snippets are code, so they stay English in every locale. `YYYY-MM` is for the author to fill in.
+const migrationId = (brick: string, field: string) => `YYYY-MM-${`${brick}-${field}`.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`
+
+function retireSnippet(brick: string, name: string, old: Field, from?: string): string {
+  const rule = from ? `{ from: '${from}' }` : old.optional ? '{ drop: true }' : '{ value: … }'
+  const why = from ? '' : old.optional ? '' : ' // required: a valid value that old site code reads'
+  return `retired: { '${brick}.${name}': ${rule} },${why}`
+}
+
+/** Retire `brick.name`; with `next`, first move its values into a new field with that definition. */
+function replaceSnippet(brick: string, name: string, old: Field, next?: Field, currency?: Currency): string {
+  if (!next) return [`// Keep “${name}” in bricks.${brick}.fields as it is in production; retired, it leaves the Studio.`, retireSnippet(brick, name, old)].join('\n')
+  const fresh = `${name}2`
+  return [
+    `// To change it: keep “${name}” in bricks.${brick}.fields as it is in production and add the new definition as “${fresh}” (any new name).`,
+    'migrations: {',
+    `  '${migrationId(brick, fresh)}': { brick: '${brick}', fills: '${fresh}', compute: (entry) => entry.${name} },${old.type === next.type ? '' : ` // convert ${old.type} to ${next.type}`}`,
+    '},',
+    // Old code reads the new field's values when every one of them fits the old definition; otherwise nothing (optional) or a fixed value.
+    retireSnippet(brick, name, old, currency && mirrorProblem(old, next, currency) === null ? fresh : undefined),
+  ].join('\n')
+}
+
+function fillSnippet(brick: string, name: string): string {
+  return [
+    '// Or fill it once for every stored entry:',
+    'migrations: {',
+    `  '${migrationId(brick, name)}': { brick: '${brick}', fills: '${name}', compute: (entry) => … },`,
+    '},',
+  ].join('\n')
+}
+
+function retireBrickSnippet(key: string): string {
+  return [`// Keep the brick “${key}” in bricks as it is in production; retired, it leaves the Studio.`, `retired: { '${key}': { drop: true } },`].join('\n')
 }
