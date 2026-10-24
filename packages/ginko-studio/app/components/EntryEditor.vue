@@ -818,16 +818,15 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
 </template>
 
 <style scoped>
-/* One column: the form keeps a readable width, centred like every page frame (StudioPage). With the right column:
-   form and an 18rem column. */
-.entry-form { max-width: 45rem; margin-inline: auto; }
+/* One column: the form keeps a readable width, on the left edge like every page frame (StudioPage). With the right
+   column: form and an 18rem column. */
+.entry-form { max-width: 45rem; }
 .entry-form.has-side { max-width: 72rem; grid-template-columns: minmax(0, 1fr) 18rem; align-items: start; }
 .editor > .preview-col { margin-top: 1.5rem; height: 80dvh; }
 /* Wide screens with the preview open: form and preview share the panel, the preview flush with its edges. */
 @media (min-width: 900px) {
   .editor.is-split { display: grid; grid-template-columns: minmax(24rem, 40rem) minmax(0, 1fr); align-items: start; }
-  /* No auto margins here: in a grid cell they shrink the form to its content. */
-  .editor.is-split .entry-form { max-width: none; margin-inline: 0; }
+  .editor.is-split .entry-form { max-width: none; }
   .editor.is-split > .preview-col {
     margin-top: 0; position: sticky; top: var(--studio-header-height);
     height: calc(100dvh - var(--studio-header-height) - 0.75rem);
