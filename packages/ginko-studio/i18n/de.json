@@ -215,7 +215,11 @@
       "desktop": "Desktop",
       "phone": "Handy",
       "open": "Öffnen",
-      "ended": "Die Website zeigt das nicht mehr: Es war bis zum {date} zu sehen. Mit einem späteren Datum ist es wieder zu sehen."
+      "ended": "Die Website zeigt das nicht mehr: Es war bis zum {date} zu sehen. Mit einem späteren Datum ist es wieder zu sehen.",
+      "resize": "Breite von Formular und Vorschau",
+      "tablet": "Tablet",
+      "laptop": "Laptop",
+      "actualSize": "Originalgröße"
     },
     "remove": {
       "title": "Eintrag entfernen",

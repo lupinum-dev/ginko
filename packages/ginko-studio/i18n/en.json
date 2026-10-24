@@ -215,7 +215,11 @@
       "desktop": "Desktop",
       "phone": "Phone",
       "open": "Open",
-      "ended": "The website no longer shows this: it was shown until {date}. A later date shows it again."
+      "ended": "The website no longer shows this: it was shown until {date}. A later date shows it again.",
+      "resize": "Width of form and preview",
+      "tablet": "Tablet",
+      "laptop": "Laptop",
+      "actualSize": "Actual size"
     },
     "remove": {
       "title": "Remove entry",
