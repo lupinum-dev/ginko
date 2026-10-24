@@ -3,8 +3,11 @@ import type { NavNode } from './navigation.ts'
 export interface SeoImage { url: string; width?: number; height?: number; alt?: string }
 export interface SeoInput {
   siteName: string
-  /** `%s` is replaced by the page title; default '%s · <siteName>'. A page without title gets siteName alone. */
-  titleTemplate?: string
+  /**
+   * `%s` is replaced by the page title; default '%s · <siteName>'. `false` keeps the title as written (a home page
+   * titled "<siteName> in Vienna"). A page without title gets siteName alone.
+   */
+  titleTemplate?: string | false
   title?: string
   description?: string
   image?: SeoImage
@@ -21,7 +24,7 @@ export function seoHead(input: SeoInput): SeoHead {
   const { siteName, description, image, noindex } = input
   const title = input.title || undefined
   const template = input.titleTemplate ?? `%s · ${siteName}`
-  const fullTitle = title ? template.replace('%s', () => title) : siteName
+  const fullTitle = !title ? siteName : template === false ? title : template.replace('%s', () => title)
 
   const meta: SeoHead['meta'] = [
     { name: 'description', content: description ?? '' },

@@ -28,11 +28,12 @@ describe('seoHead', () => {
     })
   })
 
-  it.each<[string, string | undefined, string | undefined, string]>([
+  it.each<[string, string | undefined, string | false | undefined, string]>([
     ['%s · Site', 'About', undefined, 'About · Site'],
     ['%s · Site', undefined, undefined, 'Site'],
     ['%s · Site', '', undefined, 'Site'],
     ['%s | Docs', 'Pricing', '%s | Docs', 'Pricing | Docs'],
+    ['%s · Site', 'Site in Vienna', false, 'Site in Vienna'],
   ])('applies title template %j to title %j', (_label, title, template, expected) => {
     expect(seoHead({ ...base, title, titleTemplate: template }).title).toBe(expected)
   })

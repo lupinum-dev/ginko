@@ -234,6 +234,8 @@ export function useGinkoEntry<K extends CollectionKey>(brick: K, slug: MaybeRefO
 
 export interface GinkoSeoInput {
   title?: string
+  /** `false` uses `title` as written, without the site's `seo.titleTemplate`: for a title that already names the site. */
+  titleTemplate?: false
   description?: string
   /**
    * A public path (`/og.png`), an absolute URL, or a `SeoImage` with size and alt text; a path becomes absolute with
@@ -295,7 +297,7 @@ export function useGinkoSeo(input: MaybeRefOrGetter<GinkoSeoInput>): void {
     const { seo } = config
     const raw = generated ? undefined : (page.image ?? seo.image)
     const image = raw === undefined ? undefined : typeof raw === 'string' ? { url: absolute(raw) } : { ...raw, url: absolute(raw.url) }
-    const head = seoHead({ siteName: config.name, titleTemplate: seo.titleTemplate, title: page.title, description: page.description ?? seo.description, image, type: page.type, noindex: page.noindex })
+    const head = seoHead({ siteName: config.name, titleTemplate: page.titleTemplate ?? seo.titleTemplate, title: page.title, description: page.description ?? seo.description, image, type: page.type, noindex: page.noindex })
     const ld = useSchemaOrg ? [] : pageLd()
     // The home page is the page whose main-language path is `/`.
     const home = Object.keys(schema.pages).find((key) => schema.pages[key]?.[config.mainLocale] === '/')
