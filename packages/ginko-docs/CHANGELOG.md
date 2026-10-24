@@ -1,5 +1,20 @@
 # @lupinum/ginko-docs
 
+## 0.7.0
+
+### Minor Changes
+
+- [#48](https://github.com/lupinum-dev/ginko/pull/48) [`b018582`](https://github.com/lupinum-dev/ginko/commit/b018582cb88c4b49f7a770e2f26a857ed9df2703) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `navTitle` (a short title for the navigation, breadcrumbs and previous/next links) and `navExtras: false` (no Tab, Badge, Icon) to docs pages; docs fields get German, English, Spanish and French labels in a "Navigation" group.
+
+### Patch Changes
+
+- [#48](https://github.com/lupinum-dev/ginko/pull/48) [`b018582`](https://github.com/lupinum-dev/ginko/commit/b018582cb88c4b49f7a770e2f26a857ed9df2703) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the docs theme defaults overriding a site's Tailwind 4 `@theme`: they now sit in `@layer theme`, so on a Tailwind site without its own fonts the docs use Tailwind's font stacks instead of Inter.
+- Updated dependencies [[`0441339`](https://github.com/lupinum-dev/ginko/commit/0441339dcfe4ac4eb91f25507356f4b0bf0efbe3), [`2c71cb5`](https://github.com/lupinum-dev/ginko/commit/2c71cb50361dda16d540107bb42885e8e72dc400), [`2130302`](https://github.com/lupinum-dev/ginko/commit/2130302340e8a2eeef38d133dfa8c6190d96e65e), [`7f7247d`](https://github.com/lupinum-dev/ginko/commit/7f7247d40c0d5efe43c4aacaadf169a27f5516f4), [`7f7247d`](https://github.com/lupinum-dev/ginko/commit/7f7247d40c0d5efe43c4aacaadf169a27f5516f4), [`2c71cb5`](https://github.com/lupinum-dev/ginko/commit/2c71cb50361dda16d540107bb42885e8e72dc400), [`b018582`](https://github.com/lupinum-dev/ginko/commit/b018582cb88c4b49f7a770e2f26a857ed9df2703), [`2c71cb5`](https://github.com/lupinum-dev/ginko/commit/2c71cb50361dda16d540107bb42885e8e72dc400), [`b35884f`](https://github.com/lupinum-dev/ginko/commit/b35884fbf408f09aeb58b1c31ca5aa1e8b7b7175)]:
+  - @lupinum/ginko@0.7.0
+  - @lupinum/ginko-components@0.7.0
+  - @lupinum/ginko-content@0.7.0
+  - @lupinum/ginko-i18n@0.7.0
+
 ## 0.6.7
 
 ### Patch Changes

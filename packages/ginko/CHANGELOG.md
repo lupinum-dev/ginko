@@ -1,5 +1,31 @@
 # @lupinum/ginko
 
+## 0.7.0
+
+### Minor Changes
+
+- [#46](https://github.com/lupinum-dev/ginko/pull/46) [`7f7247d`](https://github.com/lupinum-dev/ginko/commit/7f7247d40c0d5efe43c4aacaadf169a27f5516f4) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `facts` in ginko.config: texts quote fields of single bricks with `:fact{name="practice.price"}`, and pages, site search, Markdown twins and llms-full.txt show the value in effect today (a planned change from its date). The Studio shows such a component as a chip with the value the page shows, and any inline component without text of its own as a chip instead of an empty box. Also `useGinkoFact()` and `valueOn()`.
+
+- [#46](https://github.com/lupinum-dev/ginko/pull/46) [`7f7247d`](https://github.com/lupinum-dev/ginko/commit/7f7247d40c0d5efe43c4aacaadf169a27f5516f4) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add a release check for facts: a release that removes a fact that texts still quote is refused and names those texts (`pnpm local:dev` shows a warning instead), and the pushed schema now includes `languages`, so the platform formats fact values the same way the site does.
+
+### Patch Changes
+
+- [#47](https://github.com/lupinum-dev/ginko/pull/47) [`0441339`](https://github.com/lupinum-dev/ginko/commit/0441339dcfe4ac4eb91f25507356f4b0bf0efbe3) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add `.mcp.json` from `pnpm local:dev`: an agent in the site folder works in the local CMS once you have signed in.
+
+- [#49](https://github.com/lupinum-dev/ginko/pull/49) [`2c71cb5`](https://github.com/lupinum-dev/ginko/commit/2c71cb50361dda16d540107bb42885e8e72dc400) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add LocalBusiness subtypes (HealthAndBeautyBusiness, ProfessionalService, Store, Restaurant, TravelAgency and more) and Corporation, EducationalOrganization to `siteJsonLd` and `organizationLd`.
+
+- [#51](https://github.com/lupinum-dev/ginko/pull/51) [`2130302`](https://github.com/lupinum-dev/ginko/commit/2130302340e8a2eeef38d133dfa8c6190d96e65e) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix a release that changes components: it now checks every stored text that can use them, so a removed prop or option cannot break a page, and the plan lists the change.
+
+- [#49](https://github.com/lupinum-dev/ginko/pull/49) [`2c71cb5`](https://github.com/lupinum-dev/ginko/commit/2c71cb50361dda16d540107bb42885e8e72dc400) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Change the text of `legal()` to the `page` Markdown profile, so an imprint can quote the address and contact as facts.
+
+- [#48](https://github.com/lupinum-dev/ginko/pull/48) [`b018582`](https://github.com/lupinum-dev/ginko/commit/b018582cb88c4b49f7a770e2f26a857ed9df2703) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix the Markdown twin printing icon names (`lucide:book-open`) from untranslated text fields as text.
+
+- [#49](https://github.com/lupinum-dev/ginko/pull/49) [`2c71cb5`](https://github.com/lupinum-dev/ginko/commit/2c71cb50361dda16d540107bb42885e8e72dc400) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Fix `checkSite` accepting a reference from a platform brick to a file brick; it now names the field and how to fix it.
+
+- [#53](https://github.com/lupinum-dev/ginko/pull/53) [`b35884f`](https://github.com/lupinum-dev/ginko/commit/b35884fbf408f09aeb58b1c31ca5aa1e8b7b7175) Thanks [@Mat4m0](https://github.com/Mat4m0)! - Add the config lines of the allowed way to each rejected schema change in `ginko check` and `ginko release`, with the site's brick and field names filled in.
+- Updated dependencies []:
+  - @lupinum/ginko-i18n@0.7.0
+
 ## 0.6.7
 
 ### Patch Changes
