@@ -42,7 +42,9 @@ const broken = ref(new Set<string>())
 const pictures = computed(() => summary.value.pictures.flatMap(({ key, src, file, note }) => {
   const url = file ? (editorFiles ? shownSrc(editorFiles.images, src) : undefined) : /^https?:\/\//.test(src) ? src : undefined
   if (url === undefined && !file) return []
-  return [{ key, note, url: url && broken.value.has(url) ? null : url }]
+  // The focus point set in Files: the card crops like the page does.
+  const focus = file ? files.value?.[file]?.focus : undefined
+  return [{ key, note, url: url && broken.value.has(url) ? null : url, position: focus ? `${focus.x * 100}% ${focus.y * 100}%` : undefined }]
 }))
 const crop = computed(() => (values.value.fit === 'contain' ? 'object-contain' : 'object-cover'))
 // A card without text (a data block, a figure) has no box to type in. Only a card that says nothing else (no picture,
@@ -218,7 +220,7 @@ function noFollow(event: MouseEvent) {
                   class="ginko-picture relative w-full overflow-hidden rounded-md bg-muted"
                   :class="p.url === null ? 'h-16' : pictures.length > 1 ? 'aspect-[4/3]' : 'aspect-video max-h-40'"
                 >
-                  <img v-if="p.url" :src="p.url" alt="" class="ginko-card-img absolute inset-0 size-full" :class="crop" @error="hidePicture(p.url)">
+                  <img v-if="p.url" :src="p.url" alt="" class="ginko-card-img absolute inset-0 size-full" :class="crop" :style="p.position && { objectPosition: p.position }" @error="hidePicture(p.url)">
                   <p v-else-if="p.url === null" class="flex size-full items-center justify-center gap-2 p-3 text-[13px] text-muted-foreground">
                     <ImageOff class="size-4 shrink-0" aria-hidden="true" />{{ t('editor.image.missing') }}
                   </p>

@@ -4,7 +4,7 @@ import { components } from '@lupinum/ginko-components/registry'
 import { f } from '@lupinum/ginko'
 import { defineComponents, labelOf, parseMarkdown, type ComponentRegistry } from '@lupinum/ginko/internal'
 import { describe, expect, test } from 'vitest'
-import { createGinkoEditor, missingRequired, propProblem, blockSummary, readProp, slashItems, writeProp, type InsertedComponent, type PropField } from '../src/index.ts'
+import { createGinkoEditor, missingRequired, propFields, propProblem, blockSummary, readProp, slashItems, writeProp, type InsertedComponent, type PropField } from '../src/index.ts'
 
 const registry: ComponentRegistry = {
   ...components,
@@ -133,6 +133,14 @@ describe('slash insert of a component', () => {
     expect((await inserted('read-more')).calls).toEqual([])
     expect((await inserted('callout')).calls).toEqual([])
   })
+})
+
+// Wrong behaviour caught: the figure's old edge choice ("Bildausschnitt") stayed in the form next to the focus point
+// from Files, two settings for one thing; or older texts that still have it failed the check.
+test('a retired prop is not offered in the form, and a text that has it stays valid', async () => {
+  expect(propFields(components.figure).map(([key]) => key)).not.toContain('focus')
+  expect(propFields(components.figure).map(([key]) => key)).toContain('aspect')
+  expect((await parseMarkdown('::figure{src="/a.jpg" alt="A" focus="top"}\n::', { profile: 'page', components })).problems).toEqual([])
 })
 
 describe('blockSummary', () => {

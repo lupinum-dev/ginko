@@ -20,10 +20,12 @@ export const mediaComponents = defineComponents({
       bleed: f.boolean({ de: 'Breiter als der Text', en: 'Wider than the text' }, { optional: true }),
       aspect: f.choice({ de: 'Seitenverhältnis', en: 'Aspect ratio' }, {
         options: [
-          { value: 'auto', label: { de: 'Original', en: 'Original' } }, { value: 'video', label: '16:9' }, { value: 'wide', label: '2:1' },
-          { value: 'square', label: { de: 'Quadrat', en: 'Square' } }, { value: 'portrait', label: { de: 'Hochformat', en: 'Portrait' } },
+          { value: 'auto', label: { de: 'Original', en: 'Original' } }, { value: 'square', label: { de: 'Quadrat 1:1', en: 'Square 1:1' } },
+          { value: 'landscape', label: { de: 'Querformat 4:3', en: 'Landscape 4:3' } }, { value: 'portrait', label: { de: 'Hochformat 3:4', en: 'Portrait 3:4' } },
+          { value: 'video', label: { de: 'Breitbild 16:9', en: 'Widescreen 16:9' } }, { value: 'wide', label: { de: 'Panorama 2:1', en: 'Panorama 2:1' } },
         ],
         optional: true, default: 'auto',
+        hint: { de: 'Beim Zuschneiden bleibt der Fokuspunkt sichtbar. Du setzt ihn unter Dateien mit einem Klick ins Bild.', en: 'Cropping keeps the focus point in view. Set it in Files by clicking the image.' },
       }),
       fit: f.choice({ de: 'Zuschnitt', en: 'Crop' }, {
         options: [
@@ -44,14 +46,15 @@ export const mediaComponents = defineComponents({
         ],
         optional: true, default: 'border',
       }),
-      focus: f.choice({ de: 'Bildausschnitt', en: 'Image focus' }, {
+      // Replaced by the image's focus point (set in Files): no longer offered, still valid in older texts.
+      focus: { ...f.choice({ de: 'Bildausschnitt', en: 'Image focus' }, {
         options: [
           { value: 'center', label: { de: 'Mitte', en: 'Middle' } }, { value: 'top', label: { de: 'Oben', en: 'Top' } },
           { value: 'bottom', label: { de: 'Unten', en: 'Bottom' } }, { value: 'left', label: { de: 'Links', en: 'Left' } },
           { value: 'right', label: { de: 'Rechts', en: 'Right' } },
         ],
         optional: true, default: 'center',
-      }),
+      }), retired: true },
       zoom: f.boolean({ de: 'Vergrößern per Klick', en: 'Enlarge on click' }, { optional: true, default: true }),
     },
     editor: { group: { de: 'Medien', en: 'Media' }, example: '::figure{src="/favicon.svg" alt="Das Ginko-Blatt" caption="Das Zeichen von Ginko" aspect="square" fit="contain"}\n::' },

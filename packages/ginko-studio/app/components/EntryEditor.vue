@@ -574,7 +574,7 @@ const fileIds = computed(() => previewFileIds(draft.value, (previewEntries.value
 const { data: fileInfo } = useConvexQuery(api.uploads.urls, () => (showPreview.value && fileIds.value.length ? { site: props.site.slug, ids: fileIds.value } : 'skip'))
 function files(id: string) {
   const f = fileInfo.value?.[id]
-  return f ? { url: f.url, name: f.name, size: f.size, alt: f.alt, ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}) } : undefined
+  return f ? { url: f.url, name: f.name, size: f.size, alt: f.alt, ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}), ...(f.focus ? { focus: f.focus } : {}) } : undefined
 }
 
 // The save bar sits at the bottom: while this editor is open, the layout hides the phone tab bar and the toast sits
