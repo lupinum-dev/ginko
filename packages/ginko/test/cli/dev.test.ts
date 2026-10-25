@@ -65,7 +65,7 @@ describe('prepareLocalBackend', () => {
     const calls: string[][] = []
     const run = async (_command: string, args: string[]) => {
       calls.push(args.slice(1))
-      return args[1] === 'env' && args[2] === 'list' ? envList : ''
+      return args[1] === 'env' && args[2] === 'list' ? (args[3] === '--include-values' ? envList : envList.replace(/=.*$/gm, '')) : ''
     }
     return { dir, calls, run }
   }
@@ -83,13 +83,15 @@ describe('prepareLocalBackend', () => {
     expect(admin).toBe('admin@example.test')
   })
 
-  // Wrong behaviour caught: every local:dev start waits for Convex CLI calls that only repeat what `env list` showed.
+  // Wrong behaviour caught: every local:dev start waits for Convex CLI calls that only repeat what `env list` showed,
+  // or replaces the secrets (signing everyone out) because Convex listed only the names (the fake does that without
+  // --include-values, as Convex 1.48+ does for AI agents).
   it('a prepared backend costs one env list and the signing key check, and keeps the operator\'s admin', async () => {
     const envLocal = 'CONVEX_DEPLOYMENT=anonymous-agent\nBCN_AUTH_PROXY_IP_SECRET=proxy-secret\nSITE_URL=http://localhost:3100\n'
     const envList = 'GINKO_LOCAL=1\nGINKO_MAIL=outbox\nSITE_URL=http://localhost:3100\nGINKO_ADMIN_EMAILS=owner@example.test,second@example.test\nBETTER_AUTH_SECRETS=0:abc\nBCN_AUTH_PROXY_IP_SECRET=proxy-secret\n'
     const { dir, calls, run } = backend(envLocal, envList)
     const admin = await prepareLocalBackend(dir, 'local:dev', () => undefined, run)
-    expect(calls).toEqual([['env', 'list'], ['run', 'auth:ensureSigningKey']])
+    expect(calls).toEqual([['env', 'list', '--include-values'], ['run', 'auth:ensureSigningKey']])
     expect(readFileSync(join(dir, '.env.local'), 'utf8')).toBe(envLocal)
     expect(admin).toBe('owner@example.test')
   })
