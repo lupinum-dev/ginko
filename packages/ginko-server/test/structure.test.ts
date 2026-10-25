@@ -3,6 +3,7 @@ import { printOf } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
+import { tick } from './clock'
 import { errorOf, firstPage, opId, setup } from './setup'
 
 const dish = (name: string) => ({ category: 'starters', name: { de: name }, price: { amount: 900 }, allergens: ['A'], veg: 'none' })
@@ -79,9 +80,10 @@ describe('entries.remove and restore', () => {
     const life = (await as.owner.query(api.entries.removed, { site: 'restaurant', brick: 'notices' }))
     expect(life).toEqual([])
     const lifeRev = (await as.owner.query(api.entries.get, { site: 'restaurant', entry: notice }))!.lifeRev
+    const removedAt = tick()
     await as.owner.mutation(api.entries.remove, { site: 'restaurant', opId: opId(), entry: notice, lifeRev })
     expect(await as.cook.query(api.entries.removed, { site: 'restaurant', brick: 'notices' }))
-      .toEqual([{ _id: notice, title: 'Heute sind wir ausgebucht.', lifeRev: 2, deletedAt: Date.parse('2026-10-05T10:00:00Z') }])
+      .toEqual([{ _id: notice, title: 'Heute sind wir ausgebucht.', lifeRev: 2, deletedAt: removedAt }])
     expect(await as.stranger.query(api.entries.removed, { site: 'andere', brick: 'notices' })).toEqual([])
   })
 
@@ -315,8 +317,10 @@ describe('tasks.prefill', () => {
     await as.owner.mutation(api.proposals.approve, { proposal: proposed.proposal })
     expect(((await t.run((ctx) => ctx.db.get(plan)))!.data as { days: { dish: unknown }[] }).days[1]!.dish).toEqual({ de: 'Kürbisgulasch' })
 
+    // A week ahead the same week is a later one. A fresh backend: Convex time never goes back.
     vi.setSystemTime(new Date('2026-10-06T08:00:00Z'))
-    const later = as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: plan, baseRev: 2, fields })
+    const early = await setup()
+    const later = early.as.cook.mutation(api.entries.save, { site: 'restaurant', opId: opId(), task: 'lunch.lunchWeek', entry: early.entries['plan-kw42']!, baseRev: 1, fields })
     expect((await errorOf(later)).code).toBe('FORBIDDEN')
   })
 })

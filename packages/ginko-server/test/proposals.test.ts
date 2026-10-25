@@ -5,6 +5,7 @@ import type { Schema } from '@lupinum/ginko/internal'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
+import { tick } from './clock'
 import { errorOf, firstPage, opId, people, setup } from './setup'
 
 const NOW = Date.parse('2026-10-08T10:00:00Z')
@@ -148,13 +149,14 @@ describe('approving after the planned publish time', () => {
     expect(sent).toMatchObject({ status: 'open' })
 
     await s.advanceTo(NOW + 3 * HOUR)
+    const now = tick()
     const done = await s.as.owner.mutation(api.proposals.approve, { proposal: (sent as Proposed).proposal })
     expect(done).toMatchObject({ status: 'applied' })
     const published = (await s.row(draft.entry as Id<'entries'>))!
-    expect(published).toMatchObject({ state: 'live', contentAt: NOW + 3 * HOUR })
+    expect(published).toMatchObject({ state: 'live', contentAt: now })
     expect(published.publishAt).toBeUndefined()
     const changes = await s.rows('changes')
-    expect(changes.filter((c) => c.kind === 'publish')).toEqual([expect.objectContaining({ at: NOW + 3 * HOUR, msg: { key: 'history.publishedLate', params: { title: 'Neu' } } })])
+    expect(changes.filter((c) => c.kind === 'publish')).toEqual([expect.objectContaining({ at: now, msg: { key: 'history.publishedLate', params: { title: 'Neu' } } })])
     // Nothing is left to publish later.
     expect(await s.t.run((ctx) => ctx.db.system.query('_scheduled_functions').collect())).not.toContainEqual(expect.objectContaining({ name: 'entries:publishDue', state: { kind: 'pending' } }))
   })

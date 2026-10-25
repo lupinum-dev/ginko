@@ -8,6 +8,7 @@ import { api, internal } from '../convex/_generated/api'
 import type { Id } from '../convex/_generated/dataModel'
 import { bundleOf } from '../convex/bundle'
 import { splitParts } from '../convex/lib/trees'
+import { tick } from './clock'
 import { errorOf, opId, people, setup } from './setup'
 
 type Setup = Awaited<ReturnType<typeof setup>>
@@ -336,14 +337,14 @@ describe('refresh.record (Phase 5 review)', () => {
     const ok = { path: '/', status: 200, rev: '1.1', ok: true }
     const failed = { path: '/menu', status: 500, rev: '1.0', ok: false }
     const lastRefreshAt = async () => (await as.owner.query(api.sites.meta, { site: 'restaurant' })).site.lastRefreshAt
-    vi.setSystemTime(NOW)
     await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly', result: { results: [ok, failed], limited: false } })
     expect(await lastRefreshAt()).toBeNull()
+    const refreshedAt = tick()
     await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-full', result: { results: [ok], limited: false } })
-    expect(await lastRefreshAt()).toBe(NOW)
+    expect(await lastRefreshAt()).toBe(refreshedAt)
     vi.setSystemTime(NOW + 60 * 60 * 1000)
     await as.owner.mutation(internal.refresh.record, { site: 'restaurant', opId: opId(), hash: 'hash-partly-again', result: { results: [ok, failed], limited: false } })
-    expect(await lastRefreshAt()).toBe(NOW)
+    expect(await lastRefreshAt()).toBe(refreshedAt)
   })
 })
 
@@ -394,6 +395,7 @@ describe('retention (daily)', () => {
       await ctx.db.patch(entries['notice-weinabend']!, { data: { text: { de: 'Weinabend.' }, until: '2026-09-09' } })
     })
 
+    const now = tick()
     await t.mutation(internal.retention.daily, {})
 
     const [removed, kept, change] = await t.run(async (ctx) => [
@@ -401,7 +403,7 @@ describe('retention (daily)', () => {
       await ctx.db.get(entries['notice-weinabend']!),
       await ctx.db.query('changes').withIndex('by_entry', (q) => q.eq('entry', entries['notice-urlaub']!)).first(),
     ] as const)
-    expect(removed).toMatchObject({ deletedAt: NOW, lifeRev: 2 })
+    expect(removed).toMatchObject({ deletedAt: now, lifeRev: 2 })
     expect(kept?.deletedAt).toBeUndefined()
     expect(change).toMatchObject({ kind: 'remove', actor: 'system' })
   })
