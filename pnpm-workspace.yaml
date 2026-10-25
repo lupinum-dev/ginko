@@ -40,9 +40,9 @@ minimumReleaseAgeExclude:
 catalog:
   '@better-auth/core': 1.7.7
   '@better-auth/oauth-provider': 1.7.7
-  '@lupinum/better-convex-nuxt': 1.0.0-rc.6
+  '@lupinum/better-convex-nuxt': 1.0.0-rc.7
   better-auth: 1.7.7
-  convex: 1.46.0
+  convex: 1.48.0
 
 auditConfig:
   ignoreGhsas:
