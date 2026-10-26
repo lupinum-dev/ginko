@@ -50,7 +50,7 @@ vi.stubGlobal('useConvexQuery', (fn: string, args: () => unknown, options?: { ke
   }, { immediate: true })
   return list
 })
-const answer = (page: { rows: { _id: string; title: string; state: string; dates: object; gaps: [] }[]; total: number }) => {
+const answer = (page: { rows: { _id: string; title: string; state: string; dates: object; gaps: []; pending?: boolean }[]; total: number }) => {
   list.data.value = page
   list.pending.value = false
   list.isStale.value = false
@@ -143,4 +143,24 @@ test('a failed answer for the removed entries shows the alert while the list is 
     removed.data.value = undefined
     removed.error.value = undefined
   }
+})
+
+// Wrong behaviour caught: a live entry with unpublished changes was greyed out like a draft, so the list said the
+// page was not on the website while it was.
+test('a live entry with unpublished changes is marked but not greyed out like a draft', async () => {
+  const wrapper = mount(defineComponent({ render: () => h(Suspense, null, { default: () => h(ListPage) }) }), {
+    global: { mocks: { shownLabel }, stubs },
+  })
+  await flushPromises()
+  list.error.value = undefined
+  answer({ rows: [
+    { _id: 'e1', title: 'Saibling', state: 'draft', dates: {}, gaps: [] },
+    { _id: 'e2', title: 'Forelle', state: 'live', dates: {}, gaps: [], pending: true },
+  ], total: 2 })
+  await flushPromises()
+  const rows = wrapper.findAll('li[class*="group/row"]')
+  expect(rows.map((r) => [r.text().includes('Entwurf'), r.text().includes('Unveröffentlichte Änderungen'), r.attributes('data-dim')])).toEqual([
+    [true, false, 'true'],
+    [false, true, undefined],
+  ])
 })

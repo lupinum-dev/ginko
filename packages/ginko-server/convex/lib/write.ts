@@ -203,7 +203,7 @@ function placementsOf(fields: Fields, data: Data): Placement[] {
 }
 
 /** Replaces the file references of one holder with exactly `ids`. */
-export async function syncFileRefs(ctx: MutationCtx, site: Id<'sites'>, holder: 'entry' | 'change', holderId: string, ids: Set<string>) {
+export async function syncFileRefs(ctx: MutationCtx, site: Id<'sites'>, holder: 'entry' | 'change' | 'pending', holderId: string, ids: Set<string>) {
   const rows = await ctx.db.query('fileRefs').withIndex('by_holder', (q) => q.eq('holder', holder).eq('holderId', holderId)).collect()
   const have = new Set(rows.map((r) => r.file as string))
   for (const row of rows) if (!ids.has(row.file)) await ctx.db.delete(row._id)

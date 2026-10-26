@@ -128,6 +128,30 @@ export default defineSchema({
     .index('by_entry', ['entry', 'part'])
     .index('by_site', ['site']),
 
+  /**
+   * Unpublished changes of a live entry in a drafts collection (lib/pending.ts): Speichern keeps them here, Veröffentlichen
+   * writes them into the entry through `commitEntry`, Verwerfen deletes the row. One row per entry. Never read by the
+   * bundle, so the website shows only `entries.data`.
+   */
+  pendingChanges: defineTable({
+    site: v.id('sites'),
+    entry: v.id('entries'),
+    brick: v.string(),
+    /** Root field → its unpublished value; null: the field is removed. */
+    fields: v.record(v.string(), v.any()),
+    /** The prints of the leaves under those roots (they replace the entry's prints there). */
+    prints: v.record(v.string(), v.record(v.string(), v.string())),
+    /** Root field → the entry rev its unpublished value was saved at; a live write after it is a conflict at publish. */
+    revs: v.record(v.string(), v.number()),
+    /** Who saved last, when the first and the last save happened (ms). */
+    by: v.string(),
+    since: v.number(),
+    at: v.number(),
+    /** When the changes go online (ms), and the scheduled `entries.publishDue` run. */
+    publishAt: v.optional(v.number()),
+    publishJob: v.optional(v.id('_scheduled_functions')),
+  }).index('by_entry', ['entry']).index('by_site', ['site']),
+
   slugs: defineTable({
     site: v.id('sites'),
     brick: v.string(),
@@ -314,7 +338,7 @@ export default defineSchema({
   fileRefs: defineTable({
     site: v.id('sites'),
     file: v.id('uploads'),
-    holder: v.union(v.literal('entry'), v.literal('change')),
+    holder: v.union(v.literal('entry'), v.literal('change'), v.literal('pending')),
     holderId: v.string(),
     /** Entry holders only: where in the entry the file sits, and whether that image lacks a description in a language of the site. */
     uses: v.optional(v.array(v.object({ path: v.string(), missingAlt: v.boolean() }))),

@@ -487,6 +487,25 @@ describe('the address of a page in another language', () => {
   })
 })
 
+describe('the address of a page in another language, with drafts', () => {
+  // Wrong behaviour caught: the English address made from a title saved as an unpublished change is lost, or moves
+  // online before the change is published.
+  it('waits with the saved title and moves when the changes are published', async () => {
+    const s = await studioSetup({ drafts: true })
+    const slugRows = (entry: Id<'entries'>) => s.t.run(async (ctx) =>
+      (await ctx.db.query('slugs').withIndex('by_entry', (q) => q.eq('entry', entry)).collect()).map((r) => `${r.locale}:${r.slug}`).sort())
+    const wild = await s.createEvent('Wildwoche')
+    await s.as.owner.mutation(api.entries.publish, { site, opId: opId(), entry: wild.entry, lifeRev: 1 })
+    const rev = (await s.row(wild.entry))!.rev
+    await s.as.owner.mutation(api.entries.save, { site, opId: opId(), entry: wild.entry, baseRev: rev, locale: 'en', fields: { title: { en: 'Game week' } } })
+    expect(await slugRows(wild.entry)).toEqual(['de:wildwoche', 'en:wildwoche'])
+    expect((await s.as.owner.query(api.entries.get, { site, entry: wild.entry }))!.data.slug).toEqual({ de: 'wildwoche', en: 'game-week' })
+    await s.as.owner.mutation(api.entries.publish, { site, opId: opId(), entry: wild.entry, lifeRev: 2 })
+    expect(await slugRows(wild.entry)).toEqual(['de:wildwoche', 'en:game-week'])
+    expect((await s.row(wild.entry))!.data.slug).toEqual({ de: 'wildwoche', en: 'game-week' })
+  })
+})
+
 describe('entries.whyNotPublic', () => {
   const codes = (result: { reasons: { code: string }[] }) => result.reasons.map((r) => r.code)
   const why = (s: Awaited<ReturnType<typeof studioSetup>>, entry: string, locale?: string) =>
