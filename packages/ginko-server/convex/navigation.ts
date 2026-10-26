@@ -37,22 +37,26 @@ async function pagesOf(ctx: QueryCtx, site: Id<'sites'>, key: string, brick: Col
   return sortEntries(brick, rows.map((r) => ({ id: r._id, order: r.order, data: r.data }))).map((s) => byId.get(s.id)!)
 }
 
-function outlineRows(schema: Schema, brick: CollectionBrick, pages: Doc<'entries'>[]): OutlineRow[] {
+/**
+ * The pages as core's outline rows: the stored parent (a page in the trash is missing from the rows, so the page is a
+ * root, as on the website), the own section and tab in the main language (the rules run on it), and `draft` for a page
+ * the website does not show.
+ */
+function rowsOf(schema: Schema, brick: CollectionBrick, pages: Doc<'entries'>[]): OutlineRow[] {
   const main = schema.locales[0]!
-  const ids = new Set(pages.map((p) => p._id as string))
   return pages.map((p) => {
     const data = p.data as Data
-    const parent = typeof data.parent === 'string' && ids.has(data.parent) ? data.parent : undefined
+    const parent = typeof data.parent === 'string' ? data.parent : undefined
     const section = textIn(brick.fields.section, data.section, main, main)
     const tab = textIn(brick.fields.tab, data.tab, main, main)
-    return { id: p._id, ...(parent ? { parent } : {}), ...(section ? { section } : {}), ...(tab ? { tab } : {}) }
+    return { id: p._id, ...(parent ? { parent } : {}), ...(section ? { section } : {}), ...(tab ? { tab } : {}), ...((p.state ?? 'live') !== 'live' ? { draft: true } : {}) }
   })
 }
 
 /**
- * The pages of a tree collection in stored order, with what the Studio's tree shows and checks: title, short title,
- * badge, state, parent, own section and tab (in `language`, else the main one) and the revisions a move is based on.
- * Any member may read (SPEC 2.7).
+ * The pages of a tree collection in stored order, as core's outline rows (`outline` builds the website's tree from
+ * them) with what the Studio's tree shows and checks: title, short title, badge, state, the heading labels in
+ * `language` (else the main one) and the revision a move is based on. Any member may read (SPEC 2.7).
  */
 export const tree = query({
   args: { site: v.string(), brick: v.string(), language: v.optional(v.string()) },
@@ -63,16 +67,13 @@ export const tree = query({
     const main = schema.locales[0]!
     const language = (args.language && schema.locales.includes(args.language as Locale) ? args.language : main) as Locale
     const pages = await pagesOf(ctx, actor.site._id, args.brick, brick)
-    const rows = outlineRows(schema, brick, pages)
+    const rows = rowsOf(schema, brick, pages)
     return pages.map((p, i) => {
       const data = p.data as Data
       const text = (key: string) => textIn(brick.fields[key], data[key], language, main) ?? null
       return {
-        _id: p._id, rev: p.rev, state: p.state ?? 'live', publishAt: p.publishAt ?? null,
+        ...rows[i]!, rev: p.rev, state: p.state ?? 'live', publishAt: p.publishAt ?? null,
         title: titleOf(schema, brick, data, language), navTitle: text('navTitle'), badge: text('badge'),
-        // The stored parent even when it is in the trash: the tree says why the page shows elsewhere on the website.
-        parent: typeof data.parent === 'string' ? data.parent : null,
-        section: rows[i]!.section ?? null, tab: rows[i]!.tab ?? null,
         // Labels in the language shown, for the headings (the rules run on the main language).
         sectionLabel: text('section'), tabLabel: text('tab'),
       }
@@ -127,7 +128,7 @@ export const move = mutation({
       refuseChanged(entry, args.baseRev, PLACE_FIELDS)
 
       const pages = await pagesOf(ctx, actor.site._id, entry.brick, brick)
-      const rows = outlineRows(schema, brick, pages)
+      const rows = rowsOf(schema, brick, pages)
       const plan = placePlan(rows, entry._id, args.place as Place)
       if (plan === 'cycle') fail('INVALID', 'errors.placeInsideItself')
       if (plan === 'missing') fail('CHANGED_SINCE', 'errors.placeGone')
@@ -236,7 +237,7 @@ export const heading = mutation({
 
       const main = schema.locales[0]!
       const pages = await pagesOf(ctx, actor.site._id, entry.brick, brick)
-      const roots = outline(outlineRows(schema, brick, pages))
+      const roots = outline(rowsOf(schema, brick, pages))
       const at = roots.findIndex((r) => r.row.id === entry._id)
       // Nested pages follow their parent: the website ignores a heading on them.
       if (at < 0) fail('INVALID', 'errors.headingOnSubpage')
@@ -261,6 +262,8 @@ export const heading = mutation({
         const before = page.data as Data
         const data: Data = { ...before }
         if (!text) delete data[args.field]
+        // A new heading gets the text in the main language too: the structure follows the main language.
+        else if (!old && isTranslatable(field)) data[args.field] = mergeField(field, undefined, { [main]: text, [locale]: text }, undefined)!
         else data[args.field] = mergeField(field, before[args.field] as Json | undefined, isTranslatable(field) ? { [locale]: text } : text, locale)!
         const { errors } = await validate(schema, page.brick, data, { mode: 'patch', changed: new Set([args.field]), ...(await lookupsFor(ctx, actor.site._id, brick.fields, data)) })
         if (errors.length) fail('INVALID', 'errors.pleaseCheckMarkedFields', undefined, { errors: errors as unknown as Json })

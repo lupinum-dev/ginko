@@ -225,6 +225,7 @@
     "uploadFetchFailed": "Le fichier n’a pas pu être téléchargé depuis {url} (statut {status}).",
     "createNeedsCollection": "« {brick} » est un bloc unique : modifiez-le avec ginko_write.",
     "notANavigationTree": "Cette zone n’a pas d’arbre de navigation.",
+    "moveInNavigationTree": "Déplace cette page dans l’arbre de navigation.",
     "placeInsideItself": "Une page ne peut pas aller dans elle-même ni dans une de ses sous-pages.",
     "placeGone": "Cet emplacement n’existe plus : quelqu’un a déplacé ou retiré une page entre-temps.",
     "placeInvalid": "La page ne peut pas aller là.",

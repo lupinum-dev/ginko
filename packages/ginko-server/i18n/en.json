@@ -225,6 +225,7 @@
     "uploadFetchFailed": "The file could not be fetched from {url} (status {status}).",
     "createNeedsCollection": "“{brick}” is a single brick: change it with ginko_write.",
     "notANavigationTree": "This area has no navigation tree.",
+    "moveInNavigationTree": "Move this page in the navigation tree.",
     "placeInsideItself": "A page can’t go inside itself or one of its subpages.",
     "placeGone": "That place no longer exists: someone moved or removed a page meanwhile.",
     "placeInvalid": "The page can’t go there.",

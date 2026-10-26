@@ -225,6 +225,7 @@
     "uploadFetchFailed": "Die Datei konnte nicht von {url} geladen werden (Status {status}).",
     "createNeedsCollection": "„{brick}“ ist ein einzelner Baustein: ändern Sie ihn mit ginko_write.",
     "notANavigationTree": "Dieser Bereich hat keinen Navigationsbaum.",
+    "moveInNavigationTree": "Verschiebe diese Seite im Navigationsbaum.",
     "placeInsideItself": "Eine Seite kann nicht in sich selbst oder eine ihrer Unterseiten.",
     "placeGone": "Diese Stelle gibt es nicht mehr: Inzwischen hat jemand eine Seite verschoben oder entfernt.",
     "placeInvalid": "Die Seite kann dort nicht hin.",

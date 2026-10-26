@@ -46,10 +46,13 @@ async function docsSite(pages: Page[]) {
     }
   })
   const keyOf = (id: string) => Object.entries(ids).find(([, v]) => v === id)![0]
-  /** The tree as the Studio reads it, as "section › parent/child" lines per root (core outline over navigation.tree). */
-  const shape = async () => {
+  /**
+   * The tree as the Studio reads it, as "tab/section: parent(child)" lines per root (core outline over navigation.tree);
+   * `website`: live pages only, as the website shows them.
+   */
+  const shape = async (website = false) => {
     const rows = await s.as.owner.query(api.navigation.tree, { site: 'restaurant', brick: 'docs' })
-    const tree = outline(rows.map((r) => ({ id: r._id, ...(r.parent ? { parent: r.parent } : {}), ...(r.section ? { section: r.section } : {}), ...(r.tab ? { tab: r.tab } : {}) })))
+    const tree = outline(website ? rows.filter((r) => !r.draft) : rows)
     const line = (n: (typeof tree)[number]): string => keyOf(n.row.id) + (n.children.length ? `(${n.children.map(line).join(' ')})` : '')
     return tree.map((n) => `${n.tab ?? '-'}/${n.section ?? '-'}: ${line(n)}`)
   }
@@ -99,6 +102,32 @@ describe('navigation.move', () => {
     expect(await s.shape()).toEqual(['-/Start: intro', '-/Start: setup(install)', '-/Anleitungen: paging', '-/Anleitungen: auth(keys)'])
     const [paging, auth] = await s.t.run(async (ctx) => [await ctx.db.get(s.ids.paging!), await ctx.db.get(s.ids.auth!)])
     expect([paging!.data.section, auth!.data.section]).toEqual([{ de: 'Anleitungen', en: 'Anleitungen (en)' }, undefined])
+  })
+
+  // Wrong behaviour caught: the heading of a moved first page goes to the next stored page although it is a draft, so
+  // the heading vanishes from the website and its live pages join the section before.
+  it('hands a heading over to the next live page, never to a draft', async () => {
+    const s = await docsSite([{ key: 'a', section: 'S' }, { key: 'p', section: 'G' }, { key: 'q', state: 'draft' }, { key: 'r' }])
+    await s.move('p', { after: 'r' })
+    expect(await s.shape(true)).toEqual(['-/S: a', '-/G: r', '-/G: p'])
+    expect((await s.t.run((ctx) => ctx.db.get(s.ids.q!)))!.data.section).toBeUndefined()
+  })
+
+  // Wrong behaviour caught: "Go back to this version" restores the old parent or section of one page, which splits a
+  // section or puts the page inside its own subpages (a move changes several pages; only the tree moves pages).
+  it('going back to an older version leaves the page where the tree put it', async () => {
+    const s = await docsSite(PAGES)
+    const saved = await s.as.owner.mutation(api.entries.save, { site: 'restaurant', opId: opId(), entry: s.ids.paging!, baseRev: 1, fields: { title: { de: 'Blättern' } } }) as { change: string }
+    await s.move('paging', { parent: 'setup', after: 'install' })
+    const moved = await s.shape()
+    await s.as.owner.mutation(api.entries.revert, { site: 'restaurant', opId: opId(), entry: s.ids.paging!, change: saved.change })
+    expect(await s.shape()).toEqual(moved)
+  })
+
+  // Wrong behaviour caught: the list's one-step move on a tree page leaves its subpages and heading behind.
+  it('refuses the list’s one-step move for a tree page', async () => {
+    const s = await docsSite(PAGES)
+    expect(await errorOf(s.as.owner.mutation(api.entries.move, { site: 'restaurant', opId: opId(), entry: s.ids.auth!, direction: 'up' }))).toMatchObject({ code: 'INVALID', key: 'errors.moveInNavigationTree' })
   })
 
   // Wrong behaviour caught: a page put inside its own subpage vanishes from the website's navigation (a cycle).
@@ -153,8 +182,8 @@ describe('navigation.move', () => {
 })
 
 describe('navigation.heading', () => {
-  const heading = (s: Awaited<ReturnType<typeof docsSite>>, key: string, text: string, rev = 1) =>
-    s.as.owner.mutation(api.navigation.heading, { site: 'restaurant', opId: opId(), entry: s.ids[key]!, baseRev: rev, field: 'section', locale: 'de', text })
+  const heading = (s: Awaited<ReturnType<typeof docsSite>>, key: string, text: string, locale = 'de') =>
+    s.as.owner.mutation(api.navigation.heading, { site: 'restaurant', opId: opId(), entry: s.ids[key]!, baseRev: 1, field: 'section', locale, text })
 
   // Wrong behaviour caught: renaming the heading in German overwrites the English one, or renames only the first page
   // so a repeated copy on the next page splits the section in two.
@@ -177,5 +206,15 @@ describe('navigation.heading', () => {
     expect(await s.shape()).toEqual(['-/Start: intro', '-/Start: setup(install)', '-/Start: auth(keys)', '-/Referenz: paging'])
     expect((await s.t.run((ctx) => ctx.db.get(s.ids.auth!)))!.data.section).toBeUndefined()
     expect(await errorOf(heading(s, 'keys', 'Unten'))).toMatchObject({ code: 'INVALID', key: 'errors.headingOnSubpage' })
+  })
+
+  // Wrong behaviour caught: a section started while the Studio shows English exists in English only, so the navigation
+  // (built on the main language) has no such section; renaming it in English must leave German alone.
+  it('starts a heading from another language in the main language too, and renames it there only', async () => {
+    const s = await docsSite(PAGES)
+    await heading(s, 'paging', 'Reference', 'en')
+    expect(await s.shape()).toEqual(['-/Start: intro', '-/Start: setup(install)', '-/Anleitungen: auth(keys)', '-/Reference: paging'])
+    await s.as.owner.mutation(api.navigation.heading, { site: 'restaurant', opId: opId(), entry: s.ids.auth!, baseRev: 1, field: 'section', locale: 'en', text: 'Guides' })
+    expect((await s.t.run((ctx) => ctx.db.get(s.ids.auth!)))!.data.section).toEqual({ de: 'Anleitungen', en: 'Guides' })
   })
 })
