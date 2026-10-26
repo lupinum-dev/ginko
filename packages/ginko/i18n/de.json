@@ -103,6 +103,7 @@
     "linkBroken": "Link {href} führt zu keinem Eintrag und keiner Seite.",
     "linkRedirected": "Link {href} führt über eine Weiterleitung zu {to}.",
     "pathUnknown": "Pfad {path} passt zu keinem Eintrag, keiner Seite und keiner Datei in public/.",
+    "fileBroken": "Datei {file} ({label}) fehlt oder ist noch nicht verarbeitet.",
     "anchorMissing": "Anker #{anchor} fehlt: keine Überschrift mit dieser id.",
     "externalBroken": "Externer Link {href} ist kaputt ({reason})."
   },

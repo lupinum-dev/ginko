@@ -89,6 +89,15 @@ describe('checkLinks', () => {
   it('reports a broken snippet as error', () => {
     expect(run([['snippet', { name: 'gone' }]])).toMatchObject([{ severity: 'error', href: 'snippet:gone' }])
   })
+  // Wrong behaviour caught: an image or file link whose upload is missing renders without src and nobody is told.
+  it.each([
+    ['image with alt', ['img', { alt: 'Hund', 'data-broken': true, 'data-broken-file': 'mn7abc' }], 'Hund'],
+    ['image without alt', ['img', { alt: '', 'data-broken': true, 'data-broken-file': 'mn7abc' }], 'img'],
+    ['file link', ['a', { href: '$file.mn7abc', 'data-broken': true, 'data-broken-file': 'mn7abc' }, 'PDF'], 'a'],
+  ])('reports a broken file reference as error: %s', (_name, node, label) => {
+    expect(run([['p', {}, node]])).toMatchObject([{ severity: 'error', brick: 'blog', id: 'blog/other', href: '$file.mn7abc', params: { file: '$file.mn7abc', label } }])
+    expect(run([['p', {}, node]], { linkCheck: { broken: 'warn' } })).toMatchObject([{ severity: 'warn' }])
+  })
   it('reports an unknown path only when files is given', () => {
     expect(run([link('/nirgends')])).toEqual([])
     expect(run([link('/nirgends')], { files: () => false })).toMatchObject([{ severity: 'error', href: '/nirgends' }])

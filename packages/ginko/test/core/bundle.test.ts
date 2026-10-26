@@ -408,7 +408,7 @@ it('servedBundle resolves $file references in texts to the file, its size, varia
   const brick = bundle.bricks.legal
   expect(brick?.kind === 'single' && (brick.data.imprint as MarkdownTree).nodes).toEqual([
     ['p', {}, ['img', { src: 'https://cdn.example/f1.webp', alt: 'Ein Hund', width: 2400, height: 1600, srcset: 'https://cdn.example/f1-480.webp 480w, https://cdn.example/f1.webp 2400w', sizes: '100vw' }]],
-    ['p', {}, ['img', { alt: 'Eigenes', 'data-broken': true }]],
+    ['p', {}, ['img', { alt: 'Eigenes', 'data-broken': true, 'data-broken-file': 'gone' }]],
     ['p', {}, ['a', { href: 'https://cdn.example/karte.pdf' }, 'Karte']],
     ['figure', { src: 'https://cdn.example/f1.webp', alt: 'Ein Hund', width: 2400, height: 1600, srcset: 'https://cdn.example/f1-480.webp 480w, https://cdn.example/f1.webp 2400w', focal: '25% 12.3%' }],
   ])

@@ -103,6 +103,7 @@
     "linkBroken": "Le lien {href} ne mène à aucune entrée ni aucune page.",
     "linkRedirected": "Le lien {href} mène à {to} par une redirection.",
     "pathUnknown": "Le chemin {path} ne correspond à aucune entrée, aucune page ni aucun fichier de public/.",
+    "fileBroken": "Le fichier {file} ({label}) est absent ou pas encore traité.",
     "anchorMissing": "L’ancre #{anchor} est manquante : aucun titre n’a cet identifiant.",
     "externalBroken": "Le lien externe {href} est cassé ({reason})."
   },

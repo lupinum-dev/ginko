@@ -103,6 +103,7 @@
     "linkBroken": "Il link {href} non porta a nessuna voce né a nessuna pagina.",
     "linkRedirected": "Il link {href} porta a {to} tramite un reindirizzamento.",
     "pathUnknown": "Il percorso {path} non corrisponde a nessuna voce, pagina o file in public/.",
+    "fileBroken": "Il file {file} ({label}) manca o non è ancora elaborato.",
     "anchorMissing": "Manca l’ancora #{anchor}: nessun titolo ha questo id.",
     "externalBroken": "Il link esterno {href} è interrotto ({reason})."
   },

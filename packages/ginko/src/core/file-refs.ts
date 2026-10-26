@@ -159,6 +159,21 @@ export function imagePropsOf(components: ComponentRegistry | undefined): Record<
   return Object.fromEntries(Object.entries(components ?? {}).map(([tag, def]) => [tag, Object.entries(def.props ?? {}).filter(([, field]) => field.type === 'image').map(([name]) => name)]))
 }
 
+/** The `$file.<id>` references that `resolveFileRefs` could not resolve (no such file, or not processed yet), with a label (the image's alt text, else its tag). */
+export function brokenFileRefs(nodes: readonly Json[]): { id: string; label: string }[] {
+  const out: { id: string; label: string }[] = []
+  const visit = (list: readonly Json[]) => {
+    for (const node of list) {
+      if (!isNode(node)) continue
+      const [tag, props] = node
+      if (props['data-broken'] && typeof props['data-broken-file'] === 'string') out.push({ id: props['data-broken-file'], label: String(props.alt ?? '').trim() || tag })
+      visit(node.slice(2))
+    }
+  }
+  visit(nodes)
+  return out
+}
+
 /** One place in a tree that names a library file: an `img` source, a declared component image prop or a link. */
 export interface FileRefUse { id: string; kind: 'img' | 'prop' | 'link'; node: Node; prop: string }
 
@@ -210,6 +225,7 @@ export function resolveFileRefs(bundle: Bundle, schema: Pick<Schema, 'components
       if (!file) {
         if (use.kind !== 'link') delete props[use.prop]
         props['data-broken'] = true
+        props['data-broken-file'] = use.id // lets the link check and the dev warning name the file; the reference itself is gone with `src`
         continue
       }
       props[use.prop] = file.url

@@ -780,6 +780,19 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " passt zu keinem Eintrag, keiner Seite und keiner Datei in public/."
    ],
+   "fileBroken": [
+    "Datei ",
+    [
+     "a",
+     "file"
+    ],
+    " (",
+    [
+     "a",
+     "label"
+    ],
+    ") fehlt oder ist noch nicht verarbeitet."
+   ],
    "anchorMissing": [
     "Anker #",
     [
@@ -2082,6 +2095,19 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " matches no entry, no page and no file in public/."
    ],
+   "fileBroken": [
+    "File ",
+    [
+     "a",
+     "file"
+    ],
+    " (",
+    [
+     "a",
+     "label"
+    ],
+    ") is missing or not processed yet."
+   ],
    "anchorMissing": [
     "Anchor #",
     [
@@ -3383,6 +3409,19 @@ export const compiled: Record<string, MessageTree> = {
      "path"
     ],
     " no coincide con ninguna entrada, página ni archivo de public/."
+   ],
+   "fileBroken": [
+    "Falta el archivo ",
+    [
+     "a",
+     "file"
+    ],
+    " (",
+    [
+     "a",
+     "label"
+    ],
+    ") o aún no está procesado."
    ],
    "anchorMissing": [
     "Falta el ancla #",
@@ -4688,6 +4727,19 @@ export const compiled: Record<string, MessageTree> = {
     ],
     " ne correspond à aucune entrée, aucune page ni aucun fichier de public/."
    ],
+   "fileBroken": [
+    "Le fichier ",
+    [
+     "a",
+     "file"
+    ],
+    " (",
+    [
+     "a",
+     "label"
+    ],
+    ") est absent ou pas encore traité."
+   ],
    "anchorMissing": [
     "L’ancre #",
     [
@@ -5990,6 +6042,19 @@ export const compiled: Record<string, MessageTree> = {
      "path"
     ],
     " non corrisponde a nessuna voce, pagina o file in public/."
+   ],
+   "fileBroken": [
+    "Il file ",
+    [
+     "a",
+     "file"
+    ],
+    " (",
+    [
+     "a",
+     "label"
+    ],
+    ") manca o non è ancora elaborato."
    ],
    "anchorMissing": [
     "Manca l’ancora #",
@@ -7464,6 +7529,19 @@ export const compiled: Record<string, MessageTree> = {
      "path"
     ],
     " لا يطابق أي إدخال أو صفحة أو ملف في public/."
+   ],
+   "fileBroken": [
+    "الملف ",
+    [
+     "a",
+     "file"
+    ],
+    " (",
+    [
+     "a",
+     "label"
+    ],
+    ") مفقود أو لم تتم معالجته بعد."
    ],
    "anchorMissing": [
     "المرجع #",
