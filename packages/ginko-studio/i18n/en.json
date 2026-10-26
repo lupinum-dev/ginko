@@ -141,7 +141,9 @@
     "status": {
       "online": "Online",
       "onlineFrom": "Online from {when}",
-      "draft": "Draft"
+      "draft": "Draft",
+      "changes": "Unpublished changes",
+      "changesFrom": "Changes online from {when}"
     },
     "save": {
       "waiting": "Waiting for connection …",
@@ -196,7 +198,8 @@
       "go": "Publish",
       "review": "Send for review",
       "asDraft": "Save as draft",
-      "laterOpen": "Publish later"
+      "laterOpen": "Publish later",
+      "changesWhen": "When should the changes to “{title}” go online?"
     },
     "unpublish": {
       "button": "Take offline",
@@ -230,7 +233,10 @@
     "discard": {
       "question": "Discard changes?",
       "confirm": "Discard",
-      "keepEditing": "Keep editing"
+      "keepEditing": "Keep editing",
+      "menu": "Discard changes …",
+      "warning": "Your unpublished changes to “{title}” will be lost. The website stays as it is.",
+      "button": "Discard"
     },
     "gone": {
       "text": "Someone removed this entry. Your changes are still here.",
@@ -279,8 +285,11 @@
       "label": "Details",
       "status": "Status",
       "draftNote": "Not on the website yet. Publish it when it is ready.",
-      "scheduledNote": "It goes online by itself at that time."
-    }
+      "scheduledNote": "It goes online by itself at that time.",
+      "changesNote": "Saved, but not on the website yet. It shows the previous version until you publish.",
+      "changesScheduledNote": "The changes go online on their own at that time."
+    },
+    "savedNotLive": "Saved, not online yet"
   },
   "site": {
     "zoneNote": "All times are in the website's time zone ({zone}).",
@@ -514,7 +523,9 @@
     "drafts": {
       "since": "Draft since {date}",
       "goesLive": "Goes live {date}",
-      "all": "All drafts in Content"
+      "all": "All drafts in Content",
+      "changesSince": "Unpublished changes since {date}",
+      "changesGoLive": "Changes go online {date}"
     }
   },
   "editor": {
@@ -843,7 +854,13 @@
     },
     "purged": "“{title}” deleted for good.",
     "draftCreated": "Saved as a draft.",
-    "scheduledGoesLive": "Scheduled. Goes live {date}."
+    "scheduledGoesLive": "Scheduled. Goes live {date}.",
+    "changesSaved": "Saved. Not on the website yet: publish the changes when they are ready.",
+    "savedLikeLive": "Saved. It matches the version on the website again.",
+    "changesPublished": "Changes published.",
+    "changesScheduled": "Scheduled: changes online from {time}.",
+    "changesScheduleCleared": "Schedule cancelled. The changes stay saved, but not online yet.",
+    "changesDiscarded": "Changes discarded. The version on the website applies again."
   },
   "review": {
     "title": "{site} · Review",

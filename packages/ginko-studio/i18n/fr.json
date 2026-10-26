@@ -141,7 +141,9 @@
     "status": {
       "online": "En ligne",
       "onlineFrom": "En ligne à partir du {when}",
-      "draft": "Brouillon"
+      "draft": "Brouillon",
+      "changes": "Modifications non publiées",
+      "changesFrom": "Modifications en ligne à partir du {when}"
     },
     "save": {
       "waiting": "En attente de connexion…",
@@ -196,7 +198,8 @@
       "go": "Publier",
       "review": "Envoyer pour relecture",
       "asDraft": "Enregistrer comme brouillon",
-      "laterOpen": "Publier plus tard"
+      "laterOpen": "Publier plus tard",
+      "changesWhen": "Quand les modifications de « {title} » doivent-elles passer en ligne ?"
     },
     "unpublish": {
       "button": "Mettre hors ligne",
@@ -230,7 +233,10 @@
     "discard": {
       "question": "Abandonner les modifications ?",
       "confirm": "Abandonner",
-      "keepEditing": "Continuer à modifier"
+      "keepEditing": "Continuer à modifier",
+      "menu": "Abandonner les modifications …",
+      "warning": "Vos modifications non publiées de « {title} » seront perdues. Le site reste tel qu’il est.",
+      "button": "Abandonner"
     },
     "gone": {
       "text": "Quelqu’un a supprimé cette entrée. Vos modifications sont toujours là.",
@@ -279,8 +285,11 @@
       "label": "Détails",
       "status": "Statut",
       "draftNote": "Pas encore sur le site. Publiez-le quand il est prêt.",
-      "scheduledNote": "Il sera mis en ligne automatiquement à ce moment-là."
-    }
+      "scheduledNote": "Il sera mis en ligne automatiquement à ce moment-là.",
+      "changesNote": "Enregistré, mais pas encore sur le site. Il montre la version précédente jusqu’à ce que vous publiiez.",
+      "changesScheduledNote": "Les modifications passent en ligne d’elles-mêmes à ce moment-là."
+    },
+    "savedNotLive": "Enregistré, pas encore en ligne"
   },
   "site": {
     "zoneNote": "Toutes les heures sont dans le fuseau horaire du site web ({zone}).",
@@ -514,7 +523,9 @@
     "drafts": {
       "since": "Brouillon depuis le {date}",
       "goesLive": "En ligne le {date}",
-      "all": "Tous les brouillons dans Contenu"
+      "all": "Tous les brouillons dans Contenu",
+      "changesSince": "Modifications non publiées depuis {date}",
+      "changesGoLive": "Les modifications passent en ligne {date}"
     }
   },
   "editor": {
@@ -843,7 +854,13 @@
     },
     "purged": "« {title} » supprimé définitivement.",
     "draftCreated": "Enregistré comme brouillon.",
-    "scheduledGoesLive": "Planifié. En ligne le {date}."
+    "scheduledGoesLive": "Planifié. En ligne le {date}.",
+    "changesSaved": "Enregistré. Pas encore sur le site : publiez les modifications quand elles sont prêtes.",
+    "savedLikeLive": "Enregistré. Cela correspond de nouveau à la version du site.",
+    "changesPublished": "Modifications publiées.",
+    "changesScheduled": "Programmé : modifications en ligne à partir du {time}.",
+    "changesScheduleCleared": "Programmation annulée. Les modifications restent enregistrées, mais pas encore en ligne.",
+    "changesDiscarded": "Modifications abandonnées. La version du site s’applique de nouveau."
   },
   "review": {
     "title": "{site} · Relecture",

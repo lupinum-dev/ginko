@@ -86,6 +86,7 @@ function lastingOps() {
     undo: useConvexMutation(api.entries.undo),
     publish: useConvexMutation(api.entries.publish),
     unpublish: useConvexMutation(api.entries.unpublish),
+    discard: useConvexMutation(api.entries.discard),
     move: useConvexMutation(api.entries.move),
   }
 }
@@ -103,7 +104,7 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
   const purge = useConvexMutation(api.entries.purge)
   const lasting = inject(LASTING)
   if (!lasting) throw new Error('provideLastingOps() is missing in app.vue')
-  const { remove, restore, undo, publish, unpublish, move } = lasting
+  const { remove, restore, undo, publish, unpublish, discard, move } = lasting
   /** Nothing was written: say so and offer no Undo. The server does not name the approver, so neither does the message. */
   const sentForApproval = () => show(t('review.sent'))
 
@@ -175,6 +176,38 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     return result
   }
 
+  /**
+   * Puts a live entry's unpublished changes online, now or at `at`; `rev` is the version the person saw. A planned
+   * publish offers Rückgängig (the time goes, the changes stay); one done now is undone from the history.
+   */
+  async function publishChanges(entry: string, lifeRev: number, rev: number, opts: { at?: number; task?: string; timeZone: string; main: string }) {
+    const result = await publish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev, rev, at: opts.at })
+    if (isProposal(result)) { sentForApproval(); return result }
+    if (opts.at === undefined) {
+      show([t('ops.changesPublished'), t('ops.liveHint'), noteOf(result.translation, opts.main)].filter(Boolean).join(' '))
+      return result
+    }
+    show(t('ops.changesScheduled', { time: whenText(opts.at, opts.timeZone, format) }), {
+      action: { label: t('ops.undo'), run: async () => { await clearChangesSchedule(entry, lifeRev, opts.task).catch((e) => show(opErrorOf(e).message, { tone: 'err' })) } },
+    })
+    return result
+  }
+
+  /** Takes the time off planned unpublished changes; the entry stays online and the changes stay saved. */
+  async function clearChangesSchedule(entry: string, lifeRev: number, task?: string) {
+    const result = await unpublish.mutate({ site: site.value, opId: opId(), task, entry, lifeRev })
+    if (isProposal(result)) { sentForApproval(); return result }
+    show(t('ops.changesScheduleCleared'))
+    return result
+  }
+
+  /** Verwerfen: the unpublished changes go, the website keeps its version. Not undoable, so the editor asks first. */
+  async function discardChanges(entry: string, rev: number, task?: string) {
+    const result = await discard.mutate({ site: site.value, opId: opId(), task, entry, rev })
+    show(t('ops.changesDiscarded'))
+    return result
+  }
+
   /** A live entry goes back to being a draft; a scheduled draft (`wasLive: false`, its time in `at`) loses its time. `main` as for publishEntry (its undo). */
   async function unpublishEntry(entry: string, lifeRev: number, opts: { task?: string; timeZone: string; wasLive: boolean; at?: number; main: string }) {
     const result = await unpublish.mutate({ site: site.value, opId: opId(), task: opts.task, entry, lifeRev })
@@ -229,6 +262,9 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
     liveText,
     revertEntry,
     moveEntry,
+    publishChanges,
+    clearChangesSchedule,
+    discardChanges,
     /**
      * Saves changed root fields. Throws OpError; on success shows the message with Rückgängig. The message also says
      * what the other languages show now (the server's `translation`), named from the site's `main` locale.
@@ -242,6 +278,11 @@ export function useOps(site: Ref<string> | ComputedRef<string>) {
           return { proposal: result.proposal }
         }
         const change = 'change' in result ? result.change : undefined
+        // A live entry of a collection with drafts keeps the save unpublished: the message says so, and there is nothing to undo on the website.
+        if ('pending' in result) {
+          show(result.pending ? t('ops.changesSaved') : t('ops.savedLikeLive'))
+          return { proposal: undefined, rev: result.rev }
+        }
         // A draft is not on the website, so the message does not promise it (SPEC 15).
         const text = args.draft ? t('ops.draftSaved') : [t('ops.saved'), liveText(result), noteOf('translation' in result ? result.translation : undefined, args.main)].filter(Boolean).join(' ')
         show(text, change ? { action: { label: t('ops.undo'), run: () => undoChange(change, args.task) } } : {})
