@@ -774,7 +774,7 @@ onBeforeUnmount(() => { bottomBar.value = 0 })
         <p v-if="problem" class="rounded-md bg-destructive/10 px-3 py-2.5 font-medium text-destructive" role="alert">{{ problem }}</p>
         <p v-if="readOnly" class="rounded-md bg-muted px-3 py-2.5 text-muted-foreground" role="status">{{ readOnlyNote }}</p>
 
-        <NavPlace v-if="navTree" :slug="site.slug" :brick-key="brickKey" :entry="entry?._id" :place="place" :language="locale" />
+        <NavPlace v-if="navTree" :slug="site.slug" :brick-key="brickKey" :entry="entry?._id" :place="place" :language="locale" :new-draft="brick.kind === 'collection' && brick.drafts === true" />
         <EntryFields v-bind="fieldProps" :entries="mainUngrouped" @update="setField" />
         <template v-if="tabbed">
           <Tabs v-if="mainGroups.length" v-model="activeTab">

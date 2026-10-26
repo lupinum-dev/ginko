@@ -74,8 +74,10 @@ function warningOf(p: Page): { short: string; text: string } | undefined {
   const parent = p.parent ? byId.value.get(p.parent) : undefined
   if (parent && parent.state !== 'live' && p.state === 'live') return { short: t('site.tree.elsewhere'), text: t('site.tree.draftParent', { parent: parent.navTitle || parent.title || '' }) }
   if (parent && p.section) return { short: t('site.tree.unusedSection'), text: t('site.tree.unusedSectionText', { section: p.sectionLabel ?? p.section }) }
-  // The website does not show a draft, so the heading it holds is not there either until it is published.
-  const held = p.section ? (p.sectionLabel ?? p.section) : p.tab ? (p.tabLabel ?? p.tab) : undefined
+  // The website does not show a draft, so a heading it starts is not there either until it is published. (A copy of
+  // the next live page's heading counts: the draft leads that section, Ginko shows it there.)
+  const node = nodes.value.get(p.id)
+  const held = p.section && node?.section !== p.section ? (p.sectionLabel ?? p.section) : p.tab && node?.tab !== p.tab ? (p.tabLabel ?? p.tab) : undefined
   if (!parent && p.draft && held) return { short: t('site.tree.draftHeading'), text: t('site.tree.draftHeadingText', { name: held }) }
   return undefined
 }

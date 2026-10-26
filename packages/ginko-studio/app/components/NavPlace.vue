@@ -6,7 +6,7 @@ import { api } from '#convex/api'
 import { applyPlace, navTabs, outline, placePlan, walkOutline, type OutlineRow, type Place } from '@lupinum/ginko/internal'
 import { Button } from '@studio/components/ui/button'
 
-const props = defineProps<{ slug: string; brickKey: string; entry?: string; place?: Place; language: string }>()
+const props = defineProps<{ slug: string; brickKey: string; entry?: string; place?: Place; language: string; newDraft?: boolean }>()
 const { t } = useI18n()
 const query = useConvexQuery(api.navigation.tree, () => ({ site: props.slug, brick: props.brickKey, language: props.language }))
 // Stands for the page that does not exist yet; no stored id is empty.
@@ -18,8 +18,9 @@ const crumbs = computed(() => {
   let rows: OutlineRow[] = pages
   const id = props.entry ?? NEW
   if (id === NEW) {
-    // A new page is stored last, without section or parent (entries.create); then it moves to its place.
-    rows = [...rows, { id }]
+    // A new page is stored last, without section or parent (entries.create), a draft where the area has drafts; then
+    // it moves to its place.
+    rows = [...rows, { id, ...(props.newDraft ? { draft: true } : {}) }]
     const plan = props.place && placePlan(rows, id, props.place)
     if (plan && typeof plan !== 'string') rows = applyPlace(rows, plan)
   }

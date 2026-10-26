@@ -61,6 +61,7 @@ test('shows pages where the website shows them and flags a live page under a dra
   expect(wrapper.findAll('h3').map((h) => h.text())).toEqual(['Start', 'Anleitungen'])
   expect(wrapper.find('[data-tree-row="rate"]').text()).toContain('Auf der Website auf der obersten Ebene, bis „limits“ veröffentlicht ist.')
   expect(wrapper.find('[data-tree-row="soon"]').text()).toContain('„Bald“ erscheint auf der Website erst, wenn diese Seite veröffentlicht ist.')
+  expect(['limits', 'soon', 'intro'].map((id) => wrapper.find(`[data-tree-row="${id}"]`).text().includes('Entwurf'))).toEqual([true, true, false])
   expect(wrapper.find('[data-tree-row="budget"]').text()).not.toContain('Steht woanders')
 })
 
