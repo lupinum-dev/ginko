@@ -458,6 +458,20 @@ describe('block menu', () => {
     expect(editor.state.selection.from).toBe(5)
   })
 
+  // Wrong behaviour caught: TipTap focuses the text once more a frame after a focus command (on Android at once and
+  // again then). Landing after the menu had opened, that late focus closed it, and the next Escape asked to discard the
+  // task sheet instead of closing the menu.
+  test('a late focus of the text does not close the menu', async () => {
+    const wrapper = await mounted({ text: 'Eins\n' })
+    editorOf(wrapper).commands.focus('end')
+    const input = await openMenu(wrapper)
+    editorOf(wrapper).view.focus()
+    await wait(50)
+    await flushPromises()
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    expect(document.activeElement).toBe(input)
+  })
+
   test('arrow keys move the choice, Escape closes without a change', async () => {
     const wrapper = await mounted({ text: 'Eins\n' })
     editorOf(wrapper).commands.focus('end')

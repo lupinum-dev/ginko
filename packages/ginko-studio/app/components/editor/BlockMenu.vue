@@ -17,7 +17,7 @@ import { filterSlashItems, isTaskItem, runSlashItem, slashItemsAt, type SlashIte
 import { Button } from '@studio/components/ui/button'
 import { Command, CommandGroup, CommandItem, CommandList } from '@studio/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@studio/components/ui/popover'
-import { useEditorTick } from './context.ts'
+import { keepOpenOnTextFocus, useEditorTick } from './context.ts'
 
 const props = defineProps<{
   editor: Editor
@@ -116,6 +116,7 @@ function closed(event: Event) {
   if (item?.id === 'image') return
   if (!props.editor.isDestroyed) props.editor.commands.focus()
 }
+const keepOpen = keepOpenOnTextFocus(() => props.editor, () => open.value)
 const partId = (item: SlashItem, part: 'label' | 'describe') => `${uid}-${item.id.replace(/\W/g, '-')}-${part}`
 const isCurrent = (item: SlashItem) => item.kind === 'style' && item.id === current.value
 </script>
@@ -136,7 +137,7 @@ const isCurrent = (item: SlashItem) => item.kind === 'style' && item.id === curr
         <ChevronDown class="size-4 opacity-50" aria-hidden="true" />
       </Button>
     </PopoverTrigger>
-    <PopoverContent align="start" class="w-80 max-w-[calc(100vw-1rem)] p-0" @open-auto-focus.prevent @close-auto-focus="closed">
+    <PopoverContent align="start" class="w-80 max-w-[calc(100vw-1rem)] p-0" @open-auto-focus.prevent @close-auto-focus="closed" @focus-outside="keepOpen">
       <Command ref="command" loop @highlight="highlighted = $event?.ref">
         <div data-slot="command-input-wrapper" class="flex h-10 items-center gap-2 border-b px-3 pointer-coarse:h-11">
           <Search class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
