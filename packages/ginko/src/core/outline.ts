@@ -19,11 +19,11 @@ export interface Grouped { tab?: string; section?: string }
  * The tab and section of each root, in order: a root without a tab follows the one before it; a new tab starts without
  * a section; a section runs until the next one. (Children always follow their parent and carry no section.)
  */
-export function navGroups<T>(roots: readonly T[], fieldsOf: (root: T) => GroupFields | undefined): Grouped[] {
+export function navGroups<T>(roots: readonly T[], fieldsOf: (root: T, index: number) => GroupFields | undefined): Grouped[] {
   let tab: string | undefined
   let section: string | undefined
-  return roots.map((root) => {
-    const own = fieldsOf(root)
+  return roots.map((root, index) => {
+    const own = fieldsOf(root, index)
     if (own?.tab && own.tab !== tab) section = undefined
     tab = own?.tab ?? tab
     section = own?.section ?? section
@@ -56,7 +56,8 @@ export function navTabs<T extends Grouped>(roots: readonly T[]): NavTab<T>[] {
 
 /**
  * One page of the collection, in stored order: its id, its `parent` (an id) and its own section and tab texts. `draft`:
- * not on the website, so its own section and tab do nothing there; it follows the running ones.
+ * not on the website. Its own section or tab counts only where it repeats the next live page's (a draft put first in
+ * a section, which leads it once published); otherwise it follows the running ones.
  */
 export interface OutlineRow extends GroupFields { id: string; parent?: string; draft?: boolean }
 export interface OutlineNode<R extends OutlineRow = OutlineRow> extends Grouped { row: R; children: OutlineNode<R>[] }
@@ -69,8 +70,15 @@ export function outline<R extends OutlineRow>(rows: readonly R[]): OutlineNode<R
   const nodes = rows.map((row): OutlineNode<R> => ({ row, children: [] }))
   const byId = new Map(nodes.map((n) => [n.row.id, n]))
   const roots = nestBy(nodes, (n) => (n.row.parent !== undefined ? byId.get(n.row.parent) : undefined), (n) => n.children)
-  navGroups(roots, (n) => (n.row.draft ? undefined : n.row)).forEach((g, i) => Object.assign(roots[i]!, g))
+  navGroups(roots, (n, i) => (n.row.draft ? draftFields(n.row, roots.slice(i + 1).find((r) => !r.row.draft)?.row) : n.row)).forEach((g, i) => Object.assign(roots[i]!, g))
   return roots
+}
+
+/** The own fields of a draft root that count: those the next live root repeats. */
+function draftFields(draft: OutlineRow, next: OutlineRow | undefined): GroupFields | undefined {
+  const tab = draft.tab && draft.tab === next?.tab ? draft.tab : undefined
+  const section = draft.section && draft.section === next?.section ? draft.section : undefined
+  return tab || section ? { ...(tab ? { tab } : {}), ...(section ? { section } : {}) } : undefined
 }
 
 /** Every node of the tree, parents before their children, siblings in order. */
@@ -144,8 +152,10 @@ export function placePlan(rows: readonly OutlineRow[], id: string, place: Place)
   const want = new Map<string, Grouped>(outline(live(rows)).map((r) => [r.row.id, { tab: r.tab, section: r.section }]))
   // The block brings no headings: a page of it that the website shows as a root (under a draft) takes the running ones.
   for (const x of block) want.delete(x)
-  // Next to a live root: its groups. Next to a draft: the running ones there (a draft's own follow its neighbours).
-  const placeGoal = parent === undefined ? want.get(anchor!) : undefined
+  // Before a root: its groups, as the Studio shows them (a draft leading a section has its heading). After a live root:
+  // its groups; after a draft: the running ones there (a draft's groups follow its neighbours, the moved page included).
+  const before = 'before' in place ? node.get(place.before)! : undefined
+  const placeGoal = before ? { tab: before.tab, section: before.section } : parent === undefined ? want.get(anchor!) : undefined
   if (placeGoal) want.set(id, placeGoal)
   // Already there. (Just before the first page of the next section is another place: the first in that section.)
   const sameGroup = !placeGoal || (me.tab === placeGoal.tab && me.section === placeGoal.section)
@@ -198,6 +208,13 @@ export function placePlan(rows: readonly OutlineRow[], id: string, place: Place)
       write(r.id, { section: null })
     }
     section = r.section || section
+  }
+  // A draft put first in a section gets a copy of its heading (the live page keeps its own): the Studio shows it there,
+  // and once published it leads the section on the website too.
+  if (moved.draft && 'before' in place) {
+    const head = byId.get(place.before)!
+    if (head.section) write(id, { section: { from: source('section', head.section) } })
+    if (head.tab) write(id, { tab: { from: source('tab', head.tab) } })
   }
   // A write back to the stored value is no write.
   for (const [page, p] of Object.entries(patch)) {

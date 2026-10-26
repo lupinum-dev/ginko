@@ -139,8 +139,7 @@ describe('placePlan', () => {
       expect(newParent, JSON.stringify({ rows, id, place })).toBe('parent' in place ? place.parent : undefined)
       if (!('parent' in place)) {
         const anchor = after.find((n) => n.row.id === ('after' in place ? place.after : place.before))!
-        // A draft takes no heading, so it cannot be the first page of a section (it shows the running one).
-        if (!('before' in place && rows.find((r) => r.id === id)!.draft)) expect([moved.tab, moved.section], JSON.stringify({ rows, id, place })).toEqual([anchor.tab, anchor.section])
+        expect([moved.tab, moved.section], JSON.stringify({ rows, id, place })).toEqual([anchor.tab, anchor.section])
         const roots = after.map((n) => n.row.id)
         expect(roots.indexOf(id) - roots.indexOf(anchor.row.id), JSON.stringify({ rows, id, place })).toBe('after' in place ? 1 : -1)
       } else {
