@@ -421,6 +421,8 @@
       "trashParent": "Auf der Website auf der obersten Ebene: Die übergeordnete Seite ist im Papierkorb.",
       "unusedSection": "Abschnitt ohne Wirkung",
       "unusedSectionText": "Ihr Abschnitt „{section}“ wirkt nicht: Unterseiten haben keinen Abschnitt. Beim Verschieben fällt er weg.",
+      "draftHeading": "Überschrift wartet",
+      "draftHeadingText": "„{name}“ erscheint auf der Website erst, wenn diese Seite veröffentlicht ist.",
       "emptyTitle": "Überschrift „{name}“ entfernen?",
       "emptyText": "„{title}“ ist die einzige Seite unter „{name}“. Wenn du sie verschiebst, verschwindet diese Überschrift aus der Navigation.",
       "emptyConfirm": "Verschieben und Überschrift entfernen",

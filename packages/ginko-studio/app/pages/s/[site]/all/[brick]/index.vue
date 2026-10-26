@@ -59,6 +59,8 @@ const single = useConvexQuery(api.entries.single, () => (brick.value?.kind === '
 const manual = computed(() => brick.value?.kind === 'collection' && brick.value.order === 'manual')
 // A docs-like collection shows its navigation as the website does; a search or sort shows the plain list.
 const tree = computed(() => !!brick.value && isNavTree(key.value, brick.value) && !narrowed.value)
+// The tree's titles and headings follow the Studio's language when the site has it (headings are renamed in it).
+const treeLanguage = computed(() => s.schema.value?.locales.find((l) => l === uiLocale.value) ?? s.main.value)
 const canCreate = computed(() => !!access.value && (access.value.all || !!access.value.create))
 
 const rowTitle = (row: Row) => row.title ?? (brick.value ? shown(brick.value.label) : '')
@@ -123,7 +125,7 @@ const ops = useOps(s.slug)
       <p v-else-if="!total" class="rounded-xl border bg-card px-4 py-8 text-center text-muted-foreground min-[900px]:text-sm">{{ t('basics.views.noMatch') }}</p>
       <NavTree
         v-else-if="tree && brick.kind === 'collection'"
-        :slug="s.slug.value" :brick-key="key" :brick="brick" :can-arrange="s.isManager.value" :can-create="canCreate" :language="s.main.value"
+        :slug="s.slug.value" :brick-key="key" :brick="brick" :can-arrange="s.isManager.value" :can-create="canCreate" :language="treeLanguage"
       />
       <template v-else>
         <ol class="m-0 list-none divide-y overflow-hidden rounded-xl border bg-card p-0 transition-opacity aria-busy:opacity-60" :aria-busy="loading || undefined">

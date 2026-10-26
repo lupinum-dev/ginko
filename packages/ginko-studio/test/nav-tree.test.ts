@@ -21,8 +21,8 @@ type Row = { _id: string; rev?: number; state?: string; parent?: string; section
 const data = ref<unknown>()
 const pages = (rows: Row[]) => {
   data.value = rows.map((r) => ({
-    _id: r._id, rev: r.rev ?? 3, state: r.state ?? 'live', publishAt: null, title: r._id, navTitle: null, badge: null,
-    parent: r.parent ?? null, section: r.section ?? null, tab: null, sectionLabel: r.section ?? null, tabLabel: null,
+    id: r._id, ...(r.parent ? { parent: r.parent } : {}), ...(r.section ? { section: r.section } : {}), ...(r.state === 'draft' ? { draft: true } : {}),
+    rev: r.rev ?? 3, state: r.state ?? 'live', publishAt: null, title: r._id, navTitle: null, badge: null, sectionLabel: r.section ?? null, tabLabel: null,
   }))
 }
 const placeEntry = vi.fn(async () => true)
@@ -49,15 +49,18 @@ const order = (wrapper: Awaited<ReturnType<typeof view>>) => wrapper.findAll('[d
 const alt = (wrapper: Awaited<ReturnType<typeof view>>, id: string, key: string) => wrapper.find(`[data-tree-link="${id}"]`).trigger('keydown', { key, altKey: true })
 
 // Wrong behaviour caught: the tree shows the stored list instead of the website, so a page nested under one of another
-// section appears in the wrong section, and a live page whose parent is still a draft (top level on the website) looks fine.
-test('shows pages where the website shows them and flags a live page under a draft parent', async () => {
+// section appears in the wrong section, a live page whose parent is still a draft (top level on the website) looks
+// fine, and a draft's heading (not on the website) groups the live pages after it.
+test('shows pages where the website shows them and flags a live page under a draft parent and a draft heading', async () => {
   const wrapper = await view([
     { _id: 'intro', section: 'Start' }, { _id: 'errors' }, { _id: 'auth', section: 'Anleitungen' },
     { _id: 'budget', parent: 'errors' }, { _id: 'limits', state: 'draft' }, { _id: 'rate', parent: 'limits' },
+    { _id: 'soon', state: 'draft', section: 'Bald' }, { _id: 'paging' },
   ])
-  expect(order(wrapper)).toEqual(['intro', 'errors', 'budget', 'auth', 'limits', 'rate'])
+  expect(order(wrapper)).toEqual(['intro', 'errors', 'budget', 'auth', 'limits', 'rate', 'soon', 'paging'])
   expect(wrapper.findAll('h3').map((h) => h.text())).toEqual(['Start', 'Anleitungen'])
   expect(wrapper.find('[data-tree-row="rate"]').text()).toContain('Auf der Website auf der obersten Ebene, bis „limits“ veröffentlicht ist.')
+  expect(wrapper.find('[data-tree-row="soon"]').text()).toContain('„Bald“ erscheint auf der Website erst, wenn diese Seite veröffentlicht ist.')
   expect(wrapper.find('[data-tree-row="budget"]').text()).not.toContain('Steht woanders')
 })
 
@@ -74,8 +77,9 @@ test('Alt+↓ on the last page of a section makes it first under the next headin
   expect(placeEntry).toHaveBeenLastCalledWith('setup', 8, { after: 'intro' })
 })
 
-// Wrong behaviour caught: moving the only page under a heading silently removes that heading from the website.
-test('moving the only page under a heading asks first and moves only after the yes', async () => {
+// Wrong behaviour caught: moving the only page under a heading silently removes that heading from the website, or
+// then offers an Undo that cannot bring the heading back.
+test('moving the only page under a heading asks first, moves only after the yes, and offers no Undo', async () => {
   const wrapper = await view([{ _id: 'a', section: 'Start' }, { _id: 'b' }, { _id: 'c', section: 'Mehr' }])
   await alt(wrapper, 'c', 'ArrowUp')
   await flushPromises()
@@ -85,6 +89,7 @@ test('moving the only page under a heading asks first and moves only after the y
   yes.click()
   await flushPromises()
   expect(placeEntry).toHaveBeenCalledWith('c', 3, { after: 'b' }, expect.anything())
+  expect((placeEntry.mock.calls[0] as unknown as [string, number, unknown, { undo?: unknown }])[3].undo).toBeUndefined()
 })
 
 // Wrong behaviour caught: dropping a page onto the middle of another puts it next to that page instead of inside it.
@@ -98,4 +103,26 @@ test('dropping onto the middle of a page puts the dragged page inside it, after 
   await wrapper.find('[data-tree-row="auth"]').trigger('dragover', { clientX: 50, clientY: 20 })
   await wrapper.find('section > div.rounded-xl').trigger('drop')
   expect(placeEntry).toHaveBeenCalledWith('paging', 3, { parent: 'auth', after: 'keys' }, expect.anything())
+})
+
+// Wrong behaviour caught: a drop on the empty part of the list moves the page to the last row it passed over.
+test('a drop away from rows and headings moves nothing', async () => {
+  const wrapper = await view([{ _id: 'auth' }, { _id: 'paging' }])
+  await wrapper.find('[data-tree-row="paging"]').trigger('dragstart', { dataTransfer: { setData: () => {}, effectAllowed: '' } })
+  await wrapper.find('[data-tree-row="auth"]').trigger('dragover', { clientX: 50, clientY: 5 })
+  const list = wrapper.find('section > div.rounded-xl')
+  await list.trigger('dragover')
+  await list.trigger('drop')
+  expect(placeEntry).not.toHaveBeenCalled()
+})
+
+// Wrong behaviour caught: a keyboard user cannot open or close a page's subpages (only a mouse reaches the arrow).
+test('→ opens a closed page, ← closes it', async () => {
+  const wrapper = await view([{ _id: 'auth' }, { _id: 'keys', parent: 'auth' }])
+  await wrapper.find('[data-tree-row="auth"] button[tabindex="-1"]').trigger('click')
+  expect(order(wrapper)).toEqual(['auth'])
+  await wrapper.find('[data-tree-link="auth"]').trigger('keydown', { key: 'ArrowRight' })
+  expect(order(wrapper)).toEqual(['auth', 'keys'])
+  await wrapper.find('[data-tree-link="auth"]').trigger('keydown', { key: 'ArrowLeft' })
+  expect(order(wrapper)).toEqual(['auth'])
 })

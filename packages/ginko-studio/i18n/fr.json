@@ -421,6 +421,8 @@
       "trashParent": "Sur le site, au premier niveau : sa page parente est dans la corbeille.",
       "unusedSection": "Section sans effet",
       "unusedSectionText": "Sa section « {section} » n’a pas d’effet : les sous-pages n’ont pas de section. Elle disparaît au déplacement.",
+      "draftHeading": "Titre en attente",
+      "draftHeadingText": "« {name} » n’apparaît sur le site qu’une fois cette page publiée.",
       "emptyTitle": "Retirer le titre « {name} » ?",
       "emptyText": "« {title} » est la seule page sous « {name} ». La déplacer retire ce titre de la navigation.",
       "emptyConfirm": "Déplacer et retirer le titre",

@@ -5,7 +5,7 @@
 import { ChevronDownIcon, ChevronRightIcon, EllipsisIcon, GripVerticalIcon, PencilIcon, PlusIcon, TriangleAlertIcon } from '@lucide/vue'
 import { api } from '#convex/api'
 import type { CollectionBrick } from '@lupinum/ginko'
-import { navTabs, outline, walkOutline, type OutlineNode, type OutlineRow, type Place } from '@lupinum/ginko/internal'
+import { navTabs, outline, walkOutline, type OutlineNode, type Place } from '@lupinum/ginko/internal'
 import { opErrorOf } from '../composables/useOps'
 import { Badge } from '@studio/components/ui/badge'
 import { Button } from '@studio/components/ui/button'
@@ -20,7 +20,7 @@ const props = defineProps<{
   /** Owners and admins: move pages and rename headings. */
   canArrange: boolean
   canCreate: boolean
-  /** The content language of titles and headings (the site's main one). */
+  /** The content language of titles and heading labels; a renamed or started heading is written in it. */
   language: string
 }>()
 
@@ -29,12 +29,9 @@ const ops = useOps(computed(() => props.slug))
 const query = useConvexQuery(api.navigation.tree, () => ({ site: props.slug, brick: props.brickKey, language: props.language }))
 type Page = NonNullable<typeof query.data.value>[number]
 const pages = computed<Page[]>(() => query.data.value ?? [])
-const byId = computed(() => new Map(pages.value.map((p) => [p._id as string, p])))
-const rows = computed<OutlineRow[]>(() => pages.value.map((p) => ({
-  id: p._id, ...(p.parent && byId.value.has(p.parent) ? { parent: p.parent } : {}),
-  ...(p.section ? { section: p.section } : {}), ...(p.tab ? { tab: p.tab } : {}),
-})))
-const tree = computed(() => outline(rows.value))
+const byId = computed(() => new Map(pages.value.map((p) => [p.id, p])))
+// The pages are core's outline rows already (a parent in the trash is missing, so the page is a root, as on the website).
+const tree = computed(() => outline(pages.value))
 const nodes = computed(() => new Map(walkOutline(tree.value).map((n) => [n.row.id, n])))
 const parentOf = computed(() => {
   const out = new Map<string, string>()
@@ -53,8 +50,8 @@ const labelOf = (key: 'section' | 'tab', text: string | undefined) => {
   return (key === 'section' ? holder?.sectionLabel : holder?.tabLabel) || text
 }
 /** The page that starts a section run or tab: renaming it renames the heading. */
-const sectionHolder = (roots: OutlineNode[], text: string | undefined) => (text ? roots.find((r) => r.row.section === text)?.row.id : undefined)
-const tabHolder = (text: string | undefined) => (text ? tree.value.find((r) => r.row.tab === text)?.row.id : undefined)
+const sectionHolder = (roots: OutlineNode[], text: string | undefined) => (text ? roots.find((r) => r.row.section === text && !r.row.draft)?.row.id : undefined)
+const tabHolder = (text: string | undefined) => (text ? tree.value.find((r) => r.row.tab === text && !r.row.draft)?.row.id : undefined)
 
 const collapsed = ref(new Set<string>())
 function toggle(id: string) {
@@ -77,6 +74,9 @@ function warningOf(p: Page): { short: string; text: string } | undefined {
   const parent = p.parent ? byId.value.get(p.parent) : undefined
   if (parent && parent.state !== 'live' && p.state === 'live') return { short: t('site.tree.elsewhere'), text: t('site.tree.draftParent', { parent: parent.navTitle || parent.title || '' }) }
   if (parent && p.section) return { short: t('site.tree.unusedSection'), text: t('site.tree.unusedSectionText', { section: p.sectionLabel ?? p.section }) }
+  // The website does not show a draft, so the heading it holds is not there either until it is published.
+  const held = p.section ? (p.sectionLabel ?? p.section) : p.tab ? (p.tabLabel ?? p.tab) : undefined
+  if (!parent && p.draft && held) return { short: t('site.tree.draftHeading'), text: t('site.tree.draftHeadingText', { name: held }) }
   return undefined
 }
 
@@ -116,7 +116,10 @@ const focusAfter = ref<string>()
 const busy = ref(false)
 const pendingEmpty = ref<{ id: string; place: Place; name: string } | undefined>()
 
-/** Moves `id` to `place`; asks first when the page is the only one under its heading (the heading would go). */
+/**
+ * Moves `id` to `place`; asks first when the page is the only one under its heading (the heading would go). That move
+ * offers no Undo: the way back would not bring the heading back.
+ */
 async function move(id: string, place: Place, confirmed = false) {
   if (!confirmed) {
     const run = parentOf.value.has(id) ? undefined : runOf(id)
@@ -135,7 +138,7 @@ async function move(id: string, place: Place, confirmed = false) {
   try {
     await ops.placeEntry(id, page.rev, place, {
       message: t('site.tree.moved', { title: titleOf(id), place: placeWords(place) }),
-      undo: back ? async () => { const now = byId.value.get(id); if (now) await ops.placeEntry(id, now.rev, back) } : undefined,
+      undo: back && !confirmed ? async () => { const now = byId.value.get(id); if (now) await ops.placeEntry(id, now.rev, back) } : undefined,
     })
   } finally {
     busy.value = false
@@ -215,8 +218,11 @@ function onKey(e: KeyboardEvent, id: string) {
     const next = list[list.indexOf(id) + by]
     if (next) linkOf(next)?.focus()
   }
-  if (e.altKey && props.canArrange && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+  const node = nodes.value.get(id)!
+  if (e.altKey && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    // Alt+← is the browser's Back: in the tree it moves the page (or does nothing for someone who cannot arrange).
     e.preventDefault()
+    if (!props.canArrange) return
     if (e.key === 'ArrowUp') moveUp(id)
     else if (e.key === 'ArrowDown') moveDown(id)
     else if (e.key === 'ArrowRight') moveIn(id)
@@ -224,6 +230,13 @@ function onKey(e: KeyboardEvent, id: string) {
   } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     e.preventDefault()
     step(e.key === 'ArrowDown' ? 1 : -1)
+  } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    // A tree's keys: → opens a closed page or goes to its first subpage; ← closes an open one or goes to its parent.
+    e.preventDefault()
+    const open = node.children.length > 0 && !collapsed.value.has(id)
+    if (e.key === 'ArrowRight') { if (node.children.length && !open) toggle(id); else if (open) linkOf(node.children[0]!.row.id)?.focus() }
+    else if (open) toggle(id)
+    else { const parent = parentOf.value.get(id); if (parent) linkOf(parent)?.focus() }
   }
 }
 
@@ -271,6 +284,13 @@ function onDragOverHeading(e: DragEvent, first: string, name: string) {
   e.preventDefault()
   tipAt.value = { x: e.clientX, y: e.clientY }
   drop.value = { place: { before: first }, heading: first, zone: 'heading', tip: t('site.tree.dropFirst', { name }) }
+}
+/** Over the list but not a row or a heading: no place (a drop there does nothing). */
+function onDragOverList(e: DragEvent) {
+  if (!(e.target as Element | null)?.closest('[data-tree-row], [data-tree-heading]')) drop.value = undefined
+}
+function onDragLeaveList(e: DragEvent) {
+  if (!(e.currentTarget as Element).contains(e.relatedTarget as Node | null)) drop.value = undefined
 }
 function onDrop(e: DragEvent) {
   e.preventDefault()
@@ -380,7 +400,7 @@ async function finishRename(save: boolean) {
   <section :aria-label="t('site.tree.label')">
     <p v-if="query.error.value" class="mb-3 font-semibold text-destructive" role="alert">{{ opErrorOf(query.error.value, t('basics.loadFailed')).message }}</p>
     <p v-if="!query.data.value" class="rounded-xl border bg-card px-4 py-8 text-center text-muted-foreground" role="status">{{ t('site.tree.loading') }}</p>
-    <div v-else class="rounded-xl border bg-card px-2 pt-2 pb-3" @dragover.prevent @drop="onDrop">
+    <div v-else class="rounded-xl border bg-card px-2 pt-2 pb-3" @dragover="onDragOverList" @dragleave="onDragLeaveList" @drop="onDrop">
       <!-- Tabs, as on the website (only when there are two or more). -->
       <div v-if="tabs.length > 1" class="mb-1 flex flex-wrap items-center gap-1 px-1 pt-1" role="tablist" :aria-label="t('site.tree.label')">
         <template v-for="tab in tabs" :key="tab.title">
@@ -404,7 +424,7 @@ async function finishRename(save: boolean) {
         <div
           v-if="sec.title || si === 0"
           class="group/head relative flex min-h-9 items-center gap-1 rounded-md px-2 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-          :class="{ 'pt-1': si === 0, 'bg-accent': drop?.heading === sec.nodes[0]?.row.id }"
+          :class="{ 'pt-1': si === 0, 'bg-accent': drop?.heading === sec.nodes[0]?.row.id }" data-tree-heading
           @dragover="sec.nodes[0] && onDragOverHeading($event, sec.nodes[0].row.id, sec.title ? labelOf('section', sec.title) : t('site.tree.groupTop'))"
         >
           <template v-if="sec.title">

@@ -14,8 +14,8 @@ const NEW = ''
 
 const crumbs = computed(() => {
   const pages = query.data.value ?? []
-  const byId = new Map(pages.map((p) => [p._id as string, p]))
-  let rows: OutlineRow[] = pages.map((p) => ({ id: p._id, ...(p.parent && byId.has(p.parent) ? { parent: p.parent } : {}), ...(p.section ? { section: p.section } : {}), ...(p.tab ? { tab: p.tab } : {}) }))
+  const byId = new Map(pages.map((p) => [p.id, p]))
+  let rows: OutlineRow[] = pages
   const id = props.entry ?? NEW
   if (id === NEW) {
     // A new page is stored last, without section or parent (entries.create); then it moves to its place.

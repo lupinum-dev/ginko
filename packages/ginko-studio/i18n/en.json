@@ -421,6 +421,8 @@
       "trashParent": "On the website at the top level: its parent page is in the trash.",
       "unusedSection": "Unused section",
       "unusedSectionText": "Its section “{section}” is ignored: nested pages have no section. Moving the page removes it.",
+      "draftHeading": "Heading waits",
+      "draftHeadingText": "“{name}” appears on the website only once this page is published.",
       "emptyTitle": "Remove the heading “{name}”?",
       "emptyText": "“{title}” is the only page under “{name}”. Moving it removes this heading from the navigation.",
       "emptyConfirm": "Move and remove heading",

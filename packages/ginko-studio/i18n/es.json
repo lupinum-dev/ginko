@@ -421,6 +421,8 @@
       "trashParent": "En el sitio web, en el nivel superior: su página superior está en la papelera.",
       "unusedSection": "Sección sin efecto",
       "unusedSectionText": "Su sección «{section}» no tiene efecto: las subpáginas no tienen sección. Al moverla desaparece.",
+      "draftHeading": "Título en espera",
+      "draftHeadingText": "«{name}» aparece en la web solo cuando se publique esta página.",
       "emptyTitle": "¿Quitar el título «{name}»?",
       "emptyText": "«{title}» es la única página bajo «{name}». Si la mueves, este título desaparece de la navegación.",
       "emptyConfirm": "Mover y quitar el título",
